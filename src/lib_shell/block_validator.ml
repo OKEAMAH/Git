@@ -139,14 +139,14 @@ let on_request
                             ~predecessor:pred
                             header operations
                       | Error _ as x -> Lwt.return x
-                    end end >>=? fun { validation_result ; block_metadata ;
-                                       ops_metadata ; context_hash ; forking_testchain } ->
+                    end end >>=? fun { validation_store ; block_metadata ;
+                                       ops_metadata ; forking_testchain } ->
                   let validation_store =
-                    ({ context_hash ;
-                       message = validation_result.message ;
-                       max_operations_ttl =  validation_result.max_operations_ttl ;
-                       last_allowed_fork_level = validation_result.last_allowed_fork_level} :
-                       State.Block.validation_store) in
+                    ({ context_hash = validation_store.context_hash ;
+                       message = validation_store.message ;
+                       max_operations_ttl =  validation_store.max_operations_ttl ;
+                       last_allowed_fork_level = validation_store.last_allowed_fork_level} :
+                       Block_validation.validation_store) in
                   Distributed_db.commit_block
                     chain_db hash
                     header block_metadata operations ops_metadata

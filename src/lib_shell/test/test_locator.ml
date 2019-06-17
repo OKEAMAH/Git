@@ -113,7 +113,7 @@ let make_empty_chain (chain:State.Chain.t) n : Block_hash.t Lwt.t =
     ~time:header.shell.timestamp empty_context >>= fun context ->
   let header = { header with shell = { header.shell with context } } in
   let empty_result = {
-    State.Block.
+    Block_validation.
     context_hash = empty_context_hash ;
     message = None ;
     max_operations_ttl = 0 ;

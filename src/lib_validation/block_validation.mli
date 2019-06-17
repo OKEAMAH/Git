@@ -24,6 +24,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type validation_store = {
+  context_hash: Context_hash.t ;
+  message: string option ;
+  max_operations_ttl: int ;
+  last_allowed_fork_level: Int32.t ;
+}
+
 val may_patch_protocol:
   level:Int32.t ->
   Tezos_protocol_environment.validation_result ->
@@ -49,12 +56,13 @@ val check_liveness:
   unit tzresult Lwt.t
 
 type result = {
-  validation_result: Tezos_protocol_environment.validation_result ;
+  validation_store: validation_store ;
   block_metadata: MBytes.t ;
   ops_metadata: MBytes.t list list ;
-  context_hash: Context_hash.t ;
   forking_testchain: bool ;
 }
+
+val result_encoding : result Data_encoding.t
 
 val apply:
   Chain_id.t ->

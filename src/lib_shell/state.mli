@@ -139,13 +139,6 @@ module Block : sig
   type t
   type block = t
 
-  type validation_store = {
-    context_hash: Context_hash.t ;
-    message: string option ;
-    max_operations_ttl: int ;
-    last_allowed_fork_level: Int32.t ;
-  }
-
   (** Abstract view over block header storage.
       This module aims to abstract over block header's [read], [read_opt] and [known]
       functions by calling the adequate function depending on the block being pruned or not. *)
@@ -180,7 +173,7 @@ module Block : sig
     Chain.t ->
     Block_header.t -> MBytes.t ->
     Operation.t list list -> MBytes.t list list ->
-    validation_store ->
+    Block_validation.validation_store ->
     forking_testchain: bool ->
     block option tzresult Lwt.t
 

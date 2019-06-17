@@ -26,11 +26,35 @@
 
 open Block_validator_errors
 
+type validation_store = {
+  context_hash: Context_hash.t ;
+  message: string option ;
+  max_operations_ttl: int ;
+  last_allowed_fork_level: Int32.t ;
+}
+
+let validation_store_encoding =
+  let open Data_encoding in
+  conv
+    (fun {context_hash ; message ;
+          max_operations_ttl ; last_allowed_fork_level } ->
+      (context_hash, message,
+       max_operations_ttl, last_allowed_fork_level))
+    (fun (context_hash, message,
+          max_operations_ttl, last_allowed_fork_level) ->
+      {context_hash ; message ;
+       max_operations_ttl ; last_allowed_fork_level })
+    (obj4
+       (req "context_hash" Context_hash.encoding)
+       (req "message" (option string))
+       (req "max_operations_ttl" int31)
+       (req "last_allowed_fork_level" int32)
+    )
+
 type result = {
-  validation_result: Tezos_protocol_environment.validation_result ;
+  validation_store: validation_store ;
   block_metadata: MBytes.t ;
   ops_metadata: MBytes.t list list ;
-  context_hash: Context_hash.t ;
   forking_testchain : bool ;
 }
 
@@ -73,6 +97,19 @@ let init_test_chain
       Context.set_protocol test_ctxt protocol >>= fun test_ctxt ->
       Context.commit_test_chain_genesis test_ctxt forked_header >>= fun genesis_header ->
       return genesis_header
+
+let result_encoding =
+  let open Data_encoding in
+  conv
+    (fun { validation_store ; block_metadata ; ops_metadata ; forking_testchain} ->
+       (validation_store, block_metadata, ops_metadata, forking_testchain))
+    (fun (validation_store, block_metadata, ops_metadata, forking_testchain) ->
+       { validation_store ; block_metadata ; ops_metadata ; forking_testchain})
+    (obj4
+       (req "validation_store" validation_store_encoding)
+       (req "block_metadata" bytes)
+       (req "ops_metadata" (list @@ list @@ bytes))
+       (req "forking_testchain" bool))
 
 let may_patch_protocol
     ~level
@@ -274,8 +311,12 @@ module Make(Proto : Registered_protocol.T) = struct
       ~time:block_header.shell.timestamp
       ?message:validation_result.message
       context >>= fun context_hash ->
-    return ({ validation_result ; block_metadata ;
-              ops_metadata ; context_hash ; forking_testchain })
+    let validation_store =
+      { context_hash ;
+        message = validation_result.message ;
+        max_operations_ttl = validation_result.max_operations_ttl ;
+        last_allowed_fork_level = validation_result.last_allowed_fork_level} in
+    return ({ validation_store ; block_metadata ; ops_metadata ; forking_testchain})
 
 end
 
