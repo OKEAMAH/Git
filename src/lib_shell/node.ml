@@ -130,6 +130,7 @@ type config = {
   genesis: State.Chain.genesis ;
   store_root: string ;
   context_root: string ;
+  protocol_root: string ;
   patch_context: (Context.t -> Context.t Lwt.t) option ;
   p2p: (P2p.config * P2p.limits) option ;
   test_chain_max_tll: int option ;
@@ -260,10 +261,10 @@ let store_known_protocols state =
 
 let create
     ?(sandboxed = false)
+    ?multiprocess
     { genesis ; store_root ; context_root ;
-      patch_context ; p2p = p2p_params ;
-      test_chain_max_tll = max_child_ttl ;
-      checkpoint }
+      protocol_root ; patch_context ; p2p = p2p_params ;
+      test_chain_max_tll = max_child_ttl ; checkpoint }
     peer_validator_limits
     block_validator_limits
     prevalidator_limits
@@ -281,10 +282,16 @@ let create
   may_update_checkpoint mainchain_state checkpoint history_mode >>=? fun () ->
   let distributed_db = Distributed_db.create state p2p in
   store_known_protocols state >>= fun () ->
+  let multiprocess =
+    match multiprocess with
+    | Some process_path ->
+        Block_validator.External (context_index, store_root,
+                                  context_root, protocol_root, process_path)
+    | None -> Block_validator.Internal context_index in
   Validator.create state distributed_db
     peer_validator_limits
     block_validator_limits
-    (Block_validator.Internal context_index)
+    multiprocess
     prevalidator_limits
     chain_validator_limits
     ~start_testchain

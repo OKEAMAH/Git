@@ -63,7 +63,7 @@ let () =
 
 let (//) = Filename.concat
 
-let init_node ?sandbox ?checkpoint (config : Node_config_file.t) =
+let init_node ?sandbox ?checkpoint ?multiprocess (config : Node_config_file.t) =
   begin
     match sandbox with
     | None -> Lwt.return_none
@@ -148,12 +148,14 @@ let init_node ?sandbox ?checkpoint (config : Node_config_file.t) =
     patch_context = Some (Patch_context.patch_context sandbox_param) ;
     store_root = Node_data_version.store_dir config.data_dir ;
     context_root = Node_data_version.context_dir config.data_dir ;
+    protocol_root = Node_data_version.protocol_dir config.data_dir ;
     p2p = p2p_config ;
     test_chain_max_tll = Some (48 * 3600) ; (* 2 days *)
     checkpoint ;
   } in
   Node.create
     ~sandboxed:(sandbox <> None)
+    ?multiprocess
     node_config
     config.shell.peer_validator_limits
     config.shell.block_validator_limits
@@ -218,7 +220,7 @@ let init_signal () =
   ignore (Lwt_unix.on_signal Sys.sigint (handler "INT") : Lwt_unix.signal_handler_id) ;
   ignore (Lwt_unix.on_signal Sys.sigterm (handler "TERM") : Lwt_unix.signal_handler_id)
 
-let run ?verbosity ?sandbox ?checkpoint (config : Node_config_file.t) =
+let run ?verbosity ?sandbox ?checkpoint ?multiprocess (config : Node_config_file.t) =
   Node_data_version.ensure_data_dir config.data_dir >>=? fun () ->
   Lwt_lock_file.create
     ~unlink_on_exit:true (Node_data_version.lock_file config.data_dir) >>=? fun () ->
@@ -231,7 +233,7 @@ let run ?verbosity ?sandbox ?checkpoint (config : Node_config_file.t) =
     ~configuration:config.internal_events () >>= fun () ->
   Updater.init (Node_data_version.protocol_dir config.data_dir) ;
   lwt_log_notice "Starting the Tezos node..." >>= fun () ->
-  begin init_node ?sandbox ?checkpoint config >>= function
+  begin init_node ?sandbox ?checkpoint ?multiprocess config >>= function
     | Ok node -> return node
     | Error (State.Incorrect_history_mode_switch { previous_mode ; next_mode } :: _) ->
         failwith "@[Cannot switch from history mode '%a' to \
@@ -253,7 +255,7 @@ let run ?verbosity ?sandbox ?checkpoint (config : Node_config_file.t) =
   Internal_event_unix.close () >>= fun () ->
   return_unit
 
-let process sandbox verbosity checkpoint args =
+let process sandbox verbosity checkpoint multiprocess args =
   let verbosity =
     let open Internal_event in
     match verbosity with
@@ -282,11 +284,16 @@ let process sandbox verbosity checkpoint args =
           | None ->
               failwith "Failed to parse the provided checkpoint (Base58Check-encoded)."
     end >>=? fun checkpoint ->
+    begin
+      match multiprocess with
+      | Some path -> return_some path
+      | None -> return_none
+    end >>=? fun multiprocess ->
     Lwt_lock_file.is_locked
       (Node_data_version.lock_file config.data_dir) >>=? function
     | false ->
         Lwt.catch
-          (fun () -> run ?sandbox ?verbosity ?checkpoint config)
+          (fun () -> run ?sandbox ?verbosity ?checkpoint ?multiprocess config)
           (function
             |Unix.Unix_error(Unix.EADDRINUSE, "bind","") ->
                 Lwt_list.fold_right_s
@@ -339,9 +346,21 @@ module Term = struct
          info ~docs:Node_shared_arg.Manpage.misc_section
            ~doc ~docv:"<level>,<block_hash>" ["checkpoint"])
 
+  let multiprocess =
+    let open Cmdliner in
+    let doc =
+      "When enabled, it activates block validation using the \
+       provided external process. The validation procedure is then \
+       delegated to that executable. It allows the node to \
+       spawn a new processes for each block validation requests."
+    in
+    Arg.(value & opt (some string) None &
+         info ~docs:Node_shared_arg.Manpage.misc_section
+           ~doc ~docv:"EXECUTABLE" ["multiprocess"])
+
   let term =
     Cmdliner.Term.(ret (const process $ sandbox $ verbosity $ checkpoint $
-                        Node_shared_arg.Term.args))
+                        multiprocess $ Node_shared_arg.Term.args))
 
 end
 
