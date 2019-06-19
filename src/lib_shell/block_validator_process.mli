@@ -26,6 +26,7 @@
 
 type validator_kind =
   | Internal of Context.index
+  | External of Context.index * string * string * string * string
 
 type t
 
