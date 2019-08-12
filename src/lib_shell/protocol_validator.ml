@@ -27,18 +27,11 @@ open Validation_errors
 
 include Internal_event.Legacy_logging.Make_semantic(struct let name = "node.validator.block" end)
 
-type 'a request =
-  | Request_validation: {
-      hash: Protocol_hash.t ;
-      protocol: Protocol.t ;
-    } -> Registered_protocol.t tzresult request
-
-type message = Message: 'a request * 'a Lwt.u option -> message
-
 type t = {
   db: Distributed_db.t ;
   mutable worker: unit Lwt.t ;
-  messages: message Lwt_pipe.t ;
+  request: unit Lwt_condition.t ;
+  mutable pending: (Protocol.t * Registered_protocol.t tzresult Lwt.t * Registered_protocol.t tzresult Lwt.u) Protocol_hash.Map.t ;
   canceler: Lwt_canceler.t ;
 }
 
@@ -46,38 +39,32 @@ type t = {
 
 let rec worker_loop bv =
   begin
-    protect ~canceler:bv.canceler begin fun () ->
-      Lwt_pipe.pop bv.messages >>= return
-    end >>=? function Message (request, wakener) ->
-    match request with
-    | Request_validation { hash ; protocol } ->
-        Updater.compile hash protocol >>= fun valid ->
-        begin
-          if valid then
-            Distributed_db.commit_protocol bv.db hash protocol
-          else
-            (* no need to tag 'invalid' protocol on disk,
-               the economic protocol prevents us from
-               being spammed with protocol validation. *)
-            return_true
-        end >>=? fun _ ->
-        match wakener with
+    if Protocol_hash.Map.cardinal bv.pending = 0 then
+      Lwt_condition.wait bv.request >>= return
+    else
+      let (hash, (protocol, _, wakener)) =
+        Protocol_hash.Map.choose bv.pending in
+      bv.pending <- Protocol_hash.Map.remove hash bv.pending ;
+      Updater.compile hash protocol >>= fun valid ->
+      begin
+        if valid then
+          Distributed_db.commit_protocol bv.db hash protocol
+        else
+          (* no need to tag 'invalid' protocol on disk,
+             the economic protocol prevents us from
+             being spammed with protocol validation. *)
+          return_true
+      end >>=? fun _ ->
+      if valid then
+        match Registered_protocol.get hash with
+        | Some protocol -> Lwt.wakeup_later wakener (Ok protocol)
         | None ->
-            return_unit
-        | Some wakener ->
-            if valid then
-              match Registered_protocol.get hash with
-              | Some protocol ->
-                  Lwt.wakeup_later wakener (Ok protocol)
-              | None ->
-                  Lwt.wakeup_later wakener
-                    (error
-                       (Invalid_protocol { hash ; error = Dynlinking_failed }))
-            else
-              Lwt.wakeup_later wakener
-                (error
-                   (Invalid_protocol { hash ; error = Compilation_failed })) ;
-            return_unit
+            Lwt.wakeup_later wakener
+              (error (Invalid_protocol { hash ; error = Dynlinking_failed }))
+      else
+        Lwt.wakeup_later wakener
+          (error (Invalid_protocol { hash ; error = Compilation_failed })) ;
+      return_unit
   end >>= function
   | Ok () ->
       worker_loop bv
@@ -93,12 +80,13 @@ let rec worker_loop bv =
 
 let create db =
   let canceler = Lwt_canceler.create () in
-  let messages = Lwt_pipe.create () in
+  let pending = Protocol_hash.Map.empty in
+  let request = Lwt_condition.create () in
   let bv = {
-    canceler ; messages ; db ;
+    canceler ; pending ; request ; db ;
     worker = Lwt.return_unit } in
   Lwt_canceler.on_cancel bv.canceler begin fun () ->
-    Lwt_pipe.close bv.messages ;
+    Protocol_hash.Map.iter (fun _ (_, r, _) -> Lwt.cancel r) bv.pending ;
     Lwt.return_unit
   end ;
   bv.worker <-
@@ -112,7 +100,7 @@ let shutdown { canceler ; worker ; _ } =
   Lwt_canceler.cancel canceler >>= fun () ->
   worker
 
-let validate { messages ; _ } hash protocol =
+let validate state hash protocol =
   match Registered_protocol.get hash with
   | Some protocol ->
       lwt_debug Tag.DSL.(fun f ->
@@ -121,15 +109,18 @@ let validate { messages ; _ } hash protocol =
           -% a Protocol_hash.Logging.tag hash) >>= fun () ->
       return protocol
   | None ->
-      let res, wakener = Lwt.task () in
       lwt_debug Tag.DSL.(fun f ->
           f "pushing validation request for protocol %a"
           -% t event "pushing_validation_request"
           -% a Protocol_hash.Logging.tag hash) >>= fun () ->
-      Lwt_pipe.push messages
-        (Message (Request_validation { hash ; protocol },
-                  Some wakener)) >>= fun () ->
-      res
+      match Protocol_hash.Map.find_opt hash state.pending with
+      | None ->
+          let res, wakener = Lwt.task () in
+          let broadcast = Protocol_hash.Map.cardinal state.pending = 0 in
+          state.pending <- Protocol_hash.Map.add hash (protocol, res, wakener) state.pending ;
+          if broadcast then Lwt_condition.broadcast state.request () ;
+          res
+      | Some (_, res, _) -> res
 
 let fetch_and_compile_protocol pv ?peer ?timeout hash =
   match Registered_protocol.get hash with
