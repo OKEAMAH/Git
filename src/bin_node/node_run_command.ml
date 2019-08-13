@@ -63,7 +63,7 @@ let () =
 
 let (//) = Filename.concat
 
-let init_node ?sandbox ?checkpoint ?multiprocess (config : Node_config_file.t) =
+let init_node ?sandbox ?checkpoint ~multiprocess (config : Node_config_file.t) =
   begin
     match sandbox with
     | None -> Lwt.return_none
@@ -155,7 +155,7 @@ let init_node ?sandbox ?checkpoint ?multiprocess (config : Node_config_file.t) =
   } in
   Node.create
     ~sandboxed:(sandbox <> None)
-    ?multiprocess
+    ~multiprocess
     node_config
     config.shell.peer_validator_limits
     config.shell.block_validator_limits
@@ -220,7 +220,7 @@ let init_signal () =
   ignore (Lwt_unix.on_signal Sys.sigint (handler "INT") : Lwt_unix.signal_handler_id) ;
   ignore (Lwt_unix.on_signal Sys.sigterm (handler "TERM") : Lwt_unix.signal_handler_id)
 
-let run ?verbosity ?sandbox ?checkpoint ?multiprocess (config : Node_config_file.t) =
+let run ?verbosity ?sandbox ?checkpoint ~multiprocess (config : Node_config_file.t) =
   Node_data_version.ensure_data_dir config.data_dir >>=? fun () ->
   Lwt_lock_file.create
     ~unlink_on_exit:true (Node_data_version.lock_file config.data_dir) >>=? fun () ->
@@ -233,7 +233,7 @@ let run ?verbosity ?sandbox ?checkpoint ?multiprocess (config : Node_config_file
     ~configuration:config.internal_events () >>= fun () ->
   Updater.init (Node_data_version.protocol_dir config.data_dir) ;
   lwt_log_notice "Starting the Tezos node..." >>= fun () ->
-  begin init_node ?sandbox ?checkpoint ?multiprocess config >>= function
+  begin init_node ?sandbox ?checkpoint ~multiprocess config >>= function
     | Ok node -> return node
     | Error (State.Incorrect_history_mode_switch { previous_mode ; next_mode } :: _) ->
         failwith "@[Cannot switch from history mode '%a' to \
@@ -284,16 +284,11 @@ let process sandbox verbosity checkpoint multiprocess args =
           | None ->
               failwith "Failed to parse the provided checkpoint (Base58Check-encoded)."
     end >>=? fun checkpoint ->
-    begin
-      match multiprocess with
-      | Some path -> return_some path
-      | None -> return_none
-    end >>=? fun multiprocess ->
     Lwt_lock_file.is_locked
       (Node_data_version.lock_file config.data_dir) >>=? function
     | false ->
         Lwt.catch
-          (fun () -> run ?sandbox ?verbosity ?checkpoint ?multiprocess config)
+          (fun () -> run ?sandbox ?verbosity ?checkpoint ~multiprocess config)
           (function
             |Unix.Unix_error(Unix.EADDRINUSE, "bind","") ->
                 Lwt_list.fold_right_s
@@ -354,9 +349,9 @@ module Term = struct
        delegated to that executable. It allows the node to \
        spawn a new processes for each block validation requests."
     in
-    Arg.(value & opt (some string) None &
+    Arg.(value & flag &
          info ~docs:Node_shared_arg.Manpage.misc_section
-           ~doc ~docv:"EXECUTABLE" ["multiprocess"])
+           ~doc ["multiprocess"])
 
   let term =
     Cmdliner.Term.(ret (const process $ sandbox $ verbosity $ checkpoint $

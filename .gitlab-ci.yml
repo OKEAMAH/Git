@@ -794,20 +794,20 @@ opam:81:tezos-protocol-004-Pt24m4xi-tests:
   variables:
     package: tezos-protocol-004-Pt24m4xi-tests
 
-opam:82:tezos-baker-004-Pt24m4xi:
+opam:82:tezos-validator:
+  <<: *opam_definition
+  variables:
+    package: tezos-validator
+
+opam:83:tezos-baker-004-Pt24m4xi:
   <<: *opam_definition
   variables:
     package: tezos-baker-004-Pt24m4xi
 
-opam:83:tezos-endorser-004-Pt24m4xi-commands:
+opam:84:tezos-endorser-004-Pt24m4xi-commands:
   <<: *opam_definition
   variables:
     package: tezos-endorser-004-Pt24m4xi-commands
-
-opam:84:tezos-fork-validator:
-  <<: *opam_definition
-  variables:
-    package: tezos-fork-validator
 
 opam:85:tezos-network-sandbox:
   <<: *opam_definition

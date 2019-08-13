@@ -261,7 +261,7 @@ let store_known_protocols state =
 
 let create
     ?(sandboxed = false)
-    ?multiprocess
+    ~multiprocess
     { genesis ; store_root ; context_root ;
       protocol_root ; patch_context ; p2p = p2p_params ;
       test_chain_max_tll = max_child_ttl ; checkpoint }
@@ -283,11 +283,10 @@ let create
   let distributed_db = Distributed_db.create state p2p in
   store_known_protocols state >>= fun () ->
   let multiprocess =
-    match multiprocess with
-    | Some process_path ->
-        Block_validator.External (context_index, store_root,
-                                  context_root, protocol_root, process_path)
-    | None -> Block_validator.Internal context_index in
+    if multiprocess then
+      Block_validator.External (context_index, store_root,
+                                context_root, protocol_root, Sys.executable_name)
+    else Block_validator.Internal context_index in
   Validator.create state distributed_db
     peer_validator_limits
     block_validator_limits
