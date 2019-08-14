@@ -89,15 +89,31 @@ let assert_acceptable_header pipeline hash (header : Block_header.t) =
     return_unit
 
 let fetch_step pipeline (step : Block_locator.step)  =
-  lwt_log_info Tag.DSL.(fun f ->
-      f "fetching step %a -> %a (%a) from peer %a."
-      -% t event "fetching_step_from_peer"
-      -% a Block_hash.Logging.tag step.block
-      -% a Block_hash.Logging.predecessor_tag step.predecessor
-      -% a (Tag.def ~doc:"" "" Block_locator.pp_step) step
-      -% a P2p_peer.Id.Logging.tag pipeline.peer_id) >>= fun () ->
+  begin if step.step > 2000 then
+      lwt_log_notice Tag.DSL.(fun f ->
+          f "fetching a large bootstrap step (%a headers) from peer %a, this may take a while."
+          -% t event "fetching_large_step_from_peer"
+          -% a (Tag.def ~doc:"" "length" Format.pp_print_int) step.step
+          -% a P2p_peer.Id.Logging.tag pipeline.peer_id)
+    else
+      lwt_log_info Tag.DSL.(fun f ->
+          f "fetching step %a -> %a (%a) from peer %a."
+          -% t event "fetching_step_from_peer"
+          -% a Block_hash.Logging.tag step.block
+          -% a Block_hash.Logging.predecessor_tag step.predecessor
+          -% a (Tag.def ~doc:"" "" Block_locator.pp_step) step
+          -% a P2p_peer.Id.Logging.tag pipeline.peer_id)
+  end >>= fun () ->
   let rec fetch_loop acc hash cpt =
     Lwt_unix.yield () >>= fun () ->
+    begin if step.step > 2000 && step.step <> cpt && (step.step - cpt) mod 1000 = 0 then
+        lwt_log_notice Tag.DSL.(fun f ->
+            f "fetched %a/%a headers from peer %a, and continuing."
+            -% t event "still_fetching_large_step_from_peer"
+            -% a (Tag.def ~doc:"" "fetched" Format.pp_print_int) (step.step - cpt)
+            -% a (Tag.def ~doc:"" "length" Format.pp_print_int) step.step
+            -% a P2p_peer.Id.Logging.tag pipeline.peer_id)
+      else Lwt.return_unit end >>= fun () ->
     if cpt < 0 then
       lwt_log_info Tag.DSL.(fun f ->
           f "invalid step from peer %a (too long)."
@@ -119,7 +135,7 @@ let fetch_step pipeline (step : Block_locator.step)  =
       if in_chain then
         return acc
       else
-        lwt_debug Tag.DSL.(fun f ->
+        lwt_log_info Tag.DSL.(fun f ->
             f "fetching block header %a from peer %a."
             -% t event "fetching_block_header_from_peer"
             -% a Block_hash.Logging.tag hash
@@ -131,7 +147,7 @@ let fetch_step pipeline (step : Block_locator.step)  =
             hash ()
         end >>=? fun header ->
         assert_acceptable_header pipeline hash header >>=? fun () ->
-        lwt_debug Tag.DSL.(fun f ->
+        lwt_log_info Tag.DSL.(fun f ->
             f "fetched block header %a from peer %a."
             -% t event "fetched_block_header_from_peer"
             -% a Block_hash.Logging.tag hash
