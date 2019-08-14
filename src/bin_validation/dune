@@ -8,6 +8,11 @@
             tezos-shell-services
             tezos-validation
             tezos-protocol-updater
+            tezos-shell-context
+            tezos-embedded-protocol-001-PtCJ7pwo
+            tezos-embedded-protocol-002-PsYLVpVv
+            tezos-embedded-protocol-003-PsddFKi3
+            tezos-embedded-protocol-004-Pt24m4xi
             tezos-embedded-protocol-000-Ps9mPmXa)
  (flags (:standard -w -9+27-30-32-40@8
                    -safe-string
@@ -18,6 +23,7 @@
                    -open Tezos_shell_services
                    -open Tezos_validation
                    -open Tezos_protocol_updater
+                   -open Tezos_shell_context
                    -linkall))
  (modules Validator))
 

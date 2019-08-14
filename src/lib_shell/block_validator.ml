@@ -32,10 +32,6 @@ type limits = {
   worker_limits : Worker_types.limits ;
 }
 
-type validator_kind = Block_validator_process.validator_kind =
-  | Internal of Context.index
-  | External of Context.index * string * string * string * string
-
 module Name = struct
   type t = unit
   let encoding = Data_encoding.empty
@@ -51,7 +47,7 @@ module Types = struct
     limits : limits ;
     start_testchain : bool ;
   }
-  type parameters = limits * bool * Distributed_db.t * Block_validator_process.validator_kind
+  type parameters = limits * bool * Distributed_db.t * Block_validator_process.t
   let view _state _parameters = ()
 end
 
@@ -180,9 +176,8 @@ let on_request
                     return error
                   end
 
-let on_launch _ _ (limits, start_testchain, db, validation_kind) =
+let on_launch _ _ (limits, start_testchain, db, validation_process) =
   let protocol_validator = Protocol_validator.create db in
-  Block_validator_process.init validation_kind >>= fun validation_process ->
   return { Types.protocol_validator ; validation_process ; limits ; start_testchain }
 
 let on_error w r st errs =
@@ -210,7 +205,7 @@ let on_close w =
 
 let table = Worker.create_table Queue
 
-let create limits db validation_process_kind ~start_testchain =
+let create limits db validation_process ~start_testchain =
   let module Handlers = struct
     type self = t
     let on_launch = on_launch
@@ -224,7 +219,7 @@ let create limits db validation_process_kind ~start_testchain =
     table
     limits.worker_limits
     ()
-    (limits, start_testchain, db, validation_process_kind)
+    (limits, start_testchain, db, validation_process)
     (module Handlers)
 
 let shutdown = Worker.shutdown
