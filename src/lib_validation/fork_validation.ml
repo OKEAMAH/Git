@@ -42,6 +42,7 @@ type request =
       genesis_hash : Block_hash.t ;
       time : Time.Protocol.t ;
       protocol : Protocol_hash.t }
+  | Terminate
 
 let magic = MBytes.of_string "TEZOS_FORK_VALIDATOR_MAGIC_0"
 
@@ -63,7 +64,7 @@ let request_encoding =
         empty
         (function
           | Init -> Some ()
-          | Commit_genesis _ | Validate _ -> None)
+          | Commit_genesis _ | Validate _ | Terminate -> None )
         (fun () ->
            Init) ;
       case (Tag 1) ~title:"validate"
@@ -78,7 +79,7 @@ let request_encoding =
                        predecessor_block_header ; max_operations_ttl ; operations } ->
               Some (chain_id, block_header,
                     predecessor_block_header, max_operations_ttl, operations)
-          | Init | Commit_genesis _ -> None)
+          | Init | Commit_genesis _ | Terminate -> None)
         (fun (chain_id, block_header,
               predecessor_block_header, max_operations_ttl, operations) ->
           Validate { chain_id ; block_header ;
@@ -92,9 +93,14 @@ let request_encoding =
         (function
           | Commit_genesis { chain_id ; time ; genesis_hash ; protocol } ->
               Some (chain_id, time, genesis_hash, protocol)
-          | Init | Validate _ -> None)
+          | Init | Validate _ | Terminate -> None)
         (fun (chain_id, time, genesis_hash, protocol) ->
-           Commit_genesis { chain_id ; time ; genesis_hash ; protocol }) ]
+           Commit_genesis { chain_id ; time ; genesis_hash ; protocol }) ;
+      case (Tag 3) ~title:"terminate" unit
+        (function
+          | Terminate -> Some ()
+          | Init | Validate _ | Commit_genesis _ -> None)
+        (fun () -> Terminate) ; ]
 
 let data_size msg =
   String.length msg

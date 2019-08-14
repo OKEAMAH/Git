@@ -43,6 +43,7 @@ type request =
       genesis_hash : Block_hash.t ;
       time : Time.Protocol.t ;
       protocol : Protocol_hash.t }
+  | Terminate
 
 val magic : MBytes.t
 
