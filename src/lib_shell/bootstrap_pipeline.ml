@@ -331,9 +331,9 @@ let create
     block_validator peer_id chain_db locator =
   let canceler = Lwt_canceler.create () in
   let fetched_headers =
-    Lwt_pipe.create ~size:(1024, fun _ -> 1) () in
+    Lwt_pipe.create ~size:(32, fun _ -> 1) () in
   let fetched_blocks =
-    Lwt_pipe.create ~size:(128, fun _ -> 1) () in
+    Lwt_pipe.create ~size:(8, fun _ -> 1) () in
   let pipeline = {
     canceler ;
     block_header_timeout ; block_operations_timeout ;
