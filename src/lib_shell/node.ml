@@ -179,9 +179,9 @@ let default_prevalidator_limits = {
   operations_batch_size = 50 ;
 }
 let default_peer_validator_limits = {
-  block_header_timeout = Time.System.Span.of_seconds_exn 60. ;
-  block_operations_timeout = Time.System.Span.of_seconds_exn 60. ;
-  protocol_timeout = Time.System.Span.of_seconds_exn 120. ;
+  block_header_timeout = Time.System.Span.of_seconds_exn 300. ;
+  block_operations_timeout = Time.System.Span.of_seconds_exn 300. ;
+  protocol_timeout = Time.System.Span.of_seconds_exn 600. ;
   new_head_request_timeout = Time.System.Span.of_seconds_exn 90. ;
   worker_limits = {
     backlog_size = 1000 ;
