@@ -195,12 +195,14 @@ let headers_fetch_worker_loop pipeline =
             predecessor_known
             (Too_short_locator (sender_id, pipeline.locator)) >>=? fun () ->
           let rec process_headers headers =
-            let batch, headers = List.split_n 20 headers in
+            let batch, remaining_headers = List.split_n 20 headers in
             protect ~canceler:pipeline.canceler begin fun () ->
               Lwt_pipe.push pipeline.fetched_headers batch >>= fun () ->
               return_unit
             end >>=? fun () ->
-            process_headers headers in
+            match remaining_headers with
+            | [] -> return_unit
+            | _ -> process_headers remaining_headers in
           let rec pipe ?pred = function
             | [] -> return_unit
             | first :: (second :: _ as rest) ->
