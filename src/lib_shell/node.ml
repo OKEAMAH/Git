@@ -261,7 +261,7 @@ let store_known_protocols state =
 
 let create
     ?(sandboxed = false)
-    ~multiprocess
+    ~singleprocess
     { genesis ; store_root ; context_root ;
       protocol_root ; patch_context ; p2p = p2p_params ;
       test_chain_max_tll = max_child_ttl ; checkpoint }
@@ -278,18 +278,18 @@ let create
   init_p2p ~sandboxed p2p_params >>=? fun p2p ->
   begin
     let open Block_validator_process in
-    if multiprocess then
+    if singleprocess then
+      State.init
+        ~store_root ~context_root ?history_mode ?patch_context
+        genesis >>=? fun (state, mainchain_state, context_index, history_mode) ->
+      init (Internal context_index) >>=? fun validator_process ->
+      return (validator_process, state, mainchain_state, history_mode)
+    else
       init (External { context_root ; protocol_root ; process_path = Sys.executable_name }) >>=? fun validator_process ->
       let commit_genesis = Block_validator_process.commit_genesis validator_process ~genesis_hash:genesis.block in
       State.init
         ~store_root ~context_root ?history_mode ?patch_context ~commit_genesis
         genesis >>=? fun (state, mainchain_state, _context_index, history_mode) ->
-      return (validator_process, state, mainchain_state, history_mode)
-    else
-      State.init
-        ~store_root ~context_root ?history_mode ?patch_context
-        genesis >>=? fun (state, mainchain_state, context_index, history_mode) ->
-      init (Internal context_index) >>=? fun validator_process ->
       return (validator_process, state, mainchain_state, history_mode)
   end >>=? fun (validator_process, state, mainchain_state, history_mode) ->
   may_update_checkpoint mainchain_state checkpoint history_mode >>=? fun () ->

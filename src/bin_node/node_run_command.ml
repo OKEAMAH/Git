@@ -63,7 +63,7 @@ let () =
 
 let (//) = Filename.concat
 
-let init_node ?sandbox ?checkpoint ~multiprocess (config : Node_config_file.t) =
+let init_node ?sandbox ?checkpoint ~singleprocess (config : Node_config_file.t) =
   begin
     match sandbox with
     | None -> Lwt.return_none
@@ -155,7 +155,7 @@ let init_node ?sandbox ?checkpoint ~multiprocess (config : Node_config_file.t) =
   } in
   Node.create
     ~sandboxed:(sandbox <> None)
-    ~multiprocess
+    ~singleprocess
     node_config
     config.shell.peer_validator_limits
     config.shell.block_validator_limits
@@ -220,7 +220,7 @@ let init_signal () =
   ignore (Lwt_unix.on_signal Sys.sigint (handler "INT") : Lwt_unix.signal_handler_id) ;
   ignore (Lwt_unix.on_signal Sys.sigterm (handler "TERM") : Lwt_unix.signal_handler_id)
 
-let run ?verbosity ?sandbox ?checkpoint ~multiprocess (config : Node_config_file.t) =
+let run ?verbosity ?sandbox ?checkpoint ~singleprocess (config : Node_config_file.t) =
   Node_data_version.ensure_data_dir config.data_dir >>=? fun () ->
   Lwt_lock_file.create
     ~unlink_on_exit:true (Node_data_version.lock_file config.data_dir) >>=? fun () ->
@@ -233,7 +233,7 @@ let run ?verbosity ?sandbox ?checkpoint ~multiprocess (config : Node_config_file
     ~configuration:config.internal_events () >>= fun () ->
   Updater.init (Node_data_version.protocol_dir config.data_dir) ;
   lwt_log_notice "Starting the Tezos node..." >>= fun () ->
-  begin init_node ?sandbox ?checkpoint ~multiprocess config >>= function
+  begin init_node ?sandbox ?checkpoint ~singleprocess config >>= function
     | Ok node -> return node
     | Error (State.Incorrect_history_mode_switch { previous_mode ; next_mode } :: _) ->
         failwith "@[Cannot switch from history mode '%a' to \
@@ -255,7 +255,7 @@ let run ?verbosity ?sandbox ?checkpoint ~multiprocess (config : Node_config_file
   Internal_event_unix.close () >>= fun () ->
   return_unit
 
-let process sandbox verbosity checkpoint multiprocess args =
+let process sandbox verbosity checkpoint singleprocess args =
   let verbosity =
     let open Internal_event in
     match verbosity with
@@ -288,7 +288,7 @@ let process sandbox verbosity checkpoint multiprocess args =
       (Node_data_version.lock_file config.data_dir) >>=? function
     | false ->
         Lwt.catch
-          (fun () -> run ?sandbox ?verbosity ?checkpoint ~multiprocess config)
+          (fun () -> run ?sandbox ?verbosity ?checkpoint ~singleprocess config)
           (function
             |Unix.Unix_error(Unix.EADDRINUSE, "bind","") ->
                 Lwt_list.fold_right_s
@@ -341,21 +341,21 @@ module Term = struct
          info ~docs:Node_shared_arg.Manpage.misc_section
            ~doc ~docv:"<level>,<block_hash>" ["checkpoint"])
 
-  let multiprocess =
+  let singleprocess =
     let open Cmdliner in
     let doc =
-      "When enabled, it activates block validation using the \
-       provided external process. The validation procedure is then \
-       delegated to that executable. It allows the node to \
-       spawn a new processes for each block validation requests."
+      "When enabled, it deactivates block validation using an external \
+       process. Thus, the validation procedure is done in the same \
+       process as the node and might not be responding when doing \
+       extensive I/Os."
     in
     Arg.(value & flag &
          info ~docs:Node_shared_arg.Manpage.misc_section
-           ~doc ["multiprocess"])
+           ~doc ["singleprocess"])
 
   let term =
     Cmdliner.Term.(ret (const process $ sandbox $ verbosity $ checkpoint $
-                        multiprocess $ Node_shared_arg.Term.args))
+                        singleprocess $ Node_shared_arg.Term.args))
 
 end
 
