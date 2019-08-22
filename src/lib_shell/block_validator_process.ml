@@ -165,8 +165,8 @@ module Fork_validator = struct
     Lwt.catch
       (fun () ->
          (* Make sure that the promise is not canceled between a send and recv *)
-         Lwt_mutex.with_lock vp.lock begin fun () ->
-           Lwt.protected begin
+         Lwt.protected begin
+           Lwt_mutex.with_lock vp.lock begin fun () ->
              Fork_validation.send process#stdin Fork_validation.request_encoding request >>= fun () ->
              Fork_validation.recv_result process#stdout result_encoding
            end
