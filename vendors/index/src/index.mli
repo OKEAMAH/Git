@@ -74,13 +74,7 @@ module type S = sig
   type value
   (** The type for values. *)
 
-  val v :
-    ?fresh:bool ->
-    ?readonly:bool ->
-    ?shared:bool ->
-    log_size:int ->
-    string ->
-    t
+  val v : ?fresh:bool -> ?readonly:bool -> log_size:int -> string -> t
   (** The constructor for indexes.
       @param fresh
       @param read_only whether read-only mode is enabled for this index.
@@ -97,6 +91,12 @@ module type S = sig
 
   val mem : t -> key -> bool
   (** [mem t k] is [true] iff [k] is bound in [t]. *)
+
+  exception Invalid_Key_Size of key
+
+  exception Invalid_Value_Size of value
+  (** The exceptions raised when trying to add a key or a value of different
+      size than encoded_size *)
 
   val add : t -> key -> value -> unit
   (** [add t k v] binds [k] to [v] in [t]. *)

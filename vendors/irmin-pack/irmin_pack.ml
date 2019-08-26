@@ -26,11 +26,11 @@ let fresh_key =
 
 let lru_size_key =
   Irmin.Private.Conf.key ~doc:"Size of the LRU cache for pack entries."
-    "lru-size" Irmin.Private.Conf.int 100_000
+    "lru-size" Irmin.Private.Conf.int 10_000
 
 let index_log_size_key =
   Irmin.Private.Conf.key ~doc:"Size of index logs." "index-log-size"
-    Irmin.Private.Conf.int 500_000
+    Irmin.Private.Conf.int 10_000
 
 let readonly_key =
   Irmin.Private.Conf.key ~doc:"Start with a read-only disk." "readonly"
@@ -61,7 +61,7 @@ let root config =
   | Some r -> r
 
 let config ?(fresh = false) ?(shared = true) ?(readonly = false)
-    ?(lru_size = 100_000) ?(index_log_size = 500_000) root =
+    ?(lru_size = 10_000) ?(index_log_size = 10_000) root =
   let config = Irmin.Private.Conf.empty in
   let config = Irmin.Private.Conf.add config fresh_key fresh in
   let config = Irmin.Private.Conf.add config root_key (Some root) in
@@ -392,7 +392,7 @@ struct
         let readonly = readonly config in
         let shared = shared config in
         let log_size = index_log_size config in
-        let index = Index.v ~fresh ~shared ~readonly ~log_size root in
+        let index = Index.v ~fresh ~readonly ~log_size root in
         Contents.CA.v ~fresh ~shared ~readonly ~lru_size ~index root
         >>= fun contents ->
         Node.CA.v ~fresh ~shared ~readonly ~lru_size ~index root

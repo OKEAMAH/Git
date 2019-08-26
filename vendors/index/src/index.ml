@@ -37,19 +37,17 @@ module type S = sig
 
   type value
 
-  val v :
-    ?fresh:bool ->
-    ?readonly:bool ->
-    ?shared:bool ->
-    log_size:int ->
-    string ->
-    t
+  val v : ?fresh:bool -> ?readonly:bool -> log_size:int -> string -> t
 
   val clear : t -> unit
 
   val find_all : t -> key -> value list
 
   val mem : t -> key -> bool
+
+  exception Invalid_Key_Size of key
+
+  exception Invalid_Value_Size of value
 
   val add : t -> key -> value -> unit
 
@@ -71,7 +69,7 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
 
   type value = V.t
 
-  type entry = { key : key; value : value }
+  type entry = { key : key; key_hash : int; value : value }
 
   let entry_size = K.encoded_size + V.encoded_size
 
@@ -79,15 +77,25 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
 
   let entry_sizeL = Int64.of_int entry_size
 
+  exception Invalid_Key_Size of key
+
+  exception Invalid_Value_Size of value
+
   let append_entry io e =
-    IO.append io (K.encode e.key);
-    IO.append io (V.encode e.value)
+    let encoded_key = K.encode e.key in
+    let encoded_value = V.encode e.value in
+    if String.length encoded_key <> K.encoded_size then
+      raise (Invalid_Key_Size e.key);
+    if String.length encoded_value <> V.encoded_size then
+      raise (Invalid_Value_Size e.value);
+    IO.append io encoded_key;
+    IO.append io encoded_value
 
   let decode_entry bytes off =
     let string = Bytes.unsafe_to_string bytes in
     let key = K.decode string off in
     let value = V.decode string (off + K.encoded_size) in
-    { key; value }
+    { key; key_hash = K.hash key; value }
 
   module Tbl = Hashtbl.Make (K)
 
@@ -111,7 +119,11 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
     IO.clear t.log;
     may Bloomf.clear t.entries;
     Tbl.clear t.log_mem;
-    may (fun i -> IO.clear i.io) t.index;
+    may
+      (fun i ->
+        IO.clear i.io;
+        IO.close i.io)
+      t.index;
     t.index <- None
 
   let ( // ) = Filename.concat
@@ -145,39 +157,40 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
 
   let iter_io ?min ?max f io = iter_io_off ?min ?max (fun _ e -> f e) io
 
-  let get_entry io off =
-    let buf = Bytes.create entry_size in
-    let _ = IO.read io ~off buf in
-    decode_entry buf 0
+  type window = { buf: bytes; off: int64 }
+
+  let get_entry io ~window off =
+    match window with
+    | None ->
+      let buf = Bytes.create entry_size in
+      let _ = IO.read io ~off buf in
+      decode_entry buf 0
+    | Some w ->
+      let off = Int64.(to_int @@ sub off w.off) in
+      decode_entry w.buf off
 
   let with_cache ~v ~clear =
     let roots = Hashtbl.create 0 in
-    let f ?(fresh = false) ?(readonly = false) ?(shared = true) ~log_size root
-        =
-      if not shared then (
-        Log.debug (fun l ->
-            l "[%s] v fresh=%b shared=%b readonly=%b" (Filename.basename root)
-              fresh shared readonly);
-        v ~fresh ~readonly ~log_size root )
-      else
-        try
-          if not (Sys.file_exists root) then (
-            Log.debug (fun l ->
-                l "[%s] does not exist anymore, cleaning up the fd cache"
-                  (Filename.basename root));
-            Hashtbl.remove roots root;
-            raise Not_found );
-          let t = Hashtbl.find roots root in
-          Log.debug (fun l -> l "%s found in cache" root);
-          if fresh then clear t;
-          t
-        with Not_found ->
+    let f ?(fresh = false) ?(readonly = false) ~log_size root =
+      try
+        if not (Sys.file_exists root) then (
           Log.debug (fun l ->
-              l "[%s] v fresh=%b shared=%b readonly=%b"
-                (Filename.basename root) fresh shared readonly);
-          let t = v ~fresh ~readonly ~log_size root in
-          Hashtbl.add roots root t;
-          t
+              l "[%s] does not exist anymore, cleaning up the fd cache"
+                (Filename.basename root));
+          Hashtbl.remove roots (root, true);
+          Hashtbl.remove roots (root, false);
+          raise Not_found );
+        let t = Hashtbl.find roots (root, readonly) in
+        Log.debug (fun l -> l "%s found in cache" root);
+        if fresh then clear t;
+        t
+      with Not_found ->
+        Log.debug (fun l ->
+            l "[%s] v fresh=%b readonly=%b" (Filename.basename root) fresh
+              readonly);
+        let t = v ~fresh ~readonly ~log_size root in
+        Hashtbl.add roots (root, readonly) t;
+        t
     in
     `Staged f
 
@@ -216,17 +229,17 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
 
   let (`Staged v) = with_cache ~v:v_no_cache ~clear
 
-  let get_entry_iff_needed io off = function
+  let get_entry_iff_needed ~window io off = function
     | Some e -> e
-    | None -> get_entry io off
+    | None -> get_entry ~window io off
 
-  let look_around io init key h_key off =
+  let look_around ~window io init ~low ~high key h_key off =
     let rec search acc op curr =
       let off = op curr entry_sizeL in
-      if off < 0L || off >= IO.offset io then acc
+      if off < 0L || off >= IO.offset io || off < low || off > high then acc
       else
-        let e = get_entry io off in
-        let h_e = K.hash e.key in
+        let e = get_entry ~window io off in
+        let h_e = e.key_hash in
         if h_e <> h_key then acc
         else
           let new_acc = if K.equal e.key key then e.value :: acc else acc in
@@ -238,20 +251,32 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
   let interpolation_search index key =
     let hashed_key = K.hash key in
     let low, high = Fan.search index.fan_out hashed_key in
-    let rec search low high lowest_entry highest_entry =
+    let rec search steps ~window low high lowest_entry highest_entry =
       if high < low then []
       else
-        let lowest_entry = get_entry_iff_needed index.io low lowest_entry in
+        let window = match window with
+          | Some _ as w -> w
+          | None ->
+            let len = Int64.(add (sub high low) entry_sizeL) in
+            if  len <= 4_096L then (
+              let buf = Bytes.create (Int64.to_int len) in
+              let _ = IO.read index.io ~off:low buf in
+              Some { buf; off = low }
+            ) else None
+        in
+        let lowest_entry =
+          get_entry_iff_needed ~window index.io low lowest_entry
+        in
         if high = low then
           if K.equal lowest_entry.key key then [ lowest_entry.value ] else []
         else
-          let lowest_hash = K.hash lowest_entry.key in
+          let lowest_hash = lowest_entry.key_hash in
           if lowest_hash > hashed_key then []
           else
             let highest_entry =
-              get_entry_iff_needed index.io high highest_entry
+              get_entry_iff_needed ~window index.io high highest_entry
             in
-            let highest_hash = K.hash highest_entry.key in
+            let highest_hash = highest_entry.key_hash in
             if highest_hash < hashed_key then []
             else
               let lowest_hashf = float_of_int lowest_hash in
@@ -267,21 +292,22 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
               in
               let off = lowf +. doff -. mod_float doff entry_sizef in
               let offL = Int64.of_float off in
-              let e = get_entry index.io offL in
-              let hashed_e = K.hash e.key in
+              let e = get_entry ~window index.io offL in
+              let hashed_e = e.key_hash in
               if hashed_key = hashed_e then
                 let init = if K.equal key e.key then [ e.value ] else [] in
-                look_around index.io init key hashed_key offL
+                look_around ~window ~low ~high index.io init key hashed_key offL
               else if hashed_e < hashed_key then
-                (search [@tailcall])
+                (search [@tailcall]) (steps + 1) ~window
                   (Int64.add offL entry_sizeL)
                   high None (Some highest_entry)
               else
-                (search [@tailcall]) low
+                (search [@tailcall]) (steps + 1) ~window low
                   (Int64.sub offL entry_sizeL)
                   (Some lowest_entry) None
     in
-    if high < 0L then [] else (search [@tailcall]) low high None None
+    if high < 0L then [] else
+      (search [@tailcall]) ~window:None 0 low high None None
 
   let sync_log t =
     let generation = IO.get_generation t.log in
@@ -295,6 +321,7 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
       Tbl.clear t.log_mem;
       iter_io add_log_entry t.log;
       let index_path = index_path t.root in
+      may (fun i -> IO.close i.io) t.index;
       let io = IO.v ~fresh:false ~readonly:true ~generation index_path in
       let _ = IO.force_offset io in
       let io_off = IO.force_offset io in
@@ -304,7 +331,7 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
       let fan_out = Fan.v ~hash_size:K.hash_size ~entry_size fan_out_size in
       iter_io_off
         (fun off e ->
-          let hash = K.hash e.key in
+          let hash = e.key_hash in
           Fan.update fan_out hash off)
         io;
       Fan.finalize fan_out;
@@ -334,80 +361,74 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
     Log.debug (fun l -> l "mem %a" K.pp key);
     match find_all t key with [] -> false | _ -> true
 
-  let append_entry_fanout fan_out h io e =
-    Fan.update fan_out h (IO.offset io);
-    append_entry io e
+  let append_buf_fanout fan_out hash buf_str dst_io =
+    Fan.update fan_out hash (IO.offset dst_io);
+    IO.append dst_io buf_str
 
-  let merge_with log index tmp =
-    let offset = ref 0L in
-    let get_index_entry = function
-      | Some e -> Some e
-      | None ->
-          if !offset >= IO.offset index.io then None
-          else
-            let e = get_entry index.io !offset in
-            offset := Int64.add !offset entry_sizeL;
-            Some e
-    in
+  let append_entry_fanout fan_out entry dst_io =
+    Fan.update fan_out entry.key_hash (IO.offset dst_io);
+    append_entry dst_io entry
+
+  let rec merge_from_log fan_out log log_i hash_e dst_io =
+    if log_i >= Array.length log then log_i
+    else
+      let v = log.(log_i) in
+      if v.key_hash > hash_e then log_i
+      else (
+        append_entry_fanout fan_out v dst_io;
+        (merge_from_log [@tailcall]) fan_out log (log_i + 1) hash_e dst_io )
+
+  let append_remaining_log fan_out log log_i dst_io =
+    for log_i = log_i to Array.length log - 1 do
+      append_entry_fanout fan_out log.(log_i) dst_io
+    done
+
+  (** Merge [log] with [t] into [dst_io].
+      [log] must be sorted by key hashes. *)
+  let merge_with log index dst_io =
+    let entries = 10_000 in
+    let buf = Bytes.create (entries * entry_size) in
+    let refill off = ignore (IO.read index.io ~off buf) in
+    let index_end = IO.offset index.io in
     let fan_out = index.fan_out in
-    let rec go last_read l =
-      match get_index_entry last_read with
-      | None ->
-          List.iter
-            (fun v ->
-              let hashed_v = K.hash v.key in
-              append_entry_fanout fan_out hashed_v tmp v)
-            l
-      | Some e -> (
-          let hashed_e = K.hash e.key in
-          match l with
-          | v :: r ->
-              let last, rst =
-                let hashed_v = K.hash v.key in
-                if hashed_e = hashed_v then (
-                  append_entry_fanout fan_out hashed_e tmp e;
-                  append_entry_fanout fan_out hashed_v tmp v;
-                  (None, r) )
-                else if hashed_e < hashed_v then (
-                  append_entry_fanout fan_out hashed_e tmp e;
-                  (None, l) )
-                else (
-                  append_entry_fanout fan_out hashed_v tmp v;
-                  (Some e, r) )
-              in
-              if !offset >= IO.offset index.io && last = None then
-                List.iter
-                  (fun v ->
-                    let hashed_v = K.hash v.key in
-                    append_entry_fanout fan_out hashed_v tmp v)
-                  rst
-              else (go [@tailcall]) last rst
-          | [] ->
-              append_entry_fanout fan_out hashed_e tmp e;
-              iter_io
-                (fun e ->
-                  let hashed_e = K.hash e.key in
-                  append_entry_fanout fan_out hashed_e tmp e)
-                index.io ~min:!offset )
+    refill 0L;
+    let rec go index_offset buf_offset log_i =
+      if index_offset >= index_end then
+        append_remaining_log fan_out log log_i dst_io
+      else (
+        let buf_str = Bytes.sub_string buf buf_offset entry_size in
+        let index_offset = Int64.add index_offset entry_sizeL in
+        let key_e = K.decode buf_str 0 in
+        let hash_e = K.hash key_e in
+        let log_i = merge_from_log fan_out log log_i hash_e dst_io in
+        append_buf_fanout fan_out hash_e buf_str dst_io;
+        let buf_offset =
+          let n = buf_offset + entry_size in
+          if n >= Bytes.length buf then (
+            refill index_offset;
+            0
+          ) else n
+        in
+        (go [@tailcall]) index_offset buf_offset log_i )
     in
-    (go [@tailcall]) None log
+    (go [@tailcall]) 0L 0 0
 
-  module EntrySet = Set.Make (struct
-    type t = entry
-
-    let compare e e' =
-      let c = compare (K.hash e.key) (K.hash e'.key) in
-      if c = 0 then 1 else c
-  end)
-
-  let merge t =
+  let merge ~witness t =
     Log.debug (fun l -> l "merge %S" t.root);
     let tmp_path = t.root // "tmp" // "index" in
     let generation = Int64.succ t.generation in
     let tmp = IO.v ~readonly:false ~fresh:true ~generation tmp_path in
     let log =
-      Tbl.fold (fun _ e acc -> EntrySet.add e acc) t.log_mem EntrySet.empty
-      |> EntrySet.elements
+      let compare_entry e e' = compare e.key_hash e'.key_hash in
+      let b = Array.make (Tbl.length t.log_mem) witness in
+      Tbl.fold
+        (fun _ e i ->
+          b.(i) <- e;
+          i + 1)
+        t.log_mem 0
+      |> ignore;
+      Array.fast_sort compare_entry b;
+      b
     in
     ( match t.index with
     | None ->
@@ -416,11 +437,7 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
         let io =
           IO.v ~fresh:true ~readonly:false ~generation:0L (index_path t.root)
         in
-        List.iter
-          (fun v ->
-            let hashed_v = K.hash v.key in
-            append_entry_fanout fan_out hashed_v tmp v)
-          log;
+        append_remaining_log fan_out log 0 tmp;
         t.index <- Some { io; fan_out }
     | Some index ->
         let fan_out_size =
@@ -444,12 +461,12 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
   let add t key value =
     Log.debug (fun l -> l "add %a %a" K.pp key V.pp value);
     if t.config.readonly then raise RO_Not_Allowed;
-    let entry = { key; value } in
+    let entry = { key; key_hash = K.hash key; value } in
     append_entry t.log entry;
     Tbl.add t.log_mem key entry;
     may (fun bf -> Bloomf.add bf key) t.entries;
     if Int64.compare (IO.offset t.log) (Int64.of_int t.config.log_size) > 0
-    then merge t
+    then merge ~witness:entry t
 
   (* XXX: Perform a merge beforehands to ensure duplicates are not hit twice. *)
   let iter f t =
