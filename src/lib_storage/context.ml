@@ -903,3 +903,5 @@ let restore_contexts idx ~filename k_store_pruned_block pipeline_validation =
        else fail @@ Suspicious_file (total - current)
     )
     (fun () -> Lwt_unix.close fd)
+
+module Irmin = Store
