@@ -42,7 +42,6 @@ module type S = sig
 
   val v :
     ?fresh:bool ->
-    ?shared:bool ->
     ?readonly:bool ->
     ?lru_size:int ->
     index:index ->
@@ -58,6 +57,10 @@ module type S = sig
   val unsafe_find : 'a t -> key -> value option
 
   val sync : 'a t -> unit
+
+  val integrity_check : offset:int64 -> length:int -> key -> 'a t -> unit
+
+  val close : 'a t -> unit Lwt.t
 end
 
 module type MAKER = sig

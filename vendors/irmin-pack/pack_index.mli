@@ -11,23 +11,13 @@
    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. *)
 
 module type S = sig
-  type t
+  include Index.S with type value = int64 * int * char
 
-  type key
-
-  type value = int64 * int * char
-
-  val v : ?fresh:bool -> ?readonly:bool -> log_size:int -> string -> t
-
-  val clear : t -> unit
-
-  val flush : t -> unit
+  val find : t -> key -> value option
 
   val add : t -> key -> value -> unit
 
-  val mem : t -> key -> bool
-
-  val find : t -> key -> value option
+  val close : t -> unit
 end
 
 module Make (K : Irmin.Hash.S) : S with type key = K.t

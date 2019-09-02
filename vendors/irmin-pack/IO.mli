@@ -40,13 +40,17 @@ module type S = sig
   val version : t -> string
 
   val sync : t -> unit
+
+  val close : t -> unit
+
+  val is_valid : t -> bool
 end
 
 module Unix : S
 
 val with_cache :
-  v:('a -> fresh:bool -> shared:bool -> readonly:bool -> string -> 'b) ->
+  v:('a -> fresh:bool -> readonly:bool -> string -> 'b) ->
   clear:('b -> unit) ->
+  valid:('b -> bool) ->
   string ->
-  [ `Staged of
-    'a -> ?fresh:bool -> ?shared:bool -> ?readonly:bool -> string -> 'b ]
+  [ `Staged of 'a -> ?fresh:bool -> ?readonly:bool -> string -> 'b ]

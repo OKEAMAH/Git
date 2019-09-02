@@ -59,7 +59,7 @@ end
 
 module type IO = Io.S
 
-exception RO_Not_Allowed
+exception RO_not_allowed
 (** The exception raised when illegal operation is attempted on a read_only
     index. *)
 
@@ -85,21 +85,22 @@ module type S = sig
   val clear : t -> unit
   (** [clear t] clears [t] so that there are no more bindings in it. *)
 
-  val find_all : t -> key -> value list
+  val find : t -> key -> value
   (** [find t k] are all the bindings of [k] in [t]. The order is not
       specified *)
 
   val mem : t -> key -> bool
   (** [mem t k] is [true] iff [k] is bound in [t]. *)
 
-  exception Invalid_Key_Size of key
+  exception Invalid_key_size of key
 
-  exception Invalid_Value_Size of value
+  exception Invalid_value_size of value
   (** The exceptions raised when trying to add a key or a value of different
       size than encoded_size *)
 
-  val add : t -> key -> value -> unit
-  (** [add t k v] binds [k] to [v] in [t]. *)
+  val replace : t -> key -> value -> unit
+  (** [replace t k v] binds [k] to [v] in [t], replacing any exising binding
+      of [k]. *)
 
   val iter : (key -> value -> unit) -> t -> unit
   (** Iterates over the index bindings. Order is not specified.
@@ -108,6 +109,34 @@ module type S = sig
 
   val flush : t -> unit
   (** Flushes all buffers to the disk. *)
+
+  val close : t -> unit
+  (** Closes the files and clears the caches of [t].*)
+
+  val force_merge : t -> key -> value -> unit
+  (** [force_merge t k v] forces a merge for [t], where [k] and [v] are any key and value of [t].  *)
+end
+
+module Private : sig
+  module Fan : sig
+    type t
+
+    val equal : t -> t -> bool
+
+    val v : hash_size:int -> entry_size:int -> int -> t
+
+    val search : t -> int -> int64 * int64
+
+    val update : t -> int -> int64 -> unit
+
+    val finalize : t -> unit
+
+    val exported_size : t -> int
+
+    val export : t -> string
+
+    val import : hash_size:int -> string -> t
+  end
 end
 
 module Make (K : Key) (V : Value) (IO : IO) :

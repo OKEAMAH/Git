@@ -28,7 +28,6 @@ module type S = sig
 
   val v :
     ?fresh:bool ->
-    ?shared:bool ->
     ?readonly:bool ->
     ?lru_size:int ->
     index:index ->
@@ -40,6 +39,10 @@ module type S = sig
   module Key : Irmin.Hash.S with type t = key
 
   module Val : Irmin.Private.Node.S with type t = value and type hash = key
+
+  val integrity_check : offset:int64 -> length:int -> key -> 'a t -> unit
+
+  val close : 'a t -> unit Lwt.t
 end
 
 module type CONFIG = sig
@@ -780,9 +783,13 @@ struct
   let unsafe_add t k v =
     check_hash k (hash v);
     save t v.Val.v;
-    Lwt.return ()
+    Lwt.return_unit
 
   let batch = Inode.batch
 
   let v = Inode.v
+
+  let integrity_check = Inode.integrity_check
+
+  let close = Inode.close
 end

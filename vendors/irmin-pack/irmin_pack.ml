@@ -28,8 +28,6 @@ module Default = struct
   let index_log_size = 500_000
 
   let readonly = false
-
-  let shared = true
 end
 
 let fresh_key =
@@ -48,20 +46,11 @@ let readonly_key =
   Irmin.Private.Conf.key ~doc:"Start with a read-only disk." "readonly"
     Irmin.Private.Conf.bool Default.readonly
 
-let shared_key =
-  Irmin.Private.Conf.key
-    ~doc:
-      "Share resources (file-descriptors, caches) with other instances when \
-       possible."
-    "shared" Irmin.Private.Conf.bool Default.shared
-
 let fresh config = Irmin.Private.Conf.get config fresh_key
 
 let lru_size config = Irmin.Private.Conf.get config lru_size_key
 
 let readonly config = Irmin.Private.Conf.get config readonly_key
-
-let shared config = Irmin.Private.Conf.get config shared_key
 
 let index_log_size config = Irmin.Private.Conf.get config index_log_size_key
 
@@ -72,9 +61,9 @@ let root config =
   | None -> failwith "no root set"
   | Some r -> r
 
-let config ?(fresh = Default.fresh) ?(shared = Default.shared)
-    ?(readonly = Default.readonly) ?(lru_size = Default.lru_size)
-    ?(index_log_size = Default.index_log_size) root =
+let config ?(fresh = Default.fresh) ?(readonly = Default.readonly)
+    ?(lru_size = Default.lru_size) ?(index_log_size = Default.index_log_size)
+    root =
   let config = Irmin.Private.Conf.empty in
   let config = Irmin.Private.Conf.add config fresh_key fresh in
   let config = Irmin.Private.Conf.add config root_key (Some root) in
@@ -83,7 +72,6 @@ let config ?(fresh = Default.fresh) ?(shared = Default.shared)
     Irmin.Private.Conf.add config index_log_size_key index_log_size
   in
   let config = Irmin.Private.Conf.add config readonly_key readonly in
-  let config = Irmin.Private.Conf.add config shared_key shared in
   config
 
 let ( ++ ) = Int64.add
@@ -122,6 +110,7 @@ module Atomic_write (K : Irmin.Type.S) (V : Irmin.Hash.S) = struct
     block : IO.t;
     lock : Lwt_mutex.t;
     w : W.t;
+    mutable counter : int;
   }
 
   let read_length32 ~off block =
@@ -145,14 +134,14 @@ module Atomic_write (K : Irmin.Type.S) (V : Irmin.Hash.S) = struct
 
   let unsafe_find t k =
     Log.debug (fun l -> l "[branches] find %a" pp_branch k);
-    try Lwt.return (Some (Tbl.find t.cache k))
-    with Not_found -> Lwt.return None
+    try Lwt.return_some (Tbl.find t.cache k)
+    with Not_found -> Lwt.return_none
 
   let find t k = Lwt_mutex.with_lock t.lock (fun () -> unsafe_find t k)
 
   let unsafe_mem t k =
     Log.debug (fun l -> l "[branches] mem %a" pp_branch k);
-    try Lwt.return (Tbl.mem t.cache k) with Not_found -> Lwt.return false
+    try Lwt.return (Tbl.mem t.cache k) with Not_found -> Lwt.return_false
 
   let mem t v = Lwt_mutex.with_lock t.lock (fun () -> unsafe_mem t v)
 
@@ -172,7 +161,7 @@ module Atomic_write (K : Irmin.Type.S) (V : Irmin.Hash.S) = struct
     Log.debug (fun l -> l "[branches] remove %a" pp_branch k);
     Lwt_mutex.with_lock t.lock (fun () ->
         unsafe_remove t k;
-        Lwt.return ())
+        Lwt.return_unit)
     >>= fun () -> W.notify t.w k None
 
   let unsafe_clear t =
@@ -185,7 +174,13 @@ module Atomic_write (K : Irmin.Type.S) (V : Irmin.Hash.S) = struct
 
   let watches = W.v ()
 
-  let unsafe_v ~fresh ~shared:_ ~readonly file =
+  let valid t =
+    if IO.is_valid t.block then (
+      t.counter <- t.counter + 1;
+      true )
+    else false
+
+  let unsafe_v ~fresh ~readonly file =
     let block = IO.v ~fresh ~version:current_version ~readonly file in
     let cache = Tbl.create 997 in
     let index = Tbl.create 997 in
@@ -212,14 +207,23 @@ module Atomic_write (K : Irmin.Type.S) (V : Irmin.Hash.S) = struct
         (aux [@tailcall]) (off ++ Int64.(of_int @@ (len + V.hash_size))) k
     in
     (aux [@tailcall]) 0L @@ fun () ->
-    { cache; index; block; w = watches; lock = Lwt_mutex.create () }
+    {
+      cache;
+      index;
+      block;
+      w = watches;
+      lock = Lwt_mutex.create ();
+      counter = 1;
+    }
 
   let (`Staged unsafe_v) =
-    with_cache ~clear:unsafe_clear ~v:(fun () -> unsafe_v) "store.branches"
+    with_cache ~clear:unsafe_clear ~valid
+      ~v:(fun () -> unsafe_v)
+      "store.branches"
 
-  let v ?fresh ?shared ?readonly file =
+  let v ?fresh ?readonly file =
     Lwt_mutex.with_lock create (fun () ->
-        let v = unsafe_v () ?fresh ?shared ?readonly file in
+        let v = unsafe_v () ?fresh ?readonly file in
         Lwt.return v)
 
   let unsafe_set t k v =
@@ -237,14 +241,14 @@ module Atomic_write (K : Irmin.Type.S) (V : Irmin.Hash.S) = struct
     Log.debug (fun l -> l "[branches] set %a" pp_branch k);
     Lwt_mutex.with_lock t.lock (fun () ->
         unsafe_set t k v;
-        Lwt.return ())
+        Lwt.return_unit)
     >>= fun () -> W.notify t.w k (Some v)
 
   let unsafe_test_and_set t k ~test ~set =
     let v = try Some (Tbl.find t.cache k) with Not_found -> None in
-    if not (Irmin.Type.(equal (option V.t)) v test) then Lwt.return false
+    if not (Irmin.Type.(equal (option V.t)) v test) then Lwt.return_false
     else
-      let return () = Lwt.return true in
+      let return () = Lwt.return_true in
       match set with
       | None -> unsafe_remove t k |> return
       | Some v -> unsafe_set t k v |> return
@@ -254,7 +258,7 @@ module Atomic_write (K : Irmin.Type.S) (V : Irmin.Hash.S) = struct
     Lwt_mutex.with_lock t.lock (fun () -> unsafe_test_and_set t k ~test ~set)
     >>= function
     | true -> W.notify t.w k set >|= fun () -> true
-    | false -> Lwt.return false
+    | false -> Lwt.return_false
 
   let list t =
     Log.debug (fun l -> l "[branches] list");
@@ -266,6 +270,18 @@ module Atomic_write (K : Irmin.Type.S) (V : Irmin.Hash.S) = struct
   let watch t = W.watch t.w
 
   let unwatch t = W.unwatch t.w
+
+  let unsafe_close t =
+    t.counter <- t.counter - 1;
+    if t.counter = 0 then (
+      Tbl.reset t.index;
+      Tbl.reset t.cache;
+      if not (IO.readonly t.block) then IO.sync t.block;
+      IO.close t.block;
+      W.clear t.w )
+    else Lwt.return_unit
+
+  let close t = Lwt_mutex.with_lock t.lock (fun () -> unsafe_close t)
 end
 
 module type CONFIG = Inode.CONFIG
@@ -403,19 +419,54 @@ struct
         let fresh = fresh config in
         let lru_size = lru_size config in
         let readonly = readonly config in
-        let shared = shared config in
         let log_size = index_log_size config in
         let index = Index.v ~fresh ~readonly ~log_size root in
-        Contents.CA.v ~fresh ~shared ~readonly ~lru_size ~index root
+        Contents.CA.v ~fresh ~readonly ~lru_size ~index root
         >>= fun contents ->
-        Node.CA.v ~fresh ~shared ~readonly ~lru_size ~index root
-        >>= fun node ->
-        Commit.CA.v ~fresh ~shared ~readonly ~lru_size ~index root
-        >>= fun commit ->
-        Branch.v ~fresh ~shared ~readonly root >|= fun branch ->
+        Node.CA.v ~fresh ~readonly ~lru_size ~index root >>= fun node ->
+        Commit.CA.v ~fresh ~readonly ~lru_size ~index root >>= fun commit ->
+        Branch.v ~fresh ~readonly root >|= fun branch ->
         { contents; node; commit; branch; config; index }
+
+      let close t =
+        Contents.CA.close (contents_t t) >>= fun () ->
+        Node.CA.close (snd (node_t t)) >>= fun () ->
+        Commit.CA.close (snd (commit_t t)) >>= fun () -> Branch.close t.branch
     end
   end
+
+  let integrity_check ppf (t : X.Repo.t) =
+    Fmt.pf ppf "running the integrity check\n%!";
+    let commits = ref 0 in
+    let contents = ref 0 in
+    let nodes = ref 0 in
+    let pp_stats ppf () =
+      Fmt.pf ppf "%4dk blobs / %4dk trees / %4dk commits" (!contents / 1000)
+        (!nodes / 1000) (!commits / 1000)
+    in
+    let pr_stats () = Fmt.epr "\r%a%!" pp_stats () in
+    let count_increment count =
+      incr count;
+      if !count mod 100 = 0 then pr_stats ()
+    in
+    Index.iter
+      (fun k (offset, length, m) ->
+        match m with
+        | 'B' ->
+            let capability = X.Repo.contents_t t in
+            X.Contents.CA.integrity_check ~offset ~length k capability;
+            count_increment contents
+        | 'N' | 'I' ->
+            let _, capability = X.Repo.node_t t in
+            X.Node.CA.integrity_check ~offset ~length k capability;
+            count_increment nodes
+        | 'C' ->
+            let _, capability = X.Repo.commit_t t in
+            X.Commit.CA.integrity_check ~offset ~length k capability;
+            count_increment commits
+        | _ -> invalid_arg "unknown content type")
+      t.index;
+    pr_stats ()
 
   include Irmin.Of_private (X)
 end
