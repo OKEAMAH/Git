@@ -1,5 +1,7 @@
 module Private = struct
   module Fan = Fan
+  module Io_array = Io_array
+  module Search = Search
 end
 
 module type Key = sig
@@ -68,10 +70,6 @@ let may f = function None -> () | Some bf -> f bf
 
 exception RO_not_allowed
 
-let src = Logs.Src.create "index" ~doc:"Index"
-
-module Log = (val Logs.src_log src : Logs.LOG)
-
 module Make (K : Key) (V : Value) (IO : IO) = struct
   type key = K.t
 
@@ -80,8 +78,6 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
   type entry = { key : key; key_hash : int; value : value }
 
   let entry_size = K.encoded_size + V.encoded_size
-
-  let entry_sizef = float_of_int entry_size
 
   let entry_sizeL = Int64.of_int entry_size
 
@@ -119,7 +115,7 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
     log : IO.t;
     log_mem : entry Tbl.t;
     mutable counter : int;
-    lock : IO.lock;
+    lock : IO.lock option;
   }
 
   let clear t =
@@ -136,11 +132,15 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
 
   let ( // ) = Filename.concat
 
-  let log_path root = root // "index.log"
+  let index_dir root = root // "index"
 
-  let index_path root = root // "index" // "index"
+  let log_path root = index_dir root // "log"
 
-  let lock_path root = root // "index" // ".lock"
+  let index_path root = index_dir root // "data"
+
+  let lock_path root = index_dir root // "lock"
+
+  let merge_path root = index_dir root // "merge"
 
   let page_size = Int64.mul entry_sizeL 1_000L
 
@@ -167,24 +167,56 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
 
   let iter_io ?min ?max f io = iter_io_off ?min ?max (fun _ e -> f e) io
 
-  type window = { buf : bytes; off : int64 }
+  module Entry = struct
+    type t = entry
 
-  let get_entry io ~window off =
-    match window with
-    | None ->
-        let buf = Bytes.create entry_size in
-        let n = IO.read io ~off buf in
-        assert (n = entry_size);
-        decode_entry buf 0
-    | Some w ->
-        let off = Int64.(to_int @@ sub off w.off) in
-        decode_entry w.buf off
+    module Key = K
+    module Value = V
+
+    let encoded_size = entry_size
+
+    let decode = decode_entry
+
+    let to_key e = e.key
+
+    let to_value e = e.value
+  end
+
+  module IOArray = Io_array.Make (IO) (Entry)
+
+  module Search =
+    Search.Make (Entry) (IOArray)
+      (struct
+        type t = int
+
+        module Entry = Entry
+
+        let compare : int -> int -> int = compare
+
+        let of_entry e = e.key_hash
+
+        let of_key = K.hash
+
+        let linear_interpolate ~low:(low_index, low_metric)
+            ~high:(high_index, high_metric) key_metric =
+          let low_in = float_of_int low_metric in
+          let high_in = float_of_int high_metric in
+          let target_in = float_of_int key_metric in
+          let low_out = Int64.to_float low_index in
+          let high_out = Int64.to_float high_index in
+          (* Fractional position of [target_in] along the line from [low_in] to [high_in] *)
+          let proportion = (target_in -. low_in) /. (high_in -. low_in) in
+          (* Convert fractional position to position in output space *)
+          let position = low_out +. (proportion *. (high_out -. low_out)) in
+          let rounded = ceil (position -. 0.5) +. 0.5 in
+          Int64.of_float rounded
+      end)
 
   let with_cache ~v ~clear =
     let roots = Hashtbl.create 0 in
     let f ?(fresh = false) ?(readonly = false) ~log_size root =
       try
-        if not (Sys.file_exists root) then (
+        if not (Sys.file_exists (index_dir root)) then (
           Log.debug (fun l ->
               l "[%s] does not exist anymore, cleaning up the fd cache"
                 (Filename.basename root));
@@ -192,7 +224,7 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
           Hashtbl.remove roots (root, false);
           raise Not_found );
         let t = Hashtbl.find roots (root, readonly) in
-        if IO.valid_fd t.log then (
+        if t.counter <> 0 then (
           Log.debug (fun l -> l "%s found in cache" root);
           t.counter <- t.counter + 1;
           if fresh then clear t;
@@ -211,7 +243,9 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
     `Staged f
 
   let v_no_cache ~fresh ~readonly ~log_size root =
-    let lock = IO.lock (lock_path root) in
+    let lock =
+      if not readonly then Some (IO.lock (lock_path root)) else None
+    in
     let config = { log_size = log_size * entry_size; readonly } in
     let log_path = log_path root in
     let index_path = index_path root in
@@ -232,89 +266,13 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
 
   let (`Staged v) = with_cache ~v:v_no_cache ~clear
 
-  let get_entry_iff_needed ~window io off = function
-    | Some e -> e
-    | None -> get_entry ~window io off
-
-  let look_around ~window io ~low ~high key h_key off =
-    let rec search op curr =
-      let off = op curr entry_sizeL in
-      if off < low || off > high then raise Not_found
-      else
-        let e = get_entry ~window io off in
-        let h_e = e.key_hash in
-        if h_e <> h_key then raise Not_found
-        else if K.equal e.key key then e.value
-        else search op off
-    in
-    match search Int64.add off with
-    | e -> e
-    | exception Not_found -> search Int64.sub off
-
-  let interpolation_search index key : value =
+  let interpolation_search index key =
     let hashed_key = K.hash key in
-    let low, high = Fan.search index.fan_out hashed_key in
-    let rec search steps ~window low high lowest_entry highest_entry =
-      if high < low then raise Not_found
-      else
-        let window =
-          match window with
-          | Some _ as w -> w
-          | None ->
-              let len = Int64.(add (sub high low) entry_sizeL) in
-              if len <= 4_096L then (
-                let buf = Bytes.create (Int64.to_int len) in
-                let n = IO.read index.io ~off:low buf in
-                assert (n = Bytes.length buf);
-                Some { buf; off = low } )
-              else None
-        in
-        let lowest_entry =
-          get_entry_iff_needed ~window index.io low lowest_entry
-        in
-        if high = low then
-          if K.equal lowest_entry.key key then lowest_entry.value
-          else raise Not_found
-        else
-          let lowest_hash = lowest_entry.key_hash in
-          if lowest_hash > hashed_key then raise Not_found
-          else
-            let highest_entry =
-              get_entry_iff_needed ~window index.io high highest_entry
-            in
-            let highest_hash = highest_entry.key_hash in
-            if highest_hash < hashed_key then raise Not_found
-            else
-              let lowest_hashf = float_of_int lowest_hash in
-              let highest_hashf = float_of_int highest_hash in
-              let hashed_keyf = float_of_int hashed_key in
-              let lowf = Int64.to_float low in
-              let highf = Int64.to_float high in
-              let doff =
-                floor
-                  ( (highf -. lowf)
-                  *. (hashed_keyf -. lowest_hashf)
-                  /. (highest_hashf -. lowest_hashf) )
-              in
-              let off = lowf +. doff -. mod_float doff entry_sizef in
-              let offL = Int64.of_float off in
-              let e = get_entry ~window index.io offL in
-              let hashed_e = e.key_hash in
-              if hashed_key = hashed_e then
-                if K.equal key e.key then e.value
-                else
-                  look_around ~window ~low ~high index.io key hashed_key offL
-              else if hashed_e < hashed_key then
-                (search [@tailcall]) (steps + 1) ~window
-                  (Int64.add offL entry_sizeL)
-                  high None (Some highest_entry)
-              else
-                (search [@tailcall]) (steps + 1) ~window low
-                  (Int64.sub offL entry_sizeL)
-                  (Some lowest_entry) None
+    let low_bytes, high_bytes = Fan.search index.fan_out hashed_key in
+    let low, high =
+      Int64.(div low_bytes entry_sizeL, div high_bytes entry_sizeL)
     in
-    if high < 0L then raise Not_found
-    else (search [@tailcall]) ~window:None 0 low high None None
+    Search.interpolation_search (IOArray.v index.io) key ~low ~high
 
   let sync_log t =
     let generation = IO.get_generation t.log in
@@ -416,7 +374,7 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
 
   let merge ~witness t =
     Log.debug (fun l -> l "unforced merge %S\n" t.root);
-    let tmp_path = t.root // "tmp" // "index" in
+    let merge_path = merge_path t.root in
     let generation = Int64.succ t.generation in
     let log =
       let compare_entry e e' = compare e.key_hash e'.key_hash in
@@ -438,10 +396,10 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
           + Tbl.length t.log_mem
     in
     let fan_out = Fan.v ~hash_size:K.hash_size ~entry_size fan_size in
-    let tmp =
+    let merge =
       IO.v ~readonly:false ~fresh:true ~generation
         ~fan_size:(Int64.of_int (Fan.exported_size fan_out))
-        tmp_path
+        merge_path
     in
     ( match t.index with
     | None ->
@@ -449,18 +407,18 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
           IO.v ~fresh:true ~readonly:false ~generation:0L ~fan_size:0L
             (index_path t.root)
         in
-        append_remaining_log fan_out log 0 tmp;
+        append_remaining_log fan_out log 0 merge;
         t.index <- Some { io; fan_out }
     | Some index ->
         let index = { index with fan_out } in
-        merge_with log index tmp;
+        merge_with log index merge;
         t.index <- Some index );
     match t.index with
     | None -> assert false
     | Some index ->
         Fan.finalize index.fan_out;
-        IO.set_fanout tmp (Fan.export index.fan_out);
-        IO.rename ~src:tmp ~dst:index.io;
+        IO.set_fanout merge (Fan.export index.fan_out);
+        IO.rename ~src:merge ~dst:index.io;
         IO.clear t.log;
         Tbl.clear t.log_mem;
         IO.set_generation t.log generation;
@@ -495,5 +453,5 @@ module Make (K : Key) (V : Value) (IO : IO) = struct
       may (fun i -> IO.close i.io) t.index;
       t.index <- None;
       Tbl.reset t.log_mem;
-      IO.unlock t.lock )
+      may (fun lock -> IO.unlock lock) t.lock )
 end
