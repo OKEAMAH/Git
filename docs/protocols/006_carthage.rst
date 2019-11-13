@@ -14,7 +14,9 @@ Gitlab branch.
 
 **This protocol contains NO breaking changes with respect to Babylon.**
 
-TODO how to join the testnet
+Test network Carthagenet is available to test Carthage.
+See details in :ref:`Test Networks<test-networks>`
+and instructions to join in :ref:`How to get Tezos<howtoget>`.
 
 .. contents:: Summary of changes
 
