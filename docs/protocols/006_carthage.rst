@@ -20,6 +20,19 @@ and instructions to join in :ref:`How to get Tezos<howtoget>`.
 
 .. contents:: Summary of changes
 
+Smart Contracts
+---------------
+
+The gas limit per block and per operation was increased by 30%. For
+operations it changed from 800,000 to 1,040,000 and for blocks it
+changed from 8,000,000 to 10,400,000.
+
+Baking and Endorsing
+--------------------
+
+The formula to calculate baking and endorsing rewards was improved
+in order to provide more accurate results.
+
 Michelson
 ---------
 
@@ -27,8 +40,8 @@ Protocol 006 contains several improvements to the Michelson smart
 contract language.
 
 A summary of the main changes:
-
-TODO
+* Allow pairs to be comparable
+* Remove dead code for an old peephole optimisation
 
 
 Changes to RPCs
@@ -60,4 +73,4 @@ can run from this branch::
   $ ./scripts/snapshot_alpha.sh carthage_006 from babylon_005
   $ ls src/proto_006_<hash>
 
-TODO add changelog
+You can find the full changelog `here<https://hackmd.io/@adrianbrink/carthage_changelog>`_.
