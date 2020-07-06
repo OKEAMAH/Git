@@ -187,6 +187,8 @@ type error += Duplicate_map_keys of Script.location * Script.expr
 
 type error += Duplicate_set_values of Script.location * Script.expr
 
+type error += Operations_cannot_be_parsed of Script.location * Script.expr
+
 (* Toplevel errors *)
 type error +=
   | Ill_typed_data : string option * Script.expr * Script.expr -> error

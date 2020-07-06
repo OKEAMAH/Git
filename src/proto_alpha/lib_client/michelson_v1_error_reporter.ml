@@ -589,6 +589,12 @@ let report_errors ~details ~show_source
                duplicate value was found:@ @[%a@]"
               print_expr
               expr
+        | Operations_cannot_be_parsed (loc, _) ->
+            Format.fprintf
+              ppf
+              "%aOperations have no concrete syntax so they cannot be parsed."
+              print_loc
+              loc
         | Unordered_set_values (_, expr) ->
             Format.fprintf
               ppf

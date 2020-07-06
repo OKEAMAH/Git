@@ -341,6 +341,19 @@ let () =
     (function
       | Duplicate_set_values (loc, expr) -> Some (loc, expr) | _ -> None)
     (fun (loc, expr) -> Duplicate_set_values (loc, expr)) ;
+  (* Cannot parse operation *)
+  register_error_kind
+    `Permanent
+    ~id:"michelson_v1.cannot_parse_operation"
+    ~title:"Operations cannot be parsed"
+    ~description:
+      "There is no concrete syntax for operations so they cannot be parsed"
+    (obj2
+       (req "location" Script.location_encoding)
+       (req "value" Script.expr_encoding))
+    (function
+      | Operations_cannot_be_parsed (loc, expr) -> Some (loc, expr) | _ -> None)
+    (fun (loc, expr) -> Operations_cannot_be_parsed (loc, expr)) ;
   (* -- Instruction typing errors ------------- *)
   (* Fail not in tail position *)
   register_error_kind

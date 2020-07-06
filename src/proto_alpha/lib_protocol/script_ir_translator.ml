@@ -2247,10 +2247,10 @@ let rec parse_data :
   | Key_hash_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_key_hash ctxt expr
   | Signature_t, expr ->
       Lwt.return @@ traced_no_lwt @@ parse_signature ctxt expr
-  | Operation_t, _ ->
+  | Operation_t, expr ->
       (* operations cannot appear in parameters or storage,
-          the protocol should never parse the bytes of an operation *)
-      assert false
+         the protocol should never parse the bytes of an operation *)
+      tzfail (Operations_cannot_be_parsed (location expr, strip_locations expr))
   | Chain_id_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_chain_id ctxt expr
   | Address_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_address ctxt expr
   | Contract_t (arg_ty, _), expr ->
