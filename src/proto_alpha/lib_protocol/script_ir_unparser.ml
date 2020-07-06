@@ -277,18 +277,181 @@ let unparse_key_hash ~loc ctxt mode k =
       let+ ctxt = Gas.consume ctxt Unparse_costs.key_hash_readable in
       (String (loc, Signature.Public_key_hash.to_b58check k), ctxt)
 
-(* Operations are only unparsed during the production of execution traces of
-   the interpreter. *)
-let unparse_operation ~loc ctxt {piop; lazy_storage_diff = _} =
+let unparse_option_result ~loc unparse_v ctxt =
+  let open Result_syntax in
+  function
+  | Some v ->
+      let+ v, ctxt = unparse_v ctxt v in
+      (Prim (loc, D_Some, [v], []), ctxt)
+  | None -> return (Prim (loc, D_None, [], []), ctxt)
+
+(* Operations are only unparsed in RPCs, in particular during the
+   production of execution traces of the interpreter. *)
+let unparse_operation ~loc ctxt mode {piop; lazy_storage_diff = _} =
   let open Result_syntax in
   let iop = Apply_internal_results.packed_internal_operation piop in
-  let bytes =
-    Data_encoding.Binary.to_bytes_exn
-      Apply_internal_results.internal_operation_encoding
-      iop
-  in
-  let+ ctxt = Gas.consume ctxt (Unparse_costs.operation bytes) in
-  (Bytes (loc, bytes), ctxt)
+  match mode with
+  | Optimized | Optimized_legacy ->
+      let bytes =
+        Data_encoding.Binary.to_bytes_exn
+          Apply_internal_results.internal_operation_encoding
+          iop
+      in
+      let+ ctxt = Gas.consume ctxt (Unparse_costs.operation bytes) in
+      (Bytes (loc, bytes), ctxt)
+  | Readable ->
+      let transfer_tokens ~params ~amount ~dest ctxt =
+        ("Transfer_tokens", [params; amount; dest], ctxt)
+      in
+      let (Internal_operation op) = piop in
+      let+ name, args, ctxt =
+        match op.operation with
+        | Transaction_to_implicit {destination; amount} ->
+            let* amount, ctxt = unparse_mutez ~loc ctxt amount in
+            let+ destination, ctxt =
+              unparse_address
+                ~loc
+                ctxt
+                Readable
+                {
+                  destination = Contract (Implicit destination);
+                  entrypoint = Entrypoint.default;
+                }
+            in
+            transfer_tokens
+              ~params:(Prim (loc, D_Unit, [], []))
+              ~amount
+              ~dest:destination
+              ctxt
+        | Transaction_to_implicit_with_ticket
+            {destination; ticket_ty = _; ticket = _; unparsed_ticket; amount} ->
+            let* unparsed_ticket, ctxt =
+              Script.force_decode_in_context
+                ~consume_deserialization_gas:Always
+                ctxt
+                unparsed_ticket
+            in
+            let* amount, ctxt = unparse_mutez ~loc ctxt amount in
+            let+ destination, ctxt =
+              unparse_address
+                ~loc
+                ctxt
+                Readable
+                {
+                  destination = Contract (Implicit destination);
+                  entrypoint = Entrypoint.default;
+                }
+            in
+            transfer_tokens
+              ~params:(root unparsed_ticket)
+              ~amount
+              ~dest:destination
+              ctxt
+        | Transaction_to_sc_rollup
+            {
+              destination;
+              entrypoint;
+              parameters_ty = _;
+              parameters = _;
+              unparsed_parameters;
+            } ->
+            let+ destination, ctxt =
+              unparse_address
+                ~loc
+                ctxt
+                Readable
+                {destination = Sc_rollup destination; entrypoint}
+            in
+            transfer_tokens
+              ~params:(root unparsed_parameters)
+              ~amount:(Int (loc, Z.zero))
+              ~dest:destination
+              ctxt
+        | Transaction_to_zk_rollup
+            {
+              destination;
+              parameters_ty = _;
+              parameters = _;
+              unparsed_parameters;
+            } ->
+            let+ destination, ctxt =
+              unparse_address
+                ~loc
+                ctxt
+                Readable
+                {
+                  destination = Zk_rollup destination;
+                  entrypoint = Entrypoint.default;
+                }
+            in
+            transfer_tokens
+              ~params:(root unparsed_parameters)
+              ~amount:(Int (loc, Z.zero))
+              ~dest:destination
+              ctxt
+        | Transaction_to_smart_contract
+            {
+              amount;
+              location = _;
+              parameters_ty = _;
+              parameters = _;
+              unparsed_parameters;
+              entrypoint;
+              destination;
+            } ->
+            let* amount, ctxt = unparse_mutez ~loc ctxt amount in
+            let+ destination, ctxt =
+              unparse_address
+                ~loc
+                ctxt
+                Readable
+                {destination = Contract (Originated destination); entrypoint}
+            in
+            transfer_tokens
+              ~params:(root unparsed_parameters)
+              ~amount
+              ~dest:destination
+              ctxt
+        | Event {ty; tag; unparsed_data} ->
+            let tag = String (loc, Entrypoint.to_string tag) in
+            return ("Event", [root ty; tag; root unparsed_data], ctxt)
+        | Origination
+            {
+              delegate;
+              code;
+              unparsed_storage;
+              credit;
+              preorigination = _;
+              storage_type = _;
+              storage = _;
+            } ->
+            let* delegate, ctxt =
+              unparse_option_result
+                ~loc
+                (fun ctxt -> unparse_key_hash ~loc ctxt Readable)
+                ctxt
+                delegate
+            in
+            let+ credit, ctxt = unparse_mutez ~loc ctxt credit in
+            ( "Create_contract",
+              [root code; delegate; credit; root unparsed_storage],
+              ctxt )
+        | Delegation delegate ->
+            let+ delegate, ctxt =
+              unparse_option_result
+                ~loc
+                (fun ctxt -> unparse_key_hash ~loc ctxt Readable)
+                ctxt
+                delegate
+            in
+            ("Set_delegate", [delegate], ctxt)
+      in
+      ( Prim
+          ( loc,
+            D_Pair,
+            (String (loc, name) :: args) @ [Int (loc, Z.of_int op.nonce)],
+            [] ),
+        ctxt )
 
 let unparse_chain_id ~loc ctxt mode chain_id =
   let open Result_syntax in
@@ -533,7 +696,7 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
       | Key_t, k -> Lwt.return @@ unparse_key ~loc ctxt mode k
       | Key_hash_t, k -> Lwt.return @@ unparse_key_hash ~loc ctxt mode k
       | Operation_t, operation ->
-          Lwt.return @@ unparse_operation ~loc ctxt operation
+          Lwt.return @@ unparse_operation ~loc ctxt mode operation
       | Chain_id_t, chain_id ->
           Lwt.return @@ unparse_chain_id ~loc ctxt mode chain_id
       | Bls12_381_g1_t, x -> Lwt.return @@ unparse_bls12_381_g1 ~loc ctxt x

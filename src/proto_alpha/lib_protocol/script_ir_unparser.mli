@@ -106,10 +106,11 @@ val unparse_bls12_381_fr :
     [op] and consumes gas from [ctxt]. Useful only for producing execution
     traces in the interpreter. *)
 val unparse_operation :
-  loc:'loc ->
+  loc:Script.location ->
   context ->
+  unparsing_mode ->
   Script_typed_ir.operation ->
-  ('loc Script.michelson_node * context, error trace) result
+  (Script.node * context, error trace) result
 
 (** [unparse_with_data_encoding ~loc ctxt v gas_cost enc] returns the bytes
     representation of [v] wrapped in [Micheline.Bytes], consuming [gas_cost]
