@@ -1882,10 +1882,18 @@ module Scripts = struct
         let* Normalize_stack.Ex_stack (st_ty, x, st), ctxt =
           Normalize_stack.parse_stack ctxt ~legacy nodes
         in
-        let+ normalized, _ctxt =
+        let*! res =
           Normalize_stack.unparse_stack ctxt unparsing_mode st_ty x st
         in
-        normalized) ;
+        match res with
+        | Ok (normalized, _ctxt) -> return normalized
+        | Error err as output -> (
+            match Environment.wrap_tztrace err with
+            | Ecoproto_error (Script_tc_errors.Operations_cannot_be_parsed _)
+              :: _ ->
+                (* TODO: match the last error instead of the first *)
+                return stack
+            | _ -> Lwt.return output)) ;
     Registration.register0
       ~chunked:true
       S.normalize_script
