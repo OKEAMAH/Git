@@ -1,0 +1,14 @@
+(library
+ (name tezos_mempool_007_PsDeLphi)
+ (public_name tezos-mempool-007-PsDeLphi)
+ (libraries tezos-base
+            tezos-embedded-protocol-007-PsDeLphi
+            tezos-protocol-007-PsDeLphi)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_embedded_protocol_007_PsDeLphi
+                   -open Tezos_protocol_007_PsDeLphi)))
+
+(alias
+ (name runtest_lint)
+ (deps (glob_files *.ml{,i}))
+ (action (run %{lib:tezos-tooling:lint.sh} %{deps})))

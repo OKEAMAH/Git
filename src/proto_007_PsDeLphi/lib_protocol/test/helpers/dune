@@ -1,0 +1,23 @@
+(library
+ (name tezos_007_PsDeLphi_test_helpers)
+ (public_name tezos-007-PsDeLphi-test-helpers)
+ (libraries alcotest-lwt
+            tezos-base
+            tezos-stdlib-unix
+            tezos-shell-services
+            tezos-protocol-environment
+            tezos-protocol-007-PsDeLphi
+            tezos-protocol-007-PsDeLphi-parameters
+            tezos-client-007-PsDeLphi)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_micheline
+                   -open Tezos_stdlib_unix
+                   -open Tezos_protocol_007_PsDeLphi
+                   -open Tezos_client_007_PsDeLphi
+                   -open Tezos_protocol_environment_007_PsDeLphi
+                   -open Tezos_shell_services)))
+
+(alias
+ (name runtest_lint)
+ (deps (glob_files *.ml{,i}))
+ (action (run %{lib:tezos-tooling:lint.sh} %{deps})))
