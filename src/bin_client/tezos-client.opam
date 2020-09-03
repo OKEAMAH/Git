@@ -32,7 +32,7 @@ depends: [
   "tezos-client-004-Pt24m4xi-commands"
   "tezos-client-005-PsBabyM1-commands"
   "tezos-client-006-PsCARTHA-commands"
-  "tezos-client-007-PsDeLphi-commands"
+  "tezos-client-007-PsDeLphi-commands-registration"
 
   "tezos-baking-alpha-commands"
   "tezos-baking-006-PsCARTHA-commands"

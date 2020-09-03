@@ -11,8 +11,8 @@
             tezos-clic
             tezos-signer-services
             tezos-client-alpha
-            tezos-client-005-PsBabyM1
             tezos-client-006-PsCARTHA
+            tezos-client-007-PsDeLphi
  )
  (flags (:standard -open Data_encoding
                    -open Tezos_base__TzPervasives

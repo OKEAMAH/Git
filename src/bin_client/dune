@@ -43,7 +43,7 @@
               (tezos-client-006-PsCARTHA-commands.registration -> void_for_linking)
               (-> void_for_linking))
             (select void_for_linking-007-PsDeLphi from
-              (tezos-client-007-PsDeLphi-commands.registration -> void_for_linking)
+              (tezos-client-007-PsDeLphi-commands-registration -> void_for_linking)
               (-> void_for_linking))
 
             (select void_for_linking-alpha from
