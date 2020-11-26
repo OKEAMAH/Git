@@ -312,6 +312,10 @@ integration:sandboxes:daemons-upgrade:
   dependencies:
     - build
   before_script:
+    # This line is only here to allow running gitlab-runner docker exec [job]
+    # locally. It does not add any complexity when running in the CI as `make`
+    # has been executed before.
+    - make
     # Load the environment poetry previously created in the docker image.
     # Give access to the Python dependencies/executables
     - . $HOME/.venv/bin/activate
