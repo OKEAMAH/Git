@@ -25,7 +25,7 @@
 
 include Internal_event.Simple
 
-let section = ["node"; "validator"; "bootstrap_pipeline"]
+let section = ["bootstrap"]
 
 (* notice level events *)
 
@@ -34,8 +34,8 @@ let fetching_locator =
     ~section
     ~name:"fetching_locator"
     ~msg:
-      "fetching branch of about {locator_length} blocks from peer {peer_id} in \
-       {steps_number} steps"
+      "fetching ~{locator_length} blocks from peer {peer_id} in {steps_number} \
+       steps"
     ~level:Notice
     ("locator_length", Data_encoding.int31)
     ("peer_id", P2p_peer.Id.encoding)
