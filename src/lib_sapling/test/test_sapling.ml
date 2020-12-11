@@ -51,7 +51,7 @@ let test_proof_raw () =
   let signature =
     TzOption.unopt_assert ~loc:__POS__ (R.spend_sig xsk.expsk.ask ar sighash)
   in
-  R.init_params () ;
+  let () = R.init_params () in
   let ctx_prove = R.proving_ctx_init () in
   let ctx_verif = R.verification_ctx_init () in
   let (cv_spend, rk, zkproof_spend) =
@@ -101,6 +101,7 @@ let test_proof_raw () =
    We do it "by hand" and using the function verify_update that will be in the
    smart contract and forge_transaction that will be used in the wallet *)
 let test_full_transaction () =
+  let () = R.init_params () in
   let module S = Storage.Make_Storage (Core.Raw) in
   let module T = S.Tree in
   let open Core.Raw in

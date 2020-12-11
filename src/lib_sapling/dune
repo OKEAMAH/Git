@@ -6,7 +6,7 @@
 (library
  (name sapling)
  (public_name sapling)
- (libraries ctypes ctypes.foreign ctypes.stubs hex data-encoding tezos-crypto tezos-stdlib tezos-error-monad)
+ (libraries ctypes ctypes.foreign ctypes.stubs hex data-encoding tezos-crypto tezos-stdlib tezos-error-monad tezos-stdlib-unix)
  (foreign_stubs
   (language c)
   (flags (-I%{env:OPAM_SWITCH_PREFIX=}/include/librustzcash))

@@ -1,5 +1,3 @@
-let test_init () = Rustzcash.init_params ()
-
 (* test custom block for ctx *)
 let test_ctx_prove () =
   let rec loop n =
@@ -57,8 +55,7 @@ let test_fail_final_check () =
     ()
 
 let tests =
-  [ ("init", `Quick, test_init);
-    ("proving context", `Quick, test_ctx_prove);
+  [ ("proving context", `Quick, test_ctx_prove);
     ("verification context", `Quick, test_ctx_verif);
     ("fail binding_sig", `Quick, test_fail_make_binding_sig);
     ("fail final_check", `Quick, test_fail_final_check) ]

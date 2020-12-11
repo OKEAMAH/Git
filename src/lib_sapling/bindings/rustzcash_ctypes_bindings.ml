@@ -14,19 +14,10 @@ module Bindings (F : Cstubs.FOREIGN) = struct
 
   let codeunit = uint8_t
 
-  (* We don't load sprout's parameters.
-     Parameters of type Rust `usize` are converted to OCaml `int` because they are only file paths.
-     NULL is a void pointer.
-     FIXME: ptr uchar is used for codeunit, which is uint8 on non WIN32
-     machines. It is fine because unsigned char * is exactly uint8*. What about
-     WIN32 machines?
-     ptr uchar is used to give a NULL value using Ctypes.(from_voidp uchar null)
-  *)
-  let init_zksnark_params =
+  let init_sapling_params_from_memory =
     foreign
-      "librustzcash_init_zksnark_params"
-      ( ocaml_bytes @-> size_t @-> ocaml_string @-> ocaml_bytes @-> size_t
-      @-> ocaml_string @-> ptr uchar @-> size_t @-> ocaml_string
+      "librustzcash_init_sapling_params_from_memory"
+      ( ocaml_bytes @-> ocaml_bytes @-> ocaml_bytes @-> ocaml_bytes
       @-> returning void )
 
   let nsk_to_nk =
