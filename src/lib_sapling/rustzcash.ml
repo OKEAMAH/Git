@@ -368,105 +368,17 @@ let valid_position pos =
 (* Ctypes binding. We encapsulate the binding in a specific module *)
 module RS = Rustzcash_ctypes_bindings.Bindings (Rustzcash_ctypes_stubs)
 
-(* We don't load sprout's parameters.
-   Parameters of type Rust `usize` are converted to OCaml `int` because they
-   are only file paths. NULL is a void pointer.
-*)
-
-let get_sapling_parameters_files () =
-  let home = Option.value (Sys.getenv_opt "HOME") ~default:"/" in
-  let opam_switch =
-    match Sys.getenv_opt "OPAM_SWITCH_PREFIX" with
-    | Some _ as x ->
-        x
-    | None -> (
-      match Sys.getenv_opt "PWD" with
-      | Some d ->
-          let switch = Filename.concat d "_opam" in
-          if Sys.file_exists switch then Some switch else None
-      | None ->
-          None )
-  in
-  let candidates =
-    Option.fold
-      ~none:[]
-      ~some:(fun d -> [Filename.concat d "share/zcash-params"])
-      opam_switch
-  in
-  let candidates = candidates @ [Filename.concat home ".zcash-params"] in
-  let data_home =
-    match Sys.getenv_opt "XDG_DATA_HOME" with
-    | Some x ->
-        x
-    | None ->
-        Filename.concat home ".local/share/"
-  in
-  let data_dirs =
-    data_home
-    :: String.split_on_char
-         ':'
-         (Option.value
-            (Sys.getenv_opt "XDG_DATA_DIRS")
-            ~default:"/usr/local/share/:/usr/share/")
-  in
-  let candidates =
-    List.fold_right
-      (fun x acc -> Filename.concat x "zcash-params" :: acc)
-      data_dirs
-      candidates
-  in
-  let prefix_opt =
-    List.fold_left
-      (fun acc x ->
-        match acc with
-        | Some _ ->
-            acc
-        | None ->
-            if Sys.file_exists x then Some x else acc)
-      None
-      candidates
-  in
-  let prefix =
-    match prefix_opt with
-    | Some p ->
-        p
-    | None ->
-        Format.eprintf
-          "@[Cannot find zcash params in any of @[%a@].@ You may download \
-           them using \
-           https://raw.githubusercontent.com/zcash/zcash/master/zcutil/fetch-params.sh@]@."
-          (Format.pp_print_list
-             ~pp_sep:Format.pp_print_space
-             Format.pp_print_string)
-          candidates ;
-        raise Not_found
-  in
-  let spend_path = prefix ^ "/sapling-spend.params" in
-  let output_path = prefix ^ "/sapling-output.params" in
-  (spend_path, output_path)
-
 let init_sapling_params_from_memory () =
-  let open Lwt in
   let spend_params_length = 47958396 in
   let output_params_length = 3592860 in
-  let spend_params_buffer = Bytes.make spend_params_length '\000' in
-  let output_params_buffer = Bytes.make output_params_length '\000' in
-  (* FIXME: we should have the parameters in the binary *)
-  let (spend_params_file, output_params_file) =
-    get_sapling_parameters_files ()
+  let spend_params_buffer =
+    Bytes.of_string (Hex.to_string (`Hex Params.spend_params))
   in
-  Lwt_unix.openfile spend_params_file [Lwt_unix.O_RDONLY] 0o600
-  >>= fun spend_params_file ->
-  Lwt_unix.openfile output_params_file [Lwt_unix.O_RDONLY] 0o600
-  >>= fun output_params_file ->
-  Tezos_stdlib_unix.Lwt_utils_unix.read_bytes
-    spend_params_file
-    spend_params_buffer
-  >>= fun () ->
-  Tezos_stdlib_unix.Lwt_utils_unix.read_bytes
-    output_params_file
-    output_params_buffer
-  >>= fun () ->
+  let output_params_buffer =
+    Bytes.of_string (Hex.to_string (`Hex Params.output_params))
+  in
+  assert (Bytes.length spend_params_buffer = spend_params_length) ;
+  assert (Bytes.length output_params_buffer = output_params_length) ;
   let (Hash spend_hash) =
     Tezos_crypto.Hacl.Blake2b.direct spend_params_buffer 64
   in
@@ -483,15 +395,13 @@ let init_sapling_params_from_memory () =
   in
   assert (spend_hash = expected_spend_hash) ;
   assert (output_hash = expected_output_hash) ;
-  Lwt.return
-    (RS.init_sapling_params_from_memory
-       (Ctypes.ocaml_bytes_start spend_params_buffer)
-       (Ctypes.ocaml_bytes_start (Bytes.of_string expected_spend_hash))
-       (Ctypes.ocaml_bytes_start output_params_buffer)
-       (Ctypes.ocaml_bytes_start (Bytes.of_string expected_output_hash)))
+  RS.init_sapling_params_from_memory
+    (Ctypes.ocaml_bytes_start spend_params_buffer)
+    (Ctypes.ocaml_bytes_start (Bytes.of_string expected_spend_hash))
+    (Ctypes.ocaml_bytes_start output_params_buffer)
+    (Ctypes.ocaml_bytes_start (Bytes.of_string expected_output_hash))
 
-let lazy_init_sapling_params =
-  Lazy.from_fun (fun () -> Lwt_main.run (init_sapling_params_from_memory ()))
+let lazy_init_sapling_params = Lazy.from_fun init_sapling_params_from_memory
 
 let init_params () = Lazy.force lazy_init_sapling_params
 
