@@ -7,9 +7,9 @@ script_dir="$(cd "$(dirname "$0")" && pwd -P)"
 #shellcheck source=version.sh
 . "$script_dir"/version.sh
 
-# This script installs Rust dependencies such as librustzcash and the zcash
-# parameters. It assumes that cargo is installed in the system, use your package
-# manager or https://rustup.rs
+# This script installs Rust dependencies such as librustzcash and
+# rustc-bls12-381. It assumes that cargo is installed in the system, use your
+# package manager or https://rustup.rs
 
 # by specifying the env var RUST_VERSION the user can decide to use a
 # different version of rust (recommended_rust_version is a variable
@@ -41,7 +41,6 @@ fi
 LIBRARY_DIR="${OPAM_SWITCH_PREFIX}/lib"
 # Install the headers in `include`
 HEADER_DIR="${OPAM_SWITCH_PREFIX}/include"
-ZCASH_PARAMS="${OPAM_SWITCH_PREFIX}/share/zcash-params"
 
 BUILD_DIR=_build_rust
 
@@ -83,9 +82,3 @@ mkdir -p "${LIBRARY_DIR}"/rustc-bls12-381
 mkdir -p "${HEADER_DIR}"/rustc-bls12-381
 cp rust/rustc-bls12-381/include/rustc_bls12_381.h "${HEADER_DIR}/rustc-bls12-381"
 cp rust/target/release/librustc_bls12_381.a "${LIBRARY_DIR}/rustc-bls12-381"
-
-## Required for Sapling.
-echo "Installing Sapling parameters in ${ZCASH_PARAMS}"
-rm -rf "${ZCASH_PARAMS}"
-mkdir -p "${ZCASH_PARAMS}"
-cp zcash-params/* "${ZCASH_PARAMS}"
