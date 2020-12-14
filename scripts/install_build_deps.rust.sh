@@ -64,6 +64,7 @@ fi
 
 git fetch --depth 1 origin "$opam_repository_tag"
 git reset --hard "$opam_repository_tag"
+git apply rust/librustzcash_init_sapling_params.patch
 
 # this compilation option is important for the CI to avoid linking
 # statically musl, here is just for consistency
