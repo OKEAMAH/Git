@@ -275,11 +275,9 @@ end
 
 (** Regroups what needs to be exposed to a Validator **)
 module type Validator = sig
-  (** Loads the ZCash parameters for Groth16, searching them in:
-      - [/usr/share/zcash-params]
-      - [${OPAM_SWITCH_PREFIX}/share/zcash-params]
-      - [${HOME}/.zcash-params]
-      Only Sapling's parameters are loaded, not Sprout's.
+  (** Loads the Sapling parameters for Groth16 present in the module Params.
+     The Params module has been generated using
+     https://github.com/mirage/ocaml-crunch.
 
      This function must be called before any of the proving and verification
      functions requiring a context.
