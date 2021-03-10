@@ -1,0 +1,26 @@
+(library
+ (name tezos_client_entrypoints)
+ (public_name tezos-client-entrypoints)
+ (libraries tezos-base
+            tezos-client-base
+            tezos-client-mid
+            data-encoding
+            tezos-shell-services
+ )
+ (library_flags
+  (:standard -linkall))
+ (flags
+  (:standard
+    -open Tezos_base__TzPervasives
+    -open Tezos_client_base
+    -open Tezos_client_mid
+    -open Data_encoding
+    -open Tezos_shell_services
+)))
+
+(alias
+ (name runtest_lint)
+ (deps
+  (glob_files *.ml{,i}))
+ (action
+  (run %{lib:tezos-tooling:lint.sh} %{deps})))

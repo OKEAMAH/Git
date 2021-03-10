@@ -99,6 +99,8 @@ module type Alias = sig
   val of_fresh :
     #Client_context.wallet -> bool -> fresh_param -> string tzresult Lwt.t
 
+  val fresh : string -> fresh_param tzresult Lwt.t
+
   val source_param :
     ?name:string ->
     ?desc:string ->
@@ -255,6 +257,8 @@ module Alias (Entity : Entity) = struct
       ~desc
       (parameter (fun (_ : < .. >) s -> return @@ Fresh s))
       next
+
+  let fresh name = return @@ Fresh name
 
   let parse_source_string cctxt s =
     match String.split ~limit:1 ':' s with

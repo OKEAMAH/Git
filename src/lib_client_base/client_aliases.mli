@@ -94,6 +94,8 @@ module type Alias = sig
   val of_fresh :
     #Client_context.wallet -> bool -> fresh_param -> string tzresult Lwt.t
 
+  val fresh : string -> fresh_param tzresult Lwt.t
+
   val source_param :
     ?name:string ->
     ?desc:string ->
