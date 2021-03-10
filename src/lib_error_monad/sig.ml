@@ -131,6 +131,12 @@ module type EXT = sig
 
   val pp_info : Format.formatter -> error_info -> unit
 
+  (**
+    @raise [Invalid_argument] if the error is a wrapped error from another monad
+    @raise [Not_found] if the error's constructor has not been registered
+   *)
+  val find_info_of_error : error -> error_info
+
   (** Retrieves information of registered errors *)
   val get_registered_errors : unit -> error_info list
 end
