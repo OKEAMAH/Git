@@ -63,6 +63,9 @@ module type Alias = sig
   val add :
     force:bool -> #Client_context.wallet -> string -> t -> unit tzresult Lwt.t
 
+  val rename :
+    #Client_context.wallet -> old:string -> string -> unit tzresult Lwt.t
+
   val del : #Client_context.wallet -> string -> unit tzresult Lwt.t
 
   val update : #Client_context.wallet -> string -> t -> unit tzresult Lwt.t

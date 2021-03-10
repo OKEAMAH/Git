@@ -68,6 +68,9 @@ module type Alias = sig
   val add :
     force:bool -> #Client_context.wallet -> string -> t -> unit tzresult Lwt.t
 
+  val rename :
+    #Client_context.wallet -> old:string -> string -> unit tzresult Lwt.t
+
   val del : #Client_context.wallet -> string -> unit tzresult Lwt.t
 
   val update : #Client_context.wallet -> string -> t -> unit tzresult Lwt.t
@@ -187,6 +190,14 @@ module Alias (Entity : Entity) = struct
     let list = (name, value) :: list in
     if !keep then return_unit
     else wallet#write Entity.name list wallet_encoding
+
+  let rename (wallet : #wallet) ~old new_name =
+    load wallet
+    >>=? fun list ->
+    let list =
+      List.map (fun (n, v) -> if old = n then (new_name, v) else (n, v)) list
+    in
+    wallet#write Entity.name list wallet_encoding
 
   let del (wallet : #wallet) name =
     load wallet
