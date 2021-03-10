@@ -34,19 +34,7 @@ let group =
 let algo_param () =
   Clic.parameter
     ~autocomplete:(fun _ -> return ["ed25519"; "secp256k1"; "p256"])
-    (fun _ name ->
-      match name with
-      | "ed25519" ->
-          return Signature.Ed25519
-      | "secp256k1" ->
-          return Signature.Secp256k1
-      | "p256" ->
-          return Signature.P256
-      | name ->
-          failwith
-            "Unknown signature algorithm (%s). Available: 'ed25519', \
-             'secp256k1' or 'p256'"
-            name)
+    (fun _ name -> Parsers.algo name)
 
 let sig_algo_arg =
   Clic.default_arg
