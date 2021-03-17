@@ -96,7 +96,8 @@ let bootstrap_accounts_strings =
     "edpktzNbDAUjUk697W7gYg2CRuBQjyPxbEg8dLccYYwKSKvkPvjtV9";
     "edpkuTXkJDGcFd5nh6VvMz8phXxU3Bi7h6hqgywNFi1vZTfQNnS1RV";
     "edpkuFrRoDSEbJYgxRtLx2ps82UdaYc1WwfS9sE11yhauZt5DgCHbU";
-    "edpkv8EUUH68jmo3f7Um5PezmfGrRF24gnfLpH3sVNwJnV5bVCxL2n" ]
+    "edpkv8EUUH68jmo3f7Um5PezmfGrRF24gnfLpH3sVNwJnV5bVCxL2n";
+    "edpkuX2ZgeqQ7vcwpG14Gj1wutbR8PF73qSyTVwZBx8WvUjRNVDHoc" ]
 
 let bootstrap_balance = Tez_repr.of_mutez_exn 4_000_000_000_000L
 
