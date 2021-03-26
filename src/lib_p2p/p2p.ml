@@ -770,6 +770,11 @@ let watcher net = Lwt_watcher.create_stream net.watcher
 
 let negotiated_version net = net.negotiated_version
 
+let set_msg_fault ?conn _net msg_fault =
+  match conn with
+  | None -> P2p_socket.set_default_msg_fault msg_fault
+  | Some conn -> P2p_conn.set_msg_fault conn msg_fault
+
 module Internal_for_tests = struct
   let raw_broadcast (connections : ('a, 'b, 'c) P2p_conn.t P2p_peer.Table.t)
       ?except ?alt =
