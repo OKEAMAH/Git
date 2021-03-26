@@ -140,6 +140,9 @@ val close : ('msg, 'peer, 'conn) t -> unit Lwt.t
    supported by ours and the remote peer. *)
 val negotiated_version : ('msg, 'peer, 'conn) t -> Network_version.t
 
+val set_msg_fault :
+  ('msg, 'peer, 'conn) t -> P2p_services.Connections.msg_fault option -> unit
+
 (**/**)
 
 module Internal_for_tests : sig

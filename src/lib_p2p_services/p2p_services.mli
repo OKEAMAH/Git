@@ -76,6 +76,14 @@ end
 module Connections : sig
   open Tezos_rpc.Context
 
+  type msg_fault = {
+    loss : int;  (** Percentage of message lost when sending one *)
+    delay_min : float;  (** minimum delay when sending a message *)
+    delay_max : float;  (** maximum delay when sending a message *)
+  }
+
+  val msg_fault_encoding : msg_fault Data_encoding.t
+
   type connection_info = Connection_metadata.t P2p_connection.Info.t
 
   val list : #simple -> connection_info list tzresult Lwt.t

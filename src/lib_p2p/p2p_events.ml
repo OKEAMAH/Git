@@ -645,6 +645,33 @@ module P2p_socket = struct
 
   let section = ["p2p"; "socket"]
 
+  let set_msg_fault_event =
+    declare_2
+      ~section
+      ~name:"set_default_msg_fault_event"
+      ~msg:"{target} msg fault has been set"
+      ~level:Notice
+      ("target", Data_encoding.string)
+      ( "msg_fault",
+        Data_encoding.option P2p_services.Connections.msg_fault_encoding )
+
+  let msg_lost =
+    declare_1
+      ~section
+      ~name:"msg_fault_lost"
+      ~msg:"msg to {dest} lost from msg_fault behavior"
+      ~level:Info
+      ("dest", P2p_peer.Id.encoding)
+
+  let msg_delayed =
+    declare_2
+      ~section
+      ~name:"msg_fault_delayed"
+      ~msg:"msg to {dest} delayed of %f secondes from msg_fault behavior"
+      ~level:Info
+      ("delay", Data_encoding.float)
+      ("dest", P2p_peer.Id.encoding)
+
   let nack_point_with_list =
     declare_2
       ~section
