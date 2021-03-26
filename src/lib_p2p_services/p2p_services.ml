@@ -128,6 +128,19 @@ let connect ctxt ~timeout point_id =
     ()
 
 module Connections = struct
+  type msg_fault = {loss : int; delay_min : float; delay_max : float}
+
+  let msg_fault_encoding =
+    let open Data_encoding in
+    def "p2p.msg_fault" ~description:"msg_fault"
+    @@ conv
+         (fun {loss; delay_min; delay_max} -> (loss, delay_min, delay_max))
+         (fun (loss, delay_min, delay_max) -> {loss; delay_min; delay_max})
+         (obj3
+            (req "loss" Data_encoding.int8)
+            (req "delay_min" Data_encoding.float)
+            (req "delay_max" Data_encoding.float))
+
   type connection_info = Connection_metadata.t P2p_connection.Info.t
 
   let connection_info_encoding =
