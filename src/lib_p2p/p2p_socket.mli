@@ -203,6 +203,14 @@ val close : ?wait:bool -> ('msg, 'meta) t -> unit Lwt.t
 
 (**/**)
 
+(** for testing only *)
+val raw_write_sync : ('msg, 'meta) t -> Bytes.t -> unit tzresult Lwt.t
+
+val set_msg_fault :
+  ('msg, 'meta) t -> P2p_services.Connections.msg_fault option -> unit
+
+val set_default_msg_fault : P2p_services.Connections.msg_fault option -> unit
+
 module Internal_for_tests : sig
   (** [Crypto] module permits to create cryptographic data required during some
       p2p handshake tests. *)

@@ -330,6 +330,12 @@ val watcher :
   ('msg, 'peer_meta, 'conn_meta) net ->
   P2p_connection.P2p_event.t Lwt_stream.t * Lwt_watcher.stopper
 
+val set_msg_fault :
+  ?conn:('msg, 'peer_meta, 'conn_meta) connection ->
+  ('msg, 'peer_meta, 'conn_meta) net ->
+  P2p_services.Connections.msg_fault option ->
+  unit
+
 (**/**)
 
 module Internal_for_tests : sig

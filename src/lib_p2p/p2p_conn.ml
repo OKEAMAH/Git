@@ -268,3 +268,5 @@ module Internal_for_tests = struct
   let raw_write_sync t buf =
     P2p_socket.Internal_for_tests.raw_write_sync t.conn buf
 end
+
+let set_msg_fault t msg_fault = P2p_socket.set_msg_fault t.conn msg_fault

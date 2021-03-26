@@ -30,6 +30,13 @@
 *)
 module Events = P2p_events.P2p_socket
 
+let default_msg_fault = ref None
+
+let set_default_msg_fault msg_fault =
+  Events.(emit__dont_wait__use_with_care set_msg_fault_event)
+    ("default", msg_fault) ;
+  default_msg_fault := msg_fault
+
 module Crypto = struct
   (* maximal size of the buffer *)
   let bufsize = (1 lsl 16) - 1
@@ -531,7 +538,7 @@ module Reader = struct
           (Sys.word_size / 8 * 11) + size + Lwt_pipe.Maybe_bounded.push_overhead
       | Error _ -> 0
       (* we push Error only when we close the socket,
-                        we don't fear memory leaks in that case... *)
+         we don't fear memory leaks in that case... *)
     in
     let bound = Option.map (fun max -> (max, compute_size)) size in
     let st =
@@ -704,6 +711,8 @@ type ('msg, 'meta) t = {
   conn : 'meta authenticated_connection;
   reader : ('msg, 'meta) Reader.t;
   writer : ('msg, 'meta) Writer.t;
+  mutable msg_fault : P2p_services.Connections.msg_fault option;
+  outgoing_message_queue_size : int option;
 }
 
 let equal {conn = {scheduled_conn = conn2; _}; _}
@@ -756,7 +765,9 @@ let accept ?incoming_message_queue_size ?outgoing_message_queue_size
           encoding
           canceler
       in
-      let conn = {conn; reader; writer} in
+      let conn =
+        {conn; reader; writer; msg_fault = None; outgoing_message_queue_size}
+      in
       Lwt_canceler.on_cancel canceler (fun () ->
           let open Lwt_syntax in
           let* (_ : unit tzresult) =
@@ -829,6 +840,70 @@ let raw_write_sync {writer; _} bytes =
         Lwt_pipe.Maybe_bounded.push writer.messages (bytes, Some wakener)
       in
       waiter)
+
+let set_msg_fault socket msg_fault =
+  Events.(emit__dont_wait__use_with_care set_msg_fault_event)
+    ("a connection", msg_fault) ;
+  socket.msg_fault <- msg_fault
+
+let apply_fault msg_fault peer_id f =
+  let open Lwt_result_syntax in
+  let msg_fault =
+    Option.fold ~none:!default_msg_fault ~some:(fun x -> Some x) msg_fault
+  in
+  match msg_fault with
+  | None -> f ()
+  | Some P2p_services.Connections.{loss; delay_min; delay_max} ->
+      if loss > Random.int 100 then
+        let*! () = Events.(emit msg_lost) peer_id in
+        return_unit
+      else
+        let delay = delay_min +. Random.float (delay_max -. delay_min) in
+        let*! () = Events.(emit msg_delayed) (delay, peer_id) in
+        let*! () = Lwt_unix.sleep delay in
+        f ()
+
+let write st msg =
+  apply_fault st.msg_fault st.conn.info.peer_id (fun () -> write st msg)
+
+let write_sync st msg =
+  apply_fault st.msg_fault st.conn.info.peer_id (fun () -> write_sync st msg)
+
+let write_encoded_now st buf =
+  let pushed =
+    Option.fold
+      ~none:true
+      ~some:(fun max -> Lwt_pipe.Maybe_bounded.length st.writer.messages >= max)
+      st.outgoing_message_queue_size
+  in
+  Error_monad.dont_wait
+    (fun () ->
+      apply_fault st.msg_fault st.conn.info.peer_id (fun () ->
+          ignore (write_encoded_now st buf) ;
+          Lwt_result_syntax.return_unit))
+    (fun _trace -> ())
+    (fun _exn -> ()) ;
+  Ok pushed
+
+let write_now st msg =
+  let pushed =
+    Option.fold
+      ~none:true
+      ~some:(fun max -> Lwt_pipe.Maybe_bounded.length st.writer.messages >= max)
+      st.outgoing_message_queue_size
+  in
+  Error_monad.dont_wait
+    (fun () ->
+      apply_fault st.msg_fault st.conn.info.peer_id (fun () ->
+          ignore (write_now st msg) ;
+          Lwt_result_syntax.return_unit))
+    (fun _trace -> ())
+    (fun _exn -> ()) ;
+  Ok pushed
+
+let raw_write_sync st msg =
+  apply_fault st.msg_fault st.conn.info.peer_id (fun () ->
+      raw_write_sync st msg)
 
 let read {reader; _} =
   catch_closed_pipe (fun () -> Lwt_pipe.Maybe_bounded.pop reader.messages)
@@ -927,5 +1002,5 @@ module Internal_for_tests = struct
           binary_chunks_size = 0;
         }
     in
-    {conn; reader; writer}
+    {conn; reader; writer; msg_fault = None; outgoing_message_queue_size = None}
 end
