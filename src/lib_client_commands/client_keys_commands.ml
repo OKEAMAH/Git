@@ -141,7 +141,9 @@ let gen_keys_containing ?(encrypted = false) ?(prefix = false) ?(force = false)
                 Tezos_signer_backends.Unencrypted.make_pk public_key
                 >>=? fun pk_uri ->
                 ( if encrypted then
-                  Tezos_signer_backends.Encrypted.encrypt cctxt secret_key
+                  Tezos_signer_backends.Encrypted.read_password cctxt
+                  >>=? fun password ->
+                  Tezos_signer_backends.Encrypted.encrypt secret_key password
                 else Tezos_signer_backends.Unencrypted.make_sk secret_key )
                 >>=? fun sk_uri ->
                 register_key
@@ -291,7 +293,9 @@ let commands network : Client_context.full Clic.command list =
             let (pkh, pk, sk) = Signature.generate_key ~algo () in
             Tezos_signer_backends.Unencrypted.make_pk pk
             >>=? fun pk_uri ->
-            Tezos_signer_backends.Encrypted.encrypt cctxt sk
+            Tezos_signer_backends.Encrypted.read_password cctxt
+            >>=? fun password ->
+            Tezos_signer_backends.Encrypted.encrypt sk password
             >>=? fun sk_uri ->
             register_key cctxt ~force (pkh, pk_uri, sk_uri) name)
     | Some `Testnet | None ->
@@ -309,7 +313,10 @@ let commands network : Client_context.full Clic.command list =
             let (pkh, pk, sk) = Signature.generate_key ~algo () in
             Tezos_signer_backends.Unencrypted.make_pk pk
             >>=? fun pk_uri ->
-            ( if encrypted then Tezos_signer_backends.Encrypted.encrypt cctxt sk
+            ( if encrypted then
+              Tezos_signer_backends.Encrypted.read_password cctxt
+              >>=? fun password ->
+              Tezos_signer_backends.Encrypted.encrypt sk password
             else Tezos_signer_backends.Unencrypted.make_sk sk )
             >>=? fun sk_uri ->
             register_key cctxt ~force (pkh, pk_uri, sk_uri) name) );
@@ -391,7 +398,9 @@ let commands network : Client_context.full Clic.command list =
         >>=? fun () ->
         Lwt.return (Signature.Secret_key.of_b58check (Uri.path sk_uri))
         >>=? fun sk ->
-        Tezos_signer_backends.Encrypted.encrypt cctxt sk
+        Tezos_signer_backends.Encrypted.read_password cctxt
+        >>=? fun password ->
+        Tezos_signer_backends.Encrypted.encrypt sk password
         >>=? fun sk_uri ->
         cctxt#message "Encrypted secret key %a" Uri.pp_hum (sk_uri :> Uri.t)
         >>= fun () -> return_unit);
@@ -433,7 +442,9 @@ let commands network : Client_context.full Clic.command list =
             >>=? fun name ->
             input_fundraiser_params cctxt
             >>=? fun sk ->
-            Tezos_signer_backends.Encrypted.encrypt cctxt sk
+            Tezos_signer_backends.Encrypted.read_password cctxt
+            >>=? fun password ->
+            Tezos_signer_backends.Encrypted.encrypt sk password
             >>=? fun sk_uri ->
             Client_keys.neuterize sk_uri
             >>=? fun pk_uri ->
@@ -663,7 +674,9 @@ let commands network : Client_context.full Clic.command list =
               >>=? fun unencrypted_sk_uri ->
               ( match encrypt with
               | true ->
-                  Tezos_signer_backends.Encrypted.encrypt cctxt sk
+                  Tezos_signer_backends.Encrypted.read_password cctxt
+                  >>=? fun password ->
+                  Tezos_signer_backends.Encrypted.encrypt sk password
               | false ->
                   return unencrypted_sk_uri )
               >>=? fun sk_uri ->

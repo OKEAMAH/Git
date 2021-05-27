@@ -145,7 +145,9 @@ let test_random algo =
     if i >= loops then return_unit
     else
       let (_, _, sk) = Signature.generate_key ~algo () in
-      encrypt ctx sk
+      read_password ctx
+      >>=? fun password ->
+      encrypt sk password
       >>=? fun sk_uri ->
       decrypt decrypt_ctx sk_uri
       >>=? fun decrypted_sk ->
