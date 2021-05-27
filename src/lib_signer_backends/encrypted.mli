@@ -38,10 +38,13 @@ val decrypt_all : #Client_context.io_wallet -> unit tzresult Lwt.t
 val decrypt_list :
   #Client_context.io_wallet -> string list -> unit tzresult Lwt.t
 
+(** Prompts password twice to user for confirmation and returns
+    the password *)
+val read_password : #Client_context.io -> bytes tzresult Lwt.t
+
+(** Encrypts a secret key using the given password *)
 val encrypt :
-  #Client_context.io ->
-  Signature.secret_key ->
-  Client_keys.sk_uri tzresult Lwt.t
+  Signature.secret_key -> bytes -> Client_keys.sk_uri tzresult Lwt.t
 
 val encrypt_sapling_key :
   #Client_context.io ->

@@ -30,6 +30,10 @@ open Tezos_micheline
 open Client_proto_contracts
 open Client_keys
 
+let encrypt cctxt sk =
+  Tezos_signer_backends.Encrypted.read_password cctxt
+  >>=? fun password -> Tezos_signer_backends.Encrypted.encrypt sk password
+
 let get_balance (rpc : #rpc_context) ~chain ~block contract =
   Alpha_services.Contract.balance rpc (chain, block) contract
 
@@ -484,7 +488,7 @@ let activate_account (cctxt : #full) ~chain ~block ?confirmations ?dry_run
   >>=? fun () ->
   Tezos_signer_backends.Unencrypted.make_pk pk
   >>=? fun pk_uri ->
-  ( if encrypted then Tezos_signer_backends.Encrypted.encrypt cctxt sk
+  ( if encrypted then encrypt cctxt sk
   else Tezos_signer_backends.Unencrypted.make_sk sk )
   >>=? fun sk_uri ->
   Client_keys.register_key cctxt ?force (pkh, pk_uri, sk_uri) name

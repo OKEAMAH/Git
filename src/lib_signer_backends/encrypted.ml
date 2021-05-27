@@ -287,9 +287,7 @@ let rec read_password (cctxt : #Client_context.io) =
     cctxt#message "Passwords do not match." >>= fun () -> read_password cctxt
   else return password
 
-let encrypt cctxt sk =
-  read_password cctxt
-  >>=? fun password ->
+let encrypt sk password =
   let payload = Raw.encrypt ~password sk in
   let encoding =
     match sk with
