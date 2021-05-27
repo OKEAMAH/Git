@@ -12,6 +12,7 @@
             tezos-shell-services
             tezos-client-base
             tezos-client-commands
+            tezos-client-entrypoints
             tezos-mockup-commands
 
             (select void_for_linking-genesis from
@@ -102,6 +103,7 @@
                     -open Tezos_client_commands
                     -open Tezos_mockup_commands
                     -open Tezos_client_base_unix
+                    -open Tezos_client_entrypoints
                     -linkall)))
 
 (rule
@@ -137,9 +139,12 @@
 (install
  (package tezos-client)
  (section bin)
- (files (tezos-init-sandboxed-client.sh as tezos-init-sandboxed-client.sh)))
+ (files
+  (tezos-init-sandboxed-client.sh as tezos-init-sandboxed-client.sh)))
 
 (rule
  (alias runtest_lint)
- (deps (glob_files *.ml{,i}))
- (action (run %{lib:tezos-tooling:lint.sh} %{deps})))
+ (deps
+  (glob_files *.ml{,i}))
+ (action
+  (run %{lib:tezos-tooling:lint.sh} %{deps})))

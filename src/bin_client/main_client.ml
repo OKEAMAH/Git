@@ -113,12 +113,29 @@ let select_commands ctxt {chain; block; protocol; _} =
   check_network ctxt
   >>= fun network ->
   get_commands_for_version ctxt network chain block protocol
-  >|=? fun (_, commands_for_version) ->
+  >|=? fun (version, commands_for_version) ->
   Client_rpc_commands.commands
   @ Tezos_signer_backends_unix.Ledger.commands ()
   @ Client_keys_commands.commands network
   @ Client_helpers_commands.commands ()
   @ Mockup_commands.commands ()
   @ commands_for_version
+  @ Clic.
+      [ command
+          ~desc:"Call method"
+          no_options
+          ( prefix "invoke"
+          @@ string ~name:"method" ~desc:"The name of the method to call"
+          @@ string ~name:"value" ~desc:"the value to call the method on"
+          @@ stop )
+          (fun () path input (cctxt : #Client_context.full) ->
+            match Data_encoding.Json.from_string input with
+            | Error err ->
+                cctxt#message "Error: %s" err >>= fun () -> return_unit
+            | Ok input ->
+                Client_entrypoints.call_method path input cctxt version network
+                >>= fun res ->
+                cctxt#message "%a" Data_encoding.Json.pp res
+                >>= fun () -> return_unit) ]
 
 let () = Client_main_run.run (module Client_config) ~select_commands
