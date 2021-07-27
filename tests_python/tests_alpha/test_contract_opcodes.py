@@ -1449,6 +1449,10 @@ class TestContractOpcodes:
             ),
             # Fr -> Mutez
             ('bls12_381_fr_to_mutez.tz', '0', '0x10', '16'),
+            # ITER loop over nat range 0 .. (n-1)
+            ('nat_iter.tz', '0', '0', '0'),
+            ('nat_iter.tz', '5', '0', '10'),
+            ('nat_iter.tz', '5', '1', '11'),
         ],
     )
     def test_contract_input_output(

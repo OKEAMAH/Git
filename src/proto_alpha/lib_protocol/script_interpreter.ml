@@ -310,6 +310,17 @@ and kiter : type a b s r f. (a, b, s, r, f) kiter_type =
       (step [@ocaml.tailcall]) g gas body ks x (accu, stack)
  [@@inline]
 
+and kiter_nat : type a s r f. (a, s, r, f) kiter_nat_type =
+ fun mk g gas (body, (value, limit)) ks accu stack ->
+  let a = Script_int.compare value limit in
+  if Compare.Int.(a >= 0) then (next [@ocaml.tailcall]) g gas ks accu stack
+  else
+    let one = Script_int.abs (Script_int.of_int 1) in
+    let state = (Script_int.add_n value one, limit) in
+    let ks = mk (KIter_nat (body, state, ks)) in
+    (step [@ocaml.tailcall]) g gas body ks value (accu, stack)
+ [@@inline]
+
 and next :
     type a s r f.
     outdated_context * step_constants ->
@@ -329,6 +340,9 @@ and next :
       | KCons (k, ks) -> (step [@ocaml.tailcall]) g gas k ks accu stack
       | KLoop_in (ki, ks') ->
           (kloop_in [@ocaml.tailcall]) g gas ks0 ki ks' accu stack
+      | KIter_nat (body, state, ks) ->
+          let extra = (body, state) in
+          (kiter_nat [@ocaml.tailcall]) id g gas extra ks accu stack
       | KReturn (stack', ks) -> (next [@ocaml.tailcall]) g gas ks accu stack'
       | KLoop_in_left (ki, ks') ->
           (kloop_in_left [@ocaml.tailcall]) g gas ks0 ki ks' accu stack
@@ -407,6 +421,15 @@ and imap_iter : type a b c d e f g h. (a, b, c, d, e, f, g, h) imap_iter_type =
   let map = accu in
   let l = List.rev (Script_map.fold (fun k v a -> (k, v) :: a) map []) in
   let ks = log_if_needed (KIter (body, l, KCons (k, ks))) in
+  let (accu, stack) = stack in
+  (next [@ocaml.tailcall]) g gas ks accu stack
+ [@@inline]
+
+and inat_iter : type a b c d e f g. (a, b, c, d, e, f, g) inat_iter_type =
+ fun log_if_needed g gas (body, k) ks accu stack ->
+  let limit = accu in
+  let state = (Script_int.zero_n, limit) in
+  let ks = log_if_needed (KIter_nat (body, state, KCons (k, ks))) in
   let (accu, stack) = stack in
   (next [@ocaml.tailcall]) g gas ks accu stack
  [@@inline]
@@ -657,6 +680,9 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             Script_ir_translator.big_map_get_and_update ctxt key v map )
           >>=? fun ((v', map'), ctxt, gas) ->
           (step [@ocaml.tailcall]) (ctxt, sc) gas k ks v' (map', stack)
+      (* range of numbers *)
+      | INat_iter (_, body, k) ->
+          (inat_iter [@ocaml.tailcall]) id g gas (body, k) ks accu stack
       (* timestamp operations *)
       | IAdd_seconds_to_timestamp (_, k) ->
           let n = accu in
@@ -1614,6 +1640,10 @@ and klog :
       let ks' = mk ks' in
       let body = enable_log body in
       (kiter [@ocaml.tailcall]) mk g gas (body, xs) ks' accu stack
+  | KIter_nat (body, xs, ks') ->
+      let ks' = mk ks' in
+      let body = enable_log body in
+      (kiter_nat [@ocaml.tailcall]) mk g gas (body, xs) ks' accu stack
   | KList_enter_body (body, xs, ys, len, ks') ->
       let ks' = mk ks' in
       let extra = (body, xs, ys, len) in

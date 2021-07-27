@@ -617,6 +617,9 @@ module Cost_of = struct
     (* model N_ISet_size *)
     let cost_N_ISet_size = S.safe_int 15
 
+    (* TODO(Fedor): model N_INat_iter *)
+    let cost_N_INat_iter = S.safe_int 10
+
     (* model N_ISha256 *)
     (* Approximating 4.763264 x term *)
     let cost_N_ISha256 size =
@@ -708,6 +711,9 @@ module Cost_of = struct
 
     (* model N_KIter *)
     let cost_N_KIter = S.safe_int 20
+
+    (* TODO(Fedor): model N_KIter_nat *)
+    let cost_N_KIter_nat = S.safe_int 15
 
     (* model N_KList_enter_body *)
     (* Approximating 1.672196 x term *)
@@ -1032,6 +1038,8 @@ module Cost_of = struct
     let big_map_get_and_update ({size; _} : _ Script_typed_ir.big_map_overlay) =
       atomic_step_cost
         (cost_N_IMap_get_and_update big_map_elt_size (S.safe_int size))
+
+    let nat_iter = atomic_step_cost cost_N_INat_iter
 
     let add_seconds_timestamp :
         'a Script_int.num -> Script_timestamp.t -> Gas.cost =
@@ -1533,6 +1541,8 @@ module Cost_of = struct
       let loop_in_left = atomic_step_cost cost_N_KLoop_in_left
 
       let iter = atomic_step_cost cost_N_KIter
+
+      let iter_nat = atomic_step_cost cost_N_KIter_nat
 
       let list_enter_body xs ys_len =
         atomic_step_cost (cost_N_KList_enter_body xs ys_len)

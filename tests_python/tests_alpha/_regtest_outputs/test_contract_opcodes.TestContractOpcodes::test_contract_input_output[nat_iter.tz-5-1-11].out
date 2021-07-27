@@ -1,0 +1,50 @@
+tests_alpha/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[nat_iter.tz-5-1-11]
+
+storage
+  11
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 7 (remaining gas: 1039995.973 units remaining)
+    [ (Pair 1 5)  	 ]
+  - location: 7 (remaining gas: 1039995.963 units remaining)
+    [ 1  	@parameter
+      5  	@storage ]
+  - location: 8 (remaining gas: 1039995.953 units remaining)
+    [ 5  	@storage
+      1  	@parameter ]
+  - location: 9 (remaining gas: 1039995.928 units remaining)
+    [ 0  	
+      1  	@parameter ]
+  - location: 11 (remaining gas: 1039995.893 units remaining)
+    [ 1  	@parameter ]
+  - location: 9 (remaining gas: 1039995.878 units remaining)
+    [ 1  	
+      1  	@parameter ]
+  - location: 11 (remaining gas: 1039995.843 units remaining)
+    [ 2  	@parameter ]
+  - location: 9 (remaining gas: 1039995.828 units remaining)
+    [ 2  	
+      2  	@parameter ]
+  - location: 11 (remaining gas: 1039995.793 units remaining)
+    [ 4  	@parameter ]
+  - location: 9 (remaining gas: 1039995.778 units remaining)
+    [ 3  	
+      4  	@parameter ]
+  - location: 11 (remaining gas: 1039995.743 units remaining)
+    [ 7  	@parameter ]
+  - location: 9 (remaining gas: 1039995.728 units remaining)
+    [ 4  	
+      7  	@parameter ]
+  - location: 11 (remaining gas: 1039995.693 units remaining)
+    [ 11  	@parameter ]
+  - location: 9 (remaining gas: 1039995.678 units remaining)
+    [ 11  	 ]
+  - location: 12 (remaining gas: 1039995.663 units remaining)
+    [ {}  	
+      11  	 ]
+  - location: 14 (remaining gas: 1039995.648 units remaining)
+    [ (Pair {} 11)  	 ]
+

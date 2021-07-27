@@ -99,6 +99,7 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
   | IBig_map_get_and_update _ ->
       let (_, (map, _)) = stack in
       Interp_costs.big_map_get_and_update map.diff
+  | INat_iter _ -> Interp_costs.nat_iter
   | IAdd_seconds_to_timestamp _ ->
       let n = accu and (t, _) = stack in
       Interp_costs.add_seconds_timestamp n t
@@ -365,6 +366,7 @@ let cost_of_control : type a s r f. (a, s, r, f) continuation -> Gas.cost =
   | KLoop_in (_, _) -> Interp_costs.Control.loop_in
   | KLoop_in_left (_, _) -> Interp_costs.Control.loop_in_left
   | KIter (_, _, _) -> Interp_costs.Control.iter
+  | KIter_nat (_, _, _) -> Interp_costs.Control.iter_nat
   | KList_enter_body (_, xs, _, len, _) ->
       Interp_costs.Control.list_enter_body xs len
   | KList_exit_body (_, _, _, _, _) -> Interp_costs.Control.list_exit_body
@@ -849,6 +851,17 @@ type ('a, 'b, 's, 'r, 'f) kiter_type =
   's ->
   ('r * 'f * outdated_context * local_gas_counter) tzresult Lwt.t
 
+type ('a, 's, 'r, 'f) kiter_nat_type =
+  (('a, 's, 'r, 'f) continuation -> ('a, 's, 'r, 'f) continuation) ->
+  outdated_context * step_constants ->
+  local_gas_counter ->
+  (Script_int.n Script_int.num, 'a * 's, 'a, 's) kinstr
+  * (Script_int.n Script_int.num * Script_int.n Script_int.num) ->
+  ('a, 's, 'r, 'f) continuation ->
+  'a ->
+  's ->
+  ('r * 'f * outdated_context * local_gas_counter) tzresult Lwt.t
+
 type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) ilist_map_type =
   (('a, 'b, 'c, 'd) continuation -> ('a, 'b, 'c, 'd) continuation) ->
   outdated_context * step_constants ->
@@ -897,6 +910,17 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) imap_iter_type =
   ('e * 'f, 'a * 'b, 'a, 'b) kinstr * ('a, 'b, 'g, 'h) kinstr ->
   ('g, 'h, 'c, 'd) continuation ->
   ('e, 'f) map ->
+  'a * 'b ->
+  ('c * 'd * outdated_context * local_gas_counter) tzresult Lwt.t
+
+type ('a, 'b, 'c, 'd, 'e, 'f, 'g) inat_iter_type =
+  (('a, 'b, 'c, 'd) continuation -> ('a, 'b, 'c, 'd) continuation) ->
+  outdated_context * step_constants ->
+  local_gas_counter ->
+  (Script_int.n Script_int.num, 'a * 'b, 'a, 'b) kinstr
+  * ('a, 'b, 'f, 'g) kinstr ->
+  ('f, 'g, 'c, 'd) continuation ->
+  Script_int.n Script_int.num ->
   'a * 'b ->
   ('c * 'd * outdated_context * local_gas_counter) tzresult Lwt.t
 

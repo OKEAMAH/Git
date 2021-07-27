@@ -503,6 +503,15 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       * ('b option, ('a, 'b) big_map * 's, 'r, 'f) kinstr
       -> ('a, 'b option * (('a, 'b) big_map * 's), 'r, 'f) kinstr
   (*
+     Range of numbers
+     ----------------
+  *)
+  | INat_iter :
+      (n num, 'a * 's) kinfo
+      * (n num, 'a * 's, 'a, 's) kinstr
+      * ('a, 's, 'r, 'f) kinstr
+      -> (n num, 'a * 's, 'r, 'f) kinstr
+  (*
      Strings
      -------
   *)
@@ -1027,6 +1036,14 @@ and (_, _, _, _) continuation =
   | KIter :
       ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) continuation
       -> ('b, 's, 'r, 'f) continuation
+  (* This continuation is executed at each iteration of a loop with
+     a nat counter and limit. *)
+  | KIter_nat :
+      (n num, 'a * 's, 'a, 's) kinstr
+      * (n num * n num)
+      * ('a, 's, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
+  (* This continuation represents each step of a List.map. *)
   | KList_enter_body :
       ('a, 'c * 's, 'b, 'c * 's) kinstr
       * 'a list
@@ -1250,6 +1267,7 @@ let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
   | IBig_map_get (kinfo, _) -> kinfo
   | IBig_map_update (kinfo, _) -> kinfo
   | IBig_map_get_and_update (kinfo, _) -> kinfo
+  | INat_iter (kinfo, _, _) -> kinfo
   | IConcat_string (kinfo, _) -> kinfo
   | IConcat_string_pair (kinfo, _) -> kinfo
   | ISlice_string (kinfo, _) -> kinfo
@@ -1443,6 +1461,7 @@ let kinstr_rewritek :
   | IBig_map_update (kinfo, k) -> IBig_map_update (kinfo, f.apply k)
   | IBig_map_get_and_update (kinfo, k) ->
       IBig_map_get_and_update (kinfo, f.apply k)
+  | INat_iter (kinfo, kbody, k) -> INat_iter (kinfo, f.apply kbody, f.apply k)
   | IConcat_string (kinfo, k) -> IConcat_string (kinfo, f.apply k)
   | IConcat_string_pair (kinfo, k) -> IConcat_string_pair (kinfo, f.apply k)
   | ISlice_string (kinfo, k) -> ISlice_string (kinfo, f.apply k)

@@ -4000,6 +4000,42 @@ and[@coq_axiom_with_reason "gadt"] parse_instr :
             v_annot )
       in
       (typed ctxt loc instr stack : ((a, s) judgement * context) tzresult Lwt.t)
+  (* range of numbers *)
+  | (Prim (loc, I_ITER, [body], annot), Item_t (Nat_t _, rest, _)) -> (
+      check_kind [Seq_kind] body >>?= fun () ->
+      error_unexpected_annot loc annot >>?= fun () ->
+      non_terminal_recursion
+        ?type_logger
+        tc_context
+        ctxt
+        ~legacy
+        body
+        (Item_t (nat_t ~annot:None, rest, None))
+      >>=? fun (judgement, ctxt) ->
+      let mk_nat_iter ibody =
+        {
+          apply =
+            (fun kinfo k ->
+              let hinfo = {iloc = loc; kstack_ty = rest} in
+              let binfo = kinfo_of_descr ibody in
+              let ibody = ibody.instr.apply binfo (IHalt hinfo) in
+              INat_iter (kinfo, ibody, k));
+        }
+      in
+      match judgement with
+      | Typed ({aft; _} as ibody) ->
+          let invalid_iter_body () =
+            serialize_stack_for_error ctxt ibody.aft >>? fun (aft, ctxt) ->
+            serialize_stack_for_error ctxt rest >|? fun (rest, _ctxt) ->
+            Invalid_iter_body (loc, rest, aft)
+          in
+          Lwt.return
+          @@ record_trace_eval
+               invalid_iter_body
+               ( merge_stacks ~legacy loc ctxt 1 aft rest
+               >>? fun (Eq, rest, ctxt) : ((a, s) judgement * context) tzresult
+                 -> typed_no_lwt ctxt loc (mk_nat_iter ibody) rest )
+      | Failed {descr} -> typed ctxt loc (mk_nat_iter (descr rest)) rest)
   (* Sapling *)
   | (Prim (loc, I_SAPLING_EMPTY_STATE, [memo_size], annot), rest) ->
       parse_memo_size memo_size >>?= fun memo_size ->

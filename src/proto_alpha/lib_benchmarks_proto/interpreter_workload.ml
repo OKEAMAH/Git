@@ -85,6 +85,8 @@ type instruction_name =
   | N_IBig_map_get
   | N_IBig_map_update
   | N_IBig_map_get_and_update
+  (* range of numbers *)
+  | N_INat_iter
   (* string operations *)
   | N_IConcat_string
   | N_IConcat_string_pair
@@ -234,6 +236,7 @@ type continuation_name =
   | N_KLoop_in
   | N_KLoop_in_left
   | N_KIter
+  | N_KIter_nat
   | N_KList_enter_body
   | N_KList_exit_body
   | N_KMap_enter_body
@@ -286,6 +289,7 @@ let string_of_instruction_name : instruction_name -> string =
   | N_IBig_map_mem -> "N_IBig_map_mem"
   | N_IBig_map_get -> "N_IBig_map_get"
   | N_IBig_map_update -> "N_IBig_map_update"
+  | N_INat_iter -> "N_INat_iter"
   | N_IConcat_string -> "N_IConcat_string"
   | N_IConcat_string_pair -> "N_IConcat_string_pair"
   | N_ISlice_string -> "N_ISlice_string"
@@ -424,6 +428,7 @@ let string_of_continuation_name : continuation_name -> string =
   | N_KLoop_in -> "N_KLoop_in"
   | N_KLoop_in_left -> "N_KLoop_in_left"
   | N_KIter -> "N_KIter"
+  | N_KIter_nat -> "N_KIter_nat"
   | N_KList_enter_body -> "N_KList_enter_body"
   | N_KList_exit_body -> "N_KList_exit_body"
   | N_KMap_enter_body -> "N_KMap_enter_body"
@@ -794,6 +799,8 @@ module Instructions = struct
   let big_map_get_and_update key big_map =
     ir_sized_step N_IBig_map_get_and_update (binary "key" key "big_map" big_map)
 
+  let nat_iter = ir_sized_step N_INat_iter nullary
+
   let concat_string total_bytes list =
     ir_sized_step
       N_IConcat_string
@@ -1134,6 +1141,8 @@ module Control = struct
 
   let iter size = cont_sized_step N_KIter (unary "size" size)
 
+  let iter_nat = cont_sized_step N_KIter_nat nullary
+
   let list_enter_body xs_size ys_size =
     cont_sized_step
       N_KList_enter_body
@@ -1268,6 +1277,7 @@ let extract_ir_sized_step :
       (v, (_, ({diff = {size; _}; key_type; _}, _))) ) ->
       let key_size = size_of_comparable_value key_type v in
       Instructions.big_map_get_and_update key_size size
+  | (INat_iter (_, _, _), _) -> Instructions.nat_iter
   | (IConcat_string (_, _), (ss, _)) ->
       let list_size = Size.list ss in
       let total_bytes =
@@ -1482,6 +1492,7 @@ let extract_control_trace (type bef_top bef aft_top aft)
   | KLoop_in _ -> Control.loop_in
   | KLoop_in_left _ -> Control.loop_in_left
   | KIter (_, xs, _) -> Control.iter (Size.of_int (List.length xs))
+  | KIter_nat _ -> Control.iter_nat
   | KList_enter_body (_, xs, ys, _, _) ->
       Control.list_enter_body
         (Size.of_int (List.length xs))

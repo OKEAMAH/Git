@@ -102,6 +102,8 @@ module Cost_of : sig
 
     val map_size : Gas.cost
 
+    val nat_iter : Gas.cost
+
     val add_seconds_timestamp :
       'a Script_int.num -> Script_timestamp.t -> Gas.cost
 
@@ -418,6 +420,8 @@ module Cost_of : sig
       val loop_in_left : Gas.cost
 
       val iter : Gas.cost
+
+      val iter_nat : Gas.cost
 
       val list_enter_body : 'a list -> int -> Gas.cost
 

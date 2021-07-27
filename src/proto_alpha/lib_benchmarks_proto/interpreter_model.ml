@@ -373,7 +373,7 @@ let ir_model ?specialization instr_or_cont =
       | N_IBalance | N_IHash_key | N_IUnpack | N_ISource | N_ISender | N_ISelf
       | N_IAmount | N_IChainId | N_ILevel | N_ISelf_address | N_INever
       | N_IUnpair | N_IVoting_power | N_ITotal_voting_power | N_IList_size
-      | N_ISet_size | N_IMap_size | N_ISapling_empty_state ->
+      | N_ISet_size | N_IMap_size | N_ISapling_empty_state | N_INat_iter ->
           model_0 instr_or_cont (const1_model name)
       | N_ISet_mem | N_ISet_update | N_IMap_mem | N_IMap_get | N_IMap_update
       | N_IBig_map_mem | N_IBig_map_get | N_IBig_map_update
@@ -471,6 +471,7 @@ let ir_model ?specialization instr_or_cont =
       | N_KLoop_in -> model_0 instr_or_cont (const1_model name)
       | N_KLoop_in_left -> model_0 instr_or_cont (const1_model name)
       | N_KIter -> model_1 instr_or_cont (branching_model name)
+      | N_KIter_nat -> model_0 instr_or_cont (const1_model name)
       | N_KList_enter_body -> model_2 instr_or_cont (list_enter_body_model name)
       | N_KList_exit_body -> model_0 instr_or_cont (const1_model name)
       | N_KMap_enter_body -> model_1 instr_or_cont (branching_model name)
