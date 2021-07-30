@@ -514,6 +514,7 @@ let all_instructions =
     N_IBig_map_mem;
     N_IBig_map_get;
     N_IBig_map_update;
+    N_INat_iter;
     N_IConcat_string;
     N_IConcat_string_pair;
     N_ISlice_string;
@@ -652,6 +653,7 @@ let all_continuations =
     N_KLoop_in;
     N_KLoop_in_left;
     N_KIter;
+    N_KIter_nat;
     N_KList_enter_body;
     N_KList_exit_body;
     N_KMap_enter_body;

@@ -1469,6 +1469,25 @@ module Registration_section = struct
         ()
   end
 
+  module Nat_iter = struct
+    let () =
+      (*
+        INat_iter ->
+        KIter_nat (empty case) ->
+        IHalt
+       *)
+      benchmark_with_fixed_stack
+        ~amplification:100
+        ~name:Interpreter_workload.N_INat_iter
+        ~stack:(Script_int_repr.zero_n, ((), eos))
+        ~kinstr:
+          (INat_iter
+             ( kinfo (nat @$ unit @$ bot),
+               IDrop (kinfo (nat @$ unit @$ bot), halt_unit),
+               halt_unit ))
+        ()
+  end
+
   module Strings = struct
     open Alpha_context.Script_string
 
@@ -2936,6 +2955,50 @@ module Registration_section = struct
         ~salt:"_nonempty"
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let cont = KIter (IDrop (kinfo_unitunit, halt_unit), [()], KNil) in
+          let stack = ((), eos) in
+          fun () -> Ex_stack_and_cont {stack; cont})
+        ()
+
+    let () =
+      (*
+        KIter_nat (empty case) -> next
+        KNil
+       *)
+      continuation_benchmark
+        ~amplification:100
+        ~name:Interpreter_workload.N_KIter_nat
+        ~salt:"_empty"
+        ~cont_and_stack_sampler:(fun _cfg _rng_state ->
+          let cont =
+            KIter_nat
+              ( IDrop (kinfo (nat @$ unit @$ bot), halt_unit),
+                (Script_int_repr.zero_n, Script_int_repr.zero_n),
+                KNil )
+          in
+          let stack = ((), eos) in
+          fun () -> Ex_stack_and_cont {stack; cont})
+        ()
+
+    let () =
+      (*
+        KIter_nat (nonempty case) -> step
+        KDrop -> step
+        KHalt -> next
+        KIter_nat (empty case) -> next
+        KNil
+       *)
+      continuation_benchmark
+        ~amplification:100
+        ~name:Interpreter_workload.N_KIter_nat
+        ~salt:"_nonempty"
+        ~cont_and_stack_sampler:(fun _cfg _rng_state ->
+          let cont =
+            KIter_nat
+              ( IDrop (kinfo (nat @$ unit @$ bot), halt_unit),
+                ( Script_int_repr.abs (Script_int_repr.of_int 1),
+                  Script_int_repr.zero_n ),
+                KNil )
+          in
           let stack = ((), eos) in
           fun () -> Ex_stack_and_cont {stack; cont})
         ()
