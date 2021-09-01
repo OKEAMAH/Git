@@ -17,7 +17,8 @@ available at https://tezos.gitlab.io/.
 
 ## The Tezos software
 
-This repository hosts the **Octez implementation of the Tezos blockchain**, including a node, a client, a baker, an endorser, an accuser, and other tools, distributed with the Tezos economic protocols of Mainnet for convenience.
++This repository hosts **Octez**, an implementation of the Tezos blockchain.
+**Octez** provides a node, a client, a baker, an endorser, an accuser, and other tools, distributed with the Tezos economic protocols of Mainnet for convenience.
 
 In more detail, this git repository contains:
 - the source code, in directory src/
