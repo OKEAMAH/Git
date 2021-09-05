@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Tezos is a distributed consensus platform with _meta-consensus capability_, meaning that Tezos comes to consensus about the state of its ledger (like Bitcoin or Ethereum) but Tezos _also_ comes to consensus about how the
+Tezos is a blockchain that offers both  _consensus_ and _meta-consensus_, by which we mean that Tezos comes to consensus both about the state of its ledger, and  _also_ about how the
 protocol and the nodes should adapt and upgrade.
 For more information about the project, see https://tezos.com.
 
