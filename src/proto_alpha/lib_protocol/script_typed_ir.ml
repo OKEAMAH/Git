@@ -1865,6 +1865,7 @@ let kinstr_traverse i init f =
     | IBig_map_get (_, k) -> (next [@ocaml.tailcall]) k
     | IBig_map_update (_, k) -> (next [@ocaml.tailcall]) k
     | IBig_map_get_and_update (_, k) -> (next [@ocaml.tailcall]) k
+    | INat_iter (_, _, k) -> (next [@ocaml.tailcall]) k
     | IConcat_string (_, k) -> (next [@ocaml.tailcall]) k
     | IConcat_string_pair (_, k) -> (next [@ocaml.tailcall]) k
     | ISlice_string (_, k) -> (next [@ocaml.tailcall]) k

@@ -7,44 +7,44 @@ emitted operations
 big_map diff
   
 trace
-  - location: 7 (remaining gas: 1039995.973 units remaining)
+  - location: 7 (remaining gas: 1039994.454 units remaining)
     [ (Pair 0 5)  	 ]
-  - location: 7 (remaining gas: 1039995.963 units remaining)
+  - location: 7 (remaining gas: 1039994.444 units remaining)
     [ 0  	@parameter
       5  	@storage ]
-  - location: 8 (remaining gas: 1039995.953 units remaining)
+  - location: 8 (remaining gas: 1039994.434 units remaining)
     [ 5  	@storage
       0  	@parameter ]
-  - location: 9 (remaining gas: 1039995.928 units remaining)
+  - location: 9 (remaining gas: 1039994.409 units remaining)
     [ 0  	
       0  	@parameter ]
-  - location: 11 (remaining gas: 1039995.893 units remaining)
+  - location: 11 (remaining gas: 1039994.374 units remaining)
     [ 0  	@parameter ]
-  - location: 9 (remaining gas: 1039995.878 units remaining)
+  - location: 9 (remaining gas: 1039994.359 units remaining)
     [ 1  	
       0  	@parameter ]
-  - location: 11 (remaining gas: 1039995.843 units remaining)
+  - location: 11 (remaining gas: 1039994.324 units remaining)
     [ 1  	@parameter ]
-  - location: 9 (remaining gas: 1039995.828 units remaining)
+  - location: 9 (remaining gas: 1039994.309 units remaining)
     [ 2  	
       1  	@parameter ]
-  - location: 11 (remaining gas: 1039995.793 units remaining)
+  - location: 11 (remaining gas: 1039994.274 units remaining)
     [ 3  	@parameter ]
-  - location: 9 (remaining gas: 1039995.778 units remaining)
+  - location: 9 (remaining gas: 1039994.259 units remaining)
     [ 3  	
       3  	@parameter ]
-  - location: 11 (remaining gas: 1039995.743 units remaining)
+  - location: 11 (remaining gas: 1039994.224 units remaining)
     [ 6  	@parameter ]
-  - location: 9 (remaining gas: 1039995.728 units remaining)
+  - location: 9 (remaining gas: 1039994.209 units remaining)
     [ 4  	
       6  	@parameter ]
-  - location: 11 (remaining gas: 1039995.693 units remaining)
+  - location: 11 (remaining gas: 1039994.174 units remaining)
     [ 10  	@parameter ]
-  - location: 9 (remaining gas: 1039995.678 units remaining)
+  - location: 9 (remaining gas: 1039994.159 units remaining)
     [ 10  	 ]
-  - location: 12 (remaining gas: 1039995.663 units remaining)
+  - location: 12 (remaining gas: 1039994.144 units remaining)
     [ {}  	
       10  	 ]
-  - location: 14 (remaining gas: 1039995.648 units remaining)
+  - location: 14 (remaining gas: 1039994.129 units remaining)
     [ (Pair {} 10)  	 ]
 

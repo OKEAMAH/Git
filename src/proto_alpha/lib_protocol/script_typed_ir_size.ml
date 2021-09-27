@@ -471,6 +471,7 @@ and kinstr_size :
     | IBig_map_get (kinfo, _) -> ret_succ_adding accu (base kinfo)
     | IBig_map_update (kinfo, _) -> ret_succ_adding accu (base kinfo)
     | IBig_map_get_and_update (kinfo, _) -> ret_succ_adding accu (base kinfo)
+    | INat_iter (kinfo, _, _) -> ret_succ_adding accu (base kinfo)
     | IConcat_string (kinfo, _) -> ret_succ_adding accu (base kinfo)
     | IConcat_string_pair (kinfo, _) -> ret_succ_adding accu (base kinfo)
     | ISlice_string (kinfo, _) -> ret_succ_adding accu (base kinfo)
