@@ -471,7 +471,7 @@ let ir_model ?specialization instr_or_cont =
       | N_KLoop_in -> model_0 instr_or_cont (const1_model name)
       | N_KLoop_in_left -> model_0 instr_or_cont (const1_model name)
       | N_KIter -> model_1 instr_or_cont (branching_model name)
-      | N_KIter_nat -> model_0 instr_or_cont (const1_model name)
+      | N_KIter_nat -> model_1 instr_or_cont (affine_model name)
       | N_KList_enter_body -> model_2 instr_or_cont (list_enter_body_model name)
       | N_KList_exit_body -> model_0 instr_or_cont (const1_model name)
       | N_KMap_enter_body -> model_1 instr_or_cont (branching_model name)

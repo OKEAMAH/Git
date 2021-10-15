@@ -2968,15 +2968,18 @@ module Registration_section = struct
         ~amplification:100
         ~name:Interpreter_workload.N_KIter_nat
         ~salt:"_empty"
-        ~cont_and_stack_sampler:(fun _cfg _rng_state ->
-          let cont =
-            KIter_nat
-              ( IDrop (kinfo (nat @$ unit @$ bot), halt_unit),
-                (Script_int_repr.zero_n, Script_int_repr.zero_n),
-                KNil )
+        ~cont_and_stack_sampler:(fun cfg rng_state ->
+          let (module Samplers) =
+            make_default_samplers cfg.Default_config.sampler
           in
-          let stack = ((), eos) in
-          fun () -> Ex_stack_and_cont {stack; cont})
+          fun () ->
+            let n = Samplers.Michelson_base.nat rng_state in
+            let cont =
+              KIter_nat
+                (IDrop (kinfo (nat @$ unit @$ bot), halt_unit), (n, n), KNil)
+            in
+            let stack = ((), eos) in
+            Ex_stack_and_cont {stack; cont})
         ()
 
     let () =
@@ -2988,15 +2991,42 @@ module Registration_section = struct
         KNil
        *)
       continuation_benchmark
-        ~amplification:100
         ~name:Interpreter_workload.N_KIter_nat
         ~salt:"_nonempty"
+        ~intercept:false
+        ~cont_and_stack_sampler:(fun cfg rng_state ->
+          let (module Samplers) =
+            make_default_samplers cfg.Default_config.sampler
+          in
+          fun () ->
+            let n = Samplers.Michelson_base.nat rng_state in
+            let cont =
+              KIter_nat
+                ( IDrop (kinfo (nat @$ unit @$ bot), halt_unit),
+                  (Script_int_repr.succ_n n, n),
+                  KNil )
+            in
+            let stack = ((), eos) in
+            Ex_stack_and_cont {stack; cont})
+        ()
+
+    let () =
+      (*
+        KIter_nat (nonempty case) -> step
+        KDrop -> step
+        KHalt -> next
+        KIter_nat (empty case) -> next
+        KNil
+       *)
+      continuation_benchmark
+        ~name:Interpreter_workload.N_KIter_nat
+        ~salt:"_nonempty"
+        ~intercept:true
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let cont =
             KIter_nat
               ( IDrop (kinfo (nat @$ unit @$ bot), halt_unit),
-                ( Script_int_repr.abs (Script_int_repr.of_int 1),
-                  Script_int_repr.zero_n ),
+                (Script_int_repr.one_n, Script_int_repr.zero_n),
                 KNil )
           in
           let stack = ((), eos) in

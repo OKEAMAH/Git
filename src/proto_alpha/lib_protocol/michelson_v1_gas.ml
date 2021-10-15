@@ -713,7 +713,9 @@ module Cost_of = struct
     let cost_N_KIter = S.safe_int 20
 
     (* TODO(Fedor): model N_KIter_nat *)
-    let cost_N_KIter_nat = S.safe_int 15
+    let cost_N_KIter_nat size =
+      let _ = S.safe_int size in
+      S.safe_int 15
 
     (* model N_KList_enter_body *)
     (* Approximating 1.672196 x term *)
@@ -1542,7 +1544,9 @@ module Cost_of = struct
 
       let iter = atomic_step_cost cost_N_KIter
 
-      let iter_nat = atomic_step_cost cost_N_KIter_nat
+      let iter_nat size =
+        atomic_step_cost
+          (cost_N_KIter_nat (Z.log2 (Z.succ (Script_int.to_zint size))))
 
       let list_enter_body xs ys_len =
         atomic_step_cost (cost_N_KList_enter_body xs ys_len)

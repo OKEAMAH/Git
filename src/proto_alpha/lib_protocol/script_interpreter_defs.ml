@@ -366,7 +366,7 @@ let cost_of_control : type a s r f. (a, s, r, f) continuation -> Gas.cost =
   | KLoop_in (_, _) -> Interp_costs.Control.loop_in
   | KLoop_in_left (_, _) -> Interp_costs.Control.loop_in_left
   | KIter (_, _, _) -> Interp_costs.Control.iter
-  | KIter_nat (_, _, _) -> Interp_costs.Control.iter_nat
+  | KIter_nat (_, (size, _), _) -> Interp_costs.Control.iter_nat size
   | KList_enter_body (_, xs, _, len, _) ->
       Interp_costs.Control.list_enter_body xs len
   | KList_exit_body (_, _, _, _, _) -> Interp_costs.Control.list_exit_body

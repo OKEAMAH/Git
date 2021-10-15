@@ -421,7 +421,7 @@ module Cost_of : sig
 
       val iter : Gas.cost
 
-      val iter_nat : Gas.cost
+      val iter_nat : Alpha_context.Script_int.n Script_int.num -> Gas.cost
 
       val list_enter_body : 'a list -> int -> Gas.cost
 

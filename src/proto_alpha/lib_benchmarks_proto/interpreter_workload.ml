@@ -1143,7 +1143,7 @@ module Control = struct
 
   let iter size = cont_sized_step N_KIter (unary "size" size)
 
-  let iter_nat = cont_sized_step N_KIter_nat nullary
+  let iter_nat size = cont_sized_step N_KIter_nat (unary "size" size)
 
   let list_enter_body xs_size ys_size =
     cont_sized_step
@@ -1494,7 +1494,8 @@ let extract_control_trace (type bef_top bef aft_top aft)
   | KLoop_in _ -> Control.loop_in
   | KLoop_in_left _ -> Control.loop_in_left
   | KIter (_, xs, _) -> Control.iter (Size.of_int (List.length xs))
-  | KIter_nat _ -> Control.iter_nat
+  | KIter_nat (_, (size, _), _) ->
+      Control.iter_nat (Z.log2 (Z.succ (Script_int_repr.to_zint size)))
   | KList_enter_body (_, xs, ys, _, _) ->
       Control.list_enter_body
         (Size.of_int (List.length xs))
