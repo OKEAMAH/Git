@@ -7,11 +7,10 @@
 # If one of the files was modified the `TZ_OPAM_FILES_MODIFIED` is set to `true` in order for the opam
 # pipeline to be generated.
 
-set -e
+set -ex
 
 if [ -n "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" ]; then
-  git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-  git fetch origin HEAD
+  git fetch origin "$CI_MERGE_REQUEST_DIFF_BASE_SHA"
 
   FILES=$(git diff-tree --no-commit-id --name-only -r "$CI_MERGE_REQUEST_DIFF_BASE_SHA"..HEAD)
 
