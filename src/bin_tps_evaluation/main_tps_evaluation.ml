@@ -255,15 +255,13 @@ module Cli = struct
 
   let start_date_t =
     let doc = "The start date to use in the query" in
-    Arg.(
-      value & opt string "2021-09-01"
-      & info ["s"; "start-date"] ~docv:"START_DATE" ~doc)
+    let info = Arg.info ["s"; "start-date"] ~docv:"START_DATE" ~doc in
+    Arg.required (Arg.opt (Arg.some Arg.string) None info)
 
   let end_date_t =
     let doc = "The end date to use in the the query" in
-    Arg.(
-      value & opt string "2021-10-01"
-      & info ["e"; "end-date"] ~docv:"END_DATE" ~doc)
+    let info = Arg.info ["e"; "end-date"] ~docv:"END_DATE" ~doc in
+    Arg.required (Arg.opt (Arg.some Arg.string) None info)
 
   let contract_min_percentage_t =
     let doc =
