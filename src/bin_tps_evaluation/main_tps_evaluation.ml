@@ -267,8 +267,8 @@ module Cli = struct
 
   let contract_min_percentage_t =
     let doc =
-      "The minimum percentage of operations that a contract must be a \
-       destination"
+      "The minimum percentage of operations that a contract must be involved \
+       as a destination"
     in
     Arg.(
       value & opt float 0.1
