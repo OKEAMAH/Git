@@ -67,7 +67,7 @@ invalid hash root, and take over the rollup.  This is the reason behind the
 “optimistic” of optimistic rollups.
 
 Transaction Rollups on Tezos
-****************************
+----------------------------
 
 In some blockchains, optimistic rollups are usually implemented as smart
 contracts on the layer-1 chain. That is, **rollup operations**, **commitments**,
@@ -79,6 +79,8 @@ dedicated manager operations. This design choice, permitted by the amendment
 feature of Tezos, allows for a specialized, gas- and storage-efficient
 implementation of optimistic rollups.
 
+On the layer-1
+**************
 
 .. TODO: https://gitlab.com/tezos/tezos/-/issues/2154
    explain choosen ticket interaction and layer-2 operation.
@@ -86,6 +88,52 @@ implementation of optimistic rollups.
    key feature of this implementation is that these exchanges can be grouped
    into formal trades (*i.e.*, sets of ticket transfers that need to happen
    atomically).
+
+On the layer-2
+**************
+
+In the section, we focus on what happens off the Tezos blockchain.
+
+Once the assets are frozen on the layer-1 chain, they are available on
+the layer-2. They are identified by a **ticket hash**, which can be
+retrieved from the layer-1 operation’s receipt responsible for the
+deposit, and they are owned within a transaction rollup by layer-2
+accounts identified by BLS public keys.
+
+**Rollup users** can interact with a transaction rollup thanks to
+**rollup operations**. A **rollup operation** comprises the following
+information:
+
+#. The layer-2 account spearheading the operation, also called its
+   *signer* or its *author*.
+#. The counter associated to this layer-2 account, which is an
+   anti-replay measure. It's the same mechanism as in Tezos, see
+   `Tezos documentation
+   <https://tezos.gitlab.io/introduction/howtouse.html>`_ for more
+   information.
+#. The payload of the operation.
+
+In transaction rollups, tickets are exchanged with the ``Transfer``
+operation. The ``Transfer`` operation comprises the following
+information:
+
+#. The layer-2 account targeted by the operation; it becomes the new
+   owner of the ticket.
+#. A ticket hash identifying the asset to exchange.
+#. The amount of tickets being exchanged.
+
+**Rollup operations** can be batched inside a *transaction**. A given
+***transaction** is atomic: if any operation of the **transaction**
+*fails, then the whole transaction fails and leaves the balances of
+the related accounts unchanged. This can be useful to implement
+trades. For instance, two parties can agree upon exchanging two
+tickets without having to trust each other for the emission of the
+counter-part operation. For a **transaction** to be valid, it needs to
+be signed by the authors of the **rollup operations** it encompasses.
+
+**Transactions** are submitted to the layer-1, but the Tezos node do
+not interpret them. The **rollup nodes** do, but completely
+“off-chain.”
 
 Getting Started
 ---------------

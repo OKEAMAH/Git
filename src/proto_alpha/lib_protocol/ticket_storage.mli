@@ -31,6 +31,8 @@
 *)
 type key_hash
 
+val key_hash_encoding : key_hash Data_encoding.t
+
 (** [script_expr_hash_of_key_hash key_hash] returns a [Script_expr_hash.t] value
     representation of the given [key_hash]. This is useful for comparing and
     pretty-printing key-hash values. *)

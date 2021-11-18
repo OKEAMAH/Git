@@ -2377,6 +2377,8 @@ end
 module Ticket_balance : sig
   type key_hash
 
+  val key_hash_encoding : key_hash Data_encoding.t
+
   val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
 
   val make_key_hash :

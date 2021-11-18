@@ -25,6 +25,8 @@
 
 type key_hash = Script_expr_hash.t
 
+let key_hash_encoding : key_hash Data_encoding.t = Script_expr_hash.encoding
+
 type error +=
   | Negative_ticket_balance of {key : Script_expr_hash.t; balance : Z.t}
   | Failed_to_hash_node

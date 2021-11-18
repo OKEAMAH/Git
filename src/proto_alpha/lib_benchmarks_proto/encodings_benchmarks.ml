@@ -297,6 +297,85 @@ module Timestamp = struct
         Generator.Plain {workload = (); closure})
 end
 
+module Int64 = struct
+  open Tezos_shell_benchmarks.Encoding_benchmarks_helpers
+
+  let () =
+    Registration_helpers.register
+    @@ make_encode_fixed_size_to_bytes
+         ~name:"ENCODING_INT64"
+         ~to_bytes:(Data_encoding.Binary.to_bytes_exn Data_encoding.int64)
+         ~generator:(fun rng_state ->
+           Random.State.int64 rng_state Int64.max_int)
+
+  let () =
+    Registration_helpers.register
+    @@ make_decode_fixed_size_from_bytes
+         ~name:"DECODING_INT64"
+         ~to_bytes:(Data_encoding.Binary.to_bytes_exn Data_encoding.int64)
+         ~from_bytes:(Data_encoding.Binary.of_bytes_exn Data_encoding.int64)
+         ~generator:(fun rng_state ->
+           Random.State.int64 rng_state Int64.max_int)
+end
+
+module Tx_rollup_l2_key = struct
+  open Tezos_shell_benchmarks.Encoding_benchmarks_helpers
+
+  let account_generator rng_state =
+    let seed =
+      Bytes.init 32 (fun _ -> char_of_int @@ Random.State.int rng_state 255)
+    in
+    let secret_key = Bls12_381.Signature.generate_sk seed in
+    let public_key = Bls12_381.Signature.derive_pk secret_key in
+    public_key
+
+  let ticket_hash_generator rng_state =
+    let message = Random.State.int rng_state 1000 in
+    Tx_rollup_helpers.make_ticket (Format.sprintf "%d" message)
+
+  let () =
+    let open Tx_rollup_l2_context.Internal_for_tests in
+    Registration_helpers.register
+    @@ make_encode_fixed_size_to_bytes
+         ~name:"ENCODING_TX_ROLLUP_L2_COUNTER_KEY"
+         ~to_bytes:(Data_encoding.Binary.to_bytes_exn packed_key_encoding)
+         ~generator:(fun rng_state ->
+           Key (Counter (account_generator rng_state)))
+
+  let () =
+    let open Tx_rollup_l2_context.Internal_for_tests in
+    Registration_helpers.register
+    @@ make_decode_fixed_size_from_bytes
+         ~name:"DECODING_TX_ROLLUP_L2_COUNTER_KEY"
+         ~to_bytes:(Data_encoding.Binary.to_bytes_exn packed_key_encoding)
+         ~from_bytes:(Data_encoding.Binary.of_bytes_exn packed_key_encoding)
+         ~generator:(fun rng_state ->
+           Key (Counter (account_generator rng_state)))
+
+  let () =
+    let open Tx_rollup_l2_context.Internal_for_tests in
+    Registration_helpers.register
+    @@ make_encode_fixed_size_to_bytes
+         ~name:"ENCODING_TX_ROLLUP_L2_TICKET_LEDGER_KEY"
+         ~to_bytes:(Data_encoding.Binary.to_bytes_exn packed_key_encoding)
+         ~generator:(fun rng_state ->
+           Key
+             (Ticket_ledger
+                (ticket_hash_generator rng_state, account_generator rng_state)))
+
+  let () =
+    let open Tx_rollup_l2_context.Internal_for_tests in
+    Registration_helpers.register
+    @@ make_decode_fixed_size_from_bytes
+         ~name:"DECODING_TX_ROLLUP_L2_TICKET_LEDGER_KEY"
+         ~to_bytes:(Data_encoding.Binary.to_bytes_exn packed_key_encoding)
+         ~from_bytes:(Data_encoding.Binary.of_bytes_exn packed_key_encoding)
+         ~generator:(fun rng_state ->
+           Key
+             (Ticket_ledger
+                (ticket_hash_generator rng_state, account_generator rng_state)))
+end
+
 (* when benchmarking, compile bls12-381-unix without ADX, see
    https://gitlab.com/dannywillems/ocaml-bls12-381/-/blob/71d0b4d467fbfaa6452d702fcc408d7a70916a80/README.md#install
 *)
