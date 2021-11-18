@@ -67,7 +67,7 @@ invalid hash root, and take over the rollup.  This is the reason behind the
 “optimistic” of optimistic rollups.
 
 Transaction Rollups on Tezos
-****************************
+----------------------------
 
 In some blockchains, optimistic rollups are usually implemented as smart
 contracts on the layer-1 chain. That is, **rollup operations**, **commitments**,
@@ -79,6 +79,8 @@ dedicated manager operations. This design choice, permitted by the amendment
 feature of Tezos, allows for a specialized, gas- and storage-efficient
 implementation of optimistic rollups.
 
+On-chain
+********
 
 .. TODO: https://gitlab.com/tezos/tezos/-/issues/2154
    explain choosen ticket interaction and layer-2 operation.
@@ -86,6 +88,50 @@ implementation of optimistic rollups.
    key feature of this implementation is that these exchanges can be grouped
    into formal trades (*i.e.*, sets of ticket transfers that need to happen
    atomically).
+
+Off-chain
+*********
+
+Once the assets are frozen on the layer-1 chain, they are available on
+the layer-2. They are identified by a **ticket hash**, which can be
+retreived from the layer-1 operation’s receipt responsible for the
+deposit, and they are owned within a transaction rollup by accounts
+identified by BLS public keys.
+
+**Rollup users** can interact with a transaction rollup thanks to
+**rollup operations**. A **rollup operation** comprises the following
+information:
+
+#. The layer-2 account spearheading the operation, also called its
+   *signer* or its *author*.
+#. The counter associated to this layer-2 account, which is an
+   anti-replay measure.
+#. The payload of the operation.
+
+In transaction rollups, tickets are exchanged with the ``Transfer``
+operation. The ``Transfer`` operation comprises the following
+information:
+
+#. The layer-2 account targeted by the operation; it becomes the new
+   owner of the ticket.
+#. A ticket hash identifying the asset to exchange.
+#. The amount of tickets being exchanged.
+
+**Rollup operations** can be batched inside a
+**transaction**. Operations of a given **transaction** are atomic: if
+any operations of the **transaction** fails, then they all do. This
+can be useful to implement trades. For instance, two parties can agree
+upon exchanging two tickets without having to trust each other for the
+emission of the counter-part operation. For a **transaction** to be
+valid, it needs to be signed by the authors of the **rollup
+operations** it encompasses.
+
+**Transactions** are submitted to the layer-2 through the layer-1,
+which is responsible for ordering them (as part of its consensus
+algorithm).  The software component responsible for this submission is
+called the **rollup batcher**. The operator of the **rollup batcher**
+is responsible for paying the fees necessary to store the
+**transactions** inside the layer-1 storage.
 
 Getting Started
 ---------------
