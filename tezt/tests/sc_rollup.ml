@@ -142,7 +142,7 @@ let test_rollup_node_running =
       let* () = Sc_rollup_node.run sc_rollup_node in
       return ())
 
-let register ~protocols =
+let register ~protocols:(_ : Protocol.t list) =
   test_origination ~protocols ;
   test_rollup_node_configuration ~protocols ;
   test_rollup_node_running ~protocols
