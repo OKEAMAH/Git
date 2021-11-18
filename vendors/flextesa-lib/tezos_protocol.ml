@@ -165,7 +165,8 @@ let protocol_parameters_json t : Ezjsonm.t =
           ; ("frozen_deposits_percentage", int 10)
           ; ( "ratio_of_frozen_deposits_slashed_per_double_endorsement"
             , dict [("numerator", int 1); ("denominator", int 2)] )
-          ; ("double_baking_punishment", string "640000000") ]
+          ; ("double_baking_punishment", string "640000000")
+          ; ("enable_sc_rollup", bool false) ]
       | `Granada | `Hangzhou -> []
       | _ -> failwith "unsupported protocol" in
     let list_of_zs = list (fun i -> string (Int.to_string i)) in

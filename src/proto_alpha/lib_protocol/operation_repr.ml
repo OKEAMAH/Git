@@ -71,6 +71,8 @@ module Kind = struct
 
   type register_global_constant = Register_global_constant_kind
 
+  type sc_rollup_create = Sc_rollup_create_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -78,6 +80,7 @@ module Kind = struct
     | Delegation_manager_kind : delegation manager
     | Register_global_constant_manager_kind : register_global_constant manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
+    | Sc_rollup_create_manager_kind : sc_rollup_create manager
 end
 
 type 'a consensus_operation_type =
@@ -255,6 +258,11 @@ and _ manager_operation =
   | Set_deposits_limit :
       Tez_repr.t option
       -> Kind.set_deposits_limit manager_operation
+  | Sc_rollup_create : {
+      pvm : Sc_rollup_repr.PVM.t;
+      boot_sector : Sc_rollup_repr.PVM.boot_sector;
+    }
+      -> Kind.sc_rollup_create manager_operation
 
 and counter = Z.t
 
@@ -266,6 +274,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Delegation _ -> Kind.Delegation_manager_kind
   | Register_global_constant _ -> Kind.Register_global_constant_manager_kind
   | Set_deposits_limit _ -> Kind.Set_deposits_limit_manager_kind
+  | Sc_rollup_create _ -> Kind.Sc_rollup_create_manager_kind
 
 type 'kind internal_operation = {
   source : Contract_repr.contract;
@@ -493,6 +502,28 @@ module Encoding = struct
           inj = (fun key -> Set_deposits_limit key);
         }
 
+    let sc_rollup_operation_tag_offset = 200
+
+    let[@coq_axiom_with_reason "gadt"] sc_rollup_create_case =
+      MCase
+        {
+          tag = sc_rollup_operation_tag_offset + 0;
+          name = "rollup_create";
+          encoding =
+            obj2 (req "kind" Sc_rollups.encoding) (req "boot_sector" bytes);
+          select =
+            (function
+            | Manager (Sc_rollup_create _ as op) -> Some op | _ -> None);
+          proj =
+            (function
+            | Sc_rollup_create {pvm; boot_sector} ->
+                (Sc_rollups.kind_of pvm, boot_sector));
+          inj =
+            (fun (kind, boot_sector) ->
+              let pvm = Sc_rollups.of_kind kind in
+              Sc_rollup_create {pvm; boot_sector});
+        }
+
     let encoding =
       let make (MCase {tag; name; encoding; select; proj; inj}) =
         case
@@ -512,6 +543,7 @@ module Encoding = struct
           make delegation_case;
           make register_global_constant_case;
           make set_deposits_limit_case;
+          make sc_rollup_create_case;
         ]
   end
 
@@ -810,6 +842,9 @@ module Encoding = struct
   let set_deposits_limit_case =
     make_manager_case 112 Manager_operations.set_deposits_limit_case
 
+  let sc_rollup_create_case =
+    make_manager_case 113 Manager_operations.sc_rollup_create_case
+
   let contents_encoding =
     let make (Case {tag; name; encoding; select; proj; inj}) =
       case
@@ -838,6 +873,7 @@ module Encoding = struct
            make set_deposits_limit_case;
            make failing_noop_case;
            make register_global_constant_case;
+           make sc_rollup_create_case;
          ]
 
   let contents_list_encoding =
@@ -1037,6 +1073,8 @@ let equal_manager_operation_kind :
   | (Register_global_constant _, _) -> None
   | (Set_deposits_limit _, Set_deposits_limit _) -> Some Eq
   | (Set_deposits_limit _, _) -> None
+  | (Sc_rollup_create _, Sc_rollup_create _) -> Some Eq
+  | (Sc_rollup_create _, _) -> None
 
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =
@@ -1128,6 +1166,7 @@ let internal_manager_operation_size (type a) (op : a manager_operation) =
         +! option_size
              (fun _ -> Contract_repr.public_key_hash_in_memory_size)
              pkh_opt )
+  | Sc_rollup_create _ -> (Nodes.zero, h1w)
   | Reveal _ ->
       (* Reveals can't occur as internal operations *)
       assert false

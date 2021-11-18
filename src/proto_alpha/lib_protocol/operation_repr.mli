@@ -42,6 +42,7 @@
       - origination
       - delegation
       - set deposits limitation
+      - create smart contract rollup
 
     Each of them can be encoded as raw bytes. Operations are distinguished at
     type level using phantom type parameters. [packed_operation] type allows
@@ -94,6 +95,8 @@ module Kind : sig
 
   type register_global_constant = Register_global_constant_kind
 
+  type sc_rollup_create = Sc_rollup_create_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -101,6 +104,7 @@ module Kind : sig
     | Delegation_manager_kind : delegation manager
     | Register_global_constant_manager_kind : register_global_constant manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
+    | Sc_rollup_create_manager_kind : sc_rollup_create manager
 end
 
 type 'a consensus_operation_type =
@@ -231,6 +235,11 @@ and _ manager_operation =
   | Set_deposits_limit :
       Tez_repr.t option
       -> Kind.set_deposits_limit manager_operation
+  | Sc_rollup_create : {
+      pvm : Sc_rollup_repr.PVM.t;
+      boot_sector : Sc_rollup_repr.PVM.boot_sector;
+    }
+      -> Kind.sc_rollup_create manager_operation
 
 and counter = Z.t
 
@@ -350,6 +359,8 @@ module Encoding : sig
 
   val set_deposits_limit_case : Kind.set_deposits_limit Kind.manager case
 
+  val sc_rollup_create_case : Kind.sc_rollup_create Kind.manager case
+
   module Manager_operations : sig
     type 'b case =
       | MCase : {
@@ -373,5 +384,7 @@ module Encoding : sig
     val register_global_constant_case : Kind.register_global_constant case
 
     val set_deposits_limit_case : Kind.set_deposits_limit case
+
+    val sc_rollup_create_case : Kind.sc_rollup_create case
   end
 end

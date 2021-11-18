@@ -71,6 +71,16 @@ let block_hash_param =
       try return (Block_hash.of_b58check_exn s)
       with _ -> failwith "Parameter '%s' is an invalid block hash" s)
 
+let rollup_kind_param =
+  Clic.parameter (fun _ name ->
+      match Sc_rollups.from ~name with
+      | None ->
+          failwith
+            "Parameter '%s' is not a valid rollup name (must be one of %s)"
+            name
+            (String.concat ", " Sc_rollups.all)
+      | Some k -> return k)
+
 let group =
   {
     Clic.name = "context";
@@ -1952,6 +1962,90 @@ let commands_rw () =
               ~manager_sk
               None
             >>=? fun _ -> return_unit);
+    command
+      ~group
+      ~desc:"Create a new optimistic rollup."
+      (args12
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         simulate_switch
+         minimal_fees_arg
+         minimal_nanotez_per_byte_arg
+         minimal_nanotez_per_gas_unit_arg
+         storage_limit_arg
+         counter_arg
+         force_low_fee_arg
+         fee_cap_arg
+         burn_cap_arg)
+      (prefixes ["create"; "rollup"; "from"]
+      @@ ContractAlias.destination_param
+           ~name:"src"
+           ~desc:"name of the account creating the rollup"
+      @@ prefixes ["of"; "kind"]
+      @@ param
+           ~name:"rollup_kind"
+           ~desc:"kind of the rollup to be created"
+           rollup_kind_param
+      @@ prefixes ["booting"; "with"]
+      @@ param
+           ~name:"boot_sector"
+           ~desc:"the initialization state for the rollup"
+           (parameter (fun _ s -> return s))
+      @@ stop)
+      (fun ( fee,
+             dry_run,
+             verbose_signing,
+             simulation,
+             minimal_fees,
+             minimal_nanotez_per_byte,
+             minimal_nanotez_per_gas_unit,
+             storage_limit,
+             counter,
+             force_low_fee,
+             fee_cap,
+             burn_cap )
+           (_, source)
+           pvm
+           boot_sector
+           cctxt ->
+        match Contract.is_implicit source with
+        | None -> failwith "Only implicit accounts can create rollup"
+        | Some source -> (
+            Client_keys.get_key cctxt source >>=? fun (_, src_pk, src_sk) ->
+            let fee_parameter =
+              {
+                Injection.minimal_fees;
+                minimal_nanotez_per_byte;
+                minimal_nanotez_per_gas_unit;
+                force_low_fee;
+                fee_cap;
+                burn_cap;
+              }
+            in
+            let (module K : Alpha_context.Sc_rollup.PVM.S) = pvm in
+            K.parse_boot_sector boot_sector |> function
+            | None -> failwith "Invalid boot sector"
+            | Some boot_sector ->
+                sc_rollup_create
+                  cctxt
+                  ~chain:cctxt#chain
+                  ~block:cctxt#block
+                  ?dry_run:(Some dry_run)
+                  ?verbose_signing:(Some verbose_signing)
+                  ?fee
+                  ?storage_limit
+                  ?counter
+                  ?confirmations:cctxt#confirmations
+                  ~simulation
+                  ~source
+                  ~src_pk
+                  ~src_sk
+                  ~fee_parameter
+                  ~pvm
+                  ~boot_sector
+                  ()
+                >>=? fun _res -> return_unit));
   ]
 
 let commands network () =

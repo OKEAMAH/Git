@@ -750,6 +750,7 @@ module Constants : sig
     double_baking_punishment : Tez.t;
     ratio_of_frozen_deposits_slashed_per_double_endorsement : ratio;
     delegate_selection : delegate_selection;
+    enable_sc_rollup : bool;
   }
 
   module Generated : sig
@@ -828,6 +829,8 @@ module Constants : sig
   val ratio_of_frozen_deposits_slashed_per_double_endorsement : context -> ratio
 
   val delegate_selection_encoding : delegate_selection Data_encoding.t
+
+  val enable_sc_rollup : context -> bool
 
   (** All constants: fixed and parametric *)
   type t = private {fixed : fixed; parametric : parametric}
@@ -1884,6 +1887,8 @@ module Kind : sig
 
   type register_global_constant = Register_global_constant_kind
 
+  type sc_rollup_create = Sc_rollup_create_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -1891,6 +1896,7 @@ module Kind : sig
     | Delegation_manager_kind : delegation manager
     | Register_global_constant_manager_kind : register_global_constant manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
+    | Sc_rollup_create_manager_kind : sc_rollup_create manager
 end
 
 type 'a consensus_operation_type =
@@ -2008,6 +2014,11 @@ and _ manager_operation =
   | Set_deposits_limit :
       Tez.t option
       -> Kind.set_deposits_limit manager_operation
+  | Sc_rollup_create : {
+      pvm : Sc_rollup_repr.PVM.t;
+      boot_sector : Sc_rollup_repr.PVM.boot_sector;
+    }
+      -> Kind.sc_rollup_create manager_operation
 
 and counter = Z.t
 
@@ -2150,6 +2161,8 @@ module Operation : sig
 
     val set_deposits_limit_case : Kind.set_deposits_limit Kind.manager case
 
+    val sc_rollup_create_case : Kind.sc_rollup_create Kind.manager case
+
     module Manager_operations : sig
       type 'b case =
         | MCase : {
@@ -2173,6 +2186,8 @@ module Operation : sig
       val register_global_constant_case : Kind.register_global_constant case
 
       val set_deposits_limit_case : Kind.set_deposits_limit case
+
+      val sc_rollup_create_case : Kind.sc_rollup_create case
     end
   end
 
@@ -2428,4 +2443,33 @@ module Fees : sig
   type error += Storage_limit_too_high (* `Permanent *)
 
   val check_storage_limit : context -> storage_limit:Z.t -> unit tzresult
+end
+
+(** See {!Sc_rollup} and {!Sc_rollup_repr}. *)
+module Sc_rollup : sig
+  module PVM : sig
+    type boot_sector = bytes
+
+    module type S = sig
+      val name : string
+
+      val parse_boot_sector : string -> boot_sector option
+
+      val pp_boot_sector : Format.formatter -> boot_sector -> unit
+    end
+
+    type t = (module S)
+  end
+
+  module Address : S.HASH
+
+  type t = Address.t
+
+  type creation_result = {address : Address.t; size : Z.t}
+
+  val create :
+    context ->
+    pvm:PVM.t ->
+    boot_sector:Bytes.t ->
+    (context * creation_result) tzresult Lwt.t
 end

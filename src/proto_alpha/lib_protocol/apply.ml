@@ -105,6 +105,8 @@ type error +=
       limit : Tez.t;
       max_limit : Tez.t;
     }
+  | (* `Permanent *)
+      Sc_rollup_disabled
 
 let () =
   register_error_kind
@@ -461,7 +463,20 @@ let () =
     (function
       | Set_deposits_limit_too_high {limit; max_limit} -> Some (limit, max_limit)
       | _ -> None)
-    (fun (limit, max_limit) -> Set_deposits_limit_too_high {limit; max_limit})
+    (fun (limit, max_limit) -> Set_deposits_limit_too_high {limit; max_limit}) ;
+
+  let description =
+    "Smart contract rollups will be enabled in a future proposal."
+  in
+  register_error_kind
+    `Permanent
+    ~id:"operation.sc_rollup_disabled"
+    ~title:"Smart contract rollups are disabled"
+    ~description
+    ~pp:(fun ppf () -> Format.fprintf ppf "%s" description)
+    Data_encoding.unit
+    (function Sc_rollup_disabled -> Some () | _ -> None)
+    (fun () -> Sc_rollup_disabled)
 
 type error += Wrong_voting_period of int32 * int32
 
@@ -746,6 +761,9 @@ let () =
     (fun delegate -> Zero_frozen_deposits delegate)
 
 open Apply_results
+
+let experimental_sc_rollup_feature ctxt =
+  fail_unless (Constants.enable_sc_rollup ctxt) Sc_rollup_disabled
 
 let cache_layout = Constants_repr.cache_layout
 
@@ -1045,6 +1063,16 @@ let apply_manager_operation_content :
                   consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
                 },
               [] ))
+  | Sc_rollup_create {pvm; boot_sector} ->
+      experimental_sc_rollup_feature ctxt >>=? fun () ->
+      Sc_rollup.create ctxt ~pvm ~boot_sector
+      >>=? fun (ctxt, {address; size}) ->
+      let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
+      let result =
+        Sc_rollup_create_result
+          {address; consumed_gas; size; balance_updates = []}
+      in
+      return (ctxt, result, [])
 
 type success_or_failure = Success of context | Failure
 
@@ -1214,6 +1242,12 @@ let burn_storage_fees :
               global_address = payload.global_address;
             } )
   | Set_deposits_limit_result _ -> return (ctxt, storage_limit, smopr)
+  | Sc_rollup_create_result payload ->
+      let payer = `Contract payer in
+      Fees.burn_storage_fees ctxt ~storage_limit ~payer payload.size
+      >>=? fun (ctxt, storage_limit, balance_updates) ->
+      let result = Sc_rollup_create_result {payload with balance_updates} in
+      return (ctxt, storage_limit, result)
 
 let apply_manager_contents (type kind) ctxt mode chain_id
     (op : kind Kind.manager contents) :

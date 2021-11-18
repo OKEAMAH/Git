@@ -94,6 +94,8 @@ type error += Inconsistent_sources
 
 type error += (* `Permanent *) Failing_noop_error
 
+type error += (* `Permanent *) Sc_rollup_disabled
+
 val begin_partial_construction :
   t ->
   predecessor_level:Level.t ->

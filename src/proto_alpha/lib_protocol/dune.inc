@@ -39,6 +39,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    blinded_public_key_hash.mli blinded_public_key_hash.ml
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
+   sc_rollup_repr.mli sc_rollup_repr.ml
+   sc_rollup_hp48.mli sc_rollup_hp48.ml
+   sc_rollups.mli sc_rollups.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
    period_repr.mli period_repr.ml
@@ -81,6 +84,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage_functors.mli storage_functors.ml
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
+   sc_rollup_storage.mli sc_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -110,6 +114,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
+   sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
    gas_monad.mli gas_monad.ml
@@ -162,6 +167,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    blinded_public_key_hash.mli blinded_public_key_hash.ml
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
+   sc_rollup_repr.mli sc_rollup_repr.ml
+   sc_rollup_hp48.mli sc_rollup_hp48.ml
+   sc_rollups.mli sc_rollups.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
    period_repr.mli period_repr.ml
@@ -204,6 +212,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage_functors.mli storage_functors.ml
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
+   sc_rollup_storage.mli sc_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -233,6 +242,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
+   sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
    gas_monad.mli gas_monad.ml
@@ -285,6 +295,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    blinded_public_key_hash.mli blinded_public_key_hash.ml
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
+   sc_rollup_repr.mli sc_rollup_repr.ml
+   sc_rollup_hp48.mli sc_rollup_hp48.ml
+   sc_rollups.mli sc_rollups.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
    period_repr.mli period_repr.ml
@@ -327,6 +340,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage_functors.mli storage_functors.ml
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
+   sc_rollup_storage.mli sc_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -356,6 +370,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
+   sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
    gas_monad.mli gas_monad.ml
@@ -430,6 +445,9 @@ include Tezos_raw_protocol_alpha.Main
    Blinded_public_key_hash
    Block_payload_hash
    Origination_nonce
+   Sc_rollup_repr
+   Sc_rollup_hp48
+   Sc_rollups
    Slot_repr
    Tez_repr
    Period_repr
@@ -472,6 +490,7 @@ include Tezos_raw_protocol_alpha.Main
    Storage_functors
    Storage
    Cache_repr
+   Sc_rollup_storage
    Constants_storage
    Level_storage
    Nonce_storage
@@ -501,6 +520,7 @@ include Tezos_raw_protocol_alpha.Main
    Sapling_validator
    Global_constants_costs
    Global_constants_storage
+   Sc_rollup
    Alpha_context
    Local_gas_counter
    Gas_monad
@@ -594,6 +614,9 @@ include Tezos_raw_protocol_alpha.Main
    blinded_public_key_hash.mli blinded_public_key_hash.ml
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
+   sc_rollup_repr.mli sc_rollup_repr.ml
+   sc_rollup_hp48.mli sc_rollup_hp48.ml
+   sc_rollups.mli sc_rollups.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
    period_repr.mli period_repr.ml
@@ -636,6 +659,7 @@ include Tezos_raw_protocol_alpha.Main
    storage_functors.mli storage_functors.ml
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
+   sc_rollup_storage.mli sc_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -665,6 +689,7 @@ include Tezos_raw_protocol_alpha.Main
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
+   sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
    gas_monad.mli gas_monad.ml

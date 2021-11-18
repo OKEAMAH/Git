@@ -92,6 +92,7 @@ let constants_mainnet =
     ratio_of_frozen_deposits_slashed_per_double_endorsement =
       {numerator = 1; denominator = 2};
     delegate_selection = Constants.Random;
+    enable_sc_rollup = false;
   }
 
 let constants_sandbox =

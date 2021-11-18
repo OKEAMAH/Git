@@ -423,3 +423,9 @@ end
 
 module Token = Token
 module Cache = Cache_repr
+
+module Sc_rollup = struct
+  include Sc_rollup_repr
+  include Sc_rollup_storage
+  include Sc_rollup
+end
