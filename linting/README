@@ -1,0 +1,20 @@
+# Linting via semgrep
+
+This directory includes rules for linting.
+
+
+## Usage
+
+After [installing semgrep](https://semgrep.dev/docs/getting-started/) simply
+execute
+
+```
+semgrep -l ocaml -c linting/ --exclude "src/proto_0*/lib_protocol/*.ml*" src/
+```
+
+## Rules
+
+Some rules are from the
+[community standard library of rules](https://github.com/returntocorp/semgrep-rules/).
+
+Others developped in house.
