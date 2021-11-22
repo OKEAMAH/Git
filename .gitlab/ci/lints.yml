@@ -23,6 +23,17 @@ misc_checks:
       - opam_repo.patch
     expire_in: 1 days
 
+semgrep:
+  extends:
+    - .rules_template__development
+  image: returntocorp/semgrep-agent:v1
+  stage: test
+  needs: []
+  script:
+    - semgrep --disable-metrics --error -l ocaml -c linting/ --exclude "src/proto_*/" src/
+    - semgrep --disable-metrics --error -l ocaml -c linting/ --exclude "src/proto_*/lib_protocol/*.ml*" src/proto_*/
+    - semgrep --disable-metrics --error -l ocaml -c linting/ src/proto_alpha/lib_protocol/*.ml
+
 check_precommit_hook:
   extends: .build_template
   stage: test

@@ -238,6 +238,16 @@ check-python-linting:
 	@$(MAKE) -C tests_python lint
 	@$(MAKE) -C docs lint
 
+SEMGREP_COMMON_OPTIONS=--disable-metrics -l ocaml -c linting/
+
+# We can't do linting on frozen protocol (src/proto_*/lib_protocol/*.ml) but we
+# can still do it on the in-development protocol
+# (src/proto_alpha/lib_protocol/*.ml).
+check-ocaml-linting:
+	semgrep $(SEMGREP_COMMON_OPTIONS) --exclude "src/proto_*/" src/  # run on the shell
+	semgrep $(SEMGREP_COMMON_OPTIONS) --exclude "src/proto_*/lib_protocol/*.ml*" src/proto_*/  # run on protocol-related but not core-protocol files
+	semgrep $(SEMGREP_COMMON_OPTIONS) src/proto_alpha/lib_protocol/*.ml  # run on alpha core-protocol files
+
 .PHONY: fmt fmt-ocaml fmt-python
 fmt: fmt-ocaml fmt-python
 
