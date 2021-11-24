@@ -1,7 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2020-2021 Nomadic Labs <contact@nomadic-labs.com>           *)
+(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,51 +25,15 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
+(** Originated contracts handles are crafted from the hash of the operation that
+    triggered their origination (and nothing else). As a single operation can
+    trigger several originations, the corresponding handles are forged from a
+    deterministic sequence of nonces, initialized with the hash of the
+    operation. *)
+type t = {operation_hash : Operation_hash.t; origination_index : int32}
 
-(** Initializes 2 addresses to do only operations plus one that will be
-    used to bake. *)
-let init () =
-  Context.init ~consensus_threshold:0 3 >|=? fun (b, contracts) ->
-  let (src0, src1, src2) =
-    match contracts with
-    | src0 :: src1 :: src2 :: _ -> (src0, src1, src2)
-    | _ -> assert false
-  in
-  let baker =
-    match Alpha_context.Contract.is_implicit src0 with
-    | Some v -> v
-    | None -> assert false
-  in
-  (b, baker, src1, src2)
+val encoding : t Data_encoding.t
 
-(** Parses a Michelson contract from string. *)
-let toplevel_from_string str =
-  let (ast, errs) = Michelson_v1_parser.parse_toplevel ~check:true str in
-  match errs with [] -> ast.expanded | _ -> Stdlib.failwith "parse toplevel"
+val initial : Operation_hash.t -> t
 
-(** Parses a Michelson expression from string, useful for call parameters. *)
-let expression_from_string str =
-  let (ast, errs) = Michelson_v1_parser.parse_expression ~check:true str in
-  match errs with [] -> ast.expanded | _ -> Stdlib.failwith "parse expression"
-
-(** Returns a block in which the contract is originated. *)
-let originate_contract file storage src b baker =
-  let load_file f =
-    let ic = open_in f in
-    let res = really_input_string ic (in_channel_length ic) in
-    close_in ic ;
-    res
-  in
-  let contract_string = load_file file in
-  let code = toplevel_from_string contract_string in
-  let storage = expression_from_string storage in
-  let script =
-    Alpha_context.Script.{code = lazy_expr code; storage = lazy_expr storage}
-  in
-  Op.contract_origination (B b) src ~fee:(Test_tez.of_int 10) ~script
-  >>=? fun (operation, dst) ->
-  Incremental.begin_construction ~policy:Block.(By_account baker) b
-  >>=? fun incr ->
-  Incremental.add_operation incr operation >>=? fun incr ->
-  Incremental.finalize_block incr >|=? fun b -> (dst, b)
+val incr : t -> t
