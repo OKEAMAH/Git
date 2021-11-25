@@ -242,11 +242,10 @@ SEMGREP_COMMON_OPTIONS=--disable-metrics -l ocaml -c linting/
 
 # We can't do linting on frozen protocol (src/proto_*/lib_protocol/*.ml) but we
 # can still do it on the in-development protocol
-# (src/proto_alpha/lib_protocol/*.ml).
+# (src/proto_alpha/lib_protocol/*.ml). The `exclude` pattern below expresses
+# this.
 check-ocaml-linting:
-	semgrep $(SEMGREP_COMMON_OPTIONS) --exclude "src/proto_*/" src/  # run on the shell
-	semgrep $(SEMGREP_COMMON_OPTIONS) --exclude "src/proto_*/lib_protocol/*.ml*" src/proto_*/  # run on protocol-related but not core-protocol files
-	semgrep $(SEMGREP_COMMON_OPTIONS) src/proto_alpha/lib_protocol/*.ml  # run on alpha core-protocol files
+	semgrep --disable-metrics -l ocaml -c linting/ --exclude "src/proto_[0-9]*/lib_protocol/*.ml*" src/ tezt/
 
 .PHONY: fmt fmt-ocaml fmt-python
 fmt: fmt-ocaml fmt-python

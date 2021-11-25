@@ -30,9 +30,11 @@ semgrep:
   stage: test
   needs: []
   script:
-    - semgrep --disable-metrics --error -l ocaml -c linting/ --exclude "src/proto_*/" src/
-    - semgrep --disable-metrics --error -l ocaml -c linting/ --exclude "src/proto_*/lib_protocol/*.ml*" src/proto_*/
-    - semgrep --disable-metrics --error -l ocaml -c linting/ src/proto_alpha/lib_protocol/*.ml
+    # We can't do linting on frozen protocol (src/proto_*/lib_protocol/*.ml) but we
+    # can still do it on the in-development protocol
+    # (src/proto_alpha/lib_protocol/*.ml). The `exclude` pattern below expresses
+    # this.
+    - semgrep --disable-metrics -l ocaml -c linting/ --exclude "src/proto_[0-9]*/lib_protocol/*.ml*" src/ tezt/
 
 check_precommit_hook:
   extends: .build_template
