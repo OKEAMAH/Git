@@ -190,7 +190,7 @@ module Memchecks = struct
       | None -> []
       | Some op -> JSON.(op |-> "contents" |> as_list)
     in
-    Check.((List.length op_contents = List.length expected_statuses) int)
+    Check.((List.compare_lengths op_contents expected_statuses = 0) int)
       ~error_msg:"expected contents to contain %R values, got %L" ;
     List.iter2
       (fun op expected_status ->
