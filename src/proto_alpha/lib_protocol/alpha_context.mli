@@ -2507,3 +2507,32 @@ module Fees : sig
 
   val check_storage_limit : context -> storage_limit:Z.t -> unit tzresult
 end
+
+(** See {!Sc_rollup} and {!Sc_rollup_repr}. *)
+module Sc_rollup : sig
+  module PVM : sig
+    type boot_sector = bytes
+
+    module type S = sig
+      val name : string
+
+      val parse_boot_sector : string -> boot_sector option
+
+      val pp_boot_sector : Format.formatter -> boot_sector -> unit
+    end
+
+    type t = (module S)
+  end
+
+  module Address : S.HASH
+
+  type t = Address.t
+
+  type origination_result = {address : Address.t; size : Z.t}
+
+  val originate :
+    context ->
+    pvm:PVM.t ->
+    boot_sector:Bytes.t ->
+    (context * origination_result) tzresult Lwt.t
+end
