@@ -92,6 +92,8 @@
         "Global_constants_costs",
         "Global_constants_storage",
 
+        "Sc_rollup",
+
         "Alpha_context",
 
         "Local_gas_counter",
