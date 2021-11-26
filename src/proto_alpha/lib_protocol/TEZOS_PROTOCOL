@@ -15,7 +15,9 @@
         "Origination_nonce",
 
         "Sc_rollup_repr",
+        "Sc_rollup_arith",
         "Sc_rollups",
+
         "Slot_repr",
         "Tez_repr",
         "Period_repr",

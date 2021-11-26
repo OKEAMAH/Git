@@ -23,14 +23,46 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type kind = unit
+(*
 
-let encoding = Data_encoding.unit
+   Each time we add a data constructor to [kind], we also need:
+   - to extend [all] with this new constructor ;
+   - to update [kind_of_string] and [encoding].
 
-let of_kind _ = failwith "No PVM implemented yet"
+*)
+type kind = Example_arith
 
-let kind_of _ = failwith "No PVM implemented yet"
+let all = [Example_arith]
 
-let all_names = []
+let kind_of_string = function "arith" -> Some Example_arith | _ -> None
 
-let from ~name:_ = None
+let example_arith_case =
+  Data_encoding.(
+    case
+      ~title:"Example_arith rollup kind"
+      (Tag 0)
+      unit
+      (function Example_arith -> Some ())
+      (fun () -> Example_arith))
+
+let encoding = Data_encoding.union ~tag_size:`Uint16 [example_arith_case]
+
+let example_arith_pvm = (module Sc_rollup_arith : Sc_rollup_repr.PVM.S)
+
+let of_kind = function Example_arith -> example_arith_pvm
+
+let kind_of (module M : Sc_rollup_repr.PVM.S) =
+  match kind_of_string M.name with
+  | Some k -> k
+  | None ->
+      failwith
+        (Format.sprintf "The module named %s is not in Sc_rollups.all." M.name)
+
+let from ~name = match name with "arith" -> Some example_arith_pvm | _ -> None
+
+let all_names =
+  List.map
+    (fun k ->
+      let (module M : Sc_rollup_repr.PVM.S) = of_kind k in
+      M.name)
+    all

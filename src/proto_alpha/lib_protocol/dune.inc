@@ -40,6 +40,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
+   sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
@@ -167,6 +168,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
+   sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
@@ -294,6 +296,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
+   sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
@@ -443,6 +446,7 @@ include Tezos_raw_protocol_alpha.Main
    Block_payload_hash
    Origination_nonce
    Sc_rollup_repr
+   Sc_rollup_arith
    Sc_rollups
    Slot_repr
    Tez_repr
@@ -611,6 +615,7 @@ include Tezos_raw_protocol_alpha.Main
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
+   sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml

@@ -23,29 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Here is the list of PVMs available in this protocol.
+(** This module provides a temporary toy rollup. *)
 
-    This list must only be appended for backward compatibility.
-*)
-type kind = Example_arith
+val name : string
 
-val encoding : kind Data_encoding.t
+val parse_boot_sector : string -> bytes option
 
-(** [of_kind kind] returns the [PVM] of the given [kind]. *)
-val of_kind : kind -> Sc_rollup_repr.PVM.t
-
-(** [kind_of pvm] returns the [PVM] of the given [kind]. *)
-val kind_of : Sc_rollup_repr.PVM.t -> kind
-
-(** [from ~name] is [Some (module I)] if an implemented PVM called
-     [name]. This function returns [None] otherwise. *)
-val from : name:string -> Sc_rollup_repr.PVM.t option
-
-(** [all] returns all implemented PVM. *)
-val all : kind list
-
-(** [all_names] returns all implemented PVM names. *)
-val all_names : string list
-
-(** [kind_of_string name] returns the kind of the PVM of the specified [name]. *)
-val kind_of_string : string -> kind option
+val pp_boot_sector : Format.formatter -> bytes -> unit
