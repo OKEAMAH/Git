@@ -1605,3 +1605,49 @@ module Ticket_balance = struct
   module Table =
     Make_indexed_carbonated_data_storage (Sub_context) (Index) (Encoding.Z)
 end
+
+module Sc_rollup = struct
+  module Raw_context =
+    Make_subcontext (Registered) (Raw_context)
+      (struct
+        let name = ["sc_rollup"]
+      end)
+
+  module Indexed_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["index"]
+         end))
+         (Make_index (Sc_rollup_repr.Index))
+
+  (**
+
+     Each smart contract rollup is associated to:
+
+     - a PVM kind (provided at creation time, read-only) ;
+     - a boot sector (provided at creation time, read-only).
+
+  *)
+  module PVM_kind =
+    Indexed_context.Make_map
+      (struct
+        let name = ["pvm_kind"]
+      end)
+      (struct
+        type t = Sc_rollups.kind
+
+        let encoding = Sc_rollups.encoding
+      end)
+
+  module Boot_sector =
+    Indexed_context.Make_map
+      (struct
+        let name = ["boot_sector"]
+      end)
+      (struct
+        type t = bytes
+
+        let encoding = Data_encoding.bytes
+      end)
+end

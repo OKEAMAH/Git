@@ -60,6 +60,7 @@
         "Storage",
         "Cache_repr",
 
+        "Sc_rollup_storage",
         "Constants_storage",
         "Level_storage",
         "Nonce_storage",

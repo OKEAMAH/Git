@@ -680,3 +680,26 @@ module Tenderbake : sig
       with type value = Block_hash.t * Block_payload_hash.t
        and type t := Raw_context.t
 end
+
+(** Smart contract rollup *)
+module Sc_rollup : sig
+  (**
+
+     Each smart contract rollup is associated to:
+
+     - a PVM kind (provided at creation time, read-only) ;
+     - a boot sector (provided at creation time, read-only).
+
+  *)
+  module PVM_kind :
+    Indexed_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = Sc_rollups.kind
+       and type t := Raw_context.t
+
+  module Boot_sector :
+    Indexed_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = bytes
+       and type t := Raw_context.t
+end

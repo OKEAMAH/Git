@@ -83,6 +83,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage_functors.mli storage_functors.ml
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
+   sc_rollup_storage.mli sc_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -208,6 +209,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage_functors.mli storage_functors.ml
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
+   sc_rollup_storage.mli sc_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -333,6 +335,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage_functors.mli storage_functors.ml
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
+   sc_rollup_storage.mli sc_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -480,6 +483,7 @@ include Tezos_raw_protocol_alpha.Main
    Storage_functors
    Storage
    Cache_repr
+   Sc_rollup_storage
    Constants_storage
    Level_storage
    Nonce_storage
@@ -646,6 +650,7 @@ include Tezos_raw_protocol_alpha.Main
    storage_functors.mli storage_functors.ml
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
+   sc_rollup_storage.mli sc_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
