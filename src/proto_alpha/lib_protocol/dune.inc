@@ -86,6 +86,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
+   tx_rollup_storage.mli tx_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -115,7 +116,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   tx_rollup_storage.mli tx_rollup_storage.ml
+   sc_rollup.mli sc_rollup.ml
    sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
@@ -217,6 +218,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
+   tx_rollup_storage.mli tx_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -246,7 +248,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   tx_rollup_storage.mli tx_rollup_storage.ml
+   sc_rollup.mli sc_rollup.ml
    sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
@@ -348,6 +350,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
+   tx_rollup_storage.mli tx_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -377,7 +380,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   tx_rollup_storage.mli tx_rollup_storage.ml
+   sc_rollup.mli sc_rollup.ml
    sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
@@ -501,6 +504,7 @@ include Tezos_raw_protocol_alpha.Main
    Storage
    Cache_repr
    Sc_rollup_storage
+   Tx_rollup_storage
    Constants_storage
    Level_storage
    Nonce_storage
@@ -530,7 +534,7 @@ include Tezos_raw_protocol_alpha.Main
    Sapling_validator
    Global_constants_costs
    Global_constants_storage
-   Tx_rollup_storage
+   Sc_rollup
    Sc_rollup
    Alpha_context
    Local_gas_counter
@@ -673,6 +677,7 @@ include Tezos_raw_protocol_alpha.Main
    storage.mli storage.ml
    cache_repr.mli cache_repr.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
+   tx_rollup_storage.mli tx_rollup_storage.ml
    constants_storage.mli constants_storage.ml
    level_storage.mli level_storage.ml
    nonce_storage.mli nonce_storage.ml
@@ -702,7 +707,7 @@ include Tezos_raw_protocol_alpha.Main
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   tx_rollup_storage.mli tx_rollup_storage.ml
+   sc_rollup.mli sc_rollup.ml
    sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
