@@ -134,6 +134,7 @@ type parametric = {
   delegate_selection : delegate_selection;
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
+  enable_sc_rollup : bool;
 }
 
 val parametric_encoding : parametric Data_encoding.encoding

@@ -95,6 +95,7 @@ let constants_mainnet =
     tx_rollup_enable = false;
     (* TODO: https://gitlab.com/tezos/tezos/-/issues/2152 *)
     tx_rollup_origination_size = 60_000;
+    enable_sc_rollup = false;
   }
 
 let constants_sandbox =

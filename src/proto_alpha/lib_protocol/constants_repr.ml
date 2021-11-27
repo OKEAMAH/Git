@@ -205,6 +205,7 @@ type parametric = {
   delegate_selection : delegate_selection;
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
+  enable_sc_rollup : bool;
 }
 
 let parametric_encoding =
@@ -243,7 +244,8 @@ let parametric_encoding =
                 c.double_baking_punishment,
                 c.ratio_of_frozen_deposits_slashed_per_double_endorsement,
                 c.delegate_selection ),
-              (c.tx_rollup_enable, c.tx_rollup_origination_size) ) ) ) ))
+              ( (c.tx_rollup_enable, c.tx_rollup_origination_size),
+                c.enable_sc_rollup ) ) ) ) ))
     (fun ( ( preserved_cycles,
              blocks_per_cycle,
              blocks_per_commitment,
@@ -276,7 +278,8 @@ let parametric_encoding =
                    double_baking_punishment,
                    ratio_of_frozen_deposits_slashed_per_double_endorsement,
                    delegate_selection ),
-                 (tx_rollup_enable, tx_rollup_origination_size) ) ) ) ) ->
+                 ( (tx_rollup_enable, tx_rollup_origination_size),
+                   enable_sc_rollup ) ) ) ) ) ->
       {
         preserved_cycles;
         blocks_per_cycle;
@@ -312,6 +315,7 @@ let parametric_encoding =
         delegate_selection;
         tx_rollup_enable;
         tx_rollup_origination_size;
+        enable_sc_rollup;
       })
     (merge_objs
        (obj9
@@ -359,9 +363,11 @@ let parametric_encoding =
                       "ratio_of_frozen_deposits_slashed_per_double_endorsement"
                       ratio_encoding)
                    (dft "delegate_selection" delegate_selection_encoding Random))
-                (obj2
-                   (req "tx_rollup_enable" bool)
-                   (req "tx_rollup_origination_size" int31))))))
+                (merge_objs
+                   (obj2
+                      (req "tx_rollup_enable" bool)
+                      (req "tx_rollup_origination_size" int31))
+                   (obj1 (req "enable_sc_rollup" bool)))))))
 
 type t = {fixed : fixed; parametric : parametric}
 

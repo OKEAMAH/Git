@@ -652,6 +652,7 @@ def _test_create_mockup_init_show_roundtrip(
                 "tx_rollup_enable": False,
                 # TODO: https://gitlab.com/tezos/tezos/-/issues/2152
                 "tx_rollup_origination_size": 60_000,
+                "enable_sc_rollup": False,
             }
         ),
     ],

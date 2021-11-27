@@ -37,7 +37,12 @@ let test ~__FILE__ ~output_file title =
     ~tags:["sc_rollup"]
 
 let setup f ~protocol =
-  let* (node, client) = Client.init_with_protocol `Client ~protocol () in
+  let enable_sc_rollup = [(["enable_sc_rollup"], Some "true")] in
+  let base = Either.right protocol in
+  let* parameter_file = Protocol.write_parameter_file ~base enable_sc_rollup in
+  let* (node, client) =
+    Client.init_with_protocol ~parameter_file `Client ~protocol ()
+  in
   let bootstrap1_key = Constant.bootstrap1.public_key_hash in
   f node client bootstrap1_key
 

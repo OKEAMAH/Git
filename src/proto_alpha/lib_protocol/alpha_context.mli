@@ -773,6 +773,7 @@ module Constants : sig
     delegate_selection : delegate_selection;
     tx_rollup_enable : bool;
     tx_rollup_origination_size : int;
+    enable_sc_rollup : bool;
   }
 
   module Generated : sig
@@ -855,6 +856,8 @@ module Constants : sig
   val tx_rollup_origination_size : context -> int
 
   val delegate_selection_encoding : delegate_selection Data_encoding.t
+
+  val enable_sc_rollup : context -> bool
 
   (** All constants: fixed and parametric *)
   type t = private {fixed : fixed; parametric : parametric}

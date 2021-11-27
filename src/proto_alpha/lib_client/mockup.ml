@@ -69,6 +69,7 @@ module Protocol_constants_overrides = struct
       Constants.ratio option;
     tx_rollup_enable : bool option;
     tx_rollup_origination_size : int option;
+    enable_sc_rollup : bool option;
     (* Additional, "bastard" parameters (they are not protocol constants but partially treated the same way). *)
     chain_id : Chain_id.t option;
     timestamp : Time.Protocol.t option;
@@ -113,7 +114,8 @@ module Protocol_constants_overrides = struct
                   c.ratio_of_frozen_deposits_slashed_per_double_endorsement,
                   c.chain_id,
                   c.timestamp ),
-                (c.tx_rollup_enable, c.tx_rollup_origination_size) ) ) ) ))
+                ( (c.tx_rollup_enable, c.tx_rollup_origination_size),
+                  c.enable_sc_rollup ) ) ) ) ))
       (fun ( ( preserved_cycles,
                blocks_per_cycle,
                blocks_per_commitment,
@@ -148,7 +150,8 @@ module Protocol_constants_overrides = struct
                      ratio_of_frozen_deposits_slashed_per_double_endorsement,
                      chain_id,
                      timestamp ),
-                   (tx_rollup_enable, tx_rollup_origination_size) ) ) ) ) ->
+                   ( (tx_rollup_enable, tx_rollup_origination_size),
+                     enable_sc_rollup ) ) ) ) ) ->
         {
           preserved_cycles;
           blocks_per_cycle;
@@ -182,6 +185,7 @@ module Protocol_constants_overrides = struct
           delegate_selection;
           double_baking_punishment;
           ratio_of_frozen_deposits_slashed_per_double_endorsement;
+          enable_sc_rollup;
           chain_id;
           timestamp;
           tx_rollup_enable;
@@ -235,9 +239,11 @@ module Protocol_constants_overrides = struct
                         Constants.ratio_encoding)
                      (opt "chain_id" Chain_id.encoding)
                      (opt "initial_timestamp" Time.Protocol.encoding))
-                  (obj2
-                     (opt "tx_rollup_enable" Data_encoding.bool)
-                     (opt "tx_rollup_origination_size" int31))))))
+                  (merge_objs
+                     (obj2
+                        (opt "tx_rollup_enable" Data_encoding.bool)
+                        (opt "tx_rollup_origination_size" int31))
+                     (obj1 (opt "enable_sc_rollup" bool)))))))
 
   let default_value (cctxt : Tezos_client_base.Client_context.full) :
       t tzresult Lwt.t =
@@ -298,6 +304,7 @@ module Protocol_constants_overrides = struct
             parametric.ratio_of_frozen_deposits_slashed_per_double_endorsement;
         tx_rollup_enable = Some parametric.tx_rollup_enable;
         tx_rollup_origination_size = Some parametric.tx_rollup_origination_size;
+        enable_sc_rollup = Some parametric.enable_sc_rollup;
         (* Bastard additional parameters. *)
         chain_id = to_chain_id_opt cpctxt#chain;
         timestamp = Some header.timestamp;
@@ -341,6 +348,7 @@ module Protocol_constants_overrides = struct
       ratio_of_frozen_deposits_slashed_per_double_endorsement = None;
       tx_rollup_enable = None;
       tx_rollup_origination_size = None;
+      enable_sc_rollup = None;
       chain_id = None;
       timestamp = None;
     }
@@ -547,6 +555,12 @@ module Protocol_constants_overrides = struct
               o.ratio_of_frozen_deposits_slashed_per_double_endorsement;
             pp = Constants.pp_ratio;
           };
+        O
+          {
+            name = "enable_sc_rollup";
+            override_value = o.enable_sc_rollup;
+            pp = pp_print_bool;
+          };
         O {name = "chain_id"; override_value = o.chain_id; pp = Chain_id.pp};
         O
           {
@@ -680,7 +694,9 @@ module Protocol_constants_overrides = struct
          ratio_of_frozen_deposits_slashed_per_double_endorsement =
            Option.value
              ~default:c.ratio_of_frozen_deposits_slashed_per_double_endorsement
-             o.ratio_of_frozen_deposits_slashed_per_double_endorsement
+             o.ratio_of_frozen_deposits_slashed_per_double_endorsement;
+         enable_sc_rollup =
+           Option.value ~default:c.enable_sc_rollup o.enable_sc_rollup
            (* Notice that the chain_id and the timestamp are not used here
               as they are not protocol constants... *);
          tx_rollup_enable =
