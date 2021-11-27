@@ -106,6 +106,8 @@ type error +=
       max_limit : Tez.t;
     }
   | (* `Branch *) Empty_transaction of Contract.t
+  | (* `Permanent *)
+      Sc_rollup_feature_disabled
 
 let () =
   register_error_kind
@@ -477,7 +479,21 @@ let () =
         contract)
     Data_encoding.(obj1 (req "contract" Contract.encoding))
     (function Empty_transaction c -> Some c | _ -> None)
-    (fun c -> Empty_transaction c)
+    (fun c -> Empty_transaction c) ;
+  let description =
+    "Smart contract rollups will be enabled in a future proposal."
+  in
+  register_error_kind
+    `Permanent
+    ~id:"operation.sc_rollup_disabled"
+    ~title:"Smart contract rollups are disabled"
+    ~description
+    ~pp:(fun ppf () -> Format.fprintf ppf "%s" description)
+    Data_encoding.unit
+    (function Sc_rollup_feature_disabled -> Some () | _ -> None)
+    (fun () -> Sc_rollup_feature_disabled)
+
+type error += Wrong_voting_period of int32 * int32
 
 type error += (* `Temporary *) Wrong_voting_period of int32 * int32
 
@@ -761,6 +777,9 @@ let () =
     (fun delegate -> Zero_frozen_deposits delegate)
 
 open Apply_results
+
+let assert_sc_rollup_feature_enabled ctxt =
+  fail_unless (Constants.enable_sc_rollup ctxt) Sc_rollup_feature_disabled
 
 let cache_layout = Constants_repr.cache_layout
 
@@ -1093,6 +1112,7 @@ let apply_manager_operation_content :
                 },
               [] ))
   | Sc_rollup_originate {pvm; boot_sector} ->
+      assert_sc_rollup_feature_enabled ctxt >>=? fun () ->
       Sc_rollup.originate ctxt ~pvm ~boot_sector
       >>=? fun (ctxt, {address; size}) ->
       let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in

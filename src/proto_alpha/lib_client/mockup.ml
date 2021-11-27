@@ -67,6 +67,7 @@ module Protocol_constants_overrides = struct
     double_baking_punishment : Tez.t option;
     ratio_of_frozen_deposits_slashed_per_double_endorsement :
       Constants.ratio option;
+    enable_sc_rollup : bool option;
     (* Additional, "bastard" parameters (they are not protocol constants but partially treated the same way). *)
     chain_id : Chain_id.t option;
     timestamp : Time.Protocol.t option;
@@ -104,13 +105,14 @@ module Protocol_constants_overrides = struct
                 c.consensus_committee_size,
                 c.consensus_threshold,
                 c.delegate_selection ),
-              ( c.minimal_participation_ratio,
-                c.max_slashing_period,
-                c.frozen_deposits_percentage,
-                c.double_baking_punishment,
-                c.ratio_of_frozen_deposits_slashed_per_double_endorsement,
-                c.chain_id,
-                c.timestamp ) ) ) ))
+              ( ( c.minimal_participation_ratio,
+                  c.max_slashing_period,
+                  c.frozen_deposits_percentage,
+                  c.double_baking_punishment,
+                  c.ratio_of_frozen_deposits_slashed_per_double_endorsement,
+                  c.chain_id,
+                  c.timestamp ),
+                c.enable_sc_rollup ) ) ) ))
       (fun ( ( preserved_cycles,
                blocks_per_cycle,
                blocks_per_commitment,
@@ -138,13 +140,14 @@ module Protocol_constants_overrides = struct
                    consensus_committee_size,
                    consensus_threshold,
                    delegate_selection ),
-                 ( minimal_participation_ratio,
-                   max_slashing_period,
-                   frozen_deposits_percentage,
-                   double_baking_punishment,
-                   ratio_of_frozen_deposits_slashed_per_double_endorsement,
-                   chain_id,
-                   timestamp ) ) ) ) ->
+                 ( ( minimal_participation_ratio,
+                     max_slashing_period,
+                     frozen_deposits_percentage,
+                     double_baking_punishment,
+                     ratio_of_frozen_deposits_slashed_per_double_endorsement,
+                     chain_id,
+                     timestamp ),
+                   enable_sc_rollup ) ) ) ) ->
         {
           preserved_cycles;
           blocks_per_cycle;
@@ -178,6 +181,7 @@ module Protocol_constants_overrides = struct
           delegate_selection;
           double_baking_punishment;
           ratio_of_frozen_deposits_slashed_per_double_endorsement;
+          enable_sc_rollup;
           chain_id;
           timestamp;
         })
@@ -216,16 +220,20 @@ module Protocol_constants_overrides = struct
                   (opt
                      "delegate_selection"
                      Constants.delegate_selection_encoding))
-               (obj7
-                  (opt "minimal_participation_ratio" Constants.ratio_encoding)
-                  (opt "max_slashing_period" int31)
-                  (opt "frozen_deposits_percentage" int31)
-                  (opt "double_baking_punishment" Tez.encoding)
-                  (opt
-                     "ratio_of_frozen_deposits_slashed_per_double_endorsement"
-                     Constants.ratio_encoding)
-                  (opt "chain_id" Chain_id.encoding)
-                  (opt "initial_timestamp" Time.Protocol.encoding)))))
+               (merge_objs
+                  (obj7
+                     (opt
+                        "minimal_participation_ratio"
+                        Constants.ratio_encoding)
+                     (opt "max_slashing_period" int31)
+                     (opt "frozen_deposits_percentage" int31)
+                     (opt "double_baking_punishment" Tez.encoding)
+                     (opt
+                        "ratio_of_frozen_deposits_slashed_per_double_endorsement"
+                        Constants.ratio_encoding)
+                     (opt "chain_id" Chain_id.encoding)
+                     (opt "initial_timestamp" Time.Protocol.encoding))
+                  (obj1 (opt "enable_sc_rollup" bool))))))
 
   let default_value (cctxt : Tezos_client_base.Client_context.full) :
       t tzresult Lwt.t =
@@ -284,6 +292,7 @@ module Protocol_constants_overrides = struct
         ratio_of_frozen_deposits_slashed_per_double_endorsement =
           Some
             parametric.ratio_of_frozen_deposits_slashed_per_double_endorsement;
+        enable_sc_rollup = Some parametric.enable_sc_rollup;
         (* Bastard additional parameters. *)
         chain_id = to_chain_id_opt cpctxt#chain;
         timestamp = Some header.timestamp;
@@ -325,6 +334,7 @@ module Protocol_constants_overrides = struct
       frozen_deposits_percentage = None;
       double_baking_punishment = None;
       ratio_of_frozen_deposits_slashed_per_double_endorsement = None;
+      enable_sc_rollup = None;
       chain_id = None;
       timestamp = None;
     }
@@ -531,6 +541,12 @@ module Protocol_constants_overrides = struct
               o.ratio_of_frozen_deposits_slashed_per_double_endorsement;
             pp = Constants.pp_ratio;
           };
+        O
+          {
+            name = "enable_sc_rollup";
+            override_value = o.enable_sc_rollup;
+            pp = pp_print_bool;
+          };
         O {name = "chain_id"; override_value = o.chain_id; pp = Chain_id.pp};
         O
           {
@@ -652,7 +668,9 @@ module Protocol_constants_overrides = struct
          ratio_of_frozen_deposits_slashed_per_double_endorsement =
            Option.value
              ~default:c.ratio_of_frozen_deposits_slashed_per_double_endorsement
-             o.ratio_of_frozen_deposits_slashed_per_double_endorsement
+             o.ratio_of_frozen_deposits_slashed_per_double_endorsement;
+         enable_sc_rollup =
+           Option.value ~default:c.enable_sc_rollup o.enable_sc_rollup
            (* Notice that the chain_id and the timestamp are not used here
               as they are not protocol constants... *);
        }

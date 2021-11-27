@@ -144,3 +144,7 @@ let double_baking_punishment c =
 let ratio_of_frozen_deposits_slashed_per_double_endorsement c =
   let constants = Raw_context.constants c in
   constants.ratio_of_frozen_deposits_slashed_per_double_endorsement
+
+let enable_sc_rollup c =
+  let constants = Raw_context.constants c in
+  constants.enable_sc_rollup

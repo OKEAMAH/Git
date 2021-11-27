@@ -111,6 +111,8 @@ type error += (* `Permanent *) Failing_noop_error
 
 type error += (* `Branch *) Empty_transaction of Contract.t
 
+type error += (* `Permanent *) Sc_rollup_feature_disabled
+
 val begin_partial_construction :
   t ->
   predecessor_level:Level.t ->
