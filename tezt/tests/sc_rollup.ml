@@ -36,7 +36,6 @@ let test ~__FILE__ ~output_file ?(tags = []) title =
     ~title
     ~tags:("sc_rollup" :: tags)
 
-<<<<<<< HEAD
 let setup f ~protocol =
   let enable_sc_rollup = [(["enable_sc_rollup"], Some "true")] in
   let base = Either.right protocol in
@@ -143,7 +142,7 @@ let test_rollup_node_running =
       let* () = Sc_rollup_node.run sc_rollup_node in
       return ())
 
-let register ~protocols:(_ : Protocol.t list) =
+let register ~protocols =
   test_origination ~protocols ;
   test_rollup_node_configuration ~protocols ;
   test_rollup_node_running ~protocols
