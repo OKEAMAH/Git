@@ -79,4 +79,47 @@ let test_origination =
       Regression.capture rollup_address ;
       return ())
 
-let register ~protocols = test_origination ~protocols
+(* Configuration of a rollup node
+   ------------------------------
+
+   A rollup node has a configuration file that must be initialized.
+
+*)
+let setup_fresh_rollup f node client bootstrap1_key =
+  let* rollup_address =
+    Client.originate_rollup
+      ~burn_cap:Tez.(of_int 9999999)
+      ~src:bootstrap1_key
+      ~kind:"arith"
+      ~boot_sector:""
+      client
+  in
+  let sc_rollup_node = Sc_rollup_node.create node in
+  let* configuration_filename =
+    Sc_rollup_node.config_init sc_rollup_node rollup_address
+  in
+  f rollup_address sc_rollup_node configuration_filename
+
+let test_rollup_node_configuration =
+  let output_file = "sc_rollup_node_configuration" in
+  test
+    ~__FILE__
+    ~output_file
+    "configuration of an optimistic rollup node for smart contract"
+    (fun protocol ->
+      setup ~protocol @@ setup_fresh_rollup
+      @@ fun _rollup_address _sc_rollup_node filename ->
+      let read_configuration =
+        let open Ezjsonm in
+        match from_channel (open_in filename) with
+        | `O fields ->
+            (* Remove 'data-dir' as it is non deterministic. *)
+            `O (List.filter (fun (s, _) -> s <> "data-dir") fields) |> to_string
+        | _ -> failwith "The configuration file has not the expected format."
+      in
+      Regression.capture read_configuration ;
+      return ())
+
+let register ~protocols =
+  test_origination ~protocols ;
+  test_rollup_node_configuration ~protocols
