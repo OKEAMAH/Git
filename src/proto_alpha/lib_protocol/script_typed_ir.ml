@@ -61,7 +61,7 @@ type step_constants = {
 
 type never = |
 
-type address = Contract.t * string
+type address = Destination.t * string
 
 type tx_rollup_l2_address = Tx_rollup_l2_address.t
 

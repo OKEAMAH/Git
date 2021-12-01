@@ -56,4 +56,6 @@ val originated_tx_rollup : Origination_nonce.t -> t
 
 val rpc_arg : t RPC_arg.arg
 
+val in_memory_size : Saturation_repr.may_saturate Saturation_repr.t
+
 module Index : Storage_description.INDEX with type t = t

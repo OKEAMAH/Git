@@ -108,6 +108,8 @@ type error +=
   | (* `Branch *) Empty_transaction of Contract.t
   | (* `Permanent *) Tx_rollup_disabled
   | (* `Permanent *) Tx_rollup_submit_too_big
+  | (* `Permanent *) Tx_rollup_non_null_transaction
+  | (* `Permanent *) Tx_rollup_non_internal_transaction
   | (* `Permanent *)
       Sc_rollup_feature_disabled
   | (* `Permanent *)
@@ -498,6 +500,26 @@ let () =
     Data_encoding.unit
     (function Tx_rollup_disabled -> Some () | _ -> None)
     (fun () -> Tx_rollup_disabled) ;
+  register_error_kind
+    `Permanent
+    ~id:"operation.tx_rollup_non_null_transaction"
+    ~title:"Non null transaction to a transaction rollup"
+    ~description:"Non-null transactions to a tx rollup are forbidden."
+    ~pp:(fun ppf () ->
+      Format.fprintf ppf "Transaction to a transaction rollup must be null.")
+    Data_encoding.unit
+    (function Tx_rollup_non_null_transaction -> Some () | _ -> None)
+    (fun () -> Tx_rollup_non_null_transaction) ;
+  register_error_kind
+    `Permanent
+    ~id:"operation.tx_rollup_non_internal_transaction"
+    ~title:"Non internal transaction to a transaction rollup"
+    ~description:"Non-internal transactions to a tx rollup are forbidden."
+    ~pp:(fun ppf () ->
+      Format.fprintf ppf "Transaction to a transaction rollup must be internal.")
+    Data_encoding.unit
+    (function Tx_rollup_non_internal_transaction -> Some () | _ -> None)
+    (fun () -> Tx_rollup_non_internal_transaction) ;
 
   let description =
     "Smart contract rollups will be enabled in a future proposal."
@@ -874,7 +896,8 @@ let apply_manager_operation_content :
              {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt}
             : kind successful_manager_operation_result),
           [] )
-  | Transaction {amount; parameters; destination; entrypoint} -> (
+  | Transaction
+      {amount; parameters; destination = Contract destination; entrypoint} -> (
       Script.force_decode_in_context
         ~consume_deserialization_gas
         ctxt
@@ -988,6 +1011,54 @@ let apply_manager_operation_content :
                   }
               in
               (ctxt, result, operations) ))
+  | Transaction
+      {amount; parameters; destination = Tx_rollup destination; entrypoint} -> (
+      fail_unless
+        (Alpha_context.Constants.tx_rollup_enable ctxt)
+        Tx_rollup_disabled
+      >>=? fun () ->
+      fail_unless internal Tx_rollup_non_internal_transaction >>=? fun () ->
+      fail_unless Tez.(amount = zero) Tx_rollup_non_null_transaction
+      >>=? fun () ->
+      match entrypoint with
+      | "deposit" ->
+          Script.force_decode_in_context
+            ~consume_deserialization_gas
+            ctxt
+            parameters
+          >>?= fun (parameters, ctxt) ->
+          Script_ir_translator.parse_tx_rollup_deposit_parameters
+            ctxt
+            parameters
+          >>?= fun ((ticketer, contents, ty, amount, tx_rollup_l2_address), ctxt)
+            ->
+          Tx_rollup.hash_ticket ctxt destination ~contents ~ticketer ~ty
+          >>?= fun (key_hash, ctxt) ->
+          Tx_rollup.append_message
+            ctxt
+            destination
+            (Deposit {destination = tx_rollup_l2_address; key_hash; amount})
+          >>=? fun (inbox_status, ctxt) ->
+          Tx_rollup.get_state ctxt destination >>=? fun {cost_per_byte} ->
+          Tez.(cost_per_byte *? Int64.of_int inbox_status.last_message_size)
+          >>?= fun cost ->
+          Token.transfer ctxt (`Contract payer) `Burned cost
+          >|=? fun (ctxt, balance_updates) ->
+          let result =
+            Transaction_result
+              {
+                storage = None;
+                lazy_storage_diff = None;
+                balance_updates;
+                originated_contracts = [];
+                consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+                storage_size = Z.zero;
+                paid_storage_size_diff = Z.zero;
+                allocated_destination_contract = false;
+              }
+          in
+          (ctxt, result, [])
+      | _ -> fail (Script_tc_errors.No_such_entrypoint entrypoint))
   | Origination {delegate; script; preorigination; credit} ->
       Script.force_decode_in_context
         ~consume_deserialization_gas

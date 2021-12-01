@@ -26,6 +26,17 @@
 open Protocol
 open Alpha_context
 
+val manager_operation :
+  ?counter:Z.t ->
+  ?fee:Tez.tez ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:Z.t ->
+  ?public_key:public_key ->
+  source:Contract.t ->
+  Context.t ->
+  'a manager_operation ->
+  Alpha_context.packed_contents_list tzresult Lwt.t
+
 val endorsement :
   ?delegate:public_key_hash * Slot.t list ->
   ?slot:Slot.t ->
@@ -230,3 +241,10 @@ val sc_rollup_origination :
   Sc_rollup.Kind.t ->
   Sc_rollup.PVM.boot_sector ->
   packed_operation tzresult Lwt.t
+
+val sign :
+  ?watermark:Signature.watermark ->
+  Signature.secret_key ->
+  Context.t ->
+  Alpha_context.packed_contents_list ->
+  Alpha_context.packed_operation

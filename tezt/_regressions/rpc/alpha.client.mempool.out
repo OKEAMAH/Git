@@ -685,11 +685,6 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                         ],
                         "additionalProperties": false
                       },
-                      "alpha.contract_id": {
-                        "title": "A contract handle",
-                        "description": "A contract notation as given to an RPC or inside scripts. Can be a base58 implicit contract hash or a base58 originated contract hash.",
-                        "$ref": "#/definitions/unistring"
-                      },
                       "alpha.entrypoint": {
                         "title": "entrypoint",
                         "description": "Named entrypoint to a Michelson smart contract",
@@ -1359,7 +1354,7 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                                 "$ref": "#/definitions/alpha.mutez"
                               },
                               "destination": {
-                                "$ref": "#/definitions/alpha.contract_id"
+                                "$ref": "#/definitions/alpha.transaction_destination"
                               },
                               "parameters": {
                                 "type": "object",
@@ -2019,6 +2014,11 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                         ],
                         "additionalProperties": false
                       },
+                      "alpha.transaction_destination": {
+                        "title": "A destination of a transaction",
+                        "description": "A destination notation compatible with the contract notation as given to an RPC or inside scripts. Can be a base58 implicit contract hash or a base58 originated contract hash.",
+                        "$ref": "#/definitions/unistring"
+                      },
                       "alpha.tx_rollup_id": {
                         "title": "A tx rollup handle",
                         "description": "A tx rollup notation as given to an RPC or inside scripts, is a base58 tx rollup hash",
@@ -2274,7 +2274,7 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                       },
                       {
                         "description": {
-                          "title": "alpha.contract_id"
+                          "title": "alpha.transaction_destination"
                         },
                         "encoding": {
                           "tag_size": "Uint8",
@@ -2352,6 +2352,46 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                                 }
                               ],
                               "name": "Originated"
+                            },
+                            {
+                              "tag": 2,
+                              "fields": [
+                                {
+                                  "name": "Tag",
+                                  "layout": {
+                                    "size": "Uint8",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "Rollup_hash",
+                                  "layout": {
+                                    "kind": "Bytes"
+                                  },
+                                  "data_kind": {
+                                    "size": 20,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "padding",
+                                  "layout": {
+                                    "kind": "Padding"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                }
+                              ],
+                              "name": "Tx_rollup"
                             }
                           ]
                         }
@@ -3942,7 +3982,7 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                                 {
                                   "name": "destination",
                                   "layout": {
-                                    "name": "alpha.contract_id",
+                                    "name": "alpha.transaction_destination",
                                     "kind": "Ref"
                                   },
                                   "data_kind": {
@@ -5382,11 +5422,6 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                         ],
                         "additionalProperties": false
                       },
-                      "alpha.contract_id": {
-                        "title": "A contract handle",
-                        "description": "A contract notation as given to an RPC or inside scripts. Can be a base58 implicit contract hash or a base58 originated contract hash.",
-                        "$ref": "#/definitions/unistring"
-                      },
                       "alpha.entrypoint": {
                         "title": "entrypoint",
                         "description": "Named entrypoint to a Michelson smart contract",
@@ -6056,7 +6091,7 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                                 "$ref": "#/definitions/alpha.mutez"
                               },
                               "destination": {
-                                "$ref": "#/definitions/alpha.contract_id"
+                                "$ref": "#/definitions/alpha.transaction_destination"
                               },
                               "parameters": {
                                 "type": "object",
@@ -6715,6 +6750,11 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                           "code"
                         ],
                         "additionalProperties": false
+                      },
+                      "alpha.transaction_destination": {
+                        "title": "A destination of a transaction",
+                        "description": "A destination notation compatible with the contract notation as given to an RPC or inside scripts. Can be a base58 implicit contract hash or a base58 originated contract hash.",
+                        "$ref": "#/definitions/unistring"
                       },
                       "alpha.tx_rollup_id": {
                         "title": "A tx rollup handle",

@@ -72,6 +72,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
+   destination_repr.mli destination_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -210,6 +211,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
+   destination_repr.mli destination_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -348,6 +350,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
+   destination_repr.mli destination_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -508,6 +511,7 @@ include Tezos_raw_protocol_alpha.Main
    Roll_repr_legacy
    Vote_repr
    Block_header_repr
+   Destination_repr
    Operation_repr
    Manager_repr
    Commitment_repr
@@ -687,6 +691,7 @@ include Tezos_raw_protocol_alpha.Main
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
+   destination_repr.mli destination_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml

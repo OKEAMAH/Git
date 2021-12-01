@@ -85,6 +85,9 @@ val pp_short : Format.formatter -> contract -> unit
 
 (** {2 Serializers} *)
 
+val cases :
+  ('a -> contract option) -> (contract -> 'a) -> 'a Data_encoding.case list
+
 val encoding : contract Data_encoding.t
 
 val rpc_arg : contract RPC_arg.arg

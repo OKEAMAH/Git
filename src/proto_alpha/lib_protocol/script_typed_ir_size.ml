@@ -137,9 +137,9 @@ let mutez_size = h2w
 
 let timestamp_size x = Script_timestamp.to_zint x |> z_size
 
-let contract_size = Contract.in_memory_size
+let destination_size = Destination.in_memory_size
 
-let address_size ((c, s) : address) = h2w +! contract_size c +! string_size s
+let address_size ((c, s) : address) = h2w +! destination_size c +! string_size s
 
 let tx_rollup_l2_address_size (tx : tx_rollup_l2_address) =
   h2w +! Tx_rollup_l2_address.in_memory_size tx

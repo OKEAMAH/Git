@@ -146,7 +146,7 @@ let build_delegate_operation (cctxt : #full) ~chain ~block ?fee
        ~parameters
        ~entrypoint
        ?fee
-       contract)
+       (Destination.contract contract))
 
 let set_delegate (cctxt : #full) ~chain ~block ?confirmations ?dry_run
     ?verbose_signing ?simulation ?branch ~fee_parameter ?fee ~source ~src_pk
@@ -231,7 +231,7 @@ let build_transaction_operation (cctxt : #full) ~chain ~block ~contract
          contract %a)"
         entrypoint
         Contract.pp
-        destination
+        contract
   | None ->
       (Michelson_v1_entrypoints.contract_entrypoint_type
          cctxt
@@ -274,7 +274,7 @@ let build_transaction_operation (cctxt : #full) ~chain ~block ~contract
        ?fee
        ?gas_limit
        ?storage_limit
-       contract)
+       (Destination.contract contract))
 
 let transfer (cctxt : #full) ~chain ~block ?confirmations ?dry_run
     ?verbose_signing ?simulation ?branch ~source ~src_pk ~src_sk ~contract

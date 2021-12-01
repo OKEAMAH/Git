@@ -805,6 +805,26 @@ let () =
     (obj1 (req "loc" location_encoding))
     (function Unexpected_ticket loc -> Some loc | _ -> None)
     (fun loc -> Unexpected_ticket loc) ;
+  (* Unexpected ticket owner*)
+  register_error_kind
+    `Permanent
+    ~id:"michelson_v1.unexpected_ticket_owner"
+    ~title:"Unexpected ticket owner"
+    ~description:"Ticket can only be created by a smart contract"
+    (obj1 (req "ticketer" Destination.encoding))
+    (function Unexpected_ticket_owner t -> Some t | _ -> None)
+    (fun t -> Unexpected_ticket_owner t) ;
+  (* Invalid tx rollup ticket amount *)
+  register_error_kind
+    `Permanent
+    ~id:"michelson_v1.invalid_tx_rollup_ticket_amount"
+    ~title:"Invalid ticket amount"
+    ~description:
+      "Ticket amount to be deposited in a transaction rollup should fit in a \
+       64bits integer"
+    (obj1 (req "requested_value" Data_encoding.z))
+    (function Invalid_tx_rollup_ticket_amount z -> Some z | _ -> None)
+    (fun z -> Invalid_tx_rollup_ticket_amount z) ;
   (* Attempt to duplicate a non-dupable type *)
   register_error_kind
     `Permanent

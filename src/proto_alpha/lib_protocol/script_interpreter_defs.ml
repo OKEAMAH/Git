@@ -512,6 +512,24 @@ let transfer (ctxt, sc) gas amount tp p destination entrypoint =
     ~temporary:true
   >>=? fun (p, lazy_storage_diff, ctxt) ->
   unparse_data ctxt Optimized tp p >>=? fun (p, ctxt) ->
+  (* The entrypoints of a transaction rollup are polymorphic wrt. the
+     tickets it can process. However, two Michelson values can have
+     the same Micheline representation, but different types. What
+     this means is that when we start the execution of a transaction
+     rollup, the type of its argument is lost if we just give it the
+     values provided by the Michelson script.
+
+     To address this issue, we instrument a transfer to a transaction
+     rollup to inject the exact type of the entrypoint as used by
+     the smart contract. This allows the transaction rollup to extract
+     the type of the ticket. *)
+  (match (destination : Destination.t) with
+  | Contract _ -> ok (p, ctxt)
+  | Tx_rollup _ ->
+      let open Micheline in
+      Script_ir_translator.unparse_ty ~loc:dummy_location ctxt tp
+      >|? fun (ty, ctxt) -> (Seq (dummy_location, [p; ty]), ctxt))
+  >>?= fun (p, ctxt) ->
   Gas.consume ctxt (Script.strip_locations_cost p) >>?= fun ctxt ->
   let operation =
     Transaction

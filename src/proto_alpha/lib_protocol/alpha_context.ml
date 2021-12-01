@@ -60,6 +60,7 @@ module Sc_rollup = struct
   include Sc_rollup_storage
 end
 
+module Destination = Destination_repr
 include Operation_repr
 
 module Operation = struct

@@ -693,7 +693,7 @@ let transfer_command amount source destination cctxt
         ?fee
         ~src_pk
         ~src_sk
-        ~destination
+        ~destination:(Destination.contract destination)
         ?entrypoint
         ?arg
         ~amount
@@ -746,7 +746,7 @@ let prepare_batch_operation cctxt ?arg ?fee ?gas_limit ?storage_limit
            ?fee
            ?gas_limit
            ?storage_limit
-           destination))
+           (Destination.contract destination)))
   >>=? fun operation ->
   return (Annotated_manager_operation.Annotated_manager_operation operation)
 

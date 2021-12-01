@@ -113,7 +113,10 @@ let append_message :
     Constants_storage.tx_rollup_hard_size_limit_per_inbox ctxt
   in
   let size_of_message =
-    match message with Batch content -> String.length content
+    match message with
+    | Batch content -> String.length content
+    | Deposit _ -> 48 + 32
+    (* FIXME: we should not use magic numbers here *)
   in
 
   let append_message {length; cumulated_size} message =
@@ -226,3 +229,15 @@ let finalize_block : Raw_context.t -> Raw_context.t tzresult Lwt.t =
       ctxt >>?= fun ctxt ->
       Storage.Tx_rollup.State.get ctxt tx_rollup >>=? fun state ->
       finalize_rollup ctxt tx_rollup state)
+
+let hash_ticket :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    contents:Script_repr.node ->
+    ticketer:Script_repr.node ->
+    ty:Script_repr.node ->
+    (Ticket_repr.key_hash * Raw_context.t) tzresult =
+ fun ctxt tx_rollup ~contents ~ticketer ~ty ->
+  let open Micheline in
+  let owner = String (dummy_location, Tx_rollup_repr.to_b58check tx_rollup) in
+  Ticket_storage.make_key_hash ctxt ~ticketer ~typ:ty ~contents ~owner

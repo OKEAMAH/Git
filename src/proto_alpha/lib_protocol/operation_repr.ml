@@ -244,7 +244,7 @@ and _ manager_operation =
       amount : Tez_repr.tez;
       parameters : Script_repr.lazy_expr;
       entrypoint : string;
-      destination : Contract_repr.contract;
+      destination : Destination_repr.t;
     }
       -> Kind.transaction manager_operation
   | Origination : {
@@ -422,7 +422,7 @@ module Encoding = struct
           encoding =
             obj3
               (req "amount" Tez_repr.encoding)
-              (req "destination" Contract_repr.encoding)
+              (req "destination" Destination_repr.encoding)
               (opt
                  "parameters"
                  (obj2
@@ -1218,7 +1218,7 @@ let internal_manager_operation_size (type a) (op : a manager_operation) =
         (script_lazy_expr_size parameters)
         (h4w +! int64_size
         +! string_size_gen (String.length entrypoint)
-        +! Contract_repr.in_memory_size destination)
+        +! Destination_repr.in_memory_size destination)
   | Origination {delegate; script; credit = _; preorigination} ->
       ret_adding
         (script_repr_size script)

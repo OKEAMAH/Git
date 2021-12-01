@@ -31,7 +31,7 @@ This mli is organized into roughly three parts:
 Michelson is encoded in a GADT that preserves certain properties about its
 type system. If you haven't read about GADT's, check out the relevant section
 in the Tezos docs:
-https://tezos.gitlab.io/developer/gadt.html#generalized-algebraic-data-types-gadts 
+https://tezos.gitlab.io/developer/gadt.html#generalized-algebraic-data-types-gadts
 
 The idea is that type representing a Michelson type, ['a ty], is parameterized
 by a type 'a. But that 'a can't be just _any_ type; it must be valid according
@@ -42,9 +42,9 @@ careful not to accidentally quantify 'a universally, that is "for all 'a,
 it's scope. We do this by hiding 'a in an existential type. This is what
 ex_comparable_ty, ex_ty, ex_stack_ty, etc. do.
 
-2. A set of functions dealing with high-level Michelson types: 
+2. A set of functions dealing with high-level Michelson types:
 This module also provides functions for interacting with the list, map,
-set, and big_map Michelson types. 
+set, and big_map Michelson types.
 
 3. A set of functions for parsing and typechecking Michelson.
 Finally, and what you likely came for, the module provides many functions prefixed
@@ -395,7 +395,7 @@ val parse_contract :
   context ->
   Script.location ->
   'a Script_typed_ir.ty ->
-  Contract.t ->
+  Destination.t ->
   entrypoint:string ->
   (context * 'a Script_typed_ir.typed_contract) tzresult Lwt.t
 
@@ -403,9 +403,16 @@ val parse_contract_for_script :
   context ->
   Script.location ->
   'a Script_typed_ir.ty ->
-  Contract.t ->
+  Destination.t ->
   entrypoint:string ->
   (context * 'a Script_typed_ir.typed_contract option) tzresult Lwt.t
+
+val parse_tx_rollup_deposit_parameters :
+  context ->
+  Script.expr ->
+  ((Script.node * Script.node * Script.node * int64 * Bls_signature.pk)
+  * context)
+  tzresult
 
 val find_entrypoint :
   error_details:'error_trace error_details ->

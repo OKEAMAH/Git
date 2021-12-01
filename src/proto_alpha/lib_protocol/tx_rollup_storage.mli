@@ -150,6 +150,17 @@ val get_full_inbox_opt :
   Tx_rollup_repr.t ->
   Tx_rollup_inbox_repr.full option tzresult Lwt.t
 
+(** [hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty] computes the
+    hash to be used both with the table of ticket and within the
+    layer-2 to identify a layer-1 ticket. *)
+val hash_ticket :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  contents:Script_repr.node ->
+  ticketer:Script_repr.node ->
+  ty:Script_repr.node ->
+  (Ticket_repr.key_hash * Raw_context.t) tzresult
+
 (** {1 Block Finalization Routine} *)
 
 (** [finalize_block ctxt] updates the [cost_per_byte] variable of each

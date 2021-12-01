@@ -70,6 +70,8 @@ type error += Unreachable_entrypoint of prim list
 
 type error += Entrypoint_name_too_long of string
 
+type error += Invalid_tx_rollup_ticket_amount of Z.t
+
 (* Instruction typing errors *)
 type error += Fail_not_in_tail_position of Script.location
 
@@ -195,6 +197,8 @@ type error += Unparsing_too_many_recursive_calls
 
 (* Ticket errors *)
 type error += Unexpected_ticket of Script.location
+
+type error += Unexpected_ticket_owner of Destination.t
 
 type error += Unexpected_forged_value of Script.location
 

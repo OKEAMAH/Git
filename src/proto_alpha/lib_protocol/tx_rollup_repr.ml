@@ -141,3 +141,7 @@ module Index = struct
 
   let compare = compare
 end
+
+let in_memory_size =
+  let open Cache_memory_helpers in
+  header_size +! word_size +! blake2b_hash_size

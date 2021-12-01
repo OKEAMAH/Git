@@ -29,7 +29,23 @@ type batch = string
 
 let batch_encoding = Data_encoding.(obj1 (req "content" string))
 
-type message = Batch of batch
+type deposit = {
+  destination : Tx_rollup_l2_address_repr.t;
+  key_hash : Ticket_repr.key_hash;
+  amount : int64;
+}
+
+let deposit_encoding =
+  let open Data_encoding in
+  conv
+    (fun {destination; key_hash; amount} -> (destination, key_hash, amount))
+    (fun (destination, key_hash, amount) -> {destination; key_hash; amount})
+  @@ obj3
+       (req "destination" Tx_rollup_l2_address_repr.encoding)
+       (req "key_hash" Ticket_repr.key_hash_encoding)
+       (req "amount" int64)
+
+type message = Batch of batch | Deposit of deposit
 
 let message_encoding =
   let open Data_encoding in
@@ -40,8 +56,14 @@ let message_encoding =
         (Tag 0)
         ~title:"Batch"
         (obj1 (req "batch" batch_encoding))
-        (function Batch batch -> Some batch)
+        (function Batch batch -> Some batch | _ -> None)
         (fun batch -> Batch batch);
+      case
+        (Tag 1)
+        ~title:"Deposit"
+        (obj1 (req "deposit" deposit_encoding))
+        (function Deposit deposit -> Some deposit | _ -> None)
+        (fun deposit -> Deposit deposit);
     ]
 
 type summary = {length : int32; cumulated_size : int}

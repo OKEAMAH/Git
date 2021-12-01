@@ -3,7 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,41 +25,20 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** An inbox gathers, for a given Tezos level, messages crafted by the
-    layer-1 for the layer-2 to interpret. As a consequence, a
-    transaction rollup can have up to one inbox per Tezos level after
-    its origination. *)
+type t = Contract of Contract_repr.t | Tx_rollup of Tx_rollup_repr.t
 
-(** Tezos participants can submit batches of L2 operations to the
-    layer-1; they will be added to the transaction rollup inbox,
-    waiting to be interpreted by the layer-2. *)
-type batch = string
+val contract : Contract_repr.t -> t
 
-(** Smart contract on the layer-1 can “deposit” tickets into a
-    transaction rollup, for the benefit of a so-called l2 address. *)
-type deposit = {
-  destination : Tx_rollup_l2_address_repr.t;
-  key_hash : Ticket_repr.key_hash;
-  amount : int64;
-}
+val tx_rollup : Tx_rollup_repr.t -> t
 
-(** A [message] is a data submitted by the layer-1 to be interpreted
-    by the layer-2. *)
-type message = Batch of batch | Deposit of deposit
+include Compare.S with type t := t
 
-val message_encoding : message Data_encoding.t
+val to_b58check : t -> string
 
-(** The [summary] of an inbox provides data about its content, not the
-    content itself. *)
-type summary = {length : int32; cumulated_size : int}
-
-type t = summary
+val of_b58check : string -> t tzresult
 
 val encoding : t Data_encoding.t
 
 val pp : Format.formatter -> t -> unit
 
-(** The [full] view of the inbox provides the actual content of the inbox. *)
-type full = {content : message list; cumulated_size : int}
-
-val full_encoding : full Data_encoding.t
+val in_memory_size : t -> Cache_memory_helpers.sint

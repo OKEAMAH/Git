@@ -1894,6 +1894,30 @@ module Sc_rollup : sig
     (context * t * Z.t) tzresult Lwt.t
 end
 
+(** This module re-exports functions from [Ticket_storage]. See
+    documentation of the functions there.
+ *)
+module Ticket_balance : sig
+  type key_hash
+
+  val key_hash_encoding : key_hash Data_encoding.t
+
+  val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
+
+  val make_key_hash :
+    context ->
+    ticketer:Script.node ->
+    typ:Script.node ->
+    contents:Script.node ->
+    owner:Script.node ->
+    (key_hash * context) tzresult
+
+  val adjust_balance :
+    context -> key_hash -> delta:Z.t -> (Z.t * context) tzresult Lwt.t
+
+  val get_balance : context -> key_hash -> (Z.t option * context) tzresult Lwt.t
+end
+
 (** This simply re-exports [Tx_rollup_l2_address_repr].
     See [Tx_rollup_l2_address_repr] for additional documentation of
     this module. *)
@@ -1911,7 +1935,13 @@ end
 module Tx_rollup_inbox : sig
   type batch = string
 
-  type message = Batch of batch
+  type deposit = {
+    destination : Tx_rollup_l2_address.t;
+    key_hash : Ticket_balance.key_hash;
+    amount : int64;
+  }
+
+  type message = Batch of batch | Deposit of deposit
 
   val message_encoding : message Data_encoding.t
 
@@ -1955,6 +1985,14 @@ module Tx_rollup : sig
   val encoding : tx_rollup Data_encoding.t
 
   val originate : context -> (context * tx_rollup) tzresult Lwt.t
+
+  val hash_ticket :
+    context ->
+    t ->
+    contents:Script.node ->
+    ticketer:Script.node ->
+    ty:Script.node ->
+    (Ticket_balance.key_hash * context) tzresult
 
   val get_state : context -> t -> Tx_rollup_state.t tzresult Lwt.t
 
@@ -2086,6 +2124,28 @@ val consensus_content_encoding : consensus_content Data_encoding.t
 
 val pp_consensus_content : Format.formatter -> consensus_content -> unit
 
+module Destination : sig
+  type t = Contract of Contract.t | Tx_rollup of Tx_rollup.t
+
+  val contract : Contract.t -> t
+
+  val tx_rollup : Tx_rollup.t -> t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val compare : t -> t -> int
+
+  val equal : t -> t -> bool
+
+  val to_b58check : t -> string
+
+  val of_b58check : string -> t tzresult
+
+  val in_memory_size : t -> Cache_memory_helpers.sint
+end
+
 type 'kind operation = {
   shell : Operation.shell_header;
   protocol_data : 'kind protocol_data;
@@ -2160,7 +2220,7 @@ and _ manager_operation =
       amount : Tez.tez;
       parameters : Script.lazy_expr;
       entrypoint : string;
-      destination : Contract.contract;
+      destination : Destination.t;
     }
       -> Kind.transaction manager_operation
   | Origination : {
@@ -2501,30 +2561,6 @@ module Liquidity_baking : sig
     escape_vote:bool ->
     (context -> Contract.t -> (context * 'a list) tzresult Lwt.t) ->
     (context * 'a list * escape_ema) tzresult Lwt.t
-end
-
-(** This module re-exports functions from [Ticket_storage]. See
-    documentation of the functions there.
- *)
-module Ticket_balance : sig
-  type key_hash
-
-  val key_hash_encoding : key_hash Data_encoding.t
-
-  val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
-
-  val make_key_hash :
-    context ->
-    ticketer:Script.node ->
-    typ:Script.node ->
-    contents:Script.node ->
-    owner:Script.node ->
-    (key_hash * context) tzresult
-
-  val adjust_balance :
-    context -> key_hash -> delta:Z.t -> (Z.t * context) tzresult Lwt.t
-
-  val get_balance : context -> key_hash -> (Z.t option * context) tzresult Lwt.t
 end
 
 module First_level_of_tenderbake : sig
