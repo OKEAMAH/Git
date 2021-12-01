@@ -488,24 +488,42 @@ end)
     val stack : ('a, 'b) Script_typed_ir.stack_ty -> ('a * 'b) sampler
   end = struct
     let address rng_state =
+      let open Alpha_context in
       if Base_samplers.uniform_bool rng_state then
-        ( Alpha_context.Contract.implicit_contract
-            (Crypto_samplers.pkh rng_state),
+        ( Destination.contract
+            (Contract.implicit_contract (Crypto_samplers.pkh rng_state)),
           Alpha_context.Entrypoint.default )
-      else
+      else if
         (* For a description of the format, see
            tezos-codec describe alpha.contract binary encoding *)
+        Base_samplers.uniform_bool rng_state
+      then
         let string =
           "\001" ^ Base_samplers.uniform_string ~nbytes:20 rng_state ^ "\000"
         in
         let contract =
           Data_encoding.Binary.of_string_exn
-            Alpha_context.Contract.encoding
+            Alpha_context.Destination.encoding
             string
         in
         let ep =
           Alpha_context.Entrypoint.of_string_strict_exn
           @@ Base_samplers.string ~size:{min = 1; max = 31} rng_state
+        in
+        (contract, ep)
+      else
+        let string =
+          "\002" ^ Base_samplers.uniform_string ~nbytes:20 rng_state ^ "\000"
+        in
+        let contract =
+          Data_encoding.Binary.of_string_exn
+            Alpha_context.Destination.encoding
+            string
+        in
+        let ep =
+          Alpha_context.Entrypoint.of_string_strict_exn
+          @@
+          if Base_samplers.uniform_bool rng_state then "deposit" else "withdraw"
         in
         (contract, ep)
 

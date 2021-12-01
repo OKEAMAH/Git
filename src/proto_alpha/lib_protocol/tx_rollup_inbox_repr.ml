@@ -25,7 +25,23 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type message = Batch of string
+type deposit = {
+  destination : Tx_rollup_l2_address_repr.t;
+  key_hash : Ticket_hash_repr.t;
+  amount : int64;
+}
+
+let deposit_encoding =
+  let open Data_encoding in
+  conv
+    (fun {destination; key_hash; amount} -> (destination, key_hash, amount))
+    (fun (destination, key_hash, amount) -> {destination; key_hash; amount})
+  @@ obj3
+       (req "destination" Tx_rollup_l2_address_repr.encoding)
+       (req "key_hash" Ticket_hash_repr.encoding)
+       (req "amount" int64)
+
+type message = Batch of string | Deposit of deposit
 
 let message_encoding =
   let open Data_encoding in
@@ -36,11 +52,28 @@ let message_encoding =
         (Tag 0)
         ~title:"Batch"
         (obj1 (req "batch" string))
-        (function Batch batch -> Some batch)
+        (function Batch batch -> Some batch | _ -> None)
         (fun batch -> Batch batch);
+      case
+        (Tag 1)
+        ~title:"Deposit"
+        (obj1 (req "deposit" deposit_encoding))
+        (function Deposit deposit -> Some deposit | _ -> None)
+        (fun deposit -> Deposit deposit);
     ]
 
-let message_size = function Batch batch -> String.length batch
+let message_size = function
+  | Batch batch -> String.length batch
+  | Deposit {destination = _; key_hash = _; amount = _} ->
+      (* Size of a BLS public key, that is the underlying type of a
+         l2 address. See [Tx_rollup_l2_address] *)
+      let destination_size = 48 in
+      (* Size of a a script expr hash, that is the underlying type
+         of key hash. See [Ticket_repr] and [Script_expr_hash] *)
+      let key_hash_size = 32 in
+      (* [int64] *)
+      let amount_size = 8 in
+      destination_size + key_hash_size + amount_size
 
 let hash_size = 32
 

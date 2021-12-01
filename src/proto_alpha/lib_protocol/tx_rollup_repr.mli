@@ -56,4 +56,11 @@ val originated_tx_rollup : Origination_nonce.t -> t
 
 val rpc_arg : t RPC_arg.arg
 
+val in_memory_size : Saturation_repr.may_saturate Saturation_repr.t
+
 module Index : Storage_description.INDEX with type t = t
+
+(** [deposit_entrypoint] is the entrypoint a transaction rollup
+    exposes to allow layer-1 smart contracts to deposit Michelson
+    tickets. *)
+val deposit_entrypoint : Entrypoint_repr.t

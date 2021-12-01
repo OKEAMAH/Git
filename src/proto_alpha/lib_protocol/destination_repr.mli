@@ -3,7 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,48 +25,22 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Smart contract on the layer-1 can “deposit” tickets into a
-    transaction rollup, for the benefit of a so-called l2 address. *)
-type deposit = {
-  destination : Tx_rollup_l2_address_repr.t;
-  key_hash : Ticket_hash_repr.t;
-  amount : int64;
-}
+type t = Contract of Contract_repr.t | Tx_rollup of Tx_rollup_repr.t
 
-(** A [message] is a piece of data submitted though the layer-1 to be
-    interpreted by the layer-2.
+val contract : Contract_repr.t -> t
 
-    {ul {li A raw array of bytes that supposedly contains a sequence
-            of L2 operations.}
-        {li A deposit order for a L1 ticket.}} *)
-type message = Batch of string | Deposit of deposit
+val tx_rollup : Tx_rollup_repr.t -> t
 
-(** [message_size msg] returns the number of bytes allocated in an
-    inbox by [msg]. *)
-val message_size : message -> int
+include Compare.S with type t := t
 
-val message_encoding : message Data_encoding.t
+val to_b58check : t -> string
 
-type message_hash
+val of_b58check : string -> t tzresult
 
-val message_hash_encoding : message_hash Data_encoding.t
-
-val message_hash_pp : Format.formatter -> message_hash -> unit
-
-val hash_message : message -> message_hash
-
-(** An inbox gathers, for a given Tezos level, messages crafted by the
-    layer-1 for the layer-2 to interpret.
-
-    The structure comprises two fields: (1) [contents] is the list of
-    message hashes, and (2) [cumulated_size] is the quantity of bytes
-    allocated by the related messages.
-
-    We recall that a transaction rollup can have up to one inbox per
-    Tezos level, starting from its origination. See
-    {!Storage.Tx_rollup} for more information. *)
-type t = {contents : message_hash list; cumulated_size : int}
+val encoding : t Data_encoding.t
 
 val pp : Format.formatter -> t -> unit
 
-val encoding : t Data_encoding.t
+val in_memory_size : t -> Cache_memory_helpers.sint
+
+type error += Invalid_destination_b58check of string

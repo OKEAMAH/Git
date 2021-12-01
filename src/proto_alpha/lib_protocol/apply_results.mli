@@ -111,6 +111,8 @@ and _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.reveal successful_manager_operation_result
+  (* TODO: use an intermediary type for this, to distinguish between
+     transaction to contracts and rollups *)
   | Transaction_result : {
       storage : Script.expr option;
       lazy_storage_diff : Lazy_storage.diffs option;

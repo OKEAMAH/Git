@@ -28,7 +28,7 @@ open Alpha_context
 open Script_typed_ir
 
 let compare_address (x, ex) (y, ey) =
-  let lres = Contract.compare x y in
+  let lres = Destination.compare x y in
   if Compare.Int.(lres = 0) then Entrypoint.compare ex ey else lres
 
 let compare_tx_rollup_l2_address x y =

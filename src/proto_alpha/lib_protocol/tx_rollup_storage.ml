@@ -250,3 +250,15 @@ let update_tx_rollup_at_block_finalization :
       ctxt >>?= fun ctxt ->
       Storage.Tx_rollup.State.get ctxt tx_rollup >>=? fun state ->
       finalize_rollup ctxt tx_rollup state)
+
+let hash_ticket :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    contents:Script_repr.node ->
+    ticketer:Script_repr.node ->
+    ty:Script_repr.node ->
+    (Ticket_hash_repr.t * Raw_context.t) tzresult =
+ fun ctxt tx_rollup ~contents ~ticketer ~ty ->
+  let open Micheline in
+  let owner = String (dummy_location, Tx_rollup_repr.to_b58check tx_rollup) in
+  Ticket_hash_repr.make ctxt ~ticketer ~typ:ty ~contents ~owner

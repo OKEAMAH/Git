@@ -118,6 +118,8 @@ let bytes_size b = string_size_gen (Bytes.length b)
 
 let string_size s = string_size_gen (String.length s)
 
+let blake2b_hash_size = header_size +! word_size +! string_size_gen 20
+
 let ret_adding (nodes, size) added = (nodes, size +! added)
 
 let ret_succ_adding (nodes, size) added = (Nodes.succ nodes, size +! added)

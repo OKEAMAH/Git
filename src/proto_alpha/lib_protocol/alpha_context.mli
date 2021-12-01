@@ -1936,7 +1936,13 @@ end
     See {!Tx_rollup_inbox_repr} for additional documentation of this
     module. *)
 module Tx_rollup_inbox : sig
-  type message = Batch of string
+  type deposit = {
+    destination : Tx_rollup_l2_address.t;
+    key_hash : Ticket_hash.t;
+    amount : int64;
+  }
+
+  type message = Batch of string | Deposit of deposit
 
   val message_encoding : message Data_encoding.t
 
@@ -1991,7 +1997,17 @@ module Tx_rollup : sig
 
   val encoding : tx_rollup Data_encoding.t
 
+  val deposit_entrypoint : Entrypoint.t
+
   val originate : context -> (context * tx_rollup) tzresult Lwt.t
+
+  val hash_ticket :
+    context ->
+    t ->
+    contents:Script.node ->
+    ticketer:Script.node ->
+    ty:Script.node ->
+    (Ticket_hash.t * context) tzresult
 
   val get_state : context -> t -> Tx_rollup_state.t tzresult Lwt.t
 
@@ -2114,6 +2130,30 @@ val consensus_content_encoding : consensus_content Data_encoding.t
 
 val pp_consensus_content : Format.formatter -> consensus_content -> unit
 
+module Destination : sig
+  type t = Contract of Contract.t | Tx_rollup of Tx_rollup.t
+
+  val contract : Contract.t -> t
+
+  val tx_rollup : Tx_rollup.t -> t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val compare : t -> t -> int
+
+  val equal : t -> t -> bool
+
+  val to_b58check : t -> string
+
+  val of_b58check : string -> t tzresult
+
+  val in_memory_size : t -> Cache_memory_helpers.sint
+
+  type error += Invalid_destination_b58check of string
+end
+
 type 'kind operation = {
   shell : Operation.shell_header;
   protocol_data : 'kind protocol_data;
@@ -2188,7 +2228,7 @@ and _ manager_operation =
       amount : Tez.tez;
       parameters : Script.lazy_expr;
       entrypoint : Entrypoint.t;
-      destination : Contract.contract;
+      destination : Destination.t;
     }
       -> Kind.transaction manager_operation
   | Origination : {

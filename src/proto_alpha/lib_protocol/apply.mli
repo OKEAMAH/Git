@@ -115,6 +115,10 @@ type error += (* `Permanent *) Tx_rollup_disabled
 
 type error += (* `Permanent *) Tx_rollup_submit_too_big
 
+type error += (* `Permanent *) Tx_rollup_non_null_transaction
+
+type error += (* `Permanent *) Tx_rollup_non_internal_transaction
+
 type error += (* `Permanent *) Sc_rollup_feature_disabled
 
 type error += (* `Permanent *) Inconsistent_counters

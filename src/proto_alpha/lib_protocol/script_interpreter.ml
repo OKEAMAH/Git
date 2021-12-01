@@ -1015,14 +1015,15 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           (step [@ocaml.tailcall]) (ctxt, sc) gas k ks accu stack
       | IImplicit_account (_, k) ->
           let key = accu in
-          let contract = Contract.implicit_contract key in
+          let contract =
+            Destination.Contract (Contract.implicit_contract key)
+          in
           let res = (unit_t ~annot:None, (contract, Entrypoint.default)) in
           (step [@ocaml.tailcall]) g gas k ks res stack
       | IView (_, View_signature {name; input_ty; output_ty}, k) -> (
           let input = accu in
           let ((c, _entrypoint_is_ignored), stack) = stack in
           let ctxt = update_context gas ctxt in
-          Contract.get_script ctxt c >>=? fun (ctxt, script_opt) ->
           let return_none ctxt =
             (step [@ocaml.tailcall])
               (outdated ctxt, sc)
@@ -1032,89 +1033,94 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
               None
               stack
           in
-          match script_opt with
-          | None -> (return_none [@ocaml.tailcall]) ctxt
-          | Some script -> (
-              parse_script
-                ~legacy:true
-                ~allow_forged_in_storage:true
-                ctxt
-                script
-              >>=? fun (Ex_script {storage; storage_type; views; _}, ctxt) ->
-              Gas.consume ctxt (Interp_costs.view_get name views)
-              >>?= fun ctxt ->
-              match SMap.find name views with
+          match c with
+          | Tx_rollup _ -> (return_none [@ocaml.tailcall]) ctxt
+          | Contract c -> (
+              Contract.get_script ctxt c >>=? fun (ctxt, script_opt) ->
+              match script_opt with
               | None -> (return_none [@ocaml.tailcall]) ctxt
-              | Some view -> (
-                  let view_result =
-                    Script_ir_translator.parse_view_returning
-                      ctxt
-                      ~legacy:true
-                      storage_type
-                      view
-                  in
-                  trace_eval
-                    (fun () ->
-                      Script_tc_errors.Ill_typed_contract
-                        (Micheline.strip_locations view.view_code, []))
-                    view_result
-                  >>=? fun (Ex_view f, ctxt) ->
-                  match f with
-                  | Lam
-                      ( {
-                          kloc;
-                          kaft = Item_t (aft_ty, Bot_t);
-                          kbef = Item_t (bef_ty, Bot_t);
-                          kinstr;
-                        },
-                        _script_view ) -> (
-                      pair_t
-                        kloc
-                        (input_ty, None, None)
-                        (storage_type, None, None)
-                        ~annot:None
-                      >>?= fun pair_ty ->
-                      let open Gas_monad in
-                      let io_ty =
-                        Script_ir_translator.merge_types
-                          ~error_details:Fast
+              | Some script -> (
+                  parse_script
+                    ~legacy:true
+                    ~allow_forged_in_storage:true
+                    ctxt
+                    script
+                  >>=? fun (Ex_script {storage; storage_type; views; _}, ctxt)
+                    ->
+                  Gas.consume ctxt (Interp_costs.view_get name views)
+                  >>?= fun ctxt ->
+                  match SMap.find name views with
+                  | None -> (return_none [@ocaml.tailcall]) ctxt
+                  | Some view -> (
+                      let view_result =
+                        Script_ir_translator.parse_view_returning
+                          ctxt
                           ~legacy:true
-                          kloc
-                          aft_ty
-                          output_ty
-                        >>$ fun (out_eq, _ty) ->
-                        merge_types
-                          ~error_details:Fast
-                          ~legacy:true
-                          kloc
-                          bef_ty
-                          pair_ty
-                        >|$ fun (in_eq, _ty) -> (out_eq, in_eq)
+                          storage_type
+                          view
                       in
-                      Gas_monad.run ctxt io_ty >>?= fun (eq, ctxt) ->
-                      match eq with
-                      | Error Inconsistent_types_fast ->
-                          (return_none [@ocaml.tailcall]) ctxt
-                      | Ok (Eq, Eq) -> (
-                          let kkinfo = kinfo_of_kinstr k in
-                          match kkinfo.kstack_ty with
-                          | Item_t (_, s) ->
-                              let kstack_ty = Item_t (output_ty, s) in
-                              let kkinfo = {kkinfo with kstack_ty} in
-                              let ks = KCons (ICons_some (kkinfo, k), ks) in
-                              (step [@ocaml.tailcall])
-                                ( outdated ctxt,
-                                  {
-                                    sc with
-                                    source = sc.self;
-                                    self = c;
-                                    amount = Tez.zero;
-                                  } )
-                                (update_local_gas_counter ctxt)
-                                kinstr
-                                (KView_exit (sc, KReturn (stack, ks)))
-                                (input, storage)
-                                (EmptyCell, EmptyCell))))))
+                      trace_eval
+                        (fun () ->
+                          Script_tc_errors.Ill_typed_contract
+                            (Micheline.strip_locations view.view_code, []))
+                        view_result
+                      >>=? fun (Ex_view f, ctxt) ->
+                      match f with
+                      | Lam
+                          ( {
+                              kloc;
+                              kaft = Item_t (aft_ty, Bot_t);
+                              kbef = Item_t (bef_ty, Bot_t);
+                              kinstr;
+                            },
+                            _script_view ) -> (
+                          pair_t
+                            kloc
+                            (input_ty, None, None)
+                            (storage_type, None, None)
+                            ~annot:None
+                          >>?= fun pair_ty ->
+                          let open Gas_monad in
+                          let io_ty =
+                            Script_ir_translator.merge_types
+                              ~error_details:Fast
+                              ~legacy:true
+                              kloc
+                              aft_ty
+                              output_ty
+                            >>$ fun (out_eq, _ty) ->
+                            merge_types
+                              ~error_details:Fast
+                              ~legacy:true
+                              kloc
+                              bef_ty
+                              pair_ty
+                            >|$ fun (in_eq, _ty) -> (out_eq, in_eq)
+                          in
+                          Gas_monad.run ctxt io_ty >>?= fun (eq, ctxt) ->
+                          match eq with
+                          | Error Inconsistent_types_fast ->
+                              (return_none [@ocaml.tailcall]) ctxt
+                          | Ok (Eq, Eq) -> (
+                              let kkinfo = kinfo_of_kinstr k in
+                              match kkinfo.kstack_ty with
+                              | Item_t (_, s) ->
+                                  let kstack_ty = Item_t (output_ty, s) in
+                                  let kkinfo = {kkinfo with kstack_ty} in
+                                  let ks = KCons (ICons_some (kkinfo, k), ks) in
+                                  (step [@ocaml.tailcall])
+                                    ( outdated ctxt,
+                                      {
+                                        sc with
+                                        source = sc.self;
+                                        self = c;
+                                        amount = Tez.zero;
+                                      } )
+                                    (update_local_gas_counter ctxt)
+                                    kinstr
+                                    (KView_exit (sc, KReturn (stack, ks)))
+                                    (input, storage)
+                                    (EmptyCell, EmptyCell)))))))
       | ICreate_contract
           {
             storage_type;
@@ -1140,7 +1146,9 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             credit
             init
           >>=? fun (res, contract, ctxt, gas) ->
-          let stack = ((contract, Entrypoint.default), stack) in
+          let stack =
+            ((Destination.Contract contract, Entrypoint.default), stack)
+          in
           (step [@ocaml.tailcall]) (ctxt, sc) gas k ks res stack
       | ISet_delegate (_, k) ->
           let delegate = accu in
@@ -1185,16 +1193,16 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let hash = Raw_hashes.sha512 bytes in
           (step [@ocaml.tailcall]) g gas k ks hash stack
       | ISource (_, k) ->
-          let res = (sc.payer, Entrypoint.default) in
+          let res = (Destination.Contract sc.payer, Entrypoint.default) in
           (step [@ocaml.tailcall]) g gas k ks res (accu, stack)
       | ISender (_, k) ->
-          let res = (sc.source, Entrypoint.default) in
+          let res = (Destination.Contract sc.source, Entrypoint.default) in
           (step [@ocaml.tailcall]) g gas k ks res (accu, stack)
       | ISelf (_, ty, entrypoint, k) ->
-          let res = (ty, (sc.self, entrypoint)) in
+          let res = (ty, (Destination.Contract sc.self, entrypoint)) in
           (step [@ocaml.tailcall]) g gas k ks res (accu, stack)
       | ISelf_address (_, k) ->
-          let res = (sc.self, Entrypoint.default) in
+          let res = (Destination.Contract sc.self, Entrypoint.default) in
           (step [@ocaml.tailcall]) g gas k ks res (accu, stack)
       | IAmount (_, k) ->
           let accu = sc.amount and stack = (accu, stack) in
@@ -1421,7 +1429,10 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
       | IRead_ticket (_, k) ->
           let {ticketer; contents; amount} = accu in
           let stack = (accu, stack) in
-          let accu = ((ticketer, Entrypoint.default), (contents, amount)) in
+          let accu =
+            ( (Destination.Contract ticketer, Entrypoint.default),
+              (contents, amount) )
+          in
           (step [@ocaml.tailcall]) g gas k ks accu stack
       | ISplit_ticket (_, k) ->
           let ticket = accu and ((amount_a, amount_b), stack) = stack in
