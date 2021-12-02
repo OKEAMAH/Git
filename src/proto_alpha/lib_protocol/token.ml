@@ -119,7 +119,9 @@ let credit ctxt dest amount origin =
       match container with
       | `Contract dest ->
           Contract_storage.credit_only_call_from_token ctxt dest amount
-          >|=? fun ctxt -> (ctxt, Contract dest)
+          >>=? fun ctxt ->
+          Stake_storage.add_contract_stake ctxt dest amount >|=? fun ctxt ->
+          (ctxt, Contract dest)
       | `Collected_commitments bpkh ->
           Commitment_storage.increase_commitment_only_call_from_token
             ctxt
@@ -152,7 +154,9 @@ let credit ctxt dest amount origin =
             contract
             bond_id
             amount
-          >>=? fun ctxt -> return (ctxt, Frozen_bonds (contract, bond_id))))
+          >>=? fun ctxt ->
+          Stake_storage.add_contract_stake ctxt contract amount >>=? fun ctxt ->
+          return (ctxt, Frozen_bonds (contract, bond_id))))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Credited amount, origin))
 
 let spend ctxt src amount origin =
@@ -178,7 +182,9 @@ let spend ctxt src amount origin =
       match container with
       | `Contract src ->
           Contract_storage.spend_only_call_from_token ctxt src amount
-          >|=? fun ctxt -> (ctxt, Contract src)
+          >>=? fun ctxt ->
+          Stake_storage.remove_contract_stake ctxt src amount >|=? fun ctxt ->
+          (ctxt, Contract src)
       | `Collected_commitments bpkh ->
           Commitment_storage.decrease_commitment_only_call_from_token
             ctxt
@@ -207,6 +213,8 @@ let spend ctxt src amount origin =
             contract
             bond_id
             amount
+          >>=? fun ctxt ->
+          Stake_storage.remove_contract_stake ctxt contract amount
           >>=? fun ctxt -> return (ctxt, Frozen_bonds (contract, bond_id))))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Debited amount, origin))
 

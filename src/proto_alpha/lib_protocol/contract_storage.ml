@@ -594,7 +594,6 @@ let spend_only_call_from_token c contract amount =
   | Ok new_balance -> (
       Storage.Contract.Spendable_balance.update c contract new_balance
       >>=? fun c ->
-      Stake_storage.remove_contract_stake c contract amount >>=? fun c ->
       if Tez_repr.(new_balance > Tez_repr.zero) then return c
       else
         match Contract_repr.is_implicit contract with
@@ -619,8 +618,7 @@ let credit_only_call_from_token c contract amount =
       | Some manager -> create_implicit c manager ~balance:amount)
   | Some balance ->
       Tez_repr.(amount +? balance) >>?= fun balance ->
-      Storage.Contract.Spendable_balance.update c contract balance >>=? fun c ->
-      Stake_storage.add_contract_stake c contract amount
+      Storage.Contract.Spendable_balance.update c contract balance
 
 let init c =
   Storage.Contract.Global_counter.init c Z.zero >>=? fun c ->
@@ -673,7 +671,6 @@ let find_bond ctxt contract bond_id =
 let spend_bond_only_call_from_token ctxt contract bond_id amount =
   fail_when Tez_repr.(amount = zero) (Failure "Expecting : [amount > 0]")
   >>=? fun () ->
-  Stake_storage.remove_contract_stake ctxt contract amount >>=? fun ctxt ->
   Storage.Contract.Frozen_bonds.get (ctxt, contract) bond_id
   >>=? fun (ctxt, frozen_bonds) ->
   error_when
@@ -692,7 +689,6 @@ let spend_bond_only_call_from_token ctxt contract bond_id amount =
 let credit_bond_only_call_from_token ctxt contract bond_id amount =
   fail_when Tez_repr.(amount = zero) (Failure "Expecting : [amount > 0]")
   >>=? fun () ->
-  Stake_storage.add_contract_stake ctxt contract amount >>=? fun ctxt ->
   ( Storage.Contract.Frozen_bonds.find (ctxt, contract) bond_id
   >>=? fun (ctxt, frozen_bonds_opt) ->
     match frozen_bonds_opt with

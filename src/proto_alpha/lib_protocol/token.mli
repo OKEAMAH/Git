@@ -117,6 +117,9 @@ val transfer_n :
     [src] to destination [dest], and returns a new context, and the list of
     corresponding balance updates tagged with [origin]. By default, [~origin] is
     set to [Receipt_repr.Block_application].
+    In the case of [src] (resp. [dest]) being a [Contract] or a [Frozen_bonds],
+    the stake of [src]'s delegate if any (resp. [dest]'s delegate if any) is
+    increased by [amount] (resp. decreased by [amount]).
     Returns {!Storage_Error Missing_key} if [src] refers to a contract that is
     not allocated.
     Returns a [Balance_too_low] error if [src] refers to a contract whose
