@@ -144,7 +144,10 @@ let credit ctxt dest amount origin =
             ctxt
             delegate
             amount
-          >|=? fun ctxt -> (ctxt, Deposits delegate)
+          >>=? fun ctxt ->
+          let contract = Contract_repr.implicit_contract delegate in
+          Stake_storage.add_contract_stake ctxt contract amount >|=? fun ctxt ->
+          (ctxt, Deposits delegate)
       | `Block_fees ->
           Raw_context.credit_collected_fees_only_call_from_token ctxt amount
           >>?= fun ctxt -> return (ctxt, Block_fees)
@@ -203,6 +206,9 @@ let spend ctxt src amount origin =
             ctxt
             delegate
             amount
+          >>=? fun ctxt ->
+          let contract = Contract_repr.implicit_contract delegate in
+          Stake_storage.remove_contract_stake ctxt contract amount
           >|=? fun ctxt -> (ctxt, Deposits delegate)
       | `Block_fees ->
           Raw_context.spend_collected_fees_only_call_from_token ctxt amount

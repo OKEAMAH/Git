@@ -34,7 +34,13 @@
     to a destination, and the sink [`Burned] is used to express the action of
     burning a given amount of tokens taken from a source. Thanks to uniformity,
     it is easier to track transfers of tokens throughout the protocol by running
-    [grep -R "Token.transfer" src/proto_alpha]. *)
+    [grep -R "Token.transfer" src/proto_alpha].
+
+    In addition to the token movements, any token transfer includes the
+    associated staking movements. When [source] is a delegator,
+    its delegate's staking balance is increased by the transfered [amount], and
+    when [dest] is a delegator, its delegate's staking balance is decreased by
+    [amount].*)
 
 (** [container] is the type of token holders with finite capacity, and whose assets
     are contained in the context. Let [d] be a delegate. Be aware that transferring
@@ -117,8 +123,7 @@ val transfer_n :
     [src] to destination [dest], and returns a new context, and the list of
     corresponding balance updates tagged with [origin]. By default, [~origin] is
     set to [Receipt_repr.Block_application].
-    In the case of [src] (resp. [dest]) being a [Contract] or a [Frozen_bonds],
-    the stake of [src]'s delegate if any (resp. [dest]'s delegate if any) is
+    The stake of [src]'s delegate if any (resp. [dest]'s delegate if any) is
     increased by [amount] (resp. decreased by [amount]).
     Returns {!Storage_Error Missing_key} if [src] refers to a contract that is
     not allocated.
