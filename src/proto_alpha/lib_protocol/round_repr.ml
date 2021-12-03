@@ -159,10 +159,6 @@ module Durations = struct
     | Ok v -> Some v
     | Error _ -> None
 
-  let _create_exn ~minimal_block_delay ~delay_increment_per_round =
-    match create ~minimal_block_delay ~delay_increment_per_round with
-    | Ok v -> v
-    | Error _ -> failwith "Could not create round duration"
 
   let encoding =
     let open Data_encoding in
@@ -195,7 +191,6 @@ module Durations = struct
             minimal_block_delay_s
             (mul (of_int32 round) delay_increment_per_round_s))
 
-  let _first {minimal_block_delay; _} = minimal_block_delay
 end
 
 type error += Round_too_high of int32
@@ -221,7 +216,7 @@ let () =
    until round_{n- 1}. The value of the sum up until round_n is given by the
    following formula:
 
-   sum_n = ((2 * round_0) + n * delay_increment_per_round) * (n + 1) / 2
+   sum_n = minimal_block_delay + delay_increment_per_round * n * (n + 1) / 2
 
    This function therefore computes sum_{round - 1} *)
 let level_offset_of_round round_durations ~round =
@@ -272,11 +267,7 @@ let () =
 
 type round_and_offset = {round : int32; offset : Period_repr.t}
 
-(** Complexity: in the worst case, O(log max_int)*O(|round_durations|^2).
-    Normally, [level_offset] is small enough for [check_first] to
-    return the searched round, thus the binary search will not be performed.
-    [check_first] can be made to run in O(round_duration) but it is kept
-    this way for simplicity given that currently |round_durations| = 2. *)
+(** Complexity: O(log max_int). *)
 let round_and_offset round_durations ~level_offset =
   let level_offset_in_seconds = Period_repr.to_seconds level_offset in
   (* We have the invariant [round <= level_offset] so there is no need to search
