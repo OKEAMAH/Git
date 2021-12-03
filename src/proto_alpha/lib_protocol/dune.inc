@@ -73,6 +73,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    tx_rollup_message_repr.mli tx_rollup_message_repr.ml
    tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
+   tx_rollup_commitments_repr.mli tx_rollup_commitments_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
@@ -124,6 +125,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    global_constants_storage.mli global_constants_storage.ml
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
+   tx_rollup_commitments_storage.mli tx_rollup_commitments_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
@@ -224,6 +226,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    tx_rollup_message_repr.mli tx_rollup_message_repr.ml
    tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
+   tx_rollup_commitments_repr.mli tx_rollup_commitments_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
@@ -275,6 +278,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    global_constants_storage.mli global_constants_storage.ml
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
+   tx_rollup_commitments_storage.mli tx_rollup_commitments_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
@@ -375,6 +379,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    tx_rollup_message_repr.mli tx_rollup_message_repr.ml
    tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
+   tx_rollup_commitments_repr.mli tx_rollup_commitments_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
@@ -426,6 +431,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    global_constants_storage.mli global_constants_storage.ml
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
+   tx_rollup_commitments_storage.mli tx_rollup_commitments_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
@@ -548,6 +554,7 @@ include Tezos_raw_protocol_alpha.Main
    Tx_rollup_state_repr
    Tx_rollup_message_repr
    Tx_rollup_inbox_repr
+   Tx_rollup_commitments_repr
    Roll_repr_legacy
    Vote_repr
    Block_header_repr
@@ -599,6 +606,7 @@ include Tezos_raw_protocol_alpha.Main
    Global_constants_storage
    Tx_rollup_state_storage
    Tx_rollup_inbox_storage
+   Tx_rollup_commitments_storage
    Tx_rollup_storage
    Sc_rollup_storage
    Alpha_context
@@ -740,6 +748,7 @@ include Tezos_raw_protocol_alpha.Main
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    tx_rollup_message_repr.mli tx_rollup_message_repr.ml
    tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
+   tx_rollup_commitments_repr.mli tx_rollup_commitments_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
@@ -791,6 +800,7 @@ include Tezos_raw_protocol_alpha.Main
    global_constants_storage.mli global_constants_storage.ml
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
+   tx_rollup_commitments_storage.mli tx_rollup_commitments_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml

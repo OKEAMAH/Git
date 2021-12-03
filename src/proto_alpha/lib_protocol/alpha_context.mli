@@ -2126,6 +2126,66 @@ module Tx_rollup_inbox : sig
     | Tx_rollup_message_size_exceeds_limit
 end
 
+(** This simply re-exports [Tx_rollup_commitments_repr] *)
+module Tx_rollup_commitments : sig
+  module Commitment_hash : sig
+    val commitment_hash : string
+
+    include S.HASH
+  end
+
+  module Commitment : sig
+    type batch_commitment = {root : bytes}
+
+    val batch_commitment_equal : batch_commitment -> batch_commitment -> bool
+
+    type t = {
+      level : Raw_level.t;
+      batches : batch_commitment list;
+      predecessor : Commitment_hash.t option;
+    }
+
+    val ( = ) : t -> t -> bool
+
+    val pp : Format.formatter -> t -> unit
+
+    val encoding : t Data_encoding.t
+
+    val hash : t -> Commitment_hash.t
+  end
+
+  type pending_commitment = {
+    commitment : Commitment.t;
+    hash : Commitment_hash.t;
+    committer : Contract.t;
+    submitted_at : Raw_level.t;
+  }
+
+  type t = pending_commitment list
+
+  val encoding : t Data_encoding.t
+
+  type error += Commitment_hash_already_submitted
+
+  type error += Two_commitments_from_one_committer
+
+  type error += Wrong_commitment_predecessor_level
+
+  type error += Missing_commitment_predecessor
+
+  type error += Wrong_batch_count
+
+  val add_commitment :
+    context ->
+    Tx_rollup.t ->
+    Contract.t ->
+    Commitment.t ->
+    context tzresult Lwt.t
+
+  val get_commitments :
+    context -> Tx_rollup.t -> Raw_level.t -> (context * t) tzresult Lwt.t
+end
+
 (** This simply re-exports {!Destination_repr}. *)
 module Destination : sig
   type t = Contract of Contract.t | Tx_rollup of Tx_rollup.t
