@@ -110,7 +110,7 @@ let encoding =
 
 module Durations = struct
   type t = {
-    minimal_block_delay : Period_repr.t;
+    first_round_duration : Period_repr.t;
     delay_increment_per_round : Period_repr.t;
   }
 
@@ -140,54 +140,55 @@ module Durations = struct
       fmt
       "%a,@ +%a"
       Period_repr.pp
-      t.minimal_block_delay
+      t.first_round_duration
       Period_repr.pp
       t.delay_increment_per_round
 
-  let create ~minimal_block_delay ~delay_increment_per_round =
+  let create ~first_round_duration ~delay_increment_per_round =
     error_when
-      Compare.Int64.(Period_repr.to_seconds minimal_block_delay < 1L)
-      (Round_durations_must_be_at_least_one_second {round = minimal_block_delay})
+      Compare.Int64.(Period_repr.to_seconds first_round_duration < 1L)
+      (Round_durations_must_be_at_least_one_second
+         {round = first_round_duration})
     >>? fun () ->
     error_when
       Compare.Int64.(Period_repr.to_seconds delay_increment_per_round < 0L)
       (Non_increasing_rounds {increment = delay_increment_per_round})
-    >>? fun () -> ok {minimal_block_delay; delay_increment_per_round}
+    >>? fun () -> ok {first_round_duration; delay_increment_per_round}
 
-  let create_opt ~minimal_block_delay ~delay_increment_per_round =
-    match create ~minimal_block_delay ~delay_increment_per_round with
+  let create_opt ~first_round_duration ~delay_increment_per_round =
+    match create ~first_round_duration ~delay_increment_per_round with
     | Ok v -> Some v
     | Error _ -> None
 
   let encoding =
     let open Data_encoding in
     conv_with_guard
-      (fun {minimal_block_delay; delay_increment_per_round} ->
-        (minimal_block_delay, delay_increment_per_round))
-      (fun (minimal_block_delay, delay_increment_per_round) ->
-        match create_opt ~minimal_block_delay ~delay_increment_per_round with
+      (fun {first_round_duration; delay_increment_per_round} ->
+        (first_round_duration, delay_increment_per_round))
+      (fun (first_round_duration, delay_increment_per_round) ->
+        match create_opt ~first_round_duration ~delay_increment_per_round with
         | None ->
             Error
               "Either round durations are non-increasing or minimal block \
                delay < 1"
         | Some rounds -> Ok rounds)
       (obj2
-         (req "minimal_block_delay" Period_repr.encoding)
+         (req "first_round_duration" Period_repr.encoding)
          (req "delay_increment_per_round" Period_repr.encoding))
 
-  let round_duration {minimal_block_delay; delay_increment_per_round} round =
+  let round_duration {first_round_duration; delay_increment_per_round} round =
     if Compare.Int32.(round < 0l) then
       invalid_arg
         "round_durations.round_duration round must be a positive number"
     else
-      let minimal_block_delay_s = Period_repr.to_seconds minimal_block_delay
+      let first_round_duration_s = Period_repr.to_seconds first_round_duration
       and delay_increment_per_round_s =
         Period_repr.to_seconds delay_increment_per_round
       in
       Period_repr.of_seconds_exn
         Int64.(
           add
-            minimal_block_delay_s
+            first_round_duration_s
             (mul (of_int32 round) delay_increment_per_round_s))
 end
 
@@ -208,13 +209,13 @@ let () =
 
 (* The duration of round n follows the arithmetic progression:
 
-   duration(n) = minimal_block_delay + n * delay_increment_per_round
+   duration(n) = first_round_duration + n * delay_increment_per_round
 
    The level offset of round n is the sum of the durations of the rounds up
    until round (n- 1). The value of the sum up until round n is given by the
    following formula:
 
-   sum(n) = (n + 1) * minimal_block_delay + delay_increment_per_round * n * (n + 1) / 2
+   sum(n) = (n + 1) * first_round_duration + delay_increment_per_round * n * (n + 1) / 2
 
    [level_offset_of_round] therefore computes sum(round - 1) when round > 0 and 0 for
    round 0. *)
@@ -222,7 +223,7 @@ let level_offset_of_round round_durations ~round =
   if Compare.Int32.(round = zero) then ok Int64.zero
   else
     let sum_durations =
-      let Durations.{minimal_block_delay; delay_increment_per_round} =
+      let Durations.{first_round_duration; delay_increment_per_round} =
         round_durations
       in
       let roundz = Int64.of_int32 round in
@@ -234,7 +235,7 @@ let level_offset_of_round round_durations ~round =
              (Z.of_int64 @@ Period_repr.to_seconds delay_increment_per_round))
           (mul
              (Z.of_int32 round)
-             (Z.of_int64 @@ Period_repr.to_seconds minimal_block_delay)))
+             (Z.of_int64 @@ Period_repr.to_seconds first_round_duration)))
     in
     if Compare.Z.(sum_durations > Z.of_int64 Int64.max_int) then
       error (Round_too_high round)

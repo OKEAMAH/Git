@@ -571,7 +571,7 @@ let create_initial_state cctxt ?(synchronize = true) ~chain config
    let round_durations =
      Stdlib.Option.get
      @@ Round.Durations.create_opt
-          ~minimal_block_delay:constants.parametric.minimal_block_delay
+          ~first_round_duration:constants.parametric.minimal_block_delay
           ~delay_increment_per_round:
             constants.parametric.delay_increment_per_round
    in

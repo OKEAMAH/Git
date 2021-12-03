@@ -265,12 +265,12 @@ module Round : sig
 
   module Durations : sig
     val create :
-      minimal_block_delay:Period.t ->
+      first_round_duration:Period.t ->
       delay_increment_per_round:Period.t ->
       round_durations tzresult
 
     val create_opt :
-      minimal_block_delay:Period.t ->
+      first_round_duration:Period.t ->
       delay_increment_per_round:Period.t ->
       round_durations option
   end

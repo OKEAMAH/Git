@@ -92,26 +92,26 @@ module Durations : sig
 
   (** {3 Creation functions} *)
 
-  (** [create ~minimal_block_delay ~delay_increment_per_round] creates a valid
+  (** [create ~first_round_duration ~delay_increment_per_round] creates a valid
       duration value
 
-      @param minimal_block_delay minimal amount of time that a round should last
+      @param first_round_duration minimal amount of time that a round should last
       @param delay_increment_per_round amount of time added in from one round
                                        duration to the duration of its next round
       @raises Invalid_argument if
-        - minimal_block_delay <= 1; or
+        - first_round_duration <= 1; or
         - delay_increment_per_round is < 0
    *)
   val create :
-    minimal_block_delay:Period_repr.t ->
+    first_round_duration:Period_repr.t ->
     delay_increment_per_round:Period_repr.t ->
     t tzresult
 
-  (** [create_opt ~minimal_block_delay ~delay_increment_per_round] returns a valid duration value
-      [Some d] when [create ~minimal_block_delay ~delay_increment_per_round]
+  (** [create_opt ~first_round_duration ~delay_increment_per_round] returns a valid duration value
+      [Some d] when [create ~first_round_duration ~delay_increment_per_round]
       does not fail. It returns [None] otherwise. *)
   val create_opt :
-    minimal_block_delay:Period_repr.t ->
+    first_round_duration:Period_repr.t ->
     delay_increment_per_round:Period_repr.t ->
     t option
 
@@ -124,7 +124,7 @@ module Durations : sig
   (** [round_duration round_durations ~round] returns the duration of round
       [~round]. This duration follows the arithmetic progression
 
-      duration(round_n) = [minimal_block_delay] + n * [delay_increment_per_round]
+      duration(round_n) = [first_round_duration] + n * [delay_increment_per_round]
 
    *)
   val round_duration : t -> round -> Period_repr.t

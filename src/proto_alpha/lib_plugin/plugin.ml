@@ -69,9 +69,9 @@ let () =
 
 let round_durations_of_context ctxt =
   let open Alpha_context in
-  let minimal_block_delay = Constants.minimal_block_delay ctxt in
+  let first_round_duration = Constants.minimal_block_delay ctxt in
   let delay_increment_per_round = Constants.delay_increment_per_round ctxt in
-  Round.Durations.create ~minimal_block_delay ~delay_increment_per_round
+  Round.Durations.create ~first_round_duration ~delay_increment_per_round
 
 module Mempool = struct
   type nanotez = Q.t
