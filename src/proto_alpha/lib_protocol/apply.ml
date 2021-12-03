@@ -2427,6 +2427,7 @@ let begin_application ctxt chain_id (block_header : Block_header.t) fitness
   let current_level = Level.current ctxt in
   Stake_distribution.baking_rights_owner ctxt current_level ~round
   >>=? fun (ctxt, _slot, (block_producer_pk, block_producer)) ->
+  let round_durations = Constants.round_durations ctxt in
   let timestamp = block_header.shell.timestamp in
   Block_header.begin_validate_block_header
     ~block_header
@@ -2436,7 +2437,7 @@ let begin_application ctxt chain_id (block_header : Block_header.t) fitness
     ~fitness
     ~timestamp
     ~delegate_pk:block_producer_pk
-    ~round_durations:(Constants.round_durations ctxt)
+    ~round_durations
     ~proof_of_work_threshold:(Constants.proof_of_work_threshold ctxt)
     ~expected_commitment:current_level.expected_commitment
   >>?= fun () ->
