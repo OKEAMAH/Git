@@ -141,29 +141,6 @@ end
 *)
 val level_offset_of_round : Durations.t -> round:t -> Period_repr.t tzresult
 
-type round_and_offset = {round : t; offset : Period_repr.t}
-
-(** [round_and_offset round_durations ~level_offset], where [level_offset]
-    represents a time offset with respect to the start of the first round,
-    returns a tuple [(r, round_offset)] where the round [r] is such that
-    [level_offset_of_round(r) <= level_offset < level_offset_of_round(r+1)] and
-    [round_offset := level_offset - level_offset_of_round(r)]].
-
-    round = 0      1     2    3                            r
-
-          |-----|-----|-----|-----|-----|--- ... ... --|--------|-- ... --|-------
-                                                       |
-                                                 round_delay(r)
-                                                              |
-                                                              |
-                                                        <----->
-                                                      round_offset
-          <--------------------------------------------------->
-                              level_offset
-*)
-val round_and_offset :
-  Durations.t -> level_offset:Period_repr.t -> round_and_offset tzresult
-
 (** [timestamp_of_round round_durations ~predecessor_timestamp:pred_ts
      ~predecessor_round:pred_round ~round] returns the
     starting time of round [round] given that the timestamp and the round of
@@ -240,3 +217,28 @@ val round_of_timestamp :
   predecessor_round:t ->
   timestamp:Time_repr.t ->
   t tzresult
+
+module Internals_for_test : sig
+  type round_and_offset_raw = {round : round; offset : Period_repr.t}
+
+  (** [round_and_offset round_durations ~level_offset], where [level_offset]
+    represents a time offset with respect to the start of the first round,
+    returns a tuple [(r, round_offset)] where the round [r] is such that
+    [level_offset_of_round(r) <= level_offset < level_offset_of_round(r+1)] and
+    [round_offset := level_offset - level_offset_of_round(r)]].
+
+    round = 0      1     2    3                            r
+
+          |-----|-----|-----|-----|-----|--- ... ... --|--------|-- ... --|-------
+                                                       |
+                                                 round_delay(r)
+                                                              |
+                                                              |
+                                                        <----->
+                                                      round_offset
+          <--------------------------------------------------->
+                              level_offset
+*)
+  val round_and_offset :
+    Durations.t -> level_offset:Period_repr.t -> round_and_offset_raw tzresult
+end

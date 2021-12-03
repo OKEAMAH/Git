@@ -404,3 +404,11 @@ let round_of_timestamp round_durations ~predecessor_timestamp ~predecessor_round
 let level_offset_of_round round_durations ~round =
   level_offset_of_round round_durations ~round >>? fun offset ->
   ok (Period_repr.of_seconds_exn offset)
+
+module Internals_for_test = struct
+  type round_and_offset_raw = {round : round; offset : Period_repr.t}
+
+  let round_and_offset round_durations ~level_offset =
+    round_and_offset round_durations ~level_offset >|? fun v ->
+    {round = v.round; offset = v.offset}
+end

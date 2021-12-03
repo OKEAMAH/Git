@@ -144,16 +144,16 @@ let case_3_6 =
 
 let test_cases =
   [
-    (* (minimal_block_delay, delay_increment_per_round), test_case_expectations *)
+    (* (first_round_duration, delay_increment_per_round), test_case_expectations *)
     ((3, 0), case_3_3, "case_3_3");
     ((3, 3), case_3_6, "case_3_6");
   ]
 
 let round_of_int i = Round_repr.of_int i |> Environment.wrap_tzresult
 
-let mk_round_durations minimal_block_delay delay_increment_per_round =
-  let minimal_block_delay =
-    Period_repr.of_seconds_exn @@ Int64.of_int minimal_block_delay
+let mk_round_durations first_round_duration delay_increment_per_round =
+  let first_round_duration =
+    Period_repr.of_seconds_exn @@ Int64.of_int first_round_duration
   in
   let delay_increment_per_round =
     Period_repr.of_seconds_exn @@ Int64.of_int delay_increment_per_round
@@ -162,7 +162,7 @@ let mk_round_durations minimal_block_delay delay_increment_per_round =
      invariants and cannot fail *)
   Stdlib.Option.get
   @@ Round_repr.Durations.create_opt
-       ~minimal_block_delay
+       ~first_round_duration
        ~delay_increment_per_round
 
 let process_test_case (round_durations, ios, _) =
@@ -177,6 +177,7 @@ let process_test_case (round_durations, ios, _) =
         (Period_repr.to_seconds dur))
     ios.round_duration
   >>=? fun () ->
+  let open Internals_for_test in
   (* test [round_and_offset] *)
   List.iter_es
     (fun (level_offset, (round, ro)) ->
@@ -233,8 +234,8 @@ let process_test_case (round_durations, ios, _) =
 let test_round () =
   let final_test_cases =
     List.map
-      (fun ((minimal_block_delay, delay_increment_per_round), ios, name) ->
-        ( mk_round_durations minimal_block_delay delay_increment_per_round,
+      (fun ((first_round_duration, delay_increment_per_round), ios, name) ->
+        ( mk_round_durations first_round_duration delay_increment_per_round,
           ios,
           name ))
       test_cases
@@ -252,7 +253,7 @@ let test_round_of_timestamp () =
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~minimal_block_delay:duration0
+         ~first_round_duration:duration0
          ~delay_increment_per_round:Period.zero
   in
   let predecessor_timestamp = Time.Protocol.epoch in
@@ -286,7 +287,7 @@ let round_of_timestamp_perf durations =
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~minimal_block_delay:duration0
+         ~first_round_duration:duration0
          ~delay_increment_per_round
   in
 
@@ -329,7 +330,7 @@ let timestamp_of_round_perf durations =
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~minimal_block_delay:duration0
+         ~first_round_duration:duration0
          ~delay_increment_per_round
   in
   let predecessor_timestamp = Time.Protocol.epoch in
@@ -358,7 +359,7 @@ let test_error_is_triggered_for_too_high_timestamp () =
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~minimal_block_delay:(Period.of_seconds_exn 1L)
+         ~first_round_duration:(Period.of_seconds_exn 1L)
          ~delay_increment_per_round:Period.zero
   in
 
@@ -386,7 +387,7 @@ let rec ( --> ) i j =
 
 let ts_of_round_inverse durations round_int =
   let duration0_int64 = Stdlib.List.hd durations in
-  let minimal_block_delay = Period.of_seconds_exn duration0_int64 in
+  let first_round_duration = Period.of_seconds_exn duration0_int64 in
   let delay_increment_per_round =
     Period.of_seconds_exn
       (Int64.sub (Stdlib.List.nth durations 1) duration0_int64)
@@ -394,7 +395,7 @@ let ts_of_round_inverse durations round_int =
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~minimal_block_delay
+         ~first_round_duration
          ~delay_increment_per_round
   in
   let predecessor_timestamp = Time.Protocol.epoch in
@@ -429,7 +430,7 @@ let test_ts_of_round_inverse () =
 
 let round_of_ts_inverse durations ts =
   let duration0_int64 = Stdlib.List.hd durations in
-  let minimal_block_delay = Period.of_seconds_exn duration0_int64 in
+  let first_round_duration = Period.of_seconds_exn duration0_int64 in
   let delay_increment_per_round =
     Period.of_seconds_exn
       (Int64.sub (Stdlib.List.nth durations 1) duration0_int64)
@@ -437,7 +438,7 @@ let round_of_ts_inverse durations ts =
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~minimal_block_delay
+         ~first_round_duration
          ~delay_increment_per_round
   in
   let predecessor_timestamp = Time.Protocol.epoch in
@@ -491,9 +492,9 @@ let test_round_of_ts_inverse () =
 
 let test_level_offset_of_round () =
   let rd1 =
-    let minimal_block_delay = 3 in
+    let first_round_duration = 3 in
     let delay_increment_per_round = 0 in
-    mk_round_durations minimal_block_delay delay_increment_per_round
+    mk_round_durations first_round_duration delay_increment_per_round
   in
   List.iter_es
     (fun (round_durations, tests) ->
@@ -517,7 +518,6 @@ let test_level_offset_of_round () =
 let tests =
   Tztest.
     [
-      (* tztest "round_duration [0..5]" `Quick test_round_repr; *)
       tztest "test_level_offset_of_round" `Quick test_level_offset_of_round;
       tztest "test Round_duration" `Quick test_round;
       tztest "round_of_timestamp" `Quick test_round_of_timestamp;

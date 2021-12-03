@@ -275,11 +275,6 @@ module Round : sig
       round_durations option
   end
 
-  type round_and_offset = {round : t; offset : Period.t}
-
-  val round_and_offset :
-    round_durations -> level_offset:Period.t -> round_and_offset tzresult
-
   val level_offset_of_round : round_durations -> round:t -> Period.t tzresult
 
   val timestamp_of_round :
