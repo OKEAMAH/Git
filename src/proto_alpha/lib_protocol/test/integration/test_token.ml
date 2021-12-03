@@ -126,9 +126,7 @@ let test_allocated_and_still_allocated_when_empty ctxt dest initial_status =
 
 let test_allocated () =
   Random.init 0 ;
-  create_context () >>=? fun (ctxt, pkh) ->
-  let dest = `Delegate_balance pkh in
-  test_allocated_and_still_allocated_when_empty ctxt dest true >>=? fun _ ->
+  create_context () >>=? fun (ctxt, _pkh) ->
   let (pkh, _pk, _sk) = Signature.generate_key () in
   let dest = `Contract (Contract.implicit_contract pkh) in
   test_allocated_and_deallocated_when_empty ctxt dest >>=? fun _ ->
@@ -150,23 +148,11 @@ let check_sink_balances ctxt ctxt' dest amount =
   bal_dest +? amount >>?= fun add_bal_dest_amount ->
   Assert.equal_tez ~loc:__LOC__ bal_dest' add_bal_dest_amount
 
-(* Accounts of the form (`DelegateBalance pkh) are not allocated when they
-   receive funds for the first time. To force allocation, we transfer to
-   (`Contract pkh) instead. *)
-let force_allocation_if_need_be ctxt account =
-  match account with
-  | `Delegate_balance pkh ->
-      let account = `Contract (Contract.implicit_contract pkh) in
-      wrap (Token.transfer ctxt `Minted account Tez.one_mutez) >|=? fst
-  | _ -> return ctxt
-
 let test_transferring_to_sink ctxt sink amount expected_bupds =
   (* Transferring zero must be a noop, and must not return balance updates. *)
   wrap (Token.transfer ctxt `Minted sink Tez.zero) >>=? fun (ctxt', bupds) ->
   Assert.equal_bool ~loc:__LOC__ (ctxt == ctxt' && bupds = []) true
   >>=? fun _ ->
-  (* Force the allocation of [dest] if need be. *)
-  force_allocation_if_need_be ctxt sink >>=? fun ctxt ->
   (* Test transferring a non null amount. *)
   wrap (Token.transfer ctxt `Minted sink amount) >>=? fun (ctxt', bupds) ->
   check_sink_balances ctxt ctxt' sink amount >>=? fun _ ->
@@ -199,16 +185,6 @@ let test_transferring_to_collected_commitments ctxt =
     (`Collected_commitments bpkh)
     amount
     [(Commitments bpkh, Credited amount, Block_application)]
-
-let test_transferring_to_delegate_balance ctxt =
-  let (pkh, _pk, _sk) = Signature.generate_key () in
-  let dest = Contract.implicit_contract pkh in
-  let amount = random_amount () in
-  test_transferring_to_sink
-    ctxt
-    (`Delegate_balance pkh)
-    amount
-    [(Contract dest, Credited amount, Block_application)]
 
 let test_transferring_to_frozen_deposits ctxt =
   let (pkh, _pk, _sk) = Signature.generate_key () in
@@ -284,7 +260,6 @@ let test_transferring_to_sink () =
   create_context () >>=? fun (ctxt, _) ->
   test_transferring_to_contract ctxt >>=? fun _ ->
   test_transferring_to_collected_commitments ctxt >>=? fun _ ->
-  test_transferring_to_delegate_balance ctxt >>=? fun _ ->
   test_transferring_to_frozen_deposits ctxt >>=? fun _ ->
   test_transferring_to_collected_fees ctxt >>=? fun _ ->
   test_transferring_to_burned ctxt >>=? fun _ ->
@@ -325,7 +300,7 @@ let test_transferring_from_bounded_source ctxt src amount expected_bupds =
   let error_title =
     match src with
     | `Contract _ -> "Balance too low"
-    | `Delegate_balance _ | `Frozen_deposits _ | `Frozen_bonds _ ->
+    | `Frozen_deposits _ | `Frozen_bonds _ ->
         "Storage error (fatal internal error)"
     | _ -> "Underflowing tez subtraction"
   in
@@ -334,8 +309,6 @@ let test_transferring_from_bounded_source ctxt src amount expected_bupds =
   wrap (Token.transfer ctxt src `Burned Tez.zero) >>=? fun (ctxt', bupds) ->
   Assert.equal_bool ~loc:__LOC__ (ctxt == ctxt' && bupds = []) true
   >>=? fun _ ->
-  (* Force the allocation of [dest] if need be. *)
-  force_allocation_if_need_be ctxt src >>=? fun ctxt ->
   (* Test transferring everything. *)
   wrap (Token.transfer ctxt `Minted src amount) >>=? fun (ctxt, _) ->
   wrap (Token.transfer ctxt src `Burned amount) >>=? fun (ctxt', bupds) ->
@@ -385,16 +358,6 @@ let test_transferring_from_collected_commitments ctxt =
     (`Collected_commitments bpkh)
     amount
     [(Commitments bpkh, Debited amount, Block_application)]
-
-let test_transferring_from_delegate_balance ctxt =
-  let (pkh, _pk, _sk) = Signature.generate_key () in
-  let amount = random_amount () in
-  let src = Contract.implicit_contract pkh in
-  test_transferring_from_bounded_source
-    ctxt
-    (`Delegate_balance pkh)
-    amount
-    [(Contract src, Debited amount, Block_application)]
 
 let test_transferring_from_frozen_deposits ctxt =
   let (pkh, _pk, _sk) = Signature.generate_key () in
@@ -465,7 +428,6 @@ let test_transferring_from_source () =
   >>=? fun _ ->
   test_transferring_from_contract ctxt >>=? fun _ ->
   test_transferring_from_collected_commitments ctxt >>=? fun _ ->
-  test_transferring_from_delegate_balance ctxt >>=? fun _ ->
   test_transferring_from_frozen_deposits ctxt >>=? fun _ ->
   test_transferring_from_collected_fees ctxt >>=? fun _ ->
   test_transferring_from_frozen_bonds ctxt
@@ -477,7 +439,6 @@ let cast_to_container_type x =
       None
   | `Contract _ as x -> Some x
   | `Collected_commitments _ as x -> Some x
-  | `Delegate_balance _ as x -> Some x
   | `Block_fees as x -> Some x
   | `Frozen_bonds _ as x -> Some x
 
@@ -527,8 +488,6 @@ let build_test_cases () =
       (`Minted, random_amount ());
       (`Liquidity_baking_subsidies, random_amount ());
       (`Collected_commitments Blinded_public_key_hash.zero, random_amount ());
-      (`Delegate_balance baker1, random_amount ());
-      (`Delegate_balance baker2, random_amount ());
       (`Block_fees, random_amount ());
       (user1c, random_amount ());
       (user2c, random_amount ());
@@ -541,8 +500,6 @@ let build_test_cases () =
   let dest_list =
     [
       `Collected_commitments Blinded_public_key_hash.zero;
-      `Delegate_balance baker1;
-      `Delegate_balance baker2;
       `Block_fees;
       user1c;
       user2c;
@@ -565,17 +522,9 @@ let check_sink_balances ctxt ctxt' dest amount =
   | None -> return_unit
   | Some dest -> check_sink_balances ctxt ctxt' dest amount
 
-let rec check_balances ctxt ctxt' src dest amount =
+let check_balances ctxt ctxt' src dest amount =
   match (cast_to_container_type src, cast_to_container_type dest) with
   | (None, None) -> return_unit
-  | (Some (`Delegate_balance d), Some (`Contract c as contract))
-    when Contract.implicit_contract d = c ->
-      (* src and dest are in fact referring to the same contract *)
-      check_balances ctxt ctxt' contract contract amount
-  | (Some (`Contract c as contract), Some (`Delegate_balance d))
-    when Contract.implicit_contract d = c ->
-      (* src and dest are in fact referring to the same contract *)
-      check_balances ctxt ctxt' contract contract amount
   | (Some src, Some dest) when src = dest ->
       (* src and dest are the same contract *)
       wrap (Token.balance ctxt dest) >>=? fun (_, bal_dest) ->
@@ -688,7 +637,7 @@ let test_transfer_n_with_empty_source () =
   Random.init 0 ;
   create_context () >>=? fun (ctxt, pkh) ->
   wrap (test_transfer_n ctxt [] `Block_fees) >>=? fun _ ->
-  let dest = `Delegate_balance pkh in
+  let dest = `Contract (Contract.implicit_contract pkh) in
   wrap (test_transfer_n ctxt [] dest)
 
 let test_transfer_n_with_non_empty_source () =

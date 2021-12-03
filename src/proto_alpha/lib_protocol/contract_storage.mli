@@ -137,7 +137,7 @@ val spend_only_call_from_token :
 (** [raw_originate ctxt ~prepaid_bootstrap_storage contract ~script]
     originates the [contract] parameter. The [storage] space allocated by this
     origination is considered to be free of charge or to have been already paid
-    for by the user, if and only if [prepaid_bootstrap_storage] is [true]. In 
+    for by the user, if and only if [prepaid_bootstrap_storage] is [true]. In
     particular, the amount of space allocated by this origination will be part
     of the consumed space to pay for returned by the next call to
     [Fees_storage.record_paid_storage_space ctxt contract], if and only if
@@ -168,16 +168,6 @@ val set_paid_storage_space_and_return_fees_to_pay :
   Contract_repr.t ->
   Z.t ->
   (Z.t * Raw_context.t) tzresult Lwt.t
-
-(** Increases the balance of a contract. Calling this function directly may
-    break important invariants. Consider calling [credit] instead. *)
-val increase_balance_only_call_from_token :
-  Raw_context.t -> Contract_repr.t -> Tez_repr.t -> Raw_context.t tzresult Lwt.t
-
-(** Decreases the balance of a contract. Calling this function directly may
-    break important invariants. Consider calling [spend] instead. *)
-val decrease_balance_only_call_from_token :
-  Raw_context.t -> Contract_repr.t -> Tez_repr.t -> Raw_context.t tzresult Lwt.t
 
 (** [get_balance_and_frozen_bonds ctxt contract] returns the sum of the
     (spendable) balance and the frozen bonds associated to [contract]. *)

@@ -43,15 +43,10 @@
     [amount].*)
 
 (** [container] is the type of token holders with finite capacity, and whose assets
-    are contained in the context. Let [d] be a delegate. Be aware that transferring
-    to/from [`Delegate_balance d] will not update [d]'s stake, while transferring
-    to/from [`Contract (Contract_repr.implicit_contract d)] will update [d]'s
-    stake. *)
-
+    are contained in the context. *)
 type container =
   [ `Contract of Contract_repr.t
   | `Collected_commitments of Blinded_public_key_hash.t
-  | `Delegate_balance of Signature.Public_key_hash.t
   | `Frozen_deposits of Signature.Public_key_hash.t
   | `Block_fees
   | `Frozen_bonds of Contract_repr.t * Bond_id_repr.t ]
@@ -97,10 +92,7 @@ val allocated :
     carbonated data, and the balance associated to the token holder.
     This function may fail if [allocated ctxt container] returns [false].
     Returns an error with the message "get_balance" if [container] refers to an
-    originated contract that is not allocated.
-    Returns a {!Storage_Error Missing_key} error if [container] is of the form
-    [`Delegate_balance pkh], where [pkh] refers to an implicit contract that is
-    not allocated. *)
+    originated contract that is not allocated.*)
 val balance :
   Raw_context.t -> container -> (Raw_context.t * Tez_repr.t) tzresult Lwt.t
 
