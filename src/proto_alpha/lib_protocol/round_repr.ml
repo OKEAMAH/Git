@@ -159,7 +159,6 @@ module Durations = struct
     | Ok v -> Some v
     | Error _ -> None
 
-
   let encoding =
     let open Data_encoding in
     conv_with_guard
@@ -190,7 +189,6 @@ module Durations = struct
           add
             minimal_block_delay_s
             (mul (of_int32 round) delay_increment_per_round_s))
-
 end
 
 type error += Round_too_high of int32
@@ -208,17 +206,18 @@ let () =
     (function Round_too_high round -> Some round | _ -> None)
     (fun round -> Round_too_high round)
 
-(* The duration of a round follows the arithmetic progression:
+(* The duration of round n follows the arithmetic progression:
 
-   duration(round_n) = minimal_block_delay + n * delay_increment_per_round
+   duration(n) = minimal_block_delay + n * delay_increment_per_round
 
-   The level offset of round_n is the sum of the durations of the rounds up
-   until round_{n- 1}. The value of the sum up until round_n is given by the
+   The level offset of round n is the sum of the durations of the rounds up
+   until round (n- 1). The value of the sum up until round n is given by the
    following formula:
 
-   sum_n = minimal_block_delay + delay_increment_per_round * n * (n + 1) / 2
+   sum(n) = (n + 1) * minimal_block_delay + delay_increment_per_round * n * (n + 1) / 2
 
-   This function therefore computes sum_{round - 1} *)
+   [level_offset_of_round] therefore computes sum(round - 1) when round > 0 and 0 for
+   round 0. *)
 let level_offset_of_round round_durations ~round =
   if Compare.Int32.(round = zero) then ok Int64.zero
   else
@@ -226,21 +225,16 @@ let level_offset_of_round round_durations ~round =
       let Durations.{minimal_block_delay; delay_increment_per_round} =
         round_durations
       in
-      let roundz = Z.of_int32 round in
-      let two = Z.of_int 2 in
+      let roundz = Int64.of_int32 round in
+      let m = Z.of_int64 Int64.(div (mul roundz (pred roundz)) (of_int 2)) in
       Z.(
-        div
+        add
           (mul
-             roundz
-             (add
-                (mul
-                   two
-                   (Z.of_int64 @@ Period_repr.to_seconds minimal_block_delay))
-                (mul
-                   (pred roundz)
-                   (Z.of_int64
-                   @@ Period_repr.to_seconds delay_increment_per_round))))
-          two)
+             m
+             (Z.of_int64 @@ Period_repr.to_seconds delay_increment_per_round))
+          (mul
+             (Z.of_int32 round)
+             (Z.of_int64 @@ Period_repr.to_seconds minimal_block_delay)))
     in
     if Compare.Z.(sum_durations > Z.of_int64 Int64.max_int) then
       error (Round_too_high round)

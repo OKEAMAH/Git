@@ -824,8 +824,9 @@ let prepare_first_block ~level ~timestamp ctxt =
       add_constants ctxt param.constants >|= ok
   | Hangzhou_011 ->
       get_previous_protocol_constants ctxt >>= fun c ->
-      let block_time = c.minimal_block_delay in
-      (if Compare.Int64.(Period_repr.to_seconds block_time = 30L) then
+      let minimal_block_delay = c.minimal_block_delay in
+      let minimal_block_delay_s = Period_repr.to_seconds minimal_block_delay in
+      (if Compare.Int64.(minimal_block_delay_s = 30L) then
        (* that's the mainnet value of the constant; so we're
           probably on the mainnet: do no inherit this constant's
           value (as done in the else case below) *)
@@ -833,9 +834,8 @@ let prepare_first_block ~level ~timestamp ctxt =
       else
         match c.time_between_blocks with
         | first_time_between_blocks :: _ -> ok first_time_between_blocks
-        | [] -> ok block_time)
+        | [] -> ok minimal_block_delay)
       >>?= fun delay_increment_per_round ->
-      let minimal_block_delay = block_time in
       let constants =
         let consensus_committee_size = 7000 in
         let Constants_repr.Generated.
@@ -848,10 +848,7 @@ let prepare_first_block ~level ~timestamp ctxt =
           Constants_repr.Generated.generate
             ~consensus_committee_size
             ~blocks_per_minute:
-              {
-                numerator = 60;
-                denominator = Int64.to_int (Period_repr.to_seconds block_time);
-              }
+              {numerator = 60; denominator = Int64.to_int minimal_block_delay_s}
         in
         Constants_repr.
           {
