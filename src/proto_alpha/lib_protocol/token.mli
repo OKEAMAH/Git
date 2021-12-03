@@ -151,3 +151,8 @@ val add_contract_stake_balance_and_frozen_bonds :
 
 val remove_contract_stake_balance_and_frozen_bonds :
   Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
+
+(** [delegates_to_self ctxt delegate] returns true iff delegate is an implicit contract
+    that delegates to itself. *)
+val delegates_to_self :
+  Raw_context.t -> Signature.Public_key_hash.t -> bool tzresult Lwt.t

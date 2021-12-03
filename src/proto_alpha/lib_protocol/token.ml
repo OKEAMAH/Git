@@ -49,6 +49,14 @@ let add_contract_stake_balance_and_frozen_bonds ctxt contract =
   >>=? fun balance_and_frozen_bonds ->
   add_contract_stake ctxt contract balance_and_frozen_bonds
 
+(* A delegate is registered if its "implicit account" delegates to itself. *)
+let delegates_to_self c delegate =
+  Contract_delegate_storage.find c (Contract_repr.implicit_contract delegate)
+  >|=? function
+  | Some current_delegate ->
+      Signature.Public_key_hash.equal delegate current_delegate
+  | None -> false
+
 type container =
   [ `Contract of Contract_repr.t
   | `Collected_commitments of Blinded_public_key_hash.t
