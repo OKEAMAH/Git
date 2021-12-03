@@ -73,7 +73,8 @@ let baking_rights c level =
   let rec f c round =
     Stake_distribution.baking_rights_owner c level ~round
     >>=? fun (c, _slot, (delegate, _)) ->
-    return (LCons (delegate, fun () -> f c (Round.succ round)))
+    Round.succ round >>?= fun round ->
+    return (LCons (delegate, fun () -> f c round))
   in
   f c Round.zero
 

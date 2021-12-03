@@ -509,7 +509,11 @@ let repropose_block_action state delegate round (proposal : proposal) =
       Lwt.return @@ Inject_block {block_to_bake; updated_state}
 
 let end_of_round state current_round =
-  let new_round = Round.succ current_round in
+  let new_round =
+    match Round.succ current_round with
+    | Ok round -> round
+    | Error _ -> assert false
+  in
   let new_round_state = {state.round_state with current_round = new_round} in
   let new_state = {state with round_state = new_round_state} in
   (* we need to check if we need to bake for this round or not *)

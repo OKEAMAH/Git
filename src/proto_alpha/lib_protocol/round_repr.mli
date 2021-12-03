@@ -42,9 +42,8 @@ type t = round
 val zero : t
 
 (** Successor of the given round.
-    Note that there is no safety here in case we increment over
-    max_int32 as it is very unlikely to go that far. *)
-val succ : t -> t
+    Return an error if applied to the maximal value of rounds *)
+val succ : t -> t tzresult
 
 (** Predecessor of the given round.
     Returns an error if applied to [zero], as negative round are

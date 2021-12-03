@@ -233,7 +233,7 @@ module Round : sig
 
   val zero : t
 
-  val succ : t -> t
+  val succ : t -> t tzresult
 
   val pred : t -> t tzresult
 

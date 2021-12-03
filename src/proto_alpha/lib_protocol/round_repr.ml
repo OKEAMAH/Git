@@ -33,8 +33,6 @@ include (Compare.Int32 : Compare.S with type t := t)
 
 let zero = 0l
 
-let succ n = if Compare.Int32.equal n Int32.max_int then n else Int32.succ n
-
 let pp fmt i = Format.fprintf fmt "%ld" i
 
 type error += Negative_round of int
@@ -71,6 +69,11 @@ let () =
     (obj1 (req "Negative_round" int64))
     (function Round_overflow i -> Some (Int64.of_int i) | _ -> None)
     (fun i -> Round_overflow (Int64.to_int i))
+
+let succ n =
+  if Compare.Int32.equal n Int32.max_int then
+    error (Negative_round (Int32.to_int n))
+  else ok (Int32.succ n)
 
 let of_int32 i =
   if i >= 0l then Ok i else error (Negative_round (Int32.to_int i))
