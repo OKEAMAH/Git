@@ -1009,6 +1009,16 @@ module Tx_rollup : sig
     tx_rollup:string ->
     Client.t ->
     Process.t
+
+  (** Call RPC /chain/[chain]/blocks/[block]/context/[rollup_hash]/commitments *)
+  val get_commitments :
+    ?endpoint:Client.endpoint ->
+    ?hooks:Process.hooks ->
+    ?chain:string ->
+    ?block:string ->
+    tx_rollup:string ->
+    Client.t ->
+    JSON.t Lwt.t
 end
 
 module Sc_rollup : sig
