@@ -40,6 +40,9 @@ type error +=
 
 type error += (* `Temporary *) Wrong_inbox_hash
 
+type error += (* `Branch *)
+              Retire_uncommitted_level of Raw_level_repr.t
+
 (** A specialized Blake2B implementation for hashing commitments with
     "toc1" as a base58 prefix *)
 module Commitment_hash : sig

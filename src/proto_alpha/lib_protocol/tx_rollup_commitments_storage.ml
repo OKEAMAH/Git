@@ -41,6 +41,10 @@ let get_or_empty_commitments :
     ~none:(ctxt, Tx_rollup_commitments_repr.empty)
     ~some:(fun l -> (ctxt, List.rev l))
 
+let get_next_level ctxt tx_rollup level =
+  Tx_rollup_inbox_storage.get_adjacent_levels ctxt level tx_rollup
+  >|=? fun (ctxt, _, next_level) -> (ctxt, next_level)
+
 let get_prev_level ctxt tx_rollup level =
   Tx_rollup_inbox_storage.get_adjacent_levels ctxt level tx_rollup
   >|=? fun (ctxt, predecessor_level, _) -> (ctxt, predecessor_level)
@@ -99,6 +103,85 @@ let add_commitment ctxt tx_rollup pkh (commitment : Commitment.t) =
   >>?= fun new_pending ->
   Storage.Tx_rollup.Commitment_list.add ctxt key new_pending
   >>=? fun (ctxt, _, _) -> adjust_commitment_bond ctxt tx_rollup pkh 1
+
+module Commitment_set = Set.Make (Commitment_hash)
+
+let rec remove_successors :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    Raw_level_repr.t ->
+    Raw_level_repr.t ->
+    Commitment_set.t ->
+    Raw_context.t tzresult Lwt.t =
+ fun ctxt tx_rollup level top commitments ->
+  if Raw_level_repr.(level > top) then return ctxt
+  else
+    let key = (level, tx_rollup) in
+    get_next_level ctxt tx_rollup level >>=? fun (ctxt, next_level) ->
+    Storage.Tx_rollup.Commitment_list.find ctxt key
+    >>=? fun (ctxt, commitment_list) ->
+    match commitment_list with
+    | None -> (
+        match next_level with
+        | None -> return ctxt
+        | Some next_level ->
+            remove_successors ctxt tx_rollup next_level top commitments)
+    | Some pending ->
+        let pending = List.rev pending in
+        let next_commitments =
+          List.fold_left
+            (fun next_commitments {commitment; hash; _} ->
+              if
+                Option.fold
+                  ~none:false
+                  ~some:(fun predecessor ->
+                    Commitment_set.mem predecessor commitments)
+                  commitment.predecessor
+              then Commitment_set.add hash next_commitments
+              else next_commitments)
+            commitments
+            pending
+        in
+        if not @@ Commitment_set.is_empty commitments then
+          let (to_remove, new_pending) =
+            List.partition
+              (fun {hash; _} -> Commitment_set.mem hash next_commitments)
+              pending
+          in
+          List.fold_left_es
+            (fun ctxt {committer; _} ->
+              adjust_commitment_bond ctxt tx_rollup committer (-1))
+            ctxt
+            to_remove
+          >>=? fun ctxt ->
+          Storage.Tx_rollup.Commitment_list.add ctxt key new_pending
+          >>=? fun (ctxt, _, _) ->
+          match next_level with
+          | None -> return ctxt
+          | Some next_level ->
+              remove_successors ctxt tx_rollup next_level top next_commitments
+        else return ctxt
+
+let retire_rollup_level :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    Raw_level_repr.t ->
+    Raw_context.t tzresult Lwt.t =
+ fun ctxt tx_rollup level ->
+  let top = (Raw_context.current_level ctxt).level in
+  let key = (level, tx_rollup) in
+  get_or_empty_commitments ctxt key >>=? fun (ctxt, commitments) ->
+  match commitments with
+  | [] -> fail (Retire_uncommitted_level level)
+  | accepted :: rejected ->
+      let to_obviate =
+        Commitment_set.of_seq
+          (Seq.map (fun {hash; _} -> hash) (List.to_seq rejected))
+      in
+      remove_successors ctxt tx_rollup level top to_obviate >>=? fun ctxt ->
+      adjust_commitment_bond ctxt tx_rollup accepted.committer (-1)
+      >>=? fun ctxt ->
+      Storage.Tx_rollup.Commitment_list.add ctxt key [accepted] >|=? just_ctxt
 
 let get_commitments :
     Raw_context.t ->

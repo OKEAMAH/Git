@@ -40,6 +40,8 @@ type error +=
 
 type error += (* `Temporary *) Wrong_inbox_hash
 
+type error += (* `Temporary *) Retire_uncommitted_level of Raw_level_repr.t
+
 let () =
   let open Data_encoding in
   (* Commitment_hash_already_submitted *)
@@ -113,7 +115,17 @@ let () =
           Some (commitment_level, submit_level)
       | _ -> None)
     (fun (commitment_level, submit_level) ->
-      Commitment_too_early (commitment_level, submit_level))
+      Commitment_too_early (commitment_level, submit_level)) ;
+  (* Retire_uncommitted_level *)
+  register_error_kind
+    `Permanent
+    ~id:"tx_rollup_retire_uncommitted_level"
+    ~title:"Tried to retire a rollup level with no commitments"
+    ~description:
+      "An attempt was made to retire a rollup level with no commitments"
+    (obj1 (req "level" Raw_level_repr.encoding))
+    (function Retire_uncommitted_level level -> Some level | _ -> None)
+    (fun level -> Retire_uncommitted_level level)
 
 let compare_or cmp c1 c2 f = match cmp c1 c2 with 0 -> f () | diff -> diff
 
@@ -156,7 +168,7 @@ end
 module Commitment = struct
   type batch_commitment = {
     (* TODO: add effects and replace bytes with Irmin:
-       https://gitlab.com/tezos/tezos/-/issues/2444
+              https://gitlab.com/tezos/tezos/-/issues/2444
     *)
     root : bytes;
   }
