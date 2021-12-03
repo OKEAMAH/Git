@@ -102,6 +102,9 @@ val check_error : ?exit_code:int -> ?msg:Base.rex -> t -> unit Lwt.t
     the [Node] module choose all ports for you. *)
 val fresh_port : unit -> int
 
+(** [run node] launches the given smart contract rollup node. *)
+val run : t -> unit Lwt.t
+
 (** Wait until a node terminates and return its status. If the node is not
    running, make the test fail. *)
 val wait : t -> Unix.process_status Lwt.t

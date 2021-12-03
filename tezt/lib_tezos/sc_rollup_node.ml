@@ -42,7 +42,7 @@ module Parameters = struct
 
   let base_default_name = "sc-rollup-node"
 
-  let default_colors = Log.Color.[|FG.cyan; FG.magenta; FG.yellow; FG.green|]
+  let default_colors = Log.Color.[|FG.gray; FG.magenta; FG.yellow; FG.green|]
 end
 
 open Parameters
@@ -135,7 +135,7 @@ let set_ready node =
   trigger_ready node (Some ())
 
 let handle_event node {name; value = _} =
-  match name with "node_is_ready.v0" -> set_ready node | _ -> ()
+  match name with "sc_rollup_node_is_ready.v0" -> set_ready node | _ -> ()
 
 let check_event ?where node name promise =
   let* result = promise in
@@ -151,7 +151,7 @@ let wait_for_ready node =
       let (promise, resolver) = Lwt.task () in
       node.persistent_state.pending_ready <-
         resolver :: node.persistent_state.pending_ready ;
-      check_event node "node_is_ready.v0" promise
+      check_event node "sc_rollup_node_is_ready.v0" promise
 
 let create ?(path = Constant.sc_rollup_node) ?name ?color ?data_dir ?event_pipe
     ?net_port ?advertised_net_port ?(rpc_host = "127.0.0.1") ?rpc_port
@@ -184,3 +184,30 @@ let create ?(path = Constant.sc_rollup_node) ?name ?color ?data_dir ?event_pipe
   in
   on_event sc_node (handle_event sc_node) ;
   sc_node
+
+let make_arguments node =
+  [
+    "--endpoint";
+    Printf.sprintf
+      "http://%s:%d"
+      (Node.rpc_host node.persistent_state.node)
+      (Node.rpc_port node.persistent_state.node);
+  ]
+
+let do_runlike_command node arguments =
+  if node.status <> Not_running then
+    Test.fail "Smart contract rollup node %s is already running" node.name ;
+  let on_terminate _status =
+    trigger_ready node None ;
+    unit
+  in
+  let arguments = make_arguments node @ arguments in
+  run node {ready = false} arguments ~on_terminate
+
+let run node =
+  do_runlike_command node ["run"; "--data-dir"; node.persistent_state.data_dir]
+
+let run node =
+  let* () = run node in
+  let* () = wait_for_ready node in
+  return ()

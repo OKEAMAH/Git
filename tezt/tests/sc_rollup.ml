@@ -29,12 +29,12 @@
    =======
 
 *)
-let test ~__FILE__ ~output_file title =
+let test ~__FILE__ ~output_file ?(tags = []) title =
   Protocol.register_regression_test
     ~output_file
     ~__FILE__
     ~title
-    ~tags:["sc_rollup"]
+    ~tags:("sc_rollup" :: tags)
 
 let setup f ~protocol =
   let enable_sc_rollup = [(["enable_sc_rollup"], Some "true")] in
@@ -98,6 +98,7 @@ let setup_fresh_rollup f node client bootstrap1_key =
   let* configuration_filename =
     Sc_rollup_node.config_init sc_rollup_node rollup_address
   in
+  let* () = Client.bake_for client in
   f rollup_address sc_rollup_node configuration_filename
 
 let test_rollup_node_configuration =
@@ -120,6 +121,27 @@ let test_rollup_node_configuration =
       Regression.capture read_configuration ;
       return ())
 
+(* Launching a rollup node
+   -----------------------
+
+   A running rollup node can asked the address of the rollup it is
+   interacting with.
+
+*)
+let test_rollup_node_running =
+  let output_file = "sc_rollup_node_run" in
+  test
+    ~__FILE__
+    ~output_file
+    ~tags:["run"]
+    "running a smart contract rollup node"
+    (fun protocol ->
+      setup ~protocol @@ setup_fresh_rollup
+      @@ fun _rollup_address sc_rollup_node _filename ->
+      let* () = Sc_rollup_node.run sc_rollup_node in
+      return ())
+
 let register ~protocols =
   test_origination ~protocols ;
-  test_rollup_node_configuration ~protocols
+  test_rollup_node_configuration ~protocols ;
+  test_rollup_node_running ~protocols
