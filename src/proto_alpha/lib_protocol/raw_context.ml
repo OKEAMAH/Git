@@ -833,7 +833,12 @@ let prepare_first_block ~level ~timestamp ctxt =
        Period_repr.of_seconds 15L
       else
         match c.time_between_blocks with
-        | first_time_between_blocks :: _ -> ok first_time_between_blocks
+        | first_time_between_blocks :: _ ->
+            Period_repr.(
+              of_seconds
+                (Int64.sub
+                   (to_seconds first_time_between_blocks)
+                   minimal_block_delay_s))
         | [] -> ok minimal_block_delay)
       >>?= fun delay_increment_per_round ->
       let constants =
