@@ -232,9 +232,9 @@ let count = None
 
 let predecessor_start proposal_timestamp proposal_round grandparent_round =
   assert_no_error
-  @@ ( Round.level_offset_of_round
-         round_durations
-         ~round:Round.(succ grandparent_round)
+  @@ ( Round.(
+         succ grandparent_round >>? fun round ->
+         Round.level_offset_of_round round_durations ~round)
      >>? fun proposal_level_offset ->
        Round.level_offset_of_round round_durations ~round:proposal_round
        >>? fun proposal_round_offset ->
