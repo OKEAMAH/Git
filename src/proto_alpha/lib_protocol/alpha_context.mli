@@ -273,6 +273,8 @@ module Round : sig
       first_round_duration:Period.t ->
       delay_increment_per_round:Period.t ->
       round_durations option
+
+    val of_context : context -> round_durations tzresult
   end
 
   val level_offset_of_round : round_durations -> round:t -> Period.t tzresult

@@ -67,12 +67,6 @@ let () =
     (function Cannot_retrieve_predecessor_level -> Some () | _ -> None)
     (fun () -> Cannot_retrieve_predecessor_level)
 
-let round_durations_of_context ctxt =
-  let open Alpha_context in
-  let first_round_duration = Constants.minimal_block_delay ctxt in
-  let delay_increment_per_round = Constants.delay_increment_per_round ctxt in
-  Round.Durations.create ~first_round_duration ~delay_increment_per_round
-
 module Mempool = struct
   type nanotez = Q.t
 
@@ -200,7 +194,7 @@ module Mempool = struct
         Alpha_context.Fitness.round_from_raw predecessor_fitness
         >>?= fun predecessor_round ->
         Alpha_context.(
-          round_durations_of_context ctxt >>?= fun round_durations ->
+          Round.Durations.of_context ctxt >>?= fun round_durations ->
           let round_zero_duration =
             Round.round_duration round_durations Round.zero
           in
@@ -561,7 +555,7 @@ module Mempool = struct
                | Some proposal_level -> proposal_level
              in
 
-             round_durations_of_context ctxt >>?= fun round_durations ->
+             Round.Durations.of_context ctxt >>?= fun round_durations ->
              Lwt.return
              @@ acceptable_op
                   ~config
@@ -2769,7 +2763,7 @@ module RPC = struct
       Round.get ctxt >>=? fun current_round ->
       let current_level = Level.current ctxt in
       let current_timestamp = Timestamp.current ctxt in
-      round_durations_of_context ctxt >>?= fun round_durations ->
+      Round.Durations.of_context ctxt >>?= fun round_durations ->
       let rec loop l acc round =
         if Compare.Int.(round > max_round) then return (List.rev acc)
         else
@@ -2933,7 +2927,7 @@ module RPC = struct
       Round.get ctxt >>=? fun current_round ->
       let current_level = Level.current ctxt in
       let current_timestamp = Timestamp.current ctxt in
-      round_durations_of_context ctxt >>?= fun round_durations ->
+      Round.Durations.of_context ctxt >>?= fun round_durations ->
       estimated_time
         round_durations
         ~current_level

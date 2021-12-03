@@ -144,6 +144,17 @@ end
 module Round = struct
   include Round_repr
 
+  module Durations = struct
+    include Durations
+
+    let of_context (ctxt : context) =
+      let first_round_duration = Constants.minimal_block_delay ctxt in
+      let delay_increment_per_round =
+        Constants.delay_increment_per_round ctxt
+      in
+      create ~first_round_duration ~delay_increment_per_round
+  end
+
   type round_durations = Durations.t
 
   let pp_round_durations = Durations.pp
