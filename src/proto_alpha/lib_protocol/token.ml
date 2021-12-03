@@ -23,6 +23,32 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** [remove_contract_stake ctxt contract amount] calls
+    [Stake_storage.remove_stake ctxt delegate amount] if [contract] has a
+    [delegate]. Otherwise this function does nothing. *)
+let remove_contract_stake ctxt contract amount =
+  Contract_delegate_storage.find ctxt contract >>=? function
+  | None -> return ctxt
+  | Some delegate -> Stake_storage.remove_stake ctxt delegate amount
+
+(** [add_contract_stake ctxt contract amount] calls
+    [Stake_storage.add_stake ctxt delegate amount] if [contract] has a
+    [delegate]. Otherwise this function does nothing. *)
+let add_contract_stake ctxt contract amount =
+  Contract_delegate_storage.find ctxt contract >>=? function
+  | None -> return ctxt
+  | Some delegate -> Stake_storage.add_stake ctxt delegate amount
+
+let remove_contract_stake_balance_and_frozen_bonds ctxt contract =
+  Contract_storage.get_balance_and_frozen_bonds ctxt contract
+  >>=? fun balance_and_frozen_bonds ->
+  remove_contract_stake ctxt contract balance_and_frozen_bonds
+
+let add_contract_stake_balance_and_frozen_bonds ctxt contract =
+  Contract_storage.get_balance_and_frozen_bonds ctxt contract
+  >>=? fun balance_and_frozen_bonds ->
+  add_contract_stake ctxt contract balance_and_frozen_bonds
+
 type container =
   [ `Contract of Contract_repr.t
   | `Collected_commitments of Blinded_public_key_hash.t
@@ -111,7 +137,7 @@ let credit ctxt dest amount origin =
       | `Contract dest ->
           Contract_storage.credit_only_call_from_token ctxt dest amount
           >>=? fun ctxt ->
-          Stake_storage.add_contract_stake ctxt dest amount >|=? fun ctxt ->
+          add_contract_stake ctxt dest amount >|=? fun ctxt ->
           (ctxt, Contract dest)
       | `Collected_commitments bpkh ->
           Commitment_storage.increase_commitment_only_call_from_token
@@ -130,7 +156,7 @@ let credit ctxt dest amount origin =
             amount
           >>=? fun ctxt ->
           let contract = Contract_repr.implicit_contract delegate in
-          Stake_storage.add_contract_stake ctxt contract amount >|=? fun ctxt ->
+          add_contract_stake ctxt contract amount >|=? fun ctxt ->
           (ctxt, Deposits delegate)
       | `Block_fees ->
           Raw_context.credit_collected_fees_only_call_from_token ctxt amount
@@ -142,7 +168,7 @@ let credit ctxt dest amount origin =
             bond_id
             amount
           >>=? fun ctxt ->
-          Stake_storage.add_contract_stake ctxt contract amount >>=? fun ctxt ->
+          add_contract_stake ctxt contract amount >>=? fun ctxt ->
           return (ctxt, Frozen_bonds (contract, bond_id))))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Credited amount, origin))
 
@@ -170,7 +196,7 @@ let spend ctxt src amount origin =
       | `Contract src ->
           Contract_storage.spend_only_call_from_token ctxt src amount
           >>=? fun ctxt ->
-          Stake_storage.remove_contract_stake ctxt src amount >|=? fun ctxt ->
+          remove_contract_stake ctxt src amount >|=? fun ctxt ->
           (ctxt, Contract src)
       | `Collected_commitments bpkh ->
           Commitment_storage.decrease_commitment_only_call_from_token
@@ -185,8 +211,8 @@ let spend ctxt src amount origin =
             amount
           >>=? fun ctxt ->
           let contract = Contract_repr.implicit_contract delegate in
-          Stake_storage.remove_contract_stake ctxt contract amount
-          >|=? fun ctxt -> (ctxt, Deposits delegate)
+          remove_contract_stake ctxt contract amount >|=? fun ctxt ->
+          (ctxt, Deposits delegate)
       | `Block_fees ->
           Raw_context.spend_collected_fees_only_call_from_token ctxt amount
           >>?= fun ctxt -> return (ctxt, Block_fees)
@@ -197,8 +223,8 @@ let spend ctxt src amount origin =
             bond_id
             amount
           >>=? fun ctxt ->
-          Stake_storage.remove_contract_stake ctxt contract amount
-          >>=? fun ctxt -> return (ctxt, Frozen_bonds (contract, bond_id))))
+          remove_contract_stake ctxt contract amount >>=? fun ctxt ->
+          return (ctxt, Frozen_bonds (contract, bond_id))))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Debited amount, origin))
 
 let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =

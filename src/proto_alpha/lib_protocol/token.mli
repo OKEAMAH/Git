@@ -141,3 +141,13 @@ val transfer :
   [< sink] ->
   Tez_repr.t ->
   (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t
+
+(** [add_contract_stake_balance_and_frozen_bonds] and
+    [remove_contract_stake_balance_and_frozen_bonds]
+    temporary functions to facilitate the later movement of the delegation.
+    They will disappear in a future commit. *)
+val add_contract_stake_balance_and_frozen_bonds :
+  Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
+
+val remove_contract_stake_balance_and_frozen_bonds :
+  Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
