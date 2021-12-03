@@ -30,7 +30,32 @@ let fresh_tx_rollup_from_current_nonce ctxt =
 
 let originate ctxt =
   fresh_tx_rollup_from_current_nonce ctxt >>?= fun (ctxt, tx_rollup) ->
-  Storage.Tx_rollup.State.add ctxt tx_rollup Tx_rollup_repr.empty_state
+  Storage.Tx_rollup.State.add ctxt tx_rollup Tx_rollup_state_repr.empty
   >|= fun ctxt -> ok (ctxt, tx_rollup)
 
 let state c tx_rollup = Storage.Tx_rollup.State.find c tx_rollup
+
+let exists c tx_rollup =
+  state c tx_rollup >>=? fun rollup -> return @@ Option.is_some rollup
+
+let get_or_empty_inboxes ctxt key =
+  Storage.Tx_rollup.Pending_inbox.find ctxt key >>=? function
+  | None -> return Pending_inbox_repr.empty
+  | Some l -> return l
+
+let pending_inbox ctxt tx_rollup level =
+  state ctxt tx_rollup >>=? function
+  | None -> return None
+  | Some _ -> (
+      get_or_empty_inboxes ctxt (level, tx_rollup) >>=? function
+      | inbox -> return @@ Some (Pending_inbox_repr.get_operations inbox))
+
+let add_message ctxt tx_rollup level transactions =
+  let key = (level, tx_rollup) in
+  get_or_empty_inboxes ctxt key >>=? fun inboxes ->
+  let inboxes = Pending_inbox_repr.append inboxes transactions in
+  Storage.Tx_rollup.Pending_inbox.add ctxt key inboxes >|= ok
+
+let retire_rollup_level ctxt tx_rollup level =
+  let key = (level, tx_rollup) in
+  Storage.Tx_rollup.Pending_inbox.remove ctxt key >|= ok

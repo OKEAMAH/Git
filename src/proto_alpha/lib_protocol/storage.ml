@@ -1621,14 +1621,36 @@ module Tx_rollup = struct
          end))
          (Make_index (Tx_rollup_repr.Index))
 
+  module Level_indexed_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["tx_rollup_level"]
+         end))
+         (Pair
+            (Make_index
+               (Raw_level_repr.Index))
+               (Make_index (Tx_rollup_repr.Index)))
+
   module State =
     Indexed_context.Make_map
       (struct
         let name = ["state"]
       end)
       (struct
-        type t = Tx_rollup_repr.state
+        type t = Tx_rollup_state_repr.t
 
-        let encoding = Tx_rollup_repr.state_encoding
+        let encoding = Tx_rollup_state_repr.encoding
+      end)
+
+  module Pending_inbox =
+    Level_indexed_context.Make_map
+      (struct
+        let name = ["pending_inbox"]
+      end)
+      (struct
+        type t = Pending_inbox_repr.t
+
+        let encoding = Pending_inbox_repr.encoding
       end)
 end

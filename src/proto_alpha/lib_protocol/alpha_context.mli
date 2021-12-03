@@ -1513,6 +1513,63 @@ module Receipt : sig
   val group_balance_updates : balance_updates -> balance_updates tzresult
 end
 
+(** This simply re-exports [Tx_rollup_l2_repr]. *)
+module Tx_rollup_l2 : sig
+  type account = Bls_signature.pk
+
+  type ticket_sort
+
+  val ticket_sort_encoding : ticket_sort Data_encoding.t
+
+  type ticket_hash
+
+  val hash_ticket_sort : ticket_sort -> ticket_hash
+
+  val ticket_hash_encoding : ticket_hash Data_encoding.t
+
+  type deposit = {
+    destination : account;
+    ticket_hash : ticket_hash;
+    amount : Z.t;
+  }
+
+  val deposit_encoding : deposit Data_encoding.encoding
+end
+
+(** This simply re-exports [Pending_inbox_repr]. *)
+module Pending_inbox : sig
+  type transactions = {data : bytes; allocated_gas : Gas.Arith.fp}
+
+  type stored_operation =
+    | Deposit of Tx_rollup_l2.deposit
+    | Transactions of transactions
+
+  val stored_operation_encoding : stored_operation Data_encoding.t
+
+  type t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val empty : t
+
+  (** Append an operation to a block *)
+  val append : t -> stored_operation -> t
+
+  (** Returns all operations for a given block *)
+  val get_operations : t -> stored_operation list
+end
+
+(** This simply re-exports [Tx_rollup_state]. *)
+module Tx_rollup_state : sig
+  type t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+end
+
 (** This simply re-exports [Tx_rollup_repr] and [tx_rollup_storage]. See
     [tx_rollup_repr] and [tx_rollup_storage] for additional documentation of this
     module *)
@@ -1533,13 +1590,24 @@ module Tx_rollup : sig
 
   val originate : context -> (context * tx_rollup) tzresult Lwt.t
 
-  type state
+  val state : context -> tx_rollup -> Tx_rollup_state.t option tzresult Lwt.t
 
-  val state : context -> tx_rollup -> state option tzresult Lwt.t
+  val exists : context -> tx_rollup -> bool tzresult Lwt.t
 
-  val state_encoding : state Data_encoding.t
+  (** Get the pending inbox for a rollup *)
+  val pending_inbox :
+    context ->
+    tx_rollup ->
+    Raw_level.t ->
+    Pending_inbox.stored_operation list option tzresult Lwt.t
 
-  val pp_state : Format.formatter -> state -> unit
+  (** Add a message to a rollup's inbox *)
+  val add_message :
+    context ->
+    tx_rollup ->
+    Raw_level.t ->
+    Pending_inbox.stored_operation ->
+    context tzresult Lwt.t
 
   module Internal_for_tests : sig
     (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)

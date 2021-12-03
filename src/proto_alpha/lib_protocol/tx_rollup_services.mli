@@ -30,6 +30,13 @@ val state :
   'a #RPC_context.simple ->
   'a ->
   Tx_rollup.t ->
-  Tx_rollup.state option shell_tzresult Lwt.t
+  Tx_rollup_state.t option shell_tzresult Lwt.t
+
+val pending_inbox :
+  'a #RPC_context.simple ->
+  'a ->
+  Tx_rollup.t ->
+  Raw_level.t ->
+  Pending_inbox.stored_operation list option shell_tzresult Lwt.t
 
 val register : unit -> unit

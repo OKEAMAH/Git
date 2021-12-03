@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,40 +25,26 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+(** [pending_inbox] represents the pending inbox of one level of a tx_rollup. *)
+open Tx_rollup_l2_repr
 
-let custom_root =
-  (RPC_path.(open_root / "context" / "tx_rollup")
-    : RPC_context.t RPC_path.context)
+type transactions = {data : bytes; allocated_gas : Gas_limit_repr.Arith.fp}
 
-module S = struct
-  let state =
-    RPC_service.get_service
-      ~description:"Access the state of a rollup."
-      ~query:RPC_query.empty
-      ~output:(Data_encoding.option Tx_rollup_state.encoding)
-      RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
+(** The operations stored in an inbox *)
+type stored_operation = Deposit of deposit | Transactions of transactions
 
-  let pending_inbox =
-    RPC_service.get_service
-      ~description:"."
-      ~query:RPC_query.empty
-      ~output:
-        (Data_encoding.option
-        @@ Data_encoding.list Pending_inbox.stored_operation_encoding)
-      RPC_path.(
-        custom_root /: Tx_rollup.rpc_arg / "pending_inbox" /: Raw_level.rpc_arg)
-end
+val stored_operation_encoding : stored_operation Data_encoding.t
 
-let register () =
-  let open Services_registration in
-  register1 ~chunked:false S.state (fun ctxt tx_rollup () () ->
-      Tx_rollup.state ctxt tx_rollup) ;
-  register2 ~chunked:false S.pending_inbox (fun ctxt tx_rollup level () () ->
-      Tx_rollup.pending_inbox ctxt tx_rollup level)
+type t
 
-let state ctxt block tx_rollup =
-  RPC_context.make_call1 S.state ctxt block tx_rollup () ()
+val encoding : t Data_encoding.t
 
-let pending_inbox ctxt block tx_rollup level =
-  RPC_context.make_call2 S.pending_inbox ctxt block tx_rollup level () ()
+(** [empty_pending_inbox] is the initial value at the origination of a
+      tx_rollup. It contains no inboxes. *)
+val empty : t
+
+val pp : Format.formatter -> t -> unit
+
+val append : t -> stored_operation -> t
+
+val get_operations : t -> stored_operation list

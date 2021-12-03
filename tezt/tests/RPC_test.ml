@@ -620,8 +620,12 @@ let test_tx_rollup ?endpoint client =
       ~src:Constant.bootstrap1.public_key_hash
       client
   in
+  let level = "0" in
   let* () = client_bake_for client in
   let* _ = RPC.Tx_rollup.get_state ?endpoint ~tx_rollup_hash client in
+  let* _ =
+    RPC.Tx_rollup.get_pending_inbox ?endpoint ~tx_rollup_hash ~level client
+  in
   unit
 
 (* Test the various other RPCs. *)

@@ -63,6 +63,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_repr.mli script_repr.ml
    cache_memory_helpers.ml
    contract_repr.mli contract_repr.ml
+   tx_rollup_l2_repr.ml
+   pending_inbox_repr.mli pending_inbox_repr.ml
+   tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    tx_rollup_repr.mli tx_rollup_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
@@ -145,7 +148,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_services.mli voting_services.ml
    tx_rollup_services.mli tx_rollup_services.ml
    alpha_services.mli alpha_services.ml
-   tx_rollup_l2_repr.ml
    tx_rollup_l2_operation.mli tx_rollup_l2_operation.ml
    tx_rollup_l2_storage.mli tx_rollup_l2_storage.ml
    tx_rollup_l2_context.mli tx_rollup_l2_context.ml
@@ -194,6 +196,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_repr.mli script_repr.ml
    cache_memory_helpers.ml
    contract_repr.mli contract_repr.ml
+   tx_rollup_l2_repr.ml
+   pending_inbox_repr.mli pending_inbox_repr.ml
+   tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    tx_rollup_repr.mli tx_rollup_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
@@ -276,7 +281,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_services.mli voting_services.ml
    tx_rollup_services.mli tx_rollup_services.ml
    alpha_services.mli alpha_services.ml
-   tx_rollup_l2_repr.ml
    tx_rollup_l2_operation.mli tx_rollup_l2_operation.ml
    tx_rollup_l2_storage.mli tx_rollup_l2_storage.ml
    tx_rollup_l2_context.mli tx_rollup_l2_context.ml
@@ -325,6 +329,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_repr.mli script_repr.ml
    cache_memory_helpers.ml
    contract_repr.mli contract_repr.ml
+   tx_rollup_l2_repr.ml
+   pending_inbox_repr.mli pending_inbox_repr.ml
+   tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    tx_rollup_repr.mli tx_rollup_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
@@ -407,7 +414,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_services.mli voting_services.ml
    tx_rollup_services.mli tx_rollup_services.ml
    alpha_services.mli alpha_services.ml
-   tx_rollup_l2_repr.ml
    tx_rollup_l2_operation.mli tx_rollup_l2_operation.ml
    tx_rollup_l2_storage.mli tx_rollup_l2_storage.ml
    tx_rollup_l2_context.mli tx_rollup_l2_context.ml
@@ -478,6 +484,9 @@ include Tezos_raw_protocol_alpha.Main
    Script_repr
    Cache_memory_helpers
    Contract_repr
+   Tx_rollup_l2_repr
+   Pending_inbox_repr
+   Tx_rollup_state_repr
    Tx_rollup_repr
    Roll_repr_legacy
    Vote_repr
@@ -560,7 +569,6 @@ include Tezos_raw_protocol_alpha.Main
    Voting_services
    Tx_rollup_services
    Alpha_services
-   Tx_rollup_l2_repr
    Tx_rollup_l2_operation
    Tx_rollup_l2_storage
    Tx_rollup_l2_context
@@ -650,6 +658,9 @@ include Tezos_raw_protocol_alpha.Main
    script_repr.mli script_repr.ml
    cache_memory_helpers.ml
    contract_repr.mli contract_repr.ml
+   tx_rollup_l2_repr.ml
+   pending_inbox_repr.mli pending_inbox_repr.ml
+   tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    tx_rollup_repr.mli tx_rollup_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
@@ -732,7 +743,6 @@ include Tezos_raw_protocol_alpha.Main
    voting_services.mli voting_services.ml
    tx_rollup_services.mli tx_rollup_services.ml
    alpha_services.mli alpha_services.ml
-   tx_rollup_l2_repr.ml
    tx_rollup_l2_operation.mli tx_rollup_l2_operation.ml
    tx_rollup_l2_storage.mli tx_rollup_l2_storage.ml
    tx_rollup_l2_context.mli tx_rollup_l2_context.ml

@@ -38,6 +38,9 @@
         "Script_repr",
         "Cache_memory_helpers",
         "Contract_repr",
+        "Tx_rollup_l2_repr",
+        "Pending_inbox_repr",
+        "Tx_rollup_state_repr",
         "Tx_rollup_repr",
         "Roll_repr_legacy",
         "Vote_repr",
@@ -128,7 +131,6 @@
         "Tx_rollup_services",
         "Alpha_services",
 
-        "Tx_rollup_l2_repr",
         "Tx_rollup_l2_operation",
         "Tx_rollup_l2_storage",
         "Tx_rollup_l2_context",

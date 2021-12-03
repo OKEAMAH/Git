@@ -35,4 +35,34 @@ val originate :
 val state :
   Raw_context.t ->
   Tx_rollup_repr.t ->
-  Tx_rollup_repr.state option tzresult Lwt.t
+  Tx_rollup_state_repr.t option tzresult Lwt.t
+
+(* [exists context tx_rollup] returns true if the given rollup has been
+   originated. *)
+val exists :
+  Raw_context.t -> Tx_rollup_repr.t -> (bool, error trace) result Lwt.t
+
+(** [pending_inbox context tx_rollup level] is the current pending inboxes of
+    [tx_rollup] at [level] in the context. *)
+val pending_inbox :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
+  Pending_inbox_repr.stored_operation list option tzresult Lwt.t
+
+(** [add_message context tx_rollup level message] adds a message to a rollup's
+    inbox *)
+val add_message :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
+  Pending_inbox_repr.stored_operation ->
+  Raw_context.t tzresult Lwt.t
+
+(** [retire_rollup_level contxt tx_rollup level] removes all data
+   associated with a level. *)
+val retire_rollup_level :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
+  Raw_context.t tzresult Lwt.t

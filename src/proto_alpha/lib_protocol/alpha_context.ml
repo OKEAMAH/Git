@@ -234,6 +234,18 @@ module Contract = struct
   module Internal_for_tests = Contract_repr
 end
 
+module Pending_inbox = struct
+  include Pending_inbox_repr
+end
+
+module Tx_rollup_state = struct
+  include Tx_rollup_state_repr
+end
+
+module Tx_rollup_l2 = struct
+  include Tx_rollup_l2_repr
+end
+
 module Tx_rollup = struct
   include Tx_rollup_repr
   include Tx_rollup_storage

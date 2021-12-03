@@ -619,6 +619,19 @@ module Votes = struct
 end
 
 module Tx_rollup = struct
+  let sub_path_level ~chain ~block ~tx_rollup_hash ~level sub =
+    [
+      "chains";
+      chain;
+      "blocks";
+      block;
+      "context";
+      "tx_rollup";
+      tx_rollup_hash;
+      sub;
+      level;
+    ]
+
   let sub_path ~chain ~block ~tx_rollup_hash sub =
     [
       "chains";
@@ -634,5 +647,12 @@ module Tx_rollup = struct
   let get_state ?endpoint ?hooks ?(chain = "main") ?(block = "head")
       ~tx_rollup_hash client =
     let path = sub_path ~chain ~block ~tx_rollup_hash "state" in
+    Client.rpc ?endpoint ?hooks GET path client
+
+  let get_pending_inbox ?endpoint ?hooks ?(chain = "main") ?(block = "head")
+      ~tx_rollup_hash ~level client =
+    let path =
+      sub_path_level ~chain ~block ~tx_rollup_hash ~level "pending_inbox"
+    in
     Client.rpc ?endpoint ?hooks GET path client
 end

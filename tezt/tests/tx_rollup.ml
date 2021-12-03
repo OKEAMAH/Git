@@ -29,6 +29,11 @@ let get_state tx_rollup_hash client =
   let* json = RPC.Tx_rollup.get_state ~tx_rollup_hash client in
   JSON.(json |-> "state" |> as_opt |> Option.map (fun _ -> ())) |> Lwt.return
 
+let get_pending_inbox tx_rollup_hash level client =
+  let* json = RPC.Tx_rollup.get_pending_inbox ~tx_rollup_hash ~level client in
+  JSON.(json |> fun t -> if is_null t then None else as_list_opt t)
+  |> Lwt.return
+
 (*                               test                                        *)
 
 let test_simple_use_case =
@@ -52,12 +57,31 @@ let test_simple_use_case =
   in
   let* () = Client.bake_for client in
   let* state = get_state tx_rollup_hash client in
-  match state with
-  | Some _ -> unit
-  | None ->
-      Test.fail
-        "The tx rollups was not correctly originated and no state exists for \
-         %s."
-        tx_rollup_hash
+  let* _ =
+    match state with
+    | Some _ -> unit
+    | None ->
+        Test.fail
+          "The tx rollup was not correctly originated and no state exists for \
+           %s."
+          tx_rollup_hash
+  in
+  let level = "0" in
+  let* inbox = get_pending_inbox tx_rollup_hash level client in
+  let* _ =
+    match inbox with
+    | Some [] -> unit
+    | Some (_ :: _) | None ->
+        Test.fail "The tx rollup was missing an inbox for  %s." tx_rollup_hash
+  in
+  let* expected_missing_inbox =
+    get_pending_inbox "tru1AfRm5DbFm1waUZPQ3wHhdPaLUSL7b1upm" level client
+  in
+  let* _ =
+    match expected_missing_inbox with
+    | Some _ -> Test.fail "A nonexistend tx rollup had an inbox."
+    | None -> unit
+  in
+  unit
 
 let register ~protocols = test_simple_use_case ~protocols

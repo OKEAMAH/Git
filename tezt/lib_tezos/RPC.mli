@@ -962,4 +962,15 @@ module Tx_rollup : sig
     tx_rollup_hash:string ->
     Client.t ->
     JSON.t Lwt.t
+
+  (** Call RPC /chain/[chain]/blocks/[block]/context/[rollup_hash]/[level]/pending_inbox *)
+  val get_pending_inbox :
+    ?endpoint:Client.endpoint ->
+    ?hooks:Process.hooks ->
+    ?chain:string ->
+    ?block:string ->
+    tx_rollup_hash:string ->
+    level:string ->
+    Client.t ->
+    JSON.t Lwt.t
 end

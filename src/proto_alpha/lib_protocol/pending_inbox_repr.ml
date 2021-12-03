@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,40 +25,44 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+open Tx_rollup_l2_repr
 
-let custom_root =
-  (RPC_path.(open_root / "context" / "tx_rollup")
-    : RPC_context.t RPC_path.context)
+type transactions = {data : bytes; allocated_gas : Gas_limit_repr.Arith.fp}
 
-module S = struct
-  let state =
-    RPC_service.get_service
-      ~description:"Access the state of a rollup."
-      ~query:RPC_query.empty
-      ~output:(Data_encoding.option Tx_rollup_state.encoding)
-      RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
+type stored_operation = Deposit of deposit | Transactions of transactions
 
-  let pending_inbox =
-    RPC_service.get_service
-      ~description:"."
-      ~query:RPC_query.empty
-      ~output:
-        (Data_encoding.option
-        @@ Data_encoding.list Pending_inbox.stored_operation_encoding)
-      RPC_path.(
-        custom_root /: Tx_rollup.rpc_arg / "pending_inbox" /: Raw_level.rpc_arg)
-end
+let stored_operation_encoding =
+  let open Data_encoding in
+  union
+    [
+      case
+        (Tag 0)
+        ~title:"Deposit"
+        (obj1 (req "deposit" deposit_encoding))
+        (function Deposit deposit -> Some deposit | _ -> None)
+        (fun deposit -> Deposit deposit);
+      case
+        (Tag 1)
+        ~title:"Transactions"
+        (obj2
+           (req "data" Data_encoding.bytes)
+           (req "allocated_gas" Gas_limit_repr.Arith.z_fp_encoding))
+        (function
+          | Transactions {data; allocated_gas} -> Some (data, allocated_gas)
+          | _ -> None)
+        (fun (data, allocated_gas) -> Transactions {data; allocated_gas});
+    ]
 
-let register () =
-  let open Services_registration in
-  register1 ~chunked:false S.state (fun ctxt tx_rollup () () ->
-      Tx_rollup.state ctxt tx_rollup) ;
-  register2 ~chunked:false S.pending_inbox (fun ctxt tx_rollup level () () ->
-      Tx_rollup.pending_inbox ctxt tx_rollup level)
+type t = stored_operation list
 
-let state ctxt block tx_rollup =
-  RPC_context.make_call1 S.state ctxt block tx_rollup () ()
+let encoding = Data_encoding.(list stored_operation_encoding)
 
-let pending_inbox ctxt block tx_rollup level =
-  RPC_context.make_call2 S.pending_inbox ctxt block tx_rollup level () ()
+let empty = []
+
+let pp fmt t =
+  Format.fprintf fmt "pending_inbox: total blocks %d" (List.length t)
+
+(* Operations are stored in reverse order, and reversed when requested *)
+let append t txn = txn :: t
+
+let get_operations t = List.rev t

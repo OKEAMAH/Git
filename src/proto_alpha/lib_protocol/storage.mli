@@ -688,6 +688,12 @@ module Tx_rollup : sig
   module State :
     Indexed_data_storage
       with type key = Tx_rollup_repr.t
-       and type value = Tx_rollup_repr.state
+       and type value = Tx_rollup_state_repr.t
+       and type t := Raw_context.t
+
+  module Pending_inbox :
+    Indexed_data_storage
+      with type key = Raw_level_repr.t * Tx_rollup_repr.t
+       and type value = Pending_inbox_repr.t
        and type t := Raw_context.t
 end

@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,40 +25,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+(** [state] represents the state of a tx_rollup. *)
+type t
 
-let custom_root =
-  (RPC_path.(open_root / "context" / "tx_rollup")
-    : RPC_context.t RPC_path.context)
+val encoding : t Data_encoding.t
 
-module S = struct
-  let state =
-    RPC_service.get_service
-      ~description:"Access the state of a rollup."
-      ~query:RPC_query.empty
-      ~output:(Data_encoding.option Tx_rollup_state.encoding)
-      RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
+(** [empty_state] is the initial value at the origination of a
+        tx_rollup. *)
+val empty : t
 
-  let pending_inbox =
-    RPC_service.get_service
-      ~description:"."
-      ~query:RPC_query.empty
-      ~output:
-        (Data_encoding.option
-        @@ Data_encoding.list Pending_inbox.stored_operation_encoding)
-      RPC_path.(
-        custom_root /: Tx_rollup.rpc_arg / "pending_inbox" /: Raw_level.rpc_arg)
-end
-
-let register () =
-  let open Services_registration in
-  register1 ~chunked:false S.state (fun ctxt tx_rollup () () ->
-      Tx_rollup.state ctxt tx_rollup) ;
-  register2 ~chunked:false S.pending_inbox (fun ctxt tx_rollup level () () ->
-      Tx_rollup.pending_inbox ctxt tx_rollup level)
-
-let state ctxt block tx_rollup =
-  RPC_context.make_call1 S.state ctxt block tx_rollup () ()
-
-let pending_inbox ctxt block tx_rollup level =
-  RPC_context.make_call2 S.pending_inbox ctxt block tx_rollup level () ()
+val pp : Format.formatter -> t -> unit
