@@ -469,7 +469,6 @@ let delete c contract =
       (* For non implicit contract Big_map should be cleared *)
       failwith "Non implicit contracts cannot be removed"
   | Some _ ->
-      Contract_delegate_storage.unlink c contract >>=? fun c ->
       Storage.Contract.Spendable_balance.remove_existing c contract
       >>=? fun c ->
       Contract_manager_storage.remove_existing c contract >>=? fun c ->

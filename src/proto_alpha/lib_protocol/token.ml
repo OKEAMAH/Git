@@ -204,8 +204,11 @@ let spend ctxt src amount origin =
       | `Contract src ->
           Contract_storage.spend_only_call_from_token ctxt src amount
           >>=? fun ctxt ->
-          remove_contract_stake ctxt src amount >|=? fun ctxt ->
-          (ctxt, Contract src)
+          remove_contract_stake ctxt src amount >>=? fun ctxt ->
+          Contract_storage.allocated ctxt src >>=? fun allocated ->
+          (if allocated then return ctxt
+          else Contract_delegate_storage.delete ctxt src)
+          >|=? fun ctxt -> (ctxt, Contract src)
       | `Collected_commitments bpkh ->
           Commitment_storage.decrease_commitment_only_call_from_token
             ctxt
