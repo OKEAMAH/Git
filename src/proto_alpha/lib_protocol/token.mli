@@ -36,11 +36,22 @@
     it is easier to track transfers of tokens throughout the protocol by running
     [grep -R "Token.transfer" src/proto_alpha].
 
-    In addition to the token movements, any token transfer includes the
+    This module also manages the tokens' staking.
+    This module also manages the tokens' staking.
+    First, in addition to the token movements, any token transfer includes the
     associated staking movements. When [source] is a delegator,
-    its delegate's staking balance is increased by the transfered [amount], and
+    its delegate's staking balance is increased by the transferred [amount], and
     when [dest] is a delegator, its delegate's staking balance is decreased by
-    [amount].*)
+    [amount].
+    Second, along with the delegators/delegatees relationship management, this module
+    manages the associated stake movements.
+    When initiating a delegation, the delegatee's staking balance is increased by
+    the delegator's token balance.
+    When deleting a delegation, the delegatee's staking balance is decreased by
+    the delegator's token balance.
+    When updating a delegation, the staking balance of the current delegatee's
+    staking balance is decreased by the delegator's token balance, and
+    the novel delegatee's staking balance is increased by it.*)
 
 (** [container] is the type of token holders with finite capacity, and whose assets
     are contained in the context. *)
@@ -142,17 +153,41 @@ val transfer :
   Tez_repr.t ->
   (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t
 
-(** [add_contract_stake_balance_and_frozen_bonds] and
-    [remove_contract_stake_balance_and_frozen_bonds]
-    temporary functions to facilitate the later movement of the delegation.
-    They will disappear in a future commit. *)
-val add_contract_stake_balance_and_frozen_bonds :
-  Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
-
-val remove_contract_stake_balance_and_frozen_bonds :
-  Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
-
-(** [delegates_to_self ctxt delegate] returns true iff delegate is an implicit contract
-    that delegates to itself. *)
+(** [delegates_to_self ctxt delegate] returns true iff delegate is an
+    implicit contract that delegates to itself. *)
 val delegates_to_self :
   Raw_context.t -> Signature.Public_key_hash.t -> bool tzresult Lwt.t
+
+(** [init_delegate ctxt contract delegate] sets the [delegate] associated
+    to [contract].
+
+    This function is undefined if [contract] is not allocated, or if [contract]
+    has already a delegate.
+
+    It should be guarded by a [delegates_to_self delegate] checks. *)
+val init_delegate :
+  Raw_context.t ->
+  Contract_repr.t ->
+  Signature.Public_key_hash.t ->
+  Raw_context.t tzresult Lwt.t
+
+(** [update_delegate ctxt contract delegate] updates the [delegate] associated
+    to [contract].
+
+    This function is undefined if [contract] is not allocated, or if [contract]
+    does not have a delegate.
+
+    It should be guarded by a [delegates_to_self delegate] checks. *)
+val update_delegate :
+  Raw_context.t ->
+  Contract_repr.t ->
+  Signature.Public_key_hash.t ->
+  Raw_context.t tzresult Lwt.t
+
+(** [delete_delegate ctxt contract] behaves as [remove_delegate ctxt contract],
+    but in addition removes the association of the [contract] to its current
+    delegate, leaving the former with no delegate.
+
+    This function is undefined if [contract] is not allocated. *)
+val delete_delegate :
+  Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t

@@ -39,16 +39,6 @@ let add_contract_stake ctxt contract amount =
   | None -> return ctxt
   | Some delegate -> Stake_storage.add_stake ctxt delegate amount
 
-let remove_contract_stake_balance_and_frozen_bonds ctxt contract =
-  Contract_storage.get_balance_and_frozen_bonds ctxt contract
-  >>=? fun balance_and_frozen_bonds ->
-  remove_contract_stake ctxt contract balance_and_frozen_bonds
-
-let add_contract_stake_balance_and_frozen_bonds ctxt contract =
-  Contract_storage.get_balance_and_frozen_bonds ctxt contract
-  >>=? fun balance_and_frozen_bonds ->
-  add_contract_stake ctxt contract balance_and_frozen_bonds
-
 (* A delegate is registered if its "implicit account" delegates to itself. *)
 let delegates_to_self c delegate =
   Contract_delegate_storage.find c (Contract_repr.implicit_contract delegate)
@@ -56,6 +46,25 @@ let delegates_to_self c delegate =
   | Some current_delegate ->
       Signature.Public_key_hash.equal delegate current_delegate
   | None -> false
+
+let init_delegate ctxt contract delegate =
+  Contract_storage.get_balance_and_frozen_bonds ctxt contract
+  >>=? fun balance ->
+  Contract_delegate_storage.init ctxt contract delegate >>=? fun ctxt ->
+  Stake_storage.add_stake ctxt delegate balance
+
+let update_delegate ctxt contract delegate =
+  Contract_storage.get_balance_and_frozen_bonds ctxt contract
+  >>=? fun balance_and_frozen_bonds ->
+  remove_contract_stake ctxt contract balance_and_frozen_bonds >>=? fun ctxt ->
+  Contract_delegate_storage.set ctxt contract delegate >>=? fun ctxt ->
+  Stake_storage.add_stake ctxt delegate balance_and_frozen_bonds
+
+let delete_delegate ctxt contract =
+  Contract_storage.get_balance_and_frozen_bonds ctxt contract
+  >>=? fun balance_and_frozen_bonds ->
+  remove_contract_stake ctxt contract balance_and_frozen_bonds >>=? fun ctxt ->
+  Contract_delegate_storage.delete ctxt contract
 
 type container =
   [ `Contract of Contract_repr.t
@@ -204,10 +213,9 @@ let spend ctxt src amount origin =
       | `Contract src ->
           Contract_storage.spend_only_call_from_token ctxt src amount
           >>=? fun ctxt ->
-          remove_contract_stake ctxt src amount >>=? fun ctxt ->
           Contract_storage.allocated ctxt src >>=? fun allocated ->
-          (if allocated then return ctxt
-          else Contract_delegate_storage.delete ctxt src)
+          (if allocated then remove_contract_stake ctxt src amount
+          else delete_delegate ctxt src)
           >|=? fun ctxt -> (ctxt, Contract src)
       | `Collected_commitments bpkh ->
           Commitment_storage.decrease_commitment_only_call_from_token

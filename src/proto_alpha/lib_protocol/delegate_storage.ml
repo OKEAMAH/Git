@@ -197,11 +197,7 @@ let init ctxt contract delegate =
   error_unless known_delegate (Unregistered_delegate delegate) >>?= fun () ->
   Token.delegates_to_self ctxt delegate >>=? fun is_registered_delegate ->
   error_unless is_registered_delegate (Unregistered_delegate delegate)
-  >>?= fun () ->
-  Contract_delegate_storage.init ctxt contract delegate >>=? fun ctxt ->
-  Contract_storage.get_balance_and_frozen_bonds ctxt contract
-  >>=? fun balance_and_frozen_bonds ->
-  Stake_storage.add_stake ctxt delegate balance_and_frozen_bonds
+  >>?= fun () -> Token.init_delegate ctxt contract delegate
 
 let set c contract delegate =
   match delegate with
@@ -212,9 +208,7 @@ let set c contract delegate =
           Token.delegates_to_self c pkh >>=? fun is_registered_delegate ->
           fail_when is_registered_delegate (No_deletion pkh)
       | None -> return_unit)
-      >>=? fun () ->
-      Token.remove_contract_stake_balance_and_frozen_bonds c contract
-      >>=? fun c -> Contract_delegate_storage.delete c contract
+      >>=? fun () -> Token.delete_delegate c contract
   | Some delegate ->
       Contract_manager_storage.is_manager_key_revealed c delegate
       >>=? fun known_delegate ->
@@ -253,11 +247,7 @@ let set c contract delegate =
           (self_delegation && not exists)
           (Empty_delegate_account delegate)
         >>?= fun () ->
-        Token.remove_contract_stake_balance_and_frozen_bonds c contract
-        >>=? fun c ->
-        Contract_delegate_storage.set c contract delegate >>=? fun c ->
-        Token.add_contract_stake_balance_and_frozen_bonds c contract
-        >>=? fun c ->
+        Token.update_delegate c contract delegate >>=? fun c ->
         if self_delegation then
           Storage.Delegates.add c delegate >>= fun c -> set_active c delegate
         else return c
