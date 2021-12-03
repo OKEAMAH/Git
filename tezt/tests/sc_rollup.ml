@@ -87,7 +87,7 @@ let test_origination =
 *)
 let setup_fresh_rollup f node client bootstrap1_key =
   let* rollup_address =
-    Client.originate_rollup
+    Client.originate_sc_rollup
       ~burn_cap:Tez.(of_int 9999999)
       ~src:bootstrap1_key
       ~kind:"arith"
