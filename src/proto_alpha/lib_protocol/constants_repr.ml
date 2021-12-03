@@ -388,9 +388,9 @@ let check_constants constants =
     Period_repr.(constants.minimal_block_delay > zero)
     (Invalid_protocol_constants
        "The minimal block delay must be greater than zero")
-  (* we do not check delay_increment_per_round since its invariant is that it *
-     must be positive. Its encoding as [Period_repr.t] already guarantees that
-     invariant *)
+  (* we do not check delay_increment_per_round since its invariant is that it
+     must be non-negative only. Its encoding as [Period_repr.t] already
+     guarantees that invariant *)
   >>?
   fun () ->
   error_unless
