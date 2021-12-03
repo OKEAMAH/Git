@@ -327,6 +327,7 @@ let estimated_gas_single (type kind)
         Ok consumed_gas
     | Applied (Tx_rollup_submit_batch_result {consumed_gas; _}) ->
         Ok consumed_gas
+    | Applied (Tx_rollup_commit_result {consumed_gas; _}) -> Ok consumed_gas
     | Applied (Sc_rollup_originate_result {consumed_gas; _}) -> Ok consumed_gas
     | Applied (Sc_rollup_add_messages_result {consumed_gas; _}) ->
         Ok consumed_gas
@@ -375,6 +376,7 @@ let estimated_storage_single (type kind) ~tx_rollup_origination_size
            We need to charge for newly allocated storage (as we do for
            Michelson’s big map). *)
         Ok Z.zero
+    | Applied (Tx_rollup_commit_result _) -> Ok Z.zero
     | Applied (Sc_rollup_originate_result {size; _}) -> Ok size
     | Applied (Sc_rollup_add_messages_result _) -> Ok Z.zero
     | Skipped _ -> assert false
@@ -428,6 +430,7 @@ let originated_contracts_single (type kind)
     | Applied (Set_deposits_limit_result _) -> Ok []
     | Applied (Tx_rollup_origination_result _) -> Ok []
     | Applied (Tx_rollup_submit_batch_result _) -> Ok []
+    | Applied (Tx_rollup_commit_result _) -> Ok []
     | Applied (Sc_rollup_originate_result _) -> Ok []
     | Applied (Sc_rollup_add_messages_result _) -> Ok []
     | Skipped _ -> assert false

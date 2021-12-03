@@ -1264,6 +1264,17 @@ let apply_manager_operation_content :
           }
       in
       return (ctxt, result, [])
+  | Tx_rollup_commit {rollup; commitment} ->
+      Tx_rollup_commitments.add_commitment ctxt rollup source commitment
+      >>=? fun ctxt ->
+      let result =
+        Tx_rollup_commit_result
+          {
+            consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+            balance_updates = [];
+          }
+      in
+      return (ctxt, result, [])
   | Sc_rollup_originate {kind; boot_sector} ->
       Sc_rollup_operations.originate ctxt ~kind ~boot_sector
       >>=? fun ({address; size}, ctxt) ->
@@ -1410,6 +1421,8 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
         Compare.Int.(String.length content < size_limit)
         Tx_rollup_inbox.Tx_rollup_message_size_exceeds_limit
       >|=? fun () -> ctxt
+  | Tx_rollup_commit _ ->
+      assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
       assert_sc_rollup_feature_enabled ctxt >|=? fun () -> ctxt)
   >>=? fun ctxt ->
@@ -1520,6 +1533,8 @@ let burn_storage_fees :
           We need to charge for newly allocated storage (as we do for
           Michelson’s big map). *)
       return (ctxt, storage_limit, Tx_rollup_submit_batch_result payload)
+  | Tx_rollup_commit_result payload ->
+      return (ctxt, storage_limit, Tx_rollup_commit_result payload)
   | Sc_rollup_originate_result payload ->
       let payer = `Contract payer in
       Fees.burn_sc_rollup_origination_fees
