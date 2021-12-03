@@ -2216,6 +2216,13 @@ module Tx_rollup_commitments : sig
     Commitment.t ->
     context tzresult Lwt.t
 
+  val reject_commitment :
+    context ->
+    Tx_rollup.t ->
+    Raw_level.t ->
+    Commitment_hash.t ->
+    context tzresult Lwt.t
+
   val get_commitments :
     context -> Tx_rollup.t -> Raw_level.t -> (context * t) tzresult Lwt.t
 

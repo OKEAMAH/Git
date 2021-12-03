@@ -50,6 +50,20 @@ val remove_bond :
   Signature.public_key_hash ->
   Raw_context.t tzresult Lwt.t
 
+(** [reject_commitment ctxt tx_rollup_repr level commitment_hash]
+   rejects a commitment with a given hash at a given level.  All
+   successor commitments are removed, and any bonds associated with
+   them are removed.  Some successor commitments might be from
+   different contracts, in which case, we recursively remove all
+   contracts from those contracts and their successors, and so forth.
+   *)
+val reject_commitment :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
+  Tx_rollup_commitments_repr.Commitment_hash.t ->
+  Raw_context.t tzresult Lwt.t
+
 (** [retire_rollup_level context tx_rollup level] removes all data
    associated with a level. It decrements the bonded commitment count
    for any contracts whose commitments have been either accepted or

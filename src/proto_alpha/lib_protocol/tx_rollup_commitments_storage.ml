@@ -119,6 +119,7 @@ let add_commitment ctxt tx_rollup pkh (commitment : Commitment.t) =
   >>=? fun (ctxt, _, _) -> adjust_commitment_bond ctxt tx_rollup pkh 1
 
 module Commitment_set = Set.Make (Commitment_hash)
+module Contract_set = Set.Make (Signature.Public_key_hash)
 
 let rec remove_successors :
     Raw_context.t ->
@@ -228,6 +229,125 @@ let get_commitment_roots ctxt tx_rollup (level : Raw_level_repr.t)
   >>=? fun (ctxt, before_hash) ->
   nth_root commitment index >>?= fun after_hash ->
   return (ctxt, (before_hash, after_hash))
+
+let rec accumulate_bad_commitments :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    Raw_level_repr.t ->
+    Raw_level_repr.t ->
+    Commitment_set.t ->
+    Contract_set.t ->
+    (Commitment_set.t * Contract_set.t) tzresult Lwt.t =
+ fun ctxt tx_rollup level top commitments contracts ->
+  let add_bad_commitments (commitments, contracts)
+      {commitment; hash; committer; _} =
+    if
+      Option.value ~default:false
+      @@ Option.map
+           (fun predecessor -> Commitment_set.mem predecessor commitments)
+           commitment.predecessor
+      || Contract_set.mem committer contracts
+    then
+      (Commitment_set.add hash commitments, Contract_set.add committer contracts)
+    else (commitments, contracts)
+  in
+  if Raw_level_repr.(level > top) then return (commitments, contracts)
+  else
+    let key = (level, tx_rollup) in
+    Storage.Tx_rollup.Commitment_list.find ctxt key
+    >>=? fun (ctxt, commitment_list) ->
+    let pending =
+      match commitment_list with None -> [] | Some pending -> pending
+    in
+    let (commitments, contracts) =
+      List.fold_left add_bad_commitments (commitments, contracts) pending
+    in
+    get_next_level ctxt tx_rollup level >>=? fun (ctxt, next_level) ->
+    match next_level with
+    | None -> return (commitments, contracts)
+    | Some next_level ->
+        accumulate_bad_commitments
+          ctxt
+          tx_rollup
+          next_level
+          top
+          commitments
+          contracts
+
+let rec remove_commitments_by_hash :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    Raw_level_repr.t ->
+    Raw_level_repr.t ->
+    Commitment_set.t ->
+    Raw_context.t tzresult Lwt.t =
+ fun ctxt tx_rollup level top commitments ->
+  if Raw_level_repr.(level > top) then return ctxt
+  else
+    let key = (level, tx_rollup) in
+    Storage.Tx_rollup.Commitment_list.find ctxt key
+    >>=? fun (ctxt, commitment_list) ->
+    (match commitment_list with
+    | None ->
+        (* No commitments at this level -- just recurse *)
+        return ctxt
+    | Some pending ->
+        let new_pending =
+          List.filter
+            (fun {hash; _} -> not @@ Commitment_set.mem hash commitments)
+            pending
+        in
+        Storage.Tx_rollup.Commitment_list.add ctxt key new_pending
+        >|=? just_ctxt)
+    >>=? fun ctxt ->
+    get_next_level ctxt tx_rollup level >>=? fun (ctxt, next_level) ->
+    match next_level with
+    | None -> return ctxt
+    | Some next_level ->
+        remove_commitments_by_hash ctxt tx_rollup next_level top commitments
+
+let reject_commitment ctxt tx_rollup (level : Raw_level_repr.t)
+    (commitment_id : Commitment_hash.t) =
+  let top = (Raw_context.current_level ctxt).level in
+  Storage.Tx_rollup.Commitment_list.get ctxt (level, tx_rollup)
+  >>=? fun (ctxt, commitments) ->
+  let matching_commitments =
+    List.filter
+      (fun {hash; _} -> Commitment_hash.(hash = commitment_id))
+      commitments
+  in
+  let matching = List.hd matching_commitments in
+  Option.value_e ~error:(Error_monad.trace_of_error No_such_commitment) matching
+  >>?= fun to_remove ->
+  let initial_bad_commitments = Commitment_set.of_list [commitment_id] in
+  let initial_evildoers = Contract_set.of_list [to_remove.committer] in
+  let rec aux bad_commitments evildoers =
+    accumulate_bad_commitments
+      ctxt
+      tx_rollup
+      level
+      top
+      bad_commitments
+      evildoers
+    >>=? fun (new_bad_commitments, new_evildoers) ->
+    if
+      Compare.Int.(
+        Contract_set.cardinal new_evildoers = Contract_set.cardinal evildoers
+        && Commitment_set.cardinal new_bad_commitments
+           = Commitment_set.cardinal bad_commitments)
+    then return (new_bad_commitments, new_evildoers)
+    else aux new_bad_commitments new_evildoers
+  in
+  aux initial_bad_commitments initial_evildoers
+  >>=? fun (bad_commitments, evildoers) ->
+  remove_commitments_by_hash ctxt tx_rollup level top bad_commitments
+  >>=? fun ctxt ->
+  Contract_set.fold_es
+    (fun contract ctxt ->
+      let key = (tx_rollup, contract) in
+      Storage.Tx_rollup.Commitment_bond.remove ctxt key >|=? just_ctxt)
+    evildoers
+    ctxt
 
 let retire_rollup_level :
     Raw_context.t ->
