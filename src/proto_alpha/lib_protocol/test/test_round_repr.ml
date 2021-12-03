@@ -33,50 +33,6 @@
 open Protocol
 open Alpha_context
 
-let round_duration round_durations ~round =
-  match List.nth_opt round_durations (Int32.to_int round) with
-  | Some duration -> duration
-  | None -> (
-      let len = List.length round_durations in
-      match List.rev round_durations with
-      | last :: last_but_one :: _ ->
-          let last = Period_repr.to_seconds last in
-          let last_but_one = Period_repr.to_seconds last_but_one in
-          let diff = Int64.sub last last_but_one in
-          assert (Compare.Int64.(diff >= 0L)) ;
-          let offset =
-            Int64.sub (Int64.of_int32 round) (Int64.of_int (len - 1))
-          in
-          let duration = Int64.add last (Int64.mul diff offset) in
-          Period_repr.of_seconds_exn duration
-      | _ -> assert false)
-
-let test_round_repr () =
-  let round0 = Period_repr.one_second in
-  let round1 = Period_repr.of_seconds_exn 4L in
-  let round_durations =
-    Stdlib.Option.get @@ Round_repr.Durations.create_opt ~round0 ~round1 ()
-  in
-  let rec check_rounds = function
-    | [] -> return_unit
-    | round :: rounds -> (
-        let duration = round_duration ~round [round0; round1] in
-        match Round_repr.of_int32 round with
-        | Error _ -> failwith "Incorrect round value %ld" round
-        | Ok round ->
-            if
-              Period_repr.equal
-                (Round_repr.Durations.round_duration round_durations round)
-                duration
-            then check_rounds rounds
-            else
-              failwith
-                "Incorrect computed duration for round %a@."
-                Round_repr.pp
-                round)
-  in
-  check_rounds [0l; 1l; 2l; 3l; 4l; 5l]
-
 let ( >>>=? ) v f = v >|= Environment.wrap_tzresult >>=? f
 
 let ( >>>?= ) v f = v |> Environment.wrap_tzresult >>?= f
@@ -188,27 +144,29 @@ let case_3_6 =
 
 let test_cases =
   [
-    ([3; 3], case_3_3);
-    ([3; 3; 3], case_3_3);
-    ([3; 6], case_3_6);
-    ([3; 6; 9], case_3_6);
+    (* (minimal_block_delay, delay_increment_per_round), test_case_expectations *)
+    ((3, 0), case_3_3, "case_3_3");
+    ((3, 3), case_3_6, "case_3_6");
   ]
 
 let round_of_int i = Round_repr.of_int i |> Environment.wrap_tzresult
 
-let process_test_case (round_durations, ios) =
+let mk_round_durations minimal_block_delay delay_increment_per_round =
+  let minimal_block_delay =
+    Period_repr.of_seconds_exn @@ Int64.of_int minimal_block_delay
+  in
+  let delay_increment_per_round =
+    Period_repr.of_seconds_exn @@ Int64.of_int delay_increment_per_round
+  in
+  (* We assume test specifications do respect round_durations
+     invariants and cannot fail *)
+  Stdlib.Option.get
+  @@ Round_repr.Durations.create_opt
+       ~minimal_block_delay
+       ~delay_increment_per_round
+
+let process_test_case (round_durations, ios, _) =
   let open Round_repr in
-  (match
-     List.map
-       (fun x -> Period_repr.of_seconds_exn (Int64.of_int x))
-       round_durations
-   with
-  | round0 :: round1 :: other_rounds ->
-      Durations.create ~round0 ~round1 ~other_rounds ()
-      |> Environment.wrap_tzresult
-  | _ -> assert false)
-  >>?= fun round_durations ->
-  (* test [round_duration] *)
   List.iter_es
     (fun (i, o) ->
       round_of_int i >>?= fun round ->
@@ -221,13 +179,15 @@ let process_test_case (round_durations, ios) =
   >>=? fun () ->
   (* test [round_and_offset] *)
   List.iter_es
-    (fun (i, (r, ro)) ->
-      let level_offset = Period_repr.of_seconds_exn (Int64.of_int i) in
+    (fun (level_offset, (round, ro)) ->
+      let level_offset =
+        Period_repr.of_seconds_exn (Int64.of_int level_offset)
+      in
       Environment.wrap_tzresult (round_and_offset round_durations ~level_offset)
       >>?= fun round_and_offset ->
       Assert.equal_int32
         ~loc:__LOC__
-        (Int32.of_int r)
+        (Int32.of_int round)
         (Round_repr.to_int32 round_and_offset.round)
       >>=? fun () ->
       Assert.equal_int64
@@ -271,8 +231,16 @@ let process_test_case (round_durations, ios) =
     ios.round_of_timestamp
 
 let test_round () =
+  let final_test_cases =
+    List.map
+      (fun ((minimal_block_delay, delay_increment_per_round), ios, name) ->
+        ( mk_round_durations minimal_block_delay delay_increment_per_round,
+          ios,
+          name ))
+      test_cases
+  in
   (* TODO this could be run in the error monad instead of lwt *)
-  List.iter_es process_test_case test_cases
+  List.iter_es process_test_case final_test_cases
 
 let ts_add ts period =
   match Timestamp.(ts +? period) with
@@ -283,7 +251,9 @@ let test_round_of_timestamp () =
   let duration0 = Period.of_seconds_exn 1L in
   let round_durations =
     Stdlib.Option.get
-    @@ Round.Durations.create_opt ~round0:duration0 ~round1:duration0 ()
+    @@ Round.Durations.create_opt
+         ~minimal_block_delay:duration0
+         ~delay_increment_per_round:Period.zero
   in
   let predecessor_timestamp = Time.Protocol.epoch in
   let diff = ref 0 in
@@ -309,13 +279,17 @@ let test_round_of_timestamp () =
 let round_of_timestamp_perf durations =
   let duration0_int64 = Stdlib.List.hd durations in
   let duration0 = Period.of_seconds_exn duration0_int64 in
+  let delay_increment_per_round =
+    Period.of_seconds_exn
+      (Int64.sub (Stdlib.List.nth durations 1) duration0_int64)
+  in
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~round0:duration0
-         ~round1:(Period.of_seconds_exn (Stdlib.List.nth durations 1))
-         ()
+         ~minimal_block_delay:duration0
+         ~delay_increment_per_round
   in
+
   let predecessor_timestamp = Time.Protocol.epoch in
   let level_start = ts_add predecessor_timestamp duration0 in
   let max_ts = Int64.(sub (of_int32 Int32.max_int) duration0_int64) in
@@ -346,13 +320,17 @@ let test_round_of_timestamp_perf () =
   List.iter_es round_of_timestamp_perf default_round_durations_list
 
 let timestamp_of_round_perf durations =
-  let duration0 = Period.of_seconds_exn (Stdlib.List.hd durations) in
+  let duration0_int64 = Stdlib.List.hd durations in
+  let duration0 = Period.of_seconds_exn duration0_int64 in
+  let delay_increment_per_round =
+    Period.of_seconds_exn
+      (Int64.sub (Stdlib.List.nth durations 1) duration0_int64)
+  in
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~round0:duration0
-         ~round1:(Period.of_seconds_exn (Stdlib.List.nth durations 1))
-         ()
+         ~minimal_block_delay:duration0
+         ~delay_increment_per_round
   in
   let predecessor_timestamp = Time.Protocol.epoch in
   let rec loop i =
@@ -380,10 +358,10 @@ let test_error_is_triggered_for_too_high_timestamp () =
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~round0:(Period.of_seconds_exn 1L)
-         ~round1:(Period.of_seconds_exn 1L)
-         ()
+         ~minimal_block_delay:(Period.of_seconds_exn 1L)
+         ~delay_increment_per_round:Period.zero
   in
+
   let predecessor_timestamp = Time.Protocol.epoch in
   let res =
     Round.round_of_timestamp
@@ -407,12 +385,17 @@ let rec ( --> ) i j =
   if Compare.Int.(i > j) then [] else i :: (succ i --> j)
 
 let ts_of_round_inverse durations round_int =
+  let duration0_int64 = Stdlib.List.hd durations in
+  let minimal_block_delay = Period.of_seconds_exn duration0_int64 in
+  let delay_increment_per_round =
+    Period.of_seconds_exn
+      (Int64.sub (Stdlib.List.nth durations 1) duration0_int64)
+  in
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~round0:(Period.of_seconds_exn (Stdlib.List.nth durations 0))
-         ~round1:(Period.of_seconds_exn (Stdlib.List.nth durations 1))
-         ()
+         ~minimal_block_delay
+         ~delay_increment_per_round
   in
   let predecessor_timestamp = Time.Protocol.epoch in
   let predecessor_round = Round.zero in
@@ -445,12 +428,17 @@ let test_ts_of_round_inverse () =
     (List.map (fun i -> Int32.to_int Int32.max_int - i) (1 --> 20))
 
 let round_of_ts_inverse durations ts =
+  let duration0_int64 = Stdlib.List.hd durations in
+  let minimal_block_delay = Period.of_seconds_exn duration0_int64 in
+  let delay_increment_per_round =
+    Period.of_seconds_exn
+      (Int64.sub (Stdlib.List.nth durations 1) duration0_int64)
+  in
   let round_durations =
     Stdlib.Option.get
     @@ Round.Durations.create_opt
-         ~round0:(Period.of_seconds_exn (Stdlib.List.nth durations 0))
-         ~round1:(Period.of_seconds_exn (Stdlib.List.nth durations 1))
-         ()
+         ~minimal_block_delay
+         ~delay_increment_per_round
   in
   let predecessor_timestamp = Time.Protocol.epoch in
   let predecessor_round = Round.zero in
@@ -501,10 +489,36 @@ let test_round_of_ts_inverse () =
        (fun i -> Int64.of_int (Int32.to_int Int32.max_int - i))
        (0 --> 20))
 
+let test_level_offset_of_round () =
+  let rd1 =
+    let minimal_block_delay = 3 in
+    let delay_increment_per_round = 0 in
+    mk_round_durations minimal_block_delay delay_increment_per_round
+  in
+  List.iter_es
+    (fun (round_durations, tests) ->
+      List.iter_es
+        (fun (round, expected_offset) ->
+          Lwt.return @@ Environment.wrap_tzresult @@ Round_repr.of_int round
+          >>=? fun round ->
+          Lwt.return @@ Environment.wrap_tzresult
+          @@ Round_repr.level_offset_of_round round_durations ~round
+          >>=? fun computed_offset ->
+          Assert.equal_int64
+            ~loc:__LOC__
+            (Period_repr.to_seconds computed_offset)
+            (Int64.of_int expected_offset))
+        tests)
+    [
+      (rd1, [(0, 0); (1, 3); (2, 6)]);
+      (mk_round_durations 3 3, [(0, 0); (1, 3); (2, 9); (3, 18)]);
+    ]
+
 let tests =
   Tztest.
     [
-      tztest "round_duration [0..5]" `Quick test_round_repr;
+      (* tztest "round_duration [0..5]" `Quick test_round_repr; *)
+      tztest "test_level_offset_of_round" `Quick test_level_offset_of_round;
       tztest "test Round_duration" `Quick test_round;
       tztest "round_of_timestamp" `Quick test_round_of_timestamp;
       tztest "round_of_timestamp_perf" `Quick test_round_of_timestamp_perf;
