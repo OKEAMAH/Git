@@ -781,6 +781,7 @@ module Constants : sig
     tx_rollup_origination_size : int;
     tx_rollup_hard_size_limit_per_inbox : int;
     tx_rollup_hard_size_limit_per_message : int;
+    tx_rollup_commitment_bond : Tez.t;
     sc_rollup_enable : bool;
     sc_rollup_origination_size : int;
   }
@@ -871,6 +872,8 @@ module Constants : sig
   val tx_rollup_hard_size_limit_per_inbox : context -> int
 
   val tx_rollup_hard_size_limit_per_message : context -> int
+
+  val tx_rollup_commitment_bond : context -> Tez.t
 
   val sc_rollup_enable : context -> bool
 
@@ -2175,6 +2178,10 @@ module Tx_rollup_commitments : sig
 
   type error += Wrong_batch_count
 
+  type error += Retire_uncommitted_level
+
+  type error += No_such_commitment
+
   val add_commitment :
     context ->
     Tx_rollup.t ->
@@ -2182,8 +2189,25 @@ module Tx_rollup_commitments : sig
     Commitment.t ->
     context tzresult Lwt.t
 
+  val reject_commitment :
+    context ->
+    Tx_rollup.t ->
+    Raw_level.t ->
+    Commitment_hash.t ->
+    context tzresult Lwt.t
+
   val get_commitments :
     context -> Tx_rollup.t -> Raw_level.t -> (context * t) tzresult Lwt.t
+
+  val pending_bonded_commitments :
+    context -> Tx_rollup.t -> Contract.t -> (context * int) tzresult Lwt.t
+
+  module Internal_for_tests : sig
+    (** See [Tx_rollup_commitments_storage.retire_rollup_level]
+        for documentation *)
+    val retire_rollup_level :
+      context -> Tx_rollup.t -> Raw_level.t -> context tzresult Lwt.t
+  end
 end
 
 (** This simply re-exports {!Destination_repr}. *)

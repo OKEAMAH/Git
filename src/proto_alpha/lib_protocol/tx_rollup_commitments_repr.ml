@@ -35,6 +35,10 @@ type error += (* `Temporary *) Missing_commitment_predecessor
 
 type error += (* `Temporary *) Wrong_batch_count
 
+type error += (* `Temporary *) Retire_uncommitted_level
+
+type error += (* `Temporary *) No_such_commitment
+
 let () =
   let open Data_encoding in
   (* Commitment_hash_already_submitted *)
@@ -84,7 +88,26 @@ let () =
       "This commitment has a different number of batches than its inbox"
     unit
     (function Wrong_batch_count -> Some () | _ -> None)
-    (fun () -> Wrong_batch_count)
+    (fun () -> Wrong_batch_count) ;
+  (* Retire_uncommitted_level *)
+  register_error_kind
+    `Permanent
+    ~id:"Retire_uncommitted_level"
+    ~title:"Tried to retire a rollup level with no commitments"
+    ~description:
+      "An attempt was made to retire a rollup level with no commitments"
+    empty
+    (function Retire_uncommitted_level -> Some () | _ -> None)
+    (fun () -> Retire_uncommitted_level) ;
+  (* No_such_commitment *)
+  register_error_kind
+    `Permanent
+    ~id:"No_such_commitment"
+    ~title:"Tried to reject a commitment that doesn't exist"
+    ~description:"An attempt was made to reject a nonexistent commitment"
+    empty
+    (function No_such_commitment -> Some () | _ -> None)
+    (fun () -> No_such_commitment)
 
 let compare_or cmp c1 c2 f = match cmp c1 c2 with 0 -> f () | diff -> diff
 
@@ -127,7 +150,7 @@ end
 module Commitment = struct
   type batch_commitment = {
     (* TODO: add effects and replace bytes with Irmin:
-       https://gitlab.com/tezos/tezos/-/issues/2444
+              https://gitlab.com/tezos/tezos/-/issues/2444
     *)
     root : bytes;
   }

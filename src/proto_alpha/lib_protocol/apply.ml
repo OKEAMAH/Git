@@ -1265,13 +1265,24 @@ let apply_manager_operation_content :
       in
       return (ctxt, result, [])
   | Tx_rollup_commit {rollup; commitment} ->
+      ( Tx_rollup_commitments.pending_bonded_commitments ctxt rollup source
+      >>=? fun (ctxt, pending) ->
+        match pending with
+        | 0 ->
+            Token.transfer
+              ctxt
+              (`Contract source)
+              `Burned (* TODO: replace this sink with a special sink *)
+              (Constants.tx_rollup_commitment_bond ctxt)
+        | _ -> return (ctxt, []) )
+      >>=? fun (ctxt, balance_updates) ->
       Tx_rollup_commitments.add_commitment ctxt rollup source commitment
       >>=? fun ctxt ->
       let result =
         Tx_rollup_commit_result
           {
             consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
-            balance_updates = [];
+            balance_updates;
           }
       in
       return (ctxt, result, [])

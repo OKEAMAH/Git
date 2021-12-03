@@ -35,6 +35,11 @@ type error += (* `Temporary *) Missing_commitment_predecessor
 
 type error += (* `Branch *) Wrong_batch_count
 
+type error += (* `Branch *)
+                Retire_uncommitted_level
+
+type error += (* `Temporary *) No_such_commitment
+
 (** A specialized Blake2B implementation for hashing commitments with
     "toc1" as a base58 prefix *)
 module Commitment_hash : sig

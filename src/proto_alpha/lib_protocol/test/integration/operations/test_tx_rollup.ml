@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -201,6 +202,13 @@ let print_deposit_arg tx_rollup account =
 let assert_ok res = match res with Ok r -> r | Error _ -> assert false
 
 let raw_level level = assert_ok @@ Raw_level.of_int32 level
+
+let check_bond ctxt tx_rollup contract count =
+  wrap
+    (Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup contract)
+  >>=? fun (_, pending) ->
+  Alcotest.(check int "Pending commitment count correct" count pending) ;
+  return ()
 
 (** ---- TESTS -------------------------------------------------------------- *)
 
@@ -863,7 +871,7 @@ let test_commitments () =
   >>=? fun () ->
   let ctxt = Incremental.alpha_ctxt i in
   wrap (Tx_rollup_commitments.get_commitments ctxt tx_rollup level)
-  >>=? fun (_, commitments) ->
+  >>=? fun (ctxt, commitments) ->
   (Alcotest.(check int "Expected one commitment" 1 (List.length commitments)) ;
    let expected_hash = Tx_rollup_commitments.Commitment.hash commitment in
    match List.nth commitments 0 with
@@ -878,6 +886,8 @@ let test_commitments () =
          check raw_level_testable "Submitted" submitted_level submitted_at) ;
        return ())
   >>=? fun () ->
+  check_bond ctxt tx_rollup contract1 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
   ignore i ;
   return ()
 
@@ -974,6 +984,253 @@ let test_commitment_predecessor () =
   ignore i ;
   return ()
 
+(** [test_commitment_retire_simple] tests commitment retirement simple cases.
+    Note that it manually retires commitments rather than waiting for them to
+    age out. *)
+let test_commitment_retire_simple () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  (* In order to have a permissible commitment, we need a transaction. *)
+  let contents = "batch" in
+  Op.tx_rollup_submit_batch (B b) contract1 tx_rollup contents
+  >>=? fun operation ->
+  Block.bake ~operation b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let level_opt =
+    Raw_level.pred (Level.current (Incremental.alpha_ctxt i)).level
+  in
+  let level =
+    match level_opt with None -> assert false | Some level -> level
+  in
+  (* Test retirement with no commitment *)
+  wrap
+    (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
+       (Incremental.alpha_ctxt i)
+       tx_rollup
+       level)
+  >>= fun res ->
+  Assert.proto_error ~loc:__LOC__ res (fun e ->
+      e = Tx_rollup_commitments.Retire_uncommitted_level)
+  >>=? fun () ->
+  (* Now, make a commitment *)
+  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.make 20 '0'}]
+  in
+  let commitment : Tx_rollup_commitments.Commitment.t =
+    {level; batches; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  wrap
+    (Tx_rollup_commitments.pending_bonded_commitments
+       (Incremental.alpha_ctxt i)
+       tx_rollup
+       contract1)
+  >>=? fun (_, pending) ->
+  Alcotest.(check int "One pending commitment" 1 pending) ;
+  (* We can retire this level *)
+  wrap
+    (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
+       (Incremental.alpha_ctxt i)
+       tx_rollup
+       level)
+  >>=? fun ctxt ->
+  wrap
+    (Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup contract1)
+  >>=? fun (_, pending) ->
+  Alcotest.(check int "No more pending commitment" 0 pending) ;
+  ignore i ;
+  return ()
+
+(** [test_commitment_retire_complex] tests a complicated commitment
+    retirement scenario:
+
+    We have inboxes at 2, 3, and 6.
+
+    - A: Contract 1 commits to 2.
+    - B: Contract 2 commits to 2 (after 1; this commitment is
+    necessarily bogus, but we will assume that nobody notices)
+    - C: Contract 2 commits to 3 (atop A).
+    - D: Contract 1 commits to 3 (atop bogus commit B)
+    - E: Contract 2 commits to 3 (atop D).
+    - F: Contract 1 commits to 6 (atop C).
+
+    So now we retire 2.  We want nobody to get a bond back.  Then we
+    retire 3, which will enable 2 to get their bond back.  Then we
+    retire 6, which lets Contract 1 get its bond back.
+*)
+let test_commitment_retire_complex () =
+  context_init 2 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  let contract2 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  (* Transactions in blocks 2, 3, 6 *)
+  make_transactions_in tx_rollup contract1 [2; 3; 6] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.make 20 '0'}]
+  in
+  let commitment_a : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment_a >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let commitment_b : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_b >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_a in
+  let commitment_c : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_c >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_b in
+
+  let commitment_d : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_d >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_d in
+
+  let commitment_e : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 6l; batches; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_e >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_c in
+  let commitment_f : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_f >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  wrap
+    (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
+       (Incremental.alpha_ctxt i)
+       tx_rollup
+       (raw_level 2l))
+  >>=? fun ctxt ->
+  check_bond ctxt tx_rollup contract1 3 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 3 >>=? fun () ->
+  wrap
+    (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
+       ctxt
+       tx_rollup
+       (raw_level 3l))
+  >>=? fun ctxt ->
+  check_bond ctxt tx_rollup contract1 3 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
+  wrap
+    (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
+       ctxt
+       tx_rollup
+       (raw_level 6l))
+  >>=? fun ctxt ->
+  check_bond ctxt tx_rollup contract1 0 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
+  ignore ctxt ;
+  ignore i ;
+  return ()
+
+(** [test_rejection_propagation] tests a full rejection propagation: A commitment
+   by c1 is rejected, meaning that a future commitment by c2 is
+   rejected, meaning that a *past* commitment by c2 is rejected (by
+   "dead bond" rule), meaning that a later commitment by C3 is
+   rejectect (by "dead parent" rule)
+- A: Contract 1 commits to 2 (this will be rejected)
+- B: Contract 2 commits to 2 (this will *later* be rejected)
+- C: Contract 2 commits to 3 (atop A).
+- D: Contract 3 commits to 3 (atop B)
+- E: Contract 4 commits to 2 (this will survive)
+- F: Contract 4 commits to 3 (atop E; this will survive too)
+*)
+let test_rejection_propagation () =
+  context_init 4 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  let contract2 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
+  in
+  let contract3 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 2
+  in
+  let contract4 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 3
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  make_transactions_in tx_rollup contract1 [2; 3] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let batches1 : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.make 20 '0'}]
+  in
+  let batches2 : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.make 20 '1'}]
+  in
+  let batches3 : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.make 20 '2'}]
+  in
+  let commitment_a : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches = batches1; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment_a >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let commitment_b : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches = batches2; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_b >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_a in
+
+  let commitment_c : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches = batches1; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_c >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_b in
+
+  let commitment_d : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches = batches2; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract3 tx_rollup commitment_d >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let commitment_e : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches = batches3; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract4 tx_rollup commitment_e >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_e in
+
+  let commitment_f : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches = batches3; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract4 tx_rollup commitment_f >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  wrap
+    (Tx_rollup_commitments.reject_commitment
+       (Incremental.alpha_ctxt i)
+       tx_rollup
+       (raw_level 2l)
+       (Tx_rollup_commitments.Commitment.hash commitment_a))
+  >>=? fun ctxt ->
+  check_bond ctxt tx_rollup contract1 0 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
+  check_bond ctxt tx_rollup contract3 0 >>=? fun () ->
+  check_bond ctxt tx_rollup contract4 2 >>=? fun () ->
+  ignore i ;
+  return ()
+
 let tests =
   [
     Tztest.tztest
@@ -1025,4 +1282,9 @@ let tests =
       "Test commitment predecessor edge cases"
       `Quick
       test_commitment_predecessor;
+    Tztest.tztest
+      "Test commitment retirement"
+      `Quick
+      test_commitment_retire_simple;
+    Tztest.tztest "Test commitment rejection" `Quick test_rejection_propagation;
   ]

@@ -29,12 +29,38 @@
     to commitments for transaction rollups. *)
 
 (** [add_commitment context tx_rollup contract commitment] adds a
-   commitment to a rollup. *)
+   commitment to a rollup. It also increments the bonded commitment
+   count for the contract. *)
 val add_commitment :
   Raw_context.t ->
   Tx_rollup_repr.t ->
   Contract_repr.t ->
   Tx_rollup_commitments_repr.Commitment.t ->
+  Raw_context.t tzresult Lwt.t
+
+(** [reject_commitment ctxt tx_rollup_repr level commitment_hash]
+   rejects a commitment with a given hash at a given level.  All
+   successor commitments are removed, and any bonds associated with
+   them are removed.  Some successor commitments might be from
+   different contracts, in which case, we recursively remove all
+   contracts from those contracts and their successors, and so forth.
+   *)
+val reject_commitment :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
+  Tx_rollup_commitments_repr.Commitment_hash.t ->
+  Raw_context.t tzresult Lwt.t
+
+(** [retire_rollup_level context tx_rollup level] removes all data
+   associated with a level. It decrements the bonded commitment count
+   for any contracts whose commitments have been either accepted or
+   obviated (that is, neither accepted nor rejected).  This is normally
+   used in finalization and is only public for testing. *)
+val retire_rollup_level :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
   Raw_context.t tzresult Lwt.t
 
 (** [get_commitments context tx_rollup level] returns the list of
@@ -45,3 +71,12 @@ val get_commitments :
   Tx_rollup_repr.t ->
   Raw_level_repr.t ->
   (Raw_context.t * Tx_rollup_commitments_repr.t) tzresult Lwt.t
+
+(** [pending bonded_commitments ctxt tx_rollup contract] returns the
+   number of commitments that [contract] has made that are still
+   pending (that is, still subject to rejection) *)
+val pending_bonded_commitments :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Contract_repr.t ->
+  (Raw_context.t * int) tzresult Lwt.t
