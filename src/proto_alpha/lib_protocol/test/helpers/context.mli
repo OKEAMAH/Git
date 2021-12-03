@@ -163,7 +163,9 @@ module Delegate : sig
 end
 
 module Tx_rollup : sig
-  val state : t -> Tx_rollup.t -> Tx_rollup.state option tzresult Lwt.t
+  (** Return the state of a tx rollup, or an error if the rollup does not
+    exist. *)
+  val state : t -> Tx_rollup.t -> Tx_rollup_state.t tzresult Lwt.t
 end
 
 (** [init n] : returns an initial block with [n] initialized accounts

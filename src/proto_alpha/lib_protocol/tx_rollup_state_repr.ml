@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,27 +25,40 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+type t = {cost_per_byte : Tez_repr.t}
 
-let custom_root =
-  (RPC_path.(open_root / "context" / "tx_rollup")
-    : RPC_context.t RPC_path.context)
+let encoding =
+  let open Data_encoding in
+  conv
+    (fun {cost_per_byte} -> cost_per_byte)
+    (fun cost_per_byte -> {cost_per_byte})
+    (obj1 (req "cost_per_byte" Tez_repr.encoding))
 
-module S = struct
-  let state =
-    RPC_service.get_service
-      ~description:"Access the state of a rollup."
-      ~query:RPC_query.empty
-      ~output:Tx_rollup_state.encoding
-      RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
-end
+let pp fmt {cost_per_byte} =
+  Format.fprintf fmt "cost_per_byte: %a" Tez_repr.pp cost_per_byte
 
-let register () =
-  let open Services_registration in
-  register1 ~chunked:false S.state (fun ctxt tx_rollup () () ->
-      Tx_rollup.get_state_opt ctxt tx_rollup >|=? function
-      | Some x -> x
-      | None -> raise Not_found)
-
-let state ctxt block tx_rollup =
-  RPC_context.make_call1 S.state ctxt block tx_rollup () ()
+let update_cost_per_byte :
+    cost_per_byte:Tez_repr.t ->
+    tx_rollup_cost_per_byte:Tez_repr.t ->
+    final_size:int ->
+    hard_limit:int ->
+    Tez_repr.t =
+ fun ~cost_per_byte ~tx_rollup_cost_per_byte ~final_size ~hard_limit ->
+  let computation =
+    let open Compare.Int in
+    (* This cannot overflow because [hard_limit] is small enough, and
+       [final_size] is lesser than [hard_limit]. *)
+    let percentage = final_size * 100 / hard_limit in
+    if 90 < percentage then
+      Tez_repr.(
+        tx_rollup_cost_per_byte *? 105L >>? fun x ->
+        x /? 100L >>? fun x -> x +? one_mutez)
+    else if 80 < percentage && percentage <= 90 then ok tx_rollup_cost_per_byte
+    else
+      Tez_repr.(
+        tx_rollup_cost_per_byte *? 95L >>? fun x ->
+        x /? 100L >>? fun x -> x +? one_mutez)
+  in
+  match computation with
+  | Ok x -> Tez_repr.max cost_per_byte x
+  | Error _ -> cost_per_byte

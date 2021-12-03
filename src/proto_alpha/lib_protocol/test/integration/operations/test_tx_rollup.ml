@@ -38,7 +38,7 @@ open Alpha_context
 open Test_tez
 
 let check_tx_rollup_exists ctxt tx_rollup =
-  Context.Tx_rollup.state ctxt tx_rollup >|=? Option.is_some
+  Context.Tx_rollup.state ctxt tx_rollup >>=? fun _state -> return_unit
 
 (** [test_disable_feature_flag] try to originate a tx rollup with the feature
     flag is deactivated and check it fails *)
@@ -70,21 +70,23 @@ let test_origination () =
   Incremental.begin_construction b >>=? fun i ->
   Op.tx_rollup_origination (I i) contract >>=? fun (op, tx_rollup) ->
   Incremental.add_operation i op >>=? fun i ->
-  check_tx_rollup_exists (I i) tx_rollup >>=? fun exists ->
-  if exists then
-    cost_per_byte *? Int64.of_int tx_rollup_origination_size
-    >>?= fun tx_rollup_origination_burn ->
-    Assert.balance_was_debited
-      ~loc:__LOC__
-      (I i)
-      contract
-      balance
-      tx_rollup_origination_burn
-  else failwith "tx rollup was not correctly originated"
+  check_tx_rollup_exists (I i) tx_rollup >>=? fun () ->
+  cost_per_byte *? Int64.of_int tx_rollup_origination_size
+  >>?= fun tx_rollup_origination_burn ->
+  Assert.balance_was_debited
+    ~loc:__LOC__
+    (I i)
+    contract
+    balance
+    tx_rollup_origination_burn
 
 (** [test_two_origination] originate two tx rollups in the same operation and
     check that each has a different address. *)
 let test_two_origination () =
+  (*
+    TODO: https://gitlab.com/tezos/tezos/-/issues/2331
+    This test can be generalized using a property-based approach.
+   *)
   Context.init ~tx_rollup_enable:true 1 >>=? fun (b, contracts) ->
   let contract =
     WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
@@ -116,10 +118,53 @@ let test_two_origination () =
     txo1
     txo2
   >>=? fun () ->
-  check_tx_rollup_exists (I i) txo1 >>=? fun txo1_exists ->
-  Assert.equal_bool ~loc:__LOC__ txo1_exists true >>=? fun () ->
-  check_tx_rollup_exists (I i) txo2 >>=? fun txo2_exists ->
-  Assert.equal_bool ~loc:__LOC__ txo2_exists true
+  check_tx_rollup_exists (I i) txo1 >>=? fun () ->
+  check_tx_rollup_exists (I i) txo2 >>=? fun () -> return_unit
+
+(** Check that the cost per byte per inbox rate is updated correctly *)
+let test_cost_per_byte_update () =
+  let cost_per_byte = Tez.of_mutez_exn 250L in
+  let test ~tx_rollup_cost_per_byte ~final_size ~hard_limit ~result =
+    let result = Tez.of_mutez_exn result in
+    let tx_rollup_cost_per_byte = Tez.of_mutez_exn tx_rollup_cost_per_byte in
+    let new_cost_per_byte =
+      Alpha_context.Tx_rollup_state.Internal_for_tests.update_cost_per_byte
+        ~cost_per_byte
+        ~tx_rollup_cost_per_byte
+        ~final_size
+        ~hard_limit
+    in
+    Assert.equal_tez ~loc:__LOC__ result new_cost_per_byte
+  in
+
+  (* Cost per byte should remain constant *)
+  test
+    ~tx_rollup_cost_per_byte:1_000L
+    ~final_size:1_000
+    ~hard_limit:1_100
+    ~result:1_000L
+  >>=? fun () ->
+  (* Cost per byte should increase *)
+  test
+    ~tx_rollup_cost_per_byte:1_000L
+    ~final_size:1_000
+    ~hard_limit:1_000
+    ~result:1_051L
+  >>=? fun () ->
+  (* Cost per byte should decrease *)
+  test
+    ~tx_rollup_cost_per_byte:1_000L
+    ~final_size:1_000
+    ~hard_limit:1_500
+    ~result:951L
+  >>=? fun () ->
+  (* Cost per byte never decreased under the [cost_per_byte] constant *)
+  test
+    ~tx_rollup_cost_per_byte:(cost_per_byte |> Tez.to_mutez)
+    ~final_size:1_000
+    ~hard_limit:1_500
+    ~result:(cost_per_byte |> Tez.to_mutez)
+  >>=? fun () -> return_unit
 
 let tests =
   [
@@ -132,4 +177,8 @@ let tests =
       "check two originated tx rollup in one operation have different address"
       `Quick
       test_two_origination;
+    Tztest.tztest
+      "check the function that updates the cost per byte rate per inbox"
+      `Quick
+      test_cost_per_byte_update;
   ]

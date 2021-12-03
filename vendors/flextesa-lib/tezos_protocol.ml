@@ -169,8 +169,12 @@ let protocol_parameters_json t : Ezjsonm.t =
             , dict [("numerator", int 1); ("denominator", int 2)] )
           ; ("double_baking_punishment", string "640000000")
           ; ("tx_rollup_enable", bool false)
-          ; (* TODO: https://gitlab.com/tezos/tezos/-/issues/2152 *)
-            ("tx_rollup_origination_size", int 60_000)
+          ; (* TODO: https://gitlab.com/tezos/tezos/-/issues/2152
+               Transaction rollups parameters need to be refined,
+               currently the following values are merely
+               placeholders. *) ("tx_rollup_origination_size", int 60_000)
+          ; ("tx_rollup_hard_size_limit_per_inbox", int 100_000)
+          ; ("tx_rollup_initial_inbox_cost_per_byte", string (Int.to_string 250))
           ; ("sc_rollup_enable", bool false)
           ; ("sc_rollup_origination_size", int 6_314) ]
       | `Granada | `Hangzhou -> []

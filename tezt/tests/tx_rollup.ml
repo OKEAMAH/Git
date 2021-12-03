@@ -25,9 +25,9 @@
 
 (*                               utils                                       *)
 
-let get_state tx_rollup client =
+let get_cost_per_byte tx_rollup client =
   let* json = RPC.Tx_rollup.get_state ~tx_rollup client in
-  JSON.(json |-> "state" |> as_opt |> Option.map (fun _ -> ())) |> Lwt.return
+  JSON.(json |-> "cost_per_byte" |> as_int |> Tez.of_mutez_int |> Lwt.return)
 
 (*                               test                                        *)
 
@@ -51,13 +51,9 @@ let test_simple_use_case =
       client
   in
   let* () = Client.bake_for client in
-  let* state = get_state tx_rollup client in
-  match state with
-  | Some _ -> unit
-  | None ->
-      Test.fail
-        "The tx rollups was not correctly originated and no state exists for \
-         %s."
-        tx_rollup
+  (* Check the transaction rollup exists by trying to fetch its current
+     [cost_per_byte] state variable. *)
+  let* _rate = get_cost_per_byte tx_rollup client in
+  unit
 
 let register ~protocols = test_simple_use_case ~protocols

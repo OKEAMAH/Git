@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,27 +25,53 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+type message = string
 
-let custom_root =
-  (RPC_path.(open_root / "context" / "tx_rollup")
-    : RPC_context.t RPC_path.context)
+let message_encoding = Data_encoding.string
 
-module S = struct
-  let state =
-    RPC_service.get_service
-      ~description:"Access the state of a rollup."
-      ~query:RPC_query.empty
-      ~output:Tx_rollup_state.encoding
-      RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
-end
+let message_size = String.length
 
-let register () =
-  let open Services_registration in
-  register1 ~chunked:false S.state (fun ctxt tx_rollup () () ->
-      Tx_rollup.get_state_opt ctxt tx_rollup >|=? function
-      | Some x -> x
-      | None -> raise Not_found)
+let hash_size = 32
 
-let state ctxt block tx_rollup =
-  RPC_context.make_call1 S.state ctxt block tx_rollup () ()
+module Message_hash =
+  Blake2B.Make
+    (Base58)
+    (struct
+      let name = "Tx_rollup_inbox_message_hash"
+
+      let title = "The hash of a message member of a transaction rollup inbox"
+
+      let b58check_prefix = "\001\014\133" (* h2(52) *)
+
+      let size = Some hash_size
+    end)
+
+let () = Base58.check_encoded_prefix Message_hash.b58check_encoding "h2" 52
+
+type message_hash = Message_hash.t
+
+let message_hash_pp = Message_hash.pp
+
+let message_hash_encoding = Message_hash.encoding
+
+let hash_message msg =
+  Message_hash.hash_bytes
+    [Data_encoding.Binary.to_bytes_exn message_encoding msg]
+
+type t = {contents : message_hash list; cumulated_size : int}
+
+let pp fmt {contents; cumulated_size} =
+  Format.fprintf
+    fmt
+    "tx rollup inbox: %d messages using %d bytes"
+    (List.length contents)
+    cumulated_size
+
+let encoding =
+  let open Data_encoding in
+  conv
+    (fun {contents; cumulated_size} -> (contents, cumulated_size))
+    (fun (contents, cumulated_size) -> {contents; cumulated_size})
+    (obj2
+       (req "contents" @@ list message_hash_encoding)
+       (req "cumulated_size" int31))

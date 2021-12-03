@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,27 +25,39 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+(** The state of a transaction rollup is a set of variables that are
+    expected to vary in time. More precisely, the state comprises
 
-let custom_root =
-  (RPC_path.(open_root / "context" / "tx_rollup")
-    : RPC_context.t RPC_path.context)
+    {ul {li A [cost_per_byte] rate, that is expected to be at least as
+            expensive as the [cost_per_byte] constant of the protocol,
+            but can be increased if the transaction rollup is crowded.}} *)
+type t = {cost_per_byte : Tez_repr.t}
 
-module S = struct
-  let state =
-    RPC_service.get_service
-      ~description:"Access the state of a rollup."
-      ~query:RPC_query.empty
-      ~output:Tx_rollup_state.encoding
-      RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
-end
+val encoding : t Data_encoding.t
 
-let register () =
-  let open Services_registration in
-  register1 ~chunked:false S.state (fun ctxt tx_rollup () () ->
-      Tx_rollup.get_state_opt ctxt tx_rollup >|=? function
-      | Some x -> x
-      | None -> raise Not_found)
+val pp : Format.formatter -> t -> unit
 
-let state ctxt block tx_rollup =
-  RPC_context.make_call1 S.state ctxt block tx_rollup () ()
+(** [update_cost_per_byte ctxt ~cost_per_byte ~tx_rollup_cost_per_byte
+    ~final_size ~hard_limit] computes a new cost per byte based on the
+    ratio of the [hard_limit] maximum amount of byte an inbox can use
+    and the [final_size] amount of bytes it uses at the end of the
+    construction of a Tezos block. The [tx_rollup_cost_per_byte] value
+    computed by this function is always greater than the
+    [cost_per_byte] protocol constant.
+
+    More precisely, [cost_per_byte] has to be equal to the protocol
+    parameter of the same name.
+
+    In a nutshell, if the ratio is lesser than 80%, the cost per byte
+    is reduced. If the ratios is somewhere between 80% and 90%, the
+    cost per byte remains constant. If the ratio is greater than 90%,
+    then the cost per byte is increased.
+
+    The rationale behind this mechanics is to reduce the activity of a
+    rollup in case it becomes too intense. *)
+val update_cost_per_byte :
+  cost_per_byte:Tez_repr.t ->
+  tx_rollup_cost_per_byte:Tez_repr.t ->
+  final_size:int ->
+  hard_limit:int ->
+  Tez_repr.t

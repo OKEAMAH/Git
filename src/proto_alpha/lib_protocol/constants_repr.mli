@@ -121,6 +121,17 @@ type parametric = {
   initial_seed : State_hash.t option;
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
+  (* The maximum size (in bytes) a transaction rollup’s inbox is
+     allowed to reach.
+
+     See {!Tx_rollup_storage.append_message}. *)
+  tx_rollup_hard_size_limit_per_inbox : int;
+  (* The initial cost to add one byte into a transaction rollup’s
+     inbox. This value then may vary based on the activity of the
+     rollup, though it can never go down this initial value.
+
+     See {!Tx_rollup_inbox_repr.update_cost_per_byte}. *)
+  tx_rollup_initial_inbox_cost_per_byte : Tez_repr.t;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
 }

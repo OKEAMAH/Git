@@ -141,11 +141,3 @@ module Index = struct
 
   let compare = compare
 end
-
-type state = unit
-
-let state_encoding = Data_encoding.(obj1 (req "state" Data_encoding.unit))
-
-let empty_state = ()
-
-let pp_state fmt _state = Format.fprintf fmt "state"

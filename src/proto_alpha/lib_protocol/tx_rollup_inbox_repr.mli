@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,27 +25,36 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+(** A [message] is a piece of data submitted though the layer-1 to be
+    interpreted by the layer-2. *)
+type message = string
 
-let custom_root =
-  (RPC_path.(open_root / "context" / "tx_rollup")
-    : RPC_context.t RPC_path.context)
+(** [message_size msg] returns the number of bytes allocated in an
+    inbox by [msg]. *)
+val message_size : message -> int
 
-module S = struct
-  let state =
-    RPC_service.get_service
-      ~description:"Access the state of a rollup."
-      ~query:RPC_query.empty
-      ~output:Tx_rollup_state.encoding
-      RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
-end
+val message_encoding : message Data_encoding.t
 
-let register () =
-  let open Services_registration in
-  register1 ~chunked:false S.state (fun ctxt tx_rollup () () ->
-      Tx_rollup.get_state_opt ctxt tx_rollup >|=? function
-      | Some x -> x
-      | None -> raise Not_found)
+type message_hash
 
-let state ctxt block tx_rollup =
-  RPC_context.make_call1 S.state ctxt block tx_rollup () ()
+val message_hash_encoding : message_hash Data_encoding.t
+
+val message_hash_pp : Format.formatter -> message_hash -> unit
+
+val hash_message : message -> message_hash
+
+(** An inbox gathers, for a given Tezos level, messages crafted by the
+    layer-1 for the layer-2 to interpret.
+
+    The structure comprises two fields: (1) [contents] is the list of
+    message hashes, and (2) [cumulated_size] is the quantity of bytes
+    allocated by the related messages.
+
+    We recall that a transaction rollup can have up to one inbox per
+    Tezos level, starting from its origination. See
+    {!Storage.Tx_rollup} for more information. *)
+type t = {contents : message_hash list; cumulated_size : int}
+
+val pp : Format.formatter -> t -> unit
+
+val encoding : t Data_encoding.t

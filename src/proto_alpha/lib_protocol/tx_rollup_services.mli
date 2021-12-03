@@ -26,10 +26,12 @@
 
 open Alpha_context
 
+(** Return the state for a tx rollup.  Return [Not_found] if no such
+    rollup exists. *)
 val state :
   'a #RPC_context.simple ->
   'a ->
   Tx_rollup.t ->
-  Tx_rollup.state option shell_tzresult Lwt.t
+  Tx_rollup_state.t shell_tzresult Lwt.t
 
 val register : unit -> unit

@@ -40,6 +40,8 @@
         "Cache_memory_helpers",
         "Contract_repr",
         "Tx_rollup_repr",
+        "Tx_rollup_inbox_repr",
+        "Tx_rollup_state_repr",
         "Roll_repr_legacy",
         "Vote_repr",
         "Block_header_repr",

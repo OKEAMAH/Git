@@ -693,14 +693,51 @@ module Tenderbake : sig
 end
 
 module Tx_rollup : sig
-  (** Storage from this submodule must only be accessed through the
-      module `Tx_rollup_storage`. *)
+  (** The state of a transaction rollup at a given Tezos level.
 
+      This value is updated during the finalization of a Tezos block,
+      iff an inbox has been created for this rollup at this level. *)
   module State :
     Indexed_data_storage
       with type key = Tx_rollup_repr.t
-       and type value = Tx_rollup_repr.state
+       and type value = Tx_rollup_state_repr.t
        and type t := Raw_context.t
+
+  (** The cumulated size (in bytes) of the message stored in each inbox.
+
+      This value is used both to check the inbox does not grow beyond
+      the limit authorized by the
+      [tx_rollup_hard_size_limit_per_batch] protocol parameter (see
+      {!Constants_repr.parametric}), and during the finalization of a
+      Tezos block to update the [cost_per_byte] variable of a
+      transaction rollup. *)
+  module Inbox_cumulated_size :
+    Indexed_data_storage
+      with type t := Raw_context.t * Raw_level_repr.t
+       and type key = Tx_rollup_repr.t
+       and type value = int
+
+  (** A carbonated storage to store the hashes of the message stored
+      in an inbox at a given order, in reverse order.
+
+      The actual content is stored in the corresponding block. *)
+  module Inbox_rev_contents :
+    Non_iterable_indexed_carbonated_data_storage
+      with type t := Raw_context.t * Raw_level_repr.t
+       and type key = Tx_rollup_repr.t
+       and type value = Tx_rollup_inbox_repr.message_hash list
+
+  (** [fold (ctxt, level) ~order ~init ~f] traverses all rollups with
+      a nonempty inbox at [level].
+
+      No assurances whatsoever are provided regarding the order of
+      traversal. *)
+  val fold :
+    Raw_context.t ->
+    Raw_level_repr.t ->
+    init:'a ->
+    f:(Tx_rollup_repr.t -> 'a -> 'a Lwt.t) ->
+    'a Lwt.t
 end
 
 (** Smart contract rollup *)
