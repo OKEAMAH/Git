@@ -2696,6 +2696,10 @@ let finalize_application ctxt (mode : finalize_application_mode) protocol_data
     ~payload_producer ~block_producer liquidity_baking_escape_ema
     implicit_operations_results ~round ~predecessor ~migration_balance_updates =
   let level = Alpha_context.Level.current ctxt in
+  (* We update the [cost_per_byte] state variable of each transaction rollup which has
+     received incoming messages *)
+  Alpha_context.Tx_rollup.finalize_block ctxt >>=? fun ctxt ->
+  (* Then we finalize the consensus *)
   let block_endorsing_power = Consensus.current_endorsement_power ctxt in
   let consensus_threshold = Constants.consensus_threshold ctxt in
   are_endorsements_required ctxt ~level:level.level

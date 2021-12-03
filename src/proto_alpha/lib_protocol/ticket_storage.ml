@@ -23,8 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type key_hash = Script_expr_hash.t
-
 type error +=
   | Negative_ticket_balance of {key : Script_expr_hash.t; balance : Z.t}
   | Failed_to_hash_node

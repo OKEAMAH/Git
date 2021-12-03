@@ -35,14 +35,16 @@ module S = struct
     RPC_service.get_service
       ~description:"Access the state of a rollup."
       ~query:RPC_query.empty
-      ~output:(Data_encoding.option Tx_rollup.state_encoding)
+      ~output:Tx_rollup_state.encoding
       RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
 end
 
 let register () =
   let open Services_registration in
   register1 ~chunked:false S.state (fun ctxt tx_rollup () () ->
-      Tx_rollup.state ctxt tx_rollup)
+      Tx_rollup.get_state_opt ctxt tx_rollup >|=? function
+      | Some x -> x
+      | None -> raise Not_found)
 
 let state ctxt block tx_rollup =
   RPC_context.make_call1 S.state ctxt block tx_rollup () ()

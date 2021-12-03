@@ -1,7 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Trili Tech, <contact@trili.tech>                       *)
+(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,43 +25,28 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Ticket_repr
+(** An inbox gathers, for a given Tezos level, messages crafted by the
+    layer-1 for the layer-2 to interpret. As a consequence, a
+    transaction rollup can have up to one inbox per Tezos level after
+    its origination. *)
 
-(** [script_expr_hash_of_key_hash key_hash] returns a [Script_expr_hash.t] value
-    representation of the given [key_hash]. This is useful for comparing and
-    pretty-printing key-hash values. *)
-val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
+(** A [message] is a data submitted by the layer-1 to be interpreted
+    by the layer-2. *)
+type message = string
 
-(** [make_key_hash ctxt ~ticketer ~typ ~contents ~owner] creates a hashed
-    representation of the given [ticketer], [typ], [contents] and [owner].
-*)
-val make_key_hash :
-  Raw_context.t ->
-  ticketer:Script_repr.node ->
-  typ:Script_repr.node ->
-  contents:Script_repr.node ->
-  owner:Script_repr.node ->
-  (key_hash * Raw_context.t) tzresult
+val message_encoding : message Data_encoding.t
 
-(** [get_balance ctxt key] receives the ticket balance for the given
-    [key] in the context [ctxt]. The [key] represents a ticket content and a
-    ticket creator pair. In case there exists no value for the given [key],
-    [None] is returned.
-    *)
-val get_balance :
-  Raw_context.t -> key_hash -> (Z.t option * Raw_context.t) tzresult Lwt.t
+(** The [summary] of an inbox provides data about its content, not the
+    content itself. *)
+type summary = {length : int32; cumulated_size : int}
 
-(** [adjust_balance ctxt key ~delta] adjusts the balance of the
-    given key (representing a ticket content, creator and owner pair)
-    and [delta]. The value of [delta] can be positive as well as negative.
-    If there is no pre-exising balance for the given ticket type and owner,
-    it is assumed to be 0 and the new balance is [delta]. The function also
-    returns the difference between the old and the new size of the storage.
-    Note that the difference may be negative. For example, because when
-    setting the balance to zero, an entry is removed.
+type t = summary
 
-    The function fails with a [Negative_ticket_balance] error
-    in case the resulting balance is negative.
- *)
-val adjust_balance :
-  Raw_context.t -> key_hash -> delta:Z.t -> (Z.t * Raw_context.t) tzresult Lwt.t
+val encoding : t Data_encoding.t
+
+val pp : Format.formatter -> t -> unit
+
+(** The [full] view of the inbox provides the actual content of the inbox. *)
+type full = {content : message list; cumulated_size : int}
+
+val full_encoding : full Data_encoding.t

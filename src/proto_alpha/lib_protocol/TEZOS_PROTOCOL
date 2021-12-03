@@ -39,7 +39,10 @@
         "Script_repr",
         "Cache_memory_helpers",
         "Contract_repr",
+        "Ticket_repr",
         "Tx_rollup_repr",
+        "Tx_rollup_inbox_repr",
+        "Tx_rollup_state_repr",
         "Roll_repr_legacy",
         "Vote_repr",
         "Block_header_repr",
@@ -87,10 +90,10 @@
         "Liquidity_baking_migration",
         "Init_storage",
         "Sapling_validator",
+        "Tx_rollup_storage",
 
         "Global_constants_costs",
         "Global_constants_storage",
-        "Tx_rollup_storage",
         "Sc_rollup_storage",
 
         "Alpha_context",

@@ -1622,23 +1622,53 @@ module Tx_rollup = struct
         let name = ["tx_rollup"]
       end)
 
-  module Indexed_context =
+  module State =
+    Make_indexed_data_storage
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["state"]
+         end))
+         (Make_index (Tx_rollup_repr.Index))
+         (Tx_rollup_state_repr)
+
+  module Level_context =
     Make_indexed_subcontext
       (Make_subcontext (Registered) (Raw_context)
          (struct
-           let name = ["index"]
+           let name = ["level_index"]
+         end))
+         (Make_index (Raw_level_repr.Index))
+
+  module Level_tx_rollup_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Level_context.Raw_context)
+         (struct
+           let name = ["tx_rollup_index"]
          end))
          (Make_index (Tx_rollup_repr.Index))
 
-  module State =
-    Indexed_context.Make_map
-      (struct
-        let name = ["state"]
-      end)
-      (struct
-        type t = Tx_rollup_repr.state
+  let fold = Level_tx_rollup_context.fold_keys
 
-        let encoding = Tx_rollup_repr.state_encoding
+  module Inbox_info =
+    Level_tx_rollup_context.Make_map
+      (struct
+        let name = ["inbox_info"]
+      end)
+      (Tx_rollup_inbox_repr)
+
+  module Message =
+    Make_indexed_data_storage
+      (Make_subcontext (Registered) (Level_tx_rollup_context.Raw_context)
+         (struct
+           let name = ["message"]
+         end))
+         (Int31_index)
+      (struct
+        open Tx_rollup_inbox_repr
+
+        type t = message
+
+        let encoding = message_encoding
       end)
 end
 

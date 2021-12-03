@@ -64,7 +64,10 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_repr.mli script_repr.ml
    cache_memory_helpers.ml
    contract_repr.mli contract_repr.ml
+   ticket_repr.ml
    tx_rollup_repr.mli tx_rollup_repr.ml
+   tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
+   tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
@@ -110,9 +113,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    liquidity_baking_migration.mli liquidity_baking_migration.ml
    init_storage.mli init_storage.ml
    sapling_validator.ml
+   tx_rollup_storage.mli tx_rollup_storage.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
    carbonated_map_costs.mli carbonated_map_costs.ml
@@ -198,7 +201,10 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_repr.mli script_repr.ml
    cache_memory_helpers.ml
    contract_repr.mli contract_repr.ml
+   ticket_repr.ml
    tx_rollup_repr.mli tx_rollup_repr.ml
+   tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
+   tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
@@ -244,9 +250,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    liquidity_baking_migration.mli liquidity_baking_migration.ml
    init_storage.mli init_storage.ml
    sapling_validator.ml
+   tx_rollup_storage.mli tx_rollup_storage.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
    carbonated_map_costs.mli carbonated_map_costs.ml
@@ -332,7 +338,10 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_repr.mli script_repr.ml
    cache_memory_helpers.ml
    contract_repr.mli contract_repr.ml
+   ticket_repr.ml
    tx_rollup_repr.mli tx_rollup_repr.ml
+   tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
+   tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
@@ -378,9 +387,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    liquidity_baking_migration.mli liquidity_baking_migration.ml
    init_storage.mli init_storage.ml
    sapling_validator.ml
+   tx_rollup_storage.mli tx_rollup_storage.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
    carbonated_map_costs.mli carbonated_map_costs.ml
@@ -488,7 +497,10 @@ include Tezos_raw_protocol_alpha.Main
    Script_repr
    Cache_memory_helpers
    Contract_repr
+   Ticket_repr
    Tx_rollup_repr
+   Tx_rollup_inbox_repr
+   Tx_rollup_state_repr
    Roll_repr_legacy
    Vote_repr
    Block_header_repr
@@ -534,9 +546,9 @@ include Tezos_raw_protocol_alpha.Main
    Liquidity_baking_migration
    Init_storage
    Sapling_validator
+   Tx_rollup_storage
    Global_constants_costs
    Global_constants_storage
-   Tx_rollup_storage
    Sc_rollup_storage
    Alpha_context
    Carbonated_map_costs
@@ -663,7 +675,10 @@ include Tezos_raw_protocol_alpha.Main
    script_repr.mli script_repr.ml
    cache_memory_helpers.ml
    contract_repr.mli contract_repr.ml
+   ticket_repr.ml
    tx_rollup_repr.mli tx_rollup_repr.ml
+   tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
+   tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    roll_repr_legacy.mli roll_repr_legacy.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
@@ -709,9 +724,9 @@ include Tezos_raw_protocol_alpha.Main
    liquidity_baking_migration.mli liquidity_baking_migration.ml
    init_storage.mli init_storage.ml
    sapling_validator.ml
+   tx_rollup_storage.mli tx_rollup_storage.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
    carbonated_map_costs.mli carbonated_map_costs.ml

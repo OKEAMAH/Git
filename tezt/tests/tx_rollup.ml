@@ -25,9 +25,22 @@
 
 (*                               utils                                       *)
 
-let get_state tx_rollup_hash client =
+let get_cost_per_byte tx_rollup_hash client =
   let* json = RPC.Tx_rollup.get_state ~tx_rollup_hash client in
-  JSON.(json |-> "state" |> as_opt |> Option.map (fun _ -> ())) |> Lwt.return
+  JSON.(json |-> "cost_per_byte" |> as_int |> Tez.of_mutez_int |> Lwt.return)
+
+type inbox = {length : int; cumulated_size : int}
+
+let parse_inbox : JSON.t -> inbox =
+ fun inbox_obj ->
+  let length = JSON.(inbox_obj |-> "length" |> as_int) in
+  let cumulated_size = JSON.(inbox_obj |-> "cumulated_size" |> as_int) in
+  {length; cumulated_size}
+
+let get_inbox tx_rollup_hash level client =
+  let level = Int.to_string level in
+  let* json = RPC.Tx_rollup.get_inbox ~tx_rollup_hash ~level client in
+  return (parse_inbox json)
 
 (*                               test                                        *)
 
@@ -51,13 +64,17 @@ let test_simple_use_case =
       client
   in
   let* () = Client.bake_for client in
-  let* state = get_state tx_rollup_hash client in
-  match state with
-  | Some _ -> unit
-  | None ->
-      Test.fail
-        "The tx rollups was not correctly originated and no state exists for \
-         %s."
-        tx_rollup_hash
+  let* _rate = get_cost_per_byte tx_rollup_hash client in
+  let* level = Client.level client in
+
+  let* () =
+    Lwt.catch
+      (fun () ->
+        Lwt.map
+          (fun _ -> failwith "We fetched a missing inbox!")
+          (get_inbox tx_rollup_hash level client))
+      (fun _ -> return ())
+  in
+  unit
 
 let register ~protocols = test_simple_use_case ~protocols

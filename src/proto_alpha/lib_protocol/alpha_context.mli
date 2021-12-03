@@ -759,6 +759,8 @@ module Constants : sig
     initial_seed : State_hash.t option;
     tx_rollup_enable : bool;
     tx_rollup_origination_size : int;
+    tx_rollup_hard_size_limit_per_inbox : int;
+    tx_rollup_initial_inbox_cost_per_byte : Tez.t;
     sc_rollup_enable : bool;
     sc_rollup_origination_size : int;
   }
@@ -845,6 +847,10 @@ module Constants : sig
   val tx_rollup_enable : context -> bool
 
   val tx_rollup_origination_size : context -> int
+
+  val tx_rollup_hard_size_limit_per_inbox : context -> int
+
+  val tx_rollup_initial_inbox_cost_per_byte : context -> Tez.t
 
   val sc_rollup_enable : context -> bool
 
@@ -1507,41 +1513,6 @@ module Receipt : sig
   val group_balance_updates : balance_updates -> balance_updates tzresult
 end
 
-(** This simply re-exports [Tx_rollup_repr] and [tx_rollup_storage]. See
-    [tx_rollup_repr] and [tx_rollup_storage] for additional documentation of this
-    module *)
-module Tx_rollup : sig
-  include BASIC_DATA
-
-  type tx_rollup = t
-
-  val rpc_arg : tx_rollup RPC_arg.arg
-
-  val to_b58check : tx_rollup -> string
-
-  val of_b58check : string -> tx_rollup tzresult
-
-  val pp : Format.formatter -> tx_rollup -> unit
-
-  val encoding : tx_rollup Data_encoding.t
-
-  val originate : context -> (context * tx_rollup) tzresult Lwt.t
-
-  type state
-
-  val state : context -> tx_rollup -> state option tzresult Lwt.t
-
-  val state_encoding : state Data_encoding.t
-
-  val pp_state : Format.formatter -> state -> unit
-
-  module Internal_for_tests : sig
-    (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
-    val originated_tx_rollup :
-      Origination_nonce.Internal_for_tests.t -> tx_rollup
-  end
-end
-
 module Delegate : sig
   val init :
     context ->
@@ -1917,6 +1888,100 @@ module Sc_rollup : sig
     kind:Kind.t ->
     boot_sector:PVM.boot_sector ->
     (context * t * Z.t) tzresult Lwt.t
+end
+
+(** This simply re-exports [Tx_rollup_inbox_repr].
+    See [Tx_rollup_inbox_repr] for additional documentation of this
+    module. *)
+module Tx_rollup_inbox : sig
+  type message = string
+
+  val message_encoding : message Data_encoding.t
+
+  type summary = {length : int32; cumulated_size : int}
+
+  type t = summary
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  type full = {content : message list; cumulated_size : int}
+
+  val full_encoding : full Data_encoding.t
+end
+
+(** This simply re-exports [Tx_rollup_state_repr].
+    See [Tx_rollup_state_repr] for additional documentation of this
+    module. *)
+module Tx_rollup_state : sig
+  type t = {cost_per_byte : Tez.t}
+
+  val encoding : t Data_encoding.t
+end
+
+(** This simply re-exports [Tx_rollup_repr]. See [Tx_rollup_repr] for additional
+    documentation of this module. *)
+module Tx_rollup : sig
+  include BASIC_DATA
+
+  type tx_rollup = t
+
+  val rpc_arg : tx_rollup RPC_arg.arg
+
+  val to_b58check : tx_rollup -> string
+
+  val of_b58check : string -> tx_rollup tzresult
+
+  val pp : Format.formatter -> tx_rollup -> unit
+
+  val encoding : tx_rollup Data_encoding.t
+
+  val originate : context -> (context * tx_rollup) tzresult Lwt.t
+
+  val get_state : context -> t -> Tx_rollup_state.t tzresult Lwt.t
+
+  val get_state_opt : context -> t -> Tx_rollup_state.t option tzresult Lwt.t
+
+  type inbox_status = {cumulated_size : int; last_message_size : int}
+
+  val append_message :
+    context ->
+    t ->
+    Tx_rollup_inbox.message ->
+    (inbox_status * context) tzresult Lwt.t
+
+  val get_inbox :
+    context -> ?level:Raw_level.t -> t -> Tx_rollup_inbox.t tzresult Lwt.t
+
+  val get_inbox_opt :
+    context ->
+    ?level:Raw_level.t ->
+    t ->
+    Tx_rollup_inbox.t option tzresult Lwt.t
+
+  val get_full_inbox :
+    context -> ?level:Raw_level.t -> t -> Tx_rollup_inbox.full tzresult Lwt.t
+
+  val get_full_inbox_opt :
+    context ->
+    ?level:Raw_level.t ->
+    t ->
+    Tx_rollup_inbox.full option tzresult Lwt.t
+
+  val finalize_block : context -> context tzresult Lwt.t
+
+  module Internal_for_tests : sig
+    val originated_tx_rollup :
+      Origination_nonce.Internal_for_tests.t -> tx_rollup
+
+    val update_cost_per_byte :
+      cost_per_byte:Tez.t ->
+      tx_rollup_cost_per_byte:Tez.t ->
+      final_size:int ->
+      hard_limit:int ->
+      Tez.t
+  end
 end
 
 module Kind : sig
@@ -2413,6 +2478,8 @@ end
  *)
 module Ticket_balance : sig
   type key_hash
+
+  val key_hash_encoding : key_hash Data_encoding.t
 
   val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
 

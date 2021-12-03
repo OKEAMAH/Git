@@ -624,8 +624,21 @@ let test_tx_rollup ?endpoint client =
       ~src:Constant.bootstrap1.public_key_hash
       client
   in
+  let* level =
+    Lwt.bind (Client.level client) (fun level -> return @@ Int.to_string level)
+  in
   let* () = client_bake_for client in
   let* _ = RPC.Tx_rollup.get_state ?endpoint ~tx_rollup_hash client in
+  let _ =
+    Lwt.catch
+      (fun () ->
+        let _ =
+          RPC.Tx_rollup.get_inbox ?endpoint ~tx_rollup_hash ~level client
+        in
+        assert false)
+      (fun _exn -> unit)
+  in
+
   unit
 
 (* Test the various other RPCs. *)

@@ -653,6 +653,8 @@ def _test_create_mockup_init_show_roundtrip(
                 "tx_rollup_enable": False,
                 # TODO: https://gitlab.com/tezos/tezos/-/issues/2152
                 "tx_rollup_origination_size": 60_000,
+                "tx_rollup_hard_size_limit_per_inbox": 100_000,
+                "tx_rollup_initial_inbox_cost_per_byte": "250",
                 "sc_rollup_enable": False,
                 "sc_rollup_origination_size": 6_314,
             }

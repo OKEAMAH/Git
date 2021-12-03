@@ -1,7 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Trili Tech, <contact@trili.tech>                       *)
+(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,43 +25,35 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Ticket_repr
+(** The state of a transaction rollup is a set of variables that are
+    expected to vary in time. More precisely, the state comprises
 
-(** [script_expr_hash_of_key_hash key_hash] returns a [Script_expr_hash.t] value
-    representation of the given [key_hash]. This is useful for comparing and
-    pretty-printing key-hash values. *)
-val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
+    {ul {li A [cost_per_byte] rate, that is expected to be at least as
+            expensive as the [cost_per_byte] constant of the protocol,
+            but can be increased if the transaction rollup is crowded.}} *)
+type t = {cost_per_byte : Tez_repr.t}
 
-(** [make_key_hash ctxt ~ticketer ~typ ~contents ~owner] creates a hashed
-    representation of the given [ticketer], [typ], [contents] and [owner].
-*)
-val make_key_hash :
-  Raw_context.t ->
-  ticketer:Script_repr.node ->
-  typ:Script_repr.node ->
-  contents:Script_repr.node ->
-  owner:Script_repr.node ->
-  (key_hash * Raw_context.t) tzresult
+val encoding : t Data_encoding.t
 
-(** [get_balance ctxt key] receives the ticket balance for the given
-    [key] in the context [ctxt]. The [key] represents a ticket content and a
-    ticket creator pair. In case there exists no value for the given [key],
-    [None] is returned.
-    *)
-val get_balance :
-  Raw_context.t -> key_hash -> (Z.t option * Raw_context.t) tzresult Lwt.t
+val pp : Format.formatter -> t -> unit
 
-(** [adjust_balance ctxt key ~delta] adjusts the balance of the
-    given key (representing a ticket content, creator and owner pair)
-    and [delta]. The value of [delta] can be positive as well as negative.
-    If there is no pre-exising balance for the given ticket type and owner,
-    it is assumed to be 0 and the new balance is [delta]. The function also
-    returns the difference between the old and the new size of the storage.
-    Note that the difference may be negative. For example, because when
-    setting the balance to zero, an entry is removed.
+(** [update_cost_per_byte ctxt ~cost_per_byte ~tx_rollup_cost_per_byte
+    ~final_size ~hard_limit] computes a new cost per byte based
+    on the ratio of the [hard_limit] maximum amount of byte an inbox
+    can use and the [final_size] amount of bytes it uses at the end of
+    the construction of a Tezos block. The return [tx_rollup_cost_per_byte]
+    is at least [cost_per_byte].
 
-    The function fails with a [Negative_ticket_balance] error
-    in case the resulting balance is negative.
- *)
-val adjust_balance :
-  Raw_context.t -> key_hash -> delta:Z.t -> (Z.t * Raw_context.t) tzresult Lwt.t
+    In a nutshell, if the ratio is lesser than 80%, the cost per byte
+    is reduced. If the ratios is somewhere between 80% and 90%, the
+    cost per byte remains constant. If the ratio is greater than 90%,
+    then the cost per byte is increased.
+
+    The rationale behind this mechanics is to reduce the activity of a
+    rollup in case it becomes too intense. *)
+val update_cost_per_byte :
+  cost_per_byte:Tez_repr.t ->
+  tx_rollup_cost_per_byte:Tez_repr.t ->
+  final_size:int ->
+  hard_limit:int ->
+  Tez_repr.t

@@ -244,7 +244,19 @@ end
 module Tx_rollup = struct
   include Tx_rollup_repr
   include Tx_rollup_storage
-  module Internal_for_tests = Tx_rollup_repr
+
+  module Internal_for_tests = struct
+    include Tx_rollup_repr
+    include Tx_rollup_state_repr
+  end
+end
+
+module Tx_rollup_inbox = struct
+  include Tx_rollup_inbox_repr
+end
+
+module Tx_rollup_state = struct
+  include Tx_rollup_state_repr
 end
 
 module Global_constants_storage = Global_constants_storage
@@ -446,6 +458,7 @@ module Parameters = Parameters_repr
 module Liquidity_baking = Liquidity_baking_repr
 
 module Ticket_balance = struct
+  include Ticket_repr
   include Ticket_storage
 end
 

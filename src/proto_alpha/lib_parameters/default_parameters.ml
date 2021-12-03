@@ -91,6 +91,8 @@ let constants_mainnet =
     tx_rollup_enable = false;
     (* TODO: https://gitlab.com/tezos/tezos/-/issues/2152 *)
     tx_rollup_origination_size = 60_000;
+    tx_rollup_hard_size_limit_per_inbox = 100_000;
+    tx_rollup_initial_inbox_cost_per_byte = Tez.of_mutez_exn 250L;
     sc_rollup_enable = false;
     (* The following value is chosen to prevent spam. *)
     sc_rollup_origination_size = 6_314;

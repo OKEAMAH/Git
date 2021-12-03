@@ -693,14 +693,41 @@ module Tenderbake : sig
 end
 
 module Tx_rollup : sig
-  (** Storage from this submodule must only be accessed through the
-      module `Tx_rollup_storage`. *)
+  (** Each transaction rollup is associated to:
+
+      {ul {li - a mutable state which contains metadata relevant to
+                the rollup processing, and}
+          {li - a map of inboxes each associated to a Tezos level.}}
+
+      Each inbox is associated to (1) a bunch of metadata, and (2) a
+      map of numbered messages. *)
 
   module State :
     Indexed_data_storage
       with type key = Tx_rollup_repr.t
-       and type value = Tx_rollup_repr.state
+       and type value = Tx_rollup_state_repr.t
        and type t := Raw_context.t
+
+  module Inbox_info :
+    Indexed_data_storage
+      with type key = Tx_rollup_repr.t
+       and type value = Tx_rollup_inbox_repr.t
+       and type t := Raw_context.t * Raw_level_repr.t
+
+  module Message :
+    Indexed_data_storage
+      with type key = int
+       and type value = Tx_rollup_inbox_repr.message
+       and type t := (Raw_context.t * Raw_level_repr.t) * Tx_rollup_repr.t
+
+  (** The domain of transaction rollups which have an inbox at a given
+      Tezos level. *)
+  val fold :
+    Raw_context.t * Raw_level_repr.t ->
+    order:[`Sorted | `Undefined] ->
+    init:'a ->
+    f:(Tx_rollup_repr.t -> 'a -> 'a Lwt.t) ->
+    'a Lwt.t
 end
 
 (** Smart contract rollup *)

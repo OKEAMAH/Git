@@ -1,7 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Trili Tech, <contact@trili.tech>                       *)
+(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,43 +25,40 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Ticket_repr
+type t = {cost_per_byte : Tez_repr.t}
 
-(** [script_expr_hash_of_key_hash key_hash] returns a [Script_expr_hash.t] value
-    representation of the given [key_hash]. This is useful for comparing and
-    pretty-printing key-hash values. *)
-val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
+let encoding =
+  let open Data_encoding in
+  conv
+    (fun {cost_per_byte} -> cost_per_byte)
+    (fun cost_per_byte -> {cost_per_byte})
+    (obj1 (req "cost_per_byte" Tez_repr.encoding))
 
-(** [make_key_hash ctxt ~ticketer ~typ ~contents ~owner] creates a hashed
-    representation of the given [ticketer], [typ], [contents] and [owner].
-*)
-val make_key_hash :
-  Raw_context.t ->
-  ticketer:Script_repr.node ->
-  typ:Script_repr.node ->
-  contents:Script_repr.node ->
-  owner:Script_repr.node ->
-  (key_hash * Raw_context.t) tzresult
+let pp fmt {cost_per_byte} =
+  Format.fprintf fmt "cost_per_byte: %a" Tez_repr.pp cost_per_byte
 
-(** [get_balance ctxt key] receives the ticket balance for the given
-    [key] in the context [ctxt]. The [key] represents a ticket content and a
-    ticket creator pair. In case there exists no value for the given [key],
-    [None] is returned.
-    *)
-val get_balance :
-  Raw_context.t -> key_hash -> (Z.t option * Raw_context.t) tzresult Lwt.t
-
-(** [adjust_balance ctxt key ~delta] adjusts the balance of the
-    given key (representing a ticket content, creator and owner pair)
-    and [delta]. The value of [delta] can be positive as well as negative.
-    If there is no pre-exising balance for the given ticket type and owner,
-    it is assumed to be 0 and the new balance is [delta]. The function also
-    returns the difference between the old and the new size of the storage.
-    Note that the difference may be negative. For example, because when
-    setting the balance to zero, an entry is removed.
-
-    The function fails with a [Negative_ticket_balance] error
-    in case the resulting balance is negative.
- *)
-val adjust_balance :
-  Raw_context.t -> key_hash -> delta:Z.t -> (Z.t * Raw_context.t) tzresult Lwt.t
+let update_cost_per_byte :
+    cost_per_byte:Tez_repr.t ->
+    tx_rollup_cost_per_byte:Tez_repr.t ->
+    final_size:int ->
+    hard_limit:int ->
+    Tez_repr.t =
+ fun ~cost_per_byte ~tx_rollup_cost_per_byte ~final_size ~hard_limit ->
+  let computation =
+    let open Compare.Int in
+    (* This cannot overflow because [hard_limit] is lesser than
+       [100_000], and [final_size] is lesser than [hard_limit]. *)
+    let percentage = final_size * 100 / hard_limit in
+    if 90 < percentage then
+      Tez_repr.(
+        tx_rollup_cost_per_byte *? 105L >>? fun x ->
+        x /? 100L >>? fun x -> x +? one_mutez)
+    else if 80 < percentage && percentage <= 90 then ok tx_rollup_cost_per_byte
+    else
+      Tez_repr.(
+        tx_rollup_cost_per_byte *? 95L >>? fun x ->
+        x /? 100L >>? fun x -> x +? one_mutez)
+  in
+  match computation with
+  | Ok x -> Tez_repr.max cost_per_byte x
+  | Error _ -> cost_per_byte
