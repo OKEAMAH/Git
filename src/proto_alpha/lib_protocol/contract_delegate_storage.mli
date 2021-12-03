@@ -30,9 +30,9 @@ val find :
   Contract_repr.t ->
   Signature.Public_key_hash.t option tzresult Lwt.t
 
-(** [registered ctxt delegate] returns true iff delegate is an implicit contract
+(** [delegates_to_self ctxt delegate] returns true iff delegate is an implicit contract
     that delegates to itself. *)
-val registered :
+val delegates_to_self :
   Raw_context.t -> Signature.Public_key_hash.t -> bool tzresult Lwt.t
 
 (** [init ctxt contract delegate] sets the [delegate] associated to [contract].

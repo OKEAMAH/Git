@@ -26,7 +26,7 @@
 let find = Storage.Contract.Delegate.find
 
 (* A delegate is registered if its "implicit account" delegates to itself. *)
-let registered c delegate =
+let delegates_to_self c delegate =
   Storage.Contract.Delegate.find c (Contract_repr.implicit_contract delegate)
   >|=? function
   | Some current_delegate ->

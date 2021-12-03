@@ -393,7 +393,7 @@ module Delegate = struct
 
   let prepare_stake_distribution = Stake_storage.prepare_stake_distribution
 
-  let registered = Contract_delegate_storage.registered
+  let registered = Contract_delegate_storage.delegates_to_self
 
   let find = Contract_delegate_storage.find
 
