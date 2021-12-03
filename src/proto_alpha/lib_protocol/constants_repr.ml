@@ -388,11 +388,12 @@ let check_constants constants =
     Period_repr.(constants.minimal_block_delay > zero)
     (Invalid_protocol_constants
        "The minimal block delay must be greater than zero")
-  (* we do not check delay_increment_per_round since its invariant is that it
-     must be non-negative only. Its encoding as [Period_repr.t] already
-     guarantees that invariant *)
-  >>?
-  fun () ->
+  >>? fun () ->
+  error_unless
+    Period_repr.(constants.delay_increment_per_round > zero)
+    (Invalid_protocol_constants
+       "The delay increment per round must be greater than zero")
+  >>? fun () ->
   error_unless
     Compare.Int.(constants.consensus_committee_size > 3)
     (Invalid_protocol_constants

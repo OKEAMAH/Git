@@ -633,7 +633,7 @@ def _test_create_mockup_init_show_roundtrip(
                     'numerator': 1,
                 },
                 'minimal_block_delay': '1',
-                'delay_increment_per_round': '0',  # FIXME: 1?
+                'delay_increment_per_round': '1',
                 'max_slashing_period': 12,
                 "blocks_per_voting_period": 65,
                 "blocks_per_stake_snapshot": 5,

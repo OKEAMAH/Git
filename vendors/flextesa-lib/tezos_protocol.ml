@@ -160,7 +160,7 @@ let protocol_parameters_json t : Ezjsonm.t =
           ; ( "minimal_participation_ratio"
             , dict [("numerator", int 2); ("denominator", int 3)] )
           ; ("minimal_block_delay", string "1")
-          ; ("delay_increment_per_round", string "0")
+          ; ("delay_increment_per_round", string "1")
           ; ("max_slashing_period", int 2)
           ; ("frozen_deposits_percentage", int 10)
           ; ( "ratio_of_frozen_deposits_slashed_per_double_endorsement"

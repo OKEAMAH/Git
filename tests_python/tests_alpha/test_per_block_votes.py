@@ -96,7 +96,7 @@ class TestAllPerBlockVotes:
         sandbox.add_node(0, params=constants.NODE_PARAMS)
         parameters = protocol.get_parameters()
         parameters['minimal_block_delay'] = str(MINIMAL_BLOCK_DELAY)
-        parameters['delay_increment_per_round'] = "0"
+        parameters['delay_increment_per_round'] = "1"
         protocol.activate(sandbox.client(0), parameters=parameters)
         sandbox.add_baker(0, ['bootstrap1'], proto=protocol.DAEMON)
 

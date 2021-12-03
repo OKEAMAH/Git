@@ -52,7 +52,7 @@ class TestManualBake:
         proto_params = dict(protocol.TENDERBAKE_PARAMETERS)
         parameters = copy.deepcopy(proto_params)
         parameters['minimal_block_delay'] = str(MINIMAL_BLOCK_DELAY)
-        parameters['delay_increment_per_round'] = '0'
+        parameters['delay_increment_per_round'] = '1'
         protocol.activate(
             sandbox.client(0),
             parameters=proto_params,

@@ -8,7 +8,7 @@ from . import protocol
 NUM_NODES = 5  # because we assume 5 (bootstrap) accounts
 NUM_EARLY_START_NODES = 2
 MINIMAL_BLOCK_DELAY = 4
-DELAY_INCREMENT_PER_ROUND = 0
+DELAY_INCREMENT_PER_ROUND = 1
 TEST_DURATION = 5 * MINIMAL_BLOCK_DELAY
 
 

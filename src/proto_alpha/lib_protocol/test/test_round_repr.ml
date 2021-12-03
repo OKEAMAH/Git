@@ -53,7 +53,7 @@ type round_test = {
 (* an association list of the input, output values *)
 let case_3_3 =
   {
-    round_duration = [(0, 3); (1, 3); (2, 3); (3, 3)];
+    round_duration = [(0, 3); (1, 4); (2, 5); (3, 6)];
     round_and_offset =
       [
         (0, (0, 0));
@@ -62,25 +62,25 @@ let case_3_3 =
         (3, (1, 0));
         (4, (1, 1));
         (5, (1, 2));
-        (6, (2, 0));
-        (7, (2, 1));
-        (8, (2, 2));
+        (6, (1, 3));
+        (7, (2, 0));
+        (8, (2, 1));
       ];
-    timestamp_of_round = [((100, 0, 6), 121); ((100, 1, 6), 121)];
+    timestamp_of_round = [((100, 0, 6), 136); ((100, 1, 6), 137)];
     round_of_timestamp =
       [
-        ((100, 0, 121), 6);
-        ((100, 0, 122), 6);
-        ((100, 0, 123), 6);
-        ((100, 0, 124), 7);
-        ((100, 0, 125), 7);
-        ((100, 0, 126), 7);
-        ((100, 1, 121), 6);
-        ((100, 1, 122), 6);
-        ((100, 1, 123), 6);
-        ((100, 1, 124), 7);
-        ((100, 1, 125), 7);
-        ((100, 1, 126), 7);
+        ((100, 0, 121), 4);
+        ((100, 0, 122), 4);
+        ((100, 0, 123), 4);
+        ((100, 0, 124), 4);
+        ((100, 0, 125), 4);
+        ((100, 0, 126), 4);
+        ((100, 1, 121), 3);
+        ((100, 1, 122), 4);
+        ((100, 1, 123), 4);
+        ((100, 1, 124), 4);
+        ((100, 1, 125), 4);
+        ((100, 1, 126), 4);
       ];
   }
 
@@ -145,7 +145,7 @@ let case_3_6 =
 let test_cases =
   [
     (* (first_round_duration, delay_increment_per_round), test_case_expectations *)
-    ((3, 0), case_3_3, "case_3_3");
+    ((3, 1), case_3_3, "case_3_3");
     ((3, 3), case_3_6, "case_3_6");
   ]
 
@@ -493,7 +493,7 @@ let test_round_of_ts_inverse () =
 let test_level_offset_of_round () =
   let rd1 =
     let first_round_duration = 3 in
-    let delay_increment_per_round = 0 in
+    let delay_increment_per_round = 1 in
     mk_round_durations first_round_duration delay_increment_per_round
   in
   List.iter_es
@@ -511,7 +511,7 @@ let test_level_offset_of_round () =
             (Int64.of_int expected_offset))
         tests)
     [
-      (rd1, [(0, 0); (1, 3); (2, 6)]);
+      (rd1, [(0, 0); (1, 3); (2, 7)]);
       (mk_round_durations 3 3, [(0, 0); (1, 3); (2, 9); (3, 18)]);
     ]
 
