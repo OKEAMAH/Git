@@ -286,8 +286,18 @@ let begin_construction ~chain_id ~predecessor_context:ctxt
   | Some proto_header ->
       Alpha_context.Fitness.round_from_raw predecessor_fitness
       >>?= fun predecessor_round ->
+      let minimal_block_delay =
+        Alpha_context.Constants.minimal_block_delay ctxt
+      in
+      let delay_increment_per_round =
+        Alpha_context.Constants.delay_increment_per_round ctxt
+      in
+      Alpha_context.Round.Durations.create
+        ~minimal_block_delay
+        ~delay_increment_per_round
+      >>?= fun round_durations ->
       Alpha_context.Round.round_of_timestamp
-        (Alpha_context.Constants.round_durations ctxt)
+        round_durations
         ~predecessor_timestamp
         ~predecessor_round
         ~timestamp

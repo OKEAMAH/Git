@@ -201,22 +201,32 @@ let compute_next_round_time state =
            repropose a block at next level. *)
         None
     | None -> (
-        let round_durations =
-          state.global_state.constants.parametric.round_durations
+        let minimal_block_delay =
+          state.global_state.constants.parametric.minimal_block_delay
         in
-        let predecessor_timestamp = proposal.predecessor.shell.timestamp in
-        let predecessor_round = proposal.predecessor.round in
-        let next_round = Round.succ state.round_state.current_round in
+        let delay_increment_per_round =
+          state.global_state.constants.parametric.delay_increment_per_round
+        in
         match
-          timestamp_of_round
-            state.global_state.cache.known_timestamps
-            round_durations
-            ~predecessor_timestamp
-            ~predecessor_round
-            ~round:next_round
+          Round.Durations.create_opt
+            ~minimal_block_delay
+            ~delay_increment_per_round
         with
-        | Ok timestamp -> Some (timestamp, next_round)
-        | _ -> assert false)
+        | Some round_durations -> (
+            let predecessor_timestamp = proposal.predecessor.shell.timestamp in
+            let predecessor_round = proposal.predecessor.round in
+            let next_round = Round.succ state.round_state.current_round in
+            match
+              timestamp_of_round
+                state.global_state.cache.known_timestamps
+                round_durations
+                ~predecessor_timestamp
+                ~predecessor_round
+                ~round:next_round
+            with
+            | Ok timestamp -> Some (timestamp, next_round)
+            | _ -> assert false)
+        | None -> assert false)
 
 (** [first_potential_round_at_next_level state ~earliest_round] yields
     an optional pair of the earliest possible round (at or after
@@ -281,9 +291,7 @@ let compute_next_potential_baking_time state =
         elected_block.proposal.block.shell.timestamp
       in
       let predecessor_round = elected_block.proposal.block.round in
-      let round_durations =
-        state.global_state.constants.parametric.round_durations
-      in
+      let round_durations = Baking_state.get_round_durations_exn state in
       (* Compute the timestamp at which the new level will start at
          round 0.*)
       Round.timestamp_of_round
@@ -572,9 +580,14 @@ let create_initial_state cctxt ?(synchronize = true) ~chain config
     }
   in
   (if synchronize then
-   Baking_actions.compute_round
-     current_proposal
-     constants.parametric.round_durations
+   let round_durations =
+     Stdlib.Option.get
+     @@ Round.Durations.create_opt
+          ~minimal_block_delay:constants.parametric.minimal_block_delay
+          ~delay_increment_per_round:
+            constants.parametric.delay_increment_per_round
+   in
+   Baking_actions.compute_round current_proposal round_durations
    >>? fun current_round -> ok {current_round; current_phase = Idle}
   else ok {Baking_state.current_round = Round.zero; current_phase = Idle})
   >>?= fun round_state ->

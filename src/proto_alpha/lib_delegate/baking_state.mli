@@ -164,6 +164,10 @@ type state_data = {
 
 val state_data_encoding : state_data Data_encoding.t
 
+val get_round_durations : t -> Round.round_durations tzresult
+
+val get_round_durations_exn : t -> Round.round_durations
+
 val record_state : t -> unit tzresult Lwt.t
 
 val may_record_new_state :

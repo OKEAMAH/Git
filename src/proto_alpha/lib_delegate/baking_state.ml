@@ -323,6 +323,19 @@ type state = {
   round_state : round_state;
 }
 
+let get_round_durations state =
+  let minimal_block_delay =
+    state.global_state.constants.parametric.minimal_block_delay
+  in
+  let delay_increment_per_round =
+    state.global_state.constants.parametric.delay_increment_per_round
+  in
+  Environment.wrap_tzresult
+  @@ Round.Durations.create ~minimal_block_delay ~delay_increment_per_round
+
+let get_round_durations_exn state =
+  match get_round_durations state with Ok v -> v | Error _ -> assert false
+
 type t = state
 
 type timeout_kind =

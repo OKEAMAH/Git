@@ -2366,9 +2366,14 @@ type 'a full_construction = {
   liquidity_baking_escape_ema : Liquidity_baking.escape_ema;
 }
 
+let round_durations_of_context ctxt =
+  let minimal_block_delay = Constants.minimal_block_delay ctxt in
+  let delay_increment_per_round = Constants.delay_increment_per_round ctxt in
+  Round.Durations.create ~minimal_block_delay ~delay_increment_per_round
+
 let begin_full_construction ctxt ~predecessor_timestamp ~predecessor_level
     ~predecessor_round ~round protocol_data =
-  let round_durations = Constants.round_durations ctxt in
+  round_durations_of_context ctxt >>?= fun round_durations ->
   let timestamp = Timestamp.current ctxt in
   Block_header.check_timestamp
     round_durations
@@ -2425,6 +2430,7 @@ let begin_application ctxt chain_id (block_header : Block_header.t) fitness
   let current_level = Level.current ctxt in
   Stake_distribution.baking_rights_owner ctxt current_level ~round
   >>=? fun (ctxt, _slot, (block_producer_pk, block_producer)) ->
+  round_durations_of_context ctxt >>?= fun round_durations ->
   let timestamp = block_header.shell.timestamp in
   Block_header.begin_validate_block_header
     ~block_header
@@ -2434,7 +2440,7 @@ let begin_application ctxt chain_id (block_header : Block_header.t) fitness
     ~fitness
     ~timestamp
     ~delegate_pk:block_producer_pk
-    ~round_durations:(Constants.round_durations ctxt)
+    ~round_durations
     ~proof_of_work_threshold:(Constants.proof_of_work_threshold ctxt)
     ~expected_commitment:current_level.expected_commitment
   >>?= fun () ->

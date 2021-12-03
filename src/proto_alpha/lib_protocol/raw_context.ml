@@ -829,17 +829,13 @@ let prepare_first_block ~level ~timestamp ctxt =
        (* that's the mainnet value of the constant; so we're
           probably on the mainnet: do no inherit this constant's
           value (as done in the else case below) *)
-       Period_repr.of_seconds 45L
+       Period_repr.of_seconds 15L
       else
         match c.time_between_blocks with
         | first_time_between_blocks :: _ -> ok first_time_between_blocks
-        | [] -> Period_repr.mult 2l block_time)
-      >>?= fun second_round_duration ->
-      Round_repr.Durations.create
-        ~round0:block_time
-        ~round1:second_round_duration
-        ()
-      >>?= fun round_durations ->
+        | [] -> ok block_time)
+      >>?= fun delay_increment_per_round ->
+      let minimal_block_delay = block_time in
       let constants =
         let consensus_committee_size = 7000 in
         let Constants_repr.Generated.
@@ -891,7 +887,8 @@ let prepare_first_block ~level ~timestamp ctxt =
               then 3_063_809l
               else c.liquidity_baking_sunset_level);
             liquidity_baking_escape_ema_threshold = 666_667l;
-            round_durations;
+            minimal_block_delay;
+            delay_increment_per_round;
             consensus_committee_size;
             consensus_threshold;
             minimal_participation_ratio = {numerator = 2; denominator = 3};
