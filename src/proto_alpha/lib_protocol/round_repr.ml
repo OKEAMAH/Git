@@ -33,7 +33,10 @@ include (Compare.Int32 : Compare.S with type t := t)
 
 let zero = 0l
 
-let succ n = if Compare.Int32.equal n Int32.max_int then n else Int32.succ n
+let succ n =
+  if Compare.Int32.equal n Int32.max_int then
+    invalid_arg "round_repr.succ: cannot apply succ to maximum round value"
+  else Int32.succ n
 
 let pp fmt i = Format.fprintf fmt "%ld" i
 

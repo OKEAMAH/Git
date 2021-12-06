@@ -42,8 +42,9 @@ type t = round
 val zero : t
 
 (** Successor of the given round.
-    Note that there is no safety here in case we increment over
-    max_int32 as it is very unlikely to go that far. *)
+
+    @raise [Invalid_arg] if applied to the upper bound of the round integer
+    representation.  *)
 val succ : t -> t
 
 (** Predecessor of the given round.
