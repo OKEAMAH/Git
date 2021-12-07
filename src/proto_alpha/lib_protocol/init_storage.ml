@@ -289,7 +289,8 @@ let prepare_first_block ctxt ~typecheck ~level ~timestamp =
             ctxt
             Cycle_repr.(from_cycle ---> to_cycle)
       | _ -> return ctxt)
-      >>=? fun ctxt -> return (ctxt, balance_updates))
+      >>=? fun ctxt -> return (ctxt, balance_updates)
+  | Idiazabal_012 -> return (ctxt, []))
   >>=? fun (ctxt, balance_updates) ->
   Stake_storage.snapshot ctxt >>=? fun ctxt ->
   Delegate_storage.freeze_deposits_do_not_call_except_for_migration

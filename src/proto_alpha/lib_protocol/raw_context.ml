@@ -764,7 +764,10 @@ let prepare ~level ~predecessor_timestamp ~timestamp ctxt =
       };
   }
 
-type previous_protocol = Genesis of Parameters_repr.t | Hangzhou_011
+type previous_protocol =
+  | Genesis of Parameters_repr.t
+  | Hangzhou_011
+  | Idiazabal_012
 
 let check_and_update_protocol_version ctxt =
   (Context.find ctxt version_key >>= function
@@ -778,6 +781,8 @@ let check_and_update_protocol_version ctxt =
          get_proto_param ctxt >|=? fun (param, ctxt) -> (Genesis param, ctxt)
        else if Compare.String.(s = "hangzhou_011") then
          return (Hangzhou_011, ctxt)
+       else if Compare.String.(s = "idiazabal_012") then
+         return (Idiazabal_012, ctxt)
        else Lwt.return @@ storage_error (Incompatible_protocol_version s))
   >>=? fun (previous_proto, ctxt) ->
   Context.add ctxt version_key (Bytes.of_string version_value) >|= fun ctxt ->
@@ -915,7 +920,8 @@ let prepare_first_block ~level ~timestamp ctxt =
             tx_rollup_origination_size = 60_000;
           }
       in
-      add_constants ctxt constants >>= fun ctxt -> return ctxt)
+      add_constants ctxt constants >>= fun ctxt -> return ctxt
+  | Idiazabal_012 -> return ctxt)
   >>=? fun ctxt ->
   prepare ctxt ~level ~predecessor_timestamp:timestamp ~timestamp
   >|=? fun ctxt -> (previous_proto, ctxt)
