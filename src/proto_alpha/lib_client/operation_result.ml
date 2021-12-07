@@ -174,6 +174,15 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         R.pp_boot_sector
         boot_sector
         pp_result
+        result
+  | Sc_rollup_add_message {rollup; messages = _} ->
+      Format.fprintf
+        ppf
+        "@[<v 2>Add a message to the inbox of the smart contract rollup at \
+         address %a%a@]"
+        Sc_rollup.Address.pp
+        rollup
+        pp_result
         result) ;
   Format.fprintf ppf "@]"
 
@@ -399,6 +408,10 @@ let pp_manager_operation_contents_and_result ppf
     Format.fprintf ppf "@,Address: %a" Sc_rollup.Address.pp address ;
     pp_balance_updates_opt ppf balance_updates
   in
+  let pp_sc_rollup_add_message_result
+      (Sc_rollup_add_message_result {consumed_gas}) =
+    Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas
+  in
   let pp_result (type kind) ppf (result : kind manager_operation_result) =
     Format.fprintf ppf "@," ;
     match result with
@@ -468,7 +481,21 @@ let pp_manager_operation_contents_and_result ppf
           "@[<v 0>This rollup creation was BACKTRACKED, its expected effects \
            (as follow) were NOT applied.@]" ;
         pp_sc_rollup_originate_result op
+    | Applied (Sc_rollup_add_message_result _ as op) ->
+        Format.fprintf
+          ppf
+          "This operation sending a message to a smart contract rollup was \
+           successfully applied" ;
+        pp_sc_rollup_add_message_result op
+    | Backtracked ((Sc_rollup_add_message_result _ as op), _errs) ->
+        Format.fprintf
+          ppf
+          "@[<v 0>This operation sending a message to a smart contract rollup \
+           was BACKTRACKED, its expected effects (as follow) were NOT \
+           applied.@]" ;
+        pp_sc_rollup_add_message_result op
   in
+
   Format.fprintf
     ppf
     "@[<v 0>@[<v 2>Manager signed operations:@,\

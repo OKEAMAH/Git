@@ -73,6 +73,8 @@ module Kind = struct
 
   type sc_rollup_originate = Sc_rollup_originate_kind
 
+  type sc_rollup_add_message = Sc_rollup_add_message_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -81,6 +83,7 @@ module Kind = struct
     | Register_global_constant_manager_kind : register_global_constant manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
+    | Sc_rollup_add_message_manager_kind : sc_rollup_add_message manager
 end
 
 type 'a consensus_operation_type =
@@ -263,6 +266,11 @@ and _ manager_operation =
       boot_sector : Sc_rollup_repr.PVM.boot_sector;
     }
       -> Kind.sc_rollup_originate manager_operation
+  | Sc_rollup_add_message : {
+      rollup : Sc_rollup_repr.t;
+      messages : bytes list;
+    }
+      -> Kind.sc_rollup_add_message manager_operation
 
 and counter = Z.t
 
@@ -275,6 +283,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Register_global_constant _ -> Kind.Register_global_constant_manager_kind
   | Set_deposits_limit _ -> Kind.Set_deposits_limit_manager_kind
   | Sc_rollup_originate _ -> Kind.Sc_rollup_originate_manager_kind
+  | Sc_rollup_add_message _ -> Kind.Sc_rollup_add_message_manager_kind
 
 type 'kind internal_operation = {
   source : Contract_repr.contract;
@@ -524,6 +533,25 @@ module Encoding = struct
               Sc_rollup_originate {pvm; boot_sector});
         }
 
+    let[@coq_axiom_with_reason "gadt"] sc_rollup_add_message_case =
+      MCase
+        {
+          tag = sc_rollup_operation_tag_offset + 1;
+          name = "sc_rollup_add_message";
+          encoding =
+            obj2
+              (req "rollup" Sc_rollup_repr.encoding)
+              (req "message" (list bytes));
+          select =
+            (function
+            | Manager (Sc_rollup_add_message _ as op) -> Some op | _ -> None);
+          proj =
+            (function
+            | Sc_rollup_add_message {rollup; messages} -> (rollup, messages));
+          inj =
+            (fun (rollup, messages) -> Sc_rollup_add_message {rollup; messages});
+        }
+
     let encoding =
       let make (MCase {tag; name; encoding; select; proj; inj}) =
         case
@@ -544,6 +572,7 @@ module Encoding = struct
           make register_global_constant_case;
           make set_deposits_limit_case;
           make sc_rollup_originate_case;
+          make sc_rollup_add_message_case;
         ]
   end
 
@@ -845,6 +874,9 @@ module Encoding = struct
   let sc_rollup_originate_case =
     make_manager_case 113 Manager_operations.sc_rollup_originate_case
 
+  let sc_rollup_add_message_case =
+    make_manager_case 114 Manager_operations.sc_rollup_add_message_case
+
   let contents_encoding =
     let make (Case {tag; name; encoding; select; proj; inj}) =
       case
@@ -874,6 +906,7 @@ module Encoding = struct
            make failing_noop_case;
            make register_global_constant_case;
            make sc_rollup_originate_case;
+           make sc_rollup_add_message_case;
          ]
 
   let contents_list_encoding =
@@ -1075,6 +1108,8 @@ let equal_manager_operation_kind :
   | (Set_deposits_limit _, _) -> None
   | (Sc_rollup_originate _, Sc_rollup_originate _) -> Some Eq
   | (Sc_rollup_originate _, _) -> None
+  | (Sc_rollup_add_message _, Sc_rollup_add_message _) -> Some Eq
+  | (Sc_rollup_add_message _, _) -> None
 
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =
@@ -1167,6 +1202,7 @@ let internal_manager_operation_size (type a) (op : a manager_operation) =
              (fun _ -> Contract_repr.public_key_hash_in_memory_size)
              pkh_opt )
   | Sc_rollup_originate _ -> (Nodes.zero, h2w)
+  | Sc_rollup_add_message _ -> (Nodes.zero, h2w)
   | Reveal _ ->
       (* Reveals can't occur as internal operations *)
       assert false
