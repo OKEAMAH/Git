@@ -1805,6 +1805,8 @@ module Sc_rollup : sig
 
   type origination_result = {address : Address.t; size : Z.t}
 
+  val rpc_arg : t RPC_arg.t
+
   val originate :
     context ->
     pvm:PVM.t ->

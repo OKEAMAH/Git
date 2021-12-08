@@ -2349,6 +2349,25 @@ module RPC = struct
         unparsing_mode
   end
 
+  module Sc_rollup = struct
+    module S = struct
+      let path =
+        (RPC_path.(open_root / "context" / "sc_rollup")
+          : RPC_context.t RPC_path.context)
+
+      let inbox =
+        RPC_service.get_service
+          ~description:"Retrieves the inbox for a smart contract rollup."
+          ~query:RPC_query.empty
+          ~output:Sc_rollup.Inbox.encoding
+          RPC_path.(path /: Sc_rollup.rpc_arg / "inbox")
+    end
+
+    let register () =
+      Registration.register1 ~chunked:true S.inbox (fun ctxt rollup () () ->
+          Sc_rollup.inbox_uncarbonated ctxt rollup)
+  end
+
   module Forge = struct
     module S = struct
       open Data_encoding
