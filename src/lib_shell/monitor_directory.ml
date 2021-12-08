@@ -34,6 +34,9 @@ let build_rpc_directory validator mainchain_validator =
   let gen_register1 s f =
     dir := RPC_directory.gen_register !dir s (fun ((), a) p q -> f a p q)
   in
+  let gen_register2 s f =
+    dir := RPC_directory.gen_register !dir s (fun (((), a), b) p q -> f a b p q)
+  in
   gen_register0 Monitor_services.S.bootstrapped (fun () () ->
       let (block_stream, stopper) =
         Chain_validator.new_head_watcher mainchain_validator
@@ -208,4 +211,14 @@ let build_rpc_directory validator mainchain_validator =
           | Some c -> convert c >>= fun status -> Lwt.return_some [status]
       in
       RPC_answer.return_stream {next; shutdown}) ;
+  Rollup_monitoring.iter
+    (fun _proto_hash (module Monitor : Rollup_monitoring.ROLLUP_MONITOR) ->
+      let m =
+        (module Monitor : Rollup_monitoring.ROLLUP_MONITOR
+          with type t = Monitor.t
+           and type rollup_address = Monitor.rollup_address)
+      in
+      gen_register2
+        Monitor.S.monitor_rollup
+        (Rollup_monitoring.service validator store m)) ;
   !dir

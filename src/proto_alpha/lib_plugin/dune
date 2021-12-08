@@ -5,6 +5,7 @@
  (libraries tezos-base
             tezos-protocol-alpha
             tezos-stdlib-unix
+            tezos-shell-services
             )
  (modules (:standard) \ Plugin_registerer)
  (flags (:standard -open Tezos_base__TzPervasives
@@ -19,6 +20,7 @@
  (libraries tezos-base
             tezos-embedded-protocol-alpha
             tezos-protocol-plugin-alpha
+            tezos-shell-services
             tezos-shell)
  (modules Plugin_registerer)
  (flags (:standard -open Tezos_base__TzPervasives

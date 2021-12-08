@@ -10,6 +10,7 @@ depends: [
   "tezos-embedded-protocol-alpha"
   "tezos-protocol-plugin-alpha"
   "tezos-shell"
+  "tezos-shell-services"
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]

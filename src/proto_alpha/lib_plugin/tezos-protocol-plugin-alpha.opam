@@ -10,6 +10,7 @@ depends: [
   "tezos-base"
   "tezos-stdlib-unix"
   "tezos-protocol-alpha"
+  "tezos-shell-services"
   "tezos-protocol-alpha-parameters" {with-test}
   "tezos-test-helpers" {with-test}
   "alcotest-lwt" {with-test}

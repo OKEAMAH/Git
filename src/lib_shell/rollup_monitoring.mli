@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Development. <contact@tezcore.com>             *)
+(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,16 +23,54 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Rollup_monitor = struct
-  module Proto = Registerer.Registered
-  include Plugin.Rollup_monitor
+(** The type of a module packing a [filter] allowing to monitor interesting
+    data from rollup operations included in each new head. *)
+module type ROLLUP_MONITOR = sig
+  (** The protocol for which this filter operates. *)
+  module Proto : Registered_protocol.T
+
+  (** The abstract type of a [rollup_address], implemented protocol-side. *)
+  type rollup_address
+
+  (** The type of the data we wish to extract from blocks (typically, rollup
+      messages and the state of the inbox). *)
+  type t
+
+  val encoding : t Data_encoding.t
+
+  (** The service at which a stream of type [t] will be made available.  *)
+  module S : sig
+    val monitor_rollup :
+      ( [`GET],
+        unit,
+        (unit * Chain_services.chain) * rollup_address,
+        unit,
+        unit,
+        t trace )
+      RPC_service.t
+  end
+
+  (** [filter rollup ~op ~metadata] returns for each operation and its matching
+      receipt a potentially empty list of elements of type [t]. The semantics
+      is entirely defiend in the plugin. A typical example is be to select
+      all messages sent to a particular rollup. *)
+  val filter : rollup_address -> op:Operation.t -> metadata:Bytes.t -> t list
 end
 
-let () = Rollup_monitoring.register (module Rollup_monitor)
+(** [service validator store monitor] implements a streaming RPC service
+    compatible with the type of [monitor_rollup] above. *)
+val service :
+  Validator.t ->
+  Store.t ->
+  (module ROLLUP_MONITOR with type rollup_address = 'b and type t = 'a) ->
+  Chain_services.chain ->
+  'b ->
+  unit ->
+  unit ->
+  'a trace RPC_answer.t Lwt.t
 
-module Plugin = struct
-  module Proto = Registerer.Registered
-  include Plugin
-end
+val register : (module ROLLUP_MONITOR) -> unit
 
-let () = Prevalidator_filters.register (module Plugin)
+val find : Protocol_hash.t -> (module ROLLUP_MONITOR) option
+
+val iter : (Protocol_hash.t -> (module ROLLUP_MONITOR) -> unit) -> unit

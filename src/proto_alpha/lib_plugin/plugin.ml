@@ -971,6 +971,155 @@ module View_helpers = struct
     | _ -> unexpected_return
 end
 
+module Rollup_monitor = struct
+  type t = {
+    messages : Bytes.t list;
+    inbox_after : Alpha_context.Sc_rollup.Inbox.t;
+  }
+
+  type rollup_address = Sc_rollup.t
+
+  let proto_hash = Protocol_hash.to_b58check Protocol.hash
+
+  let path = RPC_path.(root / "monitor_rollup")
+
+  let encoding =
+    let open Data_encoding in
+    conv
+      (fun {messages; inbox_after} -> (messages, inbox_after))
+      (fun (messages, inbox_after) -> {messages; inbox_after})
+      (obj2
+         (req "messages" (list bytes))
+         (req "inbox_after" Alpha_context.Sc_rollup.Inbox.encoding))
+
+  module S = struct
+    (*
+       TODO-SCORU:
+       The type equality between RPC arguments of the shell and that
+       of the environment is not exported in V4, for some reason
+       (that for services is, thankfully). The following [Obj.magic]
+       is safe as of V4, but this should be taken care of.
+    *)
+    let chain_arg :
+        Tezos_shell_services.Block_services.chain Environment.RPC_arg.t =
+      Obj.magic Tezos_shell_services.Block_services.chain_arg
+
+    open Environment
+
+    (*
+       Full path: /monitor_rollup/<chain>/<b58_proto_hash>/<rollup_addr>/messages
+
+       We could put this RPC in the subtree /monitor but doing that requires
+       exposing that root in {!Tezos_shell_services.Monitor_services.S}.
+       It's not clear it's a good idea.
+
+       The following path is crafed so that there's a distinct prefix for each
+       protocol: removing {!proto_hash} would induce clashes among plugins
+       defined in several protocols. This is a hack: what we really want long-term
+       is for a worker to spawn this service automatically when a block declares
+       a new protocol (similarly as what the mempool does). This requires more
+       invasive modifications in the shell.
+    *)
+    let monitor_rollup =
+      RPC_service.get_service
+        ~description:
+          "Monitor all messages sent to the target rollup in blocks that are \
+           selected as the new head of the given chain."
+        ~query:RPC_query.empty
+        ~output:(Data_encoding.list encoding)
+        RPC_path.(
+          path /: chain_arg / proto_hash / "rollup" /: Sc_rollup.rpc_arg
+          / "messages")
+  end
+
+  let scan_op_and_metadata :
+      type k1 k2.
+      rollup_address ->
+      k1 contents ->
+      k2 Apply_results.contents_result ->
+      t list ->
+      t list =
+   fun target op receipt acc ->
+    match op with
+    | Manager_operation
+        {
+          source = _;
+          fee = _;
+          counter = _;
+          gas_limit = _;
+          storage_limit = _;
+          operation = Sc_rollup_add_message {rollup; messages};
+        } -> (
+        if Sc_rollup.Address.(target <> rollup) then acc
+        else
+          match receipt with
+          | Apply_results.Manager_operation_result
+              {
+                internal_operation_results = _;
+                balance_updates = _;
+                operation_result;
+              } -> (
+              match operation_result with
+              | Apply_results.Backtracked _ | Failed _ | Skipped _ -> acc
+              | Applied
+                  (Sc_rollup_add_message_result {consumed_gas = _; inbox_after})
+                ->
+                  {messages; inbox_after} :: acc
+              | Applied _ -> acc)
+          | _ -> assert false)
+    | _ -> acc
+
+  let rec scan_op_and_metadata_rec :
+      type k1 k2.
+      rollup_address ->
+      k1 contents_list ->
+      k2 Apply_results.contents_result_list ->
+      t list =
+    fun (type k1 k2)
+        target
+        (contents : k1 contents_list)
+        (receipt : k2 Apply_results.contents_result_list) ->
+     match (contents, receipt) with
+     | (Single contents, Apply_results.Single_result receipt) ->
+         scan_op_and_metadata target contents receipt []
+     | ( Cons (head, tail),
+         Apply_results.Cons_result (head_receipt, tail_receipts) ) ->
+         let acc = scan_op_and_metadata_rec target tail tail_receipts in
+         scan_op_and_metadata target head head_receipt acc
+     | _ -> assert false
+
+  let scan_packed_ops_and_metadata rollup (packed_op : packed_protocol_data)
+      (packed_metadata : operation_receipt) =
+    let (Operation_data op) = packed_op in
+    match packed_metadata with
+    | Operation_metadata meta ->
+        scan_op_and_metadata_rec rollup op.contents meta.contents
+    | No_operation_metadata ->
+        (* This can only happen when looking at old blocks, not freshly validated ones *)
+        assert false
+
+  let filter rollup ~(op : Tezos_base.Operation.t) ~(metadata : bytes) =
+    let packed_op =
+      match
+        Data_encoding.Binary.of_bytes_opt
+          Protocol.operation_data_encoding
+          op.proto
+      with
+      | None -> assert false
+      | Some packed_op -> packed_op
+    in
+    let packed_metadata =
+      match
+        Data_encoding.Binary.of_bytes_opt
+          Apply_results.operation_metadata_encoding
+          metadata
+      with
+      | None -> assert false
+      | Some packed_meta -> packed_meta
+    in
+    scan_packed_ops_and_metadata rollup packed_op packed_metadata
+end
+
 module RPC = struct
   open Environment
   open Alpha_context
@@ -2355,12 +2504,23 @@ module RPC = struct
         (RPC_path.(open_root / "context" / "sc_rollup")
           : RPC_context.t RPC_path.context)
 
+      let monitor_path =
+        (RPC_path.(root / "monitor" / "sc_rollup") : unit RPC_path.context)
+
       let inbox =
         RPC_service.get_service
           ~description:"Retrieves the inbox for a smart contract rollup."
           ~query:RPC_query.empty
           ~output:Sc_rollup.Inbox.encoding
           RPC_path.(path /: Sc_rollup.rpc_arg / "inbox")
+
+      let messages =
+        RPC_service.get_service
+          ~description:
+            "Streams the messages received by a smart contract rollup."
+          ~query:RPC_query.empty
+          ~output:Sc_rollup.Inbox.encoding
+          RPC_path.(monitor_path /: Sc_rollup.rpc_arg / "messages_stream")
     end
 
     let register () =
