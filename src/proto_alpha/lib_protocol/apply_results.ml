@@ -95,6 +95,7 @@ type _ successful_manager_operation_result =
       -> Kind.sc_rollup_originate successful_manager_operation_result
   | Sc_rollup_add_message_result : {
       consumed_gas : Gas.Arith.fp;
+      inbox_after : Sc_rollup.Inbox.t;
     }
       -> Kind.sc_rollup_add_message successful_manager_operation_result
 
@@ -491,7 +492,10 @@ module Manager_result = struct
   let sc_rollup_add_message_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.sc_rollup_add_message_case
-      ~encoding:(obj1 (req "consumed_gas" Gas.Arith.n_integral_encoding))
+      ~encoding:
+        (obj2
+           (req "consumed_gas" Gas.Arith.n_integral_encoding)
+           (req "inbox_after" Sc_rollup.Inbox.encoding))
       ~iselect:(function
         | Internal_operation_result
             (({operation = Sc_rollup_add_message _; _} as op), res) ->
@@ -502,9 +506,11 @@ module Manager_result = struct
             Some op
         | _ -> None)
       ~proj:(function
-        | Sc_rollup_add_message_result {consumed_gas} -> consumed_gas)
+        | Sc_rollup_add_message_result {consumed_gas; inbox_after} ->
+            (consumed_gas, inbox_after))
       ~kind:Kind.Sc_rollup_add_message_manager_kind
-      ~inj:(fun consumed_gas -> Sc_rollup_add_message_result {consumed_gas})
+      ~inj:(fun (consumed_gas, inbox_after) ->
+        Sc_rollup_add_message_result {consumed_gas; inbox_after})
 end
 
 let internal_operation_result_encoding :

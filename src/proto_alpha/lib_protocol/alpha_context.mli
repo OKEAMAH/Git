@@ -1748,6 +1748,14 @@ module Sc_rollup : sig
     type t = (module S)
   end
 
+  module Inbox : sig
+    type t
+
+    val encoding : t Data_encoding.encoding
+
+    val pp : Format.formatter -> t -> unit
+  end
+
   module Address : S.HASH
 
   type t = Address.t
@@ -1761,6 +1769,13 @@ module Sc_rollup : sig
     (context * origination_result) tzresult Lwt.t
 
   val kind : context -> t -> Sc_rollups.kind option tzresult Lwt.t
+
+  val add_messages :
+    context -> t -> bytes list -> (context * Inbox.t * Z.t) tzresult Lwt.t
+
+  val inbox : context -> t -> (context * Inbox.t) tzresult Lwt.t
+
+  val inbox_uncarbonated : context -> t -> Inbox.t tzresult Lwt.t
 end
 
 module Block_payload : sig

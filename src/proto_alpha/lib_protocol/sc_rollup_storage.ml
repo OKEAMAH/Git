@@ -28,8 +28,20 @@ let originate ctxt ~pvm_kind ~boot_sector =
   Sc_rollup_repr.Address.from_nonce nonce >>=? fun address ->
   Storage.Sc_rollup.PVM_kind.add ctxt address pvm_kind >>= fun ctxt ->
   Storage.Sc_rollup.Boot_sector.add ctxt address boot_sector >>= fun ctxt ->
+  Storage.Sc_rollup.Inbox.init ctxt address Sc_rollup_inbox.empty
+  >>=? fun (ctxt, size_diff) ->
   let stored_kind_size = 2 (* because tag_size of kind encoding is 16bits. *) in
-  let size = Z.of_int (stored_kind_size + Bytes.length boot_sector) in
+  let size =
+    Z.of_int (stored_kind_size + Bytes.length boot_sector + size_diff)
+  in
   return (ctxt, address, size)
 
 let kind ctxt address = Storage.Sc_rollup.PVM_kind.find ctxt address
+
+let add_messages ctxt rollup messages =
+  Storage.Sc_rollup.Inbox.get ctxt rollup >>=? fun (ctxt, inbox) ->
+  let inbox = Sc_rollup_inbox.add_messages inbox messages in
+  Storage.Sc_rollup.Inbox.update ctxt rollup inbox >>=? fun (ctxt, size) ->
+  return (ctxt, inbox, size)
+
+let inbox ctxt rollup = Storage.Sc_rollup.Inbox.get ctxt rollup

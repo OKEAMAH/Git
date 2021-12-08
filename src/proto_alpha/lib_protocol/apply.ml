@@ -1119,10 +1119,12 @@ let apply_manager_operation_content :
           {address; consumed_gas; size; balance_updates = []}
       in
       return (ctxt, result, [])
-  | Sc_rollup_add_message {rollup = _; messages = _} ->
+  | Sc_rollup_add_message {rollup; messages} ->
       assert_sc_rollup_feature_enabled ctxt >>=? fun () ->
+      Sc_rollup.add_messages ctxt rollup messages
+      >>=? fun (ctxt, inbox_after, _size) ->
       let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
-      let result = Sc_rollup_add_message_result {consumed_gas} in
+      let result = Sc_rollup_add_message_result {consumed_gas; inbox_after} in
       return (ctxt, result, [])
 
 type success_or_failure = Success of context | Failure

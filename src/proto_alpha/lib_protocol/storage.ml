@@ -1627,7 +1627,7 @@ module Sc_rollup = struct
 
      - a PVM kind (provided at creation time, read-only) ;
      - a boot sector (provided at creation time, read-only).
-
+     - a merkelized inbox, of which only the root hash is stored
   *)
   module PVM_kind =
     Indexed_context.Make_map
@@ -1649,5 +1649,16 @@ module Sc_rollup = struct
         type t = bytes
 
         let encoding = Data_encoding.bytes
+      end)
+
+  module Inbox =
+    Indexed_context.Make_carbonated_map
+      (struct
+        let name = ["inbox"]
+      end)
+      (struct
+        type t = Sc_rollup_inbox.t
+
+        let encoding = Sc_rollup_inbox.encoding
       end)
 end
