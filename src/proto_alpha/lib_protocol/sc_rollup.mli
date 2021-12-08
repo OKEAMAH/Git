@@ -34,3 +34,17 @@ val originate :
   pvm:Sc_rollup_repr.PVM.t ->
   boot_sector:Sc_rollup_repr.PVM.boot_sector ->
   (Raw_context.t * origination_result) tzresult Lwt.t
+
+val add_messages :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  bytes list ->
+  (Raw_context.t * Sc_rollup_inbox.t * Z.t) tzresult Lwt.t
+
+val inbox :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  (Raw_context.t * Sc_rollup_inbox.t) tzresult Lwt.t
+
+val inbox_uncarbonated :
+  Raw_context.t -> Sc_rollup_repr.t -> Sc_rollup_inbox.t tzresult Lwt.t

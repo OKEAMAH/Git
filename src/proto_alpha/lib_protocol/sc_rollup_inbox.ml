@@ -23,20 +23,42 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Sc_rollup_repr
+type hash = Dummy
 
-type origination_result = {address : Address.t; size : Z.t}
+type t = {hash : hash; offset : int64}
 
-let originate ctxt ~pvm ~boot_sector =
-  let pvm_kind = Sc_rollups.kind_of pvm in
-  Sc_rollup_storage.originate ctxt ~pvm_kind ~boot_sector
-  >>=? fun (ctxt, address, size) -> return (ctxt, {address; size})
+let pp_hash fmtr Dummy = Format.fprintf fmtr "Dummy"
 
-let add_messages ctxt rollup messages =
-  Sc_rollup_storage.add_messages ctxt rollup messages
-  >>=? fun (ctxt, inbox, size_diff) -> return (ctxt, inbox, Z.of_int size_diff)
+let pp fmtr {hash; offset} =
+  Format.fprintf
+    fmtr
+    "@[<v 2>{ hash = %a;@,offset = %Ld }@]"
+    pp_hash
+    hash
+    offset
 
-let inbox ctxt rollup = Sc_rollup_storage.inbox ctxt rollup
+let hash_encoding =
+  Data_encoding.conv
+    (fun Dummy -> ())
+    (fun () -> Dummy)
+    (Data_encoding.constant "dummy")
 
-let inbox_uncarbonated ctxt rollup =
-  Sc_rollup_storage.inbox ctxt rollup >>=? fun (_ctxt, inbox) -> return inbox
+let encoding =
+  let open Data_encoding in
+  conv
+    (fun {hash; offset} -> (hash, offset))
+    (fun (hash, offset) -> {hash; offset})
+    (obj2 (req "hash" hash_encoding) (req "offset" int64))
+
+let available {offset; hash = _} = Z.of_int64 offset
+
+let empty = {hash = Dummy; offset = 0L}
+
+let add_message {hash; offset} _bytes = {hash; offset = Int64.succ offset}
+
+let add_messages inbox messages = List.fold_left add_message inbox messages
+
+let consume_n_messages {hash; offset} ~n =
+  if Compare.Int.(n <= 0) then invalid_arg "consume_n_messages" ;
+  if Compare.Int64.(Int64.of_int n > offset) then None
+  else Some {hash; offset = Int64.sub offset (Int64.of_int n)}

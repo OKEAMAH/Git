@@ -449,4 +449,5 @@ module Sc_rollup = struct
   include Sc_rollup_repr
   include Sc_rollup_storage
   include Sc_rollup
+  module Inbox = Sc_rollup_inbox
 end

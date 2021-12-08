@@ -23,20 +23,26 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Sc_rollup_repr
+(** Merkelizing inbox for smart contract rollups. *)
 
-type origination_result = {address : Address.t; size : Z.t}
+(** The type of the in-memory state of the inbox for a smart contract rollup. *)
+type t
 
-let originate ctxt ~pvm ~boot_sector =
-  let pvm_kind = Sc_rollups.kind_of pvm in
-  Sc_rollup_storage.originate ctxt ~pvm_kind ~boot_sector
-  >>=? fun (ctxt, address, size) -> return (ctxt, {address; size})
+val pp : Format.formatter -> t -> unit
 
-let add_messages ctxt rollup messages =
-  Sc_rollup_storage.add_messages ctxt rollup messages
-  >>=? fun (ctxt, inbox, size_diff) -> return (ctxt, inbox, Z.of_int size_diff)
+val encoding : t Data_encoding.t
 
-let inbox ctxt rollup = Sc_rollup_storage.inbox ctxt rollup
+val available : t -> Z.t
 
-let inbox_uncarbonated ctxt rollup =
-  Sc_rollup_storage.inbox ctxt rollup >>=? fun (_ctxt, inbox) -> return inbox
+val empty : t
+
+(** [add_messages inbox msg_list] adds [msg_list] to [inbox] (preserving their order). *)
+val add_messages : t -> bytes list -> t
+
+(** [consume_n_messages inbox ~n] returns an inbox where [n] messages have
+    been consumed, or [None] if there are strictly less than [n] messages
+    available in [inbox].
+
+    @raise Invalid_argument if [n <= 0]
+ *)
+val consume_n_messages : t -> n:int -> t option
