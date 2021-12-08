@@ -433,3 +433,29 @@ val sc_rollup_originate :
     tztrace )
   result
   Lwt.t
+
+val sc_rollup_add_message :
+  #Protocol_client_context.full ->
+  chain:Chain_services.chain ->
+  block:Block_services.block ->
+  ?confirmations:int ->
+  ?dry_run:bool ->
+  ?verbose_signing:bool ->
+  ?simulation:bool ->
+  ?fee:Tez.t ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:counter ->
+  ?counter:counter ->
+  source:public_key_hash ->
+  rollup:Alpha_context.Sc_rollup.t ->
+  messages:bytes list ->
+  src_pk:public_key ->
+  src_sk:Client_keys.sk_uri ->
+  fee_parameter:Injection.fee_parameter ->
+  unit ->
+  ( Operation_hash.t
+    * Kind.sc_rollup_add_message Kind.manager contents
+    * Kind.sc_rollup_add_message Kind.manager Apply_results.contents_result,
+    tztrace )
+  result
+  Lwt.t
