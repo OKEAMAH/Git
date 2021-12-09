@@ -36,6 +36,7 @@ let test ~__FILE__ ~output_file ?(tags = []) title =
     ~title
     ~tags:("sc_rollup" :: tags)
 
+<<<<<<< HEAD
 let setup f ~protocol =
   let enable_sc_rollup = [(["enable_sc_rollup"], Some "true")] in
   let base = Either.right protocol in
