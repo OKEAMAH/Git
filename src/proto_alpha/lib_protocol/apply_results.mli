@@ -158,6 +158,13 @@ and _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.set_deposits_limit successful_manager_operation_result
+  | Sc_rollup_originate_result : {
+      balance_updates : Receipt.balance_updates;
+      address : Sc_rollup.Address.t;
+      consumed_gas : Gas.Arith.fp;
+      size : Z.t;
+    }
+      -> Kind.sc_rollup_originate successful_manager_operation_result
 
 and packed_successful_manager_operation_result =
   | Successful_manager_result :

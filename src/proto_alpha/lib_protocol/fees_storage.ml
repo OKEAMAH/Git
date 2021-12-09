@@ -102,6 +102,10 @@ let burn_origination_fees ?(origin = Receipt_repr.Block_application) c
   let origination_size = Constants_storage.origination_size c in
   burn_storage_fees ~origin c ~storage_limit ~payer (Z.of_int origination_size)
 
+let burn_sc_rollup_origination_fees ?(origin = Receipt_repr.Block_application) c
+    ~storage_limit ~payer consumed =
+  burn_storage_fees ~origin c ~storage_limit ~payer consumed
+
 let check_storage_limit c ~storage_limit =
   if
     Compare.Z.(
