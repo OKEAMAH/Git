@@ -756,6 +756,26 @@ val sign_block : t -> string -> delegate:string -> string Lwt.t
 (** Same as [sign_block], but do not wait for the process to exit. *)
 val spawn_sign_block : t -> string -> delegate:string -> Process.t
 
+(** Run [tezos-client originate rollup from <src> of kind <kind> booting with <boot_sector>]. *)
+val originate_rollup :
+  ?wait:string ->
+  ?burn_cap:Tez.t ->
+  src:string ->
+  kind:string ->
+  boot_sector:string ->
+  t ->
+  string Lwt.t
+
+(** Same as [originate_rollup], but do not wait for the process to exit. *)
+val spawn_originate_rollup :
+  ?wait:string ->
+  ?burn_cap:Tez.t ->
+  src:string ->
+  kind:string ->
+  boot_sector:string ->
+  t ->
+  Process.t
+
 (** {2 High-Level Functions} *)
 
 (** Create a client with mode [Client] and import all secret keys

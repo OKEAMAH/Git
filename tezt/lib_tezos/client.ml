@@ -1022,6 +1022,40 @@ let spawn_sign_block client block_hex ~delegate =
 let sign_block client block_hex ~delegate =
   spawn_sign_block client block_hex ~delegate |> Process.check_and_read_stdout
 
+let spawn_originate_rollup ?(wait = "none") ?burn_cap ~src ~kind ~boot_sector
+    client =
+  spawn_command
+    client
+    (["--wait"; wait]
+    @ [
+        "originate";
+        "rollup";
+        "from";
+        src;
+        "of";
+        "kind";
+        kind;
+        "booting";
+        "with";
+        boot_sector;
+      ]
+    @ Option.fold
+        ~none:[]
+        ~some:(fun burn_cap -> ["--burn-cap"; Tez.to_string burn_cap])
+        burn_cap)
+
+let parse_rollup_address_in_receipt output =
+  match output =~* rex "Address: (.*)" with
+  | None -> Test.fail "Cannot extract rollup address from receipt."
+  | Some x -> return x
+
+let originate_rollup ?wait ?burn_cap ~src ~kind ~boot_sector client =
+  let process =
+    spawn_originate_rollup ?wait ?burn_cap ~src ~kind ~boot_sector client
+  in
+  let* output = Process.check_and_read_stdout process in
+  parse_rollup_address_in_receipt output
+
 let init ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type () =
   let client =
     create ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type ()
