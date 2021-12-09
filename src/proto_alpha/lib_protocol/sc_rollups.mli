@@ -42,6 +42,7 @@ val kind_of : Sc_rollup_repr.PVM.t -> kind
 val from : name:string -> Sc_rollup_repr.PVM.t option
 
 (** [all] returns all implemented PVM. *)
+
 val all : kind list
 
 (** [all_names] returns all implemented PVM names. *)
@@ -49,3 +50,9 @@ val all_names : string list
 
 (** [kind_of_string name] returns the kind of the PVM of the specified [name]. *)
 val kind_of_string : string -> kind option
+
+(** [string_of_kind kind] returns a human-readable representation of [kind]. *)
+val string_of_kind : kind -> string
+
+(** [pp] is a pretty-printer for [kind]. *)
+val pp : Format.formatter -> kind -> unit
