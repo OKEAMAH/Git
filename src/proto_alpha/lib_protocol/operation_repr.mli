@@ -42,11 +42,8 @@
       - origination
       - delegation
       - set deposits limitation
-<<<<<<< HEAD
-    - tx rollup origination
-=======
+      - tx rollup origination
       - originate smart contract rollup
->>>>>>> 2182379b72 (Proto,SCORU: Expose smart contract rollup origination as L1 operation)
 
     Each of them can be encoded as raw bytes. Operations are distinguished at
     type level using phantom type parameters. [packed_operation] type allows

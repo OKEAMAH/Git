@@ -523,6 +523,7 @@ module Encoding = struct
           proj = (function Tx_rollup_origination -> ());
           inj = (fun () -> Tx_rollup_origination);
         }
+    let sc_rollup_operation_tag_offset = 200
 
     let[@coq_axiom_with_reason "gadt"] sc_rollup_originate_case =
       MCase
