@@ -493,8 +493,6 @@ let () =
     (function Sc_rollup_feature_disabled -> Some () | _ -> None)
     (fun () -> Sc_rollup_feature_disabled)
 
-type error += Wrong_voting_period of int32 * int32
-
 type error += (* `Temporary *) Wrong_voting_period of int32 * int32
 
 type error +=
