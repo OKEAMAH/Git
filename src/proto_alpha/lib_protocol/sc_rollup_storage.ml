@@ -31,3 +31,5 @@ let originate ctxt ~pvm_kind ~boot_sector =
   let stored_kind_size = 2 (* because tag_size of kind encoding is 16bits. *) in
   let size = Z.of_int (stored_kind_size + Bytes.length boot_sector) in
   return (ctxt, address, size)
+
+let kind ctxt address = Storage.Sc_rollup.PVM_kind.find ctxt address

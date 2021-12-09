@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,50 +23,45 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(*
+module Simple = struct
+  include Internal_event.Simple
 
-   Each time we add a data constructor to [kind], we also need:
-   - to extend [all] with this new constructor ;
-   - to update [kind_of_string] and [encoding].
+  let section = ["sc_rollup_node"]
 
-*)
-type kind = Example_arith
+  let starting_node =
+    declare_0
+      ~section
+      ~name:"starting_sc_rollup_node"
+      ~msg:"Starting the smart contract rollup node"
+      ~level:Notice
+      ()
 
-let all = [Example_arith]
+  let node_is_ready =
+    declare_2
+      ~section
+      ~name:"sc_rollup_node_is_ready"
+      ~msg:"The smart contract rollup node is listening to {addr}:{port}"
+      ~level:Notice
+      ("addr", Data_encoding.string)
+      ("port", Data_encoding.uint16)
 
-let kind_of_string = function "arith" -> Some Example_arith | _ -> None
+  let rollup_exists =
+    declare_2
+      ~section
+      ~name:"sc_rollup_node_knows_its_rollup"
+      ~msg:
+        "The smart contract rollup node is interacting with rollup {addr} of \
+         kind {kind}"
+      ~level:Notice
+      ("addr", Protocol.Alpha_context.Sc_rollup.Address.encoding)
+      ("kind", Data_encoding.string)
+end
 
-let example_arith_case =
-  Data_encoding.(
-    case
-      ~title:"Example_arith rollup kind"
-      (Tag 0)
-      unit
-      (function Example_arith -> Some ())
-      (fun () -> Example_arith))
+let starting_node = Simple.(emit starting_node)
 
-let encoding = Data_encoding.union ~tag_size:`Uint16 [example_arith_case]
+let node_is_ready ~rpc_addr ~rpc_port =
+  Simple.(emit node_is_ready (rpc_addr, rpc_port))
 
-let example_arith_pvm = (module Sc_rollup_arith : Sc_rollup_repr.PVM.S)
-
-let of_kind = function Example_arith -> example_arith_pvm
-
-let kind_of (module M : Sc_rollup_repr.PVM.S) =
-  match kind_of_string M.name with
-  | Some k -> k
-  | None ->
-      failwith
-        (Format.sprintf "The module named %s is not in Sc_rollups.all." M.name)
-
-let from ~name = match name with "arith" -> Some example_arith_pvm | _ -> None
-
-let all_names =
-  List.map
-    (fun k ->
-      let (module M : Sc_rollup_repr.PVM.S) = of_kind k in
-      M.name)
-    all
-
-let string_of_kind = function Example_arith -> "arith"
-
-let pp fmt k = Format.fprintf fmt "%s" (string_of_kind k)
+let rollup_exists ~addr ~kind =
+  let kind = Protocol.Sc_rollups.string_of_kind kind in
+  Simple.(emit rollup_exists (addr, kind))

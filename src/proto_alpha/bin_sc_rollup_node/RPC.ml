@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,50 +23,42 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(*
+open Tezos_rpc
+open Tezos_rpc_http
+open Tezos_rpc_http_server
+open Protocol
+open Alpha_context
 
-   Each time we add a data constructor to [kind], we also need:
-   - to extend [all] with this new constructor ;
-   - to update [kind_of_string] and [encoding].
+module S = struct
+  let sc_rollup_address =
+    RPC_service.get_service
+      ~description:"Smart contract rollup address"
+      ~query:RPC_query.empty
+      ~output:Sc_rollup.Address.encoding
+      RPC_path.(open_root / "sc_rollup_address")
+end
 
-*)
-type kind = Example_arith
+let register_sc_rollup_address configuration dir =
+  RPC_directory.register0 dir S.sc_rollup_address (fun () () ->
+      return @@ configuration.Configuration.sc_rollup_address)
 
-let all = [Example_arith]
+let register configuration =
+  RPC_directory.empty |> register_sc_rollup_address configuration
 
-let kind_of_string = function "arith" -> Some Example_arith | _ -> None
-
-let example_arith_case =
-  Data_encoding.(
-    case
-      ~title:"Example_arith rollup kind"
-      (Tag 0)
-      unit
-      (function Example_arith -> Some ())
-      (fun () -> Example_arith))
-
-let encoding = Data_encoding.union ~tag_size:`Uint16 [example_arith_case]
-
-let example_arith_pvm = (module Sc_rollup_arith : Sc_rollup_repr.PVM.S)
-
-let of_kind = function Example_arith -> example_arith_pvm
-
-let kind_of (module M : Sc_rollup_repr.PVM.S) =
-  match kind_of_string M.name with
-  | Some k -> k
-  | None ->
-      failwith
-        (Format.sprintf "The module named %s is not in Sc_rollups.all." M.name)
-
-let from ~name = match name with "arith" -> Some example_arith_pvm | _ -> None
-
-let all_names =
-  List.map
-    (fun k ->
-      let (module M : Sc_rollup_repr.PVM.S) = of_kind k in
-      M.name)
-    all
-
-let string_of_kind = function Example_arith -> "arith"
-
-let pp fmt k = Format.fprintf fmt "%s" (string_of_kind k)
+let start configuration =
+  let Configuration.{rpc_addr; rpc_port; _} = configuration in
+  let rpc_addr = P2p_addr.of_string_exn rpc_addr in
+  let host = Ipaddr.V6.to_string rpc_addr in
+  let dir = register configuration in
+  let node = `TCP (`Port rpc_port) in
+  let acl = RPC_server.Acl.default rpc_addr in
+  Lwt.catch
+    (fun () ->
+      RPC_server.launch
+        ~media_types:Media_type.all_media_types
+        ~host
+        ~acl
+        node
+        dir
+      >>= return)
+    fail_with_exn

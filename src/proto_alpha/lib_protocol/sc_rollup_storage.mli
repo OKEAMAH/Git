@@ -36,3 +36,9 @@ val originate :
   pvm_kind:Sc_rollups.kind ->
   boot_sector:bytes ->
   (Raw_context.t * Sc_rollup_repr.Address.t * Z.t) tzresult Lwt.t
+
+(** [kind context address] returns [Some kind] iff [address] is an
+    existing rollup of some [kind]. Returns [None] if [address] is
+    not a valid rollup address. *)
+val kind :
+  Raw_context.t -> Sc_rollup_repr.t -> Sc_rollups.kind option tzresult Lwt.t

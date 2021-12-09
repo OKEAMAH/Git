@@ -2499,4 +2499,6 @@ module Sc_rollup : sig
     pvm:PVM.t ->
     boot_sector:Bytes.t ->
     (context * origination_result) tzresult Lwt.t
+
+  val kind : context -> t -> Sc_rollups.kind option tzresult Lwt.t
 end

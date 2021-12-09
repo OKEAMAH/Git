@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,50 +23,19 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(*
+open Configuration
+open Protocol.Alpha_context
+open Plugin
 
-   Each time we add a data constructor to [kind], we also need:
-   - to extend [all] with this new constructor ;
-   - to update [kind_of_string] and [encoding].
-
-*)
-type kind = Example_arith
-
-let all = [Example_arith]
-
-let kind_of_string = function "arith" -> Some Example_arith | _ -> None
-
-let example_arith_case =
-  Data_encoding.(
-    case
-      ~title:"Example_arith rollup kind"
-      (Tag 0)
-      unit
-      (function Example_arith -> Some ())
-      (fun () -> Example_arith))
-
-let encoding = Data_encoding.union ~tag_size:`Uint16 [example_arith_case]
-
-let example_arith_pvm = (module Sc_rollup_arith : Sc_rollup_repr.PVM.S)
-
-let of_kind = function Example_arith -> example_arith_pvm
-
-let kind_of (module M : Sc_rollup_repr.PVM.S) =
-  match kind_of_string M.name with
-  | Some k -> k
+let check_sc_rollup_address_exists sc_rollup_address
+    (cctxt : Protocol_client_context.full) =
+  RPC.Sc_rollup.kind cctxt (cctxt#chain, cctxt#block) sc_rollup_address ()
+  >>=? fun kind_opt ->
+  (match kind_opt with
   | None ->
-      failwith
-        (Format.sprintf "The module named %s is not in Sc_rollups.all." M.name)
+      cctxt#error "%a does not exist" Sc_rollup.Address.pp sc_rollup_address
+  | Some kind -> Event.rollup_exists ~addr:sc_rollup_address ~kind)
+  >>= fun () -> return ()
 
-let from ~name = match name with "arith" -> Some example_arith_pvm | _ -> None
-
-let all_names =
-  List.map
-    (fun k ->
-      let (module M : Sc_rollup_repr.PVM.S) = of_kind k in
-      M.name)
-    all
-
-let string_of_kind = function Example_arith -> "arith"
-
-let pp fmt k = Format.fprintf fmt "%s" (string_of_kind k)
+let start configuration (cctxt : Protocol_client_context.full) =
+  check_sc_rollup_address_exists configuration.sc_rollup_address cctxt
