@@ -831,38 +831,114 @@ let prepare_first_block ~level ~timestamp ctxt =
       add_constants ctxt param.constants >|= ok
   | Ithaca_012 ->
       get_previous_protocol_constants ctxt >>= fun c ->
+      let block_time_is_30s =
+        Compare.Int64.(Period_repr.to_seconds c.minimal_block_delay = 30L)
+      in
+      let (minimal_block_delay, delay_increment_per_round) =
+        if block_time_is_30s then
+          (Period_repr.of_seconds_exn 20L, Period_repr.of_seconds_exn 10L)
+        else (c.minimal_block_delay, c.delay_increment_per_round)
+      in
+      let hard_gas_limit_per_block =
+        if block_time_is_30s then
+          Gas_limit_repr.Arith.(integral_of_int_exn 3_466_666)
+        else c.hard_gas_limit_per_block
+      in
+      let Constants_repr.Generated.
+            {
+              consensus_threshold;
+              baking_reward_fixed_portion;
+              baking_reward_bonus_per_slot;
+              endorsing_reward_per_slot;
+              liquidity_baking_subsidy;
+            } =
+        Constants_repr.Generated.generate
+          ~consensus_committee_size:c.consensus_committee_size
+          ~blocks_per_minute:
+            {
+              numerator = 60;
+              denominator =
+                minimal_block_delay |> Period_repr.to_seconds |> Int64.to_int;
+            }
+      in
+      let increase x = Int32.div (Int32.mul x 3l) 2l in
+      let ( blocks_per_cycle,
+            blocks_per_commitment,
+            blocks_per_stake_snapshot,
+            blocks_per_voting_period,
+            max_operations_time_to_live ) =
+        if block_time_is_30s then
+          ( increase c.blocks_per_cycle,
+            increase c.blocks_per_commitment,
+            increase c.blocks_per_stake_snapshot,
+            increase c.blocks_per_voting_period,
+            3 * c.max_operations_time_to_live / 2 )
+        else
+          ( c.blocks_per_cycle,
+            c.blocks_per_commitment,
+            c.blocks_per_stake_snapshot,
+            c.blocks_per_voting_period,
+            c.max_operations_time_to_live )
+      in
+      let liquidity_baking_sunset_level =
+        if Compare.Int32.(c.liquidity_baking_sunset_level = 3_063_809l) then
+          Int32.(add level (mul 15l blocks_per_voting_period))
+        else c.liquidity_baking_sunset_level
+      in
+      get_cycle_eras ctxt >>=? fun cycle_eras ->
+      let current_era = Level_repr.current_era cycle_eras in
+      let current_cycle =
+        let level_position =
+          Int32.sub level (Raw_level_repr.to_int32 current_era.first_level)
+        in
+        Cycle_repr.add
+          current_era.first_cycle
+          (Int32.to_int (Int32.div level_position c.blocks_per_cycle))
+      in
+      let new_cycle_era =
+        Level_repr.
+          {
+            first_level = Raw_level_repr.of_int32_exn (Int32.succ level);
+            first_cycle = Cycle_repr.succ current_cycle;
+            blocks_per_cycle;
+            blocks_per_commitment;
+          }
+      in
+      Level_repr.add_cycle_era cycle_eras new_cycle_era
+      >>?= fun new_cycle_eras ->
+      set_cycle_eras ctxt new_cycle_eras >>=? fun ctxt ->
       let constants =
         Constants_repr.
           {
             preserved_cycles = c.preserved_cycles;
-            blocks_per_cycle = c.blocks_per_cycle;
-            blocks_per_commitment = c.blocks_per_commitment;
-            blocks_per_stake_snapshot = c.blocks_per_stake_snapshot;
-            blocks_per_voting_period = c.blocks_per_voting_period;
+            blocks_per_cycle;
+            blocks_per_commitment;
+            blocks_per_stake_snapshot;
+            blocks_per_voting_period;
             hard_gas_limit_per_operation = c.hard_gas_limit_per_operation;
-            hard_gas_limit_per_block = c.hard_gas_limit_per_block;
+            hard_gas_limit_per_block;
             proof_of_work_threshold = c.proof_of_work_threshold;
             tokens_per_roll = c.tokens_per_roll;
             seed_nonce_revelation_tip = c.seed_nonce_revelation_tip;
             origination_size = c.origination_size;
-            max_operations_time_to_live = c.max_operations_time_to_live;
-            baking_reward_fixed_portion = c.baking_reward_fixed_portion;
-            baking_reward_bonus_per_slot = c.baking_reward_bonus_per_slot;
-            endorsing_reward_per_slot = c.endorsing_reward_per_slot;
+            max_operations_time_to_live;
+            baking_reward_fixed_portion;
+            baking_reward_bonus_per_slot;
+            endorsing_reward_per_slot;
             cost_per_byte = c.cost_per_byte;
             hard_storage_limit_per_operation =
               c.hard_storage_limit_per_operation;
             quorum_min = c.quorum_min;
             quorum_max = c.quorum_max;
             min_proposal_quorum = c.min_proposal_quorum;
-            liquidity_baking_subsidy = c.liquidity_baking_subsidy;
-            liquidity_baking_sunset_level = c.liquidity_baking_sunset_level;
+            liquidity_baking_subsidy;
+            liquidity_baking_sunset_level;
             liquidity_baking_escape_ema_threshold =
               c.liquidity_baking_escape_ema_threshold;
-            minimal_block_delay = c.minimal_block_delay;
-            delay_increment_per_round = c.delay_increment_per_round;
+            minimal_block_delay;
+            delay_increment_per_round;
             consensus_committee_size = c.consensus_committee_size;
-            consensus_threshold = c.consensus_threshold;
+            consensus_threshold (* same as c.consensus_threshold *);
             minimal_participation_ratio = c.minimal_participation_ratio;
             max_slashing_period = c.max_slashing_period;
             frozen_deposits_percentage = c.frozen_deposits_percentage;
