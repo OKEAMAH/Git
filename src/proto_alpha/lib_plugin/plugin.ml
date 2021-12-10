@@ -2505,22 +2505,22 @@ module RPC = struct
         (RPC_path.(open_root / "context" / "sc_rollup")
           : RPC_context.t RPC_path.context)
 
+      let monitor_path =
+        (RPC_path.(open_root / "monitor" / "sc_rollup") : unit RPC_path.context)
+
       let kind =
         RPC_service.get_service
           ~description:"Kind of smart contract rollup"
           ~query:RPC_query.empty
           ~output:(obj1 (opt "kind" Sc_rollups.encoding))
-          RPC_path.(path /: Alpha_context.Sc_rollup.Address.rpc_arg / "kind")
-
-      let monitor_path =
-        (RPC_path.(root / "monitor" / "sc_rollup") : unit RPC_path.context)
+          RPC_path.(path /: Sc_rollup.Address.rpc_arg / "kind")
 
       let inbox =
         RPC_service.get_service
           ~description:"Retrieves the inbox for a smart contract rollup."
           ~query:RPC_query.empty
           ~output:Sc_rollup.Inbox.encoding
-          RPC_path.(path /: Sc_rollup.rpc_arg / "inbox")
+          RPC_path.(path /: Sc_rollup.Address.rpc_arg / "inbox")
 
       let messages =
         RPC_service.get_service
@@ -2528,7 +2528,7 @@ module RPC = struct
             "Streams the messages received by a smart contract rollup."
           ~query:RPC_query.empty
           ~output:Sc_rollup.Inbox.encoding
-          RPC_path.(monitor_path /: Sc_rollup.rpc_arg / "messages_stream")
+          RPC_path.(monitor_path /: Sc_rollup.Address.rpc_arg / "messages_stream")
     end
 
 
@@ -2543,7 +2543,9 @@ module RPC = struct
       Registration.register1 ~chunked:true S.kind @@ fun ctxt address () () ->
       Alpha_context.Sc_rollup.kind ctxt address
 
-    let register () = register_inbox (); register_kind ()
+    let register () =
+      register_kind ();
+      register_inbox ();
   end
 
   module Forge = struct
