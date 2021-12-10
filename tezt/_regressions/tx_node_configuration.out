@@ -1,0 +1,2 @@
+tezt/_regressions/tx_node_configuration.out
+{"data-dir":"<variable>","client-keys":"tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx","rollup-id":"tru1HdK6HiR31Xo1bSAr4mwwCek8ExgwuUeHm","block-hash":"<variable>","rpc-port":16386}

@@ -27,37 +27,110 @@
 
 let get_state tx_rollup_hash client =
   let* json = RPC.Tx_rollup.get_state ~tx_rollup_hash client in
-  JSON.(json |-> "state" |> as_opt |> Option.map (fun _ -> ())) |> Lwt.return
+  JSON.(json |-> "state" |> as_opt) |> Lwt.return
+
+let get_block_hash block_json =
+  JSON.(block_json |-> "hash" |> as_string) |> return
+
+let test ~__FILE__ ~output_file ?(tags = []) title =
+  Protocol.register_regression_test
+    ~output_file
+    ~__FILE__
+    ~title
+    ~tags:("tx_rollup" :: tags)
+
+let setup f ~protocol =
+  let enable_tx_rollup = [(["tx_rollup_enable"], Some "true")] in
+  let base = Either.right protocol in
+  let* parameter_file = Protocol.write_parameter_file ~base enable_tx_rollup in
+  let* (node, client) =
+    Client.init_with_protocol ~parameter_file `Client ~protocol ()
+  in
+  let bootstrap1_key = Constant.bootstrap1 in
+  f node client bootstrap1_key
+
+let test_with_setup ~__FILE__ ~output_file ?(tags = []) title f =
+  test ~__FILE__ ~output_file ~tags title (fun protocol ->
+      setup ~protocol (fun node client bootstrap_key ->
+          f protocol node client bootstrap_key))
 
 (*                               test                                        *)
 
 let test_simple_use_case =
+  let output_file = "tx_simple_use_case" in
   let open Tezt_tezos in
-  Protocol.register_test ~__FILE__ ~title:"Simple use case" ~tags:["rollup"]
-  @@ fun protocol ->
-  let* parameter_file =
-    Protocol.write_parameter_file
-      ~base:(Either.right protocol)
-      [(["tx_rollup_enable"], Some "true")]
-  in
-  let* (_node, client) =
-    Client.init_with_protocol ~parameter_file `Client ~protocol ()
-  in
-  let* tx_rollup_hash =
-    Client.originate_tx_rollup
-      ~burn_cap:Tez.(of_int 9999999)
-      ~storage_limit:60_000
-      ~src:Constant.bootstrap1.public_key_hash
-      client
-  in
-  let* () = Client.bake_for client in
-  let* state = get_state tx_rollup_hash client in
-  match state with
-  | Some _ -> unit
-  | None ->
-      Test.fail
-        "The tx rollups was not correctly originated and no state exists for \
-         %s."
-        tx_rollup_hash
+  test_with_setup
+    ~__FILE__
+    ~output_file
+    "TX_rollup: simple use case"
+    (fun _protocol _node client bootstrap1_key ->
+      let* tx_rollup_hash =
+        Client.originate_tx_rollup
+          ~burn_cap:Tez.(of_int 9999999)
+          ~storage_limit:60_000
+          ~src:bootstrap1_key.public_key_hash
+          client
+      in
+      let* () = Client.bake_for client in
+      let* state = get_state tx_rollup_hash client in
+      match state with
+      | Some s ->
+          let () = Regression.capture @@ JSON.encode s in
+          unit
+      | None ->
+          Test.fail
+            "The tx rollups was not correctly originated and no state exists \
+             for %s."
+            tx_rollup_hash)
 
-let register ~protocols = test_simple_use_case ~protocols
+let test_node_configuration =
+  let output_file = "tx_node_configuration" in
+  test_with_setup
+    ~__FILE__
+    ~output_file
+    "TX_rollup: configuration"
+    (fun _protocol node client bootstrap1_key ->
+      let operator = bootstrap1_key.public_key_hash in
+      let* tx_rollup_hash =
+        Client.originate_tx_rollup
+          ~burn_cap:Tez.(of_int 9999999)
+          ~storage_limit:60_000
+          ~src:operator
+          client
+      in
+      let* json = RPC.get_block client in
+      let* block_hash = get_block_hash json in
+      let tx_rollup_node =
+        Tx_rollup_node.create
+          ~rollup_id:tx_rollup_hash
+          ~block_hash
+          ~operator
+          client
+          node
+      in
+      let* filename =
+        Tx_rollup_node.config_init tx_rollup_node tx_rollup_hash block_hash
+      in
+      let configuration =
+        let open Ezjsonm in
+        match from_channel @@ open_in filename with
+        | `O fields ->
+            `O
+              (List.map
+                 (fun (k, v) ->
+                   let x =
+                     if k = "data-dir" || k = "block-hash" then
+                       `String "<variable>"
+                     else v
+                   in
+                   (k, x))
+                 fields)
+            |> to_string
+        | _ -> failwith "Unexpected configuration format"
+      in
+      let () = Regression.capture configuration in
+      unit)
+
+let register ~protocols =
+  test_simple_use_case ~protocols ;
+  test_node_configuration ~protocols
