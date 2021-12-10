@@ -977,7 +977,7 @@ module Rollup_monitor = struct
     inbox_after : Alpha_context.Sc_rollup.Inbox.t;
   }
 
-  type rollup_address = Sc_rollup.t
+  type rollup_address = Alpha_context.Sc_rollup.t
 
   let proto_hash = Protocol_hash.to_b58check Protocol.hash
 
@@ -1028,7 +1028,7 @@ module Rollup_monitor = struct
         ~query:RPC_query.empty
         ~output:(Data_encoding.list encoding)
         RPC_path.(
-          path /: chain_arg / proto_hash / "rollup" /: Sc_rollup.rpc_arg
+          path /: chain_arg / proto_hash / "rollup" /: Alpha_context.Sc_rollup.rpc_arg
           / "messages")
   end
 
@@ -2499,10 +2499,18 @@ module RPC = struct
   end
 
   module Sc_rollup = struct
+    open Data_encoding
     module S = struct
       let path =
         (RPC_path.(open_root / "context" / "sc_rollup")
           : RPC_context.t RPC_path.context)
+
+      let kind =
+        RPC_service.get_service
+          ~description:"Kind of smart contract rollup"
+          ~query:RPC_query.empty
+          ~output:(obj1 (opt "kind" Sc_rollups.encoding))
+          RPC_path.(path /: Alpha_context.Sc_rollup.Address.rpc_arg / "kind")
 
       let monitor_path =
         (RPC_path.(root / "monitor" / "sc_rollup") : unit RPC_path.context)
@@ -2523,9 +2531,19 @@ module RPC = struct
           RPC_path.(monitor_path /: Sc_rollup.rpc_arg / "messages_stream")
     end
 
-    let register () =
+
+    let kind ctxt block sc_rollup_address =
+      RPC_context.make_call1 S.kind ctxt block sc_rollup_address ()
+
+    let register_inbox () =
       Registration.register1 ~chunked:true S.inbox (fun ctxt rollup () () ->
           Sc_rollup.inbox_uncarbonated ctxt rollup)
+
+    let register_kind () =
+      Registration.register1 ~chunked:true S.kind @@ fun ctxt address () () ->
+      Alpha_context.Sc_rollup.kind ctxt address
+
+    let register () = register_inbox (); register_kind ()
   end
 
   module Forge = struct
@@ -3294,29 +3312,6 @@ module RPC = struct
         RPC_path.(path / "round")
   end
 
-  module Sc_rollup = struct
-    open Data_encoding
-
-    module S = struct
-      let path = RPC_path.(open_root / "context" / "sc_rollup")
-
-      let kind =
-        RPC_service.get_service
-          ~description:"Kind of smart contract rollup"
-          ~query:RPC_query.empty
-          ~output:(obj1 (opt "kind" Sc_rollups.encoding))
-          RPC_path.(path /: Sc_rollup.Address.rpc_arg / "kind")
-    end
-
-    let kind ctxt block sc_rollup_address =
-      RPC_context.make_call1 S.kind ctxt block sc_rollup_address ()
-
-    let register_kind () =
-      Registration.register1 ~chunked:true S.kind @@ fun ctxt address () () ->
-      Sc_rollup.kind ctxt address
-
-    let register () = register_kind ()
-  end
 
   type Environment.Error_monad.error += Negative_level_offset
 
