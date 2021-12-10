@@ -20,6 +20,7 @@ PROTO_A_DAEMON = protocol.PREV_DAEMON
 PROTO_A_PATH = f"proto_{PROTO_A_DAEMON.replace('-','_')}"
 PROTO_B = protocol.HASH
 PROTO_B_DAEMON = protocol.DAEMON
+PROTO_B_PARAMETERS = protocol.PARAMETERS
 
 
 def client_get_current_period_kind(client) -> dict:
@@ -106,9 +107,11 @@ class TestVotingFull:
         )
 
     def test_add_bakers(self, sandbox: Sandbox):
-        """Add a baker per node"""
-        for i in range(0, NUM_NODES):
-            sandbox.add_baker(i, [f"bootstrap{i}"], proto=PROTO_B_DAEMON)
+        """
+        Add a baker for the upcoming PROTO_B per node, with 1 delegate per baker.
+        """
+        for i in range(NUM_NODES):
+            sandbox.add_baker(i, [f"bootstrap{i + 1}"], proto=PROTO_B_DAEMON)
 
     def test_client_knows_proto_b(self, sandbox: Sandbox):
         client = sandbox.client(0)
@@ -191,8 +194,11 @@ class TestVotingFull:
         sandbox.rm_baker(0, proto=PROTO_A_DAEMON)
         client = sandbox.client(0)
         level_before = client.get_level(chain='main')
-        tenderbake(client)
-        print(f"level before {level_before}")
+        # wait enough time for a block to be baked
+        first_round_duration = int(
+            PROTO_B_PARAMETERS['round_durations']['round0']
+        )
+        time.sleep(2 * first_round_duration)
         assert utils.check_level_greater_than(client, level_before + 1)
 
     @pytest.mark.xfail
