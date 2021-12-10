@@ -1,13 +1,13 @@
-Protocol Alpha
-==============
+Protocol Idiazabal
+==================
 
-This page contains all the relevant information for protocol Alpha
+This page contains all the relevant information for protocol Idiazabal
 (see :ref:`naming_convention`).
 
 The code can be found in the :src:`src/proto_012_PrwXhpab` directory of the
 ``master`` branch of Tezos.
 
-This page documents the changes brought by protocol Alpha with respect
+This page documents the changes brought by protocol Idiazabal with respect
 to Hangzhou.
 
 .. contents::
