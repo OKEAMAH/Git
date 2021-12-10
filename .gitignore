@@ -31,6 +31,7 @@ __pycache__
 /tezos-signer
 /tezos-sandbox
 /tezos-codec
+/tezos-sc-rollup-node-alpha
 /tezos-snoop
 /tezos-tps-evaluation
 
