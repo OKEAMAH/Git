@@ -1,6 +1,5 @@
 import time
 
-import subprocess
 import pytest
 
 from launchers.sandbox import Sandbox
@@ -106,11 +105,10 @@ class TestVotingFull:
             activate_in_the_past=True,
         )
 
-    # def test_add_bakers(self, sandbox: Sandbox):
-    #     """Add a baker per node"""
-    #     sandbox.add_baker(
-    #         1, [f"bootstrap{i}" for i in range(1, 6)], proto=PROTO_B_DAEMON
-    #     )
+    def test_add_bakers(self, sandbox: Sandbox):
+        """Add a baker per node"""
+        for i in range(0, NUM_NODES):
+            sandbox.add_baker(i, [f"bootstrap{i}"], proto=PROTO_B_DAEMON)
 
     def test_client_knows_proto_b(self, sandbox: Sandbox):
         client = sandbox.client(0)
@@ -178,34 +176,19 @@ class TestVotingFull:
     @pytest.mark.timeout(60)
     def test_all_nodes_run_proto_b(self, sandbox: Sandbox):
         # we let a PROTO_A baker bake the last blocks of PROTO_A
-        # sandbox.add_baker(
-        #     0, [f"bootstrap{i}" for i in range(1, 6)], proto=PROTO_A_DAEMON
-        # )
-        # for i in range(1,NUM_NODES):
-        #     sandbox.add_baker(
-        #         i, [f"bootstrap{i}"], proto=PROTO_B_DAEMON
-        #     )
+        sandbox.add_baker(
+            0, [f"bootstrap{i}" for i in range(1, 6)], proto=PROTO_A_DAEMON
+        )
         clients = sandbox.all_clients()
-        client = clients[0]
-        utils.bake(client, bake_for="bootstrap2")
         all_have_proto_b = False
         while not all_have_proto_b:
-            try:
-                utils.bake(client, bake_for="bootstrap2")
-            except subprocess.CalledProcessError:
-                # A fatal error is raised when we do not have enough endorsing
-                # power.
-                # This is typical of a simple bake for call in Tenderbake
-                # Therefore this means we actually have migrated to Tenderbake
-                # Let's use a baking call that is sure to pass
-                tenderbake(client)
-            # either succeeds out of the loop or fails due to the timeout header
-            client_protocols = [client.get_protocol() for c in clients]
+            client_protocols = [client.get_protocol() for client in clients]
             all_have_proto_b = all(p == PROTO_B for p in client_protocols)
             time.sleep(POLLING_TIME)
 
     def test_new_chain_progress(self, sandbox: Sandbox):
-        # sandbox.rm_baker(0, proto=PROTO_A_DAEMON)
+        # Now that all nodes use PROTO_B, can remove the lone baker for PROTO_A
+        sandbox.rm_baker(0, proto=PROTO_A_DAEMON)
         client = sandbox.client(0)
         level_before = client.get_level(chain='main')
         tenderbake(client)
