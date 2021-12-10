@@ -33,10 +33,10 @@ let protocols =
       Some "/include/rpc_introduction.rst.inc",
       "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK" );
     (* TODO tezos/tezos#2170: adapt rest of this list *)
-    ( "",
-      "011 Hangzhou",
+    ( "012",
+      "012 Idiazabal",
       Some "/include/rpc_introduction.rst.inc",
-      "PtHangz2aRngywmSRGGvrcTyMbbdpWdpFKuS4uMWxg2RaH9i1qx" );
+      "PrwXhpabpPHgHm71S3ukzu2C82offTiJwDaL3AChm3p8QLr6etU" );
   ]
 
 let pp_name ppf = function
