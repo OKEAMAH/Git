@@ -1,0 +1,25 @@
+(executables
+ (names test_consensus_filter)
+ (libraries tezos-base
+            alcotest-lwt
+            tezos-test-helpers
+            qcheck-alcotest
+            tezos-stdlib-unix
+            tezos-protocol-012-PrwXhpab-parameters
+            tezos-protocol-plugin-012-PrwXhpab)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_micheline
+                   -open Tezos_protocol_012_PrwXhpab
+                   -open Tezos_protocol_plugin_012_PrwXhpab
+                   -open Tezos_protocol_environment_012_PrwXhpab
+                   -open Tezos_protocol_012_PrwXhpab.Protocol)))
+
+(rule
+ (alias buildtest)
+ (deps test_consensus_filter.exe)
+ (action (progn)))
+
+(rule
+ (alias runtest)
+ (package tezos-protocol-plugin-012-PrwXhpab)
+ (action (run %{exe:test_consensus_filter.exe} -q -e)))

@@ -1,0 +1,24 @@
+(library
+ (name tezos_012_PrwXhpab_mockup_simulator)
+ (public_name tezos-baking-012-PrwXhpab.mockup-simulator)
+ (libraries tezos-client-base-unix
+            tezos-client-commands
+            tezos-protocol-012-PrwXhpab
+            tezos-baking-012-PrwXhpab
+            tezos-mockup
+            tezos-mockup-proxy
+            tezos-mockup-commands)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_protocol_012_PrwXhpab
+                   -open Tezos_client_012_PrwXhpab
+                   -open Tezos_client_commands
+                   -open Tezos_baking_012_PrwXhpab
+                   -open Tezos_stdlib_unix
+                   -open Tezos_client_base_unix
+                   -open Tezos_protocol_012_PrwXhpab_parameters
+                   -open Tezos_protocol_012_PrwXhpab.Protocol)))
+
+(rule
+ (alias runtest_lint)
+ (deps (glob_files *.ml{,i}))
+ (action (run %{lib:tezos-tooling:lint.sh} %{deps})))

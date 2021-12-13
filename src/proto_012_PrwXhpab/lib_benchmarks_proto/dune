@@ -1,0 +1,31 @@
+(library
+ (name tezos_benchmarks_proto_012_PrwXhpab)
+ (instrumentation (backend bisect_ppx))
+ (public_name tezos-benchmarks-proto-012-PrwXhpab)
+ (libraries
+  tezos-base
+  tezos-protocol-012-PrwXhpab
+  tezos-protocol-012-PrwXhpab-parameters
+  tezos-benchmark
+  tezos-benchmark-012-PrwXhpab
+  tezos-shell-benchmarks
+  tezos-micheline
+  tezos-012-PrwXhpab-test-helpers
+  tezos-sapling
+  tezos-client-012-PrwXhpab
+)
+ (library_flags (:standard -linkall))
+ (flags (:standard -open Tezos_stdlib
+                   -open Tezos_base
+                   -open Tezos_base__TzPervasives
+                   -open Tezos_error_monad
+                   -open Tezos_benchmark
+                   -open Tezos_benchmark_012_PrwXhpab
+                   -open Tezos_benchmark_type_inference_012_PrwXhpab
+                   -open Tezos_protocol_012_PrwXhpab
+                   -open Tezos_raw_protocol_012_PrwXhpab
+                   -open Tezos_client_012_PrwXhpab
+                   -open Tezos_crypto
+                   -open Tezos_micheline
+                   -open Tezos_012_PrwXhpab_test_helpers
+                   -open Tezos_client_012_PrwXhpab)))

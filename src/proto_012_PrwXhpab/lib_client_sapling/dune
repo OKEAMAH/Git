@@ -1,0 +1,19 @@
+(library
+ (name tezos_client_sapling_012_PrwXhpab)
+ (instrumentation (backend bisect_ppx))
+ (public_name tezos-client-sapling-012-PrwXhpab)
+ (libraries tezos-base
+            tezos-crypto
+            tezos-client-base
+            tezos-signer-backends
+            tezos-client-012-PrwXhpab
+            tezos-client-012-PrwXhpab-commands
+            tezos-protocol-012-PrwXhpab)
+ (library_flags (:standard -linkall))
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_stdlib_unix
+                   -open Tezos_client_base
+                   -open Tezos_client_012_PrwXhpab
+                   -open Tezos_client_012_PrwXhpab_commands
+                   -open Tezos_protocol_012_PrwXhpab
+                   -open Tezos_protocol_environment_012_PrwXhpab)))
