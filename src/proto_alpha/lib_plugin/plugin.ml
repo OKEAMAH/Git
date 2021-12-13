@@ -1028,8 +1028,8 @@ module Rollup_monitor = struct
         ~query:RPC_query.empty
         ~output:(Data_encoding.list encoding)
         RPC_path.(
-          path /: chain_arg / proto_hash / "rollup" /: Alpha_context.Sc_rollup.rpc_arg
-          / "messages")
+          path /: chain_arg / proto_hash / "rollup"
+          /: Alpha_context.Sc_rollup.rpc_arg / "messages")
   end
 
   let scan_op_and_metadata :
@@ -2500,6 +2500,7 @@ module RPC = struct
 
   module Sc_rollup = struct
     open Data_encoding
+
     module S = struct
       let path =
         (RPC_path.(open_root / "context" / "sc_rollup")
@@ -2528,9 +2529,9 @@ module RPC = struct
             "Streams the messages received by a smart contract rollup."
           ~query:RPC_query.empty
           ~output:Sc_rollup.Inbox.encoding
-          RPC_path.(monitor_path /: Sc_rollup.Address.rpc_arg / "messages_stream")
+          RPC_path.(
+            monitor_path /: Sc_rollup.Address.rpc_arg / "messages_stream")
     end
-
 
     let kind ctxt block sc_rollup_address =
       RPC_context.make_call1 S.kind ctxt block sc_rollup_address ()
@@ -2544,8 +2545,8 @@ module RPC = struct
       Alpha_context.Sc_rollup.kind ctxt address
 
     let register () =
-      register_kind ();
-      register_inbox ();
+      register_kind () ;
+      register_inbox ()
   end
 
   module Forge = struct
@@ -3313,7 +3314,6 @@ module RPC = struct
         ~output:Round.encoding
         RPC_path.(path / "round")
   end
-
 
   type Environment.Error_monad.error += Negative_level_offset
 
