@@ -28,17 +28,6 @@ def client_get_current_period_kind(client) -> dict:
     return res['voting_period']['kind']
 
 
-def tenderbake(client: Client):
-    """Call to 'bake for' that uses the multi-account command for Tenderbake.
-
-    In particular, this allows to never get a 'Delegates do not have enough
-    voting power' error in sandboxed mode since we bake for all known accounts
-    (aka all bootstrap accounts) by default in method multibake.
-
-    """
-    client.multibake(args=['--minimal-timestamp'])
-
-
 def bake_n_blocks(client: Client, baker: str, n_blocks: int):
     for _ in range(n_blocks):
         utils.bake(client, bake_for=baker)
@@ -108,7 +97,7 @@ class TestVotingFull:
 
     def test_add_bakers(self, sandbox: Sandbox):
         """
-        Add a baker for the upcoming PROTO_B per node, with 1 delegate per baker.
+        Add a baker for upcoming PROTO_B per node, with 1 delegate per baker.
         """
         for i in range(NUM_NODES):
             sandbox.add_baker(i, [f"bootstrap{i + 1}"], proto=PROTO_B_DAEMON)
