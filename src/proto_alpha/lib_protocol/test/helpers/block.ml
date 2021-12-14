@@ -686,10 +686,8 @@ let bake_n_with_all_balance_updates ?(baking_mode = Application) ?policy
             fun (Successful_manager_result r) ->
               match r with
               | Reveal_result _ | Delegation_result _
-              | Set_deposits_limit_result _
-              | Tx_rollup_origination_result _
-              | Sc_rollup_originate_result _
-              | Sc_rollup_add_message_result _ ->
+              | Set_deposits_limit_result _ | Tx_rollup_origination_result _
+              | Sc_rollup_originate_result _ | Sc_rollup_add_message_result _ ->
                   balance_updates_rev
               | Transaction_result {balance_updates; _}
               | Origination_result {balance_updates; _}
