@@ -819,4 +819,4 @@ let precheck_manager {ctxt; _} op =
              * 'kind Alpha_context.Kind.manager
                Apply_results.prechecked_contents_list) -> ()
 
-(* Vanity nonce: TBD *)
+(* Vanity nonce: 0075005294242116 *)
