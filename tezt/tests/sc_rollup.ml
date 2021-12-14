@@ -136,7 +136,7 @@ let test_rollup_node_running =
     ~tags:["run"]
     "running a smart contract rollup node"
     (fun protocol ->
-      setup ~protocol @@ setup_fresh_rollup
+      setup ~protocol @@ with_fresh_rollup
       @@ fun _rollup_address sc_rollup_node _filename ->
       let* () = Sc_rollup_node.run sc_rollup_node in
       return ())
