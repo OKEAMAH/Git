@@ -106,7 +106,7 @@ let test_rollup_node_configuration =
   test
     ~__FILE__
     ~output_file
-    "configuration of an optimistic rollup node for smart contract"
+    "configuration of a smart contract optimistic rollup node"
     (fun protocol ->
       setup ~protocol @@ with_fresh_rollup
       @@ fun _rollup_address _sc_rollup_node filename ->
