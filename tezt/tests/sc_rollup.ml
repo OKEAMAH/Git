@@ -142,6 +142,16 @@ let test_rollup_node_running =
       let* () = Sc_rollup_node.run sc_rollup_node in
       return ())
 
+(* Add messages to rollup
+   ----------------------
+
+   A message can be added to a rollup inbox, and this is reflected
+   in Layer1 inbox size. *)
+
+
+
+
+
 let register ~protocols =
   test_origination ~protocols ;
   test_rollup_node_configuration ~protocols ;
