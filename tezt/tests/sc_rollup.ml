@@ -116,7 +116,8 @@ let test_rollup_node_configuration =
         | `O fields ->
             (* Remove 'data-dir' as it is non deterministic. *)
             `O (List.filter (fun (s, _) -> s <> "data-dir") fields) |> to_string
-        | _ -> failwith "The configuration file has not the expected format."
+        | _ ->
+            failwith "The configuration file does not have the expected format."
       in
       Regression.capture read_configuration ;
       return ())
