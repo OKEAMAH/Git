@@ -1726,6 +1726,44 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                             "additionalProperties": false
                           },
                           {
+                            "title": "Tx_rollup_origination",
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "tx_rollup_origination"
+                                ]
+                              },
+                              "source": {
+                                "$ref": "#/definitions/Signature.Public_key_hash"
+                              },
+                              "fee": {
+                                "$ref": "#/definitions/alpha.mutez"
+                              },
+                              "counter": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "gas_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "storage_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "tx_rollup_origination": {}
+                            },
+                            "required": [
+                              "tx_rollup_origination",
+                              "storage_limit",
+                              "gas_limit",
+                              "counter",
+                              "fee",
+                              "source",
+                              "kind"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
                             "title": "Sc_rollup_originate",
                             "type": "object",
                             "properties": {
@@ -2159,7 +2197,7 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                     "fields": [
                       {
                         "description": {
-                          "title": "X_2"
+                          "title": "X_1"
                         },
                         "encoding": {
                           "tag_size": "Uint16",
@@ -4316,107 +4354,6 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                               "name": "Set_deposits_limit"
                             },
                             {
-                              "tag": 113,
-                              "fields": [
-                                {
-                                  "name": "Tag",
-                                  "layout": {
-                                    "size": "Uint8",
-                                    "kind": "Int"
-                                  },
-                                  "data_kind": {
-                                    "size": 1,
-                                    "kind": "Float"
-                                  },
-                                  "kind": "named"
-                                },
-                                {
-                                  "name": "source",
-                                  "layout": {
-                                    "name": "public_key_hash",
-                                    "kind": "Ref"
-                                  },
-                                  "data_kind": {
-                                    "size": 21,
-                                    "kind": "Float"
-                                  },
-                                  "kind": "named"
-                                },
-                                {
-                                  "name": "fee",
-                                  "layout": {
-                                    "name": "N.t",
-                                    "kind": "Ref"
-                                  },
-                                  "data_kind": {
-                                    "kind": "Dynamic"
-                                  },
-                                  "kind": "named"
-                                },
-                                {
-                                  "name": "counter",
-                                  "layout": {
-                                    "name": "N.t",
-                                    "kind": "Ref"
-                                  },
-                                  "data_kind": {
-                                    "kind": "Dynamic"
-                                  },
-                                  "kind": "named"
-                                },
-                                {
-                                  "name": "gas_limit",
-                                  "layout": {
-                                    "name": "N.t",
-                                    "kind": "Ref"
-                                  },
-                                  "data_kind": {
-                                    "kind": "Dynamic"
-                                  },
-                                  "kind": "named"
-                                },
-                                {
-                                  "name": "storage_limit",
-                                  "layout": {
-                                    "name": "N.t",
-                                    "kind": "Ref"
-                                  },
-                                  "data_kind": {
-                                    "kind": "Dynamic"
-                                  },
-                                  "kind": "named"
-                                },
-                                {
-                                  "name": "kind",
-                                  "layout": {
-                                    "name": "X_2",
-                                    "kind": "Ref"
-                                  },
-                                  "data_kind": {
-                                    "size": 2,
-                                    "kind": "Float"
-                                  },
-                                  "kind": "named"
-                                },
-                                {
-                                  "kind": "dyn",
-                                  "num_fields": 1,
-                                  "size": "Uint30"
-                                },
-                                {
-                                  "name": "boot_sector",
-                                  "layout": {
-                                    "kind": "Bytes"
-                                  },
-                                  "data_kind": {
-                                    "kind": "Variable"
-                                  },
-                                  "kind": "named"
-                                }
-                              ],
-                              "name": "Sc_rollup_originate"
-                            },
-                            {
                               "tag": 114,
                               "fields": [
                                 {
@@ -4524,6 +4461,181 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                                 }
                               ],
                               "name": "Sc_rollup_add_message"
+                            },
+                            {
+                              "tag": 150,
+                              "fields": [
+                                {
+                                  "name": "Tag",
+                                  "layout": {
+                                    "size": "Uint8",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "source",
+                                  "layout": {
+                                    "name": "public_key_hash",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "size": 21,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "fee",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "counter",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "gas_limit",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "storage_limit",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                }
+                              ],
+                              "name": "Tx_rollup_origination"
+                            },
+                            {
+                              "tag": 200,
+                              "fields": [
+                                {
+                                  "name": "Tag",
+                                  "layout": {
+                                    "size": "Uint8",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "source",
+                                  "layout": {
+                                    "name": "public_key_hash",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "size": 21,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "fee",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "counter",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "gas_limit",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "storage_limit",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "kind",
+                                  "layout": {
+                                    "name": "X_1",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "size": 2,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "kind": "dyn",
+                                  "num_fields": 1,
+                                  "size": "Uint30"
+                                },
+                                {
+                                  "name": "boot_sector",
+                                  "layout": {
+                                    "kind": "Bytes"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Variable"
+                                  },
+                                  "kind": "named"
+                                }
+                              ],
+                              "name": "Sc_rollup_originate"
                             }
                           ]
                         }
@@ -6309,6 +6421,44 @@ curl -s 'http://localhost:16385/describe/chains/main/mempool?recurse=yes'
                             },
                             "required": [
                               "value",
+                              "storage_limit",
+                              "gas_limit",
+                              "counter",
+                              "fee",
+                              "source",
+                              "kind"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "title": "Tx_rollup_origination",
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "tx_rollup_origination"
+                                ]
+                              },
+                              "source": {
+                                "$ref": "#/definitions/Signature.Public_key_hash"
+                              },
+                              "fee": {
+                                "$ref": "#/definitions/alpha.mutez"
+                              },
+                              "counter": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "gas_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "storage_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "tx_rollup_origination": {}
+                            },
+                            "required": [
+                              "tx_rollup_origination",
                               "storage_limit",
                               "gas_limit",
                               "counter",
