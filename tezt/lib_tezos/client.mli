@@ -783,6 +783,7 @@ val spawn_originate_sc_rollup :
   t ->
   Process.t
 
+  (*
 val sc_rollup_add_message :
   ?wait:string ->
   ?burn_cap:Tez.t ->
@@ -800,9 +801,12 @@ val sc_rollup_add_message :
     how do we handle L1 regorgs in the client? basic options:
       1) kill the stream
       2) include offsets etc
+
+    Compare streaming endpoints in K8S/Consul
     *)
 val sc_rollup_stream_messages :
   t ->
+  *)
 
 (** {2 High-Level Functions} *)
 
