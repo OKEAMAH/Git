@@ -85,20 +85,20 @@ let test_origination =
    A rollup node has a configuration file that must be initialized.
 
 *)
-let setup_fresh_rollup f node client bootstrap1_key =
+let with_fresh_rollup f tezos_node tezos_client bootstrap1_key =
   let* rollup_address =
     Client.originate_sc_rollup
       ~burn_cap:Tez.(of_int 9999999)
       ~src:bootstrap1_key
       ~kind:"arith"
       ~boot_sector:""
-      client
+      tezos_client
   in
-  let sc_rollup_node = Sc_rollup_node.create node in
+  let sc_rollup_node = Sc_rollup_node.create tezos_node in
   let* configuration_filename =
     Sc_rollup_node.config_init sc_rollup_node rollup_address
   in
-  let* () = Client.bake_for client in
+  let* () = Client.bake_for tezos_client in
   f rollup_address sc_rollup_node configuration_filename
 
 let test_rollup_node_configuration =
@@ -108,7 +108,7 @@ let test_rollup_node_configuration =
     ~output_file
     "configuration of an optimistic rollup node for smart contract"
     (fun protocol ->
-      setup ~protocol @@ setup_fresh_rollup
+      setup ~protocol @@ with_fresh_rollup
       @@ fun _rollup_address _sc_rollup_node filename ->
       let read_configuration =
         let open Ezjsonm in
