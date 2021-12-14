@@ -118,7 +118,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
    sc_rollup.mli sc_rollup.ml
-   sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
    gas_monad.mli gas_monad.ml
@@ -251,7 +250,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
    sc_rollup.mli sc_rollup.ml
-   sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
    gas_monad.mli gas_monad.ml
@@ -383,7 +381,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   sc_rollup.mli sc_rollup.ml
    sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
@@ -538,7 +535,6 @@ include Tezos_raw_protocol_alpha.Main
    Sapling_validator
    Global_constants_costs
    Global_constants_storage
-   Sc_rollup
    Sc_rollup
    Alpha_context
    Local_gas_counter
@@ -712,7 +708,6 @@ include Tezos_raw_protocol_alpha.Main
    sapling_validator.ml
    global_constants_costs.mli global_constants_costs.ml
    global_constants_storage.mli global_constants_storage.ml
-   sc_rollup.mli sc_rollup.ml
    sc_rollup.mli sc_rollup.ml
    alpha_context.mli alpha_context.ml
    local_gas_counter.ml
