@@ -783,6 +783,27 @@ val spawn_originate_sc_rollup :
   t ->
   Process.t
 
+val sc_rollup_add_message :
+  ?wait:string ->
+  ?burn_cap:Tez.t ->
+  rollup_address:string ->
+  message:string ->
+  t ->
+  unit Lwt.t
+
+(** TODO interface?
+    need to stream messages added to a single rollup, including grouping/L1 blocks
+    should probably also include offsets.
+
+    allow starting from offset N (s.t. returned messages are > this offset)
+
+    how do we handle L1 regorgs in the client? basic options:
+      1) kill the stream
+      2) include offsets etc
+    *)
+val sc_rollup_stream_messages :
+  t ->
+
 (** {2 High-Level Functions} *)
 
 (** Create a client with mode [Client] and import all secret keys
