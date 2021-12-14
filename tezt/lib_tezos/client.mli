@@ -793,6 +793,26 @@ val sc_rollup_add_message :
   unit Lwt.t
 
 (** TODO interface?
+
+    ---
+    Manual test, to be adapted for TEZT:
+      Update sandbox parameter JSON file
+      Terminal 1
+        # ./src/bin_node/tezos-sandboxed-node.sh 1 --connections 0
+      Terminal 2
+        # eval `./src/bin_client/tezos-init-sandboxed-client.sh 1`
+        # tezos-activate-alpha
+        # tezos-client rpc get /chains/main/chain_id
+        # (tezos-client originate rollup from bootstrap1 of kind arith booting with 24 --burn-cap 1 & tezos-client bake for bootstrap1)
+      Terminal 3
+        curl -v localhost:18731/monitor_rollup/CHAIN-ID/ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK/rollup/SCORU-ID/messages
+      Terminal 2
+        (tezos-client send rollup message "{}" from bootstrap1 to scr1487DHcJajMxgAhcvMXprHnBMkuwwMfwT6AssP4NhBgoJeuiUeM & tezos-client bake for bootstrap1)
+
+
+
+
+    ----
     docs/api/granada-openapi.json
 
     Can use src/bin_openapi/generate.sh
