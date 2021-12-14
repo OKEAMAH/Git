@@ -43,6 +43,7 @@ For a high-level overview of the Tezos economic protocol implementation (in the
 
 The rest of the implementation is structured in the following subdirectories:
 - `bin_accuser/`, `bin_baker/`, and `bin_endorser/`: these directories implement protocol-specific binaries for bakers and other nodes actively participating in the economic protocol.
+- `bin_sc_rollup_node` is a daemon implementing validation for smart-contract optimistic rollups
 - `lib_client/`, `lib_client_commands/`, `lib_client_sapling/`
 
   These directories contain the protocol-specific parts of the client.
