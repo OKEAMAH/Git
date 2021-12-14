@@ -793,6 +793,13 @@ val sc_rollup_add_message :
   unit Lwt.t
 
 (** TODO interface?
+    docs/api/granada-openapi.json
+
+    Can use src/bin_openapi/generate.sh
+    then see
+    "/monitor_rollup/{chain_id}/ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK/rollup/{sc_rollup_address}/messages"
+
+
     need to stream messages added to a single rollup, including grouping/L1 blocks
     should probably also include offsets.
 
