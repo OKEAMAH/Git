@@ -124,7 +124,7 @@ let test_rollup_node_configuration =
 (* Launching a rollup node
    -----------------------
 
-   A running rollup node can asked the address of the rollup it is
+   A running rollup node can be asked the address of the rollup it is
    interacting with.
 
 *)
