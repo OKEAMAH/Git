@@ -807,7 +807,7 @@ val sc_rollup_add_message :
       Terminal 3
         curl -v localhost:18731/monitor_rollup/CHAIN-ID/ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK/rollup/SCORU-ID/messages
       Terminal 2
-        (tezos-client send rollup message "{}" from bootstrap1 to scr1487DHcJajMxgAhcvMXprHnBMkuwwMfwT6AssP4NhBgoJeuiUeM & tezos-client bake for bootstrap1)
+        (tezos-client send rollup message "[\"cafe\"]" from bootstrap1 to scr1487DHcJajMxgAhcvMXprHnBMkuwwMfwT6AssP4NhBgoJeuiUeM & tezos-client bake for bootstrap1)
 
 
 
