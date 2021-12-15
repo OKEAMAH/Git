@@ -67,7 +67,7 @@ invalid hash root, and take over the rollup.  This is the reason behind the
 “optimistic” of optimistic rollups.
 
 Transaction Rollups on Tezos
-****************************
+----------------------------
 
 In some blockchains, optimistic rollups are usually implemented as smart
 contracts on the layer-1 chain. That is, **rollup operations**, **commitments**,
@@ -79,13 +79,94 @@ dedicated manager operations. This design choice, permitted by the amendment
 feature of Tezos, allows for a specialized, gas- and storage-efficient
 implementation of optimistic rollups.
 
+Transaction rollups allow for exchanging financial assets, encoded as
+`Michelson tickets
+<https://tezos.gitlab.io/michelson-reference/#type-ticket>`, at a
+higher throughput that what is possible on Tezos natively. The
+expected workflow proceeds as follow. On the layer-1, smart contracts
+can “deposit” tickets to a transaction rollup, for the benefit of a
+layer-2 address. Owners of layer-2 address owning deposited tickets
+can then exchanging them off-chain, that is, in the layer-2.
 
-.. TODO: https://gitlab.com/tezos/tezos/-/issues/2154
-   explain choosen ticket interaction and layer-2 operation.
-   Transaction rollups can be used to exchange assets (encoded as tickets). A
-   key feature of this implementation is that these exchanges can be grouped
-   into formal trades (*i.e.*, sets of ticket transfers that need to happen
-   atomically).
+On the layer-1
+**************
+
+Anyone can originate a transaction rollup on Tezos. The origination is
+the result of the Tezos operation ``Tx_rollup_origination``. Similarly
+to smart contracts, transaction rollups are assigned an address,
+prefixed by ``tru1``.
+
+Initially, the layer-2 ledger of the newly created transaction rollup
+is empty. This ledger needs to be provisioned with tickets, that are
+deposited from the layer-2 by layer-1 smart contracts. They do so by
+emitting layer-1 transactions to the transaction rollup address,
+targeting more specifically the ``deposit`` entrypoint, whose
+argument is a pair of
+
+#. A ticket (of any type)
+#. A layer-2 address (the type ``tx_rollup_l2_address`` in Michelson)
+
+Only smart contracts can emit transaction targeting a transaction
+rollup. An example of a minimal smart contract depositing ``unit``
+tickets to a transaction rollup is::
+
+    parameter (pair address tx_rollup_l2_address);
+    storage (unit);
+    code {
+           # cast the address to contract type
+           CAR;
+           UNPAIR;
+           CONTRACT %deposit (pair (ticket unit) tx_rollup_l2_address);
+
+           IF_SOME {
+                     SWAP;
+
+                     # amount for transferring
+                     PUSH mutez 0;
+                     SWAP;
+
+                     # create a ticket
+                     PUSH nat 10;
+                     PUSH unit Unit;
+                     TICKET;
+
+                     PAIR ;
+
+                     # deposit
+                     TRANSFER_TOKENS;
+
+                     DIP { NIL operation };
+                     CONS;
+
+                     DIP { PUSH unit Unit };
+                     PAIR;
+                   }
+                   { FAIL ; }
+         }
+
+When its ``default`` entrypoint is called, this smart contract emits
+an internal transaction targeting a transaction rollup in order to
+deposit 10 ``unit`` tickets for the benefit of a given layer-2
+address.
+
+Once a layer-2 address has been provisioned with a ticket, they can
+transfer it to other layer-2 address, by means of layer-2 operations.
+These operations can be submitted in batch to the layer-1 using the
+``Tx_rollup_submit_batch`` layer-1 operation.
+
+Thus, interactions between a transaction rollup and their participants
+(*i.e.*, the deposit of a ticket and the submission of a batch of
+layer-2 operations pass through the layer-1). However, it is prominent
+to understand that the goal of the layer-1 at this point is simply to
+keep the record of these interactions, **not** to try to assign a
+particular semantics to them. More precisely, these interactions are
+treated as messages addressed to the layer-2, and are stored in
+inboxes (one per Tezos level).
+
+The interpretation of these messages is delegated to the layer-2.
+
+On the layer-2
+**************
 
 Getting Started
 ---------------
@@ -109,16 +190,32 @@ The origination of a transaction rollup burns ꜩ15.
 A **transaction rollup address** is attributed to the new transaction
 rollup. This address is derived from the hash of the Tezos operation with the
 origination operation similarly to the smart contract origination. It is always
-prefixed by ``tru1``. For instance,
-
-::
+prefixed by ``tru1``. For instance,::
 
    tru1HdK6HiR31Xo1bSAr4mwwCek8ExgwuUeHm
 
 is a valid transaction rollup address.
 
 When using the ``tezos-client`` to originate a transaction rollup, it outputs
-the address.
+the newly created address.
 
-::
-.. TODO: https://gitlab.com/tezos/tezos/-/issues/2154
+Interacting with a Transaction Rollup using ``tezos-client``
+************************************************************
+
+The ``tezos-client`` provides dedicated commands to interact with a
+transaction rollup. These commands are not indented to be used in a
+daily workflow, but rather for testing and development purposes.
+
+It is possible to use the ``tezos-client`` to submit a batch of
+layer-2 operations.
+
+.. code:: sh
+
+    tezos-client submit tx rollup batch <batch content in hexadecimal notation> to <transaction rollup address> from <implicit account address>
+
+It is also possible to retrieve the content of an inbox thanks
+to a dedicated RPC of the ``tezos-node``.
+
+.. code:: sh
+
+    tezos-client rpc get /chains/main/blocks/<block>/context/tx_rollup/<transaction rollup address>/inbox/<offset>
