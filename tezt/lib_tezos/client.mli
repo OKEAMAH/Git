@@ -783,16 +783,15 @@ val spawn_originate_sc_rollup :
   t ->
   Process.t
 
-  (*
-val sc_rollup_add_message :
+val sc_rollup_add_messages :
   ?wait:string ->
   ?burn_cap:Tez.t ->
   rollup_address:string ->
-  message:string ->
+  messages:string list ->
   t ->
   unit Lwt.t
 
-(** TODO interface?
+(*
 
     ---
     Manual test, to be adapted for TEZT:
@@ -830,7 +829,6 @@ val sc_rollup_add_message :
       2) include offsets etc
 
     Compare streaming endpoints in K8S/Consul
-    *)
 val sc_rollup_stream_messages :
   t ->
   *)

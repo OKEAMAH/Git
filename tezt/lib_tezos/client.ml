@@ -1068,6 +1068,37 @@ let originate_sc_rollup ?wait ?burn_cap ~src ~kind ~boot_sector client =
   let* output = Process.check_and_read_stdout process in
   parse_rollup_address_in_receipt output
 
+let spawn_sc_rollup_add_messages ?(wait = "none") ?burn_cap ~rollup_address ~messages
+    client =
+  let msgs_str =
+    let _ = messages in
+    "[\"cafe\"]"; (* TODO use messages *)
+  in
+  spawn_command
+    client
+    (["--wait"; wait]
+    @ [
+        "send";
+        "rollup";
+        "message";
+        msgs_str;
+        "from";
+        Constant.bootstrap1.alias;
+        "to";
+        rollup_address;
+      ]
+    @ Option.fold
+        ~none:[]
+        ~some:(fun burn_cap -> ["--burn-cap"; Tez.to_string burn_cap])
+        burn_cap)
+
+let sc_rollup_add_messages ?wait ?burn_cap ~rollup_address ~messages client =
+  let process =
+    spawn_sc_rollup_add_messages ?wait ?burn_cap ~rollup_address ~messages client
+  in
+  let* _output = Process.check_and_read_stdout process in
+  return ()
+
 let init ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type () =
   let client =
     create ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type ()

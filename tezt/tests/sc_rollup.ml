@@ -105,7 +105,7 @@ let with_fresh_rollup f tezos_node tezos_client bootstrap1_key =
     Sc_rollup_node.config_init sc_rollup_node rollup_address
   in
   let* () = Client.bake_for tezos_client in
-  f rollup_address sc_rollup_node configuration_filename
+  f rollup_address sc_rollup_node configuration_filename tezos_client
 
 let test_rollup_node_configuration =
   let output_file = "sc_rollup_node_configuration" in
@@ -115,7 +115,7 @@ let test_rollup_node_configuration =
     "configuration of a smart contract optimistic rollup node"
     (fun protocol ->
       setup ~protocol @@ with_fresh_rollup
-      @@ fun _rollup_address _sc_rollup_node filename ->
+      @@ fun _rollup_address _sc_rollup_node filename _tezos_client ->
       let read_configuration =
         let open Ezjsonm in
         match from_channel (open_in filename) with
@@ -144,7 +144,7 @@ let test_rollup_node_running =
     "running a smart contract rollup node"
     (fun protocol ->
       setup ~protocol @@ with_fresh_rollup
-      @@ fun _rollup_address sc_rollup_node _filename ->
+      @@ fun _rollup_address sc_rollup_node _filename _tezos_client ->
       let* () = Sc_rollup_node.run sc_rollup_node in
       return ())
 
@@ -156,8 +156,13 @@ let test_sc_rollup_add_message =
     "adding messages to a SCORU inbox using L1 client"
     (fun protocol ->
       setup ~protocol @@ with_fresh_rollup
-      @@ fun _rollup_address _sc_rollup_node _config_filename ->
+      @@ fun rollup_address _sc_rollup_node _config_filename tezos_client ->
+      let* () =
+        Client.sc_rollup_add_messages rollup_address ["foo";"bar"] tezos_client
+      in
       return ())
+
+(* TODO test_sc_rollup_add_message with arbitrary binary strings *)
 
 
 (* Messages are streamed on /monitor_rollup endpoint *)
