@@ -148,16 +148,24 @@ let test_rollup_node_running =
       let* () = Sc_rollup_node.run sc_rollup_node in
       return ())
 
-(* Add messages to rollup
-   ----------------------
-   It is possible to add messages to a SCORU Inbox using the Tezos client.
-   Messages are reflected in inbox size (TODO and hash?).
-*)
+let test_sc_rollup_add_message =
+  let output_file = "sc_rollup_add_message" in
+  test
+    ~__FILE__
+    ~output_file
+    "adding messages to a SCORU inbox using L1 client"
+    (fun protocol ->
+      setup ~protocol @@ with_fresh_rollup
+      @@ fun _rollup_address _sc_rollup_node _config_filename ->
+      return ())
 
 
+(* Messages are streamed on /monitor_rollup endpoint *)
+(* Messages are streamed as above with the appropriate grouping *)
 
 
 let register ~protocols =
   test_origination ~protocols ;
   test_rollup_node_configuration ~protocols ;
-  test_rollup_node_running ~protocols
+  test_rollup_node_running ~protocols ;
+  test_sc_rollup_add_message ~protocols
