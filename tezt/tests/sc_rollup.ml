@@ -150,10 +150,9 @@ let test_rollup_node_running =
 
 (* Add messages to rollup
    ----------------------
-
-   A message can be added to a rollup inbox, and this is reflected
-   in Layer1 inbox size. *)
-
+   It is possible to add messages to a SCORU Inbox using the Tezos client.
+   Messages are reflected in inbox size (TODO and hash?).
+*)
 
 
 
