@@ -1,0 +1,20 @@
+(test
+ (name main)
+ (package tezos-protocol-012-PtQxg4Xg-tests)
+ (libraries tezos-base
+            tezos-micheline
+            tezos-protocol-environment
+            alcotest-lwt
+            tezos-012-PtQxg4Xg-test-helpers
+            tezos-stdlib-unix
+            tezos-client-base
+            tezos-protocol-012-PtQxg4Xg-parameters
+            tezos-base-test-helpers)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_base_test_helpers
+                   -open Tezos_micheline
+                   -open Tezos_client_012_PtQxg4Xg
+                   -open Tezos_protocol_012_PtQxg4Xg
+                   -open Tezos_protocol_environment_012_PtQxg4Xg
+                   -open Tezos_012_PtQxg4Xg_test_helpers))
+ (action (run %{test} "test" "Unit")))

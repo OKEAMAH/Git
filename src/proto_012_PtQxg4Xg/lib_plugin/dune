@@ -1,0 +1,27 @@
+(library
+ (name tezos_protocol_plugin_012_PtQxg4Xg)
+ (instrumentation (backend bisect_ppx))
+ (public_name tezos-protocol-plugin-012-PtQxg4Xg)
+ (libraries tezos-base
+            tezos-protocol-012-PtQxg4Xg
+            tezos-stdlib-unix
+            )
+ (modules (:standard) \ Plugin_registerer)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_protocol_012_PtQxg4Xg
+                   -open Tezos_stdlib_unix
+                   )))
+
+(library
+ (name tezos_protocol_plugin_012_PtQxg4Xg_registerer)
+ (instrumentation (backend bisect_ppx))
+ (public_name tezos-protocol-plugin-012-PtQxg4Xg-registerer)
+ (libraries tezos-base
+            tezos-embedded-protocol-012-PtQxg4Xg
+            tezos-protocol-plugin-012-PtQxg4Xg
+            tezos-shell)
+ (modules Plugin_registerer)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_embedded_protocol_012_PtQxg4Xg
+                   -open Tezos_protocol_plugin_012_PtQxg4Xg
+                   -open Tezos_shell)))

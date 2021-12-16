@@ -102,6 +102,11 @@ HANGZHOU_DAEMON = "011-PtHangz2"
 HANGZHOU_FOLDER = "proto_011_PtHangz2"
 HANGZHOU_PARAMETERS = get_parameters(HANGZHOU_FOLDER)
 
+ITHACA = "PtQxg4XgoBHhmoTQWo1CwjcmRRRkLUi1yKpcKbMvyFS1TvzdLqp"
+ITHACA_DAEMON = "012-PtQxg4Xg"
+ITHACA_FOLDER = "proto_012_PtQxg4Xg"
+ITHACA_PARAMETERS = get_parameters(ITHACA_FOLDER)
+
 TEZOS_CRT = """
 Certificate:
     Data:

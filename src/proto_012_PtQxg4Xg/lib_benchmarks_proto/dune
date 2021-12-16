@@ -1,0 +1,31 @@
+(library
+ (name tezos_benchmarks_proto_012_PtQxg4Xg)
+ (instrumentation (backend bisect_ppx))
+ (public_name tezos-benchmarks-proto-012-PtQxg4Xg)
+ (libraries
+  tezos-base
+  tezos-protocol-012-PtQxg4Xg
+  tezos-protocol-012-PtQxg4Xg-parameters
+  tezos-benchmark
+  tezos-benchmark-012-PtQxg4Xg
+  tezos-shell-benchmarks
+  tezos-micheline
+  tezos-012-PtQxg4Xg-test-helpers
+  tezos-sapling
+  tezos-client-012-PtQxg4Xg
+)
+ (library_flags (:standard -linkall))
+ (flags (:standard -open Tezos_stdlib
+                   -open Tezos_base
+                   -open Tezos_base__TzPervasives
+                   -open Tezos_error_monad
+                   -open Tezos_benchmark
+                   -open Tezos_benchmark_012_PtQxg4Xg
+                   -open Tezos_benchmark_type_inference_012_PtQxg4Xg
+                   -open Tezos_protocol_012_PtQxg4Xg
+                   -open Tezos_raw_protocol_012_PtQxg4Xg
+                   -open Tezos_client_012_PtQxg4Xg
+                   -open Tezos_crypto
+                   -open Tezos_micheline
+                   -open Tezos_012_PtQxg4Xg_test_helpers
+                   -open Tezos_client_012_PtQxg4Xg)))

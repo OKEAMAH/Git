@@ -1,0 +1,19 @@
+(library
+ (name tezos_client_sapling_012_PtQxg4Xg)
+ (instrumentation (backend bisect_ppx))
+ (public_name tezos-client-sapling-012-PtQxg4Xg)
+ (libraries tezos-base
+            tezos-crypto
+            tezos-client-base
+            tezos-signer-backends
+            tezos-client-012-PtQxg4Xg
+            tezos-client-012-PtQxg4Xg-commands
+            tezos-protocol-012-PtQxg4Xg)
+ (library_flags (:standard -linkall))
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_stdlib_unix
+                   -open Tezos_client_base
+                   -open Tezos_client_012_PtQxg4Xg
+                   -open Tezos_client_012_PtQxg4Xg_commands
+                   -open Tezos_protocol_012_PtQxg4Xg
+                   -open Tezos_protocol_environment_012_PtQxg4Xg)))

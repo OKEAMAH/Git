@@ -1,0 +1,25 @@
+(test
+ (name main)
+ (package tezos-baking-012-PtQxg4Xg)
+ (libraries
+   tezos-client-012-PtQxg4Xg
+   tezos_baking_012_PtQxg4Xg
+   tezos-baking-012-PtQxg4Xg.mockup-simulator
+   tezos-base-test-helpers
+   tezos-protocol-012-PtQxg4Xg-parameters
+   tezos-crypto
+   alcotest-lwt)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_micheline
+                   -open Tezos_client_012_PtQxg4Xg
+                   -open Tezos_protocol_012_PtQxg4Xg
+                   -open Tezos_protocol_environment_012_PtQxg4Xg
+                   -open Tezos_base_test_helpers
+                   -open Tezos_012_PtQxg4Xg_mockup_simulator
+                   -open Tezos_baking_012_PtQxg4Xg))
+ (action (run %{exe:main.exe} -q -e)))
+
+(rule
+ (alias runtest_lint)
+ (deps (glob_files *.ml{,i}))
+ (action (run %{lib:tezos-tooling:lint.sh} %{deps})))

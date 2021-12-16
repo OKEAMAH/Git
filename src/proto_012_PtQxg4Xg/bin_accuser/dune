@@ -1,0 +1,20 @@
+; build static executable with --profile static
+(env
+ (static
+  (flags (:standard
+           -ccopt -static))))
+
+(executable
+ (name main_accuser_012_PtQxg4Xg)
+ (instrumentation (backend bisect_ppx))
+ (public_name tezos-accuser-012-PtQxg4Xg)
+ (libraries tezos-client-base-unix
+            tezos-client-commands
+            tezos-baking-012-PtQxg4Xg-commands)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_protocol_012_PtQxg4Xg
+                   -open Tezos_client_012_PtQxg4Xg
+                   -open Tezos_client_commands
+                   -open Tezos_baking_012_PtQxg4Xg_commands
+                   -open Tezos_stdlib_unix
+                   -open Tezos_client_base_unix)))
