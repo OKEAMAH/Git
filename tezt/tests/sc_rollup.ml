@@ -148,7 +148,6 @@ let test_rollup_node_running =
       let* () = Sc_rollup_node.run sc_rollup_node in
       return ())
 
-(* TODO false positive? *)
 let test_sc_rollup_add_message =
   let output_file = "sc_rollup_add_message" in
   (* TODO test large messages *)
