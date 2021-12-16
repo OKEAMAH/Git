@@ -156,7 +156,7 @@ let test_sc_rollup_add_message =
     ~__FILE__
     ~output_file
     ~tags:["inbox"]
-    "adding messages to a SCORU inbox using L1 client"
+    "adding messages to a SCORU inbox using tezos-client"
     (fun protocol ->
       setup ~protocol @@ with_fresh_rollup
       @@ fun rollup_address _sc_rollup_node _config_filename tezos_client ->
@@ -164,7 +164,11 @@ let test_sc_rollup_add_message =
         Client.sc_rollup_add_messages ~rollup_address ~messages tezos_client
       in
       let* () = Client.bake_for tezos_client in
-      return ())
+      let* res = Client.rpc GET ["context"; "sc_rollup"; rollup_address; "inbox"] tezos_client in
+          Test.fail
+            "TORO OUTPUT: %s"
+            (JSON.encode res)
+    )
 
 
 (* Messages are streamed on /monitor_rollup endpoint *)
