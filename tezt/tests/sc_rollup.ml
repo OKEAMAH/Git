@@ -164,9 +164,9 @@ let test_sc_rollup_add_message =
         Client.sc_rollup_add_messages ~rollup_address ~messages tezos_client
       in
       let* () = Client.bake_for tezos_client in
-      let* res = Client.rpc GET ["context"; "sc_rollup"; rollup_address; "inbox"] tezos_client in
+      let* res = Client.rpc GET ["chains"; "main"; "blocks"; "head"; "context"; "sc_rollup"; rollup_address; "inbox"] tezos_client in
           Test.fail
-            "TORO OUTPUT: %s"
+            "TODO OUTPUT: %s"
             (JSON.encode res)
     )
 

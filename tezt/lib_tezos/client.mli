@@ -802,11 +802,13 @@ val sc_rollup_add_messages :
         # eval `./src/bin_client/tezos-init-sandboxed-client.sh 1`
         # tezos-activate-alpha
         # tezos-client rpc get /chains/main/chain_id
-        # (tezos-client originate rollup from bootstrap1 of kind arith booting with 24 --burn-cap 1 & tezos-client bake for bootstrap1)
+        # tezos-client --wait none originate rollup from bootstrap1 of kind arith booting with 24 --burn-cap 1
+        # tezos-client bake for bootstrap1
       Terminal 3
-        curl -v localhost:18731/monitor_rollup/CHAIN-ID/ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK/rollup/SCORU-ID/messages
+        # curl -v localhost:18731/monitor_rollup/CHAIN-ID/ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK/rollup/SCORU-ID/messages
       Terminal 2
-        (tezos-client send rollup message "[\"cafe\"]" from bootstrap1 to scr1487DHcJajMxgAhcvMXprHnBMkuwwMfwT6AssP4NhBgoJeuiUeM & tezos-client bake for bootstrap1)
+        # tezos-client --wait none send rollup message "[\"cafe\"]" from bootstrap1 to ROLLUP
+        # tezos-client bake for bootstrap1
 
 
 
