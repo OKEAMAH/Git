@@ -152,7 +152,7 @@ let test_rollup_node_running =
 let test_sc_rollup_add_message =
   let output_file = "sc_rollup_add_message" in
   (* TODO test large messages *)
-  let messages = ["ca";"cafe";"32";"ffff"] in
+  let messages = ["ca";"cafe";"32";"ffff";"\xff\x00"] in
   test
     ~__FILE__
     ~output_file

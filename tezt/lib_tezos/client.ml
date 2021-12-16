@@ -1071,8 +1071,12 @@ let originate_sc_rollup ?wait ?burn_cap ~src ~kind ~boot_sector client =
 let spawn_sc_rollup_add_messages ?(wait = "none") ?burn_cap ~rollup_address ~messages
     client =
   let msgs_str =
-    let _ = messages in
-    "[\"cafe\"]"; (* TODO use messages *)
+    (* Lists of arbitrary byte sequences may be passed.
+
+       The tezos-client binary currently expects this as JSON encoded with
+       [Data_encoding.(bytes list)].
+     *)
+    Data_encoding.(Json.to_string @@ Json.construct (list bytes) (List.map (fun m -> Bytes.of_string m) messages))
   in
   spawn_command
     client
