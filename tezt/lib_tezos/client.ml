@@ -1096,7 +1096,7 @@ let sc_rollup_add_messages ?wait ?burn_cap ~rollup_address ~messages client =
   let process =
     spawn_sc_rollup_add_messages ?wait ?burn_cap ~rollup_address ~messages client
   in
-  let* _output = Process.check_and_read_stdout process in
+  let* _ = Process.check_and_read_stdout process in
   return ()
 
 let init ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type () =
