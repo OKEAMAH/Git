@@ -148,8 +148,10 @@ let test_rollup_node_running =
       let* () = Sc_rollup_node.run sc_rollup_node in
       return ())
 
+(* TODO false positive? *)
 let test_sc_rollup_add_message =
   let output_file = "sc_rollup_add_message" in
+  let messages = ["ca";"cafe";"32";"ffff"] in
   test
     ~__FILE__
     ~output_file
@@ -158,11 +160,10 @@ let test_sc_rollup_add_message =
       setup ~protocol @@ with_fresh_rollup
       @@ fun rollup_address _sc_rollup_node _config_filename tezos_client ->
       let* () =
-        Client.sc_rollup_add_messages rollup_address ["foo";"bar"] tezos_client
+        Client.sc_rollup_add_messages ~rollup_address ~messages tezos_client
       in
+      let* () = Client.bake_for tezos_client in
       return ())
-
-(* TODO test_sc_rollup_add_message with arbitrary binary strings *)
 
 
 (* Messages are streamed on /monitor_rollup endpoint *)
