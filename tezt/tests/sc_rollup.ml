@@ -151,10 +151,12 @@ let test_rollup_node_running =
 (* TODO false positive? *)
 let test_sc_rollup_add_message =
   let output_file = "sc_rollup_add_message" in
+  (* TODO test large messages *)
   let messages = ["ca";"cafe";"32";"ffff"] in
   test
     ~__FILE__
     ~output_file
+    ~tags:["inbox"]
     "adding messages to a SCORU inbox using L1 client"
     (fun protocol ->
       setup ~protocol @@ with_fresh_rollup
