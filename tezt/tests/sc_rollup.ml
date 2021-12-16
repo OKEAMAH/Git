@@ -152,6 +152,7 @@ let test_sc_rollup_add_message =
   let output_file = "sc_rollup_add_message" in
   (* TODO test large messages *)
   (* TODO test adding messages in >1 block *)
+  (* TODO test res.hash changes in the expected fashion *)
   let messages = ["ca";"cafe";"32";"ffff";"\xff\x00"] in
   test
     ~__FILE__
