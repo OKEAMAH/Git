@@ -165,9 +165,9 @@ let test_sc_rollup_add_message =
       in
       let* () = Client.bake_for tezos_client in
       let* res = Client.rpc GET ["chains"; "main"; "blocks"; "head"; "context"; "sc_rollup"; rollup_address; "inbox"] tezos_client in
-          Test.fail
-            "TODO OUTPUT: %s"
-            (JSON.encode res)
+      if JSON.as_int (JSON.get "offset" res) <> List.length messages then
+          Test.fail "Unexpected number of messages"
+      else return ()
     )
 
 
