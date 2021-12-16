@@ -805,9 +805,9 @@ val sc_rollup_add_messages :
         # tezos-client --wait none originate rollup from bootstrap1 of kind arith booting with 24 --burn-cap 1
         # tezos-client bake for bootstrap1
       Terminal 3
-        # curl -v localhost:18731/monitor_rollup/CHAIN-ID/ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK/rollup/SCORU-ID/messages
+        # curl -v localhost:18731/monitor_rollup/$chain/ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK/rollup/$scoru/messages
       Terminal 2
-        # tezos-client --wait none send rollup message "[\"cafe\"]" from bootstrap1 to ROLLUP
+        # tezos-client --wait none send rollup message "[\"cafe\"]" from bootstrap1 to $scoru
         # tezos-client bake for bootstrap1
 
 
