@@ -632,6 +632,7 @@ module Script : sig
     | T_unit
     | T_operation
     | T_address
+    | T_tx_rollup_l2_address
     | T_sapling_transaction
     | T_sapling_state
     | T_chain_id

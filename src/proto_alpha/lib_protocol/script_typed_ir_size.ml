@@ -49,6 +49,7 @@ let (comparable_ty_size, ty_size) =
     | Key_key a -> ret_succ_adding accu (base a)
     | Timestamp_key a -> ret_succ_adding accu (base a)
     | Address_key a -> ret_succ_adding accu (base a)
+    | Tx_rollup_l2_address_key a -> ret_succ_adding accu (base a)
     | Bool_key a -> ret_succ_adding accu (base a)
     | Chain_id_key a -> ret_succ_adding accu (base a)
     | Never_key a -> ret_succ_adding accu (base a)
@@ -71,6 +72,7 @@ let (comparable_ty_size, ty_size) =
     | Key_t a -> ret_succ_adding accu @@ base a
     | Timestamp_t a -> ret_succ_adding accu @@ base a
     | Address_t a -> ret_succ_adding accu @@ base a
+    | Tx_rollup_l2_address_t a -> ret_succ_adding accu @@ base a
     | Bool_t a -> ret_succ_adding accu @@ base a
     | Operation_t a -> ret_succ_adding accu @@ base a
     | Chain_id_t a -> ret_succ_adding accu @@ base a
@@ -141,6 +143,9 @@ let address_size addr =
   h2w
   +! destination_size addr.destination
   +! Entrypoint.in_memory_size addr.entrypoint
+
+let tx_rollup_l2_address_size (tx : tx_rollup_l2_address) =
+  h2w +! Tx_rollup_l2_address.in_memory_size tx
 
 let view_signature_size (View_signature {name; input_ty; output_ty}) =
   ret_adding
@@ -253,6 +258,8 @@ let rec value_size :
     | Key_t _ -> ret_succ_adding accu (public_key_size x)
     | Timestamp_t _ -> ret_succ_adding accu (timestamp_size x)
     | Address_t _ -> ret_succ_adding accu (address_size x)
+    | Tx_rollup_l2_address_t _ ->
+        ret_succ_adding accu (tx_rollup_l2_address_size x)
     | Bool_t _ -> ret_succ accu
     | Pair_t (_, _, _) -> ret_succ_adding accu h2w
     | Union_t (_, _, _) -> ret_succ_adding accu h1w
@@ -314,6 +321,8 @@ let rec value_size :
     | Key_key _ -> ret_succ_adding accu (public_key_size x)
     | Timestamp_key _ -> ret_succ_adding accu (timestamp_size x)
     | Address_key _ -> ret_succ_adding accu (address_size x)
+    | Tx_rollup_l2_address_key _ ->
+        ret_succ_adding accu (tx_rollup_l2_address_size x)
     | Bool_key _ -> ret_succ accu
     | Pair_key (_, _, _) -> ret_succ_adding accu h2w
     | Union_key (_, _, _) -> ret_succ_adding accu h1w
