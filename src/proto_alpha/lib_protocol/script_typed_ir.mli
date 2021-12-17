@@ -73,6 +73,8 @@ end
 
 type signature = Script_signature.t
 
+type tx_rollup_l2_address = Tx_rollup_l2_address.Indexable.t
+
 type ('a, 'b) pair = 'a * 'b
 
 type ('a, 'b) union = L of 'a | R of 'b
@@ -209,6 +211,9 @@ type _ comparable_ty =
       Script_chain_id.t ty_metadata
       -> Script_chain_id.t comparable_ty
   | Address_key : address ty_metadata -> address comparable_ty
+  | Tx_rollup_l2_address_key :
+      tx_rollup_l2_address ty_metadata
+      -> tx_rollup_l2_address comparable_ty
   | Pair_key :
       'a comparable_ty * 'b comparable_ty * ('a, 'b) pair ty_metadata
       -> ('a, 'b) pair comparable_ty
@@ -246,6 +251,8 @@ val timestamp_key : Script_timestamp.t comparable_ty
 val chain_id_key : Script_chain_id.t comparable_ty
 
 val address_key : address comparable_ty
+
+val tx_rollup_l2_address_key : tx_rollup_l2_address comparable_ty
 
 val pair_key :
   Script.location ->
@@ -1366,6 +1373,9 @@ and 'ty ty =
   | Key_t : public_key ty_metadata -> public_key ty
   | Timestamp_t : Script_timestamp.t ty_metadata -> Script_timestamp.t ty
   | Address_t : address ty_metadata -> address ty
+  | Tx_rollup_l2_address_t :
+      tx_rollup_l2_address ty_metadata
+      -> tx_rollup_l2_address ty
   | Bool_t : bool ty_metadata -> bool ty
   | Pair_t : 'a ty * 'b ty * ('a, 'b) pair ty_metadata -> ('a, 'b) pair ty
   | Union_t :
@@ -1549,6 +1559,8 @@ val key_t : public_key ty
 val timestamp_t : Script_timestamp.t ty
 
 val address_t : address ty
+
+val tx_rollup_l2_address_t : tx_rollup_l2_address ty
 
 val bool_t : bool ty
 
