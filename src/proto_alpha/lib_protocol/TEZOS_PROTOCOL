@@ -41,6 +41,7 @@
         "Contract_repr",
         "Ticket_repr",
         "Tx_rollup_repr",
+        "Tx_rollup_l2_address_repr",
         "Tx_rollup_inbox_repr",
         "Tx_rollup_state_repr",
         "Roll_repr_legacy",

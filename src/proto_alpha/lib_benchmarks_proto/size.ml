@@ -142,6 +142,9 @@ let address (addr : Script_typed_ir.address) : t =
   let (_contract, entrypoint) = addr in
   Signature.Public_key_hash.size + String.length entrypoint
 
+let tx_rollup_l2_address (addr : Script_typed_ir.tx_rollup_l2_address) : t =
+  Bls12_381.Signature.pk_to_bytes addr |> Bytes.length
+
 let list (list : 'a Script_typed_ir.boxed_list) : t =
   list.Script_typed_ir.length
 

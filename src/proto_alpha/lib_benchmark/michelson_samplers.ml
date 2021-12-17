@@ -70,6 +70,7 @@ type type_name =
   | `TKey
   | `TTimestamp
   | `TAddress
+  | `TTx_rollup_l2_address
   | `TBool
   | `TPair
   | `TUnion
@@ -505,6 +506,13 @@ end)
         let ep = Base_samplers.string ~size:{min = 1; max = 31} rng_state in
         (contract, ep)
 
+    let tx_rollup_l2_address rng_state =
+      let seed =
+        Bytes.init 32 (fun _ -> char_of_int @@ Random.State.int rng_state 255)
+      in
+      let secret_key = Bls12_381.Signature.generate_sk seed in
+      Bls12_381.Signature.derive_pk secret_key
+
     let chain_id rng_state =
       let string = Base_samplers.uniform_string ~nbytes:4 rng_state in
       Data_encoding.Binary.of_string_exn Chain_id.encoding string
@@ -526,6 +534,7 @@ end)
         | Timestamp_t _ -> Michelson_base.timestamp
         | Bool_t _ -> Base_samplers.uniform_bool
         | Address_t _ -> address
+        | Tx_rollup_l2_address_t _ -> tx_rollup_l2_address
         | Pair_t ((left_t, _, _), (right_t, _, _), _) ->
             M.(
               let* left_v = value left_t in

@@ -1573,6 +1573,8 @@ module RPC = struct
             Prim (loc, T_timestamp, [], unparse_type_annot meta.annot)
         | Address_key meta ->
             Prim (loc, T_address, [], unparse_type_annot meta.annot)
+        | Tx_rollup_l2_address_key meta ->
+            Prim (loc, T_tx_rollup_l2_address, [], unparse_type_annot meta.annot)
         | Chain_id_key meta ->
             Prim (loc, T_chain_id, [], unparse_type_annot meta.annot)
         | Pair_key ((l, al), (r, ar), meta) ->
@@ -1614,6 +1616,8 @@ module RPC = struct
         | Timestamp_t meta ->
             return (T_timestamp, [], unparse_type_annot meta.annot)
         | Address_t meta -> return (T_address, [], unparse_type_annot meta.annot)
+        | Tx_rollup_l2_address_t meta ->
+            return (T_tx_rollup_l2_address, [], unparse_type_annot meta.annot)
         | Operation_t meta ->
             return (T_operation, [], unparse_type_annot meta.annot)
         | Chain_id_t meta ->

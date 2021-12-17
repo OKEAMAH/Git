@@ -1,8 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
-(* Copyright (c) 2020 Metastate AG <hello@metastate.dev>                     *)
+(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,11 +25,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val compare_comparable : 'a Script_typed_ir.comparable_ty -> 'a -> 'a -> int
+type t = Bls_signature.pk
 
-val compare_address : Script_typed_ir.address -> Script_typed_ir.address -> int
+val encoding : t Data_encoding.t
 
-val compare_tx_rollup_l2_address :
-  Script_typed_ir.tx_rollup_l2_address ->
-  Script_typed_ir.tx_rollup_l2_address ->
-  int
+val in_memory_size : t -> Cache_memory_helpers.sint

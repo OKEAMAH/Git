@@ -31,6 +31,11 @@ let compare_address (x, ex) (y, ey) =
   let lres = Contract.compare x y in
   if Compare.Int.(lres = 0) then Compare.String.compare ex ey else lres
 
+let compare_tx_rollup_l2_address x y =
+  let x = Bls_signature.pk_to_bytes x in
+  let y = Bls_signature.pk_to_bytes y in
+  Bytes.compare x y
+
 type compare_comparable_cont =
   | Compare_comparable :
       'a comparable_ty * 'a * 'a * compare_comparable_cont
@@ -57,6 +62,8 @@ let compare_comparable : type a. a comparable_ty -> a -> a -> int =
     | (Timestamp_key _, x, y) ->
         (apply [@tailcall]) (Script_timestamp.compare x y) k
     | (Address_key _, x, y) -> (apply [@tailcall]) (compare_address x y) k
+    | (Tx_rollup_l2_address_key _, x, y) ->
+        (apply [@tailcall]) (compare_tx_rollup_l2_address x y) k
     | (Bytes_key _, x, y) -> (apply [@tailcall]) (Compare.Bytes.compare x y) k
     | (Chain_id_key _, x, y) -> (apply [@tailcall]) (Chain_id.compare x y) k
     | (Pair_key ((tl, _), (tr, _), _), (lx, rx), (ly, ry)) ->
