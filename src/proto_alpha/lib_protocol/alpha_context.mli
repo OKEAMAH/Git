@@ -626,6 +626,7 @@ module Script : sig
     | T_unit
     | T_operation
     | T_address
+    | T_tx_rollup_l2_address
     | T_sapling_transaction
     | T_sapling_state
     | T_chain_id
@@ -1900,6 +1901,17 @@ module Sc_rollup : sig
     (context * t * Z.t) tzresult Lwt.t
 
   val kind : context -> t -> Kind.t option tzresult Lwt.t
+end
+
+(** This simply re-exports {!Tx_rollup_l2_address_repr}.
+    See {!Tx_rollup_l2_address_repr} for additional documentation of
+    this module. *)
+module Tx_rollup_l2_address : sig
+  type t = Bls_signature.pk
+
+  val encoding : t Data_encoding.t
+
+  val in_memory_size : t -> Cache_memory_helpers.sint
 end
 
 (** This simply re-exports {!Tx_rollup_inbox_repr}.

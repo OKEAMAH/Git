@@ -244,10 +244,8 @@ module Contract = struct
   module Internal_for_tests = Contract_repr
 end
 
-module Tx_rollup = struct
-  include Tx_rollup_repr
-  include Tx_rollup_storage
-  module Internal_for_tests = Tx_rollup_repr
+module Tx_rollup_l2_address = struct
+  include Tx_rollup_l2_address_repr
 end
 
 module Tx_rollup_inbox = struct
@@ -257,6 +255,12 @@ end
 module Tx_rollup_state = struct
   include Tx_rollup_state_repr
   module Internal_for_tests = Tx_rollup_state_repr
+end
+
+module Tx_rollup = struct
+  include Tx_rollup_repr
+  include Tx_rollup_storage
+  module Internal_for_tests = Tx_rollup_repr
 end
 
 module Global_constants_storage = Global_constants_storage
