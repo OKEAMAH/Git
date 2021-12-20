@@ -98,6 +98,8 @@ module Kind : sig
 
   type tx_rollup_origination = Tx_rollup_origination_kind
 
+  type tx_rollup_submit_batch = Tx_rollup_submit_batch_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type 'a manager =
@@ -108,6 +110,7 @@ module Kind : sig
     | Register_global_constant_manager_kind : register_global_constant manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
     | Tx_rollup_origination_manager_kind : tx_rollup_origination manager
+    | Tx_rollup_submit_batch_manager_kind : tx_rollup_submit_batch manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
 end
 
@@ -240,6 +243,11 @@ and _ manager_operation =
       Tez_repr.t option
       -> Kind.set_deposits_limit manager_operation
   | Tx_rollup_origination : Kind.tx_rollup_origination manager_operation
+  | Tx_rollup_submit_batch : {
+      tx_rollup : Tx_rollup_repr.t;
+      content : Tx_rollup_inbox_repr.batch;
+    }
+      -> Kind.tx_rollup_submit_batch manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup_repr.Kind.t;
       boot_sector : Sc_rollup_repr.PVM.boot_sector;
@@ -366,6 +374,9 @@ module Encoding : sig
 
   val tx_rollup_origination_case : Kind.tx_rollup_origination Kind.manager case
 
+  val tx_rollup_submit_batch_case :
+    Kind.tx_rollup_submit_batch Kind.manager case
+
   val sc_rollup_originate_case : Kind.sc_rollup_originate Kind.manager case
 
   module Manager_operations : sig
@@ -393,6 +404,8 @@ module Encoding : sig
     val set_deposits_limit_case : Kind.set_deposits_limit case
 
     val tx_rollup_origination_case : Kind.tx_rollup_origination case
+
+    val tx_rollup_submit_batch_case : Kind.tx_rollup_submit_batch case
 
     val sc_rollup_originate_case : Kind.sc_rollup_originate case
   end

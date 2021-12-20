@@ -963,14 +963,14 @@ module Tx_rollup : sig
     Client.t ->
     JSON.t Lwt.t
 
-  (** Call RPC /chain/[chain]/blocks/[block]/context/[rollup_hash]/inbox/[level] *)
+  (** Call RPC /chain/[chain]/blocks/[block]/context/[rollup_hash]/inbox *)
   val get_inbox :
     ?endpoint:Client.endpoint ->
     ?hooks:Process.hooks ->
     ?chain:string ->
     ?block:string ->
+    ?offset:int ->
     tx_rollup_hash:string ->
-    level:string ->
     Client.t ->
     JSON.t Lwt.t
 end

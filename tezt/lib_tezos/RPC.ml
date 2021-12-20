@@ -619,7 +619,7 @@ module Votes = struct
 end
 
 module Tx_rollup = struct
-  let sub_path_level ~chain ~block ~tx_rollup_hash ~level sub =
+  let sub_path_level ~chain ~block ~tx_rollup_hash sub =
     [
       "chains";
       chain;
@@ -629,7 +629,6 @@ module Tx_rollup = struct
       "tx_rollup";
       tx_rollup_hash;
       sub;
-      level;
     ]
 
   let sub_path ~chain ~block ~tx_rollup_hash sub =
@@ -650,7 +649,8 @@ module Tx_rollup = struct
     Client.rpc ?endpoint ?hooks GET path client
 
   let get_inbox ?endpoint ?hooks ?(chain = "main") ?(block = "head")
-      ~tx_rollup_hash ~level client =
-    let path = sub_path_level ~chain ~block ~tx_rollup_hash ~level "inbox" in
-    Client.rpc ?endpoint ?hooks GET path client
+      ?(offset = 0) ~tx_rollup_hash client =
+    let path = sub_path_level ~chain ~block ~tx_rollup_hash "inbox" in
+    let query_string = [("offset", string_of_int offset)] in
+    Client.rpc ?endpoint ?hooks GET path client ~query_string
 end

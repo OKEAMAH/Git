@@ -624,21 +624,40 @@ let test_tx_rollup ?endpoint client =
       ~src:Constant.bootstrap1.public_key_hash
       client
   in
-  let* level =
-    Lwt.bind (Client.level client) (fun level -> return @@ Int.to_string level)
-  in
   let* () = client_bake_for client in
   let* _ = RPC.Tx_rollup.get_state ?endpoint ~tx_rollup_hash client in
-  let _ =
-    Lwt.catch
-      (fun () ->
-        let _ =
-          RPC.Tx_rollup.get_inbox ?endpoint ~tx_rollup_hash ~level client
-        in
-        assert false)
-      (fun _exn -> unit)
+
+  let* () =
+    Client.spawn_rpc
+      GET
+      [
+        "chains";
+        "main";
+        "blocks";
+        "head";
+        "context";
+        "tx_rollup";
+        tx_rollup_hash;
+        "inbox";
+      ]
+      client
+    |> Process.check_error ~exit_code:1
   in
 
+  (* Put a transaction on the rollup *)
+  let* () =
+    Client.submit_tx_rollup_batch
+      ~content:(Bytes.of_string "tezos")
+      ~tx_rollup_hash
+      ~src:Constant.bootstrap1.public_key_hash
+      client
+  in
+  let* () = client_bake_for client in
+  (* Without that, the test is flaky for some reason *)
+  let* () = Lwt_unix.sleep 1.0 in
+
+  (* Now this succeeds *)
+  let* _inbox = RPC.Tx_rollup.get_inbox ?endpoint ~tx_rollup_hash client in
   unit
 
 (* Test the various other RPCs. *)

@@ -37,13 +37,14 @@ let parse_inbox : JSON.t -> inbox =
   let cumulated_size = JSON.(inbox_obj |-> "cumulated_size" |> as_int) in
   {length; cumulated_size}
 
-let get_inbox tx_rollup_hash level client =
-  let level = Int.to_string level in
-  let* json = RPC.Tx_rollup.get_inbox ~tx_rollup_hash ~level client in
+let get_inbox ?offset tx_rollup_hash client =
+  let* json = RPC.Tx_rollup.get_inbox ~tx_rollup_hash ?offset client in
   return (parse_inbox json)
 
 (*                               test                                        *)
 
+(** [test_simple_use_case] originates a transaction rollup and asserts no inbox
+    has been created by default for it. *)
 let test_simple_use_case =
   let open Tezt_tezos in
   Protocol.register_test ~__FILE__ ~title:"Simple use case" ~tags:["rollup"]
@@ -65,14 +66,13 @@ let test_simple_use_case =
   in
   let* () = Client.bake_for client in
   let* _rate = get_cost_per_byte tx_rollup_hash client in
-  let* level = Client.level client in
 
   let* () =
     Lwt.catch
       (fun () ->
         Lwt.map
           (fun _ -> failwith "We fetched a missing inbox!")
-          (get_inbox tx_rollup_hash level client))
+          (get_inbox tx_rollup_hash client))
       (fun _ -> return ())
   in
   unit

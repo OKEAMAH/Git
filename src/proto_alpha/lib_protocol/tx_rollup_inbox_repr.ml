@@ -25,9 +25,24 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type message = string
+type batch = string
 
-let message_encoding = Data_encoding.string
+let batch_encoding = Data_encoding.(obj1 (req "content" string))
+
+type message = Batch of batch
+
+let message_encoding =
+  let open Data_encoding in
+  union
+    ~tag_size:`Uint8
+    [
+      case
+        (Tag 0)
+        ~title:"Batch"
+        (obj1 (req "batch" batch_encoding))
+        (function Batch batch -> Some batch)
+        (fun batch -> Batch batch);
+    ]
 
 type summary = {length : int32; cumulated_size : int}
 

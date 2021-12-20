@@ -108,11 +108,13 @@ let append_message :
     message ->
     (inbox_status * Raw_context.t) tzresult Lwt.t =
  fun ctxt rollup message ->
-  let level = (Level_storage.current ctxt).level in
+  let level = (Raw_context.current_level ctxt).level in
   let hard_size_limit =
     Constants_storage.tx_rollup_hard_size_limit_per_inbox ctxt
   in
-  let size_of_message = String.length message in
+  let size_of_message =
+    match message with Batch content -> String.length content
+  in
 
   let append_message {length; cumulated_size} message =
     let new_size = cumulated_size + size_of_message in

@@ -73,6 +73,8 @@ module Kind = struct
 
   type tx_rollup_origination = Tx_rollup_origination_kind
 
+  type tx_rollup_submit_batch = Tx_rollup_submit_batch_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type 'a manager =
@@ -83,6 +85,7 @@ module Kind = struct
     | Register_global_constant_manager_kind : register_global_constant manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
     | Tx_rollup_origination_manager_kind : tx_rollup_origination manager
+    | Tx_rollup_submit_batch_manager_kind : tx_rollup_submit_batch manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
 end
 
@@ -262,6 +265,11 @@ and _ manager_operation =
       Tez_repr.t option
       -> Kind.set_deposits_limit manager_operation
   | Tx_rollup_origination : Kind.tx_rollup_origination manager_operation
+  | Tx_rollup_submit_batch : {
+      tx_rollup : Tx_rollup_repr.t;
+      content : Tx_rollup_inbox_repr.batch;
+    }
+      -> Kind.tx_rollup_submit_batch manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup_repr.Kind.t;
       boot_sector : Sc_rollup_repr.PVM.boot_sector;
@@ -279,6 +287,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Register_global_constant _ -> Kind.Register_global_constant_manager_kind
   | Set_deposits_limit _ -> Kind.Set_deposits_limit_manager_kind
   | Tx_rollup_origination -> Kind.Tx_rollup_origination_manager_kind
+  | Tx_rollup_submit_batch _ -> Kind.Tx_rollup_submit_batch_manager_kind
   | Sc_rollup_originate _ -> Kind.Sc_rollup_originate_manager_kind
 
 type 'kind internal_operation = {
@@ -524,6 +533,26 @@ module Encoding = struct
           inj = (fun () -> Tx_rollup_origination);
         }
 
+    let[@coq_axiom_with_reason "gadt"] tx_rollup_submit_batch_case =
+      MCase
+        {
+          tag = tx_rollup_operation_tag_offset + 1;
+          name = "tx_rollup_submit_batch";
+          encoding =
+            obj2
+              (req "rollup" Tx_rollup_repr.encoding)
+              (req "content" Data_encoding.string);
+          select =
+            (function
+            | Manager (Tx_rollup_submit_batch _ as op) -> Some op | _ -> None);
+          proj =
+            (function
+            | Tx_rollup_submit_batch {tx_rollup; content} -> (tx_rollup, content));
+          inj =
+            (fun (tx_rollup, content) ->
+              Tx_rollup_submit_batch {tx_rollup; content});
+        }
+
     let[@coq_axiom_with_reason "gadt"] sc_rollup_originate_case =
       MCase
         {
@@ -563,6 +592,7 @@ module Encoding = struct
           make register_global_constant_case;
           make set_deposits_limit_case;
           make tx_rollup_origination_case;
+          make tx_rollup_submit_batch_case;
           make sc_rollup_originate_case;
         ]
   end
@@ -867,6 +897,11 @@ module Encoding = struct
       tx_rollup_operation_tag_offset
       Manager_operations.tx_rollup_origination_case
 
+  let tx_rollup_submit_batch_case =
+    make_manager_case
+      (tx_rollup_operation_tag_offset + 1)
+      Manager_operations.tx_rollup_submit_batch_case
+
   let sc_rollup_originate_case =
     make_manager_case
       sc_rollup_operation_tag_offset
@@ -901,6 +936,7 @@ module Encoding = struct
            make failing_noop_case;
            make register_global_constant_case;
            make tx_rollup_origination_case;
+           make tx_rollup_submit_batch_case;
            make sc_rollup_originate_case;
          ]
 
@@ -1103,6 +1139,8 @@ let equal_manager_operation_kind :
   | (Set_deposits_limit _, _) -> None
   | (Tx_rollup_origination, Tx_rollup_origination) -> Some Eq
   | (Tx_rollup_origination, _) -> None
+  | (Tx_rollup_submit_batch _, Tx_rollup_submit_batch _) -> Some Eq
+  | (Tx_rollup_submit_batch _, _) -> None
   | (Sc_rollup_originate _, Sc_rollup_originate _) -> Some Eq
   | (Sc_rollup_originate _, _) -> None
 
@@ -1208,6 +1246,9 @@ let internal_manager_operation_size (type a) (op : a manager_operation) =
       assert false
   | Tx_rollup_origination ->
       (* Tx_rollup_origination operation can’t occur as internal operations *)
+      assert false
+  | Tx_rollup_submit_batch _ ->
+      (* Tx_rollup_submit_batch operation can’t occur as internal operations *)
       assert false
 
 let packed_internal_operation_in_memory_size :

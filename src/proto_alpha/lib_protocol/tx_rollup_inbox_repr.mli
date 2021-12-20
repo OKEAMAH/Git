@@ -30,9 +30,14 @@
     transaction rollup can have up to one inbox per Tezos level after
     its origination. *)
 
+(** Tezos participants can submit batches of L2 operations to the
+    layer-1; they will be added to the transaction rollup inbox,
+    waiting to be interpreted by the layer-2. *)
+type batch = string
+
 (** A [message] is a data submitted by the layer-1 to be interpreted
     by the layer-2. *)
-type message = string
+type message = Batch of batch
 
 val message_encoding : message Data_encoding.t
 

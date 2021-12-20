@@ -34,4 +34,13 @@ val state :
   Tx_rollup.t ->
   Tx_rollup_state.t shell_tzresult Lwt.t
 
+(** Return the inbox for a tx rollup for current level - offset. Return
+    Not_found if no such tx_rollup or inbox level exists. *)
+val inbox :
+  'a #RPC_context.simple ->
+  'a ->
+  ?offset:int32 ->
+  Tx_rollup.t ->
+  Tx_rollup_inbox.full shell_tzresult Lwt.t
+
 val register : unit -> unit

@@ -322,6 +322,9 @@ end
 
 module Tx_rollup = struct
   let state ctxt tx_rollup = Tx_rollup_services.state rpc_ctxt ctxt tx_rollup
+
+  let inbox ctxt ?offset tx_rollup =
+    Tx_rollup_services.inbox rpc_ctxt ctxt tx_rollup ?offset
 end
 
 let init ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
