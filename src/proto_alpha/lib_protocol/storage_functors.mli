@@ -26,7 +26,10 @@
 
 (** Tezos Protocol Implementation - Typed storage builders.
 
-  @see [Make_subcontext]
+    Contains functors used by [Storage] to create the structure on
+    disk.
+
+  See {!Make_subcontext}
  *)
 
 open Storage_sigs

@@ -255,7 +255,7 @@ let level_from_raw_aux_exn ~cycle_eras level =
   let era = era_of_level ~cycle_eras level in
   level_from_raw_with_era era ~first_level_in_alpha_family level
 
-let from_raw ~cycle_eras l = level_from_raw_aux_exn ~cycle_eras l
+let level_from_raw ~cycle_eras l = level_from_raw_aux_exn ~cycle_eras l
 
 type error += Level_not_in_alpha of Raw_level_repr.t
 
@@ -308,7 +308,7 @@ let () =
       | _ -> None)
     (fun (level, offset) -> Negative_level_and_offset_sum (level, offset))
 
-let from_raw_with_offset ~cycle_eras ~offset raw_level =
+let level_from_raw_with_offset ~cycle_eras ~offset raw_level =
   let res = Raw_level_repr.(of_int32 (Int32.add (to_int32 raw_level) offset)) in
   match res with
   | Ok level -> level_from_raw_aux ~cycle_eras level
@@ -334,3 +334,10 @@ let first_level_in_cycle_from_eras ~cycle_eras cycle =
 let last_of_cycle ~cycle_eras level =
   let era = era_of_level ~cycle_eras level.level in
   Compare.Int32.(Int32.succ level.cycle_position = era.blocks_per_cycle)
+
+module Internal_for_tests = struct
+  let add_level level n =
+    let raw_level = level.level in
+    let new_raw_level = Raw_level_repr.add raw_level n in
+    {level with level = new_raw_level}
+end

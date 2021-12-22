@@ -29,11 +29,9 @@ type container =
   | `Delegate_balance of Signature.Public_key_hash.t
   | `Frozen_deposits of Signature.Public_key_hash.t
   | `Block_fees
-  | `Legacy_deposits of Signature.Public_key_hash.t * Cycle_repr.t
-  | `Legacy_fees of Signature.Public_key_hash.t * Cycle_repr.t
-  | `Legacy_rewards of Signature.Public_key_hash.t * Cycle_repr.t ]
+  | `Frozen_bonds of Contract_repr.t * Bond_id_repr.t ]
 
-type source =
+type infinite_source =
   [ `Invoice
   | `Bootstrap
   | `Initial_commitments
@@ -44,201 +42,174 @@ type source =
   | `Baking_bonuses
   | `Minted
   | `Liquidity_baking_subsidies
-  | container ]
+  | `Tx_rollup_rejection_rewards ]
 
-type sink =
+type source = [infinite_source | container]
+
+type infinite_sink =
   [ `Storage_fees
   | `Double_signing_punishments
   | `Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
-  | `Burned
-  | container ]
+  | `Tx_rollup_rejection_punishments
+  | `Sc_rollup_refutation_punishments
+  | `Burned ]
+
+type sink = [infinite_sink | container]
 
 let allocated ctxt stored =
   match stored with
-  | `Contract contract -> Contract_storage.allocated ctxt contract
-  | `Collected_commitments bpkh -> Commitment_storage.exists ctxt bpkh >|= ok
+  | `Contract contract ->
+      Contract_storage.allocated ctxt contract >|= fun allocated ->
+      ok (ctxt, allocated)
+  | `Collected_commitments bpkh ->
+      Commitment_storage.exists ctxt bpkh >|= fun allocated ->
+      ok (ctxt, allocated)
   | `Delegate_balance delegate ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Contract_storage.allocated ctxt contract
+      let contract = Contract_repr.Implicit delegate in
+      Contract_storage.allocated ctxt contract >|= fun allocated ->
+      ok (ctxt, allocated)
   | `Frozen_deposits delegate ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Frozen_deposits_storage.allocated ctxt contract >|= ok
-  | `Block_fees -> return_true
-  (* TODO: remove in J *)
-  | `Legacy_deposits (delegate, cycle) ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Legacy_frozen_deposits.mem (ctxt, contract) cycle >|= ok
-  | `Legacy_fees (delegate, cycle) ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Legacy_frozen_fees.mem (ctxt, contract) cycle >|= ok
-  | `Legacy_rewards (delegate, cycle) ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Legacy_frozen_rewards.mem (ctxt, contract) cycle >|= ok
+      let contract = Contract_repr.Implicit delegate in
+      Frozen_deposits_storage.allocated ctxt contract >|= fun allocated ->
+      ok (ctxt, allocated)
+  | `Block_fees -> return (ctxt, true)
+  | `Frozen_bonds (contract, bond_id) ->
+      Contract_storage.bond_allocated ctxt contract bond_id
 
 let balance ctxt stored =
   match stored with
-  | `Contract contract -> Contract_storage.get_balance ctxt contract
-  | `Collected_commitments bpkh -> Commitment_storage.committed_amount ctxt bpkh
+  | `Contract contract ->
+      Contract_storage.get_balance ctxt contract >|=? fun balance ->
+      (ctxt, balance)
+  | `Collected_commitments bpkh ->
+      Commitment_storage.committed_amount ctxt bpkh >|=? fun balance ->
+      (ctxt, balance)
   | `Delegate_balance delegate ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Balance.get ctxt contract
-  | `Frozen_deposits delegate -> (
-      let contract = Contract_repr.implicit_contract delegate in
+      let contract = Contract_repr.Implicit delegate in
+      Storage.Contract.Spendable_balance.get ctxt contract >|=? fun balance ->
+      (ctxt, balance)
+  | `Frozen_deposits delegate ->
+      let contract = Contract_repr.Implicit delegate in
       Frozen_deposits_storage.find ctxt contract >|=? fun frozen_deposits ->
-      match frozen_deposits with
-      | None -> Tez_repr.zero
-      | Some frozen_deposits -> frozen_deposits.current_amount)
-  | `Block_fees -> return (Raw_context.get_collected_fees ctxt)
-  (* TODO: remove in J *)
-  | `Legacy_deposits (delegate, cycle) ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Legacy_frozen_deposits.find (ctxt, contract) cycle
-      >|=? Option.value ~default:Tez_repr.zero
-  | `Legacy_fees (delegate, cycle) ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Legacy_frozen_fees.find (ctxt, contract) cycle
-      >|=? Option.value ~default:Tez_repr.zero
-  | `Legacy_rewards (delegate, cycle) ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Legacy_frozen_rewards.find (ctxt, contract) cycle
-      >|=? Option.value ~default:Tez_repr.zero
+      let balance =
+        match frozen_deposits with
+        | None -> Tez_repr.zero
+        | Some frozen_deposits -> frozen_deposits.current_amount
+      in
+      (ctxt, balance)
+  | `Block_fees -> return (ctxt, Raw_context.get_collected_fees ctxt)
+  | `Frozen_bonds (contract, bond_id) ->
+      Contract_storage.find_bond ctxt contract bond_id
+      >|=? fun (ctxt, balance_opt) ->
+      (ctxt, Option.value ~default:Tez_repr.zero balance_opt)
 
 let credit ctxt dest amount origin =
   let open Receipt_repr in
   (match dest with
-  | `Storage_fees -> return (ctxt, Storage_fees)
-  | `Double_signing_punishments -> return (ctxt, Double_signing_punishments)
-  | `Lost_endorsing_rewards (d, p, r) ->
-      return (ctxt, Lost_endorsing_rewards (d, p, r))
-  | `Burned -> return (ctxt, Burned)
-  | `Contract dest ->
-      Contract_storage.credit_only_call_from_token ctxt dest amount
-      >|=? fun ctxt -> (ctxt, Contract dest)
-  | `Collected_commitments bpkh ->
-      Commitment_storage.increase_commitment_only_call_from_token
-        ctxt
-        bpkh
-        amount
-      >|=? fun ctxt -> (ctxt, Commitments bpkh)
-  | `Delegate_balance delegate ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Contract_storage.increase_balance_only_call_from_token
-        ctxt
-        contract
-        amount
-      >|=? fun ctxt -> (ctxt, Contract contract)
-  | `Frozen_deposits delegate as dest ->
-      allocated ctxt dest >>=? fun allocated ->
-      (if not allocated then Frozen_deposits_storage.init ctxt delegate
-      else return ctxt)
-      >>=? fun ctxt ->
-      Frozen_deposits_storage.credit_only_call_from_token ctxt delegate amount
-      >|=? fun ctxt -> (ctxt, Deposits delegate)
-  | `Block_fees ->
-      Raw_context.credit_collected_fees_only_call_from_token ctxt amount
-      >>?= fun ctxt -> return (ctxt, Block_fees)
-  (* TODO: remove in J *)
-  | `Legacy_deposits (delegate, cycle) as dest ->
-      let contract = Contract_repr.implicit_contract delegate in
-      balance ctxt dest >>=? fun old_amount ->
-      Tez_repr.(old_amount +? amount) >>?= fun new_amount ->
-      Storage.Contract.Legacy_frozen_deposits.add
-        (ctxt, contract)
-        cycle
-        new_amount
-      >>= fun ctxt -> return (ctxt, Legacy_deposits (delegate, cycle))
-  | `Legacy_fees (delegate, cycle) as dest ->
-      let contract = Contract_repr.implicit_contract delegate in
-      balance ctxt dest >>=? fun old_amount ->
-      Tez_repr.(old_amount +? amount) >>?= fun new_amount ->
-      Storage.Contract.Legacy_frozen_fees.add (ctxt, contract) cycle new_amount
-      >>= fun ctxt -> return (ctxt, Legacy_fees (delegate, cycle))
-  | `Legacy_rewards (delegate, cycle) as dest ->
-      let contract = Contract_repr.implicit_contract delegate in
-      balance ctxt dest >>=? fun old_amount ->
-      Tez_repr.(old_amount +? amount) >>?= fun new_amount ->
-      Storage.Contract.Legacy_frozen_rewards.add
-        (ctxt, contract)
-        cycle
-        new_amount
-      >>= fun ctxt -> return (ctxt, Legacy_rewards (delegate, cycle)))
+  | #infinite_sink as infinite_sink ->
+      let sink =
+        match infinite_sink with
+        | `Storage_fees -> Storage_fees
+        | `Double_signing_punishments -> Double_signing_punishments
+        | `Lost_endorsing_rewards (d, p, r) -> Lost_endorsing_rewards (d, p, r)
+        | `Tx_rollup_rejection_punishments -> Tx_rollup_rejection_punishments
+        | `Sc_rollup_refutation_punishments -> Sc_rollup_refutation_punishments
+        | `Burned -> Burned
+      in
+      return (ctxt, sink)
+  | #container as container -> (
+      match container with
+      | `Contract dest ->
+          Contract_storage.credit_only_call_from_token ctxt dest amount
+          >|=? fun ctxt -> (ctxt, Contract dest)
+      | `Collected_commitments bpkh ->
+          Commitment_storage.increase_commitment_only_call_from_token
+            ctxt
+            bpkh
+            amount
+          >|=? fun ctxt -> (ctxt, Commitments bpkh)
+      | `Delegate_balance delegate ->
+          let contract = Contract_repr.Implicit delegate in
+          Contract_storage.increase_balance_only_call_from_token
+            ctxt
+            contract
+            amount
+          >|=? fun ctxt -> (ctxt, Contract contract)
+      | `Frozen_deposits delegate as dest ->
+          allocated ctxt dest >>=? fun (ctxt, allocated) ->
+          (if not allocated then Frozen_deposits_storage.init ctxt delegate
+          else return ctxt)
+          >>=? fun ctxt ->
+          Frozen_deposits_storage.credit_only_call_from_token
+            ctxt
+            delegate
+            amount
+          >|=? fun ctxt -> (ctxt, Deposits delegate)
+      | `Block_fees ->
+          Raw_context.credit_collected_fees_only_call_from_token ctxt amount
+          >>?= fun ctxt -> return (ctxt, Block_fees)
+      | `Frozen_bonds (contract, bond_id) ->
+          Contract_storage.credit_bond_only_call_from_token
+            ctxt
+            contract
+            bond_id
+            amount
+          >>=? fun ctxt -> return (ctxt, Frozen_bonds (contract, bond_id))))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Credited amount, origin))
 
 let spend ctxt src amount origin =
   let open Receipt_repr in
   (match src with
-  | `Bootstrap -> return (ctxt, Bootstrap)
-  | `Invoice -> return (ctxt, Invoice)
-  | `Initial_commitments -> return (ctxt, Initial_commitments)
-  | `Minted -> return (ctxt, Minted)
-  | `Liquidity_baking_subsidies -> return (ctxt, Liquidity_baking_subsidies)
-  | `Revelation_rewards -> return (ctxt, Nonce_revelation_rewards)
-  | `Double_signing_evidence_rewards ->
-      return (ctxt, Double_signing_evidence_rewards)
-  | `Endorsing_rewards -> return (ctxt, Endorsing_rewards)
-  | `Baking_rewards -> return (ctxt, Baking_rewards)
-  | `Baking_bonuses -> return (ctxt, Baking_bonuses)
-  | `Contract src ->
-      Contract_storage.spend_only_call_from_token ctxt src amount
-      >|=? fun ctxt -> (ctxt, Contract src)
-  | `Collected_commitments bpkh ->
-      Commitment_storage.decrease_commitment_only_call_from_token
-        ctxt
-        bpkh
-        amount
-      >>=? fun ctxt -> return (ctxt, Commitments bpkh)
-  | `Delegate_balance delegate ->
-      let contract = Contract_repr.implicit_contract delegate in
-      Contract_storage.decrease_balance_only_call_from_token
-        ctxt
-        contract
-        amount
-      >|=? fun ctxt -> (ctxt, Contract contract)
-  | `Frozen_deposits delegate ->
-      (if Tez_repr.(amount = zero) then return ctxt
-      else
-        Frozen_deposits_storage.spend_only_call_from_token ctxt delegate amount)
-      >>=? fun ctxt -> return (ctxt, Deposits delegate)
-  | `Block_fees ->
-      Raw_context.spend_collected_fees_only_call_from_token ctxt amount
-      >>?= fun ctxt -> return (ctxt, Block_fees)
-  (* TODO: remove in J *)
-  | `Legacy_deposits (delegate, cycle) as src ->
-      balance ctxt src >>=? fun old_amount ->
-      Tez_repr.(old_amount -? amount) >>?= fun new_amount ->
-      let contract = Contract_repr.implicit_contract delegate in
-      (if Tez_repr.(new_amount = zero) then
-       Storage.Contract.Legacy_frozen_deposits.remove (ctxt, contract) cycle
-      else
-        Storage.Contract.Legacy_frozen_deposits.add
-          (ctxt, contract)
-          cycle
-          new_amount)
-      >>= fun ctxt -> return (ctxt, Legacy_deposits (delegate, cycle))
-  | `Legacy_fees (delegate, cycle) as src ->
-      balance ctxt src >>=? fun old_amount ->
-      Tez_repr.(old_amount -? amount) >>?= fun new_amount ->
-      let contract = Contract_repr.implicit_contract delegate in
-      (if Tez_repr.(new_amount = zero) then
-       Storage.Contract.Legacy_frozen_fees.remove (ctxt, contract) cycle
-      else
-        Storage.Contract.Legacy_frozen_fees.add
-          (ctxt, contract)
-          cycle
-          new_amount)
-      >>= fun ctxt -> return (ctxt, Legacy_fees (delegate, cycle))
-  | `Legacy_rewards (delegate, cycle) as src ->
-      balance ctxt src >>=? fun old_amount ->
-      Tez_repr.(old_amount -? amount) >>?= fun new_amount ->
-      let contract = Contract_repr.implicit_contract delegate in
-      (if Tez_repr.(new_amount = zero) then
-       Storage.Contract.Legacy_frozen_rewards.remove (ctxt, contract) cycle
-      else
-        Storage.Contract.Legacy_frozen_rewards.add
-          (ctxt, contract)
-          cycle
-          new_amount)
-      >>= fun ctxt -> return (ctxt, Legacy_rewards (delegate, cycle)))
+  | #infinite_source as infinite_source ->
+      let src =
+        match infinite_source with
+        | `Bootstrap -> Bootstrap
+        | `Invoice -> Invoice
+        | `Initial_commitments -> Initial_commitments
+        | `Minted -> Minted
+        | `Liquidity_baking_subsidies -> Liquidity_baking_subsidies
+        | `Revelation_rewards -> Nonce_revelation_rewards
+        | `Double_signing_evidence_rewards -> Double_signing_evidence_rewards
+        | `Endorsing_rewards -> Endorsing_rewards
+        | `Baking_rewards -> Baking_rewards
+        | `Baking_bonuses -> Baking_bonuses
+        | `Tx_rollup_rejection_rewards -> Tx_rollup_rejection_rewards
+      in
+      return (ctxt, src)
+  | #container as container -> (
+      match container with
+      | `Contract src ->
+          Contract_storage.spend_only_call_from_token ctxt src amount
+          >|=? fun ctxt -> (ctxt, Contract src)
+      | `Collected_commitments bpkh ->
+          Commitment_storage.decrease_commitment_only_call_from_token
+            ctxt
+            bpkh
+            amount
+          >|=? fun ctxt -> (ctxt, Commitments bpkh)
+      | `Delegate_balance delegate ->
+          let contract = Contract_repr.Implicit delegate in
+          Contract_storage.decrease_balance_only_call_from_token
+            ctxt
+            contract
+            amount
+          >|=? fun ctxt -> (ctxt, Contract contract)
+      | `Frozen_deposits delegate ->
+          Frozen_deposits_storage.spend_only_call_from_token
+            ctxt
+            delegate
+            amount
+          >|=? fun ctxt -> (ctxt, Deposits delegate)
+      | `Block_fees ->
+          Raw_context.spend_collected_fees_only_call_from_token ctxt amount
+          >>?= fun ctxt -> return (ctxt, Block_fees)
+      | `Frozen_bonds (contract, bond_id) ->
+          Contract_storage.spend_bond_only_call_from_token
+            ctxt
+            contract
+            bond_id
+            amount
+          >>=? fun ctxt -> return (ctxt, Frozen_bonds (contract, bond_id))))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Debited amount, origin))
 
 let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
@@ -248,6 +219,7 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
       (* Avoid accessing context data when there is nothing to transfer. *)
       return (ctxt, [])
   | _ :: _ ->
+      (* Withdraw from sources. *)
       List.fold_left_es
         (fun (ctxt, total, debit_logs) (source, amount) ->
           spend ctxt source amount origin >>=? fun (ctxt, debit_log) ->
@@ -256,7 +228,20 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
         (ctxt, Tez_repr.zero, [])
         sources
       >>=? fun (ctxt, amount, debit_logs) ->
-      credit ctxt dest amount origin >|=? fun (ctxt, credit_log) ->
+      credit ctxt dest amount origin >>=? fun (ctxt, credit_log) ->
+      (* Deallocate implicit contracts with no stake. This must be done after
+         spending and crediting. If done in between then a transfer of all the
+         balance from (`Contract c) to (`Frozen_bonds (c,_)) would leave the
+         contract c unallocated. *)
+      List.fold_left_es
+        (fun ctxt (source, _amount) ->
+          match source with
+          | `Contract contract | `Frozen_bonds (contract, _) ->
+              Contract_storage.ensure_deallocated_if_empty ctxt contract
+          | #source -> return ctxt)
+        ctxt
+        sources
+      >|=? fun ctxt ->
       (* Make sure the order of balance updates is : debit logs in the order of
          of the parameter [src], and then the credit log. *)
       let balance_updates = List.rev (credit_log :: debit_logs) in

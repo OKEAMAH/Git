@@ -112,7 +112,16 @@ module Make_subcontext (R : REGISTER) (C : Raw_context.T) (N : NAME) :
   let fold ?depth t k ~order ~init ~f =
     C.fold ?depth t (to_key k) ~order ~init ~f
 
+  let config t = C.config t
+
   module Tree = C.Tree
+  module Proof = C.Proof
+
+  let verify_tree_proof = C.verify_tree_proof
+
+  let verify_stream_proof = C.verify_stream_proof
+
+  let equal_config = C.equal_config
 
   let project = C.project
 
@@ -131,6 +140,8 @@ module Make_subcontext (R : REGISTER) (C : Raw_context.T) (N : NAME) :
       if R.ghost then Storage_description.create () else C.description
     in
     Storage_description.register_named_subcontext description N.name
+
+  let length = C.length
 end
 
 module Make_single_data_storage
@@ -208,7 +219,7 @@ module Pair (I1 : INDEX) (I2 : INDEX) : INDEX with type t = I1.t * I2.t = struct
     | None -> None
     | Some (l1, l2) -> (
         match (I1.of_path l1, I2.of_path l2) with
-        | (Some x, Some y) -> Some (x, y)
+        | Some x, Some y -> Some (x, y)
         | _ -> None)
 
   type 'a ipath = 'a I1.ipath I2.ipath
@@ -249,7 +260,7 @@ module Make_data_set_storage (C : Raw_context.T) (I : INDEX) :
     let unpack = unpack I.args in
     register_value (* TODO fixme 'elements...' *)
       ~get:(fun c ->
-        let (c, k) = unpack c in
+        let c, k = unpack c in
         mem c k >>= function true -> return_some true | false -> return_none)
       (register_indexed_subcontext
          ~list:(fun c -> elements c >|= ok)
@@ -333,7 +344,7 @@ struct
     let unpack = unpack I.args in
     register_value
       ~get:(fun c ->
-        let (c, k) = unpack c in
+        let c, k = unpack c in
         find c k)
       (register_indexed_subcontext
          ~list:(fun c -> keys c >|= ok)
@@ -368,9 +379,8 @@ module Make_indexed_carbonated_data_storage_INTERNAL
   let len_key i = I.to_path i [len_name]
 
   let consume_mem_gas c key =
-    C.consume_gas
-      c
-      (Storage_costs.read_access ~path_length:(List.length key) ~read_bytes:0)
+    let path_length = List.length @@ C.absolute_key c key in
+    C.consume_gas c (Storage_costs.read_access ~path_length ~read_bytes:0)
 
   let existing_size c i =
     C.find c (len_key i) >|= function
@@ -380,13 +390,10 @@ module Make_indexed_carbonated_data_storage_INTERNAL
   let consume_read_gas get c i =
     let len_key = len_key i in
     get c len_key >>=? fun len ->
+    let path_length = List.length @@ C.absolute_key c len_key in
     Lwt.return
       ( decode_len_value len_key len >>? fun read_bytes ->
-        let cost =
-          Storage_costs.read_access
-            ~path_length:(List.length len_key)
-            ~read_bytes
-        in
+        let cost = Storage_costs.read_access ~path_length ~read_bytes in
         C.consume_gas c cost )
 
   (* For the future: here, we bill a generic cost for encoding the value
@@ -479,7 +486,7 @@ module Make_indexed_carbonated_data_storage_INTERNAL
       ~init:(ok (s, [], offset, length))
       ~f:(fun file tree acc ->
         match (C.Tree.kind tree, acc) with
-        | (`Tree, Ok (s, rev_values, offset, length)) -> (
+        | `Tree, Ok (s, rev_values, offset, length) -> (
             if Compare.Int.(length <= 0) then
               (* Keep going until the end, we have no means of short-circuiting *)
               Lwt.return acc
@@ -499,7 +506,13 @@ module Make_indexed_carbonated_data_storage_INTERNAL
     (C.project s, List.rev rev_values)
 
   let fold_keys_unaccounted s ~order ~init ~f =
-    C.fold ~depth:(`Eq I.path_length) s [] ~order ~init ~f:(fun file tree acc ->
+    C.fold
+      ~depth:(`Eq (1 + I.path_length))
+      s
+      []
+      ~order
+      ~init
+      ~f:(fun file tree acc ->
         match C.Tree.kind tree with
         | `Value -> (
             match List.rev file with
@@ -521,7 +534,7 @@ module Make_indexed_carbonated_data_storage_INTERNAL
     let unpack = unpack I.args in
     register_value (* TODO export consumed gas ?? *)
       ~get:(fun c ->
-        let (c, k) = unpack c in
+        let c, k = unpack c in
         find c k >|=? fun (_, v) -> v)
       (register_indexed_subcontext
          ~list:(fun c -> keys_unaccounted c >|= ok)
@@ -561,6 +574,8 @@ module Make_carbonated_data_set_storage (C : Raw_context.T) (I : INDEX) :
   let mem = M.mem
 
   let init s i = M.init s i ()
+
+  let add s i = M.add s i ()
 
   let remove s i = M.remove s i
 
@@ -693,95 +708,107 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
     let to_key i k = I.to_path i k
 
     let mem c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.mem t (to_key i k)
 
     let mem_tree c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.mem_tree t (to_key i k)
 
     let get c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.get t (to_key i k)
 
     let get_tree c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.get_tree t (to_key i k)
 
     let find c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.find t (to_key i k)
 
     let find_tree c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.find_tree t (to_key i k)
 
     let list c ?offset ?length k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.list t ?offset ?length (to_key i k)
 
     let init c k v =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.init t (to_key i k) v >|=? fun t -> pack t i
 
     let init_tree c k v =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.init_tree t (to_key i k) v >|=? fun t -> pack t i
 
     let update c k v =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.update t (to_key i k) v >|=? fun t -> pack t i
 
     let update_tree c k v =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.update_tree t (to_key i k) v >|=? fun t -> pack t i
 
     let add c k v =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.add t (to_key i k) v >|= fun t -> pack t i
 
     let add_tree c k v =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.add_tree t (to_key i k) v >|= fun t -> pack t i
 
     let add_or_remove c k v =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.add_or_remove t (to_key i k) v >|= fun t -> pack t i
 
     let add_or_remove_tree c k v =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.add_or_remove_tree t (to_key i k) v >|= fun t -> pack t i
 
     let remove_existing c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.remove_existing t (to_key i k) >|=? fun t -> pack t i
 
     let remove_existing_tree c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.remove_existing_tree t (to_key i k) >|=? fun t -> pack t i
 
     let remove c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.remove t (to_key i k) >|= fun t -> pack t i
 
     let fold ?depth c k ~order ~init ~f =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.fold ?depth t (to_key i k) ~order ~init ~f
+
+    let config c =
+      let t, _ = unpack c in
+      C.config t
 
     module Tree = struct
       include C.Tree
 
       let empty c =
-        let (t, _) = unpack c in
+        let t, _ = unpack c in
         C.Tree.empty t
     end
 
+    module Proof = C.Proof
+
+    let verify_tree_proof = C.verify_tree_proof
+
+    let verify_stream_proof = C.verify_stream_proof
+
+    let equal_config = C.equal_config
+
     let project c =
-      let (t, _) = unpack c in
+      let t, _ = unpack c in
       C.project t
 
     let absolute_key c k =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.absolute_key t (to_key i k)
 
     type error += Block_quota_exceeded = C.Block_quota_exceeded
@@ -789,14 +816,18 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
     type error += Operation_quota_exceeded = C.Operation_quota_exceeded
 
     let consume_gas c g =
-      let (t, i) = unpack c in
+      let t, i = unpack c in
       C.consume_gas t g >>? fun t -> ok (pack t i)
 
     let check_enough_gas c g =
-      let (t, _i) = unpack c in
+      let t, _i = unpack c in
       C.check_enough_gas t g
 
     let description = description
+
+    let length c =
+      let t, _i = unpack c in
+      C.length t
   end
 
   module Make_set (R : REGISTER) (N : NAME) :
@@ -813,18 +844,18 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     let add s i =
       Raw_context.add (pack s i) N.name inited >|= fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       C.project s
 
     let remove s i =
       Raw_context.remove (pack s i) N.name >|= fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       C.project s
 
     let clear s =
       fold_keys s ~init:s ~order:`Sorted ~f:(fun i s ->
           Raw_context.remove (pack s i) N.name >|= fun c ->
-          let (s, _) = unpack c in
+          let s, _ = unpack c in
           s)
       >|= fun t -> C.project t
 
@@ -844,7 +875,7 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       in
       register_value
         ~get:(fun c ->
-          let (c, k) = unpack c in
+          let c, k = unpack c in
           mem c k >>= function true -> return_some true | false -> return_none)
         (register_named_subcontext description N.name)
         Data_encoding.bool
@@ -880,39 +911,39 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     let update s i v =
       Raw_context.update (pack s i) N.name (to_bytes v) >|=? fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       C.project s
 
     let init s i v =
       Raw_context.init (pack s i) N.name (to_bytes v) >|=? fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       C.project s
 
     let add s i v =
       Raw_context.add (pack s i) N.name (to_bytes v) >|= fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       C.project s
 
     let add_or_remove s i v =
       Raw_context.add_or_remove (pack s i) N.name (Option.map to_bytes v)
       >|= fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       C.project s
 
     let remove s i =
       Raw_context.remove (pack s i) N.name >|= fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       C.project s
 
     let remove_existing s i =
       Raw_context.remove_existing (pack s i) N.name >|=? fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       C.project s
 
     let clear s =
       fold_keys s ~order:`Sorted ~init:s ~f:(fun i s ->
           Raw_context.remove (pack s i) N.name >|= fun c ->
-          let (s, _) = unpack c in
+          let s, _ = unpack c in
           s)
       >|= fun t -> C.project t
 
@@ -937,7 +968,7 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       let unpack = unpack I.args in
       register_value
         ~get:(fun c ->
-          let (c, k) = unpack c in
+          let c, k = unpack c in
           find c k)
         (register_named_subcontext Raw_context.description N.name)
         V.encoding
@@ -963,9 +994,8 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     let data_name = data_name :: N.name
 
-    let path_length = List.length N.name + 1
-
     let consume_mem_gas c =
+      let path_length = List.length (Raw_context.absolute_key c N.name) + 1 in
       Raw_context.consume_gas
         c
         (Storage_costs.read_access ~path_length ~read_bytes:0)
@@ -976,6 +1006,7 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       | Some len -> decode_len_value len_name len >|? fun len -> (len, true)
 
     let consume_read_gas get c =
+      let path_length = List.length (Raw_context.absolute_key c N.name) + 1 in
       get c len_name >>=? fun len ->
       Lwt.return
         ( decode_len_value len_name len >>? fun read_bytes ->
@@ -1006,7 +1037,7 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     let find s i =
       consume_mem_gas (pack s i) >>?= fun c ->
-      let (s, _) = unpack c in
+      let s, _ = unpack c in
       Raw_context.mem (pack s i) data_name >>= fun exists ->
       if exists then get s i >|=? fun (s, v) -> (s, Some v)
       else return (C.project s, None)
@@ -1053,7 +1084,7 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       let unpack = unpack I.args in
       register_value
         ~get:(fun c ->
-          let (c, k) = unpack c in
+          let c, k = unpack c in
           find c k >|=? fun (_, v) -> v)
         (register_named_subcontext Raw_context.description N.name)
         V.encoding

@@ -30,7 +30,7 @@
 
 *)
 
-module type Mass = sig
+module type SMass = sig
   type t
 
   val encoding : t Data_encoding.t
@@ -64,7 +64,7 @@ module type S = sig
   val encoding : 'a Data_encoding.t -> 'a t Data_encoding.t
 end
 
-module Make (Mass : Mass) : S with type mass = Mass.t = struct
+module Make (Mass : SMass) : S with type mass = Mass.t = struct
   type mass = Mass.t
 
   type 'a t = {
@@ -76,12 +76,12 @@ module Make (Mass : Mass) : S with type mass = Mass.t = struct
 
   let rec init_loop total p alias small large =
     match (small, large) with
-    | ([], _) -> List.iter (fun (_, i) -> FallbackArray.set p i total) large
-    | (_, []) ->
-        (* This can only happen because of numerical inaccuracies when using
-           eg [Mass.t = float] *)
+    | [], _ -> List.iter (fun (_, i) -> FallbackArray.set p i total) large
+    | _, [] ->
+        (* This can only happen because of numerical inaccuracies e.g. when using
+           [Mass.t = float] *)
         List.iter (fun (_, i) -> FallbackArray.set p i total) small
-    | ((qi, i) :: small', (qj, j) :: large') ->
+    | (qi, i) :: small', (qj, j) :: large' ->
         FallbackArray.set p i qi ;
         FallbackArray.set alias i j ;
         let qj' = Mass.sub (Mass.add qi qj) total in
@@ -89,15 +89,11 @@ module Make (Mass : Mass) : S with type mass = Mass.t = struct
           init_loop total p alias ((qj', j) :: small') large'
         else init_loop total p alias small' ((qj', j) :: large')
 
-  let support :
-      fallback:'a -> length:int -> ('a * Mass.t) list -> 'a FallbackArray.t =
-   fun ~fallback ~length measure ->
-    let a = FallbackArray.make length fallback in
-    List.iteri (fun i (elt, _) -> FallbackArray.set a i elt) measure ;
-    a
+  let support : fallback:'a -> ('a * Mass.t) list -> 'a FallbackArray.t =
+   fun ~fallback measure -> FallbackArray.of_list ~fallback ~proj:fst measure
 
   let check_and_cleanup measure =
-    let (total, measure) =
+    let total, measure =
       List.fold_left
         (fun ((total, m) as acc) ((_, p) as point) ->
           if Mass.(zero < p) then (Mass.add total p, point :: m)
@@ -114,10 +110,10 @@ module Make (Mass : Mass) : S with type mass = Mass.t = struct
   (* NB: duplicate elements in the support are not merged;
      the algorithm should still function correctly. *)
   let create (measure : ('a * Mass.t) list) =
-    let (fallback, total, measure) = check_and_cleanup measure in
+    let fallback, total, measure = check_and_cleanup measure in
     let length = List.length measure in
     let n = Mass.of_int length in
-    let (_, small, large) =
+    let _, small, large =
       List.fold_left
         (fun (i, small, large) (_, p) ->
           let q = Mass.mul p n in
@@ -126,15 +122,15 @@ module Make (Mass : Mass) : S with type mass = Mass.t = struct
         (0, [], [])
         measure
     in
-    let support = support ~fallback ~length measure in
-    let p = FallbackArray.make length total in
+    let support = support ~fallback measure in
+    let p = FallbackArray.make length Mass.zero in
     let alias = FallbackArray.make length (-1) in
     init_loop total p alias small large ;
     {total; support; p; alias}
 
   let sample {total; support; p; alias} draw_i_elt =
     let n = FallbackArray.length support in
-    let (i, elt) = draw_i_elt ~int_bound:n ~mass_bound:total in
+    let i, elt = draw_i_elt ~int_bound:n ~mass_bound:total in
     let p = FallbackArray.get p i in
     if Mass.(elt < p) then FallbackArray.get support i
     else
@@ -182,9 +178,11 @@ end
 
 module Internal_for_tests = struct
   module Make = Make
+
+  module type SMass = SMass
 end
 
-module Mass : Mass with type t = int64 = struct
+module Mass : SMass with type t = int64 = struct
   type t = int64
 
   let encoding = Data_encoding.int64
@@ -206,4 +204,16 @@ module Mass : Mass with type t = int64 = struct
   let ( < ) = Compare.Int64.( < )
 end
 
+(* This is currently safe to do that since since at this point the values for
+   [total] is 8 * 10^8 * 10^6 and the delegates [n] = 400.
+
+   Therefore [let q = Mass.mul p n ...] in [create] does not overflow since p <
+   total.
+
+   Assuming the total active stake does not increase too much, which is the case
+   at the current 5% inflation rate, this implementation can thus support around
+   10000 delegates without overflows.
+
+   If/when this happens, the implementation should be revisited.
+*)
 include Make (Mass)

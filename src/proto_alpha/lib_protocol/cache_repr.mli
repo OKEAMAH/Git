@@ -75,15 +75,6 @@ module Admin : sig
   (** [pp fmt ctxt] is a pretty printter for the [cache] of [ctxt]. *)
   val pp : Format.formatter -> Raw_context.t -> unit
 
-  (** [set_cache_layout ctxt layout] sets the caches of [ctxt] to
-     comply with given [layout]. If there was already a cache in
-     [ctxt], it is erased by the new layout.
-
-     In that case, a fresh collection of empty caches is reconstructed
-     from the new [layout]. Notice that cache [key]s are invalidated
-     in that case, i.e. [find t k] will return [None]. *)
-  val set_cache_layout : Raw_context.t -> size list -> Raw_context.t Lwt.t
-
   (** [sync ctxt ~cache_nonce] updates the context with the domain of
      the cache computed so far. Such function is expected to be called
      at the end of the validation of a block, when there is no more
@@ -98,21 +89,28 @@ module Admin : sig
      computation is delegated to the economic protocol. *)
   val sync : Raw_context.t -> cache_nonce:Bytes.t -> Raw_context.t Lwt.t
 
-  (** [clear ctxt] removes all cache entries. *)
-  val clear : Raw_context.t -> Raw_context.t
-
   (** {3 Cache helpers for RPCs} *)
 
-  (** [future_cache_expectation ctxt ~time_in_blocks] returns [ctxt] except
-      that the entries of the caches that are presumably too old to
-      still be in the caches in [n_blocks] are removed.
+  (** [future_cache_expectation ?blocks_before_activation ctxt
+     ~time_in_blocks] returns [ctxt] except that the entries of the
+     caches that are presumably too old to still be in the caches in
+     [n_blocks] are removed.
 
-      This function is based on a heuristic. The context maintains
-      the median of the number of removed entries: this number is
-      multipled by `n_blocks` to determine the entries that are
-      likely to be removed in `n_blocks`. *)
+      This function is based on a heuristic. The context maintains the
+     median of the number of removed entries: this number is multipled
+     by `n_blocks` to determine the entries that are likely to be
+     removed in `n_blocks`.
+
+     If [blocks_before_activation] is set to [Some n],
+     then the cache is considered empty if [0 <= n <= time_in_blocks].
+     Otherwise, if [blocks_before_activation] is set to [None] and
+     if the voting period is the adoption, the cache is considered
+     empty if [blocks <= time_in_blocks remaining for adoption phase]. *)
   val future_cache_expectation :
-    Raw_context.t -> time_in_blocks:int -> Raw_context.t
+    ?blocks_before_activation:int32 ->
+    Raw_context.t ->
+    time_in_blocks:int ->
+    Raw_context.t tzresult Lwt.t
 
   (** [cache_size ctxt ~cache_index] returns an overapproximation of
        the size of the cache. Returns [None] if [cache_index] is
@@ -127,7 +125,11 @@ module Admin : sig
   val cache_size_limit : Raw_context.t -> cache_index:int -> size option
 
   (** [value_of_key ctxt k] interprets the functions introduced by
-     [register] to construct a cacheable value for a key [k]. *)
+     [register] to construct a cacheable value for a key [k]. 
+
+     [value_of_key] is a maintenance operation: it is typically run
+     when a node reboots. For this reason, this operation is not
+     carbonated. *)
   val value_of_key :
     Raw_context.t -> Context.Cache.key -> Context.Cache.value tzresult Lwt.t
 end

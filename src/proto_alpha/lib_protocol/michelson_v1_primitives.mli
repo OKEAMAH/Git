@@ -43,7 +43,7 @@ type error +=
     a few extra atom types for strings and numbers. This variant
     represents the values the [Prim] atoms in the Michelson subset
     of Micheline. Other types (such as ['a Micheline.canonical]) are
-    frequently parameterized by this type. This gives us a strongly-typed 
+    frequently parameterized by this type. This gives us a strongly-typed
     subset of Micheline while keeping the set of primitives independent
     from the definition of Micheline for easier changes.
 *)
@@ -120,6 +120,7 @@ type prim =
   | I_NONE
   | I_NOT
   | I_NOW
+  | I_MIN_BLOCK_TIME
   | I_OR
   | I_PAIR
   | I_UNPAIR
@@ -185,7 +186,9 @@ type prim =
   | T_unit
   | T_operation
   | T_address
+  | T_tx_rollup_l2_address
   | T_sapling_transaction
+  | T_sapling_transaction_deprecated
   | T_sapling_state
   | T_chain_id
   | T_never

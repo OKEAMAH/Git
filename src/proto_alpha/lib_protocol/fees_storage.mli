@@ -37,11 +37,13 @@ type error += Storage_limit_too_high (* `Permanent *)
 val record_global_constant_storage_space :
   Raw_context.t -> Z.t -> Raw_context.t * Z.t
 
-(** [record_paid_storage_space ctxt contract] updates the amount of storage
-    consumed by the [contract] and considered as accounted for as far as
-    future payment is concerned. Returns a new context, the total space
-    consumed by the [contract], and the additional (and unpaid) space consumed
-    since the last call of this function on this [contract]. *)
+(** [record_paid_storage_space ctxt contract] updates the amount of
+    storage consumed by the [contract]. This total size is considered
+    as accounted for as far as future payment is concerned.
+
+    Returns a new context, the total space consumed by the [contract],
+    and the additional (and unpaid) space consumed since the last call
+    of this function on this [contract]. *)
 val record_paid_storage_space :
   Raw_context.t -> Contract_repr.t -> (Raw_context.t * Z.t * Z.t) tzresult Lwt.t
 
@@ -83,4 +85,14 @@ val burn_tx_rollup_origination_fees :
   Raw_context.t ->
   storage_limit:Z.t ->
   payer:Token.source ->
+  (Raw_context.t * Z.t * Receipt_repr.balance_updates) tzresult Lwt.t
+
+(** [burn_sc_rollup_origination_fees ~origin ctxt ~storage_limit ~payer consumed]
+    burns the storage fees for smart contract rollup creation fees. *)
+val burn_sc_rollup_origination_fees :
+  ?origin:Receipt_repr.update_origin ->
+  Raw_context.t ->
+  storage_limit:Z.t ->
+  payer:Token.source ->
+  Z.t ->
   (Raw_context.t * Z.t * Receipt_repr.balance_updates) tzresult Lwt.t

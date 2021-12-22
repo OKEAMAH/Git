@@ -2,7 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
-(* Copyright (c) 2020 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2020-2022 Nomadic Labs <contact@nomadic-labs.com>           *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,7 +24,19 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t
+(** Internal representation of the Tez currency. Behaves mostly like a natural
+   number where number 1 represents 1/1,000,000 Tez (1 micro-Tez or mutez).
+   It's protected from ever becoming negative and overflowing by special
+   arithmetic functions, which fail in case something undesired would happen.
+   When divided, it's always rounded down to 1 mutez.
+
+   Internally encoded as [int64], which may be relevant to guard against
+   overflow errors. *)
+type repr
+
+(** [t] is made algebraic in order to distinguish it from the other type
+    parameters of [Script_typed_ir.ty]. *)
+type t = Tez_tag of repr [@@ocaml.unboxed]
 
 type tez = t
 
@@ -37,6 +49,8 @@ val one_cent : t
 val fifty_cents : t
 
 val one : t
+
+val max_mutez : t
 
 val ( -? ) : t -> t -> t tzresult
 

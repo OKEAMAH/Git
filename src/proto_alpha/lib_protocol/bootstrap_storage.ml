@@ -24,9 +24,9 @@
 (*****************************************************************************)
 
 let init_account (ctxt, balance_updates)
-    ({public_key_hash; public_key; amount} : Parameters_repr.bootstrap_account)
-    =
-  let contract = Contract_repr.implicit_contract public_key_hash in
+    ({public_key_hash; public_key; amount; delegate_to} :
+      Parameters_repr.bootstrap_account) =
+  let contract = Contract_repr.Implicit public_key_hash in
   Token.transfer
     ~origin:Protocol_migration
     ctxt
@@ -40,21 +40,26 @@ let init_account (ctxt, balance_updates)
         ctxt
         public_key_hash
         public_key
-      >>=? fun ctxt -> Delegate_storage.set ctxt contract (Some public_key_hash)
+      >>=? fun ctxt ->
+      Delegate_storage.set
+        ctxt
+        contract
+        (Some (Option.value ~default:public_key_hash delegate_to))
   | None -> return ctxt)
   >|=? fun ctxt -> (ctxt, new_balance_updates @ balance_updates)
 
 let init_contract ~typecheck (ctxt, balance_updates)
     ({delegate; amount; script} : Parameters_repr.bootstrap_contract) =
   Contract_storage.fresh_contract_from_current_nonce ctxt
-  >>?= fun (ctxt, contract) ->
+  >>?= fun (ctxt, contract_hash) ->
   typecheck ctxt script >>=? fun (script, ctxt) ->
   Contract_storage.raw_originate
     ctxt
     ~prepaid_bootstrap_storage:true
-    contract
+    contract_hash
     ~script
   >>=? fun ctxt ->
+  let contract = Contract_repr.Originated contract_hash in
   (match delegate with
   | None -> return ctxt
   | Some delegate -> Delegate_storage.init ctxt contract delegate)

@@ -67,10 +67,14 @@ let record_global_constant_storage_space context size =
   let to_be_paid = Z.add size cost_of_key in
   (context, to_be_paid)
 
-let record_paid_storage_space c contract =
-  Contract_storage.used_storage_space c contract >>=? fun size ->
-  Contract_storage.set_paid_storage_space_and_return_fees_to_pay c contract size
-  >>=? fun (to_be_paid, c) -> return (c, size, to_be_paid)
+let record_paid_storage_space ctxt contract =
+  (* Get the new size of the contract's storage. *)
+  Contract_storage.used_storage_space ctxt contract >>=? fun new_storage_size ->
+  Contract_storage.set_paid_storage_space_and_return_fees_to_pay
+    ctxt
+    contract
+    new_storage_size
+  >>=? fun (to_be_paid, c) -> return (c, new_storage_size, to_be_paid)
 
 let source_must_exist c src =
   match src with
@@ -113,6 +117,10 @@ let burn_tx_rollup_origination_fees ?(origin = Receipt_repr.Block_application) c
     ~storage_limit
     ~payer
     (Z.of_int tx_rollup_origination_size)
+
+let burn_sc_rollup_origination_fees ?(origin = Receipt_repr.Block_application) c
+    ~storage_limit ~payer consumed =
+  burn_storage_fees ~origin c ~storage_limit ~payer consumed
 
 let check_storage_limit c ~storage_limit =
   if

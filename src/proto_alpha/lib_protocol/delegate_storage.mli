@@ -100,6 +100,11 @@ type participation_info = {
      required minimum, then the rewards are zero. (dynamic) *)
 }
 
+(** Only use this function for RPC: this is expensive.
+
+   [delegate_participation_info] and [!val:check_delegate] forms the
+   implementation of RPC call "/context/delegates/<pkh>/participation".
+ *)
 val delegate_participation_info :
   Raw_context.t ->
   Signature.Public_key_hash.t ->
@@ -196,8 +201,11 @@ val frozen_deposits :
   Storage.deposits tzresult Lwt.t
 
 (** Returns the full 'balance' of the implicit contract associated to
-    a given key, i.e. the sum of the spendable balance and of the
-    frozen balance.
+    a given key, i.e. the sum of the spendable balance (given by [balance] or
+    [Contract_storage.get_balance]) and of the frozen balance. The frozen
+    balance is composed of all frozen bonds associated to the contract (given by
+    [Contract_storage.get_frozen_bonds]) and of the frozen deposits (given by
+    [frozen_deposits]).
 
     Only use this function for RPCs: this is expensive. *)
 val full_balance :
@@ -231,7 +239,9 @@ val baking_rights_owner :
   Raw_context.t ->
   Level_repr.t ->
   round:Round_repr.round ->
-  (Raw_context.t * int * (Signature.public_key * Signature.public_key_hash))
+  (Raw_context.t
+  * Slot_repr.t
+  * (Signature.public_key * Signature.public_key_hash))
   tzresult
   Lwt.t
 
@@ -240,3 +250,16 @@ val freeze_deposits_do_not_call_except_for_migration :
   new_cycle:Cycle_repr.t ->
   balance_updates:Receipt_repr.balance_updates ->
   (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t
+
+(** [init_first_cycles ctxt] computes and records the distribution of the total
+    active stake among active delegates. This concerns the total active stake
+    involved in the calculation of baking rights for all cycles in the range
+    [0, preserved_cycles]. *)
+val init_first_cycles : Raw_context.t -> Raw_context.t tzresult Lwt.t
+
+(** [compute_snapshot_index ctxt cycle max_snapshot_index] Returns the index of
+    the selected snapshot for the [cycle] passed as argument, and for the max
+    index of snapshots taken so far, [max_snapshot_index] (see
+    [Stake_storage.max_snapshot_index]. *)
+val compute_snapshot_index :
+  Raw_context.t -> Cycle_repr.t -> max_snapshot_index:int -> int tzresult Lwt.t

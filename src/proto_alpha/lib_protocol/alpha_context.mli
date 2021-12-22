@@ -2,8 +2,8 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
-(* Copyright (c) 2019-2021 Nomadic Labs <contact@nomadic-labs.com>           *)
-(* Copyright (c) 2021 Trili Tech, <contact@trili.tech>                       *)
+(* Copyright (c) 2019-2022 Nomadic Labs <contact@nomadic-labs.com>           *)
+(* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -67,19 +67,33 @@ type signature = Signature.t
 module Slot : sig
   type t
 
+  type slot = t
+
   include Compare.S with type t := t
 
   val pp : Format.formatter -> t -> unit
 
   val zero : t
 
-  val succ : t -> t
+  val succ : t -> t tzresult
 
   val of_int_do_not_use_except_for_parameters : int -> t
 
   val encoding : t Data_encoding.encoding
 
-  val slot_range : min:int -> count:int -> t list tzresult
+  module Range : sig
+    type t
+
+    val create : min:int -> count:int -> t tzresult
+
+    val fold : ('a -> slot -> 'a) -> 'a -> t -> 'a
+
+    val fold_es :
+      ('a -> slot -> 'a tzresult Lwt.t) -> 'a -> t -> 'a tzresult Lwt.t
+
+    val rev_fold_es :
+      ('a -> slot -> 'a tzresult Lwt.t) -> 'a -> t -> 'a tzresult Lwt.t
+  end
 
   module Map : Map.S with type key = t
 
@@ -87,7 +101,11 @@ module Slot : sig
 end
 
 module Tez : sig
-  include BASIC_DATA
+  type repr
+
+  type t = Tez_tag of repr [@@ocaml.unboxed]
+
+  include BASIC_DATA with type t := t
 
   type tez = t
 
@@ -182,6 +200,14 @@ module Timestamp : sig
   val predecessor : context -> time
 end
 
+module Ratio : sig
+  type t = {numerator : int; denominator : int}
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+end
+
 module Raw_level : sig
   include BASIC_DATA
 
@@ -200,6 +226,8 @@ module Raw_level : sig
   val to_int32 : raw_level -> int32
 
   val of_int32 : int32 -> raw_level tzresult
+
+  val of_int32_exn : int32 -> raw_level
 end
 
 module Cycle : sig
@@ -321,7 +349,7 @@ module Gas : sig
 
   module Arith :
     Fixed_point_repr.Safe
-      with type 'a t = Saturation_repr.may_saturate Saturation_repr.t
+      with type 'a t = private Saturation_repr.may_saturate Saturation_repr.t
   [@@coq_plain_module]
 
   (** For maintenance operations or for testing, gas can be
@@ -407,6 +435,12 @@ module Gas : sig
   (** The cost of free operation is [0]. *)
   val free : cost
 
+  (** Convert a fixed-point amount of gas to a cost. *)
+  val cost_of_gas : 'a Arith.t -> cost
+
+  (** Convert an amount of milligas expressed as an int to Arith.fp.  *)
+  val fp_of_milligas_int : int -> Arith.fp
+
   (** [atomic_step_cost x] corresponds to [x] milliunit of gas. *)
   val atomic_step_cost : _ Saturation_repr.t -> cost
 
@@ -449,39 +483,7 @@ module Gas : sig
   val cost_of_repr : Gas_limit_repr.cost -> cost
 end
 
-module Script_string : module type of Script_string_repr
-
-module Script_int : module type of Script_int_repr
-
-module Script_timestamp : sig
-  open Script_int
-
-  type t
-
-  val compare : t -> t -> int
-
-  val to_string : t -> string
-
-  val to_notation : t -> string option
-
-  val to_num_str : t -> string
-
-  val of_string : string -> t option
-
-  val diff : t -> t -> z num
-
-  val add_delta : t -> z num -> t
-
-  val sub_delta : t -> z num -> t
-
-  val now : context -> t
-
-  val to_zint : t -> Z.t
-
-  val of_zint : Z.t -> t
-
-  val encoding : t Data_encoding.encoding
-end
+module Entrypoint : module type of Entrypoint_repr
 
 module Script : sig
   type prim = Michelson_v1_primitives.prim =
@@ -557,6 +559,7 @@ module Script : sig
     | I_NONE
     | I_NOT
     | I_NOW
+    | I_MIN_BLOCK_TIME
     | I_OR
     | I_PAIR
     | I_UNPAIR
@@ -622,7 +625,9 @@ module Script : sig
     | T_unit
     | T_operation
     | T_address
+    | T_tx_rollup_l2_address
     | T_sapling_transaction
+    | T_sapling_transaction_deprecated
     | T_sapling_state
     | T_chain_id
     | T_never
@@ -645,8 +650,6 @@ module Script : sig
   val lazy_expr : expr -> lazy_expr
 
   type 'location michelson_node = ('location, prim) Micheline.node
-
-  type unlocated_michelson_node = unit michelson_node
 
   type node = location michelson_node
 
@@ -689,6 +692,18 @@ module Script : sig
   val force_bytes_in_context :
     context -> lazy_expr -> (bytes * context) tzresult
 
+  (** [consume_decoding_gas ctxt lexpr] substracts (a lower bound on)
+      the cost to deserialize [lexpr] from the current operation gas
+      level in [ctxt]. The cost does not depend on the internal state
+      of the lazy_expr.
+
+      @return [Error Operation_quota_exceeded] if the operation gas
+      level would fall below [0].
+
+      This mimics the gas consuming part of {!force_decode_in_context}
+      called with [consume_deserialization_gas:Always]. *)
+  val consume_decoding_gas : context -> lazy_expr -> context tzresult
+
   val unit_parameter : lazy_expr
 
   val strip_locations_cost : _ michelson_node -> Gas.cost
@@ -716,50 +731,92 @@ module Constants : sig
 
   val michelson_maximum_type_size : int
 
-  type ratio = {numerator : int; denominator : int}
-
-  val ratio_encoding : ratio Data_encoding.t
-
-  val pp_ratio : Format.formatter -> ratio -> unit
-
   (** Constants parameterized by context *)
-  type parametric = {
-    preserved_cycles : int;
-    blocks_per_cycle : int32;
-    blocks_per_commitment : int32;
-    blocks_per_stake_snapshot : int32;
-    blocks_per_voting_period : int32;
-    hard_gas_limit_per_operation : Gas.Arith.integral;
-    hard_gas_limit_per_block : Gas.Arith.integral;
-    proof_of_work_threshold : int64;
-    tokens_per_roll : Tez.t;
-    seed_nonce_revelation_tip : Tez.t;
-    origination_size : int;
-    baking_reward_fixed_portion : Tez.t;
-    baking_reward_bonus_per_slot : Tez.t;
-    endorsing_reward_per_slot : Tez.t;
-    cost_per_byte : Tez.t;
-    hard_storage_limit_per_operation : Z.t;
-    quorum_min : int32;
-    quorum_max : int32;
-    min_proposal_quorum : int32;
-    liquidity_baking_subsidy : Tez.t;
-    liquidity_baking_sunset_level : int32;
-    liquidity_baking_escape_ema_threshold : int32;
-    max_operations_time_to_live : int;
-    minimal_block_delay : Period.t;
-    delay_increment_per_round : Period.t;
-    minimal_participation_ratio : ratio;
-    consensus_committee_size : int;
-    consensus_threshold : int;
-    max_slashing_period : int;
-    frozen_deposits_percentage : int;
-    double_baking_punishment : Tez.t;
-    ratio_of_frozen_deposits_slashed_per_double_endorsement : ratio;
-    initial_seed : State_hash.t option;
-    tx_rollup_enable : bool;
-    tx_rollup_origination_size : int;
-  }
+  module Parametric : sig
+    type dal = {
+      feature_enable : bool;
+      number_of_slots : int;
+      number_of_shards : int;
+      endorsement_lag : int;
+      availability_threshold : int;
+    }
+
+    val dal_encoding : dal Data_encoding.t
+
+    type tx_rollup = {
+      enable : bool;
+      origination_size : int;
+      hard_size_limit_per_inbox : int;
+      hard_size_limit_per_message : int;
+      commitment_bond : Tez.t;
+      finality_period : int;
+      withdraw_period : int;
+      max_inboxes_count : int;
+      max_messages_per_inbox : int;
+      max_commitments_count : int;
+      cost_per_byte_ema_factor : int;
+      max_ticket_payload_size : int;
+      max_withdrawals_per_batch : int;
+      rejection_max_proof_size : int;
+      sunset_level : int32;
+    }
+
+    type sc_rollup = {
+      enable : bool;
+      origination_size : int;
+      challenge_window_in_blocks : int;
+      max_available_messages : int;
+      stake_amount : Tez.t;
+      commitment_period_in_blocks : int;
+      max_lookahead_in_blocks : int32;
+      max_active_outbox_levels : int32;
+      max_outbox_messages_per_level : int;
+    }
+
+    type t = {
+      preserved_cycles : int;
+      blocks_per_cycle : int32;
+      blocks_per_commitment : int32;
+      blocks_per_stake_snapshot : int32;
+      cycles_per_voting_period : int32;
+      hard_gas_limit_per_operation : Gas.Arith.integral;
+      hard_gas_limit_per_block : Gas.Arith.integral;
+      proof_of_work_threshold : int64;
+      tokens_per_roll : Tez.t;
+      seed_nonce_revelation_tip : Tez.t;
+      origination_size : int;
+      baking_reward_fixed_portion : Tez.t;
+      baking_reward_bonus_per_slot : Tez.t;
+      endorsing_reward_per_slot : Tez.t;
+      cost_per_byte : Tez.t;
+      hard_storage_limit_per_operation : Z.t;
+      quorum_min : int32;
+      quorum_max : int32;
+      min_proposal_quorum : int32;
+      liquidity_baking_subsidy : Tez.t;
+      liquidity_baking_sunset_level : int32;
+      liquidity_baking_toggle_ema_threshold : int32;
+      max_operations_time_to_live : int;
+      minimal_block_delay : Period.t;
+      delay_increment_per_round : Period.t;
+      minimal_participation_ratio : Ratio.t;
+      consensus_committee_size : int;
+      consensus_threshold : int;
+      max_slashing_period : int;
+      frozen_deposits_percentage : int;
+      double_baking_punishment : Tez.t;
+      ratio_of_frozen_deposits_slashed_per_double_endorsement : Ratio.t;
+      initial_seed : State_hash.t option;
+      cache_script_size : int;
+      cache_stake_distribution_cycles : int;
+      cache_sampler_state_cycles : int;
+      tx_rollup : tx_rollup;
+      dal : dal;
+      sc_rollup : sc_rollup;
+    }
+
+    val encoding : t Data_encoding.t
+  end
 
   module Generated : sig
     type t = {
@@ -769,12 +826,15 @@ module Constants : sig
       endorsing_reward_per_slot : Tez.t;
     }
 
-    val generate : consensus_committee_size:int -> blocks_per_minute:ratio -> t
+    val generate :
+      consensus_committee_size:int -> blocks_per_minute:Ratio.t -> t
   end
 
-  val parametric_encoding : parametric Data_encoding.t
+  val parametric : context -> Parametric.t
 
-  val parametric : context -> parametric
+  val tx_rollup : context -> Parametric.tx_rollup
+
+  val sc_rollup : context -> Parametric.sc_rollup
 
   val preserved_cycles : context -> int
 
@@ -784,7 +844,7 @@ module Constants : sig
 
   val blocks_per_stake_snapshot : context -> int32
 
-  val blocks_per_voting_period : context -> int32
+  val cycles_per_voting_period : context -> int32
 
   val hard_gas_limit_per_operation : context -> Gas.Arith.integral
 
@@ -818,7 +878,7 @@ module Constants : sig
 
   val liquidity_baking_sunset_level : context -> int32
 
-  val liquidity_baking_escape_ema_threshold : context -> int32
+  val liquidity_baking_toggle_ema_threshold : context -> int32
 
   val minimal_block_delay : context -> Period.t
 
@@ -830,7 +890,7 @@ module Constants : sig
 
   val consensus_threshold : context -> int
 
-  val minimal_participation_ratio : context -> ratio
+  val minimal_participation_ratio : context -> Ratio.t
 
   val max_slashing_period : context -> int
 
@@ -838,14 +898,49 @@ module Constants : sig
 
   val double_baking_punishment : context -> Tez.t
 
-  val ratio_of_frozen_deposits_slashed_per_double_endorsement : context -> ratio
+  val ratio_of_frozen_deposits_slashed_per_double_endorsement :
+    context -> Ratio.t
 
   val tx_rollup_enable : context -> bool
 
   val tx_rollup_origination_size : context -> int
 
+  val tx_rollup_hard_size_limit_per_inbox : context -> int
+
+  val tx_rollup_hard_size_limit_per_message : context -> int
+
+  val tx_rollup_max_withdrawals_per_batch : context -> int
+
+  val tx_rollup_commitment_bond : context -> Tez.t
+
+  val tx_rollup_finality_period : context -> int
+
+  val tx_rollup_max_inboxes_count : context -> int
+
+  val tx_rollup_max_messages_per_inbox : context -> int
+
+  val tx_rollup_max_commitments_count : context -> int
+
+  val tx_rollup_max_ticket_payload_size : context -> int
+
+  val tx_rollup_rejection_max_proof_size : context -> int
+
+  val tx_rollup_sunset_level : context -> int32
+
+  val sc_rollup_enable : context -> bool
+
+  val sc_rollup_origination_size : context -> int
+
+  val sc_rollup_max_available_messages : context -> int
+
+  val sc_rollup_stake_amount : Raw_context.t -> Tez.t
+
+  val sc_rollup_commitment_period_in_blocks : Raw_context.t -> int
+
+  val sc_rollup_max_lookahead_in_blocks : Raw_context.t -> int32
+
   (** All constants: fixed and parametric *)
-  type t = private {fixed : fixed; parametric : parametric}
+  type t = private {fixed : fixed; parametric : Parametric.t}
 
   val all : context -> t
 
@@ -949,6 +1044,10 @@ module Global_constants_storage : sig
   end
 end
 
+module Internal_for_tests : sig
+  val to_raw : context -> Raw_context.t
+end
+
 module Cache : sig
   type size = int
 
@@ -961,13 +1060,13 @@ module Cache : sig
 
     val pp : Format.formatter -> context -> unit
 
-    val set_cache_layout : context -> size list -> context Lwt.t
-
     val sync : context -> cache_nonce:Bytes.t -> context Lwt.t
 
-    val clear : context -> context
-
-    val future_cache_expectation : context -> time_in_blocks:int -> context
+    val future_cache_expectation :
+      ?blocks_before_activation:int32 ->
+      context ->
+      time_in_blocks:int ->
+      context tzresult Lwt.t
 
     val cache_size : context -> cache_index:int -> size option
 
@@ -1143,7 +1242,7 @@ end
 
 module Big_map : sig
   module Id : sig
-    type t
+    type t = Lazy_storage_kind.Big_map.Id.t
 
     val encoding : t Data_encoding.t
 
@@ -1283,6 +1382,24 @@ module Sapling : sig
   val transaction_in_memory_size : transaction -> Cache_memory_helpers.sint
 
   val diff_in_memory_size : diff -> Cache_memory_helpers.sint
+
+  module Legacy : sig
+    type transaction = Sapling.UTXO.Legacy.transaction
+
+    val transaction_encoding : transaction Data_encoding.t
+
+    val transaction_get_memo_size : transaction -> Memo_size.t option
+
+    val transaction_in_memory_size :
+      transaction -> Saturation_repr.may_saturate Saturation_repr.t
+
+    val verify_update :
+      context ->
+      state ->
+      transaction ->
+      string ->
+      (context * (Int64.t * state) option) tzresult Lwt.t
+  end
 end
 
 module Lazy_storage : sig
@@ -1316,7 +1433,10 @@ module Lazy_storage : sig
     | Remove
     | Update of {init : ('id, 'alloc) init; updates : 'updates}
 
-  type diffs_item
+  type diffs_item = private
+    | Item :
+        ('i, 'a, 'u) Lazy_storage_kind.t * 'i * ('i, 'a, 'u) diff
+        -> diffs_item
 
   val make : ('i, 'a, 'u) Kind.t -> 'i -> ('i, 'a, 'u) diff -> diffs_item
 
@@ -1325,8 +1445,6 @@ module Lazy_storage : sig
   val encoding : diffs Data_encoding.t
 
   val diffs_in_memory_size : diffs -> Cache_memory_helpers.nodes_and_size
-
-  val legacy_big_map_diff_encoding : diffs Data_encoding.t
 
   val cleanup_temporaries : context -> context Lwt.t
 
@@ -1351,32 +1469,79 @@ module Origination_nonce : sig
   end
 end
 
-module Contract : sig
-  include BASIC_DATA
+(** This module re-exports functions from {!Ticket_hash_repr}. See
+    documentation of the functions there. *)
+module Ticket_hash : sig
+  type t
 
-  type contract = t
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val zero : t
+
+  val of_script_expr_hash : Script_expr_hash.t -> t
+
+  val to_b58check : t -> string
+
+  val of_b58check_opt : string -> t option
+
+  val of_b58check_exn : string -> t
+
+  val of_bytes_exn : bytes -> t
+
+  val of_bytes_opt : bytes -> t option
+
+  val equal : t -> t -> bool
+
+  val compare : t -> t -> int
+
+  val make :
+    context ->
+    ticketer:Script.node ->
+    ty:Script.node ->
+    contents:Script.node ->
+    owner:Script.node ->
+    (t * context) tzresult
+
+  module Internal_for_tests : sig
+    val make_uncarbonated :
+      ticketer:Script.node ->
+      ty:Script.node ->
+      contents:Script.node ->
+      owner:Script.node ->
+      t tzresult
+  end
+end
+
+module Contract : sig
+  type t =
+    | Implicit of Signature.Public_key_hash.t
+    | Originated of Contract_hash.t
+
+  type error += Non_existing_contract of t
+
+  include BASIC_DATA with type t := t
+
+  val originated_encoding : Contract_hash.t Data_encoding.t
 
   val in_memory_size : t -> Cache_memory_helpers.sint
 
-  val rpc_arg : contract RPC_arg.arg
+  val rpc_arg : t RPC_arg.arg
 
-  val to_b58check : contract -> string
+  val to_b58check : t -> string
 
-  val of_b58check : string -> contract tzresult
+  val of_b58check : string -> t tzresult
 
-  val implicit_contract : public_key_hash -> contract
+  val exists : context -> t -> bool Lwt.t
 
-  val is_implicit : contract -> public_key_hash option
+  val must_exist : context -> t -> unit tzresult Lwt.t
 
-  val exists : context -> contract -> bool tzresult Lwt.t
+  val allocated : context -> t -> bool Lwt.t
 
-  val must_exist : context -> contract -> unit tzresult Lwt.t
+  val must_be_allocated : context -> t -> unit tzresult Lwt.t
 
-  val allocated : context -> contract -> bool tzresult Lwt.t
-
-  val must_be_allocated : context -> contract -> unit tzresult Lwt.t
-
-  val list : context -> contract list Lwt.t
+  val list : context -> t list Lwt.t
 
   val get_manager_key :
     ?error:error -> context -> public_key_hash -> public_key tzresult Lwt.t
@@ -1384,29 +1549,38 @@ module Contract : sig
   val is_manager_key_revealed :
     context -> public_key_hash -> bool tzresult Lwt.t
 
+  val check_public_key : public_key -> public_key_hash -> unit tzresult
+
   val reveal_manager_key :
-    context -> public_key_hash -> public_key -> context tzresult Lwt.t
+    ?check_consistency:bool ->
+    context ->
+    public_key_hash ->
+    public_key ->
+    context tzresult Lwt.t
 
   val get_script_code :
-    context -> contract -> (context * Script.lazy_expr option) tzresult Lwt.t
+    context -> t -> (context * Script.lazy_expr option) tzresult Lwt.t
 
-  val get_script :
-    context -> contract -> (context * Script.t option) tzresult Lwt.t
+  val get_script : context -> t -> (context * Script.t option) tzresult Lwt.t
 
   val get_storage :
-    context -> contract -> (context * Script.expr option) tzresult Lwt.t
+    context -> t -> (context * Script.expr option) tzresult Lwt.t
 
   val get_counter : context -> public_key_hash -> Z.t tzresult Lwt.t
 
-  val get_balance : context -> contract -> Tez.t tzresult Lwt.t
+  val get_balance : context -> t -> Tez.t tzresult Lwt.t
 
-  val get_balance_carbonated :
-    context -> contract -> (context * Tez.t) tzresult Lwt.t
+  val get_balance_carbonated : context -> t -> (context * Tez.t) tzresult Lwt.t
 
-  val fresh_contract_from_current_nonce : context -> (context * t) tzresult
+  val fresh_contract_from_current_nonce :
+    context -> (context * Contract_hash.t) tzresult
 
   val originated_from_current_nonce :
-    since:context -> until:context -> contract list tzresult Lwt.t
+    since:context -> until:context -> Contract_hash.t list tzresult Lwt.t
+
+  val get_frozen_bonds : context -> t -> Tez.t tzresult Lwt.t
+
+  val get_balance_and_frozen_bonds : context -> t -> Tez.t tzresult Lwt.t
 
   module Legacy_big_map_diff : sig
     type item = private
@@ -1429,11 +1603,9 @@ module Contract : sig
     val of_lazy_storage_diff : Lazy_storage.diffs -> t
   end
 
-  type error += Balance_too_low of contract * Tez.t * Tez.t
-
   val update_script_storage :
     context ->
-    contract ->
+    t ->
     Script.expr ->
     Lazy_storage.diffs option ->
     context tzresult Lwt.t
@@ -1448,29 +1620,590 @@ module Contract : sig
   val raw_originate :
     context ->
     prepaid_bootstrap_storage:bool ->
-    t ->
+    Contract_hash.t ->
     script:Script.t * Lazy_storage.diffs option ->
     context tzresult Lwt.t
 
   module Internal_for_tests : sig
     (** see [Contract_repr.originated_contract] for documentation *)
-    val originated_contract : Origination_nonce.Internal_for_tests.t -> contract
+    val originated_contract : Origination_nonce.Internal_for_tests.t -> t
+
+    val paid_storage_space : context -> t -> Z.t tzresult Lwt.t
+  end
+end
+
+module Tx_rollup_level : sig
+  include BASIC_DATA
+
+  type level = t
+
+  val rpc_arg : level RPC_arg.arg
+
+  val diff : level -> level -> int32
+
+  val root : level
+
+  val succ : level -> level
+
+  val pred : level -> level option
+
+  val to_int32 : level -> int32
+
+  val of_int32 : int32 -> level tzresult
+end
+
+(** This module re-exports definitions from {!Tx_rollup_repr} and
+    {!Tx_rollup_storage}. *)
+module Tx_rollup : sig
+  include BASIC_DATA
+
+  val rpc_arg : t RPC_arg.arg
+
+  val to_b58check : t -> string
+
+  val of_b58check : string -> t tzresult
+
+  val of_b58check_opt : string -> t option
+
+  val pp : Format.formatter -> t -> unit
+
+  val encoding : t Data_encoding.t
+
+  val deposit_entrypoint : Entrypoint.t
+
+  val originate : context -> (context * t) tzresult Lwt.t
+
+  module Set : Set.S with type elt = t
+
+  module Internal_for_tests : sig
+    (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
+    val originated_tx_rollup : Origination_nonce.Internal_for_tests.t -> t
+  end
+end
+
+module Tx_rollup_withdraw : sig
+  type order = {
+    claimer : Signature.Public_key_hash.t;
+    ticket_hash : Ticket_hash.t;
+    amount : Tx_rollup_l2_qty.t;
+  }
+
+  type t = order
+
+  val encoding : t Data_encoding.t
+end
+
+module Tx_rollup_withdraw_list_hash : sig
+  include S.HASH
+
+  val hash_uncarbonated : Tx_rollup_withdraw.t list -> t
+
+  val empty : t
+end
+
+module Tx_rollup_message_result : sig
+  type t = {
+    context_hash : Context_hash.t;
+    withdraw_list_hash : Tx_rollup_withdraw_list_hash.t;
+  }
+
+  val encoding : t Data_encoding.t
+
+  val empty_l2_context_hash : Context_hash.t
+
+  val init : t
+end
+
+module Tx_rollup_message_result_hash : sig
+  include S.HASH
+
+  val hash_uncarbonated : Tx_rollup_message_result.t -> t
+
+  val init : t
+end
+
+module Tx_rollup_commitment_hash : sig
+  val commitment_hash : string
+
+  include S.HASH
+end
+
+(** This module re-exports definitions from {!Tx_rollup_state_repr}
+    and {!Tx_rollup_state_storage}. *)
+module Tx_rollup_state : sig
+  type t
+
+  val initial_state : pre_allocated_storage:Z.t -> t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val find : context -> Tx_rollup.t -> (context * t option) tzresult Lwt.t
+
+  val get : context -> Tx_rollup.t -> (context * t) tzresult Lwt.t
+
+  val update : context -> Tx_rollup.t -> t -> context tzresult Lwt.t
+
+  val burn_cost : limit:Tez.t option -> t -> int -> Tez.t tzresult
+
+  val assert_exist : context -> Tx_rollup.t -> context tzresult Lwt.t
+
+  val head_levels : t -> (Tx_rollup_level.t * Raw_level.t) option
+
+  val check_level_can_be_rejected : t -> Tx_rollup_level.t -> unit tzresult
+
+  val last_removed_commitment_hashes :
+    t -> (Tx_rollup_message_result_hash.t * Tx_rollup_commitment_hash.t) option
+
+  val adjust_storage_allocation : t -> delta:Z.t -> (t * Z.t) tzresult
+
+  module Internal_for_tests : sig
+    val make :
+      ?burn_per_byte:Tez.t ->
+      ?inbox_ema:int ->
+      ?last_removed_commitment_hashes:
+        Tx_rollup_message_result_hash.t * Tx_rollup_commitment_hash.t ->
+      ?finalized_commitments:Tx_rollup_level.t * Tx_rollup_level.t ->
+      ?unfinalized_commitments:Tx_rollup_level.t * Tx_rollup_level.t ->
+      ?uncommitted_inboxes:Tx_rollup_level.t * Tx_rollup_level.t ->
+      ?commitment_newest_hash:Tx_rollup_commitment_hash.t ->
+      ?tezos_head_level:Raw_level.t ->
+      ?occupied_storage:Z.t ->
+      ?commitments_watermark:Tx_rollup_level.t ->
+      allocated_storage:Z.t ->
+      unit ->
+      t
+
+    val update_burn_per_byte :
+      t -> elapsed:int -> factor:int -> final_size:int -> hard_limit:int -> t
+
+    val get_inbox_ema : t -> int
+
+    val record_inbox_deletion : t -> Tx_rollup_level.t -> t tzresult
+
+    val get_occupied_storage : t -> Z.t
+
+    val set_occupied_storage : Z.t -> t -> t
+
+    val get_allocated_storage : t -> Z.t
+
+    val set_allocated_storage : Z.t -> t -> t
+
+    val next_commitment_level : t -> Raw_level.t -> Tx_rollup_level.t tzresult
+
+    val uncommitted_inboxes_count : t -> int
+
+    val reset_commitments_watermark : t -> t
+
+    val get_commitments_watermark : t -> Tx_rollup_level.t option
+  end
+end
+
+module Tx_rollup_reveal : sig
+  type t = {
+    contents : Script.lazy_expr;
+    ty : Script.lazy_expr;
+    ticketer : Contract.t;
+    amount : Tx_rollup_l2_qty.t;
+    claimer : Signature.Public_key_hash.t;
+  }
+
+  val encoding : t Data_encoding.t
+
+  val record :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    message_position:int ->
+    context tzresult Lwt.t
+
+  val mem :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    message_position:int ->
+    (context * bool) tzresult Lwt.t
+
+  val remove :
+    context -> Tx_rollup.t -> Tx_rollup_level.t -> context tzresult Lwt.t
+end
+
+(** This module re-exports definitions from {!Tx_rollup_message_repr}. *)
+module Tx_rollup_message : sig
+  type deposit = {
+    sender : public_key_hash;
+    destination : Tx_rollup_l2_address.Indexable.value;
+    ticket_hash : Ticket_hash.t;
+    amount : Tx_rollup_l2_qty.t;
+  }
+
+  type t = private Batch of string | Deposit of deposit
+
+  (** [make_batch batch] creates a new [Batch] message to be added that can be
+      added to an inbox, along with its size in bytes. See
+      {!Tx_rollup_message_repr.size}. *)
+  val make_batch : string -> t * int
+
+  (** [make_deposit destination ticket_hash qty] creates a new
+      [Deposit] message to be added that can be added to an inbox,
+      along with its size in bytes. See
+      {!Tx_rollup_message_repr.size}. *)
+  val make_deposit :
+    public_key_hash ->
+    Tx_rollup_l2_address.t Indexable.value ->
+    Ticket_hash.t ->
+    Tx_rollup_l2_qty.t ->
+    t * int
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+end
+
+module Tx_rollup_message_hash : sig
+  include S.HASH
+
+  val hash_uncarbonated : Tx_rollup_message.t -> t
+end
+
+(** This module re-exports definitions from {!Tx_rollup_inbox_repr} and
+    {!Tx_rollup_inbox_storage}. *)
+module Tx_rollup_inbox : sig
+  module Merkle : sig
+    type root
+
+    type path
+
+    val path_encoding : path Data_encoding.t
+
+    val root_encoding : root Data_encoding.t
+
+    val root_of_b58check_opt : string -> root option
+
+    val compute_path : Tx_rollup_message_hash.t list -> int -> path tzresult
+
+    val merklize_list : Tx_rollup_message_hash.t list -> root
+
+    val path_depth : path -> int
+  end
+
+  type t = {inbox_length : int; cumulated_size : int; merkle_root : Merkle.root}
+
+  val size : Z.t
+
+  val ( = ) : t -> t -> bool
+
+  val pp : Format.formatter -> t -> unit
+
+  val encoding : t Data_encoding.t
+
+  val append_message :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_message.t ->
+    (context * Tx_rollup_state.t * Z.t) tzresult Lwt.t
+
+  val get :
+    context -> Tx_rollup_level.t -> Tx_rollup.t -> (context * t) tzresult Lwt.t
+
+  val find :
+    context ->
+    Tx_rollup_level.t ->
+    Tx_rollup.t ->
+    (context * t option) tzresult Lwt.t
+
+  val check_message_hash :
+    context ->
+    Tx_rollup_level.t ->
+    Tx_rollup.t ->
+    position:int ->
+    Tx_rollup_message.t ->
+    Merkle.path ->
+    context tzresult Lwt.t
+end
+
+(** This simply re-exports [Tx_rollup_commitment_repr] *)
+module Tx_rollup_commitment : sig
+  module Merkle_hash : S.HASH
+
+  module Merkle :
+    Merkle_list.T
+      with type elt = Tx_rollup_message_result_hash.t
+       and type h = Merkle_hash.t
+
+  type 'a template = {
+    level : Tx_rollup_level.t;
+    messages : 'a;
+    predecessor : Tx_rollup_commitment_hash.t option;
+    inbox_merkle_root : Tx_rollup_inbox.Merkle.root;
+  }
+
+  module Compact : sig
+    type excerpt = {
+      count : int;
+      root : Merkle.h;
+      last_result_message_hash : Tx_rollup_message_result_hash.t;
+    }
+
+    type t = excerpt template
+
+    val pp : Format.formatter -> t -> unit
+
+    val encoding : t Data_encoding.t
+
+    val hash : t -> Tx_rollup_commitment_hash.t
+  end
+
+  module Submitted_commitment : sig
+    type nonrec t = {
+      commitment : Compact.t;
+      commitment_hash : Tx_rollup_commitment_hash.t;
+      committer : Signature.Public_key_hash.t;
+      submitted_at : Raw_level.t;
+      finalized_at : Raw_level.t option;
+    }
+
+    val encoding : t Data_encoding.t
+  end
+
+  module Full : sig
+    type t = Tx_rollup_message_result_hash.t list template
+
+    val encoding : t Data_encoding.t
+
+    val pp : Format.formatter -> t -> unit
+
+    val compact : t -> Compact.t
+  end
+
+  val check_message_result :
+    context ->
+    Compact.t ->
+    [ `Hash of Tx_rollup_message_result_hash.t
+    | `Result of Tx_rollup_message_result.t ] ->
+    path:Merkle.path ->
+    index:int ->
+    context tzresult
+
+  val add_commitment :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Signature.public_key_hash ->
+    Full.t ->
+    (context * Tx_rollup_state.t * Signature.public_key_hash option) tzresult
+    Lwt.t
+
+  val find :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    (context * Submitted_commitment.t option) tzresult Lwt.t
+
+  val get :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    (context * Submitted_commitment.t) tzresult Lwt.t
+
+  val check_agreed_and_disputed_results :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Submitted_commitment.t ->
+    agreed_result:Tx_rollup_message_result.t ->
+    agreed_result_path:Merkle.path ->
+    disputed_result:Tx_rollup_message_result_hash.t ->
+    disputed_position:int ->
+    disputed_result_path:Merkle.path ->
+    context tzresult Lwt.t
+
+  val get_finalized :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    (context * Submitted_commitment.t) tzresult Lwt.t
+
+  val pending_bonded_commitments :
+    context ->
+    Tx_rollup.t ->
+    Signature.public_key_hash ->
+    (context * int) tzresult Lwt.t
+
+  val has_bond :
+    context ->
+    Tx_rollup.t ->
+    Signature.public_key_hash ->
+    (context * bool) tzresult Lwt.t
+
+  val finalize_commitment :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    (context * Tx_rollup_state.t * Tx_rollup_level.t) tzresult Lwt.t
+
+  val remove_commitment :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    (context * Tx_rollup_state.t * Tx_rollup_level.t) tzresult Lwt.t
+
+  val remove_bond :
+    context ->
+    Tx_rollup.t ->
+    Signature.public_key_hash ->
+    context tzresult Lwt.t
+
+  val slash_bond :
+    context ->
+    Tx_rollup.t ->
+    Signature.public_key_hash ->
+    (context * bool) tzresult Lwt.t
+
+  val reject_commitment :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    (context * Tx_rollup_state.t) tzresult Lwt.t
+end
+
+module Tx_rollup_hash : sig
+  val message_result :
+    context ->
+    Tx_rollup_message_result.t ->
+    (context * Tx_rollup_message_result_hash.t) tzresult
+
+  val compact_commitment :
+    context ->
+    Tx_rollup_commitment.Compact.t ->
+    (context * Tx_rollup_commitment_hash.t) tzresult
+
+  val withdraw_list :
+    context ->
+    Tx_rollup_withdraw.t list ->
+    (context * Tx_rollup_withdraw_list_hash.t) tzresult
+end
+
+module Tx_rollup_errors : sig
+  type error +=
+    | Tx_rollup_already_exists of Tx_rollup.t
+    | Tx_rollup_does_not_exist of Tx_rollup.t
+    | Submit_batch_burn_exceeded of {burn : Tez.t; limit : Tez.t}
+    | Inbox_does_not_exist of Tx_rollup.t * Tx_rollup_level.t
+    | Inbox_size_would_exceed_limit of Tx_rollup.t
+    | Inbox_count_would_exceed_limit of Tx_rollup.t
+    | Message_size_exceeds_limit
+    | Too_many_inboxes
+    | Too_many_commitments
+    | Too_many_withdrawals
+    | Wrong_batch_count
+    | Commitment_too_early of {
+        provided : Tx_rollup_level.t;
+        expected : Tx_rollup_level.t;
+      }
+    | Level_already_has_commitment of Tx_rollup_level.t
+    | Wrong_inbox_hash
+    | Bond_does_not_exist of Signature.public_key_hash
+    | Bond_in_use of Signature.public_key_hash
+    | No_uncommitted_inbox
+    | No_commitment_to_finalize
+    | No_commitment_to_remove
+    | Invalid_committer
+    | Remove_commitment_too_early
+    | Commitment_does_not_exist of Tx_rollup_level.t
+    | Wrong_predecessor_hash of {
+        provided : Tx_rollup_commitment_hash.t option;
+        expected : Tx_rollup_commitment_hash.t option;
+      }
+    | Internal_error of string
+    | Wrong_message_position of {
+        level : Tx_rollup_level.t;
+        position : int;
+        length : int;
+      }
+    | Wrong_path_depth of {
+        kind : [`Inbox | `Commitment];
+        provided : int;
+        limit : int;
+      }
+    | Wrong_message_path of {expected : Tx_rollup_inbox.Merkle.root}
+    | No_finalized_commitment_for_level of {
+        level : Tx_rollup_level.t;
+        window : (Tx_rollup_level.t * Tx_rollup_level.t) option;
+      }
+    | Withdraw_invalid_path
+    | Withdraw_already_consumed
+    | Withdrawals_invalid_path
+    | Withdrawals_already_dispatched
+    | Cannot_reject_level of {
+        provided : Tx_rollup_level.t;
+        accepted_range : (Tx_rollup_level.t * Tx_rollup_level.t) option;
+      }
+    | Wrong_rejection_hash of {
+        provided : Tx_rollup_message_result_hash.t;
+        expected :
+          [ `Valid_path of Tx_rollup_commitment.Merkle.h * int
+          | `Hash of Tx_rollup_message_result_hash.t ];
+      }
+    | Wrong_deposit_parameters
+    | Proof_failed_to_reject
+    | Proof_produced_rejected_state
+    | Proof_invalid_before of {
+        agreed : Context_hash.t;
+        provided : Context_hash.t;
+      }
+    | No_withdrawals_to_dispatch
+
+  val check_path_depth :
+    [`Inbox | `Commitment] -> int -> count_limit:int -> unit tzresult
+end
+
+(** This is a forward declaration to avoid circular dependencies.
+    Use module [Sc_rollup] instead whenever possible.
+    TODO : find a better way to resolve the circular dependency
+           https://gitlab.com/tezos/tezos/-/issues/3147 *)
+module Sc_rollup_repr : sig
+  module Address : S.HASH
+
+  type t = Address.t
+end
+
+module Bond_id : sig
+  type t =
+    | Tx_rollup_bond_id of Tx_rollup.t
+    | Sc_rollup_bond_id of Sc_rollup_repr.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val compare : t -> t -> int
+
+  module Internal_for_tests : sig
+    val fold_on_bond_ids :
+      context ->
+      Contract.t ->
+      order:[`Sorted | `Undefined] ->
+      init:'a ->
+      f:(t -> 'a -> 'a Lwt.t) ->
+      'a Lwt.t
   end
 end
 
 module Receipt : sig
   type balance =
     | Contract of Contract.t
-    | Legacy_rewards of Signature.Public_key_hash.t * Cycle.t
     | Block_fees
-    | Legacy_deposits of Signature.Public_key_hash.t * Cycle.t
     | Deposits of public_key_hash
     | Nonce_revelation_rewards
     | Double_signing_evidence_rewards
     | Endorsing_rewards
     | Baking_rewards
     | Baking_bonuses
-    | Legacy_fees of Signature.Public_key_hash.t * Cycle.t
     | Storage_fees
     | Double_signing_punishments
     | Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
@@ -1481,6 +2214,10 @@ module Receipt : sig
     | Invoice
     | Initial_commitments
     | Minted
+    | Frozen_bonds of Contract.t * Bond_id.t
+    | Tx_rollup_rejection_punishments
+    | Tx_rollup_rejection_rewards
+    | Sc_rollup_refutation_punishments
 
   val compare_balance : balance -> balance -> int
 
@@ -1499,41 +2236,6 @@ module Receipt : sig
   val balance_updates_encoding : balance_updates Data_encoding.t
 
   val group_balance_updates : balance_updates -> balance_updates tzresult
-end
-
-(** This simply re-exports [Tx_rollup_repr] and [tx_rollup_storage]. See
-    [tx_rollup_repr] and [tx_rollup_storage] for additional documentation of this
-    module *)
-module Tx_rollup : sig
-  include BASIC_DATA
-
-  type tx_rollup = t
-
-  val rpc_arg : tx_rollup RPC_arg.arg
-
-  val to_b58check : tx_rollup -> string
-
-  val of_b58check : string -> tx_rollup tzresult
-
-  val pp : Format.formatter -> tx_rollup -> unit
-
-  val encoding : tx_rollup Data_encoding.t
-
-  val originate : context -> (context * tx_rollup) tzresult Lwt.t
-
-  type state
-
-  val state : context -> tx_rollup -> state option tzresult Lwt.t
-
-  val state_encoding : state Data_encoding.t
-
-  val pp_state : Format.formatter -> state -> unit
-
-  module Internal_for_tests : sig
-    (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
-    val originated_tx_rollup :
-      Origination_nonce.Internal_for_tests.t -> tx_rollup
-  end
 end
 
 module Delegate : sig
@@ -1640,7 +2342,7 @@ module Delegate : sig
   val deactivated :
     context -> Signature.Public_key_hash.t -> bool tzresult Lwt.t
 
-  val grace_period :
+  val last_cycle_before_deactivation :
     context -> Signature.Public_key_hash.t -> Cycle.t tzresult Lwt.t
 
   val pubkey : context -> public_key_hash -> public_key tzresult Lwt.t
@@ -1697,7 +2399,7 @@ module Vote : sig
   val record_proposal :
     context -> Protocol_hash.t -> public_key_hash -> context tzresult Lwt.t
 
-  val get_proposals : context -> int32 Protocol_hash.Map.t tzresult Lwt.t
+  val get_proposals : context -> int64 Protocol_hash.Map.t tzresult Lwt.t
 
   val clear_proposals : context -> context Lwt.t
 
@@ -1705,31 +2407,45 @@ module Vote : sig
     context -> public_key_hash -> int tzresult Lwt.t
 
   val listings_encoding :
-    (Signature.Public_key_hash.t * int32) list Data_encoding.t
+    (Signature.Public_key_hash.t * int64) list Data_encoding.t
 
   val update_listings : context -> context tzresult Lwt.t
 
-  val listing_size : context -> int32 tzresult Lwt.t
-
   val in_listings : context -> public_key_hash -> bool Lwt.t
 
-  val get_listings : context -> (public_key_hash * int32) list Lwt.t
+  val get_listings : context -> (public_key_hash * int64) list Lwt.t
 
   type ballot = Yay | Nay | Pass
 
+  val equal_ballot : ballot -> ballot -> bool
+
+  type delegate_info = {
+    voting_power : Int64.t option;
+    current_ballot : ballot option;
+    current_proposals : Protocol_hash.t list;
+    remaining_proposals : int;
+  }
+
+  val pp_delegate_info : Format.formatter -> delegate_info -> unit
+
+  val delegate_info_encoding : delegate_info Data_encoding.t
+
+  val get_delegate_info :
+    context -> Signature.Public_key_hash.t -> delegate_info tzresult Lwt.t
+
   val get_voting_power_free :
-    context -> Signature.Public_key_hash.t -> int32 tzresult Lwt.t
+    context -> Signature.Public_key_hash.t -> int64 tzresult Lwt.t
 
   val get_voting_power :
-    context -> Signature.Public_key_hash.t -> (context * int32) tzresult Lwt.t
+    context -> Signature.Public_key_hash.t -> (context * int64) tzresult Lwt.t
 
-  val get_total_voting_power_free : context -> int32 tzresult Lwt.t
+  val get_total_voting_power_free : context -> int64 tzresult Lwt.t
 
-  val get_total_voting_power : context -> (context * int32) tzresult Lwt.t
+  val get_total_voting_power : context -> (context * int64) tzresult Lwt.t
 
   val ballot_encoding : ballot Data_encoding.t
 
-  type ballots = {yay : int32; nay : int32; pass : int32}
+  type ballots = {yay : int64; nay : int64; pass : int64}
 
   val ballots_encoding : ballots Data_encoding.t
 
@@ -1740,8 +2456,7 @@ module Vote : sig
 
   val get_ballots : context -> ballots tzresult Lwt.t
 
-  val get_ballot_list :
-    context -> (Signature.Public_key_hash.t * ballot) list Lwt.t
+  val get_ballot_list : context -> (public_key_hash * ballot) list Lwt.t
 
   val clear_ballots : context -> context Lwt.t
 
@@ -1760,6 +2475,630 @@ module Vote : sig
   val clear_current_proposal : context -> context tzresult Lwt.t
 end
 
+(** See {!Sc_rollup_storage} and {!Sc_rollup_repr}. *)
+module Sc_rollup : sig
+  (** See {!Sc_rollup_tick_repr}. *)
+  module Tick : sig
+    type t
+
+    val initial : t
+
+    val next : t -> t
+
+    val distance : t -> t -> Z.t
+
+    val of_int : int -> t option
+
+    val to_int : t -> int option
+
+    val encoding : t Data_encoding.t
+
+    val pp : Format.formatter -> t -> unit
+
+    include Compare.S with type t := t
+
+    module Map : Map.S with type key = t
+  end
+
+  module Address = Sc_rollup_repr.Address
+
+  type t = Sc_rollup_repr.t
+
+  type rollup := t
+
+  module Staker :
+    S.SIGNATURE_PUBLIC_KEY_HASH with type t = Signature.Public_key_hash.t
+
+  module State_hash : S.HASH
+
+  type input = {
+    inbox_level : Raw_level.t;
+    message_counter : Z.t;
+    payload : string;
+  }
+
+  val input_equal : input -> input -> bool
+
+  val input_encoding : input Data_encoding.t
+
+  type input_request =
+    | No_input_required
+    | Initial
+    | First_after of Raw_level_repr.t * Z.t
+
+  val input_request_encoding : input_request Data_encoding.t
+
+  val input_request_equal : input_request -> input_request -> bool
+
+  module PVM : sig
+    type boot_sector = string
+
+    module type S = sig
+      val name : string
+
+      val parse_boot_sector : string -> boot_sector option
+
+      val pp_boot_sector : Format.formatter -> boot_sector -> unit
+
+      type state
+
+      type context
+
+      type hash = State_hash.t
+
+      type proof
+
+      val proof_encoding : proof Data_encoding.t
+
+      val proof_start_state : proof -> hash
+
+      val proof_stop_state : proof -> hash option
+
+      val proof_input_requested : proof -> input_request
+
+      val proof_input_given : proof -> input option
+
+      val state_hash : state -> hash Lwt.t
+
+      val initial_state : context -> string -> state Lwt.t
+
+      val is_input_state : state -> input_request Lwt.t
+
+      val set_input : input -> state -> state Lwt.t
+
+      val eval : state -> state Lwt.t
+
+      val verify_proof : proof -> bool Lwt.t
+
+      val produce_proof :
+        context -> input option -> state -> (proof, string) result Lwt.t
+    end
+
+    type t = (module S)
+  end
+
+  module Kind : sig
+    type t = Example_arith | Wasm_2_0_0
+
+    val encoding : t Data_encoding.t
+
+    val pvm_of : t -> PVM.t
+
+    val of_pvm : PVM.t -> t
+
+    val pvm_of_name : name:string -> PVM.t option
+
+    val name_of : t -> string
+
+    val of_name : string -> t option
+
+    val all : t list
+
+    val all_names : string list
+  end
+
+  module ArithPVM : sig
+    module type P = sig
+      module Tree :
+        Context.TREE with type key = string list and type value = bytes
+
+      type tree = Tree.tree
+
+      type proof
+
+      val proof_encoding : proof Data_encoding.t
+
+      val proof_before : proof -> State_hash.t
+
+      val proof_after : proof -> State_hash.t
+
+      val verify_proof :
+        proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
+
+      val produce_proof :
+        Tree.t ->
+        tree ->
+        (tree -> (tree * 'a) Lwt.t) ->
+        (proof * 'a) option Lwt.t
+    end
+
+    module Make (C : P) : sig
+      include PVM.S with type context = C.Tree.t and type state = C.tree
+
+      val get_tick : state -> Tick.t Lwt.t
+
+      type status = Halted | WaitingForInputMessage | Parsing | Evaluating
+
+      val get_status : state -> status Lwt.t
+    end
+  end
+
+  module Wasm_2_0_0PVM : sig
+    module type P = sig
+      module Tree :
+        Context.TREE with type key = string list and type value = bytes
+
+      type tree = Tree.tree
+
+      type proof
+
+      val proof_encoding : proof Data_encoding.t
+
+      val proof_before : proof -> State_hash.t
+
+      val proof_after : proof -> State_hash.t
+
+      val verify_proof :
+        proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
+
+      val produce_proof :
+        Tree.t ->
+        tree ->
+        (tree -> (tree * 'a) Lwt.t) ->
+        (proof * 'a) option Lwt.t
+    end
+
+    type 'a proof = {
+      tree_proof : 'a;
+      given : input option;
+      requested : input_request;
+    }
+
+    module Make (C : P) : sig
+      include
+        PVM.S
+          with type context = C.Tree.t
+           and type state = C.tree
+           and type proof = C.proof proof
+
+      val get_tick : state -> Tick.t Lwt.t
+
+      type status = Computing | WaitingForInputMessage
+
+      val get_status : state -> status Lwt.t
+
+      val produce_proof :
+        context -> input option -> state -> (proof, string) result Lwt.t
+    end
+
+    module ProtocolImplementation :
+      PVM.S
+        with type context = Context.t
+         and type state = Context.tree
+         and type proof = Context.Proof.tree Context.Proof.t proof
+  end
+
+  module Number_of_messages : Bounded.Int32.S
+
+  module Number_of_ticks : Bounded.Int32.S
+
+  module Commitment : sig
+    module Hash : S.HASH
+
+    type t = {
+      compressed_state : State_hash.t;
+      inbox_level : Raw_level.t;
+      predecessor : Hash.t;
+      number_of_messages : Number_of_messages.t;
+      number_of_ticks : Number_of_ticks.t;
+    }
+
+    val encoding : t Data_encoding.t
+
+    val pp : Format.formatter -> t -> unit
+
+    val hash : t -> Hash.t
+
+    val get_commitment :
+      context -> rollup -> Hash.t -> (t * context) tzresult Lwt.t
+
+    val last_cemented_commitment_hash_with_level :
+      context -> rollup -> (Hash.t * Raw_level.t * context) tzresult Lwt.t
+  end
+
+  val originate :
+    context ->
+    kind:Kind.t ->
+    boot_sector:string ->
+    parameters_ty:Script.lazy_expr ->
+    (t * Z.t * context) tzresult Lwt.t
+
+  val parameters_type :
+    context -> t -> (Script.lazy_expr * context) tzresult Lwt.t
+
+  val kind : context -> t -> Kind.t option tzresult Lwt.t
+
+  module Inbox : sig
+    type t
+
+    (** See {!Sc_rollup_inbox_message_repr}. *)
+    module Message : sig
+      type internal_inbox_message = {
+        payload : Script.expr;
+        sender : Contract.t;
+        source : Signature.public_key_hash;
+      }
+
+      type t = Internal of internal_inbox_message | External of string
+
+      type serialized = private string
+
+      val to_bytes : t -> serialized tzresult
+
+      module Internal_for_tests : sig
+        val of_bytes : string -> t tzresult
+      end
+    end
+
+    val pp : Format.formatter -> t -> unit
+
+    val encoding : t Data_encoding.t
+
+    val empty : Address.t -> Raw_level.t -> t
+
+    val inbox_level : t -> Raw_level.t
+
+    val number_of_available_messages : t -> Z.t
+
+    val consume_n_messages : int -> t -> t option tzresult
+
+    module Hash : S.HASH
+
+    module type MerkelizedOperations = sig
+      type tree
+
+      type message = tree
+
+      type messages = tree
+
+      type history
+
+      val history_encoding : history Data_encoding.t
+
+      val pp_history : Format.formatter -> history -> unit
+
+      val history_at_genesis : bound:int64 -> history
+
+      val add_external_messages :
+        history ->
+        t ->
+        Raw_level.t ->
+        string list ->
+        messages ->
+        (messages * history * t) tzresult Lwt.t
+
+      val add_messages_no_history :
+        t ->
+        Raw_level.t ->
+        Message.serialized list ->
+        messages ->
+        (messages * t, error trace) result Lwt.t
+
+      val get_message : messages -> Z.t -> message option Lwt.t
+
+      val get_message_payload : messages -> Z.t -> string option Lwt.t
+
+      type inclusion_proof
+
+      val inclusion_proof_encoding : inclusion_proof Data_encoding.t
+
+      val pp_inclusion_proof : Format.formatter -> inclusion_proof -> unit
+
+      val number_of_proof_steps : inclusion_proof -> int
+
+      val produce_inclusion_proof : history -> t -> t -> inclusion_proof option
+
+      val verify_inclusion_proof : inclusion_proof -> t -> t -> bool
+    end
+
+    include MerkelizedOperations with type tree = Context.tree
+
+    module type TREE = sig
+      type t
+
+      type tree
+
+      type key = string list
+
+      type value = bytes
+
+      val find : tree -> key -> value option Lwt.t
+
+      val find_tree : tree -> key -> tree option Lwt.t
+
+      val add : tree -> key -> value -> tree Lwt.t
+
+      val is_empty : tree -> bool
+
+      val hash : tree -> Context_hash.t
+    end
+
+    module MakeHashingScheme (Tree : TREE) :
+      MerkelizedOperations with type tree = Tree.tree
+
+    val add_external_messages :
+      context -> rollup -> string list -> (t * Z.t * context) tzresult Lwt.t
+
+    val add_internal_message :
+      context ->
+      rollup ->
+      payload:Script.expr ->
+      sender:Contract.t ->
+      source:Signature.public_key_hash ->
+      (t * Z.t * context) tzresult Lwt.t
+
+    val inbox : context -> rollup -> (t * context) tzresult Lwt.t
+
+    module Proof : sig
+      type t
+    end
+  end
+
+  module type PVM_with_proof = sig
+    include PVM.S
+
+    val proof : proof
+  end
+
+  type wrapped_proof =
+    | Unencodable of (module PVM_with_proof)
+    | Arith_pvm_with_proof of
+        (module PVM_with_proof
+           with type proof = Sc_rollup_arith.ProtocolImplementation.proof)
+    | Wasm_2_0_0_pvm_with_proof of
+        (module PVM_with_proof
+           with type proof = Sc_rollup_wasm.V2_0_0.ProtocolImplementation.proof)
+
+  module Proof : sig
+    type t = {pvm_step : wrapped_proof; inbox : Inbox.Proof.t option}
+
+    module type PVM_with_context_and_state = sig
+      include Sc_rollups.PVM.S
+
+      val context : context
+
+      val state : state
+    end
+
+    val produce :
+      (module PVM_with_context_and_state) ->
+      Sc_rollup_inbox_repr.t ->
+      Raw_level_repr.t ->
+      (t, string) result Lwt.t
+  end
+
+  module Game : sig
+    type player = Alice | Bob
+
+    type t = {
+      turn : player;
+      inbox_snapshot : Inbox.t;
+      level : Raw_level.t;
+      pvm_name : string;
+      dissection : (State_hash.t option * Tick.t) list;
+    }
+
+    module Index : sig
+      type t = private {alice : Staker.t; bob : Staker.t}
+
+      val make : Staker.t -> Staker.t -> t
+    end
+
+    val opponent : player -> player
+
+    type step =
+      | Dissection of (State_hash.t option * Tick.t) list
+      | Proof of Proof.t
+
+    type refutation = {choice : Tick.t; step : step}
+
+    val pp_refutation : Format.formatter -> refutation -> unit
+
+    type reason = Conflict_resolved | Invalid_move of string | Timeout
+
+    val pp_reason : Format.formatter -> reason -> unit
+
+    val reason_encoding : reason Data_encoding.t
+
+    type status = Ongoing | Ended of (reason * Staker.t)
+
+    val pp_status : Format.formatter -> status -> unit
+
+    val status_encoding : status Data_encoding.t
+
+    type outcome = {loser : player; reason : reason}
+
+    val pp_outcome : Format.formatter -> outcome -> unit
+
+    val outcome_encoding : outcome Data_encoding.t
+
+    val initial :
+      Inbox.t ->
+      pvm_name:string ->
+      parent:Commitment.t ->
+      child:Commitment.t ->
+      refuter:Staker.t ->
+      defender:Staker.t ->
+      t
+
+    val check_dissection :
+      State_hash.t option ->
+      Tick.t ->
+      State_hash.t option ->
+      Tick.t ->
+      (State_hash.t option * Tick.t) list ->
+      (unit, string) result Lwt.t
+
+    val play : t -> refutation -> (outcome, t) Either.t Lwt.t
+  end
+
+  module Stake_storage : sig
+    val publish_commitment :
+      context ->
+      t ->
+      Staker.t ->
+      Commitment.t ->
+      (Commitment.Hash.t * Raw_level.t * context * Receipt.balance_updates)
+      tzresult
+      Lwt.t
+
+    val cement_commitment :
+      context -> t -> Commitment.Hash.t -> context tzresult Lwt.t
+
+    val withdraw_stake :
+      context ->
+      t ->
+      Staker.t ->
+      (context * Receipt.balance_updates) tzresult Lwt.t
+  end
+
+  module Refutation_storage : sig
+    type point = {commitment : Commitment.t; hash : Commitment.Hash.t}
+
+    type conflict_point = point * point
+
+    val game_move :
+      context ->
+      t ->
+      player:Staker.t ->
+      opponent:Staker.t ->
+      Game.refutation ->
+      is_opening_move:bool ->
+      (Game.outcome option * context) tzresult Lwt.t
+
+    val timeout :
+      context -> t -> Game.Index.t -> (Game.outcome * context) tzresult Lwt.t
+
+    val apply_outcome :
+      context ->
+      t ->
+      Game.Index.t ->
+      Game.outcome ->
+      (Game.status * context * Receipt.balance_updates) tzresult Lwt.t
+  end
+
+  val rpc_arg : t RPC_arg.t
+
+  val list : context -> t list tzresult Lwt.t
+
+  val initial_level : context -> t -> Raw_level.t tzresult Lwt.t
+
+  val get_boot_sector : context -> t -> string tzresult Lwt.t
+
+  module Outbox : sig
+    (** See {!Sc_rollup_outbox_message_repr}. *)
+    module Message : sig
+      type transaction = {
+        unparsed_parameters : Script.expr;
+        destination : Contract_hash.t;
+        entrypoint : Entrypoint.t;
+      }
+
+      type t = Atomic_transaction_batch of {transactions : transaction list}
+
+      val of_bytes : string -> t tzresult
+
+      module Internal_for_tests : sig
+        val to_bytes : t -> string tzresult
+      end
+    end
+
+    val record_applied_message :
+      context ->
+      t ->
+      Raw_level.t ->
+      message_index:int ->
+      (Z.t * context) tzresult Lwt.t
+  end
+
+  module Internal_for_tests : sig
+    val originated_sc_rollup : Origination_nonce.Internal_for_tests.t -> t
+  end
+end
+
+(** This simply re-exports {!Destination_repr}. *)
+module Destination : sig
+  type t =
+    | Contract of Contract.t
+    | Tx_rollup of Tx_rollup.t
+    | Sc_rollup of Sc_rollup.t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val compare : t -> t -> int
+
+  val equal : t -> t -> bool
+
+  val to_b58check : t -> string
+
+  val of_b58check : string -> t tzresult
+
+  val in_memory_size : t -> Cache_memory_helpers.sint
+
+  type error += Invalid_destination_b58check of string
+end
+
+module Dal : sig
+  module Endorsement : sig
+    type t
+
+    val encoding : t Data_encoding.t
+
+    val empty : t
+
+    val occupied_size_in_bits : t -> int
+
+    val expected_size_in_bits : max_index:int -> int
+
+    val shards : context -> endorser:Signature.Public_key_hash.t -> int list
+
+    val record_available_shards : context -> t -> int list -> context
+  end
+
+  module Slot : sig
+    type header
+
+    type t = private {level : Raw_level.t; index : int; header : header}
+
+    val encoding : t Data_encoding.t
+
+    val pp : Format.formatter -> t -> unit
+
+    val current_slot_fees : context -> t -> Tez.t option
+
+    val update_slot_fees : context -> t -> Tez.t -> context * bool
+
+    val find : context -> Raw_level.t -> t list option tzresult Lwt.t
+
+    val finalize_current_slots : context -> context Lwt.t
+
+    val finalize_pending_slots :
+      context -> (context * Endorsement.t) tzresult Lwt.t
+  end
+end
+
 module Block_payload : sig
   val hash :
     predecessor:Block_hash.t ->
@@ -1774,7 +3113,8 @@ module Block_header : sig
     payload_round : Round.t;
     seed_nonce_hash : Nonce_hash.t option;
     proof_of_work_nonce : bytes;
-    liquidity_baking_escape_vote : bool;
+    liquidity_baking_toggle_vote :
+      Liquidity_baking_repr.liquidity_baking_toggle_vote;
   }
 
   type protocol_data = {contents : contents; signature : Signature.t}
@@ -1824,26 +3164,7 @@ module Block_header : sig
   (** The maximum size of block headers in bytes *)
   val max_header_length : int
 
-  type error +=
-    | Invalid_block_signature of Block_hash.t * Signature.Public_key_hash.t
-    | Invalid_stamp
-    | Invalid_payload_hash of {
-        expected : Block_payload_hash.t;
-        provided : Block_payload_hash.t;
-      }
-    | Locked_round_after_block_round of {
-        locked_round : Round_repr.t;
-        round : Round_repr.t;
-      }
-    | Invalid_payload_round of {
-        payload_round : Round_repr.t;
-        round : Round_repr.t;
-      }
-    | Insufficient_locked_round_evidence of {
-        voting_power : int;
-        consensus_threshold : int;
-      }
-    | Invalid_commitment of {expected : bool}
+  type error += Invalid_stamp
 
   val check_timestamp :
     Round.round_durations ->
@@ -1901,6 +3222,8 @@ module Kind : sig
 
   type endorsement = endorsement_consensus_kind consensus
 
+  type dal_slot_availability = Dal_slot_availability_kind
+
   type seed_nonce_revelation = Seed_nonce_revelation_kind
 
   type 'a double_consensus_operation_evidence =
@@ -1936,6 +3259,41 @@ module Kind : sig
 
   type tx_rollup_origination = Tx_rollup_origination_kind
 
+  type tx_rollup_submit_batch = Tx_rollup_submit_batch_kind
+
+  type tx_rollup_commit = Tx_rollup_commit_kind
+
+  type tx_rollup_return_bond = Tx_rollup_return_bond_kind
+
+  type tx_rollup_finalize_commitment = Tx_rollup_finalize_commitment_kind
+
+  type tx_rollup_remove_commitment = Tx_rollup_remove_commitment_kind
+
+  type tx_rollup_rejection = Tx_rollup_rejection_kind
+
+  type tx_rollup_dispatch_tickets = Tx_rollup_dispatch_tickets_kind
+
+  type transfer_ticket = Transfer_ticket_kind
+
+  type dal_publish_slot_header = Dal_publish_slot_header_kind
+
+  type sc_rollup_originate = Sc_rollup_originate_kind
+
+  type sc_rollup_add_messages = Sc_rollup_add_messages_kind
+
+  type sc_rollup_cement = Sc_rollup_cement_kind
+
+  type sc_rollup_publish = Sc_rollup_publish_kind
+
+  type sc_rollup_refute = Sc_rollup_refute_kind
+
+  type sc_rollup_timeout = Sc_rollup_timeout_kind
+
+  type sc_rollup_execute_outbox_message =
+    | Sc_rollup_execute_outbox_message_kind
+
+  type sc_rollup_recover_bond = Sc_rollup_recover_bond_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -1944,6 +3302,27 @@ module Kind : sig
     | Register_global_constant_manager_kind : register_global_constant manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
     | Tx_rollup_origination_manager_kind : tx_rollup_origination manager
+    | Tx_rollup_submit_batch_manager_kind : tx_rollup_submit_batch manager
+    | Tx_rollup_commit_manager_kind : tx_rollup_commit manager
+    | Tx_rollup_return_bond_manager_kind : tx_rollup_return_bond manager
+    | Tx_rollup_finalize_commitment_manager_kind
+        : tx_rollup_finalize_commitment manager
+    | Tx_rollup_remove_commitment_manager_kind
+        : tx_rollup_remove_commitment manager
+    | Tx_rollup_rejection_manager_kind : tx_rollup_rejection manager
+    | Tx_rollup_dispatch_tickets_manager_kind
+        : tx_rollup_dispatch_tickets manager
+    | Transfer_ticket_manager_kind : transfer_ticket manager
+    | Dal_publish_slot_header_manager_kind : dal_publish_slot_header manager
+    | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
+    | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
+    | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
+    | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
+    | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
+    | Sc_rollup_timeout_manager_kind : sc_rollup_timeout manager
+    | Sc_rollup_execute_outbox_message_manager_kind
+        : sc_rollup_execute_outbox_message manager
+    | Sc_rollup_recover_bond_manager_kind : sc_rollup_recover_bond manager
 end
 
 type 'a consensus_operation_type =
@@ -1967,6 +3346,12 @@ val consensus_content_encoding : consensus_content Data_encoding.t
 
 val pp_consensus_content : Format.formatter -> consensus_content -> unit
 
+type origination = {
+  delegate : Signature.Public_key_hash.t option;
+  script : Script.t;
+  credit : Tez.tez;
+}
+
 type 'kind operation = {
   shell : Operation.shell_header;
   protocol_data : 'kind protocol_data;
@@ -1986,6 +3371,9 @@ and _ contents_list =
 and _ contents =
   | Preendorsement : consensus_content -> Kind.preendorsement contents
   | Endorsement : consensus_content -> Kind.endorsement contents
+  | Dal_slot_availability :
+      Signature.Public_key_hash.t * Dal.Endorsement.t
+      -> Kind.dal_slot_availability contents
   | Seed_nonce_revelation : {
       level : Raw_level.t;
       nonce : Nonce.t;
@@ -2040,17 +3428,11 @@ and _ manager_operation =
   | Transaction : {
       amount : Tez.tez;
       parameters : Script.lazy_expr;
-      entrypoint : string;
-      destination : Contract.contract;
+      entrypoint : Entrypoint.t;
+      destination : Contract.t;
     }
       -> Kind.transaction manager_operation
-  | Origination : {
-      delegate : Signature.Public_key_hash.t option;
-      script : Script.t;
-      credit : Tez.tez;
-      preorigination : Contract.t option;
-    }
-      -> Kind.origination manager_operation
+  | Origination : origination -> Kind.origination manager_operation
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
@@ -2062,14 +3444,112 @@ and _ manager_operation =
       Tez.t option
       -> Kind.set_deposits_limit manager_operation
   | Tx_rollup_origination : Kind.tx_rollup_origination manager_operation
+  | Tx_rollup_submit_batch : {
+      tx_rollup : Tx_rollup.t;
+      content : string;
+      burn_limit : Tez.tez option;
+    }
+      -> Kind.tx_rollup_submit_batch manager_operation
+  | Tx_rollup_commit : {
+      tx_rollup : Tx_rollup.t;
+      commitment : Tx_rollup_commitment.Full.t;
+    }
+      -> Kind.tx_rollup_commit manager_operation
+  | Tx_rollup_return_bond : {
+      tx_rollup : Tx_rollup.t;
+    }
+      -> Kind.tx_rollup_return_bond manager_operation
+  | Tx_rollup_finalize_commitment : {
+      tx_rollup : Tx_rollup.t;
+    }
+      -> Kind.tx_rollup_finalize_commitment manager_operation
+  | Tx_rollup_remove_commitment : {
+      tx_rollup : Tx_rollup.t;
+    }
+      -> Kind.tx_rollup_remove_commitment manager_operation
+  | Tx_rollup_rejection : {
+      tx_rollup : Tx_rollup.t;
+      level : Tx_rollup_level.t;
+      message : Tx_rollup_message.t;
+      message_position : int;
+      message_path : Tx_rollup_inbox.Merkle.path;
+      message_result_hash : Tx_rollup_message_result_hash.t;
+      message_result_path : Tx_rollup_commitment.Merkle.path;
+      previous_message_result : Tx_rollup_message_result.t;
+      previous_message_result_path : Tx_rollup_commitment.Merkle.path;
+      proof : Tx_rollup_l2_proof.t;
+    }
+      -> Kind.tx_rollup_rejection manager_operation
+  | Tx_rollup_dispatch_tickets : {
+      tx_rollup : Tx_rollup.t;
+      level : Tx_rollup_level.t;
+      context_hash : Context_hash.t;
+      message_index : int;
+      message_result_path : Tx_rollup_commitment.Merkle.path;
+      tickets_info : Tx_rollup_reveal.t list;
+    }
+      -> Kind.tx_rollup_dispatch_tickets manager_operation
+  | Transfer_ticket : {
+      contents : Script.lazy_expr;
+      ty : Script.lazy_expr;
+      ticketer : Contract.t;
+      amount : Z.t;
+      destination : Contract.t;
+      entrypoint : Entrypoint.t;
+    }
+      -> Kind.transfer_ticket manager_operation
+  | Dal_publish_slot_header : {
+      slot : Dal.Slot.t;
+    }
+      -> Kind.dal_publish_slot_header manager_operation
+  | Sc_rollup_originate : {
+      kind : Sc_rollup.Kind.t;
+      boot_sector : string;
+      parameters_ty : Script.lazy_expr;
+    }
+      -> Kind.sc_rollup_originate manager_operation
+  | Sc_rollup_add_messages : {
+      rollup : Sc_rollup.t;
+      messages : string list;
+    }
+      -> Kind.sc_rollup_add_messages manager_operation
+  | Sc_rollup_cement : {
+      rollup : Sc_rollup.t;
+      commitment : Sc_rollup.Commitment.Hash.t;
+    }
+      -> Kind.sc_rollup_cement manager_operation
+  | Sc_rollup_publish : {
+      rollup : Sc_rollup.t;
+      commitment : Sc_rollup.Commitment.t;
+    }
+      -> Kind.sc_rollup_publish manager_operation
+  | Sc_rollup_refute : {
+      rollup : Sc_rollup.t;
+      opponent : Sc_rollup.Staker.t;
+      refutation : Sc_rollup.Game.refutation;
+      is_opening_move : bool;
+    }
+      -> Kind.sc_rollup_refute manager_operation
+  | Sc_rollup_timeout : {
+      rollup : Sc_rollup.t;
+      stakers : Sc_rollup.Game.Index.t;
+    }
+      -> Kind.sc_rollup_timeout manager_operation
+  | Sc_rollup_execute_outbox_message : {
+      rollup : Sc_rollup.t;
+      cemented_commitment : Sc_rollup.Commitment.Hash.t;
+      outbox_level : Raw_level.t;
+      message_index : int;
+      inclusion_proof : string;
+      message : string;
+    }
+      -> Kind.sc_rollup_execute_outbox_message manager_operation
+  | Sc_rollup_recover_bond : {
+      sc_rollup : Sc_rollup.t;
+    }
+      -> Kind.sc_rollup_recover_bond manager_operation
 
 and counter = Z.t
-
-type 'kind internal_operation = {
-  source : Contract.contract;
-  operation : 'kind manager_operation;
-  nonce : int;
-}
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -2087,9 +3567,6 @@ type packed_operation = {
   protocol_data : packed_protocol_data;
 }
 
-type packed_internal_operation =
-  | Internal_operation : 'kind internal_operation -> packed_internal_operation
-
 val manager_kind : 'kind manager_operation -> 'kind Kind.manager
 
 module Operation : sig
@@ -2106,6 +3583,7 @@ module Operation : sig
   type consensus_watermark =
     | Endorsement of Chain_id.t
     | Preendorsement of Chain_id.t
+    | Dal_slot_availability of Chain_id.t
 
   val to_watermark : consensus_watermark -> Signature.watermark
 
@@ -2147,11 +3625,6 @@ module Operation : sig
 
   val check_signature : public_key -> Chain_id.t -> _ operation -> unit tzresult
 
-  val internal_operation_encoding : packed_internal_operation Data_encoding.t
-
-  val packed_internal_operation_in_memory_size :
-    packed_internal_operation -> Cache_memory_helpers.nodes_and_size
-
   val pack : 'kind operation -> packed_operation
 
   type ('a, 'b) eq = Eq : ('a, 'a) eq
@@ -2173,6 +3646,8 @@ module Operation : sig
     val preendorsement_case : Kind.preendorsement case
 
     val endorsement_case : Kind.endorsement case
+
+    val dal_slot_availability_case : Kind.dal_slot_availability case
 
     val seed_nonce_revelation_case : Kind.seed_nonce_revelation case
 
@@ -2202,10 +3677,53 @@ module Operation : sig
     val tx_rollup_origination_case :
       Kind.tx_rollup_origination Kind.manager case
 
+    val tx_rollup_submit_batch_case :
+      Kind.tx_rollup_submit_batch Kind.manager case
+
+    val tx_rollup_commit_case : Kind.tx_rollup_commit Kind.manager case
+
+    val tx_rollup_return_bond_case :
+      Kind.tx_rollup_return_bond Kind.manager case
+
+    val tx_rollup_finalize_commitment_case :
+      Kind.tx_rollup_finalize_commitment Kind.manager case
+
+    val tx_rollup_remove_commitment_case :
+      Kind.tx_rollup_remove_commitment Kind.manager case
+
+    val tx_rollup_rejection_case : Kind.tx_rollup_rejection Kind.manager case
+
+    val tx_rollup_dispatch_tickets_case :
+      Kind.tx_rollup_dispatch_tickets Kind.manager case
+
+    val transfer_ticket_case : Kind.transfer_ticket Kind.manager case
+
+    val dal_publish_slot_header_case :
+      Kind.dal_publish_slot_header Kind.manager case
+
     val register_global_constant_case :
       Kind.register_global_constant Kind.manager case
 
     val set_deposits_limit_case : Kind.set_deposits_limit Kind.manager case
+
+    val sc_rollup_originate_case : Kind.sc_rollup_originate Kind.manager case
+
+    val sc_rollup_add_messages_case :
+      Kind.sc_rollup_add_messages Kind.manager case
+
+    val sc_rollup_cement_case : Kind.sc_rollup_cement Kind.manager case
+
+    val sc_rollup_publish_case : Kind.sc_rollup_publish Kind.manager case
+
+    val sc_rollup_refute_case : Kind.sc_rollup_refute Kind.manager case
+
+    val sc_rollup_timeout_case : Kind.sc_rollup_timeout Kind.manager case
+
+    val sc_rollup_execute_outbox_message_case :
+      Kind.sc_rollup_execute_outbox_message Kind.manager case
+
+    val sc_rollup_recover_bond_case :
+      Kind.sc_rollup_recover_bond Kind.manager case
 
     module Manager_operations : sig
       type 'b case =
@@ -2232,6 +3750,43 @@ module Operation : sig
       val set_deposits_limit_case : Kind.set_deposits_limit case
 
       val tx_rollup_origination_case : Kind.tx_rollup_origination case
+
+      val tx_rollup_submit_batch_case : Kind.tx_rollup_submit_batch case
+
+      val tx_rollup_commit_case : Kind.tx_rollup_commit case
+
+      val tx_rollup_return_bond_case : Kind.tx_rollup_return_bond case
+
+      val tx_rollup_finalize_commitment_case :
+        Kind.tx_rollup_finalize_commitment case
+
+      val tx_rollup_remove_commitment_case :
+        Kind.tx_rollup_remove_commitment case
+
+      val tx_rollup_rejection_case : Kind.tx_rollup_rejection case
+
+      val tx_rollup_dispatch_tickets_case : Kind.tx_rollup_dispatch_tickets case
+
+      val transfer_ticket_case : Kind.transfer_ticket case
+
+      val dal_publish_slot_header_case : Kind.dal_publish_slot_header case
+
+      val sc_rollup_originate_case : Kind.sc_rollup_originate case
+
+      val sc_rollup_add_messages_case : Kind.sc_rollup_add_messages case
+
+      val sc_rollup_cement_case : Kind.sc_rollup_cement case
+
+      val sc_rollup_publish_case : Kind.sc_rollup_publish case
+
+      val sc_rollup_refute_case : Kind.sc_rollup_refute case
+
+      val sc_rollup_timeout_case : Kind.sc_rollup_timeout case
+
+      val sc_rollup_execute_outbox_message_case :
+        Kind.sc_rollup_execute_outbox_message case
+
+      val sc_rollup_recover_bond_case : Kind.sc_rollup_recover_bond case
     end
   end
 
@@ -2242,6 +3797,9 @@ end
 
 module Stake_distribution : sig
   val snapshot : context -> context tzresult Lwt.t
+
+  val compute_snapshot_index :
+    context -> Cycle.t -> max_snapshot_index:int -> int tzresult Lwt.t
 
   val baking_rights_owner :
     context ->
@@ -2277,7 +3835,7 @@ end
 module Migration : sig
   type origination_result = {
     balance_updates : Receipt.balance_updates;
-    originated_contracts : Contract.t list;
+    originated_contracts : Contract_hash.t list;
     storage_size : Z.t;
     paid_storage_size_diff : Z.t;
   }
@@ -2285,6 +3843,7 @@ end
 
 (** Create an [Alpha_context.t] from an untyped context (first block in the chain only). *)
 val prepare_first_block :
+  Chain_id.t ->
   Context.t ->
   typecheck:
     (context ->
@@ -2333,6 +3892,7 @@ module Parameters : sig
     public_key_hash : public_key_hash;
     public_key : public_key option;
     amount : Tez.t;
+    delegate_to : public_key_hash option;
   }
 
   type bootstrap_contract = {
@@ -2345,7 +3905,7 @@ module Parameters : sig
     bootstrap_accounts : bootstrap_account list;
     bootstrap_contracts : bootstrap_contract list;
     commitments : Commitment.t list;
-    constants : Constants.parametric;
+    constants : Constants.Parametric.t;
     security_deposit_ramp_up_cycles : int option;
     no_reward_cycles : int option;
   }
@@ -2354,40 +3914,59 @@ module Parameters : sig
 end
 
 module Liquidity_baking : sig
-  val get_cpmm_address : context -> Contract.t tzresult Lwt.t
+  type liquidity_baking_toggle_vote =
+        Liquidity_baking_repr.liquidity_baking_toggle_vote =
+    | LB_on
+    | LB_off
+    | LB_pass
 
-  type escape_ema = Int32.t
+  val liquidity_baking_toggle_vote_encoding :
+    liquidity_baking_toggle_vote Data_encoding.encoding
+
+  val get_cpmm_address : context -> Contract_hash.t tzresult Lwt.t
+
+  module Toggle_EMA : sig
+    type t
+
+    val zero : t
+
+    val to_int32 : t -> Int32.t
+
+    val encoding : t Data_encoding.t
+  end
 
   val on_subsidy_allowed :
     context ->
-    escape_vote:bool ->
-    (context -> Contract.t -> (context * 'a list) tzresult Lwt.t) ->
-    (context * 'a list * escape_ema) tzresult Lwt.t
+    toggle_vote:liquidity_baking_toggle_vote ->
+    (context -> Contract_hash.t -> (context * 'a list) tzresult Lwt.t) ->
+    (context * 'a list * Toggle_EMA.t) tzresult Lwt.t
 end
 
 (** This module re-exports functions from [Ticket_storage]. See
     documentation of the functions there.
  *)
 module Ticket_balance : sig
-  type key_hash
-
-  val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
-
-  val make_key_hash :
-    context ->
-    ticketer:Script.node ->
-    typ:Script.node ->
-    contents:Script.node ->
-    owner:Script.node ->
-    (key_hash * context) tzresult
+  type error +=
+    | Negative_ticket_balance of {key : Ticket_hash.t; balance : Z.t}
+    | Used_storage_space_underflow
 
   val adjust_balance :
-    context -> key_hash -> delta:Z.t -> (Z.t * context) tzresult Lwt.t
+    context -> Ticket_hash.t -> delta:Z.t -> (Z.t * context) tzresult Lwt.t
 
-  val get_balance : context -> key_hash -> (Z.t option * context) tzresult Lwt.t
+  val adjust_storage_space :
+    context -> storage_diff:Z.t -> (Z.t * context) tzresult Lwt.t
+
+  val get_balance :
+    context -> Ticket_hash.t -> (Z.t option * context) tzresult Lwt.t
+
+  module Internal_for_tests : sig
+    val used_storage_space : context -> Z.t tzresult Lwt.t
+
+    val paid_storage_space : context -> Z.t tzresult Lwt.t
+  end
 end
 
-module First_level_of_tenderbake : sig
+module First_level_of_protocol : sig
   val get : context -> Raw_level.t tzresult Lwt.t
 end
 
@@ -2415,9 +3994,7 @@ module Token : sig
     | `Delegate_balance of Signature.Public_key_hash.t
     | `Frozen_deposits of Signature.Public_key_hash.t
     | `Block_fees
-    | `Legacy_deposits of Signature.Public_key_hash.t * Cycle.t
-    | `Legacy_fees of Signature.Public_key_hash.t * Cycle.t
-    | `Legacy_rewards of Signature.Public_key_hash.t * Cycle.t ]
+    | `Frozen_bonds of Contract.t * Bond_id.t ]
 
   type source =
     [ `Invoice
@@ -2430,6 +4007,7 @@ module Token : sig
     | `Baking_bonuses
     | `Minted
     | `Liquidity_baking_subsidies
+    | `Tx_rollup_rejection_rewards
     | container ]
 
   type sink =
@@ -2437,11 +4015,13 @@ module Token : sig
     | `Double_signing_punishments
     | `Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
     | `Burned
+    | `Tx_rollup_rejection_punishments
+    | `Sc_rollup_refutation_punishments
     | container ]
 
-  val allocated : context -> container -> bool tzresult Lwt.t
+  val allocated : context -> container -> (context * bool) tzresult Lwt.t
 
-  val balance : context -> container -> Tez.t tzresult Lwt.t
+  val balance : context -> container -> (context * Tez.t) tzresult Lwt.t
 
   val transfer_n :
     ?origin:Receipt.update_origin ->
@@ -2485,6 +4065,14 @@ module Fees : sig
     context ->
     storage_limit:Z.t ->
     payer:Token.source ->
+    (context * Z.t * Receipt.balance_updates) tzresult Lwt.t
+
+  val burn_sc_rollup_origination_fees :
+    ?origin:Receipt.update_origin ->
+    context ->
+    storage_limit:Z.t ->
+    payer:Token.source ->
+    Z.t ->
     (context * Z.t * Receipt.balance_updates) tzresult Lwt.t
 
   type error += Cannot_pay_storage_fee (* `Temporary *)

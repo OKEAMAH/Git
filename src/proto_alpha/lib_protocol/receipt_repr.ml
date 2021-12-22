@@ -26,16 +26,13 @@
 
 type balance =
   | Contract of Contract_repr.t
-  | Legacy_rewards of Signature.Public_key_hash.t * Cycle_repr.t
   | Block_fees
-  | Legacy_deposits of Signature.Public_key_hash.t * Cycle_repr.t
   | Deposits of Signature.Public_key_hash.t
   | Nonce_revelation_rewards
   | Double_signing_evidence_rewards
   | Endorsing_rewards
   | Baking_rewards
   | Baking_bonuses
-  | Legacy_fees of Signature.Public_key_hash.t * Cycle_repr.t
   | Storage_fees
   | Double_signing_punishments
   | Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
@@ -46,6 +43,10 @@ type balance =
   | Invoice
   | Initial_commitments
   | Minted
+  | Frozen_bonds of Contract_repr.t * Bond_id_repr.t
+  | Tx_rollup_rejection_punishments
+  | Tx_rollup_rejection_rewards
+  | Sc_rollup_refutation_punishments
 
 let balance_encoding =
   let open Data_encoding in
@@ -61,16 +62,6 @@ let balance_encoding =
            (function Contract c -> Some ((), c) | _ -> None)
            (fun ((), c) -> Contract c);
          case
-           (Tag 1)
-           ~title:"Legacy_rewards"
-           (obj4
-              (req "kind" (constant "freezer"))
-              (req "category" (constant "legacy_rewards"))
-              (req "delegate" Signature.Public_key_hash.encoding)
-              (req "cycle" Cycle_repr.encoding))
-           (function Legacy_rewards (d, l) -> Some ((), (), d, l) | _ -> None)
-           (fun ((), (), d, l) -> Legacy_rewards (d, l));
-         case
            (Tag 2)
            ~title:"Block_fees"
            (obj2
@@ -78,17 +69,6 @@ let balance_encoding =
               (req "category" (constant "block fees")))
            (function Block_fees -> Some ((), ()) | _ -> None)
            (fun ((), ()) -> Block_fees);
-         case
-           (Tag 3)
-           ~title:"Legacy_deposits"
-           (obj4
-              (req "kind" (constant "freezer"))
-              (req "category" (constant "legacy_deposits"))
-              (req "delegate" Signature.Public_key_hash.encoding)
-              (req "cycle" Cycle_repr.encoding))
-           (function
-             | Legacy_deposits (d, l) -> Some ((), (), d, l) | _ -> None)
-           (fun ((), (), d, l) -> Legacy_deposits (d, l));
          case
            (Tag 4)
            ~title:"Deposits"
@@ -139,16 +119,6 @@ let balance_encoding =
               (req "category" (constant "baking bonuses")))
            (function Baking_bonuses -> Some ((), ()) | _ -> None)
            (fun ((), ()) -> Baking_bonuses);
-         case
-           (Tag 10)
-           ~title:"Legacy_fees"
-           (obj4
-              (req "kind" (constant "freezer"))
-              (req "category" (constant "legacy_fees"))
-              (req "delegate" Signature.Public_key_hash.encoding)
-              (req "cycle" Cycle_repr.encoding))
-           (function Legacy_fees (d, l) -> Some ((), (), d, l) | _ -> None)
-           (fun ((), (), d, l) -> Legacy_fees (d, l));
          case
            (Tag 11)
            ~title:"Storage_fees"
@@ -235,62 +205,94 @@ let balance_encoding =
               (req "category" (constant "minted")))
            (function Minted -> Some ((), ()) | _ -> None)
            (fun ((), ()) -> Minted);
+         case
+           (Tag 21)
+           ~title:"Frozen_bonds"
+           (obj4
+              (req "kind" (constant "freezer"))
+              (req "category" (constant "bonds"))
+              (req "contract" Contract_repr.encoding)
+              (req "bond_id" Bond_id_repr.encoding))
+           (function Frozen_bonds (c, r) -> Some ((), (), c, r) | _ -> None)
+           (fun ((), (), c, r) -> Frozen_bonds (c, r));
+         case
+           (Tag 22)
+           ~title:"Tx_rollup_rejection_rewards"
+           (obj2
+              (req "kind" (constant "minted"))
+              (req "category" (constant "tx_rollup_rejection_rewards")))
+           (function Tx_rollup_rejection_rewards -> Some ((), ()) | _ -> None)
+           (fun ((), ()) -> Tx_rollup_rejection_rewards);
+         case
+           (Tag 23)
+           ~title:"Tx_rollup_rejection_punishments"
+           (obj2
+              (req "kind" (constant "burned"))
+              (req "category" (constant "tx_rollup_rejection_punishments")))
+           (function
+             | Tx_rollup_rejection_punishments -> Some ((), ()) | _ -> None)
+           (fun ((), ()) -> Tx_rollup_rejection_punishments);
+         case
+           (Tag 24)
+           ~title:"Sc_rollup_refutation_punishments"
+           (obj2
+              (req "kind" (constant "burned"))
+              (req "category" (constant "sc_rollup_refutation_punishments")))
+           (function
+             | Sc_rollup_refutation_punishments -> Some ((), ()) | _ -> None)
+           (fun ((), ()) -> Sc_rollup_refutation_punishments);
        ]
 
 let is_not_zero c = not (Compare.Int.equal c 0)
 
 let compare_balance ba bb =
   match (ba, bb) with
-  | (Contract ca, Contract cb) -> Contract_repr.compare ca cb
-  | (Legacy_rewards (pkha, ca), Legacy_rewards (pkhb, cb)) ->
-      let c = Signature.Public_key_hash.compare pkha pkhb in
-      if is_not_zero c then c else Cycle_repr.compare ca cb
-  | (Legacy_deposits (pkha, ca), Legacy_deposits (pkhb, cb)) ->
-      let c = Signature.Public_key_hash.compare pkha pkhb in
-      if is_not_zero c then c else Cycle_repr.compare ca cb
-  | (Deposits pkha, Deposits pkhb) ->
-      Signature.Public_key_hash.compare pkha pkhb
-  | ( Lost_endorsing_rewards (pkha, pa, ra),
-      Lost_endorsing_rewards (pkhb, pb, rb) ) ->
+  | Contract ca, Contract cb -> Contract_repr.compare ca cb
+  | Deposits pkha, Deposits pkhb -> Signature.Public_key_hash.compare pkha pkhb
+  | Lost_endorsing_rewards (pkha, pa, ra), Lost_endorsing_rewards (pkhb, pb, rb)
+    ->
       let c = Signature.Public_key_hash.compare pkha pkhb in
       if is_not_zero c then c
       else
         let c = Compare.Bool.compare pa pb in
         if is_not_zero c then c else Compare.Bool.compare ra rb
-  | (Commitments bpkha, Commitments bpkhb) ->
+  | Commitments bpkha, Commitments bpkhb ->
       Blinded_public_key_hash.compare bpkha bpkhb
-  | (Legacy_fees (pkha, ca), Legacy_fees (pkhb, cb)) ->
-      let c = Signature.Public_key_hash.compare pkha pkhb in
-      if is_not_zero c then c else Cycle_repr.compare ca cb
-  | (_, _) ->
+  | Frozen_bonds (ca, ra), Frozen_bonds (cb, rb) ->
+      let c = Contract_repr.compare ca cb in
+      if is_not_zero c then c else Bond_id_repr.compare ra rb
+  | _, _ ->
       let index b =
         match b with
         | Contract _ -> 0
-        | Legacy_rewards _ -> 1
-        | Block_fees -> 2
-        | Legacy_deposits _ -> 3
-        | Deposits _ -> 4
-        | Nonce_revelation_rewards -> 5
-        | Double_signing_evidence_rewards -> 6
-        | Endorsing_rewards -> 7
-        | Baking_rewards -> 8
-        | Baking_bonuses -> 9
-        | Legacy_fees _ -> 10
-        | Storage_fees -> 11
-        | Double_signing_punishments -> 12
-        | Lost_endorsing_rewards _ -> 13
-        | Liquidity_baking_subsidies -> 14
-        | Burned -> 15
-        | Commitments _ -> 16
-        | Bootstrap -> 17
-        | Invoice -> 18
-        | Initial_commitments -> 19
-        | Minted -> 20
+        | Block_fees -> 1
+        | Deposits _ -> 2
+        | Nonce_revelation_rewards -> 3
+        | Double_signing_evidence_rewards -> 4
+        | Endorsing_rewards -> 5
+        | Baking_rewards -> 6
+        | Baking_bonuses -> 7
+        | Storage_fees -> 8
+        | Double_signing_punishments -> 9
+        | Lost_endorsing_rewards _ -> 10
+        | Liquidity_baking_subsidies -> 11
+        | Burned -> 12
+        | Commitments _ -> 13
+        | Bootstrap -> 14
+        | Invoice -> 15
+        | Initial_commitments -> 16
+        | Minted -> 17
+        | Frozen_bonds _ -> 18
+        | Tx_rollup_rejection_punishments -> 19
+        | Tx_rollup_rejection_rewards -> 20
+        | Sc_rollup_refutation_punishments -> 21
         (* don't forget to add parameterized cases in the first part of the function *)
       in
       Compare.Int.compare (index ba) (index bb)
 
 type balance_update = Debited of Tez_repr.t | Credited of Tez_repr.t
+
+let is_zero_update = function Debited t | Credited t -> Tez_repr.(t = zero)
 
 let balance_update_encoding =
   let open Data_encoding in
@@ -369,7 +371,7 @@ let balance_updates_encoding =
   @@ list
        (conv
           (function
-            | (balance, balance_update, update_origin) ->
+            | balance, balance_update, update_origin ->
                 ((balance, balance_update), update_origin))
           (fun ((balance, balance_update), update_origin) ->
             (balance, balance_update, update_origin))
@@ -377,33 +379,49 @@ let balance_updates_encoding =
              (merge_objs balance_encoding balance_update_encoding)
              update_origin_encoding))
 
-module BalanceMap = Map.Make (struct
-  type t = balance * update_origin
+module BalanceMap = struct
+  include Map.Make (struct
+    type t = balance * update_origin
 
-  let compare (ba, ua) (bb, ub) =
-    let c = compare_balance ba bb in
-    if is_not_zero c then c else compare_update_origin ua ub
-end)
+    let compare (ba, ua) (bb, ub) =
+      let c = compare_balance ba bb in
+      if is_not_zero c then c else compare_update_origin ua ub
+  end)
+
+  let update_r key (f : 'a option -> 'b option tzresult) map =
+    f (find key map) >>? function
+    | Some v -> ok (add key v map)
+    | None -> ok (remove key map)
+end
 
 let group_balance_updates balance_updates =
   List.fold_left_e
     (fun acc (b, update, o) ->
-      (match BalanceMap.find (b, o) acc with
-      | None -> ok update
-      | Some present -> (
-          match (present, update) with
-          | (Credited a, Debited b) | (Debited b, Credited a) ->
-              if Tez_repr.(a >= b) then
-                Tez_repr.(a -? b) >>? fun update -> ok (Credited update)
-              else Tez_repr.(b -? a) >>? fun update -> ok (Debited update)
-          | (Credited a, Credited b) ->
-              Tez_repr.(a +? b) >>? fun update -> ok (Credited update)
-          | (Debited a, Debited b) ->
-              Tez_repr.(a +? b) >>? fun update -> ok (Debited update)))
-      >>? function
-      | Credited update when Tez_repr.(update = zero) ->
-          ok (BalanceMap.remove (b, o) acc)
-      | update -> ok (BalanceMap.add (b, o) update acc))
+      (* Do not do anything if the update is zero *)
+      if is_zero_update update then ok acc
+      else
+        BalanceMap.update_r
+          (b, o)
+          (function
+            | None -> ok (Some update)
+            | Some balance -> (
+                match (balance, update) with
+                | Credited a, Debited b | Debited b, Credited a ->
+                    (* Remove the binding since it just fell down to zero *)
+                    if Tez_repr.(a = b) then ok None
+                    else if Tez_repr.(a > b) then
+                      Tez_repr.(a -? b) >>? fun update ->
+                      ok (Some (Credited update))
+                    else
+                      Tez_repr.(b -? a) >>? fun update ->
+                      ok (Some (Debited update))
+                | Credited a, Credited b ->
+                    Tez_repr.(a +? b) >>? fun update ->
+                    ok (Some (Credited update))
+                | Debited a, Debited b ->
+                    Tez_repr.(a +? b) >>? fun update ->
+                    ok (Some (Debited update))))
+          acc)
     BalanceMap.empty
     balance_updates
   >>? fun map ->

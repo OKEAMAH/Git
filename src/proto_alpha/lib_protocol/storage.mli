@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2022 Trili Tech, <contact@trili.tech>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -46,73 +47,7 @@ module type Simple_single_data_storage = sig
   val init : Raw_context.t -> value -> Raw_context.t tzresult Lwt.t
 end
 
-module Legacy_block_priority : Simple_single_data_storage with type value = int
-
 module Block_round : Simple_single_data_storage with type value = Round_repr.t
-
-module Roll_legacy : sig
-  (** Storage from this submodule must only be accessed through the
-      module `Roll_legacy`. *)
-
-  module Owner :
-    Indexed_data_snapshotable_storage
-      with type key = Roll_repr_legacy.t
-       and type snapshot = Cycle_repr.t * int
-       and type value = Signature.Public_key.t
-       and type t := Raw_context.t
-
-  val clear : Raw_context.t -> Raw_context.t Lwt.t
-
-  (** The next roll to be allocated. *)
-  module Next :
-    Single_data_storage
-      with type value = Roll_repr_legacy.t
-       and type t := Raw_context.t
-
-  (** Rolls linked lists represent both account owned and free rolls.
-      All rolls belongs either to the limbo list or to an owned list. *)
-
-  (** Head of the linked list of rolls in limbo *)
-  module Limbo :
-    Single_data_storage
-      with type value = Roll_repr_legacy.t
-       and type t := Raw_context.t
-
-  (** Rolls associated to contracts, a linked list per contract *)
-  module Delegate_roll_list :
-    Indexed_data_storage
-      with type key = Signature.Public_key_hash.t
-       and type value = Roll_repr_legacy.t
-       and type t := Raw_context.t
-
-  (** Use this to iter on a linked list of rolls *)
-  module Successor :
-    Indexed_data_storage
-      with type key = Roll_repr_legacy.t
-       and type value = Roll_repr_legacy.t
-       and type t := Raw_context.t
-
-  (** The tez of a contract that are not assigned to rolls *)
-  module Delegate_change :
-    Indexed_data_storage
-      with type key = Signature.Public_key_hash.t
-       and type value = Tez_repr.t
-       and type t := Raw_context.t
-
-  (** Index of the randomly selected roll snapshot of a given cycle. *)
-  module Snapshot_for_cycle :
-    Indexed_data_storage
-      with type key = Cycle_repr.t
-       and type value = int
-       and type t := Raw_context.t
-
-  (** Last roll in the snapshoted roll allocation of a given cycle. *)
-  module Last_for_snapshot :
-    Indexed_data_storage
-      with type key = int
-       and type value = Roll_repr_legacy.t
-       and type t = Raw_context.t * Cycle_repr.t
-end
 
 type deposits = {initial_amount : Tez_repr.t; current_amount : Tez_repr.t}
 
@@ -138,7 +73,7 @@ module Contract : sig
      may also possess tez in frozen deposits. Empty balances (of zero
      tez) are only allowed for originated contracts, not for implicit
      ones. *)
-  module Balance :
+  module Spendable_balance :
     Indexed_data_storage
       with type key = Contract_repr.t
        and type value = Tez_repr.t
@@ -161,31 +96,6 @@ module Contract : sig
       with type key = Contract_repr.t
        and type value = missed_endorsements_info
        and type t := Raw_context.t
-
-  (** Frozen balance, see 'delegate_storage.mli' for more explanation.
-      Always update `Delegates_with_frozen_balance` accordingly.
-
-      Deprecated only used for migration
-  *)
-  module Legacy_frozen_deposits :
-    Indexed_data_storage
-      with type key = Cycle_repr.t
-       and type value = Tez_repr.t
-       and type t = Raw_context.t * Contract_repr.t
-
-  (** Deprecated only used for migration *)
-  module Legacy_frozen_fees :
-    Indexed_data_storage
-      with type key = Cycle_repr.t
-       and type value = Tez_repr.t
-       and type t = Raw_context.t * Contract_repr.t
-
-  (** Deprecated only used for migration *)
-  module Legacy_frozen_rewards :
-    Indexed_data_storage
-      with type key = Cycle_repr.t
-       and type value = Tez_repr.t
-       and type t = Raw_context.t * Contract_repr.t
 
   (** The manager of a contract *)
   module Manager :
@@ -231,7 +141,7 @@ module Contract : sig
 
   (** The last cycle where the delegate is considered active; that is,
      at the next cycle it will be considered inactive. *)
-  module Delegate_desactivation :
+  module Delegate_last_cycle_before_deactivation :
     Indexed_data_storage
       with type key = Contract_repr.t
        and type value = Cycle_repr.t
@@ -268,6 +178,28 @@ module Contract : sig
     Indexed_data_storage
       with type key = Contract_repr.t
        and type value = Z.t
+       and type t := Raw_context.t
+
+  (** Associates a contract and a bond_id with a bond, i.e. an amount of tez
+      that is frozen. *)
+  module Frozen_bonds :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Bond_id_repr.t
+       and type value = Tez_repr.t
+       and type t := Raw_context.t * Contract_repr.t
+
+  val fold_bond_ids :
+    Raw_context.t * Contract_repr.t ->
+    order:[`Sorted | `Undefined] ->
+    init:'a ->
+    f:(Bond_id_repr.t -> 'a -> 'a Lwt.t) ->
+    'a Lwt.t
+
+  (** Associates a contract with the total of all its frozen bonds. *)
+  module Total_frozen_bonds :
+    Indexed_data_storage
+      with type key = Contract_repr.t
+       and type value = Tez_repr.t
        and type t := Raw_context.t
 end
 
@@ -422,12 +354,6 @@ module Slashed_deposits :
      and type key = Raw_level_repr.t * Signature.Public_key_hash.t
      and type value = slashed_level
 
-(** Set of all active delegates with rolls. *)
-module Legacy_active_delegates_with_rolls :
-  Data_set_storage
-    with type t := Raw_context.t
-     and type elt = Signature.Public_key_hash.t
-
 module Stake : sig
   (** The map of all the staking balances of all delegates, including
      those with less than one roll. It might be large *)
@@ -447,6 +373,7 @@ module Stake : sig
        and type snapshot = int
        and type t := Raw_context.t
 
+  (** Counter of stake storage snapshots taken since last cycle *)
   module Last_snapshot :
     Single_data_storage with type value = int and type t := Raw_context.t
 
@@ -471,18 +398,8 @@ module Delegate_sampler_state :
   Indexed_data_storage
     with type key = Cycle_repr.t
      and type value =
-          (Signature.Public_key.t * Signature.Public_key_hash.t) Sampler.t
+      (Signature.Public_key.t * Signature.Public_key_hash.t) Sampler.t
      and type t := Raw_context.t
-
-(** Set of all the delegates with frozen rewards/deposits/fees for a given cycle.
-    Deprecated: This is now only used for stitching while migrating from an
-    emmy protocol. This is to be removed in the next version.
-
-    This table must be cleaned after migration. *)
-module Legacy_delegates_with_frozen_balance :
-  Data_set_storage
-    with type t = Raw_context.t * Cycle_repr.t
-     and type elt = Signature.Public_key_hash.t
 
 (** Votes *)
 
@@ -506,15 +423,15 @@ module Vote : sig
       with type value = Protocol_hash.t
        and type t := Raw_context.t
 
-  (** Sum of all rolls of all delegates. *)
-  module Listings_size :
-    Single_data_storage with type value = int32 and type t := Raw_context.t
+  (** Sum of voting weights of all delegates. *)
+  module Voting_power_in_listings :
+    Single_data_storage with type value = int64 and type t := Raw_context.t
 
-  (** Contains all delegates with their assigned number of rolls. *)
+  (** Contains all delegates with their assigned voting weight. *)
   module Listings :
     Indexed_data_storage
       with type key = Signature.Public_key_hash.t
-       and type value = int32
+       and type value = int64
        and type t := Raw_context.t
 
   (** Set of protocol proposal with corresponding proposer delegate *)
@@ -574,12 +491,6 @@ module Seed : sig
        and type value := nonce_status
        and type t := Raw_context.t
 
-  module Nonce_legacy :
-    Non_iterable_indexed_data_storage
-      with type key := Level_repr.t
-       and type value := nonce_status
-       and type t := Raw_context.t
-
   module For_cycle : FOR_CYCLE
 end
 
@@ -628,16 +539,16 @@ end
 
 module Liquidity_baking : sig
   (** Exponential moving average (ema) of flags set in protocol_data.contents.
-    If at any block it's above the threshold set in constants,
-    liquidity baking permanently shuts off. **)
-  module Escape_ema :
+    The liquidity baking subsidy is not sent to the CPMM if this EMA is above
+    the threshold set in constants. **)
+  module Toggle_ema :
     Single_data_storage with type t := Raw_context.t and type value = Int32.t
 
   (** Constant product market maker contract that receives liquidity baking subsidy. **)
   module Cpmm_address :
     Single_data_storage
       with type t := Raw_context.t
-       and type value = Contract_repr.t
+       and type value = Contract_hash.t
 end
 
 (** A map of [Script_repr.expr] values, indexed by their hash ([Script_expr_hash.t]).
@@ -663,14 +574,22 @@ module Ticket_balance : sig
   module Table :
     Non_iterable_indexed_carbonated_data_storage
       with type t := Raw_context.t
-       and type key = Script_expr_hash.t
+       and type key = Ticket_hash_repr.t
        and type value = Z.t
+
+  module Paid_storage_space :
+    Single_data_storage with type t := Raw_context.t and type value = Z.t
+
+  module Used_storage_space :
+    Single_data_storage with type t := Raw_context.t and type value = Z.t
 end
 
 (** Tenderbake *)
 
 module Tenderbake : sig
-  module First_level :
+  (** [First_level_of_protocol] stores the level of the first block of
+      this protocol. *)
+  module First_level_of_protocol :
     Single_data_storage
       with type t := Raw_context.t
        and type value = Raw_level_repr.t
@@ -693,12 +612,223 @@ module Tenderbake : sig
 end
 
 module Tx_rollup : sig
-  (** Storage from this submodule must only be accessed through the
-      module `Tx_rollup_storage`. *)
-
+  (** [State] stores the state of a transaction rollup. *)
   module State :
-    Indexed_data_storage
+    Non_iterable_indexed_carbonated_data_storage
       with type key = Tx_rollup_repr.t
-       and type value = Tx_rollup_repr.state
+       and type value = Tx_rollup_state_repr.t
        and type t := Raw_context.t
+
+  (** The representation of an inbox. See {!Tx_rollup_inbox_repr.t}
+     for a description of the actual content. *)
+  module Inbox :
+    Non_iterable_indexed_carbonated_data_storage
+      with type t := Raw_context.t * Tx_rollup_repr.t
+       and type key = Tx_rollup_level_repr.t
+       and type value = Tx_rollup_inbox_repr.t
+
+  (** A carbonated storage of the set of withdrawals revealed of those
+      potentially associated to each message of an inbox. The key is the message
+      number, which is sequentially assigned from 0. *)
+  module Revealed_withdrawals :
+    Non_iterable_indexed_carbonated_data_storage
+      with type t := Raw_context.t * Tx_rollup_repr.t
+       and type key = Tx_rollup_level_repr.t
+       and type value = Bitset.t
+
+  (** A rollup can have at most one commitment per rollup level. Some
+      metadata are saved in addition to the commitment itself. See
+     {!Tx_rollup_commitment_repr.Submitted_commitment.t} for the exact
+     content. *)
+  module Commitment :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Tx_rollup_level_repr.t
+       and type value = Tx_rollup_commitment_repr.Submitted_commitment.t
+       and type t := Raw_context.t * Tx_rollup_repr.t
+
+  (** This stores information about which contracts have bonds
+     for each rollup, and how many commitments those bonds
+     stake. *)
+  module Commitment_bond :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Signature.public_key_hash
+       and type value = int
+       and type t := Raw_context.t * Tx_rollup_repr.t
+end
+
+module Sc_rollup : sig
+  (** Smart contract rollup.
+
+      Storage from this submodule must only be accessed through the
+      module `Sc_rollup_storage`.
+
+      Each smart contract rollup is associated to:
+
+      - a PVM kind (provided at creation time, read-only)
+      - a boot sector (provided at creation time, read-only)
+      - a parameters type specifying the types of parameters the rollup accepts
+      - the L1 block level at which the rollup was created
+      - a merkelized inbox, of which only the root hash is stored
+      - a tree of commitments, rooted at the last cemented commitment
+      - a map from stakers to commitments
+      - a map from commitments to the time (level) of their first insertion
+
+      For performance reasons we also store (per rollup):
+
+      - the total number of active stakers;
+      - the number of stakers per commitment.
+
+      See module {!Sc_rollup_repr.Commitment} for details.
+  *)
+  module PVM_kind :
+    Indexed_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = Sc_rollups.Kind.t
+       and type t := Raw_context.t
+
+  module Boot_sector :
+    Indexed_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = string
+       and type t := Raw_context.t
+
+  module Parameters_type :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = Script_repr.lazy_expr
+       and type t := Raw_context.t
+
+  module Initial_level :
+    Indexed_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = Raw_level_repr.t
+       and type t := Raw_context.t
+
+  module Inbox :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = Sc_rollup_inbox_repr.t
+       and type t := Raw_context.t
+
+  module Last_cemented_commitment :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = Sc_rollup_commitment_repr.Hash.t
+       and type t := Raw_context.t
+
+  module Stakers :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Signature.Public_key_hash.t
+       and type value = Sc_rollup_commitment_repr.Hash.t
+       and type t = Raw_context.t * Sc_rollup_repr.t
+
+  (** Cache: This should always be the number of entries in [Stakers].
+
+      Combined with {!Commitment_stake_count} (see below), this ensures we can
+      check that all stakers agree on a commitment prior to cementing it in
+      O(1) - rather than O(n) reads.
+    *)
+  module Staker_count :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_repr.t
+       and type value = int32
+       and type t := Raw_context.t
+
+  module Commitments :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_commitment_repr.Hash.t
+       and type value = Sc_rollup_commitment_repr.t
+       and type t = Raw_context.t * Sc_rollup_repr.t
+
+  (** Cache: This should always be the number of stakers that are directly or
+      indirectly staked on this commitment.
+
+      Let Stakers[S] mean "looking up the key S in [Stakers]".
+
+      A staker [S] is directly staked on [C] if [Stakers[S] = C]. A staker
+      [S] is indirectly staked on [C] if [C] is an ancestor of [Stakers[S]].
+
+      This ensures we remove unreachable commitments at the end of a
+      dispute in O(n) reads, where n is the length of the rejected branch.
+
+      We maintain the invariant that each branch has at least one staker.  On
+      rejection, we decrease stake count from the removed staker to the root,
+      and reclaim commitments whose stake count (refcount) thus reaches zero.
+
+      In the worst case all commitments are dishonest and on the same branch.
+      In practice we expect the honest branch, to be the longest, and dishonest
+      branches to be of similar lengths, making removal require a small number
+      of steps with respect to the total number of commitments.
+   *)
+  module Commitment_stake_count :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_commitment_repr.Hash.t
+       and type value = int32
+       and type t = Raw_context.t * Sc_rollup_repr.t
+
+  module Commitment_added :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_commitment_repr.Hash.t
+       and type value = Raw_level_repr.t
+       and type t = Raw_context.t * Sc_rollup_repr.t
+
+  (** Refutation games are indexed by the rollup and the pair of
+      competing stakers. The staker pair should always be in lexical
+      order to ensure that games are not duplicated.
+  *)
+  module Game :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_game_repr.Index.t
+       and type value = Sc_rollup_game_repr.t
+       and type t = Raw_context.t * Sc_rollup_repr.t
+
+  (** [Game_timeout] stores the block level at which the staker whose
+      turn it is to move will (become vulnerable to) timeout. The staker
+      pair should always be in lexical order to ensure that this value is
+      not duplicated.
+  *)
+  module Game_timeout :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Sc_rollup_game_repr.Index.t
+       and type value = Raw_level_repr.t
+       and type t = Raw_context.t * Sc_rollup_repr.t
+
+  (** [Opponent] stores the current opponent of the staker. This is
+      mainly used to enforce the requirement that each staker should
+      only play one refutation game at a time. It will also be useful
+      for searching for current game by staker.
+  *)
+  module Opponent :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Signature.Public_key_hash.t
+       and type value = Sc_rollup_repr.Staker.t
+       and type t = Raw_context.t * Sc_rollup_repr.t
+
+  (** A carbonated storage for keeping track of applied outbox messages for a
+      a SCORU.
+
+      The [key] is an [int32] value that represents the index of a SCORU's
+      outbox level. An outbox level is mapped to the index through:
+
+      [index = outbox_level % sc_rollup_max_active_outbox_levels]
+
+      The rationale is to keep a limited number of entries. The current value of
+      an entry contains the most recently added level that maps to the index.
+
+      The [value] is a pair of the actual outbox level and a bitset containing
+      the set of applied messages.
+    *)
+  module Applied_outbox_messages :
+    Non_iterable_indexed_carbonated_data_storage
+      with type t = Raw_context.t * Sc_rollup_repr.t
+       and type key = int32
+       and type value = Raw_level_repr.t * Bitset.t
+end
+
+module Dal : sig
+  module Slot_headers :
+    Non_iterable_indexed_data_storage
+      with type t = Raw_context.t
+       and type key = Raw_level_repr.t
+       and type value = Dal_slot_repr.slot list
 end

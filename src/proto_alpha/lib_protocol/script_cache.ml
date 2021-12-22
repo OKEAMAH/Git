@@ -27,13 +27,17 @@ open Alpha_context
 
 type identifier = string
 
-let identifier_of_contract addr = Contract.to_b58check addr
+let identifier_of_contract addr = Contract_hash.to_b58check addr
 
-let contract_of_identifier identifier = Contract.of_b58check identifier
+let contract_of_identifier identifier =
+  match Contract_hash.of_b58check_opt identifier with
+  | Some addr -> Ok addr
+  | None -> error (Contract_repr.Invalid_contract_notation identifier)
 
 type cached_contract = Script.t * Script_ir_translator.ex_script
 
 let load_and_elaborate ctxt addr =
+  let addr = Contract.Originated addr in
   Contract.get_script ctxt addr >>=? fun (ctxt, script) ->
   match script with
   | None -> return (ctxt, None)
@@ -45,7 +49,7 @@ let load_and_elaborate ctxt addr =
            [script_size] (for efficiency).
            This is safe, as we already pay gas proportional to storage size
            in [parse_script] beforehand. *)
-        let (size, cost) = script_size ex_script in
+        let size, cost = script_size ex_script in
         Gas.consume ctxt cost >>?= fun ctxt ->
         return (ctxt, Some (script, ex_script, size)))
 
@@ -65,14 +69,14 @@ module Client = struct
     *)
     contract_of_identifier identifier >>?= fun addr ->
     load_and_elaborate ctxt addr >>=? function
-    | (_, None) ->
+    | _, None ->
         (* [value_of_identifier ctxt k] is applied to identifiers stored
            in the cache. Only script-based contracts that have been
            executed are in the cache. Hence, [get_script] always
            succeeds for these identifiers if [ctxt] and the [cache] are
            properly synchronized by the shell. *)
         failwith "Script_cache: Inconsistent script cache."
-    | (_, Some (unparsed_script, ir_script, _)) ->
+    | _, Some (unparsed_script, ir_script, _) ->
         return (unparsed_script, ir_script)
 end
 
@@ -85,8 +89,8 @@ let find ctxt addr =
       return (ctxt, identifier, Some (unparsed_script, ex_script))
   | None -> (
       load_and_elaborate ctxt addr >>=? function
-      | (ctxt, None) -> return (ctxt, identifier, None)
-      | (ctxt, Some (unparsed_script, script_ir, size)) ->
+      | ctxt, None -> return (ctxt, identifier, None)
+      | ctxt, Some (unparsed_script, script_ir, size) ->
           let cached_value = (unparsed_script, script_ir) in
           Lwt.return
             ( Cache.update ctxt identifier (Some (cached_value, size))
@@ -107,3 +111,7 @@ let contract_rank ctxt addr =
 let size = Cache.size
 
 let size_limit = Cache.size_limit
+
+let insert ctxt addr updated_script approx_size =
+  let identifier = identifier_of_contract addr in
+  Cache.update ctxt identifier (Some (updated_script, approx_size))

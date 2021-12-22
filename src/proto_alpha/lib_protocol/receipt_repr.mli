@@ -27,16 +27,13 @@
 (** Places where tez can be found in the ledger's state. *)
 type balance =
   | Contract of Contract_repr.t
-  | Legacy_rewards of Signature.Public_key_hash.t * Cycle_repr.t
   | Block_fees
-  | Legacy_deposits of Signature.Public_key_hash.t * Cycle_repr.t
   | Deposits of Signature.Public_key_hash.t
   | Nonce_revelation_rewards
   | Double_signing_evidence_rewards
   | Endorsing_rewards
   | Baking_rewards
   | Baking_bonuses
-  | Legacy_fees of Signature.Public_key_hash.t * Cycle_repr.t
   | Storage_fees
   | Double_signing_punishments
   | Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
@@ -47,6 +44,10 @@ type balance =
   | Invoice
   | Initial_commitments
   | Minted
+  | Frozen_bonds of Contract_repr.t * Bond_id_repr.t
+  | Tx_rollup_rejection_punishments
+  | Tx_rollup_rejection_rewards
+  | Sc_rollup_refutation_punishments
 
 (** Compares two balances. *)
 val compare_balance : balance -> balance -> int

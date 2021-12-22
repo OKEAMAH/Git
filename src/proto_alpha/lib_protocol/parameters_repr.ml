@@ -28,6 +28,7 @@ type bootstrap_account = {
   public_key_hash : Signature.Public_key_hash.t;
   public_key : Signature.Public_key.t option;
   amount : Tez_repr.t;
+  delegate_to : Signature.Public_key_hash.t option;
 }
 
 type bootstrap_contract = {
@@ -40,7 +41,7 @@ type t = {
   bootstrap_accounts : bootstrap_account list;
   bootstrap_contracts : bootstrap_contract list;
   commitments : Commitment_repr.t list;
-  constants : Constants_repr.parametric;
+  constants : Constants_parametric_repr.t;
   security_deposit_ramp_up_cycles : int option;
   no_reward_cycles : int option;
 }
@@ -54,29 +55,85 @@ let bootstrap_account_encoding =
         ~title:"Public_key_known"
         (tup2 Signature.Public_key.encoding Tez_repr.encoding)
         (function
-          | {public_key_hash; public_key = Some public_key; amount} ->
+          | {
+              public_key_hash;
+              public_key = Some public_key;
+              amount;
+              delegate_to = None;
+            } ->
               assert (
                 Signature.Public_key_hash.equal
                   (Signature.Public_key.hash public_key)
                   public_key_hash) ;
               Some (public_key, amount)
-          | {public_key = None; _} -> None)
+          | {public_key = None; _} | {delegate_to = Some _; _} -> None)
         (fun (public_key, amount) ->
           {
             public_key = Some public_key;
             public_key_hash = Signature.Public_key.hash public_key;
             amount;
+            delegate_to = None;
           });
       case
         (Tag 1)
         ~title:"Public_key_unknown"
         (tup2 Signature.Public_key_hash.encoding Tez_repr.encoding)
         (function
-          | {public_key_hash; public_key = None; amount} ->
+          | {public_key_hash; public_key = None; amount; delegate_to = None} ->
               Some (public_key_hash, amount)
-          | {public_key = Some _; _} -> None)
+          | {public_key = Some _; _} | {delegate_to = Some _; _} -> None)
         (fun (public_key_hash, amount) ->
-          {public_key = None; public_key_hash; amount});
+          {public_key = None; public_key_hash; amount; delegate_to = None});
+      case
+        (Tag 2)
+        ~title:"Public_key_known_with_delegate"
+        (tup3
+           Signature.Public_key.encoding
+           Tez_repr.encoding
+           Signature.Public_key_hash.encoding)
+        (function
+          | {
+              public_key_hash;
+              public_key = Some public_key;
+              amount;
+              delegate_to = Some delegate;
+            } ->
+              assert (
+                Signature.Public_key_hash.equal
+                  (Signature.Public_key.hash public_key)
+                  public_key_hash) ;
+              Some (public_key, amount, delegate)
+          | {public_key = None; _} | {delegate_to = None; _} -> None)
+        (fun (public_key, amount, delegate) ->
+          {
+            public_key = Some public_key;
+            public_key_hash = Signature.Public_key.hash public_key;
+            amount;
+            delegate_to = Some delegate;
+          });
+      case
+        (Tag 3)
+        ~title:"Public_key_unknown_with_delegate"
+        (tup3
+           Signature.Public_key_hash.encoding
+           Tez_repr.encoding
+           Signature.Public_key_hash.encoding)
+        (function
+          | {
+              public_key_hash;
+              public_key = None;
+              amount;
+              delegate_to = Some delegate;
+            } ->
+              Some (public_key_hash, amount, delegate)
+          | {public_key = Some _; _} | {delegate_to = None; _} -> None)
+        (fun (public_key_hash, amount, delegate) ->
+          {
+            public_key = None;
+            public_key_hash;
+            amount;
+            delegate_to = Some delegate;
+          });
     ]
 
 let bootstrap_contract_encoding =
@@ -127,6 +184,6 @@ let encoding =
           (dft "commitments" (list Commitment_repr.encoding) [])
           (opt "security_deposit_ramp_up_cycles" int31)
           (opt "no_reward_cycles" int31))
-       Constants_repr.parametric_encoding)
+       Constants_parametric_repr.encoding)
 
 let check_params params = Constants_repr.check_constants params.constants

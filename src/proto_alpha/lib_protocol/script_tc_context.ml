@@ -29,9 +29,9 @@ type in_lambda = bool
 
 type callsite =
   | Toplevel : {
-      storage_type : 'sto ty;
-      param_type : 'param ty;
-      root_name : Script_ir_annot.field_annot option;
+      storage_type : ('sto, _) ty;
+      param_type : ('param, _) ty;
+      entrypoints : 'param Script_typed_ir.entrypoints;
     }
       -> callsite
   | View : callsite
@@ -41,8 +41,8 @@ type t = {callsite : callsite; in_lambda : in_lambda}
 
 let init callsite = {callsite; in_lambda = false}
 
-let toplevel ~storage_type ~param_type root_name =
-  init (Toplevel {storage_type; param_type; root_name})
+let toplevel ~storage_type ~param_type ~entrypoints =
+  init (Toplevel {storage_type; param_type; entrypoints})
 
 let view = init View
 

@@ -46,6 +46,15 @@ module Nonce : sig
     'a #RPC_context.simple -> 'a -> Raw_level.t -> info shell_tzresult Lwt.t
 end
 
+module Snapshot_index : sig
+  val get :
+    'a #RPC_context.simple ->
+    'a ->
+    ?cycle:Cycle.t ->
+    unit ->
+    int shell_tzresult Lwt.t
+end
+
 module Contract = Contract_services
 module Constants = Constants_services
 module Delegate = Delegate_services
@@ -54,16 +63,14 @@ module Sapling = Sapling_services
 
 module Liquidity_baking : sig
   val get_cpmm_address :
-    'a #RPC_context.simple ->
-    'a ->
-    Alpha_context.Contract.t shell_tzresult Lwt.t
+    'a #RPC_context.simple -> 'a -> Contract_hash.t shell_tzresult Lwt.t
 end
 
 module Cache : sig
   val cached_contracts :
     'a #RPC_context.simple ->
     'a ->
-    (Alpha_context.Contract.t * int) list shell_tzresult Lwt.t
+    (Contract_hash.t * int) list shell_tzresult Lwt.t
 
   val contract_cache_size :
     'a #RPC_context.simple -> 'a -> int shell_tzresult Lwt.t
@@ -74,7 +81,7 @@ module Cache : sig
   val contract_rank :
     'a #RPC_context.simple ->
     'a ->
-    Alpha_context.Contract.t ->
+    Contract_hash.t ->
     int option shell_tzresult Lwt.t
 end
 
