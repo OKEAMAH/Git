@@ -121,6 +121,7 @@ type parametric = {
   initial_seed : State_hash.t option;
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
+  tx_rollup_hard_size_limit_per_batch : int;
   tx_rollup_hard_size_limit_per_inbox : int;
   tx_rollup_initial_inbox_cost_per_byte : Tez_repr.t;
   sc_rollup_enable : bool;
