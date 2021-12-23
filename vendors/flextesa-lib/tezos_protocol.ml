@@ -173,6 +173,7 @@ let protocol_parameters_json t : Ezjsonm.t =
                Transaction rollups parameters need to be refined,
                currently the following values are merely
                placeholders. *) ("tx_rollup_origination_size", int 60_000)
+          ; ("tx_rollup_hard_size_limit_per_batch", int 5_000)
           ; ("tx_rollup_hard_size_limit_per_inbox", int 100_000)
           ; ("tx_rollup_initial_inbox_cost_per_byte", string (Int.to_string 250))
           ; ("sc_rollup_enable", bool false)

@@ -106,8 +106,8 @@ type error +=
       max_limit : Tez.t;
     }
   | (* `Branch *) Empty_transaction of Contract.t
-  | (* `Permanent *)
-      Tx_rollup_disabled
+  | (* `Permanent *) Tx_rollup_disabled
+  | (* `Permanent *) Tx_rollup_submit_too_big
   | (* `Permanent *)
       Sc_rollup_feature_disabled
   | (* `Permanent *)
@@ -498,6 +498,20 @@ let () =
     Data_encoding.unit
     (function Tx_rollup_disabled -> Some () | _ -> None)
     (fun () -> Tx_rollup_disabled) ;
+
+  register_error_kind
+    `Permanent
+    ~id:"operation.tx_rollup_submit_too_big"
+    ~title:"Tx rollup inbox limit exceeded"
+    ~description:"The batch submitted is too large"
+    ~pp:(fun ppf () ->
+      Format.fprintf
+        ppf
+        "Cannot insert this batch in the inbox since it exceeds the authorized \
+         size of a batch.")
+    Data_encoding.unit
+    (function Tx_rollup_submit_too_big -> Some () | _ -> None)
+    (fun () -> Tx_rollup_submit_too_big) ;
 
   let description =
     "Smart contract rollups will be enabled in a future proposal."
@@ -1157,6 +1171,12 @@ let apply_manager_operation_content :
       return (ctxt, result, [])
   | Tx_rollup_submit_batch {tx_rollup; content} ->
       fail_unless (Constants.tx_rollup_enable ctxt) Tx_rollup_disabled
+      >>=? fun () ->
+      fail_unless
+        Compare.Int.(
+          String.length content
+          < Constants.tx_rollup_hard_size_limit_per_batch ctxt)
+        Tx_rollup_submit_too_big
       >>=? fun () ->
       Tx_rollup.append_message ctxt tx_rollup (Batch content)
       >>=? fun (message_size, ctxt) ->

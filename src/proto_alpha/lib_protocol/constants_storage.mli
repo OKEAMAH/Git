@@ -87,6 +87,8 @@ val tx_rollup_enable : Raw_context.t -> bool
 
 val tx_rollup_origination_size : Raw_context.t -> int
 
+val tx_rollup_hard_size_limit_per_batch : Raw_context.t -> int
+
 val tx_rollup_hard_size_limit_per_inbox : Raw_context.t -> int
 
 val tx_rollup_initial_inbox_cost_per_byte : Raw_context.t -> Tez_repr.t

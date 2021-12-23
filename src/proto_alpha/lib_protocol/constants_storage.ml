@@ -153,6 +153,10 @@ let tx_rollup_origination_size c =
   let constants = Raw_context.constants c in
   constants.tx_rollup_origination_size
 
+let tx_rollup_hard_size_limit_per_batch c =
+  let constants = Raw_context.constants c in
+  constants.tx_rollup_hard_size_limit_per_batch
+
 let tx_rollup_hard_size_limit_per_inbox c =
   let constants = Raw_context.constants c in
   constants.tx_rollup_hard_size_limit_per_inbox

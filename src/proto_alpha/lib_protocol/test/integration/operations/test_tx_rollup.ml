@@ -279,6 +279,78 @@ let test_add_two_batches () =
   Assert.balance_was_debited ~loc:__LOC__ (B b) contract balance cost
   >>=? fun () -> return ()
 
+(** Try to add a batch too large in an inbox. *)
+let test_batch_too_big () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let contract =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract >>=? fun (b, tx_rollup) ->
+  Context.get_constants (B b) >>=? fun constant ->
+  let contents =
+    String.make constant.parametric.tx_rollup_hard_size_limit_per_batch 'd'
+  in
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_submit_batch (I i) contract tx_rollup contents >>=? fun op ->
+  Incremental.add_operation i op ~expect_failure:(function
+      | Environment.Ecoproto_error Protocol.Apply.Tx_rollup_submit_too_big :: _
+        ->
+          return_unit
+      | _ -> failwith "Expected [Tx_rollup_submit_too_big] error")
+  >>=? fun i ->
+  ignore i ;
+  return_unit
+
+(** Try to add enough batch to reach the size limit of an inbox. *)
+let test_inbox_too_big () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let contract =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract >>=? fun (b, tx_rollup) ->
+  Context.get_constants (B b) >>=? fun constant ->
+  let tx_rollup_inbox_limit =
+    constant.parametric.tx_rollup_hard_size_limit_per_inbox
+  in
+  let tx_rollup_batch_limit =
+    constant.parametric.tx_rollup_hard_size_limit_per_batch - 1
+  in
+  let contents = String.make tx_rollup_batch_limit 'd' in
+  Context.Contract.counter (B b) contract >>=? fun counter ->
+  Incremental.begin_construction b >>=? fun i ->
+  let rec fill_inbox i inbox_size counter =
+    (* By default, the [gas_limit] is the maximum gas that can be
+       consumed by an operation. We set a lower (arbitrary) limit to
+       be able to reach the size limit of an operation. *)
+    Op.tx_rollup_submit_batch
+      ~gas_limit:(Saturation_repr.safe_int 100_000_000)
+      ~counter
+      (I i)
+      contract
+      tx_rollup
+      contents
+    >>=? fun op ->
+    let new_inbox_size = inbox_size + tx_rollup_batch_limit in
+    if new_inbox_size < tx_rollup_inbox_limit then
+      Incremental.add_operation i op >>=? fun i ->
+      fill_inbox i new_inbox_size (Z.succ counter)
+    else
+      Incremental.add_operation i op ~expect_failure:(function
+          | Environment.Ecoproto_error
+              (Protocol.Tx_rollup_storage.Tx_rollup_hard_size_limit_reached _)
+            :: _ ->
+              return_unit
+          | err ->
+              failwith
+                "Expected [Tx_rollup_hard_size_limit_reached] error, got %a"
+                Error_monad.pp_print_trace
+                err)
+  in
+
+  fill_inbox i 0 counter >>=? fun i ->
+  ignore i ;
+  return_unit
+
 (** Test that block finalization changes gas rates *)
 let test_finalization () =
   context_init 1 >>=? fun (b, contracts) ->
@@ -338,5 +410,13 @@ let tests =
       test_cost_per_byte_update;
     Tztest.tztest "add one batch to a rollup" `Quick test_add_batch;
     Tztest.tztest "add two batches to a rollup" `Quick test_add_two_batches;
+    Tztest.tztest
+      "Try to add a batch larger than the limit"
+      `Quick
+      test_batch_too_big;
+    Tztest.tztest
+      "Try to add several batches to reach the inbox limit"
+      `Quick
+      test_inbox_too_big;
     Tztest.tztest "Test finalization" `Quick test_finalization;
   ]

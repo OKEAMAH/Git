@@ -121,6 +121,9 @@ type parametric = {
   initial_seed : State_hash.t option;
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
+  (* The maximum size (in bytes) a transaction rollup’s batch of L2
+     operations is allowed to take in the inbox. *)
+  tx_rollup_hard_size_limit_per_batch : int;
   (* The maximum size (in bytes) a transaction rollup’s inbox is
      allowed to reach.
 

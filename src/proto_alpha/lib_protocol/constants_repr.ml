@@ -174,6 +174,7 @@ type parametric = {
   initial_seed : State_hash.t option;
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
+  tx_rollup_hard_size_limit_per_batch : int;
   tx_rollup_hard_size_limit_per_inbox : int;
   tx_rollup_initial_inbox_cost_per_byte : Tez_repr.t;
   sc_rollup_enable : bool;
@@ -219,6 +220,7 @@ let parametric_encoding =
                 c.initial_seed ),
               ( ( c.tx_rollup_enable,
                   c.tx_rollup_origination_size,
+                  c.tx_rollup_hard_size_limit_per_batch,
                   c.tx_rollup_hard_size_limit_per_inbox,
                   c.tx_rollup_initial_inbox_cost_per_byte ),
                 (c.sc_rollup_enable, c.sc_rollup_origination_size) ) ) ) ) ))
@@ -257,6 +259,7 @@ let parametric_encoding =
                    initial_seed ),
                  ( ( tx_rollup_enable,
                      tx_rollup_origination_size,
+                     tx_rollup_hard_size_limit_per_batch,
                      tx_rollup_hard_size_limit_per_inbox,
                      tx_rollup_initial_inbox_cost_per_byte ),
                    (sc_rollup_enable, sc_rollup_origination_size) ) ) ) ) ) ->
@@ -296,6 +299,7 @@ let parametric_encoding =
         initial_seed;
         tx_rollup_enable;
         tx_rollup_origination_size;
+        tx_rollup_hard_size_limit_per_batch;
         tx_rollup_hard_size_limit_per_inbox;
         tx_rollup_initial_inbox_cost_per_byte;
         sc_rollup_enable;
@@ -349,9 +353,10 @@ let parametric_encoding =
                       ratio_encoding)
                    (opt "initial_seed" State_hash.encoding))
                 (merge_objs
-                   (obj4
+                   (obj5
                       (req "tx_rollup_enable" bool)
                       (req "tx_rollup_origination_size" int31)
+                      (req "tx_rollup_hard_size_limit_per_batch" int31)
                       (req "tx_rollup_hard_size_limit_per_inbox" int31)
                       (req
                          "tx_rollup_initial_inbox_cost_per_byte"

@@ -31,6 +31,7 @@ protocol of light mode unspecified, using the node's protocol: ProtoGenesisGenes
   "ratio_of_frozen_deposits_slashed_per_double_endorsement":
     { "numerator": 1, "denominator": 2 }, "tx_rollup_enable": false,
   "tx_rollup_origination_size": 60000,
+  "tx_rollup_hard_size_limit_per_batch": 5000,
   "tx_rollup_hard_size_limit_per_inbox": 100000,
   "tx_rollup_initial_inbox_cost_per_byte": "250", "sc_rollup_enable": false,
   "sc_rollup_origination_size": 6314 }
