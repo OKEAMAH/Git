@@ -1265,6 +1265,8 @@ let apply_manager_operation_content :
       in
       return (ctxt, result, [])
   | Tx_rollup_commit {rollup; commitment} ->
+      Tx_rollup_commitments.finalize_pending_commitments ctxt rollup
+      >>=? fun ctxt ->
       ( Tx_rollup_commitments.pending_bonded_commitments ctxt rollup source
       >>=? fun (ctxt, pending) ->
         match pending with
@@ -1280,6 +1282,22 @@ let apply_manager_operation_content :
       >>=? fun ctxt ->
       let result =
         Tx_rollup_commit_result
+          {
+            consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+            balance_updates;
+          }
+      in
+      return (ctxt, result, [])
+  | Tx_rollup_return_bond {rollup} ->
+      Tx_rollup_commitments.remove_bond ctxt rollup source >>=? fun ctxt ->
+      Token.transfer
+        ctxt
+        `Rollup_bond_return
+        (`Contract source)
+        (Constants.tx_rollup_commitment_bond ctxt)
+      >>=? fun (ctxt, balance_updates) ->
+      let result =
+        Tx_rollup_return_bond_result
           {
             consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
             balance_updates;
@@ -1434,6 +1452,8 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
       >|=? fun () -> ctxt
   | Tx_rollup_commit _ ->
       assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
+  | Tx_rollup_return_bond _ ->
+      assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
       assert_sc_rollup_feature_enabled ctxt >|=? fun () -> ctxt)
   >>=? fun ctxt ->
@@ -1546,6 +1566,8 @@ let burn_storage_fees :
       return (ctxt, storage_limit, Tx_rollup_submit_batch_result payload)
   | Tx_rollup_commit_result payload ->
       return (ctxt, storage_limit, Tx_rollup_commit_result payload)
+  | Tx_rollup_return_bond_result payload ->
+      return (ctxt, storage_limit, Tx_rollup_return_bond_result payload)
   | Sc_rollup_originate_result payload ->
       let payer = `Contract payer in
       Fees.burn_sc_rollup_origination_fees

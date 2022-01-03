@@ -40,6 +40,13 @@ type error += (* `Branch *)
 
 type error += (* `Temporary *) No_such_commitment
 
+type error += (* `Temporary *)
+              Bond_does_not_exist of Contract_repr.t
+
+type error += (* `Temporary *) Bond_in_use of Contract_repr.t
+
+type error += (* `Temporary *) Too_many_unfinalized_levels
+
 (** A specialized Blake2B implementation for hashing commitments with
     "toc1" as a base58 prefix *)
 module Commitment_hash : sig

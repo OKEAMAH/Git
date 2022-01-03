@@ -38,6 +38,15 @@ val add_commitment :
   Tx_rollup_commitments_repr.Commitment.t ->
   Raw_context.t tzresult Lwt.t
 
+(** [remove_bond context tx_rollup contract] removes the bond for a
+   contract.  This will fail if either the bond does not exist, or the
+   bond is currently in-use. *)
+val remove_bond :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Contract_repr.t ->
+  Raw_context.t tzresult Lwt.t
+
 (** [reject_commitment ctxt tx_rollup_repr level commitment_hash]
    rejects a commitment with a given hash at a given level.  All
    successor commitments are removed, and any bonds associated with
@@ -56,12 +65,14 @@ val reject_commitment :
    associated with a level. It decrements the bonded commitment count
    for any contracts whose commitments have been either accepted or
    obviated (that is, neither accepted nor rejected).  This is normally
-   used in finalization and is only public for testing. *)
+   used in finalization (during a Commitment operation) and is only
+   public for testing. *)
 val retire_rollup_level :
   Raw_context.t ->
   Tx_rollup_repr.t ->
   Raw_level_repr.t ->
-  Raw_context.t tzresult Lwt.t
+  Raw_level_repr.t ->
+  (Raw_context.t * bool) tzresult Lwt.t
 
 (** [get_commitments context tx_rollup level] returns the list of
    non-rejected commitments for a rollup at a level, first-submitted
@@ -80,3 +91,8 @@ val pending_bonded_commitments :
   Tx_rollup_repr.t ->
   Contract_repr.t ->
   (Raw_context.t * int) tzresult Lwt.t
+
+(** [finalize_pending_commitments ctxt tx_rollup] finalizes all
+     pending commitments that are old enough. *)
+val finalize_pending_commitments :
+  Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t

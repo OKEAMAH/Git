@@ -26,25 +26,63 @@
 (*****************************************************************************)
 
 type t = {
+  first_unfinalized_level : Raw_level_repr.t option;
+  unfinalized_level_count : int;
   fees_per_byte : Tez_repr.t;
   last_inbox_level : Raw_level_repr.t option;
 }
 
-let initial_state = {fees_per_byte = Tez_repr.zero; last_inbox_level = None}
+let initial_state =
+  {
+    first_unfinalized_level = None;
+    unfinalized_level_count = 0;
+    fees_per_byte = Tez_repr.zero;
+    last_inbox_level = None;
+  }
 
 let encoding : t Data_encoding.t =
   let open Data_encoding in
   conv
-    (fun {last_inbox_level; fees_per_byte} -> (last_inbox_level, fees_per_byte))
-    (fun (last_inbox_level, fees_per_byte) -> {last_inbox_level; fees_per_byte})
-    (obj2
-       (req "last_inbox_level" (option Raw_level_repr.encoding))
-       (req "fees_per_byte" Tez_repr.encoding))
+    (fun {
+           first_unfinalized_level;
+           unfinalized_level_count;
+           fees_per_byte;
+           last_inbox_level;
+         } ->
+      ( first_unfinalized_level,
+        unfinalized_level_count,
+        fees_per_byte,
+        last_inbox_level ))
+    (fun ( first_unfinalized_level,
+           unfinalized_level_count,
+           fees_per_byte,
+           last_inbox_level ) ->
+      {
+        first_unfinalized_level;
+        unfinalized_level_count;
+        fees_per_byte;
+        last_inbox_level;
+      })
+    (obj4
+       (req "first_unfinalized_level" (option Raw_level_repr.encoding))
+       (req "unfinalized_level_count" int16)
+       (req "fees_per_byte" Tez_repr.encoding)
+       (req "last_inbox_level" (option Raw_level_repr.encoding)))
 
-let pp fmt {fees_per_byte; last_inbox_level} =
+let pp fmt
+    {
+      first_unfinalized_level;
+      unfinalized_level_count;
+      fees_per_byte;
+      last_inbox_level;
+    } =
   Format.fprintf
     fmt
-    "Tx_rollup: fees_per_byte = %a; last_inbox_level = %a"
+    "first_unfinalized_level %a unfinalized_level_count %d cost_per_byte: %a \
+     newest inbox %a"
+    (Format.pp_print_option Raw_level_repr.pp)
+    first_unfinalized_level
+    unfinalized_level_count
     Tez_repr.pp
     fees_per_byte
     (Format.pp_print_option Raw_level_repr.pp)
@@ -92,9 +130,37 @@ let fees {fees_per_byte; _} size = Tez_repr.(fees_per_byte *? Int64.of_int size)
 
 let last_inbox_level {last_inbox_level; _} = last_inbox_level
 
-let append_inbox t level = {t with last_inbox_level = Some level}
+let append_inbox t level =
+  {
+    t with
+    last_inbox_level = Some level;
+    first_unfinalized_level =
+      Some (Option.value ~default:level t.first_unfinalized_level);
+  }
+
+let unfinalized_level_count {unfinalized_level_count; _} =
+  unfinalized_level_count
+
+let first_unfinalized_level {first_unfinalized_level; _} =
+  first_unfinalized_level
+
+let increment_unfinalized_level_count state =
+  {state with unfinalized_level_count = state.unfinalized_level_count + 1}
+
+let update_after_finalize state level count =
+  {
+    state with
+    first_unfinalized_level = level;
+    unfinalized_level_count = state.unfinalized_level_count - count;
+  }
 
 module Internal_for_tests = struct
   let initial_state_with_fees_per_byte : Tez_repr.t -> t =
-   fun fees_per_byte -> {fees_per_byte; last_inbox_level = None}
+   fun fees_per_byte ->
+    {
+      first_unfinalized_level = None;
+      unfinalized_level_count = 0;
+      fees_per_byte;
+      last_inbox_level = None;
+    }
 end

@@ -39,6 +39,13 @@ type error += (* `Temporary *) Retire_uncommitted_level
 
 type error += (* `Temporary *) No_such_commitment
 
+type error += (* `Temporary *)
+              Bond_does_not_exist of Contract_repr.t
+
+type error += (* `Temporary *) Bond_in_use of Contract_repr.t
+
+type error += (* `Temporary *) Too_many_unfinalized_levels
+
 let () =
   let open Data_encoding in
   (* Commitment_hash_already_submitted *)
@@ -107,7 +114,36 @@ let () =
     ~description:"An attempt was made to reject a nonexistent commitment"
     empty
     (function No_such_commitment -> Some () | _ -> None)
-    (fun () -> No_such_commitment)
+    (fun () -> No_such_commitment) ;
+  (* Bond_does_not_exist *)
+  register_error_kind
+    `Temporary
+    ~id:"Bond_does_not_exist"
+    ~title:"This account does not have a bond for this rollup"
+    ~description:"This account does not have a bond for this rollup"
+    (obj1 (req "contract" Contract_repr.encoding))
+    (function Bond_does_not_exist contract -> Some contract | _ -> None)
+    (fun contract -> Bond_does_not_exist contract) ;
+  (* Bond_in_use *)
+  register_error_kind
+    `Temporary
+    ~id:"Bond_in_use"
+    ~title:"This account's bond is in use for one or more commitments"
+    ~description:"This account's bond is in use for one or more commitments"
+    (obj1 (req "contract" Contract_repr.encoding))
+    (function Bond_in_use contract -> Some contract | _ -> None)
+    (fun contract -> Bond_in_use contract) ;
+  (* Too_many_unfinalized_levels *)
+  register_error_kind
+    `Temporary
+    ~id:"Too_many_unfinalized_levels"
+    ~title:"This rollup hasn't had a commitment in too long"
+    ~description:
+      "This rollup hasn't a commitment in too long. We don't allow new \
+       messages to keep commitment gas reasonable."
+    empty
+    (function Too_many_unfinalized_levels -> Some () | _ -> None)
+    (fun () -> Too_many_unfinalized_levels)
 
 let compare_or cmp c1 c2 f = match cmp c1 c2 with 0 -> f () | diff -> diff
 

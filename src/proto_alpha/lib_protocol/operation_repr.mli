@@ -103,6 +103,8 @@ module Kind : sig
 
   type tx_rollup_commit = Tx_rollup_commit_kind
 
+  type tx_rollup_return_bond = Tx_rollup_return_bond_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type sc_rollup_add_messages = Sc_rollup_add_messages_kind
@@ -117,6 +119,7 @@ module Kind : sig
     | Tx_rollup_origination_manager_kind : tx_rollup_origination manager
     | Tx_rollup_submit_batch_manager_kind : tx_rollup_submit_batch manager
     | Tx_rollup_commit_manager_kind : tx_rollup_commit manager
+    | Tx_rollup_return_bond_manager_kind : tx_rollup_return_bond manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
 end
@@ -260,6 +263,10 @@ and _ manager_operation =
       commitment : Tx_rollup_commitments_repr.Commitment.t;
     }
       -> Kind.tx_rollup_commit manager_operation
+  | Tx_rollup_return_bond : {
+      rollup : Tx_rollup_repr.t;
+    }
+      -> Kind.tx_rollup_return_bond manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup_repr.Kind.t;
       boot_sector : Sc_rollup_repr.PVM.boot_sector;
@@ -396,6 +403,8 @@ module Encoding : sig
 
   val tx_rollup_commit_case : Kind.tx_rollup_commit Kind.manager case
 
+  val tx_rollup_return_bond_case : Kind.tx_rollup_return_bond Kind.manager case
+
   val sc_rollup_originate_case : Kind.sc_rollup_originate Kind.manager case
 
   val sc_rollup_add_messages_case :
@@ -430,6 +439,8 @@ module Encoding : sig
     val tx_rollup_submit_batch_case : Kind.tx_rollup_submit_batch case
 
     val tx_rollup_commit_case : Kind.tx_rollup_commit case
+
+    val tx_rollup_return_bond_case : Kind.tx_rollup_return_bond case
 
     val sc_rollup_originate_case : Kind.sc_rollup_originate case
 
