@@ -50,6 +50,16 @@ module S = struct
       ~query:RPC_query.empty
       ~output:Tx_rollup_commitments.encoding
       RPC_path.(custom_root /: Tx_rollup.rpc_arg / "commitments")
+
+  let pending_bonded_commitments =
+    RPC_service.get_service
+      ~description:
+        "Get the number of pending bonded commitments for a pkh on a rollup"
+      ~query:RPC_query.empty
+      ~output:Data_encoding.int32
+      RPC_path.(
+        custom_root /: Tx_rollup.rpc_arg / "pending_bonded_commitments"
+        /: Signature.Public_key_hash.rpc_arg)
 end
 
 let register () =
@@ -60,7 +70,13 @@ let register () =
       Tx_rollup_inbox.find ctxt tx_rollup ~level:`Current >|=? snd) ;
   register1 ~chunked:false S.commitments (fun ctxt tx_rollup () () ->
       let level = (Level.current ctxt).level in
-      Tx_rollup_commitments.get_commitments ctxt tx_rollup level >|=? snd)
+      Tx_rollup_commitments.get_commitments ctxt tx_rollup level >|=? snd) ;
+  register2
+    ~chunked:false
+    S.pending_bonded_commitments
+    (fun ctxt tx_rollup pkh () () ->
+      Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup pkh
+      >|=? fun (_, count) -> Int32.of_int count)
 
 let state ctxt block tx_rollup =
   RPC_context.make_call1 S.state ctxt block tx_rollup () ()
