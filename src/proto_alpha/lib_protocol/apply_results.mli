@@ -198,6 +198,11 @@ and _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.tx_rollup_rejection successful_manager_operation_result
+  | Tx_rollup_prerejection_result : {
+      balance_updates : Receipt.balance_updates;
+      consumed_gas : Gas.Arith.fp;
+    }
+      -> Kind.tx_rollup_prerejection successful_manager_operation_result
   | Sc_rollup_originate_result : {
       balance_updates : Receipt.balance_updates;
       address : Sc_rollup.Address.t;

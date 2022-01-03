@@ -1344,6 +1344,23 @@ let test_rejection () =
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
   let hash = Tx_rollup_commitments.Commitment.hash commitment in
+  (* Test missing prerejection *)
+  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 1 nonce
+  >>=? fun op ->
+  Incremental.add_operation i op ~expect_failure:(function
+      | Environment.Ecoproto_error
+          (Tx_rollup_rejection.Rejection_without_prerejection as e)
+        :: _ ->
+          Assert.test_error_encodings e ;
+          return_unit
+      | _ -> failwith "Need to check prerejection")
+  >>=? fun i ->
+  Op.tx_rollup_prereject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* need to bake after prereject *)
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
   (* Correct rejection *)
   Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce
   >>=? fun op ->
@@ -1358,9 +1375,12 @@ let test_rejection () =
   Op.tx_rollup_commit (I i) contract1 tx_rollup correct_commitment
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
+  let hash = Tx_rollup_commitments.Commitment.hash correct_commitment in
+  Op.tx_rollup_prereject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce2
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
   Incremental.finalize_block i >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
-  let hash = Tx_rollup_commitments.Commitment.hash correct_commitment in
   Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce2
   >>=? fun op ->
   (* Wrong rejection *)
@@ -1441,6 +1461,55 @@ let test_rejection_reward () =
   let nonce = 1000L in
   let nonce2 = 1001L in
   let nonce3 = 1002L in
+  Op.tx_rollup_prereject
+    (I i)
+    contract2
+    tx_rollup
+    (raw_level 2l)
+    bad_commitment_hash
+    1
+    nonce
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Finalize to enforce ordering *)
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_prereject
+    (I i)
+    contract3
+    tx_rollup
+    (raw_level 2l)
+    bad_commitment_hash
+    1
+    nonce2
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Finalize to enforce ordering *)
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_prereject
+    (I i)
+    contract4
+    tx_rollup
+    (raw_level 2l)
+    bad_commitment_hash
+    1
+    nonce3
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Op.tx_rollup_prereject
+    (I i)
+    contract5
+    tx_rollup
+    (raw_level 2l)
+    bad_commitment_hash
+    1
+    nonce3
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Finalize to enforce ordering *)
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
   Op.tx_rollup_reject
     (I i)
     contract3

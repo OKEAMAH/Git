@@ -1304,8 +1304,12 @@ let apply_manager_operation_content :
           }
       in
       return (ctxt, result, [])
-  | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce = _} ->
-      let priority = Z.zero in
+  | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce} ->
+      let rejection : Tx_rollup_rejection.t =
+        {rollup; level; hash; batch_index}
+      in
+      Tx_rollup_rejection.check_prerejection ctxt rejection nonce source
+      >>=? fun (ctxt, priority) ->
       Tx_rollup_commitments.get_commitment_roots
         ctxt
         rollup
@@ -1331,6 +1335,16 @@ let apply_manager_operation_content :
       >>=? fun ctxt ->
       let result =
         Tx_rollup_rejection_result
+          {
+            consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+            balance_updates = [];
+          }
+      in
+      return (ctxt, result, [])
+  | Tx_rollup_prerejection {hash} ->
+      Tx_rollup_rejection.prereject ctxt hash >>=? fun ctxt ->
+      let result =
+        Tx_rollup_prerejection_result
           {
             consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
             balance_updates = [];
@@ -1489,6 +1503,8 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
       assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Tx_rollup_rejection _ ->
       assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
+  | Tx_rollup_prerejection _ ->
+      assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
       assert_sc_rollup_feature_enabled ctxt >|=? fun () -> ctxt)
   >>=? fun ctxt ->
@@ -1605,6 +1621,8 @@ let burn_storage_fees :
       return (ctxt, storage_limit, Tx_rollup_return_bond_result payload)
   | Tx_rollup_rejection_result payload ->
       return (ctxt, storage_limit, Tx_rollup_rejection_result payload)
+  | Tx_rollup_prerejection_result payload ->
+      return (ctxt, storage_limit, Tx_rollup_prerejection_result payload)
   | Sc_rollup_originate_result payload ->
       let payer = `Contract payer in
       Fees.burn_sc_rollup_origination_fees

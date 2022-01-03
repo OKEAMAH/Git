@@ -290,3 +290,19 @@ val tx_rollup_reject :
   int ->
   int64 ->
   Operation.packed tzresult Lwt.t
+
+(** [tx_rollup_prereject ctxt source tx_rollup level hash nonce batch_index]
+    creates a prerejection to prepare for a rejection. *)
+val tx_rollup_prereject :
+  ?counter:counter ->
+  ?fee:Tez.t ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:counter ->
+  Context.t ->
+  Contract.t ->
+  Tx_rollup.t ->
+  Raw_level.t ->
+  Tx_rollup_commitments.Commitment_hash.t ->
+  int ->
+  int64 ->
+  Operation.packed tzresult Lwt.t
