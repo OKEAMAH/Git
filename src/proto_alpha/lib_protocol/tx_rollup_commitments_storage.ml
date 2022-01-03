@@ -226,11 +226,16 @@ let finalize_pending_commitments ctxt tx_rollup last_level_to_finalize =
   let first_unfinalized_level =
     Tx_rollup_state_repr.first_unfinalized_level state
   in
+  let max_count_to_finalize =
+    Constants_storage.tx_rollup_max_finalize_levels_per_commitment ctxt
+  in
   match first_unfinalized_level with
   | None -> return ctxt
   | Some first_unfinalized_level ->
       let rec finalize_level ctxt level top finalized_count =
-        if Raw_level_repr.(level > top) then
+        if Compare.Int.(finalized_count >= max_count_to_finalize) then
+          return (ctxt, finalized_count, Some level)
+        else if Raw_level_repr.(level > top) then
           return (ctxt, finalized_count, Some level)
         else
           retire_rollup_level ctxt tx_rollup level last_level_to_finalize
