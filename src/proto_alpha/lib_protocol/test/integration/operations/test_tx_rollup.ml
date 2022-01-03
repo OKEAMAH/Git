@@ -1091,6 +1091,42 @@ let test_bond_finalization () =
   ignore i ;
   return ()
 
+let test_full_inbox () =
+  let constants =
+    {
+      Tezos_protocol_alpha_parameters.Default_parameters.constants_test with
+      consensus_threshold = 0;
+      endorsing_reward_per_slot = Tez.zero;
+      baking_reward_bonus_per_slot = Tez.zero;
+      baking_reward_fixed_portion = Tez.zero;
+      tx_rollup_enable = true;
+      tx_rollup_max_unfinalized_levels = 15;
+    }
+  in
+  Context.init_with_constants constants 1 >>=? fun (b, contracts) ->
+  let contract =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract >>=? fun (b, tx_rollup) ->
+  let range start top =
+    let rec aux n acc = if n < start then acc else aux (n - 1) (n :: acc) in
+    aux top []
+  in
+  (* Transactions in blocks [2..17) *)
+  make_transactions_in tx_rollup contract (range 2 17) b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_submit_batch (B b) contract tx_rollup "contents" >>=? fun op ->
+  Incremental.add_operation i op ~expect_failure:(function
+      | Environment.Ecoproto_error
+          (Tx_rollup_commitments.Too_many_unfinalized_levels as e)
+        :: _ ->
+          Assert.test_error_encodings e ;
+          return_unit
+      | _ -> failwith "Need to avoid too many unfinalized inboxes")
+  >>=? fun i ->
+  ignore i ;
+  return ()
+
 let tests =
   [
     Tztest.tztest
@@ -1137,4 +1173,5 @@ let tests =
       `Quick
       test_commitment_acceptance;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
+    Tztest.tztest "Test full inbox" `Quick test_full_inbox;
   ]
