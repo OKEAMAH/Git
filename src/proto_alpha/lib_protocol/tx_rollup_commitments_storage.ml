@@ -63,6 +63,20 @@ let adjust_commitment_bond ctxt tx_rollup pkh delta =
   >>=? fun () ->
   Storage.Tx_rollup.Commitment_bond.add ctxt bond_key count >|=? just_ctxt
 
+let remove_bond :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    Signature.public_key_hash ->
+    Raw_context.t tzresult Lwt.t =
+ fun ctxt tx_rollup contract ->
+  let bond_key = (tx_rollup, contract) in
+  Storage.Tx_rollup.Commitment_bond.find ctxt bond_key >>=? fun (ctxt, bond) ->
+  match bond with
+  | None -> fail (Bond_does_not_exist contract)
+  | Some 0 ->
+      Storage.Tx_rollup.Commitment_bond.remove ctxt bond_key >|=? just_ctxt
+  | Some _ -> fail (Bond_in_use contract)
+
 let check_commitment_predecessor_hash ctxt tx_rollup (commitment : Commitment.t)
     =
   let level = commitment.level in

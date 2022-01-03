@@ -77,6 +77,8 @@ module Kind = struct
 
   type tx_rollup_commit = Tx_rollup_commit_kind
 
+  type tx_rollup_return_bond = Tx_rollup_return_bond_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type sc_rollup_add_messages = Sc_rollup_add_messages_kind
@@ -91,6 +93,7 @@ module Kind = struct
     | Tx_rollup_origination_manager_kind : tx_rollup_origination manager
     | Tx_rollup_submit_batch_manager_kind : tx_rollup_submit_batch manager
     | Tx_rollup_commit_manager_kind : tx_rollup_commit manager
+    | Tx_rollup_return_bond_manager_kind : tx_rollup_return_bond manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
 end
@@ -281,6 +284,10 @@ and _ manager_operation =
       commitment : Tx_rollup_commitments_repr.Commitment.t;
     }
       -> Kind.tx_rollup_commit manager_operation
+  | Tx_rollup_return_bond : {
+      tx_rollup : Tx_rollup_repr.t;
+    }
+      -> Kind.tx_rollup_return_bond manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup_repr.Kind.t;
       boot_sector : Sc_rollup_repr.PVM.boot_sector;
@@ -305,6 +312,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Tx_rollup_origination -> Kind.Tx_rollup_origination_manager_kind
   | Tx_rollup_submit_batch _ -> Kind.Tx_rollup_submit_batch_manager_kind
   | Tx_rollup_commit _ -> Kind.Tx_rollup_commit_manager_kind
+  | Tx_rollup_return_bond _ -> Kind.Tx_rollup_return_bond_manager_kind
   | Sc_rollup_originate _ -> Kind.Sc_rollup_originate_manager_kind
   | Sc_rollup_add_messages _ -> Kind.Sc_rollup_add_messages_manager_kind
 
@@ -574,6 +582,19 @@ module Encoding = struct
               Tx_rollup_commit {tx_rollup; commitment});
         }
 
+    let[@coq_axiom_with_reason "gadt"] tx_rollup_return_bond_case =
+      MCase
+        {
+          tag = tx_rollup_operation_tag_offset + 3;
+          name = "tx_rollup_return_bond";
+          encoding = obj1 (req "rollup" Tx_rollup_repr.encoding);
+          select =
+            (function
+            | Manager (Tx_rollup_return_bond _ as op) -> Some op | _ -> None);
+          proj = (function Tx_rollup_return_bond {tx_rollup} -> tx_rollup);
+          inj = (fun tx_rollup -> Tx_rollup_return_bond {tx_rollup});
+        }
+
     let[@coq_axiom_with_reason "gadt"] sc_rollup_originate_case =
       MCase
         {
@@ -635,6 +656,7 @@ module Encoding = struct
           make tx_rollup_origination_case;
           make tx_rollup_submit_batch_case;
           make tx_rollup_commit_case;
+          make tx_rollup_return_bond_case;
           make sc_rollup_originate_case;
           make sc_rollup_add_messages_case;
         ]
@@ -950,6 +972,11 @@ module Encoding = struct
       tx_rollup_operation_commit_tag
       Manager_operations.tx_rollup_commit_case
 
+  let tx_rollup_return_bond_case =
+    make_manager_case
+      (tx_rollup_operation_tag_offset + 3)
+      Manager_operations.tx_rollup_return_bond_case
+
   let sc_rollup_originate_case =
     make_manager_case
       sc_rollup_operation_origination_tag
@@ -991,6 +1018,7 @@ module Encoding = struct
            make tx_rollup_origination_case;
            make tx_rollup_submit_batch_case;
            make tx_rollup_commit_case;
+           make tx_rollup_return_bond_case;
            make sc_rollup_originate_case;
            make sc_rollup_add_messages_case;
          ]
@@ -1198,6 +1226,8 @@ let equal_manager_operation_kind :
   | (Tx_rollup_submit_batch _, _) -> None
   | (Tx_rollup_commit _, Tx_rollup_commit _) -> Some Eq
   | (Tx_rollup_commit _, _) -> None
+  | (Tx_rollup_return_bond _, Tx_rollup_return_bond _) -> Some Eq
+  | (Tx_rollup_return_bond _, _) -> None
   | (Sc_rollup_originate _, Sc_rollup_originate _) -> Some Eq
   | (Sc_rollup_originate _, _) -> None
   | (Sc_rollup_add_messages _, Sc_rollup_add_messages _) -> Some Eq
@@ -1312,6 +1342,9 @@ let internal_manager_operation_size (type a) (op : a manager_operation) =
       assert false
   | Tx_rollup_commit _ ->
       (* Tx_rollup_commit operation can’t occur as internal operations *)
+      assert false
+  | Tx_rollup_return_bond _ ->
+      (* Tx_rollup_return_bond operation can’t occur as internal operations *)
       assert false
 
 let packed_internal_operation_in_memory_size :

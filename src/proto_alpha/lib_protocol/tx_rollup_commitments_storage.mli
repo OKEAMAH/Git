@@ -41,6 +41,15 @@ val add_commitment :
   Tx_rollup_commitments_repr.Commitment.t ->
   Raw_context.t tzresult Lwt.t
 
+(** [remove_bond context tx_rollup contract] removes the bond for an
+    implicit contract.  This will fail if either the bond does not exist,
+    or the bond is currently in-use. *)
+val remove_bond :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Signature.public_key_hash ->
+  Raw_context.t tzresult Lwt.t
+
 (** [retire_rollup_level context tx_rollup level] removes all data
    associated with a level. It decrements the bonded commitment count
    for any contracts whose commitments have been either accepted or
