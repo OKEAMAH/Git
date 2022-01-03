@@ -270,6 +270,20 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         source
         pp_result
         result
+  | Tx_rollup_prerejection {tx_rollup; hash} ->
+      Format.fprintf
+        ppf
+        "@[<v 2>%s:tx_rollup %a hash %a @,From: %a%a@]"
+        (if internal then "Internal tx rollup prerejection"
+        else "Tx rollup rejection")
+        Tx_rollup.pp
+        tx_rollup
+        Tx_rollup_rejection.Rejection_hash.pp
+        hash
+        Contract.pp
+        source
+        pp_result
+        result
   | Sc_rollup_originate {kind; boot_sector} ->
       let (module R : Sc_rollups.PVM.S) = Sc_rollups.of_kind kind in
       Format.fprintf
@@ -639,6 +653,10 @@ let pp_manager_operation_contents_and_result ppf
     Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
     pp_balance_updates_opt ppf balance_updates
   in
+  let pp_tx_rollup_prerejection_result
+      (Tx_rollup_prerejection_result {consumed_gas}) =
+    Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas
+  in
   let pp_sc_rollup_originate_result
       (Sc_rollup_originate_result
         {address; consumed_gas; size; balance_updates}) =
@@ -826,6 +844,17 @@ let pp_manager_operation_contents_and_result ppf
           "@[<v 0>This transfer ticket operation was BACKTRACKED, its expected \
            effects (as follow) were NOT applied.@]" ;
         pp_transfer_ticket_result op
+    | Applied (Tx_rollup_prerejection_result _ as op) ->
+        Format.fprintf
+          ppf
+          "This tx rollup prerejection operation was successfully applied" ;
+        pp_tx_rollup_prerejection_result op
+    | Backtracked ((Tx_rollup_prerejection_result _ as op), _err) ->
+        Format.fprintf
+          ppf
+          "@[<v 0>This tx rollup prerejection operation was BACKTRACKED, its \
+           expected effects (as follow) were NOT applied.@]" ;
+        pp_tx_rollup_prerejection_result op
     | Applied (Sc_rollup_originate_result _ as op) ->
         Format.fprintf
           ppf

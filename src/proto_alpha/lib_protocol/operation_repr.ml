@@ -89,6 +89,8 @@ module Kind = struct
 
   type transfer_ticket = Transfer_ticket_kind
 
+  type tx_rollup_prerejection = Tx_rollup_prerejection_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type sc_rollup_add_messages = Sc_rollup_add_messages_kind
@@ -116,6 +118,7 @@ module Kind = struct
     | Tx_rollup_dispatch_tickets_manager_kind
         : tx_rollup_dispatch_tickets manager
     | Transfer_ticket_manager_kind : transfer_ticket manager
+    | Tx_rollup_prerejection_manager_kind : tx_rollup_prerejection manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
@@ -333,6 +336,7 @@ and _ manager_operation =
       previous_message_result : Tx_rollup_message_result_repr.t;
       previous_message_result_path : Tx_rollup_commitment_repr.Merkle.path;
       proof : Tx_rollup_l2_proof.t;
+      commitment : Tx_rollup_commitment_repr.Hash.t;
     }
       -> Kind.tx_rollup_rejection manager_operation
   | Tx_rollup_dispatch_tickets : {
@@ -353,6 +357,11 @@ and _ manager_operation =
       entrypoint : Entrypoint_repr.t;
     }
       -> Kind.transfer_ticket manager_operation
+  | Tx_rollup_prerejection : {
+      tx_rollup : Tx_rollup_repr.t;
+      hash : Tx_rollup_rejection_repr.Rejection_hash.t;
+    }
+      -> Kind.tx_rollup_prerejection manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup_repr.Kind.t;
       boot_sector : string;
@@ -395,6 +404,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Tx_rollup_rejection _ -> Kind.Tx_rollup_rejection_manager_kind
   | Tx_rollup_dispatch_tickets _ -> Kind.Tx_rollup_dispatch_tickets_manager_kind
   | Transfer_ticket _ -> Kind.Transfer_ticket_manager_kind
+  | Tx_rollup_prerejection _ -> Kind.Tx_rollup_prerejection_manager_kind
   | Sc_rollup_originate _ -> Kind.Sc_rollup_originate_manager_kind
   | Sc_rollup_add_messages _ -> Kind.Sc_rollup_add_messages_manager_kind
   | Sc_rollup_cement _ -> Kind.Sc_rollup_cement_manager_kind
@@ -471,6 +481,8 @@ let tx_rollup_operation_dispatch_tickets_tag =
   tx_rollup_operation_tag_offset + 7
 
 let transfer_ticket_tag = tx_rollup_operation_tag_offset + 8
+
+let tx_rollup_operation_prerejection_tag = tx_rollup_operation_tag_offset + 9
 
 let sc_rollup_operation_tag_offset = 200
 
@@ -729,25 +741,28 @@ module Encoding = struct
           tag = tx_rollup_operation_rejection_tag;
           name = "tx_rollup_rejection";
           encoding =
-            obj10
-              (req "rollup" Tx_rollup_repr.encoding)
-              (req "level" Tx_rollup_level_repr.encoding)
-              (req "message" Tx_rollup_message_repr.encoding)
-              (req "message_position" n)
-              (req "message_path" Tx_rollup_inbox_repr.Merkle.path_encoding)
-              (req
-                 "message_result_hash"
-                 Tx_rollup_message_result_hash_repr.encoding)
-              (req
-                 "message_result_path"
-                 Tx_rollup_commitment_repr.Merkle.path_encoding)
-              (req
-                 "previous_message_result"
-                 Tx_rollup_message_result_repr.encoding)
-              (req
-                 "previous_message_result_path"
-                 Tx_rollup_commitment_repr.Merkle.path_encoding)
-              (req "proof" Tx_rollup_l2_proof.encoding);
+            merge_objs
+              (obj9
+                 (req "rollup" Tx_rollup_repr.encoding)
+                 (req "level" Tx_rollup_level_repr.encoding)
+                 (req "message" Tx_rollup_message_repr.encoding)
+                 (req "message_position" n)
+                 (req "message_path" Tx_rollup_inbox_repr.Merkle.path_encoding)
+                 (req
+                    "message_result_hash"
+                    Tx_rollup_message_result_hash_repr.encoding)
+                 (req
+                    "message_result_path"
+                    Tx_rollup_commitment_repr.Merkle.path_encoding)
+                 (req
+                    "previous_message_result"
+                    Tx_rollup_message_result_repr.encoding)
+                 (req
+                    "previous_message_result_path"
+                    Tx_rollup_commitment_repr.Merkle.path_encoding))
+              (obj2
+                 (req "proof" Tx_rollup_l2_proof.encoding)
+                 (req "commitment" Tx_rollup_commitment_repr.Hash.encoding));
           select =
             (function
             | Manager (Tx_rollup_rejection _ as op) -> Some op | _ -> None);
@@ -765,28 +780,29 @@ module Encoding = struct
                   previous_message_result;
                   previous_message_result_path;
                   proof;
+                  commitment;
                 } ->
-                ( tx_rollup,
-                  level,
-                  message,
-                  Z.of_int message_position,
-                  message_path,
-                  message_result_hash,
-                  message_result_path,
-                  previous_message_result,
-                  previous_message_result_path,
-                  proof ));
+                ( ( tx_rollup,
+                    level,
+                    message,
+                    Z.of_int message_position,
+                    message_path,
+                    message_result_hash,
+                    message_result_path,
+                    previous_message_result,
+                    previous_message_result_path ),
+                  (proof, commitment) ));
           inj =
-            (fun ( tx_rollup,
-                   level,
-                   message,
-                   message_position,
-                   message_path,
-                   message_result_hash,
-                   message_result_path,
-                   previous_message_result,
-                   previous_message_result_path,
-                   proof ) ->
+            (fun ( ( tx_rollup,
+                     level,
+                     message,
+                     message_position,
+                     message_path,
+                     message_result_hash,
+                     message_result_path,
+                     previous_message_result,
+                     previous_message_result_path ),
+                   (proof, commitment) ) ->
               Tx_rollup_rejection
                 {
                   tx_rollup;
@@ -799,6 +815,7 @@ module Encoding = struct
                   previous_message_result;
                   previous_message_result_path;
                   proof;
+                  commitment;
                 });
         }
 
@@ -883,6 +900,25 @@ module Encoding = struct
             (fun (contents, ty, ticketer, amount, destination, entrypoint) ->
               Transfer_ticket
                 {contents; ty; ticketer; amount; destination; entrypoint});
+        }
+
+    let[@coq_axiom_with_reason "gadt"] tx_rollup_prerejection_case =
+      MCase
+        {
+          tag = tx_rollup_operation_prerejection_tag;
+          name = "tx_rollup_prerejection";
+          encoding =
+            obj2
+              (req "tx_rollup" Tx_rollup_repr.encoding)
+              (req "hash" Tx_rollup_rejection_repr.Rejection_hash.encoding);
+          select =
+            (function
+            | Manager (Tx_rollup_prerejection _ as op) -> Some op | _ -> None);
+          proj =
+            (function
+            | Tx_rollup_prerejection {tx_rollup; hash} -> (tx_rollup, hash));
+          inj =
+            (fun (tx_rollup, hash) -> Tx_rollup_prerejection {tx_rollup; hash});
         }
 
     let[@coq_axiom_with_reason "gadt"] sc_rollup_originate_case =
@@ -1301,6 +1337,11 @@ module Encoding = struct
       transfer_ticket_tag
       Manager_operations.transfer_ticket_case
 
+  let tx_rollup_prerejection_case =
+    make_manager_case
+      tx_rollup_operation_prerejection_tag
+      Manager_operations.tx_rollup_prerejection_case
+
   let sc_rollup_originate_case =
     make_manager_case
       sc_rollup_operation_origination_tag
@@ -1358,6 +1399,7 @@ module Encoding = struct
            make tx_rollup_rejection_case;
            make tx_rollup_dispatch_tickets_case;
            make transfer_ticket_case;
+           make tx_rollup_prerejection_case;
            make sc_rollup_originate_case;
            make sc_rollup_add_messages_case;
            make sc_rollup_cement_case;
@@ -1567,6 +1609,8 @@ let equal_manager_operation_kind :
   | (Tx_rollup_dispatch_tickets _, _) -> None
   | (Transfer_ticket _, Transfer_ticket _) -> Some Eq
   | (Transfer_ticket _, _) -> None
+  | (Tx_rollup_prerejection _, Tx_rollup_prerejection _) -> Some Eq
+  | (Tx_rollup_prerejection _, _) -> None
   | (Sc_rollup_originate _, Sc_rollup_originate _) -> Some Eq
   | (Sc_rollup_originate _, _) -> None
   | (Sc_rollup_add_messages _, Sc_rollup_add_messages _) -> Some Eq

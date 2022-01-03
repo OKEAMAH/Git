@@ -2672,6 +2672,8 @@ let commands_rw () =
       @@ Tx_rollup.proof_param
            ~usage:
              "Proof that the disputed message result provided is incorrect."
+      @@ prefix "with" @@ prefix "commitment"
+      @@ Tx_rollup.commitment_hash_param ~usage:"The commitment being rejected"
       @@ prefix "from"
       @@ ContractAlias.destination_param
            ~name:"src"
@@ -2700,6 +2702,7 @@ let commands_rw () =
            previous_withdraw_list_hash
            previous_message_result_path
            proof
+           commitment
            (_, source)
            cctxt ->
         match Contract.is_implicit source with
@@ -2745,6 +2748,7 @@ let commands_rw () =
               ~previous_context_hash
               ~previous_withdraw_list_hash
               ~previous_message_result_path
+              ~commitment
               ()
             >>=? fun _res -> return_unit);
     command

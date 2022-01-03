@@ -118,6 +118,8 @@ module Kind : sig
 
   type transfer_ticket = Transfer_ticket_kind
 
+  type tx_rollup_prerejection = Tx_rollup_prerejection_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type sc_rollup_add_messages = Sc_rollup_add_messages_kind
@@ -145,6 +147,7 @@ module Kind : sig
     | Tx_rollup_dispatch_tickets_manager_kind
         : tx_rollup_dispatch_tickets manager
     | Transfer_ticket_manager_kind : transfer_ticket manager
+    | Tx_rollup_prerejection_manager_kind : tx_rollup_prerejection manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
@@ -379,6 +382,7 @@ and _ manager_operation =
       previous_message_result : Tx_rollup_message_result_repr.t;
       previous_message_result_path : Tx_rollup_commitment_repr.Merkle.path;
       proof : Tx_rollup_l2_proof.t;
+      commitment : Tx_rollup_commitment_repr.Hash.t;
     }
       -> Kind.tx_rollup_rejection manager_operation
   | Tx_rollup_dispatch_tickets : {
@@ -417,6 +421,11 @@ and _ manager_operation =
           (** The entrypoint of the smart contract address that should receive the tickets. *)
     }
       -> Kind.transfer_ticket manager_operation
+  | Tx_rollup_prerejection : {
+      tx_rollup : Tx_rollup_repr.t;
+      hash : Tx_rollup_rejection_repr.Rejection_hash.t;
+    }
+      -> Kind.tx_rollup_prerejection manager_operation
   (* [Sc_rollup_originate] allows an implicit account to originate a new
      smart contract rollup (initialized with a given boot
      sector). *)
@@ -574,6 +583,9 @@ module Encoding : sig
 
   val transfer_ticket_case : Kind.transfer_ticket Kind.manager case
 
+  val tx_rollup_prerejection_case :
+    Kind.tx_rollup_prerejection Kind.manager case
+
   val sc_rollup_originate_case : Kind.sc_rollup_originate Kind.manager case
 
   val sc_rollup_add_messages_case :
@@ -631,6 +643,8 @@ module Encoding : sig
     val tx_rollup_dispatch_tickets_case : Kind.tx_rollup_dispatch_tickets case
 
     val transfer_ticket_case : Kind.transfer_ticket case
+
+    val tx_rollup_prerejection_case : Kind.tx_rollup_prerejection case
 
     val sc_rollup_originate_case : Kind.sc_rollup_originate case
 

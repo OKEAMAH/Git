@@ -2347,6 +2347,57 @@ module Rejection = struct
     replace_commitment ~l2_parameters ~commitment ~store messages
     >>= fun commitment -> return commitment
 
+  let make_rejection_param (commitment : Tx_rollup_commitment.Full.t) ~index =
+    let message_result_hash =
+      WithExceptions.Option.get
+        ~loc:__LOC__
+        (List.nth commitment.messages index)
+    in
+    let tree =
+      List.fold_left
+        (fun tree m -> Tx_rollup_commitment.Merkle.snoc tree m)
+        Tx_rollup_commitment.Merkle.nil
+        commitment.messages
+    in
+    let path =
+      match Tx_rollup_commitment.Merkle.compute_path tree index with
+      | Ok x -> x
+      | Error _ -> assert false
+    in
+    (message_result_hash, path)
+
+  let reject_with_valid_prerejection b contract tx_rollup level message
+      ~message_position ~message_path ~message_result_hash ~message_result_path
+      ~proof ~previous_message_result ~previous_message_result_path ~commitment
+      =
+    Op.tx_rollup_prereject
+      (B b)
+      ~source:contract
+      ~tx_rollup
+      ~level
+      ~message_position
+      ~proof
+    >>=? fun operation ->
+    Block.bake b ~operation >>=? fun b ->
+    let commitment =
+      Tx_rollup_commitment.(Compact.hash @@ Full.compact commitment)
+    in
+    Op.tx_rollup_reject
+      (B b)
+      contract
+      tx_rollup
+      level
+      message
+      ~message_position
+      ~message_path
+      ~message_result_hash
+      ~message_result_path
+      ~proof
+      ~previous_message_result
+      ~previous_message_result_path
+      ~commitment
+    >|=? fun op -> (op, b)
+
   let init_with_deposit ?tx_rollup_hard_size_limit_per_message addr =
     init_l2_store () >>= fun store ->
     context_init2 ?tx_rollup_hard_size_limit_per_message ()
@@ -2373,13 +2424,12 @@ module Rejection = struct
        test. *)
     l2_parameters (I i) >>=? fun l2_parameters ->
     make_proof store l2_parameters deposit >>= fun proof ->
-    Incremental.begin_construction b >>=? fun i ->
     let message_position = 0 in
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       Tx_rollup_level.root
@@ -2391,7 +2441,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
@@ -2483,14 +2535,14 @@ module Rejection = struct
     Incremental.add_operation i op >>=? fun i ->
     Incremental.finalize_block i >>=? fun b ->
     (* Now we produce a valid proof rejecting the commitment *)
-    l2_parameters (I i) >>=? fun l2_parameters ->
+    l2_parameters (B b) >>=? fun l2_parameters ->
     make_proof store l2_parameters message >>= fun proof ->
     let message_position = 0 in
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (B b)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       level
@@ -2502,8 +2554,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
-    Incremental.add_operation i op >>=? fun _ -> return_unit
+      ~commitment
+    >>=? fun (operation, b) ->
+    Block.bake b ~operation >>=? fun _ -> return_unit
 
   (** It is really similar to {!test_valid_proof_on_invalid_commitment} but it
       tries to reject a valid commitment, thus, fails. *)
@@ -2543,8 +2596,8 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (B b)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       level
@@ -2556,7 +2609,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
@@ -2584,7 +2639,6 @@ module Rejection = struct
     make_deposit b tx_rollup contract1 addr
     >>=? fun (b, (deposit_message, _), _ticket_hash) ->
     Context.Contract.balance (B b) contract1 >>=? fun balance ->
-    Context.Contract.balance (B b) contract2 >>=? fun balance2 ->
     (* [check_frozen] checks that contract1 has [expect] frozen tez. *)
     let check_frozen ~loc i expect =
       Contract.get_frozen_bonds (Incremental.alpha_ctxt i) contract1
@@ -2634,15 +2688,14 @@ module Rejection = struct
     >>=? fun () ->
     check_frozen ~loc:__LOC__ i bond_cost >>=? fun () ->
     Incremental.finalize_block i >>=? fun b ->
-    Incremental.begin_construction b >>=? fun i ->
     (* Now we produce a valid proof rejecting the second commitment *)
     make_proof store l2_parameters message >>= fun proof ->
     let message_position = 0 in
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment1 ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    reject_with_valid_prerejection
+      b
       contract2
       tx_rollup
       level1
@@ -2654,19 +2707,17 @@ module Rejection = struct
       ~proof
       ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
-    Incremental.add_operation i op >>=? fun i ->
+      ~commitment:commitment1
+    >>=? fun (operation, b) ->
+    Block.bake b ~operation >>=? fun b ->
+    Incremental.begin_construction b >>=? fun i ->
     check_bond (Incremental.alpha_ctxt i) tx_rollup contract1 0 >>=? fun () ->
     Assert.balance_was_debited ~loc:__LOC__ (I i) contract1 balance bond_cost
     >>=? fun () ->
     (* Now we need to check that the tez is really gone -- not just frozen *)
     check_frozen ~loc:__LOC__ i Tez.zero >>=? fun () ->
-    let reward = assert_ok Tez.(bond_cost /? 2L) in
-    Assert.balance_was_credited ~loc:__LOC__ (I i) contract2 balance2 reward
-    >>=? fun () ->
-    (* Now, we can still reject the root commitment, but we won't get a reward *)
+    (* Now, we can still reject the root commitment. *)
     Context.Contract.balance (I i) contract1 >>=? fun balance ->
-    Context.Contract.balance (I i) contract2 >>=? fun balance2 ->
     make_proof store l2_parameters deposit_message >>= fun proof ->
     let message_hash =
       Tx_rollup_message_hash.hash_uncarbonated deposit_message
@@ -2676,8 +2727,8 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment0 ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    reject_with_valid_prerejection
+      b
       contract2
       tx_rollup
       level0
@@ -2689,14 +2740,15 @@ module Rejection = struct
       ~proof
       ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
-    Incremental.add_operation i op >>=? fun i ->
+      ~commitment:commitment0
+    >>=? fun (operation, b) ->
+    Block.bake b ~operation >>=? fun b ->
+    Incremental.begin_construction b >>=? fun i ->
     check_bond (Incremental.alpha_ctxt i) tx_rollup contract1 0 >>=? fun () ->
     Assert.balance_was_debited ~loc:__LOC__ (I i) contract1 balance Tez.zero
     >>=? fun () ->
     (* Now we need to check that the tez still really gone -- not just frozen *)
-    check_frozen ~loc:__LOC__ i Tez.zero >>=? fun () ->
-    Assert.balance_was_credited ~loc:__LOC__ (I i) contract2 balance2 Tez.zero
+    check_frozen ~loc:__LOC__ i Tez.zero
 
   (** Test the proof production (used in this test file) and the proof
       verification handles a hard failure. [make_bad_message] makes a
@@ -2728,8 +2780,8 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (B b)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       level
@@ -2741,8 +2793,10 @@ module Rejection = struct
       ~proof
       ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
-    Incremental.add_operation i op >>=? fun i ->
+      ~commitment
+    >>=? fun (operation, b) ->
+    Block.bake b ~operation >>=? fun b ->
+    Incremental.begin_construction b >>=? fun i ->
     check_bond (Incremental.alpha_ctxt i) tx_rollup account 0 >>=? fun () ->
     return_unit
 
@@ -2806,8 +2860,9 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    Incremental.finalize_block i >>=? fun b ->
+    reject_with_valid_prerejection
+      b
       contract
       tx_rollup
       level
@@ -2819,8 +2874,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
-    Incremental.add_operation i op >>=? fun _ -> return_unit
+      ~commitment
+    >>=? fun (operation, b) ->
+    Block.bake b ~operation >>=? fun _ -> return_unit
 
   (** Test that an empty proof is not able to reject a valid commitment. *)
   let test_invalid_proof_on_invalid_commitment () =
@@ -2833,8 +2889,9 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    Incremental.finalize_block i >>=? fun b ->
+    reject_with_valid_prerejection
+      b
       contract
       tx_rollup
       level
@@ -2846,7 +2903,9 @@ module Rejection = struct
       ~proof:invalid_proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
@@ -2874,8 +2933,9 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    Incremental.finalize_block i >>=? fun b ->
+    reject_with_valid_prerejection
+      b
       contract
       tx_rollup
       level
@@ -2887,7 +2947,9 @@ module Rejection = struct
       ~message_result_path
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
@@ -2905,7 +2967,7 @@ module Rejection = struct
               }))
     >>=? fun _ -> return_unit
 
-  (** Test that rejection successfully fails when there's no commitment to
+  (** Test that prerejection successfully fails when there's no commitment to
       reject *)
   let test_no_commitment () =
     context_init1 () >>=? fun (b, contract) ->
@@ -2921,8 +2983,10 @@ module Rejection = struct
     let message_path = single_message_path message_hash in
     l2_parameters (I i) >>=? fun l2_parameters ->
     valid_empty_proof l2_parameters >>= fun proof ->
-    Op.tx_rollup_reject
-      (I i)
+    make_incomplete_commitment_for_batch (I i) level tx_rollup []
+    >>=? fun (commitment, _) ->
+    reject_with_valid_prerejection
+      b
       contract
       tx_rollup
       level
@@ -2934,14 +2998,15 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
       ~expect_failure:
         (check_proto_error
-           (Tx_rollup_errors.Cannot_reject_level
-              {provided = level; accepted_range = None}))
+           Tx_rollup_errors.Rejection_for_nonexistent_commitment)
     >>=? fun _ -> return_unit
 
   (** Test that rejection successfully fails when the rejected commitment is
@@ -2971,8 +3036,9 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    Incremental.finalize_block i >>=? fun b ->
+    reject_with_valid_prerejection
+      b
       contract
       tx_rollup
       level
@@ -2984,7 +3050,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
@@ -3015,8 +3083,9 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    Incremental.finalize_block i >>=? fun b ->
+    reject_with_valid_prerejection
+      b
       contract1
       tx_rollup
       level
@@ -3028,7 +3097,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
@@ -3041,14 +3112,15 @@ module Rejection = struct
       exist in the inbox. *)
   let test_wrong_message_position () =
     init_with_valid_commitment ()
-    >>=? fun (i, contract1, tx_rollup, level, message, _commitment) ->
+    >>=? fun (i, contract1, tx_rollup, level, message, commitment) ->
     let (message, _size) = Tx_rollup_message.make_batch message in
     let message_hash = Tx_rollup_message_hash.hash_uncarbonated message in
     let message_path = single_message_path message_hash in
     l2_parameters (I i) >>=? fun l2_parameters ->
     valid_empty_proof l2_parameters >>= fun proof ->
-    Op.tx_rollup_reject
-      (I i)
+    Incremental.finalize_block i >>=? fun b ->
+    reject_with_valid_prerejection
+      b
       contract1
       tx_rollup
       level
@@ -3060,7 +3132,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
@@ -3086,13 +3160,12 @@ module Rejection = struct
     Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
     Incremental.finalize_block i >>=? fun b ->
-    Incremental.begin_construction b >>=? fun i ->
     let message_position = 0 in
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       Tx_rollup_level.root
@@ -3104,7 +3177,9 @@ module Rejection = struct
       ~proof:invalid_proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op
@@ -3114,8 +3189,8 @@ module Rejection = struct
     (* Check with a reasonable proof *)
     l2_parameters (I i) >>=? fun l2_parameters ->
     make_proof store l2_parameters deposit >>= fun proof ->
-    Op.tx_rollup_reject
-      (I i)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       Tx_rollup_level.root
@@ -3127,7 +3202,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation i op >>=? fun _ -> return_unit
 
   let add_store_to_ctxt ctxt store =
@@ -3163,13 +3240,12 @@ module Rejection = struct
        proof required is above [size], so the rejection should succeed. *)
     l2_parameters (I i) >>=? fun l2_parameters ->
     make_proof store l2_parameters deposit >>= fun proof ->
-    Incremental.begin_construction b >>=? fun i ->
     let message_position = 0 in
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       Tx_rollup_level.root
@@ -3181,17 +3257,19 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op -> return (i, op)
+      ~commitment
 
   (** Test that a commitment which require a too-large proof can be rejected
       even if the after hash is correct. *)
   let test_too_large_rejection () =
     (* With a limit, the commitment is rejected because the required proof
        is above the limit. *)
-    test_large_rejection 100 >>=? fun (i, op) ->
+    test_large_rejection 100 >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation i op >>=? fun _ ->
     (* With a high limit, the commitment can not be rejected as it is valid *)
-    test_large_rejection 10_000 >>=? fun (i, op) ->
+    test_large_rejection 10_000 >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       ~expect_failure:
@@ -3238,13 +3316,12 @@ module Rejection = struct
     in
     (* We try to reject with the truncated proof which is already above the
        size limit. *)
-    Incremental.begin_construction b >>=? fun i ->
     let message_position = 0 in
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       Tx_rollup_level.root
@@ -3256,7 +3333,9 @@ module Rejection = struct
       ~proof:proof_truncated
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation i op >>=? fun _ -> return_unit
 
   (** Create a context where the batcher submitted and committed for a layer2
@@ -3346,8 +3425,8 @@ module Rejection = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (B b)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       level
@@ -3359,7 +3438,9 @@ module Rejection = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation i op ?expect_failure >>=? fun _ -> return_unit
 
   let test_reject_withdrawals_limit () =
@@ -3534,8 +3615,8 @@ module Rejection = struct
       let truncated_node = drop_n proof_node 100 in
       {proof with state = (fun () -> truncated_node)}
     in
-    Op.tx_rollup_reject
-      (B b)
+    reject_with_valid_prerejection
+      b
       account
       tx_rollup
       Tx_rollup_level.root
@@ -3547,11 +3628,53 @@ module Rejection = struct
       ~proof:proof_truncated
       ~previous_message_result:message0_result
       ~previous_message_result_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
     Incremental.begin_construction b >>=? fun i ->
     (* Finally, we reject the commitment and check that the size fits in
        a Tezos operation. *)
     Incremental.add_operation ~check_size:true i op >>=? fun _i -> return_unit
+
+  (** [test_missing_prerejection] tests that rejection fails without a
+      corresponding prerejection *)
+  let test_missing_prerejection () =
+    init_l2_store () >>= fun store ->
+    init_with_valid_commitment ()
+    >>=? fun (i, contract, tx_rollup, level, message, commitment) ->
+    l2_parameters (I i) >>=? fun l2_parameters ->
+    make_proof store l2_parameters (fst @@ Tx_rollup_message.make_batch message)
+    >>= fun proof ->
+    let (message, _size) = Tx_rollup_message.make_batch message in
+    let message_hash = Tx_rollup_message_hash.hash_uncarbonated message in
+    let message_path =
+      assert_ok Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0)
+    in
+    let (message_result_hash, message_result_path) =
+      make_rejection_param commitment ~index:0
+    in
+    Op.tx_rollup_reject
+      (I i)
+      contract
+      tx_rollup
+      level
+      message
+      ~message_position:0
+      ~message_path
+      ~message_result_hash
+      ~message_result_path
+      ~proof
+      ~previous_message_result
+      ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
+      ~commitment:Tx_rollup_commitment.(Compact.hash @@ Full.compact commitment)
+    >>=? fun op ->
+    Incremental.add_operation
+      i
+      op
+      ~expect_failure:
+        (check_proto_error Tx_rollup_errors.Rejection_without_prerejection)
+    >>=? fun i ->
+    ignore i ;
+    return_unit
 
   let tests =
     [
@@ -3617,6 +3740,10 @@ module Rejection = struct
         "regression test rejection max proof size and message"
         `Quick
         test_rejection_size_limit;
+      Tztest.tztest
+        "reject with a missing prerejection"
+        `Quick
+        test_missing_prerejection;
     ]
 end
 
@@ -3635,7 +3762,7 @@ module Single_message_inbox = struct
     Op.tx_rollup_submit_batch (B b) account tx_rollup contents
     >>=? fun operation -> Block.bake b ~operation
 
-  let reject ?expect_failure b tx_rollup account level commitment =
+  let reject ?expect_failure b tx_rollup account level commitment ~prereject =
     Format.printf
       "Rejecting level %a (%s)\n"
       Tx_rollup_level.pp
@@ -3647,8 +3774,23 @@ module Single_message_inbox = struct
     let (message_result_hash, message_result_path) =
       message_result_hash_and_path commitment ~message_position
     in
+    Incremental.begin_construction b >>=? fun i ->
+    (if prereject then
+     Op.tx_rollup_prereject
+       (I i)
+       ~source:account
+       ~tx_rollup
+       ~level
+       ~message_position:0
+       ~proof
+     >>=? fun op -> Incremental.add_operation i op
+    else return i)
+    >>=? fun i ->
+    let commitment =
+      Tx_rollup_commitment.(Compact.hash @@ Full.compact commitment)
+    in
     Op.tx_rollup_reject
-      (B b)
+      (I i)
       account
       tx_rollup
       level
@@ -3660,8 +3802,8 @@ module Single_message_inbox = struct
       ~proof
       ~previous_message_result:Rejection.previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
+      ~commitment
     >>=? fun operation ->
-    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation i operation ?expect_failure >>=? fun i ->
     Incremental.finalize_block i
 
@@ -3733,7 +3875,8 @@ let test_state () =
      Commits:    [A1]   [A2]
   *)
   (* Reject the commitment *)
-  reject b tx_rollup account1 Tx_rollup_level.root commit1 >>=? fun b ->
+  reject b tx_rollup account1 Tx_rollup_level.root commit1 ~prereject:true
+  >>=? fun b ->
   (*
      Inboxes:    [  ] - [  ] - [  ]
      Commits:    <A1>   <A2>
@@ -3782,7 +3925,8 @@ let test_state () =
      Commits:    [A2]   [A1]
   *)
   (* Reject the first commitment *)
-  reject b tx_rollup account2 Tx_rollup_level.root commit1 >>=? fun b ->
+  reject b tx_rollup account2 Tx_rollup_level.root commit1 ~prereject:true
+  >>=? fun b ->
   (* Check that we went back to the initial state *)
   (*
      Inboxes:    [  ] - [  ] - [  ]
@@ -3815,7 +3959,7 @@ let test_state () =
   Block.bake b ~operations:[] >>=? fun b ->
   Op.tx_rollup_finalize (B b) account1 tx_rollup >>=? fun operation ->
   Block.bake b ~operation >>=? fun b ->
-  (* Check we cannot finalize root anymore *)
+  (* Check we cannot reject root anymore *)
   reject
     b
     tx_rollup
@@ -3826,9 +3970,17 @@ let test_state () =
       (check_proto_error_f (function
           | Tx_rollup_errors.Cannot_reject_level _ -> true
           | _ -> false))
+    ~prereject:false
   >>=? fun b ->
   (* We can reject level 1 *)
-  reject b tx_rollup account2 Tx_rollup_level.(succ root) commit2 >>=? fun b ->
+  reject
+    b
+    tx_rollup
+    account2
+    Tx_rollup_level.(succ root)
+    commit2
+    ~prereject:true
+  >>=? fun b ->
   (* There is no commitment to finalize anymore *)
   Block.bake b ~operations:[] >>=? fun b ->
   Block.bake b ~operations:[] >>=? fun b ->
@@ -3904,7 +4056,8 @@ let test_state_with_deleted () =
   Op.tx_rollup_remove_commitment (B b) account1 tx_rollup >>=? fun operation ->
   Block.bake ~operation b >>=? fun b ->
   (* Reject level 1, it works *)
-  reject b tx_rollup account1 commit1.level commit1 >>=? fun b ->
+  reject b tx_rollup account1 commit1.level commit1 ~prereject:true
+  >>=? fun b ->
   ignore b ;
   return_unit
 
@@ -5137,7 +5290,6 @@ module Withdraw = struct
     >>=? fun i ->
     Incremental.add_operation i operation >>=? fun i ->
     Incremental.finalize_block i >>=? fun b ->
-    Incremental.begin_construction b >>=? fun i ->
     let message_position = 0 in
     let message_path =
       single_message_path @@ Tx_rollup_message_hash.hash_uncarbonated message
@@ -5145,8 +5297,8 @@ module Withdraw = struct
     let message_result_path =
       compute_message_result_path commitment ~message_position
     in
-    Op.tx_rollup_reject
-      (I i)
+    Rejection.reject_with_valid_prerejection
+      b
       account
       tx_rollup
       level
@@ -5158,7 +5310,9 @@ module Withdraw = struct
       ~proof
       ~previous_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
-    >>=? fun op ->
+      ~commitment
+    >>=? fun (op, b) ->
+    Incremental.begin_construction b >>=? fun i ->
     Incremental.add_operation
       i
       op

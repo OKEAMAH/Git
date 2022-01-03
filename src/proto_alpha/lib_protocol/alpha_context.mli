@@ -2027,6 +2027,14 @@ module Tx_rollup_commitment : sig
     Tx_rollup_state.t ->
     Tx_rollup_level.t ->
     (context * Tx_rollup_state.t) tzresult Lwt.t
+
+  val commitment_exists :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    Tx_rollup_commitment_hash.t ->
+    (context * bool) tzresult Lwt.t
 end
 
 module Tx_rollup_hash : sig
@@ -2865,6 +2873,8 @@ module Kind : sig
 
   type transfer_ticket = Transfer_ticket_kind
 
+  type tx_rollup_prerejection = Tx_rollup_prerejection_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type sc_rollup_add_messages = Sc_rollup_add_messages_kind
@@ -2892,6 +2902,7 @@ module Kind : sig
     | Tx_rollup_dispatch_tickets_manager_kind
         : tx_rollup_dispatch_tickets manager
     | Transfer_ticket_manager_kind : transfer_ticket manager
+    | Tx_rollup_prerejection_manager_kind : tx_rollup_prerejection manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
@@ -3049,6 +3060,7 @@ and _ manager_operation =
       previous_message_result : Tx_rollup_message_result.t;
       previous_message_result_path : Tx_rollup_commitment.Merkle.path;
       proof : Tx_rollup_l2_proof.t;
+      commitment : Tx_rollup_commitment_hash.t;
     }
       -> Kind.tx_rollup_rejection manager_operation
   | Tx_rollup_dispatch_tickets : {
@@ -3069,6 +3081,11 @@ and _ manager_operation =
       entrypoint : Entrypoint.t;
     }
       -> Kind.transfer_ticket manager_operation
+  | Tx_rollup_prerejection : {
+      tx_rollup : Tx_rollup.t;
+      hash : Tx_rollup_rejection.Rejection_hash.t;
+    }
+      -> Kind.tx_rollup_prerejection manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup.Kind.t;
       boot_sector : string;
@@ -3236,6 +3253,9 @@ module Operation : sig
 
     val transfer_ticket_case : Kind.transfer_ticket Kind.manager case
 
+    val tx_rollup_prerejection_case :
+      Kind.tx_rollup_prerejection Kind.manager case
+
     val register_global_constant_case :
       Kind.register_global_constant Kind.manager case
 
@@ -3299,6 +3319,8 @@ module Operation : sig
       val tx_rollup_dispatch_tickets_case : Kind.tx_rollup_dispatch_tickets case
 
       val transfer_ticket_case : Kind.transfer_ticket case
+
+      val tx_rollup_prerejection_case : Kind.tx_rollup_prerejection case
 
       val sc_rollup_originate_case : Kind.sc_rollup_originate case
 

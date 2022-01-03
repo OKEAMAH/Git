@@ -639,7 +639,7 @@ let tx_rollup_reject ?counter ?fee ?gas_limit ?storage_limit ctxt
     ~(message_path : Tx_rollup_inbox.Merkle.path) ~message_result_hash
     ~message_result_path ~(proof : Tx_rollup_l2_proof.t)
     ~(previous_message_result : Tx_rollup_message_result.t)
-    ~previous_message_result_path =
+    ~previous_message_result_path ~(commitment : Tx_rollup_commitment_hash.t) =
   manager_operation
     ?counter
     ?fee
@@ -659,10 +659,38 @@ let tx_rollup_reject ?counter ?fee ?gas_limit ?storage_limit ctxt
          previous_message_result;
          previous_message_result_path;
          message_result_path;
+         commitment;
        })
   >>=? fun to_sign_op ->
   Context.Contract.manager ctxt source >|=? fun account ->
   sign account.sk ctxt to_sign_op
+
+let tx_rollup_prereject ?counter ?fee ?gas_limit ?storage_limit ctxt
+    ~(source : Contract.t) ~(tx_rollup : Tx_rollup.t)
+    ~(level : Tx_rollup_level.t) ~(message_position : int)
+    ~(proof : Tx_rollup_l2_proof.t) =
+  match Contract.is_implicit source with
+  | None -> failwith "Expected an implicit contract"
+  | Some key ->
+      let hash =
+        Tx_rollup_rejection.generate_prerejection
+          ~source:key
+          ~tx_rollup
+          ~level
+          ~message_position
+          ~proof
+      in
+      manager_operation
+        ?counter
+        ?fee
+        ?gas_limit
+        ?storage_limit
+        ~source
+        ctxt
+        (Tx_rollup_prerejection {tx_rollup; hash})
+      >>=? fun to_sign_op ->
+      Context.Contract.manager ctxt source >|=? fun account ->
+      sign account.sk ctxt to_sign_op
 
 let originated_sc_rollup op =
   let packed = Operation.hash_packed op in

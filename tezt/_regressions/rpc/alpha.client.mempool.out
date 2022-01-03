@@ -675,6 +675,10 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                         "title": "A Tezos protocol ID (Base58Check-encoded)",
                         "$ref": "#/definitions/unistring"
                       },
+                      "Rejection_hash": {
+                        "title": "A rejection ID (Base58Check-encoded)",
+                        "$ref": "#/definitions/unistring"
+                      },
                       "Signature": {
                         "title": "A Ed25519, Secp256k1 or P256 signature (Base58Check-encoded)",
                         "$ref": "#/definitions/unistring"
@@ -2508,9 +2512,13 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                                   "version"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "commitment": {
+                                "$ref": "#/definitions/Commitment_hash"
                               }
                             },
                             "required": [
+                              "commitment",
                               "proof",
                               "previous_message_result_path",
                               "previous_message_result",
@@ -2972,6 +2980,50 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                               "ticket_ticketer",
                               "ticket_ty",
                               "ticket_contents",
+                              "storage_limit",
+                              "gas_limit",
+                              "counter",
+                              "fee",
+                              "source",
+                              "kind"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "title": "Tx_rollup_prerejection",
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "tx_rollup_prerejection"
+                                ]
+                              },
+                              "source": {
+                                "$ref": "#/definitions/Signature.Public_key_hash"
+                              },
+                              "fee": {
+                                "$ref": "#/definitions/alpha.mutez"
+                              },
+                              "counter": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "gas_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "storage_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "tx_rollup": {
+                                "$ref": "#/definitions/alpha.tx_rollup_id"
+                              },
+                              "hash": {
+                                "$ref": "#/definitions/Rejection_hash"
+                              }
+                            },
+                            "required": [
+                              "hash",
+                              "tx_rollup",
                               "storage_limit",
                               "gas_limit",
                               "counter",
@@ -5491,6 +5543,17 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                                     "kind": "Dynamic"
                                   },
                                   "kind": "named"
+                                },
+                                {
+                                  "name": "commitment",
+                                  "layout": {
+                                    "kind": "Bytes"
+                                  },
+                                  "data_kind": {
+                                    "size": 32,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
                                 }
                               ],
                               "name": "Tx_rollup_rejection"
@@ -5806,6 +5869,102 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                                 }
                               ],
                               "name": "Transfer_ticket"
+                            },
+                            {
+                              "tag": 159,
+                              "fields": [
+                                {
+                                  "name": "Tag",
+                                  "layout": {
+                                    "size": "Uint8",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "source",
+                                  "layout": {
+                                    "name": "public_key_hash",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "size": 21,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "fee",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "counter",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "gas_limit",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "storage_limit",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "tx_rollup",
+                                  "layout": {
+                                    "kind": "Bytes"
+                                  },
+                                  "data_kind": {
+                                    "size": 20,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "hash",
+                                  "layout": {
+                                    "kind": "Bytes"
+                                  },
+                                  "data_kind": {
+                                    "size": 20,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                }
+                              ],
+                              "name": "Tx_rollup_prerejection"
                             },
                             {
                               "tag": 200,
@@ -10168,6 +10327,10 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                         "title": "A Tezos protocol ID (Base58Check-encoded)",
                         "$ref": "#/definitions/unistring"
                       },
+                      "Rejection_hash": {
+                        "title": "A rejection ID (Base58Check-encoded)",
+                        "$ref": "#/definitions/unistring"
+                      },
                       "Signature": {
                         "title": "A Ed25519, Secp256k1 or P256 signature (Base58Check-encoded)",
                         "$ref": "#/definitions/unistring"
@@ -12001,9 +12164,13 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                                   "version"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "commitment": {
+                                "$ref": "#/definitions/Commitment_hash"
                               }
                             },
                             "required": [
+                              "commitment",
                               "proof",
                               "previous_message_result_path",
                               "previous_message_result",
@@ -12465,6 +12632,50 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                               "ticket_ticketer",
                               "ticket_ty",
                               "ticket_contents",
+                              "storage_limit",
+                              "gas_limit",
+                              "counter",
+                              "fee",
+                              "source",
+                              "kind"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "title": "Tx_rollup_prerejection",
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "tx_rollup_prerejection"
+                                ]
+                              },
+                              "source": {
+                                "$ref": "#/definitions/Signature.Public_key_hash"
+                              },
+                              "fee": {
+                                "$ref": "#/definitions/alpha.mutez"
+                              },
+                              "counter": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "gas_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "storage_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "tx_rollup": {
+                                "$ref": "#/definitions/alpha.tx_rollup_id"
+                              },
+                              "hash": {
+                                "$ref": "#/definitions/Rejection_hash"
+                              }
+                            },
+                            "required": [
+                              "hash",
+                              "tx_rollup",
                               "storage_limit",
                               "gas_limit",
                               "counter",

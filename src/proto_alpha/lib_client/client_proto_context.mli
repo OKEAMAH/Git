@@ -573,6 +573,7 @@ val submit_tx_rollup_rejection :
   previous_withdraw_list_hash:Tx_rollup_withdraw_list_hash.t ->
   previous_message_result_path:Tx_rollup_commitment.Merkle.path ->
   proof:Tx_rollup_l2_proof.t ->
+  commitment:Tx_rollup_commitment_hash.t ->
   unit ->
   (Operation_hash.t
   * Kind.tx_rollup_rejection Kind.manager contents

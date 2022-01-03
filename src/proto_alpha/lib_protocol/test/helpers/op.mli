@@ -338,6 +338,21 @@ val transfer_ticket :
   Entrypoint_repr.t ->
   (packed_operation, tztrace) result Lwt.t
 
+(** [tx_rollup_prereject ctxt source tx_rollup level hash batch_index]
+    creates a prerejection to prepare for a rejection. *)
+val tx_rollup_prereject :
+  ?counter:counter ->
+  ?fee:Tez.t ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:counter ->
+  Context.t ->
+  source:Contract.t ->
+  tx_rollup:Tx_rollup.t ->
+  level:Tx_rollup_level.t ->
+  message_position:int ->
+  proof:Tx_rollup_l2_proof.t ->
+  (packed_operation, tztrace) result Lwt.t
+
 (** [tx_rollup_reject ctxt source tx_rollup tx_rollup level message
     index proof] Rejects a tx rollup commitment. *)
 val tx_rollup_reject :
@@ -357,6 +372,7 @@ val tx_rollup_reject :
   proof:Tx_rollup_l2_proof.t ->
   previous_message_result:Tx_rollup_message_result.t ->
   previous_message_result_path:Tx_rollup_commitment.Merkle.path ->
+  commitment:Tx_rollup_commitment_hash.t ->
   Operation.packed tzresult Lwt.t
 
 (** [sc_rollup_origination ctxt source kind boot_sector] originates a new

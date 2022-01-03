@@ -968,7 +968,7 @@ let submit_tx_rollup_rejection (cctxt : #full) ~chain ~block ?confirmations
     ?counter ~source ~src_pk ~src_sk ~fee_parameter ~level ~tx_rollup ~message
     ~message_position ~message_path ~message_result_hash ~message_result_path
     ~previous_context_hash ~previous_withdraw_list_hash
-    ~previous_message_result_path ~proof () =
+    ~previous_message_result_path ~proof ~commitment () =
   let previous_message_result =
     Tx_rollup_message_result.
       {
@@ -995,6 +995,7 @@ let submit_tx_rollup_rejection (cctxt : #full) ~chain ~block ?confirmations
               previous_message_result_path;
               previous_message_result;
               proof;
+              commitment;
             }))
   in
   Injection.inject_manager_operation

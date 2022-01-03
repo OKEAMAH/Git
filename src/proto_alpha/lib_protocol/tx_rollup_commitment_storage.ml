@@ -410,3 +410,17 @@ let reject_commitment ctxt rollup state level =
   >>=? fun (ctxt, pred_hash) ->
   Tx_rollup_state_repr.record_commitment_rejection state level pred_hash
   >>?= fun state -> return (ctxt, state)
+
+let commitment_exists :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    Tx_rollup_state_repr.t ->
+    Tx_rollup_level_repr.t ->
+    Hash.t ->
+    (Raw_context.t * bool) tzresult Lwt.t =
+ fun ctxt tx_rollup state level commitment_to_check ->
+  find ctxt tx_rollup state level >>=? fun (ctxt, commitment) ->
+  match commitment with
+  | None -> return (ctxt, false)
+  | Some commitment ->
+      return (ctxt, Hash.(commitment.commitment_hash = commitment_to_check))

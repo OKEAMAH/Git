@@ -195,3 +195,14 @@ val check_agreed_and_disputed_results :
   disputed_position:int ->
   disputed_result_path:Tx_rollup_commitment_repr.Merkle.path ->
   Raw_context.t tzresult Lwt.t
+
+(** [commitment_exists ctxt tx_rollup level commitment_hash]
+    checks that the commitment at level [level] is equal to
+    [commitment_hash]. *)
+val commitment_exists :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Tx_rollup_state_repr.t ->
+  Tx_rollup_level_repr.t ->
+  Tx_rollup_commitment_repr.Hash.t ->
+  (Raw_context.t * bool) tzresult Lwt.t

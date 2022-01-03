@@ -1658,97 +1658,130 @@ let apply_external_manager_operation_content :
         message_result_path;
         previous_message_result;
         previous_message_result_path;
+        commitment = commitment_hash;
       } ->
+      Tx_rollup_rejection.check_prerejection
+        ctxt
+        ~source
+        ~tx_rollup
+        ~level
+        ~message_position
+        ~proof
+      >>=? fun (ctxt, priority) ->
       Tx_rollup_state.get ctxt tx_rollup >>=? fun (ctxt, state) ->
-      (* Check [level] *)
-      Tx_rollup_state.check_level_can_be_rejected state level >>?= fun () ->
-      Tx_rollup_commitment.get ctxt tx_rollup state level
+      Tx_rollup_commitment.find ctxt tx_rollup state level
       >>=? fun (ctxt, commitment) ->
-      (* Check [message] *)
-      error_when
-        Compare.Int.(
-          message_position < 0
-          || commitment.commitment.messages.count <= message_position)
-        (Tx_rollup_errors.Wrong_message_position
-           {
-             level = commitment.commitment.level;
-             position = message_position;
-             length = commitment.commitment.messages.count;
-           })
-      >>?= fun () ->
-      Tx_rollup_inbox.check_message_hash
-        ctxt
-        level
-        tx_rollup
-        ~position:message_position
-        message
-        message_path
-      >>=? fun ctxt ->
-      (* Check message result paths *)
-      Tx_rollup_commitment.check_agreed_and_disputed_results
-        ctxt
-        tx_rollup
-        state
-        commitment
-        ~agreed_result:previous_message_result
-        ~agreed_result_path:previous_message_result_path
-        ~disputed_result:message_result_hash
-        ~disputed_result_path:message_result_path
-        ~disputed_position:message_position
-      >>=? fun ctxt ->
-      (* Check [proof] *)
-      let parameters =
-        Tx_rollup_l2_apply.
-          {
-            tx_rollup_max_withdrawals_per_batch =
-              Constants.tx_rollup_max_withdrawals_per_batch ctxt;
-          }
-      in
-      Tx_rollup_l2_verifier.verify_proof
-        ctxt
-        parameters
-        message
-        proof
-        ~agreed:previous_message_result
-        ~rejected:message_result_hash
-        ~max_proof_size:
-          (Alpha_context.Constants.tx_rollup_rejection_max_proof_size ctxt)
-      >>=? fun ctxt ->
-      (* Proof is correct, removing *)
-      Tx_rollup_commitment.reject_commitment ctxt tx_rollup state level
-      >>=? fun (ctxt, state) ->
-      (* Bond slashing, and removing *)
-      Tx_rollup_commitment.slash_bond ctxt tx_rollup commitment.committer
-      >>=? fun (ctxt, slashed) ->
-      (if slashed then
-       let committer = Contract.implicit_contract commitment.committer in
-       let bid = Bond_id.Tx_rollup_bond_id tx_rollup in
-       Token.balance ctxt (`Frozen_bonds (committer, bid))
-       >>=? fun (ctxt, burn) ->
-       Tez.(burn /? 2L) >>?= fun reward ->
-       Token.transfer
-         ctxt
-         (`Frozen_bonds (committer, bid))
-         `Tx_rollup_rejection_punishments
-         burn
-       >>=? fun (ctxt, burn_update) ->
-       Token.transfer
-         ctxt
-         `Tx_rollup_rejection_rewards
-         (`Contract source_contract)
-         reward
-       >>=? fun (ctxt, reward_update) ->
-       return (ctxt, burn_update @ reward_update)
-      else return (ctxt, []))
+      (match commitment with
+      | Some commitment ->
+          (* Check [level] *)
+          Tx_rollup_state.check_level_can_be_rejected state level >>?= fun () ->
+          (* Check [message] *)
+          error_when
+            Compare.Int.(
+              message_position < 0
+              || commitment.commitment.messages.count <= message_position)
+            (Tx_rollup_errors.Wrong_message_position
+               {
+                 level = commitment.commitment.level;
+                 position = message_position;
+                 length = commitment.commitment.messages.count;
+               })
+          >>?= fun () ->
+          Tx_rollup_inbox.check_message_hash
+            ctxt
+            level
+            tx_rollup
+            ~position:message_position
+            message
+            message_path
+          >>=? fun ctxt ->
+          (* Check message result paths *)
+          Tx_rollup_commitment.check_agreed_and_disputed_results
+            ctxt
+            tx_rollup
+            state
+            commitment
+            ~agreed_result:previous_message_result
+            ~agreed_result_path:previous_message_result_path
+            ~disputed_result:message_result_hash
+            ~disputed_result_path:message_result_path
+            ~disputed_position:message_position
+          >>=? fun ctxt ->
+          (* Check [proof] *)
+          let parameters =
+            Tx_rollup_l2_apply.
+              {
+                tx_rollup_max_withdrawals_per_batch =
+                  Constants.tx_rollup_max_withdrawals_per_batch ctxt;
+              }
+          in
+          Tx_rollup_l2_verifier.verify_proof
+            ctxt
+            parameters
+            message
+            proof
+            ~agreed:previous_message_result
+            ~rejected:message_result_hash
+            ~max_proof_size:
+              (Alpha_context.Constants.tx_rollup_rejection_max_proof_size ctxt)
+          >>=? fun ctxt ->
+          (* Proof is correct, removing *)
+          Tx_rollup_commitment.reject_commitment ctxt tx_rollup state level
+          >>=? fun (ctxt, state) ->
+          (* Bond slashing, and removing *)
+          Tx_rollup_commitment.slash_bond ctxt tx_rollup commitment.committer
+          >>=? fun (ctxt, slashed) ->
+          (if slashed then
+           let committer = Contract.implicit_contract commitment.committer in
+           let bid = Bond_id.Tx_rollup_bond_id tx_rollup in
+           Token.balance ctxt (`Frozen_bonds (committer, bid))
+           >>=? fun (ctxt, burn) ->
+           Token.transfer
+             ctxt
+             (`Frozen_bonds (committer, bid))
+             `Tx_rollup_rejection_punishments
+             burn
+           >>=? fun (ctxt, reward_update) -> return (ctxt, reward_update)
+          else return (ctxt, []))
+          >>=? fun (ctxt, balance_updates) ->
+          Tx_rollup_rejection.update_accepted_prerejection
+            ctxt
+            ~source
+            ~tx_rollup
+            ~level
+            ~commitment:commitment_hash
+            ~commitment_exists:true
+            ~proof
+            ~priority
+          >>=? fun ctxt ->
+          (* Update state and conclude *)
+          Tx_rollup_state.update ctxt tx_rollup state >|=? fun ctxt ->
+          (ctxt, balance_updates)
+      | None ->
+          Tx_rollup_rejection.update_accepted_prerejection
+            ctxt
+            ~source
+            ~tx_rollup
+            ~level
+            ~commitment:commitment_hash
+            ~commitment_exists:false
+            ~proof
+            ~priority
+          >>=? fun ctxt -> return (ctxt, []))
       >>=? fun (ctxt, balance_updates) ->
-      (* Update state and conclude *)
-      Tx_rollup_state.update ctxt tx_rollup state >>=? fun ctxt ->
       let result =
         Tx_rollup_rejection_result
           {
             consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
             balance_updates;
           }
+      in
+      return (ctxt, result, [])
+  | Tx_rollup_prerejection {tx_rollup; hash} ->
+      Tx_rollup_rejection.prereject ctxt tx_rollup hash >>=? fun ctxt ->
+      let result =
+        Tx_rollup_prerejection_result
+          {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt}
       in
       return (ctxt, result, [])
   | Sc_rollup_originate {kind; boot_sector} ->
@@ -1912,7 +1945,8 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
         Tx_rollup_errors.Message_size_exceeds_limit
       >>=? fun () -> return ctxt
   | Tx_rollup_commit _ | Tx_rollup_return_bond _
-  | Tx_rollup_finalize_commitment _ | Tx_rollup_remove_commitment _ ->
+  | Tx_rollup_finalize_commitment _ | Tx_rollup_remove_commitment _
+  | Tx_rollup_prerejection _ ->
       assert_tx_rollup_feature_enabled ctxt >>=? fun () -> return ctxt
   | Transfer_ticket {contents; ty; _} ->
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
@@ -2092,7 +2126,7 @@ let burn_storage_fees :
           Tx_rollup_origination_result {payload with balance_updates} )
   | Tx_rollup_return_bond_result _ | Tx_rollup_remove_commitment_result _
   | Tx_rollup_rejection_result _ | Tx_rollup_finalize_commitment_result _
-  | Tx_rollup_commit_result _ ->
+  | Tx_rollup_commit_result _ | Tx_rollup_prerejection_result _ ->
       return (ctxt, storage_limit, smopr)
   | Transfer_ticket_result payload ->
       let consumed = payload.paid_storage_size_diff in
