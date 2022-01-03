@@ -110,7 +110,7 @@ type error +=
   | (* `Permanent *)
       Inconsistent_counters
   | (* `Permanent *)
-      Tx_rollup_commit_with_non_implicit_contract
+      Tx_rollup_operation_with_non_implicit_contract
 
 let () =
   register_error_kind
@@ -498,17 +498,18 @@ let () =
 
   register_error_kind
     `Permanent
-    ~id:"operation.commit_with_non_implicit_source"
-    ~title:"Submitted a commit with a non-implicit source"
-    ~description:"Submitting a commit must be with implicit contracts."
+    ~id:"operation.operation_with_non_implicit_source"
+    ~title:"Submitted a tx rollup operation with a non-implicit source"
+    ~description:
+      "Submitting a tx rollup operation must be with implicit contracts."
     ~pp:(fun ppf () ->
       Format.pp_print_string
         ppf
-        "Submitting a commit must be with implicit contracts.")
+        "Submitting a tx rollup operation must be with implicit contracts.")
     Data_encoding.empty
     (function
-      | Tx_rollup_commit_with_non_implicit_contract -> Some () | _ -> None)
-    (fun () -> Tx_rollup_commit_with_non_implicit_contract) ;
+      | Tx_rollup_operation_with_non_implicit_contract -> Some () | _ -> None)
+    (fun () -> Tx_rollup_operation_with_non_implicit_contract) ;
 
   let description =
     "Smart contract rollups will be enabled in a future proposal."
@@ -1204,7 +1205,7 @@ let apply_manager_operation_content :
   | Tx_rollup_commit {tx_rollup; commitment} -> (
       match Contract.is_implicit source with
       | None ->
-          fail Tx_rollup_commit_with_non_implicit_contract
+          fail Tx_rollup_operation_with_non_implicit_contract
           (* This is only called with implicit contracts *)
       | Some key ->
           (let current_level = (Level.current ctxt).level in
@@ -1249,6 +1250,29 @@ let apply_manager_operation_content :
               }
           in
           return (ctxt, result, []))
+  | Tx_rollup_return_bond {tx_rollup} ->
+      (match Contract.is_implicit source with
+      | None -> fail Tx_rollup_operation_with_non_implicit_contract
+      | Some key ->
+          Tx_rollup_commitments.remove_bond ctxt tx_rollup key >>=? fun ctxt ->
+          (* TODO/TORU: This depends on https://gitlab.com/tezos/tezos/-/merge_requests/4437
+             let bond_id = Rollup_bond_id.Tx_rollup_bond_id tx_rollup in
+             Token.transfer
+               ctxt
+               (`Frozen_rollup_bonds (source, bond_id))
+               (`Contract source)
+               (Constants.tx_rollup_commitment_bond ctxt))
+          *)
+          return (ctxt, []))
+      >>=? fun (ctxt, balance_updates) ->
+      let result =
+        Tx_rollup_return_bond_result
+          {
+            consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+            balance_updates;
+          }
+      in
+      return (ctxt, result, [])
   | Sc_rollup_originate {kind; boot_sector} ->
       Sc_rollup_operations.originate ctxt ~kind ~boot_sector
       >>=? fun ({address; size}, ctxt) ->
@@ -1403,6 +1427,8 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
         (Tx_rollup_commitments.Commitment_too_early
            (commitment.level, current_level))
       >|=? fun () -> ctxt
+  | Tx_rollup_return_bond _ ->
+      assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
       assert_sc_rollup_feature_enabled ctxt >|=? fun () -> ctxt)
   >>=? fun ctxt ->
@@ -1518,6 +1544,8 @@ let burn_storage_fees :
         consumed_gas = (_ : Gas.Arith.fp);
       } ->
       return (ctxt, storage_limit, smopr)
+  | Tx_rollup_return_bond_result payload ->
+      return (ctxt, storage_limit, Tx_rollup_return_bond_result payload)
   | Sc_rollup_originate_result payload ->
       let payer = `Contract payer in
       Fees.burn_sc_rollup_origination_fees

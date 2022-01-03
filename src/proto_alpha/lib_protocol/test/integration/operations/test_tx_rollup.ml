@@ -1048,6 +1048,57 @@ let test_commitment_acceptance () =
   ignore i ;
   return ()
 
+(** [test_bond_finalization] tests that commitment operations
+    in fact finalize bonds. *)
+let test_bond_finalization () =
+  context_init 2 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  let pkh1 = public_key_hash_exn contract1 in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  (* Transactions in block 2, 3, 4 *)
+  make_transactions_in tx_rollup contract1 [2; 3; 4] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_return_bond (I i) contract1 tx_rollup >>=? fun op ->
+  Incremental.add_operation i op ~expect_failure:(function
+      | Environment.Ecoproto_error
+          (Tx_rollup_commitments.Bond_does_not_exist a_pkh1 as e)
+        :: _
+        when a_pkh1 = pkh1 ->
+          Assert.test_error_encodings e ;
+          return_unit
+      | _ -> failwith "Commitment bond should not exist yet")
+  >>=? fun i ->
+  make_commitment_for_batch i (raw_level 2l) tx_rollup >>=? fun commitment_a ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment_a >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Op.tx_rollup_return_bond (I i) contract1 tx_rollup >>=? fun op ->
+  Incremental.add_operation i op ~expect_failure:(function
+      | Environment.Ecoproto_error
+          (Tx_rollup_commitments.Bond_in_use a_pkh1 as e)
+        :: _
+        when a_pkh1 = pkh1 ->
+          Assert.test_error_encodings e ;
+          return_unit
+      | _ -> failwith "Need to check that bond is in-use ")
+  >>=? fun i ->
+  wrap
+    (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
+       (Incremental.alpha_ctxt i)
+       tx_rollup
+       (raw_level 2l)
+       (raw_level 30l))
+  >>=? fun (ctxt, retired) ->
+  assert_retired retired >>=? fun () ->
+  let i = Incremental.set_alpha_ctxt i ctxt in
+  Op.tx_rollup_return_bond (I i) contract1 tx_rollup >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  ignore i ;
+  return ()
+
 let tests =
   [
     Tztest.tztest
@@ -1097,4 +1148,5 @@ let tests =
       "Test multiple nonrejected commitment"
       `Quick
       test_commitment_acceptance;
+    Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
   ]
