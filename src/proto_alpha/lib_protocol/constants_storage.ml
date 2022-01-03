@@ -169,6 +169,10 @@ let tx_rollup_finality_period c =
   let constants = Raw_context.constants c in
   constants.tx_rollup_finality_period
 
+let tx_rollup_max_unfinalized_levels c =
+  let constants = Raw_context.constants c in
+  constants.tx_rollup_max_unfinalized_levels
+
 let ratio_of_frozen_deposits_slashed_per_double_endorsement c =
   let constants = Raw_context.constants c in
   constants.ratio_of_frozen_deposits_slashed_per_double_endorsement
