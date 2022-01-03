@@ -64,6 +64,7 @@ type source =
   | `Baking_bonuses
   | `Minted
   | `Liquidity_baking_subsidies
+  | `Rollup_bond_return
   | container ]
 
 (** [sink] is the type of token receivers. Token receivers that are not
@@ -73,6 +74,7 @@ type sink =
   | `Double_signing_punishments
   | `Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
   | `Burned
+  | `Rollup_bond
   | container ]
 
 (** [allocated ctxt container] returns true if [balance ctxt container] is

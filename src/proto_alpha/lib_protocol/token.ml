@@ -44,6 +44,7 @@ type source =
   | `Baking_bonuses
   | `Minted
   | `Liquidity_baking_subsidies
+  | `Rollup_bond_return
   | container ]
 
 type sink =
@@ -51,6 +52,7 @@ type sink =
   | `Double_signing_punishments
   | `Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
   | `Burned
+  | `Rollup_bond
   | container ]
 
 let allocated ctxt stored =
@@ -111,6 +113,7 @@ let credit ctxt dest amount origin =
   | `Lost_endorsing_rewards (d, p, r) ->
       return (ctxt, Lost_endorsing_rewards (d, p, r))
   | `Burned -> return (ctxt, Burned)
+  | `Rollup_bond -> return (ctxt, Rollup_bond)
   | `Contract dest ->
       Contract_storage.credit_only_call_from_token ctxt dest amount
       >|=? fun ctxt -> (ctxt, Contract dest)
@@ -171,6 +174,7 @@ let spend ctxt src amount origin =
   | `Invoice -> return (ctxt, Invoice)
   | `Initial_commitments -> return (ctxt, Initial_commitments)
   | `Minted -> return (ctxt, Minted)
+  | `Rollup_bond_return -> return (ctxt, Rollup_bond)
   | `Liquidity_baking_subsidies -> return (ctxt, Liquidity_baking_subsidies)
   | `Revelation_rewards -> return (ctxt, Nonce_revelation_rewards)
   | `Double_signing_evidence_rewards ->

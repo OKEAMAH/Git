@@ -46,6 +46,7 @@ type balance =
   | Invoice
   | Initial_commitments
   | Minted
+  | Rollup_bond
 
 let balance_encoding =
   let open Data_encoding in
@@ -235,6 +236,14 @@ let balance_encoding =
               (req "category" (constant "minted")))
            (function Minted -> Some ((), ()) | _ -> None)
            (fun ((), ()) -> Minted);
+         case
+           (Tag 21)
+           ~title:"Rollup_bond"
+           (obj2
+              (req "kind" (constant "rollup_bond"))
+              (req "category" (constant "rollup_bond")))
+           (function Rollup_bond -> Some ((), ()) | _ -> None)
+           (fun ((), ()) -> Rollup_bond);
        ]
 
 let is_not_zero c = not (Compare.Int.equal c 0)
@@ -286,6 +295,7 @@ let compare_balance ba bb =
         | Invoice -> 18
         | Initial_commitments -> 19
         | Minted -> 20
+        | Rollup_bond -> 21
         (* don't forget to add parameterized cases in the first part of the function *)
       in
       Compare.Int.compare (index ba) (index bb)

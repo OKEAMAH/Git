@@ -1272,7 +1272,7 @@ let apply_manager_operation_content :
             Token.transfer
               ctxt
               (`Contract source)
-              `Burned (* TODO: replace this sink with a special sink *)
+              `Rollup_bond
               (Constants.tx_rollup_commitment_bond ctxt)
         | _ -> return (ctxt, []) )
       >>=? fun (ctxt, balance_updates) ->

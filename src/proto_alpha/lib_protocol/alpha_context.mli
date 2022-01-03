@@ -1517,6 +1517,7 @@ module Receipt : sig
     | Invoice
     | Initial_commitments
     | Minted
+    | Rollup_bond
 
   val compare_balance : balance -> balance -> int
 
@@ -2812,6 +2813,7 @@ module Token : sig
     | `Baking_bonuses
     | `Minted
     | `Liquidity_baking_subsidies
+    | `Rollup_bond_return
     | container ]
 
   type sink =
@@ -2819,6 +2821,7 @@ module Token : sig
     | `Double_signing_punishments
     | `Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
     | `Burned
+    | `Rollup_bond
     | container ]
 
   val allocated : context -> container -> bool tzresult Lwt.t
