@@ -37,6 +37,9 @@ let encoding =
         | _ -> raise (Invalid_argument "bls public key encoding"))
       bytes)
 
+let compare x y =
+  Bytes.compare (Bls_signature.pk_to_bytes x) (Bls_signature.pk_to_bytes y)
+
 let in_memory_size : t -> Cache_memory_helpers.sint =
  fun pk ->
   Bls_signature.pk_to_bytes pk |> Bytes.length |> Saturation_repr.safe_int

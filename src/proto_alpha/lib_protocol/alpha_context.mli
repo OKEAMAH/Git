@@ -1929,6 +1929,8 @@ module Tx_rollup_l2_address : sig
 
   val encoding : t Data_encoding.t
 
+  val compare : t -> t -> int
+
   val in_memory_size : t -> Cache_memory_helpers.sint
 end
 

@@ -3,7 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,10 +25,26 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = Bls_signature.pk
+module type STORAGE = sig
+  type t
 
-val encoding : t Data_encoding.t
+  type 'a m
 
-val compare : t -> t -> int
+  module Syntax : sig
+    val ( let+ ) : 'a m -> ('a -> 'b) -> 'b m
 
-val in_memory_size : t -> Cache_memory_helpers.sint
+    val ( let* ) : 'a m -> ('a -> 'b m) -> 'b m
+
+    val fail : error -> 'a m
+
+    val catch : 'a m -> ('a -> 'b m) -> (error -> 'b m) -> 'b m
+
+    val return : 'a -> 'a m
+
+    val list_fold_left_m : ('a -> 'b -> 'a m) -> 'a -> 'b list -> 'a m
+  end
+
+  val get : t -> bytes -> bytes option m
+
+  val set : t -> bytes -> bytes -> t m
+end

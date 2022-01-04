@@ -3,7 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,10 +25,65 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = Bls_signature.pk
+open Alpha_context
 
-val encoding : t Data_encoding.t
+type signature = bytes
 
-val compare : t -> t -> int
+type operation_content =
+  | Transfer of {
+      destination : Tx_rollup_l2_address.t;
+      ticket_hash : Ticket_hash.t;
+      amount : int64;
+    }
 
-val in_memory_size : t -> Cache_memory_helpers.sint
+let operation_content_encoding =
+  let open Data_encoding in
+  union
+    [
+      case
+        (Tag 0)
+        ~title:"Transfer"
+        (obj3
+           (req "destination" Tx_rollup_l2_address.encoding)
+           (req "ticket_hash" Ticket_hash.encoding)
+           (req "amount" Data_encoding.int64))
+        (function
+          | Transfer {destination; ticket_hash; amount} ->
+              Some (destination, ticket_hash, amount))
+        (fun (destination, ticket_hash, amount) ->
+          Transfer {destination; ticket_hash; amount});
+    ]
+
+type operation = {
+  signer : Tx_rollup_l2_address.t;
+  counter : int64;
+  content : operation_content;
+}
+
+let operation_encoding =
+  let open Data_encoding in
+  conv
+    (function {signer; counter; content} -> (signer, counter, content))
+    (function (signer, counter, content) -> {signer; counter; content})
+    (obj3
+       (req "signer" Tx_rollup_l2_address.encoding)
+       (req "counter" Data_encoding.int64)
+       (req "content" operation_content_encoding))
+
+type transaction = operation list
+
+let transaction_encoding = Data_encoding.list operation_encoding
+
+type transactions_batch = {
+  contents : transaction list;
+  aggregated_signatures : signature;
+}
+
+let transactions_batch_encoding =
+  let open Data_encoding in
+  conv
+    (function
+      | {contents; aggregated_signatures} -> (contents, aggregated_signatures))
+    (function
+      | (contents, aggregated_signatures) -> {contents; aggregated_signatures})
+    (obj2 (req "contents" @@ list transaction_encoding) (req "content" bytes))

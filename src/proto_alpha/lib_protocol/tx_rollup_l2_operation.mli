@@ -3,7 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2021 Oxhead Alpha <info@oxhead-alpha.com>                   *)
+(* Copyright (c) 2021 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,10 +25,46 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = Bls_signature.pk
+open Alpha_context
 
-val encoding : t Data_encoding.t
+type signature = bytes
 
-val compare : t -> t -> int
+(** A transactions rollup allows rollup users to exchange L1 tickets
+    off-chain. *)
+type operation_content =
+  | Transfer of {
+      destination : Tx_rollup_l2_address.t;
+      ticket_hash : Ticket_hash.t;
+      amount : int64;
+    }
 
-val in_memory_size : t -> Cache_memory_helpers.sint
+val operation_content_encoding : operation_content Data_encoding.t
+
+type operation = {
+  signer : Tx_rollup_l2_address.t;
+  counter : int64;
+  content : operation_content;
+}
+
+val operation_encoding : operation Data_encoding.t
+
+(** A [transaction] in a transactions rollup is a list of operations.
+
+    The semantics of a [transaction] ensures that an operation of a
+    transaction [t] is successfully applied ({i i.e.}, is taken into
+    account) iff all the other operations of [t] are applied. In other
+    words, if the application of any operation of [t] fails, then all
+    operations of [t] are discarded. *)
+type transaction = operation list
+
+val transaction_encoding : transaction Data_encoding.t
+
+(** A transactions batch gathers a list of transactions, and a BLS
+    aggregated signature that encompasses every operations of every
+    batches. *)
+type transactions_batch = {
+  contents : transaction list;
+  aggregated_signatures : signature;
+}
+
+val transactions_batch_encoding : transactions_batch Data_encoding.t

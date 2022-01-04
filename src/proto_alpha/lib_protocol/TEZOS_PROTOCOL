@@ -145,6 +145,11 @@
         "Tx_rollup_services",
         "Alpha_services",
 
+        "Tx_rollup_l2_operation",
+        "Tx_rollup_l2_storage",
+        "Tx_rollup_l2_context",
+        "Tx_rollup_l2_apply",
+
         "Main"
     ]
 }

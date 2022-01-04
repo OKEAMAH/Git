@@ -161,6 +161,10 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_services.mli voting_services.ml
    tx_rollup_services.mli tx_rollup_services.ml
    alpha_services.mli alpha_services.ml
+   tx_rollup_l2_operation.mli tx_rollup_l2_operation.ml
+   tx_rollup_l2_storage.mli tx_rollup_l2_storage.ml
+   tx_rollup_l2_context.mli tx_rollup_l2_context.ml
+   tx_rollup_l2_apply.mli tx_rollup_l2_apply.ml
    main.mli main.ml
    (:src_dir TEZOS_PROTOCOL))
  (action
@@ -303,6 +307,10 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_services.mli voting_services.ml
    tx_rollup_services.mli tx_rollup_services.ml
    alpha_services.mli alpha_services.ml
+   tx_rollup_l2_operation.mli tx_rollup_l2_operation.ml
+   tx_rollup_l2_storage.mli tx_rollup_l2_storage.ml
+   tx_rollup_l2_context.mli tx_rollup_l2_context.ml
+   tx_rollup_l2_apply.mli tx_rollup_l2_apply.ml
    main.mli main.ml
    (:src_dir TEZOS_PROTOCOL))
  (action (with-stdout-to %{targets}
@@ -445,6 +453,10 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_services.mli voting_services.ml
    tx_rollup_services.mli tx_rollup_services.ml
    alpha_services.mli alpha_services.ml
+   tx_rollup_l2_operation.mli tx_rollup_l2_operation.ml
+   tx_rollup_l2_storage.mli tx_rollup_l2_storage.ml
+   tx_rollup_l2_context.mli tx_rollup_l2_context.ml
+   tx_rollup_l2_apply.mli tx_rollup_l2_apply.ml
    main.mli main.ml)
  (action
   (write-file %{targets}
@@ -609,6 +621,10 @@ include Tezos_raw_protocol_alpha.Main
    Voting_services
    Tx_rollup_services
    Alpha_services
+   Tx_rollup_l2_operation
+   Tx_rollup_l2_storage
+   Tx_rollup_l2_context
+   Tx_rollup_l2_apply
    Main))
 
 (install
@@ -792,6 +808,10 @@ include Tezos_raw_protocol_alpha.Main
    voting_services.mli voting_services.ml
    tx_rollup_services.mli tx_rollup_services.ml
    alpha_services.mli alpha_services.ml
+   tx_rollup_l2_operation.mli tx_rollup_l2_operation.ml
+   tx_rollup_l2_storage.mli tx_rollup_l2_storage.ml
+   tx_rollup_l2_context.mli tx_rollup_l2_context.ml
+   tx_rollup_l2_apply.mli tx_rollup_l2_apply.ml
    main.mli main.ml
   (:src_dir TEZOS_PROTOCOL))
  (action (run %{bin:tezos-protocol-compiler} -no-hash-check .)))
