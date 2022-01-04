@@ -3,7 +3,7 @@
   "info": {
     "title": "Tezos RPC",
     "description": "Tezos client RPC API.",
-    "version": "11.0"
+    "version": "12.0+dev"
   },
   "paths": {
     "/chains/{chain_id}": {
@@ -749,6 +749,12 @@
                             }
                           ]
                         },
+                        "advertised-net-port": {
+                          "description": "Alternative port advertised to other peers to connect to. If the port is not specified, the port from listen-addr will be assumed.",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 65535
+                        },
                         "discovery-addr": {
                           "description": "Host for local peer discovery. If the port is not specified, the default port 10732 will be assumed.",
                           "nullable": true,
@@ -1029,16 +1035,36 @@
                     },
                     "internal-events": {
                       "description": "Configuration of the structured logging framework",
-                      "type": "object",
-                      "properties": {
-                        "activate": {
-                          "description": "List of URIs to activate/configure sinks.",
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/components/schemas/unistring"
+                      "oneOf": [
+                        {
+                          "title": "Active-Sinks",
+                          "description": "List of sinks to make sure are activated.",
+                          "type": "object",
+                          "properties": {
+                            "active_sinks": {
+                              "description": "List of URIs to activate/configure sinks.",
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/unistring"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "title": "Active-Sinks-Deprecated",
+                          "description": "List of sinks to make sure are activated, deprecated backwards-compatibility encoding.",
+                          "type": "object",
+                          "properties": {
+                            "activate": {
+                              "description": "List of URIs to activate/configure sinks.",
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/unistring"
+                              }
+                            }
                           }
                         }
-                      }
+                      ]
                     },
                     "shell": {
                       "description": "Configuration of network parameters",
@@ -1058,22 +1084,6 @@
                             },
                             "new_head_request_timeout": {
                               "$ref": "#/components/schemas/timespan.system"
-                            },
-                            "worker_backlog_size": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "maximum": 65535
-                            },
-                            "worker_backlog_level": {
-                              "type": "string",
-                              "enum": [
-                                "info",
-                                "debug",
-                                "error",
-                                "fatal",
-                                "warning",
-                                "notice"
-                              ]
                             }
                           }
                         },
@@ -1082,22 +1092,6 @@
                           "properties": {
                             "protocol_request_timeout": {
                               "$ref": "#/components/schemas/timespan.system"
-                            },
-                            "worker_backlog_size": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "maximum": 65535
-                            },
-                            "worker_backlog_level": {
-                              "type": "string",
-                              "enum": [
-                                "info",
-                                "debug",
-                                "error",
-                                "fatal",
-                                "warning",
-                                "notice"
-                              ]
                             }
                           }
                         },
@@ -1117,21 +1111,8 @@
                               "minimum": -1073741824,
                               "maximum": 1073741823
                             },
-                            "worker_backlog_size": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "maximum": 65535
-                            },
-                            "worker_backlog_level": {
-                              "type": "string",
-                              "enum": [
-                                "info",
-                                "debug",
-                                "error",
-                                "fatal",
-                                "warning",
-                                "notice"
-                              ]
+                            "disable_precheck": {
+                              "type": "boolean"
                             }
                           }
                         },
@@ -1152,22 +1133,6 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 255
-                                },
-                                "worker_backlog_size": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 65535
-                                },
-                                "worker_backlog_level": {
-                                  "type": "string",
-                                  "enum": [
-                                    "info",
-                                    "debug",
-                                    "error",
-                                    "fatal",
-                                    "warning",
-                                    "notice"
-                                  ]
                                 }
                               }
                             },
@@ -1180,22 +1145,6 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 255
-                                },
-                                "worker_backlog_size": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 65535
-                                },
-                                "worker_backlog_level": {
-                                  "type": "string",
-                                  "enum": [
-                                    "info",
-                                    "debug",
-                                    "error",
-                                    "fatal",
-                                    "warning",
-                                    "notice"
-                                  ]
                                 }
                               }
                             }
@@ -1342,6 +1291,72 @@
                   "required": [
                     "history_mode"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/logging": {
+      "put": {
+        "description": "Replace the logging configuration of the node.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "title": "Active-Sinks",
+                    "description": "List of sinks to make sure are activated.",
+                    "type": "object",
+                    "properties": {
+                      "active_sinks": {
+                        "description": "List of URIs to activate/configure sinks.",
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/unistring"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "title": "Active-Sinks-Deprecated",
+                    "description": "List of sinks to make sure are activated, deprecated backwards-compatibility encoding.",
+                    "type": "object",
+                    "properties": {
+                      "activate": {
+                        "description": "List of URIs to activate/configure sinks.",
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/unistring"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
                 }
               }
             }
@@ -2022,6 +2037,87 @@
                     "context",
                     "protocol_data"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monitor_rollup/{chain_id}/ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK/rollup/{sc_rollup_address}/messages": {
+      "get": {
+        "description": "Monitor all messages sent to the target rollup in blocks that are selected as the new head of the given chain.",
+        "parameters": [
+          {
+            "name": "chain_id",
+            "in": "path",
+            "description": "A chain identifier. This is either a chain hash in Base58Check notation or a one the predefined aliases: 'main', 'test'.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sc_rollup_address",
+            "in": "path",
+            "description": "A smart-contract rollup address.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "messages": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^([a-zA-Z0-9][a-zA-Z0-9])*$"
+                        }
+                      },
+                      "inbox_after": {
+                        "type": "object",
+                        "properties": {
+                          "hash": {
+                            "type": "string",
+                            "enum": [
+                              "dummy"
+                            ]
+                          },
+                          "offset": {
+                            "$ref": "#/components/schemas/int64"
+                          }
+                        },
+                        "required": [
+                          "hash",
+                          "offset"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "messages",
+                      "inbox_after"
+                    ]
+                  }
                 }
               }
             }
@@ -6865,392 +6961,6 @@
                         ]
                       }
                     },
-                    "backlog": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "level": {
-                            "type": "string",
-                            "enum": [
-                              "info",
-                              "debug",
-                              "error",
-                              "fatal",
-                              "warning",
-                              "notice"
-                            ]
-                          },
-                          "events": {
-                            "type": "array",
-                            "items": {
-                              "oneOf": [
-                                {
-                                  "title": "validation_success",
-                                  "type": "object",
-                                  "properties": {
-                                    "successful_validation": {
-                                      "type": "object",
-                                      "properties": {
-                                        "block": {
-                                          "$ref": "#/components/schemas/block_hash"
-                                        },
-                                        "chain_id": {
-                                          "$ref": "#/components/schemas/Chain_id"
-                                        },
-                                        "peer": {
-                                          "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                        }
-                                      },
-                                      "required": [
-                                        "block",
-                                        "chain_id"
-                                      ]
-                                    },
-                                    "status": {
-                                      "type": "object",
-                                      "properties": {
-                                        "pushed": {
-                                          "$ref": "#/components/schemas/timestamp.system"
-                                        },
-                                        "treated": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        },
-                                        "completed": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        }
-                                      },
-                                      "required": [
-                                        "pushed",
-                                        "treated",
-                                        "completed"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "successful_validation",
-                                    "status"
-                                  ]
-                                },
-                                {
-                                  "title": "validation_failure",
-                                  "type": "object",
-                                  "properties": {
-                                    "failed_validation": {
-                                      "type": "object",
-                                      "properties": {
-                                        "block": {
-                                          "$ref": "#/components/schemas/block_hash"
-                                        },
-                                        "chain_id": {
-                                          "$ref": "#/components/schemas/Chain_id"
-                                        },
-                                        "peer": {
-                                          "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                        }
-                                      },
-                                      "required": [
-                                        "block",
-                                        "chain_id"
-                                      ]
-                                    },
-                                    "status": {
-                                      "type": "object",
-                                      "properties": {
-                                        "pushed": {
-                                          "$ref": "#/components/schemas/timestamp.system"
-                                        },
-                                        "treated": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        },
-                                        "completed": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        }
-                                      },
-                                      "required": [
-                                        "pushed",
-                                        "treated",
-                                        "completed"
-                                      ]
-                                    },
-                                    "errors": {
-                                      "$ref": "#/components/schemas/error"
-                                    }
-                                  },
-                                  "required": [
-                                    "failed_validation",
-                                    "status"
-                                  ]
-                                },
-                                {
-                                  "title": "validation_failure_after_precheck",
-                                  "type": "object",
-                                  "properties": {
-                                    "failed_validation_after_precheck": {
-                                      "type": "object",
-                                      "properties": {
-                                        "block": {
-                                          "$ref": "#/components/schemas/block_hash"
-                                        },
-                                        "chain_id": {
-                                          "$ref": "#/components/schemas/Chain_id"
-                                        },
-                                        "peer": {
-                                          "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                        }
-                                      },
-                                      "required": [
-                                        "block",
-                                        "chain_id"
-                                      ]
-                                    },
-                                    "status": {
-                                      "type": "object",
-                                      "properties": {
-                                        "pushed": {
-                                          "$ref": "#/components/schemas/timestamp.system"
-                                        },
-                                        "treated": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        },
-                                        "completed": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        }
-                                      },
-                                      "required": [
-                                        "pushed",
-                                        "treated",
-                                        "completed"
-                                      ]
-                                    },
-                                    "errors": {
-                                      "$ref": "#/components/schemas/error"
-                                    }
-                                  },
-                                  "required": [
-                                    "failed_validation_after_precheck",
-                                    "status"
-                                  ]
-                                },
-                                {
-                                  "title": "precheck_failure",
-                                  "type": "object",
-                                  "properties": {
-                                    "failed_precheck": {
-                                      "type": "object",
-                                      "properties": {
-                                        "block": {
-                                          "$ref": "#/components/schemas/block_hash"
-                                        },
-                                        "chain_id": {
-                                          "$ref": "#/components/schemas/Chain_id"
-                                        },
-                                        "peer": {
-                                          "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                        }
-                                      },
-                                      "required": [
-                                        "block",
-                                        "chain_id"
-                                      ]
-                                    },
-                                    "status": {
-                                      "type": "object",
-                                      "properties": {
-                                        "pushed": {
-                                          "$ref": "#/components/schemas/timestamp.system"
-                                        },
-                                        "treated": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        },
-                                        "completed": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        }
-                                      },
-                                      "required": [
-                                        "pushed",
-                                        "treated",
-                                        "completed"
-                                      ]
-                                    },
-                                    "errors": {
-                                      "$ref": "#/components/schemas/error"
-                                    }
-                                  },
-                                  "required": [
-                                    "failed_precheck",
-                                    "status"
-                                  ]
-                                },
-                                {
-                                  "title": "could_not_find_context",
-                                  "type": "object",
-                                  "properties": {
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "previously_validated",
-                                  "type": "object",
-                                  "properties": {
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "validating_block",
-                                  "type": "object",
-                                  "properties": {
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "preapplication_success",
-                                  "type": "object",
-                                  "properties": {
-                                    "preapplication_success": {
-                                      "type": "object",
-                                      "properties": {
-                                        "chain_id": {
-                                          "$ref": "#/components/schemas/Chain_id"
-                                        },
-                                        "level": {
-                                          "type": "integer",
-                                          "minimum": -2147483648,
-                                          "maximum": 2147483647
-                                        }
-                                      },
-                                      "required": [
-                                        "chain_id",
-                                        "level"
-                                      ]
-                                    },
-                                    "status": {
-                                      "type": "object",
-                                      "properties": {
-                                        "pushed": {
-                                          "$ref": "#/components/schemas/timestamp.system"
-                                        },
-                                        "treated": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        },
-                                        "completed": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        }
-                                      },
-                                      "required": [
-                                        "pushed",
-                                        "treated",
-                                        "completed"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "preapplication_success",
-                                    "status"
-                                  ]
-                                },
-                                {
-                                  "title": "preapplication_failure",
-                                  "type": "object",
-                                  "properties": {
-                                    "preapplication_failure": {
-                                      "type": "object",
-                                      "properties": {
-                                        "chain_id": {
-                                          "$ref": "#/components/schemas/Chain_id"
-                                        },
-                                        "level": {
-                                          "type": "integer",
-                                          "minimum": -2147483648,
-                                          "maximum": 2147483647
-                                        }
-                                      },
-                                      "required": [
-                                        "chain_id",
-                                        "level"
-                                      ]
-                                    },
-                                    "status": {
-                                      "type": "object",
-                                      "properties": {
-                                        "pushed": {
-                                          "$ref": "#/components/schemas/timestamp.system"
-                                        },
-                                        "treated": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        },
-                                        "completed": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        }
-                                      },
-                                      "required": [
-                                        "pushed",
-                                        "treated",
-                                        "completed"
-                                      ]
-                                    },
-                                    "errors": {
-                                      "$ref": "#/components/schemas/error"
-                                    }
-                                  },
-                                  "required": [
-                                    "preapplication_failure",
-                                    "status"
-                                  ]
-                                },
-                                {
-                                  "title": "prechecking_block",
-                                  "type": "object",
-                                  "properties": {
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "prechecked_block",
-                                  "type": "object",
-                                  "properties": {
-                                    "kind": {
-                                      "$ref": "#/components/schemas/unistring"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "kind",
-                                    "block"
-                                  ]
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        "required": [
-                          "level",
-                          "events"
-                        ]
-                      }
-                    },
                     "current_request": {
                       "type": "object",
                       "properties": {
@@ -7311,8 +7021,7 @@
                   },
                   "required": [
                     "status",
-                    "pending_requests",
-                    "backlog"
+                    "pending_requests"
                   ]
                 }
               }
@@ -7807,353 +7516,6 @@
                         ]
                       }
                     },
-                    "backlog": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "level": {
-                            "type": "string",
-                            "enum": [
-                              "info",
-                              "debug",
-                              "error",
-                              "fatal",
-                              "warning",
-                              "notice"
-                            ]
-                          },
-                          "events": {
-                            "type": "array",
-                            "items": {
-                              "oneOf": [
-                                {
-                                  "title": "Processed_block",
-                                  "type": "object",
-                                  "properties": {
-                                    "processed_block": {
-                                      "type": "object",
-                                      "properties": {
-                                        "request": {
-                                          "oneOf": [
-                                            {
-                                              "title": "Hash",
-                                              "type": "object",
-                                              "properties": {
-                                                "hash": {
-                                                  "$ref": "#/components/schemas/block_hash"
-                                                }
-                                              },
-                                              "required": [
-                                                "hash"
-                                              ]
-                                            },
-                                            {
-                                              "title": "Peer_id",
-                                              "type": "object",
-                                              "properties": {
-                                                "peer_id": {
-                                                  "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                                }
-                                              },
-                                              "required": [
-                                                "peer_id"
-                                              ]
-                                            }
-                                          ]
-                                        },
-                                        "status": {
-                                          "type": "object",
-                                          "properties": {
-                                            "pushed": {
-                                              "$ref": "#/components/schemas/timestamp.system"
-                                            },
-                                            "treated": {
-                                              "$ref": "#/components/schemas/timespan.system"
-                                            },
-                                            "completed": {
-                                              "$ref": "#/components/schemas/timespan.system"
-                                            }
-                                          },
-                                          "required": [
-                                            "pushed",
-                                            "treated",
-                                            "completed"
-                                          ]
-                                        },
-                                        "outcome": {
-                                          "$ref": "#/components/schemas/chain_update"
-                                        },
-                                        "fitness": {
-                                          "$ref": "#/components/schemas/fitness"
-                                        },
-                                        "level": {
-                                          "type": "integer",
-                                          "minimum": -2147483648,
-                                          "maximum": 2147483647
-                                        },
-                                        "timestamp": {
-                                          "$ref": "#/components/schemas/timestamp.protocol"
-                                        }
-                                      },
-                                      "required": [
-                                        "request",
-                                        "status",
-                                        "outcome",
-                                        "fitness",
-                                        "level",
-                                        "timestamp"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "processed_block"
-                                  ]
-                                },
-                                {
-                                  "title": "Could_not_switch_testchain",
-                                  "type": "object",
-                                  "properties": {
-                                    "could_not_switch_testchain": {
-                                      "$ref": "#/components/schemas/error"
-                                    }
-                                  },
-                                  "required": [
-                                    "could_not_switch_testchain"
-                                  ]
-                                },
-                                {
-                                  "title": "Bootstrapped",
-                                  "type": "object",
-                                  "properties": {
-                                    "bootstrapped": {}
-                                  },
-                                  "required": [
-                                    "bootstrapped"
-                                  ]
-                                },
-                                {
-                                  "title": "Sync_status",
-                                  "oneOf": [
-                                    {
-                                      "$ref": "#/components/schemas/chain_status"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "title": "Bootstrap_active_peers",
-                                  "type": "object",
-                                  "properties": {
-                                    "bootstrap_active_peers": {
-                                      "type": "object",
-                                      "properties": {
-                                        "active": {
-                                          "type": "integer",
-                                          "minimum": -1073741824,
-                                          "maximum": 1073741823
-                                        },
-                                        "needed": {
-                                          "type": "integer",
-                                          "minimum": -1073741824,
-                                          "maximum": 1073741823
-                                        }
-                                      },
-                                      "required": [
-                                        "active",
-                                        "needed"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "bootstrap_active_peers"
-                                  ]
-                                },
-                                {
-                                  "title": "Bootstrap_active_peers_heads_time",
-                                  "type": "object",
-                                  "properties": {
-                                    "bootstrap_active_peers_head_time": {
-                                      "type": "object",
-                                      "properties": {
-                                        "min_head_time": {
-                                          "$ref": "#/components/schemas/timestamp.protocol"
-                                        },
-                                        "max_head_time": {
-                                          "$ref": "#/components/schemas/timestamp.protocol"
-                                        },
-                                        "most_recent_validation": {
-                                          "$ref": "#/components/schemas/timestamp.protocol"
-                                        }
-                                      },
-                                      "required": [
-                                        "min_head_time",
-                                        "max_head_time",
-                                        "most_recent_validation"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "bootstrap_active_peers_head_time"
-                                  ]
-                                },
-                                {
-                                  "title": "notify_branch",
-                                  "type": "object",
-                                  "properties": {
-                                    "notify_branch": {
-                                      "type": "object",
-                                      "properties": {
-                                        "peer_id": {
-                                          "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                        }
-                                      },
-                                      "required": [
-                                        "peer_id"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "notify_branch"
-                                  ]
-                                },
-                                {
-                                  "title": "notify_head",
-                                  "type": "object",
-                                  "properties": {
-                                    "notify_head": {
-                                      "type": "object",
-                                      "properties": {
-                                        "peer_id": {
-                                          "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                        }
-                                      },
-                                      "required": [
-                                        "peer_id"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "notify_head"
-                                  ]
-                                },
-                                {
-                                  "title": "disconnection",
-                                  "type": "object",
-                                  "properties": {
-                                    "disconnection": {
-                                      "type": "object",
-                                      "properties": {
-                                        "kind": {
-                                          "$ref": "#/components/schemas/unistring"
-                                        },
-                                        "peer_id": {
-                                          "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                        }
-                                      },
-                                      "required": [
-                                        "kind",
-                                        "peer_id"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "disconnection"
-                                  ]
-                                },
-                                {
-                                  "title": "request_failure",
-                                  "type": "object",
-                                  "properties": {
-                                    "request_failure": {
-                                      "type": "object",
-                                      "properties": {
-                                        "failed_validation": {
-                                          "oneOf": [
-                                            {
-                                              "title": "Hash",
-                                              "type": "object",
-                                              "properties": {
-                                                "hash": {
-                                                  "$ref": "#/components/schemas/block_hash"
-                                                }
-                                              },
-                                              "required": [
-                                                "hash"
-                                              ]
-                                            },
-                                            {
-                                              "title": "Peer_id",
-                                              "type": "object",
-                                              "properties": {
-                                                "peer_id": {
-                                                  "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                                }
-                                              },
-                                              "required": [
-                                                "peer_id"
-                                              ]
-                                            }
-                                          ]
-                                        },
-                                        "status": {
-                                          "type": "object",
-                                          "properties": {
-                                            "pushed": {
-                                              "$ref": "#/components/schemas/timestamp.system"
-                                            },
-                                            "treated": {
-                                              "$ref": "#/components/schemas/timespan.system"
-                                            },
-                                            "completed": {
-                                              "$ref": "#/components/schemas/timespan.system"
-                                            }
-                                          },
-                                          "required": [
-                                            "pushed",
-                                            "treated",
-                                            "completed"
-                                          ]
-                                        },
-                                        "errors": {
-                                          "$ref": "#/components/schemas/error"
-                                        }
-                                      },
-                                      "required": [
-                                        "failed_validation",
-                                        "status"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "request_failure"
-                                  ]
-                                },
-                                {
-                                  "title": "connection",
-                                  "type": "object",
-                                  "properties": {
-                                    "kind": {
-                                      "$ref": "#/components/schemas/unistring"
-                                    },
-                                    "peer_id": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "kind",
-                                    "peer_id"
-                                  ]
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        "required": [
-                          "level",
-                          "events"
-                        ]
-                      }
-                    },
                     "current_request": {
                       "type": "object",
                       "properties": {
@@ -8201,8 +7563,7 @@
                   },
                   "required": [
                     "status",
-                    "pending_requests",
-                    "backlog"
+                    "pending_requests"
                   ]
                 }
               }
@@ -8877,468 +8238,6 @@
                         ]
                       }
                     },
-                    "backlog": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "level": {
-                            "type": "string",
-                            "enum": [
-                              "info",
-                              "debug",
-                              "error",
-                              "fatal",
-                              "warning",
-                              "notice"
-                            ]
-                          },
-                          "events": {
-                            "type": "array",
-                            "items": {
-                              "oneOf": [
-                                {
-                                  "title": "Request",
-                                  "type": "object",
-                                  "properties": {
-                                    "request": {
-                                      "oneOf": [
-                                        {
-                                          "title": "New_head",
-                                          "type": "object",
-                                          "properties": {
-                                            "request": {
-                                              "type": "string",
-                                              "enum": [
-                                                "new_head"
-                                              ]
-                                            },
-                                            "block": {
-                                              "$ref": "#/components/schemas/block_hash"
-                                            }
-                                          },
-                                          "required": [
-                                            "request",
-                                            "block"
-                                          ]
-                                        },
-                                        {
-                                          "title": "New_branch",
-                                          "type": "object",
-                                          "properties": {
-                                            "request": {
-                                              "type": "string",
-                                              "enum": [
-                                                "new_branch"
-                                              ]
-                                            },
-                                            "block": {
-                                              "$ref": "#/components/schemas/block_hash"
-                                            },
-                                            "locators": {
-                                              "type": "integer",
-                                              "minimum": -1073741824,
-                                              "maximum": 1073741823
-                                            }
-                                          },
-                                          "required": [
-                                            "request",
-                                            "block",
-                                            "locators"
-                                          ]
-                                        }
-                                      ]
-                                    },
-                                    "status": {
-                                      "type": "object",
-                                      "properties": {
-                                        "pushed": {
-                                          "$ref": "#/components/schemas/timestamp.system"
-                                        },
-                                        "treated": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        },
-                                        "completed": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        }
-                                      },
-                                      "required": [
-                                        "pushed",
-                                        "treated",
-                                        "completed"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "request",
-                                    "status"
-                                  ]
-                                },
-                                {
-                                  "title": "Failed request",
-                                  "type": "object",
-                                  "properties": {
-                                    "error": {
-                                      "$ref": "#/components/schemas/error"
-                                    },
-                                    "failed_request": {
-                                      "oneOf": [
-                                        {
-                                          "title": "New_head",
-                                          "type": "object",
-                                          "properties": {
-                                            "request": {
-                                              "type": "string",
-                                              "enum": [
-                                                "new_head"
-                                              ]
-                                            },
-                                            "block": {
-                                              "$ref": "#/components/schemas/block_hash"
-                                            }
-                                          },
-                                          "required": [
-                                            "request",
-                                            "block"
-                                          ]
-                                        },
-                                        {
-                                          "title": "New_branch",
-                                          "type": "object",
-                                          "properties": {
-                                            "request": {
-                                              "type": "string",
-                                              "enum": [
-                                                "new_branch"
-                                              ]
-                                            },
-                                            "block": {
-                                              "$ref": "#/components/schemas/block_hash"
-                                            },
-                                            "locators": {
-                                              "type": "integer",
-                                              "minimum": -1073741824,
-                                              "maximum": 1073741823
-                                            }
-                                          },
-                                          "required": [
-                                            "request",
-                                            "block",
-                                            "locators"
-                                          ]
-                                        }
-                                      ]
-                                    },
-                                    "status": {
-                                      "type": "object",
-                                      "properties": {
-                                        "pushed": {
-                                          "$ref": "#/components/schemas/timestamp.system"
-                                        },
-                                        "treated": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        },
-                                        "completed": {
-                                          "$ref": "#/components/schemas/timespan.system"
-                                        }
-                                      },
-                                      "required": [
-                                        "pushed",
-                                        "treated",
-                                        "completed"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "error",
-                                    "failed_request",
-                                    "status"
-                                  ]
-                                },
-                                {
-                                  "title": "validating_new_branch",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "nb_blocks": {
-                                      "type": "integer",
-                                      "minimum": -1073741824,
-                                      "maximum": 1073741823
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "nb_blocks"
-                                  ]
-                                },
-                                {
-                                  "title": "new_branch_validated",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "fetching_operations_for_head",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "Requesting_new_head_validation",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "new_head_validation_end",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "ignoring_head",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "ignoring_previously_validated_block",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "ignoring_prechecked_block",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "ignoring_invalid_block",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "missing_new_head_predecessor",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "ignoring_invalid_locator_branch",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "ignore_branch_without_common_ancestor",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "no_new_head_from_peer",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "timespan": {
-                                      "type": "integer"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "timespan"
-                                  ]
-                                },
-                                {
-                                  "title": "processing_new_head",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "processing_new_branch",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                },
-                                {
-                                  "title": "terminating_worker",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "reason": {
-                                      "$ref": "#/components/schemas/unistring"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "reason"
-                                  ]
-                                },
-                                {
-                                  "title": "ignoring_prechecked_invalid_block",
-                                  "type": "object",
-                                  "properties": {
-                                    "peer": {
-                                      "$ref": "#/components/schemas/Crypto_box.Public_key_hash"
-                                    },
-                                    "block": {
-                                      "$ref": "#/components/schemas/block_hash"
-                                    }
-                                  },
-                                  "required": [
-                                    "peer",
-                                    "block"
-                                  ]
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        "required": [
-                          "level",
-                          "events"
-                        ]
-                      }
-                    },
                     "current_request": {
                       "type": "object",
                       "properties": {
@@ -9406,8 +8305,7 @@
                   },
                   "required": [
                     "status",
-                    "pending_requests",
-                    "backlog"
+                    "pending_requests"
                   ]
                 }
               }
@@ -9927,11 +8825,15 @@
                                   },
                                   "operation": {
                                     "$ref": "#/components/schemas/operation"
+                                  },
+                                  "force": {
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
                                   "request",
-                                  "operation"
+                                  "operation",
+                                  "force"
                                 ]
                               },
                               {
@@ -10015,33 +8917,6 @@
                         ]
                       }
                     },
-                    "backlog": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "level": {
-                            "type": "string",
-                            "enum": [
-                              "info",
-                              "debug",
-                              "error",
-                              "fatal",
-                              "warning",
-                              "notice"
-                            ]
-                          },
-                          "events": {
-                            "type": "array",
-                            "items": {}
-                          }
-                        },
-                        "required": [
-                          "level",
-                          "events"
-                        ]
-                      }
-                    },
                     "current_request": {
                       "type": "object",
                       "properties": {
@@ -10111,11 +8986,15 @@
                                 },
                                 "operation": {
                                   "$ref": "#/components/schemas/operation"
+                                },
+                                "force": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
                                 "request",
-                                "operation"
+                                "operation",
+                                "force"
                               ]
                             },
                             {
@@ -10202,8 +9081,7 @@
                   },
                   "required": [
                     "status",
-                    "pending_requests",
-                    "backlog"
+                    "pending_requests"
                   ]
                 }
               }
