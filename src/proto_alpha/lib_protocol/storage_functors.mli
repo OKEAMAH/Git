@@ -37,6 +37,15 @@ module Registered : REGISTER
 (* TODO this means they do not show up in API? *)
 module Ghost : REGISTER
 
+
+(*
+ *  TODO
+      REGISTER ~ bool
+      NAME ~ context key ~ string list
+      VALUE ~ (type a, a Data_encoding.t)
+      INDEX ~ (type a, a Path_encoding.S.t)
+ *)
+
 (** Given a [Raw_context], return a new [Raw_context] that projects into
     a given subtree. Similar to a {i functional lens}.
  *)
@@ -66,7 +75,7 @@ end
 
 module Pair (I1 : INDEX) (I2 : INDEX) : INDEX with type t = I1.t * I2.t
 
-(** Create storage for a compound type. *)
+(** Create storage for a set-like compound type. *)
 module Make_data_set_storage (C : Raw_context.T) (I : INDEX) :
   Data_set_storage with type t = C.t and type elt = I.t
 
@@ -74,7 +83,10 @@ module Make_data_set_storage (C : Raw_context.T) (I : INDEX) :
 module Make_carbonated_data_set_storage (C : Raw_context.T) (I : INDEX) :
   Carbonated_data_set_storage with type t = C.t and type elt = I.t
 
-(** This functor creates storage for types with a notion of an index. *)
+(** This functor creates storage for types with a notion of an index.
+    TODO exactly how?
+      Indexed_data_storage
+ *)
 module Make_indexed_data_storage (C : Raw_context.T) (I : INDEX) (V : VALUE) :
   Indexed_data_storage with type t = C.t and type key = I.t and type value = V.t
 
@@ -99,6 +111,7 @@ module Make_indexed_data_snapshotable_storage
      and type key = I.t
      and type value = V.t
 
+(* TODO ?? *)
 module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
   Indexed_raw_context
     with type t = C.t
@@ -115,6 +128,11 @@ module type WRAPPER = sig
   val unwrap : key -> t option
 end
 
+
+
+
+(* TODO ??
+   only used in legacy *)
 module Wrap_indexed_data_storage
     (C : Indexed_data_storage)
     (K : WRAPPER with type key := C.key) :
