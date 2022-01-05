@@ -87,6 +87,63 @@ implementation of optimistic rollups.
    into formal trades (*i.e.*, sets of ticket transfers that need to happen
    atomically).
 
+Commitments and rejections
+**************************
+
+In order to ensure that L2 transaction effects are correctly computed,
+rollup nodes issue commitments.  A commitment is a layer-1 operation
+which describes (using a Merkle tree hash) the state of a rollup after
+each batch of a block.  A commitment also includes the predecessor
+commitment's hash and level (except in the case of the first
+commitment for a rollup).  There is exactly one valid commitment
+possible for a given block.
+
+When a commitment is processed, any pending final commitments are
+first applied.  This allows finalization to be carbonated.  If no
+commitments are made, it is possible for inboxes to pile up, possibly
+leading to a large enough backlog that finalization would exceed the
+gas limit.  To prevent this, if there are more than 100 inboxes with
+messages but without commitments, no further messages are accepted on
+the rollup until a commitment is finalized.
+
+In order to issue a commitment, a bond is required.  One bond can
+support any number of commitments on a single rollup (but only one per
+block).  The bond is collected at the time that a given contract
+creates its first commitment is on a rollup.  It may be refunded by
+another manager operation, once the last commitment from its creator
+has been finalized (that is, after its finality period).  The bond is
+treated just like frozen balances for the purposes of delegation.
+
+If a commitment is invalid, it may be rejected.  A rejection operation
+for a commitment names one of the operations of the commitment, and
+includes a Merkle proof of its wrongness.  A L1 node can then replay
+just the transactions of a single batch to determine whether the
+rejection is valid.  A rejection must be included in a block within
+the finality period (30 blocks) of the block that the commitment is
+included in.
+
+In the case of a valid rejection, half of the commitment bond goes to
+the rejector.  All commitments by the rejected commitment's contract
+are then removed, as are all commitments which are transitive
+successors of that commitment.  Since some of those commitments might
+have been issued by different contracts, those contracts too must have
+have all of their commitments removed, as well as their successors,
+and so forth until the process reaches a fixed point.  In practice, we
+do not expect this to ever happen, since commitment bonds are
+expensive enough to discourage bad commitments.
+
+Each rejection must be preceded by a prerejection. This is to prevent
+bakers from front-running rejections.  A prerejection is a hash of:
+#. The rejection
+#. The contract which will submit the rejection
+#. A nonce
+The prerejection must be at least one block before the corresponding
+rejection.  Rejections include the nonce so that their prerejections
+can be verified.  Prerejections prevent bakers from front-running
+rejections and getting bonds without doing their own verification. In
+the case that multiple rejections reject the same commitment, the one
+with the first pre-rejection gets the reward.
+
 Getting Started
 ---------------
 
