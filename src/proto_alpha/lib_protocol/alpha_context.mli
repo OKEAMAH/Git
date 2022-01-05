@@ -1983,6 +1983,16 @@ module Tx_rollup : sig
     destination : Tx_rollup_l2_address.Indexable.t;
   }
 
+  val withdraw_entrypoint : Entrypoint.t
+
+  type withdraw_parameters = {
+    contents : Script.node;
+    ty : Script.node;
+    ticketer : Script.node;
+    amount : int64;
+    destination_contract : Contract.t;
+  }
+
   (** [hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty] computes the
       hash of the ticket of type [ty ticket], of content [contents] and
       of ticketer [ticketer].

@@ -2257,6 +2257,42 @@ let parse_tx_rollup_deposit_parameters :
       (Tx_rollup.{ticketer; contents; ty; amount; destination}, ctxt)
   | expr -> error @@ Invalid_kind (location expr, [Prim_kind], kind expr)
 
+let parse_tx_rollup_withdraw_parameters :
+    context -> Script.expr -> (Tx_rollup.withdraw_parameters * context) tzresult
+    =
+ fun ctxt parameters ->
+  match root parameters with
+  | Seq
+      ( _,
+        [
+          Prim
+            ( _,
+              D_Pair,
+              [
+                Prim
+                  ( _,
+                    D_Pair,
+                    [ticketer; Prim (_, D_Pair, [contents; amount], _)],
+                    _ );
+                destination_contract;
+              ],
+              _ );
+          ty;
+        ] ) ->
+      parse_key_hash ctxt destination_contract
+      >>? fun (destination_contract, ctxt) ->
+      let destination_contract =
+        Contract.implicit_contract destination_contract
+      in
+      (match amount with
+      | Int (_, v) when Compare.Z.(v <= Z.of_int64 Int64.max_int) ->
+          ok @@ Z.to_int64 v
+      | Int (_, v) -> error @@ Tx_rollup_invalid_ticket_amount v
+      | expr -> error @@ Invalid_kind (location expr, [Int_kind], kind expr))
+      >|? fun amount ->
+      (Tx_rollup.{ticketer; contents; ty; amount; destination_contract}, ctxt)
+  | expr -> error @@ Invalid_kind (location expr, [Prim_kind], kind expr)
+
 let parse_never expr : (never * context) tzresult =
   error @@ Invalid_never_expr (location expr)
 

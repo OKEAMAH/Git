@@ -82,3 +82,13 @@ type deposit_parameters = {
   amount : int64;
   destination : Tx_rollup_l2_address.Indexable.t;
 }
+
+val withdraw_entrypoint : Entrypoint_repr.t
+
+type withdraw_parameters = {
+  contents : Script_repr.node;
+  ty : Script_repr.node;
+  ticketer : Script_repr.node;
+  amount : int64;
+  destination_contract : Contract_repr.t;
+}

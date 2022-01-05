@@ -410,6 +410,11 @@ val parse_contract_for_script :
 val parse_tx_rollup_deposit_parameters :
   context -> Script.expr -> (Tx_rollup.deposit_parameters * context) tzresult
 
+(** [parse_tx_rollup_withdraw_parameters ctxt script] extracts from [script]
+    the parameters of the [withdraw] entrypoint of transaction rollups. *)
+val parse_tx_rollup_withdraw_parameters :
+  context -> Script.expr -> (Tx_rollup.withdraw_parameters * context) tzresult
+
 val find_entrypoint :
   error_details:'error_trace error_details ->
   't Script_typed_ir.ty ->

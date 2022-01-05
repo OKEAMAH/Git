@@ -1077,6 +1077,55 @@ let apply_manager_operation_content :
                })
         in
         (ctxt, result, [])
+      else if
+        Entrypoint.(entrypoint = Alpha_context.Tx_rollup.withdraw_entrypoint)
+      then
+        Script.force_decode_in_context
+          ~consume_deserialization_gas
+          ctxt
+          parameters
+        >>?= fun (parameters, ctxt) ->
+        Script_ir_translator.parse_tx_rollup_withdraw_parameters ctxt parameters
+        >>?= fun ( Tx_rollup.
+                     {ticketer; contents; ty; amount; destination_contract},
+                   ctxt ) ->
+        Tx_rollup.hash_ticket ctxt dst ~contents ~ticketer ~ty
+        >>?= fun (rollup_ticket_hash, ctxt) ->
+        Ticket_balance_key.ticket_balance_key_unparsed
+          ctxt
+          ~owner:source
+          ticketer
+          ty
+          contents
+        >>=? fun (destination_ticket_hash, ctxt) ->
+        Tx_rollup_offramp.withdraw
+          ctxt
+          dst
+          destination_contract
+          ~rollup_ticket_hash
+          ~destination_ticket_hash
+          amount
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/2339
+           Storage fees for transaction rollup.
+           We need to charge for newly allocated storage (as we do for
+           Michelson’s big map). This also means taking into account
+           the global table of tickets. *)
+        >>=?
+        fun ctxt ->
+        Tx_rollup_state.get ctxt dst >>=? fun (ctxt, state) ->
+        Tx_rollup_state.fees state 1 >>?= fun cost ->
+        Token.transfer ctxt (`Contract payer) `Burned cost
+        >|=? fun (ctxt, balance_updates) ->
+        let result =
+          Transaction_result
+            (Transaction_to_tx_rollup_result
+               {
+                 balance_updates;
+                 consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+                 ticket_hash = destination_ticket_hash;
+               })
+        in
+        (ctxt, result, [])
       else fail (Script_tc_errors.No_such_entrypoint entrypoint)
   | Origination {delegate; script; preorigination; credit} ->
       Script.force_decode_in_context

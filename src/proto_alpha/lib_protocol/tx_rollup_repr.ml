@@ -161,3 +161,13 @@ type deposit_parameters = {
   amount : int64;
   destination : Tx_rollup_l2_address.Indexable.t;
 }
+
+let withdraw_entrypoint = Entrypoint_repr.of_string_strict_exn "withdraw"
+
+type withdraw_parameters = {
+  contents : Script_repr.node;
+  ty : Script_repr.node;
+  ticketer : Script_repr.node;
+  amount : int64;
+  destination_contract : Contract_repr.t;
+}
