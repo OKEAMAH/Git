@@ -31,8 +31,10 @@
 
 open Storage_sigs
 
+(* TODO this means they show up in API? *)
 module Registered : REGISTER
 
+(* TODO this means they do not show up in API? *)
 module Ghost : REGISTER
 
 (** Given a [Raw_context], return a new [Raw_context] that projects into
