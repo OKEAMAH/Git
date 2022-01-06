@@ -626,6 +626,28 @@ let test_tx_rollup ?endpoint client =
   in
   let* () = client_bake_for client in
   let* _ = RPC.Tx_rollup.get_state ?endpoint ~tx_rollup client in
+
+  let* () =
+    RPC.Tx_rollup.spawn_get_inbox ~tx_rollup client
+    |> Process.check_error
+         ~exit_code:1
+         ~msg:(rex "No service found at this URL")
+  in
+
+  (* Put a transaction on the rollup *)
+  let* () =
+    Client.submit_tx_rollup_batch
+      ~content:(Bytes.of_string "tezos")
+      ~tx_rollup
+      ~src:Constant.bootstrap1.public_key_hash
+      client
+  in
+  let* () = client_bake_for client in
+  (* Without that, the test is flaky for some reason *)
+  let* () = Lwt_unix.sleep 1.0 in
+
+  (* Now this succeeds *)
+  let* _inbox = RPC.Tx_rollup.get_inbox ?endpoint ~tx_rollup client in
   unit
 
 (* Test the various other RPCs. *)

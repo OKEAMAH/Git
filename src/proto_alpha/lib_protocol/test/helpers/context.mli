@@ -166,6 +166,10 @@ module Tx_rollup : sig
   (** Return the state of a tx rollup, or an error if the rollup does not
     exist. *)
   val state : t -> Tx_rollup.t -> Tx_rollup_state.t tzresult Lwt.t
+
+  (** Return the inbox of this transaction rollup at the current
+      level. Otherwise, return an error. *)
+  val inbox : t -> Tx_rollup.t -> Tx_rollup_inbox.t tzresult Lwt.t
 end
 
 (** [init n] : returns an initial block with [n] initialized accounts

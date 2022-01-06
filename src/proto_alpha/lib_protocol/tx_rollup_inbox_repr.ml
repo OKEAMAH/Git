@@ -25,11 +25,22 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type message = string
+type message = Batch of string
 
-let message_encoding = Data_encoding.string
+let message_encoding =
+  let open Data_encoding in
+  union
+    ~tag_size:`Uint8
+    [
+      case
+        (Tag 0)
+        ~title:"Batch"
+        (obj1 (req "batch" string))
+        (function Batch batch -> Some batch)
+        (fun batch -> Batch batch);
+    ]
 
-let message_size = String.length
+let message_size = function Batch batch -> String.length batch
 
 let hash_size = 32
 

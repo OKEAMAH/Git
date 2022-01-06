@@ -1155,6 +1155,23 @@ let apply_manager_operation_content :
           }
       in
       return (ctxt, result, [])
+  | Tx_rollup_submit_batch {tx_rollup; content} ->
+      fail_unless (Constants.tx_rollup_enable ctxt) Tx_rollup_disabled
+      >>=? fun () ->
+      Tx_rollup.append_message ctxt tx_rollup (Batch content)
+      >>=? fun (message_size, ctxt) ->
+      Tx_rollup.get_state ctxt tx_rollup >>=? fun {cost_per_byte} ->
+      Tez.(cost_per_byte *? Int64.of_int message_size) >>?= fun cost ->
+      Token.transfer ctxt (`Contract source) `Burned cost
+      >>=? fun (ctxt, balance_updates) ->
+      let result =
+        Tx_rollup_submit_batch_result
+          {
+            consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+            balance_updates;
+          }
+      in
+      return (ctxt, result, [])
   | Sc_rollup_originate {kind; boot_sector} ->
       let open Sc_rollup_operations in
       assert_sc_rollup_feature_enabled ctxt >>=? fun () ->
@@ -1374,6 +1391,8 @@ let burn_storage_fees :
         ( ctxt,
           storage_limit,
           Tx_rollup_origination_result {payload with balance_updates} )
+  | Tx_rollup_submit_batch_result payload ->
+      return (ctxt, storage_limit, Tx_rollup_submit_batch_result payload)
   | Sc_rollup_originate_result payload ->
       let payer = `Contract payer in
       Fees.burn_sc_rollup_origination_fees

@@ -119,9 +119,8 @@ let append_message :
   in
   Storage.Tx_rollup.Inbox_cumulated_size.find (ctxt, level) rollup
   >>=? fun msize ->
-  let new_size =
-    Option.value ~default:0 msize + Tx_rollup_inbox_repr.message_size message
-  in
+  let message_size = Tx_rollup_inbox_repr.message_size message in
+  let new_size = Option.value ~default:0 msize + message_size in
   fail_when
     Compare.Int.(new_size > hard_size_limit)
     (Tx_rollup_hard_size_limit_reached rollup)
@@ -135,7 +134,7 @@ let append_message :
      :: Option.value ~default:[] mcontents)
   >>=? fun (ctxt, _, _) ->
   Storage.Tx_rollup.Inbox_cumulated_size.add (ctxt, level) rollup new_size
-  >>= fun ctxt -> return (new_size, ctxt)
+  >>= fun ctxt -> return (message_size, ctxt)
 
 let inbox_messages_opt :
     Raw_context.t ->

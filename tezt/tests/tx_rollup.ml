@@ -31,6 +31,8 @@ let get_cost_per_byte tx_rollup client =
 
 (*                               test                                        *)
 
+(** [test_simple_use_case] originates a transaction rollup and asserts no inbox
+    has been created by default for it. *)
 let test_simple_use_case =
   let open Tezt_tezos in
   Protocol.register_test ~__FILE__ ~title:"Simple use case" ~tags:["rollup"]
@@ -54,6 +56,7 @@ let test_simple_use_case =
   (* Check the transaction rollup exists by trying to fetch its current
      [cost_per_byte] state variable. *)
   let* _rate = get_cost_per_byte tx_rollup client in
-  unit
+  RPC.Tx_rollup.spawn_get_inbox ~tx_rollup client
+  |> Process.check_error ~exit_code:1 ~msg:(rex "No service found at this URL")
 
 let register ~protocols = test_simple_use_case ~protocols

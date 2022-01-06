@@ -26,8 +26,11 @@
 (*****************************************************************************)
 
 (** A [message] is a piece of data submitted though the layer-1 to be
-    interpreted by the layer-2. *)
-type message = string
+    interpreted by the layer-2.
+
+    {ul {li A raw array of bytes that supposedly contains a sequence
+            of L2 operations.}} *)
+type message = Batch of string
 
 (** [message_size msg] returns the number of bytes allocated in an
     inbox by [msg]. *)
