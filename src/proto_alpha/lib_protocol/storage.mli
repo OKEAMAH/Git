@@ -712,6 +712,8 @@ module Sc_rollup : sig
 
      - a PVM kind (provided at creation time, read-only) ;
      - a boot sector (provided at creation time, read-only).
+     - a tree of commitments, rooted at the last finalized commitment..
+     - a map from stakers to commitments.
 
   *)
   module PVM_kind :
