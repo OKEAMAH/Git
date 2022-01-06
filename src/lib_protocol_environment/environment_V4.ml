@@ -760,6 +760,10 @@ struct
   module RPC_arg = RPC_arg
   module RPC_path = RPC_path
   module RPC_query = RPC_query
+  module Hack = struct
+    let printf = Format.printf
+  end
+
   module RPC_service = RPC_service
 
   module RPC_answer = struct
