@@ -1689,4 +1689,15 @@ module Sc_rollup = struct
 
         let encoding = Sc_rollup_repr.PVM.boot_sector_encoding
       end)
+
+  module Last_final_commitment =
+    Indexed_context.Make_carbonated_map
+      (struct
+        let name = ["last_final_commitment"]
+      end)
+      (struct
+        type t = Sc_rollup_repr.Commitment_hash.t
+
+        let encoding = Sc_rollup_repr.Commitment_hash.encoding
+      end)
 end

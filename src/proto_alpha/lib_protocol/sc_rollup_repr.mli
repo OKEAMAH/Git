@@ -59,6 +59,10 @@ module Address : sig
   val encoded_size : int
 end
 
+module Commitment_hash : sig
+  include S.HASH
+end
+
 (** A smart contract rollup is identified by its address. *)
 type t = Address.t
 

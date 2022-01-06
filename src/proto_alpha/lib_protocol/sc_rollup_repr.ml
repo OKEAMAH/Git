@@ -79,6 +79,35 @@ module Address = struct
     | Some nonce -> ok @@ hash_bytes [nonce]
 end
 
+(* 32 *)
+let commitment_hash = "\003\250\174\238\208" (* scib1(55) *)
+
+module Commitment_hash = struct
+  let prefix = "scib1" (* FIXME change? *)
+
+  let encoded_size = 55
+
+  module H =
+    Blake2B.Make
+      (Base58)
+      (struct
+        let name = "commitment_hash"
+
+        let title = "The hash of a commitment of a smart contract rollup"
+
+        let b58check_prefix = commitment_hash
+
+        (* defaults to 32 *)
+        let size = None
+      end)
+
+  include H
+
+  let () = Base58.check_encoded_prefix b58check_encoding prefix encoded_size
+
+  include Path_encoding.Make_hex (H)
+end
+
 type t = Address.t
 
 let description =
