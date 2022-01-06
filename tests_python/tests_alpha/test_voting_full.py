@@ -185,7 +185,7 @@ class TestVotingFull:
         level_before = client.get_level(chain='main')
         # wait enough time for a block to be baked
         first_round_duration = int(
-            PROTO_B_PARAMETERS['round_durations']['round0']
+            PROTO_B_PARAMETERS['minimal_block_delay']
         )
         time.sleep(2 * first_round_duration)
         assert utils.check_level_greater_than(client, level_before + 1)
