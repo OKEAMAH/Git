@@ -2217,7 +2217,7 @@ module Tx_rollup_commitments : sig
     context -> Tx_rollup.t -> Contract.t -> (context * int) tzresult Lwt.t
 
   val finalize_pending_commitments :
-    context -> Tx_rollup.t -> context tzresult Lwt.t
+    context -> Tx_rollup.t -> (context * Contract.t list) tzresult Lwt.t
 
   val remove_bond :
     context -> Tx_rollup.t -> Contract.t -> context tzresult Lwt.t
@@ -2280,7 +2280,7 @@ module Tx_rollup_rejection : sig
   val prereject : context -> Rejection_hash.t -> context tzresult Lwt.t
 
   val check_prerejection :
-    context -> t -> int64 -> Contract.t -> (context * Z.t) tzresult Lwt.t
+    context -> t -> int64 -> Contract.t -> (context * Z.t * bool) tzresult Lwt.t
 end
 
 (** This simply re-exports {!Destination_repr}. *)

@@ -1266,7 +1266,7 @@ let apply_manager_operation_content :
       return (ctxt, result, [])
   | Tx_rollup_commit {rollup; commitment} ->
       Tx_rollup_commitments.finalize_pending_commitments ctxt rollup
-      >>=? fun ctxt ->
+      >>=? fun (ctxt, to_credit) ->
       ( Tx_rollup_commitments.pending_bonded_commitments ctxt rollup source
       >>=? fun (ctxt, pending) ->
         match pending with
@@ -1277,6 +1277,16 @@ let apply_manager_operation_content :
               `Rollup_bond
               (Constants.tx_rollup_commitment_bond ctxt)
         | _ -> return (ctxt, []) )
+      >>=? fun (ctxt, balance_updates) ->
+      let bond = Constants.tx_rollup_commitment_bond ctxt in
+      Tez.(bond /? 2L) >>?= fun reward ->
+      List.fold_left_es
+        (fun (ctxt, balance_updates) contract ->
+          Token.transfer ctxt `Rollup_bond_return (`Contract contract) reward
+          >>=? fun (ctxt, new_balance_updates) ->
+          return (ctxt, List.append new_balance_updates balance_updates))
+        (ctxt, balance_updates)
+        to_credit
       >>=? fun (ctxt, balance_updates) ->
       Tx_rollup_commitments.add_commitment ctxt rollup source commitment
       >>=? fun ctxt ->
@@ -1309,22 +1319,25 @@ let apply_manager_operation_content :
         {rollup; level; hash; batch_index}
       in
       Tx_rollup_rejection.check_prerejection ctxt rejection nonce source
-      >>=? fun (ctxt, priority) ->
-      Tx_rollup_commitments.get_commitment_roots
-        ctxt
-        rollup
-        level
-        hash
-        batch_index
-      >>=? fun (ctxt, (before_batch, after_batch)) ->
-      (* TODO replay just this one batch -- for now, we'll assume that
-         rejection succeeds if before_root = after_root*)
-      fail_unless
-        (Tx_rollup_commitments.Commitment.batch_commitment_equal
-           before_batch
-           after_batch)
-        Tx_rollup_rejection.Wrong_rejection
-      >>=? fun () ->
+      >>=? fun (ctxt, priority, exists) ->
+      (if exists then
+       Tx_rollup_commitments.get_commitment_roots
+         ctxt
+         rollup
+         level
+         hash
+         batch_index
+       >>=? fun (ctxt, (before_batch, after_batch)) ->
+       (* TODO replay just this one batch -- for now, we'll assume that
+          rejection succeeds if before_root = after_root*)
+       fail_unless
+         (Tx_rollup_commitments.Commitment.batch_commitment_equal
+            before_batch
+            after_batch)
+         Tx_rollup_rejection.Wrong_rejection
+       >>=? fun () -> return ctxt
+      else return ctxt)
+      >>=? fun ctxt ->
       Tx_rollup_commitments.reject_commitment
         ctxt
         rollup

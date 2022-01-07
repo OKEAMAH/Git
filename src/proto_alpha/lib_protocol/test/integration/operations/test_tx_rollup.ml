@@ -1436,7 +1436,7 @@ let test_rejection_reward () =
   Incremental.begin_construction b >>=? fun i ->
   (* This is the commitment that is going to be rejected *)
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}; {root = Bytes.make 20 '0'}]
+    [{root = Bytes.empty}]
   in
   let bad_commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches; predecessor = None}
@@ -1444,7 +1444,7 @@ let test_rejection_reward () =
 
   (* This is the good commitment that we will use later *)
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}; {root = Bytes.make 20 '1'}]
+    [{root = Bytes.make 20 '0'}]
   in
   let good_commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches; predecessor = None}
@@ -1467,7 +1467,7 @@ let test_rejection_reward () =
     tx_rollup
     (raw_level 2l)
     bad_commitment_hash
-    1
+    0
     nonce
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1480,7 +1480,7 @@ let test_rejection_reward () =
     tx_rollup
     (raw_level 2l)
     bad_commitment_hash
-    1
+    0
     nonce2
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1493,7 +1493,7 @@ let test_rejection_reward () =
     tx_rollup
     (raw_level 2l)
     bad_commitment_hash
-    1
+    0
     nonce3
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1503,7 +1503,7 @@ let test_rejection_reward () =
     tx_rollup
     (raw_level 2l)
     bad_commitment_hash
-    1
+    0
     nonce3
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1516,7 +1516,7 @@ let test_rejection_reward () =
     tx_rollup
     (raw_level 2l)
     bad_commitment_hash
-    1
+    0
     nonce2
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1529,7 +1529,7 @@ let test_rejection_reward () =
     tx_rollup
     (raw_level 2l)
     bad_commitment_hash
-    1
+    0
     nonce
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1542,7 +1542,7 @@ let test_rejection_reward () =
     tx_rollup
     (raw_level 2l)
     bad_commitment_hash
-    1
+    0
     nonce3
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1552,7 +1552,7 @@ let test_rejection_reward () =
     tx_rollup
     (raw_level 2l)
     bad_commitment_hash
-    1
+    0
     nonce3
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1669,5 +1669,6 @@ let tests =
     Tztest.tztest "Test commitment rejection" `Quick test_rejection_propagation;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
     Tztest.tztest "Test rejection" `Quick test_rejection;
+    Tztest.tztest "Test rejection reward" `Quick test_rejection_reward;
     Tztest.tztest "Test full inbox" `Quick test_full_inbox;
   ]

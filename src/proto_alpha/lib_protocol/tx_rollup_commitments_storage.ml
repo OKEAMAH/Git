@@ -334,23 +334,30 @@ let reject_commitment ctxt tx_rollup (level : Raw_level_repr.t)
         contract
         counter
 
+let find_commitment_by_hash ctxt tx_rollup level hash =
+  Storage.Tx_rollup.Commitment_list.get ctxt (level, tx_rollup)
+  >|=? fun (ctxt, commitments) ->
+  let pending_commitment =
+    List.find
+      (fun {commitment; _} ->
+        Commitment_hash.(hash = Commitment.hash commitment))
+      commitments
+  in
+  (ctxt, pending_commitment)
+
 let get_commitment_roots ctxt tx_rollup (level : Raw_level_repr.t)
     (commitment_id : Commitment_hash.t) (index : int) =
-  let find_commitment_by_hash ctxt level hash =
-    Storage.Tx_rollup.Commitment_list.get ctxt (level, tx_rollup)
-    >>=? fun (ctxt, commitments) ->
-    let pending_commitment =
-      List.find
-        (fun {commitment; _} ->
-          Commitment_hash.(hash = Commitment.hash commitment))
-        commitments
-    in
-    Option.value_e
-      ~error:(Error_monad.trace_of_error No_such_commitment)
-      pending_commitment
-    >>?= fun pending -> return (ctxt, pending)
+  let find_commitment_or_die ctxt level commitment_id =
+    find_commitment_by_hash ctxt tx_rollup level commitment_id
+    >>=? fun (ctxt, maybe_pending) ->
+    Option.map_es (fun pending -> return (ctxt, pending)) maybe_pending
+    >>=? fun maybe_pending ->
+    Lwt.return
+    @@ Option.value_e
+         ~error:(Error_monad.trace_of_error No_such_commitment)
+         maybe_pending
   in
-  find_commitment_by_hash ctxt level commitment_id
+  find_commitment_or_die ctxt level commitment_id
   >>=? fun (ctxt, pending_commitment) ->
   let commitment = pending_commitment.commitment in
   let nth_root (commitment : Commitment.t) n =
@@ -375,7 +382,7 @@ let get_commitment_roots ctxt tx_rollup (level : Raw_level_repr.t)
             | None -> assert false
             | Some prev_level -> prev_level
           in
-          find_commitment_by_hash ctxt prev_level prev_hash
+          find_commitment_or_die ctxt prev_level prev_hash
           >>=? fun (ctxt, {commitment = {batches; _}; _}) ->
           (let last = List.last_opt batches in
            Option.value_e
@@ -436,13 +443,22 @@ let pending_bonded_commitments :
   Storage.Tx_rollup.Commitment_bond.find ctxt (tx_rollup, contract)
   >|=? fun (ctxt, pending) -> (ctxt, Option.value ~default:0 pending)
 
+let finalize_successful_prerejections ctxt tx_rollup level =
+  Storage.Tx_rollup.Successful_prerejections.list_values
+    ((ctxt, level), tx_rollup)
+  >>=? fun (ctxt, values) ->
+  (* TODO: clear this out -- we can't do that because there is no function
+     which will give us the list of keys, nor one which will remove everything
+     under a context. *)
+  return (ctxt, List.to_seq @@ List.map snd values)
+
 let finalize_pending_commitments ctxt tx_rollup =
   Tx_rollup_state_storage.get ctxt tx_rollup >>=? fun (ctxt, state) ->
   let first_unfinalized_level =
     Tx_rollup_state_repr.first_unfinalized_level state
   in
   match first_unfinalized_level with
-  | None -> return ctxt
+  | None -> return (ctxt, [])
   | Some first_unfinalized_level ->
       let current_level = (Raw_context.current_level ctxt).level in
       let last_level_to_finalize =
@@ -450,20 +466,30 @@ let finalize_pending_commitments ctxt tx_rollup =
         | Some level -> level
         | None -> Raw_level_repr.root
       in
-      let rec finalize_level ctxt level top count =
-        if Raw_level_repr.(level > top) then return (ctxt, 0, Some level)
+      let rec finalize_level ctxt level top count to_credit =
+        if Raw_level_repr.(level > top) then
+          return (ctxt, count, to_credit, Some level)
         else
           retire_rollup_level ctxt tx_rollup level last_level_to_finalize
           >>=? fun (ctxt, finalized) ->
-          if not finalized then return (ctxt, 0, Some level)
+          if not finalized then return (ctxt, 0, Seq.empty, Some level)
           else
+            finalize_successful_prerejections ctxt tx_rollup level
+            >>=? fun (ctxt, new_to_credit) ->
+            let to_credit = Seq.append to_credit new_to_credit in
             get_next_level ctxt tx_rollup level >>=? fun (ctxt, next_level) ->
             match next_level with
-            | None -> return (ctxt, count, None)
-            | Some next_level -> finalize_level ctxt next_level top (count + 1)
+            | None -> return (ctxt, count, to_credit, None)
+            | Some next_level ->
+                finalize_level ctxt next_level top (count + 1) to_credit
       in
-      finalize_level ctxt first_unfinalized_level last_level_to_finalize 0
-      >>=? fun (ctxt, finalized_count, first_unfinalized_level) ->
+      finalize_level
+        ctxt
+        first_unfinalized_level
+        last_level_to_finalize
+        0
+        Seq.empty
+      >>=? fun (ctxt, finalized_count, to_credit, first_unfinalized_level) ->
       let new_state =
         Tx_rollup_state_repr.update_after_finalize
           state
@@ -471,7 +497,7 @@ let finalize_pending_commitments ctxt tx_rollup =
           finalized_count
       in
       Storage.Tx_rollup.State.add ctxt tx_rollup new_state
-      >>=? fun (ctxt, _, _) -> return ctxt
+      >>=? fun (ctxt, _, _) -> return (ctxt, List.of_seq to_credit)
 
 let prereject :
     Raw_context.t ->
@@ -496,7 +522,7 @@ let check_prerejection :
     Tx_rollup_rejection_repr.t ->
     int64 ->
     Contract_repr.t ->
-    (Raw_context.t * Z.t) tzresult Lwt.t =
+    (Raw_context.t * Z.t * bool) tzresult Lwt.t =
  fun ctxt {rollup; level; hash; batch_index; _} nonce source ->
   let prerejection_hash =
     Tx_rollup_rejection_repr.generate_prerejection
@@ -511,4 +537,7 @@ let check_prerejection :
   >>=? fun (ctxt, priority) ->
   match priority with
   | None -> fail Tx_rollup_rejection_repr.Rejection_without_prerejection
-  | Some priority -> return (ctxt, priority)
+  | Some priority ->
+      find_commitment_by_hash ctxt rollup level hash
+      >>=? fun (ctxt, maybe_commitment) ->
+      return (ctxt, priority, Option.is_some maybe_commitment)

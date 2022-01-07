@@ -97,7 +97,9 @@ val pending_bonded_commitments :
 (** [finalize_pending_commitments ctxt tx_rollup] finalizes all
      pending commitments that are old enough. *)
 val finalize_pending_commitments :
-  Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  (Raw_context.t * Contract_repr.t list) tzresult Lwt.t
 
 (** [get_commitment_roots] Returns the before and after roots *)
 val get_commitment_roots :
@@ -125,4 +127,4 @@ val check_prerejection :
   Tx_rollup_rejection_repr.t ->
   int64 ->
   Contract_repr.t ->
-  (Raw_context.t * Z.t) tzresult Lwt.t
+  (Raw_context.t * Z.t * bool) tzresult Lwt.t
