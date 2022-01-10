@@ -90,6 +90,19 @@ let test_sc_rollups_all_well_defined () =
   in
   all_contains_all_constructors () >>=? fun () -> all_names_are_valid ()
 
+(* tests to be defined on commitment storage ops: *)
+
+
+(* TODO check that stakers_size is the size of stakers *)
+
+(* TODO check that commitment stake count describes the number of stakers per commit *)
+
+(* TODO check invariant: all commitments have at least once staker *)
+
+(* TODO check invariant: that everyone is staked on the LFC *)
+
+(* TODO check invariant: the challenge deadline of the LFC has passed *)
+
 let tests =
   [
     Tztest.tztest
