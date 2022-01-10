@@ -26,7 +26,10 @@
 
 (** Tezos Protocol Implementation - Typed storage builders.
 
-  @see [Make_subcontext]
+    Defines functor for contructing instances of the [Storage_sigs]
+    over a [Raw_context].
+
+    @see Storage_sigs
  *)
 
 open Storage_sigs
@@ -36,11 +39,33 @@ module Registered : REGISTER
 module Ghost : REGISTER
 
 (** Given a [Raw_context], return a new [Raw_context] that projects into
-    a given subtree. Similar to a {i functional lens}.
+    a given subtree in the manner of a {i functional lens}.
+
+    {2 Example}
+
+    Using [Make_subcontext Registered C (struct name = ["bar"] end)]
+    to read/write:
+
+    [
+    /x   = "hi"
+    /y/z = "ho"
+    ]
+
+    Is the same as using [C] to read/write:
+
+    [
+    /foo/x   = "hi"
+    /foo/y/z = "ho"
+    ]
+
+    See also [Make_indexed_subcontext].
  *)
 module Make_subcontext (_ : REGISTER) (C : Raw_context.T) (_ : NAME) :
   Raw_context.T with type t = C.t
 
+(** Returns a [Single_data_storage] that reads and writes to a specific
+    key in the given data storage.
+ *)
 module Make_single_data_storage
     (_ : REGISTER)
     (C : Raw_context.T)
@@ -64,7 +89,7 @@ end
 
 module Pair (I1 : INDEX) (I2 : INDEX) : INDEX with type t = I1.t * I2.t
 
-(** Create storage for a compound type. *)
+(** Create [Data_set_storage] from the given context and index. *)
 module Make_data_set_storage (C : Raw_context.T) (I : INDEX) :
   Data_set_storage with type t = C.t and type elt = I.t
 
@@ -86,6 +111,7 @@ module Make_indexed_carbonated_data_storage
      and type key = I.t
      and type value = V.t
 
+(** Like [Make_indexed_data_snapshotable_storage], adding support for snapshots. *)
 module Make_indexed_data_snapshotable_storage
     (C : Raw_context.T)
     (Snapshot : INDEX)
@@ -97,6 +123,13 @@ module Make_indexed_data_snapshotable_storage
      and type key = I.t
      and type value = V.t
 
+(** Create an [Indexed_raw_context] from a given context and index.
+
+    This is useful when you need to create several sets, maps or
+    subcontexts using the same index.
+
+    See also [Make_subcontext].
+ *)
 module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
   Indexed_raw_context
     with type t = C.t
