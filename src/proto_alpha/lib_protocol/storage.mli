@@ -705,7 +705,8 @@ end
 
 (** Smart contract rollup *)
 module Sc_rollup : sig
-  (**
+  (** Storage from this submodule must only be accessed through the
+      module `Sc_rollup_storage`.
 
      Each smart contract rollup is associated to:
 

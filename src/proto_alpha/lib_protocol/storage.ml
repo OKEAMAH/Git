@@ -1657,7 +1657,8 @@ module Sc_rollup = struct
          end))
          (Make_index (Sc_rollup_repr.Index))
 
-  (**
+  (** Storage from this submodule must only be accessed through the
+      module `Sc_rollup_storage`.
 
      Each smart contract rollup is associated to:
 
