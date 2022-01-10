@@ -103,6 +103,18 @@ let test_sc_rollups_all_well_defined () =
 
 (* TODO check invariant: the challenge deadline of the LFC has passed *)
 
+(* TODO check staker can stake on the LFC if not previously staked *)
+
+(* TODO check staker can refine stake *)
+
+(* TODO check staker can add-commitment-and-refine *)
+
+(* TODO check staker can not backtrack *)
+
+(* TODO check staker can unstake when staked on LFC *)
+
+(* TODO check stakers staked on LFC pre-finalization are staked on LFC post-finalization *)
+
 let tests =
   [
     Tztest.tztest
