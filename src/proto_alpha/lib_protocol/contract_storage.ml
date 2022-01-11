@@ -585,7 +585,7 @@ let update_script_storage c contract storage lazy_storage_diff =
   in
   Storage.Contract.Used_storage_space.update c contract new_size
 
-let spend_only_call_from_token c contract amount =
+let spend_only_call_from_token c contract delegate amount =
   Storage.Contract.Spendable_balance.find c contract >>=? fun balance ->
   let balance = Option.value balance ~default:Tez_repr.zero in
   match Tez_repr.(balance -? amount) with
@@ -598,7 +598,7 @@ let spend_only_call_from_token c contract amount =
         match Contract_repr.is_implicit contract with
         | None -> return c
         | Some pkh -> (
-            Contract_delegate_storage.find c contract >>=? function
+            match delegate with
             | Some pkh' ->
                 if Signature.Public_key_hash.equal pkh pkh' then return c
                 else

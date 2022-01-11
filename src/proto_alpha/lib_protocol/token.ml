@@ -39,32 +39,66 @@ let add_contract_stake ctxt contract amount =
   | None -> return ctxt
   | Some delegate -> Stake_storage.add_stake ctxt delegate amount
 
-(* A delegate is registered if its "implicit account" delegates to itself. *)
-let delegates_to_self c delegate =
-  Contract_delegate_storage.find c (Contract_repr.implicit_contract delegate)
-  >|=? function
-  | Some current_delegate ->
-      Signature.Public_key_hash.equal delegate current_delegate
-  | None -> false
+type delegate = [`Contract of Contract_repr.t]
 
-let init_delegate ctxt contract delegate =
-  Contract_storage.get_balance_and_frozen_bonds ctxt contract
-  >>=? fun balance ->
-  Contract_delegate_storage.init ctxt contract delegate >>=? fun ctxt ->
-  Stake_storage.add_stake ctxt delegate balance
+type delegator = [`Contract of Contract_repr.t]
 
-let update_delegate ctxt contract delegate =
-  Contract_storage.get_balance_and_frozen_bonds ctxt contract
+let contract_of_delegator = function `Contract c -> c
+
+let pkh_of_delegate = function `Contract c -> Contract_repr.is_implicit c
+
+let contract_of_pkh pkh = `Contract (Contract_repr.implicit_contract pkh)
+
+let get_contract_delegate ctxt delegator =
+  Contract_delegate_storage.find ctxt (contract_of_delegator delegator)
+  >>=? function
+  | None -> return_none
+  | Some pkh -> return_some (contract_of_pkh pkh)
+
+let delegates_to c delegator delegate =
+  get_contract_delegate c delegator >>=? fun del ->
+  match del with
+  | None -> return_false
+  | Some (`Contract contract) ->
+      return (Contract_repr.equal contract (contract_of_delegator delegate))
+
+let delegates_to_self c delegator = delegates_to c delegator delegator
+
+let init_delegate ctxt delegator (delegate : delegate) =
+  let delegator = contract_of_delegator delegator in
+  match pkh_of_delegate delegate with
+  | Some pkh ->
+      Contract_storage.get_balance_and_frozen_bonds ctxt delegator
+      >>=? fun balance ->
+      Contract_delegate_storage.init ctxt delegator pkh >>=? fun ctxt ->
+      Stake_storage.add_stake ctxt pkh balance
+  | None -> return ctxt
+
+let update_delegate ctxt delegator delegate =
+  let delegator = contract_of_delegator delegator in
+  match pkh_of_delegate delegate with
+  | Some pkh ->
+      Contract_storage.get_balance_and_frozen_bonds ctxt delegator
+      >>=? fun balance_and_frozen_bonds ->
+      remove_contract_stake ctxt delegator balance_and_frozen_bonds
+      >>=? fun ctxt ->
+      Contract_delegate_storage.delete ctxt delegator >>=? fun ctxt ->
+      Contract_delegate_storage.set ctxt delegator pkh >>=? fun ctxt ->
+      add_contract_stake ctxt delegator balance_and_frozen_bonds
+  | None -> return ctxt
+
+let delete_delegate ctxt delegator =
+  let delegator = contract_of_delegator delegator in
+  Contract_storage.get_balance_and_frozen_bonds ctxt delegator
   >>=? fun balance_and_frozen_bonds ->
-  remove_contract_stake ctxt contract balance_and_frozen_bonds >>=? fun ctxt ->
-  Contract_delegate_storage.set ctxt contract delegate >>=? fun ctxt ->
-  Stake_storage.add_stake ctxt delegate balance_and_frozen_bonds
+  remove_contract_stake ctxt delegator balance_and_frozen_bonds >>=? fun ctxt ->
+  Contract_delegate_storage.delete ctxt delegator
 
-let delete_delegate ctxt contract =
-  Contract_storage.get_balance_and_frozen_bonds ctxt contract
-  >>=? fun balance_and_frozen_bonds ->
-  remove_contract_stake ctxt contract balance_and_frozen_bonds >>=? fun ctxt ->
-  Contract_delegate_storage.delete ctxt contract
+let staking_balance ctxt = function
+  | `Contract del -> (
+      match Contract_repr.is_implicit del with
+      | Some pkh -> Stake_storage.get_staking_balance ctxt pkh
+      | None -> return Tez_repr.zero)
 
 type container =
   [ `Contract of Contract_repr.t
@@ -211,11 +245,12 @@ let spend ctxt src amount origin =
   | #container as container -> (
       match container with
       | `Contract src ->
-          Contract_storage.spend_only_call_from_token ctxt src amount
+          Contract_delegate_storage.find ctxt src >>=? fun delegate ->
+          Contract_storage.spend_only_call_from_token ctxt src delegate amount
           >>=? fun ctxt ->
           Contract_storage.allocated ctxt src >>=? fun allocated ->
           (if allocated then remove_contract_stake ctxt src amount
-          else delete_delegate ctxt src)
+          else delete_delegate ctxt (`Contract src))
           >|=? fun ctxt -> (ctxt, Contract src)
       | `Collected_commitments bpkh ->
           Commitment_storage.decrease_commitment_only_call_from_token

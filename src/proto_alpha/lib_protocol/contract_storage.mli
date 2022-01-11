@@ -132,7 +132,11 @@ val credit_only_call_from_token :
   Raw_context.t -> Contract_repr.t -> Tez_repr.t -> Raw_context.t tzresult Lwt.t
 
 val spend_only_call_from_token :
-  Raw_context.t -> Contract_repr.t -> Tez_repr.t -> Raw_context.t tzresult Lwt.t
+  Raw_context.t ->
+  Contract_repr.t ->
+  Signature.Public_key_hash.t option ->
+  Tez_repr.t ->
+  Raw_context.t tzresult Lwt.t
 
 (** [raw_originate ctxt ~prepaid_bootstrap_storage contract ~script]
     originates the [contract] parameter. The [storage] space allocated by this

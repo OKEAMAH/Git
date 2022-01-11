@@ -37,21 +37,20 @@
     [grep -R "Token.transfer" src/proto_alpha].
 
     This module also manages the tokens' staking.
-    This module also manages the tokens' staking.
     First, in addition to the token movements, any token transfer includes the
-    associated staking movements. When [source] is a delegator,
+    associated staking movements. When [source] is a [delegator],
     its delegate's staking balance is increased by the transferred [amount], and
-    when [dest] is a delegator, its delegate's staking balance is decreased by
+    when [dest] is a [delegator], its delegate's staking balance is decreased by
     [amount].
-    Second, along with the delegators/delegatees relationship management, this module
+    Second, along with the [delegators]/[delegatees] relationship management, this module
     manages the associated stake movements.
-    When initiating a delegation, the delegatee's staking balance is increased by
-    the delegator's token balance.
-    When deleting a delegation, the delegatee's staking balance is decreased by
-    the delegator's token balance.
-    When updating a delegation, the staking balance of the current delegatee's
-    staking balance is decreased by the delegator's token balance, and
-    the novel delegatee's staking balance is increased by it.*)
+    When initiating a delegation, the [delegatee]'s staking balance is increased by
+    the [delegator]'s token balance.
+    When deleting a delegation, the [delegatee]'s staking balance is decreased by
+    the [delegator]'s token balance.
+    When updating a delegation, the staking balance of the current [delegatee]'s
+    staking balance is decreased by the [delegator]'s token balance, and
+    the novel [delegatee]'s staking balance is increased by it.*)
 
 (** [container] is the type of token holders with finite capacity, and whose assets
     are contained in the context. *)
@@ -153,10 +152,23 @@ val transfer :
   Tez_repr.t ->
   (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t
 
+(** [delegate] is the type of delegate. The Contract_repr.t must be an
+    implicit contract. *)
+type delegate = [`Contract of Contract_repr.t]
+
+(** [delegator] is the type of accounts that can delegate.*)
+type delegator = [`Contract of Contract_repr.t]
+
+(** [staking_balance ctxt del] returns the staking balance of [del].*)
+val staking_balance : Raw_context.t -> delegate -> Tez_repr.t tzresult Lwt.t
+
 (** [delegates_to_self ctxt delegate] returns true iff delegate is an
     implicit contract that delegates to itself. *)
-val delegates_to_self :
-  Raw_context.t -> Signature.Public_key_hash.t -> bool tzresult Lwt.t
+val delegates_to_self : Raw_context.t -> delegator -> bool tzresult Lwt.t
+
+(** [delegates_to ctxt contract delegate] checks that [contract]' delegate
+    is [delegate]. *)
+val delegates_to : Raw_context.t -> delegator -> delegate -> bool tzresult Lwt.t
 
 (** [init_delegate ctxt contract delegate] sets the [delegate] associated
     to [contract].
@@ -166,10 +178,7 @@ val delegates_to_self :
 
     It should be guarded by a [delegates_to_self delegate] checks. *)
 val init_delegate :
-  Raw_context.t ->
-  Contract_repr.t ->
-  Signature.Public_key_hash.t ->
-  Raw_context.t tzresult Lwt.t
+  Raw_context.t -> delegator -> delegate -> Raw_context.t tzresult Lwt.t
 
 (** [update_delegate ctxt contract delegate] updates the [delegate] associated
     to [contract].
@@ -179,15 +188,11 @@ val init_delegate :
 
     It should be guarded by a [delegates_to_self delegate] checks. *)
 val update_delegate :
-  Raw_context.t ->
-  Contract_repr.t ->
-  Signature.Public_key_hash.t ->
-  Raw_context.t tzresult Lwt.t
+  Raw_context.t -> delegator -> delegate -> Raw_context.t tzresult Lwt.t
 
 (** [delete_delegate ctxt contract] behaves as [remove_delegate ctxt contract],
     but in addition removes the association of the [contract] to its current
     delegate, leaving the former with no delegate.
 
     This function is undefined if [contract] is not allocated. *)
-val delete_delegate :
-  Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
+val delete_delegate : Raw_context.t -> delegator -> Raw_context.t tzresult Lwt.t

@@ -181,8 +181,9 @@ let set_active ctxt delegate =
   else Stake_storage.activate_only_call_from_delegate_storage ctxt delegate
 
 let staking_balance ctxt delegate =
+  let delegate = `Contract (Contract_repr.implicit_contract delegate) in
   Token.delegates_to_self ctxt delegate >>=? fun is_registered_delegate ->
-  if is_registered_delegate then Stake_storage.get_staking_balance ctxt delegate
+  if is_registered_delegate then Token.staking_balance ctxt delegate
   else return Tez_repr.zero
 
 let pubkey ctxt delegate =
@@ -191,28 +192,39 @@ let pubkey ctxt delegate =
     delegate
     ~error:(Unregistered_delegate delegate)
 
-let init ctxt contract delegate =
-  Contract_manager_storage.is_manager_key_revealed ctxt delegate
+let init ctxt contract pkh =
+  let delegate = `Contract (Contract_repr.implicit_contract pkh) in
+  let delegator = `Contract contract in
+  Contract_manager_storage.is_manager_key_revealed ctxt pkh
   >>=? fun known_delegate ->
-  error_unless known_delegate (Unregistered_delegate delegate) >>?= fun () ->
+  error_unless known_delegate (Unregistered_delegate pkh) >>?= fun () ->
   Token.delegates_to_self ctxt delegate >>=? fun is_registered_delegate ->
-  error_unless is_registered_delegate (Unregistered_delegate delegate)
-  >>?= fun () -> Token.init_delegate ctxt contract delegate
+  error_unless is_registered_delegate (Unregistered_delegate pkh) >>?= fun () ->
+  Token.init_delegate ctxt delegator delegate
+
+let registered ctxt pkh =
+  let delegate = `Contract (Contract_repr.implicit_contract pkh) in
+  Token.delegates_to_self ctxt delegate
 
 let set c contract delegate =
+  let delegator = `Contract contract in
   match delegate with
+  (* This is the case of undelegation *)
   | None ->
       (* check if contract is a registered delegate *)
       (match Contract_repr.is_implicit contract with
       | Some pkh ->
-          Token.delegates_to_self c pkh >>=? fun is_registered_delegate ->
+          Token.delegates_to_self c delegator >>=? fun is_registered_delegate ->
           fail_when is_registered_delegate (No_deletion pkh)
       | None -> return_unit)
-      >>=? fun () -> Token.delete_delegate c contract
+      >>=? fun () -> Token.delete_delegate c delegator
   | Some delegate ->
+      (*The delegate should be known and delegates to itself,e.g. being registered
+        or it is this registration e.g. its self delegation.*)
+      let cdelegate = `Contract (Contract_repr.implicit_contract delegate) in
       Contract_manager_storage.is_manager_key_revealed c delegate
       >>=? fun known_delegate ->
-      Token.delegates_to_self c delegate >>=? fun registered_delegate ->
+      Token.delegates_to_self c cdelegate >>=? fun registered_delegate ->
       let self_delegation =
         match Contract_repr.is_implicit contract with
         | Some pkh -> Signature.Public_key_hash.equal pkh delegate
@@ -221,21 +233,21 @@ let set c contract delegate =
       if (not known_delegate) || not (registered_delegate || self_delegation)
       then fail (Unregistered_delegate delegate)
       else
-        Contract_delegate_storage.find c contract >>=? fun current_delegate ->
-        (match current_delegate with
-        | Some current_delegate
-          when Signature.Public_key_hash.equal delegate current_delegate ->
+        ( Token.delegates_to c delegator cdelegate
+        >>=? fun already_delegates_to ->
+          if already_delegates_to then
             if self_delegation then
               Delegate_activation_storage.is_inactive c delegate >>=? function
               | true -> return_unit
               | false -> fail Active_delegate
             else fail Current_delegate
-        | None | Some _ -> return_unit)
+          else return_unit )
         >>=? fun () ->
         (* check if contract is a registered delegate *)
         (match Contract_repr.is_implicit contract with
         | Some pkh ->
-            Token.delegates_to_self c pkh >>=? fun is_registered_delegate ->
+            Token.delegates_to_self c delegator
+            >>=? fun is_registered_delegate ->
             (* allow self-delegation to re-activate *)
             if (not self_delegation) && is_registered_delegate then
               fail (No_deletion pkh)
@@ -247,7 +259,7 @@ let set c contract delegate =
           (self_delegation && not exists)
           (Empty_delegate_account delegate)
         >>?= fun () ->
-        Token.update_delegate c contract delegate >>=? fun c ->
+        Token.update_delegate c delegator cdelegate >>=? fun c ->
         if self_delegation then
           Storage.Delegates.add c delegate >>= fun c -> set_active c delegate
         else return c
@@ -684,7 +696,8 @@ let full_balance ctxt delegate =
 let deactivated = Delegate_activation_storage.is_inactive
 
 let delegated_balance ctxt delegate =
-  staking_balance ctxt delegate >>=? fun staking_balance ->
+  let cdelegate = `Contract (Contract_repr.implicit_contract delegate) in
+  Token.staking_balance ctxt cdelegate >>=? fun staking_balance ->
   balance ctxt delegate >>=? fun balance ->
   frozen_deposits ctxt delegate >>=? fun frozen_deposits ->
   Tez_repr.(balance +? frozen_deposits.current_amount)

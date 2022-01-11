@@ -48,6 +48,9 @@ val set :
   Signature.Public_key_hash.t option ->
   Raw_context.t tzresult Lwt.t
 
+val registered :
+  Raw_context.t -> Signature.Public_key_hash.t -> bool tzresult Lwt.t
+
 val frozen_deposits_limit :
   Raw_context.t ->
   Signature.Public_key_hash.t ->
