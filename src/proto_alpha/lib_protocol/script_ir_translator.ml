@@ -2324,7 +2324,9 @@ let parse_tx_rollup_l2_address ctxt :
       | None ->
           error
           @@ Invalid_syntactic_constant
-               (loc, strip_locations expr, "a valid tx rollup address"))
+               ( loc,
+                 strip_locations expr,
+                 "a valid transaction rollup L2 address" ))
   | (String (_, _) as expr)
   (* As unparsed with [Readable]. *)
   (* TODO: Use the b58 encoding when it is available *)
