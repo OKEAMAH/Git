@@ -103,6 +103,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    contract_manager_storage.mli contract_manager_storage.ml
    delegate_activation_storage.mli delegate_activation_storage.ml
    frozen_deposits_storage.mli frozen_deposits_storage.ml
+   tx_rollup_frozen_storage.mli tx_rollup_frozen_storage.ml
    stake_storage.mli stake_storage.ml
    contract_delegate_storage.mli contract_delegate_storage.ml
    sapling_storage.ml
@@ -257,6 +258,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    contract_manager_storage.mli contract_manager_storage.ml
    delegate_activation_storage.mli delegate_activation_storage.ml
    frozen_deposits_storage.mli frozen_deposits_storage.ml
+   tx_rollup_frozen_storage.mli tx_rollup_frozen_storage.ml
    stake_storage.mli stake_storage.ml
    contract_delegate_storage.mli contract_delegate_storage.ml
    sapling_storage.ml
@@ -411,6 +413,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    contract_manager_storage.mli contract_manager_storage.ml
    delegate_activation_storage.mli delegate_activation_storage.ml
    frozen_deposits_storage.mli frozen_deposits_storage.ml
+   tx_rollup_frozen_storage.mli tx_rollup_frozen_storage.ml
    stake_storage.mli stake_storage.ml
    contract_delegate_storage.mli contract_delegate_storage.ml
    sapling_storage.ml
@@ -587,6 +590,7 @@ include Tezos_raw_protocol_alpha.Main
    Contract_manager_storage
    Delegate_activation_storage
    Frozen_deposits_storage
+   Tx_rollup_frozen_storage
    Stake_storage
    Contract_delegate_storage
    Sapling_storage
@@ -782,6 +786,7 @@ include Tezos_raw_protocol_alpha.Main
    contract_manager_storage.mli contract_manager_storage.ml
    delegate_activation_storage.mli delegate_activation_storage.ml
    frozen_deposits_storage.mli frozen_deposits_storage.ml
+   tx_rollup_frozen_storage.mli tx_rollup_frozen_storage.ml
    stake_storage.mli stake_storage.ml
    contract_delegate_storage.mli contract_delegate_storage.ml
    sapling_storage.ml

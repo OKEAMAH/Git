@@ -36,6 +36,7 @@ val add_commitment :
   Tx_rollup_repr.t ->
   Contract_repr.t ->
   Tx_rollup_commitments_repr.Commitment.t ->
+  Tez_repr.t ->
   Raw_context.t tzresult Lwt.t
 
 (** [remove_bond context tx_rollup contract] removes the bond for a
@@ -92,8 +93,8 @@ val get_commitments :
   (Raw_context.t * Tx_rollup_commitments_repr.t) tzresult Lwt.t
 
 (** [pending bonded_commitments ctxt tx_rollup contract] returns the
-   number of commitments that [contract] has made that are still
-   pending (that is, still subject to rejection) *)
+   number of commitments that [contract] has made on [tx_rollup] that
+   are still pending (that is, still subject to rejection).  *)
 val pending_bonded_commitments :
   Raw_context.t ->
   Tx_rollup_repr.t ->

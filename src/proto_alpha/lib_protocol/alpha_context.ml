@@ -250,6 +250,7 @@ end
 module Tx_rollup = struct
   include Tx_rollup_repr
   include Tx_rollup_storage
+  include Tx_rollup_frozen_storage
 
   let hash_ticket :
       Raw_context.t ->

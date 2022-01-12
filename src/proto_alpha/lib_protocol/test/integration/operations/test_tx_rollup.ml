@@ -203,12 +203,15 @@ let assert_ok res = match res with Ok r -> r | Error _ -> assert false
 
 let raw_level level = assert_ok @@ Raw_level.of_int32 level
 
-let check_bond ctxt tx_rollup contract count =
+let check_bond ctxt tx_rollup contract count rollup_count =
   wrap
     (Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup contract)
-  >>=? fun (_, pending) ->
+  >>=? fun (ctxt, pending) ->
   Alcotest.(check int "Pending commitment count correct" count pending) ;
-  return ()
+  wrap (Tx_rollup.frozen_tez ctxt contract) >>=? fun frozen ->
+  let bond = Constants.tx_rollup_commitment_bond ctxt in
+  wrap (Lwt.return @@ Tez.(bond *? Int64.of_int rollup_count))
+  >>=? fun expected -> Assert.equal_tez ~loc:__LOC__ expected frozen
 
 let rec bake_until i top =
   let level = Incremental.level i in
@@ -813,90 +816,99 @@ let test_commitments () =
   >>=? fun operation ->
   Block.bake ~operation b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
-  let level_opt =
-    Raw_level.pred (Level.current (Incremental.alpha_ctxt i)).level
-  in
-  let level =
-    match level_opt with None -> assert false | Some level -> level
-  in
-  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}]
-  in
-  let commitment : Tx_rollup_commitments.Commitment.t =
-    {level; batches; predecessor = None}
-  in
-  let submitted_level = (Level.current (Incremental.alpha_ctxt i)).level in
-  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
-  Incremental.add_operation i op >>=? fun i ->
-  let cost = Tez.of_mutez_exn 10_000_000_000L in
-  Assert.balance_was_debited ~loc:__LOC__ (I i) contract1 balance cost
-  >>= fun _ ->
-  (* Successfully fail to submit a duplicate commitment *)
-  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment >>=? fun op ->
-  Incremental.add_operation i op ~expect_failure:(function
-      | Environment.Ecoproto_error
-          (Tx_rollup_commitments.Commitment_hash_already_submitted as e)
-        :: _ ->
-          Assert.test_error_encodings e ;
-          return_unit
-      | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
-  >>=? fun i ->
-  let batches2 : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '1'}]
-  in
-  let commitment2 : Tx_rollup_commitments.Commitment.t =
-    {level; batches = batches2; predecessor = None}
-  in
-  (* Successfully fail to submit a different commitment from contract1 *)
-  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment2 >>=? fun op ->
-  Incremental.add_operation i op ~expect_failure:(function
-      | Environment.Ecoproto_error
-          (Tx_rollup_commitments.Two_commitments_from_one_committer as e)
-        :: _ ->
-          Assert.test_error_encodings e ;
-          return_unit
-      | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
-  >>=? fun i ->
-  let batches3 : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '1'}; {root = Bytes.make 20 '2'}]
-  in
-  let commitment3 : Tx_rollup_commitments.Commitment.t =
-    {level; batches = batches3; predecessor = None}
-  in
-  (* Successfully fail to submit a different commitment from contract2 *)
-  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment3 >>=? fun op ->
-  Incremental.add_operation i op ~expect_failure:(function
-      | Environment.Ecoproto_error
-          (Tx_rollup_commitments.Wrong_batch_count as e)
-        :: _ ->
-          Assert.test_error_encodings e ;
-          return_unit
-      | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
-  >>=? fun i ->
-  (* No charge. *)
-  Assert.balance_was_debited ~loc:__LOC__ (I i) contract2 balance2 Tez.zero
-  >>=? fun () ->
-  let ctxt = Incremental.alpha_ctxt i in
-  wrap (Tx_rollup_commitments.get_commitments ctxt tx_rollup level)
-  >>=? fun (ctxt, commitments) ->
-  (Alcotest.(check int "Expected one commitment" 1 (List.length commitments)) ;
-   let expected_hash = Tx_rollup_commitments.Commitment.hash commitment in
-   match List.nth commitments 0 with
-   | None -> assert false
-   | Some {hash; committer; submitted_at; _} ->
-       Alcotest.(
-         check commitment_hash_testable "Commitment hash" expected_hash hash) ;
+  wrap (Delegate.find (Incremental.alpha_ctxt i) contract1) >>=? function
+  | None -> assert false
+  | Some delegate1 ->
+      wrap (Delegate.full_balance (Incremental.alpha_ctxt i) delegate1)
+      >>=? fun initial_full_balance ->
+      let level_opt =
+        Raw_level.pred (Level.current (Incremental.alpha_ctxt i)).level
+      in
+      let level =
+        match level_opt with None -> assert false | Some level -> level
+      in
+      let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+        [{root = Bytes.make 20 '0'}]
+      in
+      let commitment : Tx_rollup_commitments.Commitment.t =
+        {level; batches; predecessor = None}
+      in
+      let submitted_level = (Level.current (Incremental.alpha_ctxt i)).level in
+      Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+      Incremental.add_operation i op >>=? fun i ->
+      let cost = Tez.of_mutez_exn 10_000_000_000L in
+      Assert.balance_was_debited ~loc:__LOC__ (I i) contract1 balance cost
+      >>= fun _ ->
+      (* Successfully fail to submit a duplicate commitment *)
+      Op.tx_rollup_commit (I i) contract2 tx_rollup commitment >>=? fun op ->
+      Incremental.add_operation i op ~expect_failure:(function
+          | Environment.Ecoproto_error
+              (Tx_rollup_commitments.Commitment_hash_already_submitted as e)
+            :: _ ->
+              Assert.test_error_encodings e ;
+              return_unit
+          | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
+      >>=? fun i ->
+      let batches2 : Tx_rollup_commitments.Commitment.batch_commitment list =
+        [{root = Bytes.make 20 '1'}]
+      in
+      let commitment2 : Tx_rollup_commitments.Commitment.t =
+        {level; batches = batches2; predecessor = None}
+      in
+      (* Successfully fail to submit a different commitment from contract1 *)
+      Op.tx_rollup_commit (I i) contract1 tx_rollup commitment2 >>=? fun op ->
+      Incremental.add_operation i op ~expect_failure:(function
+          | Environment.Ecoproto_error
+              (Tx_rollup_commitments.Two_commitments_from_one_committer as e)
+            :: _ ->
+              Assert.test_error_encodings e ;
+              return_unit
+          | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
+      >>=? fun i ->
+      let batches3 : Tx_rollup_commitments.Commitment.batch_commitment list =
+        [{root = Bytes.make 20 '1'}; {root = Bytes.make 20 '2'}]
+      in
+      let commitment3 : Tx_rollup_commitments.Commitment.t =
+        {level; batches = batches3; predecessor = None}
+      in
+      (* Successfully fail to submit a different commitment from contract2 *)
+      Op.tx_rollup_commit (I i) contract2 tx_rollup commitment3 >>=? fun op ->
+      Incremental.add_operation i op ~expect_failure:(function
+          | Environment.Ecoproto_error
+              (Tx_rollup_commitments.Wrong_batch_count as e)
+            :: _ ->
+              Assert.test_error_encodings e ;
+              return_unit
+          | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
+      >>=? fun i ->
+      (* No charge. *)
+      Assert.balance_was_debited ~loc:__LOC__ (I i) contract2 balance2 Tez.zero
+      >>=? fun () ->
+      let ctxt = Incremental.alpha_ctxt i in
+      wrap (Tx_rollup_commitments.get_commitments ctxt tx_rollup level)
+      >>=? fun (ctxt, commitments) ->
+      (Alcotest.(
+         check int "Expected one commitment" 1 (List.length commitments)) ;
+       let expected_hash = Tx_rollup_commitments.Commitment.hash commitment in
+       match List.nth commitments 0 with
+       | None -> assert false
+       | Some {hash; committer; submitted_at; _} ->
+           Alcotest.(
+             check commitment_hash_testable "Commitment hash" expected_hash hash) ;
 
-       Alcotest.(check contract_testable "Committer" contract1 committer) ;
+           Alcotest.(check contract_testable "Committer" contract1 committer) ;
 
-       Alcotest.(
-         check raw_level_testable "Submitted" submitted_level submitted_at) ;
-       return ())
-  >>=? fun () ->
-  check_bond ctxt tx_rollup contract1 1 >>=? fun () ->
-  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
-  ignore i ;
-  return ()
+           Alcotest.(
+             check raw_level_testable "Submitted" submitted_level submitted_at) ;
+           return ())
+      >>=? fun () ->
+      check_bond ctxt tx_rollup contract1 1 1 >>=? fun () ->
+      check_bond ctxt tx_rollup contract2 0 0 >>=? fun () ->
+      wrap (Delegate.full_balance ctxt delegate1) >>=? fun full_balance ->
+      Assert.equal_tez ~loc:__LOC__ initial_full_balance full_balance
+      >>=? fun () ->
+      ignore i ;
+      return ()
 
 let make_transactions_in tx_rollup contract blocks b =
   let contents = "batch " in
@@ -1046,10 +1058,7 @@ let test_commitment_retire_simple () =
        (Level.current (Incremental.alpha_ctxt i)).level)
   >>=? fun (ctxt, retired) ->
   assert retired ;
-  wrap
-    (Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup contract1)
-  >>=? fun (_, pending) ->
-  Alcotest.(check int "No more pending commitment" 0 pending) ;
+  check_bond ctxt tx_rollup contract1 0 1 >>=? fun () ->
   ignore i ;
   return ()
 
@@ -1129,8 +1138,8 @@ let test_commitment_retire_complex () =
        (raw_level 2l))
   >>=? fun (ctxt, retired) ->
   assert retired ;
-  check_bond ctxt tx_rollup contract1 3 >>=? fun () ->
-  check_bond ctxt tx_rollup contract2 3 >>=? fun () ->
+  check_bond ctxt tx_rollup contract1 3 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 3 1 >>=? fun () ->
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        ctxt
@@ -1139,8 +1148,8 @@ let test_commitment_retire_complex () =
        (raw_level 3l))
   >>=? fun (ctxt, retired) ->
   assert retired ;
-  check_bond ctxt tx_rollup contract1 3 >>=? fun () ->
-  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
+  check_bond ctxt tx_rollup contract1 3 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 0 >>=? fun () ->
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        ctxt
@@ -1149,8 +1158,8 @@ let test_commitment_retire_complex () =
        (raw_level 6l))
   >>=? fun (ctxt, retired) ->
   assert retired ;
-  check_bond ctxt tx_rollup contract1 0 >>=? fun () ->
-  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
+  check_bond ctxt tx_rollup contract1 0 0 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 0 >>=? fun () ->
   ignore ctxt ;
   ignore i ;
   return ()
@@ -1240,10 +1249,11 @@ let test_rejection_propagation () =
        contract4
        Z.one)
   >>=? fun ctxt ->
-  check_bond ctxt tx_rollup contract1 0 >>=? fun () ->
-  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
-  check_bond ctxt tx_rollup contract3 0 >>=? fun () ->
-  check_bond ctxt tx_rollup contract4 2 >>=? fun () ->
+  check_bond ctxt tx_rollup contract1 0 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract3 0 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract4 2 1 >>=? fun () ->
+  ignore ctxt ;
   ignore i ;
   return ()
 
@@ -1319,6 +1329,8 @@ let test_bond_finalization () =
   bake_n 33 34 i last_commitment >>=? fun (_, i) ->
   Op.tx_rollup_return_bond (I i) contract1 tx_rollup >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
+  (* Here, the bond is fully returned. *)
+  check_bond (Incremental.alpha_ctxt i) tx_rollup contract1 0 0 >>=? fun () ->
   ignore i ;
   return ()
 

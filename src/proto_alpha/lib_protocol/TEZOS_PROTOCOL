@@ -80,6 +80,7 @@
         "Contract_manager_storage",
         "Delegate_activation_storage",
         "Frozen_deposits_storage",
+        "Tx_rollup_frozen_storage",
         "Stake_storage",
         "Contract_delegate_storage",
         "Sapling_storage",

@@ -48,15 +48,32 @@ let get_prev_level ctxt tx_rollup level =
   Tx_rollup_inbox_storage.get_adjacent_levels ctxt level tx_rollup
   >|=? fun (ctxt, predecessor_level, _) -> (ctxt, predecessor_level)
 
-let adjust_commitment_bond ctxt tx_rollup contract delta =
+let increment_commitment_bond ctxt tx_rollup contract bond_tez =
   let bond_key = (tx_rollup, contract) in
-  Storage.Tx_rollup.Commitment_bond.find ctxt bond_key
-  >>=? fun (ctxt, commitment) ->
-  (match commitment with
-  | Some count -> return (count + delta)
-  | None -> return delta)
-  >>=? fun count ->
-  Storage.Tx_rollup.Commitment_bond.add ctxt bond_key count >|=? just_ctxt
+  ( Storage.Tx_rollup.Commitment_bond.find ctxt bond_key >>=? fun (ctxt, bond) ->
+    match bond with
+    | Some (count, tez) -> return (ctxt, (count + 1, tez))
+    | None ->
+        ( Storage.Tx_rollup.Commitment_bond.remove ctxt bond_key
+        >>=? fun (ctxt, _, _) ->
+          Storage.Tx_rollup.Frozen_commitments.find ctxt contract >>=? function
+          | None -> return bond_tez
+          | Some old -> Lwt.return @@ Tez_repr.(old +? bond_tez) )
+        >>=? fun new_tez ->
+        Storage.Tx_rollup.Frozen_commitments.add ctxt contract new_tez
+        >>= fun ctxt -> return (ctxt, (1, bond_tez)) )
+  >>=? fun (ctxt, new_bond) ->
+  Storage.Tx_rollup.Commitment_bond.add ctxt bond_key new_bond >|=? just_ctxt
+
+let reduce_commitment_bond ctxt tx_rollup contract =
+  let bond_key = (tx_rollup, contract) in
+  ( Storage.Tx_rollup.Commitment_bond.find ctxt bond_key >>=? fun (ctxt, bond) ->
+    match bond with
+    | Some (count, tez) -> return (ctxt, (count - 1, tez))
+    | None -> assert false )
+  >>=? fun (ctxt, (count, tez)) ->
+  let new_bond = (count, tez) in
+  Storage.Tx_rollup.Commitment_bond.add ctxt bond_key new_bond >|=? just_ctxt
 
 let remove_bond :
     Raw_context.t ->
@@ -67,10 +84,14 @@ let remove_bond :
   let bond_key = (tx_rollup, contract) in
   Storage.Tx_rollup.Commitment_bond.find ctxt bond_key >>=? fun (ctxt, bond) ->
   match bond with
-  | None -> fail (Bond_does_not_exist contract)
-  | Some 0 ->
-      Storage.Tx_rollup.Commitment_bond.remove ctxt bond_key >|=? just_ctxt
-  | Some _ -> fail (Bond_in_use contract)
+  | None -> fail (Tx_rollup_commitments_repr.Bond_does_not_exist contract)
+  | Some (0, tez) ->
+      Storage.Tx_rollup.Commitment_bond.remove ctxt bond_key
+      >>=? fun (ctxt, _, _) ->
+      Storage.Tx_rollup.Frozen_commitments.get ctxt contract >>=? fun old ->
+      Tez_repr.(old -? tez) >>?= fun new_tez ->
+      Storage.Tx_rollup.Frozen_commitments.add ctxt contract new_tez >>= return
+  | Some _ -> fail (Tx_rollup_commitments_repr.Bond_in_use contract)
 
 let check_commitment_predecessor_hash ctxt tx_rollup (commitment : Commitment.t)
     =
@@ -91,7 +112,7 @@ let check_commitment_predecessor_hash ctxt tx_rollup (commitment : Commitment.t)
         Missing_commitment_predecessor
       >>=? fun () -> return ctxt
 
-let add_commitment ctxt tx_rollup contract (commitment : Commitment.t) =
+let add_commitment ctxt tx_rollup contract (commitment : Commitment.t) tez =
   let key = (commitment.level, tx_rollup) in
   get_or_empty_commitments ctxt key >>=? fun (ctxt, pending) ->
   let hash = Commitment.hash commitment in
@@ -116,7 +137,7 @@ let add_commitment ctxt tx_rollup contract (commitment : Commitment.t) =
     Tx_rollup_commitments_repr.append pending contract commitment current_level
   in
   Storage.Tx_rollup.Commitment_list.add ctxt key new_pending
-  >>=? fun (ctxt, _, _) -> adjust_commitment_bond ctxt tx_rollup contract 1
+  >>=? fun (ctxt, _, _) -> increment_commitment_bond ctxt tx_rollup contract tez
 
 module Contract_set = Set.Make (Contract_repr)
 module Commitment_set = Set.Make (Commitment_hash)
@@ -208,7 +229,7 @@ let rec remove_successors :
           in
           List.fold_left_es
             (fun ctxt {committer; _} ->
-              adjust_commitment_bond ctxt tx_rollup committer 1)
+              reduce_commitment_bond ctxt tx_rollup committer)
             ctxt
             to_remove
           >>=? fun ctxt ->
@@ -461,7 +482,7 @@ let retire_rollup_level :
             (Seq.map (fun {hash; _} -> hash) (List.to_seq rejected))
         in
         remove_successors ctxt tx_rollup level top to_reject >>=? fun ctxt ->
-        adjust_commitment_bond ctxt tx_rollup accepted.committer (-1)
+        reduce_commitment_bond ctxt tx_rollup accepted.committer
         >>=? fun ctxt ->
         Storage.Tx_rollup.Commitment_list.add ctxt key [accepted]
         >>=? fun (ctxt, _, _) -> return (ctxt, true)
@@ -486,7 +507,10 @@ let pending_bonded_commitments :
     (Raw_context.t * int) tzresult Lwt.t =
  fun ctxt tx_rollup contract ->
   Storage.Tx_rollup.Commitment_bond.find ctxt (tx_rollup, contract)
-  >|=? fun (ctxt, pending) -> (ctxt, Option.value ~default:0 pending)
+  >|=? fun (ctxt, pending) ->
+  match pending with
+  | None -> (ctxt, 0)
+  | Some (commitments, _tez) -> (ctxt, commitments)
 
 let finalize_successful_prerejections ctxt tx_rollup level =
   Storage.Tx_rollup.Successful_prerejections.list_values

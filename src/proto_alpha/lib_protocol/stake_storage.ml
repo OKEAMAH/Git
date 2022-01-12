@@ -170,6 +170,16 @@ let snapshot ctxt =
   Storage.Stake.Staking_balance.snapshot ctxt index >>=? fun ctxt ->
   Storage.Stake.Active_delegate_with_one_roll.snapshot ctxt index
 
+let full_balance ctxt delegate =
+  let delegate_contract = Contract_repr.implicit_contract delegate in
+  Frozen_deposits_storage.get ctxt delegate_contract >>=? fun frozen_deposits ->
+  Tx_rollup_frozen_storage.frozen_tez ctxt delegate_contract
+  >>=? fun rollup_frozen_deposits ->
+  Tez_repr.(frozen_deposits.current_amount +? rollup_frozen_deposits)
+  >>?= fun frozen ->
+  Storage.Contract.Balance.get ctxt delegate_contract >>=? fun balance ->
+  Lwt.return Tez_repr.(frozen +? balance)
+
 let select_distribution_for_cycle ctxt cycle pubkey =
   Storage.Stake.Last_snapshot.get ctxt >>=? fun max_index ->
   Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
@@ -192,12 +202,7 @@ let select_distribution_for_cycle ctxt cycle pubkey =
            let delegate_contract = Contract_repr.implicit_contract delegate in
            Storage.Contract.Frozen_deposits_limit.find ctxt delegate_contract
            >>=? fun frozen_deposits_limit ->
-           Storage.Contract.Balance.get ctxt delegate_contract
-           >>=? fun balance ->
-           Frozen_deposits_storage.get ctxt delegate_contract
-           >>=? fun frozen_deposits ->
-           Tez_repr.(balance +? frozen_deposits.current_amount)
-           >>?= fun total_balance ->
+           full_balance ctxt delegate >>=? fun total_balance ->
            let frozen_deposits_percentage =
              Constants_storage.frozen_deposits_percentage ctxt
            in

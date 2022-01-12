@@ -1267,18 +1267,13 @@ let apply_manager_operation_content :
   | Tx_rollup_commit {rollup; commitment} ->
       Tx_rollup_commitments.finalize_pending_commitments ctxt rollup
       >>=? fun (ctxt, to_credit) ->
+      let bond = Constants.tx_rollup_commitment_bond ctxt in
       ( Tx_rollup_commitments.pending_bonded_commitments ctxt rollup source
       >>=? fun (ctxt, pending) ->
         match pending with
-        | 0 ->
-            Token.transfer
-              ctxt
-              (`Contract source)
-              `Rollup_bond
-              (Constants.tx_rollup_commitment_bond ctxt)
+        | 0 -> Token.transfer ctxt (`Contract source) `Rollup_bond bond
         | _ -> return (ctxt, []) )
       >>=? fun (ctxt, balance_updates) ->
-      let bond = Constants.tx_rollup_commitment_bond ctxt in
       Tez.(bond /? 2L) >>?= fun reward ->
       List.fold_left_es
         (fun (ctxt, balance_updates) contract ->
@@ -1288,7 +1283,7 @@ let apply_manager_operation_content :
         (ctxt, balance_updates)
         to_credit
       >>=? fun (ctxt, balance_updates) ->
-      Tx_rollup_commitments.add_commitment ctxt rollup source commitment
+      Tx_rollup_commitments.add_commitment ctxt rollup source commitment bond
       >>=? fun ctxt ->
       let result =
         Tx_rollup_commit_result

@@ -62,6 +62,11 @@ val get_staking_balance :
 
 val snapshot : Raw_context.t -> Raw_context.t tzresult Lwt.t
 
+val full_balance :
+  Raw_context.t ->
+  Signature.public_key_hash ->
+  (Tez_repr.t, error trace) result Lwt.t
+
 val select_distribution_for_cycle_do_not_call_except_for_migration :
   Raw_context.t ->
   Cycle_repr.t ->

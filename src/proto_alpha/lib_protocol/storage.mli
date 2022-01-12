@@ -733,6 +733,15 @@ module Tx_rollup : sig
     f:(Tx_rollup_repr.t -> 'a -> 'a Lwt.t) ->
     'a Lwt.t
 
+  (* This tracks the tez frozen for rollup bonds.  The tez is still
+     available for staking and voting, but it has been transferred
+     so that it cannot be spent. *)
+  module Frozen_commitments :
+    Indexed_data_storage
+      with type key = Contract_repr.t
+       and type value = Tez_repr.t
+       and type t := Raw_context.t
+
   (* A list of the commitments for each rollup and level.  The level,
      here, is the level committed to (not the level the commitment was
      submitted).  Usually this list will be of size zero or one, since
@@ -751,8 +760,9 @@ module Tx_rollup : sig
   module Commitment_bond :
     Non_iterable_indexed_carbonated_data_storage
       with type key = Tx_rollup_repr.t * Contract_repr.t
-      (* The value here is the number of outstanding commitments *)
-       and type value = int
+      (* The value here is the number of outstanding commitments and
+         the amount of the commitment *)
+       and type value = int * Tez_repr.t
        and type t := Raw_context.t
 
   (** Track prerejections.  Before a rejection can be submitted, a

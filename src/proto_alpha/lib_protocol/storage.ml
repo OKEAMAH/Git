@@ -1710,6 +1710,25 @@ module Tx_rollup = struct
                (Tx_rollup_repr.Index))
                (Make_index (Contract_repr.Index)))
 
+  module Contract_indexed_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["tx_rollup_contract_total_bonds"]
+         end))
+         (Make_index (Contract_repr.Index))
+
+  module Frozen_commitments =
+    Contract_indexed_context.Make_map
+      (struct
+        let name = ["tx_rollup_contract_total"]
+      end)
+      (struct
+        type t = Tez_repr.t
+
+        let encoding = Tez_repr.encoding
+      end)
+
   module Commitment_list =
     Level_indexed_context.Make_carbonated_map
       (struct
@@ -1727,9 +1746,13 @@ module Tx_rollup = struct
         let name = ["commitment_bond"]
       end)
       (struct
-        type t = int
+        type t = int * Tez_repr.t
 
-        let encoding = Data_encoding.int31
+        let encoding =
+          Data_encoding.(
+            obj2
+              (req "outstanding_commitments" int31)
+              (req "bond" Tez_repr.encoding))
       end)
 
   module Level_tx_rollup_commitment_context =

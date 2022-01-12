@@ -2005,6 +2005,8 @@ module Tx_rollup : sig
   val update_tx_rollups_at_block_finalization :
     context -> context tzresult Lwt.t
 
+  val frozen_tez : context -> Contract.t -> Tez.t tzresult Lwt.t
+
   module Internal_for_tests : sig
     (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
     val originated_tx_rollup :
@@ -2199,6 +2201,7 @@ module Tx_rollup_commitments : sig
     Tx_rollup.t ->
     Contract.t ->
     Commitment.t ->
+    Tez.t ->
     context tzresult Lwt.t
 
   val reject_commitment :
