@@ -1899,8 +1899,8 @@ module Sc_rollup : sig
   val kind : context -> t -> Kind.t option tzresult Lwt.t
 end
 
-(** This simply re-exports [Tx_rollup_inbox_repr].
-    See [Tx_rollup_inbox_repr] for additional documentation of this
+(** This simply re-exports {!Tx_rollup_inbox_repr}.
+    See {!Tx_rollup_inbox_repr} for additional documentation of this
     module. *)
 module Tx_rollup_inbox : sig
   type message = string
@@ -1922,8 +1922,8 @@ module Tx_rollup_inbox : sig
   val encoding : t Data_encoding.t
 end
 
-(** This simply re-exports [Tx_rollup_state_repr].
-    See [Tx_rollup_state_repr] for additional documentation of this
+(** This simply re-exports {!Tx_rollup_state_repr}.
+    See {!Tx_rollup_state_repr} for additional documentation of this
     module. *)
 module Tx_rollup_state : sig
   type t = {cost_per_byte : Tez.t}
@@ -1940,7 +1940,8 @@ module Tx_rollup_state : sig
   end
 end
 
-(** This simply re-exports [Tx_rollup_repr]. See [Tx_rollup_repr] for additional
+(** This simply re-exports {!Tx_rollup_repr} and {!Tx_rollup_storage}.
+    See {!Tx_rollup_repr} and {!Tx_rollup_storage} for additional
     documentation of this module. *)
 module Tx_rollup : sig
   include BASIC_DATA
