@@ -43,8 +43,8 @@ let message_hash_testable : Tx_rollup_inbox.message_hash Alcotest.testable =
 let check_tx_rollup_exists ctxt tx_rollup =
   Context.Tx_rollup.state ctxt tx_rollup >>=? fun _state -> return_unit
 
-(** [check_batch_in_inbox inbox n expected] check that the [n]th element
-    of [inbox] is a batch equal to [expected]. *)
+(** [check_batch_in_inbox inbox n expected] checks that the [n]th
+    element of [inbox] is a batch equal to [expected]. *)
 let check_batch_in_inbox :
     Tx_rollup_inbox.t -> int -> string -> unit tzresult Lwt.t =
  fun inbox n expected ->
@@ -59,8 +59,8 @@ let check_batch_in_inbox :
       return_unit
   | _ -> Alcotest.fail "Selected message in the inbox is not a batch"
 
-(** [test_disable_feature_flag] try to originate a tx rollup with the feature
-    flag is deactivated and check it fails *)
+(** [test_disable_feature_flag] tries to originate a tx rollup with
+    the feature flag is deactivated and checks that it fails *)
 let test_disable_feature_flag () =
   Context.init 1 >>=? fun (b, contracts) ->
   let contract =
@@ -99,9 +99,9 @@ let test_origination () =
     balance
     tx_rollup_origination_burn
 
-(** [test_two_origination] originates two tx rollups in the same
+(** [test_two_originations] originates two tx rollups in the same
     operation and check that each has a different address. *)
-let test_two_origination () =
+let test_two_originations () =
   (*
     TODO: https://gitlab.com/tezos/tezos/-/issues/2331
     This test can be generalized using a property-based approach.
@@ -331,7 +331,7 @@ let tests =
     Tztest.tztest
       "check two originated tx rollup in one operation have different address"
       `Quick
-      test_two_origination;
+      test_two_originations;
     Tztest.tztest
       "check the function that updates the cost per byte rate per inbox"
       `Quick
