@@ -39,7 +39,7 @@ module Message_hash =
     (struct
       let name = "Tx_rollup_inbox_message_hash"
 
-      let title = "The hash of a message member of a transaction rollup inbox"
+      let title = "The hash of a a transaction rollup inbox’s message"
 
       let b58check_prefix = "\001\014\133" (* h2(52) *)
 
