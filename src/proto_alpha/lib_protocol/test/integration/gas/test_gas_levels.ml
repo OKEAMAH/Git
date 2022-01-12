@@ -373,13 +373,15 @@ let make_batch_test_block_one_origination name contract gas_sampler =
 let test_consume_exactly_all_block_gas () =
   block_with_one_origination nil_contract >>=? fun (block, src, dst) ->
   (* assumptions:
-     hard gas limit per operation = 1040000
-     hard gas limit per block = 5200000
+     hard gas limit per operation = 1_040_000
+     hard gas limit per block = 2 * 5_200_000 / 3 = 3_466_666
   *)
   let lld =
+    [(dst, Alpha_context.Gas.Arith.integral_of_int_exn (1040000 / 3))]
+    ::
     List.map
       (fun _ -> [(dst, Alpha_context.Gas.Arith.integral_of_int_exn 1040000)])
-      [1; 1; 1; 1; 1]
+      [1; 1; 1]
   in
   bake_operations_with_gas ~counter:Z.one block src lld >>=? fun _ -> return ()
 
