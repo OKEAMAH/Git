@@ -1688,6 +1688,8 @@ module Cost_of = struct
     (* Reasonable estimate. *)
     let contract = Gas.(S.safe_int 2 *@ public_key_readable)
 
+    (* This is true as long as the address inside a transaction rollup
+       is a BLS public key *)
     let tx_rollup_l2_address = bls12_381_g1
 
     (* Balance stored at /contracts/index/hash/balance, on 64 bits *)
@@ -1800,6 +1802,8 @@ module Cost_of = struct
     (* Reasonable estimate. *)
     let contract = Gas.(S.safe_int 2 *@ public_key_readable)
 
+    (* This is true as long as the address inside a transaction rollup
+       is a BLS public key *)
     let tx_rollup_l2_address = bls12_381_g1
 
     (* Reuse 006 costs. *)
