@@ -128,6 +128,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
    tx_rollup_commitments_storage.mli tx_rollup_commitments_storage.ml
+   tx_rollup_offramp_storage.mli tx_rollup_offramp_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
@@ -283,6 +284,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
    tx_rollup_commitments_storage.mli tx_rollup_commitments_storage.ml
+   tx_rollup_offramp_storage.mli tx_rollup_offramp_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
@@ -438,6 +440,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
    tx_rollup_commitments_storage.mli tx_rollup_commitments_storage.ml
+   tx_rollup_offramp_storage.mli tx_rollup_offramp_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml
@@ -615,6 +618,7 @@ include Tezos_raw_protocol_alpha.Main
    Tx_rollup_state_storage
    Tx_rollup_inbox_storage
    Tx_rollup_commitments_storage
+   Tx_rollup_offramp_storage
    Tx_rollup_storage
    Sc_rollup_storage
    Alpha_context
@@ -811,6 +815,7 @@ include Tezos_raw_protocol_alpha.Main
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
    tx_rollup_commitments_storage.mli tx_rollup_commitments_storage.ml
+   tx_rollup_offramp_storage.mli tx_rollup_offramp_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
    alpha_context.mli alpha_context.ml

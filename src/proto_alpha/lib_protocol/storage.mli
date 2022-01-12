@@ -821,6 +821,17 @@ module Tx_rollup : sig
       (Raw_context.t * Raw_level_repr.t) * Tx_rollup_repr.t ->
       (Raw_context.t * (Z.t * Contract_repr.t) list) tzresult Lwt.t
   end
+
+  (** In order to withdraw a ticket from a rollup, a l2 operation removes the
+      ticket from the l2 ledger.  This will be reflected in the effects of the
+      block's commitment. When a commitment is finalized, its effects will be
+      reflected in this table.
+      *)
+  module Ticket_offramp :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Contract_repr.t * Ticket_hash_repr.t
+       and type value = Z.t
+       and type t = Raw_context.t * Tx_rollup_repr.t
 end
 
 module Sc_rollup : sig

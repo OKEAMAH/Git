@@ -393,7 +393,7 @@ let get_commitment_roots ctxt tx_rollup (level : Raw_level_repr.t)
       | None ->
           (* TODO: empty merkle tree when we have this*)
           let empty : Tx_rollup_commitments_repr.Commitment.batch_commitment =
-            {root = Bytes.empty}
+            {effects = []; root = Bytes.empty}
           in
           return (ctxt, empty)
       | Some prev_hash ->
@@ -460,6 +460,30 @@ let gc_prerejections ctxt level =
 let get_oldest_prerejection ctxt =
   Storage.Tx_rollup.Oldest_prerejection.find ctxt
 
+let apply_effects ctxt tx_rollup (commitment : Commitment.t) =
+  List.fold_left_es
+    (fun ctxt Commitment.{effects; _} ->
+      List.fold_left_es
+        (fun ctxt ({contract; ticket; amount} : Commitment.withdrawal) ->
+          ( Storage.Tx_rollup.Ticket_offramp.find
+              (ctxt, tx_rollup)
+              (contract, ticket)
+          >>=? fun (ctxt, count) ->
+            match count with
+            | None -> return (ctxt, Z.zero)
+            | Some existing -> return (ctxt, existing) )
+          >>=? fun (ctxt, existing) ->
+          let new_amount = Z.add existing (Z.of_int64 amount) in
+          Storage.Tx_rollup.Ticket_offramp.add
+            (ctxt, tx_rollup)
+            (contract, ticket)
+            new_amount
+          >|=? just_ctxt)
+        ctxt
+        effects)
+    ctxt
+    commitment.batches
+
 let retire_rollup_level :
     Raw_context.t ->
     Tx_rollup_repr.t ->
@@ -484,6 +508,7 @@ let retire_rollup_level :
         remove_successors ctxt tx_rollup level top to_reject >>=? fun ctxt ->
         reduce_commitment_bond ctxt tx_rollup accepted.committer
         >>=? fun ctxt ->
+        apply_effects ctxt tx_rollup accepted.commitment >>=? fun ctxt ->
         Storage.Tx_rollup.Commitment_list.add ctxt key [accepted]
         >>=? fun (ctxt, _, _) -> return (ctxt, true)
 

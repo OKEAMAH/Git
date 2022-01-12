@@ -58,7 +58,13 @@ module Commitment_hash : sig
 end
 
 module Commitment : sig
-  type batch_commitment = {root : bytes}
+  type withdrawal = {
+    contract : Contract_repr.t;
+    ticket : Ticket_hash_repr.t;
+    amount : int64;
+  }
+
+  type batch_commitment = {effects : withdrawal list; root : bytes}
 
   val batch_commitment_equal : batch_commitment -> batch_commitment -> bool
 

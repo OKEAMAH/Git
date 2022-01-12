@@ -1,7 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Trili Tech, <contact@trili.tech>                       *)
+(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,29 +25,28 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This module exposes a function for generating a ticket-balance key-hash
-    given an owner and a ticket-token. The key-hash is used for populating the
-    global ticket-balance table that tracks ownership of tickets for different tokens.
- *)
+type error += (* `Permanent *) Withdraw_balance_too_low
 
-open Alpha_context
+(** [withdraw ctxt tx_rollup contract ticket_hash amount] withdraws tickets
+    tickets from a rollup and transfers them to the given contract.  It
+    fails if the balance in the offramp for this commitment is too low. *)
+val withdraw :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Contract_repr.t ->
+  rollup_ticket_hash:Ticket_hash_repr.t ->
+  destination_ticket_hash:Ticket_hash_repr.t ->
+  int64 ->
+  Raw_context.t tzresult Lwt.t
 
-(** [ticket_balance_key ctxt ~owner ex_token] returns the [key_hash] of the
-    given [owner] and [ex_token]. *)
-val ticket_balance_key :
-  context ->
-  owner:Contract.t ->
-  Ticket_token.ex_token ->
-  (Ticket_hash.t * context) tzresult Lwt.t
-
-(** [ticket_balance_key_unparsed ctxt ~owner contract ticketer contents_type
-    contents] returns the [key_hash] of the given [owner] annd ticket. It is
-    useful in the case where you already have the unparsed ticket and type in
-    hand. *)
-val ticket_balance_key_unparsed :
-  context ->
-  owner:Contract.t ->
-  Script.node ->
-  Script.node ->
-  Script.node ->
-  (Ticket_hash.t * context, error trace) result Lwt.t
+(** [add_tickets_to_offramp ctxt tx_rollup contract ticket_hash amount]
+      prepares tickets for withdrawal by adding them to the offramp.  This
+      should only be called when resolving a L2 withdraw operation.
+  *)
+val add_tickets_to_offramp :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Contract_repr.t ->
+  Ticket_hash_repr.t ->
+  int64 ->
+  Raw_context.t tzresult Lwt.t

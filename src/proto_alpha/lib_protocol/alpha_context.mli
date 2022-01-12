@@ -2144,7 +2144,13 @@ module Tx_rollup_commitments : sig
   end
 
   module Commitment : sig
-    type batch_commitment = {root : bytes}
+    type withdrawal = {
+      contract : Contract.t;
+      ticket : Ticket_hash.t;
+      amount : int64;
+    }
+
+    type batch_commitment = {effects : withdrawal list; root : bytes}
 
     val batch_commitment_equal : batch_commitment -> batch_commitment -> bool
 
@@ -2289,6 +2295,27 @@ module Tx_rollup_rejection : sig
 
   val check_prerejection :
     context -> t -> int64 -> Contract.t -> (context * Z.t * bool) tzresult Lwt.t
+end
+
+module Tx_rollup_offramp : sig
+  type error += (* `Permanent *) Withdraw_balance_too_low
+
+  val add_tickets_to_offramp :
+    context ->
+    Tx_rollup.t ->
+    Contract.t ->
+    Ticket_hash.t ->
+    int64 ->
+    context tzresult Lwt.t
+
+  val withdraw :
+    context ->
+    Tx_rollup.t ->
+    Contract.t ->
+    rollup_ticket_hash:Ticket_hash.t ->
+    destination_ticket_hash:Ticket_hash.t ->
+    int64 ->
+    context tzresult Lwt.t
 end
 
 (** This simply re-exports {!Destination_repr}. *)

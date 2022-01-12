@@ -1718,6 +1718,25 @@ module Tx_rollup = struct
          end))
          (Make_index (Contract_repr.Index))
 
+  module Rollup_indexed_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["rollup_index"]
+         end))
+         (Make_index (Tx_rollup_repr.Index))
+
+  module Contract_ticket_indexed_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Rollup_indexed_context.Raw_context)
+         (struct
+           let name = ["tx_rollup_contract_ticket"]
+         end))
+         (Pair
+            (Make_index
+               (Contract_repr.Index))
+               (Make_index (Ticket_hash_repr.Index)))
+
   module Frozen_commitments =
     Contract_indexed_context.Make_map
       (struct
@@ -1890,6 +1909,17 @@ module Tx_rollup = struct
 
     let find = I.find
   end
+
+  module Ticket_offramp =
+    Contract_ticket_indexed_context.Make_carbonated_map
+      (struct
+        let name = ["ticket_offramp"]
+      end)
+      (struct
+        type t = Z.t
+
+        let encoding = Data_encoding.z
+      end)
 end
 
 module Sc_rollup = struct

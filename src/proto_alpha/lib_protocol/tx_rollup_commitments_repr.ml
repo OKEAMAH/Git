@@ -198,9 +198,42 @@ module Commitment_hash = struct
 end
 
 module Commitment = struct
+  type withdrawal = {
+    contract : Contract_repr.t;
+    ticket : Ticket_hash_repr.t;
+    amount : int64;
+  }
+
+  let withdrawal_encoding =
+    Data_encoding.(
+      conv
+        (fun {contract; ticket; amount} -> (contract, ticket, amount))
+        (fun (contract, ticket, amount) -> {contract; ticket; amount})
+        (obj3
+           (req "contract" Contract_repr.encoding)
+           (req "ticket" Ticket_hash_repr.encoding)
+           (req "amount" int64)))
+
+  let pp_withdrawal : Format.formatter -> withdrawal -> unit =
+   fun fmt {contract; ticket; amount} ->
+    Format.fprintf
+      fmt
+      "withdrawal to %a of %Ld of %a"
+      Contract_repr.pp
+      contract
+      amount
+      Ticket_hash_repr.pp
+      ticket
+
+  let compare_withdrawal a b =
+    compare_or Contract_repr.compare a.contract b.contract (fun () ->
+        compare_or Ticket_hash_repr.compare a.ticket b.ticket (fun () ->
+            Int64.compare a.amount b.amount))
+
   type batch_commitment = {
-    (* TODO: add effects and replace bytes with Irmin:
-              https://gitlab.com/tezos/tezos/-/issues/2444
+    effects : withdrawal list;
+    (* TODO: replace bytes with Irmin:
+       https://gitlab.com/tezos/tezos/-/issues/2444
     *)
     root : bytes;
   }
@@ -210,15 +243,28 @@ module Commitment = struct
 
     let encoding =
       Data_encoding.(
-        conv (fun {root} -> root) (fun root -> {root}) (obj1 (req "root" bytes)))
+        conv
+          (fun {effects; root} -> (effects, root))
+          (fun (effects, root) -> {effects; root})
+          (obj2 (req "effects" (list withdrawal_encoding)) (req "root" bytes)))
 
     let pp : Format.formatter -> t -> unit =
-     fun fmt {root} -> Hex.pp fmt (Hex.of_bytes root)
+     fun fmt {effects; root} ->
+      Format.fprintf
+        fmt
+        "{effects = %a; root= %a}"
+        (Format.pp_print_list pp_withdrawal)
+        effects
+        Hex.pp
+        (Hex.of_bytes root)
 
     include Compare.Make (struct
       type nonrec t = t
 
-      let compare {root = root1} {root = root2} = Bytes.compare root1 root2
+      let compare {effects = effects1; root = root1}
+          {effects = effects2; root = root2} =
+        compare_or Bytes.compare root1 root2 (fun () ->
+            List.compare compare_withdrawal effects1 effects2)
     end)
   end
 

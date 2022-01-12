@@ -106,6 +106,7 @@
         "Tx_rollup_state_storage",
         "Tx_rollup_inbox_storage",
         "Tx_rollup_commitments_storage",
+        "Tx_rollup_offramp_storage",
         "Tx_rollup_storage",
         "Sc_rollup_storage",
 

@@ -74,6 +74,8 @@ let message_hash_testable : Tx_rollup_message.hash Alcotest.testable =
 
 let wrap m = m >|= Environment.wrap_tzresult
 
+let z_testable = Alcotest.testable Z.pp_print Z.equal
+
 (** [inbox_fees state size] computes the fees (per byte of message)
     one has to pay to submit a message to the current inbox. *)
 let inbox_fees state size =
@@ -828,7 +830,7 @@ let test_commitments () =
         match level_opt with None -> assert false | Some level -> level
       in
       let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-        [{root = Bytes.make 20 '0'}]
+        [{effects = []; root = Bytes.make 20 '0'}]
       in
       let commitment : Tx_rollup_commitments.Commitment.t =
         {level; batches; predecessor = None}
@@ -850,7 +852,7 @@ let test_commitments () =
           | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
       >>=? fun i ->
       let batches2 : Tx_rollup_commitments.Commitment.batch_commitment list =
-        [{root = Bytes.make 20 '1'}]
+        [{root = Bytes.make 20 '1'; effects = []}]
       in
       let commitment2 : Tx_rollup_commitments.Commitment.t =
         {level; batches = batches2; predecessor = None}
@@ -866,7 +868,10 @@ let test_commitments () =
           | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
       >>=? fun i ->
       let batches3 : Tx_rollup_commitments.Commitment.batch_commitment list =
-        [{root = Bytes.make 20 '1'}; {root = Bytes.make 20 '2'}]
+        [
+          {root = Bytes.make 20 '1'; effects = []};
+          {root = Bytes.make 20 '2'; effects = []};
+        ]
       in
       let commitment3 : Tx_rollup_commitments.Commitment.t =
         {level; batches = batches3; predecessor = None}
@@ -941,7 +946,7 @@ let test_commitment_predecessor () =
   Incremental.begin_construction b >>=? fun i ->
   (* Check error: Commitment with predecessor for first block *)
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}]
+    [{effects = []; root = Bytes.make 20 '0'}]
   in
   let some_hash =
     Tx_rollup_commitments.Commitment_hash.of_bytes_exn
@@ -1035,7 +1040,7 @@ let test_commitment_retire_simple () =
   assert (not retired) ;
   (* Now, make a commitment *)
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}]
+    [{effects = []; root = Bytes.make 20 '0'}]
   in
   let commitment : Tx_rollup_commitments.Commitment.t =
     {level; batches; predecessor = None}
@@ -1092,7 +1097,7 @@ let test_commitment_retire_complex () =
   make_transactions_in tx_rollup contract1 [2; 3; 6] b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}]
+    [{effects = []; root = Bytes.make 20 '0'}]
   in
   let commitment_a : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches; predecessor = None}
@@ -1194,13 +1199,13 @@ let test_rejection_propagation () =
   make_transactions_in tx_rollup contract1 [2; 3] b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   let batches1 : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}]
+    [{effects = []; root = Bytes.make 20 '0'}]
   in
   let batches2 : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '1'}]
+    [{effects = []; root = Bytes.make 20 '1'}]
   in
   let batches3 : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '2'}]
+    [{effects = []; root = Bytes.make 20 '2'}]
   in
   let commitment_a : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches = batches1; predecessor = None}
@@ -1282,7 +1287,7 @@ let test_bond_finalization () =
       | _ -> failwith "Commitment bond should not exist yet")
   >>=? fun i ->
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}]
+    [{effects = []; root = Bytes.make 20 '0'}]
   in
   let commitment_a : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches; predecessor = None}
@@ -1345,7 +1350,7 @@ let test_rejection () =
   make_transactions_in tx_rollup contract1 [2] b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.empty}]
+    [{root = Bytes.empty; effects = []}]
   in
   (* "Random" numbers *)
   let nonce = 1000L in
@@ -1397,7 +1402,7 @@ let test_rejection () =
   Incremental.add_operation i op >>=? fun i ->
   (* Right commitment *)
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}]
+    [{root = Bytes.make 20 '0'; effects = []}]
   in
   let correct_commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches; predecessor = None}
@@ -1474,7 +1479,7 @@ let test_rejection_reward () =
   Incremental.begin_construction b >>=? fun i ->
   (* This is the commitment that is going to be rejected *)
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.empty}]
+    [{root = Bytes.empty; effects = []}]
   in
   let bad_commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches; predecessor = None}
@@ -1482,7 +1487,7 @@ let test_rejection_reward () =
 
   (* This is the good commitment that we will use later *)
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
-    [{root = Bytes.make 20 '0'}]
+    [{root = Bytes.make 20 '0'; effects = []}]
   in
   let good_commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches; predecessor = None}
@@ -1733,6 +1738,105 @@ let test_prerejection_gc () =
   ignore i ;
   return ()
 
+let test_withdraw () =
+  context_init 2 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  let contract2 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  Incremental.begin_construction b >>=? fun i ->
+  let rollup_ticket_hash =
+    make_unit_ticket_key (Incremental.alpha_ctxt i) contract1 tx_rollup
+  in
+  wrap
+    (Ticket_balance.adjust_balance
+       (Incremental.alpha_ctxt i)
+       rollup_ticket_hash
+       ~delta:(Z.of_int 1000))
+  >>=? fun (_counter, ctxt) ->
+  let open Tezos_micheline.Micheline in
+  let open Michelson_v1_primitives in
+  let ticketer =
+    Bytes (0, Data_encoding.Binary.to_bytes_exn Contract.encoding contract1)
+  in
+  let ty = Prim (0, T_unit, [], []) in
+  let contents = Prim (0, D_Unit, [], []) in
+  wrap
+    (Ticket_balance_key.ticket_balance_key_unparsed
+       ctxt
+       ~owner:contract1
+       ticketer
+       ty
+       contents)
+  >>=? fun (destination_ticket_hash, ctxt) ->
+  wrap
+    (Tx_rollup_offramp.add_tickets_to_offramp
+       ctxt
+       tx_rollup
+       contract1
+       rollup_ticket_hash
+       123L)
+  >>=? fun ctxt ->
+  wrap
+    (Tx_rollup_offramp.withdraw
+       ctxt
+       tx_rollup
+       contract1
+       ~rollup_ticket_hash
+       ~destination_ticket_hash
+       100L)
+  >>=? fun ctxt ->
+  (* try to withdraw too many *)
+  (wrap
+     (Tx_rollup_offramp.withdraw
+        ctxt
+        tx_rollup
+        contract1
+        ~rollup_ticket_hash
+        ~destination_ticket_hash
+        24L)
+   >>= function
+   | Error _ -> return ()
+   | Ok _ -> assert false)
+  >>=? fun () ->
+  (* try to withdraw from wrong account *)
+  wrap
+    (Tx_rollup_offramp.withdraw
+       ctxt
+       tx_rollup
+       contract2
+       ~rollup_ticket_hash
+       ~destination_ticket_hash
+       23L
+     >>= function
+     | Error _ -> return ()
+     | Ok _ -> assert false)
+  >>=? fun () ->
+  wrap
+    (Tx_rollup_offramp.withdraw
+       ctxt
+       tx_rollup
+       contract1
+       ~rollup_ticket_hash
+       ~destination_ticket_hash
+       23L)
+  >>=? fun ctxt ->
+  wrap (Ticket_balance.get_balance ctxt rollup_ticket_hash)
+  >>=? fun (balance, ctxt) ->
+  Alcotest.(
+    check
+      (option z_testable)
+      "Expect a balance of 877"
+      (Some (Z.of_int 877))
+      balance) ;
+
+  ignore ctxt ;
+
+  return ()
+
 let tests =
   [
     Tztest.tztest
@@ -1794,4 +1898,5 @@ let tests =
     Tztest.tztest "Test rejection reward" `Quick test_rejection_reward;
     Tztest.tztest "Test full inbox" `Quick test_full_inbox;
     Tztest.tztest "Test prerejection gc" `Quick test_prerejection_gc;
+    Tztest.tztest "Test withdraw" `Quick test_withdraw;
   ]

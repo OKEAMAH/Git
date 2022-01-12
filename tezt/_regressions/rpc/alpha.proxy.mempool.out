@@ -711,6 +711,11 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                         ],
                         "additionalProperties": false
                       },
+                      "alpha.contract_id": {
+                        "title": "A contract handle",
+                        "description": "A contract notation as given to an RPC or inside scripts. Can be a base58 implicit contract hash or a base58 originated contract hash.",
+                        "$ref": "#/definitions/unistring"
+                      },
                       "alpha.entrypoint": {
                         "title": "entrypoint",
                         "description": "Named entrypoint to a Michelson smart contract",
@@ -1867,13 +1872,37 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                                     "items": {
                                       "type": "object",
                                       "properties": {
+                                        "effects": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "contract": {
+                                                "$ref": "#/definitions/alpha.contract_id"
+                                              },
+                                              "ticket": {
+                                                "$ref": "#/definitions/script_expr"
+                                              },
+                                              "amount": {
+                                                "$ref": "#/definitions/int64"
+                                              }
+                                            },
+                                            "required": [
+                                              "amount",
+                                              "ticket",
+                                              "contract"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
                                         "root": {
                                           "type": "string",
                                           "pattern": "^([a-zA-Z0-9][a-zA-Z0-9])*$"
                                         }
                                       },
                                       "required": [
-                                        "root"
+                                        "root",
+                                        "effects"
                                       ],
                                       "additionalProperties": false
                                     }
@@ -2818,7 +2847,178 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                       },
                       {
                         "description": {
+                          "title": "alpha.contract_id"
+                        },
+                        "encoding": {
+                          "tag_size": "Uint8",
+                          "kind": {
+                            "size": 22,
+                            "kind": "Float"
+                          },
+                          "cases": [
+                            {
+                              "tag": 0,
+                              "fields": [
+                                {
+                                  "name": "Tag",
+                                  "layout": {
+                                    "size": "Uint8",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "Signature.Public_key_hash",
+                                  "layout": {
+                                    "name": "public_key_hash",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "size": 21,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                }
+                              ],
+                              "name": "Implicit"
+                            },
+                            {
+                              "tag": 1,
+                              "fields": [
+                                {
+                                  "name": "Tag",
+                                  "layout": {
+                                    "size": "Uint8",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "Contract_hash",
+                                  "layout": {
+                                    "kind": "Bytes"
+                                  },
+                                  "data_kind": {
+                                    "size": 20,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "padding",
+                                  "layout": {
+                                    "kind": "Padding"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                }
+                              ],
+                              "name": "Originated"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "description": {
                           "title": "X_8"
+                        },
+                        "encoding": {
+                          "fields": [
+                            {
+                              "name": "contract",
+                              "layout": {
+                                "name": "alpha.contract_id",
+                                "kind": "Ref"
+                              },
+                              "data_kind": {
+                                "size": 22,
+                                "kind": "Float"
+                              },
+                              "kind": "named"
+                            },
+                            {
+                              "name": "ticket",
+                              "layout": {
+                                "kind": "Bytes"
+                              },
+                              "data_kind": {
+                                "size": 32,
+                                "kind": "Float"
+                              },
+                              "kind": "named"
+                            },
+                            {
+                              "name": "amount",
+                              "layout": {
+                                "size": "Int64",
+                                "kind": "Int"
+                              },
+                              "data_kind": {
+                                "size": 8,
+                                "kind": "Float"
+                              },
+                              "kind": "named"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "description": {
+                          "title": "X_7"
+                        },
+                        "encoding": {
+                          "fields": [
+                            {
+                              "kind": "dyn",
+                              "num_fields": 1,
+                              "size": "Uint30"
+                            },
+                            {
+                              "name": "effects",
+                              "layout": {
+                                "layout": {
+                                  "name": "X_8",
+                                  "kind": "Ref"
+                                },
+                                "kind": "Seq"
+                              },
+                              "data_kind": {
+                                "kind": "Variable"
+                              },
+                              "kind": "named"
+                            },
+                            {
+                              "kind": "dyn",
+                              "num_fields": 1,
+                              "size": "Uint30"
+                            },
+                            {
+                              "name": "root",
+                              "layout": {
+                                "kind": "Bytes"
+                              },
+                              "data_kind": {
+                                "kind": "Variable"
+                              },
+                              "kind": "named"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "description": {
+                          "title": "X_9"
                         },
                         "encoding": {
                           "tag_size": "Uint8",
@@ -2913,7 +3113,7 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                               "name": "batches",
                               "layout": {
                                 "layout": {
-                                  "name": "fitness.elem",
+                                  "name": "X_7",
                                   "kind": "Ref"
                                 },
                                 "kind": "Seq"
@@ -2926,7 +3126,7 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                             {
                               "name": "predecessor",
                               "layout": {
-                                "name": "X_8",
+                                "name": "X_9",
                                 "kind": "Ref"
                               },
                               "data_kind": {
@@ -3287,7 +3487,7 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                       },
                       {
                         "description": {
-                          "title": "X_9"
+                          "title": "X_10"
                         },
                         "encoding": {
                           "fields": [
@@ -4702,7 +4902,7 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                                 {
                                   "name": "parameters",
                                   "layout": {
-                                    "name": "X_9",
+                                    "name": "X_10",
                                     "kind": "Ref"
                                   },
                                   "data_kind": {
@@ -6657,6 +6857,11 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                         ],
                         "additionalProperties": false
                       },
+                      "alpha.contract_id": {
+                        "title": "A contract handle",
+                        "description": "A contract notation as given to an RPC or inside scripts. Can be a base58 implicit contract hash or a base58 originated contract hash.",
+                        "$ref": "#/definitions/unistring"
+                      },
                       "alpha.entrypoint": {
                         "title": "entrypoint",
                         "description": "Named entrypoint to a Michelson smart contract",
@@ -7813,13 +8018,37 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                                     "items": {
                                       "type": "object",
                                       "properties": {
+                                        "effects": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "contract": {
+                                                "$ref": "#/definitions/alpha.contract_id"
+                                              },
+                                              "ticket": {
+                                                "$ref": "#/definitions/script_expr"
+                                              },
+                                              "amount": {
+                                                "$ref": "#/definitions/int64"
+                                              }
+                                            },
+                                            "required": [
+                                              "amount",
+                                              "ticket",
+                                              "contract"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
                                         "root": {
                                           "type": "string",
                                           "pattern": "^([a-zA-Z0-9][a-zA-Z0-9])*$"
                                         }
                                       },
                                       "required": [
-                                        "root"
+                                        "root",
+                                        "effects"
                                       ],
                                       "additionalProperties": false
                                     }
@@ -8549,7 +8778,12 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                 "error": {
                   "json_schema": {
                     "$schema": "http://json-schema.org/draft-04/schema#",
-                    "description": "The full list of errors is available with the global RPC `GET errors`"
+                    "$ref": "#/definitions/error",
+                    "definitions": {
+                      "error": {
+                        "description": "The full list of errors is available with the global RPC `GET errors`"
+                      }
+                    }
                   },
                   "binary_schema": {
                     "toplevel": {
@@ -8603,6 +8837,7 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                   "json_schema": {
                     "$schema": "http://json-schema.org/draft-04/schema#",
                     "type": "object",
+                    "properties": {},
                     "additionalProperties": false
                   },
                   "binary_schema": {
@@ -8627,6 +8862,7 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                   "json_schema": {
                     "$schema": "http://json-schema.org/draft-04/schema#",
                     "type": "object",
+                    "properties": {},
                     "additionalProperties": false
                   },
                   "binary_schema": {
@@ -8698,6 +8934,7 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                   "json_schema": {
                     "$schema": "http://json-schema.org/draft-04/schema#",
                     "type": "object",
+                    "properties": {},
                     "additionalProperties": false
                   },
                   "binary_schema": {
@@ -8709,7 +8946,6 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                           },
                           "kind": "anon",
                           "data_kind": {
-                    "properties": {},
                             "size": 0,
                             "kind": "Float"
                           }
@@ -8734,7 +8970,6 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                           "data_kind": {
                             "size": 0,
                             "kind": "Float"
-                    "properties": {},
                           }
                         }
                       ]
@@ -8792,10 +9027,12 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                 "input": {
                   "json_schema": {
                     "$schema": "http://json-schema.org/draft-04/schema#",
-                    "title": "A Tezos operation ID (Base58Check-encoded)",
-                    "properties": {},
-                    "$ref": "#/definitions/unistring",
+                    "$ref": "#/definitions/Operation_hash",
                     "definitions": {
+                      "Operation_hash": {
+                        "title": "A Tezos operation ID (Base58Check-encoded)",
+                        "$ref": "#/definitions/unistring"
+                      },
                       "unistring": {
                         "title": "Universal string representation",
                         "description": "Either a plain UTF8 string, or a sequence of bytes for strings that contain invalid byte sequences.",
@@ -8905,7 +9142,3 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
     }
   }
 }
-                      "Operation_hash": {
-                        "title": "A Tezos operation ID (Base58Check-encoded)",
-                        "$ref": "#/definitions/unistring"
-                      },

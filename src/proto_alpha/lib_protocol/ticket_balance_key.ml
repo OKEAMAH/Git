@@ -72,3 +72,17 @@ let ticket_balance_key ctxt ~owner
     owner_address
   >>=? fun (owner, ctxt) ->
   Lwt.return (Ticket_hash.make ctxt ~ticketer ~typ ~contents ~owner)
+
+let ticket_balance_key_unparsed ctxt ~owner ticketer contents_type contents =
+  let owner = Destination.Contract owner in
+  let owner_address =
+    Script_typed_ir.{destination = owner; entrypoint = Entrypoint.default}
+  in
+  Script_ir_translator.unparse_data
+    ctxt
+    Script_ir_translator.Optimized_legacy
+    Script_typed_ir.address_t
+    owner_address
+  >>=? fun (owner, ctxt) ->
+  Lwt.return
+    (Ticket_hash.make ctxt ~ticketer ~typ:contents_type ~contents ~owner)

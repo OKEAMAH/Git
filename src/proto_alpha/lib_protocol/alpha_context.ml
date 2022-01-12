@@ -320,6 +320,10 @@ module Tx_rollup_rejection = struct
   include Tx_rollup_commitments_storage
 end
 
+module Tx_rollup_offramp = struct
+  include Tx_rollup_offramp_storage
+end
+
 module Global_constants_storage = Global_constants_storage
 
 module Big_map = struct
