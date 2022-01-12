@@ -1350,6 +1350,8 @@ let test_rejection () =
   (* "Random" numbers *)
   let nonce = 1000L in
   let nonce2 = 1001L in
+  wrap (Lwt.return @@ Tx_rollup_message.make_batch (Incremental.alpha_ctxt i) "")
+  >>=? fun (batch, _) ->
   let commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 2l; batches; predecessor = None}
   in
@@ -1357,7 +1359,15 @@ let test_rejection () =
   Incremental.add_operation i op >>=? fun i ->
   let hash = Tx_rollup_commitments.Commitment.hash commitment in
   (* Test missing prerejection *)
-  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 1 nonce
+  Op.tx_rollup_reject
+    (I i)
+    contract1
+    tx_rollup
+    (raw_level 2l)
+    hash
+    1
+    batch
+    nonce
   >>=? fun op ->
   Incremental.add_operation i op ~expect_failure:(function
       | Environment.Ecoproto_error
@@ -1374,7 +1384,15 @@ let test_rejection () =
   Incremental.finalize_block i >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   (* Correct rejection *)
-  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce
+  Op.tx_rollup_reject
+    (I i)
+    contract1
+    tx_rollup
+    (raw_level 2l)
+    hash
+    0
+    batch
+    nonce
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
   (* Right commitment *)
@@ -1393,7 +1411,15 @@ let test_rejection () =
   Incremental.add_operation i op >>=? fun i ->
   Incremental.finalize_block i >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
-  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce2
+  Op.tx_rollup_reject
+    (I i)
+    contract1
+    tx_rollup
+    (raw_level 2l)
+    hash
+    0
+    batch
+    nonce2
   >>=? fun op ->
   (* Wrong rejection *)
   Incremental.add_operation i op ~expect_failure:(function
@@ -1473,6 +1499,8 @@ let test_rejection_reward () =
   let nonce = 1000L in
   let nonce2 = 1001L in
   let nonce3 = 1002L in
+  wrap (Lwt.return @@ Tx_rollup_message.make_batch (Incremental.alpha_ctxt i) "")
+  >>=? fun (batch, _) ->
   Op.tx_rollup_prereject
     (I i)
     contract2
@@ -1529,6 +1557,7 @@ let test_rejection_reward () =
     (raw_level 2l)
     bad_commitment_hash
     0
+    batch
     nonce2
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1542,6 +1571,7 @@ let test_rejection_reward () =
     (raw_level 2l)
     bad_commitment_hash
     0
+    batch
     nonce
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1555,6 +1585,7 @@ let test_rejection_reward () =
     (raw_level 2l)
     bad_commitment_hash
     0
+    batch
     nonce3
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1565,6 +1596,7 @@ let test_rejection_reward () =
     (raw_level 2l)
     bad_commitment_hash
     0
+    batch
     nonce3
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->

@@ -275,7 +275,7 @@ val tx_rollup_return_bond :
   Tx_rollup.t ->
   Operation.packed tzresult Lwt.t
 
-(** [tx_rollup_reject ctxt source tx_rollup level hash batch_index nonce]
+(** [tx_rollup_reject ctxt source tx_rollup level hash batch_index batch nonce]
     rejects a commitment. *)
 val tx_rollup_reject :
   ?counter:counter ->
@@ -288,6 +288,7 @@ val tx_rollup_reject :
   Raw_level.t ->
   Tx_rollup_commitments.Commitment_hash.t ->
   int ->
+  Tx_rollup_message.t ->
   int64 ->
   Operation.packed tzresult Lwt.t
 

@@ -299,6 +299,7 @@ and _ manager_operation =
       level : Raw_level_repr.t;
       hash : Tx_rollup_commitments_repr.Commitment_hash.t;
       batch_index : int;
+      batch : Tx_rollup_message_repr.t;
       nonce : int64;
     }
       -> Kind.tx_rollup_rejection manager_operation
@@ -618,22 +619,25 @@ module Encoding = struct
           tag = tx_rollup_operation_tag_offset + 4;
           name = "tx_rollup_rejection";
           encoding =
-            obj5
+            obj6
               (req "rollup" Tx_rollup_repr.encoding)
               (req "level" Raw_level_repr.encoding)
               (req "hash" Tx_rollup_commitments_repr.Commitment_hash.encoding)
               (req "batch_index" int31)
+              (req "batch" Tx_rollup_message_repr.encoding)
               (req "nonce" int64);
           select =
             (function
             | Manager (Tx_rollup_rejection _ as op) -> Some op | _ -> None);
           proj =
             (function
-            | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce} ->
-                (rollup, level, hash, batch_index, nonce));
+            | Tx_rollup_rejection
+                {rollup; level; hash; batch_index; batch; nonce} ->
+                (rollup, level, hash, batch_index, batch, nonce));
           inj =
-            (fun (rollup, level, hash, batch_index, nonce) ->
-              Tx_rollup_rejection {rollup; level; hash; batch_index; nonce});
+            (fun (rollup, level, hash, batch_index, batch, nonce) ->
+              Tx_rollup_rejection
+                {rollup; level; hash; batch_index; batch; nonce});
         }
 
     let[@coq_axiom_with_reason "gadt"] tx_rollup_prerejection_case =

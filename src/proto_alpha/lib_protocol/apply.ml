@@ -1309,9 +1309,9 @@ let apply_manager_operation_content :
           }
       in
       return (ctxt, result, [])
-  | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce} ->
+  | Tx_rollup_rejection {rollup; level; hash; batch_index; batch; nonce} ->
       let rejection : Tx_rollup_rejection.t =
-        {rollup; level; hash; batch_index}
+        {rollup; level; hash; batch_index; batch}
       in
       Tx_rollup_rejection.check_prerejection ctxt rejection nonce source
       >>=? fun (ctxt, priority, exists) ->

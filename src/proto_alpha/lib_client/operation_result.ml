@@ -213,7 +213,7 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         source
         pp_result
         result
-  | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce} ->
+  | Tx_rollup_rejection {rollup; level; hash; batch_index; batch = _; nonce} ->
       Format.fprintf
         ppf
         "@[<v 2>%s:rollup %a level %a commitment %a index %d nonce %Lx @,\

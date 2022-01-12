@@ -2265,6 +2265,7 @@ module Tx_rollup_rejection : sig
     level : Raw_level.t;
     hash : Tx_rollup_commitments.Commitment_hash.t;
     batch_index : int;
+    batch : Tx_rollup_message.t;
   }
 
   val encoding : t Data_encoding.t
@@ -2525,6 +2526,7 @@ and _ manager_operation =
       level : Raw_level.t;
       hash : Tx_rollup_commitments.Commitment_hash.t;
       batch_index : int;
+      batch : Tx_rollup_message.t;
       nonce : int64;
     }
       -> Kind.tx_rollup_rejection manager_operation
