@@ -503,7 +503,7 @@ let () =
     `Permanent
     ~id:"operation.tx_rollup_submit_too_big"
     ~title:"Tx rollup inbox limit exceeded"
-    ~description:"The batch submitted is too large"
+    ~description:"The submitted batch is too large"
     ~pp:(fun ppf () ->
       Format.fprintf
         ppf
