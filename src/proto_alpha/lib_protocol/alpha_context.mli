@@ -1876,6 +1876,24 @@ module Block_header : sig
     unit tzresult
 end
 
+(** This module re-exports functions from [Ticket_hash_repr]. See
+    documentation of the functions there. *)
+module Ticket_hash : sig
+  type t
+
+  val encoding : t Data_encoding.t
+
+  val to_script_expr_hash : t -> Script_expr_hash.t
+
+  val make :
+    context ->
+    ticketer:Script.node ->
+    typ:Script.node ->
+    contents:Script.node ->
+    owner:Script.node ->
+    (t * context) tzresult
+end
+
 (** See {!Sc_rollup_storage} and {!Sc_rollup_repr}. *)
 module Sc_rollup : sig
   module PVM : sig
@@ -2517,22 +2535,11 @@ end
     documentation of the functions there.
  *)
 module Ticket_balance : sig
-  type key_hash
-
-  val script_expr_hash_of_key_hash : key_hash -> Script_expr_hash.t
-
-  val make_key_hash :
-    context ->
-    ticketer:Script.node ->
-    typ:Script.node ->
-    contents:Script.node ->
-    owner:Script.node ->
-    (key_hash * context) tzresult
-
   val adjust_balance :
-    context -> key_hash -> delta:Z.t -> (Z.t * context) tzresult Lwt.t
+    context -> Ticket_hash.t -> delta:Z.t -> (Z.t * context) tzresult Lwt.t
 
-  val get_balance : context -> key_hash -> (Z.t option * context) tzresult Lwt.t
+  val get_balance :
+    context -> Ticket_hash.t -> (Z.t option * context) tzresult Lwt.t
 end
 
 module First_level_of_tenderbake : sig

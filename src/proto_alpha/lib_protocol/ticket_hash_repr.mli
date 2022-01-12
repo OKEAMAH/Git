@@ -23,30 +23,28 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** [get_balance ctxt key] receives the ticket balance for the given
-    [key] in the context [ctxt]. The [key] represents a ticket content and a
-    ticket creator pair. In case there exists no value for the given [key],
-    [None] is returned.
-    *)
-val get_balance :
-  Raw_context.t ->
-  Ticket_hash_repr.t ->
-  (Z.t option * Raw_context.t) tzresult Lwt.t
+(** A value of type [key_hash] is a hashed combination of:
+  - Ticketer
+  - Content type
+  - Content
+  - Owner *)
+type t
 
-(** [adjust_balance ctxt key ~delta] adjusts the balance of the
-    given key (representing a ticket content, creator and owner pair)
-    and [delta]. The value of [delta] can be positive as well as negative.
-    If there is no pre-exising balance for the given ticket type and owner,
-    it is assumed to be 0 and the new balance is [delta]. The function also
-    returns the difference between the old and the new size of the storage.
-    Note that the difference may be negative. For example, because when
-    setting the balance to zero, an entry is removed.
+val encoding : t Data_encoding.t
 
-    The function fails with a [Negative_ticket_balance] error
-    in case the resulting balance is negative.
- *)
-val adjust_balance :
+(** [to_script_expr_hash key_hash] returns a [Script_expr_hash.t]
+    value representation of the given [key_hash]. This is useful for
+    comparing and pretty-printing key-hash values. *)
+val to_script_expr_hash : t -> Script_expr_hash.t
+
+(** [make ctxt ~ticketer ~typ ~contents ~owner] creates a hashed
+    representation of the given [ticketer], [typ], [contents] and
+    [owner].
+*)
+val make :
   Raw_context.t ->
-  Ticket_hash_repr.t ->
-  delta:Z.t ->
-  (Z.t * Raw_context.t) tzresult Lwt.t
+  ticketer:Script_repr.node ->
+  typ:Script_repr.node ->
+  contents:Script_repr.node ->
+  owner:Script_repr.node ->
+  (t * Raw_context.t) tzresult

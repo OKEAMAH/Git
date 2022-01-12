@@ -41,7 +41,6 @@
         "Contract_repr",
         "Tx_rollup_repr",
         "Tx_rollup_l2_address_repr",
-        "Tx_rollup_inbox_repr",
         "Tx_rollup_state_repr",
         "Roll_repr_legacy",
         "Vote_repr",
@@ -58,6 +57,8 @@
 
         "Raw_context_intf",
         "Raw_context",
+        "Ticket_hash_repr",
+        "Tx_rollup_inbox_repr",
         "Storage_costs",
         "Storage_sigs",
         "Storage_functors",
