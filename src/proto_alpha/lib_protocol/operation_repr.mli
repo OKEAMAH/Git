@@ -275,6 +275,7 @@ and _ manager_operation =
       level : Raw_level_repr.t;
       hash : Tx_rollup_commitments_repr.Commitment_hash.t;
       batch_index : int;
+      batch : Tx_rollup_message_repr.t;
       nonce : int64;
     }
       -> Kind.tx_rollup_rejection manager_operation

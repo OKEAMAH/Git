@@ -203,7 +203,7 @@ let get :
     (Raw_context.t * Tx_rollup_inbox_repr.t) tzresult Lwt.t =
  fun ctxt ~level tx_rollup ->
   (*
-    [inbox_opt] checks whether or not [tx_rollup] is valid, so we
+    [inbox_opt] c_hecks whether or not [tx_rollup] is valid, so we
     don’t have to do it here.
    *)
   find ctxt ~level tx_rollup >>=? function
@@ -232,6 +232,17 @@ let get_metadata :
   Storage.Tx_rollup.Inbox_metadata.find (ctxt, level) tx_rollup >>=? function
   | (_, None) -> fail (Tx_rollup_inbox_does_not_exist (tx_rollup, level))
   | (ctxt, Some metadata) -> return (ctxt, metadata)
+
+let check_batch_hash :
+    Raw_context.t ->
+    Raw_level_repr.t ->
+    Tx_rollup_repr.t ->
+    int ->
+    Tx_rollup_message_repr.t ->
+    Raw_context.t tzresult Lwt.t =
+ fun ctxt _level _rollup _batch_index _batch ->
+  (* TODO/TORU: write this! *)
+  return ctxt
 
 (* Error registration *)
 

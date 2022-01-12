@@ -247,6 +247,9 @@ let range start top =
   let rec aux n acc = if n < start then acc else aux (n - 1) (n :: acc) in
   aux top []
 
+let message txt =
+  fst @@ Tx_rollup_message.make_batch txt
+
 (** ---- TESTS -------------------------------------------------------------- *)
 
 (** [test_origination] originates a transaction rollup and checks that
@@ -1218,7 +1221,15 @@ let test_rejection () =
   Incremental.add_operation i op >>=? fun i ->
   let hash = Tx_rollup_commitments.Commitment.hash commitment in
   (* Correct rejection *)
-  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce
+  Op.tx_rollup_reject
+    (I i)
+    contract1
+    tx_rollup
+    (raw_level 2l)
+    hash
+    0
+    (message "batch")
+    nonce
   >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
   (* Right commitment *)
@@ -1230,7 +1241,15 @@ let test_rejection () =
   Incremental.finalize_block i >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   let hash = Tx_rollup_commitments.Commitment.hash correct_commitment in
-  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce2
+  Op.tx_rollup_reject
+    (I i)
+    contract1
+    tx_rollup
+    (raw_level 2l)
+    hash
+    0
+    (message "batch")
+    nonce2
   >>=? fun op ->
   (* Wrong rejection *)
   Incremental.add_operation i op ~expect_failure:(function

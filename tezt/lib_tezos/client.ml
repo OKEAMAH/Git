@@ -1147,6 +1147,8 @@ let spawn_submit_tx_rollup_batch ?(wait = "none") ?burn_cap ?storage_limit
         tx_rollup;
         "from";
         src;
+        "--fee-cap";
+        "10000000000";
       ]
     @ Option.fold
         ~none:[]

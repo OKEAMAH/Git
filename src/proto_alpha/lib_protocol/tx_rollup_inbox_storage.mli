@@ -146,3 +146,14 @@ val get_metadata :
   Raw_level_repr.t ->
   Tx_rollup_repr.t ->
   (Raw_context.t * Tx_rollup_inbox_repr.metadata) tzresult Lwt.t
+
+(* [check_batch_hash ctxt level rollup index batch] checks that a
+   batch for an inbox has the expected hash, and fails if it does
+   not. *)
+val check_batch_hash :
+  Raw_context.t ->
+  Raw_level_repr.t ->
+  Tx_rollup_repr.t ->
+  int ->
+  Tx_rollup_message_repr.t ->
+  Raw_context.t tzresult Lwt.t

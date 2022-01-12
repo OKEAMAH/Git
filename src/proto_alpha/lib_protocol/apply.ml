@@ -1266,7 +1266,9 @@ let apply_manager_operation_content :
           }
       in
       return (ctxt, result, [])
-  | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce = _} ->
+  | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce = _; batch} ->
+      Tx_rollup_inbox.check_batch_hash ctxt level rollup batch_index batch
+      >>=? fun ctxt ->
       Tx_rollup_commitments.get_commitment_roots
         ctxt
         rollup

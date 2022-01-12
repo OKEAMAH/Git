@@ -2123,6 +2123,14 @@ module Tx_rollup_inbox : sig
     Tx_rollup.t ->
     (context * Raw_level.t option * Raw_level.t option) tzresult Lwt.t
 
+  val check_batch_hash :
+    context ->
+    Raw_level.t ->
+    Tx_rollup.t ->
+    int ->
+    Tx_rollup_message.t ->
+    context tzresult Lwt.t
+
   module Internal_for_tests : sig
     type metadata = {
       count : int;
@@ -2274,6 +2282,7 @@ module Tx_rollup_rejection : sig
     level : Raw_level.t;
     hash : Tx_rollup_commitments.Commitment_hash.t;
     batch_index : int;
+    batch : Tx_rollup_message.t;
   }
 
   val encoding : t Data_encoding.t
@@ -2490,6 +2499,7 @@ and _ manager_operation =
       level : Raw_level.t;
       hash : Tx_rollup_commitments.Commitment_hash.t;
       batch_index : int;
+      batch : Tx_rollup_message.t;
       nonce : int64;
     }
       -> Kind.tx_rollup_rejection manager_operation

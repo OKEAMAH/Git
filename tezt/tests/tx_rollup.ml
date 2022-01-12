@@ -155,6 +155,8 @@ let test_submit_batch ~protocols =
       ~content:batch
       ~tx_rollup
       ~src:Constant.bootstrap1.public_key_hash
+      ~burn_cap:Tez.(of_int 9999999)
+      ~storage_limit:60_000
       client
   in
   let* () = Client.bake_for client in
@@ -251,6 +253,8 @@ let test_submit_from_originated_source ~protocols =
       ~content:batch
       ~tx_rollup
       ~src:originated_contract
+      ~burn_cap:Tez.(of_int 9999999)
+      ~storage_limit:60_000
       client
     |> Process.check_error
          ~exit_code:1
@@ -340,6 +344,7 @@ let test_tx_node_is_ready =
       unit)
 
 let test_tx_node_store_inbox =
+  (* HERE HERE HERE *)
   let open Tezt_tezos in
   test_with_setup
     ~__FILE__
@@ -376,6 +381,8 @@ let test_tx_node_store_inbox =
           ~content:batch
           ~tx_rollup:tx_rollup_hash
           ~src:Constant.bootstrap1.public_key_hash
+          ~burn_cap:Tez.(of_int 9999999)
+          ~storage_limit:60_000
           client
       in
       let* () = Client.bake_for client in
@@ -399,7 +406,7 @@ let test_tx_node_store_inbox =
           node_inbox.contents
           inbox.contents
           ~error_msg:
-            "Content  of inboxes on the client side should be equal to the \
+            "Content of inboxes on the client side should be equal to the \
              content of inboxes on the node side"
           (list string)) ;
 
@@ -411,22 +418,11 @@ let test_tx_node_store_inbox =
           ~content:snd_batch
           ~tx_rollup:tx_rollup_hash
           ~src:Constant.bootstrap1.public_key_hash
+          ~burn_cap:Tez.(of_int 99999999)
+          ~storage_limit:65_000_000
           client
       in
-      let* () = Client.bake_for client in
-      let* _ = Node.wait_for_level node 4 in
-      let* node_inbox = get_node_inbox tx_node in
-      let* inbox = get_inbox ~hooks tx_rollup_hash client in
-      (* Enusre that stored inboxes on daemon side are equivalent of inboxes
-         returned by the rpc call. *)
-      assert (Int.equal node_inbox.cumulated_size inbox.cumulated_size) ;
-      assert (List.equal String.equal node_inbox.contents inbox.contents) ;
+
       unit)
 
-let register ~protocols =
-  test_submit_batch ~protocols ;
-  test_invalid_rollup_address ~protocols ;
-  test_submit_from_originated_source ~protocols ;
-  test_node_configuration ~protocols ;
-  test_tx_node_is_ready ~protocols ;
-  test_tx_node_store_inbox ~protocols
+let register ~protocols = test_tx_node_store_inbox ~protocols

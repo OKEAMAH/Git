@@ -44,17 +44,19 @@ type t = {
   level : Raw_level_repr.t;
   hash : Tx_rollup_commitments_repr.Commitment_hash.t;
   batch_index : int;
+  batch : Tx_rollup_message_repr.t;
 }
 
 let encoding =
   let open Data_encoding in
   conv
-    (fun {rollup; level; hash; batch_index} ->
-      (rollup, level, hash, batch_index))
-    (fun (rollup, level, hash, batch_index) ->
-      {rollup; level; hash; batch_index})
-    (obj4
+    (fun {rollup; level; hash; batch_index; batch} ->
+      (rollup, level, hash, batch_index, batch))
+    (fun (rollup, level, hash, batch_index, batch) ->
+      {rollup; level; hash; batch_index; batch})
+    (obj5
        (req "rollup" Tx_rollup_repr.encoding)
        (req "level" Raw_level_repr.encoding)
        (req "hash" Tx_rollup_commitments_repr.Commitment_hash.encoding)
-       (req "batch_index" int31))
+       (req "batch_index" int31)
+       (req "batch" Tx_rollup_message_repr.encoding))

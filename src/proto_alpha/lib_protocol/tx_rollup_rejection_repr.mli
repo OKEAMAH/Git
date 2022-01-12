@@ -32,6 +32,7 @@ type t = {
   level : Raw_level_repr.t;
   hash : Tx_rollup_commitments_repr.Commitment_hash.t;
   batch_index : int;
+  batch : Tx_rollup_message_repr.t;
 }
 
 val encoding : t Data_encoding.t

@@ -2229,6 +2229,7 @@ let commands_rw () =
               ~fee_parameter
               ~tx_rollup
               ~content
+              ~gas_limit:(Gas.Arith.integral_of_int_exn 10000)
               ()
             >>=? fun _res -> return_unit);
     command
