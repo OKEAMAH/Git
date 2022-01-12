@@ -717,8 +717,8 @@ module Tx_rollup : sig
        and type key = Tx_rollup_repr.t
        and type value = int
 
-  (** A carbonated storage to store the hashes of the message stored
-      in an inbox at a given order, in reverse order.
+  (** A carbonated storage to store the hashes of the messages
+      appended in an inbox, in reverse order.
 
       The actual content is stored in the corresponding block. *)
   module Inbox_rev_contents :
