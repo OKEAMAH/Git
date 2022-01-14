@@ -25,44 +25,52 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** A collections of functions to manipulate the state of a
-    transaction rollup.
+(** Communication from the layer-1 (Tezos) to the layer-2 (a
+    transaction rollup) happens thanks to messages, crafted in the
+    layer-1 to be interpreted in the layer-2.
 
-    Except if the contrary is explicitly stated, the functions of this
-    module are cabonated. *)
+    Messages are constructed and gathered in the layer-1, in
+    inboxes. *)
 
-type error +=
-  | Tx_rollup_already_exists of Tx_rollup_repr.t
-  | Tx_rollup_does_not_exist of Tx_rollup_repr.t
+(** Smart contract on the layer-1 can deposit tickets into a
+    transaction rollup, for the benefit of a {!Tx_rollup_l2_address.t}. *)
+type deposit = {
+  destination : Tx_rollup_l2_address.t;
+  ticket_hash : Ticket_hash_repr.t;
+  amount : int64;
+}
 
-(** [init ctxt tx_rollup] initializes the state of [tx_rollup].
+(** A [message] is a piece of data originated from the layer-1 to be
+    interpreted by the layer-2.
 
-    This will raises [Tx_rollup_already_exists] if this function has
-    already been called for [tx_rollup], which is definitely something
-    that should not happen, and would indicate a bug in the
-    protocol. *)
-val init : Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
+    Transaction rollups feature two kind of messages:
 
-(** [get_opt context tx_rollup] returns the current state of
-    [tx_rollup]. If [tx_rollup] is not the address of an existing
-    transaction rollup, [None] is returned instead. *)
-val get_opt :
-  Raw_context.t ->
-  Tx_rollup_repr.t ->
-  (Raw_context.t * Tx_rollup_state_repr.t option) tzresult Lwt.t
+    {ul {li An array of bytes that supposedly contains a valid
+            sequence of layer-2 operations; their interpretation and
+            validation is deferred to the layer-2..}
+        {li A deposit order for a L1 ticket.}} *)
+type t = Batch of string | Deposit of deposit
 
-(** [get context tx_rollup] returns the current state of [tx_rollup]
-    in the context.
+(** [size msg] returns the number of bytes that are allocated in an
+    inbox by [msg]. *)
+val size : t -> int
 
-    Raises [Tx_rollup_does_not_exist] iff [tx_rollup] is not the
-    address of an existing transaction rollup. *)
-val get :
-  Raw_context.t ->
-  Tx_rollup_repr.t ->
-  (Raw_context.t * Tx_rollup_state_repr.t) tzresult Lwt.t
+val encoding : t Data_encoding.t
 
-(** [assert_exist ctxt tx_rollup] fails with
-    [Tx_rollup_does_not_exist] when [tx_rollup] is not a valid
-    transaction rollup address. *)
-val assert_exist :
-  Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
+val pp : Format.formatter -> t -> unit
+
+(** The Blake2B hash of a message.
+
+    To avoid unnecessary storage duplication, the inboxes in the
+    layer-1 do not contain the messages, but their hashes. This is
+    possible because the content of the messages can be reconstructed
+    off-chain by looking at the layer-1 operations and their
+    receipt. *)
+type hash
+
+val hash_encoding : hash Data_encoding.t
+
+val pp_hash : Format.formatter -> hash -> unit
+
+(** [hash msg] computes the hash of [msg] to be stored in the inbox. *)
+val hash : t -> hash

@@ -25,44 +25,18 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** A collections of functions to manipulate the state of a
-    transaction rollup.
+(** An inbox gathers, for a given Tezos level, messages crafted by the
+    layer-1 for the layer-2 to interpret.
 
-    Except if the contrary is explicitly stated, the functions of this
-    module are cabonated. *)
+    The structure comprises two fields: (1) [contents] is the list of
+    message hashes, and (2) [cumulated_size] is the quantity of bytes
+    allocated by the related messages.
 
-type error +=
-  | Tx_rollup_already_exists of Tx_rollup_repr.t
-  | Tx_rollup_does_not_exist of Tx_rollup_repr.t
+    We recall that a transaction rollup can have up to one inbox per
+    Tezos level, starting from its origination. See
+    {!Storage.Tx_rollup} for more information. *)
+type t = {contents : Tx_rollup_message_repr.hash list; cumulated_size : int}
 
-(** [init ctxt tx_rollup] initializes the state of [tx_rollup].
+val pp : Format.formatter -> t -> unit
 
-    This will raises [Tx_rollup_already_exists] if this function has
-    already been called for [tx_rollup], which is definitely something
-    that should not happen, and would indicate a bug in the
-    protocol. *)
-val init : Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
-
-(** [get_opt context tx_rollup] returns the current state of
-    [tx_rollup]. If [tx_rollup] is not the address of an existing
-    transaction rollup, [None] is returned instead. *)
-val get_opt :
-  Raw_context.t ->
-  Tx_rollup_repr.t ->
-  (Raw_context.t * Tx_rollup_state_repr.t option) tzresult Lwt.t
-
-(** [get context tx_rollup] returns the current state of [tx_rollup]
-    in the context.
-
-    Raises [Tx_rollup_does_not_exist] iff [tx_rollup] is not the
-    address of an existing transaction rollup. *)
-val get :
-  Raw_context.t ->
-  Tx_rollup_repr.t ->
-  (Raw_context.t * Tx_rollup_state_repr.t) tzresult Lwt.t
-
-(** [assert_exist ctxt tx_rollup] fails with
-    [Tx_rollup_does_not_exist] when [tx_rollup] is not a valid
-    transaction rollup address. *)
-val assert_exist :
-  Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
+val encoding : t Data_encoding.t

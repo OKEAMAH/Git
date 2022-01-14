@@ -25,44 +25,20 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** A collections of functions to manipulate the state of a
-    transaction rollup.
+type t = {contents : Tx_rollup_message_repr.hash list; cumulated_size : int}
 
-    Except if the contrary is explicitly stated, the functions of this
-    module are cabonated. *)
+let pp fmt {contents; cumulated_size} =
+  Format.fprintf
+    fmt
+    "tx rollup inbox: %d messages using %d bytes"
+    (List.length contents)
+    cumulated_size
 
-type error +=
-  | Tx_rollup_already_exists of Tx_rollup_repr.t
-  | Tx_rollup_does_not_exist of Tx_rollup_repr.t
-
-(** [init ctxt tx_rollup] initializes the state of [tx_rollup].
-
-    This will raises [Tx_rollup_already_exists] if this function has
-    already been called for [tx_rollup], which is definitely something
-    that should not happen, and would indicate a bug in the
-    protocol. *)
-val init : Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
-
-(** [get_opt context tx_rollup] returns the current state of
-    [tx_rollup]. If [tx_rollup] is not the address of an existing
-    transaction rollup, [None] is returned instead. *)
-val get_opt :
-  Raw_context.t ->
-  Tx_rollup_repr.t ->
-  (Raw_context.t * Tx_rollup_state_repr.t option) tzresult Lwt.t
-
-(** [get context tx_rollup] returns the current state of [tx_rollup]
-    in the context.
-
-    Raises [Tx_rollup_does_not_exist] iff [tx_rollup] is not the
-    address of an existing transaction rollup. *)
-val get :
-  Raw_context.t ->
-  Tx_rollup_repr.t ->
-  (Raw_context.t * Tx_rollup_state_repr.t) tzresult Lwt.t
-
-(** [assert_exist ctxt tx_rollup] fails with
-    [Tx_rollup_does_not_exist] when [tx_rollup] is not a valid
-    transaction rollup address. *)
-val assert_exist :
-  Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
+let encoding =
+  let open Data_encoding in
+  conv
+    (fun {contents; cumulated_size} -> (contents, cumulated_size))
+    (fun (contents, cumulated_size) -> {contents; cumulated_size})
+    (obj2
+       (req "contents" @@ list Tx_rollup_message_repr.hash_encoding)
+       (req "cumulated_size" int31))
