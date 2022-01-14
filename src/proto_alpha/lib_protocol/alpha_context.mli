@@ -769,6 +769,7 @@ module Constants : sig
     initial_seed : State_hash.t option;
     tx_rollup_enable : bool;
     tx_rollup_origination_size : int;
+    tx_rollup_hard_size_limit_per_inbox : int;
     sc_rollup_enable : bool;
     sc_rollup_origination_size : int;
   }
@@ -855,6 +856,8 @@ module Constants : sig
   val tx_rollup_enable : context -> bool
 
   val tx_rollup_origination_size : context -> int
+
+  val tx_rollup_hard_size_limit_per_inbox : context -> int
 
   val sc_rollup_enable : context -> bool
 
@@ -2043,7 +2046,9 @@ module Tx_rollup_inbox : sig
     Tx_rollup.t ->
     (context * t option) tzresult Lwt.t
 
-  type error += Tx_rollup_inbox_does_not_exist of Tx_rollup.t * Raw_level.t
+  type error +=
+    | Tx_rollup_inbox_does_not_exist of Tx_rollup.t * Raw_level.t
+    | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup.t
 end
 
 module Kind : sig

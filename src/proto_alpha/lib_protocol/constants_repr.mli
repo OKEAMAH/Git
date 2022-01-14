@@ -121,6 +121,8 @@ type parametric = {
   initial_seed : State_hash.t option;
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
+  (* the maximum amount of bytes messages can allocate in an inbox *)
+  tx_rollup_hard_size_limit_per_inbox : int;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
 }

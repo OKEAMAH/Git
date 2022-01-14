@@ -32,6 +32,7 @@
 
 type error +=
   | Tx_rollup_inbox_does_not_exist of Tx_rollup_repr.t * Raw_level_repr.t
+  | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup_repr.t
 
 (** [append_message ctxt tx_rollup message] tries to append message to
     the inbox of [tx_rollup] at the current level, creating it in the

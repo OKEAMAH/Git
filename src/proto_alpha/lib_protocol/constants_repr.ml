@@ -174,6 +174,7 @@ type parametric = {
   initial_seed : State_hash.t option;
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
+  tx_rollup_hard_size_limit_per_inbox : int;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
 }
@@ -215,7 +216,9 @@ let parametric_encoding =
                 c.double_baking_punishment,
                 c.ratio_of_frozen_deposits_slashed_per_double_endorsement,
                 c.initial_seed ),
-              ( (c.tx_rollup_enable, c.tx_rollup_origination_size),
+              ( ( c.tx_rollup_enable,
+                  c.tx_rollup_origination_size,
+                  c.tx_rollup_hard_size_limit_per_inbox ),
                 (c.sc_rollup_enable, c.sc_rollup_origination_size) ) ) ) ) ))
     (fun ( ( preserved_cycles,
              blocks_per_cycle,
@@ -250,7 +253,9 @@ let parametric_encoding =
                    double_baking_punishment,
                    ratio_of_frozen_deposits_slashed_per_double_endorsement,
                    initial_seed ),
-                 ( (tx_rollup_enable, tx_rollup_origination_size),
+                 ( ( tx_rollup_enable,
+                     tx_rollup_origination_size,
+                     tx_rollup_hard_size_limit_per_inbox ),
                    (sc_rollup_enable, sc_rollup_origination_size) ) ) ) ) ) ->
       {
         preserved_cycles;
@@ -288,6 +293,7 @@ let parametric_encoding =
         initial_seed;
         tx_rollup_enable;
         tx_rollup_origination_size;
+        tx_rollup_hard_size_limit_per_inbox;
         sc_rollup_enable;
         sc_rollup_origination_size;
       })
@@ -339,9 +345,10 @@ let parametric_encoding =
                       ratio_encoding)
                    (opt "initial_seed" State_hash.encoding))
                 (merge_objs
-                   (obj2
+                   (obj3
                       (req "tx_rollup_enable" bool)
-                      (req "tx_rollup_origination_size" int31))
+                      (req "tx_rollup_origination_size" int31)
+                      (req "tx_rollup_hard_size_limit_per_inbox" int31))
                    (obj2
                       (req "sc_rollup_enable" bool)
                       (req "sc_rollup_origination_size" int31)))))))

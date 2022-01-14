@@ -652,7 +652,10 @@ def _test_create_mockup_init_show_roundtrip(
                 "double_baking_punishment": "640000001",
                 "tx_rollup_enable": False,
                 # TODO: https://gitlab.com/tezos/tezos/-/issues/2152
+                # Transaction rollups parameters need to be refined,
+                # currently the following values are merely placeholde
                 "tx_rollup_origination_size": 60_000,
+                "tx_rollup_hard_size_limit_per_inbox": 100_000,
                 "sc_rollup_enable": False,
                 "sc_rollup_origination_size": 6_314,
             }
