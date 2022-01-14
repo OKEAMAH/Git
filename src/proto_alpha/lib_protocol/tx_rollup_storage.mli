@@ -29,3 +29,12 @@
     [origination_nonce]. *)
 val originate :
   Raw_context.t -> (Raw_context.t * Tx_rollup_repr.t) tzresult Lwt.t
+
+(** [update_tx_rollups_at_block_finalization ctxt] updates the state
+    of every transaction rollups which had an inbox created at the
+    current block.
+
+    {b Note:} As the name suggests, this function must be called at
+    block finalization time. *)
+val update_tx_rollups_at_block_finalization :
+  Raw_context.t -> Raw_context.t tzresult Lwt.t
