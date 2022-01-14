@@ -40,6 +40,7 @@
         "Script_repr",
         "Cache_memory_helpers",
         "Contract_repr",
+        "Tx_rollup_l2_address",
         "Tx_rollup_repr",
         "Tx_rollup_state_repr",
         "Roll_repr_legacy",
