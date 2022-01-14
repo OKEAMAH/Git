@@ -94,6 +94,7 @@ let constants_mainnet =
        currently the following values are merely placeholders. *)
     tx_rollup_origination_size = 60_000;
     tx_rollup_hard_size_limit_per_inbox = 100_000;
+    tx_rollup_hard_size_limit_per_message = 5_000;
     sc_rollup_enable = false;
     (* The following value is chosen to prevent spam. *)
     sc_rollup_origination_size = 6_314;

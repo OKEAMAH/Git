@@ -770,6 +770,7 @@ module Constants : sig
     tx_rollup_enable : bool;
     tx_rollup_origination_size : int;
     tx_rollup_hard_size_limit_per_inbox : int;
+    tx_rollup_hard_size_limit_per_message : int;
     sc_rollup_enable : bool;
     sc_rollup_origination_size : int;
   }
@@ -2049,6 +2050,7 @@ module Tx_rollup_inbox : sig
   type error +=
     | Tx_rollup_inbox_does_not_exist of Tx_rollup.t * Raw_level.t
     | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup.t
+    | Tx_rollup_message_size_exceeds_limit
 end
 
 module Kind : sig

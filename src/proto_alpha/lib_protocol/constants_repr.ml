@@ -175,6 +175,7 @@ type parametric = {
   tx_rollup_enable : bool;
   tx_rollup_origination_size : int;
   tx_rollup_hard_size_limit_per_inbox : int;
+  tx_rollup_hard_size_limit_per_message : int;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
 }
@@ -218,7 +219,8 @@ let parametric_encoding =
                 c.initial_seed ),
               ( ( c.tx_rollup_enable,
                   c.tx_rollup_origination_size,
-                  c.tx_rollup_hard_size_limit_per_inbox ),
+                  c.tx_rollup_hard_size_limit_per_inbox,
+                  c.tx_rollup_hard_size_limit_per_message ),
                 (c.sc_rollup_enable, c.sc_rollup_origination_size) ) ) ) ) ))
     (fun ( ( preserved_cycles,
              blocks_per_cycle,
@@ -255,7 +257,8 @@ let parametric_encoding =
                    initial_seed ),
                  ( ( tx_rollup_enable,
                      tx_rollup_origination_size,
-                     tx_rollup_hard_size_limit_per_inbox ),
+                     tx_rollup_hard_size_limit_per_inbox,
+                     tx_rollup_hard_size_limit_per_message ),
                    (sc_rollup_enable, sc_rollup_origination_size) ) ) ) ) ) ->
       {
         preserved_cycles;
@@ -294,6 +297,7 @@ let parametric_encoding =
         tx_rollup_enable;
         tx_rollup_origination_size;
         tx_rollup_hard_size_limit_per_inbox;
+        tx_rollup_hard_size_limit_per_message;
         sc_rollup_enable;
         sc_rollup_origination_size;
       })
@@ -345,10 +349,11 @@ let parametric_encoding =
                       ratio_encoding)
                    (opt "initial_seed" State_hash.encoding))
                 (merge_objs
-                   (obj3
+                   (obj4
                       (req "tx_rollup_enable" bool)
                       (req "tx_rollup_origination_size" int31)
-                      (req "tx_rollup_hard_size_limit_per_inbox" int31))
+                      (req "tx_rollup_hard_size_limit_per_inbox" int31)
+                      (req "tx_rollup_hard_size_limit_per_message" int31))
                    (obj2
                       (req "sc_rollup_enable" bool)
                       (req "sc_rollup_origination_size" int31)))))))
