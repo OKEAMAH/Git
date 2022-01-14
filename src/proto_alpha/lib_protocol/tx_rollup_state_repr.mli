@@ -1,8 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,10 +25,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let fresh_tx_rollup_from_current_nonce ctxt =
-  Raw_context.increment_origination_nonce ctxt >|? fun (ctxt, nonce) ->
-  (ctxt, Tx_rollup_repr.originated_tx_rollup nonce)
+(** The state of a transaction rollup is a set of variables that vary
+    in time, as the rollup progresses. *)
+type t
 
-let originate ctxt =
-  fresh_tx_rollup_from_current_nonce ctxt >>?= fun (ctxt, tx_rollup) ->
-  Tx_rollup_state_storage.init ctxt tx_rollup >|=? fun ctxt -> (ctxt, tx_rollup)
+(** The initial value of a transaction rollup state, after its origination. *)
+val initial_state : t
+
+val encoding : t Data_encoding.t
+
+val pp : Format.formatter -> t -> unit

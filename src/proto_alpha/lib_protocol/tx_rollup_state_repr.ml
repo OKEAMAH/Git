@@ -1,8 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,10 +25,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let fresh_tx_rollup_from_current_nonce ctxt =
-  Raw_context.increment_origination_nonce ctxt >|? fun (ctxt, nonce) ->
-  (ctxt, Tx_rollup_repr.originated_tx_rollup nonce)
+type t = unit
 
-let originate ctxt =
-  fresh_tx_rollup_from_current_nonce ctxt >>?= fun (ctxt, tx_rollup) ->
-  Tx_rollup_state_storage.init ctxt tx_rollup >|=? fun ctxt -> (ctxt, tx_rollup)
+let initial_state = ()
+
+let encoding = Data_encoding.unit
+
+let pp fmt () = Format.fprintf fmt "Tx_rollup: ()"

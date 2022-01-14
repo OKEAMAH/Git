@@ -26,8 +26,10 @@
 (*                               utils                                       *)
 
 let get_state tx_rollup client =
-  let* json = RPC.Tx_rollup.get_state ~tx_rollup client in
-  JSON.(json |-> "state" |> as_opt |> Option.map (fun _ -> ())) |> Lwt.return
+  (* The state is currently empty, but the RPC can fail if [tx_rollup]
+     does not exist. *)
+  let* _json = RPC.Tx_rollup.get_state ~tx_rollup client in
+  return ()
 
 (*                               test                                        *)
 
@@ -51,13 +53,10 @@ let test_simple_use_case =
       client
   in
   let* () = Client.bake_for client in
-  let* state = get_state tx_rollup client in
-  match state with
-  | Some _ -> unit
-  | None ->
-      Test.fail
-        "The tx rollups was not correctly originated and no state exists for \
-         %s."
-        tx_rollup
+
+  (* We check the rollup exists by trying to fetch its state. *)
+  let* _state = get_state tx_rollup client in
+
+  unit
 
 let register ~protocols = test_simple_use_case ~protocols

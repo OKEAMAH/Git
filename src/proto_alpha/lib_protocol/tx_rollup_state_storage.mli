@@ -1,8 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,10 +25,38 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let fresh_tx_rollup_from_current_nonce ctxt =
-  Raw_context.increment_origination_nonce ctxt >|? fun (ctxt, nonce) ->
-  (ctxt, Tx_rollup_repr.originated_tx_rollup nonce)
+(** A collections of functions to manipulate the state of a
+    transaction rollup.
 
-let originate ctxt =
-  fresh_tx_rollup_from_current_nonce ctxt >>?= fun (ctxt, tx_rollup) ->
-  Tx_rollup_state_storage.init ctxt tx_rollup >|=? fun ctxt -> (ctxt, tx_rollup)
+    Except if the contrary is explicitly stated, the functions of this
+    module are cabonated. *)
+
+type error +=
+  | Tx_rollup_already_exists of Tx_rollup_repr.t
+  | Tx_rollup_does_not_exist of Tx_rollup_repr.t
+
+(** [init ctxt tx_rollup] initializes the state of [tx_rollup].
+
+    This will raises [Tx_rollup_already_exists] if this function has
+    already been called for [tx_rollup], which is definitely something
+    that should not happen, and would indicate a bug in the
+    protocol. *)
+val init : Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
+
+(** [get_opt context tx_rollup] returns the current state of
+    [tx_rollup]. If [tx_rollup] is not the address of an existing
+    transaction rollup, [None] is returned instead. *)
+val get_opt :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  (Raw_context.t * Tx_rollup_state_repr.t option) tzresult Lwt.t
+
+(** [get context tx_rollup] returns the current state of [tx_rollup]
+    in the context.
+
+    Raises [Tx_rollup_does_not_exist] iff [tx_rollup] is not the
+    address of an existing transaction rollup. *)
+val get :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  (Raw_context.t * Tx_rollup_state_repr.t) tzresult Lwt.t
