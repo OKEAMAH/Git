@@ -493,6 +493,37 @@ let apply ctxt gas capture_ty capture lam =
       let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
       return (lam', ctxt, gas)
 
+(** [craft_transfer_parameters ctxt tp p] reorganizes, if need be, the
+    parameters submitted by the interpreter to prepare them for the
+    [Transaction] operation. *)
+let craft_transfer_parameters ctxt tp p : Destination.t -> _ tzresult = function
+  | Contract _ -> ok (p, ctxt)
+  (* The entrypoints of a transaction rollup are polymorphic wrt. the
+     tickets it can process. However, two Michelson values can have
+     the same Micheline representation, but different types. What
+     this means is that when we start the execution of a transaction
+     rollup, the type of its argument is lost if we just give it the
+     values provided by the Michelson script.
+
+     To address this issue, we instrument a transfer to a transaction
+     rollup to inject the exact type of the entrypoint as used by
+     the smart contract. This allows the transaction rollup to extract
+     the type of the ticket. *)
+  | Tx_rollup _ ->
+      let open Micheline in
+      (* The entrypoint type is [Pair (Ticket a) tx_rollup_l2_address].
+         We are only interested in the ticket type. *)
+      let extract_ticket_type = function
+        | Prim (_, T_pair, [Prim (_, T_ticket, [ty], _); _], _) -> ty
+        | _ ->
+            (* The implementation of the [CONTRACT] instruction
+               enforces that this cannot happen. *)
+            assert false
+      in
+      Script_ir_translator.unparse_ty ~loc:dummy_location ctxt tp
+      >|? fun (ty, ctxt) ->
+      (Seq (dummy_location, [p; extract_ticket_type ty]), ctxt)
+
 (* [transfer (ctxt, sc) gas tez tp p destination entrypoint]
    creates an operation that transfers an amount of [tez] to
    a contract determined by [(destination, entrypoint)]
@@ -512,6 +543,7 @@ let transfer (ctxt, sc) gas amount tp p destination entrypoint =
   >>=? fun (p, lazy_storage_diff, ctxt) ->
   unparse_data ctxt Optimized tp p >>=? fun (p, ctxt) ->
   Gas.consume ctxt (Script.strip_locations_cost p) >>?= fun ctxt ->
+  craft_transfer_parameters ctxt tp p destination >>?= fun (p, ctxt) ->
   let operation =
     Transaction
       {

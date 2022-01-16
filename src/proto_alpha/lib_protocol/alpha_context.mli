@@ -1950,27 +1950,6 @@ module Ticket_hash : sig
     (t * context) tzresult
 end
 
-(** This simply re-exports {!Destination_repr}. *)
-module Destination : sig
-  type t = Contract of Contract.t
-
-  val encoding : t Data_encoding.t
-
-  val pp : Format.formatter -> t -> unit
-
-  val compare : t -> t -> int
-
-  val equal : t -> t -> bool
-
-  val to_b58check : t -> string
-
-  val of_b58check : string -> t tzresult
-
-  val in_memory_size : t -> Cache_memory_helpers.sint
-
-  type error += Invalid_destination_b58check of string
-end
-
 (** This module re-exports definitions from {!Tx_rollup_repr} and
     {!Tx_rollup_storage}. *)
 module Tx_rollup : sig
@@ -1989,6 +1968,33 @@ module Tx_rollup : sig
   val pp : Format.formatter -> tx_rollup -> unit
 
   val encoding : tx_rollup Data_encoding.t
+
+  val deposit_entrypoint : Entrypoint.t
+
+  type deposit_parameters = {
+    contents : Script.node;
+    ty : Script.node;
+    ticketer : Script.node;
+    amount : int64;
+    destination : Tx_rollup_l2_address.Indexable.t;
+  }
+
+  (** [hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty] computes the
+      hash of the ticket of type [ty ticket], of content [content] and
+      of ticketer [ticketer].
+
+      The goal of the comuted hash is twofold:
+
+      {ul {li Identifying the ticket in the layer-2, and}
+          {li Registeringto the table of tickets that [tx_rollup] owns this
+              ticket.}} *)
+  val hash_ticket :
+    context ->
+    t ->
+    contents:Script.node ->
+    ticketer:Script.node ->
+    ty:Script.node ->
+    (Ticket_hash.t * context) tzresult
 
   val originate : context -> (context * tx_rollup) tzresult Lwt.t
 
@@ -2018,6 +2024,8 @@ module Tx_rollup_state : sig
   val get : context -> Tx_rollup.t -> (context * t) tzresult Lwt.t
 
   val update : context -> Tx_rollup.t -> t -> context tzresult Lwt.t
+
+  val assert_exist : context -> Tx_rollup.t -> context tzresult Lwt.t
 
   val fees : t -> int -> Tez.t tzresult
 
@@ -2113,6 +2121,27 @@ module Tx_rollup_inbox : sig
     | Tx_rollup_inbox_does_not_exist of Tx_rollup.t * Raw_level.t
     | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup.t
     | Tx_rollup_message_size_exceeds_limit
+end
+
+(** This simply re-exports {!Destination_repr}. *)
+module Destination : sig
+  type t = Contract of Contract.t | Tx_rollup of Tx_rollup.t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val compare : t -> t -> int
+
+  val equal : t -> t -> bool
+
+  val to_b58check : t -> string
+
+  val of_b58check : string -> t tzresult
+
+  val in_memory_size : t -> Cache_memory_helpers.sint
+
+  type error += Invalid_destination_b58check of string
 end
 
 module Kind : sig

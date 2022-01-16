@@ -2224,6 +2224,38 @@ let parse_tx_rollup_l2_address ctxt :
   | expr ->
       error @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
+let parse_tx_rollup_deposit_parameters :
+    context -> Script.expr -> (Tx_rollup.deposit_parameters * context) tzresult
+    =
+ fun ctxt parameters ->
+  match root parameters with
+  | Seq
+      ( _,
+        [
+          Prim
+            ( _,
+              D_Pair,
+              [
+                Prim
+                  ( _,
+                    D_Pair,
+                    [ticketer; Prim (_, D_Pair, [contents; amount], _)],
+                    _ );
+                bls;
+              ],
+              _ );
+          ty;
+        ] ) ->
+      parse_tx_rollup_l2_address ctxt bls >>? fun (destination, ctxt) ->
+      (match amount with
+      | Int (_, v) when Compare.Z.(v <= Z.of_int64 Int64.max_int) ->
+          ok @@ Z.to_int64 v
+      | Int (_, v) -> error @@ Tx_rollup_invalid_ticket_amount v
+      | expr -> error @@ Invalid_kind (location expr, [Int_kind], kind expr))
+      >|? fun amount ->
+      (Tx_rollup.{ticketer; contents; ty; amount; destination}, ctxt)
+  | expr -> error @@ Invalid_kind (location expr, [Prim_kind], kind expr)
+
 let parse_never expr : (never * context) tzresult =
   error @@ Invalid_never_expr (location expr)
 
@@ -2614,9 +2646,10 @@ let[@coq_axiom_with_reason "gadt"] rec parse_data :
       if allow_forged then
         opened_ticket_type (location expr) t >>?= fun ty ->
         parse_comparable_data ?type_logger ctxt ty expr
-        >|=? fun (({destination; entrypoint = _}, (contents, amount)), ctxt) ->
+        >>=? fun (({destination; entrypoint = _}, (contents, amount)), ctxt) ->
         match destination with
-        | Contract ticketer -> ({ticketer; contents; amount}, ctxt)
+        | Contract ticketer -> return ({ticketer; contents; amount}, ctxt)
+        | Tx_rollup _ -> fail (Unexpected_ticket_owner destination)
       else traced_fail (Unexpected_forged_value (location expr))
   (* Sets *)
   | (Set_t (t, _ty_name), (Seq (loc, vs) as expr)) ->
@@ -5108,6 +5141,16 @@ and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_contra
                   entrypoint_arg >|? fun (entrypoint, arg_ty) ->
                   let destination : Destination.t = Contract contract in
                   (ctxt, {arg_ty; address = {destination; entrypoint}}) )))
+  | Tx_rollup tx_rollup -> (
+      match arg with
+      | Pair_t (Ticket_t (_, _), Tx_rollup_l2_address_t _, _)
+        when Entrypoint.(
+               entrypoint = Alpha_context.Tx_rollup.deposit_entrypoint) ->
+          Tx_rollup_state.assert_exist ctxt tx_rollup >>=? fun ctxt ->
+          return
+            ( ctxt,
+              {arg_ty = arg; address = {destination = contract; entrypoint}} )
+      | _ -> fail (No_such_entrypoint entrypoint))
 
 and parse_view_name ctxt : Script.node -> (Script_string.t * context) tzresult =
   function
@@ -5302,6 +5345,19 @@ let parse_contract_for_script :
                               in
                               (ctxt, Some contract)
                           | Error Inconsistent_types_fast -> (ctxt, None))) )))
+  | Tx_rollup tx_rollup -> (
+      match arg with
+      | Pair_t (Ticket_t (_, _), Tx_rollup_l2_address_t _, _)
+        when Entrypoint.(
+               entrypoint = Alpha_context.Tx_rollup.deposit_entrypoint) -> (
+          Tx_rollup_state.find ctxt tx_rollup >|=? function
+          | (ctxt, Some _) ->
+              ( ctxt,
+                Some
+                  {arg_ty = arg; address = {destination = contract; entrypoint}}
+              )
+          | (ctxt, None) -> (ctxt, None))
+      | _ -> return (ctxt, None))
 
 let parse_code :
     ?type_logger:type_logger ->

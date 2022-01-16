@@ -106,6 +106,10 @@ type error +=
   | (* `Permanent *)
       Tx_rollup_feature_disabled
   | (* `Permanent *)
+      Tx_rollup_non_null_transaction
+  | (* `Permanent *)
+      Tx_rollup_non_internal_transaction
+  | (* `Permanent *)
       Sc_rollup_feature_disabled
   | (* `Permanent *)
       Inconsistent_counters
@@ -493,6 +497,28 @@ let () =
     Data_encoding.unit
     (function Tx_rollup_feature_disabled -> Some () | _ -> None)
     (fun () -> Tx_rollup_feature_disabled) ;
+
+  register_error_kind
+    `Permanent
+    ~id:"operation.tx_rollup_non_null_transaction"
+    ~title:"Non-null transaction to a transaction rollup"
+    ~description:"Non-null transactions to a tx rollup are forbidden."
+    ~pp:(fun ppf () ->
+      Format.fprintf ppf "Transaction to a transaction rollup must be null.")
+    Data_encoding.unit
+    (function Tx_rollup_non_null_transaction -> Some () | _ -> None)
+    (fun () -> Tx_rollup_non_null_transaction) ;
+
+  register_error_kind
+    `Permanent
+    ~id:"operation.tx_rollup_non_internal_transaction"
+    ~title:"Non-internal transaction to a transaction rollup"
+    ~description:"Non-internal transactions to a tx rollup are forbidden."
+    ~pp:(fun ppf () ->
+      Format.fprintf ppf "Transaction to a transaction rollup must be internal.")
+    Data_encoding.unit
+    (function Tx_rollup_non_internal_transaction -> Some () | _ -> None)
+    (fun () -> Tx_rollup_non_internal_transaction) ;
 
   let description =
     "Smart contract rollups will be enabled in a future proposal."
@@ -1000,6 +1026,57 @@ let apply_manager_operation_content :
                      })
               in
               (ctxt, result, operations) ))
+  | Transaction {amount; parameters; destination = Tx_rollup dst; entrypoint} ->
+      fail_unless
+        (Alpha_context.Constants.tx_rollup_enable ctxt)
+        Tx_rollup_disabled
+      >>=? fun () ->
+      fail_unless internal Tx_rollup_non_internal_transaction >>=? fun () ->
+      fail_unless Tez.(amount = zero) Tx_rollup_non_null_transaction
+      >>=? fun () ->
+      if Entrypoint.(entrypoint = Alpha_context.Tx_rollup.deposit_entrypoint)
+      then
+        Script.force_decode_in_context
+          ~consume_deserialization_gas
+          ctxt
+          parameters
+        >>?= fun (parameters, ctxt) ->
+        Script_ir_translator.parse_tx_rollup_deposit_parameters ctxt parameters
+        >>?= fun (Tx_rollup.{ticketer; contents; ty; amount; destination}, ctxt)
+          ->
+        Tx_rollup.hash_ticket ctxt dst ~contents ~ticketer ~ty
+        >>?= fun (ticket_hash, ctxt) ->
+        Tx_rollup_inbox.append_message
+          ctxt
+          dst
+          (Deposit {destination; ticket_hash; amount})
+        >>=? fun (message_size, ctxt) ->
+        Ticket_balance.adjust_balance
+          ctxt
+          ticket_hash
+          ~delta:(Z.of_int64 amount)
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/2339
+           Storage fees for transaction rollup.
+           We need to charge for newly allocated storage (as we do for
+           Michelson’s big map). This also means taking into account
+           the global table of tickets. *)
+        >>=?
+        fun (_size, ctxt) ->
+        Tx_rollup_state.get ctxt dst >>=? fun (ctxt, state) ->
+        Tx_rollup_state.fees state message_size >>?= fun cost ->
+        Token.transfer ctxt (`Contract payer) `Burned cost
+        >|=? fun (ctxt, balance_updates) ->
+        let result =
+          Transaction_result
+            (Transaction_to_tx_rollup_result
+               {
+                 balance_updates;
+                 consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+                 ticket_hash;
+               })
+        in
+        (ctxt, result, [])
+      else fail (Script_tc_errors.No_such_entrypoint entrypoint)
   | Origination {delegate; script; preorigination; credit} ->
       Script.force_decode_in_context
         ~consume_deserialization_gas
@@ -1378,6 +1455,11 @@ let burn_storage_fees :
                  allocated_destination_contract =
                    payload.allocated_destination_contract;
                }) )
+  | Transaction_result (Transaction_to_tx_rollup_result _ as payload) ->
+      (* TODO: https://gitlab.com/tezos/tezos/-/issues/2339
+          We need to charge for newly allocated storage (as we do for
+          Michelson’s big map). *)
+      return (ctxt, storage_limit, Transaction_result payload)
   | Origination_result payload ->
       let consumed = payload.paid_storage_size_diff in
       let payer = `Contract payer in
