@@ -37,6 +37,13 @@ module S = struct
       ~query:RPC_query.empty
       ~output:Tx_rollup_state.encoding
       RPC_path.(custom_root /: Tx_rollup.rpc_arg / "state")
+
+  let inbox =
+    RPC_service.get_service
+      ~description:"Get the inbox of a transaction rollup"
+      ~query:RPC_query.empty
+      ~output:Tx_rollup_inbox.encoding
+      RPC_path.(custom_root /: Tx_rollup.rpc_arg / "inbox")
 end
 
 let register () =
@@ -51,7 +58,17 @@ let register () =
                 We raise [Not_found] here, and let [resto] turn it
                 into a 404 error.
               *)
-              raise Not_found))
+              raise Not_found)) ;
+  register1 ~chunked:false S.inbox (fun ctxt tx_rollup () () ->
+      let level = (Level.current ctxt).level in
+      Tx_rollup_inbox.get_opt ctxt tx_rollup ~level >|=? function
+      | (_, Some x) -> x
+      | (_, None) ->
+          (*
+            We raise [Not_found] here, and let [resto] turn it
+            into a 404 error.
+           *)
+          raise Not_found)
 
 let state ctxt block tx_rollup =
   RPC_context.make_call1 S.state ctxt block tx_rollup () ()
