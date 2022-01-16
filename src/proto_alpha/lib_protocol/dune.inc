@@ -70,6 +70,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
    entrypoint_repr.mli entrypoint_repr.ml
+   destination_repr.mli destination_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -209,6 +210,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
    entrypoint_repr.mli entrypoint_repr.ml
+   destination_repr.mli destination_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -348,6 +350,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
    entrypoint_repr.mli entrypoint_repr.ml
+   destination_repr.mli destination_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -509,6 +512,7 @@ include Tezos_raw_protocol_alpha.Main
    Vote_repr
    Block_header_repr
    Entrypoint_repr
+   Destination_repr
    Operation_repr
    Manager_repr
    Commitment_repr
@@ -689,6 +693,7 @@ include Tezos_raw_protocol_alpha.Main
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
    entrypoint_repr.mli entrypoint_repr.ml
+   destination_repr.mli destination_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
