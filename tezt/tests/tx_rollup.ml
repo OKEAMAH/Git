@@ -25,15 +25,27 @@
 
 (*                               utils                                       *)
 
+type state = {fees_per_byte : int}
+
+type inbox = {cumulated_size : int; contents : string list}
+
 let get_state tx_rollup client =
   (* The state is currently empty, but the RPC can fail if [tx_rollup]
      does not exist. *)
-  let* _json = RPC.Tx_rollup.get_state ~tx_rollup client in
-  return ()
+  let* json = RPC.Tx_rollup.get_state ~tx_rollup client in
+  let fees_per_byte = JSON.(json |-> "fees_per_byte" |> as_int) in
+  return {fees_per_byte}
+
+let get_inbox tx_rollup client =
+  let* json = RPC.Tx_rollup.get_inbox ~tx_rollup client in
+  (* let obj = JSON.(json |> as_object) in *)
+  let cumulated_size = JSON.(json |-> "cumulated_size" |> as_int) in
+  let contents = JSON.(json |-> "contents" |> as_list |> List.map as_string) in
+  return {cumulated_size; contents}
 
 (*                               test                                        *)
 
-let test_simple_use_case =
+let test_submit_batch =
   let open Tezt_tezos in
   Protocol.register_test ~__FILE__ ~title:"Simple use case" ~tags:["rollup"]
   @@ fun protocol ->
@@ -42,7 +54,7 @@ let test_simple_use_case =
       ~base:(Either.right (protocol, None))
       [(["tx_rollup_enable"], Some "true")]
   in
-  let* (_node, client) =
+  let* (node, client) =
     Client.init_with_protocol ~parameter_file `Client ~protocol ()
   in
   let* tx_rollup =
@@ -54,9 +66,34 @@ let test_simple_use_case =
   in
   let* () = Client.bake_for client in
 
+  let* _ = Node.wait_for_level node 2 in
+
   (* We check the rollup exists by trying to fetch its state. *)
-  let* _state = get_state tx_rollup client in
+  let* state = get_state tx_rollup client in
+
+  (* We check the state has been initialized to the expected value. *)
+  assert (state.fees_per_byte = 0) ;
+
+  (* Submit a batch *)
+  let batch = "tezos" in
+
+  let* () =
+    Client.submit_tx_rollup_batch
+      ~content:batch
+      ~tx_rollup
+      ~src:Constant.bootstrap1.public_key_hash
+      client
+  in
+  let* () = Client.bake_for client in
+
+  (* Without that, the test is flaky for some reason *)
+  let* _ = Node.wait_for_level node 3 in
+
+  (* Check the inbox has been created *)
+  let* inbox = get_inbox tx_rollup client in
+
+  assert (String.length batch = inbox.cumulated_size) ;
 
   unit
 
-let register ~protocols = test_simple_use_case ~protocols
+let register ~protocols = test_submit_batch ~protocols
