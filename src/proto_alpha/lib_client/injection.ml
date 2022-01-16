@@ -313,6 +313,8 @@ let estimated_gas_single (type kind)
     match result with
     | Applied
         (Transaction_result (Transaction_to_contract_result {consumed_gas; _}))
+    | Applied
+        (Transaction_result (Transaction_to_tx_rollup_result {consumed_gas; _}))
       ->
         Ok consumed_gas
     | Applied (Origination_result {consumed_gas; _}) -> Ok consumed_gas
@@ -354,6 +356,12 @@ let estimated_storage_single (type kind) ~tx_rollup_origination_size
         if allocated_destination_contract then
           Ok (Z.add paid_storage_size_diff origination_size)
         else Ok paid_storage_size_diff
+    | Applied (Transaction_result (Transaction_to_tx_rollup_result _)) ->
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/2339
+           Storage fees for transaction rollup.
+           We need to charge for newly allocated storage (as we do for
+           Michelson’s big map). *)
+        Ok Z.zero
     | Applied (Origination_result {paid_storage_size_diff; _}) ->
         Ok (Z.add paid_storage_size_diff origination_size)
     | Applied (Reveal_result _) -> Ok Z.zero
@@ -411,6 +419,7 @@ let originated_contracts_single (type kind)
         (Transaction_result
           (Transaction_to_contract_result {originated_contracts; _})) ->
         Ok originated_contracts
+    | Applied (Transaction_result (Transaction_to_tx_rollup_result _)) -> Ok []
     | Applied (Origination_result {originated_contracts; _}) ->
         Ok originated_contracts
     | Applied (Register_global_constant_result _) -> Ok []

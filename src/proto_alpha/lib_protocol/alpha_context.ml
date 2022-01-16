@@ -250,6 +250,19 @@ end
 module Tx_rollup = struct
   include Tx_rollup_repr
   include Tx_rollup_storage
+
+  let hash_ticket :
+      Raw_context.t ->
+      t ->
+      contents:Script_repr.node ->
+      ticketer:Script_repr.node ->
+      ty:Script_repr.node ->
+      (Ticket_hash_repr.t * Raw_context.t) tzresult =
+   fun ctxt tx_rollup ~contents ~ticketer ~ty ->
+    let open Micheline in
+    let owner = String (dummy_location, to_b58check tx_rollup) in
+    Ticket_hash_repr.make ctxt ~ticketer ~typ:ty ~contents ~owner
+
   module Internal_for_tests = Tx_rollup_repr
 end
 

@@ -68,6 +68,10 @@ type error += Duplicate_entrypoint of Entrypoint.t
 
 type error += Unreachable_entrypoint of prim list
 
+(* Transaction rollup errors *)
+
+type error += Tx_rollup_invalid_ticket_amount of Z.t
+
 (* Instruction typing errors *)
 type error += Fail_not_in_tail_position of Script.location
 
@@ -195,6 +199,8 @@ type error += Unexpected_ticket of Script.location
 type error += Unexpected_forged_value of Script.location
 
 type error += Non_dupable_type of Script.location * Script.expr
+
+type error += Unexpected_ticket_owner of Destination.t
 
 (* Merge type errors *)
 

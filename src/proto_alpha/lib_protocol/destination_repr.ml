@@ -25,7 +25,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = Contract of Contract_repr.t
+type t = Contract of Contract_repr.t | Tx_rollup of Tx_rollup_repr.t
 
 include Compare.Make (struct
   type nonrec t = t
@@ -33,9 +33,14 @@ include Compare.Make (struct
   let compare l1 l2 =
     match (l1, l2) with
     | (Contract k1, Contract k2) -> Contract_repr.compare k1 k2
+    | (Tx_rollup k1, Tx_rollup k2) -> Tx_rollup_repr.compare k1 k2
+    | (Contract _, Tx_rollup _) -> -1
+    | (Tx_rollup _, Contract _) -> 1
 end)
 
-let to_b58check = function Contract k -> Contract_repr.to_b58check k
+let to_b58check = function
+  | Contract k -> Contract_repr.to_b58check k
+  | Tx_rollup k -> Tx_rollup_repr.to_b58check k
 
 type error += Invalid_destination_b58check of string
 
@@ -54,7 +59,10 @@ let () =
 let of_b58check s =
   match Contract_repr.of_b58check s with
   | Ok s -> Ok (Contract s)
-  | Error _ -> error (Invalid_destination_b58check s)
+  | Error _ -> (
+      match Tx_rollup_repr.of_b58check s with
+      | Ok s -> Ok (Tx_rollup s)
+      | Error _ -> error (Invalid_destination_b58check s))
 
 let encoding =
   let open Data_encoding in
@@ -62,16 +70,25 @@ let encoding =
     "transaction_destination"
     ~title:"A destination of a transaction"
     ~description:
-      "A destination notation compatible with the contract notation as given \
-       to an RPC or inside scripts. Can be a base58 implicit contract hash or \
-       a base58 originated contract hash."
+      "A destination notation compatible with the contract notation as given  \
+       to an RPC or inside scripts. Can be a base58 implicit contract hash,  a \
+       base58 originated contract hash, or a base58 originated transaction \
+       rollup."
   @@ splitted
        ~binary:
          (union
             ~tag_size:`Uint8
             (Contract_repr.cases
-               (function Contract x -> Some x)
-               (fun x -> Contract x)))
+               (function Contract x -> Some x | _ -> None)
+               (fun x -> Contract x)
+            @ [
+                case
+                  (Tag 2)
+                  (Fixed.add_padding Tx_rollup_repr.encoding 1)
+                  ~title:"Tx_rollup"
+                  (function Tx_rollup k -> Some k | _ -> None)
+                  (fun k -> Tx_rollup k);
+              ]))
        ~json:
          (conv
             to_b58check
@@ -84,8 +101,12 @@ let encoding =
             string)
 
 let pp : Format.formatter -> t -> unit =
- fun fmt -> function Contract k -> Contract_repr.pp fmt k
+ fun fmt -> function
+  | Contract k -> Contract_repr.pp fmt k
+  | Tx_rollup k -> Tx_rollup_repr.pp fmt k
 
 let in_memory_size =
   let open Cache_memory_helpers in
-  function Contract k -> h1w +! Contract_repr.in_memory_size k
+  function
+  | Contract k -> h1w +! Contract_repr.in_memory_size k
+  | Tx_rollup k -> h1w +! Tx_rollup_repr.in_memory_size k

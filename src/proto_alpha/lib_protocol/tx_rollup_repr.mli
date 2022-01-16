@@ -42,6 +42,10 @@ type tx_rollup = t
 
 include Compare.S with type t := t
 
+(** [in_memory_sise tx_rollup] returns the number of bytes [tx_rollup]
+    uses in RAM. *)
+val in_memory_size : t -> Cache_memory_helpers.sint
+
 val to_b58check : t -> string
 
 val of_b58check : string -> t tzresult
@@ -57,3 +61,22 @@ val originated_tx_rollup : Origination_nonce.t -> t
 val rpc_arg : t RPC_arg.arg
 
 module Index : Storage_description.INDEX with type t = t
+
+(** The entrypoint a layer-1 contract can use to deposit Michelson tickets
+    into a transaction rollup. *)
+val deposit_entrypoint : Entrypoint_repr.t
+
+(** The parameters expected to be supplied to the deposit entrypoint.
+
+    These arguments will not be supplied as-is, but encoded using
+    Micheline.
+
+    The function {!Script_ir_translator.parse_tx_rollup_deposit_parameters}
+    should be used to extract a [deposit_parameters] from a Micheline value. *)
+type deposit_parameters = {
+  contents : Script_repr.node;
+  ty : Script_repr.node;
+  ticketer : Script_repr.node;
+  amount : int64;
+  destination : Tx_rollup_l2_address.Indexable.t;
+}
