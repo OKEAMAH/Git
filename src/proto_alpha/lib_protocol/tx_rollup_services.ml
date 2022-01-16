@@ -72,3 +72,6 @@ let register () =
 
 let state ctxt block tx_rollup =
   RPC_context.make_call1 S.state ctxt block tx_rollup () ()
+
+let inbox ctxt block tx_rollup =
+  RPC_context.make_call1 S.inbox ctxt block tx_rollup () ()
