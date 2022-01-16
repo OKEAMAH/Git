@@ -12,6 +12,14 @@ to Protocol I.
 
 .. contents::
 
+Breaking Changes
+----------------
+
+- The binary encoding of the ``Transaction`` operation has changed.
+  Its contents now vary depending of the kind of destination. The
+  default case (implicit and smart contracts) are prefixed with the
+  tag ``0``.
+
 Bug Fixes
 ---------
 
