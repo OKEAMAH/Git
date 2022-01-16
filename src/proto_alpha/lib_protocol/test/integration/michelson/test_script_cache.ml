@@ -45,8 +45,12 @@ let err x = Exn (Script_cache_test_error x)
    The following value is hard-coded to detect change in the size
    model. It has been computed by a manual run of the test.
 
+   - Initial value was 289783
+   - The use of [Destination.t] instead of [Contract.t] in the [address] type
+     increased it to 289891
+
 *)
-let liquidity_baking_contract_size = 289783
+let liquidity_baking_contract_size = 289891
 
 let liquidity_baking_contract =
   Contract.of_b58check "KT1TxqZ8QtKvLu3V3JH7Gx58n7Co8pgtpQU5" |> function

@@ -2064,6 +2064,27 @@ module Tx_rollup_inbox : sig
     | Tx_rollup_message_size_exceeds_limit
 end
 
+(** This simply re-exports {!Destination_repr}. *)
+module Destination : sig
+  type t = Contract of Contract.t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val compare : t -> t -> int
+
+  val equal : t -> t -> bool
+
+  val to_b58check : t -> string
+
+  val of_b58check : string -> t tzresult
+
+  val in_memory_size : t -> Cache_memory_helpers.sint
+
+  type error += Invalid_destination_b58check of string
+end
+
 module Kind : sig
   type preendorsement_consensus_kind = Preendorsement_consensus_kind
 
@@ -2226,7 +2247,7 @@ and _ manager_operation =
       amount : Tez.tez;
       parameters : Script.lazy_expr;
       entrypoint : Entrypoint.t;
-      destination : Contract.contract;
+      destination : Destination.t;
     }
       -> Kind.transaction manager_operation
   | Origination : {
