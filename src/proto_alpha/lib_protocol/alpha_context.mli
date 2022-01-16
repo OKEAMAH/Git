@@ -1958,6 +1958,33 @@ module Tx_rollup : sig
 
   val encoding : tx_rollup Data_encoding.t
 
+  val deposit_entrypoint : Entrypoint.t
+
+  type deposit_parameters = {
+    contents : Script.node;
+    ty : Script.node;
+    ticketer : Script.node;
+    amount : int64;
+    destination : Tx_rollup_l2_address.t;
+  }
+
+  (** [hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty] computes the
+      hash of the ticket of type [ty ticket], of content [content] and
+      of ticketer [ticketer].
+
+      The goal of the comuted hash is twofold:
+
+      {ul {li Identifying the ticket in the layer-2, and}
+          {li Registeringto the table of tickets that [tx_rollup] owns this
+              ticket.}} *)
+  val hash_ticket :
+    context ->
+    t ->
+    contents:Script.node ->
+    ticketer:Script.node ->
+    ty:Script.node ->
+    (Ticket_hash.t * context) tzresult
+
   val originate : context -> (context * tx_rollup) tzresult Lwt.t
 
   val update_tx_rollups_at_block_finalization :
@@ -1984,6 +2011,8 @@ module Tx_rollup_state : sig
   val get_opt : context -> Tx_rollup.t -> (context * t option) tzresult Lwt.t
 
   val get : context -> Tx_rollup.t -> (context * t) tzresult Lwt.t
+
+  val assert_exist : context -> Tx_rollup.t -> context tzresult Lwt.t
 
   val fees : t -> int -> Tez.t tzresult
 
@@ -2067,7 +2096,7 @@ end
 
 (** This simply re-exports {!Destination_repr}. *)
 module Destination : sig
-  type t = Contract of Contract.t
+  type t = Contract of Contract.t | Tx_rollup of Tx_rollup.t
 
   val encoding : t Data_encoding.t
 

@@ -1031,18 +1031,18 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let (addr, stack) = stack in
           let c = addr.destination in
           let ctxt = update_context gas ctxt in
+          let return_none ctxt =
+            (step [@ocaml.tailcall])
+              (outdated ctxt, sc)
+              (update_local_gas_counter ctxt)
+              k
+              ks
+              None
+              stack
+          in
           match c with
           | Contract c -> (
               Contract.get_script ctxt c >>=? fun (ctxt, script_opt) ->
-              let return_none ctxt =
-                (step [@ocaml.tailcall])
-                  (outdated ctxt, sc)
-                  (update_local_gas_counter ctxt)
-                  k
-                  ks
-                  None
-                  stack
-              in
               match script_opt with
               | None -> (return_none [@ocaml.tailcall]) ctxt
               | Some script -> (
@@ -1129,7 +1129,8 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                                     kinstr
                                     (KView_exit (sc, KReturn (stack, ks)))
                                     (input, storage)
-                                    (EmptyCell, EmptyCell)))))))
+                                    (EmptyCell, EmptyCell))))))
+          | Tx_rollup _ -> (return_none [@ocaml.tailcall]) ctxt)
       | ICreate_contract
           {
             storage_type;
