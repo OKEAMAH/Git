@@ -291,7 +291,6 @@ let test_add_two_batches () =
   check_batch_in_inbox inbox 1 contents2 >>=? fun () ->
   inbox_fees state expected_cumulated_size >>?= fun cost ->
   Assert.balance_was_debited ~loc:__LOC__ (B b) contract balance cost
-  >>=? fun () -> return ()
 
 (** Try to add a batch too large in an inbox. *)
 let test_batch_too_big () =
@@ -313,9 +312,7 @@ let test_batch_too_big () =
       (check_proto_error (function
           | Tx_rollup_inbox.Tx_rollup_message_size_exceeds_limit -> true
           | _ -> false))
-  >>=? fun i ->
-  ignore i ;
-  return_unit
+  >>=? fun _ -> return_unit
 
 (** Try to add enough batch to reach the size limit of an inbox. *)
 let test_inbox_too_big () =
