@@ -258,7 +258,7 @@ class TestRPCsExistence:
         self, sandbox: Sandbox, session: dict
     ):
         # only implicit contracts, see
-        # proto_012_PsiThaCa/lib_protocol/contract_repr.ml
+        # proto_012_PsbtJQ44/lib_protocol/contract_repr.ml
         for contract_id in session["implicit_accounts"]:
             sandbox.client(1).rpc(
                 'get',

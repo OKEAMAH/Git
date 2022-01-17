@@ -1,10 +1,10 @@
 (tests
  (names test_uf
         test_inference)
- (package tezos-benchmark-type-inference-012-PsiThaCa)
+ (package tezos-benchmark-type-inference-012-PsbtJQ44)
  (libraries tezos-micheline tezos-micheline-rewriting
-            tezos-benchmark-type-inference-012-PsiThaCa tezos-protocol-012-PsiThaCa
-            tezos-error-monad tezos-client-012-PsiThaCa)
+            tezos-benchmark-type-inference-012-PsbtJQ44 tezos-protocol-012-PsbtJQ44
+            tezos-error-monad tezos-client-012-PsbtJQ44)
  (flags
     (:standard -open Tezos_micheline
-               -open Tezos_benchmark_type_inference_012_PsiThaCa)))
+               -open Tezos_benchmark_type_inference_012_PsbtJQ44)))

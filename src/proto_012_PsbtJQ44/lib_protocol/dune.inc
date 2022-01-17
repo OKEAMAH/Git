@@ -20,7 +20,7 @@
  (targets environment.ml)
  (action
   (write-file %{targets}
-              "module Name = struct let name = \"012-PsiThaCa\" end
+              "module Name = struct let name = \"012-PsbtJQ44\" end
 include Tezos_protocol_environment.MakeV4(Name)()
 module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
 ")))
@@ -145,7 +145,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    (:src_dir TEZOS_PROTOCOL))
  (action
   (with-stdout-to %{targets}
-                  (chdir %{workspace_root} (run %{bin:tezos-embedded-protocol-packer} "%{src_dir}" "012_PsiThaCa")))))
+                  (chdir %{workspace_root} (run %{bin:tezos-embedded-protocol-packer} "%{src_dir}" "012_PsbtJQ44")))))
 
 (rule
  (targets functor.ml)
@@ -388,31 +388,31 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    main.mli main.ml)
  (action
   (write-file %{targets}
-    "module Environment = Tezos_protocol_environment_012_PsiThaCa.Environment
-let hash = Tezos_crypto.Protocol_hash.of_b58check_exn \"PsiThaCaT47Zboaw71QWScM8sXeMM7bbQFncK9FLqYc6EKdpjVP\"
+    "module Environment = Tezos_protocol_environment_012_PsbtJQ44.Environment
+let hash = Tezos_crypto.Protocol_hash.of_b58check_exn \"PsbtJQ44JjYeqH1MCCx8474wPmKRbAWPzxr89G9jaWNjR6cpjWK\"
 let name = Environment.Name.name
-include Tezos_raw_protocol_012_PsiThaCa
-include Tezos_raw_protocol_012_PsiThaCa.Main
+include Tezos_raw_protocol_012_PsbtJQ44
+include Tezos_raw_protocol_012_PsbtJQ44.Main
 ")))
 
 (library
- (name tezos_protocol_environment_012_PsiThaCa)
+ (name tezos_protocol_environment_012_PsbtJQ44)
  (instrumentation (backend bisect_ppx))
- (public_name tezos-protocol-012-PsiThaCa.environment)
+ (public_name tezos-protocol-012-PsbtJQ44.environment)
  (library_flags (:standard -linkall))
  (libraries tezos-protocol-environment)
  (modules Environment))
 
 (library
- (name tezos_raw_protocol_012_PsiThaCa)
+ (name tezos_raw_protocol_012_PsbtJQ44)
  (instrumentation (backend bisect_ppx))
- (public_name tezos-protocol-012-PsiThaCa.raw)
- (libraries tezos_protocol_environment_012_PsiThaCa)
+ (public_name tezos-protocol-012-PsbtJQ44.raw)
+ (libraries tezos_protocol_environment_012_PsbtJQ44)
  (library_flags (:standard -linkall))
  (flags (:standard -nopervasives -nostdlib
                    -w +a-4-40..42-44-45-48
                    -warn-error +a
-                   -open Tezos_protocol_environment_012_PsiThaCa__Environment
+                   -open Tezos_protocol_environment_012_PsbtJQ44__Environment
                    -open Pervasives
                    -open Error_monad))
  (modules
@@ -533,43 +533,43 @@ include Tezos_raw_protocol_012_PsiThaCa.Main
 
 (install
  (section lib)
- (package tezos-protocol-012-PsiThaCa)
+ (package tezos-protocol-012-PsbtJQ44)
  (files (TEZOS_PROTOCOL as raw/TEZOS_PROTOCOL)))
 
 (library
- (name tezos_protocol_012_PsiThaCa)
+ (name tezos_protocol_012_PsbtJQ44)
  (instrumentation (backend bisect_ppx))
- (public_name tezos-protocol-012-PsiThaCa)
+ (public_name tezos-protocol-012-PsbtJQ44)
  (libraries
       tezos-protocol-environment
       tezos-protocol-environment-sigs
-      tezos_raw_protocol_012_PsiThaCa)
+      tezos_raw_protocol_012_PsbtJQ44)
  (flags -w "+a-4-40..42-44-45-48"
         -warn-error "+a"
         -nopervasives)
  (modules Protocol))
 
 (library
- (name tezos_protocol_012_PsiThaCa_functor)
+ (name tezos_protocol_012_PsbtJQ44_functor)
  ; The instrumentation is removed as it can lead to a stack overflow
  ; https://gitlab.com/tezos/tezos/-/issues/1927
  ; (instrumentation (backend bisect_ppx))
- (public_name tezos-protocol-functor-012-PsiThaCa)
+ (public_name tezos-protocol-functor-012-PsbtJQ44)
  (libraries
       tezos-protocol-environment
       tezos-protocol-environment-sigs
-      tezos-protocol-012-PsiThaCa.raw)
+      tezos-protocol-012-PsbtJQ44.raw)
  (flags -w "+a-4-40..42-44-45-48"
         -warn-error "+a"
         -nopervasives)
  (modules Functor))
 
 (library
- (name tezos_embedded_protocol_012_PsiThaCa)
+ (name tezos_embedded_protocol_012_PsbtJQ44)
  (instrumentation (backend bisect_ppx))
- (public_name tezos-embedded-protocol-012-PsiThaCa)
+ (public_name tezos-embedded-protocol-012-PsbtJQ44)
  (library_flags (:standard -linkall))
- (libraries tezos-protocol-012-PsiThaCa
+ (libraries tezos-protocol-012-PsbtJQ44
             tezos-protocol-updater
             tezos-protocol-environment)
  (flags (:standard -w +a-4-40..42-44-45-48
@@ -698,11 +698,11 @@ include Tezos_raw_protocol_012_PsiThaCa.Main
 
 (rule
  (alias runtest_sandbox)
- (deps .tezos_protocol_012_PsiThaCa.objs/native/tezos_protocol_012_PsiThaCa.cmx)
+ (deps .tezos_protocol_012_PsbtJQ44.objs/native/tezos_protocol_012_PsbtJQ44.cmx)
  (action (progn)))
 
 (rule
  (alias runtest)
- (package tezos-protocol-012-PsiThaCa)
+ (package tezos-protocol-012-PsbtJQ44)
  (deps (alias runtest_sandbox))
  (action (progn)))

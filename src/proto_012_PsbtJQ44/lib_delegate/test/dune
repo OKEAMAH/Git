@@ -1,22 +1,22 @@
 (test
  (name main)
- (package tezos-baking-012-PsiThaCa)
+ (package tezos-baking-012-PsbtJQ44)
  (libraries
-   tezos-client-012-PsiThaCa
-   tezos_baking_012_PsiThaCa
-   tezos-baking-012-PsiThaCa.mockup-simulator
+   tezos-client-012-PsbtJQ44
+   tezos_baking_012_PsbtJQ44
+   tezos-baking-012-PsbtJQ44.mockup-simulator
    tezos-base-test-helpers
-   tezos-protocol-012-PsiThaCa-parameters
+   tezos-protocol-012-PsbtJQ44-parameters
    tezos-crypto
    alcotest-lwt)
  (flags (:standard -open Tezos_base__TzPervasives
                    -open Tezos_micheline
-                   -open Tezos_client_012_PsiThaCa
-                   -open Tezos_protocol_012_PsiThaCa
-                   -open Tezos_protocol_environment_012_PsiThaCa
+                   -open Tezos_client_012_PsbtJQ44
+                   -open Tezos_protocol_012_PsbtJQ44
+                   -open Tezos_protocol_environment_012_PsbtJQ44
                    -open Tezos_base_test_helpers
-                   -open Tezos_012_PsiThaCa_mockup_simulator
-                   -open Tezos_baking_012_PsiThaCa))
+                   -open Tezos_012_PsbtJQ44_mockup_simulator
+                   -open Tezos_baking_012_PsbtJQ44))
  (action (run %{exe:main.exe} -q -e)))
 
 (rule

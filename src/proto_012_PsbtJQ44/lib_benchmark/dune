@@ -1,17 +1,17 @@
 (library
- (name tezos_benchmark_012_PsiThaCa)
+ (name tezos_benchmark_012_PsbtJQ44)
  (instrumentation (backend bisect_ppx))
- (public_name tezos-benchmark-012-PsiThaCa)
+ (public_name tezos-benchmark-012-PsbtJQ44)
  (libraries
   tezos-base
-  tezos-protocol-012-PsiThaCa
-  tezos-protocol-012-PsiThaCa-parameters
+  tezos-protocol-012-PsbtJQ44
+  tezos-protocol-012-PsbtJQ44-parameters
   tezos-micheline-rewriting
   tezos-benchmark
-  tezos-benchmark-type-inference-012-PsiThaCa
+  tezos-benchmark-type-inference-012-PsbtJQ44
   hashcons
   benchmark-utils
-  tezos-012-PsiThaCa-test-helpers
+  tezos-012-PsbtJQ44-test-helpers
   prbnmcn-stats)
  (library_flags (:standard -linkall))
  (private_modules kernel rules state_space)
@@ -21,7 +21,7 @@
                    -open Tezos_micheline
                    -open Tezos_micheline_rewriting
                    -open Tezos_benchmark
-                   -open Tezos_benchmark_type_inference_012_PsiThaCa
-                   -open Tezos_protocol_012_PsiThaCa
+                   -open Tezos_benchmark_type_inference_012_PsbtJQ44
+                   -open Tezos_protocol_012_PsbtJQ44
                    -open Tezos_crypto
-                   -open Tezos_012_PsiThaCa_test_helpers)))
+                   -open Tezos_012_PsbtJQ44_test_helpers)))

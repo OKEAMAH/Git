@@ -1,15 +1,15 @@
 (library
- (name tezos_baking_012_PsiThaCa)
+ (name tezos_baking_012_PsbtJQ44)
  (instrumentation (backend bisect_ppx))
- (public_name tezos-baking-012-PsiThaCa)
+ (public_name tezos-baking-012-PsbtJQ44)
  (libraries tezos-base
             tezos-version
-            tezos-protocol-012-PsiThaCa
+            tezos-protocol-012-PsbtJQ44
             tezos-protocol-environment
             tezos-shell-context
             tezos-shell-services
             tezos-client-base
-            tezos-client-012-PsiThaCa
+            tezos-client-012-PsbtJQ44
             tezos-client-commands
             tezos-stdlib
             tezos-stdlib-unix
@@ -25,11 +25,11 @@
                      baking_commands
                      baking_commands_registration))
  (flags (:standard -open Tezos_base__TzPervasives
-                   -open Tezos_protocol_012_PsiThaCa
-                   -open Tezos_protocol_plugin_012_PsiThaCa
+                   -open Tezos_protocol_012_PsbtJQ44
+                   -open Tezos_protocol_plugin_012_PsbtJQ44
                    -open Tezos_shell_services
                    -open Tezos_client_base
-                   -open Tezos_client_012_PsiThaCa
+                   -open Tezos_client_012_PsbtJQ44
                    -open Tezos_client_commands
                    -open Tezos_stdlib
                    -open Tezos_stdlib_unix
@@ -39,51 +39,51 @@
                    -open Tezos_rpc_http)))
 
 (library
- (name tezos_baking_012_PsiThaCa_commands)
+ (name tezos_baking_012_PsbtJQ44_commands)
  (instrumentation (backend bisect_ppx))
- (public_name tezos-baking-012-PsiThaCa-commands)
+ (public_name tezos-baking-012-PsbtJQ44-commands)
  (libraries tezos-base
-            tezos-protocol-012-PsiThaCa
+            tezos-protocol-012-PsbtJQ44
             tezos-protocol-environment
             tezos-shell-services
             tezos-client-base
-            tezos-client-012-PsiThaCa
+            tezos-client-012-PsbtJQ44
             tezos-client-commands
-            tezos-baking-012-PsiThaCa)
+            tezos-baking-012-PsbtJQ44)
  (library_flags (:standard -linkall))
  (modules baking_commands)
  (flags (:standard -open Tezos_base__TzPervasives
-                   -open Tezos_protocol_012_PsiThaCa
+                   -open Tezos_protocol_012_PsbtJQ44
                    -open Tezos_stdlib_unix
                    -open Tezos_shell_services
                    -open Tezos_client_base
-                   -open Tezos_client_012_PsiThaCa
+                   -open Tezos_client_012_PsbtJQ44
                    -open Tezos_client_commands
-                   -open Tezos_baking_012_PsiThaCa
+                   -open Tezos_baking_012_PsbtJQ44
                    -open Tezos_rpc)))
 
 (library
- (name tezos_baking_012_PsiThaCa_commands_registration)
+ (name tezos_baking_012_PsbtJQ44_commands_registration)
  (instrumentation (backend bisect_ppx))
- (public_name tezos-baking-012-PsiThaCa-commands.registration)
+ (public_name tezos-baking-012-PsbtJQ44-commands.registration)
  (libraries tezos-base
-            tezos-protocol-012-PsiThaCa
+            tezos-protocol-012-PsbtJQ44
             tezos-protocol-environment
             tezos-shell-services
             tezos-client-base
-            tezos-client-012-PsiThaCa
+            tezos-client-012-PsbtJQ44
             tezos-client-commands
-            tezos-baking-012-PsiThaCa
-            tezos-baking-012-PsiThaCa-commands
+            tezos-baking-012-PsbtJQ44
+            tezos-baking-012-PsbtJQ44-commands
             tezos-rpc)
  (library_flags (:standard -linkall))
  (modules baking_commands_registration)
  (flags (:standard -open Tezos_base__TzPervasives
-                   -open Tezos_protocol_012_PsiThaCa
+                   -open Tezos_protocol_012_PsbtJQ44
                    -open Tezos_shell_services
                    -open Tezos_client_base
-                   -open Tezos_client_012_PsiThaCa
+                   -open Tezos_client_012_PsbtJQ44
                    -open Tezos_client_commands
-                   -open Tezos_baking_012_PsiThaCa
-                   -open Tezos_baking_012_PsiThaCa_commands
+                   -open Tezos_baking_012_PsbtJQ44
+                   -open Tezos_baking_012_PsbtJQ44_commands
                    -open Tezos_rpc)))
