@@ -1046,11 +1046,13 @@ let apply_manager_operation_content :
           ->
         Tx_rollup.hash_ticket ctxt dst ~contents ~ticketer ~ty
         >>?= fun (ticket_hash, ctxt) ->
-        Tx_rollup_inbox.append_message
-          ctxt
-          dst
-          (Deposit {destination; ticket_hash; amount})
-        >>=? fun (message_size, ctxt) ->
+        Tx_rollup_state.get ctxt dst >>=? fun (ctxt, state) ->
+        let (deposit, message_size) =
+          Tx_rollup_message.make_deposit destination ticket_hash amount
+        in
+        Tx_rollup_inbox.append_message ctxt dst state deposit
+        >>=? fun (ctxt, new_state) ->
+        Tx_rollup_state.update ctxt dst new_state >>=? fun ctxt ->
         Ticket_balance.adjust_balance
           ctxt
           ticket_hash
@@ -1062,8 +1064,7 @@ let apply_manager_operation_content :
            the global table of tickets. *)
         >>=?
         fun (_size, ctxt) ->
-        Tx_rollup_state.get ctxt dst >>=? fun (ctxt, state) ->
-        Tx_rollup_state.fees state message_size >>?= fun cost ->
+        Tx_rollup_state.fees new_state message_size >>?= fun cost ->
         Token.transfer ctxt (`Contract payer) `Burned cost
         >|=? fun (ctxt, balance_updates) ->
         let result =

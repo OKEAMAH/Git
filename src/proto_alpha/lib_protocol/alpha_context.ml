@@ -291,6 +291,12 @@ module Tx_rollup_message = struct
       Compare.Int.(message_size < message_limit)
       Tx_rollup_inbox_storage.Tx_rollup_message_size_exceeds_limit
     >>? fun () -> Ok (message, message_size)
+
+  let make_deposit destination ticket_hash amount =
+    let deposit = Deposit {destination; ticket_hash; amount} in
+    (* FIXME: figure out the actual size *)
+    let size = 48 + 54 + 8 in
+    (deposit, size)
 end
 
 module Tx_rollup_inbox = struct

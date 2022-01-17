@@ -2056,6 +2056,9 @@ module Tx_rollup_message : sig
 
   val make_batch : context -> string -> (t * size) tzresult
 
+  val make_deposit :
+    Tx_rollup_l2_address.Indexable.t -> Ticket_hash.t -> int64 -> t * size
+
   val size : t -> int
 
   val encoding : t Data_encoding.t
