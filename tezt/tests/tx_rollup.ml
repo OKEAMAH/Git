@@ -96,4 +96,76 @@ let test_submit_batch =
 
   unit
 
-let register ~protocols = test_submit_batch ~protocols
+(** [test_deposit] originates a transaction rollup, and a smart
+    contract that it uses to perform a ticket deposit to this
+    rollup. *)
+let test_deposit =
+  let open Tezt_tezos in
+  Protocol.register_test
+    ~__FILE__
+    ~title:"Alpha: Deposit a ticket"
+    ~tags:["rollup"]
+  @@ fun protocol ->
+  let* parameter_file =
+    Protocol.write_parameter_file
+      ~base:(Either.right (protocol, None))
+      [(["tx_rollup_enable"], Some "true")]
+  in
+  let* (node, client) =
+    Client.init_with_protocol ~parameter_file `Client ~protocol ()
+  in
+
+  let* tx_rollup_contract =
+    Client.originate_contract
+      ~alias:"tx_rollup_deposit"
+      ~amount:Tez.zero
+      ~src:Constant.bootstrap1.public_key_hash
+      ~prg:"file:./tezt/tests/contracts/proto_alpha/tx_rollup_deposit.tz"
+      ~init:"Unit"
+      ~burn_cap:Tez.(of_int 3)
+      client
+  in
+
+  let* () = Client.bake_for client in
+  let* _ = Node.wait_for_level node 2 in
+
+  let* tx_rollup =
+    Client.originate_tx_rollup
+      ~burn_cap:Tez.(of_int 9999999)
+      ~storage_limit:60_000
+      ~src:Constant.bootstrap2.public_key_hash
+      client
+  in
+  let* () = Client.bake_for client in
+
+  let* _ = Node.wait_for_level node 3 in
+
+  (* We check the rollup exists by trying to fetch its state. *)
+  let* _state = get_state tx_rollup client in
+
+  (* We inject a call to the smart contract *)
+  let* _ =
+    Client.transfer
+      ~burn_cap:Tez.(of_int 9999999)
+      ~amount:Tez.zero
+      ~giver:"bootstrap1"
+      ~receiver:tx_rollup_contract
+      ~arg:(Format.sprintf "Pair \"%s\" 3" tx_rollup)
+      client
+  in
+  let* () = Client.bake_for ~minimal_fees:0 client in
+  let* _ = Node.wait_for_level node 4 in
+
+  (* Check that the inbox has been created for [tx_rollup]. *)
+  let* inbox = get_inbox tx_rollup client in
+
+  Check.(
+    (List.length inbox.contents = 1)
+      int
+      ~error_msg:"The inbox should contain one message") ;
+
+  unit
+
+let register ~protocols =
+  test_submit_batch ~protocols ;
+  test_deposit ~protocols
