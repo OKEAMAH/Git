@@ -27,9 +27,8 @@
 (** Testing
     -------
     Component:    Rollup layer 1 logic
-    Invocation:   dune exec \
-                  src/proto_alpha/lib_protocol/test/integration/operations/main.exe \
-                  -- test "^tx rollup$"
+    Invocation:   cd src/proto_alpha/lib_protocol/test/integration/operations \
+                  && dune exec ./main.exe -- test "^tx rollup$"
     Subject:      Test rollup
 *)
 
@@ -42,6 +41,15 @@ open Test_tez
 let check_tx_rollup_exists ctxt tx_rollup =
   Context.Tx_rollup.state ctxt tx_rollup >|=? fun _ -> ()
 
+(** [check_proto_error f t] checks that the first error of [t]
+    satisfies the boolean function [f]. *)
+let check_proto_error f t =
+  match t with
+  | Environment.Ecoproto_error e :: _ when f e ->
+      Assert.test_error_encodings e ;
+      return_unit
+  | _ -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t
+
 (** [test_disable_feature_flag] try to originate a tx rollup with the feature
     flag is deactivated and check it fails *)
 let test_disable_feature_flag () =
@@ -51,11 +59,8 @@ let test_disable_feature_flag () =
   in
   Incremental.begin_construction b >>=? fun i ->
   Op.tx_rollup_origination (I i) contract >>=? fun (op, _tx_rollup) ->
-  let expect_failure = function
-    | Environment.Ecoproto_error (Apply.Tx_rollup_disabled as e) :: _ ->
-        Assert.test_error_encodings e ;
-        return_unit
-    | _ -> failwith "It should not be possible to send a rollup_operation "
+  let expect_failure =
+    check_proto_error (function Apply.Tx_rollup_disabled -> true | _ -> false)
   in
   Incremental.add_operation ~expect_failure i op >>= fun _i -> return_unit
 
@@ -104,6 +109,59 @@ let context_init n =
 let originate b contract =
   Op.tx_rollup_origination (B b) contract >>=? fun (operation, tx_rollup) ->
   Block.bake ~operation b >>=? fun b -> return (b, tx_rollup)
+
+(** [make_unit_ticket_key ctxt ticketer tx_rollup] computes the key hash of
+    the unit ticket crafted by [ticketer] and owned by [tx_rollup]. *)
+let make_unit_ticket_key ctxt ticketer tx_rollup =
+  let open Tezos_micheline.Micheline in
+  let open Michelson_v1_primitives in
+  let ticketer =
+    Bytes (0, Data_encoding.Binary.to_bytes_exn Contract.encoding ticketer)
+  in
+  let ty = Prim (0, T_unit, [], []) in
+  let contents = Prim (0, D_Unit, [], []) in
+  match
+    Alpha_context.Tx_rollup.hash_ticket ctxt ~ticketer ~ty ~contents tx_rollup
+  with
+  | Ok (x, _) -> x
+  | Error _ -> raise (Invalid_argument "make_unit_ticket_key")
+
+let rng_state = Random.State.make_self_init ()
+
+let gen_l2_account () =
+  let seed =
+    Bytes.init 32 (fun _ -> char_of_int @@ Random.State.int rng_state 255)
+  in
+  let secret_key = Bls12_381.Signature.generate_sk seed in
+  let public_key = Bls12_381.Signature.derive_pk secret_key in
+  (secret_key, public_key, Tx_rollup_l2_address.of_bls_pk public_key)
+
+let is_implicit_exn x =
+  match Alpha_context.Contract.is_implicit x with
+  | Some x -> x
+  | None -> raise (Invalid_argument "is_implicit_exn")
+
+(** [expression_from_string] parses a Michelson expression from a string. *)
+let expression_from_string str =
+  let (ast, errs) = Michelson_v1_parser.parse_expression ~check:true str in
+  match errs with
+  | [] -> ast.expanded
+  | _ -> Stdlib.failwith ("parse expression: " ^ str)
+
+let print_deposit_arg tx_rollup account =
+  let open Alpha_context.Script in
+  Format.sprintf
+    "Pair \"%s\" %s"
+    (match tx_rollup with
+    | `Typed pk -> Tx_rollup.to_b58check pk
+    | `Raw str -> str)
+    (match account with
+    | `Hash pk ->
+        Format.sprintf "\"%s\"" (Tx_rollup_l2_address.address_to_b58check pk)
+    | `Raw str -> str)
+  |> fun x ->
+  Format.printf "%s\n@?" x ;
+  x |> expression_from_string |> lazy_expr
 
 (** ---- TESTS -------------------------------------------------------------- *)
 
@@ -291,12 +349,13 @@ let test_batch_too_big () =
   in
   Incremental.begin_construction b >>=? fun i ->
   Op.tx_rollup_submit_batch (I i) contract tx_rollup contents >>=? fun op ->
-  Incremental.add_operation i op ~expect_failure:(function
-      | Environment.Ecoproto_error
-          Tx_rollup_inbox.Tx_rollup_message_size_exceeds_limit
-        :: _ ->
-          return_unit
-      | _ -> failwith "Expected [Tx_rollup_message_size_exceeds_limit] error")
+  Incremental.add_operation
+    i
+    op
+    ~expect_failure:
+      (check_proto_error (function
+          | Tx_rollup_inbox.Tx_rollup_message_size_exceeds_limit -> true
+          | _ -> false))
   >>=? fun i ->
   ignore i ;
   return_unit
@@ -335,22 +394,235 @@ let test_inbox_too_big () =
       Incremental.add_operation i op >>=? fun i ->
       fill_inbox i new_inbox_size (Z.succ counter)
     else
-      Incremental.add_operation i op ~expect_failure:(function
-          | Environment.Ecoproto_error
-              (Tx_rollup_inbox.Tx_rollup_inbox_size_would_exceed_limit _)
-            :: _ ->
-              return_unit
-          | err ->
-              failwith
-                "Expected [Tx_rollup_inbox_size_would_exceed_limit] error, got \
-                 %a"
-                Error_monad.pp_print_trace
-                err)
+      Incremental.add_operation
+        i
+        op
+        ~expect_failure:
+          (check_proto_error (function
+              | Tx_rollup_inbox.Tx_rollup_inbox_size_would_exceed_limit _ ->
+                  true
+              | _ -> false))
   in
 
   fill_inbox i 0 counter >>=? fun i ->
   ignore i ;
   return_unit
+
+(** [test_valid_deposit] checks that a smart contract can deposit
+    tickets to a transaction rollup. *)
+let test_valid_deposit () =
+  let (_, _, pkh) = gen_l2_account () in
+
+  context_init 1 >>=? fun (b, contracts) ->
+  let account =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b account >>=? fun (b, tx_rollup) ->
+  Contract_helpers.originate_contract
+    "contracts/tx_rollup_deposit.tz"
+    "Unit"
+    account
+    b
+    (is_implicit_exn account)
+  >>=? fun (contract, b) ->
+  let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash pkh) in
+  let fee = Test_tez.of_int 10 in
+  Op.transaction
+    ~counter:(Z.of_int 2)
+    ~fee
+    (B b)
+    account
+    contract
+    Tez.zero
+    ~parameters
+  >>=? fun operation ->
+  Block.bake ~operation b >>=? fun b ->
+  Incremental.begin_construction b >|=? Incremental.alpha_ctxt >>=? fun ctxt ->
+  Context.Tx_rollup.inbox (B b) tx_rollup >>=? function
+  | {contents = [hash]; _} ->
+      let expected =
+        Tx_rollup_message.hash
+          (Deposit
+             {
+               destination = Full pkh;
+               amount = 10L;
+               ticket_hash = make_unit_ticket_key ctxt contract tx_rollup;
+             })
+      in
+      Alcotest.(check message_hash_testable "deposit" hash expected) ;
+      return_unit
+  | _ -> Alcotest.fail "The inbox has not the expected shape"
+
+(** [test_valid_deposit_inexistant_rollup] checks that the Michelson
+    interpreter checks the existence of a transaction rollup prior to
+    sending a deposit order. *)
+let test_valid_deposit_inexistant_rollup () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let account =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  Contract_helpers.originate_contract
+    "contracts/tx_rollup_deposit.tz"
+    "Unit"
+    account
+    b
+    (is_implicit_exn account)
+  >>=? fun (contract, b) ->
+  Incremental.begin_construction b >>=? fun i ->
+  let parameters =
+    print_deposit_arg (`Raw "tru1HdK6HiR31Xo1bSAr4mwwCek8ExgwuUeHm") (`Raw "2")
+  in
+  let fee = Test_tez.of_int 10 in
+  Op.transaction ~fee (I i) account contract Tez.zero ~parameters >>=? fun op ->
+  Incremental.add_operation
+    i
+    op
+    ~expect_failure:
+      (check_proto_error (function
+          | Script_interpreter.Runtime_contract_error _ -> true
+          | _ -> false))
+  >>=? fun _ -> return_unit
+
+(** [test_invalid_deposit_not_contract] checks a smart contract cannot
+    deposit something that is not a ticket. *)
+let test_invalid_deposit_not_ticket () =
+  let (_, _, pkh) = gen_l2_account () in
+
+  context_init 1 >>=? fun (b, contracts) ->
+  let account =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b account >>=? fun (b, tx_rollup) ->
+  Contract_helpers.originate_contract
+    "contracts/tx_rollup_deposit_incorrect_param.tz"
+    "Unit"
+    account
+    b
+    (is_implicit_exn account)
+  >>=? fun (contract, b) ->
+  Incremental.begin_construction b >>=? fun i ->
+  let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash pkh) in
+  let fee = Test_tez.of_int 10 in
+  Op.transaction ~fee (I i) account contract Tez.zero ~parameters >>=? fun op ->
+  Incremental.add_operation
+    i
+    op
+    ~expect_failure:
+      (check_proto_error (function
+          | Script_interpreter.Bad_contract_parameter _ -> true
+          | _ -> false))
+  >>=? fun _ -> return_unit
+
+(** [test_invalid_entrypoint] checks that a transaction to an invalid entrypoint
+    of a transaction rollup fails. *)
+let test_invalid_entrypoint () =
+  let (_, _, pkh) = gen_l2_account () in
+
+  context_init 1 >>=? fun (b, contracts) ->
+  let account =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b account >>=? fun (b, tx_rollup) ->
+  Contract_helpers.originate_contract
+    "contracts/tx_rollup_deposit_incorrect_param.tz"
+    "Unit"
+    account
+    b
+    (is_implicit_exn account)
+  >>=? fun (contract, b) ->
+  Incremental.begin_construction b >>=? fun i ->
+  let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash pkh) in
+  let fee = Test_tez.of_int 10 in
+  Op.transaction ~fee (I i) account contract Tez.zero ~parameters >>=? fun op ->
+  Incremental.add_operation
+    i
+    op
+    ~expect_failure:
+      (check_proto_error (function
+          | Script_interpreter.Bad_contract_parameter _ -> true
+          | _ -> false))
+  >>=? fun _ -> return_unit
+
+(** [test_invalid_l2_address] checks that a smart contract cannot make
+    a deposit order to something that is not a valid layer-2 address. *)
+let test_invalid_l2_address () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let account =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b account >>=? fun (b, tx_rollup) ->
+  Contract_helpers.originate_contract
+    "contracts/tx_rollup_deposit.tz"
+    "Unit"
+    account
+    b
+    (is_implicit_exn account)
+  >>=? fun (contract, b) ->
+  Incremental.begin_construction b >>=? fun i ->
+  let parameters =
+    print_deposit_arg (`Typed tx_rollup) (`Raw "\"invalid L2 address\"")
+  in
+  let fee = Test_tez.of_int 10 in
+  Op.transaction ~fee (I i) account contract Tez.zero ~parameters >>=? fun op ->
+  Incremental.add_operation
+    i
+    op
+    ~expect_failure:
+      (check_proto_error (function
+          | Script_interpreter.Bad_contract_parameter _ -> true
+          | _ -> false))
+  >>=? fun _ -> return_unit
+
+(** [test_valid_deposit_invalid_amount] checks that a transaction to a
+    transaction rollup fails if the [amount] parameter is not null. *)
+let test_valid_deposit_invalid_amount () =
+  let (_, _, pkh) = gen_l2_account () in
+
+  context_init 1 >>=? fun (b, contracts) ->
+  let account =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b account >>=? fun (b, tx_rollup) ->
+  Contract_helpers.originate_contract
+    "contracts/tx_rollup_deposit_one_mutez.tz"
+    "Unit"
+    account
+    b
+    (is_implicit_exn account)
+  >>=? fun (contract, b) ->
+  Incremental.begin_construction b >>=? fun i ->
+  let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash pkh) in
+  let fee = Test_tez.of_int 10 in
+  Op.transaction ~fee (I i) account contract Tez.zero ~parameters >>=? fun op ->
+  Incremental.add_operation
+    i
+    op
+    ~expect_failure:
+      (check_proto_error (function
+          | Apply.Tx_rollup_non_null_transaction -> true
+          | _ -> false))
+  >>=? fun _ -> return_unit
+
+(** [test_deposit_by_non_internal_operation] checks that a transaction
+    to the deposit entrypoint of a transaction rollup fails if it is
+    not internal. *)
+let test_deposit_by_non_internal_operation () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let account =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b account >>=? fun (b, tx_rollup) ->
+  Op.unsafe_transaction (B b) account (Tx_rollup tx_rollup) Tez.zero
+  >>=? fun operation ->
+  Incremental.begin_construction b >>=? fun i ->
+  Incremental.add_operation i operation ~expect_failure:(function
+      | Environment.Ecoproto_error
+          (Apply.Tx_rollup_non_internal_transaction as e)
+        :: _ ->
+          Assert.test_error_encodings e ;
+          return_unit
+      | _ -> failwith "It should not be possible to send a rollup_operation ")
+  >>=? fun _i -> return_unit
 
 (** Test that block finalization changes gas rates *)
 let test_finalization () =
@@ -418,5 +690,23 @@ let tests =
       "Try to add several batches to reach the inbox limit"
       `Quick
       test_inbox_too_big;
+    Tztest.tztest "Test deposit with valid contract" `Quick test_valid_deposit;
+    Tztest.tztest
+      "Test deposit with invalid parameter"
+      `Quick
+      test_invalid_deposit_not_ticket;
+    Tztest.tztest
+      "Test valid deposit to inexistant rollup"
+      `Quick
+      test_valid_deposit_inexistant_rollup;
+    Tztest.tztest "Test invalid entrypoint" `Quick test_invalid_entrypoint;
+    Tztest.tztest
+      "Test valid deposit to invalid L2 address"
+      `Quick
+      test_invalid_l2_address;
+    Tztest.tztest
+      "Test valid deposit with non-zero amount"
+      `Quick
+      test_valid_deposit_invalid_amount;
     Tztest.tztest "Test finalization" `Quick test_finalization;
   ]
