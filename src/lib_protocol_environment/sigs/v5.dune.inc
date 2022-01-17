@@ -27,6 +27,7 @@
    v5/bits.mli
    v5/equality_witness.mli
    v5/fallbackArray.mli
+   v5/hack.mli
 
    ;; Part of Error_monad/Lwtreslib
    v5/error_monad.mli
