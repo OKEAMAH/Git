@@ -34,8 +34,7 @@
 *)
 
 open Tztest
-
-type Environment.Error_monad.error += Test
+open Tx_rollup_l2_helpers
 
 let test_l2_operation_size () =
   let open Protocol.Tx_rollup_l2_batch.V1 in
@@ -83,5 +82,49 @@ let test_l2_operation_size () =
 
   return_unit
 
+type Environment.Error_monad.error += Test
+
+(* FIXME: https://gitlab.com/tezos/tezos/-/issues/2362
+   Use the Irmin store provided by [lib_context] for layer-2
+   solutions, once available.
+   As of now, we define a ad-hoc [STORAGE] implementation to run our
+   tests, but eventually we need to actually make use of the same
+   implementation as the transaction rollup node and the protocol. *)
+
+(** [test_irmin_storage] checks that the implementation of [STORAGE]
+    has the expected properties. *)
+let test_irmin_storage () =
+  let open Irmin_storage.Syntax in
+  let store = empty_storage in
+
+  let k1 = Bytes.of_string "k1" in
+  let k2 = Bytes.of_string "k2" in
+  let v1 = Bytes.of_string "v1" in
+  let v2 = Bytes.of_string "v2" in
+
+  (* 1. get (set store k1 v1) k1 == Some v1 *)
+  let* store = Irmin_storage.set store k1 v1 in
+  let* v1' = Irmin_storage.get store k1 in
+  assert (v1' = Some v1) ;
+
+  (* 2. k1 != k2 -> get (set store k2 v2) k1 = get store k1*)
+  let* store = Irmin_storage.set store k2 v2 in
+  let* v1'' = Irmin_storage.get store k1 in
+  assert (v1' = v1'') ;
+
+  (* 3. catch (fail e) f return == e *)
+  let* e = catch (fail Test) (fun _ -> assert false) return in
+  assert (e = Test) ;
+
+  return_unit
+
+let wrap_test t () =
+  t () >|= function
+  | Ok x -> Ok x
+  | Error err -> Error [Environment.Ecoproto_error err]
+
 let tests =
-  [tztest "test layer-2 operation encoding size" `Quick test_l2_operation_size]
+  [
+    tztest "test layer-2 operation encoding size" `Quick test_l2_operation_size;
+    tztest "test irmin storage" `Quick @@ wrap_test test_irmin_storage;
+  ]

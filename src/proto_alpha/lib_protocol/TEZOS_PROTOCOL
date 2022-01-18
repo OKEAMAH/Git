@@ -70,6 +70,8 @@
         "Storage",
         "Cache_repr",
 
+        "Tx_rollup_l2_storage",
+
         "Constants_storage",
         "Level_storage",
         "Nonce_storage",
