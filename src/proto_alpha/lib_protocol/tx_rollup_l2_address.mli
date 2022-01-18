@@ -67,6 +67,8 @@ module Indexable : sig
 
   val encoding : either Data_encoding.t
 
+  val index_encoding : index Data_encoding.t
+
   val compare : either -> either -> int
 
   val forget_value : value -> either

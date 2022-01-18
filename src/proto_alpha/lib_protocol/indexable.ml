@@ -170,6 +170,13 @@ module Make (V : VALUE) = struct
 
   let encoding = encoding V.encoding
 
+  let index_encoding : index Data_encoding.t =
+    Data_encoding.(
+      conv
+        (fun (Index x : index) -> x)
+        (fun x : index -> Index x)
+        Data_encoding.int32)
+
   let pp = pp V.pp
 
   let compare = compare V.compare

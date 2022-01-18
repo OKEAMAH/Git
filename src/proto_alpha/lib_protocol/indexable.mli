@@ -170,6 +170,8 @@ module Make (V : VALUE) : sig
 
   val encoding : either Data_encoding.t
 
+  val index_encoding : index Data_encoding.encoding
+
   val compare : either -> either -> int
 
   val pp : Format.formatter -> either -> unit
