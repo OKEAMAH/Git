@@ -88,6 +88,8 @@ module type INDEXABLE = sig
 
   val encoding : t Data_encoding.t
 
+  val index_encoding : index Data_encoding.t
+
   val compact : t Compact_encoding.t
 
   val compare : t -> t -> int

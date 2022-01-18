@@ -110,6 +110,8 @@ module type INDEXABLE = sig
 
   val encoding : t Data_encoding.t
 
+  val index_encoding : index Data_encoding.t
+
   val compact : t Compact_encoding.t
 
   val compare : t -> t -> int
@@ -131,6 +133,13 @@ struct
   let compact = compact V.encoding
 
   let encoding = encoding V.encoding
+
+  let index_encoding : index Data_encoding.t =
+    Data_encoding.(
+      conv
+        (fun (Index x : index) -> x)
+        (fun x : index -> Index x)
+        Compact_encoding.compact_int32)
 
   let pp = pp V.pp
 

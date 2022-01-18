@@ -71,6 +71,7 @@
         "Cache_repr",
 
         "Tx_rollup_l2_storage",
+        "Tx_rollup_l2_context",
 
         "Constants_storage",
         "Level_storage",

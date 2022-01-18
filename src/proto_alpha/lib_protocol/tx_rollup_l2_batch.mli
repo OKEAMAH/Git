@@ -77,33 +77,9 @@ open Alpha_context
     but they can also be designated by bounded integers of only 4
     bytes, dividing the memory footprint of said address per 5. *)
 
-module Ticket_indexable : sig
-  type nonrec 'state indexable = ('state, Ticket_hash.t) Indexable.indexable
+module Ticket_indexable : Indexable.INDEXABLE with type value = Ticket_hash.t
 
-  type nonrec index = Ticket_hash.t Indexable.index
-
-  type t = Ticket_hash.t Indexable.t
-
-  val encoding : t Data_encoding.t
-
-  val compare : t -> t -> int
-
-  val pp : Format.formatter -> t -> unit
-end
-
-module Signer_indexable : sig
-  type nonrec 'state indexable = ('state, Bls_signature.pk) Indexable.indexable
-
-  type nonrec index = Bls_signature.pk Indexable.index
-
-  type t = Bls_signature.pk Indexable.t
-
-  val encoding : t Data_encoding.t
-
-  val compare : t -> t -> int
-
-  val pp : Format.formatter -> t -> unit
-end
+module Signer_indexable : Indexable.INDEXABLE with type value = Bls_signature.pk
 
 (** {1 Layer-2 Batches Definitions} *)
 

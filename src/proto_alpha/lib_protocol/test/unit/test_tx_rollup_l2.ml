@@ -35,6 +35,7 @@
 
 open Tztest
 open Tx_rollup_l2_helpers
+open Protocol
 
 let test_l2_operation_size () =
   let open Protocol.Tx_rollup_l2_batch.V1 in
