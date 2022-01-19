@@ -253,6 +253,59 @@ module Context = struct
       Ops.Tree.clear ?depth tree
   end
 
+  (* Proof *)
+  module Proof = Tezos_context_sigs.Context.Proof_types
+
+  let produce_tree_proof
+      (Context
+        {ops = (module Ops) as ops; ctxt; equality_witness; impl_name; _})
+      (f : tree -> (tree * 'a) Lwt.t) =
+    Ops.produce_tree_proof ctxt (fun tree ->
+        let v = Tree {ops; tree; equality_witness; impl_name} in
+        f v >|= fun (Tree t, r) ->
+        match equiv equality_witness t.equality_witness with
+        | (Some Refl, Some Refl) -> ((t.tree : Ops.tree), r)
+        | _ -> err_implementation_mismatch ~expected:impl_name ~got:t.impl_name)
+
+  let produce_stream_proof
+      (Context
+        {ops = (module Ops) as ops; ctxt; equality_witness; impl_name; _})
+      (f : tree -> (tree * 'a) Lwt.t) =
+    Ops.produce_stream_proof ctxt (fun tree ->
+        let v = Tree {ops; tree; equality_witness; impl_name} in
+        f v >|= fun (Tree t, r) ->
+        match equiv equality_witness t.equality_witness with
+        | (Some Refl, Some Refl) -> ((t.tree : Ops.tree), r)
+        | _ -> err_implementation_mismatch ~expected:impl_name ~got:t.impl_name)
+
+  let verify_tree_proof
+      (Context
+        {ops = (module Ops) as ops; ctxt; equality_witness; impl_name; _}) proof
+      (f : tree -> (tree * 'a) Lwt.t) =
+    Ops.verify_tree_proof ctxt proof (fun tree ->
+        let v = Tree {ops; tree; equality_witness; impl_name} in
+        f v >|= fun (Tree t, r) ->
+        match equiv equality_witness t.equality_witness with
+        | (Some Refl, Some Refl) -> ((t.tree : Ops.tree), r)
+        | _ -> err_implementation_mismatch ~expected:impl_name ~got:t.impl_name)
+    >|= function
+    | Ok (tree, r) -> Ok (Tree {ops; tree; equality_witness; impl_name}, r)
+    | Error e -> Error e
+
+  let verify_stream_proof
+      (Context
+        {ops = (module Ops) as ops; ctxt; equality_witness; impl_name; _}) proof
+      (f : tree -> (tree * 'a) Lwt.t) =
+    Ops.verify_stream_proof ctxt proof (fun tree ->
+        let v = Tree {ops; tree; equality_witness; impl_name} in
+        f v >|= fun (Tree t, r) ->
+        match equiv equality_witness t.equality_witness with
+        | (Some Refl, Some Refl) -> ((t.tree : Ops.tree), r)
+        | _ -> err_implementation_mismatch ~expected:impl_name ~got:t.impl_name)
+    >|= function
+    | Ok (tree, r) -> Ok (Tree {ops; tree; equality_witness; impl_name}, r)
+    | Error e -> Error e
+
   type cache_key = Environment_cache.key
 
   type block_cache = {context_hash : Context_hash.t; cache : cache}

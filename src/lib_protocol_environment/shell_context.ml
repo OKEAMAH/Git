@@ -31,6 +31,22 @@ module C = struct
   include Tezos_context.Context
 
   let set_protocol = add_protocol
+
+  let produce producer t (f : tree -> _) =
+    find_tree t [] >>= function
+    | None -> assert false
+    | Some root ->
+        let hash = `Node (Tree.hash root) in
+        let index = index t in
+        producer index hash f
+
+  let produce_tree_proof t f = produce produce_tree_proof t f
+
+  let produce_stream_proof t f = produce produce_stream_proof t f
+
+  let verify_tree_proof t p f = verify_tree_proof (index t) p f
+
+  let verify_stream_proof t p f = verify_stream_proof (index t) p f
 end
 
 include Environment_context.Register (C)

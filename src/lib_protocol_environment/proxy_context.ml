@@ -262,6 +262,34 @@ module C = struct
 
     let clear ?depth t = Local.Tree.clear ?depth t.tree
   end
+
+  module Proof = Local.Proof
+
+  let of_local tree = {proxy = None; path = []; tree}
+
+  let map_f f tree = f (of_local tree) >|= fun (t, r) -> (t.tree, r)
+
+  let produce producer t f =
+    find_tree t [] >>= function
+    | None -> assert false
+    | Some root ->
+        let hash = `Node (Tree.hash root) in
+        let index = Local.index t.M.local in
+        producer index hash (map_f f)
+
+  let produce_tree_proof t f = produce Local.produce_tree_proof t f
+
+  let produce_stream_proof t f = produce Local.produce_stream_proof t f
+
+  let verify verifier t proof f =
+    let index = Local.index t.M.local in
+    verifier index proof (map_f f) >|= function
+    | Ok (t, r) -> Ok (of_local t, r)
+    | Error _ as e -> e
+
+  let verify_tree_proof t p f = verify Local.verify_tree_proof t p f
+
+  let verify_stream_proof t p f = verify Local.verify_stream_proof t p f
 end
 
 open Tezos_protocol_environment

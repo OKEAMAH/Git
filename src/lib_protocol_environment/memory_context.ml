@@ -30,6 +30,26 @@ module M = struct
   let set_protocol = add_protocol
 
   let fork_test_chain c ~protocol:_ ~expiration:_ = Lwt.return c
+
+  let produce producer t f =
+    find_tree t [] >>= function
+    | None -> raise (Invalid_argument "empty root tree")
+    | Some root ->
+        let hash = `Node (Tree.hash root) in
+        let index = index t in
+        producer index hash f
+
+  let produce_tree_proof t f = produce produce_tree_proof t f
+
+  let produce_stream_proof t f = produce produce_stream_proof t f
+
+  let verify_tree_proof t proof f =
+    let r = index t in
+    verify_tree_proof r proof f
+
+  let verify_stream_proof t proof f =
+    let r = index t in
+    verify_stream_proof r proof f
 end
 
 open Tezos_protocol_environment
