@@ -419,10 +419,10 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
 
   let string_of_section (s : _ section) =
     Format.sprintf
-      " %d ->  %d"
-      (* (PVM.string_of_state s.section_start_state) *)
+      "%s %d ->%s  %d"
+      (PVM.string_of_state s.section_start_state)
       (s.section_start_at :> int)
-      (* (PVM.string_of_state s.section_stop_state) *)
+      (PVM.string_of_state s.section_stop_state)
       (s.section_stop_at :> int)
 
   let string_of_dissection d = String.concat "; " (List.map string_of_section d)
@@ -628,6 +628,7 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
      function returns [None]. *)
   let play game (ConflictInside {choice; conflict_search_step}) =
     let player = game.turn in
+
     let apply_move () =
       match conflict_search_step with
       | Refine {next_dissection; stop_state} ->
@@ -659,6 +660,8 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
     in
     let outcome =
       let rec loop game move =
+        (* Hack.printf "- %s\n%!" (string_of_game game);
+        Hack.printf "  => %s\n%!" (string_of_move move); *)
         match play game move with
         | Over outcome -> outcome
         | Ongoing game ->
@@ -666,8 +669,11 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
             let move =
               match game.turn with
               | Committer ->
-                  committer.next_move
-                    (Option.value ~default:[] game.current_dissection)
+                  let nm =
+                    committer.next_move
+                      (Option.value ~default:[] game.current_dissection)
+                  in
+                  nm
               | Refuter ->
                   refuter.next_move
                     (Option.value ~default:[] game.current_dissection)
