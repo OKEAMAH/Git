@@ -1,6 +1,7 @@
 (tests
  (package tezos-protocol-alpha-tests)
  (names liquidity_baking_pbt
+        refutation_game_pbt
         saturation_fuzzing
         test_gas_properties
         test_sampler
