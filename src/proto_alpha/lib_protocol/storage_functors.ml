@@ -113,6 +113,15 @@ module Make_subcontext (R : REGISTER) (C : Raw_context.T) (N : NAME) :
     C.fold ?depth t (to_key k) ~order ~init ~f
 
   module Tree = C.Tree
+  module Proof = C.Proof
+
+  let produce_tree_proof = C.produce_tree_proof
+
+  let produce_stream_proof = C.produce_stream_proof
+
+  let verify_tree_proof = C.verify_tree_proof
+
+  let verify_stream_proof = C.verify_stream_proof
 
   let project = C.project
 
@@ -775,6 +784,24 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
         let (t, _) = unpack c in
         C.Tree.empty t
     end
+
+    module Proof = C.Proof
+
+    let produce_tree_proof c =
+      let (t, _) = unpack c in
+      C.produce_tree_proof t
+
+    let produce_stream_proof c =
+      let (t, _) = unpack c in
+      C.produce_stream_proof t
+
+    let verify_tree_proof c =
+      let (t, _) = unpack c in
+      C.verify_tree_proof t
+
+    let verify_stream_proof c =
+      let (t, _) = unpack c in
+      C.verify_stream_proof t
 
     let project c =
       let (t, _) = unpack c in

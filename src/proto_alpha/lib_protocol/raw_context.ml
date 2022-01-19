@@ -984,6 +984,8 @@ let list ctxt ?offset ?length k = Context.list (context ctxt) ?offset ?length k
 let fold ?depth ctxt k ~order ~init ~f =
   Context.fold ?depth (context ctxt) k ~order ~init ~f
 
+module Proof = Context.Proof
+
 module Tree :
   Raw_context_intf.TREE
     with type t := t
@@ -1042,6 +1044,16 @@ module Tree :
     | None -> remove t k
     | Some v -> add_tree t k v
 end
+
+let produce_tree_proof ctxt f = Context.produce_tree_proof (context ctxt) f
+
+let produce_stream_proof ctxt f = Context.produce_stream_proof (context ctxt) f
+
+let verify_tree_proof ctxt proof f =
+  Context.verify_tree_proof (context ctxt) proof f
+
+let verify_stream_proof ctxt proof f =
+  Context.verify_stream_proof (context ctxt) proof f
 
 let project x = x
 
