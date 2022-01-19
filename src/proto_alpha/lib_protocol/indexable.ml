@@ -39,24 +39,34 @@ let index h : 'a t -> 'a index tzresult Lwt.t = function
   | Value x -> h x >|=? fun x -> Index x
   | Index x -> return (Index x)
 
+let compact : 'a Data_encoding.t -> 'a t Compact_encoding.t =
+  let open Compact_encoding in
+  fun val_encoding ->
+    conv
+      ~json:
+        Data_encoding.(
+          union
+            [
+              case
+                (Tag 0)
+                ~title:"index"
+                int32
+                (function Index x -> Some x | _ -> None)
+                (fun x -> Index x);
+              case
+                (Tag 1)
+                ~title:"value"
+                val_encoding
+                (function Value x -> Some x | _ -> None)
+                (fun x -> Value x);
+            ])
+      (function Index x -> Case_0 x | Value x -> Case_1 x)
+      (function Case_0 x -> Index x | Case_1 x -> Value x)
+      (or_int32 ~int32_kind:"index" ~alt_kind:"value" val_encoding)
+
 let encoding : 'a Data_encoding.t -> 'a t Data_encoding.t =
  fun val_encoding ->
-  Data_encoding.(
-    union
-      [
-        case
-          (Tag 0)
-          ~title:"Key"
-          int32
-          (function Index x -> Some x | _ -> None)
-          (fun x -> Index x);
-        case
-          (Tag 1)
-          ~title:"Value"
-          val_encoding
-          (function Value x -> Some x | _ -> None)
-          (fun x -> Value x);
-      ])
+  Compact_encoding.make ~tag_size:`Uint8 @@ compact val_encoding
 
 let pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit =
  fun ppv fmt -> function
@@ -89,12 +99,36 @@ module type VALUE = sig
   val pp : Format.formatter -> t -> unit
 end
 
-module Make (V : VALUE) = struct
+module type INDEXABLE = sig
+  type value
+
+  type nonrec 'state indexable = ('state, value) indexable
+
+  type nonrec index = value index
+
+  type nonrec t = value t
+
+  val encoding : t Data_encoding.t
+
+  val compact : t Compact_encoding.t
+
+  val compare : t -> t -> int
+
+  val pp : Format.formatter -> t -> unit
+end
+
+module Make (V : VALUE) :
+  INDEXABLE with type value = V.t and type t = V.t t and type index = V.t index =
+struct
+  type value = V.t
+
   type nonrec 'state indexable = ('state, V.t) indexable
+
+  type nonrec index = V.t index
 
   type nonrec t = V.t t
 
-  type nonrec index = V.t index
+  let compact = compact V.encoding
 
   let encoding = encoding V.encoding
 

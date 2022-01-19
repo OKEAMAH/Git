@@ -67,5 +67,6 @@ let () =
       Unit_test.spec "saturation arithmetic" Test_saturation.tests;
       Unit_test.spec "gas monad" Test_gas_monad.tests;
       Unit_test.spec "compact encoding" Test_compact_encoding.tests;
+      Unit_test.spec "tx rollup l2" Test_tx_rollup_l2.tests;
     ]
   |> Lwt_main.run

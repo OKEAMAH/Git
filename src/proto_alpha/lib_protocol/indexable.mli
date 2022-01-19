@@ -48,6 +48,8 @@ type 'a index = (index_only, 'a) indexable
 
 val encoding : 'a Data_encoding.t -> 'a t Data_encoding.t
 
+val compact : 'a Data_encoding.t -> 'a t Compact_encoding.t
+
 val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 
 (** [index h m] computes the index of [m], if necessary. That is, if
@@ -75,10 +77,23 @@ module type VALUE = sig
   val pp : Format.formatter -> t -> unit
 end
 
-module Make (V : VALUE) : sig
-  type nonrec 'state indexable = ('state, V.t) indexable
+module type INDEXABLE = sig
+  type value
 
-  type nonrec index = V.t index
+  type nonrec 'state indexable = ('state, value) indexable
 
-  include VALUE with type t = V.t t
+  type nonrec index = value index
+
+  type nonrec t = value t
+
+  val encoding : t Data_encoding.t
+
+  val compact : t Compact_encoding.t
+
+  val compare : t -> t -> int
+
+  val pp : Format.formatter -> t -> unit
 end
+
+module Make (V : VALUE) :
+  INDEXABLE with type value = V.t and type t = V.t t and type index = V.t index
