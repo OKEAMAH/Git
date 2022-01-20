@@ -661,7 +661,7 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
     let outcome =
       let rec loop game move =
         (* Hack.printf "- %s\n%!" (string_of_game game);
-        Hack.printf "  => %s\n%!" (string_of_move move); *)
+           Hack.printf "  => %s\n%!" (string_of_move move); *)
         match play game move with
         | Over outcome -> outcome
         | Ongoing game ->

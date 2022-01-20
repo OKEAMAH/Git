@@ -853,12 +853,15 @@ module Fact20 = struct
     @@ push ~taint (lint ~taint 1)
     @@ dup ~taint @@ cmpnz ~taint
     @@ dip ~taint (swap ~taint (halt ~taint (Cell (Int, Cell (Int, Unit)))))
-    @@ loop ~taint
+    @@ loop
+         ~taint
          (dup ~taint
-         @@ dip ~taint
+         @@ dip
+              ~taint
               (swap ~taint (halt ~taint (Cell (Int, Cell (Int, Unit)))))
          @@ mul ~taint @@ swap ~taint @@ dec ~taint @@ dup ~taint
-         @@ cmpnz ~taint
+         @@ cmpnz
+              ~taint
               (halt ~taint (Cell (Bool, Cell (Int, Cell (Int, Unit))))))
     @@ drop ~taint Int (halt ~taint (Cell (Int, Unit)))
 end
@@ -1042,19 +1045,15 @@ module Strategies (G : Game) = struct
   let generate_failures failing_level (section_start_at : Tick.t)
       (section_stop_at : Tick.t) max_failure =
     let d = Tick.distance section_stop_at section_stop_at in
-    let d =
-        match max_failure with
-        | None -> d
-        | Some x -> max x 1
+    let d = match max_failure with None -> d | Some x -> max x 1 in
+    if failing_level > 0 then
+      let s =
+        init failing_level (fun _ ->
+            let s = (section_start_at :> int) + Random.int (max d 1) in
+            Tick.make s)
       in
-      if failing_level > 0 then
-        let s =
-          init failing_level (fun _ ->
-              let s = (section_start_at :> int) + Random.int (max d 1) in
-              Tick.make s)
-        in
-        s
-      else []
+      s
+    else []
 
   let machine_directed_committer {branching; failing_level; max_failure} pred =
     let history = ref PVM.empty_history in
@@ -1279,7 +1278,8 @@ let testing_count (f : (module PVM) -> int option -> bool) name =
         (Some target))
 
 let testing_mich (f : (module PVM) -> int option -> bool) name =
-  QCheck.Test.make ~name QCheck.small_int (fun _ -> f (module MPVM (Fact20)) (Some 20))
+  QCheck.Test.make ~name QCheck.small_int (fun _ ->
+      f (module MPVM (Fact20)) (Some 20))
 
 let () =
   Alcotest.run

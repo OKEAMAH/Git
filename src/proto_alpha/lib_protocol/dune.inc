@@ -120,7 +120,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    carbonated_map.mli carbonated_map.ml
    local_gas_counter.ml
    script_tc_errors.ml
-   refutation_game.ml 
    gas_monad.mli gas_monad.ml
    script_ir_annot.mli script_ir_annot.ml
    script_typed_ir.mli script_typed_ir.ml
@@ -258,7 +257,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    carbonated_map.mli carbonated_map.ml
    local_gas_counter.ml
    script_tc_errors.ml
-   refutation_game.ml 
    gas_monad.mli gas_monad.ml
    script_ir_annot.mli script_ir_annot.ml
    script_typed_ir.mli script_typed_ir.ml
@@ -396,7 +394,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    carbonated_map.mli carbonated_map.ml
    local_gas_counter.ml
    script_tc_errors.ml
-   refutation_game.ml 
    gas_monad.mli gas_monad.ml
    script_ir_annot.mli script_ir_annot.ml
    script_typed_ir.mli script_typed_ir.ml
@@ -515,7 +512,6 @@ include Tezos_raw_protocol_alpha.Main
    Migration_repr
    Raw_context_intf
    Raw_context
-   Refutation_game
    Storage_costs
    Storage_sigs
    Storage_functors
@@ -735,7 +731,6 @@ include Tezos_raw_protocol_alpha.Main
    carbonated_map.mli carbonated_map.ml
    local_gas_counter.ml
    script_tc_errors.ml
-   refutation_game.ml 
    gas_monad.mli gas_monad.ml
    script_ir_annot.mli script_ir_annot.ml
    script_typed_ir.mli script_typed_ir.ml
