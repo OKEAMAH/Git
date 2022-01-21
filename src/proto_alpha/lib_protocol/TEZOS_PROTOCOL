@@ -5,6 +5,7 @@
         "Misc",
         "Non_empty_string",
         "Path_encoding",
+        "Compact_encoding",
         "Storage_description",
         "State_hash",
         "Nonce_hash",

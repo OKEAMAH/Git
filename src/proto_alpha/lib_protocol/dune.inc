@@ -31,6 +31,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    misc.mli misc.ml
    non_empty_string.mli non_empty_string.ml
    path_encoding.mli path_encoding.ml
+   compact_encoding.mli compact_encoding.ml
    storage_description.mli storage_description.ml
    state_hash.mli state_hash.ml
    nonce_hash.mli nonce_hash.ml
@@ -178,6 +179,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    misc.mli misc.ml
    non_empty_string.mli non_empty_string.ml
    path_encoding.mli path_encoding.ml
+   compact_encoding.mli compact_encoding.ml
    storage_description.mli storage_description.ml
    state_hash.mli state_hash.ml
    nonce_hash.mli nonce_hash.ml
@@ -325,6 +327,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    misc.mli misc.ml
    non_empty_string.mli non_empty_string.ml
    path_encoding.mli path_encoding.ml
+   compact_encoding.mli compact_encoding.ml
    storage_description.mli storage_description.ml
    state_hash.mli state_hash.ml
    nonce_hash.mli nonce_hash.ml
@@ -494,6 +497,7 @@ include Tezos_raw_protocol_alpha.Main
    Misc
    Non_empty_string
    Path_encoding
+   Compact_encoding
    Storage_description
    State_hash
    Nonce_hash
@@ -682,6 +686,7 @@ include Tezos_raw_protocol_alpha.Main
    misc.mli misc.ml
    non_empty_string.mli non_empty_string.ml
    path_encoding.mli path_encoding.ml
+   compact_encoding.mli compact_encoding.ml
    storage_description.mli storage_description.ml
    state_hash.mli state_hash.ml
    nonce_hash.mli nonce_hash.ml
