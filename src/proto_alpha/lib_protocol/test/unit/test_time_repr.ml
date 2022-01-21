@@ -3,10 +3,17 @@
     Component:  Protocol (time repr)
     Invocation: dune exec src/proto_alpha/lib_protocol/test/unit/main.exe \
                 -- test "^\[Unit\] time$"
-    Subject:    Error handling of time operations 
+    Subject:    Error handling of time operations
 *)
 
 open Protocol
+
+let (let*) = (>>=?)
+
+(* TODO move *)
+let test_raw_ctxt () =
+  let* _ctxt = default_raw_ctxt in
+  return ()
 
 let test_nominal_add () =
   let t = Time_repr.of_seconds (Int64.of_int 2) in
@@ -40,6 +47,7 @@ let test_overflow_add () =
 
 let tests =
   [
+    Tztest.tztest "test raw contet" `Quick test_raw_ctxt;
     Tztest.tztest "non-overflowing addition" `Quick test_nominal_add;
     Tztest.tztest "overflowing addition" `Quick test_overflow_add;
   ]
