@@ -43,6 +43,13 @@ let prepare_metadata :
     tzresult
     Lwt.t =
  fun ctxt rollup state level ->
+  (* First, check if there are too many unfinalized levels. *)
+  fail_when
+    Compare.Int.(
+      Tx_rollup_state_repr.unfinalized_level_count state
+      > Constants_storage.tx_rollup_max_unfinalized_levels ctxt)
+    Tx_rollup_commitments_repr.Too_many_unfinalized_levels
+  >>=? fun () ->
   Storage.Tx_rollup.Inbox_metadata.find (ctxt, level) rollup
   >>=? fun (ctxt, metadata) ->
   match metadata with
@@ -52,6 +59,7 @@ let prepare_metadata :
          inbox count *)
       let predecessor = Tx_rollup_state_repr.last_inbox_level state in
       let new_state = Tx_rollup_state_repr.append_inbox state level in
+      Tx_rollup_state_storage.update ctxt rollup new_state >>=? fun ctxt ->
       (match predecessor with
       | None -> return ctxt
       | Some predecessor_level ->

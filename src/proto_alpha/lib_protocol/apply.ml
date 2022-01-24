@@ -1207,17 +1207,34 @@ let apply_manager_operation_content :
           fail Tx_rollup_commit_with_non_implicit_contract
           (* This is only called with implicit contracts *)
       | Some key ->
-          ( Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup key
-          >>=? fun (ctxt, pending) ->
-            let bond_id = Rollup_bond_id.Tx_rollup_bond_id tx_rollup in
-            match pending with
-            | 0 ->
-                Token.transfer
-                  ctxt
-                  (`Contract source)
-                  (`Frozen_rollup_bonds (source, bond_id))
-                  (Constants.tx_rollup_commitment_bond ctxt)
-            | _ -> return (ctxt, []) )
+          (let current_level = (Level.current ctxt).level in
+           let finality_period =
+             Int32.of_int @@ Constants.tx_rollup_finality_period ctxt
+           in
+           (if
+            Compare.Int32.(Raw_level.to_int32 current_level > finality_period)
+           then
+            Lwt.return
+            @@ Raw_level.of_int32
+                 (Int32.sub (Raw_level.to_int32 current_level) finality_period)
+            >>=? fun last_level_to_finalize ->
+            Tx_rollup_commitments.finalize_pending_commitments
+              ctxt
+              tx_rollup
+              last_level_to_finalize
+           else return ctxt)
+           >>=? fun ctxt ->
+           Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup key
+           >>=? fun (ctxt, pending) ->
+           let bond_id = Rollup_bond_id.Tx_rollup_bond_id tx_rollup in
+           match pending with
+           | 0 ->
+               Token.transfer
+                 ctxt
+                 (`Contract source)
+                 (`Frozen_rollup_bonds (source, bond_id))
+                 (Constants.tx_rollup_commitment_bond ctxt)
+           | _ -> return (ctxt, []))
           >>=? fun (ctxt, balance_updates) ->
           Tx_rollup_commitments.add_commitment ctxt tx_rollup key commitment
           >>=? fun ctxt ->

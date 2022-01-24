@@ -42,16 +42,19 @@ val add_commitment :
   Raw_context.t tzresult Lwt.t
 
 (** [retire_rollup_level context tx_rollup level] removes all data
-    associated with a level. It decrements the bonded commitment count
-    for any contracts whose commitments have been either accepted or
-    obviated (that is, neither accepted nor rejected).  This is normally
-    used in finalization (during a Commitment operation) and is only
-    public for testing. *)
+   associated with a level. It decrements the bonded commitment count
+   for any contracts whose commitments have been either accepted or
+   obviated (that is, neither accepted nor rejected).  This is normally
+   used in finalization(during a Commitment operation) and is only and
+   is only public for testing. *)
 val retire_rollup_level :
   Raw_context.t ->
   Tx_rollup_repr.t ->
   Raw_level_repr.t ->
-  Raw_context.t tzresult Lwt.t
+  Raw_level_repr.t ->
+  (Raw_context.t * [> `Commitment_too_late | `No_commitment | `Retired])
+  tzresult
+  Lwt.t
 
 (** [get_commitments context tx_rollup level] returns the list of
    non-rejected commitments for a rollup at a level, first-submitted
@@ -62,11 +65,30 @@ val get_commitments :
   Raw_level_repr.t ->
   (Raw_context.t * Tx_rollup_commitments_repr.t) tzresult Lwt.t
 
-(** [pending bonded_commitments ctxt tx_rollup contract] returns the
-   number of commitments that [contract] has made that are still
+(** [pending bonded_commitments ctxt tx_rollup pkh] returns the
+   number of commitments that [pkh] has made that are still
    pending (that is, still subject to rejection) *)
 val pending_bonded_commitments :
   Raw_context.t ->
   Tx_rollup_repr.t ->
   Signature.public_key_hash ->
   (Raw_context.t * int) tzresult Lwt.t
+
+(** [finalize_pending_commitments ctxt tx_rollup last_level_to_finalize]
+    finalizes all pending commitments that are old enough.  For each
+    unfinalized level up to and including last_level_to_finalize, the
+    oldest non-rejected commitment is chosen.  Any other commitments are
+    deleted, and their transitive successors are also deleted. Because
+    these commitments have not been rejected, their bonds are not
+    slashed, but we still must maintain the count of bonded commitments.
+
+    In the event that some level does not yet have any nonrejected
+    commitments, the level traversal stops.
+
+    The state is adjusted as well, tracking which levels have been
+    finalized, and which are left to be finalized. *)
+val finalize_pending_commitments :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
+  Raw_context.t tzresult Lwt.t
