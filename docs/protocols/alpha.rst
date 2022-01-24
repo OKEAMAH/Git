@@ -22,7 +22,7 @@ Contract Event Logging
 
 Contracts may now emit events thanks to a new ``EMIT`` instruction.
 
-Event emissions are denoted by internal operations that perform a contract call to a specific class of addresses starting with `ev1`. 
+Event emissions are denoted by internal operations that perform a contract call to a specific class of addresses starting with `ev1`.
 
 This new class of addresses can be computed with a newly introduced RPC at ``helpers/scripts/event_address``.
 
@@ -149,3 +149,8 @@ Internal
   value of this type may only be created in ``Validate_operation``,
   and is required by ``Apply.apply_operation`` and a few other
   functions in ``Apply``. (MR :gl:`!5557`)
+
+- Rename the function ``Big_map.list_values`` to ``list_key_values`` and make
+  it return a list of key-value pairs. Also change the name of the signature
+  ``Non_iterable_indexed_carbonated_data_storage_with_values`` to
+  ``Indexed_carbonated_data_storage``. (MR :gl:`!3491`)
