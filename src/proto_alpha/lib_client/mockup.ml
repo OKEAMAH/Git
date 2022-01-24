@@ -78,6 +78,7 @@ module Protocol_constants_overrides = struct
     tx_rollup_commitment_bond : Tez.t option;
     tx_rollup_finality_period : int option;
     tx_rollup_max_unfinalized_levels : int option;
+    tx_rollup_max_finalize_levels_per_commitment : int option;
     sc_rollup_enable : bool option;
     sc_rollup_origination_size : int option;
     (* Additional, "bastard" parameters (they are not protocol constants but partially treated the same way). *)
@@ -135,7 +136,8 @@ module Protocol_constants_overrides = struct
                       c.tx_rollup_hard_size_limit_per_message,
                       c.tx_rollup_commitment_bond,
                       c.tx_rollup_finality_period,
-                      c.tx_rollup_max_unfinalized_levels ),
+                      c.tx_rollup_max_unfinalized_levels,
+                      c.tx_rollup_max_finalize_levels_per_commitment ),
                     (c.sc_rollup_enable, c.sc_rollup_origination_size) ) ) ) )
           ) ))
       (fun ( ( preserved_cycles,
@@ -182,7 +184,8 @@ module Protocol_constants_overrides = struct
                          tx_rollup_hard_size_limit_per_message,
                          tx_rollup_commitment_bond,
                          tx_rollup_finality_period,
-                         tx_rollup_max_unfinalized_levels ),
+                         tx_rollup_max_unfinalized_levels,
+                         tx_rollup_max_finalize_levels_per_commitment ),
                        (sc_rollup_enable, sc_rollup_origination_size) ) ) ) ) )
            ) ->
         {
@@ -228,6 +231,7 @@ module Protocol_constants_overrides = struct
           tx_rollup_commitment_bond;
           tx_rollup_finality_period;
           tx_rollup_max_unfinalized_levels;
+          tx_rollup_max_finalize_levels_per_commitment;
           sc_rollup_enable;
           sc_rollup_origination_size;
           chain_id;
@@ -287,14 +291,17 @@ module Protocol_constants_overrides = struct
                         (opt "cache_stake_distribution_cycles" int8)
                         (opt "cache_sampler_state_cycles" int8))
                      (merge_objs
-                        (obj7
+                        (obj8
                            (opt "tx_rollup_enable" Data_encoding.bool)
                            (opt "tx_rollup_origination_size" int31)
                            (opt "tx_rollup_hard_size_limit_per_inbox" int31)
                            (opt "tx_rollup_hard_size_limit_per_message" int31)
                            (opt "tx_rollup_commitment_bond" Tez.encoding)
                            (opt "tx_rollup_finality_period" int31)
-                           (opt "tx_rollup_max_unfinalized_levels" int31))
+                           (opt "tx_rollup_max_unfinalized_levels" int31)
+                           (opt
+                              "tx_rollup_max_finalize_levels_per_commitment"
+                              int31))
                         (obj2
                            (opt "sc_rollup_enable" bool)
                            (opt "sc_rollup_origination_size" int31))))))))
@@ -370,6 +377,8 @@ module Protocol_constants_overrides = struct
         tx_rollup_finality_period = Some parametric.tx_rollup_finality_period;
         tx_rollup_max_unfinalized_levels =
           Some parametric.tx_rollup_max_unfinalized_levels;
+        tx_rollup_max_finalize_levels_per_commitment =
+          Some parametric.tx_rollup_max_finalize_levels_per_commitment;
         sc_rollup_enable = Some parametric.sc_rollup_enable;
         sc_rollup_origination_size = Some parametric.sc_rollup_origination_size;
         (* Bastard additional parameters. *)
@@ -424,6 +433,7 @@ module Protocol_constants_overrides = struct
       tx_rollup_commitment_bond = None;
       tx_rollup_finality_period = None;
       tx_rollup_max_unfinalized_levels = None;
+      tx_rollup_max_finalize_levels_per_commitment = None;
       sc_rollup_enable = None;
       sc_rollup_origination_size = None;
       chain_id = None;
@@ -844,6 +854,10 @@ module Protocol_constants_overrides = struct
            Option.value
              ~default:c.tx_rollup_max_unfinalized_levels
              o.tx_rollup_max_unfinalized_levels;
+         tx_rollup_max_finalize_levels_per_commitment =
+           Option.value
+             ~default:c.tx_rollup_max_finalize_levels_per_commitment
+             o.tx_rollup_max_finalize_levels_per_commitment;
          sc_rollup_enable =
            Option.value ~default:c.sc_rollup_enable o.sc_rollup_enable;
          sc_rollup_origination_size =

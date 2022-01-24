@@ -134,6 +134,9 @@ type parametric = {
   (* the maximum number of levels that can be left unfinalized
      before we stop accepting new inboxes for a tx rollup *)
   tx_rollup_max_unfinalized_levels : int;
+  (* the maximum number of levels to finalize during a commitment
+     operation.  This is bounded to prevent gas exhaustion*)
+  tx_rollup_max_finalize_levels_per_commitment : int;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
 }

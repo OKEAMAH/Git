@@ -165,6 +165,7 @@ type parametric = {
   tx_rollup_commitment_bond : Tez_repr.t;
   tx_rollup_finality_period : int;
   tx_rollup_max_unfinalized_levels : int;
+  tx_rollup_max_finalize_levels_per_commitment : int;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
 }
@@ -215,7 +216,8 @@ let parametric_encoding =
                     c.tx_rollup_hard_size_limit_per_message,
                     c.tx_rollup_commitment_bond,
                     c.tx_rollup_finality_period,
-                    c.tx_rollup_max_unfinalized_levels ),
+                    c.tx_rollup_max_unfinalized_levels,
+                    c.tx_rollup_max_finalize_levels_per_commitment ),
                   (c.sc_rollup_enable, c.sc_rollup_origination_size) ) ) ) ) )
       ))
     (fun ( ( preserved_cycles,
@@ -260,7 +262,8 @@ let parametric_encoding =
                        tx_rollup_hard_size_limit_per_message,
                        tx_rollup_commitment_bond,
                        tx_rollup_finality_period,
-                       tx_rollup_max_unfinalized_levels ),
+                       tx_rollup_max_unfinalized_levels,
+                       tx_rollup_max_finalize_levels_per_commitment ),
                      (sc_rollup_enable, sc_rollup_origination_size) ) ) ) ) ) ) ->
       {
         preserved_cycles;
@@ -306,6 +309,7 @@ let parametric_encoding =
         tx_rollup_commitment_bond;
         tx_rollup_finality_period;
         tx_rollup_max_unfinalized_levels;
+        tx_rollup_max_finalize_levels_per_commitment;
         sc_rollup_enable;
         sc_rollup_origination_size;
       })
@@ -362,14 +366,17 @@ let parametric_encoding =
                       (req "cache_stake_distribution_cycles" int8)
                       (req "cache_sampler_state_cycles" int8))
                    (merge_objs
-                      (obj7
+                      (obj8
                          (req "tx_rollup_enable" bool)
                          (req "tx_rollup_origination_size" int31)
                          (req "tx_rollup_hard_size_limit_per_inbox" int31)
                          (req "tx_rollup_hard_size_limit_per_message" int31)
                          (req "tx_rollup_commitment_bond" Tez_repr.encoding)
                          (req "tx_rollup_finality_period" int31)
-                         (req "tx_rollup_max_unfinalized_levels" int31))
+                         (req "tx_rollup_max_unfinalized_levels" int31)
+                         (req
+                            "tx_rollup_max_finalize_levels_per_commitment"
+                            int31))
                       (obj2
                          (req "sc_rollup_enable" bool)
                          (req "sc_rollup_origination_size" int31))))))))
