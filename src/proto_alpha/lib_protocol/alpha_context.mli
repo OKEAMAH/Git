@@ -2178,6 +2178,10 @@ module Tx_rollup_withdraw : sig
 
   val list_hash_encoding : list_hash Data_encoding.t
 
+  val pp_list_hash : Format.formatter -> list_hash -> unit
+
+  val list_hash_of_b58check_exn : string -> list_hash
+
   type path
 
   val path_encoding : path Data_encoding.t

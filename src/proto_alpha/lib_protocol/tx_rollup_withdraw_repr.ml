@@ -73,6 +73,10 @@ type list_hash = Withdraw_list_hash.t
 
 let list_hash_encoding = Withdraw_list_hash.encoding
 
+let pp_list_hash = Withdraw_list_hash.pp
+
+let list_hash_of_b58check_exn = Withdraw_list_hash.of_b58check_exn
+
 type path = Withdraw_list_hash.path
 
 let path_encoding = Withdraw_list_hash.path_encoding

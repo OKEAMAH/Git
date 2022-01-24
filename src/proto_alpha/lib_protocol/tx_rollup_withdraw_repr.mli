@@ -49,6 +49,10 @@ type list_hash
 
 val list_hash_encoding : list_hash Data_encoding.t
 
+val pp_list_hash : Format.formatter -> list_hash -> unit
+
+val list_hash_of_b58check_exn : string -> list_hash
+
 (** A [path] is the minimal information needed to recompute a list_hash without
     having all withdrawals.
 
