@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -169,6 +170,13 @@ let public_key_hash_exn contract =
   match Contract.is_implicit contract with
   | None -> assert false
   | Some public_key_hash -> public_key_hash
+
+let check_bond ctxt tx_rollup contract count =
+  wrap
+    (Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup contract)
+  >>=? fun (_, pending) ->
+  Alcotest.(check int "Pending commitment count correct" count pending) ;
+  return ()
 
 (** ---- TESTS -------------------------------------------------------------- *)
 
@@ -583,6 +591,7 @@ let test_commitment_duplication () =
     WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
   in
   let pkh1 = public_key_hash_exn contract1 in
+  let pkh2 = public_key_hash_exn contract2 in
   originate b contract1 >>=? fun (b, tx_rollup) ->
   Context.Contract.balance (B b) contract1 >>=? fun balance ->
   Context.Contract.balance (B b) contract2 >>=? fun balance2 ->
@@ -660,7 +669,7 @@ let test_commitment_duplication () =
   >>=? fun () ->
   let ctxt = Incremental.alpha_ctxt i in
   wrap (Tx_rollup_commitments.get_commitments ctxt tx_rollup level)
-  >>=? fun (_, commitments) ->
+  >>=? fun (ctxt, commitments) ->
   (Alcotest.(check int "Expected one commitment" 1 (List.length commitments)) ;
    let expected_hash = Tx_rollup_commitments.Commitment.hash commitment in
    match List.nth commitments 0 with
@@ -675,6 +684,8 @@ let test_commitment_duplication () =
          check raw_level_testable "Submitted" submitted_level submitted_at) ;
        return ())
   >>=? fun () ->
+  check_bond ctxt tx_rollup pkh1 1 >>=? fun () ->
+  check_bond ctxt tx_rollup pkh2 0 >>=? fun () ->
   ignore i ;
   return ()
 

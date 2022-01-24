@@ -1202,19 +1202,30 @@ let apply_manager_operation_content :
       in
       return (ctxt, result, [])
   | Tx_rollup_commit {tx_rollup; commitment} -> (
-      (* TODO: bonds https://gitlab.com/tezos/tezos/-/issues/2459 *)
       match Contract.is_implicit source with
       | None ->
           fail Tx_rollup_commit_with_non_implicit_contract
           (* This is only called with implicit contracts *)
       | Some key ->
+          ( Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup key
+          >>=? fun (ctxt, pending) ->
+            let bond_id = Rollup_bond_id.Tx_rollup_bond_id tx_rollup in
+            match pending with
+            | 0 ->
+                Token.transfer
+                  ctxt
+                  (`Contract source)
+                  (`Frozen_rollup_bonds (source, bond_id))
+                  (Constants.tx_rollup_commitment_bond ctxt)
+            | _ -> return (ctxt, []) )
+          >>=? fun (ctxt, balance_updates) ->
           Tx_rollup_commitments.add_commitment ctxt tx_rollup key commitment
           >>=? fun ctxt ->
           let result =
             Tx_rollup_commit_result
               {
                 consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
-                balance_updates = [];
+                balance_updates;
               }
           in
           return (ctxt, result, []))

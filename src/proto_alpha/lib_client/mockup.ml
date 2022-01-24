@@ -75,6 +75,7 @@ module Protocol_constants_overrides = struct
     tx_rollup_origination_size : int option;
     tx_rollup_hard_size_limit_per_inbox : int option;
     tx_rollup_hard_size_limit_per_message : int option;
+    tx_rollup_commitment_bond : Tez.t option;
     sc_rollup_enable : bool option;
     sc_rollup_origination_size : int option;
     (* Additional, "bastard" parameters (they are not protocol constants but partially treated the same way). *)
@@ -129,7 +130,8 @@ module Protocol_constants_overrides = struct
                   ( ( c.tx_rollup_enable,
                       c.tx_rollup_origination_size,
                       c.tx_rollup_hard_size_limit_per_inbox,
-                      c.tx_rollup_hard_size_limit_per_message ),
+                      c.tx_rollup_hard_size_limit_per_message,
+                      c.tx_rollup_commitment_bond ),
                     (c.sc_rollup_enable, c.sc_rollup_origination_size) ) ) ) )
           ) ))
       (fun ( ( preserved_cycles,
@@ -173,7 +175,8 @@ module Protocol_constants_overrides = struct
                      ( ( tx_rollup_enable,
                          tx_rollup_origination_size,
                          tx_rollup_hard_size_limit_per_inbox,
-                         tx_rollup_hard_size_limit_per_message ),
+                         tx_rollup_hard_size_limit_per_message,
+                         tx_rollup_commitment_bond ),
                        (sc_rollup_enable, sc_rollup_origination_size) ) ) ) ) )
            ) ->
         {
@@ -216,6 +219,7 @@ module Protocol_constants_overrides = struct
           tx_rollup_origination_size;
           tx_rollup_hard_size_limit_per_inbox;
           tx_rollup_hard_size_limit_per_message;
+          tx_rollup_commitment_bond;
           sc_rollup_enable;
           sc_rollup_origination_size;
           chain_id;
@@ -275,11 +279,12 @@ module Protocol_constants_overrides = struct
                         (opt "cache_stake_distribution_cycles" int8)
                         (opt "cache_sampler_state_cycles" int8))
                      (merge_objs
-                        (obj4
+                        (obj5
                            (opt "tx_rollup_enable" Data_encoding.bool)
                            (opt "tx_rollup_origination_size" int31)
                            (opt "tx_rollup_hard_size_limit_per_inbox" int31)
-                           (opt "tx_rollup_hard_size_limit_per_message" int31))
+                           (opt "tx_rollup_hard_size_limit_per_message" int31)
+                           (opt "tx_rollup_commitment_bond" Tez.encoding))
                         (obj2
                            (opt "sc_rollup_enable" bool)
                            (opt "sc_rollup_origination_size" int31))))))))
@@ -351,6 +356,7 @@ module Protocol_constants_overrides = struct
           Some parametric.tx_rollup_hard_size_limit_per_inbox;
         tx_rollup_hard_size_limit_per_message =
           Some parametric.tx_rollup_hard_size_limit_per_message;
+        tx_rollup_commitment_bond = Some parametric.tx_rollup_commitment_bond;
         sc_rollup_enable = Some parametric.sc_rollup_enable;
         sc_rollup_origination_size = Some parametric.sc_rollup_origination_size;
         (* Bastard additional parameters. *)
@@ -402,6 +408,7 @@ module Protocol_constants_overrides = struct
       tx_rollup_origination_size = None;
       tx_rollup_hard_size_limit_per_inbox = None;
       tx_rollup_hard_size_limit_per_message = None;
+      tx_rollup_commitment_bond = None;
       sc_rollup_enable = None;
       sc_rollup_origination_size = None;
       chain_id = None;
@@ -660,6 +667,12 @@ module Protocol_constants_overrides = struct
             override_value = o.tx_rollup_hard_size_limit_per_message;
             pp = pp_print_int;
           };
+        O
+          {
+            name = "tx_rollup_commitment_bond";
+            override_value = o.tx_rollup_commitment_bond;
+            pp = Tez.pp;
+          };
       ]
     in
     let fields_with_override =
@@ -804,6 +817,10 @@ module Protocol_constants_overrides = struct
            Option.value
              ~default:c.tx_rollup_hard_size_limit_per_message
              o.tx_rollup_hard_size_limit_per_message;
+         tx_rollup_commitment_bond =
+           Option.value
+             ~default:c.tx_rollup_commitment_bond
+             o.tx_rollup_commitment_bond;
          sc_rollup_enable =
            Option.value ~default:c.sc_rollup_enable o.sc_rollup_enable;
          sc_rollup_origination_size =
