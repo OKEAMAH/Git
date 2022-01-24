@@ -2205,6 +2205,10 @@ module Tx_rollup_commitments : sig
 
   type error += Too_many_unfinalized_levels
 
+  type error += No_such_batch of Raw_level.t * int
+
+  type error += No_such_commitment
+
   val add_commitment :
     context ->
     Tx_rollup.t ->
@@ -2229,6 +2233,16 @@ module Tx_rollup_commitments : sig
     Tx_rollup.t ->
     Signature.public_key_hash ->
     context tzresult Lwt.t
+
+  val get_commitment_roots :
+    context ->
+    Tx_rollup.t ->
+    Raw_level.t ->
+    Commitment_hash.t ->
+    int ->
+    (context * (Commitment.batch_commitment * Commitment.batch_commitment))
+    tzresult
+    Lwt.t
 
   module Internal_for_tests : sig
     (** See [Tx_rollup_commitments_storage.retire_rollup_level]

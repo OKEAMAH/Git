@@ -101,3 +101,21 @@ val finalize_pending_commitments :
   Tx_rollup_repr.t ->
   Raw_level_repr.t ->
   Raw_context.t tzresult Lwt.t
+
+(** [get_commitment_roots context tx_rollup level commitment_hash
+    batch] returns the before and after roots of the commitment
+    [commitment] at level [level], batch [batch].  If [batch] is 0,
+    then the before root will come from the last batch of the
+    predecessor commitment, or will be empty if this is the first
+    commitment on this rollup. *)
+val get_commitment_roots :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
+  Tx_rollup_commitments_repr.Commitment_hash.t ->
+  int ->
+  (Raw_context.t
+  * (Tx_rollup_commitments_repr.Commitment.batch_commitment
+    * Tx_rollup_commitments_repr.Commitment.batch_commitment))
+  tzresult
+  Lwt.t
