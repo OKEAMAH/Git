@@ -1236,7 +1236,9 @@ let test_rejection_propagation () =
        (Incremental.alpha_ctxt i)
        tx_rollup
        (raw_level 2l)
-       (Tx_rollup_commitments.Commitment.hash commitment_a))
+       (Tx_rollup_commitments.Commitment.hash commitment_a)
+       contract4
+       Z.one)
   >>=? fun ctxt ->
   check_bond ctxt tx_rollup contract1 0 >>=? fun () ->
   check_bond ctxt tx_rollup contract2 0 >>=? fun () ->

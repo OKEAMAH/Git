@@ -2206,6 +2206,8 @@ module Tx_rollup_commitments : sig
     Tx_rollup.t ->
     Raw_level.t ->
     Commitment_hash.t ->
+    Contract.t ->
+    Z.t ->
     context tzresult Lwt.t
 
   val get_commitments :
@@ -2247,6 +2249,10 @@ end
 module Tx_rollup_rejection : sig
   type error += Wrong_rejection
 
+  type error += Rejection_without_prerejection
+
+  type error += Duplicate_prerejection
+
   type t = {
     rollup : Tx_rollup.t;
     level : Raw_level.t;
@@ -2255,6 +2261,26 @@ module Tx_rollup_rejection : sig
   }
 
   val encoding : t Data_encoding.t
+
+  module Rejection_hash : sig
+    val rejection_hash : string
+
+    include S.HASH
+  end
+
+  val generate_prerejection :
+    nonce:int64 ->
+    source:Contract.t ->
+    rollup:Tx_rollup.t ->
+    level:Raw_level.t ->
+    commitment_hash:Tx_rollup_commitments.Commitment_hash.t ->
+    batch_index:int ->
+    Rejection_hash.t
+
+  val prereject : context -> Rejection_hash.t -> context tzresult Lwt.t
+
+  val check_prerejection :
+    context -> t -> int64 -> Contract.t -> (context * Z.t) tzresult Lwt.t
 end
 
 (** This simply re-exports {!Destination_repr}. *)

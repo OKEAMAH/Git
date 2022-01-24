@@ -1731,6 +1731,88 @@ module Tx_rollup = struct
 
         let encoding = Data_encoding.int31
       end)
+
+  module Level_tx_rollup_commitment_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Level_context.Raw_context)
+         (struct
+           let name = ["tx_rollup_commitment_index"]
+         end))
+         (Make_index (Tx_rollup_repr.Index))
+
+  module Prerejection_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["tx_rollup_prerejection_index"]
+         end))
+         (Make_index (Tx_rollup_rejection_repr.Rejection_hash.Index))
+
+  module Prerejection =
+    Prerejection_context.Make_carbonated_map
+      (struct
+        let name = ["prerejection"]
+      end)
+      (Encoding.Z)
+
+  module Prerejection_counter =
+    Make_single_data_storage (Registered) (Raw_context)
+      (struct
+        let name = ["prerejection_counter"]
+      end)
+      (Encoding.Z)
+
+  module Successful_prerejections :
+    Non_iterable_indexed_carbonated_data_storage_with_values
+      with type key = Tx_rollup_commitments_repr.Commitment_hash.t
+       and type value = Z.t * Contract_repr.t
+       and type t := (Raw_context.t * Raw_level_repr.t) * Tx_rollup_repr.t =
+  struct
+    module I =
+      Storage_functors.Make_indexed_carbonated_data_storage
+        (Make_subcontext
+           (Registered)
+           (Level_tx_rollup_commitment_context.Raw_context)
+           (struct
+             let name = ["succesful_prerejections"]
+           end))
+           (Make_index (Tx_rollup_commitments_repr.Commitment.Index))
+           (struct
+             type t = Z.t * Contract_repr.t
+
+             let encoding =
+               Data_encoding.(
+                 obj2
+                   (req "index" Data_encoding.z)
+                   (req "contract" Contract_repr.encoding))
+           end)
+
+    type context = I.context
+
+    type key = I.key
+
+    type value = I.value
+
+    let mem = I.mem
+
+    let remove_existing = I.remove_existing
+
+    let remove = I.remove
+
+    let update = I.update
+
+    let add_or_remove = I.add_or_remove
+
+    let init = I.init
+
+    let add = I.add
+
+    let list_values = I.list_values
+
+    let get = I.get
+
+    let find = I.find
+  end
 end
 
 module Sc_rollup = struct

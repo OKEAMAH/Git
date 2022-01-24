@@ -27,6 +27,10 @@
 
 type error += (* `Permanent *) Wrong_rejection
 
+type error += (* `Permanent *) Rejection_without_prerejection
+
+type error += (* `Permanent *) Duplicate_prerejection
+
 type t = {
   rollup : Tx_rollup_repr.t;
   level : Raw_level_repr.t;
@@ -35,3 +39,20 @@ type t = {
 }
 
 val encoding : t Data_encoding.t
+
+module Rejection_hash : sig
+  val rejection_hash : string
+
+  include S.HASH
+
+  module Index : Storage_description.INDEX with type t = t
+end
+
+val generate_prerejection :
+  nonce:int64 ->
+  source:Contract_repr.t ->
+  rollup:Tx_rollup_repr.t ->
+  level:Raw_level_repr.t ->
+  commitment_hash:Tx_rollup_commitments_repr.Commitment_hash.t ->
+  batch_index:int ->
+  Rejection_hash.t

@@ -754,6 +754,42 @@ module Tx_rollup : sig
       (* The value here is the number of outstanding commitments *)
        and type value = int
        and type t := Raw_context.t
+
+  (** Track prerejections.  Before a rejection can be submitted, a
+      pre-rejection must be submitted by the same contract which will submit
+      the rejection.  A pre-rejection contains a hash of the commitment with a
+      nonce.  Regardless of the order in which rejections are submitted, the
+      first pre-rejection submitted has priority. This dramatically reduces
+      the incentives for front-running.   Here, we just store the
+      pre-rejections themselves and their priorit, so that we can quickly
+      check their existence when a rejection is filed.*)
+  module Prerejection :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Tx_rollup_rejection_repr.Rejection_hash.t
+       and type value = Z.t
+       and type t := Raw_context.t
+
+  (* Since there is no Carbonated_single_data_storage, this is
+      uncarbonated. It would be nice to carbonate this, but since we
+      know that it is only touched during prerejection, we can just
+      build the cost into the cost of a prerejection operation. *)
+  module Prerejection_counter :
+    Single_data_storage with type value = Z.t and type t := Raw_context.t
+
+  module Successful_prerejections : sig
+    include
+      Non_iterable_indexed_carbonated_data_storage
+        with type key = Tx_rollup_commitments_repr.Commitment_hash.t
+         and type value = Z.t * Contract_repr.t
+         and type t := (Raw_context.t * Raw_level_repr.t) * Tx_rollup_repr.t
+
+    (** HACK *)
+    val list_values :
+      ?offset:int ->
+      ?length:int ->
+      (Raw_context.t * Raw_level_repr.t) * Tx_rollup_repr.t ->
+      (Raw_context.t * (Z.t * Contract_repr.t) list) tzresult Lwt.t
+  end
 end
 
 module Sc_rollup : sig

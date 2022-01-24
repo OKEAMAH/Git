@@ -1305,6 +1305,7 @@ let apply_manager_operation_content :
       in
       return (ctxt, result, [])
   | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce = _} ->
+      let priority = Z.zero in
       Tx_rollup_commitments.get_commitment_roots
         ctxt
         rollup
@@ -1320,7 +1321,13 @@ let apply_manager_operation_content :
            after_batch)
         Tx_rollup_rejection.Wrong_rejection
       >>=? fun () ->
-      Tx_rollup_commitments.reject_commitment ctxt rollup level hash
+      Tx_rollup_commitments.reject_commitment
+        ctxt
+        rollup
+        level
+        hash
+        source
+        priority
       >>=? fun ctxt ->
       let result =
         Tx_rollup_rejection_result

@@ -252,8 +252,29 @@ let rec remove_commitments_by_hash :
     | Some next_level ->
         remove_commitments_by_hash ctxt tx_rollup next_level top commitments
 
+let adjust_successful_prerejection ctxt tx_rollup level hash contract counter =
+  Storage.Tx_rollup.Successful_prerejections.find
+    ((ctxt, level), tx_rollup)
+    hash
+  >>=? fun (ctxt, existing) ->
+  match existing with
+  | None ->
+      Storage.Tx_rollup.Successful_prerejections.add
+        ((ctxt, level), tx_rollup)
+        hash
+        (counter, contract)
+      >|=? just_ctxt
+  | Some (old_counter, _) when Compare.Z.(old_counter > counter) ->
+      Storage.Tx_rollup.Successful_prerejections.add
+        ((ctxt, level), tx_rollup)
+        hash
+        (counter, contract)
+      >|=? just_ctxt
+  | Some _ -> return ctxt
+
 let reject_commitment ctxt tx_rollup (level : Raw_level_repr.t)
-    (commitment_id : Commitment_hash.t) =
+    (commitment_id : Commitment_hash.t) (contract : Contract_repr.t)
+    (counter : Z.t) =
   let top = (Raw_context.current_level ctxt).level in
   Storage.Tx_rollup.Commitment_list.get ctxt (level, tx_rollup)
   >>=? fun (ctxt, commitments) ->
@@ -262,38 +283,56 @@ let reject_commitment ctxt tx_rollup (level : Raw_level_repr.t)
       (fun {hash; _} -> Commitment_hash.(hash = commitment_id))
       commitments
   in
-  let matching = List.hd matching_commitments in
-  Option.value_e ~error:(Error_monad.trace_of_error No_such_commitment) matching
-  >>?= fun to_remove ->
-  let initial_bad_commitments = Commitment_set.of_list [commitment_id] in
-  let initial_evildoers = Contract_set.of_list [to_remove.committer] in
-  let rec aux bad_commitments evildoers =
-    accumulate_bad_commitments
-      ctxt
-      tx_rollup
-      level
-      top
-      bad_commitments
-      evildoers
-    >>=? fun (new_bad_commitments, new_evildoers) ->
-    if
-      Compare.Int.(
-        Contract_set.cardinal new_evildoers = Contract_set.cardinal evildoers
-        && Commitment_set.cardinal new_bad_commitments
-           = Commitment_set.cardinal bad_commitments)
-    then return (new_bad_commitments, new_evildoers)
-    else aux new_bad_commitments new_evildoers
-  in
-  aux initial_bad_commitments initial_evildoers
-  >>=? fun (bad_commitments, evildoers) ->
-  remove_commitments_by_hash ctxt tx_rollup level top bad_commitments
-  >>=? fun ctxt ->
-  Contract_set.fold_es
-    (fun contract ctxt ->
-      let key = (tx_rollup, contract) in
-      Storage.Tx_rollup.Commitment_bond.remove ctxt key >|=? just_ctxt)
-    evildoers
-    ctxt
+  match List.hd matching_commitments with
+  | None ->
+      (* This commit has already been rejected, but maybe this rejection
+         corresponds to an earlier prerejection which needs to be credited. *)
+      adjust_successful_prerejection
+        ctxt
+        tx_rollup
+        level
+        commitment_id
+        contract
+        counter
+  | Some to_remove ->
+      let initial_bad_commitments = Commitment_set.of_list [commitment_id] in
+      let initial_evildoers = Contract_set.of_list [to_remove.committer] in
+      let rec aux bad_commitments evildoers =
+        accumulate_bad_commitments
+          ctxt
+          tx_rollup
+          level
+          top
+          bad_commitments
+          evildoers
+        >>=? fun (new_bad_commitments, new_evildoers) ->
+        if
+          Compare.Int.(
+            Contract_set.cardinal new_evildoers
+            = Contract_set.cardinal evildoers
+            && Commitment_set.cardinal new_bad_commitments
+               = Commitment_set.cardinal bad_commitments)
+        then return (new_bad_commitments, new_evildoers)
+        else aux new_bad_commitments new_evildoers
+      in
+      aux initial_bad_commitments initial_evildoers
+      >>=? fun (bad_commitments, evildoers) ->
+      remove_commitments_by_hash ctxt tx_rollup level top bad_commitments
+      >>=? fun ctxt ->
+      Contract_set.fold_es
+        (fun contract ctxt ->
+          let key = (tx_rollup, contract) in
+          Storage.Tx_rollup.Commitment_bond.remove ctxt key >|=? just_ctxt)
+        evildoers
+        ctxt
+      >>=? fun ctxt ->
+      adjust_successful_prerejection
+        ctxt
+        tx_rollup
+        level
+        commitment_id
+        contract
+        counter
 
 let get_commitment_roots ctxt tx_rollup (level : Raw_level_repr.t)
     (commitment_id : Commitment_hash.t) (index : int) =
@@ -411,23 +450,20 @@ let finalize_pending_commitments ctxt tx_rollup =
         | Some level -> level
         | None -> Raw_level_repr.root
       in
-      let rec finalize_level ctxt level top =
-        if Raw_level_repr.(level > top) then return (0, ctxt, Some level)
+      let rec finalize_level ctxt level top count =
+        if Raw_level_repr.(level > top) then return (ctxt, 0, Some level)
         else
           retire_rollup_level ctxt tx_rollup level last_level_to_finalize
           >>=? fun (ctxt, finalized) ->
-          if not finalized then return (0, ctxt, Some level)
+          if not finalized then return (ctxt, 0, Some level)
           else
             get_next_level ctxt tx_rollup level >>=? fun (ctxt, next_level) ->
             match next_level with
-            | None -> return (0, ctxt, None)
-            | Some next_level ->
-                finalize_level ctxt next_level top
-                >>=? fun (finalized, ctxt, first_unfinalized_level) ->
-                return (finalized + 1, ctxt, first_unfinalized_level)
+            | None -> return (ctxt, count, None)
+            | Some next_level -> finalize_level ctxt next_level top (count + 1)
       in
-      finalize_level ctxt first_unfinalized_level last_level_to_finalize
-      >>=? fun (finalized_count, ctxt, first_unfinalized_level) ->
+      finalize_level ctxt first_unfinalized_level last_level_to_finalize 0
+      >>=? fun (ctxt, finalized_count, first_unfinalized_level) ->
       let new_state =
         Tx_rollup_state_repr.update_after_finalize
           state
@@ -436,3 +472,43 @@ let finalize_pending_commitments ctxt tx_rollup =
       in
       Storage.Tx_rollup.State.add ctxt tx_rollup new_state
       >>=? fun (ctxt, _, _) -> return ctxt
+
+let prereject :
+    Raw_context.t ->
+    Tx_rollup_rejection_repr.Rejection_hash.t ->
+    Raw_context.t tzresult Lwt.t =
+ fun ctxt hash ->
+  Storage.Tx_rollup.Prerejection.mem ctxt hash >>=? fun (ctxt, is_mem) ->
+  fail_when is_mem Tx_rollup_rejection_repr.Duplicate_prerejection
+  >>=? fun () ->
+  (Storage.Tx_rollup.Prerejection_counter.find ctxt >>=? function
+   | None ->
+       Storage.Tx_rollup.Prerejection_counter.init ctxt Z.one >>=? fun ctxt ->
+       return (ctxt, Z.zero)
+   | Some counter ->
+       Storage.Tx_rollup.Prerejection_counter.update ctxt (Z.succ counter)
+       >>=? fun ctxt -> return (ctxt, counter))
+  >>=? fun (ctxt, counter) ->
+  Storage.Tx_rollup.Prerejection.add ctxt hash counter >|=? just_ctxt
+
+let check_prerejection :
+    Raw_context.t ->
+    Tx_rollup_rejection_repr.t ->
+    int64 ->
+    Contract_repr.t ->
+    (Raw_context.t * Z.t) tzresult Lwt.t =
+ fun ctxt {rollup; level; hash; batch_index; _} nonce source ->
+  let prerejection_hash =
+    Tx_rollup_rejection_repr.generate_prerejection
+      ~nonce
+      ~source
+      ~rollup
+      ~level
+      ~commitment_hash:hash
+      ~batch_index
+  in
+  Storage.Tx_rollup.Prerejection.find ctxt prerejection_hash
+  >>=? fun (ctxt, priority) ->
+  match priority with
+  | None -> fail Tx_rollup_rejection_repr.Rejection_without_prerejection
+  | Some priority -> return (ctxt, priority)
