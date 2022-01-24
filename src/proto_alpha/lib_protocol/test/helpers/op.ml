@@ -580,3 +580,19 @@ let tx_rollup_return_bond ?counter ?fee ?gas_limit ?storage_limit ctxt
   >>=? fun to_sign_op ->
   Context.Contract.manager ctxt source >|=? fun account ->
   sign account.sk ctxt to_sign_op
+
+let tx_rollup_reject ?counter ?fee ?gas_limit ?storage_limit ctxt
+    (source : Contract.t) (rollup : Tx_rollup.t) (level : Raw_level.t)
+    (hash : Tx_rollup_commitments.Commitment_hash.t) (batch_index : int)
+    (nonce : int64) =
+  manager_operation
+    ?counter
+    ?fee
+    ?gas_limit
+    ?storage_limit
+    ~source
+    ctxt
+    (Tx_rollup_rejection {rollup; level; hash; batch_index; nonce})
+  >>=? fun to_sign_op ->
+  Context.Contract.manager ctxt source >|=? fun account ->
+  sign account.sk ctxt to_sign_op

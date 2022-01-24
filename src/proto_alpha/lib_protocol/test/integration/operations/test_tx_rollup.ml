@@ -210,6 +210,13 @@ let check_bond ctxt tx_rollup contract count =
   Alcotest.(check int "Pending commitment count correct" count pending) ;
   return ()
 
+let rec bake_until i top =
+  let level = Incremental.level i in
+  if level >= top then return i
+  else
+    Incremental.finalize_block i >>=? fun b ->
+    Incremental.begin_construction b >>=? fun i -> bake_until i top
+
 (** ---- TESTS -------------------------------------------------------------- *)
 
 (** [test_origination] originates a transaction rollup and checks that
@@ -1313,6 +1320,226 @@ let test_bond_finalization () =
   ignore i ;
   return ()
 
+(** [test_rejection] tests that rejection works. *)
+let test_rejection () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  (* Transactions in block 2 *)
+  make_transactions_in tx_rollup contract1 [2] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.empty}]
+  in
+  (* "Random" numbers *)
+  let nonce = 1000L in
+  let nonce2 = 1001L in
+  let commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let hash = Tx_rollup_commitments.Commitment.hash commitment in
+  (* Correct rejection *)
+  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Right commitment *)
+  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.make 20 '0'}]
+  in
+  let correct_commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup correct_commitment
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let hash = Tx_rollup_commitments.Commitment.hash correct_commitment in
+  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce2
+  >>=? fun op ->
+  (* Wrong rejection *)
+  Incremental.add_operation i op ~expect_failure:(function
+      | Environment.Ecoproto_error (Tx_rollup_rejection.Wrong_rejection as e)
+        :: _ ->
+          Assert.test_error_encodings e ;
+          return_unit
+      | _ -> failwith "Should not reject correct commitments")
+  >>=? fun i ->
+  ignore i ;
+  return ()
+
+(* [test_rejection_reward] tests that rejection rewards are (a) awarded at
+   finalization time, and (b) go to the contract with the first prerejetion.
+   The scenario is:
+   {ol {li contract1 creates a bad commitment.}
+       {li contract4 creates a good commitment so that retirement can happen.}
+       {li contract2 creates a prerejection of this commitment.}
+       {li contract3 creates a (later) prerejection too.}
+       {li contract4 creates a (later) prerejection too.}
+       {li contract3 submits their rejection.}
+       {li contract2 submits their rejection.}
+       {li contract4 submits their rejection.}
+       {li contract5 submits their rejection (in the same block as contract4,
+         just to ensure that this case works).}
+       {li enough blocks are baked so that contract5 can submit another
+       commitment, which kicks off finalization.}
+   }
+
+   We expect that contract2 will get rewarded, since their prerejection was first
+   even though contract3's rejection came first.
+   *)
+let test_rejection_reward () =
+  context_init 5 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  let contract2 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
+  in
+  let contract3 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 2
+  in
+  let contract4 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 3
+  in
+  let contract5 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 4
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  make_transactions_in tx_rollup contract1 [2] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  (* This is the commitment that is going to be rejected *)
+  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.make 20 '0'}; {root = Bytes.make 20 '0'}]
+  in
+  let bad_commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches; predecessor = None}
+  in
+
+  (* This is the good commitment that we will use later *)
+  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.make 20 '0'}; {root = Bytes.make 20 '1'}]
+  in
+  let good_commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches; predecessor = None}
+  in
+  (* Submit commitments at level 3 *)
+  Op.tx_rollup_commit (I i) contract1 tx_rollup bad_commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Op.tx_rollup_commit (I i) contract4 tx_rollup good_commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let bad_commitment_hash =
+    Tx_rollup_commitments.Commitment.hash bad_commitment
+  in
+  (* "Random" numbers *)
+  let nonce = 1000L in
+  let nonce2 = 1001L in
+  let nonce3 = 1002L in
+  Op.tx_rollup_reject
+    (I i)
+    contract3
+    tx_rollup
+    (raw_level 2l)
+    bad_commitment_hash
+    1
+    nonce2
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Finalize to enforce ordering *)
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_reject
+    (I i)
+    contract2
+    tx_rollup
+    (raw_level 2l)
+    bad_commitment_hash
+    1
+    nonce
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Finalize to enforce ordering *)
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_reject
+    (I i)
+    contract4
+    tx_rollup
+    (raw_level 2l)
+    bad_commitment_hash
+    1
+    nonce3
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Op.tx_rollup_reject
+    (I i)
+    contract5
+    tx_rollup
+    (raw_level 2l)
+    bad_commitment_hash
+    1
+    nonce3
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  bake_until i 33l >>=? fun i ->
+  (* Now we need one more commitment, so we need a batch *)
+  Op.tx_rollup_submit_batch (I i) contract4 tx_rollup "contents" >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let good_commitment_hash =
+    Tx_rollup_commitments.Commitment.hash good_commitment
+  in
+  let predecessor = good_commitment_hash in
+  let commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 34l; batches; predecessor = Some predecessor}
+  in
+  Context.Contract.balance (B b) contract2 >>=? fun balance2 ->
+  Context.Contract.balance (B b) contract3 >>=? fun balance3 ->
+  Context.Contract.balance (B b) contract4 >>=? fun balance4 ->
+  Op.tx_rollup_commit (I i) contract5 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let bond = Constants.tx_rollup_commitment_bond (Incremental.alpha_ctxt i) in
+  wrap (Lwt.return Tez.(bond /? 2L)) >>=? fun bond ->
+  (* check balances *)
+  Assert.balance_was_credited ~loc:__LOC__ (I i) contract2 balance2 bond
+  >>=? fun () ->
+  Assert.balance_was_credited ~loc:__LOC__ (I i) contract3 balance3 Tez.zero
+  >>=? fun () ->
+  Assert.balance_was_debited ~loc:__LOC__ (I i) contract4 balance4 Tez.zero
+  >>=? fun () ->
+  ignore i ;
+  return ()
+
+let test_full_inbox () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let contract =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract >>=? fun (b, tx_rollup) ->
+  let range start top =
+    let rec aux n acc = if n < start then acc else aux (n - 1) (n :: acc) in
+    aux top []
+  in
+  (* Transactions in blocks [2..102) *)
+  make_transactions_in tx_rollup contract (range 2 102) b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_submit_batch (B b) contract tx_rollup "contents" >>=? fun op ->
+  Incremental.add_operation i op ~expect_failure:(function
+      | Environment.Ecoproto_error
+          (Tx_rollup_commitments.Too_many_unfinalized_levels as e)
+        :: _ ->
+          Assert.test_error_encodings e ;
+          return_unit
+      | _ -> failwith "Need to avoid too many unfinalized inboxes")
+  >>=? fun i ->
+  ignore i ;
+  return ()
+
 let tests =
   [
     Tztest.tztest
@@ -1370,4 +1597,6 @@ let tests =
       test_commitment_retire_simple;
     Tztest.tztest "Test commitment rejection" `Quick test_rejection_propagation;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
+    Tztest.tztest "Test rejection" `Quick test_rejection;
+    Tztest.tztest "Test full inbox" `Quick test_full_inbox;
   ]
