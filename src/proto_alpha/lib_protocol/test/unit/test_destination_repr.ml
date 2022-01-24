@@ -107,16 +107,16 @@ let tests =
     @@ test_decoding_json_compat null_address;
     tztest "Json decoding compat smart contract (liquidity baking dex)" `Quick
     @@ test_decoding_json_compat liquidity_baking_dex;
-    tztest "Binary Contract_repr to Destinatino_repr (null address)" `Quick
+    tztest "Binary Contract_repr to Destination_repr (null address)" `Quick
     @@ test_encode_contract_decode_destination null_address;
     tztest
-      "Binary Contract_repr to Destinatino_repr (liquidity baking dex)"
+      "Binary Contract_repr to Destination_repr (liquidity baking dex)"
       `Quick
     @@ test_encode_contract_decode_destination liquidity_baking_dex;
     tztest "Binary Destination_repr to Contract_repr (null address)" `Quick
     @@ test_encode_destination_decode_contract null_address;
     tztest
-      "Binary Contract_repr to Destinatino_repr (liquidity baking dex)"
+      "Binary Contract_repr to Destination_repr (liquidity baking dex)"
       `Quick
     @@ test_encode_destination_decode_contract liquidity_baking_dex;
   ]
