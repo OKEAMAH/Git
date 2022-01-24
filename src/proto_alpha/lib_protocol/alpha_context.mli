@@ -784,6 +784,7 @@ module Constants : sig
     tx_rollup_commitment_bond : Tez.t;
     tx_rollup_finality_period : int;
     tx_rollup_max_unfinalized_levels : int;
+    tx_rollup_max_finalize_levels_per_commitment : int;
     sc_rollup_enable : bool;
     sc_rollup_origination_size : int;
   }
@@ -880,6 +881,8 @@ module Constants : sig
   val tx_rollup_finality_period : context -> int
 
   val tx_rollup_max_unfinalized_levels : context -> int
+
+  val tx_rollup_max_finalize_levels_per_commitment : context -> int
 
   val sc_rollup_enable : context -> bool
 
