@@ -43,6 +43,13 @@ type error += (* `Temporary *) Wrong_inbox_hash
 type error += (* `Branch *)
               Retire_uncommitted_level of Raw_level_repr.t
 
+type error += (* `Temporary *)
+              Bond_does_not_exist of Signature.public_key_hash
+
+type error += (* `Temporary *) Bond_in_use of Signature.public_key_hash
+
+type error += (* `Temporary *) Too_many_unfinalized_levels
+
 (** A specialized Blake2B implementation for hashing commitments with
     "toc1" as a base58 prefix *)
 module Commitment_hash : sig

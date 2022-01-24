@@ -2017,6 +2017,9 @@ module Tx_rollup_state : sig
 
   val last_inbox_level : t -> Raw_level.t option
 
+  val first_unfinalized_level :
+    context -> Tx_rollup.t -> (context * Raw_level.t option) tzresult Lwt.t
+
   type error +=
     | Tx_rollup_already_exists of Tx_rollup.t
     | Tx_rollup_does_not_exist of Tx_rollup.t
@@ -2200,6 +2203,12 @@ module Tx_rollup_commitments : sig
 
   type error += Retire_uncommitted_level of Raw_level.t
 
+  type error += Bond_does_not_exist of Signature.public_key_hash
+
+  type error += Bond_in_use of Signature.public_key_hash
+
+  type error += Too_many_unfinalized_levels
+
   val add_commitment :
     context ->
     Tx_rollup.t ->
@@ -2222,11 +2231,19 @@ module Tx_rollup_commitments : sig
     Signature.public_key_hash ->
     (context * bool) tzresult Lwt.t
 
+  val finalize_pending_commitments :
+    context -> Tx_rollup.t -> Raw_level.t -> context tzresult Lwt.t
+
   module Internal_for_tests : sig
     (** See [Tx_rollup_commitments_storage.retire_rollup_level]
         for documentation *)
     val retire_rollup_level :
-      context -> Tx_rollup.t -> Raw_level.t -> context tzresult Lwt.t
+      context ->
+      Tx_rollup.t ->
+      Raw_level.t ->
+      Raw_level.t ->
+      (context * [> `No_commitment | `Commitment_too_late | `Retired]) tzresult
+      Lwt.t
   end
 end
 

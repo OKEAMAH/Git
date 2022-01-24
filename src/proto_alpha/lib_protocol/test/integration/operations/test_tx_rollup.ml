@@ -854,23 +854,30 @@ let test_commitment_retire_simple () =
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        (Incremental.alpha_ctxt i)
        tx_rollup
-       level)
-  >>= fun res ->
-  Assert.proto_error ~loc:__LOC__ res (fun e ->
-      e = Tx_rollup_commitments.Retire_uncommitted_level level)
+       level
+       (raw_level @@ Incremental.level i))
+  >>=? fun (_ctxt, retired) ->
+  (match retired with
+  | `No_commitment -> return_unit
+  | _ -> failwith "Expected no commitment")
   >>=? fun () ->
   (* Now, make a commitment *)
   make_commitment_for_batch i level tx_rollup >>=? fun commitment ->
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
+  let commitment_submit_level =
+    (Level.current (Incremental.alpha_ctxt i)).level
+  in
   check_bond (Incremental.alpha_ctxt i) tx_rollup contract1 1 >>=? fun () ->
   (* We can retire this level *)
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        (Incremental.alpha_ctxt i)
        tx_rollup
-       level)
-  >>=? fun ctxt ->
+       level
+       commitment_submit_level)
+  >>=? fun (ctxt, retired) ->
+  assert_retired retired >>=? fun () ->
   check_bond ctxt tx_rollup contract1 0 >>=? fun () ->
   ignore i ;
   return ()
@@ -944,24 +951,30 @@ let test_commitment_retire_complex () =
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        (Incremental.alpha_ctxt i)
        tx_rollup
-       (raw_level 2l))
-  >>=? fun ctxt ->
+       (raw_level 2l)
+       (raw_level 10l))
+  >>=? fun (ctxt, retired) ->
+  assert_retired retired >>=? fun () ->
   check_bond ctxt tx_rollup contract1 1 >>=? fun () ->
   check_bond ctxt tx_rollup contract2 1 >>=? fun () ->
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        ctxt
        tx_rollup
-       (raw_level 3l))
-  >>=? fun ctxt ->
+       (raw_level 3l)
+       (raw_level 10l))
+  >>=? fun (ctxt, retired) ->
+  assert_retired retired >>=? fun () ->
   check_bond ctxt tx_rollup contract1 1 >>=? fun () ->
   check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        ctxt
        tx_rollup
-       (raw_level 6l))
-  >>=? fun ctxt ->
+       (raw_level 6l)
+       (raw_level 10l))
+  >>=? fun (ctxt, retired) ->
+  assert_retired retired >>=? fun () ->
   check_bond ctxt tx_rollup contract1 0 >>=? fun () ->
   check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
   ignore ctxt ;
@@ -1009,18 +1022,25 @@ let test_commitment_acceptance () =
   in
   Op.tx_rollup_commit (I i) contract3 tx_rollup commitment_d >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
+  let commitment_submit_level =
+    (Level.current (Incremental.alpha_ctxt i)).level
+  in
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        (Incremental.alpha_ctxt i)
        tx_rollup
-       (raw_level 2l))
-  >>=? fun ctxt ->
+       (raw_level 2l)
+       commitment_submit_level)
+  >>=? fun (ctxt, retired) ->
+  assert_retired retired >>=? fun () ->
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
        ctxt
        tx_rollup
-       (raw_level 3l))
-  >>=? fun ctxt ->
+       (raw_level 3l)
+       commitment_submit_level)
+  >>=? fun (ctxt, retired) ->
+  assert_retired retired >>=? fun () ->
   check_bond ctxt tx_rollup contract1 0 >>=? fun () ->
   check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
   check_bond ctxt tx_rollup contract3 0 >>=? fun () ->
