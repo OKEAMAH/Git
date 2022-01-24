@@ -29,10 +29,10 @@
     {!Operation_repr.Transaction} manager operation.
 
     The introduction of this type allows to interact with emerging
-    layer-2 solutions using the same old API Tezos users and tooling
+    layer-2 solutions using the API Tezos users and tooling
     are already used to: contract calls to entrypoint. These solutions
     cannot be integrated to {!Contract_repr.t} directly, because
-    values of this type are given a balances, which have an impact on
+    values of this type are given a balance, which has an impact on
     the delegation system. *)
 
 (** This type is a superset of the set of contracts ({!Contract_repr.t}).

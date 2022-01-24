@@ -90,7 +90,7 @@ val encoding : contract Data_encoding.t
 (** [cases f g] exports the {!Data_encoding.cases} used to define {!encoding}.
 
     The only reason why we export that is to let {!Destination_repr.encoding}
-    used it. This allows the latter to be compatible with {!encoding}, which
+    use it. This allows the latter to be compatible with {!encoding}, which
     is of key importance for backward compatibility reasons. *)
 val cases :
   ('a -> contract option) -> (contract -> 'a) -> 'a Data_encoding.case list

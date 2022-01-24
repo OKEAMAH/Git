@@ -88,5 +88,4 @@ let pp : Format.formatter -> t -> unit =
 
 let in_memory_size =
   let open Cache_memory_helpers in
-  function
-  | Contract k -> header_size +! word_size +! Contract_repr.in_memory_size k
+  function Contract k -> h1w +! Contract_repr.in_memory_size k
