@@ -654,6 +654,73 @@ module Tx_rollup : sig
       with type key = Signature.public_key_hash
        and type value = int
        and type t := Raw_context.t * Tx_rollup_repr.t
+
+  (** Track prerejections.  Before a rejection can be submitted, a
+      pre-rejection must be submitted by the same contract which will submit
+      the rejection.  A pre-rejection contains a hash of the rejection with
+      the submitting contract.  Regardless of the order in which rejections
+      are submitted, the first pre-rejection submitted has priority.
+      This dramatically reduces the incentives for front-running.   Here, we
+      just store the pre-rejections themselves and their priorities, so that
+      we can quickly check their existence when a rejection is filed.*)
+  module Prerejection :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Tx_rollup_rejection_repr.Rejection_hash.t
+       and type value = Tx_rollup_repr.t * int32
+       and type t := Raw_context.t
+
+  (** Prerejections are indexed by a counter which monotonically increases.
+      Each tx_rollup has its own counter. *)
+  module Prerejection_counter :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Tx_rollup_repr.t
+       and type value = int32
+       and type t := Raw_context.t
+
+  (** In order to garbage-collect prerejections, we store them
+      according to the rollup level at which they were submitted.
+      This seems strange, but it lets us garbage-collect them during
+      rollup level finalization, which would otherwise be impossible.
+      Since we don't know what rollup level they are for, we
+      cannot use that. *)
+  module Prerejections_by_index : sig
+    include
+      Non_iterable_indexed_carbonated_data_storage
+        with type key = int32
+         and type value = Tx_rollup_rejection_repr.Rejection_hash.t
+         and type t :=
+              (Raw_context.t * Tx_rollup_repr.t) * Tx_rollup_level_repr.t
+
+    val list_values :
+      ?offset:int ->
+      ?length:int ->
+      (Raw_context.t * Tx_rollup_repr.t) * Tx_rollup_level_repr.t ->
+      (Raw_context.t * Tx_rollup_rejection_repr.Rejection_hash.t list) tzresult
+      Lwt.t
+  end
+
+  (** When the first rejection for a commitment is filed, we put
+      the corresponding prerejection into this table.  The level,
+      here, is the level that the commitment is for.  Later, if
+      we get any other rejections for the same commitment, and
+      those rejections have earlier prerejections, we replace
+      the accepted prerejection here. At finalization time,
+      for [level], we can credit the contract listed here. *)
+  module Accepted_prerejections : sig
+    include
+      Non_iterable_indexed_carbonated_data_storage
+        with type key = Tx_rollup_commitment_repr.Hash.t
+         and type value = Tx_rollup_rejection_repr.prerejection
+         and type t :=
+              (Raw_context.t * Tx_rollup_repr.t) * Tx_rollup_level_repr.t
+
+    val list_values :
+      ?offset:int ->
+      ?length:int ->
+      (Raw_context.t * Tx_rollup_repr.t) * Tx_rollup_level_repr.t ->
+      (Raw_context.t * Tx_rollup_rejection_repr.prerejection list) tzresult
+      Lwt.t
+  end
 end
 
 module Sc_rollup : sig

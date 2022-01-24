@@ -1,8 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
+(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2022 Oxhead Alpha <info@oxheadalpha.com>                    *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,9 +25,27 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* The type of a Merkle proof for a L2 message *)
-type t = Context.Proof.stream Context.Proof.t
+module Rejection_hash : sig
+  val rejection_hash : string
 
-val encoding : t Data_encoding.t
+  include S.HASH
 
-val ( = ) : t -> t -> bool
+  module Index : Storage_description.INDEX with type t = t
+end
+
+val generate_prerejection :
+  source:Signature.Public_key_hash.t ->
+  tx_rollup:Tx_rollup_repr.t ->
+  level:Tx_rollup_level_repr.t ->
+  message_position:int ->
+  proof:Tx_rollup_l2_proof.t ->
+  Rejection_hash.t
+
+type prerejection = {
+  hash : Tx_rollup_commitment_repr.Hash.t;
+  proof : Tx_rollup_l2_proof.t;
+  contract : Signature.Public_key_hash.t;
+  priority : int32;
+}
+
+val prerejection_encoding : prerejection Data_encoding.t

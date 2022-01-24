@@ -283,6 +283,12 @@ module Tx_rollup_commitment = struct
 end
 
 module Tx_rollup_hash = Tx_rollup_hash_builder
+
+module Tx_rollup_rejection = struct
+  include Tx_rollup_rejection_repr
+  include Tx_rollup_rejection_storage
+end
+
 module Tx_rollup_errors = Tx_rollup_errors_repr
 module Global_constants_storage = Global_constants_storage
 

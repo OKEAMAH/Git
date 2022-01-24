@@ -2046,6 +2046,47 @@ module Tx_rollup_hash : sig
     (context * Tx_rollup_withdraw_list_hash.t) tzresult
 end
 
+(** This simply re-exports {!Tx_rollup_rejection_repr}. See
+    {!Tx_rollup_rejection_repr} for additional documentation of this module. *)
+module Tx_rollup_rejection : sig
+  module Rejection_hash : sig
+    val rejection_hash : string
+
+    include S.HASH
+  end
+
+  val generate_prerejection :
+    source:Signature.Public_key_hash.t ->
+    tx_rollup:Tx_rollup.t ->
+    level:Tx_rollup_level.t ->
+    message_position:int ->
+    proof:Tx_rollup_l2_proof.t ->
+    Rejection_hash.t
+
+  val prereject :
+    context -> Tx_rollup.t -> Rejection_hash.t -> context tzresult Lwt.t
+
+  val check_prerejection :
+    context ->
+    source:Signature.Public_key_hash.t ->
+    tx_rollup:Tx_rollup.t ->
+    level:Tx_rollup_level.t ->
+    message_position:int ->
+    proof:Tx_rollup_l2_proof.t ->
+    (context * int32) tzresult Lwt.t
+
+  val update_accepted_prerejection :
+    context ->
+    source:Signature.Public_key_hash.t ->
+    tx_rollup:Tx_rollup.t ->
+    level:Tx_rollup_level.t ->
+    commitment:Tx_rollup_commitment_hash.t ->
+    commitment_exists:bool ->
+    proof:Tx_rollup_l2_proof.t ->
+    priority:int32 ->
+    context tzresult Lwt.t
+end
+
 module Tx_rollup_errors : sig
   type error +=
     | Tx_rollup_already_exists of Tx_rollup.t
@@ -2115,6 +2156,10 @@ module Tx_rollup_errors : sig
         provided : Context_hash.t;
       }
     | No_withdrawals_to_dispatch
+    | Rejection_without_prerejection
+    | Duplicate_prerejection
+    | Prerejection_without_inbox
+    | Rejection_for_nonexistent_commitment
 
   val check_path_depth :
     [`Inbox | `Commitment] -> int -> count_limit:int -> unit tzresult

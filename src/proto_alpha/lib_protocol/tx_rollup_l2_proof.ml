@@ -27,3 +27,8 @@
 type t = Context.Proof.stream Context.Proof.t
 
 let encoding = Context.Proof_encoding.V2.Tree2.stream_proof_encoding
+
+let ( = ) t1 t2 =
+  let t1_bytes = Data_encoding.Binary.to_bytes_exn encoding t1 in
+  let t2_bytes = Data_encoding.Binary.to_bytes_exn encoding t2 in
+  Compare.Bytes.(t1_bytes = t2_bytes)

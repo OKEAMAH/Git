@@ -1,8 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
+(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2022 Oxhead Alpha <info@oxheadalpha.com>                    *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,9 +25,29 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* The type of a Merkle proof for a L2 message *)
-type t = Context.Proof.stream Context.Proof.t
+(** [prereject ctxt tx_rollup hash] stores a prerejection *)
+val prereject :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Tx_rollup_rejection_repr.Rejection_hash.t ->
+  Raw_context.t tzresult Lwt.t
 
-val encoding : t Data_encoding.t
+val check_prerejection :
+  Raw_context.t ->
+  source:Signature.Public_key_hash.t ->
+  tx_rollup:Tx_rollup_repr.t ->
+  level:Tx_rollup_level_repr.t ->
+  message_position:int ->
+  proof:Tx_rollup_l2_proof.t ->
+  (Raw_context.t * int32) tzresult Lwt.t
 
-val ( = ) : t -> t -> bool
+val update_accepted_prerejection :
+  Raw_context.t ->
+  source:Signature.Public_key_hash.t ->
+  tx_rollup:Tx_rollup_repr.t ->
+  level:Tx_rollup_level_repr.t ->
+  commitment:Tx_rollup_commitment_repr.Hash.t ->
+  commitment_exists:bool ->
+  proof:Tx_rollup_l2_proof.t ->
+  priority:int32 ->
+  Raw_context.t tzresult Lwt.t

@@ -92,6 +92,11 @@ type error +=
   | Proof_produced_rejected_state
   | Proof_invalid_before of {agreed : Context_hash.t; provided : Context_hash.t}
   | No_withdrawals_to_dispatch
+  | Ticket_content_size_limit_exceeded of {content_size : int; limit : int}
+  | Rejection_without_prerejection
+  | Duplicate_prerejection
+  | Prerejection_without_inbox
+  | Rejection_for_nonexistent_commitment
 
 let check_path_depth kind provided ~count_limit =
   let limit = Merkle_list.max_depth ~count_limit in
@@ -664,4 +669,43 @@ let () =
     ~description:"Cannot dispatch an empty list of withdrawals"
     empty
     (function No_withdrawals_to_dispatch -> Some () | _ -> None)
-    (fun () -> No_withdrawals_to_dispatch)
+    (fun () -> No_withdrawals_to_dispatch) ;
+  (* Rejection_without_prerejection *)
+  register_error_kind
+    `Temporary
+    ~id:"tx_rollup_rejection_without_prerejection"
+    ~title:"This rejection is missing a prerejection"
+    ~description:"This rejection is missing a prerejection"
+    unit
+    (function Rejection_without_prerejection -> Some () | _ -> None)
+    (fun () -> Rejection_without_prerejection) ;
+  (* Duplicate_prerejection *)
+  register_error_kind
+    `Branch
+    ~id:"tx_rollup_duplicate_prerejection"
+    ~title:"This prerejection has already been filed"
+    ~description:"This prerejection has already been filed"
+    unit
+    (function Duplicate_prerejection -> Some () | _ -> None)
+    (fun () -> Duplicate_prerejection) ;
+  (* Prerejection_without_inbox *)
+  register_error_kind
+    `Temporary
+    ~id:"tx_rollup_prerejection_without_inbox"
+    ~title:"Prerejection without inbox"
+    ~description:
+      "Since there are no inboxes, there are no commitments, and thus a \
+       prerejection is useless"
+    unit
+    (function Prerejection_without_inbox -> Some () | _ -> None)
+    (fun () -> Prerejection_without_inbox) ;
+  (* Rejection_for_nonexistent_commitment *)
+  register_error_kind
+    `Temporary
+    ~id:"tx_rollup_rejection_for_nonexistent_commitment"
+    ~title:"Rejection for nonexistent commit"
+    ~description:
+      "This rejection rejects a commit that does not and has never existed"
+    unit
+    (function Rejection_for_nonexistent_commitment -> Some () | _ -> None)
+    (fun () -> Rejection_for_nonexistent_commitment)

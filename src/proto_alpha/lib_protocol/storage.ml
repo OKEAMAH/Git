@@ -1443,6 +1443,24 @@ module Tx_rollup = struct
       end)
       (Bitset)
 
+  module Int32_index = struct
+    type t = int32
+
+    let compare = Compare.Int32.compare
+
+    let encoding = Data_encoding.int32
+
+    let rpc_arg = RPC_arg.int32
+
+    let path_length = 1
+
+    let to_path i l = Int32.to_string i :: l
+
+    let of_path = function
+      | [] | _ :: _ :: _ -> None
+      | [i] -> Int32.of_string_opt i
+  end
+
   module Commitment =
     Level_context.Make_carbonated_map
       (struct
@@ -1468,6 +1486,68 @@ module Tx_rollup = struct
 
         let encoding = Data_encoding.int31
       end)
+
+  module Prerejection_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["tx_rollup_prerejection_index"]
+         end))
+         (Make_index (Tx_rollup_rejection_repr.Rejection_hash.Index))
+
+  module Prerejection =
+    Prerejection_context.Make_carbonated_map
+      (struct
+        let name = ["prerejection"]
+      end)
+      (struct
+        type t = Tx_rollup_repr.t * int32
+
+        let encoding =
+          Data_encoding.(
+            obj2 (req "tx_rollup" Tx_rollup_repr.encoding) (req "index" int32))
+      end)
+
+  module Prerejection_counter =
+    Indexed_context.Make_carbonated_map
+      (struct
+        let name = ["prerejection_counter"]
+      end)
+      (Encoding.Int32)
+
+  module Prerejections_by_index_context =
+    Make_subcontext (Registered) (Level_context.Raw_context)
+      (struct
+        let name = ["prerejections_by_index"]
+      end)
+
+  module Prerejections_by_index =
+    Make_indexed_carbonated_data_storage
+      (Prerejections_by_index_context)
+      (Make_index (Int32_index))
+      (struct
+        type t = Tx_rollup_rejection_repr.Rejection_hash.t
+
+        let encoding = Tx_rollup_rejection_repr.Rejection_hash.encoding
+      end)
+
+  module Accepted_prerejections_context =
+    Make_subcontext (Registered) (Level_context.Raw_context)
+      (struct
+        let name = ["accepted_prerejections"]
+      end)
+
+  module Accepted_prerejections = struct
+    include
+      Make_indexed_carbonated_data_storage
+        (Accepted_prerejections_context)
+        (Make_index (Tx_rollup_commitment_repr.Index))
+        (struct
+          type t = Tx_rollup_rejection_repr.prerejection
+
+          let encoding = Tx_rollup_rejection_repr.prerejection_encoding
+        end)
+  end
 end
 
 module Sc_rollup = struct

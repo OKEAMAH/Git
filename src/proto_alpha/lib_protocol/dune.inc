@@ -87,6 +87,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_message_result_repr.mli tx_rollup_message_result_repr.ml
    tx_rollup_message_result_hash_repr.mli tx_rollup_message_result_hash_repr.ml
    tx_rollup_commitment_repr.mli tx_rollup_commitment_repr.ml
+   tx_rollup_rejection_repr.mli tx_rollup_rejection_repr.ml
    tx_rollup_errors_repr.ml
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    bond_id_repr.mli bond_id_repr.ml
@@ -146,6 +147,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_reveal_storage.mli tx_rollup_reveal_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
+   tx_rollup_rejection_storage.mli tx_rollup_rejection_storage.ml
    tx_rollup_commitment_storage.mli tx_rollup_commitment_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
@@ -275,6 +277,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_message_result_repr.mli tx_rollup_message_result_repr.ml
    tx_rollup_message_result_hash_repr.mli tx_rollup_message_result_hash_repr.ml
    tx_rollup_commitment_repr.mli tx_rollup_commitment_repr.ml
+   tx_rollup_rejection_repr.mli tx_rollup_rejection_repr.ml
    tx_rollup_errors_repr.ml
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    bond_id_repr.mli bond_id_repr.ml
@@ -334,6 +337,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_reveal_storage.mli tx_rollup_reveal_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
+   tx_rollup_rejection_storage.mli tx_rollup_rejection_storage.ml
    tx_rollup_commitment_storage.mli tx_rollup_commitment_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
@@ -463,6 +467,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_message_result_repr.mli tx_rollup_message_result_repr.ml
    tx_rollup_message_result_hash_repr.mli tx_rollup_message_result_hash_repr.ml
    tx_rollup_commitment_repr.mli tx_rollup_commitment_repr.ml
+   tx_rollup_rejection_repr.mli tx_rollup_rejection_repr.ml
    tx_rollup_errors_repr.ml
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    bond_id_repr.mli bond_id_repr.ml
@@ -522,6 +527,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_reveal_storage.mli tx_rollup_reveal_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
+   tx_rollup_rejection_storage.mli tx_rollup_rejection_storage.ml
    tx_rollup_commitment_storage.mli tx_rollup_commitment_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
@@ -673,6 +679,7 @@ include Tezos_raw_protocol_alpha.Main
    Tx_rollup_message_result_repr
    Tx_rollup_message_result_hash_repr
    Tx_rollup_commitment_repr
+   Tx_rollup_rejection_repr
    Tx_rollup_errors_repr
    Tx_rollup_state_repr
    Bond_id_repr
@@ -732,6 +739,7 @@ include Tezos_raw_protocol_alpha.Main
    Tx_rollup_state_storage
    Tx_rollup_reveal_storage
    Tx_rollup_inbox_storage
+   Tx_rollup_rejection_storage
    Tx_rollup_commitment_storage
    Tx_rollup_storage
    Sc_rollup_storage
@@ -902,6 +910,7 @@ include Tezos_raw_protocol_alpha.Main
    tx_rollup_message_result_repr.mli tx_rollup_message_result_repr.ml
    tx_rollup_message_result_hash_repr.mli tx_rollup_message_result_hash_repr.ml
    tx_rollup_commitment_repr.mli tx_rollup_commitment_repr.ml
+   tx_rollup_rejection_repr.mli tx_rollup_rejection_repr.ml
    tx_rollup_errors_repr.ml
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    bond_id_repr.mli bond_id_repr.ml
@@ -961,6 +970,7 @@ include Tezos_raw_protocol_alpha.Main
    tx_rollup_state_storage.mli tx_rollup_state_storage.ml
    tx_rollup_reveal_storage.mli tx_rollup_reveal_storage.ml
    tx_rollup_inbox_storage.mli tx_rollup_inbox_storage.ml
+   tx_rollup_rejection_storage.mli tx_rollup_rejection_storage.ml
    tx_rollup_commitment_storage.mli tx_rollup_commitment_storage.ml
    tx_rollup_storage.mli tx_rollup_storage.ml
    sc_rollup_storage.mli sc_rollup_storage.ml
