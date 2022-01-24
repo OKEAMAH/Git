@@ -481,7 +481,7 @@ module Big_map = struct
       end)
 
   module Contents :
-    Non_iterable_indexed_carbonated_data_storage_with_values
+    Indexed_carbonated_data_storage
       with type key = Script_expr_hash.t
        and type value = Script_repr.expr
        and type t := key = struct
@@ -518,7 +518,7 @@ module Big_map = struct
 
     let add = I.add
 
-    let list_values = I.list_values
+    let list_key_values = I.list_key_values
 
     let consume_deserialize_gas ctxt value =
       Raw_context.consume_gas ctxt (Script_repr.deserialized_cost value)
