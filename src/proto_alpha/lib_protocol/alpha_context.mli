@@ -2152,7 +2152,7 @@ module Tx_rollup_commitments : sig
 
   type error += Wrong_batch_count
 
-  type error += Commitment_too_early
+  type error += Commitment_too_early of Raw_level.t * Raw_level.t
 
   val add_commitment :
     context ->

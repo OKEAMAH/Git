@@ -35,7 +35,8 @@ type error += (* `Temporary *) Missing_commitment_predecessor
 
 type error += (* `Branch *) Wrong_batch_count
 
-type error += (* `Temporary *) Commitment_too_early
+type error +=
+  | (* `Temporary *) Commitment_too_early of Raw_level_repr.t * Raw_level_repr.t
 
 (** A specialized Blake2B implementation for hashing commitments with
     "toc1" as a base58 prefix *)

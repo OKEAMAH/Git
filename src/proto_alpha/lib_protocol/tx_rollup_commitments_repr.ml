@@ -35,7 +35,8 @@ type error += (* `Temporary *) Missing_commitment_predecessor
 
 type error += (* `Branch *) Wrong_batch_count
 
-type error += (* `Temporary *) Commitment_too_early
+type error +=
+  | (* `Temporary *) Commitment_too_early of Raw_level_repr.t * Raw_level_repr.t
 
 let () =
   let open Data_encoding in
@@ -93,9 +94,15 @@ let () =
     ~id:"tx_rollup_commitment_too_early"
     ~title:"This commitment is for a level that hasn't finished yet"
     ~description:"This commitment is for a level that hasn't finished yet"
-    unit
-    (function Commitment_too_early -> Some () | _ -> None)
-    (fun () -> Commitment_too_early)
+    (obj2
+       (req "commitment_level" Raw_level_repr.encoding)
+       (req "submit_level" Raw_level_repr.encoding))
+    (function
+      | Commitment_too_early (commitment_level, submit_level) ->
+          Some (commitment_level, submit_level)
+      | _ -> None)
+    (fun (commitment_level, submit_level) ->
+      Commitment_too_early (commitment_level, submit_level))
 
 let compare_or cmp c1 c2 f = match cmp c1 c2 with 0 -> f () | diff -> diff
 
