@@ -15,11 +15,6 @@
 
 *)
 
-(**
-
-   Helpers
-
-*)
 open Compare.Int
 
 let rec repeat (n : int) f =
@@ -30,43 +25,6 @@ let init n f =
     match n with 0 -> acc | _ -> aux (f (n - 1) :: acc) (pred n) f
   in
   aux [] n f
-
-(**
-
-   Trace counters
-
-*)
-module Tick : sig
-  type t = private int
-
-  val make : int -> t
-
-  val next : t -> t
-
-  val distance : t -> t -> int
-
-  val ( = ) : t -> t -> bool
-
-  module Map : Map.S with type key = t
-end = struct
-  type t = int
-
-  let make x =
-    assert (Compare.Int.(x >= 0)) ;
-    x
-
-  let next = succ
-
-  let distance tick1 tick2 = abs (tick1 - tick2)
-
-  let ( = ) = Compare.Int.( = )
-
-  module Map = Map.Make (struct
-    type nonrec t = t
-
-    let compare = Compare.Int.compare
-  end)
-end
 
 module type PVM = sig
   type _ state
@@ -93,8 +51,6 @@ module type PVM = sig
 
   *)
 
-  val string_of_state : _ state -> string
-
   (** The following three functions are for testing purposes. *)
   val initial_state : [`Verifiable | `Full] state
 
@@ -110,7 +66,7 @@ module type PVM = sig
   val empty_history : history
 
   (** We want to navigate into the history using a trace counter. *)
-  type tick = Tick.t
+  type tick = Tick_repr.t
 
   val remember : history -> tick -> [`Verifiable | `Full] state -> history
 
@@ -123,6 +79,8 @@ module type PVM = sig
   (** [state_at p tick] returns a full representation of [concrete_of
      state] at the given trace counter [tick]. *)
   val state_at : history -> tick -> [`Verifiable | `Full] state
+
+  val pp : Format.formatter -> _ state -> unit
 
   (** [eval failures tick state] executes the machine at [tick]
      assuming a given machine [state]. The function returns the state
@@ -174,7 +132,7 @@ module type Game = sig
   *)
   type t
 
-  val string_of_game : t -> string
+  val pp_of_game : Format.formatter -> t -> unit
 
   (**
 
@@ -294,7 +252,7 @@ module type Game = sig
       }
         -> conflict_search_step
 
-  val string_of_move : move -> string
+  val pp_of_move : Format.formatter -> move -> unit
 
   (** The committer provides a commit to start the game... *)
   type commit = Commit of [`Compressed] section
@@ -317,7 +275,7 @@ module type Game = sig
      [start_state] at some tick [start_at] and plays against each
      other to validate or to refute some commit. *)
   val run :
-    start_at:Tick.t ->
+    start_at:PVM.tick ->
     start_state:[`Verifiable | `Full] PVM.state ->
     committer:(PVM.tick * [`Verifiable | `Full] PVM.state, commit) client ->
     refuter:([`Verifiable | `Full] PVM.state * commit, refutation) client ->
@@ -412,50 +370,71 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
   let find_section section dissection =
     List.find_opt
       (fun {section_start_at; section_stop_at; _} ->
-        Tick.(
+        Tick_repr.(
           section_start_at = section.section_start_at
           && section_stop_at = section.section_stop_at))
       dissection
 
-  let string_of_section (s : _ section) =
-    Format.sprintf
-      "%s %d ->%s  %d"
-      (PVM.string_of_state s.section_start_state)
+  let pp_of_section ppf (s : _ section) =
+    Format.fprintf
+      ppf
+      "%a %d ->%a  %d"
+      PVM.pp
+      s.section_start_state
       (s.section_start_at :> int)
-      (PVM.string_of_state s.section_stop_state)
+      PVM.pp
+      s.section_stop_state
       (s.section_stop_at :> int)
 
-  let string_of_dissection d = String.concat "; " (List.map string_of_section d)
+  let pp_of_dissection d = Format.pp_print_list pp_of_section d
 
-  let string_of_game g =
-    Format.sprintf
-      "%s @ %d -> %s / %s @ %d [%s] %s playing"
-      (PVM.string_of_state g.start_state)
+  let pp_optional_dissection d =
+    Format.pp_print_option
+      ~none:(fun ppf () ->
+        Format.pp_print_text ppf "no dissection at the moment")
+      pp_of_dissection
+      d
+
+  let pp_of_game ppf g =
+    Format.fprintf
+      ppf
+      "%a @ %d -> %a / %a @ %d [%a] %s playing"
+      PVM.pp
+      g.start_state
       (g.start_at :> int)
-      (PVM.string_of_state g.player_stop_state)
-      (PVM.string_of_state g.opponent_stop_state)
+      PVM.pp
+      g.player_stop_state
+      PVM.pp
+      g.opponent_stop_state
       (g.stop_at :> int)
-      (match g.current_dissection with
-      | None -> "no dissection at the moment"
-      | Some d -> "dissection = " ^ string_of_dissection d)
+      pp_optional_dissection
+      g.current_dissection
       (match g.turn with Committer -> "committer" | Refuter -> "refuter")
 
-  let string_of_move = function
+  let pp_of_move ppf = function
     | ConflictInside
         {choice; conflict_search_step = Refine {next_dissection; stop_state}} ->
-        Format.sprintf
-          "conflict is inside %s, should end with %s, %s"
-          (string_of_section choice)
-          (PVM.string_of_state stop_state)
-          ("new dissection = " ^ string_of_dissection next_dissection)
+        Format.fprintf
+          ppf
+          "conflict is inside %a, should end with %a, new dissection = %a"
+          pp_of_section
+          choice
+          PVM.pp
+          stop_state
+          pp_of_dissection
+          next_dissection
     | ConflictInside
         {choice; conflict_search_step = Conclude {start_state; stop_state}} ->
-        Format.sprintf
-          "atomic conflict found inside %s, we can verify that it starts with \
-           %s and should end with %s"
-          (string_of_section choice)
-          (PVM.string_of_state start_state)
-          (PVM.string_of_state stop_state)
+        Format.fprintf
+          ppf
+          "atomic conflict found inside %a, we can verify that it starts with \
+           %a and should end with %a"
+          pp_of_section
+          choice
+          PVM.pp
+          start_state
+          PVM.pp
+          stop_state
 
   (**
 
@@ -485,7 +464,6 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
 
   *)
   let section_of_dissection dissection =
-    let open Tick in
     let aux d =
       match d with
       | [] -> raise (Dissection_error "empty dissection")
@@ -494,10 +472,11 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
 
           let section =
             List.fold_left
-              (fun acc x ->
-                if acc.section_stop_at = x.section_start_at && valid_section h
-                then x
-                else raise (Dissection_error "invalid dissection"))
+              Tick_repr.(
+                fun acc x ->
+                  if acc.section_stop_at = x.section_start_at && valid_section h
+                  then x
+                  else raise (Dissection_error "invalid dissection"))
               h
               tl
           in
@@ -508,7 +487,7 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
   let valid_dissection (section : _ section) dissection =
     try
       let s = section_of_dissection dissection in
-      Tick.(
+      Tick_repr.(
         s.section_start_at = section.section_start_at
         && s.section_stop_at = section.section_stop_at)
     with _ -> false
@@ -723,16 +702,5 @@ end
    - If the refuter and the committer both post valid and invalid states,
      all outcomes are possible. This means that if a committer wins a
      game we have no guarantee that she has posted a valid commit.
-
-*)
-
-(**
-
-   We could develop a Coq history for the two important expected
-   properties.
-
-   By lack of taint, we only provide a basic property-based testing.
-   We confront perfect players to random players on a very simple
-   machine which increments a counter.
 
 *)

@@ -30,10 +30,11 @@
                   src/proto_alpha/lib_protocol/test/pbt/refutation_game_pbt.exe
     Subject:      SCORU refutation game
 *)
+open Protocol
 
-open Protocol.Refutation_game
+open Game_repr
 
-exception TickNotFound of Tick.t
+exception TickNotFound of Tick_repr.t
 
 open Lib_test.Qcheck_helpers
 
@@ -61,22 +62,22 @@ end = struct
 
   let random_state _ _ = Random.bits ()
 
-  let string_of_state = string_of_int
+  let pp ppf = Format.fprintf ppf "%d"
 
   let equal_state = ( = )
 
-  type tick = Tick.t
+  type tick = Tick_repr.t
 
-  type history = {states : int Tick.Map.t; tick : tick}
+  type history = {states : int Tick_repr.Map.t; tick : tick}
 
   let remember history tick state =
-    {history with states = Tick.Map.add tick state history.states}
+    {history with states = Tick_repr.Map.add tick state history.states}
 
   exception TickNotFound of tick
 
-  let eval ~failures (tick : Tick.t) state =
+  let eval ~failures (tick : Tick_repr.t) state =
     if state >= P.target then state
-    else if List.mem ~equal:Tick.( = ) tick failures then state
+    else if List.mem ~equal:Tick_repr.( = ) tick failures then state
     else state + 1
 
   let execute_until ~failures tick state pred =
@@ -84,26 +85,26 @@ end = struct
       if pred tick state then (tick, state)
       else
         let state = eval ~failures tick state in
-        loop state (Tick.next tick)
+        loop state (Tick_repr.next tick)
     in
     loop state tick
 
   let state_at history tick =
-    let (lower, ostate, _) = Tick.Map.split tick history.states in
+    let (lower, ostate, _) = Tick_repr.Map.split tick history.states in
     match ostate with
     | Some state -> state
     | None ->
         let (tick0, state0) =
-          match Tick.Map.max_binding lower with
+          match Tick_repr.Map.max_binding lower with
           | Some s -> s
-          | None -> (Tick.make 0, 0)
+          | None -> (Tick_repr.make 0, 0)
         in
         snd
           (execute_until ~failures:[] tick0 state0 (fun tick' _ -> tick' = tick))
 
   let verifiable_state_at = state_at
 
-  let empty_history = {states = Tick.Map.empty; tick = Tick.make 0}
+  let empty_history = {states = Tick_repr.Map.empty; tick = Tick_repr.make 0}
 end
 
 let operation state number =
@@ -114,7 +115,7 @@ module RandomPVM (P : sig
 end) : sig
   include PVM with type _ state = string * int list
 end = struct
-  exception TickNotFound of Tick.t
+  exception TickNotFound of Tick_repr.t
 
   type _ state = string * int list
 
@@ -127,17 +128,20 @@ end = struct
     let stop_state = (operation "" (Random.bits ()), remaining_program) in
     stop_state
 
-  let string_of_state (st, li) =
-    st ^ List.fold_left (fun acc x -> acc ^ ";" ^ string_of_int x) "" li
+  let pp ppf (st, li) =
+    Format.fprintf ppf "%s@ %a" st (Format.pp_print_list Format.pp_print_int) li
 
   let equal_state = ( = )
 
-  type history = {states : (string * int list) Tick.Map.t; tick : Tick.t}
+  type history = {
+    states : (string * int list) Tick_repr.Map.t;
+    tick : Tick_repr.t;
+  }
 
   let remember history tick state =
-    {history with states = Tick.Map.add tick state history.states}
+    {history with states = Tick_repr.Map.add tick state history.states}
 
-  let eval ~failures (tick : Tick.t) ((hash, continuation) as state) =
+  let eval ~failures (tick : Tick_repr.t) ((hash, continuation) as state) =
     match continuation with
     | [] -> state
     | h :: tl ->
@@ -149,17 +153,17 @@ end = struct
       if pred tick state || snd state = [] then (tick, state)
       else
         let state = eval ~failures tick state in
-        loop state (Tick.next tick)
+        loop state (Tick_repr.next tick)
     in
     loop state tick
 
   let state_at history tick =
-    let (lower, ostate, _) = Tick.Map.split tick history.states in
+    let (lower, ostate, _) = Tick_repr.Map.split tick history.states in
     match ostate with
     | Some state -> state
     | None ->
         let (tick0, state0) =
-          match Tick.Map.max_binding lower with
+          match Tick_repr.Map.max_binding lower with
           | Some (t, s) -> (t, s)
           | None -> raise Not_found
         in
@@ -168,9 +172,9 @@ end = struct
 
   let verifiable_state_at = state_at
 
-  let empty_history = {states = Tick.Map.empty; tick = Tick.make 0}
+  let empty_history = {states = Tick_repr.Map.empty; tick = Tick_repr.make 0}
 
-  type tick = Tick.t
+  type tick = Tick_repr.t
 end
 
 module MerkelizedMichelson = struct
@@ -221,7 +225,7 @@ module MerkelizedMichelson = struct
 
     val transparent : t
 
-    val of_tick : Tick.t -> t
+    val of_tick : Tick_repr.t -> t
 
     val fresh : unit -> t
 
@@ -237,7 +241,7 @@ module MerkelizedMichelson = struct
         decr r ;
         !r
 
-    let of_tick (t : Tick.t) = (t :> int)
+    let of_tick (t : Tick_repr.t) = (t :> int)
 
     let to_string = string_of_int
   end
@@ -338,62 +342,80 @@ module MerkelizedMichelson = struct
 
   let hash_of v = option_get v.hash
 
-  let rec string_of_repr : type a. a repr -> string = function
+  let rec pp_of_repr : type a. Format.formatter -> a repr -> unit =
+   fun ppf repr ->
+    match repr with
     | Cell (ity, oty) ->
-        Printf.sprintf "(%s, %s)" (string_of_repr ity) (string_of_repr oty)
+        Format.fprintf ppf "(%a, %a)" pp_of_repr ity pp_of_repr oty
     | Cont (ity, oty) ->
-        Printf.sprintf "(%s ~> %s)" (string_of_repr ity) (string_of_repr oty)
-    | Instr _ -> "instr"
-    | Int -> "int"
-    | Bool -> "bool"
-    | Unit -> "unit"
+        Format.fprintf ppf "(%a ~> %a)" pp_of_repr ity pp_of_repr oty
+    | Instr _ -> Format.pp_print_string ppf "instr"
+    | Int -> Format.pp_print_string ppf "int"
+    | Bool -> Format.pp_print_string ppf "bool"
+    | Unit -> Format.pp_print_string ppf "unit"
 
-  let rec string_of_value : type a. a repr -> a -> string =
-   fun repr x ->
+  let rec pp_of_value : type a. Format.formatter -> a repr -> a -> unit =
+   fun ppf repr x ->
     match repr with
     | Cell (_ity, _oty) ->
-        Printf.sprintf "(%s, %s)" (show (fst x)) (show (snd x))
-    | Cont _ -> string_of_cont x
-    | Instr _ -> string_of_instr x
-    | Int -> string_of_int x
-    | Bool -> string_of_bool x
-    | Unit -> "()"
+        Format.fprintf ppf "(%a, %a)" show (fst x) show (snd x)
+    | Cont _ -> pp_of_cont ppf x
+    | Instr _ -> pp_of_instr ppf x
+    | Int -> Format.pp_print_int ppf x
+    | Bool -> Format.pp_print_bool ppf x
+    | Unit -> Format.pp_print_string ppf "()"
 
-  and string_of_instr : type a s. (a, s) instr -> string = function
-    | Halt -> "halt"
-    | Push (x, i) -> Printf.sprintf "push %s ; %s" (show x) (show i)
-    | Succ i -> Printf.sprintf "succ ; %s" (show i)
-    | Mul i -> Printf.sprintf "mul ; %s" (show i)
-    | Dec i -> Printf.sprintf "dec ; %s" (show i)
-    | CmpNZ i -> Printf.sprintf "cmpnz ; %s" (show i)
+  and pp_of_instr : type a s. Format.formatter -> (a, s) instr -> unit =
+   fun ppf instr ->
+    match instr with
+    | Halt -> Format.pp_print_string ppf "halt"
+    | Push (x, i) -> Format.fprintf ppf "push %a ; %a" show x show i
+    | Succ i -> Format.fprintf ppf "succ ; %a" show i
+    | Mul i -> Format.fprintf ppf "mul ; %a" show i
+    | Dec i -> Format.fprintf ppf "dec ; %a" show i
+    | CmpNZ i -> Format.fprintf ppf "cmpnz ; %a" show i
     | Loop (body, the_exit) ->
-        Printf.sprintf "loop { %s } ; %s" (show body) (show the_exit)
-    | Dup i -> Printf.sprintf "dup ; %s" (show i)
-    | Swap i -> Printf.sprintf "swap ; %s" (show i)
-    | Drop i -> Printf.sprintf "drop ; %s" (show i)
+        Format.fprintf ppf "loop { %a } ; %a" show body show the_exit
+    | Dup i -> Format.fprintf ppf "dup ; %a" show i
+    | Swap i -> Format.fprintf ppf "swap ; %a" show i
+    | Drop i -> Format.fprintf ppf "drop ; %a" show i
     | Dip (body, and_then) ->
-        Printf.sprintf "dip { %s } ; %s" (show body) (show and_then)
+        Format.fprintf ppf "dip { %a } ; %a" show body show and_then
 
-  and string_of_cont : type s f. (s, f) cont -> string = function
-    | KHalt -> "khalt"
-    | KCons (i, k) -> Printf.sprintf "%s : %s" (show i) (show k)
+  and pp_of_cont : type s f. Format.formatter -> (s, f) cont -> unit =
+   fun ppf s ->
+    match s with
+    | KHalt -> Format.pp_print_string ppf "khalt"
+    | KCons (i, k) -> Format.fprintf ppf "%a : %a" show i show k
 
   and verbose = false
 
-  and show : type a. a v -> string =
-   fun v ->
+  and show : type a. Format.formatter -> a v -> unit =
+   fun ppf v ->
     if verbose then
-      Printf.sprintf
-        "([%s | %s ]%s : %s)"
+      Format.fprintf
+        ppf
+        "([%s | %s ]%a : %a)"
         (Taint.to_string v.mark)
         (Option.fold ~none:"?" ~some:Hash.to_string v.hash)
-        (Option.fold ~none:"" ~some:(string_of_value v.repr) v.value)
-        (string_of_repr v.repr)
+        (Format.pp_print_option
+           ~none:(fun ppf _ -> Format.pp_print_string ppf "")
+           (fun ppf x -> pp_of_value ppf v.repr x))
+        v.value
+        pp_of_repr
+        v.repr
     else
-      Printf.sprintf
-        "([%s]%s)"
-        (Option.fold ~none:"?" ~some:Hash.to_string v.hash)
-        (Option.fold ~none:"" ~some:(string_of_value v.repr) v.value)
+      Format.fprintf
+        ppf
+        "([%a]%a)"
+        (Format.pp_print_option
+           ~none:(fun ppf _ -> Format.pp_print_string ppf "?")
+           (fun ppf x -> Format.pp_print_string ppf (Hash.to_string x)))
+        v.hash
+        (Format.pp_print_option
+           ~none:(fun ppf _ -> Format.pp_print_string ppf "")
+           (fun ppf x -> pp_of_value ppf v.repr x))
+        v.value
 
   let get ~taint left_space v =
     if taint <> Taint.transparent then v.mark <- taint ;
@@ -611,7 +633,7 @@ struct
   *)
   type _ state = State : ('s, ('s, 'f) cont) cell v -> _ state
 
-  let string_of_state (State cell) = show cell
+  let pp ppf (State cell) = show ppf cell
 
   let merkelize_state (State s) =
     merkelize s ;
@@ -766,19 +788,20 @@ struct
 
   *)
 
-  type history = [`Verifiable | `Full] state Tick.Map.t
+  type history = [`Verifiable | `Full] state Tick_repr.Map.t
 
-  let empty_history : history = Tick.Map.empty
+  let empty_history : history = Tick_repr.Map.empty
 
-  let remember history (tick : Tick.t) state = Tick.Map.add tick state history
+  let remember history (tick : Tick_repr.t) state =
+    Tick_repr.Map.add tick state history
 
-  type tick = Tick.t
+  type tick = Tick_repr.t
 
   exception TickNotFound of tick
 
   let forward_eval history tick =
-    match Tick.Map.split tick history with
-    | (lower, None, _) -> Tick.Map.max_binding lower
+    match Tick_repr.Map.split tick history with
+    | (lower, None, _) -> Tick_repr.Map.max_binding lower
     | (_, Some state, _) -> Some (tick, state)
 
   let eval_to : taint:Taint.t -> history -> tick -> [`Verifiable | `Full] state
@@ -792,7 +815,7 @@ struct
         let left_space = ref (16 * 1024) in
         let (v, cont) = get ~taint left_space s in
         let state' = step_cont ~taint left_space cont v in
-        go (Tick.next tick) state'
+        go (Tick_repr.next tick) state'
     in
     go tick0 state0
 
@@ -813,7 +836,7 @@ struct
   let eval :
       failures:tick list -> tick -> ([> `Verifiable] as 'a) state -> 'a state =
    fun ~failures tick (State s) ->
-    if List.mem ~equal:Tick.( = ) tick failures then
+    if List.mem ~equal:Tick_repr.( = ) tick failures then
       (* In this case, a failure is a stuttering. *)
       State s
     else
@@ -832,7 +855,7 @@ struct
     if pred tick state then (tick, merkelize_state state)
     else
       let state = eval ~failures tick state in
-      execute_until ~failures (Tick.next tick) state pred
+      execute_until ~failures (Tick_repr.next tick) state pred
 end
 
 module Push = struct
@@ -870,17 +893,18 @@ module Strategies (G : Game) = struct
   open G
   open PVM
 
-  let random_tick ?(from = 0) () = Tick.make (from + Random.int 31)
+  let random_tick ?(from = 0) () = Tick_repr.make (from + Random.int 31)
 
-  let random_section (start_at : Tick.t) start_state (stop_at : Tick.t) =
-    let x = min 10000 (abs (Tick.distance start_at stop_at)) in
+  let random_section (start_at : Tick_repr.t) start_state
+      (stop_at : Tick_repr.t) =
+    let x = min 10000 (abs (Tick_repr.distance start_at stop_at)) in
     let length = 1 + try Random.int x with _ -> 0 in
     let stop_at = (start_at :> int) + length in
 
     ({
        section_start_at = start_at;
        section_start_state = start_state;
-       section_stop_at = Tick.make stop_at;
+       section_stop_at = Tick_repr.make stop_at;
        section_stop_state = compress @@ random_state length start_state;
      }
       : _ G.section)
@@ -902,7 +926,8 @@ module Strategies (G : Game) = struct
             section.section_stop_at
             section.section_stop_state
     in
-    if Tick.distance gsection.section_stop_at gsection.section_start_at > 1 then
+    if Tick_repr.distance gsection.section_stop_at gsection.section_start_at > 1
+    then
       Some
         (aux [] gsection.section_start_at gsection.section_start_state
         |> List.rev)
@@ -959,7 +984,7 @@ module Strategies (G : Game) = struct
     max_failure : int option;
   }
 
-  type checkpoint = Tick.t -> bool
+  type checkpoint = Tick_repr.t -> bool
 
   type strategy = Random | MachineDirected of parameters * checkpoint
 
@@ -971,7 +996,8 @@ module Strategies (G : Game) = struct
 
   (** corrected, optimised and inlined version of the split (only one pass of the list rather than 3)*)
   let dissection_from_section history branching (section : _ G.section) =
-    if Tick.next section.section_start_at = section.section_stop_at then None
+    if Tick_repr.next section.section_start_at = section.section_stop_at then
+      None
     else
       let start = (section.section_start_at :> int) in
       let stop = (section.section_stop_at :> int) in
@@ -984,8 +1010,8 @@ module Strategies (G : Game) = struct
               if x = branching - 1 then stop
               else min stop (start + (bucket * (x + 1)))
             in
-            let section_start_at = Tick.make start_at
-            and section_stop_at = Tick.make stop_at in
+            let section_start_at = Tick_repr.make start_at
+            and section_stop_at = Tick_repr.make stop_at in
             ({
                section_start_at;
                section_start_state = PVM.state_at history section_start_at;
@@ -1012,7 +1038,7 @@ module Strategies (G : Game) = struct
   let next_move history branching dissection =
     let section =
       List.find_opt (conflicting_section history) dissection |> function
-      | None -> raise (TickNotFound (Tick.make 0))
+      | None -> raise (TickNotFound (Tick_repr.make 0))
       | Some s -> s
     in
     let next_dissection = dissection_from_section history branching section in
@@ -1020,7 +1046,7 @@ module Strategies (G : Game) = struct
       match next_dissection with
       | None ->
           let stop_state =
-            state_at history (Tick.next section.section_start_at)
+            state_at history (Tick_repr.next section.section_start_at)
           in
           let stop_state = PVM.(compress stop_state) in
           ( G.Conclude
@@ -1042,24 +1068,25 @@ module Strategies (G : Game) = struct
     in
     (G.ConflictInside {choice = section; conflict_search_step}, history)
 
-  let generate_failures failing_level (section_start_at : Tick.t)
-      (section_stop_at : Tick.t) max_failure =
-    let d = Tick.distance section_stop_at section_stop_at in
+  let generate_failures failing_level (section_start_at : Tick_repr.t)
+      (section_stop_at : Tick_repr.t) max_failure =
+    let d = Tick_repr.distance section_stop_at section_stop_at in
     let d = match max_failure with None -> d | Some x -> max x 1 in
     if failing_level > 0 then
       let s =
         init failing_level (fun _ ->
             let s = (section_start_at :> int) + Random.int (max d 1) in
-            Tick.make s)
+            Tick_repr.make s)
       in
       s
     else []
 
   let machine_directed_committer {branching; failing_level; max_failure} pred =
     let history = ref PVM.empty_history in
-    let initial ((section_start_at : Tick.t), section_start_state) : G.commit =
+    let initial ((section_start_at : Tick_repr.t), section_start_state) :
+        G.commit =
       let section_stop_at =
-        Tick.make ((section_start_at :> int) + Random.int 2)
+        Tick_repr.make ((section_start_at :> int) + Random.int 2)
       in
       let failures =
         generate_failures
@@ -1140,7 +1167,7 @@ module Strategies (G : Game) = struct
     | Random ->
         {
           initial =
-            (fun ((section_start_at : Tick.t), start_state) ->
+            (fun ((section_start_at : Tick_repr.t), start_state) ->
               let section_stop_at =
                 random_tick ~from:(section_start_at :> int) ()
               in
@@ -1190,7 +1217,7 @@ module Strategies (G : Game) = struct
     let committer = committer_from_strategy committer_strategy in
     let refuter = refuter_from_strategy refuter_strategy in
     let outcome =
-      G.run ~start_at:(Tick.make 0) ~start_state ~committer ~refuter
+      G.run ~start_at:(Tick_repr.make 0) ~start_state ~committer ~refuter
     in
     expectation outcome
 

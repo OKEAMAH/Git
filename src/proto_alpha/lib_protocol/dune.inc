@@ -39,7 +39,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    blinded_public_key_hash.mli blinded_public_key_hash.ml
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
-   refutation_game.ml
+   tick_repr.mli tick_repr.ml
+   game_repr.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
@@ -177,7 +178,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    blinded_public_key_hash.mli blinded_public_key_hash.ml
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
-   refutation_game.ml
+   tick_repr.mli tick_repr.ml 
+   game_repr.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
@@ -315,7 +317,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    blinded_public_key_hash.mli blinded_public_key_hash.ml
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
-   refutation_game.ml
+   tick_repr.mli tick_repr.ml
+   game_repr.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
@@ -475,7 +478,8 @@ include Tezos_raw_protocol_alpha.Main
    Blinded_public_key_hash
    Block_payload_hash
    Origination_nonce
-   Refutation_game
+   Tick_repr
+   Game_repr
    Sc_rollup_repr
    Slot_repr
    Tez_repr
@@ -654,7 +658,8 @@ include Tezos_raw_protocol_alpha.Main
    blinded_public_key_hash.mli blinded_public_key_hash.ml
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
-   refutation_game.ml
+   tick_repr.mli tick_repr.ml
+   game_repr.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml

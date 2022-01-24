@@ -13,8 +13,8 @@
         "Blinded_public_key_hash",
         "Block_payload_hash",
         "Origination_nonce",
-        "Refutation_game",
-
+        "Tick_repr",
+        "Game_repr",
         "Sc_rollup_repr",
         "Slot_repr",
         "Tez_repr",
