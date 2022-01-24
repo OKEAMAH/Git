@@ -47,6 +47,8 @@ type error += (* `Temporary *) Bond_in_use of Contract_repr.t
 
 type error += (* `Temporary *) Too_many_unfinalized_levels
 
+type error += (* `Permanent *) No_such_batch of Raw_level_repr.t * int
+
 (** A specialized Blake2B implementation for hashing commitments with
     "toc1" as a base58 prefix *)
 module Commitment_hash : sig

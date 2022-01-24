@@ -46,6 +46,8 @@ type error += (* `Temporary *) Bond_in_use of Contract_repr.t
 
 type error += (* `Temporary *) Too_many_unfinalized_levels
 
+type error += (* `Permanent *) No_such_batch of Raw_level_repr.t * int
+
 let () =
   let open Data_encoding in
   (* Commitment_hash_already_submitted *)
@@ -143,7 +145,19 @@ let () =
        messages to keep commitment gas reasonable."
     empty
     (function Too_many_unfinalized_levels -> Some () | _ -> None)
-    (fun () -> Too_many_unfinalized_levels)
+    (fun () -> Too_many_unfinalized_levels) ;
+  (* No_such_batch *)
+  register_error_kind
+    `Temporary
+    ~id:"No_such_batch"
+    ~title:"This rejection wrongly attempts to reject a non-existent batch"
+    ~description:
+      "This rejection wrongly attempts to reject a non-existent batch"
+    (obj2
+       (req "level" Raw_level_repr.encoding)
+       (req "index" Data_encoding.int31))
+    (function No_such_batch (level, index) -> Some (level, index) | _ -> None)
+    (fun (level, index) -> No_such_batch (level, index))
 
 let compare_or cmp c1 c2 f = match cmp c1 c2 with 0 -> f () | diff -> diff
 

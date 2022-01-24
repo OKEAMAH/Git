@@ -295,6 +295,59 @@ let reject_commitment ctxt tx_rollup (level : Raw_level_repr.t)
     evildoers
     ctxt
 
+let get_commitment_roots ctxt tx_rollup (level : Raw_level_repr.t)
+    (commitment_id : Commitment_hash.t) (index : int) =
+  let find_commitment_by_hash ctxt level hash =
+    Storage.Tx_rollup.Commitment_list.get ctxt (level, tx_rollup)
+    >>=? fun (ctxt, commitments) ->
+    let pending_commitment =
+      List.find
+        (fun {commitment; _} ->
+          Commitment_hash.(hash = Commitment.hash commitment))
+        commitments
+    in
+    Option.value_e
+      ~error:(Error_monad.trace_of_error No_such_commitment)
+      pending_commitment
+    >>?= fun pending -> return (ctxt, pending)
+  in
+  find_commitment_by_hash ctxt level commitment_id
+  >>=? fun (ctxt, pending_commitment) ->
+  let commitment = pending_commitment.commitment in
+  let nth_root (commitment : Commitment.t) n =
+    let nth = List.nth commitment.batches n in
+    Option.value_e
+      ~error:(Error_monad.trace_of_error (No_such_batch (level, index)))
+      nth
+  in
+  (match index with
+  | 0 -> (
+      match commitment.predecessor with
+      | None ->
+          (* TODO: empty merkle tree when we have this*)
+          let empty : Tx_rollup_commitments_repr.Commitment.batch_commitment =
+            {root = Bytes.empty}
+          in
+          return (ctxt, empty)
+      | Some prev_hash ->
+          get_prev_level ctxt tx_rollup level >>=? fun (ctxt, prev_level) ->
+          let prev_level =
+            match prev_level with
+            | None -> assert false
+            | Some prev_level -> prev_level
+          in
+          find_commitment_by_hash ctxt prev_level prev_hash
+          >>=? fun (ctxt, {commitment = {batches; _}; _}) ->
+          (let last = List.last_opt batches in
+           Option.value_e
+             ~error:(Error_monad.trace_of_error (No_such_batch (level, -1)))
+             last)
+          >>?= fun p -> return (ctxt, p))
+  | index -> nth_root commitment (index - 1) >>?= fun p -> return (ctxt, p))
+  >>=? fun (ctxt, before_hash) ->
+  nth_root commitment index >>?= fun after_hash ->
+  return (ctxt, (before_hash, after_hash))
+
 let retire_rollup_level :
     Raw_context.t ->
     Tx_rollup_repr.t ->
@@ -359,22 +412,22 @@ let finalize_pending_commitments ctxt tx_rollup =
         | None -> Raw_level_repr.root
       in
       let rec finalize_level ctxt level top =
-        if Raw_level_repr.(level > top) then return (ctxt, 0, Some level)
+        if Raw_level_repr.(level > top) then return (0, ctxt, Some level)
         else
           retire_rollup_level ctxt tx_rollup level last_level_to_finalize
           >>=? fun (ctxt, finalized) ->
-          if not finalized then return (ctxt, 0, Some level)
+          if not finalized then return (0, ctxt, Some level)
           else
             get_next_level ctxt tx_rollup level >>=? fun (ctxt, next_level) ->
             match next_level with
-            | None -> return (ctxt, 0, None)
+            | None -> return (0, ctxt, None)
             | Some next_level ->
                 finalize_level ctxt next_level top
-                >>=? fun (ctxt, finalized, first_unfinalized_level) ->
-                return (ctxt, finalized + 1, first_unfinalized_level)
+                >>=? fun (finalized, ctxt, first_unfinalized_level) ->
+                return (finalized + 1, ctxt, first_unfinalized_level)
       in
       finalize_level ctxt first_unfinalized_level last_level_to_finalize
-      >>=? fun (ctxt, finalized_count, first_unfinalized_level) ->
+      >>=? fun (finalized_count, ctxt, first_unfinalized_level) ->
       let new_state =
         Tx_rollup_state_repr.update_after_finalize
           state

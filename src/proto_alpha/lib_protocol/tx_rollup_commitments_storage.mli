@@ -96,3 +96,16 @@ val pending_bonded_commitments :
      pending commitments that are old enough. *)
 val finalize_pending_commitments :
   Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
+
+(** [get_commitment_roots] Returns the before and after roots *)
+val get_commitment_roots :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Raw_level_repr.t ->
+  Tx_rollup_commitments_repr.Commitment_hash.t ->
+  int ->
+  (Raw_context.t
+  * (Tx_rollup_commitments_repr.Commitment.batch_commitment
+    * Tx_rollup_commitments_repr.Commitment.batch_commitment))
+  tzresult
+  Lwt.t
