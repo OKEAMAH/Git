@@ -129,6 +129,7 @@ type parametric = {
   tx_rollup_hard_size_limit_per_message : int;
   (* the amount of tez to bond a tx rollup commitment *)
   tx_rollup_commitment_bond : Tez_repr.t;
+  tx_rollup_finality_period : int;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
 }
@@ -209,7 +210,7 @@ end
     subcache, a parametric constant can be used to change the limit
     (see {parametric}).
 
-    The number of subcaches and the limits for all those subcaches form 
+    The number of subcaches and the limits for all those subcaches form
     together what is called the [cache_layout]. *)
 val cache_layout_size : int
 
