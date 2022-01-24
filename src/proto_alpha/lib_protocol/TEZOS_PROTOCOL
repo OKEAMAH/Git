@@ -49,6 +49,7 @@
         "Tx_rollup_message_repr",
         "Tx_rollup_inbox_repr",
         "Tx_rollup_commitments_repr",
+        "Tx_rollup_rejection_repr",
         "Roll_repr_legacy",
         "Vote_repr",
         "Block_header_repr",

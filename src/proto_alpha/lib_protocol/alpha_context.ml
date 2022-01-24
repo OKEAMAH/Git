@@ -314,6 +314,11 @@ module Tx_rollup_commitments = struct
   end
 end
 
+module Tx_rollup_rejection = struct
+  include Tx_rollup_rejection_repr
+  include Tx_rollup_commitments_storage
+end
+
 module Global_constants_storage = Global_constants_storage
 
 module Big_map = struct

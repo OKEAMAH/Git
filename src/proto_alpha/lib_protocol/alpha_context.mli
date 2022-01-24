@@ -2242,6 +2242,21 @@ module Tx_rollup_commitments : sig
   end
 end
 
+(** This simply re-exports {!Tx_rollup_rejection_repr}. See
+    {!Tx_rollup_rejection_repr} for additional documentation of this module. *)
+module Tx_rollup_rejection : sig
+  type error += Wrong_rejection
+
+  type t = {
+    rollup : Tx_rollup.t;
+    level : Raw_level.t;
+    hash : Tx_rollup_commitments.Commitment_hash.t;
+    batch_index : int;
+  }
+
+  val encoding : t Data_encoding.t
+end
+
 (** This simply re-exports {!Destination_repr}. *)
 module Destination : sig
   type t = Contract of Contract.t | Tx_rollup of Tx_rollup.t
