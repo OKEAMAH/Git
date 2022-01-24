@@ -45,6 +45,20 @@ let get_prev_level ctxt tx_rollup level =
   Tx_rollup_inbox_storage.get_adjacent_levels ctxt level tx_rollup
   >|=? fun (ctxt, predecessor_level, _) -> (ctxt, predecessor_level)
 
+(* This indicates a programming error. *)
+type error += (*`Temporary*) Commitment_bond_negative of int
+
+let adjust_commitment_bond ctxt tx_rollup pkh delta =
+  let bond_key = (tx_rollup, pkh) in
+  Storage.Tx_rollup.Commitment_bond.find ctxt bond_key
+  >>=? fun (ctxt, commitment) ->
+  let count =
+    match commitment with Some count -> count + delta | None -> delta
+  in
+  fail_when Compare.Int.(count < 0) (Commitment_bond_negative count)
+  >>=? fun () ->
+  Storage.Tx_rollup.Commitment_bond.add ctxt bond_key count >|=? just_ctxt
+
 let check_commitment_predecessor_hash ctxt tx_rollup (commitment : Commitment.t)
     =
   let level = commitment.level in
@@ -64,7 +78,7 @@ let check_commitment_predecessor_hash ctxt tx_rollup (commitment : Commitment.t)
         Missing_commitment_predecessor
       >>=? fun () -> return ctxt
 
-let add_commitment ctxt tx_rollup contract (commitment : Commitment.t) =
+let add_commitment ctxt tx_rollup pkh (commitment : Commitment.t) =
   let key = (commitment.level, tx_rollup) in
   get_or_empty_commitments ctxt key >>=? fun (ctxt, pending) ->
   Tx_rollup_inbox_storage.get_metadata ctxt commitment.level tx_rollup
@@ -79,11 +93,12 @@ let add_commitment ctxt tx_rollup contract (commitment : Commitment.t) =
   check_commitment_predecessor_hash ctxt tx_rollup commitment >>=? fun ctxt ->
   Tx_rollup_commitments_repr.append
     pending
-    contract
+    pkh
     commitment
     (Raw_context.current_level ctxt).level
   >>?= fun new_pending ->
-  Storage.Tx_rollup.Commitment_list.add ctxt key new_pending >|=? just_ctxt
+  Storage.Tx_rollup.Commitment_list.add ctxt key new_pending
+  >>=? fun (ctxt, _, _) -> adjust_commitment_bond ctxt tx_rollup pkh 1
 
 let get_commitments :
     Raw_context.t ->
@@ -95,3 +110,21 @@ let get_commitments :
   match state with
   | None -> fail @@ Tx_rollup_state_storage.Tx_rollup_does_not_exist tx_rollup
   | Some _ -> get_or_empty_commitments ctxt (level, tx_rollup)
+
+let pending_bonded_commitments :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    Signature.public_key_hash ->
+    (Raw_context.t * int) tzresult Lwt.t =
+ fun ctxt tx_rollup pkh ->
+  Storage.Tx_rollup.Commitment_bond.find ctxt (tx_rollup, pkh)
+  >|=? fun (ctxt, pending) -> (ctxt, Option.value ~default:0 pending)
+
+let has_bond :
+    Raw_context.t ->
+    Tx_rollup_repr.t ->
+    Signature.public_key_hash ->
+    (Raw_context.t * bool) tzresult Lwt.t =
+ fun ctxt tx_rollup pkh ->
+  Storage.Tx_rollup.Commitment_bond.find ctxt (tx_rollup, pkh)
+  >|=? fun (ctxt, pending) -> (ctxt, Option.is_some pending)

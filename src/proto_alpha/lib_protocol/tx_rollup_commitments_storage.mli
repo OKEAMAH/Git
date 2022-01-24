@@ -49,3 +49,21 @@ val get_commitments :
   Tx_rollup_repr.t ->
   Raw_level_repr.t ->
   (Raw_context.t * Tx_rollup_commitments_repr.t) tzresult Lwt.t
+
+(** [pending_bonded_commitments ctxt tx_rollup contract] returns the
+   number of commitments that [contract] has made that are still
+   pending (that is, still subject to rejection). *)
+val pending_bonded_commitments :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Signature.public_key_hash ->
+  (Raw_context.t * int) tzresult Lwt.t
+
+(** [has_bond ctxt tx_rollup contract] returns true if we have
+    already collected a bond for [contract] for commitments on
+    [tx_rollup]. *)
+val has_bond :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Signature.public_key_hash ->
+  (Raw_context.t * bool) tzresult Lwt.t

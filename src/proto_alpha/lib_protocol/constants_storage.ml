@@ -161,6 +161,10 @@ let tx_rollup_hard_size_limit_per_message c =
   let constants = Raw_context.constants c in
   constants.tx_rollup_hard_size_limit_per_message
 
+let tx_rollup_commitment_bond c =
+  let constants = Raw_context.constants c in
+  constants.tx_rollup_commitment_bond
+
 let ratio_of_frozen_deposits_slashed_per_double_endorsement c =
   let constants = Raw_context.constants c in
   constants.ratio_of_frozen_deposits_slashed_per_double_endorsement
