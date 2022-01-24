@@ -794,6 +794,7 @@ module Constants : sig
     tx_rollup_hard_size_limit_per_inbox : int;
     tx_rollup_hard_size_limit_per_message : int;
     tx_rollup_commitment_bond : Tez.t;
+    tx_rollup_finality_period : int;
     sc_rollup_enable : bool;
     sc_rollup_origination_size : int;
   }
@@ -886,6 +887,8 @@ module Constants : sig
   val tx_rollup_hard_size_limit_per_message : context -> int
 
   val tx_rollup_commitment_bond : context -> Tez.t
+
+  val tx_rollup_finality_period : context -> int
 
   val sc_rollup_enable : context -> bool
 
