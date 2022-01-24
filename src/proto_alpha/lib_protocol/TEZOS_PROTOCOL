@@ -49,6 +49,7 @@
         "Tx_rollup_inbox_repr",
         "Tx_rollup_commitments_repr",
         "Rollup_bond_id_repr",
+        "Tx_rollup_rejection_repr",
         "Vote_repr",
         "Block_header_repr",
         "Entrypoint_repr",

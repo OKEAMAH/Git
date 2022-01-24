@@ -74,6 +74,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
    tx_rollup_commitments_repr.mli tx_rollup_commitments_repr.ml
    rollup_bond_id_repr.mli rollup_bond_id_repr.ml
+   tx_rollup_rejection_repr.mli tx_rollup_rejection_repr.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
    entrypoint_repr.mli entrypoint_repr.ml
@@ -231,6 +232,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
    tx_rollup_commitments_repr.mli tx_rollup_commitments_repr.ml
    rollup_bond_id_repr.mli rollup_bond_id_repr.ml
+   tx_rollup_rejection_repr.mli tx_rollup_rejection_repr.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
    entrypoint_repr.mli entrypoint_repr.ml
@@ -388,6 +390,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
    tx_rollup_commitments_repr.mli tx_rollup_commitments_repr.ml
    rollup_bond_id_repr.mli rollup_bond_id_repr.ml
+   tx_rollup_rejection_repr.mli tx_rollup_rejection_repr.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
    entrypoint_repr.mli entrypoint_repr.ml
@@ -567,6 +570,7 @@ include Tezos_raw_protocol_alpha.Main
    Tx_rollup_inbox_repr
    Tx_rollup_commitments_repr
    Rollup_bond_id_repr
+   Tx_rollup_rejection_repr
    Vote_repr
    Block_header_repr
    Entrypoint_repr
@@ -765,6 +769,7 @@ include Tezos_raw_protocol_alpha.Main
    tx_rollup_inbox_repr.mli tx_rollup_inbox_repr.ml
    tx_rollup_commitments_repr.mli tx_rollup_commitments_repr.ml
    rollup_bond_id_repr.mli rollup_bond_id_repr.ml
+   tx_rollup_rejection_repr.mli tx_rollup_rejection_repr.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
    entrypoint_repr.mli entrypoint_repr.ml

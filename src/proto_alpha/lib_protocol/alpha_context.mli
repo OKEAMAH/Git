@@ -2257,6 +2257,21 @@ module Tx_rollup_commitments : sig
   end
 end
 
+(** This simply re-exports {!Tx_rollup_rejection_repr}. See
+    {!Tx_rollup_rejection_repr} for additional documentation of this module. *)
+module Tx_rollup_rejection : sig
+  type error += Wrong_rejection
+
+  type t = {
+    rollup : Tx_rollup.t;
+    level : Raw_level.t;
+    hash : Tx_rollup_commitments.Commitment_hash.t;
+    batch_index : int;
+  }
+
+  val encoding : t Data_encoding.t
+end
+
 module Kind : sig
   type preendorsement_consensus_kind = Preendorsement_consensus_kind
 
