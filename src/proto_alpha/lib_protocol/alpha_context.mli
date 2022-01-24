@@ -2143,6 +2143,8 @@ module Tx_rollup_state : sig
 
   val assert_exist : context -> Tx_rollup.t -> context tzresult Lwt.t
 
+  val can_be_rejected : t -> Tx_rollup_level.t -> bool
+
   module Internal_for_tests : sig
     val make :
       ?burn_per_byte:Tez.t ->
@@ -2485,6 +2487,7 @@ module Tx_rollup_errors : sig
         window : (Tx_rollup_level.t * Tx_rollup_level.t) option;
       }
     | Withdraw_invalid_path
+    | Reject_final_level
 end
 
 (** This simply re-exports {!Destination_repr}. *)

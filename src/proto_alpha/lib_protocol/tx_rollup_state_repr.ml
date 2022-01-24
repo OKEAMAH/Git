@@ -480,6 +480,11 @@ let finalized_commitments_range state =
              "unreachable code per definition of [finalized_commitments_count]")
   else ok None
 
+let can_be_rejected state level =
+  match state.oldest_inbox_level with
+  | Some oldest -> Tx_rollup_level_repr.(oldest <= level)
+  | None -> false
+
 module Internal_for_tests = struct
   let make :
       ?burn_per_byte:Tez_repr.t ->

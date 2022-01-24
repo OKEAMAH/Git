@@ -66,6 +66,7 @@ type error +=
       window : (Tx_rollup_level_repr.t * Tx_rollup_level_repr.t) option;
     }
   | Withdraw_invalid_path
+  | Reject_final_level
 
 let () =
   let open Data_encoding in
@@ -424,4 +425,13 @@ let () =
     ~description:"The proof submitted for a withdrawal is invalid"
     empty
     (function Withdraw_invalid_path -> Some () | _ -> None)
-    (fun () -> Withdraw_invalid_path)
+    (fun () -> Withdraw_invalid_path) ;
+  (* Reject_final_level *)
+  register_error_kind
+    `Branch
+    ~id:"tx_rollup_reject_final_level"
+    ~title:"Attempt to reject a level that is already final"
+    ~description:"This rejection tries to reject a level that is already final"
+    unit
+    (function Reject_final_level -> Some () | _ -> None)
+    (fun () -> Reject_final_level)

@@ -169,6 +169,8 @@ val record_commitment_deletion :
 val finalized_commitments_range :
   t -> (Tx_rollup_level_repr.t * Tx_rollup_level_repr.t) option tzresult
 
+val can_be_rejected : t -> Tx_rollup_level_repr.t -> bool
+
 module Internal_for_tests : sig
   (** [make] returns a state for tests *)
   val make :
