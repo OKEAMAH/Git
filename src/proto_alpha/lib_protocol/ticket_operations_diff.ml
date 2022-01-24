@@ -252,6 +252,7 @@ let tickets_of_operation ctxt
   | Tx_rollup_submit_batch _ -> return (None, ctxt)
   | Tx_rollup_commit _ -> return (None, ctxt)
   | Tx_rollup_return_bond _ -> return (None, ctxt)
+  | Tx_rollup_rejection _ -> return (None, ctxt)
   | Sc_rollup_originate {kind = _; boot_sector = _} -> return (None, ctxt)
   | Sc_rollup_add_messages {rollup = _; messages = _} -> return (None, ctxt)
 

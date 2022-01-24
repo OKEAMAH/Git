@@ -1194,6 +1194,55 @@ let test_commitment_finality_limit () =
   ignore i ;
   return ()
 
+(** [test_rejection] tests that rejection works. *)
+let test_rejection () =
+  context_init 1 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  (* Transactions in block 2 *)
+  make_transactions_in tx_rollup contract1 [2] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{root = Bytes.empty}]
+  in
+  (* "Random" numbers *)
+  let nonce = 1000L in
+  let nonce2 = 1001L in
+  make_commitment_for_batch i (raw_level 2l) tx_rollup >>=? fun commitment ->
+  let commitment = {commitment with batches} in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let hash = Tx_rollup_commitments.Commitment.hash commitment in
+  (* Correct rejection *)
+  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Right commitment *)
+  make_commitment_for_batch i (raw_level 2l) tx_rollup
+  >>=? fun correct_commitment ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup correct_commitment
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let hash = Tx_rollup_commitments.Commitment.hash correct_commitment in
+  Op.tx_rollup_reject (I i) contract1 tx_rollup (raw_level 2l) hash 0 nonce2
+  >>=? fun op ->
+  (* Wrong rejection *)
+  Incremental.add_operation i op ~expect_failure:(function
+      | Environment.Ecoproto_error (Tx_rollup_rejection.Wrong_rejection as e)
+        :: _ ->
+          Assert.test_error_encodings e ;
+          return_unit
+      | _ -> failwith "Should not reject correct commitments")
+  >>=? fun i ->
+  ignore i ;
+  return ()
+
 let test_full_inbox () =
   let constants = {constants with tx_rollup_max_unfinalized_levels = 15} in
   originate_with_constants constants 1 >>=? fun (b, tx_rollup, contracts) ->
@@ -1261,6 +1310,7 @@ let tests =
       `Quick
       test_commitment_acceptance;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
+    Tztest.tztest "Test rejection" `Quick test_rejection;
     Tztest.tztest "Test full inbox" `Quick test_full_inbox;
     Tztest.tztest
       "Test that commitment finalizes"

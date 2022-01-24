@@ -1266,6 +1266,32 @@ let apply_manager_operation_content :
           }
       in
       return (ctxt, result, [])
+  | Tx_rollup_rejection {rollup; level; hash; batch_index; nonce = _} ->
+      Tx_rollup_commitments.get_commitment_roots
+        ctxt
+        rollup
+        level
+        hash
+        batch_index
+      >>=? fun (ctxt, (before_batch, after_batch)) ->
+      (* TODO/TORU replay just this one batch -- for now, we'll assume that
+         rejection succeeds if before_root = after_root*)
+      fail_unless
+        (Tx_rollup_commitments.Commitment.batch_commitment_equal
+           before_batch
+           after_batch)
+        Tx_rollup_rejection.Wrong_rejection
+      >>=? fun () ->
+      Tx_rollup_commitments.reject_commitment ctxt rollup level hash
+      >>=? fun ctxt ->
+      let result =
+        Tx_rollup_rejection_result
+          {
+            consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+            balance_updates = [];
+          }
+      in
+      return (ctxt, result, [])
   | Sc_rollup_originate {kind; boot_sector} ->
       Sc_rollup_operations.originate ctxt ~kind ~boot_sector
       >>=? fun ({address; size}, ctxt) ->
@@ -1422,6 +1448,8 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
       >|=? fun () -> ctxt
   | Tx_rollup_return_bond _ ->
       assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
+  | Tx_rollup_rejection _ ->
+      assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
       assert_sc_rollup_feature_enabled ctxt >|=? fun () -> ctxt)
   >>=? fun ctxt ->
@@ -1539,6 +1567,8 @@ let burn_storage_fees :
       return (ctxt, storage_limit, smopr)
   | Tx_rollup_return_bond_result payload ->
       return (ctxt, storage_limit, Tx_rollup_return_bond_result payload)
+  | Tx_rollup_rejection_result payload ->
+      return (ctxt, storage_limit, Tx_rollup_rejection_result payload)
   | Sc_rollup_originate_result payload ->
       let payer = `Contract payer in
       Fees.burn_sc_rollup_origination_fees

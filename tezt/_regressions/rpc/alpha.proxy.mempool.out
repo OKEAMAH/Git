@@ -2034,6 +2034,66 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                             "additionalProperties": false
                           },
                           {
+                            "title": "Tx_rollup_rejection",
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "tx_rollup_rejection"
+                                ]
+                              },
+                              "source": {
+                                "$ref": "#/definitions/Signature.Public_key_hash"
+                              },
+                              "fee": {
+                                "$ref": "#/definitions/alpha.mutez"
+                              },
+                              "counter": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "gas_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "storage_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "rollup": {
+                                "$ref": "#/definitions/alpha.tx_rollup_id"
+                              },
+                              "level": {
+                                "type": "integer",
+                                "minimum": -2147483648,
+                                "maximum": 2147483647
+                              },
+                              "hash": {
+                                "$ref": "#/definitions/Commitment_hash"
+                              },
+                              "batch_index": {
+                                "type": "integer",
+                                "minimum": -1073741824,
+                                "maximum": 1073741823
+                              },
+                              "nonce": {
+                                "$ref": "#/definitions/int64"
+                              }
+                            },
+                            "required": [
+                              "nonce",
+                              "batch_index",
+                              "hash",
+                              "level",
+                              "rollup",
+                              "storage_limit",
+                              "gas_limit",
+                              "counter",
+                              "fee",
+                              "source",
+                              "kind"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
                             "title": "Sc_rollup_originate",
                             "type": "object",
                             "properties": {
@@ -2333,6 +2393,11 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                           "type": "string",
                           "pattern": "^([a-zA-Z0-9][a-zA-Z0-9])*$"
                         }
+                      },
+                      "int64": {
+                        "title": "64 bit integers",
+                        "description": "Decimal representation of 64 bit integers",
+                        "type": "string"
                       },
                       "micheline.alpha.michelson_v1.expression": {
                         "oneOf": [
@@ -5149,6 +5214,139 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                               "name": "Tx_rollup_return_bond"
                             },
                             {
+                              "tag": 154,
+                              "fields": [
+                                {
+                                  "name": "Tag",
+                                  "layout": {
+                                    "size": "Uint8",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 1,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "source",
+                                  "layout": {
+                                    "name": "public_key_hash",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "size": 21,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "fee",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "counter",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "gas_limit",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "storage_limit",
+                                  "layout": {
+                                    "name": "N.t",
+                                    "kind": "Ref"
+                                  },
+                                  "data_kind": {
+                                    "kind": "Dynamic"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "rollup",
+                                  "layout": {
+                                    "kind": "Bytes"
+                                  },
+                                  "data_kind": {
+                                    "size": 20,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "level",
+                                  "layout": {
+                                    "size": "Int32",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 4,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "hash",
+                                  "layout": {
+                                    "kind": "Bytes"
+                                  },
+                                  "data_kind": {
+                                    "size": 32,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "batch_index",
+                                  "layout": {
+                                    "min": -1073741824,
+                                    "max": 1073741823,
+                                    "kind": "RangedInt"
+                                  },
+                                  "data_kind": {
+                                    "size": 4,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                },
+                                {
+                                  "name": "nonce",
+                                  "layout": {
+                                    "size": "Int64",
+                                    "kind": "Int"
+                                  },
+                                  "data_kind": {
+                                    "size": 8,
+                                    "kind": "Float"
+                                  },
+                                  "kind": "named"
+                                }
+                              ],
+                              "name": "Tx_rollup_rejection"
+                            },
+                            {
                               "tag": 200,
                               "fields": [
                                 {
@@ -7416,6 +7614,66 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                             "additionalProperties": false
                           },
                           {
+                            "title": "Tx_rollup_rejection",
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "tx_rollup_rejection"
+                                ]
+                              },
+                              "source": {
+                                "$ref": "#/definitions/Signature.Public_key_hash"
+                              },
+                              "fee": {
+                                "$ref": "#/definitions/alpha.mutez"
+                              },
+                              "counter": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "gas_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "storage_limit": {
+                                "$ref": "#/definitions/positive_bignum"
+                              },
+                              "rollup": {
+                                "$ref": "#/definitions/alpha.tx_rollup_id"
+                              },
+                              "level": {
+                                "type": "integer",
+                                "minimum": -2147483648,
+                                "maximum": 2147483647
+                              },
+                              "hash": {
+                                "$ref": "#/definitions/Commitment_hash"
+                              },
+                              "batch_index": {
+                                "type": "integer",
+                                "minimum": -1073741824,
+                                "maximum": 1073741823
+                              },
+                              "nonce": {
+                                "$ref": "#/definitions/int64"
+                              }
+                            },
+                            "required": [
+                              "nonce",
+                              "batch_index",
+                              "hash",
+                              "level",
+                              "rollup",
+                              "storage_limit",
+                              "gas_limit",
+                              "counter",
+                              "fee",
+                              "source",
+                              "kind"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
                             "title": "Sc_rollup_originate",
                             "type": "object",
                             "properties": {
@@ -7715,6 +7973,11 @@ curl -s 'http://localhost:[PORT]/describe/chains/main/mempool?recurse=yes'
                           "type": "string",
                           "pattern": "^([a-zA-Z0-9][a-zA-Z0-9])*$"
                         }
+                      },
+                      "int64": {
+                        "title": "64 bit integers",
+                        "description": "Decimal representation of 64 bit integers",
+                        "type": "string"
                       },
                       "micheline.alpha.michelson_v1.expression": {
                         "oneOf": [

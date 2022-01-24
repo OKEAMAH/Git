@@ -254,3 +254,19 @@ val tx_rollup_return_bond :
   Contract.t ->
   Tx_rollup.t ->
   Operation.packed tzresult Lwt.t
+
+(** [tx_rollup_reject ctxt source tx_rollup level hash batch_index nonce]
+    rejects a commitment. *)
+val tx_rollup_reject :
+  ?counter:counter ->
+  ?fee:Tez.t ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:counter ->
+  Context.t ->
+  Contract.t ->
+  Tx_rollup.t ->
+  Raw_level.t ->
+  Tx_rollup_commitments.Commitment_hash.t ->
+  int ->
+  int64 ->
+  Operation.packed tzresult Lwt.t
