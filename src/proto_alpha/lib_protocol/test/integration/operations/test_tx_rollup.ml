@@ -1315,6 +1315,90 @@ let test_rejection_propagation () =
   ignore i ;
   return ()
 
+(** [test_commitment_acceptance] tests a case where there are multiple
+   nonrejected commitments at finalization time.
+- A: Contract 1 commits to 2 (this will be accepted)
+- B: Contract 2 commits to 2 (this will removed but not rejected)
+- C: Contract 2 commits to 3 (atop A).
+- D: Contract 3 commits to 3 (atop B, to be removed)
+*)
+let test_commitment_acceptance () =
+  context_init 4 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  let contract2 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
+  in
+  let contract3 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 2
+  in
+  let contract4 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 3
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  make_transactions_in tx_rollup contract1 [2; 3] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let batches1 : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{effects = []; root = Bytes.make 20 '0'}]
+  in
+  let batches2 : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{effects = []; root = Bytes.make 20 '1'}]
+  in
+  let batches3 : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [{effects = []; root = Bytes.make 20 '2'}]
+  in
+  let commitment_a : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches = batches1; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment_a >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let commitment_b : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches = batches2; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_b >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_a in
+  let commitment_c : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches = batches1; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment_c >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment_b in
+  let commitment_d : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches = batches2; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract3 tx_rollup commitment_d >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let cur = Incremental.level i in
+  bake_until i (Int32.add cur 30l) >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  let contents = "batch" in
+  Op.tx_rollup_submit_batch (B b) contract1 tx_rollup contents >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let pred = commitment_c in
+  let predecessor = Tx_rollup_commitments.Commitment.hash pred in
+  let level = Int32.add (Incremental.level i) 1l in
+  let commitment : Tx_rollup_commitments.Commitment.t =
+    {
+      level = raw_level level;
+      batches = batches3;
+      predecessor = Some predecessor;
+    }
+  in
+  Op.tx_rollup_commit (I i) contract4 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let ctxt = Incremental.alpha_ctxt i in
+  check_bond ctxt tx_rollup contract1 0 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract3 0 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract4 1 1 >>=? fun () ->
+  ignore ctxt ;
+  ignore i ;
+  return ()
+
 (** [test_bond_finalization] tests that commitment operations
     in fact finalize bonds. *)
 let test_bond_finalization () =
@@ -1946,6 +2030,10 @@ let tests =
       `Quick
       test_commitment_retire_simple;
     Tztest.tztest "Test commitment rejection" `Quick test_rejection_propagation;
+    Tztest.tztest
+      "Test multiple nonrejected commitment"
+      `Quick
+      test_commitment_acceptance;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
     Tztest.tztest "Test rejection" `Quick test_rejection;
     Tztest.tztest "Test rejection reward" `Quick test_rejection_reward;
