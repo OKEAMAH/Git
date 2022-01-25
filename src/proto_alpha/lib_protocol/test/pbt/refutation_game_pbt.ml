@@ -75,6 +75,8 @@ end = struct
 
   type history = {states : int Tick_repr.Map.t; tick : tick}
 
+  let encoding = Data_encoding.int16
+
   let remember history tick state =
     {history with states = Tick_repr.Map.add tick state history.states}
 
@@ -143,9 +145,16 @@ end = struct
   let equal_state = ( = )
 
   type history = {
-    states : (string * int list) Tick_repr.Map.t;
+    states : [`Verifiable | `Full] state Tick_repr.Map.t;
     tick : Tick_repr.t;
   }
+
+  let encoding =
+    let open Data_encoding in
+    conv
+      (fun (value, list) -> (value, list))
+      (fun (value, list) -> (value, list))
+      (tup2 string (list int16))
 
   let remember history tick state =
     {history with states = Tick_repr.Map.add tick state history.states}
@@ -670,6 +679,14 @@ struct
     let stack = empty_stack ~taint in
     let cont = kcons ~taint Code.program (khalt ~taint (Cell (Int, Unit))) in
     merkelize_state (State (cell ~taint stack cont))
+
+  (** The encoding is not really the main point here, I made arathe silly one (that only produces the initial state) 
+    to move forward. *)
+  let encoding : _ state Data_encoding.t =
+    Data_encoding.conv
+      (fun x -> match x with State _ -> 3)
+      (fun _ -> compress initial_state)
+      Data_encoding.int16
 
   let random_state _ _ =
     let taint = Taint.transparent in
@@ -1357,7 +1374,7 @@ let () =
       ( "CountingPVM",
         qcheck_wrap
           [
-            testing_mich perfect_perfect "perfect-perfect";
+            testing_count perfect_perfect "perfect-perfect";
             testing_count random_random "random-random";
             testing_count random_perfect "random-perfect";
             testing_count perfect_random "perfect-random";
@@ -1367,7 +1384,7 @@ let () =
       ( "Fact20PVM",
         qcheck_wrap
           [
-            testing perfect_perfect "perfect-perfect";
+            testing_mich perfect_perfect "perfect-perfect";
             testing_mich random_random "random-random";
             testing_mich random_perfect "random-perfect";
             testing_mich perfect_random "perfect-random";

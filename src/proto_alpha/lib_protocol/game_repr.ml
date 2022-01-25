@@ -66,6 +66,8 @@ module type PVM = sig
   (** We want to navigate into the history using a trace counter. *)
   type tick = Tick_repr.t
 
+  val encoding : [`Compressed] state Data_encoding.t
+
   val remember : history -> tick -> [`Verifiable | `Full] state -> history
 
   exception TickNotFound of tick
@@ -173,7 +175,9 @@ module type Game = sig
 
     *)
 
-  val string_of_player : player -> string
+  val pp_of_player : Format.formatter -> player -> unit
+
+  val encoding : t Data_encoding.t
 
   (**
 
@@ -205,7 +209,7 @@ module type Game = sig
   *)
   type outcome = {winner : player option; reason : reason}
 
-  val string_of_outcome : outcome -> string
+  val pp_of_outcome : Format.formatter -> outcome -> unit
 
   (**
 
@@ -285,9 +289,19 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
 
   type player = Committer | Refuter
 
-  let string_of_player = function
+  let pp_of_player ppf player = 
+    Format.fprintf ppf (match player with 
     | Committer -> "committer"
-    | Refuter -> "refuter"
+    | Refuter -> "refuter")
+  let player_encoding = 
+    let open Data_encoding in
+    union ~tag_size:`Uint8
+    [ case ~title:"Commiter" (Tag 0) string
+        (function Committer -> Some "committer" | _ -> None)
+        (fun _ -> Committer ) ;
+      case ~title:"Refuter" (Tag 1) string
+        (function Refuter -> Some "refuter" | _ -> None)
+        (fun _ -> Refuter) ]
 
   let opponent = function Committer -> Refuter | Refuter -> Committer
 
@@ -325,6 +339,60 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
 
   and 'k dissection = 'k section list
   (*TODO perhaps this should be a binary tree based on start_at (which ar increasing) rather than a list. It would make find faster. *)
+  let section_encoding =
+    let open Data_encoding in
+  conv
+    (fun {section_start_state; section_start_at; section_stop_state; section_stop_at} ->
+      (section_start_state, section_start_at, section_stop_state, section_stop_at))
+    (fun (section_start_state, section_start_at, section_stop_state, section_stop_at) ->
+      {section_start_state; section_start_at; section_stop_state; section_stop_at})
+    (obj4
+       (req "section_start_state" PVM.encoding)
+       (req "section_start_at" Tick_repr.encoding)
+       (req "section_stop_state" PVM.encoding)
+       (req "section_stop_at" Tick_repr.encoding))
+  let dissection_encoding = Data_encoding.(option (list section_encoding))
+
+  let encoding =
+    let open Data_encoding in
+  conv
+    (fun {turn;
+    start_state;
+    start_at;
+    player_stop_state;
+    opponent_stop_state;
+    stop_at;
+    current_dissection} ->
+      (turn,
+      start_state,
+      start_at,
+      player_stop_state,
+      opponent_stop_state,
+      stop_at,
+      current_dissection))
+    (fun (turn,
+    start_state,
+    start_at,
+    player_stop_state,
+    opponent_stop_state,
+    stop_at,
+    current_dissection) ->
+      {turn;
+    start_state;
+    start_at;
+    player_stop_state;
+    opponent_stop_state;
+    stop_at;
+    current_dissection})
+    (obj7
+    (req "turn" player_encoding)
+       (req "start_state" PVM.encoding)
+       (req "start_at" Tick_repr.encoding)
+       (req "player_stop_state" PVM.encoding)
+       (req "oponent_stop_state" PVM.encoding)
+       (req "stop_at" Tick_repr.encoding)
+       (req "current_dissection" dissection_encoding)
+       )
 
   type conflict_search_step =
     | Refine of {
@@ -349,19 +417,24 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
 
   type reason = InvalidMove | ConflictResolved
 
-  let string_of_reason = function
-    | InvalidMove -> "invalid move"
-    | ConflictResolved -> "conflict resolved"
+  let pp_of_reason ppf reason = 
+  Format.fprintf ppf
+      "%s"
+      
+      (match reason with
+
+    | InvalidMove ->  "invalid move"
+    | ConflictResolved ->"conflict resolved")
 
   type outcome = {winner : player option; reason : reason}
-
-  let string_of_outcome {winner; reason} =
-    Format.sprintf
-      "%s because of %s"
-      (match winner with
-      | None -> "no winner"
-      | Some player -> string_of_player player ^ " wins")
-      (string_of_reason reason)
+  let pp_of_winner winner =
+    Format.pp_print_option ~none:(fun ppf () -> Format.pp_print_text ppf "no winner")
+        pp_of_player  winner 
+  let pp_of_outcome ppf {winner; reason} =
+    Format.fprintf ppf
+      "%a because of %a"
+      pp_of_winner winner
+      pp_of_reason reason
 
   type state = Over of outcome | Ongoing of t
 
@@ -637,8 +710,6 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
     in
     let outcome =
       let rec loop game move =
-        (* Hack.printf "- %s\n%!" (string_of_game game);
-           Hack.printf "  => %s\n%!" (string_of_move move); *)
         match play game move with
         | Over outcome -> outcome
         | Ongoing game ->
