@@ -38,6 +38,13 @@ exception TickNotFound of Tick_repr.t
 
 open Lib_test.Qcheck_helpers
 
+module type TestGame = sig
+  module Game : Game
+
+  val random_state :
+    int -> [`Compressed] Game.PVM.state -> [`Verifiable] Game.PVM.state
+end
+
 (**
 Helpers
 *)
@@ -59,8 +66,6 @@ end = struct
   let compress x = x
 
   let initial_state = 0
-
-  let random_state _ _ = Random.bits ()
 
   let pp ppf = Format.fprintf ppf "%d"
 
@@ -107,6 +112,15 @@ end = struct
   let empty_history = {states = Tick_repr.Map.empty; tick = Tick_repr.make 0}
 end
 
+module TestCountingGame (P : sig
+  val target : int
+end) =
+struct
+  module Game = MakeGame (MakeCountingPVM (P))
+
+  let random_state _ _ = Random.bits ()
+end
+
 let operation state number =
   Digest.bytes @@ Bytes.of_string @@ state ^ string_of_int number
 
@@ -122,11 +136,6 @@ end = struct
   let compress x = x
 
   let initial_state = ("hello", P.initial_prog)
-
-  let random_state length (_, program) =
-    let remaining_program = TzList.drop_n length program in
-    let stop_state = (operation "" (Random.bits ()), remaining_program) in
-    stop_state
 
   let pp ppf (st, li) =
     Format.fprintf ppf "%s@ %a" st (Format.pp_print_list Format.pp_print_int) li
@@ -175,6 +184,17 @@ end = struct
   let empty_history = {states = Tick_repr.Map.empty; tick = Tick_repr.make 0}
 
   type tick = Tick_repr.t
+end
+
+module RandomPVMGame (P : sig
+  val initial_prog : int list
+end) : TestGame = struct
+  module Game = MakeGame (RandomPVM (P))
+
+  let random_state length (_, program) =
+    let remaining_program = TzList.drop_n length program in
+    let stop_state = (operation "" (Random.bits ()), remaining_program) in
+    stop_state
 end
 
 module MerkelizedMichelson = struct
@@ -889,8 +909,22 @@ module Fact20 = struct
     @@ drop ~taint Int (halt ~taint (Cell (Int, Unit)))
 end
 
-module Strategies (G : Game) = struct
+module TestMPVM (Code : sig
+  val program : MerkelizedMichelson.program
+end) : TestGame = struct
+  module M = MPVM (Code)
+  module Game = MakeGame (M)
+  open MerkelizedMichelson
+
+  let random_state _ _ =
+    let taint = Taint.transparent in
+    let s = cell ~taint (empty_stack ~taint) (khalt ~taint Unit) in
+    M.compress (M.merkelize_state (M.State s))
+end
+
+module Strategies (G : TestGame) = struct
   open G
+  open Game
   open PVM
 
   let random_tick ?(from = 0) () = Tick_repr.make (from + Random.int 31)
@@ -907,9 +941,9 @@ module Strategies (G : Game) = struct
        section_stop_at = Tick_repr.make stop_at;
        section_stop_state = compress @@ random_state length start_state;
      }
-      : _ G.section)
+      : _ section)
 
-  let random_dissection (gsection : [`Compressed] G.section) =
+  let random_dissection (gsection : [`Compressed] section) =
     let rec aux dissection start_at start_state =
       if start_at = gsection.section_stop_at then dissection
       else
@@ -967,16 +1001,16 @@ module Strategies (G : Game) = struct
     let conflict_search_step =
       match next_dissection with
       | None ->
-          G.Conclude
+          Conclude
             {
               start_state = section.section_start_state;
               stop_state = compress section.section_stop_state;
             }
       | Some next_dissection ->
-          G.Refine
+          Refine
             {stop_state = compress section.section_stop_state; next_dissection}
     in
-    G.ConflictInside {choice = compress_section section; conflict_search_step}
+    ConflictInside {choice = compress_section section; conflict_search_step}
 
   type parameters = {
     branching : int;
@@ -988,14 +1022,14 @@ module Strategies (G : Game) = struct
 
   type strategy = Random | MachineDirected of parameters * checkpoint
 
-  let conflicting_section (history : PVM.history) (section : _ G.section) =
+  let conflicting_section (history : PVM.history) (section : _ section) =
     not
       (equal_state
          section.section_stop_state
          (state_at history section.section_stop_at))
 
   (** corrected, optimised and inlined version of the split (only one pass of the list rather than 3)*)
-  let dissection_from_section history branching (section : _ G.section) =
+  let dissection_from_section history branching (section : _ section) =
     if Tick_repr.next section.section_start_at = section.section_stop_at then
       None
     else
@@ -1018,18 +1052,18 @@ module Strategies (G : Game) = struct
                section_stop_at;
                section_stop_state = PVM.state_at history section_stop_at;
              }
-              : _ G.section))
+              : _ section))
       in
       Some dissection
 
-  let compress_section (section : _ G.section) : [`Compressed] G.section =
+  let compress_section (section : _ section) : [`Compressed] section =
     {
       section with
       section_start_state = PVM.compress section.section_start_state;
       section_stop_state = PVM.compress section.section_stop_state;
     }
 
-  let remember_section history (section : [`Verifiable | `Full] G.section) =
+  let remember_section history (section : [`Verifiable | `Full] section) =
     let history =
       PVM.remember history section.section_start_at section.section_start_state
     in
@@ -1049,7 +1083,7 @@ module Strategies (G : Game) = struct
             state_at history (Tick_repr.next section.section_start_at)
           in
           let stop_state = PVM.(compress stop_state) in
-          ( G.Conclude
+          ( Conclude
               {
                 start_state =
                   PVM.(verifiable_state_at history section.section_start_at);
@@ -1064,9 +1098,9 @@ module Strategies (G : Game) = struct
             List.fold_left remember_section empty_history next_dissection
           in
           let next_dissection = List.map compress_section next_dissection in
-          (G.Refine {stop_state; next_dissection}, history)
+          (Refine {stop_state; next_dissection}, history)
     in
-    (G.ConflictInside {choice = section; conflict_search_step}, history)
+    (ConflictInside {choice = section; conflict_search_step}, history)
 
   let generate_failures failing_level (section_start_at : Tick_repr.t)
       (section_stop_at : Tick_repr.t) max_failure =
@@ -1083,8 +1117,8 @@ module Strategies (G : Game) = struct
 
   let machine_directed_committer {branching; failing_level; max_failure} pred =
     let history = ref PVM.empty_history in
-    let initial ((section_start_at : Tick_repr.t), section_start_state) :
-        G.commit =
+    let initial ((section_start_at : Tick_repr.t), section_start_state) : commit
+        =
       let section_stop_at =
         Tick_repr.make ((section_start_at :> int) + Random.int 2)
       in
@@ -1116,12 +1150,12 @@ module Strategies (G : Game) = struct
       history := history' ;
       move
     in
-    ({initial; next_move} : _ G.client)
+    ({initial; next_move} : _ client)
 
   let machine_directed_refuter {branching; failing_level; max_failure} =
     let history = ref PVM.empty_history in
-    let initial (section_start_state, Commit section) : G.refutation =
-      let ({section_start_at; section_stop_at; _} : _ G.section) = section in
+    let initial (section_start_state, Commit section) : refutation =
+      let ({section_start_at; section_stop_at; _} : _ section) = section in
       let failures =
         generate_failures
           failing_level
@@ -1145,14 +1179,14 @@ module Strategies (G : Game) = struct
       let conflict_search_step =
         match next_dissection with
         | None ->
-            G.Conclude
+            Conclude
               {
                 start_state = verifiable_state_at !history section_start_at;
                 stop_state;
               }
         | Some next_dissection ->
             let next_dissection = List.map compress_section next_dissection in
-            G.Refine {stop_state; next_dissection}
+            Refine {stop_state; next_dissection}
       in
       RefuteByConflict conflict_search_step
     in
@@ -1161,9 +1195,9 @@ module Strategies (G : Game) = struct
       history := history' ;
       move
     in
-    ({initial; next_move} : _ G.client)
+    ({initial; next_move} : _ client)
 
-  let committer_from_strategy : strategy -> _ G.client = function
+  let committer_from_strategy : strategy -> _ client = function
     | Random ->
         {
           initial =
@@ -1178,22 +1212,22 @@ module Strategies (G : Game) = struct
                   section_stop_at
               in
 
-              G.Commit section);
+              Commit section);
           next_move = random_decision;
         }
     | MachineDirected (parameters, checkpoint) ->
         machine_directed_committer parameters checkpoint
 
-  let refuter_from_strategy : strategy -> _ G.client = function
+  let refuter_from_strategy : strategy -> _ client = function
     | Random ->
         {
           initial =
-            (fun ((start_state : [`Verifiable | `Full] state), G.Commit section) ->
+            (fun ((start_state : [`Verifiable | `Full] state), Commit section) ->
               let conflict_search_step =
                 let next_dissection = random_dissection section in
                 match next_dissection with
                 | None ->
-                    G.Conclude
+                    Conclude
                       {
                         start_state;
                         stop_state =
@@ -1201,13 +1235,13 @@ module Strategies (G : Game) = struct
                       }
                 | Some next_dissection ->
                     let section = List.last section next_dissection in
-                    G.Refine
+                    Refine
                       {
                         stop_state = compress section.section_stop_state;
                         next_dissection;
                       }
               in
-              G.RefuteByConflict conflict_search_step);
+              RefuteByConflict conflict_search_step);
           next_move = random_decision;
         }
     | MachineDirected (parameters, _) -> machine_directed_refuter parameters
@@ -1217,7 +1251,7 @@ module Strategies (G : Game) = struct
     let committer = committer_from_strategy committer_strategy in
     let refuter = refuter_from_strategy refuter_strategy in
     let outcome =
-      G.run ~start_at:(Tick_repr.make 0) ~start_state ~committer ~refuter
+      run ~start_at:(Tick_repr.make 0) ~start_state ~committer ~refuter
     in
     expectation outcome
 
@@ -1243,70 +1277,68 @@ module Strategies (G : Game) = struct
       ({failing_level = 1; branching = 2; max_failure}, fun _ -> assert false)
 
   let commiter_wins = function
-    | {G.winner = Some Committer; _} -> true
+    | {winner = Some Committer; _} -> true
     | _ -> false
 
-  let refuter_wins = function
-    | {G.winner = Some Refuter; _} -> true
-    | _ -> false
+  let refuter_wins = function {winner = Some Refuter; _} -> true | _ -> false
 
   let all_win (_ : outcome) = true
 end
 
-let perfect_perfect (module M : PVM) _max_failure =
-  let module S = Strategies (MakeGame (M)) in
-  S.test_strategies S.perfect_committer S.perfect_refuter S.commiter_wins
+let perfect_perfect (module P : TestGame) _max_failure =
+  let module R = Strategies (P) in
+  R.test_strategies R.perfect_committer R.perfect_refuter R.commiter_wins
 
-let random_random (module M : PVM) _max_failure =
-  let module S = Strategies (MakeGame (M)) in
+let random_random (module P : TestGame) _max_failure =
+  let module S = Strategies (P) in
   S.test_strategies Random Random S.all_win
 
-let random_perfect (module M : PVM) _max_failure =
-  let module S = Strategies (MakeGame (M)) in
+let random_perfect (module P : TestGame) _max_failure =
+  let module S = Strategies (P) in
   S.test_strategies S.perfect_committer Random S.commiter_wins
 
-let perfect_random (module M : PVM) _max_failure =
-  let module S = Strategies (MakeGame (M)) in
+let perfect_random (module P : TestGame) _max_failure =
+  let module S = Strategies (P) in
   S.test_strategies Random S.perfect_refuter S.refuter_wins
 
-let failing_perfect (module M : PVM) max_failure =
-  let module S = Strategies (MakeGame (M)) in
+let failing_perfect (module P : TestGame) max_failure =
+  let module S = Strategies (P) in
   S.test_strategies
     (S.failing_committer max_failure)
     S.perfect_refuter
     S.refuter_wins
 
-let perfect_failing (module M : PVM) max_failure =
-  let module S = Strategies (MakeGame (M)) in
+let perfect_failing (module P : TestGame) max_failure =
+  let module S = Strategies (P) in
   S.test_strategies
     S.perfect_committer
     (S.failing_refuter max_failure)
     S.commiter_wins
 
-let testing (f : (module PVM) -> int option -> bool) name =
+let testing (f : (module TestGame) -> int option -> bool) name =
   QCheck.Test.make
     ~name
     (QCheck.list_of_size QCheck.Gen.small_int (QCheck.int_range 0 100))
     (fun initial_prog ->
       QCheck.assume (initial_prog <> []) ;
       f
-        (module RandomPVM (struct
+        (module RandomPVMGame (struct
           let initial_prog = initial_prog
         end))
         (Some (List.length initial_prog)))
 
-let testing_count (f : (module PVM) -> int option -> bool) name =
+let testing_count (f : (module TestGame) -> int option -> bool) name =
   QCheck.Test.make ~name QCheck.small_int (fun target ->
       QCheck.assume (target > 0) ;
       f
-        (module MakeCountingPVM (struct
+        (module TestCountingGame (struct
           let target = target
         end))
         (Some target))
 
-let testing_mich (f : (module PVM) -> int option -> bool) name =
+let testing_mich (f : (module TestGame) -> int option -> bool) name =
   QCheck.Test.make ~name QCheck.small_int (fun _ ->
-      f (module MPVM (Fact20)) (Some 20))
+      f (module TestMPVM (Fact20)) (Some 20))
 
 let () =
   Alcotest.run
@@ -1325,7 +1357,7 @@ let () =
       ( "CountingPVM",
         qcheck_wrap
           [
-            testing perfect_perfect "perfect-perfect";
+            testing_mich perfect_perfect "perfect-perfect";
             testing_count random_random "random-random";
             testing_count random_perfect "random-perfect";
             testing_count perfect_random "perfect-random";

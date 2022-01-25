@@ -54,8 +54,6 @@ module type PVM = sig
   (** The following three functions are for testing purposes. *)
   val initial_state : [`Verifiable | `Full] state
 
-  val random_state : int -> [`Compressed] state -> [`Verifiable] state
-
   (** [equal_state s1 s2] is [true] iff [concrete_of_state s1]
       is equal to [concrete_of_state s2]. *)
   val equal_state : _ state -> _ state -> bool

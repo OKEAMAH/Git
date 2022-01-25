@@ -1,16 +1,17 @@
-  type t = int
-  let encoding = Data_encoding.int16
-  let pp ppf tick = Format.fprintf ppf "%d" tick
+type t = int
 
-  let make x =
-    assert (Compare.Int.(x >= 0)) ;
-    x
+let encoding = Data_encoding.int16
 
-  let next = succ
+let pp ppf tick = Format.fprintf ppf "%d" tick
 
-  let distance tick1 tick2 = abs (tick1 - tick2)
+let make x =
+  assert (Compare.Int.(x >= 0)) ;
+  x
 
-  let ( = ) = Compare.Int.( = )
+let next = succ
 
-  module Map = Map.Make (Compare.Int)
+let distance tick1 tick2 = abs (tick1 - tick2)
 
+let ( = ) = Compare.Int.( = )
+
+module Map = Map.Make (Compare.Int)
