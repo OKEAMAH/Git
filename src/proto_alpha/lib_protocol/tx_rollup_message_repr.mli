@@ -74,3 +74,5 @@ val pp_hash : Format.formatter -> hash -> unit
 
 (** [hash msg] computes the hash of [msg] to be stored in the inbox. *)
 val hash : t -> hash
+
+include Compare.S with type t := t

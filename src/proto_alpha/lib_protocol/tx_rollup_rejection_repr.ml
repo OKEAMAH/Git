@@ -83,6 +83,40 @@ let encoding =
        (req "batch_index" int31)
        (req "batch" Tx_rollup_message_repr.encoding))
 
+include Compare.Make (struct
+  type nonrec t = t
+
+  let compare
+      {
+        rollup = rollup1;
+        level = level1;
+        hash = hash1;
+        batch_index = batch_index1;
+        batch = batch1;
+      }
+      {
+        rollup = rollup2;
+        level = level2;
+        hash = hash2;
+        batch_index = batch_index2;
+        batch = batch2;
+      } =
+    match Tx_rollup_repr.compare rollup1 rollup2 with
+    | 0 -> (
+        match Raw_level_repr.compare level1 level2 with
+        | 0 -> (
+            match
+              Tx_rollup_commitments_repr.Commitment_hash.compare hash1 hash2
+            with
+            | 0 -> (
+                match Compare.Int.compare batch_index1 batch_index2 with
+                | 0 -> Tx_rollup_message_repr.compare batch1 batch2
+                | c -> c)
+            | c -> c)
+        | c -> c)
+    | c -> c
+end)
+
 module Rejection_hash = struct
   let rejection_hash = "\001\111\092\025" (* rej1(37) *)
 

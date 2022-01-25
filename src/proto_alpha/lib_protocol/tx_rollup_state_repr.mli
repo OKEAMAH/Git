@@ -87,3 +87,5 @@ module Internal_for_tests : sig
       wherein it costs [fees] per byte to add a message to an inbox. *)
   val initial_state_with_fees_per_byte : Tez_repr.t -> t
 end
+
+include Compare.S with type t := t

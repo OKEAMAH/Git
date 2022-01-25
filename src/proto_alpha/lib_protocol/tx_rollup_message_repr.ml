@@ -128,3 +128,25 @@ let hash_encoding = Message_hash.encoding
 
 let hash msg =
   Message_hash.hash_bytes [Data_encoding.Binary.to_bytes_exn encoding msg]
+
+include Compare.Make (struct
+  type nonrec t = t
+
+  let compare_deposit
+      {destination = destination1; ticket_hash = ticket_hash1; amount = amount1}
+      {destination = destination2; ticket_hash = ticket_hash2; amount = amount2}
+      =
+    match Tx_rollup_l2_address.Indexable.compare destination1 destination2 with
+    | 0 -> (
+        match Ticket_hash_repr.compare ticket_hash1 ticket_hash2 with
+        | 0 -> Compare.Int64.compare amount1 amount2
+        | c -> c)
+    | c -> c
+
+  let compare m1 m2 =
+    match (m1, m2) with
+    | (Batch s, Batch t) -> String.compare s t
+    | (Batch _, Deposit _) -> -1
+    | (Deposit _, Batch _) -> 1
+    | (Deposit d, Deposit e) -> compare_deposit d e
+end)

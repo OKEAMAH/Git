@@ -201,10 +201,6 @@ let print_deposit_arg tx_rollup account =
   Format.printf "%s\n@?" x ;
   x |> expression_from_string |> lazy_expr
 
-let assert_ok res = match res with Ok r -> r | Error _ -> assert false
-
-let raw_level level = assert_ok @@ Raw_level.of_int32 level
-
 let check_bond ctxt tx_rollup contract count rollup_count =
   wrap
     (Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup contract)
@@ -222,7 +218,68 @@ let rec bake_until i top =
     Incremental.finalize_block i >>=? fun b ->
     Incremental.begin_construction b >>=? fun i -> bake_until i top
 
+let encoding_roundtrip encoding eq value =
+  let encoded = Data_encoding.Binary.to_bytes_exn encoding value in
+  match Data_encoding.Binary.of_bytes encoding encoded with
+  | Ok decoded -> assert (eq decoded value)
+  | Error _ -> Stdlib.failwith "Decoding failed"
+
+let assert_ok res = match res with Ok r -> r | Error _ -> assert false
+
+let raw_level level = assert_ok @@ Raw_level.of_int32 level
+
 (** ---- TESTS -------------------------------------------------------------- *)
+let test_encoding () =
+  Context.init ~tx_rollup_enable:true 1 >>=? fun (b, contracts) ->
+  let contract =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_origination (I i) contract >>=? fun (op, tx_rollup) ->
+  Incremental.add_operation i op >>=? fun i ->
+  let state =
+    Tx_rollup_state.Internal_for_tests.initial_state_with_fees_per_byte
+      Tez.one_mutez
+  in
+  encoding_roundtrip Tx_rollup_state.encoding Tx_rollup_state.( = ) state ;
+  let commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches = []; predecessor = None}
+  in
+  encoding_roundtrip
+    Tx_rollup_commitments.Commitment.encoding
+    Tx_rollup_commitments.Commitment.( = )
+    commitment ;
+  let hash = Tx_rollup_commitments.Commitment.hash commitment in
+  encoding_roundtrip
+    Tx_rollup_commitments.Commitment_hash.encoding
+    Tx_rollup_commitments.Commitment_hash.( = )
+    hash ;
+
+  wrap (Lwt.return @@ Tx_rollup_message.make_batch (Incremental.alpha_ctxt i) "")
+  >>=? fun (batch, _) ->
+  let rejection : Tx_rollup_rejection.t =
+    {rollup = tx_rollup; level = raw_level 2l; hash; batch_index = 11; batch}
+  in
+  encoding_roundtrip
+    Tx_rollup_rejection.encoding
+    Tx_rollup_rejection.( = )
+    rejection ;
+
+  let rejection_hash =
+    Tx_rollup_rejection.generate_prerejection
+      ~nonce:100L
+      ~source:contract
+      ~rollup:tx_rollup
+      ~level:(raw_level 2l)
+      ~commitment_hash:hash
+      ~batch_index:0
+  in
+  encoding_roundtrip
+    Tx_rollup_rejection.Rejection_hash.encoding
+    Tx_rollup_rejection.Rejection_hash.( = )
+    rejection_hash ;
+  ignore i ;
+  return ()
 
 (** [test_origination] originates a transaction rollup and checks that
     it burns the expected quantity of xtz. *)
@@ -929,10 +986,6 @@ let make_transactions_in tx_rollup contract blocks b =
         Block.bake ~operations b >>=? fun b -> aux (cur + 1) blocks b
   in
   aux 2 blocks b
-
-let assert_ok res = match res with Ok r -> r | Error _ -> assert false
-
-let raw_level level = assert_ok @@ Raw_level.of_int32 level
 
 (** [test_commitment_predecessor] tests commitment predecessor edge cases  *)
 let test_commitment_predecessor () =
@@ -1899,4 +1952,5 @@ let tests =
     Tztest.tztest "Test full inbox" `Quick test_full_inbox;
     Tztest.tztest "Test prerejection gc" `Quick test_prerejection_gc;
     Tztest.tztest "Test withdraw" `Quick test_withdraw;
+    Tztest.tztest "Test encoding" `Quick test_encoding;
   ]

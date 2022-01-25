@@ -164,3 +164,43 @@ module Internal_for_tests = struct
       last_inbox_level = None;
     }
 end
+
+include Compare.Make (struct
+  type nonrec t = t
+
+  let compare
+      {
+        first_unfinalized_level = first_unfinalized_level1;
+        unfinalized_level_count = unfinalized_level_count1;
+        fees_per_byte = fees_per_byte1;
+        last_inbox_level = last_inbox_level1;
+      }
+      {
+        first_unfinalized_level = first_unfinalized_level2;
+        unfinalized_level_count = unfinalized_level_count2;
+        fees_per_byte = fees_per_byte2;
+        last_inbox_level = last_inbox_level2;
+      } =
+    match Tez_repr.compare fees_per_byte1 fees_per_byte2 with
+    | 0 -> (
+        match
+          Option.compare
+            Raw_level_repr.compare
+            first_unfinalized_level1
+            first_unfinalized_level2
+        with
+        | 0 -> (
+            match
+              Compare.Int.compare
+                unfinalized_level_count1
+                unfinalized_level_count2
+            with
+            | 0 ->
+                Option.compare
+                  Raw_level_repr.compare
+                  last_inbox_level1
+                  last_inbox_level2
+            | c -> c)
+        | c -> c)
+    | c -> c
+end)

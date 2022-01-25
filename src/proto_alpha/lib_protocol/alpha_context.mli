@@ -2033,6 +2033,8 @@ module Tx_rollup_state : sig
 
   val encoding : t Data_encoding.t
 
+  include Compare.S with type t := t
+
   val pp : Format.formatter -> t -> unit
 
   val find : context -> Tx_rollup.t -> (context * t option) tzresult Lwt.t
@@ -2283,6 +2285,8 @@ module Tx_rollup_rejection : sig
     batch_index : int;
     batch : Tx_rollup_message.t;
   }
+
+  include Compare.S with type t := t
 
   val encoding : t Data_encoding.t
 

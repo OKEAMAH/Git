@@ -57,3 +57,5 @@ val generate_prerejection :
   commitment_hash:Tx_rollup_commitments_repr.Commitment_hash.t ->
   batch_index:int ->
   Rejection_hash.t
+
+include Compare.S with type t := t
