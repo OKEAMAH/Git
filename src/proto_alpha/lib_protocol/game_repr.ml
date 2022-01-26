@@ -161,6 +161,8 @@ module type Game = sig
     section_stop_at : PVM.tick;
   }
 
+  val pp_of_section : Format.formatter -> 'k section -> unit
+
   (**
 
      There are two players with two distinct roles.
@@ -238,6 +240,10 @@ module type Game = sig
 
   *)
   type 'k dissection = 'k section list
+
+  val pp_of_dissection : Format.formatter -> 'k dissection -> unit
+
+  val valid_dissection : 'a section -> 'b dissection -> bool
 
   (**
 
@@ -498,7 +504,7 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
   let pp_of_section ppf (s : _ section) =
     Format.fprintf
       ppf
-      "%a %d ->%a  %d"
+      "( %a ) -- [%d] \n ->\n  ( %a ) -- [%d] "
       PVM.pp
       s.section_start_state
       (s.section_start_at :> int)
@@ -506,7 +512,11 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
       s.section_stop_state
       (s.section_stop_at :> int)
 
-  let pp_of_dissection d = Format.pp_print_list pp_of_section d
+  let pp_of_dissection d =
+    Format.pp_print_list
+      ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ";\n\n")
+      pp_of_section
+      d
 
   let pp_optional_dissection d =
     Format.pp_print_option
@@ -594,7 +604,7 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
             List.fold_left
               Tick_repr.(
                 fun acc x ->
-                  if acc.section_stop_at = x.section_start_at && valid_section h
+                  if acc.section_stop_at = x.section_start_at && valid_section x
                   then x
                   else raise (Dissection_error "invalid dissection"))
               h

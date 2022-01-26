@@ -184,7 +184,7 @@ end = struct
         let (tick0, state0) =
           match Tick_repr.Map.max_binding lower with
           | Some (t, s) -> (t, s)
-          | None -> raise Not_found
+          | None -> (Tick_repr.make 0, initial_state)
         in
         snd
           (execute_until ~failures:[] tick0 state0 (fun tick' _ -> tick' = tick))
@@ -1058,6 +1058,8 @@ module Strategies (G : TestGame) = struct
       let stop = (section.section_stop_at :> int) in
       let len = stop - start in
       let bucket = len / branching in
+
+      Printf.printf "dis %d %d %d %d %d" branching start stop len bucket ;
       let dissection =
         repeat branching (fun x ->
             let start_at = start + (bucket * x) in
@@ -1336,6 +1338,74 @@ let perfect_failing (module P : TestGame) max_failure =
     (S.failing_refuter max_failure)
     S.commiter_wins
 
+let test_random_dissection (module P : TestGame) start_at length branching =
+  let open P.Game in
+  let open PVM in
+  let module S = Strategies (P) in
+  let state = compress initial_state in
+  let stop_at = start_at + length in
+
+  let section =
+    P.Game.
+      {
+        section_start_at = Tick_repr.make start_at;
+        section_start_state = state;
+        section_stop_at = Tick_repr.make stop_at;
+        section_stop_state = compress @@ P.random_state length state;
+      }
+  in
+  let option_dissection =
+    S.dissection_from_section empty_history branching section
+  in
+  let dissection =
+    match option_dissection with
+    | None -> raise (Invalid_argument "no dissection")
+    | Some x -> x
+  in
+  valid_dissection section dissection
+
+let testDissection =
+  [
+    QCheck.Test.make
+      ~name:"randomVPN"
+      (QCheck.quad
+         (QCheck.list_of_size QCheck.Gen.small_int (QCheck.int_range 0 100))
+         QCheck.small_int
+         QCheck.small_int
+         QCheck.small_int)
+      (fun (initial_prog, start_at, length, branching) ->
+        QCheck.assume
+          (start_at > 0 && length > 1
+          && List.length initial_prog > start_at + length
+          && branching < length && 2 < branching) ;
+        let module P = RandomPVMGame (struct
+          let initial_prog = initial_prog
+        end) in
+        test_random_dissection (module P) start_at length branching);
+    QCheck.Test.make
+      ~name:"count"
+      (QCheck.quad
+         QCheck.small_int
+         QCheck.small_int
+         QCheck.small_int
+         QCheck.small_int)
+      (fun (target, start_at, length, branching) ->
+        QCheck.assume
+          (start_at > 0 && length > 1 && branching < length && 2 < branching) ;
+        let module P = TestCountingGame (struct
+          let target = target
+        end) in
+        test_random_dissection (module P) start_at length branching);
+    QCheck.Test.make
+      ~name:"Mich"
+      (QCheck.triple QCheck.small_int QCheck.small_int QCheck.small_int)
+      (fun (start_at, length, branching) ->
+        QCheck.assume
+          (start_at > 0 && length > 1 && branching < length && 2 < branching) ;
+        let module P = TestMPVM (Fact20) in
+        test_random_dissection (module P) start_at length branching);
+  ]
+
 let testing (f : (module TestGame) -> int option -> bool) name =
   QCheck.Test.make
     ~name
@@ -1365,6 +1435,7 @@ let () =
   Alcotest.run
     "Refutation Game"
     [
+      ("Dissection tests", qcheck_wrap testDissection);
       ( "RandomPVM",
         qcheck_wrap
           [
