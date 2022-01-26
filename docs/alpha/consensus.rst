@@ -395,9 +395,9 @@ Consensus related protocol parameters
    * - ``CONSENSUS_THRESHOLD``
      - ``ceil(2 * CONSENSUS_COMMITTEE_SIZE / 3)`` = 4667
    * - ``MINIMAL_BLOCK_DELAY``
-     - 30s
+     - 20s
    * - ``DELAY_INCREMENT_PER_ROUND``
-     - 15s
+     - 10s
    * - ``MINIMAL_PARTICIPATION_RATIO``
      - 2/3
    * - ``FROZEN_DEPOSITS_PERCENTAGE``
@@ -409,11 +409,11 @@ Consensus related protocol parameters
    * - ``RATIO_OF_FROZEN_DEPOSITS_SLASHED_PER_DOUBLE_ENDORSEMENT``
      - 1/2
    * - ``BAKING_REWARD_FIXED_PORTION``
-     - 10 tez
+     - 6.666666 tez
    * - ``BAKING_REWARD_BONUS_PER_SLOT``
-     - ``bonus / (CONSENSUS_COMMITTEE_SIZE / 3)`` = 0.004286 tez
+     - ``bonus / (CONSENSUS_COMMITTEE_SIZE / 3)`` = 0.002857 tez
    * - ``ENDORSING_REWARD_PER_SLOT``
-     - ``endorsing_reward / CONSENSUS_COMMITTEE_SIZE`` = 0.002857 tez
+     - ``endorsing_reward / CONSENSUS_COMMITTEE_SIZE`` = 0.001904 tez
 
 
 .. _shell_proto_revisit_alpha:
