@@ -48,6 +48,7 @@ end
 (**
 Helpers
 *)
+
 let option_get = function
   | Some a -> a
   | None -> raise (Invalid_argument "option is None")
@@ -369,7 +370,7 @@ module MerkelizedMichelson = struct
       and always produces an integer. *)
   type program = (unit, (int, unit) cell) instr v
 
-  let hash_of v = option_get v.hash
+  let hash_of v = Option.value ~default:(Hash.hash "Empty_hash") v.hash
 
   let rec pp_of_repr : type a. Format.formatter -> a repr -> unit =
    fun ppf repr ->
@@ -844,7 +845,10 @@ struct
   let eval_to : taint:Taint.t -> history -> tick -> [`Verifiable | `Full] state
       =
    fun ~taint history target_tick ->
-    let (tick0, state0) = option_get @@ forward_eval history target_tick in
+    let (tick0, state0) =
+      Option.value ~default:(Tick_repr.make 0, initial_state)
+      @@ forward_eval history target_tick
+    in
     let rec go tick state =
       if tick = target_tick then state
       else
@@ -1055,7 +1059,7 @@ module Strategies (G : TestGame) = struct
       let len = stop - start in
       let bucket = len / branching in
       let dissection =
-        init branching (fun x ->
+        repeat branching (fun x ->
             let start_at = start + (bucket * x) in
             let stop_at =
               if x = branching - 1 then stop
@@ -1071,7 +1075,7 @@ module Strategies (G : TestGame) = struct
              }
               : _ section))
       in
-      Some dissection
+      Result.to_option dissection
 
   let compress_section (section : _ section) : [`Compressed] section =
     {
@@ -1125,11 +1129,11 @@ module Strategies (G : TestGame) = struct
     let d = match max_failure with None -> d | Some x -> max x 1 in
     if failing_level > 0 then
       let s =
-        init failing_level (fun _ ->
+        repeat failing_level (fun _ ->
             let s = (section_start_at :> int) + Random.int (max d 1) in
             Tick_repr.make s)
       in
-      s
+      Result.value ~default:[] s
     else []
 
   let machine_directed_committer {branching; failing_level; max_failure} pred =
@@ -1359,7 +1363,7 @@ let testing_mich (f : (module TestGame) -> int option -> bool) name =
 
 let () =
   Alcotest.run
-    "Saturation"
+    "Refutation Game"
     [
       ( "RandomPVM",
         qcheck_wrap
