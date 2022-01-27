@@ -1574,6 +1574,122 @@ let test_rejection () =
   ignore i ;
   return ()
 
+(** [test_all_commitments_rejected] tests the case where all commitments
+    have been rejected as-of finalization time, so that there is nothing
+    to finalize.  We want to ensure that we can later go back and finalize
+    that level. *)
+let test_all_commitments_rejected () =
+  context_init 2 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  let contract2 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
+  in
+
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  (* Transactions in block 2,3, and 6 *)
+  make_transactions_in tx_rollup contract1 [2; 3; 6] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
+    [
+      {effects = []; root = Bytes.make 20 '0'}
+    ]
+  in
+  let good_commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 2l; batches; predecessor = None}
+  in
+  Op.tx_rollup_commit (I i) contract2 tx_rollup good_commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let nonce = 1000L in
+  wrap (Lwt.return @@ Tx_rollup_message.make_batch (Incremental.alpha_ctxt i) "")
+  >>=? fun (batch, _) ->
+  let good_hash = Tx_rollup_commitments.Commitment.hash good_commitment in
+  let bad_commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches; predecessor = Some good_hash}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup bad_commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  let bad_hash = Tx_rollup_commitments.Commitment.hash bad_commitment in
+  Op.tx_rollup_prereject
+    (I i)
+    contract1
+    tx_rollup
+    (raw_level 3l)
+    bad_hash
+    0
+    nonce
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* need to bake after prereject *)
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_reject
+    (I i)
+    contract1
+    tx_rollup
+    (raw_level 3l)
+    bad_hash
+    0
+    batch
+    nonce
+  >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Now bake until we can go past the point at which we could
+     have finalized the bad commitment if it hadn't been rejected *)
+  bake_until i (Int32.add (Incremental.level i) 30l) >>=? fun i ->
+  wrap
+    (Tx_rollup_state.first_unfinalized_level
+       (Incremental.alpha_ctxt i)
+       tx_rollup)
+  >>=? fun (_, level) ->
+  Alcotest.(
+    check
+      (option raw_level_testable)
+      "Because no commitments have been submitted, the first unfinalized level \
+       is the first-submitted level"
+      (Some (raw_level 2l))
+      level) ;
+  let commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 3l; batches; predecessor = Some good_hash}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* This should have finalized level 2, but not yet level 3 *)
+  wrap
+    (Tx_rollup_state.first_unfinalized_level
+       (Incremental.alpha_ctxt i)
+       tx_rollup)
+  >>=? fun (_, level) ->
+  Alcotest.(
+    check
+      (option raw_level_testable)
+      "Expected level 3 to be unfinalized"
+      (Some (raw_level 3l))
+      level) ;
+
+  (* Now level 3 has a real commitment -- will it get finalized? *)
+  bake_until i (Int32.add (Incremental.level i) 30l) >>=? fun i ->
+  let predecessor = Tx_rollup_commitments.Commitment.hash commitment in
+  let commitment : Tx_rollup_commitments.Commitment.t =
+    {level = raw_level 6l; batches; predecessor = Some predecessor}
+  in
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  wrap
+    (Tx_rollup_state.first_unfinalized_level
+       (Incremental.alpha_ctxt i)
+       tx_rollup)
+  >>=? fun (_, level) ->
+  Alcotest.(
+    check
+      (option raw_level_testable)
+      "Expected level 6 to be unfinalized"
+      (Some (raw_level 6l))
+      level) ;
+
+  return ()
+
 (* [test_rejection_reward] tests that rejection rewards are (a) awarded at
    finalization time, and (b) go to the contract with the first prerejetion.
    The scenario is:
@@ -2025,6 +2141,10 @@ let tests =
       "Test commitment predecessor edge cases"
       `Quick
       test_commitment_predecessor;
+    Tztest.tztest
+      "Test case that all commitments are rejected"
+      `Quick
+      test_all_commitments_rejected;
     Tztest.tztest
       "Test commitment retirement"
       `Quick
