@@ -4460,7 +4460,7 @@ include Tezos_raw_protocol_%s.Main
             tezos_base |> open_ |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             tezos_error_monad |> open_;
-            parameters |> if_some;
+            parameters |> if_some |> open_;
             tezos_benchmark |> open_;
             benchmark |> if_some |> open_;
             benchmark_type_inference |> if_some |> open_;
