@@ -1057,9 +1057,8 @@ module Strategies (G : TestGame) = struct
       let start = (section.section_start_at :> int) in
       let stop = (section.section_stop_at :> int) in
       let len = stop - start in
+      let branching = min branching len in
       let bucket = len / branching in
-
-      Printf.printf "dis %d %d %d %d %d" branching start stop len bucket ;
       let dissection =
         repeat branching (fun x ->
             let start_at = start + (bucket * x) in
@@ -1377,7 +1376,7 @@ let testDissection =
         QCheck.assume
           (start_at > 0 && length > 1
           && List.length initial_prog > start_at + length
-          && branching < length && 2 < branching) ;
+          && 1 < branching) ;
         let module P = RandomPVMGame (struct
           let initial_prog = initial_prog
         end) in
@@ -1390,8 +1389,7 @@ let testDissection =
          QCheck.small_int
          QCheck.small_int)
       (fun (target, start_at, length, branching) ->
-        QCheck.assume
-          (start_at > 0 && length > 1 && branching < length && 2 < branching) ;
+        QCheck.assume (start_at > 0 && length > 1 && 2 < branching) ;
         let module P = TestCountingGame (struct
           let target = target
         end) in
@@ -1400,8 +1398,7 @@ let testDissection =
       ~name:"Mich"
       (QCheck.triple QCheck.small_int QCheck.small_int QCheck.small_int)
       (fun (start_at, length, branching) ->
-        QCheck.assume
-          (start_at > 0 && length > 1 && branching < length && 2 < branching) ;
+        QCheck.assume (start_at > 0 && length > 1 && 2 < branching) ;
         let module P = TestMPVM (Fact20) in
         test_random_dissection (module P) start_at length branching);
   ]
