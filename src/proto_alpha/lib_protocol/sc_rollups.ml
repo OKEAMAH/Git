@@ -26,14 +26,10 @@
 open Alpha_context.Sc_rollup
 
 module PVM = struct
-  type boot_sector = Alpha_context.Sc_rollup.PVM.boot_sector
-
   module type S = sig
+    include module type of Sc_rollup_repr.PVM
+
     val name : string
-
-    val parse_boot_sector : string -> boot_sector option
-
-    val pp_boot_sector : Format.formatter -> boot_sector -> unit
   end
 
   type t = (module S)

@@ -27,8 +27,6 @@
 
 open Alpha_context.Sc_rollup
 
+include module type of PVM
+
 val name : string
-
-val parse_boot_sector : string -> PVM.boot_sector option
-
-val pp_boot_sector : Format.formatter -> PVM.boot_sector -> unit

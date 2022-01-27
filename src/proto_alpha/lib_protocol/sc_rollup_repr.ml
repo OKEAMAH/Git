@@ -23,13 +23,60 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module PVM = struct
+exception TickNotFound of Tick_repr.t
+
+module PVM  =
+struct
+  type _ state = string
+  let initial_state = "init"
+    let equal_state = String.equal
+    type tick = Tick_repr.t
+
+  type history =  string Tick_repr.Map.t
+
+  let encoding = Data_encoding.string
+
+  let remember history (tick : tick) state =
+     Tick_repr.Map.add tick state history
+
+    let pp  =
+      Format.pp_print_string 
+
+  let empty_history = Tick_repr.Map.empty
+  let eval ~failures (tick : Tick_repr.t) state =
+     if List.mem ~equal:Tick_repr.( = ) tick failures then "" else state
+     let execute_until ~failures tick state pred =
+      let rec loop state tick =
+        if pred tick state then (tick, state)
+        else
+          let state = eval ~failures tick state in
+          loop state (Tick_repr.next tick)
+      in
+      loop state tick
+
+
+      let state_at history tick =
+        let open Tick_repr in
+        let (lower, ostate, _) = Tick_repr.Map.split tick history in
+        match ostate with
+        | Some state -> state
+        | None ->
+            let (tick0, state0) =
+            Option.value ~default:(Tick_repr.make 0, initial_state) (Tick_repr.Map.max_binding lower)
+            in
+            snd
+              (execute_until ~failures:[] tick0 state0 (fun tick' _ -> tick' = tick))
+      let verifiable_state_at = state_at
+      let compress x =x
+
+end
+ (* struct
   type boot_sector = string
 
   let boot_sector_encoding = Data_encoding.string
 
   let boot_sector_of_string s = s
-end
+end *)
 
 module Address = struct
   let prefix = "scr1"

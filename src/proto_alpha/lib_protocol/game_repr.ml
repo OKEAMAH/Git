@@ -86,7 +86,7 @@ module type PVM = sig
 
   val compress : _ state -> [`Compressed] state
 
-  val verifiable_state_at : history -> tick -> [`Verifiable] state
+  val verifiable_state_at : history -> tick -> [`Full | `Verifiable] state
 
   (** [state_at p tick] returns a full representation of [concrete_of
      state] at the given trace counter [tick]. *)

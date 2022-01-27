@@ -22,10 +22,6 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+include Sc_rollup_repr.PVM
 
 let name = "arith"
-
-let parse_boot_sector _ =
-  Some (Alpha_context.Sc_rollup.PVM.boot_sector_of_string "")
-
-let pp_boot_sector _fmt _ = ()

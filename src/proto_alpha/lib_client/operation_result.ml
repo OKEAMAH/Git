@@ -181,7 +181,7 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         "@[<v 2>Originate smart contract rollup of kind %s with boot sector \
          '%a'%a@]"
         R.name
-        R.pp_boot_sector
+        R.pp
         boot_sector
         pp_result
         result) ;

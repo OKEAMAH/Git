@@ -42,13 +42,12 @@ module type TestGame = sig
   module Game : Game
 
   val random_state :
-    int -> [`Compressed] Game.PVM.state -> [`Verifiable] Game.PVM.state
+    int -> [`Compressed] Game.PVM.state -> [`Full | `Verifiable] Game.PVM.state
 end
 
 (**
 Helpers
 *)
-
 let option_get = function
   | Some a -> a
   | None -> raise (Invalid_argument "option is None")
@@ -865,7 +864,7 @@ struct
     let taint = Taint.of_tick tick in
     merkelize_state @@ eval_to ~taint history tick
 
-  let verifiable_state_at : history -> tick -> [`Verifiable] state =
+  let verifiable_state_at : history -> tick -> [`Full | `Verifiable] state =
    fun history tick ->
     let (State s0) = state_at history tick in
     let taint = Taint.of_tick tick in

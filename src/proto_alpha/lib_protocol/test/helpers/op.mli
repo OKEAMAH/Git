@@ -214,5 +214,5 @@ val sc_rollup_origination :
   Context.t ->
   Contract.t ->
   Sc_rollup.Kind.t ->
-  Sc_rollup.PVM.boot_sector ->
+  [`Verifiable|`Full] Sc_rollup.PVM.state ->
   packed_operation tzresult Lwt.t

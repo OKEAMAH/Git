@@ -33,7 +33,7 @@
 val originate :
   Raw_context.t ->
   kind:Sc_rollup_repr.Kind.t ->
-  boot_sector:Sc_rollup_repr.PVM.boot_sector ->
+  boot_sector:[`Full  |`Verifiable] Sc_rollup_repr.PVM.state ->
   (Raw_context.t * Sc_rollup_repr.Address.t * Z.t) tzresult Lwt.t
 
 (** [kind context address] returns [Some kind] iff [address] is an

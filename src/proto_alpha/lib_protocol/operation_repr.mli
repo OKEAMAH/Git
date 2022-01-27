@@ -242,7 +242,7 @@ and _ manager_operation =
   | Tx_rollup_origination : Kind.tx_rollup_origination manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup_repr.Kind.t;
-      boot_sector : Sc_rollup_repr.PVM.boot_sector;
+      boot_sector : [`Full  |`Verifiable] Sc_rollup_repr.PVM.state;
     }
       -> Kind.sc_rollup_originate manager_operation
 

@@ -90,9 +90,9 @@ let rollup_kind_param =
       | Some k -> return k)
 
 let boot_sector_param =
-  let from_text ~heuristic:_ s =
+  let from_text ~heuristic:_ _s =
     return (fun (module R : Sc_rollups.PVM.S) ->
-        R.parse_boot_sector s |> function
+        Some R.initial_state |> function
         | None -> failwith "Invalid boot sector"
         | Some boot_sector -> return boot_sector)
   in
