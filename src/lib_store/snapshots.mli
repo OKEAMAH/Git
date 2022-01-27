@@ -142,7 +142,7 @@ type error +=
 (** Current version of snapshots *)
 val current_version : int
 
-type snapshot_format = Tar | Raw
+type snapshot_format = Tar | Http | Raw
 
 val pp_snapshot_format : Format.formatter -> snapshot_format -> unit
 

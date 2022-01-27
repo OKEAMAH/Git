@@ -605,13 +605,14 @@ let pp_snapshot_header ppf = function
 
 let version = function Current_header (version, _) -> version
 
-type snapshot_format = Tar | Raw
+type snapshot_format = Tar | Http | Raw
 
 let snapshot_format_encoding =
   Data_encoding.string_enum [("Tar", Tar); ("Raw", Raw)]
 
 let pp_snapshot_format ppf = function
   | Tar -> Format.fprintf ppf "tar (single file)"
+  | Http -> Format.fprintf ppf "tar (from HTTP)"
   | Raw -> Format.fprintf ppf "directory"
 
 (* To speed up the import of the cemented blocks we increase,
@@ -2477,7 +2478,7 @@ end
 module type LOADER = sig
   type t
 
-  val load : string -> t Lwt.t
+  val load : string -> t tzresult Lwt.t
 
   val load_snapshot_header : t -> header tzresult Lwt.t
 
@@ -2489,7 +2490,7 @@ module Raw_loader : LOADER = struct
 
   let load snapshot_path =
     let snapshot_dir = Naming.snapshot_dir ~snapshot_path () in
-    Lwt.return {snapshot_dir}
+    Lwt_result_syntax.return {snapshot_dir}
 
   let load_snapshot_version t =
     let open Lwt_result_syntax in
@@ -2539,7 +2540,7 @@ module Tar_loader : LOADER = struct
         snapshot_dir
     in
     let* tar = Onthefly.open_in ~file:(Naming.file_path snapshot_file) in
-    Lwt.return {tar; snapshot_file; snapshot_tar}
+    Lwt_result_syntax.return {tar; snapshot_file; snapshot_tar}
 
   let load_snapshot_version t =
     let open Lwt_tzresult_syntax in
@@ -2590,6 +2591,60 @@ module Tar_loader : LOADER = struct
   let close t = Onthefly.close_in t.tar
 end
 
+module Http_loader : LOADER = struct
+    open Cohttp_lwt
+    open Cohttp_lwt_unix
+
+    type t = {
+        url : Uri.t;
+        tmp_dir : string;
+        tar_t : Tar_loader.t;
+    }
+
+    let test_is_http str_url = 
+        match Uri.scheme str_url with
+        | Some url -> (match String.lowercase_ascii url with
+            | "http" -> true
+            | "https" -> true
+            | _ -> false
+          )
+        | None -> false
+
+    let download_tar_file url dest_dir = 
+        let open Lwt_result_syntax in
+        let* fname = match List.last_opt (Str.split (Str.regexp "/+") (Uri.path url)) with
+            | Some d -> return d
+            | None -> failwith "Cannot access to filename from URL"
+        in
+        let dest = dest_dir ^ fname in
+        let*! _resp, body = Client.get url in
+        let stream = Body.to_stream body in
+        let*! () = Lwt_io.with_file ~mode:Lwt_io.output dest (fun chan ->
+            Lwt_stream.iter_s (Lwt_io.write chan) stream) in
+        return dest
+
+    let load uri_string =
+        let open Lwt_result_syntax in
+        let url = Uri.of_string uri_string in
+        if not (test_is_http url) then
+            failwith "Input is not a valid HTTP URL"
+        else
+            let tmp_dir = Filename.temp_file "tzsnapshot" "" in
+            let*! () = Lwt_unix.unlink tmp_dir in
+            let*! () = Lwt_unix.mkdir tmp_dir 0o700 in
+            let* fname = download_tar_file url tmp_dir in
+            let* tar_t = Tar_loader.load fname in
+            return {url; tmp_dir; tar_t}
+  
+    let load_snapshot_header t =
+        Tar_loader.load_snapshot_header t.tar_t
+
+    let close t = 
+        let open Lwt_syntax in
+        let* () = Tar_loader.close t.tar_t in
+        Lwt_unix.rmdir t.tmp_dir
+end
+
 module type Snapshot_loader = sig
   type t
 
@@ -2604,13 +2659,13 @@ module Make_snapshot_loader (Loader : LOADER) : Snapshot_loader = struct
   let close = Loader.close
 
   let load_snapshot_header ~snapshot_path =
-    let open Lwt_syntax in
+    let open Lwt_result_syntax in
     let* loader = load snapshot_path in
     trace (Wrong_snapshot_file {filename = snapshot_path})
     @@ protect
          (fun () -> Loader.load_snapshot_header loader)
          ~on_error:(fun err ->
-           let* () = close loader in
+           let*! () = close loader in
            Lwt.return_error err)
 end
 
@@ -3604,7 +3659,17 @@ end
    snapshot. We assume that a snapshot is valid if the medata can be
    read. *)
 let snapshot_file_kind ~snapshot_path =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
+  let is_valid_remote_snapshot file =
+    let (module Loader) =
+      (module Make_snapshot_loader (Http_loader) : Snapshot_loader)
+    in
+    Lwt.catch
+      (fun () ->
+        Loader.load_snapshot_header ~snapshot_path:(Naming.file_path file)
+        >>=? fun _header -> return true)
+        fail_with_exn
+  in
   let is_valid_uncompressed_snapshot file =
     let (module Loader) =
       (module Make_snapshot_loader (Tar_loader) : Snapshot_loader)
@@ -3633,14 +3698,18 @@ let snapshot_file_kind ~snapshot_path =
         let* () = is_valid_raw_snapshot snapshot_dir in
         return Raw
       else
+        let open Lwt_result_syntax in
         let snapshot_file =
           Naming.snapshot_file
             ~snapshot_filename:(Filename.basename snapshot_path)
             Naming.(
               snapshot_dir ~snapshot_path:(Filename.dirname snapshot_path) ())
         in
-        let* () = is_valid_uncompressed_snapshot snapshot_file in
-        return Tar)
+        let* valid_remote_snapshot = is_valid_remote_snapshot snapshot_file in
+        if valid_remote_snapshot then return Http
+        else
+          let* () = is_valid_uncompressed_snapshot snapshot_file in
+          return Tar)
 
 let export ?snapshot_path export_format ?rolling ~block ~store_dir ~context_dir
     ~chain_name genesis =
@@ -3648,6 +3717,7 @@ let export ?snapshot_path export_format ?rolling ~block ~store_dir ~context_dir
     match export_format with
     | Tar -> (module Make_snapshot_exporter (Tar_exporter) : Snapshot_exporter)
     | Raw -> (module Make_snapshot_exporter (Raw_exporter) : Snapshot_exporter)
+    | Http -> (module Make_snapshot_exporter (Tar_exporter) : Snapshot_exporter)
   in
   Exporter.export
     ?snapshot_path
@@ -3665,6 +3735,7 @@ let read_snapshot_header ~snapshot_path =
     match kind with
     | Tar -> (module Make_snapshot_loader (Tar_loader) : Snapshot_loader)
     | Raw -> (module Make_snapshot_loader (Raw_loader) : Snapshot_loader)
+    | Http -> (module Make_snapshot_loader (Http_loader) : Snapshot_loader)
   in
   let* (version, metadata) = Loader.load_snapshot_header ~snapshot_path in
   return (Current_header (version, metadata))
@@ -3677,6 +3748,7 @@ let import ~snapshot_path ?patch_context ?block ?check_consistency
   let (module Importer) =
     match kind with
     | Tar -> (module Make_snapshot_importer (Tar_importer) : Snapshot_importer)
+    | Http -> (module Make_snapshot_importer (Tar_importer) : Snapshot_importer)
     | Raw -> (module Make_snapshot_importer (Raw_importer) : Snapshot_importer)
   in
   let dst_store_dir = Naming.store_dir ~dir_path:dst_store_dir in

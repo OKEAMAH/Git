@@ -19,7 +19,9 @@
   camlzip
   tar
   tar-unix
-  prometheus)
+  prometheus
+  cohttp
+  cohttp-lwt-unix)
  (flags
   (:standard
    -open Tezos_shell_services
