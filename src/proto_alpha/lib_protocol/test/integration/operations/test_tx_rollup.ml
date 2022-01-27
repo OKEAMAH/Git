@@ -1611,6 +1611,84 @@ let test_full_inbox () =
   ignore i ;
   return ()
 
+let test_prerejection_gc () =
+  let make_hash () =
+    Tx_rollup_commitments.Commitment_hash.of_bytes_exn @@ Bytes.of_string
+    @@ "tcu1"
+    ^ String.init 28 (fun _ -> char_of_int (50 + Random.State.int rng_state 8))
+  in
+  let assert_equal_option_z ~loc actual expected =
+    Assert.equal
+      ~loc
+      (Option.equal Z.equal)
+      "oldest"
+      (Format.pp_print_option Z.pp_print)
+      actual
+      expected
+  in
+  let assert_oldest_prerejection ~loc i expected =
+    wrap
+      (Tx_rollup_commitments.Internal_for_tests.get_oldest_prerejection
+         (Incremental.alpha_ctxt i))
+    >>=? fun oldest -> assert_equal_option_z ~loc oldest expected
+  in
+
+  context_init 1 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  Incremental.begin_construction b >>=? fun i ->
+  let nonce = 1L in
+  let add_prerejection i =
+    Op.tx_rollup_prereject
+      (I i)
+      contract1
+      tx_rollup
+      (raw_level 2l)
+      (make_hash ())
+      1
+      nonce
+    >>=? fun op -> Incremental.add_operation i op
+  in
+  (* First, check that one prerejection can be garbage-collected ... but not immediately *)
+  add_prerejection i >>=? fun i ->
+  assert_oldest_prerejection ~loc:__LOC__ i (Some Z.zero) >>=? fun () ->
+  bake_until i 30l >>=? fun i ->
+  (* First, check that one prerejection can be garbage-collected ... nor after 29 blocks *)
+  add_prerejection i >>=? fun i ->
+  assert_oldest_prerejection ~loc:__LOC__ i (Some Z.zero) >>=? fun () ->
+  bake_until i 31l >>=? fun i ->
+  (* prerejections are not automatically garbage-collected... *)
+  assert_oldest_prerejection ~loc:__LOC__ i (Some Z.zero) >>=? fun () ->
+  add_prerejection i >>=? fun i ->
+  (* ... but are on the next prerejection *)
+  assert_oldest_prerejection ~loc:__LOC__ i (Some Z.one) >>=? fun () ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  (* Now we test that a max of 10 prerejections are garbage-collected.
+     Sadly, we need to bake during this since we will otherwise run out
+     of manager operations *)
+  let rec make_prerejections i n =
+    if n = 0 then return i
+    else
+      add_prerejection i >>=? fun i ->
+      Incremental.finalize_block i >>=? fun b ->
+      Incremental.begin_construction b >>=? fun i -> make_prerejections i (n - 1)
+  in
+  make_prerejections i 11 >>=? fun i ->
+  (* Clear out all old prerejections -- we just want these 11 to be in range*)
+  bake_until i 61l >>=? fun i ->
+  add_prerejection i >>=? fun i ->
+  assert_oldest_prerejection ~loc:__LOC__ i (Some (Z.of_int 3)) >>=? fun () ->
+  bake_until i 73l >>=? fun i ->
+  add_prerejection i >>=? fun i ->
+  assert_oldest_prerejection ~loc:__LOC__ i (Some (Z.of_int 13)) >>=? fun () ->
+  add_prerejection i >>=? fun i ->
+  assert_oldest_prerejection ~loc:__LOC__ i (Some (Z.of_int 14)) >>=? fun () ->
+  ignore i ;
+  return ()
+
 let tests =
   [
     Tztest.tztest
@@ -1671,4 +1749,5 @@ let tests =
     Tztest.tztest "Test rejection" `Quick test_rejection;
     Tztest.tztest "Test rejection reward" `Quick test_rejection_reward;
     Tztest.tztest "Test full inbox" `Quick test_full_inbox;
+    Tztest.tztest "Test prerejection gc" `Quick test_prerejection_gc;
   ]

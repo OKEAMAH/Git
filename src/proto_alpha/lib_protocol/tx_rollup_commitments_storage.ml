@@ -394,6 +394,51 @@ let get_commitment_roots ctxt tx_rollup (level : Raw_level_repr.t)
   nth_root commitment index >>?= fun after_hash ->
   return (ctxt, (before_hash, after_hash))
 
+(** [gc_prerejections ctxt level] Removes a few old prerejections, if
+   any are older than [level]. We want to bound computation, and we
+   know we'll get another chance later to remove more, so we don't
+   necessarily remove them all. *)
+let gc_prerejections ctxt level =
+  let rec aux ctxt index count =
+    if Compare.Int.(count = 0) then return (ctxt, index)
+    else
+      Storage.Tx_rollup.Prerejection_by_index.find ctxt index
+      >>=? fun (ctxt, candidate) ->
+      match candidate with
+      | None ->
+          (* We have advanced past the last prerejection. This technically
+             means that  Oldest_prerejection will point to a nonexistent
+             index, but that is OK -- it'll become correct again as soon
+             someone creates a new one, and in the meantime it does no
+             harm. *)
+          return (ctxt, index)
+      | Some (rejection, candidate_level) ->
+          if Raw_level_repr.(candidate_level > level) then
+            (* This and every subsequent prerejection are too new. *)
+            return (ctxt, index)
+          else
+            Storage.Tx_rollup.Prerejection_by_index.remove ctxt index
+            >>=? fun (ctxt, _, _) ->
+            Storage.Tx_rollup.Prerejection.remove ctxt rejection
+            >>=? fun (ctxt, _, _) -> aux ctxt (Z.succ index) (count - 1)
+  in
+  Storage.Tx_rollup.Oldest_prerejection.find ctxt >>=? function
+  | None -> return ctxt
+  | Some oldest ->
+      (* This number is pretty arbitrary -- it's a balance between
+         how quickly a storm of prerejections gets removed vs the max
+         gas cost of any one prerejection.  Ten is an easy number to
+         reason about: if someone (somehow) creates a million
+         prerejections, then 100k new prerejections will clean
+         them up, and 10k newer prerejections will clean up the 100k,
+         and so forth, leading to a total cleanup (except for the last
+         straggler) in 6 steps. *)
+      aux ctxt oldest 10 >>=? fun (ctxt, new_oldest) ->
+      Storage.Tx_rollup.Oldest_prerejection.add ctxt new_oldest >|= ok
+
+let get_oldest_prerejection ctxt =
+  Storage.Tx_rollup.Oldest_prerejection.find ctxt
+
 let retire_rollup_level :
     Raw_context.t ->
     Tx_rollup_repr.t ->
@@ -504,18 +549,26 @@ let prereject :
     Tx_rollup_rejection_repr.Rejection_hash.t ->
     Raw_context.t tzresult Lwt.t =
  fun ctxt hash ->
+  let current_level = (Raw_context.current_level ctxt).level in
+  (match Raw_level_repr.sub current_level 30 with
+  | Some gc_level -> gc_prerejections ctxt gc_level
+  | None -> return ctxt)
+  >>=? fun ctxt ->
   Storage.Tx_rollup.Prerejection.mem ctxt hash >>=? fun (ctxt, is_mem) ->
   fail_when is_mem Tx_rollup_rejection_repr.Duplicate_prerejection
   >>=? fun () ->
   (Storage.Tx_rollup.Prerejection_counter.find ctxt >>=? function
    | None ->
        Storage.Tx_rollup.Prerejection_counter.init ctxt Z.one >>=? fun ctxt ->
+       Storage.Tx_rollup.Oldest_prerejection.init ctxt Z.zero >>=? fun ctxt ->
        return (ctxt, Z.zero)
    | Some counter ->
        Storage.Tx_rollup.Prerejection_counter.update ctxt (Z.succ counter)
        >>=? fun ctxt -> return (ctxt, counter))
   >>=? fun (ctxt, counter) ->
-  Storage.Tx_rollup.Prerejection.add ctxt hash counter >|=? just_ctxt
+  Storage.Tx_rollup.Prerejection.add ctxt hash counter >>=? fun (ctxt, _, _) ->
+  Storage.Tx_rollup.Prerejection_by_index.add ctxt counter (hash, current_level)
+  >|=? just_ctxt
 
 let check_prerejection :
     Raw_context.t ->

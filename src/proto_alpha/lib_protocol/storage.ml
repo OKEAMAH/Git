@@ -1755,10 +1755,64 @@ module Tx_rollup = struct
       end)
       (Encoding.Z)
 
+  module Z_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["tx_rollup_prerejection_by_index"]
+         end))
+         (Make_index (struct
+           type t = Z.t
+
+           let compare = Z.compare
+
+           let encoding = Data_encoding.z
+
+           let rpc_arg =
+             let construct = Z.to_string in
+             let destruct hash = ok @@ Z.of_string hash in
+             RPC_arg.make
+               ~descr:"The index of a prerejection"
+               ~name:"prerejection_index"
+               ~construct
+               ~destruct
+               ()
+
+           let path_length = 1
+
+           let to_path z l = Z.to_string z :: l
+
+           let of_path = function
+             | [] | _ :: _ :: _ -> None
+             | [z] -> Some (Z.of_string z)
+         end))
+
+  module Prerejection_by_index =
+    Z_context.Make_carbonated_map
+      (struct
+        let name = ["tx_rollup_prerejection_by_index"]
+      end)
+      (struct
+        type t = Tx_rollup_rejection_repr.Rejection_hash.t * Raw_level_repr.t
+
+        let encoding =
+          Data_encoding.(
+            obj2
+              (req "hash" Tx_rollup_rejection_repr.Rejection_hash.encoding)
+              (req "level" Raw_level_repr.encoding))
+      end)
+
   module Prerejection_counter =
     Make_single_data_storage (Registered) (Raw_context)
       (struct
         let name = ["prerejection_counter"]
+      end)
+      (Encoding.Z)
+
+  module Oldest_prerejection =
+    Make_single_data_storage (Registered) (Raw_context)
+      (struct
+        let name = ["oldest_prerejection"]
       end)
       (Encoding.Z)
 

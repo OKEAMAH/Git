@@ -776,6 +776,27 @@ module Tx_rollup : sig
   module Prerejection_counter :
     Single_data_storage with type value = Z.t and type t := Raw_context.t
 
+  (* Same non-carbonation story as Prerejection_counter *)
+  module Oldest_prerejection :
+    Single_data_storage with type value = Z.t and type t := Raw_context.t
+
+  (* This is an ordered list of prerejection by counter, which corresponds
+     to submission order.  We use this for garbage collection.  When we add
+     a new prerejection, we can garbage-collect any rejections that are old
+     enough by doing a sequential search.  We can put a limit on the number
+     that we gc in any one prerejection to keep computation bounded -- as
+     long as that limit is 2 or more, the storage will also eventually get
+     reclaimed.  Since each prerejection operation will (a) examine at most
+     one prerejection that it doesn't delete, and (b) introduce at most one
+     prerejection which will need deleting once, this is amortized O(1).
+  *)
+  module Prerejection_by_index :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key = Z.t
+       and type value :=
+            Tx_rollup_rejection_repr.Rejection_hash.t * Raw_level_repr.t
+       and type t := Raw_context.t
+
   module Successful_prerejections : sig
     include
       Non_iterable_indexed_carbonated_data_storage

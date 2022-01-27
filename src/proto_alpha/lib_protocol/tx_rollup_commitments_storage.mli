@@ -63,6 +63,12 @@ val reject_commitment :
   Z.t ->
   Raw_context.t tzresult Lwt.t
 
+(* [get_oldest_prerejection ctxt] is for testing only.  It returns
+   the index of oldest prerejection that we have not yet
+   garbage-collected, or None if nobody has never submitted any
+   prerejections.  *)
+val get_oldest_prerejection : Raw_context.t -> Z.t option tzresult Lwt.t
+
 (** [retire_rollup_level context tx_rollup level] removes all data
    associated with a level. It decrements the bonded commitment count
    for any contracts whose commitments have been either accepted or

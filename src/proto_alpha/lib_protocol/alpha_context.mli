@@ -2233,6 +2233,10 @@ module Tx_rollup_commitments : sig
     Lwt.t
 
   module Internal_for_tests : sig
+    (** See [Tx_rollup_commitments_storage.get_oldest_prerejection]
+        for documentation *)
+    val get_oldest_prerejection : context -> Z.t option tzresult Lwt.t
+
     (** See [Tx_rollup_commitments_storage.retire_rollup_level]
         for documentation *)
     val retire_rollup_level :
