@@ -473,37 +473,49 @@ module Make_indexed_carbonated_data_storage_INTERNAL
       While this is inefficient and will traverse the whole tree ([O(n)]), there
       currently isn't a better decent alternative.
 
-      Once https://gitlab.com/tezos/tezos/-/merge_requests/2771 which flattens paths is done,
-      {!C.list} could be used instead here. *)
-  let list_key_values ?(offset = 0) ?(length = max_int) s =
+      FIXME: Now that MR !2771 which flattens paths is done, {!C.list} could be
+      used instead here. *)
+  let list_key_values ?(offset = 0) ?(length = max_int) ctxt =
     let root = [] in
     let depth = `Eq I.path_length in
+    C.length ctxt root >>= fun size ->
+    (* Regardless of the [length] argument, all elements stored in the context
+       are traversed. We therefore pay a gas cost proportional to the number of
+       elements, given by [size], upfront. *)
+    C.consume_gas ctxt (Storage_costs.list_key_values_traverse ~size)
+    >>?= fun ctxt ->
     C.fold
-      s
+      ctxt
       root
       ~depth
       ~order:`Sorted
-      ~init:(ok (s, [], offset, length))
+      ~init:(ok (ctxt, [], offset, length))
       ~f:(fun file tree acc ->
         match (C.Tree.kind tree, acc) with
-        | `Tree, Ok (s, rev_values, offset, length) -> (
+        | `Tree, Ok (ctxt, rev_values, offset, length) -> (
             if Compare.Int.(length <= 0) then
               (* Keep going until the end, we have no means of short-circuiting *)
               Lwt.return acc
             else if Compare.Int.(offset > 0) then
               (* Offset (first element) not reached yet *)
               let offset = pred offset in
-              Lwt.return (Ok (s, rev_values, offset, length))
+              Lwt.return (Ok (ctxt, rev_values, offset, length))
             else
               (* Nominal case *)
               match I.of_path file with
               | None -> assert false
               | Some key ->
-                  get_unprojected s key >|=? fun (s, value) ->
-                  (s, (key, value) :: rev_values, 0, pred length))
-        | _ -> Lwt.return acc)
-    >|=? fun (s, rev_values, _offset, _length) ->
-    (C.project s, List.rev rev_values)
+                  get_unprojected ctxt key >|=? fun (ctxt, value) ->
+                  (ctxt, (key, value) :: rev_values, 0, pred length))
+        | _, Ok (ctxt, rev_values, offset, length) ->
+            Lwt.return (ok (ctxt, rev_values, offset, length))
+        | _, Error _ ->
+            (* Even if we run out of gas or fail in some other way, we still
+               traverse the whole tree. In this case there is no context to
+               update. *)
+            Lwt.return acc)
+    >|=? fun (ctxt, rev_values, _offset, _length) ->
+    (C.project ctxt, List.rev rev_values)
 
   let fold_keys_unaccounted s ~order ~init ~f =
     C.fold
