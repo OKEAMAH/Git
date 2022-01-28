@@ -144,6 +144,17 @@ rejections and getting bonds without doing their own verification. In
 the case that multiple rejections reject the same commitment, the one
 with the first pre-rejection gets the reward.
 
+Withdraw
+********
+
+Withdrawals are processed during commitment finalization.  A layer-2
+withdrawal operation puts the withdrawn tickets onto the **ticket
+offramp**. From there, a L1 operation on the ``withdraw`` entrypoint
+can return the tickets to the L1 contract.  Tickets can stay in the
+offramp for an arbitrary length of time, but once they are on the
+offramp, they cannot be returned to the rollup without passing through
+L1 first.
+
 Getting Started
 ---------------
 
