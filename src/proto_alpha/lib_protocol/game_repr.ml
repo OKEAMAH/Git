@@ -29,280 +29,13 @@
    =======================
 
 *)
-
 open Compare.Int
 
+open Sc_rollup_repr
+
 let repeat n f = List.init ~when_negative_length:[] n f
-(* let rec aux acc n f =
-     match n with 0 -> acc | _ -> aux (f (n - 1) :: acc) (pred n) f
-   in
-   aux [] n f *)
 
-module type PVM = sig
-  type _ state
-
-  (**
-
-     The state of the PVM represents a concrete execution state of the
-     underlying machine. Let us write [concrete_of state] to denote
-     the underlying concrete state of some PVM [state].
-
-     This state is probably not implemented exactly as in the
-     underlying machine because it must be useful for proof generation
-     and proof validation.
-
-     In particular, a state can be a lossy compression of the concrete
-     machine state, typically a hash of this state. This is useful to
-     transmit a short fingerprint of this state to the layer 1.
-
-     A state can also be *verifiable* which means that it exposes
-     enough structure to validate an execution step of the machine.
-
-     A state must finally be *serializable* as it must be transmitted
-     from rollup participants to the layer 1.
-
-  *)
-
-  (** The following three functions are for testing purposes. *)
-  val initial_state : [`Verifiable | `Full] state
-
-  (** [equal_state s1 s2] is [true] iff [concrete_of_state s1]
-      is equal to [concrete_of_state s2]. *)
-  val equal_state : _ state -> _ state -> bool
-
-  (** The history of an execution. *)
-  type history
-
-  val empty_history : history
-
-  (** We want to navigate into the history using a trace counter. *)
-  type tick = Tick_repr.t
-
-  val encoding : [`Compressed] state Data_encoding.t
-
-  val remember : history -> tick -> [`Verifiable | `Full] state -> history
-
-  exception TickNotFound of tick
-
-  val compress : _ state -> [`Compressed] state
-
-  val verifiable_state_at : history -> tick -> [`Full | `Verifiable] state
-
-  (** [state_at p tick] returns a full representation of [concrete_of
-     state] at the given trace counter [tick]. *)
-  val state_at : history -> tick -> [`Verifiable | `Full] state
-
-  val pp : Format.formatter -> _ state -> unit
-
-  (** [eval failures tick state] executes the machine at [tick]
-     assuming a given machine [state]. The function returns the state
-     at the [next tick].
-
-     [failures] is here for testing purpose: an error is intentionally
-     inserted for ticks in [failures].
-  *)
-  val eval :
-    failures:tick list -> tick -> ([> `Verifiable] as 'a) state -> 'a state
-
-  (** [execute_until failures tick state pred] applies [eval]
-       starting from a [tick] and a [state] and returns the first
-       [tick] and [state] where [pred tick state] is [true], or
-       diverges if such a configuration does not exist. *)
-  val execute_until :
-    failures:tick list ->
-    tick ->
-    ([> `Verifiable] as 'a) state ->
-    (tick -> 'a state -> bool) ->
-    tick * 'a state
-end
-
-(**
-
-   We define an asymetrical two-player [Game].
-
-   The purpose of this game is to try to determine whether a
-   participant lies about some execution [E] running on a given [PVM]
-   assuming there is an (untrusted) oracle that claims to have
-   performed the same execution.
-
-   The game rules minimize the amount of computational work for the
-   arbitrer: most of the game steps are made to negociate a single
-   tick of the [PVM] on which the two players agree on the start state
-   but not on the next state. The arbitrer only has to reexecute a
-   single tick to run the final step of the game.
-
-*)
-module type Game = sig
-  module PVM : PVM
-
-  (**
-
-     The state of the game. This implementation is purely functional
-     hence all the information needed to run the game is stored in
-     this state.
-
-  *)
-  type t
-
-  val pp_of_game : Format.formatter -> t -> unit
-
-  (**
-
-     The goal of the game is to determine whether a given [section]
-     of the execution trace of the [PVM] is valid, that is, whether
-     running the machine starting from [start_state] and [start_at]
-     produces some [stop_state] at tick [stop_at].
-
-  *)
-  type 'k section = {
-    section_start_state : 'k PVM.state;
-    section_start_at : PVM.tick;
-    section_stop_state : 'k PVM.state;
-    section_stop_at : PVM.tick;
-  }
-
-  val pp_of_section : Format.formatter -> 'k section -> unit
-
-  (**
-
-     There are two players with two distinct roles.
-
-  *)
-  type player =
-    | Committer
-        (**
-
-       The [Committer] defends that some initial [section] that she has
-       posted is valid for execution [E].
-
-    *)
-    | Refuter
-        (**
-
-       The [Refuter] thinks this section is not valid. The refuter is
-     the untrusted oracle that can pinpoint an error in the section
-     posted by the committer.
-
-       The arbitrer trusts neither the [Committer] nor the [Refuter]:
-     it only confronts them to find a conflicting execution step that
-     the arbitrer can reexecute to conclude.
-
-    *)
-
-  val pp_of_player : Format.formatter -> player -> unit
-
-  val encoding : t Data_encoding.t
-
-  (**
-
-     The game ends if:
-
-  *)
-  type reason =
-    | InvalidMove
-        (**
-
-       One of the player makes a move that does not respect the game
-       rules.
-
-    *)
-    | ConflictResolved
-        (**
-
-       The dispute has ended with a final conflict resolution phase.
-
-    *)
-
-  (**
-
-     The game may have no winner: even though the refuter has shown
-     that the committer posted an invalid section, she may have an
-     invalid justification for this claim. In that case, nobody
-     wins.
-
-  *)
-  type outcome = {winner : player option; reason : reason}
-
-  val pp_of_outcome : Format.formatter -> outcome -> unit
-
-  (**
-
-     We maintain the state of a running game unless it is over.
-
-  *)
-  type state = Over of outcome | Ongoing of t
-
-  (**
-
-     At each step of the game, except the final one, there is a
-     [dissection], that is a list of a contiguous [sections] to
-     continue the game.
-
-  *)
-  type 'k dissection = 'k section list
-
-  val pp_of_dissection : Format.formatter -> 'k dissection -> unit
-
-  val valid_dissection : 'a section -> 'b dissection -> bool
-
-  (**
-
-     Each player's move consists in choosing a section in the current
-     dissection. This [choice] must be justified by a
-     [conflict_search_step], a justification that the conflict is in
-     the chosen section. If the chosen section is not made of a single
-     tick, the player must provide the next dissection, which must be
-     a dissection of the current section.
-
-  *)
-  type move =
-    | ConflictInside of {
-        choice : [`Compressed] section;
-        conflict_search_step : conflict_search_step;
-      }
-
-  and conflict_search_step =
-    | Refine of {
-        stop_state : [`Compressed] PVM.state;
-        next_dissection : [`Compressed] dissection;
-      }
-    | Conclude : {
-        start_state : ([> `Verifiable] as 'a) PVM.state;
-        stop_state : [`Compressed] PVM.state;
-      }
-        -> conflict_search_step
-
-  val pp_of_move : Format.formatter -> move -> unit
-
-  (** The committer provides a commit to start the game... *)
-  type commit = Commit of [`Compressed] section
-
-  (** ... and the refuter starts the conflict search process. *)
-  type refutation = RefuteByConflict of conflict_search_step
-
-  (** The interaction between the game engine and the players is
-     through a client interface. *)
-  type ('from, 'initial) client = {
-    initial : 'from -> 'initial;
-        (** [initial] is the first input to the game. *)
-    next_move : [`Compressed] dissection -> move;
-        (** [next_move dissection] is the player's move given some current
-       [dissection]. *)
-  }
-
-  (** [run start_at start_state commiter refuter] returns the outcome
-     of a game where [committer] and [refuter] agree on a
-     [start_state] at some tick [start_at] and plays against each
-     other to validate or to refute some commit. *)
-  val run :
-    start_at:PVM.tick ->
-    start_state:[`Verifiable | `Full] PVM.state ->
-    committer:(PVM.tick * [`Verifiable | `Full] PVM.state, commit) client ->
-    refuter:([`Verifiable | `Full] PVM.state * commit, refutation) client ->
-    outcome
-end
-
-module MakeGame (P : PVM) : Game with module PVM = P = struct
+module Make (P : TPVM) = struct
   module PVM = P
 
   type player = Committer | Refuter
@@ -350,12 +83,12 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
   *)
   type t = {
     turn : player;
-    start_state : [`Compressed] PVM.state;
+    start_state : [`Compressed | `Full | `Verifiable] PVM.state;
     start_at : PVM.tick;
-    player_stop_state : [`Compressed] PVM.state;
-    opponent_stop_state : [`Compressed] PVM.state;
+    player_stop_state : [`Compressed | `Full | `Verifiable] PVM.state;
+    opponent_stop_state : [`Compressed | `Full | `Verifiable] PVM.state;
     stop_at : PVM.tick;
-    current_dissection : [`Compressed] dissection option;
+    current_dissection : [`Compressed | `Full | `Verifiable] dissection option;
   }
 
   and 'k section = {
@@ -445,22 +178,22 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
 
   type conflict_search_step =
     | Refine of {
-        stop_state : [`Compressed] PVM.state;
-        next_dissection : [`Compressed] dissection;
+        stop_state : [`Compressed | `Full | `Verifiable] PVM.state;
+        next_dissection : [`Compressed | `Full | `Verifiable] dissection;
       }
     | Conclude : {
-        start_state : ([> `Verifiable] as 'a) PVM.state;
-        stop_state : [`Compressed] PVM.state;
+        start_state : ([`Compressed | `Full | `Verifiable] as 'a) PVM.state;
+        stop_state : [`Compressed | `Full | `Verifiable] PVM.state;
       }
         -> conflict_search_step
 
   type move =
     | ConflictInside of {
-        choice : [`Compressed] section;
+        choice : [`Compressed | `Full | `Verifiable] section;
         conflict_search_step : conflict_search_step;
       }
 
-  type commit = Commit of [`Compressed] section
+  type commit = Commit of [`Compressed | `Full | `Verifiable] section
 
   type refutation = RefuteByConflict of conflict_search_step
 
@@ -668,10 +401,10 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
     match eval ~failures:[] game.start_at verifiable_start_state with
     | stop_state -> (
         let player_state_valid =
-          equal_state stop_state game.player_stop_state
+          Internal_for_tests.equal_state stop_state game.player_stop_state
         in
         let opponent_state_valid =
-          equal_state stop_state game.opponent_stop_state
+          Internal_for_tests.equal_state stop_state game.opponent_stop_state
         in
         match (player_state_valid, opponent_state_valid) with
         | (true, true) -> over @@ Some Committer
@@ -691,8 +424,11 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
           find_section choice dissection
           (* TODO faster binary search in the list if we have binary tree.*)
       | None ->
-          if PVM.equal_state choice.section_start_state game.start_state then
-            Some choice
+          if
+            PVM.Internal_for_tests.equal_state
+              choice.section_start_state
+              game.start_state
+          then Some choice
           else None)
     @@ fun ({
               section_start_state;
@@ -701,7 +437,8 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
               section_stop_at;
             } :
              _ section) ->
-    if PVM.equal_state chosen_stop_state section_stop_state then None
+    if PVM.Internal_for_tests.equal_state chosen_stop_state section_stop_state
+    then None
     else
       Some
         {
@@ -730,7 +467,7 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
     else None
 
   let verifiable_representation vstate state =
-    if PVM.equal_state vstate state then Some () else None
+    if PVM.Internal_for_tests.equal_state vstate state then Some () else None
 
   (** [player game move] returns the status of the [game] after that
      [move] has been applied, if [move] is valid. Otherwise, this
@@ -758,10 +495,11 @@ module MakeGame (P : PVM) : Game with module PVM = P = struct
 
   type ('from, 'initial) client = {
     initial : 'from -> 'initial;
-    next_move : [`Compressed] dissection -> move;
+    next_move : [`Compressed | `Full | `Verifiable] dissection -> move;
   }
 
-  let run ~start_at ~(start_state : [`Verifiable | `Full] PVM.state) ~committer
+  let run ~start_at
+      ~(start_state : [`Compressed | `Verifiable | `Full] PVM.state) ~committer
       ~refuter =
     let (Commit commit) = committer.initial (start_at, start_state) in
     let (RefuteByConflict refutation) =

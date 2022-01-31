@@ -25,58 +25,153 @@
 
 exception TickNotFound of Tick_repr.t
 
-module PVM  =
-struct
-  type _ state = string
-  let initial_state = "init"
-    let equal_state = String.equal
-    type tick = Tick_repr.t
+module type TPVM = sig
+  type _ state
 
-  type history =  string Tick_repr.Map.t
+  (**
+
+     The state of the PVM represents a concrete execution state of the
+     underlying machine. Let us write [concrete_of state] to denote
+     the underlying concrete state of some PVM [state].
+
+     This state is probably not implemented exactly as in the
+     underlying machine because it must be useful for proof generation
+     and proof validation.
+
+     In particular, a state can be a lossy compression of the concrete
+     machine state, typically a hash of this state. This is useful to
+     transmit a short fingerprint of this state to the layer 1.
+
+     A state can also be *verifiable* which means that it exposes
+     enough structure to validate an execution step of the machine.
+
+     A state must finally be *serializable* as it must be transmitted
+     from rollup participants to the layer 1.
+
+  *)
+
+  module Internal_for_tests : sig
+    (** The following three functions are for testing purposes. *)
+
+    val initial_state : [`Compressed | `Verifiable | `Full] state
+
+    val random_state :
+      int ->
+      [`Compressed | `Verifiable | `Full] state ->
+      [`Compressed | `Verifiable | `Full] state
+
+    (** [equal_state s1 s2] is [true] iff [concrete_of_state s1]
+      is equal to [concrete_of_state s2]. *)
+    val equal_state : _ state -> _ state -> bool
+  end
+
+  (** The history of an execution. *)
+  type history
+
+  val empty_history : history
+
+  (** We want to navigate into the history using a trace counter. *)
+  type tick = Tick_repr.t
+
+  val encoding : [`Compressed | `Verifiable | `Full] state Data_encoding.t
+
+  val remember :
+    history -> tick -> [`Compressed | `Verifiable | `Full] state -> history
+
+  val compress : _ state -> [`Compressed] state
+
+  val verifiable_state_at :
+    history -> tick -> [`Compressed | `Verifiable | `Full] state
+
+  (** [state_at p tick] returns a full representation of [concrete_of
+     state] at the given trace counter [tick]. *)
+  val state_at : history -> tick -> [`Compressed | `Verifiable | `Full] state
+
+  val pp : Format.formatter -> [`Compressed | `Verifiable | `Full] state -> unit
+
+  (** [eval failures tick state] executes the machine at [tick]
+     assuming a given machine [state]. The function returns the state
+     at the [next tick].
+
+     [failures] is here for testing purpose: an error is intentionally
+     inserted for ticks in [failures].
+  *)
+  val eval :
+    failures:tick list -> tick -> ([> `Verifiable] as 'a) state -> 'a state
+
+  (** [execute_until failures tick state pred] applies [eval]
+       starting from a [tick] and a [state] and returns the first
+       [tick] and [state] where [pred tick state] is [true], or
+       diverges if such a configuration does not exist. *)
+  val execute_until :
+    failures:tick list ->
+    tick ->
+    ([> `Verifiable] as 'a) state ->
+    (tick -> 'a state -> bool) ->
+    tick * 'a state
+end
+
+module PVM : TPVM with type _ state = string = struct
+  type _ state = string
+
+  module Internal_for_tests = struct
+    let initial_state = "init"
+
+    let random_state _ (st : _ state) = st
+
+    let equal_state = String.equal
+  end
+
+  type tick = Tick_repr.t
+
+  type history = string Tick_repr.Map.t
 
   let encoding = Data_encoding.string
 
   let remember history (tick : tick) state =
-     Tick_repr.Map.add tick state history
+    Tick_repr.Map.add tick state history
 
-    let pp  =
-      Format.pp_print_string 
+  let pp = Format.pp_print_string
 
   let empty_history = Tick_repr.Map.empty
+
   let eval ~failures (tick : Tick_repr.t) state =
-     if List.mem ~equal:Tick_repr.( = ) tick failures then "" else state
-     let execute_until ~failures tick state pred =
-      let rec loop state tick =
-        if pred tick state then (tick, state)
-        else
-          let state = eval ~failures tick state in
-          loop state (Tick_repr.next tick)
-      in
-      loop state tick
+    if List.mem ~equal:Tick_repr.( = ) tick failures then "" else state
 
+  let execute_until ~failures tick state pred =
+    let rec loop state tick =
+      if pred tick state then (tick, state)
+      else
+        let state = eval ~failures tick state in
+        loop state (Tick_repr.next tick)
+    in
+    loop state tick
 
-      let state_at history tick =
-        let open Tick_repr in
-        let (lower, ostate, _) = Tick_repr.Map.split tick history in
-        match ostate with
-        | Some state -> state
-        | None ->
-            let (tick0, state0) =
-            Option.value ~default:(Tick_repr.make 0, initial_state) (Tick_repr.Map.max_binding lower)
-            in
-            snd
-              (execute_until ~failures:[] tick0 state0 (fun tick' _ -> tick' = tick))
-      let verifiable_state_at = state_at
-      let compress x =x
+  let state_at history tick =
+    let open Tick_repr in
+    let (lower, ostate, _) = Tick_repr.Map.split tick history in
+    match ostate with
+    | Some state -> state
+    | None ->
+        let (tick0, state0) =
+          Option.value
+            ~default:(Tick_repr.make 0, Internal_for_tests.initial_state)
+            (Tick_repr.Map.max_binding lower)
+        in
+        snd
+          (execute_until ~failures:[] tick0 state0 (fun tick' _ -> tick' = tick))
 
+  let verifiable_state_at = state_at
+
+  let compress x = x
 end
- (* struct
-  type boot_sector = string
+(* struct
+     type boot_sector = string
 
-  let boot_sector_encoding = Data_encoding.string
+     let boot_sector_encoding = Data_encoding.string
 
-  let boot_sector_of_string s = s
-end *)
+     let boot_sector_of_string s = s
+   end *)
 
 module Address = struct
   let prefix = "scr1"

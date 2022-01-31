@@ -40,37 +40,44 @@
 *)
 
 exception TickNotFound of Tick_repr.t
-module  PVM : sig
+
+module type TPVM = sig
   type _ state
 
   (**
+ 
+      The state of the PVM represents a concrete execution state of the
+      underlying machine. Let us write [concrete_of state] to denote
+      the underlying concrete state of some PVM [state].
+ 
+      This state is probably not implemented exactly as in the
+      underlying machine because it must be useful for proof generation
+      and proof validation.
+ 
+      In particular, a state can be a lossy compression of the concrete
+      machine state, typically a hash of this state. This is useful to
+      transmit a short fingerprint of this state to the layer 1.
+ 
+      A state can also be *verifiable* which means that it exposes
+      enough structure to validate an execution step of the machine.
+ 
+      A state must finally be *serializable* as it must be transmitted
+      from rollup participants to the layer 1.
+ 
+   *)
+  module Internal_for_tests : sig
+    (** The following three functions are for testing purposes. *)
+    val initial_state : [`Compressed | `Verifiable | `Full] state
 
-     The state of the PVM represents a concrete execution state of the
-     underlying machine. Let us write [concrete_of state] to denote
-     the underlying concrete state of some PVM [state].
+    val random_state :
+      int ->
+      [`Compressed | `Verifiable | `Full] state ->
+      [`Compressed | `Verifiable | `Full] state
 
-     This state is probably not implemented exactly as in the
-     underlying machine because it must be useful for proof generation
-     and proof validation.
-
-     In particular, a state can be a lossy compression of the concrete
-     machine state, typically a hash of this state. This is useful to
-     transmit a short fingerprint of this state to the layer 1.
-
-     A state can also be *verifiable* which means that it exposes
-     enough structure to validate an execution step of the machine.
-
-     A state must finally be *serializable* as it must be transmitted
-     from rollup participants to the layer 1.
-
-  *)
-
-  (** The following three functions are for testing purposes. *)
-  val initial_state : [`Verifiable | `Full] state
-
-  (** [equal_state s1 s2] is [true] iff [concrete_of_state s1]
-      is equal to [concrete_of_state s2]. *)
-  val equal_state : _ state -> _ state -> bool
+    (** [equal_state s1 s2] is [true] iff [concrete_of_state s1]
+       is equal to [concrete_of_state s2]. *)
+    val equal_state : _ state -> _ state -> bool
+  end
 
   (** The history of an execution. *)
   type history
@@ -80,34 +87,36 @@ module  PVM : sig
   (** We want to navigate into the history using a trace counter. *)
   type tick = Tick_repr.t
 
-  val encoding : [`Full  |`Verifiable] state Data_encoding.t
+  val encoding : [`Compressed | `Verifiable | `Full] state Data_encoding.t
 
-  val remember : history -> tick -> [`Verifiable | `Full] state -> history
+  val remember :
+    history -> tick -> [`Compressed | `Verifiable | `Full] state -> history
 
   val compress : _ state -> [`Compressed] state
 
-  val verifiable_state_at : history -> tick -> [`Full  |`Verifiable] state
+  val verifiable_state_at :
+    history -> tick -> [`Compressed | `Verifiable | `Full] state
 
   (** [state_at p tick] returns a full representation of [concrete_of
-     state] at the given trace counter [tick]. *)
-  val state_at : history -> tick -> [`Verifiable | `Full] state
+      state] at the given trace counter [tick]. *)
+  val state_at : history -> tick -> [`Compressed | `Verifiable | `Full] state
 
-  val pp : Format.formatter -> _ state -> unit
+  val pp : Format.formatter -> [`Compressed | `Verifiable | `Full] state -> unit
 
   (** [eval failures tick state] executes the machine at [tick]
-     assuming a given machine [state]. The function returns the state
-     at the [next tick].
-
-     [failures] is here for testing purpose: an error is intentionally
-     inserted for ticks in [failures].
-  *)
+      assuming a given machine [state]. The function returns the state
+      at the [next tick].
+ 
+      [failures] is here for testing purpose: an error is intentionally
+      inserted for ticks in [failures].
+   *)
   val eval :
     failures:tick list -> tick -> ([> `Verifiable] as 'a) state -> 'a state
 
   (** [execute_until failures tick state pred] applies [eval]
-       starting from a [tick] and a [state] and returns the first
-       [tick] and [state] where [pred tick state] is [true], or
-       diverges if such a configuration does not exist. *)
+        starting from a [tick] and a [state] and returns the first
+        [tick] and [state] where [pred tick state] is [true], or
+        diverges if such a configuration does not exist. *)
   val execute_until :
     failures:tick list ->
     tick ->
@@ -116,6 +125,7 @@ module  PVM : sig
     tick * 'a state
 end
 
+module PVM : TPVM
 
 (** A smart-contract rollup has an address starting with "scr1". *)
 module Address : sig

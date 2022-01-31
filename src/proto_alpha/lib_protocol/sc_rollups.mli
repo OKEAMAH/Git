@@ -28,9 +28,10 @@ open Alpha_context.Sc_rollup
 
 module PVM : sig
   module type S = sig
-    include module type of Sc_rollup_repr.PVM
-
     val name : string
+
+    val parse_boot_sector :
+      string -> [`Compressed | `Full | `Verifiable] PVM.state option
   end
 
   type t = (module S)

@@ -722,6 +722,7 @@ module Sc_rollup : sig
   module Boot_sector :
     Indexed_data_storage
       with type key = Sc_rollup_repr.t
-       and type value = [`Full  |`Verifiable] Sc_rollup_repr.PVM.state
+       and type value =
+            [`Full | `Verifiable | `Compressed] Sc_rollup_repr.PVM.state
        and type t := Raw_context.t
 end

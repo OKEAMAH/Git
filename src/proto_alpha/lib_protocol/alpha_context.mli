@@ -1903,7 +1903,7 @@ end
 
 (** See {!Sc_rollup_storage} and {!Sc_rollup_repr}. *)
 module Sc_rollup : sig
-  module PVM : module type of Sc_rollup_repr.PVM
+  module PVM : Sc_rollup_repr.TPVM
 
   module Address : S.HASH
 
@@ -1918,7 +1918,7 @@ module Sc_rollup : sig
   val originate :
     context ->
     kind:Kind.t ->
-    boot_sector:[`Full | `Verifiable] PVM.state ->
+    boot_sector:[`Full | `Verifiable | `Compressed] PVM.state ->
     (context * t * Z.t) tzresult Lwt.t
 
   val kind : context -> t -> Kind.t option tzresult Lwt.t
@@ -2103,7 +2103,7 @@ and _ manager_operation =
   | Tx_rollup_origination : Kind.tx_rollup_origination manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup.Kind.t;
-      boot_sector : [`Full | `Verifiable] Sc_rollup.PVM.state;
+      boot_sector : [`Compressed | `Verifiable | `Full] Sc_rollup.PVM.state;
     }
       -> Kind.sc_rollup_originate manager_operation
 

@@ -214,5 +214,5 @@ val sc_rollup_origination :
   Context.t ->
   Contract.t ->
   Sc_rollup.Kind.t ->
-  [`Verifiable|`Full] Sc_rollup.PVM.state ->
+  [`Compressed | `Verifiable | `Full] Sc_rollup.PVM.state ->
   packed_operation tzresult Lwt.t

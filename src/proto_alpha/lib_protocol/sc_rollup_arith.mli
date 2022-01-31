@@ -27,6 +27,7 @@
 
 open Alpha_context.Sc_rollup
 
-include module type of PVM
-
 val name : string
+
+val parse_boot_sector :
+  string -> [`Compressed | `Full | `Verifiable] PVM.state option

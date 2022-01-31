@@ -40,8 +40,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
    tick_repr.mli tick_repr.ml
-   game_repr.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
+   game_repr.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
    period_repr.mli period_repr.ml
@@ -179,8 +179,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
    tick_repr.mli tick_repr.ml
-   game_repr.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
+   game_repr.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
    period_repr.mli period_repr.ml
@@ -318,8 +318,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
    tick_repr.mli tick_repr.ml
-   game_repr.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
+   game_repr.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
    period_repr.mli period_repr.ml
@@ -659,8 +659,8 @@ include Tezos_raw_protocol_alpha.Main
    block_payload_hash.mli block_payload_hash.ml
    origination_nonce.mli origination_nonce.ml
    tick_repr.mli tick_repr.ml
-   game_repr.ml
    sc_rollup_repr.mli sc_rollup_repr.ml
+   game_repr.ml
    slot_repr.mli slot_repr.ml
    tez_repr.mli tez_repr.ml
    period_repr.mli period_repr.ml

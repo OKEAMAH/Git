@@ -1682,7 +1682,7 @@ module Sc_rollup = struct
         let name = ["boot_sector"]
       end)
       (struct
-        type t = [`Full | `Verifiable] Sc_rollup_repr.PVM.state
+        type t = [`Compressed | `Verifiable | `Full] Sc_rollup_repr.PVM.state
 
         let encoding = Sc_rollup_repr.PVM.encoding
       end)

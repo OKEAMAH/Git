@@ -22,6 +22,8 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-include Sc_rollup_repr.PVM
+open Alpha_context.Sc_rollup
 
 let name = "arith"
+
+let parse_boot_sector (_ : string) = Some PVM.Internal_for_tests.initial_state

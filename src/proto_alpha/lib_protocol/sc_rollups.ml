@@ -27,9 +27,10 @@ open Alpha_context.Sc_rollup
 
 module PVM = struct
   module type S = sig
-    include module type of Sc_rollup_repr.PVM
-
     val name : string
+
+    val parse_boot_sector :
+      string -> [`Compressed | `Full | `Verifiable] PVM.state option
   end
 
   type t = (module S)
@@ -39,7 +40,7 @@ let all = [Kind.Example_arith]
 
 let kind_of_string = function "arith" -> Some Kind.Example_arith | _ -> None
 
-let example_arith_pvm = (module Sc_rollup_arith : PVM.S)
+let example_arith_pvm : (module PVM.S) = (module Sc_rollup_arith)
 
 let of_kind = function Kind.Example_arith -> example_arith_pvm
 
