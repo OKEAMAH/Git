@@ -113,9 +113,7 @@ end
 module Term = struct
   type subcommand = Export | Import | Info
 
-  let check_snapshot_path = function
-    | None -> fail Missing_file_argument
-    | Some path ->
+  let check_snapshot_path path = 
         if Sys.file_exists path then return path
         else fail (Cannot_locate_file path)
 
@@ -159,17 +157,28 @@ module Term = struct
             ~block
             genesis
       | Import ->
+          Format.printf "Trying to import\n";
           let data_dir =
             Option.value
               args.data_dir
               ~default:Node_config_file.default_data_dir
           in
+          Format.printf "check if datadir exist\n";
           let*! existing_data_dir = Lwt_unix.file_exists data_dir in
           let* node_config = Node_shared_arg.read_and_patch_config_file args in
           let ({genesis; _} : Node_config_file.blockchain_network) =
             node_config.blockchain_network
           in
-          let* snapshot_path = check_snapshot_path snapshot_path in
+          Format.printf "Check if path is url\n";
+          let* snapshot_path = match snapshot_path with
+          | Some path -> (
+              let path_is_url = Snapshots.check_is_url path in
+                if path_is_url then return path
+                else check_snapshot_path path
+              )
+          | None -> fail Missing_file_argument
+          in
+          Format.printf "Creating dir cleaner function\n";
           let dir_cleaner () =
             let*! () = Event.(emit cleaning_up_after_failure) data_dir in
             if existing_data_dir then
@@ -208,6 +217,7 @@ module Term = struct
           let patch_context =
             Patch_context.patch_context genesis sandbox_parameters
           in
+          Format.printf "Starting protect\n";
           let* () =
             protect
               ~on_error:(fun err ->
@@ -224,6 +234,7 @@ module Term = struct
                   | None -> return_none
                 in
                 let check_consistency = not disable_check in
+                Format.printf "Importing snapshot\n";
                 Snapshots.import
                   ~snapshot_path
                   ~patch_context
@@ -251,7 +262,10 @@ module Term = struct
                 node_config.blockchain_network.user_activated_protocol_overrides
           else return_unit
       | Info ->
-          let* snapshot_path = check_snapshot_path snapshot_path in
+          let* snapshot_path = match snapshot_path with
+          | Some path -> check_snapshot_path path
+          | None -> fail Missing_file_argument
+          in
           let* snapshot_header =
             Snapshots.read_snapshot_header ~snapshot_path
           in
@@ -325,6 +339,7 @@ module Term = struct
     and printer ppf = function
       | Snapshots.Tar -> Format.fprintf ppf "tar"
       | Raw -> Format.fprintf ppf "raw"
+      | Snapshots.Http -> Format.fprintf ppf "tar"
     in
     let open Cmdliner.Arg in
     let doc =

@@ -208,3 +208,5 @@ val import :
     returns its kind. Returns [Invalid] if it is a wrong snapshot
     file. *)
 val snapshot_file_kind : snapshot_path:string -> snapshot_format tzresult Lwt.t
+
+val check_is_url : string -> bool
