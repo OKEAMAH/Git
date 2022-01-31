@@ -1,8 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>  and           *)
-(*  Trili Tech, <contact@trili.tech>                                         *)
+(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Trili Tech, <contact@trili.tech>                       *)
+(*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
 (* to deal in the Software without restriction, including without limitation *)
@@ -38,6 +39,121 @@ let repeat n f = List.init ~when_negative_length:[] n f
 module Make (P : TPVM) = struct
   module PVM = P
 
+  module Section_repr = struct
+    type 'k section = {
+      section_start_state : 'k PVM.state;
+      section_start_at : PVM.tick;
+      section_stop_state : 'k PVM.state;
+      section_stop_at : PVM.tick;
+    }
+
+    and 'k dissection = 'k section list
+
+    let section_encoding =
+      let open Data_encoding in
+      conv
+        (fun {
+               section_start_state;
+               section_start_at;
+               section_stop_state;
+               section_stop_at;
+             } ->
+          ( section_start_state,
+            section_start_at,
+            section_stop_state,
+            section_stop_at ))
+        (fun ( section_start_state,
+               section_start_at,
+               section_stop_state,
+               section_stop_at ) ->
+          {
+            section_start_state;
+            section_start_at;
+            section_stop_state;
+            section_stop_at;
+          })
+        (obj4
+           (req "section_start_state" PVM.encoding)
+           (req "section_start_at" Tick_repr.encoding)
+           (req "section_stop_state" PVM.encoding)
+           (req "section_stop_at" Tick_repr.encoding))
+
+    let dissection_encoding = Data_encoding.(option (list section_encoding))
+
+    let find_section section dissection =
+      List.find_opt
+        (fun {section_start_at; section_stop_at; _} ->
+          Tick_repr.(
+            section_start_at = section.section_start_at
+            && section_stop_at = section.section_stop_at))
+        dissection
+
+    let pp_of_section ppf (s : _ section) =
+      Format.fprintf
+        ppf
+        "( %a ) -- [%d] \n ->\n  ( %a ) -- [%d] "
+        PVM.pp
+        s.section_start_state
+        (s.section_start_at :> int)
+        PVM.pp
+        s.section_stop_state
+        (s.section_stop_at :> int)
+
+    let pp_of_dissection d =
+      Format.pp_print_list
+        ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ";\n\n")
+        pp_of_section
+        d
+
+    let pp_optional_dissection d =
+      Format.pp_print_option
+        ~none:(fun ppf () ->
+          Format.pp_print_text ppf "no dissection at the moment")
+        pp_of_dissection
+        d
+
+    let valid_section ({section_start_at; section_stop_at; _} : _ section) =
+      (section_stop_at :> int) > (section_start_at :> int)
+
+    (**
+      
+           A dissection is a partition of a section.
+      
+        *)
+    exception Dissection_error of string
+
+    let section_of_dissection dissection =
+      let aux d =
+        match d with
+        | [] -> raise (Dissection_error "empty dissection")
+        | h :: tl ->
+            let {section_start_at; section_start_state; _} = h in
+
+            let section =
+              List.fold_left
+                Tick_repr.(
+                  fun acc x ->
+                    if
+                      acc.section_stop_at = x.section_start_at
+                      && valid_section x
+                    then x
+                    else raise (Dissection_error "invalid dissection"))
+                h
+                tl
+            in
+            {section with section_start_at; section_start_state}
+      in
+      aux dissection
+
+    let valid_dissection (section : _ section) dissection =
+      try
+        let s = section_of_dissection dissection in
+        Tick_repr.(
+          s.section_start_at = section.section_start_at
+          && s.section_stop_at = section.section_stop_at)
+      with _ -> false
+  end
+
   type player = Committer | Refuter
 
   let pp_of_player ppf player =
@@ -66,21 +182,6 @@ module Make (P : TPVM) = struct
 
   let opponent = function Committer -> Refuter | Refuter -> Committer
 
-  (**
-
-       At each game step, we interprete the current player's move in
-       order to update the following fields for the opponent's turn.
-
-       Hence, at the beginning of the game step, [player_stop_state]
-       is the stop state of the current player while at the end of the
-       turn, this is the [stop_state] of the opponent.
-
-       There are some redundancies in this data structure since most
-       of the information is already in [current_dissection]. However,
-       fields provide a direct access to important pieces of
-       information.
-
-  *)
   type t = {
     turn : player;
     start_state : [`Compressed | `Full | `Verifiable] PVM.state;
@@ -88,49 +189,11 @@ module Make (P : TPVM) = struct
     player_stop_state : [`Compressed | `Full | `Verifiable] PVM.state;
     opponent_stop_state : [`Compressed | `Full | `Verifiable] PVM.state;
     stop_at : PVM.tick;
-    current_dissection : [`Compressed | `Full | `Verifiable] dissection option;
+    current_dissection :
+      [`Compressed | `Full | `Verifiable] Section_repr.dissection option;
   }
-
-  and 'k section = {
-    section_start_state : 'k PVM.state;
-    section_start_at : PVM.tick;
-    section_stop_state : 'k PVM.state;
-    section_stop_at : PVM.tick;
-  }
-
-  and 'k dissection = 'k section list
 
   (*TODO perhaps this should be a binary tree based on start_at (which ar increasing) rather than a list. It would make find faster. *)
-  let section_encoding =
-    let open Data_encoding in
-    conv
-      (fun {
-             section_start_state;
-             section_start_at;
-             section_stop_state;
-             section_stop_at;
-           } ->
-        ( section_start_state,
-          section_start_at,
-          section_stop_state,
-          section_stop_at ))
-      (fun ( section_start_state,
-             section_start_at,
-             section_stop_state,
-             section_stop_at ) ->
-        {
-          section_start_state;
-          section_start_at;
-          section_stop_state;
-          section_stop_at;
-        })
-      (obj4
-         (req "section_start_state" PVM.encoding)
-         (req "section_start_at" Tick_repr.encoding)
-         (req "section_stop_state" PVM.encoding)
-         (req "section_stop_at" Tick_repr.encoding))
-
-  let dissection_encoding = Data_encoding.(option (list section_encoding))
 
   let encoding =
     let open Data_encoding in
@@ -174,12 +237,13 @@ module Make (P : TPVM) = struct
          (req "player_stop_state" PVM.encoding)
          (req "oponent_stop_state" PVM.encoding)
          (req "stop_at" Tick_repr.encoding)
-         (req "current_dissection" dissection_encoding))
+         (req "current_dissection" Section_repr.dissection_encoding))
 
   type conflict_search_step =
     | Refine of {
         stop_state : [`Compressed | `Full | `Verifiable] PVM.state;
-        next_dissection : [`Compressed | `Full | `Verifiable] dissection;
+        next_dissection :
+          [`Compressed | `Full | `Verifiable] Section_repr.dissection;
       }
     | Conclude : {
         start_state : ([`Compressed | `Full | `Verifiable] as 'a) PVM.state;
@@ -189,11 +253,12 @@ module Make (P : TPVM) = struct
 
   type move =
     | ConflictInside of {
-        choice : [`Compressed | `Full | `Verifiable] section;
+        choice : [`Compressed | `Full | `Verifiable] Section_repr.section;
         conflict_search_step : conflict_search_step;
       }
 
-  type commit = Commit of [`Compressed | `Full | `Verifiable] section
+  type commit =
+    | Commit of [`Compressed | `Full | `Verifiable] Section_repr.section
 
   type refutation = RefuteByConflict of conflict_search_step
 
@@ -226,38 +291,6 @@ module Make (P : TPVM) = struct
 
   type state = Over of outcome | Ongoing of t
 
-  let find_section section dissection =
-    List.find_opt
-      (fun {section_start_at; section_stop_at; _} ->
-        Tick_repr.(
-          section_start_at = section.section_start_at
-          && section_stop_at = section.section_stop_at))
-      dissection
-
-  let pp_of_section ppf (s : _ section) =
-    Format.fprintf
-      ppf
-      "( %a ) -- [%d] \n ->\n  ( %a ) -- [%d] "
-      PVM.pp
-      s.section_start_state
-      (s.section_start_at :> int)
-      PVM.pp
-      s.section_stop_state
-      (s.section_stop_at :> int)
-
-  let pp_of_dissection d =
-    Format.pp_print_list
-      ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ";\n\n")
-      pp_of_section
-      d
-
-  let pp_optional_dissection d =
-    Format.pp_print_option
-      ~none:(fun ppf () ->
-        Format.pp_print_text ppf "no dissection at the moment")
-      pp_of_dissection
-      d
-
   let pp_of_game ppf g =
     Format.fprintf
       ppf
@@ -270,7 +303,7 @@ module Make (P : TPVM) = struct
       PVM.pp
       g.opponent_stop_state
       (g.stop_at :> int)
-      pp_optional_dissection
+      Section_repr.pp_optional_dissection
       g.current_dissection
       (match g.turn with Committer -> "committer" | Refuter -> "refuter")
 
@@ -280,11 +313,11 @@ module Make (P : TPVM) = struct
         Format.fprintf
           ppf
           "conflict is inside %a, should end with %a, new dissection = %a"
-          pp_of_section
+          Section_repr.pp_of_section
           choice
           PVM.pp
           stop_state
-          pp_of_dissection
+          Section_repr.pp_of_dissection
           next_dissection
     | ConflictInside
         {choice; conflict_search_step = Conclude {start_state; stop_state}} ->
@@ -292,7 +325,7 @@ module Make (P : TPVM) = struct
           ppf
           "atomic conflict found inside %a, we can verify that it starts with \
            %a and should end with %a"
-          pp_of_section
+          Section_repr.pp_of_section
           choice
           PVM.pp
           start_state
@@ -304,15 +337,6 @@ module Make (P : TPVM) = struct
      A section is valid if its ticks are consistent.
 
   *)
-  let valid_section ({section_start_at; section_stop_at; _} : _ section) =
-    (section_stop_at :> int) > (section_start_at :> int)
-
-  (**
-
-     A dissection is a partition of a section.
-
-  *)
-  exception Dissection_error of string
 
   (**
 
@@ -326,34 +350,6 @@ module Make (P : TPVM) = struct
       it computes the section it represents.
 
   *)
-  let section_of_dissection dissection =
-    let aux d =
-      match d with
-      | [] -> raise (Dissection_error "empty dissection")
-      | h :: tl ->
-          let {section_start_at; section_start_state; _} = h in
-
-          let section =
-            List.fold_left
-              Tick_repr.(
-                fun acc x ->
-                  if acc.section_stop_at = x.section_start_at && valid_section x
-                  then x
-                  else raise (Dissection_error "invalid dissection"))
-              h
-              tl
-          in
-          {section with section_start_at; section_start_state}
-    in
-    aux dissection
-
-  let valid_dissection (section : _ section) dissection =
-    try
-      let s = section_of_dissection dissection in
-      Tick_repr.(
-        s.section_start_at = section.section_start_at
-        && s.section_stop_at = section.section_stop_at)
-    with _ -> false
 
   (** [confict_found game] is [true] iff the [game]'s section is
       one tick long. *)
@@ -417,11 +413,12 @@ module Make (P : TPVM) = struct
      to [game] and justified by [chosen_stop_state].
 
      If the [choice] is invalid, this function returns [None]. *)
-  let apply_choice ~(game : t) ~(choice : _ section) chosen_stop_state =
+  let apply_choice ~(game : t) ~(choice : _ Section_repr.section)
+      chosen_stop_state =
     Option.bind
       (match game.current_dissection with
       | Some dissection ->
-          find_section choice dissection
+          Section_repr.find_section choice dissection
           (* TODO faster binary search in the list if we have binary tree.*)
       | None ->
           if
@@ -436,7 +433,7 @@ module Make (P : TPVM) = struct
               section_stop_state;
               section_stop_at;
             } :
-             _ section) ->
+             _ Section_repr.section) ->
     if PVM.Internal_for_tests.equal_state chosen_stop_state section_stop_state
     then None
     else
@@ -453,8 +450,9 @@ module Make (P : TPVM) = struct
   (** [apply_dissection game next_dissection] returns [Some game']
       where the [current_dissection] is the [next_dissection] if
       it is valid. Otherwise, this function returns [None]. *)
-  let apply_dissection ~(game : t) (next_dissection : _ dissection) =
-    let current_section : _ section =
+  let apply_dissection ~(game : t) (next_dissection : _ Section_repr.dissection)
+      =
+    let current_section : _ Section_repr.section =
       {
         section_start_state = game.start_state;
         section_start_at = game.start_at;
@@ -462,7 +460,7 @@ module Make (P : TPVM) = struct
         section_stop_at = game.stop_at;
       }
     in
-    if valid_dissection current_section next_dissection then
+    if Section_repr.valid_dissection current_section next_dissection then
       Some {game with current_dissection = Some next_dissection}
     else None
 
@@ -495,7 +493,8 @@ module Make (P : TPVM) = struct
 
   type ('from, 'initial) client = {
     initial : 'from -> 'initial;
-    next_move : [`Compressed | `Full | `Verifiable] dissection -> move;
+    next_move :
+      [`Compressed | `Full | `Verifiable] Section_repr.dissection -> move;
   }
 
   let run ~start_at

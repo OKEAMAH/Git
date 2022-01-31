@@ -931,10 +931,10 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
        section_stop_at = Tick_repr.make stop_at;
        section_stop_state = Internal_for_tests.random_state length start_state;
      }
-      : _ section)
+      : _ Section_repr.section)
 
-  let random_dissection (gsection : [`Compressed | `Verifiable | `Full] section)
-      =
+  let random_dissection
+      (gsection : [`Compressed | `Verifiable | `Full] Section_repr.section) =
     let rec aux dissection start_at start_state =
       if start_at = gsection.section_stop_at then dissection
       else
@@ -959,6 +959,7 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
     else None
 
   let random_decision d =
+    let open Section_repr in
     let x = Random.int (List.length d) in
     let section =
       match List.(nth d x) with Some s -> s | None -> raise Not_found
@@ -1006,14 +1007,17 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
 
   type strategy = Random | MachineDirected of parameters * checkpoint
 
-  let conflicting_section (history : PVM.history) (section : _ section) =
+  let conflicting_section (history : PVM.history)
+      (section : _ Section_repr.section) =
     not
       (Internal_for_tests.equal_state
          section.section_stop_state
          (state_at history section.section_stop_at))
 
   (** corrected, optimised and inlined version of the split (only one pass of the list rather than 3)*)
-  let dissection_from_section history branching (section : _ section) =
+  let dissection_from_section history branching
+      (section : _ Section_repr.section) =
+    let open Section_repr in
     if Tick_repr.next section.section_start_at = section.section_stop_at then
       None
     else
@@ -1041,7 +1045,8 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
       in
       Result.to_option dissection
 
-  let compress_section (section : _ section) : [`Compressed] section =
+  let compress_section (section : _ Section_repr.section) :
+      [`Compressed] Section_repr.section =
     {
       section with
       section_start_state = PVM.compress section.section_start_state;
@@ -1049,7 +1054,7 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
     }
 
   let remember_section history
-      (section : [`Compressed | `Verifiable | `Full] section) =
+      (section : [`Compressed | `Verifiable | `Full] Section_repr.section) =
     let history =
       PVM.remember history section.section_start_at section.section_start_state
     in
@@ -1136,7 +1141,9 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
   let machine_directed_refuter {branching; failing_level; max_failure} =
     let history = ref PVM.empty_history in
     let initial (section_start_state, Commit section) : refutation =
-      let ({section_start_at; section_stop_at; _} : _ section) = section in
+      let ({section_start_at; section_stop_at; _} : _ Section_repr.section) =
+        section
+      in
       let failures =
         generate_failures
           failing_level
@@ -1298,7 +1305,7 @@ let test_random_dissection (module P : Sc_rollup_repr.TPVM) start_at length
   let stop_at = start_at + length in
 
   let section =
-    S.Game.
+    S.Game.Section_repr.
       {
         section_start_at = Tick_repr.make start_at;
         section_start_state = state;
@@ -1314,7 +1321,7 @@ let test_random_dissection (module P : Sc_rollup_repr.TPVM) start_at length
     | None -> raise (Invalid_argument "no dissection")
     | Some x -> x
   in
-  S.Game.valid_dissection section dissection
+  S.Game.Section_repr.valid_dissection section dissection
 
 let testDissection =
   [

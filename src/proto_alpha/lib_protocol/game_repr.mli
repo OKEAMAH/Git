@@ -1,97 +1,105 @@
+(*****************************************************************************)
+(*                                                                           *)
+(* Open Source License                                                       *)
+(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>  and           *)
+(*  Trili Tech, <contact@trili.tech>                                         *)
+(* Permission is hereby granted, free of charge, to any person obtaining a   *)
+(* copy of this software and associated documentation files (the "Software"),*)
+(* to deal in the Software without restriction, including without limitation *)
+(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
+(* and/or sell copies of the Software, and to permit persons to whom the     *)
+(* Software is furnished to do so, subject to the following conditions:      *)
+(*                                                                           *)
+(* The above copyright notice and this permission notice shall be included   *)
+(* in all copies or substantial portions of the Software.                    *)
+(*                                                                           *)
+(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
+(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
+(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
+(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
+(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
+(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
+(* DEALINGS IN THE SOFTWARE.                                                 *)
+(*                                                                           *)
+(*****************************************************************************)
+
+(** This module creates a refutation game for Optimistic rollup.
+   It is in fact a functor that takes a PVM module and produce a game. *)
+
 val repeat : int -> (int -> 'a) -> ('a list, 'b list) result
 
 module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
-  module PVM : sig
-    type 'a state = 'a P.state
+  module PVM :
+    Sc_rollup_repr.TPVM
+      with type 'a state = 'a P.state
+       and type history = P.history
 
-    module Internal_for_tests : sig
-      val initial_state : [`Compressed | `Full | `Verifiable] state
+  module Section_repr : sig
+    type 'k section = {
+      section_start_state : 'k P.state;
+      section_start_at : Tick_repr.t;
+      section_stop_state : 'k P.state;
+      section_stop_at : Tick_repr.t;
+    }
 
-      val random_state :
-        int ->
-        [`Compressed | `Verifiable | `Full] state ->
-        [`Compressed | `Verifiable | `Full] state
+    and 'k dissection = 'k section list
 
-      val equal_state : 'a state -> 'b state -> bool
-    end
+    val section_encoding :
+      [`Compressed | `Full | `Verifiable] section Data_encoding.t
 
-    type history = P.history
+    val dissection_encoding :
+      [`Compressed | `Full | `Verifiable] section list option Data_encoding.t
 
-    val empty_history : history
+    val find_section : 'a section -> 'b section list -> 'b section option
 
-    type tick = Tick_repr.t
+    val pp_of_section :
+      Format.formatter -> [`Compressed | `Full | `Verifiable] section -> unit
 
-    val encoding : [`Compressed | `Full | `Verifiable] state Data_encoding.t
+    val pp_of_dissection :
+      Format.formatter ->
+      [`Compressed | `Full | `Verifiable] section list ->
+      unit
 
-    val remember :
-      history -> tick -> [`Compressed | `Full | `Verifiable] state -> history
+    val pp_optional_dissection :
+      Format.formatter ->
+      [`Compressed | `Full | `Verifiable] section list option ->
+      unit
 
-    val compress : 'a state -> [`Compressed] state
+    val valid_section : 'a section -> bool
 
-    val verifiable_state_at :
-      history -> tick -> [`Compressed | `Full | `Verifiable] state
+    exception Dissection_error of string
 
-    val state_at : history -> tick -> [`Compressed | `Full | `Verifiable] state
+    val section_of_dissection : 'a section list -> 'a section
 
-    val pp :
-      Format.formatter -> [`Compressed | `Full | `Verifiable] state -> unit
-
-    val eval :
-      failures:tick list -> tick -> ([> `Verifiable] as 'a) state -> 'a state
-
-    val execute_until :
-      failures:tick list ->
-      tick ->
-      ([> `Verifiable] as 'a) state ->
-      (tick -> 'a state -> bool) ->
-      tick * 'a state
+    val valid_dissection : 'a section -> 'b section list -> bool
   end
-
-  type t
-
-  val pp_of_game : Format.formatter -> t -> unit
-
-  type 'k section = {
-    section_start_state : 'k P.state;
-    section_start_at : Tick_repr.t;
-    section_stop_state : 'k P.state;
-    section_stop_at : Tick_repr.t;
-  }
-
-  val pp_of_section :
-    Format.formatter -> [`Compressed | `Full | `Verifiable] section -> unit
 
   type player = Committer | Refuter
 
   val pp_of_player : Format.formatter -> player -> unit
 
+  val player_encoding : player Data_encoding.t
+
+  val opponent : player -> player
+
+  type t = {
+    turn : player;
+    start_state : [`Compressed | `Full | `Verifiable] P.state;
+    start_at : Tick_repr.t;
+    player_stop_state : [`Compressed | `Full | `Verifiable] P.state;
+    opponent_stop_state : [`Compressed | `Full | `Verifiable] P.state;
+    stop_at : Tick_repr.t;
+    current_dissection :
+      [`Compressed | `Full | `Verifiable] Section_repr.dissection option;
+  }
+
   val encoding : t Data_encoding.t
 
-  type reason = InvalidMove | ConflictResolved
-
-  type outcome = {winner : player option; reason : reason}
-
-  val pp_of_outcome : Format.formatter -> outcome -> unit
-
-  type state = Over of outcome | Ongoing of t
-
-  type 'k dissection = 'k section list
-
-  val pp_of_dissection :
-    Format.formatter -> [`Compressed | `Full | `Verifiable] dissection -> unit
-
-  val valid_dissection : 'a section -> 'b dissection -> bool
-
-  type move =
-    | ConflictInside of {
-        choice : [`Compressed | `Full | `Verifiable] section;
-        conflict_search_step : conflict_search_step;
-      }
-
-  and conflict_search_step =
+  type conflict_search_step =
     | Refine of {
         stop_state : [`Compressed | `Full | `Verifiable] P.state;
-        next_dissection : [`Compressed | `Full | `Verifiable] dissection;
+        next_dissection :
+          [`Compressed | `Full | `Verifiable] Section_repr.dissection;
       }
     | Conclude : {
         start_state : [`Compressed | `Full | `Verifiable] P.state;
@@ -99,22 +107,67 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
       }
         -> conflict_search_step
 
-  val pp_of_move : Format.formatter -> move -> unit
+  type move =
+    | ConflictInside of {
+        choice : [`Compressed | `Full | `Verifiable] Section_repr.section;
+        conflict_search_step : conflict_search_step;
+      }
 
-  type commit = Commit of [`Compressed | `Full | `Verifiable] section
+  type commit =
+    | Commit of [`Compressed | `Full | `Verifiable] Section_repr.section
 
   type refutation = RefuteByConflict of conflict_search_step
 
+  type reason = InvalidMove | ConflictResolved
+
+  val pp_of_reason : Format.formatter -> reason -> unit
+
+  type outcome = {winner : player option; reason : reason}
+
+  val pp_of_winner : Format.formatter -> player option -> unit
+
+  val pp_of_outcome : Format.formatter -> outcome -> unit
+
+  type state = Over of outcome | Ongoing of t
+
+  val pp_of_game : Format.formatter -> t -> unit
+
+  val pp_of_move : Format.formatter -> move -> unit
+
+  val conflict_found : t -> bool
+
+  val stop_state :
+    conflict_search_step -> [`Compressed | `Full | `Verifiable] P.state
+
+  val initial : commit -> conflict_search_step -> t * move
+
+  val resolve_conflict : t -> [> `Verifiable] P.state -> outcome
+
+  val apply_choice :
+    game:t ->
+    choice:[`Compressed | `Full | `Verifiable] Section_repr.section ->
+    [`Compressed | `Full | `Verifiable] P.state ->
+    t option
+
+  val apply_dissection :
+    game:t ->
+    [`Compressed | `Full | `Verifiable] Section_repr.dissection ->
+    t option
+
+  val verifiable_representation : 'a P.state -> 'b P.state -> unit option
+
+  val play : t -> move -> state
+
   type ('from, 'initial) client = {
     initial : 'from -> 'initial;
-    next_move : [`Compressed | `Full | `Verifiable] dissection -> move;
+    next_move :
+      [`Compressed | `Full | `Verifiable] Section_repr.dissection -> move;
   }
 
   val run :
-    start_at:Tick_repr.t ->
+    start_at:'a ->
     start_state:[`Compressed | `Full | `Verifiable] P.state ->
-    committer:
-      (Tick_repr.t * [`Compressed | `Full | `Verifiable] P.state, commit) client ->
+    committer:('a * [`Compressed | `Full | `Verifiable] P.state, commit) client ->
     refuter:
       ([`Compressed | `Full | `Verifiable] P.state * commit, refutation) client ->
     outcome
