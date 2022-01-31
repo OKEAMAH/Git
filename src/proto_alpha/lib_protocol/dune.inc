@@ -479,8 +479,8 @@ include Tezos_raw_protocol_alpha.Main
    Block_payload_hash
    Origination_nonce
    Tick_repr
-   Game_repr
    Sc_rollup_repr
+   Game_repr
    Slot_repr
    Tez_repr
    Period_repr
