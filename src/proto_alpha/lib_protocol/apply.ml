@@ -1027,9 +1027,7 @@ let apply_manager_operation_content :
               in
               (ctxt, result, operations) ))
   | Transaction {amount; parameters; destination = Tx_rollup dst; entrypoint} ->
-      fail_unless (Constants.tx_rollup_enable ctxt) Tx_rollup_disabled
-      >>=? fun () ->
-      fail_unless internal Tx_rollup_non_internal_transaction >>=? fun () ->
+      assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
       fail_unless Tez.(amount = zero) Tx_rollup_non_null_transaction
       >>=? fun () ->
       if Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) then
@@ -1355,7 +1353,12 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
      deserialized before (e.g. when retrieve in JSON format). *)
   (match operation with
   | Reveal pk -> Contract.reveal_manager_key ctxt source pk
-  | Transaction {parameters; _} ->
+  | Transaction {parameters; destination; _} ->
+      (* Precheck is not called for non-internal operations. *)
+      fail_when
+        (match destination with Tx_rollup _ -> true | _ -> false)
+        Tx_rollup_non_internal_transaction
+      >>=? fun () ->
       Lwt.return
       @@ record_trace Gas_quota_exceeded_init_deserialize
       @@ (* Fail early if not enough gas for complete deserialization
