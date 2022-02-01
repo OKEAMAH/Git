@@ -1066,7 +1066,7 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
       | None -> raise (TickNotFound (Tick_repr.make 0))
       | Some s -> s
     in
-    let next_dissection = dissection_from_section history branching section in
+    let next_dissection = Section_repr.dissection_of_section history branching section in
     let (conflict_search_step, history) =
       match next_dissection with
       | None ->
@@ -1158,7 +1158,7 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
       history := PVM.remember !history section_start_at section_start_state ;
       history := PVM.remember !history section_stop_at section_stop_state ;
       let next_dissection =
-        dissection_from_section
+        Section_repr.dissection_of_section
           !history
           branching
           {section with section_stop_state}
@@ -1314,7 +1314,7 @@ let test_random_dissection (module P : Sc_rollup_repr.TPVM) start_at length
       }
   in
   let option_dissection =
-    S.dissection_from_section empty_history branching section
+    S.Game.Section_repr.dissection_of_section empty_history branching section
   in
   let dissection =
     match option_dissection with

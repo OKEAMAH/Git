@@ -34,7 +34,11 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
       with type 'a state = 'a P.state
        and type history = P.history
 
+  (** This sumbodule introduces sections and dissections and the functions that build them
+*)
   module Section_repr : sig
+    (** a section has a start and end tick as well as a start and end state. 
+    The game will compare such sections and dissagree on them.*)
     type 'k section = {
       section_start_state : 'k P.state;
       section_start_at : Tick_repr.t;
@@ -42,6 +46,9 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
       section_stop_at : Tick_repr.t;
     }
 
+    (**a dissection is a split of a section in several smaller sections. it is defined as a list.
+    TODO perhaps this should be a binary tree based on start_at (which ar increasing) rather than a list. It would make find faster.
+*)
     and 'k dissection = 'k section list
 
     val section_encoding :
@@ -65,13 +72,24 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
       [`Compressed | `Full | `Verifiable] section list option ->
       unit
 
+    (** a section is valid if its star_at tick is smaller than it stop_at tick.*)
     val valid_section : 'a section -> bool
 
     exception Dissection_error of string
 
-    val section_of_dissection : 'a section list -> 'a section
+    (** this checks that a dissection is continuous and assembles the corresponding 
+    section*)
+    val section_of_dissection : 'a dissection -> 'a section
 
-    val valid_dissection : 'a section -> 'b section list -> bool
+    (** this function checks that a given dissection is actually a dissection of a section.*)
+    val valid_dissection : 'a section -> 'a dissection -> bool
+
+    (** This splits a section into a dissection with a fixed number of pieces and whose states come from the history.*)
+    val dissection_of_section :
+      PVM.history ->
+      int ->
+      'a section ->
+      [`Compressed | `Full | `Verifiable] section list option
   end
 
   type player = Committer | Refuter
@@ -82,6 +100,11 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
 
   val opponent : player -> player
 
+  (** this is the type (state) of a game at a certain moment.It indicates the following:
+  - whose turn it is,
+  - where does it start and where does it stop
+  - the agreed starting state and the disagreed stop state,
+  _ the current dissection that teh player should choose from.*)
   type t = {
     turn : player;
     start_state : [`Compressed | `Full | `Verifiable] P.state;
@@ -95,6 +118,8 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
 
   val encoding : t Data_encoding.t
 
+  (** a conflict_search_step can either be a refining of an existing section or a concluded
+  step.*)
   type conflict_search_step =
     | Refine of {
         stop_state : [`Compressed | `Full | `Verifiable] P.state;
@@ -107,15 +132,19 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
       }
         -> conflict_search_step
 
+  (** a move consists of a choice of a section and a conflict_search step. 
+Note that there is some overlap of the info in a move.*)
   type move =
     | ConflictInside of {
         choice : [`Compressed | `Full | `Verifiable] Section_repr.section;
         conflict_search_step : conflict_search_step;
       }
 
+  (** the commiter commits a section *)
   type commit =
     | Commit of [`Compressed | `Full | `Verifiable] Section_repr.section
 
+  (** the refuter refutes a conflict_search_step*)
   type refutation = RefuteByConflict of conflict_search_step
 
   type reason = InvalidMove | ConflictResolved

@@ -152,6 +152,34 @@ module Make (P : TPVM) = struct
           s.section_start_at = section.section_start_at
           && s.section_stop_at = section.section_stop_at)
       with _ -> false
+
+    let dissection_of_section history (branching : int) (section : _ section) =
+      if Tick_repr.(next section.section_start_at = section.section_stop_at)
+      then None
+      else
+        let start = (section.section_start_at :> int) in
+        let stop = (section.section_stop_at :> int) in
+        let len = stop - start in
+        let branching = min branching len in
+        let bucket = len / branching in
+        let dissection =
+          repeat branching (fun x ->
+              let start_at = start + (bucket * x) in
+              let stop_at =
+                if x = branching - 1 then stop
+                else min stop (start + (bucket * (x + 1)))
+              in
+              let section_start_at = Tick_repr.make start_at
+              and section_stop_at = Tick_repr.make stop_at in
+              ({
+                 section_start_at;
+                 section_start_state = PVM.state_at history section_start_at;
+                 section_stop_at;
+                 section_stop_state = PVM.state_at history section_stop_at;
+               }
+                : _ section))
+        in
+        Result.to_option dissection
   end
 
   type player = Committer | Refuter
@@ -192,8 +220,6 @@ module Make (P : TPVM) = struct
     current_dissection :
       [`Compressed | `Full | `Verifiable] Section_repr.dissection option;
   }
-
-  (*TODO perhaps this should be a binary tree based on start_at (which ar increasing) rather than a list. It would make find faster. *)
 
   let encoding =
     let open Data_encoding in
