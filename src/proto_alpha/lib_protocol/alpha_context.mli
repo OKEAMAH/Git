@@ -1980,14 +1980,14 @@ module Tx_rollup : sig
   }
 
   (** [hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty] computes the
-      hash of the ticket of type [ty ticket], of content [content] and
+      hash of the ticket of type [ty ticket], of content [contents] and
       of ticketer [ticketer].
 
-      The goal of the comuted hash is twofold:
+      The goal of the computed hash is twofold:
 
       {ul {li Identifying the ticket in the layer-2, and}
-          {li Registeringto the table of tickets that [tx_rollup] owns this
-              ticket.}} *)
+          {li Registering in the table of tickets that [tx_rollup]
+              owns this ticket.}} *)
   val hash_ticket :
     context ->
     t ->
