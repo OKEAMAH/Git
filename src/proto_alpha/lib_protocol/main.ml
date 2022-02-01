@@ -84,6 +84,8 @@ let validation_passes =
       };
       (* 512kB *)
       {max_size = 512 * 1024; max_op = None};
+      (* FIXME: copy of manager operations for prototyping.*)
+      {max_size = 512 * 1024; max_op = None};
     ]
 
 let rpc_services =
