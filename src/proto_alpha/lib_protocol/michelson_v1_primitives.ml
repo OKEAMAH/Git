@@ -751,6 +751,7 @@ let prim_encoding =
          ("constant", H_constant);
          (* Alpha_012 addition *)
          ("SUB_MUTEZ", I_SUB_MUTEZ);
+         (* Alpha_013 addition *)
          ("tx_rollup_l2_address", T_tx_rollup_l2_address);
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
