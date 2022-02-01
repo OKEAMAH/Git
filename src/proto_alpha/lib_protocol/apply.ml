@@ -1027,15 +1027,12 @@ let apply_manager_operation_content :
               in
               (ctxt, result, operations) ))
   | Transaction {amount; parameters; destination = Tx_rollup dst; entrypoint} ->
-      fail_unless
-        (Alpha_context.Constants.tx_rollup_enable ctxt)
-        Tx_rollup_disabled
+      fail_unless (Constants.tx_rollup_enable ctxt) Tx_rollup_disabled
       >>=? fun () ->
       fail_unless internal Tx_rollup_non_internal_transaction >>=? fun () ->
       fail_unless Tez.(amount = zero) Tx_rollup_non_null_transaction
       >>=? fun () ->
-      if Entrypoint.(entrypoint = Alpha_context.Tx_rollup.deposit_entrypoint)
-      then
+      if Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) then
         Script.force_decode_in_context
           ~consume_deserialization_gas
           ctxt
