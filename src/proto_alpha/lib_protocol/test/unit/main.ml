@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 module Unit_test : sig
-  (** 
+  (**
    * Example: [spec "Alpha_context.ml" Test_alpha_context.test_cases]
    * Unit tests needs tag in log (like "[UNIT] some test description here...")
    * This function handles such meta data *)
@@ -61,7 +61,7 @@ let () =
       Unit_test.spec "level module" Test_level_module.tests;
       Unit_test.spec "qty" Test_qty.tests;
       Unit_test.spec "round" Test_round_repr.tests;
-      Unit_test.spec "time" Test_time_repr.tests;
+      Unit_test.spec "proofs" Test_time_repr.tests;
       Unit_test.spec "receipt encodings" Test_receipt.tests;
       Unit_test.spec "saturation arithmetic" Test_saturation.tests;
       Unit_test.spec "gas monad" Test_gas_monad.tests;
