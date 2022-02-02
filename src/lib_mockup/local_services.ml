@@ -869,6 +869,8 @@ module Make (E : MENV) = struct
            with_chain ~caller_name:"protocol_data_raw" chain (fun () ->
                RPC_answer.return E.protocol_data)))
 
+  let rec init v n = if n <= 0 then [] else v :: init v (n - 1)
+
   let operations () =
     Directory.prefix
       (Tezos_rpc.RPC_path.prefix Chain_services.path Block_services.path)
@@ -878,7 +880,8 @@ module Make (E : MENV) = struct
          (fun (((), chain), _block) () () ->
            with_chain ~caller_name:"operations" chain (fun () ->
                (* FIXME: Better answer here *)
-               RPC_answer.return [[]; []; []; []]))
+               RPC_answer.return
+                 (init [] E.rpc_context.block_header.validation_passes)))
 
   let monitor_operations () =
     let open Lwt_syntax in
