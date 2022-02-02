@@ -23,8 +23,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let () =
-  Alcotest_lwt.run
-    "tezos-shell-context"
-    [("mem_context", Test_mem_context.tests); ("cache", Test_cache.tests); ("proxy_context", Test_proxy_context.tests);]
-  |> Lwt_main.run
+(** Testing
+    -------
+    Component:    Protocol Environment
+    Invocation:   dune build @src/lib_protocol_environment/runtest
+    Dependencies: src/lib_protocol_environment/test/assert.ml
+    Subject:      Low-level operations on proxy contexts.
+*)
+
+val tests : unit Alcotest_lwt.test_case trace

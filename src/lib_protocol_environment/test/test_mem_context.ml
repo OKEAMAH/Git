@@ -62,7 +62,7 @@ type t = {
   block3b : Context.t;
 }
 
-let wrap_context_init f _ () =
+let wrap_context_init f  _ () =
   let genesis = Memory_context.empty in
   create_block2 genesis >>= fun block2 ->
   create_block3a block2 >>= fun block3a ->
