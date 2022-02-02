@@ -2,7 +2,7 @@
     -------
     Component:  Protocol (time repr)
     Invocation: dune exec src/proto_alpha/lib_protocol/test/unit/main.exe \
-                -- test "^\[Unit\] time$"
+                -- test "^\[Unit\] merkle proofs$"
     Subject:    Error handling of time operations
 *)
 
