@@ -135,6 +135,12 @@ let check_json_is_empty_list ?(fail_msg = "") json =
       in
       Test.fail "%s" msg
 
+let number protocol =
+  Protocol.(match protocol with Alpha -> 13 | Ithaca -> 12 | Hangzhou -> 11)
+
+let validation_passes protocol =
+  Protocol.(match protocol with Alpha -> 5 | Ithaca -> 4 | Hangzhou -> 4)
+
 (* Test.
 
    Aim: check that a node launched with "debug" event level performs
@@ -209,7 +215,7 @@ let test_debug_level_misc =
   let* ops = RPC.get_operations client_1 in
   Log.info "RPC.get_operations done." ;
   (match JSON.(ops |> as_list_opt) with
-  | Some [x1; x2; x3; x4] -> (
+  | Some [x1; x2; x3; x4] when number protocol < 13 -> (
       List.iter check_json_is_empty_list [x1; x2; x3] ;
       match JSON.(x4 |> as_list_opt) with
       | Some [x] -> (
@@ -223,7 +229,27 @@ let test_debug_level_misc =
           Test.fail
             "Fourth list returned by RPC.operations should contain exactly one \
              operation.")
-  | _ -> Test.fail "RPC.operations should return a list of length 4.") ;
+  | Some [x1; x2; x3; x4; x5] -> (
+      List.iter check_json_is_empty_list [x1; x2; x3; x5] ;
+      match JSON.(x4 |> as_list_opt) with
+      | Some [x] -> (
+          match JSON.(x |-> "hash" |> as_string_opt) with
+          | Some s when String.equal s oph1 -> ()
+          | _ ->
+              Test.fail
+                "Fourth list returned by RPC.operations should contain only \
+                 the previously applied operation.")
+      | _ ->
+          Test.fail
+            "Fourth list returned by RPC.operations should contain exactly one \
+             operation.")
+  | Some l ->
+      Test.fail
+        "RPC.operations returned a list of an incorrect size: Expected '%d', \
+         got '%d'"
+        (validation_passes protocol)
+        (List.length l)
+  | None -> Test.fail "RPC.operations failed to return a list of operations") ;
   unit
 
 (* Wait for an event of name "set_head.v0".
