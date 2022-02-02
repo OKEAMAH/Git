@@ -235,8 +235,8 @@ let () =
     ~id:"michelson_v1.invalid_tx_rollup_ticket_amount"
     ~title:"Invalid ticket amount"
     ~description:
-      "Ticket amount to be deposited in a transaction rollup should fit in a \
-       64bits integer"
+      "Ticket amount to be deposited in a transaction rollup should be \
+       strictly positive and fit in a signed 64-bit integer"
     (obj1 (req "requested_value" Data_encoding.z))
     (function Tx_rollup_invalid_ticket_amount z -> Some z | _ -> None)
     (fun z -> Tx_rollup_invalid_ticket_amount z) ;
