@@ -61,7 +61,7 @@ let () =
       Unit_test.spec "level module" Test_level_module.tests;
       Unit_test.spec "qty" Test_qty.tests;
       Unit_test.spec "round" Test_round_repr.tests;
-      Unit_test.spec "proofs" Test_time_repr.tests;
+      Unit_test.spec "merkle proofs" Test_time_repr.tests;
       Unit_test.spec "receipt encodings" Test_receipt.tests;
       Unit_test.spec "saturation arithmetic" Test_saturation.tests;
       Unit_test.spec "gas monad" Test_gas_monad.tests;
