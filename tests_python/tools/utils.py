@@ -59,11 +59,7 @@ def check_block_contains_operations(
     client: Client, operation_hashes: List[str]
 ) -> bool:
     res = client.rpc('get', '/chains/main/blocks/head/operation_hashes')
-    flatten = (
-        res[0] + res[1] + res[2] + res[3]
-        if res is not None and len(res) == 4
-        else []
-    )
+    flatten: List[str] = sum(res, [])
     return all(oh in flatten for oh in operation_hashes)
 
 
