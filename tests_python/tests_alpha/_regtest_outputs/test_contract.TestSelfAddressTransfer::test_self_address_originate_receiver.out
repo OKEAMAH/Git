@@ -50,4 +50,4 @@ New contract [CONTRACT_HASH] originated.
 Contract memorized as self_address_receiver.
 Injected block at minimal timestamp
 [ [ "[BLOCK_HASH]" ], [], [],
-  [ "[BLOCK_HASH]" ] ]
+  [ "[BLOCK_HASH]" ], [] ]

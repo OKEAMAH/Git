@@ -80,7 +80,7 @@ This sequence of operations was run:
 Injected block at minimal timestamp
 { "level": [LEVEL], "proto": 1,
   "predecessor": "[BLOCK_HASH]",
-  "timestamp": "[TIMESTAMP]", "validation_pass": 4,
+  "timestamp": "[TIMESTAMP]", "validation_pass": 5,
   "operations_hash": "[OPERATION_HASH]",
   "fitness": "[FITNESS]",
   "context": "[CONTEXT]" }

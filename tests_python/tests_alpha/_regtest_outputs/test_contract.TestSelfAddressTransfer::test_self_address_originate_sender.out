@@ -49,4 +49,4 @@ This sequence of operations was run:
 New contract [CONTRACT_HASH] originated.
 Contract memorized as self_address_sender.
 Injected block at minimal timestamp
-[ [], [], [], [ "[BLOCK_HASH]" ] ]
+[ [], [], [], [ "[BLOCK_HASH]" ], [] ]
