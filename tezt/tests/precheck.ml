@@ -163,6 +163,9 @@ let forge_block ~protocol ?client node ~key =
   in
   return block_header
 
+let validation_passes protocol =
+  Protocol.(match protocol with Alpha -> 5 | Ithaca -> 4 | Hangzhou -> 4)
+
 let propagate_precheckable_bad_block =
   let blocks_to_bake = 4 in
   Protocol.register_test
@@ -236,7 +239,8 @@ let propagate_precheckable_bad_block =
     `O
       [
         ("data", `String signed_bad_block_header_hex);
-        ("operations", `A (List.init 4 (fun _ -> `A [])));
+        ( "operations",
+          `A (List.init (validation_passes protocol) (fun _ -> `A [])) );
       ]
   in
   let wait_precheck_but_validation_fail node =
