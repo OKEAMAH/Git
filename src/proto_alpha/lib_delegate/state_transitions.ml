@@ -377,13 +377,19 @@ let propose_fresh_block_action ~endorsements ?last_proposal
             Operation_pool.votes_payload;
             anonymous_payload;
             managers_payload;
+            tx_rollup_payload;
           } =
             proposal.payload
           in
           List.fold_left
             Operation_pool.add_operations
             pool
-            [votes_payload; anonymous_payload; managers_payload]
+            [
+              votes_payload;
+              anonymous_payload;
+              managers_payload;
+              tx_rollup_payload;
+            ]
       | None -> pool
     in
     (* 2. Filter and only retain relevant endorsements. *)

@@ -34,6 +34,8 @@ val anonymous_index : int
 
 val managers_index : int
 
+val tx_rollup_index : int
+
 module Operation_set : Set.S with type elt = packed_operation
 
 (** Generic base type for pools *)
@@ -42,6 +44,7 @@ type 'collection t = {
   votes : 'collection;
   anonymous : 'collection;
   managers : 'collection;
+  tx_rollup : 'collection;
 }
 
 (** A pool of operations for a single origin, or undifferenciated origin,
@@ -70,6 +73,7 @@ type payload = {
   votes_payload : packed_operation list;
   anonymous_payload : packed_operation list;
   managers_payload : packed_operation list;
+  tx_rollup_payload : packed_operation list;
 }
 
 val empty_payload : payload

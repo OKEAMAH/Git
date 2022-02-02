@@ -37,6 +37,8 @@ let anonymous_quota = Stdlib.List.nth quota Operation_pool.anonymous_index
 
 let managers_quota = Stdlib.List.nth quota Operation_pool.managers_index
 
+let tx_rollup_quota = Stdlib.List.nth quota Operation_pool.tx_rollup_index
+
 type prioritized_manager = {
   op : Prioritized_operation.t;
   size : int;
@@ -219,7 +221,8 @@ let filter_valid_operations_up_to_quota inc (ops, quota) =
   with Full (inc, l) -> Lwt.return (inc, List.rev l)
 
 let filter_operations_with_simulation initial_inc fees_config
-    ~hard_gas_limit_per_block {consensus; votes; anonymous; managers} =
+    ~hard_gas_limit_per_block {consensus; votes; anonymous; managers; tx_rollup}
+    =
   let {
     Baking_configuration.minimal_fees;
     minimal_nanotez_per_gas_unit;
@@ -254,7 +257,11 @@ let filter_operations_with_simulation initial_inc fees_config
       |> List.map (fun {op; _} -> Prioritized_operation.packed op),
       managers_quota )
   >>= fun (inc, managers) ->
-  let operations = [consensus; votes; anonymous; managers] in
+  filter_valid_operations_up_to_quota
+    inc
+    (Prioritized_operation_set.operations tx_rollup, tx_rollup_quota)
+  >>= fun (inc, tx_rollup) ->
+  let operations = [consensus; votes; anonymous; managers; tx_rollup] in
   let operations_hash =
     Operation_list_list_hash.compute
       (List.map
@@ -289,7 +296,7 @@ let filter_valid_operations_up_to_quota_without_simulation (ops, quota) =
   with Full l -> List.rev l
 
 let filter_operations_without_simulation fees_config ~hard_gas_limit_per_block
-    {consensus; votes; anonymous; managers} =
+    {consensus; votes; anonymous; managers; tx_rollup} =
   let consensus =
     filter_valid_operations_up_to_quota_without_simulation
       (Prioritized_operation_set.operations consensus, consensus_quota)
@@ -324,5 +331,9 @@ let filter_operations_without_simulation fees_config ~hard_gas_limit_per_block
         |> List.map (fun {op; _} -> Prioritized_operation.packed op),
         managers_quota )
   in
-  let operations = [consensus; votes; anonymous; managers] in
+  let tx_rollup =
+    filter_valid_operations_up_to_quota_without_simulation
+      (Prioritized_operation_set.operations tx_rollup, tx_rollup_quota)
+  in
+  let operations = [consensus; votes; anonymous; managers; tx_rollup] in
   operations

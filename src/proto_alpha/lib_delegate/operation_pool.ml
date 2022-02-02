@@ -33,6 +33,7 @@ type 'collection t = {
   votes : 'collection;
   anonymous : 'collection;
   managers : 'collection;
+  tx_rollup : 'collection;
 }
 
 module Prioritized_operation = struct
@@ -81,44 +82,54 @@ type ordered_pool = packed_operation list t
 let ordered_pool_encoding =
   let open Data_encoding in
   conv
-    (fun {consensus; votes; anonymous; managers} ->
-      (consensus, votes, anonymous, managers))
-    (fun (consensus, votes, anonymous, managers) ->
-      {consensus; votes; anonymous; managers})
-    (obj4
+    (fun {consensus; votes; anonymous; managers; tx_rollup} ->
+      (consensus, votes, anonymous, managers, tx_rollup))
+    (fun (consensus, votes, anonymous, managers, tx_rollup) ->
+      {consensus; votes; anonymous; managers; tx_rollup})
+    (obj5
        (req "ordered_consensus" (list (dynamic_size Operation.encoding)))
        (req "ordered_votes" (list (dynamic_size Operation.encoding)))
        (req "ordered_anonymouns" (list (dynamic_size Operation.encoding)))
-       (req "ordered_managers" (list (dynamic_size Operation.encoding))))
+       (req "ordered_managers" (list (dynamic_size Operation.encoding)))
+       (req "ordered_tx_rollup" (list (dynamic_size Operation.encoding))))
 
 type payload = {
   votes_payload : packed_operation list;
   anonymous_payload : packed_operation list;
   managers_payload : packed_operation list;
+  tx_rollup_payload : packed_operation list;
 }
 
 let empty_payload =
-  {votes_payload = []; anonymous_payload = []; managers_payload = []}
+  {
+    votes_payload = [];
+    anonymous_payload = [];
+    managers_payload = [];
+    tx_rollup_payload = [];
+  }
 
 let payload_encoding =
   let open Data_encoding in
   conv
-    (fun {votes_payload; anonymous_payload; managers_payload} ->
-      (votes_payload, anonymous_payload, managers_payload))
-    (fun (votes_payload, anonymous_payload, managers_payload) ->
-      {votes_payload; anonymous_payload; managers_payload})
-    (obj3
+    (fun {votes_payload; anonymous_payload; managers_payload; tx_rollup_payload} ->
+      (votes_payload, anonymous_payload, managers_payload, tx_rollup_payload))
+    (fun (votes_payload, anonymous_payload, managers_payload, tx_rollup_payload) ->
+      {votes_payload; anonymous_payload; managers_payload; tx_rollup_payload})
+    (obj4
        (req "votes_payload" (list (dynamic_size Operation.encoding)))
        (req "anonymous_payload" (list (dynamic_size Operation.encoding)))
-       (req "managers_payload" (list (dynamic_size Operation.encoding))))
+       (req "managers_payload" (list (dynamic_size Operation.encoding)))
+       (req "tx_rollup_payload" (list (dynamic_size Operation.encoding))))
 
-let pp_payload fmt {votes_payload; anonymous_payload; managers_payload} =
+let pp_payload fmt
+    {votes_payload; anonymous_payload; managers_payload; tx_rollup_payload} =
   Format.fprintf
     fmt
-    "[votes: %d, anonymous: %d, managers: %d]"
+    "[votes: %d, anonymous: %d, managers: %d, tx_rollup: %d]"
     (List.length votes_payload)
     (List.length anonymous_payload)
     (List.length managers_payload)
+    (List.length tx_rollup_payload)
 
 let empty =
   {
@@ -126,27 +137,31 @@ let empty =
     votes = Operation_set.empty;
     anonymous = Operation_set.empty;
     managers = Operation_set.empty;
+    tx_rollup = Operation_set.empty;
   }
 
-let empty_ordered = {consensus = []; votes = []; anonymous = []; managers = []}
+let empty_ordered =
+  {consensus = []; votes = []; anonymous = []; managers = []; tx_rollup = []}
 
-let pp_pool fmt {consensus; votes; anonymous; managers} =
+let pp_pool fmt {consensus; votes; anonymous; managers; tx_rollup} =
   Format.fprintf
     fmt
-    "[consensus: %d, votes: %d, anonymous: %d, managers: %d]"
+    "[consensus: %d, votes: %d, anonymous: %d, managers: %d, tx_rollup: %d]"
     (Operation_set.cardinal consensus)
     (Operation_set.cardinal votes)
     (Operation_set.cardinal anonymous)
     (Operation_set.cardinal managers)
+    (Operation_set.cardinal tx_rollup)
 
-let pp_ordered_pool fmt {consensus; votes; anonymous; managers} =
+let pp_ordered_pool fmt {consensus; votes; anonymous; managers; tx_rollup} =
   Format.fprintf
     fmt
-    "[consensus: %d, votes: %d, anonymous: %d, managers: %d]"
+    "[consensus: %d, votes: %d, anonymous: %d, managers: %d, tx_rollup: %d]"
     (List.length consensus)
     (List.length votes)
     (List.length anonymous)
     (List.length managers)
+    (List.length tx_rollup)
 
 (* Hypothesis : we suppose [List.length Protocol.Main.validation_passes = 4] *)
 let consensus_index = 0
@@ -156,6 +171,8 @@ let votes_index = 1
 let anonymous_index = 2
 
 let managers_index = 3
+
+let tx_rollup_index = 4
 
 let classify op =
   (* Hypothesis: acceptable passes returns a size at most 1 list  *)
@@ -281,32 +298,41 @@ let filter_endorsements ops =
       | _ -> None)
     ops
 
-let ordered_to_list_list {consensus; votes; anonymous; managers} =
-  [consensus; votes; anonymous; managers]
+let ordered_to_list_list {consensus; votes; anonymous; managers; tx_rollup} =
+  [consensus; votes; anonymous; managers; tx_rollup]
 
 let ordered_of_list_list = function
-  | [consensus; votes; anonymous; managers] ->
-      Some {consensus; votes; anonymous; managers}
+  | [consensus; votes; anonymous; managers; tx_rollup] ->
+      Some {consensus; votes; anonymous; managers; tx_rollup}
   | _ -> None
 
-let payload_of_ordered_pool {votes; anonymous; managers; _} =
+let payload_of_ordered_pool
+    {consensus = _; votes; anonymous; managers; tx_rollup} =
   {
     votes_payload = votes;
     anonymous_payload = anonymous;
     managers_payload = managers;
+    tx_rollup_payload = tx_rollup;
   }
 
 let ordered_pool_of_payload ~consensus_operations
-    {votes_payload; anonymous_payload; managers_payload} =
+    {votes_payload; anonymous_payload; managers_payload; tx_rollup_payload} =
   {
     consensus = consensus_operations;
     votes = votes_payload;
     anonymous = anonymous_payload;
     managers = managers_payload;
+    tx_rollup = tx_rollup_payload;
   }
 
 let extract_operations_of_list_list = function
-  | [consensus; votes_payload; anonymous_payload; managers_payload] ->
+  | [
+      consensus;
+      votes_payload;
+      anonymous_payload;
+      managers_payload;
+      tx_rollup_payload;
+    ] ->
       let (preendorsements, endorsements) =
         List.fold_left
           (fun ( (preendorsements : Kind.preendorsement Operation.t list),
@@ -328,16 +354,19 @@ let extract_operations_of_list_list = function
       let preendorsements =
         if preendorsements = [] then None else Some preendorsements
       in
-      let payload = {votes_payload; anonymous_payload; managers_payload} in
+      let payload =
+        {votes_payload; anonymous_payload; managers_payload; tx_rollup_payload}
+      in
       Some (preendorsements, endorsements, payload)
   | _ -> None
 
-let filter_pool p {consensus; votes; anonymous; managers} =
+let filter_pool p {consensus; votes; anonymous; managers; tx_rollup} =
   {
     consensus = Operation_set.filter p consensus;
     votes = Operation_set.filter p votes;
     anonymous = Operation_set.filter p anonymous;
     managers = Operation_set.filter p managers;
+    tx_rollup = Operation_set.filter p tx_rollup;
   }
 
 module Prioritized = struct
@@ -356,6 +385,7 @@ module Prioritized = struct
       votes = of_operation_set pool.votes;
       anonymous = of_operation_set pool.anonymous;
       managers = of_operation_set pool.managers;
+      tx_rollup = of_operation_set pool.tx_rollup;
     }
 
   let add_operation =
@@ -372,7 +402,7 @@ module Prioritized = struct
       (external_operations : packed_operation list) =
     List.fold_left add_external_operation pool external_operations
 
-  let filter p {consensus; votes; anonymous; managers} =
+  let filter p {consensus; votes; anonymous; managers; tx_rollup} =
     let filter =
       Prioritized_operation_set.filter (fun pop ->
           p (Prioritized_operation.packed pop))
@@ -382,5 +412,6 @@ module Prioritized = struct
       votes = filter votes;
       anonymous = filter anonymous;
       managers = filter managers;
+      tx_rollup = filter tx_rollup;
     }
 end
