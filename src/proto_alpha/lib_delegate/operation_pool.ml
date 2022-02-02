@@ -183,6 +183,7 @@ let classify op =
       else if pass = votes_index then `Votes
       else if pass = anonymous_index then `Anonymous
       else if pass = managers_index then `Managers
+      else if pass = tx_rollup_index then `Tx_rollup
       else `Bad
   | _ -> `Bad
 
@@ -200,6 +201,9 @@ let add_operation_to_pool add classify pool operation =
   | `Managers ->
       let managers = add operation pool.managers in
       {pool with managers}
+  | `Tx_rollup ->
+      let tx_rollup = add operation pool.tx_rollup in
+      {pool with tx_rollup}
   | `Bad -> pool
 
 let add_operation = add_operation_to_pool Operation_set.add classify
