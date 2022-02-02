@@ -388,9 +388,13 @@ let check_ordering ops =
   let ops' = List.sort compare_info ops in
   assert (ops = ops')
 
-let assert_block_is_well_baked block =
+let number protocol =
+  Protocol.(match protocol with Alpha -> 13 | Ithaca -> 12 | Hangzhou -> 11)
+
+let assert_block_is_well_baked ~protocol block =
   match JSON.(as_list (block |-> "operations")) with
-  | [endorsement_ops; vote_ops; anonymous_ops; manager_ops] ->
+  | [endorsement_ops; vote_ops; anonymous_ops; manager_ops]
+    when number protocol < 13 ->
       (* There very well might be endorsement operations *)
       Log.debug
         "%d endorsement operations"
@@ -398,6 +402,20 @@ let assert_block_is_well_baked block =
       List.iter
         (fun l -> assert (JSON.as_list l = []))
         [vote_ops; anonymous_ops] ;
+      let fees_managers_and_counters =
+        List.map
+          (fun json -> get_fees_manager_and_counter json)
+          (JSON.as_list manager_ops)
+      in
+      check_ordering fees_managers_and_counters
+  | [endorsement_ops; vote_ops; anonymous_ops; manager_ops; tx_rollup_ops] ->
+      (* There very well might be endorsement operations *)
+      Log.debug
+        "%d endorsement operations"
+        (List.length (JSON.as_list endorsement_ops)) ;
+      List.iter
+        (fun l -> assert (JSON.as_list l = []))
+        [vote_ops; anonymous_ops; tx_rollup_ops] ;
       let fees_managers_and_counters =
         List.map
           (fun json -> get_fees_manager_and_counter json)
@@ -462,7 +480,7 @@ let bake_and_check state ~protocol ~mempool =
   let* block =
     Client.(rpc GET ["chains"; "main"; "blocks"; "head"] state.sandbox_client)
   in
-  assert_block_is_well_baked block ;
+  assert_block_is_well_baked ~protocol block ;
   return ()
 
 let init ~protocol =
