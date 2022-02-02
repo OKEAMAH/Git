@@ -278,6 +278,7 @@ module Make (E : MENV) = struct
         ()
 
     let warn msg =
+      let msg = String.map (function ' ' -> '_' | x -> x) msg in
       S.declare_0
         ~section
         ~name:(Printf.sprintf "local_services_warn_%s" msg)
