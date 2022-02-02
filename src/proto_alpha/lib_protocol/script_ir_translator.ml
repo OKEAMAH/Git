@@ -5093,8 +5093,8 @@ and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_contra
     Destination.t ->
     entrypoint:Entrypoint.t ->
     (context * arg typed_contract) tzresult Lwt.t =
- fun ~stack_depth ~legacy ctxt loc arg contract ~entrypoint ->
-  match contract with
+ fun ~stack_depth ~legacy ctxt loc arg destination ~entrypoint ->
+  match destination with
   | Contract contract -> (
       match Contract.is_implicit contract with
       | Some _ ->
@@ -5140,17 +5140,13 @@ and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_contra
                        loc
                   >>? fun (entrypoint_arg, ctxt) ->
                   entrypoint_arg >|? fun (entrypoint, arg_ty) ->
-                  let destination : Destination.t = Contract contract in
                   (ctxt, {arg_ty; address = {destination; entrypoint}}) )))
   | Tx_rollup tx_rollup ->
       Tx_rollup_state.assert_exist ctxt tx_rollup >>=? fun ctxt ->
       if Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) then
         match arg with
         | Pair_t (Ticket_t (_, _), Tx_rollup_l2_address_t _, _) ->
-            return
-              ( ctxt,
-                {arg_ty = arg; address = {destination = contract; entrypoint}}
-              )
+            return (ctxt, {arg_ty = arg; address = {destination; entrypoint}})
         | _ -> failwith "TODO: bad parameter"
       else fail (No_such_entrypoint entrypoint)
 
