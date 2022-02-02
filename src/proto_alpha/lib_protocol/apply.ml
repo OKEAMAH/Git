@@ -106,7 +106,7 @@ type error +=
   | (* `Permanent *)
       Tx_rollup_feature_disabled
   | (* `Permanent *)
-      Tx_rollup_non_null_transaction
+      Tx_rollup_invalid_transaction_amount
   | (* `Permanent *)
       Tx_rollup_non_internal_transaction
   | (* `Permanent *)
@@ -500,14 +500,19 @@ let () =
 
   register_error_kind
     `Permanent
-    ~id:"operation.tx_rollup_non_null_transaction"
-    ~title:"Non-null transaction to a transaction rollup"
-    ~description:"Non-null transactions to a tx rollup are forbidden."
+    ~id:"operation.tx_rollup_invalid_transaction_amount"
+    ~title:"Transaction amount to a transaction rollup must be zero"
+    ~description:
+      "Because transaction rollups are outside of the delegation mechanism of \
+       Tezos, they cannot own Tez, and therefore transactions targeting a \
+       transaction rollup must have its amount field set to zero."
     ~pp:(fun ppf () ->
-      Format.fprintf ppf "Transaction to a transaction rollup must be null.")
+      Format.fprintf
+        ppf
+        "Transaction amount to a transaction rollup must be zero.")
     Data_encoding.unit
-    (function Tx_rollup_non_null_transaction -> Some () | _ -> None)
-    (fun () -> Tx_rollup_non_null_transaction) ;
+    (function Tx_rollup_invalid_transaction_amount -> Some () | _ -> None)
+    (fun () -> Tx_rollup_invalid_transaction_amount) ;
 
   register_error_kind
     `Permanent
@@ -1028,7 +1033,7 @@ let apply_manager_operation_content :
               (ctxt, result, operations) ))
   | Transaction {amount; parameters; destination = Tx_rollup dst; entrypoint} ->
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
-      fail_unless Tez.(amount = zero) Tx_rollup_non_null_transaction
+      fail_unless Tez.(amount = zero) Tx_rollup_invalid_transaction_amount
       >>=? fun () ->
       if Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) then
         Script.force_decode_in_context

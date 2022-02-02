@@ -113,7 +113,7 @@ type error += (* `Branch *) Empty_transaction of Contract.t
 
 type error += (* `Permanent *) Tx_rollup_feature_disabled
 
-type error += (* `Permanent *) Tx_rollup_non_null_transaction
+type error += (* `Permanent *) Tx_rollup_invalid_transaction_amount
 
 type error += (* `Permanent *) Tx_rollup_non_internal_transaction
 
