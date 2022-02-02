@@ -721,6 +721,7 @@ let relative_position_within_block op1 op2 =
   | (_, Single (Failing_noop _)) -> 1
   | (Single (Failing_noop _), _) -> -1
   (* Manager operations with smaller counter are pre-validated first. *)
+  (* FIXME: Should we update this for tx_rollup operations? *)
   | (Single (Manager_operation op1), Single (Manager_operation op2)) ->
       Z.compare op1.counter op2.counter
   | (Cons (Manager_operation op1, _), Single (Manager_operation op2)) ->
