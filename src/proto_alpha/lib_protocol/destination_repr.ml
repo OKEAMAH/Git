@@ -77,7 +77,7 @@ let encoding =
     "transaction_destination"
     ~title:"A destination of a transaction"
     ~description:
-      "A destination notation compatible with the contract notation as given  \
+      "A destination notation compatible with the contract notation as given \
        to an RPC or inside scripts. Can be a base58 implicit contract hash, a \
        base58 originated contract hash, or a base58 originated transaction \
        rollup."
