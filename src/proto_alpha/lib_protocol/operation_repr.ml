@@ -1034,8 +1034,20 @@ let acceptable_passes (op : packed_operation) =
   | Single (Double_preendorsement_evidence _) -> [2]
   | Single (Double_baking_evidence _) -> [2]
   | Single (Activate_account _) -> [2]
-  | Single (Manager_operation _) -> [3]
-  | Cons (Manager_operation _, _ops) -> [3]
+  | Single (Manager_operation {operation; _}) -> (
+      match operation with
+      | Reveal _ | Transaction _ | Origination _ | Delegation _
+      | Register_global_constant _ | Set_deposits_limit _
+      | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
+          [3]
+      | Tx_rollup_origination | Tx_rollup_submit_batch _ -> [4])
+  | Cons (Manager_operation {operation; _}, _ops) -> (
+      match operation with
+      | Reveal _ | Transaction _ | Origination _ | Delegation _
+      | Register_global_constant _ | Set_deposits_limit _
+      | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
+          [3]
+      | Tx_rollup_origination | Tx_rollup_submit_batch _ -> [4])
 
 type error += Invalid_signature (* `Permanent *)
 
