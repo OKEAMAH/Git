@@ -5142,16 +5142,17 @@ and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_contra
                   entrypoint_arg >|? fun (entrypoint, arg_ty) ->
                   let destination : Destination.t = Contract contract in
                   (ctxt, {arg_ty; address = {destination; entrypoint}}) )))
-  | Tx_rollup tx_rollup -> (
-      match arg with
-      | Pair_t (Ticket_t (_, _), Tx_rollup_l2_address_t _, _)
-        when Entrypoint.(
-               entrypoint = Alpha_context.Tx_rollup.deposit_entrypoint) ->
-          Tx_rollup_state.assert_exist ctxt tx_rollup >>=? fun ctxt ->
-          return
-            ( ctxt,
-              {arg_ty = arg; address = {destination = contract; entrypoint}} )
-      | _ -> fail (No_such_entrypoint entrypoint))
+  | Tx_rollup tx_rollup ->
+      Tx_rollup_state.assert_exist ctxt tx_rollup >>=? fun ctxt ->
+      if Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) then
+        match arg with
+        | Pair_t (Ticket_t (_, _), Tx_rollup_l2_address_t _, _) ->
+            return
+              ( ctxt,
+                {arg_ty = arg; address = {destination = contract; entrypoint}}
+              )
+        | _ -> failwith "TODO: bad parameter"
+      else fail (No_such_entrypoint entrypoint)
 
 and parse_view_name ctxt : Script.node -> (Script_string.t * context) tzresult =
   function
