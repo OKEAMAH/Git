@@ -2248,7 +2248,8 @@ let parse_tx_rollup_deposit_parameters :
         ] ) ->
       parse_tx_rollup_l2_address ctxt bls >>? fun (destination, ctxt) ->
       (match amount with
-      | Int (_, v) when Compare.Z.(v <= Z.of_int64 Int64.max_int) ->
+      | Int (_, v) when Compare.Z.(Z.zero < v && v <= Z.of_int64 Int64.max_int)
+        ->
           ok @@ Z.to_int64 v
       | Int (_, v) -> error @@ Tx_rollup_invalid_ticket_amount v
       | expr -> error @@ Invalid_kind (location expr, [Int_kind], kind expr))
