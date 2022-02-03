@@ -68,12 +68,14 @@ let set_active ctxt delegate =
     ctxt
     delegate_contract
   >>=? fun current_last_active_cycle ->
+  let inactivity_delay = 1 (* was: 1 + preserved_cycles *) in
   let last_active_cycle =
     match current_last_active_cycle with
-    | None -> Cycle_repr.add current_cycle (1 + (2 * preserved_cycles))
+    | None -> Cycle_repr.add current_cycle (inactivity_delay + preserved_cycles)
     | Some current_last_active_cycle ->
         let delay =
-          if inactive then 1 + (2 * preserved_cycles) else 1 + preserved_cycles
+          if inactive then inactivity_delay + preserved_cycles
+          else inactivity_delay
         in
         let updated = Cycle_repr.add current_cycle delay in
         Cycle_repr.max current_last_active_cycle updated
