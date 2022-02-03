@@ -24,7 +24,50 @@
 (*****************************************************************************)
 
 (** This module creates a refutation game for Optimistic rollup.
-   It is in fact a functor that takes a PVM module and produce a game. *)
+   It is in fact a functor that takes a PVM module and produce a game. 
+
+   Expected properties
+   ===================
+
+   Honest-committer-wins:
+   - If a committer has posted a valid commit and has a perfect PVM at hand,
+     there is a winning strategy which consists in choosing the first section
+     of the current dissection and in producing a regular dissection until the
+     conflict is reached.
+
+   Honest-refuter-wins:
+   - If a refuter has detected an invalid commit and has a perfect PVM at hand,
+     the same strategy is also winning.
+
+   Here "winning strategy" means that the player actually wins (a draw is not
+   enough).
+
+
+   Important invariants
+   ====================
+
+   - The committer and the refuter agree on the first state of the current
+     section and disagree on its final state. If they agree on both then whoever plays loses by InvalidMove.
+
+   Remarks
+   =======
+
+   There are several subtle cornercases:
+
+   - If the refuter and the committer both post only invalid states, the
+     game may end in a conflict state where both are wrong. By convention,
+     we decide that these games have no winner.
+   
+  - If the refuter and the committer both post only states, the
+     game never has any conflicts. By convention,
+     we decide that in this case the commiter winds by InvalidMove.
+
+   - If the refuter and the committer both post valid and invalid states,
+     all outcomes are possible. This means that if a committer wins a
+     game we have no guarantee that she has posted a valid commit.
+  
+
+*)
 
 val repeat : int -> (int -> 'a) -> ('a list, 'b list) result
 
@@ -34,7 +77,7 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
       with type 'a state = 'a P.state
        and type history = P.history
 
-  (** This sumbodule introduces sections and dissections and the functions that build them
+  (** This submodule introduces sections and dissections and the functions that build them
 *)
   module Section_repr : sig
     (** a section has a start and end tick as well as a start and end state. 
@@ -46,30 +89,27 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
       section_stop_at : Tick_repr.t;
     }
 
-    (**a dissection is a split of a section in several smaller sections. it is defined as a list.
-    TODO perhaps this should be a binary tree based on start_at (which ar increasing) rather than a list. It would make find faster.
-*)
-    and 'k dissection = 'k section list
+    (**a dissection is a split of a section in several smaller sections. it is defined as a map
+     based on start_at (which are increasing) rather than a list.*)
+    and 'k dissection = 'k section Tick_repr.Map.t
 
     val section_encoding :
       [`Compressed | `Full | `Verifiable] section Data_encoding.t
 
     val dissection_encoding :
-      [`Compressed | `Full | `Verifiable] section list option Data_encoding.t
+      [`Compressed | `Full | `Verifiable] dissection option Data_encoding.t
 
-    val find_section : 'a section -> 'b section list -> 'b section option
+    val find_section : 'a section -> 'a dissection -> 'a section option
 
     val pp_of_section :
       Format.formatter -> [`Compressed | `Full | `Verifiable] section -> unit
 
     val pp_of_dissection :
-      Format.formatter ->
-      [`Compressed | `Full | `Verifiable] section list ->
-      unit
+      Format.formatter -> [`Compressed | `Full | `Verifiable] dissection -> unit
 
     val pp_optional_dissection :
       Format.formatter ->
-      [`Compressed | `Full | `Verifiable] section list option ->
+      [`Compressed | `Full | `Verifiable] dissection option ->
       unit
 
     (** a section is valid if its star_at tick is smaller than it stop_at tick.*)
@@ -77,19 +117,32 @@ module Make : functor (P : Sc_rollup_repr.TPVM) -> sig
 
     exception Dissection_error of string
 
-    (** this checks that a dissection is continuous and assembles the corresponding 
-    section*)
-    val section_of_dissection : 'a dissection -> 'a section
+    (**
 
-    (** this function checks that a given dissection is actually a dissection of a section.*)
+     A dissection is valid if it is composed of a list of contiguous
+     sections that covers a given [section].
+
+     In practice, we also want sections to be balanced in terms of gas
+     they consume to avoid strategies that slowdown convergence.
+
+     the function  valid_dissection checks if a dissection is valid and, if so, 
+      it verifies that it is a dissection of the given section.
+
+  *)
     val valid_dissection : 'a section -> 'a dissection -> bool
 
-    (** This splits a section into a dissection with a fixed number of pieces and whose states come from the history.*)
+    (** This function takes a section and an integer branching and creates a dissection with branching number of pieces that
+        are (roughly) equal and whose states come from the history.
+    Assume that length of the initial section is len and len mod branching = r. We have the following invariants:
+    - if branching >len then we make branching = len (split the section into one tick sections)
+    - valid_disection section (dissection_of_section history branching section)=true
+    - The first r pieces are one tick longer than the rest (the alternative would have been for the last piece to be a lot longer)
+    *)
     val dissection_of_section :
       PVM.history ->
       int ->
       'a section ->
-      [`Compressed | `Full | `Verifiable] section list option
+      [`Compressed | `Full | `Verifiable] dissection option
   end
 
   type player = Committer | Refuter
@@ -151,33 +204,59 @@ Note that there is some overlap of the info in a move.*)
 
   val pp_of_reason : Format.formatter -> reason -> unit
 
+  (** the outcome of a finished game gives the winner as well as the reason for winning*)
   type outcome = {winner : player option; reason : reason}
 
   val pp_of_winner : Format.formatter -> player option -> unit
 
   val pp_of_outcome : Format.formatter -> outcome -> unit
 
+  (** a game can be over witha given outcome or Ongoing with  a given game state*)
   type state = Over of outcome | Ongoing of t
 
   val pp_of_game : Format.formatter -> t -> unit
 
   val pp_of_move : Format.formatter -> move -> unit
 
+  (** [confict_found game] is [true] iff the [game]'s section is
+      one tick long. *)
   val conflict_found : t -> bool
 
+  (** this function extracts the stop state of a conflict_search_step*)
   val stop_state :
     conflict_search_step -> [`Compressed | `Full | `Verifiable] P.state
 
+  (**
+
+     The initial game state from the commit and the refutation.
+
+     The first player to play is the refuter.
+
+  *)
   val initial : commit -> conflict_search_step -> t * move
 
+  (**
+
+     Assuming a [game] where the current section is one tick long,
+     [resolve_conflict game] determines the [game] outcome.
+
+  *)
   val resolve_conflict : t -> [> `Verifiable] P.state -> outcome
 
+  (** [apply_choice turn game choice chosen_stop_state] returns [Some
+     game'] state where the [choice] of the [turn]'s player is applied
+     to [game] and justified by [chosen_stop_state].
+
+     If the [choice] is invalid, this function returns [None]. *)
   val apply_choice :
     game:t ->
     choice:[`Compressed | `Full | `Verifiable] Section_repr.section ->
     [`Compressed | `Full | `Verifiable] P.state ->
     t option
 
+  (** [apply_dissection game next_dissection] returns [Some game']
+      where the [current_dissection] is the [next_dissection] if
+      it is valid. Otherwise, this function returns [None]. *)
   val apply_dissection :
     game:t ->
     [`Compressed | `Full | `Verifiable] Section_repr.dissection ->
@@ -185,13 +264,26 @@ Note that there is some overlap of the info in a move.*)
 
   val verifiable_representation : 'a P.state -> 'b P.state -> unit option
 
+  (** [playe game move] returns the state of the [game] after that
+     [move] has been applied, if [move] is valid. Otherwise, this
+     function returns an game over due to InvalidMove. *)
   val play : t -> move -> state
+
+  (** a client is a strategy for a player. It consists of an initial move and a function that 
+  picks the next move once the oponent gives ou a dissection.
+  In practice 
+  - the commuter will be a ((tick * _ state) * commit) client
+  - the refuter will be a ((_ state * commit) * refutation) client *)
 
   type ('from, 'initial) client = {
     initial : 'from -> 'initial;
     next_move :
       [`Compressed | `Full | `Verifiable] Section_repr.dissection -> move;
   }
+
+  (** this is the function that runs a game. 
+  It receives a starting tick and a starting state as well as commiter and refuter clients and 
+  outputs the outcome of the refutation game.*)
 
   val run :
     start_at:'a ->

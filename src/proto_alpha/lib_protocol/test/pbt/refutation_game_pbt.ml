@@ -45,6 +45,7 @@ let option_get = function
   | Some a -> a
   | None -> raise (Invalid_argument "option is None")
 
+(** this is avery simple PVM whose state is an integer and who can count up to a certin target.*)
 module MakeCountingPVM (P : sig
   val target : int
 end) : Sc_rollup_repr.TPVM with type _ state = int = struct
@@ -106,6 +107,10 @@ end
 let operation state number =
   Digest.bytes @@ Bytes.of_string @@ state ^ string_of_int number
 
+(** this is a simple  "random PVM" its state is a pair (state, prog) whee state is a string and 
+prog is a list of integers representing the a program. evaluation just consumes the head of program 
+and modifies state by concatenating the head of the program to the existing state and hashing the result.
+It is initiated with an initialprgram that creates the initial state. *)
 module MakeRandomPVM (P : sig
   val initial_prog : int list
 end) : Sc_rollup_repr.TPVM with type _ state = string * int list = struct
@@ -180,6 +185,9 @@ end) : Sc_rollup_repr.TPVM with type _ state = string * int list = struct
   type tick = Tick_repr.t
 end
 
+(** This is a mor ecomplicated PVM introducing a subset of 
+Michelson instructions. the eval functions pretty much like the 
+evaluation of a smart contract.*)
 module MerkelizedMichelson = struct
   (**
 
@@ -912,13 +920,22 @@ module Fact20 = struct
     @@ drop ~taint Int (halt ~taint (Cell (Int, Unit)))
 end
 
+(** This module introduces some testing strategies for a game created from a PVM
+*)
 module Strategies (P : Sc_rollup_repr.TPVM) = struct
   module Game = Game_repr.Make (P)
   open Game
   open PVM
 
+  (** this eception is needed for a small that alows a "fold-with break"
+*)
+  exception
+    Section of [`Compressed | `Verifiable | `Full] Game.Section_repr.section
+
   let random_tick ?(from = 0) () = Tick_repr.make (from + Random.int 31)
 
+  (** this picks a random section between start_at and stop_at. The states 
+  are determined by the random_state function.*)
   let random_section (start_at : Tick_repr.t) start_state
       (stop_at : Tick_repr.t) =
     let x = min 10000 (abs (Tick_repr.distance start_at stop_at)) in
@@ -933,8 +950,11 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
      }
       : _ Section_repr.section)
 
+  (** this picks a random dissection of a given section. 
+  The sections involved are random and their states have no connection with the initial section.*)
   let random_dissection
       (gsection : [`Compressed | `Verifiable | `Full] Section_repr.section) =
+    let open Tick_repr in
     let rec aux dissection start_at start_state =
       if start_at = gsection.section_stop_at then dissection
       else
@@ -947,22 +967,35 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
         then aux dissection start_at start_state
         else
           aux
-            (section :: dissection)
+            (Map.add section.section_start_at section dissection)
             section.section_stop_at
             section.section_stop_state
     in
-    if Tick_repr.distance gsection.section_stop_at gsection.section_start_at > 1
-    then
+    if distance gsection.section_stop_at gsection.section_start_at > 1 then
       Some
-        (aux [] gsection.section_start_at gsection.section_start_state
-        |> List.rev)
+        (aux Map.empty gsection.section_start_at gsection.section_start_state)
     else None
 
+  (** this function assmbles a random decision from a given dissection.
+    It first picks a random section from the dissection and modifies randomly its states.
+    If the length of this section is one tick the returns a conclusion with the given modified states.
+    If the length is longer it creates a random decision and outputs a Refine decisoon with this dissection.*)
   let random_decision d =
     let open Section_repr in
-    let x = Random.int (List.length d) in
+    let open Tick_repr.Map in
+    let cardinal = cardinal d in
+    let x = Random.int cardinal in
+    (* Section_repr.pp_of_dissection Format.std_formatter d; *)
+    let (_, section) =
+      try
+        fold
+          (fun _ s (n, _) -> if n = x then raise (Section s) else (n + 1, None))
+          d
+          (0, None)
+      with Section sec -> (0, Some sec)
+    in
     let section =
-      match List.(nth d x) with Some s -> s | None -> raise Not_found
+      match section with None -> raise Not_found | Some section -> section
     in
     let section_start_at = section.section_start_at in
     let section_stop_at = section.section_stop_at in
@@ -997,6 +1030,8 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
     in
     ConflictInside {choice = section; conflict_search_step}
 
+  (** technical params for machine directed strategies, branching is the number of pieces for a dissection
+failing level*)
   type parameters = {
     branching : int;
     failing_level : int;
@@ -1005,8 +1040,10 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
 
   type checkpoint = Tick_repr.t -> bool
 
+  (** there are two kinds of strategies, random and machine dirrected by a params and a checkpoint*)
   type strategy = Random | MachineDirected of parameters * checkpoint
 
+  (**checks that the stop state of a section conflicts with the one in the history.*)
   let conflicting_section (history : PVM.history)
       (section : _ Section_repr.section) =
     not
@@ -1014,45 +1051,7 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
          section.section_stop_state
          (state_at history section.section_stop_at))
 
-  (** corrected, optimised and inlined version of the split (only one pass of the list rather than 3)*)
-  let dissection_from_section history branching
-      (section : _ Section_repr.section) =
-    let open Section_repr in
-    if Tick_repr.next section.section_start_at = section.section_stop_at then
-      None
-    else
-      let start = (section.section_start_at :> int) in
-      let stop = (section.section_stop_at :> int) in
-      let len = stop - start in
-      let branching = min branching len in
-      let bucket = len / branching in
-      let dissection =
-        repeat branching (fun x ->
-            let start_at = start + (bucket * x) in
-            let stop_at =
-              if x = branching - 1 then stop
-              else min stop (start + (bucket * (x + 1)))
-            in
-            let section_start_at = Tick_repr.make start_at
-            and section_stop_at = Tick_repr.make stop_at in
-            ({
-               section_start_at;
-               section_start_state = PVM.state_at history section_start_at;
-               section_stop_at;
-               section_stop_state = PVM.state_at history section_stop_at;
-             }
-              : _ section))
-      in
-      Result.to_option dissection
-
-  let compress_section (section : _ Section_repr.section) :
-      [`Compressed] Section_repr.section =
-    {
-      section with
-      section_start_state = PVM.compress section.section_start_state;
-      section_stop_state = PVM.compress section.section_stop_state;
-    }
-
+  (** updates the history*)
   let remember_section history
       (section : [`Compressed | `Verifiable | `Full] Section_repr.section) =
     let history =
@@ -1060,13 +1059,33 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
     in
     PVM.remember history section.section_stop_at section.section_stop_state
 
+  (** Finds the section (if it exists) is a dissection that conflicts with the history. 
+    This is where the trick with the exception appears*)
+  let find_conflict history dissection =
+    try
+      Tick_repr.Map.fold
+        (fun _ v _ ->
+          if conflicting_section history v then raise (Section v) else None)
+        dissection
+        None
+    with Section section -> Some section
+
+  (** [next_move history branching dissection] 
+  If finds the next move based on a dissection and history.
+  It finds the first section of dissection that conflicts with the history. 
+  If the section has length one tick it returns a move with a Conclude conflict_search_step.
+  If the section is longer it creates a new dissection with branching many pieces, updates the history based on 
+  this dissection and returns a move with a Refine type conflict_search_step.
+   *)
   let next_move history branching dissection =
     let section =
-      List.find_opt (conflicting_section history) dissection |> function
+      find_conflict history dissection |> function
       | None -> raise (TickNotFound (Tick_repr.make 0))
       | Some s -> s
     in
-    let next_dissection = Section_repr.dissection_of_section history branching section in
+    let next_dissection =
+      Section_repr.dissection_of_section history branching section
+    in
     let (conflict_search_step, history) =
       match next_dissection with
       | None ->
@@ -1083,16 +1102,20 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
       | Some next_dissection ->
           let stop_state = state_at history section.section_stop_at in
           let history =
-            List.fold_left remember_section empty_history next_dissection
+            Tick_repr.Map.fold
+              (fun _ v acc -> remember_section acc v)
+              next_dissection
+              empty_history
           in
           (Refine {stop_state; next_dissection}, history)
     in
     (ConflictInside {choice = section; conflict_search_step}, history)
 
+  (** helper function that generates an array of failing_level many ticks between start and stop*)
   let generate_failures failing_level (section_start_at : Tick_repr.t)
       (section_stop_at : Tick_repr.t) max_failure =
     let d = Tick_repr.distance section_stop_at section_stop_at in
-    let d = match max_failure with None -> d | Some x -> max x 1 in
+    let d = match max_failure with None -> d | Some x -> x in
     if failing_level > 0 then
       let s =
         repeat failing_level (fun _ ->
@@ -1102,6 +1125,8 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
       Result.value ~default:[] s
     else []
 
+  (** this is an outomatic commuter client. It generates a "perfect" client for the commuter unless 
+given some positive failing level when it "forgets" to evaluate the ticks on the autmatically generated failure list.*)
   let machine_directed_committer {branching; failing_level; max_failure} pred =
     let history = ref PVM.empty_history in
     let initial ((section_start_at : Tick_repr.t), section_start_state) : commit
@@ -1138,6 +1163,8 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
 
     ({initial; next_move} : _ client)
 
+  (** this is an outomatic refuter client. It generates a "perfect" client for the commuter unless 
+given some positive failing level when it "forgets" to evaluate the ticks on the autmatically generated failure list.*)
   let machine_directed_refuter {branching; failing_level; max_failure} =
     let history = ref PVM.empty_history in
     let initial (section_start_state, Commit section) : refutation =
@@ -1179,11 +1206,14 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
     let next_move dissection =
       let (move, history') = next_move !history branching dissection in
       history := history' ;
-
       move
     in
     ({initial; next_move} : _ client)
 
+  (** This builds a commiter client from a strategy. 
+    If the strategy is MachineDirected it uses the above constructions. 
+    if the strategy is random then it usesa random section for the initial commitments 
+     and  the random decision for the next move.*)
   let committer_from_strategy : strategy -> _ client = function
     | Random ->
         {
@@ -1201,6 +1231,11 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
     | MachineDirected (parameters, checkpoint) ->
         machine_directed_committer parameters checkpoint
 
+  (** This builds a refuter client from a strategy. 
+    If the strategy is MachineDirected it uses the above constructions. 
+    If the strategy is random then it uses a randomdissection 
+    of the commited section for the initial refutation 
+     and  the random decision for the next move.*)
   let refuter_from_strategy : strategy -> _ client = function
     | Random ->
         {
@@ -1218,7 +1253,11 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
                           Internal_for_tests.random_state 1 start_state;
                       }
                 | Some next_dissection ->
-                    let section = List.last section next_dissection in
+                    let (_, section) =
+                      Option.value
+                        ~default:(Tick_repr.make 0, section)
+                        (Tick_repr.Map.max_binding next_dissection)
+                    in
                     Refine
                       {stop_state = section.section_stop_state; next_dissection}
               in
@@ -1227,6 +1266,9 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
         }
     | MachineDirected (parameters, _) -> machine_directed_refuter parameters
 
+  (** [test_strategies committer_strategy refuter_strategy expectation] 
+    runs a game based oin the two given strategies and checks that the resulting 
+    outcome fits the expectations. *)
   let test_strategies committer_strategy refuter_strategy expectation =
     let start_state = PVM.Internal_for_tests.initial_state in
     let committer = committer_from_strategy committer_strategy in
@@ -1234,19 +1276,21 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
     let outcome =
       run ~start_at:(Tick_repr.make 0) ~start_state ~committer ~refuter
     in
-
     expectation outcome
 
+  (** This is a commuter client having a perfect strategy*)
   let perfect_committer =
     MachineDirected
       ( {failing_level = 0; branching = 2; max_failure = None},
         fun tick -> (tick :> int) >= 20 + Random.int 100 )
+  (** This is a refuter client having a perfect strategy*)
 
   let perfect_refuter =
     MachineDirected
       ( {failing_level = 0; branching = 2; max_failure = None},
         fun _ -> assert false )
 
+  (** This is a commuter client having a strategy that forgets a tick*)
   let failing_committer max_failure =
     MachineDirected
       ( {failing_level = 1; branching = 2; max_failure},
@@ -1254,10 +1298,12 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
           let s = match max_failure with None -> 20 | Some x -> x in
           (tick :> int) >= s )
 
+  (** This is a commuter client having a strategy that forgets a tick*)
   let failing_refuter max_failure =
     MachineDirected
       ({failing_level = 1; branching = 2; max_failure}, fun _ -> assert false)
 
+  (** the possible expectation functions *)
   let commiter_wins = function
     | {winner = Some Committer; _} -> true
     | _ -> false
@@ -1267,6 +1313,7 @@ module Strategies (P : Sc_rollup_repr.TPVM) = struct
   let all_win (_ : outcome) = true
 end
 
+(** the following are the possible combinations of strategies*)
 let perfect_perfect (module P : Sc_rollup_repr.TPVM) _max_failure =
   let module R = Strategies (P) in
   R.test_strategies R.perfect_committer R.perfect_refuter R.commiter_wins
@@ -1296,6 +1343,37 @@ let perfect_failing (module P : Sc_rollup_repr.TPVM) max_failure =
     S.perfect_committer
     (S.failing_refuter max_failure)
     S.commiter_wins
+
+(** this assembles a test from a RandomPVM and a function that choses the type of strategies *)
+let testing_randomPVM (f : (module Sc_rollup_repr.TPVM) -> int option -> bool)
+    name =
+  QCheck.Test.make
+    ~name
+    (QCheck.list_of_size QCheck.Gen.small_int (QCheck.int_range 0 100))
+    (fun initial_prog ->
+      QCheck.assume (initial_prog <> []) ;
+      f
+        (module MakeRandomPVM (struct
+          let initial_prog = initial_prog
+        end))
+        (Some (List.length initial_prog)))
+
+(** this assembles a test from a CountingPVM and a function that choses the type of strategies *)
+let testing_countPVM (f : (module Sc_rollup_repr.TPVM) -> int option -> bool)
+    name =
+  QCheck.Test.make ~name QCheck.small_int (fun target ->
+      QCheck.assume (target > 0) ;
+      f
+        (module MakeCountingPVM (struct
+          let target = target
+        end))
+        (Some target))
+
+(** this assembles a test from a MichelsonPVM and a function that choses the type of strategies *)
+
+let testing_mich (f : (module Sc_rollup_repr.TPVM) -> int option -> bool) name =
+  QCheck.Test.make ~name QCheck.small_int (fun _ ->
+      f (module MakeMPVM (Fact20)) (Some 20))
 
 let test_random_dissection (module P : Sc_rollup_repr.TPVM) start_at length
     branching =
@@ -1334,7 +1412,7 @@ let testDissection =
          QCheck.small_int)
       (fun (initial_prog, start_at, length, branching) ->
         QCheck.assume
-          (start_at > 0 && length > 1
+          (start_at >= 0 && length > 1
           && List.length initial_prog > start_at + length
           && 1 < branching) ;
         let module P = MakeRandomPVM (struct
@@ -1349,7 +1427,7 @@ let testDissection =
          QCheck.small_int
          QCheck.small_int)
       (fun (target, start_at, length, branching) ->
-        QCheck.assume (start_at > 0 && length > 1 && 2 < branching) ;
+        QCheck.assume (start_at >= 0 && length > 1 && 1 < branching) ;
         let module P = MakeCountingPVM (struct
           let target = target
         end) in
@@ -1358,36 +1436,10 @@ let testDissection =
       ~name:"Mich"
       (QCheck.triple QCheck.small_int QCheck.small_int QCheck.small_int)
       (fun (start_at, length, branching) ->
-        QCheck.assume (start_at > 0 && length > 1 && 2 < branching) ;
+        QCheck.assume (start_at >= 0 && length > 1 && 1 < branching) ;
         let module P = MakeMPVM (Fact20) in
         test_random_dissection (module P) start_at length branching);
   ]
-
-let testing (f : (module Sc_rollup_repr.TPVM) -> int option -> bool) name =
-  QCheck.Test.make
-    ~name
-    (QCheck.list_of_size QCheck.Gen.small_int (QCheck.int_range 0 100))
-    (fun initial_prog ->
-      QCheck.assume (initial_prog <> []) ;
-      f
-        (module MakeRandomPVM (struct
-          let initial_prog = initial_prog
-        end))
-        (Some (List.length initial_prog)))
-
-let testing_count (f : (module Sc_rollup_repr.TPVM) -> int option -> bool) name
-    =
-  QCheck.Test.make ~name QCheck.small_int (fun target ->
-      QCheck.assume (target > 0) ;
-      f
-        (module MakeCountingPVM (struct
-          let target = target
-        end))
-        (Some target))
-
-let testing_mich (f : (module Sc_rollup_repr.TPVM) -> int option -> bool) name =
-  QCheck.Test.make ~name QCheck.small_int (fun _ ->
-      f (module MakeMPVM (Fact20)) (Some 20))
 
 let () =
   Alcotest.run
@@ -1397,22 +1449,22 @@ let () =
       ( "RandomPVM",
         qcheck_wrap
           [
-            testing perfect_perfect "perfect-perfect";
-            testing random_random "random-random";
-            testing random_perfect "random-perfect";
-            testing perfect_random "perfect-random";
-            testing failing_perfect "failing_perfect";
-            testing perfect_failing "perfect-failing";
+            testing_randomPVM perfect_perfect "perfect-perfect";
+            testing_randomPVM random_random "random-random";
+            testing_randomPVM random_perfect "random-perfect";
+            testing_randomPVM perfect_random "perfect-random";
+            testing_randomPVM failing_perfect "failing_perfect";
+            testing_randomPVM perfect_failing "perfect-failing";
           ] );
       ( "CountingPVM",
         qcheck_wrap
           [
-            testing_count perfect_perfect "perfect-perfect";
-            testing_count random_random "random-random";
-            testing_count random_perfect "random-perfect";
-            testing_count perfect_random "perfect-random";
-            testing_count failing_perfect "failing_perfect";
-            testing_count perfect_failing "perfect-failing";
+            testing_countPVM perfect_perfect "perfect-perfect";
+            testing_countPVM random_random "random-random";
+            testing_countPVM random_perfect "random-perfect";
+            testing_countPVM perfect_random "perfect-random";
+            testing_countPVM failing_perfect "failing_perfect";
+            testing_countPVM perfect_failing "perfect-failing";
           ] );
       ( "Fact20PVM",
         qcheck_wrap
