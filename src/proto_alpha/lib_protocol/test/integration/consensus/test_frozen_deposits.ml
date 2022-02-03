@@ -385,7 +385,7 @@ let test_unfreeze_deposits_after_deactivation () =
      expected last cycles at which it is considered active and at
      which it has non-zero deposits *)
   let last_active_cycle =
-    1 + (2 * constants.preserved_cycles)
+    1 + constants.preserved_cycles
     (* according to [Delegate_storage.set_active] *)
   in
   let last_cycle_with_deposits =

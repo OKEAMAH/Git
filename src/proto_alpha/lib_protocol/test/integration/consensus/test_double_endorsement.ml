@@ -341,12 +341,6 @@ let test_freeze_more_with_low_balance =
     let denunciation = double_endorsement (B b2) end_a end_b in
     Block.bake ~policy:(Excluding [account1]) b2 ~operations:[denunciation]
   in
-  let check_unique_endorser b account2 =
-    Context.get_endorsers (B b) >>=? function
-    | [{delegate; _}] when Signature.Public_key_hash.equal account2 delegate ->
-        return_unit
-    | _ -> failwith "We are supposed to only have account2 as endorser."
-  in
   fun () ->
     let constants =
       {
@@ -424,28 +418,6 @@ let test_freeze_more_with_low_balance =
     Block.bake c2 ~policy:(By_account account1) >>= fun c3 ->
     (* Once the deposits dropped to 0, the baker cannot bake anymore *)
     Assert.proto_error_with_info ~loc:__LOC__ c3 "Zero frozen deposits"
-    >>=? fun () ->
-    (* We bake [2 * preserved_cycles] additional cycles only with [account2].
-       Because [account1] does not bake during this period, it loses its rights.
-    *)
-    Block.bake_until_n_cycle_end
-      ~policy:(By_account account2)
-      (2 * constants.preserved_cycles)
-      c2
-    >>=? fun d1 ->
-    Context.Delegate.info (B d1) account1 >>=? fun info5 ->
-    (* [account1] is only deactivated after 1 + [2 * preserved_cycles] (see
-       [Delegate_activation_storage.set_active] since the last time it was
-       active, that is, since the first cycle. Thus the cycle at which
-       [account1] is deactivated is 2 + [2 * preserved_cycles] from genesis. *)
-    Assert.equal_bool ~loc:__LOC__ info5.deactivated false >>=? fun () ->
-    (* account1 is still active, but has no rights. *)
-    check_unique_endorser d1 account2 >>=? fun () ->
-    Block.bake_until_cycle_end ~policy:(By_account account2) d1 >>=? fun e1 ->
-    (* account1 has no rights and furthermore is no longer active. *)
-    check_unique_endorser e1 account2 >>=? fun () ->
-    Context.Delegate.info (B e1) account1 >>=? fun info6 ->
-    Assert.equal_bool ~loc:__LOC__ info6.deactivated true
 
 let tests =
   [
