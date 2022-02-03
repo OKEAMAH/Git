@@ -257,3 +257,5 @@ val init_with_constants :
 (** [default_raw_context] returns a [Raw_context.t] for use in tests
     below [Alpha_context] *)
 val default_raw_context : unit -> Raw_context.t tzresult Lwt.t
+
+val current_level : t -> Level.t Environment.Error_monad.shell_tzresult Lwt.t

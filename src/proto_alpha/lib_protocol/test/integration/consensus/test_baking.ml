@@ -439,6 +439,92 @@ let test_committee_sampling () =
     10_000
     [(792_000_000_000L, (9_830, 9_970)); (8_000_000_000L, (40, 160))]
 
+let _test_pouet () =
+  let constants =
+    {
+      Default_parameters.constants_test with
+      frozen_deposits_percentage = 10;
+      endorsing_reward_per_slot = Tez.zero;
+      baking_reward_bonus_per_slot = Tez.zero;
+      baking_reward_fixed_portion = Tez.zero;
+      consensus_committee_size = 30;
+      consensus_threshold = 0;
+      origination_size = 0;
+      preserved_cycles = 1;
+      blocks_per_cycle = 4l;
+      blocks_per_commitment = 2l;
+      minimal_participation_ratio = {numerator = 1; denominator = 8};
+    }
+  in
+  Context.init_with_constants constants 1 >>=? fun (b, c) ->
+  let bootstrap_delegate =
+    Stdlib.List.hd c |> Contract.is_implicit |> function
+    | None -> assert false
+    | Some p -> p
+  in
+  let acc = Account.new_account () in
+  let acc_contract = Contract.(implicit_contract acc.pkh) in
+  Op.transaction
+    (B b)
+    (Stdlib.List.hd c)
+    acc_contract
+    (Tez.of_mutez_exn 2_000_000_000_000L)
+  >>=? fun transfer ->
+  Block.bake ~operation:transfer b >>=? fun b ->
+  Op.delegation (B b) acc_contract (Some acc.pkh) >>=? fun delegation ->
+  Block.bake ~operation:delegation b >>=? fun b ->
+  let print_info b =
+    Context.current_level (B b) >>=? fun {Level.cycle; _} ->
+    Context.get_endorsing_power_for_delegate (B b) acc.pkh >>=? fun power ->
+    let has_rights = power <> 0 in
+    Context.Delegate.info (B b) acc.pkh >>=? fun info ->
+    Format.printf
+      "cycle: %a, active: %b, grace period: %a, frozen deposits: %a, has \
+       rights: %b (power: %d)@."
+      Cycle.pp
+      cycle
+      (not info.deactivated)
+      Cycle.pp
+      info.grace_period
+      Tez.pp
+      info.frozen_deposits
+      has_rights
+      power ;
+    return_unit
+  in
+  print_newline () ;
+  print_newline () ;
+  print_newline () ;
+  print_info b >>=? fun () ->
+  let policy = Block.By_account bootstrap_delegate in
+  List.fold_left_es
+    (fun b _ ->
+      Block.bake ~policy b >>=? fun b ->
+      Block.bake ~policy b >>=? fun b' ->
+      Context.get_endorsers (B b') >>=? fun validators ->
+      let delegate =
+        List.find_map
+          (fun {Plugin.RPC.Validators.delegate; slots; _} ->
+            if delegate = bootstrap_delegate then Some (delegate, slots)
+            else None)
+          validators
+        |> function
+        | None -> assert false
+        | Some x -> x
+      in
+      Op.endorsement ~delegate ~endorsed_block:b' (B b) () >>=? fun operation ->
+      let operation = Operation.pack operation in
+      Block.bake ~policy ~operation b' >>=? fun b'' ->
+      Block.bake_until_cycle_end ~policy b'' >>=? fun b ->
+      print_info b >>=? fun () -> return b)
+    b
+    (1 -- 20)
+  >>=? fun _ ->
+  print_newline () ;
+  print_newline () ;
+  print_newline () ;
+  return_unit
+
 let tests =
   [
     Tztest.tztest "cycle" `Quick test_cycle;
@@ -465,4 +551,5 @@ let tests =
       `Quick
       (test_enough_active_stake_to_bake ~has_active_stake:false);
     Tztest.tztest "test committee sampling" `Quick test_committee_sampling;
+    (* Tztest.tztest "pouet" `Quick test_pouet; *)
   ]

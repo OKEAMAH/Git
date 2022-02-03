@@ -117,6 +117,8 @@ let rpc_ctxt =
         | I bl -> Incremental.rpc_ctxt#call_proto_service3 s bl a b c q i
   end
 
+let current_level ctxt = Plugin.RPC.current_level rpc_ctxt ctxt
+
 let get_endorsers ctxt = Plugin.RPC.Validators.get rpc_ctxt ctxt
 
 let get_first_different_endorsers ctxt =
