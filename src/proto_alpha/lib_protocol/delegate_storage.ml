@@ -380,7 +380,6 @@ let max_frozen_deposits_and_delegates_to_remove ctxt ~from_cycle ~to_cycle =
   let frozen_deposits_percentage =
     Constants_storage.frozen_deposits_percentage ctxt
   in
-  let cycles = Cycle_repr.(from_cycle ---> to_cycle) in
   (match Cycle_repr.pred from_cycle with
   | None -> return Signature.Public_key_hash.Set.empty
   | Some cleared_cycle -> (
@@ -419,7 +418,7 @@ let max_frozen_deposits_and_delegates_to_remove ctxt ~from_cycle ~to_cycle =
         (maxima, delegates_to_remove)
         active_stakes)
     (Signature.Public_key_hash.Map.empty, cleared_cycle_delegates)
-    cycles
+    Cycle_repr.(from_cycle ---> to_cycle)
 
 let freeze_deposits ?(origin = Receipt_repr.Block_application) ctxt ~new_cycle
     ~balance_updates =
