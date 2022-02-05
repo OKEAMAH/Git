@@ -671,6 +671,277 @@ let test_transfer_n_with_non_empty_source () =
   wrap (test_transfer_n ctxt sources user1c) >>=? fun _ ->
   wrap (test_transfer_n ctxt ((user1c, random_amount ()) :: sources) user1c)
 
+let test_delegation_to_registered_delegate () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (spkh, _pk, _sk) = Signature.generate_key () in
+  let src = Contract.implicit_contract spkh in
+  let (dpkh, _dpk, _dsk) = Signature.generate_key () in
+  let del = Contract.implicit_contract dpkh in
+  wrap (Token.transfer ctxt `Minted (`Contract del) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract src) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal ->
+  wrap (Token.init_delegate ctxt (`Contract src) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal' ->
+  wrap (Token.balance ctxt (`Contract src)) >>=? fun (_, sbal) ->
+  sbal +? dbal >>?= fun add_sbal_dbal ->
+  Assert.equal_tez ~loc:__LOC__ dbal' add_sbal_dbal
+
+let test_undelegation () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (spkh, _pk, _sk) = Signature.generate_key () in
+  let src = Contract.implicit_contract spkh in
+  let (dpkh, _dpk, _dsk) = Signature.generate_key () in
+  let del = Contract.implicit_contract dpkh in
+  wrap (Token.transfer ctxt `Minted (`Contract del) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract src) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_init ->
+  wrap (Token.init_delegate ctxt (`Contract src) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_del ->
+  wrap (Token.balance ctxt (`Contract src)) >>=? fun (_, sbal) ->
+  wrap (Token.delete_delegate ctxt (`Contract src)) >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_undel ->
+  sbal +? dbal_init >>?= fun res_del ->
+  dbal_del -? sbal >>?= fun res_undel ->
+  Assert.equal_tez ~loc:__LOC__ dbal_del res_del >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ dbal_undel res_undel >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ dbal_init dbal_undel
+
+let test_undelegation_not_delegate () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (spkh, _pk, _sk) = Signature.generate_key () in
+  let src = Contract.implicit_contract spkh in
+  let (dpkh, _dpk, _dsk) = Signature.generate_key () in
+  let del = Contract.implicit_contract dpkh in
+  wrap (Token.transfer ctxt `Minted (`Contract del) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract src) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_del ->
+  wrap (Token.delete_delegate ctxt (`Contract src)) >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_undel ->
+  Assert.equal_tez ~loc:__LOC__ dbal_del dbal_undel
+
+let test_update_delegation () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (spkh, _pk, _sk) = Signature.generate_key () in
+  let src = Contract.implicit_contract spkh in
+  let (d1pkh, _d1pk, _d1sk) = Signature.generate_key () in
+  let del1 = Contract.implicit_contract d1pkh in
+  let (d2pkh, _d2pk, _d2sk) = Signature.generate_key () in
+  let del2 = Contract.implicit_contract d2pkh in
+  wrap (Token.transfer ctxt `Minted (`Contract del1) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del1) (`Contract del1))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract del2) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del2) (`Contract del2))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract src) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.balance ctxt (`Contract src)) >>=? fun (_, sbal) ->
+  wrap (Token.staking_balance ctxt (`Contract del1)) >>=? fun del1_init ->
+  wrap (Token.staking_balance ctxt (`Contract del2)) >>=? fun del2_init ->
+  wrap (Token.init_delegate ctxt (`Contract src) (`Contract del1))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del1)) >>=? fun del1_initd ->
+  wrap (Token.staking_balance ctxt (`Contract del2)) >>=? fun del2_initd ->
+  wrap (Token.update_delegate ctxt (`Contract src) (`Contract del2))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del1)) >>=? fun del1_updd ->
+  wrap (Token.staking_balance ctxt (`Contract del2)) >>=? fun del2_updd ->
+  del1_init +? sbal >>?= fun res_del1_initd ->
+  del2_init +? sbal >>?= fun res_del2_updd ->
+  Assert.equal_tez ~loc:__LOC__ del1_initd res_del1_initd >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ del2_initd del2_init >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ del1_updd del1_init >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ del2_updd res_del2_updd
+
+let test_update_delegation_of_unitialized () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (spkh, _pk, _sk) = Signature.generate_key () in
+  let src = Contract.implicit_contract spkh in
+  let (dpkh, _dpk, _dsk) = Signature.generate_key () in
+  let del = Contract.implicit_contract dpkh in
+  wrap (Token.transfer ctxt `Minted (`Contract del) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract src) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal ->
+  wrap (Token.update_delegate ctxt (`Contract src) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal' ->
+  wrap (Token.balance ctxt (`Contract src)) >>=? fun (_, sbal) ->
+  sbal +? dbal >>?= fun add_sbal_dbal ->
+  Assert.equal_tez ~loc:__LOC__ dbal' add_sbal_dbal
+
+let test_staking_transfer_from_delegator_to_undelegator () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (spkh, _pk, _sk) = Signature.generate_key () in
+  let src = Contract.implicit_contract spkh in
+  let (skpkh, _pk, _sk) = Signature.generate_key () in
+  let sk = Contract.implicit_contract skpkh in
+  let (dpkh, _dpk, _dsk) = Signature.generate_key () in
+  let del = Contract.implicit_contract dpkh in
+  wrap (Token.transfer ctxt `Minted (`Contract del) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract src) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_init ->
+  wrap (Token.init_delegate ctxt (`Contract src) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_del ->
+  wrap (Token.transfer ctxt `Minted (`Contract sk) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.balance ctxt (`Contract src)) >>=? fun (_, bsrc_init) ->
+  wrap (Token.balance ctxt (`Contract sk)) >>=? fun (_, bsk_init) ->
+  bsrc_init /? 2L >>?= fun am ->
+  wrap (Token.transfer ctxt (`Contract src) (`Contract sk) am)
+  >>=? fun (ctxt, _) ->
+  wrap (Token.balance ctxt (`Contract sk)) >>=? fun (_, bsk_tr) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_tr ->
+  dbal_init +? bsrc_init >>?= fun res_dbal_del ->
+  am +? bsk_init >>?= fun res_bsk_tr ->
+  dbal_del -? am >>?= fun res_dbal_tr ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal_del dbal_del >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_bsk_tr bsk_tr >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal_tr dbal_tr
+
+let test_staking_transfer_from_undelegator_to_delegator () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (spkh, _pk, _sk) = Signature.generate_key () in
+  let src = Contract.implicit_contract spkh in
+  let (skpkh, _pk, _sk) = Signature.generate_key () in
+  let sk = Contract.implicit_contract skpkh in
+  let (dpkh, _dpk, _dsk) = Signature.generate_key () in
+  let del = Contract.implicit_contract dpkh in
+  wrap (Token.transfer ctxt `Minted (`Contract del) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract sk) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_init ->
+  wrap (Token.init_delegate ctxt (`Contract sk) (`Contract del))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_del ->
+  wrap (Token.transfer ctxt `Minted (`Contract src) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.balance ctxt (`Contract src)) >>=? fun (_, bsrc_init) ->
+  wrap (Token.balance ctxt (`Contract sk)) >>=? fun (_, bsk_init) ->
+  bsrc_init /? 2L >>?= fun am ->
+  wrap (Token.transfer ctxt (`Contract src) (`Contract sk) am)
+  >>=? fun (ctxt, _) ->
+  wrap (Token.balance ctxt (`Contract sk)) >>=? fun (_, bsk_tr) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_tr ->
+  dbal_init +? bsk_init >>?= fun res_dbal_del ->
+  am +? bsk_init >>?= fun res_bsk_tr ->
+  dbal_del +? am >>?= fun res_dbal_tr ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal_del dbal_del >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_bsk_tr bsk_tr >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal_tr dbal_tr
+
+let test_staking_transfer_from_delegator_to_delegator () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (spkh, _pk, _sk) = Signature.generate_key () in
+  let src = Contract.implicit_contract spkh in
+  let (skpkh, _pk, _sk) = Signature.generate_key () in
+  let sk = Contract.implicit_contract skpkh in
+  let (d1pkh, _d1pk, _d1sk) = Signature.generate_key () in
+  let del1 = Contract.implicit_contract d1pkh in
+  let (d2pkh, _d2pk, _d2sk) = Signature.generate_key () in
+  let del2 = Contract.implicit_contract d2pkh in
+
+  wrap (Token.transfer ctxt `Minted (`Contract del1) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del1) (`Contract del1))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract src) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del1)) >>=? fun dbal1_init ->
+  wrap (Token.init_delegate ctxt (`Contract src) (`Contract del1))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del1)) >>=? fun dbal1_del ->
+  wrap (Token.transfer ctxt `Minted (`Contract del2) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.init_delegate ctxt (`Contract del2) (`Contract del2))
+  >>=? fun ctxt ->
+  wrap (Token.transfer ctxt `Minted (`Contract sk) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del2)) >>=? fun dbal2_init ->
+  wrap (Token.init_delegate ctxt (`Contract sk) (`Contract del2))
+  >>=? fun ctxt ->
+  wrap (Token.staking_balance ctxt (`Contract del2)) >>=? fun dbal2_del ->
+  wrap (Token.balance ctxt (`Contract src)) >>=? fun (_, bsrc_init) ->
+  wrap (Token.balance ctxt (`Contract sk)) >>=? fun (_, bsk_init) ->
+  bsrc_init /? 2L >>?= fun am ->
+  wrap (Token.transfer ctxt (`Contract src) (`Contract sk) am)
+  >>=? fun (ctxt, _) ->
+  wrap (Token.balance ctxt (`Contract src)) >>=? fun (_, bsrc_tr) ->
+  wrap (Token.balance ctxt (`Contract sk)) >>=? fun (_, bsk_tr) ->
+  wrap (Token.staking_balance ctxt (`Contract del1)) >>=? fun dbal1_tr ->
+  wrap (Token.staking_balance ctxt (`Contract del2)) >>=? fun dbal2_tr ->
+  dbal1_init +? bsrc_init >>?= fun res_dbal1_del ->
+  dbal2_init +? bsk_init >>?= fun res_dbal2_del ->
+  dbal1_del -? am >>?= fun res_dbal1_tr ->
+  dbal2_del +? am >>?= fun res_dbal2_tr ->
+  dbal1_init +? bsrc_tr >>?= fun res_dbal1_tr' ->
+  dbal2_init +? bsk_tr >>?= fun res_dbal2_tr' ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal1_del dbal1_del >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal2_del dbal2_del >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal1_tr dbal1_tr >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal2_tr dbal2_tr >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal1_tr' dbal1_tr >>=? fun _ ->
+  Assert.equal_tez ~loc:__LOC__ res_dbal2_tr' dbal2_tr
+
+let test_staking_balance_of_not_delegate () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (dpkh, _dpk, _dsk) = Signature.generate_key () in
+  let del = Contract.implicit_contract dpkh in
+  wrap (Token.transfer ctxt `Minted (`Contract del) (random_amount ()))
+  >>=? fun (ctxt, _) ->
+  wrap (Token.staking_balance ctxt (`Contract del)) >>= fun res ->
+  Assert.proto_error_with_info
+    ~loc:__LOC__
+    res
+    "Storage error (fatal internal error)"
+
+let test_self_delegation_of_unitialized () =
+  Random.init 0 ;
+  create_context () >>=? fun (ctxt, _pkh) ->
+  let (dpkh, _dpk, _dsk) = Signature.generate_key () in
+  let del = Contract.implicit_contract dpkh in
+  wrap (Token.init_delegate ctxt (`Contract del) (`Contract del)) >>= fun res ->
+  Assert.proto_error_with_info
+    ~loc:__LOC__
+    res
+    "Storage error (fatal internal error)"
+
 let tests =
   Tztest.
     [
@@ -694,4 +965,40 @@ let tests =
         "transfer - test from n sources to a destination"
         `Quick
         test_transfer_n_with_non_empty_source;
+      tztest
+        "delegation - test initial delegation"
+        `Quick
+        test_delegation_to_registered_delegate;
+      tztest "delegation - test undelegation" `Quick test_undelegation;
+      tztest
+        "delegation - test undelegation not delegate"
+        `Quick
+        test_undelegation_not_delegate;
+      tztest "delegation - test update delegation" `Quick test_update_delegation;
+      tztest
+        "delegation - test update unitialized delegation."
+        `Quick
+        test_update_delegation_of_unitialized;
+      tztest
+        "staking - test staking movement through a transfer from a delegator \
+         to a non delegator"
+        `Quick
+        test_staking_transfer_from_delegator_to_undelegator;
+      tztest
+        "staking - test staking movement through a transfer from a non \
+         delegator to a delegator"
+        `Quick
+        test_staking_transfer_from_undelegator_to_delegator;
+      tztest
+        "staking - test staking movement through a transfer between delegators"
+        `Quick
+        test_staking_transfer_from_delegator_to_delegator;
+      tztest
+        "delegation - test getting staking balance of non delegate goes wrong."
+        `Quick
+        test_staking_balance_of_not_delegate;
+      tztest
+        "delegation - test self delegation of unitialized contract goes wrong."
+        `Quick
+        test_self_delegation_of_unitialized;
     ]

@@ -3331,6 +3331,23 @@ module Token : sig
     [< sink] ->
     Tez.t ->
     (context * Receipt.balance_updates) tzresult Lwt.t
+
+  type delegate = [`Contract of Contract.t]
+
+  type delegator = [`Contract of Contract.t]
+
+  val staking_balance : context -> delegate -> Tez.t tzresult Lwt.t
+
+  val delegates_to_self : context -> delegator -> bool tzresult Lwt.t
+
+  val delegates_to : context -> delegator -> delegate -> bool tzresult Lwt.t
+
+  val init_delegate : context -> delegator -> delegate -> context tzresult Lwt.t
+
+  val update_delegate :
+    context -> delegator -> delegate -> context tzresult Lwt.t
+
+  val delete_delegate : context -> delegator -> context tzresult Lwt.t
 end
 
 module Fees : sig
