@@ -43,7 +43,26 @@ let deposit_encoding =
        (req "ticket_hash" Ticket_hash_repr.encoding)
        (req "amount" int64)
 
-type t = Batch of string | Deposit of deposit
+type message = Batch of string | Deposit of deposit
+
+type t = {message : message; size : int}
+
+let size = function
+  | Batch batch -> String.length batch
+  | Deposit {destination = d; ticket_hash = _; amount = _} ->
+      (* Size of a BLS public key, that is the underlying type of a
+         l2 address. See [Tx_rollup_l2_address] *)
+      let destination_size = Tx_rollup_l2_address.Indexable.size d in
+      (* Size of a [Script_expr_hash.t], that is the underlying type
+         of [Ticket_hash_repr.t]. *)
+      let key_hash_size = 32 in
+      (* [int64] *)
+      let amount_size = 8 in
+      destination_size + key_hash_size + amount_size
+
+let make message =
+  let size = size message in
+  {message; size}
 
 let encoding =
   let open Data_encoding in
@@ -90,19 +109,6 @@ let pp fmt =
         ticket_hash
         amount
 
-let size = function
-  | Batch batch -> String.length batch
-  | Deposit {destination = d; ticket_hash = _; amount = _} ->
-      (* Size of a BLS public key, that is the underlying type of a
-         l2 address. See [Tx_rollup_l2_address] *)
-      let destination_size = Tx_rollup_l2_address.Indexable.size d in
-      (* Size of a [Script_expr_hash.t], that is the underlying type
-         of [Ticket_hash_repr.t]. *)
-      let key_hash_size = 32 in
-      (* [int64] *)
-      let amount_size = 8 in
-      destination_size + key_hash_size + amount_size
-
 let hash_size = 32
 
 module Message_hash =
@@ -126,5 +132,5 @@ let pp_hash = Message_hash.pp
 
 let hash_encoding = Message_hash.encoding
 
-let hash msg =
-  Message_hash.hash_bytes [Data_encoding.Binary.to_bytes_exn encoding msg]
+let hash message =
+  Message_hash.hash_bytes [Data_encoding.Binary.to_bytes_exn encoding message]

@@ -2001,38 +2001,6 @@ module Tx_rollup : sig
   end
 end
 
-(** This module re-exports definitions from {!Tx_rollup_state_repr}
-    and {!Tx_rollup_state_storage}. *)
-module Tx_rollup_state : sig
-  type t
-
-  val initial_state : t
-
-  val encoding : t Data_encoding.t
-
-  val pp : Format.formatter -> t -> unit
-
-  val find : context -> Tx_rollup.t -> (context * t option) tzresult Lwt.t
-
-  val get : context -> Tx_rollup.t -> (context * t) tzresult Lwt.t
-
-  val update : context -> Tx_rollup.t -> t -> context tzresult Lwt.t
-
-  val fees : t -> int -> Tez.t tzresult
-
-  val last_inbox_level : t -> Raw_level.t option
-
-  type error +=
-    | Tx_rollup_already_exists of Tx_rollup.t
-    | Tx_rollup_does_not_exist of Tx_rollup.t
-
-  module Internal_for_tests : sig
-    val initial_state_with_fees_per_byte : Tez.t -> t
-
-    val update_fees_per_byte : t -> final_size:int -> hard_limit:int -> t
-  end
-end
-
 (** This module re-exports definitions from {!Tx_rollup_message_repr}. *)
 module Tx_rollup_message : sig
   type deposit = {
@@ -2041,17 +2009,15 @@ module Tx_rollup_message : sig
     amount : int64;
   }
 
-  type t = private Batch of string | Deposit of deposit
+  type message = Batch of string | Deposit of deposit
 
-  type size = int
+  type t = private {message : message; size : int}
 
-  val make_batch : context -> string -> (t * size) tzresult
+  val make : message -> t
 
-  val size : t -> int
+  val encoding : message Data_encoding.t
 
-  val encoding : t Data_encoding.t
-
-  val pp : Format.formatter -> t -> unit
+  val pp : Format.formatter -> message -> unit
 
   type hash
 
@@ -2059,30 +2025,34 @@ module Tx_rollup_message : sig
 
   val pp_hash : Format.formatter -> hash -> unit
 
-  val hash : t -> hash
+  val hash : message -> hash
 end
 
 (** This module re-exports definitions from {!Tx_rollup_inbox_repr} and
     {!Tx_rollup_inbox_storage}. *)
 module Tx_rollup_inbox : sig
-  type t = {contents : Tx_rollup_message.hash list; cumulated_size : int}
+  type content = private Tx_rollup_message.hash list
+
+  type metadata = private {
+    cumulated_size : int;
+    predecessor : Raw_level_repr.t option;
+    successor : Raw_level_repr.t option;
+  }
+
+  type t = {content : content; metadata : metadata}
 
   val pp : Format.formatter -> t -> unit
 
   val encoding : t Data_encoding.t
 
   val append_message :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_state.t ->
-    Tx_rollup_message.t ->
-    (context * Tx_rollup_state.t) tzresult Lwt.t
+    context -> Tx_rollup.t -> t -> Tx_rollup_message.t -> context tzresult Lwt.t
 
   val messages :
     context ->
     level:[`Current | `Level of Raw_level.t] ->
     Tx_rollup.t ->
-    (context * Tx_rollup_message.hash list) tzresult Lwt.t
+    (context * content) tzresult Lwt.t
 
   val size :
     context ->
@@ -2112,6 +2082,39 @@ module Tx_rollup_inbox : sig
     | Tx_rollup_inbox_does_not_exist of Tx_rollup.t * Raw_level.t
     | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup.t
     | Tx_rollup_message_size_exceeds_limit
+end
+
+(** This module re-exports definitions from {!Tx_rollup_state_repr}
+    and {!Tx_rollup_state_storage}. *)
+module Tx_rollup_state : sig
+  type t
+
+  val initial_state : t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val find : context -> Tx_rollup.t -> (context * t option) tzresult Lwt.t
+
+  val get : context -> Tx_rollup.t -> (context * t) tzresult Lwt.t
+
+  val make_inbox :
+    context -> Tx_rollup.t -> t -> (context * Tx_rollup_inbox.t) tzresult Lwt.t
+
+  val fees : t -> int -> Tez.t tzresult
+
+  val last_inbox_level : t -> Raw_level.t option
+
+  type error +=
+    | Tx_rollup_already_exists of Tx_rollup.t
+    | Tx_rollup_does_not_exist of Tx_rollup.t
+
+  module Internal_for_tests : sig
+    val initial_state_with_fees_per_byte : Tez.t -> t
+
+    val update_fees_per_byte : t -> final_size:int -> hard_limit:int -> t
+  end
 end
 
 module Kind : sig

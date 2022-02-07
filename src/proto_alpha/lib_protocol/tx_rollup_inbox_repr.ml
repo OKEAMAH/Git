@@ -25,24 +25,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = {contents : Tx_rollup_message_repr.hash list; cumulated_size : int}
-
-let pp fmt {contents; cumulated_size} =
-  Format.fprintf
-    fmt
-    "tx rollup inbox: %d messages using %d bytes"
-    (List.length contents)
-    cumulated_size
-
-let encoding =
-  let open Data_encoding in
-  conv
-    (fun {contents; cumulated_size} -> (contents, cumulated_size))
-    (fun (contents, cumulated_size) -> {contents; cumulated_size})
-    (obj2
-       (req "contents" @@ list Tx_rollup_message_repr.hash_encoding)
-       (req "cumulated_size" int31))
-
 type metadata = {
   cumulated_size : int;
   predecessor : Raw_level_repr.t option;
@@ -60,3 +42,25 @@ let metadata_encoding =
        (req "cumulated_size" int31)
        (req "predecessor" (option Raw_level_repr.encoding))
        (req "successor" (option Raw_level_repr.encoding)))
+
+type content = Tx_rollup_message_repr.hash list
+
+let content_encoding = Data_encoding.list Tx_rollup_message_repr.hash_encoding
+
+type t = {content : content; metadata : metadata}
+
+let pp fmt {content; metadata = {cumulated_size; _}} =
+  Format.fprintf
+    fmt
+    "tx rollup inbox: %d messages using %d bytes"
+    (List.length content)
+    cumulated_size
+
+let encoding =
+  let open Data_encoding in
+  conv
+    (fun {content; metadata} -> (content, metadata))
+    (fun (content, metadata) -> {content; metadata})
+    (obj2
+       (req "content" @@ content_encoding)
+       (req "metadata" metadata_encoding))

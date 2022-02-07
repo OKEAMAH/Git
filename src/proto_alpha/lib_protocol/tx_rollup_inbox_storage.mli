@@ -35,32 +35,23 @@ type error +=
   | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup_repr.t
   | Tx_rollup_message_size_exceeds_limit
 
-(** [append_message ctxt tx_rollup state message] tries to append
-    [message] to the inbox of [tx_rollup] at the current level, creating
-    it in theprocess if need be. This function returns the size of the
-    appended message (in bytes), in order for the appropriate fees to be
-    taken from the message author, as well as the new state.  It
-    is the caller's responsibility to store the returned state.
+(** [append_message ctxt tx_rollup inbox message] tries to append
+   [message] to the [inbox] of [tx_rollup] at the current level.
 
     {b Note:} [tx_rollup] needs to be a valid transaction address. It
-    is the responsibility of the caller to assert it.
+   is the responsibility of the caller to assert it.
 
     Returns the error
 
     {ul {li [Tx_rollup_hard_size_limit_reached] if appending [message]
-            to the inbox would make it exceed the maximum size
-            specified by the [tx_rollup_hard_size_limit_per_inbox]
-            protocol parameter.}
-        {li [Tx_rollup_message_size_exceeds_limit] if the size of
-            [message] is greater than the
-            [tx_rollup_hard_size_limit_per_message] protocol
-            parameter.}} *)
+   to the inbox would make it exceed the maximum size specified by the
+   [tx_rollup_hard_size_limit_per_inbox] protocol parameter.}} *)
 val append_message :
   Raw_context.t ->
   Tx_rollup_repr.t ->
-  Tx_rollup_state_repr.t ->
+  Tx_rollup_inbox_repr.t ->
   Tx_rollup_message_repr.t ->
-  (Raw_context.t * Tx_rollup_state_repr.t) tzresult Lwt.t
+  Raw_context.t tzresult Lwt.t
 
 (** [messages ctxt ~level tx_rollup] returns the list of messages
     hashes stored in the inbox of [tx_rollup] at level [level].

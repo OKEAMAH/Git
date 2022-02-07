@@ -50,7 +50,7 @@ let update_tx_rollups_at_block_finalization :
       let state =
         Tx_rollup_state_repr.update_fees_per_byte
           state
-          ~final_size:inbox.cumulated_size
+          ~final_size:inbox.metadata.cumulated_size
           ~hard_limit
       in
       Storage.Tx_rollup.State.add ctxt tx_rollup state >|=? fun (ctxt, _, _) ->

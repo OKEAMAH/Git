@@ -1169,15 +1169,22 @@ let apply_manager_operation_content :
       return (ctxt, result, [])
   | Tx_rollup_submit_batch {tx_rollup; content} ->
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
-      Tx_rollup_message.make_batch ctxt content
-      >>?= fun (message, message_size) ->
+      let (Tx_rollup_message.{size = message_size; message = _} as full_message)
+          =
+        Tx_rollup_message.make (Batch content)
+      in
       Tx_rollup_state.get ctxt tx_rollup >>=? fun (ctxt, state) ->
+      (* We first preleve the fees to fail early if the source does
+         not have enough fees. *)
       Tx_rollup_state.fees state message_size >>?= fun cost ->
       Token.transfer ctxt (`Contract source) `Burned cost
       >>=? fun (ctxt, balance_updates) ->
-      Tx_rollup_inbox.append_message ctxt tx_rollup state message
-      >>=? fun (ctxt, state) ->
-      Tx_rollup_state.update ctxt tx_rollup state >>=? fun ctxt ->
+      (Tx_rollup_inbox.find ctxt ~level:`Current tx_rollup >>=? function
+       | (ctxt, None) -> Tx_rollup_state.make_inbox ctxt tx_rollup state
+       | (ctxt, Some inbox) -> return (ctxt, inbox))
+      >>=? fun (ctxt, inbox) ->
+      Tx_rollup_inbox.append_message ctxt tx_rollup inbox full_message
+      >>=? fun ctxt ->
       let result =
         Tx_rollup_submit_batch_result
           {
@@ -1320,11 +1327,12 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
          Do we need to take into account the carbonation of hasing
          [content] here? *)
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
-      let size_limit =
+      let message = Tx_rollup_message.make (Batch content) in
+      let message_limit =
         Alpha_context.Constants.tx_rollup_hard_size_limit_per_message ctxt
       in
       fail_unless
-        Compare.Int.(String.length content < size_limit)
+        Compare.Int.(message.Tx_rollup_message.size < message_limit)
         Tx_rollup_inbox.Tx_rollup_message_size_exceeds_limit
       >|=? fun () -> ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->

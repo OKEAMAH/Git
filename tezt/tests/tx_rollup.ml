@@ -49,7 +49,9 @@ let get_state ?hooks tx_rollup client =
 
 let get_inbox ?hooks tx_rollup client =
   let* json = RPC.Tx_rollup.get_inbox ?hooks ~tx_rollup client in
-  let cumulated_size = JSON.(json |-> "cumulated_size" |> as_int) in
+  let cumulated_size =
+    JSON.(json |-> "metadata" |-> "cumulated_size" |> as_int)
+  in
   let contents = JSON.(json |-> "contents" |> as_list |> List.map as_string) in
   return {cumulated_size; contents}
 

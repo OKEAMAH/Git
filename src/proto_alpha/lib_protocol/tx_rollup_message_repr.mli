@@ -40,6 +40,8 @@ type deposit = {
   amount : int64;
 }
 
+type message = Batch of string | Deposit of deposit
+
 (** A [message] is a piece of data originated from the layer-1 to be
     interpreted by the layer-2.
 
@@ -48,16 +50,17 @@ type deposit = {
     {ul {li An array of bytes that supposedly contains a valid
             sequence of layer-2 operations; their interpretation and
             validation is deferred to the layer-2..}
-        {li A deposit order for a L1 ticket.}} *)
-type t = Batch of string | Deposit of deposit
+        {li A deposit order for a L1 ticket.}} 
 
-(** [size msg] returns the number of bytes that are allocated in an
-    inbox by [msg]. *)
-val size : t -> int
+    We pack the size with the message to ensure that the size is computed 
+    by this module. *)
+type t = private {message : message; size : int}
 
-val encoding : t Data_encoding.t
+val make : message -> t
 
-val pp : Format.formatter -> t -> unit
+val encoding : message Data_encoding.t
+
+val pp : Format.formatter -> message -> unit
 
 (** The Blake2B hash of a message.
 
@@ -73,4 +76,4 @@ val hash_encoding : hash Data_encoding.t
 val pp_hash : Format.formatter -> hash -> unit
 
 (** [hash msg] computes the hash of [msg] to be stored in the inbox. *)
-val hash : t -> hash
+val hash : message -> hash

@@ -719,7 +719,7 @@ module Tx_rollup : sig
     Non_iterable_indexed_carbonated_data_storage
       with type t := Raw_context.t * Raw_level_repr.t
        and type key = Tx_rollup_repr.t
-       and type value = Tx_rollup_message_repr.hash list
+       and type value = Tx_rollup_inbox_repr.content
 
   (** [fold (ctxt, level) ~order ~init ~f] traverses all rollups with
       a nonempty inbox at [level].

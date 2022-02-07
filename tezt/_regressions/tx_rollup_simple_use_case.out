@@ -32,5 +32,5 @@ This sequence of operations was run:
 
 
 ./tezos-client rpc get /chains/main/blocks/head/context/tx_rollup/tru1EL3YqhLS3kwni3ikbqMrui61fA5k7StHz/inbox
-{ "contents": [ "M21tdhc2Wn76n164oJvyKW4JVZsDSDeuDsbLgp61XZWtrXjL5WA" ],
-  "cumulated_size": 5 }
+{ "content": [ "M21tdhc2Wn76n164oJvyKW4JVZsDSDeuDsbLgp61XZWtrXjL5WA" ],
+  "metadata": { "cumulated_size": 5, "predecessor": null, "successor": null } }

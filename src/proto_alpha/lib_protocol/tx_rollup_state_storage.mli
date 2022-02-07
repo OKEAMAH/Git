@@ -32,6 +32,9 @@
     module are carbonated. *)
 
 type error +=
+  | Tx_rollup_inbox_does_not_exist of Tx_rollup_repr.t * Raw_level_repr.t
+  | Tx_rollup_inbox_already_exist of Tx_rollup_repr.t * Raw_level_repr.t
+  | Tx_rollup_inbox_inconsistency of Tx_rollup_repr.t * Raw_level_repr.t
   | Tx_rollup_already_exists of Tx_rollup_repr.t
   | Tx_rollup_does_not_exist of Tx_rollup_repr.t
 
@@ -67,16 +70,30 @@ val get :
   Tx_rollup_repr.t ->
   (Raw_context.t * Tx_rollup_state_repr.t) tzresult Lwt.t
 
-(** [update ctxt tx_rollup new_state] replaces the stored state of
-    [tx_rollup] with [new_state]. *)
-val update :
-  Raw_context.t ->
-  Tx_rollup_repr.t ->
-  Tx_rollup_state_repr.t ->
-  Raw_context.t tzresult Lwt.t
-
 (** [assert_exist ctxt tx_rollup] fails with
     [Tx_rollup_does_not_exist] when [tx_rollup] is not a valid
     transaction rollup address. *)
 val assert_exist :
   Raw_context.t -> Tx_rollup_repr.t -> Raw_context.t tzresult Lwt.t
+
+(** [make_inbox ctxt tx_rollup state] creates a new inbox for the
+   current level. An error is returned in the following cases:
+
+    {ul {li [Tx_rollup_does_not_exist]}
+
+    {li [Tx_rollup_inbox_already_exist]}
+
+    {li [Tx_rollup_inbox_inconsistency]}
+
+    {li [Tx_rollup_inbox_does_not_exist]}}
+
+   {b Note:} It is the responsability of the caller to ensure that the
+   [tx_rollup] exists and at the current level, there is no
+   [inbox]. The errors [Tx_rollup_inbox_inconsistency] and
+   [Tx_rollup_inbox_does_not_exist] can be raised only if there is an
+   inconsistency in the internal rollup storage. *)
+val make_inbox :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Tx_rollup_state_repr.t ->
+  (Raw_context.t * Tx_rollup_inbox_repr.t) tzresult Lwt.t

@@ -25,23 +25,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** An inbox gathers, for a given Tezos level, messages crafted by the
-    layer-1 for the layer-2 to interpret.
-
-    The structure comprises two fields: (1) [contents] is the list of
-    message hashes, and (2) [cumulated_size] is the quantity of bytes
-    allocated by the related messages.
-
-    We recall that a transaction rollup can have up to one inbox per
-    Tezos level, starting from its origination. See
-    {!Storage.Tx_rollup} for more information. *)
-type t = {contents : Tx_rollup_message_repr.hash list; cumulated_size : int}
-
-val pp : Format.formatter -> t -> unit
-
-val encoding : t Data_encoding.t
-
-(* The metadata for an inbox stores the [cumulated_size] in
+(** The metadata for an inbox stores the [cumulated_size] in
    bytes for the inbox, so that we do not need to retrieve the entries
    for the inbox just to get the size.  It also stores the
    [predecessor] and [successor] levels.  For the first inbox of a
@@ -52,5 +36,23 @@ type metadata = {
   predecessor : Raw_level_repr.t option;
   successor : Raw_level_repr.t option;
 }
+
+(** An inbox gathers, for a given Tezos level, messages crafted by the
+    layer-1 for the layer-2 to interpret.
+
+    The structure comprises two fields: (1) [contents] is the list of
+    message hashes, and (2) [cumulated_size] is the quantity of bytes
+    allocated by the related messages.
+
+    We recall that a transaction rollup can have up to one inbox per
+    Tezos level, starting from its origination. See
+    {!Storage.Tx_rollup} for more information. *)
+type content = Tx_rollup_message_repr.hash list
+
+type t = {content : content; metadata : metadata}
+
+val pp : Format.formatter -> t -> unit
+
+val encoding : t Data_encoding.t
 
 val metadata_encoding : metadata Data_encoding.t
