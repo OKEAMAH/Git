@@ -39,5 +39,6 @@ let () =
       ("storage description", Test_storage.tests);
       ("storage tests", Test_storage_functions.tests);
       ("token movements", Test_token.tests);
+      ("rollup deposits", Test_rollup_deposits.tests);
     ]
   |> Lwt_main.run
