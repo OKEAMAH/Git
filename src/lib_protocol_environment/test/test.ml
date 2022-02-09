@@ -26,5 +26,9 @@
 let () =
   Alcotest_lwt.run
     "tezos-shell-context"
-    [("mem_context", Test_mem_context.tests); ("cache", Test_cache.tests); ("proxy_context", Test_proxy_context.tests);]
+    [
+      ("mem_context", Test_mem_context.tests);
+      ("cache", Test_cache.tests);
+      ("proxy_context", Test_proxy_context.tests);
+    ]
   |> Lwt_main.run

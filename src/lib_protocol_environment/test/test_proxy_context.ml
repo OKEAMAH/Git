@@ -55,18 +55,14 @@ let create_block3b ctxt =
   Context.add ctxt ["a"; "d"] (Bytes.of_string "Février") >>= fun ctxt ->
   Lwt.return ctxt
 
-type t = {
-  proxy : Context.t;
-  memref : Context.t;
-}
+type t = {proxy : Context.t; memref : Context.t}
 
+let populate_context (ctxt : Context.t) blocks =
+  List.fold_left_s (fun acc f -> f acc) ctxt blocks
 
-
-let populate_context (ctxt:Context.t) blocks = List.fold_left_s (fun acc f -> f acc) ctxt blocks
-
-let init_contexts (blockfuncs:(Context.t -> Context.t Lwt.t) list) (f:(t -> unit Lwt.t)) _ () : 'a Lwt.t =
+let init_contexts (blockfuncs : (Context.t -> Context.t Lwt.t) list)
+    (f : t -> unit Lwt.t) _ () : 'a Lwt.t =
   let open Lwt_syntax in
-
   (* TODO:      Use proxy in delegation mode *)
   let proxy_genesis : Context.t = Proxy_context.empty None in
   let* proxy = populate_context proxy_genesis blockfuncs in
@@ -74,27 +70,30 @@ let init_contexts (blockfuncs:(Context.t -> Context.t Lwt.t) list) (f:(t -> unit
   let memref_genesis : Context.t = Memory_context.empty in
   let* memref = populate_context memref_genesis blockfuncs in
 
-  f { proxy; memref }
-
-
+  f {proxy; memref}
 
 let test_cmp msg testfunc val_assert proxy_ctx memref_ctx =
   let open Lwt_syntax in
-
   (* Assert the value is the one expected *)
   let* proxy_got = testfunc proxy_ctx in
-  val_assert proxy_got;
+  val_assert proxy_got ;
 
   (* Assert the value from the reference implementation is the same *)
   let* memref_got = testfunc memref_ctx in
-  Assert.equal ~msg proxy_got memref_got;
+  Assert.equal ~msg proxy_got memref_got ;
   Lwt.return_unit
 
 (* Test MEM *)
-let test_mem { proxy; memref; _} =
+let test_mem {proxy; memref; _} =
   let open Lwt_syntax in
-
-  let testmemfct msg path exp = test_cmp msg (fun ctx -> Context.mem ctx path) (Assert.equal_bool ~msg exp) proxy memref in
+  let testmemfct msg path exp =
+    test_cmp
+      msg
+      (fun ctx -> Context.mem ctx path)
+      (Assert.equal_bool ~msg exp)
+      proxy
+      memref
+  in
 
   let* () = testmemfct "1st_layer_leaf" ["version"] true in
   let* () = testmemfct "removed_leaf" ["a"; "c"] false in
@@ -104,68 +103,94 @@ let test_mem { proxy; memref; _} =
   Lwt.return_unit
 
 (* Test MEM TREE *)
-let test_mem_tree { proxy; memref; _} =
+let test_mem_tree {proxy; memref; _} =
   let open Lwt_syntax in
-
   let testmemtreefct msg path exp =
-      test_cmp msg
+    test_cmp
+      msg
       (fun ctx -> Context.mem_tree ctx path)
       (Assert.equal_bool ~msg exp)
-      proxy memref in
+      proxy
+      memref
+  in
 
   let* () = testmemtreefct "exist_tree" ["a"] true in
   let* () = testmemtreefct "doesnt_exist_tree" ["b"] false in
-  (* let* () = testmemtreefct "is_leaf_not_tree" ["a"; "d"] false in *)
 
+  (* let* () = testmemtreefct "is_leaf_not_tree" ["a"; "d"] false in *)
   Lwt.return_unit
 
 (* Test FIND *)
-let test_find { proxy; memref; _} =
+let test_find {proxy; memref; _} =
   let open Lwt_syntax in
-
   let testfindfct msg path exp =
-      test_cmp msg
+    test_cmp
+      msg
       (fun ctx -> Context.find ctx path)
       (Assert.equal_bytes_option ~msg exp)
-      proxy memref in
+      proxy
+      memref
+  in
 
-  let* () = testfindfct "exist_1stlayer_leaf" ["version"] (Some (Bytes.of_string "0.0")) in
-  let* () = testfindfct "exist_leaf" ["a"; "d"] (Some (Bytes.of_string "Février")) in
-  let* () = testfindfct "doesnt_exist_leaf" ["a"; "x"] (None) in
-  let* () = testfindfct "removed_leaf" ["a"; "c"] (None) in
+  let* () =
+    testfindfct "exist_1stlayer_leaf" ["version"] (Some (Bytes.of_string "0.0"))
+  in
+  let* () =
+    testfindfct "exist_leaf" ["a"; "d"] (Some (Bytes.of_string "Février"))
+  in
+  let* () = testfindfct "doesnt_exist_leaf" ["a"; "x"] None in
+  let* () = testfindfct "removed_leaf" ["a"; "c"] None in
 
   Lwt.return_unit
 
 (* Test FIND TREE *)
-let test_find_tree { proxy; memref; _} =
+let test_find_tree {proxy; memref; _} =
   let open Lwt_syntax in
-
   let testfindtreefct msg path exp =
-      test_cmp msg
+    test_cmp
+      msg
       (fun ctx -> Context.find ctx path)
       (Assert.equal_bytes_option ~msg exp)
-      proxy memref in
+      proxy
+      memref
+  in
 
-  let* () = testfindtreefct "exist_1stlayer_leaf" ["version"] (Some (Bytes.of_string "0.0")) in
-  let* () = testfindtreefct "exist_leaf" ["a"; "d"] (Some (Bytes.of_string "Février")) in
-  let* () = testfindtreefct "doesnt_exist_leaf" ["a"; "x"] (None) in
-  let* () = testfindtreefct "removed_leaf" ["a"; "c"] (None) in
+  let* () =
+    testfindtreefct
+      "exist_1stlayer_leaf"
+      ["version"]
+      (Some (Bytes.of_string "0.0"))
+  in
+  let* () =
+    testfindtreefct "exist_leaf" ["a"; "d"] (Some (Bytes.of_string "Février"))
+  in
+  let* () = testfindtreefct "doesnt_exist_leaf" ["a"; "x"] None in
+  let* () = testfindtreefct "removed_leaf" ["a"; "c"] None in
 
   Lwt.return_unit
 
 (* Test LIST *)
-let test_list { proxy; memref; _} =
+let test_list {proxy; memref; _} =
   let open Lwt_syntax in
+  let testlistfct msg path assert_fct =
+    test_cmp
+      msg
+      (fun ctx -> Context.list ctx path)
+      (fun ret -> Assert.equal_bool ~msg true (assert_fct ret))
+      proxy
+      memref
+  in
 
-  let testlistfct msg path assert_fct = test_cmp msg
-    (fun ctx -> Context.list ctx path)
-    (fun ret -> Assert.equal_bool ~msg true (assert_fct ret))
-    proxy memref in
-
-  let* () = testlistfct "exist_1stlayer_leaf" ["version"] (fun l -> List.length l = 0) in
+  let* () =
+    testlistfct "exist_1stlayer_leaf" ["version"] (fun l -> List.length l = 0)
+  in
   let* () = testlistfct "exist_leaf" ["a"; "d"] (fun l -> List.length l = 0) in
-  let* () = testlistfct "doesnt_exist_leaf" ["a"; "x"] (fun l -> List.length l = 0) in
-  let* () = testlistfct "removed_leaf" ["a"; "c"] (fun l -> List.length l = 0) in
+  let* () =
+    testlistfct "doesnt_exist_leaf" ["a"; "x"] (fun l -> List.length l = 0)
+  in
+  let* () =
+    testlistfct "removed_leaf" ["a"; "c"] (fun l -> List.length l = 0)
+  in
 
   Lwt.return_unit
 
@@ -183,11 +208,13 @@ let tests =
 
 let tests : unit Alcotest_lwt.test_case list =
   List.map
-    (fun (n, f) -> Alcotest_lwt.test_case n `Quick (init_contexts [ create_block2; create_block3a; create_block3b ] f))
+    (fun (n, f) ->
+      Alcotest_lwt.test_case
+        n
+        `Quick
+        (init_contexts [create_block2; create_block3a; create_block3b] f))
     tests
 
 let () =
-  Alcotest_lwt.run
-    "tezos-shell-proxy-context"
-    [("proxy_context", tests);]
+  Alcotest_lwt.run "tezos-shell-proxy-context" [("proxy_context", tests)]
   |> Lwt_main.run
