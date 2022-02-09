@@ -103,12 +103,29 @@ let test_mem { proxy; memref; _} =
 
   Lwt.return_unit
 
+(* Test MEM TREE *)
+let test_mem_tree { proxy; memref; _} =
+  let open Lwt_syntax in
+
+  let testmemtreefct msg path exp =
+      test_cmp msg
+      (fun ctx -> Context.mem_tree ctx path)
+      (Assert.equal_bool ~msg exp)
+      proxy memref in
+
+  let* () = testmemtreefct "exist_tree" ["a"] true in
+  let* () = testmemtreefct "doesnt_exist_tree" ["b"] false in
+  (* let* () = testmemtreefct "is_leaf_not_tree" ["a"; "d"] false in *)
+
+  Lwt.return_unit
+
 
 (******************************************************************************)
 
 let tests =
   [
     ("mem", test_mem);
+    ("memtree", test_mem_tree);
   ]
 
 let tests : unit Alcotest_lwt.test_case list =
