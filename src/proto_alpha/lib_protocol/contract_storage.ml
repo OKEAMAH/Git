@@ -438,7 +438,7 @@ let create_implicit c manager ~balance =
 
 let stake = Storage.Contract.Balance.get
 
-let delete c contract =
+let delete_only_call_from_token c contract =
   match Contract_repr.is_implicit contract with
   | None ->
       (* For non implicit contract Big_map should be cleared *)
@@ -572,8 +572,10 @@ let spend_only_call_from_token c contract amount =
       >>=? fun c ->
       if Tez_repr.(new_balance > Tez_repr.zero) then return c
       else
+        (* Ensure that empty implicit contracts that delegate to other contracts
+           remain non empty. *)
         match Contract_repr.is_implicit contract with
-        | None -> return c (* Never delete originated contracts *)
+        | None -> return c
         | Some pkh -> (
             Contract_delegate_storage.find c contract >>=? function
             | Some pkh' ->
@@ -581,9 +583,7 @@ let spend_only_call_from_token c contract amount =
                 else
                   (* Delegated implicit accounts cannot be emptied *)
                   fail (Empty_implicit_delegated_contract pkh)
-            | None ->
-                (* Delete empty implicit contract *)
-                delete c contract))
+            | None -> return c))
 
 (* [Tez_repr.(amount <> zero)] is a precondition of this function. It ensures that
    no entry associating a null balance to an implicit contract exists in the map

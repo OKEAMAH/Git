@@ -153,6 +153,24 @@ let spend ctxt src amount origin =
       >>?= fun ctxt -> return (ctxt, Block_fees))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Debited amount, origin))
 
+let deallocate_stakeless_implicit_contracts ctxt contract =
+  match Contract_repr.is_implicit contract with
+  | None -> return ctxt (* Never delete originated contracts *)
+  | Some _ ->
+      Contract_storage.stake ctxt contract >>=? fun stake ->
+      if Tez_repr.(stake = Tez_repr.zero) then
+        (* Delete empty implicit contract. *)
+        Contract_delegate_storage.find ctxt contract >>=? function
+        | Some _ ->
+            (* Here, we know that the contract delegates to iself. Indeed, it
+               does not delegate to a different one, because the balance of
+               such contracts cannot be zero (see [spend_only_call_from_token]
+               in module [Contract_storage]), hence the stake of such contracts
+               cannot be zero either. *)
+            return ctxt
+        | None -> Contract_storage.delete_only_call_from_token ctxt contract
+      else return ctxt
+
 let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
   let sources = List.filter (fun (_, am) -> Tez_repr.(am <> zero)) src in
   match sources with
@@ -168,7 +186,22 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
         (ctxt, Tez_repr.zero, [])
         sources
       >>=? fun (ctxt, amount, debit_logs) ->
-      credit ctxt dest amount origin >|=? fun (ctxt, credit_log) ->
+      credit ctxt dest amount origin >>=? fun (ctxt, credit_log) ->
+      (* Deallocate implicit contracts with no stake. *)
+      List.fold_left_es
+        (fun ctxt (source, _amount) ->
+          match source with
+          | `Contract contract ->
+              (* If [contract] is in [sources] more than once, we must avoid
+                 deallocating twice. *)
+              Contract_storage.allocated ctxt contract >>=? fun allocated ->
+              if allocated then
+                deallocate_stakeless_implicit_contracts ctxt contract
+              else return ctxt
+          | #source -> return ctxt)
+        ctxt
+        sources
+      >|=? fun ctxt ->
       (* Make sure the order of balance updates is : debit logs in the order of
          of the parameter [src], and then the credit log. *)
       let balance_updates = List.rev (credit_log :: debit_logs) in
