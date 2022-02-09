@@ -348,6 +348,28 @@ module Contract = struct
         let name = ["frozen_deposits_limit"]
       end)
       (Tez_repr)
+
+  module Rollup_bond_id_index =
+    Make_indexed_subcontext
+      (Make_subcontext (Ghost) (Indexed_context.Raw_context)
+         (struct
+           let name = ["rollup_bond_id_index"]
+         end))
+         (Make_index (Rollup_bond_id_repr.Index))
+
+  module Frozen_rollup_bonds =
+    Rollup_bond_id_index.Make_map
+      (struct
+        let name = ["rollup_bonds"]
+      end)
+      (Tez_repr)
+
+  module Total_rollup_bonds =
+    Indexed_context.Make_map
+      (struct
+        let name = ["total_rollup_bonds"]
+      end)
+      (Tez_repr)
 end
 
 module type NEXT = sig

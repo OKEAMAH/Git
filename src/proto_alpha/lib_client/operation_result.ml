@@ -276,6 +276,13 @@ let pp_balance_updates ppf = function
               | Invoice -> "invoices"
               | Initial_commitments -> "initial commitments"
               | Minted -> "minted"
+              | Rollup_bonds (contract, bond_id) ->
+                  Format.asprintf
+                    "Rollup_bonds(%a,%a)"
+                    Contract.pp
+                    contract
+                    Rollup_bond_id.pp
+                    bond_id
             in
             let balance =
               match origin with

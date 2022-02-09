@@ -179,6 +179,18 @@ module Contract : sig
       with type key = Contract_repr.t
        and type value = Z.t
        and type t := Raw_context.t
+
+  module Frozen_rollup_bonds :
+    Indexed_data_storage
+      with type key = Rollup_bond_id_repr.t
+       and type value = Tez_repr.t
+       and type t := Raw_context.t * Contract_repr.t
+
+  module Total_rollup_bonds :
+    Indexed_data_storage
+      with type key = Contract_repr.t
+       and type value = Tez_repr.t
+       and type t := Raw_context.t
 end
 
 module Big_map : sig

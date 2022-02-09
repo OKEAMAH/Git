@@ -28,7 +28,8 @@ type container =
   | `Collected_commitments of Blinded_public_key_hash.t
   | `Delegate_balance of Signature.Public_key_hash.t
   | `Frozen_deposits of Signature.Public_key_hash.t
-  | `Block_fees ]
+  | `Block_fees
+  | `Frozen_rollup_bonds of Contract_repr.t * Rollup_bond_id_repr.t ]
 
 type source =
   [ `Invoice
@@ -61,6 +62,8 @@ let allocated ctxt stored =
       let contract = Contract_repr.implicit_contract delegate in
       Frozen_deposits_storage.allocated ctxt contract >|= ok
   | `Block_fees -> return_true
+  | `Frozen_rollup_bonds (contract, bond_id) ->
+      Frozen_rollup_bonds_storage.allocated ctxt contract bond_id
 
 let balance ctxt stored =
   match stored with
@@ -76,6 +79,9 @@ let balance ctxt stored =
       | None -> Tez_repr.zero
       | Some frozen_deposits -> frozen_deposits.current_amount)
   | `Block_fees -> return (Raw_context.get_collected_fees ctxt)
+  | `Frozen_rollup_bonds (contract, bond_id) ->
+      Frozen_rollup_bonds_storage.find ctxt contract bond_id
+      >|=? Option.value ~default:Tez_repr.zero
 
 let credit ctxt dest amount origin =
   let open Receipt_repr in
@@ -110,7 +116,14 @@ let credit ctxt dest amount origin =
       >|=? fun ctxt -> (ctxt, Deposits delegate)
   | `Block_fees ->
       Raw_context.credit_collected_fees_only_call_from_token ctxt amount
-      >>?= fun ctxt -> return (ctxt, Block_fees))
+      >>?= fun ctxt -> return (ctxt, Block_fees)
+  | `Frozen_rollup_bonds (contract, bond_id) ->
+      Frozen_rollup_bonds_storage.credit_only_call_from_token
+        ctxt
+        contract
+        bond_id
+        amount
+      >>=? fun ctxt -> return (ctxt, Rollup_bonds (contract, bond_id)))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Credited amount, origin))
 
 let spend ctxt src amount origin =
@@ -150,7 +163,14 @@ let spend ctxt src amount origin =
       >>=? fun ctxt -> return (ctxt, Deposits delegate)
   | `Block_fees ->
       Raw_context.spend_collected_fees_only_call_from_token ctxt amount
-      >>?= fun ctxt -> return (ctxt, Block_fees))
+      >>?= fun ctxt -> return (ctxt, Block_fees)
+  | `Frozen_rollup_bonds (contract, bond_id) ->
+      Frozen_rollup_bonds_storage.spend_only_call_from_token
+        ctxt
+        contract
+        bond_id
+        amount
+      >>=? fun ctxt -> return (ctxt, Rollup_bonds (contract, bond_id)))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Debited amount, origin))
 
 let deallocate_stakeless_implicit_contracts ctxt contract =
@@ -178,6 +198,7 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
       (* Avoid accessing context data when there is nothing to transfer. *)
       return (ctxt, [])
   | _ :: _ ->
+      (* Withdraw from sources. *)
       List.fold_left_es
         (fun (ctxt, total, debit_logs) (source, amount) ->
           spend ctxt source amount origin >>=? fun (ctxt, debit_log) ->
@@ -186,12 +207,13 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
         (ctxt, Tez_repr.zero, [])
         sources
       >>=? fun (ctxt, amount, debit_logs) ->
+      (* Credit the destination. *)
       credit ctxt dest amount origin >>=? fun (ctxt, credit_log) ->
       (* Deallocate implicit contracts with no stake. *)
       List.fold_left_es
         (fun ctxt (source, _amount) ->
           match source with
-          | `Contract contract ->
+          | `Contract contract | `Frozen_rollup_bonds (contract, _) ->
               (* If [contract] is in [sources] more than once, we must avoid
                  deallocating twice. *)
               Contract_storage.allocated ctxt contract >>=? fun allocated ->

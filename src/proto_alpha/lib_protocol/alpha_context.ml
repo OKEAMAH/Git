@@ -349,6 +349,7 @@ module Sapling = struct
   type alloc = Sapling_state.alloc = {memo_size : Sapling_repr.Memo_size.t}
 end
 
+module Rollup_bond_id = Rollup_bond_id_repr
 module Receipt = Receipt_repr
 
 module Delegate = struct

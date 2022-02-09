@@ -44,6 +44,7 @@ type balance =
   | Invoice
   | Initial_commitments
   | Minted
+  | Rollup_bonds of Contract_repr.t * Rollup_bond_id_repr.t
 
 (** Compares two balances. *)
 val compare_balance : balance -> balance -> int

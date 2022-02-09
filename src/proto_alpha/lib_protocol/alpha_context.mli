@@ -1487,6 +1487,43 @@ module Contract : sig
   end
 end
 
+(** This module re-exports definitions from {!Tx_rollup_repr} and
+    {!Tx_rollup_storage}. *)
+module Tx_rollup : sig
+  include BASIC_DATA
+
+  type tx_rollup = t
+
+  val rpc_arg : tx_rollup RPC_arg.arg
+
+  val to_b58check : tx_rollup -> string
+
+  val of_b58check : string -> tx_rollup tzresult
+
+  val of_b58check_opt : string -> tx_rollup option
+
+  val pp : Format.formatter -> tx_rollup -> unit
+
+  val encoding : tx_rollup Data_encoding.t
+
+  val originate : context -> (context * tx_rollup) tzresult Lwt.t
+
+  val update_tx_rollups_at_block_finalization :
+    context -> context tzresult Lwt.t
+
+  module Internal_for_tests : sig
+    (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
+    val originated_tx_rollup :
+      Origination_nonce.Internal_for_tests.t -> tx_rollup
+  end
+end
+
+module Rollup_bond_id : sig
+  type t = Tx_rollup_bond_id of Tx_rollup.t
+
+  val pp : Format.formatter -> t -> unit
+end
+
 module Receipt : sig
   type balance =
     | Contract of Contract.t
@@ -1507,6 +1544,7 @@ module Receipt : sig
     | Invoice
     | Initial_commitments
     | Minted
+    | Rollup_bonds of Contract.t * Rollup_bond_id.t
 
   val compare_balance : balance -> balance -> int
 
@@ -1940,37 +1978,6 @@ module Destination : sig
   val in_memory_size : t -> Cache_memory_helpers.sint
 
   type error += Invalid_destination_b58check of string
-end
-
-(** This module re-exports definitions from {!Tx_rollup_repr} and
-    {!Tx_rollup_storage}. *)
-module Tx_rollup : sig
-  include BASIC_DATA
-
-  type tx_rollup = t
-
-  val rpc_arg : tx_rollup RPC_arg.arg
-
-  val to_b58check : tx_rollup -> string
-
-  val of_b58check : string -> tx_rollup tzresult
-
-  val of_b58check_opt : string -> tx_rollup option
-
-  val pp : Format.formatter -> tx_rollup -> unit
-
-  val encoding : tx_rollup Data_encoding.t
-
-  val originate : context -> (context * tx_rollup) tzresult Lwt.t
-
-  val update_tx_rollups_at_block_finalization :
-    context -> context tzresult Lwt.t
-
-  module Internal_for_tests : sig
-    (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
-    val originated_tx_rollup :
-      Origination_nonce.Internal_for_tests.t -> tx_rollup
-  end
 end
 
 (** This module re-exports definitions from {!Tx_rollup_state_repr}
@@ -2718,7 +2725,8 @@ module Token : sig
     | `Collected_commitments of Blinded_public_key_hash.t
     | `Delegate_balance of Signature.Public_key_hash.t
     | `Frozen_deposits of Signature.Public_key_hash.t
-    | `Block_fees ]
+    | `Block_fees
+    | `Frozen_rollup_bonds of Contract.t * Rollup_bond_id.t ]
 
   type source =
     [ `Invoice

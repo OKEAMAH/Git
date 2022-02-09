@@ -46,7 +46,8 @@ type container =
   | `Collected_commitments of Blinded_public_key_hash.t
   | `Delegate_balance of Signature.Public_key_hash.t
   | `Frozen_deposits of Signature.Public_key_hash.t
-  | `Block_fees ]
+  | `Block_fees
+  | `Frozen_rollup_bonds of Contract_repr.t * Rollup_bond_id_repr.t ]
 
 (** [source] is the type of token providers. Token providers that are not
     containers are considered to have infinite capacity. *)
