@@ -119,6 +119,23 @@ let test_mem_tree { proxy; memref; _} =
 
   Lwt.return_unit
 
+(* Test FIND *)
+let test_find { proxy; memref; _} =
+  let open Lwt_syntax in
+
+  let testfindfct msg path exp =
+      test_cmp msg
+      (fun ctx -> Context.find ctx path)
+      (Assert.equal_bytes_option ~msg exp)
+      proxy memref in
+
+  let* () = testfindfct "exist_1stlayer_leaf" ["version"] (Some (Bytes.of_string "0.0")) in
+  let* () = testfindfct "exist_leaf" ["a"; "d"] (Some (Bytes.of_string "Février")) in
+  let* () = testfindfct "doesnt_exist_leaf" ["a"; "x"] (None) in
+  let* () = testfindfct "removed_leaf" ["a"; "c"] (None) in
+
+  Lwt.return_unit
+
 
 (******************************************************************************)
 
@@ -126,6 +143,7 @@ let tests =
   [
     ("mem", test_mem);
     ("memtree", test_mem_tree);
+    ("find", test_find);
   ]
 
 let tests : unit Alcotest_lwt.test_case list =
