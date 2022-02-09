@@ -76,30 +76,31 @@ let init_contexts (blockfuncs:(Context.t -> Context.t Lwt.t) list) (f:(t -> unit
 
   f { proxy; memref }
 
-(** Simple test *)
 
-let c = function None -> None | Some s -> Some (Bytes.to_string s)
 
-(** Restore the context applied until [block2]. It is asserted that
-    the following key-values are present:
-    - (["version"], ["0.0"])
-    - (["a"; "b"], ["Novembre"])
-    - [(["a"; "c"], "Juin")]
-*)
-let test_simple ctxt = 
-  Context.find ctxt ["version"] >>= fun version ->
-  Assert.equal_string_option ~msg:__LOC__ (c version) (Some "0.0") ;
-  Context.find ctxt ["a"; "b"] >>= fun novembre ->
-  Assert.equal_string_option (Some "Novembre") (c novembre) ;
-  Context.find ctxt ["a"; "c"] >>= fun juin ->
-  Assert.equal_string_option ~msg:__LOC__ (Some "Juin") (c juin) ;
+let test_cmp msg testfunc val_assert proxy_ctx memref_ctx =
+  let open Lwt_syntax in
+
+  (* Assert the value is the one expected *)
+  let* proxy_got = testfunc proxy_ctx in
+  val_assert proxy_got;
+
+  (* Assert the value from the reference implementation is the same *)
+  let* memref_got = testfunc memref_ctx in
+  Assert.equal ~msg proxy_got memref_got;
   Lwt.return_unit
 
+(* Test MEM *)
 let test_mem { proxy; memref; _} =
   let open Lwt_syntax in
-  (* let proxy_version = Context.find proxy ["version"] in *)
-  (* let memref_version = Context.find memref ["version"] in *)
-  (* let () = Assert.equal_string_option proxy_version memref_version in *)
+
+  let testmemfct msg path exp = test_cmp msg (fun ctx -> Context.mem ctx path) (Assert.equal_bool ~msg exp) proxy memref in
+
+  let* () = testmemfct "1st_layer_leaf" ["version"] true in
+  let* () = testmemfct "removed_leaf" ["a"; "c"] false in
+  let* () = testmemfct "exist_leaf" ["a"; "d"] true in
+  let* () = testmemfct "doesnt_exist_leaf" ["a"; "x"] false in
+
   Lwt.return_unit
 
 
@@ -107,7 +108,7 @@ let test_mem { proxy; memref; _} =
 
 let tests =
   [
-    ("memops", test_mem);
+    ("mem", test_mem);
   ]
 
 let tests : unit Alcotest_lwt.test_case list =
