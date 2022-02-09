@@ -153,6 +153,21 @@ let test_find_tree { proxy; memref; _} =
 
   Lwt.return_unit
 
+(* Test LIST *)
+let test_list { proxy; memref; _} =
+  let open Lwt_syntax in
+
+  let testlistfct msg path assert_fct = test_cmp msg
+    (fun ctx -> Context.list ctx path)
+    (fun ret -> Assert.equal_bool ~msg true (assert_fct ret))
+    proxy memref in
+
+  let* () = testlistfct "exist_1stlayer_leaf" ["version"] (fun l -> List.length l = 0) in
+  let* () = testlistfct "exist_leaf" ["a"; "d"] (fun l -> List.length l = 0) in
+  let* () = testlistfct "doesnt_exist_leaf" ["a"; "x"] (fun l -> List.length l = 0) in
+  let* () = testlistfct "removed_leaf" ["a"; "c"] (fun l -> List.length l = 0) in
+
+  Lwt.return_unit
 
 (******************************************************************************)
 
@@ -162,6 +177,8 @@ let tests =
     ("memtree", test_mem_tree);
     ("find", test_find);
     ("find_tree", test_find_tree);
+    ("list", test_list);
+    (* Should break with delegation set *)
   ]
 
 let tests : unit Alcotest_lwt.test_case list =
