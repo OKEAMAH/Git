@@ -428,7 +428,7 @@ let init2 ?rng_state ?commitments ?(initial_balances = []) ?no_endorsing
   | (_, []) | (_, [_]) -> assert false
   | (b, contract_1 :: contract_2 :: _) -> (b, contract_1, contract_2)
 
-let init_with_constants constants n =
+let init_with_constants ?level constants n =
   let accounts = Account.generate_accounts n in
   let contracts =
     List.map
@@ -446,7 +446,8 @@ let init_with_constants constants n =
   let parameters =
     Default_parameters.parameters_of_constants ~bootstrap_accounts constants
   in
-  Block.genesis_with_parameters parameters >|=? fun blk -> (blk, contracts)
+  Block.genesis_with_parameters ?level parameters >|=? fun blk ->
+  (blk, contracts)
 
 let default_raw_context () =
   let initial_accounts =

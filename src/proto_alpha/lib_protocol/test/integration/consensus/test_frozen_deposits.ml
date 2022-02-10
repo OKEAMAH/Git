@@ -43,7 +43,11 @@ let constants =
     baking_reward_bonus_per_slot = Tez.zero;
     baking_reward_fixed_portion = Tez.zero;
     consensus_threshold = 0;
+    minimal_participation_ratio = {numerator = 0; denominator = 1};
     origination_size = 0;
+    blocks_per_commitment =
+      Int32.succ Default_parameters.constants_test.blocks_per_cycle
+      (* so no commitments expected *);
   }
 
 let get_first_2_accounts_contracts contracts =

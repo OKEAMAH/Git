@@ -82,7 +82,17 @@ let wrap et = et >>= fun e -> Lwt.return (Environment.wrap_tzresult e)
 let test_bake_n_cycles n () =
   let open Block in
   let policy = By_round 0 in
-  Context.init ~no_endorsing:true 1 >>=? fun (block, _contracts) ->
+  let constants =
+    {
+      Default_parameters.constants_test with
+      consensus_threshold = 0;
+      minimal_participation_ratio = {numerator = 0; denominator = 1};
+      blocks_per_commitment =
+        Int32.succ Default_parameters.constants_test.blocks_per_cycle
+        (* so no commitments expected *);
+    }
+  in
+  Context.init_with_constants constants 1 >>=? fun (block, _contracts) ->
   Block.bake_until_n_cycle_end ~policy n block >>=? fun _block -> return ()
 
 (** Check that, after one or two voting periods, the voting power of a baker is
@@ -91,7 +101,19 @@ let test_bake_n_cycles n () =
 let test_voting_power_cache () =
   let open Block in
   let policy = By_round 0 in
-  Context.init ~no_endorsing:true 1 >>=? fun (genesis, _contracts) ->
+  let constants =
+    {
+      Default_parameters.constants_test with
+      endorsing_reward_per_slot = Tez.zero;
+      baking_reward_bonus_per_slot = Tez.zero;
+      consensus_threshold = 0;
+      minimal_participation_ratio = {numerator = 0; denominator = 1};
+      blocks_per_commitment =
+        Int32.succ Default_parameters.constants_test.blocks_per_cycle
+        (* so no commitments expected *);
+    }
+  in
+  Context.init_with_constants constants 1 >>=? fun (genesis, _contracts) ->
   Context.get_constants (B genesis) >>=? fun csts ->
   let blocks_per_voting_period =
     Int32.(
@@ -455,8 +477,10 @@ let _test_pouet () =
       origination_size = 0;
       preserved_cycles = 1;
       blocks_per_cycle = 4l;
-      blocks_per_commitment = 2l;
       minimal_participation_ratio = {numerator = 1; denominator = 8};
+      blocks_per_commitment =
+        Int32.succ Default_parameters.constants_test.blocks_per_cycle
+        (* so no commitments expected *);
     }
   in
   Context.init_with_constants constants 1 >>=? fun (b, c) ->

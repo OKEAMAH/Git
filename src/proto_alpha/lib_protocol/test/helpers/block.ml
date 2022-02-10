@@ -346,21 +346,22 @@ let initial_alpha_context ?(commitments = []) constants
   Alpha_context.prepare_first_block ~typecheck ~level ~timestamp ctxt
   >|= Environment.wrap_tzresult
 
-let genesis_with_parameters parameters =
+let genesis_with_parameters ?level parameters =
   let hash =
     Block_hash.of_b58check_exn
       "BLockGenesisGenesisGenesisGenesisGenesisCCCCCeZiLHU"
   in
+  let level = Option.value ~default:0l level in
   let fitness =
     Fitness_repr.create_without_locked_round
-      ~level:(Protocol.Raw_level_repr.of_int32_exn 0l)
+      ~level:(Protocol.Raw_level_repr.of_int32_exn level)
       ~predecessor_round:Round_repr.zero
       ~round:Round_repr.zero
     |> Fitness_repr.to_raw
   in
   let shell =
     Forge.make_shell
-      ~level:0l
+      ~level
       ~predecessor:hash
       ~timestamp:Time.Protocol.epoch
       ~fitness

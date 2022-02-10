@@ -108,9 +108,22 @@ let liquidity_baking_cpmm_address () =
     "KT1TxqZ8QtKvLu3V3JH7Gx58n7Co8pgtpQU5"
   >>=? fun () -> return_unit
 
+let init_context_with_one_account () =
+  let constants =
+    {
+      Default_parameters.constants_test with
+      consensus_threshold = 0;
+      minimal_participation_ratio = {numerator = 0; denominator = 1};
+      blocks_per_commitment =
+        Int32.succ Default_parameters.constants_test.blocks_per_cycle
+        (* so no commitments expected *);
+    }
+  in
+  Context.init_with_constants constants 1
+
 (* Test that after [n] blocks, the liquidity baking CPMM contract is credited [n] times the subsidy amount. *)
 let liquidity_baking_subsidies n () =
-  Context.init ~no_endorsing:true 1 >>=? fun (blk, _contracts) ->
+  init_context_with_one_account () >>=? fun (blk, _contracts) ->
   Context.get_liquidity_baking_cpmm_address (B blk) >>=? fun liquidity_baking ->
   Context.Contract.balance (B blk) liquidity_baking >>=? fun old_balance ->
   Block.bake_n n blk >>=? fun blk ->
@@ -129,7 +142,7 @@ let liquidity_baking_subsidies n () =
    More precisely, after the sunset, the total amount credited to the subsidy is only proportional
    to the sunset level and in particular it does not depend on [n]. *)
 let liquidity_baking_sunset_level n () =
-  Context.init ~no_endorsing:true 1 >>=? fun (blk, _contracts) ->
+  init_context_with_one_account () >>=? fun (blk, _contracts) ->
   Context.get_liquidity_baking_cpmm_address (B blk) >>=? fun liquidity_baking ->
   Context.get_constants (B blk) >>=? fun csts ->
   let sunset = csts.parametric.liquidity_baking_sunset_level in
@@ -151,7 +164,7 @@ let liquidity_baking_sunset_level n () =
 (* Escape level is roughly 2*(log(1-1/(2*percent_flagging)) / log(0.999)) *)
 let liquidity_baking_escape_hatch n_vote_false n_vote_true escape_level
     bake_after_escape () =
-  Context.init ~no_endorsing:true 1 >>=? fun (blk, _contracts) ->
+  init_context_with_one_account () >>=? fun (blk, _contracts) ->
   Context.get_liquidity_baking_cpmm_address (B blk) >>=? fun liquidity_baking ->
   Context.Contract.balance (B blk) liquidity_baking >>=? fun old_balance ->
   let rec bake_escaping blk i =
@@ -194,7 +207,7 @@ let liquidity_baking_escape_hatch_40 n () =
 (* 33% of blocks have liquidity_baking_escape_vote = true.
    Escape hatch should not be activated. *)
 let liquidity_baking_escape_hatch_33 n () =
-  Context.init ~no_endorsing:true 1 >>=? fun (blk, _contracts) ->
+  init_context_with_one_account () >>=? fun (blk, _contracts) ->
   Context.get_liquidity_baking_cpmm_address (B blk) >>=? fun liquidity_baking ->
   Context.get_constants (B blk) >>=? fun csts ->
   let sunset = csts.parametric.liquidity_baking_sunset_level in
@@ -223,7 +236,7 @@ let liquidity_baking_escape_hatch_33 n () =
 (* Test that the escape EMA in block metadata is correct. *)
 let liquidity_baking_escape_ema n_vote_false n_vote_true escape_level
     bake_after_escape expected_escape_ema () =
-  Context.init ~no_endorsing:true 1 >>=? fun (blk, _contracts) ->
+  init_context_with_one_account () >>=? fun (blk, _contracts) ->
   let rec bake_escaping blk i =
     if i < escape_level then
       Block.bake_n n_vote_false blk >>=? fun blk ->
@@ -247,7 +260,7 @@ let liquidity_baking_escape_ema_threshold () =
   liquidity_baking_escape_ema 0 1 812 1 667_667 ()
 
 let liquidity_baking_storage n () =
-  Context.init ~no_endorsing:true 1 >>=? fun (blk, _contracts) ->
+  init_context_with_one_account () >>=? fun (blk, _contracts) ->
   Context.get_liquidity_baking_cpmm_address (B blk) >>=? fun liquidity_baking ->
   Context.get_liquidity_baking_subsidy (B blk) >>=? fun subsidy ->
   let expected_storage =
@@ -275,7 +288,7 @@ let liquidity_baking_storage n () =
   >>=? fun () -> return_unit
 
 let liquidity_baking_balance_update () =
-  Context.init ~no_endorsing:true 1 >>=? fun (blk, _contracts) ->
+  init_context_with_one_account () >>=? fun (blk, _contracts) ->
   Context.get_liquidity_baking_cpmm_address (B blk) >>=? fun liquidity_baking ->
   Context.get_constants (B blk) >>=? fun csts ->
   let sunset = csts.parametric.liquidity_baking_sunset_level in
@@ -403,7 +416,17 @@ let liquidity_baking_origination_test_migration () =
 
 (* Test that with no contract at the tzBTC address and the level high enough to indicate we could be on mainnet, no contracts are originated in stitching. *)
 let liquidity_baking_origination_no_tzBTC_mainnet_migration () =
-  Context.init ~no_endorsing:true ~level:1_437_862l 1
+  let constants =
+    {
+      Default_parameters.constants_test with
+      consensus_threshold = 0;
+      minimal_participation_ratio = {numerator = 0; denominator = 1};
+      blocks_per_commitment =
+        Int32.succ Default_parameters.constants_test.blocks_per_cycle
+        (* so no commitments expected *);
+    }
+  in
+  Context.init_with_constants constants ~level:1_437_862l 1
   >>=? fun (blk, _contracts) ->
   (* By baking a bit we also check that the subsidy application with no CPMM present does nothing rather than stopping the chain.*)
   Block.bake_n_with_origination_results 64 blk

@@ -126,7 +126,8 @@ val genesis :
   (Account.t * Tez.tez) list ->
   block tzresult Lwt.t
 
-val genesis_with_parameters : Parameters.t -> block tzresult Lwt.t
+val genesis_with_parameters :
+  ?level:int32 -> Parameters.t -> block tzresult Lwt.t
 
 (** [alpha_context <opts> accounts] : instantiates an alpha_context with the
     given constants [<opts>] and initializes [accounts] with their

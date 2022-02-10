@@ -349,6 +349,7 @@ let test_freeze_more_with_low_balance =
         baking_reward_bonus_per_slot = Tez.zero;
         baking_reward_fixed_portion = Tez.zero;
         consensus_threshold = 0;
+        minimal_participation_ratio = {numerator = 0; denominator = 1};
         origination_size = 0;
         preserved_cycles = 5;
         ratio_of_frozen_deposits_slashed_per_double_endorsement =

@@ -43,6 +43,19 @@ let account_pair = function [a1; a2] -> (a1, a2) | _ -> assert false
 
 let wrap e = Lwt.return (Environment.wrap_tzresult e)
 
+let context_init_two_accounts () =
+  let constants =
+    {
+      Default_parameters.constants_test with
+      consensus_threshold = 0;
+      minimal_participation_ratio = {numerator = 0; denominator = 1};
+      blocks_per_commitment =
+        Int32.succ Default_parameters.constants_test.blocks_per_cycle
+        (* so no commitments expected *);
+    }
+  in
+  Context.init_with_constants constants 2
+
 (** Check that [Delegate.staking_balance] is the same as [Delegate.full_balance]
    (this is not true in general, but in these tests it is because they only deal
    with self-delegation. Also, check that [Delegate.staking_balance] coincides
@@ -110,7 +123,7 @@ let test_simple_staking_rights () =
     equals to its balance. Then both accounts have consistent staking
     rights. *)
 let test_simple_staking_rights_after_baking () =
-  Context.init ~no_endorsing:true 2 >>=? fun (b, accounts) ->
+  context_init_two_accounts () >>=? fun (b, accounts) ->
   let (a1, a2) = account_pair accounts in
   Context.Contract.manager (B b) a1 >>=? fun m1 ->
   Context.Contract.manager (B b) a2 >>=? fun m2 ->
@@ -130,7 +143,7 @@ let check_active_staking_balance ~loc ~deactivated b (m : Account.t) =
   if deactivated then check_no_stake ~loc b m else check_stake ~loc b m
 
 let run_until_deactivation () =
-  Context.init ~no_endorsing:true 2 >>=? fun (b, accounts) ->
+  context_init_two_accounts () >>=? fun (b, accounts) ->
   let (a1, a2) = account_pair accounts in
   Context.Contract.balance (B b) a1 >>=? fun balance_start ->
   Context.Contract.manager (B b) a1 >>=? fun m1 ->
@@ -297,7 +310,7 @@ let test_deactivation_then_empty_then_self_delegation_then_recredit () =
    be activated. Again, consistency for baking rights are preserved for the
    first and third accounts. *)
 let test_delegation () =
-  Context.init ~no_endorsing:true 2 >>=? fun (b, accounts) ->
+  context_init_two_accounts () >>=? fun (b, accounts) ->
   let (a1, a2) = account_pair accounts in
   let m3 = Account.new_account () in
   Account.add_account m3 ;

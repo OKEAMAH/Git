@@ -250,6 +250,7 @@ val init2 :
   (Block.t * Alpha_context.Contract.t * Alpha_context.Contract.t) tzresult Lwt.t
 
 val init_with_constants :
+  ?level:int32 ->
   Constants.parametric ->
   int ->
   (Block.t * Alpha_context.Contract.t list) tzresult Lwt.t
