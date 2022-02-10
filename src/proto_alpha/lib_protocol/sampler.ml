@@ -97,19 +97,20 @@ module Make (Mass : SMass) : S with type mass = Mass.t = struct
       List.fold_left
         (fun ((total, m) as acc) ((_, p) as point) ->
           if Mass.(zero < p) then (Mass.add total p, point :: m)
-          else if Mass.(p < zero) then invalid_arg "create"
+          else if Mass.(p < zero) then invalid_arg "create: negative mass"
           else (* p = zero: drop point *)
             acc)
         (Mass.zero, [])
         measure
     in
     match measure with
-    | [] -> invalid_arg "create"
+    | [] -> invalid_arg "create: no points with non-zero mass"
     | (fallback, _) :: _ -> (fallback, total, measure)
 
   (* NB: duplicate elements in the support are not merged;
      the algorithm should still function correctly. *)
   let create (measure : ('a * Mass.t) list) =
+    (match measure with [] -> invalid_arg "create: empty measure" | _ -> ()) ;
     let (fallback, total, measure) = check_and_cleanup measure in
     let length = List.length measure in
     let n = Mass.of_int length in
