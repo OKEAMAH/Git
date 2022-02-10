@@ -347,7 +347,7 @@ module Tx_rollup = struct
   let inbox ctxt tx_rollup = Tx_rollup_services.inbox rpc_ctxt ctxt tx_rollup
 end
 
-let init ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
+let init ?rng_state ?commitments ?(initial_balances = []) ?no_endorsing
     ?min_proposal_quorum ?bootstrap_contracts ?level ?cost_per_byte
     ?liquidity_baking_subsidy ?endorsing_reward_per_slot
     ?baking_reward_bonus_per_slot ?baking_reward_fixed_portion ?origination_size
@@ -361,7 +361,7 @@ let init ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
   in
   Block.genesis
     ?commitments
-    ?consensus_threshold
+    ?no_endorsing
     ?min_proposal_quorum
     ?bootstrap_contracts
     ?level
@@ -378,7 +378,7 @@ let init ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
     accounts
   >|=? fun blk -> (blk, contracts)
 
-let init1 ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
+let init1 ?rng_state ?commitments ?(initial_balances = []) ?no_endorsing
     ?min_proposal_quorum ?level ?cost_per_byte ?liquidity_baking_subsidy
     ?endorsing_reward_per_slot ?baking_reward_bonus_per_slot
     ?baking_reward_fixed_portion ?origination_size ?blocks_per_cycle
@@ -387,7 +387,7 @@ let init1 ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
     ?rng_state
     ?commitments
     ~initial_balances
-    ?consensus_threshold
+    ?no_endorsing
     ?min_proposal_quorum
     ?level
     ?cost_per_byte
@@ -403,7 +403,7 @@ let init1 ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
   | (_, []) -> assert false
   | (b, contract_1 :: _) -> (b, contract_1)
 
-let init2 ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
+let init2 ?rng_state ?commitments ?(initial_balances = []) ?no_endorsing
     ?min_proposal_quorum ?level ?cost_per_byte ?liquidity_baking_subsidy
     ?endorsing_reward_per_slot ?baking_reward_bonus_per_slot
     ?baking_reward_fixed_portion ?origination_size ?blocks_per_cycle
@@ -412,7 +412,7 @@ let init2 ?rng_state ?commitments ?(initial_balances = []) ?consensus_threshold
     ?rng_state
     ?commitments
     ~initial_balances
-    ?consensus_threshold
+    ?no_endorsing
     ?min_proposal_quorum
     ?level
     ?cost_per_byte

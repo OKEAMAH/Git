@@ -365,8 +365,7 @@ let test_block_with_multiple_transfers_with_without_fee () =
 
 (** Build a chain that has 10 blocks. *)
 let test_build_a_chain () =
-  Context.init2 ~consensus_threshold:0 ()
-  >>=? fun (b, contract_1, contract_2) ->
+  Context.init2 ~no_endorsing:true () >>=? fun (b, contract_1, contract_2) ->
   let ten = of_int 10 in
   List.fold_left_es
     (fun b _ ->

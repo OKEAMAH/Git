@@ -110,6 +110,7 @@ let context_init n =
     {
       Context.default_test_contants with
       consensus_threshold = 0;
+      minimal_participation_ratio = {numerator = 0; denominator = 1};
       tx_rollup_enable = true;
       tx_rollup_finality_period = 1;
       tx_rollup_withdraw_period = 1;

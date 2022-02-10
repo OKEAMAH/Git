@@ -50,7 +50,7 @@ open Alpha_context
     - Randomize the number of blocks baked after the n cycles baked
       previously. *)
 let test_cycle () =
-  Context.init ~consensus_threshold:0 5 >>=? fun (b, _) ->
+  Context.init ~no_endorsing:true 5 >>=? fun (b, _) ->
   Context.get_constants (B b) >>=? fun csts ->
   let blocks_per_cycle = csts.parametric.blocks_per_cycle in
   let pp fmt x = Format.fprintf fmt "%ld" x in
@@ -82,7 +82,7 @@ let wrap et = et >>= fun e -> Lwt.return (Environment.wrap_tzresult e)
 let test_bake_n_cycles n () =
   let open Block in
   let policy = By_round 0 in
-  Context.init ~consensus_threshold:0 1 >>=? fun (block, _contracts) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (block, _contracts) ->
   Block.bake_until_n_cycle_end ~policy n block >>=? fun _block -> return ()
 
 (** Check that, after one or two voting periods, the voting power of a baker is
@@ -91,7 +91,7 @@ let test_bake_n_cycles n () =
 let test_voting_power_cache () =
   let open Block in
   let policy = By_round 0 in
-  Context.init ~consensus_threshold:0 1 >>=? fun (genesis, _contracts) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (genesis, _contracts) ->
   Context.get_constants (B genesis) >>=? fun csts ->
   let blocks_per_voting_period =
     Int32.(
@@ -152,7 +152,7 @@ let test_voting_power_cache () =
 
 (** test that after baking, one gets the baking reward fixed portion. *)
 let test_basic_baking_reward () =
-  Context.init ~consensus_threshold:0 1 >>=? fun (genesis, contracts) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (genesis, contracts) ->
   Block.bake genesis >>=? fun b ->
   let baker = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
   Context.Contract.pkh baker >>=? fun baker_pkh ->
@@ -189,7 +189,10 @@ let get_contract_for_pkh contracts pkh =
     [b2'] is build on top of [b1] by a different baker, using the same payload as
     [b2].  *)
 let test_rewards_block_and_payload_producer () =
-  Context.init ~consensus_threshold:1 10 >>=? fun (genesis, contracts) ->
+  let constants =
+    {Default_parameters.constants_test with consensus_threshold = 1}
+  in
+  Context.init_with_constants constants 10 >>=? fun (genesis, contracts) ->
   Context.get_baker (B genesis) ~round:0 >>=? fun baker_b1 ->
   get_contract_for_pkh contracts baker_b1 >>=? fun baker_b1_contract ->
   Block.bake ~policy:(By_round 0) genesis >>=? fun b1 ->
@@ -312,7 +315,7 @@ let test_enough_active_stake_to_bake ~has_active_stake () =
      active balance is less or equal the staking balance (see
      [Delegate_storage.select_distribution_for_cycle]). *)
   let initial_bal1 = if has_active_stake then tpr else Int64.sub tpr 1L in
-  Context.init ~initial_balances:[initial_bal1; tpr] ~consensus_threshold:0 2
+  Context.init ~initial_balances:[initial_bal1; tpr] ~no_endorsing:true 2
   >>=? fun (b0, accounts) ->
   let (account1, _account2) =
     match accounts with a1 :: a2 :: _ -> (a1, a2) | _ -> assert false

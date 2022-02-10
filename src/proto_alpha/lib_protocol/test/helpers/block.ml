@@ -408,7 +408,7 @@ let validate_initial_accounts (initial_accounts : (Account.t * Tez.t) list)
       failwith "Insufficient tokens in initial accounts to create one roll")
     (function Exit -> return_unit | exc -> raise exc)
 
-let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
+let prepare_initial_context_params ?(no_endorsing = false) ?min_proposal_quorum
     ?level ?cost_per_byte ?liquidity_baking_subsidy ?endorsing_reward_per_slot
     ?baking_reward_bonus_per_slot ?baking_reward_fixed_portion ?origination_size
     ?blocks_per_cycle ?cycles_per_voting_period ?tx_rollup_enable
@@ -453,7 +453,11 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
       cycles_per_voting_period
   in
   let consensus_threshold =
-    Option.value ~default:constants.consensus_threshold consensus_threshold
+    if no_endorsing then 0 else constants.consensus_threshold
+  in
+  let minimal_participation_ratio =
+    if no_endorsing then Constants.{numerator = 0; denominator = 1}
+    else constants.minimal_participation_ratio
   in
   let tx_rollup_enable =
     Option.value ~default:constants.tx_rollup_enable tx_rollup_enable
@@ -474,6 +478,7 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
       cost_per_byte;
       liquidity_baking_subsidy;
       consensus_threshold;
+      minimal_participation_ratio;
       tx_rollup_enable;
       sc_rollup_enable;
     }
@@ -518,14 +523,13 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
 
 (* if no parameter file is passed we check in the current directory
    where the test is run *)
-let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
-    ?bootstrap_contracts ?level ?cost_per_byte ?liquidity_baking_subsidy
-    ?endorsing_reward_per_slot ?baking_reward_bonus_per_slot
-    ?baking_reward_fixed_portion ?origination_size ?blocks_per_cycle
-    ?cycles_per_voting_period ?tx_rollup_enable ?sc_rollup_enable
-    (initial_accounts : (Account.t * Tez.t) list) =
+let genesis ?commitments ?no_endorsing ?min_proposal_quorum ?bootstrap_contracts
+    ?level ?cost_per_byte ?liquidity_baking_subsidy ?endorsing_reward_per_slot
+    ?baking_reward_bonus_per_slot ?baking_reward_fixed_portion ?origination_size
+    ?blocks_per_cycle ?cycles_per_voting_period ?tx_rollup_enable
+    ?sc_rollup_enable (initial_accounts : (Account.t * Tez.t) list) =
   prepare_initial_context_params
-    ?consensus_threshold
+    ?no_endorsing
     ?min_proposal_quorum
     ?level
     ?cost_per_byte

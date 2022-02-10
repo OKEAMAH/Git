@@ -192,7 +192,7 @@ val init :
   ?rng_state:Random.State.t ->
   ?commitments:Commitment.t list ->
   ?initial_balances:int64 list ->
-  ?consensus_threshold:int ->
+  ?no_endorsing:bool ->
   ?min_proposal_quorum:int32 ->
   ?bootstrap_contracts:Parameters.bootstrap_contract list ->
   ?level:int32 ->
@@ -215,7 +215,7 @@ val init1 :
   ?rng_state:Random.State.t ->
   ?commitments:Commitment.t list ->
   ?initial_balances:int64 list ->
-  ?consensus_threshold:int ->
+  ?no_endorsing:bool ->
   ?min_proposal_quorum:int32 ->
   ?level:int32 ->
   ?cost_per_byte:Tez.t ->
@@ -235,7 +235,7 @@ val init2 :
   ?rng_state:Random.State.t ->
   ?commitments:Commitment.t list ->
   ?initial_balances:int64 list ->
-  ?consensus_threshold:int ->
+  ?no_endorsing:bool ->
   ?min_proposal_quorum:int32 ->
   ?level:int32 ->
   ?cost_per_byte:Tez.t ->

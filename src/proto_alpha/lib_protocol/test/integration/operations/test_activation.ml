@@ -336,7 +336,7 @@ let secrets () =
 (** Helper: Create a genesis block with predefined commitments,
     accounts and balances. *)
 let activation_init () =
-  Context.init ~consensus_threshold:0 ~commitments 1 >|=? fun (b, cs) ->
+  Context.init ~no_endorsing:true ~commitments 1 >|=? fun (b, cs) ->
   secrets () |> fun ss -> (b, cs, ss)
 
 (** Verify the genesis block created by [activation_init] can be

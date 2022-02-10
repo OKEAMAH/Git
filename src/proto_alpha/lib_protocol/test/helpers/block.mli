@@ -109,7 +109,7 @@ val check_constants_consistency : Constants.parametric -> unit tzresult Lwt.t
 *)
 val genesis :
   ?commitments:Commitment.t list ->
-  ?consensus_threshold:int ->
+  ?no_endorsing:bool ->
   ?min_proposal_quorum:int32 ->
   ?bootstrap_contracts:Parameters.bootstrap_contract list ->
   ?level:int32 ->
@@ -243,9 +243,9 @@ val bake_until_n_cycle_end :
 (** Bakes enough blocks to reach the cycle. *)
 val bake_until_cycle : ?policy:baker_policy -> Cycle.t -> t -> t tzresult Lwt.t
 
-(** Common util function to create parameters for [initial_context] function *)
+(** Common utility function to create parameters for [initial_context] function *)
 val prepare_initial_context_params :
-  ?consensus_threshold:int ->
+  ?no_endorsing:bool ->
   ?min_proposal_quorum:int32 ->
   ?level:int32 ->
   ?cost_per_byte:Tez.t ->

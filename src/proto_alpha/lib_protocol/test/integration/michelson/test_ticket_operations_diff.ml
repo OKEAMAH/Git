@@ -179,7 +179,7 @@ let string_token ~ticketer content =
 
 (** Initializes one address for operations and one baker. *)
 let init () =
-  Context.init ~consensus_threshold:0 2 >|=? fun (block, contracts) ->
+  Context.init ~no_endorsing:true 2 >|=? fun (block, contracts) ->
   let (src0, src1) =
     match contracts with src0 :: src1 :: _ -> (src0, src1) | _ -> assert false
   in

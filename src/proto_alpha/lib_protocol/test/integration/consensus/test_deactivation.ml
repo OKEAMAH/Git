@@ -110,7 +110,7 @@ let test_simple_staking_rights () =
     equals to its balance. Then both accounts have consistent staking
     rights. *)
 let test_simple_staking_rights_after_baking () =
-  Context.init ~consensus_threshold:0 2 >>=? fun (b, accounts) ->
+  Context.init ~no_endorsing:true 2 >>=? fun (b, accounts) ->
   let (a1, a2) = account_pair accounts in
   Context.Contract.manager (B b) a1 >>=? fun m1 ->
   Context.Contract.manager (B b) a2 >>=? fun m2 ->
@@ -130,7 +130,7 @@ let check_active_staking_balance ~loc ~deactivated b (m : Account.t) =
   if deactivated then check_no_stake ~loc b m else check_stake ~loc b m
 
 let run_until_deactivation () =
-  Context.init ~consensus_threshold:0 2 >>=? fun (b, accounts) ->
+  Context.init ~no_endorsing:true 2 >>=? fun (b, accounts) ->
   let (a1, a2) = account_pair accounts in
   Context.Contract.balance (B b) a1 >>=? fun balance_start ->
   Context.Contract.manager (B b) a1 >>=? fun m1 ->
@@ -297,7 +297,7 @@ let test_deactivation_then_empty_then_self_delegation_then_recredit () =
    be activated. Again, consistency for baking rights are preserved for the
    first and third accounts. *)
 let test_delegation () =
-  Context.init ~consensus_threshold:0 2 >>=? fun (b, accounts) ->
+  Context.init ~no_endorsing:true 2 >>=? fun (b, accounts) ->
   let (a1, a2) = account_pair accounts in
   let m3 = Account.new_account () in
   Account.add_account m3 ;

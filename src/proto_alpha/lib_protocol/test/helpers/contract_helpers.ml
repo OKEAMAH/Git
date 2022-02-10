@@ -30,7 +30,7 @@ open Error_monad_operators
 (** Initializes 2 addresses to do only operations plus one that will be
     used to bake. *)
 let init () =
-  Context.init ~consensus_threshold:0 3 >|=? fun (b, contracts) ->
+  Context.init ~no_endorsing:true 3 >|=? fun (b, contracts) ->
   let (src0, src1, src2) =
     match contracts with
     | src0 :: src1 :: src2 :: _ -> (src0, src1, src2)

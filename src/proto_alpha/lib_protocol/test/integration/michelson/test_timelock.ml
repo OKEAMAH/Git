@@ -75,7 +75,7 @@ let contract_test () =
     Incremental.add_operation incr operation >>=? fun incr ->
     Incremental.finalize_block incr >|=? fun b -> (dst, b)
   in
-  Context.init ~consensus_threshold:0 3 >>=? fun (b, contracts) ->
+  Context.init ~no_endorsing:true 3 >>=? fun (b, contracts) ->
   let src = match contracts with hd :: _ -> hd | _ -> assert false in
   originate_contract "contracts/timelock.tz" "0xaa" src b >>=? fun (dst, b) ->
   let (public, secret) = Timelock.gen_rsa_keys () in

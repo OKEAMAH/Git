@@ -38,7 +38,7 @@ open Protocol
 open Alpha_context
 
 let init_genesis ?policy () =
-  Context.init ~consensus_threshold:0 5 >>=? fun (genesis, _) ->
+  Context.init ~no_endorsing:true 5 >>=? fun (genesis, _) ->
   Block.bake ?policy genesis >>=? fun b -> return (genesis, b)
 
 (** inject an endorsement and return the block with the endorsement and its
@@ -362,7 +362,7 @@ let test_fitness_gap () =
   Assert.equal_int32 ~loc:__LOC__ level_diff 1l
 
 let test_preendorsement_endorsement_same_level () =
-  Context.init ~consensus_threshold:0 1 >>=? fun (genesis, _) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (genesis, _) ->
   Block.bake genesis >>=? fun b1 ->
   Incremental.begin_construction ~mempool_mode:true ~policy:(By_round 2) b1
   >>=? fun i ->
@@ -376,7 +376,10 @@ let test_preendorsement_endorsement_same_level () =
 (** Test for endorsement injection with wrong slot in mempool mode. This
     test is expected to fail *)
 let test_wrong_endorsement_slot_in_mempool_mode () =
-  Context.init ~consensus_threshold:1 5 >>=? fun (genesis, _) ->
+  let constants =
+    {Default_parameters.constants_test with consensus_threshold = 1}
+  in
+  Context.init_with_constants constants 5 >>=? fun (genesis, _) ->
   Block.bake genesis >>=? fun b1 ->
   let module V = Plugin.RPC.Validators in
   (Context.get_endorsers (B b1) >>=? function
@@ -409,7 +412,7 @@ let test_endorsement_for_next_round () =
 
 (** Endorsement of grandparent  *)
 let test_endorsement_grandparent () =
-  Context.init ~consensus_threshold:0 1 >>=? fun (genesis, _) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (genesis, _) ->
   Block.bake genesis >>=? fun b_gp ->
   Block.bake b_gp >>=? fun b ->
   Incremental.begin_construction ~mempool_mode:true b >>=? fun i ->
@@ -425,7 +428,7 @@ let test_endorsement_grandparent () =
 
 (** Double inclusion of grandparent endorsement *)
 let test_double_endorsement_grandparent () =
-  Context.init ~consensus_threshold:0 1 >>=? fun (genesis, _) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (genesis, _) ->
   Block.bake genesis >>=? fun b_gp ->
   Block.bake b_gp >>=? fun b ->
   Incremental.begin_construction ~mempool_mode:true b >>=? fun i ->
@@ -448,7 +451,7 @@ let test_double_endorsement_grandparent () =
 
 (** Endorsement of grandparent on same slot as parent *)
 let test_endorsement_grandparent_same_slot () =
-  Context.init ~consensus_threshold:0 1 >>=? fun (genesis, _) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (genesis, _) ->
   Block.bake genesis >>=? fun b_gp ->
   Block.bake b_gp >>=? fun b ->
   Incremental.begin_construction ~mempool_mode:true b >>=? fun i ->
@@ -466,7 +469,7 @@ let test_endorsement_grandparent_same_slot () =
 
 (** Endorsement of grandparent in application mode should be rejected *)
 let test_endorsement_grandparent_application () =
-  Context.init ~consensus_threshold:0 1 >>=? fun (genesis, _) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (genesis, _) ->
   Block.bake genesis >>=? fun b_gp ->
   Block.bake b_gp >>=? fun b ->
   Op.endorsement ~endorsed_block:b_gp (B genesis) () >>=? fun op ->
@@ -478,7 +481,7 @@ let test_endorsement_grandparent_application () =
 
 (** Endorsement of grandparent in full construction mode should be rejected *)
 let test_endorsement_grandparent_full_construction () =
-  Context.init ~consensus_threshold:0 1 >>=? fun (genesis, _) ->
+  Context.init ~no_endorsing:true 1 >>=? fun (genesis, _) ->
   Block.bake genesis >>=? fun b_gp ->
   Block.bake b_gp >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->

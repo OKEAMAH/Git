@@ -238,7 +238,7 @@ let context_init =
   Context.init
     ~blocks_per_cycle:4l
     ~cycles_per_voting_period:1l
-    ~consensus_threshold:0
+    ~no_endorsing:true
     ~endorsing_reward_per_slot:Tez.zero
     ~baking_reward_bonus_per_slot:Tez.zero
     ~baking_reward_fixed_portion:Tez.zero
