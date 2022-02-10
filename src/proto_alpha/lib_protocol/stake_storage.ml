@@ -174,57 +174,66 @@ let compute_snapshot_index ctxt cycle ~max_snapshot_index =
   Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
   compute_snapshot_index_for_seed ~max_snapshot_index seed
 
-let get_stakes_for_selected_index ctxt index =
+let get_stakes_for_selected_index ctxt index set =
   Storage.Stake.Active_delegate_with_one_roll.fold_snapshot
     ctxt
     index
     ~order:`Sorted
     ~init:([], Tez_repr.zero)
     ~f:(fun delegate () (acc, total_stake) ->
-      Storage.Stake.Staking_balance.Snapshot.get ctxt (index, delegate)
-      >>=? fun staking_balance ->
-      let delegate_contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Frozen_deposits_limit.find ctxt delegate_contract
-      >>=? fun frozen_deposits_limit ->
-      Storage.Contract.Spendable_balance.get ctxt delegate_contract
-      >>=? fun balance ->
-      Frozen_deposits_storage.get ctxt delegate_contract
-      >>=? fun frozen_deposits ->
-      Tez_repr.(balance +? frozen_deposits.current_amount)
-      >>?= fun total_balance ->
-      let frozen_deposits_percentage =
-        Constants_storage.frozen_deposits_percentage ctxt
-      in
-      let stake_to_consider =
-        match frozen_deposits_limit with
-        | Some frozen_deposits_limit -> (
-            try
-              let open Tez_repr in
-              let max_mutez = of_mutez_exn Int64.max_int in
-              if frozen_deposits_limit > div_exn max_mutez 100 then
-                let frozen_deposits_limit_by_10 =
-                  mul_exn frozen_deposits_limit 10
-                in
-                if frozen_deposits_limit_by_10 < staking_balance then
-                  frozen_deposits_limit_by_10
-                else staking_balance
-              else
-                min
-                  staking_balance
-                  (div_exn
-                     (mul_exn frozen_deposits_limit 100)
-                     frozen_deposits_percentage)
-            with _ -> staking_balance)
-        | None -> staking_balance
-      in
-      Tez_repr.(total_balance *? 100L) >>?= fun expanded_balance ->
-      Tez_repr.(expanded_balance /? Int64.of_int frozen_deposits_percentage)
-      >>?= fun max_staking_capacity ->
-      let stake_for_cycle =
-        Tez_repr.min stake_to_consider max_staking_capacity
-      in
-      Tez_repr.(total_stake +? stake_for_cycle) >>?= fun total_stake ->
-      return ((delegate, stake_for_cycle) :: acc, total_stake))
+      if Signature.Public_key_hash.Set.mem delegate set then (
+        Logging.log
+          Error
+          "  [select_distribution_for_cycle] %a is desactivated, do not \
+           consider it@."
+          Signature.Public_key_hash.pp_short
+          delegate ;
+        return (acc, total_stake))
+      else
+        Storage.Stake.Staking_balance.Snapshot.get ctxt (index, delegate)
+        >>=? fun staking_balance ->
+        let delegate_contract = Contract_repr.implicit_contract delegate in
+        Storage.Contract.Frozen_deposits_limit.find ctxt delegate_contract
+        >>=? fun frozen_deposits_limit ->
+        Storage.Contract.Spendable_balance.get ctxt delegate_contract
+        >>=? fun balance ->
+        Frozen_deposits_storage.get ctxt delegate_contract
+        >>=? fun frozen_deposits ->
+        Tez_repr.(balance +? frozen_deposits.current_amount)
+        >>?= fun total_balance ->
+        let frozen_deposits_percentage =
+          Constants_storage.frozen_deposits_percentage ctxt
+        in
+        let stake_to_consider =
+          match frozen_deposits_limit with
+          | Some frozen_deposits_limit -> (
+              try
+                let open Tez_repr in
+                let max_mutez = of_mutez_exn Int64.max_int in
+                if frozen_deposits_limit > div_exn max_mutez 100 then
+                  let frozen_deposits_limit_by_10 =
+                    mul_exn frozen_deposits_limit 10
+                  in
+                  if frozen_deposits_limit_by_10 < staking_balance then
+                    frozen_deposits_limit_by_10
+                  else staking_balance
+                else
+                  min
+                    staking_balance
+                    (div_exn
+                       (mul_exn frozen_deposits_limit 100)
+                       frozen_deposits_percentage)
+              with _ -> staking_balance)
+          | None -> staking_balance
+        in
+        Tez_repr.(total_balance *? 100L) >>?= fun expanded_balance ->
+        Tez_repr.(expanded_balance /? Int64.of_int frozen_deposits_percentage)
+        >>?= fun max_staking_capacity ->
+        let stake_for_cycle =
+          Tez_repr.min stake_to_consider max_staking_capacity
+        in
+        Tez_repr.(total_stake +? stake_for_cycle) >>?= fun total_stake ->
+        return ((delegate, stake_for_cycle) :: acc, total_stake))
 
 let sampler_for_cycle ctxt cycle =
   let read ctxt =
@@ -233,12 +242,17 @@ let sampler_for_cycle ctxt cycle =
   in
   Raw_context.sampler_for_cycle ~read ctxt cycle
 
-let select_distribution_for_cycle ctxt cycle pubkey =
+let select_distribution_for_cycle ctxt cycle pubkey set =
+  Logging.log
+    Error
+    "\n[select_distribution_for_cycle] for cycle %a@."
+    Cycle_repr.pp
+    cycle ;
   Storage.Stake.Last_snapshot.get ctxt >>=? fun max_snapshot_index ->
   Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
   compute_snapshot_index_for_seed ~max_snapshot_index seed
   >>=? fun selected_index ->
-  get_stakes_for_selected_index ctxt selected_index
+  get_stakes_for_selected_index ctxt selected_index set
   >>=? fun (stakes, total_stake) ->
   let stakes = List.sort (fun (_, x) (_, y) -> Tez_repr.compare y x) stakes in
   Selected_distribution_for_cycle.init ctxt cycle stakes >>=? fun ctxt ->
@@ -276,7 +290,11 @@ let init_first_cycles ctxt pubkey =
       snapshot ctxt >>=? fun ctxt ->
       (* NB: we need to take several snapshots because
          select_distribution_for_cycle deletes the snapshots *)
-      select_distribution_for_cycle ctxt cycle pubkey)
+      select_distribution_for_cycle
+        ctxt
+        cycle
+        pubkey
+        Signature.Public_key_hash.Set.empty)
     ctxt
     (0 --> preserved)
 
@@ -290,10 +308,10 @@ let fold ctxt ~f ~order init =
       get_staking_balance ctxt delegate >>=? fun stake ->
       f (delegate, stake) acc)
 
-let select_new_distribution_at_cycle_end ctxt ~new_cycle =
+let select_new_distribution_at_cycle_end ctxt ~new_cycle set =
   let preserved = Constants_storage.preserved_cycles ctxt in
   let for_cycle = Cycle_repr.add new_cycle preserved in
-  select_distribution_for_cycle ctxt for_cycle
+  select_distribution_for_cycle ctxt for_cycle set
 
 let clear_at_cycle_end ctxt ~new_cycle =
   let max_slashing_period = Constants_storage.max_slashing_period ctxt in

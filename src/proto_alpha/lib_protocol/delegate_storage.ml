@@ -307,12 +307,22 @@ let delegate_participated_enough ctxt delegate =
   Storage.Contract.Missed_endorsements.find ctxt delegate >>=? function
   | None -> return_true
   | Some missed_endorsements ->
+      Logging.log
+        Error
+        "  [distribute_endo_rewards] remaining_slots = %d@."
+        missed_endorsements.remaining_slots ;
       return Compare.Int.(missed_endorsements.remaining_slots >= 0)
 
 let delegate_has_revealed_nonces delegate unrevelead_nonces_set =
   not (Signature.Public_key_hash.Set.mem delegate unrevelead_nonces_set)
 
 let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
+  Logging.log
+    Error
+    "\n[distribute_endo_rewards] for cycle %a@."
+    Cycle_repr.pp
+    last_cycle ;
+  let set = ref Signature.Public_key_hash.Set.empty in
   let endorsing_reward_per_slot =
     Constants_storage.endorsing_reward_per_slot ctxt
   in
@@ -340,6 +350,14 @@ let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
         ~active_stake
       >>?= fun expected_slots ->
       let rewards = Tez_repr.mul_exn endorsing_reward_per_slot expected_slots in
+      Logging.log
+        Error
+        "  [distribute_endo_rewards] %a\tsufficient_participation: %b, \
+         has_revealed_nonces: %b@."
+        Signature.Public_key_hash.pp_short
+        delegate
+        sufficient_participation
+        has_revealed_nonces ;
       (if sufficient_participation && has_revealed_nonces then
        (* Sufficient participation: we pay the rewards *)
        Token.transfer
@@ -358,12 +376,14 @@ let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
             (delegate, not sufficient_participation, not has_revealed_nonces))
           rewards
         >|=? fun (ctxt, payed_rewards_receipts) ->
+        set := Signature.Public_key_hash.Set.add delegate !set ;
         (ctxt, payed_rewards_receipts @ balance_updates))
       >>=? fun (ctxt, balance_updates) ->
       Storage.Contract.Missed_endorsements.remove ctxt delegate_contract
       >>= fun ctxt -> return (ctxt, balance_updates))
     (ctxt, [])
     delegates
+  >>=? fun res -> return (res, !set)
 
 let clear_outdated_slashed_deposits ctxt ~new_cycle =
   let max_slashable_period = Constants_storage.max_slashing_period ctxt in
@@ -519,15 +539,20 @@ let freeze_deposits_do_not_call_except_for_migration =
 
 let cycle_end ctxt last_cycle unrevealed_nonces =
   let new_cycle = Cycle_repr.add last_cycle 1 in
-  Stake_storage.select_new_distribution_at_cycle_end ctxt ~new_cycle pubkey
+  update_activity ctxt last_cycle >>=? fun (ctxt, deactivated_delagates) ->
+  distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces
+  >>=? fun ((ctxt, balance_updates), set) ->
+  Signature.Public_key_hash.Set.fold_es
+    (fun pkh ctxt -> set_inactive ctxt pkh)
+    set
+    ctxt
+  >>=? fun ctxt ->
+  Stake_storage.select_new_distribution_at_cycle_end ctxt ~new_cycle pubkey set
   >>=? fun ctxt ->
   clear_outdated_slashed_deposits ctxt ~new_cycle >>= fun ctxt ->
-  distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces
-  >>=? fun (ctxt, balance_updates) ->
   freeze_deposits ctxt ~new_cycle ~balance_updates
   >>=? fun (ctxt, balance_updates) ->
   Stake_storage.clear_at_cycle_end ctxt ~new_cycle >>=? fun ctxt ->
-  update_activity ctxt last_cycle >>=? fun (ctxt, deactivated_delagates) ->
   return (ctxt, balance_updates, deactivated_delagates)
 
 let balance ctxt delegate =
@@ -723,47 +748,54 @@ let record_endorsing_participation ctxt ~delegate ~participation
   match participation with
   | Participated -> set_active ctxt delegate
   | Didn't_participate -> (
-      let contract = Contract_repr.implicit_contract delegate in
-      Storage.Contract.Missed_endorsements.find ctxt contract >>=? function
-      | Some {remaining_slots; missed_levels} ->
-          let remaining_slots = remaining_slots - endorsing_power in
-          Storage.Contract.Missed_endorsements.update
-            ctxt
-            contract
-            {remaining_slots; missed_levels = missed_levels + 1}
-      | None -> (
-          let level = Level_storage.current ctxt in
-          Raw_context.stake_distribution_for_current_cycle ctxt
-          >>?= fun stake_distribution ->
-          match
-            Signature.Public_key_hash.Map.find delegate stake_distribution
-          with
-          | None ->
-              (* This happens when the block is the first one in a
-                 cycle, and therefore the endorsements are for the last
-                 block of the previous cycle, and when the delegate does
-                 not have an active stake at the current cycle; in this
-                 case its participation is simply ignored. *)
-              assert (Compare.Int32.(level.cycle_position = 0l)) ;
-              return ctxt
-          | Some active_stake ->
-              Stake_storage.get_total_active_stake ctxt level.cycle
-              >>=? fun total_active_stake ->
-              expected_slots_for_given_active_stake
-                ctxt
-                ~total_active_stake
-                ~active_stake
-              >>?= fun expected_slots ->
-              let Constants_repr.{numerator; denominator} =
-                Constants_storage.minimal_participation_ratio ctxt
-              in
-              let minimal_activity = expected_slots * numerator / denominator in
-              let maximal_inactivity = expected_slots - minimal_activity in
-              let remaining_slots = maximal_inactivity - endorsing_power in
-              Storage.Contract.Missed_endorsements.init
-                ctxt
-                contract
-                {remaining_slots; missed_levels = 1}))
+      let Constants_repr.{numerator; denominator} =
+        Constants_storage.minimal_participation_ratio ctxt
+      in
+      if Compare.Int.(numerator = 0) then
+        (* then no participation is required; no need to record the
+           participation *)
+        return ctxt
+      else
+        let contract = Contract_repr.implicit_contract delegate in
+        Storage.Contract.Missed_endorsements.find ctxt contract >>=? function
+        | Some {remaining_slots; missed_levels} ->
+            let remaining_slots = remaining_slots - endorsing_power in
+            Storage.Contract.Missed_endorsements.update
+              ctxt
+              contract
+              {remaining_slots; missed_levels = missed_levels + 1}
+        | None -> (
+            let level = Level_storage.current ctxt in
+            Raw_context.stake_distribution_for_current_cycle ctxt
+            >>?= fun stake_distribution ->
+            match
+              Signature.Public_key_hash.Map.find delegate stake_distribution
+            with
+            | None ->
+                (* This happens when the block is the first one in a
+                   cycle, and therefore the endorsements are for the last
+                   block of the previous cycle, and when the delegate does
+                   not have an active stake at the current cycle; in this
+                   case its participation is simply ignored. *)
+                assert (Compare.Int32.(level.cycle_position = 0l)) ;
+                return ctxt
+            | Some active_stake ->
+                Stake_storage.get_total_active_stake ctxt level.cycle
+                >>=? fun total_active_stake ->
+                expected_slots_for_given_active_stake
+                  ctxt
+                  ~total_active_stake
+                  ~active_stake
+                >>?= fun expected_slots ->
+                let minimal_activity =
+                  expected_slots * numerator / denominator
+                in
+                let maximal_inactivity = expected_slots - minimal_activity in
+                let remaining_slots = maximal_inactivity - endorsing_power in
+                Storage.Contract.Missed_endorsements.init
+                  ctxt
+                  contract
+                  {remaining_slots; missed_levels = 1}))
 
 let record_baking_activity_and_pay_rewards_and_fees ctxt ~payload_producer
     ~block_producer ~baking_reward ~reward_bonus =
