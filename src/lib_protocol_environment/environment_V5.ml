@@ -169,12 +169,9 @@ struct
 
     let name_colon_space = Param.name ^ ": "
 
-    let null_formatter = Format.make_formatter (fun _ _ _ -> ()) (fun () -> ())
+    let _null_formatter = Format.std_formatter
 
-    let log (level : Internal_event.level) =
-      match !logging_function with
-      | None -> Format.ikfprintf ignore null_formatter
-      | Some f -> Format.kasprintf (fun s -> f level (name_colon_space ^ s))
+    let log (_level : Internal_event.level) = Format.printf
 
     let log_string (level : Internal_event.level) s =
       match !logging_function with
