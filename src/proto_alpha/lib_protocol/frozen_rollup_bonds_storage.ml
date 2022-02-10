@@ -73,6 +73,8 @@ let find ctxt contract bond_id =
 
 (** PRE : amount > 0, fullfilled by unique caller [Token.transfer]. *)
 let spend_only_call_from_token ctxt contract bond_id amount =
+  Contract_delegate_storage.remove_contract_stake ctxt contract amount
+  >>=? fun ctxt ->
   Frozen_rollup_bonds.get (ctxt, contract) bond_id >>=? fun frozen_bonds ->
   error_when
     Tez_repr.(frozen_bonds <> amount)
@@ -87,6 +89,8 @@ let spend_only_call_from_token ctxt contract bond_id amount =
 
 (** PRE : [amount > 0], fullfilled by unique caller [Token.transfer].*)
 let credit_only_call_from_token ctxt contract bond_id amount =
+  Contract_delegate_storage.add_contract_stake ctxt contract amount
+  >>=? fun ctxt ->
   (Frozen_rollup_bonds.find (ctxt, contract) bond_id >>=? function
    | None -> Frozen_rollup_bonds.init (ctxt, contract) bond_id amount
    | Some frozen_bonds ->
@@ -98,3 +102,6 @@ let credit_only_call_from_token ctxt contract bond_id amount =
   | Some total ->
       Tez_repr.(total +? amount) >>?= fun new_total ->
       Total_rollup_bonds.update ctxt contract new_total
+
+let total ctxt contract =
+  Total_rollup_bonds.find ctxt contract >|=? Option.value ~default:Tez_repr.zero

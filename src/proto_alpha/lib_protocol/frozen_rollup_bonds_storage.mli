@@ -23,7 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This module manages frozen rollups deposits (here called bonds). *)
+(** This module manages frozen rollups deposits (here called bonds). These
+    bonds are part of the stake of the contract making the deposit. *)
 
 (** This error is raised when [spend_only_call_from_token] is called with an
     amount that is less than the deposit associated to the given contract and
@@ -80,3 +81,7 @@ val credit_only_call_from_token :
   Rollup_bond_id_repr.t ->
   Tez_repr.t ->
   Raw_context.t tzresult Lwt.t
+
+(** [total ctxt contract] returns the total amount of bonds associated to
+    [contract]. *)
+val total : Raw_context.t -> Contract_repr.t -> Tez_repr.t tzresult Lwt.t

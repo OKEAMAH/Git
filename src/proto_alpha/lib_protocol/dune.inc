@@ -105,9 +105,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    contract_delegate_storage.mli contract_delegate_storage.ml
    sapling_storage.ml
    lazy_storage_diff.mli lazy_storage_diff.ml
+   frozen_rollup_bonds_storage.mli frozen_rollup_bonds_storage.ml
    contract_storage.mli contract_storage.ml
    commitment_storage.mli commitment_storage.ml
-   frozen_rollup_bonds_storage.mli frozen_rollup_bonds_storage.ml
    token.mli token.ml
    delegate_storage.mli delegate_storage.ml
    bootstrap_storage.mli bootstrap_storage.ml
@@ -262,9 +262,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    contract_delegate_storage.mli contract_delegate_storage.ml
    sapling_storage.ml
    lazy_storage_diff.mli lazy_storage_diff.ml
+   frozen_rollup_bonds_storage.mli frozen_rollup_bonds_storage.ml
    contract_storage.mli contract_storage.ml
    commitment_storage.mli commitment_storage.ml
-   frozen_rollup_bonds_storage.mli frozen_rollup_bonds_storage.ml
    token.mli token.ml
    delegate_storage.mli delegate_storage.ml
    bootstrap_storage.mli bootstrap_storage.ml
@@ -419,9 +419,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    contract_delegate_storage.mli contract_delegate_storage.ml
    sapling_storage.ml
    lazy_storage_diff.mli lazy_storage_diff.ml
+   frozen_rollup_bonds_storage.mli frozen_rollup_bonds_storage.ml
    contract_storage.mli contract_storage.ml
    commitment_storage.mli commitment_storage.ml
-   frozen_rollup_bonds_storage.mli frozen_rollup_bonds_storage.ml
    token.mli token.ml
    delegate_storage.mli delegate_storage.ml
    bootstrap_storage.mli bootstrap_storage.ml
@@ -598,9 +598,9 @@ include Tezos_raw_protocol_alpha.Main
    Contract_delegate_storage
    Sapling_storage
    Lazy_storage_diff
+   Frozen_rollup_bonds_storage
    Contract_storage
    Commitment_storage
-   Frozen_rollup_bonds_storage
    Token
    Delegate_storage
    Bootstrap_storage
@@ -796,9 +796,9 @@ include Tezos_raw_protocol_alpha.Main
    contract_delegate_storage.mli contract_delegate_storage.ml
    sapling_storage.ml
    lazy_storage_diff.mli lazy_storage_diff.ml
+   frozen_rollup_bonds_storage.mli frozen_rollup_bonds_storage.ml
    contract_storage.mli contract_storage.ml
    commitment_storage.mli commitment_storage.ml
-   frozen_rollup_bonds_storage.mli frozen_rollup_bonds_storage.ml
    token.mli token.ml
    delegate_storage.mli delegate_storage.ml
    bootstrap_storage.mli bootstrap_storage.ml
