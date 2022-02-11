@@ -43,40 +43,38 @@ let registered c delegate =
       Signature.Public_key_hash.equal delegate current_delegate
   | None -> false
 
-let link c contract delegate =
-  Storage.Contract.Balance.get c contract >>=? fun balance ->
-  Stake_storage.add_stake c delegate balance >>=? fun c ->
+let link c contract stake delegate =
+  Stake_storage.add_stake c delegate stake >>=? fun c ->
   Storage.Contract.Delegated.add
     (c, Contract_repr.implicit_contract delegate)
     contract
   >|= ok
 
-let unlink c contract =
+let unlink c contract stake =
   Storage.Contract.Delegate.find c contract >>=? function
   | None -> return c
   | Some delegate ->
-      Storage.Contract.Balance.get c contract >>=? fun balance ->
-      (* Removes the balance of the contract from the delegate *)
-      Stake_storage.remove_stake c delegate balance >>=? fun c ->
+      (* Removes the stake of the contract from the delegate *)
+      Stake_storage.remove_stake c delegate stake >>=? fun c ->
       Storage.Contract.Delegated.remove
         (c, Contract_repr.implicit_contract delegate)
         contract
       >|= ok
 
-let init ctxt contract delegate =
+let init ctxt contract stake delegate =
   Storage.Contract.Delegate.init ctxt contract delegate >>=? fun ctxt ->
-  link ctxt contract delegate
+  link ctxt contract stake delegate
 
-let delete ctxt contract =
-  unlink ctxt contract >>=? fun ctxt ->
+let delete ctxt contract stake =
+  unlink ctxt contract stake >>=? fun ctxt ->
   Storage.Contract.Delegate.remove ctxt contract >|= ok
 
-let remove ctxt contract = unlink ctxt contract
+let remove ctxt contract stake = unlink ctxt contract stake
 
-let set ctxt contract delegate =
-  unlink ctxt contract >>=? fun ctxt ->
+let set ctxt contract stake delegate =
+  unlink ctxt contract stake >>=? fun ctxt ->
   Storage.Contract.Delegate.add ctxt contract delegate >>= fun ctxt ->
-  link ctxt contract delegate
+  link ctxt contract stake delegate
 
 let delegated_contracts ctxt delegate =
   let contract = Contract_repr.implicit_contract delegate in

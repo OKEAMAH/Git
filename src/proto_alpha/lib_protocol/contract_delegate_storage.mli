@@ -42,31 +42,37 @@ val registered :
 val init :
   Raw_context.t ->
   Contract_repr.t ->
+  Tez_repr.t ->
   Signature.Public_key_hash.t ->
   Raw_context.t tzresult Lwt.t
 
-(** [remove ctxt contract] removes contract from the list of contracts that
+(** [remove ctxt contract stake] removes contract from the list of contracts that
     delegated to [find ctxt contract], i.e. the output of [delegated_contracts].
     This function does not affect the value of the expression
-    [find ctxt contract].
+    [find ctxt contract]. [stake] is the total stake of [contract]
 
     This function is undefined if [contract] is not allocated. *)
-val remove : Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
+val remove :
+  Raw_context.t -> Contract_repr.t -> Tez_repr.t -> Raw_context.t tzresult Lwt.t
 
-(** [delete ctxt contract] behaves as [remove ctxt contract], but in addition
-    removes the association of the [contract] to its current delegate, leaving
-    the former with no delegate.
+(** [delete ctxt contract stake] behaves as [remove ctxt contract stake], but
+    in addition removes the association of the [contract] to its current
+    delegate, leaving the former with no delegate. [stake] is the total stake of
+    [contract].
 
     This function is undefined if [contract] is not allocated. *)
-val delete : Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
+val delete :
+  Raw_context.t -> Contract_repr.t -> Tez_repr.t -> Raw_context.t tzresult Lwt.t
 
-(** [set ctxt contract delegate] updates the [delegate] associated to [contract].
+(** [set ctxt contract stake delegate] updates the [delegate] associated to
+    [contract], where [stake] is the total stake of [contract].
 
     This function is undefined if [contract] is not allocated, or if [contract]
     does not have a delegate. *)
 val set :
   Raw_context.t ->
   Contract_repr.t ->
+  Tez_repr.t ->
   Signature.Public_key_hash.t ->
   Raw_context.t tzresult Lwt.t
 

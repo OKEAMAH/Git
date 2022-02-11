@@ -199,18 +199,20 @@ let init ctxt contract delegate =
   error_unless known_delegate (Unregistered_delegate delegate) >>?= fun () ->
   Contract_delegate_storage.registered ctxt delegate >>=? fun is_registered ->
   error_unless is_registered (Unregistered_delegate delegate) >>?= fun () ->
-  Contract_delegate_storage.init ctxt contract delegate
+  Contract_storage.stake ctxt contract >>=? fun stake ->
+  Contract_delegate_storage.init ctxt contract stake delegate
 
 let set c contract delegate =
   match delegate with
   | None -> (
+      Contract_storage.stake c contract >>=? fun stake ->
       match Contract_repr.is_implicit contract with
       | Some pkh ->
           (* check if contract is a registered delegate *)
           Contract_delegate_storage.registered c pkh >>=? fun is_registered ->
           if is_registered then fail (No_deletion pkh)
-          else Contract_delegate_storage.delete c contract
-      | None -> Contract_delegate_storage.delete c contract)
+          else Contract_delegate_storage.delete c contract stake
+      | None -> Contract_delegate_storage.delete c contract stake)
   | Some delegate ->
       Contract_manager_storage.is_manager_key_revealed c delegate
       >>=? fun known_delegate ->
@@ -249,7 +251,8 @@ let set c contract delegate =
           (self_delegation && not exists)
           (Empty_delegate_account delegate)
         >>?= fun () ->
-        Contract_delegate_storage.set c contract delegate >>=? fun c ->
+        Contract_storage.stake c contract >>=? fun stake ->
+        Contract_delegate_storage.set c contract stake delegate >>=? fun c ->
         if self_delegation then
           Storage.Delegates.add c delegate >>= fun c -> set_active c delegate
         else return c

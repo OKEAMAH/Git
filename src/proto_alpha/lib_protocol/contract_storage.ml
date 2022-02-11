@@ -436,13 +436,16 @@ let create_implicit c manager ~balance =
     ?script:None
     ()
 
+let stake = Storage.Contract.Balance.get
+
 let delete c contract =
   match Contract_repr.is_implicit contract with
   | None ->
       (* For non implicit contract Big_map should be cleared *)
       failwith "Non implicit contracts cannot be removed"
   | Some _ ->
-      Contract_delegate_storage.remove c contract >>=? fun c ->
+      stake c contract >>=? fun stake ->
+      Contract_delegate_storage.remove c contract stake >>=? fun c ->
       Storage.Contract.Balance.remove_existing c contract >>=? fun c ->
       Contract_manager_storage.remove_existing c contract >>=? fun c ->
       Storage.Contract.Counter.remove_existing c contract >>=? fun c ->
