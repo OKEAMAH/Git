@@ -172,11 +172,23 @@ let public_key_hash_exn contract =
   | Some public_key_hash -> public_key_hash
 
 let check_bond ctxt tx_rollup contract count =
-  wrap
-    (Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup contract)
+  let pkh = public_key_hash_exn contract in
+  wrap (Tx_rollup_commitments.pending_bonded_commitments ctxt tx_rollup pkh)
   >>=? fun (_, pending) ->
   Alcotest.(check int "Pending commitment count correct" count pending) ;
   return ()
+
+let rec bake_until i top =
+  let level = Incremental.level i in
+  if level >= top then return i
+  else
+    Incremental.finalize_block i >>=? fun b ->
+    Incremental.begin_construction b >>=? fun i -> bake_until i top
+
+let assert_retired retired =
+  match retired with
+  | `Retired -> return_unit
+  | _ -> failwith "Expected retired"
 
 (** ---- TESTS -------------------------------------------------------------- *)
 
@@ -591,7 +603,6 @@ let test_commitment_duplication () =
     WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
   in
   let pkh1 = public_key_hash_exn contract1 in
-  let pkh2 = public_key_hash_exn contract2 in
   originate b contract1 >>=? fun (b, tx_rollup) ->
   Context.Contract.balance (B b) contract1 >>=? fun balance ->
   Context.Contract.balance (B b) contract2 >>=? fun balance2 ->
@@ -684,8 +695,8 @@ let test_commitment_duplication () =
          check raw_level_testable "Submitted" submitted_level submitted_at) ;
        return ())
   >>=? fun () ->
-  check_bond ctxt tx_rollup pkh1 1 >>=? fun () ->
-  check_bond ctxt tx_rollup pkh2 0 >>=? fun () ->
+  check_bond ctxt tx_rollup contract1 1 >>=? fun () ->
+  check_bond ctxt tx_rollup contract2 0 >>=? fun () ->
   ignore i ;
   return ()
 
