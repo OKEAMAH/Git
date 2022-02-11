@@ -113,6 +113,83 @@ let test_submit_batch ~protocols =
 
   unit
 
+let test_submit_commitment ~protocols =
+  let open Tezt_tezos in
+  Protocol.register_regression_test
+    ~__FILE__
+    ~output_file:"tx_rollup_commitment"
+    ~title:"Commitment"
+    ~tags:["tx_rollup"]
+    ~protocols
+  @@ fun protocol ->
+  let* parameter_file = parameter_file protocol in
+  let* (node, client) =
+    Client.init_with_protocol ~parameter_file `Client ~protocol ()
+  in
+  let* tx_rollup =
+    Client.originate_tx_rollup
+      ~burn_cap:Tez.(of_int 9999999)
+      ~storage_limit:60_000
+      ~src:Constant.bootstrap1.public_key_hash
+      client
+  in
+
+  Regression.capture tx_rollup ;
+
+  let* () = Client.bake_for client in
+  let* _ = Node.wait_for_level node 2 in
+
+  (* We check the rollup exists by trying to fetch its state. Since it
+     is a regression test, we can detect changes to this default
+     state. *)
+  let* _state = get_state ~hooks tx_rollup client in
+
+  (* Submit a batch *)
+  let batch = "tezos" in
+
+  let* () =
+    Client.submit_tx_rollup_batch
+      ~hooks
+      ~content:batch
+      ~tx_rollup
+      ~src:Constant.bootstrap1.public_key_hash
+      client
+  in
+  let* () = Client.bake_for client in
+
+  let* _ = Node.wait_for_level node 3 in
+
+  (* Check the inbox has been created *)
+  let* inbox = get_inbox ~hooks tx_rollup client in
+
+  let* () = Client.bake_for client in
+
+  let* _ = Node.wait_for_level node 4 in
+
+  let* () = Client.bake_for client in
+
+  let* _ = Node.wait_for_level node 5 in
+
+  assert (String.length batch = inbox.cumulated_size) ;
+
+  let level = 3l in
+
+  let roots = ["root"] in
+
+  let* () =
+    Client.submit_tx_rollup_commitment
+      ~hooks
+      ~level
+      ~roots
+      ~predecessor:None
+      ~tx_rollup
+      ~src:Constant.bootstrap1.public_key_hash
+      client
+  in
+  let* () = Client.bake_for client in
+
+  unit
+
 let test_invalid_rollup_address ~protocols =
   let open Tezt_tezos in
   Protocol.register_test
@@ -201,5 +278,6 @@ let test_submit_from_originated_source ~protocols =
 
 let register ~protocols =
   test_submit_batch ~protocols ;
+  test_submit_commitment ~protocols ;
   test_invalid_rollup_address ~protocols ;
   test_submit_from_originated_source ~protocols

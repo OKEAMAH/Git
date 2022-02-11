@@ -1,4 +1,4 @@
-tezt/_regressions/tx_rollup_simple_use_case.out
+tezt/_regressions/tx_rollup_commitment.out
 tru1EL3YqhLS3kwni3ikbqMrui61fA5k7StHz
 
 ./tezos-client rpc get /chains/main/blocks/head/context/tx_rollup/tru1EL3YqhLS3kwni3ikbqMrui61fA5k7StHz/state
@@ -34,3 +34,31 @@ This sequence of operations was run:
 ./tezos-client rpc get /chains/main/blocks/head/context/tx_rollup/tru1EL3YqhLS3kwni3ikbqMrui61fA5k7StHz/inbox
 { "contents": [ "M21tdhc2Wn76n164oJvyKW4JVZsDSDeuDsbLgp61XZWtrXjL5WA" ],
   "cumulated_size": 5 }
+
+./tezos-client --wait none submit tx rollup commitment 3  726f6f74 to tru1EL3YqhLS3kwni3ikbqMrui61fA5k7StHz from '[PUBLIC_KEY_HASH]'
+Node is bootstrapped.
+Estimated gas: 2670.280 units (will add 100 for safety)
+Estimated storage: no bytes added
+Operation successfully injected in the node.
+Operation hash is '[OPERATION_HASH]'
+NOT waiting for the operation to be included.
+Use command
+  tezos-client wait for [OPERATION_HASH] to be included --confirmations 1 --branch [BRANCH_HASH]
+and/or an external block explorer to make sure that it has been included.
+This sequence of operations was run:
+  Manager signed operations:
+    From: [PUBLIC_KEY_HASH]
+    Fee to the baker: ꜩ0.000539
+    Expected counter: 3
+    Gas limit: 2771
+    Storage limit: 0 bytes
+    Balance updates:
+      [PUBLIC_KEY_HASH] ... -ꜩ0.000539
+      payload fees(the block proposer) ....... +ꜩ0.000539
+    Tx rollup commitment:tru1EL3YqhLS3kwni3ikbqMrui61fA5k7StHz, commitment 3 : batches = 726f6f74 predecessor 
+      From: [PUBLIC_KEY_HASH]
+      This tx rollup commit operation was successfully applied
+      Balance updates:
+        
+      Consumed gas: 2670.280
+

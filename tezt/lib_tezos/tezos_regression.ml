@@ -33,6 +33,7 @@ let hooks =
         ("KT1\\w{33}", "[CONTRACT_HASH]");
         ("\\bo\\w{50}\\b", "[OPERATION_HASH]");
         ("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z", "[TIMESTAMP]");
+        ("B\\w{50}", "[BRANCH_HASH]");
         (* Ports are non-deterministic when using -j. *)
         ("/localhost:\\d{4,5}/", "/localhost:[PORT]/");
       ]
