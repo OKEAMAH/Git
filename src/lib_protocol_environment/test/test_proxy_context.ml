@@ -39,6 +39,11 @@
                    \-- block3b
 *)
 
+open Lib_test
+
+let rand_lbl _ : string = Qcheck2_helpers.Gen.t
+let rand_val _ = Bytes.of_string (Qcheck_helpers.string_fixed 30)
+
 let create_block2 ctxt =
   Context.add ctxt ["a"; "b"] (Bytes.of_string "Novembre") >>= fun ctxt ->
   Context.add ctxt ["a"; "c"] (Bytes.of_string "Juin") >>= fun ctxt ->
