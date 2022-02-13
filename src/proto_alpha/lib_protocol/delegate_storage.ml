@@ -522,7 +522,11 @@ let freeze_deposits_do_not_call_except_for_migration =
 
 let cycle_end ctxt last_cycle unrevealed_nonces =
   let new_cycle = Cycle_repr.add last_cycle 1 in
-  Stake_storage.select_new_distribution_at_cycle_end ctxt ~new_cycle pubkey
+  Stake_storage.select_new_distribution_at_cycle_end
+    ctxt
+    ~new_cycle
+    pubkey
+    Contract_storage.stake
   >>=? fun ctxt ->
   clear_outdated_slashed_deposits ctxt ~new_cycle >>= fun ctxt ->
   distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces

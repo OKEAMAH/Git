@@ -170,7 +170,7 @@ let snapshot ctxt =
   Storage.Stake.Staking_balance.snapshot ctxt index >>=? fun ctxt ->
   Storage.Stake.Active_delegate_with_one_roll.snapshot ctxt index
 
-let select_distribution_for_cycle ctxt cycle pubkey =
+let select_distribution_for_cycle ctxt cycle pubkey undeposited_stake =
   Storage.Stake.Last_snapshot.get ctxt >>=? fun max_index ->
   Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
   let rd = Seed_repr.initialize_new seed [Bytes.of_string "stake_snapshot"] in
@@ -192,8 +192,7 @@ let select_distribution_for_cycle ctxt cycle pubkey =
            let delegate_contract = Contract_repr.implicit_contract delegate in
            Storage.Contract.Frozen_deposits_limit.find ctxt delegate_contract
            >>=? fun frozen_deposits_limit ->
-           Storage.Contract.Balance.get ctxt delegate_contract
-           >>=? fun balance ->
+           undeposited_stake ctxt delegate_contract >>=? fun balance ->
            Frozen_deposits_storage.get ctxt delegate_contract
            >>=? fun frozen_deposits ->
            Tez_repr.(balance +? frozen_deposits.current_amount)
@@ -261,7 +260,7 @@ let clear_cycle ctxt cycle =
   Delegate_sampler_state.remove_existing ctxt cycle >>=? fun ctxt ->
   Storage.Seed.For_cycle.remove_existing ctxt cycle
 
-let init_first_cycles ctxt pubkey =
+let init_first_cycles ctxt pubkey undeposited_stake =
   let preserved = Constants_storage.preserved_cycles ctxt in
   List.fold_left_es
     (fun ctxt c ->
@@ -269,7 +268,7 @@ let init_first_cycles ctxt pubkey =
       snapshot ctxt >>=? fun ctxt ->
       (* NB: we need to take several snapshots because
          select_distribution_for_cycle deletes the snapshots *)
-      select_distribution_for_cycle ctxt cycle pubkey)
+      select_distribution_for_cycle ctxt cycle pubkey undeposited_stake)
     ctxt
     (0 --> preserved)
 
@@ -283,10 +282,10 @@ let fold ctxt ~f ~order init =
       get_staking_balance ctxt delegate >>=? fun stake ->
       f (delegate, stake) acc)
 
-let select_new_distribution_at_cycle_end ctxt ~new_cycle =
+let select_new_distribution_at_cycle_end ctxt ~new_cycle undeposited_stake =
   let preserved = Constants_storage.preserved_cycles ctxt in
   let for_cycle = Cycle_repr.add new_cycle preserved in
-  select_distribution_for_cycle ctxt for_cycle
+  select_distribution_for_cycle ctxt for_cycle undeposited_stake
 
 let clear_at_cycle_end ctxt ~new_cycle =
   let max_slashing_period = Constants_storage.max_slashing_period ctxt in
