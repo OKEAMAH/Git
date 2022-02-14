@@ -1368,7 +1368,7 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
          application. *)
       let current_level = (Level.current ctxt).level in
       fail_when
-        Raw_level.(current_level <= Raw_level.succ commitment.level)
+        Raw_level.(current_level <= commitment.level)
         Tx_rollup_commitments.Commitment_too_early
       >|=? fun () -> ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
