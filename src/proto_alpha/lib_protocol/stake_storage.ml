@@ -164,12 +164,15 @@ let snapshot ctxt =
   Storage.Stake.Staking_balance.snapshot ctxt index >>=? fun ctxt ->
   Storage.Stake.Active_delegate_with_one_roll.snapshot ctxt index
 
-let compute_snapshot_index ctxt cycle ~max_snapshot_index =
-  Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
+let compute_snapshot_index_for_seed ~max_snapshot_index seed =
   let rd = Seed_repr.initialize_new seed [Bytes.of_string "stake_snapshot"] in
   let seq = Seed_repr.sequence rd 0l in
   Seed_repr.take_int32 seq (Int32.of_int max_snapshot_index)
   |> fst |> Int32.to_int |> return
+
+let compute_snapshot_index ctxt cycle ~max_snapshot_index =
+  Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
+  compute_snapshot_index_for_seed ~max_snapshot_index seed
 
 let get_stakes_for_selected_index ctxt index =
   Storage.Stake.Active_delegate_with_one_roll.fold_snapshot
@@ -223,9 +226,23 @@ let get_stakes_for_selected_index ctxt index =
       Tez_repr.(total_stake +? stake_for_cycle) >>?= fun total_stake ->
       return ((delegate, stake_for_cycle) :: acc, total_stake))
 
+let sampler_for_cycle ctxt cycle =
+  match Raw_context.sampler_for_cycle ctxt cycle with
+  | Ok (seed, state) -> return (ctxt, seed, state)
+  | Error `Sampler_not_set -> (
+      Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
+      Delegate_sampler_state.get ctxt cycle >>=? fun state ->
+      match Raw_context.set_sampler_for_cycle ctxt cycle (seed, state) with
+      | Error `Sampler_already_set ->
+          (* We just tested with [Raw_context.sampler_for_cycle] that the
+             sampler was not set in [ctxt] for [cycle]. *)
+          assert false
+      | Ok ctxt -> return (ctxt, seed, state))
+
 let select_distribution_for_cycle ctxt cycle pubkey =
   Storage.Stake.Last_snapshot.get ctxt >>=? fun max_snapshot_index ->
-  compute_snapshot_index ctxt ~max_snapshot_index cycle
+  Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
+  compute_snapshot_index_for_seed ~max_snapshot_index seed
   >>=? fun selected_index ->
   List.fold_left_es
     (fun ctxt index ->
@@ -245,7 +262,14 @@ let select_distribution_for_cycle ctxt cycle pubkey =
          stakes
        >>=? fun stakes_pk ->
        let state = Sampler.create stakes_pk in
-       Delegate_sampler_state.init ctxt cycle state
+       Delegate_sampler_state.init ctxt cycle state >>=? fun ctxt ->
+       (* pre-allocate the sampler *)
+       match Raw_context.set_sampler_for_cycle ctxt cycle (seed, state) with
+       | Error `Sampler_already_set ->
+           (* we are initializing the cycle, it should not have been
+              initialized before. *)
+           assert false
+       | Ok ctxt -> return ctxt
       else return ctxt)
       >>=? fun ctxt ->
       Storage.Stake.Staking_balance.delete_snapshot ctxt index >>= fun ctxt ->
