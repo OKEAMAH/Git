@@ -847,8 +847,6 @@ let test_commitment_retire_simple () =
   Block.bake ~operation b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   let level = raw_level 2l in
-  Incremental.finalize_block i >>=? fun b ->
-  Incremental.begin_construction b >>=? fun i ->
   (* Test retirement with no commitment *)
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
@@ -1059,8 +1057,6 @@ let test_bond_finalization () =
   originate b contract1 >>=? fun (b, tx_rollup) ->
   (* Transactions in block 2, 3, 4 *)
   make_transactions_in tx_rollup contract1 [2; 3; 4] b >>=? fun b ->
-  Incremental.begin_construction b >>=? fun i ->
-  Incremental.finalize_block i >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   Op.tx_rollup_return_bond (I i) contract1 tx_rollup >>=? fun op ->
   Incremental.add_operation i op ~expect_failure:(function
