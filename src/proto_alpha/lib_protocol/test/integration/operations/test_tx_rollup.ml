@@ -648,8 +648,6 @@ let test_commitment_duplication () =
   let level = raw_level 2l in
   Block.bake ~operation b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
-  Incremental.finalize_block i >>=? fun b ->
-  Incremental.begin_construction b >>=? fun i ->
   make_commitment_for_batch i level tx_rollup >>=? fun commitment ->
   let submitted_level = (Level.current (Incremental.alpha_ctxt i)).level in
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
@@ -827,8 +825,6 @@ let test_commitment_retire_simple () =
   Block.bake ~operation b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   let level = raw_level 2l in
-  Incremental.finalize_block i >>=? fun b ->
-  Incremental.begin_construction b >>=? fun i ->
   (* Test retirement with no commitment *)
   wrap
     (Tx_rollup_commitments.Internal_for_tests.retire_rollup_level
@@ -981,8 +977,6 @@ let test_commitment_acceptance () =
   originate b contract1 >>=? fun (b, tx_rollup) ->
   make_transactions_in tx_rollup contract1 [2; 3] b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
-  Incremental.finalize_block i >>=? fun b ->
-  Incremental.begin_construction b >>=? fun i ->
   make_commitment_for_batch i (raw_level 2l) tx_rollup >>=? fun commitment_a ->
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment_a >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1040,8 +1034,6 @@ let test_bond_finalization () =
   originate b contract1 >>=? fun (b, tx_rollup) ->
   (* Transactions in block 2, 3, 4 *)
   make_transactions_in tx_rollup contract1 [2; 3; 4] b >>=? fun b ->
-  Incremental.begin_construction b >>=? fun i ->
-  Incremental.finalize_block i >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
   Op.tx_rollup_return_bond (I i) contract1 tx_rollup >>=? fun op ->
   Incremental.add_operation i op ~expect_failure:(function
