@@ -37,6 +37,8 @@ type error += (* `Branch *) Wrong_batch_count
 
 type error += (* `Temporary *) Commitment_too_early
 
+type error += (* `Temporary *) Wrong_inbox_hash
+
 (** A specialized Blake2B implementation for hashing commitments with
     "toc1" as a base58 prefix *)
 module Commitment_hash : sig
@@ -63,6 +65,7 @@ module Commitment : sig
     level : Raw_level_repr.t;
     batches : batch_commitment list;
     predecessor : Commitment_hash.t option;
+    inbox_hash : Tx_rollup_inbox_repr.Hash.t;
   }
 
   val ( = ) : t -> t -> bool

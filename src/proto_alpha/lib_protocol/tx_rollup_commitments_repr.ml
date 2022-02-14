@@ -37,6 +37,8 @@ type error += (* `Branch *) Wrong_batch_count
 
 type error += (* `Temporary *) Commitment_too_early
 
+type error += (* `Temporary *) Wrong_inbox_hash
+
 let () =
   let open Data_encoding in
   (* Commitment_hash_already_submitted *)
@@ -64,7 +66,7 @@ let () =
     ~id:"tx_rollup_wrong_commitment_predecessor_level"
     ~title:"This commitment's predecessor is invalid"
     ~description:
-      "This commitment has predecessor but shouldn't, or doesn't but should"
+      "This commitment has a predecessor but shouldn't, or doesn't but should"
     unit
     (function Wrong_commitment_predecessor_level -> Some () | _ -> None)
     (fun () -> Wrong_commitment_predecessor_level) ;
@@ -87,6 +89,15 @@ let () =
     unit
     (function Wrong_batch_count -> Some () | _ -> None)
     (fun () -> Wrong_batch_count) ;
+  (* Wrong_inbox_hash *)
+  register_error_kind
+    `Temporary
+    ~id:"Wrong_inbox_hash"
+    ~title:"This commitment has the wrong inbox hash"
+    ~description:"This commitment has a different hash than its inbox"
+    unit
+    (function Wrong_inbox_hash -> Some () | _ -> None)
+    (fun () -> Wrong_inbox_hash) ;
   (* Commitment_too_early *)
   register_error_kind
     `Temporary
@@ -167,6 +178,7 @@ module Commitment = struct
     level : Raw_level_repr.t;
     batches : batch_commitment list;
     predecessor : Commitment_hash.t option;
+    inbox_hash : Tx_rollup_inbox_repr.Hash.t;
   }
 
   include Compare.Make (struct
@@ -177,23 +189,27 @@ module Commitment = struct
     let compare r1 r2 =
       compare_or Raw_level_repr.compare r1.level r2.level (fun () ->
           compare_or Compare_root_list.compare r1.batches r2.batches (fun () ->
-              Option.compare
-                Commitment_hash.compare
+              compare_or
+                (Option.compare Commitment_hash.compare)
                 r1.predecessor
-                r2.predecessor))
+                r2.predecessor
+                (fun () ->
+                  Tx_rollup_inbox_repr.Hash.compare r1.inbox_hash r2.inbox_hash)))
   end)
 
   let pp : Format.formatter -> t -> unit =
    fun fmt t ->
     Format.fprintf
       fmt
-      "commitment %a : batches = %a predecessor %a"
+      "commitment %a : batches = %a predecessor %a for inbox %a"
       Raw_level_repr.pp
       t.level
       (Format.pp_print_list Batch.pp)
       t.batches
       (Format.pp_print_option Commitment_hash.pp)
       t.predecessor
+      Tx_rollup_inbox_repr.Hash.pp
+      t.inbox_hash
 
   (* FIXME/TORU: https://gitlab.com/tezos/tezos/-/issues/2470
 
@@ -201,26 +217,35 @@ module Commitment = struct
   let encoding =
     let open Data_encoding in
     conv
-      (fun {level; batches; predecessor} -> (level, batches, predecessor))
-      (fun (level, batches, predecessor) -> {level; batches; predecessor})
-      (obj3
+      (fun {level; batches; predecessor; inbox_hash} ->
+        (level, batches, predecessor, inbox_hash))
+      (fun (level, batches, predecessor, inbox_hash) ->
+        {level; batches; predecessor; inbox_hash})
+      (obj4
          (req "level" Raw_level_repr.encoding)
          (req "batches" (list Batch.encoding))
-         (req "predecessor" (option Commitment_hash.encoding)))
+         (req "predecessor" (option Commitment_hash.encoding))
+         (req "inbox_hash" Tx_rollup_inbox_repr.Hash.encoding))
 
-  let hash t =
+  let hash {level; batches; predecessor; inbox_hash} =
     let to_bytes_exn = Data_encoding.Binary.to_bytes_exn in
-    let level_bytes = to_bytes_exn Raw_level_repr.encoding t.level in
+    let level_bytes = to_bytes_exn Raw_level_repr.encoding level in
     let predecessor_bytes =
       Option.fold
         ~none:Bytes.empty
         ~some:(fun pred -> Commitment_hash.to_bytes pred)
-        t.predecessor
+        predecessor
     in
     let batches_bytes =
-      to_bytes_exn (Data_encoding.list Batch.encoding) t.batches
+      to_bytes_exn (Data_encoding.list Batch.encoding) batches
     in
-    Commitment_hash.hash_bytes [level_bytes; predecessor_bytes; batches_bytes]
+    let inbox_hash_bytes =
+      Data_encoding.Binary.to_bytes_exn
+        Tx_rollup_inbox_repr.Hash.encoding
+        inbox_hash
+    in
+    Commitment_hash.hash_bytes
+      [level_bytes; predecessor_bytes; batches_bytes; inbox_hash_bytes]
 
   module Index = struct
     type t = Commitment_hash.t

@@ -2058,6 +2058,20 @@ end
 module Tx_rollup_inbox : sig
   type t = {contents : Tx_rollup_message.hash list; cumulated_size : int}
 
+  module Hash : sig
+    type t
+
+    include Compare.S with type t := t
+
+    val pp : Format.formatter -> t -> unit
+
+    val empty : t
+
+    val encoding : t Data_encoding.t
+
+    val extend : t -> Tx_rollup_message.hash -> t
+  end
+
   val pp : Format.formatter -> t -> unit
 
   val encoding : t Data_encoding.t
@@ -2099,6 +2113,22 @@ module Tx_rollup_inbox : sig
     Tx_rollup.t ->
     (context * Raw_level.t option * Raw_level.t option) tzresult Lwt.t
 
+  module Internal_for_tests : sig
+    type metadata = {
+      count : int;
+      cumulated_size : int;
+      hash : Hash.t;
+      predecessor : Raw_level_repr.t option;
+      successor : Raw_level_repr.t option;
+    }
+
+    val get_metadata :
+      context ->
+      Raw_level.t ->
+      Tx_rollup.t ->
+      (context * metadata) tzresult Lwt.t
+  end
+
   type error +=
     | Tx_rollup_inbox_does_not_exist of Tx_rollup.t * Raw_level.t
     | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup.t
@@ -2122,6 +2152,7 @@ module Tx_rollup_commitments : sig
       level : Raw_level.t;
       batches : batch_commitment list;
       predecessor : Commitment_hash.t option;
+      inbox_hash : Tx_rollup_inbox.Hash.t;
     }
 
     val ( = ) : t -> t -> bool
@@ -2155,6 +2186,8 @@ module Tx_rollup_commitments : sig
   type error += Wrong_batch_count
 
   type error += Commitment_too_early
+
+  type error += Wrong_inbox_hash
 
   val add_commitment :
     context ->
