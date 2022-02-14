@@ -35,6 +35,8 @@ type error += (* `Temporary *) Missing_commitment_predecessor
 
 type error += (* `Branch *) Wrong_batch_count
 
+type error += (* `Temporary *) Wrong_inbox_hash
+
 type error +=
   | (* `Temporary *) Commitment_too_early of Raw_level_repr.t * Raw_level_repr.t
 
@@ -71,6 +73,7 @@ module Commitment : sig
     level : Raw_level_repr.t;
     batches : batch_commitment list;
     predecessor : Commitment_hash.t option;
+    inbox_hash : Tx_rollup_inbox_repr.Hash.t;
   }
 
   val ( = ) : t -> t -> bool

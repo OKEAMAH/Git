@@ -43,8 +43,34 @@ let encoding =
        (req "contents" @@ list Tx_rollup_message_repr.hash_encoding)
        (req "cumulated_size" int31))
 
+module Hash = struct
+  type t = bytes
+
+  include Compare.Make (Bytes)
+
+  let pp : Format.formatter -> t -> unit =
+   fun fmt t -> Hex.pp fmt (Hex.of_bytes t)
+
+  let empty = Bytes.empty
+
+  let encoding = Data_encoding.bytes
+
+  let extend t message =
+    let message =
+      Data_encoding.Binary.to_bytes_exn
+        Tx_rollup_message_repr.hash_encoding
+        message
+    in
+    Raw_hashes.blake2b (Bytes.cat t message)
+end
+
+let hash_inbox : t -> Hash.t =
+ fun t -> List.fold_left (fun h msg -> Hash.extend h msg) Hash.empty t.contents
+
 type metadata = {
+  count : int;
   cumulated_size : int;
+  hash : Hash.t;
   predecessor : Raw_level_repr.t option;
   successor : Raw_level_repr.t option;
 }
@@ -52,11 +78,13 @@ type metadata = {
 let metadata_encoding =
   let open Data_encoding in
   conv
-    (fun {cumulated_size; predecessor; successor} ->
-      (cumulated_size, predecessor, successor))
-    (fun (cumulated_size, predecessor, successor) ->
-      {cumulated_size; predecessor; successor})
-    (obj3
+    (fun {count; cumulated_size; hash; predecessor; successor} ->
+      (count, cumulated_size, hash, predecessor, successor))
+    (fun (count, cumulated_size, hash, predecessor, successor) ->
+      {count; cumulated_size; hash; predecessor; successor})
+    (obj5
+       (req "count" int31)
        (req "cumulated_size" int31)
+       (req "hash" bytes)
        (req "predecessor" (option Raw_level_repr.encoding))
        (req "successor" (option Raw_level_repr.encoding)))

@@ -41,14 +41,34 @@ val pp : Format.formatter -> t -> unit
 
 val encoding : t Data_encoding.t
 
-(* The metadata for an inbox stores the [cumulated_size] in
-   bytes for the inbox, so that we do not need to retrieve the entries
-   for the inbox just to get the size.  It also stores the
+module Hash : sig
+  type t = private bytes
+
+  include Compare.S with type t := t
+
+  val pp : Format.formatter -> t -> unit
+
+  val empty : t
+
+  val encoding : t Data_encoding.t
+
+  val extend : t -> Tx_rollup_message_repr.hash -> t
+end
+
+val hash_inbox : t -> Hash.t
+
+(* The metadata for an inbox stores: (1) the count of messages (2) the
+   [cumulated_size] in bytes for the inbox, so that we do not need to
+   retrieve the entries for the inbox just to get the size.  (3) the
    [predecessor] and [successor] levels.  For the first inbox of a
    rollup, the [predecessor] will be None.  For all inboxes, the
-   [successor] will be None until a subsequent inbox is created. *)
+   [successor] will be None until a subsequent inbox is created.
+   (4) the cumulative hash of the inbox contents -- that is,
+   h(h(h("" ^ contents[0]) ^ contents[1]), ...) *)
 type metadata = {
+  count : int;
   cumulated_size : int;
+  hash : Hash.t;
   predecessor : Raw_level_repr.t option;
   successor : Raw_level_repr.t option;
 }
