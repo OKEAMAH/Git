@@ -193,7 +193,7 @@ let deallocate_stakeless_implicit_contracts ctxt contract =
         (* Delete empty implicit contract. *)
         Contract_delegate_storage.find ctxt contract >>=? function
         | Some _ ->
-            (* Here, we know that the contract delegates to iself. Indeed, it
+            (* Here, we know that the contract delegates to itself. Indeed, it
                does not delegate to a different one, because the balance of
                such contracts cannot be zero (see [spend_only_call_from_token]
                in module [Contract_storage]), hence the stake of such contracts

@@ -27,8 +27,8 @@
     bonds are part of the stake of the contract making the deposit. *)
 
 (** This error is raised when [spend_only_call_from_token] is called with an
-    amount that is less than the deposit associated to the given contract and
-    rollup bond id.*)
+    amount that is not equal to the deposit associated to the given contract and
+    rollup bond id. *)
 type error +=
   | (* `Permanent *)
       Frozen_rollup_bonds_must_be_spent_at_once of
