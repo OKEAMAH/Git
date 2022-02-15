@@ -351,14 +351,14 @@ module Contract = struct
 
   module Rollup_bond_id_index =
     Make_indexed_subcontext
-      (Make_subcontext (Ghost) (Indexed_context.Raw_context)
+      (Make_subcontext (Registered) (Indexed_context.Raw_context)
          (struct
            let name = ["rollup_bond_id_index"]
          end))
          (Make_index (Rollup_bond_id_repr.Index))
 
   module Frozen_rollup_bonds =
-    Rollup_bond_id_index.Make_map
+    Rollup_bond_id_index.Make_carbonated_map
       (struct
         let name = ["rollup_bonds"]
       end)

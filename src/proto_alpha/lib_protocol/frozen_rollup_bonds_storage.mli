@@ -34,25 +34,27 @@ type error +=
       Frozen_rollup_bonds_must_be_spent_at_once of
       Contract_repr.t * Rollup_bond_id_repr.t
 
-(** [has_frozen_bonds ctxt contract] returns true if there are frozen bonds
-    associated to [contract], and returns false otherwise. *)
+(** [has_frozen_bonds ctxt contract] returns true iff there are frozen bonds
+    associated to [contract]. *)
 val has_frozen_bonds : Raw_context.t -> Contract_repr.t -> bool tzresult Lwt.t
 
-(** [allocated ctxt contract bond_id] returns [true] if there is a bond
-    associated to [contract] and [bond_id], and returns false otherwise. *)
+(** [allocated ctxt contract bond_id] returns a new context because of an access
+    to carbonated data, and a boolean that is [true] iff there is a bond
+    associated to [contract] and [bond_id]. *)
 val allocated :
   Raw_context.t ->
   Contract_repr.t ->
   Rollup_bond_id_repr.t ->
-  bool tzresult Lwt.t
+  (Raw_context.t * bool) tzresult Lwt.t
 
-(** [find ctxt contract bond_id] returns the bond associated to
-    [contract] and [bond_id] if there is one, and returns [None] otherwise. *)
+(** [find ctxt contract bond_id] returns a new context because of an access
+    to carbonated data, and the bond associated to [contract] and [bond_id] if
+    there is one, or [None] if there is none. *)
 val find :
   Raw_context.t ->
   Contract_repr.t ->
   Rollup_bond_id_repr.t ->
-  Tez_repr.t option tzresult Lwt.t
+  (Raw_context.t * Tez_repr.t option) tzresult Lwt.t
 
 (** [spend ctxt contract bond_id amount] withdraws the given [amount] from
     the value of the bond associated to [contract] and [bond_id].

@@ -436,6 +436,12 @@ let create_implicit c manager ~balance =
     ?script:None
     ()
 
+let has_stake ctxt contract =
+  let open Storage.Contract in
+  Balance.get ctxt contract >>=? fun balance ->
+  if Tez_repr.(balance > Tez_repr.zero) then return true
+  else Frozen_rollup_bonds_storage.has_frozen_bonds ctxt contract
+
 let stake ctxt contract =
   let open Storage.Contract in
   Balance.get ctxt contract >>=? fun balance ->

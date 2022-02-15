@@ -23,14 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This module encapsulates the following storage maps:
+(** This module encapsulates the following (carbonated) storage maps:
     - [Storage.Contract.Frozen_rollup_bonds]
     - [Storage.Contract.Total_rollup_bonds]
 
    This module enforces the following invariants:
     - [ (Frozen_rollup_bonds.mem x) <-> (Total_rollup_bonds.mem x) ]
-    - [ Total_rollup_bonds.find x ] = sum of all bond values in
-      [ Frozen_rollup_bonds.bindings x ]. *)
+    - [ Total_rollup_bonds.find (ctxt, contract) ] = sum of all bond values in
+      [ Frozen_rollup_bonds] that are associated to contract. *)
 
 open Storage.Contract
 
@@ -66,7 +66,7 @@ let () =
 let has_frozen_bonds ctxt contract = Total_rollup_bonds.mem ctxt contract >|= ok
 
 let allocated ctxt contract bond_id =
-  Frozen_rollup_bonds.mem (ctxt, contract) bond_id >|= ok
+  Frozen_rollup_bonds.mem (ctxt, contract) bond_id
 
 let find ctxt contract bond_id =
   Frozen_rollup_bonds.find (ctxt, contract) bond_id
@@ -75,12 +75,14 @@ let find ctxt contract bond_id =
 let spend_only_call_from_token ctxt contract bond_id amount =
   Contract_delegate_storage.remove_contract_stake ctxt contract amount
   >>=? fun ctxt ->
-  Frozen_rollup_bonds.get (ctxt, contract) bond_id >>=? fun frozen_bonds ->
+  Frozen_rollup_bonds.get (ctxt, contract) bond_id
+  >>=? fun (ctxt, frozen_bonds) ->
   error_when
     Tez_repr.(frozen_bonds <> amount)
     (Frozen_rollup_bonds_must_be_spent_at_once (contract, bond_id))
   >>?= fun () ->
-  Frozen_rollup_bonds.remove_existing (ctxt, contract) bond_id >>=? fun ctxt ->
+  Frozen_rollup_bonds.remove_existing (ctxt, contract) bond_id
+  >>=? fun (ctxt, _) ->
   Total_rollup_bonds.get ctxt contract >>=? fun total ->
   Tez_repr.(total -? amount) >>?= fun new_total ->
   if Tez_repr.(new_total = zero) then
@@ -91,13 +93,16 @@ let spend_only_call_from_token ctxt contract bond_id amount =
 let credit_only_call_from_token ctxt contract bond_id amount =
   Contract_delegate_storage.add_contract_stake ctxt contract amount
   >>=? fun ctxt ->
-  (Frozen_rollup_bonds.find (ctxt, contract) bond_id >>=? function
-   | None -> Frozen_rollup_bonds.init (ctxt, contract) bond_id amount
-   | Some frozen_bonds ->
-       Tez_repr.(frozen_bonds +? amount) >>?= fun new_amount ->
-       Frozen_rollup_bonds.update (ctxt, contract) bond_id new_amount)
-  >>=? fun ctxt ->
-  Total_rollup_bonds.find ctxt contract >>=? function
+  ( Frozen_rollup_bonds.find (ctxt, contract) bond_id
+  >>=? fun (ctxt, frozen_bonds_opt) ->
+    match frozen_bonds_opt with
+    | None -> Frozen_rollup_bonds.init (ctxt, contract) bond_id amount
+    | Some frozen_bonds ->
+        Tez_repr.(frozen_bonds +? amount) >>?= fun new_amount ->
+        Frozen_rollup_bonds.update (ctxt, contract) bond_id new_amount )
+  >>=? fun (ctxt, _consumed1) ->
+  Total_rollup_bonds.find ctxt contract >>=? fun total_opt ->
+  match total_opt with
   | None -> Total_rollup_bonds.init ctxt contract amount
   | Some total ->
       Tez_repr.(total +? amount) >>?= fun new_total ->

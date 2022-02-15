@@ -41,13 +41,16 @@
     to/from [`Delegate_balance d] will not update [d]'s stake, while transferring
     to/from [`Contract (Contract_repr.implicit_contract d)] will update [d]'s
     stake. *)
+type carb_container =
+  [`Frozen_rollup_bonds of Contract_repr.t * Rollup_bond_id_repr.t]
+
 type container =
   [ `Contract of Contract_repr.t
   | `Collected_commitments of Blinded_public_key_hash.t
   | `Delegate_balance of Signature.Public_key_hash.t
   | `Frozen_deposits of Signature.Public_key_hash.t
   | `Block_fees
-  | `Frozen_rollup_bonds of Contract_repr.t * Rollup_bond_id_repr.t ]
+  | carb_container ]
 
 (** [source] is the type of token providers. Token providers that are not
     containers are considered to have infinite capacity. *)
@@ -73,10 +76,23 @@ type sink =
   | `Burned
   | container ]
 
+(** [carb_allocated ctxt container] returns a new context because of an access
+    to carbonated data, and a boolean that is true when [balance ctxt container]
+    is guaranteed not to fail, and false when [balance ctxt container] may fail.
+*)
+val carb_allocated :
+  Raw_context.t -> carb_container -> (Raw_context.t * bool) tzresult Lwt.t
+
 (** [allocated ctxt container] returns true if [balance ctxt container] is
     guaranteed not to fail, and returns false when [balance ctxt container] may
     fail. *)
 val allocated : Raw_context.t -> container -> bool tzresult Lwt.t
+
+(** [carb_balance ctxt container] returns a new context because of an access
+    to carbonated data, and the balance associated to [container], or
+    [Tez_rep.zero] if there is no balance associated to [container]. *)
+val carb_balance :
+  Raw_context.t -> carb_container -> (Raw_context.t * Tez_repr.t) tzresult Lwt.t
 
 (** [balance ctxt container] returns the balance associated to the token holder,
     may fail if [allocated ctxt container] returns [false].
