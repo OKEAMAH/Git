@@ -399,3 +399,11 @@ clean: coverage-clean
 	@-${MAKE} -C docs clean
 	@-${MAKE} -C tests_python clean
 	@-rm -f docs/api/tezos-{baker,endorser,accuser}-alpha.html docs/api/tezos-{admin-,}client.html docs/api/tezos-signer.html
+
+.PHONY: lock
+lock:
+	./scripts/setup_local_switch.sh
+	echo "opam-version: \"2.0\"" > ocamlfind-as-opam-provided.opam
+	echo "x-opam-monorepo-opam-provided: [\"ocamlfind\"]" >> ocamlfind-as-opam-provided.opam
+	opam monorepo lock --recurse --lockfile tezos.opam.locked || (rm ocamlfind-as-opam-provided.opam && exit 1)
+	rm ocamlfind-as-opam-provided.opam

@@ -12,6 +12,7 @@ __pycache__
 /_snoop
 /node_modules
 /_opam-repo-for-releases/
+/duniverse
 
 /test_results
 
