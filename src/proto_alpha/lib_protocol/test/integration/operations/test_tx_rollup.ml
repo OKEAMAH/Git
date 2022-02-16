@@ -225,6 +225,28 @@ let assert_retired retired =
   | `Retired -> return_unit
   | _ -> failwith "Expected retired"
 
+let constants =
+  {
+    Tezos_protocol_alpha_parameters.Default_parameters.constants_test with
+    consensus_threshold = 0;
+    endorsing_reward_per_slot = Tez.zero;
+    baking_reward_bonus_per_slot = Tez.zero;
+    baking_reward_fixed_portion = Tez.zero;
+    tx_rollup_enable = true;
+  }
+
+let originate_with_constants constants n =
+  Context.init_with_constants constants n >>=? fun (b, contracts) ->
+  let contract =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract >>=? fun (b, tx_rollup) ->
+  return (b, tx_rollup, contracts)
+
+let range start top =
+  let rec aux n acc = if n < start then acc else aux (n - 1) (n :: acc) in
+  aux top []
+
 (** ---- TESTS -------------------------------------------------------------- *)
 
 (** [test_origination] originates a transaction rollup and checks that
@@ -1046,8 +1068,8 @@ let test_commitment_acceptance () =
   ignore i ;
   return ()
 
-(** [test_bond_finalization] tests that commitment operations
-    in fact finalize bonds. *)
+(** [test_bond_finalization] tests that commitment retirement
+    in fact finalizes bonds. *)
 let test_bond_finalization () =
   context_init 2 >>=? fun (b, contracts) ->
   let contract1 =
@@ -1095,26 +1117,111 @@ let test_bond_finalization () =
   ignore i ;
   return ()
 
-let test_full_inbox () =
-  let constants =
-    {
-      Tezos_protocol_alpha_parameters.Default_parameters.constants_test with
-      consensus_threshold = 0;
-      endorsing_reward_per_slot = Tez.zero;
-      baking_reward_bonus_per_slot = Tez.zero;
-      baking_reward_fixed_portion = Tez.zero;
-      tx_rollup_enable = true;
-      tx_rollup_max_unfinalized_levels = 15;
-    }
-  in
-  Context.init_with_constants constants 1 >>=? fun (b, contracts) ->
-  let contract =
+(** [test_commitment_finalizes] tests that commitment operations
+    perform retirement. *)
+let test_commitment_finalizes () =
+  let constants = {constants with tx_rollup_finality_period = 10} in
+  originate_with_constants constants 3 >>=? fun (b, tx_rollup, contracts) ->
+  let contract1 =
     WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
   in
-  originate b contract >>=? fun (b, tx_rollup) ->
-  let range start top =
-    let rec aux n acc = if n < start then acc else aux (n - 1) (n :: acc) in
-    aux top []
+  let contract2 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1
+  in
+  let contract3 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 2
+  in
+  (* Transactions in block 2, 3, 4 *)
+  make_transactions_in tx_rollup contract1 [2; 3; 4] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  make_commitment_for_batch i (raw_level 2l) tx_rollup >>=? fun commitment ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Now wait for the most of the finality period to pass. *)
+  bake_until i 13l >>=? fun i ->
+  make_commitment_for_batch i (raw_level 3l) tx_rollup >>=? fun commitment ->
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* We check that the commitment for level 2 was not finalized by
+     checking the bond for contract1. *)
+  check_bond (Incremental.alpha_ctxt i) tx_rollup contract1 1 >>=? fun () ->
+  (* Wait one and try again. *)
+  bake_until i 14l >>=? fun i ->
+  make_commitment_for_batch i (raw_level 4l) tx_rollup >>=? fun commitment ->
+  Op.tx_rollup_commit (I i) contract3 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  check_bond (Incremental.alpha_ctxt i) tx_rollup contract1 0 >>=? fun () ->
+  (* Check that we don't finalize too far. *)
+  check_bond (Incremental.alpha_ctxt i) tx_rollup contract2 1 >>=? fun () ->
+  ignore i ;
+  return ()
+
+(** [test_commitment_finality_limti] tests that commitment operations
+    do not finalize more than the limit *)
+let test_commitment_finality_limit () =
+  let constants =
+    {
+      constants with
+      tx_rollup_finality_period = 15;
+      tx_rollup_max_finalize_levels_per_commitment = 3;
+      hard_gas_limit_per_block = Gas.Arith.integral_exn (Z.of_int 10000000000);
+    }
+  in
+  originate_with_constants constants 10 >>=? fun (b, tx_rollup, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  let contract10 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 9
+  in
+  let check_bond_for_contract i contract_n expected_bond =
+    let contract =
+      WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts contract_n
+    in
+    check_bond (Incremental.alpha_ctxt i) tx_rollup contract expected_bond
+  in
+
+  (* Transactions in block 2-11 *)
+  make_transactions_in tx_rollup contract1 (range 2 12) b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let rec make_many_commitments i cur top =
+    if cur = top then return i
+    else
+      make_commitment_for_batch i (raw_level (Int32.of_int cur)) tx_rollup
+      >>=? fun commitment ->
+      let contract =
+        WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts cur
+      in
+      Op.tx_rollup_commit (I i) contract tx_rollup commitment >>=? fun op ->
+      Incremental.add_operation i op >>=? fun i ->
+      make_many_commitments i (cur + 1) top
+  in
+  make_many_commitments i 2 10 >>=? fun i ->
+  (* Now wait for the the rest of the finality period to pass. *)
+  bake_until i 30l >>=? fun i ->
+  make_commitment_for_batch i (raw_level 10l) tx_rollup >>=? fun commitment ->
+  Op.tx_rollup_commit (I i) contract10 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  check_bond_for_contract i 2 0 >>=? fun () ->
+  check_bond_for_contract i 3 0 >>=? fun () ->
+  check_bond_for_contract i 4 0 >>=? fun () ->
+  (* We hit the limit, so the next one is not final. *)
+  check_bond_for_contract i 5 1 >>=? fun () ->
+  make_commitment_for_batch i (raw_level 11l) tx_rollup >>=? fun commitment ->
+  Op.tx_rollup_commit (I i) contract10 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  check_bond_for_contract i 5 0 >>=? fun () ->
+  check_bond_for_contract i 6 0 >>=? fun () ->
+  check_bond_for_contract i 7 0 >>=? fun () ->
+  check_bond_for_contract i 8 1 >>=? fun () ->
+  ignore i ;
+  return ()
+
+let test_full_inbox () =
+  let constants = {constants with tx_rollup_max_unfinalized_levels = 15} in
+  originate_with_constants constants 1 >>=? fun (b, tx_rollup, contracts) ->
+  let contract =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
   in
   (* Transactions in blocks [2..17) *)
   make_transactions_in tx_rollup contract (range 2 17) b >>=? fun b ->
@@ -1182,4 +1289,12 @@ let tests =
       test_commitment_acceptance;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
     Tztest.tztest "Test full inbox" `Quick test_full_inbox;
+    Tztest.tztest
+      "Test that commitment finalizes"
+      `Quick
+      test_commitment_finalizes;
+    Tztest.tztest
+      "Test that commitment finality limit"
+      `Quick
+      test_commitment_finality_limit;
   ]
