@@ -160,6 +160,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_interpreter_defs.ml
    script_interpreter.mli script_interpreter.ml
    sc_rollup_operations.mli sc_rollup_operations.ml
+   sc_rollup_PVM_sem.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
@@ -315,6 +316,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_interpreter_defs.ml
    script_interpreter.mli script_interpreter.ml
    sc_rollup_operations.mli sc_rollup_operations.ml
+   sc_rollup_PVM_sem.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
@@ -470,6 +472,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_interpreter_defs.ml
    script_interpreter.mli script_interpreter.ml
    sc_rollup_operations.mli sc_rollup_operations.ml
+   sc_rollup_PVM_sem.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
@@ -647,6 +650,7 @@ include Tezos_raw_protocol_alpha.Main
    Script_interpreter_defs
    Script_interpreter
    Sc_rollup_operations
+   Sc_rollup_PVM_sem
    Sc_rollup_arith
    Sc_rollups
    Baking
@@ -843,6 +847,7 @@ include Tezos_raw_protocol_alpha.Main
    script_interpreter_defs.ml
    script_interpreter.mli script_interpreter.ml
    sc_rollup_operations.mli sc_rollup_operations.ml
+   sc_rollup_PVM_sem.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml

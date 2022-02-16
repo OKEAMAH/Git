@@ -23,9 +23,21 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Alpha_context
+open Sc_rollup
+
 let name = "arith"
 
-let parse_boot_sector _ =
-  Some (Alpha_context.Sc_rollup.PVM.boot_sector_of_string "")
+let parse_boot_sector _ = Some (PVM.boot_sector_of_string "")
 
 let pp_boot_sector _fmt _ = ()
+
+type state = unit
+
+let eval : state -> state option = fun _ -> assert false
+
+let equal_states _ _ = assert false
+
+let encoding = Data_encoding.unit
+
+let compress _ = assert false
