@@ -906,7 +906,8 @@ let test_commitment_duplication () =
           Assert.test_error_encodings e ;
           return_unit
       | t -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t)
-  >>=? fun i ->
+  >>=? fun (* using the same context leads to gas exhaustion *)
+             _i ->
   let batches3 : Tx_rollup_commitments.Commitment.batch_commitment list =
     [{root = Bytes.make 20 '1'}; {root = Bytes.make 20 '2'}]
   in
@@ -1008,8 +1009,8 @@ let test_commitment_predecessor () =
           Assert.test_error_encodings e ;
           return_unit
       | _ -> failwith "Need to check commitment predecessor")
-  >>=? fun i ->
-  (* Commitment  refers to a predecessor which does not exist *)
+  >>=? fun (* using the same context leads to gas exhaustion *) _i ->
+  (* Commitment refers to a predecessor which does not exist *)
   let commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 3l; batches; predecessor = Some some_hash}
   in
