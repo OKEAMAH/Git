@@ -106,14 +106,12 @@ let append_message :
     Compare.Int.(new_size < inbox_limit)
     (Tx_rollup_inbox_size_would_exceed_limit rollup)
   >>=? fun () ->
-  Storage.Tx_rollup.Inbox_rev_contents.find (ctxt, level) rollup
-  >>=? fun (ctxt, mcontents) ->
   (* FIXME/TORU: https://gitlab.com/tezos/tezos/-/issues/2408
      Carbonate hashing the message. *)
-  Storage.Tx_rollup.Inbox_rev_contents.add
-    (ctxt, level)
-    rollup
-    (message_hash :: Option.value ~default:[] mcontents)
+  Storage.Tx_rollup.Inbox_contents.add
+    ((ctxt, level), rollup)
+    (Int32.of_int new_metadata.count)
+    message_hash
   >>=? fun (ctxt, _, _) -> return (ctxt, new_state)
 
 let get_level :
@@ -130,17 +128,17 @@ let messages_opt :
     (Raw_context.t * Tx_rollup_message_repr.hash list option) tzresult Lwt.t =
  fun ctxt ~level tx_rollup ->
   let level = get_level ctxt level in
-  Storage.Tx_rollup.Inbox_rev_contents.find (ctxt, level) tx_rollup
+  Storage.Tx_rollup.Inbox_contents.list_values ((ctxt, level), tx_rollup)
   >>=? function
-  | (ctxt, Some rev_contents) -> return (ctxt, Some (List.rev rev_contents))
-  | (ctxt, None) ->
+  | (ctxt, []) ->
       (*
-        Prior to returning [None], we check whether or not the
-        transaction rollup address is valid, to raise the appropriate
-        if need be.
-       *)
+      Prior to returning [None], we check whether or not the
+      transaction rollup address is valid, to raise the appropriate
+      if need be.
+     *)
       Tx_rollup_state_storage.assert_exist ctxt tx_rollup >>=? fun ctxt ->
       return (ctxt, None)
+  | (ctxt, contents) -> return (ctxt, Some contents)
 
 let messages :
     Raw_context.t ->
