@@ -35,26 +35,6 @@
 open Protocol
 open Alpha_context
 
-(** [baker] bakes and [endorser] endorses *)
-let bake_and_endorse_once (b_pred, b_cur) baker endorser =
-  let open Context in
-  Context.get_endorsers (B b_cur) >>=? fun endorsers_list ->
-  List.find_map
-    (function
-      | {Plugin.RPC.Validators.delegate; slots; _} ->
-          if Signature.Public_key_hash.equal delegate endorser then
-            Some (delegate, slots)
-          else None)
-    endorsers_list
-  |> function
-  | None -> assert false
-  | Some delegate ->
-      Block.get_round b_cur >>?= fun round ->
-      Op.endorsement ~round ~delegate ~endorsed_block:b_cur (B b_pred) ()
-      >>=? fun endorsement ->
-      let endorsement = Operation.pack endorsement in
-      Block.bake ~policy:(By_account baker) ~operation:endorsement b_cur
-
 (** We test that:
   - a delegate that participates enough, gets its endorsing rewards at the end of the cycle,
   - a delegate that does not participating enough during a cycle, doesn't get rewarded.
@@ -99,8 +79,12 @@ let test_participation ~sufficient_participation () =
         then (del2, endorsing_power + endorsing_power_for_level)
         else (del1, endorsing_power)
       in
-      bake_and_endorse_once (b_pred, b_crt) del1 endorser >>=? fun b ->
-      return (b_crt, b, new_endorsing_power))
+      Consensus_helpers.bake_and_endorse
+        ~policy:(By_account del1)
+        ~grandparent:b_pred
+        ~endorsers:[endorser]
+        b_crt
+      >>=? fun b -> return (b_crt, b, new_endorsing_power))
     (b0, b1, 0)
     (2 -- (blocks_per_cycle - 1))
   >>=? fun (pred_b, b, _) ->
@@ -184,7 +168,12 @@ let test_participation_rpc () =
         info.expected_endorsing_rewards
         endorsing_rewards
       >>=? fun () ->
-      bake_and_endorse_once (b_pred, b_crt) del1 del1 >>=? fun b ->
+      Consensus_helpers.bake_and_endorse
+        ~policy:(By_account del1)
+        ~grandparent:b_pred
+        ~endorsers:[del1]
+        b_crt
+      >>=? fun b ->
       (* [level_int] is the level of [b_crt] *)
       level_int |> Int32.of_int |> Raw_level.of_int32
       |> Environment.wrap_tzresult

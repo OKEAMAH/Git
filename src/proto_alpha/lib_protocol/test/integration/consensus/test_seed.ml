@@ -202,7 +202,7 @@ let test_unrevealed () =
   let blocks_per_commitment =
     Int32.to_int csts.parametric.blocks_per_commitment
   in
-  let bake_and_endorse_block ?policy (pred_b, b) =
+  let _bake_and_endorse_block ?policy (pred_b, b) =
     Context.get_endorsers (B b) >>=? fun slots ->
     List.map_es
       (fun {Plugin.RPC.Validators.delegate; slots; _} ->
@@ -222,7 +222,7 @@ let test_unrevealed () =
   Block.bake_until_cycle_end ~policy b >>=? fun b ->
   Context.Delegate.info (B b) delegate2 >>=? fun info_before ->
   Block.bake ~policy b >>=? fun b' ->
-  bake_and_endorse_block ~policy (b, b') >>=? fun b ->
+  Consensus_helpers.bake_and_endorse ~policy ~grandparent:b b' >>=? fun b ->
   (* Finish cycle 1 excluding the first baker *)
   Block.bake_until_cycle_end ~policy b >>=? fun b ->
   Context.Delegate.info (B b) delegate2 >>=? fun info_after ->

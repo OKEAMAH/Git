@@ -106,3 +106,35 @@ let test_consensus_op_for_next ~genesis ~kind ~next =
     | `Round -> "Consensus operation for future round"
   in
   Assert.proto_error_with_info ~loc:__LOC__ res error_title
+
+(** [bake_and_endorse grandparent ?policy ?endorsers pred] bakes a
+   block on top of [pred] that includes the endorsements produced by
+   [endorsers] (or by all endorsers if [endorsers] is not given). *)
+let bake_and_endorse :
+    grandparent:Block.t ->
+    ?policy:Block.baker_policy ->
+    ?endorsers:public_key_hash list ->
+    Block.t ->
+    Block.t tzresult Lwt.t =
+ fun ~grandparent ?policy ?endorsers pred ->
+  Context.get_endorsers (B pred) >>=? fun all_endorsers ->
+  let endorsers_with_rights =
+    match endorsers with
+    | None -> all_endorsers
+    | Some endorsers ->
+        List.filter
+          (function
+            | {Plugin.RPC.Validators.delegate; _} ->
+                List.exists (Signature.Public_key_hash.equal delegate) endorsers)
+          all_endorsers
+  in
+  List.map_es
+    (fun {Plugin.RPC.Validators.delegate; slots; _} ->
+      Op.endorsement
+        ~delegate:(delegate, slots)
+        ~endorsed_block:pred
+        (B grandparent)
+        ()
+      >>=? fun op -> Operation.pack op |> return)
+    endorsers_with_rights
+  >>=? fun endorsements -> Block.bake ?policy ~operations:endorsements pred
