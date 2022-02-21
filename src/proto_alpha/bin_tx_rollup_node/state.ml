@@ -30,21 +30,22 @@ open Protocol.Apply_results
 open Protocol_client_context
 module Block_hash_map = Map.Make (Block_hash)
 
-type t = Stores.t
+type t = {store : Stores.t; context_index : Context.index}
 
 let rollup_operation_index = 3
 
-let set_new_head store hash = Stores.Tezos_head.set store hash
+let set_new_head state hash = Stores.Tezos_head.set state.store hash
 
-let get_head store = Stores.Tezos_head.find store
+let get_head state = Stores.Tezos_head.find state.store
 
-let block_already_seen store hash = Stores.Inboxes.mem store hash
+let block_already_seen state hash = Stores.Inboxes.mem state.store hash
 
-let find_inbox store hash = Stores.Inboxes.find store hash
+let find_inbox state hash = Stores.Inboxes.find state.store hash
 
-let save_inbox store hash inbox =
+let save_inbox state hash inbox =
+  let store = state.store in
   let open Lwt_result_syntax in
-  let*! previous_inbox = Stores.Inboxes.find store hash in
+  let*! previous_inbox = Stores.Inboxes.find state.store hash in
   match previous_inbox with
   | None -> Stores.Inboxes.add store hash inbox
   | Some x ->
@@ -93,11 +94,24 @@ let check_origination_in_block_info rollup block_info =
   | Some _ -> return_unit
   | None -> fail @@ Error.Tx_rollup_not_originated_in_the_given_block rollup
 
-let init ~data_dir ~context ~rollup ~rollup_genesis =
+let init_store ~data_dir ~context ~rollup ~rollup_genesis =
   let open Lwt_result_syntax in
   let block = `Hash (rollup_genesis, 0) in
   let* block_info =
     Alpha_block_services.info context ~chain:context#chain ~block ()
   in
   let* () = check_origination_in_block_info rollup block_info in
-  Stores.load data_dir
+  Stores.load (Node_data.store_dir data_dir)
+
+let init_context ~data_dir =
+  let open Lwt_result_syntax in
+  let*! index = Context.init (Node_data.context_dir data_dir) in
+  return index
+
+let init ~data_dir ~context ~rollup ~rollup_genesis =
+  let open Lwt_result_syntax in
+  let store = init_store ~data_dir ~context ~rollup ~rollup_genesis in
+  let context_index = init_context ~data_dir in
+  let* store = store in
+  let* context_index = context_index in
+  return {store; context_index}
