@@ -38,7 +38,10 @@ let set_new_head state hash = Stores.Tezos_head.set state.store hash
 
 let get_head state = Stores.Tezos_head.find state.store
 
-let block_already_seen state hash = Stores.Inboxes.mem state.store hash
+let context_hash state block_hash =
+  Stores.Context_hashes.find state.store block_hash
+
+let block_already_seen state hash = context_hash state hash
 
 let find_inbox state hash = Stores.Inboxes.find state.store hash
 
@@ -57,6 +60,9 @@ let save_inbox state hash inbox =
           }
       in
       Stores.Inboxes.add store hash inbox
+
+let save_context_hash state block_hash context_hash =
+  Stores.Context_hashes.add state.store block_hash context_hash
 
 let check_origination_in_block_info rollup block_info =
   let extract_originated_tx_rollup :

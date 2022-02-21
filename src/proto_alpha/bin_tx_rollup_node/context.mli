@@ -39,6 +39,9 @@ val init :
   string ->
   index Lwt.t
 
+(** Build an empty context from an index *)
+val empty : index -> t
+
 (** Close the index. Does not fail when the context is already closed. *)
 val close : index -> unit Lwt.t
 

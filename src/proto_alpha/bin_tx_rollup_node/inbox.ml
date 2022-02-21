@@ -27,7 +27,16 @@
 
 open Protocol.Alpha_context
 
-type t = {contents : Tx_rollup_message.t list; cumulated_size : int}
+type message_result =
+  | Interpreted of Tx_rollup_l2_apply.Message_result.t
+  | Discarded of tztrace
+
+type inbox_message = {
+  message : Tx_rollup_message.t;
+  context_hash : Protocol.Tx_rollup_l2_context_hash.t;
+}
+
+type t = {contents : inbox_message list; cumulated_size : int}
 
 let pp fmt {contents; cumulated_size} =
   Format.fprintf
@@ -36,15 +45,33 @@ let pp fmt {contents; cumulated_size} =
     (List.length contents)
     cumulated_size
 
+let message_result_encoding =
+  let open Data_encoding in
+  (* FIXME/TORU Dummy value, use actual encoding *)
+  conv (fun _ -> ()) (fun () -> Discarded []) unit
+
+let inbox_message_encoding =
+  let open Data_encoding in
+  conv
+    (fun {message; context_hash} -> (message, context_hash))
+    (fun (message, context_hash) -> {message; context_hash})
+    (obj2
+       (req "message" Tx_rollup_message.encoding)
+       (req "context_hash" Protocol.Tx_rollup_l2_context_hash.encoding))
+
 let encoding =
   let open Data_encoding in
   conv
     (fun {contents; cumulated_size} -> (contents, cumulated_size))
     (fun (contents, cumulated_size) -> {contents; cumulated_size})
     (obj2
-       (req "contents" @@ list Tx_rollup_message.encoding)
+       (req "contents" @@ list inbox_message_encoding)
        (req "cumulated_size" int31))
 
 let to_protocol_inbox {contents; cumulated_size} =
   Tx_rollup_inbox.
-    {contents = List.map Tx_rollup_message.hash contents; cumulated_size}
+    {
+      contents =
+        List.map (fun {message; _} -> Tx_rollup_message.hash message) contents;
+      cumulated_size;
+    }

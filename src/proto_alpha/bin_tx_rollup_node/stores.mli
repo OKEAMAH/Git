@@ -81,3 +81,10 @@ module Inboxes :
 (** A persistent reference cell that stores the last Tezos head processed
     by the daemon. *)
 module Tezos_head : REF with type value = Block_hash.t and type t = t
+
+(** Persistent storage for transaction rollup context hashes. *)
+module Context_hashes :
+  MAP
+    with type key = Block_hash.t
+     and type value = Protocol.Tx_rollup_l2_context_hash.t
+     and type t = t

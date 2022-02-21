@@ -227,6 +227,7 @@ module Inboxes = Make_map (struct
 
   type value = Inbox.t
 
+  (* TODO/TORU: use more compact Block_hash.to_string? *)
   let key_to_string = Block_hash.to_b58check
 
   let value_encoding = Inbox.encoding
@@ -238,4 +239,17 @@ module Tezos_head = Make_ref (struct
   type value = Block_hash.t
 
   let value_encoding = Block_hash.encoding
+end)
+
+module Context_hashes = Make_map (struct
+  let location = ["tx_rollup"; "context_hashes"]
+
+  type key = Block_hash.t
+
+  type value = Protocol.Tx_rollup_l2_context_hash.t
+
+  (* TODO/TORU: use more compact Block_hash.to_string? *)
+  let key_to_string = Block_hash.to_b58check
+
+  let value_encoding = Protocol.Tx_rollup_l2_context_hash.encoding
 end)

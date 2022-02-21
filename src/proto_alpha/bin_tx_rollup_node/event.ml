@@ -139,17 +139,17 @@ let messages_application =
     ("number", Data_encoding.int31)
 
 let inbox_stored =
-  declare_3
+  declare_4
     ~section
     ~name:"tx_rollup_node_inbox_stored"
     ~msg:
-      "an inbox with size {cumulated_size} has been stored for {block_hash}: \
-       {messages}"
+      "an inbox with size {cumulated_size} and resulting context hash \
+       {context_hash} has been stored for {block_hash}: {messages}"
     ~level:Notice
     ("block_hash", Block_hash.encoding)
-    ( "messages",
-      Data_encoding.list Protocol.Alpha_context.Tx_rollup_message.encoding )
+    ("messages", Data_encoding.list Inbox.inbox_message_encoding)
     ("cumulated_size", Data_encoding.int31)
+    ("context_hash", Protocol.Tx_rollup_l2_context_hash.encoding)
 
 let irmin_store_loaded =
   declare_1

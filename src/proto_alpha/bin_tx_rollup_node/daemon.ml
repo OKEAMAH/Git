@@ -30,13 +30,23 @@ open Tezos_shell_services
 open Protocol_client_context
 open Protocol.Alpha_context
 
-let messages_to_inbox messages =
-  let cumulated_size =
-    List.fold_left (fun acc x -> acc + String.length x) 0 messages
+(* TODO/TORU: don't reapply whole inbox on update *)
+let messages_to_inbox ctxt messages =
+  let open Lwt_result_syntax in
+  let+ (ctxt, rev_contents, cumulated_size) =
+    List.fold_left_es
+      (fun (ctxt, acc, total_size) message ->
+        let (batch, size) = Tx_rollup_message.make_batch message in
+        let+ ctxt = Apply.apply_batch ctxt batch in
+        let context_hash = Context.hash ctxt in
+        let inbox_message = {Inbox.message = batch; context_hash} in
+        (ctxt, inbox_message :: acc, total_size + size))
+      (ctxt, [], 0)
+      messages
   in
-  let make_batch msg = fst @@ Tx_rollup_message.make_batch msg in
-  let contents = List.map make_batch messages in
-  Inbox.{contents; cumulated_size}
+  let contents = List.rev rev_contents in
+  let inbox = Inbox.{contents; cumulated_size} in
+  (ctxt, inbox)
 
 let compute_messages block_info rollup_id =
   let managed_operation =
@@ -93,25 +103,33 @@ let compute_messages block_info rollup_id =
          rollup and per block. *)
       managed_operations |> List.concat_map finalize_receipt
 
-let process_messages_and_inboxes state rollup_genesis block_info rollup_id =
+let process_messages_and_inboxes (state : State.t) ~predecessor_context_hash
+    block_info rollup_id =
   let open Lwt_result_syntax in
   let current_hash = block_info.Alpha_block_services.hash in
-  let predecessor_hash = block_info.header.shell.predecessor in
-  let*! has_previous_state = State.block_already_seen state predecessor_hash in
-  let*? () =
-    error_unless
-      (has_previous_state || Block_hash.equal rollup_genesis current_hash)
-      (Error.Tx_rollup_block_predecessor_not_processed predecessor_hash)
+  (* let predecessor_hash = block_info.header.shell.predecessor in
+   * let*! predecessor_context_hash = State.context_hash state predecessor_hash in *)
+  let*! predecessor_context =
+    match predecessor_context_hash with
+    | None ->
+        (* Rollup Genesis *)
+        Lwt.return (Context.empty state.context_index)
+    | Some context_hash ->
+        (* Known predecessor *)
+        (* TODO/TORU: don't checkout from disk unless reorg *)
+        Context.checkout_exn state.context_index context_hash
   in
   let messages = compute_messages block_info rollup_id in
   let messages_len = List.length messages in
-  let inbox = messages_to_inbox messages in
+  let* (context, inbox) = messages_to_inbox predecessor_context messages in
   let*! () = Event.(emit messages_application) messages_len in
   let* () = State.save_inbox state current_hash inbox in
+  let*! context_hash = Context.commit context in
   let*! () =
     Event.(emit inbox_stored)
-      (current_hash, inbox.contents, inbox.cumulated_size)
+      (current_hash, inbox.contents, inbox.cumulated_size, context_hash)
   in
+  let* () = State.save_context_hash state current_hash context_hash in
   return_unit
 
 let rec process_hash cctxt state rollup_genesis current_hash rollup_id =
@@ -125,31 +143,44 @@ and process_block cctxt state rollup_genesis block_info rollup_id =
   let open Lwt_result_syntax in
   let current_hash = block_info.hash in
   let predecessor_hash = block_info.header.shell.predecessor in
-  let*! was_processed = State.block_already_seen state current_hash in
-  if was_processed then
-    let*! () = Event.(emit block_already_seen) current_hash in
-    return_unit
+  (* TODO/TORU: What if rollup_genesis is on another branch, i.e. in a reorg? *)
+  if Block_hash.equal rollup_genesis current_hash then return_unit
   else
-    let*! predecessor_was_processed =
-      State.block_already_seen state predecessor_hash
-    in
-    let* () =
-      if
-        (not predecessor_was_processed)
-        && not (Block_hash.equal rollup_genesis current_hash)
-      then
-        let*! () = Event.(emit processing_block_predecessor) predecessor_hash in
-        process_hash cctxt state rollup_genesis predecessor_hash rollup_id
-      else return ()
-    in
-    let*! () = Event.(emit processing_block) (current_hash, predecessor_hash) in
-    let* () =
-      process_messages_and_inboxes state rollup_genesis block_info rollup_id
-    in
-    let* () = State.set_new_head state current_hash in
-    let*! () = Event.(emit new_tezos_head) current_hash in
-    let*! () = Event.(emit block_processed) current_hash in
-    return_unit
+    let*! context_hash = State.context_hash state current_hash in
+    match context_hash with
+    | Some _ ->
+        (* Already processed *)
+        let*! () = Event.(emit block_already_seen) current_hash in
+        return_unit
+    | None ->
+        let*! predecessor_context_hash =
+          State.block_already_seen state predecessor_hash
+        in
+        let* () =
+          match predecessor_context_hash with
+          | None ->
+              let*! () =
+                Event.(emit processing_block_predecessor) predecessor_hash
+              in
+              process_hash cctxt state rollup_genesis predecessor_hash rollup_id
+          | Some _ ->
+              (* Predecessor known *)
+              return_unit
+        in
+        let*! () =
+          Event.(emit processing_block) (current_hash, predecessor_hash)
+        in
+        let* () =
+          process_messages_and_inboxes
+            state
+            ~predecessor_context_hash
+            block_info
+            rollup_id
+        in
+        let* () = State.set_new_head state current_hash in
+        let*! () = Event.(emit new_tezos_head) current_hash in
+        let*! () = Event.(emit block_processed) current_hash in
+        return_unit
 
 let process_inboxes cctxt state rollup_genesis current_hash rollup_id =
   let open Lwt_result_syntax in
@@ -221,7 +252,8 @@ let run ~data_dir cctxt =
                 in
                 match r with
                 | Ok () -> Lwt.return ()
-                | Error _ ->
+                | Error e ->
+                    Format.eprintf "%a@." pp_print_trace e ;
                     let () = interupt () in
                     Lwt.return ())
               block_stream

@@ -30,7 +30,7 @@ open Protocol.Alpha_context
     type stored in the Irmin store. The [State] module allows access to this stored
     data. *)
 
-type t
+type t = private {store : Stores.t; context_index : Context.index}
 
 (** [init ~data_dir ~context ~rollup ~block_origination_hash]
     checks that the rollup [rollup_id] is created inside the block
@@ -47,11 +47,22 @@ val init :
     reference cell. *)
 val set_new_head : t -> Block_hash.t -> unit tzresult Lwt.t
 
-(** [get_head state] returns the head that has just been processed from the reference cell. *)
+(** [get_head state] returns the head that has just been processed from the
+    reference cell. *)
 val get_head : t -> Block_hash.t option Lwt.t
 
-(** [block_already_seen state block] returns [true] iff [block] has already been processed. *)
-val block_already_seen : t -> Block_hash.t -> bool Lwt.t
+(** [context_hash state block_hash] returns the rollup context hash associated
+    with a Tezos block hash, i.e. the hash of the context resulting from the
+    application of the inbox contained in this block. Returns [None] if the block
+    [block_hash] has never been handled by the rollup node. *)
+val context_hash :
+  t -> Block_hash.t -> Protocol.Tx_rollup_l2_context_hash.t option Lwt.t
+
+(** [block_already_seen state block] returns the hash of the context after the
+    application of the inbox of block [block] if it has already been processed,
+    or [None] otherwise. *)
+val block_already_seen :
+  t -> Block_hash.t -> Protocol.Tx_rollup_l2_context_hash.t option Lwt.t
 
 (** [save_inbox state hash inbox] saves the inbox relative to the block referenced by
     the hash given as
@@ -64,3 +75,12 @@ val find_inbox : t -> Block_hash.t -> Inbox.t option Lwt.t
 (** [rollup_operation_index] returns the index where are rollup operation (currently
     as manager operation) stored into a [Block_info.t]. *)
 val rollup_operation_index : int
+
+(** [save_context_hash state block_hash context_hash] saves the rollup context
+    hash resulting from the application of the inbox contained in the block
+    [block_hash]. *)
+val save_context_hash :
+  t ->
+  Block_hash.t ->
+  Protocol.Tx_rollup_l2_context_hash.t ->
+  unit tzresult Lwt.t

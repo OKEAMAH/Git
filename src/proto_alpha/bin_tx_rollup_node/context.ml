@@ -159,9 +159,7 @@ end
 
 include Protocol.Tx_rollup_l2_context.Make (Irmin_storage)
 
-(* let empty_storage : Irmin_storage.t = Store.Tree.empty ()
- *
- * let empty : t = empty_storage *)
+let empty index = {index; parents = []; tree = Store.Tree.empty ()}
 
 let sync index =
   if index.readonly then Store.sync index.repo ;
