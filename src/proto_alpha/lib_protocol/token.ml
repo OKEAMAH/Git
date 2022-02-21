@@ -187,9 +187,7 @@ let credit ctxt dest amount origin =
       match container with
       | `Contract dest ->
           Contract_storage.credit_only_call_from_token ctxt dest amount
-          >>=? fun ctxt ->
-          add_contract_stake ctxt dest amount >|=? fun ctxt ->
-          (ctxt, Contract dest)
+          >|=? fun ctxt -> (ctxt, Contract dest)
       | `Collected_commitments bpkh ->
           Commitment_storage.increase_commitment_only_call_from_token
             ctxt
@@ -205,10 +203,7 @@ let credit ctxt dest amount origin =
             ctxt
             delegate
             amount
-          >>=? fun ctxt ->
-          let contract = Contract_repr.implicit_contract delegate in
-          add_contract_stake ctxt contract amount >|=? fun ctxt ->
-          (ctxt, Deposits delegate)
+          >|=? fun ctxt -> (ctxt, Deposits delegate)
       | `Block_fees ->
           Raw_context.credit_collected_fees_only_call_from_token ctxt amount
           >>?= fun ctxt -> return (ctxt, Block_fees)
@@ -218,9 +213,7 @@ let credit ctxt dest amount origin =
             contract
             bond_id
             amount
-          >>=? fun ctxt ->
-          add_contract_stake ctxt contract amount >>=? fun ctxt ->
-          return (ctxt, Frozen_bonds (contract, bond_id))))
+          >>=? fun ctxt -> return (ctxt, Frozen_bonds (contract, bond_id))))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Credited amount, origin))
 
 let spend ctxt src amount origin =
@@ -249,8 +242,8 @@ let spend ctxt src amount origin =
           Contract_storage.spend_only_call_from_token ctxt src delegate amount
           >>=? fun ctxt ->
           Contract_storage.allocated ctxt src >>=? fun allocated ->
-          (if allocated then remove_contract_stake ctxt src amount
-          else delete_delegate ctxt (`Contract src))
+          (if allocated then return ctxt
+          else Contract_delegate_storage.delete ctxt src)
           >|=? fun ctxt -> (ctxt, Contract src)
       | `Collected_commitments bpkh ->
           Commitment_storage.decrease_commitment_only_call_from_token
@@ -263,10 +256,7 @@ let spend ctxt src amount origin =
             ctxt
             delegate
             amount
-          >>=? fun ctxt ->
-          let contract = Contract_repr.implicit_contract delegate in
-          remove_contract_stake ctxt contract amount >|=? fun ctxt ->
-          (ctxt, Deposits delegate)
+          >|=? fun ctxt -> (ctxt, Deposits delegate)
       | `Block_fees ->
           Raw_context.spend_collected_fees_only_call_from_token ctxt amount
           >>?= fun ctxt -> return (ctxt, Block_fees)
@@ -276,10 +266,104 @@ let spend ctxt src amount origin =
             contract
             bond_id
             amount
-          >>=? fun ctxt ->
-          remove_contract_stake ctxt contract amount >>=? fun ctxt ->
-          return (ctxt, Frozen_bonds (contract, bond_id))))
+          >>=? fun ctxt -> return (ctxt, Frozen_bonds (contract, bond_id))))
   >|=? fun (ctxt, balance) -> (ctxt, (balance, Debited amount, origin))
+
+(* stake diff calculation *)
+(* [stake_removes] is a map associated to the delegatees for which
+   at least a delegator has spended tez in a transfer_n, the total
+   amount spended by its delegatees in this transfer_n.*)
+
+module StMap = Map.Make (struct
+  type t = Contract_repr.t
+
+  let compare = Contract_repr.compare
+end)
+
+(* [collect_delegate_stake_mvt amount del dsdiff] ensures that only
+   one stake decreasement will be performed per delegatee during a
+   transfer_n.
+
+   It collects by source an [amount], checks if it already knows [del]
+   and adds [amount] to the stake to remove for [del] in this
+   transfer.
+
+   When [del] does not already appear in [dsdiff], [del] is added
+   associated to [amount]. *)
+let collect_delegate_stake_mvt amount del dsdiff =
+  match StMap.find del dsdiff with
+  | None -> return (StMap.add del amount dsdiff)
+  | Some old_amount ->
+      Tez_repr.(old_amount +? amount) >>?= fun new_amount ->
+      return (StMap.add del new_amount dsdiff)
+
+(* [update_staking_balances del_cred amount_cred dsdiff ctxt] ensures
+   that only one staking movement is performed per delegatee during a
+   transfer_n. It computes for each delegatee implies in a transfer_n
+   the unique staking movement to performed.
+
+   From a [stake_removes] map [dsdiff] and a context [ctxt] computes a
+   new context such as only one staking movement is performed for the
+   [delegatee]'s in [dsdiff] and [del_cred].
+
+   For any [del] in [dsdiff], [del] is not [del_cred], it removes
+   [dsdiff del] from [del] staking balance.
+
+   When [del_cred] is not in [dsdiff], [cred_amount] is added to its
+   staking amount. Otherwise, either:
+   - [cred_amount] = [dsdiff del_cred] and no updates is performed, or
+   - [cred_amount] > [dsdiff del_cred] and the diff is added to
+     [del_cred]'s staking_balance, or
+   - [cred_amount] > [dsdiff del_cred] and the diff is removed to
+     [del_cred]'s staking_balance. *)
+
+let update_staking_balances del_cred amount_cred dsdiff pre_ctxt =
+  let cmp d1 d2 =
+    match d1 with Some d1 -> Contract_repr.(d1 = d2) | None -> false
+  in
+  StMap.fold_es
+    (fun del amount_spend (ctxt, found) ->
+      match Contract_repr.is_implicit del with
+      | None -> return (ctxt, found)
+      | Some del_pkh ->
+          if cmp del_cred del then
+            (if Tez_repr.(amount_spend = amount_cred) then return ctxt
+            else if Tez_repr.(amount_spend > amount_cred) then
+              Tez_repr.(amount_spend -? amount_cred) >>?= fun new_amount ->
+              Stake_storage.remove_stake ctxt del_pkh new_amount
+            else
+              Tez_repr.(amount_cred -? amount_spend) >>?= fun new_amount ->
+              Stake_storage.add_stake ctxt del_pkh new_amount)
+            >>=? fun ctxt -> return (ctxt, true)
+          else
+            Stake_storage.remove_stake ctxt del_pkh amount_spend
+            >>=? fun ctxt -> return (ctxt, found))
+    dsdiff
+    (pre_ctxt, false)
+  >>=? fun (ctxt, found) ->
+  if found then return ctxt
+  else
+    match del_cred with
+    | None -> return ctxt
+    | Some del_cred -> (
+        match Contract_repr.is_implicit del_cred with
+        | None -> return ctxt
+        | Some del_pkh -> Stake_storage.add_stake ctxt del_pkh amount_cred)
+
+let delegate_of ctxt std =
+  match std with
+  | `Contract src | `Frozen_bonds (src, _) -> (
+      Contract_delegate_storage.find ctxt src >>=? function
+      | None -> return_none
+      | Some del -> return_some (Contract_repr.implicit_contract del))
+  | `Frozen_deposits delegate -> (
+      Contract_delegate_storage.find
+        ctxt
+        (Contract_repr.implicit_contract delegate)
+      >>=? function
+      | None -> return_none
+      | Some del -> return_some (Contract_repr.implicit_contract del))
+  | `Block_fees | `Collected_commitments _ | #source | #sink -> return_none
 
 let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
   let sources = List.filter (fun (_, am) -> Tez_repr.(am <> zero)) src in
@@ -288,15 +372,21 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
       (* Avoid accessing context data when there is nothing to transfer. *)
       return (ctxt, [])
   | _ :: _ ->
-      (* Withdraw from sources. *)
+      (* Withdraw from sources and compute of the stake decreasements by
+         delegatee. *)
       List.fold_left_es
-        (fun (ctxt, total, debit_logs) (source, amount) ->
+        (fun ((ctxt, total, debit_logs), dsdiff) (source, amount) ->
           spend ctxt source amount origin >>=? fun (ctxt, debit_log) ->
           Tez_repr.(amount +? total) >>?= fun total ->
-          return (ctxt, total, debit_log :: debit_logs))
-        (ctxt, Tez_repr.zero, [])
+          delegate_of ctxt source >>=? fun del ->
+          (match del with
+          | None -> return dsdiff
+          | Some del -> collect_delegate_stake_mvt amount del dsdiff)
+          >>=? fun dsdiff ->
+          return ((ctxt, total, debit_log :: debit_logs), dsdiff))
+        ((ctxt, Tez_repr.zero, []), StMap.empty)
         sources
-      >>=? fun (ctxt, amount, debit_logs) ->
+      >>=? fun ((ctxt, amount, debit_logs), dsdiff) ->
       credit ctxt dest amount origin >>=? fun (ctxt, credit_log) ->
       (* Deallocate implicit contracts with no stake. This must be done after
          spending and crediting. If done in between then a transfer of all the
@@ -310,11 +400,14 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
           | #source -> return ctxt)
         ctxt
         sources
-      >|=? fun ctxt ->
+      >>=? fun ctxt ->
+      (* Make a unique staking movement by delegatee implies in this transfer_n.*)
+      delegate_of ctxt dest >>=? fun del ->
+      update_staking_balances del amount dsdiff ctxt >>=? fun ctxt ->
       (* Make sure the order of balance updates is : debit logs in the order of
          of the parameter [src], and then the credit log. *)
       let balance_updates = List.rev (credit_log :: debit_logs) in
-      (ctxt, balance_updates)
+      return (ctxt, balance_updates)
 
 let transfer ?(origin = Receipt_repr.Block_application) ctxt src dest amount =
   transfer_n ~origin ctxt [(src, amount)] dest

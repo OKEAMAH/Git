@@ -41,7 +41,9 @@
     associated staking movements. When [source] is a [delegator],
     its delegate's staking balance is increased by the transferred [amount], and
     when [dest] is a [delegator], its delegate's staking balance is decreased by
-    [amount].
+    [amount]. To improve performance, we avoid "dry" staking movements by computing
+    only one staking update per delegatee by transfer. Hence, a transfer which
+    source and dest share the same delegatee has no associated staking movement.
     Second, along with the [delegators]/[delegatees] relationship management, this module
     manages the associated stake movements.
     When initiating a delegation, the [delegatee]'s staking balance is increased by
@@ -126,7 +128,8 @@ val transfer_n :
     corresponding balance updates tagged with [origin]. By default, [~origin] is
     set to [Receipt_repr.Block_application].
     The stake of [src]'s delegate if any (resp. [dest]'s delegate if any) is
-    increased by [amount] (resp. decreased by [amount]).
+    increased by [amount] (resp. decreased by [amount]). If they share
+    the same [delegatee], no staking movement is performed.
     Returns {!Storage_Error Missing_key} if [src] refers to a contract that is
     not allocated.
     Returns a [Balance_too_low] error if [src] refers to a contract whose

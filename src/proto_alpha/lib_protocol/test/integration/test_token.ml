@@ -859,7 +859,7 @@ let test_staking_transfer_from_undelegator_to_delegator () =
   wrap (Token.staking_balance ctxt (`Contract del)) >>=? fun dbal_tr ->
   dbal_init +? bsk_init >>?= fun res_dbal_del ->
   am +? bsk_init >>?= fun res_bsk_tr ->
-  dbal_del +? am >>?= fun res_dbal_tr ->
+  res_dbal_del +? am >>?= fun res_dbal_tr ->
   Assert.equal_tez ~loc:__LOC__ res_dbal_del dbal_del >>=? fun _ ->
   Assert.equal_tez ~loc:__LOC__ res_bsk_tr bsk_tr >>=? fun _ ->
   Assert.equal_tez ~loc:__LOC__ res_dbal_tr dbal_tr
