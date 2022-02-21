@@ -976,6 +976,8 @@ let test_commitment_predecessor () =
   (* Transactions in blocks 2, 3, 6 *)
   make_transactions_in tx_rollup contract1 [2; 3; 6] b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
+  (* Lower gas limit per operation to not exhaust block gas limit *)
+  let gas_limit = Gas.Arith.integral_of_int_exn 100_000 in
   (* Check error: Commitment with predecessor for first block *)
   let batches : Tx_rollup_commitments.Commitment.batch_commitment list =
     [{root = Bytes.make 20 '0'}]
@@ -987,7 +989,8 @@ let test_commitment_predecessor () =
   let commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 1l; batches; predecessor = Some some_hash}
   in
-  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment ~gas_limit
+  >>=? fun op ->
   let error =
     Tx_rollup_inbox.Tx_rollup_inbox_does_not_exist (tx_rollup, raw_level 1l)
   in
@@ -1001,7 +1004,8 @@ let test_commitment_predecessor () =
   let commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 3l; batches; predecessor = None}
   in
-  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment ~gas_limit
+  >>=? fun op ->
   Incremental.add_operation i op ~expect_failure:(function
       | Environment.Ecoproto_error
           (Tx_rollup_commitments.Wrong_commitment_predecessor_level as e)
@@ -1009,12 +1013,13 @@ let test_commitment_predecessor () =
           Assert.test_error_encodings e ;
           return_unit
       | _ -> failwith "Need to check commitment predecessor")
-  >>=? fun (* using the same context leads to gas exhaustion *) _i ->
+  >>=? fun i ->
   (* Commitment refers to a predecessor which does not exist *)
   let commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 3l; batches; predecessor = Some some_hash}
   in
-  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment ~gas_limit
+  >>=? fun op ->
   Incremental.add_operation i op ~expect_failure:(function
       | Environment.Ecoproto_error
           (Tx_rollup_commitments.Missing_commitment_predecessor as e)
@@ -1027,7 +1032,8 @@ let test_commitment_predecessor () =
   let commitment : Tx_rollup_commitments.Commitment.t =
     {level = raw_level 5l; batches; predecessor = Some some_hash}
   in
-  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment ~gas_limit
+  >>=? fun op ->
   let error =
     Tx_rollup_inbox.Tx_rollup_inbox_does_not_exist (tx_rollup, raw_level 5l)
   in
