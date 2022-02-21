@@ -455,6 +455,8 @@ type ('arg, 'storage) script =
       arg_type : ('arg, _) ty;
       storage : 'storage;
       storage_type : ('storage, _) ty;
+      event_type : (_, _) ty;
+      event_type_node : Script.node option;
       views : view_map;
       entrypoints : 'arg entrypoints;
       code_size : Cache_memory_helpers.sint;
@@ -1384,6 +1386,14 @@ and 'kind manager_operation =
       unparsed_parameters : Script.expr;
     }
       -> Kind.transaction manager_operation
+  | Transaction_to_event : {
+      event_address : Contract_event.address;
+      event_ty : (_, _) ty;
+      tag : string;
+      unparsed_data : Script.expr;
+      location : Script.location;
+    }
+      -> Kind.transaction manager_operation
   | Origination : {
       origination : Alpha_context.origination;
       preorigination : Contract_hash.t;
@@ -1410,6 +1420,8 @@ and operation = {
   lazy_storage_diff : Lazy_storage.diffs option;
 }
 
+let default_event_type = Unit_t
+
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
 [@@ocaml.unboxed]
@@ -1418,6 +1430,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   function
   | Transaction_to_contract _ -> Kind.Transaction_manager_kind
   | Transaction_to_tx_rollup _ -> Kind.Transaction_manager_kind
+  | Transaction_to_event _ -> Kind.Transaction_manager_kind
   | Origination _ -> Kind.Origination_manager_kind
   | Delegation _ -> Kind.Delegation_manager_kind
 

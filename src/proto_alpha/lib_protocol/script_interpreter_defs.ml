@@ -38,7 +38,10 @@ open Script_typed_ir
 open Script_ir_translator
 open Local_gas_counter
 
-type error += Tx_rollup_invalid_transaction_amount
+type error +=
+  | Tx_rollup_invalid_transaction_amount
+  | Event_invalid_transaction_amount
+  | Event_malformed_parameter_type
 
 let () =
   register_error_kind
@@ -56,6 +59,35 @@ let () =
     Data_encoding.unit
     (function Tx_rollup_invalid_transaction_amount -> Some () | _ -> None)
     (fun () -> Tx_rollup_invalid_transaction_amount)
+
+let () =
+  register_error_kind
+    `Permanent
+    ~id:"operation.event_invalid_transaction_amount"
+    ~title:"Transaction amount to an event must be zero"
+    ~description:
+      "Events does not own Tez, and therefore transactions targeting a event \
+       sink must have its amount field set to zero."
+    ~pp:(fun ppf () ->
+      Format.pp_print_string ppf "Transaction amount to an event must be zero.")
+    Data_encoding.unit
+    (function Event_invalid_transaction_amount -> Some () | _ -> None)
+    (fun () -> Event_invalid_transaction_amount)
+
+let () =
+  register_error_kind
+    `Permanent
+    ~id:"operation.event_malformed_parameter_type"
+    ~title:"Parameters type for event contract is malformed"
+    ~description:"This type has to be a pair of a string and another type."
+    ~pp:(fun ppf () ->
+      Format.pp_print_string
+        ppf
+        "Parameters type for event contract is malformed and is expected to be \
+         a pair of a string and another type.")
+    Data_encoding.unit
+    (function Event_malformed_parameter_type -> Some () | _ -> None)
+    (fun () -> Event_malformed_parameter_type)
 
 (*
 
@@ -582,6 +614,30 @@ let make_transaction_to_tx_rollup (type t tc) ctxt ~destination ~amount
          refactoring away to reach it. *)
       assert false
 
+let make_transaction_to_event (type t tc) ctxt ~event_address ~location ~amount
+    ~(event_ty : (t, tc) ty) ~(event_data : t) =
+  error_unless Tez.(amount = zero) Event_invalid_transaction_amount
+  >>?= fun () ->
+  match event_ty with
+  | Pair_t (String_t, event_ty, _, _) ->
+      let tag, event_data = event_data in
+      unparse_data ctxt Optimized event_ty event_data
+      >>=? fun (unparsed_data, ctxt) ->
+      Lwt.return
+        ( Gas.consume ctxt (Script.strip_locations_cost unparsed_data)
+        >|? fun ctxt ->
+          let unparsed_data = Micheline.strip_locations unparsed_data in
+          ( Transaction_to_event
+              {
+                event_address;
+                location;
+                event_ty;
+                tag = Script_string.to_string tag;
+                unparsed_data;
+              },
+            ctxt ) )
+  | _ -> fail Event_malformed_parameter_type
+
 (* [transfer (ctxt, sc) gas tez parameters_ty parameters destination entrypoint]
    creates an operation that transfers an amount of [tez] to a destination and
    an entrypoint instantiated with argument [parameters] of type
@@ -622,7 +678,15 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters
   | Sc_rollup _ ->
       (* TODO #2801
          Implement transfers to sc rollups. *)
-      failwith "Transferring to smart-contract rollups is not yet supported")
+      failwith "Transferring to smart-contract rollups is not yet supported"
+  | Event event_address ->
+      make_transaction_to_event
+        ctxt
+        ~event_address
+        ~amount
+        ~location
+        ~event_ty:parameters_ty
+        ~event_data:parameters)
   >>=? fun (operation, ctxt) ->
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let iop = {source = Contract.Originated sc.self; operation; nonce} in

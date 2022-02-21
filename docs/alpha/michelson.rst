@@ -1866,7 +1866,7 @@ for under/overflows.
 Operations on contracts
 ~~~~~~~~~~~~~~~~~~~~~~~
 
--  ``CREATE_CONTRACT { storage 'g ; parameter 'p ; code ... }``:
+-  ``CREATE_CONTRACT { storage 'g ; parameter 'p ; event 'e; code ... }``:
    Forge a new contract from a literal.
 
 ::
@@ -2337,8 +2337,6 @@ Operations on timelock
 ::
 
    ::  chest_key : chest : nat : 'S -> or bytes bool : 'S
-
-
 
 Removed instructions
 ~~~~~~~~~~~~~~~~~~~~

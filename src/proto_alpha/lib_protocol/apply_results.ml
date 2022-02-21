@@ -97,6 +97,24 @@ let contents_of_internal_operation (type kind)
             entrypoint = Tx_rollup.deposit_entrypoint;
             parameters = Script.lazy_expr unparsed_parameters;
           }
+    | Transaction_to_event {event_address; tag; unparsed_data; _} ->
+        let open Micheline in
+        let open Michelson_v1_primitives in
+        let parameters =
+          strip_locations
+            (Prim
+               ( dummy_location,
+                 D_Pair,
+                 [String (dummy_location, tag); root unparsed_data],
+                 [] ))
+        in
+        Transaction
+          {
+            destination = Event event_address;
+            amount = Tez.zero;
+            entrypoint = Contract_event.entrypoint;
+            parameters = Script.lazy_expr parameters;
+          }
     | Origination {origination; _} -> Origination origination
     | Delegation delegate -> Delegation delegate
   in
@@ -119,6 +137,7 @@ type successful_transaction_result =
       storage_size : Z.t;
       paid_storage_size_diff : Z.t;
       allocated_destination_contract : bool;
+      events : Contract_event.log;
     }
   | Transaction_to_tx_rollup_result of {
       ticket_hash : Ticket_hash.t;
@@ -440,7 +459,7 @@ module Manager_result = struct
         case
           ~title:"To_contract"
           (Tag 0)
-          (obj9
+          (obj10
              (opt "storage" Script.expr_encoding)
              (dft "balance_updates" Receipt.balance_updates_encoding [])
              (dft "originated_contracts" (list Contract.originated_encoding) [])
@@ -449,7 +468,8 @@ module Manager_result = struct
              (dft "storage_size" z Z.zero)
              (dft "paid_storage_size_diff" z Z.zero)
              (dft "allocated_destination_contract" bool false)
-             (opt "lazy_storage_diff" Lazy_storage.encoding))
+             (opt "lazy_storage_diff" Lazy_storage.encoding)
+             (dft "events" (list Contract_event.encoding) []))
           (function
             | Transaction_to_contract_result
                 {
@@ -461,6 +481,7 @@ module Manager_result = struct
                   storage_size;
                   paid_storage_size_diff;
                   allocated_destination_contract;
+                  events;
                 } ->
                 Some
                   ( storage,
@@ -471,7 +492,8 @@ module Manager_result = struct
                     storage_size,
                     paid_storage_size_diff,
                     allocated_destination_contract,
-                    lazy_storage_diff )
+                    lazy_storage_diff,
+                    events )
             | _ -> None)
           (fun ( storage,
                  balance_updates,
@@ -481,7 +503,8 @@ module Manager_result = struct
                  storage_size,
                  paid_storage_size_diff,
                  allocated_destination_contract,
-                 lazy_storage_diff ) ->
+                 lazy_storage_diff,
+                 events ) ->
             assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
             Transaction_to_contract_result
               {
@@ -493,6 +516,7 @@ module Manager_result = struct
                 storage_size;
                 paid_storage_size_diff;
                 allocated_destination_contract;
+                events;
               });
         case
           ~title:"To_tx_rollup"

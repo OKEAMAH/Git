@@ -1,0 +1,34 @@
+parameter unit;
+storage unit;
+event (or (nat %int) (string %str));
+code { DROP;
+       UNIT;
+       PUSH address "ev12m5E1yW14mc9rsrcdGAWVfDSdmRGuctykrVU55bHZBGv9kmdhW";
+       CONTRACT %emit (pair string (or nat string));
+       IF_NONE
+       { PUSH string "fail to generate event sink";
+         FAILWITH
+       }
+       {  DUP;
+          PUSH mutez 0;
+          PUSH string "right";
+          RIGHT nat;
+          PUSH string "tag1";
+          PAIR;
+          TRANSFER_TOKENS;
+          SWAP;
+          PUSH mutez 0;
+          PUSH nat 2;
+          LEFT string;
+          PUSH string "tag2";
+          PAIR;
+          TRANSFER_TOKENS;
+          NIL operation;
+          SWAP;
+          CONS;
+          SWAP;
+          CONS;
+          PAIR
+       } }
+
+       

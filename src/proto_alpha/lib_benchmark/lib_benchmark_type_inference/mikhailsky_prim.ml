@@ -32,6 +32,7 @@ type prim =
   | K_parameter
   | K_storage
   | K_code
+  | K_event
   | D_False
   | D_Elt
   | D_Left
@@ -199,6 +200,7 @@ let relation =
     (K_parameter, Michelson_v1_primitives.K_parameter);
     (K_storage, Michelson_v1_primitives.K_storage);
     (K_code, Michelson_v1_primitives.K_code);
+    (K_event, Michelson_v1_primitives.K_event);
     (D_False, Michelson_v1_primitives.D_False);
     (D_Elt, Michelson_v1_primitives.D_Elt);
     (D_Left, Michelson_v1_primitives.D_Left);
@@ -369,6 +371,7 @@ let string_of_prim prim =
   | K_parameter -> "K_parameter"
   | K_storage -> "K_storage"
   | K_code -> "K_code"
+  | K_event -> "K_event"
   | D_False -> "D_False"
   | D_Elt -> "D_Elt"
   | D_Left -> "D_Left"
@@ -535,7 +538,7 @@ type kind = Data_kind | Instr_kind | Type_kind | Keyword_kind | Annot_kind
 
 let kind (x : prim) =
   match x with
-  | K_parameter | K_storage | K_code -> Keyword_kind
+  | K_parameter | K_storage | K_code | K_event -> Keyword_kind
   | D_Hole | D_False | D_Elt | D_Left | D_None | D_Pair | D_Right | D_Some
   | D_True | D_Unit ->
       Data_kind

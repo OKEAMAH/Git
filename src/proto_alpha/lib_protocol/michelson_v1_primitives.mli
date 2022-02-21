@@ -52,6 +52,7 @@ type prim =
   | K_storage
   | K_code
   | K_view
+  | K_event
   | D_False
   | D_Elt
   | D_Left

@@ -39,6 +39,7 @@ type prim =
   | K_storage
   | K_code
   | K_view
+  | K_event
   | D_False
   | D_Elt
   | D_Left
@@ -197,7 +198,7 @@ type namespace =
   | (* prefix "H" *) Constant_hash_namespace
 
 let namespace = function
-  | K_code | K_view | K_parameter | K_storage -> Keyword_namespace
+  | K_code | K_view | K_parameter | K_storage | K_event -> Keyword_namespace
   | D_Elt | D_False | D_Left | D_None | D_Pair | D_Right | D_Some | D_True
   | D_Unit ->
       Constant_namespace
@@ -246,6 +247,7 @@ let string_of_prim = function
   | K_storage -> "storage"
   | K_code -> "code"
   | K_view -> "view"
+  | K_event -> "event"
   | D_False -> "False"
   | D_Elt -> "Elt"
   | D_Left -> "Left"
@@ -399,6 +401,7 @@ let prim_of_string = function
   | "storage" -> ok K_storage
   | "code" -> ok K_code
   | "view" -> ok K_view
+  | "event" -> ok K_event
   | "False" -> ok D_False
   | "Elt" -> ok D_Elt
   | "Left" -> ok D_Left
@@ -760,7 +763,8 @@ let prim_encoding =
          (* Alpha_013 addition *)
          ("tx_rollup_l2_address", T_tx_rollup_l2_address);
          ("MIN_BLOCK_TIME", I_MIN_BLOCK_TIME);
-         ("sapling_transaction", T_sapling_transaction)
+         ("sapling_transaction", T_sapling_transaction);
+         ("event", K_event)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *);
        ]

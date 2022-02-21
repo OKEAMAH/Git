@@ -116,6 +116,11 @@ type error += Cannot_serialize_storage
 
 type error += Michelson_too_many_recursive_calls
 
+type error += Event_type_mismatch
+
+type error +=
+  | Event_mismatch_address : {expected : string; actual : string} -> error
+
 let () =
   let open Data_encoding in
   let trace_encoding =
@@ -183,6 +188,19 @@ let () =
     Data_encoding.empty
     (function Cannot_serialize_failure -> Some () | _ -> None)
     (fun () -> Cannot_serialize_failure) ;
+  (* Event mismatch address *)
+  register_error_kind
+    `Permanent
+    ~id:"michelson_v1.event_mismatch_address"
+    ~title:"Event parameter is malformed"
+    ~description:"Event address is diverging from the event type specification."
+    (obj2
+       (req "expected" Data_encoding.string)
+       (req "actual" Data_encoding.string))
+    (function
+      | Event_mismatch_address {expected; actual} -> Some (expected, actual)
+      | _ -> None)
+    (fun (expected, actual) -> Event_mismatch_address {expected; actual}) ;
   (* Cannot serialize storage *)
   register_error_kind
     `Temporary
@@ -345,7 +363,7 @@ and next :
       | KMap_exit_body (body, xs, ys, yk, ks) ->
           (kmap_exit [@ocaml.tailcall]) id g gas body xs ys yk ks accu stack
       | KView_exit (orig_step_constants, ks) ->
-          let g = (fst g, orig_step_constants) in
+          let g = (ctxt, orig_step_constants) in
           (next [@ocaml.tailcall]) g gas ks accu stack)
 
 (*
@@ -1038,7 +1056,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack
           in
           match c with
-          | Contract (Implicit _) | Tx_rollup _ | Sc_rollup _ ->
+          | Contract (Implicit _) | Tx_rollup _ | Sc_rollup _ | Event _ ->
               (return_none [@ocaml.tailcall]) ctxt
           | Contract (Originated contract_hash as c) -> (
               Contract.get_script ctxt c >>=? fun (ctxt, script_opt) ->
@@ -1618,7 +1636,8 @@ and klog :
       let ks' = mk ks' in
       (kmap_exit [@ocaml.tailcall]) mk g gas body xs ys yk ks' accu stack
   | KView_exit (orig_step_constants, ks') ->
-      let g = (fst g, orig_step_constants) in
+      let ctxt, _ = g in
+      let g = (ctxt, orig_step_constants) in
       (next [@ocaml.tailcall]) g gas ks' accu stack
   | KLog (_, _) ->
       (* This case should never happen. *)
@@ -1700,7 +1719,40 @@ type execution_result = {
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
   ticket_diffs : Z.t Ticket_token_map.t;
+  events : Contract_event.log;
 }
+
+let collect_events ctxt expected_event_address expected_event_type ops =
+  let check_event_ty (type a ac b bc) ctxt (exp : (a, ac) ty) (got : (b, bc) ty)
+      loc : ((a, a) eq * context) tzresult =
+    record_trace
+      Event_type_mismatch
+      ( Gas_monad.run ctxt @@ ty_eq ~error_details:(Informative loc) exp got
+      >>? fun (eq, ctxt) ->
+        eq >|? fun Eq -> (Eq, ctxt) )
+  in
+  let collect_one op (ctxt, ops, evs) =
+    match op with
+    | Internal_operation
+        {
+          operation =
+            Transaction_to_event
+              {event_address; event_ty; tag; unparsed_data = data; location};
+          _;
+        } ->
+        check_event_ty ctxt expected_event_type event_ty location
+        >>? fun (Eq, ctxt) ->
+        error_unless
+          Contract_event.Hash.(expected_event_address = event_address)
+          (Event_mismatch_address
+             {
+               expected = Contract_event.to_b58check expected_event_address;
+               actual = Contract_event.to_b58check event_address;
+             })
+        >>? fun () -> ok (ctxt, ops, Contract_event.{tag; data} :: evs)
+    | op -> ok (ctxt, op :: ops, evs)
+  in
+  List.fold_right_e collect_one ops (ctxt, [], [])
 
 let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     unparsed_script cached_script arg =
@@ -1722,6 +1774,8 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
                    storage_type;
                    entrypoints;
                    views;
+                   event_type;
+                   event_type_node;
                  }),
              ctxt ) ->
   Gas_monad.run
@@ -1778,10 +1832,26 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     | [] -> None
     | diff -> Some diff
   in
+  Option.map (Script_ir_translator.hash_event_ty ctxt) event_type_node
+  |> Option.value
+       ~default:(ok (Script_ir_translator.hash_default_event_type, ctxt))
+  >>?= fun (event_address, ctxt) ->
+  collect_events ctxt event_address event_type operations
+  >>?= fun (ctxt, operations, events) ->
   let script =
     Ex_script
       (Script
-         {code_size; code; arg_type; storage; storage_type; entrypoints; views})
+         {
+           code_size;
+           code;
+           arg_type;
+           storage;
+           storage_type;
+           entrypoints;
+           views;
+           event_type;
+           event_type_node;
+         })
   in
   Ticket_scanner.type_has_tickets ctxt arg_type
   >>?= fun (arg_type_has_tickets, ctxt) ->
@@ -1811,6 +1881,7 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
         lazy_storage_diff = lazy_storage_diff_all;
         operations;
         ticket_diffs;
+        events;
       },
       ctxt )
 

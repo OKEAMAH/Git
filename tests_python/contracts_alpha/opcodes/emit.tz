@@ -1,0 +1,29 @@
+{ parameter unit ;
+  storage unit ;
+  event (or (nat %number) (string %words)) ;
+  code { DROP ;
+         UNIT ;
+         PUSH address "ev13o2yWTf9YocjZXWyyHhuTDzoeDuKKe2RmKp9sBnPFeywtpdFsp" ;
+         CONTRACT %emit (pair string (or nat string)) ;
+         IF_NONE
+           { PUSH string "fail to generate event sink" ; FAILWITH }
+           { DUP ;
+             PUSH mutez 0 ;
+             PUSH nat 10 ;
+             LEFT string ;
+             PUSH string "this is number" ;
+             PAIR ;
+             TRANSFER_TOKENS ;
+             SWAP ;
+             PUSH mutez 0 ;
+             PUSH string "lorem ipsum" ;
+             RIGHT nat ;
+             PUSH string "Cicero" ;
+             PAIR ;
+             TRANSFER_TOKENS ;
+             NIL operation ;
+             DIG 2 ;
+             CONS ;
+             SWAP ;
+             CONS ;
+             PAIR } } }

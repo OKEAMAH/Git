@@ -491,6 +491,7 @@ module Script : sig
     | K_storage
     | K_code
     | K_view
+    | K_event
     | D_False
     | D_Elt
     | D_Left
@@ -2182,6 +2183,39 @@ module Bond_id : sig
   end
 end
 
+(** Contract_event exposes fields for event data access. See [Contract_event_repr]. *)
+module Contract_event : sig
+  type t = {tag : string; data : Script.expr}
+
+  val encoding : t Data_encoding.t
+
+  module Hash : module type of Contract_event_repr.Hash
+
+  type address = Hash.t
+
+  val in_memory_size : address -> Cache_memory_helpers.sint
+
+  val to_b58check : address -> string
+
+  val pp : Format.formatter -> address -> unit
+
+  val of_b58data : Base58.data -> address option
+
+  val of_b58check : string -> (address, error trace) result
+
+  val of_b58check_opt : string -> address option
+
+  val entrypoint : Entrypoint.t
+
+  val ty_encoding :
+    Michelson_v1_primitives.prim Micheline.canonical Data_encoding.t
+
+  val default_event_type_node :
+    (Micheline.canonical_location, Michelson_v1_primitives.prim) Micheline.node
+
+  type log = t list
+end
+
 module Receipt : sig
   type balance =
     | Contract of Contract.t
@@ -2916,6 +2950,7 @@ module Destination : sig
     | Contract of Contract.t
     | Tx_rollup of Tx_rollup.t
     | Sc_rollup of Sc_rollup.t
+    | Event of Contract_event.address
 
   val encoding : t Data_encoding.t
 
