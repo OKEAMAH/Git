@@ -45,6 +45,7 @@ type error +=
   | Inconsistent_counters
   | Forbidden_zero_ticket_quantity
   | Incorrect_reveal_position
+  | Event_non_internal_transaction
 
 val begin_partial_construction :
   context ->

@@ -1,0 +1,77 @@
+tests_alpha/test_contract.py::TestTypecheck::test_typecheck[opcodes/emit.tz]
+
+Well typed
+Gas remaining: 1039978.639 units remaining
+{ parameter unit ;
+  storage unit ;
+  event (or (nat %number) (string %words)) ;
+  code { DROP
+         /* [] */ ;
+         UNIT
+         /* [ unit ] */ ;
+         PUSH address
+              "ev13o2yWTf9YocjZXWyyHhuTDzoeDuKKe2RmKp9sBnPFeywtpdFsp"
+         /* [ address : unit ] */ ;
+         CONTRACT %emit
+           (pair string (or nat string))
+         /* [ option (contract (pair string (or nat string))) : unit ] */ ;
+         IF_NONE
+           { PUSH string "fail to generate event sink" /* [ string : unit ] */ ; FAILWITH /* [] */ }
+           { DUP
+             /* [ contract (pair string (or nat string))
+                : contract (pair string (or nat string)) : unit ] */ ;
+             PUSH mutez
+                  0
+             /* [ mutez : contract (pair string (or nat string))
+                : contract (pair string (or nat string)) : unit ] */ ;
+             PUSH nat
+                  10
+             /* [ nat : mutez : contract (pair string (or nat string))
+                : contract (pair string (or nat string)) : unit ] */ ;
+             LEFT string
+             /* [ or nat string : mutez : contract (pair string (or nat string))
+                : contract (pair string (or nat string)) : unit ] */ ;
+             PUSH string
+                  "this is number"
+             /* [ string : or nat string : mutez : contract (pair string (or nat string))
+                : contract (pair string (or nat string)) : unit ] */ ;
+             PAIR
+             /* [ pair string (or nat string) : mutez
+                : contract (pair string (or nat string))
+                : contract (pair string (or nat string)) : unit ] */ ;
+             TRANSFER_TOKENS
+             /* [ operation : contract (pair string (or nat string)) : unit ] */ ;
+             SWAP
+             /* [ contract (pair string (or nat string)) : operation : unit ] */ ;
+             PUSH mutez
+                  0
+             /* [ mutez : contract (pair string (or nat string)) : operation : unit ] */ ;
+             PUSH string
+                  "lorem ipsum"
+             /* [ string : mutez : contract (pair string (or nat string)) : operation
+                : unit ] */ ;
+             RIGHT
+               nat
+             /* [ or nat string : mutez : contract (pair string (or nat string)) : operation
+                : unit ] */ ;
+             PUSH string
+                  "Cicero"
+             /* [ string : or nat string : mutez : contract (pair string (or nat string))
+                : operation : unit ] */ ;
+             PAIR
+             /* [ pair string (or nat string) : mutez
+                : contract (pair string (or nat string)) : operation : unit ] */ ;
+             TRANSFER_TOKENS
+             /* [ operation : operation : unit ] */ ;
+             NIL operation
+             /* [ list operation : operation : operation : unit ] */ ;
+             DIG 2
+             /* [ operation : list operation : operation : unit ] */ ;
+             CONS
+             /* [ list operation : operation : unit ] */ ;
+             SWAP
+             /* [ operation : list operation : unit ] */ ;
+             CONS
+             /* [ list operation : unit ] */ ;
+             PAIR
+             /* [ pair (list operation) unit ] */ } } }

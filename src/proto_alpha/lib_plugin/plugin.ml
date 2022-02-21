@@ -2348,6 +2348,7 @@ module RPC = struct
         | ISplit_ticket _ -> pp_print_string fmt "SPLIT_TICKET"
         | IJoin_tickets _ -> pp_print_string fmt "JOIN_TICKETS"
         | IOpen_chest _ -> pp_print_string fmt "OPEN_CHEST"
+        | IEmit _ -> pp_print_string fmt "EMIT"
         | IHalt _ -> pp_print_string fmt "[halt]"
         | ILog (_, _, _, instr) ->
             Format.fprintf fmt "log/%a" pp_instr_name instr
@@ -2588,6 +2589,7 @@ module RPC = struct
                        operations;
                        lazy_storage_diff;
                        ticket_diffs = _;
+                       events = _;
                      },
                      _ ) ->
           ( storage,
@@ -2659,6 +2661,7 @@ module RPC = struct
                          operations;
                          lazy_storage_diff;
                          ticket_diffs = _;
+                         events = _;
                        },
                        _ctxt ),
                      trace ) ->
@@ -2759,6 +2762,7 @@ module RPC = struct
                        storage = _;
                        lazy_storage_diff = _;
                        ticket_diffs = _;
+                       events = _;
                      },
                      _ctxt ) ->
           Lwt.return
@@ -2866,6 +2870,7 @@ module RPC = struct
                        storage;
                        lazy_storage_diff = _;
                        ticket_diffs = _;
+                       events = _;
                      },
                      _ctxt ) ->
           View_helpers.extract_value_from_storage storage >>?= fun value ->

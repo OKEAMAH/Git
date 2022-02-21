@@ -54,6 +54,7 @@
         "Contract_repr",
         "Indexable",
         "Entrypoint_repr",
+        "Contract_event_repr",
         "Tx_rollup_level_repr",
         "Tx_rollup_l2_proof",
         "Tx_rollup_l2_address",

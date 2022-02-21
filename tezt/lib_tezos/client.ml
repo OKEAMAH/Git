@@ -1850,6 +1850,21 @@ let contract_storage ?unparsing_mode address client =
     @ optional_arg "unparsing-mode" normalize_mode_to_string unparsing_mode)
   |> Process.check_and_read_stdout
 
+let contract_code ?unparsing_mode address client =
+  let unparsing_mode_to_string = function
+    | `Optimized -> "Optimized"
+    | `Optimized_legacy -> "Optimized_legacy"
+    | `Readable -> "Readable"
+  in
+  spawn_command
+    client
+    (["get"; "contract"; "code"; "for"; address]
+    @ Option.fold
+        ~none:[]
+        ~some:(fun u -> ["--unparsing-mode"; unparsing_mode_to_string u])
+        unparsing_mode)
+  |> Process.check_and_read_stdout
+
 let sign_bytes ~signer ~data client =
   let* output =
     spawn_command client ["sign"; "bytes"; data; "for"; signer]

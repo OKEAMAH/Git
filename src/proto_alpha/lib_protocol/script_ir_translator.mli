@@ -191,6 +191,7 @@ val parse_comparable_data :
   Script.node ->
   ('a * context) tzresult Lwt.t
 
+(* Parsing a Micheline node data into an IR-typed data*)
 val parse_data :
   ?type_logger:type_logger ->
   context ->
@@ -200,6 +201,7 @@ val parse_data :
   Script.node ->
   ('a * context) tzresult Lwt.t
 
+(* Unparsing an IR-typed data back into a Micheline node data *)
 val unparse_data :
   context ->
   unparsing_mode ->
@@ -424,6 +426,9 @@ val hash_data :
   ('a, _) Script_typed_ir.ty ->
   'a ->
   (Script_expr_hash.t * context) tzresult Lwt.t
+
+val hash_event_ty_uncarbonated :
+  tag:string -> event_type:Script.expr -> Contract_event.address
 
 type lazy_storage_ids
 

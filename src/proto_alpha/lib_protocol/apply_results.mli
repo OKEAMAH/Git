@@ -171,6 +171,7 @@ and successful_transaction_result =
       storage_size : Z.t;
       paid_storage_size_diff : Z.t;
       allocated_destination_contract : bool;
+      events : Contract_event.log;
     }
   | Transaction_to_tx_rollup_result of {
       ticket_hash : Ticket_hash.t;

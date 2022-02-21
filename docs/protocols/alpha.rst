@@ -17,6 +17,13 @@ Smart Contract Optimistic Rollups
 
 Rollups supporting execution of smart contracts. (MRs :gl:`!4933`, :gl:`!4812`)
 
+Contract Event Logging
+----------------------
+
+Contracts now may write event logs, with data attachment of custom event types declared
+in contract Michelsons, into transaction receipt upon successful application of operations.
+(MR :gl: `!4656`)
+
 Breaking Changes
 ----------------
 

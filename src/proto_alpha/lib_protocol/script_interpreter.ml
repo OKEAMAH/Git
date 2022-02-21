@@ -345,7 +345,7 @@ and next :
       | KMap_exit_body (body, xs, ys, yk, ks) ->
           (kmap_exit [@ocaml.tailcall]) id g gas body xs ys yk ks accu stack
       | KView_exit (orig_step_constants, ks) ->
-          let g = (fst g, orig_step_constants) in
+          let g = (ctxt, orig_step_constants) in
           (next [@ocaml.tailcall]) g gas ks accu stack)
 
 (*
@@ -1038,7 +1038,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack
           in
           match c with
-          | Contract (Implicit _) | Tx_rollup _ | Sc_rollup _ ->
+          | Contract (Implicit _) | Tx_rollup _ | Sc_rollup _ | Event _ ->
               (return_none [@ocaml.tailcall]) ctxt
           | Contract (Originated contract_hash as c) -> (
               Contract.get_script ctxt c >>=? fun (ctxt, script_opt) ->
@@ -1496,7 +1496,19 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                 | Bogus_cipher -> R false
                 | Bogus_opening -> R true)
           in
-          (step [@ocaml.tailcall]) g gas k ks accu stack)
+          (step [@ocaml.tailcall]) g gas k ks accu stack
+      | IEmit {tag; ty = event_type; k; addr = event_address; kinfo} ->
+          let event_data = accu in
+          emit_event
+            (ctxt, sc)
+            gas
+            ~event_address
+            ~location:kinfo.iloc
+            ~event_type
+            ~tag
+            ~event_data
+          >>=? fun (accu, ctxt, gas) ->
+          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks accu stack)
 
 (*
 
@@ -1618,7 +1630,8 @@ and klog :
       let ks' = mk ks' in
       (kmap_exit [@ocaml.tailcall]) mk g gas body xs ys yk ks' accu stack
   | KView_exit (orig_step_constants, ks') ->
-      let g = (fst g, orig_step_constants) in
+      let ctxt, _ = g in
+      let g = (ctxt, orig_step_constants) in
       (next [@ocaml.tailcall]) g gas ks' accu stack
   | KLog (_, _) ->
       (* This case should never happen. *)
@@ -1700,7 +1713,18 @@ type execution_result = {
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
   ticket_diffs : Z.t Ticket_token_map.t;
+  events : Contract_event.log;
 }
+
+let collect_events ctxt ops =
+  let collect_one op (ctxt, ops, evs) =
+    match op with
+    | Internal_operation
+        {operation = Transaction_to_event {addr; unparsed_data = data; _}; _} ->
+        ok (ctxt, ops, Contract_event.{data; addr} :: evs)
+    | op -> ok (ctxt, op :: ops, evs)
+  in
+  List.fold_right_e collect_one ops (ctxt, [], [])
 
 let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     unparsed_script cached_script arg =
@@ -1778,6 +1802,7 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     | [] -> None
     | diff -> Some diff
   in
+  collect_events ctxt operations >>?= fun (ctxt, operations, events) ->
   let script =
     Ex_script
       (Script
@@ -1811,6 +1836,7 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
         lazy_storage_diff = lazy_storage_diff_all;
         operations;
         ticket_diffs;
+        events;
       },
       ctxt )
 

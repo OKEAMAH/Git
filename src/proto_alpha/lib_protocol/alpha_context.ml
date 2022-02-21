@@ -225,6 +225,12 @@ module Gas = struct
   let cost_of_repr cost = cost
 end
 
+module Contract_event = struct
+  include Contract_event_repr
+
+  type log = t list
+end
+
 module Level = struct
   include Level_repr
   include Level_storage

@@ -604,6 +604,33 @@ let hash_comparable_data ctxt ty data =
   pack_comparable_data ctxt ty data >>=? fun (bytes, ctxt) ->
   Lwt.return @@ hash_bytes ctxt bytes
 
+let pack_event_ty_uncarbonated unparsed =
+  Data_encoding.Binary.to_bytes_exn Contract_event.ty_encoding unparsed
+
+let prefix_header_on_event_ty_bytes tag bytes =
+  let buf = Bytes.of_string tag in
+  let tag_len = Bytes.length buf in
+  let buf = Bytes.extend buf 0 (1 + Bytes.length bytes) in
+  Bytes.set buf tag_len '\005' ;
+  Bytes.blit bytes 0 buf (1 + tag_len) (Bytes.length bytes) ;
+  buf
+
+let hash_event_ty_bytes_uncarbonated bytes =
+  Contract_event.Hash.hash_bytes [bytes]
+
+let hash_event_ty ctxt tag unparsed =
+  let bytes = pack_event_ty_uncarbonated unparsed in
+  Gas.consume ctxt (Script.serialized_cost bytes) >>? fun ctxt ->
+  (* append a 0x05 byte before the serialized type data *)
+  let bytes = prefix_header_on_event_ty_bytes tag bytes in
+  Gas.consume ctxt (Michelson_v1_gas.Cost_of.Interpreter.blake2b bytes)
+  >|? fun ctxt -> (hash_event_ty_bytes_uncarbonated bytes, ctxt)
+
+let hash_event_ty_uncarbonated ~tag ~event_type =
+  pack_event_ty_uncarbonated event_type
+  |> prefix_header_on_event_ty_bytes tag
+  |> hash_event_ty_bytes_uncarbonated
+
 (* ---- Tickets ------------------------------------------------------------ *)
 
 (*
@@ -1500,6 +1527,7 @@ let parse_storage_ty :
           (Ex_ty ty, ctxt))
   | _ -> (parse_normal_storage_ty [@tailcall]) ctxt ~stack_depth ~legacy node
 
+(* check_packable: determine if a `ty` is packable into Michelson *)
 let check_packable ~legacy loc root =
   let rec check : type t tc. (t, tc) ty -> unit tzresult = function
     (* /!\ When adding new lazy storage kinds, be sure to return an error. /!\
@@ -2436,7 +2464,7 @@ let[@coq_axiom_with_reason "gadt"] rec parse_data :
         >>=? fun (({destination; entrypoint = _}, (contents, amount)), ctxt) ->
         match destination with
         | Contract ticketer -> return ({ticketer; contents; amount}, ctxt)
-        | Tx_rollup _ | Sc_rollup _ ->
+        | Tx_rollup _ | Sc_rollup _ | Event _ ->
             fail (Unexpected_ticket_owner destination)
       else traced_fail (Unexpected_forged_value (location expr))
   (* Sets *)
@@ -4586,6 +4614,18 @@ and[@coq_axiom_with_reason "gadt"] parse_instr :
       Item_t (Chest_key_t, Item_t (Chest_t, Item_t (Nat_t, rest))) ) ->
       let instr = {apply = (fun kinfo k -> IOpen_chest (kinfo, k))} in
       typed ctxt loc instr (Item_t (union_bytes_bool_t, rest))
+  | Prim (loc, I_EMIT, [ty_node], annot), Item_t (data, rest) ->
+      parse_packable_ty ctxt ~stack_depth:(stack_depth + 1) ~legacy ty_node
+      >>?= fun (Ex_ty ty, ctxt) ->
+      check_item_ty ctxt ty data loc I_EMIT 1 2 >>?= fun (Eq, ctxt) ->
+      parse_entrypoint_annot_strict loc annot >|? Entrypoint_repr.to_string
+      >>?= fun tag ->
+      let ty_node = strip_locations ty_node in
+      hash_event_ty ctxt tag ty_node >>?= fun (addr, ctxt) ->
+      let instr =
+        {apply = (fun kinfo k -> IEmit {kinfo; tag; ty = data; k; addr})}
+      in
+      typed ctxt loc instr (Item_t (Operation_t, rest))
   (* Primitive parsing errors *)
   | ( Prim
         ( loc,
@@ -4852,7 +4892,7 @@ and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_contra
       Tx_rollup_state.assert_exist ctxt tx_rollup >>=? fun ctxt ->
       if Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) then
         (* /!\ This pattern matching needs to remain in sync with
-           [parse_contract] and [parse_tx_rollup_deposit_parameters]. *)
+           [parse_contract_for_script] and [parse_tx_rollup_deposit_parameters]. *)
         match arg with
         | Pair_t (Ticket_t (_, _), Tx_rollup_l2_address_t, _, _) ->
             let address = {destination; entrypoint} in
@@ -4865,6 +4905,18 @@ and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_contra
       (* TODO #2800
          Implement typechecking of sc rollup deposits. *)
       fail (No_such_entrypoint entrypoint)
+  | Event _ -> (
+      match arg with
+      | Pair_t (String_t, _, _, _) ->
+          return
+            ( ctxt,
+              Typed_contract
+                {
+                  arg_ty = arg;
+                  address =
+                    {destination; entrypoint = Contract_event.entrypoint};
+                } )
+      | _ -> fail (Event_bad_parameter loc))
 
 and parse_view_name ctxt : Script.node -> (Script_string.t * context) tzresult =
   function
@@ -5063,7 +5115,7 @@ let parse_contract_for_script :
                           | Error Inconsistent_types_fast -> (ctxt, None))) )))
   | Tx_rollup tx_rollup -> (
       (* /!\ This pattern matching needs to remain in sync with
-         [parse_contract_for_script] and
+         [parse_contract] and
          [parse_tx_rollup_deposit_parameters]. *)
       match arg with
       | Pair_t (Ticket_t (_, _), Tx_rollup_l2_address_t, _, _)
@@ -5076,6 +5128,22 @@ let parse_contract_for_script :
           | ctxt, None -> (ctxt, None))
       | _ -> return (ctxt, None))
   | Sc_rollup _ -> return (ctxt, None)
+  | Event _ ->
+      return
+        (match arg with
+        | Pair_t (String_t, _, _, _) ->
+            ( ctxt,
+              Some
+                (Typed_contract
+                   {
+                     arg_ty = arg;
+                     address =
+                       {
+                         destination = contract;
+                         entrypoint = Contract_event.entrypoint;
+                       };
+                   }) )
+        | _ -> (ctxt, None))
 
 let view_size view =
   let open Script_typed_ir_size in
