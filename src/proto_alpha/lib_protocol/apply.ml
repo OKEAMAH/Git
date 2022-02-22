@@ -1049,6 +1049,8 @@ let apply_manager_operation_content :
               in
               (ctxt, result, operations) ))
   | Transaction {amount; parameters; destination = Tx_rollup dst; entrypoint} ->
+      (* FIXME/TORU: #2488 The ticket accounting for the recipient of rollup
+         transactions is not done anywhere *)
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
       fail_unless Tez.(amount = zero) Tx_rollup_invalid_transaction_amount
       >>=? fun () ->
@@ -1106,6 +1108,26 @@ let apply_manager_operation_content :
         in
         return (ctxt, result, [])
       else fail (Script_tc_errors.No_such_entrypoint entrypoint)
+  | Tx_rollup_withdraw
+      {
+        tx_rollup = _;
+        level = _;
+        context_hash = _;
+        message_index = _;
+        withdraw_path = _;
+        contents = _;
+        ty = _;
+        ticketer = _;
+        amount = _;
+        destination = _;
+        entrypoint = _;
+      } ->
+      assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
+      let result =
+        Tx_rollup_withdraw_result
+          {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt}
+      in
+      return (ctxt, result, [])
   | Origination {delegate; script; preorigination; credit} ->
       Script.force_decode_in_context
         ~consume_deserialization_gas
@@ -1556,7 +1578,8 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
       Tx_rollup_commitment.check_commitment_level state commitment
       >|=? fun () -> ctxt
   | Tx_rollup_return_bond _ | Tx_rollup_finalize_commitment _
-  | Tx_rollup_remove_commitment _ | Tx_rollup_rejection _ ->
+  | Tx_rollup_remove_commitment _ | Tx_rollup_rejection _ | Tx_rollup_withdraw _
+    ->
       assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ ->
       assert_sc_rollup_feature_enabled ctxt >|=? fun () -> ctxt)
@@ -1668,7 +1691,8 @@ let burn_storage_fees :
           Michelson’s big map). *)
   | Tx_rollup_submit_batch_result _ | Tx_rollup_commit_result _
   | Tx_rollup_return_bond_result _ | Tx_rollup_finalize_commitment_result _
-  | Tx_rollup_remove_commitment_result _ | Tx_rollup_rejection_result _ ->
+  | Tx_rollup_remove_commitment_result _ | Tx_rollup_rejection_result _
+  | Tx_rollup_withdraw_result _ ->
       return (ctxt, storage_limit, smopr)
   | Sc_rollup_originate_result payload ->
       let payer = `Contract payer in

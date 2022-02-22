@@ -44,6 +44,8 @@
       - set deposits limitation
       - tx rollup origination
       - tx rollup batch submission
+      - tx rollup commit
+      - tx rollup withdraw
       - smart contract rollup origination
 
     Each of them can be encoded as raw bytes. Operations are distinguished at
@@ -111,6 +113,8 @@ module Kind : sig
 
   type tx_rollup_rejection = Tx_rollup_rejection_kind
 
+  type tx_rollup_withdraw = Tx_rollup_withdraw_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type sc_rollup_add_messages = Sc_rollup_add_messages_kind
@@ -131,6 +135,7 @@ module Kind : sig
     | Tx_rollup_remove_commitment_manager_kind
         : tx_rollup_remove_commitment manager
     | Tx_rollup_rejection_manager_kind : tx_rollup_rejection manager
+    | Tx_rollup_withdraw_manager_kind : tx_rollup_withdraw manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
 end
@@ -359,6 +364,30 @@ and _ manager_operation =
       proof : (* FIXME/TORU *) bool;
     }
       -> Kind.tx_rollup_rejection manager_operation
+      (** [Tx_rollup_withdraw] allows an implicit account to send [amount]
+      tickets that was pulled out of [tx_rollup] to
+      [destination%entrypoint]. The ticket must have been addressed to the
+      source of the operation. It must have been pulled out at [level] and
+      from the message at [message_index]. The ticket is composed of
+      [ticketer; ty; contents]. *)
+  | Tx_rollup_withdraw : {
+      tx_rollup : Tx_rollup_repr.t;
+      level : Tx_rollup_level_repr.t;
+      context_hash : bytes;
+          (** The hash of the l2 context resulting from the execution of the
+              inbox from where this withdrawal was emitted. *)
+      message_index : int;
+      withdraw_path : Tx_rollup_withdraw_repr.path;
+          (** The proof that this withdraw is indeed included in
+              commitment for [tx_rollup] at [level] with [context_hash]. *)
+      contents : Script_repr.lazy_expr;
+      ty : Script_repr.lazy_expr;
+      ticketer : Contract_repr.t;
+      amount : Tx_rollup_l2_qty.t;
+      destination : Contract_repr.t;
+      entrypoint : Entrypoint_repr.t;
+    }
+      -> Kind.tx_rollup_withdraw manager_operation
   (* [Sc_rollup_originate] allows an implicit account to originate a new
      smart contract rollup (initialized with a given boot
      sector). *)
@@ -515,6 +544,8 @@ module Encoding : sig
 
   val tx_rollup_rejection_case : Kind.tx_rollup_rejection Kind.manager case
 
+  val tx_rollup_withdraw_case : Kind.tx_rollup_withdraw Kind.manager case
+
   val sc_rollup_originate_case : Kind.sc_rollup_originate Kind.manager case
 
   val sc_rollup_add_messages_case :
@@ -558,6 +589,8 @@ module Encoding : sig
     val tx_rollup_remove_commitment_case : Kind.tx_rollup_remove_commitment case
 
     val tx_rollup_rejection_case : Kind.tx_rollup_rejection case
+
+    val tx_rollup_withdraw_case : Kind.tx_rollup_withdraw case
 
     val sc_rollup_originate_case : Kind.sc_rollup_originate case
 

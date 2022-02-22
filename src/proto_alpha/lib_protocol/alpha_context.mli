@@ -2526,6 +2526,8 @@ module Kind : sig
 
   type tx_rollup_rejection = Tx_rollup_rejection_kind
 
+  type tx_rollup_withdraw = Tx_rollup_withdraw_kind
+
   type sc_rollup_originate = Sc_rollup_originate_kind
 
   type sc_rollup_add_messages = Sc_rollup_add_messages_kind
@@ -2546,6 +2548,7 @@ module Kind : sig
     | Tx_rollup_remove_commitment_manager_kind
         : tx_rollup_remove_commitment manager
     | Tx_rollup_rejection_manager_kind : tx_rollup_rejection manager
+    | Tx_rollup_withdraw_manager_kind : tx_rollup_withdraw manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
 end
@@ -2697,6 +2700,20 @@ and _ manager_operation =
       proof : (* FIXME/TORU *) bool;
     }
       -> Kind.tx_rollup_rejection manager_operation
+  | Tx_rollup_withdraw : {
+      tx_rollup : Tx_rollup.t;
+      level : Tx_rollup_level.t;
+      context_hash : bytes;
+      message_index : int;
+      withdraw_path : Tx_rollup_withdraw.path;
+      contents : Script.lazy_expr;
+      ty : Script.lazy_expr;
+      ticketer : Contract.t;
+      amount : Tx_rollup_l2_qty.t;
+      destination : Contract.t;
+      entrypoint : Entrypoint.t;
+    }
+      -> Kind.tx_rollup_withdraw manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup.Kind.t;
       boot_sector : Sc_rollup.PVM.boot_sector;
@@ -2863,6 +2880,8 @@ module Operation : sig
 
     val tx_rollup_rejection_case : Kind.tx_rollup_rejection Kind.manager case
 
+    val tx_rollup_withdraw_case : Kind.tx_rollup_withdraw Kind.manager case
+
     val register_global_constant_case :
       Kind.register_global_constant Kind.manager case
 
@@ -2912,6 +2931,8 @@ module Operation : sig
         Kind.tx_rollup_remove_commitment case
 
       val tx_rollup_rejection_case : Kind.tx_rollup_rejection case
+
+      val tx_rollup_withdraw_case : Kind.tx_rollup_withdraw case
 
       val sc_rollup_originate_case : Kind.sc_rollup_originate case
 
