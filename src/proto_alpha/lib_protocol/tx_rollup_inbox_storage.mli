@@ -33,6 +33,7 @@
 type error +=
   | Tx_rollup_inbox_does_not_exist of Tx_rollup_repr.t * Raw_level_repr.t
   | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup_repr.t
+  | Tx_rollup_inbox_count_would_exceed_limit of Tx_rollup_repr.t
   | Tx_rollup_message_size_exceeds_limit
 
 (** [append_message ctxt tx_rollup state message] tries to append

@@ -135,6 +135,9 @@ type parametric = {
   (* the maximum number of levels that can be left unfinalized
      before we stop accepting new inboxes for a tx rollup *)
   tx_rollup_max_unfinalized_levels : int;
+  (* the maximum number of messages in an inbox.  This bounds the
+     size of a commitment. *)
+  tx_rollup_max_messages_per_inbox : int;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
 }

@@ -797,6 +797,7 @@ module Constants : sig
     tx_rollup_commitment_bond : Tez.t;
     tx_rollup_finality_period : int;
     tx_rollup_max_unfinalized_levels : int;
+    tx_rollup_max_messages_per_inbox : int;
     sc_rollup_enable : bool;
     sc_rollup_origination_size : int;
   }
@@ -893,6 +894,8 @@ module Constants : sig
   val tx_rollup_finality_period : context -> int
 
   val tx_rollup_max_unfinalized_levels : context -> int
+
+  val tx_rollup_max_messages_per_inbox : context -> int
 
   val sc_rollup_enable : context -> bool
 
@@ -2185,6 +2188,7 @@ module Tx_rollup_inbox : sig
   type error +=
     | Tx_rollup_inbox_does_not_exist of Tx_rollup.t * Raw_level.t
     | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup.t
+    | Tx_rollup_inbox_count_would_exceed_limit of Tx_rollup.t
     | Tx_rollup_message_size_exceeds_limit
 end
 

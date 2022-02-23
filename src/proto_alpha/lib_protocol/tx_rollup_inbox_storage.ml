@@ -28,6 +28,7 @@
 type error +=
   | Tx_rollup_inbox_does_not_exist of Tx_rollup_repr.t * Raw_level_repr.t
   | Tx_rollup_inbox_size_would_exceed_limit of Tx_rollup_repr.t
+  | Tx_rollup_inbox_count_would_exceed_limit of Tx_rollup_repr.t
   | Tx_rollup_message_size_exceeds_limit
 
 (** [prepare_metadata ctxt rollup state level] prepares the metadata for
@@ -127,6 +128,12 @@ let append_message :
   let message_size = Tx_rollup_message_repr.size message in
   prepare_metadata ctxt rollup state level
   >>=? fun (ctxt, new_state, metadata) ->
+  fail_when
+    Compare.Int.(
+      Int32.to_int metadata.inbox_length
+      >= Constants_storage.tx_rollup_max_messages_per_inbox ctxt)
+    (Tx_rollup_inbox_count_would_exceed_limit rollup)
+  >>=? fun () ->
   Tx_rollup_message_builder.hash ctxt message >>?= fun (ctxt, message_hash) ->
   update_metadata metadata message_hash message_size >>?= fun new_metadata ->
   Storage.Tx_rollup.Inbox_metadata.add (ctxt, level) rollup new_metadata
@@ -297,7 +304,25 @@ let () =
       | Tx_rollup_inbox_size_would_exceed_limit rollup -> Some rollup
       | _ -> None)
     (fun rollup -> Tx_rollup_inbox_size_would_exceed_limit rollup) ;
-  (* Tx_rollup_message_size_exceed_limit *)
+  (* Tx_rollup_message_count_would_exceed_limit *)
+  register_error_kind
+    `Permanent
+    ~id:"tx_rollup_inbox_count_would_exceed_limit"
+    ~title:"Transaction rollup inbox’s size would exceed the limit"
+    ~description:"Transaction rollup inbox’s size would exceed the limit"
+    ~pp:(fun ppf addr ->
+      Format.fprintf
+        ppf
+        "Adding the submitted message would make the inbox of %a exceed the \
+         authorized limit at this level"
+        Tx_rollup_repr.pp
+        addr)
+    (obj1 (req "tx_rollup_address" Tx_rollup_repr.encoding))
+    (function
+      | Tx_rollup_inbox_count_would_exceed_limit rollup -> Some rollup
+      | _ -> None)
+    (fun rollup -> Tx_rollup_inbox_count_would_exceed_limit rollup) ;
+  (* Tx_rollup_message_size_exceeds_limit *)
   register_error_kind
     `Permanent
     ~id:"tx_rollup_message_size_exceeds_limit"
