@@ -50,9 +50,11 @@ let bls_pk_gen =
 
 let signer_gen : Signer_indexable.either QCheck2.Gen.t =
   let open QCheck2.Gen in
-  let* choice = bool in
-  if choice then (fun pk -> from_value pk) <$> bls_pk_gen
-  else (fun x -> from_index_exn x) <$> ui32
+  frequency
+    [
+      (1, (fun pk -> from_value pk) <$> bls_pk_gen);
+      (9, (fun x -> from_index_exn x) <$> ui32);
+    ]
 
 let l2_address_gen =
   let open QCheck2.Gen in
@@ -71,9 +73,61 @@ let destination_gen =
     if choice then (fun x -> Layer2 (from_index_exn x)) <$> ui32
     else (fun x -> Layer2 (from_value x)) <$> l2_address_gen
 
-let ticket_hash_gen =
+(* Creating ticket hashes *)
+
+let hash_ticket tx_rollup ~contents ~ticketer ~ty =
+  let open Protocol in
+  let hash_of_node node =
+    let node = Micheline.strip_locations node in
+    let bytes =
+      Data_encoding.Binary.to_bytes_exn Script_repr.expr_encoding node
+    in
+    Alpha_context.Ticket_hash.of_script_expr_hash
+    @@ Script_expr_hash.hash_bytes [bytes]
+  in
+  let make_ticket_hash ~ticketer ~ty ~contents ~owner =
+    hash_of_node
+    @@ Micheline.(Seq (dummy_location, [ticketer; ty; contents; owner]))
+  in
+  let owner =
+    Micheline.(
+      String (dummy_location, Tx_rollup_l2_address.to_b58check tx_rollup))
+  in
+  make_ticket_hash ~ticketer ~ty ~contents ~owner
+
+(** [make_unit_ticket_key ctxt ticketer tx_rollup] computes the key hash of
+    the unit ticket crafted by [ticketer] and owned by [tx_rollup]. *)
+let make_unit_ticket_key ticketer tx_rollup =
+  let open Protocol in
+  let open Alpha_context in
+  let open Tezos_micheline.Micheline in
+  let open Michelson_v1_primitives in
+  let ticketer =
+    Bytes (0, Data_encoding.Binary.to_bytes_exn Contract.encoding ticketer)
+  in
+  let ty = Prim (0, T_unit, [], []) in
+  let contents = Prim (0, D_Unit, [], []) in
+  hash_ticket ~ticketer ~ty ~contents tx_rollup
+
+let ticket_hash_idx_gen =
   let open QCheck2.Gen in
   from_index_exn <$> ui32
+
+(* TODO: we introduce a bit more randomness here *)
+let ticket_hash_value_gen =
+  let open QCheck2.Gen in
+  let ticketer_b58 = "tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU" in
+  let ticketer_pkh = Signature.Public_key_hash.of_b58check_exn ticketer_b58 in
+  let ticketer =
+    Protocol.Alpha_context.Contract.implicit_contract ticketer_pkh
+  in
+  let* tx_rollup = l2_address_gen in
+  let ticket_hash = make_unit_ticket_key ticketer tx_rollup in
+  return (from_value ticket_hash)
+
+let ticket_hash_gen =
+  let open QCheck2.Gen in
+  oneof [ticket_hash_idx_gen; ticket_hash_value_gen]
 
 let qty_gen =
   let open QCheck2.Gen in
@@ -82,10 +136,17 @@ let qty_gen =
 
 let v1_operation_content_gen =
   let open QCheck2.Gen in
-  let+ destination = destination_gen
-  and+ ticket_hash = ticket_hash_gen
-  and+ qty = qty_gen in
-  V1.{destination; ticket_hash; qty}
+  (* in valid [operation_content]s, the ticket_hash is a value when the
+     destination is layer1 *)
+  let* destination = destination_gen in
+  match destination with
+  | Layer1 _ ->
+      let+ ticket_hash = ticket_hash_value_gen and+ qty = qty_gen in
+      V1.{destination; ticket_hash; qty}
+  | Layer2 _ ->
+      (* here ticket hash value *)
+      let+ ticket_hash = ticket_hash_gen and+ qty = qty_gen in
+      V1.{destination; ticket_hash; qty}
 
 let v1_operation_gen =
   let open QCheck2.Gen in

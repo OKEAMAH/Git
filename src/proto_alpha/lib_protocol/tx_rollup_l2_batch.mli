@@ -198,7 +198,14 @@ module V1 : sig
       {ul {li [00] means an integer fitting on 1 byte.}
           {li [01] means an integer fitting on 2 bytes.}
           {li [10] means an integer fitting on 4 bytes.}
-          {li [11] means an integer fitting on 8 bytes.} *)
+          {li [11] means an integer fitting on 8 bytes.}
+
+
+      TODO: better exception type. 
+
+      Raises an [Invalid_argument] exception if the [destination] is a layer-1
+      address and the ticket_hash is an index, which is not allowed by the
+      layer-2 protocol. *)
   val compact_operation_content :
     Indexable.unknown operation_content Data_encoding.Compact.t
 end
