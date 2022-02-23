@@ -2,8 +2,6 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
-(* Copyright (c) 2022 Marigold, <contact@marigold.dev>                       *)
-(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,41 +23,30 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Error issued when the rollup referenced by its hash has not been created
-    on the block referenced by its hash. The node computes a state from the
-    block that created the rollup. *)
-type error +=
-  | Tx_rollup_not_originated_in_the_given_block of
-      Protocol.Alpha_context.Tx_rollup.t
+(** Tx rollup context serialization format. *)
 
-(** Error issued when the daemon attempts to process the operations of a block
-    for which the predecessor has not yet been processed. *)
-type error += Tx_rollup_block_predecessor_not_processed of Block_hash.t
+module Hash : sig
+  include Irmin.Hash.S
 
-(** Error issued when the encoding of a value, in order to be persisted in the
-    store, fails. *)
-type error +=
-  | Tx_rollup_unable_to_encode_storable_value of string * Data_encoding.Json.t
+  val to_raw_string : t -> string
 
-(** Error issued when decoding a persisted value in the store fails. *)
-type error += Tx_rollup_unable_to_decode_stored_value of string * string
+  val to_context_hash : t -> Protocol.Tx_rollup_l2_context_hash.t
 
-(** Error issued when an error occurs on Irmin side. *)
-type error += Tx_rollup_irmin_error of string
+  val of_context_hash : Protocol.Tx_rollup_l2_context_hash.t -> t
+end
 
-(** Error issued when the configuration file does not exists. *)
-type error += Tx_rollup_configuration_file_does_not_exists of string
+module Conf : Irmin_pack.Conf.S
 
-(** Error issued when the configuration file cannot be write. *)
-type error += Tx_rollup_unable_to_write_configuration_file of string
+module Contents : Irmin.Contents.S with type t = bytes
 
-(** Error issued when the Tezos node is not in a valid history_mode. *)
-type error +=
-  | Tx_rollup_invalid_history_mode of Tezos_shell_services.History_mode.t
+module Metadata : Irmin.Metadata.S with type t = unit
 
-(** Error issued when the Tx rollup node has the wrong context version. *)
-type error +=
-  | Tx_rollup_unsupported_context_version of {
-      current : Protocol.Tx_rollup_l2_context_hash.Version.t;
-      expected : Protocol.Tx_rollup_l2_context_hash.Version.t;
-    }
+module Path : Irmin.Path.S with type step = string and type t = string list
+
+module Branch : Irmin.Branch.S with type t = string
+
+module Node : Irmin.Private.Node.Maker
+
+module Commit : Irmin.Private.Commit.Maker
+
+module Info = Irmin.Info

@@ -2,8 +2,6 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
-(* Copyright (c) 2022 Marigold, <contact@marigold.dev>                       *)
-(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,41 +23,68 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Error issued when the rollup referenced by its hash has not been created
-    on the block referenced by its hash. The node computes a state from the
-    block that created the rollup. *)
-type error +=
-  | Tx_rollup_not_originated_in_the_given_block of
-      Protocol.Alpha_context.Tx_rollup.t
+include Tezos_context_encoding.Context
 
-(** Error issued when the daemon attempts to process the operations of a block
-    for which the predecessor has not yet been processed. *)
-type error += Tx_rollup_block_predecessor_not_processed of Block_hash.t
+module Conf : Irmin_pack.Conf.S = struct
+  let entries = 2
 
-(** Error issued when the encoding of a value, in order to be persisted in the
-    store, fails. *)
-type error +=
-  | Tx_rollup_unable_to_encode_storable_value of string * Data_encoding.Json.t
+  let stable_hash = 2
 
-(** Error issued when decoding a persisted value in the store fails. *)
-type error += Tx_rollup_unable_to_decode_stored_value of string * string
+  let inode_child_order = `Seeded_hash
+end
 
-(** Error issued when an error occurs on Irmin side. *)
-type error += Tx_rollup_irmin_error of string
+module Hash : sig
+  include Irmin.Hash.S
 
-(** Error issued when the configuration file does not exists. *)
-type error += Tx_rollup_configuration_file_does_not_exists of string
+  val to_raw_string : t -> string
 
-(** Error issued when the configuration file cannot be write. *)
-type error += Tx_rollup_unable_to_write_configuration_file of string
+  val to_context_hash : t -> Protocol.Tx_rollup_l2_context_hash.t
 
-(** Error issued when the Tezos node is not in a valid history_mode. *)
-type error +=
-  | Tx_rollup_invalid_history_mode of Tezos_shell_services.History_mode.t
+  val of_context_hash : Protocol.Tx_rollup_l2_context_hash.t -> t
+end = struct
+  open Protocol
 
-(** Error issued when the Tx rollup node has the wrong context version. *)
-type error +=
-  | Tx_rollup_unsupported_context_version of {
-      current : Protocol.Tx_rollup_l2_context_hash.Version.t;
-      expected : Protocol.Tx_rollup_l2_context_hash.Version.t;
-    }
+  module H = Digestif.Make_BLAKE2B (struct
+    let digest_size = 32
+  end)
+
+  type t = H.t
+
+  let to_raw_string = H.to_raw_string
+
+  let of_context_hash s =
+    Tx_rollup_l2_context_hash.to_bytes s |> Bytes.to_string |> H.of_raw_string
+
+  let to_context_hash h =
+    H.to_raw_string h |> Bytes.of_string
+    |> Tx_rollup_l2_context_hash.of_bytes_exn
+
+  let pp ppf t = Tx_rollup_l2_context_hash.pp ppf (to_context_hash t)
+
+  let of_string x =
+    match Tx_rollup_l2_context_hash.of_b58check_opt x with
+    | Some x -> Ok (of_context_hash x)
+    | None ->
+        Error (`Msg "Failed to read b58check encoded tx_rollup_l2_context")
+
+  let short_hash_string = Irmin.Type.(unstage (short_hash string))
+
+  let short_hash ?seed t = short_hash_string ?seed (H.to_raw_string t)
+
+  let t : t Irmin.Type.t =
+    Irmin.Type.map
+      ~pp
+      ~of_string
+      Irmin.Type.(string_of (`Fixed H.digest_size))
+      ~short_hash
+      H.of_raw_string
+      H.to_raw_string
+
+  let short_hash =
+    let f = short_hash_string ?seed:None in
+    fun t -> f (H.to_raw_string t)
+
+  let hash_size = H.digest_size
+
+  let hash = H.digesti_string
+end
