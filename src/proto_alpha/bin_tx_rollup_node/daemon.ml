@@ -30,6 +30,8 @@ open Tezos_shell_services
 open Protocol_client_context
 open Protocol.Alpha_context
 
+(* TODO/TORU: Move application logic in other module *)
+
 (* TODO/TORU: don't reapply whole inbox on update *)
 let interp_messages ctxt messages cumulated_size =
   let open Lwt_syntax in
@@ -59,7 +61,81 @@ let interp_messages ctxt messages cumulated_size =
   let inbox = Inbox.{contents; cumulated_size} in
   (ctxt, inbox)
 
-let compute_messages block_info rollup_id =
+(* TODO/TORU return proper errors or option *)
+let parse_tx_rollup_l2_address :
+    Script.node -> Protocol.Tx_rollup_l2_address.Indexable.value tzresult =
+  let open Protocol in
+  let open Micheline in
+  function
+  | Bytes (_loc, bytes) (* As unparsed with [Optimized]. *) -> (
+      match Tx_rollup_l2_address.of_bytes_opt bytes with
+      | Some txa -> ok (Tx_rollup_l2_address.Indexable.value txa)
+      | None -> error_with "Not a valid transaction rollup L2 address")
+  | String (_loc, str) (* As unparsed with [Readable]. *) -> (
+      match Tx_rollup_l2_address.of_b58check_opt str with
+      | Some txa -> ok (Tx_rollup_l2_address.Indexable.value txa)
+      | None -> error_with "Not a valid transaction rollup L2 address")
+  | _expr -> error_with "Not a valid transaction rollup L2 address"
+
+(* TODO/TORU: return proper errors or option *)
+(* TODO/TORU: expose uncarbonated parse_tx_rollup_deposit_parameters in protocol *)
+let parse_tx_rollup_deposit_parameters :
+    Script.expr -> Tx_rollup.deposit_parameters tzresult =
+ fun parameters ->
+  let open Micheline in
+  let open Protocol in
+  (* /!\ This pattern matching needs to remain in sync with the
+     Script_ir_translator.parse_tx_rollup_deposit_parameters. *)
+  match root parameters with
+  | Seq
+      ( _,
+        [
+          Prim
+            ( _,
+              D_Pair,
+              [
+                Prim
+                  ( _,
+                    D_Pair,
+                    [ticketer; Prim (_, D_Pair, [contents; amount], _)],
+                    _ );
+                bls;
+              ],
+              _ );
+          ty;
+        ] ) ->
+      parse_tx_rollup_l2_address bls >>? fun destination ->
+      (match amount with
+      | Int (_, v) when Compare.Z.(Z.zero < v && v <= Z.of_int64 Int64.max_int)
+        ->
+          ok @@ Tx_rollup_l2_qty.of_int64_exn (Z.to_int64 v)
+      | Int (_, _) -> error_with "Tx_rollup_invalid_ticket_amount"
+      | _expr -> error_with "Invalid deposit")
+      >|? fun amount -> Tx_rollup.{ticketer; contents; ty; amount; destination}
+  | _expr -> error_with "Invalid deposit"
+
+(* TODO/TORU: return proper errors or option *)
+(* TODO/TORU: expose uncarbonated hash_ticket in protocol *)
+let hash_ticket tx_rollup ~contents ~ticketer ~ty =
+  let open Protocol in
+  let open Micheline in
+  let hash_of_node node =
+    let node = Micheline.strip_locations node in
+    match Data_encoding.Binary.to_bytes_opt Script_repr.expr_encoding node with
+    | Some bytes ->
+        ok
+          (Ticket_hash.of_script_expr_hash
+          @@ Script_expr_hash.hash_bytes [bytes])
+    | None -> error_with "Failed_to_hash_node"
+  in
+  let make ~ticketer ~ty ~contents ~owner =
+    hash_of_node
+    @@ Micheline.Seq (Micheline.dummy_location, [ticketer; ty; contents; owner])
+  in
+  let owner = String (dummy_location, Tx_rollup.to_b58check tx_rollup) in
+  make ~ticketer ~ty ~contents ~owner
+
+let extract_messages_from_block block_info rollup_id =
   let managed_operation =
     List.nth_opt
       block_info.Alpha_block_services.operations
@@ -87,17 +163,33 @@ let compute_messages block_info rollup_id =
           {
             operation =
               Transaction
-                {amount; parameters; destination = Tx_rollup dst; entrypoint};
+                {
+                  amount = _;
+                  parameters;
+                  destination = Tx_rollup dst;
+                  entrypoint;
+                };
             _;
           },
         Manager_operation_result
           {operation_result = Applied (Transaction_result _); _} )
       when Tx_rollup.equal dst rollup_id
-           && Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) ->
-        (* Deposit *)
-        (* TODO/TORU *)
-        ignore (amount, parameters) ;
-        assert false
+           && Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) -> (
+        (* Deposit message *)
+        match Data_encoding.force_decode parameters with
+        | None -> None
+        | Some parameters -> (
+            match parse_tx_rollup_deposit_parameters parameters with
+            | Error _ -> None
+            | Ok Tx_rollup.{ticketer; contents; ty; amount; destination} -> (
+                match hash_ticket dst ~contents ~ticketer ~ty with
+                | Error _ -> None
+                | Ok ticket_hash ->
+                    Some
+                      (Tx_rollup_message.make_deposit
+                         destination
+                         ticket_hash
+                         amount))))
     | (_, _) -> None
   in
   let rec get_related_messages :
