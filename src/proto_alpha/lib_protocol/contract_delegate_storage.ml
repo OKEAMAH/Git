@@ -25,16 +25,6 @@
 
 let find = Storage.Contract.Delegate.find
 
-let remove_contract_stake ctxt contract amount =
-  find ctxt contract >>=? function
-  | None -> return ctxt
-  | Some delegate -> Stake_storage.remove_stake ctxt delegate amount
-
-let add_contract_stake ctxt contract amount =
-  find ctxt contract >>=? function
-  | None -> return ctxt
-  | Some delegate -> Stake_storage.add_stake ctxt delegate amount
-
 (* A delegate is registered if its "implicit account" delegates to itself. *)
 let registered c delegate =
   Storage.Contract.Delegate.find c (Contract_repr.implicit_contract delegate)
