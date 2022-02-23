@@ -229,15 +229,10 @@ let get_stakes_for_selected_index ctxt index =
 let sampler_for_cycle ctxt cycle =
   match Raw_context.sampler_for_cycle ctxt cycle with
   | Ok (seed, state) -> return (ctxt, seed, state)
-  | Error `Sampler_not_set -> (
+  | Error `Sampler_not_set ->
       Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
       Delegate_sampler_state.get ctxt cycle >>=? fun state ->
-      match Raw_context.set_sampler_for_cycle ctxt cycle (seed, state) with
-      | Error `Sampler_already_set ->
-          (* We just tested with [Raw_context.sampler_for_cycle] that the
-             sampler was not set in [ctxt] for [cycle]. *)
-          assert false
-      | Ok ctxt -> return (ctxt, seed, state))
+      return @@ Raw_context.set_or_get_sampler_for_cycle ctxt cycle (seed, state)
 
 let select_distribution_for_cycle ctxt cycle pubkey =
   Storage.Stake.Last_snapshot.get ctxt >>=? fun max_snapshot_index ->
@@ -264,12 +259,10 @@ let select_distribution_for_cycle ctxt cycle pubkey =
        let state = Sampler.create stakes_pk in
        Delegate_sampler_state.init ctxt cycle state >>=? fun ctxt ->
        (* pre-allocate the sampler *)
-       match Raw_context.set_sampler_for_cycle ctxt cycle (seed, state) with
-       | Error `Sampler_already_set ->
-           (* we are initializing the cycle, it should not have been
-              initialized before. *)
-           assert false
-       | Ok ctxt -> return ctxt
+       let (ctxt, _, _) =
+         Raw_context.set_or_get_sampler_for_cycle ctxt cycle (seed, state)
+       in
+       return ctxt
       else return ctxt)
       >>=? fun ctxt ->
       Storage.Stake.Staking_balance.delete_snapshot ctxt index >>= fun ctxt ->

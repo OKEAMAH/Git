@@ -1119,6 +1119,15 @@ let record_non_consensus_operation_hash ctxt operation_hash =
 
 let non_consensus_operations ctxt = List.rev (non_consensus_operations_rev ctxt)
 
+let set_or_get_sampler_for_cycle ctxt cycle ((seed, state) as sampler_with_seed)
+    =
+  let map = sampler_state ctxt in
+  match Cycle_repr.Map.find cycle map with
+  | None ->
+      let map = Cycle_repr.Map.add cycle sampler_with_seed map in
+      (update_sampler_state ctxt map, seed, state)
+  | Some (seed, state) -> (ctxt, seed, state)
+
 let set_sampler_for_cycle ctxt cycle sampler_with_seed =
   let map = sampler_state ctxt in
   if Cycle_repr.Map.mem cycle map then Error `Sampler_already_set

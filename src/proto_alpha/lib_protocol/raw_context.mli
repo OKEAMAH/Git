@@ -197,6 +197,14 @@ val record_non_consensus_operation_hash : t -> Operation_hash.t -> t
 
 val non_consensus_operations : t -> Operation_hash.t list
 
+val set_or_get_sampler_for_cycle :
+  t ->
+  Cycle_repr.t ->
+  Seed_repr.seed * (Signature.public_key * Signature.public_key_hash) Sampler.t ->
+  t
+  * Seed_repr.seed
+  * (Signature.public_key * Signature.public_key_hash) Sampler.t
+
 (** [set_sampler_for_cycle ctxt cycle sampler] evaluates to
     [Ok c] with [c] verifying [sampler_for_cycle c cycle = sampler]
     if no sampler was set for the same [cycle] beforehand.
