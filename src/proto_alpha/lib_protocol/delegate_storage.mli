@@ -242,3 +242,5 @@ val freeze_deposits_do_not_call_except_for_migration :
   new_cycle:Cycle_repr.t ->
   balance_updates:Receipt_repr.balance_updates ->
   (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t
+
+val init_first_cycles : Raw_context.t -> Raw_context.t tzresult Lwt.t

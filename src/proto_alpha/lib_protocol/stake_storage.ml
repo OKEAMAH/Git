@@ -23,8 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Misc
-
 module Selected_distribution_for_cycle = struct
   module Cache_client = struct
     type cached_value = (Signature.Public_key_hash.t * Tez_repr.t) list
@@ -170,77 +168,28 @@ let snapshot ctxt =
   Storage.Stake.Staking_balance.snapshot ctxt index >>=? fun ctxt ->
   Storage.Stake.Active_delegate_with_one_roll.snapshot ctxt index
 
-let select_distribution_for_cycle ctxt cycle pubkey =
+let max_snapshot_index = Storage.Stake.Last_snapshot.get
+
+(* PRE : [ snapshot_index < (max_snapshot_index ctxt) ]. *)
+let update_selected_distribution_for_cycle ctxt ~cycle ~snapshot_index stakes
+    total_stake =
   Storage.Stake.Last_snapshot.get ctxt >>=? fun max_index ->
-  Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
-  let rd = Seed_repr.initialize_new seed [Bytes.of_string "stake_snapshot"] in
-  let seq = Seed_repr.sequence rd 0l in
-  let selected_index =
-    Seed_repr.take_int32 seq (Int32.of_int max_index) |> fst |> Int32.to_int
-  in
   List.fold_left_es
     (fun ctxt index ->
-      (if Compare.Int.(index = selected_index) then
-       Storage.Stake.Active_delegate_with_one_roll.fold_snapshot
-         ctxt
-         index
-         ~order:`Sorted
-         ~init:([], Tez_repr.zero)
-         ~f:(fun delegate () (acc, total_stake) ->
-           Storage.Stake.Staking_balance.Snapshot.get ctxt (index, delegate)
-           >>=? fun staking_balance ->
-           let delegate_contract = Contract_repr.implicit_contract delegate in
-           Storage.Contract.Frozen_deposits_limit.find ctxt delegate_contract
-           >>=? fun frozen_deposits_limit ->
-           Storage.Contract.Balance.get ctxt delegate_contract
-           >>=? fun balance ->
-           Frozen_deposits_storage.get ctxt delegate_contract
-           >>=? fun frozen_deposits ->
-           Tez_repr.(balance +? frozen_deposits.current_amount)
-           >>?= fun total_balance ->
-           let frozen_deposits_percentage =
-             Constants_storage.frozen_deposits_percentage ctxt
-           in
-           let stake_to_consider =
-             match frozen_deposits_limit with
-             | Some frozen_deposits_limit -> (
-                 try
-                   let max_mutez = Tez_repr.of_mutez_exn Int64.max_int in
-                   let frozen_stake_limit =
-                     if Tez_repr.(frozen_deposits_limit > div_exn max_mutez 100)
-                     then max_mutez
-                     else
-                       Tez_repr.(
-                         div_exn
-                           (mul_exn frozen_deposits_limit 100)
-                           frozen_deposits_percentage)
-                   in
-                   Tez_repr.min staking_balance frozen_stake_limit
-                 with _ -> staking_balance)
-             | None -> staking_balance
-           in
-           let max_staking_capacity =
-             Tez_repr.(
-               div_exn (mul_exn total_balance 100) frozen_deposits_percentage)
-           in
-           let stake_for_cycle =
-             Tez_repr.min stake_to_consider max_staking_capacity
-           in
-           Tez_repr.(total_stake +? stake_for_cycle) >>?= fun total_stake ->
-           return ((delegate, stake_for_cycle) :: acc, total_stake))
-       >>=? fun (stakes, total_stake) ->
+      (if Compare.Int.(index = snapshot_index) then
        let stakes =
-         List.sort (fun (_, x) (_, y) -> Tez_repr.compare y x) stakes
+         List.sort (fun (_, _, x) (_, _, y) -> Tez_repr.compare y x) stakes
        in
-       Selected_distribution_for_cycle.init ctxt cycle stakes >>=? fun ctxt ->
+       let distrib = List.map (fun (_, pkh, stk) -> (pkh, stk)) stakes in
+       Selected_distribution_for_cycle.init ctxt cycle distrib >>=? fun ctxt ->
        Storage.Total_active_stake.add ctxt cycle total_stake >>= fun ctxt ->
-       List.fold_left_es
-         (fun acc (pkh, stake) ->
-           pubkey ctxt pkh >>=? fun pk ->
-           return (((pk, pkh), Tez_repr.to_mutez stake) :: acc))
-         []
-         stakes
-       >>=? fun stakes_pk ->
+       let stakes_pk =
+         List.fold_left
+           (fun acc (pk, pkh, stake) ->
+             ((pk, pkh), Tez_repr.to_mutez stake) :: acc)
+           []
+           stakes
+       in
        let state = Sampler.create stakes_pk in
        Delegate_sampler_state.init ctxt cycle state
       else return ctxt)
@@ -252,26 +201,11 @@ let select_distribution_for_cycle ctxt cycle pubkey =
     Misc.(0 --> (max_index - 1))
   >>=? fun ctxt -> Storage.Stake.Last_snapshot.update ctxt 0
 
-let select_distribution_for_cycle_do_not_call_except_for_migration =
-  select_distribution_for_cycle
-
 let clear_cycle ctxt cycle =
   Storage.Total_active_stake.remove_existing ctxt cycle >>=? fun ctxt ->
   Selected_distribution_for_cycle.remove_existing ctxt cycle >>=? fun ctxt ->
   Delegate_sampler_state.remove_existing ctxt cycle >>=? fun ctxt ->
   Storage.Seed.For_cycle.remove_existing ctxt cycle
-
-let init_first_cycles ctxt pubkey =
-  let preserved = Constants_storage.preserved_cycles ctxt in
-  List.fold_left_es
-    (fun ctxt c ->
-      let cycle = Cycle_repr.of_int32_exn (Int32.of_int c) in
-      snapshot ctxt >>=? fun ctxt ->
-      (* NB: we need to take several snapshots because
-         select_distribution_for_cycle deletes the snapshots *)
-      select_distribution_for_cycle ctxt cycle pubkey)
-    ctxt
-    (0 --> preserved)
 
 let fold ctxt ~f ~order init =
   Storage.Stake.Active_delegate_with_one_roll.fold
@@ -283,10 +217,15 @@ let fold ctxt ~f ~order init =
       get_staking_balance ctxt delegate >>=? fun stake ->
       f (delegate, stake) acc)
 
-let select_new_distribution_at_cycle_end ctxt ~new_cycle =
-  let preserved = Constants_storage.preserved_cycles ctxt in
-  let for_cycle = Cycle_repr.add new_cycle preserved in
-  select_distribution_for_cycle ctxt for_cycle
+let fold_snapshot ctxt index ~f ~order init =
+  Storage.Stake.Active_delegate_with_one_roll.fold_snapshot
+    ctxt
+    index
+    ~order
+    ~init
+    ~f:(fun delegate () acc ->
+      Storage.Stake.Staking_balance.Snapshot.get ctxt (index, delegate)
+      >>=? fun stake -> f (delegate, stake) acc)
 
 let clear_at_cycle_end ctxt ~new_cycle =
   let max_slashing_period = Constants_storage.max_slashing_period ctxt in

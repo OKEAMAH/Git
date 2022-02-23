@@ -517,10 +517,76 @@ let freeze_deposits ?(origin = Receipt_repr.Block_application) ctxt ~new_cycle
 let freeze_deposits_do_not_call_except_for_migration =
   freeze_deposits ~origin:Protocol_migration
 
+let select_distribution_for_cycle ctxt cycle =
+  Stake_storage.max_snapshot_index ctxt >>=? fun max_index ->
+  Storage.Seed.For_cycle.get ctxt cycle >>=? fun seed ->
+  let rd = Seed_repr.initialize_new seed [Bytes.of_string "stake_snapshot"] in
+  let seq = Seed_repr.sequence rd 0l in
+  let selected_index =
+    Seed_repr.take_int32 seq (Int32.of_int max_index) |> fst |> Int32.to_int
+  in
+  Stake_storage.fold_snapshot
+    ctxt
+    selected_index
+    ~order:`Sorted
+    ([], Tez_repr.zero)
+    ~f:(fun (delegate, staking_balance) (acc, total_stake) ->
+      let delegate_contract = Contract_repr.implicit_contract delegate in
+      Storage.Contract.Frozen_deposits_limit.find ctxt delegate_contract
+      >>=? fun frozen_deposits_limit ->
+      Contract_storage.full_balance ctxt delegate_contract >>=? fun balance ->
+      (* Storage.Contract.Balance.get ctxt delegate_contract >>=? fun balance -> *)
+      Frozen_deposits_storage.get ctxt delegate_contract
+      >>=? fun frozen_deposits ->
+      Tez_repr.(balance +? frozen_deposits.current_amount)
+      >>?= fun total_balance ->
+      let frozen_deposits_percentage =
+        Constants_storage.frozen_deposits_percentage ctxt
+      in
+      let stake_to_consider =
+        match frozen_deposits_limit with
+        | Some frozen_deposits_limit -> (
+            try
+              let max_mutez = Tez_repr.of_mutez_exn Int64.max_int in
+              let frozen_stake_limit =
+                if Tez_repr.(frozen_deposits_limit > div_exn max_mutez 100) then
+                  max_mutez
+                else
+                  Tez_repr.(
+                    div_exn
+                      (mul_exn frozen_deposits_limit 100)
+                      frozen_deposits_percentage)
+              in
+              Tez_repr.min staking_balance frozen_stake_limit
+            with _ -> staking_balance)
+        | None -> staking_balance
+      in
+      let max_staking_capacity =
+        Tez_repr.(
+          div_exn (mul_exn total_balance 100) frozen_deposits_percentage)
+      in
+      let stake_for_cycle =
+        Tez_repr.min stake_to_consider max_staking_capacity
+      in
+      Tez_repr.(total_stake +? stake_for_cycle) >>?= fun total_stake ->
+      pubkey ctxt delegate >>=? fun delegate_pk ->
+      return ((delegate_pk, delegate, stake_for_cycle) :: acc, total_stake))
+  >>=? fun (stakes, total_stake) ->
+  Stake_storage.update_selected_distribution_for_cycle
+    ctxt
+    ~cycle
+    ~snapshot_index:selected_index
+    stakes
+    total_stake
+
+let select_new_distribution_at_cycle_end ctxt ~new_cycle =
+  let preserved = Constants_storage.preserved_cycles ctxt in
+  let for_cycle = Cycle_repr.add new_cycle preserved in
+  select_distribution_for_cycle ctxt for_cycle
+
 let cycle_end ctxt last_cycle unrevealed_nonces =
   let new_cycle = Cycle_repr.add last_cycle 1 in
-  Stake_storage.select_new_distribution_at_cycle_end ctxt ~new_cycle pubkey
-  >>=? fun ctxt ->
+  select_new_distribution_at_cycle_end ctxt ~new_cycle >>=? fun ctxt ->
   clear_outdated_slashed_deposits ctxt ~new_cycle >>= fun ctxt ->
   distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces
   >>=? fun (ctxt, balance_updates) ->
@@ -885,3 +951,15 @@ let delegate_participation_info ctxt delegate =
           remaining_allowed_missed_slots;
           expected_endorsing_rewards;
         }
+
+let init_first_cycles ctxt =
+  let preserved = Constants_storage.preserved_cycles ctxt in
+  List.fold_left_es
+    (fun ctxt c ->
+      let cycle = Cycle_repr.of_int32_exn (Int32.of_int c) in
+      Stake_storage.snapshot ctxt >>=? fun ctxt ->
+      (* NB: we need to take several snapshots because
+         select_distribution_for_cycle deletes the snapshots *)
+      select_distribution_for_cycle ctxt cycle)
+    ctxt
+    Misc.(0 --> preserved)

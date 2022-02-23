@@ -62,22 +62,7 @@ val get_staking_balance :
 
 val snapshot : Raw_context.t -> Raw_context.t tzresult Lwt.t
 
-val select_distribution_for_cycle_do_not_call_except_for_migration :
-  Raw_context.t ->
-  Cycle_repr.t ->
-  (Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Signature.Public_key.t tzresult Lwt.t) ->
-  Raw_context.t tzresult Lwt.t
-
 val clear_cycle : Raw_context.t -> Cycle_repr.t -> Raw_context.t tzresult Lwt.t
-
-val init_first_cycles :
-  Raw_context.t ->
-  (Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Signature.Public_key.t tzresult Lwt.t) ->
-  Raw_context.t tzresult Lwt.t
 
 val fold :
   Raw_context.t ->
@@ -86,12 +71,22 @@ val fold :
   'a ->
   'a tzresult Lwt.t
 
-val select_new_distribution_at_cycle_end :
+val fold_snapshot :
   Raw_context.t ->
-  new_cycle:Cycle_repr.t ->
-  (Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Signature.Public_key.t tzresult Lwt.t) ->
+  int ->
+  f:(Signature.Public_key_hash.t * Tez_repr.t -> 'a -> 'a tzresult Lwt.t) ->
+  order:[`Sorted | `Undefined] ->
+  'a ->
+  'a tzresult Lwt.t
+
+val max_snapshot_index : Raw_context.t -> int tzresult Lwt.t
+
+val update_selected_distribution_for_cycle :
+  Raw_context.t ->
+  cycle:Cycle_repr.t ->
+  snapshot_index:int ->
+  (Signature.public_key * Signature.public_key_hash * Tez_repr.t) list ->
+  Tez_repr.t ->
   Raw_context.t tzresult Lwt.t
 
 val clear_at_cycle_end :
