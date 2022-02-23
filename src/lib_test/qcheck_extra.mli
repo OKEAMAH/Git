@@ -254,7 +254,11 @@ module Stateful_gen : sig
 
       This is a straight RNG without shrinking.
    *)
-  module Make (F : Monad.S) : S with type 'a m = 'a F.t
+  module Make (F : Monad.S) :
+    S with type 'a m = 'a F.t and type 'a t = Random_pure.t -> 'a F.t
 
-  module Default : S with type 'a m = 'a Identity.t
+  module Default :
+    S
+      with type 'a m = 'a Identity.t
+       and type 'a t = Random_pure.t -> 'a Identity.t
 end
