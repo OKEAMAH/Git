@@ -32,6 +32,13 @@ open Protocol.Alpha_context
 
 (* TODO/TORU: Move application logic in other module *)
 
+let get_context (state : State.t) ctxt_hash =
+  match state.context_cache with
+  | Some {context; context_hash}
+    when Protocol.Tx_rollup_l2_context_hash.equal ctxt_hash context_hash ->
+      Lwt.return context
+  | _ -> Context.checkout_exn state.context_index ctxt_hash
+
 (* TODO/TORU: don't reapply whole inbox on update *)
 let interp_messages ctxt messages cumulated_size =
   let open Lwt_syntax in
@@ -234,8 +241,6 @@ let process_messages_and_inboxes (state : State.t) ~predecessor_context_hash
     block_info rollup_id =
   let open Lwt_result_syntax in
   let current_hash = block_info.Alpha_block_services.hash in
-  (* let predecessor_hash = block_info.header.shell.predecessor in
-   * let*! predecessor_context_hash = State.context_hash state predecessor_hash in *)
   let*! predecessor_context =
     match predecessor_context_hash with
     | None ->
@@ -243,8 +248,7 @@ let process_messages_and_inboxes (state : State.t) ~predecessor_context_hash
         Lwt.return (Context.empty state.context_index)
     | Some context_hash ->
         (* Known predecessor *)
-        (* TODO/TORU: don't checkout from disk unless reorg *)
-        Context.checkout_exn state.context_index context_hash
+        get_context state context_hash
   in
   let (messages, cumulated_size) =
     extract_messages_from_block block_info rollup_id
@@ -255,12 +259,13 @@ let process_messages_and_inboxes (state : State.t) ~predecessor_context_hash
   in
   let* () = State.save_inbox state current_hash inbox in
   let*! context_hash = Context.commit context in
+  let state = State.cache_context state context context_hash in
   let*! () =
     Event.(emit inbox_stored)
       (current_hash, inbox.contents, inbox.cumulated_size, context_hash)
   in
   let* () = State.save_context_hash state current_hash context_hash in
-  return_unit
+  return state
 
 let rec process_hash cctxt state rollup_genesis current_hash rollup_id =
   let open Lwt_result_syntax in
@@ -274,19 +279,19 @@ and process_block cctxt state rollup_genesis block_info rollup_id =
   let current_hash = block_info.hash in
   let predecessor_hash = block_info.header.shell.predecessor in
   (* TODO/TORU: What if rollup_genesis is on another branch, i.e. in a reorg? *)
-  if Block_hash.equal rollup_genesis current_hash then return_unit
+  if Block_hash.equal rollup_genesis current_hash then return state
   else
     let*! context_hash = State.context_hash state current_hash in
     match context_hash with
     | Some _ ->
         (* Already processed *)
         let*! () = Event.(emit block_already_seen) current_hash in
-        return_unit
+        return state
     | None ->
         let*! predecessor_context_hash =
           State.block_already_seen state predecessor_hash
         in
-        let* () =
+        let* state =
           match predecessor_context_hash with
           | None ->
               let*! () =
@@ -295,12 +300,12 @@ and process_block cctxt state rollup_genesis block_info rollup_id =
               process_hash cctxt state rollup_genesis predecessor_hash rollup_id
           | Some _ ->
               (* Predecessor known *)
-              return_unit
+              return state
         in
         let*! () =
           Event.(emit processing_block) (current_hash, predecessor_hash)
         in
-        let* () =
+        let* state =
           process_messages_and_inboxes
             state
             ~predecessor_context_hash
@@ -310,13 +315,12 @@ and process_block cctxt state rollup_genesis block_info rollup_id =
         let* () = State.set_new_head state current_hash in
         let*! () = Event.(emit new_tezos_head) current_hash in
         let*! () = Event.(emit block_processed) current_hash in
-        return_unit
+        return state
 
 let process_inboxes cctxt state rollup_genesis current_hash rollup_id =
   let open Lwt_result_syntax in
   let*! () = Event.(emit new_block) current_hash in
-  let* () = process_hash cctxt state rollup_genesis current_hash rollup_id in
-  return_unit
+  process_hash cctxt state rollup_genesis current_hash rollup_id
 
 let main_exit_callback state data_dir exit_status =
   let open Lwt_syntax in
@@ -369,9 +373,9 @@ let run ~data_dir cctxt =
           let* (block_stream, interupt) =
             connect ~delay:reconnection_delay cctxt
           in
-          let*! () =
-            Lwt_stream.iter_s
-              (fun (current_hash, _header) ->
+          let*! _state =
+            Lwt_stream.fold_s
+              (fun (current_hash, _header) state ->
                 let*! r =
                   process_inboxes
                     cctxt
@@ -381,12 +385,13 @@ let run ~data_dir cctxt =
                     rollup_id
                 in
                 match r with
-                | Ok () -> Lwt.return ()
+                | Ok state -> Lwt.return state
                 | Error e ->
                     Format.eprintf "%a@." pp_print_trace e ;
                     let () = interupt () in
-                    Lwt.return ())
+                    Lwt.return state)
               block_stream
+              state
           in
           let*! () = Event.(emit connection_lost) () in
           loop ())

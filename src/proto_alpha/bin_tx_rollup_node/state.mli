@@ -30,7 +30,17 @@ open Protocol.Alpha_context
     type stored in the Irmin store. The [State] module allows access to this stored
     data. *)
 
-type t = private {store : Stores.t; context_index : Context.index}
+(** A (size 1) cache for a context and its hash.  *)
+type context_cache = {
+  context : Context.t;
+  context_hash : Protocol.Tx_rollup_l2_context_hash.t;
+}
+
+type t = private {
+  store : Stores.t;
+  context_index : Context.index;
+  context_cache : context_cache option;
+}
 
 (** [init ~data_dir ~context ~rollup ~block_origination_hash]
     checks that the rollup [rollup_id] is created inside the block
@@ -84,3 +94,7 @@ val save_context_hash :
   Block_hash.t ->
   Protocol.Tx_rollup_l2_context_hash.t ->
   unit tzresult Lwt.t
+
+(** Cache a context and its hash in the state so as to prevent unnecessary
+    checkouts on linear histories (e.g. in the normal mode).  *)
+val cache_context : t -> Context.t -> Protocol.Tx_rollup_l2_context_hash.t -> t

@@ -30,7 +30,16 @@ open Protocol.Apply_results
 open Protocol_client_context
 module Block_hash_map = Map.Make (Block_hash)
 
-type t = {store : Stores.t; context_index : Context.index}
+type context_cache = {
+  context : Context.t;
+  context_hash : Protocol.Tx_rollup_l2_context_hash.t;
+}
+
+type t = {
+  store : Stores.t;
+  context_index : Context.index;
+  context_cache : context_cache option;
+}
 
 let rollup_operation_index = 3
 
@@ -120,4 +129,7 @@ let init ~data_dir ~context ~rollup ~rollup_genesis =
   let context_index = init_context ~data_dir in
   let* store = store in
   let* context_index = context_index in
-  return {store; context_index}
+  return {store; context_index; context_cache = None}
+
+let cache_context state context context_hash =
+  {state with context_cache = Some {context; context_hash}}
