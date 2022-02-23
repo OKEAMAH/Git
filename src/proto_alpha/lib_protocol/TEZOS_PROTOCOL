@@ -45,6 +45,7 @@
         "Entrypoint_repr",
         "Tx_rollup_l2_address",
         "Tx_rollup_l2_qty",
+        "Tx_rollup_l2_context_hash",
         "Tx_rollup_repr",
         "Tx_rollup_state_repr",
         "Tx_rollup_message_repr",
