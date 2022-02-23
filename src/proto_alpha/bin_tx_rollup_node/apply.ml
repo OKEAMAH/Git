@@ -23,7 +23,4 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let apply_batch (ctxt : Context.t) batch : Context.t tzresult Lwt.t =
-  (* TODO/TORU *)
-  ignore (ctxt, batch) ;
-  assert false
+include Protocol.Tx_rollup_l2_apply.Make (Context)

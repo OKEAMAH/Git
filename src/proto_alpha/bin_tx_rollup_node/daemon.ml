@@ -31,17 +31,28 @@ open Protocol_client_context
 open Protocol.Alpha_context
 
 (* TODO/TORU: don't reapply whole inbox on update *)
-let messages_to_inbox ctxt messages =
-  let open Lwt_result_syntax in
-  let+ (ctxt, rev_contents, cumulated_size) =
-    List.fold_left_es
-      (fun (ctxt, acc, total_size) message ->
-        let (batch, size) = Tx_rollup_message.make_batch message in
-        let+ ctxt = Apply.apply_batch ctxt batch in
-        let context_hash = Context.hash ctxt in
-        let inbox_message = {Inbox.message = batch; context_hash} in
-        (ctxt, inbox_message :: acc, total_size + size))
-      (ctxt, [], 0)
+let interp_messages ctxt messages cumulated_size =
+  let open Lwt_syntax in
+  let+ (ctxt, _ctxt_hash, rev_contents) =
+    List.fold_left_s
+      (fun (ctxt, ctxt_hash, acc) message ->
+        let+ apply_res = Apply.apply_message ctxt message in
+        let (ctxt, ctxt_hash, result) =
+          match apply_res with
+          | Ok (ctxt, result) ->
+              (* The message was successfully interpreted but the status in
+                 [result] may indicate that the application failed. The context
+                 may have been modified with e.g. updated counters. *)
+              (ctxt, Context.hash ctxt, Inbox.Interpreted result)
+          | Error err ->
+              (* The message was discarded before attempting to interpret it. The
+                 context is not modified. For instance if a batch is unparsable,
+                 or the BLS signature is incorrect, or a counter is wrong, etc. *)
+              (ctxt, ctxt_hash, Inbox.Discarded err)
+        in
+        let inbox_message = {Inbox.message; result; context_hash = ctxt_hash} in
+        (ctxt, ctxt_hash, inbox_message :: acc))
+      (ctxt, Context.hash ctxt, [])
       messages
   in
   let contents = List.rev rev_contents in
@@ -54,36 +65,62 @@ let compute_messages block_info rollup_id =
       block_info.Alpha_block_services.operations
       State.rollup_operation_index
   in
-  let rec get_related_messages :
-      type kind. string list -> kind contents_and_result_list -> string list =
-   fun acc -> function
-    | Single_and_result
-        ( Manager_operation
-            {
-              operation =
-                Tx_rollup_submit_batch {tx_rollup; content; burn_limit = _};
-              _;
-            },
-          Manager_operation_result
-            {operation_result = Applied (Tx_rollup_submit_batch_result _); _} )
+  let get_message :
+      type kind.
+      kind contents ->
+      kind contents_result ->
+      (Tx_rollup_message.t * int) option =
+   fun op result ->
+    match (op, result) with
+    | ( Manager_operation
+          {
+            operation =
+              Tx_rollup_submit_batch {tx_rollup; content; burn_limit = _};
+            _;
+          },
+        Manager_operation_result
+          {operation_result = Applied (Tx_rollup_submit_batch_result _); _} )
       when Tx_rollup.equal rollup_id tx_rollup ->
-        List.rev (content :: acc)
-    | Cons_and_result
-        ( Manager_operation
-            {
-              operation =
-                Tx_rollup_submit_batch {tx_rollup; content; burn_limit = _};
-              _;
-            },
-          Manager_operation_result
-            {operation_result = Applied (Tx_rollup_submit_batch_result _); _},
-          xs )
-      when Tx_rollup.equal rollup_id tx_rollup ->
-        get_related_messages (content :: acc) xs
-    | Single_and_result _ -> List.rev acc
-    | Cons_and_result (_, _, xs) -> get_related_messages acc xs
+        (* Batch message *)
+        Some (Tx_rollup_message.make_batch content)
+    | ( Manager_operation
+          {
+            operation =
+              Transaction
+                {amount; parameters; destination = Tx_rollup dst; entrypoint};
+            _;
+          },
+        Manager_operation_result
+          {operation_result = Applied (Transaction_result _); _} )
+      when Tx_rollup.equal dst rollup_id
+           && Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) ->
+        (* Deposit *)
+        (* TODO/TORU *)
+        ignore (amount, parameters) ;
+        assert false
+    | (_, _) -> None
   in
-  let finalize_receipt operation =
+  let rec get_related_messages :
+      type kind.
+      Tx_rollup_message.t list ->
+      int ->
+      kind contents_and_result_list ->
+      Tx_rollup_message.t list * int =
+   fun acc cumulated_size -> function
+    | Single_and_result (op, result) -> (
+        match get_message op result with
+        | None -> (List.rev acc, cumulated_size)
+        | Some (message, size) ->
+            (List.rev (message :: acc), cumulated_size + size))
+    | Cons_and_result (op, result, rest) ->
+        let (acc, cumulated_size) =
+          match get_message op result with
+          | None -> (acc, cumulated_size)
+          | Some (message, size) -> (message :: acc, cumulated_size + size)
+        in
+        get_related_messages acc cumulated_size rest
+  in
+  let finalize_receipt (acc, cumulated_size) operation =
     match Alpha_block_services.(operation.protocol_data, operation.receipt) with
     | ( Operation_data {contents = operation_contents; _},
         Some (Operation_metadata {contents = result_contents}) ) -> (
@@ -92,16 +129,14 @@ let compute_messages block_info rollup_id =
             let operation_and_result =
               pack_contents_list operation_contents result_contents
             in
-            get_related_messages [] operation_and_result
-        | None -> [])
-    | (_, Some No_operation_metadata) | (_, None) -> []
+            get_related_messages acc cumulated_size operation_and_result
+        | None -> (acc, cumulated_size))
+    | (_, Some No_operation_metadata) | (_, None) -> (acc, cumulated_size)
   in
   match managed_operation with
-  | None -> []
+  | None -> ([], 0)
   | Some managed_operations ->
-      (* We can use [List.concat_map] because we do not expect many batches per
-         rollup and per block. *)
-      managed_operations |> List.concat_map finalize_receipt
+      List.fold_left finalize_receipt ([], 0) managed_operations
 
 let process_messages_and_inboxes (state : State.t) ~predecessor_context_hash
     block_info rollup_id =
@@ -119,10 +154,13 @@ let process_messages_and_inboxes (state : State.t) ~predecessor_context_hash
         (* TODO/TORU: don't checkout from disk unless reorg *)
         Context.checkout_exn state.context_index context_hash
   in
-  let messages = compute_messages block_info rollup_id in
-  let messages_len = List.length messages in
-  let* (context, inbox) = messages_to_inbox predecessor_context messages in
-  let*! () = Event.(emit messages_application) messages_len in
+  let (messages, cumulated_size) =
+    extract_messages_from_block block_info rollup_id
+  in
+  let*! () = Event.(emit messages_application) (List.length messages) in
+  let*! (context, inbox) =
+    interp_messages predecessor_context messages cumulated_size
+  in
   let* () = State.save_inbox state current_hash inbox in
   let*! context_hash = Context.commit context in
   let*! () =

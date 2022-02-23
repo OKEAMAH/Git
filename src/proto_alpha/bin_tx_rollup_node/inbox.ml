@@ -25,7 +25,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol.Alpha_context
+open Protocol
+open Alpha_context
 
 type message_result =
   | Interpreted of Tx_rollup_l2_apply.Message_result.t
@@ -33,7 +34,8 @@ type message_result =
 
 type inbox_message = {
   message : Tx_rollup_message.t;
-  context_hash : Protocol.Tx_rollup_l2_context_hash.t;
+  result : message_result;
+  context_hash : Tx_rollup_l2_context_hash.t;
 }
 
 type t = {contents : inbox_message list; cumulated_size : int}
@@ -53,11 +55,12 @@ let message_result_encoding =
 let inbox_message_encoding =
   let open Data_encoding in
   conv
-    (fun {message; context_hash} -> (message, context_hash))
-    (fun (message, context_hash) -> {message; context_hash})
-    (obj2
+    (fun {message; result; context_hash} -> (message, result, context_hash))
+    (fun (message, result, context_hash) -> {message; result; context_hash})
+    (obj3
        (req "message" Tx_rollup_message.encoding)
-       (req "context_hash" Protocol.Tx_rollup_l2_context_hash.encoding))
+       (req "result" message_result_encoding)
+       (req "context_hash" Tx_rollup_l2_context_hash.encoding))
 
 let encoding =
   let open Data_encoding in

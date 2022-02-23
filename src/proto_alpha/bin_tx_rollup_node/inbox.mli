@@ -28,7 +28,8 @@
 (** A non-compact representation of inboxes that represents complete messages
     and not their hashes. *)
 
-open Protocol.Alpha_context
+open Protocol
+open Alpha_context
 
 (** Result of application of an inbox message *)
 type message_result =
@@ -41,7 +42,8 @@ type message_result =
     of the message *)
 type inbox_message = {
   message : Tx_rollup_message.t;
-  context_hash : Protocol.Tx_rollup_l2_context_hash.t;
+  result : message_result;
+  context_hash : Tx_rollup_l2_context_hash.t;
 }
 
 (** The type representing an inbox whose contents are the messages and not the
