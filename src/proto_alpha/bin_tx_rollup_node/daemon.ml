@@ -267,19 +267,20 @@ let process_messages_and_inboxes (state : State.t) ~predecessor_context_hash
   let* () = State.save_context_hash state current_hash context_hash in
   return state
 
-let rec process_hash cctxt state rollup_genesis current_hash rollup_id =
+let rec process_hash cctxt state current_hash rollup_id =
   let open Lwt_result_syntax in
   let chain = cctxt#chain in
   let block = `Hash (current_hash, 0) in
   let* block_info = Alpha_block_services.info cctxt ~chain ~block () in
-  process_block cctxt state rollup_genesis block_info rollup_id
+  process_block cctxt state block_info rollup_id
 
-and process_block cctxt state rollup_genesis block_info rollup_id =
+and process_block cctxt state block_info rollup_id =
   let open Lwt_result_syntax in
   let current_hash = block_info.hash in
   let predecessor_hash = block_info.header.shell.predecessor in
   (* TODO/TORU: What if rollup_genesis is on another branch, i.e. in a reorg? *)
-  if Block_hash.equal rollup_genesis current_hash then return state
+  if Block_hash.equal state.State.rollup_origination.block_hash current_hash
+  then return state
   else
     let*! context_hash = State.context_hash state current_hash in
     match context_hash with
@@ -297,7 +298,7 @@ and process_block cctxt state rollup_genesis block_info rollup_id =
               let*! () =
                 Event.(emit processing_block_predecessor) predecessor_hash
               in
-              process_hash cctxt state rollup_genesis predecessor_hash rollup_id
+              process_hash cctxt state predecessor_hash rollup_id
           | Some _ ->
               (* Predecessor known *)
               return state
@@ -317,10 +318,10 @@ and process_block cctxt state rollup_genesis block_info rollup_id =
         let*! () = Event.(emit block_processed) current_hash in
         return state
 
-let process_inboxes cctxt state rollup_genesis current_hash rollup_id =
+let process_inboxes cctxt state current_hash rollup_id =
   let open Lwt_result_syntax in
   let*! () = Event.(emit new_block) current_hash in
-  process_hash cctxt state rollup_genesis current_hash rollup_id
+  process_hash cctxt state current_hash rollup_id
 
 let main_exit_callback state data_dir exit_status =
   let open Lwt_syntax in
@@ -350,9 +351,7 @@ let run ~data_dir cctxt =
        configuration) =
     Configuration.load ~data_dir
   in
-  let* state =
-    State.init ~data_dir ~context:cctxt ~rollup:rollup_id ~rollup_genesis
-  in
+  let* state = State.init ~data_dir ~context:cctxt ?rollup_genesis rollup_id in
   let* _rpc_server = RPC.start configuration state in
   let _ =
     (* Register cleaner callback *)
@@ -376,14 +375,7 @@ let run ~data_dir cctxt =
           let*! _state =
             Lwt_stream.fold_s
               (fun (current_hash, _header) state ->
-                let*! r =
-                  process_inboxes
-                    cctxt
-                    state
-                    rollup_genesis
-                    current_hash
-                    rollup_id
-                in
+                let*! r = process_inboxes cctxt state current_hash rollup_id in
                 match r with
                 | Ok state -> Lwt.return state
                 | Error e ->

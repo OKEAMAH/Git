@@ -23,8 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol.Tx_rollup_l2_storage_sig
 open Error
+open Protocol.Tx_rollup_l2_storage_sig
 open Context_encoding
 
 (* /!\ Logging and parameters copied over from [lib_context/context.ml].

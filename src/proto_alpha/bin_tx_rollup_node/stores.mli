@@ -82,6 +82,11 @@ module Inboxes :
     by the daemon. *)
 module Tezos_head : REF with type value = Block_hash.t and type t = t
 
+(** A persistent reference to the rollup origination block (initialized on first
+   run). *)
+module Rollup_origination :
+  REF with type value = Block_hash.t * int32 and type t = t
+
 (** Persistent storage for transaction rollup context hashes. *)
 module Context_hashes :
   MAP
