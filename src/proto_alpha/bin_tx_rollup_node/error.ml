@@ -49,6 +49,22 @@ let () =
       | _ -> None)
     (fun rollup_id -> Tx_rollup_not_originated_in_the_given_block rollup_id)
 
+type error += Tx_rollup_originated_in_fork
+
+let () =
+  register_error_kind
+    ~id:"tx_rollup.node.originated_in_fork"
+    ~title:"transaction rollup was originated in another branch"
+    ~description:"The transaction rollup was originated in another branch."
+    ~pp:(fun ppf () ->
+      Format.fprintf
+        ppf
+        "The transaction rollup was originated in another branch.")
+    `Permanent
+    Data_encoding.(unit)
+    (function Tx_rollup_originated_in_fork -> Some () | _ -> None)
+    (fun () -> Tx_rollup_originated_in_fork)
+
 type error += Tx_rollup_block_predecessor_not_processed of Block_hash.t
 
 let () =

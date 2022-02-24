@@ -29,6 +29,7 @@ open Protocol.Apply_results
 open Tezos_shell_services
 open Protocol_client_context
 open Protocol.Alpha_context
+open Error
 
 (* TODO/TORU: Move application logic in other module *)
 
@@ -278,8 +279,12 @@ and process_block cctxt state block_info rollup_id =
   let open Lwt_result_syntax in
   let current_hash = block_info.hash in
   let predecessor_hash = block_info.header.shell.predecessor in
-  (* TODO/TORU: What if rollup_genesis is on another branch, i.e. in a reorg? *)
-  if Block_hash.equal state.State.rollup_origination.block_hash current_hash
+  if block_info.header.shell.level < state.State.rollup_origination.block_level
+  then
+    (* We went back too far because the genesis block is in another branch *)
+    fail [Tx_rollup_originated_in_fork]
+  else if
+    Block_hash.equal state.State.rollup_origination.block_hash current_hash
   then return state
   else
     let*! context_hash = State.context_hash state current_hash in
@@ -344,6 +349,8 @@ let valid_history_mode = function
   | History_mode.Archive | History_mode.Full _ -> true
   | _ -> false
 
+(* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/2551
+   Clean exit *)
 let run ~data_dir cctxt =
   let open Lwt_result_syntax in
   let*! () = Event.(emit starting_node) () in
@@ -378,6 +385,9 @@ let run ~data_dir cctxt =
                 let*! r = process_inboxes cctxt state current_hash rollup_id in
                 match r with
                 | Ok state -> Lwt.return state
+                | Error (Tx_rollup_originated_in_fork :: _ as e) ->
+                    Format.eprintf "%a@.Exiting.@." pp_print_trace e ;
+                    Lwt_exit.exit_and_raise 1
                 | Error e ->
                     Format.eprintf "%a@." pp_print_trace e ;
                     let () = interupt () in

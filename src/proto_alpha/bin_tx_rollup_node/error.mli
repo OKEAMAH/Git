@@ -32,6 +32,10 @@ type error +=
   | Tx_rollup_not_originated_in_the_given_block of
       Protocol.Alpha_context.Tx_rollup.t
 
+(** Error issued when the rollup genesis block is (or moves) to a different
+    branch. *)
+type error += Tx_rollup_originated_in_fork
+
 (** Error issued when the daemon attempts to process the operations of a block
     for which the predecessor has not yet been processed. *)
 type error += Tx_rollup_block_predecessor_not_processed of Block_hash.t
