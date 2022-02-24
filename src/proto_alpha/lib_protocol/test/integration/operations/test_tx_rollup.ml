@@ -114,6 +114,18 @@ let context_init n =
     ~baking_reward_fixed_portion:Tez.zero
     n
 
+(** [context_init1] initializes a context with no consensus rewards
+    to not interfere with balances prediction. It returns the created
+    context and 1 contract. *)
+let context_init1 () =
+  Context.init1
+    ~consensus_threshold:0
+    ~tx_rollup_enable:true
+    ~endorsing_reward_per_slot:Tez.zero
+    ~baking_reward_bonus_per_slot:Tez.zero
+    ~baking_reward_fixed_portion:Tez.zero
+    ()
+
 (** [originate b contract] originates a tx_rollup from [contract],
     and returns the new block and the tx_rollup address. *)
 let originate b contract =
