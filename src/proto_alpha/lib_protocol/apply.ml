@@ -1426,7 +1426,11 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
   Fees.check_storage_limit ctxt ~storage_limit >>?= fun () ->
   let source_contract = Contract.implicit_contract source in
   Contract.must_be_allocated ctxt source_contract >>=? fun () ->
+
   Contract.check_counter_increment ctxt source counter >>=? fun () ->
+
+  let _ = counter in
+
   let consume_deserialization_gas = Script.Always in
   (* We want to always consume the deserialization gas here, independently of
      the internal state of the lazy_exprs in the arguments. Otherwise we might

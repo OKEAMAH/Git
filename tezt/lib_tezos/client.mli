@@ -899,6 +899,7 @@ module Tx_rollup : sig
     content:string ->
     rollup:string ->
     src:string ->
+    ?counter:int ->
     t ->
     unit Process.runnable
 

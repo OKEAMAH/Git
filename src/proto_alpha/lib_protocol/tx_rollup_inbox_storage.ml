@@ -66,8 +66,11 @@ let prepare_metadata :
   Storage.Tx_rollup.Inbox_metadata.find (ctxt, level) rollup
   >>=? fun (ctxt, metadata) ->
   (match metadata with
-  | Some metadata -> return (ctxt, state, metadata)
+  | Some metadata ->
+      Logging.(log Info "old metadata\n") ;
+      return (ctxt, state, metadata)
   | None ->
+      Logging.(log Info "first message\n") ;
       (* First message in inbox: need to update linked list and pending
          inbox count *)
       let predecessor = Tx_rollup_state_repr.last_inbox_level state in
@@ -125,9 +128,11 @@ let append_message :
     (Raw_context.t * Tx_rollup_state_repr.t) tzresult Lwt.t =
  fun ctxt rollup state message ->
   let level = (Raw_context.current_level ctxt).level in
+  Logging.(log Info "APPEND at level %a\n" Raw_level_repr.pp level) ;
   let message_size = Tx_rollup_message_repr.size message in
   prepare_metadata ctxt rollup state level
   >>=? fun (ctxt, new_state, metadata) ->
+  Logging.(log Info "APPEND: l = %ld\n" metadata.inbox_length) ;
   fail_when
     Compare.Int.(
       Int32.to_int metadata.inbox_length
@@ -137,7 +142,8 @@ let append_message :
   Tx_rollup_message_builder.hash ctxt message >>?= fun (ctxt, message_hash) ->
   update_metadata metadata message_hash message_size >>?= fun new_metadata ->
   Storage.Tx_rollup.Inbox_metadata.add (ctxt, level) rollup new_metadata
-  >>=? fun (ctxt, _, _) ->
+  >>=? fun (ctxt, _, already) ->
+  Logging.(log Info "ALREADY: %b\n" already) ;
   let new_size = new_metadata.cumulated_size in
   let inbox_limit =
     Constants_storage.tx_rollup_hard_size_limit_per_inbox ctxt
@@ -150,7 +156,9 @@ let append_message :
     ((ctxt, level), rollup)
     metadata.inbox_length
     message_hash
-  >>=? fun (ctxt, _, _) -> return (ctxt, new_state)
+  >>=? fun (ctxt, _, _) ->
+  Logging.(log Info "EOF\n") ;
+  return (ctxt, new_state)
 
 let get_level :
     Raw_context.t -> [`Current | `Level of Raw_level_repr.t] -> Raw_level_repr.t
@@ -187,6 +195,8 @@ let messages :
   messages_opt ctxt ~level tx_rollup >>=? function
   | (ctxt, Some messages) -> return (ctxt, messages)
   | (_, None) ->
+    let raw_level = get_level ctxt level in
+    Logging.(log Info "Failed to find messages at level %a" Raw_level_repr.pp raw_level) ;
       fail (Tx_rollup_inbox_does_not_exist (tx_rollup, get_level ctxt level))
 
 let size :

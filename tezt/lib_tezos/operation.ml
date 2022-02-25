@@ -44,6 +44,11 @@ type manager_op_kind =
     }
   | Reveal of string (* public key *)
   | Origination of {code : micheline; storage : micheline; balance : int}
+  | Tx_rollup_submit_batch of {
+      tx_rollup : string;
+      content : string;
+      burn_limit : int;
+    }
 
 (* This is the manager operations' content type *)
 type manager_operation_content = {
@@ -131,7 +136,8 @@ let manager_op_content_to_json_string
     {op_kind; fee; gas_limit; storage_limit; source; counter} client =
   let jz_string_of_int n = Ezjsonm.string @@ string_of_int n in
   let mk_jsonm ?(amount = `Null) ?(destination = `Null) ?(parameter = `Null)
-      ?(public_key = `Null) ?(balance = `Null) ?(script = `Null) kind =
+      ?(public_key = `Null) ?(balance = `Null) ?(script = `Null)
+      ?(rollup = `Null) ?(content = `Null) ?(burn_limit = `Null) kind =
     let filter = List.filter (fun (_k, v) -> v <> `Null) in
     return
     @@ `O
@@ -153,6 +159,10 @@ let manager_op_content_to_json_string
               (* Smart Contract origination *)
               ("balance", balance);
               ("script", script);
+              (* Tx_rollup *)
+              ("rollup", rollup);
+              ("content", content);
+              ("burn_limit", burn_limit);
             ])
   in
   match op_kind with
@@ -177,6 +187,11 @@ let manager_op_content_to_json_string
       let* storage = data_to_json client storage in
       let script : Ezjsonm.value = `O [("code", code); ("storage", storage)] in
       mk_jsonm ~balance:(jz_string_of_int balance) ~script "origination"
+  | Tx_rollup_submit_batch {tx_rollup; content; burn_limit} ->
+      let rollup = Ezjsonm.string tx_rollup in
+      let content = Ezjsonm.string content in
+      let burn_limit = jz_string_of_int burn_limit in
+      mk_jsonm ~rollup ~content ~burn_limit "tx_rollup_submit_batch"
 
 (* construct a JSON operations with contents and branch *)
 let manager_op_to_json_string ~branch operations_json =
@@ -370,3 +385,35 @@ let inject_transfers ?protocol ?async ?force ?wait_for_injection ?amount ?fee
         loop oph_list (pred n)
   in
   loop [] number_of_operations
+
+module Tx_rollup = struct
+  let mk_submit_batch ~source ?counter ?(fee = 1_000) ?(gas_limit = 1040)
+      ?(storage_limit = 257) ~content ~tx_rollup client =
+    mk_manager_op ~source ?counter ~fee ~gas_limit ~storage_limit client
+    (* TODO/TORU: figure out actual burn limit *)
+    @@ Tx_rollup_submit_batch {tx_rollup; content; burn_limit = 1_000_000}
+
+  let inject_submit_batch ?protocol ?async ?force ?wait_for_injection ?branch
+      ~source ?(signer = source) ?counter ?fee ?gas_limit ?storage_limit
+      ~content ~tx_rollup client =
+    let* op =
+      mk_submit_batch
+        ~source
+        ?counter
+        ?fee
+        ?gas_limit
+        ?storage_limit
+        ~content
+        ~tx_rollup
+        client
+    in
+    forge_and_inject_operation
+      ?protocol
+      ?async
+      ?force
+      ?wait_for_injection
+      ?branch
+      ~batch:[op]
+      ~signer
+      client
+end

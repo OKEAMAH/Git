@@ -38,10 +38,10 @@ let hooks = Tezos_regression.hooks
 
 module Rollup = Rollup.Tx_rollup
 
-let parameter_file protocol =
+let parameter_file ?(extra = []) protocol =
   Protocol.write_parameter_file
     ~base:(Either.right (protocol, None))
-    [(["tx_rollup_enable"], Some "true")]
+    ((["tx_rollup_enable"], Some "true") :: extra)
 
 (* This module only registers regressions tests. Those regressions
    tests should be used to ensure there is no regressions with the
@@ -49,10 +49,16 @@ let parameter_file protocol =
 module Regressions = struct
   type t = {node : Node.t; client : Client.t; rollup : string}
 
-  let init_with_tx_rollup ~protocol =
-    let* parameter_file = parameter_file protocol in
+  let init_with_tx_rollup ~protocol ?additional_bootstrap_account_count ?extra
+      () =
+    let* parameter_file = parameter_file ?extra protocol in
     let* (node, client) =
-      Client.init_with_protocol ~parameter_file `Client ~protocol ()
+      Client.init_with_protocol
+        ?additional_bootstrap_account_count
+        ~parameter_file
+        `Client
+        ~protocol
+        ()
     in
     (* We originate a dumb rollup to be able to generate a paths for
        tx_rollups related RPCs. *)
@@ -71,7 +77,7 @@ module Regressions = struct
       ~tags:["tx_rollup"; "rpc"]
       ~protocols
     @@ fun protocol ->
-    let* {node = _; client; rollup} = init_with_tx_rollup ~protocol in
+    let* {node = _; client; rollup} = init_with_tx_rollup ~protocol () in
     let*! _state = Rollup.get_state ~hooks ~rollup client in
     return ()
 
@@ -98,7 +104,7 @@ module Regressions = struct
       ~protocols
     @@ fun protocol ->
     let* ({rollup; client; node = _} as state) =
-      init_with_tx_rollup ~protocol
+      init_with_tx_rollup ~protocol ()
     in
     (* The content of the batch does not matter for the regression test. *)
     let batch = "blob" in
@@ -132,7 +138,7 @@ module Regressions = struct
       ~tags:["tx_rollup"; "rpc"; "commitment"]
       ~protocols
     @@ fun protocol ->
-    let* ({rollup; client; node} as state) = init_with_tx_rollup ~protocol in
+    let* ({rollup; client; node} as state) = init_with_tx_rollup ~protocol () in
     (* The content of the batch does not matter for the regression test. *)
     let batch = "blob" in
     let* () = submit_batch ~batch state in
@@ -299,7 +305,7 @@ let test_submit_batches_in_several_blocks ~protocols =
   in
   (* Let’s try to see if we can submit three more batches in the next level *)
   let* () =
-    submit_three_batches_and_check_size ~rollup node client submission 3
+    submit_three_batches_and_check_size ~rollup node client submission 4
   in
   unit
 
@@ -351,7 +357,148 @@ let test_submit_from_originated_source ~protocols =
   in
   unit
 
+(* TODO/TORU: fix copy-paste*)
+let check_mempool ?(applied = []) ?(branch_delayed = []) ?(branch_refused = [])
+    ?(refused = []) ?(outdated = []) ?(unprocessed = []) client =
+  let* mempool = Mempool.get_mempool client in
+  let expected_mempool =
+    Mempool.
+      {applied; branch_delayed; branch_refused; refused; outdated; unprocessed}
+  in
+  Check.(
+    (expected_mempool = mempool)
+      Mempool.classified_typ
+      ~error_msg:"Expected mempool %L, got %R") ;
+  unit
+
+let test_commitment_size_limit ~protocols =
+  Protocol.register_test
+    ~__FILE__
+    ~title:
+      "Test that we can commit to the largest possible inbox (and not to a \
+       larger one)"
+    ~tags:["tx_rollup"]
+    ~protocols
+  @@ fun protocol ->
+  let n = 13 in
+
+  let _additional_bootstrap_account_count = n - 5 in
+  let additional_bootstrap_account_count = 0 in
+  let* parameter_file = parameter_file protocol in
+  let* (node, client) =
+    Client.init_with_protocol
+      ~parameter_file
+      ~additional_bootstrap_account_count
+      `Client
+      ~protocol
+      ~nodes_args:
+        Node.
+          [
+            Connections 0;
+            Synchronisation_threshold 0;
+            Disable_operations_precheck;
+          ]
+      ()
+  in
+  Format.printf "BOOTSTRAPPEED ACCTS:\n" ;
+  Format.print_flush () ;
+  let*! rollup =
+    Client.Tx_rollup.originate ~src:Constant.bootstrap1.public_key_hash client
+  in
+  let* () = Client.bake_for client in
+  let* _ = Node.wait_for_level node 2 in
+  let submit_n_batches_and_commit n predecessor =
+    let level = Node.get_level node in
+    let batches =
+      List.init n (fun i ->
+          (Format.sprintf "batch #%d" i, Account.bootstrap (i + 1)))
+    in
+    (* We chunk the batches, because iter_p will happily spawn N processes
+       for a list of N items, and this can cause us to run out of file
+       handles or RAM. *)
+    let chunk list chunk_size =
+      let rec aux list chunks chunk =
+        match list with
+        | [] -> List.rev (List.rev chunk :: chunks)
+        | hd :: tl ->
+            if List.length chunk = chunk_size then
+              (aux [@tailcall]) tl (List.rev chunk :: chunks) [hd]
+            else (aux [@tailcall]) tl chunks (hd :: chunk)
+      in
+      aux list [] []
+    in
+    let batch_count = ref 0 in
+    let batch_chunks = chunk batches (min 1 n / 12) in
+    let* oph =
+      Lwt_list.map_p
+        (fun chunk ->
+          Lwt_list.map_s
+            (fun (content, _src) ->
+              let* (`OpHash oph) =
+                Operation.Tx_rollup.inject_submit_batch
+                  ~force:true
+                  ~source:Constant.bootstrap1
+                  ~content
+                  ~tx_rollup:rollup
+                  client
+              in
+
+                (*
+              let*! () =
+                Client.Tx_rollup.submit_batch
+                  ~hooks
+                  ~content
+                  ~rollup
+                  ~src
+                  ~counter:(!batch_count + 1)
+                  client
+
+                  *)
+
+
+              let current_level = Node.get_level node in
+              Format.printf "batches, level = %d\n" current_level ;
+              batch_count := !batch_count + 1 ;
+              return oph)
+            chunk)
+        batch_chunks
+    in
+
+    let oph =  List.flatten @@  oph in
+    let* () = check_mempool ~applied:oph client in
+    (*
+    let*! inbox = Rollup.get_inbox ~hooks ~rollup client in
+    *)
+    let* () = Client.bake_for client in
+    let* _ = Node.wait_for_level node 3 in
+
+    let batch_level = level + 1 in
+    let current_level = Node.get_level node in
+    Format.printf "getting inbox, level = %d\n" current_level ;
+
+    let*! inbox = Rollup.get_inbox ~hooks ~rollup  client in
+
+    let* () = Client.bake_for client in
+    let roots =
+      List.init n (fun i -> Format.sprintf "thirty-two bytes of %07d." i)
+    in
+    return
+    @@ Client.Tx_rollup.submit_commitment
+         ~hooks
+         ~level:batch_level
+         ~roots
+         ~inbox_hash:inbox.hash
+         ~predecessor
+         ~rollup
+         ~src:Constant.bootstrap1.public_key_hash
+         client
+  in
+  let* commit = submit_n_batches_and_commit n None in
+  let*! () = commit in
+  unit
+
 let register ~protocols =
   Regressions.register ~protocols ;
   test_submit_batches_in_several_blocks ~protocols ;
-  test_submit_from_originated_source ~protocols
+  test_submit_from_originated_source ~protocols ;
+  test_commitment_size_limit ~protocols

@@ -336,3 +336,26 @@ val inject_transfers :
   number_of_operations:int ->
   Client.t ->
   [`OpHash of string] list Lwt.t
+
+module Tx_rollup : sig
+  (** [inject_submit_batch] is a high-level wrapper that allows to build tx
+    rollup submit batch iperations operations and to inject it using the
+    given client.
+*)
+  val inject_submit_batch :
+    ?protocol:Protocol.t ->
+    ?async:bool ->
+    ?force:bool ->
+    ?wait_for_injection:Node.t ->
+    ?branch:string ->
+    source:Account.key ->
+    ?signer:Account.key ->
+    ?counter:int ->
+    ?fee:int ->
+    ?gas_limit:int ->
+    ?storage_limit:int ->
+    content:string ->
+    tx_rollup:string ->
+    Client.t ->
+    [> `OpHash of string] Lwt.t
+end
