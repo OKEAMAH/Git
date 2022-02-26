@@ -138,7 +138,6 @@ let add_commitment ctxt tx_rollup pkh (commitment : Tx_rollup_commitment_repr.t)
   Tx_rollup_inbox_storage.get_metadata ctxt commitment.level tx_rollup
   >>=? fun (ctxt, {inbox_length; hash; _}) ->
   let actual_len = List.length commitment.batches in
-  Logging.(log Info "HERE!: expect %ld got %d\n" inbox_length actual_len) ;
   fail_unless
     Compare.Int.(Int32.to_int inbox_length = actual_len)
     Wrong_batch_count

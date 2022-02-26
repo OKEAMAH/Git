@@ -1190,7 +1190,7 @@ module Tx_rollup = struct
     {value = process; run = parse}
 
   let submit_batch ?(wait = "none") ?burn_cap ?storage_limit ?hooks ~content
-      ~rollup ~src ?counter client =
+      ~rollup ~src client =
     let process =
       spawn_command
         ?hooks
@@ -1214,11 +1214,7 @@ module Tx_rollup = struct
         @ Option.fold
             ~none:[]
             ~some:(fun s -> ["--storage-limit"; string_of_int s])
-            storage_limit
-        @ Option.fold
-            ~none:[]
-            ~some:(fun s -> ["--counter"; string_of_int s])
-            counter)
+            storage_limit)
     in
     let parse process = Process.check process in
     {value = process; run = parse}

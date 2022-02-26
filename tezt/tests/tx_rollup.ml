@@ -38,10 +38,10 @@ let hooks = Tezos_regression.hooks
 
 module Rollup = Rollup.Tx_rollup
 
-let parameter_file ?(extra = []) protocol =
+let parameter_file protocol =
   Protocol.write_parameter_file
     ~base:(Either.right (protocol, None))
-    ((["tx_rollup_enable"], Some "true") :: extra)
+    [(["tx_rollup_enable"], Some "true")]
 
 (* This module only registers regressions tests. Those regressions
    tests should be used to ensure there is no regressions with the
@@ -49,16 +49,10 @@ let parameter_file ?(extra = []) protocol =
 module Regressions = struct
   type t = {node : Node.t; client : Client.t; rollup : string}
 
-  let init_with_tx_rollup ~protocol ?additional_bootstrap_account_count ?extra
-      () =
-    let* parameter_file = parameter_file ?extra protocol in
+  let init_with_tx_rollup ~protocol =
+    let* parameter_file = parameter_file protocol in
     let* (node, client) =
-      Client.init_with_protocol
-        ?additional_bootstrap_account_count
-        ~parameter_file
-        `Client
-        ~protocol
-        ()
+      Client.init_with_protocol ~parameter_file `Client ~protocol ()
     in
     (* We originate a dumb rollup to be able to generate a paths for
        tx_rollups related RPCs. *)
@@ -77,7 +71,7 @@ module Regressions = struct
       ~tags:["tx_rollup"; "rpc"]
       ~protocols
     @@ fun protocol ->
-    let* {node = _; client; rollup} = init_with_tx_rollup ~protocol () in
+    let* {node = _; client; rollup} = init_with_tx_rollup ~protocol in
     let*! _state = Rollup.get_state ~hooks ~rollup client in
     return ()
 
@@ -104,7 +98,7 @@ module Regressions = struct
       ~protocols
     @@ fun protocol ->
     let* ({rollup; client; node = _} as state) =
-      init_with_tx_rollup ~protocol ()
+      init_with_tx_rollup ~protocol
     in
     (* The content of the batch does not matter for the regression test. *)
     let batch = "blob" in
@@ -138,7 +132,7 @@ module Regressions = struct
       ~tags:["tx_rollup"; "rpc"; "commitment"]
       ~protocols
     @@ fun protocol ->
-    let* ({rollup; client; node} as state) = init_with_tx_rollup ~protocol () in
+    let* ({rollup; client; node} as state) = init_with_tx_rollup ~protocol in
     (* The content of the batch does not matter for the regression test. *)
     let batch = "blob" in
     let* () = submit_batch ~batch state in
@@ -380,6 +374,8 @@ let test_commitment_size_limit ~protocols =
     ~tags:["tx_rollup"]
     ~protocols
   @@ fun protocol ->
+
+  (* This is the number that we eventually want to get to 1018/1019. *)
   let n = 13 in
 
   let _additional_bootstrap_account_count = n - 5 in
@@ -443,7 +439,7 @@ let test_commitment_size_limit ~protocols =
                   client
               in
 
-                (*
+              (*
               let*! () =
                 Client.Tx_rollup.submit_batch
                   ~hooks
@@ -454,8 +450,6 @@ let test_commitment_size_limit ~protocols =
                   client
 
                   *)
-
-
               let current_level = Node.get_level node in
               Format.printf "batches, level = %d\n" current_level ;
               batch_count := !batch_count + 1 ;
@@ -464,7 +458,7 @@ let test_commitment_size_limit ~protocols =
         batch_chunks
     in
 
-    let oph =  List.flatten @@  oph in
+    let oph = List.flatten @@ oph in
     let* () = check_mempool ~applied:oph client in
     (*
     let*! inbox = Rollup.get_inbox ~hooks ~rollup client in
@@ -476,7 +470,7 @@ let test_commitment_size_limit ~protocols =
     let current_level = Node.get_level node in
     Format.printf "getting inbox, level = %d\n" current_level ;
 
-    let*! inbox = Rollup.get_inbox ~hooks ~rollup  client in
+    let*! inbox = Rollup.get_inbox ~hooks ~rollup client in
 
     let* () = Client.bake_for client in
     let roots =
