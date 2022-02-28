@@ -122,6 +122,9 @@ module Message_result : sig
      withdrawals that result from failing deposits and layer2-to-layer1
      transfers. *)
   type t = message_result * withdrawal list
+
+  val hash :
+    bytes -> withdrawal list -> Tx_rollup_commitment.Message_result_hash.t
 end
 
 module Make (Context : CONTEXT) : sig

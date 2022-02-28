@@ -162,6 +162,18 @@ module Message_result = struct
     amount : Tx_rollup_l2_qty.t;
   }
 
+  let withdrawal_encoding : withdrawal Data_encoding.t =
+    let open Data_encoding in
+    conv
+      (fun {destination; ticket_hash; amount} ->
+        (destination, ticket_hash, amount))
+      (fun (destination, ticket_hash, amount) ->
+        {destination; ticket_hash; amount})
+      (obj3
+         (req "destination" Signature.Public_key_hash.encoding)
+         (req "ticket_hash" Ticket_hash.encoding)
+         (req "amount" Tx_rollup_l2_qty.encoding))
+
   type transaction_result =
     | Transaction_success
     | Transaction_failure of {index : int; reason : error}
@@ -184,6 +196,22 @@ module Message_result = struct
     | Batch_V1_result of Batch_V1.t
 
   type t = message_result * withdrawal list
+
+  let hash ctxt_root withdraw_list =
+    let withdraw_list_hash_bytes =
+      List.map
+        (fun withdraw ->
+          Tx_rollup_commitment.Withdraw_hash.hash_bytes
+          @@ [Data_encoding.Binary.to_bytes_exn withdrawal_encoding withdraw])
+        withdraw_list
+      |> Tx_rollup_commitment.Withdraw_hash_list_hash.compute
+      |> Data_encoding.Binary.to_bytes_exn
+           Tx_rollup_commitment.Withdraw_hash_list_hash.encoding
+    in
+    (* TODO/TORU: this needs to change with we use irmin *)
+    let ctxt_root_bytes = ctxt_root in
+    Tx_rollup_commitment.Message_result_hash.hash_bytes
+      [ctxt_root_bytes; withdraw_list_hash_bytes]
 end
 
 module Make (Context : CONTEXT) = struct
@@ -635,11 +663,11 @@ module Make (Context : CONTEXT) = struct
       (apply_deposit ())
       (fun (ctxt, indexes) -> return (ctxt, Deposit_success indexes, None))
       (fun reason ->
-            (* Should there an error during the deposit, then return
-               the full [amount] to [sender] in the form of a
-               withdrawal. *)
-            let withdrawal = {destination = sender; ticket_hash; amount} in
-            return (initial_ctxt, Deposit_failure reason, Some withdrawal))
+        (* Should there an error during the deposit, then return
+           the full [amount] to [sender] in the form of a
+           withdrawal. *)
+        let withdrawal = {destination = sender; ticket_hash; amount} in
+        return (initial_ctxt, Deposit_failure reason, Some withdrawal))
 
   let apply_message : ctxt -> Tx_rollup_message.t -> (ctxt * Message_result.t) m
       =

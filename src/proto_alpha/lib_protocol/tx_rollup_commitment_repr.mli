@@ -56,9 +56,11 @@ module Commitment_hash : sig
   include S.HASH
 end
 
-type batch_commitment = {root : bytes}
+module Withdraw_hash : S.HASH
 
-val batch_commitment_equal : batch_commitment -> batch_commitment -> bool
+module Withdraw_hash_list_hash : S.MERKLE_TREE with type elt = Withdraw_hash.t
+
+module Message_result_hash : S.HASH
 
 (** A commitment describes the interpretation of the messages stored in the
     inbox of a particular [level], on top of a particular layer-2 context.
@@ -72,7 +74,7 @@ val batch_commitment_equal : batch_commitment -> batch_commitment -> bool
     empty tree. *)
 type t = {
   level : Raw_level_repr.t;
-  batches : batch_commitment list;
+  batches : Message_result_hash.t list;
   predecessor : Commitment_hash.t option;
   inbox_hash : Tx_rollup_inbox_repr.hash;
 }

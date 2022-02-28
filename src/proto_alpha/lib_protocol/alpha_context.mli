@@ -2198,13 +2198,15 @@ module Tx_rollup_commitment : sig
     include S.HASH
   end
 
-  type batch_commitment = {root : bytes}
+  module Withdraw_hash : S.HASH
 
-  val batch_commitment_equal : batch_commitment -> batch_commitment -> bool
+  module Withdraw_hash_list_hash : S.MERKLE_TREE with type elt = Withdraw_hash.t
+
+  module Message_result_hash : S.HASH
 
   type t = {
     level : Raw_level.t;
-    batches : batch_commitment list;
+    batches : Message_result_hash.t list;
     predecessor : Commitment_hash.t option;
     inbox_hash : Tx_rollup_inbox.hash;
   }
