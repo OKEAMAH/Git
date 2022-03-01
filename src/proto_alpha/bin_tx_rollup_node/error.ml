@@ -311,3 +311,60 @@ let () =
     (function
       | Tx_rollup_unable_to_hash_ticket tx_rollup -> Some tx_rollup | _ -> None)
     (fun tx_rollup -> Tx_rollup_unable_to_hash_ticket tx_rollup)
+
+type error +=
+  | Tx_rollup_no_rollup_origination_on_disk_and_no_rollup_genesis_given
+
+let () =
+  let description =
+    "No rollup origination on disk and no rollup genesis provided"
+  in
+  register_error_kind
+    ~id:"tx_rollup.node.no_rollup_origination_and_no_rollup_genesis_given"
+    ~title:"No rollup origination on disk and none provided"
+    ~description
+    ~pp:(fun ppf () -> Format.fprintf ppf "%s" description)
+    `Permanent
+    Data_encoding.empty
+    (function
+      | Tx_rollup_no_rollup_origination_on_disk_and_no_rollup_genesis_given ->
+          Some ()
+      | _ -> None)
+    (fun () ->
+      Tx_rollup_no_rollup_origination_on_disk_and_no_rollup_genesis_given)
+
+type error +=
+  | Tx_rollup_different_disk_stored_origination_rollup_and_given_rollup_genesis of {
+      disk_rollup_origination : Block_hash.t;
+      given_rollup_genesis : Block_hash.t;
+    }
+
+let () =
+  register_error_kind
+    ~id:
+      "tx_rollup.node.different_disk_stored_origination_rollup_and_given_rollup_genesis"
+    ~title:"Rollup origination on disk is different from the one provided"
+    ~description:
+      "Rollup origination on disk is different from the provided rollup genesis"
+    ~pp:(fun ppf (disk_rollup, given_rollup) ->
+      Format.fprintf
+        ppf
+        "Rollup origination on disk (%a) is different from the provided rollup \
+         genesis (%a)"
+        Block_hash.pp
+        disk_rollup
+        Block_hash.pp
+        given_rollup)
+    `Permanent
+    Data_encoding.(
+      obj2
+        (req "disk_rollup" Block_hash.encoding)
+        (req "given_rollup" Block_hash.encoding))
+    (function
+      | Tx_rollup_different_disk_stored_origination_rollup_and_given_rollup_genesis
+          {disk_rollup_origination; given_rollup_genesis} ->
+          Some (disk_rollup_origination, given_rollup_genesis)
+      | _ -> None)
+    (fun (disk_rollup_origination, given_rollup_genesis) ->
+      Tx_rollup_different_disk_stored_origination_rollup_and_given_rollup_genesis
+        {disk_rollup_origination; given_rollup_genesis})
