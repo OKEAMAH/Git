@@ -67,3 +67,16 @@ type error +=
       current : Protocol.Tx_rollup_l2_context_hash.Version.t;
       expected : Protocol.Tx_rollup_l2_context_hash.Version.t;
     }
+
+(** Error issued when the Tx rollup node try to parse an invalid rollup l2 address. *)
+type error += Tx_rollup_invalid_l2_address of Micheline.canonical_location
+
+(** Error issued when a ticket amount is invalid. *)
+type error += Tx_rollup_invalid_ticket_amount of Z.t
+
+(** Error issued when a deposit is invalid. *)
+type error += Tx_rollup_invalid_deposit
+
+(** Error issued when the Tx rollup node fail to hash a ticket. *)
+type error +=
+  | Tx_rollup_unable_to_hash_ticket of Protocol.Alpha_context.Tx_rollup.t
