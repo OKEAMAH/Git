@@ -148,78 +148,78 @@ let extract_messages_from_block block_info rollup_id =
       block_info.Alpha_block_services.operations
       State.rollup_operation_index
   in
-  let get_message :
+  let rec get_messages :
       type kind.
-      kind contents ->
-      kind contents_result ->
-      (Tx_rollup_message.t * int) option =
-   fun op result ->
-    match (op, result) with
-    | ( Manager_operation
-          {
-            operation =
-              Tx_rollup_submit_batch {tx_rollup; content; burn_limit = _};
-            _;
-          },
-        Manager_operation_result
-          {operation_result = Applied (Tx_rollup_submit_batch_result _); _} )
-      when Tx_rollup.equal rollup_id tx_rollup ->
-        (* Batch message *)
-        Some (Tx_rollup_message.make_batch content)
-    | ( Manager_operation
-          {
-            operation =
-              Transaction
-                {
-                  amount = _;
-                  parameters;
-                  destination = Tx_rollup dst;
-                  entrypoint;
-                };
-            _;
-          },
-        Manager_operation_result
-          {operation_result = Applied (Transaction_result _); _} )
-      when Tx_rollup.equal dst rollup_id
-           && Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) -> (
-        (* Deposit message *)
-        match Data_encoding.force_decode parameters with
-        | None -> None
-        | Some parameters -> (
-            match parse_tx_rollup_deposit_parameters parameters with
-            | Error _ -> None
-            | Ok Tx_rollup.{ticketer; contents; ty; amount; destination} -> (
-                match hash_ticket dst ~contents ~ticketer ~ty with
-                | Error _ -> None
-                | Ok ticket_hash ->
-                    Some
-                      (Tx_rollup_message.make_deposit
-                         destination
-                         ticket_hash
-                         amount))))
-    | (_, _) -> None
+      kind manager_operation ->
+      kind manager_operation_result ->
+      packed_internal_operation_result list ->
+      Tx_rollup_message.t list * int ->
+      Tx_rollup_message.t list * int =
+   fun op result internal_operation_results (messages, cumulated_size) ->
+    let message_and_size =
+      match (op, result) with
+      | ( Tx_rollup_submit_batch {tx_rollup; content; burn_limit = _},
+          Applied (Tx_rollup_submit_batch_result _) )
+        when Tx_rollup.equal rollup_id tx_rollup ->
+          (* Batch message *)
+          Some (Tx_rollup_message.make_batch content)
+      | ( Transaction
+            {amount = _; parameters; destination = Tx_rollup dst; entrypoint},
+          Applied (Transaction_result _) )
+        when Tx_rollup.equal dst rollup_id
+             && Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) -> (
+          (* Deposit message *)
+          match Data_encoding.force_decode parameters with
+          | None -> None
+          | Some parameters -> (
+              match parse_tx_rollup_deposit_parameters parameters with
+              | Error _ -> None
+              | Ok Tx_rollup.{ticketer; contents; ty; amount; destination} -> (
+                  match hash_ticket dst ~contents ~ticketer ~ty with
+                  | Error _ -> None
+                  | Ok ticket_hash ->
+                      Some
+                        (Tx_rollup_message.make_deposit
+                           destination
+                           ticket_hash
+                           amount))))
+      | (_, _) -> None
+    in
+    let acc =
+      match message_and_size with
+      | None -> (messages, cumulated_size)
+      | Some (msg, size) -> (msg :: messages, cumulated_size + size)
+    in
+    (* Add messages from internal operations *)
+    List.fold_left
+      (fun acc (Internal_operation_result ({operation; _}, result)) ->
+        get_messages operation result [] acc)
+      acc
+      internal_operation_results
   in
   let rec get_related_messages :
       type kind.
-      Tx_rollup_message.t list ->
-      int ->
+      Tx_rollup_message.t list * int ->
       kind contents_and_result_list ->
       Tx_rollup_message.t list * int =
-   fun acc cumulated_size -> function
-    | Single_and_result (op, result) -> (
-        match get_message op result with
-        | None -> (List.rev acc, cumulated_size)
-        | Some (message, size) ->
-            (List.rev (message :: acc), cumulated_size + size))
-    | Cons_and_result (op, result, rest) ->
-        let (acc, cumulated_size) =
-          match get_message op result with
-          | None -> (acc, cumulated_size)
-          | Some (message, size) -> (message :: acc, cumulated_size + size)
+   fun acc -> function
+    | Single_and_result
+        ( Manager_operation {operation; _},
+          Manager_operation_result
+            {operation_result; internal_operation_results; _} ) ->
+        get_messages operation operation_result internal_operation_results acc
+    | Single_and_result (_, _) -> acc
+    | Cons_and_result
+        ( Manager_operation {operation; _},
+          Manager_operation_result
+            {operation_result; internal_operation_results; _},
+          rest ) ->
+        let acc =
+          get_messages operation operation_result internal_operation_results acc
         in
-        get_related_messages acc cumulated_size rest
+        get_related_messages acc rest
   in
-  let finalize_receipt (acc, cumulated_size) operation =
+  let finalize_receipt acc operation =
     match Alpha_block_services.(operation.protocol_data, operation.receipt) with
     | ( Operation_data {contents = operation_contents; _},
         Some (Operation_metadata {contents = result_contents}) ) -> (
@@ -228,14 +228,17 @@ let extract_messages_from_block block_info rollup_id =
             let operation_and_result =
               pack_contents_list operation_contents result_contents
             in
-            get_related_messages acc cumulated_size operation_and_result
-        | None -> (acc, cumulated_size))
-    | (_, Some No_operation_metadata) | (_, None) -> (acc, cumulated_size)
+            get_related_messages acc operation_and_result
+        | None -> acc)
+    | (_, Some No_operation_metadata) | (_, None) -> acc
   in
   match managed_operation with
   | None -> ([], 0)
   | Some managed_operations ->
-      List.fold_left finalize_receipt ([], 0) managed_operations
+      let (rev_messages, cumulated_size) =
+        List.fold_left finalize_receipt ([], 0) managed_operations
+      in
+      (List.rev rev_messages, cumulated_size)
 
 let process_messages_and_inboxes (state : State.t) ~predecessor_context_hash
     block_info rollup_id =
