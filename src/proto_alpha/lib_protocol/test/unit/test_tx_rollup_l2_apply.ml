@@ -360,7 +360,7 @@ let test_deposit_with_existing_indexes () =
       return_unit
   | _ -> fail_msg "Unexpected operation result"
 
-(** Test that deposit overflow withdraws the amount setn. *)
+(** Test that deposit overflow withdraws the amount sent. *)
 let test_returned_deposit () =
   let open Context_l2.Syntax in
   let* (ctxt, tidxs, accounts) =

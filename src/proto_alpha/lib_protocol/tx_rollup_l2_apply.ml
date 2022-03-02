@@ -634,8 +634,7 @@ module Make (Context : CONTEXT) = struct
     catch
       (apply_deposit ())
       (fun (ctxt, indexes) -> return (ctxt, Deposit_success indexes, None))
-      (function
-        | reason ->
+      (fun reason ->
             (* Should there an error during the deposit, then return
                the full [amount] to [sender] in the form of a
                withdrawal. *)
