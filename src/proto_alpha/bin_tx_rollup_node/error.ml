@@ -258,39 +258,6 @@ let () =
     (function Tx_rollup_invalid_l2_address loc -> Some loc | _ -> None)
     (fun loc -> Tx_rollup_invalid_l2_address loc)
 
-type error += Tx_rollup_invalid_ticket_amount of Z.t
-
-let () =
-  register_error_kind
-    ~id:"tx_rollup.node.invalid_ticket_amount"
-    ~title:"Invalid transaction rollup ticket amount"
-    ~description:"Not a valid transaction rollup ticket amount"
-    ~pp:(fun ppf amount ->
-      Format.fprintf
-        ppf
-        "Not a valid transaction rollup ticket amount: %a"
-        Z.pp_print
-        amount)
-    `Permanent
-    Data_encoding.(obj1 (req "amount" z))
-    (function
-      | Tx_rollup_invalid_ticket_amount amount -> Some amount | _ -> None)
-    (fun amount -> Tx_rollup_invalid_ticket_amount amount)
-
-type error += Tx_rollup_invalid_deposit
-
-let () =
-  let description = "Not a valid transaction rollup deposit" in
-  register_error_kind
-    ~id:"tx_rollup.node.invalid_deposit"
-    ~title:"Invalid transaction rollup Deposit"
-    ~description
-    ~pp:(fun ppf () -> Format.fprintf ppf "%s" description)
-    `Permanent
-    Data_encoding.empty
-    (function Tx_rollup_invalid_deposit -> Some () | _ -> None)
-    (fun () -> Tx_rollup_invalid_deposit)
-
 type error +=
   | Tx_rollup_unable_to_hash_ticket of Protocol.Alpha_context.Tx_rollup.t
 

@@ -2189,12 +2189,12 @@ let parse_address ctxt : Script.node -> (address * context) tzresult = function
   | expr ->
       error @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
-let parse_tx_rollup_l2_address ctxt :
-    Script.node -> (tx_rollup_l2_address * context) tzresult = function
+let parse_tx_rollup_l2_address_with (state : 'a) action :
+    Script.node -> (tx_rollup_l2_address * 'a) tzresult = function
   | Bytes (loc, bytes) as expr (* As unparsed with [Optimized]. *) -> (
-      Gas.consume ctxt Typecheck_costs.tx_rollup_l2_address >>? fun ctxt ->
+      action state >>? fun state ->
       match Tx_rollup_l2_address.of_bytes_opt bytes with
-      | Some txa -> ok (Tx_rollup_l2_address.Indexable.value txa, ctxt)
+      | Some txa -> ok (Tx_rollup_l2_address.Indexable.value txa, state)
       | None ->
           error
           @@ Invalid_syntactic_constant
@@ -2202,9 +2202,9 @@ let parse_tx_rollup_l2_address ctxt :
                  strip_locations expr,
                  "a valid transaction rollup L2 address" ))
   | String (loc, str) as expr (* As unparsed with [Readable]. *) -> (
-      Gas.consume ctxt Typecheck_costs.tx_rollup_l2_address >>? fun ctxt ->
+      action state >>? fun state ->
       match Tx_rollup_l2_address.of_b58check_opt str with
-      | Some txa -> ok (Tx_rollup_l2_address.Indexable.value txa, ctxt)
+      | Some txa -> ok (Tx_rollup_l2_address.Indexable.value txa, state)
       | None ->
           error
           @@ Invalid_syntactic_constant
@@ -2214,13 +2214,18 @@ let parse_tx_rollup_l2_address ctxt :
   | expr ->
       error @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
+let parse_tx_rollup_l2_address ctxt bls =
+  parse_tx_rollup_l2_address_with
+    ctxt
+    (fun ctxt -> Gas.consume ctxt Typecheck_costs.tx_rollup_l2_address)
+    bls
+
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/2035
    Investigate if separating internal operations from manager
    operations could make this shenanigan useless.  *)
-let parse_tx_rollup_deposit_parameters :
-    context -> Script.expr -> (Tx_rollup.deposit_parameters * context) tzresult
-    =
- fun ctxt parameters ->
+let parse_tx_rollup_deposit_parameters_with (state : 'a) action :
+    Script.expr -> (Tx_rollup.deposit_parameters * 'a) tzresult =
+ fun parameters ->
   (* /!\ This pattern matching needs to remain in sync with the
      [Tx_rollup] case of [parse_contract] and [parse_contract_for_script]. *)
   match root parameters with
@@ -2241,7 +2246,7 @@ let parse_tx_rollup_deposit_parameters :
               _ );
           ty;
         ] ) ->
-      parse_tx_rollup_l2_address ctxt bls >>? fun (destination, ctxt) ->
+      action state bls >>? fun (destination, state) ->
       (match amount with
       | Int (_, v) when Compare.Z.(Z.zero < v && v <= Z.of_int64 Int64.max_int)
         ->
@@ -2249,8 +2254,18 @@ let parse_tx_rollup_deposit_parameters :
       | Int (_, v) -> error @@ Tx_rollup_invalid_ticket_amount v
       | expr -> error @@ Invalid_kind (location expr, [Int_kind], kind expr))
       >|? fun amount ->
-      (Tx_rollup.{ticketer; contents; ty; amount; destination}, ctxt)
+      (Tx_rollup.{ticketer; contents; ty; amount; destination}, state)
   | expr -> error @@ Invalid_kind (location expr, [Seq_kind], kind expr)
+
+let parse_tx_rollup_deposit_parameters ctxt e =
+  parse_tx_rollup_deposit_parameters_with ctxt parse_tx_rollup_l2_address e
+
+let parse_tx_rollup_deposit_parameters_uncarbonated e =
+  parse_tx_rollup_deposit_parameters_with
+    ()
+    (fun () bls -> parse_tx_rollup_l2_address_with () (fun () -> ok ()) bls)
+    e
+  |> Result.map fst
 
 let parse_never expr : (never * context) tzresult =
   error @@ Invalid_never_expr (location expr)
