@@ -1996,6 +1996,15 @@ module Tx_rollup : sig
     ty:Script.node ->
     (Ticket_hash.t * context) tzresult
 
+  (** [hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty] is an uncarbonated version
+    of {!hash_ticket}. *)
+  val hash_ticket_uncarbonated :
+    t ->
+    contents:Script.node ->
+    ticketer:Script.node ->
+    ty:Script.node ->
+    Ticket_hash.t tzresult
+
   val originate : context -> (context * tx_rollup) tzresult Lwt.t
 
   val update_tx_rollups_at_block_finalization :

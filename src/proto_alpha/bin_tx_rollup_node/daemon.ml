@@ -69,26 +69,6 @@ let interp_messages ctxt messages cumulated_size =
   let inbox = Inbox.{contents; cumulated_size} in
   (ctxt, inbox)
 
-(* TODO/TORU: expose uncarbonated hash_ticket in protocol *)
-let hash_ticket tx_rollup ~contents ~ticketer ~ty =
-  let open Protocol in
-  let open Micheline in
-  let hash_of_node node =
-    let node = Micheline.strip_locations node in
-    match Data_encoding.Binary.to_bytes_opt Script_repr.expr_encoding node with
-    | Some bytes ->
-        ok
-          (Ticket_hash.of_script_expr_hash
-          @@ Script_expr_hash.hash_bytes [bytes])
-    | None -> error (Error.Tx_rollup_unable_to_hash_ticket tx_rollup)
-  in
-  let make ~ticketer ~ty ~contents ~owner =
-    hash_of_node
-    @@ Micheline.Seq (Micheline.dummy_location, [ticketer; ty; contents; owner])
-  in
-  let owner = String (dummy_location, Tx_rollup.to_b58check tx_rollup) in
-  make ~ticketer ~ty ~contents ~owner
-
 let extract_messages_from_block block_info rollup_id =
   let managed_operation =
     List.nth_opt
@@ -126,7 +106,13 @@ let extract_messages_from_block block_info rollup_id =
               with
               | Error _ -> None
               | Ok Tx_rollup.{ticketer; contents; ty; amount; destination} -> (
-                  match hash_ticket dst ~contents ~ticketer ~ty with
+                  match
+                    Tx_rollup.hash_ticket_uncarbonated
+                      dst
+                      ~contents
+                      ~ticketer
+                      ~ty
+                  with
                   | Error _ -> None
                   | Ok ticket_hash ->
                       Some

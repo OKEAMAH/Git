@@ -259,27 +259,6 @@ let () =
     (fun loc -> Tx_rollup_invalid_l2_address loc)
 
 type error +=
-  | Tx_rollup_unable_to_hash_ticket of Protocol.Alpha_context.Tx_rollup.t
-
-let () =
-  register_error_kind
-    ~id:"tx_rollup.node.unable_to_hash_ticket"
-    ~title:"Failed to hash ticket"
-    ~description:"Unable to hash a ticket "
-    ~pp:(fun ppf rollup_id ->
-      Format.fprintf
-        ppf
-        "Unable to hash a ticket for rollup %a"
-        Protocol.Alpha_context.Tx_rollup.pp
-        rollup_id)
-    `Permanent
-    Data_encoding.(
-      obj1 (req "tx_rollup" Protocol.Alpha_context.Tx_rollup.encoding))
-    (function
-      | Tx_rollup_unable_to_hash_ticket tx_rollup -> Some tx_rollup | _ -> None)
-    (fun tx_rollup -> Tx_rollup_unable_to_hash_ticket tx_rollup)
-
-type error +=
   | Tx_rollup_no_rollup_origination_on_disk_and_no_rollup_genesis_given
 
 let () =

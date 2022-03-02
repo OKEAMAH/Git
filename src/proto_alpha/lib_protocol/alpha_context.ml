@@ -239,10 +239,26 @@ module Tx_rollup = struct
   include Tx_rollup_repr
   include Tx_rollup_storage
 
-  let hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty =
+  let hash_ticket_with builder tx_rollup ~contents ~ticketer ~ty =
     let open Micheline in
     let owner = String (dummy_location, to_b58check tx_rollup) in
-    Ticket_hash_builder.make ctxt ~ticketer ~ty ~contents ~owner
+    (builder ()) ~ticketer ~ty ~contents ~owner
+
+  let hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty =
+    hash_ticket_with
+      (fun () -> Ticket_hash_builder.make ctxt)
+      tx_rollup
+      ~contents
+      ~ticketer
+      ~ty
+
+  let hash_ticket_uncarbonated tx_rollup ~contents ~ticketer ~ty =
+    hash_ticket_with
+      (fun () -> Ticket_hash_builder.make_uncarbonated)
+      tx_rollup
+      ~contents
+      ~ticketer
+      ~ty
 
   module Internal_for_tests = Tx_rollup_repr
 end

@@ -68,10 +68,6 @@ type error +=
       expected : Protocol.Tx_rollup_l2_context_hash.Version.t;
     }
 
-(** Error issued when the Tx rollup node fail to hash a ticket. *)
-type error +=
-  | Tx_rollup_unable_to_hash_ticket of Protocol.Alpha_context.Tx_rollup.t
-
 (** Error issued when the Tx rollup node is start without origination rollup stored on disk
     and when there is no given rollup genesis. *)
 type error +=

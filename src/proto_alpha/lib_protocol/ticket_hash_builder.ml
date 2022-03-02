@@ -47,18 +47,39 @@ let hash_bytes_cost bytes =
   let ( lsr ) = S.shift_right in
   S.safe_int 200 + (v0 + (v0 lsr 2)) |> Gas_limit_repr.atomic_step_cost
 
-let hash_of_node ctxt node =
-  Raw_context.consume_gas ctxt (Script_repr.strip_locations_cost node)
-  >>? fun ctxt ->
+let hash_of_node_with state strip_location_cost consumption node =
+  strip_location_cost state node >>? fun state ->
   let node = Micheline.strip_locations node in
   match Data_encoding.Binary.to_bytes_opt Script_repr.expr_encoding node with
   | Some bytes ->
-      Raw_context.consume_gas ctxt (hash_bytes_cost bytes) >|? fun ctxt ->
+      consumption state bytes >|? fun state ->
       ( Ticket_hash_repr.of_script_expr_hash
         @@ Script_expr_hash.hash_bytes [bytes],
-        ctxt )
+        state )
   | None -> error Failed_to_hash_node
 
-let make ctxt ~ticketer ~ty ~contents ~owner =
-  hash_of_node ctxt
+let hash_of_node_uncarbonated node =
+  hash_of_node_with () (fun () _node -> ok ()) (fun () _bytes -> ok ()) node
+
+let hash_of_node ctxt node =
+  hash_of_node_with
+    ctxt
+    (fun ctxt node ->
+      let node = Script_repr.strip_locations_cost node in
+      Raw_context.consume_gas ctxt node)
+    (fun ctxt bytes ->
+      let cost = hash_bytes_cost bytes in
+      Raw_context.consume_gas ctxt cost)
+    node
+
+let make_with hashed ~ticketer ~ty ~contents ~owner =
+  hashed
   @@ Micheline.Seq (Micheline.dummy_location, [ticketer; ty; contents; owner])
+
+let make ctxt ~ticketer ~ty ~contents ~owner =
+  let hashed = hash_of_node ctxt in
+  make_with hashed ~ticketer ~ty ~contents ~owner
+
+let make_uncarbonated ~ticketer ~ty ~contents ~owner =
+  let hashed = hash_of_node_uncarbonated in
+  make_with hashed ~ticketer ~ty ~contents ~owner |> Result.map fst
