@@ -6384,3 +6384,41 @@ let script_size
   in
   let cost = Script_typed_ir_size_costs.nodes_cost ~nodes in
   (Saturation_repr.(add code_size storage_size |> to_int), cost)
+
+let tx_rollup_reconstruct_ticket_for_withdraw :
+    context ->
+    ticketer:Contract.t ->
+    contents:Script.expr ->
+    ty:'a Script_typed_ir.comparable_ty ->
+    amount:Tx_rollup_l2_qty.t ->
+    ('a Script_typed_ir.ticket
+    * 'a Script_typed_ir.ticket Script_typed_ir.ty
+    * context)
+    tzresult
+    Lwt.t =
+ fun ctxt ~ticketer ~contents ~ty ~amount ->
+  parse_comparable_data ctxt ty (Micheline.root contents)
+  >>=? fun (contents, ctxt) ->
+  let amount =
+    Option.value
+      ~default:Script_int.zero_n
+      Script_int.(is_nat @@ of_int64 @@ Tx_rollup_l2_qty.to_int64 amount)
+  in
+  let ticket = Script_typed_ir.{ticketer; contents; amount} in
+  Script_typed_ir.ticket_t Micheline.dummy_location ty >>?= fun ty ->
+  return (ticket, ty, ctxt)
+
+let tx_rollup_withdraw_parameters_for_contract_call :
+    context ->
+    ticketer:Contract.t ->
+    contents:Script.expr ->
+    ty:Script.expr ->
+    amount:Tx_rollup_l2_qty.t ->
+    (Script.lazy_expr * context) tzresult Lwt.t =
+ fun ctxt ~ticketer ~contents ~ty ~amount ->
+  parse_comparable_ty ctxt (Micheline.root ty)
+  >>?= fun (Ex_comparable_ty ty, ctxt) ->
+  tx_rollup_reconstruct_ticket_for_withdraw ctxt ~ticketer ~contents ~ty ~amount
+  >>=? fun (ticket, ticket_ty, ctxt) ->
+  unparse_data ctxt Optimized ticket_ty ticket >|=? fun (parameters, ctxt) ->
+  (Script.lazy_expr (Micheline.strip_locations parameters), ctxt)

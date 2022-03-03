@@ -499,3 +499,12 @@ val get_single_sapling_state :
     the in-memory representation of [script] as well as the cost
     associated to computing that overapproximation. *)
 val script_size : ex_script -> int * Gas_limit_repr.cost
+
+(* /!\ This creates a tickets, must be used with precaution  *)
+val tx_rollup_withdraw_parameters_for_contract_call :
+  context ->
+  ticketer:Contract.t ->
+  contents:Script.expr ->
+  ty:Script.expr ->
+  amount:Tx_rollup_l2_qty.t ->
+  (Script.lazy_expr * context) tzresult Lwt.t
