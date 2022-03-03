@@ -2153,6 +2153,32 @@ module Tx_rollup_state : sig
   end
 end
 
+module Tx_rollup_withdraw : sig
+  type withdrawal = {
+    destination : Signature.Public_key_hash.t;
+    ticket_hash : Ticket_hash.t;
+    amount : Tx_rollup_l2_qty.t;
+  }
+
+  type t = withdrawal
+
+  val encoding : t Data_encoding.t
+
+  type list_hash
+
+  val list_hash_encoding : list_hash Data_encoding.t
+
+  type path
+
+  val path_encoding : path Data_encoding.t
+
+  val hash_list : t list -> list_hash
+
+  val compute_path : t list -> int -> path
+
+  val check_path : path -> t -> list_hash * int
+end
+
 (** This module re-exports definitions from {!Tx_rollup_message_repr}. *)
 module Tx_rollup_message : sig
   type deposit = {
@@ -2283,13 +2309,20 @@ end
 
 (** This simply re-exports [Tx_rollup_commitment_repr] *)
 module Tx_rollup_commitment : sig
-  type batch_commitment = {root : bytes}
+  module Commitment_hash : sig
+    val commitment_hash : string
 
-  val batch_commitment_equal : batch_commitment -> batch_commitment -> bool
+    include S.HASH
+  end
+
+  module Message_result_hash : S.HASH
+
+  val batch_commitment :
+    bytes -> Tx_rollup_withdraw.list_hash -> Message_result_hash.t
 
   type t = {
     level : Tx_rollup_level.t;
-    batches : batch_commitment list;
+    batches : Message_result_hash.t list;
     predecessor : Tx_rollup_commitment_hash.t option;
     inbox_hash : Tx_rollup_inbox.hash;
   }

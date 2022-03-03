@@ -158,7 +158,7 @@ let eq_addr_indexable = Alcotest.of_pp (Indexable.pp (fun _ _ -> ()))
 let eq_ticket_indexable = Alcotest.of_pp (Indexable.pp (fun _ _ -> ()))
 
 let pp_withdrawal fmt = function
-  | Message_result.{destination; ticket_hash; amount} ->
+  | Tx_rollup_withdraw.{destination; ticket_hash; amount} ->
       Format.fprintf
         fmt
         "{destination=%a; ticket_hash=%a; amount=%a}"

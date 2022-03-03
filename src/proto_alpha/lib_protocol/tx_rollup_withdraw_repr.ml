@@ -3,7 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxheadalpha.com>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,60 +25,60 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Communication from the layer-1 (Tezos) to the layer-2 (a
-    transaction rollup) happens thanks to messages, crafted in the
-    layer-1 to be interpreted in the layer-2.
-
-    Messages are constructed and gathered in the layer-1, in
-    inboxes (see {!Tx_rollup_repr_storage.append_message}). *)
-
-(** Smart contract on the layer-1 can deposit tickets into a
-    transaction rollup, for the benefit of a {!Tx_rollup_l2_address.t}.
-    The [sender] is an implicit account where the deposit is returned in form of
-    a withdrawal, should the application of the deposit fail.
- *)
-type deposit = {
-  sender : Signature.Public_key_hash.t;
-  destination : Tx_rollup_l2_address.Indexable.value;
+type withdrawal = {
+  destination : Signature.Public_key_hash.t;
   ticket_hash : Ticket_hash_repr.t;
   amount : Tx_rollup_l2_qty.t;
 }
 
-(** A [message] is a piece of data originated from the layer-1 to be
-    interpreted by the layer-2.
+type t = withdrawal
 
-    Transaction rollups feature two kind of messages:
+let encoding : withdrawal Data_encoding.t =
+  let open Data_encoding in
+  conv
+    (fun {destination; ticket_hash; amount} ->
+      (destination, ticket_hash, amount))
+    (fun (destination, ticket_hash, amount) ->
+      {destination; ticket_hash; amount})
+    (obj3
+       (req "destination" Signature.Public_key_hash.encoding)
+       (req "ticket_hash" Ticket_hash_repr.encoding)
+       (req "amount" Tx_rollup_l2_qty.encoding))
 
-    {ul {li An array of bytes that supposedly contains a valid
-            sequence of layer-2 operations; their interpretation and
-            validation is deferred to the layer-2..}
-        {li A deposit order for a L1 ticket.}} *)
-type t = Batch of string | Deposit of deposit
+module Withdraw_list_hash = struct
+  let withdraw_list_hash = "\079\139\113" (* twL(53) *)
 
-(** [size msg] returns the number of bytes that are allocated in an
-    inbox by [msg]. *)
-val size : t -> int
+  include
+    Blake2B.Make_merkle_tree
+      (Base58)
+      (struct
+        let name = "Withdraw_list_hash"
 
-val deposit_encoding : deposit Data_encoding.t
+        let title = "A hash of withdraw's list"
 
-val encoding : t Data_encoding.t
+        let b58check_prefix = withdraw_list_hash
 
-val pp : Format.formatter -> t -> unit
+        let size = None (* 32 *)
+      end)
+      (struct
+        type t = withdrawal
 
-(** The Blake2B hash of a message.
+        let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
+      end)
 
-    To avoid unnecessary storage duplication, the inboxes in the
-    layer-1 do not contain the messages, but their hashes (see
-    {!Tx_rollup_inbox_storage.append_message}). This is possible
-    because the content of the messages can be reconstructed off-chain
-    by looking at the layer-1 operations and their receipt. *)
-type hash
+  let () = Base58.check_encoded_prefix b58check_encoding "twL" 53
+end
 
-val hash_encoding : hash Data_encoding.t
+type list_hash = Withdraw_list_hash.t
 
-val pp_hash : Format.formatter -> hash -> unit
+let list_hash_encoding = Withdraw_list_hash.encoding
 
-(** [hash_uncarbonated msg] computes the hash of [msg] without gas consumption. *)
-val hash_uncarbonated : t -> hash
+type path = Withdraw_list_hash.path
 
-val hash_equal : hash -> hash -> bool
+let path_encoding = Withdraw_list_hash.path_encoding
+
+let hash_list : t list -> list_hash = Withdraw_list_hash.compute
+
+let compute_path : t list -> int -> path = Withdraw_list_hash.compute_path
+
+let check_path : path -> t -> list_hash * int = Withdraw_list_hash.check_path
