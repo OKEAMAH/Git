@@ -383,7 +383,7 @@ module type PROOF = sig
 
         The sequance [e_1 ... e_n] proves that the [e_1], ..., [e_n] are
         read in the store in sequence. *)
-    type t = elt Seq.t
+    type t
   end
 
   type stream = Stream.t
