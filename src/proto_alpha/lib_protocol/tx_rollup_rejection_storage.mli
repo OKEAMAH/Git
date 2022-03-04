@@ -51,3 +51,9 @@ val update_accepted_prerejection :
   proof:Tx_rollup_l2_proof.t ->
   priority:int32 ->
   Raw_context.t tzresult Lwt.t
+
+val finalize_prerejections :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Tx_rollup_level_repr.t ->
+  (Raw_context.t * Signature.public_key_hash list) tzresult Lwt.t

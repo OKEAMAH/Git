@@ -126,3 +126,41 @@ let update_accepted_prerejection :
       commitment
       new_prerejection
     >>=? fun (ctxt, _, _) -> return ctxt
+
+let finalize_prerejections ctxt tx_rollup level =
+  (* Find all of the accepted prerejections for this level *)
+  Storage.Tx_rollup.Accepted_prerejections.list_values ((ctxt, tx_rollup), level)
+  >>=? fun (ctxt, accepted_prerejections) ->
+  let to_reward =
+    List.map
+      (fun (accepted : Tx_rollup_rejection_repr.prerejection) ->
+        accepted.contract)
+      accepted_prerejections
+  in
+  (* Remove them *)
+  List.fold_left_es
+    (fun ctxt (accepted : Tx_rollup_rejection_repr.prerejection) ->
+      Storage.Tx_rollup.Accepted_prerejections.remove
+        ((ctxt, tx_rollup), level)
+        accepted.hash
+      >|=? fun (ctxt, _, _) -> ctxt)
+    ctxt
+    accepted_prerejections
+  >>=? fun ctxt ->
+  (* Now, find all of the prerejections submitted for this level *)
+  Storage.Tx_rollup.Prerejections_by_index.list_values ((ctxt, tx_rollup), level)
+  >>=? fun (ctxt, prerejections) ->
+  List.fold_left_es
+    (fun ctxt prerejection ->
+      Storage.Tx_rollup.Prerejection.get ctxt prerejection
+      >>=? fun (ctxt, (_, index)) ->
+      (* Remove the prerejection from both tables *)
+      Storage.Tx_rollup.Prerejection.remove ctxt prerejection
+      >>=? fun (ctxt, _, _) ->
+      Storage.Tx_rollup.Prerejections_by_index.remove
+        ((ctxt, tx_rollup), level)
+        index
+      >|=? fun (ctxt, _, _) -> ctxt)
+    ctxt
+    prerejections
+  >|=? fun ctxt -> (ctxt, to_reward)

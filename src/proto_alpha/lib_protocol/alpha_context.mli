@@ -2001,7 +2001,12 @@ module Tx_rollup_commitment : sig
     context ->
     Tx_rollup.t ->
     Tx_rollup_state.t ->
-    (context * Tx_rollup_state.t * Tx_rollup_level.t) tzresult Lwt.t
+    (context
+    * Tx_rollup_state.t
+    * Tx_rollup_level.t
+    * Signature.public_key_hash list)
+    tzresult
+    Lwt.t
 
   val remove_commitment :
     context ->
@@ -2093,6 +2098,12 @@ module Tx_rollup_rejection : sig
     proof:Tx_rollup_l2_proof.t ->
     priority:int32 ->
     context tzresult Lwt.t
+
+  val finalize_prerejections :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    (context * Signature.public_key_hash list) tzresult Lwt.t
 end
 
 module Tx_rollup_errors : sig

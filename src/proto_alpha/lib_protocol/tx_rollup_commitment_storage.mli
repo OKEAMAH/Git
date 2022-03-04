@@ -151,13 +151,18 @@ val has_bond :
 
     The state of the rollup is adjusted accordingly, and the finalized
     level is returned. Besides, the inbox at said level is removed
-    from the context. This function returns the new context, and the
-    new state. *)
+    from the context. This function returns: the new context, the
+    new state, the level finalized, and a list of contracts to reward
+    for rejections. *)
 val finalize_commitment :
   Raw_context.t ->
   Tx_rollup_repr.t ->
   Tx_rollup_state_repr.t ->
-  (Raw_context.t * Tx_rollup_state_repr.t * Tx_rollup_level_repr.t) tzresult
+  (Raw_context.t
+  * Tx_rollup_state_repr.t
+  * Tx_rollup_level_repr.t
+  * Signature.public_key_hash list)
+  tzresult
   Lwt.t
 
 (** [remove_commitment ctxt tx_rollup state] tries to remove the

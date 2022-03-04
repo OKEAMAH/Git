@@ -296,9 +296,14 @@ let finalize_commitment ctxt rollup state =
       >>=? fun (ctxt, _commitment_size_alloc) ->
       (* See {{Note}} for a rationale on why ignoring storage
          allocation is safe. *)
+      Tx_rollup_rejection_storage.finalize_prerejections
+        ctxt
+        rollup
+        oldest_inbox_level
+      >>=? fun (ctxt, to_reward) ->
       (* We update the state *)
       Tx_rollup_state_repr.record_inbox_deletion state oldest_inbox_level
-      >>?= fun state -> return (ctxt, state, oldest_inbox_level)
+      >>?= fun state -> return (ctxt, state, oldest_inbox_level, to_reward)
   | None -> fail No_commitment_to_finalize
 
 let remove_commitment ctxt rollup state =
