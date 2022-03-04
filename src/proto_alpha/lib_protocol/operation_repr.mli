@@ -361,7 +361,7 @@ and _ manager_operation =
       level : Tx_rollup_level_repr.t;
       message : Tx_rollup_message_repr.t;
       message_position : int;
-      proof : bool;
+      proof : Context.Proof.stream Context.Proof.t;
       before_root : Context_hash.t;
       before_withdraw : Tx_rollup_withdraw_repr.list_hash;
       after_result : Tx_rollup_commitment_repr.Message_result_hash.t;

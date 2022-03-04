@@ -563,7 +563,7 @@ val submit_tx_rollup_rejection :
   tx_rollup:Tx_rollup.t ->
   message:string ->
   message_position:int ->
-  proof:bool ->
+  proof:string ->
   before_withdraw:string ->
   before_root:string ->
   after_result:string ->

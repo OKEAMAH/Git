@@ -640,8 +640,8 @@ let tx_rollup_withdraw ?counter ?fee ?gas_limit ?storage_limit ctxt
 
 let tx_rollup_reject ?counter ?fee ?gas_limit ?storage_limit ctxt
     (source : Contract.t) (tx_rollup : Tx_rollup.t) (level : Tx_rollup_level.t)
-    (message : Tx_rollup_message.t) ~(message_position : int) ~(proof : bool)
-    ~(before_root : Context_hash.t)
+    (message : Tx_rollup_message.t) ~(message_position : int)
+    ~(proof : Tx_rollup_rejection_proof.t) ~(before_root : Context_hash.t)
     ~(before_withdraw : Tx_rollup_withdraw.list_hash)
     ~(after_result : Tx_rollup_commitment_message_result_hash.t) =
   manager_operation

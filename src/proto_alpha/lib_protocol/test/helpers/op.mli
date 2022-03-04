@@ -335,7 +335,7 @@ val tx_rollup_reject :
   Tx_rollup_level.t ->
   Tx_rollup_message.t ->
   message_position:int ->
-  proof:bool ->
+  proof:Tx_rollup_rejection_proof.t ->
   before_root:Context_hash.t ->
   before_withdraw:Tx_rollup_withdraw.list_hash ->
   after_result:Tx_rollup_commitment_message_result_hash.t ->

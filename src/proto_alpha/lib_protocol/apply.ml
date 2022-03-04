@@ -1555,8 +1555,10 @@ let apply_manager_operation_content :
           equal commitment_before_result expected_before_result)
         Tx_rollup_errors.Wrong_rejection_proof_hash
       >>=? fun () ->
-      (* TODO/TORU: validate proof *)
-      fail_unless proof Tx_rollup_errors.Invalid_proof >>=? fun () ->
+        (* TODO/TORU: validate proof *)
+        ignore proof;
+        return true
+      >>=? fun _ ->
       (* Proof is correct, removing *)
       Tx_rollup_commitment.reject_commitment ctxt tx_rollup state level
       >>=? fun (ctxt, state) ->

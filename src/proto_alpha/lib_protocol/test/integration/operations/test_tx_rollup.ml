@@ -1857,8 +1857,20 @@ let test_rejection_fail () =
   >>=? fun (commitment, batches_result) ->
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
-  (* Here, we create an invalid proof: TODO/TORU: create a valid proof too *)
-  let proof = false in
+  (* Here, we create an invalid proof: we have a single message which
+     is invalid, and thus the expected before_root should be equal
+     to the after_root, which is equal to the empty tree.  And indeed,
+     that is precisely what the commitment says will happen. So
+     the rejection is invalid. TODO/TORU: create a batch with messages,
+     and check valid and invalid rejections of that. *)
+  let proof : Tx_rollup_rejection_proof.t =
+    {
+      version = 0;
+      before = `Value empty_context_hash;
+      after = `Value empty_context_hash;
+      state = Seq.empty;
+    }
+  in
   let (message, _size) = Tx_rollup_message.make_batch message in
   let result =
     match List.nth_opt batches_result 0 with

@@ -316,7 +316,7 @@ and _ manager_operation =
       level : Tx_rollup_level_repr.t;
       message : Tx_rollup_message_repr.t;
       message_position : int;
-      proof : bool;
+      proof : Context.Proof.stream Context.Proof.t;
       before_root : Context_hash.t;
       before_withdraw : Tx_rollup_withdraw_repr.list_hash;
       after_result : Tx_rollup_commitment_repr.Message_result_hash.t;
@@ -710,7 +710,7 @@ module Encoding = struct
               (req "level" Tx_rollup_level_repr.encoding)
               (req "message" Tx_rollup_message_repr.encoding)
               (req "message_position" int31)
-              (req "proof" bool)
+              (req "proof" Tx_rollup_rejection_proof_repr.encoding)
               (req "before_root" Context_hash.encoding)
               (req "before_withdraw" Tx_rollup_withdraw_repr.list_hash_encoding)
               (req
