@@ -250,108 +250,107 @@ let () =
 let rec kmap_exit :
     type a b c d e f g h m n o. (a, b, c, d, e, f, g, h, m, n, o) kmap_exit_type
     =
- fun mk g gas (body, xs, ys, yk) ks accu stack ->
+ fun mk (g, gas) (body, xs, ys, yk) ks (accu, stack) ->
   let ys = Script_map.update yk (Some accu) ys in
   let ks = mk (KMap_enter_body (body, xs, ys, ks)) in
   let (accu, stack) = stack in
-  (next [@ocaml.tailcall]) g gas ks accu stack
+  (next [@ocaml.tailcall]) (g, gas) ks accu stack
  [@@inline]
 
 and kmap_enter : type a b c d i j k. (a, b, c, d, i, j, k) kmap_enter_type =
- fun mk g gas (body, xs, ys) ks accu stack ->
+ fun mk (g, gas) (body, xs, ys) ks (accu, stack) ->
   match xs with
-  | [] -> (next [@ocaml.tailcall]) g gas ks ys (accu, stack)
+  | [] -> (next [@ocaml.tailcall]) (g, gas) ks ys (accu, stack)
   | (xk, xv) :: xs ->
       let ks = mk (KMap_exit_body (body, xs, ys, xk, ks)) in
       let res = (xk, xv) in
       let stack = (accu, stack) in
-      (step [@ocaml.tailcall]) g gas body ks res stack
+      (step [@ocaml.tailcall]) (g, gas) (body, ks) res stack
  [@@inline]
 
 and klist_exit : type a b c d i j. (a, b, c, d, i, j) klist_exit_type =
- fun mk g gas (body, xs, ys, len) ks accu stack ->
+ fun mk (g, gas) (body, xs, ys, len) ks (accu, stack) ->
   let ks = mk (KList_enter_body (body, xs, accu :: ys, len, ks)) in
   let (accu, stack) = stack in
-  (next [@ocaml.tailcall]) g gas ks accu stack
+  (next [@ocaml.tailcall]) (g, gas) ks accu stack
  [@@inline]
 
 and klist_enter : type a b c d e j. (a, b, c, d, e, j) klist_enter_type =
- fun mk g gas (body, xs, ys, len) ks' accu stack ->
+ fun mk (g, gas) (body, xs, ys, len) ks' (accu, stack) ->
   match xs with
   | [] ->
       let ys = {elements = List.rev ys; length = len} in
-      (next [@ocaml.tailcall]) g gas ks' ys (accu, stack)
+      (next [@ocaml.tailcall]) (g, gas) ks' ys (accu, stack)
   | x :: xs ->
       let ks = mk (KList_exit_body (body, xs, ys, len, ks')) in
-      (step [@ocaml.tailcall]) g gas body ks x (accu, stack)
+      (step [@ocaml.tailcall]) (g, gas) (body, ks) x (accu, stack)
  [@@inline]
 
 and kloop_in_left : type a b c d e f g. (a, b, c, d, e, f, g) kloop_in_left_type
     =
- fun g gas ks0 ki ks' accu stack ->
+ fun (g, gas) ks0 (ki, ks') (accu, stack) ->
   match accu with
-  | L v -> (step [@ocaml.tailcall]) g gas ki ks0 v stack
-  | R v -> (next [@ocaml.tailcall]) g gas ks' v stack
+  | L v -> (step [@ocaml.tailcall]) (g, gas) (ki, ks0) v stack
+  | R v -> (next [@ocaml.tailcall]) (g, gas) ks' v stack
  [@@inline]
 
 and kloop_in : type a b c r f s. (a, b, c, r, f, s) kloop_in_type =
- fun g gas ks0 ki ks' accu stack ->
+ fun (g, gas) ks0 (ki, ks') (accu, stack) ->
   let (accu', stack') = stack in
-  if accu then (step [@ocaml.tailcall]) g gas ki ks0 accu' stack'
-  else (next [@ocaml.tailcall]) g gas ks' accu' stack'
+  if accu then (step [@ocaml.tailcall]) (g, gas) (ki, ks0) accu' stack'
+  else (next [@ocaml.tailcall]) (g, gas) ks' accu' stack'
  [@@inline]
 
 and kiter : type a b s r f. (a, b, s, r, f) kiter_type =
- fun mk g gas (body, xs) ks accu stack ->
+ fun mk (g, gas) (body, xs) ks (accu, stack) ->
   match xs with
-  | [] -> (next [@ocaml.tailcall]) g gas ks accu stack
+  | [] -> (next [@ocaml.tailcall]) (g, gas) ks accu stack
   | x :: xs ->
       let ks = mk (KIter (body, xs, ks)) in
-      (step [@ocaml.tailcall]) g gas body ks x (accu, stack)
+      (step [@ocaml.tailcall]) (g, gas) (body, ks) x (accu, stack)
  [@@inline]
 
 and next :
     type a s r f.
-    outdated_context * step_constants ->
-    local_gas_counter ->
+    (outdated_context * step_constants) * local_gas_counter ->
     (a, s, r, f) continuation ->
     a ->
     s ->
     (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =
- fun ((ctxt, _) as g) gas ks0 accu stack ->
+ fun (((ctxt, _) as g), gas) ks0 accu stack ->
   match consume_control gas ks0 with
   | None -> fail Gas.Operation_quota_exceeded
   | Some gas -> (
       match ks0 with
       | KLog (ks, logger) ->
-          (klog [@ocaml.tailcall]) logger g gas ks0 ks accu stack
+          (klog [@ocaml.tailcall]) (logger, g, gas) (ks0, ks) accu stack
       | KNil -> Lwt.return (Ok (accu, stack, ctxt, gas))
-      | KCons (k, ks) -> (step [@ocaml.tailcall]) g gas k ks accu stack
+      | KCons (k, ks) -> (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | KLoop_in (ki, ks') ->
-          (kloop_in [@ocaml.tailcall]) g gas ks0 ki ks' accu stack
-      | KReturn (stack', ks) -> (next [@ocaml.tailcall]) g gas ks accu stack'
-      | KMap_head (f, ks) -> (next [@ocaml.tailcall]) g gas ks (f accu) stack
+          (kloop_in [@ocaml.tailcall]) (g, gas) ks0 (ki, ks') (accu, stack)
+      | KReturn (stack', ks) -> (next [@ocaml.tailcall]) (g, gas) ks accu stack'
+      | KMap_head (f, ks) -> (next [@ocaml.tailcall]) (g, gas) ks (f accu) stack
       | KLoop_in_left (ki, ks') ->
-          (kloop_in_left [@ocaml.tailcall]) g gas ks0 ki ks' accu stack
-      | KUndip (x, ks) -> (next [@ocaml.tailcall]) g gas ks x (accu, stack)
+          (kloop_in_left [@ocaml.tailcall]) (g, gas) ks0 (ki, ks') (accu, stack)
+      | KUndip (x, ks) -> (next [@ocaml.tailcall]) (g, gas) ks x (accu, stack)
       | KIter (body, xs, ks) ->
           let extra = (body, xs) in
-          (kiter [@ocaml.tailcall]) id g gas extra ks accu stack
+          (kiter [@ocaml.tailcall]) id (g, gas) extra ks (accu, stack)
       | KList_enter_body (body, xs, ys, len, ks) ->
           let extra = (body, xs, ys, len) in
-          (klist_enter [@ocaml.tailcall]) id g gas extra ks accu stack
+          (klist_enter [@ocaml.tailcall]) id (g, gas) extra ks (accu, stack)
       | KList_exit_body (body, xs, ys, len, ks) ->
           let extra = (body, xs, ys, len) in
-          (klist_exit [@ocaml.tailcall]) id g gas extra ks accu stack
+          (klist_exit [@ocaml.tailcall]) id (g, gas) extra ks (accu, stack)
       | KMap_enter_body (body, xs, ys, ks) ->
           let extra = (body, xs, ys) in
-          (kmap_enter [@ocaml.tailcall]) id g gas extra ks accu stack
+          (kmap_enter [@ocaml.tailcall]) id (g, gas) extra ks (accu, stack)
       | KMap_exit_body (body, xs, ys, yk, ks) ->
           let extra = (body, xs, ys, yk) in
-          (kmap_exit [@ocaml.tailcall]) id g gas extra ks accu stack
+          (kmap_exit [@ocaml.tailcall]) id (g, gas) extra ks (accu, stack)
       | KView_exit (orig_step_constants, ks) ->
           let g = (fst g, orig_step_constants) in
-          (next [@ocaml.tailcall]) g gas ks accu stack)
+          (next [@ocaml.tailcall]) (g, gas) ks accu stack)
 
 (*
 
@@ -367,7 +366,7 @@ and next :
 
 *)
 and ilist_map : type a b c d e f g h. (a, b, c, d, e, f, g, h) ilist_map_type =
- fun log_if_needed g gas (body, k) ks accu stack ->
+ fun log_if_needed (g, gas) (body, k) ks (accu, stack) ->
   let xs = accu.elements in
   let ys = [] in
   let len = accu.length in
@@ -375,80 +374,82 @@ and ilist_map : type a b c d e f g h. (a, b, c, d, e, f, g, h) ilist_map_type =
     log_if_needed (KList_enter_body (body, xs, ys, len, KCons (k, ks)))
   in
   let (accu, stack) = stack in
-  (next [@ocaml.tailcall]) g gas ks accu stack
+  (next [@ocaml.tailcall]) (g, gas) ks accu stack
  [@@inline]
 
 and ilist_iter : type a b c d e f g. (a, b, c, d, e, f, g) ilist_iter_type =
- fun log_if_needed g gas (body, k) ks accu stack ->
+ fun log_if_needed (g, gas) (body, k) ks (accu, stack) ->
   let xs = accu.elements in
   let ks = log_if_needed (KIter (body, xs, KCons (k, ks))) in
   let (accu, stack) = stack in
-  (next [@ocaml.tailcall]) g gas ks accu stack
+  (next [@ocaml.tailcall]) (g, gas) ks accu stack
  [@@inline]
 
 and iset_iter : type a b c d e f g. (a, b, c, d, e, f, g) iset_iter_type =
- fun log_if_needed g gas (body, k) ks accu stack ->
+ fun log_if_needed (g, gas) (body, k) ks (accu, stack) ->
   let set = accu in
   let l = List.rev (Script_set.fold (fun e acc -> e :: acc) set []) in
   let ks = log_if_needed (KIter (body, l, KCons (k, ks))) in
   let (accu, stack) = stack in
-  (next [@ocaml.tailcall]) g gas ks accu stack
+  (next [@ocaml.tailcall]) (g, gas) ks accu stack
  [@@inline]
 
 and imap_map : type a b c d e f g h i. (a, b, c, d, e, f, g, h, i) imap_map_type
     =
- fun log_if_needed g gas (body, k) ks accu stack ->
+ fun log_if_needed (g, gas) (body, k) ks (accu, stack) ->
   let map = accu in
   let xs = List.rev (Script_map.fold (fun k v a -> (k, v) :: a) map []) in
   let ys = Script_map.empty_from map in
   let ks = log_if_needed (KMap_enter_body (body, xs, ys, KCons (k, ks))) in
   let (accu, stack) = stack in
-  (next [@ocaml.tailcall]) g gas ks accu stack
+  (next [@ocaml.tailcall]) (g, gas) ks accu stack
  [@@inline]
 
 and imap_iter : type a b c d e f g h. (a, b, c, d, e, f, g, h) imap_iter_type =
- fun log_if_needed g gas (body, k) ks accu stack ->
+ fun log_if_needed (g, gas) (body, k) ks (accu, stack) ->
   let map = accu in
   let l = List.rev (Script_map.fold (fun k v a -> (k, v) :: a) map []) in
   let ks = log_if_needed (KIter (body, l, KCons (k, ks))) in
   let (accu, stack) = stack in
-  (next [@ocaml.tailcall]) g gas ks accu stack
+  (next [@ocaml.tailcall]) (g, gas) ks accu stack
  [@@inline]
 
 and imul_teznat : type a b c d e f. (a, b, c, d, e, f) imul_teznat_type =
- fun logger g gas (kinfo, k) ks accu stack ->
+ fun (logger, g, gas) (kinfo, k) ks accu stack ->
   let x = accu in
   let (y, stack) = stack in
   match Script_int.to_int64 y with
   | None -> get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
   | Some y ->
-      Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
+      Tez.(x *? y) >>?= fun res ->
+      (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
 
 and imul_nattez : type a b c d e f. (a, b, c, d, e, f) imul_nattez_type =
- fun logger g gas (kinfo, k) ks accu stack ->
+ fun (logger, g, gas) (kinfo, k) ks accu stack ->
   let y = accu in
   let (x, stack) = stack in
   match Script_int.to_int64 y with
   | None -> get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
   | Some y ->
-      Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
+      Tez.(x *? y) >>?= fun res ->
+      (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
 
 and ilsl_nat : type a b c d e f. (a, b, c, d, e, f) ilsl_nat_type =
- fun logger g gas (kinfo, k) ks accu stack ->
+ fun (logger, g, gas) (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
   match Script_int.shift_left_n x y with
   | None -> get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
-  | Some x -> (step [@ocaml.tailcall]) g gas k ks x stack
+  | Some x -> (step [@ocaml.tailcall]) (g, gas) (k, ks) x stack
 
 and ilsr_nat : type a b c d e f. (a, b, c, d, e, f) ilsr_nat_type =
- fun logger g gas (kinfo, k) ks accu stack ->
+ fun (logger, g, gas) (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
   match Script_int.shift_right_n x y with
   | None -> get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
-  | Some r -> (step [@ocaml.tailcall]) g gas k ks r stack
+  | Some r -> (step [@ocaml.tailcall]) (g, gas) (k, ks) r stack
 
 and ifailwith : type a b. (a, b) ifailwith_type =
- fun logger (ctxt, _) gas kloc tv accu ->
+ fun (logger, (ctxt, _), gas) kloc tv accu ->
   let v = accu in
   let ctxt = update_context gas ctxt in
   trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
@@ -457,7 +458,7 @@ and ifailwith : type a b. (a, b) ifailwith_type =
   get_log logger >>=? fun log -> fail (Reject (kloc, v, log))
 
 and iexec : type a b c d e f g. (a, b, c, d, e, f, g) iexec_type =
- fun logger g gas k ks accu stack ->
+ fun (logger, g, gas) k ks accu stack ->
   let arg = accu and (code, stack) = stack in
   let (Lam (code, _)) = code in
   let code =
@@ -466,234 +467,226 @@ and iexec : type a b c d e f g. (a, b, c, d, e, f, g) iexec_type =
     | Some logger -> log_kinstr logger code.kinstr
   in
   let ks = KReturn (stack, KCons (k, ks)) in
-  (step [@ocaml.tailcall]) g gas code ks arg (EmptyCell, EmptyCell)
+  (step [@ocaml.tailcall]) (g, gas) (code, ks) arg (EmptyCell, EmptyCell)
 
 and step : type a s b t r f. (a, s, b, t, r, f) step_type =
- fun ((ctxt, sc) as g) gas i ks accu stack ->
+ fun (((ctxt, sc) as g), gas) (i, ks) accu stack ->
   match consume_instr gas i accu stack with
   | None -> fail Gas.Operation_quota_exceeded
   | Some gas -> (
       match i with
       | ILog (_, event, logger, k) ->
-          (log [@ocaml.tailcall]) (logger, event) g gas k ks accu stack
-      | IHalt _ -> (next [@ocaml.tailcall]) g gas ks accu stack
+          (log [@ocaml.tailcall]) (logger, event, g, gas) (k, ks) accu stack
+      | IHalt _ -> (next [@ocaml.tailcall]) (g, gas) ks accu stack
       (* stack ops *)
       | IDrop (_, k) ->
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
-      | IDup (_, k) -> (step [@ocaml.tailcall]) g gas k ks accu (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
+      | IDup (_, k) ->
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu (accu, stack)
       | ISwap (_, k) ->
           let (top, stack) = stack in
-          (step [@ocaml.tailcall]) g gas k ks top (accu, stack)
-      | IConst (_, v, k) -> (step [@ocaml.tailcall]) g gas k ks v (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) top (accu, stack)
+      | IConst (_, v, k) ->
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) v (accu, stack)
       (* options *)
       | ICons_some (_, k) ->
-          (step [@ocaml.tailcall]) g gas k ks (Some accu) stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) (Some accu) stack
       | ICons_none (_, k) ->
-          (step [@ocaml.tailcall]) g gas k ks None (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) None (accu, stack)
       | IIf_none {branch_if_none; branch_if_some; k; _} -> (
           match accu with
           | None ->
               let (accu, stack) = stack in
               (step [@ocaml.tailcall])
-                g
-                gas
-                branch_if_none
-                (KCons (k, ks))
+                (g, gas)
+                (branch_if_none, KCons (k, ks))
                 accu
                 stack
           | Some v ->
               (step [@ocaml.tailcall])
-                g
-                gas
-                branch_if_some
-                (KCons (k, ks))
+                (g, gas)
+                (branch_if_some, KCons (k, ks))
                 v
                 stack)
       | IOpt_map {body; k; kinfo = _} -> (
           match accu with
-          | None -> (step [@ocaml.tailcall]) g gas k ks None stack
+          | None -> (step [@ocaml.tailcall]) (g, gas) (k, ks) None stack
           | Some v ->
               let ks' = KMap_head (Option.some, KCons (k, ks)) in
-              (step [@ocaml.tailcall]) g gas body ks' v stack)
+              (step [@ocaml.tailcall]) (g, gas) (body, ks') v stack)
       (* pairs *)
       | ICons_pair (_, k) ->
           let (b, stack) = stack in
-          (step [@ocaml.tailcall]) g gas k ks (accu, b) stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) (accu, b) stack
       | IUnpair (_, k) ->
           let (a, b) = accu in
-          (step [@ocaml.tailcall]) g gas k ks a (b, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) a (b, stack)
       | ICar (_, k) ->
           let (a, _) = accu in
-          (step [@ocaml.tailcall]) g gas k ks a stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) a stack
       | ICdr (_, k) ->
           let (_, b) = accu in
-          (step [@ocaml.tailcall]) g gas k ks b stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) b stack
       (* unions *)
-      | ICons_left (_, k) -> (step [@ocaml.tailcall]) g gas k ks (L accu) stack
-      | ICons_right (_, k) -> (step [@ocaml.tailcall]) g gas k ks (R accu) stack
+      | ICons_left (_, k) ->
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) (L accu) stack
+      | ICons_right (_, k) ->
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) (R accu) stack
       | IIf_left {branch_if_left; branch_if_right; k; _} -> (
           match accu with
           | L v ->
               (step [@ocaml.tailcall])
-                g
-                gas
-                branch_if_left
-                (KCons (k, ks))
+                (g, gas)
+                (branch_if_left, KCons (k, ks))
                 v
                 stack
           | R v ->
               (step [@ocaml.tailcall])
-                g
-                gas
-                branch_if_right
-                (KCons (k, ks))
+                (g, gas)
+                (branch_if_right, KCons (k, ks))
                 v
                 stack)
       (* lists *)
       | ICons_list (_, k) ->
           let (tl, stack) = stack in
           let accu = Script_list.cons accu tl in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | INil (_, k) ->
           let stack = (accu, stack) in
           let accu = Script_list.empty in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IIf_cons {branch_if_cons; branch_if_nil; k; _} -> (
           match accu.elements with
           | [] ->
               let (accu, stack) = stack in
               (step [@ocaml.tailcall])
-                g
-                gas
-                branch_if_nil
-                (KCons (k, ks))
+                (g, gas)
+                (branch_if_nil, KCons (k, ks))
                 accu
                 stack
           | hd :: tl ->
               let tl = {elements = tl; length = accu.length - 1} in
               (step [@ocaml.tailcall])
-                g
-                gas
-                branch_if_cons
-                (KCons (k, ks))
+                (g, gas)
+                (branch_if_cons, KCons (k, ks))
                 hd
                 (tl, stack))
       | IList_map (_, body, k) ->
-          (ilist_map [@ocaml.tailcall]) id g gas (body, k) ks accu stack
+          (ilist_map [@ocaml.tailcall]) id (g, gas) (body, k) ks (accu, stack)
       | IList_size (_, k) ->
           let list = accu in
           let len = Script_int.(abs (of_int list.length)) in
-          (step [@ocaml.tailcall]) g gas k ks len stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) len stack
       | IList_iter (_, body, k) ->
-          (ilist_iter [@ocaml.tailcall]) id g gas (body, k) ks accu stack
+          (ilist_iter [@ocaml.tailcall]) id (g, gas) (body, k) ks (accu, stack)
       (* sets *)
       | IEmpty_set (_, ty, k) ->
           let res = Script_set.empty ty in
           let stack = (accu, stack) in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | ISet_iter (_, body, k) ->
-          (iset_iter [@ocaml.tailcall]) id g gas (body, k) ks accu stack
+          (iset_iter [@ocaml.tailcall]) id (g, gas) (body, k) ks (accu, stack)
       | ISet_mem (_, k) ->
           let (set, stack) = stack in
           let res = Script_set.mem accu set in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | ISet_update (_, k) ->
           let (presence, (set, stack)) = stack in
           let res = Script_set.update accu presence set in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | ISet_size (_, k) ->
           let res = Script_set.size accu in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       (* maps *)
       | IEmpty_map (_, ty, k) ->
           let res = Script_map.empty ty and stack = (accu, stack) in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IMap_map (_, body, k) ->
-          (imap_map [@ocaml.tailcall]) id g gas (body, k) ks accu stack
+          (imap_map [@ocaml.tailcall]) id (g, gas) (body, k) ks (accu, stack)
       | IMap_iter (_, body, k) ->
-          (imap_iter [@ocaml.tailcall]) id g gas (body, k) ks accu stack
+          (imap_iter [@ocaml.tailcall]) id (g, gas) (body, k) ks (accu, stack)
       | IMap_mem (_, k) ->
           let (map, stack) = stack in
           let res = Script_map.mem accu map in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IMap_get (_, k) ->
           let (map, stack) = stack in
           let res = Script_map.get accu map in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IMap_update (_, k) ->
           let (v, (map, stack)) = stack in
           let key = accu in
           let res = Script_map.update key v map in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IMap_get_and_update (_, k) ->
           let key = accu in
           let (v, (map, rest)) = stack in
           let map' = Script_map.update key v map in
           let v' = Script_map.get key map in
-          (step [@ocaml.tailcall]) g gas k ks v' (map', rest)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) v' (map', rest)
       | IMap_size (_, k) ->
           let res = Script_map.size accu in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       (* Big map operations *)
       | IEmpty_big_map (_, tk, tv, k) ->
           let ebm = Script_ir_translator.empty_big_map tk tv in
-          (step [@ocaml.tailcall]) g gas k ks ebm (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) ebm (accu, stack)
       | IBig_map_mem (_, k) ->
           let (map, stack) = stack in
           let key = accu in
           ( use_gas_counter_in_context ctxt gas @@ fun ctxt ->
             Script_ir_translator.big_map_mem ctxt key map )
           >>=? fun (res, ctxt, gas) ->
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks res stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) res stack
       | IBig_map_get (_, k) ->
           let (map, stack) = stack in
           let key = accu in
           ( use_gas_counter_in_context ctxt gas @@ fun ctxt ->
             Script_ir_translator.big_map_get ctxt key map )
           >>=? fun (res, ctxt, gas) ->
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks res stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) res stack
       | IBig_map_update (_, k) ->
           let key = accu in
           let (maybe_value, (map, stack)) = stack in
           ( use_gas_counter_in_context ctxt gas @@ fun ctxt ->
             Script_ir_translator.big_map_update ctxt key maybe_value map )
           >>=? fun (big_map, ctxt, gas) ->
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks big_map stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) big_map stack
       | IBig_map_get_and_update (_, k) ->
           let key = accu in
           let (v, (map, stack)) = stack in
           ( use_gas_counter_in_context ctxt gas @@ fun ctxt ->
             Script_ir_translator.big_map_get_and_update ctxt key v map )
           >>=? fun ((v', map'), ctxt, gas) ->
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks v' (map', stack)
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) v' (map', stack)
       (* timestamp operations *)
       | IAdd_seconds_to_timestamp (_, k) ->
           let n = accu in
           let (t, stack) = stack in
           let result = Script_timestamp.add_delta t n in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       | IAdd_timestamp_to_seconds (_, k) ->
           let t = accu in
           let (n, stack) = stack in
           let result = Script_timestamp.add_delta t n in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       | ISub_timestamp_seconds (_, k) ->
           let t = accu in
           let (s, stack) = stack in
           let result = Script_timestamp.sub_delta t s in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       | IDiff_timestamps (_, k) ->
           let t1 = accu in
           let (t2, stack) = stack in
           let result = Script_timestamp.diff t1 t2 in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       (* string operations *)
       | IConcat_string_pair (_, k) ->
           let x = accu in
           let (y, stack) = stack in
           let s = Script_string.concat_pair x y in
-          (step [@ocaml.tailcall]) g gas k ks s stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) s stack
       | IConcat_string (_, k) ->
           let ss = accu in
           (* The cost for this fold_left has been paid upfront *)
@@ -705,7 +698,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           in
           consume gas (Interp_costs.concat_string total_length) >>?= fun gas ->
           let s = Script_string.concat ss.elements in
-          (step [@ocaml.tailcall]) g gas k ks s stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) s stack
       | ISlice_string (_, k) ->
           let offset = accu and (length, (s, stack)) = stack in
           let s_length = Z.of_int (Script_string.length s) in
@@ -714,18 +707,18 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           if Compare.Z.(offset < s_length && Z.add offset length <= s_length)
           then
             let s = Script_string.sub s (Z.to_int offset) (Z.to_int length) in
-            (step [@ocaml.tailcall]) g gas k ks (Some s) stack
-          else (step [@ocaml.tailcall]) g gas k ks None stack
+            (step [@ocaml.tailcall]) (g, gas) (k, ks) (Some s) stack
+          else (step [@ocaml.tailcall]) (g, gas) (k, ks) None stack
       | IString_size (_, k) ->
           let s = accu in
           let result = Script_int.(abs (of_int (Script_string.length s))) in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       (* bytes operations *)
       | IConcat_bytes_pair (_, k) ->
           let x = accu in
           let (y, stack) = stack in
           let s = Bytes.cat x y in
-          (step [@ocaml.tailcall]) g gas k ks s stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) s stack
       | IConcat_bytes (_, k) ->
           let ss = accu in
           (* The cost for this fold_left has been paid upfront *)
@@ -737,7 +730,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           in
           consume gas (Interp_costs.concat_string total_length) >>?= fun gas ->
           let s = Bytes.concat Bytes.empty ss.elements in
-          (step [@ocaml.tailcall]) g gas k ks s stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) s stack
       | ISlice_bytes (_, k) ->
           let offset = accu and (length, (s, stack)) = stack in
           let s_length = Z.of_int (Bytes.length s) in
@@ -746,86 +739,86 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           if Compare.Z.(offset < s_length && Z.add offset length <= s_length)
           then
             let s = Bytes.sub s (Z.to_int offset) (Z.to_int length) in
-            (step [@ocaml.tailcall]) g gas k ks (Some s) stack
-          else (step [@ocaml.tailcall]) g gas k ks None stack
+            (step [@ocaml.tailcall]) (g, gas) (k, ks) (Some s) stack
+          else (step [@ocaml.tailcall]) (g, gas) (k, ks) None stack
       | IBytes_size (_, k) ->
           let s = accu in
           let result = Script_int.(abs (of_int (Bytes.length s))) in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       (* currency operations *)
       | IAdd_tez (_, k) ->
           let x = accu in
           let (y, stack) = stack in
           Tez.(x +? y) >>?= fun res ->
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | ISub_tez (_, k) ->
           let x = accu in
           let (y, stack) = stack in
           let res = Tez.sub_opt x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | ISub_tez_legacy (_, k) ->
           let x = accu in
           let (y, stack) = stack in
           Tez.(x -? y) >>?= fun res ->
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IMul_teznat (kinfo, k) ->
-          imul_teznat None g gas (kinfo, k) ks accu stack
+          imul_teznat (None, g, gas) (kinfo, k) ks accu stack
       | IMul_nattez (kinfo, k) ->
-          imul_nattez None g gas (kinfo, k) ks accu stack
+          imul_nattez (None, g, gas) (kinfo, k) ks accu stack
       (* boolean operations *)
       | IOr (_, k) ->
           let x = accu in
           let (y, stack) = stack in
-          (step [@ocaml.tailcall]) g gas k ks (x || y) stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) (x || y) stack
       | IAnd (_, k) ->
           let x = accu in
           let (y, stack) = stack in
-          (step [@ocaml.tailcall]) g gas k ks (x && y) stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) (x && y) stack
       | IXor (_, k) ->
           let x = accu in
           let (y, stack) = stack in
           let res = Compare.Bool.(x <> y) in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | INot (_, k) ->
           let x = accu in
-          (step [@ocaml.tailcall]) g gas k ks (not x) stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) (not x) stack
       (* integer operations *)
       | IIs_nat (_, k) ->
           let x = accu in
           let res = Script_int.is_nat x in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IAbs_int (_, k) ->
           let x = accu in
           let res = Script_int.abs x in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IInt_nat (_, k) ->
           let x = accu in
           let res = Script_int.int x in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | INeg (_, k) ->
           let x = accu in
           let res = Script_int.neg x in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IAdd_int (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.add x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IAdd_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.add_n x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | ISub_int (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.sub x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IMul_int (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.mul x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IMul_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.mul_n x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IEdiv_teznat (_, k) ->
           let x = accu and (y, stack) = stack in
           let x = Script_int.of_int64 (Tez.to_mutez x) in
@@ -842,7 +835,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                 (* Cannot overflow *)
                 | _ -> assert false)
           in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       | IEdiv_tez (_, k) ->
           let x = accu and (y, stack) = stack in
           let x = Script_int.abs (Script_int.of_int64 (Tez.to_mutez x)) in
@@ -858,76 +851,72 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                     | None -> assert false (* Cannot overflow *)
                     | Some r -> Some (q, r)))
           in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       | IEdiv_int (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.ediv x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IEdiv_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.ediv_n x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
-      | ILsl_nat (kinfo, k) -> ilsl_nat None g gas (kinfo, k) ks accu stack
-      | ILsr_nat (kinfo, k) -> ilsr_nat None g gas (kinfo, k) ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
+      | ILsl_nat (kinfo, k) -> ilsl_nat (None, g, gas) (kinfo, k) ks accu stack
+      | ILsr_nat (kinfo, k) -> ilsr_nat (None, g, gas) (kinfo, k) ks accu stack
       | IOr_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.logor x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IAnd_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.logand x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IAnd_int_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.logand x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IXor_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.logxor x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | INot_int (_, k) ->
           let x = accu in
           let res = Script_int.lognot x in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       (* control *)
       | IIf {branch_if_true; branch_if_false; k; _} ->
           let (res, stack) = stack in
           if accu then
             (step [@ocaml.tailcall])
-              g
-              gas
-              branch_if_true
-              (KCons (k, ks))
+              (g, gas)
+              (branch_if_true, KCons (k, ks))
               res
               stack
           else
             (step [@ocaml.tailcall])
-              g
-              gas
-              branch_if_false
-              (KCons (k, ks))
+              (g, gas)
+              (branch_if_false, KCons (k, ks))
               res
               stack
       | ILoop (_, body, k) ->
           let ks = KLoop_in (body, KCons (k, ks)) in
-          (next [@ocaml.tailcall]) g gas ks accu stack
+          (next [@ocaml.tailcall]) (g, gas) ks accu stack
       | ILoop_left (_, bl, br) ->
           let ks = KLoop_in_left (bl, KCons (br, ks)) in
-          (next [@ocaml.tailcall]) g gas ks accu stack
+          (next [@ocaml.tailcall]) (g, gas) ks accu stack
       | IDip (_, b, k) ->
           let ign = accu in
           let ks = KUndip (ign, KCons (k, ks)) in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) g gas b ks accu stack
-      | IExec (_, k) -> iexec None g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (b, ks) accu stack
+      | IExec (_, k) -> iexec (None, g, gas) k ks accu stack
       | IApply (_, capture_ty, k) ->
           let capture = accu in
           let (lam, stack) = stack in
           apply ctxt gas capture_ty capture lam >>=? fun (lam', ctxt, gas) ->
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks lam' stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) lam' stack
       | ILambda (_, lam, k) ->
-          (step [@ocaml.tailcall]) g gas k ks lam (accu, stack)
-      | IFailwith (_, kloc, tv) -> ifailwith None g gas kloc tv accu
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) lam (accu, stack)
+      | IFailwith (_, kloc, tv) -> ifailwith (None, g, gas) kloc tv accu
       (* comparison *)
       | ICompare (_, ty, k) ->
           let a = accu in
@@ -935,53 +924,53 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let r =
             Script_int.of_int @@ Script_comparable.compare_comparable ty a b
           in
-          (step [@ocaml.tailcall]) g gas k ks r stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) r stack
       (* comparators *)
       | IEq (_, k) ->
           let a = accu in
           let a = Script_int.compare a Script_int.zero in
           let a = Compare.Int.(a = 0) in
-          (step [@ocaml.tailcall]) g gas k ks a stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) a stack
       | INeq (_, k) ->
           let a = accu in
           let a = Script_int.compare a Script_int.zero in
           let a = Compare.Int.(a <> 0) in
-          (step [@ocaml.tailcall]) g gas k ks a stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) a stack
       | ILt (_, k) ->
           let a = accu in
           let a = Script_int.compare a Script_int.zero in
           let a = Compare.Int.(a < 0) in
-          (step [@ocaml.tailcall]) g gas k ks a stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) a stack
       | ILe (_, k) ->
           let a = accu in
           let a = Script_int.compare a Script_int.zero in
           let a = Compare.Int.(a <= 0) in
-          (step [@ocaml.tailcall]) g gas k ks a stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) a stack
       | IGt (_, k) ->
           let a = accu in
           let a = Script_int.compare a Script_int.zero in
           let a = Compare.Int.(a > 0) in
-          (step [@ocaml.tailcall]) g gas k ks a stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) a stack
       | IGe (_, k) ->
           let a = accu in
           let a = Script_int.compare a Script_int.zero in
           let a = Compare.Int.(a >= 0) in
-          (step [@ocaml.tailcall]) g gas k ks a stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) a stack
       (* packing *)
       | IPack (_, ty, k) ->
           let value = accu in
           ( use_gas_counter_in_context ctxt gas @@ fun ctxt ->
             Script_ir_translator.pack_data ctxt ty value )
           >>=? fun (bytes, ctxt, gas) ->
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks bytes stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) bytes stack
       | IUnpack (_, ty, k) ->
           let bytes = accu in
           ( use_gas_counter_in_context ctxt gas @@ fun ctxt ->
             unpack ctxt ~ty ~bytes )
           >>=? fun (opt, ctxt, gas) ->
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks opt stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) opt stack
       | IAddress (_, k) ->
-          (step [@ocaml.tailcall]) g gas k ks accu.address stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu.address stack
       | IContract (kinfo, t, entrypoint, k) -> (
           let addr = accu in
           let entrypoint_opt =
@@ -1001,8 +990,9 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
               >>=? fun (ctxt, maybe_contract) ->
               let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
               let accu = maybe_contract in
-              (step [@ocaml.tailcall]) (ctxt, sc) gas k ks accu stack
-          | None -> (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack)
+              (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) accu stack
+          | None ->
+              (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) None stack)
       | ITransfer_tokens (_, k) ->
           let p = accu in
           let (amount, (tcontract, stack)) = stack in
@@ -1011,7 +1001,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let entrypoint = tcontract.address.entrypoint in
           transfer (ctxt, sc) gas amount tp p destination entrypoint
           >>=? fun (accu, ctxt, gas) ->
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks accu stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) accu stack
       | IImplicit_account (_, k) ->
           let key = accu in
           let arg_ty = unit_t in
@@ -1022,7 +1012,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             }
           in
           let res = {arg_ty; address} in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IView (_, View_signature {name; input_ty; output_ty}, k) -> (
           let input = accu in
           let (addr, stack) = stack in
@@ -1030,7 +1020,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let ctxt = update_context gas ctxt in
           let return_none ctxt =
             let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
-            (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack
+            (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) None stack
           in
           match c with
           | Contract c -> (
@@ -1104,23 +1094,23 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                                     local_gas_counter_and_outdated_context ctxt
                                   in
                                   (step [@ocaml.tailcall])
-                                    ( ctxt,
-                                      {
-                                        source = sc.self;
-                                        self = c;
-                                        amount = Tez.zero;
-                                        balance;
-                                        (* The following remain unchanged, but let's
-                                           list them anyway, so that we don't forget
-                                           to update something added later. *)
-                                        payer = sc.payer;
-                                        chain_id = sc.chain_id;
-                                        now = sc.now;
-                                        level = sc.level;
-                                      } )
-                                    gas
-                                    kinstr
-                                    (KView_exit (sc, KReturn (stack, ks)))
+                                    ( ( ctxt,
+                                        {
+                                          source = sc.self;
+                                          self = c;
+                                          amount = Tez.zero;
+                                          balance;
+                                          (* The following remain unchanged, but let's
+                                             list them anyway, so that we don't forget
+                                             to update something added later. *)
+                                          payer = sc.payer;
+                                          chain_id = sc.chain_id;
+                                          now = sc.now;
+                                          level = sc.level;
+                                        } ),
+                                      gas )
+                                    ( kinstr,
+                                      KView_exit (sc, KReturn (stack, ks)) )
                                     (input, storage)
                                     (EmptyCell, EmptyCell))))))
           | Tx_rollup _ -> (return_none [@ocaml.tailcall]) ctxt)
@@ -1153,7 +1143,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             ( {destination = Contract contract; entrypoint = Entrypoint.default},
               stack )
           in
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks res stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) res stack
       | ISet_delegate (_, k) ->
           let delegate = accu in
           let operation = Delegation delegate in
@@ -1162,15 +1152,16 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let piop = Internal_operation {source = sc.self; operation; nonce} in
           let res = {piop; lazy_storage_diff = None} in
           let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks res stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) res stack
       | IBalance (_, k) ->
           let ctxt = update_context gas ctxt in
           let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
           let g = (ctxt, sc) in
-          (step [@ocaml.tailcall]) g gas k ks sc.balance (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) sc.balance (accu, stack)
       | ILevel (_, k) ->
-          (step [@ocaml.tailcall]) g gas k ks sc.level (accu, stack)
-      | INow (_, k) -> (step [@ocaml.tailcall]) g gas k ks sc.now (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) sc.level (accu, stack)
+      | INow (_, k) ->
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) sc.now (accu, stack)
       | IMin_block_time (_, k) ->
           let ctxt = update_context gas ctxt in
           let min_block_time =
@@ -1180,46 +1171,46 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             |> Script_int.abs
           in
           let new_stack = (accu, stack) in
-          (step [@ocaml.tailcall]) g gas k ks min_block_time new_stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) min_block_time new_stack
       | ICheck_signature (_, k) ->
           let key = accu and (signature, (message, stack)) = stack in
           let res = Script_signature.check key signature message in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IHash_key (_, k) ->
           let key = accu in
           let res = Signature.Public_key.hash key in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IBlake2b (_, k) ->
           let bytes = accu in
           let hash = Raw_hashes.blake2b bytes in
-          (step [@ocaml.tailcall]) g gas k ks hash stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) hash stack
       | ISha256 (_, k) ->
           let bytes = accu in
           let hash = Raw_hashes.sha256 bytes in
-          (step [@ocaml.tailcall]) g gas k ks hash stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) hash stack
       | ISha512 (_, k) ->
           let bytes = accu in
           let hash = Raw_hashes.sha512 bytes in
-          (step [@ocaml.tailcall]) g gas k ks hash stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) hash stack
       | ISource (_, k) ->
           let destination : Destination.t = Contract sc.payer in
           let res = {destination; entrypoint = Entrypoint.default} in
-          (step [@ocaml.tailcall]) g gas k ks res (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res (accu, stack)
       | ISender (_, k) ->
           let destination : Destination.t = Contract sc.source in
           let res = {destination; entrypoint = Entrypoint.default} in
-          (step [@ocaml.tailcall]) g gas k ks res (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res (accu, stack)
       | ISelf (_, ty, entrypoint, k) ->
           let destination : Destination.t = Contract sc.self in
           let res = {arg_ty = ty; address = {destination; entrypoint}} in
-          (step [@ocaml.tailcall]) g gas k ks res (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res (accu, stack)
       | ISelf_address (_, k) ->
           let destination : Destination.t = Contract sc.self in
           let res = {destination; entrypoint = Entrypoint.default} in
-          (step [@ocaml.tailcall]) g gas k ks res (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res (accu, stack)
       | IAmount (_, k) ->
           let accu = sc.amount and stack = (accu, stack) in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IDig (_, _n, n', k) ->
           let ((accu, stack), x) =
             interp_stack_prefix_preserving_operation
@@ -1229,7 +1220,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
               stack
           in
           let accu = x and stack = (accu, stack) in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IDug (_, _n, n', k) ->
           let v = accu in
           let (accu, stack) = stack in
@@ -1240,11 +1231,11 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
               accu
               stack
           in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IDipn (_, _n, n', b, k) ->
           let (accu, stack, restore_prefix) = kundip n' accu stack k in
           let ks = KCons (restore_prefix, ks) in
-          (step [@ocaml.tailcall]) g gas b ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (b, ks) accu stack
       | IDropn (_, _n, n', k) ->
           let stack =
             let rec aux :
@@ -1263,10 +1254,10 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             aux n' accu stack
           in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | ISapling_empty_state (_, memo_size, k) ->
           let state = Sapling.empty_state ~memo_size () in
-          (step [@ocaml.tailcall]) g gas k ks state (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) state (accu, stack)
       | ISapling_verify_update (_, k) -> (
           let transaction = accu in
           let (state, stack) = stack in
@@ -1281,12 +1272,13 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           match balance_state_opt with
           | Some (balance, state) ->
               let state = Some (Script_int.of_int64 balance, state) in
-              (step [@ocaml.tailcall]) (ctxt, sc) gas k ks state stack
-          | None -> (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack)
+              (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) state stack
+          | None ->
+              (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) None stack)
       | IChainId (_, k) ->
           let accu = Script_chain_id.make sc.chain_id
           and stack = (accu, stack) in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | INever _ -> ( match accu with _ -> .)
       | IVoting_power (_, k) ->
           let key_hash = accu in
@@ -1294,76 +1286,76 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           Vote.get_voting_power ctxt key_hash >>=? fun (ctxt, power) ->
           let power = Script_int.(abs (of_int64 power)) in
           let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
-          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks power stack
+          (step [@ocaml.tailcall]) ((ctxt, sc), gas) (k, ks) power stack
       | ITotal_voting_power (_, k) ->
           let ctxt = update_context gas ctxt in
           Vote.get_total_voting_power ctxt >>=? fun (ctxt, power) ->
           let power = Script_int.(abs (of_int64 power)) in
           let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
           let g = (ctxt, sc) in
-          (step [@ocaml.tailcall]) g gas k ks power (accu, stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) power (accu, stack)
       | IKeccak (_, k) ->
           let bytes = accu in
           let hash = Raw_hashes.keccak256 bytes in
-          (step [@ocaml.tailcall]) g gas k ks hash stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) hash stack
       | ISha3 (_, k) ->
           let bytes = accu in
           let hash = Raw_hashes.sha3_256 bytes in
-          (step [@ocaml.tailcall]) g gas k ks hash stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) hash stack
       | IAdd_bls12_381_g1 (_, k) ->
           let x = accu and (y, stack) = stack in
           let accu = Script_bls.G1.add x y in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IAdd_bls12_381_g2 (_, k) ->
           let x = accu and (y, stack) = stack in
           let accu = Script_bls.G2.add x y in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IAdd_bls12_381_fr (_, k) ->
           let x = accu and (y, stack) = stack in
           let accu = Script_bls.Fr.add x y in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IMul_bls12_381_g1 (_, k) ->
           let x = accu and (y, stack) = stack in
           let accu = Script_bls.G1.mul x y in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IMul_bls12_381_g2 (_, k) ->
           let x = accu and (y, stack) = stack in
           let accu = Script_bls.G2.mul x y in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IMul_bls12_381_fr (_, k) ->
           let x = accu and (y, stack) = stack in
           let accu = Script_bls.Fr.mul x y in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IMul_bls12_381_fr_z (_, k) ->
           let x = accu and (y, stack) = stack in
           let x = Script_bls.Fr.of_z (Script_int.to_zint x) in
           let res = Script_bls.Fr.mul x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IMul_bls12_381_z_fr (_, k) ->
           let y = accu and (x, stack) = stack in
           let x = Script_bls.Fr.of_z (Script_int.to_zint x) in
           let res = Script_bls.Fr.mul x y in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | IInt_bls12_381_fr (_, k) ->
           let x = accu in
           let res = Script_int.of_zint (Script_bls.Fr.to_z x) in
-          (step [@ocaml.tailcall]) g gas k ks res stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) res stack
       | INeg_bls12_381_g1 (_, k) ->
           let x = accu in
           let accu = Script_bls.G1.negate x in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | INeg_bls12_381_g2 (_, k) ->
           let x = accu in
           let accu = Script_bls.G2.negate x in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | INeg_bls12_381_fr (_, k) ->
           let x = accu in
           let accu = Script_bls.Fr.negate x in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IPairing_check_bls12_381 (_, k) ->
           let pairs = accu in
           let check = Script_bls.pairing_check pairs.elements in
-          (step [@ocaml.tailcall]) g gas k ks check stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) check stack
       | IComb (_, _, witness, k) ->
           let rec aux :
               type before after.
@@ -1377,7 +1369,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           in
           let stack = aux witness (accu, stack) in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IUncomb (_, _, witness, k) ->
           let rec aux :
               type before after.
@@ -1389,7 +1381,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           in
           let stack = aux witness (accu, stack) in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IComb_get (_, _, witness, k) ->
           let comb = accu in
           let rec aux :
@@ -1402,7 +1394,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             | (Comb_get_plus_two witness', (_, b)) -> aux witness' b
           in
           let accu = aux witness comb in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IComb_set (_, _, witness, k) ->
           let value = accu and (comb, stack) = stack in
           let rec aux :
@@ -1419,7 +1411,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                 (hd, aux witness' value tl)
           in
           let accu = aux witness value comb in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IDup_n (_, _, witness, k) ->
           let rec aux :
               type before after.
@@ -1431,20 +1423,20 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           in
           let stack = (accu, stack) in
           let accu = aux witness stack in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       (* Tickets *)
       | ITicket (_, k) ->
           let contents = accu and (amount, stack) = stack in
           let ticketer = sc.self in
           let accu = {ticketer; contents; amount} in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | IRead_ticket (_, k) ->
           let {ticketer; contents; amount} = accu in
           let stack = (accu, stack) in
           let destination : Destination.t = Contract ticketer in
           let addr = {destination; entrypoint = Entrypoint.default} in
           let accu = (addr, (contents, amount)) in
-          (step [@ocaml.tailcall]) g gas k ks accu stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack
       | ISplit_ticket (_, k) ->
           let ticket = accu and ((amount_a, amount_b), stack) = stack in
           let result =
@@ -1457,7 +1449,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                   {ticket with amount = amount_b} )
             else None
           in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       | IJoin_tickets (_, contents_ty, k) ->
           let (ticket_a, ticket_b) = accu in
           let result =
@@ -1478,7 +1470,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                 }
             else None
           in
-          (step [@ocaml.tailcall]) g gas k ks result stack
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) result stack
       | IOpen_chest (_, k) ->
           let open Timelock in
           let chest_key = accu in
@@ -1495,7 +1487,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                 | Bogus_cipher -> R false
                 | Bogus_opening -> R true)
           in
-          (step [@ocaml.tailcall]) g gas k ks accu stack)
+          (step [@ocaml.tailcall]) (g, gas) (k, ks) accu stack)
 
 (*
 
@@ -1522,8 +1514,16 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
 
 *)
 and log :
-    type a s b t r f. logger * logging_event -> (a, s, b, t, r, f) step_type =
- fun (logger, event) ((ctxt, _) as g) gas k ks accu stack ->
+    type a s b t r f.
+    logger
+    * logging_event
+    * (outdated_context * step_constants)
+    * local_gas_counter ->
+    (a, s, b, t) kinstr * (b, t, r, f) continuation ->
+    a ->
+    s ->
+    (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =
+ fun (logger, event, ((ctxt, _) as g), gas) (k, ks) accu stack ->
   (match (k, event) with
   | (ILog _, LogEntry) -> ()
   | (_, LogEntry) -> log_entry logger ctxt gas k accu stack
@@ -1532,51 +1532,48 @@ and log :
   let with_log k = match k with KLog _ -> k | _ -> KLog (k, logger) in
   match k with
   | IList_map (_, body, k) ->
-      (ilist_map [@ocaml.tailcall]) with_log g gas (body, k) ks accu stack
+      (ilist_map [@ocaml.tailcall]) with_log (g, gas) (body, k) ks (accu, stack)
   | IList_iter (_, body, k) ->
-      (ilist_iter [@ocaml.tailcall]) with_log g gas (body, k) ks accu stack
+      (ilist_iter [@ocaml.tailcall]) with_log (g, gas) (body, k) ks (accu, stack)
   | ISet_iter (_, body, k) ->
-      (iset_iter [@ocaml.tailcall]) with_log g gas (body, k) ks accu stack
+      (iset_iter [@ocaml.tailcall]) with_log (g, gas) (body, k) ks (accu, stack)
   | IMap_map (_, body, k) ->
-      (imap_map [@ocaml.tailcall]) with_log g gas (body, k) ks accu stack
+      (imap_map [@ocaml.tailcall]) with_log (g, gas) (body, k) ks (accu, stack)
   | IMap_iter (_, body, k) ->
-      (imap_iter [@ocaml.tailcall]) with_log g gas (body, k) ks accu stack
+      (imap_iter [@ocaml.tailcall]) with_log (g, gas) (body, k) ks (accu, stack)
   | ILoop (_, body, k) ->
       let ks = with_log (KLoop_in (body, KCons (k, ks))) in
-      (next [@ocaml.tailcall]) g gas ks accu stack
+      (next [@ocaml.tailcall]) (g, gas) ks accu stack
   | ILoop_left (_, bl, br) ->
       let ks = with_log (KLoop_in_left (bl, KCons (br, ks))) in
-      (next [@ocaml.tailcall]) g gas ks accu stack
+      (next [@ocaml.tailcall]) (g, gas) ks accu stack
   | IMul_teznat (kinfo, k) ->
       let extra = (kinfo, k) in
-      (imul_teznat [@ocaml.tailcall]) (Some logger) g gas extra ks accu stack
+      (imul_teznat [@ocaml.tailcall]) (Some logger, g, gas) extra ks accu stack
   | IMul_nattez (kinfo, k) ->
       let extra = (kinfo, k) in
-      (imul_nattez [@ocaml.tailcall]) (Some logger) g gas extra ks accu stack
+      (imul_nattez [@ocaml.tailcall]) (Some logger, g, gas) extra ks accu stack
   | ILsl_nat (kinfo, k) ->
       let extra = (kinfo, k) in
-      (ilsl_nat [@ocaml.tailcall]) (Some logger) g gas extra ks accu stack
+      (ilsl_nat [@ocaml.tailcall]) (Some logger, g, gas) extra ks accu stack
   | ILsr_nat (kinfo, k) ->
       let extra = (kinfo, k) in
-      (ilsr_nat [@ocaml.tailcall]) (Some logger) g gas extra ks accu stack
+      (ilsr_nat [@ocaml.tailcall]) (Some logger, g, gas) extra ks accu stack
   | IFailwith (_, kloc, tv) ->
-      (ifailwith [@ocaml.tailcall]) (Some logger) g gas kloc tv accu
+      (ifailwith [@ocaml.tailcall]) (Some logger, g, gas) kloc tv accu
   | IExec (_, k) ->
-      (iexec [@ocaml.tailcall]) (Some logger) g gas k ks accu stack
-  | _ -> (step [@ocaml.tailcall]) g gas k (with_log ks) accu stack
+      (iexec [@ocaml.tailcall]) (Some logger, g, gas) k ks accu stack
+  | _ -> (step [@ocaml.tailcall]) (g, gas) (k, with_log ks) accu stack
  [@@inline]
 
 and klog :
     type a s r f.
-    logger ->
-    outdated_context * step_constants ->
-    local_gas_counter ->
-    (a, s, r, f) continuation ->
-    (a, s, r, f) continuation ->
+    logger * (outdated_context * step_constants) * local_gas_counter ->
+    (a, s, r, f) continuation * (a, s, r, f) continuation ->
     a ->
     s ->
     (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =
- fun logger g gas ks0 ks accu stack ->
+ fun (logger, g, gas) (ks0, ks) accu stack ->
   (match ks with KLog _ -> () | _ -> log_control logger ks) ;
   let enable_log ki = log_kinstr logger ki in
   let mk k = match k with KLog _ -> k | _ -> KLog (k, logger) in
@@ -1584,49 +1581,54 @@ and klog :
   | KCons (ki, ks') ->
       let log = enable_log ki in
       let ks = mk ks' in
-      (step [@ocaml.tailcall]) g gas log ks accu stack
-  | KNil -> (next [@ocaml.tailcall]) g gas ks accu stack
+      (step [@ocaml.tailcall]) (g, gas) (log, ks) accu stack
+  | KNil -> (next [@ocaml.tailcall]) (g, gas) ks accu stack
   | KLoop_in (ki, ks') ->
       let ks' = mk ks' in
       let ki = enable_log ki in
-      (kloop_in [@ocaml.tailcall]) g gas ks0 ki ks' accu stack
+      (kloop_in [@ocaml.tailcall]) (g, gas) ks0 (ki, ks') (accu, stack)
   | KReturn (stack', ks') ->
       let ks' = mk ks' in
       let ks = KReturn (stack', ks') in
-      (next [@ocaml.tailcall]) g gas ks accu stack
-  | KMap_head (f, ks) -> (next [@ocaml.tailcall]) g gas ks (f accu) stack
+      (next [@ocaml.tailcall]) (g, gas) ks accu stack
+  | KMap_head (f, ks) -> (next [@ocaml.tailcall]) (g, gas) ks (f accu) stack
   | KLoop_in_left (ki, ks') ->
       let ks' = mk ks' in
       let ki = enable_log ki in
-      (kloop_in_left [@ocaml.tailcall]) g gas ks0 ki ks' accu stack
+      (kloop_in_left [@ocaml.tailcall]) (g, gas) ks0 (ki, ks') (accu, stack)
   | KUndip (x, ks') ->
       let ks' = mk ks' in
       let ks = KUndip (x, ks') in
-      (next [@ocaml.tailcall]) g gas ks accu stack
+      (next [@ocaml.tailcall]) (g, gas) ks accu stack
   | KIter (body, xs, ks') ->
       let ks' = mk ks' in
       let body = enable_log body in
-      (kiter [@ocaml.tailcall]) mk g gas (body, xs) ks' accu stack
+      (kiter [@ocaml.tailcall]) mk (g, gas) (body, xs) ks' (accu, stack)
   | KList_enter_body (body, xs, ys, len, ks') ->
       let ks' = mk ks' in
       let extra = (body, xs, ys, len) in
-      (klist_enter [@ocaml.tailcall]) mk g gas extra ks' accu stack
+      (klist_enter [@ocaml.tailcall]) mk (g, gas) extra ks' (accu, stack)
   | KList_exit_body (body, xs, ys, len, ks') ->
       let ks' = mk ks' in
       let extra = (body, xs, ys, len) in
-      (klist_exit [@ocaml.tailcall]) mk g gas extra ks' accu stack
+      (klist_exit [@ocaml.tailcall]) mk (g, gas) extra ks' (accu, stack)
   | KMap_enter_body (body, xs, ys, ks') ->
       let ks' = mk ks' in
-      (kmap_enter [@ocaml.tailcall]) mk g gas (body, xs, ys) ks' accu stack
+      (kmap_enter [@ocaml.tailcall]) mk (g, gas) (body, xs, ys) ks' (accu, stack)
   | KMap_exit_body (body, xs, ys, yk, ks') ->
       let ks' = mk ks' in
-      (kmap_exit [@ocaml.tailcall]) mk g gas (body, xs, ys, yk) ks' accu stack
+      (kmap_exit [@ocaml.tailcall])
+        mk
+        (g, gas)
+        (body, xs, ys, yk)
+        ks'
+        (accu, stack)
   | KView_exit (orig_step_constants, ks') ->
       let g = (fst g, orig_step_constants) in
-      (next [@ocaml.tailcall]) g gas ks' accu stack
+      (next [@ocaml.tailcall]) (g, gas) ks' accu stack
   | KLog (_, _) ->
       (* This case should never happen. *)
-      (next [@ocaml.tailcall]) g gas ks accu stack
+      (next [@ocaml.tailcall]) (g, gas) ks accu stack
  [@@inline]
 
 (*
@@ -1639,7 +1641,7 @@ and klog :
 let step_descr ~log_now logger (ctxt, sc) descr accu stack =
   let (gas, outdated_ctxt) = local_gas_counter_and_outdated_context ctxt in
   (match logger with
-  | None -> step (outdated_ctxt, sc) gas descr.kinstr KNil accu stack
+  | None -> step ((outdated_ctxt, sc), gas) (descr.kinstr, KNil) accu stack
   | Some logger ->
       (if log_now then
        let kinfo = kinfo_of_kinstr descr.kinstr in
@@ -1647,7 +1649,7 @@ let step_descr ~log_now logger (ctxt, sc) descr accu stack =
       let log =
         ILog (kinfo_of_kinstr descr.kinstr, LogEntry, logger, descr.kinstr)
       in
-      step (outdated_ctxt, sc) gas log KNil accu stack)
+      step ((outdated_ctxt, sc), gas) (log, KNil) accu stack)
   >>=? fun (accu, stack, ctxt, gas) ->
   return (accu, stack, update_context gas ctxt)
 
@@ -1662,12 +1664,12 @@ let kstep logger ctxt step_constants kinstr accu stack =
     | Some logger -> ILog (kinfo_of_kinstr kinstr, LogEntry, logger, kinstr)
   in
   let (gas, outdated_ctxt) = local_gas_counter_and_outdated_context ctxt in
-  step (outdated_ctxt, step_constants) gas kinstr KNil accu stack
+  step ((outdated_ctxt, step_constants), gas) (kinstr, KNil) accu stack
   >>=? fun (accu, stack, ctxt, gas) ->
   return (accu, stack, update_context gas ctxt)
 
 let internal_step ctxt step_constants gas kinstr accu stack =
-  step (ctxt, step_constants) gas kinstr KNil accu stack
+  step ((ctxt, step_constants), gas) (kinstr, KNil) accu stack
 
 let step logger ctxt step_constants descr stack =
   step_descr ~log_now:false logger (ctxt, step_constants) descr stack
@@ -1811,7 +1813,7 @@ module Internals = struct
     let ks =
       match logger with None -> ks | Some logger -> KLog (ks, logger)
     in
-    next g gas ks accu stack
+    next (g, gas) ks accu stack
 
   let step (ctxt, step_constants) gas ks accu stack =
     internal_step ctxt step_constants gas ks accu stack
