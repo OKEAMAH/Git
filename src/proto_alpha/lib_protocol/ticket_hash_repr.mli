@@ -44,6 +44,8 @@ val pp : Format.formatter -> t -> unit
 
 include Compare.S with type t := t
 
+val zero : t
+
 val of_script_expr_hash : Script_expr_hash.t -> t
 
 module Index : Storage_description.INDEX with type t = t
