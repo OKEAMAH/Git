@@ -988,6 +988,15 @@ let submit_tx_rollup_remove_commitment (cctxt : #full) ~chain ~block
   | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->
       return (oph, op, result)
 
+let of_hex hex encoding name =
+  match Hex.to_string (`Hex hex) with
+  | Some string -> (
+      match Data_encoding.Json.from_string string with
+      | Ok json -> return (Data_encoding.Json.destruct encoding json)
+      | Error err -> failwith "Invalid encoding for %s: %s" name err)
+  | _ ->
+      failwith "The %s argument is not using a valid hexadecimal encoding" name
+
 let submit_tx_rollup_rejection (cctxt : #full) ~chain ~block ?confirmations
     ?dry_run ?verbose_signing ?simulation ?fee ?gas_limit ?storage_limit
     ?counter ~source ~src_pk ~src_sk ~fee_parameter ~level ~tx_rollup ~message
@@ -1013,6 +1022,7 @@ let submit_tx_rollup_rejection (cctxt : #full) ~chain ~block ?confirmations
         "%s is not a valid notation for a withdraw list hash"
         withdrawals_merkle_root)
   >>=? fun withdrawals_merkle_root ->
+  of_hex proof Tx_rollup_l2_proof.encoding "proof" >>=? fun proof ->
   let contents :
       Kind.tx_rollup_rejection Annotated_manager_operation.annotated_list =
     Annotated_manager_operation.Single_manager

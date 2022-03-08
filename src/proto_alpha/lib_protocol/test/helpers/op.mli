@@ -352,6 +352,6 @@ val tx_rollup_reject :
   Tx_rollup_level.t ->
   Tx_rollup_message.t ->
   message_position:int ->
-  proof:bool ->
+  proof:Tx_rollup_l2_proof.t ->
   previous_message_result:Tx_rollup_commitment.message_result ->
   Operation.packed tzresult Lwt.t

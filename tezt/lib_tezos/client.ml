@@ -1326,7 +1326,7 @@ module Tx_rollup = struct
         @ ["at"; "level"; string_of_int level]
         @ ["message"; message]
         @ ["at"; "position"; string_of_int position]
-        @ ["with"; "proof"; string_of_bool proof]
+        @ ["with"; "proof"; proof]
         @ ["with"; "agreed"; "context"; "hash"; context_hash]
         @ ["and"; "withdraw"; "list"; withdraw_list_hash]
         @ ["to"; rollup] @ ["from"; src]

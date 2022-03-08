@@ -26,6 +26,17 @@
 
 open Alpha_context
 
+module Verifier_storage : sig
+  include
+    Tx_rollup_l2_storage_sig.STORAGE
+      with type t = Context.tree
+       and type 'a m = ('a, error) result Lwt.t
+end
+
+module Verifier_context : sig
+  include Tx_rollup_l2_context_sig.CONTEXT with type t = Verifier_storage.t
+end
+
 (** [verify_proof message proof ~agreed ~rejected] verifies a Merkle
     proof for a L2 message, starting from the state [agreed].  If the
     [proof] is correct, and the final Merkle hash is not equal to

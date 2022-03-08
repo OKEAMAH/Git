@@ -779,12 +779,20 @@ let test_rollup_last_commitment_is_rejected =
   let*! _ = RPC.Tx_rollup.get_state ~rollup client in
   (* This is the encoding of [batch]. *)
   let message = "{ \"batch\": \"blob\"}" in
+
+  let proof =
+    "{ \"version\": 0,\"before\":{ \"kind\": \"Value\",\"value\":{ \"value\": \
+     \"CoUeJrcPBj3T3iJL3PY4jZHnmZa5rRZ87VQPdSBNBcwZRMWJGh9j\" } },\"after\":{ \
+     \"kind\": \"Value\",\"value\":{ \"value\": \
+     \"CoUeJrcPBj3T3iJL3PY4jZHnmZa5rRZ87VQPdSBNBcwZRMWJGh9j\" } },\"state\": \
+     [] }"
+  in
   let*! () =
     submit_rejection
       ~level:0
       ~message
       ~position:0
-      ~proof:true
+      ~proof
       ~context_hash:Constant.tx_rollup_empty_l2_context
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list
       state
