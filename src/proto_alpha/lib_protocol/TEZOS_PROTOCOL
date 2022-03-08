@@ -163,6 +163,7 @@
 
         "Baking",
         "Amendment",
+        "Tx_rollup_l2_verifier",
         "Apply_results",
         "Apply",
 

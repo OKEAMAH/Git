@@ -1523,10 +1523,7 @@ let apply_manager_operation_content :
         after_result;
       } ->
       Tx_rollup_state.get ctxt tx_rollup >>=? fun (ctxt, state) ->
-      fail_unless
-        (Tx_rollup_state.can_be_rejected state level)
-        Tx_rollup_errors.Reject_final_level
-      >>=? fun () ->
+      (* TODO/TORU: Check the proof *)
       Tx_rollup_inbox.check_message_hash
         ctxt
         level

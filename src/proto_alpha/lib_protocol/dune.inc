@@ -176,6 +176,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
+   tx_rollup_l2_verifier.mli tx_rollup_l2_verifier.ml
    apply_results.mli apply_results.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
@@ -343,6 +344,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
+   tx_rollup_l2_verifier.mli tx_rollup_l2_verifier.ml
    apply_results.mli apply_results.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
@@ -510,6 +512,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
+   tx_rollup_l2_verifier.mli tx_rollup_l2_verifier.ml
    apply_results.mli apply_results.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
@@ -699,6 +702,7 @@ include Tezos_raw_protocol_alpha.Main
    Sc_rollups
    Baking
    Amendment
+   Tx_rollup_l2_verifier
    Apply_results
    Apply
    Services_registration
@@ -907,6 +911,7 @@ include Tezos_raw_protocol_alpha.Main
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
+   tx_rollup_l2_verifier.mli tx_rollup_l2_verifier.ml
    apply_results.mli apply_results.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
