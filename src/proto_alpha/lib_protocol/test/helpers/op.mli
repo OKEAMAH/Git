@@ -299,3 +299,25 @@ val tx_rollup_remove_commitment :
   Contract.t ->
   Tx_rollup.t ->
   Operation.packed tzresult Lwt.t
+
+(** [tx_rollup_withdraw ctxt source tx_rollup commitment] Commits to a tx
+    rollup state. *)
+val tx_rollup_withdraw :
+  ?counter:counter ->
+  ?fee:Tez.t ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:counter ->
+  Context.t ->
+  source:Contract.t ->
+  Tx_rollup.t ->
+  Tx_rollup_level.t ->
+  context_hash:bytes ->
+  message_index:int ->
+  contents:Script.lazy_expr ->
+  ty:Script.lazy_expr ->
+  ticketer:Contract.t ->
+  Tx_rollup_l2_qty.t ->
+  destination:Contract.t ->
+  Tx_rollup_withdraw.path ->
+  Entrypoint_repr.t ->
+  (packed_operation, tztrace) result Lwt.t
