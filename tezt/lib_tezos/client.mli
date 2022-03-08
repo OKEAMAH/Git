@@ -954,7 +954,10 @@ module Tx_rollup : sig
     level:int ->
     message:string ->
     position:int ->
-    proof:bool ->
+    proof:string ->
+    before_root:string ->
+    before_withdraw:string ->
+    after_result:string ->
     rollup:string ->
     src:string ->
     t ->
@@ -1051,7 +1054,7 @@ val init_with_node :
     - Create [additional_account_count] accounts with
       [default_accounts_balance]
     - Activate the given protocol with [additional_account_count]
-      additional bootstrap accounts whose aliases are given by 
+      additional bootstrap accounts whose aliases are given by
      [Account.bootstrap].
 
     In addition to the client, returns the first created node

@@ -163,7 +163,7 @@ module Regressions = struct
       let* () =
         submit_commitment
           ~level:0
-          ~roots:["root"]
+          ~roots:["txm2mwuRpJsPWzuSXpVpDA2ATWRXxDkHoBr5R9bWrgTdPFAHR6Mqf"]
           ~inbox_hash:inbox.hash
           ~predecessor:None
           state
@@ -191,7 +191,7 @@ module Regressions = struct
       let* () =
         submit_commitment
           ~level:0
-          ~roots:["root"]
+          ~roots:["txm2mwuRpJsPWzuSXpVpDA2ATWRXxDkHoBr5R9bWrgTdPFAHR6Mqf"]
           ~inbox_hash:inbox.hash
           ~predecessor:None
           state
@@ -438,7 +438,7 @@ module Regressions = struct
       let* () =
         submit_commitment
           ~level:0
-          ~roots:["root"]
+          ~roots:["txm2mwuRpJsPWzuSXpVpDA2ATWRXxDkHoBr5R9bWrgTdPFAHR6Mqf"]
           ~inbox_hash:inbox.hash
           ~predecessor:None
           state
@@ -648,7 +648,7 @@ let test_rollup_with_two_commitments =
   let* () =
     submit_commitment
       ~level:0
-      ~roots:["root"]
+      ~roots:["txm2mwuRpJsPWzuSXpVpDA2ATWRXxDkHoBr5R9bWrgTdPFAHR6Mqf"]
       ~inbox_hash:inbox.hash
       ~predecessor:None
       state
@@ -710,7 +710,7 @@ let test_rollup_with_two_commitments =
   let* () =
     submit_commitment
       ~level:1
-      ~roots:["root"]
+      ~roots:["txm2mwuRpJsPWzuSXpVpDA2ATWRXxDkHoBr5R9bWrgTdPFAHR6Mqf"]
       ~inbox_hash:inbox.hash
       ~predecessor
       state
@@ -754,7 +754,7 @@ let test_rollup_last_commitment_is_rejected =
   let* () =
     submit_commitment
       ~level:0
-      ~roots:["root"]
+      ~roots:["txm4HZQy5nMioQewVrxYusXFcddB5PCMBANjvWykA2nf47HemAfJp"]
       ~inbox_hash:inbox.hash
       ~predecessor:None
       state
@@ -765,7 +765,29 @@ let test_rollup_last_commitment_is_rejected =
   let*! _ = RPC.Tx_rollup.get_state ~rollup client in
   (* This is the encoding of [batch]. *)
   let message = "{ \"batch\": \"blob\"}" in
-  let*! () = submit_rejection ~level:0 ~message ~position:0 ~proof:true state in
+  let before_root = "CoUeJrcPBj3T3iJL3PY4jZHnmZa5rRZ87VQPdSBNBcwZRMWJGh9j" in
+  let before_withdraw =
+    "twL1bwYYMJGywZM1RMsru6vBoEb6k98NcmFTua4PcjK5XiTVFF4or"
+  in
+  let after_result = "txm4HZQy5nMioQewVrxYusXFcddB5PCMBANjvWykA2nf47HemAfJp" in
+  let proof =
+    "{ \"version\": 0,\"before\":{ \"kind\": \"Value\",\"value\":{ \"value\": \
+     \"CoUeJrcPBj3T3iJL3PY4jZHnmZa5rRZ87VQPdSBNBcwZRMWJGh9j\" } },\"after\":{ \
+     \"kind\": \"Value\",\"value\":{ \"value\": \
+     \"CoUeJrcPBj3T3iJL3PY4jZHnmZa5rRZ87VQPdSBNBcwZRMWJGh9j\" } },\"state\": \
+     [] }"
+  in
+  let*! () =
+    submit_rejection
+      ~level:0
+      ~message
+      ~position:0
+      ~proof
+      ~before_root
+      ~before_withdraw
+      ~after_result
+      state
+  in
   let* () = Client.bake_for client in
   let*! _ = RPC.Tx_rollup.get_state ~rollup client in
   let* _ = RPC.get_block client in

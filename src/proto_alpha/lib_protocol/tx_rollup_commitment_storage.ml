@@ -270,10 +270,16 @@ let remove_commitment ctxt rollup state =
       (* We remove the commitment *)
       Storage.Tx_rollup.Commitment.remove ctxt (tail, rollup)
       >>=? fun (ctxt, _freed_size, _existed) ->
+      (match List.last_opt commitment.commitment.batches with
+      | Some hash -> ok hash
+      | None ->
+          error (Internal_error "empty commitments should not be possible"))
+      >>?= fun msg_hash ->
       (* We update the state *)
       Tx_rollup_state_repr.record_commitment_deletion
         state
         tail
+        msg_hash
         commitment.commitment_hash
       >>?= fun state -> return (ctxt, state, tail)
   | None -> fail No_commitment_to_remove
@@ -304,3 +310,79 @@ let reject_commitment ctxt rollup state level =
       Tx_rollup_state_repr.record_commitment_rejection state level pred_hash
       >>?= fun state -> return (ctxt, state)
   | _ -> fail Invalid_rejection_level_argument
+
+let empty_message_hash_result =
+  let empty_withdraw = Tx_rollup_withdraw_repr.hash_list [] in
+  (* This is probably wrong for an empty context *)
+  let empty = Context_hash.zero in
+  batch_commitment (Context_hash.to_bytes empty) empty_withdraw
+
+let get_before_and_after_results ctxt tx_rollup level ~message_position state =
+  Storage.Tx_rollup.Commitment.get ctxt (level, tx_rollup)
+  >>=? fun (ctxt, submitted_commitment) ->
+  let commitment = submitted_commitment.commitment in
+  Option.value_e
+    ~error:
+      (Error_monad.trace_of_error
+         (Wrong_message_position
+            {
+              level;
+              position = message_position;
+              length = List.length commitment.batches;
+            }))
+    (List.nth_opt commitment.batches message_position)
+  >>?= fun after_hash ->
+  if Compare.Int.(message_position = 0) then
+    match Tx_rollup_level_repr.pred level with
+    | None -> return (ctxt, empty_message_hash_result, after_hash)
+    | Some pred_level -> (
+        Storage.Tx_rollup.Commitment.find ctxt (pred_level, tx_rollup)
+        >>=? function
+        | (ctxt, None) ->
+            (* In this case, the predecessor commitment is not stored.  We need to
+               check a bunch of things to ensure that the last removed commitment
+               is a valid predecessor.
+            *)
+            if Option.is_none (Tx_rollup_state_repr.commitment_tail_level state)
+            then
+              match
+                Tx_rollup_state_repr.last_removed_commitment_hashes state
+              with
+              | None -> fail (Internal_error "Missing last removed commitment")
+              | Some (message_commitment, commitment_hash) ->
+                  Option.value_e
+                    ~error:
+                      (Error_monad.trace_of_error
+                         (Internal_error
+                            "Non-initial commitment has empty predecessor"))
+                    commitment.predecessor
+                  >>?= fun predecessor_commitment_hash ->
+                  fail_unless
+                    (Commitment_hash.( = )
+                       predecessor_commitment_hash
+                       commitment_hash)
+                    (Internal_error
+                       "Last removed commitment has wrong predecessor hash")
+                  >>=? fun () -> return (ctxt, message_commitment, after_hash)
+            else fail (Internal_error "Missing commitment predecessor")
+        | (ctxt, Some {commitment = {batches; _}; _}) ->
+            Option.value_e
+              ~error:
+                (Error_monad.trace_of_error (Internal_error "Empty commitment"))
+              (List.last_opt batches)
+            >>?= fun message -> return (ctxt, message, after_hash))
+  else
+    Storage.Tx_rollup.Commitment.get ctxt (level, tx_rollup)
+    >>=? fun (ctxt, submitted_commitment) ->
+    let commitment = submitted_commitment.commitment in
+    Option.value_e
+      ~error:
+        (Error_monad.trace_of_error
+           (Wrong_message_position
+              {
+                level;
+                position = message_position - 1;
+                length = List.length commitment.batches;
+              }))
+      (List.nth_opt commitment.batches (message_position - 1))
+    >>?= fun before_hash -> return (ctxt, before_hash, after_hash)

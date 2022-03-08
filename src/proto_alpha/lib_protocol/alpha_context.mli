@@ -2122,6 +2122,16 @@ module Tx_rollup_commitment_hash : sig
   include S.HASH
 end
 
+module Tx_rollup_commitment_message_result_hash : sig
+  include S.HASH
+end
+
+module Tx_rollup_rejection_proof : sig
+  type t = Context.Proof.stream Context.Proof.t
+
+  val encoding : t Data_encoding.t
+end
+
 (** This module re-exports definitions from {!Tx_rollup_state_repr}
     and {!Tx_rollup_state_storage}. *)
 module Tx_rollup_state : sig
@@ -2149,7 +2159,8 @@ module Tx_rollup_state : sig
     val make :
       ?burn_per_byte:Tez.t ->
       ?inbox_ema:int ->
-      ?last_removed_commitment_hash:Tx_rollup_commitment_hash.t ->
+      ?last_removed_commitment_hashes:
+        Tx_rollup_commitment_message_result_hash.t * Tx_rollup_commitment_hash.t ->
       ?commitment_tail_level:Tx_rollup_level.t ->
       ?oldest_inbox_level:Tx_rollup_level.t ->
       ?commitment_head_level:Tx_rollup_level.t * Tx_rollup_commitment_hash.t ->
@@ -2348,11 +2359,13 @@ module Tx_rollup_commitment : sig
   module Message_result_hash : S.HASH
 
   val batch_commitment :
-    bytes -> Tx_rollup_withdraw.list_hash -> Message_result_hash.t
+    bytes ->
+    Tx_rollup_withdraw.list_hash ->
+    Tx_rollup_commitment_message_result_hash.t
 
   type t = {
     level : Tx_rollup_level.t;
-    batches : Message_result_hash.t list;
+    batches : Tx_rollup_commitment_message_result_hash.t list;
     predecessor : Tx_rollup_commitment_hash.t option;
     inbox_hash : Tx_rollup_inbox.hash;
   }
@@ -2448,6 +2461,18 @@ module Tx_rollup_commitment : sig
     Tx_rollup_state.t ->
     Tx_rollup_level.t ->
     (context * Tx_rollup_state.t) tzresult Lwt.t
+
+  val get_before_and_after_results :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    message_position:int ->
+    Tx_rollup_state.t ->
+    (context
+    * Tx_rollup_commitment_message_result_hash.t
+    * Tx_rollup_commitment_message_result_hash.t)
+    tzresult
+    Lwt.t
 end
 
 module Tx_rollup_errors : sig
@@ -2492,6 +2517,7 @@ module Tx_rollup_errors : sig
       }
     | Withdraw_invalid_path
     | Reject_final_level
+    | Wrong_rejection_proof_hash
 end
 
 (** This simply re-exports {!Destination_repr}. *)
@@ -2746,7 +2772,10 @@ and _ manager_operation =
       level : Tx_rollup_level.t;
       message : Tx_rollup_message.t;
       message_position : int;
-      proof : (* FIXME/TORU *) bool;
+      proof : bool;
+      before_root : Context_hash.t;
+      before_withdraw : Tx_rollup_withdraw.list_hash;
+      after_result : Tx_rollup_commitment_message_result_hash.t;
     }
       -> Kind.tx_rollup_rejection manager_operation
   | Tx_rollup_withdraw : {

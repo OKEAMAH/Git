@@ -37,6 +37,8 @@ open Protocol
 open Alpha_context
 open Test_tez
 
+let empty_context_hash = Environment.Context_hash.zero
+
 (** [check_tx_rollup_exists ctxt tx_rollup] returns [()] iff [tx_rollup]
     is a valid address for a transaction rollup. Otherwise, it fails. *)
 let check_tx_rollup_exists ctxt tx_rollup =
@@ -237,7 +239,7 @@ let hash_empty_withdraw_list = Tx_rollup_withdraw.hash_list []
    withdraw in a association list of [batch_index -> withdraw_list].
    Be careful not to provide a too big withdraw_list as the construction
    is expensive *)
-let make_commitment_for_batch i level tx_rollup withdraw_list =
+let make_commitment_for_batch ?(batches = []) i level tx_rollup withdraw_list =
   let ctxt = Incremental.alpha_ctxt i in
   wrap
     (Alpha_context.Tx_rollup_inbox.Internal_for_tests.get_metadata
@@ -245,10 +247,12 @@ let make_commitment_for_batch i level tx_rollup withdraw_list =
        level
        tx_rollup)
   >>=? fun (ctxt, metadata) ->
-  List.init
-    ~when_negative_length:[]
-    (Int32.to_int metadata.inbox_length)
-    (fun i -> Bytes.make 20 (Char.chr i))
+  (if List.is_empty batches then
+   List.init
+     ~when_negative_length:[]
+     (Int32.to_int metadata.inbox_length)
+     (fun i -> Bytes.make 32 (Char.chr i))
+  else Ok batches)
   >>?= fun batches_result ->
   let message_result =
     List.mapi
@@ -901,7 +905,7 @@ let test_commitment_duplication () =
   make_commitment_for_batch i Tx_rollup_level.root tx_rollup []
   >>=? fun (commitment, _) ->
   (* Successfully fail to submit a different commitment from contract2 *)
-  let batches2 : Tx_rollup_commitment.Message_result_hash.t list =
+  let batches2 =
     [Bytes.make 20 '1'; Bytes.make 20 '2']
     |> List.map (fun context_hash ->
            Tx_rollup_commitment.batch_commitment
@@ -1835,6 +1839,53 @@ end
 
 *)
 
+(** [test_rejection_fail] tests that rejection successfully fails with
+    a wrong rejection. *)
+let test_rejection_fail () =
+  context_init 2 >>=? fun (b, contracts) ->
+  let contract1 =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
+  in
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  let message = "bogus" in
+  Op.tx_rollup_submit_batch (B b) contract1 tx_rollup message
+  >>=? fun operation ->
+  Block.bake ~operation b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let level = Tx_rollup_level.root in
+  make_commitment_for_batch i level tx_rollup []
+  >>=? fun (commitment, batches_result) ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  (* Here, we create an invalid proof: TODO/TORU: create a valid proof too *)
+  let proof = false in
+  let (message, _size) = Tx_rollup_message.make_batch message in
+  let result =
+    match List.nth_opt batches_result 0 with
+    | None -> assert false
+    | Some result -> result
+  in
+  Op.tx_rollup_reject
+    (I i)
+    contract1
+    tx_rollup
+    level
+    message
+    ~message_position:0
+    ~proof
+    ~before_root:empty_context_hash
+    ~before_withdraw:(Tx_rollup_withdraw.hash_list [])
+    ~after_result:(Tx_rollup_commitment_message_result_hash.of_bytes_exn result)
+  >>=? fun op ->
+  Incremental.add_operation
+    i
+    op
+    ~expect_failure:(check_proto_error Tx_rollup_errors.Invalid_proof)
+  >>=? fun i ->
+  ignore i ;
+
+  return ()
+
 let tests =
   [
     Tztest.tztest
@@ -1899,5 +1950,6 @@ let tests =
       `Quick
       test_too_many_commitments;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
+    Tztest.tztest "Test rejection" `Quick test_rejection_fail;
   ]
   @ Withdraw.tests

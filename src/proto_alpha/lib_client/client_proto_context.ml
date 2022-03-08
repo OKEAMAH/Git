@@ -863,21 +863,11 @@ let submit_tx_rollup_commitment (cctxt : #full) ~chain ~block ?confirmations
     ?counter ~source ~src_pk ~src_sk ~fee_parameter ~level ~inbox_hash ~batches
     ~predecessor ~tx_rollup () =
   Environment.wrap_tzresult (Tx_rollup_level.of_int32 level) >>?= fun level ->
-  List.map_es
-    (fun root ->
-      match Hex.to_bytes (`Hex root) with
-      | Some content ->
-          return
-          @@ Tx_rollup_commitment.batch_commitment
-               content
-               (Tx_rollup_withdraw.hash_list [])
-      | None ->
-          failwith
-            "%s is not a valid binary text encoded using the hexadecimal \
-             notation"
-            root)
-    (String.split_on_char '!' batches)
-  >>=? fun batches ->
+  let batches =
+    List.map
+      Tx_rollup_commitment_message_result_hash.of_b58check_exn
+      (String.split_on_char '!' batches)
+  in
   let predecessor =
     Option.map
       (fun pred_str -> Tx_rollup_commitment_hash.of_b58check_exn pred_str)
@@ -993,44 +983,68 @@ let submit_tx_rollup_remove_commitment (cctxt : #full) ~chain ~block
 let submit_tx_rollup_rejection (cctxt : #full) ~chain ~block ?confirmations
     ?dry_run ?verbose_signing ?simulation ?fee ?gas_limit ?storage_limit
     ?counter ~source ~src_pk ~src_sk ~fee_parameter ~level ~tx_rollup ~message
-    ~message_position ~proof () =
-  (match Data_encoding.Json.from_string message with
-  | Ok json -> return json
-  | Error err -> failwith "Message is not a valid JSON-encoded message: %s" err)
-  >>=? fun json ->
-  let message = Data_encoding.Json.(destruct Tx_rollup_message.encoding json) in
-  Environment.wrap_tzresult (Tx_rollup_level.of_int32 level) >>?= fun level ->
-  let contents :
-      Kind.tx_rollup_rejection Annotated_manager_operation.annotated_list =
-    Annotated_manager_operation.Single_manager
-      (Injection.prepare_manager_operation
-         ~fee:(Limit.of_option fee)
-         ~gas_limit:(Limit.of_option gas_limit)
-         ~storage_limit:(Limit.of_option storage_limit)
-         (Tx_rollup_rejection
-            {tx_rollup; level; message; message_position; proof}))
-  in
-  Injection.inject_manager_operation
-    cctxt
-    ~chain
-    ~block
-    ?confirmations
-    ?dry_run
-    ?verbose_signing
-    ?simulation
-    ?counter
-    ~source
-    ~fee:(Limit.of_option fee)
-    ~storage_limit:(Limit.of_option storage_limit)
-    ~gas_limit:(Limit.of_option gas_limit)
-    ~src_pk
-    ~src_sk
-    ~fee_parameter
-    contents
-  >>=? fun (oph, op, result) ->
-  match Apply_results.pack_contents_list op result with
-  | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->
-      return (oph, op, result)
+    ~message_position ~proof ~before_withdraw ~before_root ~after_result () =
+  let message = Hex.to_string (`Hex message) in
+  match message with
+  | None -> failwith "Invalid hex"
+  | Some message -> (
+      (match Data_encoding.Json.from_string message with
+      | Ok json -> return json
+      | Error err ->
+          failwith "Message is not a valid JSON-encoded message: %s" err)
+      >>=? fun json ->
+      let message =
+        Data_encoding.Json.(destruct Tx_rollup_message.encoding json)
+      in
+      Environment.wrap_tzresult (Tx_rollup_level.of_int32 level)
+      >>?= fun level ->
+      let before_withdraw =
+        Tx_rollup_withdraw.list_hash_of_b58check_exn before_withdraw
+      in
+      Context_hash.of_b58check before_root >>?= fun before_root ->
+      let after_result =
+        Tx_rollup_commitment_message_result_hash.of_b58check_exn after_result
+      in
+      let contents :
+          Kind.tx_rollup_rejection Annotated_manager_operation.annotated_list =
+        Annotated_manager_operation.Single_manager
+          (Injection.prepare_manager_operation
+             ~fee:(Limit.of_option fee)
+             ~gas_limit:(Limit.of_option gas_limit)
+             ~storage_limit:(Limit.of_option storage_limit)
+             (Tx_rollup_rejection
+                {
+                  tx_rollup;
+                  level;
+                  message;
+                  message_position;
+                  before_withdraw;
+                  before_root;
+                  after_result;
+                  proof;
+                }))
+      in
+      Injection.inject_manager_operation
+        cctxt
+        ~chain
+        ~block
+        ?confirmations
+        ?dry_run
+        ?verbose_signing
+        ?simulation
+        ?counter
+        ~source
+        ~fee:(Limit.of_option fee)
+        ~storage_limit:(Limit.of_option storage_limit)
+        ~gas_limit:(Limit.of_option gas_limit)
+        ~src_pk
+        ~src_sk
+        ~fee_parameter
+        contents
+      >>=? fun (oph, op, result) ->
+      match Apply_results.pack_contents_list op result with
+      | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->
+          return (oph, op, result))
 
 let sc_rollup_originate (cctxt : #full) ~chain ~block ?confirmations ?dry_run
     ?verbose_signing ?simulation ?fee ?gas_limit ?storage_limit ?counter ~source

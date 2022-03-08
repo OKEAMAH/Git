@@ -144,9 +144,29 @@ val remove_commitment :
   (Raw_context.t * Tx_rollup_state_repr.t * Tx_rollup_level_repr.t) tzresult
   Lwt.t
 
+(** [reject_commitment context tx_rollup state level] removes the
+    commitment at [level] after a successful rejection. The [state]
+    is updated to reflect the rejection, and returned. *)
 val reject_commitment :
   Raw_context.t ->
   Tx_rollup_repr.t ->
   Tx_rollup_state_repr.t ->
   Tx_rollup_level_repr.t ->
   (Raw_context.t * Tx_rollup_state_repr.t) tzresult Lwt.t
+
+(** [get_before_and_after_roots tx_rollup level ~message_position state]
+    returns the before- and after- roots for a given [message_position],
+    from the commitment on [tx_rollup] at [level]. If there is no
+    commitment at [level], [Storage_error.Missing_key] is returned.
+*)
+val get_before_and_after_results :
+  Raw_context.t ->
+  Tx_rollup_repr.t ->
+  Tx_rollup_level_repr.t ->
+  message_position:int ->
+  Tx_rollup_state_repr.t ->
+  (Raw_context.t
+  * Tx_rollup_commitment_repr.Message_result_hash.t
+  * Tx_rollup_commitment_repr.Message_result_hash.t)
+  tzresult
+  Lwt.t

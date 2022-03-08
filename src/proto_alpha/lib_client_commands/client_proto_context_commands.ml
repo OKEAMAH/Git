@@ -103,10 +103,7 @@ let tx_rollup_proof_param =
   Clic.param
     ~name:"tx_rollup rejection proof"
     ~desc:"The proof associated to the rejection operation"
-    (Clic.parameter (fun _ s ->
-         match bool_of_string_opt s with
-         | Some c -> return c
-         | None -> failwith "Parameter '%s' is not a boolean" s))
+    string_parameter
 
 let rollup_kind_param =
   Clic.parameter (fun _ name ->
@@ -2520,6 +2517,21 @@ let commands_rw () =
            ~name:"message_position"
            ~desc:"position of the message being rejected in the inbox"
            int_parameter
+      @@ prefix "with" @@ prefix "before_root"
+      @@ Clic.param
+           ~name:"before_root"
+           ~desc:"l2 context root before the commitment."
+           Client_proto_args.string_parameter
+      @@ prefix "with" @@ prefix "before_withdraw"
+      @@ Clic.param
+           ~name:"before_withdraw"
+           ~desc:"l2 withdraw for root before the commitment."
+           Client_proto_args.string_parameter
+      @@ prefix "with" @@ prefix "after_result"
+      @@ Clic.param
+           ~name:"after_result"
+           ~desc:"result after the batch."
+           Client_proto_args.string_parameter
       @@ prefix "with" @@ prefix "proof" @@ tx_rollup_proof_param @@ prefix "to"
       @@ tx_rollup_param @@ prefix "from"
       @@ ContractAlias.destination_param
@@ -2541,6 +2553,9 @@ let commands_rw () =
            level
            message
            message_position
+           before_root
+           before_withdraw
+           after_result
            proof
            tx_rollup
            (_, source)
@@ -2582,6 +2597,9 @@ let commands_rw () =
               ~message
               ~message_position
               ~proof
+              ~before_root
+              ~before_withdraw
+              ~after_result
               ()
             >>=? fun _res -> return_unit);
     command

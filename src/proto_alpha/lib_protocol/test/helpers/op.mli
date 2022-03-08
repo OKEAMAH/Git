@@ -321,3 +321,22 @@ val tx_rollup_withdraw :
   Tx_rollup_withdraw.path ->
   Entrypoint_repr.t ->
   (packed_operation, tztrace) result Lwt.t
+
+(** [tx_rollup_reject ctxt source tx_rollup tx_rollup level message
+    index proof] Rejects a tx rollup commitment. *)
+val tx_rollup_reject :
+  ?counter:Z.t ->
+  ?fee:Tez.tez ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:Z.t ->
+  Context.t ->
+  Contract.t ->
+  Tx_rollup.t ->
+  Tx_rollup_level.t ->
+  Tx_rollup_message.t ->
+  message_position:int ->
+  proof:bool ->
+  before_root:Context_hash.t ->
+  before_withdraw:Tx_rollup_withdraw.list_hash ->
+  after_result:Tx_rollup_commitment_message_result_hash.t ->
+  Operation.packed tzresult Lwt.t

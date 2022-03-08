@@ -67,6 +67,7 @@ type error +=
     }
   | Withdraw_invalid_path
   | Reject_final_level
+  | Wrong_rejection_proof_hash
 
 let () =
   let open Data_encoding in
@@ -434,4 +435,15 @@ let () =
     ~description:"This rejection tries to reject a level that is already final"
     unit
     (function Reject_final_level -> Some () | _ -> None)
-    (fun () -> Reject_final_level)
+    (fun () -> Reject_final_level) ;
+  (* Wrong_rejection_proof_hash *)
+  register_error_kind
+    `Branch
+    ~id:"tx_rollup_wrong_rejection_proof_hash"
+    ~title:"Wrong component hashes in rejection"
+    ~description:
+      "This rejection doesn't include component (ctxt, withdraw) roots which \
+       match the stored roots"
+    unit
+    (function Wrong_rejection_proof_hash -> Some () | _ -> None)
+    (fun () -> Wrong_rejection_proof_hash)

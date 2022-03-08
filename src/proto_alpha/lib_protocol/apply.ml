@@ -1511,13 +1511,22 @@ let apply_manager_operation_content :
           }
       in
       return (ctxt, result, [])
-  | Tx_rollup_rejection {proof; tx_rollup; level; message; message_position} ->
+  | Tx_rollup_rejection
+      {
+        proof;
+        tx_rollup;
+        level;
+        message;
+        message_position;
+        before_root;
+        before_withdraw;
+        after_result;
+      } ->
       Tx_rollup_state.get ctxt tx_rollup >>=? fun (ctxt, state) ->
       fail_unless
         (Tx_rollup_state.can_be_rejected state level)
         Tx_rollup_errors.Reject_final_level
       >>=? fun () ->
-      (* TODO/TORU: Check the proof *)
       Tx_rollup_inbox.check_message_hash
         ctxt
         level
@@ -1525,6 +1534,31 @@ let apply_manager_operation_content :
         ~position:message_position
         message
       >>=? fun ctxt ->
+      Tx_rollup_commitment.get_before_and_after_results
+        ctxt
+        tx_rollup
+        level
+        ~message_position
+        state
+      >>=? fun (ctxt, commitment_before_result, commitment_after_result) ->
+      (* The rejection claims the same result as the commitment -- there's
+         no disagreement. *)
+      fail_when
+        Tx_rollup_commitment_message_result_hash.(
+          equal after_result commitment_after_result)
+        Tx_rollup_errors.Wrong_rejection_proof_hash
+      >>=? fun () ->
+      let expected_before_result =
+        Tx_rollup_commitment.batch_commitment
+          (Context_hash.to_bytes before_root)
+          before_withdraw
+      in
+      fail_unless
+        Tx_rollup_commitment_message_result_hash.(
+          equal commitment_before_result expected_before_result)
+        Tx_rollup_errors.Wrong_rejection_proof_hash
+      >>=? fun () ->
+      (* TODO/TORU: validate proof *)
       fail_unless proof Tx_rollup_errors.Invalid_proof >>=? fun () ->
       (* Proof is correct, removing *)
       Tx_rollup_commitment.reject_commitment ctxt tx_rollup state level

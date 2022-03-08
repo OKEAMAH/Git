@@ -52,6 +52,7 @@
         "Tx_rollup_message_repr",
         "Tx_rollup_inbox_repr",
         "Tx_rollup_commitment_repr",
+        "Tx_rollup_rejection_proof_repr",
         "Tx_rollup_errors_repr",
         "Tx_rollup_state_repr",
         "Vote_repr",

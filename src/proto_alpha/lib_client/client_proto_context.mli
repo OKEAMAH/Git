@@ -564,6 +564,9 @@ val submit_tx_rollup_rejection :
   message:string ->
   message_position:int ->
   proof:bool ->
+  before_withdraw:string ->
+  before_root:string ->
+  after_result:string ->
   unit ->
   (Operation_hash.t
   * Kind.tx_rollup_rejection Kind.manager contents

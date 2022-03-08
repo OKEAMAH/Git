@@ -149,15 +149,17 @@ val record_commitment_rejection :
   Tx_rollup_commitment_repr.Commitment_hash.t option ->
   t tzresult
 
-(** [record_commitment_deletion state level hash] updates [state] to
-    take into account the deletion of a commitment at a given rollup
-    [level], and of given [hash].
+(** [record_commitment_deletion state level msg_hash commitment_hash]
+    updates [state] to take into account the deletion of a commitment
+    at a given rollup [level], and of given [commitment_hash] and
+    whose last message commitment is [msg_hash].
 
     This function returns an [Internal_error] if [level] is not the
     commitment tail, that is the oldest finalized commitment. *)
 val record_commitment_deletion :
   t ->
   Tx_rollup_level_repr.t ->
+  Tx_rollup_commitment_repr.Message_result_hash.t ->
   Tx_rollup_commitment_repr.Commitment_hash.t ->
   t tzresult
 
@@ -171,12 +173,20 @@ val finalized_commitments_range :
 
 val can_be_rejected : t -> Tx_rollup_level_repr.t -> bool
 
+val last_removed_commitment_hashes :
+  t ->
+  (Tx_rollup_commitment_repr.Message_result_hash.t
+  * Tx_rollup_commitment_repr.Commitment_hash.t)
+  option
+
 module Internal_for_tests : sig
   (** [make] returns a state for tests *)
   val make :
     ?burn_per_byte:Tez_repr.t ->
     ?inbox_ema:int ->
-    ?last_removed_commitment_hash:Tx_rollup_commitment_repr.Commitment_hash.t ->
+    ?last_removed_commitment_hashes:
+      Tx_rollup_commitment_repr.Message_result_hash.t
+      * Tx_rollup_commitment_repr.Commitment_hash.t ->
     ?commitment_tail_level:Tx_rollup_level_repr.t ->
     ?oldest_inbox_level:Tx_rollup_level_repr.t ->
     ?commitment_head_level:

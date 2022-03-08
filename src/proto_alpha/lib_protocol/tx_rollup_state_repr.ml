@@ -59,8 +59,10 @@ open Tx_rollup_errors_repr
       layer-1 storage.
 *)
 type t = {
-  last_removed_commitment_hash :
-    Tx_rollup_commitment_repr.Commitment_hash.t option;
+  last_removed_commitment_hashes :
+    (Tx_rollup_commitment_repr.Message_result_hash.t
+    * Tx_rollup_commitment_repr.Commitment_hash.t)
+    option;
   commitment_tail_level : Tx_rollup_level_repr.t option;
   oldest_inbox_level : Tx_rollup_level_repr.t option;
   commitment_head_level :
@@ -95,7 +97,7 @@ type t = {
 
    Note that the oldest inbox level is not always lesser than the
    commitment head. If the commitment head is equal to [None], it
-   means all the inboxes currently stored in layer-1 are “uncommitted”, 
+   means all the inboxes currently stored in layer-1 are “uncommitted”,
    that is, no commitments have been submitted for them.
 
    In such a case, the rollup state is analoguous to
@@ -109,7 +111,7 @@ type t = {
              ^^^^^^^^^^^^^^^^
                 uncommitted
 
-   Similarly, it is possible to see the oldest inbox level and head level 
+   Similarly, it is possible to see the oldest inbox level and head level
    set to [None]. For instance, when each commitment in the
    layer-1 storage has been properly finalized. In this case, the
    layout will be
@@ -143,7 +145,7 @@ type t = {
 
 let initial_state =
   {
-    last_removed_commitment_hash = None;
+    last_removed_commitment_hashes = None;
     commitment_tail_level = None;
     oldest_inbox_level = None;
     commitment_head_level = None;
@@ -156,7 +158,7 @@ let encoding : t Data_encoding.t =
   let open Data_encoding in
   conv
     (fun {
-           last_removed_commitment_hash;
+           last_removed_commitment_hashes;
            commitment_tail_level;
            oldest_inbox_level;
            commitment_head_level;
@@ -164,14 +166,14 @@ let encoding : t Data_encoding.t =
            burn_per_byte;
            inbox_ema;
          } ->
-      ( last_removed_commitment_hash,
+      ( last_removed_commitment_hashes,
         commitment_tail_level,
         oldest_inbox_level,
         commitment_head_level,
         head_level,
         burn_per_byte,
         inbox_ema ))
-    (fun ( last_removed_commitment_hash,
+    (fun ( last_removed_commitment_hashes,
            commitment_tail_level,
            oldest_inbox_level,
            commitment_head_level,
@@ -179,7 +181,7 @@ let encoding : t Data_encoding.t =
            burn_per_byte,
            inbox_ema ) ->
       {
-        last_removed_commitment_hash;
+        last_removed_commitment_hashes;
         commitment_tail_level;
         oldest_inbox_level;
         commitment_head_level;
@@ -189,8 +191,15 @@ let encoding : t Data_encoding.t =
       })
     (obj7
        (req
-          "last_removed_commitment_hash"
-          (option Tx_rollup_commitment_repr.Commitment_hash.encoding))
+          "last_removed_commitment_hashes"
+          (option
+             (obj2
+                (req
+                   "last_message_hash"
+                   Tx_rollup_commitment_repr.Message_result_hash.encoding)
+                (req
+                   "commitment_hash"
+                   Tx_rollup_commitment_repr.Commitment_hash.encoding))))
        (req "commitment_tail_level" (option Tx_rollup_level_repr.encoding))
        (req "oldest_inbox_level" (option Tx_rollup_level_repr.encoding))
        (req
@@ -210,7 +219,7 @@ let encoding : t Data_encoding.t =
 
 let pp fmt
     {
-      last_removed_commitment_hash;
+      last_removed_commitment_hashes;
       commitment_tail_level;
       oldest_inbox_level;
       commitment_head_level;
@@ -222,7 +231,7 @@ let pp fmt
     fprintf
       fmt
       "oldest_inbox_level: %a cost_per_byte: %a inbox_ema: %d head inbox: %a \
-       commitment tail: %a commitment head: %a last_removed_commitment_hash: \
+       commitment tail: %a commitment head: %a last_removed_commitment_hashes: \
        %a"
       (Format.pp_print_option Tx_rollup_level_repr.pp)
       oldest_inbox_level
@@ -249,8 +258,15 @@ let pp fmt
              Tx_rollup_commitment_repr.Commitment_hash.pp
              tezos_lvl))
       commitment_head_level
-      (pp_print_option Tx_rollup_commitment_repr.Commitment_hash.pp)
-      last_removed_commitment_hash)
+      (pp_print_option (fun fmt (m, c) ->
+           fprintf
+             fmt
+             "(%a, %a)"
+             Tx_rollup_commitment_repr.Message_result_hash.pp
+             m
+             Tx_rollup_commitment_repr.Commitment_hash.pp
+             c))
+      last_removed_commitment_hashes)
 
 let update_burn_per_byte : t -> final_size:int -> hard_limit:int -> t =
  fun ({burn_per_byte; inbox_ema; _} as state) ~final_size ~hard_limit ->
@@ -434,25 +450,25 @@ let record_commitment_rejection state level predecessor_hash =
           >>? fun () ->
           unwrap_option
             "Missing commitment hash"
-            state.last_removed_commitment_hash
-          >>? fun pred_hash ->
+            state.last_removed_commitment_hashes
+          >>? fun (_, pred_hash) ->
           ok {state with commitment_head_level = Some (pred_level, pred_hash)}
       | (None, None) ->
           check_none
             "Unexpected last removed commitment"
-            state.last_removed_commitment_hash
+            state.last_removed_commitment_hashes
           >>? fun () -> ok {state with commitment_head_level = None}
       | _ -> error (Internal_error "Machine state inconsistency"))
   | _ -> error (Internal_error "No commitment to reject")
 
-let record_commitment_deletion state level hash =
+let record_commitment_deletion state level message_hash commitment_hash =
   match commitment_tail_level state with
   | Some tail when Tx_rollup_level_repr.(level = tail) ->
       ok
         {
           state with
           commitment_tail_level = Some (Tx_rollup_level_repr.succ tail);
-          last_removed_commitment_hash = Some hash;
+          last_removed_commitment_hashes = Some (message_hash, commitment_hash);
         }
   | _ -> error (Internal_error "Trying to remove an incorrect commitment")
 
@@ -485,11 +501,15 @@ let can_be_rejected state level =
   | Some oldest -> Tx_rollup_level_repr.(oldest <= level)
   | None -> false
 
+let last_removed_commitment_hashes state = state.last_removed_commitment_hashes
+
 module Internal_for_tests = struct
   let make :
       ?burn_per_byte:Tez_repr.t ->
       ?inbox_ema:int ->
-      ?last_removed_commitment_hash:Tx_rollup_commitment_repr.Commitment_hash.t ->
+      ?last_removed_commitment_hashes:
+        Tx_rollup_commitment_repr.Message_result_hash.t
+        * Tx_rollup_commitment_repr.Commitment_hash.t ->
       ?commitment_tail_level:Tx_rollup_level_repr.t ->
       ?oldest_inbox_level:Tx_rollup_level_repr.t ->
       ?commitment_head_level:
@@ -499,14 +519,14 @@ module Internal_for_tests = struct
       t =
    fun ?(burn_per_byte = Tez_repr.zero)
        ?(inbox_ema = 0)
-       ?last_removed_commitment_hash
+       ?last_removed_commitment_hashes
        ?commitment_tail_level
        ?oldest_inbox_level
        ?commitment_head_level
        ?head_level
        () ->
     {
-      last_removed_commitment_hash;
+      last_removed_commitment_hashes;
       burn_per_byte;
       inbox_ema;
       commitment_tail_level;

@@ -316,7 +316,10 @@ and _ manager_operation =
       level : Tx_rollup_level_repr.t;
       message : Tx_rollup_message_repr.t;
       message_position : int;
-      proof : (* FIXME/TORU *) bool;
+      proof : bool;
+      before_root : Context_hash.t;
+      before_withdraw : Tx_rollup_withdraw_repr.list_hash;
+      after_result : Tx_rollup_commitment_repr.Message_result_hash.t;
     }
       -> Kind.tx_rollup_rejection manager_operation
   | Tx_rollup_withdraw : {
@@ -702,24 +705,61 @@ module Encoding = struct
           tag = tx_rollup_operation_rejection_tag;
           name = "tx_rollup_rejection";
           encoding =
-            obj5
+            obj8
               (req "rollup" Tx_rollup_repr.encoding)
               (req "level" Tx_rollup_level_repr.encoding)
               (req "message" Tx_rollup_message_repr.encoding)
               (req "message_position" int31)
-              (req "proof" bool);
+              (req "proof" bool)
+              (req "before_root" Context_hash.encoding)
+              (req "before_withdraw" Tx_rollup_withdraw_repr.list_hash_encoding)
+              (req
+                 "after_result"
+                 Tx_rollup_commitment_repr.Message_result_hash.encoding);
           select =
             (function
             | Manager (Tx_rollup_rejection _ as op) -> Some op | _ -> None);
           proj =
             (function
             | Tx_rollup_rejection
-                {tx_rollup; level; message; message_position; proof} ->
-                (tx_rollup, level, message, message_position, proof));
+                {
+                  tx_rollup;
+                  level;
+                  message;
+                  message_position;
+                  proof;
+                  before_root;
+                  before_withdraw;
+                  after_result;
+                } ->
+                ( tx_rollup,
+                  level,
+                  message,
+                  message_position,
+                  proof,
+                  before_root,
+                  before_withdraw,
+                  after_result ));
           inj =
-            (fun (tx_rollup, level, message, message_position, proof) ->
+            (fun ( tx_rollup,
+                   level,
+                   message,
+                   message_position,
+                   proof,
+                   before_root,
+                   before_withdraw,
+                   after_result ) ->
               Tx_rollup_rejection
-                {tx_rollup; level; message; message_position; proof});
+                {
+                  tx_rollup;
+                  level;
+                  message;
+                  message_position;
+                  proof;
+                  before_root;
+                  before_withdraw;
+                  after_result;
+                });
         }
 
     let[@coq_axiom_with_reason "gadt"] tx_rollup_withdraw_case =
