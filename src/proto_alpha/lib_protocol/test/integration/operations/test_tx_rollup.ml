@@ -42,14 +42,16 @@ open Test_tez
 let check_tx_rollup_exists ctxt tx_rollup =
   Context.Tx_rollup.state ctxt tx_rollup >|=? fun _ -> ()
 
-(** [check_proto_error f t] checks that the first error of [t]
+(** [check_proto_error_f f t] checks that the first error of [t]
     satisfies the boolean function [f]. *)
-let check_proto_error f t =
+let check_proto_error_f f t =
   match t with
   | Environment.Ecoproto_error e :: _ when f e ->
       Assert.test_error_encodings e ;
       return_unit
   | _ -> failwith "Unexpected error: %a" Error_monad.pp_print_trace t
+
+let check_proto_error e = check_proto_error_f (( = ) e)
 
 (** [test_disable_feature_flag] try to originate a tx rollup with the feature
     flag is deactivated and check it fails *)
@@ -61,13 +63,10 @@ let test_disable_feature_flag () =
   Incremental.begin_construction b >>=? fun i ->
   Op.tx_rollup_origination (I i) contract >>=? fun (op, _tx_rollup) ->
   Incremental.add_operation
-    ~expect_failure:
-      (check_proto_error (function
-          | Apply.Tx_rollup_feature_disabled -> true
-          | _ -> false))
+    ~expect_apply_failure:(check_proto_error Apply.Tx_rollup_feature_disabled)
     i
     op
-  >>= fun _i -> return_unit
+  >>=? fun _i -> return_unit
 
 let message_hash_testable : Tx_rollup_message.hash Alcotest.testable =
   Alcotest.testable Tx_rollup_message.pp_hash ( = )
@@ -429,7 +428,7 @@ let test_add_batch_with_limit () =
     i
     op
     ~expect_failure:
-      (check_proto_error (function
+      (check_proto_error_f (function
           | Tx_rollup_errors.Submit_batch_burn_excedeed _ -> true
           | _ -> false))
   >>=? fun _ -> return_unit
@@ -495,13 +494,12 @@ let test_batch_too_big () =
   in
   Incremental.begin_construction b >>=? fun i ->
   Op.tx_rollup_submit_batch (I i) contract tx_rollup contents >>=? fun op ->
-  Incremental.add_operation i op >>= function
-  | Ok _ -> assert false
-  | Error trace ->
-      check_proto_error
-        (function
-          | Tx_rollup_errors.Message_size_exceeds_limit -> true | _ -> false)
-        trace
+  Incremental.add_operation
+    i
+    ~expect_apply_failure:
+      (check_proto_error Tx_rollup_errors.Message_size_exceeds_limit)
+    op
+  >>=? fun _ -> return_unit
 
 (** [fill_inbox b tx_rollup contract contents k] fills the inbox of
     [tx_rollup] with batches containing [contents] sent by [contract].
@@ -555,7 +553,7 @@ let test_inbox_size_too_big () =
         i
         op
         ~expect_failure:
-          (check_proto_error (function
+          (check_proto_error_f (function
               | Tx_rollup_errors.Inbox_size_would_exceed_limit _ -> true
               | _ -> false))
       >>=? fun _i -> return_unit)
@@ -602,7 +600,7 @@ let test_inbox_count_too_big () =
     i
     op
     ~expect_failure:
-      (check_proto_error @@ function
+      (check_proto_error_f @@ function
        | Tx_rollup_errors.Inbox_count_would_exceed_limit rollup ->
            rollup = tx_rollup
        | _ -> false)
@@ -682,7 +680,7 @@ let test_valid_deposit_inexistant_rollup () =
     i
     op
     ~expect_failure:
-      (check_proto_error (function
+      (check_proto_error_f (function
           | Script_interpreter.Runtime_contract_error _ -> true
           | _ -> false))
   >>=? fun _ -> return_unit
@@ -712,7 +710,7 @@ let test_invalid_deposit_not_ticket () =
     i
     op
     ~expect_failure:
-      (check_proto_error (function
+      (check_proto_error_f (function
           | Script_interpreter.Bad_contract_parameter _ -> true
           | _ -> false))
   >>=? fun _ -> return_unit
@@ -742,7 +740,7 @@ let test_invalid_entrypoint () =
     i
     op
     ~expect_failure:
-      (check_proto_error (function
+      (check_proto_error_f (function
           | Script_interpreter.Bad_contract_parameter _ -> true
           | _ -> false))
   >>=? fun _ -> return_unit
@@ -772,7 +770,7 @@ let test_invalid_l2_address () =
     i
     op
     ~expect_failure:
-      (check_proto_error (function
+      (check_proto_error_f (function
           | Script_interpreter.Bad_contract_parameter _ -> true
           | _ -> false))
   >>=? fun _ -> return_unit
@@ -801,9 +799,7 @@ let test_valid_deposit_invalid_amount () =
     i
     op
     ~expect_failure:
-      (check_proto_error (function
-          | Apply.Tx_rollup_invalid_transaction_amount -> true
-          | _ -> false))
+      (check_proto_error Apply.Tx_rollup_invalid_transaction_amount)
   >>=? fun _ -> return_unit
 
 (** [test_deposit_by_non_internal_operation] checks that a transaction
@@ -821,10 +817,7 @@ let test_deposit_by_non_internal_operation () =
   Incremental.add_operation
     i
     operation
-    ~expect_failure:
-      (check_proto_error (function
-          | Apply.Tx_rollup_non_internal_transaction -> true
-          | _ -> false))
+    ~expect_failure:(check_proto_error Apply.Tx_rollup_non_internal_transaction)
   >>=? fun _i -> return_unit
 
 (** Test that block finalization changes gas rates *)
@@ -933,10 +926,7 @@ let test_commitment_duplication () =
   Incremental.add_operation
     i
     op
-    ~expect_failure:
-      (check_proto_error @@ function
-       | Tx_rollup_errors.Wrong_batch_count -> true
-       | _ -> false)
+    ~expect_failure:(check_proto_error Tx_rollup_errors.Wrong_batch_count)
   >>=? fun i ->
   (* Submit the correct one *)
   let submitted_level = (Level.current (Incremental.alpha_ctxt i)).level in
@@ -951,7 +941,7 @@ let test_commitment_duplication () =
   (Incremental.add_operation i op >>= function
    | Ok _ -> failwith "an error was expected"
    | Error e ->
-       check_proto_error
+       check_proto_error_f
          (function
            | Tx_rollup_errors.Level_already_has_commitment level1 ->
                Tx_rollup_level.root = level1
@@ -1034,10 +1024,8 @@ let test_commitment_predecessor () =
     Tx_rollup_errors.Commitment_too_early
       {provided = tx_level 10l; expected = tx_level 0l}
   in
-  (Incremental.add_operation i op >>= function
-   | Ok _ -> failwith "This shouldn’t have succeeded"
-   | Error e -> check_proto_error (( = ) error) e)
-  >>=? fun () ->
+  Incremental.add_operation i op ~expect_apply_failure:(check_proto_error error)
+  >>=? fun _ ->
   (* Now we submit a real commitment *)
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1057,7 +1045,7 @@ let test_commitment_predecessor () =
     i
     op
     ~expect_failure:
-      (check_proto_error @@ function
+      (check_proto_error_f @@ function
        | Tx_rollup_errors.Wrong_predecessor_hash {provided = None; expected} ->
            expected = commitment.predecessor
        | _ -> false)
@@ -1072,7 +1060,7 @@ let test_commitment_predecessor () =
     i
     op
     ~expect_failure:
-      (check_proto_error @@ function
+      (check_proto_error_f @@ function
        | Tx_rollup_errors.Wrong_predecessor_hash {provided = _; expected} ->
            expected = commitment.predecessor
        | _ -> false)
@@ -1108,8 +1096,7 @@ let test_full_inbox () =
   Incremental.add_operation
     i
     op
-    ~expect_failure:
-      (check_proto_error @@ ( = ) Tx_rollup_errors.Too_many_inboxes)
+    ~expect_failure:(check_proto_error Tx_rollup_errors.Too_many_inboxes)
   >>=? fun i ->
   ignore i ;
   return ()
@@ -1132,7 +1119,7 @@ let test_bond_finalization () =
     i
     op
     ~expect_failure:
-      (check_proto_error @@ function
+      (check_proto_error_f @@ function
        | Tx_rollup_errors.Bond_does_not_exist a_pkh1 -> a_pkh1 = pkh1
        | _ -> false)
   >>=? fun i ->
@@ -1145,7 +1132,7 @@ let test_bond_finalization () =
     i
     op
     ~expect_failure:
-      (check_proto_error @@ function
+      (check_proto_error_f @@ function
        | Tx_rollup_errors.Bond_in_use a_pkh1 -> a_pkh1 = pkh1
        | _ -> false)
   >>=? fun i ->
@@ -1198,9 +1185,7 @@ let test_too_many_commitments () =
     i
     op
     ~expect_failure:
-      (check_proto_error (function
-          | Tx_rollup_errors.Too_many_finalized_commitments -> true
-          | _ -> false))
+      (check_proto_error Tx_rollup_errors.Too_many_finalized_commitments)
   >>=? fun i ->
   (* Wait out the withdrawal period. *)
   bake_until i 12l >>=? fun i ->
