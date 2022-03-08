@@ -70,3 +70,24 @@ val compute_path : t list -> int -> path
 (** [check_path path withdrawal] return the [list_hash] computed for
     [withdrawal] and the index on the list. *)
 val check_path : path -> t -> list_hash * int
+
+(** [Withdrawal_accounting] provide a interface to do accounting of index. It
+    has a minimal footprint.
+
+    It is used by the storage to store which withdrawal index have already been
+    submitted by a user.*)
+module Withdrawal_accounting : sig
+  type t = int64 list
+
+  val empty : t
+
+  (** [get l index] check if the [index] was set previously in [l]. Fails when
+      [index] is negative. *)
+  val get : t -> int -> bool tzresult
+
+  (** [set l index] set [index] in [l] to [true]. Fails when [index] is
+      negative. *)
+  val set : t -> int -> t tzresult
+
+  val encoding : t Data_encoding.t
+end

@@ -115,6 +115,10 @@ type error +=
       Inconsistent_counters
   | (* `Permanent *)
       Tx_rollup_operation_with_non_implicit_contract
+  | (* `Permanent *)
+      Tx_rollup_inexistant_withdraw
+  | (* `Permanent *)
+      Tx_rollup_withdraw_already_consumed
 
 let () =
   register_error_kind
@@ -541,6 +545,35 @@ let () =
     Data_encoding.unit
     (function Tx_rollup_non_internal_transaction -> Some () | _ -> None)
     (fun () -> Tx_rollup_non_internal_transaction) ;
+
+  register_error_kind
+    `Permanent
+    ~id:"operation.tx_rollup_inexistant_withdraw"
+    ~title:"withdraw is inexistant"
+    ~description:
+      "The submitted withdraw does not exists for that level and tx_rollup"
+    ~pp:(fun ppf () ->
+      Format.fprintf
+        ppf
+        "The submitted withdraw does not exists for that level and transaction \
+         rollup.")
+    Data_encoding.unit
+    (function Tx_rollup_inexistant_withdraw -> Some () | _ -> None)
+    (fun () -> Tx_rollup_inexistant_withdraw) ;
+
+  register_error_kind
+    `Permanent
+    ~id:"operation.Tx_rollup_withdraw_already_consumed"
+    ~title:"withdraw already consumed"
+    ~description:"The submitted withdraw have already been submitted"
+    ~pp:(fun ppf () ->
+      Format.fprintf
+        ppf
+        "The submitted withdraw exists but it has already been submitted \
+         earlier.")
+    Data_encoding.unit
+    (function Tx_rollup_withdraw_already_consumed -> Some () | _ -> None)
+    (fun () -> Tx_rollup_withdraw_already_consumed) ;
 
   let description =
     "Smart contract rollups will be enabled in a future proposal."
@@ -1112,10 +1145,10 @@ let apply_manager_operation_content :
       (* FIXME/TORU: #2488 The ticket accounting for the withdraw is not done here *)
       {
         tx_rollup;
-        level = _;
-        context_hash = _;
-        message_index = _;
-        withdraw_path = _;
+        level;
+        context_hash;
+        message_index;
+        withdraw_path;
         contents;
         ty;
         ticketer;
@@ -1123,6 +1156,7 @@ let apply_manager_operation_content :
         destination;
         entrypoint;
       } ->
+      (* Should be part of the operation *)
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
       (* Ticket parsing and hashing *)
       Script.force_decode_in_context ~consume_deserialization_gas ctxt ty
@@ -1141,9 +1175,40 @@ let apply_manager_operation_content :
         ~contents:(Micheline.root contents)
         ~ticketer:(Micheline.root @@ Micheline.strip_locations ticketer_node)
         ~ty:(Micheline.root ty)
-      >>?= fun (_ticket_hash, ctxt) ->
-      (* TODO/TORU: Before calling the next function we needs to make sure that
-         this ticket hash is part of the commitment *)
+      >>?= fun (ticket_hash, ctxt) ->
+      (* Checking the operation is non-internal *)
+      Option.value_e
+        ~error:
+          (Error_monad.trace_of_error
+             Tx_rollup_operation_with_non_implicit_contract)
+        (Contract.is_implicit source)
+      >>?= fun source_pkh ->
+      (* Computing the withdrawal hash *)
+      let withdrawal =
+        Tx_rollup_withdraw.{destination = source_pkh; ticket_hash; amount}
+      in
+      let (computed_list_hash, withdraw_index) =
+        Tx_rollup_withdraw.check_path withdraw_path withdrawal
+      in
+      Tx_rollup_commitment.get_final_existing ctxt tx_rollup level
+      >>=? fun (ctxt, commitment) ->
+      fail_unless
+        (Tx_rollup_commitment.check_batch_commitment
+           commitment.commitment
+           ~context_hash
+           computed_list_hash
+           ~message_index)
+        Tx_rollup_errors.Withdraw_invalid_path
+      >>=? fun () ->
+      Tx_rollup_withdraw.mem ctxt tx_rollup level ~message_index ~withdraw_index
+      >>=? fun (already_consumed, ctxt) ->
+      fail_when already_consumed Tx_rollup_withdraw_already_consumed
+      >>=? fun () ->
+      Tx_rollup_withdraw.add ctxt tx_rollup level ~message_index ~withdraw_index
+      >>=? fun ctxt ->
+      (* FIXME/TORU: #2488 The ticket accounting for the withdraw should be done here.
+         Before calling the next function we needs to make sure that
+         this ticket is owns by the tx_rollup *)
       Script_ir_translator.tx_rollup_withdraw_parameters_for_contract_call
         ctxt
         ~ticketer
@@ -1155,6 +1220,7 @@ let apply_manager_operation_content :
         Internal_operation
           {
             source;
+            (* TODO is 0 correct ? *)
             nonce = 0;
             operation =
               Transaction

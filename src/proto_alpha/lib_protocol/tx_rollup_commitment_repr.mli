@@ -70,6 +70,17 @@ val encoding : t Data_encoding.t
 
 val hash : t -> Commitment_hash.t
 
+(** [check_batch_commitment commitment context_hash withdraw_list_hash
+   n] returns true if the message result hash of the [n]th batch in
+   [commitment] corresponds to [context_hash] and
+   [withdraw_list_hash]. *)
+val check_batch_commitment :
+  t ->
+  context_hash:bytes ->
+  Tx_rollup_withdraw_repr.list_hash ->
+  message_index:int ->
+  bool
+
 module Index : Storage_description.INDEX with type t = Commitment_hash.t
 
 module Submitted_commitment : sig

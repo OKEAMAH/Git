@@ -2177,6 +2177,22 @@ module Tx_rollup_withdraw : sig
   val compute_path : t list -> int -> path
 
   val check_path : path -> t -> list_hash * int
+
+  val add :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    message_index:int ->
+    withdraw_index:int ->
+    context tzresult Lwt.t
+
+  val mem :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    message_index:int ->
+    withdraw_index:int ->
+    (bool * context) tzresult Lwt.t
 end
 
 (** This module re-exports definitions from {!Tx_rollup_message_repr}. *)
@@ -2347,6 +2363,13 @@ module Tx_rollup_commitment : sig
 
   val hash : t -> Tx_rollup_commitment_hash.t
 
+  val check_batch_commitment :
+    t ->
+    context_hash:bytes ->
+    Tx_rollup_withdraw.list_hash ->
+    message_index:int ->
+    bool
+
   val add_commitment :
     context ->
     Tx_rollup.t ->
@@ -2364,6 +2387,12 @@ module Tx_rollup_commitment : sig
     (context * Submitted_commitment.t option) tzresult Lwt.t
 
   val get :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    (context * Submitted_commitment.t) tzresult Lwt.t
+
+  val get_final_existing :
     context ->
     Tx_rollup.t ->
     Tx_rollup_level.t ->
@@ -2443,6 +2472,11 @@ module Tx_rollup_errors : sig
         length : int;
       }
     | Wrong_message_hash
+    | No_finalized_commitment_for_level of {
+        level : Tx_rollup_level.t;
+        window : (Tx_rollup_level.t * Tx_rollup_level.t) option;
+      }
+    | Withdraw_invalid_path
 end
 
 (** This simply re-exports {!Destination_repr}. *)

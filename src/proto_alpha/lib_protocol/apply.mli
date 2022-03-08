@@ -47,6 +47,8 @@ type error += (* `Permanent *) Tx_rollup_invalid_transaction_amount
 
 type error += (* `Permanent *) Tx_rollup_non_internal_transaction
 
+type error += (* `Permanent *) Tx_rollup_withdraw_already_consumed
+
 type error += (* `Permanent *) Sc_rollup_feature_disabled
 
 type error += (* `Permanent *) Inconsistent_counters
