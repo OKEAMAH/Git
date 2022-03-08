@@ -232,6 +232,12 @@ module Stateful_gen : sig
     (** Generate a readable string. *)
     val string_readable : string t
 
+    (** Generate a char *)
+    val any_char : char t
+
+    (** Generate a [bytes] of size given in input *)
+    val bytes_sequence : int -> bytes t
+
     (** Lift the underlying computation type into a generator. *)
     val lift : 'a m -> 'a t
 

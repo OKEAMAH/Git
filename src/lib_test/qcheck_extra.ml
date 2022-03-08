@@ -130,6 +130,10 @@ module Stateful_gen = struct
 
     val string_readable : string t
 
+    val any_char : char t
+
+    val bytes_sequence : int -> bytes t
+
     val lift : 'a m -> 'a t
 
     val to_qcheck_gen : 'a t -> 'a m QCheck.Gen.t
@@ -214,6 +218,17 @@ module Stateful_gen = struct
     let string_readable =
       let+ l = small_list char_readable in
       String.of_seq (List.to_seq l)
+
+    let any_char =
+      let+ n = nat_less_than 256 in
+      char_of_int n
+
+    let bytes_sequence n =
+      let+ chars = replicate n any_char in
+
+      let bytes_seq = Bytes.init n (fun _ -> Char.chr 0) in
+      List.iteri (Bytes.set bytes_seq) chars ;
+      bytes_seq
 
     let to_qcheck_gen g std_random_state =
       g
