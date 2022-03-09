@@ -137,6 +137,20 @@ let test_context_list_fct (proxy : Context.t) : unit Lwt.t =
   let* () = assert_list ["a"] ["b"; "c"] in
   Lwt.return_unit
 
+let test_context_length_fct (proxy : Context.t) : unit Lwt.t =
+  let open Lwt_syntax in
+  let assert_length key expected =
+    let* res = Context.length proxy key in
+    Format.printf "%d %d\n" expected res ;
+    Assert.equal ~msg:("Context.length " ^ key_to_string key) expected res ;
+    Lwt.return_unit
+  in
+  let* () = assert_length ["a"] 2 in
+  let* () = assert_length [] 2 in
+  let* () = assert_length ["a"; "b"] 0 in
+  let* () = assert_length ["a"; "x"] 0 in
+  Lwt.return_unit
+
 let test_context_fold_fct (proxy : Context.t) : unit Lwt.t =
   let open Lwt_syntax in
   let assert_fold key fct =
@@ -164,6 +178,7 @@ let tests =
     ("find", test_context_find_fct);
     ("find_tree", test_context_find_tree_fct);
     ("list", test_context_list_fct);
+    ("length", test_context_length_fct);
     ("fold", test_context_fold_fct);
   ]
 
