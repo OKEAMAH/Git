@@ -1615,6 +1615,20 @@ let tezos_protocol_environment =
         "Proxy_delegate";
       ]
 
+let tezos_shell_context =
+  public_lib
+    "tezos-shell-context"
+    ~path:"src/lib_protocol_environment"
+    ~synopsis:
+      "Tezos: economic-protocols environment implementation for `tezos-node`"
+    ~deps:
+      [
+        tezos_base |> open_ ~m:"TzPervasives";
+        tezos_protocol_environment;
+        tezos_context;
+      ]
+    ~modules:["Proxy_delegate_maker"; "Shell_context"]
+
 let _tezos_protocol_environment_tests =
   tests
     [
@@ -1631,22 +1645,9 @@ let _tezos_protocol_environment_tests =
         alcotest_lwt;
         tezos_test_helpers;
         qcheck_alcotest;
+        tezos_shell_context;
         lwt_unix;
       ]
-
-let tezos_shell_context =
-  public_lib
-    "tezos-shell-context"
-    ~path:"src/lib_protocol_environment"
-    ~synopsis:
-      "Tezos: economic-protocols environment implementation for `tezos-node`"
-    ~deps:
-      [
-        tezos_base |> open_ ~m:"TzPervasives";
-        tezos_protocol_environment;
-        tezos_context;
-      ]
-    ~modules:["Proxy_delegate_maker"; "Shell_context"]
 
 let tezos_protocol_compiler_registerer =
   public_lib

@@ -25,6 +25,7 @@ depends: [
   "alcotest-lwt" { with-test & >= "1.5.0" }
   "tezos-test-helpers" {with-test}
   "qcheck-alcotest" { with-test & >= "0.15" }
+  "tezos-shell-context" {with-test}
   "lwt" { with-test & >= "5.4.0" }
 ]
 build: [

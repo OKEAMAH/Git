@@ -32,11 +32,21 @@
 *)
 
 (* Generates data inside the context of the block *)
-let create_block (ctxt : Context.t) : Context.t Lwt.t =
+let create_block (ctxt : Tezos_context_memory.Context.t) :
+    Tezos_context_memory.Context.t Lwt.t =
   let open Lwt_syntax in
-  let* ctxt = Context.add ctxt ["a"; "b"] (Bytes.of_string "Novembre") in
-  let* ctxt = Context.add ctxt ["a"; "c"] (Bytes.of_string "Juin") in
-  let* ctxt = Context.add ctxt ["version"] (Bytes.of_string "0.0") in
+  let* ctxt =
+    Tezos_context_memory.Context.add
+      ctxt
+      ["a"; "b"]
+      (Bytes.of_string "Novembre")
+  in
+  let* ctxt =
+    Tezos_context_memory.Context.add ctxt ["a"; "c"] (Bytes.of_string "Juin")
+  in
+  let* ctxt =
+    Tezos_context_memory.Context.add ctxt ["version"] (Bytes.of_string "0.0")
+  in
   Lwt.return ctxt
 
 let key_to_string : String.t list -> String.t = String.concat ";"
@@ -44,8 +54,11 @@ let key_to_string : String.t list -> String.t = String.concat ";"
 (* Initialize the Context before starting the tests *)
 let init_contexts (f : Context.t -> unit Lwt.t) _ () : 'a Lwt.t =
   let open Lwt_syntax in
-  let proxy_genesis : Context.t = Proxy_context.empty None in
-  let* proxy = create_block proxy_genesis in
+  let* ctxt = create_block Tezos_context_memory.Context.empty in
+  let proxy : Context.t =
+    Proxy_context.empty
+      (Some (Tezos_shell_context.Proxy_delegate_maker.of_memory_context ctxt))
+  in
   f proxy
 
 let test_context_mem_fct (proxy : Context.t) : unit Lwt.t =
