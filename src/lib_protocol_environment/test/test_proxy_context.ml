@@ -86,7 +86,8 @@ let test_context_mem_tree_fct (proxy : Context.t) : unit Lwt.t =
   in
   let* () = assert_mem_tree ["a"] true in
   let* () = assert_mem_tree ["b"] false in
-  let* () = assert_mem_tree ["a"; "b"] false in
+  let* () = assert_mem_tree ["a"; "b"] true in
+  let* () = assert_mem_tree ["a"; "x"] false in
   Lwt.return_unit
 
 let test_context_find_fct (proxy : Context.t) : unit Lwt.t =
