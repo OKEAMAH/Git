@@ -117,7 +117,7 @@ let max_op_ttl = 120
 let tx_rollup_l2_address = "tz4MSfZsn6kMDczShy8PMeB628TNukn9hi2K"
 
 let tx_rollup_empty_l2_context =
-  "CoVdWnWTqvYLikKj8koW6zpxCvK6FzZiD31YWEpD1UNAjWn7vhch"
+  "CoVu7Pqp1Gh3z33mink5T5Q2kAQKtnn3GHxVhyehdKZpQMBxFBGF"
 
 let tx_rollup_empty_withdraw_list =
   "txw1qi5zqv2cizWX3XYSGtj5aDpdft5V4er7SK44TNpW5usEi5im7"
