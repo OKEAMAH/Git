@@ -26,27 +26,15 @@
 
 open Alpha_context
 
-(* This function extracts nodes of:
-    - Ticketer
-    - Type of content
-    - Content
-    - Owner
-   to generate at ticket-balance key-hash.
+(* This function extracts nodes only of:
+   - Ticketer
+   - Owner
+     to generate at ticket-balance key-hash.
 *)
-let ticket_balance_key ctxt ~owner
-    (Ticket_token.Ex_token {ticketer; contents_type; contents}) =
-  let loc = Micheline.dummy_location in
-  Script_ir_translator.unparse_comparable_ty ~loc ctxt contents_type
-  >>?= fun (cont_ty_unstripped, ctxt) ->
-  (* We strip the annotations from the content type in order to map
-     tickets with the same content type, but with different annotations, to the
-     same hash. *)
-  Gas.consume ctxt (Script.strip_annotations_cost cont_ty_unstripped)
-  >>?= fun ctxt ->
-  let ty = Script.strip_annotations cont_ty_unstripped in
-  let ticketer = Destination.Contract ticketer in
+let of_script_node ctxt ~owner ~ticketer ~ty ~contents =
   let ticketer_address =
-    Script_typed_ir.{destination = ticketer; entrypoint = Entrypoint.default}
+    Script_typed_ir.
+      {destination = Contract ticketer; entrypoint = Entrypoint.default}
   in
   let owner_address =
     Script_typed_ir.{destination = owner; entrypoint = Entrypoint.default}
@@ -57,13 +45,6 @@ let ticket_balance_key ctxt ~owner
     Script_typed_ir.address_t
     ticketer_address
   >>=? fun (ticketer, ctxt) ->
-  Script_ir_translator.unparse_comparable_data
-    ~loc
-    ctxt
-    Script_ir_translator.Optimized_legacy
-    contents_type
-    contents
-  >>=? fun (contents, ctxt) ->
   Script_ir_translator.unparse_data
     ctxt
     Script_ir_translator.Optimized_legacy
@@ -71,3 +52,30 @@ let ticket_balance_key ctxt ~owner
     owner_address
   >>=? fun (owner, ctxt) ->
   Lwt.return (Ticket_hash.make ctxt ~ticketer ~ty ~contents ~owner)
+
+(* This function extracts nodes of:
+   - Ticketer
+   - Type of content
+   - Content
+   - Owner
+     to generate at ticket-balance key-hash.
+*)
+let of_ex_token ctxt ~owner
+    (Ticket_token.Ex_token {ticketer; contents_type; contents}) =
+  let loc = Micheline.dummy_location in
+  Script_ir_translator.unparse_comparable_ty ~loc ctxt contents_type
+  >>?= fun (cont_ty_unstripped, ctxt) ->
+  (* We strip the annotations from the content type in order to map
+     tickets with the same content type, but with different annotations, to the
+     same hash. *)
+  Gas.consume ctxt (Script.strip_annotations_cost cont_ty_unstripped)
+  >>?= fun ctxt ->
+  let ty = Script.strip_annotations cont_ty_unstripped in
+  Script_ir_translator.unparse_comparable_data
+    ~loc
+    ctxt
+    Script_ir_translator.Optimized_legacy
+    contents_type
+    contents
+  >>=? fun (contents, ctxt) ->
+  of_script_node ctxt ~owner ~ticketer ~ty ~contents

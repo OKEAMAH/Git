@@ -1643,23 +1643,6 @@ module Tx_rollup : sig
     destination : Tx_rollup_l2_address.Indexable.value;
   }
 
-  (** [hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty] computes the
-      hash of the ticket of type [ty ticket], of content [contents] and
-      of ticketer [ticketer].
-
-      The goal of the computed hash is twofold:
-
-      {ul {li Identifying the ticket in the layer-2, and}
-          {li Registering in the table of tickets that [tx_rollup]
-              owns this ticket.}} *)
-  val hash_ticket :
-    context ->
-    t ->
-    contents:Script.node ->
-    ticketer:Contract.t ->
-    ty:Script.node ->
-    (Ticket_hash.t * context) tzresult
-
   val originate : context -> (context * tx_rollup) tzresult Lwt.t
 
   module Set : Set.S with type elt = tx_rollup
@@ -1668,14 +1651,6 @@ module Tx_rollup : sig
     (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
     val originated_tx_rollup :
       Origination_nonce.Internal_for_tests.t -> tx_rollup
-
-    (** same as [hash_ticket] but uncarbonated *)
-    val hash_ticket_uncarbonated :
-      t ->
-      contents:Script.node ->
-      ticketer:Contract.t ->
-      ty:Script.node ->
-      Ticket_hash.t tzresult
   end
 end
 

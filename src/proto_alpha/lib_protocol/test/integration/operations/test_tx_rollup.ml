@@ -190,29 +190,30 @@ let is_implicit_exn x =
 (** [make_ticket_key ty contents ticketer tx_rollup] computes the ticket hash
     of the ticket containing [contents] of type [ty], crafted by [ticketer] and
     owned by [tx_rollup]. *)
-let make_ticket_key ~ty ~contents ~ticketer tx_rollup =
-  let open Tezos_micheline.Micheline in
-  let ticketer =
-    Bytes (0, Data_encoding.Binary.to_bytes_exn Contract.encoding ticketer)
-  in
-  match
-    Alpha_context.Tx_rollup.Internal_for_tests.hash_ticket_uncarbonated
-      ~ticketer
-      ~ty
-      ~contents
-      tx_rollup
-  with
-  | Ok x -> x
-  | Error _ -> raise (Invalid_argument "make_ticket_key")
+let make_ticket_key ctxt ~ty ~contents ~ticketer tx_rollup =
+  (match ctxt with
+  | Context.B block ->
+      Incremental.begin_construction block >>=? fun incr -> return incr
+  | Context.I incr -> return incr)
+  >>=? fun incr ->
+  let ctxt = Incremental.alpha_ctxt incr in
+  wrap
+  @@ Ticket_balance_key.of_script_node
+       ctxt
+       ~owner:(Tx_rollup tx_rollup)
+       ~ticketer
+       ~ty
+       ~contents
+  >|=? fst
 
 (** [make_unit_ticket_key ticketer tx_rollup] computes the ticket hash of
     the unit ticket crafted by [ticketer] and owned by [tx_rollup]. *)
-let make_unit_ticket_key ~ticketer tx_rollup =
+let make_unit_ticket_key ctxt ~ticketer tx_rollup =
   let open Tezos_micheline.Micheline in
   let open Michelson_v1_primitives in
   let ty = Prim (0, T_unit, [], []) in
   let contents = Prim (0, D_Unit, [], []) in
-  make_ticket_key ~ty ~contents ~ticketer tx_rollup
+  make_ticket_key ctxt ~ty ~contents ~ticketer tx_rollup
 
 let rng_state = Random.State.make_self_init ()
 
@@ -702,7 +703,8 @@ let test_valid_deposit () =
   Incremental.begin_construction b >|=? Incremental.alpha_ctxt >>=? fun ctxt ->
   Context.Tx_rollup.inbox (B b) tx_rollup Tx_rollup_level.root >>=? function
   | {contents = [hash]; _} ->
-      let ticket_hash = make_unit_ticket_key ~ticketer:contract tx_rollup in
+      make_unit_ticket_key (B b) ~ticketer:contract tx_rollup
+      >>=? fun ticket_hash ->
       let (message, _size) =
         Tx_rollup_message.make_deposit
           (is_implicit_exn account)
@@ -1624,20 +1626,19 @@ module Withdraw = struct
 
     let amount = Tx_rollup_l2_qty.of_int64_exn 10L
 
-    let ticket_hash ~ticketer ~tx_rollup =
+    let ticket_hash ctxt ~ticketer ~tx_rollup =
       make_ticket_key
+        ctxt
         ~ty:(Tezos_micheline.Micheline.root ty)
         ~contents:(Tezos_micheline.Micheline.root contents)
         ~ticketer
         tx_rollup
 
-    let withdrawal ~ticketer ?(recipient = ticketer) tx_rollup :
-        Tx_rollup_withdraw.t =
-      {
-        claimer = is_implicit_exn recipient;
-        ticket_hash = ticket_hash ~ticketer ~tx_rollup;
-        amount;
-      }
+    let withdrawal ctxt ~ticketer ?(claimer = ticketer) tx_rollup :
+        Tx_rollup_withdraw.t tzresult Lwt.t =
+      ticket_hash ctxt ~ticketer ~tx_rollup >|=? fun ticket_hash ->
+      Tx_rollup_withdraw.
+        {claimer = is_implicit_exn claimer; ticket_hash; amount}
   end
 
   (** [test_valid_withdraw] checks that a smart contract can deposit tickets to a
@@ -1667,8 +1668,14 @@ module Withdraw = struct
     *)
 
     (* 1. Create a ticket and it's withdrawal *)
-    let withdraw = Nat_ticket.withdrawal ~ticketer:account1 tx_rollup in
-
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* wrong ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     (* 2 Add a batch message to [b], a commitment for that inbox
        containing the withdrawal at index 0, and finalize that
        commitment *)
@@ -1696,7 +1703,7 @@ module Withdraw = struct
        ~context_hash
        ~contents:(Script.lazy_expr Nat_ticket.contents)
        ~ty:(Script.lazy_expr Nat_ticket.ty)
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        Nat_ticket.amount
        ~destination:withdraw_contract
        withdraw_proof
@@ -1720,7 +1727,9 @@ module Withdraw = struct
         "(Some (Pair 0x%s (Pair %d %s)))"
         (Hex.show
            (Hex.of_string
-              (Data_encoding.Binary.to_string_exn Contract.encoding account1)))
+              (Data_encoding.Binary.to_string_exn
+                 Contract.encoding
+                 withdraw_contract)))
         Nat_ticket.contents_nat
         (Tx_rollup_l2_qty.to_string Nat_ticket.amount)
       |> Expr.from_string |> Option.some
@@ -1757,7 +1766,7 @@ module Withdraw = struct
       ~message_index:0
       ~contents:(Script.lazy_expr Nat_ticket.contents)
       ~ty:(Script.lazy_expr Nat_ticket.ty)
-      ~ticketer:account1
+      ~ticketer:withdraw_contract
       Nat_ticket.amount
       ~destination:withdraw_contract
       dummy_withdraw_proof
@@ -1784,7 +1793,14 @@ module Withdraw = struct
     Op.tx_rollup_submit_batch (B b) account1 tx_rollup batch
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
-    let withdraw = Nat_ticket.withdrawal ~ticketer:account1 tx_rollup in
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     context_finalize_batch_with_withdrawals
       ~account:account1
       ~tx_rollup
@@ -1806,7 +1822,7 @@ module Withdraw = struct
        ~message_index:0
        ~contents:(Script.lazy_expr Nat_ticket.contents)
        ~ty:(Script.lazy_expr Nat_ticket.ty)
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        Nat_ticket.amount
        ~destination:withdraw_contract
        withdraw_path
@@ -1828,8 +1844,14 @@ module Withdraw = struct
     Op.tx_rollup_submit_batch (B b) account1 tx_rollup batch
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
-    let withdraw = Nat_ticket.withdrawal ~ticketer:account1 tx_rollup in
-
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     context_finalize_batch_with_withdrawals
       ~account:account1
       ~tx_rollup
@@ -1856,7 +1878,7 @@ module Withdraw = struct
            ~message_index:0
            ~contents:(Script.lazy_expr Nat_ticket.contents)
            ~ty:(Script.lazy_expr Nat_ticket.ty)
-           ~ticketer:account1
+           ~ticketer:withdraw_contract
            amount
            ~destination:withdraw_contract
            withdraw_path
@@ -1881,7 +1903,7 @@ module Withdraw = struct
        ~message_index:0
        ~contents:(Script.lazy_expr Nat_ticket.contents)
        ~ty:(Script.lazy_expr @@ Expr.from_string "unit")
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        Nat_ticket.amount
        ~destination:withdraw_contract
        withdraw_path
@@ -1903,7 +1925,7 @@ module Withdraw = struct
        ~message_index:0
        ~contents:(Script.lazy_expr @@ Expr.from_string "2")
        ~ty:(Script.lazy_expr Nat_ticket.ty)
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        Nat_ticket.amount
        ~destination:withdraw_contract
        withdraw_path
@@ -1925,7 +1947,7 @@ module Withdraw = struct
        ~message_index:0
        ~contents:(Script.lazy_expr Nat_ticket.contents)
        ~ty:(Script.lazy_expr Nat_ticket.ty)
-       ~ticketer:withdraw_contract
+       ~ticketer:account1
        Nat_ticket.amount
        ~destination:withdraw_contract
        withdraw_path
@@ -1946,9 +1968,14 @@ module Withdraw = struct
     Op.tx_rollup_submit_batch (B b) account1 tx_rollup batch
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
-    let withdrawal1 : Tx_rollup_withdraw.t =
-      Nat_ticket.withdrawal ~ticketer:account1 tx_rollup
-    in
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdrawal1 ->
     let withdrawal2 : Tx_rollup_withdraw.t =
       {withdrawal1 with amount = Tx_rollup_l2_qty.of_int64_exn 5L}
     in
@@ -1978,7 +2005,7 @@ module Withdraw = struct
        ~message_index:0
        ~contents:(Script.lazy_expr Nat_ticket.contents)
        ~ty:(Script.lazy_expr Nat_ticket.ty)
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        Nat_ticket.amount
        ~destination:withdraw_contract
        invalid_withdraw_path
@@ -2003,7 +2030,7 @@ module Withdraw = struct
        ~message_index:0
        ~contents:(Script.lazy_expr Nat_ticket.contents)
        ~ty:(Script.lazy_expr Nat_ticket.ty)
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        Nat_ticket.amount
        ~destination:withdraw_contract
        invalid_withdraw_path
@@ -2020,7 +2047,14 @@ module Withdraw = struct
   let test_invalid_withdraw_already_consumed () =
     context_init1_withdraw ()
     >>=? fun (account1, tx_rollup, withdraw_contract, b) ->
-    let withdraw = Nat_ticket.withdrawal ~ticketer:account1 tx_rollup in
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     context_finalize_batch_with_withdrawals
       ~account:account1
       ~tx_rollup
@@ -2041,7 +2075,7 @@ module Withdraw = struct
       ~context_hash
       ~contents:(Script.lazy_expr Nat_ticket.contents)
       ~ty:(Script.lazy_expr Nat_ticket.ty)
-      ~ticketer:account1
+      ~ticketer:withdraw_contract
       Nat_ticket.amount
       ~destination:withdraw_contract
       withdraw_proof
@@ -2059,7 +2093,7 @@ module Withdraw = struct
       ~context_hash
       ~contents:(Script.lazy_expr Nat_ticket.contents)
       ~ty:(Script.lazy_expr Nat_ticket.ty)
-      ~ticketer:account1
+      ~ticketer:withdraw_contract
       Nat_ticket.amount
       ~destination:withdraw_contract
       withdraw_proof
@@ -2079,12 +2113,14 @@ module Withdraw = struct
   let test_invalid_withdraw_someone_elses () =
     context_init2_withdraw ()
     >>=? fun (account1, account2, tx_rollup, withdraw_contract, b) ->
-    let withdraw =
-      Nat_ticket.withdrawal
-        ~ticketer:account1 (* Explicit for clarity *)
-        ~recipient:account1
-        tx_rollup
-    in
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     context_finalize_batch_with_withdrawals
       ~account:account1
       ~tx_rollup
@@ -2107,7 +2143,7 @@ module Withdraw = struct
       ~context_hash
       ~contents:(Script.lazy_expr Nat_ticket.contents)
       ~ty:(Script.lazy_expr Nat_ticket.ty)
-      ~ticketer:account1
+      ~ticketer:withdraw_contract
       Nat_ticket.amount
       ~destination:withdraw_contract
       withdraw_proof
@@ -2133,7 +2169,14 @@ module Withdraw = struct
       b
       (is_implicit_exn account1)
     >>=? fun (withdraw_contract_unit_tickets, b) ->
-    let withdraw = Nat_ticket.withdrawal ~ticketer:account1 tx_rollup in
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract_unit_tickets
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     context_finalize_batch_with_withdrawals
       ~account:account1
       ~tx_rollup
@@ -2154,7 +2197,7 @@ module Withdraw = struct
       ~context_hash
       ~contents:(Script.lazy_expr Nat_ticket.contents)
       ~ty:(Script.lazy_expr Nat_ticket.ty)
-      ~ticketer:account1
+      ~ticketer:withdraw_contract_unit_tickets
       Nat_ticket.amount
       ~destination:withdraw_contract_unit_tickets
       withdraw_proof
@@ -2176,7 +2219,14 @@ module Withdraw = struct
   let test_invalid_withdraw_bad_entrypoint () =
     context_init1_withdraw ()
     >>=? fun (account1, tx_rollup, withdraw_contract, b) ->
-    let withdraw = Nat_ticket.withdrawal ~ticketer:account1 tx_rollup in
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     context_finalize_batch_with_withdrawals
       ~account:account1
       ~tx_rollup
@@ -2197,7 +2247,7 @@ module Withdraw = struct
       ~context_hash
       ~contents:(Script.lazy_expr Nat_ticket.contents)
       ~ty:(Script.lazy_expr Nat_ticket.ty)
-      ~ticketer:account1
+      ~ticketer:withdraw_contract
       Nat_ticket.amount
       ~destination:withdraw_contract
       withdraw_proof
@@ -2227,14 +2277,13 @@ module Withdraw = struct
     let contents_nat = 1 in
     let contents = Expr.from_string (string_of_int contents_nat) in
     let amount = Tx_rollup_l2_qty.of_int64_exn 10L in
-    let ticket_hash =
-      make_ticket_key
-        ~ty:(Tezos_micheline.Micheline.root ty)
-        ~contents:(Tezos_micheline.Micheline.root contents)
-        ~ticketer:account1
-        tx_rollup
-    in
-
+    make_ticket_key
+      (B b)
+      ~ty:(Tezos_micheline.Micheline.root ty)
+      ~contents:(Tezos_micheline.Micheline.root contents)
+      ~ticketer:withdraw_contract
+      tx_rollup
+    >>=? fun ticket_hash ->
     (* 2.2 Create a withdrawal for the ticket *)
     let withdraw : Tx_rollup_withdraw.t =
       {claimer = is_implicit_exn account1; ticket_hash; amount}
@@ -2272,7 +2321,7 @@ module Withdraw = struct
        ~context_hash
        ~contents:(Script.lazy_expr contents)
        ~ty:(Script.lazy_expr ty)
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        amount
        ~destination:withdraw_contract
        withdraw_proof
@@ -2292,7 +2341,14 @@ module Withdraw = struct
   let test_too_late_withdrawal () =
     context_init1_withdraw ()
     >>=? fun (account1, tx_rollup, withdraw_contract, b) ->
-    let withdraw = Nat_ticket.withdrawal ~ticketer:account1 tx_rollup in
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     context_finalize_batch_with_withdrawals
       ~account:account1
       ~tx_rollup
@@ -2317,7 +2373,7 @@ module Withdraw = struct
        ~context_hash
        ~contents:(Script.lazy_expr Nat_ticket.contents)
        ~ty:(Script.lazy_expr Nat_ticket.ty)
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        Nat_ticket.amount
        ~destination:withdraw_contract
        withdraw_proof
@@ -2359,7 +2415,14 @@ module Withdraw = struct
       return_unit
     in
 
-    let withdraw = Nat_ticket.withdrawal ~ticketer:account1 tx_rollup in
+    Nat_ticket.withdrawal
+      (B b)
+      ~ticketer:
+        withdraw_contract
+        (* impossible ticketer but we forge the ticket here, this will fail when ticket table*)
+      ~claimer:account1
+      tx_rollup
+    >>=? fun withdraw ->
     context_finalize_batch_with_withdrawals
       ~account:account1
       ~tx_rollup
@@ -2382,7 +2445,7 @@ module Withdraw = struct
        ~context_hash
        ~contents:(Script.lazy_expr Nat_ticket.contents)
        ~ty:(Script.lazy_expr Nat_ticket.ty)
-       ~ticketer:account1
+       ~ticketer:withdraw_contract
        Nat_ticket.amount
        ~destination:withdraw_contract
        withdraw_proof
@@ -2404,7 +2467,7 @@ module Withdraw = struct
 
   let tests =
     [
-      Tztest.tztest "Test withdraw" `Quick test_valid_withdraw;
+      Tztest.tztest "Test valid withdraw" `Quick test_valid_withdraw;
       Tztest.tztest
         "Test withdraw w/ missing commitment"
         `Quick

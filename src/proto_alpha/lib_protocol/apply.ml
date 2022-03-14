@@ -1057,8 +1057,13 @@ let apply_transaction_to_rollup ~consume_deserialization_gas ~ctxt ~parameters
     >>?= fun (parameters, ctxt) ->
     Script_ir_translator.parse_tx_rollup_deposit_parameters ctxt parameters
     >>?= fun (Tx_rollup.{ticketer; contents; ty; amount; destination}, ctxt) ->
-    Tx_rollup.hash_ticket ctxt dst_rollup ~contents ~ticketer ~ty
-    >>?= fun (ticket_hash, ctxt) ->
+    Ticket_balance_key.of_script_node
+      ctxt
+      ~owner:(Tx_rollup dst_rollup)
+      ~ticketer
+      ~ty
+      ~contents
+    >>=? fun (ticket_hash, ctxt) ->
     (* If the ticket deposit fails on L2 for some reason
        (e.g. [Balance_overflow] in the recipient), then it is
        returned to [payer]. As [payer] is implicit, it cannot own
@@ -1392,13 +1397,13 @@ let apply_external_manager_operation_content :
       >>?= fun (ty, ctxt) ->
       Script.force_decode_in_context ~consume_deserialization_gas ctxt contents
       >>?= fun (contents, ctxt) ->
-      Tx_rollup.hash_ticket
+      Ticket_balance_key.of_script_node
         ctxt
-        tx_rollup
-        ~contents:(Micheline.root contents)
+        ~owner:(Tx_rollup tx_rollup)
         ~ticketer
+        ~contents:(Micheline.root contents)
         ~ty:(Micheline.root ty)
-      >>?= fun (ticket_hash, ctxt) ->
+      >>=? fun (tx_rollup_ticket_hash, ctxt) ->
       (* Checking the operation is non-internal *)
       Option.value_e
         ~error:
@@ -1408,7 +1413,8 @@ let apply_external_manager_operation_content :
       >>?= fun source_pkh ->
       (* Computing the withdrawal hash *)
       let withdrawal =
-        Tx_rollup_withdraw.{claimer = source_pkh; ticket_hash; amount}
+        Tx_rollup_withdraw.
+          {claimer = source_pkh; ticket_hash = tx_rollup_ticket_hash; amount}
       in
       let (withdrawals_merkle_root, withdraw_index) =
         Tx_rollup_withdraw.check_path withdraw_path withdrawal

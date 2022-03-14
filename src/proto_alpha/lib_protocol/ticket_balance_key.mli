@@ -30,6 +30,16 @@ open Alpha_context
     global ticket-balance table that tracks ownership of tickets for different tokens.
  *)
 
+(** [of_script_node ctxt ~owner ~ticketer ~ty ~contents] returns the [key_hash] of the
+    given [owner], [ticketer], [ty] and [contents] that describe  a ticket. *)
+val of_script_node :
+  context ->
+  owner:Destination.t ->
+  ticketer:Contract.t ->
+  ty:Script.node ->
+  contents:Script.node ->
+  (Ticket_hash.t * context) tzresult Lwt.t
+
 (** [of_ex_token ctxt ~owner ex_token] returns the [key_hash] of the
     given [owner] and [ex_token]. *)
 val of_ex_token :
