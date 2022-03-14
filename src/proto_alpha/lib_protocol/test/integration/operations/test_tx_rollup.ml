@@ -1551,6 +1551,71 @@ module Rejection = struct
     ]
 end
 
+(** [test_state] tests some edge cases in state management around
+    rejecting commitments. *)
+let test_state () =
+  context_init1 () >>=? fun (b, account1) ->
+  originate b account1 >>=? fun (b, tx_rollup) ->
+  let pkh = is_implicit_exn account1 in
+  Incremental.begin_construction b >>=? fun i ->
+  let ctxt = Incremental.alpha_ctxt i in
+  let (message, _) = Tx_rollup_message.make_batch "bogus" in
+  let state = Tx_rollup_state.initial_state in
+  wrap (Tx_rollup_inbox.append_message ctxt tx_rollup state message)
+  >>=? fun (ctxt, state) ->
+  (* need to increment state so that the second message goes into a new inbox *)
+  let i = Incremental.set_alpha_ctxt i ctxt in
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  let ctxt = Incremental.alpha_ctxt i in
+  wrap (Tx_rollup_inbox.append_message ctxt tx_rollup state message)
+  >>=? fun (ctxt, state) ->
+  let inbox_hash = Tx_rollup_inbox.hash_inbox [message] in
+  let add_commitment ctxt state level predecessor =
+    let commitment =
+      Tx_rollup_commitment.
+        {
+          level;
+          messages = [Tx_rollup_message_result_hash.zero];
+          predecessor;
+          inbox_hash;
+        }
+    in
+    wrap
+      (Tx_rollup_commitment.add_commitment ctxt tx_rollup state pkh commitment)
+    >|=? fun (ctxt, state) -> (ctxt, state, commitment)
+  in
+  (* Create and reject a commitment at level 0 *)
+  add_commitment ctxt state Tx_rollup_level.root None
+  >>=? fun (ctxt, state, _) ->
+  wrap
+    (Tx_rollup_commitment.reject_commitment
+       ctxt
+       tx_rollup
+       state
+       Tx_rollup_level.root)
+  >>=? fun (ctxt, state) ->
+  (* Create a commitment at level 0; create and reject a commitment at level 1 *)
+  add_commitment ctxt state Tx_rollup_level.root None
+  >>=? fun (ctxt, state, commitment0) ->
+  let level1 = Tx_rollup_level.succ Tx_rollup_level.root in
+  let commitment0_hash = Tx_rollup_commitment.hash commitment0 in
+  add_commitment ctxt state level1 (Some commitment0_hash)
+  >>=? fun (ctxt, state, _) ->
+  wrap (Tx_rollup_commitment.reject_commitment ctxt tx_rollup state level1)
+  >>=? fun (ctxt, state) ->
+  wrap
+    (Tx_rollup_commitment.reject_commitment
+       ctxt
+       tx_rollup
+       state
+       Tx_rollup_level.root)
+  >>=? fun (ctxt, state) ->
+  ignore ctxt ;
+  ignore state ;
+
+  return ()
+
 module Withdraw = struct
   (** [context_init_withdraw n] initializes a context with [n + 1] accounts, one rollup and a
       withdrawal recipient contract. *)
@@ -2512,5 +2577,6 @@ let tests =
       `Quick
       test_too_many_commitments;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
+    Tztest.tztest "Test state" `Quick test_state;
   ]
   @ Withdraw.tests @ Rejection.tests

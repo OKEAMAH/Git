@@ -454,12 +454,22 @@ let record_commitment_rejection state level predecessor_hash =
   | (Some inbox_tail, Some commitment_head)
     when Tx_rollup_level_repr.(inbox_tail <= level && level <= commitment_head)
     -> (
-      match (commitment_tail_level state, Tx_rollup_level_repr.pred level) with
+      match (state.commitment_tail_level, Tx_rollup_level_repr.pred level) with
       | (Some commitment_tail, Some pred_level)
         when Tx_rollup_level_repr.(commitment_tail <= pred_level) ->
           unwrap_option "Missing predecessor commitment" predecessor_hash
           >>? fun pred_hash ->
           ok {state with commitment_head_level = Some (pred_level, pred_hash)}
+      | (Some _, None) ->
+          (* Rejecting the only commitment *)
+          check_none "Unexpected predecessor hash" predecessor_hash
+          >>? fun () ->
+          ok
+            {
+              state with
+              commitment_head_level = None;
+              commitment_tail_level = None;
+            }
       | (None, Some pred_level) ->
           check_none "Unexpected predecessor hash" predecessor_hash
           >>? fun () ->
