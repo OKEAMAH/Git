@@ -1638,7 +1638,7 @@ module Tx_rollup : sig
   type deposit_parameters = {
     contents : Script.node;
     ty : Script.node;
-    ticketer : Script.node;
+    ticketer : Contract.t;
     amount : Tx_rollup_l2_qty.t;
     destination : Tx_rollup_l2_address.Indexable.value;
   }
@@ -1656,7 +1656,7 @@ module Tx_rollup : sig
     context ->
     t ->
     contents:Script.node ->
-    ticketer:Script.node ->
+    ticketer:Contract.t ->
     ty:Script.node ->
     (Ticket_hash.t * context) tzresult
 
@@ -1673,7 +1673,7 @@ module Tx_rollup : sig
     val hash_ticket_uncarbonated :
       t ->
       contents:Script.node ->
-      ticketer:Script.node ->
+      ticketer:Contract.t ->
       ty:Script.node ->
       Ticket_hash.t tzresult
   end
@@ -2085,6 +2085,7 @@ module Tx_rollup_errors : sig
         computed : Tx_rollup_message_result_hash.t;
         expected : Tx_rollup_message_result_hash.t;
       }
+    | Deposit_wrong_ticketer of Tx_rollup.t
 end
 
 module Bond_id : sig

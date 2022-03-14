@@ -1392,17 +1392,11 @@ let apply_external_manager_operation_content :
       >>?= fun (ty, ctxt) ->
       Script.force_decode_in_context ~consume_deserialization_gas ctxt contents
       >>?= fun (contents, ctxt) ->
-      Script_ir_translator.unparse_data
-        ctxt
-        Optimized
-        Script_typed_ir.address_t
-        {destination = Contract ticketer; entrypoint = Entrypoint.default}
-      >>=? fun (ticketer_node, ctxt) ->
       Tx_rollup.hash_ticket
         ctxt
         tx_rollup
         ~contents:(Micheline.root contents)
-        ~ticketer:(Micheline.root @@ Micheline.strip_locations ticketer_node)
+        ~ticketer
         ~ty:(Micheline.root ty)
       >>?= fun (ticket_hash, ctxt) ->
       (* Checking the operation is non-internal *)
@@ -1455,9 +1449,9 @@ let apply_external_manager_operation_content :
       Script_typed_ir.ticket_t Micheline.dummy_location ty >>?= fun ty ->
       return (ticket, ty, ctxt) >>=? fun (ticket, ticket_ty, ctxt) ->
       Script_ir_translator.unparse_data ctxt Optimized ticket_ty ticket
-      >>=? fun (parameters, ctxt) ->
+      >>=? fun (parameters_node, ctxt) ->
       let parameters =
-        Script.lazy_expr (Micheline.strip_locations parameters)
+        Script.lazy_expr (Micheline.strip_locations parameters_node)
       in
       (* FIXME/TORU: #2488 the returned op will fail when ticket hardening is
          merged, it must be commented or fixed *)
@@ -1465,7 +1459,6 @@ let apply_external_manager_operation_content :
         Script_typed_ir.Internal_operation
           {
             source;
-            (* TODO is 0 correct ? *)
             nonce = 0;
             operation =
               Transaction
@@ -1477,7 +1470,7 @@ let apply_external_manager_operation_content :
                       destination = Contract destination;
                       entrypoint;
                     };
-                  location = Micheline.location ticketer_node;
+                  location = Micheline.location parameters_node;
                   parameters_ty = ticket_ty;
                   parameters = ticket;
                 };

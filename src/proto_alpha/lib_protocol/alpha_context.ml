@@ -248,6 +248,7 @@ module Tx_rollup = struct
   let hash_ticket ctxt tx_rollup ~contents ~ticketer ~ty =
     let open Micheline in
     let owner = String (dummy_location, to_b58check tx_rollup) in
+    let ticketer = String (dummy_location, Contract.to_b58check ticketer) in
     Ticket_hash_builder.make ctxt ~ticketer ~ty ~contents ~owner
 
   module Internal_for_tests = struct
@@ -256,6 +257,7 @@ module Tx_rollup = struct
     let hash_ticket_uncarbonated tx_rollup ~contents ~ticketer ~ty =
       let open Micheline in
       let owner = String (dummy_location, to_b58check tx_rollup) in
+      let ticketer = String (dummy_location, Contract.to_b58check ticketer) in
       Ticket_hash_builder.Internal_for_tests.make_uncarbonated
         ~ticketer
         ~ty

@@ -158,7 +158,7 @@ let deposit_entrypoint = Entrypoint_repr.of_string_strict_exn "deposit"
 type deposit_parameters = {
   contents : Script_repr.node;
   ty : Script_repr.node;
-  ticketer : Script_repr.node;
+  ticketer : Contract_repr.t;
   amount : Tx_rollup_l2_qty.t;
   destination : Tx_rollup_l2_address.Indexable.value;
 }

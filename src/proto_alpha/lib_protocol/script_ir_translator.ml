@@ -2342,7 +2342,14 @@ let parse_tx_rollup_deposit_parameters :
           ok @@ Tx_rollup_l2_qty.of_int64_exn (Z.to_int64 v)
       | Int (_, v) -> error @@ Tx_rollup_invalid_ticket_amount v
       | expr -> error @@ Invalid_kind (location expr, [Int_kind], kind expr))
-      >|? fun amount ->
+      >>? fun amount ->
+      parse_address ctxt ticketer
+      >>? fun ({destination = ticketer; entrypoint = _}, ctxt) ->
+      (match ticketer with
+      | Destination.Contract c -> ok c
+      | Tx_rollup tx_rollup ->
+          error @@ Tx_rollup_errors.Deposit_wrong_ticketer tx_rollup)
+      >|? fun ticketer ->
       (Tx_rollup.{ticketer; contents; ty; amount; destination}, ctxt)
   | expr -> error @@ Invalid_kind (location expr, [Seq_kind], kind expr)
 
