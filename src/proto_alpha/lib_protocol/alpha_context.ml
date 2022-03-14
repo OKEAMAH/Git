@@ -398,7 +398,12 @@ module Sapling = struct
   end
 end
 
-module Bond_id = Bond_id_repr
+module Bond_id = struct
+  include Bond_id_repr
+
+  let fold_on_bond_ids = Contract_storage.fold_on_bond_ids
+end
+
 module Receipt = Receipt_repr
 
 module Delegate = struct
