@@ -106,7 +106,8 @@ let check_batch_in_inbox :
 (** [context_init n] initializes a context with no consensus rewards
     to not interfere with balances prediction. It returns the created
     context and [n] contracts. *)
-let context_init ?(tx_rollup_max_unfinalized_levels = 2100) n =
+let context_init ?(tx_rollup_max_unfinalized_levels = 2100)
+    ?(tx_rollup_max_proof_size = 30_000) n =
   Context.init_with_constants
     {
       Context.default_test_contants with
@@ -115,6 +116,7 @@ let context_init ?(tx_rollup_max_unfinalized_levels = 2100) n =
       tx_rollup_finality_period = 1;
       tx_rollup_withdraw_period = 1;
       tx_rollup_max_finalized_levels = 2;
+      tx_rollup_max_proof_size;
       tx_rollup_max_unfinalized_levels;
       endorsing_reward_per_slot = Tez.zero;
       baking_reward_bonus_per_slot = Tez.zero;
@@ -125,8 +127,8 @@ let context_init ?(tx_rollup_max_unfinalized_levels = 2100) n =
 (** [context_init1] initializes a context with no consensus rewards
     to not interfere with balances prediction. It returns the created
     context and 1 contract. *)
-let context_init1 () =
-  context_init 1 >|=? function
+let context_init1 ?tx_rollup_max_proof_size () =
+  context_init ?tx_rollup_max_proof_size 1 >|=? function
   | (b, contract_1 :: _) -> (b, contract_1)
   | (_, _) -> assert false
 
@@ -1777,17 +1779,12 @@ module Rejection = struct
     let* ctxt = C.checkout_exn index h in
     return ctxt
 
-  (** [test_rejection_too_large] tries to test rejecting a message
-      that would require a too-large proof.  TODO/TORU: refine this.
-      (To facilitate this, we'll set up a max proof size constant that's
-      actually small enough to achieve -- but first, we've got to be able
-      to actually do proofs for L2 batches!)
-      *)
-  let test_rejection_too_large () =
+  let test_large_rejection size =
     let (sk1, pk1, pkh1) = gen_l2_account () in
-    let (_sk2, _pk2, pkh2) = gen_l2_account () in
+    let (sk2, pk2, pkh2) = gen_l2_account () in
     init_l2_ctxt () >>= fun (l2_ctxt, l2_store) ->
-    context_init1 () >>=? fun (b, account) ->
+    context_init1 ?tx_rollup_max_proof_size:(Some size) ()
+    >>=? fun (b, account) ->
     originate b account >>=? fun (b, tx_rollup) ->
     Contract_helpers.originate_contract
       "contracts/tx_rollup_deposit.tz"
@@ -1820,7 +1817,6 @@ module Rejection = struct
     add_store_to_ctxt l2_ctxt l2_store >>= fun l2_ctxt ->
     let ticket_hash_index = Indexable.from_value ticket_hash in
     let pkh2_index = Indexable.from_value pkh2 in
-    (* TODO/TORU: we would like to make many more operations here *)
     let operation_content1 =
       Tx_rollup_l2_batch.V1.
         {
@@ -1850,8 +1846,45 @@ module Rejection = struct
       Data_encoding.Binary.to_string_exn Tx_rollup_l2_batch.encoding (V1 batch)
     in
     let (message2, _size) = Tx_rollup_message.make_batch message2_bytes in
-    make_proof l2_ctxt message2 >>= fun proof ->
-    Op.tx_rollup_submit_batch (B b) account tx_rollup message2_bytes
+    make_proof l2_ctxt message2 >>= fun short_proof ->
+    (* This short proof should be a prefix of the proof for the actual
+       message which we will submit.  We stipulate that the actual proof
+       would be too large. *)
+    let pkh1_index = Indexable.from_value pkh1 in
+    let operation_content2 =
+      Tx_rollup_l2_batch.V1.
+        {
+          destination = Layer2 pkh1_index;
+          ticket_hash = ticket_hash_index;
+          qty = Tx_rollup_l2_qty.one;
+        }
+    in
+    let op2 =
+      Tx_rollup_l2_batch.V1.
+        {
+          signer = Indexable.from_value pk2;
+          counter = 0L;
+          contents = [operation_content2];
+        }
+    in
+    let transaction = [op1; op2] in
+    let signatures =
+      Tx_rollup_l2_helpers.sign_transaction [sk1; sk2] transaction
+    in
+    let signature =
+      assert_some @@ Bls_signature.aggregate_signature_opt signatures
+    in
+    let batch =
+      Tx_rollup_l2_batch.V1.
+        {contents = [transaction]; aggregated_signature = signature}
+    in
+    let message2_long_bytes =
+      Data_encoding.Binary.to_string_exn Tx_rollup_l2_batch.encoding (V1 batch)
+    in
+    let (message2_long, _size) =
+      Tx_rollup_message.make_batch message2_long_bytes
+    in
+    Op.tx_rollup_submit_batch (B b) account tx_rollup message2_long_bytes
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
     Incremental.begin_construction b >>=? fun i ->
@@ -1859,7 +1892,9 @@ module Rejection = struct
     make_commitment_for_batch i level tx_rollup []
     >>=? fun (commitment, _batches_result) ->
     let before =
-      match proof.before with `Value before -> before | `Node before -> before
+      match short_proof.before with
+      | `Value before -> before
+      | `Node before -> before
     in
     let result_hash_after =
       Tx_rollup_commitment.hash_message_result
@@ -1878,25 +1913,40 @@ module Rejection = struct
     >>=? fun (commitment, _batches_result) ->
     Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
-    (* Check with a reasonable proof *)
+    (* Check with a too-short proof *)
     Op.tx_rollup_reject
       (I i)
       account
       tx_rollup
       level
-      message2
+      message2_long
       ~message_position:0
-      ~proof
+      ~proof:short_proof
       ~previous_message_result:
         {
           context_hash = before;
           withdrawals_merkle_root =
             Tx_rollup_withdraw.empty_withdrawals_merkle_root;
         }
-    >>=? fun op ->
+    >|=? fun op -> (i, op)
+
+  (** [test_rejection_too_large] tries to test rejecting a message
+      that would require a too-large proof.
+      *)
+  let test_rejection_too_large () =
+    (* TODO/TORU: empirically, 100 is always small enough, and 30000 is always
+       large enough.  But the actual proof size appears to be non-deterministic,
+       which can't possibly be good news. *)
+    test_large_rejection 100 >>=? fun (i, op) ->
     Incremental.add_operation i op >>=? fun i ->
     ignore i ;
-
+    test_large_rejection 30000 >>=? fun (i, op) ->
+    Incremental.add_operation
+      i
+      op
+      ~expect_failure:(check_proto_error Tx_rollup_errors.Invalid_proof)
+    >>=? fun i ->
+    ignore i ;
     return ()
 
   let tests =

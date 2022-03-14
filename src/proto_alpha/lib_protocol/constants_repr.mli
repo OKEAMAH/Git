@@ -147,6 +147,9 @@ type parametric = {
   (* The number of blocks used to compute the ema factor determining
      the cost per byte for new messages in the inbox. *)
   tx_rollup_cost_per_byte_ema_factor : int;
+  (* The maximum size, in bytes, of a Merkle proof.  Operations which would
+     require proofs larger than this should be no-ops. *)
+  tx_rollup_max_proof_size : int;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
   sc_rollup_challenge_window_in_blocks : int;

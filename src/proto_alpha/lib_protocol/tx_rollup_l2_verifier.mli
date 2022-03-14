@@ -47,4 +47,5 @@ val verify_proof :
   Tx_rollup_l2_proof.t ->
   agreed:Tx_rollup_commitment.message_result ->
   rejected:Tx_rollup_message_result_hash.t ->
+  max_proof_size:int ->
   bool Lwt.t

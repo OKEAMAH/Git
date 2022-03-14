@@ -59,19 +59,15 @@ module Verifier_context = Tx_rollup_l2_context.Make (Verifier_storage)
 module Verifier_apply = Tx_rollup_l2_apply.Make (Verifier_context)
 
 let verify_proof message proof
-    ~(agreed : Alpha_context.Tx_rollup_commitment.message_result) ~rejected =
+    ~(agreed : Alpha_context.Tx_rollup_commitment.message_result) ~rejected
+    ~max_proof_size =
   let agreed = agreed.context_hash in
   Context.verify_stream_proof proof (fun tree ->
       let before = Context.Tree.hash tree in
       assert (Context_hash.(before = agreed)) ;
       (Verifier_apply.apply_message tree message >>= function
        | Ok (tree, message_result) -> Lwt.return (tree, Some message_result)
-       | Error e ->
-           (* TODO/TORU: "empty stream when looking for hash %a" *)
-           (* TODO/TORU: remove this *)
-           Logging.(
-             log Info "Got error: %a\n" pp_trace (Error_monad.trace_of_error e)) ;
-           Lwt.return (tree, None))
+       | Error _ -> Lwt.return (tree, None))
       >>= fun (tree, message_result) ->
       let after = Context.Tree.hash tree in
       Lwt.return (tree, (after, message_result)))
@@ -92,6 +88,11 @@ let verify_proof message proof
         (not
            Alpha_context.Tx_rollup_message_result_hash.(
              equal rejected result_hash))
+  | Error (`Stream_too_short _) ->
+      let proof_size =
+        Data_encoding.Binary.length Tx_rollup_l2_proof.encoding proof
+      in
+      Lwt.return Compare.Int.(proof_size > max_proof_size)
   | Error _ ->
       (* TODO/TORU: need to grovel thru error and check for too-large proof*)
       Lwt.return false

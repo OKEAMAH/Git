@@ -1687,6 +1687,7 @@ let apply_external_manager_operation_content :
         proof
         ~agreed:previous_message_result
         ~rejected
+        ~max_proof_size:(Alpha_context.Constants.tx_rollup_max_proof_size ctxt)
       >>= fun verified ->
       fail_unless verified Tx_rollup_errors.Invalid_proof >>=? fun () ->
       (* Proof is correct, removing *)
