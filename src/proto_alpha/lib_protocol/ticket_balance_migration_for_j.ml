@@ -57,7 +57,10 @@ let update_contract_tickets ctxt contract =
         has_tickets
         storage
       >>=? fun (tickets, ctxt) ->
-      List.fold_left_es (add_ticket_balance contract) ctxt tickets
+      List.fold_left_es
+        (add_ticket_balance (Destination.Contract contract))
+        ctxt
+        tickets
 
 let is_originated contract =
   match Contract.is_originated contract with Some _ -> true | _ -> false

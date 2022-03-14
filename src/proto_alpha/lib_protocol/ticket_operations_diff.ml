@@ -26,14 +26,14 @@
 open Alpha_context
 
 type ticket_transfer = {
-  destination : Contract.t;
+  destination : Destination.t;
   tickets : Ticket_scanner.ex_ticket list;
 }
 
 type ticket_token_diff = {
   ticket_token : Ticket_token.ex_token;
   total_amount : Script_int.n Script_int.num;
-  destinations : (Contract.t * Script_int.n Script_int.num) list;
+  destinations : (Destination.t * Script_int.n Script_int.num) list;
 }
 
 type error += Failed_to_get_script of Contract.t | Contract_not_originated
@@ -67,9 +67,9 @@ let () =
 
 (** A carbonated map where the keys are contracts. *)
 module Contract_map = Carbonated_map.Make (struct
-  type t = Contract.t
+  type t = Destination.t
 
-  let compare = Contract.compare
+  let compare = Destination.compare
 
   let compare_cost _ = Ticket_costs.Constants.cost_compare_key_contract
 end)
@@ -103,7 +103,7 @@ module Ticket_token_map = struct
         - The internal contract-indexed map cannot be empty.
 
    *)
-  let add ctxt ~ticket_token ~destination ~amount map =
+  let add ctxt ~ticket_token ~(destination : Destination.t) ~amount map =
     Ticket_token_map.update
       ctxt
       ticket_token
@@ -209,13 +209,14 @@ let tickets_of_transaction ctxt ~destination ~entrypoint ~location
         ctxt
         has_tickets
         parameters
-      >>=? fun (tickets, ctxt) -> return (Some {destination; tickets}, ctxt)
+      >>=? fun (tickets, ctxt) ->
+      return (Some {destination = Contract destination; tickets}, ctxt)
 
 (** Extract tickets of an origination operation by scanning the storage. *)
 let tickets_of_origination ctxt ~preorigination script =
   match preorigination with
   | None -> fail Contract_not_originated
-  | Some destination ->
+  | Some contract ->
       (* TODO: #2351
          Avoid having to parse the script here.
          We're not able to rely on caching due to issues with lazy storage.
@@ -247,7 +248,8 @@ let tickets_of_origination ctxt ~preorigination script =
         ~include_lazy:true
         has_tickets
         storage
-      >|=? fun (tickets, ctxt) -> (Some {tickets; destination}, ctxt)
+      >|=? fun (tickets, ctxt) ->
+      (Some {tickets; destination = Destination.Contract contract}, ctxt)
 
 (* TODO: #2352
    Extend operations scanning to support rollup-operations once ready.

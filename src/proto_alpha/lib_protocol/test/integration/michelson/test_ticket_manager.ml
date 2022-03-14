@@ -102,7 +102,7 @@ let ticket_balance_of_storage ctxt contract =
                let* (key, ctxt) =
                  Ticket_balance_key.ticket_balance_key
                    ctxt
-                   ~owner:contract
+                   ~owner:(Contract contract)
                    ex_token
                in
                let acc = (key, amount) :: acc in

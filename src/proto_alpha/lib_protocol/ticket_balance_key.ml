@@ -48,7 +48,6 @@ let ticket_balance_key ctxt ~owner
   let ticketer_address =
     Script_typed_ir.{destination = ticketer; entrypoint = Entrypoint.default}
   in
-  let owner = Destination.Contract owner in
   let owner_address =
     Script_typed_ir.{destination = owner; entrypoint = Entrypoint.default}
   in

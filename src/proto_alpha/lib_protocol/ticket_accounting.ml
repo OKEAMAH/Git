@@ -121,7 +121,7 @@ let update_ticket_balances_for_self_contract ctxt ~self ticket_diffs =
         ctxt
         ~total_storage_diff
         ticket_token
-        [(self, amount)])
+        [(Destination.Contract self, amount)])
     (Z.zero, ctxt)
     ticket_diffs
 

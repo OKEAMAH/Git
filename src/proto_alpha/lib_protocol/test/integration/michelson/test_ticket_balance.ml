@@ -77,7 +77,9 @@ let get_balance ctxt ~token ~owner =
 let assert_token_balance ~loc block token owner expected =
   let* incr = Incremental.begin_construction block in
   let ctxt = Incremental.alpha_ctxt incr in
-  let* (balance, _) = get_balance ctxt ~token ~owner in
+  let* (balance, _) =
+    get_balance ctxt ~token ~owner:(Destination.Contract owner)
+  in
   match (balance, expected) with
   | (Some b, Some e) -> Assert.equal_int ~loc (Z.to_int b) e
   | (Some b, None) ->

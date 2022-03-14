@@ -32,6 +32,6 @@
     given [owner] and [ex_token]. *)
 val ticket_balance_key :
   Alpha_context.context ->
-  owner:Alpha_context.Contract.t ->
+  owner:Alpha_context.Destination.t ->
   Ticket_token.ex_token ->
   (Alpha_context.Ticket_hash.t * Alpha_context.context) tzresult Lwt.t
