@@ -70,7 +70,7 @@ let originate = Contract_helpers.originate_contract_from_string
 
 let get_balance ctxt ~token ~owner =
   let* (key_hash, ctxt) =
-    wrap @@ Ticket_balance_key.ticket_balance_key ctxt ~owner token
+    wrap @@ Ticket_balance_key.of_ex_token ctxt ~owner token
   in
   wrap (Ticket_balance.get_balance ctxt key_hash)
 

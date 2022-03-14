@@ -931,7 +931,7 @@ let test_update_ticket_self_diff () =
   (* After update, we should have 10 added red tokens. *)
   let* (red_self_token_hash, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract self)
          red_token
@@ -988,7 +988,7 @@ let test_update_self_ticket_transfer () =
   let* () =
     let* (red_receiver_token_hash, ctxt) =
       wrap
-      @@ Ticket_balance_key.ticket_balance_key
+      @@ Ticket_balance_key.of_ex_token
            ctxt
            ~owner:(Destination.Contract ticket_receiver)
            red_token
@@ -1016,14 +1016,14 @@ let test_update_valid_transfer () =
   let* red_token = string_ticket_token ticketer "red" in
   let* (red_self_token_hash, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract self)
          red_token
   in
   let* (red_receiver_token_hash, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract destination)
          red_token
@@ -1078,7 +1078,7 @@ let test_update_transfer_tickets_to_self () =
   let* red_token = string_ticket_token ticketer "red" in
   let* (red_self_token_hash, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract self)
          red_token
@@ -1175,7 +1175,7 @@ let test_update_valid_origination () =
   let* red_token = string_ticket_token ticketer "red" in
   let* (red_self_token_hash, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract self)
          red_token
@@ -1206,7 +1206,7 @@ let test_update_valid_origination () =
      from [self] to [destination]. *)
   let* (red_originated_token_hash, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract originated)
          red_token
@@ -1231,7 +1231,7 @@ let test_update_self_origination () =
   let* red_token = string_ticket_token ticketer "red" in
   let* (red_originated_token_hash, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract originated)
          red_token
@@ -1280,7 +1280,7 @@ let test_ticket_token_map_of_list_with_duplicates () =
   (* After update, we should have 10 + 5 added red tokens. *)
   let* (red_self_token_hash, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract self)
          red_token

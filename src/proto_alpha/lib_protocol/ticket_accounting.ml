@@ -88,7 +88,7 @@ let ticket_balances_of_value ctxt ~include_lazy ty value =
 let update_ticket_balances ctxt ~total_storage_diff token destinations =
   List.fold_left_es
     (fun (tot_storage_diff, ctxt) (owner, delta) ->
-      Ticket_balance_key.ticket_balance_key ctxt ~owner token
+      Ticket_balance_key.of_ex_token ctxt ~owner token
       >>=? fun (key_hash, ctxt) ->
       Ticket_balance.adjust_balance ctxt key_hash ~delta
       >>=? fun (storage_diff, ctxt) ->

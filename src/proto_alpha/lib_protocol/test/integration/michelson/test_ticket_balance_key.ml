@@ -63,7 +63,7 @@ let make_key ctxt ~ticketer ~ty ~content ~owner =
   let* owner = make_contract owner in
   let* (key, ctxt) =
     wrap
-    @@ Ticket_balance_key.ticket_balance_key
+    @@ Ticket_balance_key.of_ex_token
          ctxt
          ~owner:(Destination.Contract owner)
          ex_token
