@@ -1626,7 +1626,8 @@ module Rejection = struct
       when the message hash does not match the one stored in the inbox *)
   let test_wrong_message_hash () =
     init_with_valid_commitment ()
-    >>=? fun (i, contract1, tx_rollup, level, _message) ->
+    >>=? fun (i, contract1, tx_rollup, level, prev_message) ->
+    let (prev_message, _size) = Tx_rollup_message.make_batch prev_message in
     let (message, _size) = Tx_rollup_message.make_batch "wrong message" in
     valid_empty_proof () >>= fun proof ->
     Op.tx_rollup_reject
@@ -1647,11 +1648,14 @@ module Rejection = struct
     Incremental.add_operation
       i
       op
-      ~expect_failure:(check_proto_error Tx_rollup_errors.Wrong_message_hash)
-    >>=? fun i ->
-    ignore i ;
-
-    return ()
+      ~expect_failure:
+        (check_proto_error
+           (Tx_rollup_errors.Wrong_message_hash
+              {
+                expected = Tx_rollup_message.hash_uncarbonated prev_message;
+                actual = Tx_rollup_message.hash_uncarbonated message;
+              }))
+    >>=? fun _ -> return_unit
 
   (** [test_wrong_message_position] tests that rejection successfully fails
       when the message position does exist in the inbox *)

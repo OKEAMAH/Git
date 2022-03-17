@@ -60,7 +60,10 @@ type error +=
       position : int;
       length : int;
     }
-  | Wrong_message_hash
+  | Wrong_message_hash of {
+      expected : Tx_rollup_message_repr.hash;
+      actual : Tx_rollup_message_repr.hash;
+    }
   | No_finalized_commitment_for_level of {
       level : Tx_rollup_level_repr.t;
       window : (Tx_rollup_level_repr.t * Tx_rollup_level_repr.t) option;
@@ -387,9 +390,13 @@ let () =
     ~description:
       "This rejection has sent a message with a hash that doesn't match the \
        stored one"
-    unit
-    (function Wrong_message_hash -> Some () | _ -> None)
-    (fun () -> Wrong_message_hash) ;
+    (obj2
+       (req "expected" Tx_rollup_message_repr.hash_encoding)
+       (req "actual" Tx_rollup_message_repr.hash_encoding))
+    (function
+      | Wrong_message_hash {expected; actual} -> Some (expected, actual)
+      | _ -> None)
+    (fun (expected, actual) -> Wrong_message_hash {expected; actual}) ;
   (* No_finalized_commitment_for_level *)
   register_error_kind
     `Temporary

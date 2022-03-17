@@ -1961,7 +1961,10 @@ module Tx_rollup_errors : sig
         position : int;
         length : int;
       }
-    | Wrong_message_hash
+    | Wrong_message_hash of {
+        expected : Tx_rollup_message.hash;
+        actual : Tx_rollup_message.hash;
+      }
     | No_finalized_commitment_for_level of {
         level : Tx_rollup_level.t;
         window : (Tx_rollup_level.t * Tx_rollup_level.t) option;

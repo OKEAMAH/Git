@@ -287,5 +287,5 @@ let check_message_hash :
   Tx_rollup_message_builder.hash ctxt message >>?= fun (ctxt, actual_hash) ->
   fail_unless
     (Tx_rollup_message_repr.hash_equal actual_hash expected_hash)
-    Wrong_message_hash
+    (Wrong_message_hash {expected = expected_hash; actual = actual_hash})
   >>=? fun () -> return ctxt
