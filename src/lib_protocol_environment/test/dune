@@ -2,7 +2,7 @@
 ; Edit file manifest/main.ml instead.
 
 (tests
- (names test test_mem_context_array_theory test_cache test_proxy_context)
+ (names test test_mem_context_array_theory test_cache)
  (package tezos-protocol-environment)
  (libraries
   bls12-381-unix
@@ -12,7 +12,6 @@
   alcotest-lwt
   tezos-test-helpers
   qcheck-alcotest
-  tezos-shell-context
   lwt.unix)
  (flags
   (:standard -open Tezos_base.TzPervasives -open Tezos_protocol_environment)))
