@@ -53,7 +53,6 @@ type error +=
       provided : Tx_rollup_commitment_repr.Commitment_hash.t option;
       expected : Tx_rollup_commitment_repr.Commitment_hash.t option;
     }
-  | Invalid_proof
   | Internal_error of string
   | Wrong_message_position of {
       level : Tx_rollup_level_repr.t;
@@ -80,6 +79,13 @@ type error +=
       computed : Tx_rollup_commitment_repr.Message_result_hash.t;
       expected : Tx_rollup_commitment_repr.Message_result_hash.t;
     }
+  | Wrong_rejection_before_hash of {
+      expected : Context_hash.t;
+      actual : Context_hash.t;
+    }
+  | Proof_failed_to_reject
+  | Proof_produced_rejected_state
+  | Proof_invalid_before of {agreed : Context_hash.t; provided : Context_hash.t}
 
 let () =
   let open Data_encoding in
@@ -168,15 +174,6 @@ let () =
     empty
     (function No_uncommitted_inbox -> Some () | _ -> None)
     (fun () -> No_uncommitted_inbox) ;
-  (* Invalid_proof *)
-  register_error_kind
-    `Temporary
-    ~id:"tx_rollup_invalid_proof"
-    ~title:"The proof submitted for a rejection is invalid"
-    ~description:"The proof submitted for a rejection is invalid"
-    empty
-    (function Invalid_proof -> Some () | _ -> None)
-    (fun () -> Invalid_proof) ;
   (* Tx_rollup_message_size_exceed_limit *)
   register_error_kind
     `Temporary
@@ -517,4 +514,54 @@ let () =
           Some (provided, computed, expected)
       | _ -> None)
     (fun (provided, computed, expected) ->
-      Wrong_rejection_hashes {provided; computed; expected})
+      Wrong_rejection_hashes {provided; computed; expected}) ;
+  (* Wrong_rejection_before_hash *)
+  register_error_kind
+    `Temporary
+    ~id:"tx_rollup_wrong_rejection_before_hash"
+    ~title:"The previous message result provided is invalid"
+    ~description:
+      "The previous message result provided is different from the agreed one"
+    (obj2
+       (req "expected" Context_hash.encoding)
+       (req "actual" Context_hash.encoding))
+    (function
+      | Wrong_rejection_before_hash {actual; expected} -> Some (actual, expected)
+      | _ -> None)
+    (fun (actual, expected) -> Wrong_rejection_before_hash {actual; expected}) ;
+  (* Proof_failed_to_reject *)
+  register_error_kind
+    `Temporary
+    ~id:"tx_rollup_verify_failed_to_reject"
+    ~title:"Proof failed to reject the commitment"
+    ~description:
+      "The proof verification failed and was unable to reject the commitment"
+    empty
+    (function Proof_failed_to_reject -> Some () | _ -> None)
+    (fun () -> Proof_failed_to_reject) ;
+  (* Proof_produced_rejected_state *)
+  register_error_kind
+    `Temporary
+    ~id:"tx_rollup_proof_produced_rejected_state"
+    ~title:"Proof produced the rejected state"
+    ~description:
+      "The proof submitted did not refute the rejected commitment. The proof \
+       produced the same commited state"
+    empty
+    (function Proof_produced_rejected_state -> Some () | _ -> None)
+    (fun () -> Proof_produced_rejected_state) ;
+  (* Proof_invalid_before *)
+  register_error_kind
+    `Temporary
+    ~id:"tx_rollup_proof_invalid_before"
+    ~title:"Proof started from an invalid hash"
+    ~description:
+      "The proof started from a hash which is not the one agreed on (i.e. in \
+       the previous commitment)"
+    (obj2
+       (req "agreed" Context_hash.encoding)
+       (req "provided" Context_hash.encoding))
+    (function
+      | Proof_invalid_before {agreed; provided} -> Some (agreed, provided)
+      | _ -> None)
+    (fun (agreed, provided) -> Proof_invalid_before {agreed; provided})

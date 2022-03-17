@@ -1954,7 +1954,6 @@ module Tx_rollup_errors : sig
         expected : Tx_rollup_commitment_hash.t option;
       }
     | Invalid_rejection_level_argument
-    | Invalid_proof
     | Internal_error of string
     | Wrong_message_position of {
         level : Tx_rollup_level.t;
@@ -1979,6 +1978,12 @@ module Tx_rollup_errors : sig
         provided : Tx_rollup_commitment.message_result;
         computed : Tx_rollup_message_result_hash.t;
         expected : Tx_rollup_message_result_hash.t;
+      }
+    | Proof_failed_to_reject
+    | Proof_produced_rejected_state
+    | Proof_invalid_before of {
+        agreed : Context_hash.t;
+        provided : Context_hash.t;
       }
 end
 

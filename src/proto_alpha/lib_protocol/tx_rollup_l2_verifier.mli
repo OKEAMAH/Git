@@ -40,12 +40,11 @@ end
 (** [verify_proof message proof ~agreed ~rejected] verifies a Merkle
     proof for a L2 message, starting from the state [agreed].  If the
     [proof] is correct, and the final Merkle hash is not equal to
-    [rejected], then [verify_proof] returns true.
-*)
+    [rejected], then [verify_proof] passes. *)
 val verify_proof :
   Tx_rollup_message.t ->
   Tx_rollup_l2_proof.t ->
   agreed:Tx_rollup_commitment.message_result ->
   rejected:Tx_rollup_message_result_hash.t ->
   max_proof_size:int ->
-  bool Lwt.t
+  unit tzresult Lwt.t

@@ -1481,7 +1481,8 @@ module Rejection = struct
     Incremental.add_operation
       i
       op
-      ~expect_failure:(check_proto_error Tx_rollup_errors.Invalid_proof)
+      ~expect_failure:
+        (check_proto_error Tx_rollup_errors.Proof_failed_to_reject)
     >>=? fun i ->
     ignore i ;
 
@@ -1749,7 +1750,8 @@ module Rejection = struct
     Incremental.add_operation
       i
       op
-      ~expect_failure:(check_proto_error Tx_rollup_errors.Invalid_proof)
+      ~expect_failure:
+        (check_proto_error Tx_rollup_errors.Proof_failed_to_reject)
     >>=? fun i ->
     (* Check with a reasonable proof *)
     make_proof l2_ctxt deposit_message >>= fun proof ->
@@ -1948,7 +1950,8 @@ module Rejection = struct
     Incremental.add_operation
       i
       op
-      ~expect_failure:(check_proto_error Tx_rollup_errors.Invalid_proof)
+      ~expect_failure:
+        (check_proto_error Tx_rollup_errors.Proof_failed_to_reject)
     >>=? fun i ->
     ignore i ;
     return ()
