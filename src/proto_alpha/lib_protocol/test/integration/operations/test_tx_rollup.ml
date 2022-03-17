@@ -240,12 +240,14 @@ let raw_level level = assert_ok @@ Raw_level.of_int32 level
 
 let merkle_root_empty_withdraw_list = Tx_rollup_withdraw.merkelize_list []
 
-(* Make a valid commitment for a batch.  TODO/TORU: roots are still wrong, of
-   course, until we get Merkle proofs In the mean time provides the list of
-   withdraw in a association list of [batch_index -> withdraw_list].
-   Be careful not to provide a too big withdraw_list as the construction
-   is expensive *)
-let make_commitment_for_batch i level tx_rollup withdraw_list =
+(** Create an incomplet (but valid) commitment for a given level. It is
+    incomplete in the sens that the merkle roots for each message are
+    {!Tx_rollup_commitment.empty_l2_context_hash}.
+    In the mean time provides the list of
+    withdraw in a association list of [batch_index -> withdraw_list].
+    Be careful not to provide a too big withdraw_list as the construction
+    is expensive *)
+let make_incomplete_commitment_for_batch i level tx_rollup withdraw_list =
   let ctxt = Incremental.alpha_ctxt i in
   wrap
     (Alpha_context.Tx_rollup_inbox.Internal_for_tests.get_metadata
@@ -965,7 +967,7 @@ let test_commitment_duplication () =
   >>=? fun operation ->
   Block.bake ~operation b >>=? fun b ->
   Incremental.begin_construction b >>=? fun i ->
-  make_commitment_for_batch i Tx_rollup_level.root tx_rollup []
+  make_incomplete_commitment_for_batch i Tx_rollup_level.root tx_rollup []
   >>=? fun (commitment, _) ->
   (* Successfully fail to submit a different commitment from contract2 *)
   let batches2 : Tx_rollup_message_result_hash.t list =
@@ -1072,7 +1074,7 @@ let test_commitment_predecessor () =
     Tx_rollup_commitment_hash.of_bytes_exn
       (Bytes.of_string "tcu1deadbeefdeadbeefdeadbeefdead")
   in
-  make_commitment_for_batch i Tx_rollup_level.root tx_rollup []
+  make_incomplete_commitment_for_batch i Tx_rollup_level.root tx_rollup []
   >>=? fun (commitment, _) ->
   let commitment_for_invalid_inbox = {commitment with level = tx_level 10l} in
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment_for_invalid_inbox
@@ -1087,7 +1089,11 @@ let test_commitment_predecessor () =
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
   (* Commitment without predecessor for block with predecessor*)
-  make_commitment_for_batch i Tx_rollup_level.(succ root) tx_rollup []
+  make_incomplete_commitment_for_batch
+    i
+    Tx_rollup_level.(succ root)
+    tx_rollup
+    []
   >>=? fun (commitment, _) ->
   let commitment_with_missing_predecessor =
     {commitment with predecessor = None}
@@ -1177,7 +1183,7 @@ let test_bond_finalization () =
        | Tx_rollup_errors.Bond_does_not_exist a_pkh1 -> a_pkh1 = pkh1
        | _ -> false)
   >>=? fun i ->
-  make_commitment_for_batch i Tx_rollup_level.root tx_rollup []
+  make_incomplete_commitment_for_batch i Tx_rollup_level.root tx_rollup []
   >>=? fun (commitment_a, _) ->
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment_a >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
@@ -1217,7 +1223,8 @@ let test_too_many_commitments () =
   let rec make_commitments i level n =
     if n = 0 then return (i, level)
     else
-      make_commitment_for_batch i level tx_rollup [] >>=? fun (commitment, _) ->
+      make_incomplete_commitment_for_batch i level tx_rollup []
+      >>=? fun (commitment, _) ->
       Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
       Incremental.add_operation i op >>=? fun i ->
       make_commitments i (Tx_rollup_level.succ level) (n - 1)
@@ -1230,7 +1237,8 @@ let test_too_many_commitments () =
   Op.tx_rollup_finalize (I i) contract1 tx_rollup >>=? fun op ->
   Incremental.add_operation i op >>=? fun i ->
   (* Fail to add a new commitment. *)
-  make_commitment_for_batch i level tx_rollup [] >>=? fun (commitment, _) ->
+  make_incomplete_commitment_for_batch i level tx_rollup []
+  >>=? fun (commitment, _) ->
   Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
   Incremental.add_operation
     i
@@ -1251,51 +1259,6 @@ let test_too_many_commitments () =
   return ()
 
 module Rejection = struct
-  let init_with_bogus_batch () =
-    context_init1 () >>=? fun (b, contract1) ->
-    originate b contract1 >>=? fun (b, tx_rollup) ->
-    let message = "bogus" in
-    Op.tx_rollup_submit_batch (B b) contract1 tx_rollup message
-    >>=? fun operation ->
-    Block.bake ~operation b >>=? fun b ->
-    Incremental.begin_construction b >|=? fun i ->
-    let level = Tx_rollup_level.root in
-    (i, contract1, tx_rollup, level, message)
-
-  let init_with_valid_commitment () =
-    init_with_bogus_batch ()
-    >>=? fun (i, contract1, tx_rollup, level, message) ->
-    make_commitment_for_batch i level tx_rollup []
-    >>=? fun (commitment, _batches_result) ->
-    Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
-    Incremental.add_operation i op >|=? fun i ->
-    (i, contract1, tx_rollup, level, message)
-
-  let init_with_invalid_commitment () =
-    init_with_bogus_batch ()
-    >>=? fun (i, contract1, tx_rollup, level, message) ->
-    make_commitment_for_batch i level tx_rollup []
-    >>=? fun (commitment, _batches_result) ->
-    let commitment =
-      {
-        commitment with
-        messages =
-          [
-            Tx_rollup_commitment.hash_message_result
-              {
-                context_hash =
-                  Context_hash.of_b58check_exn
-                    "CoUiEnajKeukmYFUgWTJF2z3v24MycpTaomF8a9hRzVy7as9hvgy";
-                withdrawals_merkle_root =
-                  Tx_rollup_withdraw.empty_withdrawals_merkle_root;
-              };
-          ];
-      }
-    in
-    Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
-    Incremental.add_operation i op >|=? fun i ->
-    (i, contract1, tx_rollup, level, message)
-
   open Protocol
 
   exception Error of Environment.Error_monad.error
@@ -1374,53 +1337,124 @@ module Rejection = struct
   module Context = Tx_rollup_l2_context.Make (Storage)
   module Prover_apply = Tx_rollup_l2_apply.Make (Prover_context)
   module Apply = Tx_rollup_l2_apply.Make (Context)
+  module C = Tezos_context_memory.Context_binary
 
-  type proof =
-    Tezos_context_memory.Context_binary.Proof.stream
-    Tezos_context_memory.Context_binary.Proof.t
+  let init_with_bogus_batch () =
+    context_init1 () >>=? fun (b, contract1) ->
+    originate b contract1 >>=? fun (b, tx_rollup) ->
+    let message = "bogus" in
+    Op.tx_rollup_submit_batch (B b) contract1 tx_rollup message
+    >>=? fun operation ->
+    Block.bake ~operation b >>=? fun b ->
+    Incremental.begin_construction b >|=? fun i ->
+    let level = Tx_rollup_level.root in
+    (i, contract1, tx_rollup, level, message)
+
+  let init_with_valid_commitment () =
+    init_with_bogus_batch ()
+    >>=? fun (i, contract1, tx_rollup, level, message) ->
+    make_incomplete_commitment_for_batch i level tx_rollup []
+    >>=? fun (commitment, _batches_result) ->
+    Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+    Incremental.add_operation i op >|=? fun i ->
+    (i, contract1, tx_rollup, level, message)
+
+  let init_with_invalid_commitment () =
+    init_with_bogus_batch ()
+    >>=? fun (i, contract1, tx_rollup, level, message) ->
+    make_incomplete_commitment_for_batch i level tx_rollup []
+    >>=? fun (commitment, _batches_result) ->
+    let commitment =
+      {
+        commitment with
+        messages =
+          [
+            Tx_rollup_commitment.hash_message_result
+              {
+                context_hash =
+                  Context_hash.of_b58check_exn
+                    "CoUiEnajKeukmYFUgWTJF2z3v24MycpTaomF8a9hRzVy7as9hvgy";
+                withdrawals_merkle_root =
+                  Tx_rollup_withdraw.empty_withdrawals_merkle_root;
+              };
+          ];
+      }
+    in
+    Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+    Incremental.add_operation i op >|=? fun i ->
+    (i, contract1, tx_rollup, level, message)
 
   let run_transaction ctxt msg =
     let open Prover_context.Syntax in
-    let* (ctxt, _result) = Prover_apply.apply_message ctxt msg in
+    let* (ctxt, _) = Prover_apply.apply_message ctxt msg in
     return ctxt
 
-  module C = Tezos_context_memory.Context_binary
-  module Bls_signature = Protocol.Environment.Bls_signature
+  let time () =
+    Time.System.now () |> Time.System.to_notation
+    |> Time.Protocol.of_notation_exn
 
-  let init_l2_ctxt () =
+  (** [init_l2_ctxt ()] creates the required empty storage and tree. 
+      It creates a tree where the counters are explicitely set (it's an Irmin
+      restriction, we can not hash an empty tree). It return the persistent
+      store containing the tree.
+
+      {!Tx_rollup_commitment.empty_l2_context_hash} is the hash of the
+      tree produced in this function. 
+
+      TODO: unit?
+  *)
+  let init_l2_store () =
     let open Context.Syntax in
-    let ctxt = C.empty in
-    let time = Time.Protocol.of_seconds 0L in
-    let* store =
-      Prover_context.Address_index.init_counter (C.Tree.empty ctxt)
-    in
-    let* store = Prover_context.Ticket_index.init_counter store in
-    let* ctxt = C.add_tree ctxt [] store in
+    let store = C.empty in
+    let time = time () in
+    let tree = C.Tree.empty store in
+    let* tree = Prover_context.Address_index.init_counter tree in
+    let* tree = Prover_context.Ticket_index.init_counter tree in
+    let* ctxt = C.add_tree store [] tree in
     let* h = C.commit ~time ctxt in
     let index = C.index ctxt in
-    let* ctxt = C.checkout_exn index h in
-    return (ctxt, store)
+    let* store = C.checkout_exn index h in
+    return store
 
-  let make_proof ctxt msg =
+  (** TODO: check that each function here is cool *)
+
+  let get_tree_from_store store =
     let open Context.Syntax in
-    let index = C.index ctxt in
-    let* tree_opt = C.find_tree ctxt [] in
-    let hash =
-      match tree_opt with Some t -> C.Tree.hash t | None -> assert false
-    in
+    let* tree_opt = C.find_tree store [] in
+    match tree_opt with Some x -> return x | None -> assert false
+
+  let hash_tree_from_store store =
+    let open Context.Syntax in
+    let+ tree = get_tree_from_store store in
+    C.Tree.hash tree
+
+  let commit_store store =
+    let open Context.Syntax in
+    let time = time () in
+    let* h = C.commit ~time store in
+    let index = C.index store in
+    let* store = C.checkout_exn index h in
+    return store
+
+  (** [make_proof store msg] applies [msg] on [store] and  return the
+      created proof. *)
+  let make_proof store msg =
+    let open Context.Syntax in
+    let index = C.index store in
+    let* hash = hash_tree_from_store store in
     let* (proof, ()) =
       C.produce_stream_proof index (`Node hash) (fun ctxt ->
           catch
             (run_transaction ctxt msg)
             (fun ctxt -> return (ctxt, ()))
-            (fun _error -> return (ctxt, ())))
+            (fun _ -> return (ctxt, ())))
     in
     return proof
 
-  let valid_empty_proof () : Tx_rollup_l2_proof.t Lwt.t =
-    init_l2_ctxt () >>= fun (l2_ctxt, _) ->
+  let valid_empty_proof () =
+    init_l2_store () >>= fun l2_store ->
     let (message, _) = Tx_rollup_message.make_batch "bogus" in
-    make_proof l2_ctxt message
+    make_proof l2_store message
 
   let invalid_proof : Tx_rollup_l2_proof.t =
     {
@@ -1430,19 +1464,105 @@ module Rejection = struct
       state = Seq.empty;
     }
 
-  (** [test_success] tests that rejection succeeds if the commitment is
-      wrong and the proof is correct. *)
-  let test_success () =
-    init_with_invalid_commitment ()
-    >>=? fun (i, contract1, tx_rollup, level, message) ->
-    let (message, _size) = Tx_rollup_message.make_batch message in
-    valid_empty_proof () >>= fun proof ->
+  (** Takes a commitment and replace the message results with valid results.
+
+      FIXME/TORU: they override the withdrawals merkle roots, this is not good
+      but there is yet not tests calling this function which uses these roots.
+      Although, it shouldn't be to hard to fix this. *)
+  let replace_commitment ~store ~commitment messages =
+    let open Context in
+    let open Syntax in
+    let* (_, rev_results) =
+      list_fold_left_m
+        (fun (store, rev_results) msg ->
+          let* store =
+            catch
+              (Apply.apply_message store msg)
+              (fun (store, _) -> return store)
+              (fun _reason -> return store)
+          in
+          let* hash_tree = hash_tree_from_store store in
+          let result_hash =
+            Tx_rollup_commitment.hash_message_result
+              {
+                context_hash = hash_tree;
+                withdrawals_merkle_root = merkle_root_empty_withdraw_list;
+              }
+          in
+          return (store, result_hash :: rev_results))
+        (store, [])
+        messages
+    in
+    let results = List.rev rev_results in
+    return Tx_rollup_commitment.{commitment with messages = results}
+
+  (** Produce an invalid commitment with {!make_incomplete_commitment_for_batch},
+      then changes the Merkle roots for each message result.
+
+      FIXME/TORU: it is not perfectly valid, the withdrawals are still missing.
+      see {!replace_commitment} documentation. *)
+  let make_valid_commitment_for_messages ~i ~level ~tx_rollup
+      ?(withdrawals = []) ~store messages =
+    make_incomplete_commitment_for_batch i level tx_rollup withdrawals
+    >>=? fun (commitment, _) ->
+    replace_commitment ~commitment ~store messages >>= fun commitment ->
+    return commitment
+
+  let init_with_deposit () =
+    let (sk, pk, pkh) = gen_l2_account () in
+    init_l2_store () >>= fun store ->
+    context_init1 () >>=? fun (b, account) ->
+    originate b account >>=? fun (b, tx_rollup) ->
+    Contract_helpers.originate_contract
+      "contracts/tx_rollup_deposit.tz"
+      "Unit"
+      account
+      b
+      (is_implicit_exn account)
+    >>=? fun (contract, b) ->
+    let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash pkh) in
+    let fee = Test_tez.of_int 10 in
+    Op.transaction
+      ~counter:(Z.of_int 2)
+      ~fee
+      (B b)
+      account
+      contract
+      Tez.zero
+      ~parameters
+    >>=? fun operation ->
+    Block.bake ~operation b >>=? fun b ->
+    let ticket_hash = make_unit_ticket_key ~ticketer:contract tx_rollup in
+    let (deposit, _) =
+      Tx_rollup_message.make_deposit
+        (is_implicit_exn account)
+        (Tx_rollup_l2_address.Indexable.value pkh)
+        ticket_hash
+        (Tx_rollup_l2_qty.of_int64_exn 10L)
+    in
+    Incremental.begin_construction b >>=? fun i ->
+    make_valid_commitment_for_messages
+      ~i
+      ~level:Tx_rollup_level.root
+      ~tx_rollup
+      ~store
+      [deposit]
+    >>=? fun commitment ->
+    Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
+    Incremental.add_operation i op >>=? fun i ->
+    Incremental.finalize_block i >>=? fun b ->
+    (* We try to reject the previous commitment, but as it was valid,
+       we can not reject a valid state. This is not really need to test this
+       here, as they are dedicated tests, but this behave like a regression
+       test. *)
+    make_proof store deposit >>= fun proof ->
+    Incremental.begin_construction b >>=? fun i ->
     Op.tx_rollup_reject
       (I i)
-      contract1
+      account
       tx_rollup
-      level
-      message
+      Tx_rollup_level.root
+      deposit
       ~message_position:0
       ~proof
       ~previous_message_result:
@@ -1452,23 +1572,239 @@ module Rejection = struct
             Tx_rollup_withdraw.empty_withdrawals_merkle_root;
         }
     >>=? fun op ->
+    Incremental.add_operation
+      i
+      op
+      ~expect_failure:
+        (check_proto_error Tx_rollup_errors.Proof_produced_rejected_state)
+    >>=? fun i ->
+    Incremental.finalize_block i >>=? fun b ->
+    (* Finally, we apply the deposit manually to have the good resulting store
+       for next operations *)
+    Apply.apply_message store deposit >>= fun (store, _) ->
+    commit_store store >>= fun store ->
+    return (b, account, tx_rollup, store, (sk, pk, pkh), ticket_hash)
+
+  let operation_content destination ticket_hash qty =
+    let open Tx_rollup_l2_batch in
+    let open V1 in
+    {
+      destination = Layer2 (Indexable.from_value destination);
+      ticket_hash = Indexable.from_value ticket_hash;
+      qty = Tx_rollup_l2_qty.of_int64_exn qty;
+    }
+
+  let operation signer ?(counter = 1L) contents =
+    let open Tx_rollup_l2_batch in
+    let open V1 in
+    {signer = Indexable.from_value signer; counter; contents}
+
+  let make_transfers src counter transfers =
+    let rec contents acc = function
+      | [] -> acc
+      | (destination, ticket_hash, qty) :: rst ->
+          let acc = operation_content destination ticket_hash qty :: acc in
+          contents acc rst
+    in
+    let contents = contents [] transfers in
+    operation src ?counter contents
+
+  let make_message_transfer ~signers all_transfers =
+    let transaction =
+      List.map
+        (fun (src, counter, transfers) -> make_transfers src counter transfers)
+        all_transfers
+    in
+    let signatures =
+      Tx_rollup_l2_helpers.sign_transaction signers transaction
+    in
+    let signature =
+      assert_some
+      @@ Environment.Bls_signature.aggregate_signature_opt signatures
+    in
+    let batch =
+      Tx_rollup_l2_batch.V1.
+        {contents = [transaction]; aggregated_signature = signature}
+    in
+    let batch_bytes =
+      Data_encoding.Binary.to_string_exn Tx_rollup_l2_batch.encoding (V1 batch)
+    in
+    let msg = Tx_rollup_message.make_batch batch_bytes |> fst in
+    (msg, batch_bytes)
+
+  (** Test that we can produce a simple but valid proof. *)
+  let test_valid_proof_on_invalid_commitment () =
+    init_with_deposit ()
+    >>=? fun (b, account, tx_rollup, store, (sk, pk, _pkh), ticket_hash) ->
+    hash_tree_from_store store >>= fun l2_context_hash ->
+    (* Create a transfer from [pk] to a new address *)
+    let (_, _, addr) = gen_l2_account () in
+    let (message, batch_bytes) =
+      make_message_transfer
+        ~signers:[sk]
+        [(pk, None, [(addr, ticket_hash, 1L)])]
+    in
+    Op.tx_rollup_submit_batch (B b) account tx_rollup batch_bytes
+    >>=? fun operation ->
+    Block.bake ~operation b >>=? fun b ->
+    (* Make an invalid commitment for the submitted transfer *)
+    let level = Tx_rollup_level.(succ root) in
+    Incremental.begin_construction b >>=? fun i ->
+    make_incomplete_commitment_for_batch i level tx_rollup []
+    >>=? fun (commitment, _) ->
+    Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
-    ignore i ;
-
-    return ()
-
-  (** [test_invalid_proof] tests that rejection successfully fails
-      with an invalid proof. *)
-  let test_invalid_proof () =
-    init_with_valid_commitment ()
-    >>=? fun (i, contract1, tx_rollup, level, message) ->
-    let (message, _size) = Tx_rollup_message.make_batch message in
+    Incremental.finalize_block i >>=? fun b ->
+    (* Now we produce a valid proof rejecting the commitment *)
+    make_proof store message >>= fun proof ->
     Op.tx_rollup_reject
-      (I i)
-      contract1
+      (B b)
+      account
       tx_rollup
       level
       message
+      ~message_position:0
+      ~proof
+      ~previous_message_result:
+        {
+          context_hash = l2_context_hash;
+          withdrawals_merkle_root =
+            Tx_rollup_withdraw.empty_withdrawals_merkle_root;
+        }
+    >>=? fun op ->
+    Incremental.add_operation i op >>=? fun _ -> return_unit
+
+  (** It is really similar to {!test_valid_proof_on_invalid_commitment} but it
+      tries to reject a valid commitment, thus, fails. *)
+  let test_valid_proof_on_valid_commitment () =
+    init_with_deposit ()
+    >>=? fun (b, account, tx_rollup, store, (sk, pk, _pkh), ticket_hash) ->
+    hash_tree_from_store store >>= fun l2_context_hash ->
+    (* Create a transfer from [pk] to a new address *)
+    let (_, _, addr) = gen_l2_account () in
+    let (message, batch_bytes) =
+      make_message_transfer
+        ~signers:[sk]
+        [(pk, None, [(addr, ticket_hash, 1L)])]
+    in
+    Op.tx_rollup_submit_batch (B b) account tx_rollup batch_bytes
+    >>=? fun operation ->
+    Block.bake ~operation b >>=? fun b ->
+    (* Make an invalid commitment for the submitted transfer *)
+    let level = Tx_rollup_level.(succ root) in
+    Incremental.begin_construction b >>=? fun i ->
+    make_valid_commitment_for_messages ~i ~level ~tx_rollup ~store [message]
+    >>=? fun commitment ->
+    Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
+    Incremental.add_operation i op >>=? fun i ->
+    Incremental.finalize_block i >>=? fun b ->
+    (* Now we produce a valid proof rejecting the commitment *)
+    make_proof store message >>= fun proof ->
+    Op.tx_rollup_reject
+      (B b)
+      account
+      tx_rollup
+      level
+      message
+      ~message_position:0
+      ~proof
+      ~previous_message_result:
+        {
+          context_hash = l2_context_hash;
+          withdrawals_merkle_root =
+            Tx_rollup_withdraw.empty_withdrawals_merkle_root;
+        }
+    >>=? fun op ->
+    Incremental.add_operation
+      i
+      op
+      ~expect_failure:
+        (check_proto_error_f @@ function
+         | Tx_rollup_errors.Proof_produced_rejected_state -> true
+         | _ -> false)
+    >>=? fun _ -> return_unit
+
+  (** Test the proof production (used in this test file) and the proof
+      verification handles a hard failure. For instance, we try to
+      a proof with a ill-signed batch. *)
+  let test_proof_with_hard_fail_message () =
+    init_with_deposit ()
+    >>=? fun (b, account, tx_rollup, store, (_sk, pk, addr), ticket_hash) ->
+    hash_tree_from_store store >>= fun l2_context_hash ->
+    (* We build a dummy transfer, we don't care about the content, it will hard
+       fail on the check signature. *)
+    let (random_sk, _, _) = gen_l2_account () in
+    let (message, batch_bytes) =
+      make_message_transfer
+        ~signers:[random_sk]
+        [(pk, None, [(addr, ticket_hash, 1L)])]
+    in
+    Op.tx_rollup_submit_batch (B b) account tx_rollup batch_bytes
+    >>=? fun operation ->
+    Block.bake ~operation b >>=? fun b ->
+    (* Make an invalid commitment for the submitted transfer *)
+    let level = Tx_rollup_level.(succ root) in
+    Incremental.begin_construction b >>=? fun i ->
+    make_incomplete_commitment_for_batch i level tx_rollup []
+    >>=? fun (commitment, _) ->
+    Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
+    Incremental.add_operation i op >>=? fun i ->
+    Incremental.finalize_block i >>=? fun b ->
+    (* Now we produce a valid proof rejecting the commitment *)
+    make_proof store message >>= fun proof ->
+    Op.tx_rollup_reject
+      (B b)
+      account
+      tx_rollup
+      level
+      message
+      ~message_position:0
+      ~proof
+      ~previous_message_result:
+        {
+          context_hash = l2_context_hash;
+          withdrawals_merkle_root =
+            Tx_rollup_withdraw.empty_withdrawals_merkle_root;
+        }
+    >>=? fun op ->
+    Incremental.add_operation i op >>=? fun _ -> return_unit
+
+  (** Test that an empty proof is enough to reject a dumb commitment. It is
+      dumb in the sense that the commited message does not change the context
+      at all (e.g. the message can not be decoded). *)
+  let test_empty_proof_on_dumb_commitment () =
+    init_with_invalid_commitment ()
+    >>=? fun (i, contract, tx_rollup, level, message) ->
+    let (msg, _) = Tx_rollup_message.make_batch message in
+    valid_empty_proof () >>= fun proof ->
+    Op.tx_rollup_reject
+      (I i)
+      contract
+      tx_rollup
+      level
+      msg
+      ~message_position:0
+      ~proof
+      ~previous_message_result:
+        {
+          context_hash = Tx_rollup_commitment.empty_l2_context_hash;
+          withdrawals_merkle_root =
+            Tx_rollup_withdraw.empty_withdrawals_merkle_root;
+        }
+    >>=? fun op ->
+    Incremental.add_operation i op >>=? fun _ -> return_unit
+
+  (** Test that an empty proof is not able to reject a valid commitment. *)
+  let test_invalid_proof_on_invalid_commitment () =
+    init_with_valid_commitment ()
+    >>=? fun (i, contract, tx_rollup, level, message) ->
+    let (msg, _) = Tx_rollup_message.make_batch message in
+    Op.tx_rollup_reject
+      (I i)
+      contract
+      tx_rollup
+      level
+      msg
       ~message_position:0
       ~proof:invalid_proof
       ~previous_message_result:
@@ -1483,17 +1819,14 @@ module Rejection = struct
       op
       ~expect_failure:
         (check_proto_error Tx_rollup_errors.Proof_failed_to_reject)
-    >>=? fun i ->
-    ignore i ;
+    >>=? fun _ -> return_unit
 
-    return ()
-
-  (** [test_invalid_agreed] tests that rejection successfully fails
-      when there is a disagreement about the previous state. *)
+  (** Test that rejection successfully fails when there is a disagreement about
+      the previous state. *)
   let test_invalid_agreed () =
     init_with_valid_commitment ()
-    >>=? fun (i, contract1, tx_rollup, level, message) ->
-    let (message, _size) = Tx_rollup_message.make_batch message in
+    >>=? fun (i, contract, tx_rollup, level, message) ->
+    let (msg, _) = Tx_rollup_message.make_batch message in
     (* This intentionally does not match  *)
     let previous_message_result : Tx_rollup_commitment.message_result =
       {
@@ -1505,12 +1838,12 @@ module Rejection = struct
     in
     Op.tx_rollup_reject
       (I i)
-      contract1
+      contract
       tx_rollup
       level
-      message
+      msg
       ~message_position:0
-      ~proof:invalid_proof (* doesn't matter -- we'll never check it*)
+      ~proof:invalid_proof (* doesn't matter -- we'll never check it *)
       ~previous_message_result
     >>=? fun op ->
     Incremental.add_operation
@@ -1528,33 +1861,30 @@ module Rejection = struct
                   Tx_rollup_message_result_hash.of_b58check_exn
                     "txmr1zhXvqor6BUgtzA6GKtWLK7orXHNiYtCmQ3R4RJPCNxoF4jQCS";
               }))
-    >>=? fun i ->
-    ignore i ;
+    >>=? fun _ -> return_unit
 
-    return ()
-
-  (** [test_no_commitment] tests that rejection successfully fails
-      when there's no commitment to reject *)
+  (** Test that rejection successfully fails when there's no commitment to
+      reject *)
   let test_no_commitment () =
-    context_init 2 >>=? fun (b, contracts) ->
-    let contract1 =
+    context_init 1 >>=? fun (b, contracts) ->
+    let contract =
       WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 0
     in
-    originate b contract1 >>=? fun (b, tx_rollup) ->
+    originate b contract >>=? fun (b, tx_rollup) ->
     let message = "bogus" in
-    Op.tx_rollup_submit_batch (B b) contract1 tx_rollup message
+    Op.tx_rollup_submit_batch (B b) contract tx_rollup message
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
     Incremental.begin_construction b >>=? fun i ->
     let level = Tx_rollup_level.root in
-    let (message, _size) = Tx_rollup_message.make_batch message in
+    let (msg, _) = Tx_rollup_message.make_batch message in
     valid_empty_proof () >>= fun proof ->
     Op.tx_rollup_reject
       (I i)
-      contract1
+      contract
       tx_rollup
       level
-      message
+      msg
       ~message_position:0
       ~proof
       ~previous_message_result:
@@ -1571,37 +1901,34 @@ module Rejection = struct
         (check_proto_error
            (Tx_rollup_errors.Cannot_reject_level
               {provided = level; accepted_range = None}))
-    >>=? fun i ->
-    ignore i ;
+    >>=? fun _ -> return_unit
 
-    return ()
-
-  (** [test_commitment_is_final] tests that rejection successfully fails
-      when the rejected commitment is already final *)
+  (** Test that rejection successfully fails when the rejected commitment is
+      already final *)
   let test_commitment_is_final () =
     init_with_valid_commitment ()
-    >>=? fun (i, contract1, tx_rollup, level, message) ->
-    (* Create a new commitment so that once we have finalized the fist one,
+    >>=? fun (i, contract, tx_rollup, level, message) ->
+    (* Create a new commitment so that once we have finalized the first one,
        we still have a range of valid final commitments *)
-    Op.tx_rollup_submit_batch (I i) contract1 tx_rollup message >>=? fun op ->
+    Op.tx_rollup_submit_batch (I i) contract tx_rollup message >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
     Incremental.finalize_block i >>=? fun b ->
     Incremental.begin_construction b >>=? fun i ->
     let level2 = Tx_rollup_level.succ level in
-    make_commitment_for_batch i level2 tx_rollup []
-    >>=? fun (commitment2, _batches_result) ->
-    Op.tx_rollup_commit (I i) contract1 tx_rollup commitment2 >>=? fun op ->
+    make_incomplete_commitment_for_batch i level2 tx_rollup []
+    >>=? fun (commitment2, _) ->
+    Op.tx_rollup_commit (I i) contract tx_rollup commitment2 >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
-    Op.tx_rollup_finalize (I i) contract1 tx_rollup >>=? fun op ->
+    Op.tx_rollup_finalize (I i) contract tx_rollup >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
-    let (message, _size) = Tx_rollup_message.make_batch message in
+    let (msg, _) = Tx_rollup_message.make_batch message in
     valid_empty_proof () >>= fun proof ->
     Op.tx_rollup_reject
       (I i)
-      contract1
+      contract
       tx_rollup
       level
-      message
+      msg
       ~message_position:0
       ~proof
       ~previous_message_result:
@@ -1618,25 +1945,22 @@ module Rejection = struct
         (check_proto_error
            (Tx_rollup_errors.Cannot_reject_level
               {provided = level; accepted_range = Some (level2, level2)}))
-    >>=? fun i ->
-    ignore i ;
+    >>=? fun _ -> return_unit
 
-    return ()
-
-  (** [test_wrong_message_hash] tests that rejection successfully fails
-      when the message hash does not match the one stored in the inbox *)
+  (** Test that rejection successfully fails when the message hash does not
+      match the one stored in the inbox *)
   let test_wrong_message_hash () =
     init_with_valid_commitment ()
-    >>=? fun (i, contract1, tx_rollup, level, prev_message) ->
-    let (prev_message, _size) = Tx_rollup_message.make_batch prev_message in
-    let (message, _size) = Tx_rollup_message.make_batch "wrong message" in
+    >>=? fun (i, contract, tx_rollup, level, prev_message) ->
+    let (prev_msg, _) = Tx_rollup_message.make_batch prev_message in
+    let (msg, _) = Tx_rollup_message.make_batch "wrong message" in
     valid_empty_proof () >>= fun proof ->
     Op.tx_rollup_reject
       (I i)
-      contract1
+      contract
       tx_rollup
       level
-      message
+      msg
       ~message_position:0
       ~proof
       ~previous_message_result:
@@ -1653,24 +1977,24 @@ module Rejection = struct
         (check_proto_error
            (Tx_rollup_errors.Wrong_message_hash
               {
-                expected = Tx_rollup_message.hash_uncarbonated prev_message;
-                actual = Tx_rollup_message.hash_uncarbonated message;
+                expected = Tx_rollup_message.hash_uncarbonated prev_msg;
+                actual = Tx_rollup_message.hash_uncarbonated msg;
               }))
     >>=? fun _ -> return_unit
 
-  (** [test_wrong_message_position] tests that rejection successfully fails
-      when the message position does exist in the inbox *)
+  (** Test that rejection successfully fails when the message position does
+      exist in the inbox. *)
   let test_wrong_message_position () =
     init_with_valid_commitment ()
-    >>=? fun (i, contract1, tx_rollup, level, message) ->
-    let (message, _size) = Tx_rollup_message.make_batch message in
+    >>=? fun (i, contract, tx_rollup, level, msg) ->
+    let (msg, _) = Tx_rollup_message.make_batch msg in
     valid_empty_proof () >>= fun proof ->
     Op.tx_rollup_reject
       (I i)
-      contract1
+      contract
       tx_rollup
       level
-      message
+      msg
       ~message_position:1
       ~proof
       ~previous_message_result:
@@ -1687,16 +2011,13 @@ module Rejection = struct
         (check_proto_error
            (Tx_rollup_errors.Wrong_message_position
               {level; position = 1; length = 1}))
-    >>=? fun i ->
-    ignore i ;
+    >>=? fun _ -> return ()
 
-    return ()
-
-  (** [test_nontrivial_rejection] tests rejecting a commitment to a non-trivial
-      message -- that is, not a no-op. *)
+  (** Test rejecting a commitment to a non-trivial message -- that is,
+      not a no-op. *)
   let test_nontrivial_rejection () =
-    let (_, _, pkh1) = gen_l2_account () in
-    init_l2_ctxt () >>= fun (l2_ctxt, _) ->
+    let (_, _, addr) = gen_l2_account () in
+    init_l2_store () >>= fun store ->
     context_init1 () >>=? fun (b, account) ->
     originate b account >>=? fun (b, tx_rollup) ->
     Contract_helpers.originate_contract
@@ -1706,7 +2027,7 @@ module Rejection = struct
       b
       (is_implicit_exn account)
     >>=? fun (contract, b) ->
-    let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash pkh1) in
+    let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash addr) in
     let fee = Test_tez.of_int 10 in
     Op.transaction
       ~counter:(Z.of_int 2)
@@ -1719,25 +2040,26 @@ module Rejection = struct
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
     let ticket_hash = make_unit_ticket_key ~ticketer:contract tx_rollup in
-    let (deposit_message, _size) =
+    let (deposit, _) =
       Tx_rollup_message.make_deposit
         (is_implicit_exn account)
-        (Tx_rollup_l2_address.Indexable.value pkh1)
+        (Tx_rollup_l2_address.Indexable.value addr)
         ticket_hash
         (Tx_rollup_l2_qty.of_int64_exn 10L)
     in
     Incremental.begin_construction b >>=? fun i ->
-    let level = Tx_rollup_level.root in
-    make_commitment_for_batch i level tx_rollup []
-    >>=? fun (commitment, _batches_result) ->
+    make_incomplete_commitment_for_batch i Tx_rollup_level.root tx_rollup []
+    >>=? fun (commitment, _) ->
     Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
+    Incremental.finalize_block i >>=? fun b ->
+    Incremental.begin_construction b >>=? fun i ->
     Op.tx_rollup_reject
       (I i)
       account
       tx_rollup
-      level
-      deposit_message
+      Tx_rollup_level.root
+      deposit
       ~message_position:0
       ~proof:invalid_proof
       ~previous_message_result:
@@ -1754,13 +2076,13 @@ module Rejection = struct
         (check_proto_error Tx_rollup_errors.Proof_failed_to_reject)
     >>=? fun i ->
     (* Check with a reasonable proof *)
-    make_proof l2_ctxt deposit_message >>= fun proof ->
+    make_proof store deposit >>= fun proof ->
     Op.tx_rollup_reject
       (I i)
       account
       tx_rollup
-      level
-      deposit_message
+      Tx_rollup_level.root
+      deposit
       ~message_position:0
       ~proof
       ~previous_message_result:
@@ -1770,15 +2092,11 @@ module Rejection = struct
             Tx_rollup_withdraw.empty_withdrawals_merkle_root;
         }
     >>=? fun op ->
-    Incremental.add_operation i op >>=? fun i ->
-    ignore i ;
-
-    return ()
+    Incremental.add_operation i op >>=? fun _ -> return_unit
 
   let add_store_to_ctxt ctxt store =
     let open Context.Syntax in
-    (* TODO/TORU: why this time? *)
-    let time = Time.Protocol.of_seconds 1L in
+    let time = Time.Protocol.of_seconds 0L in
     let* ctxt = C.add_tree ctxt [] store in
     let* h = C.commit ~time ctxt in
     let index = C.index ctxt in
@@ -1786,11 +2104,9 @@ module Rejection = struct
     return ctxt
 
   let test_large_rejection size =
-    let (sk1, pk1, pkh1) = gen_l2_account () in
-    let (sk2, pk2, pkh2) = gen_l2_account () in
-    init_l2_ctxt () >>= fun (l2_ctxt, l2_store) ->
-    context_init1 ?tx_rollup_max_proof_size:(Some size) ()
-    >>=? fun (b, account) ->
+    let (_sk, _pk, addr) = gen_l2_account () in
+    init_l2_store () >>= fun store ->
+    context_init1 ~tx_rollup_max_proof_size:size () >>=? fun (b, account) ->
     originate b account >>=? fun (b, tx_rollup) ->
     Contract_helpers.originate_contract
       "contracts/tx_rollup_deposit.tz"
@@ -1799,7 +2115,7 @@ module Rejection = struct
       b
       (is_implicit_exn account)
     >>=? fun (contract, b) ->
-    let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash pkh1) in
+    let parameters = print_deposit_arg (`Typed tx_rollup) (`Hash addr) in
     let fee = Test_tez.of_int 10 in
     Op.transaction
       ~counter:(Z.of_int 2)
@@ -1812,182 +2128,95 @@ module Rejection = struct
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
     let ticket_hash = make_unit_ticket_key ~ticketer:contract tx_rollup in
-    let (deposit_message, _size) =
+    let (deposit, _) =
       Tx_rollup_message.make_deposit
         (is_implicit_exn account)
-        (Tx_rollup_l2_address.Indexable.value pkh1)
+        (Tx_rollup_l2_address.Indexable.value addr)
         ticket_hash
         (Tx_rollup_l2_qty.of_int64_exn 10L)
     in
-    Prover_apply.apply_message l2_store deposit_message >>= fun (l2_store, _) ->
-    add_store_to_ctxt l2_ctxt l2_store >>= fun l2_ctxt ->
-    let ticket_hash_index = Indexable.from_value ticket_hash in
-    let pkh2_index = Indexable.from_value pkh2 in
-    let operation_content1 =
-      Tx_rollup_l2_batch.V1.
-        {
-          destination = Layer2 pkh2_index;
-          ticket_hash = ticket_hash_index;
-          qty = Tx_rollup_l2_qty.one;
-        }
-    in
-    let op1 =
-      Tx_rollup_l2_batch.V1.
-        {
-          signer = Indexable.from_value pk1;
-          counter = 0L;
-          contents = [operation_content1];
-        }
-    in
-    let transaction = [op1] in
-    let signatures = Tx_rollup_l2_helpers.sign_transaction [sk1] transaction in
-    let signature =
-      assert_some @@ Bls_signature.aggregate_signature_opt signatures
-    in
-    let batch =
-      Tx_rollup_l2_batch.V1.
-        {contents = [transaction]; aggregated_signature = signature}
-    in
-    let message2_bytes =
-      Data_encoding.Binary.to_string_exn Tx_rollup_l2_batch.encoding (V1 batch)
-    in
-    let (message2, _size) = Tx_rollup_message.make_batch message2_bytes in
-    make_proof l2_ctxt message2 >>= fun short_proof ->
-    (* This short proof should be a prefix of the proof for the actual
-       message which we will submit.  We stipulate that the actual proof
-       would be too large. *)
-    let pkh1_index = Indexable.from_value pkh1 in
-    let operation_content2 =
-      Tx_rollup_l2_batch.V1.
-        {
-          destination = Layer2 pkh1_index;
-          ticket_hash = ticket_hash_index;
-          qty = Tx_rollup_l2_qty.one;
-        }
-    in
-    let op2 =
-      Tx_rollup_l2_batch.V1.
-        {
-          signer = Indexable.from_value pk2;
-          counter = 0L;
-          contents = [operation_content2];
-        }
-    in
-    let transaction = [op1; op2] in
-    let signatures =
-      Tx_rollup_l2_helpers.sign_transaction [sk1; sk2] transaction
-    in
-    let signature =
-      assert_some @@ Bls_signature.aggregate_signature_opt signatures
-    in
-    let batch =
-      Tx_rollup_l2_batch.V1.
-        {contents = [transaction]; aggregated_signature = signature}
-    in
-    let message2_long_bytes =
-      Data_encoding.Binary.to_string_exn Tx_rollup_l2_batch.encoding (V1 batch)
-    in
-    let (message2_long, _size) =
-      Tx_rollup_message.make_batch message2_long_bytes
-    in
-    Op.tx_rollup_submit_batch (B b) account tx_rollup message2_long_bytes
-    >>=? fun operation ->
-    Block.bake ~operation b >>=? fun b ->
     Incremental.begin_construction b >>=? fun i ->
-    let level = Tx_rollup_level.root in
-    make_commitment_for_batch i level tx_rollup []
-    >>=? fun (commitment, _batches_result) ->
-    let before =
-      match short_proof.before with
-      | `Value before -> before
-      | `Node before -> before
-    in
-    let result_hash_after =
-      Tx_rollup_commitment.hash_message_result
-        {
-          context_hash = before;
-          withdrawals_merkle_root = merkle_root_empty_withdraw_list;
-        }
-    in
-    let commitment =
-      {commitment with messages = [result_hash_after]; predecessor = None}
-    in
+    make_valid_commitment_for_messages
+      ~i
+      ~level:Tx_rollup_level.root
+      ~tx_rollup
+      ~store
+      [deposit]
+    >>=? fun commitment ->
     Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
-    let level = Tx_rollup_level.succ level in
-    make_commitment_for_batch i level tx_rollup []
-    >>=? fun (commitment, _batches_result) ->
-    Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun op ->
-    Incremental.add_operation i op >>=? fun i ->
-    (* Check with a too-short proof *)
+    Incremental.finalize_block i >>=? fun b ->
+    (* The previous commitment produced a valid after hash. However, the
+       proof required is above [size], so the rejection should succeed. *)
+    make_proof store deposit >>= fun proof ->
+    Incremental.begin_construction b >>=? fun i ->
     Op.tx_rollup_reject
       (I i)
       account
       tx_rollup
-      level
-      message2_long
+      Tx_rollup_level.root
+      deposit
       ~message_position:0
-      ~proof:short_proof
+      ~proof
       ~previous_message_result:
         {
-          context_hash = before;
+          context_hash = Tx_rollup_commitment.empty_l2_context_hash;
           withdrawals_merkle_root =
             Tx_rollup_withdraw.empty_withdrawals_merkle_root;
         }
-    >|=? fun op -> (i, op)
+    >>=? fun op -> return (i, op)
 
-  (** [test_rejection_too_large] tries to test rejecting a message
-      that would require a too-large proof.
-      *)
-  let test_rejection_too_large () =
-    (* TODO/TORU: empirically, 100 is always small enough, and 30000 is always
-       large enough.  But the actual proof size appears to be non-deterministic,
-       which can't possibly be good news. *)
+  (** Test that a commitment which require a too-large proof can be rejected
+      even if the after hash is correct. *)
+  let test_too_large_rejection () =
+    (* With a limit, the commitment is rejected because the required proof
+       is above the limit. *)
     test_large_rejection 100 >>=? fun (i, op) ->
-    Incremental.add_operation i op >>=? fun i ->
-    ignore i ;
-    test_large_rejection 30000 >>=? fun (i, op) ->
+    Incremental.add_operation i op >>=? fun _ ->
+    (* With a high limit, the commitment can not be rejected as it is valid *)
+    test_large_rejection 10_000 >>=? fun (i, op) ->
     Incremental.add_operation
       i
-      op
       ~expect_failure:
-        (check_proto_error Tx_rollup_errors.Proof_failed_to_reject)
-    >>=? fun i ->
-    ignore i ;
-    return ()
+        (check_proto_error Tx_rollup_errors.Proof_produced_rejected_state)
+      op
+    >>=? fun _ -> return_unit
 
   let tests =
     [
-      Tztest.tztest "Test rejection happy path" `Quick test_success;
       Tztest.tztest
-        "Test rejection with invalid agreed"
+        "reject invalid commitment"
         `Quick
-        test_invalid_agreed;
+        test_valid_proof_on_invalid_commitment;
       Tztest.tztest
-        "Test rejection with invalid proof"
+        "reject valid commitment fails"
         `Quick
-        test_invalid_proof;
+        test_valid_proof_on_valid_commitment;
       Tztest.tztest
-        "Test rejection with no commitment"
+        "proof for a hard failing message"
         `Quick
-        test_no_commitment;
+        test_proof_with_hard_fail_message;
       Tztest.tztest
-        "Test rejection with final commitment"
+        "empty proof for an invalid message"
         `Quick
-        test_commitment_is_final;
+        test_empty_proof_on_dumb_commitment;
       Tztest.tztest
-        "Test rejection with wrong message"
+        "reject with invalid proof"
         `Quick
-        test_wrong_message_hash;
+        test_invalid_proof_on_invalid_commitment;
+      Tztest.tztest "reject with invalid agreed" `Quick test_invalid_agreed;
+      Tztest.tztest "reject with no commitment" `Quick test_no_commitment;
+      Tztest.tztest "reject with wrong message" `Quick test_wrong_message_hash;
       Tztest.tztest
-        "Test rejection with wrong message position"
+        "reject with wrong message position"
         `Quick
         test_wrong_message_position;
+      Tztest.tztest "reject too-large proof" `Quick test_too_large_rejection;
+      Tztest.tztest "reject a final commitment" `Quick test_commitment_is_final;
       Tztest.tztest
-        "Test successful and unsuccessful rejection of nontrivial message"
+        "test successful and unsuccessful rejection of nontrivial message"
         `Quick
         test_nontrivial_rejection;
-      Tztest.tztest "Test too-large proof" `Quick test_rejection_too_large;
     ]
 end
 
@@ -2094,7 +2323,7 @@ module Withdraw = struct
   (** [context_finalize_batch_with_withdrawals account tx_rollup batch withdrawals b]
       submits a batch containing the message [batch] to [tx_rollup] in the block [b].
       In the following block, it adds a commitment for that block containing
-      [withdrawals] (same format as in [make_commitment_for_batch]).
+      [withdrawals] (same format as in [make_incomplete_commitment_for_batch]).
       In the third and final block, it finalizes the commitment.
 
       It returns the commitment and a list of dummy context hashes
@@ -2109,7 +2338,11 @@ module Withdraw = struct
        list of withdrawals as per
        [withdrawals]. Include the commitment in an operation and bake. *)
     Incremental.begin_construction b >>=? fun i ->
-    make_commitment_for_batch i Tx_rollup_level.root tx_rollup withdrawals
+    make_incomplete_commitment_for_batch
+      i
+      Tx_rollup_level.root
+      tx_rollup
+      withdrawals
     >>=? fun (commitment, context_hash_list) ->
     Op.tx_rollup_commit (I i) account tx_rollup commitment >>=? fun operation ->
     Incremental.add_operation i operation >>=? fun i ->
@@ -2749,7 +2982,11 @@ module Withdraw = struct
        [withdrawal]. Include the commitment in an operation and bake
        it. *)
     Incremental.begin_construction b >>=? fun i ->
-    make_commitment_for_batch i Tx_rollup_level.root tx_rollup [(0, [withdraw])]
+    make_incomplete_commitment_for_batch
+      i
+      Tx_rollup_level.root
+      tx_rollup
+      [(0, [withdraw])]
     >>=? fun (commitment, context_hash_list) ->
     Op.tx_rollup_commit (I i) account1 tx_rollup commitment
     >>=? fun operation ->
