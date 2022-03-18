@@ -2,7 +2,7 @@ tezt/_regressions/tx_rollup_finalize_too_recent_commitment.out
 
 ./tezos-client --wait none submit tx rollup batch 626c6f62 to '[TX_ROLLUP_HASH]' from '[PUBLIC_KEY_HASH]'
 Node is bootstrapped.
-Estimated gas: 2257.424 units (will add 100 for safety)
+Estimated gas: 2257.486 units (will add 100 for safety)
 Estimated storage: no bytes added
 Operation successfully injected in the node.
 Operation hash is '[OPERATION_HASH]'
@@ -24,7 +24,7 @@ This sequence of operations was run:
       This tx rollup submit operation was successfully applied
       Balance updates:
         
-      Consumed gas: 2257.424
+      Consumed gas: 2257.486
 
 
 ./tezos-client rpc get '/chains/main/blocks/head/context/tx_rollup/[TX_ROLLUP_HASH]/inbox/0'
@@ -34,7 +34,7 @@ This sequence of operations was run:
 
 ./tezos-client --wait none submit tx rollup commitment 0 '[TX_ROLLUP_INBOX_HASH]'  '[TX_ROLLUP_MESSAGE_RESULT_HASH]' to '[TX_ROLLUP_HASH]' from '[PUBLIC_KEY_HASH]'
 Node is bootstrapped.
-Estimated gas: 3690.976 units (will add 100 for safety)
+Estimated gas: 3691.016 units (will add 100 for safety)
 Estimated storage: no bytes added
 Operation successfully injected in the node.
 Operation hash is '[OPERATION_HASH]'
@@ -47,7 +47,7 @@ This sequence of operations was run:
     From: [PUBLIC_KEY_HASH]
     Fee to the baker: ꜩ0.000697
     Expected counter: 3
-    Gas limit: 3791
+    Gas limit: 3792
     Storage limit: 0 bytes
     Balance updates:
       [PUBLIC_KEY_HASH] ... -ꜩ0.000697
@@ -58,7 +58,7 @@ This sequence of operations was run:
       Balance updates:
         [PUBLIC_KEY_HASH] ....................................................... -ꜩ10000
         Frozen_bonds([PUBLIC_KEY_HASH],[TX_ROLLUP_HASH]) ... +ꜩ10000
-      Consumed gas: 3690.976
+      Consumed gas: 3691.016
 
 
 ./tezos-client --wait none submit tx rollup finalize commitment to '[TX_ROLLUP_HASH]' from '[PUBLIC_KEY_HASH]'

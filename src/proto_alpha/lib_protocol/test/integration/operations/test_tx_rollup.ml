@@ -1052,10 +1052,7 @@ let test_commitment_duplication () =
    | Ok _ -> failwith "an error was expected"
    | Error e ->
        check_proto_error_f
-         (function
-           | Tx_rollup_errors.Level_already_has_commitment level1 ->
-               Tx_rollup_level.root = level1
-           | _ -> false)
+         (function Tx_rollup_errors.No_uncommitted_inbox -> true | _ -> false)
          e)
   >>=? fun _ ->
   (* No charge. *)
