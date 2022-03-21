@@ -67,9 +67,14 @@ let get_node_inbox ?(block = "head") node client =
       Rollup.compute_inbox_from_messages messages client
 
 let get_rollup_parameter_file ~protocol =
-  let enable_tx_rollup = [(["tx_rollup_enable"], Some "true")] in
+  let parameters =
+    [
+      (["tx_rollup_enable"], Some "true");
+      (["tx_rollup_min_batch_size"], Some "5");
+    ]
+  in
   let base = Either.right (protocol, None) in
-  Protocol.write_parameter_file ~base enable_tx_rollup
+  Protocol.write_parameter_file ~base parameters
 
 (* Checks that the configuration is stored and that the required
    fields are present. *)

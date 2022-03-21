@@ -186,6 +186,7 @@ module Tx_rollup = struct
             ( ["tx_rollup_withdraw_period"],
               Some (string_of_int parameters.withdraw_period) );
           ]
+        @ [(["tx_rollup_min_batch_size"], Some "4")]
       in
       Protocol.write_parameter_file ~base:(Either.right (protocol, None)) args
   end

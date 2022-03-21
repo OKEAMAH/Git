@@ -795,6 +795,7 @@ module Constants : sig
     tx_rollup_origination_size : int;
     tx_rollup_hard_size_limit_per_inbox : int;
     tx_rollup_hard_size_limit_per_message : int;
+    tx_rollup_min_batch_size : int;
     tx_rollup_max_withdrawals_per_batch : int;
     tx_rollup_commitment_bond : Tez.t;
     tx_rollup_finality_period : int;
@@ -895,6 +896,8 @@ module Constants : sig
   val tx_rollup_hard_size_limit_per_inbox : context -> int
 
   val tx_rollup_hard_size_limit_per_message : context -> int
+
+  val tx_rollup_min_batch_size : context -> int
 
   val tx_rollup_max_withdrawals_per_batch : context -> int
 
@@ -1883,7 +1886,7 @@ module Tx_rollup_errors : sig
     | Inbox_does_not_exist of Tx_rollup.t * Tx_rollup_level.t
     | Inbox_size_would_exceed_limit of Tx_rollup.t
     | Inbox_count_would_exceed_limit of Tx_rollup.t
-    | Message_size_exceeds_limit
+    | Message_size_exceeds_limit of {min : int; max : int; given : int}
     | Too_many_inboxes
     | Too_many_finalized_commitments
     | Wrong_batch_count

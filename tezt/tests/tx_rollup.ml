@@ -340,8 +340,19 @@ module Regressions = struct
       @@ fun protocol ->
       let* state = init_with_tx_rollup ~protocol () in
       let batch = "" in
-      let* () = submit_batch ~batch state in
-      unit
+      let*? process =
+        Client.Tx_rollup.submit_batch
+          ~hooks
+          ~content:batch
+          ~rollup:state.rollup
+          ~src:Constant.bootstrap1.public_key_hash
+          state.client
+      in
+      Process.check_error
+        ~msg:
+          (rex
+             "A message submitted to a transaction rollup inbox exceeds limit")
+        process
 
     let submit_maximum_size_batch =
       Protocol.register_regression_test

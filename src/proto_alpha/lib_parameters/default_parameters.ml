@@ -108,6 +108,9 @@ let constants_mainnet =
     (* Transaction rollup’s size limits are expressed in number of bytes *)
     tx_rollup_hard_size_limit_per_inbox = 100_000;
     tx_rollup_hard_size_limit_per_message = 5_000;
+    (* The smallest possible tx rollup batch: one transaction, signed *)
+    tx_rollup_min_batch_size =
+      8 + Bls12_381.Signature.MinSig.signature_size_in_bytes;
     (* We limit the number of withdraws per message to avoid costly
        allocations/iterations in the accounting mechanism used for each
        withdraw claiming in L1 and cleaned when removing a commitment. *)

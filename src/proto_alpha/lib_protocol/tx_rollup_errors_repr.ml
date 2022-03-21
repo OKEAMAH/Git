@@ -33,7 +33,7 @@ type error +=
   | Inbox_size_would_exceed_limit of Tx_rollup_repr.t
   | Inbox_count_would_exceed_limit of Tx_rollup_repr.t
   | No_uncommitted_inbox
-  | Message_size_exceeds_limit
+  | Message_size_exceeds_limit of {min : int; max : int; given : int}
   | Too_many_inboxes
   | Too_many_finalized_commitments
   | Wrong_batch_count
@@ -159,7 +159,7 @@ let () =
     (function
       | Inbox_count_would_exceed_limit rollup -> Some rollup | _ -> None)
     (fun rollup -> Inbox_count_would_exceed_limit rollup) ;
-  (* Tx_rollup_message_size_exceed_limit *)
+  (* No_uncommitted_inbox *)
   register_error_kind
     `Temporary
     ~id:"tx_rollup_no_uncommitted_inbox"
@@ -184,9 +184,11 @@ let () =
     ~title:"A message submitted to a transaction rollup inbox exceeds limit"
     ~description:
       "A message submitted to a transaction rollup inbox exceeds limit"
-    empty
-    (function Message_size_exceeds_limit -> Some () | _ -> None)
-    (fun () -> Message_size_exceeds_limit) ;
+    (obj3 (req "min" int31) (req "max" int31) (req "given" int31))
+    (function
+      | Message_size_exceeds_limit {min; max; given} -> Some (min, max, given)
+      | _ -> None)
+    (fun (min, max, given) -> Message_size_exceeds_limit {min; max; given}) ;
   (* Tx_rollup_too_many_inboxes *)
   register_error_kind
     `Temporary

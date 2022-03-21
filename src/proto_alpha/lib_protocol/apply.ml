@@ -1983,15 +1983,17 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
       assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Tx_rollup_submit_batch {content; _} ->
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
-      let size_limit =
+      let size_min = Alpha_context.Constants.tx_rollup_min_batch_size ctxt in
+      let size_max =
         Alpha_context.Constants.tx_rollup_hard_size_limit_per_message ctxt
       in
       let (_message, message_size) = Tx_rollup_message.make_batch content in
       Tx_rollup_gas.message_hash_cost message_size >>?= fun cost ->
       Alpha_context.Gas.consume ctxt cost >>?= fun ctxt ->
       fail_unless
-        Compare.Int.(message_size <= size_limit)
-        Tx_rollup_errors.Message_size_exceeds_limit
+        Compare.Int.(size_min <= message_size && message_size <= size_max)
+        (Tx_rollup_errors.Message_size_exceeds_limit
+           {min = size_min; max = size_max; given = message_size})
       >>=? fun () -> return ctxt
   | Tx_rollup_commit {commitment; tx_rollup} ->
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->

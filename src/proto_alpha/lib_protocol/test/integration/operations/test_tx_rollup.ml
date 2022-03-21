@@ -159,6 +159,7 @@ let context_init ?(tx_rollup_max_unfinalized_levels = 2100)
       tx_rollup_finality_period = 1;
       tx_rollup_withdraw_period = 1;
       tx_rollup_max_finalized_levels = 2;
+      tx_rollup_min_batch_size = 5;
       tx_rollup_max_unfinalized_levels;
       endorsing_reward_per_slot = Tez.zero;
       baking_reward_bonus_per_slot = Tez.zero;
@@ -638,7 +639,35 @@ let test_batch_too_big () =
   Incremental.add_operation
     i
     ~expect_apply_failure:
-      (check_proto_error Tx_rollup_errors.Message_size_exceeds_limit)
+      (check_proto_error
+         (Tx_rollup_errors.Message_size_exceeds_limit
+            {
+              min = 5;
+              max = constant.parametric.tx_rollup_hard_size_limit_per_message;
+              given =
+                constant.parametric.tx_rollup_hard_size_limit_per_message + 1;
+            }))
+    op
+  >>=? fun _ -> return_unit
+
+(** Try to add a too-small batch in an inbox. *)
+let test_batch_too_small () =
+  context_init1 () >>=? fun (b, contract) ->
+  originate b contract >>=? fun (b, tx_rollup) ->
+  Context.get_constants (B b) >>=? fun constant ->
+  let contents = "tiny" in
+  Incremental.begin_construction b >>=? fun i ->
+  Op.tx_rollup_submit_batch (I i) contract tx_rollup contents >>=? fun op ->
+  Incremental.add_operation
+    i
+    ~expect_apply_failure:
+      (check_proto_error
+         (Tx_rollup_errors.Message_size_exceeds_limit
+            {
+              min = 5;
+              max = constant.parametric.tx_rollup_hard_size_limit_per_message;
+              given = 4;
+            }))
     op
   >>=? fun _ -> return_unit
 
@@ -1400,6 +1429,7 @@ let test_full_inbox () =
       baking_reward_fixed_portion = Tez.zero;
       tx_rollup_enable = true;
       tx_rollup_max_unfinalized_levels = 15;
+      tx_rollup_min_batch_size = 5;
     }
   in
   Context.init_with_constants constants 1 >>=? fun (b, contracts) ->

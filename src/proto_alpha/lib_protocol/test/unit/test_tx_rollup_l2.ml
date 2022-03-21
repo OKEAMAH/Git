@@ -553,7 +553,7 @@ module Test_batch_encodings = struct
           qty
 
   let test_l2_transaction_size () =
-    (* Assert the smallest operation_content size is 5 *)
+    (* Assert the smallest operation_content size is 4 *)
     let opc =
       Transfer
         {
