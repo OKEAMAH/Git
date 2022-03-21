@@ -1474,6 +1474,32 @@ let test_full_inbox () =
   ignore i ;
   return ()
 
+(** [test_duplicate_commitments] tests that duplicate commitment are not
+    allowed. *)
+let test_duplicate_commitments () =
+  context_init2 () >>=? fun (b, contract1, contract2) ->
+  originate b contract1 >>=? fun (b, tx_rollup) ->
+  (* We need two transactions here to get Level_already_has_commitment.
+     With one, we get No_uncommitted_inbox*)
+  make_transactions_in tx_rollup contract1 [2; 3] b >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  Incremental.begin_construction b >>=? fun i ->
+  make_incomplete_commitment_for_batch i Tx_rollup_level.root tx_rollup []
+  >>=? fun (commitment, _) ->
+  Op.tx_rollup_commit (I i) contract1 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation i op >>=? fun i ->
+  Op.tx_rollup_commit (I i) contract2 tx_rollup commitment >>=? fun op ->
+  Incremental.add_operation
+    i
+    op
+    ~expect_apply_failure:
+      (check_proto_error_f @@ function
+       | Tx_rollup_errors.Level_already_has_commitment level ->
+           level = Tx_rollup_level.root
+       | _ -> assert false)
+  >>=? fun _ -> return_unit
+
 (** [test_bond_finalization] tests that level retirement in fact
     allows bonds to be returned. *)
 let test_bond_finalization () =
@@ -4466,6 +4492,7 @@ let tests =
       "Test finalization edge cases"
       `Quick
       test_finalization_edge_cases;
+    Tztest.tztest "Test duplicate commitments" `Quick test_duplicate_commitments;
     Tztest.tztest "Test bond finalization" `Quick test_bond_finalization;
     Tztest.tztest "Test state" `Quick test_state;
     Tztest.tztest
