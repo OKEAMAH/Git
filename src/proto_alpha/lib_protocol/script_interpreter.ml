@@ -405,18 +405,6 @@ and imap_iter : type a b c d e f g h. (a, b, c, d, e, f, g, h) imap_iter_type =
   (next [@ocaml.tailcall]) g gas ks accu stack
  [@@inline]
 
-and ifailwith : ifailwith_type =
-  {
-    ifailwith =
-      (fun (ctxt, _) gas kloc tv accu ->
-        let v = accu in
-        let ctxt = update_context gas ctxt in
-        trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
-        >>=? fun (v, _ctxt) ->
-        let v = Micheline.strip_locations v in
-        fail (Reject (kloc, v)));
-  }
-
 and iexec : type a b c d e f g. (a, b, c, d, e, f, g) iexec_type =
  fun logger g gas k ks accu stack ->
   let arg = accu and (code, stack) = stack in
@@ -909,8 +897,12 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
       | ILambda (_, lam, k) ->
           (step [@ocaml.tailcall]) g gas k ks lam (accu, stack)
       | IFailwith (_, kloc, tv) ->
-          let {ifailwith} = ifailwith in
-          ifailwith g gas kloc tv accu
+          let v = accu in
+          let ctxt = update_context gas ctxt in
+          trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
+          >>=? fun (v, _ctxt) ->
+          let v = Micheline.strip_locations v in
+          fail (Reject (kloc, v))
       (* comparison *)
       | ICompare (_, ty, k) ->
           let a = accu in

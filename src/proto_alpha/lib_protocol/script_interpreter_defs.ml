@@ -852,18 +852,6 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) imap_iter_type =
   'a * 'b ->
   ('c * 'd * outdated_context * local_gas_counter) tzresult Lwt.t
 
-type ifailwith_type = {
-  ifailwith :
-    'a 'ac 'b.
-    outdated_context * step_constants ->
-    local_gas_counter ->
-    Script.location ->
-    ('a, 'ac) ty ->
-    'a ->
-    ('b, error trace) result Lwt.t;
-}
-[@@unboxed]
-
 type ('a, 'b, 'c, 'd, 'e, 'f, 'g) iexec_type =
   logger option ->
   outdated_context * step_constants ->
