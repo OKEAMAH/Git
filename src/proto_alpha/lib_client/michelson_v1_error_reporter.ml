@@ -101,7 +101,7 @@ let collect_error_locations errs =
         | Invalid_syntactic_constant (loc, _, _)
         | Invalid_contract (loc, _)
         | Comparable_type_expected (loc, _)
-        | Overflow (loc, _)
+        | Overflow loc
         | Reject (loc, _, _)
         | Pair_bad_argument loc
         | Unpair_bad_argument loc
@@ -772,21 +772,8 @@ let report_errors ~details ~show_source ?parsed ppf errs =
                       print_execution_trace
                       trace)
               trace
-        | Overflow (loc, trace) ->
-            Format.fprintf
-              ppf
-              "%aunexpected arithmetic overflow%a"
-              print_loc
-              loc
-              (fun ppf -> function
-                | None -> ()
-                | Some trace ->
-                    Format.fprintf
-                      ppf
-                      "@,@[<v 2>trace@,%a@]"
-                      print_execution_trace
-                      trace)
-              trace
+        | Overflow loc ->
+            Format.fprintf ppf "%aunexpected arithmetic overflow" print_loc loc
         | err -> Format.fprintf ppf "%a" Environment.Error_monad.pp err) ;
         if rest <> [] then Format.fprintf ppf "@," ;
         print_trace locations rest

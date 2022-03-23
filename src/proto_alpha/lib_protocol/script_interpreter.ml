@@ -104,7 +104,7 @@ type step_constants = Script_typed_ir.step_constants = {
 
 type error += Reject of Script.location * Script.expr * execution_trace option
 
-type error += Overflow of Script.location * execution_trace option
+type error += Overflow of Script.location
 
 type error += Runtime_contract_error of Contract.t
 
@@ -144,11 +144,9 @@ let () =
     ~title:"Script failed (overflow error)"
     ~description:
       "A FAIL instruction was reached due to the detection of an overflow"
-    (obj2
-       (req "location" Script.location_encoding)
-       (opt "trace" trace_encoding))
-    (function Overflow (loc, trace) -> Some (loc, trace) | _ -> None)
-    (fun (loc, trace) -> Overflow (loc, trace)) ;
+    (obj1 (req "location" Script.location_encoding))
+    (function Overflow loc -> Some loc | _ -> None)
+    (fun loc -> Overflow loc) ;
   (* Runtime contract error *)
   register_error_kind
     `Temporary
@@ -420,7 +418,7 @@ and imul_teznat : type a b c d e f. (a, b, c, d, e, f) imul_teznat_type =
   let x = accu in
   let (y, stack) = stack in
   match Script_int.to_int64 y with
-  | None -> get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
+  | None -> get_log logger >>=? fun _log -> fail (Overflow kinfo.iloc)
   | Some y ->
       Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
 
@@ -429,7 +427,7 @@ and imul_nattez : type a b c d e f. (a, b, c, d, e, f) imul_nattez_type =
   let y = accu in
   let (x, stack) = stack in
   match Script_int.to_int64 y with
-  | None -> get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
+  | None -> get_log logger >>=? fun _log -> fail (Overflow kinfo.iloc)
   | Some y ->
       Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
 
@@ -437,14 +435,14 @@ and ilsl_nat : type a b c d e f. (a, b, c, d, e, f) ilsl_nat_type =
  fun logger g gas (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
   match Script_int.shift_left_n x y with
-  | None -> get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
+  | None -> get_log logger >>=? fun _log -> fail (Overflow kinfo.iloc)
   | Some x -> (step [@ocaml.tailcall]) g gas k ks x stack
 
 and ilsr_nat : type a b c d e f. (a, b, c, d, e, f) ilsr_nat_type =
  fun logger g gas (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
   match Script_int.shift_right_n x y with
-  | None -> get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
+  | None -> get_log logger >>=? fun _log -> fail (Overflow kinfo.iloc)
   | Some r -> (step [@ocaml.tailcall]) g gas k ks r stack
 
 and ifailwith : ifailwith_type =

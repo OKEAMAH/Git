@@ -228,7 +228,7 @@ let error_encoding_tests =
         (test_json_roundtrip_err name e))
     [
       ("Reject", Reject (0, script_expr_int, None));
-      ("Overflow", Overflow (0, None));
+      ("Overflow", Overflow 0);
       ("Runtime_contract_error", Runtime_contract_error contract_zero);
       ("Bad_contract_parameter", Bad_contract_parameter contract_zero);
       ("Cannot_serialize_failure", Cannot_serialize_failure);
