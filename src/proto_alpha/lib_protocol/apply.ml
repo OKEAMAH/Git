@@ -1271,6 +1271,15 @@ let apply_external_manager_operation_content :
         ~internal:false
   | Transaction {destination = Tx_rollup _; _} ->
       fail Tx_rollup_non_internal_transaction
+  | Tx_rollup_dispatch_tickets
+      {
+        tx_rollup = _;
+        level = _;
+        context_hash = _;
+        message_index = _;
+        tickets_info = _;
+      } ->
+      fail Tx_rollup_non_internal_transaction
   | Tx_rollup_withdraw
       {
         tx_rollup;
@@ -1890,7 +1899,8 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
         Tx_rollup_errors.Message_size_exceeds_limit
       >>=? fun () -> return ctxt
   | Tx_rollup_commit _ | Tx_rollup_return_bond _
-  | Tx_rollup_finalize_commitment _ | Tx_rollup_remove_commitment _ ->
+  | Tx_rollup_finalize_commitment _ | Tx_rollup_remove_commitment _
+  | Tx_rollup_dispatch_tickets _ ->
       assert_tx_rollup_feature_enabled ctxt >|=? fun () -> ctxt
   | Tx_rollup_withdraw {withdraw_path; _} ->
       assert_tx_rollup_feature_enabled ctxt >>=? fun () ->
@@ -2031,7 +2041,7 @@ let burn_storage_fees :
           storage_limit,
           Tx_rollup_origination_result {payload with balance_updates} )
   | Tx_rollup_return_bond_result _ | Tx_rollup_remove_commitment_result _
-  | Tx_rollup_rejection_result _ ->
+  | Tx_rollup_rejection_result _ | Tx_rollup_dispatch_tickets_result _ ->
       return (ctxt, storage_limit, smopr)
   | Tx_rollup_withdraw_result payload ->
       let consumed = payload.paid_storage_size_diff in

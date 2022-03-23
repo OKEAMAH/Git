@@ -1766,6 +1766,14 @@ module Tx_rollup_withdraw : sig
     val path_depth : path -> int
   end
 
+  type withdrawal_info = {
+    contents : Script.lazy_expr;
+    ty : Script.lazy_expr;
+    ticketer : Contract.t;
+    amount : Tx_rollup_l2_qty.t;
+    claimer : Signature.Public_key_hash.t;
+  }
+
   val add :
     context ->
     Tx_rollup_state.t ->
@@ -2762,6 +2770,8 @@ module Kind : sig
 
   type tx_rollup_rejection = Tx_rollup_rejection_kind
 
+  type tx_rollup_dispatch_tickets = Tx_rollup_dispatch_tickets_kind
+
   type tx_rollup_withdraw = Tx_rollup_withdraw_kind
 
   type sc_rollup_originate = Sc_rollup_originate_kind
@@ -2788,6 +2798,8 @@ module Kind : sig
     | Tx_rollup_remove_commitment_manager_kind
         : tx_rollup_remove_commitment manager
     | Tx_rollup_rejection_manager_kind : tx_rollup_rejection manager
+    | Tx_rollup_dispatch_tickets_manager_kind
+        : tx_rollup_dispatch_tickets manager
     | Tx_rollup_withdraw_manager_kind : tx_rollup_withdraw manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
@@ -2945,6 +2957,14 @@ and _ manager_operation =
       proof : Tx_rollup_l2_proof.t;
     }
       -> Kind.tx_rollup_rejection manager_operation
+  | Tx_rollup_dispatch_tickets : {
+      tx_rollup : Tx_rollup.t;
+      level : Tx_rollup_level.t;
+      context_hash : Context_hash.t;
+      message_index : int;
+      tickets_info : Tx_rollup_withdraw.withdrawal_info list;
+    }
+      -> Kind.tx_rollup_dispatch_tickets manager_operation
   | Tx_rollup_withdraw : {
       tx_rollup : Tx_rollup.t;
       level : Tx_rollup_level.t;
@@ -3123,6 +3143,9 @@ module Operation : sig
 
     val tx_rollup_rejection_case : Kind.tx_rollup_rejection Kind.manager case
 
+    val tx_rollup_dispatch_tickets_case :
+      Kind.tx_rollup_dispatch_tickets Kind.manager case
+
     val tx_rollup_withdraw_case : Kind.tx_rollup_withdraw Kind.manager case
 
     val register_global_constant_case :
@@ -3184,6 +3207,8 @@ module Operation : sig
         Kind.tx_rollup_remove_commitment case
 
       val tx_rollup_rejection_case : Kind.tx_rollup_rejection case
+
+      val tx_rollup_dispatch_tickets_case : Kind.tx_rollup_dispatch_tickets case
 
       val tx_rollup_withdraw_case : Kind.tx_rollup_withdraw case
 

@@ -83,6 +83,16 @@ end
     an inbox given by [message_count_limit]. *)
 val maximum_path_depth : withdraw_count_limit:int -> int
 
+type withdrawal_info = {
+  contents : Script_repr.lazy_expr;
+  ty : Script_repr.lazy_expr;
+  ticketer : Contract_repr.t;
+  amount : Tx_rollup_l2_qty.t;
+  claimer : Signature.Public_key_hash.t;
+}
+
+val withdrawal_info_encoding : withdrawal_info Data_encoding.t
+
 (** [Withdrawal_accounting] provides an interface for the storage to
    account for which withdrawals (as identified by their index) have
    been consumed. *)

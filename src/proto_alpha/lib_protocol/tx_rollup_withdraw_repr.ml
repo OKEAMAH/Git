@@ -130,6 +130,28 @@ let () =
     (function Too_big_withdrawal_index i -> Some i | _ -> None)
     (fun i -> Too_big_withdrawal_index i)
 
+type withdrawal_info = {
+  contents : Script_repr.lazy_expr;
+  ty : Script_repr.lazy_expr;
+  ticketer : Contract_repr.t;
+  amount : Tx_rollup_l2_qty.t;
+  claimer : Signature.Public_key_hash.t;
+}
+
+let withdrawal_info_encoding : withdrawal_info Data_encoding.t =
+  let open Data_encoding in
+  conv
+    (fun {contents; ty; ticketer; amount; claimer} ->
+      (contents, ty, ticketer, amount, claimer))
+    (fun (contents, ty, ticketer, amount, claimer) ->
+      {contents; ty; ticketer; amount; claimer})
+    (obj5
+       (req "contents" Script_repr.lazy_expr_encoding)
+       (req "ty" Script_repr.lazy_expr_encoding)
+       (req "ticketer" Contract_repr.encoding)
+       (req "amount" Tx_rollup_l2_qty.encoding)
+       (req "claimer" Signature.Public_key_hash.encoding))
+
 module Withdrawal_accounting = struct
   (** Internally, the withdrawal accounting is implemented through a
       list of [int64], encoding an "infinite" bitvector [bitv], so that, intuitively:

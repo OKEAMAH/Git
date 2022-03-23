@@ -714,6 +714,7 @@ let bake_n_with_all_balance_updates ?(baking_mode = Application) ?policy
               | Tx_rollup_finalize_commitment_result _
               | Tx_rollup_remove_commitment_result _
               | Tx_rollup_rejection_result _ | Tx_rollup_withdraw_result _
+              | Tx_rollup_dispatch_tickets_result _
               | Sc_rollup_originate_result _ | Sc_rollup_add_messages_result _
               | Sc_rollup_cement_result _ | Sc_rollup_publish_result _ ->
                   balance_updates_rev
@@ -753,6 +754,7 @@ let bake_n_with_origination_results ?(baking_mode = Application) ?policy n b =
             | Successful_manager_result (Tx_rollup_finalize_commitment_result _)
             | Successful_manager_result (Tx_rollup_remove_commitment_result _)
             | Successful_manager_result (Tx_rollup_rejection_result _)
+            | Successful_manager_result (Tx_rollup_dispatch_tickets_result _)
             | Successful_manager_result (Tx_rollup_withdraw_result _)
             | Successful_manager_result (Sc_rollup_originate_result _)
             | Successful_manager_result (Sc_rollup_add_messages_result _)
