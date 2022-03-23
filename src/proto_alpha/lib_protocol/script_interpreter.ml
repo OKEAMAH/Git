@@ -405,15 +405,6 @@ and imap_iter : type a b c d e f g h. (a, b, c, d, e, f, g, h) imap_iter_type =
   (next [@ocaml.tailcall]) g gas ks accu stack
  [@@inline]
 
-and imul_nattez : type a b c d e f. (a, b, c, d, e, f) imul_nattez_type =
- fun g gas (kinfo, k) ks accu stack ->
-  let y = accu in
-  let (x, stack) = stack in
-  match Script_int.to_int64 y with
-  | None -> fail (Overflow kinfo.iloc)
-  | Some y ->
-      Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
-
 and ilsl_nat : type a b c d e f. (a, b, c, d, e, f) ilsl_nat_type =
  fun g gas (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
@@ -760,7 +751,14 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           | Some y ->
               Tez.(x *? y) >>?= fun res ->
               (step [@ocaml.tailcall]) g gas k ks res stack)
-      | IMul_nattez (kinfo, k) -> imul_nattez g gas (kinfo, k) ks accu stack
+      | IMul_nattez (kinfo, k) -> (
+          let y = accu in
+          let (x, stack) = stack in
+          match Script_int.to_int64 y with
+          | None -> fail (Overflow kinfo.iloc)
+          | Some y ->
+              Tez.(x *? y) >>?= fun res ->
+              (step [@ocaml.tailcall]) g gas k ks res stack)
       (* boolean operations *)
       | IOr (_, k) ->
           let x = accu in
