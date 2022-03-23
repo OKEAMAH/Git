@@ -901,6 +901,7 @@ let submit_tx_rollup_commitment (cctxt : #full) ~chain ~block ?confirmations
     ?simulation
     ?counter
     ~source
+    ~successor_level:true
     ~fee:(Limit.of_option fee)
     ~storage_limit:(Limit.of_option storage_limit)
     ~gas_limit:(Limit.of_option gas_limit)
