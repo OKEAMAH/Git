@@ -853,7 +853,6 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) imap_iter_type =
   ('c * 'd * outdated_context * local_gas_counter) tzresult Lwt.t
 
 type ('a, 'b, 'c, 'd, 'e, 'f) imul_teznat_type =
-  logger option ->
   outdated_context * step_constants ->
   local_gas_counter ->
   (Tez.t, 'a) kinfo * (Tez.t, 'b, 'c, 'd) kinstr ->
@@ -863,7 +862,6 @@ type ('a, 'b, 'c, 'd, 'e, 'f) imul_teznat_type =
   ('e * 'f * outdated_context * local_gas_counter, error trace) result Lwt.t
 
 type ('a, 'b, 'c, 'd, 'e, 'f) imul_nattez_type =
-  logger option ->
   outdated_context * step_constants ->
   local_gas_counter ->
   (Script_int.n Script_int.num, 'a) kinfo * (Tez.t, 'b, 'c, 'd) kinstr ->
@@ -873,7 +871,6 @@ type ('a, 'b, 'c, 'd, 'e, 'f) imul_nattez_type =
   ('e * 'f * outdated_context * local_gas_counter, error trace) result Lwt.t
 
 type ('a, 'b, 'c, 'd, 'e, 'f) ilsl_nat_type =
-  logger option ->
   outdated_context * step_constants ->
   local_gas_counter ->
   (Script_int.n Script_int.num, 'a) kinfo
@@ -884,7 +881,6 @@ type ('a, 'b, 'c, 'd, 'e, 'f) ilsl_nat_type =
   ('e * 'f * outdated_context * local_gas_counter, error trace) result Lwt.t
 
 type ('a, 'b, 'c, 'd, 'e, 'f) ilsr_nat_type =
-  logger option ->
   outdated_context * step_constants ->
   local_gas_counter ->
   (Script_int.n Script_int.num, 'a) kinfo
@@ -897,7 +893,6 @@ type ('a, 'b, 'c, 'd, 'e, 'f) ilsr_nat_type =
 type ifailwith_type = {
   ifailwith :
     'a 'ac 'b.
-    logger option ->
     outdated_context * step_constants ->
     local_gas_counter ->
     Script.location ->

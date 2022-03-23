@@ -406,7 +406,7 @@ and imap_iter : type a b c d e f g h. (a, b, c, d, e, f, g, h) imap_iter_type =
  [@@inline]
 
 and imul_teznat : type a b c d e f. (a, b, c, d, e, f) imul_teznat_type =
- fun _logger g gas (kinfo, k) ks accu stack ->
+ fun g gas (kinfo, k) ks accu stack ->
   let x = accu in
   let (y, stack) = stack in
   match Script_int.to_int64 y with
@@ -415,7 +415,7 @@ and imul_teznat : type a b c d e f. (a, b, c, d, e, f) imul_teznat_type =
       Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
 
 and imul_nattez : type a b c d e f. (a, b, c, d, e, f) imul_nattez_type =
- fun _logger g gas (kinfo, k) ks accu stack ->
+ fun g gas (kinfo, k) ks accu stack ->
   let y = accu in
   let (x, stack) = stack in
   match Script_int.to_int64 y with
@@ -424,14 +424,14 @@ and imul_nattez : type a b c d e f. (a, b, c, d, e, f) imul_nattez_type =
       Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
 
 and ilsl_nat : type a b c d e f. (a, b, c, d, e, f) ilsl_nat_type =
- fun _logger g gas (kinfo, k) ks accu stack ->
+ fun g gas (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
   match Script_int.shift_left_n x y with
   | None -> fail (Overflow kinfo.iloc)
   | Some x -> (step [@ocaml.tailcall]) g gas k ks x stack
 
 and ilsr_nat : type a b c d e f. (a, b, c, d, e, f) ilsr_nat_type =
- fun _logger g gas (kinfo, k) ks accu stack ->
+ fun g gas (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
   match Script_int.shift_right_n x y with
   | None -> fail (Overflow kinfo.iloc)
@@ -440,7 +440,7 @@ and ilsr_nat : type a b c d e f. (a, b, c, d, e, f) ilsr_nat_type =
 and ifailwith : ifailwith_type =
   {
     ifailwith =
-      (fun _logger (ctxt, _) gas kloc tv accu ->
+      (fun (ctxt, _) gas kloc tv accu ->
         let v = accu in
         let ctxt = update_context gas ctxt in
         trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
@@ -761,10 +761,8 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let (y, stack) = stack in
           Tez.(x -? y) >>?= fun res ->
           (step [@ocaml.tailcall]) g gas k ks res stack
-      | IMul_teznat (kinfo, k) ->
-          imul_teznat None g gas (kinfo, k) ks accu stack
-      | IMul_nattez (kinfo, k) ->
-          imul_nattez None g gas (kinfo, k) ks accu stack
+      | IMul_teznat (kinfo, k) -> imul_teznat g gas (kinfo, k) ks accu stack
+      | IMul_nattez (kinfo, k) -> imul_nattez g gas (kinfo, k) ks accu stack
       (* boolean operations *)
       | IOr (_, k) ->
           let x = accu in
@@ -860,8 +858,8 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let x = accu and (y, stack) = stack in
           let res = Script_int.ediv_n x y in
           (step [@ocaml.tailcall]) g gas k ks res stack
-      | ILsl_nat (kinfo, k) -> ilsl_nat None g gas (kinfo, k) ks accu stack
-      | ILsr_nat (kinfo, k) -> ilsr_nat None g gas (kinfo, k) ks accu stack
+      | ILsl_nat (kinfo, k) -> ilsl_nat g gas (kinfo, k) ks accu stack
+      | ILsr_nat (kinfo, k) -> ilsr_nat g gas (kinfo, k) ks accu stack
       | IOr_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.logor x y in
@@ -922,7 +920,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           (step [@ocaml.tailcall]) g gas k ks lam (accu, stack)
       | IFailwith (_, kloc, tv) ->
           let {ifailwith} = ifailwith in
-          ifailwith None g gas kloc tv accu
+          ifailwith g gas kloc tv accu
       (* comparison *)
       | ICompare (_, ty, k) ->
           let a = accu in
@@ -1563,21 +1561,6 @@ and log :
   | ILoop_left (_, bl, br) ->
       let ks = with_log (KLoop_in_left (bl, KCons (br, ks))) in
       (next [@ocaml.tailcall]) g gas ks accu stack
-  | IMul_teznat (kinfo, k) ->
-      let extra = (kinfo, k) in
-      (imul_teznat [@ocaml.tailcall]) (Some logger) g gas extra ks accu stack
-  | IMul_nattez (kinfo, k) ->
-      let extra = (kinfo, k) in
-      (imul_nattez [@ocaml.tailcall]) (Some logger) g gas extra ks accu stack
-  | ILsl_nat (kinfo, k) ->
-      let extra = (kinfo, k) in
-      (ilsl_nat [@ocaml.tailcall]) (Some logger) g gas extra ks accu stack
-  | ILsr_nat (kinfo, k) ->
-      let extra = (kinfo, k) in
-      (ilsr_nat [@ocaml.tailcall]) (Some logger) g gas extra ks accu stack
-  | IFailwith (_, kloc, tv) ->
-      let {ifailwith} = ifailwith in
-      (ifailwith [@ocaml.tailcall]) (Some logger) g gas kloc tv accu
   | IExec (_, k) ->
       (iexec [@ocaml.tailcall]) (Some logger) g gas k ks accu stack
   | _ -> (step [@ocaml.tailcall]) g gas k (with_log ks) accu stack
