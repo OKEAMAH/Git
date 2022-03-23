@@ -405,13 +405,6 @@ and imap_iter : type a b c d e f g h. (a, b, c, d, e, f, g, h) imap_iter_type =
   (next [@ocaml.tailcall]) g gas ks accu stack
  [@@inline]
 
-and ilsr_nat : type a b c d e f. (a, b, c, d, e, f) ilsr_nat_type =
- fun g gas (kinfo, k) ks accu stack ->
-  let x = accu and (y, stack) = stack in
-  match Script_int.shift_right_n x y with
-  | None -> fail (Overflow kinfo.iloc)
-  | Some r -> (step [@ocaml.tailcall]) g gas k ks r stack
-
 and ifailwith : ifailwith_type =
   {
     ifailwith =
@@ -852,7 +845,11 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           match Script_int.shift_left_n x y with
           | None -> fail (Overflow kinfo.iloc)
           | Some x -> (step [@ocaml.tailcall]) g gas k ks x stack)
-      | ILsr_nat (kinfo, k) -> ilsr_nat g gas (kinfo, k) ks accu stack
+      | ILsr_nat (kinfo, k) -> (
+          let x = accu and (y, stack) = stack in
+          match Script_int.shift_right_n x y with
+          | None -> fail (Overflow kinfo.iloc)
+          | Some r -> (step [@ocaml.tailcall]) g gas k ks r stack)
       | IOr_nat (_, k) ->
           let x = accu and (y, stack) = stack in
           let res = Script_int.logor x y in

@@ -852,16 +852,6 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) imap_iter_type =
   'a * 'b ->
   ('c * 'd * outdated_context * local_gas_counter) tzresult Lwt.t
 
-type ('a, 'b, 'c, 'd, 'e, 'f) ilsr_nat_type =
-  outdated_context * step_constants ->
-  local_gas_counter ->
-  (Script_int.n Script_int.num, 'a) kinfo
-  * (Script_int.n Script_int.num, 'b, 'c, 'd) kinstr ->
-  ('c, 'd, 'e, 'f) continuation ->
-  Script_int.n Script_int.num ->
-  Script_int.n Script_int.num * 'b ->
-  ('e * 'f * outdated_context * local_gas_counter, error trace) result Lwt.t
-
 type ifailwith_type = {
   ifailwith :
     'a 'ac 'b.
