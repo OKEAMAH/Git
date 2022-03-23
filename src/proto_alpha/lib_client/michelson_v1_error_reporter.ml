@@ -102,7 +102,7 @@ let collect_error_locations errs =
         | Invalid_contract (loc, _)
         | Comparable_type_expected (loc, _)
         | Overflow loc
-        | Reject (loc, _, _)
+        | Reject (loc, _)
         | Pair_bad_argument loc
         | Unpair_bad_argument loc
         | Dup_n_bad_argument loc )
@@ -755,23 +755,14 @@ let report_errors ~details ~show_source ?parsed ppf errs =
               tya
               print_ty
               tyb
-        | Reject (loc, v, trace) ->
+        | Reject (loc, v) ->
             Format.fprintf
               ppf
-              "%ascript reached FAILWITH instruction@ @[<hov 2>with@ %a@]%a"
+              "%ascript reached FAILWITH instruction@ @[<hov 2>with@ %a@]"
               print_loc
               loc
               print_expr
               v
-              (fun ppf -> function
-                | None -> ()
-                | Some trace ->
-                    Format.fprintf
-                      ppf
-                      "@,@[<v 2>trace@,%a@]"
-                      print_execution_trace
-                      trace)
-              trace
         | Overflow loc ->
             Format.fprintf ppf "%aunexpected arithmetic overflow" print_loc loc
         | err -> Format.fprintf ppf "%a" Environment.Error_monad.pp err) ;

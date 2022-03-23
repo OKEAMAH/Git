@@ -102,7 +102,7 @@ type step_constants = Script_typed_ir.step_constants = {
 
 (* ---- Run-time errors -----------------------------------------------------*)
 
-type error += Reject of Script.location * Script.expr * execution_trace option
+type error += Reject of Script.location * Script.expr
 
 type error += Overflow of Script.location
 
@@ -118,25 +118,17 @@ type error += Michelson_too_many_recursive_calls
 
 let () =
   let open Data_encoding in
-  let trace_encoding =
-    list
-    @@ obj3
-         (req "location" Script.location_encoding)
-         (req "gas" Gas.encoding)
-         (req "stack" (list Script.expr_encoding))
-  in
   (* Reject *)
   register_error_kind
     `Temporary
     ~id:"michelson_v1.script_rejected"
     ~title:"Script failed"
     ~description:"A FAILWITH instruction was reached"
-    (obj3
+    (obj2
        (req "location" Script.location_encoding)
-       (req "with" Script.expr_encoding)
-       (opt "trace" trace_encoding))
-    (function Reject (loc, v, trace) -> Some (loc, v, trace) | _ -> None)
-    (fun (loc, v, trace) -> Reject (loc, v, trace)) ;
+       (req "with" Script.expr_encoding))
+    (function Reject (loc, v) -> Some (loc, v) | _ -> None)
+    (fun (loc, v) -> Reject (loc, v)) ;
   (* Overflow *)
   register_error_kind
     `Temporary
@@ -454,7 +446,7 @@ and ifailwith : ifailwith_type =
         trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
         >>=? fun (v, _ctxt) ->
         let v = Micheline.strip_locations v in
-        get_log logger >>=? fun log -> fail (Reject (kloc, v, log)));
+        get_log logger >>=? fun _log -> fail (Reject (kloc, v)));
   }
 
 and iexec : type a b c d e f g. (a, b, c, d, e, f, g) iexec_type =

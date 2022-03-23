@@ -227,7 +227,7 @@ let error_encoding_tests =
         `Quick
         (test_json_roundtrip_err name e))
     [
-      ("Reject", Reject (0, script_expr_int, None));
+      ("Reject", Reject (0, script_expr_int));
       ("Overflow", Overflow 0);
       ("Runtime_contract_error", Runtime_contract_error contract_zero);
       ("Bad_contract_parameter", Bad_contract_parameter contract_zero);
