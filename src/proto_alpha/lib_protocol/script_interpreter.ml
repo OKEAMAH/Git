@@ -406,47 +406,47 @@ and imap_iter : type a b c d e f g h. (a, b, c, d, e, f, g, h) imap_iter_type =
  [@@inline]
 
 and imul_teznat : type a b c d e f. (a, b, c, d, e, f) imul_teznat_type =
- fun logger g gas (kinfo, k) ks accu stack ->
+ fun _logger g gas (kinfo, k) ks accu stack ->
   let x = accu in
   let (y, stack) = stack in
   match Script_int.to_int64 y with
-  | None -> get_log logger >>=? fun _log -> fail (Overflow kinfo.iloc)
+  | None -> fail (Overflow kinfo.iloc)
   | Some y ->
       Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
 
 and imul_nattez : type a b c d e f. (a, b, c, d, e, f) imul_nattez_type =
- fun logger g gas (kinfo, k) ks accu stack ->
+ fun _logger g gas (kinfo, k) ks accu stack ->
   let y = accu in
   let (x, stack) = stack in
   match Script_int.to_int64 y with
-  | None -> get_log logger >>=? fun _log -> fail (Overflow kinfo.iloc)
+  | None -> fail (Overflow kinfo.iloc)
   | Some y ->
       Tez.(x *? y) >>?= fun res -> (step [@ocaml.tailcall]) g gas k ks res stack
 
 and ilsl_nat : type a b c d e f. (a, b, c, d, e, f) ilsl_nat_type =
- fun logger g gas (kinfo, k) ks accu stack ->
+ fun _logger g gas (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
   match Script_int.shift_left_n x y with
-  | None -> get_log logger >>=? fun _log -> fail (Overflow kinfo.iloc)
+  | None -> fail (Overflow kinfo.iloc)
   | Some x -> (step [@ocaml.tailcall]) g gas k ks x stack
 
 and ilsr_nat : type a b c d e f. (a, b, c, d, e, f) ilsr_nat_type =
- fun logger g gas (kinfo, k) ks accu stack ->
+ fun _logger g gas (kinfo, k) ks accu stack ->
   let x = accu and (y, stack) = stack in
   match Script_int.shift_right_n x y with
-  | None -> get_log logger >>=? fun _log -> fail (Overflow kinfo.iloc)
+  | None -> fail (Overflow kinfo.iloc)
   | Some r -> (step [@ocaml.tailcall]) g gas k ks r stack
 
 and ifailwith : ifailwith_type =
   {
     ifailwith =
-      (fun logger (ctxt, _) gas kloc tv accu ->
+      (fun _logger (ctxt, _) gas kloc tv accu ->
         let v = accu in
         let ctxt = update_context gas ctxt in
         trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
         >>=? fun (v, _ctxt) ->
         let v = Micheline.strip_locations v in
-        get_log logger >>=? fun _log -> fail (Reject (kloc, v)));
+        fail (Reject (kloc, v)));
   }
 
 and iexec : type a b c d e f g. (a, b, c, d, e, f, g) iexec_type =
