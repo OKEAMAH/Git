@@ -1,8 +1,9 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
+(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2022 Oxhead Alpha <info@oxheadalpha.com>                    *)
+(* Copyright (c) 2022 Oxhead Alpha <info@oxhead-alpha.com>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,32 +25,35 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+let record ctxt tx_rollup state level ~message_position =
+  Storage.Tx_rollup.Revealed_withdrawals.find (ctxt, level) tx_rollup
+  >>=? fun (ctxt, revealed_withdrawals_opt) ->
+  Bitfield.add
+    (Option.value ~default:Bitfield.empty revealed_withdrawals_opt)
+    message_position
+  >>?= fun revealed_withdrawals ->
+  Storage.Tx_rollup.Revealed_withdrawals.add
+    (ctxt, level)
+    tx_rollup
+    revealed_withdrawals
+  >>=? fun (ctxt, new_size, _is_new) ->
+  Tx_rollup_state_repr.adjust_storage_allocation
+    state
+    ~delta:(Z.of_int new_size)
+  >>?= fun (state, diff) -> return (ctxt, state, diff)
 
-module Verifier_storage : sig
-  include
-    Tx_rollup_l2_storage_sig.STORAGE
-      with type t = Context.tree
-       and type 'a m = ('a, error) result Lwt.t
-end
+let mem ctxt tx_rollup level ~message_position =
+  Storage.Tx_rollup.Revealed_withdrawals.find (ctxt, level) tx_rollup
+  >>=? fun (ctxt, revealed_withdrawals_opt) ->
+  match revealed_withdrawals_opt with
+  | Some field ->
+      Bitfield.mem field message_position >>?= fun res -> return (ctxt, res)
+  | None -> return (ctxt, false)
 
-module Verifier_context : sig
-  include Tx_rollup_l2_context_sig.CONTEXT with type t = Verifier_storage.t
-end
-
-(** [verify_proof message proof ~agreed ~rejected ~max_proof_size] verifies
-    a Merkle proof for a L2 message, starting from the state [agreed]. If the
-    [proof] is correct, and the final Merkle hash is not equal to [rejected],
-    then [verify_proof] passes.
-    Note that if the proof is larger than [max_proof_size] and the final
-    Merkle hash is equal to [rejected], the needed proof for the rejected
-    commitment is too large, thus, [verify_proof] passes and the commitment
-    is rejected. *)
-val verify_proof :
-  Tx_rollup_l2_apply.parameters ->
-  Tx_rollup_message.t ->
-  Tx_rollup_l2_proof.t ->
-  agreed:Tx_rollup_message_result.t ->
-  rejected:Tx_rollup_message_result_hash.t ->
-  max_proof_size:int ->
-  unit tzresult Lwt.t
+let remove ctxt tx_rollup state level =
+  Storage.Tx_rollup.Revealed_withdrawals.remove (ctxt, level) tx_rollup
+  >>=? fun (ctxt, freed_size, _existed) ->
+  Tx_rollup_state_repr.adjust_storage_allocation
+    state
+    ~delta:Z.(neg @@ of_int freed_size)
+  >>?= fun (state, _) -> return (ctxt, state)

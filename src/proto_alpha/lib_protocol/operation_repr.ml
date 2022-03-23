@@ -87,7 +87,7 @@ module Kind = struct
 
   type tx_rollup_dispatch_tickets = Tx_rollup_dispatch_tickets_kind
 
-  type tx_rollup_withdraw = Tx_rollup_withdraw_kind
+  type transfer_ticket = Transfer_ticket_kind
 
   type sc_rollup_originate = Sc_rollup_originate_kind
 
@@ -115,7 +115,7 @@ module Kind = struct
     | Tx_rollup_rejection_manager_kind : tx_rollup_rejection manager
     | Tx_rollup_dispatch_tickets_manager_kind
         : tx_rollup_dispatch_tickets manager
-    | Tx_rollup_withdraw_manager_kind : tx_rollup_withdraw manager
+    | Transfer_ticket_manager_kind : transfer_ticket manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
@@ -328,7 +328,7 @@ and _ manager_operation =
       message : Tx_rollup_message_repr.t;
       message_position : int;
       message_path : Tx_rollup_inbox_repr.Merkle.path;
-      previous_message_result : Tx_rollup_commitment_repr.message_result;
+      previous_message_result : Tx_rollup_message_result_repr.t;
       proof : Tx_rollup_l2_proof.t;
     }
       -> Kind.tx_rollup_rejection manager_operation
@@ -337,25 +337,18 @@ and _ manager_operation =
       level : Tx_rollup_level_repr.t;
       context_hash : Context_hash.t;
       message_index : int;
-      tickets_info : Tx_rollup_withdraw_repr.withdrawal_info list;
+      tickets_info : Tx_rollup_reveal_repr.t list;
     }
       -> Kind.tx_rollup_dispatch_tickets manager_operation
-  | Tx_rollup_withdraw : {
-      tx_rollup : Tx_rollup_repr.t;
-      level : Tx_rollup_level_repr.t;
-      context_hash : Context_hash.t;
-      message_index : int;
-      withdrawals_merkle_root : Tx_rollup_withdraw_repr.Merkle.root;
-      withdraw_path : Tx_rollup_withdraw_repr.Merkle.path;
-      withdraw_position : int;
+  | Transfer_ticket : {
       contents : Script_repr.lazy_expr;
       ty : Script_repr.lazy_expr;
       ticketer : Contract_repr.t;
-      amount : Tx_rollup_l2_qty.t;
+      amount : Z.t;
       destination : Contract_repr.t;
       entrypoint : Entrypoint_repr.t;
     }
-      -> Kind.tx_rollup_withdraw manager_operation
+      -> Kind.transfer_ticket manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup_repr.Kind.t;
       boot_sector : string;
@@ -397,7 +390,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
       Kind.Tx_rollup_remove_commitment_manager_kind
   | Tx_rollup_rejection _ -> Kind.Tx_rollup_rejection_manager_kind
   | Tx_rollup_dispatch_tickets _ -> Kind.Tx_rollup_dispatch_tickets_manager_kind
-  | Tx_rollup_withdraw _ -> Kind.Tx_rollup_withdraw_manager_kind
+  | Transfer_ticket _ -> Kind.Transfer_ticket_manager_kind
   | Sc_rollup_originate _ -> Kind.Sc_rollup_originate_manager_kind
   | Sc_rollup_add_messages _ -> Kind.Sc_rollup_add_messages_manager_kind
   | Sc_rollup_cement _ -> Kind.Sc_rollup_cement_manager_kind
@@ -473,7 +466,7 @@ let tx_rollup_operation_rejection_tag = tx_rollup_operation_tag_offset + 6
 let tx_rollup_operation_reveal_withdrawals_tag =
   tx_rollup_operation_tag_offset + 7
 
-let tx_rollup_operation_withdraw_tag = tx_rollup_operation_tag_offset + 8
+let transfer_ticket_tag = tx_rollup_operation_tag_offset + 8
 
 let sc_rollup_operation_tag_offset = 200
 
@@ -740,7 +733,7 @@ module Encoding = struct
               (req "message_path" Tx_rollup_inbox_repr.Merkle.path_encoding)
               (req
                  "previous_message_result"
-                 Tx_rollup_commitment_repr.message_result_encoding)
+                 Tx_rollup_message_result_repr.encoding)
               (req "proof" Tx_rollup_l2_proof.encoding);
           select =
             (function
@@ -797,8 +790,7 @@ module Encoding = struct
               (req "message_index" int31)
               (req
                  "tickets_info"
-                 (Data_encoding.list
-                    Tx_rollup_withdraw_repr.withdrawal_info_encoding));
+                 (Data_encoding.list Tx_rollup_reveal_repr.encoding));
           select =
             (function
             | Manager (Tx_rollup_dispatch_tickets _ as op) -> Some op
@@ -814,92 +806,31 @@ module Encoding = struct
                 {tx_rollup; level; context_hash; message_index; tickets_info});
         }
 
-    let[@coq_axiom_with_reason "gadt"] tx_rollup_withdraw_case =
+    let[@coq_axiom_with_reason "gadt"] transfer_ticket_case =
       MCase
         {
-          tag = tx_rollup_operation_withdraw_tag;
-          name = "tx_rollup_withdraw";
+          tag = transfer_ticket_tag;
+          name = "transfer_ticket";
           encoding =
-            merge_objs
-              (obj10
-                 (req "tx_rollup" Tx_rollup_repr.encoding)
-                 (req "level" Tx_rollup_level_repr.encoding)
-                 (req "context_hash" Context_hash.encoding)
-                 (req "message_index" int31)
-                 (req
-                    "withdrawals_merkle_root"
-                    Tx_rollup_withdraw_repr.Merkle.root_encoding)
-                 (req
-                    "withdraw_path"
-                    Tx_rollup_withdraw_repr.Merkle.path_encoding)
-                 (req "withdraw_position" int31)
-                 (req "ticket_contents" Script_repr.lazy_expr_encoding)
-                 (req "ticket_ty" Script_repr.lazy_expr_encoding)
-                 (req "ticket_ticketer" Contract_repr.encoding))
-              (obj3
-                 (req "ticket_amount" Tx_rollup_l2_qty.encoding)
-                 (req "destination" Contract_repr.encoding)
-                 (req "entrypoint" Entrypoint_repr.simple_encoding));
+            obj6
+              (req "ticket_contents" Script_repr.lazy_expr_encoding)
+              (req "ticket_ty" Script_repr.lazy_expr_encoding)
+              (req "ticket_ticketer" Contract_repr.encoding)
+              (req "ticket_amount" n)
+              (req "destination" Contract_repr.encoding)
+              (req "entrypoint" Entrypoint_repr.simple_encoding);
           select =
             (function
-            | Manager (Tx_rollup_withdraw _ as op) -> Some op | _ -> None);
+            | Manager (Transfer_ticket _ as op) -> Some op | _ -> None);
           proj =
             (function
-            | Tx_rollup_withdraw
-                {
-                  tx_rollup;
-                  level;
-                  context_hash;
-                  message_index;
-                  withdrawals_merkle_root;
-                  withdraw_path;
-                  withdraw_position;
-                  contents;
-                  ty;
-                  ticketer;
-                  amount;
-                  destination;
-                  entrypoint;
-                } ->
-                ( ( tx_rollup,
-                    level,
-                    context_hash,
-                    message_index,
-                    withdrawals_merkle_root,
-                    withdraw_path,
-                    withdraw_position,
-                    contents,
-                    ty,
-                    ticketer ),
-                  (amount, destination, entrypoint) ));
+            | Transfer_ticket
+                {contents; ty; ticketer; amount; destination; entrypoint} ->
+                (contents, ty, ticketer, amount, destination, entrypoint));
           inj =
-            (fun ( ( tx_rollup,
-                     level,
-                     context_hash,
-                     message_index,
-                     withdrawals_merkle_root,
-                     withdraw_path,
-                     withdraw_position,
-                     contents,
-                     ty,
-                     ticketer ),
-                   (amount, destination, entrypoint) ) ->
-              Tx_rollup_withdraw
-                {
-                  tx_rollup;
-                  level;
-                  context_hash;
-                  message_index;
-                  withdrawals_merkle_root;
-                  withdraw_path;
-                  withdraw_position;
-                  contents;
-                  ty;
-                  ticketer;
-                  amount;
-                  destination;
-                  entrypoint;
-                });
+            (fun (contents, ty, ticketer, amount, destination, entrypoint) ->
+              Transfer_ticket
+                {contents; ty; ticketer; amount; destination; entrypoint});
         }
 
     let[@coq_axiom_with_reason "gadt"] sc_rollup_originate_case =
@@ -1313,10 +1244,10 @@ module Encoding = struct
       tx_rollup_operation_reveal_withdrawals_tag
       Manager_operations.tx_rollup_dispatch_tickets_case
 
-  let tx_rollup_withdraw_case =
+  let transfer_ticket_case =
     make_manager_case
-      tx_rollup_operation_withdraw_tag
-      Manager_operations.tx_rollup_withdraw_case
+      transfer_ticket_tag
+      Manager_operations.transfer_ticket_case
 
   let sc_rollup_originate_case =
     make_manager_case
@@ -1374,7 +1305,7 @@ module Encoding = struct
            make tx_rollup_remove_commitment_case;
            make tx_rollup_rejection_case;
            make tx_rollup_dispatch_tickets_case;
-           make tx_rollup_withdraw_case;
+           make transfer_ticket_case;
            make sc_rollup_originate_case;
            make sc_rollup_add_messages_case;
            make sc_rollup_cement_case;
@@ -1582,8 +1513,8 @@ let equal_manager_operation_kind :
   | (Tx_rollup_rejection _, _) -> None
   | (Tx_rollup_dispatch_tickets _, Tx_rollup_dispatch_tickets _) -> Some Eq
   | (Tx_rollup_dispatch_tickets _, _) -> None
-  | (Tx_rollup_withdraw _, Tx_rollup_withdraw _) -> Some Eq
-  | (Tx_rollup_withdraw _, _) -> None
+  | (Transfer_ticket _, Transfer_ticket _) -> Some Eq
+  | (Transfer_ticket _, _) -> None
   | (Sc_rollup_originate _, Sc_rollup_originate _) -> Some Eq
   | (Sc_rollup_originate _, _) -> None
   | (Sc_rollup_add_messages _, Sc_rollup_add_messages _) -> Some Eq

@@ -635,13 +635,16 @@ let paid_storage_space c contract =
   >|=? Option.value ~default:Z.zero
 
 let set_paid_storage_space_and_return_fees_to_pay c contract new_storage_space =
-  Storage.Contract.Paid_storage_space.get c contract
-  >>=? fun already_paid_space ->
+  Storage.Contract.Paid_storage_space.find c contract
+  >>=? fun already_paid_space_opt ->
+  let already_paid_space =
+    Option.value ~default:Z.zero already_paid_space_opt
+  in
   if Compare.Z.(already_paid_space >= new_storage_space) then return (Z.zero, c)
   else
     let to_pay = Z.sub new_storage_space already_paid_space in
-    Storage.Contract.Paid_storage_space.update c contract new_storage_space
-    >|=? fun c -> (to_pay, c)
+    Storage.Contract.Paid_storage_space.add c contract new_storage_space
+    >>= fun c -> return (to_pay, c)
 
 let update_balance ctxt contract f amount =
   Storage.Contract.Spendable_balance.get ctxt contract >>=? fun balance ->

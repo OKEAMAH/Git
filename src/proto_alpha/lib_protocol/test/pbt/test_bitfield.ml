@@ -31,7 +31,7 @@
 *)
 
 open Lib_test.Qcheck2_helpers
-open Protocol.Bit_field_repr
+open Protocol.Bitfield
 
 let gen_ofs = QCheck2.Gen.int_bound (64 * 10)
 
