@@ -27,7 +27,7 @@ fi
 
 # Copy the part of manifest/main.ml that is before the declaration of alpha.
 echo "Updating manifest: copy header..."
-grep -B 1000000 'let alpha = active "alpha"' manifest/main.ml | head --lines=-1 > manifest/main.ml.new
+grep -B 1000000 'let alpha = active "alpha"' manifest/main.ml | sed '$d' > manifest/main.ml.new
 
 # Insert the new lines we want to insert.
 echo "Updating manifest: add new line..."

@@ -116,16 +116,16 @@ doc_index="docs/index.rst"
 (
     set -e
     grep -B9999 -F "$alpha_line" "$doc_index" \
-      | head -n-1
+      | sed '$d'
     grep -A9999 -F "$alpha_line" "$doc_index" \
       | grep -B9999 -F 'toctree' -m1 \
-      | head -n-1 \
+      | sed '$d' \
       | sed -e "s/Alpha Development/${label} ${capitalized_label}/g" \
             -e "s,alpha/,${label}/,g"
     grep -B9999 -F "$alpha_line" "$doc_index" \
-      | tac \
+      | tail -r \
       | grep -B9999 -F 'toctree' -m1 \
-      | tac
+      | tail -r
     grep -A9999 -F "$alpha_line" "$doc_index" \
       | tail -n+2 \
       | awk '{
@@ -147,12 +147,12 @@ echo "Fixing python tests"
 cd tests_python/tests_${version}
 sed -i.old -e "s,tezos\.gitlab\.io/alpha/,tezos.gitlab.io/${version}_${label}/,g" \
            -e "s/proto_alpha/proto_${version}_${short_hash}/g" \
-           -e "s/_alpha\b/_${version}/g" \
-           -e "s/\balpha\b/${version}/g" \
+           -e "s/_alpha[[:>:]]/_${version}/g" \
+           -e "s/[[:<:]]alpha[[:>:]]/${version}/g" \
     $(find . -name \*.py)
 echo "Fixing python regtests ouputs"
 cd _regtest_outputs
-sed -i.old -e "s/_alpha\b/_${version}/g" *.out
+sed -i.old -e "s/_alpha[[:>:]]/_${version}/g" *.out
 cd ../..
 
 echo "Fixing python protocol constants"
@@ -162,7 +162,7 @@ crt_line='TEZOS_CRT = """'
 constants_file='tools/constants.py'
 (
     grep -B9999 -F "$crt_line" "$constants_file" \
-      | head -n-1
+      | sed '$d'
 
     cat <<EOF
 ${upcased_label} = "$long_hash"
