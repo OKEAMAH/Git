@@ -1486,8 +1486,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
@@ -2156,8 +2156,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
@@ -2231,8 +2231,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
@@ -2331,8 +2331,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
@@ -2405,8 +2405,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
@@ -2474,8 +2474,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
@@ -2546,8 +2546,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
@@ -2656,8 +2656,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
@@ -2746,8 +2746,8 @@ let commands_rw () =
               cctxt
               ~chain:cctxt#chain
               ~block:cctxt#block
-              ?dry_run:(Some dry_run)
-              ?verbose_signing:(Some verbose_signing)
+              ~dry_run
+              ~verbose_signing
               ?fee
               ?storage_limit
               ?counter
