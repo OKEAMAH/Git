@@ -30,3 +30,5 @@ type t = Context.Proof.stream Context.Proof.t
 val encoding : t Data_encoding.t
 
 val ( = ) : t -> t -> bool
+
+val pp : Format.formatter -> t -> unit

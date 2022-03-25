@@ -32,3 +32,7 @@ let ( = ) t1 t2 =
   let t1_bytes = Data_encoding.Binary.to_bytes_exn encoding t1 in
   let t2_bytes = Data_encoding.Binary.to_bytes_exn encoding t2 in
   Compare.Bytes.(t1_bytes = t2_bytes)
+
+let pp fmt t =
+  let json = Data_encoding.Json.construct encoding t in
+  Data_encoding.Json.pp fmt json
