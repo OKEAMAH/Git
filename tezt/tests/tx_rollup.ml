@@ -134,7 +134,7 @@ let submit_remove_commitment ?(src = Constant.bootstrap1.public_key_hash)
 
 let submit_rejection ?(src = Constant.bootstrap1.public_key_hash) ~level
     ~message ~position ~proof {rollup; client; node = _} ~context_hash
-    ~withdraw_list_hash =
+    ~withdraw_list_hash ~commitment =
   Client.Tx_rollup.submit_rejection
     ~hooks
     ~level
@@ -145,6 +145,7 @@ let submit_rejection ?(src = Constant.bootstrap1.public_key_hash) ~level
     ~src
     ~context_hash
     ~withdraw_list_hash
+    ~commitment
     client
 
 let bake_and_wait ?(nb = 1) client node =
@@ -153,6 +154,32 @@ let bake_and_wait ?(nb = 1) client node =
       let* () = Client.bake_for client in
       let* _n = Node.wait_for_level node (current_level + 1) in
       unit)
+
+let submit_prerejection ?(src = Constant.bootstrap1.public_key_hash)
+    {rollup; client; node = _} ~hash =
+  Client.Tx_rollup.submit_prerejection ~hooks ~hash ~rollup ~src client
+
+let generate_prerejection ~rollup ~level ~message_position ~proof =
+  let process =
+    Process.spawn
+      "./tezos-tx-rollup-node-alpha"
+      [
+        "hash";
+        "rejection";
+        "--rollup-id";
+        rollup;
+        "--source";
+        Constant.bootstrap1.public_key_hash;
+        "--level";
+        Int.to_string level;
+        "--message-position";
+        Int.to_string message_position;
+        "--proof";
+        proof;
+      ]
+  in
+  let* out = Process.check_and_read_stdout process in
+  return @@ String.trim out
 
 (* This module only registers regressions tests. Those regressions
    tests should be used to ensure there is no regressions with the
@@ -1065,6 +1092,19 @@ let test_rollup_last_commitment_is_rejected =
       client
   in
   let agreed_message_result_path = "[]" in
+  let*! commitment =
+    Rollup.get_commitment ~hooks ~block:"head" ~level:0 ~rollup client
+  in
+  let commitment = assert_some commitment in
+  let* prerejection =
+    generate_prerejection
+      ~rollup
+      ~level:0
+      ~message_position:0
+      ~proof:Constant.tx_rollup_proof_initial_state
+  in
+  let*! () = submit_prerejection ~hash:prerejection state in
+  let* () = Client.bake_for client in
   let*! () =
     submit_rejection
       ~level:0
@@ -1077,6 +1117,7 @@ let test_rollup_last_commitment_is_rejected =
       ~proof:Constant.tx_rollup_proof_initial_state
       ~context_hash:Constant.tx_rollup_empty_l2_context
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list_hash
+      ~commitment:commitment.commitment_hash
       state
   in
   let* () = Client.bake_for client in
@@ -1155,6 +1196,19 @@ let test_rollup_reject_position_one =
       ~position:1
       client
   in
+  let*! commitment =
+    Rollup.get_commitment ~hooks ~block:"head" ~level:0 ~rollup client
+  in
+  let commitment = assert_some commitment in
+  let* prerejection =
+    generate_prerejection
+      ~rollup
+      ~level:0
+      ~message_position:1
+      ~proof:Constant.tx_rollup_proof_initial_state
+  in
+  let*! () = submit_prerejection ~hash:prerejection state in
+  let* () = Client.bake_for client in
   let*! () =
     submit_rejection
       ~level:0
@@ -1168,6 +1222,7 @@ let test_rollup_reject_position_one =
       ~proof:Constant.tx_rollup_proof_initial_state
       ~context_hash:Constant.tx_rollup_empty_l2_context
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list_hash
+      ~commitment:commitment.commitment_hash
       state
   in
   let* () = Client.bake_for client in
@@ -1199,6 +1254,15 @@ let test_rollup_wrong_rejection =
   let* () =
     repeat parameters.finality_period (fun () -> Client.bake_for client)
   in
+  let*! commitment =
+    Rollup.get_commitment
+      ~hooks
+      ~block:"head"
+      ~level:0
+      ~rollup:state.rollup
+      client
+  in
+  let commitment = assert_some commitment in
   (* This is the encoding of [batch]. *)
   let message = batch in
   let*! _ = RPC.Tx_rollup.get_state ~rollup client in
@@ -1211,6 +1275,17 @@ let test_rollup_wrong_rejection =
       ~position:0
       client
   in
+  let proof =
+    {|{ "version": 3,
+  "before": { "node": "CoVu7Pqp1Gh3z33mink5T5Q2kAQKtnn3GHxVhyehdKZpQMBxFBGF" } ,
+  "after": { "node": "CoUeJrcPBj3T3iJL3PY4jZHnmZa5rRZ87VQPdSBNBcwZRMWJGh9j" } ,
+  "state": [] }|}
+  in
+  let* hash =
+    generate_prerejection ~rollup ~level:0 ~message_position:0 ~proof
+  in
+  let*! () = submit_prerejection ~hash state in
+  let* () = Client.bake_for client in
   let message_path = List.map (fun x -> JSON.as_string x) (JSON.as_list path) in
   let message_result_hash = Constant.tx_rollup_initial_message_result in
   let*! message_result_path =
@@ -1225,11 +1300,7 @@ let test_rollup_wrong_rejection =
     Operation.inject_rejection
       ~source:Constant.bootstrap1
       ~tx_rollup:state.rollup
-      ~proof:
-        {|{ "version": 3,
-  "before": { "node": "CoVu7Pqp1Gh3z33mink5T5Q2kAQKtnn3GHxVhyehdKZpQMBxFBGF" } ,
-  "after": { "node": "CoUeJrcPBj3T3iJL3PY4jZHnmZa5rRZ87VQPdSBNBcwZRMWJGh9j" } ,
-  "state": [] }|}
+      ~proof
       ~level:0
       ~message
       ~message_position:0
@@ -1240,6 +1311,7 @@ let test_rollup_wrong_rejection =
       ~previous_message_context_hash:Constant.tx_rollup_empty_l2_context
       ~previous_message_withdraw_list_hash:
         Constant.tx_rollup_empty_withdraw_list_hash
+      ~commitment:commitment.commitment_hash
       state.client
   in
   let* () = Client.bake_for client in
@@ -1297,6 +1369,19 @@ let test_rollup_wrong_path_for_rejection =
       client
   in
   let*! _ = RPC.Tx_rollup.get_state ~rollup client in
+  let* hash =
+    generate_prerejection
+      ~rollup
+      ~level:0
+      ~message_position:0
+      ~proof:Constant.tx_rollup_proof_initial_state
+  in
+  let*! () = submit_prerejection ~hash state in
+  let* () = Client.bake_for client in
+  let*! commitment =
+    Rollup.get_commitment ~hooks ~block:"head" ~level:0 ~rollup client
+  in
+  let commitment = assert_some commitment in
   let* (`OpHash _op) =
     Operation.inject_rejection
       ~source:Constant.bootstrap1
@@ -1312,6 +1397,7 @@ let test_rollup_wrong_path_for_rejection =
       ~previous_message_context_hash:Constant.tx_rollup_empty_l2_context
       ~previous_message_withdraw_list_hash:
         Constant.tx_rollup_empty_withdraw_list_hash
+      ~commitment:commitment.commitment_hash
       client
   in
   let* () = Client.bake_for client in
@@ -1380,6 +1466,15 @@ let test_rollup_wrong_rejection_long_path =
       client
   in
   let agreed_message_result_path = "[]" in
+  let*! commitment =
+    Rollup.get_commitment
+      ~hooks
+      ~block:"head"
+      ~level:0
+      ~rollup:state.rollup
+      client
+  in
+  let commitment = assert_some commitment in
   let*? process =
     Client.Tx_rollup.submit_rejection
       ~src:Constant.bootstrap1.alias
@@ -1394,6 +1489,7 @@ let test_rollup_wrong_rejection_long_path =
       ~agreed_message_result_path
       ~context_hash:Constant.tx_rollup_empty_l2_context
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list_hash
+      ~commitment:commitment.commitment_hash
       state.client
   in
   let* () =
@@ -1401,6 +1497,15 @@ let test_rollup_wrong_rejection_long_path =
       ~msg:(rex "proto.alpha.tx_rollup_wrong_message_path_depth")
       process
   in
+  let* hash =
+    generate_prerejection
+      ~rollup:state.rollup
+      ~level:0
+      ~message_position:0
+      ~proof:Constant.tx_rollup_proof_initial_state
+  in
+  let*! () = submit_prerejection ~hash state in
+  let* () = Client.bake_for client in
   (* We check here the path is valid but the operation is rejected for
      a different reason. *)
   let*? process =
@@ -1418,6 +1523,7 @@ let test_rollup_wrong_rejection_long_path =
       ~context_hash:Constant.tx_rollup_empty_l2_context
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list_hash
       state.client
+      ~commitment:commitment.commitment_hash
   in
   Process.check_error
     ~msg:(rex "proto.alpha.tx_rollup_wrong_message_path")

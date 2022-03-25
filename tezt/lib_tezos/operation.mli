@@ -131,6 +131,7 @@ val mk_rejection :
   previous_message_result_path:JSON.u ->
   previous_message_context_hash:string ->
   previous_message_withdraw_list_hash:string ->
+  commitment:string ->
   Client.t ->
   manager_operation_content Lwt.t
 
@@ -447,6 +448,7 @@ val inject_rejection :
   previous_message_result_path:JSON.u ->
   previous_message_context_hash:string ->
   previous_message_withdraw_list_hash:string ->
+  commitment:string ->
   Client.t ->
   [`OpHash of string] Lwt.t
 

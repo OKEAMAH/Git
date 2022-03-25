@@ -57,6 +57,7 @@ type manager_op_kind =
       previous_message_result_path : JSON.u;
       previous_message_context_hash : string;
       previous_message_withdraw_list_hash : string;
+      commitment : string;
     }
   | Delegation of (* public key hash *) string
   | Transfer_ticket of {
@@ -153,7 +154,7 @@ let mk_rejection ~source ?counter ?(fee = 1_000_000) ?(gas_limit = 1_000_000)
     ?(storage_limit = 0) ~tx_rollup ~proof ~level ~message ~message_position
     ~message_path ~message_result_hash ~message_result_path
     ~previous_message_result_path ~previous_message_context_hash
-    ~previous_message_withdraw_list_hash client =
+    ~previous_message_withdraw_list_hash ~commitment client =
   mk_manager_op ~source ?counter ~fee ~gas_limit ~storage_limit client
   @@ Rejection
        {
@@ -168,6 +169,7 @@ let mk_rejection ~source ?counter ?(fee = 1_000_000) ?(gas_limit = 1_000_000)
          previous_message_result_path;
          previous_message_context_hash;
          previous_message_withdraw_list_hash;
+         commitment;
        }
 
 let mk_transfer_ticket ~source ?counter ?(fee = 1_000_000)
@@ -192,7 +194,8 @@ let manager_op_content_to_json_string
       ?(previous_message_result = `Null) ?(message_result_hash = `Null)
       ?(message_result_path = `Null) ?(previous_message_result_path = `Null)
       ?(ticket_contents = `Null) ?(ticket_ty = `Null) ?(ticket_ticketer = `Null)
-      ?(ticket_amount = `Null) ?(entrypoint = `Null) kind =
+      ?(ticket_amount = `Null) ?(entrypoint = `Null) ?(commitment = `Null) kind
+      =
     let filter = List.filter (fun (_k, v) -> v <> `Null) in
     return
     @@ `O
@@ -223,6 +226,7 @@ let manager_op_content_to_json_string
               ("message_position", message_position);
               ("message_path", message_path);
               ("previous_message_result", previous_message_result);
+              ("commitment", commitment);
               ("level", level);
               ("message_result_hash", message_result_hash);
               ("message_result_path", message_result_path);
@@ -272,6 +276,7 @@ let manager_op_content_to_json_string
         message_result_path;
         previous_message_result_path;
         previous_message_withdraw_list_hash;
+        commitment;
       } ->
       let rollup = `String tx_rollup in
       let proof = Ezjsonm.value_from_string proof in
@@ -287,6 +292,7 @@ let manager_op_content_to_json_string
           ]
       in
       let message_result_hash = `String message_result_hash in
+      let commitment = `String commitment in
       mk_jsonm
         ~rollup
         ~proof
@@ -298,6 +304,7 @@ let manager_op_content_to_json_string
         ~message_result_hash
         ~message_result_path
         ~previous_message_result_path
+        ~commitment
         "tx_rollup_rejection"
   | Transfer_ticket {contents; ty; ticketer; amount; destination; entrypoint} ->
       let* ticket_contents = data_to_json client contents in
@@ -487,7 +494,8 @@ let inject_rejection ?protocol ?async ?force ?wait_for_injection ?branch ~source
     ?(signer = source) ?counter ?fee ?gas_limit ?storage_limit ~tx_rollup ~proof
     ~level ~message ~message_position ~message_path ~message_result_hash
     ~message_result_path ~previous_message_result_path
-    ~previous_message_context_hash ~previous_message_withdraw_list_hash client =
+    ~previous_message_context_hash ~previous_message_withdraw_list_hash
+    ~commitment client =
   let* op =
     mk_rejection
       ~source
@@ -506,6 +514,7 @@ let inject_rejection ?protocol ?async ?force ?wait_for_injection ?branch ~source
       ~previous_message_result_path
       ~previous_message_context_hash
       ~previous_message_withdraw_list_hash
+      ~commitment
       client
   in
   forge_and_inject_operation

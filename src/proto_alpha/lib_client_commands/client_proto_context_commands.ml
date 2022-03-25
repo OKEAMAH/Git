@@ -2969,6 +2969,87 @@ let commands_rw () =
             >>=? fun _res -> return_unit);
     command
       ~group
+      ~desc:"Submit an optimistic transaction rollup prerejection operation."
+      (args12
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         simulate_switch
+         minimal_fees_arg
+         minimal_nanotez_per_byte_arg
+         minimal_nanotez_per_gas_unit_arg
+         storage_limit_arg
+         counter_arg
+         force_low_fee_arg
+         fee_cap_arg
+         burn_cap_arg)
+      (prefixes ["submit"; "tx"; "rollup"; "prerejection"]
+      @@ prefix "with" @@ prefix "hash"
+      @@ Clic.param
+           ~name:"hash"
+           ~desc:"the prerejection hash"
+           Client_proto_args.string_parameter
+      @@ prefix "to"
+      @@ Tx_rollup.tx_rollup_address_param
+           ~usage:"Tx rollup receiving the prerejection."
+      @@ prefix "from"
+      @@ ContractAlias.destination_param
+           ~name:"src"
+           ~desc:"name of the account rejecting the commitment."
+      @@ stop)
+      (fun ( fee,
+             dry_run,
+             verbose_signing,
+             simulation,
+             minimal_fees,
+             minimal_nanotez_per_byte,
+             minimal_nanotez_per_gas_unit,
+             storage_limit,
+             counter,
+             force_low_fee,
+             fee_cap,
+             burn_cap )
+           hash
+           tx_rollup
+           (_, source)
+           cctxt ->
+        match Contract.is_implicit source with
+        | None ->
+            failwith
+              "Only implicit accounts can reject transaction rollup commitments"
+        | Some source ->
+            Client_keys.get_key cctxt source >>=? fun (_, src_pk, src_sk) ->
+            let fee_parameter =
+              {
+                Injection.minimal_fees;
+                minimal_nanotez_per_byte;
+                minimal_nanotez_per_gas_unit;
+                force_low_fee;
+                fee_cap;
+                burn_cap;
+              }
+            in
+            submit_tx_rollup_prerejection
+              cctxt
+              ~chain:cctxt#chain
+              ~block:cctxt#block
+              ?dry_run:(Some dry_run)
+              ?verbose_signing:(Some verbose_signing)
+              ?fee
+              ?storage_limit
+              ?counter
+              ?confirmations:cctxt#confirmations
+              ~simulation
+              ~source
+              ~src_pk
+              ~src_sk
+              ~fee_parameter
+              ~tx_rollup
+              ~hash
+              ()
+            >>=? fun _res -> return_unit);
+    command
+      ~group
       ~desc:"Originate a new smart-contract rollup."
       (args12
          fee_arg

@@ -33,6 +33,10 @@
 module Rollup = Rollup.Tx_rollup
 module Rollup_node = Rollup_node.Tx_node
 
+let assert_some o = match o with None -> assert false | Some o -> o
+
+let assert_ok r = match r with Error _ -> assert false | Ok r -> r
+
 let get_block_hash block_json = JSON.(block_json |-> "hash" |> as_string)
 
 let get_rollup_parameter_file ~protocol =
@@ -153,6 +157,35 @@ let init_and_run_rollup_node ~operator ?batch_signer ?finalize_commitment_signer
   Log.info "Tx_rollup node is now running" ;
   let* () = Rollup_node.wait_for_ready tx_node in
   Lwt.return (tx_rollup_hash, tx_node)
+
+(** Generate and submit a prerejection for a given rejection proof *)
+let prereject ~message_position ~source ~tx_rollup_hash ~client ~level proof_str
+    =
+  let open Tezos_protocol_alpha.Protocol.Alpha_context in
+  let prerejection =
+    Tx_rollup_rejection.generate_prerejection
+      ~source:(Tezos_crypto.Signature.Public_key_hash.of_b58check_exn source)
+      ~tx_rollup:(assert_some @@ Tx_rollup.of_b58check_opt tx_rollup_hash)
+      ~level:(assert_ok @@ Tx_rollup_level.of_int32 level)
+      ~message_position
+      ~proof:
+        (Data_encoding.Json.destruct
+           Tezos_protocol_alpha.Protocol.Tx_rollup_l2_proof.encoding
+        @@ assert_ok
+        @@ Data_encoding.Json.from_string proof_str)
+  in
+  let prerejection_str =
+    Tx_rollup_rejection.Rejection_hash.to_b58check prerejection
+  in
+  let*? process =
+    Client.Tx_rollup.submit_prerejection
+      ~hash:prerejection_str
+      ~rollup:tx_rollup_hash
+      ~src:source
+      client
+  in
+  let* () = Process.check process in
+  Client.bake_for client
 
 (* Checks that the tx_node is ready after originating an associated
    rollup key. *)
@@ -1473,6 +1506,7 @@ let test_l2_proof_rpc_position =
         in
         return (JSON.encode agreed_message_result_path)
       in
+
       let* {
              proof;
              message;
@@ -1492,6 +1526,23 @@ let test_l2_proof_rpc_position =
           ~agreed_message_result_path
           commitment_info
       in
+      let* () =
+        prereject
+          ~client
+          ~source:operator
+          ~message_position:0
+          ~tx_rollup_hash
+          ~level:1l
+          proof
+      in
+      let*! commitment =
+        Rollup.get_commitment
+          ~block:"head"
+          ~level:0
+          ~rollup:tx_rollup_hash
+          client
+      in
+      let commitment = assert_some commitment in
       let*? process =
         Client.Tx_rollup.submit_rejection
           ~src:operator
@@ -1506,6 +1557,7 @@ let test_l2_proof_rpc_position =
           ~context_hash
           ~withdraw_list_hash
           ~agreed_message_result_path
+          ~commitment:commitment.commitment_hash
           client
       in
       let* () =
@@ -1533,6 +1585,17 @@ let test_l2_proof_rpc_position =
           ~agreed_message_result_path
           commitment_info
       in
+      Format.printf "trying prereject\n" ;
+      let* () =
+        prereject
+          ~client
+          ~source:operator
+          ~message_position:1
+          ~tx_rollup_hash
+          ~level:1l
+          proof
+      in
+      Format.printf "done prereject\n" ;
       let*? process =
         Client.Tx_rollup.submit_rejection
           ~src:operator
@@ -1547,6 +1610,7 @@ let test_l2_proof_rpc_position =
           ~context_hash
           ~withdraw_list_hash
           ~agreed_message_result_path
+          ~commitment:commitment.commitment_hash
           client
       in
       let* () =
@@ -1617,6 +1681,23 @@ let test_reject_bad_commitment =
           ~client
           commitment_info
       in
+      let*! commitment =
+        Rollup.get_commitment
+          ~block:"head"
+          ~level:0
+          ~rollup:tx_rollup_hash
+          client
+      in
+      let commitment = assert_some commitment in
+      let* () =
+        prereject
+          ~client
+          ~source:operator
+          ~message_position:0
+          ~tx_rollup_hash
+          ~level:0l
+          proof
+      in
       let*! () =
         Client.Tx_rollup.submit_rejection
           ~src:operator
@@ -1631,6 +1712,7 @@ let test_reject_bad_commitment =
           ~context_hash
           ~withdraw_list_hash
           ~agreed_message_result_path
+          ~commitment:commitment.commitment_hash
           client
       in
       unit)

@@ -80,6 +80,14 @@ let rejection_signer_arg =
     ~doc:"The signer for rejections"
     ()
 
+let source_arg =
+  let doc = "The public key which will submit the rejection" in
+  Clic.arg
+    ~long:"source"
+    ~placeholder:"public_key"
+    ~doc
+    (Clic.parameter (fun _ -> Client_keys.Public_key_hash.of_source))
+
 let rollup_id_arg =
   Clic.arg
     ~long:"rollup-id"
@@ -89,6 +97,43 @@ let rollup_id_arg =
          match Protocol.Alpha_context.Tx_rollup.of_b58check s with
          | Ok x -> return x
          | Error _ -> failwith "Invalid Rollup Id"))
+
+let level_arg =
+  Clic.arg
+    ~long:"level"
+    ~placeholder:"level"
+    ~doc:"The rollup level to target"
+    (Clic.parameter (fun _ s ->
+         match Int32.of_string_opt s with
+         | Some x -> (
+             match Protocol.Alpha_context.Tx_rollup_level.of_int32 x with
+             | Ok x -> return x
+             | Error _ -> failwith "Invalid level")
+         | None -> failwith "Invalid level"))
+
+let message_position_arg =
+  Clic.arg
+    ~long:"message-position"
+    ~placeholder:"message position"
+    ~doc:"The message position to target"
+    (Clic.parameter (fun _ s ->
+         match Int32.of_string_opt s with
+         | Some x -> return @@ Int32.to_int x
+         | None -> failwith "Invalid message position"))
+
+let proof_arg =
+  Clic.arg
+    ~long:"proof"
+    ~placeholder:"proof (json)"
+    ~doc:"The proof"
+    (Clic.parameter (fun _ s ->
+         match Data_encoding.Json.from_string s with
+         | Ok json ->
+             return
+             @@ Data_encoding.Json.destruct
+                  Protocol.Tx_rollup_l2_proof.encoding
+                  json
+         | Error e -> failwith "%s" e))
 
 let rollup_genesis_arg =
   Clic.arg
@@ -196,6 +241,39 @@ let configuration_init_command =
       let*! () = Event.(emit configuration_was_written) (file, config) in
       return_unit)
 
+let hash_rejection_command =
+  let open Clic in
+  command
+    ~group
+    ~desc:"Generate a rejection hash for a prerejection."
+    (args5 source_arg rollup_id_arg level_arg message_position_arg proof_arg)
+    (prefixes ["hash"; "rejection"] @@ stop)
+    (fun (source, tx_rollup, level, message_position, proof) cctxt ->
+      let open Lwt_result_syntax in
+      let*! () = Event.(emit preamble_warning) () in
+      let* source = to_tzresult "Missing arg --source" source in
+      let* tx_rollup = to_tzresult "Missing arg --rollup_id" tx_rollup in
+      let* level = to_tzresult "Missing arg --level" level in
+      let* message_position =
+        to_tzresult "Missing arg --message-position" message_position
+      in
+      let* proof = to_tzresult "Missing arg --proof" proof in
+
+      let hash =
+        Protocol.Alpha_context.Tx_rollup_rejection.generate_prerejection
+          ~source
+          ~tx_rollup
+          ~level
+          ~message_position
+          ~proof
+      in
+      let hash_str =
+        Protocol.Alpha_context.Tx_rollup_rejection.Rejection_hash.to_b58check
+          hash
+      in
+      let*! () = cctxt#message "%s" hash_str in
+      return_unit)
+
 let run_command =
   let open Lwt_result_syntax in
   let open Clic in
@@ -221,7 +299,7 @@ let run_command =
 let tx_rollup_commands () =
   List.map
     (Clic.map_command (new Protocol_client_context.wrap_full))
-    [configuration_init_command; run_command]
+    [configuration_init_command; run_command; hash_rejection_command]
 
 let select_commands _ _ = return (tx_rollup_commands ())
 

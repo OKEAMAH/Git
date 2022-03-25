@@ -1370,7 +1370,7 @@ module Tx_rollup = struct
   let submit_rejection ?(wait = "none") ?burn_cap ?storage_limit ?hooks ~level
       ~message ~position ~path ~message_result_hash
       ~rejected_message_result_path ~agreed_message_result_path ~proof
-      ~context_hash ~withdraw_list_hash ~rollup ~src client =
+      ~context_hash ~withdraw_list_hash ~rollup ~src ~commitment client =
     let process =
       spawn_command
         ?hooks
@@ -1386,7 +1386,9 @@ module Tx_rollup = struct
         @ ["with"; "agreed"; "context"; "hash"; context_hash]
         @ ["and"; "withdraw"; "list"; "hash"; withdraw_list_hash]
         @ ["and"; "result"; "path"; agreed_message_result_path]
-        @ ["using"; "proof"; proof; "from"; src]
+        @ ["using"; "proof"; proof]
+        @ ["with"; "commitment"; commitment]
+        @ ["from"; src]
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap
         @ optional_arg ~name:"storage-limit" string_of_int storage_limit)
     in
@@ -1487,6 +1489,27 @@ module Tx_rollup = struct
             ticketer;
           ]
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap)
+    in
+    let parse process = Process.check process in
+    {value = process; run = parse}
+
+  let submit_prerejection ?(wait = "none") ?burn_cap ?storage_limit ?hooks ~hash
+      ~rollup ~src client =
+    let process =
+      spawn_command
+        ?hooks
+        client
+        (["--wait"; wait]
+        @ ["submit"; "tx"; "rollup"; "prerejection"]
+        @ ["with"; "hash"; hash] @ ["to"; rollup] @ ["from"; src]
+        @ Option.fold
+            ~none:[]
+            ~some:(fun burn_cap -> ["--burn-cap"; Tez.to_string burn_cap])
+            burn_cap
+        @ Option.fold
+            ~none:[]
+            ~some:(fun s -> ["--storage-limit"; string_of_int s])
+            storage_limit)
     in
     let parse process = Process.check process in
     {value = process; run = parse}

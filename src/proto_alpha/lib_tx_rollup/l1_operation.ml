@@ -57,6 +57,7 @@ module Manager_operation = struct
            make tx_rollup_finalize_commitment_case;
            make tx_rollup_remove_commitment_case;
            make tx_rollup_rejection_case;
+           make tx_rollup_prerejection_case;
            make tx_rollup_dispatch_tickets_case;
            make transfer_ticket_case;
            make sc_rollup_originate_case;
@@ -85,6 +86,7 @@ module Manager_operation = struct
     | Tx_rollup_remove_commitment _ -> tx_rollup_remove_commitment_case
     | Tx_rollup_rejection _ -> tx_rollup_rejection_case
     | Tx_rollup_dispatch_tickets _ -> tx_rollup_dispatch_tickets_case
+    | Tx_rollup_prerejection _ -> tx_rollup_prerejection_case
     | Transfer_ticket _ -> transfer_ticket_case
     | Sc_rollup_originate _ -> sc_rollup_originate_case
     | Sc_rollup_add_messages _ -> sc_rollup_add_messages_case

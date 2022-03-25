@@ -1062,10 +1062,10 @@ module Tx_rollup : sig
     t ->
     unit Runnable.process
 
-  (** Run [tezos-client submit tx rollup rejection commitment at level
+  (** Run [tezos-client submit tx rollup reject commitment at level
      <level> message <message> at <position> with <proof> with agreed
-     context hash <context_hash> and withdraw list
-     <withdraw_list_hash> to <tx_rollup> from <src>]. *)
+     context hash <context_hash> and withdraw list <withdraw_list_hash>
+     with commitment <commitment> to <tx_rollup> from <src>]. *)
   val submit_rejection :
     ?wait:string ->
     ?burn_cap:Tez.t ->
@@ -1081,6 +1081,20 @@ module Tx_rollup : sig
     proof:string ->
     context_hash:string ->
     withdraw_list_hash:string ->
+    rollup:string ->
+    src:string ->
+    commitment:string ->
+    t ->
+    unit Runnable.process
+
+  (** Run [tezos-client submit tx rollup prerejection with hash <hash>
+    to <tx_rollup> from <src>]. *)
+  val submit_prerejection :
+    ?wait:string ->
+    ?burn_cap:Tez.t ->
+    ?storage_limit:int ->
+    ?hooks:Process.hooks ->
+    hash:string ->
     rollup:string ->
     src:string ->
     t ->
