@@ -17,6 +17,7 @@
             tezos-client-alpha
             tezos-test-helpers
             tezos-alpha-test-helpers
+            tezos-context
             alcotest
             qcheck-alcotest
             tezos-benchmark

@@ -51,6 +51,36 @@ let assume_some opt f = match opt with Some x -> f x | None -> assert false
 let hash_state state number =
   Digest.bytes @@ Bytes.of_string @@ state ^ string_of_int number
 
+let check li =
+  if List.length li < 5 then false
+  else
+    try
+      let l =
+        List.fold_left
+          (fun acc el ->
+            let nacc = if el = "+" then acc - 1 else acc + 1 in
+            assert (nacc > 0) ;
+            nacc)
+          0
+          li
+      in
+      l >= 0
+    with _ -> false
+
+let gen_list () =
+  QCheck2.Gen.(
+    list
+      (oneof
+         [
+           return "+";
+           (let* x = nat in
+            return (string_of_int x));
+         ]))
+
+let rec correct_string () =
+  let c = QCheck2.Gen.(generate1 (gen_list ())) in
+  if check c then c else correct_string ()
+
 module type TestPVM = sig
   include Sc_rollup_PVM_sem.S
 
@@ -180,6 +210,105 @@ end) : TestPVM with type state = string * int list = struct
     eval a >>= fun x -> Lwt.return (equal_states x b)
 end
 
+module ContextPVM = Sc_rollup_arith.Make (struct
+  module Tree = struct
+    include Tezos_context_memory.Context.Tree
+
+    type tree = Tezos_context_memory.Context.tree
+
+    type t = Tezos_context_memory.Context.t
+
+    type key = string list
+
+    type value = bytes
+  end
+
+  type tree = Tezos_context_memory.Context.tree
+
+  type proof =
+    Tezos_context_memory.Context.Proof.tree Tezos_context_memory.Context.Proof.t
+
+  let verify_proof = Tezos_context_memory.Context.verify_tree_proof
+
+  let kinded_hash_to_state_hash = function
+    | `Value hash | `Node hash ->
+        State_hash.hash_bytes [Context_hash.to_bytes hash]
+
+  let proof_start_state proof =
+    kinded_hash_to_state_hash proof.Tezos_context_memory.Context.Proof.before
+
+  let proof_stop_state proof =
+    kinded_hash_to_state_hash proof.Tezos_context_memory.Context.Proof.after
+
+  let proof_encoding =
+    Tezos_context_helpers.Context.Proof_encoding.V2.Tree32.tree_proof_encoding
+end)
+
+module MakeArith (P : sig
+  val inputs : string
+
+  val evals : int
+end) : TestPVM = struct
+  include ContextPVM
+
+  let init_context = Tezos_context_memory.Context.empty
+
+  module Internal_for_tests = struct
+    let initial_state =
+      let promise =
+        let* boot = initial_state init_context "" >>= eval in
+        let input =
+          Sc_rollup_PVM_sem.
+            {
+              inbox_level = Raw_level.root;
+              message_counter = Z.zero;
+              payload = P.inputs;
+            }
+        in
+        let prelim = set_input input boot in
+        List.fold_left
+          (fun acc _ -> acc >>= fun acc -> ContextPVM.eval acc)
+          prelim
+        @@ List.repeat P.evals ()
+      in
+      Lwt_main.run promise
+
+    (* let to_kindered_hash h =
+       `Value (Context_hash.hash_bytes [State_hash.to_bytes h]) *)
+
+    let random_state i state =
+      let open ContextPVM in
+      let program = correct_string () in
+      let input =
+        Sc_rollup_PVM_sem.
+          {
+            inbox_level = Raw_level.root;
+            message_counter = Z.zero;
+            payload = String.concat " " program;
+          }
+      in
+      let prelim = set_input input state in
+      Lwt_main.run
+      @@ List.fold_left
+           (fun acc _ -> acc >>= fun acc -> ContextPVM.eval acc)
+           prelim
+      @@ List.repeat i ()
+
+    let make_proof before_state _ : proof =
+      let open Tezos_context_memory.Context in
+      let promise =
+        let* ctx = add_tree init_context [] before_state in
+        let _ = commit ~time:(Tezos_base.Time.Protocol.of_seconds 0L) ctx in
+        let h = Tree.hash before_state in
+        produce_tree_proof (index init_context) (`Node h) (fun x ->
+            let* result = eval x in
+            Lwt.return (result, ()))
+      in
+      let (pf, ()) = Lwt_main.run promise in
+      pf
+  end
+end
+
 (** This module introduces some testing strategies for a game created from a PVM
 *)
 module Strategies (P : TestPVM) = struct
@@ -194,7 +323,7 @@ module Strategies (P : TestPVM) = struct
       if pred tick state then Lwt.return (tick, state)
       else
         PVM.eval state >>= fun s ->
-        if s = state then Lwt.return (tick, state)
+        if P.state_hash s = P.state_hash state then Lwt.return (tick, state)
         else loop s (Sc_rollup_tick_repr.next tick)
     in
     loop state tick
@@ -783,6 +912,21 @@ let testing_countPVM (f : (module TestPVM) -> int option -> bool) name =
         end))
         (Some target))
 
+let testing_arith (f : (module TestPVM) -> int option -> bool) name =
+  let open QCheck2 in
+  Test.make
+    ~name
+    Gen.(pair (gen_list ()) small_int)
+    (fun (inputs, evals) ->
+      assume (check inputs && evals > List.length inputs / 2) ;
+      f
+        (module MakeArith (struct
+          let inputs = String.concat " " inputs
+
+          let evals = evals
+        end))
+        (Some evals))
+
 let test_random_dissection (module P : TestPVM) start_at length branching =
   let open P in
   let module S = Strategies (P) in
@@ -872,5 +1016,13 @@ let () =
             testing_countPVM random_random "random-random";
             testing_countPVM random_perfect "random-perfect";
             testing_countPVM perfect_random "perfect-random";
+          ] );
+      ( "ArithPVM",
+        qcheck_wrap
+          [
+            testing_arith perfect_perfect "perfect-perfect";
+            testing_arith random_random "random-random";
+            testing_arith random_perfect "random-perfect";
+            testing_arith perfect_random "perfect-random";
           ] );
     ]
