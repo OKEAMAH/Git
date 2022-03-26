@@ -111,7 +111,7 @@ let constants_mainnet =
     (* We limit the number of withdraws per message to avoid costly
        allocations/iterations in the accounting mechanism used for each
        withdraw claiming in L1 and cleaned when removing a commitment. *)
-    tx_rollup_max_withdrawals_per_batch = 255;
+    tx_rollup_max_withdrawals_per_batch = 15;
     tx_rollup_commitment_bond = Tez.of_mutez_exn 10_000_000_000L;
     tx_rollup_finality_period;
     tx_rollup_max_inboxes_count = tx_rollup_finality_period + 100;
@@ -121,7 +121,7 @@ let constants_mainnet =
     (* Must be greater than the withdraw period. *)
     tx_rollup_max_commitments_count = (2 * tx_rollup_finality_period) + 100;
     tx_rollup_cost_per_byte_ema_factor = 120;
-    tx_rollup_max_ticket_payload_size = 10_240;
+    tx_rollup_max_ticket_payload_size = 2_048;
     (* Must be smaller than maximum limit of a manager operation
        (minus overhead), since we need to limit our proofs to those
        that can fit in an operation. *)
