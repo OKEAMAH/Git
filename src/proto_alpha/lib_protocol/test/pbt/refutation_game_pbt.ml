@@ -918,7 +918,10 @@ let testing_arith (f : (module TestPVM) -> int option -> bool) name =
     ~name
     Gen.(pair (gen_list ()) small_int)
     (fun (inputs, evals) ->
-      assume (check inputs && evals > List.length inputs / 2) ;
+      assume
+        (check inputs
+        && evals > List.length inputs / 2
+        && evals <= List.length inputs) ;
       f
         (module MakeArith (struct
           let inputs = String.concat " " inputs
