@@ -53,6 +53,8 @@ let constants_mainnet =
     tokens_per_roll = Tez.(mul_exn one 6_000);
     seed_nonce_revelation_tip =
       (match Tez.(one /? 8L) with Ok c -> c | Error _ -> assert false);
+    vdf_result_revelation_tip =
+      (match Tez.(one /? 2L) with Ok c -> c | Error _ -> assert false);
     origination_size = 257;
     baking_reward_fixed_portion (* 10_000_000 mutez *);
     baking_reward_bonus_per_slot (* 4_286 mutez *);

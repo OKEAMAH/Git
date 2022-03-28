@@ -92,6 +92,7 @@ type parametric = {
   proof_of_work_threshold : int64;
   tokens_per_roll : Tez_repr.t;
   seed_nonce_revelation_tip : Tez_repr.t;
+  vdf_result_revelation_tip : Tez_repr.t;
   origination_size : int;
   baking_reward_fixed_portion : Tez_repr.t;
   baking_reward_bonus_per_slot : Tez_repr.t;
@@ -167,6 +168,7 @@ module Proto_previous : sig
     proof_of_work_threshold : int64;
     tokens_per_roll : Tez_repr.t;
     seed_nonce_revelation_tip : Tez_repr.t;
+    vdf_result_revelation_tip : Tez_repr.t;
     origination_size : int;
     baking_reward_fixed_portion : Tez_repr.t;
     baking_reward_bonus_per_slot : Tez_repr.t;

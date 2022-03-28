@@ -843,6 +843,7 @@ let prepare_first_block ~level ~timestamp ctxt =
             proof_of_work_threshold = c.proof_of_work_threshold;
             tokens_per_roll = c.tokens_per_roll;
             seed_nonce_revelation_tip = c.seed_nonce_revelation_tip;
+            vdf_result_revelation_tip = Tez_repr.zero;
             origination_size = c.origination_size;
             max_operations_time_to_live = c.max_operations_time_to_live;
             baking_reward_fixed_portion = c.baking_reward_fixed_portion;

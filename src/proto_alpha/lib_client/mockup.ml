@@ -46,6 +46,7 @@ module Protocol_constants_overrides = struct
     proof_of_work_threshold : int64 option;
     tokens_per_roll : Tez.t option;
     seed_nonce_revelation_tip : Tez.t option;
+    vdf_result_revelation_tip : Tez.t option;
     origination_size : int option;
     baking_reward_fixed_portion : Tez.t option;
     baking_reward_bonus_per_slot : Tez.t option;
@@ -93,6 +94,7 @@ module Protocol_constants_overrides = struct
             c.proof_of_work_threshold,
             c.tokens_per_roll ),
           ( ( c.seed_nonce_revelation_tip,
+              c.vdf_result_revelation_tip,
               c.origination_size,
               c.baking_reward_fixed_portion,
               c.baking_reward_bonus_per_slot,
@@ -130,6 +132,7 @@ module Protocol_constants_overrides = struct
                proof_of_work_threshold,
                tokens_per_roll ),
              ( ( seed_nonce_revelation_tip,
+                 vdf_result_revelation_tip,
                  origination_size,
                  baking_reward_fixed_portion,
                  baking_reward_bonus_per_slot,
@@ -168,6 +171,7 @@ module Protocol_constants_overrides = struct
           proof_of_work_threshold;
           tokens_per_roll;
           seed_nonce_revelation_tip;
+          vdf_result_revelation_tip;
           origination_size;
           baking_reward_fixed_portion;
           baking_reward_bonus_per_slot;
@@ -209,8 +213,9 @@ module Protocol_constants_overrides = struct
             (opt "proof_of_work_threshold" int64)
             (opt "tokens_per_roll" Tez.encoding))
          (merge_objs
-            (obj8
+            (obj9
                (opt "seed_nonce_revelation_tip" Tez.encoding)
+               (opt "vdf_result_revelation_tip" Tez.encoding)
                (opt "origination_size" int31)
                (opt "baking_reward_fixed_portion" Tez.encoding)
                (opt "baking_reward_bonus_per_slot" Tez.encoding)
@@ -274,6 +279,7 @@ module Protocol_constants_overrides = struct
         proof_of_work_threshold = Some parametric.proof_of_work_threshold;
         tokens_per_roll = Some parametric.tokens_per_roll;
         seed_nonce_revelation_tip = Some parametric.seed_nonce_revelation_tip;
+        vdf_result_revelation_tip = Some parametric.vdf_result_revelation_tip;
         origination_size = Some parametric.origination_size;
         baking_reward_fixed_portion =
           Some parametric.baking_reward_fixed_portion;
@@ -327,6 +333,7 @@ module Protocol_constants_overrides = struct
       proof_of_work_threshold = None;
       tokens_per_roll = None;
       seed_nonce_revelation_tip = None;
+      vdf_result_revelation_tip = None;
       origination_size = None;
       baking_reward_fixed_portion = None;
       baking_reward_bonus_per_slot = None;
@@ -443,6 +450,12 @@ module Protocol_constants_overrides = struct
           {
             name = "seed_nonce_revelation_tip";
             override_value = o.seed_nonce_revelation_tip;
+            pp = Tez.pp;
+          };
+        O
+          {
+            name = "vdf_result_revelation_tip";
+            override_value = o.vdf_result_revelation_tip;
             pp = Tez.pp;
           };
         O
@@ -656,6 +669,10 @@ module Protocol_constants_overrides = struct
            Option.value
              ~default:c.seed_nonce_revelation_tip
              o.seed_nonce_revelation_tip;
+         vdf_result_revelation_tip =
+           Option.value
+             ~default:c.vdf_result_revelation_tip
+             o.vdf_result_revelation_tip;
          origination_size =
            Option.value ~default:c.origination_size o.origination_size;
          baking_reward_fixed_portion =

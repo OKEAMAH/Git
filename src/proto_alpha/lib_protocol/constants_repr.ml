@@ -150,6 +150,7 @@ type parametric = {
   proof_of_work_threshold : int64;
   tokens_per_roll : Tez_repr.t;
   seed_nonce_revelation_tip : Tez_repr.t;
+  vdf_result_revelation_tip : Tez_repr.t;
   origination_size : int;
   baking_reward_fixed_portion : Tez_repr.t;
   baking_reward_bonus_per_slot : Tez_repr.t;
@@ -192,6 +193,7 @@ let parametric_encoding =
           c.proof_of_work_threshold,
           c.tokens_per_roll ),
         ( ( c.seed_nonce_revelation_tip,
+            c.vdf_result_revelation_tip,
             c.origination_size,
             c.baking_reward_fixed_portion,
             c.baking_reward_bonus_per_slot,
@@ -227,6 +229,7 @@ let parametric_encoding =
              proof_of_work_threshold,
              tokens_per_roll ),
            ( ( seed_nonce_revelation_tip,
+               vdf_result_revelation_tip,
                origination_size,
                baking_reward_fixed_portion,
                baking_reward_bonus_per_slot,
@@ -263,6 +266,7 @@ let parametric_encoding =
         proof_of_work_threshold;
         tokens_per_roll;
         seed_nonce_revelation_tip;
+        vdf_result_revelation_tip;
         origination_size;
         baking_reward_fixed_portion;
         baking_reward_bonus_per_slot;
@@ -306,8 +310,9 @@ let parametric_encoding =
           (req "proof_of_work_threshold" int64)
           (req "tokens_per_roll" Tez_repr.encoding))
        (merge_objs
-          (obj8
+          (obj9
              (req "seed_nonce_revelation_tip" Tez_repr.encoding)
+             (req "vdf_result_revelation_tip" Tez_repr.encoding)
              (req "origination_size" int31)
              (req "baking_reward_fixed_portion" Tez_repr.encoding)
              (req "baking_reward_bonus_per_slot" Tez_repr.encoding)
@@ -500,6 +505,7 @@ module Proto_previous = struct
     proof_of_work_threshold : int64;
     tokens_per_roll : Tez_repr.t;
     seed_nonce_revelation_tip : Tez_repr.t;
+    vdf_result_revelation_tip : Tez_repr.t;
     origination_size : int;
     baking_reward_fixed_portion : Tez_repr.t;
     baking_reward_bonus_per_slot : Tez_repr.t;
@@ -540,6 +546,7 @@ module Proto_previous = struct
             c.proof_of_work_threshold,
             c.tokens_per_roll ),
           ( ( c.seed_nonce_revelation_tip,
+              c.vdf_result_revelation_tip,
               c.origination_size,
               c.baking_reward_fixed_portion,
               c.baking_reward_bonus_per_slot,
@@ -574,6 +581,7 @@ module Proto_previous = struct
                proof_of_work_threshold,
                tokens_per_roll ),
              ( ( seed_nonce_revelation_tip,
+                 vdf_result_revelation_tip,
                  origination_size,
                  baking_reward_fixed_portion,
                  baking_reward_bonus_per_slot,
@@ -609,6 +617,7 @@ module Proto_previous = struct
           proof_of_work_threshold;
           tokens_per_roll;
           seed_nonce_revelation_tip;
+          vdf_result_revelation_tip;
           origination_size;
           baking_reward_fixed_portion;
           baking_reward_bonus_per_slot;
@@ -650,8 +659,9 @@ module Proto_previous = struct
             (req "proof_of_work_threshold" int64)
             (req "tokens_per_roll" Tez_repr.encoding))
          (merge_objs
-            (obj8
+            (obj9
                (req "seed_nonce_revelation_tip" Tez_repr.encoding)
+               (req "vdf_result_revelation_tip" Tez_repr.encoding)
                (req "origination_size" int31)
                (req "baking_reward_fixed_portion" Tez_repr.encoding)
                (req "baking_reward_bonus_per_slot" Tez_repr.encoding)

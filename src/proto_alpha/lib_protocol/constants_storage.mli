@@ -51,6 +51,8 @@ val tokens_per_roll : Raw_context.t -> Tez_repr.t
 
 val seed_nonce_revelation_tip : Raw_context.t -> Tez_repr.t
 
+val vdf_result_revelation_tip : Raw_context.t -> Tez_repr.t
+
 val origination_size : Raw_context.t -> int
 
 val baking_reward_fixed_portion : Raw_context.t -> Tez_repr.t

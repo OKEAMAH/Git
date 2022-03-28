@@ -735,6 +735,7 @@ module Constants : sig
     proof_of_work_threshold : int64;
     tokens_per_roll : Tez.t;
     seed_nonce_revelation_tip : Tez.t;
+    vdf_result_revelation_tip : Tez.t;
     origination_size : int;
     baking_reward_fixed_portion : Tez.t;
     baking_reward_bonus_per_slot : Tez.t;
@@ -802,6 +803,8 @@ module Constants : sig
   val tokens_per_roll : context -> Tez.t
 
   val seed_nonce_revelation_tip : context -> Tez.t
+
+  val vdf_result_revelation_tip : context -> Tez.t
 
   val origination_size : context -> int
 

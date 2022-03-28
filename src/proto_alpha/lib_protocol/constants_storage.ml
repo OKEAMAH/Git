@@ -75,6 +75,10 @@ let seed_nonce_revelation_tip c =
   let constants = Raw_context.constants c in
   constants.seed_nonce_revelation_tip
 
+let vdf_result_revelation_tip c =
+  let constants = Raw_context.constants c in
+  constants.vdf_result_revelation_tip
+
 let origination_size c =
   let constants = Raw_context.constants c in
   constants.origination_size

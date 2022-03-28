@@ -619,6 +619,7 @@ def _test_create_mockup_init_show_roundtrip(
                 "endorsing_reward_per_slot": "2857",
                 "origination_size": 258,
                 "seed_nonce_revelation_tip": "125001",
+                "vdf_result_revelation_tip": "250000",
                 "tokens_per_roll": "8000000001",
                 "proof_of_work_threshold": "-2",
                 "hard_gas_limit_per_block": "10400001",
