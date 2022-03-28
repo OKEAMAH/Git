@@ -38,6 +38,7 @@ module Protocol_constants_overrides = struct
     preserved_cycles : int option;
     blocks_per_cycle : int32 option;
     blocks_per_commitment : int32 option;
+    blocks_per_reveal_period : int32 option;
     blocks_per_stake_snapshot : int32 option;
     blocks_per_voting_period : int32 option;
     hard_gas_limit_per_operation : Gas.Arith.integral option;
@@ -84,6 +85,7 @@ module Protocol_constants_overrides = struct
         ( ( c.preserved_cycles,
             c.blocks_per_cycle,
             c.blocks_per_commitment,
+            c.blocks_per_reveal_period,
             c.blocks_per_stake_snapshot,
             c.blocks_per_voting_period,
             c.hard_gas_limit_per_operation,
@@ -120,6 +122,7 @@ module Protocol_constants_overrides = struct
       (fun ( ( preserved_cycles,
                blocks_per_cycle,
                blocks_per_commitment,
+               blocks_per_reveal_period,
                blocks_per_stake_snapshot,
                blocks_per_voting_period,
                hard_gas_limit_per_operation,
@@ -157,6 +160,7 @@ module Protocol_constants_overrides = struct
           preserved_cycles;
           blocks_per_cycle;
           blocks_per_commitment;
+          blocks_per_reveal_period;
           blocks_per_stake_snapshot;
           blocks_per_voting_period;
           hard_gas_limit_per_operation;
@@ -193,10 +197,11 @@ module Protocol_constants_overrides = struct
           tx_rollup_origination_size;
         })
       (merge_objs
-         (obj9
+         (obj10
             (opt "preserved_cycles" uint8)
             (opt "blocks_per_cycle" int32)
             (opt "blocks_per_commitment" int32)
+            (opt "blocks_per_reveal_period" int32)
             (opt "blocks_per_stake_snapshot" int32)
             (opt "blocks_per_voting_period" int32)
             (opt "hard_gas_limit_per_operation" Gas.Arith.z_integral_encoding)
@@ -260,6 +265,7 @@ module Protocol_constants_overrides = struct
         preserved_cycles = Some parametric.preserved_cycles;
         blocks_per_cycle = Some parametric.blocks_per_cycle;
         blocks_per_commitment = Some parametric.blocks_per_commitment;
+        blocks_per_reveal_period = Some parametric.blocks_per_reveal_period;
         blocks_per_stake_snapshot = Some parametric.blocks_per_stake_snapshot;
         blocks_per_voting_period = Some parametric.blocks_per_voting_period;
         hard_gas_limit_per_operation =
@@ -313,6 +319,7 @@ module Protocol_constants_overrides = struct
       preserved_cycles = None;
       blocks_per_cycle = None;
       blocks_per_commitment = None;
+      blocks_per_reveal_period = None;
       blocks_per_stake_snapshot = None;
       blocks_per_voting_period = None;
       hard_gas_limit_per_operation = None;
@@ -388,6 +395,12 @@ module Protocol_constants_overrides = struct
           {
             name = "blocks_per_commitment";
             override_value = o.blocks_per_commitment;
+            pp = pp_print_int32;
+          };
+        O
+          {
+            name = "blocks_per_reveal_period";
+            override_value = o.blocks_per_reveal_period;
             pp = pp_print_int32;
           };
         O
@@ -613,6 +626,10 @@ module Protocol_constants_overrides = struct
            Option.value ~default:c.blocks_per_cycle o.blocks_per_cycle;
          blocks_per_commitment =
            Option.value ~default:c.blocks_per_commitment o.blocks_per_commitment;
+         blocks_per_reveal_period =
+           Option.value
+             ~default:c.blocks_per_reveal_period
+             o.blocks_per_reveal_period;
          blocks_per_stake_snapshot =
            Option.value
              ~default:c.blocks_per_stake_snapshot

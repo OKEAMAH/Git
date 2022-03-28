@@ -727,6 +727,7 @@ module Constants : sig
     preserved_cycles : int;
     blocks_per_cycle : int32;
     blocks_per_commitment : int32;
+    blocks_per_reveal_period : int32;
     blocks_per_stake_snapshot : int32;
     blocks_per_voting_period : int32;
     hard_gas_limit_per_operation : Gas.Arith.integral;
@@ -781,6 +782,8 @@ module Constants : sig
   val blocks_per_cycle : context -> int32
 
   val blocks_per_commitment : context -> int32
+
+  val blocks_per_reveal_period : context -> int32
 
   val blocks_per_stake_snapshot : context -> int32
 

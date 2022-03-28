@@ -84,6 +84,7 @@ type parametric = {
   preserved_cycles : int;
   blocks_per_cycle : int32;
   blocks_per_commitment : int32;
+  blocks_per_reveal_period : int32;
   blocks_per_stake_snapshot : int32;
   blocks_per_voting_period : int32;
   hard_gas_limit_per_operation : Gas_limit_repr.Arith.integral;
@@ -158,6 +159,7 @@ module Proto_previous : sig
     preserved_cycles : int;
     blocks_per_cycle : int32;
     blocks_per_commitment : int32;
+    blocks_per_reveal_period : int32;
     blocks_per_stake_snapshot : int32;
     blocks_per_voting_period : int32;
     hard_gas_limit_per_operation : Gas_limit_repr.Arith.integral;

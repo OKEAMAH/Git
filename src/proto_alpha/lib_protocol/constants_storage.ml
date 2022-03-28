@@ -35,6 +35,10 @@ let blocks_per_commitment c =
   let constants = Raw_context.constants c in
   constants.blocks_per_commitment
 
+let blocks_per_reveal_period c =
+  let constants = Raw_context.constants c in
+  constants.blocks_per_reveal_period
+
 let blocks_per_stake_snapshot c =
   let constants = Raw_context.constants c in
   constants.blocks_per_stake_snapshot

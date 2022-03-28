@@ -142,6 +142,7 @@ type parametric = {
   preserved_cycles : int;
   blocks_per_cycle : int32;
   blocks_per_commitment : int32;
+  blocks_per_reveal_period : int32;
   blocks_per_stake_snapshot : int32;
   blocks_per_voting_period : int32;
   hard_gas_limit_per_operation : Gas_limit_repr.Arith.integral;
@@ -183,6 +184,7 @@ let parametric_encoding =
       ( ( c.preserved_cycles,
           c.blocks_per_cycle,
           c.blocks_per_commitment,
+          c.blocks_per_reveal_period,
           c.blocks_per_stake_snapshot,
           c.blocks_per_voting_period,
           c.hard_gas_limit_per_operation,
@@ -217,6 +219,7 @@ let parametric_encoding =
     (fun ( ( preserved_cycles,
              blocks_per_cycle,
              blocks_per_commitment,
+             blocks_per_reveal_period,
              blocks_per_stake_snapshot,
              blocks_per_voting_period,
              hard_gas_limit_per_operation,
@@ -252,6 +255,7 @@ let parametric_encoding =
         preserved_cycles;
         blocks_per_cycle;
         blocks_per_commitment;
+        blocks_per_reveal_period;
         blocks_per_stake_snapshot;
         blocks_per_voting_period;
         hard_gas_limit_per_operation;
@@ -286,10 +290,11 @@ let parametric_encoding =
         tx_rollup_origination_size;
       })
     (merge_objs
-       (obj9
+       (obj10
           (req "preserved_cycles" uint8)
           (req "blocks_per_cycle" int32)
           (req "blocks_per_commitment" int32)
+          (req "blocks_per_reveal_period" int32)
           (req "blocks_per_stake_snapshot" int32)
           (req "blocks_per_voting_period" int32)
           (req
@@ -487,6 +492,7 @@ module Proto_previous = struct
     preserved_cycles : int;
     blocks_per_cycle : int32;
     blocks_per_commitment : int32;
+    blocks_per_reveal_period : int32;
     blocks_per_stake_snapshot : int32;
     blocks_per_voting_period : int32;
     hard_gas_limit_per_operation : Gas_limit_repr.Arith.integral;
@@ -526,6 +532,7 @@ module Proto_previous = struct
         ( ( c.preserved_cycles,
             c.blocks_per_cycle,
             c.blocks_per_commitment,
+            c.blocks_per_reveal_period,
             c.blocks_per_stake_snapshot,
             c.blocks_per_voting_period,
             c.hard_gas_limit_per_operation,
@@ -559,6 +566,7 @@ module Proto_previous = struct
       (fun ( ( preserved_cycles,
                blocks_per_cycle,
                blocks_per_commitment,
+               blocks_per_reveal_period,
                blocks_per_stake_snapshot,
                blocks_per_voting_period,
                hard_gas_limit_per_operation,
@@ -593,6 +601,7 @@ module Proto_previous = struct
           preserved_cycles;
           blocks_per_cycle;
           blocks_per_commitment;
+          blocks_per_reveal_period;
           blocks_per_stake_snapshot;
           blocks_per_voting_period;
           hard_gas_limit_per_operation;
@@ -625,10 +634,11 @@ module Proto_previous = struct
           delegate_selection;
         })
       (merge_objs
-         (obj9
+         (obj10
             (req "preserved_cycles" uint8)
             (req "blocks_per_cycle" int32)
             (req "blocks_per_commitment" int32)
+            (req "blocks_per_reveal_period" int32)
             (req "blocks_per_stake_snapshot" int32)
             (req "blocks_per_voting_period" int32)
             (req

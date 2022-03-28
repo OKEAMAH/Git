@@ -835,6 +835,7 @@ let prepare_first_block ~level ~timestamp ctxt =
             preserved_cycles = c.preserved_cycles;
             blocks_per_cycle = c.blocks_per_cycle;
             blocks_per_commitment = c.blocks_per_commitment;
+            blocks_per_reveal_period = c.blocks_per_cycle;
             blocks_per_stake_snapshot = c.blocks_per_stake_snapshot;
             blocks_per_voting_period = c.blocks_per_voting_period;
             hard_gas_limit_per_operation = c.hard_gas_limit_per_operation;

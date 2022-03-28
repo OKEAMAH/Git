@@ -638,6 +638,7 @@ def _test_create_mockup_init_show_roundtrip(
                 "blocks_per_voting_period": 65,
                 "blocks_per_stake_snapshot": 5,
                 "blocks_per_commitment": 5,
+                "blocks_per_voting_period": 5,
                 "blocks_per_cycle": 9,
                 "preserved_cycles": 3,
                 "liquidity_baking_escape_ema_threshold": 1000000,

@@ -255,12 +255,23 @@ let protocol_param_key = ["protocol_parameters"]
 
 let check_constants_consistency constants =
   let open Constants in
-  let {blocks_per_cycle; blocks_per_commitment; blocks_per_stake_snapshot; _} =
+  let {
+    blocks_per_cycle;
+    blocks_per_commitment;
+    blocks_per_reveal_period;
+    blocks_per_stake_snapshot;
+    _;
+  } =
     constants
   in
   Error_monad.unless (blocks_per_commitment <= blocks_per_cycle) (fun () ->
       failwith
         "Inconsistent constants : blocks per commitment must be less than \
+         blocks per cycle")
+  >>=? fun () ->
+  Error_monad.unless (blocks_per_reveal_period <= blocks_per_cycle) (fun () ->
+      failwith
+        "Inconsistent constants : blocks per reveal period must be less than \
          blocks per cycle")
   >>=? fun () ->
   Error_monad.unless (blocks_per_cycle >= blocks_per_stake_snapshot) (fun () ->

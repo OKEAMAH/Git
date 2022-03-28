@@ -30,6 +30,8 @@ val blocks_per_cycle : Raw_context.t -> int32
 
 val blocks_per_commitment : Raw_context.t -> int32
 
+val blocks_per_reveal_period : Raw_context.t -> int32
+
 val blocks_per_stake_snapshot : Raw_context.t -> int32
 
 val blocks_per_voting_period : Raw_context.t -> int32
