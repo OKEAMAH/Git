@@ -171,6 +171,8 @@ module Make (Context : P) :
 
       val remove : Tree.key -> unit t
 
+      val clear_error : unit t
+
       val find_value : Tree.key -> 'a Data_encoding.t -> 'a option t
 
       val get_value : default:'a -> Tree.key -> 'a Data_encoding.t -> 'a t
@@ -208,6 +210,8 @@ module Make (Context : P) :
         let open Lwt_syntax in
         let* tree = Tree.remove tree key in
         return (tree, Some ())
+
+      let clear_error = remove internal_error_key
 
       let find_value key encoding state =
         let open Lwt_syntax in
@@ -710,6 +714,7 @@ module Make (Context : P) :
     let open Monad.Syntax in
     let* () = EvaluationResult.set None in
     let* () = Stack.clear in
+    let* () = NextMessage.set None in
     let* () = Status.set Evaluating in
     return ()
 
@@ -787,6 +792,7 @@ module Make (Context : P) :
   let reboot =
     let open Monad.Syntax in
     let* () = Status.set WaitingForInputMessage in
+    let* () = clear_error in
     let* () = Stack.clear in
     let* () = Code.clear in
     return ()
