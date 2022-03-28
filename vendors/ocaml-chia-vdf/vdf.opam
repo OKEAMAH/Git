@@ -1,0 +1,22 @@
+opam-version: "2.0"
+authors: [ "Nomadic Labs <contact@nomadic-labs.com>" ]
+maintainer: [ "Nomadic Labs <contact@nomadic-labs.com>" ]
+synopsis: "VDF TODO"
+homepage: "https://gitlab.com/nomadic-labs/tezos"
+dev-repo: "git+https://gitlab.com/nomadic-labs/tezos"
+bug-reports: "https://gitlab.com/nomadic-labs/tezos/issues"
+license: "MIT"
+depends: [
+  "ocaml" {>= "4.08"}
+  "dune" {>= "2.8.4"}
+  # Dependencies for vdf
+  ## require libgmp
+  "conf-gmp"
+  ## To compile g++ code
+  "conf-g++"
+  "integers"
+  "alcotest" {with-test}
+  "bisect_ppx" {with-test & >= "2.5"}
+]
+build: [[ "dune" "build" "-j" jobs "-p" name "@install" ]]
+run-test: [[ "dune" "runtest" "-p" name "-j" jobs ]]

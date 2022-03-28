@@ -1,0 +1,12 @@
+(library
+ (name vdf)
+ (public_name vdf)
+ (libraries integers)
+ (library_flags :standard -linkall -ccopt -lpthread)
+ (c_library_flags
+  (-lgmpxx -lgmp -lstdc++))
+ (foreign_stubs
+  (language cxx)
+  (include_dirs libvdf)
+  (flags :standard -std=c++1z)
+  (names binding_interface_stubs)))
