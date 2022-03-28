@@ -169,7 +169,7 @@ let check_commitment_predecessor ctxt state commitment =
   | (None, None) -> return ctxt
   | (provided, expected) -> fail (Wrong_predecessor_hash {provided; expected})
 
-let check_commitment_batches_and_merkle_root ctxt tx_rollup commitment =
+let check_commitment_batches_and_merkle_root ctxt tx_rollup state commitment =
   Tx_rollup_inbox_storage.get ctxt commitment.level tx_rollup
   >>=? fun (ctxt, {inbox_length; merkle_root; _}) ->
   fail_unless
@@ -179,7 +179,7 @@ let check_commitment_batches_and_merkle_root ctxt tx_rollup commitment =
   fail_unless
     Tx_rollup_inbox_repr.Merkle.(commitment.inbox_merkle_root = merkle_root)
     Wrong_inbox_hash
-  >>=? fun () -> return ctxt
+  >>=? fun () -> return (ctxt, state)
 
 let add_commitment ctxt tx_rollup state pkh commitment =
   let commitment_limit =
@@ -194,8 +194,8 @@ let add_commitment ctxt tx_rollup state pkh commitment =
   let current_level = (Raw_context.current_level ctxt).level in
   check_commitment_level current_level state commitment >>?= fun () ->
   check_commitment_predecessor ctxt state commitment >>=? fun ctxt ->
-  check_commitment_batches_and_merkle_root ctxt tx_rollup commitment
-  >>=? fun ctxt ->
+  check_commitment_batches_and_merkle_root ctxt tx_rollup state commitment
+  >>=? fun (ctxt, state) ->
   (* Everything has been sorted out, let’s update the storage *)
   let commitment = Tx_rollup_commitment_repr.Full.compact commitment in
   let commitment_hash = Tx_rollup_commitment_repr.Compact.hash commitment in
@@ -251,8 +251,8 @@ let finalize_commitment ctxt rollup state =
         No_commitment_to_finalize
       >>=? fun () ->
       (* We remove the inbox *)
-      Tx_rollup_inbox_storage.remove ctxt oldest_inbox_level rollup state
-      >>=? fun (ctxt, state) ->
+      Tx_rollup_inbox_storage.remove ctxt oldest_inbox_level rollup
+      >>=? fun ctxt ->
       (* We update the commitment to mark it as finalized *)
       Storage.Tx_rollup.Commitment.update
         ctxt
