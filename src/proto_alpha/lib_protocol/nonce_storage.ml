@@ -89,8 +89,12 @@ let get_unrevealed ctxt (level : Level_repr.t) =
   | Some revealed_cycle -> (
       if Cycle_repr.(revealed_cycle < level.Level_repr.cycle) then
         fail Too_early_revelation
-      else if Cycle_repr.(level.Level_repr.cycle < revealed_cycle) then
-        fail Too_late_revelation
+      else if
+        Cycle_repr.(level.Level_repr.cycle < revealed_cycle)
+        || Compare.Int32.(
+             level.Level_repr.cycle_position
+             > Constants_storage.blocks_per_reveal_period ctxt)
+      then fail Too_late_revelation
       else
         Storage.Seed.Nonce.get ctxt level >>=? function
         | Revealed _ -> fail Previously_revealed_nonce
