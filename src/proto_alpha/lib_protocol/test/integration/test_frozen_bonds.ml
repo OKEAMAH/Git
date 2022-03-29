@@ -319,8 +319,7 @@ let test_rpcs () =
       Assert.equal_tez ~loc:__LOC__ balance_and_frozen_bonds balance
   | _ -> (* Exactly one account has been generated. *) assert false
 
-(** A helper to test a particular delegation/freezing scenario
-*)
+(** A helper to test a particular delegation/freezing scenario *)
 let test_scenario scenario =
   init_test ~user_is_delegate:false
   >>=? fun (ctxt, user_contract, user_account, delegate1) ->
