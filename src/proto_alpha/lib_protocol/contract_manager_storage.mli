@@ -32,6 +32,7 @@ type error +=
       provided_hash : Signature.Public_key_hash.t;
     }
   | (* `Branch *) Previously_revealed_key of Contract_repr.t
+  | (* `Temporary *) Manager_key_not_found of Signature.Public_key_hash.t
 
 (** [init ctxt contract manager] associates [manager] to [contract]. This
     function is undefined if [contract] has already a manager associated to it.

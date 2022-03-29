@@ -32,6 +32,7 @@ type error +=
       provided_hash : Signature.Public_key_hash.t;
     }
   | (* `Branch *) Previously_revealed_key of Contract_repr.t
+  | (* `Temporary *) Manager_key_not_found of Signature.Public_key_hash.t
 
 let () =
   register_error_kind
@@ -89,7 +90,23 @@ let () =
         s)
     Data_encoding.(obj1 (req "contract" Contract_repr.encoding))
     (function Previously_revealed_key s -> Some s | _ -> None)
-    (fun s -> Previously_revealed_key s)
+    (fun s -> Previously_revealed_key s) ;
+  register_error_kind
+    `Temporary
+    ~id:"contract.manager_key_not_found"
+    ~title:"Manager key was not found"
+    ~description:
+      "One tried fetch the manager key of a contract, but it was not found"
+    ~pp:(fun ppf pkh ->
+      Format.fprintf
+        ppf
+        "Manager key not found for %a."
+        Signature.Public_key_hash.pp
+        pkh)
+    Data_encoding.(
+      obj1 (req "public_key_hash" Signature.Public_key_hash.encoding))
+    (function Manager_key_not_found pkh -> Some pkh | _ -> None)
+    (fun pkh -> Manager_key_not_found pkh)
 
 let init = Storage.Contract.Manager.init
 
@@ -119,7 +136,7 @@ let get_manager_key ?error ctxt pkh =
   Storage.Contract.Manager.find ctxt contract >>=? function
   | None -> (
       match error with
-      | None -> failwith "get_manager_key"
+      | None -> fail (Manager_key_not_found pkh)
       | Some error -> fail error)
   | Some (Manager_repr.Hash _) -> (
       match error with
