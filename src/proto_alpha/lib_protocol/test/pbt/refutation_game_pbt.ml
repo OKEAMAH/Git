@@ -323,8 +323,11 @@ module Strategies (P : TestPVM) = struct
     let rec loop state tick =
       if pred tick state then Lwt.return (tick, state)
       else
-        PVM.eval state >>= fun s ->
-        if P.state_hash s = P.state_hash state then Lwt.return (tick, state)
+        let* s = PVM.eval state in
+        let* hash1 = P.state_hash state in
+        let* hash2 = P.state_hash s in
+
+        if State_hash.equal hash1 hash2 then Lwt.return (tick, state)
         else loop s (Sc_rollup_tick_repr.next tick)
     in
     loop state tick
