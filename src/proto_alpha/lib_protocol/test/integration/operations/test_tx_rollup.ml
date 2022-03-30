@@ -520,6 +520,19 @@ module Nat_ticket = struct
     (op, block, deposit_contract)
 end
 
+let message_result context_hash withdraws =
+  Tx_rollup_message_result.
+    {
+      context_hash;
+      withdraw_list_hash = Tx_rollup_withdraw_list_hash.hash withdraws;
+    }
+
+let initial_message_result : Tx_rollup_message_result.t =
+  {
+    context_hash = Tx_rollup_message_result.empty_l2_context_hash;
+    withdraw_list_hash = Tx_rollup_withdraw_list_hash.empty;
+  }
+
 (** ---- TESTS -------------------------------------------------------------- *)
 
 (** [test_origination] originates a transaction rollup and checks that
@@ -2118,12 +2131,6 @@ module Rejection = struct
   module Apply = Tx_rollup_l2_apply.Make (L2_Context)
   module C = Tezos_context_memory.Context_binary
 
-  let previous_message_result : Tx_rollup_message_result.t =
-    {
-      context_hash = Tx_rollup_message_result.empty_l2_context_hash;
-      withdraw_list_hash = Tx_rollup_withdraw_list_hash.empty;
-    }
-
   let init_with_bogus_batch () =
     context_init1 () >>=? fun (b, contract1) ->
     originate b contract1 >>=? fun (b, tx_rollup) ->
@@ -2389,7 +2396,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation
@@ -2492,11 +2499,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result:
-        {
-          context_hash = l2_context_hash;
-          withdraw_list_hash = Tx_rollup_withdraw_list_hash.empty;
-        }
+      ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation i op >>=? fun _ -> return_unit
@@ -2547,11 +2550,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result:
-        {
-          context_hash = l2_context_hash;
-          withdraw_list_hash = Tx_rollup_withdraw_list_hash.empty;
-        }
+      ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation
@@ -2642,11 +2641,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result:
-        {
-          context_hash = l2_context_hash;
-          withdraw_list_hash = Tx_rollup_withdraw_list_hash.empty;
-        }
+      ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
@@ -2679,11 +2674,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result:
-        {
-          context_hash = l2_context_hash;
-          withdraw_list_hash = Tx_rollup_withdraw_list_hash.empty;
-        }
+      ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
@@ -2733,11 +2724,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result:
-        {
-          context_hash = l2_context_hash;
-          withdraw_list_hash = Tx_rollup_withdraw_list_hash.empty;
-        }
+      ~previous_message_result:(message_result l2_context_hash [])
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
@@ -2816,7 +2803,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation i op >>=? fun _ -> return_unit
@@ -2841,7 +2828,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof:invalid_proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation
@@ -2928,7 +2915,7 @@ module Rejection = struct
       ~message_result_hash:Tx_rollup_message_result_hash.zero
       ~message_result_path:Tx_rollup_commitment.Merkle.dummy_path
       ~proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation
@@ -2976,7 +2963,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation
@@ -3016,7 +3003,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation
@@ -3047,7 +3034,7 @@ module Rejection = struct
       ~message_result_hash:Tx_rollup_message_result_hash.zero
       ~message_result_path:Tx_rollup_commitment.Merkle.dummy_path
       ~proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation
@@ -3116,7 +3103,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof:invalid_proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation
@@ -3139,7 +3126,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation i op >>=? fun _ -> return_unit
@@ -3218,7 +3205,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op -> return (i, op)
 
@@ -3288,7 +3275,7 @@ module Rejection = struct
       ~message_result_hash
       ~message_result_path
       ~proof:proof_truncated
-      ~previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun op ->
     Incremental.add_operation i op >>=? fun _ -> return_unit
@@ -3388,7 +3375,7 @@ let test_state () =
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result:Rejection.previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun operation ->
     Incremental.begin_construction b >>=? fun i ->
@@ -3458,8 +3445,7 @@ let test_state () =
     Tx_rollup_commitment.
       {
         commit1 with
-        messages =
-          [Tx_rollup_message_result_hash.hash Rejection.previous_message_result];
+        messages = [Tx_rollup_message_result_hash.hash initial_message_result];
       }
   in
   let commit2 =
@@ -3529,8 +3515,7 @@ let test_state_with_deleted () =
     Tx_rollup_commitment.
       {
         level = Tx_rollup_level.root;
-        messages =
-          [Tx_rollup_message_result_hash.hash Rejection.previous_message_result];
+        messages = [Tx_rollup_message_result_hash.hash initial_message_result];
         predecessor = None;
         inbox_merkle_root = inbox_hash;
       }
@@ -3578,7 +3563,7 @@ let test_state_with_deleted () =
       ~message_result_hash
       ~message_result_path
       ~proof
-      ~previous_message_result:Rejection.previous_message_result
+      ~previous_message_result:initial_message_result
       ~previous_message_result_path:Tx_rollup_commitment.Merkle.dummy_path
     >>=? fun operation ->
     Incremental.begin_construction b >>=? fun i ->
@@ -4811,7 +4796,7 @@ module Withdraw = struct
       deposit1
       (tx_level 0l)
       []
-      ~previous_message_result:Rejection.previous_message_result
+      ~previous_message_result:initial_message_result
     >>=? fun (i, previous_message_result) ->
     l2_parameters (I i) >>=? fun l2_parameters ->
     (* Finally, we apply the deposit manually to have the good resulting store
@@ -4885,7 +4870,7 @@ module Withdraw = struct
       deposit1
       (tx_level 0l)
       []
-      ~previous_message_result:Rejection.previous_message_result
+      ~previous_message_result:initial_message_result
     >>=? fun (i, previous_message_result) ->
     l2_parameters (I i) >>=? fun l2_parameters ->
     (* Finally, we apply the deposit manually to have the good resulting store
