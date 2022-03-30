@@ -295,8 +295,7 @@ let gen_l2_account () =
     owned by [tx_rollup]. *)
 let make_ticket_key ctxt ~ty ~contents ~ticketer tx_rollup =
   (match ctxt with
-  | Context.B block ->
-      Incremental.begin_construction block >>=? fun incr -> return incr
+  | Context.B block -> Incremental.begin_construction block
   | Context.I incr -> return incr)
   >>=? fun incr ->
   let ctxt = Incremental.alpha_ctxt incr in
@@ -780,7 +779,6 @@ let test_add_two_batches () =
      its successor. *)
   Context.Tx_rollup.inbox (B b) tx_rollup Tx_rollup_level.(succ root)
   >>=? fun inbox ->
-  Incremental.begin_construction b >>=? fun _incr ->
   let contents1_hash =
     Tx_rollup_message.hash_uncarbonated
       (Tx_rollup_message.make_batch contents1 |> fst)
@@ -3563,9 +3561,7 @@ let test_state_with_deleted () =
   Block.bake b ~operations:[] >>=? fun b ->
   Block.bake b ~operations:[] >>=? fun b ->
   Op.tx_rollup_remove_commitment (B b) account1 tx_rollup >>=? fun operation ->
-  Incremental.begin_construction b >>=? fun i ->
-  Incremental.add_operation i operation >>=? fun i ->
-  Incremental.finalize_block i >>=? fun b ->
+  Block.bake ~operation b >>=? fun b ->
   (* Reject *)
   let reject ?expect_failure b level commitment =
     l2_parameters (B b) >>=? fun l2_parameters ->
@@ -3888,10 +3884,7 @@ module Withdraw = struct
       context_hash
       [ticket_info1; ticket_info2]
     >>=? fun operation ->
-    Incremental.begin_construction block >>=? fun i ->
-    Incremental.add_operation i operation >>=? fun i ->
-    Incremental.finalize_block i >>=? fun block ->
-    (* Block.bake ~operation block >>=? fun block -> *)
+    Block.bake ~operation block >>=? fun block ->
     (* Now the Tx_rollup should own no tickets and the two implicit contract half before
        calling withdraw.*)
     assert_ticket_balance
@@ -4677,13 +4670,12 @@ module Withdraw = struct
       committed_level
       false
     >>=? fun () ->
-    (* Exexute with withdrawal *)
-    Incremental.begin_construction b >>=? fun incr ->
+    (* Execute with withdrawal *)
     let (_message_result_hash, message_result_path) =
       Rejection.make_rejection_param commitment ~index:0
     in
     Op.tx_rollup_dispatch_tickets
-      (I incr)
+      (B b)
       ~source:account1
       ~message_index:0
       ~message_result_path
@@ -4692,9 +4684,7 @@ module Withdraw = struct
       context_hash
       [ticket_info]
     >>=? fun operation ->
-    Incremental.begin_construction b >>=? fun i ->
-    Incremental.add_operation i operation >>=? fun i ->
-    Incremental.finalize_block i >>=? fun b ->
+    Block.bake ~operation b >>=? fun b ->
     assert_consumed
       b
       ~msg:"should be consumed after withdrawal"
@@ -4704,9 +4694,7 @@ module Withdraw = struct
     (* Remove the commitment *)
     Op.tx_rollup_remove_commitment (B b) account1 tx_rollup
     >>=? fun operation ->
-    Incremental.begin_construction b >>=? fun i ->
-    Incremental.add_operation i operation >>=? fun i ->
-    Incremental.finalize_block i >>=? fun b ->
+    Block.bake ~operation b >>=? fun b ->
     assert_consumed
       b
       committed_level
@@ -4806,7 +4794,6 @@ module Withdraw = struct
       ~amount:(Tx_rollup_l2_qty.of_int64_exn max)
       tx_rollup
     >>=? fun (withdraw, _) ->
-    Incremental.begin_construction b >>=? fun i ->
     Nat_ticket.ticket_hash (B b) ~ticketer:deposit_contract ~tx_rollup
     >>=? fun ticket_hash ->
     let (deposit1, _) =
@@ -4819,7 +4806,7 @@ module Withdraw = struct
     Rejection.init_l2_store () >>= fun store ->
     (* For the first deposit, we have no withdraws *)
     make_and_check_correct_commitment
-      (I i)
+      (B b)
       tx_rollup
       account1
       store
@@ -4879,7 +4866,6 @@ module Withdraw = struct
     in
     deposit b pkh1 >>=? fun b ->
     deposit b pkh2 >>=? fun b ->
-    Incremental.begin_construction b >>=? fun i ->
     Nat_ticket.ticket_hash (B b) ~ticketer:deposit_contract ~tx_rollup
     >>=? fun ticket_hash ->
     let make_deposit pkh =
@@ -4894,7 +4880,7 @@ module Withdraw = struct
     Rejection.init_l2_store () >>= fun store ->
     (* For the first deposit, we have no withdraws *)
     make_and_check_correct_commitment
-      (I i)
+      (B b)
       tx_rollup
       account1
       store
