@@ -31,7 +31,9 @@ let add_ticket_balance contract ctxt ticket =
   Ticket_balance_key.of_ex_token ctxt ~owner:contract token
   >>=? fun (hash, ctxt) ->
   Ticket_balance.adjust_balance ctxt hash ~delta:(Script_int.to_zint amount)
-  >|=? fun ((_added_size : Z.t), ctxt) -> ctxt
+  >>=? fun ((added_size : Z.t), ctxt) ->
+  Ticket_balance.adjust_storage_space ctxt ~storage_diff:added_size
+  >|=? fun (_sponsored_storage, ctxt) -> ctxt
 
 let update_contract_tickets ctxt contract =
   (* We could fetch and parse code and storage separately, and extract tickets
