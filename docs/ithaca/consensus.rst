@@ -57,7 +57,7 @@ only provide a user/developer perspective.
 Tenderbake is executed for each new block level by a "committee" whose members
 are called *validators*, which are delegates selected at random based on their
 stake, in the same way as endorsers are selected in Emmy*. We let
-``CONSENSUS_COMMITTEE_SIZE`` be the number of validator slots per level. This
+``CONSENSUS_COMMITTEE_SIZE`` be the number of validator :ref:`slots<rights_ithaca>` per level. This
 constant has the role of ``ENDORSERS_PER_BLOCK`` in Emmy*.
 
 For each level, Tenderbake proceeds in rounds. Each *round* represents an
