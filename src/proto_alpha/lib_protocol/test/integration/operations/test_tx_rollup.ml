@@ -415,6 +415,10 @@ let assert_ticket_balance ~loc block token owner expected =
   | (None, Some b) -> failwith "%s: Expected balance %d but got none" loc b
   | (None, None) -> return ()
 
+let single_message_path message =
+  let message_hash = Tx_rollup_message.hash_uncarbonated message in
+  assert_ok @@ Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0)
+
 module Nat_ticket = struct
   let ty_str = "nat"
 
@@ -603,10 +607,7 @@ let test_burn_per_byte_update () =
         ~hard_limit
     in
     let new_burn =
-      match Alpha_context.Tx_rollup_state.burn_cost ~limit:None state 1 with
-      | Ok x -> x
-      | Error _ ->
-          Stdlib.failwith "could not compute the fees for a message of 1 byte"
+      assert_ok @@ Alpha_context.Tx_rollup_state.burn_cost ~limit:None state 1
     in
     Assert.equal_tez ~loc:__LOC__ result new_burn
   in
@@ -1626,11 +1627,6 @@ let make_transactions_in tx_rollup contract blocks b =
   in
   aux 2 blocks b
 
-let assert_ok res =
-  match res with
-  | Ok r -> r
-  | Error _ -> raise (Invalid_argument "Error: assert_ok")
-
 let tx_level level = assert_ok @@ Tx_rollup_level.of_int32 level
 
 (** [test_storage_burn_for_commitment] test storage space allocation
@@ -2209,7 +2205,7 @@ module Rejection = struct
   let get_tree_from_store store =
     let open L2_Context.Syntax in
     let* tree_opt = C.find_tree store [] in
-    match tree_opt with Some x -> return x | None -> assert false
+    return @@ assert_some tree_opt
 
   let hash_tree_from_store store =
     let open L2_Context.Syntax in
@@ -2354,9 +2350,7 @@ module Rejection = struct
         commitment.messages
     in
     let path =
-      match Tx_rollup_commitment.Merkle.compute_path tree index with
-      | Ok x -> x
-      | Error _ -> assert false
+      assert_ok @@ Tx_rollup_commitment.Merkle.compute_path tree index
     in
     (message_result_hash, path)
 
@@ -2366,12 +2360,7 @@ module Rejection = struct
     originate b account >>=? fun (b, tx_rollup) ->
     make_deposit b tx_rollup account
     >>=? fun (b, deposit, l2_account, ticket_hash) ->
-    let deposit_hash = Tx_rollup_message.hash_uncarbonated deposit in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [deposit_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path deposit in
     Incremental.begin_construction b >>=? fun i ->
     make_valid_commitment_for_messages
       (I i)
@@ -2478,12 +2467,7 @@ module Rejection = struct
         ~signers:[sk]
         [(Bls_pk pk, None, [(addr, ticket_hash, 1L)])]
     in
-    let message_hash = Tx_rollup_message.hash_uncarbonated message in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path message in
     Op.tx_rollup_submit_batch (B b) account tx_rollup batch_bytes
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
@@ -2538,12 +2522,7 @@ module Rejection = struct
         ~signers:[sk]
         [(Bls_pk pk, None, [(addr, ticket_hash, 1L)])]
     in
-    let message_hash = Tx_rollup_message.hash_uncarbonated message in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path message in
     Op.tx_rollup_submit_batch (B b) account tx_rollup batch_bytes
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
@@ -2620,10 +2599,7 @@ module Rejection = struct
     Incremental.begin_construction b >>=? fun i ->
     l2_parameters (B b) >>=? fun l2_parameters ->
     let (message, _) = Tx_rollup_message.make_batch "fake" in
-    let message_hash = Tx_rollup_message.hash_uncarbonated message in
-    let message_path =
-      assert_ok @@ Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0)
-    in
+    let message_path = single_message_path message in
     hash_tree_from_store store >>= fun l2_context_hash ->
     let make_invalid_commitment i level h =
       (* Make some invalid commitments for the submitted messages *)
@@ -2692,10 +2668,7 @@ module Rejection = struct
     Context.Contract.balance (I i) contract1 >>=? fun balance ->
     Context.Contract.balance (I i) contract2 >>=? fun balance2 ->
     make_proof store l2_parameters deposit_message >>= fun proof ->
-    let message_hash = Tx_rollup_message.hash_uncarbonated deposit_message in
-    let message_path =
-      assert_ok @@ Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0)
-    in
+    let message_path = single_message_path message in
     let (message_result_hash, message_result_path) =
       make_rejection_param commitment0 ~index:0
     in
@@ -2735,12 +2708,7 @@ module Rejection = struct
     >>=? fun (b, account, _, tx_rollup, store, (sk, pk, addr), ticket_hash) ->
     hash_tree_from_store store >>= fun l2_context_hash ->
     let (message, batch_bytes) = make_bad_message sk pk addr ticket_hash in
-    let message_hash = Tx_rollup_message.hash_uncarbonated message in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path message in
     Op.tx_rollup_submit_batch (B b) account tx_rollup batch_bytes
     >>=? fun operation ->
     Block.bake ~operation b >>=? fun b ->
@@ -2834,9 +2802,7 @@ module Rejection = struct
     let (msg, _) = Tx_rollup_message.make_batch message in
     let message_hash = Tx_rollup_message.hash_uncarbonated msg in
     let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
+      assert_ok @@ Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0)
     in
     l2_parameters (I i) >>=? fun l2_parameters ->
     valid_empty_proof l2_parameters >>= fun proof ->
@@ -2863,13 +2829,8 @@ module Rejection = struct
   let test_invalid_proof_on_invalid_commitment () =
     init_with_valid_commitment ()
     >>=? fun (i, contract, tx_rollup, level, message, commitment) ->
-    let (msg, _) = Tx_rollup_message.make_batch message in
-    let message_hash = Tx_rollup_message.hash_uncarbonated msg in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let (message, _) = Tx_rollup_message.make_batch message in
+    let message_path = single_message_path message in
     let (message_result_hash, message_result_path) =
       make_rejection_param commitment ~index:0
     in
@@ -2878,7 +2839,7 @@ module Rejection = struct
       contract
       tx_rollup
       level
-      msg
+      message
       ~message_position:0
       ~message_path
       ~message_result_hash
@@ -2899,7 +2860,7 @@ module Rejection = struct
   let test_invalid_agreed () =
     init_with_valid_commitment ()
     >>=? fun (i, contract, tx_rollup, level, message, commitment) ->
-    let (msg, _) = Tx_rollup_message.make_batch message in
+    let (message, _) = Tx_rollup_message.make_batch message in
     (* This intentionally does not match  *)
     let previous_message_result : Tx_rollup_message_result.t =
       {
@@ -2908,12 +2869,7 @@ module Rejection = struct
         withdraw_list_hash = Tx_rollup_withdraw_list_hash.empty;
       }
     in
-    let message_hash = Tx_rollup_message.hash_uncarbonated msg in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path message in
     let (message_result_hash, message_result_path) =
       make_rejection_param commitment ~index:0
     in
@@ -2922,7 +2878,7 @@ module Rejection = struct
       contract
       tx_rollup
       level
-      msg
+      message
       ~message_position:0
       ~message_path
       ~proof:invalid_proof (* doesn't matter -- we'll never check it*)
@@ -2962,12 +2918,7 @@ module Rejection = struct
     Incremental.begin_construction b >>=? fun i ->
     let level = Tx_rollup_level.root in
     let (message, _size) = Tx_rollup_message.make_batch message in
-    let message_hash = Tx_rollup_message.hash_uncarbonated message in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path message in
     l2_parameters (I i) >>=? fun l2_parameters ->
     valid_empty_proof l2_parameters >>= fun proof ->
     Op.tx_rollup_reject
@@ -3012,12 +2963,7 @@ module Rejection = struct
     Op.tx_rollup_finalize (I i) contract tx_rollup >>=? fun op ->
     Incremental.add_operation i op >>=? fun i ->
     let (message, _size) = Tx_rollup_message.make_batch message in
-    let message_hash = Tx_rollup_message.hash_uncarbonated message in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path message in
     l2_parameters (I i) >>=? fun l2_parameters ->
     valid_empty_proof l2_parameters >>= fun proof ->
     let (message_result_hash, message_result_path) =
@@ -3057,12 +3003,7 @@ module Rejection = struct
       Tx_rollup_inbox.Merkle.merklize_list [prev_message_hash]
     in
     let (message, _size) = Tx_rollup_message.make_batch "wrong message" in
-    let message_hash = Tx_rollup_message.hash_uncarbonated message in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path message in
     l2_parameters (I i) >>=? fun l2_parameters ->
     valid_empty_proof l2_parameters >>= fun proof ->
     let (message_result_hash, message_result_path) =
@@ -3096,12 +3037,7 @@ module Rejection = struct
     init_with_valid_commitment ()
     >>=? fun (i, contract1, tx_rollup, level, message, _commitment) ->
     let (message, _size) = Tx_rollup_message.make_batch message in
-    let message_hash = Tx_rollup_message.hash_uncarbonated message in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path message in
     l2_parameters (I i) >>=? fun l2_parameters ->
     valid_empty_proof l2_parameters >>= fun proof ->
     Op.tx_rollup_reject
@@ -3162,12 +3098,7 @@ module Rejection = struct
         ticket_hash
         (Tx_rollup_l2_qty.of_int64_exn 10L)
     in
-    let message_hash = Tx_rollup_message.hash_uncarbonated deposit_message in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [message_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path deposit_message in
     Incremental.begin_construction b >>=? fun i ->
     make_incomplete_commitment_for_batch (I i) Tx_rollup_level.root tx_rollup []
     >>=? fun (commitment, _) ->
@@ -3260,12 +3191,7 @@ module Rejection = struct
         ticket_hash
         (Tx_rollup_l2_qty.of_int64_exn 10L)
     in
-    let deposit_hash = Tx_rollup_message.hash_uncarbonated deposit in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [deposit_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path deposit in
     Incremental.begin_construction b >>=? fun i ->
     make_valid_commitment_for_messages
       (I i)
@@ -3331,12 +3257,7 @@ module Rejection = struct
     >>=? fun (b, account) ->
     originate b account >>=? fun (b, tx_rollup) ->
     make_deposit b tx_rollup account >>=? fun (b, deposit, _, _) ->
-    let deposit_hash = Tx_rollup_message.hash_uncarbonated deposit in
-    let message_path =
-      match Tx_rollup_inbox.Merkle.(compute_path [deposit_hash] 0) with
-      | Error _ -> assert false
-      | Ok path -> path
-    in
+    let message_path = single_message_path deposit in
     Incremental.begin_construction b >>=? fun i ->
     let level = Tx_rollup_level.root in
     make_valid_commitment_for_messages (I i) ~level ~store ~tx_rollup [deposit]
@@ -3444,10 +3365,9 @@ let test_state () =
   let contents = "bogus" in
   let (message, _) = Tx_rollup_message.make_batch contents in
   let message_hash = Tx_rollup_message.hash_uncarbonated message in
-  (match Tx_rollup_inbox.Merkle.compute_path [message_hash] 0 with
-  | Ok message_path -> return message_path
-  | _ -> assert false)
-  >>=? fun message_path ->
+  let message_path =
+    assert_ok @@ Tx_rollup_inbox.Merkle.compute_path [message_hash] 0
+  in
   let inbox_hash = Tx_rollup_inbox.Merkle.merklize_list [message_hash] in
 
   let submit b =
@@ -3596,10 +3516,9 @@ let test_state_with_deleted () =
   let contents = "bogus" in
   let (message, _) = Tx_rollup_message.make_batch contents in
   let message_hash = Tx_rollup_message.hash_uncarbonated message in
-  (match Tx_rollup_inbox.Merkle.compute_path [message_hash] 0 with
-  | Ok message_path -> return message_path
-  | _ -> assert false)
-  >>=? fun message_path ->
+  let message_path =
+    assert_ok @@ Tx_rollup_inbox.Merkle.compute_path [message_hash] 0
+  in
   let inbox_hash = Tx_rollup_inbox.Merkle.merklize_list [message_hash] in
   let submit b =
     Op.tx_rollup_submit_batch (B b) account1 tx_rollup contents
@@ -4831,11 +4750,7 @@ module Withdraw = struct
     Incremental.add_operation i operation >>=? fun i ->
     Incremental.finalize_block i >>=? fun b ->
     Incremental.begin_construction b >>=? fun i ->
-    let message_path =
-      assert_ok
-        Tx_rollup_inbox.Merkle.(
-          compute_path [Tx_rollup_message.hash_uncarbonated message] 0)
-    in
+    let message_path = single_message_path message in
     let (message_result_hash, message_result_path) =
       Rejection.make_rejection_param commitment ~index:0
     in
