@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open Clic
+open Lwt_result_syntax
 
 let group = {name = "encoding"; title = "Commands to handle encodings"}
 
@@ -52,9 +53,194 @@ let bytes_parameter =
       | Some s -> Lwt.return_ok s
       | None -> cctxt#error "Invalid hex string: %s" hex)
 
+class unix_sc_client_context ~rpc_config =
+  object
+    inherit
+      Client_context_unix.unix_io_wallet
+        ~base_dir:"/tmp"
+        ~password_filename:None
+
+    inherit
+      Tezos_rpc_http_client_unix.RPC_client_unix.http_ctxt
+        rpc_config
+        (Tezos_rpc_http.Media_type.Command_line.of_command_line
+           rpc_config.media_type)
+  end
+
+let make_unix_client_context endpoint =
+  let rpc_config =
+    {Tezos_rpc_http_client_unix.RPC_client_unix.default_config with endpoint}
+  in
+  new unix_sc_client_context ~rpc_config
+
+let default_endpoint = Uri.of_string "http://localhost:8732"
+
+let valid_endpoint _ s =
+  let endpoint = Uri.of_string s in
+  match (Uri.scheme endpoint, Uri.query endpoint, Uri.fragment endpoint) with
+  | (Some ("http" | "https"), [], None) -> return endpoint
+  | _ -> failwith "Endpoint should be of the form http[s]://address:port"
+
+let endpoint_arg () =
+  arg ~long:"endpoint" ~short:'E' ~placeholder:"uri" ~doc:""
+  @@ parameter valid_endpoint
+
+let distributed_db_messages_encoding =
+  match Data_encoding.Registration.find "distributed_db_messages" with
+  | None ->
+      Format.eprintf "Unexpected error@." ;
+      assert false (* FIXME *)
+  | Some registration -> registration
+
+exception Update
+
+let rec assoc_put_or_replace ~key ~value = function
+  | [] -> [(key, value)]
+  | (k, _) :: assoc when k = key -> (key, value) :: assoc
+  | (k, v) :: assoc -> (k, v) :: assoc_put_or_replace ~key ~value assoc
+
+let as_object_opt json =
+  match json with
+  | `O l -> Some (List.map (fun (name, node) -> (name, node)) l)
+  | _ -> None
+
+let put (key, value) json : Json.t =
+  match as_object_opt json with
+  | None -> raise Update
+  | Some obj -> `O (assoc_put_or_replace ~key ~value obj)
+
+let get (json : Json.t) key =
+  match json with
+  | `O fields -> (
+      match List.assoc_opt ~equal:( = ) key fields with
+      | None -> raise Update
+      | Some node -> node)
+  | _ -> raise Update
+
+let rec get_path json path =
+  match path with
+  | [] -> Some json
+  | key :: path -> ( try get_path (get json key) path with Update -> None)
+
+let update key f (json : Json.t) : Json.t =
+  let v = get json key in
+  put (key, f v) json
+
+let rec update_path (json : Json.t) path value : Json.t =
+  try
+    match path with
+    | [] -> value
+    | key :: path -> update key (fun json -> update_path json path value) json
+  with Update -> json
+
+let protocol_data_substitution =
+  ("block_header.protocol_data", ["block_header"; "protocol_data"])
+
+let protocol_data_substitution2 =
+  ("block_header.protocol_data", ["current_block_header"; "protocol_data"])
+
+(* FIXME: Should be updated *)
+let default_proto_level = 012
+
+let proto_prefix_from_level proto_level =
+  match proto_level with 012 -> Some "012-Psithaca" | _ -> None
+
+let apply ?(proto_level = default_proto_level) (proto_encoding_name, path) json
+    =
+  match proto_prefix_from_level proto_level with
+  | None ->
+      Format.eprintf "Z@." ;
+      json
+  | Some proto_prefix -> (
+      let encoding_name =
+        Format.asprintf "%s.%s" proto_prefix proto_encoding_name
+      in
+      match Data_encoding.Registration.find encoding_name with
+      | None ->
+          Format.eprintf "A@." ;
+          json
+      | Some registration -> (
+          match get_path json path with
+          | None ->
+              Format.eprintf "B@." ;
+              json
+          | Some (`String hex_str) -> (
+              match Hex.to_bytes (`Hex hex_str) with
+              | None -> json
+              | Some data -> (
+                  match
+                    Data_encoding.Registration.json_of_bytes registration data
+                  with
+                  | None ->
+                      Format.eprintf "C@." ;
+                      json
+                  | Some value -> update_path json path value))
+          | Some _ ->
+              Format.eprintf "D@." ;
+              json))
+
+let pp_distributed_db_messages fmt data =
+  match
+    Data_encoding.Registration.json_of_bytes
+      distributed_db_messages_encoding
+      data
+  with
+  | None -> Format.fprintf fmt "UNKNOWN ENCODING@."
+  | Some json ->
+      let json = apply protocol_data_substitution json in
+      let json = apply protocol_data_substitution2 json in
+      Format.fprintf fmt "%a@." Json.pp json
+
 let commands () =
-  let open Lwt_syntax in
   [
+    command
+      ~group
+      ~desc:"Sniffer"
+      (args1 (endpoint_arg ()))
+      (fixed ["sniff"; "local"; "node"])
+      (fun local_node (_cctxt : #Client_context.printer) ->
+        let endpoint = Option.value local_node ~default:default_endpoint in
+        let cctxt = make_unix_client_context endpoint in
+        let* points =
+          cctxt#call_service
+            P2p_services.Points.S.list
+            ()
+            (object
+               method filters = []
+            end)
+            ()
+        in
+        let pp_data fmt data = pp_distributed_db_messages fmt data in
+        let pp point timestamp data =
+          Format.eprintf
+            "[%a] point %a sends:@.%a@.@."
+            Time.System.pp_hum
+            timestamp
+            P2p_point.Id.pp
+            point
+            pp_data
+            data
+        in
+        List.iter_ep
+          (fun point ->
+            let* (data_stream, stream_stopper) =
+              RPC_context.make_streamed_call
+                P2p_services.Points.S.sniff
+                cctxt
+                ((), point)
+                ()
+                ()
+            in
+            let rec loop () =
+              let*! data = Lwt_stream.get data_stream in
+              match data with
+              | None -> return (stream_stopper ())
+              | Some P2p_services.{timestamp; data} ->
+                  pp point timestamp data ;
+                  loop ()
+            in
+            loop ())
+          (List.map fst points));
     command
       ~group
       ~desc:"List the registered encoding in Tezos."
@@ -66,7 +252,7 @@ let commands () =
           |> List.map (fun (id, elem) ->
                  (id, Data_encoding.Registration.description elem))
         in
-        let* () =
+        let*! () =
           cctxt#message
             "@[<v>%a@]@."
             (Format.pp_print_list
@@ -95,7 +281,7 @@ let commands () =
            ())
       (fixed ["dump"; "encodings"])
       (fun minify (cctxt : #Client_context.printer) ->
-        let* () =
+        let*! () =
           cctxt#message
             "%s"
             (Json.to_string
@@ -140,7 +326,7 @@ let commands () =
               "Impossible to the JSON convert to binary.@,\
                This error should not happen."
         | Some bytes ->
-            let* () = cctxt#message "%a" Hex.pp (Hex.of_bytes bytes) in
+            let*! () = cctxt#message "%a" Hex.pp (Hex.of_bytes bytes) in
             Lwt_result_syntax.return_unit);
     (* Binary -> JSON *)
     command
@@ -160,7 +346,7 @@ let commands () =
         with
         | None -> cctxt#error "Cannot parse the binary with the given encoding"
         | Some bytes ->
-            let* () = cctxt#message "%a" Json.pp bytes in
+            let*! () = cctxt#message "%a" Json.pp bytes in
             Lwt_result_syntax.return_unit);
     command
       ~group
@@ -180,7 +366,7 @@ let commands () =
             fmt
             bytes
         in
-        let* () = cctxt#message "%a" pp_bytes bytes in
+        let*! () = cctxt#message "%a" pp_bytes bytes in
         Lwt_result_syntax.return_unit);
     command
       ~group
@@ -199,7 +385,7 @@ let commands () =
             fmt
             json
         in
-        let* () = cctxt#message "%a" pp_json json in
+        let*! () = cctxt#message "%a" pp_json json in
         Lwt_result_syntax.return_unit);
     command
       ~group
@@ -215,7 +401,7 @@ let commands () =
         let schema =
           Data_encoding.Registration.binary_schema registered_encoding
         in
-        let* () = cctxt#message "%a" Data_encoding.Binary_schema.pp schema in
+        let*! () = cctxt#message "%a" Data_encoding.Binary_schema.pp schema in
         Lwt_result_syntax.return_unit);
     command
       ~group
@@ -231,6 +417,6 @@ let commands () =
         let schema =
           Data_encoding.Registration.json_schema registered_encoding
         in
-        let* () = cctxt#message "%a" Json_schema.pp schema in
+        let*! () = cctxt#message "%a" Json_schema.pp schema in
         Lwt_result_syntax.return_unit);
   ]

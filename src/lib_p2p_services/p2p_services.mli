@@ -67,6 +67,8 @@ module S : sig
     RPC_service.t
 end
 
+type sniffable_data = {data : Bytes.t; timestamp : Ptime.t}
+
 module Connections : sig
   open RPC_context
 
@@ -161,6 +163,15 @@ module Points : sig
         < monitor : bool >,
         unit,
         P2p_point.Pool_event.t list )
+      RPC_service.t
+
+    val sniff :
+      ( [`GET],
+        unit,
+        unit * P2p_point.Id.t,
+        unit,
+        unit,
+        sniffable_data )
       RPC_service.t
 
     (* DEPRECATED *)

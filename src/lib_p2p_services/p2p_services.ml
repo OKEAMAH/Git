@@ -55,6 +55,17 @@ let timeout_query =
        (fun t -> t#timeout)
   |> seal
 
+type sniffable_data = {data : Bytes.t; timestamp : Ptime.t}
+
+let sniffable_data_encoding =
+  let open Data_encoding in
+  conv
+    (fun {data; timestamp} -> (timestamp, data))
+    (fun (timestamp, data) -> {data; timestamp})
+    (obj2
+       (req "timestamp" Time.System.encoding)
+       (req "data" Data_encoding.bytes))
+
 module S = struct
   let self =
     RPC_service.get_service
@@ -282,6 +293,13 @@ module Points = struct
            component is unused."
         RPC_path.(
           root / "network" / "points" /: P2p_point.Id.rpc_arg / "banned")
+
+    let sniff =
+      RPC_service.get_service
+        ~description:"Stream of all network events"
+        ~query:RPC_query.empty
+        ~output:sniffable_data_encoding
+        RPC_path.(root / "network" / "points" /: P2p_point.Id.rpc_arg / "sniff")
   end
 
   open RPC_context

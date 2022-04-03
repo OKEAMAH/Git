@@ -193,3 +193,5 @@ module Internal_for_tests : sig
 
   val mock : 'meta authenticated_connection -> ('msg, 'meta) t
 end
+
+val sniffer : P2p_services.sniffable_data Lwt_pipe.Unbounded.t P2p_point.Table.t

@@ -441,6 +441,8 @@ let authenticate ~canceler ~proof_of_work_target ~incoming scheduled_conn
   in
   return (info, {scheduled_conn; info; cryptobox_data})
 
+let sniffer = P2p_point.Table.create 100
+
 module Reader = struct
   type ('msg, 'meta) t = {
     canceler : Lwt_canceler.t;
@@ -470,6 +472,20 @@ module Reader = struct
           let*! () =
             Events.(emit read_event) (Bytes.length buf, st.conn.info.peer_id)
           in
+          let P2p_connection.Info.{id_point; _} = st.conn.info in
+          let point = P2p_connection.Id.to_point id_point in
+          (match point with
+          | None -> ()
+          | Some point -> (
+              match P2p_point.Table.find sniffer point with
+              | None -> ()
+              | Some pipe ->
+                  let now = Time.System.now () in
+                  let buf' = Bytes.create (Bytes.length buf) in
+                  Bytes.blit buf 0 buf' 0 (Bytes.length buf) ;
+                  let data = P2p_services.{timestamp = now; data = buf'} in
+                  Format.eprintf "PUSH: %d@." (Lwt_pipe.Unbounded.length pipe) ;
+                  Lwt_pipe.Unbounded.push pipe data)) ;
           loop (decode_next_buf buf)
     in
     loop (Data_encoding.Binary.read_stream ?init st.encoding)

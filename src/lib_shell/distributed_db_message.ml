@@ -364,7 +364,13 @@ let distributed_db_versions = Distributed_db_version.[zero; one; two]
 let cfg chain_name : _ P2p_params.message_config =
   {encoding; chain_name; distributed_db_versions}
 
-let raw_encoding = P2p_message.encoding encoding
+let raw_encoding =
+  Data_encoding.def
+    "distributed_db_messages"
+    ~description:"Distributed db messages"
+  @@ P2p_message.encoding encoding
+
+let () = Data_encoding.Registration.register raw_encoding
 
 let pp_json ppf msg =
   Data_encoding.Json.pp

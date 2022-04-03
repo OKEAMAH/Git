@@ -52,6 +52,8 @@ type t =
 
 val encoding : t P2p_params.app_message_encoding list
 
+val raw_encoding : t P2p_message.t Data_encoding.t
+
 val distributed_db_versions : Distributed_db_version.t list
 
 val cfg : Distributed_db_version.Name.t -> t P2p_params.message_config

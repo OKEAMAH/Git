@@ -18,6 +18,8 @@
   tezos-stdlib-unix
   tezos-event-logging
   tezos-signer-services
+  tezos-p2p-services
+  tezos-shell
   (select void_for_linking-tezos-client-005-PsBabyM1 from
    (tezos-client-005-PsBabyM1 -> void_for_linking-tezos-client-005-PsBabyM1.empty)
    (-> void_for_linking-tezos-client-005-PsBabyM1.empty))
@@ -54,7 +56,8 @@
    -open Tezos_client_base
    -open Tezos_clic
    -open Tezos_stdlib_unix
-   -open Tezos_event_logging)))
+   -open Tezos_event_logging
+   -open Tezos_p2p_services)))
 
 (rule
  (action

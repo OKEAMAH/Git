@@ -344,6 +344,27 @@ let build_rpc_directory net =
             @@ Option.map info_of_point_info (P2p_pool.Points.info pool point))
   in
   let dir =
+    RPC_directory.gen_register1
+      dir
+      P2p_services.Points.S.sniff
+      (fun point () () ->
+        let pipe =
+          match P2p_point.Table.find_opt P2p_socket.sniffer point with
+          | None ->
+              let pipe = Lwt_pipe.Unbounded.create () in
+              P2p_point.Table.add P2p_socket.sniffer point pipe ;
+              pipe
+          | Some pipe -> pipe
+        in
+        let shutdown () = P2p_point.Table.remove P2p_socket.sniffer point in
+        let next () =
+          let*! data = Lwt_pipe.Unbounded.pop pipe in
+          Format.eprintf "POP: %d@." (Lwt_pipe.Unbounded.length pipe) ;
+          Lwt.return_some data
+        in
+        RPC_answer.return_stream {next; shutdown})
+  in
+  let dir =
     RPC_directory.opt_register1
       dir
       P2p_services.Points.S.patch
