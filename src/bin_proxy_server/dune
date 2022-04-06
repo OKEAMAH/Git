@@ -70,6 +70,9 @@
   (select void_for_linking-tezos-client-012-Psithaca from
    (tezos-client-012-Psithaca -> void_for_linking-tezos-client-012-Psithaca.empty)
    (-> void_for_linking-tezos-client-012-Psithaca.empty))
+  (select void_for_linking-tezos-client-013-Ps73j8CV from
+   (tezos-client-013-Ps73j8CV -> void_for_linking-tezos-client-013-Ps73j8CV.empty)
+   (-> void_for_linking-tezos-client-013-Ps73j8CV.empty))
   (select void_for_linking-tezos-client-alpha from
    (tezos-client-alpha -> void_for_linking-tezos-client-alpha.empty)
    (-> void_for_linking-tezos-client-alpha.empty))
@@ -91,6 +94,9 @@
   (select void_for_linking-tezos-protocol-plugin-012-Psithaca from
    (tezos-protocol-plugin-012-Psithaca -> void_for_linking-tezos-protocol-plugin-012-Psithaca.empty)
    (-> void_for_linking-tezos-protocol-plugin-012-Psithaca.empty))
+  (select void_for_linking-tezos-protocol-plugin-013-Ps73j8CV from
+   (tezos-protocol-plugin-013-Ps73j8CV -> void_for_linking-tezos-protocol-plugin-013-Ps73j8CV.empty)
+   (-> void_for_linking-tezos-protocol-plugin-013-Ps73j8CV.empty))
   (select void_for_linking-tezos-protocol-plugin-alpha from
    (tezos-protocol-plugin-alpha -> void_for_linking-tezos-protocol-plugin-alpha.empty)
    (-> void_for_linking-tezos-protocol-plugin-alpha.empty)))
@@ -120,6 +126,7 @@
    (write-file void_for_linking-tezos-client-010-PtGRANAD.empty "")
    (write-file void_for_linking-tezos-client-011-PtHangz2.empty "")
    (write-file void_for_linking-tezos-client-012-Psithaca.empty "")
+   (write-file void_for_linking-tezos-client-013-Ps73j8CV.empty "")
    (write-file void_for_linking-tezos-client-alpha.empty "")
    (write-file void_for_linking-tezos-protocol-plugin-007-PsDELPH1.empty "")
    (write-file void_for_linking-tezos-protocol-plugin-008-PtEdo2Zk.empty "")
@@ -127,4 +134,5 @@
    (write-file void_for_linking-tezos-protocol-plugin-010-PtGRANAD.empty "")
    (write-file void_for_linking-tezos-protocol-plugin-011-PtHangz2.empty "")
    (write-file void_for_linking-tezos-protocol-plugin-012-Psithaca.empty "")
+   (write-file void_for_linking-tezos-protocol-plugin-013-Ps73j8CV.empty "")
    (write-file void_for_linking-tezos-protocol-plugin-alpha.empty ""))))

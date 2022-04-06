@@ -10,7 +10,8 @@
   tezos-protocol-environment
   tezos-protocol-013-Ps73j8CV)
  (library_flags (:standard -linkall))
- (flags (:standard -open Tezos_base.TzPervasives -open Tezos_protocol_013_Ps73j8CV))
+ (flags
+  (:standard -open Tezos_base.TzPervasives -open Tezos_protocol_013_Ps73j8CV))
  (modules (:standard \ gen)))
 
 (executable
