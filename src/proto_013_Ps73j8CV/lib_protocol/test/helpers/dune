@@ -1,0 +1,25 @@
+(library
+ (name tezos_013_Ps73j8CV_test_helpers)
+ (instrumentation (backend bisect_ppx))
+ (public_name tezos-013-Ps73j8CV-test-helpers)
+ (libraries alcotest-lwt
+            qcheck-alcotest
+            tezos-test-helpers
+            tezos-base
+            tezos-micheline
+            tezos-stdlib-unix
+            tezos-shell-services
+            tezos-protocol-environment
+            tezos-protocol-013-Ps73j8CV
+            tezos-protocol-013-Ps73j8CV-parameters
+            tezos-client-013-Ps73j8CV
+            tezos-protocol-plugin-013-Ps73j8CV)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+                   -open Tezos_micheline
+                   -open Tezos_stdlib_unix
+                   -open Tezos_protocol_013_Ps73j8CV
+                   -open Tezos_client_013_Ps73j8CV
+                   -open Tezos_protocol_plugin_013_Ps73j8CV
+                   -open Tezos_protocol_environment_013_Ps73j8CV
+                   -open Tezos_shell_services)))

@@ -1,0 +1,93 @@
+tests_013/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[dipn.tz-0-(Pair (Pair (Pair (Pair 1 2) 3) 4) 5)-6]
+
+storage
+  6
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 15 (remaining gas: 1039985.975 units remaining)
+    [ (Pair (Pair (Pair (Pair (Pair 1 2) 3) 4) 5) 0) ]
+  - location: 15 (remaining gas: 1039985.965 units remaining)
+    [ (Pair (Pair (Pair (Pair 1 2) 3) 4) 5) ]
+  - location: 16 (remaining gas: 1039985.955 units remaining)
+    [ (Pair (Pair (Pair 1 2) 3) 4)
+      5 ]
+  - location: 17 (remaining gas: 1039985.945 units remaining)
+    [ (Pair (Pair 1 2) 3)
+      4
+      5 ]
+  - location: 18 (remaining gas: 1039985.935 units remaining)
+    [ (Pair 1 2)
+      3
+      4
+      5 ]
+  - location: 19 (remaining gas: 1039985.925 units remaining)
+    [ 1
+      2
+      3
+      4
+      5 ]
+  - location: 20 (remaining gas: 1039985.873 units remaining)
+    [  ]
+  - location: 23 (remaining gas: 1039985.863 units remaining)
+    [ 6 ]
+  - location: 20 (remaining gas: 1039985.838 units remaining)
+    [ 5
+      6 ]
+  - location: 20 (remaining gas: 1039985.828 units remaining)
+    [ 4
+      5
+      6 ]
+  - location: 20 (remaining gas: 1039985.818 units remaining)
+    [ 3
+      4
+      5
+      6 ]
+  - location: 20 (remaining gas: 1039985.808 units remaining)
+    [ 2
+      3
+      4
+      5
+      6 ]
+  - location: 20 (remaining gas: 1039985.798 units remaining)
+    [ 1
+      2
+      3
+      4
+      5
+      6 ]
+  - location: 20 (remaining gas: 1039985.798 units remaining)
+    [ 1
+      2
+      3
+      4
+      5
+      6 ]
+  - location: 26 (remaining gas: 1039985.788 units remaining)
+    [ 2
+      3
+      4
+      5
+      6 ]
+  - location: 27 (remaining gas: 1039985.778 units remaining)
+    [ 3
+      4
+      5
+      6 ]
+  - location: 28 (remaining gas: 1039985.768 units remaining)
+    [ 4
+      5
+      6 ]
+  - location: 29 (remaining gas: 1039985.758 units remaining)
+    [ 5
+      6 ]
+  - location: 30 (remaining gas: 1039985.748 units remaining)
+    [ 6 ]
+  - location: 31 (remaining gas: 1039985.733 units remaining)
+    [ {}
+      6 ]
+  - location: 33 (remaining gas: 1039985.718 units remaining)
+    [ (Pair {} 6) ]
+

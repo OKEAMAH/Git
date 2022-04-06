@@ -1,0 +1,23 @@
+tests_013/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[if_some.tz-"?"-(Some "hello")-"hello"]
+
+storage
+  "hello"
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 8 (remaining gas: 1039992.511 units remaining)
+    [ (Pair (Some "hello") "?") ]
+  - location: 8 (remaining gas: 1039992.501 units remaining)
+    [ (Some "hello") ]
+  - location: 10 (remaining gas: 1039992.491 units remaining)
+    [ "hello" ]
+  - location: 10 (remaining gas: 1039992.476 units remaining)
+    [ "hello" ]
+  - location: 16 (remaining gas: 1039992.461 units remaining)
+    [ {}
+      "hello" ]
+  - location: 18 (remaining gas: 1039992.446 units remaining)
+    [ (Pair {} "hello") ]
+

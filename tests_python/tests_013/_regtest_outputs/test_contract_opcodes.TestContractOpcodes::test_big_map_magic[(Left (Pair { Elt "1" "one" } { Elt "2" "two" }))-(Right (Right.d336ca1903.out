@@ -1,0 +1,83 @@
+tests_013/test_contract_opcodes.py::TestContractOpcodes::test_big_map_magic[(Left (Pair { Elt "1" "one" } { Elt "2" "two" }))-(Right (Right (Right (Right { "1" }))))-(Left (Pair 4 5))-big_map_diff5]
+
+storage
+  (Left (Pair 4 5))
+emitted operations
+  
+big_map diff
+  New map(5) of type (big_map string string)
+  Set map(5)["2"] to "two"
+  New map(4) of type (big_map string string)
+  Unset map(4)["1"]
+trace
+  - location: 43 (remaining gas: 1039920.252 units remaining)
+    [ (Pair (Right (Right (Right (Right { "1" }))))
+            (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))) ]
+  - location: 43 (remaining gas: 1039920.242 units remaining)
+    [ (Right (Right (Right (Right { "1" }))))
+      (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
+  - location: 44 (remaining gas: 1039920.232 units remaining)
+    [ (Right (Right (Right { "1" })))
+      (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
+  - location: 60 (remaining gas: 1039920.222 units remaining)
+    [ (Right (Right { "1" }))
+      (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
+  - location: 65 (remaining gas: 1039920.212 units remaining)
+    [ (Right { "1" })
+      (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
+  - location: 108 (remaining gas: 1039920.202 units remaining)
+    [ { "1" }
+      (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
+  - location: 131 (remaining gas: 1039920.187 units remaining)
+    [ (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
+  - location: 134 (remaining gas: 1039920.177 units remaining)
+    [ (Pair { Elt "1" "one" } { Elt "2" "two" }) ]
+  - location: 134 (remaining gas: 1039920.162 units remaining)
+    [ (Pair { Elt "1" "one" } { Elt "2" "two" }) ]
+  - location: 140 (remaining gas: 1039920.152 units remaining)
+    [ { Elt "1" "one" }
+      { Elt "2" "two" } ]
+  - location: 131 (remaining gas: 1039920.122 units remaining)
+    [ { "1" }
+      { Elt "1" "one" }
+      { Elt "2" "two" } ]
+  - location: 141 (remaining gas: 1039920.122 units remaining)
+    [ "1"
+      { Elt "1" "one" }
+      { Elt "2" "two" } ]
+  - location: 143 (remaining gas: 1039920.107 units remaining)
+    [ { Elt "1" "one" }
+      { Elt "2" "two" } ]
+  - location: 145 (remaining gas: 1039920.092 units remaining)
+    [ None
+      { Elt "1" "one" }
+      { Elt "2" "two" } ]
+  - location: 143 (remaining gas: 1039920.062 units remaining)
+    [ "1"
+      None
+      { Elt "1" "one" }
+      { Elt "2" "two" } ]
+  - location: 147 (remaining gas: 1039919.130 units remaining)
+    [ {}
+      { Elt "2" "two" } ]
+  - location: 141 (remaining gas: 1039919.115 units remaining)
+    [ {}
+      { Elt "2" "two" } ]
+  - location: 148 (remaining gas: 1039919.100 units remaining)
+    [ (Pair {} { Elt "2" "two" }) ]
+  - location: 149 (remaining gas: 1039919.085 units remaining)
+    [ (Left (Pair {} { Elt "2" "two" })) ]
+  - location: 108 (remaining gas: 1039919.070 units remaining)
+    [ (Left (Pair {} { Elt "2" "two" })) ]
+  - location: 65 (remaining gas: 1039919.055 units remaining)
+    [ (Left (Pair {} { Elt "2" "two" })) ]
+  - location: 60 (remaining gas: 1039919.040 units remaining)
+    [ (Left (Pair {} { Elt "2" "two" })) ]
+  - location: 44 (remaining gas: 1039919.025 units remaining)
+    [ (Left (Pair {} { Elt "2" "two" })) ]
+  - location: 151 (remaining gas: 1039919.010 units remaining)
+    [ {}
+      (Left (Pair {} { Elt "2" "two" })) ]
+  - location: 153 (remaining gas: 1039918.995 units remaining)
+    [ (Pair {} (Left (Pair {} { Elt "2" "two" }))) ]
+

@@ -1,0 +1,43 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_benchmarks_proto_013_Ps73j8CV)
+ (public_name tezos-benchmarks-proto-013-Ps73j8CV)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  str
+  tezos-stdlib
+  tezos-base
+  tezos-error-monad
+  tezos-protocol-013-Ps73j8CV-parameters
+  tezos-benchmark
+  tezos-benchmark-013-Ps73j8CV
+  tezos-benchmark-type-inference-013-Ps73j8CV
+  tezos-protocol-013-Ps73j8CV
+  tezos-protocol-013-Ps73j8CV.raw
+  tezos-crypto
+  tezos-shell-benchmarks
+  tezos-micheline
+  tezos-013-Ps73j8CV-test-helpers
+  tezos-sapling
+  tezos-client-013-Ps73j8CV
+  tezos-tooling
+  tezos-protocol-environment)
+ (library_flags (:standard -linkall))
+ (flags
+  (:standard
+   -open Tezos_stdlib
+   -open Tezos_base
+   -open Tezos_base.TzPervasives
+   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+   -open Tezos_error_monad
+   -open Tezos_benchmark
+   -open Tezos_benchmark_013_Ps73j8CV
+   -open Tezos_benchmark_type_inference_013_Ps73j8CV
+   -open Tezos_protocol_013_Ps73j8CV
+   -open Tezos_raw_protocol_013_Ps73j8CV
+   -open Tezos_crypto
+   -open Tezos_micheline
+   -open Tezos_013_Ps73j8CV_test_helpers
+   -open Tezos_client_013_Ps73j8CV)))

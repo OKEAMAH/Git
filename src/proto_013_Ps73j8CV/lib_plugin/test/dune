@@ -1,0 +1,32 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(tests
+ (names test_consensus_filter test_filter_state test_plugin)
+ (package tezos-protocol-plugin-013-Ps73j8CV-tests)
+ (libraries
+  tezos-base
+  tezos-base-test-helpers
+  tezos-base.unix
+  alcotest-lwt
+  tezos-test-helpers
+  qcheck-alcotest
+  tezos-stdlib-unix
+  tezos-micheline
+  tezos-protocol-plugin-013-Ps73j8CV
+  tezos-protocol-013-Ps73j8CV.environment
+  tezos-protocol-013-Ps73j8CV
+  tezos-protocol-013-Ps73j8CV-parameters
+  tezos-013-Ps73j8CV-test-helpers)
+ (flags
+  (:standard
+   -open Tezos_base.TzPervasives
+   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+   -open Tezos_base_test_helpers
+   -open Tezos_micheline
+   -open Tezos_protocol_plugin_013_Ps73j8CV
+   -open Tezos_protocol_environment_013_Ps73j8CV
+   -open Tezos_protocol_013_Ps73j8CV
+   -open Tezos_protocol_013_Ps73j8CV.Protocol
+   -open Tezos_protocol_013_Ps73j8CV_parameters
+   -open Tezos_013_Ps73j8CV_test_helpers)))
