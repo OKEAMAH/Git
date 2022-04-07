@@ -219,53 +219,6 @@ let test_assert_cmp_if () =
   assert_cmp_if "ASSERT_CMPGT" "GT" >>? fun () ->
   assert_cmp_if "ASSERT_CMPGE" "GE"
 
-(* The work of merge request !628
-   > ASSERT_LEFT @x  =>  IF_LEFT {RENAME @x} {FAIL}
-   > ASSERT_RIGHT @x  =>  IF_LEFT {FAIL} {RENAME @x}
-   > ASSERT_SOME @x  =>  IF_NONE {FAIL} {RENAME @x}
-*)
-
-let may_rename annot = Seq (zero_loc, [Prim (zero_loc, "RENAME", [], annot)])
-
-let fail_false_may_rename =
-  [
-    may_rename ["@annot"];
-    Seq
-      ( zero_loc,
-        [
-          Seq
-            ( zero_loc,
-              [
-                Prim (zero_loc, "UNIT", [], []);
-                Prim (zero_loc, "FAILWITH", [], []);
-              ] );
-        ] );
-  ]
-
-let fail_true_may_rename =
-  [
-    Seq
-      ( zero_loc,
-        [
-          Seq
-            ( zero_loc,
-              [
-                Prim (zero_loc, "UNIT", [], []);
-                Prim (zero_loc, "FAILWITH", [], []);
-              ] );
-        ] );
-    may_rename ["@annot"];
-  ]
-
-(** Expand "ASSERT_SOME @annot"
-    into   "IF_NONE { } {UNIT;FAILWITH}"
-   using variable annotation "@annot"
-*)
-let test_assert_some_annot () =
-  assert_expands
-    (Prim (zero_loc, "ASSERT_SOME", [], ["@annot"]))
-    (Seq (zero_loc, [Prim (zero_loc, "IF_NONE", fail_true_may_rename, [])]))
-
 (** Expand "ASSERT_SOME"
     into   "IF_NONE { UNIT;FAILWITH } { }"
 *)
@@ -274,15 +227,6 @@ let test_assert_some () =
     (Prim (zero_loc, "ASSERT_SOME", [], []))
     (Seq (zero_loc, [Prim (zero_loc, "IF_NONE", fail_true, [])]))
 
-(** Expand "ASSERT_LEFT @annot"
-    into   "IF_LEFT { } {UNIT;FAILWITH}"
-   using variable annotation "@annot"
-*)
-let test_assert_left_annot () =
-  assert_expands
-    (Prim (zero_loc, "ASSERT_LEFT", [], ["@annot"]))
-    (Seq (zero_loc, [Prim (zero_loc, "IF_LEFT", fail_false_may_rename, [])]))
-
 (** Expand "ASSERT_LEFT"
     into   "IF_LEFT { } {UNIT;FAILWITH}"
 *)
@@ -290,15 +234,6 @@ let test_assert_left () =
   assert_expands
     (Prim (zero_loc, "ASSERT_LEFT", [], []))
     (Seq (zero_loc, [Prim (zero_loc, "IF_LEFT", fail_false, [])]))
-
-(** Expand "ASSERT_RIGHT @annot"
-    into   "IF_LEFT {UNIT;FAILWITH} { }"
-   using variable annotation "@annot"
-*)
-let test_assert_right_annot () =
-  assert_expands
-    (Prim (zero_loc, "ASSERT_RIGHT", [], ["@annot"]))
-    (Seq (zero_loc, [Prim (zero_loc, "IF_LEFT", fail_true_may_rename, [])]))
 
 (** Expand "ASSERT_RIGHT"
     into   "IF_LEFT {UNIT;FAILWITH} { }"
@@ -790,30 +725,6 @@ let test_unexpansion_assert_cmp_if () =
   assert_unexpansion_assert_cmp_if_compare "GT" "ASSERT_CMPGT" >>? fun () ->
   assert_unexpansion_assert_cmp_if_compare "GE" "ASSERT_CMPGE"
 
-(** Unexpanding "IF_NONE { FAIL } { RENAME @annot }"
-    yields      "ASSERT_SOME @annot"
-*)
-let test_unexpand_assert_some_annot () =
-  assert_unexpansion
-    (Seq (zero_loc, [Prim (zero_loc, "IF_NONE", fail_true_may_rename, [])]))
-    (Prim (zero_loc, "ASSERT_SOME", [], ["@annot"]))
-
-(** Unexpanding "IF_LEFT { RENAME @annot } { FAIL }"
-    yields      "ASSERT_LEFT @annot"
-*)
-let test_unexpand_assert_left_annot () =
-  assert_unexpansion
-    (Seq (zero_loc, [Prim (zero_loc, "IF_LEFT", fail_false_may_rename, [])]))
-    (Prim (zero_loc, "ASSERT_LEFT", [], ["@annot"]))
-
-(** Unexpanding "IF_LEFT { FAIL } { RENAME @annot }"
-    yields      "ASSERT_RIGHT @annot"
-*)
-let test_unexpand_assert_right_annot () =
-  assert_unexpansion
-    (Seq (zero_loc, [Prim (zero_loc, "IF_LEFT", fail_true_may_rename, [])]))
-    (Prim (zero_loc, "ASSERT_RIGHT", [], ["@annot"]))
-
 (** Unexpanding "IF_NONE {} { FAIL }"
     yields      "ASSERT_NONE"
 *)
@@ -1254,12 +1165,6 @@ let tests =
     ("assert some expansion", fun _ -> Lwt.return (test_assert_some ()));
     ("assert left expansion", fun _ -> Lwt.return (test_assert_left ()));
     ("assert right expansion", fun _ -> Lwt.return (test_assert_right ()));
-    ( "assert some annot expansion",
-      fun _ -> Lwt.return (test_assert_some_annot ()) );
-    ( "assert left annot expansion",
-      fun _ -> Lwt.return (test_assert_left_annot ()) );
-    ( "assert right annot expansion",
-      fun _ -> Lwt.return (test_assert_right_annot ()) );
     (*syntactic conveniences*)
     ("diip expansion", fun _ -> Lwt.return (test_diip ()));
     ("duup expansion", fun _ -> Lwt.return (test_duup ()));
@@ -1294,12 +1199,6 @@ let tests =
       fun _ -> Lwt.return (test_unexpand_assert_left ()) );
     ( "assert_right unexpansion",
       fun _ -> Lwt.return (test_unexpand_assert_right ()) );
-    ( "assert_some annot unexpansion",
-      fun _ -> Lwt.return (test_unexpand_assert_some_annot ()) );
-    ( "assert_left annot unexpansion",
-      fun _ -> Lwt.return (test_unexpand_assert_left_annot ()) );
-    ( "assert_right annot unexpansion",
-      fun _ -> Lwt.return (test_unexpand_assert_right_annot ()) );
     ("unpair unexpansion", fun _ -> Lwt.return (test_unexpand_unpair ()));
     ("pair unexpansion", fun _ -> Lwt.return (test_unexpand_pair ()));
     ("pappaiir unexpansion", fun _ -> Lwt.return (test_unexpand_pappaiir ()));

@@ -1,7 +1,7 @@
 tests_alpha/test_contract.py::TestTypecheck::test_typecheck[mini_scenarios/ticket_wallet_non_fungible.tz]
 
 Well typed
-Gas remaining: 1039959.702 units remaining
+Gas remaining: 1039961.519 units remaining
 { parameter
     (or (ticket %receive nat)
         (pair %send (contract %destination (ticket nat)) (address %ticketer) (nat %id))) ;
@@ -24,9 +24,6 @@ Gas remaining: 1039959.702 units remaining
             : big_map (pair address nat) (ticket nat) ] */ ;
          IF_LEFT
            { READ_TICKET
-             /* [ pair address nat nat : ticket nat : address
-                : big_map (pair address nat) (ticket nat) ] */ ;
-             CAST (pair (address %ticketer) (nat %id) (nat %amount))
              /* [ pair address nat nat : ticket nat : address
                 : big_map (pair address nat) (ticket nat) ] */ ;
              UNPAIR

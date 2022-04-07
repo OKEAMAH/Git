@@ -4423,20 +4423,25 @@ and[@coq_axiom_with_reason "gadt"] parse_instr :
       typed ctxt loc instr stack
   (* annotations *)
   | (Prim (loc, I_CAST, [cast_t], annot), (Item_t (t, _) as stack)) ->
-      check_var_annot loc annot >>?= fun () ->
-      parse_any_ty ctxt ~stack_depth:(stack_depth + 1) ~legacy cast_t
-      >>?= fun (Ex_ty cast_t, ctxt) ->
-      Gas_monad.run ctxt @@ ty_eq ~error_details:Informative loc cast_t t
-      >>?= fun (eq, ctxt) ->
-      eq >>?= fun Eq ->
-      (* We can reuse [stack] because [a ty = b ty] means [a = b]. *)
-      let instr = {apply = (fun _ k -> k)} in
-      (typed ctxt loc instr stack : ((a, s) judgement * context) tzresult Lwt.t)
+      if legacy then
+        check_var_annot loc annot >>?= fun () ->
+        parse_any_ty ctxt ~stack_depth:(stack_depth + 1) ~legacy cast_t
+        >>?= fun (Ex_ty cast_t, ctxt) ->
+        Gas_monad.run ctxt @@ ty_eq ~error_details:Informative loc cast_t t
+        >>?= fun (eq, ctxt) ->
+        eq >>?= fun Eq ->
+        (* We can reuse [stack] because [a ty = b ty] means [a = b]. *)
+        let instr = {apply = (fun _ k -> k)} in
+        (typed ctxt loc instr stack
+          : ((a, s) judgement * context) tzresult Lwt.t)
+      else fail (Deprecated_instruction I_CAST)
   | (Prim (loc, I_RENAME, [], annot), (Item_t _ as stack)) ->
-      check_var_annot loc annot >>?= fun () ->
-      (* can erase annot *)
-      let instr = {apply = (fun _ k -> k)} in
-      typed ctxt loc instr stack
+      if legacy then
+        check_var_annot loc annot >>?= fun () ->
+        (* can erase annot *)
+        let instr = {apply = (fun _ k -> k)} in
+        typed ctxt loc instr stack
+      else fail (Deprecated_instruction I_RENAME)
   (* packing *)
   | (Prim (loc, I_PACK, [], annot), Item_t (t, rest)) ->
       check_packable

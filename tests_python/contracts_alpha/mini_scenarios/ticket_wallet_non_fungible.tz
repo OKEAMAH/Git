@@ -18,7 +18,7 @@ code
         # Receive entrypoint
 
         # Get the ticketer and id
-        READ_TICKET; CAST (pair (address %ticketer) (nat %id) (nat %amount));
+        READ_TICKET;
         UNPAIR 3;
         DIG 2; PUSH nat 1; ASSERT_CMPEQ; # This checks that the amount is 1
         PAIR;

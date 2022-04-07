@@ -17,7 +17,7 @@ code { DUP; CAR;
                  DIP{ SWAP }; GET @opt_prev_balance;
                  # Create the account
                  IF_SOME # Add to an existing account
-                   { RENAME @previous_balance;
+                   {
                      AMOUNT; ADD; SOME; SWAP; UPDATE; NIL operation; PAIR }
                    { DIP{ AMOUNT; SOME }; UPDATE; NIL operation; PAIR }}
                # Withdrawal
@@ -33,8 +33,7 @@ code { DUP; CAR;
                  # Account does not exist
                  IF_NONE { PUSH string "Account does not exist"; PAIR; FAILWITH }
                          # Account exists
-                         { RENAME @previous_balance;
-                           DIP { DROP };
+                         { DIP { DROP };
                            DUP; DIIP{ DUP; CDAR %withdraw_amount; DUP };
                            # Ensure funds are available
                            DIP{ CMPLT @not_enough }; SWAP;

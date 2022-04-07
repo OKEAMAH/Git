@@ -945,7 +945,7 @@ let ticket_wallet =
             READ_TICKET;
             GET @total_amount 4;
             DUP @amount 5;
-            SWAP; SUB; ISNAT; ASSERT_SOME @remaining_amount;
+            SWAP; SUB; ISNAT; ASSERT_SOME;
 
             # Split the ticket
             DIG 4; PAIR; SWAP; SPLIT_TICKET;

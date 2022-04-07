@@ -37,7 +37,7 @@ storage (pair (big_map %ledger (address :user)
               (pair (address %admin)
                     (pair (bool %paused)
                           (nat %totalSupply))));
-code { CAST (pair (or (or (or (pair address (pair address nat)) (pair address nat)) (or (pair (pair address address) (contract nat)) (or (pair address (contract nat)) (pair unit (contract nat))))) (or (or bool address) (or (pair unit (contract address)) (or (pair address nat) (pair address nat))))) (pair (big_map address (pair nat (map address nat))) (pair address (pair bool nat))));
+code {
        DUP;
        CAR;
        DIP { CDR };

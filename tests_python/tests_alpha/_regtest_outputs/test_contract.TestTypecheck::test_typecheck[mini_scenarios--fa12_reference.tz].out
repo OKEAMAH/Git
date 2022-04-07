@@ -1,7 +1,7 @@
 tests_alpha/test_contract.py::TestTypecheck::test_typecheck[mini_scenarios/fa12_reference.tz]
 
 Well typed
-Gas remaining: 1039349.178 units remaining
+Gas remaining: 1039359.737 units remaining
 { parameter
     (or (or (or (pair %transfer (address :from) (pair (address :to) (nat :value)))
                 (pair %approve (address :spender) (nat :value)))
@@ -16,22 +16,7 @@ Gas remaining: 1039349.178 units remaining
              (address :user)
              (pair (nat :balance) (map :approvals (address :spender) (nat :value))))
           (pair (address %admin) (pair (bool %paused) (nat %totalSupply)))) ;
-  code { CAST (pair (or (or (or (pair address (pair address nat)) (pair address nat))
-                            (or (pair (pair address address) (contract nat))
-                                (or (pair address (contract nat)) (pair unit (contract nat)))))
-                        (or (or bool address)
-                            (or (pair unit (contract address)) (or (pair address nat) (pair address nat)))))
-                    (pair (big_map address (pair nat (map address nat))) (pair address (pair bool nat))))
-         /* [ pair (or (or (or (pair address address nat) (pair address nat))
-                         (or (pair (pair address address) (contract nat))
-                             (or (pair address (contract nat)) (pair unit (contract nat)))))
-                     (or (or bool address)
-                         (or (pair unit (contract address)) (or (pair address nat) (pair address nat)))))
-                 (big_map address (pair nat (map address nat)))
-                 address
-                 bool
-                 nat ] */ ;
-         DUP
+  code { DUP
          /* [ pair (or (or (or (pair address address nat) (pair address nat))
                          (or (pair (pair address address) (contract nat))
                              (or (pair address (contract nat)) (pair unit (contract nat)))))

@@ -1,7 +1,7 @@
 tests_alpha/test_contract.py::TestTypecheck::test_typecheck[attic/accounts.tz]
 
 Well typed
-Gas remaining: 1039932.585 units remaining
+Gas remaining: 1039933.548 units remaining
 { parameter
     (or (key_hash %Initialize)
         (pair %Withdraw (key %from) (pair (mutez %withdraw_amount) (signature %sig)))) ;
@@ -26,9 +26,7 @@ Gas remaining: 1039932.585 units remaining
              GET @opt_prev_balance
              /* [ option mutez : key_hash : map key_hash mutez ] */ ;
              IF_SOME
-               { RENAME @previous_balance
-                 /* [ mutez : key_hash : map key_hash mutez ] */ ;
-                 AMOUNT
+               { AMOUNT
                  /* [ mutez : mutez : key_hash : map key_hash mutez ] */ ;
                  ADD
                  /* [ mutez : key_hash : map key_hash mutez ] */ ;
@@ -131,9 +129,7 @@ Gas remaining: 1039932.585 units remaining
                  /* [ pair string key_hash : pair key mutez signature : map key_hash mutez ] */ ;
                  FAILWITH
                  /* [] */ }
-               { RENAME @previous_balance
-                 /* [ mutez : key_hash : pair key mutez signature : map key_hash mutez ] */ ;
-                 DIP { DROP /* [ pair key mutez signature : map key_hash mutez ] */ }
+               { DIP { DROP /* [ pair key mutez signature : map key_hash mutez ] */ }
                  /* [ mutez : pair key mutez signature : map key_hash mutez ] */ ;
                  DUP
                  /* [ mutez : mutez : pair key mutez signature : map key_hash mutez ] */ ;
