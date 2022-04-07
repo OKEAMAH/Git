@@ -3716,6 +3716,8 @@ end = struct
 
   let _012_Psithaca = active (V 012) "Psithaca"
 
+  let _013_PtJARLSB = active (V 013) "PtJARLSB"
+
   let alpha = active Alpha "alpha"
 
   let all = List.rev !all_rev

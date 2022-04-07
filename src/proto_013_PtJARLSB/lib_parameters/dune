@@ -10,7 +10,8 @@
   tezos-protocol-environment
   tezos-protocol-013-PtJARLSB)
  (library_flags (:standard -linkall))
- (flags (:standard -open Tezos_base.TzPervasives -open Tezos_protocol_013_PtJARLSB))
+ (flags
+  (:standard -open Tezos_base.TzPervasives -open Tezos_protocol_013_PtJARLSB))
  (modules (:standard \ gen)))
 
 (executable
