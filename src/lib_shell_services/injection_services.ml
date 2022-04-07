@@ -80,6 +80,21 @@ module S = struct
     |+ opt_field "chain" Chain_services.chain_arg (fun t -> t#chain)
     |> seal
 
+  let operations_query =
+    let open RPC_query in
+    query (fun async force chain ->
+        object
+          method async = async
+
+          method force = force
+
+          method chain = chain
+        end)
+    |+ flag "async" (fun t -> t#async)
+    |+ flag "force" (fun t -> t#force)
+    |+ opt_field "chain" Chain_services.chain_arg (fun t -> t#chain)
+    |> seal
+
   (* If [private_] is set, the [private/injection/operation] path is used,
    * otherwise, it is [/injection/operation].
      This RPC does less checks than [injection/operation] and should be used for
@@ -103,6 +118,30 @@ module S = struct
       ~output:Operation_hash.encoding
       (if private_ then RPC_path.(root / "private" / "injection" / "operation")
       else RPC_path.(path / "operation"))
+
+  let private_operations =
+    RPC_service.post_service
+      ~description:
+        "Inject a list of operations in a node. If [force] is [true] then the \
+         operations are immediatly injected. The injection will succeed, but \
+         it does not mean the operation is valid. In any case, the injection \
+         will be quick, hence [async] will be taken into account but should \
+         have almost no impact. If [async] is [true], all the promises \
+         returned by injecting an operation will be dropped. Each injection is \
+         done independently, and does not depend on the other injected \
+         operations result. Otherwise ([async]=[force]=[false]), for each \
+         operation, we record a list of promises. If all the injections \
+         succeed, the result is [()], otherwise an error is returned. This \
+         error contains a list of [error trace option].  [None] means that the \
+         injection succeeded. Otherwise, the [error trace] returned by the \
+         injection is wrapped into [Some (error trace)]. Hence, if an error is \
+         returned there is at least one element which is [Some (error trace)], \
+         and the length of the list is of the same size than the number of \
+         operations sent."
+      ~query:operations_query
+      ~input:(list (dynamic_size bytes))
+      ~output:(list Operation_hash.encoding)
+      RPC_path.(root / "private" / "injection" / "operations")
 
   let private_operation = operation ~private_:true
 
@@ -159,6 +198,21 @@ let operation_rpc ctxt ~private_rpc ?(async = false) ?chain operation =
 
 let private_operation ctxt ?async ?chain operation =
   operation_rpc ctxt ~private_rpc:true ?async ?chain operation
+
+let private_operations ctxt ?(async = false) ?(force = false) ?chain operations
+    =
+  make_call
+    S.private_operations
+    ctxt
+    ()
+    (object
+       method async = async
+
+       method chain = chain
+
+       method force = force
+    end)
+    operations
 
 let operation ctxt ?async ?chain operation =
   operation_rpc ctxt ~private_rpc:false ?async ?chain operation

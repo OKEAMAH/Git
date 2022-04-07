@@ -45,6 +45,36 @@ let inject_block validator ?force ?chain bytes operations =
       let* _ = block in
       return_unit )
 
+type Error_monad.error += Injection_operations_error of error trace option list
+
+let () =
+  register_recursive_error_kind
+    `Permanent
+    ~id:"injection_operations_error"
+    ~title:"Injection operations error"
+    ~description:
+      "While injecting several operations at once, one or several injections \
+       failed."
+    ~pp:(fun ppf err ->
+      Format.fprintf
+        ppf
+        "While injecting several operations, one or several injections failed: \
+         %a"
+        (Format.pp_print_list
+           ~pp_sep:Format.pp_force_newline
+           (Format.pp_print_option
+              ~none:(fun ppf () -> Format.fprintf ppf "Operation succeeded")
+              pp_print_trace))
+        err)
+    (fun error_encoding ->
+      Data_encoding.(
+        obj1
+          (req
+             "injection_errors"
+             (list (dynamic_size (option (list (dynamic_size error_encoding))))))))
+    (function Injection_operations_error err -> Some err | _ -> None)
+    (function err -> Injection_operations_error err)
+
 let inject_operation validator ~force ?chain bytes =
   let open Lwt_tzresult_syntax in
   let*! chain_id = read_chain_id validator chain in
@@ -55,6 +85,28 @@ let inject_operation validator ~force ?chain bytes =
   in
   let hash = Operation_hash.hash_bytes [bytes] in
   Lwt.return (hash, t)
+
+let inject_operations validator ~force ?chain bytes_list =
+  let open Lwt_syntax in
+  let* (hashes, promises) =
+    List.fold_left_s
+      (fun (hashes, promises) bytes ->
+        let* (hash, promise) = inject_operation validator ~force ?chain bytes in
+        return (hash :: hashes, promise :: promises))
+      ([], [])
+      bytes_list
+  in
+  let fold_errors (has_failed, result) = function
+    | Ok () -> (has_failed, None :: result)
+    | Error trace -> (true, Some trace :: result)
+  in
+  let map l =
+    let (has_failed, result) = List.fold_left fold_errors (false, []) l in
+    if not has_failed then Ok ()
+    else Tzresult_syntax.fail (Injection_operations_error (List.rev result))
+  in
+  let t = Lwt.map map (Lwt.all promises) in
+  return (hashes, t)
 
 let inject_protocol store proto =
   let open Lwt_tzresult_syntax in
@@ -91,6 +143,13 @@ let build_rpc_directory validator =
     let* () = if q#async then return_unit else wait in
     return hash
   in
+  let inject_operations q contents =
+    let*! (hash, wait) =
+      inject_operations validator ~force:q#force ?chain:q#chain contents
+    in
+    let* () = if q#async then return_unit else wait in
+    return hash
+  in
   register0 Injection_services.S.block (fun q (raw, operations) ->
       let* (hash, wait) =
         inject_block validator ?chain:q#chain ~force:q#force raw operations
@@ -101,6 +160,7 @@ let build_rpc_directory validator =
   register0
     Injection_services.S.private_operation
     (inject_operation ~force:true) ;
+  register0 Injection_services.S.private_operations inject_operations ;
   register0 Injection_services.S.protocol (fun q protocol ->
       let*! (hash, wait) = inject_protocol state protocol in
       let* () = if q#async then return_unit else wait in
