@@ -94,10 +94,11 @@ committed nonces later, in the current cycle.
 
 We make the assumption that at least one participant is honest, that
 is, it has indeed chosen a random value.  This is a necessary
-condition for the seed to be random. The randomness is however
-biasable as this protocol suffers from the "last adversary attack":
-the last revealer can choose not to reveal its committed value and can
-thus choose between two different seeds.
+condition for the seed to be random. The randomness could however
+be biased as this protocol suffers from the "last revealer attack":
+the last revealer can choose to reveal or not its committed value and can
+thus choose between two different predetermined seeds.
+In practice this "attack" is hard to perform, because one often cannot make sure to be the last revealer.
 
 Concretely, the random seed for cycle
 ``n`` is a 256-bit long number computed at the very end of cycle ``n-1-PRESERVED_CYCLES`` from
