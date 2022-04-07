@@ -41,6 +41,10 @@ let protocols =
       "Ithaca",
       Some "/include/rpc_introduction.rst.inc",
       "Psithaca2MLRFYargivpo7YvUr7wUDqyxrdhC5CQq78mRvimz6A" );
+    ( "jarlsberg",
+      "Jarlsberg",
+      Some "/include/rpc_introduction.rst.inc",
+      "Ps73j8CVgMgabg8VMnnepjqaDPKryXY1CtUYeZ7CWBEoauutZqJ" );
   ]
 
 let pp_name ppf = function
