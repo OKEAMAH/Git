@@ -93,7 +93,7 @@ previous cycle, they first commit to nonces and they only reveal their
 committed nonces later, in the current cycle.
 
 We make the assumption that at least one participant is honest, that
-is, it has indeed chosen a random value.  This is a necessary
+is, it has indeed chosen a random value and this values was revealed.  This is a necessary
 condition for the seed to be random. The randomness could however
 be biased as this protocol suffers from the "last revealer attack":
 the last revealer can choose to reveal or not its committed value and can
