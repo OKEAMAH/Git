@@ -1,0 +1,32 @@
+(tests
+ (package tezos-protocol-013-PtJARLSB-tests)
+ (names liquidity_baking_pbt
+        saturation_fuzzing
+        test_merkle_list
+        test_gas_properties
+        test_sampler
+        test_script_comparison
+        test_tez_repr
+        test_tx_rollup_l2_encoding
+        test_bitset
+        test_sc_rollup_tick_repr
+        refutation_game_pbt
+        test_carbonated_map)
+ (libraries tezos-base
+            tezos-micheline
+            tezos-client-013-PtJARLSB
+            tezos-test-helpers
+            tezos-013-PtJARLSB-test-helpers
+            alcotest
+            qcheck-alcotest
+            tezos-benchmark
+            tezos-benchmark-013-PtJARLSB)
+ (flags (:standard
+          -open Tezos_base__TzPervasives
+                   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+          -open Tezos_micheline
+          -open Tezos_client_013_PtJARLSB
+          -open Tezos_protocol_013_PtJARLSB
+          -open Tezos_013_PtJARLSB_test_helpers
+          -open Tezos_benchmark_013_PtJARLSB
+          -open Tezos_benchmark_type_inference_013_PtJARLSB)))

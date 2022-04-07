@@ -1,0 +1,29 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(test
+ (name main)
+ (package tezos-baking-013-PtJARLSB)
+ (libraries
+  tezos-base
+  tezos-micheline
+  tezos-client-013-PtJARLSB
+  tezos-protocol-013-PtJARLSB
+  tezos-protocol-013-PtJARLSB.environment
+  tezos-base-test-helpers
+  tezos-baking-013-PtJARLSB.mockup-simulator
+  tezos-baking-013-PtJARLSB
+  tezos-protocol-013-PtJARLSB-parameters
+  tezos-crypto
+  alcotest-lwt)
+ (flags
+  (:standard
+   -open Tezos_base.TzPervasives
+   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+   -open Tezos_micheline
+   -open Tezos_client_013_PtJARLSB
+   -open Tezos_protocol_013_PtJARLSB
+   -open Tezos_protocol_environment_013_PtJARLSB
+   -open Tezos_base_test_helpers
+   -open Tezos_013_PtJARLSB_mockup_simulator
+   -open Tezos_baking_013_PtJARLSB)))

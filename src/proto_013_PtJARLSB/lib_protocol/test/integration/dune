@@ -1,0 +1,17 @@
+(test
+ (name main)
+ (package tezos-protocol-013-PtJARLSB-tests)
+ (libraries alcotest-lwt
+            tezos-base
+            tezos-client-013-PtJARLSB
+            tezos-protocol-013-PtJARLSB
+            tezos-protocol-013-PtJARLSB-parameters
+            tezos-base-test-helpers
+            tezos-013-PtJARLSB-test-helpers)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+                   -open Tezos_client_013_PtJARLSB
+                   -open Tezos_protocol_013_PtJARLSB
+                   -open Tezos_protocol_013_PtJARLSB_parameters
+                   -open Tezos_013_PtJARLSB_test_helpers
+                   -open Tezos_base_test_helpers)))
