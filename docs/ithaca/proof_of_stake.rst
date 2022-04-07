@@ -78,7 +78,7 @@ Random seed
 
 To each cycle is associated a random number called the
 seed. This seed is used within its cycle to generate pseudo-random
-values in the protocol, in particular when selecting delegates to participate in consensus.
+values in the protocol, in particular for selecting delegates to participate in consensus.
 
 The seed is the output of a simple multi-party randomness protocol
 (similar in spirit with the `RANDAO protocol <https://github.com/randao/randao>`_):
@@ -93,7 +93,7 @@ previous cycle, they first commit to nonces and they only reveal their
 committed nonces later, in the current cycle.
 
 We make the assumption that at least one participant is honest, that
-is, it has indeed revealed a random value.  This is a necessary
+is, it has indeed chosen a random value.  This is a necessary
 condition for the seed to be random. The randomness is however
 biasable as this protocol suffers from the "last adversary attack":
 the last revealer can choose not to reveal its committed value and can
