@@ -10,7 +10,8 @@
   tezos-protocol-environment
   tezos-protocol-013-PsJakart)
  (library_flags (:standard -linkall))
- (flags (:standard -open Tezos_base.TzPervasives -open Tezos_protocol_013_PsJakart))
+ (flags
+  (:standard -open Tezos_base.TzPervasives -open Tezos_protocol_013_PsJakart))
  (modules (:standard \ gen)))
 
 (executable
