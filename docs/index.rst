@@ -173,6 +173,15 @@ in the :ref:`introduction <howtoget>`.
 
 .. toctree::
    :maxdepth: 2
+   :caption: jakarta Jakarta Protocol doc:
+
+   jakarta/protocol
+   jakarta/glossary
+   jakarta/cli-commands
+   jakarta/rpc
+
+.. toctree::
+   :maxdepth: 2
    :caption: Alpha Development Protocol doc:
 
    alpha/protocol
@@ -224,6 +233,7 @@ in the :ref:`introduction <howtoget>`.
    protocols/010_granada
    protocols/011_hangzhou
    protocols/012_ithaca
+   protocols/013_jakarta
    protocols/alpha
 
 .. toctree::
