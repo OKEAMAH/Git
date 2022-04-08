@@ -177,9 +177,9 @@ let cast_transaction_parameter (type a ac b bc) ctxt location
 
 let tickets_of_transaction ctxt ~destination ~entrypoint ~location
     ~parameters_ty ~parameters =
-  match Contract.is_implicit destination with
-  | Some _ -> return (None, ctxt)
-  | None ->
+  match destination with
+  | `Implicit _ -> return (None, ctxt)
+  | `Originated _ ->
       (* TODO: #2653
          Avoid having to load the script from the cache.
          This is currently in place to avoid regressions for type-checking
