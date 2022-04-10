@@ -139,7 +139,7 @@ module Bounded_encoding = struct
   let protocol = delayed (fun () -> !protocol_cache)
 
   (* Twice the current max size of a mempoool *)
-  let mempool_max_operations = ref (Some 4000)
+  let mempool_max_operations = ref (Some 10000)
 
   let mempool_cache =
     ref (Mempool.bounded_encoding ?max_operations:!mempool_max_operations ())
