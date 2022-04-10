@@ -1958,6 +1958,208 @@ module Revamped = struct
       return process
     in
     Process.check_error ~msg:(rex "proto.012-Psithaca.balance_is_empty") process
+
+  let contract =
+    {|
+parameter int;
+storage unit; 
+code {
+       CAR; 
+       DUP; 
+       GT; 
+       LOOP 
+         { 
+           PUSH int 1;
+           SWAP;
+           SUB; 
+           DUP; 
+           GT
+         }; 
+       DROP; 
+       UNIT; 
+       NIL operation; 
+       PAIR
+     }
+|}
+
+  let test_flush =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Flushing mempool"
+      ~tags:["mempool"; "flush"]
+    @@ fun protocol ->
+    (* Magic constant for the contract above. Consume about 5_00_000 gas.*)
+    let contract_parameter = 7676473 * 5 in
+    let reveal_cost = 1040 in
+    let simple_transfer_cost = 1040 in
+    let maximum_number_of_operations =
+      Cli.get (fun x -> try Some (int_of_string x) with _ -> None) "n"
+    in
+    let precheck =
+      Cli.get
+        ~default:true
+        (fun x -> try Some (bool_of_string x) with _ -> None)
+        "precheck"
+    in
+    let gas =
+      Cli.get
+        ~default:10
+        (fun x ->
+          try
+            let x = int_of_string x in
+            if x < 0 || x > 100 then None else Some x
+          with _ -> None)
+        "gas"
+    in
+    let simple_transfer =
+      Cli.get
+        (fun x ->
+          try
+            let b = bool_of_string x in
+            Some b
+          with _ -> None)
+        "simple"
+    in
+    Log.info "Parameters of the test:" ;
+    Log.info "Precheck: %b" precheck ;
+    Log.info "Operations: %d" maximum_number_of_operations ;
+    Log.info
+      "Simple transfers: %b (If true, filling value is ignoared)"
+      simple_transfer ;
+    Log.info "Filling: %d %% gas" gas ;
+    let gas_estimation =
+      if simple_transfer then
+        (maximum_number_of_operations * reveal_cost) + simple_transfer_cost
+      else (maximum_number_of_operations * reveal_cost) + (5_000_000 * gas / 100)
+    in
+    Log.info "Estimation of gas consumed: %d" gas_estimation ;
+    let precheck_arg =
+      if not precheck then Node.[Disable_operations_precheck] else []
+    in
+    let parameter_file protocol =
+      (* Bump arbitrarily the gas limit, in particular to not have
+         problems with operation inclusions. *)
+      let args =
+        [
+          (["hard_gas_limit_per_block"], Some "\"100_000_000\"");
+          (["hard_gas_limit_per_operation"], Some "\"100_000_000\"");
+        ]
+      in
+      Protocol.write_parameter_file ~base:(Either.right (protocol, None)) args
+    in
+    let* parameter_file = parameter_file protocol in
+    let nodes_args =
+      Node.[Synchronisation_threshold 0; Connections 1] @ precheck_arg
+    in
+    let* (node, client) =
+      Client.init_with_protocol
+        ~event_sections_levels:[("prevalidator", `Debug)]
+        ~additional_bootstrap_account_count:maximum_number_of_operations
+        ~nodes_args
+        ~parameter_file
+        ~protocol
+        `Client
+        ()
+    in
+    let bootstraps =
+      Constant.all_secret_keys @ Client.additional_bootstraps client
+    in
+    let* contract_hash =
+      Client.originate_contract
+        ~alias:"loop"
+        ~amount:Tez.zero
+        ~burn_cap:(Tez.of_int 99999)
+        ~src:Constant.bootstrap1.alias
+        ~prg:contract
+        client
+    in
+    let* () = Client.bake_for client in
+    let* branch = RPC.get_block_hash client in
+    Log.info "Forging %d operations" maximum_number_of_operations ;
+    let* ops =
+      Lwt_list.map_p
+        (fun i ->
+          let account = List.nth bootstraps (i + 5) in
+          let* reveal = Operation.mk_reveal ~counter:1 ~source:account client in
+          let* operation =
+            if simple_transfer then
+              Operation.mk_transfer
+                ~counter:2
+                ~source:account
+                ~dest:account
+                client
+            else
+              let arg =
+                (* We apply the percentage contained in [gas]. *)
+                contract_parameter * 50 / (maximum_number_of_operations * 100)
+                |> string_of_int
+              in
+              Operation.mk_call
+                ~counter:2
+                ~amount:0
+                ~fee:(int_of_string arg) (* Just to ensure inclusion *)
+                ~gas_limit:
+                  (int_of_string arg)
+                  (* Wrong gas limit but we do not care here. *)
+                ~entrypoint:"default"
+                ~arg:(`Json (`O [("int", `String arg)]))
+                ~source:account
+                ~dest:contract_hash
+                client
+          in
+          let* unsigned_op =
+            Operation.forge_operation
+              ~protocol:Protocol.Alpha
+              ~branch
+              ~batch:[reveal; operation]
+              client
+          in
+          let signature =
+            Operation.sign_manager_op_hex ~signer:account unsigned_op
+          in
+          return (unsigned_op, signature))
+        (range 1 maximum_number_of_operations)
+    in
+    let* _op_hashes = Operation.inject_operations ~force:true ~ops client in
+    let old = ref @@ Unix.gettimeofday () in
+    let cpt_node_1 = ref 0 in
+    let (node_1_t, node_1_u) = Lwt.task () in
+    let on_notify_event u cpt Node.{name; value = _} =
+      if !cpt = 0 then old := Unix.gettimeofday () ;
+      if name = "operation_reclassified.v0" then (
+        incr cpt ;
+        if !cpt = maximum_number_of_operations then Lwt.wakeup u ())
+    in
+    Node.on_event node (on_notify_event node_1_u cpt_node_1) ;
+    let before = Unix.gettimeofday () in
+    let* _ = bake_for ~wait_for_flush:true ~empty:true ~protocol node client in
+    let now = Unix.gettimeofday () in
+    Log.info "Flushing time on node A: %f" (now -. before) ;
+    let* () = node_1_t in
+    let now = Unix.gettimeofday () in
+    Log.info "Reclassification time on node A: %f" (now -. !old) ;
+    let* node2 =
+      Node.init ~event_sections_levels:[("prevalidator", `Debug)] nodes_args
+    in
+    let* client2 = Client.init ~endpoint:(Node node2) () in
+    let cpt_node_2 = ref 0 in
+    let (node_2_t, node_2_u) = Lwt.task () in
+    Node.on_event node2 (on_notify_event node_2_u cpt_node_2) ;
+    let* () = Client.Admin.connect_address ~peer:node2 client in
+    let* _ = Node.wait_for_level node2 2 in
+    let* () = synchronize_mempool client2 node in
+    let* () = node_2_t in
+    let now = Unix.gettimeofday () in
+    Log.info "Classification time on node B: %f" (now -. !old) ;
+    Log.info "Check validity of the test" ;
+    let* json =
+      RPC.get_mempool_pending_operations ~endpoint:(Node node2) client
+    in
+    let json_list = JSON.(json |-> "applied" |> as_list) in
+    Check.(List.length json_list = maximum_number_of_operations)
+      Check.int
+      ~error_msg:"Expected %R operations in block. Got %L" ;
+    unit
 end
 
 let check_operation_is_in_applied_mempool ops oph =
@@ -4144,6 +4346,7 @@ let register ~protocols =
   Revamped.wrong_signed_branch_delayed_becomes_refused protocols ;
   Revamped.precheck_with_empty_balance [Protocol.Ithaca]
   (* FIXME: handle the case for Alpha. *) ;
+  Revamped.test_flush protocols ;
   run_batched_operation protocols ;
   propagation_future_endorsement protocols ;
   forge_pre_filtered_operation protocols ;
