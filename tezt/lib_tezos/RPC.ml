@@ -176,6 +176,19 @@ let private_inject_operation ?endpoint ?hooks ?(async = false) ~data client =
   let query_string = if async then [("async", "")] else [] in
   Client.Spawn.rpc ?endpoint ?hooks ~query_string ~data POST path client
 
+let private_inject_operations ?endpoint ?hooks ?(async = false) ?(force = false)
+    ~data client =
+  let path = ["private"; "injection"; "operations"] in
+  let force_query_string = if force then [("force", "true")] else [] in
+  let query_string =
+    if async then [("async", "true")] @ force_query_string
+    else force_query_string
+  in
+  let filename = Temp.file "operations" in
+  JSON.encode_to_file_u filename data ;
+  (* sound hackish *)
+  Client.Spawn.rpc ?endpoint ?hooks ~query_string ~filename POST path client
+
 let get_constants ?endpoint ?hooks ?(chain = "main") ?(block = "head") client =
   let path = ["chains"; chain; "blocks"; block; "context"; "constants"] in
   Client.rpc ?endpoint ?hooks GET path client

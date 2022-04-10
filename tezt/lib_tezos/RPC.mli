@@ -135,6 +135,16 @@ val private_inject_operation :
   Client.t ->
   JSON.t Process.runnable
 
+(** Call RPC /private/injection/operations *)
+val private_inject_operations :
+  ?endpoint:Client.endpoint ->
+  ?hooks:Process.hooks ->
+  ?async:bool ->
+  ?force:bool ->
+  data:JSON.u ->
+  Client.t ->
+  JSON.t Process.runnable
+
 (** Call RPC /injection/block *)
 val inject_block :
   ?endpoint:Client.endpoint ->
