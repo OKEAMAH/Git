@@ -7,5 +7,6 @@
             tezos-base.unix
             tezos-stdlib-unix
             tezos-protocol-alpha
+	    tezos-client-alpha	    
             tezos-protocol-010-PtGRANAD)
  (flags (:standard -open Tezt -open Tezt_tezos -open Tezt.Base)))
