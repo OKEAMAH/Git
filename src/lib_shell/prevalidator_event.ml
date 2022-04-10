@@ -96,6 +96,14 @@ let operations_to_reclassify =
     ~level:Debug
     ("count", Data_encoding.int31)
 
+let operation_reclassified =
+  declare_0
+    ~section
+    ~name:"operation_reclassified"
+    ~msg:"reclassified"
+    ~level:Debug
+    ()
+
 let request_completed_notice =
   declare_2
     ~section
