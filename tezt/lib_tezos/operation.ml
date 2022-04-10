@@ -290,14 +290,20 @@ let forge_operation ?protocol ~branch ~batch client =
     Lwt_list.map_p (fun op -> manager_op_content_to_json_string op client) batch
   in
   let op_json = manager_op_to_json_string ~branch (`A json_batch) in
-  let* hex =
-    match protocol with
-    | None -> RPC.post_forge_operations ~data:op_json client >|= JSON.as_string
-    | Some p ->
-        let name = Protocol.daemon_name p ^ ".operation.unsigned" in
-        Codec.encode ~name op_json
-  in
-  return (`Hex hex)
+  match protocol with
+  | None ->
+      let* json = RPC.post_forge_operations ~data:op_json client in
+      return (JSON.as_string json |> fun x -> `Hex x)
+  | Some p -> (
+      let name = Protocol.daemon_name p ^ ".operation.unsigned" in
+      match Data_encoding.Registration.find name with
+      | None -> Test.fail "NO WAY"
+      | Some registrated -> (
+          match
+            Data_encoding.Registration.bytes_of_json registrated op_json
+          with
+          | None -> Test.fail "NO WAY 2"
+          | Some bytes -> return (Hex.of_bytes bytes)))
 
 let sign_manager_op_bytes ~(signer : Account.key) (op_bytes : Bytes.t) =
   Account.sign_bytes ~watermark:Generic_operation ~signer op_bytes
@@ -323,6 +329,32 @@ let inject_operation ?(async = false) ?(force = false) ?wait_for_injection
   let*! oph_json = inject ~async ~data:(`String signed_op) client in
   let* () = waiter in
   return (`OpHash (JSON.as_string oph_json))
+
+let inject_operations ?(async = false) ?(force = false) ?wait_for_injection ~ops
+    client =
+  let waiter =
+    match wait_for_injection with
+    | None -> Lwt.return_unit
+    | Some node -> Node.wait_for_request ~request:`Inject node
+  in
+  let*! json =
+    RPC.private_inject_operations
+      ~async
+      ~force
+      ~data:
+        (`A
+          (List.map
+             (fun (`Hex unsigned_op, `Hex signature) ->
+               `String (unsigned_op ^ signature))
+             ops))
+      client
+  in
+  let* () = waiter in
+  let result =
+    JSON.(
+      json |> as_list |> List.map (fun json -> `OpHash (JSON.as_string json)))
+  in
+  return result
 
 let runnable_inject_operation ?(async = false) ?(force = false) ~unsigned_op
     ~signature client =

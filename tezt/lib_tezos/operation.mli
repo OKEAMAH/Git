@@ -233,6 +233,14 @@ val inject_operation :
   Client.t ->
   [`OpHash of string] Lwt.t
 
+val inject_operations :
+  ?async:bool ->
+  ?force:bool ->
+  ?wait_for_injection:Node.t ->
+  ops:(Hex.t * Hex.t) list ->
+  Client.t ->
+  [`OpHash of string] list Lwt.t
+
 val runnable_inject_operation :
   ?async:bool ->
   ?force:bool ->
