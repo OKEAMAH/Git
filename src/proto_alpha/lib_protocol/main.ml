@@ -83,7 +83,7 @@ let validation_passes =
         max_op = Some max_anon_ops_per_block;
       };
       (* 512kB *)
-      {max_size = 512 * 1024; max_op = None};
+      {max_size = 512 * 1024 * 100; max_op = None};
     ]
 
 let rpc_services =
