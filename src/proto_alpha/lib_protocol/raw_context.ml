@@ -247,6 +247,25 @@ type back = {
   tx_rollup_current_messages :
     Tx_rollup_inbox_repr.Merkle.tree Tx_rollup_repr.Map.t;
   sc_rollup_current_messages : Context.tree Sc_rollup_address_map_builder.t;
+  das_current_slot_proposals :
+    (Das_slot_repr.Header.t * Tez_repr.t) option FallbackArray.t;
+  (* DAS/FIXME We associate to a slot header some fees. This enable
+     the use of a fee market for slot publication. However, this is
+     not resiliant from the game theory point of view. Probably we can
+     find better incentives here. In any case, because we want the
+     following invariant:
+
+         - For each level and for each slot there is at most one slot
+     header.
+
+         We need to provide an incentive to avoid byzantines to post
+     dummy slot headers. *)
+  das_endorsement_slot_accountibility : bool FallbackArray.t FallbackArray.t;
+      (* DAS/FIXME Think harder about this representation:
+
+         - For each slot, we record the shards which are available
+
+         So we have an array of 256 * 2048 cells. *)
 }
 
 (*
@@ -817,6 +836,18 @@ let prepare ~level ~predecessor_timestamp ~timestamp ctxt =
         stake_distribution_for_current_cycle = None;
         tx_rollup_current_messages = Tx_rollup_repr.Map.empty;
         sc_rollup_current_messages = Sc_rollup_carbonated_map.empty;
+        das_current_slot_proposals =
+          FallbackArray.make
+            constants.Constants_parametric_repr.das.number_of_slots
+            None;
+        das_endorsement_slot_accountibility =
+          FallbackArray.of_list
+            ~fallback:(FallbackArray.make 0 false)
+            ~proj:(fun _ ->
+              FallbackArray.make
+                constants.Constants_parametric_repr.das.number_of_shards
+                false)
+            Misc.(1 --> constants.Constants_parametric_repr.das.number_of_slots);
       };
   }
 
@@ -1433,4 +1464,61 @@ module Sc_rollup_in_memory_inbox = struct
     in
     let back = {ctxt.back with sc_rollup_current_messages} in
     {ctxt with back}
+end
+
+module Das = struct
+  (* DAS/FIXME Can we find a better/faster representation? *)
+  let record_available_shards ctxt slots committed_shards =
+    let das_endorsement_slot_accountibility =
+      ctxt.back.das_endorsement_slot_accountibility
+    in
+    List.iter
+      (fun index ->
+        if Das_endorsement_repr.mem slots index then
+          let shards =
+            FallbackArray.get das_endorsement_slot_accountibility index
+          in
+          List.iter
+            (fun shard_index -> FallbackArray.set shards shard_index true)
+            committed_shards)
+      Misc.(0 --> (ctxt.back.constants.das.number_of_shards - 1))
+
+  let current_slot_fees ctxt Das_slot_repr.{slot; _} =
+    FallbackArray.get ctxt.back.das_current_slot_proposals slot
+    |> Option.map snd
+
+  let update_slot ctxt Das_slot_repr.{slot; header; _} fees =
+    FallbackArray.set
+      ctxt.back.das_current_slot_proposals
+      slot
+      (Some (header, fees))
+
+  let get_pending_slot_headers ctxt =
+    FallbackArray.fold
+      (fun l x -> (x |> Option.map fst) :: l)
+      ctxt.back.das_current_slot_proposals
+      []
+    |> List.rev
+
+  let get_shards_availibility ctxt =
+    ctxt.back.das_endorsement_slot_accountibility
+
+  (* DAS/FIXME We have to choose for the sampling. Here we use the one
+     used by the consensus which is hackish and probably not what we
+     want at the end. However, it should be enough for a
+     prototype. This has a very bad complexity too. *)
+  let shards ctxt ~endorser =
+    let max_shards = ctxt.back.constants.das.number_of_shards in
+    Slot_repr.Map.fold_e
+      (fun slot (_, public_key_hash, _) shards ->
+        (* Early fail because 2048 < 7000 *)
+        if Compare.Int.(Slot_repr.to_int slot >= max_shards) then Error shards
+        else if Signature.Public_key_hash.(public_key_hash = endorser) then
+          Ok (Slot_repr.to_int slot :: shards)
+        else Ok shards)
+      ctxt.back.consensus.allowed_endorsements
+      []
+    |> function
+    | Ok shards -> shards
+    | Error shards -> shards
 end
