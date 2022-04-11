@@ -60,6 +60,19 @@ module Sc_rollup = struct
   include Sc_rollup_storage
 end
 
+module Das = struct
+  module Endorsement = struct
+    include Das_endorsement_repr
+    include Raw_context.Das
+  end
+
+  module Slot = struct
+    include Das_slot_repr
+    include Das_slot_storage
+    include Raw_context.Das
+  end
+end
+
 module Entrypoint = Entrypoint_repr
 include Operation_repr
 

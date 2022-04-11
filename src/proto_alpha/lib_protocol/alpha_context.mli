@@ -2741,6 +2741,44 @@ module Sc_rollup : sig
   end
 end
 
+module Das : sig
+  module Endorsement : sig
+    type t
+
+    val empty : t
+
+    val size : t -> int
+
+    val expected_size : max_index:int -> int
+
+    val shards : context -> endorser:Signature.Public_key_hash.t -> int list
+
+    val record_available_shards : context -> t -> int list -> unit
+  end
+
+  module Slot : sig
+    type t
+
+    val encoding : t Data_encoding.t
+
+    val pp : Format.formatter -> t -> unit
+
+    val current_slot_fees : context -> t -> Tez.t option
+
+    val update_slot : context -> t -> Tez.t -> unit
+
+    val index : t -> int
+
+    val find : context -> Raw_level.t -> t option list option tzresult Lwt.t
+
+    val finalize_pending_slots : context -> context Lwt.t
+
+    val finalize_confirmed_slots : context -> context Lwt.t
+
+    val finalize_unavailable_slots : context -> context tzresult Lwt.t
+  end
+end
+
 module Block_payload : sig
   val hash :
     predecessor:Block_hash.t ->
@@ -2961,7 +2999,7 @@ type 'a consensus_operation_type =
 val pp_operation_kind :
   Format.formatter -> 'kind consensus_operation_type -> unit
 
-type consensus_content = {
+type 'data_availibility raw_consensus_content = {
   slot : Slot.t;
   level : Raw_level.t;
   (* The level is not required to validate an endorsement when it corresponds
@@ -2969,9 +3007,17 @@ type consensus_content = {
      the level. *)
   round : Round.t;
   block_payload_hash : Block_payload_hash.t;
+  data_availibility : 'data_availibility;
 }
 
+type consensus_content = unit raw_consensus_content
+
+type consensus_content_with_data = Das.Endorsement.t raw_consensus_content
+
 val consensus_content_encoding : consensus_content Data_encoding.t
+
+val consensus_content_with_data_encoding :
+  consensus_content_with_data Data_encoding.t
 
 val pp_consensus_content : Format.formatter -> consensus_content -> unit
 
@@ -2999,7 +3045,7 @@ and _ contents_list =
 
 and _ contents =
   | Preendorsement : consensus_content -> Kind.preendorsement contents
-  | Endorsement : consensus_content -> Kind.endorsement contents
+  | Endorsement : consensus_content_with_data -> Kind.endorsement contents
   | Seed_nonce_revelation : {
       level : Raw_level.t;
       nonce : Nonce.t;
