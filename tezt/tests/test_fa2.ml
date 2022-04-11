@@ -911,6 +911,16 @@ let test_mockup ~protocol () =
       client
   in
   Format.printf "STO: %s\n" storage;
+  let* storage =
+  Client.run_script
+    ~source:{|tz1f1S7V2hZJ3mhj47djb5j1saek8c2yB2Cx|}
+    ~prg:hen_contract
+    ~storage:hen_test_sto
+    ~input:(Format.sprintf {|%S|} bootstrap1.public_key_hash)
+    ~entrypoint:"set_administrator"
+    client
+in
+Format.printf "STO: %s\n" storage;
   unit
 
 

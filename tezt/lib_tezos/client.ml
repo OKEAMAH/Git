@@ -985,7 +985,7 @@ let stresstest ?endpoint ?source_aliases ?source_pkhs ?source_accounts ?seed
     client
   |> Process.check
 
-let spawn_run_script ?hooks ?balance ?self_address ?source ?payer ~prg ~storage
+let spawn_run_script ?hooks ?balance ?self_address ?source ?payer ?entrypoint ~prg ~storage
     ~input client =
   spawn_command
     ?hooks
@@ -994,7 +994,8 @@ let spawn_run_script ?hooks ?balance ?self_address ?source ?payer ~prg ~storage
     @ optional_arg ~name:"payer" Fun.id payer
     @ optional_arg ~name:"source" Fun.id source
     @ optional_arg ~name:"balance" Tez.to_string balance
-    @ optional_arg ~name:"self-address" Fun.id self_address)
+    @ optional_arg ~name:"self-address" Fun.id self_address
+    @ optional_arg ~name:"entrypoint" Fun.id entrypoint)
 
 let stresstest_estimate_gas ?endpoint client =
   let* output =
@@ -1017,7 +1018,7 @@ let stresstest_originate_smart_contracts ?endpoint (source : Account.key) client
     ["stresstest"; "originate"; "smart"; "contracts"; "from"; source.alias]
   |> Process.check
 
-let run_script ?hooks ?balance ?self_address ?source ?payer ~prg ~storage ~input
+let run_script ?hooks ?balance ?self_address ?source ?payer ?entrypoint ~prg ~storage ~input
     client =
   let* client_output =
     spawn_run_script
@@ -1026,6 +1027,7 @@ let run_script ?hooks ?balance ?self_address ?source ?payer ~prg ~storage ~input
       ?source
       ?payer
       ?self_address
+      ?entrypoint
       ~prg
       ~storage
       ~input
