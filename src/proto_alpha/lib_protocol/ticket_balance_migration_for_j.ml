@@ -63,8 +63,7 @@ let update_contract_tickets ctxt contract =
         (Z.zero, ctxt)
         tickets
 
-let is_originated contract =
-  match Contract.is_originated contract with Some _ -> true | _ -> false
+let is_originated = function `Originated _ -> true | `Implicit _ -> false
 
 let init ctxt =
   Contract.list ctxt >>= fun contracts ->
