@@ -165,10 +165,10 @@ the stakes in a particular stake snapshot: the probability to sample a
 particular delegate is its stake in the snapshot over the total stake
 in that snapshot.
 
-The delegates' rights at a given level are expressed in terms of
-the (quantity of) *slots* that the delegate owns
-at that level. The number of slots it owns represents its weight in
-consensus.
+Concretely, the delegates' rights at a given level are expressed in terms of
+the (quantity of) *slots* that the delegate owns at that level.
+This quantity represents the delegate's weight in consensus.
+We note that, in the long run (that is, on average over many levels), the number of slots is proportional to its stake.
 The owner of a slot is obtained by sampling using the algorithm
 mentioned above.
 Concretely, given a level and a slot (which is just a non-negative integer),
