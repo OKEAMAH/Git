@@ -370,3 +370,25 @@ module Sc_rollup_in_memory_inbox : sig
 
   val set_current_messages : t -> Sc_rollup_repr.t -> Context.tree -> t tzresult
 end
+
+module Das : sig
+  (* [record_available_shards records slots shards] records that the
+     list of shards [shards] were declared available. The function
+     assumes that a shard belongs to the interval [0;
+     number_of_shards].
+
+     This function has a side-effect and consequently should be used
+     carefully. In particular, we should not expect any backtracking
+     here. *)
+  val record_available_shards : t -> Das_endorsement_repr.t -> int list -> unit
+
+  val current_slot_fees : t -> Das_slot_repr.t -> Tez_repr.t option
+
+  val update_slot : t -> Das_slot_repr.t -> Tez_repr.t -> unit
+
+  val get_pending_slot_headers : t -> Das_slot_repr.Header.t option list
+
+  val get_shards_availibility : t -> bool FallbackArray.t FallbackArray.t
+
+  val shards : t -> endorser:Signature.Public_key_hash.t -> int list
+end
