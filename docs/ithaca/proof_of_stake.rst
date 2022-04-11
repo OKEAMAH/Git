@@ -27,6 +27,9 @@ be predicted too much in advance.
 Delegation
 ----------
 
+.. figure:: images/delegation.svg
+   :alt: Delegation between accounts
+
 A *delegate* is any :ref:`implicit account <Implicit account>` registered as
 such by emitting a delegate registration operation.
 
@@ -75,6 +78,9 @@ stake. In what follows we detail the selection mechanism used in Tezos.
 
 Random seed
 ^^^^^^^^^^^
+
+.. figure:: images/seeds-commitments.svg
+   :alt: Timeline chart for cycles of seed generation
 
 To each cycle is associated a random number called the
 seed. This seed is used within its cycle to generate pseudo-random
@@ -131,6 +137,9 @@ revealed nonce.
 Stake snapshots
 ^^^^^^^^^^^^^^^
 
+.. figure:: images/stake-snapshot.svg
+   :alt: Timeline chart for cycles of stake snapshot selection
+
 Before turning to the rights selection mechanism, we first introduce a new
 terminology, *stake snapshot*, to denote the stored (in the
 :ref:`context <Context>`) stake distribution for a given block. Stake
@@ -153,6 +162,9 @@ Only the stake of active delegates with the minimal stake of ``TOKENS_PER_ROLL``
 
 Slot selection
 ^^^^^^^^^^^^^^
+
+.. figure:: images/slots.svg
+   :alt: Slots assignments
 
 Delegates' rights to participate are determined using the `alias
 method <https://en.wikipedia.org/wiki/Alias_method>`_, more precisely
