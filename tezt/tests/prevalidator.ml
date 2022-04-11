@@ -2147,6 +2147,8 @@ code {
     Node.on_event node2 (on_notify_event node_2_u cpt_node_2) ;
     let* () = Client.Admin.connect_address ~peer:node2 client in
     let* _ = Node.wait_for_level node2 2 in
+    let* () = Lwt_unix.sleep 1. in
+    (* Avoid some flakyness? Is the prevalidator started? *)
     let* () = synchronize_mempool client2 node in
     let* () = node_2_t in
     let now = Unix.gettimeofday () in
