@@ -80,6 +80,7 @@
         "Sc_rollup_tick_repr",
         "Carbonated_map_costs",
         "Carbonated_map",
+	"Das_slot_repr",
 
         "Raw_context_intf",
         "Raw_context",
