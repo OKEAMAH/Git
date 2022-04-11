@@ -765,3 +765,11 @@ module Sc_rollup : sig
        and type value = Raw_level_repr.t
        and type t = Raw_context.t * Sc_rollup_repr.t
 end
+
+module Das : sig
+  module Slot_headers :
+    Non_iterable_indexed_data_storage
+      with type t = Raw_context.t
+       and type key = Raw_level_repr.t
+       and type value = Das_slot_repr.Header.t option list
+end
