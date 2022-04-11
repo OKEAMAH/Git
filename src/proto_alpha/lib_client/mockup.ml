@@ -86,6 +86,7 @@ module Protocol_constants_overrides = struct
     tx_rollup_max_ticket_payload_size : int option;
     tx_rollup_rejection_max_proof_size : int option;
     tx_rollup_sunset_level : int32 option;
+    das : Constants.Parametric.das option;
     sc_rollup_enable : bool option;
     sc_rollup_origination_size : int option;
     sc_rollup_challenge_window_in_blocks : int option;
@@ -158,7 +159,8 @@ module Protocol_constants_overrides = struct
                         c.tx_rollup_max_ticket_payload_size,
                         c.tx_rollup_rejection_max_proof_size,
                         c.tx_rollup_sunset_level ) ),
-                    ( c.sc_rollup_enable,
+                    ( c.das,
+                      c.sc_rollup_enable,
                       c.sc_rollup_origination_size,
                       c.sc_rollup_challenge_window_in_blocks,
                       c.sc_rollup_max_available_messages,
@@ -219,7 +221,8 @@ module Protocol_constants_overrides = struct
                            tx_rollup_max_ticket_payload_size,
                            tx_rollup_rejection_max_proof_size,
                            tx_rollup_sunset_level ) ),
-                       ( sc_rollup_enable,
+                       ( das,
+                         sc_rollup_enable,
                          sc_rollup_origination_size,
                          sc_rollup_challenge_window_in_blocks,
                          sc_rollup_max_available_messages,
@@ -278,6 +281,7 @@ module Protocol_constants_overrides = struct
           tx_rollup_max_ticket_payload_size;
           tx_rollup_rejection_max_proof_size;
           tx_rollup_sunset_level;
+          das;
           sc_rollup_enable;
           sc_rollup_origination_size;
           sc_rollup_challenge_window_in_blocks;
@@ -361,7 +365,10 @@ module Protocol_constants_overrides = struct
                               (opt "tx_rollup_max_ticket_payload_size" int31)
                               (opt "tx_rollup_rejection_max_proof_size" int31)
                               (opt "tx_rollup_sunset_level" int32)))
-                        (obj8
+                        (obj9
+                           (opt
+                              "das_parametric"
+                              Constants.Parametric.das_encoding)
                            (opt "sc_rollup_enable" bool)
                            (opt "sc_rollup_origination_size" int31)
                            (opt "sc_rollup_challenge_window_in_blocks" int31)
@@ -460,6 +467,7 @@ module Protocol_constants_overrides = struct
         tx_rollup_rejection_max_proof_size =
           Some parametric.tx_rollup_rejection_max_proof_size;
         tx_rollup_sunset_level = Some parametric.tx_rollup_sunset_level;
+        das = Some parametric.das;
         sc_rollup_enable = Some parametric.sc_rollup_enable;
         sc_rollup_origination_size = Some parametric.sc_rollup_origination_size;
         sc_rollup_challenge_window_in_blocks =
@@ -534,6 +542,7 @@ module Protocol_constants_overrides = struct
       tx_rollup_max_ticket_payload_size = None;
       tx_rollup_rejection_max_proof_size = None;
       tx_rollup_sunset_level = None;
+      das = None;
       sc_rollup_enable = None;
       sc_rollup_origination_size = None;
       sc_rollup_challenge_window_in_blocks = None;
@@ -1016,6 +1025,7 @@ module Protocol_constants_overrides = struct
            Option.value
              ~default:c.tx_rollup_sunset_level
              o.tx_rollup_sunset_level;
+         das = Option.value ~default:c.das o.das;
          sc_rollup_enable =
            Option.value ~default:c.sc_rollup_enable o.sc_rollup_enable;
          sc_rollup_origination_size =

@@ -25,6 +25,42 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type das = {
+  number_of_slots : int;
+  number_of_shards : int;
+  endorsement_lag : int;
+  availibility_threshold : int;
+}
+
+let das_encoding =
+  let open Data_encoding in
+  conv
+    (fun {
+           number_of_slots;
+           number_of_shards;
+           endorsement_lag;
+           availibility_threshold;
+         } ->
+      ( number_of_slots,
+        number_of_shards,
+        endorsement_lag,
+        availibility_threshold ))
+    (fun ( number_of_slots,
+           number_of_shards,
+           endorsement_lag,
+           availibility_threshold ) ->
+      {
+        number_of_slots;
+        number_of_shards;
+        endorsement_lag;
+        availibility_threshold;
+      })
+    (obj4
+       (req "number_of_slots" Data_encoding.int16)
+       (req "number_of_shards" Data_encoding.int16)
+       (req "endorsement_lag" Data_encoding.int16)
+       (req "availibility_threshold" Data_encoding.int16))
+
 (* The encoded representation of this type is stored in the context as
    bytes. Changing the encoding, or the value of these constants from
    the previous protocol may break the context migration, or (even
@@ -87,6 +123,7 @@ type t = {
   tx_rollup_max_withdrawals_per_batch : int;
   tx_rollup_rejection_max_proof_size : int;
   tx_rollup_sunset_level : int32;
+  das : das;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
   sc_rollup_challenge_window_in_blocks : int;
@@ -152,7 +189,8 @@ let encoding =
                       c.tx_rollup_max_ticket_payload_size,
                       c.tx_rollup_rejection_max_proof_size,
                       c.tx_rollup_sunset_level ) ),
-                  ( c.sc_rollup_enable,
+                  ( c.das,
+                    c.sc_rollup_enable,
                     c.sc_rollup_origination_size,
                     c.sc_rollup_challenge_window_in_blocks,
                     c.sc_rollup_max_available_messages,
@@ -211,7 +249,8 @@ let encoding =
                          tx_rollup_max_ticket_payload_size,
                          tx_rollup_rejection_max_proof_size,
                          tx_rollup_sunset_level ) ),
-                     ( sc_rollup_enable,
+                     ( das,
+                       sc_rollup_enable,
                        sc_rollup_origination_size,
                        sc_rollup_challenge_window_in_blocks,
                        sc_rollup_max_available_messages,
@@ -271,6 +310,7 @@ let encoding =
         tx_rollup_max_ticket_payload_size;
         tx_rollup_rejection_max_proof_size;
         tx_rollup_sunset_level;
+        das;
         sc_rollup_enable;
         sc_rollup_origination_size;
         sc_rollup_challenge_window_in_blocks;
@@ -351,7 +391,8 @@ let encoding =
                             (req "tx_rollup_max_ticket_payload_size" int31)
                             (req "tx_rollup_rejection_max_proof_size" int31)
                             (req "tx_rollup_sunset_level" int32)))
-                      (obj8
+                      (obj9
+                         (req "das_parametric" das_encoding)
                          (req "sc_rollup_enable" bool)
                          (req "sc_rollup_origination_size" int31)
                          (req "sc_rollup_challenge_window_in_blocks" int31)
