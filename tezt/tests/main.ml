@@ -37,7 +37,7 @@ let protocols = [Protocol.Alpha; Protocol.Ithaca; Protocol.Hangzhou]
 let migrate_from = Protocol.Ithaca
 
 let migrate_to = Protocol.Alpha
-
+ 
 (* This module runs the tests implemented in all other modules of this directory.
    Each module defines tests which are thematically related,
    as functions to be called here. *)
@@ -123,6 +123,7 @@ let () =
   Deposits_limit.register ~protocols:[Ithaca; Alpha] ;
   (* Relies on a feature only available since J. *)
   Run_script.register ~protocols:[Alpha] ;
-  Sapling.register ~protocols:[Alpha] ;
+  Sapling.register ~protocols:[Alpha] ; 
+  Test_fa2.register ~protocols:[Alpha] ;
   (* Test.run () should be the last statement, don't register afterwards! *)
   Test.run ()
