@@ -198,9 +198,7 @@ let transaction_costs_encoding =
        (req "smart_contracts" (assoc Gas.Arith.n_integral_encoding)))
 
 let destination_to_contract dst =
-  match dst with
-  | Implicit x -> Contract.implicit_contract x
-  | Originated x -> x.destination
+  match dst with Implicit x -> `Implicit x | Originated x -> x.destination
 
 let parse_strategy s =
   match String.split ~limit:1 ':' s with
@@ -426,10 +424,7 @@ let sample_smart_contracts smart_contracts rng_state =
 let rec sample_transfer (cctxt : Protocol_client_context.full) chain block
     (parameters : parameters) (state : state) =
   sample_source_from_pool state cctxt >>= fun src ->
-  Alpha_services.Contract.balance
-    cctxt
-    (chain, block)
-    (Contract.implicit_contract src.pkh)
+  Alpha_services.Contract.balance cctxt (chain, block) (`Implicit src.pkh)
   >>=? fun tez ->
   if Tez.(tez = zero) then
     log Debug (fun () ->

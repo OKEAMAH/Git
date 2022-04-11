@@ -2672,9 +2672,7 @@ module Registration_section = struct
       let zero = Script_int.zero_n in
       let ticket =
         {
-          ticketer =
-            Alpha_context.Contract.implicit_contract
-              Environment.Signature.Public_key_hash.zero;
+          ticketer = `Implicit Environment.Signature.Public_key_hash.zero;
           contents = ();
           amount = zero;
         }
@@ -2862,9 +2860,7 @@ module Registration_section = struct
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let open Script_typed_ir in
           let open Alpha_context in
-          let zero =
-            Contract.implicit_contract Signature.Public_key_hash.zero
-          in
+          let zero = `Implicit Signature.Public_key_hash.zero in
           let step_constants =
             {
               source = zero;

@@ -199,8 +199,7 @@ let assert_empty_ballots b loc =
   | [] -> return_unit
   | _ -> failwith "%s - Unexpected ballot list" loc
 
-let mk_contracts_from_pkh pkh_list =
-  List.map Contract.implicit_contract pkh_list
+let mk_contracts_from_pkh pkh_list = List.map (fun c -> `Implicit c) pkh_list
 
 (* get the list of delegates and the list of their voting power from listings *)
 let get_delegates_and_power_from_listings b =

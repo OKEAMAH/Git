@@ -391,11 +391,7 @@ let init_gen tup ?rng_state ?commitments ?(initial_balances = [])
     ?tx_rollup_sunset_level ?tx_rollup_origination_size ?sc_rollup_enable () =
   let n = tup_n tup in
   let accounts = Account.generate_accounts ?rng_state ~initial_balances n in
-  let contracts =
-    List.map
-      (fun (a, _) -> Alpha_context.Contract.implicit_contract Account.(a.pkh))
-      accounts
-  in
+  let contracts = List.map (fun (a, _) -> `Implicit Account.(a.pkh)) accounts in
   Block.genesis
     ?commitments
     ?consensus_threshold
@@ -428,11 +424,7 @@ let init3 = init_gen T3
 let init_with_constants_gen tup constants =
   let n = tup_n tup in
   let accounts = Account.generate_accounts n in
-  let contracts =
-    List.map
-      (fun (a, _) -> Alpha_context.Contract.implicit_contract Account.(a.pkh))
-      accounts
-  in
+  let contracts = List.map (fun (a, _) -> `Implicit Account.(a.pkh)) accounts in
   let open Tezos_protocol_alpha_parameters in
   let bootstrap_accounts =
     List.map
