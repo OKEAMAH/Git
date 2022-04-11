@@ -97,6 +97,8 @@ module Kind = struct
 
   type sc_rollup_publish = Sc_rollup_publish_kind
 
+  type das_slot_header = Das_slot_header_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -120,6 +122,7 @@ module Kind = struct
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
     | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
+    | Das_slot_header_manager_kind : das_slot_header manager
 end
 
 type 'a consensus_operation_type =
@@ -372,6 +375,10 @@ and _ manager_operation =
       commitment : Sc_rollup_repr.Commitment.t;
     }
       -> Kind.sc_rollup_publish manager_operation
+  | Das_slot_header : {
+      slot : Das_slot_repr.t;
+    }
+      -> Kind.das_slot_header manager_operation
 
 and counter = Z.t
 
@@ -398,6 +405,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Sc_rollup_add_messages _ -> Kind.Sc_rollup_add_messages_manager_kind
   | Sc_rollup_cement _ -> Kind.Sc_rollup_cement_manager_kind
   | Sc_rollup_publish _ -> Kind.Sc_rollup_publish_manager_kind
+  | Das_slot_header _ -> Kind.Das_slot_header_manager_kind
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -480,6 +488,10 @@ let sc_rollup_operation_add_message_tag = sc_rollup_operation_tag_offset + 1
 let sc_rollup_operation_cement_tag = sc_rollup_operation_tag_offset + 2
 
 let sc_rollup_operation_publish_tag = sc_rollup_operation_tag_offset + 3
+
+let das_offset = 300
+
+let das_slot_header_tag = das_offset + 0
 
 module Encoding = struct
   open Data_encoding
@@ -960,6 +972,19 @@ module Encoding = struct
           inj =
             (fun (rollup, commitment) -> Sc_rollup_publish {rollup; commitment});
         }
+
+    let[@coq_axiom_with_reason "gadt"] das_slot_header_case =
+      MCase
+        {
+          tag = das_slot_header_tag;
+          name = "das_slot_header";
+          encoding = obj1 (req "das_slot" Das_slot_repr.encoding);
+          select =
+            (function
+            | Manager (Das_slot_header _ as op) -> Some op | _ -> None);
+          proj = (function Das_slot_header {slot} -> slot);
+          inj = (fun slot -> Das_slot_header {slot});
+        }
   end
 
   type 'b case =
@@ -1320,6 +1345,11 @@ module Encoding = struct
       sc_rollup_operation_publish_tag
       Manager_operations.sc_rollup_publish_case
 
+  let das_slot_header_case =
+    make_manager_case
+      das_slot_header_tag
+      Manager_operations.das_slot_header_case
+
   let contents_encoding =
     let make (Case {tag; name; encoding; select; proj; inj}) =
       case
@@ -1574,6 +1604,8 @@ let equal_manager_operation_kind :
   | (Sc_rollup_cement _, _) -> None
   | (Sc_rollup_publish _, Sc_rollup_publish _) -> Some Eq
   | (Sc_rollup_publish _, _) -> None
+  | (Das_slot_header _, Das_slot_header _) -> Some Eq
+  | (Das_slot_header _, _) -> None
 
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =

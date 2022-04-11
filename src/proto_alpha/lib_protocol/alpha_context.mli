@@ -2878,6 +2878,8 @@ module Kind : sig
 
   type sc_rollup_publish = Sc_rollup_publish_kind
 
+  type das_slot_header = Das_slot_header_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -2901,6 +2903,7 @@ module Kind : sig
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
     | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
+    | Das_slot_header_manager_kind : das_slot_header manager
 end
 
 type 'a consensus_operation_type =
@@ -3101,6 +3104,10 @@ and _ manager_operation =
       commitment : Sc_rollup.Commitment.t;
     }
       -> Kind.sc_rollup_publish manager_operation
+  | Das_slot_header : {
+      slot : Das.Slot.t;
+    }
+      -> Kind.das_slot_header manager_operation
 
 and counter = Z.t
 

@@ -126,6 +126,8 @@ module Kind : sig
 
   type sc_rollup_publish = Sc_rollup_publish_kind
 
+  type das_slot_header = Das_slot_header_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -149,6 +151,7 @@ module Kind : sig
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
     | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
+    | Das_slot_header_manager_kind : das_slot_header manager
 end
 
 type 'a consensus_operation_type =
@@ -441,6 +444,10 @@ and _ manager_operation =
       commitment : Sc_rollup_repr.Commitment.t;
     }
       -> Kind.sc_rollup_publish manager_operation
+  | Das_slot_header : {
+      slot : Das_slot_repr.t;
+    }
+      -> Kind.das_slot_header manager_operation
 
 (** Counters are used as anti-replay protection mechanism in
     manager operations: each manager account stores a counter and
@@ -582,6 +589,8 @@ module Encoding : sig
 
   val sc_rollup_publish_case : Kind.sc_rollup_publish Kind.manager case
 
+  val das_slot_header_case : Kind.das_slot_header Kind.manager case
+
   module Manager_operations : sig
     type 'b case =
       | MCase : {
@@ -638,5 +647,7 @@ module Encoding : sig
     val sc_rollup_cement_case : Kind.sc_rollup_cement case
 
     val sc_rollup_publish_case : Kind.sc_rollup_publish case
+
+    val das_slot_header_case : Kind.das_slot_header case
   end
 end

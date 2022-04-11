@@ -275,6 +275,10 @@ and _ successful_manager_operation_result =
       staked_hash : Sc_rollup.Commitment_hash.t;
     }
       -> Kind.sc_rollup_publish successful_manager_operation_result
+  | Das_slot_header_result : {
+      consumed_gas : Gas.Arith.fp;
+    }
+      -> Kind.das_slot_header successful_manager_operation_result
 
 and packed_successful_manager_operation_result =
   | Successful_manager_result :
