@@ -106,6 +106,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    carbonated_map_costs.mli carbonated_map_costs.ml
    carbonated_map.mli carbonated_map.ml
    das_slot_repr.mli das_slot_repr.ml
+   das_state_repr.mli das_state_repr.ml
    raw_context_intf.ml
    raw_context.mli raw_context.ml
    storage_costs.mli storage_costs.ml
@@ -296,6 +297,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    carbonated_map_costs.mli carbonated_map_costs.ml
    carbonated_map.mli carbonated_map.ml
    das_slot_repr.mli das_slot_repr.ml
+   das_state_repr.mli das_state_repr.ml
    raw_context_intf.ml
    raw_context.mli raw_context.ml
    storage_costs.mli storage_costs.ml
@@ -486,6 +488,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    carbonated_map_costs.mli carbonated_map_costs.ml
    carbonated_map.mli carbonated_map.ml
    das_slot_repr.mli das_slot_repr.ml
+   das_state_repr.mli das_state_repr.ml
    raw_context_intf.ml
    raw_context.mli raw_context.ml
    storage_costs.mli storage_costs.ml
@@ -698,6 +701,7 @@ include Tezos_raw_protocol_alpha.Main
    Carbonated_map_costs
    Carbonated_map
    Das_slot_repr
+   Das_state_repr
    Raw_context_intf
    Raw_context
    Storage_costs
@@ -929,6 +933,7 @@ include Tezos_raw_protocol_alpha.Main
    carbonated_map_costs.mli carbonated_map_costs.ml
    carbonated_map.mli carbonated_map.ml
    das_slot_repr.mli das_slot_repr.ml
+   das_state_repr.mli das_state_repr.ml
    raw_context_intf.ml
    raw_context.mli raw_context.ml
    storage_costs.mli storage_costs.ml

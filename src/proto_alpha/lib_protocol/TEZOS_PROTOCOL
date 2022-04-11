@@ -81,6 +81,7 @@
         "Carbonated_map_costs",
         "Carbonated_map",
 	"Das_slot_repr",
+	"Das_state_repr",
 
         "Raw_context_intf",
         "Raw_context",
