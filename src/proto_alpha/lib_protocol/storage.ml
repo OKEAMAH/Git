@@ -1647,3 +1647,35 @@ module Sc_rollup = struct
         let encoding = Sc_rollup_repr.Staker.encoding
       end)
 end
+
+module Das = struct
+  module Raw_context =
+    Make_subcontext (Registered) (Raw_context)
+      (struct
+        let name = ["das"]
+      end)
+
+  module Level_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["level"]
+         end))
+         (Make_index (Raw_level_repr.Index))
+
+  (* DAS/FIXME:
+
+     This is only for prototyping. Probably something smarter would be
+     to index each header directly. *)
+  module Slot_headers =
+    Level_context.Make_map
+      (struct
+        let name = ["slots"]
+      end)
+      (struct
+        type t = Das_slot_repr.Header.t option list
+
+        let encoding =
+          Data_encoding.(list (option Das_slot_repr.Header.encoding))
+      end)
+end
