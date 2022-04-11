@@ -339,6 +339,14 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         Sc_rollup.Address.pp
         rollup
         pp_result
+        result
+  | Das_slot_header {slot} ->
+      Format.fprintf
+        ppf
+        "@[<v 2>Publish slot %a%a@]"
+        Das.Slot.pp
+        slot
+        pp_result
         result) ;
 
   Format.fprintf ppf "@]"
@@ -712,6 +720,9 @@ let pp_manager_operation_contents_and_result ppf
       Sc_rollup.Game.pp_status
       status
   in
+  let pp_das_slot_header_result (Das_slot_header_result {consumed_gas}) =
+    Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas
+  in
   let pp_result (type kind) ppf (result : kind manager_operation_result) =
     Format.fprintf ppf "@," ;
     match result with
@@ -913,6 +924,11 @@ let pp_manager_operation_contents_and_result ppf
           "This operation publishing a commitment on a smart contract rollup \
            was successfully applied" ;
         pp_sc_rollup_publish_result op
+    | Applied (Das_slot_header_result _ as op) ->
+        Format.fprintf
+          ppf
+          "This operation publishing a slot header was successfully applied" ;
+        pp_das_slot_header_result op
     | Backtracked ((Sc_rollup_publish_result _ as op), _errs) ->
         Format.fprintf
           ppf
@@ -946,6 +962,12 @@ let pp_manager_operation_contents_and_result ppf
            rollup by timeout was BACKTRACKED, its expected effects (as follow) \
            were NOT applied.@]" ;
         pp_sc_rollup_timeout_result op
+    | Backtracked ((Das_slot_header_result _ as op), _errs) ->
+        Format.fprintf
+          ppf
+          "@[<v 0>This operation publishing a slot header was BACKTRACKED, its \
+           expected effects (as follow) were NOT applied.@]" ;
+        pp_das_slot_header_result op
   in
 
   Format.fprintf

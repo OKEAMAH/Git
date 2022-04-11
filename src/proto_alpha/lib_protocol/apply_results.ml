@@ -249,6 +249,10 @@ type _ successful_manager_operation_result =
       status : Sc_rollup.Game.status;
     }
       -> Kind.sc_rollup_timeout successful_manager_operation_result
+  | Das_slot_header_result : {
+      consumed_gas : Gas.Arith.fp;
+    }
+      -> Kind.das_slot_header successful_manager_operation_result
 
 let migration_origination_result_to_successful_manager_operation_result
     ({
@@ -1338,6 +1342,9 @@ let equal_manager_kind :
   | Kind.Sc_rollup_timeout_manager_kind, Kind.Sc_rollup_timeout_manager_kind ->
       Some Eq
   | Kind.Sc_rollup_timeout_manager_kind, _ -> None
+  | Kind.Das_slot_header_manager_kind, Kind.Das_slot_header_manager_kind ->
+      Some Eq
+  | Kind.Das_slot_header_manager_kind, _ -> None
 
 module Encoding = struct
   type 'kind case =
@@ -2639,6 +2646,23 @@ let kind_equal :
         } ) ->
       Some Eq
   | Manager_operation {operation = Sc_rollup_timeout _; _}, _ -> None
+  | ( Manager_operation {operation = Das_slot_header _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Failed (Alpha_context.Kind.Das_slot_header_manager_kind, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Das_slot_header _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Skipped Alpha_context.Kind.Das_slot_header_manager_kind;
+          _;
+        } ) ->
+      Some Eq
+  | Manager_operation {operation = Das_slot_header _; _}, _ -> None
 
 let rec kind_equal_list :
     type kind kind2.

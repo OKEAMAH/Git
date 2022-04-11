@@ -130,6 +130,8 @@ module Kind : sig
 
   type sc_rollup_timeout = Sc_rollup_timeout_kind
 
+  type das_slot_header = Das_slot_header_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -155,6 +157,7 @@ module Kind : sig
     | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
     | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
     | Sc_rollup_timeout_manager_kind : sc_rollup_timeout manager
+    | Das_slot_header_manager_kind : das_slot_header manager
 end
 
 type 'a consensus_operation_type =
@@ -458,6 +461,10 @@ and _ manager_operation =
       stakers : Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t;
     }
       -> Kind.sc_rollup_timeout manager_operation
+  | Das_slot_header : {
+      slot : Das_slot_repr.t;
+    }
+      -> Kind.das_slot_header manager_operation
 
 (** Counters are used as anti-replay protection mechanism in
     manager operations: each manager account stores a counter and
@@ -603,6 +610,8 @@ module Encoding : sig
 
   val sc_rollup_timeout_case : Kind.sc_rollup_timeout Kind.manager case
 
+  val das_slot_header_case : Kind.das_slot_header Kind.manager case
+
   module Manager_operations : sig
     type 'b case =
       | MCase : {
@@ -663,5 +672,7 @@ module Encoding : sig
     val sc_rollup_refute_case : Kind.sc_rollup_refute case
 
     val sc_rollup_timeout_case : Kind.sc_rollup_timeout case
+
+    val das_slot_header_case : Kind.das_slot_header case
   end
 end

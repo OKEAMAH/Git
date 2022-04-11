@@ -1232,13 +1232,14 @@ let apply_external_manager_operation_content :
     source:public_key_hash ->
     chain_id:Chain_id.t ->
     gas_consumed_in_precheck:Gas.cost option ->
+    fee:Tez.t ->
     kind manager_operation ->
     (context
     * kind successful_manager_operation_result
     * Script_typed_ir.packed_internal_operation list)
     tzresult
     Lwt.t =
- fun ctxt mode ~source ~chain_id ~gas_consumed_in_precheck operation ->
+ fun ctxt mode ~source ~chain_id ~gas_consumed_in_precheck ~fee operation ->
   let source_contract = Contract.Implicit source in
   prepare_apply_manager_operation_content
     ~ctxt
@@ -1771,6 +1772,11 @@ let apply_external_manager_operation_content :
       let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
       let result = Sc_rollup_timeout_result {status; consumed_gas} in
       return (ctxt, result, [])
+  | Das_slot_header {slot} ->
+      Das_apply.apply_publish_slot_header ctxt slot fee >>?= fun () ->
+      let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
+      let result = Das_slot_header_result {consumed_gas} in
+      return (ctxt, result, [])
 
 type success_or_failure = Success of context | Failure
 
@@ -1977,7 +1983,10 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
       >>?= fun () -> return ctxt
   | Sc_rollup_originate _ | Sc_rollup_add_messages _ | Sc_rollup_cement _
   | Sc_rollup_publish _ | Sc_rollup_refute _ | Sc_rollup_timeout _ ->
-      assert_sc_rollup_feature_enabled ctxt >|=? fun () -> ctxt)
+      assert_sc_rollup_feature_enabled ctxt >|=? fun () -> ctxt
+  | Das_slot_header {slot} ->
+      Das_apply.validate_publish_slot_header ctxt slot >>?= fun () ->
+      return ctxt)
   >>=? fun ctxt ->
   Contract.increment_counter ctxt source >>=? fun ctxt ->
   Token.transfer ctxt (`Contract source_contract) `Block_fees fee
@@ -2128,6 +2137,7 @@ let burn_storage_fees :
   | Sc_rollup_publish_result _ -> return (ctxt, storage_limit, smopr)
   | Sc_rollup_refute_result _ -> return (ctxt, storage_limit, smopr)
   | Sc_rollup_timeout_result _ -> return (ctxt, storage_limit, smopr)
+  | Das_slot_header_result _ -> return (ctxt, storage_limit, smopr)
 
 let apply_manager_contents (type kind) ctxt mode chain_id
     ~gas_consumed_in_precheck (op : kind Kind.manager contents) :
@@ -2141,6 +2151,7 @@ let apply_manager_contents (type kind) ctxt mode chain_id
                                    operation;
                                    gas_limit;
                                    storage_limit;
+                                   fee;
                                    _;
                                  }) =
     op
@@ -2154,6 +2165,7 @@ let apply_manager_contents (type kind) ctxt mode chain_id
     ~source
     ~gas_consumed_in_precheck
     ~chain_id
+    ~fee
     operation
   >>= function
   | Ok (ctxt, operation_results, internal_operations) -> (

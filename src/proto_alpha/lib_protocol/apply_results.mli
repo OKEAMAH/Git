@@ -285,6 +285,10 @@ and _ successful_manager_operation_result =
       status : Sc_rollup.Game.status;
     }
       -> Kind.sc_rollup_timeout successful_manager_operation_result
+  | Das_slot_header_result : {
+      consumed_gas : Gas.Arith.fp;
+    }
+      -> Kind.das_slot_header successful_manager_operation_result
 
 and packed_successful_manager_operation_result =
   | Successful_manager_result :
