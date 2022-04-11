@@ -885,6 +885,17 @@ let prepare_first_block ~level ~timestamp ctxt =
       add_constants ctxt param.constants >|= ok
   | Jakarta_013 ->
       get_previous_protocol_constants ctxt >>= fun c ->
+      let das =
+        Constants_parametric_repr.
+          {
+            number_of_slots = 256;
+            number_of_shards = 2048;
+            challenge_period = 64;
+            endorsement_lag = 2;
+            challenge_timeout = 16;
+            availibility_threshold = 50;
+          }
+      in
       let constants =
         Constants_parametric_repr.
           {
@@ -949,6 +960,7 @@ let prepare_first_block ~level ~timestamp ctxt =
             tx_rollup_rejection_max_proof_size =
               c.tx_rollup_rejection_max_proof_size;
             tx_rollup_sunset_level = c.tx_rollup_sunset_level;
+            das;
             sc_rollup_enable = false;
             (* The following value is chosen to prevent spam. *)
             sc_rollup_origination_size = 6_314;
