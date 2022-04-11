@@ -82,6 +82,7 @@
         "Carbonated_map",
 	"Das_slot_repr",
 	"Das_state_repr",
+	"Das_endorsement_repr",	
 
         "Raw_context_intf",
         "Raw_context",
