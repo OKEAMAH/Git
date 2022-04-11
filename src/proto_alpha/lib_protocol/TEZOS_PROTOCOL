@@ -68,7 +68,8 @@
         "Tx_rollup_state_repr",
 
 	"Das_slot_repr",
-
+	"Das_state_repr",
+	
         "Bond_id_repr",
         "Vote_repr",
         "Liquidity_baking_repr",

@@ -92,6 +92,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_errors_repr.ml
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    das_slot_repr.mli das_slot_repr.ml
+   das_state_repr.mli das_state_repr.ml
    bond_id_repr.mli bond_id_repr.ml
    vote_repr.mli vote_repr.ml
    liquidity_baking_repr.mli liquidity_baking_repr.ml
@@ -283,6 +284,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_errors_repr.ml
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    das_slot_repr.mli das_slot_repr.ml
+   das_state_repr.mli das_state_repr.ml
    bond_id_repr.mli bond_id_repr.ml
    vote_repr.mli vote_repr.ml
    liquidity_baking_repr.mli liquidity_baking_repr.ml
@@ -474,6 +476,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    tx_rollup_errors_repr.ml
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    das_slot_repr.mli das_slot_repr.ml
+   das_state_repr.mli das_state_repr.ml
    bond_id_repr.mli bond_id_repr.ml
    vote_repr.mli vote_repr.ml
    liquidity_baking_repr.mli liquidity_baking_repr.ml
@@ -687,6 +690,7 @@ include Tezos_raw_protocol_alpha.Main
    Tx_rollup_errors_repr
    Tx_rollup_state_repr
    Das_slot_repr
+   Das_state_repr
    Bond_id_repr
    Vote_repr
    Liquidity_baking_repr
@@ -919,6 +923,7 @@ include Tezos_raw_protocol_alpha.Main
    tx_rollup_errors_repr.ml
    tx_rollup_state_repr.mli tx_rollup_state_repr.ml
    das_slot_repr.mli das_slot_repr.ml
+   das_state_repr.mli das_state_repr.ml
    bond_id_repr.mli bond_id_repr.ml
    vote_repr.mli vote_repr.ml
    liquidity_baking_repr.mli liquidity_baking_repr.ml
