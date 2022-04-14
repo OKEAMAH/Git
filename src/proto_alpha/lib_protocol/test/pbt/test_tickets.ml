@@ -189,42 +189,42 @@ let from_ty_ex_c : 'v Script_typed_ir.ty_ex_c -> ex_ty = function
 let pair_t ?(location = Micheline.dummy_location) ty1 ty2 =
   match Script_typed_ir.pair_t location ty1 ty2 with
   | Ok pair_ty -> pair_ty
-  | Error _ -> assert false
+  | Error _ -> Stdlib.failwith "Cannot generate Pair"
 
 let union_t ?(location = Micheline.dummy_location) ty1 ty2 =
   match Script_typed_ir.union_t location ty1 ty2 with
   | Ok union_ty -> union_ty
-  | Error _ -> assert false
+  | Error _ -> Stdlib.failwith "Cannot generate Union"
 
 let option_t ?(location = Micheline.dummy_location) ty =
   match Script_typed_ir.option_t location ty with
   | Ok option_ty -> option_ty
-  | Error _ -> assert false
+  | Error _ -> Stdlib.failwith "Cannot generate Option"
 
 let list_t ?(location = Micheline.dummy_location) ty =
   match Script_typed_ir.list_t location ty with
   | Ok list_ty -> list_ty
-  | Error _ -> assert false
+  | Error _ -> Stdlib.failwith "Cannot generate List"
 
 let set_t ?(location = Micheline.dummy_location) ty =
   match Script_typed_ir.set_t location ty with
   | Ok set_ty -> set_ty
-  | Error _ -> assert false
+  | Error _ -> Stdlib.failwith "Cannot generate Set"
 
 let map_t ?(location = Micheline.dummy_location) cty ty =
   match Script_typed_ir.map_t location cty ty with
   | Ok map_ty -> map_ty
-  | Error _ -> assert false
+  | Error _ -> Stdlib.failwith "Cannot generate Map"
 
 let ticket_t ?(location = Micheline.dummy_location) ty =
   match Script_typed_ir.ticket_t location ty with
   | Ok ticket_ty -> ticket_ty
-  | Error _ -> assert false
+  | Error _ -> Stdlib.failwith "Cannot generate Ticket"
 
 let big_map_t ?(location = Micheline.dummy_location) cty ty =
   match Script_typed_ir.big_map_t location cty ty with
   | Ok map_ty -> map_ty
-  | Error _ -> assert false
+  | Error _ -> Stdlib.failwith "Cannot generate Bigmap"
 
 let rec to_string : ex_ty -> string = function
   | Ex_ty ty -> (
@@ -244,7 +244,7 @@ let rec to_string : ex_ty -> string = function
       | Key_hash_t -> "key_hash"
       | Key_t -> "key"
       | Tx_rollup_l2_address_t -> "tx_rollup_l2_address"
-      | Pair_t (ty1, ty2, _, YesYes) ->
+      | Pair_t (ty1, ty2, _, _) ->
           "(pair " ^ to_string (Ex_ty ty1) ^ " " ^ to_string (Ex_ty ty2) ^ ")"
       | Union_t (ty1, ty2, _, _) ->
           "(union " ^ to_string (Ex_ty ty1) ^ " " ^ to_string (Ex_ty ty2) ^ ")"
@@ -257,7 +257,7 @@ let rec to_string : ex_ty -> string = function
       | Big_map_t (ty1, ty2, _) ->
           "(big_map " ^ to_string (Ex_ty ty1) ^ " " ^ to_string (Ex_ty ty2)
           ^ ")"
-      | _ -> (* TODO : raise error here ? *) "Not supported")
+      | _ -> "Not supported")
 
 (** Existential wrapper over some test type and a whitness. *)
 type ex_val = Ex_val : ('a, 'b) Script_typed_ir.ty * 'a -> ex_val
@@ -328,7 +328,7 @@ let rec ex_ty_generator :
     allow_bigmap:bool -> max_depth:int -> ex_ty Context_gen.t =
  fun ~allow_bigmap ~max_depth ->
   let return_ex x = Context_gen.return (Ex_ty x) in
-  let return_ex_from_ty_ex_c x = Context_gen.return (from_ty_ex_c x) in
+  let _return_ex_from_ty_ex_c x = Context_gen.return (from_ty_ex_c x) in
 
   let open Monad.Syntax (Context_gen) in
   Context_gen.oneof
@@ -354,46 +354,46 @@ let rec ex_ty_generator :
         ]
        @
        if max_depth > 0 then
-         [
-           (let* (Ex_ty ty1) =
-              ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
-            in
-            let* (Ex_ty ty2) =
-              ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
-            in
-            return_ex_from_ty_ex_c @@ pair_t ty1 ty2);
-           (let* (Ex_ty ty1) =
-              ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
-            in
-            let* (Ex_ty ty2) =
-              ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
-            in
-            return_ex_from_ty_ex_c @@ union_t ty1 ty2);
-           (let* (Ex_ty ty) =
-              ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
-            in
-            return_ex @@ option_t ty);
-           (let* (Ex_ty ty) =
-              ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
-            in
-            return_ex @@ list_t ty);
-           (let* (Ex_comparable_ty ty) =
-              ex_comparable_ty_generator ~max_depth:(max_depth - 1)
-            in
-            return_ex @@ set_t ty);
-           (let* (Ex_comparable_ty ty) =
-              ex_comparable_ty_generator ~max_depth:(max_depth - 1)
-            in
-            return_ex @@ ticket_t ty);
-           (let* (Ex_comparable_ty ty1) =
-              ex_comparable_ty_generator ~max_depth:(max_depth - 1)
-            in
-            let* (Ex_ty ty2) =
-              ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
-            in
-            return_ex @@ map_t ty1 ty2);
-         ]
-         @
+         (*[
+             (let* (Ex_ty ty1) =
+                ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
+              in
+              let* (Ex_ty ty2) =
+                ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
+              in
+              return_ex_from_ty_ex_c @@ pair_t ty1 ty2);
+             (let* (Ex_ty ty1) =
+                ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
+              in
+              let* (Ex_ty ty2) =
+                ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
+              in
+              return_ex_from_ty_ex_c @@ union_t ty1 ty2);
+             (let* (Ex_ty ty) =
+                ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
+              in
+              return_ex @@ option_t ty);
+             (let* (Ex_ty ty) =
+                ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
+              in
+              return_ex @@ list_t ty);
+             (let* (Ex_comparable_ty ty) =
+                ex_comparable_ty_generator ~max_depth:(max_depth - 1)
+              in
+              return_ex @@ set_t ty);
+             (let* (Ex_comparable_ty ty) =
+                ex_comparable_ty_generator ~max_depth:(max_depth - 1)
+              in
+              return_ex @@ ticket_t ty);
+             (let* (Ex_comparable_ty ty1) =
+                ex_comparable_ty_generator ~max_depth:(max_depth - 1)
+              in
+              let* (Ex_ty ty2) =
+                ex_ty_generator ~allow_bigmap ~max_depth:(max_depth - 1)
+              in
+              return_ex @@ map_t ty1 ty2);
+           ]
+           @*)
          if allow_bigmap then
            [
              (let* (Ex_comparable_ty ty1) =
@@ -697,8 +697,12 @@ let ty_generator :
         let* assoc_list = small_assoc_list ty1 ty2' in
         big_map_of_list_gen_t ty1 ty2 assoc_list
     | Address_t -> address ()
-    | Never_t -> (* we never generate type Never_t *) assert false
-    | _ -> (* we do not generate any other type *) assert false
+    | Never_t ->
+        (* we never generate type Never_t *)
+        Stdlib.failwith "Generating value of type never"
+    | _ ->
+        (* we do not generate any other type *)
+        Stdlib.failwith "Generating unsupported type"
   (* Generate a list with all unique elements. *)
   and small_unique_list :
       type k. k Script_typed_ir.comparable_ty -> k list Context_gen.t =
@@ -842,6 +846,24 @@ let unparse_data_to_string :
   let* node = unparse_data_readable ty x in
   Context_monad.return @@ string_of_node node
 
+(** Unparse and parse back a Michelson type. *)
+let unparse_and_parse ty =
+  Context_monad.lift_right @@ fun ctxt ->
+  let open Lwt_result_syntax in
+  let*? (node, ctxt) =
+    Script_ir_translator.unparse_ty ~loc:Micheline.dummy_location ctxt ty
+  in
+  let open Lwt_syntax in
+  let+ () = Lwt_io.fprintf Lwt_io.stdout "%s\n" (to_string (Ex_ty ty)) in
+  Script_ir_translator.parse_ty
+    ctxt
+    ~legacy:false
+    ~allow_lazy_storage:true
+    ~allow_operation:false
+    ~allow_contract:true
+    ~allow_ticket:true
+    node
+
 (** A fixed seed used to test the generator framework itself. *)
 let test_seed = 5471827389070247L
 
@@ -973,6 +995,10 @@ let qcheck_make_stateful :
       @@ Lwt.map (fun x -> snd x)
       @@ Context_monad.run_lwt_exn ctxt (property ex))
 
+let pp_ir_ex_ty f (Script_ir_translator.Ex_ty ty) =
+  let s = to_string @@ Ex_ty ty in
+  Format.pp_print_string f s
+
 let pp_bal f kvs_balance =
   Format.pp_print_string f (show_balance_table @@ normalize_balances kvs_balance)
 
@@ -1045,6 +1071,23 @@ let test_sanity =
           let* str = unparse_data_to_string ty x in
           Context_monad.return
           @@ Test_helpers.qcheck_eq ~pp:Format.pp_print_string str str);
+      qcheck_make_stateful
+        ~name:"ex_ty_generator works"
+        ~generator:(ex_ty_generator ~allow_bigmap:true ~max_depth:5)
+        ~property:(fun ex ->
+          let str = to_string ex in
+          Context_monad.return
+          @@ Test_helpers.qcheck_eq ~pp:Format.pp_print_string str str);
+      qcheck_make_stateful
+        ~name:"parsing and unparsing leads to identity"
+        ~generator:(ex_ty_generator ~allow_bigmap:false ~max_depth:2)
+        ~property:(fun ex ->
+          let open Monad.Syntax (Context_monad) in
+          let (Ex_ty ty) = ex in
+          let expected = Script_ir_translator.Ex_ty ty in
+          let* actual = unparse_and_parse ty in
+          Context_monad.return
+          @@ Test_helpers.qcheck_eq ~pp:pp_ir_ex_ty expected actual);
     ]
 
 let test_storage_unchanged =
@@ -1054,11 +1097,7 @@ let test_storage_unchanged =
         ~name:"storage unchanged"
         ~generator:
           (let open Monad.Syntax (Context_gen) in
-          let+ storage =
-            (*
-               ex_val_generator ~allow_bigmap:false ~max_depth:5
-               *)
-            ex_val_generator ~allow_bigmap:false ~max_depth:3
+          let+ storage = ex_val_generator ~allow_bigmap:false ~max_depth:3
           and+ param = Context_gen.return (Ex_val (Unit_t, ())) in
           (storage, param))
         ~property:(fun (ex_storage, ex_param) ->
@@ -1262,19 +1301,9 @@ let test_drop_lazy =
                new_balances);
     ]
 
-let () = print_endline "Hello world"
-
 let tests =
   List.concat
-    [
-      test_stateless;
-      test_return_generators;
-      test_stateful;
-      test_sanity;
-      test_storage_unchanged;
-      test_drop_from_strict;
-      test_drop_lazy;
-    ]
+    [test_stateless; test_return_generators; test_stateful; test_sanity]
 
 let () =
   Lwt_main.run
