@@ -189,9 +189,6 @@ let freeze_deposits ?(origin = Receipt_repr.Block_application) ctxt ~new_cycle
     delegates_to_remove
     (ctxt, balance_updates)
 
-let freeze_deposits_do_not_call_except_for_migration =
-  freeze_deposits ~origin:Protocol_migration
-
 let cycle_end ctxt last_cycle unrevealed_nonces =
   let new_cycle = Cycle_repr.add last_cycle 1 in
   Delegate_sampler.select_new_distribution_at_cycle_end ctxt ~new_cycle
@@ -212,7 +209,7 @@ let cycle_end ctxt last_cycle unrevealed_nonces =
   update_activity ctxt last_cycle >>=? fun (ctxt, deactivated_delagates) ->
   return (ctxt, balance_updates, deactivated_delagates)
 
-let init_first_cycles ctxt =
+let init_first_cycles ctxt ~origin =
   let preserved = Constants_storage.preserved_cycles ctxt in
   List.fold_left_es
     (fun ctxt c ->
@@ -223,3 +220,6 @@ let init_first_cycles ctxt =
       Delegate_sampler.select_distribution_for_cycle ctxt cycle)
     ctxt
     Misc.(0 --> preserved)
+  >>=? fun ctxt ->
+  let cycle = (Raw_context.current_level ctxt).cycle in
+  freeze_deposits ~origin ~new_cycle:cycle ~balance_updates:[] ctxt
