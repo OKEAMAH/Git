@@ -2668,18 +2668,19 @@ let check_denunciation_age ctxt kind given_level =
        {kind; level = given_level; last_cycle = last_slashable_cycle})
 
 let punish_delegate ctxt delegate level mistake mk_result ~payload_producer =
-  let already_slashed, punish =
+  let check_and_record_already_slashed, punish =
     match mistake with
     | `Double_baking ->
-        ( Delegate.already_slashed_for_double_baking,
+        ( Delegate.check_and_record_already_slashed_for_double_baking,
           Delegate.punish_double_baking )
     | `Double_endorsing ->
-        ( Delegate.already_slashed_for_double_endorsing,
+        ( Delegate.check_and_record_already_slashed_for_double_endorsing,
           Delegate.punish_double_endorsing )
   in
-  already_slashed ctxt delegate level >>=? fun slashed ->
+  check_and_record_already_slashed ctxt delegate level
+  >>=? fun (ctxt, slashed) ->
   fail_when slashed Unrequired_denunciation >>=? fun () ->
-  punish ctxt delegate level >>=? fun (ctxt, burned, punish_balance_updates) ->
+  punish ctxt delegate >>=? fun (ctxt, burned, punish_balance_updates) ->
   (match Tez.(burned /? 2L) with
   | Ok reward ->
       Token.transfer
