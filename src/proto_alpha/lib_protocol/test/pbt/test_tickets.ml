@@ -38,8 +38,8 @@ module Monad = Qcheck_extra.Monad
 module Identity = Qcheck_extra.Identity
 module Script_typed_ir = Protocol.Script_typed_ir
 module Script_ir_translator = Protocol.Script_ir_translator
-module Env = Protocol.Environment
 module Script_comparable = Protocol.Script_comparable
+module Env = Protocol.Environment
 module Gen = Qcheck_extra.Stateful_gen.Default
 open Protocol.Alpha_context
 
@@ -345,11 +345,11 @@ let rec ex_ty_generator :
           return_ex Bytes_t;
           return_ex Signature_t;
           return_ex Chain_id_t;
+          return_ex Tx_rollup_l2_address_t;
           (* TODO
              return_ex Address_t;
              return_ex Key_hash_t;
              return_ex Key_t;
-             return_ex Tx_rollup_l2_address_key_t;
           *)
         ]
        @
@@ -482,6 +482,62 @@ let secret_key ?(algo = Tezos_crypto.Signature.Ed25519) ?(seed_length = 32) () =
   let+ (_, _, sk) = key_triple ~algo ~seed_length () in
   sk
 
+let bls_keys_with_tx_rollup_address ?(seed_length = 32) () =
+  let open Monad.Syntax (Context_gen) in
+  let+ seed = Context_gen.bytes_sequence seed_length in
+  let secret_key = Bls12_381.Signature.generate_sk seed in
+  let public_key = Bls12_381.Signature.MinPk.derive_pk secret_key in
+  let tx_rollup_address =
+    Protocol.Indexable.value
+    @@ Protocol.Tx_rollup_l2_address.of_bls_pk public_key
+  in
+  (secret_key, public_key, tx_rollup_address)
+
+let tx_rollup_l2_address ?(seed_length = 32) () =
+  let open Monad.Syntax (Context_gen) in
+  let+ (_, _, tx_rollup_address) =
+    bls_keys_with_tx_rollup_address ~seed_length ()
+  in
+  tx_rollup_address
+
+(* Use sensible names for entrypoints - taken from the interface of FA1.2.*)
+let entrypoint () =
+  let entrypoints =
+    ["transfer"; "approve"; "getAllowance"; "getBalance"; "getTotalSupply"]
+  in
+  list_lift
+  @@ List.map Protocol.Entrypoint_repr.of_string_strict_exn entrypoints
+
+let destination ?(max_origination_index = 64) () =
+  (* Ugly as we do not expose a method to set the origination nonce directly in the protocol. *)
+  let rec build_origination_nonce current_nonce index =
+    if Int32.(index <= zero) then current_nonce
+    else
+      let new_nonce = Origination_nonce.Internal_for_tests.incr current_nonce in
+      build_origination_nonce new_nonce (Int32.sub index Int32.one)
+  in
+
+  let open Monad.Syntax (Context_gen) in
+  (* We can use a zero hash, and then randomise the origination_index to
+     randomise the generated contract address
+  *)
+  let operation_hash = Env.Operation_hash.zero in
+  let+ origination_index = Context_gen.nat_less_than max_origination_index in
+  let origination_index = Int32.of_int origination_index in
+  let origination_nonce =
+    build_origination_nonce
+      (Origination_nonce.Internal_for_tests.initial operation_hash)
+      origination_index
+  in
+  Destination.Contract
+    (Contract.Internal_for_tests.originated_contract origination_nonce)
+
+let address ?(max_origination_index = 64) () =
+  let open Monad.Syntax (Context_gen) in
+  let* destination = destination ~max_origination_index () in
+  let+ entrypoint = entrypoint () in
+  ({destination; entrypoint} : Protocol.Script_typed_ir.address)
+
 (* Generate one random signed message *)
 let signature ?(algo = Tezos_crypto.Signature.Ed25519) ?(seed_length = 32) () =
   let open Monad.Syntax (Context_gen) in
@@ -494,26 +550,52 @@ let to_token ~contents_type ~contents ~ticketer =
   @@ Context_monad.return
        (Protocol.Ticket_token.Ex_token {contents_type; contents; ticketer})
 
-let adjust_balance ~ty ~ticketer ~owner ~contents =
-  let make_ticket_hash ctxt =
-    Ticket_hash.make ctxt ~ticketer ~ty ~contents ~owner
+let make_ticket_hash ?(loc = Micheline.dummy_location) ctxt ~ticketer
+    ~(ty : ('a, _) Script_typed_ir.ty) ~contents ~owner =
+  let open Lwt_result_syntax in
+  let*? (ty_unparsed, ctxt) = Script_ir_translator.unparse_ty ~loc ctxt ty in
+  let ty_unparsed = Script.strip_annotations ty_unparsed in
+  let* (contents, ctxt) =
+    Script_ir_translator.unparse_comparable_data
+      ~loc
+      ctxt
+      Script_ir_translator.Optimized_legacy
+      ty
+      contents
   in
-  let open Error_monad.Lwt_result_syntax in
+  let ticketer_address =
+    Script_typed_ir.
+      {destination = Contract ticketer; entrypoint = Entrypoint.default}
+  in
+  let owner_address =
+    Script_typed_ir.{destination = owner; entrypoint = Entrypoint.default}
+  in
+  let* (ticketer, ctxt) =
+    Script_ir_translator.unparse_data
+      ctxt
+      Script_ir_translator.Optimized_legacy
+      Script_typed_ir.address_t
+      ticketer_address
+  in
+  let* (owner, ctxt) =
+    Script_ir_translator.unparse_data
+      ctxt
+      Script_ir_translator.Optimized_legacy
+      Script_typed_ir.address_t
+      owner_address
+  in
+  let*? x = Ticket_hash.make ctxt ~ticketer ~ty:ty_unparsed ~contents ~owner in
+  return x
+
+let adjust_balance ~(ty : ('a, _) Script_typed_ir.ty) ~ticketer ~owner ~contents
+    =
   Context_gen.lift @@ Context_monad.lift_right
   @@ fun ctxt ->
+  let open Lwt_result_syntax in
   (*let* () = Lwt_io.printl ("TODO DEBUG added ticket " ^ show_token token))  in *)
-  let* (hash, ctxt) = Lwt.return (make_ticket_hash ctxt) in
+  let* (hash, ctxt) = make_ticket_hash ctxt ~ticketer ~ty ~contents ~owner in
   Ticket_balance.adjust_balance ctxt hash ~delta:Z.one
 
-(** Given a type, generate a random value of that type.
-
-    @param ticket_owner
-      If given, all generated tickets are initially credited to
-      this account.
-
-    TODO allow different ticket creators. For now we always use ticket_owner.
-    TODO allow different ticket amounts. For now we always use 1.
- *)
 let ty_generator :
     type a.
     ?ticket_owner:Contract.t -> a Script_typed_ir.ty_ex_c -> a Context_gen.t =
@@ -553,20 +635,14 @@ let ty_generator :
     | Bytes_t ->
         let+ x = Context_gen.string_readable in
         Bytes.of_string x
-    | Key_hash_t ->
-        Context_gen.return
-          (Env.Signature.Public_key_hash.of_b58check_exn "TODO")
-    | Key_t ->
-        Context_gen.return (Env.Signature.Public_key.of_b58check_exn "TODO")
+    | Key_hash_t -> public_key_hash ()
+    | Key_t -> public_key ()
     | Chain_id_t ->
         (* TODO demonstrate this won't raise exn *)
         Context_gen.return
           (Script_typed_ir.Script_chain_id.make
              (Env.Chain_id.of_b58check_exn "NetXdQprcVkpaWU"))
-    | Tx_rollup_l2_address_t ->
-        Context_gen.return
-          (Protocol.Tx_rollup_l2_address.Indexable.value
-             (Protocol.Tx_rollup_l2_address.of_b58check_exn "TODO"))
+    | Tx_rollup_l2_address_t -> tx_rollup_l2_address ()
     | Pair_t (ty1, ty2, _metadata, _comparable) ->
         let ty1 = Script_typed_ir.Ty_ex_c ty1 in
         let ty2 = Script_typed_ir.Ty_ex_c ty2 in
@@ -592,10 +668,17 @@ let ty_generator :
         let+ x = small_unique_list ty1 in
         Script_set.of_list ty1 x
     | Ticket_t (ty1, _metadata) ->
-        let ty1 = Script_typed_ir.Ty_ex_c ty1 in
-        let* contents = loop ty1 in
+        let ty1_ex = Script_typed_ir.Ty_ex_c ty1 in
+        let* contents = loop ty1_ex in
+        let* destination = destination () in
         let open Script_typed_ir in
-        (* let* _ = adjust_balance ~contents ~ty:ty1 ~ticketer:ticket_owner ~owner:ticket_owner in *)
+        let* _ =
+          adjust_balance
+            ~contents
+            ~ty:ty1
+            ~ticketer:ticket_owner
+            ~owner:destination
+        in
         (* TODO can you always use "default"? a la ITicket in
            Script_interpreter?
         *)
@@ -613,9 +696,9 @@ let ty_generator :
         let ty2' = Script_typed_ir.Ty_ex_c ty2 in
         let* assoc_list = small_assoc_list ty1 ty2' in
         big_map_of_list_gen_t ty1 ty2 assoc_list
-    | Address_t -> Stdlib.failwith "TODO generate address"
-    | Never_t -> Stdlib.failwith "TODO handle never"
-    | _ -> assert false
+    | Address_t -> address ()
+    | Never_t -> (* we never generate type Never_t *) assert false
+    | _ -> (* we do not generate any other type *) assert false
   (* Generate a list with all unique elements. *)
   and small_unique_list :
       type k. k Script_typed_ir.comparable_ty -> k list Context_gen.t =
