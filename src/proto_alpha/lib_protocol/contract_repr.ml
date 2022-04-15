@@ -23,20 +23,22 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t =
-  | Implicit of Signature.Public_key_hash.t
-  | Originated of Contract_hash.t
+type implicit = [`Implicit of Signature.Public_key_hash.t]
+
+type originated = [`Originated of Contract_hash.t]
+
+type t = [implicit | originated]
 
 include Compare.Make (struct
   type nonrec t = t
 
   let compare l1 l2 =
     match (l1, l2) with
-    | (Implicit pkh1, Implicit pkh2) ->
+    | (`Implicit pkh1, `Implicit pkh2) ->
         Signature.Public_key_hash.compare pkh1 pkh2
-    | (Originated h1, Originated h2) -> Contract_hash.compare h1 h2
-    | (Implicit _, Originated _) -> -1
-    | (Originated _, Implicit _) -> 1
+    | (`Originated h1, `Originated h2) -> Contract_hash.compare h1 h2
+    | (`Implicit _, `Originated _) -> -1
+    | (`Originated _, `Implicit _) -> 1
 end)
 
 let blake2b_hash_size =
@@ -50,34 +52,36 @@ let public_key_hash_in_memory_size =
 let in_memory_size =
   let open Cache_memory_helpers in
   function
-  | Implicit _ -> h1w +! public_key_hash_in_memory_size
-  | Originated _ -> h1w +! blake2b_hash_size
+  | `Implicit _ -> h2w +! public_key_hash_in_memory_size
+  | `Originated _ -> h2w +! blake2b_hash_size
 
 type error += Invalid_contract_notation of string (* `Permanent *)
 
 let to_b58check = function
-  | Implicit pbk -> Signature.Public_key_hash.to_b58check pbk
-  | Originated h -> Contract_hash.to_b58check h
+  | `Implicit pbk -> Signature.Public_key_hash.to_b58check pbk
+  | `Originated h -> Contract_hash.to_b58check h
 
 let of_b58check s =
   match Base58.decode s with
   | Some data -> (
       match data with
-      | Ed25519.Public_key_hash.Data h -> ok (Implicit (Signature.Ed25519 h))
+      | Ed25519.Public_key_hash.Data h ->
+          ok (`Implicit (Signature.Ed25519 h : Signature.public_key_hash))
       | Secp256k1.Public_key_hash.Data h ->
-          ok (Implicit (Signature.Secp256k1 h))
-      | P256.Public_key_hash.Data h -> ok (Implicit (Signature.P256 h))
-      | Contract_hash.Data h -> ok (Originated h)
+          ok (`Implicit (Signature.Secp256k1 h : Signature.public_key_hash))
+      | P256.Public_key_hash.Data h ->
+          ok (`Implicit (Signature.P256 h : Signature.public_key_hash))
+      | Contract_hash.Data h -> ok (`Originated h)
       | _ -> error (Invalid_contract_notation s))
   | None -> error (Invalid_contract_notation s)
 
 let pp ppf = function
-  | Implicit pbk -> Signature.Public_key_hash.pp ppf pbk
-  | Originated h -> Contract_hash.pp ppf h
+  | `Implicit pbk -> Signature.Public_key_hash.pp ppf pbk
+  | `Originated h -> Contract_hash.pp ppf h
 
 let pp_short ppf = function
-  | Implicit pbk -> Signature.Public_key_hash.pp_short ppf pbk
-  | Originated h -> Contract_hash.pp_short ppf h
+  | `Implicit pbk -> Signature.Public_key_hash.pp_short ppf pbk
+  | `Originated h -> Contract_hash.pp_short ppf h
 
 let cases is_contract to_contract =
   Data_encoding.
@@ -87,15 +91,15 @@ let cases is_contract to_contract =
         ~title:"Implicit"
         Signature.Public_key_hash.encoding
         (fun k ->
-          match is_contract k with Some (Implicit k) -> Some k | _ -> None)
-        (fun k -> to_contract (Implicit k));
+          match is_contract k with Some (`Implicit k) -> Some k | _ -> None)
+        (fun k -> to_contract (`Implicit k));
       case
         (Tag 1)
         (Fixed.add_padding Contract_hash.encoding 1)
         ~title:"Originated"
         (fun k ->
-          match is_contract k with Some (Originated k) -> Some k | _ -> None)
-        (fun k -> to_contract (Originated k));
+          match is_contract k with Some (`Originated k) -> Some k | _ -> None)
+        (fun k -> to_contract (`Originated k));
     ]
 
 let encoding =
@@ -130,17 +134,17 @@ let () =
     (function Invalid_contract_notation loc -> Some loc | _ -> None)
     (fun loc -> Invalid_contract_notation loc)
 
-let implicit_contract id = Implicit id
+let implicit_contract id = `Implicit id
 
-let is_implicit = function Implicit m -> Some m | Originated _ -> None
+let is_implicit = function `Implicit m -> Some m | `Originated _ -> None
 
-let is_originated = function Implicit _ -> None | Originated h -> Some h
+let is_originated = function `Implicit _ -> None | `Originated h -> Some h
 
 let originated_contract nonce =
   let data =
     Data_encoding.Binary.to_bytes_exn Origination_nonce.encoding nonce
   in
-  Originated (Contract_hash.hash_bytes [data])
+  `Originated (Contract_hash.hash_bytes [data])
 
 let originated_contracts
     ~since:
