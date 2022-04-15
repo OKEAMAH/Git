@@ -91,9 +91,9 @@ let get_address_from_storage inc factory_addr =
   match factory_storage with
   | Some {entrypoint; _} when not (Entrypoint.is_default entrypoint) ->
       failwith "Did not expect non-default entrypoint"
-  | Some {destination = Tx_rollup _; _} ->
+  | Some {destination = `Tx_rollup _; _} ->
       failwith "Did not expect non-contract address"
-  | Some {destination = Contract addr; entrypoint = _it_is_default} ->
+  | Some {destination = #Contract.t as addr; entrypoint = _it_is_default} ->
       return addr
   | _ ->
       failwith

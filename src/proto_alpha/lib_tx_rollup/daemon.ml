@@ -111,7 +111,7 @@ let extract_messages_from_block block_info rollup_id =
           (* Batch message *)
           Some (Tx_rollup_message.make_batch content)
       | ( Transaction
-            {amount = _; parameters; destination = Tx_rollup dst; entrypoint},
+            {amount = _; parameters; destination = `Tx_rollup dst; entrypoint},
           Applied
             (Transaction_result
               (Transaction_to_tx_rollup_result {ticket_hash; _})) )

@@ -1025,7 +1025,7 @@ let apply_transaction_to_tx_rollup ~ctxt ~parameters_ty ~parameters ~amount
     let (ex_token, ticket_amount) =
       Ticket_token.token_and_amount_of_ex_ticket ex_ticket
     in
-    Ticket_balance_key.of_ex_token ctxt ~owner:(Tx_rollup dst_rollup) ex_token
+    Ticket_balance_key.of_ex_token ctxt ~owner:(`Tx_rollup dst_rollup) ex_token
     >>=? fun (ticket_hash, ctxt) ->
     Option.value_e
       ~error:(Error_monad.trace_of_error Tx_rollup_invalid_transaction_amount)
@@ -1168,7 +1168,12 @@ let apply_internal_manager_operation_content :
   | Transaction
       {
         transaction =
-          {amount; parameters = _; destination = Contract contract; entrypoint};
+          {
+            amount;
+            parameters = _;
+            destination = #Contract.t as contract;
+            entrypoint;
+          };
         location;
         parameters_ty;
         parameters = typed_parameters;
@@ -1192,7 +1197,7 @@ let apply_internal_manager_operation_content :
   | Transaction
       {
         transaction =
-          {amount; destination = Tx_rollup dst; entrypoint; parameters = _};
+          {amount; destination = `Tx_rollup dst; entrypoint; parameters = _};
         location = _;
         parameters_ty;
         parameters;
@@ -1261,7 +1266,7 @@ let apply_external_manager_operation_content :
             : kind successful_manager_operation_result),
           [] )
   | Transaction
-      {amount; parameters; destination = Contract contract; entrypoint} ->
+      {amount; parameters; destination = #Contract.t as contract; entrypoint} ->
       Script.force_decode_in_context
         ~consume_deserialization_gas
         ctxt
@@ -1279,7 +1284,7 @@ let apply_external_manager_operation_content :
         ~chain_id
         ~mode
         ~internal:false
-  | Transaction {destination = Tx_rollup _; _} ->
+  | Transaction {destination = `Tx_rollup _; _} ->
       fail Tx_rollup_non_internal_transaction
   | Tx_rollup_dispatch_tickets
       {
@@ -1345,7 +1350,7 @@ let apply_external_manager_operation_content :
         let amount = Tx_rollup_l2_qty.to_z amount in
         Ticket_balance_key.of_ex_token
           ctxt
-          ~owner:(Contract (`Implicit claimer))
+          ~owner:(`Implicit claimer)
           ticket_token
         >>=? fun (claimer_ticket_hash, ctxt) ->
         Tx_rollup_ticket.transfer_ticket_with_hashes
@@ -1380,15 +1385,15 @@ let apply_external_manager_operation_content :
             ~contents
             ~ty
             ~source:source_contract
-            ~destination:(Contract destination)
+            ~destination:(destination :> Destination.t)
             ~entrypoint
             ~amount
             ctxt
           >>=? fun (ctxt, ticket_token, op) ->
           Tx_rollup_ticket.transfer_ticket
             ctxt
-            ~src:(Contract source_contract)
-            ~dst:(Contract destination)
+            ~src:(source_contract :> Destination.t)
+            ~dst:(destination :> Destination.t)
             ticket_token
             amount
           >>=? fun (ctxt, paid_storage_size_diff) ->
@@ -1839,7 +1844,7 @@ let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
       (* Precheck is only called for non-internal operations
        * and rollup transactions must be internal. *)
       fail_when
-        (match destination with Tx_rollup _ -> true | _ -> false)
+        (match destination with `Tx_rollup _ -> true | _ -> false)
         Tx_rollup_non_internal_transaction
       >>=? fun () ->
       Lwt.return

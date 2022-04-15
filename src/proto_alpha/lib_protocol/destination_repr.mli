@@ -35,13 +35,15 @@
     values of this type are given a balance, which has an impact on
     the delegation system. *)
 
+type tx_rollup = [`Tx_rollup of Tx_rollup_repr.t]
+
 (** This type is a superset of the set of contracts ({!Contract_repr.t}).
 
     {b Note:} It is of key importance that the encoding of this type
     remains compatible with {!Contract_repr.encoding}, for the
     introduction to this type to remain transparent from the existing
     tooling perspective.  *)
-type t = Contract of Contract_repr.t | Tx_rollup of Tx_rollup_repr.t
+type t = [Contract_repr.t | tx_rollup]
 
 include Compare.S with type t := t
 

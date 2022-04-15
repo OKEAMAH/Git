@@ -58,7 +58,7 @@ let update_contract_tickets ctxt contract =
       >>=? fun (tickets, ctxt) ->
       List.fold_left_es
         (fun (acc_size, ctxt) t ->
-          add_ticket_balance (Destination.Contract contract) ctxt t
+          add_ticket_balance (contract :> Destination.t) ctxt t
           >|=? fun (added_size, ctxt) -> (Z.add acc_size added_size, ctxt))
         (Z.zero, ctxt)
         tickets

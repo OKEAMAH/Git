@@ -515,7 +515,7 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters destination
       Destination.t ->
       ((location, prim) Micheline.node * context) tzresult =
    fun ctxt tp p -> function
-    | Contract _ -> ok (p, ctxt)
+    | #Contract.t -> ok (p, ctxt)
     (* The entrypoints of a transaction rollup are polymorphic wrt. the
        tickets it can process. However, two Michelson values can have
        the same Micheline representation, but different types. What
@@ -527,7 +527,7 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters destination
        rollup to inject the exact type of the entrypoint as used by
        the smart contract. This allows the transaction rollup to extract
        the type of the ticket. *)
-    | Tx_rollup _ -> (
+    | `Tx_rollup _ -> (
         let open Micheline in
         match tp with
         | Pair_t (Ticket_t (tp, _), _, _, _) ->

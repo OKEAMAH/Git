@@ -373,7 +373,7 @@ let transaction ?counter ?fee ?gas_limit ?storage_limit ?parameters ?entrypoint
     ?entrypoint
     ctxt
     src
-    (Contract dst)
+    (dst :> Destination.t)
     amount
 
 let delegation ?fee ctxt source dst =

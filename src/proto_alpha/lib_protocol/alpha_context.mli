@@ -2130,7 +2130,9 @@ end
 
 (** This simply re-exports {!Destination_repr}. *)
 module Destination : sig
-  type t = Contract of Contract.t | Tx_rollup of Tx_rollup.t
+  type tx_rollup = [`Tx_rollup of Tx_rollup.t]
+
+  type t = [Contract.t | tx_rollup]
 
   val encoding : t Data_encoding.t
 

@@ -731,7 +731,7 @@ module ConcreteBaseMachine :
     pure @@ Tez.to_mutez x
 
   let get_tzbtc_balance contract env blk =
-    let destination = Destination.Contract contract in
+    let destination = (contract : Contract.t :> Destination.t) in
     Lqt_fa12_repr.Storage.getBalance_opt
       (B blk)
       ~contract:env.tzbtc_contract
@@ -740,7 +740,7 @@ module ConcreteBaseMachine :
     pure (Option.value (Option.map Z.to_int mamount) ~default:0)
 
   let get_liquidity_balance contract env blk =
-    let destination = Destination.Contract contract in
+    let destination = (contract : Contract.t :> Destination.t) in
     Lqt_fa12_repr.Storage.getBalance_opt
       (B blk)
       ~contract:env.liquidity_contract

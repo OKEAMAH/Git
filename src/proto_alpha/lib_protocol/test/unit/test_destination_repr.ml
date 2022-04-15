@@ -50,8 +50,6 @@ let contracts =
   let until = incr_n_times since 5 in
   Contract_repr.originated_contracts ~since ~until
 
-let dest x = Destination_repr.Contract x
-
 let construct = Data_encoding.Json.construct
 
 let destruct = Data_encoding.Json.destruct
@@ -75,8 +73,7 @@ let tx_rollup_address = "txr1YNMEtkj5Vkqsbdmt7xaxBTMRZjzS96UAi"
 
 let assert_compat contract destination =
   match destination with
-  | Destination_repr.Contract contract'
-    when Contract_repr.equal contract contract' ->
+  | #Contract_repr.t as contract' when Contract_repr.equal contract contract' ->
       ()
   | _ -> raise (Invalid_argument "assert_compat")
 
@@ -121,7 +118,7 @@ let test_encode_destination_decode_contract str () =
 
 let encoding_compat ~encode_contract ~decode_contract ~encode_destination
     ~decode_destination contract =
-  let destination = dest contract in
+  let destination = (contract : Contract_repr.t :> Destination_repr.t) in
 
   let encoded_contract = encode_contract contract in
   let encoded_destination = encode_destination destination in

@@ -311,7 +311,7 @@ let make_ticket_key ctxt ~ty ~contents ~ticketer tx_rollup =
   >>=?? fun (contents, ctxt) ->
   Ticket_balance_key.of_ex_token
     ctxt
-    ~owner:(Tx_rollup tx_rollup)
+    ~owner:(`Tx_rollup tx_rollup)
     (Ticket_token.Ex_token {ticketer; contents_type; contents})
   >|=?? fst
 
@@ -1430,7 +1430,7 @@ let test_deposit_too_many_tickets () =
 let test_deposit_by_non_internal_operation () =
   context_init1 () >>=? fun (b, account) ->
   originate b account >>=? fun (b, tx_rollup) ->
-  Op.unsafe_transaction (B b) account (Tx_rollup tx_rollup) Tez.zero
+  Op.unsafe_transaction (B b) account (`Tx_rollup tx_rollup) Tez.zero
   >>=? fun operation ->
   Incremental.begin_construction b >>=? fun i ->
   Incremental.add_operation i operation >>= function
@@ -3918,25 +3918,35 @@ module Withdraw = struct
       ~loc:__LOC__
       block
       token_one
-      (Contract deposit_contract)
+      (deposit_contract :> Destination.t)
       None
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Contract withdraw_contract)
+      (withdraw_contract :> Destination.t)
       None
-    >>=? fun () ->
-    assert_ticket_balance ~loc:__LOC__ block token_one (Contract account1) None
-    >>=? fun () ->
-    assert_ticket_balance ~loc:__LOC__ block token_one (Contract account2) None
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Tx_rollup tx_rollup)
+      (account1 :> Destination.t)
+      None
+    >>=? fun () ->
+    assert_ticket_balance
+      ~loc:__LOC__
+      block
+      token_one
+      (account2 :> Destination.t)
+      None
+    >>=? fun () ->
+    assert_ticket_balance
+      ~loc:__LOC__
+      block
+      token_one
+      (`Tx_rollup tx_rollup)
       (Some (Int64.to_int Nat_ticket.int64_amount))
     >>=? fun () ->
     (* The withdrawal execution operation must include proof that the
@@ -4016,35 +4026,35 @@ module Withdraw = struct
       ~loc:__LOC__
       block
       token_one
-      (Contract deposit_contract)
+      (deposit_contract :> Destination.t)
       None
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Contract withdraw_contract)
+      (withdraw_contract :> Destination.t)
       None
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Contract account1)
+      (account1 :> Destination.t)
       (Some (Int64.to_int int64_half_amount))
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Contract account2)
+      (account2 :> Destination.t)
       (Some (Int64.to_int int64_half_amount))
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Tx_rollup tx_rollup)
+      (`Tx_rollup tx_rollup)
       None
     >>=? fun () ->
     (* 3. Now execute the withdrawal. The ticket should be received by
@@ -4095,30 +4105,35 @@ module Withdraw = struct
       ~loc:__LOC__
       block
       token_one
-      (Contract deposit_contract)
+      (deposit_contract :> Destination.t)
       None
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Contract withdraw_contract)
-      (Some (Int64.to_int int64_half_amount))
-    >>=? fun () ->
-    assert_ticket_balance ~loc:__LOC__ block token_one (Contract account1) None
-    >>=? fun () ->
-    assert_ticket_balance
-      ~loc:__LOC__
-      block
-      token_one
-      (Contract account2)
+      (withdraw_contract :> Destination.t)
       (Some (Int64.to_int int64_half_amount))
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Tx_rollup tx_rollup)
+      (account1 :> Destination.t)
+      None
+    >>=? fun () ->
+    assert_ticket_balance
+      ~loc:__LOC__
+      block
+      token_one
+      (account2 :> Destination.t)
+      (Some (Int64.to_int int64_half_amount))
+    >>=? fun () ->
+    assert_ticket_balance
+      ~loc:__LOC__
+      block
+      token_one
+      (`Tx_rollup tx_rollup)
       None
     >>=? fun () ->
     (* 5.1 And finally we try to drop the other half amount of ticket. *)
@@ -4147,25 +4162,35 @@ module Withdraw = struct
       ~loc:__LOC__
       block
       token_one
-      (Contract deposit_contract)
+      (deposit_contract :> Destination.t)
       None
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Contract withdraw_contract)
+      (withdraw_contract :> Destination.t)
       (Some (Int64.to_int int64_half_amount))
-    >>=? fun () ->
-    assert_ticket_balance ~loc:__LOC__ block token_one (Contract account1) None
-    >>=? fun () ->
-    assert_ticket_balance ~loc:__LOC__ block token_one (Contract account2) None
     >>=? fun () ->
     assert_ticket_balance
       ~loc:__LOC__
       block
       token_one
-      (Tx_rollup tx_rollup)
+      (account1 :> Destination.t)
+      None
+    >>=? fun () ->
+    assert_ticket_balance
+      ~loc:__LOC__
+      block
+      token_one
+      (account2 :> Destination.t)
+      None
+    >>=? fun () ->
+    assert_ticket_balance
+      ~loc:__LOC__
+      block
+      token_one
+      (`Tx_rollup tx_rollup)
       None
 
   (** [test_invalid_reveal_withdrawals_no_commitment] checks that attempting to
@@ -5226,7 +5251,7 @@ module Withdraw = struct
         ~loc:__LOC__
         block
         token_one
-        (Contract forge_withdraw_deposit_contract)
+        (forge_withdraw_deposit_contract :> Destination.t)
         balance
     in
     let assert_account_ticket_balance ~__LOC__ block balance =
@@ -5234,7 +5259,7 @@ module Withdraw = struct
         ~loc:__LOC__
         block
         token_one
-        (Contract account)
+        (account :> Destination.t)
         balance
     in
     let assert_tx_rollup_ticket_balance ~__LOC__ block balance =
@@ -5242,7 +5267,7 @@ module Withdraw = struct
         ~loc:__LOC__
         block
         token_one
-        (Tx_rollup tx_rollup)
+        (`Tx_rollup tx_rollup)
         balance
     in
     (* forge tickets and store them in the contract storage. *)

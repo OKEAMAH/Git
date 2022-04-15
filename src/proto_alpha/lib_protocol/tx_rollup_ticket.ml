@@ -93,7 +93,7 @@ let parse_ticket_and_operation ~consume_deserialization_gas ~ticketer ~contents
   return (ctxt, ticket_token, op)
 
 let make_withdraw_order ctxt tx_rollup ex_ticket claimer amount =
-  Ticket_balance_key.of_ex_token ctxt ~owner:(Tx_rollup tx_rollup) ex_ticket
+  Ticket_balance_key.of_ex_token ctxt ~owner:(`Tx_rollup tx_rollup) ex_ticket
   >>=? fun (tx_rollup_ticket_hash, ctxt) ->
   let withdrawal =
     Tx_rollup_withdraw.{claimer; ticket_hash = tx_rollup_ticket_hash; amount}

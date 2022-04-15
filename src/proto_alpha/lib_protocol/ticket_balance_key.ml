@@ -51,8 +51,8 @@ let of_ex_token ctxt ~owner
     contents
   >>=? fun (contents, ctxt) ->
   let ticketer_address =
-    Script_typed_ir.
-      {destination = Contract ticketer; entrypoint = Entrypoint.default}
+    let destination = (ticketer :> Destination.t) in
+    Script_typed_ir.{destination; entrypoint = Entrypoint.default}
   in
   let owner_address =
     Script_typed_ir.{destination = owner; entrypoint = Entrypoint.default}

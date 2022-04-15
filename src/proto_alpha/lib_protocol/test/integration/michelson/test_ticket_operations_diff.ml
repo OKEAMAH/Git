@@ -300,7 +300,7 @@ let transfer_operation ~incr ~src ~destination ~parameters_ty ~parameters =
                     parameters =
                       Script.lazy_expr @@ Micheline.strip_locations params_node;
                     entrypoint = Entrypoint.default;
-                    destination = Destination.Contract destination;
+                    destination = (destination : Contract.t :> Destination.t);
                   };
                 location = Micheline.dummy_location;
                 parameters_ty;
@@ -336,7 +336,7 @@ let transfer_operation_to_tx_rollup ~incr ~src ~parameters_ty ~parameters
                     parameters =
                       Script.lazy_expr @@ Micheline.strip_locations params_node;
                     entrypoint = Tx_rollup.deposit_entrypoint;
-                    destination = Destination.Tx_rollup tx_rollup;
+                    destination = `Tx_rollup tx_rollup;
                   };
                 location = Micheline.dummy_location;
                 parameters_ty;
@@ -471,7 +471,7 @@ let test_transfer_one_ticket () =
         {
           ticket_token = string_token ~ticketer "white";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
       ]
 
@@ -510,17 +510,17 @@ let test_transfer_multiple_tickets () =
         {
           ticket_token = string_token ~ticketer "red";
           total_amount = nat 5;
-          destinations = [(Destination.Contract orig_contract, nat 5)];
+          destinations = [((orig_contract :> Destination.t), nat 5)];
         };
         {
           ticket_token = string_token ~ticketer "blue";
           total_amount = nat 2;
-          destinations = [(Destination.Contract orig_contract, nat 2)];
+          destinations = [((orig_contract :> Destination.t), nat 2)];
         };
         {
           ticket_token = string_token ~ticketer "green";
           total_amount = nat 3;
-          destinations = [(Destination.Contract orig_contract, nat 3)];
+          destinations = [((orig_contract :> Destination.t), nat 3)];
         };
       ]
 
@@ -564,32 +564,32 @@ let test_transfer_different_tickets () =
         {
           ticket_token = string_token ~ticketer:ticketer1 "red";
           total_amount = nat 2;
-          destinations = [(Destination.Contract destination, nat 2)];
+          destinations = [((destination :> Destination.t), nat 2)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer1 "green";
           total_amount = nat 2;
-          destinations = [(Destination.Contract destination, nat 2)];
+          destinations = [((destination :> Destination.t), nat 2)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer1 "blue";
           total_amount = nat 2;
-          destinations = [(Destination.Contract destination, nat 2)];
+          destinations = [((destination :> Destination.t), nat 2)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer2 "red";
           total_amount = nat 1;
-          destinations = [(Destination.Contract destination, nat 1)];
+          destinations = [((destination :> Destination.t), nat 1)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer2 "green";
           total_amount = nat 1;
-          destinations = [(Destination.Contract destination, nat 1)];
+          destinations = [((destination :> Destination.t), nat 1)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer2 "blue";
           total_amount = nat 1;
-          destinations = [(Destination.Contract destination, nat 1)];
+          destinations = [((destination :> Destination.t), nat 1)];
         };
       ]
 
@@ -628,6 +628,8 @@ let test_transfer_to_two_contracts_with_different_tickets () =
   let* (ticket_diffs, ctxt) =
     ticket_diffs_of_operations incr [operation1; operation2]
   in
+  let destination1 = (destination1 :> Destination.t) in
+  let destination2 = (destination2 :> Destination.t) in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -637,29 +639,17 @@ let test_transfer_to_two_contracts_with_different_tickets () =
         {
           ticket_token = string_token ~ticketer "red";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract destination2, nat 1);
-              (Destination.Contract destination1, nat 1);
-            ];
+          destinations = [(destination2, nat 1); (destination1, nat 1)];
         };
         {
           ticket_token = string_token ~ticketer "green";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract destination2, nat 1);
-              (Destination.Contract destination1, nat 1);
-            ];
+          destinations = [(destination2, nat 1); (destination1, nat 1)];
         };
         {
           ticket_token = string_token ~ticketer "blue";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract destination2, nat 1);
-              (Destination.Contract destination1, nat 1);
-            ];
+          destinations = [(destination2, nat 1); (destination1, nat 1)];
         };
       ]
 
@@ -720,7 +710,7 @@ let test_originate_with_one_ticket () =
         {
           ticket_token = string_token ~ticketer "white";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
       ]
 
@@ -761,17 +751,17 @@ let test_originate_with_multiple_tickets () =
         {
           ticket_token = string_token ~ticketer "red";
           total_amount = nat 5;
-          destinations = [(Destination.Contract orig_contract, nat 5)];
+          destinations = [((orig_contract :> Destination.t), nat 5)];
         };
         {
           ticket_token = string_token ~ticketer "blue";
           total_amount = nat 2;
-          destinations = [(Destination.Contract orig_contract, nat 2)];
+          destinations = [((orig_contract :> Destination.t), nat 2)];
         };
         {
           ticket_token = string_token ~ticketer "green";
           total_amount = nat 3;
-          destinations = [(Destination.Contract orig_contract, nat 3)];
+          destinations = [((orig_contract :> Destination.t), nat 3)];
         };
       ]
 
@@ -823,32 +813,32 @@ let test_originate_with_different_tickets () =
         {
           ticket_token = string_token ~ticketer:ticketer1 "red";
           total_amount = nat 2;
-          destinations = [(Destination.Contract orig_contract, nat 2)];
+          destinations = [((orig_contract :> Destination.t), nat 2)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer1 "green";
           total_amount = nat 2;
-          destinations = [(Destination.Contract orig_contract, nat 2)];
+          destinations = [((orig_contract :> Destination.t), nat 2)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer1 "blue";
           total_amount = nat 2;
-          destinations = [(Destination.Contract orig_contract, nat 2)];
+          destinations = [((orig_contract :> Destination.t), nat 2)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer2 "red";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer2 "green";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer2 "blue";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
       ]
 
@@ -886,6 +876,8 @@ let test_originate_two_contracts_with_different_tickets () =
   let* (ticket_diffs, ctxt) =
     ticket_diffs_of_operations incr [operation1; operations2]
   in
+  let orig_contract1 = (orig_contract1 :> Destination.t) in
+  let orig_contract2 = (orig_contract2 :> Destination.t) in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -895,29 +887,17 @@ let test_originate_two_contracts_with_different_tickets () =
         {
           ticket_token = string_token ~ticketer "red";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract orig_contract2, nat 1);
-              (Destination.Contract orig_contract1, nat 1);
-            ];
+          destinations = [(orig_contract2, nat 1); (orig_contract1, nat 1)];
         };
         {
           ticket_token = string_token ~ticketer "green";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract orig_contract2, nat 1);
-              (Destination.Contract orig_contract1, nat 1);
-            ];
+          destinations = [(orig_contract2, nat 1); (orig_contract1, nat 1)];
         };
         {
           ticket_token = string_token ~ticketer "blue";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract orig_contract2, nat 1);
-              (Destination.Contract orig_contract1, nat 1);
-            ];
+          destinations = [(orig_contract2, nat 1); (orig_contract1, nat 1)];
         };
       ]
 
@@ -962,6 +942,8 @@ let test_originate_and_transfer () =
   let* (ticket_diffs, ctxt) =
     ticket_diffs_of_operations incr [operation1; operation2]
   in
+  let orig_contract1 = (orig_contract1 :> Destination.t) in
+  let destination2 = (destination2 :> Destination.t) in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -971,29 +953,17 @@ let test_originate_and_transfer () =
         {
           ticket_token = string_token ~ticketer "red";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract destination2, nat 1);
-              (Destination.Contract orig_contract1, nat 1);
-            ];
+          destinations = [(destination2, nat 1); (orig_contract1, nat 1)];
         };
         {
           ticket_token = string_token ~ticketer "green";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract destination2, nat 1);
-              (Destination.Contract orig_contract1, nat 1);
-            ];
+          destinations = [(destination2, nat 1); (orig_contract1, nat 1)];
         };
         {
           ticket_token = string_token ~ticketer "blue";
           total_amount = nat 2;
-          destinations =
-            [
-              (Destination.Contract destination2, nat 1);
-              (Destination.Contract orig_contract1, nat 1);
-            ];
+          destinations = [(destination2, nat 1); (orig_contract1, nat 1)];
         };
       ]
 
@@ -1041,17 +1011,17 @@ let test_originate_big_map_with_tickets () =
         {
           ticket_token = string_token ~ticketer "red";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
         {
           ticket_token = string_token ~ticketer "green";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
         {
           ticket_token = string_token ~ticketer "blue";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
       ]
 
@@ -1121,17 +1091,17 @@ let test_transfer_big_map_with_tickets () =
         {
           ticket_token = string_token ~ticketer:ticketer_contract "red";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer_contract "green";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
         {
           ticket_token = string_token ~ticketer:ticketer_contract "blue";
           total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
+          destinations = [((orig_contract :> Destination.t), nat 1)];
         };
       ]
 
@@ -1188,7 +1158,7 @@ let test_tx_rollup_deposit_one_ticket () =
         {
           ticket_token = string_token ~ticketer "white";
           total_amount = nat 1;
-          destinations = [(Destination.Tx_rollup tx_rollup, nat 1)];
+          destinations = [(`Tx_rollup tx_rollup, nat 1)];
         };
       ]
 

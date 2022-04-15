@@ -1092,7 +1092,7 @@ let call_multisig (cctxt : #Protocol_client_context.full) ~chain ~block
     ~source
     ~src_pk
     ~src_sk
-    ~destination:(Contract multisig_contract)
+    ~destination:(multisig_contract :> Destination.t)
     ?entrypoint
     ~parameters
     ~amount

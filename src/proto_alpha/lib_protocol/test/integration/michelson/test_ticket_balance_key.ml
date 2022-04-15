@@ -62,11 +62,8 @@ let make_key ctxt ~ticketer ~ty ~content ~owner =
   let* (ex_token, ctxt) = make_ex_token ctxt ~ticketer ~ty ~content in
   let* owner = make_contract owner in
   let* (key, ctxt) =
-    wrap
-    @@ Ticket_balance_key.of_ex_token
-         ctxt
-         ~owner:(Destination.Contract owner)
-         ex_token
+    let owner = (owner :> Destination.t) in
+    wrap @@ Ticket_balance_key.of_ex_token ctxt ~owner ex_token
   in
   return (key, ctxt)
 

@@ -224,7 +224,8 @@ let tickets_of_transaction ctxt ~destination ~entrypoint ~location
         has_tickets
         parameters
       >>=? fun (tickets, ctxt) ->
-      return (Some {destination = Contract destination; tickets}, ctxt)
+      let destination = (destination :> Destination.t) in
+      return (Some {destination; tickets}, ctxt)
 
 (** Extract tickets of an origination operation by scanning the storage. *)
 let tickets_of_origination ctxt ~preorigination ~storage_type ~storage =
@@ -234,7 +235,8 @@ let tickets_of_origination ctxt ~preorigination ~storage_type ~storage =
   >>?= fun (has_tickets, ctxt) ->
   Ticket_scanner.tickets_of_value ctxt ~include_lazy:true has_tickets storage
   >|=? fun (tickets, ctxt) ->
-  (Some {tickets; destination = Destination.Contract preorigination}, ctxt)
+  let destination = (preorigination : Contract.t :> Destination.t) in
+  (Some {tickets; destination}, ctxt)
 
 let tickets_of_operation ctxt
     (Script_typed_ir.Internal_operation {source = _; operation; nonce = _}) =
@@ -246,7 +248,7 @@ let tickets_of_operation ctxt
             amount = _;
             parameters = _;
             entrypoint;
-            destination = Destination.Contract destination;
+            destination = #Contract.t as destination;
           };
         location;
         parameters_ty;
@@ -263,7 +265,7 @@ let tickets_of_operation ctxt
       {
         transaction =
           {
-            destination = Destination.Tx_rollup tx_rollup_dest;
+            destination = `Tx_rollup tx_rollup_dest;
             parameters = _;
             entrypoint;
             amount = _;
@@ -276,11 +278,7 @@ let tickets_of_operation ctxt
         Tx_rollup_parameters.get_deposit_parameters parameters_ty parameters
         >>?= fun {ex_ticket; l2_destination = _} ->
         return
-          ( Some
-              {
-                destination = Destination.Tx_rollup tx_rollup_dest;
-                tickets = [ex_ticket];
-              },
+          ( Some {destination = `Tx_rollup tx_rollup_dest; tickets = [ex_ticket]},
             ctxt )
       else return (None, ctxt)
   | Origination

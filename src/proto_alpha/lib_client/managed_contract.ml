@@ -153,7 +153,7 @@ let build_delegate_operation (cctxt : #full) ~chain ~block ?fee
        ~parameters
        ~entrypoint
        ?fee
-       (Contract contract))
+       (contract :> Destination.t))
 
 let set_delegate (cctxt : #full) ~chain ~block ?confirmations ?dry_run
     ?verbose_signing ?simulation ?branch ~fee_parameter ?fee ~source ~src_pk
@@ -226,8 +226,9 @@ let build_lambda_for_transfer_to_originated ~destination ~entrypoint ~amount
       Michelson_v1_printer.print_expr
       parameter
 
-let build_transaction_operation (cctxt : #full) ~chain ~block ~contract
-    ~destination ?(entrypoint = Entrypoint.default) ?arg ~amount ?fee ?gas_limit
+let build_transaction_operation (cctxt : #full) ~chain ~block
+    ~(contract : Contract.t) ~(destination : Contract.t)
+    ?(entrypoint = Entrypoint.default) ?arg ~amount ?fee ?gas_limit
     ?storage_limit () =
   (match destination with
   | `Implicit destination when Entrypoint.is_default entrypoint ->
@@ -284,7 +285,7 @@ let build_transaction_operation (cctxt : #full) ~chain ~block ~contract
        ?fee
        ?gas_limit
        ?storage_limit
-       (Contract contract))
+       (contract :> Destination.t))
 
 let transfer (cctxt : #full) ~chain ~block ?confirmations ?dry_run
     ?verbose_signing ?simulation ?(force = false) ?branch ~source ~src_pk

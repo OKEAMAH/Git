@@ -1470,7 +1470,7 @@ module View_helpers = struct
              {
                transaction =
                  {
-                   destination = Contract destination;
+                   destination = #Contract.t as destination;
                    parameters;
                    entrypoint = _;
                    amount = _;

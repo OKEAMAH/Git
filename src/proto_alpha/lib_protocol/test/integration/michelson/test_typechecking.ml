@@ -507,7 +507,7 @@ let test_parse_address () =
     ctxt
     address_t
     (String (-1, "KT1FAKEFAKEFAKEFAKEFAKEFAKEFAKGGSE2x%"))
-    {destination = Contract kt1fake; entrypoint = Entrypoint.default}
+    {destination = (kt1fake :> Destination.t); entrypoint = Entrypoint.default}
   >>=? fun ctxt ->
   (* tz1% (empty entrypoint) *)
   wrap_error_lwt
@@ -518,7 +518,7 @@ let test_parse_address () =
     ctxt
     address_t
     (String (-1, "tz1fakefakefakefakefakefakefakcphLA5%"))
-    {destination = Contract tz1fake; entrypoint = Entrypoint.default}
+    {destination = (tz1fake :> Destination.t); entrypoint = Entrypoint.default}
   >|=? fun _ctxt -> ()
 
 let test_unparse_data loc ctxt ty x ~expected_readable ~expected_optimized =

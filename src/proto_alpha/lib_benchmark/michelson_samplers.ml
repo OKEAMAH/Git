@@ -492,11 +492,8 @@ end)
   end = struct
     let address rng_state =
       if Base_samplers.uniform_bool rng_state then
-        let contract = `Implicit (Crypto_samplers.pkh rng_state) in
-        {
-          destination = Contract contract;
-          entrypoint = Alpha_context.Entrypoint.default;
-        }
+        let destination = `Implicit (Crypto_samplers.pkh rng_state) in
+        {destination; entrypoint = Alpha_context.Entrypoint.default}
       else
         (* For a description of the format, see
            tezos-codec describe alpha.contract binary encoding *)
@@ -512,7 +509,8 @@ end)
           Alpha_context.Entrypoint.of_string_strict_exn
           @@ Base_samplers.string ~size:{min = 1; max = 31} rng_state
         in
-        {destination = Contract contract; entrypoint = ep}
+        let destination = (contract :> Alpha_context.Destination.t) in
+        {destination; entrypoint = ep}
 
     let tx_rollup_l2_address rng_state =
       let seed =

@@ -101,10 +101,8 @@ let ticket_balance_of_storage ctxt contract =
         @@ List.fold_left_es
              (fun (acc, ctxt) (ex_token, amount) ->
                let* (key, ctxt) =
-                 Ticket_balance_key.of_ex_token
-                   ctxt
-                   ~owner:(Contract contract)
-                   ex_token
+                 let owner = (contract :> Destination.t) in
+                 Ticket_balance_key.of_ex_token ctxt ~owner ex_token
                in
                let acc = (key, amount) :: acc in
                return (acc, ctxt))

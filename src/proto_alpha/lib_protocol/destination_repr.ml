@@ -25,20 +25,25 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = Contract of Contract_repr.t | Tx_rollup of Tx_rollup_repr.t
+type tx_rollup = [`Tx_rollup of Tx_rollup_repr.t]
+
+type t = [Contract_repr.t | tx_rollup]
 (* If you add more cases to this type, please update the
    [test_compare_destination] test in
    [test/unit/test_destinatino_repr.ml] to ensure that the compare
    function keeps its expected behavior to distinguish between
    implicit accounts and smart contracts. *)
 
+type destination = t
+
 include Compare.Make (struct
   type nonrec t = t
 
   let compare l1 l2 =
     match (l1, l2) with
-    | (Contract k1, Contract k2) -> Contract_repr.compare k1 k2
-    | (Tx_rollup k1, Tx_rollup k2) -> Tx_rollup_repr.compare k1 k2
+    | ((#Contract_repr.t as k1), (#Contract_repr.t as k2)) ->
+        Contract_repr.compare k1 k2
+    | (`Tx_rollup k1, `Tx_rollup k2) -> Tx_rollup_repr.compare k1 k2
     (* This function is used by the Michelson interpreter to compare
        addresses. It is of significant importance to remember that in
        Michelson, address comparison is used to distinguish between
@@ -46,13 +51,13 @@ include Compare.Make (struct
        KT1 < others], which the two following lines ensure. The
        wildcards are therefore here for a reason, and should not be
        modified when new constructors are added to [t]. *)
-    | (Contract _, _) -> -1
-    | (_, Contract _) -> 1
+    | (#Contract_repr.t, `Tx_rollup _) -> -1
+    | (`Tx_rollup _, #Contract_repr.t) -> 1
 end)
 
 let to_b58check = function
-  | Contract k -> Contract_repr.to_b58check k
-  | Tx_rollup k -> Tx_rollup_repr.to_b58check k
+  | #Contract_repr.t as k -> Contract_repr.to_b58check k
+  | `Tx_rollup k -> Tx_rollup_repr.to_b58check k
 
 type error += Invalid_destination_b58check of string
 
@@ -70,10 +75,10 @@ let () =
 
 let of_b58check s =
   match Contract_repr.of_b58check s with
-  | Ok s -> Ok (Contract s)
+  | Ok contract -> Ok (contract :> t)
   | Error _ -> (
       match Tx_rollup_repr.of_b58check s with
-      | Ok s -> Ok (Tx_rollup s)
+      | Ok s -> Ok (`Tx_rollup s)
       | Error _ -> error (Invalid_destination_b58check s))
 
 let encoding =
@@ -91,15 +96,15 @@ let encoding =
          (union
             ~tag_size:`Uint8
             (Contract_repr.cases
-               (function Contract x -> Some x | _ -> None)
-               (fun x -> Contract x)
+               (function #Contract_repr.t as x -> Some x | _ -> None)
+               (fun x -> (x :> destination))
             @ [
                 case
                   (Tag 2)
                   (Fixed.add_padding Tx_rollup_repr.encoding 1)
                   ~title:"Tx_rollup"
-                  (function Tx_rollup k -> Some k | _ -> None)
-                  (fun k -> Tx_rollup k);
+                  (function `Tx_rollup k -> Some k | _ -> None)
+                  (fun k -> `Tx_rollup k);
               ]))
        ~json:
          (conv
@@ -114,11 +119,11 @@ let encoding =
 
 let pp : Format.formatter -> t -> unit =
  fun fmt -> function
-  | Contract k -> Contract_repr.pp fmt k
-  | Tx_rollup k -> Tx_rollup_repr.pp fmt k
+  | #Contract_repr.t as k -> Contract_repr.pp fmt k
+  | `Tx_rollup k -> Tx_rollup_repr.pp fmt k
 
 let in_memory_size =
   let open Cache_memory_helpers in
   function
-  | Contract k -> h1w +! Contract_repr.in_memory_size k
-  | Tx_rollup k -> h1w +! Tx_rollup_repr.in_memory_size k
+  | #Contract_repr.t as k -> Contract_repr.in_memory_size k
+  | `Tx_rollup k -> h2w +! Tx_rollup_repr.in_memory_size k
