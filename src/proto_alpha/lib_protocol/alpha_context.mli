@@ -1471,7 +1471,7 @@ module Contract : sig
 
   type originated = [`Originated of Contract_hash.t]
 
-  type t = private [implicit | originated]
+  type t = [implicit | originated]
 
   include BASIC_DATA with type t := t
 

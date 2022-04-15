@@ -42,7 +42,7 @@ type implicit = [`Implicit of Signature.Public_key_hash.t]
 
 type originated = [`Originated of Contract_hash.t]
 
-type t = private [implicit | originated]
+type t = [implicit | originated]
 
 include Compare.S with type t := t
 
