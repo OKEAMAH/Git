@@ -24,8 +24,8 @@
 (*****************************************************************************)
 
 let init_account (ctxt, balance_updates)
-    ({public_key_hash; public_key; amount} : Parameters_repr.bootstrap_account)
-    =
+    ({public_key_hash; public_key; amount; delegate_to} :
+      Parameters_repr.bootstrap_account) =
   let contract = Contract_repr.Implicit public_key_hash in
   Token.transfer
     ~origin:Protocol_migration
@@ -40,7 +40,11 @@ let init_account (ctxt, balance_updates)
         ctxt
         public_key_hash
         public_key
-      >>=? fun ctxt -> Delegate_storage.set ctxt contract (Some public_key_hash)
+      >>=? fun ctxt ->
+      Delegate_storage.set
+        ctxt
+        contract
+        (Some (Option.value ~default:public_key_hash delegate_to))
   | None -> return ctxt)
   >|=? fun ctxt -> (ctxt, new_balance_updates @ balance_updates)
 
@@ -67,7 +71,12 @@ let init_contract ~typecheck (ctxt, balance_updates)
 let init ctxt ~typecheck ?no_reward_cycles accounts contracts =
   let nonce = Operation_hash.hash_string ["Un festival de GADT."] in
   let ctxt = Raw_context.init_origination_nonce ctxt nonce in
-  List.fold_left_es init_account (ctxt, []) accounts
+  (* Create the accounts, delegating to either delegate_to or self *)
+  List.fold_left_es
+    (fun (ctxt, balance_updates) account ->
+      init_account (ctxt, balance_updates) account)
+    (ctxt, [])
+    accounts
   >>=? fun (ctxt, balance_updates) ->
   List.fold_left_es (init_contract ~typecheck) (ctxt, balance_updates) contracts
   >>=? fun (ctxt, balance_updates) ->
