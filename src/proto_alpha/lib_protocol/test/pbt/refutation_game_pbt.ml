@@ -293,7 +293,8 @@ end) : TestPVM = struct
       @@ List.fold_left
            (fun acc _ -> acc >>= fun acc -> ContextPVM.eval acc)
            prelim
-      @@ List.repeat i ()
+      @@ List.repeat (min i (List.length program - 2) + 1) ()
+    (*this avoids a `too long` or `too short` i*)
 
     let make_proof before_state _ : proof =
       let open Tezos_context_memory.Context in
@@ -434,7 +435,6 @@ module Strategies (P : TestPVM) = struct
     in
     let outcome =
       let rec loop game move =
-        pp_player Format.std_formatter game.turn ;
         play game move >>= function
         | Over outcome -> Lwt.return outcome
         | Ongoing game ->
@@ -812,7 +812,6 @@ module Strategies (P : TestPVM) = struct
     let outcome =
       run ~start_at:Sc_rollup_tick_repr.initial ~start_state ~committer ~refuter
     in
-    pp_outcome Format.std_formatter @@ Lwt_main.run outcome ;
     expectation outcome
 
   (** This is a commuter client having a perfect strategy*)
@@ -920,6 +919,7 @@ let testing_countPVM (f : (module TestPVM) -> int option -> bool) name =
 let testing_arith (f : (module TestPVM) -> int option -> bool) name =
   let open QCheck2 in
   Test.make
+    ~count:10000
     ~name
     Gen.(pair gen_list small_int)
     (fun (inputs, evals) ->
