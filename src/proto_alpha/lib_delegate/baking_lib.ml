@@ -76,7 +76,9 @@ let preendorse (cctxt : Protocol_client_context.full) ?(force = false) delegates
           cctxt#error "Cannot preendorse an outdated proposal"
       | Valid_proposal -> return_unit
   in
-  let consensus_list = make_consensus_list state proposal in
+  let consensus_list =
+    make_consensus_list state proposal ~data_availibility:()
+  in
   let*! () =
     cctxt#message
       "@[<v 2>Preendorsing for:@ %a@]"
@@ -113,7 +115,10 @@ let endorse (cctxt : Protocol_client_context.full) ?(force = false) delegates =
       | Outdated_proposal -> cctxt#error "Cannot endorse an outdated proposal"
       | Valid_proposal -> return_unit
   in
-  let consensus_list = make_consensus_list state proposal in
+  (* DAS/FIXME: Implement this *)
+  let consensus_list =
+    make_consensus_list state proposal ~data_availibility:Das.Endorsement.empty
+  in
   let*! () =
     cctxt#message
       "@[<v 2>Endorsing for:@ %a@]"
@@ -178,8 +183,9 @@ let endorsements_endorsing_power state endorsements =
          power + get_endorsement_voting_power endorsement)
        0
 
-let generic_endorsing_power (filter : packed_operation list -> 'a list)
-    (extract : 'a -> consensus_content) state =
+let generic_endorsing_power (type data)
+    (filter : packed_operation list -> 'a list)
+    (extract : 'a -> data raw_consensus_content) state =
   let current_mempool =
     Operation_worker.get_current_operations state.global_state.operation_worker
   in
@@ -418,7 +424,11 @@ let baking_minimal_timestamp state =
   let cctxt = state.global_state.cctxt in
   let latest_proposal = state.level_state.latest_proposal in
   let own_endorsements =
-    State_transitions.make_consensus_list state latest_proposal
+    (* DAS/FIXME: Implement this *)
+    State_transitions.make_consensus_list
+      state
+      latest_proposal
+      ~data_availibility:Das.Endorsement.empty
   in
   let current_mempool =
     Operation_worker.get_current_operations state.global_state.operation_worker

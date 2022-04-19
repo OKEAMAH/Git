@@ -131,17 +131,18 @@ module Kind = struct
     | Das_slot_header_manager_kind : das_slot_header manager
 end
 
-type 'a consensus_operation_type =
-  | Endorsement : Kind.endorsement consensus_operation_type
-  | Preendorsement : Kind.preendorsement consensus_operation_type
+type (_, _) consensus_operation_type =
+  | Endorsement
+      : (Kind.endorsement, Das_endorsement_repr.t) consensus_operation_type
+  | Preendorsement : (Kind.preendorsement, unit) consensus_operation_type
 
-let pp_operation_kind (type kind) ppf
-    (operation_kind : kind consensus_operation_type) =
+let pp_operation_kind (type kind data) ppf
+    (operation_kind : (kind, data) consensus_operation_type) =
   match operation_kind with
   | Endorsement -> Format.fprintf ppf "Endorsement"
   | Preendorsement -> Format.fprintf ppf "Preendorsement"
 
-type consensus_content = {
+type 'data_availibility raw_consensus_content = {
   slot : Slot_repr.t;
   level : Raw_level_repr.t;
   (* The level is not required to validate an endorsement when it corresponds
@@ -149,24 +150,40 @@ type consensus_content = {
      the level. *)
   round : Round_repr.t;
   block_payload_hash : Block_payload_hash.t;
-      (* NOTE: This could be just the hash of the set of operations (the
-         actual payload). The grandfather block hash should already be
-         fixed by the operation.shell.branch field.  This is not really
-         important but could make things easier for debugging *)
+  (* NOTE: This could be just the hash of the set of operations (the
+     actual payload). The grandfather block hash should already be
+     fixed by the operation.shell.branch field.  This is not really
+     important but could make things easier for debugging *)
+  data_availibility : 'data_availibility;
+      (* This field is not part of the Tenderbake consensus, but is used
+         to get a consensus on the data-available. This is only used for
+         [endorsements]. *)
 }
 
-let consensus_content_encoding =
+type consensus_content = unit raw_consensus_content
+
+type consensus_content_with_data = Das_endorsement_repr.t raw_consensus_content
+
+let raw_consensus_content_encoding data_availibility_encoding =
   let open Data_encoding in
   conv
-    (fun {slot; level; round; block_payload_hash} ->
-      (slot, level, round, block_payload_hash))
-    (fun (slot, level, round, block_payload_hash) ->
-      {slot; level; round; block_payload_hash})
-    (obj4
+    (fun {slot; level; round; block_payload_hash; data_availibility} ->
+      (slot, level, round, block_payload_hash, data_availibility))
+    (fun (slot, level, round, block_payload_hash, data_availibility) ->
+      {slot; level; round; block_payload_hash; data_availibility})
+    (* DAS/FIXME: Is the last field cost-free when [data_availibility_encoding] is [unit] ? *)
+    (obj5
        (req "slot" Slot_repr.encoding)
        (req "level" Raw_level_repr.encoding)
        (req "round" Round_repr.encoding)
-       (req "block_payload_hash" Block_payload_hash.encoding))
+       (req "block_payload_hash" Block_payload_hash.encoding)
+       (req "data_availibility" data_availibility_encoding))
+
+let consensus_content_encoding =
+  raw_consensus_content_encoding Data_encoding.unit
+
+let consensus_content_with_data_encoding =
+  raw_consensus_content_encoding Das_endorsement_repr.encoding
 
 let pp_consensus_content ppf content =
   Format.fprintf
@@ -236,7 +253,7 @@ and _ contents_list =
 
 and _ contents =
   | Preendorsement : consensus_content -> Kind.preendorsement contents
-  | Endorsement : consensus_content -> Kind.endorsement contents
+  | Endorsement : consensus_content_with_data -> Kind.endorsement contents
   | Seed_nonce_revelation : {
       level : Raw_level_repr.t;
       nonce : Seed_repr.nonce;
@@ -1103,30 +1120,18 @@ module Encoding = struct
                   @@ union [make preendorsement_case]))
                (varopt "signature" Signature.encoding)))
 
-  let endorsement_encoding =
-    obj4
-      (req "slot" Slot_repr.encoding)
-      (req "level" Raw_level_repr.encoding)
-      (req "round" Round_repr.encoding)
-      (req "block_payload_hash" Block_payload_hash.encoding)
-
   let endorsement_case =
     Case
       {
         tag = 21;
         name = "endorsement";
-        encoding = endorsement_encoding;
+        encoding = consensus_content_with_data_encoding;
         select =
           (function Contents (Endorsement _ as op) -> Some op | _ -> None);
         proj =
-          (fun [@coq_match_with_default] (Endorsement consensus_content) ->
-            ( consensus_content.slot,
-              consensus_content.level,
-              consensus_content.round,
-              consensus_content.block_payload_hash ));
-        inj =
-          (fun (slot, level, round, block_payload_hash) ->
-            Endorsement {slot; level; round; block_payload_hash});
+          (fun [@coq_match_with_default] (Endorsement endorsement) ->
+            endorsement);
+        inj = (fun endorsement -> Endorsement endorsement);
       }
 
   let[@coq_axiom_with_reason "gadt"] endorsement_encoding =

@@ -114,16 +114,17 @@ let get_block_offset level =
       Events.(emit invalid_level_conversion) (Environment.wrap_tztrace errs)
       >>= fun () -> Lwt.return (`Head 0)
 
-let get_payload_hash (type kind) (op_kind : kind consensus_operation_type)
-    (op : kind Operation.t) =
+let get_payload_hash (type kind data)
+    (op_kind : (kind, data) consensus_operation_type) (op : kind Operation.t) =
   match (op_kind, op.protocol_data.contents) with
-  | Preendorsement, Single (Preendorsement consensus_content)
+  | Preendorsement, Single (Preendorsement consensus_content) ->
+      consensus_content.block_payload_hash
   | Endorsement, Single (Endorsement consensus_content) ->
       consensus_content.block_payload_hash
   | _ -> .
 
-let double_consensus_op_evidence (type kind) :
-    kind consensus_operation_type ->
+let double_consensus_op_evidence (type kind data) :
+    (kind, data) consensus_operation_type ->
     #Protocol_client_context.full ->
     'a ->
     branch:Block_hash.t ->
@@ -134,9 +135,9 @@ let double_consensus_op_evidence (type kind) :
   | Endorsement -> Plugin.RPC.Forge.double_endorsement_evidence
   | Preendorsement -> Plugin.RPC.Forge.double_preendorsement_evidence
 
-let process_consensus_op (type kind) cctxt
-    (op_kind : kind consensus_operation_type) (new_op : kind Operation.t)
-    chain_id level round slot ops_table =
+let process_consensus_op (type kind data) cctxt
+    (op_kind : (kind, data) consensus_operation_type)
+    (new_op : kind Operation.t) chain_id level round slot ops_table =
   let map =
     Option.value ~default:Slot_Map.empty
     @@ HLevel.find ops_table (chain_id, level, round)

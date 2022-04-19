@@ -2514,10 +2514,10 @@ type 'consensus_op_kind expected_consensus_content = {
 (* The [Alpha_context] is modified only in [Full_construction] mode
    when we check a preendorsement if the [preendorsement_quorum_round]
    was not set. *)
-let compute_expected_consensus_content (type consensus_op_kind)
+let compute_expected_consensus_content (type consensus_op_kind data)
     ~(current_level : Level.t) ~(proposal_level : Level.t) (ctxt : context)
     (application_mode : apply_mode)
-    (operation_kind : consensus_op_kind consensus_operation_type)
+    (operation_kind : (consensus_op_kind, data) consensus_operation_type)
     (operation_round : Round.t) (operation_level : Raw_level.t) :
     (context * consensus_op_kind expected_consensus_content) tzresult Lwt.t =
   match operation_kind with
@@ -2622,7 +2622,8 @@ let check_operation_branch ~expected ~provided =
     (Block_hash.equal expected provided)
     (Wrong_consensus_operation_branch (expected, provided))
 
-let check_round (type kind) (operation_kind : kind consensus_operation_type)
+let check_round (type kind data)
+    (operation_kind : (kind, data) consensus_operation_type)
     (apply_mode : apply_mode) ~(expected : Round.t) ~(provided : Round.t) :
     unit tzresult =
   match apply_mode with
@@ -2646,9 +2647,9 @@ let check_round (type kind) (operation_kind : kind consensus_operation_type)
         (Round.equal expected provided)
         (Wrong_round_for_consensus_operation {expected; provided})
 
-let check_consensus_content (type kind) (apply_mode : apply_mode)
-    (content : consensus_content) (operation_branch : Block_hash.t)
-    (operation_kind : kind consensus_operation_type)
+let check_consensus_content (type kind data) (apply_mode : apply_mode)
+    (content : data raw_consensus_content) (operation_branch : Block_hash.t)
+    (operation_kind : (kind, data) consensus_operation_type)
     (expected_content : kind expected_consensus_content) : unit tzresult =
   let expected_level = expected_content.level.level in
   let provided_level = content.level in
@@ -2675,10 +2676,10 @@ let check_consensus_content (type kind) (apply_mode : apply_mode)
    to the grandfather: the block hash used in the payload_hash. Otherwise we could produce
    a preendorsement pointing to the direct proposal. This preendorsement wouldn't be able to
    propagate for a subsequent proposal using it as a locked_round evidence. *)
-let validate_consensus_contents (type kind) ctxt chain_id
-    (operation_kind : kind consensus_operation_type)
+let validate_consensus_contents (type kind data) ctxt chain_id
+    (operation_kind : (kind, data) consensus_operation_type)
     (operation : kind operation) (apply_mode : apply_mode)
-    (content : consensus_content) :
+    (content : data raw_consensus_content) :
     (context * public_key_hash * int) tzresult Lwt.t =
   let current_level = Level.current ctxt in
   let proposal_level = get_predecessor_level apply_mode in
@@ -2702,6 +2703,11 @@ let validate_consensus_contents (type kind) ctxt chain_id
     operation.shell.branch
     operation_kind
     expected_content
+  >>?= fun () ->
+  (match operation_kind with
+  | Preendorsement -> ok ()
+  | Endorsement ->
+      Das_apply.validate_data_availibility ctxt content.data_availibility)
   >>?= fun () ->
   match Slot.Map.find content.slot slot_map with
   | None -> fail Wrong_slot_used_for_consensus_operation
@@ -2783,45 +2789,50 @@ let punish_double_endorsement_or_preendorsement (type kind) ctxt ~chain_id
     | Single (Endorsement _) ->
         Double_endorsement_evidence_result balance_updates
   in
-  match (op1.protocol_data.contents, op2.protocol_data.contents) with
-  | Single (Preendorsement e1), Single (Preendorsement e2)
-  | Single (Endorsement e1), Single (Endorsement e2) ->
-      let kind = if preendorsement then Preendorsement else Endorsement in
-      let op1_hash = Operation.hash op1 in
-      let op2_hash = Operation.hash op2 in
-      fail_unless
-        (Raw_level.(e1.level = e2.level)
-        && Round.(e1.round = e2.round)
-        && (not
-              (Block_payload_hash.equal
-                 e1.block_payload_hash
-                 e2.block_payload_hash))
-        && (* we require an order on hashes to avoid the existence of
-              equivalent evidences *)
-        Operation_hash.(op1_hash < op2_hash))
-        (Invalid_denunciation kind)
-      >>=? fun () ->
-      (* Disambiguate: levels are equal *)
-      let level = Level.from_raw ctxt e1.level in
-      check_denunciation_age ctxt kind level.level >>=? fun () ->
-      Stake_distribution.slot_owner ctxt level e1.slot
-      >>=? fun (ctxt, (delegate1_pk, delegate1)) ->
-      Stake_distribution.slot_owner ctxt level e2.slot
-      >>=? fun (ctxt, (_delegate2_pk, delegate2)) ->
-      fail_unless
-        (Signature.Public_key_hash.equal delegate1 delegate2)
-        (Inconsistent_denunciation {kind; delegate1; delegate2})
-      >>=? fun () ->
-      let delegate_pk, delegate = (delegate1_pk, delegate1) in
-      Operation.check_signature delegate_pk chain_id op1 >>?= fun () ->
-      Operation.check_signature delegate_pk chain_id op2 >>?= fun () ->
-      punish_delegate
-        ctxt
-        delegate
-        level
-        `Double_endorsing
-        mk_result
-        ~payload_producer
+  let check_consensus_content (type a) (e1 : a raw_consensus_content)
+      (e2 : a raw_consensus_content) =
+    let kind = if preendorsement then Preendorsement else Endorsement in
+    let op1_hash = Operation.hash op1 in
+    let op2_hash = Operation.hash op2 in
+    fail_unless
+      (Raw_level.(e1.level = e2.level)
+      && Round.(e1.round = e2.round)
+      && (not
+            (Block_payload_hash.equal
+               e1.block_payload_hash
+               e2.block_payload_hash))
+      && (* we require an order on hashes to avoid the existence of
+            equivalent evidences *)
+      Operation_hash.(op1_hash < op2_hash))
+      (Invalid_denunciation kind)
+    >>=? fun () ->
+    (* Disambiguate: levels are equal *)
+    let level = Level.from_raw ctxt e1.level in
+    check_denunciation_age ctxt kind level.level >>=? fun () ->
+    Stake_distribution.slot_owner ctxt level e1.slot
+    >>=? fun (ctxt, (delegate1_pk, delegate1)) ->
+    Stake_distribution.slot_owner ctxt level e2.slot
+    >>=? fun (ctxt, (_delegate2_pk, delegate2)) ->
+    fail_unless
+      (Signature.Public_key_hash.equal delegate1 delegate2)
+      (Inconsistent_denunciation {kind; delegate1; delegate2})
+    >>=? fun () -> return (ctxt, delegate1_pk, delegate1, level)
+  in
+  (match (op1.protocol_data.contents, op2.protocol_data.contents) with
+  | (Single (Preendorsement e1), Single (Preendorsement e2)) ->
+      check_consensus_content e1 e2
+  | (Single (Endorsement e1), Single (Endorsement e2)) ->
+      check_consensus_content e1 e2)
+  >>=? fun (ctxt, delegate_pk, delegate, level) ->
+  Operation.check_signature delegate_pk chain_id op1 >>?= fun () ->
+  Operation.check_signature delegate_pk chain_id op2 >>?= fun () ->
+  punish_delegate
+    ctxt
+    delegate
+    level
+    `Double_endorsing
+    mk_result
+    ~payload_producer
 
 let punish_double_baking ctxt chain_id bh1 bh2 ~payload_producer =
   let hash1 = Block_header.hash bh1 in
@@ -2866,8 +2877,9 @@ let punish_double_baking ctxt chain_id bh1 bh2 ~payload_producer =
     ~payload_producer
     (fun balance_updates -> Double_baking_evidence_result balance_updates)
 
-let is_parent_endorsement ctxt ~proposal_level ~grand_parent_round
-    (operation : 'a operation) (operation_content : consensus_content) =
+let is_parent_endorsement (type data) ctxt ~proposal_level ~grand_parent_round
+    (operation : 'a operation) (operation_content : data raw_consensus_content)
+    =
   match Consensus.grand_parent_branch ctxt with
   | None -> false
   | Some (great_grand_parent_hash, grand_parent_payload_hash) ->
@@ -2960,6 +2972,11 @@ let apply_contents_list (type kind) ctxt chain_id (apply_mode : apply_mode) mode
             ~initial_slot:consensus_content.slot
             ~power:voting_power
           >>?= fun ctxt ->
+          Das_apply.apply_data_availibility
+            ctxt
+            consensus_content.data_availibility
+            ~endorser:delegate
+          >>=? fun () ->
           return
             ( ctxt,
               Single_result

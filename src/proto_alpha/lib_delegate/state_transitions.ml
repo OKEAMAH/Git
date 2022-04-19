@@ -68,7 +68,7 @@ let is_acceptable_proposal_for_current_level state
          is a predecessor therefore the proposal is valid *)
       Lwt.return Valid_proposal
 
-let make_consensus_list state proposal =
+let make_consensus_list state proposal ~data_availibility =
   (* TODO efficiently iterate on the slot map instead of removing
      duplicate endorsements *)
   let level =
@@ -81,7 +81,13 @@ let make_consensus_list state proposal =
   SlotMap.fold
     (fun _slot (delegate, slots) acc ->
       ( delegate,
-        {slot = Stdlib.List.hd slots.slots; level; round; block_payload_hash} )
+        {
+          slot = Stdlib.List.hd slots.slots;
+          level;
+          round;
+          block_payload_hash;
+          data_availibility;
+        } )
       :: acc)
     state.level_state.delegate_slots.own_delegate_slots
     []
@@ -97,7 +103,7 @@ let make_preendorse_action state proposal =
     {state with round_state}
   in
   let preendorsements : (delegate * consensus_content) list =
-    make_consensus_list state proposal
+    make_consensus_list state proposal ~data_availibility:()
   in
   Inject_preendorsements {preendorsements; updated_state}
 
@@ -598,8 +604,9 @@ let make_endorse_action state proposal =
       proposal.block.round
       proposal.block.payload_hash
   in
-  let endorsements : (delegate * consensus_content) list =
-    make_consensus_list state proposal
+  let endorsements : (delegate * consensus_content_with_data) list =
+    (* DAS/FIXME: Implement this *)
+    make_consensus_list state proposal ~data_availibility:Das.Endorsement.empty
   in
   Inject_endorsements {endorsements; updated_state}
 

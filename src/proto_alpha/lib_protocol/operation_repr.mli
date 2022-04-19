@@ -160,14 +160,15 @@ module Kind : sig
     | Das_slot_header_manager_kind : das_slot_header manager
 end
 
-type 'a consensus_operation_type =
-  | Endorsement : Kind.endorsement consensus_operation_type
-  | Preendorsement : Kind.preendorsement consensus_operation_type
+type (_, _) consensus_operation_type =
+  | Endorsement
+      : (Kind.endorsement, Das_endorsement_repr.t) consensus_operation_type
+  | Preendorsement : (Kind.preendorsement, unit) consensus_operation_type
 
 val pp_operation_kind :
-  Format.formatter -> 'kind consensus_operation_type -> unit
+  Format.formatter -> ('kind, 'data) consensus_operation_type -> unit
 
-type consensus_content = {
+type 'data_availibility raw_consensus_content = {
   slot : Slot_repr.t;
   (* By convention, this is the validator's first slot. *)
   level : Raw_level_repr.t;
@@ -175,10 +176,18 @@ type consensus_content = {
   round : Round_repr.t;
   (* The round of (pre)endorsed block. *)
   block_payload_hash : Block_payload_hash.t;
-      (* The payload hash of (pre)endorsed block. *)
+  (* The payload hash of (pre)endorsed block. *)
+  data_availibility : 'data_availibility;
 }
 
+type consensus_content = unit raw_consensus_content
+
+type consensus_content_with_data = Das_endorsement_repr.t raw_consensus_content
+
 val consensus_content_encoding : consensus_content Data_encoding.t
+
+val consensus_content_with_data_encoding :
+  consensus_content_with_data Data_encoding.t
 
 val pp_consensus_content : Format.formatter -> consensus_content -> unit
 
@@ -233,7 +242,7 @@ and _ contents =
   | Preendorsement : consensus_content -> Kind.preendorsement contents
   (* Endorsement: About consensus, endorsement of a block held by a
      validator. *)
-  | Endorsement : consensus_content -> Kind.endorsement contents
+  | Endorsement : consensus_content_with_data -> Kind.endorsement contents
   (* Seed_nonce_revelation: Nonces are created by bakers and are
      combined to create pseudo-random seeds. Bakers are urged to reveal their
      nonces after a given number of cycles to keep their block rewards

@@ -2995,12 +2995,12 @@ module Kind : sig
     | Das_slot_header_manager_kind : das_slot_header manager
 end
 
-type 'a consensus_operation_type =
-  | Endorsement : Kind.endorsement consensus_operation_type
-  | Preendorsement : Kind.preendorsement consensus_operation_type
+type (_, _) consensus_operation_type =
+  | Endorsement : (Kind.endorsement, Das.Endorsement.t) consensus_operation_type
+  | Preendorsement : (Kind.preendorsement, unit) consensus_operation_type
 
 val pp_operation_kind :
-  Format.formatter -> 'kind consensus_operation_type -> unit
+  Format.formatter -> ('kind, _) consensus_operation_type -> unit
 
 type 'data_availibility raw_consensus_content = {
   slot : Slot.t;
