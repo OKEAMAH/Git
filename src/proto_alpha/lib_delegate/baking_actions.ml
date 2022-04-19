@@ -129,7 +129,7 @@ type action =
       updated_state : state;
     }
   | Inject_endorsements of {
-      endorsements : (delegate * consensus_content) list;
+      endorsements : (delegate * consensus_content_with_data) list;
       updated_state : state;
     }
   | Update_to_level of level_update

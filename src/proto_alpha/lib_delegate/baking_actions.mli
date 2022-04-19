@@ -51,7 +51,7 @@ type action =
       updated_state : state;
     }
   | Inject_endorsements of {
-      endorsements : (delegate * consensus_content) list;
+      endorsements : (delegate * consensus_content_with_data) list;
       updated_state : state;
     }
   | Update_to_level of level_update
@@ -95,13 +95,13 @@ val inject_preendorsements :
 
 val sign_endorsements :
   state ->
-  (delegate * consensus_content) list ->
+  (delegate * consensus_content_with_data) list ->
   (delegate * packed_operation) list tzresult Lwt.t
 
 val inject_endorsements :
   state_recorder:(new_state:state -> unit tzresult Lwt.t) ->
   state ->
-  endorsements:(delegate * consensus_content) list ->
+  endorsements:(delegate * consensus_content_with_data) list ->
   updated_state:state ->
   state tzresult Lwt.t
 

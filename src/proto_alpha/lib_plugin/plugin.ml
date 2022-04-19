@@ -906,11 +906,11 @@ module Mempool = struct
          acceptable *)
       acceptable ~drift ~op_earliest_ts ~now_timestamp
 
-  let pre_filter_far_future_consensus_ops config
+  let pre_filter_far_future_consensus_ops (type data) config
       ~filter_state:({grandparent_level_start; round_zero_duration; _} : state)
       ?validation_state_before
-      ({level = op_level; round = op_round; _} : consensus_content) : bool Lwt.t
-      =
+      ({level = op_level; round = op_round; _} : data raw_consensus_content) :
+      bool Lwt.t =
     match
       (grandparent_level_start, validation_state_before, round_zero_duration)
     with
@@ -990,7 +990,18 @@ module Mempool = struct
     match contents with
     | Single (Failing_noop _) ->
         Lwt.return (`Refused [Environment.wrap_tzerror Wrong_operation])
-    | Single (Preendorsement consensus_content)
+    | Single (Preendorsement consensus_content) ->
+        pre_filter_far_future_consensus_ops
+          ~filter_state
+          config
+          ?validation_state_before
+          consensus_content
+        >>= fun keep ->
+        if keep then Lwt.return @@ `Passed_prefilter consensus_prio
+        else
+          Lwt.return
+            (`Branch_refused
+              [Environment.wrap_tzerror Consensus_operation_in_far_future])
     | Single (Endorsement consensus_content) ->
         pre_filter_far_future_consensus_ops
           ~filter_state

@@ -32,6 +32,7 @@ val endorsement :
   ?level:Raw_level.t ->
   ?round:Round.t ->
   ?block_payload_hash:Block_payload_hash.t ->
+  ?data_availibility:Das.Endorsement.t ->
   endorsed_block:Block.t ->
   Context.t ->
   ?signing_context:Context.t ->

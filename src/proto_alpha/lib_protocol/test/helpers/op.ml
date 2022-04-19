@@ -53,7 +53,7 @@ let mk_block_payload_hash pred_hash payload_round (b : Block.t) =
 
 (* ctxt is used for getting the branch in sign *)
 let endorsement ?delegate ?slot ?level ?round ?block_payload_hash
-    ~endorsed_block ctxt ?(signing_context = ctxt) () =
+    ?data_availibility ~endorsed_block ctxt ?(signing_context = ctxt) () =
   let pred_hash = match ctxt with Context.B b -> b.hash | _ -> assert false in
   (match delegate with
   | None -> Context.get_endorser (B endorsed_block)
@@ -75,7 +75,14 @@ let endorsement ?delegate ?slot ?level ?round ?block_payload_hash
     | None -> mk_block_payload_hash pred_hash round endorsed_block
     | Some block_payload_hash -> block_payload_hash
   in
-  let consensus_content = {slot; level; round; block_payload_hash} in
+  let data_availibility =
+    match data_availibility with
+    | None -> Das.Endorsement.empty
+    | Some data_availibility -> data_availibility
+  in
+  let consensus_content =
+    {slot; level; round; block_payload_hash; data_availibility}
+  in
   let op = Single (Endorsement consensus_content) in
   Account.find delegate_pkh >>=? fun delegate ->
   return
@@ -108,7 +115,10 @@ let preendorsement ?delegate ?slot ?level ?round ?block_payload_hash
     | None -> mk_block_payload_hash pred_hash round endorsed_block
     | Some block_payload_hash -> block_payload_hash
   in
-  let consensus_content = {slot; level; round; block_payload_hash} in
+  let data_availibility = () in
+  let consensus_content =
+    {slot; level; round; block_payload_hash; data_availibility}
+  in
   let op = Single (Preendorsement consensus_content) in
   Account.find delegate_pkh >>=? fun delegate ->
   return

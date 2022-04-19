@@ -36,7 +36,10 @@ val is_acceptable_proposal_for_current_level :
   state -> proposal -> proposal_acceptance Lwt.t
 
 val make_consensus_list :
-  state -> proposal -> (delegate * consensus_content) list
+  state ->
+  proposal ->
+  data_availibility:'a ->
+  (delegate * 'a raw_consensus_content) list
 
 val make_preendorse_action : state -> proposal -> action
 
