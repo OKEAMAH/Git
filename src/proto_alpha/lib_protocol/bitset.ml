@@ -49,3 +49,5 @@ let () =
     (obj1 (req "position" int31))
     (function Invalid_position i -> Some i | _ -> None)
     (fun i -> Invalid_position i)
+
+let size = Z.numbits
