@@ -106,23 +106,6 @@ module type CORE = sig
     ('err -> error) ->
     unit
 
-  (** Same as [register_error_kind] but allow errors to wrap other errors.
-
-      The encoding argument is a function which will be given the encoding of
-      errors as argument so that you can encode errors in errors using a fixpoint.
-
-      Another difference with [register_error_kind] is that [pp] is mandatory. *)
-  val register_recursive_error_kind :
-    error_category ->
-    id:string ->
-    title:string ->
-    description:string ->
-    pp:(Format.formatter -> 'err -> unit) ->
-    (error Data_encoding.t -> 'err Data_encoding.t) ->
-    (error -> 'err option) ->
-    ('err -> error) ->
-    unit
-
   (** Classify an error using the registered kinds *)
   val classify_error : error -> Error_classification.t
 
@@ -253,46 +236,47 @@ module type MONAD_EXTENSION = sig
 
   val classify_trace : tztrace -> Error_classification.t
 
-  val return : 'a -> ('a, 'e) result Lwt.t
+  module Legacy_monad_globals : sig
+    val return : 'a -> ('a, 'e) result Lwt.t
 
-  val return_unit : (unit, 'e) result Lwt.t
+    val return_unit : (unit, 'e) result Lwt.t
 
-  val return_none : ('a option, 'e) result Lwt.t
+    val return_none : ('a option, 'e) result Lwt.t
 
-  val return_some : 'a -> ('a option, 'e) result Lwt.t
+    val return_some : 'a -> ('a option, 'e) result Lwt.t
 
-  val return_nil : ('a list, 'e) result Lwt.t
+    val return_nil : ('a list, 'e) result Lwt.t
 
-  val return_true : (bool, 'e) result Lwt.t
+    val return_true : (bool, 'e) result Lwt.t
 
-  val return_false : (bool, 'e) result Lwt.t
+    val return_false : (bool, 'e) result Lwt.t
 
-  (** more globals *)
-  val ( >>= ) : 'a Lwt.t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
+    val ( >>= ) : 'a Lwt.t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
 
-  val ( >|= ) : 'a Lwt.t -> ('a -> 'b) -> 'b Lwt.t
+    val ( >|= ) : 'a Lwt.t -> ('a -> 'b) -> 'b Lwt.t
 
-  val ok : 'a -> ('a, 'e) result
+    val ok : 'a -> ('a, 'e) result
 
-  val error : 'e -> ('a, 'e trace) result
+    val error : 'e -> ('a, 'e trace) result
 
-  val ( >>? ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
+    val ( >>? ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
 
-  val ( >|? ) : ('a, 'e) result -> ('a -> 'b) -> ('b, 'e) result
+    val ( >|? ) : ('a, 'e) result -> ('a -> 'b) -> ('b, 'e) result
 
-  val fail : 'e -> ('a, 'e trace) result Lwt.t
+    val fail : 'e -> ('a, 'e trace) result Lwt.t
 
-  val ( >>=? ) :
-    ('a, 'e) result Lwt.t ->
-    ('a -> ('b, 'e) result Lwt.t) ->
-    ('b, 'e) result Lwt.t
+    val ( >>=? ) :
+      ('a, 'e) result Lwt.t ->
+      ('a -> ('b, 'e) result Lwt.t) ->
+      ('b, 'e) result Lwt.t
 
-  val ( >|=? ) : ('a, 'e) result Lwt.t -> ('a -> 'b) -> ('b, 'e) result Lwt.t
+    val ( >|=? ) : ('a, 'e) result Lwt.t -> ('a -> 'b) -> ('b, 'e) result Lwt.t
 
-  val ( >>?= ) :
-    ('a, 'e) result -> ('a -> ('b, 'e) result Lwt.t) -> ('b, 'e) result Lwt.t
+    val ( >>?= ) :
+      ('a, 'e) result -> ('a -> ('b, 'e) result Lwt.t) -> ('b, 'e) result Lwt.t
 
-  val ( >|?= ) : ('a, 'e) result -> ('a -> 'b Lwt.t) -> ('b, 'e) result Lwt.t
+    val ( >|?= ) : ('a, 'e) result -> ('a -> 'b Lwt.t) -> ('b, 'e) result Lwt.t
+  end
 
   (* Pretty-prints an error trace. *)
   val pp_print_trace : Format.formatter -> error trace -> unit

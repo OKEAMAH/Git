@@ -70,9 +70,12 @@ When the preprocessing will occur, the code will be transformed as follows:
         (fun () -> g ())
       in
       let* c = h () in
-      let* __flush__id__0 = foo a b c in
-      let+ () = Tezos_time_measurement_runtime.Default.Time_measurement.flush () in
-      __flush__id__0
+      Lwt.bind
+        (foo a b c)
+        (fun __flush__id__0 ->
+          Lwt.map
+            (fun () -> __flush__id__0)
+            (Tezos_time_measurement_runtime.Default.Time_measurement.flush ()))
 
 Woah! What a mess... Let's see what this means.
 
@@ -131,11 +134,15 @@ This is useful to prevent our code from embedding benchmarking tooling in
 production by mistake: If no backend is specified for the compilation, added
 attributes will just be ignored by the OCaml compiler and that's it!
 
-We can now compile our ready-to-benchmark code:::
+We can now compile our ready-to-benchmark code:
+
+.. code-block::
 
     dune build --instrument-with tezos-time-measurement
 
-We can then run the executable:::
+We can then run the executable:
+
+.. code-block::
 
     ./my_program.exe
 
@@ -180,10 +187,14 @@ The PPX provides the handling of three attributes:
   inside a ``Lwt.t`` monad. So, this attribute must be placed on an expression
   evaluating in a ``Lwt.t`` value in order to compile.
 
+Some of these attributes are used, for instance, in the implementation of the :ref:`performance regression test framework <performance_regression_test_fw>`.
+
 Instrumenting the tezos-node executable
 ---------------------------------------
 
 A helper has been added in the ``Makefile``, so you just need to run the following
-command to instrument the node during the compilation:::
+command to instrument the node during the compilation:
 
-    ./make enable-time-measurement
+.. code-block::
+
+   ./make enable-time-measurement

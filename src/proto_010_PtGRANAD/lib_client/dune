@@ -1,3 +1,6 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
 (library
  (name tezos_client_010_PtGRANAD)
  (public_name tezos-client-010-PtGRANAD)
@@ -13,12 +16,13 @@
   tezos-protocol-plugin-010-PtGRANAD
   tezos-protocol-010-PtGRANAD-parameters
   tezos-rpc)
- (inline_tests (flags -verbose))
+ (inline_tests (flags -verbose) (modes native))
  (preprocess (pps ppx_inline_test))
  (library_flags (:standard -linkall))
  (flags
   (:standard
    -open Tezos_base.TzPervasives
+   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
    -open Tezos_shell_services
    -open Tezos_client_base
    -open Tezos_protocol_010_PtGRANAD

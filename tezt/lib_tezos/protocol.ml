@@ -25,29 +25,29 @@
 (*****************************************************************************)
 
 (* Declaration order must respect the version order. *)
-type t = Hangzhou | Ithaca | Alpha
+type t = Ithaca | Jakarta | Alpha
 
 type constants = Constants_sandbox | Constants_mainnet | Constants_test
 
 let name = function
   | Alpha -> "Alpha"
-  | Hangzhou -> "Hangzhou"
   | Ithaca -> "Ithaca"
+  | Jakarta -> "Jakarta"
 
-let number = function Hangzhou -> 011 | Ithaca -> 012 | Alpha -> 013
+let number = function Ithaca -> 012 | Jakarta -> 013 | Alpha -> 014
 
 let directory = function
   | Alpha -> "proto_alpha"
-  | Hangzhou -> "proto_011_PtHangz2"
   | Ithaca -> "proto_012_Psithaca"
+  | Jakarta -> "proto_013_PtJakart"
 
 (* Test tags must be lowercase. *)
 let tag protocol = String.lowercase_ascii (name protocol)
 
 let hash = function
   | Alpha -> "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK"
-  | Hangzhou -> "PtHangz2aRngywmSRGGvrcTyMbbdpWdpFKuS4uMWxg2RaH9i1qx"
   | Ithaca -> "Psithaca2MLRFYargivpo7YvUr7wUDqyxrdhC5CQq78mRvimz6A"
+  | Jakarta -> "PtJakartaiDz69SfDDLXJSiuZqTSeSKRDbKVZC8MNzJnvRjvnGw"
 
 let genesis_hash = "ProtoGenesisGenesisGenesisGenesisGenesisGenesk612im"
 
@@ -64,8 +64,8 @@ let parameter_file ?(constants = default_constants) protocol =
 
 let daemon_name = function
   | Alpha -> "alpha"
-  | Hangzhou -> "011-PtHangz2"
   | Ithaca -> "012-Psithaca"
+  | Jakarta -> "013-PtJakart"
 
 let accuser proto = "./tezos-accuser-" ^ daemon_name proto
 
@@ -113,10 +113,7 @@ let write_parameter_file :
               `String account.public_key_hash;
               `String
                 (string_of_int
-                   (Option.fold
-                      ~none:4000000000000
-                      ~some:Fun.id
-                      default_balance));
+                   (Option.value ~default:4000000000000 default_balance));
             ])
         additional_bootstrap_accounts
     in
@@ -125,23 +122,20 @@ let write_parameter_file :
       bootstrap_accounts
       (Some (`A (existing_accounts @ additional_bootstrap_accounts)))
   in
-  let* overriden_parameters_out =
-    Lwt_io.open_file ~mode:Output overriden_parameters
-  in
-  let* () = Lwt_io.write overriden_parameters_out @@ JSON.encode_u parameters in
+  JSON.encode_to_file_u overriden_parameters parameters ;
   Lwt.return overriden_parameters
 
 let next_protocol = function
-  | Hangzhou -> Some Ithaca
-  | Ithaca -> None
+  | Ithaca -> Some Jakarta
+  | Jakarta -> None
   | Alpha -> None
 
 let previous_protocol = function
-  | Alpha -> Some Hangzhou
-  | Ithaca -> Some Hangzhou
-  | Hangzhou -> None
+  | Alpha -> Some Jakarta
+  | Jakarta -> Some Ithaca
+  | Ithaca -> None
 
-let all = [Alpha; Hangzhou; Ithaca]
+let all = [Alpha; Ithaca; Jakarta]
 
 type supported_protocols =
   | Any_protocol

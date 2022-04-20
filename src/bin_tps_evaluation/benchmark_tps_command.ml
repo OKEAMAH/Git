@@ -40,6 +40,15 @@ let get_minimal_block_delay protocol protocol_constants =
   in
   int_of_float JSON.(json |-> "minimal_block_delay" |> as_float)
 
+(** Set max prechecked manager operations count. *)
+let set_max_prechecked_manager_operations n client =
+  let path = ["chains"; "main"; "mempool"; "filter"] in
+  let data =
+    `O [("max_prechecked_manager_operations", `Float (Float.of_int n))]
+  in
+  let* _ = Client.rpc ~data POST path client in
+  Lwt.return_unit
+
 (** Get a list of hashes of the given number of most recent blocks. *)
 let get_blocks blocks_total client =
   let open Lwt_syntax in
@@ -202,6 +211,7 @@ let run_benchmark ~lift_protocol_limits ~provided_tps_of_injection ~blocks_total
   let* () =
     Client.stresstest_originate_smart_contracts originating_bootstrap client
   in
+  let* () = set_max_prechecked_manager_operations total_bootstraps client in
   Log.info "Waiting to reach the next level" ;
   let* _ = Node.wait_for_level node (benchmark_starting_level - 1) in
   Log.info "Using the parameter file: %s" parameter_file ;
@@ -274,19 +284,19 @@ let regression_handling defacto_tps_of_injection empirical_tps
       ~minimum_previous_count:previous_count
       ~stddev:false
       ~repeat:1
-      ~tags:[("lifted_protocol_limits", lifted_protocol_limits_tag)]
+      ~tags:[(Dashboard.Tag.lifted_protocol_limits, lifted_protocol_limits_tag)]
   in
   let* () =
-    save_and_check "defacto_tps_of_injection" @@ fun () ->
+    save_and_check Dashboard.Measurement.defacto_tps_of_injection @@ fun () ->
     defacto_tps_of_injection
   in
-  save_and_check "empirical_tps" @@ fun () -> empirical_tps
+  save_and_check Dashboard.Measurement.empirical_tps @@ fun () -> empirical_tps
 
 let register () =
   Long_test.register
     ~__FILE__
-    ~title:"tezos_tps_benchmark"
-    ~tags:["tezos_tps_benchmark"]
+    ~title:Dashboard.Test.benchmark_tps
+    ~tags:[Dashboard.Test.benchmark_tps]
     ~timeout:(Long_test.Minutes 60)
     ~executors:Long_test.[x86_executor1]
     (fun () ->

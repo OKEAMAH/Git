@@ -163,7 +163,6 @@ type parametric = {
   tx_rollup_origination_size : int;
   tx_rollup_hard_size_limit_per_inbox : int;
   tx_rollup_hard_size_limit_per_message : int;
-  tx_rollup_max_withdrawals_per_batch : int;
   tx_rollup_commitment_bond : Tez_repr.t;
   tx_rollup_finality_period : int;
   tx_rollup_withdraw_period : int;
@@ -172,11 +171,17 @@ type parametric = {
   tx_rollup_max_commitments_count : int;
   tx_rollup_cost_per_byte_ema_factor : int;
   tx_rollup_max_ticket_payload_size : int;
+  tx_rollup_max_withdrawals_per_batch : int;
   tx_rollup_rejection_max_proof_size : int;
+  tx_rollup_sunset_level : int32;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
   sc_rollup_challenge_window_in_blocks : int;
   sc_rollup_max_available_messages : int;
+  sc_rollup_stake_amount_in_mutez : int;
+  sc_rollup_commitment_frequency_in_blocks : int;
+  sc_rollup_commitment_storage_size_in_bytes : int;
+  sc_rollup_max_lookahead_in_blocks : int32;
 }
 
 let parametric_encoding =
@@ -232,11 +237,16 @@ let parametric_encoding =
                     ( c.tx_rollup_max_commitments_count,
                       c.tx_rollup_cost_per_byte_ema_factor,
                       c.tx_rollup_max_ticket_payload_size,
-                      c.tx_rollup_rejection_max_proof_size ) ),
+                      c.tx_rollup_rejection_max_proof_size,
+                      c.tx_rollup_sunset_level ) ),
                   ( c.sc_rollup_enable,
                     c.sc_rollup_origination_size,
                     c.sc_rollup_challenge_window_in_blocks,
-                    c.sc_rollup_max_available_messages ) ) ) ) ) ) ))
+                    c.sc_rollup_max_available_messages,
+                    c.sc_rollup_stake_amount_in_mutez,
+                    c.sc_rollup_commitment_frequency_in_blocks,
+                    c.sc_rollup_commitment_storage_size_in_bytes,
+                    c.sc_rollup_max_lookahead_in_blocks ) ) ) ) ) ) ))
     (fun ( ( preserved_cycles,
              blocks_per_cycle,
              blocks_per_commitment,
@@ -286,11 +296,16 @@ let parametric_encoding =
                        ( tx_rollup_max_commitments_count,
                          tx_rollup_cost_per_byte_ema_factor,
                          tx_rollup_max_ticket_payload_size,
-                         tx_rollup_rejection_max_proof_size ) ),
+                         tx_rollup_rejection_max_proof_size,
+                         tx_rollup_sunset_level ) ),
                      ( sc_rollup_enable,
                        sc_rollup_origination_size,
                        sc_rollup_challenge_window_in_blocks,
-                       sc_rollup_max_available_messages ) ) ) ) ) ) ) ->
+                       sc_rollup_max_available_messages,
+                       sc_rollup_stake_amount_in_mutez,
+                       sc_rollup_commitment_frequency_in_blocks,
+                       sc_rollup_commitment_storage_size_in_bytes,
+                       sc_rollup_max_lookahead_in_blocks ) ) ) ) ) ) ) ->
       {
         preserved_cycles;
         blocks_per_cycle;
@@ -342,10 +357,15 @@ let parametric_encoding =
         tx_rollup_cost_per_byte_ema_factor;
         tx_rollup_max_ticket_payload_size;
         tx_rollup_rejection_max_proof_size;
+        tx_rollup_sunset_level;
         sc_rollup_enable;
         sc_rollup_origination_size;
         sc_rollup_challenge_window_in_blocks;
         sc_rollup_max_available_messages;
+        sc_rollup_stake_amount_in_mutez;
+        sc_rollup_commitment_frequency_in_blocks;
+        sc_rollup_commitment_storage_size_in_bytes;
+        sc_rollup_max_lookahead_in_blocks;
       })
     (merge_objs
        (obj9
@@ -412,16 +432,23 @@ let parametric_encoding =
                             (req "tx_rollup_withdraw_period" int31)
                             (req "tx_rollup_max_inboxes_count" int31)
                             (req "tx_rollup_max_messages_per_inbox" int31))
-                         (obj4
+                         (obj5
                             (req "tx_rollup_max_commitments_count" int31)
                             (req "tx_rollup_cost_per_byte_ema_factor" int31)
                             (req "tx_rollup_max_ticket_payload_size" int31)
-                            (req "tx_rollup_rejection_max_proof_size" int31)))
-                      (obj4
+                            (req "tx_rollup_rejection_max_proof_size" int31)
+                            (req "tx_rollup_sunset_level" int32)))
+                      (obj8
                          (req "sc_rollup_enable" bool)
                          (req "sc_rollup_origination_size" int31)
                          (req "sc_rollup_challenge_window_in_blocks" int31)
-                         (req "sc_rollup_max_available_messages" int31))))))))
+                         (req "sc_rollup_max_available_messages" int31)
+                         (req "sc_rollup_stake_amount_in_mutez" int31)
+                         (req "sc_rollup_commitment_frequency_in_blocks" int31)
+                         (req
+                            "sc_rollup_commitment_storage_size_in_bytes"
+                            int31)
+                         (req "sc_rollup_max_lookahead_in_blocks" int32))))))))
 
 type t = {fixed : fixed; parametric : parametric}
 

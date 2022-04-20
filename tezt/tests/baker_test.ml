@@ -50,12 +50,13 @@ let baker_stresstest =
   Protocol.register_test
     ~__FILE__
     ~title:"baker stresstest"
-    ~tags:["node"; "baker"]
+    ~tags:["node"; "baker"; "stresstest"]
   @@ fun protocol ->
   let* (node, client) =
     Client.init_with_protocol `Client ~protocol () ~timestamp_delay:0.0
   in
   let* _ = Baker.init ~protocol node client in
+  let* _ = Node.wait_for_level node 3 in
   (* Use a large tps, to have failing operations too *)
   let* () = Client.stresstest ~tps:25 ~transfers:100 client in
   Lwt.return_unit

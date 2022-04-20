@@ -114,10 +114,22 @@ type ('arg, 'storage) code =
 
 type ex_code = Ex_code : ('a, 'c) code -> ex_code
 
-type 'storage ex_view =
-  | Ex_view :
-      ('input * 'storage, 'output) Script_typed_ir.lambda
-      -> 'storage ex_view
+type 'storage typed_view =
+  | Typed_view : {
+      input_ty : ('input, _) Script_typed_ir.ty;
+      output_ty : ('output, _) Script_typed_ir.ty;
+      kinstr :
+        ( 'input * 'storage,
+          Script_typed_ir.end_of_stack,
+          'output,
+          Script_typed_ir.end_of_stack )
+        Script_typed_ir.kinstr;
+      original_code_expr : Script.node;
+    }
+      -> 'storage typed_view
+
+type 'storage typed_view_map =
+  (Script_string.t, 'storage typed_view) Script_typed_ir.map
 
 type ('a, 's, 'b, 'u) cinstr = {
   apply :
@@ -293,21 +305,21 @@ val parse_view_output_ty :
   Script.node ->
   (ex_ty * context) tzresult
 
-val parse_view_returning :
+val parse_view :
   ?type_logger:type_logger ->
   context ->
   legacy:bool ->
   ('storage, _) Script_typed_ir.ty ->
   Script_typed_ir.view ->
-  ('storage ex_view * context) tzresult Lwt.t
+  ('storage typed_view * context) tzresult Lwt.t
 
-val typecheck_views :
+val parse_views :
   ?type_logger:type_logger ->
   context ->
   legacy:bool ->
   ('storage, _) Script_typed_ir.ty ->
   Script_typed_ir.view_map ->
-  context tzresult Lwt.t
+  ('storage typed_view_map * context) tzresult Lwt.t
 
 (**
   [parse_ty] allowing big_map values, operations, contract and tickets.
@@ -333,16 +345,6 @@ val unparse_ty :
   context ->
   ('a, _) Script_typed_ir.ty ->
   ('loc Script.michelson_node * context) tzresult
-
-val unparse_comparable_ty :
-  loc:'loc ->
-  context ->
-  'a Script_typed_ir.comparable_ty ->
-  ('loc Script.michelson_node * context) tzresult
-
-val ty_of_comparable_ty :
-  'a Script_typed_ir.comparable_ty ->
-  ('a, Dependent_bool.yes) Script_typed_ir.ty
 
 val parse_toplevel :
   context -> legacy:bool -> Script.expr -> (toplevel * context) tzresult Lwt.t
@@ -394,8 +396,14 @@ val parse_script :
   (ex_script * context) tzresult Lwt.t
 
 (* Gas accounting may not be perfect in this function, as it is only called by RPCs. *)
-val unparse_script :
-  context -> unparsing_mode -> ex_script -> (Script.t * context) tzresult Lwt.t
+val parse_and_unparse_script_unaccounted :
+  context ->
+  legacy:bool ->
+  allow_forged_in_storage:bool ->
+  unparsing_mode ->
+  normalize_types:bool ->
+  Script.t ->
+  (Script.t * context) tzresult Lwt.t
 
 val parse_contract :
   context ->
@@ -418,7 +426,12 @@ val parse_contract_for_script :
     existential. Typically, it will be used to go from the type of an
     entry-point to the full type of a contract. *)
 type 'a ex_ty_cstr =
-  | Ex_ty_cstr : ('b, _) Script_typed_ir.ty * ('b -> 'a) -> 'a ex_ty_cstr
+  | Ex_ty_cstr : {
+      ty : ('b, _) Script_typed_ir.ty;
+      construct : 'b -> 'a;
+      original_type_expr : Script.node;
+    }
+      -> 'a ex_ty_cstr
 
 val find_entrypoint :
   error_details:'error_trace error_details ->
@@ -427,14 +440,11 @@ val find_entrypoint :
   Entrypoint.t ->
   ('t ex_ty_cstr, 'error_trace) Gas_monad.t
 
-val list_entrypoints :
-  context ->
+val list_entrypoints_uncarbonated :
   ('t, _) Script_typed_ir.ty ->
   't Script_typed_ir.entrypoints ->
-  (Michelson_v1_primitives.prim list list
-  * (Michelson_v1_primitives.prim list * Script.unlocated_michelson_node)
-    Entrypoint.Map.t)
-  tzresult
+  Michelson_v1_primitives.prim list list
+  * (ex_ty * Script.node) Entrypoint.Map.t
 
 val pack_data :
   context ->

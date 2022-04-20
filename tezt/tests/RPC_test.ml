@@ -83,7 +83,8 @@ let check_rpc ~test_mode_tag ~test_function ?parameter_overrides
   let (client_mode_tag, title_tag) =
     match test_mode_tag with
     | `Client -> (`Client, "client")
-    | `Client_with_proxy_server -> (`Client, "proxy_server")
+    | `Client_data_dir_proxy_server -> (`Client, "proxy_server_data_dir")
+    | `Client_rpc_proxy_server -> (`Client, "proxy_server_rpc")
     | `Light -> (`Light, "light")
     | `Proxy -> (`Proxy, "proxy")
   in
@@ -109,7 +110,7 @@ let check_rpc ~test_mode_tag ~test_function ?parameter_overrides
   in
   let bake =
     match test_mode_tag with
-    | `Client_with_proxy_server ->
+    | `Client_data_dir_proxy_server | `Client_rpc_proxy_server ->
         (* Because the proxy server doesn't support genesis. *)
         true
     | `Client | `Light | `Proxy -> false
@@ -126,8 +127,15 @@ let check_rpc ~test_mode_tag ~test_function ?parameter_overrides
   let* endpoint =
     match test_mode_tag with
     | `Client | `Light | `Proxy -> return Client.(Node node)
-    | `Client_with_proxy_server ->
-        let* proxy_server = Proxy_server.init node in
+    | (`Client_rpc_proxy_server | `Client_data_dir_proxy_server) as
+      proxy_server_mode ->
+        let args =
+          Some
+            (match proxy_server_mode with
+            | `Client_rpc_proxy_server -> [Proxy_server.Data_dir]
+            | `Client_data_dir_proxy_server -> [])
+        in
+        let* proxy_server = Proxy_server.init ?args node in
         return Client.(Proxy_server proxy_server)
   in
   let* _ = test_function protocol ?endpoint:(Some endpoint) client in
@@ -209,7 +217,7 @@ let test_contracts _protocol ?endpoint client =
       client
   in
   let* () = client_bake_for client in
-  let* () =
+  let*! () =
     Client.set_delegate ~src:delegated_implicit ~delegate:bootstrap1 client
   in
   let* () = client_bake_for client in
@@ -562,23 +570,10 @@ let get_contracts ?endpoint client =
   Lwt.return contracts
 
 (* Test the delegates RPC for the specified protocol. *)
-let test_delegates protocol ?endpoint client =
+let test_delegates _protocol ?endpoint client =
   let* contracts = get_contracts ?endpoint client in
-  let* () =
-    match protocol with
-    | Protocol.Ithaca | Protocol.Alpha ->
-        let* () =
-          test_delegates_on_registered_alpha ~contracts ?endpoint client
-        in
-        test_delegates_on_unregistered_alpha ~contracts ?endpoint client
-    | Protocol.Hangzhou ->
-        let* () =
-          test_delegates_on_registered_hangzhou ~contracts ?endpoint client
-        in
-        test_delegates_on_unregistered_hangzhou ~contracts ?endpoint client
-  in
-
-  unit
+  let* () = test_delegates_on_registered_alpha ~contracts ?endpoint client in
+  test_delegates_on_unregistered_alpha ~contracts ?endpoint client
 
 (* Test the votes RPC. *)
 let test_votes _protocol ?endpoint client =
@@ -918,6 +913,7 @@ let start_with_acl address acl =
   Node.Config_file.update node (JSON.update "rpc" (JSON.put ("acl", acl))) ;
   let* () = Node.identity_generate node in
   let* () = Node.run node [] in
+  let* () = Node.wait_for_ready node in
   Client.init ~endpoint ()
 
 (* Test access to RPC regulated with an ACL. *)
@@ -975,6 +971,7 @@ let binary_regression_test () =
   let* () = Node.config_init node [] in
   let* () = Node.identity_generate node in
   let* () = Node.run node [] in
+  let* () = Node.wait_for_ready node in
   let* json_client = Client.init ~endpoint ~media_type:Json () in
   let* binary_client = Client.init ~endpoint ~media_type:Binary () in
   let call_rpc client =
@@ -1000,6 +997,7 @@ let test_node_binary_mode address () =
   let* () = Node.config_init node [] in
   let* () = Node.identity_generate node in
   let* () = Node.run node [Media_type Binary] in
+  let* () = Node.wait_for_ready node in
   let* client = Client.init ~endpoint ~media_type:Json () in
   Client.spawn_rpc GET ["chains"; "main"; "blocks"] client
   |> Process.check_error ~exit_code:1
@@ -1010,9 +1008,10 @@ let test_no_service_at_valid_prefix address () =
   let* () = Node.config_init node [] in
   let* () = Node.identity_generate node in
   let* () = Node.run node [] in
+  let* () = Node.wait_for_ready node in
   let* client = Client.init ~endpoint () in
   let* () =
-    Client.spawn_rpc GET ["chains"; "main"] client
+    Client.spawn_rpc ~better_errors:true GET ["chains"; "main"] client
     |> Process.check_error
          ~exit_code:1
          ~msg:
@@ -1071,7 +1070,7 @@ let register protocols =
       ~test_function:test_others
       ~parameter_overrides:consensus_threshold ;
     match test_mode_tag with
-    | `Client_with_proxy_server | `Light -> ()
+    | `Client_data_dir_proxy_server | `Client_rpc_proxy_server | `Light -> ()
     | _ ->
         check_rpc
           "mempool"
@@ -1080,7 +1079,13 @@ let register protocols =
   in
   List.iter
     (register protocols)
-    [`Client; `Light; `Proxy; `Client_with_proxy_server] ;
+    [
+      `Client;
+      `Light;
+      `Proxy;
+      `Client_data_dir_proxy_server;
+      `Client_rpc_proxy_server;
+    ] ;
 
   let addresses = ["localhost"; "127.0.0.1"] in
   let mk_title list_type address =

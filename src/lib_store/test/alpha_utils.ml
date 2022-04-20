@@ -23,6 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Assert = Lib_test.Assert
 open Tezos_protocol_alpha.Protocol
 open Alpha_context
 open Tezos_context
@@ -89,7 +90,7 @@ module Account = struct
   let activator_account = new_account ()
 
   let find pkh =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     match Signature.Public_key_hash.Table.find known_accounts pkh with
     | Some v -> return v
     | None -> failwith "Missing account: %a" Signature.Public_key_hash.pp pkh
@@ -117,7 +118,7 @@ module Account = struct
     |> WithExceptions.Option.get ~loc:__LOC__
 
   let new_commitment ?seed () =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let (pkh, pk, sk) = Signature.generate_key ?seed ~algo:Ed25519 () in
     let unactivated_account = {pkh; pk; sk} in
     let open Commitment in
@@ -128,7 +129,7 @@ module Account = struct
 end
 
 let make_rpc_context ~chain_id ctxt block =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let header = Store.Block.shell_header block in
   let ({
          timestamp = predecessor_timestamp;
@@ -149,7 +150,7 @@ let make_rpc_context ~chain_id ctxt block =
       {shell = header; protocol_data = Store.Block.protocol_data block}
   in
   let ctxt = Shell_context.wrap_disk_context ctxt in
-  let* value_of_key =
+  let*! value_of_key =
     Main.value_of_key
       ~chain_id
       ~predecessor_context:ctxt
@@ -158,16 +159,22 @@ let make_rpc_context ~chain_id ctxt block =
       ~predecessor_fitness
       ~predecessor
       ~timestamp
-    >|= Tezos_protocol_alpha.Protocol.Environment.wrap_tzresult
   in
-  Tezos_protocol_environment.Context.load_cache
-    (Store.Block.hash block)
-    ctxt
-    `Lazy
-    (fun key ->
-      value_of_key key
-      >|= Tezos_protocol_alpha.Protocol.Environment.wrap_tzresult)
-  >>=? fun ctxt ->
+  let*? value_of_key =
+    Tezos_protocol_alpha.Protocol.Environment.wrap_tzresult value_of_key
+  in
+  let* ctxt =
+    Tezos_protocol_environment.Context.load_cache
+      (Store.Block.hash block)
+      ctxt
+      `Lazy
+      (fun key ->
+        let*! value = value_of_key key in
+        let*? value =
+          Tezos_protocol_alpha.Protocol.Environment.wrap_tzresult value
+        in
+        return value)
+  in
   return
   @@ new Environment.proto_rpc_context_of_directory
        (fun block ->
@@ -349,7 +356,7 @@ end
 let protocol_param_key = ["protocol_parameters"]
 
 let check_constants_consistency constants =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let open Constants_repr in
   let {blocks_per_cycle; blocks_per_commitment; blocks_per_stake_snapshot; _} =
     constants
@@ -436,7 +443,7 @@ let patch_context ctxt ~json =
   let ctxt = Shell_context.wrap_disk_context ctxt in
   let* r = Main.init ctxt shell in
   match r with
-  | Error _ -> assert false
+  | Error e -> failwith "%a" Environment.Error_monad.pp_trace e
   | Ok {context; _} -> return_ok (Shell_context.unwrap_disk_context context)
 
 let default_patch_context ctxt =
@@ -452,7 +459,7 @@ let empty_operations =
   WithExceptions.List.init ~loc:__LOC__ nb_validation_passes (fun _ -> [])
 
 let apply ctxt chain_id ~policy ?(operations = empty_operations) pred =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* rpc_ctxt = make_rpc_context ~chain_id ctxt pred in
   let element_of_key ~chain_id ~predecessor_context ~predecessor_timestamp
       ~predecessor_level ~predecessor_fitness ~predecessor ~timestamp =
@@ -587,7 +594,7 @@ let apply ctxt chain_id ~policy ?(operations = empty_operations) pred =
 
 let apply_and_store chain_store ?(synchronous_merge = true) ?policy
     ?(operations = empty_operations) pred =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* ctxt = Store.Block.context chain_store pred in
   let chain_id = Store.Chain.chain_id chain_store in
   let* ( block_header,
@@ -598,6 +605,22 @@ let apply_and_store chain_store ?(synchronous_merge = true) ?policy
     apply ctxt chain_id ~policy ~operations pred
   in
   let context_hash = block_header.shell.context in
+  let ops_metadata =
+    let operations_metadata =
+      WithExceptions.List.init ~loc:__LOC__ 4 (fun _ -> [])
+    in
+    match ops_metadata_hashes with
+    | Some metadata_hashes ->
+        let res =
+          WithExceptions.List.map2
+            ~loc:__LOC__
+            (WithExceptions.List.map2 ~loc:__LOC__ (fun x y -> (x, y)))
+            operations_metadata
+            metadata_hashes
+        in
+        Block_validation.Metadata_hash res
+    | None -> Block_validation.(No_metadata_hash operations_metadata)
+  in
   let validation_result =
     {
       Tezos_validation.Block_validation.validation_store =
@@ -608,10 +631,8 @@ let apply_and_store chain_store ?(synchronous_merge = true) ?policy
           max_operations_ttl = validation.max_operations_ttl;
           last_allowed_fork_level = validation.last_allowed_fork_level;
         };
-      block_metadata = block_header_metadata;
-      ops_metadata = WithExceptions.List.init ~loc:__LOC__ 4 (fun _ -> []);
-      block_metadata_hash;
-      ops_metadata_hashes;
+      block_metadata = (block_header_metadata, block_metadata_hash);
+      ops_metadata;
     }
   in
   let operations =

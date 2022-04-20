@@ -209,12 +209,12 @@ module State_transitions = struct
       ~msg:"different branch proposal has the same prequorum"
       ()
 
-  let preendorsing_proposal =
+  let attempting_preendorse_proposal =
     declare_1
       ~section
-      ~name:"preendorsing_proposal"
+      ~name:"attempting_preendorsing_proposal"
       ~level:Info
-      ~msg:"preendorsing proposal {block_hash}"
+      ~msg:"attempting to preendorse proposal {block_hash}"
       ~pp1:Block_hash.pp
       ("block_hash", Block_hash.encoding)
 
@@ -367,7 +367,7 @@ module Scheduling = struct
       ~section
       ~name:"proposal_already_injected"
       ~level:Debug
-      ~msg:"proposal already injected for next level round, skipping..."
+      ~msg:"proposal already injected for next level, skipping..."
       ()
 
   let next_potential_slot =
@@ -469,21 +469,21 @@ module Lib = struct
 
   let section = section @ ["lib"]
 
-  let preendorsing_proposal =
+  let attempting_preendorse_proposal =
     declare_1
       ~section
-      ~name:"preendorsing_proposal"
+      ~name:"attempting_preendorsing_proposal"
       ~level:Debug
-      ~msg:"preendorsing proposal {proposal}"
+      ~msg:"attempting to preendorse proposal {proposal}"
       ~pp1:Baking_state.pp_proposal
       ("proposal", Baking_state.proposal_encoding)
 
-  let endorsing_proposal =
+  let attempting_endorse_proposal =
     declare_1
       ~section
-      ~name:"endorsing_proposal"
+      ~name:"attempting_endorsing_proposal"
       ~level:Debug
-      ~msg:"endorsing proposal {proposal}"
+      ~msg:"attempting to endorse proposal {proposal}"
       ~pp1:Baking_state.pp_proposal
       ("proposal", Baking_state.proposal_encoding)
 end
@@ -853,4 +853,28 @@ module Liquidity_baking = struct
       ~level:Notice
       ~msg:"Will vote to continue or restart Liquidity Baking"
       ()
+end
+
+module Selection = struct
+  include Internal_event.Simple
+
+  let invalid_operation_filtered =
+    declare_2
+      ~section
+      ~name:"invalid_operation_filtered"
+      ~level:Warning
+      ~msg:"filtered invalid operation {op}: {errors}"
+      ~pp1:Operation_hash.pp
+      ("op", Operation_hash.encoding)
+      ~pp2:pp_print_top_error_of_trace
+      ("errors", Error_monad.(TzTrace.encoding error_encoding))
+
+  let cannot_serialize_operation_metadata =
+    declare_1
+      ~section
+      ~name:"cannot_serialize_operation_metadata"
+      ~level:Warning
+      ~msg:"cannot serialize operation {op} metadata"
+      ~pp1:Operation_hash.pp
+      ("op", Operation_hash.encoding)
 end

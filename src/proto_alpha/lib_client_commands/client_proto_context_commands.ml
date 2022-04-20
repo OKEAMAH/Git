@@ -35,6 +35,14 @@ open Client_proto_args
 let encrypted_switch =
   Clic.switch ~long:"encrypted" ~doc:"encrypt the key on-disk" ()
 
+let normalize_types_switch =
+  Clic.switch
+    ~long:"normalize-types"
+    ~doc:
+      "Whether types should be normalized (annotations removed, combs \
+       flattened) or kept as they appeared in the original script."
+    ()
+
 let report_michelson_errors ?(no_print_source = false) ~msg
     (cctxt : #Client_context.full) = function
   | Error errs ->
@@ -93,11 +101,73 @@ let tx_rollup_parameter =
       | Some c -> return c
       | None -> failwith "Parameter '%s' is an invalid tx rollup address" s)
 
-let tx_rollup_param =
+let tx_rollup_param next =
   Clic.param
-    ~name:"tx_rollup address"
-    ~desc:"The tx rollup address that we are sending this batch to."
+    ~name:"tx rollup address"
+    ~desc:"Transaction rollup address to use in a transaction rollup command."
     tx_rollup_parameter
+    next
+
+let tx_rollup_level_parameter =
+  Clic.parameter (fun _ s ->
+      match Int32.of_string_opt s with
+      | Some i ->
+          Lwt.return @@ Environment.wrap_tzresult (Tx_rollup_level.of_int32 i)
+      | None ->
+          failwith
+            "'%s' is not a valid transaction rollup level (should be an int32 \
+             value)"
+            s)
+
+let tx_rollup_level_param next =
+  Clic.param
+    ~name:"tx rollup level"
+    ~desc:"Transaction rollup level to use in a transaction rollup command."
+    tx_rollup_level_parameter
+    next
+
+let tx_rollup_context_hash_parameter =
+  Clic.parameter (fun _ s ->
+      match Context_hash.of_b58check_opt s with
+      | Some hash -> return hash
+      | None -> failwith "%s is not a valid notation for a context hash" s)
+
+let tx_rollup_message_result_path_parameter =
+  Clic.parameter (fun _ s ->
+      match Data_encoding.Json.from_string s with
+      | Ok json -> (
+          try
+            return
+              (Data_encoding.Json.destruct
+                 Tx_rollup_commitment.Merkle.path_encoding
+                 json)
+          with Data_encoding.Json.Cannot_destruct (_path, exn) ->
+            failwith
+              "Invalid JSON for a message result path: %a"
+              (fun ppf -> Data_encoding.Json.print_error ppf)
+              exn)
+      | Error err ->
+          failwith
+            "'%s' is not a valid JSON-encoded message result path: %s"
+            s
+            err)
+
+let tx_rollup_tickets_dispatch_info_parameter =
+  Clic.parameter (fun _ s ->
+      match Data_encoding.Json.from_string s with
+      | Ok json -> (
+          try
+            return (Data_encoding.Json.destruct Tx_rollup_reveal.encoding json)
+          with Data_encoding.Json.Cannot_destruct (_path, exn) ->
+            failwith
+              "Invalid JSON for tickets dispatch info: %a"
+              (fun ppf -> Data_encoding.Json.print_error ppf)
+              exn)
+      | Error err ->
+          failwith
+            "'%s' is not a valid JSON-encoded tickets dispatch info: %s"
+            s
+            err)
 
 let tx_rollup_proof_param =
   Clic.param
@@ -342,16 +412,19 @@ let commands_ro () =
     command
       ~group
       ~desc:"Get the code of a contract."
-      (args1 (unparsing_mode_arg ~default:"Readable"))
+      (args2 (unparsing_mode_arg ~default:"Readable") normalize_types_switch)
       (prefixes ["get"; "contract"; "code"; "for"]
       @@ ContractAlias.destination_param ~name:"src" ~desc:"source contract"
       @@ stop)
-      (fun unparsing_mode (_, contract) (cctxt : Protocol_client_context.full) ->
+      (fun (unparsing_mode, normalize_types)
+           (_, contract)
+           (cctxt : Protocol_client_context.full) ->
         get_script
           cctxt
           ~chain:cctxt#chain
           ~block:cctxt#block
           ~unparsing_mode
+          ~normalize_types
           contract
         >>=? function
         | None -> cctxt#error "This is not a smart contract."
@@ -380,7 +453,7 @@ let commands_ro () =
     command
       ~group
       ~desc:"Get the type of an entrypoint of a contract."
-      no_options
+      (args1 normalize_types_switch)
       (prefixes ["get"; "contract"; "entrypoint"; "type"; "of"]
       @@ Clic.param
            ~name:"entrypoint"
@@ -389,13 +462,17 @@ let commands_ro () =
       @@ prefixes ["for"]
       @@ ContractAlias.destination_param ~name:"src" ~desc:"source contract"
       @@ stop)
-      (fun () entrypoint (_, contract) (cctxt : Protocol_client_context.full) ->
+      (fun normalize_types
+           entrypoint
+           (_, contract)
+           (cctxt : Protocol_client_context.full) ->
         Michelson_v1_entrypoints.contract_entrypoint_type
           cctxt
           ~chain:cctxt#chain
           ~block:cctxt#block
           ~contract
           ~entrypoint
+          ~normalize_types
         >>= Michelson_v1_entrypoints.print_entrypoint_type
               cctxt
               ~emacs:false
@@ -404,16 +481,17 @@ let commands_ro () =
     command
       ~group
       ~desc:"Get the entrypoint list of a contract."
-      no_options
+      (args1 normalize_types_switch)
       (prefixes ["get"; "contract"; "entrypoints"; "for"]
       @@ ContractAlias.destination_param ~name:"src" ~desc:"source contract"
       @@ stop)
-      (fun () (_, contract) (cctxt : Protocol_client_context.full) ->
+      (fun normalize_types (_, contract) (cctxt : Protocol_client_context.full) ->
         Michelson_v1_entrypoints.list_contract_entrypoints
           cctxt
           ~chain:cctxt#chain
           ~block:cctxt#block
           ~contract
+          ~normalize_types
         >>= Michelson_v1_entrypoints.print_entrypoints_list
               cctxt
               ~emacs:false
@@ -2597,6 +2675,16 @@ let commands_rw () =
            ~name:"message_path"
            ~desc:"merkle path of the message being rejected in the inbox"
            string_parameter
+      @@ prefixes ["to"; "reject"]
+      @@ Clic.param
+           ~name:"message_result_hash"
+           ~desc:"message result hash being rejected"
+           Client_proto_args.string_parameter
+      @@ prefixes ["with"; "path"]
+      @@ Clic.param
+           ~name:"message_result_path"
+           ~desc:"merkle path of message result hash being rejected"
+           Client_proto_args.string_parameter
       @@ prefix "with" @@ prefix "proof" @@ tx_rollup_proof_param
       @@ prefixes ["with"; "agreed"; "context"; "hash"]
       @@ Clic.param
@@ -2605,9 +2693,14 @@ let commands_rw () =
            Client_proto_args.string_parameter
       @@ prefixes ["and"; "withdraw"; "list"]
       @@ Clic.param
-           ~name:"withdrawals_merkle_root"
-           ~desc:"the hash of the merkelised withdraw list"
+           ~name:"withdraw_list_hash"
+           ~desc:"the hash of the withdraw list"
            Client_proto_args.string_parameter
+      @@ prefixes ["with"; "path"]
+      @@ Clic.param
+           ~name:"message_result_path"
+           ~desc:"merkle path of the message result being rejected in the inbox"
+           string_parameter
       @@ prefix "to" @@ tx_rollup_param @@ prefix "from"
       @@ ContractAlias.destination_param
            ~name:"src"
@@ -2629,9 +2722,12 @@ let commands_rw () =
            message
            message_position
            message_path
+           message_result_hash
+           message_result_path
            proof
-           context_hash
-           withdrawals_merkle_root
+           previous_context_hash
+           previous_withdraw_list_hash
+           previous_message_result_path
            tx_rollup
            (_, source)
            cctxt ->
@@ -2672,9 +2768,237 @@ let commands_rw () =
               ~message
               ~message_position
               ~message_path
+              ~message_result_hash
+              ~message_result_path
               ~proof
+              ~previous_context_hash
+              ~previous_withdraw_list_hash
+              ~previous_message_result_path
+              ()
+            >>=? fun _res -> return_unit);
+    command
+      ~group
+      ~desc:
+        "Dispatch tickets withdrawn from a transaction rollup to owners. The \
+         withdrawals are part of a finalized commitment of the transaction \
+         rollup. Owners are implicit accounts who can then transfer the \
+         tickets to smart contracts using the \"transfer tickets\" command. \
+         See transaction rollups documentation for more information.\n\n\
+         The provided list of ticket information must be ordered as in  \
+         withdrawal list computed by the application of the message. "
+      (args12
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         simulate_switch
+         minimal_fees_arg
+         minimal_nanotez_per_byte_arg
+         minimal_nanotez_per_gas_unit_arg
+         storage_limit_arg
+         counter_arg
+         force_low_fee_arg
+         fee_cap_arg
+         burn_cap_arg)
+      (prefixes ["dispatch"; "tickets"; "of"; "tx"; "rollup"]
+      @@ tx_rollup_param @@ prefix "from"
+      @@ ContractAlias.destination_param
+           ~name:"source"
+           ~desc:"Account used to dispatch tickets."
+      @@ prefixes ["at"; "level"]
+      @@ tx_rollup_level_param
+      @@ prefixes ["for"; "the"; "message"; "at"; "index"]
+      @@ Clic.param
+           ~name:"message index"
+           ~desc:"Index of the message whose withdrawals will be dispatched."
+           int_parameter
+      @@ prefixes ["with"; "the"; "context"; "hash"]
+      @@ Clic.param
+           ~name:"context hash"
+           ~desc:
+             "Context hash (base58 encoded) from the message result of the \
+              message producing the withdrawals."
+           tx_rollup_context_hash_parameter
+      @@ prefixes ["and"; "path"]
+      @@ Clic.param
+           ~name:"message result path"
+           ~desc:
+             "Merkle path (JSON encoded) for the message result hash of the \
+              message producing the withdrawals in the commitment.\n\
+              The JSON should be list of base58-encoded message result hashes."
+           tx_rollup_message_result_path_parameter
+      @@ prefixes ["and"; "tickets"; "info"]
+      @@ seq_of_param
+           (Clic.param
+              ~name:"tickets info"
+              ~desc:
+                "Information (JSON encoded) needed to dispatch tickets to its \
+                 owner.\n\
+                 JSON has the following format: {\"contents\": <tickets \
+                 content>,\"ty\": <tickets type>, \"ticketer\": <ticketer \
+                 contract address>, \"amount\": <withdrawn amount>, \
+                 \"\"claimer\": <new owner's public key hash>}"
+              tx_rollup_tickets_dispatch_info_parameter))
+      (fun ( fee,
+             dry_run,
+             verbose_signing,
+             simulation,
+             minimal_fees,
+             minimal_nanotez_per_byte,
+             minimal_nanotez_per_gas_unit,
+             storage_limit,
+             counter,
+             force_low_fee,
+             fee_cap,
+             burn_cap )
+           tx_rollup
+           (_, source)
+           level
+           message_position
+           context_hash
+           message_result_path
+           tickets_info
+           cctxt ->
+        match Contract.is_implicit source with
+        | None ->
+            failwith
+              "Only implicit account can dispatch tickets for a transaction \
+               rollup."
+        | Some source ->
+            Client_keys.get_key cctxt source >>=? fun (_, src_pk, src_sk) ->
+            let fee_parameter =
+              {
+                Injection.minimal_fees;
+                minimal_nanotez_per_byte;
+                minimal_nanotez_per_gas_unit;
+                force_low_fee;
+                fee_cap;
+                burn_cap;
+              }
+            in
+            tx_rollup_dispatch_tickets
+              cctxt
+              ~chain:cctxt#chain
+              ~block:cctxt#block
+              ~dry_run
+              ~verbose_signing
+              ?fee
+              ?storage_limit
+              ?counter
+              ?confirmations:cctxt#confirmations
+              ~simulation
+              ~source
+              ~src_pk
+              ~src_sk
+              ~fee_parameter
+              ~level
               ~context_hash
-              ~withdrawals_merkle_root
+              ~message_position
+              ~message_result_path
+              ~tickets_info
+              ~tx_rollup
+              ()
+            >>=? fun _res -> return_unit);
+    command
+      ~group
+      ~desc:"Transfer tickets from an implicit account to a contract."
+      (args12
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         simulate_switch
+         minimal_fees_arg
+         minimal_nanotez_per_byte_arg
+         minimal_nanotez_per_gas_unit_arg
+         storage_limit_arg
+         counter_arg
+         force_low_fee_arg
+         fee_cap_arg
+         burn_cap_arg)
+      (prefix "transfer"
+      @@ non_negative_z_param ~name:"qty" ~desc:"Amount of tickets to transfer."
+      @@ prefixes ["tickets"; "from"]
+      @@ ContractAlias.destination_param
+           ~name:"tickets owner"
+           ~desc:"Implicit account owning the tickets."
+      @@ prefix "to"
+      @@ ContractAlias.destination_param
+           ~name:"recipient contract"
+           ~desc:"Contract receiving the tickets."
+      @@ prefixes ["with"; "entrypoint"]
+      @@ Clic.param
+           ~name:"entrypoint"
+           ~desc:"Entrypoint to use on the receiving contract."
+           entrypoint_parameter
+      @@ prefixes ["and"; "contents"]
+      @@ Clic.param
+           ~name:"tickets content"
+           ~desc:"Content of the tickets."
+           Client_proto_args.string_parameter
+      @@ prefixes ["and"; "type"]
+      @@ Clic.param
+           ~name:"tickets type"
+           ~desc:"Type of the tickets."
+           Client_proto_args.string_parameter
+      @@ prefixes ["and"; "ticketer"]
+      @@ ContractAlias.destination_param
+           ~name:"tickets ticketer"
+           ~desc:"Ticketer contract of the tickets."
+      @@ stop)
+      (fun ( fee,
+             dry_run,
+             verbose_signing,
+             simulation,
+             minimal_fees,
+             minimal_nanotez_per_byte,
+             minimal_nanotez_per_gas_unit,
+             storage_limit,
+             counter,
+             force_low_fee,
+             fee_cap,
+             burn_cap )
+           amount
+           (_, source)
+           (_, destination)
+           entrypoint
+           contents
+           ty
+           (_, ticketer)
+           cctxt ->
+        match Contract.is_implicit source with
+        | None -> failwith "Only implicit accounts can transfer tickets."
+        | Some source ->
+            Client_keys.get_key cctxt source >>=? fun (_, src_pk, src_sk) ->
+            let fee_parameter =
+              {
+                Injection.minimal_fees;
+                minimal_nanotez_per_byte;
+                minimal_nanotez_per_gas_unit;
+                force_low_fee;
+                fee_cap;
+                burn_cap;
+              }
+            in
+            transfer_ticket
+              cctxt
+              ~chain:cctxt#chain
+              ~block:cctxt#block
+              ~dry_run
+              ~verbose_signing
+              ?fee
+              ?storage_limit
+              ?counter
+              ?confirmations:cctxt#confirmations
+              ~simulation
+              ~source
+              ~src_pk
+              ~src_sk
+              ~fee_parameter
+              ~contents
+              ~ty
+              ~ticketer
+              ~amount
+              ~destination
+              ~entrypoint
               ()
             >>=? fun _res -> return_unit);
     command
@@ -2782,7 +3106,7 @@ let commands_rw () =
            ~name:"messages"
            ~desc:
              "the message(s) to be sent to the rollup (syntax: \
-              bin:<path_to_binary_file>|text:<json list of hex \
+              bin:<path_to_binary_file>|text:<json list of string \
               messages>|file:<json_file>)"
            messages_param
       @@ prefixes ["from"]
@@ -2818,11 +3142,11 @@ let commands_rw () =
         (match messages with
         | `Bin message -> return [message]
         | `Json messages -> (
-            match Data_encoding.(Json.destruct (list bytes) messages) with
+            match Data_encoding.(Json.destruct (list string) messages) with
             | exception _ ->
                 failwith
                   "Could not read list of messages (expected list of bytes)"
-            | messages -> return (List.map Bytes.to_string messages)))
+            | messages -> return messages))
         >>=? fun messages ->
         Client_keys.get_key cctxt source >>=? fun (_, src_pk, src_sk) ->
         let fee_parameter =

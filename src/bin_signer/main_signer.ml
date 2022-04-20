@@ -75,7 +75,7 @@ let magic_bytes_arg =
                     error_with
                       "Bad format for magic bytes, a series of numbers is \
                        expected, separated by commas.")
-              (String.split ',' s))))
+              (String.split_no_empty ',' s))))
 
 let high_watermark_switch =
   Clic.switch
@@ -383,4 +383,4 @@ end
 let () =
   Client_main_run.run
     (module Signer_config)
-    ~select_commands:(fun _ _ -> Lwt_tzresult_syntax.return_nil)
+    ~select_commands:(fun _ _ -> Lwt_result_syntax.return_nil)

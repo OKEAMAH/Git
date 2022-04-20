@@ -56,11 +56,13 @@ let get_contract_big_map_value (rpc : #rpc_context) ~chain ~block contract key =
     contract
     key
 
-let get_script (rpc : #rpc_context) ~chain ~block ~unparsing_mode contract =
+let get_script (rpc : #rpc_context) ~chain ~block ~unparsing_mode
+    ~normalize_types contract =
   Plugin.RPC.Contract.get_script_normalized
     rpc
     (chain, block)
     ~unparsing_mode
+    ~normalize_types
     ~contract
 
 let get_script_hash (rpc : #rpc_context) ~chain ~block contract =
@@ -719,17 +721,18 @@ let submit_ballot ?dry_run ?verbose_signing (cctxt : #full) ~chain ~block
 
 let pp_operation formatter (a : Alpha_block_services.operation) =
   match (a.receipt, a.protocol_data) with
-  | (Some (Apply_results.Operation_metadata omd), Operation_data od) -> (
+  | (Receipt (Apply_results.Operation_metadata omd), Operation_data od) -> (
       match Apply_results.kind_equal_list od.contents omd.contents with
       | Some Apply_results.Eq ->
           Operation_result.pp_operation_result
             formatter
             (od.contents, omd.contents)
       | None -> Stdlib.failwith "Unexpected result.")
-  | (None, _) ->
+  | (Empty, _) ->
       Stdlib.failwith
         "Pruned metadata: the operation receipt was removed accordingly to the \
          node's history mode."
+  | (Too_large, _) -> Stdlib.failwith "Too large metadata."
   | _ -> Stdlib.failwith "Unexpected result."
 
 let get_operation_from_block (cctxt : #full) ~chain predecessors operation_hash
@@ -879,7 +882,7 @@ let submit_tx_rollup_commitment (cctxt : #full) ~chain ~block ?confirmations
   | Some content -> return content
   | None -> failwith "%s is not a valid inbox merkle root" inbox_merkle_root)
   >>=? fun inbox_merkle_root ->
-  let commitment : Tx_rollup_commitment.t =
+  let commitment : Tx_rollup_commitment.Full.t =
     {level; messages; predecessor; inbox_merkle_root}
   in
   let contents :
@@ -989,28 +992,45 @@ let submit_tx_rollup_remove_commitment (cctxt : #full) ~chain ~block
 let submit_tx_rollup_rejection (cctxt : #full) ~chain ~block ?confirmations
     ?dry_run ?verbose_signing ?simulation ?fee ?gas_limit ?storage_limit
     ?counter ~source ~src_pk ~src_sk ~fee_parameter ~level ~tx_rollup ~message
-    ~message_position ~message_path ~context_hash ~withdrawals_merkle_root
-    ~proof () =
+    ~message_position ~message_path ~message_result_hash ~message_result_path
+    ~previous_context_hash ~previous_withdraw_list_hash
+    ~previous_message_result_path ~proof () =
   (match Data_encoding.Json.from_string message with
   | Ok json -> return json
   | Error err -> failwith "Message is not a valid JSON-encoded message: %s" err)
   >>=? fun json ->
   let message = Data_encoding.Json.(destruct Tx_rollup_message.encoding json) in
   Environment.wrap_tzresult (Tx_rollup_level.of_int32 level) >>?= fun level ->
-  (match Context_hash.of_b58check_opt context_hash with
+  (match Context_hash.of_b58check_opt previous_context_hash with
   | Some hash -> return hash
   | None ->
-      failwith "%s is not a valid notation for a context hash" context_hash)
-  >>=? fun context_hash ->
+      failwith
+        "%s is not a valid notation for a context hash"
+        previous_context_hash)
+  >>=? fun previous_context_hash ->
   (match
-     Tx_rollup_withdraw.Merkle.root_of_b58check_opt withdrawals_merkle_root
+     Tx_rollup_withdraw_list_hash.of_b58check_opt previous_withdraw_list_hash
    with
   | Some hash -> return hash
   | None ->
       failwith
         "%s is not a valid notation for a withdraw list hash"
-        withdrawals_merkle_root)
-  >>=? fun withdrawals_merkle_root ->
+        previous_withdraw_list_hash)
+  >>=? fun previous_withdraw_list_hash ->
+  let previous_message_result =
+    Tx_rollup_message_result.
+      {
+        context_hash = previous_context_hash;
+        withdraw_list_hash = previous_withdraw_list_hash;
+      }
+  in
+  (match Tx_rollup_message_result_hash.of_b58check_opt message_result_hash with
+  | Some x -> return x
+  | _ ->
+      failwith
+        "%s is not a valid notation for a withdraw list hash"
+        message_result_hash)
+  >>=? fun message_result_hash ->
   (match Data_encoding.Json.from_string message_path with
   | Ok json ->
       Data_encoding.Json.destruct Tx_rollup_inbox.Merkle.path_encoding json
@@ -1018,6 +1038,22 @@ let submit_tx_rollup_rejection (cctxt : #full) ~chain ~block ?confirmations
   | Error err ->
       failwith "Message path is not a valid JSON-encoded message: %s" err)
   >>=? fun message_path ->
+  (match Data_encoding.Json.from_string message_result_path with
+  | Ok json ->
+      Data_encoding.Json.destruct Tx_rollup_commitment.Merkle.path_encoding json
+      |> return
+  | Error err ->
+      failwith "Message result path is not a valid JSON-encoded message: %s" err)
+  >>=? fun message_result_path ->
+  (match Data_encoding.Json.from_string previous_message_result_path with
+  | Ok json ->
+      Data_encoding.Json.destruct Tx_rollup_commitment.Merkle.path_encoding json
+      |> return
+  | Error err ->
+      failwith
+        "Previous message result path is not a valid JSON-encoded message: %s"
+        err)
+  >>=? fun previous_message_result_path ->
   (match Data_encoding.Json.from_string proof with
   | Ok json ->
       Data_encoding.Json.destruct Tx_rollup_l2_proof.encoding json |> return
@@ -1037,7 +1073,10 @@ let submit_tx_rollup_rejection (cctxt : #full) ~chain ~block ?confirmations
               message;
               message_position;
               message_path;
-              previous_message_result = {context_hash; withdrawals_merkle_root};
+              message_result_hash;
+              message_result_path;
+              previous_message_result_path;
+              previous_message_result;
               proof;
             }))
   in
@@ -1092,6 +1131,92 @@ let submit_tx_rollup_return_bond (cctxt : #full) ~chain ~block ?confirmations
     ~src_sk
     ~fee_parameter
     contents
+  >>=? fun (oph, op, result) ->
+  match Apply_results.pack_contents_list op result with
+  | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->
+      return (oph, op, result)
+
+let tx_rollup_dispatch_tickets (cctxt : #full) ~chain ~block ?confirmations
+    ?dry_run ?verbose_signing ?simulation ?fee ?gas_limit ?storage_limit
+    ?counter ~source ~src_pk ~src_sk ~fee_parameter ~level ~context_hash
+    ~message_position ~message_result_path ~tickets_info ~tx_rollup () =
+  let contents :
+      Kind.tx_rollup_dispatch_tickets Annotated_manager_operation.annotated_list
+      =
+    Annotated_manager_operation.Single_manager
+      (Injection.prepare_manager_operation
+         ~fee:(Limit.of_option fee)
+         ~gas_limit:(Limit.of_option gas_limit)
+         ~storage_limit:(Limit.of_option storage_limit)
+         (Tx_rollup_dispatch_tickets
+            {
+              tx_rollup;
+              level;
+              context_hash;
+              message_index = message_position;
+              message_result_path;
+              tickets_info;
+            }))
+  in
+  Injection.inject_manager_operation
+    cctxt
+    ~chain
+    ~block
+    ?confirmations
+    ?dry_run
+    ?verbose_signing
+    ?simulation
+    ?counter
+    ~source
+    ~successor_level:true
+    ~fee:(Limit.of_option fee)
+    ~storage_limit:(Limit.of_option storage_limit)
+    ~gas_limit:(Limit.of_option gas_limit)
+    ~src_pk
+    ~src_sk
+    ~fee_parameter
+    contents
+  >>=? fun (oph, op, result) ->
+  match Apply_results.pack_contents_list op result with
+  | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->
+      return (oph, op, result)
+
+let transfer_ticket (cctxt : #full) ~chain ~block ?confirmations ?dry_run
+    ?verbose_signing ?simulation ?fee ?gas_limit ?storage_limit ?counter ~source
+    ~src_pk ~src_sk ~fee_parameter ~contents ~ty ~ticketer ~amount ~destination
+    ~entrypoint () =
+  parse_expression contents >>=? fun {expanded; _} ->
+  let contents = Script.lazy_expr expanded in
+  parse_expression ty >>=? fun {expanded; _} ->
+  let ty = Script.lazy_expr expanded in
+  let operation :
+      Kind.transfer_ticket Annotated_manager_operation.annotated_list =
+    Annotated_manager_operation.Single_manager
+      (Injection.prepare_manager_operation
+         ~fee:(Limit.of_option fee)
+         ~gas_limit:(Limit.of_option gas_limit)
+         ~storage_limit:(Limit.of_option storage_limit)
+         (Transfer_ticket
+            {contents; ty; ticketer; amount; destination; entrypoint}))
+  in
+  Injection.inject_manager_operation
+    cctxt
+    ~chain
+    ~block
+    ?confirmations
+    ?dry_run
+    ?verbose_signing
+    ?simulation
+    ?counter
+    ~source
+    ~successor_level:true
+    ~fee:(Limit.of_option fee)
+    ~storage_limit:(Limit.of_option storage_limit)
+    ~gas_limit:(Limit.of_option gas_limit)
+    ~src_pk
+    ~src_sk
+    ~fee_parameter
+    operation
   >>=? fun (oph, op, result) ->
   match Apply_results.pack_contents_list op result with
   | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->

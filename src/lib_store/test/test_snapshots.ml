@@ -25,6 +25,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Assert_lib = Lib_test_extra.Assert_lib
 open Test_utils
 
 let check_import_invariants ~test_descr ~rolling
@@ -46,7 +47,7 @@ let check_import_invariants ~test_descr ~rolling
           imported_chain_store
           [exported_block]
       in
-      Assert.equal_block
+      Assert_lib.Crypto.equal_block
         ~msg:("imported head consistency: " ^ test_descr)
         (Store.Block.header exported_block)
         (Store.Block.header head) ;
@@ -118,6 +119,7 @@ let export_import ~test_descr ~previously_baked_blocks ?exported_block_hash
       ~store_dir
       ~context_dir
       ~chain_name
+      ~on_disk:false
       genesis
   in
   let dir = store_dir // "imported_store" in
@@ -133,6 +135,8 @@ let export_import ~test_descr ~previously_baked_blocks ?exported_block_hash
       ~configured_history_mode:None
       ~user_activated_upgrades:[]
       ~user_activated_protocol_overrides:[]
+      ~operation_metadata_size_limit:None
+      ~in_memory:false
       genesis
   in
   let* store' =
@@ -239,7 +243,7 @@ let check_baking_continuity ~test_descr ~exported_chain_store
       return last
     else Store.Block.read_block_by_level exported_chain_store level_to_reach
   in
-  Assert.equal_block
+  Assert_lib.Crypto.equal_block
     ~msg:("check both head after baking: " ^ test_descr)
     (Store.Block.header last)
     (Store.Block.header last') ;
@@ -503,6 +507,7 @@ let test_rolling () =
         ~store_dir
         ~context_dir
         ~chain_name
+        ~on_disk:false
         genesis
     in
     let* () =
@@ -514,6 +519,8 @@ let test_rolling () =
         ~configured_history_mode:None
         ~user_activated_upgrades:[]
         ~user_activated_protocol_overrides:[]
+        ~operation_metadata_size_limit:None
+        ~in_memory:false
         genesis
     in
     let* store' =
@@ -628,6 +635,7 @@ let test_drag_after_import () =
         ~store_dir
         ~context_dir
         ~chain_name
+        ~on_disk:false
         genesis
     in
     let* () =
@@ -639,7 +647,9 @@ let test_drag_after_import () =
         ~configured_history_mode:None
         ~user_activated_upgrades:[]
         ~user_activated_protocol_overrides:[]
+        ~operation_metadata_size_limit:None
         ~block:export_block_hash
+        ~in_memory:false
         genesis
     in
     let* store' =

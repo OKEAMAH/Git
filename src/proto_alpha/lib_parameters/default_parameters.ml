@@ -27,7 +27,7 @@
 
 open Protocol.Alpha_context
 
-let tx_rollup_finality_period = 60_000
+let tx_rollup_finality_period = 40_000
 
 let constants_mainnet =
   let consensus_committee_size = 7000 in
@@ -100,18 +100,19 @@ let constants_mainnet =
     cache_stake_distribution_cycles = 8;
     (* One for the sampler state for all cycles stored at any moment (as above). *)
     cache_sampler_state_cycles = 8;
-    tx_rollup_enable = false;
-    (* TODO: https://gitlab.com/tezos/tezos/-/issues/2152
-       Transaction rollups parameters need to be refined,
-       currently the following values are merely placeholders. *)
-    tx_rollup_origination_size = 60_000;
-    (* Transaction rollup’s size limits are expressed in number of bytes *)
-    tx_rollup_hard_size_limit_per_inbox = 100_000;
+    tx_rollup_enable = true;
+    (* Based on how storage burn is implemented for
+       transaction rollups, this means that a rollup operator
+       can create 100 inboxes (40 bytes per inboxes) before
+       having to pay storage burn. *)
+    tx_rollup_origination_size = 4_000;
+    (* Considering an average size of layer-2 operations of
+       20, this gives a TPS per rollup higher than 400, and
+       the capability to have two rollups at full speed on
+       mainnet (as long as they do not reach scalability
+       issues related to proof size). *)
+    tx_rollup_hard_size_limit_per_inbox = 500_000;
     tx_rollup_hard_size_limit_per_message = 5_000;
-    (* We limit the number of withdraws per message to avoid costly
-       allocations/iterations in the accounting mechanism used for each
-       withdraw claiming in L1 and cleaned when removing a commitment. *)
-    tx_rollup_max_withdrawals_per_batch = 255;
     tx_rollup_commitment_bond = Tez.of_mutez_exn 10_000_000_000L;
     tx_rollup_finality_period;
     tx_rollup_max_inboxes_count = tx_rollup_finality_period + 100;
@@ -121,11 +122,31 @@ let constants_mainnet =
     (* Must be greater than the withdraw period. *)
     tx_rollup_max_commitments_count = (2 * tx_rollup_finality_period) + 100;
     tx_rollup_cost_per_byte_ema_factor = 120;
-    tx_rollup_max_ticket_payload_size = 10_240;
+    (* Tickets are transmitted in batches in the
+       [Tx_rollup_dispatch_tickets] operation.
+
+       The semantics is that this operation is used to
+       concretize the withdraw orders emitted by the layer-2,
+       one layer-1 operation per messages of an
+       inbox. Therefore, it is of significant importance that
+       a valid batch does not produce a list of withdraw
+       orders which could not fit in a layer-1 operation.
+
+       With these values, at least 2048 bytes remain available
+       to store the rest of the operands of
+       [Tx_rollup_dispatch_tickets] (in practice, even more,
+       because we overapproximate the size of tickets). So we
+       are safe. *)
+    tx_rollup_max_withdrawals_per_batch = 15;
+    tx_rollup_max_ticket_payload_size = 2_048;
     (* Must be smaller than maximum limit of a manager operation
        (minus overhead), since we need to limit our proofs to those
        that can fit in an operation. *)
     tx_rollup_rejection_max_proof_size = 30000;
+    (* This is the first block of cycle 618, which is expected to be
+       about one year after the activation of protocol J.
+       See https://tzstats.com/cycle/618 *)
+    tx_rollup_sunset_level = 3_473_409l;
     sc_rollup_enable = false;
     (* The following value is chosen to prevent spam. *)
     sc_rollup_origination_size = 6_314;
@@ -135,6 +156,12 @@ let constants_mainnet =
     (* TODO: https://gitlab.com/tezos/tezos/-/issues/2556
        The follow constants need to be refined. *)
     sc_rollup_max_available_messages = 1_000_000;
+    (* TODO: https://gitlab.com/tezos/tezos/-/issues/2756
+       The following constants need to be refined. *)
+    sc_rollup_stake_amount_in_mutez = 32_000_000;
+    sc_rollup_commitment_frequency_in_blocks = 20;
+    sc_rollup_commitment_storage_size_in_bytes = 84;
+    sc_rollup_max_lookahead_in_blocks = 30_000l;
   }
 
 let constants_sandbox =

@@ -23,8 +23,49 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Assert = Lib_test.Assert
+module Assert_lib = Lib_test_extra.Assert_lib
 open Alcotest_lwt
 open Filename.Infix
+
+let equal_metadata ?msg m1 m2 =
+  let eq m1 m2 =
+    match (m1, m2) with
+    | (None, None) -> true
+    | (Some m1, Some m2) -> m1 = m2
+    | _ -> false
+  in
+  let prn (md : Tezos_store.Store.Block.metadata option) =
+    let option_pp ~default pp fmt = function
+      | None -> Format.fprintf fmt "%s" default
+      | Some x -> Format.fprintf fmt "%a" pp x
+    in
+    Format.asprintf
+      "%a"
+      (option_pp
+         ~default:"None"
+         (fun
+           fmt
+           ({
+              message;
+              max_operations_ttl;
+              last_allowed_fork_level;
+              block_metadata = _;
+              operations_metadata = _;
+            } :
+             Store.Block.metadata)
+         ->
+           Format.fprintf
+             fmt
+             "message: %a@.max_operations_ttl: %d@. last_allowed_fork_level: \
+              %ld@."
+             (option_pp ~default:"None" Format.pp_print_string)
+             message
+             max_operations_ttl
+             last_allowed_fork_level))
+      md
+  in
+  Assert.equal ?msg ~prn ~eq m1 m2
 
 let genesis_hash =
   Block_hash.of_b58check_exn
@@ -77,13 +118,12 @@ let check_invariants ?(expected_checkpoint = None) ?(expected_savepoint = None)
         | Some l -> snd l
         | None -> Block.last_allowed_fork_level head_metadata
       in
-      Assert.is_true
-        ~msg:
-          (Format.sprintf
-             "check_invariant: checkpoint.level(%ld) < \
-              head.last_allowed_fork_level(%ld)"
-             (snd checkpoint)
-             expected_checkpoint_level)
+      Assert.assert_true
+        (Format.sprintf
+           "check_invariant: checkpoint.level(%ld) < \
+            head.last_allowed_fork_level(%ld)"
+           (snd checkpoint)
+           expected_checkpoint_level)
         Compare.Int32.(snd checkpoint >= expected_checkpoint_level) ;
       let*! savepoint_b_opt =
         Block.read_block_opt chain_store (fst savepoint)
@@ -347,6 +387,20 @@ let store_raw_block chain_store (raw_block : Block_repr.t) =
   let metadata =
     WithExceptions.Option.get ~loc:__LOC__ (Block_repr.metadata raw_block)
   in
+  let ops_metadata =
+    let operations_metadata = Block_repr.operations_metadata metadata in
+    match Block_repr.operations_metadata_hashes raw_block with
+    | Some metadata_hashes ->
+        let res =
+          WithExceptions.List.map2
+            ~loc:__LOC__
+            (WithExceptions.List.map2 ~loc:__LOC__ (fun x y -> (x, y)))
+            operations_metadata
+            metadata_hashes
+        in
+        Block_validation.Metadata_hash res
+    | None -> Block_validation.(No_metadata_hash operations_metadata)
+  in
   let validation_result =
     {
       Tezos_validation.Block_validation.validation_store =
@@ -357,10 +411,10 @@ let store_raw_block chain_store (raw_block : Block_repr.t) =
           max_operations_ttl = Block_repr.max_operations_ttl metadata;
           last_allowed_fork_level = Block_repr.last_allowed_fork_level metadata;
         };
-      block_metadata = Block_repr.block_metadata metadata;
-      ops_metadata = Block_repr.operations_metadata metadata;
-      block_metadata_hash = Block_repr.block_metadata_hash raw_block;
-      ops_metadata_hashes = Block_repr.operations_metadata_hashes raw_block;
+      block_metadata =
+        ( Block_repr.block_metadata metadata,
+          Block_repr.block_metadata_hash raw_block );
+      ops_metadata;
     }
   in
   let* r =
@@ -521,7 +575,7 @@ let assert_presence_in_store ?(with_metadata = false) chain_store blocks =
         | Some b' ->
             let b_header = Store.Block.header b in
             let b'_header = Store.Block.header b' in
-            Assert.equal_block
+            Assert_lib.Crypto.equal_block
               ~msg:"assert_presence: different header"
               b_header
               b'_header ;
@@ -533,7 +587,7 @@ let assert_presence_in_store ?(with_metadata = false) chain_store blocks =
                 let* b'_metadata =
                   Store.Block.get_block_metadata_opt chain_store b'
                 in
-                Assert.equal_metadata
+                equal_metadata
                   b_metadata
                   b'_metadata
                   ~msg:"assert_presence: different metadata" ;

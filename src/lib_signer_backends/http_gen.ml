@@ -27,8 +27,6 @@ module Make (N : sig
   val scheme : string
 end) =
 struct
-  open Client_keys
-
   let scheme = N.scheme
 
   module Make
@@ -41,6 +39,8 @@ struct
         val logger : RPC_client.logger
       end) =
   struct
+    include Client_keys.Signature_type
+
     let scheme = scheme
 
     let title =
@@ -92,7 +92,7 @@ struct
 
     let parse uri =
       (* extract `tz1..` from the last component of the path *)
-      let open Lwt_tzresult_syntax in
+      let open Lwt_result_syntax in
       assert (Uri.scheme uri = Some scheme) ;
       let path = Uri.path uri in
       let* (base, pkh) =

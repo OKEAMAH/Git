@@ -57,7 +57,7 @@ let string_list_of_ex_tickets ctxt tickets =
       @@ Script_ir_translator.unparse_data
            ctxt
            Script_ir_translator.Readable
-           (Script_ir_translator.ty_of_comparable_ty cty)
+           cty
            contents
     in
     let content =
@@ -184,8 +184,8 @@ let tickets_from_big_map_ref ~pre_populated value_exp =
             wrap
             @@ Script_ir_translator.hash_comparable_data
                  ctxt
-                 Script_typed_ir.int_key
-                 (Script_int_repr.of_int key)
+                 Script_typed_ir.int_t
+                 (Script_int.of_int key)
           in
           return
             ( {

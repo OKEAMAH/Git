@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 ## This script is not meant to be executed interactively. Instead it is meant to
 ## be used in other scripts to provide common variables for version numbers and
@@ -20,12 +20,12 @@ export recommended_node_version=14.12.0
 
 ## full_opam_repository is a commit hash of the public OPAM repository, i.e.
 ## https://github.com/ocaml/opam-repository
-export full_opam_repository_tag=b3c67242acd3da4b450e4ed575cff833abb7750e
+export full_opam_repository_tag=cb33a152429f2129849d61ea57eff998f6b25411
 
 ## opam_repository is an additional, tezos-specific opam repository.
 ## This value MUST be the same as `build_deps_image_version` in `.gitlab/ci/templates.yml
 export opam_repository_url=https://gitlab.com/tezos/opam-repository
-export opam_repository_tag=fe26a6543652b0554ee6b2f2cf59bb89abc5379d
+export opam_repository_tag=4aabc02a9c160ecae2a39153c27c0a67000a999b
 export opam_repository_git=$opam_repository_url.git
 export opam_repository=$opam_repository_git\#$opam_repository_tag
 

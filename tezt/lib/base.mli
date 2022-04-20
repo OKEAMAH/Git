@@ -46,7 +46,7 @@ val ( and* ) : 'a Lwt.t -> 'b Lwt.t -> ('a * 'b) Lwt.t
     More precisely, if one of the two promises is rejected
     or canceled, cancel the other promise and reject the resulting
     promise immediately with the original exception. *)
-val ( and*! ) : 'a Lwt.t -> 'b Lwt.t -> ('a * 'b) Lwt.t
+val lwt_both_fail_early : 'a Lwt.t -> 'b Lwt.t -> ('a * 'b) Lwt.t
 
 (** Same as [Lwt.return]. *)
 val return : 'a -> 'a Lwt.t
@@ -66,43 +66,6 @@ val some : 'a -> 'a option Lwt.t
 
     [name] is used in the error message if [option] is [None]. *)
 val mandatory : string -> 'a option -> 'a
-
-(** {2 The runnable monad} *)
-
-(** Values that come with functions to handle them.
-
-    This is intended mainly for use with ['a = Process.t].
-    Indeed, it is convenient to define functions that declare both how to
-    spawn processes and how to read their output. Sometimes you want
-    the output, sometimes you just want the [Process.t] itself
-    (e.g. to check its exit code). Instead of defining one function for
-    each use case, you can define a single function that returns a [runnable],
-    and use [let*!] when you need the output value, or [let*?] if you just
-    need the process itself. There is no function to inject a value
-    into the monad ([return]), as there is no need for it.
-
-    For instance, let's say you have a function which runs [git log]:
-    {[
-      val git_log: unit -> (Process.t, string list) runnable
-    ]}
-    If you just want to check the exit code, use it like this:
-    {[
-      let*? process : Process.t = git_log () in
-      Process.check process
-    ]}
-    If you just want to get its output, use it like this:
-    {[
-      let*! log : string list = git_log () in
-    ]} *)
-type ('a, 'b) runnable = {value : 'a; run : 'a -> 'b Lwt.t}
-
-(** Apply the function of a runnable to its value. *)
-val ( let*! ) : ('a, 'b) runnable -> ('b -> 'c Lwt.t) -> 'c Lwt.t
-
-(** Get the value of a runnable and pass it to a continuation.
-
-    You can also just access field [value] directly. *)
-val ( let*? ) : ('a, 'b) runnable -> ('a -> 'c) -> 'c
 
 (** {2 Lists} *)
 
@@ -148,6 +111,12 @@ val ( =~* ) : string -> rex -> string option
 (** Match a regular expression with two capture groups. *)
 val ( =~** ) : string -> rex -> (string * string) option
 
+(** Match a regular expression with three capture groups. *)
+val ( =~*** ) : string -> rex -> (string * string * string) option
+
+(** Match a regular expression with four capture groups. *)
+val ( =~**** ) : string -> rex -> (string * string * string * string) option
+
 (** Match a regular expression with one capture group and return all results. *)
 val matches : string -> rex -> string list
 
@@ -186,8 +155,13 @@ val with_open_out : string -> (out_channel -> unit) -> unit
    error while reading, the channel is closed before raising the exception **)
 val with_open_in : string -> (in_channel -> 'a) -> 'a
 
-(** [read_file filename] returns the full contents of file [filename] *)
-val read_file : string -> string Lwt.t
+(** Write a string into a file, overwriting the file if it already exists.
+
+    Usage: [write_file filename ~contents] *)
+val write_file : string -> contents:string -> unit
+
+(** Read the whole contents of a file. *)
+val read_file : string -> string
 
 (** {2 Common structures} *)
 
@@ -196,5 +170,9 @@ module String_map : Map.S with type key = string
 module String_set : sig
   include Set.S with type elt = string
 
+  (** Pretty-print a set of strings.
+
+      Items are quoted, separated by commas and breakable spaces,
+      and the result is surrounded by braces. *)
   val pp : Format.formatter -> t -> unit
 end

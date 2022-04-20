@@ -46,7 +46,7 @@ val max_operation_data_length : int
     number by finding the largest possible contract in terms of
     number of nodes. The number of nodes is constrained by the
     current "max_operation_data_length" (32768) to be ~10,000 (
-    see "largest_flat_contract.tz" in the tezt suite for the largest
+    see "large_flat_contract.tz" in the tezt suite for the largest
     contract with constants that can be originated). As a first
     approximation, we set the node size limit to 5 times this amount. *)
 val max_micheline_node_count : int
@@ -65,6 +65,11 @@ val max_micheline_bytes_limit : int
     in [Script_ir_translator]. *)
 val max_allowed_global_constant_depth : int
 
+(** A global size limit on the size of Michelson types.
+
+    The size of a type is the number of nodes in its AST
+    representation. See [Script_typed_ir.TYPE_SIZE].
+ *)
 val michelson_maximum_type_size : int
 
 type fixed
@@ -128,8 +133,6 @@ type parametric = {
   tx_rollup_hard_size_limit_per_inbox : int;
   (* the maximum amount of bytes one batch can allocate in an inbox *)
   tx_rollup_hard_size_limit_per_message : int;
-  (* the maximum number of allowed "L2-to-L1" withdraws per batch *)
-  tx_rollup_max_withdrawals_per_batch : int;
   (* the amount of tez to bond a tx rollup commitment *)
   tx_rollup_commitment_bond : Tez_repr.t;
   (* the number of blocks before a tx rollup block is final *)
@@ -149,15 +152,40 @@ type parametric = {
   (* The number of blocks used to compute the ema factor determining
      the cost per byte for new messages in the inbox. *)
   tx_rollup_cost_per_byte_ema_factor : int;
-  (* maximum size, in bytes, of the contents given in deposited tickets. *)
+  (* Tickets are transmitted in batches in the
+     [Tx_rollup_dispatch_tickets] operation.
+
+     The semantics is that this operation is used to
+     concretize the withdraw orders emitted by the layer-2,
+     one layer-1 operation per messages of an
+     inbox. Therefore, it is of significant importance that
+     a valid batch does not produce a list of withdraw
+     orders which could not fit in a layer-1 operation.
+
+     With these values, at least 2048 bytes remain available
+     to store the rest of the operands of
+     [Tx_rollup_dispatch_tickets] (in practice, even more,
+     because we overapproximate the size of tickets). So we
+     are safe. *)
   tx_rollup_max_ticket_payload_size : int;
+  tx_rollup_max_withdrawals_per_batch : int;
   (* The maximum size, in bytes, of a Merkle proof.  Operations which would
      require proofs larger than this should be no-ops. *)
   tx_rollup_rejection_max_proof_size : int;
+  tx_rollup_sunset_level : int32;
   sc_rollup_enable : bool;
   sc_rollup_origination_size : int;
   sc_rollup_challenge_window_in_blocks : int;
   sc_rollup_max_available_messages : int;
+  sc_rollup_stake_amount_in_mutez : int;
+  (* The frequency with which commitments are made. *)
+  sc_rollup_commitment_frequency_in_blocks : int;
+  (* The storage size requirement (in bytes) of a commitment *)
+  sc_rollup_commitment_storage_size_in_bytes : int;
+  (* The maximum depth of a staker's position - chosen alongside
+     [sc_rollup_commitment_frequency_in_blocks] to prevent the cost
+     of a staker's commitments' storage being greater than their deposit. *)
+  sc_rollup_max_lookahead_in_blocks : int32;
 }
 
 val parametric_encoding : parametric Data_encoding.encoding

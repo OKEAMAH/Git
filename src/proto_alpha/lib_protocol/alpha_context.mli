@@ -477,42 +477,6 @@ end
 
 module Entrypoint : module type of Entrypoint_repr
 
-module Script_string : module type of Script_string_repr
-
-module Script_int : module type of Script_int_repr
-
-module Script_timestamp : sig
-  open Script_int
-
-  type repr
-
-  type t = Timestamp_tag of repr [@@ocaml.unboxed]
-
-  val compare : t -> t -> int
-
-  val to_string : t -> string
-
-  val to_notation : t -> string option
-
-  val to_num_str : t -> string
-
-  val of_string : string -> t option
-
-  val diff : t -> t -> z num
-
-  val add_delta : t -> z num -> t
-
-  val sub_delta : t -> z num -> t
-
-  val now : context -> t
-
-  val to_zint : t -> Z.t
-
-  val of_zint : Z.t -> t
-
-  val encoding : t Data_encoding.encoding
-end
-
 module Script : sig
   type prim = Michelson_v1_primitives.prim =
     | K_parameter
@@ -679,8 +643,6 @@ module Script : sig
 
   type 'location michelson_node = ('location, prim) Micheline.node
 
-  type unlocated_michelson_node = unit michelson_node
-
   type node = location michelson_node
 
   type t = {code : lazy_expr; storage : lazy_expr}
@@ -797,7 +759,6 @@ module Constants : sig
     tx_rollup_origination_size : int;
     tx_rollup_hard_size_limit_per_inbox : int;
     tx_rollup_hard_size_limit_per_message : int;
-    tx_rollup_max_withdrawals_per_batch : int;
     tx_rollup_commitment_bond : Tez.t;
     tx_rollup_finality_period : int;
     tx_rollup_withdraw_period : int;
@@ -806,11 +767,17 @@ module Constants : sig
     tx_rollup_max_commitments_count : int;
     tx_rollup_cost_per_byte_ema_factor : int;
     tx_rollup_max_ticket_payload_size : int;
+    tx_rollup_max_withdrawals_per_batch : int;
     tx_rollup_rejection_max_proof_size : int;
+    tx_rollup_sunset_level : int32;
     sc_rollup_enable : bool;
     sc_rollup_origination_size : int;
     sc_rollup_challenge_window_in_blocks : int;
     sc_rollup_max_available_messages : int;
+    sc_rollup_stake_amount_in_mutez : int;
+    sc_rollup_commitment_frequency_in_blocks : int;
+    sc_rollup_commitment_storage_size_in_bytes : int;
+    sc_rollup_max_lookahead_in_blocks : int32;
   }
 
   module Generated : sig
@@ -915,6 +882,8 @@ module Constants : sig
   val tx_rollup_max_ticket_payload_size : context -> int
 
   val tx_rollup_rejection_max_proof_size : context -> int
+
+  val tx_rollup_sunset_level : context -> int32
 
   val sc_rollup_enable : context -> bool
 
@@ -1497,488 +1466,6 @@ module Ticket_hash : sig
   end
 end
 
-module Tx_rollup_level : sig
-  include BASIC_DATA
-
-  type level = t
-
-  val rpc_arg : level RPC_arg.arg
-
-  val diff : level -> level -> int32
-
-  val root : level
-
-  val succ : level -> level
-
-  val pred : level -> level option
-
-  val to_int32 : level -> int32
-
-  val of_int32 : int32 -> level tzresult
-end
-
-(** This module re-exports definitions from {!Tx_rollup_repr} and
-    {!Tx_rollup_storage}. *)
-module Tx_rollup : sig
-  include BASIC_DATA
-
-  type tx_rollup = t
-
-  val rpc_arg : tx_rollup RPC_arg.arg
-
-  val to_b58check : tx_rollup -> string
-
-  val of_b58check : string -> tx_rollup tzresult
-
-  val of_b58check_opt : string -> tx_rollup option
-
-  val pp : Format.formatter -> tx_rollup -> unit
-
-  val encoding : tx_rollup Data_encoding.t
-
-  val deposit_entrypoint : Entrypoint.t
-
-  val originate : context -> (context * tx_rollup) tzresult Lwt.t
-
-  module Set : Set.S with type elt = tx_rollup
-
-  module Internal_for_tests : sig
-    (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
-    val originated_tx_rollup :
-      Origination_nonce.Internal_for_tests.t -> tx_rollup
-  end
-end
-
-module Tx_rollup_commitment_hash : sig
-  val commitment_hash : string
-
-  include S.HASH
-end
-
-module Tx_rollup_message_result_hash : S.HASH
-
-(** This module re-exports definitions from {!Tx_rollup_state_repr}
-    and {!Tx_rollup_state_storage}. *)
-module Tx_rollup_state : sig
-  type t
-
-  val initial_state : pre_allocated_storage:Z.t -> t
-
-  val encoding : t Data_encoding.t
-
-  val pp : Format.formatter -> t -> unit
-
-  val find : context -> Tx_rollup.t -> (context * t option) tzresult Lwt.t
-
-  val get : context -> Tx_rollup.t -> (context * t) tzresult Lwt.t
-
-  val update : context -> Tx_rollup.t -> t -> context tzresult Lwt.t
-
-  val burn_cost : limit:Tez.t option -> t -> int -> Tez.t tzresult
-
-  val assert_exist : context -> Tx_rollup.t -> context tzresult Lwt.t
-
-  val head_levels : t -> (Tx_rollup_level.t * Raw_level.t) option
-
-  val check_level_can_be_rejected : t -> Tx_rollup_level.t -> unit tzresult
-
-  val last_removed_commitment_hashes :
-    t -> (Tx_rollup_message_result_hash.t * Tx_rollup_commitment_hash.t) option
-
-  val adjust_storage_allocation : t -> delta:Z.t -> (t * Z.t) tzresult
-
-  module Internal_for_tests : sig
-    val make :
-      ?burn_per_byte:Tez.t ->
-      ?inbox_ema:int ->
-      ?last_removed_commitment_hashes:
-        Tx_rollup_message_result_hash.t * Tx_rollup_commitment_hash.t ->
-      ?finalized_commitments:Tx_rollup_level.t * Tx_rollup_level.t ->
-      ?unfinalized_commitments:Tx_rollup_level.t * Tx_rollup_level.t ->
-      ?uncommitted_inboxes:Tx_rollup_level.t * Tx_rollup_level.t ->
-      ?commitment_newest_hash:Tx_rollup_commitment_hash.t ->
-      ?tezos_head_level:Raw_level.t ->
-      ?occupied_storage:Z.t ->
-      allocated_storage:Z.t ->
-      unit ->
-      t
-
-    val update_burn_per_byte :
-      t -> elapsed:int -> factor:int -> final_size:int -> hard_limit:int -> t
-
-    val get_inbox_ema : t -> int
-
-    val record_inbox_deletion : t -> Tx_rollup_level.t -> t tzresult
-
-    val get_occupied_storage : t -> Z.t
-
-    val set_occupied_storage : Z.t -> t -> t
-
-    val get_allocated_storage : t -> Z.t
-
-    val set_allocated_storage : Z.t -> t -> t
-  end
-end
-
-module Tx_rollup_withdraw : sig
-  type withdrawal = {
-    claimer : Signature.Public_key_hash.t;
-    ticket_hash : Ticket_hash.t;
-    amount : Tx_rollup_l2_qty.t;
-  }
-
-  type t = withdrawal
-
-  val encoding : t Data_encoding.t
-
-  module Merkle : sig
-    type root
-
-    type path
-
-    val empty : root
-
-    val path_encoding : path Data_encoding.t
-
-    val root_encoding : root Data_encoding.t
-
-    val root_of_b58check_opt : string -> root option
-
-    val compute_path : withdrawal list -> int -> path tzresult
-
-    val check_path : path -> int -> withdrawal -> root -> bool tzresult
-
-    val merklize_list : withdrawal list -> root
-
-    val path_depth : path -> int
-  end
-
-  val add :
-    context ->
-    Tx_rollup_state.t ->
-    Tx_rollup.t ->
-    Tx_rollup_level.t ->
-    message_index:int ->
-    withdraw_position:int ->
-    (context * Tx_rollup_state.t * Z.t) tzresult Lwt.t
-
-  val mem :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_level.t ->
-    message_index:int ->
-    withdraw_position:int ->
-    (bool * context) tzresult Lwt.t
-
-  val maximum_path_depth : withdraw_count_limit:int -> int
-end
-
-(** This module re-exports definitions from {!Tx_rollup_message_repr}. *)
-module Tx_rollup_message : sig
-  type deposit = {
-    sender : public_key_hash;
-    destination : Tx_rollup_l2_address.Indexable.value;
-    ticket_hash : Ticket_hash.t;
-    amount : Tx_rollup_l2_qty.t;
-  }
-
-  type t = private Batch of string | Deposit of deposit
-
-  (** [make_batch batch] creates a new [Batch] message to be added that can be
-      added to an inbox, along with its size in bytes. See
-      {!Tx_rollup_message_repr.size}. *)
-  val make_batch : string -> t * int
-
-  (** [make_deposit destination ticket_hash qty] creates a new
-      [Deposit] message to be added that can be added to an inbox,
-      along with its size in bytes. See
-      {!Tx_rollup_message_repr.size}. *)
-  val make_deposit :
-    public_key_hash ->
-    Tx_rollup_l2_address.t Indexable.value ->
-    Ticket_hash.t ->
-    Tx_rollup_l2_qty.t ->
-    t * int
-
-  val encoding : t Data_encoding.t
-
-  val pp : Format.formatter -> t -> unit
-
-  type hash
-
-  val hash_encoding : hash Data_encoding.t
-
-  val pp_hash : Format.formatter -> hash -> unit
-
-  val hash_uncarbonated : t -> hash
-
-  val hash : context -> t -> (context * hash) tzresult
-end
-
-(** This module re-exports definitions from {!Tx_rollup_inbox_repr} and
-    {!Tx_rollup_inbox_storage}. *)
-module Tx_rollup_inbox : sig
-  module Merkle : sig
-    type root
-
-    type path
-
-    val path_encoding : path Data_encoding.t
-
-    val root_encoding : root Data_encoding.t
-
-    val root_of_b58check_opt : string -> root option
-
-    val compute_path : Tx_rollup_message.hash list -> int -> path tzresult
-
-    val merklize_list : Tx_rollup_message.hash list -> root
-
-    val path_depth : path -> int
-  end
-
-  type t = {inbox_length : int; cumulated_size : int; merkle_root : Merkle.root}
-
-  val ( = ) : t -> t -> bool
-
-  val pp : Format.formatter -> t -> unit
-
-  val encoding : t Data_encoding.t
-
-  val append_message :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_state.t ->
-    Tx_rollup_message.t ->
-    (context * Tx_rollup_state.t * Z.t) tzresult Lwt.t
-
-  val size :
-    context ->
-    Tx_rollup_level.t ->
-    Tx_rollup.t ->
-    (context * int) tzresult Lwt.t
-
-  val get :
-    context -> Tx_rollup_level.t -> Tx_rollup.t -> (context * t) tzresult Lwt.t
-
-  val find :
-    context ->
-    Tx_rollup_level.t ->
-    Tx_rollup.t ->
-    (context * t option) tzresult Lwt.t
-
-  val check_message_hash :
-    context ->
-    Tx_rollup_level.t ->
-    Tx_rollup.t ->
-    position:int ->
-    Tx_rollup_message.t ->
-    Merkle.path ->
-    context tzresult Lwt.t
-
-  val maximum_path_depth : message_count_limit:int -> int
-end
-
-(** This simply re-exports [Tx_rollup_commitment_repr] *)
-module Tx_rollup_commitment : sig
-  type message_result = {
-    context_hash : Context_hash.t;
-    withdrawals_merkle_root : Tx_rollup_withdraw.Merkle.root;
-  }
-
-  val hash_message_result : message_result -> Tx_rollup_message_result_hash.t
-
-  val pp_message_result_hash :
-    Format.formatter -> Tx_rollup_message_result_hash.t -> unit
-
-  val empty_l2_context_hash : Context_hash.t
-
-  type t = {
-    level : Tx_rollup_level.t;
-    messages : Tx_rollup_message_result_hash.t list;
-    predecessor : Tx_rollup_commitment_hash.t option;
-    inbox_merkle_root : Tx_rollup_inbox.Merkle.root;
-  }
-
-  include Compare.S with type t := t
-
-  module Submitted_commitment : sig
-    type nonrec t = {
-      commitment : t;
-      commitment_hash : Tx_rollup_commitment_hash.t;
-      committer : Signature.Public_key_hash.t;
-      submitted_at : Raw_level.t;
-      finalized_at : Raw_level.t option;
-    }
-
-    val encoding : t Data_encoding.t
-  end
-
-  val pp : Format.formatter -> t -> unit
-
-  val encoding : t Data_encoding.t
-
-  val hash : t -> Tx_rollup_commitment_hash.t
-
-  val check_message_result : t -> message_result -> message_index:int -> bool
-
-  val add_commitment :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_state.t ->
-    Signature.public_key_hash ->
-    t ->
-    (context * Tx_rollup_state.t * Z.t) tzresult Lwt.t
-
-  val check_commitment_level :
-    Raw_level.t -> Tx_rollup_state.t -> t -> unit tzresult
-
-  val find :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_state.t ->
-    Tx_rollup_level.t ->
-    (context * Submitted_commitment.t option) tzresult Lwt.t
-
-  val get :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_state.t ->
-    Tx_rollup_level.t ->
-    (context * Submitted_commitment.t) tzresult Lwt.t
-
-  val get_before_and_after_results :
-    context ->
-    Tx_rollup.t ->
-    Submitted_commitment.t ->
-    message_position:int ->
-    Tx_rollup_state.t ->
-    (context
-    * Tx_rollup_message_result_hash.t
-    * Tx_rollup_message_result_hash.t)
-    tzresult
-    Lwt.t
-
-  val get_finalized :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_level.t ->
-    (context * Submitted_commitment.t) tzresult Lwt.t
-
-  val pending_bonded_commitments :
-    context ->
-    Tx_rollup.t ->
-    Signature.public_key_hash ->
-    (context * int) tzresult Lwt.t
-
-  val has_bond :
-    context ->
-    Tx_rollup.t ->
-    Signature.public_key_hash ->
-    (context * bool) tzresult Lwt.t
-
-  val finalize_commitment :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_state.t ->
-    (context * Tx_rollup_state.t * Tx_rollup_level.t * Z.t) tzresult Lwt.t
-
-  val remove_commitment :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_state.t ->
-    (context * Tx_rollup_state.t * Tx_rollup_level.t) tzresult Lwt.t
-
-  val remove_bond :
-    context ->
-    Tx_rollup.t ->
-    Signature.public_key_hash ->
-    context tzresult Lwt.t
-
-  val slash_bond :
-    context ->
-    Tx_rollup.t ->
-    Signature.public_key_hash ->
-    (context * bool) tzresult Lwt.t
-
-  val reject_commitment :
-    context ->
-    Tx_rollup.t ->
-    Tx_rollup_state.t ->
-    Tx_rollup_level.t ->
-    (context * Tx_rollup_state.t) tzresult Lwt.t
-end
-
-module Tx_rollup_errors : sig
-  type error +=
-    | Tx_rollup_already_exists of Tx_rollup.t
-    | Tx_rollup_does_not_exist of Tx_rollup.t
-    | Submit_batch_burn_exceeded of {burn : Tez.t; limit : Tez.t}
-    | Inbox_does_not_exist of Tx_rollup.t * Tx_rollup_level.t
-    | Inbox_size_would_exceed_limit of Tx_rollup.t
-    | Inbox_count_would_exceed_limit of Tx_rollup.t
-    | Message_size_exceeds_limit
-    | Too_many_inboxes
-    | Too_many_commitments
-    | Wrong_batch_count
-    | Commitment_too_early of {
-        provided : Tx_rollup_level.t;
-        expected : Tx_rollup_level.t;
-      }
-    | Level_already_has_commitment of Tx_rollup_level.t
-    | Wrong_inbox_hash
-    | Bond_does_not_exist of Signature.public_key_hash
-    | Bond_in_use of Signature.public_key_hash
-    | No_uncommitted_inbox
-    | No_commitment_to_finalize
-    | No_commitment_to_remove
-    | Commitment_does_not_exist of Tx_rollup_level.t
-    | Wrong_predecessor_hash of {
-        provided : Tx_rollup_commitment_hash.t option;
-        expected : Tx_rollup_commitment_hash.t option;
-      }
-    | Invalid_rejection_level_argument
-    | Internal_error of string
-    | Wrong_message_position of {
-        level : Tx_rollup_level.t;
-        position : int;
-        length : int;
-      }
-    | Wrong_message_path_depth of {provided : int; limit : int}
-    | Wrong_withdraw_path_depth of {provided : int; limit : int}
-    | Wrong_message_path of {expected : Tx_rollup_inbox.Merkle.root}
-    | No_finalized_commitment_for_level of {
-        level : Tx_rollup_level.t;
-        window : (Tx_rollup_level.t * Tx_rollup_level.t) option;
-      }
-    | Withdraw_invalid_path
-    | Withdraw_already_consumed
-    | Cannot_reject_level of {
-        provided : Tx_rollup_level.t;
-        accepted_range : (Tx_rollup_level.t * Tx_rollup_level.t) option;
-      }
-    | Wrong_rejection_hashes of {
-        provided : Tx_rollup_commitment.message_result;
-        computed : Tx_rollup_message_result_hash.t;
-        expected : Tx_rollup_message_result_hash.t;
-      }
-    | Deposit_wrong_ticketer of Tx_rollup.t
-    | Wrong_deposit_parameters
-    | Proof_failed_to_reject
-    | Proof_produced_rejected_state
-    | Proof_invalid_before of {
-        agreed : Context_hash.t;
-        provided : Context_hash.t;
-      }
-end
-
-module Bond_id : sig
-  type t = Tx_rollup_bond_id of Tx_rollup.t
-
-  val pp : Format.formatter -> t -> unit
-
-  val compare : t -> t -> int
-end
-
 module Contract : sig
   include BASIC_DATA
 
@@ -2042,14 +1529,6 @@ module Contract : sig
 
   val get_balance_and_frozen_bonds : context -> contract -> Tez.t tzresult Lwt.t
 
-  val fold_on_bond_ids :
-    context ->
-    contract ->
-    order:[`Sorted | `Undefined] ->
-    init:'a ->
-    f:(Bond_id.t -> 'a -> 'a Lwt.t) ->
-    'a Lwt.t
-
   module Legacy_big_map_diff : sig
     type item = private
       | Update of {
@@ -2095,6 +1574,561 @@ module Contract : sig
   module Internal_for_tests : sig
     (** see [Contract_repr.originated_contract] for documentation *)
     val originated_contract : Origination_nonce.Internal_for_tests.t -> contract
+
+    val paid_storage_space : context -> t -> Z.t tzresult Lwt.t
+  end
+end
+
+module Tx_rollup_level : sig
+  include BASIC_DATA
+
+  type level = t
+
+  val rpc_arg : level RPC_arg.arg
+
+  val diff : level -> level -> int32
+
+  val root : level
+
+  val succ : level -> level
+
+  val pred : level -> level option
+
+  val to_int32 : level -> int32
+
+  val of_int32 : int32 -> level tzresult
+end
+
+(** This module re-exports definitions from {!Tx_rollup_repr} and
+    {!Tx_rollup_storage}. *)
+module Tx_rollup : sig
+  include BASIC_DATA
+
+  type tx_rollup = t
+
+  val rpc_arg : tx_rollup RPC_arg.arg
+
+  val to_b58check : tx_rollup -> string
+
+  val of_b58check : string -> tx_rollup tzresult
+
+  val of_b58check_opt : string -> tx_rollup option
+
+  val pp : Format.formatter -> tx_rollup -> unit
+
+  val encoding : tx_rollup Data_encoding.t
+
+  val deposit_entrypoint : Entrypoint.t
+
+  val originate : context -> (context * tx_rollup) tzresult Lwt.t
+
+  module Set : Set.S with type elt = tx_rollup
+
+  module Internal_for_tests : sig
+    (** see [tx_rollup_repr.originated_tx_rollup] for documentation *)
+    val originated_tx_rollup :
+      Origination_nonce.Internal_for_tests.t -> tx_rollup
+  end
+end
+
+module Tx_rollup_withdraw : sig
+  type order = {
+    claimer : Signature.Public_key_hash.t;
+    ticket_hash : Ticket_hash.t;
+    amount : Tx_rollup_l2_qty.t;
+  }
+
+  type t = order
+
+  val encoding : t Data_encoding.t
+end
+
+module Tx_rollup_withdraw_list_hash : sig
+  include S.HASH
+
+  val hash_uncarbonated : Tx_rollup_withdraw.t list -> t
+
+  val empty : t
+end
+
+module Tx_rollup_message_result : sig
+  type t = {
+    context_hash : Context_hash.t;
+    withdraw_list_hash : Tx_rollup_withdraw_list_hash.t;
+  }
+
+  val encoding : t Data_encoding.t
+
+  val empty_l2_context_hash : Context_hash.t
+
+  val init : t
+end
+
+module Tx_rollup_message_result_hash : sig
+  include S.HASH
+
+  val hash_uncarbonated : Tx_rollup_message_result.t -> t
+
+  val init : t
+end
+
+module Tx_rollup_commitment_hash : sig
+  val commitment_hash : string
+
+  include S.HASH
+end
+
+(** This module re-exports definitions from {!Tx_rollup_state_repr}
+    and {!Tx_rollup_state_storage}. *)
+module Tx_rollup_state : sig
+  type t
+
+  val initial_state : pre_allocated_storage:Z.t -> t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val find : context -> Tx_rollup.t -> (context * t option) tzresult Lwt.t
+
+  val get : context -> Tx_rollup.t -> (context * t) tzresult Lwt.t
+
+  val update : context -> Tx_rollup.t -> t -> context tzresult Lwt.t
+
+  val burn_cost : limit:Tez.t option -> t -> int -> Tez.t tzresult
+
+  val assert_exist : context -> Tx_rollup.t -> context tzresult Lwt.t
+
+  val head_levels : t -> (Tx_rollup_level.t * Raw_level.t) option
+
+  val check_level_can_be_rejected : t -> Tx_rollup_level.t -> unit tzresult
+
+  val last_removed_commitment_hashes :
+    t -> (Tx_rollup_message_result_hash.t * Tx_rollup_commitment_hash.t) option
+
+  val adjust_storage_allocation : t -> delta:Z.t -> (t * Z.t) tzresult
+
+  module Internal_for_tests : sig
+    val make :
+      ?burn_per_byte:Tez.t ->
+      ?inbox_ema:int ->
+      ?last_removed_commitment_hashes:
+        Tx_rollup_message_result_hash.t * Tx_rollup_commitment_hash.t ->
+      ?finalized_commitments:Tx_rollup_level.t * Tx_rollup_level.t ->
+      ?unfinalized_commitments:Tx_rollup_level.t * Tx_rollup_level.t ->
+      ?uncommitted_inboxes:Tx_rollup_level.t * Tx_rollup_level.t ->
+      ?commitment_newest_hash:Tx_rollup_commitment_hash.t ->
+      ?tezos_head_level:Raw_level.t ->
+      ?occupied_storage:Z.t ->
+      ?commitments_watermark:Tx_rollup_level.t ->
+      allocated_storage:Z.t ->
+      unit ->
+      t
+
+    val update_burn_per_byte :
+      t -> elapsed:int -> factor:int -> final_size:int -> hard_limit:int -> t
+
+    val get_inbox_ema : t -> int
+
+    val record_inbox_deletion : t -> Tx_rollup_level.t -> t tzresult
+
+    val get_occupied_storage : t -> Z.t
+
+    val set_occupied_storage : Z.t -> t -> t
+
+    val get_allocated_storage : t -> Z.t
+
+    val set_allocated_storage : Z.t -> t -> t
+
+    val next_commitment_level : t -> Raw_level.t -> Tx_rollup_level.t tzresult
+
+    val uncommitted_inboxes_count : t -> int
+
+    val reset_commitments_watermark : t -> t
+
+    val get_commitments_watermark : t -> Tx_rollup_level.t option
+  end
+end
+
+module Tx_rollup_reveal : sig
+  type t = {
+    contents : Script.lazy_expr;
+    ty : Script.lazy_expr;
+    ticketer : Contract.t;
+    amount : Tx_rollup_l2_qty.t;
+    claimer : Signature.Public_key_hash.t;
+  }
+
+  val encoding : t Data_encoding.t
+
+  val record :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    message_position:int ->
+    context tzresult Lwt.t
+
+  val mem :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_level.t ->
+    message_position:int ->
+    (context * bool) tzresult Lwt.t
+
+  val remove :
+    context -> Tx_rollup.t -> Tx_rollup_level.t -> context tzresult Lwt.t
+end
+
+(** This module re-exports definitions from {!Tx_rollup_message_repr}. *)
+module Tx_rollup_message : sig
+  type deposit = {
+    sender : public_key_hash;
+    destination : Tx_rollup_l2_address.Indexable.value;
+    ticket_hash : Ticket_hash.t;
+    amount : Tx_rollup_l2_qty.t;
+  }
+
+  type t = private Batch of string | Deposit of deposit
+
+  (** [make_batch batch] creates a new [Batch] message to be added that can be
+      added to an inbox, along with its size in bytes. See
+      {!Tx_rollup_message_repr.size}. *)
+  val make_batch : string -> t * int
+
+  (** [make_deposit destination ticket_hash qty] creates a new
+      [Deposit] message to be added that can be added to an inbox,
+      along with its size in bytes. See
+      {!Tx_rollup_message_repr.size}. *)
+  val make_deposit :
+    public_key_hash ->
+    Tx_rollup_l2_address.t Indexable.value ->
+    Ticket_hash.t ->
+    Tx_rollup_l2_qty.t ->
+    t * int
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+end
+
+module Tx_rollup_message_hash : sig
+  include S.HASH
+
+  val hash_uncarbonated : Tx_rollup_message.t -> t
+end
+
+(** This module re-exports definitions from {!Tx_rollup_inbox_repr} and
+    {!Tx_rollup_inbox_storage}. *)
+module Tx_rollup_inbox : sig
+  module Merkle : sig
+    type root
+
+    type path
+
+    val path_encoding : path Data_encoding.t
+
+    val root_encoding : root Data_encoding.t
+
+    val root_of_b58check_opt : string -> root option
+
+    val compute_path : Tx_rollup_message_hash.t list -> int -> path tzresult
+
+    val merklize_list : Tx_rollup_message_hash.t list -> root
+
+    val path_depth : path -> int
+  end
+
+  type t = {inbox_length : int; cumulated_size : int; merkle_root : Merkle.root}
+
+  val size : Z.t
+
+  val ( = ) : t -> t -> bool
+
+  val pp : Format.formatter -> t -> unit
+
+  val encoding : t Data_encoding.t
+
+  val append_message :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_message.t ->
+    (context * Tx_rollup_state.t * Z.t) tzresult Lwt.t
+
+  val get :
+    context -> Tx_rollup_level.t -> Tx_rollup.t -> (context * t) tzresult Lwt.t
+
+  val find :
+    context ->
+    Tx_rollup_level.t ->
+    Tx_rollup.t ->
+    (context * t option) tzresult Lwt.t
+
+  val check_message_hash :
+    context ->
+    Tx_rollup_level.t ->
+    Tx_rollup.t ->
+    position:int ->
+    Tx_rollup_message.t ->
+    Merkle.path ->
+    context tzresult Lwt.t
+end
+
+(** This simply re-exports [Tx_rollup_commitment_repr] *)
+module Tx_rollup_commitment : sig
+  module Merkle_hash : S.HASH
+
+  module Merkle :
+    Merkle_list.T
+      with type elt = Tx_rollup_message_result_hash.t
+       and type h = Merkle_hash.t
+
+  type 'a template = {
+    level : Tx_rollup_level.t;
+    messages : 'a;
+    predecessor : Tx_rollup_commitment_hash.t option;
+    inbox_merkle_root : Tx_rollup_inbox.Merkle.root;
+  }
+
+  module Compact : sig
+    type excerpt = {
+      count : int;
+      root : Merkle.h;
+      last_result_message_hash : Tx_rollup_message_result_hash.t;
+    }
+
+    type t = excerpt template
+
+    val pp : Format.formatter -> t -> unit
+
+    val encoding : t Data_encoding.t
+
+    val hash : t -> Tx_rollup_commitment_hash.t
+  end
+
+  module Submitted_commitment : sig
+    type nonrec t = {
+      commitment : Compact.t;
+      commitment_hash : Tx_rollup_commitment_hash.t;
+      committer : Signature.Public_key_hash.t;
+      submitted_at : Raw_level.t;
+      finalized_at : Raw_level.t option;
+    }
+
+    val encoding : t Data_encoding.t
+  end
+
+  module Full : sig
+    type t = Tx_rollup_message_result_hash.t list template
+
+    val encoding : t Data_encoding.t
+
+    val pp : Format.formatter -> t -> unit
+
+    val compact : t -> Compact.t
+  end
+
+  val check_message_result :
+    context ->
+    Compact.t ->
+    [ `Hash of Tx_rollup_message_result_hash.t
+    | `Result of Tx_rollup_message_result.t ] ->
+    path:Merkle.path ->
+    index:int ->
+    context tzresult
+
+  val add_commitment :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Signature.public_key_hash ->
+    Full.t ->
+    (context * Tx_rollup_state.t * Signature.public_key_hash option) tzresult
+    Lwt.t
+
+  val find :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    (context * Submitted_commitment.t option) tzresult Lwt.t
+
+  val get :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    (context * Submitted_commitment.t) tzresult Lwt.t
+
+  val check_agreed_and_disputed_results :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Submitted_commitment.t ->
+    agreed_result:Tx_rollup_message_result.t ->
+    agreed_result_path:Merkle.path ->
+    disputed_result:Tx_rollup_message_result_hash.t ->
+    disputed_position:int ->
+    disputed_result_path:Merkle.path ->
+    context tzresult Lwt.t
+
+  val get_finalized :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    (context * Submitted_commitment.t) tzresult Lwt.t
+
+  val pending_bonded_commitments :
+    context ->
+    Tx_rollup.t ->
+    Signature.public_key_hash ->
+    (context * int) tzresult Lwt.t
+
+  val has_bond :
+    context ->
+    Tx_rollup.t ->
+    Signature.public_key_hash ->
+    (context * bool) tzresult Lwt.t
+
+  val finalize_commitment :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    (context * Tx_rollup_state.t * Tx_rollup_level.t) tzresult Lwt.t
+
+  val remove_commitment :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    (context * Tx_rollup_state.t * Tx_rollup_level.t) tzresult Lwt.t
+
+  val remove_bond :
+    context ->
+    Tx_rollup.t ->
+    Signature.public_key_hash ->
+    context tzresult Lwt.t
+
+  val slash_bond :
+    context ->
+    Tx_rollup.t ->
+    Signature.public_key_hash ->
+    (context * bool) tzresult Lwt.t
+
+  val reject_commitment :
+    context ->
+    Tx_rollup.t ->
+    Tx_rollup_state.t ->
+    Tx_rollup_level.t ->
+    (context * Tx_rollup_state.t) tzresult Lwt.t
+end
+
+module Tx_rollup_hash : sig
+  val message_result :
+    context ->
+    Tx_rollup_message_result.t ->
+    (context * Tx_rollup_message_result_hash.t) tzresult
+
+  val compact_commitment :
+    context ->
+    Tx_rollup_commitment.Compact.t ->
+    (context * Tx_rollup_commitment_hash.t) tzresult
+
+  val withdraw_list :
+    context ->
+    Tx_rollup_withdraw.t list ->
+    (context * Tx_rollup_withdraw_list_hash.t) tzresult
+end
+
+module Tx_rollup_errors : sig
+  type error +=
+    | Tx_rollup_already_exists of Tx_rollup.t
+    | Tx_rollup_does_not_exist of Tx_rollup.t
+    | Submit_batch_burn_exceeded of {burn : Tez.t; limit : Tez.t}
+    | Inbox_does_not_exist of Tx_rollup.t * Tx_rollup_level.t
+    | Inbox_size_would_exceed_limit of Tx_rollup.t
+    | Inbox_count_would_exceed_limit of Tx_rollup.t
+    | Message_size_exceeds_limit
+    | Too_many_inboxes
+    | Too_many_commitments
+    | Too_many_withdrawals
+    | Wrong_batch_count
+    | Commitment_too_early of {
+        provided : Tx_rollup_level.t;
+        expected : Tx_rollup_level.t;
+      }
+    | Level_already_has_commitment of Tx_rollup_level.t
+    | Wrong_inbox_hash
+    | Bond_does_not_exist of Signature.public_key_hash
+    | Bond_in_use of Signature.public_key_hash
+    | No_uncommitted_inbox
+    | No_commitment_to_finalize
+    | No_commitment_to_remove
+    | Invalid_committer
+    | Remove_commitment_too_early
+    | Commitment_does_not_exist of Tx_rollup_level.t
+    | Wrong_predecessor_hash of {
+        provided : Tx_rollup_commitment_hash.t option;
+        expected : Tx_rollup_commitment_hash.t option;
+      }
+    | Internal_error of string
+    | Wrong_message_position of {
+        level : Tx_rollup_level.t;
+        position : int;
+        length : int;
+      }
+    | Wrong_path_depth of {
+        kind : [`Inbox | `Commitment];
+        provided : int;
+        limit : int;
+      }
+    | Wrong_message_path of {expected : Tx_rollup_inbox.Merkle.root}
+    | No_finalized_commitment_for_level of {
+        level : Tx_rollup_level.t;
+        window : (Tx_rollup_level.t * Tx_rollup_level.t) option;
+      }
+    | Withdraw_invalid_path
+    | Withdraw_already_consumed
+    | Withdrawals_invalid_path
+    | Withdrawals_already_dispatched
+    | Cannot_reject_level of {
+        provided : Tx_rollup_level.t;
+        accepted_range : (Tx_rollup_level.t * Tx_rollup_level.t) option;
+      }
+    | Wrong_rejection_hash of {
+        provided : Tx_rollup_message_result_hash.t;
+        expected :
+          [ `Valid_path of Tx_rollup_commitment.Merkle.h * int
+          | `Hash of Tx_rollup_message_result_hash.t ];
+      }
+    | Wrong_deposit_parameters
+    | Proof_failed_to_reject
+    | Proof_produced_rejected_state
+    | Proof_invalid_before of {
+        agreed : Context_hash.t;
+        provided : Context_hash.t;
+      }
+    | No_withdrawals_to_dispatch
+
+  val check_path_depth :
+    [`Inbox | `Commitment] -> int -> count_limit:int -> unit tzresult
+end
+
+module Bond_id : sig
+  type t = Tx_rollup_bond_id of Tx_rollup.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val compare : t -> t -> int
+
+  module Internal_for_tests : sig
+    val fold_on_bond_ids :
+      context ->
+      Contract.t ->
+      order:[`Sorted | `Undefined] ->
+      init:'a ->
+      f:(t -> 'a -> 'a Lwt.t) ->
+      'a Lwt.t
   end
 end
 
@@ -2462,6 +2496,8 @@ module Sc_rollup : sig
 
     val empty : Address.t -> Raw_level.t -> t
 
+    val inbox_level : t -> Raw_level.t
+
     val number_of_available_messages : t -> Z.t
 
     val consume_n_messages : int -> t -> t option tzresult
@@ -2581,7 +2617,7 @@ module Sc_rollup : sig
 
   val list : context -> t list tzresult Lwt.t
 
-  val initial_level : context -> t -> Raw_level_repr.t tzresult Lwt.t
+  val initial_level : context -> t -> Raw_level.t tzresult Lwt.t
 
   module Internal_for_tests : sig
     val originated_sc_rollup : Origination_nonce.Internal_for_tests.t -> t
@@ -2758,7 +2794,9 @@ module Kind : sig
 
   type tx_rollup_rejection = Tx_rollup_rejection_kind
 
-  type tx_rollup_withdraw = Tx_rollup_withdraw_kind
+  type tx_rollup_dispatch_tickets = Tx_rollup_dispatch_tickets_kind
+
+  type transfer_ticket = Transfer_ticket_kind
 
   type sc_rollup_originate = Sc_rollup_originate_kind
 
@@ -2784,7 +2822,9 @@ module Kind : sig
     | Tx_rollup_remove_commitment_manager_kind
         : tx_rollup_remove_commitment manager
     | Tx_rollup_rejection_manager_kind : tx_rollup_rejection manager
-    | Tx_rollup_withdraw_manager_kind : tx_rollup_withdraw manager
+    | Tx_rollup_dispatch_tickets_manager_kind
+        : tx_rollup_dispatch_tickets manager
+    | Transfer_ticket_manager_kind : transfer_ticket manager
     | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
@@ -2916,7 +2956,7 @@ and _ manager_operation =
       -> Kind.tx_rollup_submit_batch manager_operation
   | Tx_rollup_commit : {
       tx_rollup : Tx_rollup.t;
-      commitment : Tx_rollup_commitment.t;
+      commitment : Tx_rollup_commitment.Full.t;
     }
       -> Kind.tx_rollup_commit manager_operation
   | Tx_rollup_return_bond : {
@@ -2937,26 +2977,31 @@ and _ manager_operation =
       message : Tx_rollup_message.t;
       message_position : int;
       message_path : Tx_rollup_inbox.Merkle.path;
-      previous_message_result : Tx_rollup_commitment.message_result;
+      message_result_hash : Tx_rollup_message_result_hash.t;
+      message_result_path : Tx_rollup_commitment.Merkle.path;
+      previous_message_result : Tx_rollup_message_result.t;
+      previous_message_result_path : Tx_rollup_commitment.Merkle.path;
       proof : Tx_rollup_l2_proof.t;
     }
       -> Kind.tx_rollup_rejection manager_operation
-  | Tx_rollup_withdraw : {
+  | Tx_rollup_dispatch_tickets : {
       tx_rollup : Tx_rollup.t;
       level : Tx_rollup_level.t;
       context_hash : Context_hash.t;
       message_index : int;
-      withdrawals_merkle_root : Tx_rollup_withdraw.Merkle.root;
-      withdraw_path : Tx_rollup_withdraw.Merkle.path;
-      withdraw_position : int;
+      message_result_path : Tx_rollup_commitment.Merkle.path;
+      tickets_info : Tx_rollup_reveal.t list;
+    }
+      -> Kind.tx_rollup_dispatch_tickets manager_operation
+  | Transfer_ticket : {
       contents : Script.lazy_expr;
       ty : Script.lazy_expr;
       ticketer : Contract.t;
-      amount : Tx_rollup_l2_qty.t;
+      amount : Z.t;
       destination : Contract.t;
       entrypoint : Entrypoint.t;
     }
-      -> Kind.tx_rollup_withdraw manager_operation
+      -> Kind.transfer_ticket manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup.Kind.t;
       boot_sector : string;
@@ -3119,7 +3164,10 @@ module Operation : sig
 
     val tx_rollup_rejection_case : Kind.tx_rollup_rejection Kind.manager case
 
-    val tx_rollup_withdraw_case : Kind.tx_rollup_withdraw Kind.manager case
+    val tx_rollup_dispatch_tickets_case :
+      Kind.tx_rollup_dispatch_tickets Kind.manager case
+
+    val transfer_ticket_case : Kind.transfer_ticket Kind.manager case
 
     val register_global_constant_case :
       Kind.register_global_constant Kind.manager case
@@ -3181,7 +3229,9 @@ module Operation : sig
 
       val tx_rollup_rejection_case : Kind.tx_rollup_rejection case
 
-      val tx_rollup_withdraw_case : Kind.tx_rollup_withdraw case
+      val tx_rollup_dispatch_tickets_case : Kind.tx_rollup_dispatch_tickets case
+
+      val transfer_ticket_case : Kind.transfer_ticket case
 
       val sc_rollup_originate_case : Kind.sc_rollup_originate case
 
@@ -3347,11 +3397,24 @@ end
     documentation of the functions there.
  *)
 module Ticket_balance : sig
+  type error +=
+    | Negative_ticket_balance of {key : Ticket_hash.t; balance : Z.t}
+    | Used_storage_space_underflow
+
   val adjust_balance :
     context -> Ticket_hash.t -> delta:Z.t -> (Z.t * context) tzresult Lwt.t
 
+  val adjust_storage_space :
+    context -> storage_diff:Z.t -> (Z.t * context) tzresult Lwt.t
+
   val get_balance :
     context -> Ticket_hash.t -> (Z.t option * context) tzresult Lwt.t
+
+  module Internal_for_tests : sig
+    val used_storage_space : context -> Z.t tzresult Lwt.t
+
+    val paid_storage_space : context -> Z.t tzresult Lwt.t
+  end
 end
 
 module First_level_of_protocol : sig
@@ -3428,10 +3491,7 @@ end
 
 module Fees : sig
   val record_paid_storage_space :
-    context ->
-    Contract.t ->
-    ticket_table_size_diff:Z.t ->
-    (context * Z.t * Z.t) tzresult Lwt.t
+    context -> Contract.t -> (context * Z.t * Z.t) tzresult Lwt.t
 
   val record_global_constant_storage_space : context -> Z.t -> context * Z.t
 

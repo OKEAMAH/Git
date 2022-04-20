@@ -92,18 +92,6 @@ end
 
 module Raw_level = Raw_level_repr
 module Cycle = Cycle_repr
-module Script_string = Script_string_repr
-module Script_int = Script_int_repr
-
-module Script_timestamp = struct
-  include Script_timestamp_repr
-
-  let now ctxt =
-    let {Constants_repr.minimal_block_delay; _} = Raw_context.constants ctxt in
-    let first_delay = Period_repr.to_seconds minimal_block_delay in
-    let current_timestamp = Raw_context.predecessor_timestamp ctxt in
-    Time.add current_timestamp first_delay |> Timestamp.to_seconds |> of_int64
-end
 
 module Script = struct
   include Michelson_v1_primitives
@@ -234,13 +222,15 @@ module Contract = struct
 
   let get_manager_key = Contract_manager_storage.get_manager_key
 
-  module Internal_for_tests = Contract_repr
+  module Internal_for_tests = struct
+    include Contract_repr
+    include Contract_storage
+  end
 end
 
 module Tx_rollup_level = Tx_rollup_level_repr
-module Tx_rollup_commitment_hash = Tx_rollup_commitment_repr.Commitment_hash
-module Tx_rollup_message_result_hash =
-  Tx_rollup_commitment_repr.Message_result_hash
+module Tx_rollup_commitment_hash = Tx_rollup_commitment_repr.Hash
+module Tx_rollup_message_result_hash = Tx_rollup_message_result_hash_repr
 
 module Tx_rollup = struct
   include Tx_rollup_repr
@@ -258,14 +248,17 @@ module Tx_rollup_state = struct
   end
 end
 
-module Tx_rollup_withdraw = struct
-  include Tx_rollup_withdraw_repr
-  include Tx_rollup_withdraw_storage
+module Tx_rollup_withdraw = Tx_rollup_withdraw_repr
+module Tx_rollup_withdraw_list_hash = Tx_rollup_withdraw_list_hash_repr
+module Tx_rollup_message_result = Tx_rollup_message_result_repr
+
+module Tx_rollup_reveal = struct
+  include Tx_rollup_reveal_repr
+  include Tx_rollup_reveal_storage
 end
 
 module Tx_rollup_message = struct
   include Tx_rollup_message_repr
-  include Tx_rollup_message_builder
 
   let make_message msg = (msg, size msg)
 
@@ -274,6 +267,8 @@ module Tx_rollup_message = struct
   let make_deposit sender destination ticket_hash amount =
     make_message @@ Deposit {sender; destination; ticket_hash; amount}
 end
+
+module Tx_rollup_message_hash = Tx_rollup_message_hash_repr
 
 module Tx_rollup_inbox = struct
   include Tx_rollup_inbox_repr
@@ -285,6 +280,7 @@ module Tx_rollup_commitment = struct
   include Tx_rollup_commitment_storage
 end
 
+module Tx_rollup_hash = Tx_rollup_hash_builder
 module Tx_rollup_errors = Tx_rollup_errors_repr
 module Global_constants_storage = Global_constants_storage
 
@@ -377,7 +373,11 @@ module Sapling = struct
   end
 end
 
-module Bond_id = Bond_id_repr
+module Bond_id = struct
+  include Bond_id_repr
+  module Internal_for_tests = Contract_storage
+end
+
 module Receipt = Receipt_repr
 
 module Delegate = struct

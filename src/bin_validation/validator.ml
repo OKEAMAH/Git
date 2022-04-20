@@ -112,7 +112,7 @@ end
 open Filename.Infix
 
 let load_protocol proto protocol_root =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   if Registered_protocol.mem proto then return_unit
   else
     let cmxs_file =
@@ -126,7 +126,7 @@ let load_protocol proto protocol_root =
     | exception Dynlink.Error err ->
         Format.ksprintf
           (fun msg ->
-            fail
+            tzfail
               Block_validator_errors.(
                 Validation_process_failed (Protocol_dynlink_failure msg)))
           "Cannot load file: %s. (Expected location: %s.)"
@@ -171,6 +171,7 @@ let init input =
          genesis;
          user_activated_upgrades;
          user_activated_protocol_overrides;
+         operation_metadata_size_limit;
        } =
     External_validation.recv input External_validation.parameters_encoding
   in
@@ -187,16 +188,18 @@ let init input =
       protocol_root,
       genesis,
       user_activated_upgrades,
-      user_activated_protocol_overrides )
+      user_activated_protocol_overrides,
+      operation_metadata_size_limit )
 
 let run input output =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* () = handshake input output in
   let*! ( context_index,
           protocol_root,
           genesis,
           user_activated_upgrades,
-          user_activated_protocol_overrides ) =
+          user_activated_protocol_overrides,
+          operation_metadata_size_limit ) =
     init input
   in
   let rec loop (cache : Environment_context.Context.block_cache option)
@@ -252,7 +255,7 @@ let run input output =
                 match o with
                 | Some context -> return context
                 | None ->
-                    fail
+                    tzfail
                       (Block_validator_errors.Failed_to_checkout_context
                          pred_context_hash))
           in
@@ -263,6 +266,7 @@ let run input output =
               Block_validation.chain_id;
               user_activated_upgrades;
               user_activated_protocol_overrides;
+              operation_metadata_size_limit;
               max_operations_ttl;
               predecessor_block_header;
               predecessor_block_metadata_hash;
@@ -329,7 +333,7 @@ let run input output =
                 match context with
                 | Some context -> return context
                 | None ->
-                    fail
+                    tzfail
                       (Block_validator_errors.Failed_to_checkout_context
                          pred_context_hash))
           in
@@ -340,6 +344,7 @@ let run input output =
                 ~chain_id
                 ~user_activated_upgrades
                 ~user_activated_protocol_overrides
+                ~operation_metadata_size_limit
                 ~timestamp
                 ~protocol_data
                 ~live_blocks
@@ -395,7 +400,7 @@ let run input output =
                 match o with
                 | Some context -> return context
                 | None ->
-                    fail
+                    tzfail
                       (Block_validator_errors.Failed_to_checkout_context
                          predecessor_block_header.shell.context))
           in
@@ -439,7 +444,7 @@ let run input output =
               External_validation.send
                 output
                 (Error_monad.result_encoding Data_encoding.empty)
-                (Tzresult_syntax.fail
+                (Result_syntax.tzfail
                    (Block_validator_errors.Failed_to_checkout_context
                       context_hash))
         in

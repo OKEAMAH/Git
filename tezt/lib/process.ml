@@ -312,12 +312,13 @@ let to_key_equal_value (kv_map : string String_map.t) : string array =
   |> Seq.map (fun (name, value) -> name ^ "=" ^ value)
   |> Array.of_seq
 
-let spawn_with_stdin ?runner ?(log_status_on_exit = true) ?(log_output = true)
-    ?name ?(color = Log.Color.FG.cyan) ?(env = String_map.empty) ?hooks command
-    arguments =
+let spawn_with_stdin ?runner ?(log_command = true) ?(log_status_on_exit = true)
+    ?(log_output = true) ?name ?(color = Log.Color.FG.cyan)
+    ?(env = String_map.empty) ?hooks command arguments =
   let name = Option.value ~default:(get_unique_name command) name in
   Option.iter (fun hooks -> hooks.on_spawn command arguments) hooks ;
-  Log.command ~color:Log.Color.bold ~prefix:name command arguments ;
+  if log_command then
+    Log.command ~color:Log.Color.bold ~prefix:name command arguments ;
   let lwt_command =
     match runner with
     | None -> (command, Array.of_list (command :: arguments))
@@ -385,11 +386,12 @@ let spawn_with_stdin ?runner ?(log_status_on_exit = true) ?(log_output = true)
   process.handle <- handle_process ~log_output process ;
   (process, process.lwt_process#stdin)
 
-let spawn ?runner ?log_status_on_exit ?log_output ?name ?color ?env ?hooks
-    command arguments =
+let spawn ?runner ?log_command ?log_status_on_exit ?log_output ?name ?color ?env
+    ?hooks command arguments =
   let (process, stdin) =
     spawn_with_stdin
       ?runner
+      ?log_command
       ?log_status_on_exit
       ?log_output
       ?name
@@ -520,32 +522,27 @@ let check_error ?exit_code ?msg process =
     }
   in
   match status with
-  | WEXITED n ->
-      if not (Option.fold ~none:(n <> 0) ~some:(( = ) n) exit_code) then
-        raise
-          (Failed
-             {
-               error with
-               reason =
-                 Some
-                   (Option.fold
-                      ~none:" with any non-zero code"
-                      ~some:(fun exit_code ->
-                        sf " with code %d but failed with code %d" exit_code n)
-                      exit_code);
-             }) ;
-      Option.iter
-        (fun msg ->
-          if err_msg =~! msg then
-            raise
-              (Failed
-                 {
-                   error with
-                   reason =
-                     Some (sf " but failed with stderr =~! %s" (show_rex msg));
-                 }))
-        msg ;
-      unit
+  | WEXITED n -> (
+      match exit_code with
+      | None when n = 0 ->
+          raise (Failed {error with reason = Some " with any non-zero code"})
+      | Some exit_code when n <> exit_code ->
+          let reason = sf " with code %d but failed with code %d" exit_code n in
+          raise (Failed {error with reason = Some reason})
+      | _ ->
+          Option.iter
+            (fun msg ->
+              if err_msg =~! msg then
+                raise
+                  (Failed
+                     {
+                       error with
+                       reason =
+                         Some
+                           (sf " but failed with stderr =~! %s" (show_rex msg));
+                     }))
+            msg ;
+          unit)
   | _ -> raise (Failed error)
 
 let program_path program =
@@ -554,12 +551,3 @@ let program_path program =
       let* path = run_and_read_stdout "sh" ["-c"; "command -v " ^ program] in
       return (Some (String.trim path)))
     (fun _ -> return None)
-
-type nonrec 'a runnable = (t, 'a) runnable
-
-let runnable_map f {value; run} =
-  let run x =
-    let* output = run x in
-    return (f output)
-  in
-  {value; run}

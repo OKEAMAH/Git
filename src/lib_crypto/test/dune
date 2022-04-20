@@ -1,9 +1,8 @@
 ; This file was automatically generated, do not edit.
 ; Edit file manifest/main.ml instead.
 
-(tests
+(executables
  (names test_run test_prop_signature)
- (package tezos-crypto)
  (modes native js)
  (libraries
   tezos-stdlib
@@ -25,19 +24,27 @@
    -open Data_encoding)))
 
 (rule
+ (alias runtest)
+ (package tezos-crypto)
+ (action (run %{dep:./test_run.exe})))
+
+(rule
+ (alias runtest)
+ (package tezos-crypto)
+ (action (run %{dep:./test_prop_signature.exe})))
+
+(rule
  (alias runtest_js)
  (package tezos-crypto)
- (locks npm)
  (action
   (run
-   %{dep:../../tooling/node_wrapper.exe} --secp256k1 1.1.1 --hacl 1.1.0
+   %{dep:../../tooling/node_wrapper.exe} --bls12-381 --secp256k1 --hacl
    %{dep:./test_run.bc.js})))
 
 (rule
  (alias runtest_js)
  (package tezos-crypto)
- (locks npm)
  (action
   (run
-   %{dep:../../tooling/node_wrapper.exe} --secp256k1 1.1.1 --hacl 1.1.0
+   %{dep:../../tooling/node_wrapper.exe} --bls12-381 --secp256k1 --hacl
    %{dep:./test_prop_signature.bc.js})))

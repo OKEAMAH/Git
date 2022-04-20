@@ -23,6 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Assert_lib = Lib_test_extra.Assert_lib
 open Test_utils
 
 let assert_presence_in_cemented_store ?(with_metadata = true) cemented_store
@@ -48,7 +49,7 @@ let assert_presence_in_cemented_store ?(with_metadata = true) cemented_store
             Assert.equal ~msg:"block equality with metadata" b b' ;
             return_unit)
           else (
-            Assert.equal_block
+            Assert_lib.Crypto.equal_block
               ~msg:"block equality without metadata"
               (Block_repr.header b)
               (Block_repr.header b') ;

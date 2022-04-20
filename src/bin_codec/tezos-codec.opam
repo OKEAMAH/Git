@@ -9,7 +9,7 @@ dev-repo: "git+https://gitlab.com/tezos/tezos.git"
 license: "MIT"
 depends: [
   "dune" { >= "2.9" }
-  "data-encoding" { >= "0.5.1" & < "0.6" }
+  "data-encoding" { >= "0.5.3" & < "0.6" }
   "tezos-base"
   "tezos-client-base-unix"
   "tezos-client-base"
@@ -27,6 +27,7 @@ depopts: [
   "tezos-client-010-PtGRANAD"
   "tezos-client-011-PtHangz2"
   "tezos-client-012-Psithaca"
+  "tezos-client-013-PtJakart"
   "tezos-client-alpha"
 ]
 build: [

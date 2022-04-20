@@ -43,8 +43,14 @@
 (** [validation_mode] permits to differenciate [!type:validation_state]
     values.
 
-    TODO: #2536
-      Add some documentation for the different modes.
+    There are four validation modes:
+    - [Application]
+    - [Partial_application]
+    - [Partial_construction]
+    - [Full_construction]
+
+    For the meaning and typical uses of each mode, refer to the
+    comments attached to the corresponding type constructors below.
 *)
 type validation_mode =
   | Application of {
@@ -65,7 +71,7 @@ type validation_mode =
       predecessor_level : Alpha_context.Level.t;
       predecessor_round : Alpha_context.Round.t;
     }
-      (** [Partial_application] is use in chain bootstrapping - not all checks
+      (** [Partial_application] is used in pre-checking of blocks - not all checks
          are done. Special case of [Application] to allow quick rejection of bad
          blocks. See
          {!val:Tezos_protocol_environment_sigs.V5.T.Updater.PROTOCOL.begin_partial_application}
@@ -121,7 +127,7 @@ type operation = Alpha_context.packed_operation = {
     @return [Error Invalid_signature] if the signature check fails
     @return [Error Unrevealed_manager_key] if the manager has not yet been
     revealed
-    @return [Error Failure "get_manager_key"] if the key is not found in the
+    @return [Error Missing_manager_contract] if the key is not found in the
     context
     @return [Error Inconsistent_sources] if the operations in a batch are not
     from the same manager *)

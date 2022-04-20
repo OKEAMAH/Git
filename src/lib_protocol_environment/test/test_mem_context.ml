@@ -39,6 +39,8 @@
                    \-- block3b
 *)
 
+module Assert = Lib_test.Assert
+
 let create_block2 ctxt =
   let open Lwt_syntax in
   let* ctxt = Context.add ctxt ["a"; "b"] (Bytes.of_string "Novembre") in
@@ -92,7 +94,23 @@ let test_simple {block2 = ctxt; _} =
   Assert.equal_string_option (Some "Novembre") (c novembre) ;
   let* juin = Context.find ctxt ["a"; "c"] in
   Assert.equal_string_option ~msg:__LOC__ (Some "Juin") (c juin) ;
-  Lwt.return_unit
+
+  (* Mem function returns "true" if the key given leads to an existing leaf *)
+  let* res = Context.mem ctxt ["a"] in
+  Assert.equal_bool false res ;
+  let* res = Context.mem ctxt ["a"; "c"] in
+  Assert.equal_bool true res ;
+  let* res = Context.mem ctxt ["a"; "x"] in
+  Assert.equal_bool false res ;
+
+  (* Mem_tree is like "mem", but also returns "true" for a trunk node *)
+  let* res = Context.mem_tree ctxt ["a"] in
+  Assert.equal_bool true res ;
+  let* res = Context.mem_tree ctxt ["a"; "c"] in
+  Assert.equal_bool true res ;
+  let* res = Context.mem_tree ctxt ["a"; "x"] in
+  Assert.equal_bool false res ;
+  return_unit
 
 (** Restore the context applied until [block3a]. It is asserted that
     the following key-values are present:
@@ -107,7 +125,7 @@ let test_continuation {block3a = ctxt; _} =
   let* version = Context.find ctxt ["version"] in
   Assert.equal_string_option ~msg:__LOC__ (Some "0.0") (c version) ;
   let* novembre = Context.find ctxt ["a"; "b"] in
-  Assert.is_none ~msg:__LOC__ (c novembre) ;
+  Assert.assert_none ~msg:__LOC__ (c novembre) ;
   let* juin = Context.find ctxt ["a"; "c"] in
   Assert.equal_string_option ~msg:__LOC__ (Some "Juin") (c juin) ;
   let* mars = Context.find ctxt ["a"; "d"] in
@@ -129,7 +147,7 @@ let test_fork {block3b = ctxt; _} =
   let* novembre = Context.find ctxt ["a"; "b"] in
   Assert.equal_string_option ~msg:__LOC__ (Some "Novembre") (c novembre) ;
   let* juin = Context.find ctxt ["a"; "c"] in
-  Assert.is_none ~msg:__LOC__ (c juin) ;
+  Assert.assert_none ~msg:__LOC__ (c juin) ;
   let* mars = Context.find ctxt ["a"; "d"] in
   Assert.equal_string_option ~msg:__LOC__ (Some "Février") (c mars) ;
   Lwt.return_unit

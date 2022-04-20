@@ -1063,7 +1063,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                   | None -> (return_none [@ocaml.tailcall]) ctxt
                   | Some view -> (
                       let view_result =
-                        Script_ir_translator.parse_view_returning
+                        Script_ir_translator.parse_view
                           ctxt
                           ~legacy:true
                           storage_type
@@ -1074,85 +1074,67 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                           Script_tc_errors.Ill_typed_contract
                             (Micheline.strip_locations view.view_code, []))
                         view_result
-                      >>=? fun (Ex_view f, ctxt) ->
-                      match f with
-                      | Lam
-                          ( {
-                              kloc;
-                              kaft = Item_t (aft_ty, Bot_t);
-                              kbef = Item_t (bef_ty, Bot_t);
-                              kinstr;
-                            },
-                            _script_view ) -> (
-                          pair_t kloc input_ty storage_type
-                          >>?= fun (Ty_ex_c pair_ty) ->
-                          let io_ty =
-                            let open Gas_monad.Syntax in
-                            let* out_eq =
-                              Script_ir_translator.ty_eq
-                                ~error_details:Fast
-                                kloc
-                                aft_ty
-                                output_ty
-                            in
-                            let+ in_eq =
-                              ty_eq ~error_details:Fast kloc bef_ty pair_ty
-                            in
-                            (out_eq, in_eq)
-                          in
-                          Gas_monad.run ctxt io_ty >>?= fun (eq, ctxt) ->
-                          match eq with
-                          | Error Inconsistent_types_fast ->
-                              (return_none [@ocaml.tailcall]) ctxt
-                          | Ok (Eq, Eq) -> (
-                              let kkinfo = kinfo_of_kinstr k in
-                              match kkinfo.kstack_ty with
-                              | Item_t (_, s) ->
-                                  let kstack_ty = Item_t (output_ty, s) in
-                                  let kkinfo = {kkinfo with kstack_ty} in
-                                  let ks = KCons (ICons_some (kkinfo, k), ks) in
-                                  Contract.get_balance_carbonated ctxt c
-                                  >>=? fun (ctxt, balance) ->
-                                  let (gas, ctxt) =
-                                    local_gas_counter_and_outdated_context ctxt
-                                  in
-                                  (step [@ocaml.tailcall])
-                                    ( ctxt,
-                                      {
-                                        source = sc.self;
-                                        self = c;
-                                        amount = Tez.zero;
-                                        balance;
-                                        (* The following remain unchanged, but let's
-                                           list them anyway, so that we don't forget
-                                           to update something added later. *)
-                                        payer = sc.payer;
-                                        chain_id = sc.chain_id;
-                                        now = sc.now;
-                                        level = sc.level;
-                                      } )
-                                    gas
-                                    kinstr
-                                    (KView_exit (sc, KReturn (stack, ks)))
-                                    (input, storage)
-                                    (EmptyCell, EmptyCell))))))
+                      >>=? fun ( Typed_view
+                                   {
+                                     input_ty = input_ty';
+                                     output_ty = output_ty';
+                                     kinstr;
+                                     original_code_expr = _;
+                                   },
+                                 ctxt ) ->
+                      let loc = Micheline.location view.view_code in
+                      let io_ty =
+                        let open Gas_monad.Syntax in
+                        let* out_eq =
+                          ty_eq ~error_details:Fast loc output_ty' output_ty
+                        in
+                        let+ in_eq =
+                          ty_eq ~error_details:Fast loc input_ty input_ty'
+                        in
+                        (out_eq, in_eq)
+                      in
+                      Gas_monad.run ctxt io_ty >>?= fun (eq, ctxt) ->
+                      match eq with
+                      | Error Inconsistent_types_fast ->
+                          (return_none [@ocaml.tailcall]) ctxt
+                      | Ok (Eq, Eq) -> (
+                          let kkinfo = kinfo_of_kinstr k in
+                          match kkinfo.kstack_ty with
+                          | Item_t (_, s) ->
+                              let kstack_ty = Item_t (output_ty, s) in
+                              let kkinfo = {kkinfo with kstack_ty} in
+                              let ks = KCons (ICons_some (kkinfo, k), ks) in
+                              Contract.get_balance_carbonated ctxt c
+                              >>=? fun (ctxt, balance) ->
+                              let (gas, ctxt) =
+                                local_gas_counter_and_outdated_context ctxt
+                              in
+                              (step [@ocaml.tailcall])
+                                ( ctxt,
+                                  {
+                                    source = sc.self;
+                                    self = c;
+                                    amount = Tez.zero;
+                                    balance;
+                                    (* The following remain unchanged, but let's
+                                       list them anyway, so that we don't forget
+                                       to update something added later. *)
+                                    payer = sc.payer;
+                                    chain_id = sc.chain_id;
+                                    now = sc.now;
+                                    level = sc.level;
+                                  } )
+                                gas
+                                kinstr
+                                (KView_exit (sc, KReturn (stack, ks)))
+                                (input, storage)
+                                (EmptyCell, EmptyCell)))))
           | Tx_rollup _ -> (return_none [@ocaml.tailcall]) ctxt)
-      | ICreate_contract
-          {storage_type; arg_type; lambda; views; entrypoints; k; _} ->
+      | ICreate_contract {storage_type; code; k; kinfo = _} ->
           (* Removed the instruction's arguments manager, spendable and delegatable *)
           let delegate = accu in
           let (credit, (init, stack)) = stack in
-          create_contract
-            g
-            gas
-            storage_type
-            arg_type
-            lambda
-            views
-            entrypoints
-            delegate
-            credit
-            init
+          create_contract g gas storage_type code delegate credit init
           >>=? fun (res, contract, ctxt, gas) ->
           let stack =
             ( {destination = Contract contract; entrypoint = Entrypoint.default},
@@ -1513,7 +1495,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
              incorrect. Indeed the verification asks for an integer for practical reasons.
              Therefore no proof can be correct.*)
           let accu =
-            match Alpha_context.Script_int.to_int time_z with
+            match Script_int.to_int time_z with
             | None -> R false
             | Some time -> (
                 match Script_timelock.open_chest chest chest_key ~time with
@@ -1693,12 +1675,6 @@ let kstep logger ctxt step_constants kinstr accu stack =
   >>=? fun (accu, stack, ctxt, gas) ->
   return (accu, stack, update_context gas ctxt)
 
-let internal_step ctxt step_constants gas kinstr accu stack =
-  step (ctxt, step_constants) gas kinstr KNil accu stack
-
-let step logger ctxt step_constants descr stack =
-  step_descr ~log_now:false logger (ctxt, step_constants) descr stack
-
 (*
 
    High-level functions
@@ -1712,7 +1688,7 @@ type execution_arg =
   | Untyped_arg : Script.expr -> execution_arg
 
 let lift_execution_arg (type a ac) ctxt ~internal (entrypoint_ty : (a, ac) ty)
-    (box : a -> 'b) arg : ('b * context) tzresult Lwt.t =
+    (construct : a -> 'b) arg : ('b * context) tzresult Lwt.t =
   (match arg with
   | Untyped_arg arg ->
       let arg = Micheline.root arg in
@@ -1729,7 +1705,7 @@ let lift_execution_arg (type a ac) ctxt ~internal (entrypoint_ty : (a, ac) ty)
       res >>?= fun Eq ->
       let parsed_arg : a = parsed_arg in
       return (parsed_arg, ctxt))
-  >>=? fun (entrypoint_arg, ctxt) -> return (box entrypoint_arg, ctxt)
+  >>=? fun (entrypoint_arg, ctxt) -> return (construct entrypoint_arg, ctxt)
 
 type execution_result = {
   script : Script_ir_translator.ex_script;
@@ -1767,10 +1743,11 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     (find_entrypoint ~error_details:Informative arg_type entrypoints entrypoint)
   >>?= fun (r, ctxt) ->
   record_trace (Bad_contract_parameter step_constants.self) r
-  >>?= fun (Ex_ty_cstr (entrypoint_ty, box)) ->
+  >>?= fun (Ex_ty_cstr {ty = entrypoint_ty; construct; original_type_expr = _})
+    ->
   trace
     (Bad_contract_parameter step_constants.self)
-    (lift_execution_arg ctxt ~internal entrypoint_ty box arg)
+    (lift_execution_arg ctxt ~internal entrypoint_ty construct arg)
   >>=? fun (arg, ctxt) ->
   Script_ir_translator.collect_lazy_storage ctxt arg_type arg
   >>?= fun (to_duplicate, ctxt) ->
@@ -1894,5 +1871,10 @@ module Internals = struct
     next g gas ks accu stack
 
   let step (ctxt, step_constants) gas ks accu stack =
-    internal_step ctxt step_constants gas ks accu stack
+    step (ctxt, step_constants) gas ks KNil accu stack
+
+  let step_descr logger ctxt step_constants descr stack =
+    step_descr ~log_now:false logger (ctxt, step_constants) descr stack
+
+  let kstep = kstep
 end

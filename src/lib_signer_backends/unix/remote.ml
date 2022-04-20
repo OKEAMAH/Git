@@ -54,6 +54,7 @@ struct
     \ - $TEZOS_SIGNER_HTTP_HOST and $TEZOS_SIGNER_HTTP_PORT (default: 6732),\n\
     \ - $TEZOS_SIGNER_HTTPS_HOST and $TEZOS_SIGNER_HTTPS_PORT (default: 443)."
 
+  include Client_keys.Signature_type
   module Socket = Socket.Make (S)
   module Http = Http.Make (RPC_client) (S)
   module Https = Https.Make (RPC_client) (S)
@@ -133,7 +134,7 @@ let make_pk pk =
     (Uri.make ~scheme ~path:(Signature.Public_key.to_b58check pk) ())
 
 let read_base_uri_from_env () =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   match
     ( Sys.getenv_opt "TEZOS_SIGNER_UNIX_PATH",
       Sys.getenv_opt "TEZOS_SIGNER_TCP_HOST",

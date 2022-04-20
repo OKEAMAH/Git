@@ -168,6 +168,8 @@ module Operation = struct
 
   let inject_origination = inject_origination ~async:true ~force:true
 
+  let inject_transfer_ticket = inject_transfer_ticket ~async:true ~force:true
+
   let forge_and_inject_operation ?protocol ?branch ~batch ~signer
       ?patch_unsigned client =
     let* branch = get_injection_branch ?branch client in
@@ -284,6 +286,21 @@ module Helpers = struct
     let* () = bake_and_wait_block nodes.main in
     Log.info "  - Contract address is %s." contract ;
     return contract
+
+  type hard_gas_limits = {
+    hard_gas_limit_per_operation : int;
+    hard_gas_limit_per_block : int;
+  }
+
+  let gas_limits client =
+    let* constants = RPC.get_constants client in
+    let hard_gas_limit_per_operation =
+      JSON.(constants |-> "hard_gas_limit_per_operation" |> as_int)
+    in
+    let hard_gas_limit_per_block =
+      JSON.(constants |-> "hard_gas_limit_per_block" |> as_int)
+    in
+    return {hard_gas_limit_per_operation; hard_gas_limit_per_block}
 end
 
 (** This module provides helper functions and wrappers to check the
@@ -811,6 +828,257 @@ module Illtyped_originations = struct
     contract_body_illtyped_1 protocols ;
     contract_body_illtyped_2 protocols ;
     initial_storage_illtyped protocols
+end
+
+module Deserialisation = struct
+  let milligas_per_byte = 20 (* As per the protocol *)
+
+  (** Returns the gas needed for the deserialization of an argument of
+      size [size_kB] in kilobytes. *)
+  let deserialization_gas ~size_kB = size_kB * milligas_per_byte
+
+  (** Returns an hexadecimal representation of a zero byte sequence of
+     size [size_kB]. *)
+  let make_zero_hex ~size_kB =
+    (* A hex representation for a byte sequence of n bytes is 2n long,
+       so for n kB it is 2000n long *)
+    String.make (size_kB * 2000) '0'
+
+  (* Originate a contract that takes a byte sequence as argument and does nothing *)
+  let originate_noop_contract nc =
+    let* contract =
+      Client.originate_contract
+        ~wait:"none"
+        ~init:"Unit"
+        ~alias:"deserialization_gas"
+        ~amount:Tez.zero
+        ~burn_cap:Tez.one
+        ~src:Constant.bootstrap1.alias
+        ~prg:"parameter bytes; storage unit; code {CDR; NIL operation; PAIR}"
+        nc.client
+    in
+    let* () = Helpers.bake_and_wait_block nc in
+    return contract
+
+  (* Gas to execute call to noop contract without deserialization *)
+  let gas_to_execute_rest_noop = function
+    | Protocol.Ithaca -> 2049
+    | Jakarta | Alpha -> 2109
+
+  let inject_call_with_bytes ?(source = Constant.bootstrap5) ?protocol ~contract
+      ~size_kB ~gas_limit client =
+    let* op =
+      Operation.mk_call
+        ~entrypoint:"default"
+        ~arg:(`Json (`O [("bytes", `String (make_zero_hex ~size_kB))]))
+        ~gas_limit
+        ~dest:contract
+        ~source
+        client
+    in
+    Operation.forge_and_inject_operation
+      ?protocol
+      ~batch:[op]
+      ~signer:source
+      client
+
+  let test_deserialization_gas_canary =
+    Protocol.register_test
+      ~__FILE__
+      ~title:
+        "Smart contract call that should succeeds with the provided gas limit"
+      ~tags:["precheck"; "gas"; "deserialization"; "canary"]
+    @@ fun protocol ->
+    let* nodes = Helpers.init ~protocol () in
+    let* contract = originate_noop_contract nodes.main in
+    let size_kB = 20 in
+    let min_deserialization_gas = deserialization_gas ~size_kB in
+    let gas_for_the_rest = gas_to_execute_rest_noop protocol in
+    (* This is specific to this contract, obtained empirically *)
+    let* _ =
+      Memchecks.with_applied_checks
+        ~__LOC__
+        nodes
+        ~expected_statuses:["applied"]
+      @@ fun () ->
+      inject_call_with_bytes
+        ~protocol
+        ~contract
+        ~size_kB:20
+        ~gas_limit:(min_deserialization_gas + gas_for_the_rest)
+        (* Enough gas to deserialize and do the application *)
+        nodes.main.client
+    in
+    unit
+
+  let test_not_enough_gas_deserialization =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Contract call with not enough gas to deserialize argument"
+      ~tags:["precheck"; "gas"; "deserialization"]
+    @@ fun protocol ->
+    let* nodes = Helpers.init ~protocol () in
+    let* contract = originate_noop_contract nodes.main in
+    let size_kB = 20 in
+    let min_deserialization_gas = deserialization_gas ~size_kB in
+    let* _ =
+      Memchecks.with_refused_checks ~__LOC__ nodes @@ fun () ->
+      inject_call_with_bytes
+        ~protocol
+        ~contract
+        ~size_kB
+        ~gas_limit:(min_deserialization_gas - 1)
+        nodes.main.client
+    in
+    unit
+
+  let test_deserialization_gas_accounting =
+    Protocol.register_test
+      ~__FILE__
+      ~title:
+        "Smart contract call that would succeed if we did not account \
+         deserialization gas correctly"
+      ~tags:["precheck"; "gas"; "deserialization"; "lazy_expr"]
+    @@ fun protocol ->
+    let* nodes = Helpers.init ~protocol () in
+    let* contract = originate_noop_contract nodes.main in
+    let size_kB = 20 in
+    let min_deserialization_gas = deserialization_gas ~size_kB in
+    let gas_for_the_rest = gas_to_execute_rest_noop protocol in
+    (* This is specific to this contract, obtained empirically *)
+    let* _ =
+      Memchecks.with_applied_checks
+        ~__LOC__
+        nodes
+        ~expected_statuses:["failed"]
+        ~expected_errors:[["gas_exhausted.operation"]]
+      @@ fun () ->
+      inject_call_with_bytes
+        ~protocol
+        ~contract
+        ~size_kB:20
+        ~gas_limit:(min_deserialization_gas + gas_for_the_rest - 1)
+        (* Enough gas to deserialize or to do the rest, but not to do both *)
+        nodes.main.client
+    in
+    unit
+
+  let register ~protocols =
+    test_deserialization_gas_canary protocols ;
+    test_not_enough_gas_deserialization protocols ;
+    test_deserialization_gas_accounting [Ithaca; Alpha]
+end
+
+module Gas_limits = struct
+  (** Build a batch of transfers with the same given gas limit for every one of
+      them.  *)
+  let mk_batch ?(source = Constant.bootstrap2) ?(dest = Constant.bootstrap3) ~nb
+      ~gas_limit client =
+    let rec loop n counter acc =
+      if n <= 0 then Lwt.return (List.rev acc)
+      else
+        let counter = counter + 1 in
+        let* op =
+          Operation.mk_transfer
+            ~source
+            ~fee:1_000_000
+            ~gas_limit
+            ~dest
+            ~counter
+            client
+        in
+        loop (n - 1) counter (op :: acc)
+    in
+    let* counter = Operation.get_counter client ~source:Constant.bootstrap1 in
+    loop nb counter []
+
+  let block_below_ops_below =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Batch below block limit with each operation below limit"
+      ~tags:["precheck"; "batch"; "gas"]
+    @@ fun protocol ->
+    let* nodes = Helpers.init ~protocol () in
+    let* limits = Helpers.gas_limits nodes.main.client in
+    (* Gas limit per op is ok *)
+    let* batch =
+      mk_batch
+        ~nb:2
+        ~gas_limit:limits.hard_gas_limit_per_operation
+        nodes.main.client
+    in
+    let* _oph =
+      Memchecks.with_applied_checks
+        ~__LOC__
+        nodes
+        ~expected_statuses:["applied"; "applied"]
+      @@ fun () ->
+      Operation.forge_and_inject_operation
+        ~protocol
+        ~batch
+        ~signer:Constant.bootstrap2
+        nodes.main.client
+    in
+    unit
+
+  let block_below_ops_over =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Batch below block limit with operations over limit"
+      ~tags:["precheck"; "batch"; "gas"; "op_gas"]
+    @@ fun protocol ->
+    let* nodes = Helpers.init ~protocol () in
+    let* limits = Helpers.gas_limits nodes.main.client in
+    let* batch =
+      mk_batch
+        ~nb:2
+        ~gas_limit:(limits.hard_gas_limit_per_operation + 1)
+        nodes.main.client
+    in
+    let* _oph =
+      Memchecks.with_refused_checks ~__LOC__ nodes @@ fun () ->
+      (* Gas limit per op is too high *)
+      Operation.forge_and_inject_operation
+        ~protocol
+        ~batch
+        ~signer:Constant.bootstrap2
+        nodes.main.client
+    in
+    unit
+
+  let block_over_ops_below =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Batch over block limit with operations below limit"
+      ~tags:["precheck"; "batch"; "gas"; "block_gas"]
+    @@ fun protocol ->
+    let* nodes = Helpers.init ~protocol () in
+    let* limits = Helpers.gas_limits nodes.main.client in
+    (* Gas limit per block is too high *)
+    let too_many_ops =
+      (limits.hard_gas_limit_per_block / limits.hard_gas_limit_per_operation)
+      + 1
+    in
+    let* batch =
+      mk_batch
+        ~nb:too_many_ops
+        ~gas_limit:limits.hard_gas_limit_per_operation
+        nodes.main.client
+    in
+    let* _oph =
+      Memchecks.with_refused_checks ~__LOC__ nodes @@ fun () ->
+      Operation.forge_and_inject_operation
+        ~protocol
+        ~batch
+        ~signer:Constant.bootstrap2
+        nodes.main.client
+    in
+    unit
+
+  let register ~protocols =
+    block_below_ops_below protocols ;
+    block_below_ops_over protocols ;
+    block_over_ops_below [Ithaca; Alpha]
 end
 
 module Reveal = struct
@@ -1637,8 +1905,99 @@ module Simple_contract_calls = struct
     test_contract_call_with_loop_gas_exhaution protocols
 end
 
+module Tx_rollup = struct
+  open Deserialisation (* for the constants *)
+
+  (* In this test, we ensure that we can build a [transfer ticket] operation
+     which passes the precheck. Note that we do not build a transfer ticket
+     operation which succeeds because this requires a lot more work to build a
+     context where it is valid. This tests serves as a "canary" to ensure that
+     the next one still remain meaningful even after changes in the protocol. *)
+  let transfer_ticket_deserialization_canary =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Deserialization of transfer ticket"
+      ~tags:
+        [
+          "precheck";
+          "deserialization";
+          "gas";
+          "transfer_ticket";
+          "tx_rollup";
+          "canary";
+        ]
+    @@ fun protocol ->
+    let* nodes = Helpers.init ~protocol () in
+    let size_kB = 20 in
+    let min_deserialization_gas =
+      (* contents *) deserialization_gas ~size_kB + (* ty *) 1
+    in
+    let* _oph =
+      Memchecks.with_applied_checks
+        ~__LOC__
+        nodes
+        ~expected_statuses:["failed"]
+        ~expected_errors:[["cannot_transfer_ticket_to_implicit"]]
+      (* Does not fail in precheck, so is applied (as failed) *)
+      @@ fun () ->
+      Operation.inject_transfer_ticket
+        ~protocol
+        ~source:Constant.bootstrap1
+        ~gas_limit:
+          (min_deserialization_gas + 1000)
+          (* we add 1000 (the gas for manager operation) to avoid failing with
+             gas_exhausted right after precheck *)
+        ~contents:(`Json (`O [("bytes", `String (make_zero_hex ~size_kB))]))
+        ~ty:(`Json (`O [("prim", `String "bytes")]))
+        ~ticketer:Constant.bootstrap2.public_key_hash
+        ~amount:1
+        ~destination:Constant.bootstrap1.public_key_hash
+        ~entrypoint:"default"
+        nodes.main.client
+    in
+    unit
+
+  (* This test makes sure that the deserialization is performed in the
+     precheck. The operation should be refused because there isn't enough gas to
+     deserialize the micheline parameters. *)
+  let transfer_ticket_deserialization_too_large =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Deserialization of transfer ticket too large"
+      ~tags:
+        ["precheck"; "deserialization"; "gas"; "transfer_ticket"; "tx_rollup"]
+    @@ fun protocol ->
+    let* nodes = Helpers.init ~protocol () in
+    let size_kB = 20 in
+    let min_deserialization_gas =
+      (* contents *) deserialization_gas ~size_kB + (* ty *) 1
+    in
+    let* _oph =
+      Memchecks.with_refused_checks ~__LOC__ nodes @@ fun () ->
+      Operation.inject_transfer_ticket
+        ~protocol
+        ~source:Constant.bootstrap1
+        ~gas_limit:(min_deserialization_gas - 1)
+        ~contents:(`Json (`O [("bytes", `String (make_zero_hex ~size_kB))]))
+        ~ty:(`Json (`O [("prim", `String "bytes")]))
+        ~ticketer:Constant.bootstrap2.public_key_hash
+        ~amount:1
+        ~destination:Constant.bootstrap1.public_key_hash
+        ~entrypoint:"default"
+        nodes.main.client
+    in
+    unit
+
+  let register ~protocols =
+    transfer_ticket_deserialization_canary protocols ;
+    transfer_ticket_deserialization_too_large protocols
+end
+
 let register ~protocols =
   Illtyped_originations.register ~protocols ;
+  Deserialisation.register ~protocols ;
+  Gas_limits.register ~protocols ;
   Reveal.register ~protocols ;
   Simple_transfers.register ~protocols ;
-  Simple_contract_calls.register ~protocols
+  Simple_contract_calls.register ~protocols ;
+  Tx_rollup.register ~protocols:[Alpha]

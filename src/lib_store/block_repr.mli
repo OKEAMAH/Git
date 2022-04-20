@@ -52,7 +52,7 @@ type metadata = {
   max_operations_ttl : int;
   last_allowed_fork_level : Int32.t;
   block_metadata : Bytes.t;
-  operations_metadata : Bytes.t list list;
+  operations_metadata : Block_validation.operation_metadata list list;
 }
 
 (** The type for a [block] stored on disk.
@@ -149,9 +149,10 @@ val max_operations_ttl : metadata -> int
 
 val last_allowed_fork_level : metadata -> Int32.t
 
-val block_metadata : metadata -> Bytes.t
+val block_metadata : metadata -> bytes
 
-val operations_metadata : metadata -> Bytes.t list list
+val operations_metadata :
+  metadata -> Block_validation.operation_metadata list list
 
 (** {1 Utility functions} *)
 
@@ -189,3 +190,7 @@ val pread_block_exn : Lwt_unix.file_descr -> file_offset:int -> (t * int) Lwt.t
     was an error. *)
 val pread_block :
   Lwt_unix.file_descr -> file_offset:int -> (t * int) option Lwt.t
+
+(** [decode_metadata data] decodes metadata from [data] encoded either
+    with the new encoding or the legacy one. *)
+val decode_metadata : string -> metadata option

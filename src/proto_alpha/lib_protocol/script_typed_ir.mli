@@ -279,29 +279,36 @@ type view = {
 
 type view_map = (Script_string.t, view) map
 
+type entrypoint_info = {name : Entrypoint.t; original_type_expr : Script.node}
+
 (** ['arg entrypoints] represents the tree of entrypoints of a parameter type
     ['arg].
-    [name] is the name of the entrypoint at that node if it is not [None].
+    [at_node] are entrypoint details at that node if it is not [None].
     [nested] are the entrypoints below the node in the tree.
       It is always [Entrypoints_None] for non-union nodes.
       But it is also ok to have [Entrypoints_None] for a union node, it just
       means that there are no entrypoints below that node in the tree.
 *)
-type 'arg entrypoints = {
-  name : Entrypoint.t option;
+type 'arg entrypoints_node = {
+  at_node : entrypoint_info option;
   nested : 'arg nested_entrypoints;
 }
 
 and 'arg nested_entrypoints =
   | Entrypoints_Union : {
-      left : 'l entrypoints;
-      right : 'r entrypoints;
+      left : 'l entrypoints_node;
+      right : 'r entrypoints_node;
     }
       -> ('l, 'r) union nested_entrypoints
   | Entrypoints_None : _ nested_entrypoints
 
-(** [no_entrypoints] is [{name = None; nested = Entrypoints_None}] *)
-val no_entrypoints : _ entrypoints
+(** [no_entrypoints] is [{at_node = None; nested = Entrypoints_None}] *)
+val no_entrypoints : _ entrypoints_node
+
+type 'arg entrypoints = {
+  root : 'arg entrypoints_node;
+  original_type_expr : Script.node;
+}
 
 type ('arg, 'storage) script =
   | Script : {
@@ -856,10 +863,7 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
   | ICreate_contract : {
       kinfo : (public_key_hash option, Tez.t * ('a * 's)) kinfo;
       storage_type : ('a, _) ty;
-      arg_type : ('b, _) ty;
-      lambda : ('b * 'a, operation boxed_list * 'a) lambda;
-      views : view_map;
-      entrypoints : 'b entrypoints;
+      code : Script.expr;
       k : (operation, address * 's, 'r, 'f) kinstr;
     }
       -> (public_key_hash option, Tez.t * ('a * 's), 'r, 'f) kinstr
@@ -1506,7 +1510,8 @@ and 'kind manager_operation =
   | Origination : {
       origination : Alpha_context.origination;
       preorigination : Contract.t;
-      script : ('arg, 'storage) script;
+      storage_type : ('storage, _) ty;
+      storage : 'storage;
     }
       -> Kind.origination manager_operation
   | Delegation :
@@ -1545,63 +1550,9 @@ val kinstr_rewritek :
 
 val ty_size : ('a, _) ty -> 'a Type_size.t
 
-val comparable_ty_size : 'a comparable_ty -> 'a Type_size.t
-
 val is_comparable : ('v, 'c) ty -> 'c dbool
 
 type 'v ty_ex_c = Ty_ex_c : ('v, _) ty -> 'v ty_ex_c [@@ocaml.unboxed]
-
-val unit_key : unit comparable_ty
-
-val never_key : never comparable_ty
-
-val int_key : z num comparable_ty
-
-val nat_key : n num comparable_ty
-
-val signature_key : signature comparable_ty
-
-val string_key : Script_string.t comparable_ty
-
-val bytes_key : Bytes.t comparable_ty
-
-val mutez_key : Tez.t comparable_ty
-
-val bool_key : bool comparable_ty
-
-val key_hash_key : public_key_hash comparable_ty
-
-val key_key : public_key comparable_ty
-
-val timestamp_key : Script_timestamp.t comparable_ty
-
-val chain_id_key : Script_chain_id.t comparable_ty
-
-val address_key : address comparable_ty
-
-val tx_rollup_l2_address_key : tx_rollup_l2_address comparable_ty
-
-val pair_key :
-  Script.location ->
-  'a comparable_ty ->
-  'b comparable_ty ->
-  ('a, 'b) pair comparable_ty tzresult
-
-val pair_3_key :
-  Script.location ->
-  'a comparable_ty ->
-  'b comparable_ty ->
-  'c comparable_ty ->
-  ('a, ('b, 'c) pair) pair comparable_ty tzresult
-
-val union_key :
-  Script.location ->
-  'a comparable_ty ->
-  'b comparable_ty ->
-  ('a, 'b) union comparable_ty tzresult
-
-val option_key :
-  Script.location -> 'v comparable_ty -> 'v option comparable_ty tzresult
 
 val unit_t : unit comparable_ty
 
@@ -1634,17 +1585,24 @@ val pair_t :
 
 val comparable_pair_t :
   Script.location ->
-  ('a, yes) ty ->
-  ('b, yes) ty ->
-  (('a, 'b) pair, yes) ty tzresult
+  'a comparable_ty ->
+  'b comparable_ty ->
+  ('a, 'b) pair comparable_ty tzresult
+
+val comparable_pair_3_t :
+  Script.location ->
+  'a comparable_ty ->
+  'b comparable_ty ->
+  'c comparable_ty ->
+  ('a, ('b, 'c) pair) pair comparable_ty tzresult
 
 val union_t :
   Script.location -> ('a, _) ty -> ('b, _) ty -> ('a, 'b) union ty_ex_c tzresult
 
 val comparable_union_t :
   Script.location ->
-  ('a, yes) ty ->
-  ('b, yes) ty ->
+  'a comparable_ty ->
+  'b comparable_ty ->
   ('a, 'b) union comparable_ty tzresult
 
 val union_bytes_bool_t : (Bytes.t, bool) union comparable_ty
@@ -1656,6 +1614,9 @@ val lambda_t :
   (('arg, 'ret) lambda, no) ty tzresult
 
 val option_t : Script.location -> ('v, 'c) ty -> ('v option, 'c) ty tzresult
+
+val comparable_option_t :
+  Script.location -> 'v comparable_ty -> 'v option comparable_ty tzresult
 
 val option_mutez_t : Tez.t option comparable_ty
 
@@ -1749,12 +1710,7 @@ type 'a kinstr_traverse = {
 val kinstr_traverse :
   ('a, 'b, 'c, 'd) kinstr -> 'ret -> 'ret kinstr_traverse -> 'ret
 
-type 'a ty_traverse = {
-  apply : 't 'tc. 'a -> ('t, 'tc) ty -> 'a;
-  apply_comparable : 't. 'a -> 't comparable_ty -> 'a;
-}
-
-val comparable_ty_traverse : 'a comparable_ty -> 'r -> 'r ty_traverse -> 'r
+type 'a ty_traverse = {apply : 't 'tc. 'a -> ('t, 'tc) ty -> 'a}
 
 val ty_traverse : ('a, _) ty -> 'r -> 'r ty_traverse -> 'r
 
@@ -1764,12 +1720,8 @@ type 'accu stack_ty_traverse = {
 
 val stack_ty_traverse : ('a, 's) stack_ty -> 'r -> 'r stack_ty_traverse -> 'r
 
-type 'a value_traverse = {
-  apply : 't 'tc. 'a -> ('t, 'tc) ty -> 't -> 'a;
-  apply_comparable : 't. 'a -> 't comparable_ty -> 't -> 'a;
-}
+type 'a value_traverse = {apply : 't 'tc. 'a -> ('t, 'tc) ty -> 't -> 'a}
 
-val value_traverse :
-  (('t, _) ty, 't comparable_ty) union -> 't -> 'r -> 'r value_traverse -> 'r
+val value_traverse : ('t, _) ty -> 't -> 'r -> 'r value_traverse -> 'r
 
 val stack_top_ty : ('a, 'b * 's) stack_ty -> 'a ty_ex_c

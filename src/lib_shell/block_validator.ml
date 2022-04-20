@@ -28,7 +28,10 @@
 open Block_validator_worker_state
 open Block_validator_errors
 
-type limits = {protocol_timeout : Time.System.Span.t}
+type limits = {
+  protocol_timeout : Time.System.Span.t;
+  operation_metadata_size_limit : int option;
+}
 
 type result =
   | Already_commited
@@ -117,7 +120,7 @@ module Worker = Worker.Make (Name) (Event) (Request) (Types) (Logger)
 type t = Worker.infinite Worker.queue Worker.t
 
 let check_chain_liveness chain_db hash (header : Block_header.t) =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let chain_store = Distributed_db.chain_store chain_db in
   match Store.Chain.expiration chain_store with
   | Some eol when Time.Protocol.(eol <= header.shell.timestamp) ->
@@ -129,11 +132,8 @@ let check_chain_liveness chain_db hash (header : Block_header.t) =
             timestamp = header.shell.timestamp;
           }
       in
-      fail (invalid_block hash error)
+      tzfail (invalid_block hash error)
   | None | Some _ -> return_unit
-
-let is_already_validated chain_store hash =
-  Store.Block.is_known chain_store hash
 
 let precheck_block bvp chain_store ~predecessor block_header block_hash
     operations =
@@ -174,7 +174,7 @@ let on_validation_request w
   let open Lwt_result_syntax in
   let bv = Worker.state w in
   let chain_store = Distributed_db.chain_store chain_db in
-  let*! b = is_already_validated chain_store hash in
+  let*! b = Store.Block.is_known_valid chain_store hash in
   match b with
   | true -> return Already_commited
   | false -> (
@@ -278,7 +278,10 @@ let on_validation_request w
       | Error errs ->
           let* () =
             if
-              List.exists (function Invalid_block _ -> true | _ -> false) errs
+              (not precheck_and_notify)
+              && List.exists
+                   (function Invalid_block _ -> true | _ -> false)
+                   errs
             then
               Worker.protect w (fun () ->
                   Distributed_db.commit_invalid_block chain_db hash header errs)
@@ -430,7 +433,7 @@ let create limits db validation_process ~start_testchain =
 
     let on_completion = on_completion
 
-    let on_no_request _ = Lwt_tzresult_syntax.return_unit
+    let on_no_request _ = Lwt_result_syntax.return_unit
   end in
   Worker.launch
     table
@@ -448,9 +451,9 @@ type block_validity =
 let validate w ?canceler ?peer ?(notify_new_block = fun _ -> ())
     ?(precheck_and_notify = false) chain_db hash (header : Block_header.t)
     operations : block_validity Lwt.t =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let chain_store = Distributed_db.chain_store chain_db in
-  let*! b = is_already_validated chain_store hash in
+  let*! b = Store.Block.is_known_valid chain_store hash in
   match b with
   | true ->
       let*! () = Worker.log_event w (Previously_validated hash) in

@@ -2,8 +2,7 @@ The consensus algorithm
 =======================
 
 This document provides a high-level description of Tenderbake, the Tezos
-:doc:`proof-of-stake<proof_of_stake>` consensus algorithm, as implemented in the
-I protocol.
+:doc:`proof-of-stake<proof_of_stake>` consensus algorithm.
 
 History
 -------
@@ -56,7 +55,7 @@ only provide a user/developer perspective.
 Tenderbake is executed for each new block level by a "committee" whose members
 are called *validators*, which are delegates selected at random based on their
 stake, in the same way as endorsers are selected in Emmy*. We let
-``CONSENSUS_COMMITTEE_SIZE`` be the number of validator slots per level. This
+``CONSENSUS_COMMITTEE_SIZE`` be the number of validator :ref:`slots<rights_alpha>` per level. This
 constant has the role of ``ENDORSERS_PER_BLOCK`` in Emmy*.
 Furthermore, we use ``CONSENSUS_THRESHOLD`` to denote two thirds of ``CONSENSUS_COMMITTEE_SIZE``.
 
@@ -296,7 +295,7 @@ producer and are distributed immediately.
 To encourage fairness and participation, the *block* proposer receives
 a bonus for the extra endorsements it includes in the block.
 The bonus is proportional to the number of
-validator slots above the threshold of :math:`\lceil CONSENSUS\_COMMITTEE\_SIZE \times \frac{2}{3} \rceil` that
+validator slots above the threshold of ``CONSENSUS_COMMITTEE_SIZE * 2 / 3`` that
 the included endorsements represent. The bonus is also distributed
 immediately.
 
@@ -337,25 +336,25 @@ The bonus per additional endorsement slot is in turn ``bonus /
 ``CONSENSUS_COMMITTEE_SIZE / 3`` validator slots corresponding to the
 additional endorsements included in a block). The rewards per
 endorsement slot are ``endorsing_rewards / CONSENSUS_COMMITTEE_SIZE``.
-Assuming ``CONSENSUS_COMMITTEE_SIZE = 8000``, we obtain a bonus per slot of
-``10 / (8000 / 3) = 0.00375`` tez and an endorsing
-rewards per slot of ``20 / 8000 = 0.0025`` tez.
+Assuming ``CONSENSUS_COMMITTEE_SIZE = 7000``, we obtain a bonus per slot of
+``10 / (7000 / 3) = 0.004286`` tez and an endorsing
+rewards per slot of ``20 / 7000 = 0.002857`` tez.
 
 Let's take an example. Say a block has round 1, is proposed by
 delegate B, and contains the payload from round 0 produced by delegate
-A. Also, B includes endorsements with endorsing power ``6000``. Then A receives
+A. Also, B includes endorsements with endorsing power ``5251``. Then A receives
 the fees and 10 tez (the ``BAKING_REWARD_FIXED_PORTION``) as a reward for
-producing the block's payload. For simpler calculations, let's assume
-``CONSENSUS_COMMITTEE_SIZE = 8000``. Concerning the bonus, the minimum required validator slots is ``5334``, and there are ``2666 = 8000 - 5334`` additional validator slots.
-Therefore B receives the bonus ``(6000 - 5334) * 0.00375 = 2.4975`` tez. (Note
-that B only included endorsements corresponding to 666 additional validator slots, about a quarter of the
-maximum 2666 extra endorsements it could have theoretically included.) Finally, consider some
+producing the block's payload. Concerning the bonus, given that
+``CONSENSUS_COMMITTEE_SIZE = 7000``, the minimum required validator slots is ``4667``, and there are ``2333 = 7000 - 4667`` additional validator slots.
+Therefore B receives the bonus ``(5251 - 4667) * 0.004286 = 2.503`` tez. (Note
+that B only included endorsements corresponding to 584 = 5251 - 4667 additional validator slots, about a quarter of the
+maximum 2333 extra endorsements it could have theoretically included.) Finally, consider some
 delegate C, whose active stake at some cycle is 5% of the total stake. Note that
-his expected number of validator slots for that cycle is ``5/100 * 8192 * 8000 =
-3,276,800`` slots. Assume also that the endorsing power of C's endorsements
+his expected number of validator slots for that cycle is ``5/100 * 8192 * 7000 =
+2,867,200`` slots. Assume also that the endorsing power of C's endorsements
 included during that cycle has been ``3,123,456`` slots. Given that this number is
-bigger than the minimum required (``3,276,800 * 2 / 3``), it receives an endorsing
-reward of ``3,276,800 * 0.0025 = 8192`` tez for that cycle.
+bigger than the minimum required (``2,867,200 * 2 / 3``), it receives an endorsing
+reward of ``2,867,200 * 0.002857 = 8191.59`` tez for that cycle.
 
 .. _slashing_alpha:
 
@@ -439,13 +438,41 @@ There are two additional fields: ``payload_hash`` and ``payload_round`` which ar
 
 .. _fitness_alpha:
 
-The fitness is given by the tuple ``(level, locked_round, predecessor_round, round)``.
+The fitness is given by the tuple ``(version, level, locked_round, - predecessor_round - 1, round)``.
+The current version of the fitness is 2 (version 0 was used by Emmy, and version 1 by Emmy+ and Emmy*).
 The fitness encapsulates more information than in Emmy* because Tenderbake is more complex: recall that blocks at the last level only represent :ref:`candidate blocks<finality_alpha>`.
 In Emmy*, only the level mattered.
 But in Tenderbake, we need to, for instance, allow for new blocks at the same level to be accepted by nodes.
-Therefore the fitness also includes the block's round.
+Therefore the fitness also includes the block's round (as the fifth component).
 Furthermore, we also allow to change the predecessor block when it has a :ref:`smaller round<finality_alpha>`.
-Therefore the fitness also includes the predecessor block's round.
+Therefore the fitness also includes the opposite of predecessor block's round as the forth component (the predecessor is taken for technical reasons).
+Finally, to (partially) enforce :ref:`the rule on
+re-proposals<quorum_alpha>`, the fitness also includes, as the third
+component, the round at which a preendorsement quorum was observed by
+the baker, if any (this component can therefore be empty). By the way,
+preendorsements are present in a block if and only if the locked round
+component is non-empty and if so, the locked round has to match the
+round of the included preendorsements.
+
+Next, we provide two examples of fitness values:
+``02::00001000::::ffffffff::00000000`` and
+``02::00001000::00000000::fffffffe::00000001`` (in the hexadecimal
+format that one may observe in the node's logs). These two values have
+the following components:
+
+- the 1st component, ``02``, is the fitness version;
+- the 2nd component, ``00001000``, is the block's level (level 4096);
+- the 3rd component is the block's locked round: empty in the first case, 0 in the second;
+- the 4th component is the round of the predecessor block, here 0 in the first case and 1 in the second case;
+- the 5th component is the block's round: 0 in the first case, 1 in the second case.
+
+We recall (see :ref:`shell_header`) that the fitness is, from the
+shell's perspective, a sequence of sequences of unsigned bytes and
+comparison is done first by the length of the sequence and then
+lexicographically (both for the outer sequence, and for each of the
+inner sequences). So the first fitness is smaller than the second one,
+because of the third component, the empty bitstring being smaller than
+any other bitstring.
 
 
 

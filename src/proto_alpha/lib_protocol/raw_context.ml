@@ -26,6 +26,23 @@
 
 module Int_set = Set.Make (Compare.Int)
 
+module Sc_rollup_address_comparable = struct
+  include Sc_rollup_repr.Address
+
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/2648
+     Fill in real benchmarked values.
+     Need to create benchmark and fill in values.
+  *)
+  let compare_cost _rollup = Saturation_repr.safe_int 15
+end
+
+(* This will not create the map yet, as functions to consume gas have not 
+   been defined yet. However, it will make the type of the carbonated map 
+   available to be used in the definition of type back.
+*)
+module Sc_rollup_address_map_builder =
+  Carbonated_map.Make_builder (Sc_rollup_address_comparable)
+
 (*
 
    Gas levels maintenance
@@ -229,7 +246,7 @@ type back = {
     Tez_repr.t Signature.Public_key_hash.Map.t option;
   tx_rollup_current_messages :
     Tx_rollup_inbox_repr.Merkle.tree Tx_rollup_repr.Map.t;
-  sc_rollup_current_messages : Context.tree Sc_rollup_repr.Address.Map.t;
+  sc_rollup_current_messages : Context.tree Sc_rollup_address_map_builder.t;
 }
 
 (*
@@ -523,6 +540,19 @@ let gas_consumed ~since ~until =
       Gas_limit_repr.Arith.sub before after
   | (_, _) -> Gas_limit_repr.Arith.zero
 
+(* Once gas consuming functions have been defined, 
+   we can instantiate the carbonated map. 
+   See [Sc_rollup_carbonated_map_maker] above.
+ *)
+
+module Gas = struct
+  type context = t
+
+  let consume = consume_gas
+end
+
+module Sc_rollup_carbonated_map = Sc_rollup_address_map_builder.Make (Gas)
+
 type missing_key_kind = Get | Set | Del | Copy
 
 type storage_error =
@@ -786,7 +816,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ctxt =
         sampler_state = Cycle_repr.Map.empty;
         stake_distribution_for_current_cycle = None;
         tx_rollup_current_messages = Tx_rollup_repr.Map.empty;
-        sc_rollup_current_messages = Sc_rollup_repr.Address.Map.empty;
+        sc_rollup_current_messages = Sc_rollup_carbonated_map.empty;
       };
   }
 
@@ -859,7 +889,7 @@ let prepare_first_block ~level ~timestamp ctxt =
         (* Ignore reminder if any *)
         Int32.div c.blocks_per_voting_period c.blocks_per_cycle
       in
-      let tx_rollup_finality_period = 60_000 in
+      let tx_rollup_finality_period = 40_000 in
       let constants =
         Constants_repr.
           {
@@ -901,15 +931,36 @@ let prepare_first_block ~level ~timestamp ctxt =
             cache_script_size = 100_000_000;
             cache_stake_distribution_cycles = 8;
             cache_sampler_state_cycles = 8;
-            tx_rollup_enable = false;
-            (* TODO: https://gitlab.com/tezos/tezos/-/issues/2152
-               Transaction rollups parameters need to be refined,
-               currently the following values are merely
-               placeholders. *)
-            tx_rollup_origination_size = 60_000;
-            tx_rollup_hard_size_limit_per_inbox = 100_000;
+            tx_rollup_enable = true;
+            (* Based on how storage burn is implemented for
+               transaction rollups, this means that a rollup operator
+               can create 100 inboxes (40 bytes per inboxes) before
+               having to pay storage burn. *)
+            tx_rollup_origination_size = 4_000;
+            (* Considering an average size of layer-2 operations of
+               20, this gives a TPS per rollup higher than 400, and
+               the capability to have two rollups at full speed on
+               mainnet (as long as they do not reach scalability
+               issues related to proof size). *)
+            tx_rollup_hard_size_limit_per_inbox = 500_000;
             tx_rollup_hard_size_limit_per_message = 5_000;
-            tx_rollup_max_withdrawals_per_batch = 255;
+            (* Tickets are transmitted in batches in the
+               [Tx_rollup_dispatch_tickets] operation.
+
+               The semantics is that this operation is used to
+               concretize the withdraw orders emitted by the layer-2,
+               one layer-1 operation per messages of an
+               inbox. Therefore, it is of significant importance that
+               a valid batch does not produce a list of withdraw
+               orders which could not fit in a layer-1 operation.
+
+               With these values, at least 2048 bytes remain available
+               to store the rest of the operands of
+               [Tx_rollup_dispatch_tickets] (in practice, even more,
+               because we overapproximate the size of tickets). So we
+               are safe. *)
+            tx_rollup_max_withdrawals_per_batch = 15;
+            tx_rollup_max_ticket_payload_size = 2_048;
             tx_rollup_commitment_bond = Tez_repr.of_mutez_exn 10_000_000_000L;
             tx_rollup_finality_period;
             tx_rollup_withdraw_period = tx_rollup_finality_period;
@@ -923,8 +974,11 @@ let prepare_first_block ~level ~timestamp ctxt =
               (2 * tx_rollup_finality_period) + 100;
             (* The default ema factor is [120] blocks, so about one hour. *)
             tx_rollup_cost_per_byte_ema_factor = 120;
-            tx_rollup_max_ticket_payload_size = 10_240;
             tx_rollup_rejection_max_proof_size = 30_000;
+            (* This is the first block of cycle 618, which is expected to be
+               about one year after the activation of protocol J.
+               See https://tzstats.com/cycle/618 *)
+            tx_rollup_sunset_level = 3_473_409l;
             sc_rollup_enable = false;
             (* The following value is chosen to prevent spam. *)
             sc_rollup_origination_size = 6_314;
@@ -934,6 +988,15 @@ let prepare_first_block ~level ~timestamp ctxt =
             (* TODO: https://gitlab.com/tezos/tezos/-/issues/2556
                The follow constants need to be refined. *)
             sc_rollup_max_available_messages = 1_000_000;
+            (* TODO: https://gitlab.com/tezos/tezos/-/issues/2756
+               The following constants need to be refined. *)
+            sc_rollup_stake_amount_in_mutez = 32_000_000;
+            sc_rollup_commitment_frequency_in_blocks = 20;
+            (* 76 for Commitments entry + 4 for Commitment_stake_count entry
+               + 4 for Commitment_added entry
+               + 0 for Staker_count_update entry *)
+            sc_rollup_commitment_storage_size_in_bytes = 84;
+            sc_rollup_max_lookahead_in_blocks = 30_000l;
           }
       in
       add_constants ctxt constants >>= fun ctxt -> return ctxt)
@@ -1366,16 +1429,24 @@ end
 *)
 module Sc_rollup_in_memory_inbox = struct
   let current_messages ctxt rollup =
-    Sc_rollup_repr.Address.Map.find rollup ctxt.back.sc_rollup_current_messages
-    |> function
-    | None -> Tree.empty ctxt
-    | Some tree -> tree
+    let open Tzresult_syntax in
+    let+ (messages, ctxt) =
+      Sc_rollup_carbonated_map.find
+        ctxt
+        rollup
+        ctxt.back.sc_rollup_current_messages
+    in
+    match messages with
+    | None -> (Tree.empty ctxt, ctxt)
+    | Some tree -> (tree, ctxt)
 
   let set_current_messages ctxt rollup tree =
-    let sc_rollup_current_messages =
-      Sc_rollup_repr.Address.Map.add
+    let open Tzresult_syntax in
+    let+ (sc_rollup_current_messages, ctxt) =
+      Sc_rollup_carbonated_map.update
+        ctxt
         rollup
-        tree
+        (fun ctxt _prev_tree -> return (Some tree, ctxt))
         ctxt.back.sc_rollup_current_messages
     in
     let back = {ctxt.back with sc_rollup_current_messages} in

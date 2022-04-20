@@ -649,6 +649,78 @@ module Tx_rollup = struct
         in
         Client.Spawn.rpc ?endpoint ?hooks ~data POST path client
     end
+
+    module Commitment = struct
+      let merkle_tree_hash ?endpoint ?hooks ?(chain = "main") ?(block = "head")
+          ~data client =
+        let path =
+          [
+            "chains";
+            chain;
+            "blocks";
+            block;
+            "helpers";
+            "forge";
+            "tx_rollup";
+            "commitment";
+            "merkle_tree_hash";
+          ]
+        in
+        Client.Spawn.rpc ?endpoint ?hooks ~data POST path client
+
+      let merkle_tree_path ?endpoint ?hooks ?(chain = "main") ?(block = "head")
+          ~data client =
+        let path =
+          [
+            "chains";
+            chain;
+            "blocks";
+            block;
+            "helpers";
+            "forge";
+            "tx_rollup";
+            "commitment";
+            "merkle_tree_path";
+          ]
+        in
+        Client.Spawn.rpc ?endpoint ?hooks ~data POST path client
+
+      let message_result_hash ?endpoint ?hooks ?(chain = "main")
+          ?(block = "head") ~data client =
+        let path =
+          [
+            "chains";
+            chain;
+            "blocks";
+            block;
+            "helpers";
+            "forge";
+            "tx_rollup";
+            "commitment";
+            "message_result_hash";
+          ]
+        in
+        Client.Spawn.rpc ?endpoint ?hooks ~data POST path client
+    end
+
+    module Withdraw = struct
+      let withdraw_list_hash ?endpoint ?hooks ?(chain = "main")
+          ?(block = "head") ~data client =
+        let path =
+          [
+            "chains";
+            chain;
+            "blocks";
+            block;
+            "helpers";
+            "forge";
+            "tx_rollup";
+            "withdraw";
+            "withdraw_list_hash";
+          ]
+        in
+        Client.Spawn.rpc ?endpoint ?hooks ~data POST path client
+    end
   end
 end
 
@@ -674,6 +746,13 @@ module Sc_rollup = struct
     Client.rpc ?endpoint ?hooks GET path client
 end
 
+let raw_bytes ?endpoint ?hooks ?(chain = "main") ?(block = "head") ?(path = [])
+    client =
+  let path =
+    ["chains"; chain; "blocks"; block; "context"; "raw"; "bytes"] @ path
+  in
+  Client.rpc ?endpoint ?hooks GET path client
+
 module Curl = struct
   let curl_path_cache = ref None
 
@@ -691,6 +770,44 @@ module Curl = struct
               curl_path_cache := Some curl_path ;
               return curl_path
         in
-        return @@ Some (fun ~url -> run_and_read_stdout curl_path ["-s"; url])
+        return
+        @@ Some
+             (fun ~url ->
+               let* output = run_and_read_stdout curl_path ["-s"; url] in
+               return (JSON.parse ~origin:url output))
+      with _ -> return @@ None)
+
+  let post () =
+    Process.(
+      try
+        let* curl_path =
+          match !curl_path_cache with
+          | Some curl_path -> return curl_path
+          | None ->
+              let* curl_path =
+                run_and_read_stdout "sh" ["-c"; "command -v curl"]
+              in
+              let curl_path = String.trim curl_path in
+              curl_path_cache := Some curl_path ;
+              return curl_path
+        in
+        return
+        @@ Some
+             (fun ~url data ->
+               let* output =
+                 run_and_read_stdout
+                   curl_path
+                   [
+                     "-X";
+                     "POST";
+                     "-H";
+                     "Content-Type: application/json";
+                     "-s";
+                     url;
+                     "-d";
+                     JSON.encode data;
+                   ]
+               in
+               return (JSON.parse ~origin:url output))
       with _ -> return @@ None)
 end

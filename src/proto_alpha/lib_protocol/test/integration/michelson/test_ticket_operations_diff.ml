@@ -59,8 +59,8 @@ let big_map_updates_of_key_values ctxt key_values =
         wrap
           (Script_ir_translator.hash_comparable_data
              ctxt
-             Script_typed_ir.int_key
-             (Script_int_repr.of_int key))
+             Script_typed_ir.int_t
+             (Script_int.of_int key))
       in
       return
         ( {
@@ -173,10 +173,10 @@ let assert_equal_ticket_token_diffs ctxt ~loc ticket_diffs
 let string_token ~ticketer content =
   let contents =
     Result.value_f ~default:(fun _ -> assert false)
-    @@ Alpha_context.Script_string.of_string content
+    @@ Script_string.of_string content
   in
   Ticket_token.Ex_token
-    {ticketer; contents_type = Script_typed_ir.string_key; contents}
+    {ticketer; contents_type = Script_typed_ir.string_t; contents}
 
 (** Initializes one address for operations and one baker. *)
 let init ?tx_rollup_enable () =
@@ -232,7 +232,18 @@ let origination_operation block ~src ~baker ~script ~storage ~forges_tickets =
     Incremental.begin_construction ~policy:Block.(By_account baker) block
   in
   let ctxt = Incremental.alpha_ctxt incr in
-  let* (Script_ir_translator.Ex_script parsed_script, ctxt) =
+  let* ( Script_ir_translator.Ex_script
+           (Script
+             {
+               storage_type;
+               storage;
+               code = _;
+               arg_type = _;
+               views = _;
+               entrypoints = _;
+               code_size = _;
+             }),
+         ctxt ) =
     wrap
     @@ Script_ir_translator.parse_script
          ctxt
@@ -249,7 +260,8 @@ let origination_operation block ~src ~baker ~script ~storage ~forges_tickets =
             {
               origination = {delegate = None; script; credit = Tez.one};
               preorigination = orig_contract;
-              script = parsed_script;
+              storage_type;
+              storage;
             };
         nonce = 1;
       }
@@ -271,7 +283,7 @@ let originate block ~src ~baker ~script ~storage ~forges_tickets =
   return (orig_contract, incr)
 
 let transfer_operation ~incr ~src ~destination ~parameters_ty ~parameters =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let ctxt = Incremental.alpha_ctxt incr in
   let* (params_node, ctxt) =
     wrap
@@ -307,7 +319,7 @@ let transfer_operation ~incr ~src ~destination ~parameters_ty ~parameters =
 
 let transfer_operation_to_tx_rollup ~incr ~src ~parameters_ty ~parameters
     ~tx_rollup =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let ctxt = Incremental.alpha_ctxt incr in
   let* (params_node, ctxt) =
     wrap
@@ -369,7 +381,7 @@ let ticket_big_map_script =
   |}
 
 let list_ticket_string_ty =
-  ticket_t Micheline.dummy_location string_key >>? fun ticket_ty ->
+  ticket_t Micheline.dummy_location string_t >>? fun ticket_ty ->
   list_t Micheline.dummy_location ticket_ty
 
 let make_ticket (ticketer, contents, amount) =
@@ -381,7 +393,7 @@ let make_tickets ts =
   return {elements; length = List.length elements}
 
 let transfer_tickets_operation ~incr ~src ~destination tickets =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let*? parameters_ty = Environment.wrap_tzresult list_ticket_string_ty in
   let* parameters = wrap @@ make_tickets tickets in
   transfer_operation ~incr ~src ~destination ~parameters_ty ~parameters
@@ -1081,20 +1093,20 @@ let test_transfer_big_map_with_tickets () =
       ~storage:"{}"
       ~forges_tickets:false
   in
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let*? value_type =
-    Environment.wrap_tzresult @@ ticket_t Micheline.dummy_location string_key
+    Environment.wrap_tzresult @@ ticket_t Micheline.dummy_location string_t
   in
   let*? parameters_ty =
     Environment.wrap_tzresult
-    @@ big_map_t Micheline.dummy_location int_key value_type
+    @@ big_map_t Micheline.dummy_location int_t value_type
   in
   let parameters =
     Big_map
       {
         id = Some big_map_id;
         diff = {map = Big_map_overlay.empty; size = 0};
-        key_type = int_key;
+        key_type = int_t;
         value_type;
       }
   in
@@ -1132,7 +1144,7 @@ let test_transfer_big_map_with_tickets () =
 
 (** Test transfer a ticket to a tx_rollup. *)
 let test_tx_rollup_deposit_one_ticket () =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* (_baker, src, block) = init ~tx_rollup_enable:true () in
   let* ticketer = one_ticketer block in
   let* incr = Incremental.begin_construction block in
@@ -1142,7 +1154,7 @@ let test_tx_rollup_deposit_one_ticket () =
   let* incr = Incremental.add_operation incr operation in
 
   let*? ticket_ty =
-    Script_typed_ir.(ticket_t Micheline.dummy_location string_key)
+    Script_typed_ir.(ticket_t Micheline.dummy_location string_t)
     |> Environment.wrap_tzresult
   in
   let*? (Ty_ex_c parameters_ty) =

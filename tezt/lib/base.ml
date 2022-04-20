@@ -42,7 +42,7 @@ let ( let* ) = Lwt.bind
 
 let ( and* ) = Lwt.both
 
-let ( and*! ) a b =
+let lwt_both_fail_early a b =
   let (main_promise, main_awakener) = Lwt.task () in
   let already_woke_up = ref false in
   Lwt.on_failure a (fun exn ->
@@ -71,14 +71,6 @@ let some = Lwt.return_some
 let mandatory name = function
   | None -> failwith ("no value for " ^ name)
   | Some x -> x
-
-type ('a, 'b) runnable = {value : 'a; run : 'a -> 'b Lwt.t}
-
-let ( let*! ) x f =
-  let* res = x.run x.value in
-  f res
-
-let ( let*? ) x f = f x.value
 
 let range a b =
   let rec range ?(acc = []) a b =
@@ -129,6 +121,21 @@ let ( =~** ) s (_, r) =
   | None -> None
   | Some group -> Some (get_group group 1, get_group group 2)
 
+let ( =~*** ) s (_, r) =
+  match Re.exec_opt r s with
+  | None -> None
+  | Some group -> Some (get_group group 1, get_group group 2, get_group group 3)
+
+let ( =~**** ) s (_, r) =
+  match Re.exec_opt r s with
+  | None -> None
+  | Some group ->
+      Some
+        ( get_group group 1,
+          get_group group 2,
+          get_group group 3,
+          get_group group 4 )
+
 let matches s (_, r) = Re.all r s |> List.map (fun g -> get_group g 1)
 
 let replace_string ?pos ?len ?all (_, r) ~by s =
@@ -168,9 +175,21 @@ let with_open_in file read_f =
     close_in chan ;
     raise x
 
+let write_file filename ~contents =
+  with_open_out filename @@ fun ch -> output_string ch contents
+
 let read_file filename =
-  let* ic = Lwt_io.open_file ~mode:Lwt_io.Input filename in
-  Lwt_io.read ic
+  with_open_in filename @@ fun ch ->
+  let buffer = Buffer.create 512 in
+  let bytes = Bytes.create 512 in
+  let rec loop () =
+    let len = input ch bytes 0 512 in
+    if len > 0 then (
+      Buffer.add_subbytes buffer bytes 0 len ;
+      loop ())
+  in
+  loop () ;
+  Buffer.contents buffer
 
 module String_map = Map.Make (String)
 
@@ -178,5 +197,13 @@ module String_set = struct
   include Set.Make (String)
 
   let pp fmt set =
-    Format.pp_print_list Format.pp_print_string fmt (elements set)
+    if is_empty set then Format.fprintf fmt "{}"
+    else
+      Format.fprintf
+        fmt
+        "@[<hov 2>{ %a }@]"
+        (Format.pp_print_list
+           ~pp_sep:(fun fmt () -> Format.fprintf fmt ",@ ")
+           (fun fmt -> Format.fprintf fmt "%S"))
+        (elements set)
 end

@@ -45,6 +45,8 @@ type argument =
   | No_bootstrap_peers
   | Disable_operations_precheck
   | Media_type of media_type
+  | Metadata_size_limit of int option
+  | Metrics_addr of string
 
 let make_argument = function
   | Network x -> ["--network"; x]
@@ -66,6 +68,9 @@ let make_argument = function
   | No_bootstrap_peers -> ["--no-bootstrap-peers"]
   | Disable_operations_precheck -> ["--disable-mempool-precheck"]
   | Media_type media_type -> ["--media-type"; string_of_media_type media_type]
+  | Metadata_size_limit None -> ["--metadata-size-limit"; "unlimited"]
+  | Metadata_size_limit (Some i) -> ["--metadata-size-limit"; string_of_int i]
+  | Metrics_addr metrics_addr -> ["--metrics-addr"; metrics_addr]
 
 let make_arguments arguments = List.flatten (List.map make_argument arguments)
 
@@ -185,9 +190,7 @@ module Config_file = struct
 
   let read node = JSON.parse_file (filename node)
 
-  let write node config =
-    with_open_out (filename node) @@ fun chan ->
-    output_string chan (JSON.encode config)
+  let write node config = JSON.encode_to_file (filename node) config
 
   let update node update = read node |> update |> write node
 

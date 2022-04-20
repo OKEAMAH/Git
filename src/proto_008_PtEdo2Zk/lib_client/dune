@@ -1,3 +1,6 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
 (library
  (name tezos_client_008_PtEdo2Zk)
  (public_name tezos-client-008-PtEdo2Zk)
@@ -17,6 +20,7 @@
  (flags
   (:standard
    -open Tezos_base.TzPervasives
+   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
    -open Tezos_shell_services
    -open Tezos_client_base
    -open Tezos_protocol_008_PtEdo2Zk

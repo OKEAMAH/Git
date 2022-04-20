@@ -24,18 +24,19 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Assert_lib = Lib_test_extra.Assert_lib
 open Test_utils
 
 let check_flags descr store expected_head =
   let open Lwt_result_syntax in
   let chain_store = Store.main_chain_store store in
   let*! current_head = Store.Chain.current_head chain_store in
-  Assert.equal_block
+  Assert_lib.Crypto.equal_block
     ~msg:("head consistency: " ^ descr)
     (Store.Block.header expected_head)
     (Store.Block.header current_head) ;
   let history_mode = Store.Chain.history_mode chain_store in
-  Assert.equal_history_mode
+  Assert_lib.Shell_services.equal_history_mode
     ~msg:("history mode consistency: " ^ descr)
     history_mode
     History_mode.Archive ;
@@ -78,6 +79,7 @@ let test_from_bootstrapped ~descr (store_dir, context_dir) store
             genesis
             ~user_activated_upgrades:[]
             ~user_activated_protocol_overrides:[]
+            ~operation_metadata_size_limit:None
         in
         return_false)
       ~on_error:(function
@@ -204,6 +206,7 @@ let test_from_snapshot ~descr:_ (store_dir, context_dir) store
             ~context_dir
             ~chain_name
             ~snapshot_path
+            ~on_disk:false
             genesis
         in
         let* () =
@@ -217,6 +220,8 @@ let test_from_snapshot ~descr:_ (store_dir, context_dir) store
             ~configured_history_mode:None
             ~user_activated_upgrades:[]
             ~user_activated_protocol_overrides:[]
+            ~operation_metadata_size_limit:None
+            ~in_memory:true
             genesis
         in
         let* () =
@@ -227,6 +232,7 @@ let test_from_snapshot ~descr:_ (store_dir, context_dir) store
             genesis
             ~user_activated_upgrades:[]
             ~user_activated_protocol_overrides:[]
+            ~operation_metadata_size_limit:None
         in
         return_false)
       ~on_error:(function

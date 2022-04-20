@@ -34,13 +34,13 @@ let protocols =
       "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK" );
     (* TODO tezos/tezos#2170: adapt rest of this list *)
     ( "",
-      "Hangzhou",
-      Some "/include/rpc_introduction.rst.inc",
-      "PtHangz2aRngywmSRGGvrcTyMbbdpWdpFKuS4uMWxg2RaH9i1qx" );
-    ( "ithaca",
       "Ithaca",
       Some "/include/rpc_introduction.rst.inc",
       "Psithaca2MLRFYargivpo7YvUr7wUDqyxrdhC5CQq78mRvimz6A" );
+    ( "jakarta",
+      "Jakarta",
+      Some "/include/rpc_introduction.rst.inc",
+      "PtJakartaiDz69SfDDLXJSiuZqTSeSKRDbKVZC8MNzJnvRjvnGw" );
   ]
 
 let pp_name ppf = function
@@ -55,6 +55,18 @@ let ref_of_service (prefix, meth) =
        (Re.Str.regexp "<\\([^>]*\\)>")
        "\\1"
        (String.concat "--" prefix))
+
+(** Encode HTML special characters in string s using escape sequences "&xxx;" *)
+let html_encode =
+  let rexp = Str.regexp ".*[&><]" in
+  fun s ->
+    (* ensure no string allocation is done in the common case *)
+    if Str.string_match rexp s 0 then
+      let s1 = Str.global_replace (Str.regexp "&") "&amp;" s in
+      let s2 = Str.global_replace (Str.regexp "<") "&lt;" s1 in
+      let s3 = Str.global_replace (Str.regexp ">") "&gt;" s2 in
+      s3
+    else s
 
 module Index = struct
   let rec pp prefix ppf dir =
@@ -152,7 +164,7 @@ module Description = struct
           | Flag -> Format.fprintf ppf "<span class=\"query\">%s</span>" name) ;
           match description with
           | None -> ()
-          | Some descr -> Format.fprintf ppf " : %s" descr)
+          | Some descr -> Format.fprintf ppf " : %s" (html_encode descr))
 
     let pp ppf query =
       match query with
@@ -208,8 +220,8 @@ module Description = struct
       Format.fprintf
         ppf
         "@[<h>%a@]%a"
-        Format.pp_print_text
-        (Option.value ~default:"" service.description)
+        Format.(pp_print_option pp_print_text)
+        (Option.map html_encode service.description)
         Query.pp
         service.query
 
@@ -417,7 +429,7 @@ let make_default_acl _node =
     |> Data_encoding.Json.construct policy_encoding
   in
   Data_encoding.Json.pp Format.std_formatter policy ;
-  return ()
+  Lwt.return_ok ()
 
 let main node =
   let cmd = Sys.argv.(1) in

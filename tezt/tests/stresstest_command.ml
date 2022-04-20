@@ -139,16 +139,21 @@ let test_stresstest_sources_format =
        |           | | | |
       [-           - - - -] Accounts
   *)
+  let additional_bootstrap_account_count =
+    max 0 (n_bootstraps_total - (Account.Bootstrap.keys |> Array.length))
+  in
   let* (node, client) =
     Client.init_with_protocol
       ~nodes_args:[Synchronisation_threshold 0; Connections 0]
-      ~additional_bootstrap_account_count:
-        (n_bootstraps_total - Constant.default_bootstrap_count)
+      ~additional_bootstrap_account_count
       `Client
       ~protocol
       ()
   in
   (* Prepare sources for stresstest *)
+  let* () = Client.bake_for client in
+  let* () = Client.bake_for client in
+  let* _ = Node.wait_for_level node 3 in
   let* bootstraps_to_use =
     (* Note that bootstrap indices start at 1; we keep the ones with
        an even index. *)
@@ -221,6 +226,10 @@ let test_stresstest_sources_format =
     let waiter = wait_for_n_injections n_bootstraps_to_use node in
     let* () =
       if first_iteration then (
+        (* Bake some blocks to reach required level for stresstest command. *)
+        let* () = Client.bake_for client in
+        let* () = Client.bake_for client in
+        let* _ = Node.wait_for_level node 3 in
         non_terminating_process
         @@ Client.spawn_stresstest
              ~source_aliases
@@ -277,18 +286,27 @@ let test_stresstest_n_transfers =
   @@ fun protocol ->
   let n_transfers = 10 in
   let n_bootstraps = 2 * n_transfers in
-  let* (_node, client) =
+  let additional_bootstrap_account_count =
+    max 0 (n_bootstraps - (Account.Bootstrap.keys |> Array.length))
+  in
+  let* (node, client) =
     Client.init_with_protocol
       ~nodes_args:[Synchronisation_threshold 0; Connections 0]
-      ~additional_bootstrap_account_count:
-        (n_bootstraps - Constant.default_bootstrap_count)
+      ~additional_bootstrap_account_count
       `Client
       ~protocol
       ()
   in
+  let* () = Client.bake_for client in
+  let* () = Client.bake_for client in
+  let* _ = Node.wait_for_level node 3 in
   let source_aliases =
     List.map (fun i -> sf "bootstrap%d" i) (range 1 n_bootstraps)
   in
+  (* Bake some blocks to reach required level for stresstest command. *)
+  let* () = Client.bake_for client in
+  let* () = Client.bake_for client in
+  let* _ = Node.wait_for_level node 3 in
   let* () =
     Client.stresstest
       ~transfers:n_transfers
@@ -338,17 +356,23 @@ let test_stresstest_multiple_nodes =
   let n_nodes = 4 in
   let n_bootstraps_per_node = 5 in
   let n_bootstraps_total = n_nodes * n_bootstraps_per_node in
+  let additional_bootstrap_account_count =
+    max 0 (n_bootstraps_total - (Account.Bootstrap.keys |> Array.length))
+  in
   let* (central_node, central_client) =
     Client.init_with_protocol
       ~nodes_args:Node.[Synchronisation_threshold 0; Connections (n_nodes - 1)]
       ~event_sections_levels:
         [("prevalidator", `Debug)] (* for "arrived" request events *)
-      ~additional_bootstrap_account_count:
-        (n_bootstraps_total - Constant.default_bootstrap_count)
+      ~additional_bootstrap_account_count
       `Client
       ~protocol
       ()
   in
+  (* Bake some blocks to reach required level for stresstest command. *)
+  let* () = Client.bake_for central_client in
+  let* () = Client.bake_for central_client in
+  let* _ = Node.wait_for_level central_node 3 in
   let get_accounts_from_num_range (num_range : int list) =
     let aliases = List.map (sf "bootstrap%d") num_range in
     Lwt_list.map_p
@@ -375,7 +399,7 @@ let test_stresstest_multiple_nodes =
             ()
         in
         let* () = Client.Admin.connect_address central_client ~peer:node in
-        let* _ = Node.wait_for_level node 1 in
+        let* _ = Node.wait_for_level node 3 in
         return (node, client, accounts))
       (List.init (n_nodes - 1) Fun.id)
   in

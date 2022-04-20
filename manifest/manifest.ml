@@ -44,7 +44,7 @@ module Ne_list = struct
 end
 
 module Dune = struct
-  type kind = Library | Executable | Test
+  type kind = Library | Executable
 
   type mode = Byte | Native | JS
 
@@ -178,7 +178,7 @@ module Dune = struct
       ?(preprocess = Stdlib.List.[]) ?(preprocessor_deps = Stdlib.List.[])
       ?(wrapped = true) ?modules ?modules_without_implementation ?modes
       ?foreign_stubs ?c_library_flags ?(private_modules = Stdlib.List.[])
-      ?(deps = Stdlib.List.[]) ?js_of_ocaml ?action (names : string list) =
+      ?js_of_ocaml (names : string list) =
     [
       V
         [
@@ -187,9 +187,7 @@ module Dune = struct
             | (Library, [_]) -> "library"
             | (Library, _) -> "libraries"
             | (Executable, [_]) -> "executable"
-            | (Executable, _) -> "executables"
-            | (Test, [_]) -> "test"
-            | (Test, _) -> "tests");
+            | (Executable, _) -> "executables");
           (match names with
           | [name] -> [S "name"; S name]
           | _ -> S "names" :: of_atom_list names);
@@ -212,7 +210,34 @@ module Dune = struct
           (match libraries with
           | [] -> E
           | _ -> [V (S "libraries" :: libraries)]);
-          (if inline_tests then [S "inline_tests"; [S "flags"; S "-verbose"]]
+          (if inline_tests then
+           let modes : mode list =
+             match (modes, js_of_ocaml) with
+             | (None, None) ->
+                 (* Make the default dune behavior explicit *)
+                 [Native]
+             | (None, Some _) -> [Native; JS]
+             | (Some modes, _) ->
+                 (* always preserve mode if specified *)
+                 modes
+           in
+           [
+             S "inline_tests";
+             [S "flags"; S "-verbose"];
+             S "modes"
+             ::
+             of_list
+               (List.map
+                  (function
+                    | JS ->
+                        (* We don't run inline_tests in JS by default because of the issue #1947.
+                           In short, we don't want [dune runtest] to depend on node.
+                           Remove this code after we switch to dune.3.0
+                           and address https://gitlab.com/tezos/tezos/-/issues/1947 *)
+                        E
+                    | mode -> S (string_of_mode mode))
+                  modes);
+           ]
           else E);
           (match preprocess with
           | [] -> E
@@ -243,8 +268,6 @@ module Dune = struct
               S "names" :: of_atom_list x.names;
             ] );
           (opt c_library_flags @@ fun x -> [S "c_library_flags"; of_atom_list x]);
-          (match deps with [] -> E | _ -> S "deps" :: of_list deps);
-          opt action (fun action -> S "action" :: action);
         ];
     ]
 
@@ -297,20 +320,25 @@ module Dune = struct
           acc
       | _ -> go_to_src (Filename.concat ".." acc) (Filename.dirname dir)
     in
-    let (runner, locks) =
+    let runner =
       match node_wrapper_flags with
-      | [] -> (S "node", None)
+      | [] -> S "node"
       | _ ->
           let node = go_to_src "tooling/node_wrapper.exe" dir in
-          ( [S ("%{dep:" ^ node ^ "}"); G (of_atom_list node_wrapper_flags)],
-            Some "npm" )
+          [S ("%{dep:" ^ node ^ "}"); G (of_atom_list node_wrapper_flags)]
     in
     alias_rule
       "runtest_js"
       ~package
       ~deps:dep_files
-      ?locks
       ~action:[S "run"; G runner; S ("%{dep:./" ^ name ^ ".bc.js}")]
+
+  let runtest ~package ~dep_files name =
+    alias_rule
+      "runtest"
+      ~package
+      ~deps:dep_files
+      ~action:[S "run"; S ("%{dep:./" ^ name ^ ".exe}")]
 
   let setenv name value followup = [G [S "setenv"; S name; S value]; followup]
 
@@ -416,6 +444,19 @@ module Version = struct
   let or_list = List.fold_left ( || ) False
 end
 
+module Npm = struct
+  type t = {
+    package : string;
+    version : Version.constraints;
+    node_wrapper_flags : string list;
+  }
+
+  let make ~node_wrapper_flags package version =
+    {package; version; node_wrapper_flags}
+
+  let node_wrapper_flags t = t.node_wrapper_flags
+end
+
 (*****************************************************************************)
 (*                                  OPAM                                     *)
 (*****************************************************************************)
@@ -447,6 +488,7 @@ module Opam = struct
     synopsis : string;
     url : url option;
     description : string option;
+    x_opam_monorepo_opam_provided : string list;
   }
 
   let pp fmt
@@ -463,6 +505,7 @@ module Opam = struct
         synopsis;
         url;
         description;
+        x_opam_monorepo_opam_provided;
       } =
     let (depopts, depends) = List.partition (fun dep -> dep.optional) depends in
     let (depopts, conflicts) =
@@ -638,6 +681,11 @@ module Opam = struct
     pp_line "%a" (pp_list ~v:true ~prefix:"depends: " pp_dependency) depends ;
     if depopts <> [] then
       pp_line "%a" (pp_list ~v:true ~prefix:"depopts: " pp_dependency) depopts ;
+    if x_opam_monorepo_opam_provided <> [] then
+      pp_line
+        "%a"
+        (pp_list ~v:true ~prefix:"x-opam-monorepo-opam-provided: " pp_string)
+        x_opam_monorepo_opam_provided ;
     if conflicts <> [] then
       pp_line
         "%a"
@@ -647,6 +695,112 @@ module Opam = struct
     pp_line "synopsis: %a" pp_string synopsis ;
     Option.iter pp_url url ;
     Option.iter (pp_line "description: %a" pp_string) description
+end
+
+module Env : sig
+  (** [env] stanza *)
+  type t
+
+  (** profile selector for the env stanza. A profile name or Any (_) *)
+  type profile = Profile of string | Any
+
+  (** The empty env *)
+  val empty : t
+
+  (** [to_s_expr env] converts an env into a s_expr *)
+  val to_s_expr : t -> Dune.s_expr
+
+  (** [add profile ~key payload] adds a [key] entry with its [payload]
+      to the given [profile].  Adding an entry to [Any] profile means
+      that it will apply regardless of the profile. In practice, it
+      means that the entry can end up being duplicated in the resulting
+      [s_expr].
+    {[
+      Env.empty
+      |> Env.add Any ~key:"flags" Dune.[S "-flag"]
+      |> Env.add (Profile "static") ~key:"link_flags" Dune.[S "-link-flag"]
+    ]}
+
+    will generate
+
+    {v
+      (env
+        (_
+          (flags (-flag))
+        )
+        (static
+          (flags (-flag))
+          (link_flags (-link_flag))
+        )
+      )
+    v}
+
+    Also note that [Profile "_"] is not allowed. One should use [Any] instead.
+ *)
+  val add : profile -> key:string -> Dune.s_expr -> t -> t
+end = struct
+  type entry = string * Dune.s_expr
+
+  type profile = Profile of string | Any
+
+  type t = (profile * entry) list
+
+  let empty = []
+
+  let add profile ~key payload env =
+    (match profile with
+    | Profile "_" ->
+        invalid_arg "Env.add: [Provide \"_\"] is not allowed. Use [Any]."
+    | Profile _ | Any -> ()) ;
+    (profile, (key, payload)) :: env
+
+  let s_expr_of_entry (name, payload) = Dune.[S name; payload]
+
+  let to_s_expr (t : t) =
+    let (any, names) =
+      List.partition_map
+        (function
+          | (Any, entry) -> Left entry
+          | (Profile name, entry) -> Right (name, entry))
+        t
+    in
+    let names =
+      List.fold_left
+        (fun names (n, entry) ->
+          String_map.update
+            n
+            (function
+              | None -> Some [entry] | Some prev -> Some (entry :: prev))
+            names)
+        String_map.empty
+        names
+    in
+    let names =
+      match any with
+      | [] -> names
+      | _ -> String_map.add "_" any (String_map.map (fun x -> any @ x) names)
+    in
+    String_map.iter
+      (fun name entries ->
+        let entry_names = List.map fst entries in
+        if
+          List.length (List.sort_uniq compare entry_names)
+          <> List.length entry_names
+        then invalid_arg ("Env.to_s_expr: duplicated entry in env " ^ name))
+      names ;
+    if String_map.is_empty names then Dune.E
+    else
+      let compare_key ((a : string), _) (b, _) = compare a b in
+      let l : Dune.s_expr list =
+        List.map
+          (fun (name, entries) ->
+            Dune.(
+              S name
+              ::
+              of_list (List.map s_expr_of_entry (List.sort compare_key entries))))
+          (List.sort compare_key (String_map.bindings names))
+      in
+      Dune.(S "env" :: of_list l)
 end
 
 (*****************************************************************************)
@@ -662,17 +816,21 @@ module Target = struct
     opam : string option;
     version : Version.constraints;
     js_compatible : bool;
-    node_wrapper_flags : string list;
+    npm_deps : Npm.t list;
   }
 
   type vendored = {
     name : string;
     main_module : string option;
     js_compatible : bool;
-    node_wrapper_flags : string list;
+    npm_deps : Npm.t list;
   }
 
-  type opam_only = {name : string; version : Version.constraints}
+  type opam_only = {
+    name : string;
+    version : Version.constraints;
+    can_vendor : bool;
+  }
 
   type modules =
     | All
@@ -688,8 +846,7 @@ module Target = struct
     | Private_library of string
     | Public_executable of full_name Ne_list.t
     | Private_executable of string Ne_list.t
-    | Test of string Ne_list.t
-    | Test_executable of string Ne_list.t
+    | Test_executable of {names : string Ne_list.t; run : bool}
 
   type preprocessor_dep = File of string
 
@@ -698,7 +855,6 @@ module Target = struct
     time_measurement_ppx : bool;
     c_library_flags : string list option;
     conflicts : t list;
-    dep_files : string list;
     deps : t list;
     dune : Dune.s_expr;
     foreign_stubs : Dune.foreign_stubs option;
@@ -729,12 +885,13 @@ module Target = struct
     description : string option;
     warnings : string option;
     wrapped : bool;
-    node_wrapper_flags : string list;
+    npm_deps : Npm.t list;
     cram : bool;
-    action : Dune.s_expr option;
   }
 
   and preprocessor = PPS of t * string list
+
+  and inline_tests = Inline_tests_backend of t
 
   and select = {
     package : t;
@@ -755,6 +912,12 @@ module Target = struct
   let pps ?(args = []) = function
     | None -> invalid_arg "Manifest.Target.pps cannot be given no_target"
     | Some target -> PPS (target, args)
+
+  let inline_tests_backend = function
+    | None ->
+        invalid_arg
+          "Manifest.Target.inline_tests_backend cannot be given no_target"
+    | Some target -> Inline_tests_backend target
 
   let convert_to_identifier = String.map @@ function '-' | '.' -> '_' | c -> c
 
@@ -793,8 +956,7 @@ module Target = struct
         | Private_library name
         | Public_executable ({public_name = name; _}, _)
         | Private_executable (name, _)
-        | Test (name, _)
-        | Test_executable (name, _) ->
+        | Test_executable {names = (name, _); _} ->
             name)
 
   let rec names_for_dune = function
@@ -807,8 +969,7 @@ module Target = struct
         | Private_library internal_name -> (internal_name, [])
         | Public_executable (head, tail) ->
             (head.public_name, List.map (fun x -> x.public_name) tail)
-        | Private_executable names | Test names | Test_executable names -> names
-        )
+        | Private_executable names | Test_executable {names; _} -> names)
 
   let rec library_name_for_dune = function
     | Vendored {name; _} | External {name; _} | Opam_only {name; _} -> Ok name
@@ -820,8 +981,7 @@ module Target = struct
         | Private_library internal_name -> Ok internal_name
         | Public_executable ({public_name = name; _}, _)
         | Private_executable (name, _)
-        | Test (name, _)
-        | Test_executable (name, _) ->
+        | Test_executable {names = (name, _); _} ->
             Error name)
 
   let iter_internal_by_path f =
@@ -835,11 +995,10 @@ module Target = struct
     ?bisect_ppx:bool ->
     ?c_library_flags:string list ->
     ?conflicts:t option list ->
-    ?dep_files:string list ->
     ?deps:t option list ->
     ?dune:Dune.s_expr ->
     ?foreign_stubs:Dune.foreign_stubs ->
-    ?inline_tests:bool ->
+    ?inline_tests:inline_tests ->
     ?js_compatible:bool ->
     ?js_of_ocaml:Dune.s_expr ->
     ?documentation:Dune.s_expr ->
@@ -847,7 +1006,7 @@ module Target = struct
     ?modes:Dune.mode list ->
     ?modules:string list ->
     ?modules_without_implementation:string list ->
-    ?node_wrapper_flags:string list ->
+    ?npm_deps:Npm.t list ->
     ?nopervasives:bool ->
     ?nostdlib:bool ->
     ?ocaml:Version.constraints ->
@@ -867,21 +1026,20 @@ module Target = struct
     ?warnings:string ->
     ?wrapped:bool ->
     ?cram:bool ->
-    ?action:Dune.s_expr ->
     path:string ->
     'a ->
     t option
 
   let internal make_kind ?all_modules_except ?bisect_ppx ?c_library_flags
       ?(conflicts = []) ?(dep_files = []) ?(deps = []) ?(dune = Dune.[])
-      ?foreign_stubs ?(inline_tests = false) ?js_compatible ?js_of_ocaml
-      ?documentation ?(linkall = false) ?modes ?modules
-      ?(modules_without_implementation = []) ?(node_wrapper_flags = [])
-      ?(nopervasives = false) ?(nostdlib = false) ?ocaml ?opam ?(opaque = false)
-      ?(opens = []) ?(preprocess = []) ?(preprocessor_deps = [])
-      ?(private_modules = []) ?(opam_only_deps = []) ?release ?static
-      ?static_cclibs ?synopsis ?description ?(time_measurement_ppx = false)
-      ?warnings ?(wrapped = true) ?(cram = false) ?action ~path names =
+      ?foreign_stubs ?inline_tests ?js_compatible ?js_of_ocaml ?documentation
+      ?(linkall = false) ?modes ?modules ?(modules_without_implementation = [])
+      ?(npm_deps = []) ?(nopervasives = false) ?(nostdlib = false) ?ocaml ?opam
+      ?(opaque = false) ?(opens = []) ?(preprocess = [])
+      ?(preprocessor_deps = []) ?(private_modules = []) ?(opam_only_deps = [])
+      ?release ?static ?static_cclibs ?synopsis ?description
+      ?(time_measurement_ppx = false) ?warnings ?(wrapped = true)
+      ?(cram = false) ~path names =
     let conflicts = List.filter_map Fun.id conflicts in
     let deps = List.filter_map Fun.id deps in
     let opam_only_deps = List.filter_map Fun.id opam_only_deps in
@@ -905,6 +1063,18 @@ module Target = struct
       | (Some false, None) | (None, None) -> (false, None)
     in
     let kind = make_kind names in
+    let (preprocess, inline_tests) =
+      match inline_tests with
+      | None -> (preprocess, false)
+      | Some (Inline_tests_backend target) -> (
+          match kind with
+          | Public_library _ | Private_library _ ->
+              (PPS (target, []) :: preprocess, true)
+          | Public_executable _ | Private_executable _ | Test_executable _ ->
+              invalid_arg
+                "Target.internal: cannot specify `inline_tests` for \
+                 executables and tests")
+    in
     let opam =
       match opam with
       | Some "" -> None
@@ -930,12 +1100,7 @@ module Target = struct
                 "for targets which provide private executables such as %S, you \
                  must specify ~opam (set it to \"\" for no opam file)"
                 name
-          | Test (name, _) ->
-              invalid_argf
-                "for targets which provide tests such as %S, you must specify \
-                 ~opam (set it to \"\" for no opam file)"
-                name
-          | Test_executable (name, _) ->
+          | Test_executable {names = (name, _); _} ->
               invalid_argf
                 "for targets which provide test executables such as %S, you \
                  must specify ~opam (set it to \"\" for no opam file)"
@@ -971,60 +1136,88 @@ module Target = struct
       | Public_library _ | Private_library _ | Public_executable _
       | Private_executable _ ->
           true
-      | Test _ | Test_executable _ -> false
+      | Test_executable _ -> false
     in
     let bisect_ppx = Option.value bisect_ppx ~default:not_a_test in
-    let runtest_js_rules =
-      match (kind, opam, js_compatible) with
-      | (Test names, Some package, true)
-      | (Test_executable names, Some package, true) ->
-          let collect_node_wrapper_flags deps =
-            let rec loop (seen, acc) dep =
-              match library_name_for_dune dep with
-              | Error _ -> (seen, acc)
-              | Ok name -> (
-                  if String_set.mem name seen then (seen, acc)
-                  else
-                    match dep with
-                    | Internal {deps; node_wrapper_flags; _} ->
-                        let acc = node_wrapper_flags @ acc in
-                        let seen = String_set.add name seen in
-                        loops (seen, acc) deps
-                    | External {node_wrapper_flags; _} ->
-                        let seen = String_set.add name seen in
-                        (seen, node_wrapper_flags @ acc)
-                    | Vendored {node_wrapper_flags; _} ->
-                        let seen = String_set.add name seen in
-                        (seen, node_wrapper_flags @ acc)
-                    | Select {package; _} -> loop (seen, acc) package
-                    | Opam_only _ -> (seen, acc)
-                    | Optional t -> loop (seen, acc) t
-                    | Open (t, _) -> loop (seen, acc) t)
-            and loops (seen, acc) deps =
-              List.fold_left
-                (fun (seen, acc) x -> loop (seen, acc) x)
-                (seen, acc)
-                deps
-            in
-            loops (String_set.empty, []) deps
+    let runtest_rules =
+      let collect_node_wrapper_flags deps =
+        let rec loop (seen, acc) dep =
+          match library_name_for_dune dep with
+          | Error _ -> (seen, acc)
+          | Ok name -> (
+              if String_set.mem name seen then (seen, acc)
+              else
+                match dep with
+                | Internal {deps; npm_deps; _} ->
+                    let acc =
+                      List.concat_map Npm.node_wrapper_flags npm_deps @ acc
+                    in
+                    let seen = String_set.add name seen in
+                    loops (seen, acc) deps
+                | External {npm_deps; _} ->
+                    let seen = String_set.add name seen in
+                    (seen, List.concat_map Npm.node_wrapper_flags npm_deps @ acc)
+                | Vendored {npm_deps; _} ->
+                    let seen = String_set.add name seen in
+                    (seen, List.concat_map Npm.node_wrapper_flags npm_deps @ acc)
+                | Select {package; _} -> loop (seen, acc) package
+                | Opam_only _ -> (seen, acc)
+                | Optional t -> loop (seen, acc) t
+                | Open (t, _) -> loop (seen, acc) t)
+        and loops (seen, acc) deps =
+          List.fold_left
+            (fun (seen, acc) x -> loop (seen, acc) x)
+            (seen, acc)
+            deps
+        in
+        loops (String_set.empty, []) deps
+      in
+      let run_js = js_compatible in
+      let run_native =
+        match modes with
+        | None | Some [] -> true
+        | Some modes -> List.mem Dune.Native modes
+      in
+      match (kind, opam, dep_files) with
+      | (Test_executable {names; run = true}, Some package, _) ->
+          let runtest_js_rules =
+            if run_js then
+              let node_wrapper_flags : string list =
+                snd (collect_node_wrapper_flags deps)
+              in
+              List.map
+                (fun name ->
+                  Dune.(
+                    runtest_js
+                      ~dep_files
+                      ~package:(Filename.basename package)
+                      ~node_wrapper_flags
+                      ~dir:path
+                      name))
+                (Ne_list.to_list names)
+            else []
           in
-          let node_wrapper_flags : string list =
-            snd (collect_node_wrapper_flags deps)
+          let runtest_rules =
+            if run_native then
+              List.map
+                (fun name ->
+                  Dune.(
+                    runtest ~dep_files ~package:(Filename.basename package) name))
+                (Ne_list.to_list names)
+            else []
           in
-          List.map
-            (fun name ->
-              Dune.(
-                runtest_js
-                  ~dep_files
-                  ~package:(Filename.basename package)
-                  ~node_wrapper_flags
-                  ~dir:path
-                  name))
-            (Ne_list.to_list names)
+          runtest_rules @ runtest_js_rules
+      | (Test_executable {names = (name, _); run = false; _}, _, _ :: _) ->
+          invalid_argf
+            "for targets which provide test executables such as %S, \
+             [~dep_files] is only meaningful for runtest alias. It cannot be \
+             used together with [runtest:false]"
+            name
+      | (_, _, _ :: _) -> assert false
       | _ -> []
     in
     let dune =
-      List.fold_right (fun x dune -> Dune.(x :: dune)) runtest_js_rules dune
+      List.fold_right (fun x dune -> Dune.(x :: dune)) runtest_rules dune
     in
     register_internal
       {
@@ -1032,7 +1225,6 @@ module Target = struct
         time_measurement_ppx;
         c_library_flags;
         conflicts;
-        dep_files;
         deps;
         dune;
         foreign_stubs;
@@ -1061,31 +1253,30 @@ module Target = struct
         static_cclibs;
         synopsis;
         description;
-        node_wrapper_flags;
+        npm_deps;
         warnings;
         wrapped;
         cram;
-        action;
       }
 
   let public_lib ?internal_name =
-    internal @@ fun public_name ->
+    internal ?dep_files:None @@ fun public_name ->
     let internal_name =
       Option.value internal_name ~default:(convert_to_identifier public_name)
     in
     Public_library {internal_name; public_name}
 
-  let private_lib = internal @@ fun name -> Private_library name
+  let private_lib = internal ?dep_files:None @@ fun name -> Private_library name
 
   let public_exe ?internal_name =
-    internal @@ fun public_name ->
+    internal ?dep_files:None @@ fun public_name ->
     let internal_name =
       Option.value internal_name ~default:(convert_to_identifier public_name)
     in
     Public_executable ({internal_name; public_name}, [])
 
   let public_exes ?internal_names =
-    internal @@ fun public_names ->
+    internal ?dep_files:None @@ fun public_names ->
     let names =
       match internal_names with
       | None ->
@@ -1109,49 +1300,40 @@ module Target = struct
     | head :: tail -> Public_executable (head, tail)
 
   let private_exe =
-    internal @@ fun internal_name -> Private_executable (internal_name, [])
+    internal ?dep_files:None @@ fun internal_name ->
+    Private_executable (internal_name, [])
 
   let private_exes =
-    internal @@ fun internal_names ->
+    internal ?dep_files:None @@ fun internal_names ->
     match internal_names with
     | [] -> invalid_argf "Target.private_exes: at least one name must be given"
     | head :: tail -> Private_executable (head, tail)
 
-  let test = internal @@ fun test_name -> Test (test_name, [])
+  let test ?dep_files ?(runtest = true) =
+    internal ?dep_files @@ fun test_name ->
+    Test_executable {names = (test_name, []); run = runtest}
 
-  let tests =
-    internal @@ fun test_names ->
+  let tests ?dep_files ?(runtest = true) =
+    internal ?dep_files @@ fun test_names ->
     match test_names with
     | [] -> invalid_arg "Target.tests: at least one name must be given"
-    | head :: tail -> Test (head, tail)
+    | head :: tail -> Test_executable {names = (head, tail); run = runtest}
 
-  let test_exe = internal @@ fun test_name -> Test_executable (test_name, [])
+  let vendored_lib ?main_module ?(js_compatible = false) ?(npm_deps = []) name =
+    Some (Vendored {name; main_module; js_compatible; npm_deps})
 
-  let test_exes =
-    internal @@ fun test_names ->
-    match test_names with
-    | [] -> invalid_arg "Target.test_exes: at least one name must be given"
-    | head :: tail -> Test_executable (head, tail)
-
-  let vendored_lib ?main_module ?(js_compatible = false)
-      ?(node_wrapper_flags = []) name =
-    Some (Vendored {name; main_module; js_compatible; node_wrapper_flags})
-
-  let external_lib ?main_module ?opam ?(js_compatible = false)
-      ?(node_wrapper_flags = []) name version =
+  let external_lib ?main_module ?opam ?(js_compatible = false) ?(npm_deps = [])
+      name version =
     let opam =
       match opam with None -> Some name | Some "" -> None | Some _ as x -> x
     in
-    Some
-      (External
-         {name; main_module; opam; version; js_compatible; node_wrapper_flags})
+    Some (External {name; main_module; opam; version; js_compatible; npm_deps})
 
-  let rec external_sublib ?main_module ?(js_compatible = false)
-      ?(node_wrapper_flags = []) parent name =
+  let rec external_sublib ?main_module ?(js_compatible = false) ?(npm_deps = [])
+      parent name =
     match parent with
     | External {opam; version; _} ->
-        External
-          {name; main_module; opam; version; js_compatible; node_wrapper_flags}
+        External {name; main_module; opam; version; js_compatible; npm_deps}
     | Opam_only _ ->
         invalid_arg
           "Target.external_sublib: parent must be a non-opam-only external lib"
@@ -1168,20 +1350,14 @@ module Target = struct
     | Open (target, module_name) ->
         Open (external_sublib target name, module_name)
 
-  let external_sublib ?main_module ?js_compatible ?node_wrapper_flags parent
-      name =
+  let external_sublib ?main_module ?js_compatible ?npm_deps parent name =
     match parent with
     | None -> invalid_arg "external_sublib cannot be called with no_target"
     | Some parent ->
-        Some
-          (external_sublib
-             ?main_module
-             ?js_compatible
-             ?node_wrapper_flags
-             parent
-             name)
+        Some (external_sublib ?main_module ?js_compatible ?npm_deps parent name)
 
-  let opam_only name version = Some (Opam_only {name; version})
+  let opam_only ?(can_vendor = true) name version =
+    Some (Opam_only {name; version; can_vendor})
 
   let optional = function None -> None | Some target -> Some (Optional target)
 
@@ -1191,8 +1367,7 @@ module Target = struct
           match kind with
           | Public_library {internal_name; _} | Private_library internal_name ->
               String.capitalize_ascii internal_name
-          | Public_executable _ | Private_executable _ | Test _
-          | Test_executable _ ->
+          | Public_executable _ | Private_executable _ | Test_executable _ ->
               invalid_argf
                 "Manifest.open_: cannot be used on executable and test targets \
                  (such as %s)"
@@ -1226,6 +1401,9 @@ module Target = struct
     Open (target, module_name)
 
   let open_ ?m = function None -> None | Some target -> Some (open_ ?m target)
+
+  let open_if ?m condition target =
+    if condition then open_ ?m target else target
 
   let select ~package ~source_if_present ~source_if_absent ~target =
     match package with
@@ -1331,8 +1509,7 @@ let generate_dune ~dune_file_has_static_profile (internal : Target.internal) =
   let is_lib =
     match internal.kind with
     | Public_library _ | Private_library _ -> true
-    | Public_executable _ | Private_executable _ | Test _ | Test_executable _ ->
-        false
+    | Public_executable _ | Private_executable _ | Test_executable _ -> false
   in
   let library_flags =
     if internal.linkall && is_lib then Some Dune.[S ":standard"; S "-linkall"]
@@ -1412,8 +1589,7 @@ let generate_dune ~dune_file_has_static_profile (internal : Target.internal) =
   in
   let package =
     match (internal.kind, internal.opam) with
-    | ((Public_executable _ | Test _), Some opam) ->
-        Some (Filename.basename opam)
+    | (Public_executable _, Some opam) -> Some (Filename.basename opam)
     | _ -> None
   in
   let instrumentation =
@@ -1439,8 +1615,7 @@ let generate_dune ~dune_file_has_static_profile (internal : Target.internal) =
           List.map get_internal_name (head :: tail),
           List.map get_public_name (head :: tail) )
     | Private_executable (head, tail) -> (Executable, head :: tail, [])
-    | Test (head, tail) -> (Test, head :: tail, [])
-    | Test_executable (head, tail) -> (Executable, head :: tail, [])
+    | Test_executable {names = (head, tail); _} -> (Executable, head :: tail, [])
   in
   let documentation =
     match internal.documentation with
@@ -1468,30 +1643,25 @@ let generate_dune ~dune_file_has_static_profile (internal : Target.internal) =
       ?foreign_stubs:internal.foreign_stubs
       ?c_library_flags:internal.c_library_flags
       ~private_modules:internal.private_modules
-      ~deps:(List.map Dune.file internal.dep_files)
       ?js_of_ocaml:internal.js_of_ocaml
-      ?action:internal.action
     :: documentation :: create_empty_files :: internal.dune)
 
 let static_profile (cclibs : string list) =
-  Dune.
-    [
-      S "static";
+  Env.add
+    (Profile "static")
+    ~key:"flags"
+    Dune.
       [
-        S "flags";
-        [
-          S ":standard";
-          G [S "-ccopt"; S "-static"];
-          (match cclibs with
-          | [] -> E
-          | _ :: _ ->
-              let arg =
-                List.map (fun lib -> "-l" ^ lib) cclibs |> String.concat " "
-              in
-              G [S "-cclib"; S arg]);
-        ];
-      ];
-    ]
+        S ":standard";
+        G [S "-ccopt"; S "-static"];
+        (match cclibs with
+        | [] -> E
+        | _ :: _ ->
+            let arg =
+              List.map (fun lib -> "-l" ^ lib) cclibs |> String.concat " "
+            in
+            G [S "-cclib"; S arg]);
+      ]
 
 (* Remove duplicates from a list.
    Items that are not removed are kept in their original order.
@@ -1530,6 +1700,7 @@ let generate_dune_files () =
     fmt
     "; This file was automatically generated, do not edit.@.; Edit file \
      manifest/main.ml instead.@.@." ;
+  let env = Env.empty in
   let env =
     if has_static then
       let cclibs =
@@ -1538,19 +1709,15 @@ let generate_dune_files () =
           internals
         |> List.flatten |> deduplicate_list Fun.id
       in
-      [static_profile cclibs]
-    else []
+      static_profile cclibs env
+    else env
   in
-  (match env with
-  | [] -> ()
-  | _ :: _ ->
-      let env_stanza = Dune.[S "env" :: of_list env] in
-      Format.fprintf fmt "%a@." Dune.pp env_stanza) ;
+  let dunes = Dune.[Env.to_s_expr env] :: dunes in
   List.iteri
     (fun i dune ->
-      if i <> 0 || has_static then Format.fprintf fmt "@." ;
+      if i <> 0 then Format.fprintf fmt "@." ;
       Format.fprintf fmt "%a@." Dune.pp dune)
-    dunes
+    (List.filter (fun x -> not (Dune.is_empty x)) dunes)
 
 (* Convert [target] into an opam dependency so that it can be added as a dependency
    in packages that depend on it.
@@ -1577,16 +1744,19 @@ let rec as_opam_dependency ~fix_version ~(for_package : string) ~with_test
         Some {Opam.package; version; with_test; optional = false}
   | Vendored {name = package; _} ->
       Some {Opam.package; version = True; with_test; optional = false}
-  | External {opam = Some opam; version; _} | Opam_only {name = opam; version}
-    ->
+  | External {opam = Some opam; version; _}
+  | Opam_only {name = opam; version; _} ->
       let version =
         (* FIXME: https://gitlab.com/tezos/tezos/-/issues/1453
            Remove this once all packages (including protocol packages)
-           have been ported to the manifest. *)
+           have been ported to the manifest.
+           "tezos-rust-libs" is an exception to the exception... *)
         if
           fix_version
           && (has_prefix ~prefix:"tezos-" (Filename.basename opam)
              || has_prefix ~prefix:"octez-" (Filename.basename opam))
+          && Filename.basename opam <> "tezos-rust-libs"
+          && Filename.basename opam <> "octez-rust-libs"
         then Version.(Exactly Version)
         else version
       in
@@ -1598,17 +1768,24 @@ let rec as_opam_dependency ~fix_version ~(for_package : string) ~with_test
   | Open (target, _) ->
       as_opam_dependency ~fix_version ~for_package ~with_test target
 
+let as_opam_monorepo_opam_provided = function
+  | Target.Opam_only {can_vendor = false; name; _} -> Some name
+  | _ -> None
+
 let generate_opam ?release this_package (internals : Target.internal list) :
     Opam.t =
   let for_package = Filename.basename this_package in
   let map l f = List.map f l in
-  let depends =
-    List.flatten @@ map internals
+  let (depends, x_opam_monorepo_opam_provided) =
+    List.split @@ map internals
     @@ fun internal ->
     let with_test =
-      match internal.kind with Test _ | Test_executable _ -> true | _ -> false
+      match internal.kind with Test_executable _ -> true | _ -> false
     in
     let deps = internal.deps @ internal.opam_only_deps in
+    let x_opam_monorepo_opam_provided =
+      List.filter_map as_opam_monorepo_opam_provided deps
+    in
     let deps =
       List.filter_map
         (as_opam_dependency
@@ -1624,7 +1801,12 @@ let generate_opam ?release this_package (internals : Target.internal list) :
         ~with_test
         target
     in
-    List.filter_map get_preprocess_dep internal.preprocess @ deps
+    ( List.filter_map get_preprocess_dep internal.preprocess @ deps,
+      x_opam_monorepo_opam_provided )
+  in
+  let depends = List.flatten depends in
+  let x_opam_monorepo_opam_provided =
+    List.flatten x_opam_monorepo_opam_provided
   in
   let depends =
     match
@@ -1723,6 +1905,7 @@ let generate_opam ?release this_package (internals : Target.internal list) :
     synopsis;
     url = Option.map (fun {url; _} -> url) release;
     description;
+    x_opam_monorepo_opam_provided;
   }
 
 let generate_opam_files () =
@@ -1783,6 +1966,89 @@ let generate_dune_project_files () =
       Format.fprintf fmt "; Edit file manifest/manifest.ml instead.@.")
     t
 
+let generate_package_json_file () =
+  let l = ref [] in
+  let add npm = if not (List.mem npm !l) then l := npm :: !l in
+  let rec collect (target : Target.t) =
+    match target with
+    | External {npm_deps; _} | Vendored {npm_deps; _} | Internal {npm_deps; _}
+      ->
+        List.iter add npm_deps
+    | Optional internal -> collect internal
+    | Select {package; _} | Open (package, _) -> collect package
+    | Opam_only _ -> ()
+  in
+  Target.iter_internal_by_path (fun _path internals ->
+      List.iter
+        (fun (internal : Target.internal) ->
+          List.iter add internal.npm_deps ;
+          List.iter collect internal.deps)
+        internals) ;
+  let pp_version_atom fmt = function
+    | Version.V x -> Format.fprintf fmt "%s" x
+    | Version ->
+        invalid_arg "[Version] cannot be used to constrain Npm packages."
+  in
+  let rec pp_version_constraint ~in_and fmt = function
+    | Version.True ->
+        invalid_arg "[True] cannot be used to constrain Npm packages."
+    | False -> invalid_arg "[False] cannot be used to constrain Npm packages."
+    | Not _ -> invalid_arg "[Not] cannot be used to constrain Npm packages."
+    | Exactly version -> Format.fprintf fmt "%a" pp_version_atom version
+    | Different_from version ->
+        Format.fprintf fmt "!= %a" pp_version_atom version
+    | At_least version -> Format.fprintf fmt ">=%a" pp_version_atom version
+    | More_than version -> Format.fprintf fmt ">%a" pp_version_atom version
+    | At_most version -> Format.fprintf fmt "<=%a" pp_version_atom version
+    | Less_than version -> Format.fprintf fmt "<%a" pp_version_atom version
+    | And (a, b) ->
+        Format.fprintf
+          fmt
+          "%a %a"
+          (pp_version_constraint ~in_and:true)
+          a
+          (pp_version_constraint ~in_and:true)
+          b
+    | Or (a, b) ->
+        if in_and then
+          invalid_arg
+            "Npm version constraint don't allow [Or] nested inside [And]" ;
+        Format.fprintf
+          fmt
+          "%a || %a"
+          (pp_version_constraint ~in_and:false)
+          a
+          (pp_version_constraint ~in_and:false)
+          b
+  in
+  let pp_dep fmt (npm : Npm.t) =
+    Format.fprintf
+      fmt
+      {|    "%s": "%a"|}
+      npm.package
+      (pp_version_constraint ~in_and:false)
+      npm.version
+  in
+  write "package.json" @@ fun fmt ->
+  Format.fprintf
+    fmt
+    {|
+{
+  "DO NOT EDIT": "This file was automatically generated, edit file manifest/main.ml instead",
+  "private": true,
+  "type": "commonjs",
+  "description": "n/a",
+  "license": "n/a",
+  "dependencies": {
+%a
+  }
+}
+|}
+    (Format.pp_print_list
+       ~pp_sep:(fun fmt () -> Format.fprintf fmt ",@.")
+       pp_dep)
+    (List.sort compare !l)
+
 let check_for_non_generated_files ?(exclude = fun _ -> false) () =
   let rec find_opam_and_dune_files acc dir =
     let dir_contents = Sys.readdir dir in
@@ -1820,8 +2086,7 @@ let check_js_of_ocaml () =
     | Public_library {public_name; _} -> public_name
     | Private_library internal_name -> internal_name
     | Public_executable ({public_name = name; _}, _) -> name
-    | Private_executable (name, _) | Test (name, _) | Test_executable (name, _)
-      ->
+    | Private_executable (name, _) | Test_executable {names = (name, _); _} ->
         Filename.concat path name
   in
   let missing_from_target = ref String_map.empty in
@@ -1927,6 +2192,7 @@ let generate ?exclude () =
     generate_dune_files () ;
     generate_opam_files () ;
     generate_dune_project_files () ;
+    generate_package_json_file () ;
     check_for_non_generated_files ?exclude () ;
     check_js_of_ocaml () ;
     Option.iter (generate_opam_files_for_release packages_dir) release

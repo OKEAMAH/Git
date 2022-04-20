@@ -63,7 +63,7 @@ let uname () =
       | exn -> Lwt.return_error (error_info "uname" (Printexc.to_string exn)))
 
 let page_size sysname =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let get_conf_process =
     match sysname with
     | Linux -> Ok ("getconf", [|"getconf"; "PAGE_SIZE"|])
@@ -89,7 +89,9 @@ let linux_statm pid =
       | true ->
           Lwt_io.with_file ~mode:Input fname (fun ic ->
               let* line = Lwt_io.read_line ic in
-              match List.map Int64.of_string @@ TzString.split ' ' line with
+              match
+                List.map Int64.of_string @@ TzString.split_no_empty ' ' line
+              with
               | size :: resident :: shared :: text :: lib :: data :: dt :: _
                 -> (
                   let* r = page_size Linux in
@@ -141,7 +143,7 @@ let darwin_ps pid =
                   Lwt.return_error
                     (error_info "ps" "Unexpected ps answer (2nd line)")
               | Some ps_stats -> (
-                  match TzString.split ' ' ps_stats with
+                  match TzString.split_no_empty ' ' ps_stats with
                   | _pid :: mem :: resident :: _ -> (
                       let* r = page_size Darwin in
                       match r with

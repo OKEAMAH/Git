@@ -25,6 +25,9 @@ be documented here either.
 Node
 ----
 
+- Added Jakarta, a protocol proposal for Mainnet featuring, among others,
+  Transaction Optimistic Rollups, Tickets Hardening and Liquidity Baking Toggle.
+
 - **Breaking change**:
   restored the encoding of events corresponding to "completed
   requests" (block validation, head switch, ...) to pre v11. They only
@@ -43,34 +46,60 @@ Node
   must be used for RPC requests to the node. The value can be  ``json``,
   ``binary`` or ``any``. By default, the value is set to ``any``.
 
-- Added an option ``--listen-prometheus <PORT>`` to ``tezos-node run`` to
+- Added an option ``--metrics-addr <ADDR>:<PORT>`` to ``tezos-node`` to
   expose some metrics using the Prometheus format.
 
 - Adds ``tezos-node storage head-commmit`` command to print the current
   context head commit hash to stdout.
 
-- The node context storage format was upgraded. To this end, a new storage
-  version was introduced: 0.0.7 (previously 0.0.6). Upgrading from 0.0.6 to
-  0.0.7 is done automatically by the node the first time you run it. This
-  upgrade is instantaneous. However, be careful that previous versions of Octez
-  will refuse to run on a data directory which was used with Octez 12.0.
-
 - Added a check to ensure the consistency between the imported
   snapshot history mode and the one stored in the targeted data
   directory configuration file.
 
+- Fixed a wrong behavior that could cause the savepoint to be dragged
+  too early.
+
+- The node context storage format was upgraded. To this end, a new storage
+  version was introduced: 0.0.8 (previously 0.0.7). Upgrading from 0.0.7 to
+  0.0.8 is done automatically by the node the first time you run it. This
+  upgrade is instantaneous. However, be careful that previous versions of Octez
+  will refuse to run on a data directory which was used with Octez 13.0.
+
+- Validation errors are flatter. Instead of the ``economic_protocol_error``
+  carrying a field ``trace`` with the relevant economic-protocol errors, the
+  relevant economic-protocol errors are included in the main trace itself.
+
+- Exported snapshots now have version number 4 (previously 3).
+  Snapshots of version 2 and 3 exported with previous versions of
+  Octez can still be imported. Snapshots of version 4 cannot be
+  imported with Octez prior to version 13.0.
+
+- Added optional query parameter ``force_metadata`` to the ``GET
+  /chains/<chain>/blocks/<block>/`` and ``GET
+  /chains/<chain>/blocks/<block>/operations/`` RPCs. Passing this
+  parameter forces the re-computation of operation metadata that were
+  considered as too large, even if they exceed the configured limit. The
+  re-computed metadata are not stored on disk after this call, they are
+  just returned.
+
 Client
 ------
 
-- A new ``--force`` option was added to the ``transfer`` command. It
-  makes the client inject the transaction in a node even if the
-  simulation of the transaction fails.
+- The client no longer computes the description of RPCs by default.
+  This makes the client run faster at the cost of possibly getting
+  less informative error messages. You can switch back to the previous
+  behavior using new command-line option ``--better-errors``.
 
 - A new ``--self-address`` option was added to the ``run script``
   command. It makes the given address be considered the address of
   the contract being run. The address must actually exist in the
   context. If ``--balance`` wasn't specified, the script also
   inherits the given contract's balance.
+
+- Storage and input parameters given to the ``run script`` command
+  can now be read from a file just like the script itself can.
+  Also like with script, the ``file:`` prefix can be added for
+  disambiguation.
 
 Baker / Endorser / Accuser
 --------------------------
@@ -102,14 +131,39 @@ Signer
 Proxy server
 ------------
 
+- A new ``--data-dir`` option was added. It expects the path of the
+  data-dir of the node from which to obtain data. This option greatly
+  reduces the number of RPCs between the proxy server and the node, thus
+  reducing the IO consumption of the node.
+
 Protocol Compiler And Environment
 ---------------------------------
 
 Codec
 -----
 
+- Added command ``slice`` which splits a binary, hex-encoded blob into its
+  different constituents. This command is useful to understand what a binary message means.
+
 Docker Images
 -------------
 
+- Script ``tezos_docker_manager.sh`` (also known as ``mainnet.sh``) is now deprecated.
+  It may be removed from Octez starting from version 14.0.
+  It is recommended to write your own Docker Compose files instead.
+  To this end, you can take inspiration from ``scripts/docker/docker-compose-generic.yml``.
+
+- ``tezos_docker_manager.sh`` no longer starts the endorser.
+  As a reminder, starting from Ithaca, which is the active protocol on Mainnet,
+  there is no endorser: its role is played by the baker.
+
+- ``tezos_docker_manager.sh`` no longer supports Hangzhounet.
+
 Miscellaneous
 -------------
+
+- Removed protocol ``genesis-carthagenet``.
+  No live test network uses this protocol anymore.
+
+- Removed delegates for protocol Hangzhou, since it was replaced by Ithaca
+  as the active protocol on Mainnet.

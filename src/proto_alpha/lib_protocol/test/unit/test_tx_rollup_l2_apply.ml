@@ -84,7 +84,7 @@ let expect_error_status ~msg error status cont =
 
 let aggregate_signature_exn : signature list -> signature =
  fun signatures ->
-  match Bls12_381.Signature.MinSig.aggregate_signature_opt signatures with
+  match Bls12_381.Signature.MinPk.aggregate_signature_opt signatures with
   | Some res -> res
   | None -> raise (Invalid_argument "aggregate_signature_exn")
 
@@ -1628,7 +1628,8 @@ let test_transfer_to_self () =
       Transaction_failure
         {index = 0; reason = Tx_rollup_l2_apply.Invalid_self_transfer} ) ->
       return_unit
-  | (_, _) -> fail_msg "The transaction should faild with [Invalid_destination]"
+  | (_, _) ->
+      fail_msg "The transaction should have failed with [Invalid_destination]"
 
 module Indexes = struct
   (** The context should be dropped during an invalid deposit, as the

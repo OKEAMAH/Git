@@ -226,6 +226,11 @@ module type TYPE_SIZE = sig
 
      It allows keeping type metadata and types non-private.
 
+     The size of a type is the number of nodes in its AST
+     representation. In other words, the size of a type is 1 plus the size of
+     its arguments. For instance, the size of [Unit] is 1 and the size of
+     [Pair ty1 ty2] is [1] plus the size of [ty1] and [ty2].
+
      This module is here because we want three levels of visibility over this
      code:
      - inside this submodule, we have [type 'a t = int]
@@ -421,20 +426,27 @@ type view = {
 
 type view_map = (Script_string.t, view) map
 
-type 'arg entrypoints = {
-  name : Entrypoint.t option;
+type entrypoint_info = {name : Entrypoint.t; original_type_expr : Script.node}
+
+type 'arg entrypoints_node = {
+  at_node : entrypoint_info option;
   nested : 'arg nested_entrypoints;
 }
 
 and 'arg nested_entrypoints =
   | Entrypoints_Union : {
-      left : 'l entrypoints;
-      right : 'r entrypoints;
+      left : 'l entrypoints_node;
+      right : 'r entrypoints_node;
     }
       -> ('l, 'r) union nested_entrypoints
   | Entrypoints_None : _ nested_entrypoints
 
-let no_entrypoints = {name = None; nested = Entrypoints_None}
+let no_entrypoints = {at_node = None; nested = Entrypoints_None}
+
+type 'arg entrypoints = {
+  root : 'arg entrypoints_node;
+  original_type_expr : Script.node;
+}
 
 type ('arg, 'storage) script =
   | Script : {
@@ -898,10 +910,7 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
   | ICreate_contract : {
       kinfo : (public_key_hash option, Tez.t * ('a * 's)) kinfo;
       storage_type : ('a, _) ty;
-      arg_type : ('b, _) ty;
-      lambda : ('b * 'a, operation boxed_list * 'a) lambda;
-      views : view_map;
-      entrypoints : 'b entrypoints;
+      code : Script.expr;
       k : (operation, address * 's, 'r, 'f) kinstr;
     }
       -> (public_key_hash option, Tez.t * ('a * 's), 'r, 'f) kinstr
@@ -1368,7 +1377,8 @@ and 'kind manager_operation =
   | Origination : {
       origination : Alpha_context.origination;
       preorigination : Contract.t;
-      script : ('arg, 'storage) script;
+      storage_type : ('storage, _) ty;
+      storage : 'storage;
     }
       -> Kind.origination manager_operation
   | Delegation :
@@ -1705,11 +1715,9 @@ let kinstr_rewritek :
   | ITransfer_tokens (kinfo, k) -> ITransfer_tokens (kinfo, f.apply k)
   | IView (kinfo, view_signature, k) -> IView (kinfo, view_signature, f.apply k)
   | IImplicit_account (kinfo, k) -> IImplicit_account (kinfo, f.apply k)
-  | ICreate_contract
-      {kinfo; storage_type; arg_type; lambda; views; entrypoints; k} ->
+  | ICreate_contract {kinfo; storage_type; code; k} ->
       let k = f.apply k in
-      ICreate_contract
-        {kinfo; storage_type; arg_type; lambda; views; entrypoints; k}
+      ICreate_contract {kinfo; storage_type; code; k}
   | ISet_delegate (kinfo, k) -> ISet_delegate (kinfo, f.apply k)
   | INow (kinfo, k) -> INow (kinfo, f.apply k)
   | IMin_block_time (kinfo, k) -> IMin_block_time (kinfo, f.apply k)
@@ -1792,18 +1800,7 @@ let ty_metadata : type a ac. (a, ac) ty -> a ty_metadata = function
   | Bls12_381_fr_t | Chest_t | Chest_key_t ->
       meta_basic
 
-let comparable_ty_metadata : type a. a comparable_ty -> a ty_metadata = function
-  | Unit_t | Never_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t
-  | Mutez_t | Bool_t | Key_hash_t | Key_t | Timestamp_t | Chain_id_t | Address_t
-  | Tx_rollup_l2_address_t ->
-      meta_basic
-  | Pair_t (_, _, meta, YesYes) -> meta
-  | Union_t (_, _, meta, YesYes) -> meta
-  | Option_t (_, meta, Yes) -> meta
-
 let ty_size t = (ty_metadata t).size
-
-let comparable_ty_size t = (comparable_ty_metadata t).size
 
 let is_comparable : type v c. (v, c) ty -> c dbool = function
   | Never_t -> Yes
@@ -1845,55 +1842,29 @@ type 'v ty_ex_c = Ty_ex_c : ('v, _) ty -> 'v ty_ex_c [@@ocaml.unboxed]
 
 let unit_t = Unit_t
 
-let unit_key = unit_t
-
 let int_t = Int_t
-
-let int_key = int_t
 
 let nat_t = Nat_t
 
-let nat_key = nat_t
-
 let signature_t = Signature_t
-
-let signature_key = signature_t
 
 let string_t = String_t
 
-let string_key = string_t
-
 let bytes_t = Bytes_t
-
-let bytes_key = bytes_t
 
 let mutez_t = Mutez_t
 
-let mutez_key = mutez_t
-
 let key_hash_t = Key_hash_t
-
-let key_hash_key = key_hash_t
 
 let key_t = Key_t
 
-let key_key = key_t
-
 let timestamp_t = Timestamp_t
-
-let timestamp_key = timestamp_t
 
 let address_t = Address_t
 
-let address_key = address_t
-
 let bool_t = Bool_t
 
-let bool_key = bool_t
-
 let tx_rollup_l2_address_t = Tx_rollup_l2_address_t
-
-let tx_rollup_l2_address_key = tx_rollup_l2_address_t
 
 let pair_t :
     type a ac b bc.
@@ -1908,11 +1879,8 @@ let comparable_pair_t loc l r =
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
   Pair_t (l, r, {size}, YesYes)
 
-let pair_key loc l r =
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  Pair_t (l, r, {size}, YesYes)
-
-let pair_3_key loc l m r = pair_key loc m r >>? fun r -> pair_key loc l r
+let comparable_pair_3_t loc l m r =
+  comparable_pair_t loc m r >>? fun r -> comparable_pair_t loc l r
 
 let union_t :
     type a ac b bc.
@@ -1923,14 +1891,10 @@ let union_t :
   let (Ex_dand cmp) = dand (is_comparable l) (is_comparable r) in
   Ty_ex_c (Union_t (l, r, {size}, cmp))
 
-let comparable_union_t loc l r =
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  Union_t (l, r, {size}, YesYes)
-
 let union_bytes_bool_t =
   Union_t (bytes_t, bool_t, {size = Type_size.three}, YesYes)
 
-let union_key loc l r =
+let comparable_union_t loc l r =
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
   Union_t (l, r, {size}, YesYes)
 
@@ -1975,7 +1939,7 @@ let option_pair_int_nat_t =
       {size = Type_size.four},
       Yes )
 
-let option_key loc t =
+let comparable_option_t loc t =
   Type_size.compound1 loc (ty_size t) >|? fun size -> Option_t (t, {size}, Yes)
 
 let list_t loc t =
@@ -1986,15 +1950,14 @@ let operation_t = Operation_t
 let list_operation_t = List_t (operation_t, {size = Type_size.two})
 
 let set_t loc t =
-  Type_size.compound1 loc (comparable_ty_size t) >|? fun size ->
-  Set_t (t, {size})
+  Type_size.compound1 loc (ty_size t) >|? fun size -> Set_t (t, {size})
 
 let map_t loc l r =
-  Type_size.compound2 loc (comparable_ty_size l) (ty_size r) >|? fun size ->
+  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
   Map_t (l, r, {size})
 
 let big_map_t loc l r =
-  Type_size.compound2 loc (comparable_ty_size l) (ty_size r) >|? fun size ->
+  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
   Big_map_t (l, r, {size})
 
 let contract_t loc t =
@@ -2011,11 +1974,7 @@ let sapling_state_t ~memo_size = Sapling_state_t memo_size
 
 let chain_id_t = Chain_id_t
 
-let chain_id_key = chain_id_t
-
 let never_t = Never_t
-
-let never_key = never_t
 
 let bls12_381_g1_t = Bls12_381_g1_t
 
@@ -2024,8 +1983,7 @@ let bls12_381_g2_t = Bls12_381_g2_t
 let bls12_381_fr_t = Bls12_381_fr_t
 
 let ticket_t loc t =
-  Type_size.compound1 loc (comparable_ty_size t) >|? fun size ->
-  Ticket_t (t, {size})
+  Type_size.compound1 loc (ty_size t) >|? fun size -> Ticket_t (t, {size})
 
 let chest_key_t = Chest_key_t
 
@@ -2220,41 +2178,15 @@ let kinstr_traverse i init f =
   in
   aux init i (fun accu -> accu)
 
-type 'a ty_traverse = {
-  apply : 't 'tc. 'a -> ('t, 'tc) ty -> 'a;
-  apply_comparable : 't. 'a -> 't comparable_ty -> 'a;
-}
+type 'a ty_traverse = {apply : 't 'tc. 'a -> ('t, 'tc) ty -> 'a}
 
-let (ty_traverse, comparable_ty_traverse) =
+let ty_traverse =
   let rec aux :
-      type t ret accu.
-      accu ty_traverse -> accu -> t comparable_ty -> (accu -> ret) -> ret =
-   fun f accu ty continue ->
-    let accu = f.apply_comparable accu ty in
-    let next2 ty1 ty2 =
-      (aux [@ocaml.tailcall]) f accu ty1 @@ fun accu ->
-      (aux [@ocaml.tailcall]) f accu ty2 @@ fun accu ->
-      (continue [@ocaml.tailcall]) accu
-    in
-    let next ty1 =
-      (aux [@ocaml.tailcall]) f accu ty1 @@ fun accu ->
-      (continue [@ocaml.tailcall]) accu
-    in
-    let return () = (continue [@ocaml.tailcall]) accu in
-    match ty with
-    | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
-    | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
-    | Bool_t | Chain_id_t | Never_t ->
-        (return [@ocaml.tailcall]) ()
-    | Pair_t (ty1, ty2, _, YesYes) -> (next2 [@ocaml.tailcall]) ty1 ty2
-    | Union_t (ty1, ty2, _, YesYes) -> (next2 [@ocaml.tailcall]) ty1 ty2
-    | Option_t (ty, _, Yes) -> (next [@ocaml.tailcall]) ty
-  and aux' :
       type ret t tc accu.
       accu ty_traverse -> accu -> (t, tc) ty -> (accu -> ret) -> ret =
    fun f accu ty continue ->
     let accu = f.apply accu ty in
-    match (ty : (t, tc) ty) with
+    match ty with
     | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
     | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
     | Bool_t | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
@@ -2264,22 +2196,22 @@ let (ty_traverse, comparable_ty_traverse) =
     | Ticket_t (cty, _) -> aux f accu cty continue
     | Chest_key_t | Chest_t -> (continue [@ocaml.tailcall]) accu
     | Pair_t (ty1, ty2, _, _) ->
-        (next2' [@ocaml.tailcall]) f accu ty1 ty2 continue
+        (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
     | Union_t (ty1, ty2, _, _) ->
-        (next2' [@ocaml.tailcall]) f accu ty1 ty2 continue
+        (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
     | Lambda_t (ty1, ty2, _) ->
-        (next2' [@ocaml.tailcall]) f accu ty1 ty2 continue
-    | Option_t (ty1, _, _) -> (next' [@ocaml.tailcall]) f accu ty1 continue
-    | List_t (ty1, _) -> (next' [@ocaml.tailcall]) f accu ty1 continue
+        (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
+    | Option_t (ty1, _, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
+    | List_t (ty1, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
     | Set_t (cty, _) -> (aux [@ocaml.tailcall]) f accu cty @@ continue
     | Map_t (cty, ty1, _) ->
         (aux [@ocaml.tailcall]) f accu cty @@ fun accu ->
-        (next' [@ocaml.tailcall]) f accu ty1 continue
+        (next [@ocaml.tailcall]) f accu ty1 continue
     | Big_map_t (cty, ty1, _) ->
         (aux [@ocaml.tailcall]) f accu cty @@ fun accu ->
-        (next' [@ocaml.tailcall]) f accu ty1 continue
-    | Contract_t (ty1, _) -> (next' [@ocaml.tailcall]) f accu ty1 continue
-  and next2' :
+        (next [@ocaml.tailcall]) f accu ty1 continue
+    | Contract_t (ty1, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
+  and next2 :
       type a ac b bc ret accu.
       accu ty_traverse ->
       accu ->
@@ -2288,18 +2220,17 @@ let (ty_traverse, comparable_ty_traverse) =
       (accu -> ret) ->
       ret =
    fun f accu ty1 ty2 continue ->
-    (aux' [@ocaml.tailcall]) f accu ty1 @@ fun accu ->
-    (aux' [@ocaml.tailcall]) f accu ty2 @@ fun accu ->
+    (aux [@ocaml.tailcall]) f accu ty1 @@ fun accu ->
+    (aux [@ocaml.tailcall]) f accu ty2 @@ fun accu ->
     (continue [@ocaml.tailcall]) accu
-  and next' :
+  and next :
       type a ac ret accu.
       accu ty_traverse -> accu -> (a, ac) ty -> (accu -> ret) -> ret =
    fun f accu ty1 continue ->
-    (aux' [@ocaml.tailcall]) f accu ty1 @@ fun accu ->
+    (aux [@ocaml.tailcall]) f accu ty1 @@ fun accu ->
     (continue [@ocaml.tailcall]) accu
   in
-  ( (fun ty init f -> aux' f init ty (fun accu -> accu)),
-    fun cty init f -> aux f init cty (fun accu -> accu) )
+  fun ty init f -> aux f init ty (fun accu -> accu)
 
 type 'accu stack_ty_traverse = {
   apply : 'ty 's. 'accu -> ('ty, 's) stack_ty -> 'accu;
@@ -2314,13 +2245,9 @@ let stack_ty_traverse (type a t) (sty : (a, t) stack_ty) init f =
   in
   aux init sty
 
-type 'a value_traverse = {
-  apply : 't 'tc. 'a -> ('t, 'tc) ty -> 't -> 'a;
-  apply_comparable : 't. 'a -> 't comparable_ty -> 't -> 'a;
-}
+type 'a value_traverse = {apply : 't 'tc. 'a -> ('t, 'tc) ty -> 't -> 'a}
 
-let value_traverse (type t tc) (ty : ((t, tc) ty, t comparable_ty) union)
-    (x : t) init f =
+let value_traverse (type t tc) (ty : (t, tc) ty) (x : t) init f =
   let rec aux : type ret t tc. 'accu -> (t, tc) ty -> t -> ('accu -> ret) -> ret
       =
    fun accu ty x continue ->
@@ -2359,7 +2286,7 @@ let value_traverse (type t tc) (ty : ((t, tc) ty, t comparable_ty) union)
         match x with
         | None -> return ()
         | Some v -> (next [@ocaml.tailcall]) ty v)
-    | Ticket_t (cty, _) -> (aux' [@ocaml.tailcall]) accu cty x.contents continue
+    | Ticket_t (cty, _) -> (aux [@ocaml.tailcall]) accu cty x.contents continue
     | List_t (ty', _) -> on_list ty' accu x.elements
     | Map_t (kty, ty', _) ->
         let (Map_tag (module M)) = x in
@@ -2368,20 +2295,12 @@ let value_traverse (type t tc) (ty : ((t, tc) ty, t comparable_ty) union)
     | Set_t (ty', _) ->
         let (Set_tag (module M)) = x in
         let elements = M.OPS.fold (fun x s -> x :: s) M.boxed [] in
-        on_list' accu ty' elements continue
+        on_list ty' accu elements
     | Big_map_t (_, _, _) ->
         (* For big maps, there is no obvious recursion scheme so we
            delegate this case to the client. *)
         (return [@ocaml.tailcall]) ()
     | Contract_t (_, _) -> (return [@ocaml.tailcall]) ()
-  and on_list' :
-      type ret t. 'accu -> t comparable_ty -> t list -> ('accu -> ret) -> ret =
-   fun accu ty' xs continue ->
-    match xs with
-    | [] -> (continue [@ocaml.tailcall]) accu
-    | x :: xs ->
-        (aux' [@ocaml.tailcall]) accu ty' x @@ fun accu ->
-        (on_list' [@ocaml.tailcall]) accu ty' xs continue
   and on_bindings :
       type ret k v vc.
       'accu ->
@@ -2394,42 +2313,11 @@ let value_traverse (type t tc) (ty : ((t, tc) ty, t comparable_ty) union)
     match xs with
     | [] -> (continue [@ocaml.tailcall]) accu
     | (k, v) :: xs ->
-        (aux' [@ocaml.tailcall]) accu kty k @@ fun accu ->
+        (aux [@ocaml.tailcall]) accu kty k @@ fun accu ->
         (aux [@ocaml.tailcall]) accu ty' v @@ fun accu ->
         (on_bindings [@ocaml.tailcall]) accu kty ty' continue xs
-  and aux' : type ret t. 'accu -> t comparable_ty -> t -> ('accu -> ret) -> ret
-      =
-   fun accu ty x continue ->
-    let accu = f.apply_comparable accu ty x in
-    let next2 ty1 ty2 x1 x2 =
-      (aux' [@ocaml.tailcall]) accu ty1 x1 @@ fun accu ->
-      (aux' [@ocaml.tailcall]) accu ty2 x2 @@ fun accu ->
-      (continue [@ocaml.tailcall]) accu
-    in
-    let next ty1 x1 =
-      (aux' [@ocaml.tailcall]) accu ty1 x1 @@ fun accu ->
-      (continue [@ocaml.tailcall]) accu
-    in
-    let return () = (continue [@ocaml.tailcall]) accu in
-    match ty with
-    | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
-    | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
-    | Bool_t | Chain_id_t | Never_t ->
-        (return [@ocaml.tailcall]) ()
-    | Pair_t (ty1, ty2, _, YesYes) ->
-        (next2 [@ocaml.tailcall]) ty1 ty2 (fst x) (snd x)
-    | Union_t (ty1, ty2, _, YesYes) -> (
-        match x with
-        | L l -> (next [@ocaml.tailcall]) ty1 l
-        | R r -> (next [@ocaml.tailcall]) ty2 r)
-    | Option_t (ty, _, Yes) -> (
-        match x with
-        | None -> (return [@ocaml.tailcall]) ()
-        | Some v -> (next [@ocaml.tailcall]) ty v)
   in
-  match ty with
-  | L ty -> aux init ty x (fun accu -> accu)
-  | R cty -> aux' init cty x (fun accu -> accu)
+  aux init ty x (fun accu -> accu)
   [@@coq_axiom_with_reason "local mutually recursive definition not handled"]
 
 let stack_top_ty : type a b s. (a, b * s) stack_ty -> a ty_ex_c = function

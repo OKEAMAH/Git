@@ -3,6 +3,72 @@
 Changelog
 '''''''''
 
+Version 12.3
+============
+
+- Fixed a bug that prevented the store from
+  decoding metadata from previous versions of Octez.
+  This bug caused the store to systematically have to restore
+  its consistency on startup.
+
+- **Breaking change**:
+  Exported snapshots now have version number 3 (previously 2).
+  Snapshots exported by nodes running previous versions of Octez can still be
+  imported by a v12.3 node, but snapshots exported by a v12.3 node cannot
+  be imported by nodes running previous versions.
+
+  Please note that snapshots exported with versions 12.1 and 12.2
+  of Octez cannot be imported with previous versions of Octez either,
+  but their version number was not increased, leading to less clear
+  error messages when trying to import them from previous versions.
+  It is thus recommended to avoid exporting snapshots with versions
+  12.1 or 12.2 of Octez.
+
+- Increased the maximum size of requests to sign a block header with a
+  Ledger in order to take into account Tenderbake block headers which
+  are reproposals of a block at an higher round.
+  Combined with an incoming update of the Ledger baking app,
+  this fixes a case where the Ledger failed to sign blocks.
+
+Version 12.2
+============
+
+- Added ``--metadata-size-limit`` option to the node to configure the
+  operation metadata size limit. This defaults to 10MB but can be
+  overridden by providing another value (representing a number of bytes)
+  or the value ``unlimited``.
+
+Version 12.1
+============
+
+Node
+----
+
+- Added optional argument ``cycle`` to RPC ``selected_snapshot``.
+  See more information in the changelog of the protocol:
+  :doc:`../protocols/012_ithaca`
+
+- **Breaking change**: The node no longer stores large metadata.
+  RPC requesting this kind of metadata will return ``"too large"``.
+  To this end, a new storage version was introduced: 0.0.7 (previously
+  0.0.6). Upgrading from 0.0.6 to 0.0.7 is done automatically by the
+  node the first time you run it. This upgrade is
+  instantaneous. However, be careful that previous versions of Octez
+  will refuse to run on a data directory which was used with Octez
+  12.1 or later.
+
+- A new ``--force`` option was added to the ``transfer`` command. It
+  makes the client inject the transaction in a node even if the
+  simulation of the transaction fails.
+
+- Fixed a corner case where the mempool would propagate invalid operations.
+
+Baker
+-----
+
+- Fixed an incorrect behavior that could make the baker crash under
+  certain circumstances.
+
 Version 12.0
 ============
 
@@ -178,8 +244,8 @@ Node
   without having to restart the node. See also the new documentation pages
   related to logging.
 
-- Better handling of mempool cache in the `distributed_db` which
-  should make the `distributed_db` RAM consumption strongly
+- Better handling of mempool cache in the ``distributed_db`` which
+  should make the ``distributed_db`` RAM consumption strongly
   correlated to the one of the mempool.
 
 - Fixed RPC GET ``/chains/<chain_id>/mempool/filter``, that did not

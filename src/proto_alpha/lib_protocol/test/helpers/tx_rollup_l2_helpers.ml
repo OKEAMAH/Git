@@ -38,6 +38,8 @@ module Store = struct
     let inode_child_order = `Seeded_hash
 
     let contents_length_header = None
+
+    let forbid_empty_dir_persistence = true
   end
 
   open Irmin_pack_mem.Maker (Conf)
@@ -101,12 +103,12 @@ let gen_l2_address () =
     Bytes.init 32 (fun _ -> char_of_int @@ Random.State.int rng_state 255)
   in
   let secret_key = Bls12_381.Signature.generate_sk seed in
-  let public_key = Bls12_381.Signature.MinSig.derive_pk secret_key in
+  let public_key = Bls12_381.Signature.MinPk.derive_pk secret_key in
   (secret_key, public_key, Tx_rollup_l2_address.of_bls_pk public_key)
 
-(** [make_unit_ticket_key ctxt ticketer tx_rollup] computes the key hash of
-    the unit ticket crafted by [ticketer] and owned by [tx_rollup]. *)
-let make_unit_ticket_key ticketer tx_rollup =
+(** [make_unit_ticket_key ctxt ticketer l2_address] computes the key hash of
+    the unit ticket crafted by [ticketer] and owned by [l2_address]. *)
+let make_unit_ticket_key ticketer l2_address =
   let open Tezos_micheline.Micheline in
   let open Michelson_v1_primitives in
   let ticketer =
@@ -119,7 +121,7 @@ let make_unit_ticket_key ticketer tx_rollup =
   let ty = Prim (0, T_unit, [], []) in
   let contents = Prim (0, D_Unit, [], []) in
   let owner =
-    String (dummy_location, Tx_rollup_l2_address.to_b58check tx_rollup)
+    String (dummy_location, Tx_rollup_l2_address.to_b58check l2_address)
   in
   Alpha_context.Ticket_hash.Internal_for_tests.make_uncarbonated
     ~ticketer
@@ -168,7 +170,7 @@ let sign_transaction :
       transaction
   in
 
-  List.map (fun sk -> Bls12_381.Signature.MinSig.Aug.sign sk buf) sks
+  List.map (fun sk -> Bls12_381.Signature.MinPk.Aug.sign sk buf) sks
 
 type Environment.Error_monad.error += Test_error of string
 

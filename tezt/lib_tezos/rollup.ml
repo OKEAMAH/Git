@@ -23,8 +23,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Runnable.Syntax
+
 module Tx_rollup = struct
   type range = Empty of int | Interval of int * int
+
+  type commitments_hashes = {message_hash : string; commitment_hash : string}
 
   let pp_range fmt = function
     | Empty x -> Format.fprintf fmt "next: %d" x
@@ -38,6 +42,16 @@ module Tx_rollup = struct
       let head = JSON.(json |-> "newest" |> as_int) in
       Interval (tail, head)
 
+  let commitment_newest_hash_of_json json =
+    let open JSON in
+    if is_null json then None
+    else
+      Some
+        {
+          message_hash = json |-> "last_message_hash" |> as_string;
+          commitment_hash = json |-> "commitment_hash" |> as_string;
+        }
+
   type state = {
     finalized_commitments : range;
     unfinalized_commitments : range;
@@ -46,13 +60,100 @@ module Tx_rollup = struct
     commitment_newest_hash : string option;
     burn_per_byte : int;
     inbox_ema : int;
+    last_removed_commitment_hashes : commitments_hashes option;
   }
 
   type inbox = {inbox_length : int; cumulated_size : int; merkle_root : string}
 
-  type message = [`Batch of Hex.t]
+  type messages = {
+    count : int;
+    root : string;
+    last_message_result_hash : string;
+  }
+
+  type commitment = {
+    level : int;
+    messages : messages;
+    predecessor : string option;
+    inbox_merkle_root : string;
+  }
+
+  type submitted_commitment = {
+    commitment : commitment;
+    commitment_hash : string;
+    committer : string;
+    submitted_at : int;
+    finalized_at : int option;
+  }
+
+  type deposit_content = {
+    sender : string;
+    destination : string;
+    ticket_hash : string;
+    amount : int64;
+  }
+
+  type deposit = [`Deposit of deposit_content]
+
+  type batch = [`Batch of Hex.t]
+
+  type message = [deposit | batch]
 
   let make_batch batch = `Batch (Hex.of_string batch)
+
+  let make_deposit ~sender ~destination ~ticket_hash ~amount =
+    `Deposit {sender; destination; ticket_hash; amount}
+
+  let json_of_batch (`Hex message) = `O [("batch", `String message)]
+
+  let json_of_deposit {sender; destination; ticket_hash; amount} =
+    `O
+      [
+        ( "deposit",
+          `O
+            [
+              ("sender", `String sender);
+              ("destination", `String destination);
+              ("ticket_hash", `String ticket_hash);
+              ("amount", `String (Int64.to_string amount));
+            ] );
+      ]
+
+  let json_of_message = function
+    | `Batch batch -> json_of_batch batch
+    | `Deposit deposit -> json_of_deposit deposit
+
+  type withdraw = {claimer : string; ticket_hash : string; amount : int64}
+
+  let json_of_withdraw {claimer; ticket_hash; amount} =
+    `O
+      [
+        ("claimer", `String claimer);
+        ("ticket_hash", `String ticket_hash);
+        ("amount", `String (Int64.to_string amount));
+      ]
+
+  type ticket_dispatch_info = {
+    contents : string;
+    ty : string;
+    ticketer : string;
+    amount : int64;
+    claimer : string;
+  }
+
+  let get_json_of_ticket_dispatch_info {contents; ty; ticketer; amount; claimer}
+      client =
+    let* contents_json = Client.convert_data_to_json ~data:contents client in
+    let* ty_json = Client.convert_data_to_json ~data:ty client in
+    return
+      (`O
+        [
+          ("contents", contents_json);
+          ("ty", ty_json);
+          ("ticketer", `String ticketer);
+          ("amount", `String (Int64.to_string amount));
+          ("claimer", `String claimer);
+        ])
 
   let get_state ?hooks ~rollup client =
     let parse json =
@@ -71,6 +172,11 @@ module Tx_rollup = struct
       in
       let burn_per_byte = JSON.(json |-> "burn_per_byte" |> as_int) in
       let inbox_ema = JSON.(json |-> "inbox_ema" |> as_int) in
+      let last_removed_commitment_hashes =
+        JSON.(
+          json |-> "last_removed_commitment_hashes"
+          |> commitment_newest_hash_of_json)
+      in
       {
         finalized_commitments;
         unfinalized_commitments;
@@ -79,23 +185,51 @@ module Tx_rollup = struct
         commitment_newest_hash;
         burn_per_byte;
         inbox_ema;
+        last_removed_commitment_hashes;
       }
     in
-    let runnable = RPC.Tx_rollup.get_state ?hooks ~rollup client in
-    Process.runnable_map parse runnable
+    RPC.Tx_rollup.get_state ?hooks ~rollup client |> Runnable.map parse
 
   let get_inbox ?hooks ~rollup ~level client =
     let parse json =
-      let inbox_length = JSON.(json |-> "inbox_length" |> as_int) in
-      let cumulated_size = JSON.(json |-> "cumulated_size" |> as_int) in
-      let merkle_root = JSON.(json |-> "merkle_root" |> as_string) in
-      {inbox_length; cumulated_size; merkle_root}
+      if JSON.is_null json then None
+      else
+        let inbox_length = JSON.(json |-> "inbox_length" |> as_int) in
+        let cumulated_size = JSON.(json |-> "cumulated_size" |> as_int) in
+        let merkle_root = JSON.(json |-> "merkle_root" |> as_string) in
+        Some {inbox_length; cumulated_size; merkle_root}
     in
-    let runnable = RPC.Tx_rollup.get_inbox ?hooks ~rollup ~level client in
-    Process.runnable_map parse runnable
+    RPC.Tx_rollup.get_inbox ?hooks ~rollup ~level client |> Runnable.map parse
 
   let get_commitment ?hooks ?block ~rollup ~level client =
+    let parse json =
+      if JSON.is_null json then None
+      else
+        let commitment_json = JSON.(json |-> "commitment") in
+        let level = JSON.(commitment_json |-> "level" |> as_int) in
+        let messages_json = JSON.(commitment_json |-> "messages") in
+        let count = JSON.(messages_json |-> "count" |> as_int) in
+        let root = JSON.(messages_json |-> "root" |> as_string) in
+        let last_message_result_hash =
+          JSON.(messages_json |-> "last_message_result_hash" |> as_string)
+        in
+        let messages = {count; root; last_message_result_hash} in
+        let predecessor =
+          JSON.(commitment_json |-> "predecessor" |> as_string_opt)
+        in
+        let inbox_merkle_root =
+          JSON.(commitment_json |-> "inbox_merkle_root" |> as_string)
+        in
+        let commitment = {level; messages; predecessor; inbox_merkle_root} in
+        let commitment_hash = JSON.(json |-> "commitment_hash" |> as_string) in
+        let committer = JSON.(json |-> "committer" |> as_string) in
+        let submitted_at = JSON.(json |-> "submitted_at" |> as_int) in
+        let finalized_at = JSON.(json |-> "finalized_at" |> as_int_opt) in
+        Some
+          {commitment; commitment_hash; committer; submitted_at; finalized_at}
+    in
     RPC.Tx_rollup.get_commitment ?hooks ?block ~rollup ~level client
+    |> Runnable.map parse
 
   let get_pending_bonded_commitments ?hooks ?block ~rollup ~pkh client =
     RPC.Tx_rollup.get_pending_bonded_commitments
@@ -105,11 +239,11 @@ module Tx_rollup = struct
       ~pkh
       client
 
-  let message_hash ?hooks ~message:(`Batch (`Hex message) : message) client =
+  let message_hash ?hooks ~message client =
     let parse json = `Hash JSON.(json |-> "hash" |> as_string) in
-    let data : JSON.u = `O [("message", `O [("batch", `String message)])] in
-    let runnable = RPC.Tx_rollup.Forge.Inbox.message_hash ?hooks ~data client in
-    Process.runnable_map parse runnable
+    let data : JSON.u = `O [("message", json_of_message message)] in
+    RPC.Tx_rollup.Forge.Inbox.message_hash ?hooks ~data client
+    |> Runnable.map parse
 
   let inbox_merkle_tree_hash ?hooks ~message_hashes client =
     let parse json = `Hash JSON.(json |-> "hash" |> as_string) in
@@ -117,10 +251,8 @@ module Tx_rollup = struct
     let data =
       `O [("message_hashes", `A (List.map make_message message_hashes))]
     in
-    let runnable =
-      RPC.Tx_rollup.Forge.Inbox.merkle_tree_hash ?hooks ~data client
-    in
-    Process.runnable_map parse runnable
+    RPC.Tx_rollup.Forge.Inbox.merkle_tree_hash ?hooks ~data client
+    |> Runnable.map parse
 
   let inbox_merkle_tree_path ?hooks ~message_hashes ~position client =
     let parse json = JSON.(json |-> "path") in
@@ -132,10 +264,60 @@ module Tx_rollup = struct
           ("position", `Float (float_of_int position));
         ]
     in
-    let runnable =
-      RPC.Tx_rollup.Forge.Inbox.merkle_tree_path ?hooks ~data client
+    RPC.Tx_rollup.Forge.Inbox.merkle_tree_path ?hooks ~data client
+    |> Runnable.map parse
+
+  let commitment_merkle_tree_hash ?hooks ~message_result_hashes client =
+    let parse json = `Hash JSON.(json |-> "hash" |> as_string) in
+    let make_message (`Hash message) : JSON.u = `String message in
+    let data =
+      `O
+        [
+          ( "message_result_hashes",
+            `A (List.map make_message message_result_hashes) );
+        ]
     in
-    Process.runnable_map parse runnable
+    let runnable =
+      RPC.Tx_rollup.Forge.Commitment.merkle_tree_hash ?hooks ~data client
+    in
+    Runnable.map parse runnable
+
+  let commitment_merkle_tree_path ?hooks ~message_result_hashes ~position client
+      =
+    let parse json = JSON.(json |-> "path") in
+    let make_message (`Hash message) : JSON.u = `String message in
+    let data =
+      `O
+        [
+          ( "message_result_hashes",
+            `A (List.map make_message message_result_hashes) );
+          ("position", `Float (float_of_int position));
+        ]
+    in
+    let runnable =
+      RPC.Tx_rollup.Forge.Commitment.merkle_tree_path ?hooks ~data client
+    in
+    Runnable.map parse runnable
+
+  let withdraw_list_hash ?hooks ~withdrawals client =
+    let parse json = JSON.(json |-> "hash" |> as_string) in
+    let data =
+      `O [("withdraw_list", `A (List.map json_of_withdraw withdrawals))]
+    in
+    RPC.Tx_rollup.Forge.Withdraw.withdraw_list_hash ?hooks ~data client
+    |> Runnable.map parse
+
+  let message_result_hash ?hooks ~context_hash ~withdraw_list_hash client =
+    let parse json = JSON.(json |-> "hash" |> as_string) in
+    let data =
+      `O
+        [
+          ("context_hash", `String context_hash);
+          ("withdraw_list_hash", `String withdraw_list_hash);
+        ]
+    in
+    RPC.Tx_rollup.Forge.Commitment.message_result_hash ?hooks ~data client
+    |> Runnable.map parse
 
   let compute_inbox_from_messages ?hooks messages client =
     let* message_hashes =
@@ -153,10 +335,18 @@ module Tx_rollup = struct
         inbox_length = List.length messages;
         cumulated_size =
           List.map
-            (fun (`Batch (`Hex message)) ->
-              (* In the Hex reprensatated as a string, a byte is
-                 encoded using two characters. *)
-              String.length message / 2)
+            (function
+              | `Batch (`Hex message) ->
+                  (* In the Hex represented as a string, a byte is
+                     encoded using two characters. *)
+                  String.length message / 2
+              | `Deposit _ ->
+                  let sender_pkh_size = 65 in
+                  let destination_bls_pkh_size = 36 in
+                  let ticket_hash_size = 32 in
+                  let amount_size = 8 in
+                  sender_pkh_size + destination_bls_pkh_size + ticket_hash_size
+                  + amount_size)
             messages
           |> List.fold_left ( + ) 0;
         merkle_root;
@@ -169,11 +359,12 @@ module Tx_rollup = struct
       let open Check in
       convert
         (fun {
+               last_removed_commitment_hashes;
                finalized_commitments;
                unfinalized_commitments;
                uncommitted_inboxes;
-               tezos_head_level;
                commitment_newest_hash;
+               tezos_head_level;
                burn_per_byte;
                inbox_ema;
              } ->
@@ -181,8 +372,21 @@ module Tx_rollup = struct
             unfinalized_commitments,
             uncommitted_inboxes,
             tezos_head_level,
-            (commitment_newest_hash, burn_per_byte, inbox_ema) ))
-        (tuple5 range range range (option int) (tuple3 (option string) int int))
+            commitment_newest_hash,
+            burn_per_byte,
+            inbox_ema,
+            Option.map
+              (function r -> (r.message_hash, r.commitment_hash))
+              last_removed_commitment_hashes ))
+        (tuple8
+           range
+           range
+           range
+           (option int)
+           (option string)
+           int
+           int
+           (option (tuple2 string string)))
 
     let inbox : inbox Check.typ =
       let open Check in
@@ -190,6 +394,43 @@ module Tx_rollup = struct
         (fun {inbox_length; cumulated_size; merkle_root} ->
           (inbox_length, cumulated_size, merkle_root))
         (tuple3 int int string)
+
+    let commitment : submitted_commitment Check.typ =
+      let open Check in
+      convert
+        (fun {
+               commitment =
+                 {
+                   level;
+                   messages = {count; root; last_message_result_hash};
+                   predecessor;
+                   inbox_merkle_root;
+                 };
+               commitment_hash;
+               committer;
+               submitted_at;
+               finalized_at;
+             } ->
+          ( ( level,
+              (count, root, last_message_result_hash),
+              predecessor,
+              inbox_merkle_root ),
+            commitment_hash,
+            committer,
+            submitted_at,
+            finalized_at ))
+        (tuple5
+           (tuple4 int (tuple3 int string string) (option string) string)
+           string
+           string
+           int
+           (option int))
+
+    let commitments_hashes : commitments_hashes Check.typ =
+      let open Check in
+      convert
+        (fun r -> (r.message_hash, r.commitment_hash))
+        (tuple2 string string)
   end
 
   module Parameters = struct

@@ -156,7 +156,7 @@ class TestManager:
         utils.bake(client, bake_for='bootstrap5')
         new_balance = client.get_mutez_balance('manager')
         new_balance_bootstrap = client.get_mutez_balance('bootstrap2')
-        fee = 0.000585
+        fee = 0.000587
         fee_mutez = utils.mutez_of_tez(fee)
         assert balance - amount_mutez == new_balance
         assert (
@@ -180,7 +180,7 @@ class TestManager:
         new_balance = client.get_mutez_balance('manager')
         new_balance_dest = client.get_mutez_balance('manager2')
         new_balance_bootstrap = client.get_mutez_balance('bootstrap2')
-        fee = 0.000787
+        fee = 0.000731
         fee_mutez = utils.mutez_of_tez(fee)
         assert balance - amount_mutez == new_balance
         assert balance_dest + amount_mutez == new_balance_dest
@@ -539,7 +539,7 @@ class TestContracts:
             # error message for set update on non-comparable type
             (
                 "set_update_non_comparable.tz",
-                r'Type nat is not compatible with type list operation',
+                r'Type nat\s+is not compatible with type list operation',
             ),
             # error message for the arity of the chain_id type
             (
@@ -550,11 +550,6 @@ class TestContracts:
             ("big_dip.tz", r'expected a positive 10-bit integer'),
             # error message for DROP over the limit
             ("big_drop.tz", r'expected a positive 10-bit integer'),
-            # error message for set update on non-comparable type
-            (
-                "set_update_non_comparable.tz",
-                r'Type nat is not compatible with type list operation',
-            ),
             # error message for attempting to push a value of type never
             ("never_literal.tz", r'type never has no inhabitant.'),
             # COMB, UNCOMB, and DUP cannot take 0 as argument
@@ -2345,5 +2340,65 @@ class TestOriginateContractFromContract:
             'bootstrap2',
             'originate_contract',
             ['--arg', 'Unit', '--burn-cap', '2'],
+        )
+        utils.bake(client, 'bootstrap5')
+
+
+@pytest.mark.incremental
+@pytest.mark.contract
+@pytest.mark.regression
+class TestCreateRemoveTickets:
+    def test_add_clear_tickets_origination(
+        self, client_regtest_scrubbed, session
+    ):
+        client = client_regtest_scrubbed
+        path = os.path.join(
+            CONTRACT_PATH, 'mini_scenarios', 'add_clear_tickets.tz'
+        )
+        originate(client, session, path, '{}', 200)
+
+    def test_add_clear_tickets_add_first_transfer(
+        self, client_regtest_scrubbed
+    ):
+        client = client_regtest_scrubbed
+        client.transfer(
+            0,
+            'bootstrap2',
+            'add_clear_tickets',
+            ['--entrypoint', 'add', '--arg', 'Pair 1 "A"', '--burn-cap', '2'],
+        )
+        utils.bake(client, 'bootstrap5')
+
+    def test_add_clear_tickets_clear_transfer(self, client_regtest_scrubbed):
+        client = client_regtest_scrubbed
+        client.transfer(
+            0,
+            'bootstrap2',
+            'add_clear_tickets',
+            ['--entrypoint', 'clear', '--arg', 'Unit', '--burn-cap', '2'],
+        )
+        utils.bake(client, 'bootstrap5')
+
+    def test_add_clear_tickets_add_second_transfer(
+        self, client_regtest_scrubbed
+    ):
+        client = client_regtest_scrubbed
+        client.transfer(
+            0,
+            'bootstrap2',
+            'add_clear_tickets',
+            ['--entrypoint', 'add', '--arg', 'Pair 1 "B"', '--burn-cap', '2'],
+        )
+        utils.bake(client, 'bootstrap5')
+
+    def test_add_clear_tickets_add_third_transfer(
+        self, client_regtest_scrubbed
+    ):
+        client = client_regtest_scrubbed
+        client.transfer(
+            0,
+            'bootstrap2',
+            'add_clear_tickets',
+            ['--entrypoint', 'add', '--arg', 'Pair 1 "C"', '--burn-cap', '2'],
         )
         utils.bake(client, 'bootstrap5')

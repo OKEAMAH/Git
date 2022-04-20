@@ -143,9 +143,21 @@ let bytes_of_prefixed_string s =
 let bytes_parameter = parameter (fun _ s -> bytes_of_prefixed_string s)
 
 let data_parameter =
-  parameter (fun _ data ->
-      Lwt.return @@ Tezos_micheline.Micheline_parser.no_parsing_error
-      @@ Michelson_v1_parser.parse_expression data)
+  let open Lwt_syntax in
+  let parse input =
+    return @@ Tezos_micheline.Micheline_parser.no_parsing_error
+    @@ Michelson_v1_parser.parse_expression input
+  in
+  parameter (fun (cctxt : #Client_context.full) ->
+      Client_aliases.parse_alternatives
+        [
+          ( "file",
+            fun filename ->
+              let open Lwt_result_syntax in
+              let* input = catch_es (fun () -> cctxt#read_file filename) in
+              parse input );
+          ("text", parse);
+        ])
 
 let entrypoint_parameter =
   parameter (fun _ str ->
@@ -260,6 +272,17 @@ let tez_param ~name ~desc next =
     ~desc:(desc ^ " in \xEA\x9C\xA9\n" ^ tez_format)
     (tez_parameter name)
     next
+
+let non_negative_z_parameter =
+  parameter (fun _ s ->
+      try
+        let v = Z.of_string s in
+        assert (Compare.Z.(v >= Z.zero)) ;
+        return v
+      with _ -> failwith "Invalid number, must be a non negative number.")
+
+let non_negative_z_param ~name ~desc next =
+  Clic.param ~name ~desc non_negative_z_parameter next
 
 let fee_arg =
   arg
@@ -376,13 +399,7 @@ let counter_arg =
     ~short:'C'
     ~placeholder:"counter"
     ~doc:"Set the counter to be used by the transaction"
-    (parameter (fun _ s ->
-         try
-           let v = Z.of_string s in
-           assert (Compare.Z.(v >= Z.zero)) ;
-           return v
-         with _ ->
-           failwith "invalid counter (must be a positive number of bytes)"))
+    non_negative_z_parameter
 
 let max_priority_arg =
   arg

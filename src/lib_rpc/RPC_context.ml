@@ -113,19 +113,19 @@ let not_found s p q =
   let {RPC_service.meth; uri; _} =
     RPC_service.forge_partial_request s ~base p q
   in
-  Lwt_tzresult_syntax.fail (Not_found {meth; uri})
+  Lwt_result_syntax.tzfail (Not_found {meth; uri})
 
 let gone s p q =
   let {RPC_service.meth; uri; _} =
     RPC_service.forge_partial_request s ~base p q
   in
-  Lwt_tzresult_syntax.fail (Gone {meth; uri})
+  Lwt_result_syntax.tzfail (Gone {meth; uri})
 
 let error_with s p q =
   let {RPC_service.meth; uri; _} =
     RPC_service.forge_partial_request s ~base p q
   in
-  Lwt_tzresult_syntax.fail (Generic_error {meth; uri})
+  Lwt_result_syntax.tzfail (Generic_error {meth; uri})
 
 class ['pr] of_directory (dir : 'pr RPC_directory.t) =
   object
@@ -229,7 +229,17 @@ let make_streamed_call s (ctxt : #streamed) p q i =
   let open Lwt_result_syntax in
   let (stream, push) = Lwt_stream.create () in
   let on_chunk v = push (Some v) and on_close () = push None in
-  let* close = ctxt#call_streamed_service s ~on_chunk ~on_close p q i in
+  let* spill_all = ctxt#call_streamed_service s ~on_chunk ~on_close p q i in
+  let close () =
+    spill_all () ;
+    (* Resto returns a function which is essentially
+       [Lwt_stream.junk_while (Fun.const true)], but the function doesn't
+       actually close the stream, nor does it uninstalls handlers. Hence we
+       need to call [on_close] here.
+       Before we close, we check wether the stream has been closed (by one of
+       the values being junked). *)
+    if Lwt_stream.is_closed stream then () else on_close ()
+  in
   return (stream, close)
 
 let () =

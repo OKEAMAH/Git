@@ -1,9 +1,8 @@
 ; This file was automatically generated, do not edit.
 ; Edit file manifest/main.ml instead.
 
-(tests
+(executables
  (names test_hacl test_prop_hacl_hash test_prop_signature_pk)
- (package tezos-hacl)
  (modes native js)
  (libraries
   tezos-stdlib
@@ -24,35 +23,44 @@
  (modules (:standard \ test)))
 
 (rule
- (alias runtest_js)
+ (alias runtest)
  (package tezos-hacl)
- (locks npm)
- (action
-  (run
-   %{dep:../../tooling/node_wrapper.exe} --hacl 1.1.0
-   %{dep:./test_hacl.bc.js})))
+ (action (run %{dep:./test_hacl.exe})))
+
+(rule
+ (alias runtest)
+ (package tezos-hacl)
+ (action (run %{dep:./test_prop_hacl_hash.exe})))
+
+(rule
+ (alias runtest)
+ (package tezos-hacl)
+ (action (run %{dep:./test_prop_signature_pk.exe})))
 
 (rule
  (alias runtest_js)
  (package tezos-hacl)
- (locks npm)
+ (action
+  (run %{dep:../../tooling/node_wrapper.exe} --hacl %{dep:./test_hacl.bc.js})))
+
+(rule
+ (alias runtest_js)
+ (package tezos-hacl)
  (action
   (run
-   %{dep:../../tooling/node_wrapper.exe} --hacl 1.1.0
+   %{dep:../../tooling/node_wrapper.exe} --hacl
    %{dep:./test_prop_hacl_hash.bc.js})))
 
 (rule
  (alias runtest_js)
  (package tezos-hacl)
- (locks npm)
  (action
   (run
-   %{dep:../../tooling/node_wrapper.exe} --hacl 1.1.0
+   %{dep:../../tooling/node_wrapper.exe} --hacl
    %{dep:./test_prop_signature_pk.bc.js})))
 
-(test
+(executable
  (name test)
- (package tezos-hacl)
  (modes native js)
  (libraries
   tezos-stdlib
@@ -66,9 +74,10 @@
  (js_of_ocaml)
  (modules test))
 
+(rule (alias runtest) (package tezos-hacl) (action (run %{dep:./test.exe})))
+
 (rule
  (alias runtest_js)
  (package tezos-hacl)
- (locks npm)
  (action
-  (run %{dep:../../tooling/node_wrapper.exe} --hacl 1.1.0 %{dep:./test.bc.js})))
+  (run %{dep:../../tooling/node_wrapper.exe} --hacl %{dep:./test.bc.js})))

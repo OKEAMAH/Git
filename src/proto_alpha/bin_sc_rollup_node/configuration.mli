@@ -26,6 +26,7 @@
 type t = {
   data_dir : string;
   sc_rollup_address : Protocol.Alpha_context.Sc_rollup.t;
+  sc_rollup_node_operator : Signature.Public_key_hash.t;
   rpc_addr : string;
   rpc_port : int;
 }
@@ -38,6 +39,8 @@ val default_rpc_addr : string
 
 (** [default_rpc_port] is the default value for [rpc_port]. *)
 val default_rpc_port : int
+
+val default_fee_parameter : Injection.fee_parameter
 
 (** [filename configuration] returns the [configuration] filename. *)
 val filename : t -> string

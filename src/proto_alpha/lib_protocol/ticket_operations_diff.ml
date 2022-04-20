@@ -66,18 +66,25 @@ let () =
     (fun () -> Contract_not_originated)
 
 (** A carbonated map where the keys are destination (contract or tx_rollup). *)
-module Destination_map = Carbonated_map.Make (struct
-  type t = Destination.t
+module Destination_map =
+  Carbonated_map.Make
+    (struct
+      type context = Alpha_context.context
 
-  let compare = Destination.compare
+      let consume = Alpha_context.Gas.consume
+    end)
+    (struct
+      type t = Destination.t
 
-  (* TODO: #2667
-     Change cost-function to one for comparing destinations.
-     Not expected to have any performance impact but we should update for
-     completeness.
-  *)
-  let compare_cost _ = Ticket_costs.Constants.cost_compare_key_contract
-end)
+      let compare = Destination.compare
+
+      (* TODO: #2667
+         Change cost-function to one for comparing destinations.
+         Not expected to have any performance impact but we should update for
+         completeness.
+      *)
+      let compare_cost _ = Ticket_costs.Constants.cost_compare_key_contract
+    end)
 
 (** A module for mapping ticket-tokens to a map of contract destinations and
     amounts. The values specify how to distribute the spending of a ticket-token
@@ -199,7 +206,7 @@ let tickets_of_transaction ctxt ~destination ~entrypoint ~location
            entrypoints
            entrypoint)
       >>?= fun (res, ctxt) ->
-      res >>?= fun (Ex_ty_cstr (entry_arg_ty, _f)) ->
+      res >>?= fun (Ex_ty_cstr {ty = entry_arg_ty; _}) ->
       Ticket_scanner.type_has_tickets ctxt entry_arg_ty
       >>?= fun (has_tickets, ctxt) ->
       (* Check that the parameter's type matches that of the entry-point, and
@@ -220,17 +227,7 @@ let tickets_of_transaction ctxt ~destination ~entrypoint ~location
       return (Some {destination = Contract destination; tickets}, ctxt)
 
 (** Extract tickets of an origination operation by scanning the storage. *)
-let tickets_of_origination ctxt ~preorigination
-    (Script_typed_ir.Script
-      {
-        storage_type;
-        storage;
-        code = _;
-        arg_type = _;
-        views = _;
-        entrypoints = _;
-        code_size = _;
-      }) =
+let tickets_of_origination ctxt ~preorigination ~storage_type ~storage =
   (* Extract any tickets from the storage. Note that if the type of the contract
      storage does not contain tickets, storage is not scanned. *)
   Ticket_scanner.type_has_tickets ctxt storage_type
@@ -290,9 +287,10 @@ let tickets_of_operation ctxt
       {
         origination = {delegate = _; script = _; credit = _};
         preorigination;
-        script;
+        storage_type;
+        storage;
       } ->
-      tickets_of_origination ctxt ~preorigination script
+      tickets_of_origination ctxt ~preorigination ~storage_type ~storage
   | Delegation _ -> return (None, ctxt)
 
 let add_transfer_to_token_map ctxt token_map {destination; tickets} =

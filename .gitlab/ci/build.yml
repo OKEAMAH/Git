@@ -21,7 +21,7 @@
     # build artifacts.
     - dune build $COVERAGE_OPTIONS @runtest_dune_template
     # 2. Actually build
-    - make all build-sandbox
+    - make all build-sandbox build-unreleased
     # 3. Also build the tps evaluation tool which is not part of the default build.
     - dune build $COVERAGE_OPTIONS src/bin_tps_evaluation
     # 4. clean-up caches before uploading the cache
@@ -89,7 +89,9 @@ build_x86_64:
 
 # arm64 static binaries are built in the stage `build_release` and only for master and releases.
 build:static-x86_64-linux-binaries:
-  extends: .build_static_binaries_template
+  extends:
+    - .build_static_binaries_template
+    - .rules_template__not_on_latest_release
   script:
     - sudo apk --no-cache --virtual add upx
     # Compress resulting binaries
@@ -97,6 +99,7 @@ build:static-x86_64-linux-binaries:
   variables:
     ARCH: "x86_64"
   stage: build
+  needs: []
 
 build:static-arm64-linux-binaries:
   extends:
@@ -109,3 +112,4 @@ build:static-arm64-linux-binaries:
     - echo "No compression for now"
   tags:
     - arm64
+  needs: []

@@ -14,7 +14,7 @@ depends: [
   "integers_stubs_js"
   "ctypes" { >= "0.18.0" }
   "ctypes_stubs_js"
-  "data-encoding" { >= "0.5.1" & < "0.6" }
+  "data-encoding" { >= "0.5.3" & < "0.6" }
   "tezos-stdlib"
   "tezos-crypto"
   "tezos-error-monad"
@@ -25,6 +25,9 @@ depends: [
   "tezos-base-test-helpers" {with-test}
   "alcotest-lwt" { with-test & >= "1.5.0" }
   "tezos-hacl" {with-test}
+]
+x-opam-monorepo-opam-provided: [
+  "tezos-rust-libs"
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]

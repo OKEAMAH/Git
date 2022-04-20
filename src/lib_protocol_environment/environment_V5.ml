@@ -96,8 +96,8 @@ module type V5 = sig
        and type Timelock.chest_key = Timelock.chest_key
        and type Timelock.opening_result = Timelock.opening_result
        and module Sapling = Tezos_sapling.Core.Validator
-       and type Bls_signature.pk = Bls12_381.Signature.MinSig.pk
-       and type Bls_signature.signature = Bls12_381.Signature.MinSig.signature
+       and type Bls_signature.pk = Bls12_381.Signature.MinPk.pk
+       and type Bls_signature.signature = Bls12_381.Signature.MinPk.signature
        and type ('a, 'b) Either.t = ('a, 'b) Stdlib.Either.t
 
   type error += Ecoproto_error of Error_monad.error
@@ -269,7 +269,7 @@ struct
   end
 
   module Bls_signature = struct
-    include Bls12_381.Signature.MinSig
+    include Bls12_381.Signature.MinPk
 
     let verify = Aug.verify
 
@@ -682,10 +682,16 @@ struct
     module Tzresult_syntax = Traced_result_syntax
     module Lwt_tzresult_syntax = Lwt_traced_result_syntax
     include
-      Tezos_error_monad.Monad_extension_maker.Make (Error_core) (TzTrace)
+      Tezos_error_monad.Monad_maker.Make (Error_core) (TzTrace)
         (Tezos_error_monad.TzLwtreslib.Monad)
 
     (* Backwards compatibility additions (dont_wait, trace helpers) *)
+    include Tezos_protocol_environment_structs.V5.M.Error_monad_infix_globals
+
+    let fail e = Lwt.return_error (TzTrace.make e)
+
+    let error e = Error (TzTrace.make e)
+
     let dont_wait ex er f = dont_wait f er ex
 
     let trace_of_error e = TzTrace.make e
@@ -728,11 +734,11 @@ struct
       let+ r = Result.catch_s ?catch_only f in
       Result.map_error (fun e -> error_of_exn e) r
 
-    let both_e = Tzresult_syntax.both
+    let both_e = Tezos_error_monad.TzLwtreslib.Monad.Traced_result_syntax.both
 
-    let join_e = Tzresult_syntax.join
+    let join_e = Tezos_error_monad.TzLwtreslib.Monad.Traced_result_syntax.join
 
-    let all_e = Tzresult_syntax.all
+    let all_e = Tezos_error_monad.TzLwtreslib.Monad.Traced_result_syntax.all
   end
 
   let () =

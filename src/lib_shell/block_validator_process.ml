@@ -28,6 +28,7 @@
 type validator_environment = {
   user_activated_upgrades : User_activated.upgrades;
   user_activated_protocol_overrides : User_activated.protocol_overrides;
+  operation_metadata_size_limit : int option;
 }
 
 type validator_kind =
@@ -142,6 +143,7 @@ module Internal_validator_process = struct
     chain_store : Store.chain_store;
     user_activated_upgrades : User_activated.upgrades;
     user_activated_protocol_overrides : User_activated.protocol_overrides;
+    operation_metadata_size_limit : int option;
     (*
        The cache must be updated by the component that owns the
        context, i.e., the component that has the writing permissions
@@ -154,7 +156,11 @@ module Internal_validator_process = struct
   }
 
   let init
-      ({user_activated_upgrades; user_activated_protocol_overrides; _} :
+      ({
+         user_activated_upgrades;
+         user_activated_protocol_overrides;
+         operation_metadata_size_limit;
+       } :
         validator_environment) chain_store =
     let open Lwt_syntax in
     let* () = Events.(emit init ()) in
@@ -163,6 +169,7 @@ module Internal_validator_process = struct
         chain_store;
         user_activated_upgrades;
         user_activated_protocol_overrides;
+        operation_metadata_size_limit;
         cache = None;
         preapply_result = None;
       }
@@ -173,9 +180,13 @@ module Internal_validator_process = struct
     Store.context_index (Store.Chain.global_store chain_store)
 
   let make_apply_environment
-      {user_activated_upgrades; user_activated_protocol_overrides; _}
-      chain_store predecessor max_operations_ttl =
-    let open Lwt_tzresult_syntax in
+      {
+        user_activated_upgrades;
+        user_activated_protocol_overrides;
+        operation_metadata_size_limit;
+        _;
+      } chain_store predecessor max_operations_ttl =
+    let open Lwt_result_syntax in
     let chain_id = Store.Chain.chain_id chain_store in
     let predecessor_block_header = Store.Block.header predecessor in
     let context_hash = predecessor_block_header.shell.context in
@@ -184,7 +195,8 @@ module Internal_validator_process = struct
       let*! o = Context.checkout context_index context_hash in
       match o with
       | None ->
-          fail (Block_validator_errors.Failed_to_checkout_context context_hash)
+          tzfail
+            (Block_validator_errors.Failed_to_checkout_context context_hash)
       | Some ctx -> return ctx
     in
     let predecessor_block_metadata_hash =
@@ -203,11 +215,12 @@ module Internal_validator_process = struct
         predecessor_context;
         user_activated_upgrades;
         user_activated_protocol_overrides;
+        operation_metadata_size_limit;
       }
 
   let apply_block validator chain_store ~predecessor ~max_operations_ttl
       block_header operations =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let* env =
       make_apply_environment
         validator
@@ -245,7 +258,7 @@ module Internal_validator_process = struct
       ~live_operations ~predecessor_shell_header ~predecessor_hash
       ~predecessor_max_operations_ttl ~predecessor_block_metadata_hash
       ~predecessor_ops_metadata_hash operations =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let context_index =
       Store.context_index (Store.Chain.global_store validator.chain_store)
     in
@@ -254,18 +267,23 @@ module Internal_validator_process = struct
       let*! o = Context.checkout context_index context_hash in
       match o with
       | None ->
-          fail (Block_validator_errors.Failed_to_checkout_context context_hash)
+          tzfail
+            (Block_validator_errors.Failed_to_checkout_context context_hash)
       | Some ctx -> return ctx
     in
     let user_activated_upgrades = validator.user_activated_upgrades in
     let user_activated_protocol_overrides =
       validator.user_activated_protocol_overrides
     in
+    let operation_metadata_size_limit =
+      validator.operation_metadata_size_limit
+    in
     let* (result, apply_result) =
       Block_validation.preapply
         ~chain_id
         ~user_activated_upgrades
         ~user_activated_protocol_overrides
+        ~operation_metadata_size_limit
         ~timestamp
         ~protocol_data
         ~live_blocks
@@ -283,7 +301,7 @@ module Internal_validator_process = struct
 
   let precheck_block validator chain_store ~predecessor header _hash operations
       =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let chain_id = Store.Chain.chain_id chain_store in
     let context_index =
       Store.context_index (Store.Chain.global_store validator.chain_store)
@@ -294,7 +312,8 @@ module Internal_validator_process = struct
       let*! o = Context.checkout context_index context_hash in
       match o with
       | None ->
-          fail (Block_validator_errors.Failed_to_checkout_context context_hash)
+          tzfail
+            (Block_validator_errors.Failed_to_checkout_context context_hash)
       | Some ctx -> return ctx
     in
     let cache =
@@ -323,12 +342,12 @@ module Internal_validator_process = struct
       ~protocol:genesis.protocol
 
   let init_test_chain validator forking_block =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let forked_header = Store.Block.header forking_block in
     let* context = Store.Block.context validator.chain_store forking_block in
     Block_validation.init_test_chain context forked_header
 
-  let reconfigure_event_logging _ _ = Lwt_tzresult_syntax.return_unit
+  let reconfigure_event_logging _ _ = Lwt_result_syntax.return_unit
 end
 
 (** Block validation using an external process *)
@@ -487,6 +506,7 @@ module External_validator_process = struct
     protocol_root : string;
     user_activated_upgrades : User_activated.upgrades;
     user_activated_protocol_overrides : User_activated.protocol_overrides;
+    operation_metadata_size_limit : int option;
     process_path : string;
     mutable validator_process : process_status;
     lock : Lwt_mutex.t;
@@ -509,7 +529,7 @@ module External_validator_process = struct
     | Some _ | None -> Filename.get_temp_dir_name ()
 
   let start_process vp =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let canceler = Lwt_canceler.create () in
     (* We assume that there is only one validation process per socket *)
     let socket_dir = get_temporary_socket_dir () in
@@ -580,6 +600,7 @@ module External_validator_process = struct
         genesis = vp.genesis;
         user_activated_upgrades = vp.user_activated_upgrades;
         user_activated_protocol_overrides = vp.user_activated_protocol_overrides;
+        operation_metadata_size_limit = vp.operation_metadata_size_limit;
       }
     in
     vp.validator_process <-
@@ -615,7 +636,7 @@ module External_validator_process = struct
     return (process, process_stdin, process_stdout)
 
   let send_request vp request result_encoding =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let* (process, process_stdin, process_stdout) =
       match vp.validator_process with
       | Running
@@ -637,7 +658,7 @@ module External_validator_process = struct
       | Uninitialized -> start_process vp
       | Exiting ->
           let*! () = Events.(emit cannot_start_process ()) in
-          fail Block_validator_errors.Cannot_validate_while_shutting_down
+          tzfail Block_validator_errors.Cannot_validate_while_shutting_down
     in
     Lwt.catch
       (fun () ->
@@ -683,10 +704,15 @@ module External_validator_process = struct
         fail_with_exn exn)
 
   let init
-      ({user_activated_upgrades; user_activated_protocol_overrides} :
+      ({
+         user_activated_upgrades;
+         user_activated_protocol_overrides;
+         operation_metadata_size_limit;
+         _;
+       } :
         validator_environment) ~genesis ~data_dir ~context_root ~protocol_root
       ~process_path ~sandbox_parameters =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let*! () = Events.(emit init ()) in
     let validator =
       {
@@ -696,6 +722,7 @@ module External_validator_process = struct
         protocol_root;
         user_activated_upgrades;
         user_activated_protocol_overrides;
+        operation_metadata_size_limit;
         process_path;
         validator_process = Uninitialized;
         lock = Lwt_mutex.create ();
@@ -839,7 +866,7 @@ module External_validator_process = struct
 end
 
 let init validator_environment validator_kind =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   match validator_kind with
   | Internal chain_store ->
       let* (validator : 'a) =
@@ -881,7 +908,7 @@ let reconfigure_event_logging (E {validator_process = (module VP); validator})
 
 let apply_block (E {validator_process = (module VP); validator}) chain_store
     ~predecessor header operations =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* metadata = Store.Block.get_block_metadata chain_store predecessor in
   let max_operations_ttl = Store.Block.max_operations_ttl metadata in
   let* (live_blocks, live_operations) =
@@ -916,7 +943,7 @@ let init_test_chain (E {validator_process = (module VP); validator})
 
 let preapply_block (E {validator_process = (module VP); validator} : t)
     chain_store ~predecessor ~protocol_data ~timestamp operations =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let chain_id = Store.Chain.chain_id chain_store in
   let* (live_blocks, live_operations) =
     Store.Chain.compute_live_blocks chain_store ~block:predecessor

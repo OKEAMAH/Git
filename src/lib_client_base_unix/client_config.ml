@@ -35,6 +35,7 @@ type cli_args = {
   protocol : Protocol_hash.t option;
   print_timings : bool;
   log_requests : bool;
+  better_errors : bool;
   client_mode : client_mode;
 }
 
@@ -318,6 +319,7 @@ let default_cli_args =
     protocol = None;
     print_timings = false;
     log_requests = false;
+    better_errors = false;
     client_mode = `Mode_client;
   }
 
@@ -328,33 +330,33 @@ let string_parameter () : (string, #Client_context.full) parameter =
 
 let media_type_parameter () :
     (Media_type.Command_line.t, #Client_context.full) parameter =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   parameter (fun _ x ->
       match Media_type.Command_line.parse_cli_parameter x with
       | Some v -> return v
-      | None -> fail (Invalid_media_type_arg x))
+      | None -> tzfail (Invalid_media_type_arg x))
 
 let endpoint_parameter () =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   parameter (fun _ x ->
       let parsed = Uri.of_string x in
       let* _ =
         match Uri.scheme parsed with
         | Some "http" | Some "https" -> return ()
         | _ ->
-            fail
+            tzfail
               (Invalid_endpoint_arg
                  ("only http and https endpoints are supported: " ^ x))
       in
       match (Uri.query parsed, Uri.fragment parsed) with
       | ([], None) -> return parsed
       | _ ->
-          fail
+          tzfail
             (Invalid_endpoint_arg
                ("endpoint uri should not have query string or fragment: " ^ x)))
 
 let sources_parameter () =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   parameter (fun _ path ->
       let*! r = Lwt_utils_unix.Json.read_file path in
       match r with
@@ -378,31 +380,31 @@ let sources_parameter () =
 
 let chain_parameter () =
   parameter (fun _ chain ->
-      let open Lwt_tzresult_syntax in
+      let open Lwt_result_syntax in
       match Chain_services.parse_chain chain with
-      | Error _ -> fail (Invalid_chain_argument chain)
+      | Error _ -> tzfail (Invalid_chain_argument chain)
       | Ok chain -> return chain)
 
 let block_parameter () =
   parameter (fun _ block ->
-      let open Lwt_tzresult_syntax in
+      let open Lwt_result_syntax in
       match Block_services.parse_block block with
-      | Error _ -> fail (Invalid_block_argument block)
+      | Error _ -> tzfail (Invalid_block_argument block)
       | Ok block -> return block)
 
 let wait_parameter () =
   parameter (fun _ wait ->
-      let open Lwt_tzresult_syntax in
+      let open Lwt_result_syntax in
       match wait with
       | "no" | "none" -> return_none
       | _ -> (
           match int_of_string_opt wait with
           | Some w when 0 <= w -> return_some w
-          | None | Some _ -> fail (Invalid_wait_arg wait)))
+          | None | Some _ -> tzfail (Invalid_wait_arg wait)))
 
 let protocol_parameter () =
   parameter (fun _ arg ->
-      let open Lwt_tzresult_syntax in
+      let open Lwt_result_syntax in
       match
         Seq.filter
           (fun (hash, _commands) ->
@@ -411,7 +413,7 @@ let protocol_parameter () =
         @@ ()
       with
       | Cons ((hash, _commands), _) -> return_some hash
-      | Nil -> fail (Invalid_protocol_argument arg))
+      | Nil -> tzfail (Invalid_protocol_argument arg))
 
 (* Command-line only args (not in config file) *)
 let base_dir_arg () =
@@ -448,8 +450,9 @@ let chain_arg () =
     ~long:"chain"
     ~placeholder:"hash|tag"
     ~doc:
-      "chain on which to apply contextual commands (possible tags are 'main' \
-       and 'test')"
+      "chain on which to apply contextual commands (commands dependent on the \
+       context associated with the specified chain). Possible tags are 'main' \
+       and 'test'."
     ~default:(Chain_services.to_string default_cli_args.chain)
     (chain_parameter ())
 
@@ -457,10 +460,13 @@ let block_arg () =
   default_arg
     ~long:"block"
     ~short:'b'
-    ~placeholder:"hash|tag"
+    ~placeholder:"hash|level|tag"
     ~doc:
-      "block on which to apply contextual commands (possible tags are 'head' \
-       and 'genesis')"
+      "block on which to apply contextual commands (commands dependent on the \
+       context associated with the specified block). Possible tags include \
+       'head' and 'genesis' +/- an optional offset (e.g. \"tezos-client -b \
+       head-1 get timestamp\"). Note that block queried must exist in node's \
+       storage."
     ~default:(Block_services.to_string default_cli_args.block)
     (block_parameter ())
 
@@ -470,7 +476,8 @@ let wait_arg () =
     ~short:'w'
     ~placeholder:"none|<int>"
     ~doc:
-      "how many confirmation blocks before to consider an operation as included"
+      "how many confirmation blocks are needed before an operation is \
+       considered included"
     (wait_parameter ())
 
 let protocol_arg () =
@@ -483,6 +490,15 @@ let protocol_arg () =
 
 let log_requests_switch () =
   switch ~long:"log-requests" ~short:'l' ~doc:"log all requests to the node" ()
+
+let better_errors () =
+  switch
+    ~long:"better-errors"
+    ~doc:
+      "Error reporting is more detailed. Can be used if a call to an RPC fails \
+       or if you don't know the input accepted by the RPC. It may happen that \
+       the RPC calls take more time however."
+    ()
 
 (* Command-line args which can be set in config file as well *)
 let addr_confdesc = "-A/--addr ('node_addr' in config file)"
@@ -504,10 +520,10 @@ let port_arg () =
     ~placeholder:"number"
     ~doc:"[DEPRECATED: use --endpoint instead] RPC port of the node"
     (parameter (fun _ x ->
-         let open Lwt_tzresult_syntax in
+         let open Lwt_result_syntax in
          match int_of_string_opt x with
          | Some i -> return i
-         | None -> fail (Invalid_port_arg x)))
+         | None -> tzfail (Invalid_port_arg x)))
 
 let tls_confdesc = "-S/--tls ('tls' in config file)"
 
@@ -574,7 +590,7 @@ let password_filename_arg () =
 let client_mode_arg () =
   let mode_strings = List.map client_mode_to_string all_modes in
   let parse_client_mode (str : string) : client_mode tzresult =
-    let open Tzresult_syntax in
+    let open Result_syntax in
     let* modes_and_strings =
       List.combine
         ~when_different_lengths:(TzTrace.make @@ Exn (Failure __LOC__))
@@ -582,7 +598,7 @@ let client_mode_arg () =
         all_modes
     in
     match List.assoc_opt ~equal:String.equal str modes_and_strings with
-    | None -> fail (Invalid_mode_arg str)
+    | None -> tzfail (Invalid_mode_arg str)
     | Some mode -> return mode
   in
   default_arg
@@ -596,7 +612,7 @@ let client_mode_arg () =
        (fun _ param -> Lwt.return (parse_client_mode param)))
 
 let read_config_file config_file =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let*! r = Lwt_utils_unix.Json.read_file config_file in
   match r with
   | Error errs ->
@@ -615,7 +631,7 @@ let read_config_file config_file =
           exn)
 
 let fail_on_non_mockup_dir (cctxt : #Client_context.full) =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let base_dir = cctxt#get_base_dir in
   let open Tezos_mockup.Persistence in
   let* b = classify_base_dir base_dir in
@@ -660,7 +676,7 @@ let config_show_client (cctxt : #Client_context.full) (config_file : string) cfg
 (* The implementation of ["config"; "show"] when --mode is "mockup" *)
 let config_show_mockup (cctxt : #Client_context.full)
     (protocol_hash_opt : Protocol_hash.t option) (base_dir : string) =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* () = fail_on_non_mockup_dir cctxt in
   let* (mockup, _) =
     Tezos_mockup.Persistence.get_mockup_context_from_disk
@@ -698,7 +714,7 @@ let config_init_client config_file cfg =
 (* The implementation of ["config"; "init"] when --mode is "mockup" *)
 let config_init_mockup cctxt protocol_hash_opt bootstrap_accounts_file
     protocol_constants_file base_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* () = fail_on_non_mockup_dir cctxt in
   let* () =
     fail_when
@@ -839,7 +855,7 @@ let commands config_file cfg (client_mode : client_mode)
   ]
 
 let global_options () =
-  args17
+  args18
     (base_dir_arg ())
     (config_file_arg ())
     (timings_switch ())
@@ -848,6 +864,7 @@ let global_options () =
     (wait_arg ())
     (protocol_arg ())
     (log_requests_switch ())
+    (better_errors ())
     (addr_arg ())
     (port_arg ())
     (tls_switch ())
@@ -883,7 +900,7 @@ let default_parsed_config_args =
  * fail).
  *)
 let check_base_dir_for_mode (ctx : #Client_context.full) client_mode base_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let open Tezos_mockup.Persistence in
   let* base_dir_class = classify_base_dir base_dir in
   match client_mode with
@@ -970,7 +987,7 @@ let build_endpoint addr port tls =
   |> updatecomp Uri.with_scheme scheme
 
 let light_mode_checks mode endpoint sources =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   match (mode, sources) with
   | (`Mode_client, None) | (`Mode_mockup, None) | (`Mode_proxy, None) ->
       (* No --mode light, no --sources; good *)
@@ -1008,7 +1025,7 @@ let light_mode_checks mode endpoint sources =
           (List.hd sources_uris)
 
 let parse_config_args (ctx : #Client_context.full) argv =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* ( ( base_dir,
            config_file,
            timings,
@@ -1017,6 +1034,7 @@ let parse_config_args (ctx : #Client_context.full) argv =
            confirmations,
            protocol,
            log_requests,
+           better_errors,
            node_addr,
            node_port,
            tls,
@@ -1101,7 +1119,7 @@ let parse_config_args (ctx : #Client_context.full) argv =
       |> checkabs tls_confdesc tls
     in
     if superr <> [] then
-      fail (Suppressed_arg {args = superr; by = endpoint_confdesc})
+      tzfail (Suppressed_arg {args = superr; by = endpoint_confdesc})
     else return ()
   in
   let tls = if tls then Some true else None in
@@ -1181,6 +1199,7 @@ let parse_config_args (ctx : #Client_context.full) argv =
       sources;
       print_timings = timings;
       log_requests;
+      better_errors;
       password_filename;
       protocol;
       client_mode;
@@ -1204,6 +1223,7 @@ type t =
   * Shell_services.block
   * int option option
   * Protocol_hash.t option option
+  * bool
   * bool
   * string option
   * int option

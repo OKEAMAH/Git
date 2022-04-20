@@ -23,6 +23,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* module Constants will be shadowed by Alpha_context.Constansts
+   once we open Alpha_context, hence we we alias it to Rollup_node_constants
+*)
 open Protocol
 open Alpha_context
 module Block_services = Block_services.Make (Protocol) (Protocol)
@@ -32,10 +35,6 @@ let head_processing_failure e =
     "Error during head processing: @[%a@]"
     Error_monad.(TzTrace.pp_print_top pp)
     e ;
-  Lwt_exit.exit_and_raise 1
-
-let unstarted_failure () =
-  Format.eprintf "Sc rollup node inbox is not started.\n" ;
   Lwt_exit.exit_and_raise 1
 
 module State = struct
@@ -51,21 +50,13 @@ module State = struct
 
   let history_of_hash = Store.Histories.get
 
-  let (set_sc_rollup_address, get_sc_rollup_address) =
-    let sc_rollup_address = ref None in
-    ( (fun x -> sc_rollup_address := Some x),
-      fun () ->
-        match !sc_rollup_address with
-        | None -> unstarted_failure ()
-        | Some a -> a )
-
   let get_message_tree = Store.MessageTrees.get
 
   let set_message_tree = Store.MessageTrees.set
 end
 
 let get_messages cctxt head rollup =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let open Block_services in
   let+ operations =
     Operations.operations cctxt ~chain:`Main ~block:(`Level (snd head)) ()
@@ -87,10 +78,11 @@ let get_messages cctxt head rollup =
   in
   List.concat_map process_operations operations
 
-let process_head cctxt store Layer1.(Head {level; hash = head_hash} as head) =
-  let rollup = State.get_sc_rollup_address () in
+let process_head {Node_context.cctxt; rollup_address; _} store
+    Layer1.(Head {level; hash = head_hash} as head) =
   let open Lwt_result_syntax in
-  get_messages cctxt (head_hash, level) rollup >>= function
+  let*! res = get_messages cctxt (head_hash, level) rollup_address in
+  match res with
   | Error e -> head_processing_failure e
   | Ok messages ->
       let*! () =
@@ -117,15 +109,17 @@ let process_head cctxt store Layer1.(Head {level; hash = head_hash} as head) =
       let*! () = State.add_history store head_hash history in
       return_unit
 
-let update cctxt store chain_event =
-  let open Lwt_tzresult_syntax in
+let update node_ctxt store chain_event =
+  let open Lwt_result_syntax in
   let open Layer1 in
   Lwt.map Environment.wrap_tzresult
   @@
   match chain_event with
   | SameBranch {new_head; intermediate_heads} ->
-      let* () = List.iter_es (process_head cctxt store) intermediate_heads in
-      process_head cctxt store new_head
+      let* () =
+        List.iter_es (process_head node_ctxt store) intermediate_heads
+      in
+      process_head node_ctxt store new_head
   | Rollback {new_head = _} ->
       (*
 
@@ -137,20 +131,19 @@ let update cctxt store chain_event =
 
 let inbox_of_hash = State.inbox_of_hash
 
-let start store sc_rollup_address =
+let start store Node_context.{rollup_address; _} =
   let open Lwt_syntax in
-  State.set_sc_rollup_address sc_rollup_address ;
-  Inbox_event.starting () >>= fun () ->
-  State.inbox_exists store Layer1.genesis_hash >>= function
-  | false ->
-      let* () =
-        State.add_inbox
-          store
-          Layer1.genesis_hash
-          (Sc_rollup.Inbox.empty sc_rollup_address Raw_level.root)
-      in
-      State.add_history
+  let* () = Inbox_event.starting () in
+  let* exists = State.inbox_exists store Layer1.genesis_hash in
+  if exists then return_unit
+  else
+    let* () =
+      State.add_inbox
         store
         Layer1.genesis_hash
-        (Store.Inbox.history_at_genesis ~bound:(Int64.of_int 60000))
-  | true -> Lwt.return ()
+        (Sc_rollup.Inbox.empty rollup_address Raw_level.root)
+    in
+    State.add_history
+      store
+      Layer1.genesis_hash
+      (Store.Inbox.history_at_genesis ~bound:(Int64.of_int 60000))

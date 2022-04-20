@@ -333,9 +333,7 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
   | IRead_ticket _ -> Interp_costs.read_ticket
   | IOpen_chest _ ->
       let _chest_key = accu and (chest, (time, _)) = stack in
-      Interp_costs.open_chest
-        ~chest
-        ~time:(Alpha_context.Script_int.to_zint time)
+      Interp_costs.open_chest ~chest ~time:(Script_int.to_zint time)
   | ILog _ -> Gas.free
  [@@ocaml.inline always]
  [@@coq_axiom_with_reason "unreachable expression `.` not handled"]
@@ -533,10 +531,7 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters destination
         let open Micheline in
         match tp with
         | Pair_t (Ticket_t (tp, _), _, _, _) ->
-            Script_ir_translator.unparse_comparable_ty
-              ~loc:dummy_location
-              ctxt
-              tp
+            Script_ir_translator.unparse_ty ~loc:dummy_location ctxt tp
             >|? fun (ty, ctxt) -> (Seq (dummy_location, [p; ty]), ctxt)
         | _ ->
             (* TODO: https://gitlab.com/tezos/tezos/-/issues/2455
@@ -563,10 +558,10 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters destination
   >>=? fun (parameters, lazy_storage_diff, ctxt) ->
   unparse_data ctxt Optimized parameters_ty parameters
   >>=? fun (unparsed_parameters, ctxt) ->
-  Gas.consume ctxt (Script.strip_locations_cost unparsed_parameters)
-  >>?= fun ctxt ->
   craft_transfer_parameters ctxt parameters_ty unparsed_parameters destination
   >>?= fun (unparsed_parameters, ctxt) ->
+  Gas.consume ctxt (Script.strip_locations_cost unparsed_parameters)
+  >>?= fun ctxt ->
   let transaction =
     let parameters =
       Script.lazy_expr (Micheline.strip_locations unparsed_parameters)
@@ -582,49 +577,12 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters destination
   let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
   return (res, ctxt, gas)
 
-(* [create_contract (ctxt, sc) gas storage_ty param_ty code entrypoints
-   delegate credit init] creates an origination operation for a
-   contract represented by [code], with some [entrypoints], some initial
-   [credit] (taken to contract being executed), and an initial storage
-   [init] of type [storage_ty]. The type of the new contract argument
-   is [param_ty]. *)
-
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/1688
-   Refactor the sharing part of unparse_script and create_contract *)
-let create_contract (ctxt, sc) gas storage_type param_type lambda views
-    entrypoints delegate credit init =
+(** [create_contract (ctxt, sc) gas storage_ty code delegate credit init]
+    creates an origination operation for a contract represented by [code], some
+    initial [credit] (withdrawn from the contract being executed), and an
+    initial storage [init] of type [storage_ty]. *)
+let create_contract (ctxt, sc) gas storage_type code delegate credit init =
   let ctxt = update_context gas ctxt in
-  let loc = Micheline.dummy_location in
-  unparse_parameter_ty ~loc ctxt param_type ~entrypoints
-  >>?= fun (unparsed_param_type, ctxt) ->
-  unparse_ty ~loc ctxt storage_type >>?= fun (unparsed_storage_type, ctxt) ->
-  let open Micheline in
-  let view name {input_ty; output_ty; view_code} views =
-    Prim
-      ( loc,
-        K_view,
-        [
-          String (loc, Script_string.to_string name);
-          input_ty;
-          output_ty;
-          view_code;
-        ],
-        [] )
-    :: views
-  in
-  let view_list = Script_map.fold view views [] |> List.rev in
-  let (Lam (_, code)) = lambda in
-  let code =
-    strip_locations
-      (Seq
-         ( loc,
-           [
-             Prim (loc, K_parameter, [unparsed_param_type], []);
-             Prim (loc, K_storage, [unparsed_storage_type], []);
-             Prim (loc, K_code, [code], []);
-           ]
-           @ view_list ))
-  in
   collect_lazy_storage ctxt storage_type init >>?= fun (to_duplicate, ctxt) ->
   let to_update = no_lazy_storage_id in
   extract_lazy_storage_diff
@@ -638,7 +596,7 @@ let create_contract (ctxt, sc) gas storage_type param_type lambda views
   >>=? fun (init, lazy_storage_diff, ctxt) ->
   unparse_data ctxt Optimized storage_type init >>=? fun (storage, ctxt) ->
   Gas.consume ctxt (Script.strip_locations_cost storage) >>?= fun ctxt ->
-  let storage = strip_locations storage in
+  let storage = Micheline.strip_locations storage in
   Contract.fresh_contract_from_current_nonce ctxt >>?= fun (ctxt, contract) ->
   let origination =
     {
@@ -648,21 +606,9 @@ let create_contract (ctxt, sc) gas storage_type param_type lambda views
         {code = Script.lazy_expr code; storage = Script.lazy_expr storage};
     }
   in
-  Script_ir_translator.code_size ctxt lambda views >>?= fun (code_size, ctxt) ->
-  let script =
-    Script
-      {
-        code = lambda;
-        arg_type = param_type;
-        storage = init;
-        storage_type;
-        views;
-        entrypoints;
-        code_size;
-      }
-  in
   let operation =
-    Origination {origination; preorigination = contract; script}
+    Origination
+      {origination; preorigination = contract; storage_type; storage = init}
   in
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let piop = Internal_operation {source = sc.self; operation; nonce} in

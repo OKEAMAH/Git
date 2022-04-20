@@ -26,7 +26,7 @@
 (* Testing
    -------
    Component:    Mempool
-   Invocation:   dune exec tezt/tests/main.exe -- --file mempool.ml
+   Invocation:   dune exec tezt/tests/main.exe -- --file prevalidator.ml
    Subject:      .
 *)
 
@@ -159,15 +159,16 @@ module Revamped = struct
     let* () = Node.run node [] in
     let* () = Node.wait_for_ready node in
     let* client = Client.init ~endpoint:(Node node) () in
+    let bootstrap_accounts = Account.Bootstrap.keys |> Array.length in
     let* additional_bootstrap_accounts =
       Lwt_list.map_s
         (fun i ->
-          let alias = Account.bootstrap i in
+          let alias = Account.Bootstrap.alias i in
           let* key = Client.gen_and_show_keys ~alias client in
           return (key, None))
         (range
-           (Constant.default_bootstrap_count + 1)
-           (Constant.default_bootstrap_count + nb_additional_bootstrap_accounts))
+           (1 + bootstrap_accounts)
+           (bootstrap_accounts + nb_additional_bootstrap_accounts))
     in
     let* parameter_file =
       Protocol.write_parameter_file
@@ -1924,8 +1925,39 @@ module Revamped = struct
         ~outdated:[oph3]
         client1
     in
-
     unit
+
+  let precheck_with_empty_balance =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Precheck refused an operation which empties a balance"
+      ~tags:["mempool"; "precheck"; "empty"; "balance"]
+    @@ fun protocol ->
+    let* (_node, client) = Client.init_with_protocol ~protocol `Client () in
+    let*! json_balance =
+      RPC.Contracts.get_balance
+        ~contract_id:Constant.bootstrap1.public_key_hash
+        client
+    in
+    let balance = JSON.as_string json_balance |> int_of_string in
+    let* op =
+      Operation.mk_transfer
+        ~fee:balance
+        ~source:Constant.bootstrap1
+        ~dest:Constant.bootstrap2
+        client
+    in
+    let* process =
+      let* runnable =
+        Operation.runnable_forge_and_inject_operation
+          ~batch:[op]
+          ~signer:Constant.bootstrap1
+          client
+      in
+      let*? process = runnable in
+      return process
+    in
+    Process.check_error ~msg:(rex "proto.012-Psithaca.balance_is_empty") process
 end
 
 let check_operation_is_in_applied_mempool ops oph =
@@ -2331,7 +2363,7 @@ let get_endorsement_has_bytes ~protocol client =
   in
   let wrapped_bytes =
     match protocol with
-    | Protocol.Ithaca | Protocol.Alpha ->
+    | Protocol.Ithaca | Protocol.Jakarta | Protocol.Alpha ->
         let signature = get_signature op in
         let kind = JSON.get "kind" contents |> JSON.as_string in
         if not (kind = "endorsement") then
@@ -2375,51 +2407,6 @@ let get_endorsement_has_bytes ~protocol client =
         in
         Data_encoding.Binary.to_bytes_exn
           Tezos_protocol_alpha.Protocol.Operation_repr.encoding
-          wrapped
-    | Protocol.Hangzhou ->
-        let endorsement = JSON.get "endorsement" contents in
-        let signature = get_signature endorsement in
-        let level =
-          Tezos_protocol_010_PtGRANAD.Protocol.Raw_level_repr.of_int32_exn
-            (Int32.of_int
-               (JSON.get "operations" endorsement
-               |> JSON.get "level" |> JSON.as_int))
-        in
-        let wrapped =
-          Tezos_protocol_010_PtGRANAD.Protocol.Operation_repr.
-            {
-              shell;
-              protocol_data =
-                Operation_data
-                  {
-                    contents =
-                      Single
-                        (Endorsement_with_slot
-                           {
-                             endorsement =
-                               {
-                                 shell;
-                                 protocol_data =
-                                   {
-                                     contents =
-                                       Single
-                                         (Tezos_protocol_010_PtGRANAD.Protocol
-                                          .Operation_repr
-                                          .Endorsement
-                                            {level});
-                                     signature = Some signature;
-                                   };
-                               };
-                             slot =
-                               Tezos_protocol_alpha.Protocol.Slot_repr.to_int
-                                 slot;
-                           });
-                    signature = None;
-                  };
-            }
-        in
-        Data_encoding.Binary.to_bytes_exn
-          Tezos_protocol_010_PtGRANAD.Protocol.Operation_repr.encoding
           wrapped
   in
   Lwt.return (wrapped_bytes, hash)
@@ -2701,6 +2688,7 @@ let refetch_failed_operation =
   let* () =
     Node.run ~event_sections_levels:[("prevalidator", `Debug)] node_2 []
   in
+  let* () = Node.wait_for_ready node_2 in
   let* client_1 = Client.init ~endpoint:(Node node_1) ()
   and* client_2 = Client.init ~endpoint:(Node node_2) () in
   let* () = Client.Admin.trust_address client_1 ~peer:node_2
@@ -4109,6 +4097,8 @@ let register ~protocols =
   Revamped.test_prefiltered_limit protocols ;
   Revamped.test_prefiltered_limit_remove protocols ;
   Revamped.wrong_signed_branch_delayed_becomes_refused protocols ;
+  Revamped.precheck_with_empty_balance [Protocol.Ithaca]
+  (* FIXME: handle the case for Alpha. *) ;
   run_batched_operation protocols ;
   propagation_future_endorsement protocols ;
   forge_pre_filtered_operation protocols ;

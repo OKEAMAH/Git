@@ -1,9 +1,8 @@
 ; This file was automatically generated, do not edit.
 ; Edit file manifest/main.ml instead.
 
-(test
+(executable
  (name test_parser)
- (package tezos-version)
  (modes native js)
  (libraries
   tezos-version
@@ -13,10 +12,14 @@
  (flags (:standard -open Tezos_version)))
 
 (rule
+ (alias runtest)
+ (package tezos-version)
+ (action (run %{dep:./test_parser.exe})))
+
+(rule
  (alias runtest_js)
  (package tezos-version)
- (locks npm)
  (action
   (run
-   %{dep:../../tooling/node_wrapper.exe} --secp256k1 1.1.1 --hacl 1.1.0
+   %{dep:../../tooling/node_wrapper.exe} --bls12-381 --secp256k1 --hacl
    %{dep:./test_parser.bc.js})))

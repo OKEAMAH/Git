@@ -148,28 +148,21 @@ in the :ref:`introduction <howtoget>`.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Hangzhou Protocol doc:
+   :caption: Ithaca Protocol doc:
 
-   active/michelson
-   active/proof_of_stake
-   active/consensus
-   active/sapling
-   active/voting
-   active/liquidity_baking
-   active/timelock
-   active/plugins
+   active/protocol
    active/glossary
    active/cli-commands
    active/rpc
 
 .. toctree::
    :maxdepth: 2
-   :caption: Ithaca Protocol doc:
+   :caption: Jakarta Protocol doc:
 
-   ithaca/protocol
-   ithaca/glossary
-   ithaca/cli-commands
-   ithaca/rpc
+   jakarta/protocol
+   jakarta/glossary
+   jakarta/cli-commands
+   jakarta/rpc
 
 .. toctree::
    :maxdepth: 2
@@ -224,6 +217,7 @@ in the :ref:`introduction <howtoget>`.
    protocols/010_granada
    protocols/011_hangzhou
    protocols/012_ithaca
+   protocols/013_jakarta
    protocols/alpha
 
 .. toctree::

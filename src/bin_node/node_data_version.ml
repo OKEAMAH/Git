@@ -51,8 +51,9 @@ let version_file_name = "version.json"
  *  - 0.0.4 : context upgrade (switching from LMDB to IRMIN v2)
  *  - 0.0.5 : never released (but used in 10.0~rc1 and 10.0~rc2)
  *  - 0.0.6 : store upgrade (switching from LMDB)
- *  - 0.0.7 : context upgrade (upgrade to irmin.3.0) *)
-let data_version = "0.0.7"
+ *  - 0.0.7 : new store metadata representation
+ *  - 0.0.8 : context upgrade (upgrade to irmin.3.0) *)
+let data_version = "0.0.8"
 
 (* List of upgrade functions from each still supported previous
    version to the current [data_version] above. If this list grows too
@@ -60,10 +61,12 @@ let data_version = "0.0.7"
    converter), and to sequence them dynamically instead of
    statically. *)
 let upgradable_data_version =
+  let open Lwt_result_syntax in
   [
     ( "0.0.6",
-      fun ~data_dir:_ _ ~chain_name:_ ~sandbox_parameters:_ ->
-        Lwt_tzresult_syntax.return_unit );
+      fun ~data_dir:_ _ ~chain_name:_ ~sandbox_parameters:_ -> return_unit );
+    ( "0.0.7",
+      fun ~data_dir:_ _ ~chain_name:_ ~sandbox_parameters:_ -> return_unit );
   ]
 
 let version_encoding = Data_encoding.(obj1 (req "version" string))
@@ -242,7 +245,7 @@ let write_version_file data_dir =
   |> trace (Could_not_write_version_file version_file)
 
 let read_version_file version_file =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* json =
     trace
       (Could_not_read_data_dir_version version_file)
@@ -254,15 +257,15 @@ let read_version_file version_file =
   | Data_encoding.Json.No_case_matched _ | Data_encoding.Json.Bad_array_size _
   | Data_encoding.Json.Missing_field _ | Data_encoding.Json.Unexpected_field _
   ->
-    fail (Could_not_read_data_dir_version version_file)
+    tzfail (Could_not_read_data_dir_version version_file)
 
 let check_data_dir_version files data_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let version_file = version_file data_dir in
   let*! file_exists = Lwt_unix.file_exists version_file in
   if not file_exists then
     let msg = Some (clean_directory files) in
-    fail (Invalid_data_dir {data_dir; msg})
+    tzfail (Invalid_data_dir {data_dir; msg})
   else
     let* version = read_version_file version_file in
     if String.equal version data_version then return_none
@@ -273,10 +276,10 @@ let check_data_dir_version files data_dir =
           upgradable_data_version
       with
       | Some f -> return_some f
-      | None -> fail (Invalid_data_dir_version (data_version, version))
+      | None -> tzfail (Invalid_data_dir_version (data_version, version))
 
 let ensure_data_dir bare data_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let write_version () =
     let* () = write_version_file data_dir in
     return_none
@@ -301,13 +304,13 @@ let ensure_data_dir bare data_dir =
         | [] -> write_version ()
         | files when bare ->
             let msg = Some (clean_directory files) in
-            fail (Invalid_data_dir {data_dir; msg})
+            tzfail (Invalid_data_dir {data_dir; msg})
         | files -> check_data_dir_version files data_dir
       else
         let*! () = Lwt_utils_unix.create_dir ~perm:0o700 data_dir in
         write_version ())
     (function
-      | Unix.Unix_error _ -> fail (Invalid_data_dir {data_dir; msg = None})
+      | Unix.Unix_error _ -> tzfail (Invalid_data_dir {data_dir; msg = None})
       | exc -> raise exc)
 
 let upgrade_data_dir ~data_dir genesis ~chain_name ~sandbox_parameters =
@@ -330,17 +333,19 @@ let upgrade_data_dir ~data_dir genesis ~chain_name ~sandbox_parameters =
           Lwt.return (Error e))
 
 let ensure_data_dir ?(bare = false) data_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let* o = ensure_data_dir bare data_dir in
   match o with
   | None -> return_unit
-  (* Here, we enable the automatic upgrade from "0.0.6" to
-     "0.0.7". This should be removed as soon as the "0.0.7" version or
+  (* Here, we enable the automatic upgrade from "0.0.6" and "0.0.7" to
+     "0.0.8". This should be removed as soon as the "0.0.8" version or
      above is mandatory. *)
-  | Some ("0.0.6", _upgrade) ->
+  | Some (v, _upgrade) when String.(equal "0.0.6" v) || String.(equal "0.0.7" v)
+    ->
       upgrade_data_dir ~data_dir () ~chain_name:() ~sandbox_parameters:()
   | Some (version, _) ->
-      fail (Data_dir_needs_upgrade {expected = data_version; actual = version})
+      tzfail
+        (Data_dir_needs_upgrade {expected = data_version; actual = version})
 
 let upgrade_status data_dir =
   let open Lwt_result_syntax in

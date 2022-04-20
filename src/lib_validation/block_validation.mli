@@ -62,12 +62,18 @@ val check_proto_environment_version_increasing :
 val init_test_chain :
   Context.t -> Block_header.t -> Block_header.t tzresult Lwt.t
 
+type operation_metadata = Metadata of Bytes.t | Too_large_metadata
+
+val operation_metadata_encoding : operation_metadata Data_encoding.t
+
+type ops_metadata =
+  | No_metadata_hash of operation_metadata list list
+  | Metadata_hash of (operation_metadata * Operation_metadata_hash.t) list list
+
 type result = {
   validation_store : validation_store;
-  block_metadata : Bytes.t;
-  ops_metadata : Bytes.t list list;
-  block_metadata_hash : Block_metadata_hash.t option;
-  ops_metadata_hashes : Operation_metadata_hash.t list list option;
+  block_metadata : bytes * Block_metadata_hash.t option;
+  ops_metadata : ops_metadata;
 }
 
 type apply_result = {result : result; cache : Environment_context.Context.cache}
@@ -101,7 +107,12 @@ type apply_environment = {
       (** user activated upgrades *)
   user_activated_protocol_overrides : User_activated.protocol_overrides;
       (** user activated protocol overrides *)
+  operation_metadata_size_limit : int option;
+      (** size limit for operation metadata that should be written on disk *)
 }
+
+(** Default size limit for operation metadata *)
+val default_operation_metadata_size_limit : int option
 
 (** [apply env header ops] gets the protocol [P] of the context of the predecessor
     block and calls successively:
@@ -136,6 +147,7 @@ val preapply :
   chain_id:Chain_id.t ->
   user_activated_upgrades:Tezos_base.User_activated.upgrades ->
   user_activated_protocol_overrides:Tezos_base.User_activated.protocol_overrides ->
+  operation_metadata_size_limit:int option ->
   timestamp:Time.Protocol.t ->
   protocol_data:bytes ->
   live_blocks:Block_hash.Set.t ->
@@ -151,3 +163,14 @@ val preapply :
   * (apply_result * Context.t))
   tzresult
   Lwt.t
+
+val recompute_metadata :
+  chain_id:Chain_id.t ->
+  predecessor_block_header:Block_header.t ->
+  predecessor_context:Context.t ->
+  predecessor_block_metadata_hash:Block_metadata_hash.t option ->
+  predecessor_ops_metadata_hash:Operation_metadata_list_list_hash.t option ->
+  block_header:Block_header.t ->
+  operations:Operation.t trace trace ->
+  cache:Environment_context.Context.source_of_cache ->
+  ((bytes * Block_metadata_hash.t option) * ops_metadata) tzresult Lwt.t

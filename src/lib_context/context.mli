@@ -50,7 +50,7 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) : sig
 
   val index : context -> index
 
-  (** Open or initialize a versioned store at a given path. 
+  (** Open or initialize a versioned store at a given path.
 
       @param indexing_strategy determines whether newly-exported objects by
       this store handle should also be added to the store's index. [`Minimal]
@@ -62,6 +62,7 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) : sig
     ?patch_context:(context -> context tzresult Lwt.t) ->
     ?readonly:bool ->
     ?indexing_strategy:[`Always | `Minimal] ->
+    ?index_log_size:int ->
     string ->
     index Lwt.t
 
@@ -72,13 +73,18 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) : sig
     Does not fail when the context is not in read-only mode. *)
   val sync : index -> unit Lwt.t
 
+  val flush : t -> t Lwt.t
+
   val compute_testchain_chain_id : Block_hash.t -> Chain_id.t
 
   val compute_testchain_genesis : Block_hash.t -> Block_hash.t
 
-  (** Build an empty context from an index. The resulting context is not yet
-      commited. *)
+  (** Build an empty context from an index. The resulting context should not
+      be committed. *)
   val empty : index -> t
+
+  (** Returns [true] if the context is empty. *)
+  val is_empty : t -> bool
 
   val commit_genesis :
     index ->
@@ -170,19 +176,20 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) : sig
   (** {2 Context dumping} *)
 
   val dump_context :
-    index -> Context_hash.t -> fd:Lwt_unix.file_descr -> int tzresult Lwt.t
+    index ->
+    Context_hash.t ->
+    fd:Lwt_unix.file_descr ->
+    on_disk:bool ->
+    int tzresult Lwt.t
 
-  (** Rebuild a context from a given snapshot.
-
-      NOTE: the indexing strategy used by the [index] must be [`Always] (in
-      order to recover direct internal pointers between store objects during
-      the import). This limitation is likely to be removed in a future version
-      of [lib_context]. *)
+  (** Rebuild a context from a given snapshot. *)
   val restore_context :
     index ->
     expected_context_hash:Context_hash.t ->
     nb_context_elements:int ->
     fd:Lwt_unix.file_descr ->
+    legacy:bool ->
+    in_memory:bool ->
     unit tzresult Lwt.t
 
   val retrieve_commit_info :

@@ -1,3 +1,6 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
 (library
  (name tenderbrute)
  (public_name tezos-baking-alpha.tenderbrute)
@@ -12,6 +15,7 @@
   (:standard
    -open Data_encoding
    -open Tezos_base.TzPervasives
+   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
    -open Tezos_base
    -open Tezos_protocol_alpha
    -open Tezos_client_base

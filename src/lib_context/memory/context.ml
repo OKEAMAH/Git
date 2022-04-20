@@ -40,12 +40,22 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
       match t with
       | `Node hash -> `Node (Hash.of_context_hash hash)
       | `Value hash -> `Contents (Hash.of_context_hash hash, ())
+
+    let of_irmin_key t : kinded_key =
+      match t with
+      | `Node hash -> `Node (Hash.to_context_hash hash)
+      | `Contents (hash, ()) -> `Value (Hash.to_context_hash hash)
   end
 
   module Tree = struct
     include Tezos_context_helpers.Context.Make_tree (Conf) (Store)
 
     let shallow repo key = Store.Tree.shallow repo (Kinded_key.to_irmin_key key)
+
+    let kinded_key tree =
+      match Store.Tree.key tree with
+      | None -> None
+      | Some h -> Some (Kinded_key.of_irmin_key h)
   end
 
   include Tree
@@ -210,9 +220,10 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
   let get_hash_version _c = Context_hash.Version.of_int 0
 
   let set_hash_version c v =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     if Context_hash.Version.(of_int 0 = v) then return c
-    else fail (Tezos_context_helpers.Context.Unsupported_context_hash_version v)
+    else
+      tzfail (Tezos_context_helpers.Context.Unsupported_context_hash_version v)
 
   let add_predecessor_block_metadata_hash v hash =
     let data =

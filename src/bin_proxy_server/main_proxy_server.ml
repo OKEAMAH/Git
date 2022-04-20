@@ -68,7 +68,7 @@ let data_dir : string option Term.t =
      reducing the node's IO)."
   in
   let docv = "DATA_DIR" in
-  Arg.(value & opt (some string) None & info ["data-dir"] ~docv ~doc)
+  Arg.(value & opt (some string) None & info ["d"; "data-dir"] ~docv ~doc)
 
 let sym_block_caching_time : int option Term.t =
   let doc =
@@ -99,7 +99,7 @@ let load_config_from_file (config_file : string) =
     and the command line, and translates the result to
     a value of type [Proxy_server_config.runtime]. *)
 let get_runtime config_from_file config_args =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let open Proxy_server_config in
   let config =
     match config_from_file with
@@ -128,7 +128,7 @@ let main_promise (config_file : string option)
          rpc_server_port;
          rpc_server_tls;
          sym_block_caching_time;
-         data_dir;
+         data_dir = data_dir_opt;
        } =
     get_runtime config_from_file config_args
   in
@@ -162,13 +162,57 @@ let main_promise (config_file : string option)
       `Mode_proxy
       None
   in
+  (* This should probably be extracted into Lwt_result or similar. *)
+  let lift_lwt (a : 'a Lwt.t) : 'a tzresult Lwt.t =
+    let*! r = a in
+    return r
+  in
+  (* The context index, which we try to read if and only if the --data-dir *)
+  (* argument has been passed. *)
+  let* (context_index : Tezos_context.Context.index option) =
+    Option.map_es
+      (fun data_dir ->
+        let context_path = Filename.concat data_dir "context" in
+        Lwt.catch
+          (fun () ->
+            lift_lwt
+              (Tezos_shell_context.Proxy_delegate_maker.make_index
+                 ~context_path))
+          (function
+            | Index_unix__Raw.Not_written ->
+                failwith
+                  "error reading data-dir: %s is not a valid context directory"
+                  context_path
+            | Unix.Unix_error (Unix.EBADF, _, _) ->
+                failwith
+                  "error reading data-dir: %s does not exist"
+                  context_path
+            | e ->
+                failwith
+                  "unexpected error %s while reading context directory %s"
+                  (Printexc.to_string e)
+                  context_path))
+      data_dir_opt
+  in
+  (* Now we build the function that the proxy server can use to build a proxy
+     delegate later, using [Tezos_shell_context.Proxy_delegate_maker.*] functions.
+     This lets it not depend directly on [Tezos_shell_context]: if it did, it
+     would break compilation of tezos-client to JavaScript. *)
+  let on_disk_proxy_builder =
+    Option.map
+      (fun index ctx_hash ->
+        (* Sync first so we don't observe a stale state. *)
+        let*! () = Tezos_context.Context.sync index in
+        Tezos_shell_context.Proxy_delegate_maker.of_index ~index ctx_hash)
+      context_index
+  in
   let dir =
     let sleep = Lwt_unix.sleep in
     Tezos_proxy.Proxy_services.build_directory
       printer
       http_ctxt
       (Tezos_proxy.Proxy_services.Proxy_server
-         {sleep; sym_block_caching_time; data_dir})
+         {sleep; sym_block_caching_time; on_disk_proxy_builder})
       proxy_env
   in
   let server_args : Proxy_server_main_run.args =

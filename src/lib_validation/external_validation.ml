@@ -31,6 +31,7 @@ type parameters = {
   sandbox_parameters : Data_encoding.json option;
   user_activated_upgrades : User_activated.upgrades;
   user_activated_protocol_overrides : User_activated.protocol_overrides;
+  operation_metadata_size_limit : int option;
 }
 
 type request =
@@ -123,6 +124,7 @@ let parameters_encoding =
            genesis;
            user_activated_upgrades;
            user_activated_protocol_overrides;
+           operation_metadata_size_limit;
            sandbox_parameters;
          } ->
       ( context_root,
@@ -130,12 +132,14 @@ let parameters_encoding =
         genesis,
         user_activated_upgrades,
         user_activated_protocol_overrides,
+        operation_metadata_size_limit,
         sandbox_parameters ))
     (fun ( context_root,
            protocol_root,
            genesis,
            user_activated_upgrades,
            user_activated_protocol_overrides,
+           operation_metadata_size_limit,
            sandbox_parameters ) ->
       {
         context_root;
@@ -143,9 +147,10 @@ let parameters_encoding =
         genesis;
         user_activated_upgrades;
         user_activated_protocol_overrides;
+        operation_metadata_size_limit;
         sandbox_parameters;
       })
-    (obj6
+    (obj7
        (req "context_root" string)
        (req "protocol_root" string)
        (req "genesis" Genesis.encoding)
@@ -153,6 +158,7 @@ let parameters_encoding =
        (req
           "user_activated_protocol_overrides"
           User_activated.protocol_overrides_encoding)
+       (opt "operation_metadata_size_limit" int31)
        (opt "sandbox_parameters" json))
 
 let case_validate tag =
@@ -417,7 +423,7 @@ let create_socket ~canceler =
   Lwt.return socket
 
 let create_socket_listen ~canceler ~max_requests ~socket_path =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let*! socket = create_socket ~canceler in
   let* () =
     Lwt.catch
@@ -428,7 +434,7 @@ let create_socket_listen ~canceler ~max_requests ~socket_path =
         | Unix.Unix_error (ENAMETOOLONG, _, _) ->
             (* Unix.ENAMETOOLONG (Filename too long (POSIX.1-2001)) can
                be thrown if the given directory has a too long path. *)
-            fail
+            tzfail
               Block_validator_errors.(
                 Validation_process_failed (Socket_path_too_long socket_path))
         | Unix.Unix_error (EACCES, _, _) ->
@@ -436,12 +442,12 @@ let create_socket_listen ~canceler ~max_requests ~socket_path =
                thrown when the given directory has wrong access rights.
                Unix.EPERM (Operation not permitted (POSIX.1-2001)) should
                not be thrown in this case. *)
-            fail
+            tzfail
               Block_validator_errors.(
                 Validation_process_failed
                   (Socket_path_wrong_permission socket_path))
         | exn ->
-            fail
+            tzfail
               (Block_validator_errors.Validation_process_failed
                  (Cannot_run_external_validator (Printexc.to_string exn))))
   in

@@ -25,6 +25,7 @@
 
 let () =
   Long_test.init () ;
+  Dashboard.update_grafana_dashboard () ;
   Benchmark_tps_command.register () ;
   Estimate_average_block_command.register () ;
   Gas_tps_command.register () ;

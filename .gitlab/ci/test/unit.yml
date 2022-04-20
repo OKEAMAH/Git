@@ -41,36 +41,6 @@
   tags:
     - arm64
 
-unit:011_PtHangz2:
-  extends:
-  - .unit_test_template_x86_64_coverage
-  # We use an extra level of indirection for TEST_TARGETS, to avoid
-  # overly long job names causing GitLab CI to silently fail.
-  variables:
-    # Note the use of @ resp. @@ to select tests recursively resp. non-recursively
-    proto_011_PtHangz2__lib_protocol__1: >
-      @@src/proto_011_PtHangz2/lib_protocol/test/integration/runtest
-      @src/proto_011_PtHangz2/lib_protocol/test/integration/consensus/runtest
-      @src/proto_011_PtHangz2/lib_protocol/test/integration/gas/runtest
-    proto_011_PtHangz2__lib_protocol__2: >
-      @src/proto_011_PtHangz2/lib_protocol/test/integration/michelson/runtest
-      @src/proto_011_PtHangz2/lib_protocol/test/integration/operations/runtest
-    proto_011_PtHangz2__lib_protocol__3: >
-      @src/proto_011_PtHangz2/lib_protocol/test/pbt/runtest
-      @src/proto_011_PtHangz2/lib_protocol/test/unit/runtest
-    proto_011_PtHangz2: >
-      @src/proto_011_PtHangz2/lib_benchmark/runtest
-      @src/proto_011_PtHangz2/lib_client/runtest
-  parallel:
-    matrix:
-      - TEST_TARGETS:
-          - proto_011_PtHangz2__lib_protocol__1
-          - proto_011_PtHangz2__lib_protocol__2
-          - proto_011_PtHangz2__lib_protocol__3
-          - proto_011_PtHangz2
-  script:
-    - scripts/test_wrapper.sh $TEST_TARGETS ${!TEST_TARGETS}
-
 unit:012_Psithaca:
   extends:
   - .unit_test_template_x86_64_coverage
@@ -100,6 +70,38 @@ unit:012_Psithaca:
           - proto_012_Psithaca__lib_protocol__2
           - proto_012_Psithaca__lib_protocol__3
           - proto_012_Psithaca
+  script:
+    - scripts/test_wrapper.sh $TEST_TARGETS ${!TEST_TARGETS}
+
+unit:013_PtJakart:
+  extends:
+  - .unit_test_template_x86_64_coverage
+  # We use an extra level of indirection for TEST_TARGETS, to avoid
+  # overly long job names causing GitLab CI to silently fail.
+  variables:
+    # Note the use of @ resp. @@ to select tests recursively resp. non-recursively
+    proto_013_PtJakart__lib_protocol__1: >
+        @@src/proto_013_PtJakart/lib_protocol/test/integration/runtest
+        @src/proto_013_PtJakart/lib_protocol/test/integration/consensus/runtest
+        @src/proto_013_PtJakart/lib_protocol/test/integration/gas/runtest
+    proto_013_PtJakart__lib_protocol__2: >
+        @src/proto_013_PtJakart/lib_protocol/test/integration/michelson/runtest
+        @src/proto_013_PtJakart/lib_protocol/test/integration/operations/runtest
+    proto_013_PtJakart__lib_protocol__3: >
+        @src/proto_013_PtJakart/lib_protocol/test/pbt/runtest
+        @src/proto_013_PtJakart/lib_protocol/test/unit/runtest
+    proto_013_PtJakart: >
+        @src/proto_013_PtJakart/lib_benchmark/runtest
+        @src/proto_013_PtJakart/lib_client/runtest
+        @src/proto_013_PtJakart/lib_plugin/runtest
+        @src/proto_013_PtJakart/lib_delegate/runtest
+  parallel:
+    matrix:
+      - TEST_TARGETS:
+          - proto_013_PtJakart__lib_protocol__1
+          - proto_013_PtJakart__lib_protocol__2
+          - proto_013_PtJakart__lib_protocol__3
+          - proto_013_PtJakart
   script:
     - scripts/test_wrapper.sh $TEST_TARGETS ${!TEST_TARGETS}
 
@@ -134,7 +136,6 @@ unit:alpha:
           - proto_alpha
   script:
     - scripts/test_wrapper.sh $TEST_TARGETS ${!TEST_TARGETS}
-
 unit:non-proto-x86_64:
   extends:
   - .unit_test_template_x86_64_coverage

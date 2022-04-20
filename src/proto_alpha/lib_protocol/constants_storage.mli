@@ -2,7 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
-(* Copyright (c) 2020-2021 Nomadic Labs <contact@nomadic-labs.com>           *)
+(* Copyright (c) 2020-2022 Nomadic Labs <contact@nomadic-labs.com>           *)
 (* Copyright (c) 2021-2022 Trili Tech, <contact@trili.tech>                  *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
@@ -24,6 +24,10 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+
+(** This module provides functions to extract the value of protocol parameters
+    from the context.
+    See {!Constant_repr.parametric} for more details about these values. *)
 
 val preserved_cycles : Raw_context.t -> int
 
@@ -112,6 +116,8 @@ val tx_rollup_max_ticket_payload_size : Raw_context.t -> int
 
 val tx_rollup_rejection_max_proof_size : Raw_context.t -> int
 
+val tx_rollup_sunset_level : Raw_context.t -> int32
+
 val ratio_of_frozen_deposits_slashed_per_double_endorsement :
   Raw_context.t -> Constants_repr.ratio
 
@@ -126,3 +132,11 @@ val sc_rollup_origination_size : Raw_context.t -> int
 val sc_rollup_challenge_window_in_blocks : Raw_context.t -> int
 
 val sc_rollup_max_available_messages : Raw_context.t -> int
+
+val sc_rollup_stake_amount_in_mutez : Raw_context.t -> int
+
+val sc_rollup_commitment_frequency_in_blocks : Raw_context.t -> int
+
+val sc_rollup_commitment_storage_size_in_bytes : Raw_context.t -> int
+
+val sc_rollup_max_lookahead_in_blocks : Raw_context.t -> int32

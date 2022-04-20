@@ -71,7 +71,7 @@ module Raw = struct
     Bytes.cat salt (Crypto_box.Secretbox.secretbox key msg nonce)
 
   let decrypt algo ~password ~encrypted_sk =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_result_syntax in
     let salt = Bytes.sub encrypted_sk 0 salt_len in
     let encrypted_sk = Bytes.sub encrypted_sk salt_len encrypted_size in
     let key = Crypto_box.Secretbox.unsafe_of_bytes (pbkdf ~salt ~password) in
@@ -164,7 +164,7 @@ let passwords = ref []
    given more than `retries_left` *)
 let interactive_decrypt_loop (cctxt : #Client_context.io) ?name ~retries_left
     ~encrypted_sk algo =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let rec interactive_decrypt_loop (cctxt : #Client_context.io) name
       ~current_retries ~retries ~encrypted_sk algo =
     match current_retries with
@@ -399,6 +399,8 @@ struct
     \ - encrypted:<public_key>\n\
      where <public_key> is the public key in Base58."
 
+  include Client_keys.Signature_type
+
   let public_key = Unencrypted.public_key
 
   let public_key_hash = Unencrypted.public_key_hash
@@ -426,7 +428,7 @@ struct
     let* sk = decrypt C.cctxt sk_uri in
     return (Signature.deterministic_nonce_hash sk buf)
 
-  let supports_deterministic_nonces _ = Lwt_tzresult_syntax.return_true
+  let supports_deterministic_nonces _ = Lwt_result_syntax.return_true
 end
 
 let encrypt_pvss_key cctxt sk =

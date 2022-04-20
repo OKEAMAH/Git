@@ -229,7 +229,7 @@ let rec count =
 
 let list url (cctxt : #Client_context.full) =
   let open Lwt_result_syntax in
-  let args = String.split '/' url in
+  let args = String.split_no_empty '/' url in
   let* tree = RPC_description.describe cctxt ~recurse:true args in
   let open RPC_description in
   let collected_args = ref [] in
@@ -245,7 +245,7 @@ let list url (cctxt : #Client_context.full) =
       ppf
       "@,    @[%a@]"
       (fun ppf words -> List.iter (Format.fprintf ppf "%s@ ") words)
-      (String.split ' ' description)
+      (String.split_no_empty ' ' description)
   in
   let display_arg ppf arg =
     match arg.RPC_arg.descr with
@@ -346,7 +346,7 @@ let list url (cctxt : #Client_context.full) =
 
 let schema meth url (cctxt : #Client_context.full) =
   let open Lwt_result_syntax in
-  let args = String.split '/' url in
+  let args = String.split_no_empty '/' url in
   let open RPC_description in
   let* s = RPC_description.describe cctxt ~recurse:false args in
   match s with
@@ -373,7 +373,7 @@ let schema meth url (cctxt : #Client_context.full) =
 
 let format binary meth url (cctxt : #Client_context.io_rpcs) =
   let open Lwt_result_syntax in
-  let args = String.split '/' url in
+  let args = String.split_no_empty '/' url in
   let open RPC_description in
   let pp =
     if binary then fun ppf (_, schema) ->
@@ -455,37 +455,52 @@ let display_answer (cctxt : #Client_context.full) :
 let call ?body meth raw_url (cctxt : #Client_context.full) =
   let open Lwt_result_syntax in
   let uri = Uri.of_string raw_url in
-  let args = String.split '/' (Uri.path uri) in
-  let* s = RPC_description.describe cctxt ~recurse:false args in
-  match s with
-  | Static {services; _} -> (
-      match RPC_service.MethMap.find_opt meth services with
-      | None -> no_service_at_valid_prefix cctxt
-      | Some {input = None; _} ->
-          let*! () =
-            match body with
-            | None -> Lwt.return_unit
-            | Some _ ->
-                cctxt#warning
-                  "This URL did not expect a JSON input but one was provided\n\
-                   %!"
-          in
-          let* answer = cctxt#generic_media_type_call meth ?body uri in
-          let*! () = display_answer cctxt answer in
-          return_unit
-      | Some {input = Some input; _} -> (
-          let*! r =
-            match body with
-            | None -> fill_in ~show_optionals:false (fst (Lazy.force input))
-            | Some body -> Lwt.return (Ok body)
-          in
-          match r with
-          | Error msg -> cctxt#error "%s" msg
-          | Ok body ->
-              let* answer = cctxt#generic_media_type_call meth ~body uri in
-              let*! () = display_answer cctxt answer in
-              return_unit))
-  | _ -> cctxt#error "No service found at this URL\n%!"
+  let args = String.split_no_empty '/' (Uri.path uri) in
+  if not cctxt#verbose_rpc_error_diagnostics then
+    let body =
+      (* This code is similar to a piece of code in [fill_in]
+         function. An RPC is declared as POST, PATCH or PUT, but the
+         body is not given. In that case, the body should be an empty
+         JSON object. *)
+      match (meth, body) with
+      | (_, Some _) -> body
+      | (`DELETE, None) | (`GET, None) -> None
+      | (`PATCH, None) | (`PUT, None) | (`POST, None) -> Some (`O [])
+    in
+    let* answer = cctxt#generic_media_type_call meth ?body uri in
+    let*! () = display_answer cctxt answer in
+    return_unit
+  else
+    let* s = RPC_description.describe cctxt ~recurse:false args in
+    match s with
+    | Static {services; _} -> (
+        match RPC_service.MethMap.find_opt meth services with
+        | None -> no_service_at_valid_prefix cctxt
+        | Some {input = None; _} ->
+            let*! () =
+              match body with
+              | None -> Lwt.return_unit
+              | Some _ ->
+                  cctxt#warning
+                    "This URL did not expect a JSON input but one was provided\n\
+                     %!"
+            in
+            let* answer = cctxt#generic_media_type_call meth ?body uri in
+            let*! () = display_answer cctxt answer in
+            return_unit
+        | Some {input = Some input; _} -> (
+            let*! r =
+              match body with
+              | None -> fill_in ~show_optionals:false (fst (Lazy.force input))
+              | Some body -> Lwt.return (Ok body)
+            in
+            match r with
+            | Error msg -> cctxt#error "%s" msg
+            | Ok body ->
+                let* answer = cctxt#generic_media_type_call meth ~body uri in
+                let*! () = display_answer cctxt answer in
+                return_unit))
+    | _ -> cctxt#error "No service found at this URL\n%!"
 
 let call_with_json meth raw_url json (cctxt : #Client_context.full) =
   match Data_encoding.Json.from_string json with
@@ -519,7 +534,7 @@ let meth_params ?(name = "HTTP method") ?(desc = "") params =
          @@ List.map Resto.string_of_meth
          @@ [`GET; `POST; `DELETE; `PUT; `PATCH])
        (fun _ name ->
-         let open Lwt_tzresult_syntax in
+         let open Lwt_result_syntax in
          match Resto.meth_of_string (String.uppercase_ascii name) with
          | None -> failwith "Unknown HTTP method: %s" name
          | Some meth -> return meth))

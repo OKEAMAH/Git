@@ -74,7 +74,7 @@ let parse_block s =
           WithExceptions.Option.get ~loc:__LOC__
           @@ List.assoc ~equal:Int.equal 1 counts
         in
-        (String.split delim s, delim)
+        (String.split_no_empty delim s, delim)
     | _ -> raise Exit
   in
   (* Converts a string representing a block level into a Int32. Fails
@@ -491,12 +491,17 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
                (dynamic_size Operation.shell_header_encoding)
                (dynamic_size Next_proto.operation_data_encoding)))
 
+  type operation_receipt =
+    | Empty
+    | Too_large
+    | Receipt of Proto.operation_receipt
+
   type operation = {
     chain_id : Chain_id.t;
     hash : Operation_hash.t;
     shell : Operation.shell_header;
     protocol_data : Proto.operation_data;
-    receipt : Proto.operation_receipt option;
+    receipt : operation_receipt;
   }
 
   let operation_data_encoding =
@@ -505,20 +510,31 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       ~tag_size:`Uint8
       [
         case
-          ~title:"Operation with metadata"
+          ~title:"Operation with too large metadata"
           (Tag 0)
-          Proto.operation_data_and_receipt_encoding
+          (merge_objs
+             Proto.operation_data_encoding
+             (obj1 (req "metadata" (constant "too large"))))
           (function
-            | (operation_data, Some receipt) -> Some (operation_data, receipt)
+            | (operation_data, Too_large) -> Some (operation_data, ())
             | _ -> None)
-          (function
-            | (operation_data, receipt) -> (operation_data, Some receipt));
+          (fun (operation_data, ()) -> (operation_data, Too_large));
         case
           ~title:"Operation without metadata"
           (Tag 1)
           Proto.operation_data_encoding
-          (function (operation_data, None) -> Some operation_data | _ -> None)
-          (fun operation_data -> (operation_data, None));
+          (function
+            | (operation_data, Empty) -> Some operation_data | _ -> None)
+          (fun operation_data -> (operation_data, Empty));
+        case
+          ~title:"Operation with metadata"
+          (Tag 2)
+          Proto.operation_data_and_receipt_encoding
+          (function
+            | (operation_data, Receipt receipt) -> Some (operation_data, receipt)
+            | _ -> None)
+          (function
+            | (operation_data, receipt) -> (operation_data, Receipt receipt));
       ]
 
   let operation_encoding =
@@ -640,13 +656,27 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           RPC_path.(path / "protocol_data" / "raw")
     end
 
+    let force_operation_metadata_query =
+      let open RPC_query in
+      query (fun force_metadata ->
+          object
+            method force_metadata = force_metadata
+          end)
+      |+ flag
+           "force_metadata"
+           ~descr:
+             "Forces to recompute the operations metadata if it was considered \
+              as too large."
+           (fun x -> x#force_metadata)
+      |> seal
+
     module Operations = struct
       let path = RPC_path.(path / "operations")
 
       let operations =
         RPC_service.get_service
           ~description:"All the operations included in the block."
-          ~query:RPC_query.empty
+          ~query:force_operation_metadata_query
           ~output:(list (dynamic_size (list operation_encoding)))
           path
 
@@ -677,7 +707,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           ~description:
             "All the operations included in `n-th` validation pass of the \
              block."
-          ~query:RPC_query.empty
+          ~query:force_operation_metadata_query
           ~output:(list operation_encoding)
           RPC_path.(path /: list_arg)
 
@@ -685,7 +715,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
         RPC_service.get_service
           ~description:
             "The `m-th` operation in the `n-th` validation pass of the block."
-          ~query:RPC_query.empty
+          ~query:force_operation_metadata_query
           ~output:operation_encoding
           RPC_path.(path /: list_arg /: offset_arg)
     end
@@ -911,7 +941,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           "All the information about a block. The associated metadata may not \
            be present depending on the history mode and block's distance from \
            the head."
-        ~query:RPC_query.empty
+        ~query:force_operation_metadata_query
         ~output:block_info_encoding
         path
 
@@ -1389,17 +1419,41 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
   module Operations = struct
     module S = S.Operations
 
-    let operations ctxt =
+    let operations ctxt ?(force_metadata = false) =
       let f = make_call0 S.operations ctxt in
-      fun ?(chain = `Main) ?(block = `Head 0) () -> f chain block () ()
+      fun ?(chain = `Main) ?(block = `Head 0) () ->
+        f
+          chain
+          block
+          (object
+             method force_metadata = force_metadata
+          end)
+          ()
 
-    let operations_in_pass ctxt =
+    let operations_in_pass ctxt ?(force_metadata = false) =
       let f = make_call1 S.operations_in_pass ctxt in
-      fun ?(chain = `Main) ?(block = `Head 0) n -> f chain block n () ()
+      fun ?(chain = `Main) ?(block = `Head 0) n ->
+        f
+          chain
+          block
+          n
+          (object
+             method force_metadata = force_metadata
+          end)
+          ()
 
-    let operation ctxt =
+    let operation ctxt ?(force_metadata = false) =
       let f = make_call2 S.operation ctxt in
-      fun ?(chain = `Main) ?(block = `Head 0) n m -> f chain block n m () ()
+      fun ?(chain = `Main) ?(block = `Head 0) n m ->
+        f
+          chain
+          block
+          n
+          m
+          (object
+             method force_metadata = force_metadata
+          end)
+          ()
   end
 
   module Operation_hashes = struct
@@ -1510,9 +1564,16 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       fun ?(chain = `Main) ?(block = `Head 0) s -> f chain block s () ()
   end
 
-  let info ctxt =
+  let info ctxt ?(force_metadata = false) =
     let f = make_call0 S.info ctxt in
-    fun ?(chain = `Main) ?(block = `Head 0) () -> f chain block () ()
+    fun ?(chain = `Main) ?(block = `Head 0) () ->
+      f
+        chain
+        block
+        (object
+           method force_metadata = force_metadata
+        end)
+        ()
 
   module Mempool = struct
     type t = S.Mempool.t = {

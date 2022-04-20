@@ -80,7 +80,7 @@ let default_index_log_size = 10_000
 let default_compression_level = 9
 
 let create ~log_size cemented_blocks_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   protect (fun () ->
       let cemented_blocks_dir_path = Naming.dir_path cemented_blocks_dir in
       let cemented_blocks_metadata_dir =
@@ -99,7 +99,7 @@ let create ~log_size cemented_blocks_dir =
             return_unit)
           (function
             | Failure s when s = "Not a directory" ->
-                fail
+                tzfail
                   (Store_errors.Failed_to_init_cemented_block_store
                      cemented_blocks_dir_path)
             | e -> Lwt.fail e)
@@ -138,9 +138,11 @@ let compare_cemented_metadata ({start_level; _} : cemented_metadata_file)
   Compare.Int32.compare start_level start_level'
 
 let load_table cemented_blocks_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   protect (fun () ->
       let cemented_blocks_dir_path = Naming.dir_path cemented_blocks_dir in
+      (* No need to check the existence of the cemented block
+         directory as it is always there, even if empty. *)
       let*! dir_handle = Lwt_unix.opendir cemented_blocks_dir_path in
       let rec loop acc =
         let*! filename =
@@ -181,61 +183,68 @@ let load_table cemented_blocks_dir =
           return_some cemented_files_array)
 
 let load_metadata_table cemented_blocks_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   protect (fun () ->
       let cemented_metadata_dir =
         Naming.cemented_blocks_metadata_dir cemented_blocks_dir
       in
-      let*! dir_handle =
-        Lwt_unix.opendir (Naming.dir_path cemented_metadata_dir)
-      in
-      let rec loop acc =
-        let*! filename =
-          Option.catch_s
-            ~catch_only:(function End_of_file -> true | _ -> false)
-            (fun () -> Lwt_unix.readdir dir_handle)
+      let metadata_dir_path = Naming.dir_path cemented_metadata_dir in
+      (* Make sure that the cemented metadata data directory exists,
+         as it may not be the case, depending on the history mode. *)
+      let*! exists = Lwt_unix.file_exists metadata_dir_path in
+      if exists then (
+        let*! dir_handle = Lwt_unix.opendir metadata_dir_path in
+        let rec loop acc =
+          let*! filename =
+            Option.catch_s
+              ~catch_only:(function End_of_file -> true | _ -> false)
+              (fun () -> Lwt_unix.readdir dir_handle)
+          in
+          match filename with
+          | Some filename -> (
+              let levels =
+                String.split_on_char '_' (Filename.remove_extension filename)
+              in
+              match levels with
+              | [start_level; end_level] -> (
+                  let start_level_opt = Int32.of_string_opt start_level in
+                  let end_level_opt = Int32.of_string_opt end_level in
+                  match (start_level_opt, end_level_opt) with
+                  | (Some start_level, Some end_level) ->
+                      let file =
+                        Naming.cemented_blocks_file
+                          cemented_blocks_dir
+                          ~start_level
+                          ~end_level
+                      in
+                      let metadata_file =
+                        Naming.cemented_blocks_metadata_file
+                          cemented_metadata_dir
+                          file
+                      in
+                      loop ({start_level; end_level; metadata_file} :: acc)
+                  | _ -> loop acc)
+              | _ -> loop acc)
+          | None -> Lwt.return acc
         in
-        match filename with
-        | Some filename -> (
-            let levels =
-              String.split_on_char '_' (Filename.remove_extension filename)
-            in
-            match levels with
-            | [start_level; end_level] -> (
-                let start_level_opt = Int32.of_string_opt start_level in
-                let end_level_opt = Int32.of_string_opt end_level in
-                match (start_level_opt, end_level_opt) with
-                | (Some start_level, Some end_level) ->
-                    let file =
-                      Naming.cemented_blocks_file
-                        cemented_blocks_dir
-                        ~start_level
-                        ~end_level
-                    in
-                    let metadata_file =
-                      Naming.cemented_blocks_metadata_file
-                        cemented_metadata_dir
-                        file
-                    in
-                    loop ({start_level; end_level; metadata_file} :: acc)
-                | _ -> loop acc)
-            | _ -> loop acc)
-        | None -> Lwt.return acc
-      in
-      let*! cemented_files =
-        Lwt.finalize
-          (fun () -> loop [])
-          (fun () -> Lwt_unix.closedir dir_handle)
-      in
-      match cemented_files with
-      | [] -> return_none
-      | cemented_files_list ->
-          let cemented_files_array = Array.of_list cemented_files_list in
-          Array.sort compare_cemented_metadata cemented_files_array ;
-          return_some cemented_files_array)
+        let*! cemented_files =
+          Lwt.finalize
+            (fun () -> loop [])
+            (fun () -> Lwt_unix.closedir dir_handle)
+        in
+        match cemented_files with
+        | [] -> return_none
+        | cemented_files_list ->
+            let cemented_files_array = Array.of_list cemented_files_list in
+            Array.sort compare_cemented_metadata cemented_files_array ;
+            return_some cemented_files_array)
+      else return_none)
+
+let cemented_metadata_files cemented_block_store =
+  load_metadata_table cemented_block_store.cemented_blocks_dir
 
 let load ~readonly ~log_size cemented_blocks_dir =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let cemented_block_level_index =
     Cemented_block_level_index.v
       ~readonly
@@ -262,7 +271,7 @@ let load ~readonly ~log_size cemented_blocks_dir =
   return cemented_store
 
 let init ?(log_size = default_index_log_size) chain_dir ~readonly =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let cemented_blocks_dir = Naming.cemented_blocks_dir chain_dir in
   let cemented_blocks_dir_path = Naming.dir_path cemented_blocks_dir in
   let*! b = Lwt_unix.file_exists cemented_blocks_dir_path in
@@ -338,9 +347,8 @@ let find_block_file cemented_store block_level =
 (* Hypothesis: the table is ordered. *)
 let compute_location cemented_store block_level =
   Option.map
-    (function
-      | {start_level; file; _} ->
-          (file, Int32.(to_int (sub block_level start_level))))
+    (fun {start_level; file; _} ->
+      (file, Int32.(to_int (sub block_level start_level))))
     (find_block_file cemented_store block_level)
 
 let is_cemented cemented_store hash =
@@ -367,7 +375,7 @@ let get_cemented_block_hash cemented_store level =
   with Not_found -> None
 
 let read_block_metadata ?location cemented_store block_level =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let location =
     match location with
     | Some _ -> location
@@ -384,27 +392,29 @@ let read_block_metadata ?location cemented_store block_level =
       let*! b = Lwt_unix.file_exists metadata_file in
       match b with
       | false -> return_none
-      | true -> (
-          match Zip.open_in metadata_file with
-          | exception _ -> return_none
-          | in_file ->
-              Lwt.catch
+      | true ->
+          Lwt.catch
+            (fun () ->
+              let*! in_file = Lwt_preemptive.detach Zip.open_in metadata_file in
+              Lwt.finalize
                 (fun () ->
-                  let entry =
-                    Zip.find_entry in_file (Int32.to_string block_level)
+                  let*! entry =
+                    Lwt_preemptive.detach
+                      (fun () ->
+                        Zip.find_entry in_file (Int32.to_string block_level))
+                      ()
                   in
-                  let metadata = Zip.read_entry in_file entry in
-                  Zip.close_in in_file ;
-                  return_some
-                    (Data_encoding.Binary.of_string_exn
-                       Block_repr.metadata_encoding
-                       metadata))
-                (fun _ ->
-                  Zip.close_in in_file ;
-                  return_none)))
+                  let*! metadata =
+                    Lwt_preemptive.detach
+                      (fun () -> Zip.read_entry in_file entry)
+                      ()
+                  in
+                  Block_repr.decode_metadata metadata |> return)
+                (fun () -> Lwt_preemptive.detach Zip.close_in in_file))
+            (fun _ -> return_none))
 
 let cement_blocks_metadata cemented_store blocks =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let cemented_metadata_dir =
     cemented_store.cemented_blocks_dir |> Naming.cemented_blocks_metadata_dir
   in
@@ -422,43 +432,46 @@ let cement_blocks_metadata cemented_store blocks =
       (Block_repr.level
          (List.hd blocks |> WithExceptions.Option.get ~loc:__LOC__))
   with
-  | None -> fail (Cannot_cement_blocks_metadata `Not_cemented)
+  | None -> tzfail (Cannot_cement_blocks_metadata `Not_cemented)
   | Some {file; _} ->
       let tmp_metadata_file_path =
         Naming.cemented_blocks_tmp_metadata_file cemented_metadata_dir file
         |> Naming.file_path
       in
-      if List.exists (fun block -> Block_repr.metadata block <> None) blocks
-      then (
-        let out_file = Zip.open_out tmp_metadata_file_path in
-        let*! () =
-          List.iter_s
-            (fun block ->
-              let level = Block_repr.level block in
-              match Block_repr.metadata block with
-              | Some metadata ->
-                  let metadata =
-                    Data_encoding.Binary.to_string_exn
-                      Block_repr.metadata_encoding
-                      metadata
-                  in
-                  Zip.add_entry
-                    ~level:default_compression_level
-                    metadata
-                    out_file
-                    (Int32.to_string level) ;
-                  Lwt.pause ()
-              | None -> Lwt.return_unit)
-            blocks
-        in
-        Zip.close_out out_file ;
-        let metadata_file_path =
-          Naming.cemented_blocks_metadata_file cemented_metadata_dir file
-          |> Naming.file_path
-        in
-        let*! () = Lwt_unix.rename tmp_metadata_file_path metadata_file_path in
-        return_unit)
-      else return_unit
+      let*! out_file =
+        Lwt_preemptive.detach Zip.open_out tmp_metadata_file_path
+      in
+      let*! () =
+        Lwt.finalize
+          (fun () ->
+            List.iter_s
+              (fun block ->
+                let level = Block_repr.level block in
+                match Block_repr.metadata block with
+                | Some metadata ->
+                    let metadata =
+                      Data_encoding.Binary.to_string_exn
+                        Block_repr.metadata_encoding
+                        metadata
+                    in
+                    Lwt_preemptive.detach
+                      (fun () ->
+                        Zip.add_entry
+                          ~level:default_compression_level
+                          metadata
+                          out_file
+                          (Int32.to_string level))
+                      ()
+                | None -> Lwt.return_unit)
+              blocks)
+          (fun () -> Lwt_preemptive.detach Zip.close_out out_file)
+      in
+      let metadata_file_path =
+        Naming.cemented_blocks_metadata_file cemented_metadata_dir file
+        |> Naming.file_path
+      in
+      let*! () = Lwt_unix.rename tmp_metadata_file_path metadata_file_path in
+      return_unit
 
 let read_block fd block_number =
   let open Lwt_syntax in
@@ -469,8 +482,7 @@ let read_block fd block_number =
     Lwt_utils_unix.read_bytes ~pos:0 ~len:offset_length fd offset_buffer
   in
   let offset =
-    Data_encoding.(Binary.of_bytes_opt offset_encoding offset_buffer)
-    |> WithExceptions.Option.get ~loc:__LOC__
+    Data_encoding.(Binary.of_bytes_exn offset_encoding offset_buffer)
   in
   let* _ofs = Lwt_unix.lseek fd offset Unix.SEEK_SET in
   (* We move the cursor to the element's position *)
@@ -496,7 +508,7 @@ let get_highest_cemented_level cemented_store =
         None
 
 let get_cemented_block_by_level (cemented_store : t) ~read_metadata level =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   match compute_location cemented_store level with
   | None -> return_none
   | Some ((filename, block_number) as location) ->
@@ -518,7 +530,7 @@ let read_block_metadata cemented_store block_level =
   read_block_metadata cemented_store block_level
 
 let get_cemented_block_by_hash ~read_metadata (cemented_store : t) hash =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   match get_cemented_block_level cemented_store hash with
   | None -> return_none
   | Some level ->
@@ -531,7 +543,7 @@ let get_cemented_block_by_hash ~read_metadata (cemented_store : t) hash =
      and all blocks are expected to have metadata. *)
 let cement_blocks ?(check_consistency = true) (cemented_store : t)
     ~write_metadata (blocks : Block_repr.t list) =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   let nb_blocks = List.length blocks in
   let preamble_length = nb_blocks * offset_length in
   let* () = fail_when (nb_blocks = 0) (Cannot_cement_blocks `Empty) in
@@ -653,7 +665,7 @@ let cement_blocks ?(check_consistency = true) (cemented_store : t)
   cemented_store.cemented_blocks_files <- Some new_array ;
   (* Compress and write the metadatas *)
   if write_metadata then
-    Store_events.(emit start_cementing_blocks_metadata) () >>= fun () ->
+    let*! () = Store_events.(emit start_cementing_blocks_metadata) () in
     cement_blocks_metadata cemented_store blocks
   else return_unit
 
@@ -713,9 +725,10 @@ let trigger_rolling_gc cemented_store cemented_blocks_files offset =
       files_to_remove
 
 let trigger_gc cemented_store history_mode =
-  Store_events.(emit start_store_garbage_collection) () >>= fun () ->
+  let open Lwt_syntax in
+  let* () = Store_events.(emit start_store_garbage_collection) () in
   match cemented_store.cemented_blocks_files with
-  | None -> Lwt.return_unit
+  | None -> return_unit
   | Some cemented_blocks_files -> (
       match history_mode with
       | History_mode.Archive -> Lwt.return_unit
@@ -737,7 +750,7 @@ let trigger_gc cemented_store history_mode =
           trigger_rolling_gc cemented_store cemented_blocks_files offset)
 
 let iter_cemented_file f ({file; _} as cemented_blocks_file) =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   protect (fun () ->
       let file_path = Naming.file_path file in
       Lwt_io.with_file
@@ -776,13 +789,13 @@ let iter_cemented_file f ({file; _} as cemented_blocks_file) =
             (fun exn ->
               Format.kasprintf
                 (fun trace ->
-                  fail (Inconsistent_cemented_file (file_path, trace)))
+                  tzfail (Inconsistent_cemented_file (file_path, trace)))
                 "%s"
                 (Printexc.to_string exn))))
 
 let check_indexes_consistency ?(post_step = fun () -> Lwt.return_unit)
     ?genesis_hash cemented_store =
-  let open Lwt_tzresult_syntax in
+  let open Lwt_result_syntax in
   match cemented_store.cemented_blocks_files with
   | None -> return_unit
   | Some table ->
