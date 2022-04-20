@@ -919,7 +919,6 @@ let testing_countPVM (f : (module TestPVM) -> int option -> bool) name =
 let testing_arith (f : (module TestPVM) -> int option -> bool) name =
   let open QCheck2 in
   Test.make
-    ~count:10000
     ~name
     Gen.(pair gen_list small_int)
     (fun (inputs, evals) ->
