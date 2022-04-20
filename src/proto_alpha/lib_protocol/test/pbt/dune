@@ -1,42 +1,32 @@
 (tests
  (package tezos-protocol-alpha-tests)
- (names
-  liquidity_baking_pbt
-  saturation_fuzzing
-  test_merkle_list
-  test_gas_properties
-  test_sampler
-  test_script_comparison
-  test_tez_repr
-  test_tx_rollup_l2_encoding
-  test_tx_rollup_l2_withdraw_storage
-  test_sc_rollup_tick_repr
-  test_refutation_game
-  test_carbonated_map)
- (libraries
-  tezos-base
-  tezos-micheline
-  tezos-client-alpha
-  tezos-test-helpers
-  tezos-alpha-test-helpers
-  tezos-context
-  alcotest
-  qcheck-alcotest
-  tezos-benchmark
-  tezos-benchmark-alpha)
- (flags
-  (:standard
-   -open
-   Tezos_base__TzPervasives
-   -open
-   Tezos_micheline
-   -open
-   Tezos_client_alpha
-   -open
-   Tezos_protocol_alpha
-   -open
-   Tezos_alpha_test_helpers
-   -open
-   Tezos_benchmark_alpha
-   -open
-   Tezos_benchmark_type_inference_alpha)))
+ (names liquidity_baking_pbt
+        saturation_fuzzing
+        test_merkle_list
+        test_gas_properties
+        test_sampler
+        test_script_comparison
+        test_tez_repr
+        test_tx_rollup_l2_encoding
+        test_tx_rollup_l2_withdraw_storage
+        test_sc_rollup_tick_repr
+        test_refutation_game
+        test_carbonated_map)
+ (libraries tezos-base
+            tezos-micheline
+            tezos-client-alpha
+            tezos-test-helpers
+            tezos-alpha-test-helpers
+            tezos-context
+            alcotest
+            qcheck-alcotest
+            tezos-benchmark
+            tezos-benchmark-alpha)
+ (flags (:standard
+          -open Tezos_base__TzPervasives
+          -open Tezos_micheline
+          -open Tezos_client_alpha
+          -open Tezos_protocol_alpha
+          -open Tezos_alpha_test_helpers
+          -open Tezos_benchmark_alpha
+          -open Tezos_benchmark_type_inference_alpha)))
