@@ -194,6 +194,8 @@
         "Sc_rollup_arith",
         "Sc_rollups",
 
+	"Das_apply",
+
         "Baking",
         "Amendment",
         "Apply",

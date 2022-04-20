@@ -202,6 +202,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollup_PVM_sem.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
+   das_apply.mli das_apply.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply.mli apply.ml
@@ -396,6 +397,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollup_PVM_sem.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
+   das_apply.mli das_apply.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply.mli apply.ml
@@ -590,6 +592,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollup_PVM_sem.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
+   das_apply.mli das_apply.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply.mli apply.ml
@@ -806,6 +809,7 @@ include Tezos_raw_protocol_alpha.Main
    Sc_rollup_PVM_sem
    Sc_rollup_arith
    Sc_rollups
+   Das_apply
    Baking
    Amendment
    Apply
@@ -1041,6 +1045,7 @@ include Tezos_raw_protocol_alpha.Main
    sc_rollup_PVM_sem.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
+   das_apply.mli das_apply.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply.mli apply.ml
