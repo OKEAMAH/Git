@@ -202,16 +202,6 @@ let set_frozen_deposits_limit ctxt delegate limit =
 let frozen_deposits ctxt delegate =
   Frozen_deposits_storage.get ctxt (Contract_repr.Implicit delegate)
 
-let set_inactive ctxt delegate =
-  Delegate_activation_storage.set_inactive ctxt delegate >>= fun ctxt ->
-  Stake_storage.deactivate_only_call_from_delegate_storage ctxt delegate >|= ok
-
-let set_active ctxt delegate =
-  Delegate_activation_storage.set_active ctxt delegate
-  >>=? fun (ctxt, inactive) ->
-  if not inactive then return ctxt
-  else Stake_storage.activate_only_call_from_delegate_storage ctxt delegate
-
 let balance ctxt delegate =
   let contract = Contract_repr.Implicit delegate in
   Storage.Contract.Spendable_balance.get ctxt contract
@@ -310,5 +300,6 @@ let set c contract delegate =
         Stake_storage.add_stake c delegate balance_and_frozen_bonds
         >>=? fun c ->
         if self_delegation then
-          Storage.Delegates.add c delegate >>= fun c -> set_active c delegate
+          Storage.Delegates.add c delegate >>= fun c ->
+          Stake_storage.set_active c delegate
         else return c

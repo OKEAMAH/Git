@@ -112,9 +112,3 @@ val pubkey :
   Raw_context.t ->
   Signature.Public_key_hash.t ->
   Signature.Public_key.t tzresult Lwt.t
-
-val set_active :
-  Raw_context.t -> Signature.Public_key_hash.t -> Raw_context.t tzresult Lwt.t
-
-val set_inactive :
-  Raw_context.t -> Signature.Public_key_hash.t -> Raw_context.t tzresult Lwt.t
