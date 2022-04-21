@@ -40,7 +40,7 @@ type error +=
   | (* `Temporary *) Not_registered of Signature.Public_key_hash.t
 
 (** Check that a given implicit account is a registered delegate. *)
-val check_delegate :
+val check_registered :
   Raw_context.t -> Signature.Public_key_hash.t -> unit tzresult Lwt.t
 
 (** Iterate on all registered delegates. *)

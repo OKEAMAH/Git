@@ -173,7 +173,7 @@ let () =
 
 (* The fact that this succeeds iff [registered ctxt pkh] returns true is an
    invariant of the [set] function. *)
-let check_delegate ctxt pkh =
+let check_registered ctxt pkh =
   Storage.Delegates.mem ctxt pkh >>= function
   | true -> return_unit
   | false -> fail (Not_registered pkh)

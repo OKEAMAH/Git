@@ -366,7 +366,7 @@ let register () =
       | {with_minimal_stake = false; without_minimal_stake = false; _} ->
           return delegates) ;
   register1 ~chunked:false S.info (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.full_balance ctxt pkh >>=? fun full_balance ->
       Delegate.frozen_deposits ctxt pkh >>=? fun frozen_deposits ->
       Delegate.staking_balance ctxt pkh >>=? fun staking_balance ->
@@ -389,42 +389,42 @@ let register () =
         voting_info;
       }) ;
   register1 ~chunked:false S.full_balance (fun ctxt pkh () () ->
-      trace (Balance_rpc_non_delegate pkh) (Delegate.check_delegate ctxt pkh)
+      trace (Balance_rpc_non_delegate pkh) (Delegate.check_registered ctxt pkh)
       >>=? fun () -> Delegate.full_balance ctxt pkh) ;
   register1 ~chunked:false S.current_frozen_deposits (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.frozen_deposits ctxt pkh >>=? fun deposits ->
       return deposits.current_amount) ;
   register1 ~chunked:false S.frozen_deposits (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.frozen_deposits ctxt pkh >>=? fun deposits ->
       return deposits.initial_amount) ;
   register1 ~chunked:false S.staking_balance (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.staking_balance ctxt pkh) ;
   register1 ~chunked:false S.frozen_deposits_limit (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.frozen_deposits_limit ctxt pkh) ;
   register1 ~chunked:true S.delegated_contracts (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.delegated_contracts ctxt pkh >|= ok) ;
   register1 ~chunked:false S.delegated_balance (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.delegated_balance ctxt pkh) ;
   register1 ~chunked:false S.deactivated (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.deactivated ctxt pkh) ;
   register1 ~chunked:false S.grace_period (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.last_cycle_before_deactivation ctxt pkh) ;
   register1 ~chunked:false S.voting_power (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Vote.get_voting_power_free ctxt pkh) ;
   register1 ~chunked:false S.voting_info (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Vote.get_delegate_info ctxt pkh) ;
   register1 ~chunked:false S.participation (fun ctxt pkh () () ->
-      Delegate.check_delegate ctxt pkh >>=? fun () ->
+      Delegate.check_registered ctxt pkh >>=? fun () ->
       Delegate.delegate_participation_info ctxt pkh)
 
 let list ctxt block ?(active = true) ?(inactive = false)
