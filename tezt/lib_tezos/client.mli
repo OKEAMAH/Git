@@ -470,6 +470,7 @@ val spawn_transfer :
   ?storage_limit:int ->
   ?counter:int ->
   ?arg:string ->
+  ?entrypoint:string ->
   ?force:bool ->
   amount:Tez.t ->
   giver:string ->
