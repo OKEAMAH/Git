@@ -32,8 +32,6 @@
     has been closed. *)
 type worker_name = {base : string; name : string}
 
-type Error_monad.error += Closed of worker_name
-
 (** Functor to build a group of workers.
     At that point, all the types are fixed and introspectable,
     but the actual parameters and event handlers can be tweaked
@@ -63,6 +61,8 @@ module type T = sig
 
   type dropbox
 
+  type 'a message_error = Closed | Request_error of 'a | Any of exn
+
   (** Supported kinds of internal buffers. *)
   type _ buffer_kind =
     | Queue : infinite queue buffer_kind
@@ -84,18 +84,26 @@ module type T = sig
         provided by the type of buffer chosen at {!launch}.*)
     type self
 
+    type launch_error
+
     (** Builds the initial internal state of a worker at launch.
         It is possible to initialize the message queue.
         Of course calling {!state} will fail at that point. *)
     val on_launch :
-      self -> Name.t -> Types.parameters -> Types.state tzresult Lwt.t
+      self ->
+      Name.t ->
+      Types.parameters ->
+      (Types.state, launch_error) result Lwt.t
 
     (** The main request processor, i.e. the body of the event loop. *)
-    val on_request : self -> 'a Request.t -> 'a tzresult Lwt.t
+    val on_request :
+      self ->
+      ('a, 'request_error) Request.t ->
+      ('a, 'request_error) result Lwt.t
 
     (** Called when no request has been made before the timeout, if
         the parameter has been passed to {!launch}. *)
-    val on_no_request : self -> unit tzresult Lwt.t
+    val on_no_request : self -> unit Lwt.t
 
     (** A function called when terminating a worker. *)
     val on_close : self -> unit Lwt.t
@@ -108,15 +116,19 @@ module type T = sig
         {!trigger_shutdown} to kill the worker. *)
     val on_error :
       self ->
-      Request.view ->
       Worker_types.request_status ->
-      error list ->
+      ('a, 'request_error) Request.t ->
+      'request_error ->
       unit tzresult Lwt.t
 
     (** A function called at the end of the worker loop in case of a
         successful treatment of the current request. *)
     val on_completion :
-      self -> 'a Request.t -> 'a -> Worker_types.request_status -> unit Lwt.t
+      self ->
+      ('a, 'request_error) Request.t ->
+      'a ->
+      Worker_types.request_status ->
+      unit Lwt.t
   end
 
   (** Creates a new worker instance.
@@ -126,8 +138,10 @@ module type T = sig
     ?timeout:Time.System.Span.t ->
     Name.t ->
     Types.parameters ->
-    (module HANDLERS with type self = 'kind t) ->
-    'kind t tzresult Lwt.t
+    (module HANDLERS
+       with type self = 'kind t
+        and type launch_error = 'launch_error) ->
+    ('kind t, 'launch_error) result Lwt.t
 
   (** Triggers a worker termination and waits for its completion.
       Cannot be called from within the handlers.  *)
@@ -139,18 +153,37 @@ module type T = sig
     (** With [BOX]es, you can put a request right at the front *)
     type t
 
-    val put_request : t -> 'a Request.t -> unit
+    (** [put_request worker request] sends the [request] to the [worker]. If the
+        [worker] dropbox is closed, then it is a no-op. *)
+    val put_request : t -> ('a, 'request_error) Request.t -> unit
 
-    val put_request_and_wait : t -> 'a Request.t -> 'a tzresult Lwt.t
+    (** [put_request_and_wait worker request] sends the [request] to the
+        [worker] and waits for its completion. If the worker dropbox is closed,
+        then it returns [Error None]. *)
+    val put_request_and_wait :
+      t ->
+      ('a, 'request_error) Request.t ->
+      ('a, 'request_error message_error) result Lwt.t
   end
 
   module type QUEUE = sig
     (** With [QUEUE]s, you can push requests in the queue *)
     type 'a t
 
-    val push_request_and_wait : 'q t -> 'a Request.t -> 'a tzresult Lwt.t
+    (** [push_request_and_wait worker request] sends the [request] to the [worker]
+    and waits for its completion. If the [worker] queue is closed, then it
+    returns [Error None]. If the buffer is a bounded queue and the underlying
+    queue is full, the call is blocking. *)
+    val push_request_and_wait :
+      'q t ->
+      ('a, 'request_error) Request.t ->
+      ('a, 'request_error message_error) result Lwt.t
 
-    val push_request : 'q t -> 'a Request.t -> unit Lwt.t
+    (** [push_request worker request] sends the [request] to the [worker]. The
+        promise returned is [true] if the request was pushed successfuly or
+        [false] if the worker queue is closed. If the buffer is a bounded queue
+        and the underlying queue is full, the call is blocking. *)
+    val push_request : 'q t -> ('a, 'request_error) Request.t -> bool Lwt.t
 
     val pending_requests : 'a t -> (Time.System.t * Request.view) list
 
@@ -165,16 +198,9 @@ module type T = sig
     include QUEUE with type 'a t := 'a queue t
 
     (** Adds a message to the queue immediately. *)
-    val push_request_now : infinite queue t -> 'a Request.t -> unit
+    val push_request_now :
+      infinite queue t -> ('a, 'request_error) Request.t -> unit
   end
-
-  (** Detects cancellation from within the request handler to stop
-      asynchronous operations. *)
-  val protect :
-    _ t ->
-    ?on_error:(error list -> 'b tzresult Lwt.t) ->
-    (unit -> 'b tzresult Lwt.t) ->
-    'b tzresult Lwt.t
 
   (** Exports the canceler to allow cancellation of other tasks when this
       worker is shutdown or when it dies. *)
@@ -191,6 +217,14 @@ module type T = sig
 
   (** Access the internal state, once initialized. *)
   val state : _ t -> Types.state
+
+  (** [with_state w f] calls [f] on the current state of worker [w] if
+      it was intialized and not closed or crashed, otherwise
+      returns immediately. *)
+  val with_state :
+    _ t ->
+    (Types.state -> (unit, 'request_error) result Lwt.t) ->
+    (unit, 'request_error) result Lwt.t
 
   (** Introspect the message queue, gives the times requests were pushed. *)
   val pending_requests : _ queue t -> (Time.System.t * Request.view) list

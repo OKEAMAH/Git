@@ -55,7 +55,7 @@ val create :
   Distributed_db.t ->
   Block_validator_process.t ->
   start_testchain:bool ->
-  t tzresult Lwt.t
+  t Lwt.t
 
 type block_validity =
   | Valid
@@ -127,7 +127,10 @@ val preapply :
   timestamp:Time.Protocol.t ->
   protocol_data:bytes ->
   Operation.t list list ->
-  (Block_header.shell_header * error Preapply_result.t trace) tzresult Lwt.t
+  ( Block_header.shell_header * error Preapply_result.t trace,
+    error trace )
+  result
+  Lwt.t
 
 val fetch_and_compile_protocol :
   t ->

@@ -41,20 +41,20 @@ end
 module Request = struct
   include Request
 
-  type _ t =
+  type (_, _) t =
     | Validated : {
         peer : P2p_peer_id.t option;
         (* The peer who sent the block if it was not injected locally. *)
         block : Store.Block.t;
       }
-        -> Event.update t
-    | Notify_branch : P2p_peer.Id.t * Block_locator.t -> unit t
+        -> (Event.update, error trace) t
+    | Notify_branch : P2p_peer.Id.t * Block_locator.t -> (unit, error trace) t
     | Notify_head :
         P2p_peer.Id.t * Block_hash.t * Block_header.t * Mempool.t
-        -> unit t
-    | Disconnection : P2p_peer.Id.t -> unit t
+        -> (unit, error trace) t
+    | Disconnection : P2p_peer.Id.t -> (unit, error trace) t
 
-  let view (type a) (req : a t) : view =
+  let view (type a b) (req : (a, b) t) : view =
     match req with
     | Validated {block; _} -> Hash (Store.Block.hash block)
     | Notify_branch (peer_id, _) -> PeerId peer_id
@@ -183,14 +183,17 @@ let with_activated_peer_validator w peer_id f =
   let* pv =
     P2p_peer.Error_table.find_or_make nv.active_peers peer_id (fun () ->
         let*! () = Worker.log_event w (Connection peer_id) in
-        Peer_validator.create
-          ~notify_new_block:(notify_new_block w (Some peer_id))
-          ~notify_termination:(fun _pv ->
-            P2p_peer.Error_table.remove nv.active_peers peer_id)
-          nv.parameters.peer_validator_limits
-          nv.parameters.block_validator
-          nv.chain_db
-          peer_id)
+        let*! pv =
+          Peer_validator.create
+            ~notify_new_block:(notify_new_block w (Some peer_id))
+            ~notify_termination:(fun _pv ->
+              P2p_peer.Error_table.remove nv.active_peers peer_id)
+            nv.parameters.peer_validator_limits
+            nv.parameters.block_validator
+            nv.chain_db
+            peer_id
+        in
+        Lwt.return_ok pv)
   in
   match Peer_validator.status pv with
   | Worker_types.Running _ -> f pv
@@ -517,8 +520,8 @@ let on_disconnection w peer_id =
       let*! () = Peer_validator.shutdown pv in
       return_unit
 
-let on_request (type a) w start_testchain active_chains spawn_child
-    (req : a Request.t) : a tzresult Lwt.t =
+let on_request (type a b) w start_testchain active_chains spawn_child
+    (req : (a, b) Request.t) : (a, b) result Lwt.t =
   match req with
   | Request.Validated {peer; block} ->
       on_validation_request
@@ -534,7 +537,8 @@ let on_request (type a) w start_testchain active_chains spawn_child
       on_notify_head w peer_id (hash, header) mempool
   | Request.Disconnection peer_id -> on_disconnection w peer_id
 
-let on_completion (type a) w (req : a Request.t) (update : a) request_status =
+let on_completion (type a b) w (req : (a, b) Request.t) (update : a)
+    request_status =
   match req with
   | Request.Validated {block; _} ->
       let open Lwt_syntax in
@@ -655,6 +659,8 @@ let may_load_protocols parameters =
                return_unit))
     indexed_protocols
 
+type launch_error = error trace
+
 let on_launch w _ parameters =
   let open Lwt_result_syntax in
   let* () = may_load_protocols parameters in
@@ -752,16 +758,19 @@ let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
   let module Handlers = struct
     type self = t
 
+    type nonrec launch_error = launch_error
+
     let on_launch = on_launch
 
     let on_request w = on_request w start_testchain active_chains spawn_child
 
     let on_close = on_close
 
-    let on_error w r st errs =
-      let*! () = Worker.log_event w (Request_failure (r, st, errs)) in
-      match r with
-      | Hash _ ->
+    let on_error (type a b) w st (request : (a, b) Request.t) (errs : b) :
+        unit tzresult Lwt.t =
+      let request_view = Request.view request in
+      match request with
+      | Validated _ ->
           (* If an error happens here, it means that the request
              [Validated] failed. For this request, the payload
              associated to the request was validated and therefore is
@@ -770,8 +779,11 @@ let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
              example. If there is an error at this level, it certainly
              requires a manual operation from the maintener of the
              node. *)
+          let*! () =
+            Worker.log_event w (Request_failure (request_view, st, errs))
+          in
           Lwt.return_error errs
-      | PeerId _ ->
+      | Notify_branch _ | Notify_head _ | Disconnection _ ->
           (* We do not crash the worker here mainly for one reason:
              Such request comes from a remote peer. The payload for
              this request may contain unsafe data. The current policy
@@ -789,7 +801,7 @@ let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
 
     let on_completion = on_completion
 
-    let on_no_request _ = return_unit
+    let on_no_request _ = Lwt.return_unit
   end in
   let chain_id = Store.Chain.chain_id chain_store in
   let parameters =
