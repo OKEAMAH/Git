@@ -877,6 +877,22 @@ code { DUP ;
        PAIR }
 |}
 
+let get_balance_callback = 
+  {|
+parameter (list (pair
+                  (pair %request (address %owner)
+                                 (nat %token_id))
+                  (nat %balance)));
+storage   (list (pair
+                  (pair %request (address %owner)
+                                 (nat %token_id))
+                  (nat %balance)));
+code  { CAR;
+        NIL operation;
+        PAIR
+      }
+|}
+
 let mini_contract = 
   {|
 parameter address;
@@ -895,7 +911,14 @@ code {
         PAIR }
 |}                         
 
-let hen_test_sto = {|{{"tz1f1S7V2hZJ3mhj47djb5j1saek8c2yB2Cx"; {709141; {}}}; {{{}; {}}; {False; {Elt 0 {0;{}}}}}}|}
+let fail_contract = 
+  {|
+parameter unit;
+storage unit;
+code { PUSH string "TESTERROR" ; FAILWITH }
+|}
+
+let hen_test_sto = Format.sprintf "{{%S; {709141; {Elt {%S;0} 100}}}; {{{}; {}}; {False; {Elt 0 {0;{}}}}}}" Constant.bootstrap1.public_key_hash Constant.bootstrap2.public_key_hash
 
 let test_mockup ~protocol () =
   let* client = Client.init_mockup ~protocol () in
@@ -955,7 +978,7 @@ let test_bake ~protocol () =
     Operation.inject_contract_call
       ~amount:0
       ~source:Constant.bootstrap1
-      ~dest:contract_hash
+      ~dest:"minicontract"
       ~entrypoint:""
       ~arg:(`Michelson (Format.sprintf "%S" Constant.bootstrap2.public_key_hash))
       client
@@ -990,16 +1013,132 @@ let test_bake ~protocol () =
 
   unit
 
+
+
+let test_fail ~protocol () =
+  let* (node, client) = Client.init_with_protocol `Client ~protocol () in
+  let data_dir = Node.data_dir node in
+
+  let wait_injection = Node.wait_for_request ~request:`Inject node in
+  let* contract_hash =
+    Client.originate_contract
+      ~init:"Unit"
+      ~alias:"failcontract"
+      ~amount:Tez.zero
+      ~src:"bootstrap1"
+      ~prg:fail_contract
+      ~burn_cap:Tez.one
+      client
+  in
+  let* () = wait_injection in
+  let* () = Client.bake_for ~context_path:(data_dir // "context") client in
+
+  Format.printf "TEST FAIL\n";
+
+  (* let wait_injection = Node.wait_for_request ~request:`Inject node in *)
+  let process =
+  Client.spawn_transfer
+    ~arg:"Unit"
+    ~amount:Tez.zero
+    ~giver:"bootstrap1"
+    ~receiver:contract_hash
+    client
+  in
+  let* std_err =
+    Process.check_and_read_stderr ~expect_failure:true process
+  in
+
+
+  Format.printf "DONE %s\n" std_err;
+
+  unit
+
+let print_balances ~client ~contract_hash ~callback_hash  =
+  let* (`OpHash _todo) =
+    Operation.inject_contract_call
+      ~amount:0
+      ~source:Constant.bootstrap1
+      ~dest:contract_hash
+      ~entrypoint:"balance_of"
+      ~arg:(`Michelson (Format.sprintf "{{{%S; 0}; {%S; 0}}; %S}" Constant.bootstrap2.public_key_hash Constant.bootstrap3.public_key_hash callback_hash))
+      client
+  in
+  let* balances = Client.contract_storage "callback" client
+  in
+  Format.printf "balances: %s\n" balances;
+  unit
+
+let print_storage ~client =
+  let* storage = Client.contract_storage "contract" client
+  in
+  Format.printf "TEST FA2\n";
+  Format.printf "STO: %s\n" storage;
+  unit
+
+let test_fa2 ~protocol ~contract ~storage () =
+
+  Format.printf "TEST FA2\n";
+
+  let* client = Client.init_mockup ~protocol () in
+
+  let* contract_hash =
+    Client.originate_contract
+      ~init:storage
+      ~alias:"contract"
+      ~amount:Tez.zero
+      ~src:"bootstrap1"
+      ~prg:contract
+      ~burn_cap:(Tez.of_int 10)
+      client
+  in
+  Format.printf "Contract originated\n";
+
+  let* callback_hash =
+    Client.originate_contract
+      ~init:"{}"
+      ~alias:"callback"
+      ~amount:Tez.zero
+      ~src:"bootstrap1"
+      ~prg:get_balance_callback
+      ~burn_cap:(Tez.of_int 10)
+      client
+  in
+
+  Format.printf "Callback originated\n";
+
+  let* () = print_balances ~client ~contract_hash ~callback_hash in
+
+  let process =
+    Client.spawn_transfer
+      ~entrypoint:"transfer"
+      ~arg:(Format.sprintf "{{%S; {{%S; 0; 100}}}}" Constant.bootstrap2.public_key_hash Constant.bootstrap3.public_key_hash)
+      ~amount:Tez.zero
+      ~giver:"bootstrap2"
+      ~receiver:contract_hash
+      ~burn_cap:(Tez.of_int 10)
+      client
+  in
+  (* let* std_err =
+    Process.check_and_read_stderr ~expect_failure:false process
+  in *)
+  let* () = Process.check process in
+
+  Format.printf "Transferred 100 from bootstrap 2 to bootstrap 3\n";
+
+  let* () = print_balances ~client ~contract_hash ~callback_hash in
+
+  unit
+
 let make_for ~protocol () =
   List.iter
     (fun (title, f) ->
       Test.register ~__FILE__ ~title ~tags:["test_test"] f)
     [
-      ( "test_bake",
-      test_bake ~protocol );
-      (* ("Run script with source and sender", test_source_and_sender ~protocol); *)
-      ( "test_mockup",
-      test_mockup ~protocol );
+      (* ( "test_bake", test_bake ~protocol ); *)
+      (* ( "test_mockup", test_mockup ~protocol ); *)
+      ( "test_fa2", test_fa2 ~protocol ~contract:hen_contract ~storage:hen_test_sto);
+      (* ( "test_fail", test_fail ~protocol); *)
+
     ]
 
 let register ~protocols =
@@ -1007,6 +1146,5 @@ let register ~protocols =
     (function
       | Protocol.Alpha as protocol -> make_for ~protocol ()
       | Protocol.Hangzhou | Protocol.Ithaca -> ())
-    (* Won't work prior to protocol J. *)
     protocols
     
