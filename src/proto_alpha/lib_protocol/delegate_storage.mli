@@ -97,19 +97,32 @@ val delegated_balance :
 val full_balance :
   Raw_context.t -> Signature.Public_key_hash.t -> Tez_repr.t tzresult Lwt.t
 
-(** Allow to register a delegate when creating an account. *)
-val init :
-  Raw_context.t ->
-  Contract_repr.t ->
-  Signature.Public_key_hash.t ->
-  Raw_context.t tzresult Lwt.t
+module Contract : sig
+  (** [init ctxt contract delegate] allows to register a delegate when
+      creating a contract.
 
-(** Allow to set the delegate of an account. *)
-val set :
-  Raw_context.t ->
-  Contract_repr.t ->
-  Signature.Public_key_hash.t option ->
-  Raw_context.t tzresult Lwt.t
+      This function is undefined if [contract] is not allocated, or if
+      [contract] has already a delegate, or if [delegate] is not a registered
+      delegate. *)
+  val init :
+    Raw_context.t ->
+    Contract_repr.t ->
+    Signature.Public_key_hash.t ->
+    Raw_context.t tzresult Lwt.t
+
+  (** [set ctxt contract delegate_opt] allows to set or unsetthe
+      delegate of a contract.
+
+      This function is undefined if [contract] is not allocated. When
+      [delegate = contract], the function also register the contract
+      as a delegate. Otherwide, the function is undefined if
+      [delegate] is not a registered delegate *)
+  val set :
+    Raw_context.t ->
+    Contract_repr.t ->
+    Signature.Public_key_hash.t option ->
+    Raw_context.t tzresult Lwt.t
+end
 
 val pubkey :
   Raw_context.t ->

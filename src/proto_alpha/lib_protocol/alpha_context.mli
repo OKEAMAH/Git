@@ -1757,18 +1757,16 @@ module Contract : sig
     script:Script.t * Lazy_storage.diffs option ->
     context tzresult Lwt.t
 
+  (** Functions for handling the delegate of a contract.*)
   module Delegate : sig
     (** See {!Contract_delegate_storage.find}. *)
-    val find : context -> t -> Signature.Public_key_hash.t option tzresult Lwt.t
+    val init : context -> t -> public_key_hash -> context tzresult Lwt.t
 
-    val init :
-      context -> t -> Signature.Public_key_hash.t -> context tzresult Lwt.t
+    (** see {!Delegate_table_storage.set}. *)
+    val set : context -> t -> public_key_hash option -> context tzresult Lwt.t
 
-    val set :
-      context ->
-      t ->
-      Signature.Public_key_hash.t option ->
-      context tzresult Lwt.t
+    (** see {!Delegate_table_storage.find}. *)
+    val find : context -> t -> public_key_hash option tzresult Lwt.t
   end
 
   (** This module discloses definitions that are only useful for tests and must
