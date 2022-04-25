@@ -4575,6 +4575,7 @@ module Parameters : sig
     public_key : public_key option;
     amount : Tez.t;
     delegate_to : public_key_hash option;
+    consensus_key : public_key option;
   }
 
   type bootstrap_contract = {
@@ -4591,6 +4592,8 @@ module Parameters : sig
     security_deposit_ramp_up_cycles : int option;
     no_reward_cycles : int option;
   }
+
+  val bootstrap_account_encoding : bootstrap_account Data_encoding.t
 
   val encoding : t Data_encoding.t
 end
