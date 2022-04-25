@@ -51,8 +51,26 @@ let assume_some opt f = match opt with Some x -> f x | None -> assert false
 let hash_state state number =
   Digest.bytes @@ Bytes.of_string @@ state ^ string_of_int number
 
-(** This is a `correct list` generator. It generates a list of strings that are either integers or `+` 
-to be consumed by the arithmetic PVM.*)
+(** 
+ `genlist` is a `correct list` generator. It generates a list of strings that are either integers or `+` 
+   to be consumed by the arithmetic PVM. 
+  If a `+` is found then the previous two element of the stack are poped then added and the result 
+  is pushed to the stack. In particular lists like `[1 +]` are incorrect.
+    
+  To preserve the correctness invariant, genlist is a recursive generator that produce a pair 
+  `(stack_size, state_list)` where  state_list is a correct list of integers and `+` and consuming it 
+  will produce a `stack` of length `stack_size`.
+  For example a result can be `(3, [1; 2; +; 3; +; 2; 2; +; 1;]). Consuming the list will produce the stack
+  `[6; 4; 2]` which has length 3.
+  The generator has two branches. 
+  1. with frequency 1 adds integers to state_list and increases the corresponding stack_size.
+  2. With frequency 2, at each step, it looks at the inductive result
+  `(self (n - 1))=(stack_size, state_list)`. 
+  If the stack_size is smaller than 2 then it adds an integer to the state_list and increases the stack_size
+  Otherwise it adds a plus to the state_list and decreases the stack_size.
+  Remark: The algorithm is linear in the size of the generated list and generates all kinds of inputs not only 
+  those that produce a stack of size 1.  
+*)
 let gen_list =
   QCheck2.Gen.(
     map (fun (_, l) -> List.rev l)
@@ -65,9 +83,10 @@ let gen_list =
                  [
                    ( 2,
                      map2
-                       (fun x (i, y) ->
-                         if i > 2 then (i - 1, "+" :: y)
-                         else (i + 1, string_of_int x :: y))
+                       (fun x (stack_size, state_list) ->
+                         if stack_size > 2 then
+                           (stack_size - 1, "+" :: state_list)
+                         else (stack_size + 1, string_of_int x :: state_list))
                        nat
                        (self (n - 1)) );
                    ( 1,
@@ -77,7 +96,7 @@ let gen_list =
                        (self (n - 1)) );
                  ]))
 
-(**Thi uses the above generator to produce a correct program with at least 3 elements*)
+(** This uses the above generator to produce a correct program with at least 3 elements. *)
 let rec correct_string () =
   let x = QCheck2.Gen.(generate1 gen_list) in
   if List.length x < 3 then correct_string () else x
@@ -85,14 +104,16 @@ let rec correct_string () =
 module type TestPVM = sig
   include Sc_rollup_PVM_sem.S
 
-  module Internal_for_tests : sig
-    (** This a post-boot  state. It is used as default in many functions. *)
+  module Utils : sig
+    (** This a post-boot state. It is used as default in many functions. *)
     val default_state : state
 
-    (** this generates a random state*)
+    (** [random_state n state] generates a random state. *)
     val random_state : int -> state -> state
 
-    (** This makes a proof from a pair of states. In the arithPVM only one such is needed.*)
+    (** [make_proof start_state stop_state] produces a proof that the eval of start_state is the stop_state.
+        It will be used by the `verify_proof`. In the arithPVM we use `produce_tree_proof` which only requires a
+        starting state (tree) and the transition function.*)
     val make_proof : state -> state -> proof
   end
 end
@@ -130,7 +151,7 @@ end) : TestPVM with type state = int = struct
 
   let set_input _ s = Lwt.return s
 
-  module Internal_for_tests = struct
+  module Utils = struct
     let default_state = P.target
 
     let random_state _ _ = Random.bits ()
@@ -181,7 +202,7 @@ end) : TestPVM with type state = string * int list = struct
 
   let set_input _ state = Lwt.return state
 
-  module Internal_for_tests = struct
+  module Utils = struct
     let default_state = ("hello", P.initial_prog)
 
     let random_state length ((_, program) : state) =
@@ -257,7 +278,7 @@ end) : TestPVM = struct
 
   let init_context = Tezos_context_memory.Context.empty
 
-  module Internal_for_tests = struct
+  module Utils = struct
     let default_state =
       let promise =
         let* boot = initial_state init_context "" >>= eval in
@@ -398,11 +419,11 @@ module Strategies (P : TestPVM) = struct
               (Sc_rollup_tick_repr.of_int stop_at)
           in
           let* (starting_state, history) =
-            state_at history section_start_at P.Internal_for_tests.default_state
+            state_at history section_start_at P.Utils.default_state
           in
           let* section_start_state = P.state_hash starting_state in
           let* (stoping_state, history) =
-            state_at history section_stop_at P.Internal_for_tests.default_state
+            state_at history section_stop_at P.Utils.default_state
           in
           let* section_stop_state = P.state_hash stoping_state in
 
@@ -482,10 +503,7 @@ module Strategies (P : TestPVM) = struct
       Sc_rollup_tick_repr.(of_int (start_at + length))
     in
     let section_stop_at = Option.value ~default:start_at stop_at in
-
-    let random_stop_state =
-      P.Internal_for_tests.(random_state length default_state)
-    in
+    let random_stop_state = P.Utils.(random_state length default_state) in
     let* section_stop_state = P.state_hash random_stop_state in
     Lwt.return
       Section.
@@ -552,18 +570,16 @@ module Strategies (P : TestPVM) = struct
     in
     let section_start_at = section.section_start_at in
     let section_stop_at = section.section_stop_at in
-    let start_state = P.Internal_for_tests.(random_state 0 default_state) in
+    let start_state = P.Utils.(random_state 0 default_state) in
     let* section_start_state = P.state_hash start_state in
     let stop_state =
       assume_some (Sc_rollup_tick_repr.to_int section_stop_at)
       @@ fun section_stop_at ->
       assume_some (Sc_rollup_tick_repr.to_int section_start_at)
       @@ fun section_start_at ->
-      P.Internal_for_tests.(
-        random_state (section_stop_at - section_start_at) default_state)
+      P.Utils.(random_state (section_stop_at - section_start_at) default_state)
     in
     let* section_stop_state = P.state_hash stop_state in
-
     let* next_dissection = random_dissection section in
     let section =
       {
@@ -575,8 +591,7 @@ module Strategies (P : TestPVM) = struct
     in
     let conflict_resolution_step =
       match next_dissection with
-      | None ->
-          Conclude (None, P.Internal_for_tests.make_proof start_state stop_state)
+      | None -> Conclude (None, P.Utils.make_proof start_state stop_state)
       | Some next_dissection ->
           Refine {stop_state = section.section_stop_state; next_dissection}
     in
@@ -601,10 +616,7 @@ module Strategies (P : TestPVM) = struct
   *)
   let conflicting_section history (section : Section.section) =
     let* (new_state, _) =
-      state_at
-        history
-        section.section_stop_at
-        P.Internal_for_tests.default_state
+      state_at history section.section_stop_at P.Utils.default_state
     in
     let* new_hash = P.state_hash new_state in
     Lwt.return @@ not (section.section_stop_state = new_hash)
@@ -649,24 +661,17 @@ module Strategies (P : TestPVM) = struct
             state_at
               history
               (Sc_rollup_tick_repr.next section.section_start_at)
-              P.Internal_for_tests.default_state
+              P.Utils.default_state
           in
           let* (start_state, _) =
-            state_at
-              history
-              section.section_start_at
-              P.Internal_for_tests.default_state
+            state_at history section.section_start_at P.Utils.default_state
           in
           Lwt.return
-            ( Conclude
-                (None, P.Internal_for_tests.make_proof start_state stop_state),
+            ( Conclude (None, P.Utils.make_proof start_state stop_state),
               empty_history )
       | Some next_dissection ->
           let* (state, history) =
-            state_at
-              history
-              section.section_stop_at
-              P.Internal_for_tests.default_state
+            state_at history section.section_stop_at P.Utils.default_state
           in
           let* stop_state = P.state_hash state in
           Lwt.return (Refine {stop_state; next_dissection}, history)
@@ -728,13 +733,9 @@ module Strategies (P : TestPVM) = struct
         match next_dissection with
         | None ->
             let* (state, _) =
-              state_at
-                history
-                section_start_at
-                P.Internal_for_tests.default_state
+              state_at history section_start_at P.Utils.default_state
             in
-            Lwt.return
-            @@ Conclude (None, P.Internal_for_tests.make_proof state stop_state)
+            Lwt.return @@ Conclude (None, P.Utils.make_proof state stop_state)
         | Some next_dissection ->
             Lwt.return
             @@ Refine {stop_state = section_stop_state; next_dissection}
@@ -806,7 +807,7 @@ module Strategies (P : TestPVM) = struct
     runs a game based oin the two given strategies and checks that the resulting
     outcome fits the expectations. *)
   let test_strategies committer_strategy refuter_strategy expectation =
-    let start_state = P.Internal_for_tests.default_state in
+    let start_state = P.Utils.default_state in
     let committer = committer_from_strategy committer_strategy in
     let refuter = refuter_from_strategy refuter_strategy in
     let outcome =
@@ -934,7 +935,7 @@ let testing_arith (f : (module TestPVM) -> int option -> bool) name =
 let test_random_dissection (module P : TestPVM) start_at length branching =
   let open P in
   let module S = Strategies (P) in
-  let* section_start_state = P.state_hash @@ Internal_for_tests.default_state in
+  let* section_start_state = P.state_hash @@ Utils.default_state in
   let section_stop_at =
     match Sc_rollup_tick_repr.of_int (start_at + length) with
     | None -> assert false
@@ -946,7 +947,7 @@ let test_random_dissection (module P : TestPVM) start_at length branching =
     | Some x -> x
   in
   let* section_stop_state =
-    P.state_hash @@ Internal_for_tests.(random_state length default_state)
+    P.state_hash @@ Utils.(random_state length default_state)
   in
   let section =
     S.Game.Section.
