@@ -94,6 +94,8 @@ let address ?(hostname = false) ?from peer =
   | Some endpoint ->
       Runner.address ~hostname ?from:(runner endpoint) (runner peer)
 
+let optional_switch ~name = function false -> [] | true -> ["--" ^ name]
+
 let optional_arg ~name f = function None -> [] | Some x -> ["--" ^ name; f x]
 
 let create_with_mode ?(path = Constant.tezos_client)
@@ -637,7 +639,7 @@ let spawn_bls_gen_keys ?hooks ?(force = false) ~alias client =
   spawn_command
     ?hooks
     client
-    (["bls"; "gen"; "keys"; alias] @ if force then ["--force"] else [])
+    (["bls"; "gen"; "keys"; alias] @ optional_switch ~name:"force" force)
 
 let bls_gen_keys ?hooks ?force ~alias client =
   spawn_bls_gen_keys ?hooks ?force ~alias client |> Process.check
@@ -662,12 +664,17 @@ let bls_list_keys ?hooks client =
   in
   return (parse_list_keys out)
 
-let spawn_bls_show_address ?hooks ~alias client =
-  spawn_command ?hooks client ["bls"; "show"; "address"; alias]
+let spawn_bls_show_address ?hooks ?(show_secret = false) ~alias client =
+  spawn_command
+    ?hooks
+    client
+    (["bls"; "show"; "address"; alias]
+    @ optional_switch ~name:"show-secret" show_secret)
 
-let bls_show_address ?hooks ~alias client =
+let bls_show_address ?hooks ?show_secret ~alias client =
   let* out =
-    spawn_bls_show_address ?hooks ~alias client |> Process.check_and_read_stdout
+    spawn_bls_show_address ?hooks ?show_secret ~alias client
+    |> Process.check_and_read_stdout
   in
   return (Account.parse_client_output_aggregate ~alias ~client_output:out)
 

@@ -522,7 +522,11 @@ v}
     }
 ]} *)
 val bls_show_address :
-  ?hooks:Process.hooks -> alias:string -> t -> Account.aggregate_key Lwt.t
+  ?hooks:Process.hooks ->
+  ?show_secret:bool ->
+  alias:string ->
+  t ->
+  Account.aggregate_key Lwt.t
 
 (** Run [tezos-client bls import secret key <account.aggregate_alias>
     <account.aggregate_secret_key>]. *)

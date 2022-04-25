@@ -943,10 +943,10 @@ let commands network : Client_context.full Clic.command list =
       command
         ~group
         ~desc:"Show the keys associated with an rollup account."
-        no_options
+        (args1 show_private_switch)
         (prefixes ["bls"; "show"; "address"]
         @@ Aggregate_alias.Public_key_hash.alias_param @@ stop)
-        (fun () (name, _pkh) (cctxt : #Client_context.full) ->
+        (fun show_private (name, _pkh) (cctxt : #Client_context.full) ->
           let* keys_opt = alias_aggregate_keys cctxt name in
           match keys_opt with
           | None ->
@@ -961,19 +961,23 @@ let commands network : Client_context.full Clic.command list =
               in
               match pk with
               | None -> return_unit
-              | Some pk -> (
+              | Some pk ->
                   let*! () =
                     cctxt#message
                       "Public Key: %a"
                       Aggregate_signature.Public_key.pp
                       pk
                   in
-                  match skloc with
-                  | None -> return_unit
-                  | Some skloc ->
-                      let* skloc = Aggregate_alias.Secret_key.to_source skloc in
-                      let*! () = cctxt#message "Secret Key: %s" skloc in
-                      return_unit)));
+                  if show_private then
+                    match skloc with
+                    | None -> return_unit
+                    | Some skloc ->
+                        let* skloc =
+                          Aggregate_alias.Secret_key.to_source skloc
+                        in
+                        let*! () = cctxt#message "Secret Key: %s" skloc in
+                        return_unit
+                  else return_unit));
       command
         ~group
         ~desc:"Add a secret key to the wallet."
