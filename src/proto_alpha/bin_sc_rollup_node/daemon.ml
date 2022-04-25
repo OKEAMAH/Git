@@ -117,8 +117,8 @@ module Make (PVM : Pvm.S) = struct
       | Sc_rollup_dal_slot_subscribe {rollup; _} ->
           Sc_rollup.Address.(rollup = node_ctxt.Node_context.rollup_address)
       | Reveal _ | Transaction _ | Origination _ | Delegation _
-      | Register_global_constant _ | Set_deposits_limit _
-      | Increase_paid_storage _ | Tx_rollup_origination
+      | Update_consensus_key _ | Register_global_constant _
+      | Set_deposits_limit _ | Increase_paid_storage _ | Tx_rollup_origination
       | Tx_rollup_submit_batch _ | Tx_rollup_commit _ | Tx_rollup_return_bond _
       | Tx_rollup_finalize_commitment _ | Tx_rollup_remove_commitment _
       | Tx_rollup_rejection _ | Tx_rollup_dispatch_tickets _ | Transfer_ticket _
