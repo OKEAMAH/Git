@@ -842,39 +842,81 @@ let commands network : Client_context.full Clic.command list =
           in
           let* () = PVSS_public_key.set cctxt [] in
           PVSS_secret_key.set cctxt []);
-      command
-        ~group
-        ~desc:"Generate a pair of BLS keys."
-        (args1 (Aggregate_alias.Secret_key.force_switch ()))
-        (prefixes ["bls"; "gen"; "keys"]
-        @@ Aggregate_alias.Secret_key.fresh_alias_param @@ stop)
-        (fun force name (cctxt : #Client_context.full) ->
-          let* name = Aggregate_alias.Secret_key.of_fresh cctxt force name in
-          let mnemonic = Mnemonic.new_random in
-          let*! () =
-            cctxt#message
-              "It is important to save this mnemonic in a secure place:@\n\
-               @\n\
-               %a@\n\
-               @\n\
-               The mnemonic can be used to recover your spending key.@."
-              Mnemonic.words_pp
-              (Bip39.to_words mnemonic)
-          in
-          let seed = Mnemonic.to_32_bytes mnemonic in
-          let (pkh, pk, sk) = Aggregate_signature.generate_key ~seed () in
-          let*? pk_uri =
-            Tezos_signer_backends.Unencrypted.Aggregate.make_pk pk
-          in
-          let*? sk_uri =
-            Tezos_signer_backends.Unencrypted.Aggregate.make_sk sk
-          in
-          register_aggregate_key
-            cctxt
-            ~force
-            (pkh, pk_uri, sk_uri)
-            ~public_key:pk
-            name);
+      (let desc = "Generate a pair of BLS keys." in
+       let force_switch = Aggregate_alias.Secret_key.force_switch in
+       let cmd =
+         prefixes ["bls"; "gen"; "keys"]
+         @@ Aggregate_alias.Secret_key.fresh_alias_param @@ stop
+       in
+       let generate_keys (cctxt : Client_context.full) force name =
+         let* name = Aggregate_alias.Secret_key.of_fresh cctxt force name in
+         let mnemonic = Mnemonic.new_random in
+         let*! () =
+           cctxt#message
+             "It is important to save this mnemonic in a secure place:@\n\
+              @\n\
+              %a@\n\
+              @\n\
+              The mnemonic can be used to recover your spending key.@."
+             Mnemonic.words_pp
+             (Bip39.to_words mnemonic)
+         in
+         let seed = Mnemonic.to_32_bytes mnemonic in
+         let (pkh, pk, sk) = Aggregate_signature.generate_key ~seed () in
+         let*? pk_uri =
+           Tezos_signer_backends.Unencrypted.Aggregate.make_pk pk
+         in
+         return (name, pkh, pk, pk_uri, sk)
+       in
+       match network with
+       | Some `Mainnet ->
+           command
+             ~group
+             ~desc
+             (args1 (force_switch ()))
+             cmd
+             (fun force name (cctxt : #Client_context.full) ->
+               let* (name, pkh, pk, pk_uri, sk) =
+                 generate_keys cctxt force name
+               in
+               let* sk_uri =
+                 Tezos_signer_backends.Encrypted
+                 .prompt_twice_and_encrypt_aggregate
+                   cctxt
+                   sk
+               in
+               register_aggregate_key
+                 cctxt
+                 ~force
+                 (pkh, pk_uri, sk_uri)
+                 ~public_key:pk
+                 name)
+       | Some `Testnet | None ->
+           command
+             ~group
+             ~desc
+             (args2 (force_switch ()) (encrypted_switch ()))
+             cmd
+             (fun (force, encrypted) name (cctxt : #Client_context.full) ->
+               let* (name, pkh, pk, pk_uri, sk) =
+                 generate_keys cctxt force name
+               in
+               let* sk_uri =
+                 if encrypted then
+                   Tezos_signer_backends.Encrypted
+                   .prompt_twice_and_encrypt_aggregate
+                     cctxt
+                     sk
+                 else
+                   Tezos_signer_backends.Unencrypted.Aggregate.make_sk sk
+                   |> Lwt.return
+               in
+               register_aggregate_key
+                 cctxt
+                 ~force
+                 (pkh, pk_uri, sk_uri)
+                 ~public_key:pk
+                 name));
       command
         ~group
         ~desc:"List BlS keys."

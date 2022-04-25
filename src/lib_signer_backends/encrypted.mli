@@ -52,6 +52,14 @@ val prompt_twice_and_encrypt :
   Signature.secret_key ->
   Client_keys.sk_uri tzresult Lwt.t
 
+(** [prompt_twice_and_encrypt_aggregate cctxt sk] Prompts password twice to user
+    for confirmation and returns the corresponding encrypted aggregate secret
+    key *)
+val prompt_twice_and_encrypt_aggregate :
+  #Client_context.io ->
+  Aggregate_signature.secret_key ->
+  Client_keys.aggregate_sk_uri tzresult Lwt.t
+
 val encrypt_sapling_key :
   #Client_context.io ->
   Tezos_sapling.Core.Wallet.Spending_key.t ->
