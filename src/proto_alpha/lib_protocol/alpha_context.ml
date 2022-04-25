@@ -486,8 +486,6 @@ module Stake_distribution = struct
 
   let slot_owner = Delegate_sampler.slot_owner
 
-  let delegate_pubkey = Delegate_storage.pubkey
-
   let get_staking_balance = Delegate_storage.staking_balance
 end
 
