@@ -39,6 +39,9 @@ type error +=
     }
   | (* `Temporary *) Not_registered of Signature.Public_key_hash.t
 
+(** Has a delegate been registered in the delegate table? *)
+val registered : Raw_context.t -> Signature.Public_key_hash.t -> bool Lwt.t
+
 (** Check that a given implicit account is a registered delegate. *)
 val check_registered :
   Raw_context.t -> Signature.Public_key_hash.t -> unit tzresult Lwt.t
