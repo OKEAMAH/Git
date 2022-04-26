@@ -3520,6 +3520,7 @@ let finalize_application ctxt (mode : finalize_application_mode) protocol_data
       Consensus.store_grand_parent_branch ctxt predecessor_branch >>= return
   | None -> return ctxt)
   >>=? fun ctxt ->
+  Das_apply.das_finalisation ctxt >>=? fun ctxt ->
   (* We mark the current payload hash as the predecessor one => this
      will only be accessed by the successor block now. *)
   Consensus.store_endorsement_branch ctxt (predecessor, block_payload_hash)
