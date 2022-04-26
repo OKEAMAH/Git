@@ -98,25 +98,29 @@ val full_balance :
   Raw_context.t -> Signature.Public_key_hash.t -> Tez_repr.t tzresult Lwt.t
 
 module Contract : sig
-  (** [init ctxt contract delegate] allows to register a delegate when
+  (** [init ctxt contract delegate] registers a delegate when
       creating a contract.
 
-      This function is undefined if [contract] is not allocated, or if
-      [contract] has already a delegate, or if [delegate] is not a registered
-      delegate. *)
+      This functions assumes that [contract] is allocated.
+      This function returns an error if [contract] already has a delegate or
+      if [delegate] is not a registered delegate. *)
   val init :
     Raw_context.t ->
     Contract_repr.t ->
     Signature.Public_key_hash.t ->
     Raw_context.t tzresult Lwt.t
 
-  (** [set ctxt contract delegate_opt] allows to set or unsetthe
-      delegate of a contract.
+  (** [set ctxt contract delegate_opt] allows to set the
+      delegate of a contract to [delegate] when [delegate_opt = Some delegate]
+      or to unset the delegate when [delegate_opt = None].
+      When [delegate_opt = Some contract] (aka self-delegation),
+      the function also registers the contract as a delegate and
+      sets the delegate as {{!module:Delegate_activation_storage}active}.
 
-      This function is undefined if [contract] is not allocated. When
-      [delegate = contract], the function also register the contract
-      as a delegate. Otherwide, the function is undefined if
-      [delegate] is not a registered delegate *)
+      It returns an error when trying to set the delegate to an unregistered delegate.
+      It returns an error when trying to unset or change the delegate of a registered delegate.
+      It returns an error when self-delegating and the delegate is not {{!Contract_storage.allocated}allocated}.
+      It returns an error when self-delegating and the delegate is already active. *)
   val set :
     Raw_context.t ->
     Contract_repr.t ->

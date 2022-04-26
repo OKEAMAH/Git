@@ -32,7 +32,7 @@ val find :
 
 (** [init ctxt contract delegate] sets the [delegate] associated to [contract].
 
-    This function is undefined if [contract] has already a delegate. *)
+    This function returns an error if [contract] has already a delegate. *)
 val init :
   Raw_context.t ->
   Contract_repr.t ->
