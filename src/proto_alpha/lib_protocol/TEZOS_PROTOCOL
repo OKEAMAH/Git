@@ -139,6 +139,8 @@
         "Sc_rollup_costs",
         "Sc_rollup_storage",
 
+	"Das_slot_storage",
+
         "Alpha_context",
         "Script_string",
         "Script_int",
