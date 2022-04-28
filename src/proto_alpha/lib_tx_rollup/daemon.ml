@@ -681,6 +681,49 @@ let process_head state (current_hash, current_header) rollup_id =
   let*! () = trigger_injection state current_header in
   return_unit
 
+let catch_up_on_commitments state =
+  let open Lwt_result_syntax in
+  let head = State.get_head state in
+  let rec inject_missing_commitment to_commit block_hash =
+    let*! b = State.get_block_and_metadata state block_hash in
+    match b with
+    | None -> return to_commit
+    | Some (_, {commitment_included = Some _; _}) ->
+        (* Commitment for this block has been included on L1, stop there *)
+        return to_commit
+    | Some ({header = {level = Genesis; _}; _}, _) ->
+        (* No commitments for genesis block *)
+        return to_commit
+    | Some (({header = {level = Rollup_level level; _}; _} as block), _) -> (
+        (* As far as we know, commitment for this block was not included on
+           L1. However we might be very late w.r.t the L1 chain at this point so
+           maybe the commitment was included while the rollup node was offline. *)
+        let* commitment =
+          Protocol.Tx_rollup_services.commitment
+            state.State.cctxt
+            (state.State.cctxt#chain, `Head 0)
+            state.State.rollup_info.rollup_id
+            level
+        in
+        match commitment with
+        | Some _ ->
+            (* Commitment for the same L2 level was already included on L1. The
+               inclusion information will be recovered later on. Note that this
+               commitment may be bad, but we will detect it later when we
+               effectively crawl the chain. *)
+            return to_commit
+        | None ->
+            inject_missing_commitment
+              (block :: to_commit)
+              block.header.predecessor)
+  in
+  let* to_commit = inject_missing_commitment [] head.hash in
+  List.iter_es (commit_block_on_l1 state) to_commit
+
+let catch_up state = catch_up_on_commitments state
+(* TODO/TORU: We may also need to catch up on finalization/removal of
+   commitments here. *)
+
 let main_exit_callback state exit_status =
   let open Lwt_syntax in
   let* () = Stores.close state.State.stores in
@@ -761,6 +804,7 @@ let run configuration cctxt =
     Lwt_exit.register_clean_up_callback ~loc:__LOC__ (main_exit_callback state)
   in
   let*! () = Event.(emit node_is_ready) () in
+  let* () = catch_up state in
   let rec loop () =
     let* () =
       Lwt.catch
