@@ -184,6 +184,32 @@ let check_l1_block_contains_rejection ~level block =
       JSON.(op |-> "contents" |=> 0 |-> "level" |> as_int) = level)
     block
 
+let check_l2_level block expected_level =
+  let level = JSON.(block |-> "header" |-> "level" |> as_int) in
+  Check.((level = expected_level) int)
+    ~error_msg:"L2 level is %L but expected %R" ;
+  Log.info "Rollup level %d" level
+
+let check_commitments_inclusion ~tx_node list =
+  let check_commitment_included block expected =
+    let level = JSON.(block |-> "header" |-> "level") in
+    let not_included =
+      JSON.(block |-> "metadata" |-> "commitment_included" |> is_null)
+    in
+    if not_included = expected then
+      Test.fail
+        "Commitment for level %s is %sincluded but should %sbe"
+        (JSON.encode level)
+        (if not_included then "not " else "")
+        (if expected then "" else "not ")
+  in
+  Lwt_list.iter_p
+    (fun (block, included) ->
+      let* block = Rollup_node.Client.get_block ~tx_node ~block in
+      check_commitment_included block included ;
+      unit)
+    list
+
 (* Checks that the configuration is stored and that the  required
    fields are present. *)
 let test_node_configuration =
@@ -1756,46 +1782,22 @@ let test_committer =
         let signature = sign_one_transaction from tx in
         tx_client_inject_transaction ~tx_client tx signature
       in
-      let check_l2_level block expected_level =
-        let level = JSON.(block |-> "header" |-> "level" |> as_int) in
-        Check.((level = expected_level) int)
-          ~error_msg:"L2 level is %L but expected %R" ;
-        Log.info "Rollup level %d" level
-      in
-      let check_commitment_included block expected =
-        let level = JSON.(block |-> "header" |-> "level") in
-        let not_included =
-          JSON.(block |-> "metadata" |-> "commitment_included" |> is_null)
-        in
-        if not_included = expected then
-          Test.fail
-            "Commitment for level %s is %sincluded but should %sbe"
-            (JSON.encode level)
-            (if not_included then "not " else "")
-            (if expected then "" else "not ")
-      in
-      let check_commitments_inclusion list =
-        Lwt_list.iter_p
-          (fun (block, included) ->
-            let* block = Rollup_node.Client.get_block ~tx_node ~block in
-            check_commitment_included block included ;
-            unit)
-          list
-      in
-      let* () = check_commitments_inclusion [("0", false)] in
+      let* () = check_commitments_inclusion ~tx_node [("0", false)] in
       Log.info "Sending some L2 transactions" ;
       let* _ = inject_tx ~from:bls_key_1 ~dest:bls_pkh_2 ~amount:1000L () in
       let* _ = inject_tx ~from:bls_key_2 ~dest:bls_pkh_1 ~amount:2L () in
       let* () = Client.bake_for client in
       let* tzlevel = Rollup_node.wait_for_tezos_level tx_node (tzlevel + 1) in
-      let* () = check_commitments_inclusion [("0", true)] in
+      let* () = check_commitments_inclusion ~tx_node [("0", true)] in
       let* () =
         check_injection tx_node "commitment" @@ Client.bake_for client
       in
       let* tzlevel = Rollup_node.wait_for_tezos_level tx_node (tzlevel + 1) in
       let* block = Rollup_node.Client.get_block ~tx_node ~block:"head" in
       check_l2_level block 1 ;
-      let* () = check_commitments_inclusion [("0", true); ("1", false)] in
+      let* () =
+        check_commitments_inclusion ~tx_node [("0", true); ("1", false)]
+      in
       Log.info "Sending some more L2 transactions" ;
       let* _ = inject_tx ~from:bls_key_1 ~dest:bls_pkh_2 ~amount:3L () in
       let* _ = inject_tx ~from:bls_key_2 ~dest:bls_pkh_1 ~amount:4L () in
@@ -1803,7 +1805,9 @@ let test_committer =
       let* tzlevel = Rollup_node.wait_for_tezos_level tx_node (tzlevel + 1) in
       let* block = Rollup_node.Client.get_block ~tx_node ~block:"head" in
       check_l2_level block 1 ;
-      let* () = check_commitments_inclusion [("0", true); ("1", true)] in
+      let* () =
+        check_commitments_inclusion ~tx_node [("0", true); ("1", true)]
+      in
       Log.info "Sending some more L2 transactions" ;
       let* _ = inject_tx ~from:bls_key_1 ~dest:bls_pkh_2 ~amount:5L () in
       let* _ = inject_tx ~from:bls_key_2 ~dest:bls_pkh_1 ~amount:6L () in
@@ -1814,7 +1818,9 @@ let test_committer =
       let* block = Rollup_node.Client.get_block ~tx_node ~block:"head" in
       check_l2_level block 2 ;
       let* () =
-        check_commitments_inclusion [("0", true); ("1", true); ("2", false)]
+        check_commitments_inclusion
+          ~tx_node
+          [("0", true); ("1", true); ("2", false)]
       in
       let* () =
         check_injection tx_node "commitment" @@ Client.bake_for client
@@ -1824,6 +1830,7 @@ let test_committer =
       check_l2_level block 3 ;
       let* () =
         check_commitments_inclusion
+          ~tx_node
           [("0", true); ("1", true); ("2", true); ("3", false)]
       in
       unit)
@@ -2205,6 +2212,100 @@ let test_accuser =
   check_l1_block_contains_rejection ~level:0 block ;
   unit
 
+let test_catch_up =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"TX_rollup: catch-up on commitments"
+    ~tags:["tx_rollup"; "node"; "catch_up"; "commitments"]
+  @@ fun protocol ->
+  let* parameter_file =
+    Parameters.parameter_file
+      ~parameters:Parameters.{finality_period = 5; withdraw_period = 5}
+      protocol
+  in
+  let* (node, client) =
+    Client.init_with_protocol ~parameter_file `Client ~protocol ()
+  in
+  let originator = Constant.bootstrap2.public_key_hash in
+  let operator = Constant.bootstrap1.public_key_hash in
+  let* (tx_rollup_hash, tx_node) =
+    (* Starting without committer/operator *)
+    init_and_run_rollup_node
+      ~originator
+      ~batch_signer:Constant.bootstrap5.public_key_hash
+      node
+      client
+  in
+  let tx_client = Tx_rollup_client.create tx_node in
+  (* Generating some identities *)
+  let* bls_key_1 = generate_bls_addr ~alias:"alice" client in
+  let bls_pkh_1 = bls_key_1.aggregate_public_key_hash in
+  let* bls_key_2 = generate_bls_addr ~alias:"bob" client in
+  let bls_pkh_2 = bls_key_2.aggregate_public_key_hash in
+  let* (tzlevel, _deposit_contract) =
+    make_deposit
+      ~source:Constant.bootstrap2.public_key_hash
+      ~tx_rollup_hash
+      ~tx_node
+      ~client
+      ~tickets_amount:100_000
+      bls_pkh_1
+  in
+  let* inbox = tx_client_get_inbox_as_json ~tx_client ~block:"head" in
+  let ticket_id = get_ticket_hash_from_deposit_json inbox in
+  Log.info "Ticket %s was successfully emitted" ticket_id ;
+  let* block = Rollup_node.Client.get_block ~tx_node ~block:"head" in
+  check_l2_level block 0 ;
+  let inject_tx ?counter ~from ~dest ?(amount = 1L) () =
+    let* tx =
+      craft_tx
+        tx_client
+        ~qty:amount
+        ?counter
+        ~signer:from.Account.aggregate_public_key
+        ~dest
+        ~ticket:ticket_id
+    in
+    let signature = sign_one_transaction from tx in
+    tx_client_inject_transaction ~tx_client tx signature
+  in
+  Log.info "Making L1 block 1" ;
+  let* _ = inject_tx ~from:bls_key_1 ~dest:bls_pkh_2 ~amount:1000L () in
+  let* _ = inject_tx ~from:bls_key_2 ~dest:bls_pkh_1 ~amount:2L () in
+  let* () = Client.bake_for_and_wait client in
+  let* () = Client.bake_for_and_wait client in
+  let* tzlevel = Rollup_node.wait_for_tezos_level tx_node (tzlevel + 2) in
+  let* block = Rollup_node.Client.get_block ~tx_node ~block:"head" in
+  check_l2_level block 1 ;
+  Log.info "Making L1 block 2" ;
+  let* _ = inject_tx ~from:bls_key_1 ~dest:bls_pkh_2 ~amount:3L () in
+  let* _ = inject_tx ~from:bls_key_2 ~dest:bls_pkh_1 ~amount:4L () in
+  let* () = Client.bake_for_and_wait client in
+  let* () = Client.bake_for_and_wait client in
+  let* _tzlevel = Rollup_node.wait_for_tezos_level tx_node (tzlevel + 2) in
+  let* block = Rollup_node.Client.get_block ~tx_node ~block:"head" in
+  check_l2_level block 2 ;
+  Log.info "Check no block is committed" ;
+  let* () =
+    check_commitments_inclusion
+      ~tx_node
+      [("0", false); ("1", false); ("2", false)]
+  in
+  Log.info "Stopping rollup node" ;
+  let* () = Rollup_node.terminate tx_node in
+  Log.info "Restarting rollup node with committer/operator" ;
+  let* () = Rollup_node.change_signers ~operator:(Some operator) tx_node in
+  let* () = Rollup_node.run tx_node in
+  let* () = Rollup_node.wait_for_ready tx_node in
+  (* Baking one block to make sure catch up phase is over *)
+  let* () = Client.bake_for_and_wait client in
+  let* () = Client.bake_for_and_wait client in
+  let* _tzlevel = Rollup_node.wait_for_tezos_level tx_node (tzlevel + 2) in
+  let* () =
+    check_commitments_inclusion ~tx_node [("0", true); ("1", true); ("2", true)]
+  in
+  unit
+
 let register ~protocols =
   test_node_configuration protocols ;
   test_tx_node_origination protocols ;
@@ -2218,4 +2319,5 @@ let register ~protocols =
   test_committer protocols ;
   test_tickets_context protocols ;
   test_withdrawals protocols ;
-  test_accuser protocols
+  test_accuser protocols ;
+  test_catch_up protocols
