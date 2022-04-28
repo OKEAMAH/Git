@@ -115,3 +115,4 @@ module Filename : sig
 end
 
 module Bounded = Bounded
+module Kate_amortized = Kate_amortized

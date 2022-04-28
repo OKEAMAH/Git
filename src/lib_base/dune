@@ -19,6 +19,7 @@
   tezos-clic
   tezos-micheline
   tezos-event-logging
+  kate-amortized
   ptime
   ptime.clock.os
   ezjsonm

@@ -90,3 +90,4 @@ module Filename = struct
 end
 
 module Bounded = Bounded
+module Kate_amortized = Kate_amortized
