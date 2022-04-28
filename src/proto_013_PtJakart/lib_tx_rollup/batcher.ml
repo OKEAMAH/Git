@@ -264,28 +264,42 @@ type worker = Worker.infinite Worker.queue Worker.t
 module Handlers = struct
   type self = worker
 
-  let on_request : type r. worker -> r Request.t -> r tzresult Lwt.t =
+  let on_request :
+      type r request_error.
+      worker -> (r, request_error) Request.t -> (r, request_error) result Lwt.t
+      =
    fun w request ->
     let open Lwt_result_syntax in
     let state = Worker.state w in
     match request with
     | Request.Register {tr; apply; eager_batch = _} ->
+        protect @@ fun () ->
         let* tr_hash = on_register state ~apply tr in
         return tr_hash
-    | Request.Batch -> on_batch state
-    | Request.New_head head -> on_new_head state head
+    | Request.Batch -> protect @@ fun () -> on_batch state
+    | Request.New_head head -> protect @@ fun () -> on_new_head state head
 
-  let on_request w r = protect @@ fun () -> on_request w r
+  type launch_error = error trace
 
   let on_launch _w rollup Types.{signer; index; constants} =
     let open Lwt_result_syntax in
     let*! state = init_batcher_state ~rollup ~signer index constants in
     return state
 
-  let on_error _w r st errs =
+  let on_error (type a b) _w st (r : (a, b) Request.t) (errs : b) :
+      unit tzresult Lwt.t =
     let open Lwt_result_syntax in
-    let*! () = Event.(emit Batcher.Worker.request_failed) (r, st, errs) in
-    return_unit
+    let request_view = Request.view r in
+    let emit_and_return_errors errs =
+      let*! () =
+        Event.(emit Batcher.Worker.request_failed) (request_view, st, errs)
+      in
+      return_unit
+    in
+    match r with
+    | Request.Register _ -> emit_and_return_errors errs
+    | Request.Batch -> emit_and_return_errors errs
+    | Request.New_head _ -> emit_and_return_errors errs
 
   let on_completion _w r _ st =
     match Request.view r with
@@ -294,7 +308,7 @@ module Handlers = struct
     | View Batch ->
         Event.(emit Batcher.Worker.request_completed_notice) (Request.view r, st)
 
-  let on_no_request _ = return_unit
+  let on_no_request _ = Lwt.return_unit
 
   let on_close _w = Lwt.return_unit
 end
@@ -314,11 +328,25 @@ let get_queue w =
   let state = Worker.state w in
   Tx_queue.elements state.transactions
 
+let handle_request_error rq =
+  let open Lwt_syntax in
+  let* rq = rq in
+  match rq with
+  | Ok res -> return_ok res
+  | Error (Worker.Request_error errs) -> Lwt.return_error errs
+  | Error Closed -> Lwt.return_error [Canceled]
+  | Error (Any exn) -> Lwt.return_error [Exn exn]
+
 let register_transaction ?(eager_batch = false) ?(apply = true) w tr =
   Worker.Queue.push_request_and_wait
     w
     (Request.Register {tr; apply; eager_batch})
+  |> handle_request_error
 
-let batch w = Worker.Queue.push_request_and_wait w Request.Batch
+let batch w =
+  Worker.Queue.push_request_and_wait w Request.Batch |> handle_request_error
 
-let new_head w b = Worker.Queue.push_request w (Request.New_head b)
+let new_head w b =
+  let open Lwt_syntax in
+  let* _pushed = Worker.Queue.push_request w (Request.New_head b) in
+  return_unit
