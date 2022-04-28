@@ -112,6 +112,10 @@ val get_level_l2_block : t -> L2block.level -> L2block.t option Lwt.t
 (** Returns [true] if the Tezos block was already processed by the rollup node. *)
 val tezos_block_already_processed : t -> Block_hash.t -> bool Lwt.t
 
+(** Returns the reorganization of L1 blocks (if any) for [new_head]. *)
+val get_tezos_reorg_for_new_head :
+  t -> Block_hash.t -> Alpha_block_services.block_info reorg tzresult Lwt.t
+
 (** Returns the inclusion info for a commitment. *)
 val get_included_commitment :
   t ->
@@ -134,9 +138,8 @@ val get_block_and_metadata :
     reorganized. *)
 val set_head : t -> L2block.t -> L2block.t reorg tzresult Lwt.t
 
-(** Set the Tezos head. Returns the reorganization of L1 blocks (if any). *)
-val set_tezos_head :
-  t -> Block_hash.t -> Alpha_block_services.block_info reorg tzresult Lwt.t
+(** Set the Tezos head. *)
+val set_tezos_head : t -> Block_hash.t -> unit tzresult Lwt.t
 
 (** Save an L2 block to disk:
     - Save both the header and the inbox

@@ -671,9 +671,10 @@ let process_head state (current_hash, current_header) rollup_id =
   let open Lwt_result_syntax in
   let*! () = Event.(emit new_block) current_hash in
   let* (_, _, blocks_to_commit) = process_block state current_hash rollup_id in
-  let* l1_reorg = State.set_tezos_head state current_hash in
+  let* l1_reorg = State.get_tezos_reorg_for_new_head state current_hash in
   let* () = handle_l1_reorg state () l1_reorg in
   let* () = List.iter_es (commit_block_on_l1 state) blocks_to_commit in
+  let* () = State.set_tezos_head state current_hash in
   let* () = batch () in
   let* () = queue_gc_operations state in
   let* () = notify_head state current_hash l1_reorg in
