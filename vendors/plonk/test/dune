@@ -1,0 +1,22 @@
+(executable
+ (name main)
+ (libraries plonk alcotest bls12-381 qcheck-alcotest polynomial))
+
+(copy_files ../../srs/{srs_*})
+
+(rule
+ (alias runtest)
+ (deps srs_5 srs_16)
+ (action
+  (run %{exe:main.exe} -q)))
+
+(rule
+ (alias runtest_slow)
+ (deps srs_5 srs_16)
+ (action
+  (run %{exe:main.exe})))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))

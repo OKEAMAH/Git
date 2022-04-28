@@ -1,0 +1,18 @@
+(executable
+ (name main)
+ (libraries alcotest polynomial))
+
+(rule
+ (alias runtest)
+ (action
+  (run %{exe:main.exe} -q)))
+
+(rule
+ (alias runtest_slow)
+ (action
+  (run %{exe:main.exe})))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))

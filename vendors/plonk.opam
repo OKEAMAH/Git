@@ -1,0 +1,28 @@
+opam-version: "2.0"
+maintainer: "contact@tezos.com"
+authors: [ "Nomadic Labs Privacy Team" ]
+bug-reports: "https://gitlab.com/tezos/tezos/issues"
+dev-repo: "git+https://gitlab.com/nomadic-labs/privacy-team.git"
+homepage: "git+https://gitlab.com/nomadic-labs/privacy-team.git"
+license: "MIT"
+depends: [
+  "dune" { >= "2.0" }
+  "domainslib" { >= "0.3.2" }
+  "hacl-star" { >= "0.4.0" }
+  "bls12-381"
+  "alcotest" { with-test & >= "1.1.0" }
+  "qcheck-alcotest" { with-test }
+  "bisect_ppx" { with-test }
+  "mec" { with-test }
+  "polynomial" { with-test }
+]
+pin-depends: [
+  [ "mec.dev" "git+https://gitlab.com/dannywillems/ocaml-ec.git#82bcddc87459a86d032549e75a9098ac7276de7c" ]
+  [ "polynomial.dev" "git+https://gitlab.com/dannywillems/ocaml-polynomial.git#master" ]
+  [ "bls12-381.dev" "git+https://gitlab.com/dannywillems/ocaml-bls12-381.git#6445b299ca52753f6722060dfa4b6c47374b2291" ]
+]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "test" "-p" name "-j" jobs] {with-test}
+]
+synopsis: "Plonk zero-knowledge proving system"

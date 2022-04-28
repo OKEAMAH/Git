@@ -1,0 +1,26 @@
+(copy_files gates/*.ml)
+
+(library
+ (public_name plonk)
+ (name plonk)
+ (modules
+  Encodings
+  SMap
+  Main_protocol
+  Multicore
+  List
+  Utils
+  Fr_generation
+  Kzg
+  Polynomial_protocol
+  Permutation_gate
+  Evaluations_map
+  Plookup_gate
+  Plookup_protocol
+  Circuit
+  Custom_gate
+  Pack
+  Kzg_pack)
+ (libraries hacl-star bls12-381 polynomial data-encoding)
+ (instrumentation
+  (backend bisect_ppx)))

@@ -1,0 +1,7 @@
+(library
+ (name kate_amortized)
+ (public_name kate-amortized)
+ (modules Kate_amortized Reed_solomon)
+ (libraries unix bls12-381 plonk tezos-error-monad)
+ (instrumentation
+  (backend bisect_ppx)))

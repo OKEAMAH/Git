@@ -1,0 +1,19 @@
+opam-version: "2.0"
+maintainer: "contact@tezos.com"
+authors: [ "Nomadic Labs Privacy Team" ]
+bug-reports: "https://gitlab.com/tezos/tezos/issues"
+dev-repo: "git+https://gitlab.com/nomadic-labs/privacy-team.git"
+homepage: "git+https://gitlab.com/nomadic-labs/privacy-team.git"
+license: "MIT"
+depends: [
+  "dune" { >= "2.0" }
+  "alcotest" { with-test & >= "1.1.0" }
+  "bisect_ppx" { with-test }
+  "plonk"
+  "tezos-error-monad" { >= "12.3" }
+]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "test" "-p" name "-j" jobs] {with-test}
+]
+synopsis: "Fast amortized Kate proofs"

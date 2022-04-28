@@ -1,0 +1,24 @@
+(copy_files stubs/*.c)
+
+(copy_files stubs/*.h)
+
+(library
+ (public_name polynomial)
+ (name polynomial)
+ (modules
+  Carray
+  Fr_generation
+  Domain
+  Univariate
+  Multivariate
+  Evaluations_c
+  Polynomial_c
+  Polynomial)
+ (libraries bls12-381 data-encoding)
+ (instrumentation
+  (backend bisect_ppx))
+ ;; For C stubs
+ (library_flags :standard -linkall -ccopt -lpthread)
+ (foreign_stubs
+  (language c)
+  (names caml_polynomial_stubs polynomial)))

@@ -1,0 +1,23 @@
+(executable
+ (name main)
+ (libraries kate_amortized alcotest bls12-381))
+
+(rule
+ (alias runtest)
+ (action
+  (run %{exe:main.exe} -q)))
+
+(rule
+ (alias runtest_slow)
+ (action
+  (run %{exe:main.exe})))
+
+(rule
+ (alias are_we_fast_yet)
+ (action
+  (run %{exe:main.exe} test Bench -v)))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))
