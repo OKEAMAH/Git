@@ -30,6 +30,15 @@
     Subject:      Helpers.
 *)
 
+(* The tests in [lib_micheline] uses [Alcotest] as it has to be [js_compatible]. *)
+(* So implies that the signature needed for tests to run are [('a, 'b) result] (recoverable errors), *)
+(* and not [unit] (irrecoverable errors). *)
+
+(* [lib_test] is designed to work with test having irrecoverable errors and using the [Alcotest_lwt] library *)
+(* and then cannot be re-used for the tests in [lib_micheline]. *)
+(* That is the reason why this library has a separate file containing duplicates of [lib_test] *)
+(* and are not factorised together in [lib_test] instead. *)
+
 (* Mini compatibility layer to avoid circular dependency *)
 module Compat = struct
   let failwith fmt = Format.kasprintf (fun s -> Error s) fmt
