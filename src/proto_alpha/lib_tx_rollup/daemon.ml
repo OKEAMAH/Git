@@ -500,11 +500,11 @@ let trigger_injection state header =
         let* () = Event.(emit inject_wait) delay in
         Lwt_unix.sleep delay
     in
-    Injector.inject ~strategy:Injector.Delay_block ()
+    Injector.inject ~strategy:`Delay_block ()
   in
   ignore promise ;
   (* Queue request for injection of operation that must be injected each block *)
-  Injector.inject ~strategy:Injector.Each_block ()
+  Injector.inject ~strategy:`Each_block ()
 
 let dispatch_withdrawals_on_l1 state level =
   let open Lwt_result_syntax in
@@ -770,6 +770,7 @@ let run configuration cctxt =
   in
   let* () =
     Injector.init
+      state.cctxt
       state
       ~signers:
         (List.filter_map
@@ -777,15 +778,15 @@ let run configuration cctxt =
              | (None, _, _) -> None
              | (Some x, strategy, tags) -> Some (x, strategy, tags))
            [
-             (operator, Injector.Each_block, [`Commitment]);
+             (operator, `Each_block, [`Commitment]);
              (* Batches of L2 operations are submitted with a delay after each
                 block, to allow for more operations to arrive and be included in
                 the following block. *)
-             (signers.submit_batch, Delay_block, [`Submit_batch]);
-             (signers.finalize_commitment, Each_block, [`Finalize_commitment]);
-             (signers.remove_commitment, Each_block, [`Remove_commitment]);
-             (signers.rejection, Each_block, [`Rejection]);
-             (signers.dispatch_withdrawals, Each_block, [`Dispatch_withdrawals]);
+             (signers.submit_batch, `Delay_block, [`Submit_batch]);
+             (signers.finalize_commitment, `Each_block, [`Finalize_commitment]);
+             (signers.remove_commitment, `Each_block, [`Remove_commitment]);
+             (signers.rejection, `Each_block, [`Rejection]);
+             (signers.dispatch_withdrawals, `Each_block, [`Dispatch_withdrawals]);
            ])
   in
   let* () =

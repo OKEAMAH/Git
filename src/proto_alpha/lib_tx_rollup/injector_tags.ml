@@ -23,13 +23,17 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include
-  Injector_sigs.S
-    with type rollup_node_state := State.t
-     and type tag :=
-          [ `Commitment
-          | `Submit_batch
-          | `Finalize_commitment
-          | `Remove_commitment
-          | `Rejection
-          | `Dispatch_withdrawals ]
+module Make (Tag : Injector_sigs.TAG) = struct
+  include Set.Make (Tag)
+
+  let pp ppf tags =
+    Format.pp_print_list
+      ~pp_sep:(fun ppf () -> Format.fprintf ppf ",@ ")
+      Tag.pp
+      ppf
+      (elements tags)
+
+  let encoding =
+    let open Data_encoding in
+    conv elements of_list (list Tag.encoding)
+end

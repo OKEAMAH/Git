@@ -28,22 +28,6 @@ open Protocol
 open Alpha_context
 open Common
 
-type tag =
-  [ `Commitment
-  | `Submit_batch
-  | `Finalize_commitment
-  | `Remove_commitment
-  | `Rejection
-  | `Dispatch_withdrawals ]
-
-module Tags : Set.S with type elt = tag
-
-type tags = Tags.t
-
-val tags_encoding : tags Data_encoding.t
-
-val pp_tags : Format.formatter -> tags -> unit
-
 module Request : sig
   type 'a t =
     | Add_pending : L1_operation.t -> unit t

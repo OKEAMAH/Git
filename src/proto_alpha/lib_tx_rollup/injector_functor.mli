@@ -23,13 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include
-  Injector_sigs.S
-    with type rollup_node_state := State.t
-     and type tag :=
-          [ `Commitment
-          | `Submit_batch
-          | `Finalize_commitment
-          | `Remove_commitment
-          | `Rejection
-          | `Dispatch_withdrawals ]
+open Injector_sigs
+
+module Make (P : PARAMETERS) :
+  S with type rollup_node_state := P.rollup_node_state and type tag := P.Tag.t

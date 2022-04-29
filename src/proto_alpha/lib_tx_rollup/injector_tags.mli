@@ -23,13 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include
-  Injector_sigs.S
-    with type rollup_node_state := State.t
-     and type tag :=
-          [ `Commitment
-          | `Submit_batch
-          | `Finalize_commitment
-          | `Remove_commitment
-          | `Rejection
-          | `Dispatch_withdrawals ]
+(** Make a set of tags given a module for tags. *)
+module Make (Tag : Injector_sigs.TAG) : sig
+  include Set.S with type elt = Tag.t
+
+  (** Pretty print a set of tags *)
+  val pp : Format.formatter -> t -> unit
+
+  (** Encoding for sets of tags  *)
+  val encoding : t Data_encoding.t
+end
