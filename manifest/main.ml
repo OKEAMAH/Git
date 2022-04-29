@@ -3389,6 +3389,29 @@ end = struct
     let _baker = daemon "baker" in
     let _accuser = daemon "accuser" in
     let _endorser = some_if N.(number <= 011) @@ fun () -> daemon "endorser" in
+    let rollups =
+      some_if N.(number >= 013) @@ fun () ->
+      public_lib
+        (sf "tezos-rollups-%s" name_dash)
+        ~path:(sf "src/proto_%s/lib_rollups" name_underscore)
+        ~synopsis:"Tezos/Protocol: protocol specific library for rollups"
+        ~deps:
+          [
+            tezos_base |> open_ ~m:"TzPervasives"
+            |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
+            |> open_;
+            tezos_crypto |> open_;
+            main |> open_;
+            environment |> open_;
+            tezos_micheline |> open_;
+            client |> if_some |> open_;
+            tezos_client_base |> open_;
+            tezos_workers |> open_;
+            tezos_shell;
+          ]
+        ~inline_tests:ppx_inline_test
+        ~linkall:true
+    in
     let sc_rollup =
       some_if N.(number >= 013) @@ fun () ->
       public_lib
@@ -3494,6 +3517,7 @@ end = struct
             tezos_shell;
             tezos_store;
             tezos_workers |> open_;
+            rollups |> if_some |> open_;
           ]
         ~inline_tests:ppx_inline_test
         ~linkall:true
