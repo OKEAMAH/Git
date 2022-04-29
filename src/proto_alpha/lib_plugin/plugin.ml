@@ -4348,6 +4348,49 @@ module RPC = struct
       RPC_context.make_call0 S.validators ctxt block {levels; delegates} ()
   end
 
+  module DAS = struct
+    module S = struct
+      open Data_encoding
+
+      let custom_root = RPC_path.(open_root / "helpers" / "das")
+
+      type query = {
+        level : Raw_level.t option;
+        delegate : Signature.Public_key_hash.t option;
+      }
+
+      let query : query RPC_query.t =
+        let open RPC_query in
+        query (fun level delegate -> {level; delegate})
+        |+ opt_field "level" Raw_level.rpc_arg (fun t -> t.level)
+        |+ opt_field "delegate" Signature.Public_key_hash.rpc_arg (fun t ->
+               t.delegate)
+        |> seal
+
+      let slots_rights =
+        RPC_service.get_service
+          ~description:"DAS/FIXME"
+          ~query
+          ~output:(list int31)
+          RPC_path.(custom_root / "rights")
+
+      let availibility =
+        RPC_service.post_service
+          ~description:"DAS/FIXME"
+          ~input:Raw_level.encoding
+          ~query:RPC_query.empty
+          ~output:(option (list (option Das.Slot.encoding)))
+          RPC_path.(custom_root / "availability")
+    end
+
+    let register () =
+      let open Services_registration in
+      register0 S.slots_rights ~chunked:false (fun _ctxt _q () ->
+          Stdlib.failwith "TODO") ;
+      register0 S.availibility ~chunked:false @@ fun ctxt () level ->
+      Das.Slot.find ctxt level
+  end
+
   module S = struct
     open Data_encoding
 
@@ -4415,6 +4458,7 @@ module RPC = struct
     Validators.register () ;
     Sc_rollup.register () ;
     Tx_rollup.register () ;
+    DAS.register () ;
     Registration.register0 ~chunked:false S.current_level (fun ctxt q () ->
         if q.offset < 0l then fail Negative_level_offset
         else
