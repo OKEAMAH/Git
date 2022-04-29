@@ -40,7 +40,7 @@ type mode =
   | Proxy_client  (** [tezos-client --mode proxy] is running *)
   | Proxy_server of {
       sleep : float -> unit Lwt.t;
-      sym_block_caching_time : int option;
+      sym_block_caching_time : Ptime.span option;
       on_disk_proxy_builder :
         (Context_hash.t -> Proxy_delegate.t tzresult Lwt.t) option;
     }
