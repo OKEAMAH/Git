@@ -250,7 +250,5 @@ let reject_bad_commitment ~source (state : State.t)
             proof;
           }
       in
-      let manager_operation = Manager rejection_operation in
-      let hash = L1_operation.hash_manager_operation manager_operation in
-      Injector.add_pending_operation
-        {L1_operation.hash; source; manager_operation}
+      let manager_operation = L1_operation.make ~source rejection_operation in
+      Injector.add_pending_operation manager_operation

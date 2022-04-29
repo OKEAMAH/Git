@@ -40,9 +40,6 @@ let commit_block ~operator tx_rollup block =
   match block.L2block.commitment with
   | None -> return_unit
   | Some commitment ->
-      let manager_operation =
-        Manager (Tx_rollup_commit {tx_rollup; commitment})
-      in
-      let hash = L1_operation.hash_manager_operation manager_operation in
-      Injector.add_pending_operation
-        {L1_operation.hash; source = operator; manager_operation}
+      let commit_operation = Tx_rollup_commit {tx_rollup; commitment} in
+      let l1_operation = L1_operation.make ~source:operator commit_operation in
+      Injector.add_pending_operation l1_operation
