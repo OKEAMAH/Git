@@ -44,6 +44,7 @@ val create :
   ?remove_commitment_signer:string ->
   ?dispatch_withdrawals_signer:string ->
   ?rejection_signer:string ->
+  ?allow_deposit:bool ->
   Client.t ->
   Node.t ->
   t
@@ -56,6 +57,10 @@ val endpoint : t -> string
     More precisely, wait until a [node_is_ready] event occurs.
     If such an event already occurred, return immediately. *)
 val wait_for_ready : t -> unit Lwt.t
+
+(** Returns [None] if node is already terminated or returns the node process if
+    it still running. *)
+val process : t -> Process.t option
 
 (** Wait for a given Tezos chain level.
 
@@ -72,6 +77,7 @@ val change_signers :
   ?remove_commitment_signer:string option ->
   ?dispatch_withdrawals_signer:string option ->
   ?rejection_signer:string option ->
+  ?allow_deposit:bool ->
   t ->
   unit Lwt.t
 

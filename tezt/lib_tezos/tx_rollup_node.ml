@@ -40,6 +40,7 @@ module Parameters = struct
     rejection_signer : string option;
     rollup_genesis : string;
     rpc_addr : string;
+    allow_deposit : bool;
     dormant_mode : bool;
     mutable pending_ready : unit option Lwt.u list;
     mutable pending_level : (int * int option Lwt.u) list;
@@ -74,19 +75,20 @@ let add_option flag str_opt command =
 let spawn_config_init node =
   spawn_command
     node
-    ([
-       "config";
-       "init";
-       "on";
-       "--data-dir";
-       data_dir node;
-       "--rollup-id";
-       node.persistent_state.rollup_id;
-       "--rollup-genesis";
-       node.persistent_state.rollup_genesis;
-       "--rpc-addr";
-       rpc_addr node;
-     ]
+    (([
+        "config";
+        "init";
+        "on";
+        "--data-dir";
+        data_dir node;
+        "--rollup-id";
+        node.persistent_state.rollup_id;
+        "--rollup-genesis";
+        node.persistent_state.rollup_genesis;
+        "--rpc-addr";
+        rpc_addr node;
+      ]
+     @ if node.persistent_state.allow_deposit then ["--allow-deposit"] else [])
     |> add_option "--operator" @@ operator node
     |> add_option "--batch-signer" node.persistent_state.batch_signer
     |> add_option
@@ -162,6 +164,11 @@ let wait_for_ready node =
         resolver :: node.persistent_state.pending_ready ;
       check_event node "tx_rollup_node_is_ready.v0" promise
 
+let process node =
+  match node.status with
+  | Running {process; _} -> Some process
+  | Not_running -> None
+
 let wait_for_tezos_level node level =
   match node.status with
   | Running {session_state = {level = Known current_level; _}; _}
@@ -209,7 +216,8 @@ let create ?(path = Constant.tx_rollup_node) ?runner ?data_dir
     ?(addr = "127.0.0.1") ?(dormant_mode = false) ?color ?event_pipe ?name
     ~rollup_id ~rollup_genesis ?operator ?batch_signer
     ?finalize_commitment_signer ?remove_commitment_signer
-    ?dispatch_withdrawals_signer ?rejection_signer client tezos_node =
+    ?dispatch_withdrawals_signer ?rejection_signer ?(allow_deposit = false)
+    client tezos_node =
   let name = match name with None -> fresh_name () | Some name -> name in
   let rpc_addr =
     match String.rindex_opt addr ':' with
@@ -239,6 +247,7 @@ let create ?(path = Constant.tx_rollup_node) ?runner ?data_dir
         remove_commitment_signer;
         dispatch_withdrawals_signer;
         rejection_signer;
+        allow_deposit;
         client;
         pending_ready = [];
         pending_level = [];
@@ -280,7 +289,7 @@ let run node =
 
 let change_signers ?operator ?batch_signer ?finalize_commitment_signer
     ?remove_commitment_signer ?dispatch_withdrawals_signer ?rejection_signer
-    (tx_node : t) =
+    ?allow_deposit (tx_node : t) =
   let operator =
     Option.value operator ~default:tx_node.persistent_state.operator
   in
@@ -307,6 +316,9 @@ let change_signers ?operator ?batch_signer ?finalize_commitment_signer
       rejection_signer
       ~default:tx_node.persistent_state.rejection_signer
   in
+  let allow_deposit =
+    Option.value allow_deposit ~default:tx_node.persistent_state.allow_deposit
+  in
   let tmp_tx_node =
     {
       tx_node with
@@ -319,6 +331,7 @@ let change_signers ?operator ?batch_signer ?finalize_commitment_signer
           remove_commitment_signer;
           dispatch_withdrawals_signer;
           rejection_signer;
+          allow_deposit;
         };
     }
   in
