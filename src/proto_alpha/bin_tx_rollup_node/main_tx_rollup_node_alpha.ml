@@ -132,6 +132,12 @@ let reconnection_delay_arg =
     (Clic.parameter (fun _ p ->
          try return (float_of_string p) with _ -> failwith "Cannot read float"))
 
+let allow_deposit_arg =
+  Clic.switch
+    ~doc:"Allow the operator to make a first deposit for commitments"
+    ~long:"allow-deposit"
+    ()
+
 let group =
   Clic.
     {
@@ -146,7 +152,7 @@ let configuration_init_command =
   command
     ~group
     ~desc:"Configure the transaction rollup daemon."
-    (args11
+    (args12
        data_dir_arg
        operator_arg
        batch_signer_arg
@@ -157,6 +163,7 @@ let configuration_init_command =
        rollup_id_arg
        rollup_genesis_arg
        rpc_addr_arg
+       allow_deposit_arg
        reconnection_delay_arg)
     (prefixes ["config"; "init"; "on"] @@ stop)
     (fun ( data_dir,
@@ -169,6 +176,7 @@ let configuration_init_command =
            rollup_id,
            rollup_genesis,
            rpc_addr,
+           allow_deposit,
            reconnection_delay )
          cctxt ->
       let open Lwt_result_syntax in
@@ -196,6 +204,7 @@ let configuration_init_command =
             rollup_genesis;
             rpc_addr;
             reconnection_delay;
+            allow_deposit;
             l2_blocks_cache_size = default_l2_blocks_cache_size;
           }
       in
