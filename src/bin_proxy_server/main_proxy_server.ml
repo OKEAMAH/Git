@@ -32,7 +32,7 @@ let config : string option Term.t =
   let doc =
     "The configuration file. Fields (see corresponding options): endpoint \
      (string), rpc_addr (string), rpc_tls (string), sym_block_caching_time \
-     (int), and data_dir (string)."
+     (Ptime.span), and data_dir (string)."
   in
   let docv = "CONFIG" in
   Arg.(value & opt (some string) None & info ["c"; "config"] ~docv ~doc)
@@ -70,7 +70,7 @@ let data_dir : string option Term.t =
   let docv = "DATA_DIR" in
   Arg.(value & opt (some string) None & info ["d"; "data-dir"] ~docv ~doc)
 
-let sym_block_caching_time : int option Term.t =
+let sym_block_caching_time : Ptime.span option Term.t =
   let doc =
     "The duration (in seconds) during which data for a symbolic block \
      identifier (like head) is kept. Smaller values increase the endpoint's \
@@ -79,7 +79,7 @@ let sym_block_caching_time : int option Term.t =
      this value)."
   in
   let docv = "SYM_BLOCK_CACHING_TIME" in
-  Arg.(value & opt (some int) None & info ["sym-block-caching-time"] ~docv ~doc)
+  Arg.(value & opt (some Ptime.span conv) None & info ["sym-block-caching-time"] ~docv ~doc)
 
 let load_config_from_file (config_file : string) =
   let open Lwt_result_syntax in
