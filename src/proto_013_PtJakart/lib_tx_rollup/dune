@@ -26,6 +26,7 @@
   tezos-shell
   tezos-store
   tezos-workers
+  tezos-protocol-plugin-013-PtJakart
   tezos-rollups-013-PtJakart)
  (inline_tests (flags -verbose) (modes native))
  (preprocess (pps ppx_inline_test))
@@ -50,4 +51,5 @@
    -open Tezos_client_base
    -open Tezos_client_base_unix
    -open Tezos_workers
+   -open Tezos_protocol_plugin_013_PtJakart
    -open Tezos_rollups_013_PtJakart)))

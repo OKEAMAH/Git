@@ -29,6 +29,7 @@ depends: [
   "tezos-shell"
   "tezos-store"
   "tezos-workers"
+  "tezos-protocol-plugin-alpha"
   "tezos-rollups-alpha"
 ]
 build: [

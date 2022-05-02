@@ -115,3 +115,6 @@ type error +=
       reconstructed_inbox : Protocol.Alpha_context.Tx_rollup_inbox.t;
       protocol_inbox : Protocol.Alpha_context.Tx_rollup_inbox.t;
     }
+
+(** Error returned when the rollup node is not authorized to make deposits *)
+type error += Tx_rollup_deposit_not_allowed

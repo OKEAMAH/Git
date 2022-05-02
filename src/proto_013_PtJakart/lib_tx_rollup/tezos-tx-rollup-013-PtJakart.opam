@@ -29,6 +29,7 @@ depends: [
   "tezos-shell"
   "tezos-store"
   "tezos-workers"
+  "tezos-protocol-plugin-013-PtJakart"
   "tezos-rollups-013-PtJakart"
 ]
 build: [

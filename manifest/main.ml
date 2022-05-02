@@ -3517,6 +3517,7 @@ end = struct
             tezos_shell;
             tezos_store;
             tezos_workers |> open_;
+            plugin |> if_some |> open_;
             rollups |> if_some |> open_;
           ]
         ~inline_tests:ppx_inline_test
