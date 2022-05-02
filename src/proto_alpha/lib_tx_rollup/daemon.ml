@@ -524,6 +524,57 @@ let reject_bad_commitment state commitment =
   | None -> return_unit
   | Some source -> Accuser.reject_bad_commitment ~source state commitment
 
+let fail_when_slashed (type kind) state l1_operation
+    (result : kind manager_operation_result) =
+  let open Lwt_result_syntax in
+  let open Apply_results in
+  match state.State.operator with
+  | None -> return_unit
+  | Some operator -> (
+      match result with
+      | Applied result ->
+          let balance_updates =
+            match result with
+            | Reveal_result _ | Delegation_result _
+            | Set_deposits_limit_result _ | Sc_rollup_add_messages_result _
+            | Sc_rollup_cement_result _ | Sc_rollup_publish_result _ ->
+                []
+            | Transaction_result
+                ( Transaction_to_contract_result {balance_updates; _}
+                | Transaction_to_tx_rollup_result {balance_updates; _} )
+            | Origination_result {balance_updates; _}
+            | Register_global_constant_result {balance_updates; _}
+            | Tx_rollup_origination_result {balance_updates; _}
+            | Tx_rollup_submit_batch_result {balance_updates; _}
+            | Tx_rollup_commit_result {balance_updates; _}
+            | Tx_rollup_return_bond_result {balance_updates; _}
+            | Tx_rollup_finalize_commitment_result {balance_updates; _}
+            | Tx_rollup_remove_commitment_result {balance_updates; _}
+            | Tx_rollup_rejection_result {balance_updates; _}
+            | Tx_rollup_dispatch_tickets_result {balance_updates; _}
+            | Transfer_ticket_result {balance_updates; _}
+            | Sc_rollup_originate_result {balance_updates; _} ->
+                balance_updates
+          in
+          let (frozen_debit, punish) =
+            List.fold_left
+              (fun (frozen_debit, punish) -> function
+                | Receipt.(Tx_rollup_rejection_punishments, Credited _, _) ->
+                    (* Someone was punished *)
+                    (frozen_debit, true)
+                | (Frozen_bonds (committer, _), Debited _, _)
+                  when Contract.(committer = implicit_contract operator.pkh) ->
+                    (* Our frozen bonds are gone *)
+                    (true, punish)
+                | _ -> (frozen_debit, punish))
+              (false, false)
+              balance_updates
+          in
+          fail_when
+            (frozen_debit && punish)
+            (Error.Tx_rollup_deposit_slashed l1_operation)
+      | _ -> return_unit)
+
 let process_op (type kind) (state : State.t) l1_block l1_operation ~source:_
     (op : kind manager_operation) (result : kind manager_operation_result)
     (acc : 'acc) : 'acc tzresult Lwt.t =
@@ -531,6 +582,7 @@ let process_op (type kind) (state : State.t) l1_block l1_operation ~source:_
   let is_my_rollup tx_rollup =
     Tx_rollup.equal state.rollup_info.rollup_id tx_rollup
   in
+  let* () = Error.trace_fatal @@ fail_when_slashed state l1_operation result in
   match (op, result) with
   | ( Tx_rollup_commit {commitment; tx_rollup},
       Applied (Tx_rollup_commit_result _) )
