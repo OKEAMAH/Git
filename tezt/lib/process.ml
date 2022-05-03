@@ -492,6 +492,15 @@ let check_and_read_stdout = check_and_read ~channel_getter:stdout
 
 let check_and_read_stderr = check_and_read ~channel_getter:stderr
 
+let wait_and_read ~channel_getter process =
+  let* _ = wait process
+  and* output = Lwt_io.read (channel_getter process) in
+  return output
+
+let wait_and_read_stdout = wait_and_read ~channel_getter:stdout
+
+let wait_and_read_stderr = wait_and_read ~channel_getter:stderr
+
 let run_and_read_stdout ?log_status_on_exit ?name ?color ?env ?expect_failure
     command arguments =
   let process = spawn ?log_status_on_exit ?name ?color ?env command arguments in

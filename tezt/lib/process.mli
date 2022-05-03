@@ -143,6 +143,12 @@ val check_and_read_stderr : ?expect_failure:bool -> t -> string Lwt.t
     in which case fail if the process succeeds. *)
 val check_and_read_both : ?expect_failure:bool -> t -> (string * string) Lwt.t
 
+(** Wait until a process terminates and read its standard output. *)
+val wait_and_read_stdout : t -> string Lwt.t
+
+(** Wait until a process terminates and read its standard error. *)
+val wait_and_read_stderr : t -> string Lwt.t
+
 (** Spawn a process, wait for it to terminate, and check its status. *)
 val run :
   ?log_status_on_exit:bool ->
