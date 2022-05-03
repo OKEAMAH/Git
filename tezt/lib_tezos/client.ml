@@ -574,6 +574,15 @@ let gen_keys ?alias client =
   let* () = Process.check p in
   return alias
 
+let spawn_get_contract_entrypoint_type ~entrypoint ~contract client =
+  Client.spawn_command client ["get"; "contract"; "entrypoint"; "type"; "of"; entrypoint; "for"; contract]
+
+let get_contract_entrypoint_type ~entrypoint ~contract client =
+  let process = spawn_get_contract_entrypoint_type ~entrypoint ~contract client in
+  let* () = Process.check process
+  and* output = Lwt_io.read (Process.stdout process) in
+  return (output =~* rex "Entrypoint \\w+: (.*)\\s*")
+
 let spawn_show_address ~alias client =
   spawn_command client ["show"; "address"; alias; "--show-secret"]
 

@@ -436,9 +436,16 @@ val spawn_show_address : alias:string -> t -> Process.t
     The default value for [alias] is a fresh alias of the form [tezt_<n>]. *)
 val gen_keys : ?alias:string -> t -> string Lwt.t
 
-(** A helper to run [tezos-client gen keys] followed by
-    [tezos-client show address] to get the generated key. *)
-val gen_and_show_keys : ?alias:string -> t -> Account.key Lwt.t
+(** Same as [show_address], but do not wait for the process to exit
+    (which also implies that there is no output key to parse). *)
+val spawn_show_address : alias:string -> t -> Process.t
+
+(** Same as [get_contract_entrypoint_type], but do not wait for the process to exit. *)
+
+val spawn_get_contract_entrypoint_type : entrypoint:string -> contract:string -> t -> Process.t
+
+(** Run [tezos-client get contract entrypoint type of entrypoint for contract] and return the type as a string if the entrypoint is found *)
+val get_contract_entrypoint_type : entrypoint:string -> contract:string -> t -> string option Lwt.t
 
 (** Run [tezos-client transfer amount from giver to receiver]. *)
 val transfer :
