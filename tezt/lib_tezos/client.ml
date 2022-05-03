@@ -575,7 +575,7 @@ let gen_keys ?alias client =
   return alias
 
 let spawn_get_contract_entrypoint_type ~entrypoint ~contract client =
-  Client.spawn_command client ["get"; "contract"; "entrypoint"; "type"; "of"; entrypoint; "for"; contract]
+  spawn_command client ["get"; "contract"; "entrypoint"; "type"; "of"; entrypoint; "for"; contract]
 
 let get_contract_entrypoint_type ~entrypoint ~contract client =
   let process = spawn_get_contract_entrypoint_type ~entrypoint ~contract client in
