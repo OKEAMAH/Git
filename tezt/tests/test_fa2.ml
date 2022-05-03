@@ -1045,24 +1045,26 @@ let test_fail ~protocol () =
     client
   in
   let* std_err =
-    Process.check_and_read_stderr ~expect_failure:true process
+    Process.wait_and_read_stderr process
   in
 
 
-  Format.printf "DONE %s\n" std_err;
+  Format.printf "ERROR: &&&%s&&&\n" std_err;
 
   unit
 
 let print_balances ~client ~contract_hash ~callback_hash  =
-  let* (`OpHash _todo) =
-    Operation.inject_contract_call
-      ~amount:0
-      ~source:Constant.bootstrap1
-      ~dest:contract_hash
+  let process =
+    Client.spawn_transfer
       ~entrypoint:"balance_of"
-      ~arg:(`Michelson (Format.sprintf "{{{%S; 0}; {%S; 0}}; %S}" Constant.bootstrap2.public_key_hash Constant.bootstrap3.public_key_hash callback_hash))
+      ~arg:(Format.sprintf "{{{%S; 0}; {%S; 0}}; %S}" Constant.bootstrap2.public_key_hash Constant.bootstrap3.public_key_hash callback_hash)
+      ~amount:Tez.zero
+      ~giver:"bootstrap2"
+      ~receiver:contract_hash
+      ~burn_cap:(Tez.of_int 10)
       client
   in
+  let* () = Process.check process in
   let* balances = Client.contract_storage "callback" client
   in
   Format.printf "balances: %s\n" balances;
@@ -1075,9 +1077,28 @@ let print_storage ~client =
   Format.printf "STO: %s\n" storage;
   unit
 
+let check_entrypoint_type ~entrypoint ~client ~expected_type =
+  let* output =
+  Client.get_contract_entrypoint_type
+    ~entrypoint
+    ~contract:"contract"
+    client
+  in
+  begin match output with 
+  | None -> Format.printf "No %s entrypoint\n\n" entrypoint
+  | Some typ -> 
+    if typ = expected_type
+      (* "(pair (list (pair address nat)) (contract (list (pair (pair address nat) nat))))" *)
+    then 
+      Format.printf "%s entrypoint has correct type\n\n" entrypoint
+    else
+      Format.printf "%s entrypoint has type:\n%s\ninstead of\n%s\n\n" entrypoint typ expected_type
+    end;
+    unit
+
 let test_fa2 ~protocol ~contract ~storage () =
 
-  Format.printf "TEST FA2\n";
+  Format.printf "TEST FA2\n\n";
 
   let* client = Client.init_mockup ~protocol () in
 
@@ -1091,7 +1112,7 @@ let test_fa2 ~protocol ~contract ~storage () =
       ~burn_cap:(Tez.of_int 10)
       client
   in
-  Format.printf "Contract originated\n";
+  Format.printf "Contract originated\n\n";
 
   let* callback_hash =
     Client.originate_contract
@@ -1104,8 +1125,27 @@ let test_fa2 ~protocol ~contract ~storage () =
       client
   in
 
-  Format.printf "Callback originated\n";
+  Format.printf "Callback originated\n\n";
 
+  let* () = 
+    check_entrypoint_type
+      ~entrypoint:"balance_of"
+      ~expected_type:"(pair (list (pair address nat)) (contract (list (pair (pair address nat) nat))))"
+      ~client
+  in
+  let* () = 
+  check_entrypoint_type
+    ~entrypoint:"transfer"
+    ~expected_type:"(list (pair address (list (pair address nat nat))))"
+    ~client
+  in
+  let* () = 
+  check_entrypoint_type
+    ~entrypoint:"update_operators"
+    ~expected_type:"(list (or (pair address address nat) (pair address address nat)))"
+    ~client
+  in
+  
   let* () = print_balances ~client ~contract_hash ~callback_hash in
 
   let process =
