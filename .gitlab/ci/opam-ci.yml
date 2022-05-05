@@ -356,6 +356,11 @@ opam:tezos-context:
   variables:
     package: tezos-context
 
+opam:tezos-context-ops:
+  extends: .opam_template
+  variables:
+    package: tezos-context-ops
+
 opam:tezos-crypto:
   extends: .opam_template
   variables:

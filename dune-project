@@ -81,6 +81,7 @@
 (package (name tezos-client-sapling-alpha))
 (package (name tezos-codec))
 (package (name tezos-context))
+(package (name tezos-context-ops))
 (package (name tezos-crypto))
 (package (name tezos-error-monad))
 (package (name tezos-event-logging))
