@@ -12,6 +12,7 @@
         test_sc_rollup_tick_repr
         refutation_game_pbt
         test_carbonated_map
+        test_ticket_generators
         test_tickets)
  (libraries tezos-base
             tezos-micheline
