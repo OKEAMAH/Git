@@ -1070,6 +1070,26 @@ let print_balances ~client ~contract_hash ~callback_hash  =
   Format.printf "balances: %s\n" balances;
   unit
 
+
+let get_balances ~client ~contract_hash ~callback_hash  =
+  let process =
+    Client.spawn_transfer
+      ~entrypoint:"balance_of"
+      ~arg:(Format.sprintf "{{{%S; 0}; {%S; 0}}; %S}" Constant.bootstrap2.public_key_hash Constant.bootstrap3.public_key_hash callback_hash)
+      ~amount:Tez.zero
+      ~giver:"bootstrap2"
+      ~receiver:contract_hash
+      ~burn_cap:(Tez.of_int 10)
+      client
+  in
+  let* () = Process.check process in
+  let* balances_string = Client.contract_storage "callback" client in
+  let balances_string = Option.get (balances_string =~* rex "{\\s*(.*)\\s*}") in 
+  let balances_strings = String.split_on_char ';' balances_string in
+  return @@ List.map 
+    (fun s -> let (a,b,c) = Option.get (s =~*** (rex {|\\s*Pair \\(Pair "(\w+)" (\\d+)\\) (\\d+)\\s*|})) in ((a,b),c))
+    balances_strings
+  
 let print_storage ~client =
   let* storage = Client.contract_storage "contract" client
   in
@@ -1092,7 +1112,7 @@ let check_entrypoint_type ~entrypoint ~client ~expected_type =
     then 
       Format.printf "%s entrypoint has correct type\n\n" entrypoint
     else
-      Format.printf "%s entrypoint has type:\n%s\ninstead of\n%s\n\n" entrypoint typ expected_type
+      Format.printf "%s entrypoint has type\n%s\ninstead of\n%s\n\n" entrypoint typ expected_type
     end;
     unit
 
