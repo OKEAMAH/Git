@@ -293,11 +293,9 @@ let rec ex_comparable_ty_generator :
           return_ex @@ Script_typed_ir.bytes_t;
           return_ex @@ Script_typed_ir.signature_t;
           return_ex @@ Script_typed_ir.chain_id_t;
-          (* TODO
-             return_ex @@ Script_typed_ir.address_key;
-             return_ex @@ Script_typed_ir.key_hash_key;
-             return_ex @@ Script_typed_ir.key_key;
-          *)
+          return_ex @@ Script_typed_ir.address_t;
+          return_ex @@ Script_typed_ir.key_hash_t;
+          return_ex @@ Script_typed_ir.key_t;
         ]
        @
        if max_depth > 0 then
@@ -895,7 +893,7 @@ let test_stateful :
     unit Alcotest_lwt.test_case =
   let test_context () =
     let ( let* ) m f = m >>=? f in
-    let* (b, _) = Context.init 3 in
+    let* (b, _) = Context.init_n 3 () in
     let* v = Incremental.begin_construction b in
     return (Incremental.alpha_ctxt v)
   in
@@ -929,7 +927,7 @@ let test_stateful_ty :
 
 let test_context () =
   let ( let* ) m f = m >>=? f in
-  let* (b, _) = Context.init 5 in
+  let* (b, _) = Context.init_n 5 () in
   let* v = Incremental.begin_construction b in
   return @@ Incremental.alpha_ctxt v
 
