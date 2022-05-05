@@ -62,7 +62,8 @@ module Init = struct
       populates it with the data required for a {!Context.t} and then calls
       [f] by passing it an empty [Context.t]. After [f] finishes, the state
       is cleaned up. *)
-  let wrap_tzresult_lwt (f : Context.t -> unit tzresult Lwt.t) () :
+  let wrap_tzresult_lwt_disk
+      (f : Environment_context.Context.t -> unit tzresult Lwt.t) () :
       unit tzresult Lwt.t =
     Lwt_utils_unix.with_tempdir "tezos_test_" (fun base_dir ->
         let open Lwt_result_syntax in
@@ -76,6 +77,7 @@ module Init = struct
             ~protocol:genesis_protocol
         in
         let*! v = Context.checkout_exn idx genesis in
+        let v = Tezos_shell_context.Shell_context.wrap_disk_context v in
         f v)
 
   let genesis_block (context_hash : Context_hash.t) : Store.Block.t =
@@ -98,7 +100,7 @@ let create_prevalidation
     Internal_for_tests.CHAIN_STORE with type chain_store = unit = struct
     type chain_store = unit
 
-    let context () _block : Tezos_context.Context.t tzresult Lwt.t =
+    let context () _block : Environment_context.Context.t tzresult Lwt.t =
       Lwt_result_syntax.return ctxt
 
     let chain_id () = Init.chain_id
@@ -125,7 +127,7 @@ let test_create ctxt =
     create_prevalidation (module Mock_protocol) ctxt
   in
   let predecessor : Store.Block.t =
-    Init.genesis_block @@ Context.hash ~time:timestamp ctxt
+    Init.genesis_block @@ Context_ops.hash ~time:timestamp ctxt
   in
   let* _ =
     Prevalidation.create chain_store ~predecessor ~live_operations ~timestamp ()
@@ -179,7 +181,7 @@ let test_apply_operation_crash ctxt =
     mk_ops (module P)
   in
   let predecessor : Store.Block.t =
-    Init.genesis_block @@ Context.hash ~time:timestamp ctxt
+    Init.genesis_block @@ Context_ops.hash ~time:timestamp ctxt
   in
   let* pv = P.create chain_store ~predecessor ~live_operations ~timestamp () in
   let apply_op pv op =
@@ -245,7 +247,7 @@ let test_apply_operation_live_operations ctxt =
   in
   let live_operations : Operation_hash.Set.t = mk_live_operations rand ops in
   let predecessor : Store.Block.t =
-    Init.genesis_block @@ Context.hash ~time:timestamp ctxt
+    Init.genesis_block @@ Context_ops.hash ~time:timestamp ctxt
   in
   let* pv = P.create chain_store ~predecessor ~live_operations ~timestamp () in
   let op_in_live_operations op =
@@ -294,7 +296,7 @@ let test_apply_operation_applied ctxt =
   in
   let live_operations : Operation_hash.Set.t = mk_live_operations rand ops in
   let predecessor : Store.Block.t =
-    Init.genesis_block @@ Context.hash ~time:timestamp ctxt
+    Init.genesis_block @@ Context_ops.hash ~time:timestamp ctxt
   in
   let* pv = P.create chain_store ~predecessor ~live_operations ~timestamp () in
   let to_applied = P.Internal_for_tests.to_applied in
@@ -338,7 +340,7 @@ let () =
           Tztest.tztest
             "[create] returns Ok"
             `Quick
-            (Init.wrap_tzresult_lwt test_create);
+            (Init.wrap_tzresult_lwt_disk test_create);
         ] );
       (* Run only those tests with:
          dune exec src/lib_shell/test/test_prevalidation_t.exe -- test apply_operation '0..2' *)
@@ -348,17 +350,17 @@ let () =
             "[apply_operation] returns [Branch_delayed] when [apply_operation] \
              from the protocol crashes"
             `Quick
-            (Init.wrap_tzresult_lwt test_apply_operation_crash);
+            (Init.wrap_tzresult_lwt_disk test_apply_operation_crash);
           Tztest.tztest
             "[apply_operation] returns [Outdated] on operations in \
              [live_operations]"
             `Quick
-            (Init.wrap_tzresult_lwt test_apply_operation_live_operations);
+            (Init.wrap_tzresult_lwt_disk test_apply_operation_live_operations);
           Tztest.tztest
             "[apply_operation] makes the [applied] field grow for [Applied] \
              operations (and only for them)"
             `Quick
-            (Init.wrap_tzresult_lwt test_apply_operation_applied);
+            (Init.wrap_tzresult_lwt_disk test_apply_operation_applied);
         ] );
     ]
   |> Lwt_main.run

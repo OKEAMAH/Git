@@ -13,7 +13,7 @@
   tezos-base.unix
   tezos-context
   tezos-store
-  tezos-shell-context
+  tezos-context-ops
   tezos-p2p
   tezos-stdlib-unix
   tezos-shell-services
@@ -31,7 +31,7 @@
    -open Tezos_base_unix
    -open Tezos_context
    -open Tezos_store
-   -open Tezos_shell_context
+   -open Tezos_context_ops
    -open Tezos_p2p
    -open Tezos_stdlib_unix
    -open Tezos_shell_services

@@ -15,7 +15,7 @@ depends: [
   "tezos-base"
   "tezos-context"
   "tezos-store"
-  "tezos-shell-context"
+  "tezos-context-ops"
   "tezos-p2p"
   "tezos-stdlib-unix"
   "tezos-shell-services"
@@ -27,6 +27,7 @@ depends: [
   "tezos-version"
   "lwt-exit"
   "tezos-base-test-helpers" {with-test}
+  "tezos-shell-context" {with-test}
   "tezos-embedded-protocol-demo-noops" {with-test}
   "tezos-event-logging-test-helpers" {with-test}
   "tezos-test-helpers" {with-test}

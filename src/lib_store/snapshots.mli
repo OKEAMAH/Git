@@ -200,7 +200,9 @@ val export :
    all in memory, which is faster but uses more memory. *)
 val import :
   snapshot_path:string ->
-  ?patch_context:(Context.t -> Context.t tzresult Lwt.t) ->
+  ?patch_context:
+    (Environment_context.Context.t ->
+    Environment_context.Context.t tzresult Lwt.t) ->
   ?block:Block_hash.t ->
   ?check_consistency:bool ->
   dst_store_dir:string ->

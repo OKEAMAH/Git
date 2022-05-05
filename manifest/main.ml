@@ -1884,6 +1884,7 @@ let tezos_store =
         index;
         irmin_pack;
         tezos_context |> open_;
+        tezos_context_ops |> open_;
         tezos_shell_context;
         tezos_validation |> open_;
         tezos_protocol_updater |> open_;
@@ -1944,7 +1945,7 @@ let tezos_shell =
         tezos_base_unix |> open_;
         tezos_context |> open_;
         tezos_store |> open_;
-        tezos_shell_context |> open_;
+        tezos_context_ops |> open_;
         tezos_p2p |> open_;
         tezos_stdlib_unix |> open_;
         tezos_shell_services |> open_;
@@ -3834,6 +3835,7 @@ let _tezos_store_tests =
     ~deps:
       [
         tezos_base |> open_ ~m:"TzPervasives";
+        tezos_context_ops |> open_;
         tezos_store |> open_;
         tezos_shell_services |> open_;
         tezos_stdlib_unix |> open_;
@@ -3887,6 +3889,7 @@ let _tezos_shell_tests =
         tezos_base_test_helpers |> open_;
         tezos_store |> open_;
         tezos_context |> open_;
+        tezos_context_ops |> open_;
         tezos_shell_context |> open_;
         tezos_protocol_updater |> open_;
         tezos_p2p |> open_;

@@ -206,7 +206,7 @@ let may_update_protocol_level chain_store ~block =
   let new_proto_level = Store.Block.proto_level block in
   if Compare.Int.(prev_proto_level < new_proto_level) then
     let* context = Store.Block.context chain_store block in
-    let*! new_protocol = Context.get_protocol context in
+    let*! new_protocol = Context_ops.get_protocol context in
     Store.Chain.may_update_protocol_level
       chain_store
       ~pred
