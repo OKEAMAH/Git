@@ -1897,6 +1897,57 @@ let tezos_store =
         tar_unix;
         prometheus;
       ]
+    ~modules:
+      [
+        "block_key";
+        "block_level";
+        "block_repr";
+        "block_store";
+        "cemented_block_store";
+        "consistency";
+        "floating_block_index";
+        "floating_block_store";
+        "naming";
+        "protocol_store";
+        "stored_data";
+        "store_events";
+        "store_metrics";
+        "store";
+        "store_types";
+      ]
+
+let tezos_store_reconstruction =
+  public_lib
+    "tezos-store.reconstruction"
+    ~path:"src/lib_store"
+    ~opam:"tezos-store"
+    ~deps:
+      [
+        tezos_base |> open_ |> open_ ~m:"TzPervasives";
+        tezos_stdlib_unix |> open_;
+        tezos_shell_services |> open_;
+        tezos_protocol_updater |> open_;
+        tezos_validation |> open_;
+        tezos_context_ops |> open_;
+        tezos_store |> open_;
+      ]
+    ~modules:["reconstruction"; "reconstruction_events"]
+
+let tezos_store_snapshots =
+  public_lib
+    "tezos-store.snapshots"
+    ~path:"src/lib_store"
+    ~opam:"tezos-store"
+    ~deps:
+      [
+        tezos_base |> open_ |> open_ ~m:"TzPervasives";
+        tezos_stdlib_unix |> open_;
+        tezos_shell_services |> open_;
+        tezos_context |> open_;
+        tezos_validation |> open_;
+        tezos_store |> open_;
+      ]
+    ~modules:["snapshots"; "snapshots_events"]
 
 let tezos_requester =
   public_lib
@@ -3837,6 +3888,8 @@ let _tezos_store_tests =
         tezos_base |> open_ ~m:"TzPervasives";
         tezos_context_ops |> open_;
         tezos_store |> open_;
+        tezos_store_reconstruction |> open_;
+        tezos_store_snapshots |> open_;
         tezos_shell_services |> open_;
         tezos_stdlib_unix |> open_;
         tezos_validation |> open_;
@@ -4037,6 +4090,8 @@ let _tezos_node =
          tezos_p2p |> open_;
          tezos_shell |> open_;
          tezos_store |> open_;
+         tezos_store_reconstruction |> open_;
+         tezos_store_snapshots |> open_;
          tezos_context |> open_;
          tezos_validator_lib |> open_;
          tezos_validation |> open_;
