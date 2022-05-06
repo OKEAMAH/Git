@@ -163,6 +163,25 @@ let liquidity_baking_toggle_vote_arg =
     ~placeholder:"vote"
     liquidity_baking_toggle_vote_parameter
 
+let baking_nonce_mode_parameter =
+  Clic.parameter
+    ~autocomplete:(fun _ctxt -> return ["random"; "deterministic"])
+    (fun _ctxt -> function
+      | "random" -> return Baking_configuration.Random
+      | "deterministic" -> return Baking_configuration.Deterministic
+      | s ->
+          failwith
+            "unexpected vote: %s, expected either \"random\" or \
+             \"deterministic\"."
+            s)
+
+let baking_nonce_mode_arg =
+  Clic.arg
+    ~doc:"Baking nonce generation mode"
+    ~long:"baking-nonce-mode"
+    ~placeholder:"nonce-mode"
+    baking_nonce_mode_parameter
+
 let get_delegates (cctxt : Protocol_client_context.full)
     (pkhs : Signature.public_key_hash list) =
   let proj_delegate (alias, public_key_hash, public_key, secret_key_uri) =
@@ -321,7 +340,7 @@ let baker_commands () : Protocol_client_context.full Clic.command list =
     command
       ~group
       ~desc:"Launch the baker daemon."
-      (args8
+      (args9
          pidfile_arg
          minimal_fees_arg
          minimal_nanotez_per_gas_unit_arg
@@ -329,7 +348,8 @@ let baker_commands () : Protocol_client_context.full Clic.command list =
          keep_alive_arg
          liquidity_baking_toggle_vote_arg
          per_block_vote_file_arg
-         operations_arg)
+         operations_arg
+         baking_nonce_mode_arg)
       (prefixes ["run"; "with"; "local"; "node"]
       @@ param
            ~name:"node_data_path"
@@ -343,7 +363,8 @@ let baker_commands () : Protocol_client_context.full Clic.command list =
              keep_alive,
              liquidity_baking_toggle_vote,
              per_block_vote_file,
-             extra_operations )
+             extra_operations,
+             nonce )
            node_data_path
            sources
            cctxt ->
@@ -365,6 +386,7 @@ let baker_commands () : Protocol_client_context.full Clic.command list =
           ~liquidity_baking_toggle_vote
           ?per_block_vote_file
           ?extra_operations
+          ?nonce
           ~chain:cctxt#chain
           ~context_path
           ~keep_alive
