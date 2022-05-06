@@ -1011,6 +1011,11 @@ opam:tezos-store:
   variables:
     package: tezos-store
 
+opam:tezos-store-shared:
+  extends: .opam_template
+  variables:
+    package: tezos-store-shared
+
 opam:tezos-test-helpers:
   extends: .opam_template
   variables:

@@ -463,7 +463,7 @@ module Tezos_block_info = struct
   let t =
     let open Repr in
     map
-      (triple L2_block_key.t int32 Tezos_store.Block_key.t)
+      (triple L2_block_key.t int32 Tezos_store_shared.Block_key.t)
       (fun (l2_block, level, predecessor) -> {l2_block; level; predecessor})
       (fun {l2_block; level; predecessor} -> (l2_block, level, predecessor))
 
@@ -493,7 +493,7 @@ module Commitment_info = struct
   let t =
     let open Repr in
     map
-      (pair Tezos_store.Block_key.t Operation_key.t)
+      (pair Tezos_store_shared.Block_key.t Operation_key.t)
       (fun (block, operation) -> {block; operation})
       (fun {block; operation} -> (block, operation))
 
@@ -523,7 +523,7 @@ module Tezos_block_store = struct
   }
 
   include
-    Make_indexable (Tezos_store.Block_key) (Tezos_block_info)
+    Make_indexable (Tezos_store_shared.Block_key) (Tezos_block_info)
       (struct
         let path ~data_dir = Node_data.tezos_blocks_index data_dir
       end)

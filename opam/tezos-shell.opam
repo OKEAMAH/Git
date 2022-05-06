@@ -14,6 +14,7 @@ depends: [
   "prometheus"
   "tezos-base"
   "tezos-context"
+  "tezos-store-shared"
   "tezos-store"
   "tezos-context-ops"
   "tezos-p2p"

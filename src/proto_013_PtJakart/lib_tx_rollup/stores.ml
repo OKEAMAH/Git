@@ -233,7 +233,7 @@ module Tezos_block_info = struct
   let t =
     let open Repr in
     map
-      (triple L2_block_key.t int32 Tezos_store.Block_key.t)
+      (triple L2_block_key.t int32 Tezos_store_shared.Block_key.t)
       (fun (l2_block, level, predecessor) -> {l2_block; level; predecessor})
       (fun {l2_block; level; predecessor} -> (l2_block, level, predecessor))
 
@@ -302,7 +302,7 @@ module L2_block_index =
 module Level_index =
   Index_unix.Make (L2_level_key) (L2_level_info) (Index.Cache.Unbounded)
 module Tezos_block_index =
-  Index_unix.Make (Tezos_store.Block_key) (Tezos_block_info)
+  Index_unix.Make (Tezos_store_shared.Block_key) (Tezos_block_info)
     (Index.Cache.Unbounded)
 
 module L2_blocks_file = struct

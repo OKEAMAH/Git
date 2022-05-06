@@ -1871,6 +1871,20 @@ let tezos_validation =
         tezos_stdlib_unix |> open_;
       ]
 
+let tezos_store_shared =
+  public_lib
+    "tezos-store-shared"
+    ~path:"src/lib_store/shared"
+    ~synopsis:"Tezos: functionalities shared by all store implementations"
+    ~deps:
+      [
+        tezos_base |> open_ |> open_ ~m:"TzPervasives";
+        tezos_shell_services |> open_;
+        ringo_lwt;
+        tezos_validation |> open_;
+      ]
+    ~modules:["naming"; "block_repr"; "store_types"; "block_key"; "block_level"]
+
 let tezos_store =
   public_lib
     "tezos-store"
@@ -1896,25 +1910,21 @@ let tezos_store =
         tar;
         tar_unix;
         prometheus;
+        tezos_store_shared |> open_;
       ]
     ~modules:
       [
-        "block_key";
-        "block_level";
-        "block_repr";
         "block_repr_unix";
         "block_store";
         "cemented_block_store";
         "consistency";
         "floating_block_index";
         "floating_block_store";
-        "naming";
         "protocol_store";
         "stored_data";
         "store_events";
         "store_metrics";
         "store";
-        "store_types";
       ]
 
 let tezos_store_reconstruction =
@@ -1930,6 +1940,7 @@ let tezos_store_reconstruction =
         tezos_protocol_updater |> open_;
         tezos_validation |> open_;
         tezos_context_ops |> open_;
+        tezos_store_shared |> open_;
         tezos_store |> open_;
       ]
     ~modules:["reconstruction"; "reconstruction_events"]
@@ -1946,6 +1957,7 @@ let tezos_store_snapshots =
         tezos_shell_services |> open_;
         tezos_context |> open_;
         tezos_validation |> open_;
+        tezos_store_shared |> open_;
         tezos_store |> open_;
       ]
     ~modules:["snapshots"; "snapshots_events"]
@@ -1996,6 +2008,7 @@ let tezos_shell =
         tezos_base |> open_ ~m:"TzPervasives" |> open_;
         tezos_base_unix |> open_;
         tezos_context |> open_;
+        tezos_store_shared |> open_;
         tezos_store |> open_;
         tezos_context_ops |> open_;
         tezos_p2p |> open_;
@@ -3888,6 +3901,7 @@ let _tezos_store_tests =
       [
         tezos_base |> open_ ~m:"TzPervasives";
         tezos_context_ops |> open_;
+        tezos_store_shared |> open_;
         tezos_store |> open_;
         tezos_store_reconstruction |> open_;
         tezos_store_snapshots |> open_;
@@ -3942,6 +3956,7 @@ let _tezos_shell_tests =
         tezos_base |> open_ ~m:"TzPervasives";
         tezos_base_test_helpers |> open_;
         tezos_store |> open_;
+        tezos_store_shared |> open_;
         tezos_context |> open_;
         tezos_context_ops |> open_;
         tezos_shell_context |> open_;
