@@ -72,7 +72,7 @@ type validation_config =
   | Node
   | ContextIndex of Abstract_context_index.t
 
-type nonce_config = Deterministic | Random
+type nonce_config = Deterministic of int32 | Random
 
 type state_recorder_config = Filesystem | Disabled
 
@@ -206,9 +206,9 @@ let nonce_config_encoding =
       case
         ~title:"Deterministic"
         (Tag 0)
-        (constant "deterministic")
-        (function Deterministic -> Some () | _ -> None)
-        (fun () -> Deterministic);
+        (obj1 (req "deterministic" int32))
+        (function Deterministic block -> Some block | _ -> None)
+        (fun block -> Deterministic block);
       case
         ~title:"Random"
         (Tag 1)

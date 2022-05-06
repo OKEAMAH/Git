@@ -165,19 +165,23 @@ let liquidity_baking_toggle_vote_arg =
 
 let baking_nonce_mode_parameter =
   Clic.parameter
-    ~autocomplete:(fun _ctxt -> return ["random"; "deterministic"])
+    ~autocomplete:(fun _ctxt -> return ["random"; "1"])
     (fun _ctxt -> function
       | "random" -> return Baking_configuration.Random
-      | "deterministic" -> return Baking_configuration.Deterministic
-      | s ->
-          failwith
-            "unexpected vote: %s, expected either \"random\" or \
-             \"deterministic\"."
-            s)
+      | s -> (
+          match Int32.of_string_opt s with
+          | Some block -> return (Baking_configuration.Deterministic block)
+          | None ->
+              failwith
+                "unexpected vote: %s, expected either \"random\" or \
+                 \"deterministic\"."
+                s))
 
 let baking_nonce_mode_arg =
   Clic.arg
-    ~doc:"Baking nonce generation mode"
+    ~doc:
+      "Baking nonce generation mode: either \"random\" or a block number after \
+       which deterministic generation should be used (use \"1\" for always)"
     ~long:"baking-nonce-mode"
     ~placeholder:"nonce-mode"
     baking_nonce_mode_parameter

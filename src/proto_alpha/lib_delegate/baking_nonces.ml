@@ -201,12 +201,12 @@ let get_unrevealed_nonces ({cctxt; chain; _} as state) nonces =
 let generate_seed_nonce (nonce_config : Baking_configuration.nonce_config)
     (delegate : Baking_state.delegate) level =
   (match nonce_config with
-  | Deterministic ->
+  | Deterministic start_level when start_level <= Raw_level.to_int32 level ->
       let data = Data_encoding.Binary.to_bytes_exn Raw_level.encoding level in
       Client_keys.deterministic_nonce delegate.secret_key_uri data
       >>=? fun nonce ->
       return (Data_encoding.Binary.of_bytes_exn Nonce.encoding nonce)
-  | Random -> (
+  | Deterministic _ | Random -> (
       match Nonce.of_bytes (Rand.generate Constants.nonce_length) with
       | Error _errs -> assert false
       | Ok nonce -> return nonce))

@@ -47,7 +47,7 @@ type validation_config =
   | Node
   | ContextIndex of Abstract_context_index.t
 
-type nonce_config = Deterministic | Random
+type nonce_config = Deterministic of int32 | Random
 
 type state_recorder_config = Filesystem | Disabled
 
