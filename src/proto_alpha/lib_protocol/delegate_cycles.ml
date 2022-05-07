@@ -189,6 +189,63 @@ let freeze_deposits ?(origin = Receipt_repr.Block_application) ctxt ~new_cycle
     delegates_to_remove
     (ctxt, balance_updates)
 
+let delegate_has_revealed_nonces delegate unrevelead_nonces_set =
+  not (Signature.Public_key_hash.Set.mem delegate unrevelead_nonces_set)
+
+let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
+  let endorsing_reward_per_slot =
+    Constants_storage.endorsing_reward_per_slot ctxt
+  in
+  let unrevealed_nonces_set =
+    List.fold_left
+      (fun set {Storage.Seed.nonce_hash = _; delegate} ->
+        Signature.Public_key_hash.Set.add delegate set)
+      Signature.Public_key_hash.Set.empty
+      unrevealed_nonces
+  in
+  Stake_storage.get_total_active_stake ctxt last_cycle
+  >>=? fun total_active_stake ->
+  Stake_storage.get_selected_distribution ctxt last_cycle >>=? fun delegates ->
+  List.fold_left_es
+    (fun (ctxt, balance_updates) (delegate, active_stake) ->
+      let delegate_contract = Contract_repr.Implicit delegate in
+      Delegate_missed_endorsements_storage.reset_delegate_participation
+        ctxt
+        delegate
+      >>=? fun (ctxt, sufficient_participation) ->
+      let has_revealed_nonces =
+        delegate_has_revealed_nonces delegate unrevealed_nonces_set
+      in
+      let expected_slots =
+        Delegate_missed_endorsements_storage
+        .expected_slots_for_given_active_stake
+          ctxt
+          ~total_active_stake
+          ~active_stake
+      in
+      let rewards = Tez_repr.mul_exn endorsing_reward_per_slot expected_slots in
+      if sufficient_participation && has_revealed_nonces then
+        (* Sufficient participation: we pay the rewards *)
+        Token.transfer
+          ctxt
+          `Endorsing_rewards
+          (`Contract delegate_contract)
+          rewards
+        >|=? fun (ctxt, payed_rewards_receipts) ->
+        (ctxt, payed_rewards_receipts @ balance_updates)
+      else
+        (* Insufficient participation or unrevealed nonce: no rewards *)
+        Token.transfer
+          ctxt
+          `Endorsing_rewards
+          (`Lost_endorsing_rewards
+            (delegate, not sufficient_participation, not has_revealed_nonces))
+          rewards
+        >|=? fun (ctxt, payed_rewards_receipts) ->
+        (ctxt, payed_rewards_receipts @ balance_updates))
+    (ctxt, [])
+    delegates
+
 let cycle_end ctxt last_cycle =
   Seed_storage.cycle_end ctxt last_cycle >>=? fun (ctxt, unrevealed_nonces) ->
   let new_cycle = Cycle_repr.add last_cycle 1 in
@@ -198,10 +255,7 @@ let cycle_end ctxt last_cycle =
     ctxt
     ~new_cycle
   >>= fun ctxt ->
-  Delegate_missed_endorsements_storage.distribute_endorsing_rewards
-    ctxt
-    last_cycle
-    unrevealed_nonces
+  distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces
   >>=? fun (ctxt, balance_updates) ->
   freeze_deposits ctxt ~new_cycle ~balance_updates
   >>=? fun (ctxt, balance_updates) ->

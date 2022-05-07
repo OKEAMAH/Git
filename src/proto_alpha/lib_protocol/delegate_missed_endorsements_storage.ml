@@ -204,65 +204,11 @@ let participation_info ctxt delegate =
           expected_endorsing_rewards;
         }
 
-let delegate_participated_enough ctxt delegate =
-  Storage.Contract.Missed_endorsements.find ctxt delegate >>=? function
-  | None -> return_true
+let reset_delegate_participation ctxt delegate =
+  let contract = Contract_repr.Implicit delegate in
+  Storage.Contract.Missed_endorsements.find ctxt contract >>=? fun missed ->
+  match missed with
+  | None -> return (ctxt, true)
   | Some missed_endorsements ->
-      return Compare.Int.(missed_endorsements.remaining_slots >= 0)
-
-let delegate_has_revealed_nonces delegate unrevelead_nonces_set =
-  not (Signature.Public_key_hash.Set.mem delegate unrevelead_nonces_set)
-
-let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
-  let endorsing_reward_per_slot =
-    Constants_storage.endorsing_reward_per_slot ctxt
-  in
-  let unrevealed_nonces_set =
-    List.fold_left
-      (fun set {Storage.Seed.nonce_hash = _; delegate} ->
-        Signature.Public_key_hash.Set.add delegate set)
-      Signature.Public_key_hash.Set.empty
-      unrevealed_nonces
-  in
-  Stake_storage.get_total_active_stake ctxt last_cycle
-  >>=? fun total_active_stake ->
-  Stake_storage.get_selected_distribution ctxt last_cycle >>=? fun delegates ->
-  List.fold_left_es
-    (fun (ctxt, balance_updates) (delegate, active_stake) ->
-      let delegate_contract = Contract_repr.Implicit delegate in
-      delegate_participated_enough ctxt delegate_contract
-      >>=? fun sufficient_participation ->
-      let has_revealed_nonces =
-        delegate_has_revealed_nonces delegate unrevealed_nonces_set
-      in
-      let expected_slots =
-        expected_slots_for_given_active_stake
-          ctxt
-          ~total_active_stake
-          ~active_stake
-      in
-      let rewards = Tez_repr.mul_exn endorsing_reward_per_slot expected_slots in
-      (if sufficient_participation && has_revealed_nonces then
-       (* Sufficient participation: we pay the rewards *)
-       Token.transfer
-         ctxt
-         `Endorsing_rewards
-         (`Contract delegate_contract)
-         rewards
-       >|=? fun (ctxt, payed_rewards_receipts) ->
-       (ctxt, payed_rewards_receipts @ balance_updates)
-      else
-        (* Insufficient participation or unrevealed nonce: no rewards *)
-        Token.transfer
-          ctxt
-          `Endorsing_rewards
-          (`Lost_endorsing_rewards
-            (delegate, not sufficient_participation, not has_revealed_nonces))
-          rewards
-        >|=? fun (ctxt, payed_rewards_receipts) ->
-        (ctxt, payed_rewards_receipts @ balance_updates))
-      >>=? fun (ctxt, balance_updates) ->
-      Storage.Contract.Missed_endorsements.remove ctxt delegate_contract
-      >>= fun ctxt -> return (ctxt, balance_updates))
-    (ctxt, [])
-    delegates
+      Storage.Contract.Missed_endorsements.remove ctxt contract >>= fun ctxt ->
+      return (ctxt, Compare.Int.(missed_endorsements.remaining_slots >= 0))

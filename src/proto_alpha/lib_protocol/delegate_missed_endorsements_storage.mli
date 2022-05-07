@@ -25,6 +25,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+val expected_slots_for_given_active_stake :
+  Raw_context.t ->
+  total_active_stake:Tez_repr.tez ->
+  active_stake:Tez_repr.tez ->
+  int
+
 type level_participation = Participated | Didn't_participate
 
 (** Record the participation of a delegate as a validator. *)
@@ -34,6 +40,13 @@ val record_endorsing_participation :
   participation:level_participation ->
   endorsing_power:int ->
   Raw_context.t tzresult Lwt.t
+
+(** Check that a delegate participated enough in the last cycle,
+    and then reset the participation for preparing the next cycle. *)
+val reset_delegate_participation :
+  Raw_context.t ->
+  Signature.Public_key_hash.t ->
+  (Raw_context.t * bool) tzresult Lwt.t
 
 (** Participation information. We denote by:
     - "static" information that does not change during the cycle
@@ -77,10 +90,4 @@ val record_baking_activity_and_pay_rewards_and_fees :
   block_producer:Signature.Public_key_hash.t ->
   baking_reward:Tez_repr.t ->
   reward_bonus:Tez_repr.t option ->
-  (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t
-
-val distribute_endorsing_rewards :
-  Raw_context.t ->
-  Cycle_repr.t ->
-  Storage.Seed.unrevealed_nonce list ->
   (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t
