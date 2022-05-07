@@ -56,7 +56,7 @@ let expect_error err = function
 let expect_alpha_error err = expect_error (Environment.Ecoproto_error err)
 
 let expect_no_change_registered_delegate_pkh pkh = function
-  | Environment.Ecoproto_error (Delegate_storage.No_deletion pkh0) :: _
+  | Environment.Ecoproto_error (Delegate_storage.Contract.No_deletion pkh0) :: _
     when pkh0 = pkh ->
       return_unit
   | _ -> failwith "Delegate can not be deleted and operation should fail."
@@ -221,7 +221,8 @@ let bootstrap_manager_already_registered_delegate ~fee () =
   else
     Incremental.add_operation
       ~expect_apply_failure:(function
-        | Environment.Ecoproto_error Delegate_storage.Active_delegate :: _ ->
+        | Environment.Ecoproto_error Delegate_storage.Contract.Active_delegate
+          :: _ ->
             return_unit
         | _ -> failwith "Delegate is already active and operation should fail.")
       i
@@ -458,7 +459,8 @@ let tests_bootstrap_contracts =
    two possibilities of 1a for non-credited contracts. *)
 
 let expect_unregistered_key pkh = function
-  | Environment.Ecoproto_error (Delegate_storage.Unregistered_delegate pkh0)
+  | Environment.Ecoproto_error
+      (Delegate_storage.Contract.Unregistered_delegate pkh0)
     :: _
     when pkh = pkh0 ->
       return_unit

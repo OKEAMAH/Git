@@ -1422,7 +1422,11 @@ let commands_rw () =
           src_pk
         >>= function
         | Ok _ -> return_unit
-        | Error [Environment.Ecoproto_error Delegate_storage.Active_delegate] ->
+        | Error
+            [
+              Environment.Ecoproto_error
+                Delegate_storage.Contract.Active_delegate;
+            ] ->
             cctxt#message "Delegate already activated." >>= fun () ->
             return_unit
         | Error el -> Lwt.return_error el);

@@ -25,132 +25,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type error +=
-  | (* `Permanent *) No_deletion of Signature.Public_key_hash.t
-  | (* `Temporary *) Active_delegate
-  | (* `Temporary *) Current_delegate
-  | (* `Permanent *) Empty_delegate_account of Signature.Public_key_hash.t
-  | (* `Permanent *) Unregistered_delegate of Signature.Public_key_hash.t
-  | (* `Permanent *) Unassigned_validation_slot_for_level of Level_repr.t * int
-  | (* `Permanent *)
-      Cannot_find_active_stake of {
-      cycle : Cycle_repr.t;
-      delegate : Signature.Public_key_hash.t;
-    }
-  | (* `Temporary *) Not_registered of Signature.Public_key_hash.t
+type error += (* `Temporary *) Not_registered of Signature.Public_key_hash.t
 
 let () =
-  register_error_kind
-    `Permanent
-    ~id:"delegate.no_deletion"
-    ~title:"Forbidden delegate deletion"
-    ~description:"Tried to unregister a delegate"
-    ~pp:(fun ppf delegate ->
-      Format.fprintf
-        ppf
-        "Delegate deletion is forbidden (%a)"
-        Signature.Public_key_hash.pp
-        delegate)
-    Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
-    (function No_deletion c -> Some c | _ -> None)
-    (fun c -> No_deletion c) ;
-  register_error_kind
-    `Temporary
-    ~id:"delegate.already_active"
-    ~title:"Delegate already active"
-    ~description:"Useless delegate reactivation"
-    ~pp:(fun ppf () ->
-      Format.fprintf ppf "The delegate is still active, no need to refresh it")
-    Data_encoding.empty
-    (function Active_delegate -> Some () | _ -> None)
-    (fun () -> Active_delegate) ;
-  register_error_kind
-    `Temporary
-    ~id:"delegate.unchanged"
-    ~title:"Unchanged delegated"
-    ~description:"Contract already delegated to the given delegate"
-    ~pp:(fun ppf () ->
-      Format.fprintf
-        ppf
-        "The contract is already delegated to the same delegate")
-    Data_encoding.empty
-    (function Current_delegate -> Some () | _ -> None)
-    (fun () -> Current_delegate) ;
-  register_error_kind
-    `Permanent
-    ~id:"delegate.empty_delegate_account"
-    ~title:"Empty delegate account"
-    ~description:"Cannot register a delegate when its implicit account is empty"
-    ~pp:(fun ppf delegate ->
-      Format.fprintf
-        ppf
-        "Delegate registration is forbidden when the delegate\n\
-        \           implicit account is empty (%a)"
-        Signature.Public_key_hash.pp
-        delegate)
-    Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
-    (function Empty_delegate_account c -> Some c | _ -> None)
-    (fun c -> Empty_delegate_account c) ;
-  (* Unregistered delegate *)
-  register_error_kind
-    `Permanent
-    ~id:"contract.manager.unregistered_delegate"
-    ~title:"Unregistered delegate"
-    ~description:"A contract cannot be delegated to an unregistered delegate"
-    ~pp:(fun ppf k ->
-      Format.fprintf
-        ppf
-        "The provided public key (with hash %a) is not registered as valid \
-         delegate key."
-        Signature.Public_key_hash.pp
-        k)
-    Data_encoding.(obj1 (req "hash" Signature.Public_key_hash.encoding))
-    (function Unregistered_delegate k -> Some k | _ -> None)
-    (fun k -> Unregistered_delegate k) ;
-  (* Unassigned_validation_slot_for_level *)
-  register_error_kind
-    `Permanent
-    ~id:"delegate.unassigned_validation_slot_for_level"
-    ~title:"Unassigned validation slot for level"
-    ~description:
-      "The validation slot for the given level is not assigned. Nobody payed \
-       for that slot, or the level is either in the past or too far in the \
-       future (further than the validatiors_selection_offset constant)"
-    ~pp:(fun ppf (l, slot) ->
-      Format.fprintf
-        ppf
-        "The validation slot %i for the level %a is not assigned. Nobody payed \
-         for that slot, or the level is either in the past or too far in the \
-         future (further than the validatiors_selection_offset constant)"
-        slot
-        Level_repr.pp
-        l)
-    Data_encoding.(obj2 (req "level" Level_repr.encoding) (req "slot" int31))
-    (function
-      | Unassigned_validation_slot_for_level (l, s) -> Some (l, s) | _ -> None)
-    (fun (l, s) -> Unassigned_validation_slot_for_level (l, s)) ;
-  register_error_kind
-    `Permanent
-    ~id:"delegate.cannot_find_active_stake"
-    ~title:"Cannot find active stake"
-    ~description:
-      "The active stake of a delegate cannot be found for the given cycle."
-    ~pp:(fun ppf (cycle, delegate) ->
-      Format.fprintf
-        ppf
-        "The active stake of the delegate %a cannot be found for the cycle %a."
-        Cycle_repr.pp
-        cycle
-        Signature.Public_key_hash.pp
-        delegate)
-    Data_encoding.(
-      obj2
-        (req "cycle" Cycle_repr.encoding)
-        (req "delegate" Signature.Public_key_hash.encoding))
-    (function
-      | Cannot_find_active_stake {cycle; delegate} -> Some (cycle, delegate)
-      | _ -> None)
-    (fun (cycle, delegate) -> Cannot_find_active_stake {cycle; delegate}) ;
   register_error_kind
     `Temporary
     ~id:"delegate.not_registered"
@@ -181,12 +58,6 @@ let check_registered ctxt pkh =
 let fold = Storage.Delegates.fold
 
 let list = Storage.Delegates.elements
-
-let pubkey ctxt pkh =
-  Contract_manager_storage.get_manager_key
-    ctxt
-    pkh
-    ~error:(Unregistered_delegate pkh)
 
 let frozen_deposits_limit ctxt delegate =
   Storage.Contract.Frozen_deposits_limit.find
@@ -230,6 +101,27 @@ let full_balance ctxt delegate =
     - stake is properly moved when changing delegation.
 *)
 module Contract = struct
+  type error +=
+    | (* `Permanent *) Unregistered_delegate of Signature.Public_key_hash.t
+
+  let () =
+    (* Unregistered delegate *)
+    register_error_kind
+      `Permanent
+      ~id:"contract.manager.unregistered_delegate"
+      ~title:"Unregistered delegate"
+      ~description:"A contract cannot be delegated to an unregistered delegate"
+      ~pp:(fun ppf k ->
+        Format.fprintf
+          ppf
+          "The provided public key (with hash %a) is not registered as valid \
+           delegate key."
+          Signature.Public_key_hash.pp
+          k)
+      Data_encoding.(obj1 (req "hash" Signature.Public_key_hash.encoding))
+      (function Unregistered_delegate k -> Some k | _ -> None)
+      (fun k -> Unregistered_delegate k)
+
   let init ctxt contract delegate =
     Contract_manager_storage.is_manager_key_revealed ctxt delegate
     >>=? fun known_delegate ->
@@ -240,6 +132,38 @@ module Contract = struct
     Contract_storage.get_balance_and_frozen_bonds ctxt contract
     >>=? fun balance_and_frozen_bonds ->
     Stake_storage.add_stake ctxt delegate balance_and_frozen_bonds
+
+  type error +=
+    | (* `Temporary *) Active_delegate
+    | (* `Permanent *) Empty_delegate_account of Signature.Public_key_hash.t
+
+  let () =
+    register_error_kind
+      `Temporary
+      ~id:"delegate.already_active"
+      ~title:"Delegate already active"
+      ~description:"Useless delegate reactivation"
+      ~pp:(fun ppf () ->
+        Format.fprintf ppf "The delegate is still active, no need to refresh it")
+      Data_encoding.empty
+      (function Active_delegate -> Some () | _ -> None)
+      (fun () -> Active_delegate) ;
+    register_error_kind
+      `Permanent
+      ~id:"delegate.empty_delegate_account"
+      ~title:"Empty delegate account"
+      ~description:
+        "Cannot register a delegate when its implicit account is empty"
+      ~pp:(fun ppf delegate ->
+        Format.fprintf
+          ppf
+          "Delegate registration is forbidden when the delegate\n\
+          \           implicit account is empty (%a)"
+          Signature.Public_key_hash.pp
+          delegate)
+      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      (function Empty_delegate_account c -> Some c | _ -> None)
+      (fun c -> Empty_delegate_account c)
 
   let set_self_delegate c delegate =
     let open Lwt_tzresult_syntax in
@@ -273,6 +197,38 @@ module Contract = struct
       let*! c = Storage.Delegates.add c delegate in
       let* c = Stake_storage.set_active c delegate in
       return c
+
+  type error +=
+    | (* `Permanent *) No_deletion of Signature.Public_key_hash.t
+    | (* `Temporary *) Current_delegate
+
+  let () =
+    register_error_kind
+      `Permanent
+      ~id:"delegate.no_deletion"
+      ~title:"Forbidden delegate deletion"
+      ~description:"Tried to unregister a delegate"
+      ~pp:(fun ppf delegate ->
+        Format.fprintf
+          ppf
+          "Delegate deletion is forbidden (%a)"
+          Signature.Public_key_hash.pp
+          delegate)
+      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      (function No_deletion c -> Some c | _ -> None)
+      (fun c -> No_deletion c) ;
+    register_error_kind
+      `Temporary
+      ~id:"delegate.unchanged"
+      ~title:"Unchanged delegated"
+      ~description:"Contract already delegated to the given delegate"
+      ~pp:(fun ppf () ->
+        Format.fprintf
+          ppf
+          "The contract is already delegated to the same delegate")
+      Data_encoding.empty
+      (function Current_delegate -> Some () | _ -> None)
+      (fun () -> Current_delegate)
 
   let set_delegate c contract delegate =
     let open Lwt_tzresult_syntax in
@@ -323,3 +279,9 @@ module Contract = struct
         set_self_delegate c delegate
     | _ -> set_delegate c contract delegate
 end
+
+let pubkey ctxt pkh =
+  Contract_manager_storage.get_manager_key
+    ~error:(Contract.Unregistered_delegate pkh)
+    ctxt
+    pkh

@@ -25,19 +25,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type error +=
-  | (* `Permanent *) No_deletion of Signature.Public_key_hash.t
-  | (* `Temporary *) Active_delegate
-  | (* `Temporary *) Current_delegate
-  | (* `Permanent *) Empty_delegate_account of Signature.Public_key_hash.t
-  | (* `Permanent *) Unregistered_delegate of Signature.Public_key_hash.t
-  | (* `Permanent *) Unassigned_validation_slot_for_level of Level_repr.t * int
-  | (* `Permanent *)
-      Cannot_find_active_stake of {
-      cycle : Cycle_repr.t;
-      delegate : Signature.Public_key_hash.t;
-    }
-  | (* `Temporary *) Not_registered of Signature.Public_key_hash.t
+type error += (* `Temporary *) Not_registered of Signature.Public_key_hash.t
 
 (** Has a delegate been registered in the delegate table? *)
 val registered : Raw_context.t -> Signature.Public_key_hash.t -> bool Lwt.t
@@ -98,6 +86,13 @@ val full_balance :
   Raw_context.t -> Signature.Public_key_hash.t -> Tez_repr.t tzresult Lwt.t
 
 module Contract : sig
+  type error +=
+    | (* `Permanent *) Unregistered_delegate of Signature.Public_key_hash.t
+    | (* `Temporary *) Active_delegate
+    | (* `Permanent *) Empty_delegate_account of Signature.Public_key_hash.t
+    | (* `Permanent *) No_deletion of Signature.Public_key_hash.t
+    | (* `Temporary *) Current_delegate
+
   (** [init ctxt contract delegate] registers a delegate when
       creating a contract.
 
