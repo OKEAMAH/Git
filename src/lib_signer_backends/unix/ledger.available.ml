@@ -348,19 +348,144 @@ module Ledger_commands = struct
         let signature = P256.of_bytes_exn (Bigstring.to_bytes buf) in
         return (Signature.of_p256 signature)
 
-  let get_deterministic_nonce hid curve path msg =
+  module Ledger_key = struct
+    type t = {
+      device_info : Hidapi.device_info;
+      curve : Ledgerwallet_tezos.curve;
+      path : int32 list;
+    }
+
+    include Compare.Make (struct
+      type nonrec t = t
+
+      let compare_device_info
+          ({
+             path = path_a;
+             vendor_id = vendor_id_a;
+             product_id = product_id_a;
+             serial_number = serial_number_a;
+             release_number = release_number_a;
+             manufacturer_string = manufacturer_string_a;
+             product_string = product_string_a;
+             usage_page = usage_page_a;
+             usage = usage_a;
+             interface_number = interface_number_a;
+           } :
+            Hidapi.device_info)
+          ({
+             path = path_b;
+             vendor_id = vendor_id_b;
+             product_id = product_id_b;
+             serial_number = serial_number_b;
+             release_number = release_number_b;
+             manufacturer_string = manufacturer_string_b;
+             product_string = product_string_b;
+             usage_page = usage_page_b;
+             usage = usage_b;
+             interface_number = interface_number_b;
+           } :
+            Hidapi.device_info) =
+        Compare.or_else (String.compare path_a path_b) (fun () ->
+            Compare.or_else
+              (Compare.Int.compare vendor_id_a vendor_id_b)
+              (fun () ->
+                Compare.or_else
+                  (Compare.Int.compare product_id_a product_id_b)
+                  (fun () ->
+                    Compare.or_else
+                      (Option.compare
+                         Compare.String.compare
+                         serial_number_a
+                         serial_number_b)
+                      (fun () ->
+                        Compare.or_else
+                          (Compare.Int.compare
+                             release_number_a
+                             release_number_b)
+                          (fun () ->
+                            Compare.or_else
+                              (Option.compare
+                                 Compare.String.compare
+                                 manufacturer_string_a
+                                 manufacturer_string_b)
+                              (fun () ->
+                                Compare.or_else
+                                  (Option.compare
+                                     Compare.String.compare
+                                     product_string_a
+                                     product_string_b)
+                                  (fun () ->
+                                    Compare.or_else
+                                      (Compare.Int.compare
+                                         usage_page_a
+                                         usage_page_b)
+                                      (fun () ->
+                                        Compare.or_else
+                                          (Compare.Int.compare usage_a usage_b)
+                                          (fun () ->
+                                            Compare.Int.compare
+                                              interface_number_a
+                                              interface_number_b)))))))))
+
+      let compare_curve a_curve b_curve =
+        let curve_to_index (curve : Ledgerwallet_tezos.curve) =
+          match curve with
+          | Ed25519 -> 0
+          | Secp256k1 -> 1
+          | Secp256r1 -> 2
+          | Bip32_ed25519 -> 3
+        in
+        Compare.Int.compare (curve_to_index a_curve) (curve_to_index b_curve)
+
+      let compare {device_info = a_device_info; curve = a_curve; path = a_path}
+          {device_info = b_device_info; curve = b_curve; path = b_path} =
+        Compare.or_else
+          (List.compare Compare.Int32.compare a_path b_path)
+          (fun () ->
+            Compare.or_else (compare_curve a_curve b_curve) (fun () ->
+                compare_device_info a_device_info b_device_info))
+    end)
+  end
+
+  module Ledger_nonce_map = Map.Make (Ledger_key)
+
+  (** Map ledger keys to their root deterministic nonces*)
+  let ledger_nonce_map = ref Ledger_nonce_map.empty
+
+  let get_deterministic_nonce hid device_info curve path msg =
+    (* The Ledger is quite slow to generate deterministic nonces, so we
+       use the following hack: generate a single deterministic nonce,
+       cache it, and use it to generate a key for HMAC.  Then use HMAC
+       to generate further determinstic nonces. *)
     let open Lwt_result_syntax in
-    let path = Bip32_path.tezos_root @ path in
-    let* nonce =
-      wrap_ledger_cmd (fun pp ->
-          Ledgerwallet_tezos.get_deterministic_nonce
-            ~pp
-            hid
-            curve
-            path
-            (Cstruct.of_bytes msg))
+    let ledger_nonce_map_key = Ledger_key.{device_info; curve; path} in
+    let cached_ledger_nonce =
+      Ledger_nonce_map.find ledger_nonce_map_key !ledger_nonce_map
     in
-    return (Bigstring.of_bytes (Cstruct.to_bytes nonce))
+    let* key =
+      match cached_ledger_nonce with
+      | Some cached -> return cached
+      | None ->
+          let path = Bip32_path.tezos_root @ path in
+          let* nonce =
+            wrap_ledger_cmd (fun pp ->
+                Ledgerwallet_tezos.get_deterministic_nonce
+                  ~pp
+                  hid
+                  curve
+                  path
+                  (Cstruct.of_bytes
+                     (Bytes.of_string
+                        "Deterministic derivation of nonces for RANDAO")))
+          in
+
+          let nonce = Cstruct.to_bytes nonce in
+          ledger_nonce_map :=
+            Ledger_nonce_map.add ledger_nonce_map_key nonce !ledger_nonce_map ;
+          return nonce
+    in
+    let bytes = Hacl.Hash.SHA256.HMAC.digest ~key ~msg in
+    return (Bigstring.of_bytes bytes)
 end
 
 (** Identification of a ledger's root key through crouching-tigers
@@ -793,9 +918,14 @@ module Signer_implementation : Client_keys.SIGNER = struct
     let* {curve; path; _} = Ledger_uri.full_account ledger_uri in
     use_ledger_or_fail
       ~ledger_uri
-      (fun hidapi (_version, _git_commit) _device_info _ledger_id ->
+      (fun hidapi (_version, _git_commit) device_info _ledger_id ->
         let* bytes =
-          Ledger_commands.get_deterministic_nonce hidapi curve path msg
+          Ledger_commands.get_deterministic_nonce
+            hidapi
+            device_info
+            curve
+            path
+            msg
         in
         return_some (Bigstring.to_bytes bytes))
 
