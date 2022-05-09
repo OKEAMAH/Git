@@ -1070,6 +1070,17 @@ let print_balances ~client ~contract_hash ~callback_hash  =
   Format.printf "balances: %s\n" balances;
   unit
 
+let json_micheline_to_pair json =
+  let arg_list = JSON.(json |-> "args" |> as_list) in 
+  match arg_list with 
+  | [a1;a2] -> (a1,a2)
+  | _ -> raise @@ Invalid_argument "expected a pair"
+
+let json_micheline_to_int json = 
+  JSON.(json |-> "int" |> as_int)
+
+let json_micheline_to_string json = 
+  JSON.(json |-> "string" |> as_string)
 
 let get_balances ~client ~contract_hash ~callback_hash  =
   let process =
@@ -1083,19 +1094,37 @@ let get_balances ~client ~contract_hash ~callback_hash  =
       client
   in
   let* () = Process.check process in
-  let* balances_string = Client.contract_storage "callback" client in
+  let* s = Client.contract_storage "callback" client in
+  let* json = Client.convert_data_to_json ~data:s client in
+  let json = JSON.annotate ~origin:"tezos-client convert data" json in
+  Format.printf "json %s\n" @@ JSON.encode json;
+
+  let json_list = JSON.as_list json in 
+  let parse json =
+    let pair, amount = json_micheline_to_pair json in 
+    let account, token_id = json_micheline_to_pair pair in 
+    ((json_micheline_to_string account, json_micheline_to_int token_id),
+      json_micheline_to_int amount) in
+  return @@ List.map parse json_list
+  
+
+  (* let json_micheline_to_int json = JSON.(json |-> "int" |> as_int) in
+  let (parsed : int list) =
+    JSON.(json |> as_list |> List.map json_micheline_to_int)
+  in
+
   let balances_string = Option.get (balances_string =~* rex "{\\s*(.*)\\s*}") in 
   let balances_strings = String.split_on_char ';' balances_string in
   return @@ List.map 
     (fun s -> let (a,b,c) = Option.get (s =~*** (rex {|\\s*Pair \\(Pair "(\w+)" (\\d+)\\) (\\d+)\\s*|})) in ((a,b),c))
-    balances_strings
+    balances_strings *)
   
-let print_storage ~client =
+(* let print_storage ~client =
   let* storage = Client.contract_storage "contract" client
   in
   Format.printf "TEST FA2\n";
   Format.printf "STO: %s\n" storage;
-  unit
+  unit *)
 
 let check_entrypoint_type ~entrypoint ~client ~expected_type =
   let* output =
@@ -1121,6 +1150,7 @@ let test_fa2 ~protocol ~contract ~storage () =
   Format.printf "TEST FA2\n\n";
 
   let* client = Client.init_mockup ~protocol () in
+  Format.printf "TEST FA2\n\n";
 
   let* contract_hash =
     Client.originate_contract
@@ -1183,9 +1213,12 @@ let test_fa2 ~protocol ~contract ~storage () =
   in *)
   let* () = Process.check process in
 
-  Format.printf "Transferred 100 from bootstrap 2 to bootstrap 3\n";
+  Format.printf "Transferred 100 tokens from bootstrap 2 to bootstrap 3\n";
 
-  let* () = print_balances ~client ~contract_hash ~callback_hash in
+  let* balances = get_balances ~client ~contract_hash ~callback_hash in
+
+  Check.((List.assoc (Constant.bootstrap2.public_key_hash, 0) balances = 0) int ~error_msg:"failed");
+  Check.((List.assoc (Constant.bootstrap3.public_key_hash, 0) balances = 100) int ~error_msg:"failed");
 
   unit
 
