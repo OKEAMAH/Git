@@ -158,6 +158,7 @@
 (package (name tezos-stdlib-unix))
 (package (name tezos-store))
 (package (name tezos-store-shared))
+(package (name tezos-store-unix))
 (package (name tezos-test-helpers))
 (package (name tezos-test-helpers-extra))
 (package (name tezos-tooling))

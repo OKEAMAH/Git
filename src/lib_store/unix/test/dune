@@ -7,9 +7,9 @@
   tezos-base
   tezos-context-ops
   tezos-store-shared
-  tezos-store
-  tezos-store.reconstruction
-  tezos-store.snapshots
+  tezos-store-unix
+  tezos-store-unix.reconstruction
+  tezos-store-unix.snapshots
   tezos-shell-services
   tezos-stdlib-unix
   tezos-validation
@@ -26,9 +26,9 @@
    -open Tezos_base.TzPervasives
    -open Tezos_context_ops
    -open Tezos_store_shared
-   -open Tezos_store
-   -open Tezos_store_reconstruction
-   -open Tezos_store_snapshots
+   -open Tezos_store_unix
+   -open Tezos_store_unix_reconstruction
+   -open Tezos_store_unix_snapshots
    -open Tezos_shell_services
    -open Tezos_stdlib_unix
    -open Tezos_validation
@@ -37,7 +37,7 @@
 
 (rule
  (alias runtest)
- (package tezos-store)
+ (package tezos-store-unix)
  (action (setenv SLOW_TEST false (run %{exe:test.exe}))))
 
 (rule
@@ -46,5 +46,5 @@
 
 (rule
  (alias runtest_locator_bench)
- (package tezos-store)
+ (package tezos-store-unix)
  (action (run %{exe:test_locator.exe} --bench)))

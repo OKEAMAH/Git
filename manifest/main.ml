@@ -1885,11 +1885,11 @@ let tezos_store_shared =
       ]
     ~modules:["naming"; "block_repr"; "store_types"; "block_key"; "block_level"]
 
-let tezos_store =
+let tezos_store_unix =
   public_lib
-    "tezos-store"
-    ~path:"src/lib_store"
-    ~synopsis:"Tezos: store for `tezos-node`"
+    "tezos-store-unix"
+    ~path:"src/lib_store/unix"
+    ~synopsis:"Tezos: store for `tezos-node` (unix implementation)"
     ~deps:
       [
         tezos_shell_services |> open_;
@@ -1927,11 +1927,11 @@ let tezos_store =
         "store";
       ]
 
-let tezos_store_reconstruction =
+let tezos_store_unix_reconstruction =
   public_lib
-    "tezos-store.reconstruction"
-    ~path:"src/lib_store"
-    ~opam:"tezos-store"
+    "tezos-store-unix.reconstruction"
+    ~path:"src/lib_store/unix"
+    ~opam:"tezos-store-unix"
     ~deps:
       [
         tezos_base |> open_ |> open_ ~m:"TzPervasives";
@@ -1941,15 +1941,15 @@ let tezos_store_reconstruction =
         tezos_validation |> open_;
         tezos_context_ops |> open_;
         tezos_store_shared |> open_;
-        tezos_store |> open_;
+        tezos_store_unix |> open_;
       ]
     ~modules:["reconstruction"; "reconstruction_events"]
 
-let tezos_store_snapshots =
+let tezos_store_unix_snapshots =
   public_lib
-    "tezos-store.snapshots"
-    ~path:"src/lib_store"
-    ~opam:"tezos-store"
+    "tezos-store-unix.snapshots"
+    ~path:"src/lib_store/unix"
+    ~opam:"tezos-store-unix"
     ~deps:
       [
         tezos_base |> open_ |> open_ ~m:"TzPervasives";
@@ -1958,9 +1958,34 @@ let tezos_store_snapshots =
         tezos_context |> open_;
         tezos_validation |> open_;
         tezos_store_shared |> open_;
-        tezos_store |> open_;
+        tezos_store_unix |> open_;
       ]
     ~modules:["snapshots"; "snapshots_events"]
+
+let tezos_store =
+  public_lib
+    "tezos-store"
+    ~path:"src/lib_store"
+    ~synopsis:"Tezos: store for `tezos-node` (virtual library)"
+    ~deps:
+      [
+        tezos_base |> open_ |> open_ ~m:"TzPervasives";
+        lwt_watcher;
+        tezos_shell_services |> open_;
+        tezos_validation |> open_;
+        tezos_context_ops |> open_;
+        tezos_store_shared |> open_;
+      ]
+    ~virtual_modules:["store"]
+    ~default_implementation:"tezos-store.real"
+
+let _tezos_store_real =
+  public_lib
+    "tezos-store.real"
+    ~path:"src/lib_store/real"
+    ~opam:"tezos-store"
+    ~deps:[tezos_store_unix |> open_]
+    ~implements:tezos_store
 
 let tezos_requester =
   public_lib
@@ -3895,16 +3920,16 @@ let _tezos_micheline_rewriting_tests =
 let _tezos_store_tests =
   tests
     ["test"; "test_locator"]
-    ~path:"src/lib_store/test"
-    ~opam:"tezos-store"
+    ~path:"src/lib_store/unix/test"
+    ~opam:"tezos-store-unix"
     ~deps:
       [
         tezos_base |> open_ ~m:"TzPervasives";
         tezos_context_ops |> open_;
         tezos_store_shared |> open_;
-        tezos_store |> open_;
-        tezos_store_reconstruction |> open_;
-        tezos_store_snapshots |> open_;
+        tezos_store_unix |> open_;
+        tezos_store_unix_reconstruction |> open_;
+        tezos_store_unix_snapshots |> open_;
         tezos_shell_services |> open_;
         tezos_stdlib_unix |> open_;
         tezos_validation |> open_;
@@ -3929,14 +3954,14 @@ let _tezos_store_tests =
         [
           alias_rule
             "runtest"
-            ~package:"tezos-store"
+            ~package:"tezos-store-unix"
             ~action:(setenv "SLOW_TEST" "false" @@ run_exe "test" []);
           alias_rule
             "test_slow_manual"
             ~action:(setenv "SLOW_TEST" "true" @@ run_exe "test" []);
           alias_rule
             "runtest_locator_bench"
-            ~package:"tezos-store"
+            ~package:"tezos-store-unix"
             ~action:(run_exe "test_locator" ["--bench"]);
         ]
 
@@ -4100,9 +4125,9 @@ let _tezos_node =
          tezos_rpc_http_server |> open_;
          tezos_p2p |> open_;
          tezos_shell |> open_;
-         tezos_store |> open_;
-         tezos_store_reconstruction |> open_;
-         tezos_store_snapshots |> open_;
+         tezos_store;
+         tezos_store_unix_reconstruction |> open_;
+         tezos_store_unix_snapshots |> open_;
          tezos_context |> open_;
          tezos_validator_lib |> open_;
          tezos_validation |> open_;
@@ -4117,6 +4142,7 @@ let _tezos_node =
          lwt_exit;
        ]
       @ protocol_deps)
+    ~opens:["Tezos_store"]
     ~linkall:true
     ~dune:
       Dune.

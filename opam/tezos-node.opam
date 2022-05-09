@@ -18,6 +18,7 @@ depends: [
   "tezos-p2p"
   "tezos-shell"
   "tezos-store"
+  "tezos-store-unix"
   "tezos-context"
   "tezos-validator"
   "tezos-validation"
