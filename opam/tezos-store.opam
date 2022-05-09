@@ -16,6 +16,8 @@ depends: [
   "tezos-context-ops"
   "tezos-store-shared"
   "tezos-store-unix"
+  "tezos-context"
+  "tezos-protocol-environment"
 ]
 build: [
   ["rm" "-r" "vendors"]

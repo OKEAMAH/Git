@@ -1987,6 +1987,25 @@ let _tezos_store_real =
     ~deps:[tezos_store_unix |> open_]
     ~implements:tezos_store
 
+let _tezos_store_mocked =
+  public_lib
+    "tezos-store.mocked"
+    ~path:"src/lib_store/mocked"
+    ~opam:"tezos-store"
+    ~deps:
+      [
+        tezos_base |> open_ ~m:"TzPervasives";
+        tezos_shell_services |> open_;
+        tezos_context_memory |> open_;
+        tezos_context_ops |> open_;
+        tezos_validation |> open_;
+        tezos_protocol_environment;
+        tezos_store_shared |> open_;
+      ]
+    ~private_modules:
+      ["block_store"; "protocol_store"; "store_events"; "stored_data"]
+    ~implements:tezos_store
+
 let tezos_requester =
   public_lib
     "tezos-requester"
