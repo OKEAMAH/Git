@@ -1126,11 +1126,15 @@ module Level : sig
 
   val levels_in_current_cycle : context -> ?offset:int32 -> unit -> level list
 
+  val levels_with_commitments_in_cycle : context -> Cycle.t -> level list
+
   val last_allowed_fork_level : context -> Raw_level.t
 
   val dawn_of_a_new_cycle : context -> Cycle.t option
 
   val may_snapshot_rolls : context -> bool
+
+  val to_raw : level -> Raw_level.t
 end
 
 module Fitness : sig
@@ -1187,6 +1191,8 @@ module Nonce : sig
   type status = Unrevealed of unrevealed | Revealed of nonce
 
   val get : context -> Level.t -> status tzresult Lwt.t
+
+  val find : context -> Level.t -> status option tzresult Lwt.t
 
   val of_bytes : bytes -> nonce tzresult
 

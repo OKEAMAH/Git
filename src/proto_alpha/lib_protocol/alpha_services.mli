@@ -44,6 +44,19 @@ module Nonce : sig
 
   val get :
     'a #RPC_context.simple -> 'a -> Raw_level.t -> info shell_tzresult Lwt.t
+
+  type unrevealed_nonce = {
+    level : Raw_level.t;
+    delegate : Signature.Public_key_hash.t;
+  }
+
+  (** Get all levels in this level's cycle which have an unrevealed
+    nonce. *)
+  val get_unrevealed_nonces :
+    'a #RPC_context.simple ->
+    'a ->
+    Raw_level.t ->
+    unrevealed_nonce list shell_tzresult Lwt.t
 end
 
 module Snapshot_index : sig

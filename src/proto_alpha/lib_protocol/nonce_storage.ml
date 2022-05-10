@@ -118,6 +118,8 @@ type status = Storage.Seed.nonce_status =
 
 let get = Storage.Seed.Nonce.get
 
+let find = Storage.Seed.Nonce.find
+
 type nonce_presence = No_nonce_expected | Nonce_expected of status
 
 let check ctxt level =

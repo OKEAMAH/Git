@@ -335,6 +335,8 @@ let last_of_cycle ~cycle_eras level =
   let era = era_of_level ~cycle_eras level.level in
   Compare.Int32.(Int32.succ level.cycle_position = era.blocks_per_cycle)
 
+let to_raw level = level.level
+
 module Internal_for_tests = struct
   let add_level level n =
     let raw_level = level.level in

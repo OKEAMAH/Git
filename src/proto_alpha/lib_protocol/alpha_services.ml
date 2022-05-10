@@ -77,6 +77,20 @@ module Nonce = struct
           (fun () -> Forgotten);
       ]
 
+  type unrevealed_nonce = {
+    level : Raw_level.t;
+    delegate : Signature.Public_key_hash.t;
+  }
+
+  let unrevealed_nonce_encoding =
+    let open Data_encoding in
+    conv
+      (fun {level; delegate} -> (level, delegate))
+      (fun (level, delegate) -> {level; delegate})
+      (obj2
+         (req "level" Raw_level.encoding)
+         (req "delegate" Signature.Public_key_hash.encoding))
+
   module S = struct
     let get =
       RPC_service.get_service
@@ -84,6 +98,14 @@ module Nonce = struct
         ~query:RPC_query.empty
         ~output:info_encoding
         RPC_path.(custom_root / "context" / "nonces" /: Raw_level.rpc_arg)
+
+    let get_unrevealed_nonces =
+      RPC_service.get_service
+        ~description:"Levels with unrevealed nonces in this level's cycle."
+        ~query:RPC_query.empty
+        ~output:(Data_encoding.list unrevealed_nonce_encoding)
+        RPC_path.(
+          custom_root / "context" / "unrevealed_nonces" /: Raw_level.rpc_arg)
   end
 
   let register () =
@@ -93,9 +115,33 @@ module Nonce = struct
         Nonce.get ctxt level >|= function
         | Ok (Revealed nonce) -> ok (Revealed nonce)
         | Ok (Unrevealed {nonce_hash; _}) -> ok (Missing nonce_hash)
-        | Error _ -> ok Forgotten)
+        | Error _ -> ok Forgotten) ;
+    register1
+      ~chunked:false
+      S.get_unrevealed_nonces
+      (fun ctxt raw_level () () ->
+        let level = Level.from_raw ctxt raw_level in
+        let cycle = level.cycle in
+        match Cycle.pred cycle with
+        | Some cycle ->
+            let levels = Level.levels_with_commitments_in_cycle ctxt cycle in
+            List.fold_left_es
+              (fun acc level ->
+                Nonce.find ctxt level >>=? function
+                | Some (Unrevealed {delegate; _}) ->
+                    let level = Level.to_raw level in
+                    let unrevealed : unrevealed_nonce = {level; delegate} in
+                    return (unrevealed :: acc)
+                | _ -> return acc)
+              []
+              levels
+            >|=? List.rev
+        | None -> return [])
 
   let get ctxt block level = RPC_context.make_call1 S.get ctxt block level () ()
+
+  let get_unrevealed_nonces ctxt block level =
+    RPC_context.make_call1 S.get_unrevealed_nonces ctxt block level () ()
 end
 
 type error += No_available_snapshots of {min_cycle : int32}

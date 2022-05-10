@@ -109,6 +109,8 @@ val first_level_in_cycle_from_eras :
 (** Returns true if the given level is the last of a cycle. *)
 val last_of_cycle : cycle_eras:cycle_eras -> level -> bool
 
+val to_raw : level -> Raw_level_repr.t
+
 module Internal_for_tests : sig
   val add_level : t -> int -> t
 end

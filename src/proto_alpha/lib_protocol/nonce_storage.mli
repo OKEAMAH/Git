@@ -45,6 +45,8 @@ type status = Unrevealed of unrevealed | Revealed of Seed_repr.nonce
 
 val get : Raw_context.t -> Level_repr.t -> status tzresult Lwt.t
 
+val find : Raw_context.t -> Level_repr.t -> status option tzresult Lwt.t
+
 type nonce_presence = No_nonce_expected | Nonce_expected of status
 
 val check : Raw_context.t -> Level_repr.t -> nonce_presence tzresult Lwt.t
