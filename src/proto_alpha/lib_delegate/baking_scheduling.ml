@@ -770,6 +770,7 @@ let run cctxt ?canceler ?(stop_on_event = fun _ -> false)
     initial_state.global_state.chain_id
     initial_state.global_state.constants
     cloned_block_stream
+    delegates
   >>= fun revelation_worker_canceler ->
   Option.iter
     (fun canceler ->

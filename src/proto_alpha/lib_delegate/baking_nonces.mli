@@ -32,6 +32,7 @@ type state = {
   constants : Constants.t;
   config : Baking_configuration.nonce_config;
   nonces_location : [`Nonce] Baking_files.location;
+  delegates : Baking_state.delegate list;
   mutable last_predecessor : Block_hash.t;
 }
 
@@ -79,9 +80,6 @@ val blocks_from_current_cycle :
   unit ->
   Block_hash.t list tzresult Lwt.t
 
-val get_unrevealed_nonces :
-  t -> Nonce.t Block_hash.Map.t -> (Raw_level.t * Nonce.t) list tzresult Lwt.t
-
 val generate_seed_nonce :
   Baking_configuration.nonce_config ->
   Baking_state.delegate ->
@@ -103,12 +101,11 @@ val inject_seed_nonce_revelation :
   (Raw_level.t * Nonce.t) list ->
   unit tzresult Lwt.t
 
-val reveal_potential_nonces : t -> Baking_state.proposal -> unit tzresult Lwt.t
-
 val start_revelation_worker :
   Protocol_client_context.full ->
   Baking_configuration.nonce_config ->
   Chain_id.t ->
   Constants.t ->
   Baking_state.proposal Lwt_stream.t ->
+  Baking_state.delegate list ->
   Lwt_canceler.t Lwt.t

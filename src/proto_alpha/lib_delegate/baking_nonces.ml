@@ -33,6 +33,7 @@ type state = {
   constants : Constants.t;
   config : Baking_configuration.nonce_config;
   nonces_location : [`Nonce] Baking_files.location;
+  delegates : Baking_state.delegate list;
   mutable last_predecessor : Block_hash.t;
 }
 
@@ -198,14 +199,16 @@ let get_unrevealed_nonces ({cctxt; chain; _} as state) nonces =
 
 (* Nonce creation *)
 
+let deterministic_nonce (delegate : Baking_state.delegate) level =
+  let data = Data_encoding.Binary.to_bytes_exn Raw_level.encoding level in
+  Client_keys.deterministic_nonce delegate.secret_key_uri data >>=? fun nonce ->
+  return @@ Data_encoding.Binary.of_bytes_exn Nonce.encoding nonce
+
 let generate_seed_nonce (nonce_config : Baking_configuration.nonce_config)
     (delegate : Baking_state.delegate) level =
   (match nonce_config with
   | Deterministic start_level when start_level <= Raw_level.to_int32 level ->
-      let data = Data_encoding.Binary.to_bytes_exn Raw_level.encoding level in
-      Client_keys.deterministic_nonce delegate.secret_key_uri data
-      >>=? fun nonce ->
-      return (Data_encoding.Binary.of_bytes_exn Nonce.encoding nonce)
+      deterministic_nonce delegate level
   | Deterministic _ | Random -> (
       match Nonce.of_bytes (Rand.generate Constants.nonce_length) with
       | Error _errs -> assert false
@@ -247,9 +250,66 @@ let inject_seed_nonce_revelation (cctxt : #Protocol_client_context.full) ~chain
           >>= fun () -> return_unit)
         nonces
 
-(** [reveal_potential_nonces] reveal registered nonces *)
-let reveal_potential_nonces
-    ({cctxt; chain; nonces_location; last_predecessor; _} as state) new_proposal
+let reveal_potential_nonces_random ({cctxt; chain; nonces_location; _} as state)
+    block branch =
+  load cctxt nonces_location >>= function
+  | Error err -> Events.(emit cannot_read_nonces err) >>= fun () -> return_unit
+  | Ok nonces -> (
+      get_unrevealed_nonces state nonces >>= function
+      | Error err ->
+          Events.(emit cannot_retrieve_unrevealed_nonces err) >>= fun () ->
+          return_unit
+      | Ok nonces_to_reveal -> (
+          inject_seed_nonce_revelation
+            cctxt
+            ~chain
+            ~block
+            ~branch
+            nonces_to_reveal
+          >>= function
+          | Error err ->
+              Events.(emit cannot_inject_nonces err) >>= fun () -> return_unit
+          | Ok () ->
+              (* If some nonces are to be revealed it means:
+                 - We entered a new cycle and we can clear old nonces ;
+                 - A revelation was not included yet in the cycle beginning.
+                   So, it is safe to only filter outdated_nonces there *)
+              filter_outdated_nonces state nonces >>=? fun live_nonces ->
+              save cctxt nonces_location live_nonces >>=? fun () -> return_unit)
+      )
+
+let reveal_potential_nonces_deterministic {cctxt; chain; delegates; _} block
+    branch level =
+  Lwt.return (Environment.wrap_tzresult (Raw_level.of_int32 level))
+  >>=? fun level ->
+  Alpha_services.Nonce.get_unrevealed_nonces cctxt (chain, `Head 0) level
+  >>=? fun unrevealed ->
+  List.filter_map_es
+    (fun ({level; delegate} : Alpha_services.Nonce.unrevealed_nonce) ->
+      let delegate =
+        List.find
+          (fun (putative : Baking_state.delegate) ->
+            delegate = putative.public_key_hash)
+          delegates
+      in
+      Option.map_es
+        (fun delegate ->
+          deterministic_nonce delegate level >|=? fun nonce -> (level, nonce))
+        delegate)
+    unrevealed
+  >>=? fun nonces_to_reveal ->
+  match nonces_to_reveal with
+  | [] -> return_unit
+  | nonces_to_reveal -> (
+      inject_seed_nonce_revelation cctxt ~chain ~block ~branch nonces_to_reveal
+      >>= function
+      | Error err ->
+          Events.(emit cannot_inject_nonces err) >>= fun () -> return_unit
+      | Ok () -> return_unit)
+
+(** [reveal_potential_nonces_random] reveal registered nonces *)
+let reveal_potential_nonces (nonce_config : Baking_configuration.nonce_config)
+    ({cctxt; last_predecessor; _} as state) new_proposal (head_level : Level.t)
     =
   let new_predecessor_hash = new_proposal.Baking_state.predecessor.hash in
   if
@@ -262,37 +322,20 @@ let reveal_potential_nonces
     let branch = new_predecessor_hash in
     (* improve concurrency *)
     cctxt#with_lock @@ fun () ->
-    load cctxt nonces_location >>= function
-    | Error err ->
-        Events.(emit cannot_read_nonces err) >>= fun () -> return_unit
-    | Ok nonces -> (
-        get_unrevealed_nonces state nonces >>= function
-        | Error err ->
-            Events.(emit cannot_retrieve_unrevealed_nonces err) >>= fun () ->
-            return_unit
-        | Ok [] -> return_unit
-        | Ok nonces_to_reveal -> (
-            inject_seed_nonce_revelation
-              cctxt
-              ~chain
-              ~block
-              ~branch
-              nonces_to_reveal
-            >>= function
-            | Error err ->
-                Events.(emit cannot_inject_nonces err) >>= fun () -> return_unit
-            | Ok () ->
-                (* If some nonces are to be revealed it means:
-                   - We entered a new cycle and we can clear old nonces ;
-                   - A revelation was not included yet in the cycle beginning.
-                     So, it is safe to only filter outdated_nonces there *)
-                filter_outdated_nonces state nonces >>=? fun live_nonces ->
-                save cctxt nonces_location live_nonces >>=? fun () ->
-                return_unit)))
+    let head_raw_level = Raw_level.to_int32 head_level.level in
+    let beginning_of_this_cycle =
+      Int32.sub head_raw_level head_level.cycle_position
+    in
+    match nonce_config with
+    | Deterministic start_level when start_level <= beginning_of_this_cycle ->
+        reveal_potential_nonces_deterministic state block branch head_raw_level
+    | Deterministic _ | Random ->
+        reveal_potential_nonces_random state block branch)
   else return_unit
 
 (* We suppose that the block stream is cloned by the caller *)
-let start_revelation_worker cctxt config chain_id constants block_stream =
+let start_revelation_worker cctxt config chain_id constants block_stream
+    delegates =
   let nonces_location = Baking_files.resolve_location ~chain_id `Nonce in
   may_migrate cctxt nonces_location >>= fun () ->
   let chain = `Hash chain_id in
@@ -306,6 +349,7 @@ let start_revelation_worker cctxt config chain_id constants block_stream =
       config;
       nonces_location;
       last_predecessor = Block_hash.zero;
+      delegates;
     }
   in
   let rec worker_loop () =
@@ -320,8 +364,9 @@ let start_revelation_worker cctxt config chain_id constants block_stream =
     | Some new_proposal ->
         if !should_shutdown then return_unit
         else
-          reveal_potential_nonces state new_proposal >>=? fun () ->
-          worker_loop ()
+          Plugin.RPC.current_level cctxt (chain, `Head 0) >>=? fun head_level ->
+          reveal_potential_nonces config state new_proposal head_level
+          >>=? fun () -> worker_loop ()
   in
   Lwt.dont_wait
     (fun () ->
