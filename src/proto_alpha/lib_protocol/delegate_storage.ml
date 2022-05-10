@@ -25,6 +25,17 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** This is module regroups everything related to delegate registration
+    (see the invariant maintained by the submodule `Contract`.
+
+    It also regroups "trivial" getter/setter related to delegates.
+
+    It is responsible for:
+    - [Storage.Contract.Frozen_deposits_limit]
+    - [Storage.Delegates]
+
+*)
+
 type error += (* `Temporary *) Not_registered of Signature.Public_key_hash.t
 
 let () =

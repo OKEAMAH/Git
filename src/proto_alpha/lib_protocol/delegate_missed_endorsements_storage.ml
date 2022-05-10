@@ -25,6 +25,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** This module is responsible for:
+    - [Storage.Contract.Missed_endorsements]
+*)
+
 let expected_slots_for_given_active_stake ctxt ~total_active_stake ~active_stake
     =
   let blocks_per_cycle =

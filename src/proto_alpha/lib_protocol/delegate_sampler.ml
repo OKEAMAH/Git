@@ -25,6 +25,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** This module is responsible for:
+    - [Storage.Seed.For_cycle]
+
+    And the submodule `Delegate_sampler_state` is responsible for:
+    - [Storage.Delegate_sampler_state]
+*)
+
 module Delegate_sampler_state = struct
   module Cache_client = struct
     type cached_value =

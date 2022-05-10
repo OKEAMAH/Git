@@ -25,6 +25,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** This module is responsible for:
+    - [Storage.Slashed_deposits]
+*)
+
 let check_and_record_already_slashed_for_double_baking ctxt delegate
     (level : Level_repr.t) =
   let open Lwt_tzresult_syntax in
