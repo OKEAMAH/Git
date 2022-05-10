@@ -641,6 +641,7 @@ type 'a maker =
   ?warnings:string ->
   ?warn_error:string ->
   ?virtual_modules:string list ->
+  ?default_implementation:string ->
   ?wrapped:bool ->
   ?cram:bool ->
   ?license:string ->
