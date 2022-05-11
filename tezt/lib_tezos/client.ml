@@ -607,7 +607,10 @@ let propose_for ?endpoint ?(minimal_timestamp = true) ?protocol ?key ?force
 
 let id = ref 0
 
-let spawn_gen_keys ?alias client =
+let spawn_gen_keys ?alias ?signature_algorithm client =
+  let signature_algorithm_arg =
+    match signature_algorithm with None -> [] | Some arg -> ["--sig"; arg]
+  in
   let alias =
     match alias with
     | None ->
@@ -615,10 +618,11 @@ let spawn_gen_keys ?alias client =
         sf "tezt_%d" !id
     | Some alias -> alias
   in
-  (spawn_command client ["gen"; "keys"; alias], alias)
+  ( spawn_command client (["gen"; "keys"; alias] @ signature_algorithm_arg),
+    alias )
 
-let gen_keys ?alias client =
-  let p, alias = spawn_gen_keys ?alias client in
+let gen_keys ?alias ?signature_algorithm client =
+  let p, alias = spawn_gen_keys ?alias ?signature_algorithm client in
   let* () = Process.check p in
   return alias
 
@@ -701,6 +705,15 @@ let spawn_bls_import_secret_key ?hooks ?(force = false)
 
 let bls_import_secret_key ?hooks ?force key sc_client =
   spawn_bls_import_secret_key ?hooks ?force key sc_client |> Process.check
+
+let spawn_gen_nonce ?hooks client alias seed =
+  spawn_command ?hooks client ["generate"; "nonce"; "for"; alias; "from"; seed]
+
+let gen_nonce ?hooks sc_client ~alias seed =
+  let* out =
+    spawn_gen_nonce ?hooks sc_client alias seed |> Process.check_and_read_stdout
+  in
+  return (String.trim out)
 
 let spawn_transfer ?hooks ?log_output ?endpoint ?(wait = "none") ?burn_cap ?fee
     ?gas_limit ?storage_limit ?counter ?arg ?(simulation = false)

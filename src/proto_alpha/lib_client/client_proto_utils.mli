@@ -38,3 +38,9 @@ val check_message :
   message:string ->
   signature:Signature.t ->
   bool tzresult Lwt.t
+
+val gen_nonce :
+  #Protocol_client_context.full ->
+  src_sk:Client_keys.sk_uri ->
+  seed:string ->
+  bytes tzresult Lwt.t

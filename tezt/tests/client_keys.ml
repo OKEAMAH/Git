@@ -95,6 +95,28 @@ let test_bls_gen_keys () =
       let* _account = Client.bls_show_address ~alias client in
       return ())
 
+let test_deterministic_nonce signature_algorithm =
+  let* client = Client.init () in
+  let alias = "key_for" ^ signature_algorithm in
+  let* alias = Client.gen_keys ~alias ~signature_algorithm client in
+  let* maybe_nonce1a = Client.gen_nonce client ~alias "deadbeef" in
+  let* maybe_nonce1b = Client.gen_nonce client ~alias "deadbeef" in
+  let* maybe_nonce2 = Client.gen_nonce client ~alias "c0ffee" in
+  assert (maybe_nonce1a = maybe_nonce1b) ;
+  assert (maybe_nonce1a != maybe_nonce2) ;
+  return ()
+
+let test_deterministic_nonce () =
+  Test.register
+    ~__FILE__
+    ~tags:["client"; "keys"]
+    ~title:"Generate deterministic nonces"
+    (fun () ->
+      let* () = test_deterministic_nonce "ed25519" in
+      let* () = test_deterministic_nonce "secp256k1" in
+      let* () = test_deterministic_nonce "p256" in
+      return ())
+
 let test_bls_list_keys () =
   Test.register
     ~__FILE__
@@ -129,4 +151,5 @@ let register_protocol_independent () =
   test_bls_import_secret_key () ;
   test_bls_show_address () ;
   test_bls_gen_keys () ;
-  test_bls_list_keys ()
+  test_bls_list_keys () ;
+  test_deterministic_nonce ()

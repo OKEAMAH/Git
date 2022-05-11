@@ -53,3 +53,8 @@ let check_message (cctxt : #full) ~block ~key_locator ~quiet ~message ~signature
     key_locator
     signature
     bytes
+
+let gen_nonce (cctxt : #full) ~src_sk ~seed =
+  cctxt#message "nonce: @[%s@]" seed >>= fun () ->
+  let seed_bytes = Hex.to_bytes_exn (Hex.of_string seed) in
+  Client_keys.deterministic_nonce src_sk seed_bytes
