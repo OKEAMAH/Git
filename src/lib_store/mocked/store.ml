@@ -2252,3 +2252,9 @@ let make_pp_store (store : store) =
         allow_testchains
         pp_testchain_store
         ())
+
+module Unsafe = struct
+  let repr_of_block b = b
+
+  let block_of_repr b = b
+end
