@@ -29,6 +29,7 @@
 type t
 
 val create :
+  Internal_id.t ->
   Store.t ->
   Distributed_db.t ->
   Peer_validator.limits ->

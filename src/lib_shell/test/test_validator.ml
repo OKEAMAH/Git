@@ -64,6 +64,7 @@ let init_validator
     in
     let* validator =
       Validator.create
+        (Internal_id.fresh ())
         store
         db
         Node.default_peer_validator_limits

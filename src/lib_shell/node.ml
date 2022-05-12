@@ -239,6 +239,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
     } peer_validator_limits block_validator_limits prevalidator_limits
     chain_validator_limits history_mode =
   let open Lwt_result_syntax in
+  let internal_id = Internal_id.fresh () in
   let start_prevalidator, start_testchain =
     match p2p_params with
     | Some _ -> (not disable_mempool, enable_testchain)
@@ -315,6 +316,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
   let*! () = store_known_protocols store in
   let* validator =
     Validator.create
+      internal_id
       store
       distributed_db
       peer_validator_limits
@@ -345,7 +347,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
   in
   return
     {
-      internal_id = Internal_id.fresh ();
+      internal_id;
       store;
       distributed_db;
       validator;

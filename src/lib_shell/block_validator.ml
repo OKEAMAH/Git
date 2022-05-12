@@ -48,15 +48,15 @@ module Block_hash_ring =
     (Block_hash)
 
 module Name = struct
-  type t = unit
+  type t = Internal_id.t
 
-  let encoding = Data_encoding.empty
+  let encoding = Internal_id.encoding
 
   let base = ["validator"; "block"]
 
-  let pp _ () = ()
+  let pp = Internal_id.pp
 
-  let equal () () = true
+  let equal = Internal_id.equal
 end
 
 module Types = struct
@@ -425,7 +425,7 @@ let on_close w =
 
 let table = Worker.create_table Queue
 
-let create limits db validation_process ~start_testchain =
+let create id limits db validation_process ~start_testchain =
   let module Handlers = struct
     type self = t
 
@@ -443,7 +443,7 @@ let create limits db validation_process ~start_testchain =
   end in
   Worker.launch
     table
-    ()
+    id
     (limits, start_testchain, db, validation_process)
     (module Handlers)
 
@@ -534,14 +534,10 @@ let fetch_and_compile_protocol w =
 
 let status = Worker.status
 
-let running_worker () =
-  match Worker.list table with
-  | [(_, single)] -> single
-  | [] -> raise Not_found
-  | _ :: _ :: _ ->
-      (* NOTE: names of workers must be unique, [Name.t = unit] which has only
-         one inhabitant. *)
-      assert false
+let running_worker id =
+  match Worker.find_opt table id with
+  | None -> raise Not_found
+  | Some worker -> worker
 
 let pending_requests t = Worker.Queue.pending_requests t
 

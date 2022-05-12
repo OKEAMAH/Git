@@ -38,12 +38,13 @@ type t = {
   active_chains : Chain_validator.t Chain_id.Table.t;
 }
 
-let create state db peer_validator_limits block_validator_limits
+let create id state db peer_validator_limits block_validator_limits
     block_validator_kind prevalidator_limits chain_validator_limits
     ~start_testchain =
   let open Lwt_result_syntax in
   let* block_validator =
     Block_validator.create
+      id
       block_validator_limits
       db
       block_validator_kind

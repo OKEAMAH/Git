@@ -81,6 +81,7 @@ let wrap
       in
       let* block_validator =
         Block_validator.create
+          (Internal_id.fresh ())
           Node.default_block_validator_limits
           db
           block_validator_processs

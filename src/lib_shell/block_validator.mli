@@ -33,8 +33,10 @@ type limits = {
   operation_metadata_size_limit : int option;
 }
 
-(** [create limits ddb bvp start_testchain] creates a
-   [Block_validator].
+(** [create id limits ddb bvp start_testchain] creates a
+   [Block_validator] for a node named [id].
+
+    - [id] is the internal id of the node.
 
     - [limits] contains various [timeout] limits.
 
@@ -51,6 +53,7 @@ type limits = {
     This function is not supposed to fail. It is implemented this way
    because of the interface implemented by the [Worker] module. *)
 val create :
+  Internal_id.t ->
   limits ->
   Distributed_db.t ->
   Block_validator_process.t ->
@@ -139,7 +142,7 @@ val fetch_and_compile_protocol :
 
 val shutdown : t -> unit Lwt.t
 
-val running_worker : unit -> t
+val running_worker : Internal_id.t -> t
 
 val status : t -> Worker_types.worker_status
 
