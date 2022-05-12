@@ -61,6 +61,7 @@ let () =
     (fun () -> Failed_to_init_P2P)
 
 type t = {
+  internal_id : Internal_id.t;
   store : Store.t;
   distributed_db : Distributed_db.t;
   validator : Validator.t;
@@ -344,6 +345,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
   in
   return
     {
+      internal_id = Internal_id.fresh ();
       store;
       distributed_db;
       validator;
