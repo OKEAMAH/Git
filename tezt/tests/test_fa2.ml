@@ -1082,14 +1082,20 @@ let json_micheline_to_int json =
 let json_micheline_to_string json = 
   JSON.(json |-> "string" |> as_string)
 
-let get_balances ~client ~contract_hash ~callback_hash  =
+let get_balances ~client ~callback_hash =
   let process =
     Client.spawn_transfer
       ~entrypoint:"balance_of"
-      ~arg:(Format.sprintf "{{{%S; 0}; {%S; 0}}; %S}" Constant.bootstrap2.public_key_hash Constant.bootstrap3.public_key_hash callback_hash)
+      ~arg:(Format.sprintf "{{{%S; 0}; {%S; 0}; {%S; 0}; {%S; 0}; {%S; 0}}; %S}" 
+        Constant.bootstrap1.public_key_hash 
+        Constant.bootstrap2.public_key_hash 
+        Constant.bootstrap3.public_key_hash 
+        Constant.bootstrap4.public_key_hash 
+        Constant.bootstrap5.public_key_hash 
+        callback_hash)
       ~amount:Tez.zero
       ~giver:"bootstrap2"
-      ~receiver:contract_hash
+      ~receiver:"contract"
       ~burn_cap:(Tez.of_int 10)
       client
   in
@@ -1107,6 +1113,20 @@ let get_balances ~client ~contract_hash ~callback_hash  =
       json_micheline_to_int amount) in
   return @@ List.map parse json_list
   
+let check_balances ~client ~callback_hash ~error_msg expected = 
+  match expected with 
+  | [b1; b2; b3; b4; b5] ->
+      let* balances = get_balances ~client ~callback_hash in
+      Check.((List.assoc (Constant.bootstrap1.public_key_hash, 0) balances = b1) int ~error_msg);
+      Check.((List.assoc (Constant.bootstrap2.public_key_hash, 0) balances = b2) int ~error_msg);
+      Check.((List.assoc (Constant.bootstrap3.public_key_hash, 0) balances = b3) int ~error_msg);
+      Check.((List.assoc (Constant.bootstrap4.public_key_hash, 0) balances = b4) int ~error_msg);
+      Check.((List.assoc (Constant.bootstrap5.public_key_hash, 0) balances = b5) int ~error_msg);
+      unit
+    
+
+  | _ -> raise @@ Invalid_argument "expected a 5 element list"
+
 
   (* let json_micheline_to_int json = JSON.(json |-> "int" |> as_int) in
   let (parsed : int list) =
@@ -1215,10 +1235,30 @@ let test_fa2 ~protocol ~contract ~storage () =
 
   Format.printf "Transferred 100 tokens from bootstrap 2 to bootstrap 3\n";
 
-  let* balances = get_balances ~client ~contract_hash ~callback_hash in
+  let* () = check_balances [0;0;100;0;0] ~error_msg:"list of transfers in order" ~client ~callback_hash in
 
-  Check.((List.assoc (Constant.bootstrap2.public_key_hash, 0) balances = 0) int ~error_msg:"failed");
-  Check.((List.assoc (Constant.bootstrap3.public_key_hash, 0) balances = 100) int ~error_msg:"failed");
+  let process =
+    Client.spawn_transfer
+      ~entrypoint:"transfer"
+      ~arg:(Format.sprintf "{{%S; {{%S; 0; 100}}}; {%S; {{%S; 0; 100}}}; {%S; {{%S; 0; 100}}}}" 
+        Constant.bootstrap3.public_key_hash Constant.bootstrap4.public_key_hash
+        Constant.bootstrap4.public_key_hash Constant.bootstrap5.public_key_hash
+        Constant.bootstrap5.public_key_hash Constant.bootstrap1.public_key_hash
+      )
+      ~amount:Tez.zero
+      ~giver:"bootstrap1"
+      ~receiver:contract_hash
+      ~burn_cap:(Tez.of_int 10)
+      client
+  in
+  (* let* std_err =
+    Process.check_and_read_stderr ~expect_failure:false process
+  in *)
+  let* () = Process.check process in
+
+  Format.printf "Transferred 100 tokens from bootstrap 3 to bootstrap 4 then 100 from bootstrap 4 to bootstrap 5 then 100 from bootstrap 5 to bootstrap 1\n";
+
+  let* () = check_balances [100;0;0;0;0] ~error_msg:"list of transfers in order" ~client ~callback_hash in
 
   unit
 
