@@ -33,7 +33,7 @@ type limits = {
   operation_metadata_size_limit : int option;
 }
 
-(** [create limits ddb bvp start_testchain] creates a
+(** [create limits ddb bvp] creates a
    [Block_validator].
 
     - [limits] contains various [timeout] limits.
@@ -45,17 +45,10 @@ type limits = {
    a proxy between the shell and the validation part related to the
    economic protocol (See [Block_validator_process]).
 
-    - [start_testchain] if set to true allows to run the [testchain].
-
-
     This function is not supposed to fail. It is implemented this way
    because of the interface implemented by the [Worker] module. *)
 val create :
-  limits ->
-  Distributed_db.t ->
-  Block_validator_process.t ->
-  start_testchain:bool ->
-  t tzresult Lwt.t
+  limits -> Distributed_db.t -> Block_validator_process.t -> t tzresult Lwt.t
 
 type block_validity =
   | Valid

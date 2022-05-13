@@ -32,22 +32,16 @@ type t = {
   peer_validator_limits : Peer_validator.limits;
   block_validator_limits : Block_validator.limits;
   prevalidator_limits : Prevalidator.limits;
-  start_testchain : bool;
   valid_block_input : Store.Block.t Lwt_watcher.input;
   chains_input : (Chain_id.t * bool) Lwt_watcher.input;
   active_chains : Chain_validator.t Chain_id.Table.t;
 }
 
 let create state db peer_validator_limits block_validator_limits
-    block_validator_kind prevalidator_limits chain_validator_limits
-    ~start_testchain =
+    block_validator_kind prevalidator_limits chain_validator_limits =
   let open Lwt_result_syntax in
   let* block_validator =
-    Block_validator.create
-      block_validator_limits
-      db
-      block_validator_kind
-      ~start_testchain
+    Block_validator.create block_validator_limits db block_validator_kind
   in
   let valid_block_input = Lwt_watcher.create_input () in
   let chains_input = Lwt_watcher.create_input () in
@@ -55,7 +49,6 @@ let create state db peer_validator_limits block_validator_limits
     {
       state;
       db;
-      start_testchain;
       block_validator;
       block_validator_limits;
       prevalidator_limits;
@@ -75,7 +68,6 @@ let activate v ~start_prevalidator ~validator_process chain_store =
   | None ->
       Chain_validator.create
         ~start_prevalidator
-        ~start_testchain:v.start_testchain
         ~active_chains:v.active_chains
         ~block_validator_process:validator_process
         v.peer_validator_limits

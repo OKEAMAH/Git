@@ -119,24 +119,6 @@ let table = Worker.create_table Queue
 
 let shutdown w = Worker.shutdown w
 
-let shutdown_child nv active_chains =
-  let open Lwt_syntax in
-  Option.iter_s
-    (fun ({parameters = {chain_store; global_chains_input; _}; _}, shutdown) ->
-      let test_chain_id = Store.Chain.chain_id chain_store in
-      Lwt_watcher.notify global_chains_input (test_chain_id, false) ;
-      Chain_id.Table.remove active_chains test_chain_id ;
-      let* r = Store.Chain.shutdown_testchain nv.parameters.chain_store in
-      match r with
-      | Error _err ->
-          (* FIXME *)
-          Lwt.return_unit
-      | Ok () ->
-          let* () = shutdown () in
-          nv.child <- None ;
-          Lwt.return_unit)
-    nv.child
-
 (* Update the synchronisation state and if it is relevant, set the
    bootstrapped flag to true. Assume:
 
@@ -213,125 +195,6 @@ let may_update_protocol_level chain_store ~block =
       ~protocol_level:new_proto_level
       (block, new_protocol)
   else return_unit
-
-let may_switch_test_chain w active_chains spawn_child block =
-  let open Lwt_result_syntax in
-  let nv = Worker.state w in
-  let may_create_child block test_protocol expiration forking_block_hash =
-    let block_header = Store.Block.header block in
-    let genesis_hash = Context.compute_testchain_genesis forking_block_hash in
-    let testchain_id = Context.compute_testchain_chain_id genesis_hash in
-    let*! activated =
-      match nv.child with
-      | None -> Lwt.return_false
-      | Some (child, _) ->
-          let child_chain_store = child.parameters.chain_store in
-          let child_genesis = Store.Chain.genesis child_chain_store in
-          Lwt.return (Block_hash.equal child_genesis.block genesis_hash)
-    in
-    let expired = expiration < block_header.shell.timestamp in
-    if expired && activated then
-      let*! () = shutdown_child nv active_chains in
-      return_unit
-    else
-      let chain_store = nv.parameters.chain_store in
-      let allow_forked_chains =
-        Store.allow_testchains (Store.Chain.global_store chain_store)
-      in
-      if (not allow_forked_chains) || activated || expired then return_unit
-      else
-        let* testchain_store =
-          let*! o =
-            Store.get_chain_store_opt
-              (Store.Chain.global_store nv.parameters.chain_store)
-              testchain_id
-          in
-          match o with
-          | Some test_chain_store -> return test_chain_store
-          | None ->
-              let try_init_test_chain cont =
-                let* forking_block =
-                  Store.Block.read_block chain_store forking_block_hash
-                in
-                let bvp = nv.parameters.block_validator_process in
-                let*! r =
-                  Block_validator_process.init_test_chain bvp forking_block
-                in
-                match r with
-                | Ok genesis_header ->
-                    let* testchain =
-                      Store.Chain.fork_testchain
-                        chain_store
-                        ~testchain_id
-                        ~forked_block:forking_block
-                        ~genesis_hash
-                        ~genesis_header
-                        ~expiration
-                        ~test_protocol
-                    in
-                    let testchain_store =
-                      Store.Chain.testchain_store testchain
-                    in
-                    let*! new_genesis_block =
-                      Store.Chain.current_head testchain_store
-                    in
-                    Lwt_watcher.notify
-                      nv.parameters.global_valid_block_input
-                      new_genesis_block ;
-                    Lwt_watcher.notify nv.valid_block_input new_genesis_block ;
-                    return testchain_store
-                | Error
-                    (Block_validator_errors.Missing_test_protocol
-                       missing_protocol
-                    :: _) ->
-                    let* _ =
-                      Block_validator.fetch_and_compile_protocol
-                        nv.parameters.block_validator
-                        missing_protocol
-                    in
-                    cont ()
-                | Error _ as error -> Lwt.return error
-              in
-              try_init_test_chain @@ fun () ->
-              try_init_test_chain @@ fun () ->
-              failwith "Could not retrieve test protocol"
-        in
-        (* [spawn_child] is a callback to [create_node]. Thus, it takes care of
-           global initialization boilerplate (e.g. notifying [global_chains_input],
-           adding the chain to the correct tables, ...) *)
-        let* child =
-          spawn_child
-            ~parent:(Store.Chain.chain_id chain_store)
-            nv.parameters.start_prevalidator
-            nv.parameters.peer_validator_limits
-            nv.parameters.prevalidator_limits
-            nv.parameters.block_validator
-            nv.parameters.global_valid_block_input
-            nv.parameters.global_chains_input
-            nv.parameters.db
-            testchain_store
-            nv.parameters.limits
-          (* TODO: different limits main/test ? *)
-        in
-        nv.child <- Some child ;
-        return_unit
-  in
-  let*! r =
-    let* v = Store.Block.testchain_status nv.parameters.chain_store block in
-    match v with
-    | (Not_running, _) ->
-        let*! () = shutdown_child nv active_chains in
-        return_unit
-    | ((Forking _ | Running _), None) -> return_unit (* only for snapshots *)
-    | ( (Forking {protocol; expiration; _} | Running {protocol; expiration; _}),
-        Some forking_block_hash ) ->
-        may_create_child block protocol expiration forking_block_hash
-  in
-  match r with
-  | Ok () -> Lwt.return_unit
-  | Error err ->
-      Worker.record_event w (Could_not_switch_testchain err) ;
-      Lwt.return_unit
 
 let broadcast_head w ~previous block =
   let open Lwt_syntax in
@@ -424,8 +287,7 @@ let may_flush_or_update_prevalidator parameters event prevalidator chain_db
           live_blocks
           live_operations
 
-let on_validation_request w peer start_testchain active_chains spawn_child block
-    =
+let on_validation_request w peer block =
   let open Lwt_result_syntax in
   let*! () =
     Option.iter_s
@@ -452,11 +314,6 @@ let on_validation_request w peer start_testchain active_chains spawn_child block
     | Some previous ->
         let*! () = broadcast_head w ~previous block in
         let* () = may_update_protocol_level chain_store ~block in
-        let*! () =
-          if start_testchain then
-            may_switch_test_chain w active_chains spawn_child block
-          else Lwt.return_unit
-        in
         Lwt_watcher.notify nv.new_head_input block ;
         let is_branch_switch =
           Block_hash.equal head_hash block_header.shell.predecessor
@@ -517,17 +374,9 @@ let on_disconnection w peer_id =
       let*! () = Peer_validator.shutdown pv in
       return_unit
 
-let on_request (type a) w start_testchain active_chains spawn_child
-    (req : a Request.t) : a tzresult Lwt.t =
+let on_request (type a) w (req : a Request.t) : a tzresult Lwt.t =
   match req with
-  | Request.Validated {peer; block} ->
-      on_validation_request
-        w
-        peer
-        start_testchain
-        active_chains
-        spawn_child
-        block
+  | Request.Validated {peer; block} -> on_validation_request w peer block
   | Request.Notify_branch (peer_id, locator) ->
       on_notify_branch w peer_id locator
   | Request.Notify_head (peer_id, hash, header, mempool) ->
@@ -723,38 +572,17 @@ let on_launch w _ parameters =
 
 let metrics = Shell_metrics.Chain_validator.init Name.base
 
-let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
-    start_prevalidator (peer_validator_limits : Peer_validator.limits)
+let create ~active_chains ?parent ~block_validator_process start_prevalidator
+    (peer_validator_limits : Peer_validator.limits)
     (prevalidator_limits : Prevalidator.limits) block_validator
     global_valid_block_input global_chains_input db chain_store limits =
   let open Lwt_result_syntax in
-  let spawn_child ~parent enable_prevalidator peer_validator_limits
-      prevalidator_limits block_validator global_valid_block_input
-      global_chains_input ddb chain_store limits =
-    let* w =
-      create
-        ~start_testchain
-        ~active_chains
-        ~parent
-        ~block_validator_process
-        enable_prevalidator
-        peer_validator_limits
-        prevalidator_limits
-        block_validator
-        global_valid_block_input
-        global_chains_input
-        ddb
-        chain_store
-        limits
-    in
-    return (Worker.state w, fun () -> Worker.shutdown w)
-  in
   let module Handlers = struct
     type self = t
 
     let on_launch = on_launch
 
-    let on_request w = on_request w start_testchain active_chains spawn_child
+    let on_request w = on_request w
 
     let on_close = on_close
 
@@ -815,13 +643,11 @@ let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
 
 (** Current block computation *)
 
-let create ~start_prevalidator ~start_testchain ~active_chains
-    ~block_validator_process peer_validator_limits prevalidator_limits
-    block_validator global_valid_block_input global_chains_input global_db state
-    limits =
+let create ~start_prevalidator ~active_chains ~block_validator_process
+    peer_validator_limits prevalidator_limits block_validator
+    global_valid_block_input global_chains_input global_db state limits =
   (* hide the optional ?parent *)
   create
-    ~start_testchain
     ~active_chains
     ~block_validator_process
     start_prevalidator

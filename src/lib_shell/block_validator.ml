@@ -64,11 +64,10 @@ module Types = struct
     protocol_validator : Protocol_validator.t;
     validation_process : Block_validator_process.t;
     limits : limits;
-    start_testchain : bool;
     invalid_blocks_after_precheck : error trace Block_hash_ring.t;
   }
 
-  type parameters = limits * bool * Distributed_db.t * Block_validator_process.t
+  type parameters = limits * Distributed_db.t * Block_validator_process.t
 end
 
 module Request = struct
@@ -331,7 +330,7 @@ let on_request : type r. t -> r Request.t -> r tzresult Lwt.t =
 
 let metrics = Shell_metrics.Block_validator.init Name.base
 
-let on_launch _ _ (limits, start_testchain, db, validation_process) =
+let on_launch _ _ (limits, db, validation_process) =
   let protocol_validator = Protocol_validator.create db in
   let invalid_blocks_after_precheck = Block_hash_ring.create 50 in
   Lwt.return_ok
@@ -339,7 +338,6 @@ let on_launch _ _ (limits, start_testchain, db, validation_process) =
       Types.protocol_validator;
       validation_process;
       limits;
-      start_testchain;
       invalid_blocks_after_precheck;
     }
 
@@ -425,7 +423,7 @@ let on_close w =
 
 let table = Worker.create_table Queue
 
-let create limits db validation_process ~start_testchain =
+let create limits db validation_process =
   let module Handlers = struct
     type self = t
 
@@ -441,11 +439,7 @@ let create limits db validation_process ~start_testchain =
 
     let on_no_request _ = Lwt_result_syntax.return_unit
   end in
-  Worker.launch
-    table
-    ()
-    (limits, start_testchain, db, validation_process)
-    (module Handlers)
+  Worker.launch table () (limits, db, validation_process) (module Handlers)
 
 let shutdown = Worker.shutdown
 

@@ -71,7 +71,6 @@ let init_validator
         block_validator
         Node.default_prevalidator_limits
         Node.default_chain_validator_limits
-        ~start_testchain:false
     in
     Lwt.return_ok (block_validator, validator, Store.main_chain_store store)
   in

@@ -231,14 +231,12 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
       p2p = p2p_params;
       target;
       disable_mempool;
-      enable_testchain;
+      enable_testchain = _;
     } peer_validator_limits block_validator_limits prevalidator_limits
     chain_validator_limits history_mode =
   let open Lwt_result_syntax in
-  let (start_prevalidator, start_testchain) =
-    match p2p_params with
-    | Some _ -> (not disable_mempool, enable_testchain)
-    | None -> (true, true)
+  let start_prevalidator =
+    match p2p_params with Some _ -> not disable_mempool | None -> true
   in
   let* p2p =
     init_p2p
@@ -263,7 +261,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
           ?history_mode
           ~store_dir:store_root
           ~context_dir:context_root
-          ~allow_testchains:start_testchain
+          ~allow_testchains:false
           genesis
       in
       let main_chain_store = Store.main_chain_store store in
@@ -295,7 +293,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
           ~commit_genesis
           ~store_dir:store_root
           ~context_dir:context_root
-          ~allow_testchains:start_testchain
+          ~allow_testchains:false
           genesis
       in
       return (validator_process, store)
@@ -318,7 +316,6 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
       validator_process
       prevalidator_limits
       chain_validator_limits
-      ~start_testchain
   in
   let* mainchain_validator =
     Validator.activate
