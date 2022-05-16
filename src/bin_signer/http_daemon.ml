@@ -43,6 +43,23 @@ let run (cctxt : #Client_context.wallet) ~hosts ?magic_bytes
         Handler.public_key cctxt pkh)
   in
   let dir =
+    RPC_directory.register1
+      dir
+      Signer_services.deterministic_nonce
+      (fun pkh signature data ->
+        Handler.deterministic_nonce ~require_auth cctxt {pkh; data; signature})
+  in
+  let dir =
+    RPC_directory.register1
+      dir
+      Signer_services.deterministic_nonce_hash
+      (fun pkh signature data ->
+        Handler.deterministic_nonce_hash
+          ~require_auth
+          cctxt
+          {pkh; data; signature})
+  in
+  let dir =
     RPC_directory.register0 dir Signer_services.authorized_keys (fun () () ->
         if require_auth then
           let* keys = Handler.Authorized_key.load cctxt in

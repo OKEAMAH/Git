@@ -52,7 +52,7 @@ let deterministic_nonce =
     ~query
     ~input:Data_encoding.bytes
     ~output:Data_encoding.(obj1 (req "deterministic_nonce" bytes))
-    RPC_path.(root / "keys" /: Signature.Public_key_hash.rpc_arg)
+    RPC_path.(root / "deterministic_nonce" /: Signature.Public_key_hash.rpc_arg)
 
 let deterministic_nonce_hash =
   RPC_service.post_service
@@ -62,7 +62,8 @@ let deterministic_nonce_hash =
     ~query
     ~input:Data_encoding.bytes
     ~output:Data_encoding.(obj1 (req "deterministic_nonce_hash" bytes))
-    RPC_path.(root / "keys" /: Signature.Public_key_hash.rpc_arg)
+    RPC_path.(
+      root / "deterministic_nonce_hash" /: Signature.Public_key_hash.rpc_arg)
 
 let supports_deterministic_nonces =
   RPC_service.get_service
