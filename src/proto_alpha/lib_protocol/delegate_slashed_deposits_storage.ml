@@ -29,48 +29,22 @@
     - [Storage.Slashed_deposits]
 *)
 
-let check_and_record_already_slashed_for_double_baking ctxt delegate
-    (level : Level_repr.t) =
-  let open Lwt_tzresult_syntax in
-  let* slashed =
-    Storage.Slashed_deposits.find (ctxt, level.cycle) (level.level, delegate)
-  in
-  let already_slashed, updated_slashed =
-    match slashed with
-    | None ->
-        (false, {Storage.for_double_baking = true; for_double_endorsing = false})
-    | Some slashed ->
-        (slashed.for_double_baking, {slashed with for_double_baking = true})
-  in
-  let*! ctxt =
-    Storage.Slashed_deposits.add
-      (ctxt, level.cycle)
-      (level.level, delegate)
-      updated_slashed
-  in
-  return (ctxt, already_slashed)
+type error += Unrequired_denunciation
 
-let check_and_record_already_slashed_for_double_endorsing ctxt delegate
-    (level : Level_repr.t) =
-  let open Lwt_tzresult_syntax in
-  let* slashed =
-    Storage.Slashed_deposits.find (ctxt, level.cycle) (level.level, delegate)
-  in
-  let already_slashed, updated_slashed =
-    match slashed with
-    | None ->
-        (false, {Storage.for_double_endorsing = true; for_double_baking = false})
-    | Some slashed ->
-        ( slashed.for_double_endorsing,
-          {slashed with for_double_endorsing = true} )
-  in
-  let*! ctxt =
-    Storage.Slashed_deposits.add
-      (ctxt, level.cycle)
-      (level.level, delegate)
-      updated_slashed
-  in
-  return (ctxt, already_slashed)
+let () =
+  register_error_kind
+    `Branch
+    ~id:"block.unrequired_denunciation"
+    ~title:"Unrequired denunciation"
+    ~description:"A denunciation is unrequired"
+    ~pp:(fun ppf _ ->
+      Format.fprintf
+        ppf
+        "A valid denunciation cannot be applied: the associated delegate has \
+         already been denounced for this level.")
+    Data_encoding.unit
+    (function Unrequired_denunciation -> Some () | _ -> None)
+    (fun () -> Unrequired_denunciation)
 
 let clear_outdated_slashed_deposits ctxt ~new_cycle =
   let max_slashable_period = Constants_storage.max_slashing_period ctxt in
@@ -78,9 +52,23 @@ let clear_outdated_slashed_deposits ctxt ~new_cycle =
   | None -> Lwt.return ctxt
   | Some outdated_cycle -> Storage.Slashed_deposits.clear (ctxt, outdated_cycle)
 
-let punish_double_endorsing ctxt delegate =
+let punish_double_endorsing ctxt delegate (level : Level_repr.t) =
+  let open Lwt_tzresult_syntax in
+  let* slashed =
+    Storage.Slashed_deposits.find (ctxt, level.cycle) (level.level, delegate)
+  in
+  let* updated_slashed =
+    match slashed with
+    | None ->
+        return {Storage.for_double_endorsing = true; for_double_baking = false}
+    | Some slashed ->
+        let* () =
+          fail_when slashed.for_double_endorsing Unrequired_denunciation
+        in
+        return {slashed with for_double_endorsing = true}
+  in
   let delegate_contract = Contract_repr.Implicit delegate in
-  Frozen_deposits_storage.get ctxt delegate_contract >>=? fun frozen_deposits ->
+  let* frozen_deposits = Frozen_deposits_storage.get ctxt delegate_contract in
   let slashing_ratio : Ratio_repr.t =
     Constants_storage.ratio_of_frozen_deposits_slashed_per_double_endorsement
       ctxt
@@ -94,29 +82,55 @@ let punish_double_endorsing ctxt delegate =
   let amount_to_burn =
     Tez_repr.(min frozen_deposits.current_amount punish_value)
   in
-  Token.transfer
-    ctxt
-    (`Frozen_deposits delegate)
-    `Double_signing_punishments
-    amount_to_burn
-  >>=? fun (ctxt, balance_updates) ->
-  Stake_storage.remove_stake ctxt delegate amount_to_burn >>=? fun ctxt ->
+  let* ctxt, balance_updates =
+    Token.transfer
+      ctxt
+      (`Frozen_deposits delegate)
+      `Double_signing_punishments
+      amount_to_burn
+  in
+  let* ctxt = Stake_storage.remove_stake ctxt delegate amount_to_burn in
+  let*! ctxt =
+    Storage.Slashed_deposits.add
+      (ctxt, level.cycle)
+      (level.level, delegate)
+      updated_slashed
+  in
   return (ctxt, amount_to_burn, balance_updates)
 
-let punish_double_baking ctxt delegate =
+let punish_double_baking ctxt delegate (level : Level_repr.t) =
+  let open Lwt_tzresult_syntax in
+  let* slashed =
+    Storage.Slashed_deposits.find (ctxt, level.cycle) (level.level, delegate)
+  in
+  let* updated_slashed =
+    match slashed with
+    | None ->
+        return {Storage.for_double_baking = true; for_double_endorsing = false}
+    | Some slashed ->
+        let* () = fail_when slashed.for_double_baking Unrequired_denunciation in
+        return {slashed with for_double_baking = true}
+  in
   let delegate_contract = Contract_repr.Implicit delegate in
-  Frozen_deposits_storage.get ctxt delegate_contract >>=? fun frozen_deposits ->
+  let* frozen_deposits = Frozen_deposits_storage.get ctxt delegate_contract in
   let slashing_for_one_block =
     Constants_storage.double_baking_punishment ctxt
   in
   let amount_to_burn =
     Tez_repr.(min frozen_deposits.current_amount slashing_for_one_block)
   in
-  Token.transfer
-    ctxt
-    (`Frozen_deposits delegate)
-    `Double_signing_punishments
-    amount_to_burn
-  >>=? fun (ctxt, balance_updates) ->
-  Stake_storage.remove_stake ctxt delegate amount_to_burn >>=? fun ctxt ->
+  let* ctxt, balance_updates =
+    Token.transfer
+      ctxt
+      (`Frozen_deposits delegate)
+      `Double_signing_punishments
+      amount_to_burn
+  in
+  let* ctxt = Stake_storage.remove_stake ctxt delegate amount_to_burn in
+  let*! ctxt =
+    Storage.Slashed_deposits.add
+      (ctxt, level.cycle)
+      (level.level, delegate)
+      updated_slashed
+  in
   return (ctxt, amount_to_burn, balance_updates)

@@ -109,7 +109,6 @@ type error +=
       delegate1 : Signature.Public_key_hash.t;
       delegate2 : Signature.Public_key_hash.t;
     }
-  | Unrequired_denunciation
   | Too_early_denunciation of {
       kind : denunciation_kind;
       level : Raw_level.t;
@@ -618,19 +617,6 @@ let () =
       | _ -> None)
     (fun (kind, delegate1, delegate2) ->
       Inconsistent_denunciation {kind; delegate1; delegate2}) ;
-  register_error_kind
-    `Branch
-    ~id:"block.unrequired_denunciation"
-    ~title:"Unrequired denunciation"
-    ~description:"A denunciation is unrequired"
-    ~pp:(fun ppf _ ->
-      Format.fprintf
-        ppf
-        "A valid denunciation cannot be applied: the associated delegate has \
-         already been denounced for this level.")
-    Data_encoding.unit
-    (function Unrequired_denunciation -> Some () | _ -> None)
-    (fun () -> Unrequired_denunciation) ;
   register_error_kind
     `Temporary
     ~id:"block.too_early_denunciation"
@@ -2668,19 +2654,12 @@ let check_denunciation_age ctxt kind given_level =
        {kind; level = given_level; last_cycle = last_slashable_cycle})
 
 let punish_delegate ctxt delegate level mistake mk_result ~payload_producer =
-  let check_and_record_already_slashed, punish =
+  let punish =
     match mistake with
-    | `Double_baking ->
-        ( Delegate.check_and_record_already_slashed_for_double_baking,
-          Delegate.punish_double_baking )
-    | `Double_endorsing ->
-        ( Delegate.check_and_record_already_slashed_for_double_endorsing,
-          Delegate.punish_double_endorsing )
+    | `Double_baking -> Delegate.punish_double_baking
+    | `Double_endorsing -> Delegate.punish_double_endorsing
   in
-  check_and_record_already_slashed ctxt delegate level
-  >>=? fun (ctxt, slashed) ->
-  fail_when slashed Unrequired_denunciation >>=? fun () ->
-  punish ctxt delegate >>=? fun (ctxt, burned, punish_balance_updates) ->
+  punish ctxt delegate level >>=? fun (ctxt, burned, punish_balance_updates) ->
   (match Tez.(burned /? 2L) with
   | Ok reward ->
       Token.transfer

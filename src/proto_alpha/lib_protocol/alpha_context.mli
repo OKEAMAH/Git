@@ -2426,20 +2426,16 @@ module Delegate : sig
     Cycle.t ->
     (context * Receipt.balance_updates * public_key_hash list) tzresult Lwt.t
 
-  val check_and_record_already_slashed_for_double_endorsing :
-    context -> public_key_hash -> Level.t -> (context * bool) tzresult Lwt.t
-
-  val check_and_record_already_slashed_for_double_baking :
-    context -> public_key_hash -> Level.t -> (context * bool) tzresult Lwt.t
-
   val punish_double_endorsing :
     context ->
     public_key_hash ->
+    Level.t ->
     (context * Tez.t * Receipt.balance_updates) tzresult Lwt.t
 
   val punish_double_baking :
     context ->
     public_key_hash ->
+    Level.t ->
     (context * Tez.t * Receipt.balance_updates) tzresult Lwt.t
 
   val full_balance : context -> public_key_hash -> Tez.t tzresult Lwt.t
