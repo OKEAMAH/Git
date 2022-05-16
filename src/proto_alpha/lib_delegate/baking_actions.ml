@@ -294,11 +294,15 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
   >>=? fun {unsigned_block_header; operations} ->
   sign_block_header state delegate unsigned_block_header
   >>=? fun signed_block_header ->
-  (match seed_nonce_opt with
-  | None ->
+  (match (seed_nonce_opt, state.global_state.config.nonce) with
+  | None, _ ->
       (* Nothing to do *)
       return_unit
-  | Some (_, nonce) ->
+  | _, Deterministic start_level
+    when start_level <= Raw_level.to_int32 @@ Level.to_raw injection_level ->
+      (* No need to write deterministic nonces *)
+      return_unit
+  | Some (_, nonce), _ ->
       let block_hash = Block_header.hash signed_block_header in
       Baking_nonces.register_nonce cctxt ~chain_id block_hash nonce)
   >>=? fun () ->
