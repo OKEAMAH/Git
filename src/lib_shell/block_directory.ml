@@ -139,7 +139,7 @@ let build_raw_header_rpc_directory (module Proto : Block_services.PROTO) =
             }) ;
   !dir
 
-let build_raw_rpc_directory (module Proto : Block_services.PROTO)
+let build_raw_rpc_directory id (module Proto : Block_services.PROTO)
     (module Next_proto : Registered_protocol.T) =
   let open Lwt_result_syntax in
   let dir : (Store.chain_store * Store.Block.block) RPC_directory.t ref =
@@ -570,7 +570,7 @@ let build_raw_rpc_directory (module Proto : Block_services.PROTO)
           p.operations
       in
       let* bv =
-        try return (Block_validator.running_worker ())
+        try return (Block_validator.running_worker id)
         with _ -> failwith "Block validator is not running"
       in
       Block_validator.preapply
@@ -686,7 +686,7 @@ let get_protocol hash =
   | None -> raise Not_found
   | Some protocol -> protocol
 
-let get_directory chain_store block =
+let get_directory id chain_store block =
   let open Lwt_syntax in
   let* o = Store.Chain.get_rpc_directory chain_store block in
   match o with
@@ -698,6 +698,7 @@ let get_directory chain_store block =
       let (module Next_proto) = get_protocol next_protocol_hash in
       let build_fake_rpc_directory () =
         build_raw_rpc_directory
+          id
           (module Block_services.Fake_protocol)
           (module Next_proto)
       in
@@ -735,7 +736,7 @@ let get_directory chain_store block =
         | Some dir -> Lwt.return dir
         | None ->
             let dir =
-              build_raw_rpc_directory (module Proto) (module Next_proto)
+              build_raw_rpc_directory id (module Proto) (module Next_proto)
             in
             let* () =
               Store.Chain.set_rpc_directory
@@ -746,11 +747,11 @@ let get_directory chain_store block =
             in
             Lwt.return dir)
 
-let build_rpc_directory chain_store block =
+let build_rpc_directory id chain_store block =
   let open Lwt_syntax in
   let* o = Store.Chain.block_of_identifier_opt chain_store block in
   match o with
   | None -> Lwt.fail Not_found
   | Some b ->
-      let* dir = get_directory chain_store b in
+      let* dir = get_directory id chain_store b in
       Lwt.return (RPC_directory.map (fun _ -> Lwt.return (chain_store, b)) dir)

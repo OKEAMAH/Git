@@ -369,16 +369,16 @@ let build_rpc_directory node =
   in
   merge
     (Protocol_directory.build_rpc_directory
-       (Block_validator.running_worker ())
+       (Block_validator.running_worker node.internal_id)
        node.store) ;
   merge
     (Monitor_directory.build_rpc_directory
        node.validator
        node.mainchain_validator) ;
   merge (Injection_directory.build_rpc_directory node.validator) ;
-  merge (Chain_directory.build_rpc_directory node.validator) ;
+  merge (Chain_directory.build_rpc_directory node.internal_id node.validator) ;
   merge (P2p.build_rpc_directory node.p2p) ;
-  merge (Worker_directory.build_rpc_directory node.store) ;
+  merge (Worker_directory.build_rpc_directory node.internal_id node.store) ;
   merge (Stat_directory.rpc_directory ()) ;
   merge
     (Config_directory.build_rpc_directory

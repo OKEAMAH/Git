@@ -121,7 +121,7 @@ let list_blocks chain_store ?(length = 1) ?min_date heads =
   in
   return (List.rev blocks)
 
-let rpc_directory validator =
+let rpc_directory id validator =
   let open Lwt_result_syntax in
   let dir : Store.chain_store RPC_directory.t ref = ref RPC_directory.empty in
   let register0 s f =
@@ -179,7 +179,7 @@ let rpc_directory validator =
       list_blocks chain ?length:q#length ?min_date:q#min_date q#heads) ;
   register_dynamic_directory2
     Block_services.path
-    Block_directory.build_rpc_directory ;
+    (Block_directory.build_rpc_directory id) ;
   (* invalid_blocks *)
   register0 S.Invalid_blocks.list (fun chain_store () () ->
       let convert (hash, {Store_types.level; errors}) = {hash; level; errors} in
@@ -195,10 +195,10 @@ let rpc_directory validator =
       Store.Block.unmark_invalid chain_store hash) ;
   !dir
 
-let build_rpc_directory validator =
+let build_rpc_directory id validator =
   let distributed_db = Validator.distributed_db validator in
   let store = Distributed_db.store distributed_db in
-  let dir = ref (rpc_directory validator) in
+  let dir = ref (rpc_directory id validator) in
   (* Mempool *)
   let merge d = dir := RPC_directory.merge !dir d in
   merge

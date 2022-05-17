@@ -24,7 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let build_rpc_directory state =
+let build_rpc_directory id state =
   let open Lwt_syntax in
   let dir : unit RPC_directory.t ref = ref RPC_directory.empty in
   let register0 s f =
@@ -65,7 +65,7 @@ let build_rpc_directory state =
       return_ok {Worker_types.status; pending_requests; current_request}) ;
   (* Workers : Block_validator *)
   register0 Worker_services.Block_validator.S.state (fun () () ->
-      let w = Block_validator.running_worker () in
+      let w = Block_validator.running_worker id in
       return_ok
         {
           Worker_types.status = Block_validator.status w;

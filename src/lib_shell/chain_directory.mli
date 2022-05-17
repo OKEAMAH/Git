@@ -34,6 +34,7 @@ val get_chain_store_exn :
 
 val get_checkpoint : Store.t -> Chain_services.chain -> Block_hash.t Lwt.t
 
-val rpc_directory : Validator.t -> Store.chain_store RPC_directory.t
+val rpc_directory :
+  Internal_id.t -> Validator.t -> Store.chain_store RPC_directory.t
 
-val build_rpc_directory : Validator.t -> unit RPC_directory.t
+val build_rpc_directory : Internal_id.t -> Validator.t -> unit RPC_directory.t

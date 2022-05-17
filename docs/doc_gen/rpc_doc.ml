@@ -400,6 +400,7 @@ let make_index node required_version =
           [".."; "<block_id>"],
           RPC_directory.map (fun () -> assert false)
           @@ Block_directory.build_raw_rpc_directory
+               (Internal_id.fresh ())
                (module Proto)
                (module Proto) ))
       protocols
