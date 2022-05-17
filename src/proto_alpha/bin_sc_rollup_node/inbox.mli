@@ -34,13 +34,15 @@
 *)
 open Protocol
 
-(** [process_head node_ctxt store head] changes the state of the inbox to react to
-    [head]. In particular, this process requests the tezos node
-    through the context client [node_ctxt.cctxt] to retrieve the messages published
-    at the level indicated by [head]. *)
-
+(** [process_head node_ctxt store head operations] changes the state
+   of the inbox to react to [head]. In particular, this process
+   filters the provided [operations] of the [head] block. *)
 val process_head :
-  Node_context.t -> Store.t -> Layer1.head -> unit tzresult Lwt.t
+  Node_context.t ->
+  Store.t ->
+  Layer1.head ->
+  Layer1_services.operation list list ->
+  unit tzresult Lwt.t
 
 (** [inbox_of_hash node_ctxt store block_hash] returns the rollup inbox at the end of the
     given validation of [block_hash]. *)

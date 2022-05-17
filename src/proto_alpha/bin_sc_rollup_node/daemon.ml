@@ -71,15 +71,23 @@ module Make (PVM : Pvm.S) = struct
     *)
     let open Lwt_result_syntax in
     let {finalized; seen_before; head} = head_state in
-    let* () =
+    let cctxt = node_ctxt.Node_context.cctxt in
+    let* _operations =
       let*! () = emit_head_processing_event head_state in
-      if seen_before then return_unit
+      (* Avoid processing inbox again if it has been processed before for this head *)
+      if seen_before then return None
       else
-        (* Avoid processing inbox again if it has been processed before for this head *)
-        let* () = Inbox.process_head node_ctxt store head in
+        let* operations =
+          let open Layer1_services in
+          let (Head {level; _}) = head in
+          Operations.operations cctxt ~chain:`Main ~block:(`Level level) ()
+        in
+        let*! () = emit_head_processing_event head_state in
+        let* () = Inbox.process_head node_ctxt store head operations in
         (* Avoid storing and publishing commitments if the head is not final *)
         (* Avoid triggering the pvm execution if this has been done before for this head *)
-        Components.Interpreter.process_head node_ctxt store head
+        let* () = Components.Interpreter.process_head node_ctxt store head in
+        return_some operations
     in
     let* () =
       if finalized then Components.Commitment.process_head node_ctxt store head

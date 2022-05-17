@@ -28,16 +28,8 @@
 *)
 open Protocol
 open Alpha_context
-module Block_services = Block_services.Make (Protocol) (Protocol)
 
 let lift = Lwt.map Environment.wrap_tzresult
-
-let head_processing_failure e =
-  Format.eprintf
-    "Error during head processing: @[%a@]"
-    Error_monad.(TzTrace.pp_print_top pp)
-    e ;
-  Lwt_exit.exit_and_raise 1
 
 module State = struct
   let add_messages = Store.Messages.add
@@ -68,12 +60,7 @@ module State = struct
   let set_message_tree = Store.MessageTrees.set
 end
 
-let get_messages cctxt head rollup =
-  let open Lwt_result_syntax in
-  let open Block_services in
-  let+ operations =
-    Operations.operations cctxt ~chain:`Main ~block:(`Level (snd head)) ()
-  in
+let get_messages rollup operations =
   let is_add_message = function
     | Contents
         (Manager_operation
@@ -82,51 +69,46 @@ let get_messages cctxt head rollup =
         messages
     | _ -> []
   in
-  let process_contents {protocol_data = Operation_data {contents; _}; _} =
+  let process_contents
+      ({protocol_data = Operation_data {contents; _}; _} :
+        Layer1_services.operation) =
     let operations = Operation.to_list (Contents_list contents) in
     List.concat_map is_add_message operations
   in
-  let process_operations operations =
-    List.concat_map process_contents operations
-  in
+  let process_operations = List.concat_map process_contents in
   List.concat_map process_operations operations
 
-let process_head Node_context.({cctxt; rollup_address; _} as node_ctxt) store
-    Layer1.(Head {level; hash = head_hash} as head) =
+let process_head (Node_context.{rollup_address; _} as node_ctxt) store
+    Layer1.(Head {level; hash = head_hash} as head) operations =
   let open Lwt_result_syntax in
-  let*! res = get_messages cctxt (head_hash, level) rollup_address in
-  match res with
-  | Error e -> head_processing_failure e
-  | Ok messages ->
-      let*! () =
-        Inbox_event.get_messages head_hash level (List.length messages)
-      in
-      let*! () = State.add_messages store head_hash messages in
-      (*
+  let messages = get_messages rollup_address operations in
+  let*! () = Inbox_event.get_messages head_hash level (List.length messages) in
+  let*! () = State.add_messages store head_hash messages in
+  (*
 
           We compute the inbox of this block using the inbox of its
           predecessor. That way, the computation of inboxes is robust
           to chain reorganization.
 
       *)
-      let*! predecessor = Layer1.predecessor store head in
-      let*! inbox = State.inbox_of_hash node_ctxt store predecessor in
-      lift
-      @@ let*! history = State.history_of_hash store predecessor in
-         let*! messages_tree = State.get_message_tree store predecessor in
-         let*? level = Raw_level.of_int32 level in
-         let* messages_tree, history, inbox =
-           Store.Inbox.add_external_messages
-             history
-             inbox
-             level
-             messages
-             messages_tree
-         in
-         let*! () = State.set_message_tree store head_hash messages_tree in
-         let*! () = State.add_inbox store head_hash inbox in
-         let*! () = State.add_history store head_hash history in
-         return_unit
+  let*! predecessor = Layer1.predecessor store head in
+  let*! inbox = State.inbox_of_hash node_ctxt store predecessor in
+  lift
+  @@ let*! history = State.history_of_hash store predecessor in
+     let*! messages_tree = State.get_message_tree store predecessor in
+     let*? level = Raw_level.of_int32 level in
+     let* messages_tree, history, inbox =
+       Store.Inbox.add_external_messages
+         history
+         inbox
+         level
+         messages
+         messages_tree
+     in
+     let*! () = State.set_message_tree store head_hash messages_tree in
+     let*! () = State.add_inbox store head_hash inbox in
+     let*! () = State.add_history store head_hash history in
+     return_unit
 
 let inbox_of_hash = State.inbox_of_hash
 
