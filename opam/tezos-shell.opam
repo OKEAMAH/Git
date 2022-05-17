@@ -17,6 +17,7 @@ depends: [
   "tezos-store-shared"
   "tezos-store"
   "tezos-context-ops"
+  "tezos-p2p-shared"
   "tezos-p2p"
   "tezos-stdlib-unix"
   "tezos-shell-services"

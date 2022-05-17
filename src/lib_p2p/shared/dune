@@ -2,17 +2,16 @@
 ; Edit file manifest/main.ml instead.
 
 (library
- (name tezos_p2p)
- (public_name tezos-p2p)
+ (name tezos_p2p_shared)
+ (public_name tezos-p2p-shared)
  (instrumentation (backend bisect_ppx))
  (libraries
+  lwt-watcher
   tezos-base
-  tezos-p2p-services
-  tezos-p2p-shared)
+  tezos-shell-services)
  (flags
   (:standard
+   -open Tezos_base
    -open Tezos_base.TzPervasives
-   -open Tezos_p2p_services
-   -open Tezos_p2p_shared))
- (virtual_modules p2p)
- (default_implementation tezos-p2p.real))
+   -open Tezos_shell_services))
+ (modules p2p_params p2p_message p2p_point_state))

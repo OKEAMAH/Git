@@ -541,6 +541,16 @@ opam:tezos-p2p-services:
   variables:
     package: tezos-p2p-services
 
+opam:tezos-p2p-shared:
+  extends: .opam_template
+  variables:
+    package: tezos-p2p-shared
+
+opam:tezos-p2p-unix:
+  extends: .opam_template
+  variables:
+    package: tezos-p2p-unix
+
 opam:tezos-protocol-000-Ps9mPmXa:
   extends: .opam_template
   variables:

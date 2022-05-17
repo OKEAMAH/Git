@@ -26,7 +26,8 @@
   resto-cohttp-self-serving-client
   tezos-rpc
   tezos-p2p-services
-  tezos-p2p
+  tezos-p2p-shared
+  tezos-p2p-unix
   tezos-protocol-environment
   tezos-stdlib-unix
   tezos-rpc-http

@@ -164,14 +164,6 @@ type ('msg, 'peer_meta, 'conn_meta) net = ('msg, 'peer_meta, 'conn_meta) t
 
 val announced_version : ('msg, 'peer_meta, 'conn_meta) net -> Network_version.t
 
-val pool :
-  ('msg, 'peer_meta, 'conn_meta) net ->
-  ('msg, 'peer_meta, 'conn_meta) P2p_pool.t option
-
-val connect_handler :
-  ('msg, 'peer_meta, 'conn_meta) net ->
-  ('msg, 'peer_meta, 'conn_meta) P2p_connect_handler.t option
-
 (** A faked p2p layer, which do not initiate any connection
     nor open any listening socket *)
 val faked_network :
@@ -326,6 +318,9 @@ val greylist_addr : ('msg, 'peer_meta, 'conn_meta) net -> P2p_addr.t -> unit
 
 val greylist_peer : ('msg, 'peer_meta, 'conn_meta) net -> P2p_peer.Id.t -> unit
 
-val watcher :
-  ('msg, 'peer_meta, 'conn_meta) net ->
-  P2p_connection.P2p_event.t Lwt_stream.t * Lwt_watcher.stopper
+val build_rpc_directory :
+  ( 'a,
+    Tezos_p2p_services.Peer_metadata.t,
+    Tezos_p2p_services.Connection_metadata.t )
+  t ->
+  unit RPC_directory.t

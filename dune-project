@@ -98,6 +98,8 @@
 (package (name tezos-openapi))
 (package (name tezos-p2p))
 (package (name tezos-p2p-services))
+(package (name tezos-p2p-shared))
+(package (name tezos-p2p-unix))
 (package (name tezos-protocol-008-PtEdo2Zk-parameters))
 (package (name tezos-protocol-009-PsFLoren-parameters))
 (package (name tezos-protocol-010-PtGRANAD-parameters))

@@ -68,6 +68,8 @@ type limits = {
   binary_chunks_size : int option;
 }
 
+let private_mode (c : config) = c.private_mode
+
 let create_scheduler limits =
   let max_upload_speed = Option.map (( * ) 1024) limits.max_upload_speed in
   let max_download_speed = Option.map (( * ) 1024) limits.max_download_speed in

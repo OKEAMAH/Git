@@ -51,10 +51,7 @@ val wait_pred_s :
 (** Based on [wait_pred]. [wait_conns ~pool n] waits until at least [n]
    connections are actives in [~pool]. *)
 val wait_conns :
-  ?timeout:float ->
-  pool:('a, 'b, 'c) Tezos_p2p.P2p_pool.t ->
-  int ->
-  unit tzresult Lwt.t
+  ?timeout:float -> pool:('a, 'b, 'c) P2p_pool.t -> int -> unit tzresult Lwt.t
 
 (** [connect_all connect_handler points] establishes the connections to
     [points] using [connect_handler] and returns them. If one connection need
@@ -68,7 +65,7 @@ val connect_all :
 
 (** [close_active_conns pool@] closes all actives connections of the pool. This
     function waits until the connections are effectively closed. *)
-val close_active_conns : ('a, 'b, 'c) Tezos_p2p.P2p_pool.t -> unit Lwt.t
+val close_active_conns : ('a, 'b, 'c) P2p_pool.t -> unit Lwt.t
 
 val addr : Ipaddr.V6.t ref
 

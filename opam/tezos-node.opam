@@ -16,6 +16,7 @@ depends: [
   "tezos-rpc-http"
   "tezos-rpc-http-server"
   "tezos-p2p"
+  "tezos-p2p-shared"
   "tezos-shell"
   "tezos-store"
   "tezos-store-unix"

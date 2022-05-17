@@ -1168,11 +1168,25 @@ let _tezos_tooling_opam_lint =
     ~opam:"tezos-tooling"
     ~deps:[_tezos_tooling_opam_file_format; unix]
 
-let tezos_p2p =
+let tezos_p2p_shared =
   public_lib
-    "tezos-p2p"
-    ~path:"src/lib_p2p"
-    ~synopsis:"Tezos: library for a pool of P2P connections"
+    "tezos-p2p-shared"
+    ~path:"src/lib_p2p/shared"
+    ~synopsis:"Tezos: functionalities shared by all p2p implementations"
+    ~deps:
+      [
+        lwt_watcher;
+        tezos_base |> open_ |> open_ ~m:"TzPervasives";
+        tezos_shell_services |> open_;
+      ]
+    ~modules:["p2p_params"; "p2p_message"; "p2p_point_state"]
+
+let tezos_p2p_unix =
+  public_lib
+    "tezos-p2p-unix"
+    ~path:"src/lib_p2p/unix"
+    ~synopsis:
+      "Tezos: library for a pool of P2P connections (unix implementation)"
     ~deps:
       [
         lwt_watcher;
@@ -1183,9 +1197,32 @@ let tezos_p2p =
         tezos_stdlib_unix |> open_;
         tezos_stdlib |> open_;
         tezos_p2p_services |> open_;
+        tezos_p2p_shared |> open_;
         tezos_version;
         prometheus;
       ]
+
+let tezos_p2p =
+  public_lib
+    "tezos-p2p"
+    ~path:"src/lib_p2p"
+    ~synopsis:"Tezos: library for a pool of P2P connections"
+    ~deps:
+      [
+        tezos_base |> open_ ~m:"TzPervasives";
+        tezos_p2p_services |> open_;
+        tezos_p2p_shared |> open_;
+      ]
+    ~virtual_modules:["p2p"]
+    ~default_implementation:"tezos-p2p.real"
+
+let _tezos_p2p_real =
+  public_lib
+    "tezos-p2p.real"
+    ~path:"src/lib_p2p/real"
+    ~opam:"tezos-p2p"
+    ~deps:[tezos_p2p_shared |> open_; tezos_p2p_unix |> open_]
+    ~implements:tezos_p2p
 
 let _tezos_p2p_tests =
   tests
@@ -1202,7 +1239,7 @@ let _tezos_p2p_tests =
       (* "test_p2p_logging"; *)
       "test_p2p_connect_handler";
     ]
-    ~path:"src/lib_p2p/test"
+    ~path:"src/lib_p2p/unix/test"
     ~opam:"tezos-p2p"
     ~deps:
       [
@@ -1210,7 +1247,8 @@ let _tezos_p2p_tests =
         tezos_base_unix;
         tezos_stdlib_unix |> open_;
         tezos_stdlib |> open_;
-        tezos_p2p |> open_;
+        tezos_p2p_shared |> open_;
+        tezos_p2p_unix |> open_;
         tezos_test_helpers;
         tezos_base_test_helpers |> open_;
         tezos_event_logging_test_helpers |> open_;
@@ -2055,6 +2093,7 @@ let tezos_shell =
         tezos_store_shared |> open_;
         tezos_store |> open_;
         tezos_context_ops |> open_;
+        tezos_p2p_shared |> open_;
         tezos_p2p |> open_;
         tezos_stdlib_unix |> open_;
         tezos_shell_services |> open_;
@@ -2375,7 +2414,8 @@ let tezos_mockup =
         resto_cohttp_self_serving_client;
         tezos_rpc;
         tezos_p2p_services;
-        tezos_p2p;
+        tezos_p2p_shared;
+        tezos_p2p_unix;
         tezos_protocol_environment;
         tezos_stdlib_unix;
         tezos_rpc_http;
@@ -4009,6 +4049,7 @@ let _tezos_shell_tests =
         tezos_shell_context |> open_;
         tezos_protocol_updater |> open_;
         tezos_p2p |> open_;
+        tezos_p2p_shared |> open_;
         tezos_p2p_services |> open_;
         tezos_requester;
         tezos_shell |> open_;
@@ -4143,6 +4184,7 @@ let _tezos_node =
          tezos_rpc_http |> open_;
          tezos_rpc_http_server |> open_;
          tezos_p2p |> open_;
+         tezos_p2p_shared |> open_;
          tezos_shell |> open_;
          tezos_store;
          tezos_store_unix_reconstruction |> open_;

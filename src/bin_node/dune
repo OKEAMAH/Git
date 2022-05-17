@@ -17,6 +17,7 @@
   tezos-rpc-http
   tezos-rpc-http-server
   tezos-p2p
+  tezos-p2p-shared
   tezos-shell
   tezos-store
   tezos-store-unix.reconstruction
@@ -117,6 +118,7 @@
    -open Tezos_rpc_http
    -open Tezos_rpc_http_server
    -open Tezos_p2p
+   -open Tezos_p2p_shared
    -open Tezos_shell
    -open Tezos_store_unix_reconstruction
    -open Tezos_store_unix_snapshots
