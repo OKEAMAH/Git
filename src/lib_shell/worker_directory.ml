@@ -85,7 +85,7 @@ let build_rpc_directory id state =
                    Peer_validator.information w,
                    Peer_validator.pipeline_length w )
              else None)
-           (Peer_validator.running_workers ()))) ;
+           (Peer_validator.running_workers id))) ;
   register2 Worker_services.Peer_validators.S.state (fun chain peer_id () () ->
       let* chain_id = Chain_directory.get_chain_id state chain in
       let equal (acid, apid) (bcid, bpid) =
@@ -96,7 +96,7 @@ let build_rpc_directory id state =
         @@ List.assoc
              ~equal
              (chain_id, peer_id)
-             (Peer_validator.running_workers ())
+             (Peer_validator.running_workers id)
       in
       return_ok
         {

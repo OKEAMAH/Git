@@ -29,16 +29,29 @@
 open Peer_validator_worker_state
 
 module Name = struct
-  type t = Chain_id.t * P2p_peer.Id.t
+  type t = Internal_id.t * Chain_id.t * P2p_peer.Id.t
 
-  let encoding = Data_encoding.tup2 Chain_id.encoding P2p_peer.Id.encoding
+  let encoding =
+    Data_encoding.tup3
+      Internal_id.encoding
+      Chain_id.encoding
+      P2p_peer.Id.encoding
 
   let base = ["validator"; "peer"]
 
-  let pp ppf (chain, peer) =
-    Format.fprintf ppf "%a:%a" Chain_id.pp_short chain P2p_peer.Id.pp_short peer
+  let pp ppf (id, chain, peer) =
+    Format.fprintf
+      ppf
+      "[%a]:%a:%a"
+      Internal_id.pp
+      id
+      Chain_id.pp_short
+      chain
+      P2p_peer.Id.pp_short
+      peer
 
-  let equal (c1, p1) (c2, p2) = Chain_id.equal c1 c2 && P2p_peer.Id.equal p1 p2
+  let equal (id1, c1, p1) (id2, c2, p2) =
+    Internal_id.equal id1 id2 && Chain_id.equal c1 c2 && P2p_peer.Id.equal p1 p2
 end
 
 module Request = struct
@@ -463,14 +476,14 @@ let on_close w =
   pv.parameters.notify_termination () ;
   Lwt.return_unit
 
-let on_launch _ name parameters =
+let on_launch _ (_node_id, _chain_id, peer_id) parameters =
   let open Lwt_syntax in
   let chain_store = Distributed_db.chain_store parameters.chain_db in
   let* genesis = Store.Chain.genesis_block chain_store in
   (* TODO : why do we have genesis and not current_head here ?? *)
   let rec pv =
     {
-      peer_id = snd name;
+      peer_id;
       parameters = {parameters with notify_new_block};
       pipeline = None;
       last_validated_head = Store.Block.header genesis;
@@ -501,10 +514,13 @@ let table =
   in
   Worker.create_table (Dropbox {merge})
 
-let create ?(notify_new_block = fun _ -> ()) ?(notify_termination = fun _ -> ())
-    limits block_validator chain_db peer_id =
+let create ~node_id ?(notify_new_block = fun _ -> ())
+    ?(notify_termination = fun _ -> ()) limits block_validator chain_db peer_id
+    =
   let name =
-    (Store.Chain.chain_id (Distributed_db.chain_store chain_db), peer_id)
+    ( node_id,
+      Store.Chain.chain_id (Distributed_db.chain_store chain_db),
+      peer_id )
   in
   let parameters =
     {chain_db; notify_termination; block_validator; notify_new_block; limits}
@@ -552,7 +568,13 @@ let status = Worker.status
 
 let information = Worker.information
 
-let running_workers () = Worker.list table
+let running_workers node_id =
+  let workers = Worker.list table in
+  List.filter_map
+    (fun ((id, chain_id, peer_id), w) ->
+      if Internal_id.equal node_id id then Some ((chain_id, peer_id), w)
+      else None)
+    workers
 
 let current_request t = Worker.current_request t
 

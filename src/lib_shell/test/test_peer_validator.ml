@@ -87,8 +87,10 @@ let wrap
           block_validator_processs
           ~start_testchain:false
       in
+      let node_id = Internal_id.fresh () in
       let* pv =
         Peer_validator.create
+          ~node_id
           Node.default_peer_validator_limits
           block_validator
           chain_db

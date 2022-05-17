@@ -188,6 +188,7 @@ let with_activated_peer_validator w peer_id f =
     P2p_peer.Error_table.find_or_make nv.active_peers peer_id (fun () ->
         let*! () = Worker.log_event w (Connection peer_id) in
         Peer_validator.create
+          ~node_id:nv.parameters.node_id
           ~notify_new_block:(notify_new_block w (Some peer_id))
           ~notify_termination:(fun _pv ->
             P2p_peer.Error_table.remove nv.active_peers peer_id)

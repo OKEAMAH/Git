@@ -36,6 +36,7 @@ type limits = {
 val peer_id : t -> P2p_peer.Id.t
 
 val create :
+  node_id:Internal_id.t ->
   ?notify_new_block:(Store.Block.t -> unit) ->
   ?notify_termination:(unit -> unit) ->
   limits ->
@@ -50,7 +51,7 @@ val notify_branch : t -> Block_locator.t -> unit
 
 val notify_head : t -> Block_hash.t -> Block_header.t -> unit
 
-val running_workers : unit -> ((Chain_id.t * P2p_peer.Id.t) * t) list
+val running_workers : Internal_id.t -> ((Chain_id.t * P2p_peer.Id.t) * t) list
 
 val status : t -> Worker_types.worker_status
 
