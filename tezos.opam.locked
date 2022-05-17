@@ -77,8 +77,8 @@ depends: [
   "integers_stubs_js" {= "1.0" & ?vendor}
   "ipaddr" {= "5.3.0" & ?vendor}
   "ipaddr-sexp" {= "5.3.0" & ?vendor}
-  "irmin" {= "3.2.1" & ?vendor}
-  "irmin-pack" {= "3.2.1" & ?vendor}
+  "irmin" {= "3.2.2" & ?vendor}
+  "irmin-pack" {= "3.2.2" & ?vendor}
   "jane-street-headers" {= "v0.14.0" & ?vendor}
   "js_of_ocaml" {= "4.0.0" & ?vendor}
   "js_of_ocaml-compiler" {= "4.0.0" & ?vendor}
@@ -139,7 +139,7 @@ depends: [
   "ppx_hash" {= "v0.14.0" & ?vendor}
   "ppx_here" {= "v0.14.0" & ?vendor}
   "ppx_inline_test" {= "v0.14.1" & ?vendor}
-  "ppx_irmin" {= "3.2.1" & ?vendor}
+  "ppx_irmin" {= "3.2.2" & ?vendor}
   "ppx_js_style" {= "v0.14.1" & ?vendor}
   "ppx_optcomp" {= "v0.14.3" & ?vendor}
   "ppx_repr" {= "0.6.0" & ?vendor}
@@ -543,12 +543,12 @@ pin-depends: [
     "https://github.com/mirage/ocaml-ipaddr/releases/download/v5.3.0/ipaddr-5.3.0.tbz"
   ]
   [
-    "irmin.3.2.1"
-    "https://github.com/mirage/irmin/releases/download/3.2.1/irmin-3.2.1.tbz"
+    "irmin.3.2.2"
+    "https://github.com/mirage/irmin/releases/download/3.2.2/irmin-3.2.2.tbz"
   ]
   [
-    "irmin-pack.3.2.1"
-    "https://github.com/mirage/irmin/releases/download/3.2.1/irmin-3.2.1.tbz"
+    "irmin-pack.3.2.2"
+    "https://github.com/mirage/irmin/releases/download/3.2.2/irmin-3.2.2.tbz"
   ]
   [
     "jane-street-headers.v0.14.0"
@@ -665,10 +665,6 @@ pin-depends: [
     "https://github.com/ocurrent/ocaml-version/releases/download/v3.4.0/ocaml-version-v3.4.0.tbz"
   ]
   [
-    "ocamlfind.1.9.3"
-    "http://download.camlcity.org/download/findlib-1.9.3.tar.gz"
-  ]
-  [
     "ocamlformat.0.18.0"
     "https://github.com/ocaml-ppx/ocamlformat/releases/download/0.18.0/ocamlformat-0.18.0.tbz"
   ]
@@ -761,8 +757,8 @@ pin-depends: [
     "https://github.com/janestreet/ppx_inline_test/archive/v0.14.1.tar.gz"
   ]
   [
-    "ppx_irmin.3.2.1"
-    "https://github.com/mirage/irmin/releases/download/3.2.1/irmin-3.2.1.tbz"
+    "ppx_irmin.3.2.2"
+    "https://github.com/mirage/irmin/releases/download/3.2.2/irmin-3.2.2.tbz"
   ]
   [
     "ppx_js_style.v0.14.1"
@@ -946,10 +942,6 @@ pin-depends: [
     "https://github.com/CraigFe/progress/releases/download/0.2.1/terminal-0.2.1.tbz"
   ]
   [
-    "tezos-rust-libs.1.1"
-    "https://gitlab.com/tezos/tezos-rust-libs/-/archive/v1.1/tezos-rust-libs-v1.1.zip"
-  ]
-  [
     "time_now.v0.14.0"
     "https://ocaml.janestreet.com/ocaml-core/v0.14/files/time_now-v0.14.0.tar.gz"
   ]
@@ -1011,14 +1003,6 @@ pin-depends: [
   ]
 ]
 x-opam-monorepo-duniverse-dirs: [
-  [
-    "http://download.camlcity.org/download/findlib-1.9.3.tar.gz"
-    "ocamlfind"
-    [
-      "md5=24047dd8a0da5322253de9b7aa254e42"
-      "sha512=27cc4ce141576bf477fb9d61a82ad65f55478740eed59fb43f43edb794140829fd2ff89ad27d8a890cfc336b54c073a06de05b31100fc7c01cacbd7d88e928ea"
-    ]
-  ]
   [
     "https://erratique.ch/software/cmdliner/releases/cmdliner-1.1.1.tbz"
     "cmdliner"
@@ -1515,11 +1499,11 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://github.com/mirage/irmin/releases/download/3.2.1/irmin-3.2.1.tbz"
+    "https://github.com/mirage/irmin/releases/download/3.2.2/irmin-3.2.2.tbz"
     "irmin"
     [
-      "sha256=9cfb7291a7d90ca0e55ece33040ad41e74cadd8c6446e04c33558bc1a1951518"
-      "sha512=9605acd77de9aae70ae96554a28594e6ed5beba70a48145c0fc2204b32bb23b843ba98cf034e88391581d5f3495154195c644d64a3aa3f8d3994a9c5518c5cda"
+      "sha256=fde223f91b7adb0118698f210356c9965b4a7ae87f61d19c7f2892d1a2d0bcb9"
+      "sha512=02ad3dbe6646640271e721105abcb58f00b06255fe36f378545acd2fb7c9647952ee50247e1508f417fa8c3de713bf9bd213840081af37650ee524170a2e36bc"
     ]
   ]
   [
@@ -1965,14 +1949,6 @@ x-opam-monorepo-duniverse-dirs: [
     [
       "md5=a0b3e072bbc3541b60196de967ed266a"
       "sha512=b6a12de26fa58ac5f5c3a49963d3b76dfbe391f86ef14c97715d2fccb439daf7c2e602c15b48e1db9d933832f3ee2171adb1f990f3c15be5f33ae815ce5cf7a8"
-    ]
-  ]
-  [
-    "https://gitlab.com/tezos/tezos-rust-libs/-/archive/v1.1/tezos-rust-libs-v1.1.zip"
-    "tezos-rust-libs"
-    [
-      "md5=a8a2720ba70306fdb6d0297f4d9bf95a"
-      "sha512=3aaf61288547df2ab6c9b7b092abe507316732da627bc76afda516becd36f02f029ddb96e85470bc58bf5ef703146a633fb0df21b705480dbf4f6f21b08d54eb"
     ]
   ]
   [
