@@ -25,6 +25,7 @@
 (*****************************************************************************)
 
 type t = {
+  node_id : Internal_id.t;
   state : Store.t;
   db : Distributed_db.t;
   block_validator : Block_validator.t;
@@ -38,13 +39,13 @@ type t = {
   active_chains : Chain_validator.t Chain_id.Table.t;
 }
 
-let create id state db peer_validator_limits block_validator_limits
+let create node_id state db peer_validator_limits block_validator_limits
     block_validator_kind prevalidator_limits chain_validator_limits
     ~start_testchain =
   let open Lwt_result_syntax in
   let* block_validator =
     Block_validator.create
-      id
+      node_id
       block_validator_limits
       db
       block_validator_kind
@@ -54,6 +55,7 @@ let create id state db peer_validator_limits block_validator_limits
   let chains_input = Lwt_watcher.create_input () in
   return
     {
+      node_id;
       state;
       db;
       start_testchain;
@@ -75,6 +77,7 @@ let activate v ~start_prevalidator ~validator_process chain_store =
   | Some chain -> return_ok chain
   | None ->
       Chain_validator.create
+        ~node_id:v.node_id
         ~start_prevalidator
         ~start_testchain:v.start_testchain
         ~active_chains:v.active_chains

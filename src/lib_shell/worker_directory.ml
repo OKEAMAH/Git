@@ -113,7 +113,7 @@ let build_rpc_directory id state =
                Chain_validator.status w,
                Chain_validator.information w,
                Chain_validator.pending_requests_length w ))
-           (Chain_validator.running_workers ()))) ;
+           (Chain_validator.running_workers id))) ;
   register1 Worker_services.Chain_validators.S.state (fun chain () () ->
       let* chain_id = Chain_directory.get_chain_id state chain in
       let w =
@@ -121,7 +121,7 @@ let build_rpc_directory id state =
         @@ List.assoc
              ~equal:Chain_id.equal
              chain_id
-             (Chain_validator.running_workers ())
+             (Chain_validator.running_workers id)
       in
       return_ok
         {
@@ -137,7 +137,7 @@ let build_rpc_directory id state =
         @@ List.assoc
              ~equal:Chain_id.equal
              chain_id
-             (Chain_validator.running_workers ())
+             (Chain_validator.running_workers id)
       in
       return_ok (Chain_validator.ddb_information w)) ;
   !dir

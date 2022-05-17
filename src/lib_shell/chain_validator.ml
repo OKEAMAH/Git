@@ -27,15 +27,18 @@
 open Chain_validator_worker_state
 
 module Name = struct
-  type t = Chain_id.t
+  type t = Internal_id.t * Chain_id.t
 
-  let encoding = Chain_id.encoding
+  let encoding =
+    let open Data_encoding in
+    obj2 (req "node_id" Internal_id.encoding) (req "chain_id" Chain_id.encoding)
 
   let base = ["validator"; "chain"]
 
-  let pp = Chain_id.pp_short
+  let pp fmtr (id, chain) =
+    Format.fprintf fmtr "%a.%a" Internal_id.pp id Chain_id.pp_short chain
 
-  let equal = Chain_id.equal
+  let equal (i1, c1) (i2, c2) = Internal_id.equal i1 i2 && Chain_id.equal c1 c2
 end
 
 module Request = struct
@@ -68,7 +71,8 @@ type limits = {synchronisation : synchronisation_limits}
 
 module Types = struct
   type parameters = {
-    parent : Name.t option;
+    node_id : Internal_id.t;
+    parent : Chain_id.t option;
     (* inherit bootstrap status from parent chain validator *)
     db : Distributed_db.t;
     chain_store : Store.chain_store;
@@ -167,8 +171,8 @@ let check_and_update_synchronisation_state w (hash, block) peer_id : unit Lwt.t
 let notify_new_block w peer block =
   let nv = Worker.state w in
   Option.iter
-    (fun id ->
-      List.assoc ~equal:Chain_id.equal id (Worker.list table)
+    (fun chain_id ->
+      Worker.find_opt table (nv.parameters.node_id, chain_id)
       |> Option.iter (fun w ->
              let nv = Worker.state w in
              Lwt_watcher.notify nv.valid_block_input block))
@@ -723,8 +727,9 @@ let on_launch w _ parameters =
 
 let metrics = Shell_metrics.Chain_validator.init Name.base
 
-let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
-    start_prevalidator (peer_validator_limits : Peer_validator.limits)
+let rec create ~node_id ~start_testchain ~active_chains ?parent
+    ~block_validator_process start_prevalidator
+    (peer_validator_limits : Peer_validator.limits)
     (prevalidator_limits : Prevalidator.limits) block_validator
     global_valid_block_input global_chains_input db chain_store limits =
   let open Lwt_result_syntax in
@@ -733,6 +738,7 @@ let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
       global_chains_input ddb chain_store limits =
     let* w =
       create
+        ~node_id
         ~start_testchain
         ~active_chains
         ~parent
@@ -794,6 +800,7 @@ let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
   let chain_id = Store.Chain.chain_id chain_store in
   let parameters =
     {
+      node_id;
       parent;
       peer_validator_limits;
       start_prevalidator;
@@ -808,19 +815,22 @@ let rec create ~start_testchain ~active_chains ?parent ~block_validator_process
       metrics = metrics chain_id;
     }
   in
-  let* w = Worker.launch table chain_id parameters (module Handlers) in
+  let* w =
+    Worker.launch table (node_id, chain_id) parameters (module Handlers)
+  in
   Chain_id.Table.add active_chains (Store.Chain.chain_id chain_store) w ;
   Lwt_watcher.notify global_chains_input (Store.Chain.chain_id chain_store, true) ;
   return w
 
 (** Current block computation *)
 
-let create ~start_prevalidator ~start_testchain ~active_chains
+let create ~node_id ~start_prevalidator ~start_testchain ~active_chains
     ~block_validator_process peer_validator_limits prevalidator_limits
     block_validator global_valid_block_input global_chains_input global_db state
     limits =
   (* hide the optional ?parent *)
   create
+    ~node_id
     ~start_testchain
     ~active_chains
     ~block_validator_process
@@ -853,11 +863,8 @@ let chain_db w =
 let child w =
   Option.bind
     (Worker.state w).child
-    (fun ({parameters = {chain_store; _}; _}, _) ->
-      List.assoc
-        ~equal:Chain_id.equal
-        (Store.Chain.chain_id chain_store)
-        (Worker.list table))
+    (fun ({parameters = {chain_store; node_id; _}; _}, _) ->
+      Worker.find_opt table (node_id, Store.Chain.chain_id chain_store))
 
 let assert_fitness_increases ?(force = false) w distant_header =
   let open Lwt_syntax in
@@ -929,7 +936,12 @@ let status = Worker.status
 
 let information = Worker.information
 
-let running_workers () = Worker.list table
+let running_workers node_id =
+  let workers = Worker.list table in
+  List.filter_map
+    (fun ((id, chain_id), w) ->
+      if Internal_id.equal node_id id then Some (chain_id, w) else None)
+    workers
 
 let pending_requests t = Worker.Queue.pending_requests t
 

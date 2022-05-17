@@ -43,6 +43,7 @@ type synchronisation_limits = {
 type limits = {synchronisation : synchronisation_limits}
 
 val create :
+  node_id:Internal_id.t ->
   start_prevalidator:bool ->
   start_testchain:bool ->
   active_chains:t Chain_id.Table.t ->
@@ -96,7 +97,7 @@ val valid_block_watcher : t -> Store.Block.t Lwt_stream.t * Lwt_watcher.stopper
 
 val new_head_watcher : t -> Store.Block.t Lwt_stream.t * Lwt_watcher.stopper
 
-val running_workers : unit -> (Chain_id.t * t) list
+val running_workers : Internal_id.t -> (Chain_id.t * t) list
 
 val status : t -> Worker_types.worker_status
 
