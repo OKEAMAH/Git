@@ -24,6 +24,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Client = Client_base
+
 (** In all RPCs, default [chain] is "main" and default [block] is
    "head~2" to pick the finalized branch for Tenderbake. *)
 

@@ -24,6 +24,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Client = Client_base
+
 let get_connections ?endpoint ?hooks ?peer_id client =
   match peer_id with
   | None ->
