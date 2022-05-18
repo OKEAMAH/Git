@@ -76,6 +76,7 @@ val default_limits : limits
 
 (** Creates/tear-down a new prevalidator context. *)
 val create :
+  Internal_id.t ->
   limits ->
   (module Prevalidator_filters.FILTER) ->
   Distributed_db.chain_db ->
@@ -105,7 +106,7 @@ val flush :
 
 (** Returns the list of prevalidation contexts running and their associated
     chain *)
-val running_workers : unit -> (Chain_id.t * Protocol_hash.t * t) list
+val running_workers : Internal_id.t -> (Chain_id.t * Protocol_hash.t * t) list
 
 (** Worker status and events *)
 

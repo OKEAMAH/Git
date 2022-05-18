@@ -385,7 +385,11 @@ let instantiate_prevalidator parameters set_prevalidator block chain_db =
       Store.Block.protocol_hash parameters.chain_store block
     in
     let* (module Filter) = safe_get_prevalidator_filter new_protocol in
-    Prevalidator.create parameters.prevalidator_limits (module Filter) chain_db
+    Prevalidator.create
+      parameters.node_id
+      parameters.prevalidator_limits
+      (module Filter)
+      chain_db
   in
   match r with
   | Error errs ->

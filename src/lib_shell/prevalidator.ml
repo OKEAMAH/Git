@@ -46,23 +46,30 @@ let default_limits =
 let advertisement_delay = 0.1
 
 module Name = struct
-  type t = Chain_id.t * Protocol_hash.t
+  type t = Internal_id.t * Chain_id.t * Protocol_hash.t
 
-  let encoding = Data_encoding.tup2 Chain_id.encoding Protocol_hash.encoding
+  let encoding =
+    Data_encoding.tup3
+      Internal_id.encoding
+      Chain_id.encoding
+      Protocol_hash.encoding
 
   let base = ["prevalidator"]
 
-  let pp fmt (chain_id, proto_hash) =
+  let pp fmt (id, chain_id, proto_hash) =
     Format.fprintf
       fmt
-      "%a:%a"
+      "%a:%a:%a"
+      Internal_id.pp
+      id
       Chain_id.pp_short
       chain_id
       Protocol_hash.pp_short
       proto_hash
 
-  let equal (c1, p1) (c2, p2) =
-    Chain_id.equal c1 c2 && Protocol_hash.equal p1 p2
+  let equal (id1, c1, p1) (id2, c2, p2) =
+    Internal_id.equal id1 id2 && Chain_id.equal c1 c2
+    && Protocol_hash.equal p1 p2
 end
 
 module Dummy_event = struct
@@ -1065,6 +1072,8 @@ module type ARG = sig
   val chain_db : Distributed_db.chain_db
 
   val chain_id : Chain_id.t
+
+  val node_id : Internal_id.t
 end
 
 (** The functor that is not tested, in other words used only in production.
@@ -1089,7 +1098,7 @@ module Make
   T with type prevalidation_t = Prevalidation_t.t = struct
   include Make_s (Filter) (Prevalidation_t)
 
-  let name = (Arg.chain_id, Filter.Proto.hash)
+  let name = (Arg.node_id, Arg.chain_id, Filter.Proto.hash)
 
   module Types = struct
     type state = types_state
@@ -1637,22 +1646,28 @@ module Make
 end
 
 module ChainProto_registry = Map.Make (struct
-  type t = Chain_id.t * Protocol_hash.t
+  type t = Internal_id.t * Chain_id.t * Protocol_hash.t
 
-  let compare (c1, p1) (c2, p2) =
-    let pc = Protocol_hash.compare p1 p2 in
-    if pc = 0 then Chain_id.compare c1 c2 else pc
+  let compare (id1, c1, p1) (id2, c2, p2) =
+    let ic = Internal_id.compare id1 id2 in
+    if ic = 0 then
+      let pc = Protocol_hash.compare p1 p2 in
+      if pc = 0 then Chain_id.compare c1 c2 else pc
+    else ic
 end)
 
 let chain_proto_registry : t ChainProto_registry.t ref =
   ref ChainProto_registry.empty
 
-let create limits (module Filter : Prevalidator_filters.FILTER) chain_db =
+let create node_id limits (module Filter : Prevalidator_filters.FILTER) chain_db
+    =
   let open Lwt_result_syntax in
   let chain_store = Distributed_db.chain_store chain_db in
   let chain_id = Store.Chain.chain_id chain_store in
   match
-    ChainProto_registry.find (chain_id, Filter.Proto.hash) !chain_proto_registry
+    ChainProto_registry.find
+      (node_id, chain_id, Filter.Proto.hash)
+      !chain_proto_registry
   with
   | None ->
       let module Prevalidation_t = Prevalidation.Make (Filter.Proto) in
@@ -1665,6 +1680,8 @@ let create limits (module Filter : Prevalidator_filters.FILTER) chain_db =
             let chain_db = chain_db
 
             let chain_id = chain_id
+
+            let node_id = node_id
           end)
           (Prevalidation_t)
       in
@@ -1708,9 +1725,10 @@ let status (t : t) =
   let w = Lazy.force Prevalidator.worker in
   Prevalidator.Worker.status w
 
-let running_workers () =
+let running_workers node_id =
   ChainProto_registry.fold
-    (fun (id, proto) t acc -> (id, proto, t) :: acc)
+    (fun (node_id', id, proto) t acc ->
+      if Internal_id.equal node_id node_id' then (id, proto, t) :: acc else acc)
     !chain_proto_registry
     []
 
