@@ -1,0 +1,15 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_time_shims)
+ (public_name tezos-time-shims)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  ptime
+  ptime.clock.os
+  mtime
+  mtime.clock.os)
+ (js_of_ocaml)
+ (virtual_modules tezos_time_shims)
+ (default_implementation tezos-time-shims.real))

@@ -12,13 +12,13 @@
   tezos-event-logging
   tezos-stdlib
   data-encoding
-  lwt.unix
+  tezos-unix-shims
+  tezos-time-shims
   ipaddr.unix
   re
   ezjsonm
   ptime
   mtime
-  mtime.clock.os
   lwt_log)
  (flags
   (:standard
@@ -26,4 +26,6 @@
    -open Tezos_error_monad.TzLwtreslib
    -open Tezos_event_logging
    -open Tezos_stdlib
-   -open Data_encoding)))
+   -open Data_encoding
+   -open Tezos_unix_shims
+   -open Tezos_time_shims)))

@@ -17,7 +17,7 @@
   tezos-micheline
   tezos-event-logging
   ptime
-  ptime.clock.os
+  tezos-time-shims
   ezjsonm
   lwt
   ipaddr)
@@ -32,7 +32,8 @@
    -open Tezos_rpc
    -open Tezos_clic
    -open Tezos_micheline
-   -open Tezos_event_logging)))
+   -open Tezos_event_logging
+   -open Tezos_time_shims)))
 
 (ocamllex point_parser)
 

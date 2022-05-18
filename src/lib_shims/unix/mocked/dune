@@ -1,0 +1,11 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_unix_shims_mocked)
+ (public_name tezos-unix-shims.mocked)
+ (implements tezos-unix-shims)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  lwt.unix
+  tezos-shims-shared))

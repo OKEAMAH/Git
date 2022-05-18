@@ -991,6 +991,11 @@ opam:tezos-shell-services-test-helpers:
   variables:
     package: tezos-shell-services-test-helpers
 
+opam:tezos-shims-shared:
+  extends: .opam_template
+  variables:
+    package: tezos-shims-shared
+
 opam:tezos-signer:
   extends: .opam_template
   variables:
@@ -1046,6 +1051,11 @@ opam:tezos-time-measurement:
   variables:
     package: tezos-time-measurement
 
+opam:tezos-time-shims:
+  extends: .opam_template
+  variables:
+    package: tezos-time-shims
+
 opam:tezos-tooling:
   extends: .opam_template
   variables:
@@ -1085,6 +1095,11 @@ opam:tezos-tx-rollup-node-alpha:
   extends: .opam_template
   variables:
     package: tezos-tx-rollup-node-alpha
+
+opam:tezos-unix-shims:
+  extends: .opam_template
+  variables:
+    package: tezos-unix-shims
 
 opam:tezos-validation:
   extends: .opam_template

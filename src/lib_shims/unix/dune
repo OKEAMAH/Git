@@ -1,0 +1,11 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_unix_shims)
+ (public_name tezos-unix-shims)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  lwt.unix)
+ (virtual_modules tezos_unix_shims)
+ (default_implementation tezos-unix-shims.real))

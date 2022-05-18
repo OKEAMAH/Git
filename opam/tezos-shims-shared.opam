@@ -9,27 +9,12 @@ dev-repo: "git+https://gitlab.com/tezos/tezos.git"
 license: "MIT"
 depends: [
   "dune" { >= "2.9" & < "3.0" }
-  "tezos-stdlib"
-  "tezos-crypto"
-  "data-encoding" { >= "0.5.3" & < "0.6" }
-  "tezos-error-monad"
-  "tezos-rpc"
-  "tezos-clic"
-  "tezos-micheline"
-  "tezos-event-logging"
-  "ptime" { >= "1.0.0" }
-  "tezos-time-shims"
-  "ezjsonm" { >= "1.1.0" }
   "lwt" { >= "5.4.0" }
-  "ipaddr" { >= "5.0.0" & < "6.0.0" }
-  "tezos-hacl"
-  "tezos-stdlib-unix"
-  "qcheck-alcotest" { with-test & >= "0.15" }
-  "tezos-test-helpers" {with-test}
+  "psq" { >= "0.2.0" }
 ]
 build: [
   ["rm" "-r" "vendors"]
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
-synopsis: "Tezos: meta-package and pervasive type definitions for Tezos"
+synopsis: "Tezos: mocking overlay for time, shared machinery"

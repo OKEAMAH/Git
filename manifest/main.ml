@@ -172,7 +172,7 @@ let lwt_watcher = external_lib "lwt-watcher" V.(exactly "0.2")
 
 let mtime = external_lib ~js_compatible:true "mtime" V.(at_least "1.0.0")
 
-let mtime_clock_os = external_sublib mtime "mtime.clock.os"
+let mtime_clock_os = external_sublib ~js_compatible:true mtime "mtime.clock.os"
 
 let ocaml_migrate_parsetree = external_lib "ocaml-migrate-parsetree" V.True
 
@@ -226,6 +226,8 @@ let prometheus = external_lib "prometheus" V.True
 let prometheus_app = external_lib "prometheus-app" V.True
 
 let prometheus_app_unix = external_sublib prometheus_app "prometheus-app.unix"
+
+let psq = external_lib ~js_compatible:true "psq" V.(at_least "0.2.0")
 
 let pyml = external_lib "pyml" V.True
 
@@ -765,6 +767,77 @@ let tezos_event_logging_test_helpers =
     ~linkall:true
     ~bisect_ppx:false
 
+module Shims = struct
+  (* shared between tezos-time-shims and tezos-unix-shims *)
+  let tezos_shims_shared =
+    public_lib
+      "tezos-shims-shared"
+      ~path:"src/lib_shims/shared"
+      ~synopsis:"Tezos: mocking overlay for time, shared machinery"
+      ~deps:[lwt; psq]
+      ~js_compatible:true
+
+  module Time = struct
+    let shims =
+      public_lib
+        "tezos-time-shims"
+        ~path:"src/lib_shims/time"
+        ~synopsis:"Tezos: mocking overlay over ptime_clock and mtime_clock"
+        ~deps:[ptime; ptime_clock_os; mtime; mtime_clock_os]
+        ~js_compatible:true
+        ~virtual_modules:["tezos_time_shims"]
+        ~default_implementation:"tezos-time-shims.real"
+
+    let _tezos_time_shims_mocked =
+      public_lib
+        "tezos-time-shims.mocked"
+        ~path:"src/lib_shims/time/mocked"
+        ~opam:"tezos-time-shims"
+        ~deps:[tezos_shims_shared; ptime_clock_os; mtime_clock_os]
+        ~js_compatible:true
+        ~implements:shims
+
+    let _tezos_time_shims_real =
+      public_lib
+        "tezos-time-shims.real"
+        ~path:"src/lib_shims/time/real"
+        ~opam:"tezos-time-shims"
+        ~deps:[ptime_clock_os; mtime_clock_os]
+        ~js_compatible:true
+        ~implements:shims
+  end
+
+  module Unix = struct
+    let shims =
+      public_lib
+        "tezos-unix-shims"
+        ~path:"src/lib_shims/unix"
+        ~synopsis:"Tezos: mocking overlay over Lwt_unix"
+        ~deps:[lwt_unix]
+        ~js_compatible:false
+        ~virtual_modules:["tezos_unix_shims"]
+        ~default_implementation:"tezos-unix-shims.real"
+
+    let _tezos_unix_shims_mocked =
+      public_lib
+        "tezos-unix-shims.mocked"
+        ~path:"src/lib_shims/unix/mocked"
+        ~opam:"tezos-unix-shims"
+        ~deps:[lwt_unix; tezos_shims_shared]
+        ~js_compatible:false
+        ~implements:shims
+
+    let _tezos_unix_shims_real =
+      public_lib
+        "tezos-unix-shims.real"
+        ~path:"src/lib_shims/unix/real"
+        ~opam:"tezos-unix-shims"
+        ~deps:[lwt_unix]
+        ~js_compatible:false
+        ~implements:shims
+  end
+end
+
 let tezos_stdlib_unix =
   public_lib
     "tezos-stdlib-unix"
@@ -780,13 +853,13 @@ let tezos_stdlib_unix =
         tezos_event_logging |> open_;
         tezos_stdlib |> open_;
         data_encoding |> open_;
-        lwt_unix;
+        Shims.Unix.shims |> open_;
+        Shims.Time.shims |> open_;
         ipaddr_unix;
         re;
         ezjsonm;
         ptime;
         mtime;
-        mtime_clock_os;
         lwt_log;
         conf_libev;
       ]
@@ -878,7 +951,7 @@ let tezos_base =
         tezos_micheline |> open_;
         tezos_event_logging |> open_;
         ptime;
-        ptime_clock_os;
+        Shims.Time.shims |> open_;
         ezjsonm;
         lwt;
         ipaddr;
