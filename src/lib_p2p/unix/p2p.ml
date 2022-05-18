@@ -24,49 +24,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open P2p_config
 module Events = P2p_events.P2p
 
-type config = {
-  listening_port : P2p_addr.port option;
-  listening_addr : P2p_addr.t option;
-  advertised_port : P2p_addr.port option;
-  discovery_port : P2p_addr.port option;
-  discovery_addr : Ipaddr.V4.t option;
-  trusted_points : (P2p_point.Id.t * P2p_peer.Id.t option) list;
-  peers_file : string;
-  private_mode : bool;
-  identity : P2p_identity.t;
-  proof_of_work_target : Crypto_box.pow_target;
-  trust_discovered_peers : bool;
-  reconnection_config : P2p_point_state.Info.reconnection_config;
-}
+type config = P2p_config.config
 
-type limits = {
-  connection_timeout : Time.System.Span.t;
-  authentication_timeout : Time.System.Span.t;
-  greylist_timeout : Time.System.Span.t;
-  maintenance_idle_time : Time.System.Span.t;
-  min_connections : int;
-  expected_connections : int;
-  max_connections : int;
-  backlog : int;
-  max_incoming_connections : int;
-  max_download_speed : int option;
-  max_upload_speed : int option;
-  read_buffer_size : int;
-  read_queue_size : int option;
-  write_queue_size : int option;
-  incoming_app_message_queue_size : int option;
-  incoming_message_queue_size : int option;
-  outgoing_message_queue_size : int option;
-  max_known_peer_ids : (int * int) option;
-  max_known_points : (int * int) option;
-  peer_greylist_size : int;
-  ip_greylist_size_in_kilobytes : int;
-  ip_greylist_cleanup_delay : Time.System.Span.t;
-  swap_linger : Time.System.Span.t;
-  binary_chunks_size : int option;
-}
+type limits = P2p_config.limits
 
 let private_mode (c : config) = c.private_mode
 

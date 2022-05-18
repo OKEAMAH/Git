@@ -1179,7 +1179,7 @@ let tezos_p2p_shared =
         tezos_base |> open_ |> open_ ~m:"TzPervasives";
         tezos_shell_services |> open_;
       ]
-    ~modules:["p2p_params"; "p2p_message"; "p2p_point_state"]
+    ~modules:["p2p_params"; "p2p_message"; "p2p_point_state"; "p2p_config"]
 
 let tezos_p2p_unix =
   public_lib
@@ -1222,6 +1222,20 @@ let _tezos_p2p_real =
     ~path:"src/lib_p2p/real"
     ~opam:"tezos-p2p"
     ~deps:[tezos_p2p_shared |> open_; tezos_p2p_unix |> open_]
+    ~implements:tezos_p2p
+
+let _tezos_p2p_mocked =
+  public_lib
+    "tezos-p2p.mocked"
+    ~path:"src/lib_p2p/mocked"
+    ~opam:"tezos-p2p"
+    ~deps:
+      [
+        tezos_base |> open_ ~m:"TzPervasives";
+        tezos_p2p_shared |> open_;
+        tezos_p2p_unix |> open_;
+      ]
+    ~private_modules:["network"]
     ~implements:tezos_p2p
 
 let _tezos_p2p_tests =

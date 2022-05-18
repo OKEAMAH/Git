@@ -2,16 +2,17 @@
 ; Edit file manifest/main.ml instead.
 
 (library
- (name tezos_p2p_shared)
- (public_name tezos-p2p-shared)
+ (name tezos_p2p_mocked)
+ (public_name tezos-p2p.mocked)
+ (implements tezos-p2p)
  (instrumentation (backend bisect_ppx))
  (libraries
-  lwt-watcher
   tezos-base
-  tezos-shell-services)
+  tezos-p2p-shared
+  tezos-p2p-unix)
  (flags
   (:standard
-   -open Tezos_base
    -open Tezos_base.TzPervasives
-   -open Tezos_shell_services))
- (modules p2p_params p2p_message p2p_point_state p2p_config))
+   -open Tezos_p2p_shared
+   -open Tezos_p2p_unix))
+ (private_modules network))

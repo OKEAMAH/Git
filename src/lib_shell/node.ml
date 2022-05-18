@@ -91,7 +91,7 @@ let init_connection_metadata opt disable_mempool =
   let open Connection_metadata in
   match opt with
   | None -> {disable_mempool = false; private_node = false}
-  | Some c -> {disable_mempool; private_node = c.P2p.private_mode}
+  | Some c -> {disable_mempool; private_node = c.P2p_config.private_mode}
 
 let init_p2p chain_name p2p_params disable_mempool =
   let open Lwt_result_syntax in
