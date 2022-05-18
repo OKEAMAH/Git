@@ -61,22 +61,23 @@ module State = struct
 end
 
 let get_messages rollup operations =
-  let is_add_message = function
-    | Contents
-        (Manager_operation
-          {operation = Sc_rollup_add_messages {rollup = rollup'; messages}; _})
+  let apply (type kind) accu ~source:_ (operation : kind manager_operation)
+      _result =
+    match operation with
+    | Sc_rollup_add_messages {rollup = rollup'; messages}
       when Sc_rollup.Address.(rollup' = rollup) ->
-        messages
-    | _ -> []
+        messages :: accu
+    | _ -> accu
   in
-  let process_contents
-      ({protocol_data = Operation_data {contents; _}; _} :
-        Layer1_services.operation) =
-    let operations = Operation.to_list (Contents_list contents) in
-    List.concat_map is_add_message operations
+  let apply_internal (type kind) accu ~source:_
+      (_operation : kind Apply_results.internal_manager_operation) _result =
+    accu
   in
-  let process_operations = List.concat_map process_contents in
-  List.concat_map process_operations operations
+  Layer1_services.process_applied_operations
+    []
+    operations
+    {apply; apply_internal}
+  |> List.rev |> List.flatten
 
 let process_head (Node_context.{rollup_address; _} as node_ctxt) store
     Layer1.(Head {level; hash = head_hash} as head) operations =
