@@ -87,7 +87,7 @@ let get_sc_rollup_commitment_frequency_in_blocks client =
   |> JSON.as_int |> return
 
 let sc_rollup_node_rpc sc_node service =
-  let* curl = RPC.Curl.get () in
+  let* curl = Curl.get () in
   match curl with
   | None -> return None
   | Some curl ->

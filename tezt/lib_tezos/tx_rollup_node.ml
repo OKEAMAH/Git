@@ -366,7 +366,7 @@ end
 
 module Client = struct
   let raw_tx_node_rpc node ~url =
-    let* rpc = RPC.Curl.get () in
+    let* rpc = Curl.get () in
     match rpc with
     | None -> assert false
     | Some curl ->

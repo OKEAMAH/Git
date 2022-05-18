@@ -1067,14 +1067,3 @@ val raw_bytes :
   ?path:string list ->
   Client.t ->
   JSON.t Lwt.t
-
-module Curl : sig
-  (** [get ()] returns [Some curl] where [curl ~url] returns the raw response obtained
-      by curl when requesting [url]. Returns [None] if [curl] cannot be found. *)
-  val get : unit -> (url:string -> JSON.t Lwt.t) option Lwt.t
-
-  (** [post data] returns [Some curl] where [curl ~url data] returns the raw
-      response obtained by curl when posting the data to [url]. Returns [None] if
-      [curl] cannot be found. *)
-  val post : unit -> (url:string -> JSON.t -> JSON.t Lwt.t) option Lwt.t
-end
