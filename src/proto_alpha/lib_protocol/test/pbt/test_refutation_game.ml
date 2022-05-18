@@ -1057,6 +1057,8 @@ let pp_player ppf {pkh; contract = _; strategy; game_player} =
     strategy
     (if Game.player_equal game_player Alice then "Alice" else "Bob")
 
+let is_within_size_limits _ = true
+
 type player_client = {
   player : player;
   states : (Tick.t * State_hash.t) list;

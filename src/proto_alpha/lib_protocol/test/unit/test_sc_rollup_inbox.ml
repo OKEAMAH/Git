@@ -706,6 +706,7 @@ let tests =
       gen_inclusion_proof_inputs
       test_inclusion_proof_production;
     Tztest.tztest_qcheck2
+      ~count:10
       ~name:"Verify inclusion proofs."
       gen_inclusion_proof_inputs
       test_inclusion_proof_verification;

@@ -1105,6 +1105,10 @@ module Make (Context : P) :
 
   type error += Arith_proof_production_failed
 
+  let proof_length proof =
+    Bytes.length
+    @@ Data_encoding.Binary.to_bytes_exn Context.proof_encoding proof
+
   let produce_proof context input_given state =
     let open Lwt_result_syntax in
     let*! result =
@@ -1112,7 +1116,11 @@ module Make (Context : P) :
     in
     match result with
     | Some (tree_proof, requested) ->
-        return {tree_proof; given = input_given; requested}
+        if
+          Compare.Int.(
+            proof_length tree_proof < Constants_repr.sc_rollup_max_proof_size)
+        then return {tree_proof; given = input_given; requested}
+        else failwith "Proof is too long"
     | None -> fail Arith_proof_production_failed
 
   let verify_origination_proof proof boot_sector =
@@ -1138,7 +1146,11 @@ module Make (Context : P) :
     in
     match result with
     | Some (tree_proof, ()) ->
-        return {tree_proof; given = None; requested = No_input_required}
+        if
+          Compare.Int.(
+            proof_length tree_proof < Constants_repr.sc_rollup_max_proof_size)
+        then return {tree_proof; given = None; requested = No_input_required}
+        else failwith "Origination proof is too long"
     | None -> fail Arith_proof_production_failed
 
   (* TEMPORARY: The following definitions will be extended in a future commit. *)
@@ -1190,7 +1202,11 @@ module Make (Context : P) :
     in
     match result with
     | Some (output_proof, true) ->
-        return {output_proof; output_proof_state; output_proof_output}
+        if
+          Compare.Int.(
+            proof_length output_proof < Constants_repr.sc_rollup_max_proof_size)
+        then return {output_proof; output_proof_state; output_proof_output}
+        else failwith "Output proof is too long"
     | Some (_, false) -> fail Arith_invalid_claim_about_outbox
     | None -> fail Arith_output_proof_production_failed
 

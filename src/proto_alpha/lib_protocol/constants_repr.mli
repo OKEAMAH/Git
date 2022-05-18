@@ -82,6 +82,10 @@ val sc_max_wrapped_proof_binary_size : int
 *)
 val sc_rollup_message_size_limit : int
 
+(** Alimit on the size of a proof. This should prevent accidentally 
+    produce/consume too large proofs.*)
+val sc_rollup_max_proof_size : int
+
 type fixed
 
 val fixed_encoding : fixed Data_encoding.encoding

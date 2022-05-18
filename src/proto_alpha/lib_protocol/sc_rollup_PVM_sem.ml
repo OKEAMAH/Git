@@ -154,6 +154,8 @@ module type S = sig
 
   val proof_encoding : proof Data_encoding.t
 
+  (** [proof_start_state proof] returns the initial state hash of the
+     [proof] execution step. *)
   val proof_start_state : proof -> hash
 
   val proof_stop_state : proof -> hash option

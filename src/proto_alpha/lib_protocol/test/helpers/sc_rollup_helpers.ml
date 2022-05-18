@@ -56,6 +56,13 @@ module In_memory_context = struct
   let verify_proof p f =
     Lwt.map Result.to_option (Context.verify_tree_proof p f)
 
+  let proof_encoding =
+    Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V1.Tree32
+    .tree_proof_encoding
+
+  let proof_length proof =
+    Bytes.length @@ Data_encoding.Binary.to_bytes_exn proof_encoding proof
+
   let produce_proof context state step =
     let open Lwt_syntax in
     let* context = Context.add_tree context [] state in
@@ -65,8 +72,13 @@ module In_memory_context = struct
     match Tree.kinded_key state with
     | Some k ->
         let index = Context.index context in
-        let* p = Context.produce_tree_proof index k step in
-        return (Some p)
+        let* ((proof, _) as p) = Context.produce_tree_proof index k step in
+
+        if
+          Compare.Int.(
+            proof_length proof < Constants_repr.sc_rollup_max_proof_size)
+        then return (Some p)
+        else return None
     | None -> return None
 
   let kinded_hash_to_state_hash = function
@@ -80,6 +92,12 @@ module In_memory_context = struct
   let proof_encoding =
     Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V2.Tree32
     .tree_proof_encoding
+
+  let is_within_size_limits proof =
+    let encoded_proof =
+      Data_encoding.Binary.to_bytes_exn proof_encoding proof
+    in
+    Compare.Int.(Bytes.length encoded_proof < 1024)
 end
 
 module Arith_pvm :

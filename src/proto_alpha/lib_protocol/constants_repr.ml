@@ -91,6 +91,8 @@ let sc_max_wrapped_proof_binary_size = 30_000
 *)
 let sc_rollup_message_size_limit = 4_096
 
+let sc_rollup_max_proof_size = 1_024
+
 type fixed = unit
 
 let fixed_encoding =
