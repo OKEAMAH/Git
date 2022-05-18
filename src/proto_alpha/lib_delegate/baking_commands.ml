@@ -332,6 +332,21 @@ let per_block_vote_file_arg =
     ~placeholder:"filename"
     (Clic.parameter (fun _ s -> return s))
 
+(** [test_nonce nonce delegates] If nonce is Deterministic, check that all
+      signers for all delegates support determinsitic nonces. Else, just
+      return. *)
+let test_nonce (nonce : Baking_configuration.nonce_config option)
+    (delegates : Baking_state.delegate list) =
+  match nonce with
+  | None | Some Random -> return_unit
+  | Some (Deterministic _) ->
+      let data = Bytes.make 1 'c' in
+      List.iter_es
+        (fun (delegate : Baking_state.delegate) ->
+          Client_keys.deterministic_nonce delegate.secret_key_uri data
+          >|=? fun _ -> ())
+        delegates
+
 let baker_commands () : Protocol_client_context.full Clic.command list =
   let open Clic in
   let group =
@@ -382,6 +397,7 @@ let baker_commands () : Protocol_client_context.full Clic.command list =
         may_lock_pidfile pidfile @@ fun () ->
         get_delegates cctxt sources >>=? fun delegates ->
         let context_path = Filename.Infix.(node_data_path // "context") in
+        test_nonce nonce delegates >>=? fun () ->
         Client_daemon.Baker.run
           cctxt
           ~minimal_fees
