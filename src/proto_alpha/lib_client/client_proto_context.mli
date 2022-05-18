@@ -815,8 +815,58 @@ val sc_rollup_recover_bond :
   fee_parameter:Injection.fee_parameter ->
   sc_rollup:Sc_rollup.t ->
   unit ->
-  (Operation_hash.t
+  Operation_hash.t
   * Kind.sc_rollup_recover_bond Kind.manager contents
-  * Kind.sc_rollup_recover_bond Kind.manager Apply_results.contents_result)
+  * Kind.sc_rollup_recover_bond Kind.manager Apply_results.contents_result
+
+val sc_rollup_refute :
+  #Protocol_client_context.full ->
+  chain:Chain_services.chain ->
+  block:Block_services.block ->
+  ?confirmations:int ->
+  ?dry_run:bool ->
+  ?verbose_signing:bool ->
+  ?simulation:bool ->
+  ?fee:Tez.t ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:counter ->
+  ?counter:counter ->
+  source:public_key_hash ->
+  rollup:Alpha_context.Sc_rollup.t ->
+  refutation:Alpha_context.Sc_rollup.Game.refutation ->
+  opponent:Alpha_context.Sc_rollup.Staker.t ->
+  src_pk:public_key ->
+  src_sk:Client_keys.sk_uri ->
+  fee_parameter:Injection.fee_parameter ->
+  unit ->
+  (Operation_hash.t
+  * Kind.sc_rollup_refute Kind.manager contents
+  * Kind.sc_rollup_refute Kind.manager Apply_results.contents_result)
+  tzresult
+  Lwt.t
+
+val sc_rollup_timeout :
+  #Protocol_client_context.full ->
+  chain:Chain_services.chain ->
+  block:Block_services.block ->
+  ?confirmations:int ->
+  ?dry_run:bool ->
+  ?verbose_signing:bool ->
+  ?simulation:bool ->
+  ?fee:Tez.t ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:counter ->
+  ?counter:counter ->
+  source:public_key_hash ->
+  rollup:Alpha_context.Sc_rollup.t ->
+  alice:Alpha_context.Sc_rollup.Staker.t ->
+  bob:Alpha_context.Sc_rollup.Staker.t ->
+  src_pk:public_key ->
+  src_sk:Client_keys.sk_uri ->
+  fee_parameter:Injection.fee_parameter ->
+  unit ->
+  (Operation_hash.t
+  * Kind.sc_rollup_timeout Kind.manager contents
+  * Kind.sc_rollup_timeout Kind.manager Apply_results.contents_result)
   tzresult
   Lwt.t
