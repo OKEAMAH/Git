@@ -56,7 +56,7 @@ let init_with_tx_rollup ?additional_bootstrap_account_count
   in
   (* We originate a dumb rollup to be able to generate a paths for
      tx_rollups related RPCs. *)
-  let*! rollup =
+  let* rollup =
     Client.Tx_rollup.originate
       ~hooks
       ~src:Constant.bootstrap1.public_key_hash
@@ -321,6 +321,7 @@ module Regressions = struct
       let*? p =
         Client.Tx_rollup.submit_finalize_commitment ~hooks ~rollup ~src client
       in
+      let* p = p in
       let* () =
         Process.check_error ~msg:(rex "tx_rollup_no_commitment_to_finalize") p
       in
@@ -343,6 +344,7 @@ module Regressions = struct
       let*? p =
         submit_remove_commitment ~src:Constant.bootstrap2.public_key_hash state
       in
+      let* p = p in
       let* () =
         Process.check_error ~msg:(rex "tx_rollup_remove_commitment_too_early") p
       in
@@ -515,6 +517,7 @@ module Regressions = struct
           ~src:Constant.bootstrap1.public_key_hash
           state.client
       in
+      let* process = process in
       Process.check_error
         ~msg:
           (rex
@@ -594,7 +597,7 @@ module Regressions = struct
           ~src:Constant.bootstrap1.public_key_hash
           client
       in
-
+      let* process = process in
       let* () =
         Process.check_error
           ~exit_code:1
@@ -620,6 +623,7 @@ module Regressions = struct
       in
       let* () = Client.bake_for_and_wait client in
       let*? process = submit_finalize_commitment state in
+      let* process = process in
       Process.check_error
         ~exit_code:1
         ~msg:(rex "proto.alpha.tx_rollup_no_commitment_to_finalize")
@@ -640,6 +644,7 @@ module Regressions = struct
       let* () = submit_batch ~batch state in
       let* () = Client.bake_for_and_wait client in
       let*? process = submit_finalize_commitment state in
+      let* process = process in
       Process.check_error
         ~exit_code:1
         ~msg:(rex "proto.alpha.tx_rollup_no_commitment_to_finalize")
@@ -662,6 +667,7 @@ module Regressions = struct
       let* () = submit_batch ~batch state in
       let* () = Client.bake_for_and_wait client in
       let*? process = submit_finalize_commitment state in
+      let* process = process in
       Process.check_error
         ~exit_code:1
         ~msg:(rex "proto.alpha.tx_rollup_no_commitment_to_finalize")
@@ -691,6 +697,7 @@ module Regressions = struct
       in
       let* () = Client.bake_for_and_wait client in
       let*? process = submit_finalize_commitment state in
+      let* process = process in
       Process.check_error
         ~exit_code:1
         ~msg:(rex "proto.alpha.tx_rollup_no_commitment_to_finalize")
@@ -762,7 +769,7 @@ let test_submit_batches_in_several_blocks =
   let* node, client =
     Client.init_with_protocol ~parameter_file `Client ~protocol ()
   in
-  let*! rollup =
+  let* rollup =
     Client.Tx_rollup.originate
       ~hooks
       ~src:Constant.bootstrap1.public_key_hash
@@ -867,7 +874,7 @@ let test_submit_from_originated_source =
   in
   let* () = Client.bake_for_and_wait client in
   (* We originate a tx_rollup using an implicit account *)
-  let*! rollup =
+  let* rollup =
     Client.Tx_rollup.originate ~src:Constant.bootstrap1.public_key_hash client
   in
   let* () = Client.bake_for_and_wait client in
@@ -881,6 +888,7 @@ let test_submit_from_originated_source =
       ~src:originated_contract
       client
   in
+  let* process = process in
   let* () =
     Process.check_error
       ~exit_code:1
@@ -957,6 +965,7 @@ let test_rollup_with_two_commitments =
     ~error_msg:"The second operation status expected is %R. Got %L" ;
   (* We try to finalize a new commitment but it fails. *)
   let*? process = submit_finalize_commitment state in
+  let* process = process in
   let* () =
     Process.check_error
       ~exit_code:1
@@ -1238,6 +1247,7 @@ let test_rollup_wrong_rejection =
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list_hash
       state
   in
+  let* process = process in
   let* () =
     Process.check_error
       ~msg:(rex "proto.alpha.tx_rollup_proof_failed_to_reject")
@@ -1296,6 +1306,7 @@ let test_rollup_wrong_path_for_rejection =
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list_hash
       state
   in
+  let* process = process in
   let* () =
     Process.check_error
       ~msg:(rex "proto.alpha.tx_rollup_wrong_message_path")
@@ -1363,6 +1374,7 @@ let test_rollup_wrong_rejection_long_path =
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list_hash
       state
   in
+  let* process = process in
   let* () =
     Process.check_error
       ~msg:(rex "proto.alpha.tx_rollup_wrong_message_path_depth")
@@ -1384,6 +1396,7 @@ let test_rollup_wrong_rejection_long_path =
       ~withdraw_list_hash:Constant.tx_rollup_empty_withdraw_list_hash
       state
   in
+  let* process = process in
   Process.check_error
     ~msg:(rex "proto.alpha.tx_rollup_wrong_message_path")
     process

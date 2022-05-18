@@ -227,7 +227,7 @@ let test_node_configuration =
       in
       let operator = Constant.bootstrap1.public_key_hash in
       (* Originate a rollup with a given operator *)
-      let*! tx_rollup_hash = Client.Tx_rollup.originate ~src:operator client in
+      let* tx_rollup_hash = Client.Tx_rollup.originate ~src:operator client in
       let* () =
         Rollup_node.create Operator ~rollup_id:tx_rollup_hash client node
         |> Rollup_node.spawn_init_config
@@ -263,7 +263,7 @@ let init_and_run_rollup_node ~originator ?operator ?batch_signer
     ?finalize_commitment_signer ?remove_commitment_signer
     ?dispatch_withdrawals_signer ?rejection_signer
     ?(allow_deposit = operator <> None) ?(bake_origination = true) node client =
-  let*! tx_rollup_hash = Client.Tx_rollup.originate ~src:originator client in
+  let* tx_rollup_hash = Client.Tx_rollup.originate ~src:originator client in
   let* () =
     if bake_origination then Client.bake_for_and_wait client else unit
   in
@@ -317,9 +317,7 @@ let test_not_allow_deposit =
       in
       let originator = Constant.bootstrap1.public_key_hash in
       let operator = Constant.bootstrap2.public_key_hash in
-      let*! tx_rollup_hash =
-        Client.Tx_rollup.originate ~src:originator client
-      in
+      let* tx_rollup_hash = Client.Tx_rollup.originate ~src:originator client in
       let* () = Client.bake_for_and_wait client in
       Log.info "Tx_rollup %s was successfully originated" tx_rollup_hash ;
       let tx_node =
@@ -414,7 +412,7 @@ let test_tx_node_store_inbox =
         Client.init_with_protocol ~parameter_file `Client ~protocol ()
       in
       let operator = Constant.bootstrap1.public_key_hash in
-      let*! rollup = Client.Tx_rollup.originate ~src:operator client in
+      let* rollup = Client.Tx_rollup.originate ~src:operator client in
       let* () = Client.bake_for_and_wait client in
       let tx_node =
         Rollup_node.create
@@ -506,7 +504,7 @@ let test_node_cannot_connect =
   in
   let originator = Constant.bootstrap1.public_key_hash in
   Log.info "Originate rollup" ;
-  let*! rollup_id = Client.Tx_rollup.originate ~src:originator client in
+  let* rollup_id = Client.Tx_rollup.originate ~src:originator client in
   let* () = Client.bake_for_and_wait client in
   Log.info "Stopping Tezos node" ;
   let* () = Node.terminate node in
@@ -1767,6 +1765,7 @@ let test_l2_proof_rpc_position =
           ~agreed_message_result_path
           client
       in
+      let* process = process in
       let* () =
         Process.check_error
           ~msg:(rex "proto.alpha.tx_rollup_proof_produced_rejected_state")
@@ -1808,6 +1807,7 @@ let test_l2_proof_rpc_position =
           ~agreed_message_result_path
           client
       in
+      let* process = process in
       let* () =
         Process.check_error
           ~msg:(rex "proto.alpha.tx_rollup_proof_produced_rejected_state")
@@ -2682,7 +2682,7 @@ let test_origination_deposit_same_block =
         contract_id ;
       let originator = Constant.bootstrap1.public_key_hash in
       Log.info "Originating rollup" ;
-      let*! tx_rollup_hash =
+      let* tx_rollup_hash =
         Client.Tx_rollup.originate
           ~fee:(Tez.of_int 100)
             (* High fee to ensure the origination appears in the block before the
