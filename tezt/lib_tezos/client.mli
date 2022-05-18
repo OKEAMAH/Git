@@ -211,6 +211,7 @@ val spawn_bake_for :
 
     Default [key] is {!Constant.bootstrap1.alias}. *)
 val endorse_for :
+  ?monitor_mempool:bool ->
   ?endpoint:endpoint ->
   ?protocol:Protocol.t ->
   ?key:string list ->
@@ -231,6 +232,7 @@ val spawn_endorse_for :
 
     Default [key] is {!Constant.bootstrap1.alias}. *)
 val preendorse_for :
+  ?monitor_mempool:bool ->
   ?endpoint:endpoint ->
   ?protocol:Protocol.t ->
   ?key:string list ->
@@ -264,6 +266,7 @@ val spawn_propose_for :
 
 (** [propose_for] *)
 val propose_for :
+  ?monitor_mempool:bool ->
   ?endpoint:endpoint ->
   ?minimal_timestamp:bool ->
   ?protocol:Protocol.t ->
@@ -351,6 +354,7 @@ val bls_import_secret_key :
 
 (** Run [tezos-client transfer amount from giver to receiver]. *)
 val transfer :
+  ?monitor_mempool:bool ->
   ?hooks:Process.hooks ->
   ?log_output:bool ->
   ?endpoint:endpoint ->
@@ -392,6 +396,7 @@ val spawn_transfer :
 
 (** Run [tezos-client multiple transfers from giver using json_batch]. *)
 val multiple_transfers :
+  ?monitor_mempool:bool ->
   ?log_output:bool ->
   ?endpoint:endpoint ->
   ?wait:string ->
@@ -451,7 +456,12 @@ val reveal :
 
 (** Run [tezos-client withdraw delegate from <src>]. *)
 val withdraw_delegate :
-  ?endpoint:endpoint -> ?wait:string -> src:string -> t -> unit Lwt.t
+  ?monitor_mempool:bool ->
+  ?endpoint:endpoint ->
+  ?wait:string ->
+  src:string ->
+  t ->
+  unit Lwt.t
 
 (** Same as [withdraw_delegate], but do not wait for the process to exit. *)
 val spawn_withdraw_delegate :
@@ -487,6 +497,8 @@ val spawn_create_mockup :
 
     Default [key] is {!Constant.bootstrap1.alias}. *)
 val submit_proposals :
+  ?monitor_mempool:bool ->
+  ?endpoint:endpoint ->
   ?key:string ->
   ?wait:string ->
   ?proto_hash:string ->
@@ -496,6 +508,7 @@ val submit_proposals :
 
 (** Same as [submit_proposals], but do not wait for the process to exit. *)
 val spawn_submit_proposals :
+  ?endpoint:endpoint ->
   ?key:string ->
   ?wait:string ->
   ?proto_hash:string ->
@@ -509,14 +522,28 @@ type ballot = Nay | Pass | Yay
 
     Default [key] is {!Constant.bootstrap1.alias}. *)
 val submit_ballot :
-  ?key:string -> ?wait:string -> proto_hash:string -> ballot -> t -> unit Lwt.t
+  ?monitor_mempool:bool ->
+  ?endpoint:endpoint ->
+  ?key:string ->
+  ?wait:string ->
+  proto_hash:string ->
+  ballot ->
+  t ->
+  unit Lwt.t
 
 (** Same as [submit_ballot], but do not wait for the process to exit. *)
 val spawn_submit_ballot :
-  ?key:string -> ?wait:string -> proto_hash:string -> ballot -> t -> Process.t
+  ?endpoint:endpoint ->
+  ?key:string ->
+  ?wait:string ->
+  proto_hash:string ->
+  vote:ballot ->
+  t ->
+  Process.t
 
 (** Run [tezos-client set deposits limit for <src> to <limit>] *)
 val set_deposits_limit :
+  ?monitor_mempool:bool ->
   ?hooks:Process.hooks ->
   ?endpoint:endpoint ->
   ?wait:string ->
@@ -527,6 +554,7 @@ val set_deposits_limit :
 
 (** Run [tezos-client unset deposits limit for <src>] *)
 val unset_deposits_limit :
+  ?monitor_mempool:bool ->
   ?hooks:Process.hooks ->
   ?endpoint:endpoint ->
   ?wait:string ->
@@ -542,6 +570,7 @@ val unset_deposits_limit :
 (** Run [tezos-client originate contract alias transferring amount from src
     running prg]. Returns the originated contract hash *)
 val originate_contract :
+  ?monitor_mempool:bool ->
   ?hooks:Process.hooks ->
   ?log_output:bool ->
   ?endpoint:endpoint ->
@@ -698,6 +727,8 @@ val spawn_run_script :
 (** Run [tezos-client register global constant value from src].
     Returns the address hash of the new constant. *)
 val register_global_constant :
+  ?monitor_mempool:bool ->
+  ?endpoint:endpoint ->
   ?wait:string ->
   ?burn_cap:Tez.t ->
   src:string ->
@@ -707,6 +738,7 @@ val register_global_constant :
 
 (** Same as [register_global_constant] but do not wait for the process to exit. *)
 val spawn_register_global_constant :
+  ?endpoint:endpoint ->
   ?wait:string ->
   ?burn_cap:Tez.t ->
   value:string ->
@@ -856,6 +888,8 @@ val spawn_sign_block : t -> string -> delegate:string -> Process.t
 module Tx_rollup : sig
   (** Run [tezos-client originate tx rollup from <src>]. *)
   val originate :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?storage_limit:int ->
@@ -863,10 +897,12 @@ module Tx_rollup : sig
     ?hooks:Process.hooks ->
     src:string ->
     t ->
-    string Runnable.process
+    string Lwt.t
 
   (** Run [tezos-client submit tx rollup batch <batch_content> to <tx_rollup> from <src>]. *)
   val submit_batch :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?storage_limit:int ->
@@ -877,10 +913,12 @@ module Tx_rollup : sig
     rollup:string ->
     src:string ->
     t ->
-    unit Runnable.process
+    (Process.t Lwt.t, unit) Runnable.t
 
   (** Run [tezos-client submit tx rollup commitment <content> to <tx_rollup> from <src>]. *)
   val submit_commitment :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?storage_limit:int ->
@@ -892,10 +930,12 @@ module Tx_rollup : sig
     rollup:string ->
     src:string ->
     t ->
-    unit Runnable.process
+    (Process.t Lwt.t, unit) Runnable.t
 
   (** Run [tezos-client submit tx rollup finalize commitment to <tx_rollup> from <src>]. *)
   val submit_finalize_commitment :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?storage_limit:int ->
@@ -903,10 +943,12 @@ module Tx_rollup : sig
     rollup:string ->
     src:string ->
     t ->
-    unit Runnable.process
+    (Process.t Lwt.t, unit) Runnable.t
 
   (** Run [tezos-client submit tx rollup remove commitment to <tx_rollup> from <src>]. *)
   val submit_remove_commitment :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?storage_limit:int ->
@@ -914,13 +956,15 @@ module Tx_rollup : sig
     rollup:string ->
     src:string ->
     t ->
-    unit Runnable.process
+    (Process.t Lwt.t, unit) Runnable.t
 
   (** Run [tezos-client submit tx rollup rejection commitment at level
      <level> message <message> at <position> with <proof> with agreed
      context hash <context_hash> and withdraw list
      <withdraw_list_hash> to <tx_rollup> from <src>]. *)
   val submit_rejection :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?storage_limit:int ->
@@ -938,10 +982,12 @@ module Tx_rollup : sig
     rollup:string ->
     src:string ->
     t ->
-    unit Runnable.process
+    (Process.t Lwt.t, unit) Runnable.t
 
   (** Run [tezos-client submit tx rollup return bond to <tx_rollup> from <src>]. *)
   val submit_return_bond :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?storage_limit:int ->
@@ -949,9 +995,11 @@ module Tx_rollup : sig
     rollup:string ->
     src:string ->
     t ->
-    unit Runnable.process
+    (Process.t Lwt.t, unit) Runnable.t
 
   val dispatch_tickets :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?storage_limit:int ->
@@ -964,9 +1012,11 @@ module Tx_rollup : sig
     message_result_path:string ->
     ticket_dispatch_info_data_list:string list ->
     t ->
-    unit Runnable.process
+    (Process.t Lwt.t, unit) Runnable.t
 
   val transfer_tickets :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     ?hooks:Process.hooks ->
@@ -978,7 +1028,7 @@ module Tx_rollup : sig
     ty:string ->
     ticketer:string ->
     t ->
-    unit Runnable.process
+    (Process.t Lwt.t, unit) Runnable.t
 end
 
 (** Run [tezos-client show voting period] and return the period name. *)
@@ -990,6 +1040,8 @@ val spawn_show_voting_period : ?endpoint:endpoint -> t -> Process.t
 module Sc_rollup : sig
   (** Run [tezos-client originate sc rollup from <src> of kind <kind> booting with <boot_sector>]. *)
   val originate :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?hooks:Process.hooks ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
@@ -1001,6 +1053,7 @@ module Sc_rollup : sig
 
   (** Same as [originate], but do not wait for the process to exit. *)
   val spawn_originate :
+    ?endpoint:endpoint ->
     ?hooks:Process.hooks ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
@@ -1012,6 +1065,8 @@ module Sc_rollup : sig
 
   (** Run [tezos-client send rollup message <msg> from <src> to <dst>]. *)
   val send_message :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?hooks:Process.hooks ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
@@ -1023,6 +1078,7 @@ module Sc_rollup : sig
 
   (** Same as [send_message], but do not wait for the process to exit. *)
   val spawn_send_message :
+    ?endpoint:endpoint ->
     ?hooks:Process.hooks ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
@@ -1034,6 +1090,8 @@ module Sc_rollup : sig
 
   (** Run [tezos-client cemment commitment <hash> from <src> for sc rollup <rollup>]. *)
   val cement_commitment :
+    ?monitor_mempool:bool ->
+    ?endpoint:endpoint ->
     ?hooks:Process.hooks ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
@@ -1045,6 +1103,7 @@ module Sc_rollup : sig
 
   (** Same as [cement_commitment], but do not wait for the process to exit. *)
   val spawn_cement_commitment :
+    ?endpoint:endpoint ->
     ?hooks:Process.hooks ->
     ?wait:string ->
     ?burn_cap:Tez.t ->

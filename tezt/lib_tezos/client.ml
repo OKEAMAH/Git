@@ -41,6 +41,98 @@ let optional_switch ~name = function false -> [] | true -> ["--" ^ name]
 
 let optional_arg ~name f = function None -> [] | Some x -> ["--" ^ name; f x]
 
+let wait_monitor_operation ?endpoint operation_hash_promise (client : t) =
+  let promise, resolver = Lwt.task () in
+  let* () =
+    RPC.Monitor.operations
+      ?endpoint
+      ~applied:true
+      ~refused:true
+      ~branch_delayed:true
+      ~outdated:true
+      ~branch_refused:true
+      client
+    @@ fun json ->
+    let mempool = JSON.as_list json in
+    let* expected_operation_hash = operation_hash_promise in
+    match
+      List.find_opt
+        (fun op ->
+          let operation_hash = JSON.(op |-> "hash" |> as_string) in
+          operation_hash = expected_operation_hash)
+        mempool
+    with
+    | None -> return `Continue
+    | Some op ->
+        let error = JSON.(op |-> "error") in
+        if not (JSON.is_null error) then (
+          Lwt.cancel promise ;
+          Test.fail
+            "Operation %s is in mempool with error: %s"
+            expected_operation_hash
+            (JSON.encode error))
+        else (
+          Lwt.wakeup_later resolver op ;
+          return `Stop)
+  in
+  promise
+
+let with_monitor_injection ?(timeout = 10) ?endpoint (client : t) spawn_inject =
+  let oph_promise, oph_resolver = Lwt.task () in
+  let monitor =
+    let* _ = wait_monitor_operation ?endpoint oph_promise client in
+    return `Found_operation
+  in
+  let process = spawn_inject ?endpoint client in
+  let* client_output = Process.check_and_read_stdout process in
+  match client_output =~* rex "Operation hash is '(.*)'" with
+  | None ->
+      Test.fail
+        "Cannot extract operation hash from client_output: %s"
+        client_output
+  | Some oph -> (
+      Lwt.wakeup_later oph_resolver oph ;
+      let timeout_promise =
+        let* () = Lwt_unix.sleep (float_of_int timeout) in
+        return `Timeout
+      in
+      let* result = Lwt.pick [monitor; timeout_promise] in
+      match result with
+      | `Timeout ->
+          Test.fail
+            "Operation %s was not seen in mempool after %d seconds"
+            oph
+            timeout
+      | `Found_operation -> return (process, client_output))
+
+let check_injection ?(monitor_mempool = true) ?(expect_failure = false) ?timeout
+    ?endpoint (client : t) spawn_inject =
+  if expect_failure || not monitor_mempool then
+    spawn_inject ?endpoint client |> Process.check ~expect_failure
+  else
+    let* _ = with_monitor_injection ?timeout ?endpoint client spawn_inject in
+    unit
+
+let check_injection_output ?(monitor_mempool = true) ?(expect_failure = false)
+    ?timeout ?endpoint (client : t) spawn_inject =
+  if expect_failure || not monitor_mempool then
+    spawn_inject ?endpoint client
+    |> Process.check_and_read_stdout ~expect_failure
+  else
+    let* _, output =
+      with_monitor_injection ?timeout ?endpoint client spawn_inject
+    in
+    return output
+
+let check_injection_process ?(monitor_mempool = true) ?timeout ?endpoint
+    (client : t) spawn_inject =
+  if not monitor_mempool then return (spawn_inject ?endpoint client)
+  else
+    let* process, _ =
+      with_monitor_injection ?timeout ?endpoint client spawn_inject
+    in
+    return process
+
 let spawn_shell_header ?endpoint ?(chain = "main") ?(block = "head") client =
   let path = ["chains"; chain; "blocks"; block; "header"; "shell"] in
   spawn_rpc ?endpoint GET path client
@@ -338,16 +430,18 @@ let spawn_propose_for ?endpoint ?minimal_timestamp ?protocol ?key ?force client
     ?force
     client
 
-let endorse_for ?endpoint ?protocol ?key ?force client =
-  spawn_endorse_for ?endpoint ?protocol ?key ?force client |> Process.check
+let endorse_for ?monitor_mempool ?endpoint ?protocol ?key ?force client =
+  check_injection ?monitor_mempool ?endpoint client
+  @@ spawn_endorse_for ?protocol ?key ?force
 
-let preendorse_for ?endpoint ?protocol ?key ?force client =
-  spawn_preendorse_for ?endpoint ?protocol ?key ?force client |> Process.check
+let preendorse_for ?monitor_mempool ?endpoint ?protocol ?key ?force client =
+  check_injection ?monitor_mempool ?endpoint client
+  @@ spawn_preendorse_for ?protocol ?key ?force
 
-let propose_for ?endpoint ?(minimal_timestamp = true) ?protocol ?key ?force
-    client =
-  spawn_propose_for ?endpoint ?protocol ?key ?force ~minimal_timestamp client
-  |> Process.check
+let propose_for ?monitor_mempool ?endpoint ?(minimal_timestamp = true) ?protocol
+    ?key ?force client =
+  check_injection ?monitor_mempool ?endpoint client
+  @@ spawn_propose_for ?protocol ?key ?force ~minimal_timestamp
 
 let id = ref 0
 
@@ -468,27 +562,25 @@ let spawn_transfer ?hooks ?log_output ?endpoint ?(wait = "none") ?burn_cap ?fee
     @ (if simulation then ["--simulation"] else [])
     @ if force then ["--force"] else [])
 
-let transfer ?hooks ?log_output ?endpoint ?wait ?burn_cap ?fee ?gas_limit
-    ?storage_limit ?counter ?arg ?simulation ?force ?expect_failure ~amount
-    ~giver ~receiver client =
-  spawn_transfer
-    ?log_output
-    ?endpoint
-    ?hooks
-    ?wait
-    ?burn_cap
-    ?fee
-    ?gas_limit
-    ?storage_limit
-    ?counter
-    ?arg
-    ?simulation
-    ?force
-    ~amount
-    ~giver
-    ~receiver
-    client
-  |> Process.check ?expect_failure
+let transfer ?monitor_mempool ?hooks ?log_output ?endpoint ?wait ?burn_cap ?fee
+    ?gas_limit ?storage_limit ?counter ?arg ?simulation ?force ?expect_failure
+    ~amount ~giver ~receiver client =
+  check_injection ?monitor_mempool ?endpoint ?expect_failure client
+  @@ spawn_transfer
+       ?log_output
+       ?hooks
+       ?wait
+       ?burn_cap
+       ?fee
+       ?gas_limit
+       ?storage_limit
+       ?counter
+       ?arg
+       ?simulation
+       ?force
+       ~amount
+       ~giver
+       ~receiver
 
 let spawn_multiple_transfers ?log_output ?endpoint ?(wait = "none") ?burn_cap
     ?fee_cap ?gas_limit ?storage_limit ?counter ?arg ~giver ~json_batch client =
@@ -508,22 +600,20 @@ let spawn_multiple_transfers ?log_output ?endpoint ?(wait = "none") ?burn_cap
     @ optional_arg ~name:"counter" string_of_int counter
     @ optional_arg ~name:"arg" Fun.id arg)
 
-let multiple_transfers ?log_output ?endpoint ?wait ?burn_cap ?fee_cap ?gas_limit
-    ?storage_limit ?counter ?arg ~giver ~json_batch client =
-  spawn_multiple_transfers
-    ?log_output
-    ?endpoint
-    ?wait
-    ?burn_cap
-    ?fee_cap
-    ?gas_limit
-    ?storage_limit
-    ?counter
-    ?arg
-    ~giver
-    ~json_batch
-    client
-  |> Process.check
+let multiple_transfers ?monitor_mempool ?log_output ?endpoint ?wait ?burn_cap
+    ?fee_cap ?gas_limit ?storage_limit ?counter ?arg ~giver ~json_batch client =
+  check_injection ?monitor_mempool ?endpoint client
+  @@ spawn_multiple_transfers
+       ?log_output
+       ?wait
+       ?burn_cap
+       ?fee_cap
+       ?gas_limit
+       ?storage_limit
+       ?counter
+       ?arg
+       ~giver
+       ~json_batch
 
 let spawn_get_delegate ?endpoint ~src client =
   spawn_command ?endpoint client ["get"; "delegate"; "for"; src]
@@ -568,8 +658,9 @@ let spawn_withdraw_delegate ?endpoint ?(wait = "none") ~src client =
     client
     (["--wait"; wait] @ ["withdraw"; "delegate"; "for"; src])
 
-let withdraw_delegate ?endpoint ?wait ~src client =
-  spawn_withdraw_delegate ?endpoint ?wait ~src client |> Process.check
+let withdraw_delegate ?monitor_mempool ?endpoint ?wait ~src client =
+  check_injection ?monitor_mempool ?endpoint client
+  @@ spawn_withdraw_delegate ?wait ~src
 
 let spawn_get_balance_for ?endpoint ~account client =
   spawn_command ?endpoint client ["get"; "balance"; "for"; account]
@@ -595,51 +686,60 @@ let create_mockup ?sync_mode ?parameter_file ~protocol client =
   spawn_create_mockup ?sync_mode ?parameter_file ~protocol client
   |> Process.check
 
-let spawn_submit_proposals ?(key = Constant.bootstrap1.alias) ?(wait = "none")
-    ?proto_hash ?(proto_hashes = []) client =
+let spawn_submit_proposals ?endpoint ?(key = Constant.bootstrap1.alias)
+    ?(wait = "none") ?proto_hash ?(proto_hashes = []) client =
   let proto_hashes =
     match proto_hash with None -> proto_hashes | Some h -> h :: proto_hashes
   in
   spawn_command
+    ?endpoint
     client
     ("--wait" :: wait :: "submit" :: "proposals" :: "for" :: key :: proto_hashes)
 
-let submit_proposals ?key ?wait ?proto_hash ?proto_hashes client =
-  spawn_submit_proposals ?key ?wait ?proto_hash ?proto_hashes client
-  |> Process.check
+let submit_proposals ?monitor_mempool ?endpoint ?key ?wait ?proto_hash
+    ?proto_hashes client =
+  check_injection ?monitor_mempool ?endpoint client
+  @@ spawn_submit_proposals ?key ?wait ?proto_hash ?proto_hashes
 
 type ballot = Nay | Pass | Yay
 
-let spawn_submit_ballot ?(key = Constant.bootstrap1.alias) ?(wait = "none")
-    ~proto_hash vote client =
+let spawn_submit_ballot ?endpoint ?(key = Constant.bootstrap1.alias)
+    ?(wait = "none") ~proto_hash ~vote client =
   let string_of_vote = function
     | Yay -> "yay"
     | Nay -> "nay"
     | Pass -> "pass"
   in
   spawn_command
+    ?endpoint
     client
     (["--wait"; wait]
     @ ["submit"; "ballot"; "for"; key; proto_hash; string_of_vote vote])
 
-let submit_ballot ?key ?wait ~proto_hash vote client =
-  spawn_submit_ballot ?key ?wait ~proto_hash vote client |> Process.check
+let submit_ballot ?monitor_mempool ?endpoint ?key ?wait ~proto_hash vote client
+    =
+  check_injection ?monitor_mempool ?endpoint client
+  @@ spawn_submit_ballot ?key ?wait ~proto_hash ~vote
 
-let set_deposits_limit ?hooks ?endpoint ?(wait = "none") ~src ~limit client =
+let set_deposits_limit ?monitor_mempool ?hooks ?endpoint ?(wait = "none") ~src
+    ~limit client =
+  check_injection_output ?monitor_mempool ?endpoint client
+  @@ fun ?endpoint client ->
   spawn_command
-    ?hooks
     ?endpoint
+    ?hooks
     client
     (["--wait"; wait] @ ["set"; "deposits"; "limit"; "for"; src; "to"; limit])
-  |> Process.check_and_read_stdout
 
-let unset_deposits_limit ?hooks ?endpoint ?(wait = "none") ~src client =
+let unset_deposits_limit ?monitor_mempool ?hooks ?endpoint ?(wait = "none") ~src
+    client =
+  check_injection_output ?monitor_mempool ?endpoint client
+  @@ fun ?endpoint client ->
   spawn_command
     ?hooks
     ?endpoint
     client
     (["--wait"; wait] @ ["unset"; "deposits"; "limit"; "for"; src])
-  |> Process.check_and_read_stdout
 
 let spawn_originate_contract ?hooks ?log_output ?endpoint ?(wait = "none") ?init
     ?burn_cap ~alias ~amount ~src ~prg client =
@@ -679,22 +779,20 @@ let convert_script_to_json ?endpoint ~script client =
 let convert_data_to_json ?endpoint ~data client =
   convert_michelson_to_json ~kind:"data" ?endpoint ~input:data client
 
-let originate_contract ?hooks ?log_output ?endpoint ?wait ?init ?burn_cap ~alias
-    ~amount ~src ~prg client =
+let originate_contract ?monitor_mempool ?hooks ?log_output ?endpoint ?wait ?init
+    ?burn_cap ~alias ~amount ~src ~prg client =
   let* client_output =
-    spawn_originate_contract
-      ?endpoint
-      ?log_output
-      ?hooks
-      ?wait
-      ?init
-      ?burn_cap
-      ~alias
-      ~amount
-      ~src
-      ~prg
-      client
-    |> Process.check_and_read_stdout
+    check_injection_output ?monitor_mempool ?endpoint client
+    @@ spawn_originate_contract
+         ?log_output
+         ?hooks
+         ?wait
+         ?init
+         ?burn_cap
+         ~alias
+         ~amount
+         ~src
+         ~prg
   in
   match client_output =~* rex "New contract ?(KT1\\w{33})" with
   | None ->
@@ -888,18 +986,20 @@ let run_script ?hooks ?balance ?self_address ?source ?payer ~prg ~storage ~input
         client_output
   | Some storage -> return @@ String.trim storage
 
-let spawn_register_global_constant ?(wait = "none") ?burn_cap ~value ~src client
-    =
+let spawn_register_global_constant ?endpoint ?(wait = "none") ?burn_cap ~value
+    ~src client =
   spawn_command
+    ?endpoint
     client
     (["--wait"; wait]
     @ ["register"; "global"; "constant"; value; "from"; src]
     @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap)
 
-let register_global_constant ?wait ?burn_cap ~src ~value client =
+let register_global_constant ?monitor_mempool ?endpoint ?wait ?burn_cap ~src
+    ~value client =
   let* client_output =
-    spawn_register_global_constant ?wait ?burn_cap ~src ~value client
-    |> Process.check_and_read_stdout
+    check_injection_output ?monitor_mempool ?endpoint client
+    @@ spawn_register_global_constant ?wait ?burn_cap ~src ~value
   in
   match client_output =~* rex "Global address: (expr\\w{50})" with
   | None ->
@@ -1059,50 +1159,56 @@ let sign_block client block_hex ~delegate =
   spawn_sign_block client block_hex ~delegate |> Process.check_and_read_stdout
 
 module Tx_rollup = struct
-  let originate ?(wait = "none") ?(burn_cap = Tez.of_int 9_999_999)
-      ?(storage_limit = 60_000) ?fee ?hooks ~src client =
-    let process =
-      spawn_command
-        ?hooks
-        client
-        ([
-           "--wait";
-           wait;
-           "originate";
-           "tx";
-           "rollup";
-           "from";
-           src;
-           "--burn-cap";
-           Tez.to_string burn_cap;
-           "--storage-limit";
-           string_of_int storage_limit;
-         ]
-        @ Option.fold
-            ~none:[]
-            ~some:(fun f ->
-              [
-                "--fee";
-                Tez.to_string f;
-                "--force-low-fee";
-                "--fee-cap";
-                Tez.to_string f;
-              ])
-            fee)
-    in
+  let spawn_originate ?endpoint ?(wait = "none")
+      ?(burn_cap = Tez.of_int 9_999_999) ?(storage_limit = 60_000) ?fee ?hooks
+      ~src client =
+    spawn_command
+      ?endpoint
+      ?hooks
+      client
+      ([
+         "--wait";
+         wait;
+         "originate";
+         "tx";
+         "rollup";
+         "from";
+         src;
+         "--burn-cap";
+         Tez.to_string burn_cap;
+         "--storage-limit";
+         string_of_int storage_limit;
+       ]
+      @ Option.fold
+          ~none:[]
+          ~some:(fun f ->
+            [
+              "--fee";
+              Tez.to_string f;
+              "--force-low-fee";
+              "--fee-cap";
+              Tez.to_string f;
+            ])
+          fee)
 
-    let parse process =
-      let* output = Process.check_and_read_stdout process in
-      output
-      =~* rex "Originated tx rollup: ?(\\w*)"
-      |> mandatory "tx rollup hash" |> Lwt.return
+  let originate ?monitor_mempool ?endpoint ?wait ?burn_cap ?storage_limit ?fee
+      ?hooks ~src client =
+    let* output =
+      check_injection_output ?monitor_mempool ?endpoint client
+      @@ spawn_originate ?wait ?burn_cap ?storage_limit ?fee ?hooks ~src
     in
-    {value = process; run = parse}
+    output
+    =~* rex "Originated tx rollup: ?(\\w*)"
+    |> mandatory "tx rollup hash" |> return
 
-  let submit_batch ?(wait = "none") ?burn_cap ?storage_limit ?hooks ?log_output
-      ?log_command ~content:(`Hex content) ~rollup ~src client =
+  let submit_batch ?monitor_mempool ?endpoint ?(wait = "none") ?burn_cap
+      ?storage_limit ?hooks ?log_output ?log_command ~content:(`Hex content)
+      ~rollup ~src client =
     let process =
+      check_injection_process ?monitor_mempool ?endpoint client
+      @@ fun ?endpoint client ->
       spawn_command
+        ?endpoint
         ?hooks
         ?log_output
         ?log_command
@@ -1122,13 +1228,17 @@ module Tx_rollup = struct
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap
         @ optional_arg ~name:"storage-limit" string_of_int storage_limit)
     in
-    let parse process = Process.check process in
+    let parse process = Lwt.bind process Process.check in
     {value = process; run = parse}
 
-  let submit_commitment ?(wait = "none") ?burn_cap ?storage_limit ?hooks
-      ?predecessor ~level ~roots ~inbox_merkle_root ~rollup ~src client =
+  let submit_commitment ?monitor_mempool ?endpoint ?(wait = "none") ?burn_cap
+      ?storage_limit ?hooks ?predecessor ~level ~roots ~inbox_merkle_root
+      ~rollup ~src client =
     let process =
+      check_injection_process ?monitor_mempool ?endpoint client
+      @@ fun ?endpoint client ->
       spawn_command
+        ?endpoint
         ?hooks
         client
         (["--wait"; wait]
@@ -1141,13 +1251,16 @@ module Tx_rollup = struct
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap
         @ optional_arg ~name:"storage-limit" string_of_int storage_limit)
     in
-    let parse process = Process.check process in
+    let parse process = Lwt.bind process Process.check in
     {value = process; run = parse}
 
-  let submit_finalize_commitment ?(wait = "none") ?burn_cap ?storage_limit
-      ?hooks ~rollup ~src client =
+  let submit_finalize_commitment ?monitor_mempool ?endpoint ?(wait = "none")
+      ?burn_cap ?storage_limit ?hooks ~rollup ~src client =
     let process =
+      check_injection_process ?monitor_mempool ?endpoint client
+      @@ fun ?endpoint client ->
       spawn_command
+        ?endpoint
         ?hooks
         client
         (["--wait"; wait]
@@ -1155,13 +1268,16 @@ module Tx_rollup = struct
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap
         @ optional_arg ~name:"storage-limit" string_of_int storage_limit)
     in
-    let parse process = Process.check process in
+    let parse process = Lwt.bind process Process.check in
     {value = process; run = parse}
 
-  let submit_remove_commitment ?(wait = "none") ?burn_cap ?storage_limit ?hooks
-      ~rollup ~src client =
+  let submit_remove_commitment ?monitor_mempool ?endpoint ?(wait = "none")
+      ?burn_cap ?storage_limit ?hooks ~rollup ~src client =
     let process =
+      check_injection_process ?monitor_mempool ?endpoint client
+      @@ fun ?endpoint client ->
       spawn_command
+        ?endpoint
         ?hooks
         client
         (["--wait"; wait]
@@ -1169,15 +1285,18 @@ module Tx_rollup = struct
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap
         @ optional_arg ~name:"storage-limit" string_of_int storage_limit)
     in
-    let parse process = Process.check process in
+    let parse process = Lwt.bind process Process.check in
     {value = process; run = parse}
 
-  let submit_rejection ?(wait = "none") ?burn_cap ?storage_limit ?hooks ~level
-      ~message ~position ~path ~message_result_hash
+  let submit_rejection ?monitor_mempool ?endpoint ?(wait = "none") ?burn_cap
+      ?storage_limit ?hooks ~level ~message ~position ~path ~message_result_hash
       ~rejected_message_result_path ~agreed_message_result_path ~proof
       ~context_hash ~withdraw_list_hash ~rollup ~src client =
     let process =
+      check_injection_process ?monitor_mempool ?endpoint client
+      @@ fun ?endpoint client ->
       spawn_command
+        ?endpoint
         ?hooks
         client
         (["--wait"; wait]
@@ -1195,13 +1314,16 @@ module Tx_rollup = struct
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap
         @ optional_arg ~name:"storage-limit" string_of_int storage_limit)
     in
-    let parse process = Process.check process in
+    let parse process = Lwt.bind process Process.check in
     {value = process; run = parse}
 
-  let submit_return_bond ?(wait = "none") ?burn_cap ?storage_limit ?hooks
-      ~rollup ~src client =
+  let submit_return_bond ?monitor_mempool ?endpoint ?(wait = "none") ?burn_cap
+      ?storage_limit ?hooks ~rollup ~src client =
     let process =
+      check_injection_process ?monitor_mempool ?endpoint client
+      @@ fun ?endpoint client ->
       spawn_command
+        ?endpoint
         ?hooks
         client
         (["--wait"; wait]
@@ -1215,14 +1337,18 @@ module Tx_rollup = struct
             ~some:(fun s -> ["--storage-limit"; string_of_int s])
             storage_limit)
     in
-    let parse process = Process.check process in
+    let parse process = Lwt.bind process Process.check in
     {value = process; run = parse}
 
-  let dispatch_tickets ?(wait = "none") ?burn_cap ?storage_limit ?hooks
-      ~tx_rollup ~src ~level ~message_position ~context_hash
-      ~message_result_path ~ticket_dispatch_info_data_list client =
+  let dispatch_tickets ?monitor_mempool ?endpoint ?(wait = "none") ?burn_cap
+      ?storage_limit ?hooks ~tx_rollup ~src ~level ~message_position
+      ~context_hash ~message_result_path ~ticket_dispatch_info_data_list client
+      =
     let process =
+      check_injection_process ?monitor_mempool ?endpoint client
+      @@ fun ?endpoint client ->
       spawn_command
+        ?endpoint
         ?hooks
         client
         (["--wait"; wait]
@@ -1260,13 +1386,16 @@ module Tx_rollup = struct
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap
         @ optional_arg ~name:"storage-limit" string_of_int storage_limit)
     in
-    let parse process = Process.check process in
+    let parse process = Lwt.bind process Process.check in
     {value = process; run = parse}
 
-  let transfer_tickets ?(wait = "none") ?burn_cap ?hooks ~qty ~src ~destination
-      ~entrypoint ~contents ~ty ~ticketer client =
+  let transfer_tickets ?monitor_mempool ?endpoint ?(wait = "none") ?burn_cap
+      ?hooks ~qty ~src ~destination ~entrypoint ~contents ~ty ~ticketer client =
     let process =
+      check_injection_process ?monitor_mempool ?endpoint client
+      @@ fun ?endpoint client ->
       spawn_command
+        ?endpoint
         ?hooks
         client
         (["--wait"; wait]
@@ -1293,7 +1422,7 @@ module Tx_rollup = struct
           ]
         @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap)
     in
-    let parse process = Process.check process in
+    let parse process = Lwt.bind process Process.check in
     {value = process; run = parse}
 end
 
@@ -1311,9 +1440,10 @@ let show_voting_period ?endpoint client =
   | Some period -> return period
 
 module Sc_rollup = struct
-  let spawn_originate ?hooks ?(wait = "none") ?burn_cap ~src ~kind ~boot_sector
-      client =
+  let spawn_originate ?endpoint ?hooks ?(wait = "none") ?burn_cap ~src ~kind
+      ~boot_sector client =
     spawn_command
+      ?endpoint
       ?hooks
       client
       (["--wait"; wait]
@@ -1337,42 +1467,43 @@ module Sc_rollup = struct
     | None -> Test.fail "Cannot extract rollup address from receipt."
     | Some x -> return x
 
-  let originate ?hooks ?wait ?burn_cap ~src ~kind ~boot_sector client =
-    let process =
-      spawn_originate ?hooks ?wait ?burn_cap ~src ~kind ~boot_sector client
+  let originate ?monitor_mempool ?endpoint ?hooks ?wait ?burn_cap ~src ~kind
+      ~boot_sector client =
+    let* output =
+      check_injection_output ?monitor_mempool ?endpoint client
+      @@ spawn_originate ?hooks ?wait ?burn_cap ~src ~kind ~boot_sector
     in
-    let* output = Process.check_and_read_stdout process in
     parse_rollup_address_in_receipt output
 
-  let spawn_send_message ?hooks ?(wait = "none") ?burn_cap ~msg ~src ~dst client
-      =
+  let spawn_send_message ?endpoint ?hooks ?(wait = "none") ?burn_cap ~msg ~src
+      ~dst client =
     spawn_command
+      ?endpoint
       ?hooks
       client
       (["--wait"; wait]
       @ ["send"; "sc"; "rollup"; "message"; msg; "from"; src; "to"; dst]
       @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap)
 
-  let send_message ?hooks ?wait ?burn_cap ~msg ~src ~dst client =
-    let process =
-      spawn_send_message ?hooks ?wait ?burn_cap ~msg ~src ~dst client
-    in
-    Process.check process
+  let send_message ?monitor_mempool ?endpoint ?hooks ?wait ?burn_cap ~msg ~src
+      ~dst client =
+    check_injection ?monitor_mempool ?endpoint client
+    @@ spawn_send_message ?hooks ?wait ?burn_cap ~msg ~src ~dst
 
-  let spawn_cement_commitment ?hooks ?(wait = "none") ?burn_cap ~hash ~src ~dst
-      client =
+  let spawn_cement_commitment ?endpoint ?hooks ?(wait = "none") ?burn_cap ~hash
+      ~src ~dst client =
     spawn_command
+      ?endpoint
       ?hooks
       client
       (["--wait"; wait]
       @ ["cement"; "commitment"; hash; "from"; src; "for"; "sc"; "rollup"; dst]
       @ optional_arg ~name:"burn-cap" Tez.to_string burn_cap)
 
-  let cement_commitment ?hooks ?wait ?burn_cap ~hash ~src ~dst client =
-    let process =
-      spawn_cement_commitment ?hooks ?wait ?burn_cap ~hash ~src ~dst client
-    in
-    Process.check process
+  let cement_commitment ?monitor_mempool ?endpoint ?hooks ?wait ?burn_cap ~hash
+      ~src ~dst client =
+    check_injection ?monitor_mempool ?endpoint client
+    @@ spawn_cement_commitment ?hooks ?wait ?burn_cap ~hash ~src ~dst
 end
 
 let init ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type () =
