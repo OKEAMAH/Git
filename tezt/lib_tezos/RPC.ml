@@ -780,3 +780,84 @@ let raw_bytes ?endpoint ?hooks ?(chain = "main") ?(block = "head") ?(path = [])
     ["chains"; chain; "blocks"; block; "context"; "raw"; "bytes"] @ path
   in
   Client.rpc ?endpoint ?hooks GET path client
+
+module Monitor = struct
+  let generic_monitor ?endpoint ?(query_string = []) ~path client on_value =
+    let endpoint =
+      match endpoint with
+      | Some e -> e
+      | None -> Option.get Client.(get_mode client |> mode_to_endpoint)
+    in
+    let host, port =
+      match endpoint with
+      | Node n -> (Node.rpc_host n, Node.rpc_port n)
+      | Proxy_server s -> ("localhost", Proxy_server.rpc_port s)
+    in
+    let node_addr = Printf.sprintf "http://%s:%d" host port in
+    let url = String.concat "/" (node_addr :: path) in
+    let* curl = Curl.stream () in
+    match curl with
+    | None ->
+        Format.ksprintf
+          failwith
+          "curl command must be available to stream call streamed RPC: %s"
+          url
+    | Some curl_stream ->
+        let url =
+          match query_string with
+          | [] -> url
+          | _ ->
+              let query =
+                List.map
+                  (fun (arg, value) -> Printf.sprintf "%s=%s" arg value)
+                  query_string
+                |> String.concat "&"
+              in
+              String.concat "?" [url; query]
+        in
+        let stream, close = curl_stream ~url in
+        let rec loop () =
+          let* json_opt = Lwt_stream.get stream in
+          match json_opt with
+          | None -> unit
+          | Some json -> (
+              let* res =
+                Lwt.catch (fun () -> on_value json) (fun _ -> return `Stop)
+              in
+              match res with
+              | `Stop -> unit
+              | `Continue ->
+                  (* Stream is still open and user wants more elements *)
+                  loop ())
+        in
+        let promise = loop () in
+        Lwt.on_cancel promise close ;
+        let* () = promise in
+        close () ;
+        unit
+
+  let operations ?endpoint ?(chain = "main") ?applied ?refused ?outdated
+      ?branch_refused ?branch_delayed client on_operation =
+    let path = ["chains"; chain; "mempool"; "monitor_operations"] in
+    let add_param arg name query =
+      match arg with
+      | None -> query
+      | Some arg -> (name, string_of_bool arg) :: query
+    in
+    let query_string =
+      []
+      |> add_param applied "applied"
+      |> add_param refused "refused"
+      |> add_param outdated "outdated"
+      |> add_param branch_refused "branch_refused"
+      |> add_param branch_delayed "branch_delayed"
+    in
+    generic_monitor ?endpoint ~path ~query_string client on_operation
+
+  let heads ?endpoint ?(chain = "main") ?next_protocol client on_head =
+    let path = ["monitor"; "heads"; chain] in
+    let query_string =
+      Option.map (fun p -> [("next_protocol", p)]) next_protocol
+    in
+    generic_monitor ?endpoint ~path ?query_string client on_head
+end

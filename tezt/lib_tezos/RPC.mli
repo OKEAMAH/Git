@@ -1067,3 +1067,28 @@ val raw_bytes :
   ?path:string list ->
   Client.t ->
   JSON.t Lwt.t
+
+module Monitor : sig
+  (** Call RPC /chain/[chain]/mempool/monitor_operations **)
+  val operations :
+    ?endpoint:Client.endpoint ->
+    (* ?hooks:Process.hooks -> *)
+    ?chain:string ->
+    ?applied:bool ->
+    ?refused:bool ->
+    ?outdated:bool ->
+    ?branch_refused:bool ->
+    ?branch_delayed:bool ->
+    Client.t ->
+    (JSON.t -> [`Continue | `Stop] Lwt.t) ->
+    unit Lwt.t
+
+  (** Call RPC /monitor/heads/[chain] **)
+  val heads :
+    ?endpoint:Client.endpoint ->
+    ?chain:string ->
+    ?next_protocol:string ->
+    Client.t ->
+    (JSON.t -> [`Continue | `Stop] Lwt.t) ->
+    unit Lwt.t
+end
