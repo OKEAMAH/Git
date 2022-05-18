@@ -80,7 +80,16 @@ module Make (PVM : Pvm.S) = struct
         let* operations =
           let open Layer1_services in
           let (Head {level; _}) = head in
-          Operations.operations cctxt ~chain:`Main ~block:(`Level level) ()
+          (* It would be a security problem to ignore operation
+             receipt because metadata are too large. For this reason,
+             we set [force_metadata] to [true] to make sure the
+             receipts are always accessible to the rollup node. *)
+          Operations.operations
+            ~force_metadata:true
+            cctxt
+            ~chain:`Main
+            ~block:(`Level level)
+            ()
         in
         let*! () = emit_head_processing_event head_state in
         let* () = Inbox.process_head node_ctxt store head operations in
