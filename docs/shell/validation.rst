@@ -15,28 +15,9 @@ the :ref:`distributed DB<DDB_component>`.
 Concepts
 --------
 
-Before presenting these three components, we define some basic concepts.
+Before presenting these three components, be sure you understand the basic concepts of :ref:`block <Block>`, :ref:`fitness <Fitness>` (which see), and the related notion of shell header (explained below).
 
-Block
-~~~~~
-
-The Tezos blockchain is a linked list of blocks (or actually, a tree when several competing branches exist).
-Blocks conceptually contain a header and a list of operations.
-In the implementation, the list of operations in the block is represented as the hash of the Merkle tree containing them.
-
-The header itself decomposes into a shell header (common to all protocols) and a protocol-specific header.
-
-Fitness
-~~~~~~~
-
-To each block, we associate a measure of fitness which determines the quality of the chain leading to that block.
-This measure is computed by the consensus protocol.
-The shell changes the head of the chain to the valid block that has the highest fitness.
-
-The fitness belongs to the shell part of the block header.
-The shell does not know the exact representation of the fitness, except that it has a total order on it.
-
-
+.. index:: block; shell header
 .. _shell_header:
 
 Shell header

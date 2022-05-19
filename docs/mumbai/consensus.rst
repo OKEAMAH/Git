@@ -456,6 +456,9 @@ Shell-protocol interaction revisited
 
 :ref:`Recall<shell_proto_interact_mumbai>` that, for the shell to interact with the economic protocol, two notions are defined abstractly at the level of the shell and made concrete at the level of the consensus protocol.
 Namely, these two notions are the protocol-specific header and the fitness.
+
+.. index:: block; protocol header
+
 As in Emmy*, the protocol-specific header contains the fields:
 
 - ``signature``: a digital signature of the shell and protocol headers (excluding the signature itself)
@@ -465,8 +468,9 @@ As in Emmy*, the protocol-specific header contains the fields:
 
 There are two additional fields: ``payload_hash`` and ``payload_round`` which are needed for establishing if a block is :ref:`final<finality_mumbai>`.
 
-.. _fitness:
-.. _fitness_mumbai:
+.. _fitness_implem:
+.. _fitness_implem_mumbai:
+.. index:: fitness; formula
 
 The fitness is given by the tuple ``(version, level, locked_round, - predecessor_round - 1, round)``.
 The current version of the fitness is 2 (version 0 was used by Emmy, and version 1 by Emmy+ and Emmy*).
