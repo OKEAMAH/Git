@@ -73,7 +73,6 @@ let faked_network :
   {self = peer_id; version = default_version; handle = None}
 
 (* /!\ HACK /!\
-
    The mocked p2p implementation relies on some shared state among all p2p intances.
    So when we perform a call to [P2p.create], we need to get a handle on that
    shared state. The issue is that the current p2p API allows to create many p2p
@@ -268,26 +267,31 @@ let greylist_peer _net _id =
 
 let build_rpc_directory _ = RPC_directory.empty
 
-(* module Internal_for_tests = struct
- *   let connect_peers a b = Network.connect_peers handle ~a ~b
- *
- *   let disconnect_peers a b = Network.disconnect_peers handle ~a ~b
- *
- *   let neighbourhood peer =
- *     let peer_state = Network.get_peer_exn ~s:"iter_neighbourhood" handle peer in
- *     List.map (fun {Network.data; peer; _} -> (peer, data)) peer_state.conns
- *
- *   let iter_neighbourhood peer f =
- *     let peer_state = Network.get_peer_exn ~s:"iter_neighbourhood" handle peer in
- *     List.iter
- *       (fun {Network.data = outbound; peer = neighbor; _} ->
- *         f ~outbound ~neighbor)
- *       peer_state.conns
- *
- *   let iter_neighbourhood_es peer f =
- *     let peer_state = Network.get_peer_exn ~s:"iter_neighbourhood" handle peer in
- *     List.iter_es
- *       (fun {Network.data = outbound; peer = neighbor; _} ->
- *         f ~outbound ~neighbor)
- *       peer_state.conns
- * end *)
+module Internal_for_tests = struct
+  type ('msg, 'peer, 'conn) mocked_network =
+    ('msg, 'peer, 'conn) Network.network
+
+  let find_handle_opt = find_handle_opt
+
+  let connect_peers = Network.connect_peers
+
+  let disconnect_peers = Network.disconnect_peers
+
+  let neighbourhood handle peer =
+    let peer_state = Network.get_peer_exn ~s:"iter_neighbourhood" handle peer in
+    List.map (fun {Network.data; peer; _} -> (peer, data)) peer_state.conns
+
+  let iter_neighbourhood handle peer f =
+    let peer_state = Network.get_peer_exn ~s:"iter_neighbourhood" handle peer in
+    List.iter
+      (fun {Network.data = outbound; peer = neighbor; _} ->
+        f ~outbound ~neighbor)
+      peer_state.conns
+
+  let iter_neighbourhood_es handle peer f =
+    let peer_state = Network.get_peer_exn ~s:"iter_neighbourhood" handle peer in
+    List.iter_es
+      (fun {Network.data = outbound; peer = neighbor; _} ->
+        f ~outbound ~neighbor)
+      peer_state.conns
+end

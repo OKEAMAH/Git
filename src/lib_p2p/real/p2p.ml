@@ -28,3 +28,25 @@
 include Tezos_p2p_unix.P2p
 
 let build_rpc_directory = Tezos_p2p_unix.P2p_directory.build_rpc_directory
+
+module Internal_for_tests = struct
+  type ('msg, 'peer, 'conn) mocked_network = unit
+
+  let find_handle_opt _version = None
+
+  let connect_peers _handle ~a:_ ~b:_ ~a_meta:_ ~b_meta:_ ~ab_conn_meta:_
+      ~ba_conn_meta:_ =
+    Error "P2p.Internal_for_tests: connect_peers not implemented"
+
+  let disconnect_peers _handle ~a:_ ~b:_ =
+    Error "P2p.Internal_for_tests: disconnect_peers not implemented"
+
+  let neighbourhood _handle _peer =
+    invalid_arg "P2p.Internal_for_tests: neighbourhood not implemented"
+
+  let iter_neighbourhood _handle _peer _f =
+    invalid_arg "P2p.Internal_for_tests: iter_neighbourhood not implemented"
+
+  let iter_neighbourhood_es _handle _peer _f =
+    invalid_arg "P2p.Internal_for_tests: iter_neighbourhood not implemented"
+end

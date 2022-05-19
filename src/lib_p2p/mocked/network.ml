@@ -63,7 +63,7 @@ end
 
 let peer_state self_meta = {conns = []; self_meta; on_new_conn = []}
 
-let conn peer peer_meta conn_meta =
+let make_conn_with peer peer_meta conn_meta =
   {
     data = Lwt_pipe.Unbounded.create ();
     peer;
@@ -102,7 +102,7 @@ let remove_peer_from_neighbours net ~id ~removed_peer =
   Peer_table.replace net.network id {state with conns} ;
   return_unit
 
-let connect_peers net ~a ~b =
+let connect_peers net ~a ~b ~a_meta ~b_meta ~ab_conn_meta ~ba_conn_meta =
   if P2p_peer.Id.equal a b then
     Format.kasprintf fail "connect_peers: equal peers"
   else
@@ -133,14 +133,14 @@ let connect_peers net ~a ~b =
         a
         {
           a_state with
-          conns = conn b (assert false) (assert false) :: a_state.conns;
+          conns = make_conn_with b b_meta ab_conn_meta :: a_state.conns;
         } ;
       Peer_table.replace
         net.network
         b
         {
           b_state with
-          conns = conn a (assert false) (assert false) :: b_state.conns;
+          conns = make_conn_with a a_meta ba_conn_meta :: b_state.conns;
         } ;
       List.iter (fun callback -> callback b) a_state.on_new_conn ;
       List.iter (fun callback -> callback a) b_state.on_new_conn ;
