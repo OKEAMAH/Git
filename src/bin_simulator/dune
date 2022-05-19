@@ -1,0 +1,42 @@
+(executable
+  (name simulator)
+  (libraries
+    tezos-base
+    tezos-crypto
+    tezos-shell
+    tezos-stdlib
+    tezos-shims-shared
+    tezos-time-shims.mocked
+    tezos-unix-shims.mocked
+    tezos-p2p-shared
+    tezos-p2p.mocked
+    tezos-store.mocked
+    tezos-protocol-alpha
+    tezos-protocol-genesis
+    tezos-protocol-alpha-parameters
+    raylib
+    raygui
+    gg
+    ocamlgraph
+    prbnmcn-stats
+    (select void_for_linking-tezos-embedded-protocol-genesis from
+       (tezos-embedded-protocol-genesis -> void_for_linking-tezos-embedded-protocol-genesis.empty)
+       (-> void_for_linking-tezos-embedded-protocol-genesis.empty))
+
+    (select void_for_linking-tezos-embedded-protocol-alpha from
+     (tezos-embedded-protocol-alpha -> void_for_linking-tezos-embedded-protocol-alpha.empty)
+     (-> void_for_linking-tezos-embedded-protocol-alpha.empty)))
+ (flags
+  (:standard
+    -open Tezos_base
+    -open Tezos_crypto
+    -open Tezos_stdlib
+    -open Tezos_stdlib_unix
+    -open Tezos_error_monad
+    -open Error_monad
+    -open Tezos_lwt_result_stdlib
+    -open Tezos_p2p_shared
+    -open Tezos_p2p
+    -open Tezos_shell
+    -open Tezos_unix_shims
+)))

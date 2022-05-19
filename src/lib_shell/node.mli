@@ -72,3 +72,17 @@ val create :
 val shutdown : t -> unit Lwt.t
 
 val build_rpc_directory : t -> unit RPC_directory.t
+
+module Internal_for_tests : sig
+  val internal_id : t -> Internal_id.t
+
+  val distributed_db : t -> Distributed_db.t
+
+  val validator : t -> Validator.t
+
+  val mainchain_validator : t -> Chain_validator.t
+
+  val p2p : t -> Distributed_db.p2p
+
+  val store : t -> Store.t
+end

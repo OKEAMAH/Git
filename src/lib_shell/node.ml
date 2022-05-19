@@ -390,3 +390,17 @@ let build_rpc_directory node =
   register0 RPC_service.error_service (fun () () ->
       Lwt.return_ok (Data_encoding.Json.schema Error_monad.error_encoding)) ;
   !dir
+
+module Internal_for_tests = struct
+  let internal_id {internal_id; _} = internal_id
+
+  let distributed_db {distributed_db; _} = distributed_db
+
+  let validator {validator; _} = validator
+
+  let mainchain_validator {mainchain_validator; _} = mainchain_validator
+
+  let p2p ({p2p; _} : t) = p2p
+
+  let store {store; _} = store
+end
