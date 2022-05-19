@@ -1,4 +1,4 @@
-tx_rollup_rpc_commitment_remove.out
+tx_rollup_rpc_commitment_remove.jakarta.out
 
 ./tezos-client --wait none originate tx rollup tx_rollup from '[PUBLIC_KEY_HASH]' --burn-cap 9999999 --storage-limit 60000
 Node is bootstrapped.
@@ -124,7 +124,7 @@ This simulation failed:
     This operation FAILED.
 
 Error:
-  { "id": "proto.alpha.tx_rollup_no_commitment_to_finalize",
+  { "id": "proto.013-PtJakart.tx_rollup_no_commitment_to_finalize",
   "description": "There is no commitment to finalize", "data": {} }
 
 ./tezos-client --wait none finalize commitment of tx rollup '[TX_ROLLUP_HASH]' from '[PUBLIC_KEY_HASH]'
@@ -170,10 +170,8 @@ This simulation failed:
       This operation FAILED.
 
 Error:
-  { "id": "proto.alpha.tx_rollup_remove_commitment_too_early",
-  "description":
-    "It's too early to try to remove the oldest final commitment",
-  "data": {} }
+  { "id": "proto.013-PtJakart.tx_rollup_no_commitment_to_remove",
+  "description": "There is no commitment to remove", "data": {} }
 
 ./tezos-client rpc get '/chains/main/blocks/head/context/tx_rollup/[TX_ROLLUP_HASH]/state'
 { "last_removed_commitment_hashes": null,

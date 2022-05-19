@@ -1,4 +1,4 @@
-tx_rollup_finalize_commitment_no_commitment.out
+tx_rollup_rpc_inbox.alpha.out
 
 ./tezos-client --wait none originate tx rollup tx_rollup from '[PUBLIC_KEY_HASH]' --burn-cap 9999999 --storage-limit 60000
 Node is bootstrapped.
@@ -57,19 +57,6 @@ This sequence of operations was run:
       Consumed gas: 2108.268
 
 
-./tezos-client --wait none finalize commitment of tx rollup '[TX_ROLLUP_HASH]' from '[PUBLIC_KEY_HASH]'
-Node is bootstrapped.
-This simulation failed:
-  Manager signed operations:
-    From: [PUBLIC_KEY_HASH]
-    Fee to the baker: ꜩ0
-    Expected counter: 3
-    Gas limit: 1040000
-    Storage limit: 60000 bytes
-    Tx rollup finalize commitment:[TX_ROLLUP_HASH] 
-    From: [PUBLIC_KEY_HASH]
-    This operation FAILED.
-
-Error:
-  { "id": "proto.alpha.tx_rollup_no_commitment_to_finalize",
-  "description": "There is no commitment to finalize", "data": {} }
+./tezos-client rpc get '/chains/main/blocks/head/context/tx_rollup/[TX_ROLLUP_HASH]/inbox/0'
+{ "inbox_length": 1, "cumulated_size": 4,
+  "merkle_root": "[TX_ROLLUP_INBOX_HASH]" }
