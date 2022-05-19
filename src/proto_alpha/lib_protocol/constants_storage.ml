@@ -146,6 +146,10 @@ let double_baking_punishment c =
   let constants = Raw_context.constants c in
   constants.double_baking_punishment
 
+let max_blocks_per_endorsement_rights_request c =
+  let constants = Raw_context.constants c in
+  constants.max_blocks_per_endorsement_rights_request
+
 let tx_rollup_enable c =
   let constants = Raw_context.constants c in
   constants.tx_rollup_enable

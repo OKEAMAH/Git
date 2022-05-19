@@ -88,6 +88,8 @@ val frozen_deposits_percentage : Raw_context.t -> int
 
 val double_baking_punishment : Raw_context.t -> Tez_repr.t
 
+val max_blocks_per_endorsement_rights_request : Raw_context.t -> int
+
 val tx_rollup_enable : Raw_context.t -> bool
 
 val tx_rollup_origination_size : Raw_context.t -> int

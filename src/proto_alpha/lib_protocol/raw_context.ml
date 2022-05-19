@@ -921,6 +921,7 @@ let prepare_first_block ~level ~timestamp ctxt =
             max_slashing_period = c.max_slashing_period;
             frozen_deposits_percentage = c.frozen_deposits_percentage;
             double_baking_punishment = c.double_baking_punishment;
+            max_blocks_per_endorsement_rights_request = 128;
             ratio_of_frozen_deposits_slashed_per_double_endorsement =
               c.ratio_of_frozen_deposits_slashed_per_double_endorsement;
             initial_seed = c.initial_seed;

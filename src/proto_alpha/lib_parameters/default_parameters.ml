@@ -108,6 +108,7 @@ let constants_mainnet =
     max_slashing_period = 2;
     frozen_deposits_percentage = 10;
     double_baking_punishment = Tez.(mul_exn one 640);
+    max_blocks_per_endorsement_rights_request = 128;
     ratio_of_frozen_deposits_slashed_per_double_endorsement =
       {numerator = 1; denominator = 2};
     initial_seed = None;

@@ -753,6 +753,7 @@ module Constants : sig
       max_slashing_period : int;
       frozen_deposits_percentage : int;
       double_baking_punishment : Tez.t;
+      max_blocks_per_endorsement_rights_request : int;
       ratio_of_frozen_deposits_slashed_per_double_endorsement : Ratio.t;
       initial_seed : State_hash.t option;
       cache_script_size : int;
@@ -863,6 +864,8 @@ module Constants : sig
   val frozen_deposits_percentage : context -> int
 
   val double_baking_punishment : context -> Tez.t
+
+  val max_blocks_per_endorsement_rights_request : context -> int
 
   val ratio_of_frozen_deposits_slashed_per_double_endorsement :
     context -> Ratio.t

@@ -38,6 +38,8 @@ type Environment.Error_monad.error += Cannot_serialize_log
 
 type Environment.Error_monad.error += Cannot_retrieve_predecessor_level
 
+type Environment.Error_monad.error += Too_many_levels of int (* `Permanent *)
+
 let () =
   Environment.Error_monad.register_error_kind
     `Branch
@@ -66,7 +68,20 @@ let () =
     ~description:"Cannot retrieve predecessor level."
     Data_encoding.empty
     (function Cannot_retrieve_predecessor_level -> Some () | _ -> None)
-    (fun () -> Cannot_retrieve_predecessor_level)
+    (fun () -> Cannot_retrieve_predecessor_level) ;
+  Environment.Error_monad.register_error_kind
+    `Permanent
+    ~id:"too_many_levels"
+    ~title:"Requested baking rights for too many levels at once"
+    ~description:"Requested baking rights for too many levels at once."
+    ~pp:(fun ppf limit ->
+      Format.fprintf
+        ppf
+        "Requested baking rights for too many levels at once. Max is (%d)"
+        limit)
+    Data_encoding.(obj1 (req "max" int31))
+    (function Too_many_levels max -> Some max | _ -> None)
+    (fun max -> Too_many_levels max)
 
 module Mempool = struct
   type error_classification =
@@ -4210,6 +4225,10 @@ module RPC = struct
              deprecated because in this case the RPC takes a long time and \
              returns an unreasonable amount of data. Parameter `delegate` can \
              be used to restrict the results to the given delegates.\n\
+             The maximum number of levels returned is limited by the config \
+             variable `max_blocks_per_endorsement_rights_request`, which \
+             defaults to `blocks_per_cycle`, but which can be set lower. This \
+             parameter does not affect requests for full cycles. \n\
              Returns the smallest endorsing slots and the endorsing power. \
              Also returns the minimal timestamp that corresponds to endorsing \
              at the given level. The timestamps are omitted for levels in the \
@@ -4247,6 +4266,9 @@ module RPC = struct
 
     let register () =
       Registration.register0 ~chunked:true S.endorsing_rights (fun ctxt q () ->
+          let limit =
+            Constants.max_blocks_per_endorsement_rights_request ctxt
+          in
           let cycles =
             match q.cycle with None -> [] | Some cycle -> [cycle]
           in
@@ -4257,6 +4279,10 @@ module RPC = struct
               cycles
               q.levels
           in
+          fail_when
+            Compare.List_length_with.(levels > limit)
+            (Too_many_levels limit)
+          >>=? fun () ->
           List.map_es (endorsing_rights_at_level ctxt) levels
           >|=? fun rights_per_level ->
           match q.delegates with

@@ -652,6 +652,7 @@ def _test_create_mockup_init_show_roundtrip(
                     'denominator': 2,
                 },
                 "double_baking_punishment": "640000001",
+                "max_blocks_per_endorsement_rights_request": 128,
                 "cache_script_size": 100000001,
                 "cache_stake_distribution_cycles": 10,
                 "cache_sampler_state_cycles": 10,

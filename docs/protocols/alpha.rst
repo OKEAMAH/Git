@@ -20,6 +20,11 @@ Rollups supporting execution of smart contracts. (MRs :gl:`!4933`, :gl:`!4812`)
 Breaking Changes
 ----------------
 
+- The Baking rights RPC, when called with a list of levels, now has a
+  limit of (by default) 128 levels.  This should not affect most users,
+  since most users will want either a small number of levels, or a full
+  cycle.
+
 RPC Changes
 -----------
 
