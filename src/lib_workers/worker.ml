@@ -549,6 +549,7 @@ struct
       w.state <- None ;
       return_unit
     in
+    let protect f = protect ~canceler:w.canceler f in
     let rec loop () =
       (* The call to [protect] here allows the call to [pop] (responsible
          for fetching the next request) to be canceled by the use of the
@@ -564,9 +565,7 @@ struct
          fails immediately with [Canceled]. *)
       Lwt.bind
         Lwt_result_syntax.(
-          let* popped =
-            protect ~canceler:w.canceler (fun () -> Lwt_result.ok @@ pop w)
-          in
+          let* popped = protect (fun () -> Lwt_result.ok @@ pop w) in
           match popped with
           | None -> Handlers.on_no_request w
           | Some (pushed, Message (request, u)) -> (
@@ -575,7 +574,9 @@ struct
               w.current_request <- Some (pushed, treated, current_request) ;
               match u with
               | None ->
-                  let* res = Handlers.on_request w request in
+                  let* res =
+                    protect (fun () -> Handlers.on_request w request)
+                  in
                   let completed = Time.System.now () in
                   w.current_request <- None ;
                   let status = Worker_types.{pushed; treated; completed} in
@@ -590,7 +591,9 @@ struct
                      (Error). To that end, we treat it locally like a regular
                      promise (which happens to carry a [result]) within the Lwt
                      monad. *)
-                  let*! res = Handlers.on_request w request in
+                  let*! res =
+                    protect (fun () -> Handlers.on_request w request)
+                  in
                   Lwt.wakeup_later u res ;
                   let*? res = res in
                   let completed = Time.System.now () in
