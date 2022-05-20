@@ -45,7 +45,20 @@ let init_account (ctxt, balance_updates)
         ctxt
         contract
         (Some (Option.value ~default:public_key_hash delegate_to))
-  | None -> return ctxt)
+  | None ->
+      Option.iter
+        (fun delegate_to ->
+          Logging.(
+            log
+              Warning
+              "Attempt to delegate from an unrevealed key ignored: not \
+               delegating %a to %a"
+              Signature.Public_key_hash.pp
+              public_key_hash
+              Signature.Public_key_hash.pp
+              delegate_to))
+        delegate_to ;
+      return ctxt)
   >|=? fun ctxt -> (ctxt, new_balance_updates @ balance_updates)
 
 let init_contract ~typecheck (ctxt, balance_updates)
