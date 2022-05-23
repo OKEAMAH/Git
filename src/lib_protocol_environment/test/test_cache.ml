@@ -33,7 +33,7 @@
 *)
 
 open Environment_cache
-open Lib_test.Qcheck_helpers
+open Lib_test.Qcheck2_helpers
 
 (*
 
@@ -48,7 +48,7 @@ let position_of_assoc ~equal k ks =
   in
   aux 0 ks
 
-let gen_layout = QCheck.(make Gen.(list small_int))
+let gen_layout = QCheck2.Gen.(list small_int)
 
 let low_size = 5_000
 
@@ -80,7 +80,7 @@ let number_of_keys cache =
   !r
 
 let gen_entries ?(high_init_entries = high_init_entries) ncaches =
-  QCheck.Gen.(
+  QCheck2.Gen.(
     let* size = int_range low_init_entries high_init_entries in
     let* entries =
       list_repeat
@@ -105,7 +105,7 @@ let insert_entries cache entries =
 
 let gen_cache ?(allow_empty = true) ?(high_init_entries = high_init_entries) ()
     =
-  QCheck.(
+  QCheck2.(
     Gen.(
       let* ncaches = int_range 1 3 in
       let layout = generate ~n:ncaches (int_range low_size high_size) in
@@ -183,9 +183,9 @@ let check_uninitialised_is_unusable =
       cache_fun (list_keys ~cache_index:0);
     ]
   in
-  QCheck.Test.make
+  QCheck2.Test.make
     ~name:"an uninitialised cache is unusable"
-    QCheck.(make Gen.(pair (oneofl cache_funs) (pure uninitialised)))
+    QCheck2.Gen.(pair (oneofl cache_funs) (pure uninitialised))
     (fun (cache_fun, cache) ->
       try
         cache_fun cache ;
@@ -216,23 +216,22 @@ let valid_empty_subcaches layout =
        layout
 
 let check_from_layout_is_empty =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:50
     ~name:"from_layout produces valid empty subcaches"
     gen_layout
     valid_empty_subcaches
 
 let check_from_layout_with_negative_size =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:10
     ~name:"from_layout fails on negative sizes"
-    QCheck.Gen.(
-      QCheck.make
-        (let* n = int_range 1 10 in
-         let* layout = list_repeat n small_int in
-         let* idx = int_range 0 (List.length layout - 1) in
-         let* neg_size = int_range (-100) (-1) in
-         return (layout, idx, neg_size)))
+    QCheck2.Gen.(
+      let* n = int_range 1 10 in
+      let* layout = list_repeat n small_int in
+      let* idx = int_range 0 (List.length layout - 1) in
+      let* neg_size = int_range (-100) (-1) in
+      return (layout, idx, neg_size))
     (fun (layout, idx, neg_size) ->
       let layout =
         List.mapi (fun i x -> if i = idx then neg_size else x) layout
@@ -256,7 +255,7 @@ let invalid_cache_indices layout =
       QCheck.Test.fail_report "Out of bound cache index should produce failures"
 
 let check_invalid_cache_indices =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:50
     ~name:"invalid cache indices produce failures"
     gen_layout
@@ -272,7 +271,7 @@ let compatible_layout_validates_correctly layout =
   compatible_layout cache layout
 
 let check_compatible_layout_validates_correctly =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:10
     ~name:"compatible_layout validates correctly"
     gen_layout
@@ -284,10 +283,10 @@ let compatible_layout_invalidates_correctly (layout1, layout2) =
   || qcheck_eq ~pp:pp_layout layout1 layout2
 
 let check_compatible_layout_invalidates_correctly =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:10
     ~name:"compatible_layout invalidates correctly"
-    (QCheck.pair gen_layout gen_layout)
+    (QCheck2.Gen.pair gen_layout gen_layout)
     compatible_layout_invalidates_correctly
 
 (*
@@ -299,10 +298,10 @@ let clear_preserves_layout_and_removes_entries (layout, _, cache) =
   from_layout layout = clear cache
 
 let check_clear_preserves_layout_and_removes_entries =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:50
     ~name:"clear preserves layout and removes entries"
-    (QCheck.make (gen_cache ()))
+    (gen_cache ())
     clear_preserves_layout_and_removes_entries
 
 (*
@@ -317,10 +316,10 @@ let key_of_identifier_assigns_given_identifier (cache_index, identifier) =
     (identifier_of_key @@ key_of_identifier ~cache_index identifier)
 
 let check_key_of_identifier_assigns_given_identifier =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:50
     ~name:"key_of_identifier uses given identifier"
-    QCheck.(pair small_int string)
+    QCheck2.Gen.(pair small_int string)
     key_of_identifier_assigns_given_identifier
 
 (*
@@ -377,17 +376,17 @@ let inserted_entries_are_in get (_, entries, cache) =
   process (clear cache) (List.rev entries)
 
 let check_inserted_entries_are_in_order_with_find =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:100
     ~name:"inserted entries are in the cache (with find)"
-    (QCheck.make (gen_cache ()))
+    (gen_cache ())
     (inserted_entries_are_in find)
 
 let check_inserted_entries_are_in_order_with_lookup =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:100
     ~name:"inserted entries are in the cache (with lookup)"
-    (QCheck.make (gen_cache ()))
+    (gen_cache ())
     (inserted_entries_are_in (fun cache k -> lookup cache k |> Option.map fst))
 
 (*
@@ -421,10 +420,10 @@ let update_changes_cached_value (_, entries, cache) =
     entries
 
 let check_update_changes_cached_value =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:100
     ~name:"update with some value changes mapping"
-    (QCheck.make (gen_cache ()))
+    (gen_cache ())
     update_changes_cached_value
 
 let update_removes_cached_value (_, entries, cache) =
@@ -460,10 +459,10 @@ let update_removes_cached_value (_, entries, cache) =
     entries
 
 let check_update_removes_cached_value =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:100
     ~name:"update with none removes mapping"
-    (QCheck.make (gen_cache ()))
+    (gen_cache ())
     update_removes_cached_value
 
 (*
@@ -482,10 +481,10 @@ let future_cache_expectation_does_not_change_not_full_cache
   future_cache_expectation ~time_in_blocks cache = cache
 
 let check_future_cache_expectation_does_not_change_not_full_cache =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:100
     ~name:"future_cache_expectation does not change not full cache"
-    QCheck.(pair small_int (QCheck.make (gen_cache ())))
+    QCheck2.Gen.(pair small_int (gen_cache ()))
     future_cache_expectation_does_not_change_not_full_cache
 
 let future_cache_expectation_repeats_the_past
@@ -523,10 +522,10 @@ let future_cache_expectation_repeats_the_past
     else true
 
 let check_future_cache_expectation_repeats_the_past =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:50
     ~name:"future_cache_expectation repeats the past"
-    QCheck.(pair small_int (pair small_int (QCheck.make (gen_cache ()))))
+    QCheck2.Gen.(pair small_int (pair small_int (gen_cache ())))
     future_cache_expectation_repeats_the_past
 
 (*
@@ -553,15 +552,13 @@ let after_sync_cache_nonce_are_set (entries, cache, fresh_entries) =
   if_in_then_has_cache_nonce cache fresh_entries nonce2
 
 let check_after_sync_cache_nonce_are_set =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:50
     ~name:"after sync, cache nonce are set"
-    QCheck.(
-      make
-        Gen.(
-          let* _, entries, cache = gen_cache () in
-          let* fresh_entries = gen_entries (number_of_caches cache) in
-          return (entries, cache, fresh_entries)))
+    QCheck2.Gen.(
+      let* _, entries, cache = gen_cache () in
+      let* fresh_entries = gen_entries (number_of_caches cache) in
+      return (entries, cache, fresh_entries))
     after_sync_cache_nonce_are_set
 
 (*
@@ -596,10 +593,10 @@ let list_keys_returns_entries (_, entries, cache) =
     (0 -- (number_of_caches cache - 1))
 
 let check_list_keys_returns_entries =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:100
     ~name:"list keys returns all entries"
-    (QCheck.make (gen_cache ()))
+    (gen_cache ())
     list_keys_returns_entries
 
 (*
@@ -631,10 +628,10 @@ let key_rank_returns_valid_rank (_, entries, cache) =
     (0 -- (number_of_caches cache - 1))
 
 let check_key_rank_returns_valid_rank =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:25
     ~name:"key rank returns valid rank"
-    (QCheck.make (gen_cache ()))
+    (gen_cache ())
     key_rank_returns_valid_rank
 
 (*
@@ -656,10 +653,10 @@ let from_cache_with_same_domain_copies (_, _, cache) =
   return (same_cache_keys cache cache')
 
 let check_from_cache_with_same_domain_copies =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:25
     ~name:"from_cache with same domain copies"
-    (QCheck.make (gen_cache ()))
+    (gen_cache ())
     (fun x ->
       Lwt_main.run (from_cache_with_same_domain_copies x) |> function
       | Ok b -> b
@@ -730,10 +727,10 @@ let load_cache_correctly_restores_cache_in_memory_normal_case =
   load_cache_correctly_restores_cache_in_memory builder
 
 let check_load_cache_correctly_restores_cache_in_memory mode_label mode =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~count:50
     ~name:("load_cache correctly restores in-memory caches " ^ mode_label)
-    (QCheck.make (gen_cache ~high_init_entries:low_init_entries ()))
+    (gen_cache ~high_init_entries:low_init_entries ())
     (fun x ->
       Lwt_main.run
         (load_cache_correctly_restores_cache_in_memory_normal_case mode x)
@@ -748,11 +745,10 @@ let load_cache_correctly_restores_cache_in_memory_fatal_error_case =
   load_cache_correctly_restores_cache_in_memory builder
 
 let check_load_cache_fails_if_builder_fails mode_label mode =
-  QCheck.Test.make
+  QCheck2.Test.make
     ~name:("load_cache fails if builder fails " ^ mode_label)
-    (QCheck.make
-       ~print:(fun c -> Format.asprintf "%a" pp_cache c)
-       (gen_cache ~allow_empty:false ~high_init_entries:low_init_entries ()))
+    ~print:(fun c -> Format.asprintf "%a" pp_cache c)
+    (gen_cache ~allow_empty:false ~high_init_entries:low_init_entries ())
     (fun x ->
       Lwt_main.run
         (load_cache_correctly_restores_cache_in_memory_fatal_error_case mode x)
