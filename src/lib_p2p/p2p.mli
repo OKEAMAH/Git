@@ -293,6 +293,7 @@ module Internal_for_tests : sig
     b_meta:'b ->
     ab_conn_meta:'c ->
     ba_conn_meta:'c ->
+    propagation_delay:float ->
     (unit, string) result
 
   val disconnect_peers :
@@ -304,19 +305,24 @@ module Internal_for_tests : sig
   val neighbourhood :
     ('a, 'b, 'c) mocked_network ->
     P2p_peer.Id.t ->
-    (P2p_peer.Id.t * 'a Lwt_pipe.Unbounded.t) list
+    (P2p_peer.Id.t * ('a * int * float) Lwt_pipe.Unbounded.t) list
 
   val iter_neighbourhood :
     ('a, 'b, 'c) mocked_network ->
     P2p_peer.Id.t ->
-    (outbound:'a Lwt_pipe.Unbounded.t -> neighbor:P2p_peer.Id.t -> unit) ->
+    (outbound:('a * int * float) Lwt_pipe.Unbounded.t ->
+    neighbor:P2p_peer.Id.t ->
+    unit) ->
     unit
 
   val iter_neighbourhood_es :
     ('a, 'b, 'c) mocked_network ->
     P2p_peer.Id.t ->
-    (outbound:'a Lwt_pipe.Unbounded.t ->
+    (outbound:('a * int * float) Lwt_pipe.Unbounded.t ->
     neighbor:P2p_peer.Id.t ->
     (unit, 'd) result Lwt.t) ->
     (unit, 'd) result Lwt.t
+
+  val sleep_on_deferred_delays :
+    ('a, 'b, 'c) mocked_network -> P2p_peer.Id.t -> (unit, string) result Lwt.t
 end

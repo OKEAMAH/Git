@@ -120,7 +120,7 @@ let create :
   let handle =
     match find_handle_opt version with
     | None ->
-        let handle = Network.create () in
+        let handle = Network.create msg_cfg.encoding in
         handles := P2p_network {id = version; handle} :: !handles ;
         handle
     | Some handle -> handle
@@ -276,6 +276,8 @@ module Internal_for_tests = struct
   let connect_peers = Network.connect_peers
 
   let disconnect_peers = Network.disconnect_peers
+
+  let sleep_on_deferred_delays = Network.sleep_on_deferred_delays
 
   let neighbourhood handle peer =
     let peer_state = Network.get_peer_exn ~s:"iter_neighbourhood" handle peer in
