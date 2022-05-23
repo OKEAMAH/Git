@@ -270,7 +270,7 @@ let pp_manager_operation_content (type kind) source pp_result ppf
   | Transfer_ticket _ ->
       Format.fprintf ppf "Transfer tickets:@,From: %a" Contract.pp source
   | Sc_rollup_originate {kind; boot_sector; parameters_ty} ->
-      let (module R : Sc_rollups.PVM.S) = Sc_rollups.of_kind kind in
+      let (module R : Sc_rollup.PVM.S) = Sc_rollup.Kind.pvm_of kind in
       let parameters_ty =
         WithExceptions.Option.to_exn
           ~none:(Failure "ill-serialized parameters type")
