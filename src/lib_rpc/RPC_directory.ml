@@ -26,6 +26,70 @@
 open Error_monad
 include Resto_directory.Make (RPC_encoding)
 
+let string_of_step = function
+  | Static s -> s
+  | Dynamic arg -> Format.sprintf "<%s>" arg.name
+  | DynamicTail arg -> Format.sprintf "<%s...>" arg.name
+
+let pp_confict_kind ppf = function
+  | CDir -> Format.pp_print_string ppf "Dir conflict"
+  | CBuilder -> Format.pp_print_string ppf "Builder conflict"
+  | CTail -> Format.pp_print_string ppf "Tail conflict"
+  | CService meth ->
+      Format.fprintf ppf "Method conflict for %s" (Resto.string_of_meth meth)
+  | CTypes (arg1, arg2) ->
+      Format.fprintf
+        ppf
+        "Type conflict for argument %s with argument %s"
+        arg1.name
+        arg2.name
+  | CType (arg, names) ->
+      Format.fprintf
+        ppf
+        "Type conflict for %s with argument %s"
+        (String.concat ", " names)
+        arg.name
+
+let pp_conflict ppf (steps, kind) =
+  Format.fprintf
+    ppf
+    "%a in /%s"
+    pp_confict_kind
+    kind
+    (String.concat "/" @@ List.map string_of_step steps)
+
+let rec pp_path :
+    type a b. Format.formatter -> (a, b) Resto.Internal.path -> unit =
+ fun ppf -> function
+  | Root -> ()
+  | Static (p, s) -> Format.fprintf ppf "%a/%s" pp_path p s
+  | Dynamic (p, arg) -> Format.fprintf ppf "%a/<%s>" pp_path p arg.descr.name
+  | DynamicTail (p, arg) ->
+      Format.fprintf ppf "%a/<%s...>" pp_path p arg.descr.name
+
+(* TODO: https://gitlab.com/nomadic-labs/resto/-/issues/3
+   Use printing from Resto when available.*)
+let pp_service ppf service =
+  let iservice = Service.Internal.to_service service in
+  Format.fprintf
+    ppf
+    "%s %a (%s)"
+    (Resto.string_of_meth iservice.meth)
+    pp_path
+    iservice.path
+    (Option.value ~default:"" iservice.description)
+
+let register dir service handler =
+  try register dir service handler
+  with Conflict (steps, conflict) as e ->
+    Format.eprintf
+      "@[<v 2>Error in registration of service %a:@ %a@]@."
+      pp_service
+      service
+      pp_conflict
+      (steps, conflict) ;
+    raise e
+
 let gen_register dir service handler =
   register dir service (fun p q i ->
       Lwt.catch
