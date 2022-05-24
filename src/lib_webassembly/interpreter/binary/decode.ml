@@ -1119,7 +1119,7 @@ type section_tag =
   | `TypeSection ]
 
 type module_kont =
-  | MK_Stop of module_'
+  | MK_Stop of module_' (* TODO: actually, should be module_ *)
   | MK_Start
   | MK_Next of field list
   | MK_Skip_custom
@@ -1190,8 +1190,8 @@ let module_ s =
          let f = at export s in (* small enough to fit in a tick *)
          MK_Field_collect (ty, n - 1, f :: l) :: rest
        | StartField ->
-         let f = at start s in (* small enough to fit in a tick *)
-         MK_Field_collect (ty, n - 1, f :: l) :: rest
+         (* not a vector *)
+         assert false
        | ElemField ->
          failwith "HERE" (* do something incremental, like Global, but more complex *)
        | DataCountField ->
@@ -1214,6 +1214,7 @@ let module_ s =
     | MK_Field_rev (ty, l, f :: fs) :: rest ->
       MK_Field_rev (ty, f :: l, fs) :: rest
     | MK_Field_rev (TypeField, l, []) :: MK_Next fields :: rest ->
+      (* TODO: maybe we can factor-out these similarly shaped module section transitions *)
       MK_Skip_custom
       :: MK_Field (ImportField, `ImportSection)
       :: MK_Next (Vec_field (TypeField, l) :: fields)  :: []
@@ -1259,7 +1260,7 @@ let module_ s =
           | [] -> assert false
           | Single_field _ :: rest -> find_vec ty rest
           | Vec_field (ty', v) :: rest ->
-            match ty, ty' with
+            match ty, ty' with (* TODO: factor this out with a Leibnitz equality witness *)
             | TypeField, TypeField -> v
             | ImportField, ImportField -> v
             | FuncField, FuncField -> v
@@ -1344,3 +1345,12 @@ let all_custom tag s =
   in collect ()
 
 let decode_custom tag name bs = all_custom tag (stream name bs)
+
+(* Incremental parser TODO list:
+   - Make extra sure that the input consumed at each tick is less than some limit << L1 op size
+   - Make extra sure to limit the part of the state consumed at each tick
+   - Sections marked `faiwith "HERE" are not implemented
+   - Make the input shallow-able, probably keep the imperative structure
+   - Make the state shallow-able (insert Merkelized cuts)
+   - Drop the dead synchronous utility functions, or turn them into small step ones
+   - Remove the wildcard patterns in the continuation stack matches *)
