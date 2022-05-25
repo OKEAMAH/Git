@@ -846,7 +846,7 @@ let section tag f default s =
 
 let type_ s = at func_type s
 
-let type_section s =
+let _type_section s =
   section `TypeSection (vec type_) [] s
 
 
@@ -866,13 +866,13 @@ let import s =
   let idesc = at import_desc s in
   {module_name; item_name; idesc}
 
-let import_section s =
+let _import_section s =
   section `ImportSection (vec (at import)) [] s
 
 
 (* Function section *)
 
-let func_section s =
+let _func_section s =
   section `FuncSection (vec (at var)) [] s
 
 
@@ -882,7 +882,7 @@ let table s =
   let ttype = table_type s in
   {ttype}
 
-let table_section s =
+let _table_section s =
   section `TableSection (vec (at table)) [] s
 
 
@@ -892,7 +892,7 @@ let memory s =
   let mtype = memory_type s in
   {mtype}
 
-let memory_section s =
+let _memory_section s =
   section `MemorySection (vec (at memory)) [] s
 
 
@@ -903,7 +903,7 @@ let global s =
   let ginit = const s in
   {gtype; ginit}
 
-let global_section s =
+let _global_section s =
   section `GlobalSection (vec (at global)) [] s
 
 
@@ -922,7 +922,7 @@ let export s =
   let edesc = at export_desc s in
   {name; edesc}
 
-let export_section s =
+let _export_section s =
   section `ExportSection (vec (at export)) [] s
 
 
@@ -1015,7 +1015,7 @@ let code_step s = function
 
   | CK_Stop _ -> assert false (* final step, cannot reduce *)
 
-let code_section s =
+let _code_section s =
   section `CodeSection (vec (at (sized code))) [] s
 
 
@@ -1167,13 +1167,13 @@ let elem_step s =
   | EK_Init (emode, ref_index, etype, Rev ([], einit), _) ->
     let emode = Source.(emode @@ no_region) in
     EK_Stop {etype; einit; emode}
-  | EK_Init (emode, ref_index, etype, Rev (c :: l, l'), _) ->
-    EK_Init (emode, ref_index, etype, Rev (l, c :: l'), _)
+  | EK_Init (emode, ref_index, etype, Rev (c :: l, l'), instr_kont) ->
+    EK_Init (emode, ref_index, etype, Rev (l, c :: l'), instr_kont)
 
   | EK_Stop _  -> assert false (* Final step, cannot reduce *)
 
 
-let elem_section s =
+let _elem_section s =
   section `ElemSection (vec (at elem)) [] s
 
 
@@ -1229,7 +1229,7 @@ let data_step s =
     DK_Mode (index, instr_block_step s instr_kont)
   | DK_Stop _ -> assert false (* final step, cannot reduce *)
 
-let data_section s =
+let _data_section s =
   section `DataSection (vec (at data)) [] s
 
 
