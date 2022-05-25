@@ -1136,6 +1136,40 @@ let data s =
     {dinit; dmode}
   | _ -> error s (pos s - 1) "malformed data segment kind"
 
+type data_kont =
+  | DK_Start
+  | DK_Mode of int32 Source.phrase * instr_block_kont list
+  | DK_Stop of data_segment'
+
+let data_start s =
+  match vu32 s with
+  | 0x00l ->
+    (* active_zero *)
+    let index = Source.(0l @@ Source.no_region) in
+    DK_Mode (index, (IK_Next []) :: [])
+  | 0x01l ->
+    (* passive *)
+    let dinit = string s in
+    let dmode = Source.(Passive @@ no_region) in
+    DK_Stop {dmode; dinit}
+  | 0x02l ->
+    (* active *)
+    let index = at var s in
+    DK_Mode (index, (IK_Next []) :: [])
+  | _ -> error s (pos s - 1) "malformed data segment kind"
+
+let data_step s =
+  function
+  | DK_Start -> data_start s
+  | DK_Mode (index, [ IK_Stop offset ]) ->
+    let offset = Source.(offset @@ no_region) in (* locations lost *)
+    let dmode = Source.(Active {index; offset} @@ no_region) in
+    let dinit = string s in
+    DK_Stop {dmode; dinit}
+  | DK_Mode (index, instr_kont) ->
+    DK_Mode (index, instr_block_step s instr_kont)
+  | DK_Stop _ -> assert false (* final step, cannot reduce *)
+
 let data_section s =
   section `DataSection (vec (at data)) [] s
 
@@ -1215,6 +1249,7 @@ type module_kont =
   | MK_Field : 'a field_type * section_tag -> module_kont
   | MK_Global of global_type * int * instr_block_kont list
   | MK_Elem of elem_kont * int
+  | MK_Data of data_kont * int
 
 let module_ s =
   let step = function
@@ -1288,7 +1323,7 @@ let module_ s =
        | CodeField ->
          failwith "HERE" (* do something incremental, like Global, but more complex *)
        | DataField ->
-         failwith "HERE" (* do something incremental, like Global, but more complex *)
+         MK_Data (DK_Start, pos s) :: collect
       )
 
     | MK_Global (gtype, left, [ IK_Stop res]) :: MK_Field_collect (GlobalField, n, l) :: rest ->
@@ -1305,8 +1340,19 @@ let module_ s =
       end_ s ;
       let elem = Source.(elem @@ region s left (pos s)) in
       MK_Field_collect (ElemField, (n - 1), elem :: l) :: rest
+    | MK_Elem (EK_Stop _, _) :: _ ->
+      assert false
     | MK_Elem (elem_kont, pos) :: rest ->
       MK_Elem (elem_step s elem_kont, pos) :: rest
+
+    | MK_Data (DK_Stop data, left) :: MK_Field_collect (DataField, n, l) :: rest ->
+      end_ s ;
+      let data = Source.(data @@ region s left (pos s)) in
+      MK_Field_collect (DataField, (n - 1), data :: l) :: rest
+    | MK_Data (DK_Stop _, _) :: _ ->
+      assert false
+    | MK_Data (data_kont, pos) :: rest ->
+      MK_Data (data_step s data_kont, pos) :: rest
 
     | MK_Field_rev (ty, l, f :: fs) :: rest ->
       MK_Field_rev (ty, f :: l, fs) :: rest
