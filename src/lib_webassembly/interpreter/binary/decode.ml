@@ -1027,6 +1027,93 @@ let elem s =
     {etype; einit; emode}
   | _ -> error s (pos s - 1) "malformed elements segment kind"
 
+type ref_index = Indexed | Const
+
+type 'a vec_kont = Collect of int * 'a list | Rev of 'a list * 'a list
+
+type elem_kont =
+  | EK_Start
+  | EK_Mode of int32 Source.phrase * ref_index * instr_block_kont list
+  | EK_Init of segment_mode' * ref_index * ref_type * const vec_kont * instr_block_kont list
+  | EK_Stop of elem_segment'
+
+let ek_start s =
+    match vu32 s with
+    | 0x00l ->
+      (* active_zero *)
+      let index = Source.(0l @@ Source.no_region) in
+      EK_Mode (index, Indexed, (IK_Next []) :: [])
+    | 0x01l ->
+      (* passive *)
+      let ref_type = elem_kind s in
+      let n = len32 s in
+      EK_Init (Passive, Indexed, ref_type, Collect (n, []), IK_Next [] ::  [])
+    | 0x02l ->
+      (* active *)
+      let index = at var s in
+      EK_Mode (index, Indexed, (IK_Next []) :: [])
+    | 0x03l ->
+      (* declarative *)
+      let ref_type = elem_kind s in
+      let n = len32 s in
+      EK_Init (Declarative, Indexed, ref_type, Collect (n,  []), IK_Next [] ::  [])
+    | 0x04l ->
+      (* active_zero *)
+      let index = Source.(0l @@ Source.no_region) in
+      EK_Mode (index, Const, (IK_Next []) :: [])
+    | 0x05l ->
+      (* passive *)
+      let ref_type = elem_kind s in
+      let n = len32 s in
+      EK_Init (Passive, Const, ref_type, Collect (n, []),  IK_Next [] ::  [])
+    | 0x06l ->
+      (* active *)
+      let index = at var s in
+      EK_Mode (index, Const, (IK_Next []) :: [])
+    | 0x07l ->
+      (* declarative *)
+      let ref_type = elem_kind s in
+      let n = len32 s in
+      EK_Init (Declarative, Const, ref_type, Collect (n, []), IK_Next [] ::  [])
+    | _ -> error s (pos s - 1) "malformed elements segment kind"
+
+let elem_step s =
+  function
+  | EK_Start -> ek_start s
+  | EK_Mode (index, ref_index, [IK_Stop offset]) ->
+    let offset = Source.(offset @@ no_region) in (* locations lost *)
+    let ref_type = if ref_index = Indexed then elem_kind s else ref_type s in
+    let n = len32 s in
+    EK_Init (Active {index; offset},
+             ref_index,
+             ref_type,
+             Collect (n, []),
+             IK_Next [] :: [])
+  | EK_Mode (index, ref_index, k) ->
+    EK_Mode (index, ref_index, instr_block_step s k)
+
+  (* COLLECT *)
+  | EK_Init (emode, ref_index, etype, Collect(0, l), [ IK_Stop einit ]) ->
+    let einit = Source.(einit @@ no_region) in (* locations lost *)
+    EK_Init (emode, ref_index, etype, Rev(einit :: l, []), [])
+  | EK_Init (emode, ref_index, etype, Collect(n, l), [ IK_Stop einit ]) ->
+    let einit = Source.(einit @@ no_region) in (* locations lost *)
+    EK_Init (emode, ref_index, etype, Collect(n-1, einit :: l), [IK_Next []])
+
+  | EK_Init (emode, ref_index, etype, Collect(n, l), instr_kont) ->
+    let instr_kont' = instr_block_step s instr_kont in
+    EK_Init (emode, ref_index, etype, Collect(n, l), instr_kont')
+
+  (* REV *)
+  | EK_Init (emode, ref_index, etype, Rev ([], einit), _) ->
+    let emode = Source.(emode @@ no_region) in
+    EK_Stop {etype; einit; emode}
+  | EK_Init (emode, ref_index, etype, Rev (c :: l, l'), _) ->
+    EK_Init (emode, ref_index, etype, Rev (l, c :: l'), _)
+
+  | EK_Stop _  -> assert false (* Final step, cannot reduce *)
+
+
 let elem_section s =
   section `ElemSection (vec (at elem)) [] s
 
@@ -1127,6 +1214,7 @@ type module_kont =
   | MK_Field_rev : 'a field_type * 'a list * 'a list -> module_kont
   | MK_Field : 'a field_type * section_tag -> module_kont
   | MK_Global of global_type * int * instr_block_kont list
+  | MK_Elem of elem_kont * int
 
 let module_ s =
   let step = function
@@ -1193,7 +1281,7 @@ let module_ s =
          (* not a vector *)
          assert false
        | ElemField ->
-         failwith "HERE" (* do something incremental, like Global, but more complex *)
+         MK_Elem (EK_Start, pos s) :: collect
        | DataCountField ->
          (* not a vector *)
          assert false
@@ -1202,6 +1290,7 @@ let module_ s =
        | DataField ->
          failwith "HERE" (* do something incremental, like Global, but more complex *)
       )
+
     | MK_Global (gtype, left, [ IK_Stop res]) :: MK_Field_collect (GlobalField, n, l) :: rest ->
       end_ s ;
       let ginit = Source.(res @@ region s left (pos s)) in
@@ -1211,6 +1300,14 @@ let module_ s =
       assert false
     | MK_Global (ty, pos, k) :: rest ->
       MK_Global (ty, pos, instr_block_step s k) :: rest
+
+    | MK_Elem (EK_Stop elem, left) :: MK_Field_collect (ElemField, n, l) :: rest ->
+      end_ s ;
+      let elem = Source.(elem @@ region s left (pos s)) in
+      MK_Field_collect (ElemField, (n - 1), elem :: l) :: rest
+    | MK_Elem (elem_kont, pos) :: rest ->
+      MK_Elem (elem_step s elem_kont, pos) :: rest
+
     | MK_Field_rev (ty, l, f :: fs) :: rest ->
       MK_Field_rev (ty, f :: l, fs) :: rest
     | MK_Field_rev (TypeField, l, []) :: MK_Next fields :: rest ->
