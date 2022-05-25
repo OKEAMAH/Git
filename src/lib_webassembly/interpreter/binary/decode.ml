@@ -954,6 +954,67 @@ let code _ s =
   end_ s;
   {locals; body; ftype = Source.((-1l) @@ Source.no_region)}
 
+type 'a vec_kont = Collect of int * 'a list | Rev of 'a list * 'a list
+
+type pos = int
+
+type size = { size: int; start: pos}
+
+type code_kont =
+  | CK_Start
+  | CK_Locals of pos * size * pos * (int32 * value_type) vec_kont
+  | CK_Body of pos * size * value_type list * instr_block_kont list
+  | CK_Stop of func
+
+(* Originaly `sized` split in two *)
+let size s =
+  let size = len32 s in
+  let start = pos s in
+  { size; start }
+
+let check_size { size; start } s =
+  require (pos s = start + size) s start "section size mismatch"
+
+
+let at' left s x =
+  let right = pos s in
+  Source.(x @@ region s left right)
+
+
+let code_step s = function
+  | CK_Start ->
+    let left = pos s in
+    let size = size s in
+    let pos = pos s in
+    let n = len32 s in
+    CK_Locals (left, size, pos, Collect (n, []))
+
+  | CK_Locals (left, size, pos, Collect (0, l)) ->
+    CK_Locals (left, size, pos, Rev (l, []))
+  | CK_Locals (left, size, pos, Collect (n, l)) ->
+    let local = local s in (* small enough to fit in a tick *)
+    CK_Locals (left, size, pos, Collect (n - 1, local :: l))
+
+  | CK_Locals (left, size, pos, Rev ([], nts)) ->
+    (* TODO: does it all fit into a tick? Can be easily inlined during the collect/rev *)
+    let ns = List.map (fun (n, _) -> I64_convert.extend_i32_u n) nts in
+    require (I64.lt_u (List.fold_left I64.add 0L ns) 0x1_0000_0000L)
+      s pos "too many locals";
+    let locals = List.flatten (List.map (Lib.Fun.uncurry Lib.List32.make) nts) in
+    CK_Body (left, size, locals, [ IK_Next [] ])
+  | CK_Locals (left, size, pos, Rev (t :: l, l')) ->
+    CK_Locals (left, size, pos, Rev (l, t :: l'))
+
+  | CK_Body (left, size, locals, [ IK_Stop body ]) ->
+    check_size size s;
+    let func =
+      at' left s @@ {locals; body; ftype = Source.((-1l) @@ Source.no_region)} in
+    CK_Stop func
+  | CK_Body (left, size, locals, instr_block_konst) ->
+    CK_Body (left, size, locals, instr_block_step s instr_block_konst)
+
+  | CK_Stop _ -> assert false (* final step, cannot reduce *)
+
 let code_section s =
   section `CodeSection (vec (at (sized code))) [] s
 
@@ -1028,8 +1089,6 @@ let elem s =
   | _ -> error s (pos s - 1) "malformed elements segment kind"
 
 type ref_index = Indexed | Const
-
-type 'a vec_kont = Collect of int * 'a list | Rev of 'a list * 'a list
 
 type elem_kont =
   | EK_Start
@@ -1250,6 +1309,7 @@ type module_kont =
   | MK_Global of global_type * int * instr_block_kont list
   | MK_Elem of elem_kont * int
   | MK_Data of data_kont * int
+  | MK_Code of code_kont * int
 
 let module_ s =
   let step = function
@@ -1321,7 +1381,7 @@ let module_ s =
          (* not a vector *)
          assert false
        | CodeField ->
-         failwith "HERE" (* do something incremental, like Global, but more complex *)
+         MK_Code (CK_Start, pos s) :: collect
        | DataField ->
          MK_Data (DK_Start, pos s) :: collect
       )
@@ -1353,6 +1413,14 @@ let module_ s =
       assert false
     | MK_Data (data_kont, pos) :: rest ->
       MK_Data (data_step s data_kont, pos) :: rest
+
+    | MK_Code (CK_Stop func, left) :: MK_Field_collect (CodeField, n, l) :: rest ->
+      end_ s ;
+      MK_Field_collect (CodeField, (n - 1), func :: l) :: rest
+    | MK_Code (CK_Stop _, _) :: _ ->
+      assert false
+    | MK_Code (code_kont, pos) :: rest ->
+      MK_Code (code_step s code_kont, pos) :: rest
 
     | MK_Field_rev (ty, l, f :: fs) :: rest ->
       MK_Field_rev (ty, f :: l, fs) :: rest
