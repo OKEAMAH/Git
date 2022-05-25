@@ -168,7 +168,7 @@ let func_type s =
     let ins = result_type s in
     let out = result_type s in
     FuncType (ins, out)
-  | _ -> error s (pos s - 1) "malformed function type"
+  | v -> error s (pos s - 1) (Format.sprintf "malformed function type: %d" v)
 
 let limits vu s =
   let has_max = bool s in
@@ -973,7 +973,8 @@ let size s =
   { size; start }
 
 let check_size { size; start } s =
-  require (pos s = start + size) s start "section size mismatch"
+  Format.printf "pos s: %d; start: %d; size: %d\n%!" (pos s) start size;
+  require (pos s = start + size) s start "check_size: section size mismatch"
 
 
 let at' left s x =
@@ -983,9 +984,11 @@ let at' left s x =
 
 let code_step s = function
   | CK_Start ->
+    (* `at` left *)
     let left = pos s in
     let size = size s in
     let pos = pos s in
+    (* `vec` size *)
     let n = len32 s in
     CK_Locals (left, size, pos, Collect (n, []))
 
@@ -1006,6 +1009,7 @@ let code_step s = function
     CK_Locals (left, size, pos, Rev (l, t :: l'))
 
   | CK_Body (left, size, locals, [ IK_Stop body ]) ->
+    end_ s;
     check_size size s;
     let func =
       at' left s @@ {locals; body; ftype = Source.((-1l) @@ Source.no_region)} in
@@ -1140,8 +1144,10 @@ let elem_step s =
   function
   | EK_Start -> ek_start s
   | EK_Mode (index, ref_index, [IK_Stop offset]) ->
+    end_ s;
     let offset = Source.(offset @@ no_region) in (* locations lost *)
     let ref_type = if ref_index = Indexed then elem_kind s else ref_type s in
+    (* `vec` size *)
     let n = len32 s in
     EK_Init (Active {index; offset},
              ref_index,
@@ -1153,9 +1159,11 @@ let elem_step s =
 
   (* COLLECT *)
   | EK_Init (emode, ref_index, etype, Collect(0, l), [ IK_Stop einit ]) ->
+    end_ s;
     let einit = Source.(einit @@ no_region) in (* locations lost *)
     EK_Init (emode, ref_index, etype, Rev(einit :: l, []), [])
   | EK_Init (emode, ref_index, etype, Collect(n, l), [ IK_Stop einit ]) ->
+    end_ s;
     let einit = Source.(einit @@ no_region) in (* locations lost *)
     EK_Init (emode, ref_index, etype, Collect(n-1, einit :: l), [IK_Next []])
 
@@ -1221,6 +1229,7 @@ let data_step s =
   function
   | DK_Start -> data_start s
   | DK_Mode (index, [ IK_Stop offset ]) ->
+    end_ s;
     let offset = Source.(offset @@ no_region) in (* locations lost *)
     let dmode = Source.(Active {index; offset} @@ no_region) in
     let dinit = string s in
@@ -1311,24 +1320,51 @@ type module_kont =
   | MK_Data of data_kont * int
   | MK_Code of code_kont * int
 
+let string_of_field: type a. a field_type -> string =
+  function
+  | TypeField -> "TypeField"
+  | ImportField -> "ImportField"
+  | FuncField -> "FuncField"
+  | TableField -> "TableField"
+  | MemoryField -> "MemoryField"
+  | GlobalField -> "GlobalField"
+  | ExportField -> "ExportField"
+  | StartField -> "StartField"
+  | ElemField -> "ElemField"
+  | DataCountField -> "DataCountField"
+  | CodeField -> "CodeField"
+  | DataField -> "DataField"
+
 let module_ s =
   let step = function
     | MK_Start :: []  ->
+      (* Module header *)
       let header = u32 s in
       require (header = magic) s 0 "magic header not detected";
       let version = u32 s in
       require (version = Encode.version) s 4 "unknown binary version";
+      (* Module header *)
       MK_Skip_custom
       :: MK_Field (TypeField,`TypeSection)
       :: MK_Next [] :: []
     | MK_Skip_custom :: ks ->
+      Format.printf "MK_Skip_Custom\n%!";
       (match id s with
        | Some `CustomSection ->
+         Format.printf "In custom section\n%!";
+         (* section_with_size *)
          ignore (u8 s);
+         (* sized *)
          let l = len32 s in
-         skip l s ;
+         Format.printf "custom size %d\n%!" l;
+         (* custom *)
+         let start = pos s in
+         let _id = name s in
+         let _bs = get_string (l - (pos s - start)) s in
+         (* /custom *)
          MK_Skip_custom :: ks
-       | _ -> ks)
+       | _ ->
+         Format.printf "No custom section\n%!"; ks)
     | MK_Field (DataCountField, `DataCountSection) :: MK_Next fields :: [] ->
       let v = data_count_section s in
       MK_Skip_custom
@@ -1340,10 +1376,14 @@ let module_ s =
       :: MK_Field (ElemField, `ElemSection)
       :: MK_Next (Single_field (StartField, v) :: fields) :: []
     | MK_Field (ty, tag) :: (MK_Next fields :: [] as rest) ->
+      Format.printf "MK_Field %s\n%!" (string_of_field ty);
       (match id s with
        | Some t when t = tag->
          ignore (u8 s);
+         let _l = len32 s in
+         (* length of vec *)
          let l = len32 s in
+         Format.printf "Length field: %d\n%!" l;
          MK_Field_collect (ty, l, []) :: rest
        | _ ->
          MK_Field_rev (ty, [], []) :: rest)
@@ -1352,6 +1392,7 @@ let module_ s =
     | MK_Field_collect (ty, n, l) :: rest as collect ->
       (match ty with
        | TypeField ->
+         Format.printf "Type field\n%!";
          let f = type_ s in (* TODO: check if small enough to fit in a tick *)
          MK_Field_collect (ty, n - 1, f :: l) :: rest
        | ImportField ->
@@ -1376,6 +1417,7 @@ let module_ s =
          (* not a vector *)
          assert false
        | ElemField ->
+         Format.printf "Elem field\n%!";
          MK_Elem (EK_Start, pos s) :: collect
        | DataCountField ->
          (* not a vector *)
@@ -1397,7 +1439,6 @@ let module_ s =
       MK_Global (ty, pos, instr_block_step s k) :: rest
 
     | MK_Elem (EK_Stop elem, left) :: MK_Field_collect (ElemField, n, l) :: rest ->
-      end_ s ;
       let elem = Source.(elem @@ region s left (pos s)) in
       MK_Field_collect (ElemField, (n - 1), elem :: l) :: rest
     | MK_Elem (EK_Stop _, _) :: _ ->
@@ -1406,7 +1447,6 @@ let module_ s =
       MK_Elem (elem_step s elem_kont, pos) :: rest
 
     | MK_Data (DK_Stop data, left) :: MK_Field_collect (DataField, n, l) :: rest ->
-      end_ s ;
       let data = Source.(data @@ region s left (pos s)) in
       MK_Field_collect (DataField, (n - 1), data :: l) :: rest
     | MK_Data (DK_Stop _, _) :: _ ->
@@ -1415,7 +1455,6 @@ let module_ s =
       MK_Data (data_step s data_kont, pos) :: rest
 
     | MK_Code (CK_Stop func, left) :: MK_Field_collect (CodeField, n, l) :: rest ->
-      end_ s ;
       MK_Field_collect (CodeField, (n - 1), func :: l) :: rest
     | MK_Code (CK_Stop _, _) :: _ ->
       assert false
@@ -1446,6 +1485,7 @@ let module_ s =
       :: MK_Field (GlobalField, `GlobalSection)
       :: MK_Next (Vec_field (MemoryField, l) :: fields) :: []
     | MK_Field_rev (GlobalField, l, []) :: MK_Next fields :: rest ->
+      Format.printf "after Rev GlobalField\n%!";
       MK_Skip_custom
       :: MK_Field (ExportField, `ExportSection)
       :: MK_Next (Vec_field (GlobalField, l) :: fields) :: []
