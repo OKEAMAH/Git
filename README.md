@@ -1,8 +1,10 @@
 # Tezos Octez implementation
 
+change here
+
 ## Introduction
 
-Tezos is a blockchain that offers both  _consensus_ and _meta-consensus_, by which we mean that Tezos comes to consensus both about the state of its ledger, and  _also_ about how the
+Tezos is a blockchain that offers both _consensus_ and _meta-consensus_, by which we mean that Tezos comes to consensus both about the state of its ledger, and _also_ about how the
 protocol and the nodes should adapt and upgrade.
 For more information about the project, see https://tezos.com.
 
@@ -21,10 +23,11 @@ This repository hosts **Octez**, an implementation of the Tezos blockchain.
 **Octez** provides a node, a client, a baker, an endorser, an accuser, and other tools, distributed with the Tezos economic protocols of Mainnet for convenience.
 
 In more detail, this git repository contains:
+
 - the source code, in directory src/
 - tests (mainly system tests):
-  * in a Python testing and execution framework, under tests_python/
-  * in an OCaml system testing framework for Tezos called Tezt, under tezt/
+  - in a Python testing and execution framework, under tests_python/
+  - in an OCaml system testing framework for Tezos called Tezt, under tezt/
 - the developer documentation of the Tezos software, under docs/
 - a few third-party libraries, adapted for Tezos, under vendors/
 
@@ -59,7 +62,7 @@ discuss the future of Tezos with the community at large.
 ### Development of the Tezos protocol
 
 The core of the Tezos software that implements the economic ruleset is
-called the *protocol*. Unlike the rest of the source code, updates to the
+called the _protocol_. Unlike the rest of the source code, updates to the
 protocol must be further adopted through the [Tezos
 on-chain voting
 procedure](https://tezos.gitlab.io/whitedoc/voting.html). Protocol
@@ -70,5 +73,6 @@ to study and to maximize the throughput of the voting procedure.
 ## Community
 
 Links to community websites are gathered in the following community portals:
+
 - https://www.tezos.help/
 - https://developers.tezos.com/ (for developers of applications built on Tezos)
