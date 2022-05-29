@@ -1,5 +1,5 @@
 # Tezos Octez implementation
-Yoyo
+Yoyoyo
 ## Introduction
 
 Tezos is a blockchain that offers both  _consensus_ and _meta-consensus_, by which we mean that Tezos comes to consensus both about the state of its ledger, and  _also_ about how the
