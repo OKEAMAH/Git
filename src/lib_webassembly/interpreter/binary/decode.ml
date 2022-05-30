@@ -1632,7 +1632,7 @@ let all_custom tag s =
     | Some _ -> collect ()
   in collect ()
 
-let decode_custom tag name bs = all_custom tag (stream name bs)
+let _decode_custom tag name bs = all_custom tag (stream name bs)
 
 (* Incremental parser TODO list:
    - Make extra sure that the input consumed at each tick is less than some limit << L1 op size
