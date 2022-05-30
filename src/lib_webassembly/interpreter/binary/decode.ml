@@ -1356,7 +1356,9 @@ type section_tag =
   | `TypeSection ]
 
 type module_kont =
+  (* Done, one module produced *)
   | MK_Stop of module_' (* TODO: actually, should be module_ *)
+  (* Start of input *)
   | MK_Start
   | MK_Next of field list
   | MK_Skip_custom
@@ -1368,7 +1370,7 @@ type module_kont =
   | MK_Data of data_kont * int
   | MK_Code of code_kont * int
 
-let module_ s =
+let module_ (s : stream) : Ast.module_' =
   let step = function
     | MK_Start :: []  ->
       (* Module header *)
