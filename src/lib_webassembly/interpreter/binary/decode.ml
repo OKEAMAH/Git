@@ -950,6 +950,7 @@ let local s =
 let code _ s =
   let pos = pos s in
   let nts = vec local s in
+  (* TODO is List. stuff safe? *)
   let ns = List.map (fun (n, _) -> I64_convert.extend_i32_u n) nts in
   require (I64.lt_u (List.fold_left I64.add 0L ns) 0x1_0000_0000L)
     s pos "too many locals";
@@ -1359,17 +1360,22 @@ type section_tag =
   | `TypeSection ]
 
 type module_kont =
-  (* Yield module *)
+  (* Yield the given module*)
   | MK_Stop of module_' (* TODO: actually, should be module_ *)
-  (* Read a full module *)
+  (* Start parsing a module *)
   | MK_Start
+  (* Build a module with the given fields *)
   | MK_Next of field list
+  (* Skip n>0 custom sections *)
   | MK_Skip_custom
+
+  (* TODO ?? *)
   | MK_Field_collect : 'a field_type * size * int * 'a list -> module_kont
   | MK_Field_rev : 'a field_type * size * 'a list * 'a list -> module_kont
-  (* Read a fild of this type *)
   | MK_Field : 'a field_type * section_tag -> module_kont
+
   | MK_Global of global_type * int * instr_block_kont list
+
   | MK_Elem of elem_kont * int
   | MK_Data of data_kont * int
   | MK_Code of code_kont * int
@@ -1398,7 +1404,8 @@ let step : stream -> module_kont list -> module_kont list =
       (* Module header *)
       MK_Skip_custom
       :: MK_Field (TypeField,`TypeSection)
-      :: MK_Next [] :: []
+      :: MK_Next []
+
     | MK_Skip_custom :: ks ->
       (match id s with
        | Some `CustomSection ->
@@ -1413,16 +1420,19 @@ let step : stream -> module_kont list -> module_kont list =
          MK_Skip_custom :: ks
        | _ ->
          (* Format.printf "No custom section\n%!";  *)ks)
+
     | MK_Field (DataCountField, `DataCountSection) :: MK_Next fields :: [] ->
       let v = data_count_section s in
       MK_Skip_custom
       :: MK_Field (CodeField, `CodeSection)
       :: MK_Next (Single_field (DataCountField, v) :: fields) :: []
+
     | MK_Field (StartField, `StartSection) :: MK_Next fields :: [] ->
       let v = start_section s in
       MK_Skip_custom
       :: MK_Field (ElemField, `ElemSection)
       :: MK_Next (Single_field (StartField, v) :: fields) :: []
+
     | MK_Field (ty, tag) :: (MK_Next fields :: [] as rest) ->
       (match id s with
        | Some t when t = tag->
@@ -1508,22 +1518,29 @@ let step : stream -> module_kont list -> module_kont list =
 
     | MK_Field_rev (ty, size, l, f :: fs) :: rest ->
       MK_Field_rev (ty, size, f :: l, fs) :: rest
+
+    (* Type -> Import *)
     | MK_Field_rev (TypeField, size, l, []) :: MK_Next fields :: rest ->
       check_size size s;
       (* TODO: maybe we can factor-out these similarly shaped module section transitions *)
       MK_Skip_custom
       :: MK_Field (ImportField, `ImportSection)
       :: MK_Next (Vec_field (TypeField, l) :: fields)  :: []
+
+    (* Import -> Func *)
     | MK_Field_rev (ImportField, size, l, []) :: MK_Next fields :: rest ->
       check_size size s;
       MK_Skip_custom
       :: MK_Field (FuncField, `FuncSection)
       :: MK_Next (Vec_field (ImportField, l) :: fields) :: []
+
+    (* Func -> Table *)
     | MK_Field_rev (FuncField, size, l, []) :: MK_Next fields :: rest ->
       check_size size s;
       MK_Skip_custom
       :: MK_Field (TableField, `TableSection)
       :: MK_Next (Vec_field (FuncField, l) :: fields) :: []
+
     | MK_Field_rev (TableField, size, l, []) :: MK_Next fields :: rest ->
       check_size size s;
       MK_Skip_custom
@@ -1549,15 +1566,25 @@ let step : stream -> module_kont list -> module_kont list =
       MK_Skip_custom
       :: MK_Field (DataCountField, `DataCountSection)
       :: MK_Next (Vec_field (ElemField, l) :: fields) :: []
+    (* Code -> Data *)
     | MK_Field_rev (CodeField, size, l, []) :: MK_Next fields :: rest ->
       check_size size s;
       MK_Skip_custom
       :: MK_Field (DataField, `DataSection)
       :: MK_Next (Vec_field (CodeField, l) :: fields) :: []
+    (* Data is the last section *)
     | MK_Field_rev (DataField, size, l, []) :: MK_Next fields :: rest ->
       check_size size s;
       MK_Skip_custom
       :: MK_Next (Vec_field (DataField, l) :: fields) :: []
+
+    (* Penultimate step.
+
+       Extract the fields of each kind (type, func, element segment, etc) and build
+       the module.
+
+       TODO this looks linear in the size of the module tree??
+     *)
     | MK_Next fields :: [] ->
       (* TODO is this let rec safe? *)
       let rec find_vec
@@ -1616,6 +1643,7 @@ let step : stream -> module_kont list -> module_kont list =
       let imports = find_vec ImportField fields in
       let exports = find_vec ExportField fields in
       ignore types;
+      (* TODO is list stuff safe? *)
       require (pos s = len s) s (len s) "unexpected content after last section";
       require (List.length func_types = List.length func_bodies)
         s (len s) "function and code section have inconsistent lengths";
