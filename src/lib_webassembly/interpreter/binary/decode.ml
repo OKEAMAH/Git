@@ -778,6 +778,7 @@ let instr_block_step s cont =
   | IK_Rev ([], es) :: ks -> IK_Stop es :: ks
   | IK_Rev (e :: rest, es) :: ks -> IK_Rev (rest, e :: es) :: ks
   | IK_Next es :: ks ->
+    Format.printf "IK_Next (length: %d)\n%!" (List.length es);
     (match peek s with
      | None | Some (0x05 | 0x0b) -> IK_Rev (es, []) :: ks
      | _ ->
@@ -974,7 +975,7 @@ let size s =
 
 let check_size { size; start } s =
   Format.printf "pos s: %d; start: %d; size: %d\n%!" (pos s) start size;
-  require (pos s = start + size) s start "check_size: section size mismatch"
+  require (pos s = start + size) s start "section size mismatch"
 
 
 let at' left s x =
@@ -1138,6 +1139,7 @@ let ek_start s =
       (* passive *)
       let ref_type = ref_type s in
       let n = len32 s in
+      Format.printf "Length of vec: %d\n%!" n;
       EK_Init_const (Passive, ref_type, Collect (n, []),  IK_Next [] ::  [])
     | 0x06l ->
       (* active *)
@@ -1185,16 +1187,17 @@ let elem_step s =
     EK_Init_indexed (emode, etype, Collect(n-1, elem_index :: l))
 
   (* COLLECT CONST *)
-  | EK_Init_const (emode, etype, Collect(0, l), [ IK_Stop einit ]) ->
-    end_ s;
-    let einit = Source.(einit @@ no_region) in (* locations lost *)
-    EK_Init_const (emode, etype, Rev(einit :: l, []), [])
+  | EK_Init_const (emode, etype, Collect(0, l), _) ->
+    Format.printf "IK_STOP!\n%!";
+    EK_Init_const (emode, etype, Rev(l, []), [])
   | EK_Init_const (emode, etype, Collect(n, l), [ IK_Stop einit ]) ->
+    Format.printf "IK_STOP, but remain %d!\n%!" n;
     end_ s;
     let einit = Source.(einit @@ no_region) in (* locations lost *)
     EK_Init_const (emode, etype, Collect(n-1, einit :: l), [IK_Next []])
 
   | EK_Init_const (emode, etype, Collect(n, l), instr_kont) ->
+    Format.printf "STEP\n%!";
     let instr_kont' = instr_block_step s instr_kont in
     EK_Init_const (emode, etype, Collect(n, l), instr_kont')
 
@@ -1384,6 +1387,10 @@ let pp_of_kont =
     (fun ppf mk -> Format.fprintf ppf "%s" (string_of_module_kont mk))
 
 let module_ s =
+  Format.printf "===============\n\
+                 Module at: %s\n\
+                 ===============\n%!"
+    (Source.string_of_region (region s (pos s) (pos s)));
   let step = function
     | MK_Start :: []  ->
       (* Module header *)
