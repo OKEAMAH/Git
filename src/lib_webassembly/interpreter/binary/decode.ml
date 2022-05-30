@@ -1345,8 +1345,8 @@ type module_kont =
   | MK_Start
   | MK_Next of field list
   | MK_Skip_custom
-  | MK_Field_collect : 'a field_type * int * 'a list -> module_kont
-  | MK_Field_rev : 'a field_type * 'a list * 'a list -> module_kont
+  | MK_Field_collect : 'a field_type * size * int * 'a list -> module_kont
+  | MK_Field_rev : 'a field_type * size * 'a list * 'a list -> module_kont
   | MK_Field : 'a field_type * section_tag -> module_kont
   | MK_Global of global_type * int * instr_block_kont list
   | MK_Elem of elem_kont * int
@@ -1373,8 +1373,8 @@ let string_of_module_kont = function
   | MK_Start -> "MK_Start"
   | MK_Next _ -> "Mk_Next"
   | MK_Skip_custom -> "MK_Skip_Custom"
-  | MK_Field_collect (ty, _, _) -> Format.sprintf "MK_Field_collect (%s)" (string_of_field ty)
-  | MK_Field_rev (ty, _, _) -> Format.sprintf "MK_Field_rev (%s)" (string_of_field ty)
+  | MK_Field_collect (ty, _, _, _) -> Format.sprintf "MK_Field_collect (%s)" (string_of_field ty)
+  | MK_Field_rev (ty, _, _, _) -> Format.sprintf "MK_Field_rev (%s)" (string_of_field ty)
   | MK_Field (ty, _) ->  Format.sprintf "MK_Field (%s)" (string_of_field ty)
   | MK_Global _ -> Format.sprintf "MK_Global"
   | MK_Elem (e, n) -> Format.sprintf "MK_Elem (%s, %d)" (string_of_elem_kont e) n
@@ -1435,39 +1435,41 @@ let module_ s =
       (match id s with
        | Some t when t = tag->
          ignore (u8 s);
-         let _l = len32 s in
+         Format.printf "ignore byte\n%!";
+         let size = size s in
          (* length of vec *)
          let l = len32 s in
-         Format.printf "Length field: %d\n%!" l;
-         MK_Field_collect (ty, l, []) :: rest
+         Format.printf "Length vec: %d\n%!" l;
+         MK_Field_collect (ty, size, l, []) :: rest
        | _ ->
-         MK_Field_rev (ty, [], []) :: rest)
-    | MK_Field_collect (ty, 0, l) :: (MK_Next _ :: [] as rest) ->
-      MK_Field_rev (ty, [], l) :: rest
-    | MK_Field_collect (ty, n, l) :: rest as collect ->
+         let size = { size = 0; start = pos s } in
+         MK_Field_rev (ty, size, [], []) :: rest)
+    | MK_Field_collect (ty, size, 0, l) :: (MK_Next _ :: [] as rest) ->
+      MK_Field_rev (ty, size, [], l) :: rest
+    | MK_Field_collect (ty, size, n, l) :: rest as collect ->
       (match ty with
        | TypeField ->
          (* Format.printf "Type field\n%!"; *)
          let f = type_ s in (* TODO: check if small enough to fit in a tick *)
-         MK_Field_collect (ty, n - 1, f :: l) :: rest
+         MK_Field_collect (ty, size, n - 1, f :: l) :: rest
        | ImportField ->
          let f = at import s in (* TODO: check if small enough to fit in a tick *)
-         MK_Field_collect (ty, n - 1, f :: l) :: rest
+         MK_Field_collect (ty, size, n - 1, f :: l) :: rest
        | FuncField ->
          let f = at var s in (* small enough to fit in a tick *)
-         MK_Field_collect (ty, n - 1, f :: l) :: rest
+         MK_Field_collect (ty, size, n - 1, f :: l) :: rest
        | TableField ->
          let f = at table s in (* small enough to fit in a tick *)
-         MK_Field_collect (ty, n - 1, f :: l) :: rest
+         MK_Field_collect (ty, size, n - 1, f :: l) :: rest
        | MemoryField ->
          let f = at memory s in (* small enough to fit in a tick *)
-         MK_Field_collect (ty, n - 1, f :: l) :: rest
+         MK_Field_collect (ty, size, n - 1, f :: l) :: rest
        | GlobalField ->
          let gtype = global_type s in
          MK_Global (gtype, pos s, [IK_Next []]) :: collect
        | ExportField ->
          let f = at export s in (* small enough to fit in a tick *)
-         MK_Field_collect (ty, n - 1, f :: l) :: rest
+         MK_Field_collect (ty, size, n - 1, f :: l) :: rest
        | StartField ->
          (* not a vector *)
          assert false
@@ -1483,80 +1485,89 @@ let module_ s =
          MK_Data (DK_Start, pos s) :: collect
       )
 
-    | MK_Global (gtype, left, [ IK_Stop res]) :: MK_Field_collect (GlobalField, n, l) :: rest ->
+    | MK_Global (gtype, left, [ IK_Stop res]) :: MK_Field_collect (GlobalField, size, n, l) :: rest ->
       end_ s ;
       let ginit = Source.(res @@ region s left (pos s)) in
       let f = Source.({gtype; ginit} @@ region s left (pos s)) in
-      MK_Field_collect (GlobalField, (n - 1), f :: l) :: rest
+      MK_Field_collect (GlobalField, size, (n - 1), f :: l) :: rest
     | MK_Global (ty, pos, [ IK_Stop res]) :: _ ->
       assert false
     | MK_Global (ty, pos, k) :: rest ->
       MK_Global (ty, pos, instr_block_step s k) :: rest
 
-    | MK_Elem (EK_Stop elem, left) :: MK_Field_collect (ElemField, n, l) :: rest ->
+    | MK_Elem (EK_Stop elem, left) :: MK_Field_collect (ElemField, size, n, l) :: rest ->
       let elem = Source.(elem @@ region s left (pos s)) in
-      MK_Field_collect (ElemField, (n - 1), elem :: l) :: rest
+      MK_Field_collect (ElemField, size, (n - 1), elem :: l) :: rest
     | MK_Elem (EK_Stop _, _) :: _ ->
       assert false
     | MK_Elem (elem_kont, pos) :: rest ->
       MK_Elem (elem_step s elem_kont, pos) :: rest
 
-    | MK_Data (DK_Stop data, left) :: MK_Field_collect (DataField, n, l) :: rest ->
+    | MK_Data (DK_Stop data, left) :: MK_Field_collect (DataField, size, n, l) :: rest ->
       let data = Source.(data @@ region s left (pos s)) in
-      MK_Field_collect (DataField, (n - 1), data :: l) :: rest
+      MK_Field_collect (DataField, size, (n - 1), data :: l) :: rest
     | MK_Data (DK_Stop _, _) :: _ ->
       assert false
     | MK_Data (data_kont, pos) :: rest ->
       MK_Data (data_step s data_kont, pos) :: rest
 
-    | MK_Code (CK_Stop func, left) :: MK_Field_collect (CodeField, n, l) :: rest ->
-      MK_Field_collect (CodeField, (n - 1), func :: l) :: rest
+    | MK_Code (CK_Stop func, left) :: MK_Field_collect (CodeField, size, n, l) :: rest ->
+      MK_Field_collect (CodeField, size, (n - 1), func :: l) :: rest
     | MK_Code (CK_Stop _, _) :: _ ->
       assert false
     | MK_Code (code_kont, pos) :: rest ->
       MK_Code (code_step s code_kont, pos) :: rest
 
-    | MK_Field_rev (ty, l, f :: fs) :: rest ->
-      MK_Field_rev (ty, f :: l, fs) :: rest
-    | MK_Field_rev (TypeField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (ty, size, l, f :: fs) :: rest ->
+      MK_Field_rev (ty, size, f :: l, fs) :: rest
+    | MK_Field_rev (TypeField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       (* TODO: maybe we can factor-out these similarly shaped module section transitions *)
       MK_Skip_custom
       :: MK_Field (ImportField, `ImportSection)
       :: MK_Next (Vec_field (TypeField, l) :: fields)  :: []
-    | MK_Field_rev (ImportField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (ImportField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Field (FuncField, `FuncSection)
       :: MK_Next (Vec_field (ImportField, l) :: fields) :: []
-    | MK_Field_rev (FuncField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (FuncField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Field (TableField, `TableSection)
       :: MK_Next (Vec_field (FuncField, l) :: fields) :: []
-    | MK_Field_rev (TableField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (TableField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Field (MemoryField, `MemorySection)
       :: MK_Next (Vec_field (TableField, l) :: fields) :: []
-    | MK_Field_rev (MemoryField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (MemoryField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Field (GlobalField, `GlobalSection)
       :: MK_Next (Vec_field (MemoryField, l) :: fields) :: []
-    | MK_Field_rev (GlobalField, l, []) :: MK_Next fields :: rest ->
-      Format.printf "after Rev GlobalField\n%!";
+    | MK_Field_rev (GlobalField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Field (ExportField, `ExportSection)
       :: MK_Next (Vec_field (GlobalField, l) :: fields) :: []
-    | MK_Field_rev (ExportField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (ExportField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Field (StartField, `StartSection)
       :: MK_Next (Vec_field (ExportField, l) :: fields) :: []
-    | MK_Field_rev (ElemField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (ElemField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Field (DataCountField, `DataCountSection)
       :: MK_Next (Vec_field (ElemField, l) :: fields) :: []
-    | MK_Field_rev (CodeField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (CodeField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Field (DataField, `DataSection)
       :: MK_Next (Vec_field (CodeField, l) :: fields) :: []
-    | MK_Field_rev (DataField, l, []) :: MK_Next fields :: rest ->
+    | MK_Field_rev (DataField, size, l, []) :: MK_Next fields :: rest ->
+      check_size size s;
       MK_Skip_custom
       :: MK_Next (Vec_field (DataField, l) :: fields) :: []
     | MK_Next fields :: [] ->
