@@ -79,6 +79,7 @@ let u64 s =
   let hi = I64_convert.extend_i32_u (u32 s) in
   Int64.(add lo (shift_left hi 32))
 
+(* TODO safe? *)
 let rec vuN n s =
   require (n > 0) s (pos s) "integer representation too long";
   let b = u8 s in
@@ -86,6 +87,7 @@ let rec vuN n s =
   let x = Int64.of_int (b land 0x7f) in
   if b land 0x80 = 0 then x else Int64.(logor x (shift_left (vuN (n - 7) s) 7))
 
+(* TODO safe? *)
 let rec vsN n s =
   require (n > 0) s (pos s) "integer representation too long";
   let b = u8 s in
@@ -115,6 +117,7 @@ let len32 s =
 
 let bool s = (vu1 s = 1)
 let string s = let n = len32 s in get_string n s
+(* TODO safe? *)
 let rec list f n s = if n = 0 then [] else let x = f s in x :: list f (n - 1) s
 let opt f b s = if b then Some (f s) else None
 let vec f s = let n = len32 s in list f n s
@@ -800,6 +803,7 @@ let instr_block_step s cont =
   | _ -> assert false
 
 let instr_block s =
+  (* TODO Safe? *)
   let rec loop  = function
     | [ IK_Stop res ] -> res
     | k -> loop (instr_block_step s k) in
@@ -1170,7 +1174,8 @@ let ek_start s =
     EK_Init_const (Declarative, ref_type, Collect (n, []), IK_Next [] ::  [])
   | _ -> error s (pos s - 1) "malformed elements segment kind"
 
-let elem_step s =
+let elem_step : stream -> elem_kont -> elem_kont  =
+  function s ->
   function
   | EK_Start -> ek_start s
   | EK_Mode (index, ref_index, ref_type_opt, [IK_Stop offset]) ->
@@ -1318,8 +1323,6 @@ let non_custom_section s =
 
 (* Modules *)
 
-let rec iterate f s = if f s <> None then iterate f s
-
 let magic = 0x6d736100l
 
 type _ field_type =
@@ -1356,20 +1359,33 @@ type section_tag =
   | `TypeSection ]
 
 type module_kont =
-  (* Done, one module produced *)
+  (* Yield module *)
   | MK_Stop of module_' (* TODO: actually, should be module_ *)
-  (* Start of input *)
+  (* Read a full module *)
   | MK_Start
   | MK_Next of field list
   | MK_Skip_custom
   | MK_Field_collect : 'a field_type * size * int * 'a list -> module_kont
   | MK_Field_rev : 'a field_type * size * 'a list * 'a list -> module_kont
+  (* Read a fild of this type *)
   | MK_Field : 'a field_type * section_tag -> module_kont
   | MK_Global of global_type * int * instr_block_kont list
   | MK_Elem of elem_kont * int
   | MK_Data of data_kont * int
   | MK_Code of code_kont * int
 
+(*
+ TODO this is small step, but is the tree modification actually bounded?
+
+ Need to check both lookahead (e.g. that stream reads don't explode)
+ and module updates.
+
+ TODO what is actually in the official test suite?
+
+ TODO wrap this into something that
+    1) lazily reads stream/kont from a tree
+    2) lazily updates a tree with the updated stream state/new kont
+ *)
 let step : stream -> module_kont list -> module_kont list =
     function s -> (
     function
@@ -1543,6 +1559,7 @@ let step : stream -> module_kont list -> module_kont list =
       MK_Skip_custom
       :: MK_Next (Vec_field (DataField, l) :: fields) :: []
     | MK_Next fields :: [] ->
+      (* TODO is this let rec safe? *)
       let rec find_vec
         : type t. t field_type -> _ -> t list
         = fun ty fields -> match fields with
@@ -1622,6 +1639,8 @@ let module_ (s : stream) : Ast.module_' =
   loop [ MK_Start ]
 
 let decode name bs = at module_ (stream name bs)
+
+let rec iterate f s = if f s <> None then iterate f s
 
 let all_custom tag s =
   let header = u32 s in
