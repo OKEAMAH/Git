@@ -1370,8 +1370,9 @@ type module_kont =
   | MK_Data of data_kont * int
   | MK_Code of code_kont * int
 
-let module_ (s : stream) : Ast.module_' =
-  let step = function
+let step : stream -> module_kont list -> module_kont list =
+    function s -> (
+    function
     | MK_Start :: []  ->
       (* Module header *)
       let header = u32 s in
@@ -1611,10 +1612,13 @@ let module_ (s : stream) : Ast.module_' =
           func_types func_bodies
       in
       [ MK_Stop {types; tables; memories; globals; funcs; imports; exports; elems; datas; start} ]
-    | _ -> assert false in
+    | _ -> assert false
+    )
+
+let module_ (s : stream) : Ast.module_' =
   let rec loop = function
     | [ MK_Stop m ] -> m
-    | k -> loop (step k) in
+    | k -> loop (step s k) in
   loop [ MK_Start ]
 
 let decode name bs = at module_ (stream name bs)
