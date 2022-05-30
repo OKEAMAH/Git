@@ -955,7 +955,9 @@ let code _ s =
   end_ s;
   {locals; body; ftype = Source.((-1l) @@ Source.no_region)}
 
-type 'a vec_kont = Collect of int * 'a list | Rev of 'a list * 'a list
+type ('a, 'b) vec_map_kont = Collect of int * 'a list | Rev of 'a list * 'b list
+
+type 'a vec_kont = ('a, 'a) vec_map_kont
 
 type pos = int
 
@@ -963,8 +965,19 @@ type size = { size: int; start: pos}
 
 type code_kont =
   | CK_Start
-  | CK_Locals of pos * size * pos * (int32 * value_type) vec_kont
-  | CK_Body of pos * size * value_type list * instr_block_kont list
+  | CK_Locals of
+      { left: pos;
+        size : size;
+        pos : pos;
+        vec_kont: (int32 * value_type, value_type) vec_map_kont;
+        locals_size: Int64.t;
+      }
+  | CK_Body of
+      { left: pos;
+        size : size;
+        locals: value_type list;
+        const_kont: instr_block_kont list;
+      }
   | CK_Stop of func
 
 (* Originaly `sized` split in two *)
@@ -991,32 +1004,47 @@ let code_step s = function
     let pos = pos s in
     (* `vec` size *)
     let n = len32 s in
-    CK_Locals (left, size, pos, Collect (n, []))
+    CK_Locals {
+      left;
+      size;
+      pos;
+      vec_kont = Collect (n, []);
+      locals_size = 0L;
+    }
 
-  | CK_Locals (left, size, pos, Collect (0, l)) ->
-    CK_Locals (left, size, pos, Rev (l, []))
-  | CK_Locals (left, size, pos, Collect (n, l)) ->
-    let local = local s in (* small enough to fit in a tick *)
-    CK_Locals (left, size, pos, Collect (n - 1, local :: l))
-
-  | CK_Locals (left, size, pos, Rev ([], nts)) ->
-    (* TODO: does it all fit into a tick? Can be easily inlined during the collect/rev *)
-    let ns = List.map (fun (n, _) -> I64_convert.extend_i32_u n) nts in
-    require (I64.lt_u (List.fold_left I64.add 0L ns) 0x1_0000_0000L)
+  | CK_Locals { left; size; pos; vec_kont = Collect (0, l); locals_size; } ->
+    require (I64.lt_u locals_size 0x1_0000_0000L)
       s pos "too many locals";
-    let locals = List.flatten (List.map (Lib.Fun.uncurry Lib.List32.make) nts) in
-    CK_Body (left, size, locals, [ IK_Next [] ])
-  | CK_Locals (left, size, pos, Rev (t :: l, l')) ->
-    CK_Locals (left, size, pos, Rev (l, t :: l'))
+    CK_Locals { left; size; pos; vec_kont = Rev (l, []); locals_size; }
+  | CK_Locals { left; size; pos; vec_kont =  Collect (n, l); locals_size; } ->
+    let local = local s in (* small enough to fit in a tick *)
+    let locals_size =
+      I64.add locals_size (I64_convert.extend_i32_u (fst local)) in
+    CK_Locals
+      { left; size; pos; vec_kont = Collect (n - 1, local :: l); locals_size; }
 
-  | CK_Body (left, size, locals, [ IK_Stop body ]) ->
+  | CK_Locals
+      { left; size; pos; vec_kont = Rev ([], locals);
+        locals_size; }->
+    CK_Body { left; size; locals; const_kont = [ IK_Next [] ] }
+  | CK_Locals
+      { left; size; pos; vec_kont = Rev ((0l, t) :: l, l'); locals_size } ->
+    CK_Locals { left; size; pos; vec_kont = Rev (l, l'); locals_size; }
+  | CK_Locals
+      { left; size; pos; vec_kont = Rev ((n, t) :: l, l'); locals_size; } ->
+    let n' = I32.sub n 1l in
+    CK_Locals
+      { left; size; pos; vec_kont = Rev ((n', t) :: l, t :: l'); locals_size; }
+
+
+  | CK_Body { left; size; locals; const_kont = [ IK_Stop body ] } ->
     end_ s;
     check_size size s;
     let func =
       at' left s @@ {locals; body; ftype = Source.((-1l) @@ Source.no_region)} in
     CK_Stop func
-  | CK_Body (left, size, locals, instr_block_konst) ->
-    CK_Body (left, size, locals, instr_block_step s instr_block_konst)
+  | CK_Body { left; size; locals; const_kont } ->
+    CK_Body { left; size; locals; const_kont = instr_block_step s const_kont }
 
   | CK_Stop _ -> assert false (* final step, cannot reduce *)
 
