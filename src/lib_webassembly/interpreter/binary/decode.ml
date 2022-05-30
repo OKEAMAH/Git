@@ -1581,6 +1581,7 @@ let step : stream -> module_kont list -> module_kont list =
             | DataField, DataField -> v
             | _ -> find_vec ty rest
       in
+      (* TODO is this let rec safe? *)
       let rec find_single
         : type t. t field_type -> _ -> t option
         = fun ty fields -> match fields with
