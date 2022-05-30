@@ -324,7 +324,7 @@ module Delegate = struct
     voting_power : int64;
   }
 
-  let info ctxt pkh = Delegate_services.info rpc_ctxt ctxt pkh
+  let info ctxt pkh = Plugin.RPC.Delegate.info rpc_ctxt ctxt pkh
 
   let full_balance ctxt pkh = Delegate_services.full_balance rpc_ctxt ctxt pkh
 
@@ -343,6 +343,9 @@ module Delegate = struct
   let deactivated ctxt pkh = Delegate_services.deactivated rpc_ctxt ctxt pkh
 
   let participation ctxt pkh = Delegate_services.participation rpc_ctxt ctxt pkh
+
+  let delegated_balance ctxt pkh =
+    Plugin.RPC.Delegate.delegated_balance rpc_ctxt ctxt pkh
 end
 
 module Tx_rollup = struct

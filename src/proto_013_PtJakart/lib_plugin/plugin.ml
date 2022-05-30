@@ -2883,6 +2883,150 @@ module RPC = struct
         (unparsing_mode, normalize_types)
   end
 
+  module Delegate = struct
+    type info = {
+      full_balance : Tez.t;
+      current_frozen_deposits : Tez.t;
+      frozen_deposits : Tez.t;
+      staking_balance : Tez.t;
+      frozen_deposits_limit : Tez.t option;
+      delegated_contracts : Alpha_context.Contract.t list;
+      delegated_balance : Tez.t;
+      deactivated : bool;
+      grace_period : Cycle.t;
+      voting_power : int64;
+    }
+
+    let info_encoding =
+      let open Data_encoding in
+      conv
+        (fun {
+               full_balance;
+               current_frozen_deposits;
+               frozen_deposits;
+               staking_balance;
+               frozen_deposits_limit;
+               delegated_contracts;
+               delegated_balance;
+               deactivated;
+               grace_period;
+               voting_power;
+             } ->
+          ( full_balance,
+            current_frozen_deposits,
+            frozen_deposits,
+            staking_balance,
+            frozen_deposits_limit,
+            delegated_contracts,
+            delegated_balance,
+            deactivated,
+            grace_period,
+            voting_power ))
+        (fun ( full_balance,
+               current_frozen_deposits,
+               frozen_deposits,
+               staking_balance,
+               frozen_deposits_limit,
+               delegated_contracts,
+               delegated_balance,
+               deactivated,
+               grace_period,
+               voting_power ) ->
+          {
+            full_balance;
+            current_frozen_deposits;
+            frozen_deposits;
+            staking_balance;
+            frozen_deposits_limit;
+            delegated_contracts;
+            delegated_balance;
+            deactivated;
+            grace_period;
+            voting_power;
+          })
+        (obj10
+           (req "full_balance" Tez.encoding)
+           (req "current_frozen_deposits" Tez.encoding)
+           (req "frozen_deposits" Tez.encoding)
+           (req "staking_balance" Tez.encoding)
+           (opt "frozen_deposits_limit" Tez.encoding)
+           (req "delegated_contracts" (list Alpha_context.Contract.encoding))
+           (req "delegated_balance" Tez.encoding)
+           (req "deactivated" bool)
+           (req "grace_period" Cycle.encoding)
+           (req "voting_power" int64))
+
+    module S = struct
+      let path =
+        (RPC_path.(open_root / "context" / "delegates")
+          : RPC_context.t RPC_path.context)
+
+      let delegated_balance =
+        RPC_service.get_service
+          ~description:
+            "Returns the sum (in mutez) of all balances of all the contracts \
+             that delegate to a given delegate. This excludes the delegate's \
+             own balance, its frozen deposits and its frozen bonds."
+          ~query:RPC_query.empty
+          ~output:Tez.encoding
+          RPC_path.(
+            path /: Signature.Public_key_hash.rpc_arg / "delegated_balance")
+
+      let info =
+        RPC_service.get_service
+          ~description:"Everything about a delegate."
+          ~query:RPC_query.empty
+          ~output:info_encoding
+          RPC_path.(path /: Signature.Public_key_hash.rpc_arg)
+    end
+
+    let delegated_balance ctxt pkh =
+      Delegate.staking_balance ctxt pkh >>=? fun staking_balance ->
+      Delegate.full_balance ctxt pkh >>=? fun self_staking_balance ->
+      Lwt.return Tez.(staking_balance -? self_staking_balance)
+
+    let register () =
+      (* Patched RPC: delegated_balance *)
+      Registration.register1
+        ~chunked:false
+        S.delegated_balance
+        (fun ctxt pkh () () ->
+          Delegate.check_delegate ctxt pkh >>=? fun () ->
+          delegated_balance ctxt pkh) ;
+      (* Patched RPC: info *)
+      Registration.register1 ~chunked:false S.info (fun ctxt pkh () () ->
+          Delegate.check_delegate ctxt pkh >>=? fun () ->
+          Delegate.full_balance ctxt pkh >>=? fun full_balance ->
+          Delegate.frozen_deposits ctxt pkh >>=? fun frozen_deposits ->
+          Delegate.staking_balance ctxt pkh >>=? fun staking_balance ->
+          Delegate.frozen_deposits_limit ctxt pkh
+          >>=? fun frozen_deposits_limit ->
+          Delegate.delegated_contracts ctxt pkh >>= fun delegated_contracts ->
+          delegated_balance ctxt pkh >>=? fun delegated_balance ->
+          Delegate.deactivated ctxt pkh >>=? fun deactivated ->
+          Delegate.last_cycle_before_deactivation ctxt pkh
+          >>=? fun grace_period ->
+          Vote.get_voting_power_free ctxt pkh >|=? fun voting_power ->
+          {
+            full_balance;
+            current_frozen_deposits = frozen_deposits.current_amount;
+            frozen_deposits = frozen_deposits.initial_amount;
+            staking_balance;
+            frozen_deposits_limit;
+            delegated_contracts;
+            delegated_balance;
+            deactivated;
+            grace_period;
+            voting_power;
+          })
+
+    let delegated_balance rpc_ctxt ctxt pkh =
+      RPC_context.make_call1 S.delegated_balance rpc_ctxt ctxt pkh () ()
+
+    let info rpc_ctxt ctxt pkh =
+      RPC_context.make_call1 S.info rpc_ctxt ctxt pkh () ()
+  end
+
   module Big_map = struct
     module S = struct
       let path =
@@ -3962,6 +4106,7 @@ module RPC = struct
     Forge.register () ;
     Parse.register () ;
     Contract.register () ;
+    Delegate.register () ;
     Big_map.register () ;
     Baking_rights.register () ;
     Endorsing_rights.register () ;

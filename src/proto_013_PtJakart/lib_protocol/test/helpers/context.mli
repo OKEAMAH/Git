@@ -159,7 +159,7 @@ module Delegate : sig
     voting_power : int64;
   }
 
-  val info : t -> public_key_hash -> Delegate_services.info tzresult Lwt.t
+  val info : t -> public_key_hash -> Plugin.RPC.Delegate.info tzresult Lwt.t
 
   val full_balance : t -> public_key_hash -> Tez.t tzresult Lwt.t
 
@@ -178,6 +178,8 @@ module Delegate : sig
 
   val participation :
     t -> public_key_hash -> Delegate.participation_info tzresult Lwt.t
+
+  val delegated_balance : t -> public_key_hash -> Tez.t tzresult Lwt.t
 end
 
 module Tx_rollup : sig
