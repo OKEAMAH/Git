@@ -36,6 +36,7 @@ struct
     | Signature.Ed25519 -> "ed25519"
     | Signature.Secp256k1 -> "secp256k1"
     | Signature.P256 -> "p256"
+    | Signature.Bls -> "bls"
 
   module Sampler = Crypto_samplers.Make_finite_key_pool (struct
     let size = 256
@@ -206,6 +207,10 @@ end)
 
 module P256 = Make_elliptic_curve_encoding_benchmarks (struct
   let algo = Signature.P256
+end)
+
+module Bls = Make_elliptic_curve_encoding_benchmarks (struct
+  let algo = Signature.Bls
 end)
 
 let chain_id_encoding =
