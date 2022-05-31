@@ -70,7 +70,7 @@ module Raw = struct
           Data_encoding.Binary.to_bytes_exn Secp256k1.Secret_key.encoding sk
       | Decrypted_sk (P256 sk) ->
           Data_encoding.Binary.to_bytes_exn P256.Secret_key.encoding sk
-      | Decrypted_aggregate_sk (Bls12_381 sk) ->
+      | Decrypted_sk (Bls sk) | Decrypted_aggregate_sk (Bls12_381 sk) ->
           Data_encoding.Binary.to_bytes_exn Bls.Secret_key.encoding sk
     in
     Bytes.cat salt (Crypto_box.Secretbox.secretbox key msg nonce)
@@ -113,7 +113,7 @@ module Raw = struct
         | None ->
             failwith
               "Corrupted wallet, deciphered key is not a valid P256 secret key")
-    | Some bytes, Encrypted_aggregate_sk -> (
+    | Some bytes, (Encrypted_aggregate_sk | Encrypted_sk Signature.Bls) -> (
         match
           Data_encoding.Binary.of_bytes_opt Bls.Secret_key.encoding bytes
         with
@@ -362,7 +362,8 @@ let common_encrypt sk password =
     | Decrypted_sk (Ed25519 _) -> Encodings.ed25519
     | Decrypted_sk (Secp256k1 _) -> Encodings.secp256k1
     | Decrypted_sk (P256 _) -> Encodings.p256
-    | Decrypted_aggregate_sk (Bls12_381 _) -> Encodings.bls12_381
+    | Decrypted_sk (Bls _) | Decrypted_aggregate_sk (Bls12_381 _) ->
+        Encodings.bls12_381
   in
   Base58.simple_encode encoding payload
 
