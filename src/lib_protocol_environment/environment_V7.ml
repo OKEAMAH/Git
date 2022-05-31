@@ -74,10 +74,10 @@ module type T = sig
        and type Bls.Public_key_hash.t = Bls.Public_key_hash.t
        and type Bls.Public_key.t = Bls.Public_key.t
        and type Bls.t = Bls.t
-       and type Signature.public_key_hash = Signature.public_key_hash
-       and type Signature.public_key = Signature.public_key
-       and type Signature.t = Signature.t
-       and type Signature.watermark = Signature.watermark
+       and type Signature.public_key_hash = Signature.V0.public_key_hash
+       and type Signature.public_key = Signature.V0.public_key
+       and type Signature.t = Signature.V0.t
+       and type Signature.watermark = Signature.V0.watermark
        and type Micheline.canonical_location = Micheline.canonical_location
        and type 'a Micheline.canonical = 'a Micheline.canonical
        and type Z.t = Z.t
@@ -269,7 +269,7 @@ struct
   module Secp256k1 = Secp256k1
   module P256 = P256
   module Bls = Bls
-  module Signature = Signature
+  module Signature = Signature.V0
   module Timelock = Timelock
   module Vdf = Class_group_vdf.Vdf_self_contained
 
