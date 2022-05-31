@@ -1385,6 +1385,7 @@ type module_kont =
           MK_Code
           MK_Data
         MK_Field_collect T
+        MK_Field_rev
   *)
 
   (* Type, total size, remaining bytes, elements parsed so far? *)
@@ -1714,7 +1715,9 @@ let _decode_custom tag name bs = all_custom tag (stream name bs)
    - Make extra sure that the input consumed at each tick is less than some limit << L1 op size
    - Make extra sure to limit the part of the state consumed at each tick
    - Sections marked `faiwith "HERE" are not implemented
+
    - Make the input shallow-able, probably keep the imperative structure
    - Make the state shallow-able (insert Merkelized cuts)
+
    - Drop the dead synchronous utility functions, or turn them into small step ones
    - Remove the wildcard patterns in the continuation stack matches *)
