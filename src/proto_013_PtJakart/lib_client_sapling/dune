@@ -8,7 +8,6 @@
  (libraries
   tezos-base
   tezos-clic
-  tezos-crypto
   tezos-stdlib-unix
   tezos-client-base
   tezos-signer-backends
@@ -20,9 +19,11 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_stdlib_unix
   -open Tezos_client_base
+  -open Tezos_client_base.Signature_aliases.V0
   -open Tezos_client_013_PtJakart
   -open Tezos_client_013_PtJakart_commands
   -open Tezos_protocol_013_PtJakart

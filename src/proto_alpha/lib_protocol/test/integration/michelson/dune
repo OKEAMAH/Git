@@ -23,6 +23,7 @@
   -open Tezos_alpha_test_helpers
   -open Tezos_base_test_helpers
   -open Tezos_client_alpha
+  -open Tezos_benchmark
   -open Tezos_micheline
   -open Tezos_benchmark_alpha
   -open Tezos_benchmark_type_inference_alpha))

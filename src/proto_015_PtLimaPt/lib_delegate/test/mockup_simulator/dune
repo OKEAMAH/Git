@@ -11,6 +11,7 @@
   tezos-client-commands
   tezos-baking-015-PtLimaPt
   tezos-stdlib-unix
+  tezos-client-base
   tezos-client-base-unix
   tezos-protocol-015-PtLimaPt.parameters
   tezos-mockup
@@ -20,6 +21,7 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_protocol_015_PtLimaPt
   -open Tezos_protocol_015_PtLimaPt.Protocol
@@ -27,6 +29,8 @@
   -open Tezos_client_commands
   -open Tezos_baking_015_PtLimaPt
   -open Tezos_stdlib_unix
+  -open Tezos_client_base
+  -open Tezos_client_base.Signature_aliases.V0
   -open Tezos_client_base_unix
   -open Tezos_protocol_015_PtLimaPt_parameters
   -open Tenderbrute_015_PtLimaPt))

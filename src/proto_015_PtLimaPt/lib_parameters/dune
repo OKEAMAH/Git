@@ -13,6 +13,7 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_protocol_015_PtLimaPt)
  (modules (:standard \ gen)))
 
@@ -27,6 +28,7 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_protocol_015_PtLimaPt_parameters
   -open Tezos_protocol_015_PtLimaPt)
  (modules gen))

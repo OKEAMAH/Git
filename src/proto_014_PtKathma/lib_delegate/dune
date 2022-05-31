@@ -32,11 +32,13 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_protocol_014_PtKathma
   -open Tezos_protocol_plugin_014_PtKathma
   -open Tezos_shell_services
   -open Tezos_client_base
+  -open Tezos_client_base.Signature_aliases.V0
   -open Tezos_client_014_PtKathma
   -open Tezos_client_commands
   -open Tezos_stdlib
@@ -68,11 +70,13 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_protocol_014_PtKathma
   -open Tezos_stdlib_unix
   -open Tezos_shell_services
   -open Tezos_client_base
+  -open Tezos_client_base.Signature_aliases.V0
   -open Tezos_client_014_PtKathma
   -open Tezos_client_commands
   -open Tezos_baking_014_PtKathma
@@ -98,9 +102,11 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_protocol_014_PtKathma
   -open Tezos_shell_services
   -open Tezos_client_base
+  -open Tezos_client_base.Signature_aliases.V0
   -open Tezos_client_014_PtKathma
   -open Tezos_client_commands
   -open Tezos_baking_014_PtKathma

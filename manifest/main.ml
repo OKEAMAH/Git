@@ -3545,6 +3545,13 @@ end = struct
       let name_dash = Name.name_dash name in
       let number = Name.number name in
       let path = Name.base_path name in
+      let open_versioned_signature t =
+        open_if N.(number <= 015) ~m:"Signature_aliases.V0" t
+      in
+      let open_tzpervasives t =
+        t |> open_ ~m:"TzPervasives"
+        |> open_if N.(number <= 015) ~m:"TzPervasives.Signature_aliases.V0"
+      in
       let _integration_consensus =
         test
           "main"
@@ -3553,7 +3560,7 @@ end = struct
           ~deps:
             [
               alcotest_lwt;
-              octez_base |> open_ ~m:"TzPervasives"
+              octez_base |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
               main |> open_;
               test_helpers |> if_some |> open_;
@@ -3570,7 +3577,7 @@ end = struct
           ~deps:
             [
               alcotest_lwt;
-              octez_base |> open_ ~m:"TzPervasives"
+              octez_base |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
               main |> open_;
               test_helpers |> if_some |> open_;
@@ -3591,14 +3598,14 @@ end = struct
           ~deps:
             [
               alcotest_lwt;
-              octez_base |> open_ ~m:"TzPervasives"
+              octez_base |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
               main |> open_;
               test_helpers |> if_some |> open_;
               octez_base_test_helpers |> open_;
               octez_client_base |> if_ N.(number <= 012);
               client |> if_some |> open_;
-              octez_benchmark;
+              octez_benchmark |> open_ |> open_versioned_signature;
               octez_micheline |> open_;
               benchmark |> if_some |> open_;
               benchmark_type_inference |> if_some |> open_;
@@ -3614,7 +3621,7 @@ end = struct
           ~deps:
             [
               alcotest_lwt;
-              octez_base |> open_ ~m:"TzPervasives"
+              octez_base |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
               main |> open_;
               client |> if_some |> if_ N.(number >= 012) |> open_;
@@ -3632,7 +3639,7 @@ end = struct
           ~deps:
             [
               alcotest_lwt;
-              octez_base |> open_ ~m:"TzPervasives"
+              octez_base |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
               main |> open_;
               qcheck_alcotest;
@@ -3652,7 +3659,7 @@ end = struct
               (if N.(number >= 015) then Some tezt_lib else None) |> if_some;
               octez_context;
               alcotest_lwt;
-              octez_base |> open_ ~m:"TzPervasives"
+              octez_base |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
               client |> if_some |> open_;
               octez_client_base |> if_ N.(number <= 012);
@@ -3710,9 +3717,9 @@ end = struct
             [
               octez_base
               |> if_ N.(number <= 14)
-              |> open_ ~m:"TzPervasives"
+              |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-              octez_base |> if_ N.(number >= 15) |> open_ ~m:"TzPervasives";
+              octez_base |> if_ N.(number >= 15) |> open_tzpervasives;
               octez_micheline |> open_;
               client |> if_some |> open_;
               main |> open_;
@@ -3722,7 +3729,7 @@ end = struct
               alcotest;
               qcheck_alcotest;
               octez_client_base |> if_ N.(number <= 012);
-              octez_benchmark;
+              octez_benchmark |> open_ |> open_versioned_signature;
               benchmark |> if_some |> open_;
               benchmark_type_inference |> if_some |> open_;
               sc_rollup |> if_some |> if_ N.(number >= 016) |> open_;
@@ -3740,7 +3747,7 @@ end = struct
           ~alias:""
           ~deps:
             [
-              octez_base |> open_ ~m:"TzPervasives"
+              octez_base |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
               octez_base_test_helpers |> open_;
               octez_micheline |> open_;
@@ -3785,7 +3792,7 @@ end = struct
             ~opam:(sf "tezos-protocol-%s-tests" name_dash)
             ~deps:
               [
-                octez_base |> open_ ~m:"TzPervasives";
+                octez_base |> open_tzpervasives;
                 tezt_tezos |> open_;
                 main |> open_;
                 client |> if_some |> open_;
@@ -4093,9 +4100,10 @@ module Protocol = Protocol
         ~deps:
           [
             octez_base |> open_ ~m:"TzPervasives"
+            |> open_ ~m:"TzPervasives.Signature_aliases.V0"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_shell_services |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_ ~m:"Signature_aliases.V0";
             octez_protocol_environment;
             main |> open_;
             octez_client_commands |> open_;
@@ -4153,6 +4161,13 @@ module Protocol = Protocol
       match (o1, o2) with Some x, Some y -> Some (x, y) | _, _ -> None
     in
     let {Lib_protocol.main; embedded} = Lib_protocol.make ~name in
+    let open_versioned_signature t =
+      open_if N.(number <= 015) ~m:"Signature_aliases.V0" t
+    in
+    let open_tzpervasives t =
+      t |> open_ ~m:"TzPervasives"
+      |> open_if N.(number <= 015) ~m:"TzPervasives.Signature_aliases.V0"
+    in
     let parameters =
       only_if (N.(number >= 011) && not_overridden) @@ fun () ->
       public_lib
@@ -4161,7 +4176,7 @@ module Protocol = Protocol
         ~all_modules_except:["gen"]
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives";
+            octez_base |> open_tzpervasives;
             octez_protocol_environment;
             main |> open_;
           ]
@@ -4175,7 +4190,7 @@ module Protocol = Protocol
         ~opam:(sf "tezos-protocol-%s" name_dash)
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives";
+            octez_base |> open_tzpervasives;
             parameters |> open_;
             main |> if_ N.(number >= 012) |> open_;
           ]
@@ -4213,7 +4228,7 @@ module Protocol = Protocol
         ~synopsis:"Tezos/Protocol: protocol plugin"
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             main |> open_;
           ]
@@ -4228,7 +4243,7 @@ module Protocol = Protocol
         ~synopsis:"Tezos/Protocol: protocol plugin registerer"
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             embedded |> open_;
             plugin |> open_;
@@ -4245,11 +4260,11 @@ module Protocol = Protocol
         ~synopsis:"Tezos/Protocol: protocol specific library for `tezos-client`"
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_clic;
             octez_shell_services |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             main |> open_;
             octez_mockup_registration |> if_ N.(number >= 011);
             octez_proxy |> if_ N.(number >= 011);
@@ -4283,7 +4298,7 @@ module Protocol = Protocol
             alcotest_lwt;
             qcheck_alcotest;
             octez_test_helpers;
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_micheline |> open_;
             octez_stdlib_unix |> open_;
@@ -4307,7 +4322,7 @@ module Protocol = Protocol
         ~opam:(sf "tezos-protocol-plugin-%s-tests" name_dash)
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_base_test_helpers |> open_;
             octez_base_unix |> if_ N.(number >= 013);
@@ -4335,7 +4350,7 @@ module Protocol = Protocol
         ~opam:(sf "tezos-client-%s" name_dash)
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_micheline |> open_;
             client |> if_some |> open_;
@@ -4355,9 +4370,9 @@ module Protocol = Protocol
           [
             octez_base
             |> if_ N.(number <= 14)
-            |> open_ ~m:"TzPervasives"
+            |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_base |> if_ N.(number >= 15) |> open_ ~m:"TzPervasives";
+            octez_base |> if_ N.(number >= 15) |> open_tzpervasives;
             octez_clic;
             main |> open_;
             parameters |> if_some |> if_ N.(number >= 013) |> open_;
@@ -4367,7 +4382,7 @@ module Protocol = Protocol
             octez_mockup |> if_ N.(number >= 011);
             octez_mockup_registration |> if_ N.(number >= 011);
             octez_mockup_commands |> if_ N.(number >= 011);
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             client |> if_some |> open_;
             octez_client_commands |> open_;
             octez_rpc |> open_;
@@ -4388,12 +4403,11 @@ module Protocol = Protocol
         ~path:(path // "lib_client_sapling")
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_clic;
-            octez_crypto;
             octez_stdlib_unix |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             octez_signer_backends;
             client |> if_some |> open_;
             client_commands |> if_some |> open_;
@@ -4412,7 +4426,7 @@ module Protocol = Protocol
           [
             octez_base
             |> if_ N.(number <= 14)
-            |> open_ ~m:"TzPervasives"
+            |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_base |> if_ N.(number >= 15) |> open_ ~m:"TzPervasives";
             octez_clic;
@@ -4420,7 +4434,7 @@ module Protocol = Protocol
             parameters |> if_some |> if_ N.(number >= 013) |> open_;
             octez_protocol_environment;
             octez_shell_services |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             client |> if_some |> open_;
             octez_client_commands |> open_;
             client_commands |> if_some |> open_;
@@ -4443,7 +4457,7 @@ module Protocol = Protocol
           else "Tezos/Protocol: base library for `tezos-baker/accuser`")
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_clic;
             octez_version;
@@ -4451,7 +4465,7 @@ module Protocol = Protocol
             plugin |> if_some |> open_;
             octez_protocol_environment;
             octez_shell_services |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             client |> if_some |> open_;
             octez_client_commands |> open_;
             octez_stdlib |> open_;
@@ -4482,12 +4496,12 @@ module Protocol = Protocol
         ~deps:
           [
             data_encoding |> open_;
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
             |> open_;
             octez_base_unix;
             main |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             client |> if_some |> open_;
           ]
         ~bisect_ppx:false
@@ -4501,10 +4515,10 @@ module Protocol = Protocol
         ~opam:(sf "tezos-baking-%s" name_dash)
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
             |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             client |> if_some |> open_;
             main |> open_;
             tenderbrute |> if_some |> open_;
@@ -4522,13 +4536,14 @@ module Protocol = Protocol
           ~path:(path // "lib_delegate/test/mockup_simulator")
           ~deps:
             [
-              octez_base |> open_ ~m:"TzPervasives"
+              octez_base |> open_tzpervasives
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
               main |> open_ |> open_ ~m:"Protocol";
               client |> if_some |> open_;
               octez_client_commands |> open_;
               baking |> open_;
               octez_stdlib_unix |> open_;
+              octez_client_base |> open_ |> open_versioned_signature;
               octez_client_base_unix |> open_;
               parameters |> if_some |> open_;
               octez_mockup;
@@ -4544,7 +4559,7 @@ module Protocol = Protocol
         ~opam:(sf "tezos-baking-%s" name_dash)
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_protocol_environment |> if_ N.(number <= 011);
             octez_test_helpers |> if_ N.(number <= 011);
@@ -4570,13 +4585,13 @@ module Protocol = Protocol
         ~synopsis:"Tezos/Protocol: protocol-specific commands for baking"
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             main |> open_;
             octez_stdlib_unix |> open_;
             octez_protocol_environment;
             octez_shell_services |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             client |> if_some |> open_;
             octez_client_commands |> open_;
             baking |> if_some |> open_;
@@ -4597,11 +4612,11 @@ module Protocol = Protocol
         ~path:(path // "lib_delegate")
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives";
+            octez_base |> open_tzpervasives;
             main |> open_;
             octez_protocol_environment;
             octez_shell_services |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             client |> if_some |> open_;
             octez_client_commands |> open_;
             baking |> if_some |> open_;
@@ -4625,7 +4640,7 @@ module Protocol = Protocol
         ~release:true
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_clic;
             main |> open_;
@@ -4647,18 +4662,17 @@ module Protocol = Protocol
         ~synopsis:"Tezos/Protocol: protocol specific library building injectors"
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
             |> open_;
-            octez_base_unix;
-            octez_stdlib_unix |> open_;
-            octez_crypto |> open_;
+            octez_crypto |> open_ |> open_versioned_signature;
             main |> open_;
             octez_micheline |> open_;
             client |> if_some |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             octez_workers |> open_;
             octez_shell;
+            octez_stdlib_unix |> open_;
           ]
         ~inline_tests:ppx_expect
         ~linkall:true
@@ -4688,7 +4702,7 @@ module Protocol = Protocol
           "Tezos/Protocol: protocol specific library for `tezos-sc-rollup`"
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives";
+            octez_base |> open_tzpervasives;
             main |> open_;
             plugin |> if_some |> open_;
             parameters |> if_some |> open_;
@@ -4707,7 +4721,7 @@ module Protocol = Protocol
         ~release:true
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_clic;
             octez_client_base;
@@ -4732,12 +4746,12 @@ module Protocol = Protocol
         ~release:true
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_clic;
             octez_client_commands |> open_;
             octez_stdlib_unix |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             octez_client_base_unix |> open_;
             client |> if_some |> open_;
             octez_context_encoding;
@@ -4775,10 +4789,10 @@ module Protocol = Protocol
         ~deps:
           [
             index;
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
             |> open_;
-            octez_crypto |> open_;
+            octez_crypto |> open_ |> open_versioned_signature;
             main |> open_;
             client |> if_some |> open_;
             octez_client_commands |> open_;
@@ -4790,7 +4804,7 @@ module Protocol = Protocol
             octez_rpc_http_client_unix |> open_;
             octez_rpc_http_server |> open_;
             octez_micheline |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             octez_client_base_unix |> open_;
             octez_shell;
             octez_store;
@@ -4811,10 +4825,11 @@ module Protocol = Protocol
         ~release:true
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_clic;
             main |> open_ |> open_ ~m:"Protocol";
+            octez_client_base |> open_ |> open_versioned_signature;
             client |> if_some |> open_;
             client_commands |> if_some |> open_;
             octez_client_base_unix |> open_;
@@ -4833,13 +4848,13 @@ module Protocol = Protocol
         ~release:true
         ~deps:
           [
-            octez_base |> open_ ~m:"TzPervasives"
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
             |> open_;
             octez_clic;
             main |> open_;
             client |> if_some |> open_;
-            octez_client_base |> open_;
+            octez_client_base |> open_ |> open_versioned_signature;
             octez_client_base_unix |> open_;
             tx_rollup |> if_some |> open_;
           ]
@@ -4893,7 +4908,7 @@ module Protocol = Protocol
           [
             octez_stdlib |> open_;
             octez_error_monad |> open_;
-            octez_crypto |> open_;
+            octez_crypto |> open_ |> open_versioned_signature;
             octez_micheline |> open_;
             octez_micheline_rewriting |> open_;
             main |> open_;
@@ -4933,10 +4948,10 @@ module Protocol = Protocol
             octez_error_monad |> open_;
             octez_micheline |> open_;
             octez_micheline_rewriting |> open_;
-            octez_benchmark |> open_;
+            octez_benchmark |> open_ |> open_versioned_signature;
             benchmark_type_inference |> if_some |> open_;
             main |> open_;
-            octez_crypto |> open_;
+            octez_crypto |> open_ |> open_versioned_signature;
             parameters |> if_some;
             hashcons;
             test_helpers |> open_;
@@ -4963,12 +4978,12 @@ module Protocol = Protocol
         ~opam:(sf "tezos-benchmark-%s" name_dash)
         ~deps:
           [
-            octez_base
+            octez_base |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_micheline |> open_;
             octez_micheline_rewriting;
             main |> open_;
-            octez_benchmark |> open_;
+            octez_benchmark |> open_ |> open_versioned_signature;
             benchmark_type_inference |> if_some |> open_;
             benchmark |> if_some |> open_;
             test_helpers |> open_;
@@ -5000,15 +5015,15 @@ module Protocol = Protocol
           [
             str;
             octez_stdlib |> open_;
-            octez_base |> open_ |> open_ ~m:"TzPervasives"
+            octez_base |> open_ |> open_tzpervasives
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_error_monad |> open_;
             parameters |> if_some |> open_;
-            octez_benchmark |> open_;
+            octez_benchmark |> open_ |> open_versioned_signature;
             benchmark |> if_some |> open_;
             benchmark_type_inference |> if_some |> open_;
             main |> open_ |> open_ ~m:"Protocol";
-            octez_crypto |> open_;
+            octez_crypto |> open_ |> open_versioned_signature;
             octez_shell_benchmarks;
             octez_micheline |> open_;
             test_helpers |> open_;

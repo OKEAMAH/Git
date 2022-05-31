@@ -18,6 +18,7 @@
   -open Tezos_stdlib
   -open Tezos_error_monad
   -open Tezos_crypto
+  -open Tezos_crypto.Signature_aliases.V0
   -open Tezos_micheline
   -open Tezos_micheline_rewriting
   -open Tezos_protocol_014_PtKathma))

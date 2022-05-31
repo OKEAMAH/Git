@@ -11,7 +11,6 @@ depends: [
   "dune" { >= "3.0" }
   "ppx_expect"
   "tezos-base"
-  "tezos-stdlib-unix"
   "tezos-crypto"
   "tezos-protocol-alpha"
   "tezos-micheline"
@@ -19,6 +18,7 @@ depends: [
   "tezos-client-base"
   "tezos-workers"
   "tezos-shell"
+  "tezos-stdlib-unix"
 ]
 build: [
   ["rm" "-r" "vendors"]

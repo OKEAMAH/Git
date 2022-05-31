@@ -12,6 +12,7 @@ depends: [
   "tezos-base"
   "tezos-clic"
   "tezos-protocol-014-PtKathma"
+  "tezos-client-base"
   "tezos-client-014-PtKathma"
   "tezos-client-base-unix"
   "tezos-stdlib-unix"

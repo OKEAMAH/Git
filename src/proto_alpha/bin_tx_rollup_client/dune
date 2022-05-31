@@ -10,6 +10,7 @@
   tezos-base
   tezos-clic
   tezos-protocol-alpha
+  tezos-client-base
   tezos-client-alpha
   tezos-client-alpha.commands
   tezos-client-base-unix
@@ -25,6 +26,7 @@
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_protocol_alpha
   -open Tezos_protocol_alpha.Protocol
+  -open Tezos_client_base
   -open Tezos_client_alpha
   -open Tezos_client_alpha_commands
   -open Tezos_client_base_unix

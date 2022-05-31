@@ -20,10 +20,12 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_base
   -open Tezos_protocol_014_PtKathma
   -open Tezos_client_014_PtKathma
   -open Tezos_client_base
+  -open Tezos_client_base.Signature_aliases.V0
   -open Tezos_client_base_unix
   -open Tezos_tx_rollup_014_PtKathma))

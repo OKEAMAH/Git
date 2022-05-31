@@ -11,6 +11,7 @@
   tezos-client-commands
   tezos-baking-alpha
   tezos-stdlib-unix
+  tezos-client-base
   tezos-client-base-unix
   tezos-protocol-alpha.parameters
   tezos-mockup
@@ -27,6 +28,7 @@
   -open Tezos_client_commands
   -open Tezos_baking_alpha
   -open Tezos_stdlib_unix
+  -open Tezos_client_base
   -open Tezos_client_base_unix
   -open Tezos_protocol_alpha_parameters
   -open Tenderbrute_alpha))

@@ -18,11 +18,14 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_protocol_015_PtLimaPt
   -open Tezos_015_PtLimaPt_test_helpers
   -open Tezos_base_test_helpers
   -open Tezos_client_015_PtLimaPt
+  -open Tezos_benchmark
+  -open Tezos_benchmark.Signature_aliases.V0
   -open Tezos_micheline
   -open Tezos_benchmark_015_PtLimaPt
   -open Tezos_benchmark_type_inference_015_PtLimaPt))

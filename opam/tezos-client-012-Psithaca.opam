@@ -32,7 +32,6 @@ depends: [
   "tezos-mockup-commands"
   "tezos-client-commands"
   "tezos-client-base-unix"
-  "tezos-crypto"
 ]
 build: [
   ["rm" "-r" "vendors"]

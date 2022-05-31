@@ -30,11 +30,14 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_micheline
   -open Tezos_client_014_PtKathma
   -open Tezos_protocol_014_PtKathma
   -open Tezos_014_PtKathma_test_helpers
+  -open Tezos_benchmark
+  -open Tezos_benchmark.Signature_aliases.V0
   -open Tezos_benchmark_014_PtKathma
   -open Tezos_benchmark_type_inference_014_PtKathma))
 

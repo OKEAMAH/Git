@@ -19,6 +19,7 @@
   -open Tezt_core
   -open Tezt_core.Base
   -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Signature_aliases.V0
   -open Tezt_tezos
   -open Tezos_protocol_014_PtKathma
   -open Tezos_client_014_PtKathma

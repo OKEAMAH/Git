@@ -12,6 +12,7 @@ depends: [
   "tezos-base"
   "tezos-clic"
   "tezos-protocol-alpha"
+  "tezos-client-base"
   "tezos-client-alpha"
   "tezos-client-base-unix"
   "tezos-stdlib-unix"
