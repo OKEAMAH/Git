@@ -1164,6 +1164,8 @@ module V0 = Make (struct
         Signature.Public_key_hash.t -> Public_key_hash.t tzresult =
       let open Result_syntax in
       function
+      | Bls _ ->
+          tzfail (Exn (Failure "BLS public key hash not supported by V0"))
       | Ed25519 k -> return (Ed25519 k : Public_key_hash.t)
       | Secp256k1 k -> return (Secp256k1 k : Public_key_hash.t)
       | P256 k -> return (P256 k : Public_key_hash.t)
@@ -1171,6 +1173,7 @@ module V0 = Make (struct
     let public_key : Signature.Public_key.t -> Public_key.t tzresult =
       let open Result_syntax in
       function
+      | Bls _ -> tzfail (Exn (Failure "BLS public key not supported by V0"))
       | Ed25519 k -> return (Ed25519 k : Public_key.t)
       | Secp256k1 k -> return (Secp256k1 k : Public_key.t)
       | P256 k -> return (P256 k : Public_key.t)
@@ -1178,6 +1181,7 @@ module V0 = Make (struct
     let signature : Signature.t -> t tzresult =
       let open Result_syntax in
       function
+      | Bls _ -> tzfail (Exn (Failure "BLS signature not supported by V0"))
       | Ed25519 k -> return (Ed25519 k : t)
       | Secp256k1 k -> return (Secp256k1 k : t)
       | P256 k -> return (P256 k : t)
