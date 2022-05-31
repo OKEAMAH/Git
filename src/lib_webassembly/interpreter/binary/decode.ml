@@ -754,7 +754,9 @@ let instr s pos tag =
 
   | b -> illegal s pos b
 
-let instr_block_step s cont =
+let instr_block_step : stream -> instr_block_kont list -> instr_block_kont list =
+  function s ->
+  function cont ->
   match cont with
   | IK_Stop res :: [] -> invalid_arg "instr_block"
   | IK_Stop res :: IK_Block (bt, pos) :: IK_Next es :: rest ->
@@ -999,7 +1001,9 @@ let at' left s x =
   Source.(x @@ region s left right)
 
 
-let code_step s = function
+let code_step : stream -> code_kont -> code_kont =
+  function s ->
+  function
   | CK_Start ->
     (* `at` left *)
     let left = pos s in
@@ -1279,7 +1283,8 @@ let data_start s =
     DK_Mode (index, (IK_Next []) :: [])
   | _ -> error s (pos s - 1) "malformed data segment kind"
 
-let data_step s =
+let data_step : stream -> data_kont -> data_kont  =
+  function s ->
   function
   | DK_Start -> data_start s
   | DK_Mode (index, [ IK_Stop offset ]) ->
@@ -1369,9 +1374,22 @@ type module_kont =
   (* Skip n>0 custom sections *)
   | MK_Skip_custom
 
-  (* TODO ?? *)
+  (* TODO Lifecycle:
+
+      MK_Field T
+      if there is not one
+        MK_Field_rev T
+      else
+        optionally
+          MK_Elem
+          MK_Code
+          MK_Data
+        MK_Field_collect T
+  *)
+
+  (* Type, total size, remaining bytes, elements parsed so far? *)
   | MK_Field_collect : 'a field_type * size * int * 'a list -> module_kont
-  | MK_Field_rev : 'a field_type * size * 'a list * 'a list -> module_kont
+  | MmK_Field_rev : 'a field_type * size * 'a list * 'a list -> module_kont
   | MK_Field : 'a field_type * section_tag -> module_kont
 
   | MK_Global of global_type * int * instr_block_kont list
@@ -1404,7 +1422,7 @@ let step : stream -> module_kont list -> module_kont list =
       (* Module header *)
       MK_Skip_custom
       :: MK_Field (TypeField,`TypeSection)
-      :: MK_Next []
+      :: MK_Next [] :: []
 
     | MK_Skip_custom :: ks ->
       (match id s with
@@ -1444,6 +1462,7 @@ let step : stream -> module_kont list -> module_kont list =
        | _ ->
          let size = { size = 0; start = pos s } in
          MK_Field_rev (ty, size, [], []) :: rest)
+
     | MK_Field_collect (ty, size, 0, l) :: (MK_Next _ :: [] as rest) ->
       MK_Field_rev (ty, size, [], l) :: rest
     | MK_Field_collect (ty, size, n, l) :: rest as collect ->
@@ -1464,7 +1483,9 @@ let step : stream -> module_kont list -> module_kont list =
          let f = at memory s in (* small enough to fit in a tick *)
          MK_Field_collect (ty, size, n - 1, f :: l) :: rest
        | GlobalField ->
+         (* Parse a type *)
          let gtype = global_type s in
+         (* Parse an instr block *)
          MK_Global (gtype, pos s, [IK_Next []]) :: collect
        | ExportField ->
          let f = at export s in (* small enough to fit in a tick *)
@@ -1483,6 +1504,7 @@ let step : stream -> module_kont list -> module_kont list =
          MK_Data (DK_Start, pos s) :: collect
       )
 
+    (* Finish/continue parsing a the instruction part of a global *)
     | MK_Global (gtype, left, [ IK_Stop res]) :: MK_Field_collect (GlobalField, size, n, l) :: rest ->
       end_ s ;
       let ginit = Source.(res @@ region s left (pos s)) in
@@ -1493,6 +1515,7 @@ let step : stream -> module_kont list -> module_kont list =
     | MK_Global (ty, pos, k) :: rest ->
       MK_Global (ty, pos, instr_block_step s k) :: rest
 
+    (* Finish/continue parsing an element segment *)
     | MK_Elem (EK_Stop elem, left) :: MK_Field_collect (ElemField, size, n, l) :: rest ->
       let elem = Source.(elem @@ region s left (pos s)) in
       MK_Field_collect (ElemField, size, (n - 1), elem :: l) :: rest
@@ -1501,6 +1524,7 @@ let step : stream -> module_kont list -> module_kont list =
     | MK_Elem (elem_kont, pos) :: rest ->
       MK_Elem (elem_step s elem_kont, pos) :: rest
 
+    (* Finish/continue parsing data segment *)
     | MK_Data (DK_Stop data, left) :: MK_Field_collect (DataField, size, n, l) :: rest ->
       let data = Source.(data @@ region s left (pos s)) in
       MK_Field_collect (DataField, size, (n - 1), data :: l) :: rest
