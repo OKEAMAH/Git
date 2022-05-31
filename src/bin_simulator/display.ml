@@ -67,21 +67,17 @@ let draw_scene :
       unit) ->
     unit =
  fun model ~draw_node ~draw_edge ->
-  (* Draw edges first. *)
-  SM.Vertex_table.iter
-    (fun source_id source_state ->
-      (* let src = p3_to_raylib source_state.SM.position in *)
-      List.iter
-        (fun (target_id, _) ->
-          let target_state = SM.Vertex_table.find model.SM.state target_id in
-          let vec = V3.sub target_state.SM.position source_state.SM.position in
-          let unit_dir = V3.unit vec in
-          let src = p3_to_raylib @@ V3.add source_state.SM.position unit_dir in
-          let tgt = p3_to_raylib @@ V3.sub target_state.SM.position unit_dir in
-          Raylib.draw_line_3d src tgt Raylib.Color.black ;
-          draw_edge source_id src target_id tgt)
-        source_state.SM.neighbours)
-    model.SM.state ;
+  SM.G.iter_edges
+    (fun source_id target_id ->
+      let source_state = SM.Vertex_table.find model.SM.state source_id in
+      let target_state = SM.Vertex_table.find model.SM.state target_id in
+      let vec = V3.sub target_state.SM.position source_state.SM.position in
+      let unit_dir = V3.unit vec in
+      let src = p3_to_raylib @@ V3.add source_state.SM.position unit_dir in
+      let tgt = p3_to_raylib @@ V3.sub target_state.SM.position unit_dir in
+      Raylib.draw_line_3d src tgt Raylib.Color.black ;
+      draw_edge source_id src target_id tgt)
+    model.SM.graph ;
   SM.Vertex_table.iter
     (fun id state ->
       let pos = p3_to_raylib state.SM.position in
@@ -125,6 +121,15 @@ let draw_all sm camera ~draw_node ~draw_edge =
   in
   let elapse = Raygui.button rect "Step forward" in
 
+  let rect =
+    Rectangle.create
+      (float offset)
+      (float (height - offset - button_height))
+      (float button_width)
+      (float button_height)
+  in
+  let relax = Raygui.button rect "Relax layout" in
+
   let elapsed = Tezos_shims_shared.Internal_for_tests.now () -. t0 in
   draw_text
     (Format.asprintf "elapsed: %f s" elapsed)
@@ -149,4 +154,4 @@ let draw_all sm camera ~draw_node ~draw_edge =
     Color.black ;
 
   end_drawing () ;
-  elapse
+  (elapse, relax)

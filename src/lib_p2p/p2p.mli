@@ -289,8 +289,7 @@ module Internal_for_tests : sig
     ('a, 'b, 'c) mocked_network ->
     a:P2p_peer.Id.t ->
     b:P2p_peer.Id.t ->
-    a_meta:'b ->
-    b_meta:'b ->
+    peer_meta_initial:(unit -> 'b) ->
     ab_conn_meta:'c ->
     ba_conn_meta:'c ->
     propagation_delay:float ->
@@ -325,4 +324,10 @@ module Internal_for_tests : sig
 
   val sleep_on_deferred_delays :
     ('a, 'b, 'c) mocked_network -> P2p_peer.Id.t -> (unit, string) result Lwt.t
+
+  val on_disconnection :
+    ('a, 'b, 'c) mocked_network ->
+    P2p_peer.Id.t ->
+    (P2p_peer.Id.t -> unit) ->
+    unit
 end

@@ -177,7 +177,8 @@ let default_shell =
     block_validator_limits = Node.default_block_validator_limits;
     prevalidator_limits = Node.default_prevalidator_limits;
     peer_validator_limits = Node.default_peer_validator_limits;
-    chain_validator_limits = Node.default_chain_validator_limits;
+    chain_validator_limits =
+      {Chain_validator.synchronisation = {latency = 150; threshold = 0}};
   }
 
 let default_disable_config_validation = false

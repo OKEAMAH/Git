@@ -853,8 +853,6 @@ let tezos_stdlib_unix =
         tezos_event_logging |> open_;
         tezos_stdlib |> open_;
         data_encoding |> open_;
-        Shims.Unix.shims |> open_;
-        Shims.Time.shims |> open_;
         ipaddr_unix;
         re;
         ezjsonm;
@@ -862,6 +860,8 @@ let tezos_stdlib_unix =
         mtime;
         lwt_log;
         conf_libev;
+        Shims.Unix.shims |> open_;
+        Shims.Time.shims |> open_;
       ]
 
 let tezos_clic =
@@ -951,10 +951,11 @@ let tezos_base =
         tezos_micheline |> open_;
         tezos_event_logging |> open_;
         ptime;
-        Shims.Time.shims |> open_;
         ezjsonm;
         lwt;
         ipaddr;
+        Shims.Time.shims |> open_;
+        Shims.Unix.shims |> open_;
       ]
     ~js_compatible:true
     ~js_of_ocaml:[[S "javascript_files"; S "ptime.js"]]
@@ -1306,7 +1307,8 @@ let _tezos_p2p_mocked =
       [
         tezos_base |> open_ ~m:"TzPervasives";
         tezos_p2p_shared |> open_;
-        tezos_p2p_unix |> open_;
+        Shims.Unix.shims |> open_;
+        Shims.Time.shims |> open_;
       ]
     ~private_modules:["network"]
     ~implements:tezos_p2p

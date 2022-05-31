@@ -34,7 +34,7 @@ module Internal_for_tests = struct
 
   let find_handle_opt _version = None
 
-  let connect_peers _handle ~a:_ ~b:_ ~a_meta:_ ~b_meta:_ ~ab_conn_meta:_
+  let connect_peers _handle ~a:_ ~b:_ ~peer_meta_initial:_ ~ab_conn_meta:_
       ~ba_conn_meta:_ ~propagation_delay:_ =
     Error "P2p.Internal_for_tests: connect_peers not implemented"
 
@@ -53,4 +53,7 @@ module Internal_for_tests = struct
   let sleep_on_deferred_delays _handle _peer_id =
     invalid_arg
       "P2p.Internal_for_tests: sleep_on_deferred_delays not implemented"
+
+  let on_disconnection _handle _peer _f =
+    invalid_arg "P2p.Internal_for_tests: on_disconnection not implemented"
 end

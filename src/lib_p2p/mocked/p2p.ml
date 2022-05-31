@@ -27,6 +27,8 @@ type ('msg, 'peer_meta, 'conn_meta) t = {
   self : P2p_peer.Id.t;
   version : Network_version.t;
   handle : ('msg, 'peer_meta, 'conn_meta) Network.network option;
+  peer_cfg : 'peer_meta P2p_params.peer_meta_config;
+  conn_cfg : 'conn_meta P2p_params.conn_meta_config option;
 }
 
 type ('msg, 'peer_meta, 'conn_meta) net = ('msg, 'peer_meta, 'conn_meta) t
@@ -68,9 +70,15 @@ let faked_network :
     'peer_metadata P2p_params.peer_meta_config ->
     'conn_metadata ->
     ('message, 'peer_metadata, 'conn_metadata) net =
- fun _msg_cfg _meta_cfg _meta ->
+ fun _msg_cfg peer_cfg _meta ->
   let {P2p_identity.peer_id; _} = P2p_identity.generate_with_pow_target_0 () in
-  {self = peer_id; version = default_version; handle = None}
+  {
+    self = peer_id;
+    version = default_version;
+    handle = None;
+    peer_cfg;
+    conn_cfg = None;
+  }
 
 (* /!\ HACK /!\
    The mocked p2p implementation relies on some shared state among all p2p intances.
@@ -109,7 +117,7 @@ let create :
     'conn_metadata P2p_params.conn_meta_config ->
     'message P2p_params.message_config ->
     ('message, 'peer_metadata, 'conn_metadata) net tzresult Lwt.t =
- fun ~config:_ ~limits:_ peer_cfg _conn_cfg msg_cfg ->
+ fun ~config:_ ~limits:_ peer_cfg conn_cfg msg_cfg ->
   let {P2p_identity.peer_id; _} = P2p_identity.generate_with_pow_target_0 () in
   let version =
     Network_version.announced
@@ -125,11 +133,16 @@ let create :
         handle
     | Some handle -> handle
   in
-  match
-    Network.activate_peer handle peer_id (peer_cfg.peer_meta_initial ())
-  with
+  match Network.activate_peer handle peer_id with
   | Ok () ->
-      Lwt_result_syntax.return {self = peer_id; version; handle = Some handle}
+      Lwt_result_syntax.return
+        {
+          self = peer_id;
+          version;
+          handle = Some handle;
+          peer_cfg;
+          conn_cfg = Some conn_cfg;
+        }
   | Error msg ->
       let err = error_of_fmt "%s" msg in
       Lwt_result_syntax.tzfail err
@@ -137,7 +150,7 @@ let create :
 let activate {self; handle; _} =
   Option.iter
     (fun handle ->
-      match Network.get_peer handle self with
+      match Network.get_peer ~s:"P2p.activate" handle self with
       | Ok _ -> ()
       | Error msg -> Stdlib.failwith msg)
     handle
@@ -156,12 +169,18 @@ let negotiated_version {version; _} _conn = version
 
 let peer_id {self; _} = self
 
-let get_peer_metadata {self; handle; _} peer =
+let get_peer_metadata {self; handle; peer_cfg; _} peer =
   match handle with
   | None ->
       Stdlib.failwith
         "mocked p2p: get_peer_metadata not implemented for faked p2p"
-  | Some handle -> Network.get_peer_meta handle ~self peer
+  | Some handle -> (
+      (* It does happen that the shell asks for the metadata of a peer
+         _after_ disconnecting from that peer.
+         The real p2p keeps a separate table of known peers. We
+         probably ought to do the same. *)
+      try Network.get_peer_meta handle ~self peer
+      with Invalid_argument _ -> peer_cfg.peer_meta_initial ())
 
 let connection_info {self; handle; _} {peer} =
   match handle with
@@ -296,4 +315,6 @@ module Internal_for_tests = struct
       (fun {Network.data = outbound; peer = neighbor; _} ->
         f ~outbound ~neighbor)
       peer_state.conns
+
+  let on_disconnection = Network.on_disconnection
 end

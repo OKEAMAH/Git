@@ -29,11 +29,9 @@ val erdos_renyi : int -> float -> Random.State.t -> G.t
    a stiffness constant. All springs are considered "relaxed" for a parameter
    length [relax_length]. *)
 type t = {
-  (* total force applied on each object *)
   state : node_state Vertex_table.t;
-  (* edges/springs *)
+  graph : G.t;
   relax_length : float;
-  (* relaxed length *)
   stiffness : float;
 }
 
@@ -42,7 +40,6 @@ and node_state = {
   mutable position : P3.t;
   mutable velocity : V3.t;
   mutable force : V3.t;
-  mutable neighbours : (Vertex.t * float) list;
   mutable is_anchor : bool;
 }
 
@@ -56,8 +53,6 @@ val velocity : node_state -> V3.t
 
 val force : node_state -> V3.t
 
-val neighbours : node_state -> (Vertex.t * float) list
-
 val state : t -> node_state Vertex_table.t
 
 val compute_forces : t -> float -> float -> unit
@@ -70,7 +65,6 @@ val spherical_configuration :
   ?stiffness:float ->
   ?relax_length:float ->
   ?anchor:anchor ->
-  add_edges:bool ->
   unit ->
   t
 
@@ -81,6 +75,8 @@ val remove_edge : t -> Vertex.t -> Vertex.t -> unit
 val add_vertex : t -> Vertex.t -> unit
 
 val remove_vertex : t -> Vertex.t -> unit
+
+val iter_edges : t -> (int -> int -> unit) -> unit
 
 val perform_relaxation_step :
   model:t -> drag_factor:float -> coulomb_factor:float -> delta_t:float -> unit

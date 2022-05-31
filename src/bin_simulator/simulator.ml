@@ -20,26 +20,31 @@ type simulation_state = {
   node_info : node_info array;  (** Mapping indices to [node_info] *)
   embedding : S.t;  (** Embedding the p2p graph in R^3 using a spring model *)
   elapse : bool ref;
+  step_spring : bool ref;
+  mutex : Mutex.t;
 }
 
 (** Create a random network with [nodes] nodes. *)
-let create_from_graph graph =
-  let nodes = S.G.nb_vertex graph in
+let create node_count =
+  let vertices = List.init node_count Fun.id in
+  let graph = Springmodel.G.create () in
+  List.iter (fun v -> Springmodel.G.add_vertex graph v) vertices ;
   let sm =
     Springmodel.spherical_configuration
       ~radius:15.0
-      ~relax_length:10.
-      ~stiffness:1.0
-      ~anchor:(Springmodel.Random {count = 1 + (nodes / 10)})
-      ~add_edges:false
+      ~relax_length:1.
+      ~stiffness:0.001
+      ~anchor:(Springmodel.Random {count = 1 + (node_count / 10)})
       graph
       ()
   in
   {
-    node_table = Table.create nodes;
-    node_info = Array.init nodes (fun _ -> {node = None; peer_id = None});
+    node_table = Table.create node_count;
+    node_info = Array.init node_count (fun _ -> {node = None; peer_id = None});
     embedding = sm;
     elapse = ref false;
+    step_spring = ref false;
+    mutex = Mutex.create ();
   }
 
 let stop = ref false
@@ -156,11 +161,12 @@ let rec loop camera st =
     in
     update_camera (addr camera) ;
     let*! () = Lwt.pause () in
-    Springmodel.perform_relaxation_step
-      ~model:st.embedding
-      ~drag_factor:0.7
-      ~coulomb_factor:1.
-      ~delta_t:0.1 ;
+    if !(st.step_spring) then
+      Springmodel.perform_relaxation_step
+        ~model:st.embedding
+        ~drag_factor:0.99
+        ~coulomb_factor:1e-10
+        ~delta_t:0.1 ;
     let*! () = Lwt.pause () in
     let* levels =
       Lwtreslib.Bare.List.map_es
@@ -175,7 +181,8 @@ let rec loop camera st =
         (Array.to_list st.node_info)
     in
     let levels = Array.of_list levels in
-    let switch =
+    Mutex.lock st.mutex ;
+    let switch, step_spring =
       Display.draw_all
         st.embedding
         camera
@@ -213,53 +220,106 @@ let rec loop camera st =
             Raylib.Color.black
             (Printf.sprintf "%d" src_to_tgt))
     in
-
+    Mutex.unlock st.mutex ;
     if switch then st.elapse := not !(st.elapse) ;
-
-    if !(st.elapse) then Tezos_shims_shared.Internal_for_tests.elapse dt ;
+    if step_spring then st.step_spring := not !(st.step_spring) ;
     loop camera st
+
+[@@@ocaml.alert "-deprecated"]
+
+let run st p =
+  let rec run_loop () =
+    (* Fulfill paused promises now. *)
+    Lwt.wakeup_paused () ;
+    match Lwt.poll p with
+    | Some x -> x
+    | None ->
+        (* Do the main loop call. *)
+        let paused = Lwt.paused_count () in
+        let should_block_waiting_for_io = paused = 0 in
+        let can_elapse = paused = 1 in
+        Lwt_engine.iter should_block_waiting_for_io ;
+
+        if can_elapse && !(st.elapse) then
+          Tezos_shims_shared.Internal_for_tests.elapse dt
+        else () ;
+
+        (* Repeat. *)
+        run_loop ()
+  in
+
+  run_loop ()
 
 let () =
   let cam = Display.setup 900 800 in
-  let graph =
-    (* Random connexion graph *)
-    Springmodel.erdos_renyi node_count edge_p (Random.State.make_self_init ())
-  in
-  let state = create_from_graph graph in
+  let state = create node_count in
+  let rng_state = Random.State.make [|13908120983|] in
   let open Lwt_result_syntax in
   let _ =
-    Lwt_main.run
+    run state
     @@ let* () =
          make_n_nodes_and_start state node_count (fun _nodes ->
              let open Lwt_result_syntax in
              let*! () = Lwt_unix.sleep 1.0 in
+             let graph = state.embedding.Springmodel.graph in
+             let vertices =
+               Springmodel.G.fold_vertex (fun v l -> v :: l) graph []
+             in
+             Mutex.lock state.mutex ;
+             let coin = Stats.Gen.bernoulli edge_p in
+             List.iter
+               (fun i ->
+                 List.iter
+                   (fun j ->
+                     if i < j && coin rng_state then
+                       Springmodel.add_edge state.embedding i j
+                     else ())
+                   vertices)
+               vertices ;
              S.G.iter_edges
                (fun i j ->
+                 let i, j = if i < j then (i, j) else (j, i) in
                  assert (i <> j) ;
                  match
                    (state.node_info.(i).peer_id, state.node_info.(j).peer_id)
                  with
                  | Some p1, Some p2 -> (
                      assert (not (P2p_peer.Id.equal p1 p2)) ;
-                     Springmodel.add_edge state.embedding i j ;
                      match
                        P2p.Internal_for_tests.connect_peers
                          (handle ())
                          ~a:p1
                          ~b:p2
-                         ~a_meta:(Tezos_p2p_services.Peer_metadata.empty ())
-                         ~b_meta:(Tezos_p2p_services.Peer_metadata.empty ())
+                         ~peer_meta_initial:
+                           Tezos_p2p_services.Peer_metadata.empty
                          ~ab_conn_meta:
                            Tezos_p2p_services.Connection_metadata.
                              {disable_mempool = false; private_node = false}
                          ~ba_conn_meta:
                            Tezos_p2p_services.Connection_metadata.
                              {disable_mempool = false; private_node = false}
+                         ~propagation_delay:(5. +. Random.float 5.0)
                      with
                      | Ok () -> ()
                      | Error msg -> Stdlib.failwith msg)
                  | _ -> assert false)
-               graph ;
+               state.embedding.Springmodel.graph ;
+             Mutex.unlock state.mutex ;
+
+             S.G.iter_vertex
+               (fun i ->
+                 let self = Option.get state.node_info.(i).peer_id in
+                 P2p.Internal_for_tests.on_disconnection
+                   (handle ())
+                   self
+                   (fun peer ->
+                     Mutex.lock state.mutex ;
+                     let peer_index =
+                       (Option.get (Table.find state.node_table peer)).id
+                     in
+                     Springmodel.remove_edge state.embedding i peer_index ;
+                     Mutex.unlock state.mutex))
+               state.embedding.Springmodel.graph ;
              let*! () = Lwt_unix.sleep 1.0 in
              let* _ = activate_alpha state 0 in
              Lwt_result_syntax.return_unit)

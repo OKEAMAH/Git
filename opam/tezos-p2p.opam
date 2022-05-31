@@ -13,6 +13,8 @@ depends: [
   "tezos-p2p-services"
   "tezos-p2p-shared"
   "tezos-p2p-unix"
+  "tezos-unix-shims"
+  "tezos-time-shims"
   "tezos-stdlib-unix" {with-test}
   "tezos-stdlib" {with-test}
   "tezos-test-helpers" {with-test}

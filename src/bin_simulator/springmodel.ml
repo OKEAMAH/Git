@@ -32,8 +32,8 @@ module Label = struct
   let default = ()
 end
 
-module Vertex_table = Hashtbl.Make (Vertex)
 module G = Graph.Imperative.Graph.ConcreteLabeled (Vertex) (Label)
+module Vertex_table = Hashtbl.Make (G.V)
 
 let erdos_renyi n p rng_state =
   let coin = Stats.Gen.bernoulli p in
@@ -52,15 +52,10 @@ let erdos_renyi n p rng_state =
     graph ;
   graph
 
-(* As usual, this is implemented by a graph where the edges are labelled by
-   a stiffness constant. All springs are considered "relaxed" for a parameter
-   length [relax_length]. *)
 type t = {
-  (* total force applied on each object *)
   state : node_state Vertex_table.t;
-  (* edges/springs *)
+  graph : G.t;
   relax_length : float;
-  (* relaxed length *)
   stiffness : float;
 }
 
@@ -69,15 +64,17 @@ and node_state = {
   mutable position : P3.t;
   mutable velocity : V3.t;
   mutable force : V3.t;
-  mutable neighbours : (Vertex.t * float) list;
   mutable is_anchor : bool;
 }
 
 type anchor = Vertices of Vertex.t list | Random of {count : int}
 
 let pp fmtr (model : t) =
-  Vertex_table.iter
-    (fun vertex {position; velocity; force; neighbours; _} ->
+  G.iter_vertex
+    (fun vertex ->
+      let {position; velocity; force; _} =
+        Vertex_table.find model.state vertex
+      in
       Format.fprintf
         fmtr
         "%a -> @[ pos = %a;@, vel = %a;@, frc = %a; @,"
@@ -89,22 +86,21 @@ let pp fmtr (model : t) =
         velocity
         V3.pp
         force ;
+      let neighbours = G.succ model.graph vertex in
       Format.fprintf
         fmtr
         "%a @]"
         (Format.pp_print_list
            ~pp_sep:(fun fmtr () -> Format.fprintf fmtr ",")
-           (fun fmtr (vtx, _) -> Vertex.pp fmtr vtx))
+           Vertex.pp)
         neighbours)
-    model.state
+    model.graph
 
 let position {position; _} = position
 
 let velocity {velocity; _} = velocity
 
 let force {force; _} = force
-
-let neighbours {neighbours; _} = neighbours
 
 let state {state; _} = state
 
@@ -125,7 +121,7 @@ let compute_forces (model : t) (drag_factor : float) (coulomb_factor : float) =
       (* reset accumulator *)
       state.force <- V3.zero ;
       List.iteri
-        (fun _ (target, stiffness) ->
+        (fun _ target ->
           let c = Vertex.compare v target in
           (* Compute force only once per edge. No loops. *)
           if c < 0 then (
@@ -135,7 +131,7 @@ let compute_forces (model : t) (drag_factor : float) (coulomb_factor : float) =
             let ndir = V3.norm direction in
             let delta_rel = ndir -. model.relax_length in
             (* delta_rel > 0.0 -> stretched spring -> force towards target *)
-            let force = delta_rel *. stiffness in
+            let force = delta_rel *. model.stiffness in
             let forcevec = V3.smul (force /. ndir) direction in
             (* drag *)
             let drag = V3.smul ~-.drag_factor state.velocity in
@@ -146,7 +142,7 @@ let compute_forces (model : t) (drag_factor : float) (coulomb_factor : float) =
             state.force <- V3.add state.force forcevec ;
             target_state.force <- V3.add target_state.force (V3.neg forcevec))
           else ())
-        state.neighbours)
+        (G.succ model.graph v))
     model.state ;
   (* Coulomb potential *)
   Vertex_table.iter
@@ -177,19 +173,20 @@ let _compute_forces (model : t) (drag_factor : float) (coulomb_factor : float) =
   (* reset force acc *)
   Vertex_table.iter (fun _ state -> state.force <- V3.zero) model.state ;
   Vertex_table.iter
-    (fun _v0 state ->
+    (fun v0 state ->
       let pos0 = state.position in
       let drag = V3.smul ~-.drag_factor state.velocity in
       state.force <- V3.add drag state.force ;
+      let neighbours = G.succ model.graph v0 in
       List.iter
-        (fun (v1, stiffness) ->
+        (fun v1 ->
           let state1 = Vertex_table.find model.state v1 in
           let pos1 = state1.position in
           let dir1 = V3.sub pos1 pos0 in
           let u = V3.unit dir1 in
-          state.force <- V3.add state.force (V3.smul stiffness dir1) ;
+          state.force <- V3.add state.force (V3.smul model.stiffness dir1) ;
           List.iter
-            (fun (v2, _) ->
+            (fun v2 ->
               if Vertex.equal v1 v2 then ()
               else
                 let state2 = Vertex_table.find model.state v2 in
@@ -201,8 +198,8 @@ let _compute_forces (model : t) (drag_factor : float) (coulomb_factor : float) =
                 let f2 = V3.smul r @@ V3.cross n v in
                 state1.force <- V3.add state1.force f1 ;
                 state2.force <- V3.add state2.force f2)
-            state.neighbours)
-        state.neighbours)
+            neighbours)
+        neighbours)
     model.state
 
 let _euler model delta_t =
@@ -242,19 +239,10 @@ let integrate = verlet
 let pi = Float.pi
 
 let spherical_configuration (g : G.t) ?(radius = 50.0) ?(stiffness = 0.1)
-    ?(relax_length = 300.0) ?anchor ~add_edges () =
+    ?(relax_length = 300.0) ?anchor () =
   let table = Vertex_table.create (G.nb_vertex g) in
   G.iter_vertex
     (fun v ->
-      let neighbours =
-        if add_edges then
-          G.fold_succ_e
-            (fun (_v, _lab, v') acc -> (v', stiffness) :: acc)
-            g
-            v
-            []
-        else []
-      in
       let position =
         let theta0 = Random.float (2.0 *. pi) in
         let theta1 = acos (1.0 -. Random.float 2.0) in
@@ -269,7 +257,6 @@ let spherical_configuration (g : G.t) ?(radius = 50.0) ?(stiffness = 0.1)
           position;
           velocity = V3.zero;
           force = V3.zero;
-          neighbours;
           is_anchor = false;
         }
       in
@@ -299,24 +286,20 @@ let spherical_configuration (g : G.t) ?(radius = 50.0) ?(stiffness = 0.1)
       let state = Vertex_table.find table anchor in
       state.is_anchor <- true)
     anchors ;
-  {state = table; relax_length; stiffness}
+  {state = table; graph = g; relax_length; stiffness}
 
 let add_edge (model : t) (v1 : Vertex.t) (v2 : Vertex.t) =
-  assert (Vertex_table.mem model.state v1) ;
-  assert (Vertex_table.mem model.state v2) ;
+  assert (G.mem_vertex model.graph v1) ;
+  assert (G.mem_vertex model.graph v2) ;
+  assert (not (G.mem_edge model.graph v1 v2)) ;
   let c = Vertex.compare v1 v2 in
   assert (c <> 0) ;
-  let (v1, v2) = if c = -1 then (v1, v2) else (v2, v1) in
-  let state = Vertex_table.find model.state v1 in
-  state.neighbours <- (v2, model.stiffness) :: state.neighbours
+  G.add_edge model.graph v1 v2
 
 let remove_edge (model : t) (v1 : Vertex.t) (v2 : Vertex.t) =
-  let v1_state = Vertex_table.find model.state v1 in
-  v1_state.neighbours <-
-    List.filter (fun (v', _) -> not (Vertex.equal v' v2)) v1_state.neighbours ;
-  let v2_state = Vertex_table.find model.state v2 in
-  v1_state.neighbours <-
-    List.filter (fun (v', _) -> not (Vertex.equal v' v1)) v2_state.neighbours
+  G.remove_edge model.graph v1 v2
+
+let iter_edges (model : t) f = G.iter_edges f model.graph
 
 let random_sign () = if Random.bool () then 1. else ~-.1.
 
@@ -334,20 +317,14 @@ let add_vertex (model : t) (v : Vertex.t) =
       position;
       velocity = V3.zero;
       force = V3.zero;
-      neighbours = [];
       is_anchor = false;
     }
   in
+  G.add_vertex model.graph v ;
   Vertex_table.add model.state v state
 
 let remove_vertex (model : t) (v : Vertex.t) =
-  let state = Vertex_table.find model.state v in
-  List.iter
-    (fun (v', _) ->
-      let state' = Vertex_table.find model.state v' in
-      state'.neighbours <-
-        List.filter (fun (v', _) -> not (Vertex.equal v' v)) state.neighbours)
-    state.neighbours ;
+  G.remove_vertex model.graph v ;
   Vertex_table.remove model.state v
 
 let perform_relaxation_step ~model ~drag_factor ~coulomb_factor ~delta_t =

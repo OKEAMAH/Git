@@ -34,7 +34,6 @@ type ('msg, 'peer_meta, 'conn_meta) single_conn = {
   data : 'msg in_flight Lwt_pipe.Unbounded.t;
       (** Messages outbound to [peer] *)
   peer : P2p_peer.Id.t;
-  meta : 'peer_meta;
   conn : 'conn_meta;
   propagation_delay : float;
 }
@@ -42,10 +41,12 @@ type ('msg, 'peer_meta, 'conn_meta) single_conn = {
 type ('msg, 'peer_meta, 'conn_meta) connections =
   ('msg, 'peer_meta, 'conn_meta) single_conn list
 
+module Peer_table = P2p_peer.Id.Table
+
 type ('msg, 'peer_meta, 'conn_meta) peer_state = {
   conns : ('msg, 'peer_meta, 'conn_meta) single_conn list;
       (** Outgoing connections from this peer *)
-  self_meta : 'peer_meta;  (** Metadata for this peer *)
+  pool : 'peer_meta Peer_table.t;  (** Metadata on peers *)
   bandwidth : float;  (** Bandwidth (in bytes/second) *)
   encoding_speed : float;
       (** In bytes/second.
@@ -56,9 +57,9 @@ type ('msg, 'peer_meta, 'conn_meta) peer_state = {
   mutable deferred_delay : float;  (** Delay accumulated in calls to [send] *)
   mutable on_new_conn : (P2p_peer.Id.t -> unit) list;
       (** Callbacks called when a new connection is added. *)
+  mutable on_disconnect : (P2p_peer.Id.t -> unit) list;
+      (** Callbacks called when a connection is removed. *)
 }
-
-module Peer_table = P2p_peer.Id.Table
 
 type ('msg, 'peer_meta, 'conn_meta) network = {
   network : ('msg, 'peer_meta, 'conn_meta) peer_state Peer_table.t;
@@ -90,22 +91,22 @@ module type Parameters = sig
   val create_conn_metadata : unit -> conn_metadata
 end
 
-let peer_state ~self_meta ~encoding_speed ~decoding_speed ~bandwidth =
+let peer_state ~encoding_speed ~decoding_speed ~bandwidth =
   {
     conns = [];
-    self_meta;
-    on_new_conn = [];
+    pool = Peer_table.create 11;
     encoding_speed;
     decoding_speed;
     bandwidth;
     deferred_delay = 0.0;
+    on_new_conn = [];
+    on_disconnect = [];
   }
 
-let make_conn_with ~peer ~peer_meta ~conn_meta ~propagation_delay =
+let make_conn_with ~peer ~conn_meta ~propagation_delay =
   {
     data = Lwt_pipe.Unbounded.create ();
     peer;
-    meta = peer_meta;
     conn = conn_meta;
     propagation_delay;
   }
@@ -123,17 +124,13 @@ let get_peer ?(s = "get_peer") net id =
   | None -> Format.kasprintf fail "%s: %a does not exist" s P2p_peer.Id.pp id
   | Some peer -> return peer
 
-let activate_peer net id meta =
+let activate_peer net id =
   match Peer_table.find_opt net.network id with
   | None ->
       Peer_table.add
         net.network
         id
-        (peer_state
-           ~self_meta:meta
-           ~encoding_speed:1e6
-           ~decoding_speed:1e6
-           ~bandwidth:1e9) ;
+        (peer_state ~encoding_speed:1e6 ~decoding_speed:1e6 ~bandwidth:1e9) ;
       return_unit
   | Some _ ->
       Format.kasprintf fail "activate_peer: %a already exists" P2p_peer.Id.pp id
@@ -148,7 +145,11 @@ let remove_peer_from_neighbours net ~id ~removed_peer =
   Peer_table.replace net.network id {state with conns} ;
   return_unit
 
-let connect_peers net ~a ~b ~a_meta ~b_meta ~ab_conn_meta ~ba_conn_meta
+let add_empty_metadata_if_nonexistent peer_state peer peer_meta_initial =
+  if Peer_table.mem peer_state.pool peer then ()
+  else Peer_table.add peer_state.pool peer (peer_meta_initial ())
+
+let connect_peers net ~a ~b ~peer_meta_initial ~ab_conn_meta ~ba_conn_meta
     ~propagation_delay =
   if P2p_peer.Id.equal a b then
     Format.kasprintf fail "connect_peers: equal peers"
@@ -175,17 +176,15 @@ let connect_peers net ~a ~b ~a_meta ~b_meta ~ab_conn_meta ~ba_conn_meta
         b_state.conns
     then err a b
     else (
+      add_empty_metadata_if_nonexistent a_state b peer_meta_initial ;
+      add_empty_metadata_if_nonexistent b_state a peer_meta_initial ;
       Peer_table.replace
         net.network
         a
         {
           a_state with
           conns =
-            make_conn_with
-              ~peer:b
-              ~peer_meta:b_meta
-              ~conn_meta:ab_conn_meta
-              ~propagation_delay
+            make_conn_with ~peer:b ~conn_meta:ab_conn_meta ~propagation_delay
             :: a_state.conns;
         } ;
       Peer_table.replace
@@ -194,11 +193,7 @@ let connect_peers net ~a ~b ~a_meta ~b_meta ~ab_conn_meta ~ba_conn_meta
         {
           b_state with
           conns =
-            make_conn_with
-              ~peer:a
-              ~peer_meta:a_meta
-              ~conn_meta:ba_conn_meta
-              ~propagation_delay
+            make_conn_with ~peer:a ~conn_meta:ba_conn_meta ~propagation_delay
             :: b_state.conns;
         } ;
       List.iter (fun callback -> callback b) a_state.on_new_conn ;
@@ -243,6 +238,8 @@ let disconnect_peers net ~a ~b =
           (fun {peer; _} -> not (P2p_peer.Id.equal peer a))
           b_state.conns
       in
+      List.iter (fun callback -> callback b) a_state.on_disconnect ;
+      List.iter (fun callback -> callback a) b_state.on_disconnect ;
       Peer_table.replace net.network a {a_state with conns = a_conns} ;
       Peer_table.replace net.network b {b_state with conns = b_conns} ;
       return_unit
@@ -260,7 +257,7 @@ let send net ~src ~dst msg =
     List.find (fun {peer; _} -> P2p_peer.Id.equal peer dst) src_state.conns
   in
   let size = Data_encoding.Binary.length net.msg_encoding msg in
-  let time_to_encode = src_state.encoding_speed in
+  let time_to_encode = float size /. src_state.encoding_speed in
   let time_to_send = float size /. src_state.bandwidth in
   src_state.deferred_delay <-
     src_state.deferred_delay +. (time_to_encode +. time_to_send) ;
@@ -275,7 +272,9 @@ let send net ~src ~dst msg =
         src
   | Some {data; propagation_delay; _} ->
       let now = Ptime.to_float_s (Ptime_clock.now ()) in
-      let arrives_at = now +. propagation_delay in
+      let arrives_at =
+        now +. time_to_encode +. time_to_send +. propagation_delay
+      in
       Lwt_pipe.Unbounded.push data (msg, size, arrives_at) ;
       return_unit
 
@@ -298,7 +297,7 @@ let recv net ~dst ~src =
   | Some {data; _} ->
       let*! data, size, arrives_at = Lwt_pipe.Unbounded.pop data in
       let now = Ptime.to_float_s (Ptime_clock.now ()) in
-      let time_to_decode = float size *. dst_state.encoding_speed in
+      let time_to_decode = float size /. dst_state.decoding_speed in
       let*! () =
         if arrives_at <= now then Lwt_unix.sleep time_to_decode
         else Lwt_unix.sleep (time_to_decode +. arrives_at -. now)
@@ -314,23 +313,35 @@ let get_peer_conn net ~self n =
   | None ->
       Format.kasprintf
         invalid_arg
-        "get_peer: %a is not in the neighbourhood of %a"
+        "get_peer_conn: %a is not in the neighbourhood of %a"
         P2p_peer.Id.pp
         n
         P2p_peer.Id.pp
         self
   | Some conn -> conn
 
-let get_self_meta net ~self =
-  (get_peer_exn ~s:"get_self_meta" net self).self_meta
-
-let get_peer_meta net ~self n = (get_peer_conn net ~self n).meta
+let get_peer_meta net ~self n =
+  let state = get_peer_exn ~s:"get_peer_meta" net self in
+  match Peer_table.find state.pool n with
+  | None ->
+      Format.kasprintf
+        invalid_arg
+        "get_peer_meta: %a is not in the neighbourhood of %a"
+        P2p_peer.Id.pp
+        n
+        P2p_peer.Id.pp
+        self
+  | Some meta -> meta
 
 let get_conn_meta net ~self n = (get_peer_conn net ~self n).conn
 
 let on_new_connection net id f =
   let state = get_peer_exn ~s:"on_new_connection" net id in
   state.on_new_conn <- f :: state.on_new_conn
+
+let on_disconnection net id f =
+  let state = get_peer_exn ~s:"on_disconnection" net id in
+  state.on_disconnect <- f :: state.on_new_conn
 
 let sleep_on_deferred_delays net peer_id =
   let open Lwt_result_syntax in

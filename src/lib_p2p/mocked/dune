@@ -9,10 +9,12 @@
  (libraries
   tezos-base
   tezos-p2p-shared
-  tezos-p2p-unix)
+  tezos-unix-shims
+  tezos-time-shims)
  (flags
   (:standard
    -open Tezos_base.TzPervasives
    -open Tezos_p2p_shared
-   -open Tezos_p2p_unix))
+   -open Tezos_unix_shims
+   -open Tezos_time_shims))
  (private_modules network))

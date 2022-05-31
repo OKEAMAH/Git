@@ -17,10 +17,11 @@
   tezos-micheline
   tezos-event-logging
   ptime
-  tezos-time-shims
   ezjsonm
   lwt
-  ipaddr)
+  ipaddr
+  tezos-time-shims
+  tezos-unix-shims)
  (js_of_ocaml (javascript_files ptime.js))
  (flags
   (:standard
@@ -33,7 +34,8 @@
    -open Tezos_clic
    -open Tezos_micheline
    -open Tezos_event_logging
-   -open Tezos_time_shims)))
+   -open Tezos_time_shims
+   -open Tezos_unix_shims)))
 
 (ocamllex point_parser)
 
