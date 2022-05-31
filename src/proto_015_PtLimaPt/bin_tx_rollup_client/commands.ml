@@ -23,8 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Tezos_client_base
-
 let l1_destination_parameter =
   Tezos_clic.parameter (fun _ s ->
       match Signature.Public_key_hash.of_b58check_opt s with

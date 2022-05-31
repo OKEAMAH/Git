@@ -619,12 +619,7 @@ module Make (Rollup : PARAMETERS) = struct
           assert false
       | Ok packed_contents_list -> packed_contents_list
     in
-    let signature =
-      match state.signer.pkh with
-      | Signature.Ed25519 _ -> Signature.of_ed25519 Ed25519.zero
-      | Secp256k1 _ -> Signature.of_secp256k1 Secp256k1.zero
-      | P256 _ -> Signature.of_p256 P256.zero
-    in
+    let signature = Signature.zero in
     let branch = Block_hash.zero in
     let operation =
       {

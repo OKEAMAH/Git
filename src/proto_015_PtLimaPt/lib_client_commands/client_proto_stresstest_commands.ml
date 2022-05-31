@@ -247,7 +247,8 @@ let normalize_source cctxt =
     | Ok sk -> Lwt.return_some sk
     | Error _ ->
         let+ r = Tezos_signer_backends.Encrypted.decrypt cctxt sk_uri in
-        Option.of_result r
+        let sk = Option.of_result r in
+        Option.bind sk Signature.Of_V_latest.secret_key
   in
   let key_from_alias alias =
     let warning msg alias =
