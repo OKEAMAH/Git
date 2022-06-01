@@ -1,5 +1,35 @@
 module Genesis = Tezos_protocol_genesis.Protocol
-module Alpha = Tezos_protocol_alpha.Protocol
+
+module Mocked = Mocked_protocol.Make (struct
+  let signature_check_time =
+    (* taken from gas model *)
+    50_000.0 *. 1e-9
+
+  let hashing_time =
+    (* taken from gas model *)
+    1.2 *. 1e-9
+
+  let endorsement_processing_time () =
+    (* No idea, no storage access so probably fast *)
+    1e-6
+
+  let operation_size () = 32 + Random.int (30 * 1024)
+
+  let gas_deviation () = 0.8 +. Random.float 0.4
+end)
+
+module Registered_mocked_protocol =
+  Tezos_protocol_updater.Registered_protocol.Register_embedded_V6
+    (Mocked_protocol.Env)
+    (Mocked)
+    (struct
+      let hash = None
+
+      let sources = Protocol.{expected_env = V6; components = []}
+    end)
+
+module Protocol_used_for_simulation = Registered_mocked_protocol
+(* = Tezos_protocol_alpha.Protocol *)
 
 let get_genesis node =
   let open Tezos_store in
@@ -73,7 +103,7 @@ let activate_alpha node =
     Data_encoding.Binary.to_bytes_exn Data_encoding.json json
   in
 
-  let protocol = Alpha.hash in
+  let protocol = Protocol_used_for_simulation.hash in
 
   inject_block_proto_genesis
     node

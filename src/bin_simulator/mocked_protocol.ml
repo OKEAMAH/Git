@@ -1,5 +1,4 @@
 open Tezos_rpc
-open Tezos_event_logging
 open Environment_context
 
 (** [Mocking_parameters] contains values and samplers accounting
@@ -15,7 +14,8 @@ module type Mocking_parameters = sig
       This should be close to deterministic but we allow for randomness. *)
   val endorsement_processing_time : unit -> float
 
-  (** Operations have random sizes. Automatically truncated to correct interval. *)
+  (** Operations have random sizes (in bytes).
+      Must return a value consistent with the protocol parameters. *)
   val operation_size : unit -> int
 
   (** The gas <-> time conversion is axiomatically set to 1ns per milligas.
@@ -23,117 +23,16 @@ module type Mocking_parameters = sig
   val gas_deviation : unit -> float
 end
 
-(* Size of an encoded endorsement, in bytes *)
-let endorsement_size = 48
+module Env =
+  Tezos_protocol_environment.MakeV6
+    (struct
+      let name = "V6"
+    end)
+    ()
 
-module Mocked (P : Mocking_parameters) : sig
-  val max_block_length : int
-
-  val max_operation_data_length : int
-
-  val validation_passes : quota trace
-
-  type block_header_data
-
-  val block_header_data_encoding : block_header_data Data_encoding.t
-
-  type block_header = {
-    shell : Block_header.shell_header;
-    protocol_data : block_header_data;
-  }
-
-  type block_header_metadata
-
-  val block_header_metadata_encoding : block_header_metadata Data_encoding.t
-
-  type operation_data
-
-  type operation_receipt
-
-  type operation = {
-    shell : Operation.shell_header;
-    protocol_data : operation_data;
-  }
-
-  val operation_data_encoding : operation_data Data_encoding.t
-
-  val operation_receipt_encoding : operation_receipt Data_encoding.t
-
-  val operation_data_and_receipt_encoding :
-    (operation_data * operation_receipt) Data_encoding.t
-
-  val acceptable_passes : operation -> int trace
-
-  val relative_position_within_block : operation -> operation -> int
-
-  type validation_state
-
-  val apply_operation :
-    validation_state ->
-    operation ->
-    (validation_state * operation_receipt) Error_monad.tzresult Lwt.t
-
-  val rpc_services : rpc_context RPC_directory.t
-
-  val init :
-    Context.t ->
-    Block_header.shell_header ->
-    validation_result Error_monad.tzresult Lwt.t
-
-  val value_of_key :
-    chain_id:Chain_id.t ->
-    predecessor_context:Context.t ->
-    predecessor_timestamp:Time.Protocol.t ->
-    predecessor_level:int32 ->
-    predecessor_fitness:Fitness.t ->
-    predecessor:Block_hash.t ->
-    timestamp:Time.Protocol.t ->
-    (Context.cache_key -> Context.cache_value Error_monad.tzresult Lwt.t)
-    Error_monad.tzresult
-    Lwt.t
-
-  val set_log_message_consumer :
-    (Internal_event.level -> string -> unit) -> unit
-
-  val environment_version : Protocol.env_version
-
-  val begin_partial_application :
-    chain_id:Chain_id.t ->
-    ancestor_context:Context.t ->
-    predecessor:Block_header.t ->
-    predecessor_hash:Block_hash.t ->
-    cache:Context.source_of_cache ->
-    block_header ->
-    (validation_state, tztrace) result Lwt.t
-
-  val begin_application :
-    chain_id:Chain_id.t ->
-    predecessor_context:Context.t ->
-    predecessor_timestamp:Time.Protocol.t ->
-    predecessor_fitness:Fitness.t ->
-    cache:Context.source_of_cache ->
-    block_header ->
-    validation_state Error_monad.tzresult Lwt.t
-
-  val begin_construction :
-    chain_id:Chain_id.t ->
-    predecessor_context:Context.t ->
-    predecessor_timestamp:Time.Protocol.t ->
-    predecessor_level:int32 ->
-    predecessor_fitness:Fitness.t ->
-    predecessor:Block_hash.t ->
-    timestamp:Time.Protocol.t ->
-    ?protocol_data:block_header_data ->
-    cache:Context.source_of_cache ->
-    unit ->
-    validation_state Error_monad.tzresult Lwt.t
-
-  val finalize_block :
-    validation_state ->
-    Block_header.shell_header option ->
-    (validation_result * block_header_metadata) tzresult Lwt.t
-end = struct
+module Make (P : Mocking_parameters) : Env.Updater.PROTOCOL = struct
   let max_block_length =
+    (* TODO? *)
     let fake_shell =
       {
         Block_header.level = 0l;
@@ -177,9 +76,8 @@ end = struct
   let block_header_metadata_encoding = Data_encoding.unit
 
   type operation_data =
-    | Mocked_endorsement
-    | Mocked_manager_list of
-        int list (* each mgr op is abstracted by its gas consumption *)
+    | Mocked_endorsement of {dummy_payload : Bytes.t}
+    | Mocked_manager of {gas : int; dummy_payload : Bytes.t}
 
   type operation_receipt = unit
 
@@ -195,15 +93,19 @@ end = struct
         case
           ~title:"Mocked_endorsement"
           (Tag 0)
-          unit
-          (function Mocked_endorsement -> Some () | _ -> None)
-          (fun () -> Mocked_endorsement);
+          bytes
+          (function
+            | Mocked_endorsement {dummy_payload} -> Some dummy_payload
+            | _ -> None)
+          (fun dummy_payload -> Mocked_endorsement {dummy_payload});
         case
           ~title:"Mocked_manager"
           (Tag 1)
-          (list int31)
-          (function Mocked_manager_list gasses -> Some gasses | _ -> None)
-          (fun gasses -> Mocked_manager_list gasses);
+          (tup2 int31 bytes)
+          (function
+            | Mocked_manager {gas; dummy_payload} -> Some (gas, dummy_payload)
+            | _ -> None)
+          (fun (gas, dummy_payload) -> Mocked_manager {gas; dummy_payload});
       ]
 
   let operation_receipt_encoding = Data_encoding.unit
@@ -213,15 +115,15 @@ end = struct
 
   let acceptable_passes {shell = _; protocol_data} =
     match protocol_data with
-    | Mocked_endorsement -> [0]
-    | Mocked_manager_list _ -> [3]
+    | Mocked_endorsement _ -> [0]
+    | Mocked_manager _ -> [3]
 
   let relative_position_within_block op1 op2 =
     match (op1.protocol_data, op2.protocol_data) with
-    | Mocked_endorsement, Mocked_endorsement
-    | Mocked_manager_list _, Mocked_manager_list _ ->
+    | Mocked_endorsement _, Mocked_endorsement _
+    | Mocked_manager _, Mocked_manager _ ->
         0
-    | Mocked_endorsement, _ -> -1
+    | Mocked_endorsement _, _ -> -1
     | _ -> 1
 
   type validation_state = {
@@ -230,12 +132,13 @@ end = struct
     remaining_gas : int;
   }
 
-  type error += Operation_quota_exceeded
+  type Env.Error_monad.error += Operation_quota_exceeded
 
-  let error e = Lwt_result_syntax.fail (TzTrace.make e)
+  let error e : 'a Env.Error_monad.tzresult Lwt.t =
+    Lwt.return (Env.Error_monad.error e)
 
   let () =
-    register_error_kind
+    Env.Error_monad.register_error_kind
       `Temporary
       ~id:"gas_exhausted.operation"
       ~title:"Gas quota exceeded for the operation"
@@ -246,33 +149,32 @@ end = struct
       (function Operation_quota_exceeded -> Some () | _ -> None)
       (fun () -> Operation_quota_exceeded)
 
+  let sigcheck_time bytes =
+    let hash = P.hashing_time *. float_of_int (Bytes.length bytes) in
+    hash +. P.signature_check_time
+
   let apply_operation :
       validation_state ->
       operation ->
-      (validation_state * operation_receipt) tzresult Lwt.t =
+      (validation_state * operation_receipt) Env.Error_monad.tzresult Lwt.t =
    fun ({context = _; level = _; remaining_gas} as vs) op ->
     let open Lwt_result_syntax in
     match op.protocol_data with
-    | Mocked_endorsement ->
-        let t = P.endorsement_processing_time () in
-        let h = float_of_int endorsement_size *. P.hashing_time in
-        let*! () = Lwt_unix.sleep (P.signature_check_time +. h +. t) in
+    | Mocked_endorsement {dummy_payload} ->
+        let sigcheck = sigcheck_time dummy_payload in
+        let processing = P.endorsement_processing_time () in
+        let*! () = Lwt_unix.sleep (sigcheck +. processing) in
         return (vs, ())
-    | Mocked_manager_list gasses ->
-        let t, total_gas =
-          List.fold_left
-            (fun (time, total_gas) gas ->
-              let time = time +. manager_op_processing_time gas in
-              let total_gas = total_gas + gas in
-              (time, total_gas))
-            (0.0, 0)
-            gasses
+    | Mocked_manager {gas; dummy_payload} ->
+        let remaining = remaining_gas - gas in
+        let* () =
+          if remaining < 0 then error Operation_quota_exceeded else return ()
         in
-        let remaining = remaining_gas - total_gas in
-        if remaining < 0 then error Operation_quota_exceeded
-        else
-          let*! () = Lwt_unix.sleep t in
-          return (vs, ())
+        let sigcheck = sigcheck_time dummy_payload in
+        let gas_dev = P.gas_deviation () in
+        let processing = gas_dev *. float_of_int gas in
+        let*! () = Lwt_unix.sleep (sigcheck +. processing) in
+        return (vs, ())
 
   let rpc_services = RPC_directory.empty
 
@@ -293,23 +195,15 @@ end = struct
     let open Lwt_result_syntax in
     return (fun _cache_key -> assert false)
 
-  let set_log_message_consumer _consumer = ()
-
-  let environment_version = Protocol.V6
-
-  let begin_partial_application ~chain_id:_ ~ancestor_context ~predecessor
-      ~predecessor_hash:_ ~cache:_ _block_header =
+  let begin_partial_application ~chain_id:_ ~ancestor_context
+      ~predecessor_timestamp:_ ~predecessor_fitness:_
+      (block_header : block_header) =
     let open Lwt_result_syntax in
-    let predecessor_level = predecessor.Block_header.shell.level in
-    return
-      {
-        context = ancestor_context;
-        level = Int32.succ predecessor_level;
-        remaining_gas = 5_200_000_000;
-      }
+    let level = block_header.shell.level in
+    return {context = ancestor_context; level; remaining_gas = 5_200_000_000}
 
   let begin_application ~chain_id:_ ~predecessor_context
-      ~predecessor_timestamp:_ ~predecessor_fitness:_ ~cache:_
+      ~predecessor_timestamp:_ ~predecessor_fitness:_
       (block_header : block_header) =
     let open Lwt_result_syntax in
     let level = block_header.shell.level in
@@ -317,7 +211,7 @@ end = struct
 
   let begin_construction ~chain_id:_ ~predecessor_context
       ~predecessor_timestamp:_ ~predecessor_level ~predecessor_fitness:_
-      ~predecessor:_ ~timestamp:_ ?protocol_data:_ ~cache:_ () =
+      ~predecessor:_ ~timestamp:_ ?protocol_data:_ () =
     let open Lwt_result_syntax in
     let level = Int32.succ predecessor_level in
     return {context = predecessor_context; level; remaining_gas = 5_200_000_000}
