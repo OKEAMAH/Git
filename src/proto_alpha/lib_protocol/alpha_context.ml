@@ -55,6 +55,8 @@ module Slot = Slot_repr
 module Sc_rollup = struct
   module Tick = Sc_rollup_tick_repr
   include Sc_rollup_repr
+  include Sc_rollup_PVM_sem
+  module ArithPVM = Sc_rollup_arith
 
   module Inbox = struct
     include Sc_rollup_inbox_repr
