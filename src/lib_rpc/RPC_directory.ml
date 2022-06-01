@@ -79,16 +79,24 @@ let pp_service ppf service =
     iservice.path
     (Option.value ~default:"" iservice.description)
 
+exception Directory_conflict of string * step list * conflict
+
+let () =
+  Printexc.register_printer @@ function
+  | Directory_conflict (service, steps, conflict) ->
+      Format.kasprintf
+        Option.some
+        "Conflict in registration of service %s:\n%a"
+        service
+        pp_conflict
+        (steps, conflict)
+  | _ -> None
+
 let register dir service handler =
   try register dir service handler
-  with Conflict (steps, conflict) as e ->
-    Format.eprintf
-      "@[<v 2>Error in registration of service %a:@ %a@]@."
-      pp_service
-      service
-      pp_conflict
-      (steps, conflict) ;
-    raise e
+  with Conflict (steps, conflict) ->
+    let service_str = Format.asprintf "%a" pp_service service in
+    raise (Directory_conflict (service_str, steps, conflict))
 
 let gen_register dir service handler =
   register dir service (fun p q i ->
