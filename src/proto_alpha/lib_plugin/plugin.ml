@@ -3521,12 +3521,28 @@ module RPC = struct
 
       let path = RPC_path.(path / "forge")
 
-      let operations =
+      let private_path = RPC_path.(path / "private" / "forge")
+
+      let operation =
         RPC_service.post_service
           ~description:"Forge an operation"
           ~query:RPC_query.empty
           ~input:Operation.unsigned_encoding
           ~output:bytes
+          RPC_path.(path / "operations")
+
+      let operations_input_encoding =
+        let open Data_encoding in
+        obj2
+          (req "branch" Tezos_base.Operation.shell_header_encoding)
+          (req "operations" (list Operation.contents_list_encoding))
+
+      let operations =
+        RPC_service.post_service
+          ~description:"Forge a list of operations"
+          ~query:RPC_query.empty
+          ~input:operations_input_encoding
+          ~output:(Data_encoding.list bytes)
           RPC_path.(path / "operations")
 
       let empty_proof_of_work_nonce =
@@ -3650,12 +3666,23 @@ module RPC = struct
     let register () =
       Registration.register0_noctxt
         ~chunked:true
-        S.operations
+        S.operation
         (fun () (shell, proto) ->
           return
             (Data_encoding.Binary.to_bytes_exn
                Operation.unsigned_encoding
                (shell, proto))) ;
+      Registration.register0_noctxt
+        ~chunked:true
+        S.operations
+        (fun () (shell, operations) ->
+          return
+            (List.map
+               (fun proto ->
+                 Data_encoding.Binary.to_bytes_exn
+                   Operation.unsigned_encoding
+                   (shell, proto))
+               operations)) ;
       Registration.register0_noctxt
         ~chunked:true
         S.protocol_data
@@ -3759,7 +3786,7 @@ module RPC = struct
                   :: ops
             in
             Environment.wrap_tzresult @@ Operation.of_list ops >>?= fun ops ->
-            RPC_context.make_call0 S.operations ctxt block () ({branch}, ops)
+            RPC_context.make_call0 S.operation ctxt block () ({branch}, ops)
 
       let reveal ctxt block ~branch ~source ~sourcePubKey ~counter ~fee () =
         operations
@@ -3829,11 +3856,14 @@ module RPC = struct
 
     let operation ctxt block ~branch operation =
       RPC_context.make_call0
-        S.operations
+        S.operation
         ctxt
         block
         ()
         ({branch}, Contents_list (Single operation))
+
+    let operations ctxt block ~branch operations =
+      RPC_context.make_call0 S.operations ctxt block () ({branch}, operations)
 
     let endorsement ctxt b ~branch ~consensus_content () =
       operation ctxt b ~branch (Endorsement consensus_content)
