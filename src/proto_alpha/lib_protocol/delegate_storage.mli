@@ -25,6 +25,16 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** This module groups everything related to delegate registration.
+    For the invariants maintained, see the submodule {!Contract}.
+
+    It also groups "trivial" getters/setters related to delegates.
+
+    It is responsible for maintaining the following tables:
+    - {!Storage.Contract.Frozen_deposits_limit}
+    - {!Storage.Delegates}
+*)
+
 type error += (* `Temporary *) Not_registered of Signature.Public_key_hash.t
 
 (** Has a delegate been registered in the delegate table? *)
@@ -85,6 +95,13 @@ val delegated_balance :
 val full_balance :
   Raw_context.t -> Signature.Public_key_hash.t -> Tez_repr.t tzresult Lwt.t
 
+(** This module ensures the following invariants:
+    - registered delegates (i.e. those that appear in {!Storage.Delegates}) are
+    self-delegated (i.e. {!Contract_delegate_storage.find} [delegate] returns [delegate]),
+    - registered delegates have their public keys revealed,
+    - registered delegates cannot change their delegation,
+    - stake is properly moved when changing delegation.
+*)
 module Contract : sig
   type error +=
     | (* `Permanent *) Unregistered_delegate of Signature.Public_key_hash.t
@@ -123,6 +140,8 @@ module Contract : sig
     Raw_context.t tzresult Lwt.t
 end
 
+(** Returns the public key of a registered delegate. Returns the error
+   {!Contract.Unregistered_delegate} if the delegate is not registered.  *)
 val pubkey :
   Raw_context.t ->
   Signature.Public_key_hash.t ->

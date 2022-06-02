@@ -25,17 +25,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This is module regroups everything related to delegate registration
-    (see the invariant maintained by the submodule `Contract`.
-
-    It also regroups "trivial" getter/setter related to delegates.
-
-    It is responsible for:
-    - [Storage.Contract.Frozen_deposits_limit]
-    - [Storage.Delegates]
-
-*)
-
 type error += (* `Temporary *) Not_registered of Signature.Public_key_hash.t
 
 let () =
@@ -106,11 +95,6 @@ let full_balance ctxt delegate =
   Lwt.return
     Tez_repr.(frozen_deposits.current_amount +? balance_and_frozen_bonds)
 
-(** This module ensures the following invariants:
-    - registered delegates are self-delegated and appears in `Storage.Delegate`,
-      i.e. registered delegate cannot change their delegation
-    - stake is properly moved when changing delegation.
-*)
 module Contract = struct
   type error +=
     | (* `Permanent *) Unregistered_delegate of Signature.Public_key_hash.t

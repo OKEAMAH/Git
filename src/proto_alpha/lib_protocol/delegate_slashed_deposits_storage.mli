@@ -25,6 +25,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** This module maintains the storage related to slashing of delegates for
+   double signing. In particular, it is responsible for maintaining the
+   {!Storage.Slashed_deposits} table.  *)
+
 type error += Unrequired_denunciation
 
 (** Burn some frozen deposit for a delegate at a given level and

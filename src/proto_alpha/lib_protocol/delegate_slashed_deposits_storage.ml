@@ -25,10 +25,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This module is responsible for:
-    - [Storage.Slashed_deposits]
-*)
-
 type error += Unrequired_denunciation
 
 let () =
