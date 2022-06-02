@@ -31,7 +31,7 @@
     - {!Storage.Stake.Staking_balance}
     - {!Storage.Stake.Active_delegate_with_one_roll}
     - {!Storage.Stake.Last_snapshot}
-    - {!Storage.Total_active_stake}
+    - {!Storage.Stake.Total_active_stake}
 *)
 
 val remove_stake :
