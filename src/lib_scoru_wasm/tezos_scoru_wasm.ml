@@ -40,30 +40,7 @@ module Make (T : TreeS) : sig
     include T
   end
 
-  module TreeEncodings = Encodings.Make (T)
-
-  let _of_memory_instance_tree :
-             Tree.tree ->
-             Tezos_webassembly_interpreter.Memory.memory Tezos_webassembly_interpreter.Lazy_map.Int32Map.t Lwt.t
-    =
-    TreeEncodings.(Tree.Encoding.run memory_instance_encoding)
-
-  let _of_table_instance_tree :
-      Tree.tree ->
-                 Tezos_webassembly_interpreter.Table.table Encodings.Decoded.t
-                          Tezos_webassembly_interpreter.Lazy_map.Int32Map.t Lwt.t
-    =
-    TreeEncodings.(Tree.Encoding.run table_instance_encoding)
-
-  let _of_global_instance_tree :
-       Tree.tree ->
-                  Tezos_webassembly_interpreter.Global.global Encodings.Decoded.t
-                           Tezos_webassembly_interpreter.Lazy_map.Int32Map.t Lwt.t
-    =
-    TreeEncodings.(Tree.Encoding.run global_instance_encoding)
-
-  let step x = Lwt.return x
-    (* Stdlib.failwith "lib_scoru_wasm/tezos_scoru_wasm2" *)
+  let step _ =
+    Stdlib.failwith "lib_scoru_wasm/tezos_scoru_wasm2"
 end
 
-let wasm_step3 = 2

@@ -312,6 +312,37 @@ let ledgerwallet_tezos = vendored_lib "ledgerwallet-tezos"
 
 (* INTERNAL LIBS *)
 
+let tezos_webassembly_interpreter =
+  public_lib
+    "tezos-webassembly-interpreter"
+    ~path:"src/lib_webassembly/interpreter"
+    ~license:"Apache License 2.0"
+    ~extra_authors:["WebAssembly Authors"]
+    ~synopsis:"WebAssembly reference interpreter with tweaks for Tezos"
+    ~all_modules_except:["main"]
+    ~dune:Dune.[[S "include"; S "dune.inc"]]
+
+let _tezos_webassembly_repl =
+  private_exe
+    "main"
+    ~path:"src/lib_webassembly/interpreter"
+    ~modules:["main"]
+    ~opam:""
+    ~deps:[tezos_webassembly_interpreter |> open_]
+
+let _tezos_webassembly_test =
+  test
+    "main"
+    ~path:"src/lib_webassembly/test"
+    ~opam:"tezos-webassembly-interpreter"
+    ~deps:
+      [
+        tezos_webassembly_interpreter |> open_;
+        qcheck_core;
+        qcheck_alcotest;
+        alcotest;
+      ]
+
 let tezos_test_helpers =
   public_lib
     "tezos-test-helpers"
@@ -1400,6 +1431,20 @@ let tezos_context_sigs =
     ~path:"src/lib_context/sigs"
     ~deps:[tezos_base |> open_ ~m:"TzPervasives"; tezos_stdlib |> open_]
 
+let tezos_scoru_wasm =
+  public_lib
+    "tezos-scoru-wasm"
+    ~path:"src/lib_scoru_wasm"
+    ~synopsis:
+      "Protocol environment dependency providing WASM functionality for SCORU"
+    ~deps:
+      [
+        tezos_webassembly_interpreter;
+        tezos_context_sigs;
+        tezos_lwt_result_stdlib;
+        data_encoding;
+      ]
+
 let tezos_context_encoding =
   public_lib
     "tezos-context.encoding"
@@ -1634,6 +1679,7 @@ let tezos_protocol_environment_structs =
         tezos_stdlib;
         tezos_crypto;
         tezos_lwt_result_stdlib;
+        tezos_scoru_wasm;
         data_encoding;
         bls12_381;
       ]
@@ -1650,6 +1696,21 @@ let tezos_protocol_environment_structs =
           include_ "v6.dune.inc";
         ]
 
+(* TODO need to expose the function here - line 1653*)
+(* context-wise the only dependency here is
+
+      Tezos_context_memory - direct dep
+      Tezos_context_sigs - via Tezos_scoru_wasm
+        Contains mostly types, notably
+          Context.S.Tree = Context.TREE
+          Context.S <: Context.VIEW
+          Context.TREE <: Context.VIEW
+
+      Note
+        Tezos_scoru_wasm.TreeS = Tezos_context_sigs.TREE with type key = ...etc
+
+
+ *)
 let tezos_protocol_environment =
   public_lib
     "tezos-protocol-environment"
@@ -1680,6 +1741,7 @@ protocols.|}
         tezos_protocol_environment_structs;
         tezos_micheline |> open_;
         tezos_context_memory;
+        tezos_scoru_wasm;
         tezos_event_logging;
       ]
     ~wrapped:false
@@ -2599,6 +2661,7 @@ let tezos_openapi =
        format"
     ~deps:[ezjsonm; json_data_encoding; tezt]
 
+(* TODO remove
 let tezos_webassembly_interpreter =
   public_lib
     "tezos-webassembly-interpreter"
@@ -2630,13 +2693,8 @@ let _tezos_webassembly_test =
         alcotest;
       ]
 
-let _tezos_scoru_wasm =
-  public_lib
-    "tezos-scoru-wasm"
-    ~path:"src/lib_scoru_wasm"
-    ~synopsis:
-      "Protocol environment dependency providing WASM functionality for SCORU"
-    ~deps:[tezos_webassembly_interpreter]
+=======
+*)
 
 let _tezos_protocol_compiler_bin =
   public_exe

@@ -304,6 +304,8 @@ module V5 = struct
     val verify_tree_proof : (tree_proof, 'a) verifier
 
     val verify_stream_proof : (stream_proof, 'a) verifier
+
+    val wasm_step : tree -> tree Lwt.t
   end
 
   module type CACHE = CACHE

@@ -217,9 +217,27 @@ module Make (PVM : Pvm.S) = struct
     in
     start ()
 end
+let foo () = (
+  let open Lwt_result_syntax in
+  let* conf = Configuration.load ~data_dir:"." in
+  let*! store = Store.load conf in
+  let* _ = (
+    let open Lwt_syntax in
+    let open Wasm_2_0_0_pvm in
+    let* s = initial_state store "" in
+    let* _s = eval s in
+    let* _s = eval s in
+    let* _s = eval s in
+    let* _s = eval s in
+    let* _s = eval s in
+    return (Ok ())
+    ) in
+  return ()
+)
 
 let run ~data_dir (cctxt : Protocol_client_context.full) =
   let open Lwt_result_syntax in
+  let* () = foo () in
   let*! () = Event.starting_node () in
   let* configuration = Configuration.load ~data_dir in
   let open Configuration in

@@ -539,6 +539,9 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
 
   let produce_stream_proof index = produce_stream_proof index.repo
 
+  (* TODO move *)
+  let wasm_step _ = Stdlib.failwith "TODO wasm lib_context/context"
+
   (*-- Predefined Fields -------------------------------------------------------*)
 
   module Root_tree = struct

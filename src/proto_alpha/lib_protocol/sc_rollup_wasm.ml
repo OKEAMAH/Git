@@ -47,6 +47,8 @@ module V2_0_0 = struct
 
     val produce_proof :
       Tree.t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
+
+    val wasm_step : tree -> tree Lwt.t
   end
 
   module type S = sig
@@ -398,7 +400,10 @@ module V2_0_0 = struct
 
     let eval state = state_of (ticked eval_step) state
 
-    let step_transition input_given state =
+    let step_transition
+      (input_given : PS.input option)
+      (state : Context.tree) :
+          (Context.tree * PS.input_request) Lwt.t =
       let open Lwt_syntax in
       let* request = is_input_state state in
       let* state =
@@ -466,5 +471,7 @@ module V2_0_0 = struct
     let proof_after proof = kinded_hash_to_state_hash proof.Context.Proof.after
 
     let proof_encoding = Context.Proof_encoding.V1.Tree32.tree_proof_encoding
+
+    let wasm_step = Context.wasm_step
   end)
 end

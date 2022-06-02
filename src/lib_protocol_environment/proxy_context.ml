@@ -390,6 +390,8 @@ module C = struct
 
   let verify_stream_proof p f = verify Local.verify_stream_proof p f
 
+  let wasm_step _ = Stdlib.failwith "TODO wasm lib_protocol_env/proxy_context"
+
   let config t = Local.config t.M.local
 
   let equal_config = Local.equal_config

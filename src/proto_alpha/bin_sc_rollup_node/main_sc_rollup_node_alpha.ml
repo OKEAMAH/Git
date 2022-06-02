@@ -239,6 +239,7 @@ let config_init_command =
         (filename config)
       >>= fun _ -> return ())
 
+
 let run_command =
   let open Clic in
   command
@@ -246,7 +247,8 @@ let run_command =
     ~desc:"Run the rollup daemon."
     (args1 data_dir_arg)
     (prefixes ["run"] @@ stop)
-    (fun data_dir cctxt -> Daemon.run ~data_dir cctxt >>=? fun () -> return ())
+    (fun data_dir cctxt ->
+      Daemon.run ~data_dir cctxt >>=? fun () -> return ())
 
 let sc_rollup_commands () =
   List.map
@@ -255,5 +257,6 @@ let sc_rollup_commands () =
 
 let select_commands _ _ =
   return (sc_rollup_commands () @ Client_helpers_commands.commands ())
+
 
 let () = Client_main_run.run (module Client_config) ~select_commands

@@ -32,15 +32,15 @@ open Alpha_context
     It is imperative that this is aligned with the protocol's implementation.
 *)
 module Wasm_2_0_0_proof_format = struct
-  open Store
+  (* open Store *)
 
-  type proof = IStoreProof.Proof.tree IStoreProof.Proof.t
+  type proof = Store.IStoreProof.Proof.tree Store.IStoreProof.Proof.t
 
   let produce_proof context tree step =
     let open Lwt_syntax in
-    match IStoreTree.kinded_key tree with
+    match Store.IStoreTree.kinded_key tree with
     | Some k ->
-        let* p = IStoreProof.produce_tree_proof (IStore.repo context) k step in
+        let* p = Store.IStoreProof.produce_tree_proof (Store.IStore.repo context) k step in
         return (Some p)
     | None -> return None
 
@@ -48,7 +48,7 @@ module Wasm_2_0_0_proof_format = struct
     (* The rollup node is not supposed to verify proof. We keep
        this part in case this changes in the future. *)
     let open Lwt_syntax in
-    let* result = IStoreProof.verify_tree_proof proof step in
+    let* result = Store.IStoreProof.verify_tree_proof proof step in
     match result with
     | Ok v -> return (Some v)
     | Error _ ->
@@ -57,18 +57,21 @@ module Wasm_2_0_0_proof_format = struct
         return None
 
   let kinded_hash_to_state_hash :
-      IStoreProof.Proof.kinded_hash -> Sc_rollup.State_hash.t = function
+      Store.IStoreProof.Proof.kinded_hash -> Sc_rollup.State_hash.t = function
     | `Value hash | `Node hash ->
         Sc_rollup.State_hash.hash_bytes [Context_hash.to_bytes hash]
 
   let proof_before proof =
-    kinded_hash_to_state_hash proof.IStoreProof.Proof.before
+    kinded_hash_to_state_hash proof.Store.IStoreProof.Proof.before
 
   let proof_after proof =
-    kinded_hash_to_state_hash proof.IStoreProof.Proof.after
+    kinded_hash_to_state_hash proof.Store.IStoreProof.Proof.after
 
   let proof_encoding =
     Tezos_context_helpers.Merkle_proof_encoding.V2.Tree32.tree_proof_encoding
+
+  module T = Tezos_scoru_wasm.Make(Store.IStoreTree)
+  let wasm_step x = T.step x
 end
 
 module Impl : Pvm.S = struct
@@ -88,3 +91,8 @@ module Impl : Pvm.S = struct
 end
 
 include Impl
+
+(* TODO move this *)
+
+
+

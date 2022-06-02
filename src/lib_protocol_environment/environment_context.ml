@@ -220,6 +220,7 @@ module Context = struct
       let+ tree = Ops.Tree.add tree key value in
       Tree {c with tree}
 
+
     let find (Tree {ops = (module Ops); tree; _}) key = Ops.Tree.find tree key
 
     let mem_tree (Tree {ops = (module Ops); tree; _}) key =
@@ -274,6 +275,7 @@ module Context = struct
 
   let config (Context {ops = (module Ops); ctxt; _}) = Ops.config ctxt
 
+
   (* Proof *)
   module Proof = Tezos_context_sigs.Context.Proof_types
 
@@ -302,6 +304,20 @@ module Context = struct
       | Some Refl, Some Refl -> t.tree
       | _ -> err_implementation_mismatch ~expected:impl_name ~got:t.impl_name
   end
+
+  let wasm_step : tree -> tree Lwt.t =
+    function tree ->
+    let open Lwt_syntax in
+    let tree = Proof_context.project tree (* TODO will fail at runtime if not called from verify_proof *) in
+    let module P = Tezos_scoru_wasm.Make(struct
+      include Proof_context.M.Tree
+      type t = Proof_context.M.t
+      type tree = Proof_context.M.tree
+      type key = string list
+      type value = bytes
+      end) in
+    let* tree = P.step tree in
+    return (Proof_context.inject tree)
 
   (* In-memory context for proof, using [Context_binary] which produces more
      compact Merkle proofs. *)
@@ -382,6 +398,7 @@ module Context = struct
           Lwt.return (Proof_context.project tree, r))
     in
     return (Proof_context.inject tree, r)
+
 
   let equal_config = Tezos_context_sigs.Config.equal
 
