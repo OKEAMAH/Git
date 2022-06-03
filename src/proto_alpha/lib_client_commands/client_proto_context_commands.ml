@@ -1532,7 +1532,8 @@ let commands_rw () =
              >>= function
              | Ok voting_power -> return (voting_power <> 0L)
              | Error
-                 (Environment.Ecoproto_error (Delegate_storage.Not_registered _)
+                 (Environment.Ecoproto_error
+                    (Delegate_services.Not_registered _)
                  :: _) ->
                  return false
              | Error _ as err -> Lwt.return err)
@@ -1725,7 +1726,8 @@ let commands_rw () =
              >>= function
              | Ok voting_power -> return (voting_power <> 0L)
              | Error
-                 (Environment.Ecoproto_error (Delegate_storage.Not_registered _)
+                 (Environment.Ecoproto_error
+                    (Delegate_services.Not_registered _)
                  :: _) ->
                  return false
              | Error _ as err -> Lwt.return err)

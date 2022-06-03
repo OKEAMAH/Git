@@ -2407,8 +2407,6 @@ module Delegate : sig
 
   val list : context -> public_key_hash list Lwt.t
 
-  val check_registered : context -> public_key_hash -> unit tzresult Lwt.t
-
   type participation_info = {
     expected_cycle_activity : int;
     minimal_cycle_activity : int;

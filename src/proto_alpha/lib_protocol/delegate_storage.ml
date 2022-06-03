@@ -25,35 +25,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type error += (* `Temporary *) Not_registered of Signature.Public_key_hash.t
-
-let () =
-  register_error_kind
-    `Temporary
-    ~id:"delegate.not_registered"
-    ~title:"Not a registered delegate"
-    ~description:
-      "The provided public key hash is not the address of a registered \
-       delegate."
-    ~pp:(fun ppf pkh ->
-      Format.fprintf
-        ppf
-        "The provided public key hash (%a) is not the address of a registered \
-         delegate. If you own this account and want to register it as a \
-         delegate, use a delegation operation to delegate the account to \
-         itself."
-        Signature.Public_key_hash.pp
-        pkh)
-    Data_encoding.(obj1 (req "pkh" Signature.Public_key_hash.encoding))
-    (function Not_registered pkh -> Some pkh | _ -> None)
-    (fun pkh -> Not_registered pkh)
-
 let registered = Storage.Delegates.mem
-
-let check_registered ctxt pkh =
-  registered ctxt pkh >>= function
-  | true -> return_unit
-  | false -> fail (Not_registered pkh)
 
 let fold = Storage.Delegates.fold
 
