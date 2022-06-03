@@ -26,21 +26,27 @@
 (* Primitives for sampling crypto-related data *)
 
 module type Param_S = sig
+  type algo
+
   val size : int
 
-  val algo : [`Algo of Signature.algo | `Default]
+  val algo : [`Algo of algo | `Default]
 end
 
-module type Finite_key_pool_S = sig
-  val pk : Signature.public_key Base_samplers.sampler
+module type P_Finite_key_pool_S = sig
+  type public_key_hash
 
-  val pkh : Signature.public_key_hash Base_samplers.sampler
+  type public_key
 
-  val sk : Signature.secret_key Base_samplers.sampler
+  type secret_key
 
-  val all :
-    (Signature.public_key_hash * Signature.public_key * Signature.secret_key)
-    Base_samplers.sampler
+  val pk : public_key Base_samplers.sampler
+
+  val pkh : public_key_hash Base_samplers.sampler
+
+  val sk : secret_key Base_samplers.sampler
+
+  val all : (public_key_hash * public_key * secret_key) Base_samplers.sampler
 end
 
 module type Signature_S = sig
@@ -71,7 +77,7 @@ module Make_p_finite_key_pool
 
   let key_pool = Queue.create ()
 
-  let all_algos = [|Signature.Ed25519; Signature.Secp256k1; Signature.P256|]
+  let all_algos = Array.of_list Signature.algos
 
   let uniform_algo state =
     let i = Random.State.int state (Array.length all_algos) in
