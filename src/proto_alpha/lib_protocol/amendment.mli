@@ -103,3 +103,10 @@ val record_ballot :
   Protocol_hash.t ->
   Vote.ballot ->
   context tzresult Lwt.t
+
+(** On testnets whose [chain_id] is not the one of Mainnet, this
+    function checks whether the provided [pkh] is the one of the
+    registered governance dictator, if any.
+
+    On mainnet, it always returns false. *)
+val is_governance_dictator : context -> Chain_id.t -> public_key_hash -> bool

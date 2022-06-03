@@ -95,6 +95,8 @@ type error +=
   | Set_deposits_limit_on_unregistered_delegate of Signature.Public_key_hash.t
   | Set_deposits_limit_too_high of {limit : Tez.t; max_limit : Tez.t}
   | Error_while_taking_fees
+  | Ballot_on_unregistered_delegate of Signature.Public_key_hash.t
+  | Proposals_on_unregistered_delegate of Signature.Public_key_hash.t
   | Empty_transaction of Contract.t
   | Tx_rollup_feature_disabled
   | Tx_rollup_invalid_transaction_ticket_amount
@@ -447,6 +449,35 @@ let () =
     (function
       | Set_deposits_limit_on_unregistered_delegate c -> Some c | _ -> None)
     (fun c -> Set_deposits_limit_on_unregistered_delegate c) ;
+  register_error_kind
+    `Permanent
+    ~id:"operation.ballot_on_unregistered_delegate"
+    ~title:"Ballot with an unregistered delegate"
+    ~description:"Cannot cast a ballot with an unregistered delegate."
+    ~pp:(fun ppf c ->
+      Format.fprintf
+        ppf
+        "Cannot cast a ballot for public key hash %a (unregistered delegate)."
+        Signature.Public_key_hash.pp
+        c)
+    Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+    (function Ballot_on_unregistered_delegate c -> Some c | _ -> None)
+    (fun c -> Ballot_on_unregistered_delegate c) ;
+  register_error_kind
+    `Permanent
+    ~id:"operation.proposals_on_unregistered_delegate"
+    ~title:"Proposals with an unregistered delegate"
+    ~description:"Cannot submit proposals with an unregistered delegate."
+    ~pp:(fun ppf c ->
+      Format.fprintf
+        ppf
+        "Cannot submit proposals for public key hash %a (unregistered \
+         delegate)."
+        Signature.Public_key_hash.pp
+        c)
+    Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+    (function Proposals_on_unregistered_delegate c -> Some c | _ -> None)
+    (fun c -> Proposals_on_unregistered_delegate c) ;
   register_error_kind
     `Permanent
     ~id:"operation.set_deposits_limit_too_high"
@@ -2936,6 +2967,14 @@ let apply_contents_list (type kind) ctxt chain_id (apply_mode : apply_mode)
       >>=? fun (ctxt, bupds) ->
       return (ctxt, Single_result (Activate_account_result bupds))
   | Single (Proposals {source; period; proposals}) ->
+      Delegate.registered ctxt source >>= fun is_registered ->
+      let is_governance_dictator =
+        Amendment.is_governance_dictator ctxt chain_id source
+      in
+      error_unless
+        (is_registered || is_governance_dictator)
+        (Proposals_on_unregistered_delegate source)
+      >>?= fun () ->
       Delegate.pubkey ctxt source >>=? fun delegate ->
       Operation.check_signature delegate chain_id operation >>?= fun () ->
       Voting_period.get_current ctxt >>=? fun {index = current_period; _} ->
@@ -2946,6 +2985,9 @@ let apply_contents_list (type kind) ctxt chain_id (apply_mode : apply_mode)
       Amendment.record_proposals ctxt chain_id source proposals >|=? fun ctxt ->
       (ctxt, Single_result Proposals_result)
   | Single (Ballot {source; period; proposal; ballot}) ->
+      Delegate.registered ctxt source >>= fun is_registered ->
+      error_unless is_registered (Ballot_on_unregistered_delegate source)
+      >>?= fun () ->
       Delegate.pubkey ctxt source >>=? fun delegate ->
       Operation.check_signature delegate chain_id operation >>?= fun () ->
       Voting_period.get_current ctxt >>=? fun {index = current_period; _} ->
