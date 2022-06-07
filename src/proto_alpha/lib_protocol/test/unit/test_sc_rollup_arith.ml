@@ -223,6 +223,7 @@ let syntactically_valid_messages =
       ("1 2 3++3+", [IPush 1; IPush 2; IPush 3; IAdd; IAdd; IPush 3; IAdd]);
       ("", []);
       ("1 a", [IPush 1; IStore "a"]);
+      ("2 288 +++"), [IPush 2; IPush 288; IAdd; IAdd; IAdd];
     ]
 
 let syntactically_invalid_messages =

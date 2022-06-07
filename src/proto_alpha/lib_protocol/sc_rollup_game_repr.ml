@@ -124,11 +124,11 @@ module V1 = struct
 
   let pp_dissection ppf d =
     Format.pp_print_list
-      ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ";\n")
+      ~pp_sep:(fun ppf () -> Format.pp_print_string ppf " then ")
       (fun ppf {state_hash; tick} ->
         Format.fprintf
           ppf
-          "  %a @ %a"
+          "  %a at tick %a;\n"
           (Format.pp_print_option State_hash.pp)
           state_hash
           Sc_rollup_tick_repr.pp
@@ -456,10 +456,12 @@ let check_dissection start start_tick stop stop_tick dissection =
           check
             (not (Option.equal State_hash.equal b stop))
             (match stop with
-            | None -> "The stop hash should be None."
+            | None ->
+                "The stop hash should not agree with previous dissection \
+                 (None)."
             | Some stop ->
                 Format.asprintf
-                  "The stop hash should be equal to %a"
+                  "The stop hash should not agree with previous dissection (%a)"
                   State_hash.pp
                   stop)
         in

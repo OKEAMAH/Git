@@ -3127,6 +3127,8 @@ module Sc_rollup : sig
       type status = Halted | WaitingForInputMessage | Parsing | Evaluating
 
       val get_status : state -> status Lwt.t
+
+      val pp : state -> (Format.formatter -> unit -> unit) Lwt.t
     end
 
     val reference_initial_state_hash : State_hash.t
@@ -3302,6 +3304,8 @@ module Sc_rollup : sig
     val player_equal : player -> player -> bool
 
     type dissection_chunk = {state_hash : State_hash.t option; tick : Tick.t}
+
+    val pp_dissection : Format.formatter -> dissection_chunk list -> unit
 
     type t = {
       turn : player;
