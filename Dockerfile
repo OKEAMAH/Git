@@ -16,6 +16,7 @@ COPY --chown=tezos:nogroup --from=builder /home/tezos/tezos/tezos-admin-client /
 COPY --chown=tezos:nogroup --from=builder /home/tezos/tezos/tezos-node /home/tezos/bin/
 COPY --chown=tezos:nogroup --from=builder /home/tezos/tezos/tezos-proxy-server /home/tezos/bin/
 COPY --chown=tezos:nogroup --from=builder /home/tezos/tezos/tezos-signer /home/tezos/bin/
+COPY --chown=tezos:nogroup --from=builder /home/tezos/tezos/tezos-tx-rollup-* /home/tezos/bin/
 # Add entrypoint scripts
 COPY --chown=tezos:nogroup scripts/docker/entrypoint.* /home/tezos/bin/
 # Add scripts

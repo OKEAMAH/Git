@@ -17,6 +17,11 @@ do
   fi
 done < active_protocol_versions
 
+while read -r  proto
+do
+  binaries="${binaries} tezos-tx-rollup-client-${proto} tezos-tx-rollup-node-${proto}"
+done < tx_rollup_protocol_versions
+
 ### Compute GitLab release names
 
 # Remove the 'v' in front
