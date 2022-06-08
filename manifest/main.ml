@@ -3038,6 +3038,7 @@ end = struct
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~deps:
             [
+              tezos_context;
               alcotest_lwt;
               tezos_base |> open_ ~m:"TzPervasives"
               |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
