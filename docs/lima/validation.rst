@@ -55,11 +55,12 @@ does not implement this business logic *monolithically*, as described
 above, but it rather presents a more fine-grained API. The rationale
 is to provide specialized variations of the core *validation* and
 *application* functionality, dubbed :ref:`Validation
-modes<validation_modes_alpha>`. The latter enable, for instance, to
-distinguish and nuance the validation (and application) of operations
-"in the mempool" by the :doc:`prevalidator<../shell/prevalidation>`,
-from the validation (and application) of the contents of newly baked
-block broadcast across the network. The resulting concrete API is
+modes<validation_modes_lima>`. These modes enable the protocol to
+distinguish the validation of operations "in the mempool", performed
+by the :doc:`prevalidator<../shell/prevalidation>`, from the
+validation of the operations included in newly received blocks,
+performed by the :ref:`block validator<block_validator>`, in order to
+localize validation rules as needed. The resulting concrete API is
 specified by the :package-api:`Protocol
 <tezos-protocol-environment/Tezos_protocol_environment/V7/module-type-T/Updater/module-type-PROTOCOL/index.html>`
 module in the :doc:`protocol
@@ -202,6 +203,48 @@ disk in order to prevent potential attacks.
 
 Block Validation
 ================
+
+.. FIXME tezos/tezos#3921:
+
+   Adapt to pipelined block validation up to Lima and v7 environment.
+
+The validity of a blocks depends on a set of precondition checks
+implemented in different steps, which happen at different stages of
+the evaluation of a block.
+
+The first step in the process is to decide whether a candidate block
+is *well-formed*, that is, that it has the expected "shape" of a valid
+block under the current Tezos economic protocol. Given a block
+candidate, the block validation process will then verify that the
+candidate block declares consistent :ref:`level<Level>`,
+:ref:`round<Round>`, and timestamp values; that it carries a valid
+signature, etc. At this step, the block validation process will also
+initialize the data-structures required for subsequent steps.
+
+The second step iterates over the block's operations and proceeds to
+apply them sequentially. When at least one operation is found to be
+invalid, under the conditions described in
+:ref:`operation_validity_lima` further below, the whole block is
+considered as invalid.
+
+The last step in the block validation process, known as "block
+finalization", aims to verify that the collected consensus operations
+constitute a sufficiently large :ref:`quorum<quorum_lima>`. That is,
+it will verify that the total endorsing power present in the block is
+greater than the ``CONSENSUS_THRESHOLD`` constant.
+
+This last step also yields a new context -- the resulting state of the
+Tezos ledger after the application of the candidate block. The shell
+may decide to commit this context to disk.
+
+The Tezos economic protocol also offers a cheap (read "faster")
+alternative to determine an over-approximation of the validity of a
+block (see :ref:`partial_application_lima` above). This feature
+allows the shell to propagate blocks faster without needing to fully
+validate them, speeding-up block propagation over the network. As this
+is an over-approximation, this feature cannot be considered to provide
+a safe guarantee that a block will be valid: in particular, it does
+not validate all kinds of operations.
 
 .. _operation_validity_lima:
 
