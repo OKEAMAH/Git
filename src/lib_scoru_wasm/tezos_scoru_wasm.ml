@@ -31,6 +31,7 @@
 *)
 
 open Sigs
+open Tezos_webassembly_interpreter
 
 type input = {
   inbox_level : Tezos_base.Bounded.Int32.NonNegative.t;
@@ -81,10 +82,20 @@ module Make (T : TreeS) : sig
 
       Should not raise. *)
   val get_info : T.tree -> info Lwt.t
+
+  val module_instance_of_tree :
+    Instance.module_inst Instance.Vector.t ->
+    T.tree ->
+    Instance.module_inst Lwt.t
+
+  val module_instances_of_tree :
+    T.tree -> Instance.module_inst Instance.Vector.t Lwt.t
 end = struct
   module Tree = struct
     include T
   end
+
+  module Decodings = Decodings.Make (T)
 
   let compute_step = Lwt.return
 
@@ -103,4 +114,10 @@ end = struct
         last_input_read = None;
         input_request = No_input_required;
       }
+
+  let module_instance_of_tree modules =
+    Decodings.Tree.Decoding.run (Decodings.module_instance_decoding modules)
+
+  let module_instances_of_tree =
+    Decodings.Tree.Decoding.run Decodings.module_instances_decoding
 end

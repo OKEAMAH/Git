@@ -1,3 +1,5 @@
+module TzStdLib = Tezos_lwt_result_stdlib.Lwtreslib.Bare
+
 open Source
 open Ast
 
@@ -9,7 +11,7 @@ let registry = ref Registry.empty
 
 let register name lookup = registry := Registry.add name lookup !registry
 
-let lookup (m : module_) (im : import) : Instance.extern =
+let lookup (m : module_) (im : import) : Instance.extern Lwt.t =
   let {module_name; item_name; idesc} = im.it in
   let t = import_type m im in
   try Registry.find module_name !registry item_name t with Not_found ->
@@ -17,4 +19,4 @@ let lookup (m : module_) (im : import) : Instance.extern =
       ("unknown import \"" ^ string_of_name module_name ^
         "\".\"" ^ string_of_name item_name ^ "\"")
 
-let link m = List.map (lookup m) m.it.imports
+let link m = TzStdLib.List.map_s (lookup m) m.it.imports

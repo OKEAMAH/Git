@@ -1,5 +1,4 @@
 module type S = sig
-
   open Types
   open Values
 
@@ -26,4 +25,9 @@ module type S = sig
   val store : table -> index -> ref_ -> unit (* raises Type, Bounds *)
   val blit : table -> index -> ref_ list -> unit (* raises Bounds *)
 
+  val alloc_shallow : table_type -> t
+
+  module Vector = Lazy_vector.Mutable.LwtInt32Vector
+
+  val of_lazy_vector : table_type -> ref_ Vector.Vector.t -> t
 end
