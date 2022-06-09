@@ -43,7 +43,27 @@ module type Finite_key_pool_S = sig
     Base_samplers.sampler
 end
 
-module Make_finite_key_pool (Arg : Param_S) : Finite_key_pool_S = struct
+module type Signature_S = sig
+  include S.SIGNATURE
+
+  type algo
+
+  val algos : algo list
+
+  val generate_key :
+    ?algo:algo ->
+    ?seed:Bytes.t ->
+    unit ->
+    Public_key_hash.t * Public_key.t * Secret_key.t
+end
+
+module Make_p_finite_key_pool
+    (Signature : Signature_S)
+    (Arg : Param_S with type algo := Signature.algo) :
+  P_Finite_key_pool_S
+    with type public_key_hash := Signature.Public_key_hash.t
+     and type public_key := Signature.Public_key.t
+     and type secret_key := Signature.Secret_key.t = struct
   let () = if Arg.size < 1 then invalid_arg "Make_finite_key_pool" else ()
 
   (* Hardcoded bc not directly accessible through the Tezos_crypto API. *)
@@ -93,3 +113,35 @@ module Make_finite_key_pool (Arg : Param_S) : Finite_key_pool_S = struct
 
   let all = get_next
 end
+
+module V0 = struct
+  module type Finite_key_pool_S =
+    P_Finite_key_pool_S
+      with type public_key_hash := Signature_v0.Public_key_hash.t
+       and type public_key := Signature_v0.Public_key.t
+       and type secret_key := Signature_v0.Secret_key.t
+
+  module Make_finite_key_pool = Make_p_finite_key_pool (Signature_v0)
+end
+
+module V1 = struct
+  module type Finite_key_pool_S =
+    P_Finite_key_pool_S
+      with type public_key_hash := Signature.V1.Public_key_hash.t
+       and type public_key := Signature.V1.Public_key.t
+       and type secret_key := Signature.V1.Secret_key.t
+
+  module Make_finite_key_pool = Make_p_finite_key_pool (Signature.V1)
+end
+
+module V_latest = struct
+  module type Finite_key_pool_S =
+    P_Finite_key_pool_S
+      with type public_key_hash := Signature.V_latest.Public_key_hash.t
+       and type public_key := Signature.V_latest.Public_key.t
+       and type secret_key := Signature.V_latest.Secret_key.t
+
+  module Make_finite_key_pool = Make_p_finite_key_pool (Signature.V_latest)
+end
+
+include V_latest
