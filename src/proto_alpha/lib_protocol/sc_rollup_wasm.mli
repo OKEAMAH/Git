@@ -79,7 +79,6 @@ module V2_0_0 : sig
     val produce_proof :
       Tree.t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
 
-    val wasm_step : tree -> tree Lwt.t
   end
 
   type 'a proof = {

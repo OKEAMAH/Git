@@ -77,8 +77,6 @@ module M = struct
   include Tree
   module Proof = Memory_context.M.Proof
 
-  let wasm_step _ = assert false
-
   let set_protocol _ _ = assert false
 
   let get_protocol _ = assert false

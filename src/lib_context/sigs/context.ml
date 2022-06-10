@@ -541,7 +541,4 @@ module type S = sig
 
   (** [verify_stream] is the verifier of stream proofs. *)
   val verify_stream_proof : (stream_proof, 'a) verifier
-
-  (* TODO move *)
-  val wasm_step : tree -> tree Lwt.t
 end

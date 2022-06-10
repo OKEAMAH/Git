@@ -48,7 +48,6 @@ module V2_0_0 = struct
     val produce_proof :
       Tree.t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
 
-    val wasm_step : tree -> tree Lwt.t
   end
 
   module type S = sig
@@ -472,6 +471,5 @@ module V2_0_0 = struct
 
     let proof_encoding = Context.Proof_encoding.V1.Tree32.tree_proof_encoding
 
-    let wasm_step = Context.wasm_step
   end)
 end

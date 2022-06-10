@@ -2645,7 +2645,6 @@ module Sc_rollup : sig
         (tree -> (tree * 'a) Lwt.t) ->
         (proof * 'a) option Lwt.t
 
-      val wasm_step : tree -> tree Lwt.t
     end
 
     type 'a proof = {

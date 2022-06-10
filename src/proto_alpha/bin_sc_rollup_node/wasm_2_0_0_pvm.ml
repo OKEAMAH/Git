@@ -71,7 +71,6 @@ module Wasm_2_0_0_proof_format = struct
     Tezos_context_helpers.Merkle_proof_encoding.V2.Tree32.tree_proof_encoding
 
   module T = Tezos_scoru_wasm.Make(Store.IStoreTree)
-  let wasm_step x = T.step x
 end
 
 module Impl : Pvm.S = struct

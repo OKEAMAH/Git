@@ -76,9 +76,6 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
       | `Node hash -> `Node (Hash.of_context_hash hash)
       | `Value hash -> `Value (Hash.of_context_hash hash))
 
-  (* TODO move *)
-  let wasm_step _ = Stdlib.failwith "TODO wasm lib_context/memory/context"
-
   type index = Store.repo
 
   type context = {

@@ -464,8 +464,6 @@ type stream_proof := Proof.stream Proof.t
 (** [verify_stream] is the verifier of stream proofs. *)
 val verify_stream_proof : (stream_proof, 'a) verifier
 
-(* TODO move *)
-val wasm_step : tree -> tree Lwt.t
 
 module type PROOF_ENCODING = sig
   val tree_proof_encoding : tree_proof Data_encoding.t

@@ -305,20 +305,6 @@ module Context = struct
       | _ -> err_implementation_mismatch ~expected:impl_name ~got:t.impl_name
   end
 
-  let wasm_step : tree -> tree Lwt.t =
-    function tree ->
-    let open Lwt_syntax in
-    let tree = Proof_context.project tree (* TODO will fail at runtime if not called from verify_proof *) in
-    let module P = Tezos_scoru_wasm.Make(struct
-      include Proof_context.M.Tree
-      type t = Proof_context.M.t
-      type tree = Proof_context.M.tree
-      type key = string list
-      type value = bytes
-      end) in
-    let* tree = P.step tree in
-    return (Proof_context.inject tree)
-
   (* In-memory context for proof, using [Context_binary] which produces more
      compact Merkle proofs. *)
   module Proof_context_binary = struct
