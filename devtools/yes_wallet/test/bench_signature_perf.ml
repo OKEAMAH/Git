@@ -54,7 +54,7 @@ let sk algo =
 
 let fake_sk algo =
   let pk = pk algo in
-  let open Tezos_crypto.Signature in
+  let open Signature in
   let pk_b = Data_encoding.Binary.to_bytes_exn Public_key.encoding pk in
   let sk_b = Bytes.sub pk_b 0 33 in
   Data_encoding.Binary.of_bytes_exn Secret_key.encoding sk_b

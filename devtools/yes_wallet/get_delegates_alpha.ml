@@ -37,6 +37,11 @@ module Get_delegates = struct
     let ( +? ) a b = Environment.wrap_tzresult (a +? b)
   end
 
+  module Signature = struct
+    include Signature_v1
+    module To_latest = Signature.Of_V1
+  end
+
   module Delegate = struct
     open Alpha_context.Delegate
 
