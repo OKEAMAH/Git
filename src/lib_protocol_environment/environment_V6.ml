@@ -1107,7 +1107,7 @@ struct
       (* TODO: https://gitlab.com/tezos/tezos/-/issues/3090
          The expected implementation of this function is the step
          function implemented in `lib_webassembly'. *)
-      let step (t : Tree.tree) = Lwt.return t
+      let step (t : Tree.tree) = Tezos_scoru_wasm.step
     end
   end
 
