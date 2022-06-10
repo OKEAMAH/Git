@@ -32,13 +32,23 @@ let keys =
   let keys_p = Signature.generate_key ~algo:P256 () in
   let keys_e = Signature.generate_key ~algo:Ed25519 () in
   let keys_s = Signature.generate_key ~algo:Secp256k1 () in
-  function Signature.P256 -> keys_p | Ed25519 -> keys_e | Secp256k1 -> keys_s
+  let keys_b = Signature.generate_key ~algo:Bls () in
+  function
+  | Signature.P256 -> keys_p
+  | Ed25519 -> keys_e
+  | Secp256k1 -> keys_s
+  | Bls -> keys_b
 
 let wrong_keys =
   let keys_p = Signature.generate_key ~algo:P256 () in
   let keys_e = Signature.generate_key ~algo:Ed25519 () in
   let keys_s = Signature.generate_key ~algo:Secp256k1 () in
-  function Signature.P256 -> keys_p | Ed25519 -> keys_e | Secp256k1 -> keys_s
+  let keys_b = Signature.generate_key ~algo:Bls () in
+  function
+  | Signature.P256 -> keys_p
+  | Ed25519 -> keys_e
+  | Secp256k1 -> keys_s
+  | Bls -> keys_b
 
 let wrong_pk algo =
   let _, pk, _ = wrong_keys algo in
@@ -96,6 +106,7 @@ let str_of_algo = function
   | Signature.Ed25519 -> "Ed25519"
   | Signature.Secp256k1 -> "Secp256k1"
   | Signature.P256 -> "P256"
+  | Signature.Bls -> "Bls"
 
 let time ~yes_crypto ~algo size datas =
   Format.eprintf "generating signatures...@?" ;
@@ -151,5 +162,5 @@ let () =
       let _ = repeat 5 (time ~algo 100_000) (generate_data 1_000 100_000) in
       let _ = repeat 5 (time ~algo 1_000_000) (generate_data 1_000 1_000_000) in
       ())
-    [Ed25519; Secp256k1; P256]
+    [Ed25519; Secp256k1; P256; Bls]
 (* let _ = time (generate_data 1_000 10_000_000) *)
