@@ -34,7 +34,7 @@ module type DAL_cryptobox_sig = sig
   type polynomial
 
   (** Commitment to a polynomial. *)
-  type commitment
+  type commitment = Kate_amortized.Kate_amortized.commitment
 
   (** Proof of evaluations of shards. *)
   type proof_shards
