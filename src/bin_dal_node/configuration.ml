@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2022 Trili Tech, <contact@trili.tech>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,34 +24,41 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let group =
-  {Clic.name = "dal-daemon"; title = "Commands related to the DAL daemon"}
+type t = {data_dir : string; rpc_addr : string; rpc_port : int}
 
-let data_dir_arg =
-  let default = Configuration.default_data_dir in
-  Clic.default_arg
-    ~long:"data-dir"
-    ~placeholder:"data-dir"
-    ~doc:
-      (Format.sprintf
-         "The path to the DAL daemon data directory. Default value is %s"
-         default)
-    ~default
-    (Client_config.string_parameter ())
+let default_data_dir = Filename.concat (Sys.getenv "HOME") ".tezos-dal-node"
 
-let run_command =
-  let open Clic in
-  command
-    ~group
-    ~desc:"Run the DAL daemon."
-    (args1 data_dir_arg)
-    (prefixes ["run"] @@ stop)
-    (fun data_dir cctxt -> Daemon.run ~data_dir cctxt)
+let relative_filename data_dir = Filename.concat data_dir "config.json"
 
-let commands () = [run_command]
+let filename config = relative_filename config.data_dir
 
-let select_commands _ _ =
+let default_rpc_addr = "127.0.0.1"
+
+let default_rpc_port = 10732
+
+let encoding : t Data_encoding.t =
+  let open Data_encoding in
+  conv
+    (fun {data_dir; rpc_addr; rpc_port} -> (data_dir, rpc_addr, rpc_port))
+    (fun (data_dir, rpc_addr, rpc_port) -> {data_dir; rpc_addr; rpc_port})
+    (obj3
+       (dft
+          "data-dir"
+          ~description:"Location of the data dir"
+          string
+          default_data_dir)
+       (dft "rpc-addr" ~description:"RPC address" string default_rpc_addr)
+       (dft "rpc-port" ~description:"RPC port" int16 default_rpc_port))
+
+let save config =
+  let open Lwt_syntax in
+  Lwt_utils_unix.with_atomic_open_out (filename config) @@ fun chan ->
+  let json = Data_encoding.Json.construct encoding config in
+  let* () = Lwt_utils_unix.create_dir config.data_dir in
+  let content = Data_encoding.Json.to_string json in
+  Lwt_utils_unix.write_string chan content
+
+let load ~data_dir =
   let open Lwt_result_syntax in
-  return (commands ())
-
-let () = Client_main_run.run (module Client_config) ~select_commands
+  let+ json = Lwt_utils_unix.Json.read_file (relative_filename data_dir) in
+  Data_encoding.Json.destruct encoding json
