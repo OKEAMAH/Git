@@ -427,7 +427,7 @@ opam:tezos-client-000-Ps9mPmXa:
 opam:tezos-client-001-PtCJ7pwo:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_3
+    - .rules_template__trigger_opam_batch_4
   variables:
     package: tezos-client-001-PtCJ7pwo
 
@@ -532,7 +532,7 @@ opam:tezos-client-base:
 opam:tezos-client-base-unix:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_2
+    - .rules_template__trigger_opam_batch_3
   variables:
     package: tezos-client-base-unix
 
@@ -584,6 +584,13 @@ opam:tezos-crypto:
     - .rules_template__trigger_opam_batch_6
   variables:
     package: tezos-crypto
+
+opam:tezos-dal-node:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_2
+  variables:
+    package: tezos-dal-node
 
 opam:tezos-embedded-protocol-000-Ps9mPmXa:
   extends:
@@ -910,7 +917,7 @@ opam:tezos-protocol-006-PsCARTHA:
 opam:tezos-protocol-007-PsDELPH1:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_4
+    - .rules_template__trigger_opam_batch_5
   variables:
     package: tezos-protocol-007-PsDELPH1
 
