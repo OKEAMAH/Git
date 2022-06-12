@@ -22,50 +22,16 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+open Tezos_crypto_dal
 
-include Internal_event.Simple
+module Constants = struct
+  let redundancy_factor = 2
 
-let section = ["dal"; "node"]
+  let slot_segment_size = 4096
 
-let starting_node =
-  declare_0
-    ~section
-    ~name:"starting_dal_node"
-    ~msg:"Starting the DAL node"
-    ~level:Notice
-    ()
+  let slot_size = 4096 * 256 (* slot size * number of slots *)
 
-let shutdown_node =
-  declare_1
-    ~section
-    ~name:"stopping_dal_node"
-    ~msg:"Stopping DAL node"
-    ~level:Notice
-    ("exit_status", Data_encoding.int8)
+  let shards_amount = 2048
+end
 
-let node_is_ready =
-  declare_2
-    ~section
-    ~name:"dal_node_is_ready"
-    ~msg:"The DAL node is listening to {addr}:{port}"
-    ~level:Notice
-    ("addr", Data_encoding.string)
-    ("port", Data_encoding.uint16)
-
-let stored_slot =
-  declare_2
-    ~section
-    ~name:"stored_slot"
-    ~msg:"Slot stored: size {size}, shards {shards}"
-    ~level:Notice
-    ("size", Data_encoding.int31)
-    ("shards", Data_encoding.int31)
-
-let fetched_slot =
-  declare_2
-    ~section
-    ~name:"fetched_slot"
-    ~msg:"Slot fetched: size {size}, shards {shards}"
-    ~level:Notice
-    ("size", Data_encoding.int31)
-    ("shards", Data_encoding.int31)
+include Dal_cryptobox.Make (Constants)

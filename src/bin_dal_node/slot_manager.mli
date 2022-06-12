@@ -23,49 +23,33 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include Internal_event.Simple
+(**
+   Functions to manage slots storage.
 
-let section = ["dal"; "node"]
+   - writing a slot means splitting it in shards and store them on disk
+   - reading a slot means rebuild it from the shards
+   *)
 
-let starting_node =
-  declare_0
-    ~section
-    ~name:"starting_dal_node"
-    ~msg:"Starting the DAL node"
-    ~level:Notice
-    ()
+(** [slot_header_of_hex s] decodes the slot_header from an hexadecimal string *)
+val slot_header_of_hex : string -> Dal_types.slot_header tzresult
 
-let shutdown_node =
-  declare_1
-    ~section
-    ~name:"stopping_dal_node"
-    ~msg:"Stopping DAL node"
-    ~level:Notice
-    ("exit_status", Data_encoding.int8)
+(** [split_and_store store slot] splits [slot] in shards, stores it onto the
+    disk and returns the corresponding [slot_header] *)
+val split_and_store :
+  Store.t -> Dal_types.slot -> Dal_types.slot_header tzresult Lwt.t
 
-let node_is_ready =
-  declare_2
-    ~section
-    ~name:"dal_node_is_ready"
-    ~msg:"The DAL node is listening to {addr}:{port}"
-    ~level:Notice
-    ("addr", Data_encoding.string)
-    ("port", Data_encoding.uint16)
+(** [get_shard store slot_header shard_id] gets the shard associated to
+    [slot_header] at the range [shard_id] *)
+val get_shard :
+  Store.t -> Dal_types.slot_header -> int -> Cryptobox.shard tzresult Lwt.t
 
-let stored_slot =
-  declare_2
-    ~section
-    ~name:"stored_slot"
-    ~msg:"Slot stored: size {size}, shards {shards}"
-    ~level:Notice
-    ("size", Data_encoding.int31)
-    ("shards", Data_encoding.int31)
+(** [get_slot store slot_header] fetches from disk the shards associated to
+    [slot_header], gathers them, rebuilds and returns the [slot]. *)
+val get_slot : Store.t -> Dal_types.slot_header -> Dal_types.slot tzresult Lwt.t
 
-let fetched_slot =
-  declare_2
-    ~section
-    ~name:"fetched_slot"
-    ~msg:"Slot fetched: size {size}, shards {shards}"
-    ~level:Notice
-    ("size", Data_encoding.int31)
-    ("shards", Data_encoding.int31)
+module Utils : sig
+  (** [trim_x00 b] removes trailing '\000' at the end of a [b] and returns a new
+      [bytes]. This function in needed to debug the fetching a slot and remove
+      spurious uneeded data form it. *)
+  val trim_x00 : bytes -> bytes
+end
