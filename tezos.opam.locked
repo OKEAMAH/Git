@@ -161,13 +161,13 @@ depends: [
   "qcheck-core" {= "0.18.1" & ?vendor}
   "re" {= "1.10.4" & ?vendor}
   "repr" {= "0.6.0" & ?vendor}
-  "resto" {= "0.6.1" & ?vendor}
-  "resto-acl" {= "0.6.1" & ?vendor}
-  "resto-cohttp" {= "0.6.1" & ?vendor}
-  "resto-cohttp-client" {= "0.6.1" & ?vendor}
-  "resto-cohttp-self-serving-client" {= "0.6.1" & ?vendor}
-  "resto-cohttp-server" {= "0.6.1" & ?vendor}
-  "resto-directory" {= "0.6.1" & ?vendor}
+  "resto" {= "0.8" & ?vendor}
+  "resto-acl" {= "0.8" & ?vendor}
+  "resto-cohttp" {= "0.8" & ?vendor}
+  "resto-cohttp-client" {= "0.8" & ?vendor}
+  "resto-cohttp-self-serving-client" {= "0.8" & ?vendor}
+  "resto-cohttp-server" {= "0.8" & ?vendor}
+  "resto-directory" {= "0.8" & ?vendor}
   "result" {= "1.5" & ?vendor}
   "ringo" {= "0.9" & ?vendor}
   "ringo-lwt" {= "0.9" & ?vendor}
@@ -843,32 +843,32 @@ pin-depends: [
     "https://github.com/mirage/repr/releases/download/0.6.0/repr-fuzz-0.6.0.tbz"
   ]
   [
-    "resto.0.6.1"
-    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.6.1/resto-v0.6.1.tar.gz"
+    "resto.0.8"
+    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
   ]
   [
-    "resto-acl.0.6.1"
-    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.6.1/resto-v0.6.1.tar.gz"
+    "resto-acl.0.8"
+    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
   ]
   [
-    "resto-cohttp.0.6.1"
-    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.6.1/resto-v0.6.1.tar.gz"
+    "resto-cohttp.0.8"
+    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
   ]
   [
-    "resto-cohttp-client.0.6.1"
-    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.6.1/resto-v0.6.1.tar.gz"
+    "resto-cohttp-client.0.8"
+    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
   ]
   [
-    "resto-cohttp-self-serving-client.0.6.1"
-    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.6.1/resto-v0.6.1.tar.gz"
+    "resto-cohttp-self-serving-client.0.8"
+    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
   ]
   [
-    "resto-cohttp-server.0.6.1"
-    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.6.1/resto-v0.6.1.tar.gz"
+    "resto-cohttp-server.0.8"
+    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
   ]
   [
-    "resto-directory.0.6.1"
-    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.6.1/resto-v0.6.1.tar.gz"
+    "resto-directory.0.8"
+    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
   ]
   [
     "result.1.5"
@@ -1887,11 +1887,11 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.6.1/resto-v0.6.1.tar.gz"
+    "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
     "resto"
     [
-      "md5=aaa32ff0f0b78d2ab231e8bc5227bead"
-      "sha512=f362893693e75df8021365a7b3291874ad38f928054e16fc48f9040545d7dcfc60f9c19bd7f00f8e89b3c2c72bea916a425d769b41331da08a222a81968954e9"
+      "md5=0f2a4c07a71d78b783eb69f2c720494b"
+      "sha512=6f2bb07f8546d86788f32372879ea6af5a18d9715f64a0e7ff5f28b5db6ddcb7fa691936af387a880a1dc9f320b7b9224670fbdcfe1841890b8144ff0f9e66a2"
     ]
   ]
   [
