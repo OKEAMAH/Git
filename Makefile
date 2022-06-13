@@ -403,7 +403,16 @@ clean: coverage-clean
 .PHONY: lock
 lock:
 	./scripts/setup_local_switch.sh
-	echo "opam-version: \"2.0\"" > ocamlfind-as-opam-provided.opam
-	echo "x-opam-monorepo-opam-provided: [\"ocamlfind\"]" >> ocamlfind-as-opam-provided.opam
-	opam monorepo lock --recurse --lockfile tezos.opam.locked || (rm ocamlfind-as-opam-provided.opam && exit 1)
-	rm ocamlfind-as-opam-provided.opam
+	opam monorepo lock \
+		--recurse \
+		--lockfile tezos.opam.locked \
+		--add-opam-provided ocamlfind
+
+.PHONY: update-lock
+update-lock:
+	./scripts/setup_local_switch.sh
+	opam monorepo lock \
+		--recurse \
+		--lockfile tezos.opam.locked \
+		--add-opam-provided ocamlfind \
+		--minimal-update

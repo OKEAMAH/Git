@@ -22,7 +22,7 @@ eval "$(opam env --shell=sh)"
 opam install --deps-only --ignore-pin-depends ./tezos.opam.locked
 
 # Installs the opam-monorepo plugin
-opam install opam-monorepo.0.3.1
+opam install opam-monorepo.0.3.3
 
 # Installs all depexts and transitive depexts of the project
 opam monorepo depext
