@@ -238,6 +238,8 @@ module Gas = struct
   let cost_of_repr cost = cost
 end
 
+module Contract_event = Contract_event_repr
+
 module Level = struct
   include Level_repr
   include Level_storage

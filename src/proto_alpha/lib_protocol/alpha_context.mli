@@ -603,6 +603,7 @@ module Script : sig
     | I_SPLIT_TICKET
     | I_JOIN_TICKETS
     | I_OPEN_CHEST
+    | I_EMIT
     | T_bool
     | T_contract
     | T_int
@@ -2195,6 +2196,32 @@ module Bond_id : sig
   end
 end
 
+(** Contract_event exposes fields for event data access. See [Contract_event_repr]. *)
+module Contract_event : sig
+  module Hash : module type of Contract_event_repr.Hash
+
+  type address = Hash.t
+
+  type t = {addr : address; data : Script.expr}
+
+  val encoding : t Data_encoding.t
+
+  val in_memory_size : address -> Cache_memory_helpers.sint
+
+  val to_b58check : address -> string
+
+  val pp : Format.formatter -> address -> unit
+
+  val of_b58data : Base58.data -> address option
+
+  val of_b58check : string -> (address, error trace) result
+
+  val of_b58check_opt : string -> address option
+
+  val ty_encoding :
+    Michelson_v1_primitives.prim Micheline.canonical Data_encoding.t
+end
+
 module Receipt : sig
   type balance =
     | Contract of Contract.t
@@ -3066,6 +3093,7 @@ module Destination : sig
     | Contract of Contract.t
     | Tx_rollup of Tx_rollup.t
     | Sc_rollup of Sc_rollup.t
+    | Event of Contract_event.address
 
   val encoding : t Data_encoding.t
 
