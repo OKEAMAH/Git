@@ -39,7 +39,36 @@ val get_ongoing_game_for_staker :
   Raw_context.t ->
   Sc_rollup_repr.t ->
   Sc_rollup_repr.Staker.t ->
-  (Sc_rollup_game_repr.t option * Raw_context.t) tzresult Lwt.t
+  ((Sc_rollup_game_repr.t * Sc_rollup_game_repr.Index.t) option * Raw_context.t)
+  tzresult
+  Lwt.t
+
+(** A conflict between a staker and an [other] staker. The conflict is
+   about the commitment that follows the [parent_commitment]:
+   [their_commitment] and [our_commitment] are distinct, hence in
+   conflict. *)
+type conflict = {
+  other : Sc_rollup_repr.Staker.t;
+  their_commitment : Sc_rollup_commitment_repr.t;
+  our_commitment : Sc_rollup_commitment_repr.t;
+  parent_commitment : Sc_rollup_commitment_repr.Hash.t;
+}
+
+val conflict_encoding : conflict Data_encoding.t
+
+(** [conflicting_stakers_uncarbonated rollup staker] returns the list
+   of conflicts with [staker] in [rollup].
+
+   Notice that this operation can be expensive as it is proportional
+   to the number of stakers multiplied by the number of commitments in
+   the staked branches. Fortunately, this operation is only useful as
+   an RPC for the rollup node to look for a new conflict to solve. *)
+val conflicting_stakers_uncarbonated :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  Sc_rollup_repr.Staker.t ->
+  conflict list tzresult Lwt.t
+
 val start_game :
   Raw_context.t ->
   Sc_rollup_repr.t ->

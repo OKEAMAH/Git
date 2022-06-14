@@ -2933,13 +2933,15 @@ module Sc_rollup : sig
 
     val produce :
       (module PVM_with_context_and_state) ->
-      Sc_rollup_inbox_repr.t ->
-      Raw_level_repr.t ->
+      Inbox.t ->
+      Raw_level.t ->
       (t, error) result Lwt.t
   end
 
   module Game : sig
     type player = Alice | Bob
+
+    val player_equal : player -> player -> bool
 
     type t = {
       turn : player;
@@ -3030,8 +3032,30 @@ module Sc_rollup : sig
 
     type conflict_point = point * point
 
+    type conflict = {
+      other : Staker.t;
+      their_commitment : Commitment.t;
+      our_commitment : Commitment.t;
+      parent_commitment : Commitment.Hash.t;
+    }
+
+    val conflict_encoding : conflict Data_encoding.t
+
     val get_ongoing_game_for_staker :
-      context -> t -> Staker.t -> (Game.t option * context) tzresult Lwt.t
+      context ->
+      t ->
+      Staker.t ->
+      ((Game.t * Game.Index.t) option * context) tzresult Lwt.t
+
+    val conflicting_stakers_uncarbonated :
+      context -> t -> Staker.t -> conflict list tzresult Lwt.t
+
+    val start_game :
+      context ->
+      t ->
+      player:Signature.public_key_hash ->
+      opponent:Signature.public_key_hash ->
+      context tzresult Lwt.t
 
     val game_move :
       context ->

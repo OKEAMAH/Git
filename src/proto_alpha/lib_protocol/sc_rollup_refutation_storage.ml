@@ -311,3 +311,48 @@ let apply_outcome ctxt rollup stakers (outcome : Sc_rollup_game_repr.outcome) =
 module Internal_for_tests = struct
   let get_conflict_point = get_conflict_point
 end
+
+type conflict = {
+  other : Sc_rollup_repr.Staker.t;
+  their_commitment : Sc_rollup_commitment_repr.t;
+  our_commitment : Sc_rollup_commitment_repr.t;
+  parent_commitment : Sc_rollup_commitment_repr.Hash.t;
+}
+
+let conflict_encoding =
+  Data_encoding.(
+    conv
+      (fun {other; their_commitment; our_commitment; parent_commitment} ->
+        (other, their_commitment, our_commitment, parent_commitment))
+      (fun (other, their_commitment, our_commitment, parent_commitment) ->
+        {other; their_commitment; our_commitment; parent_commitment})
+      (obj4
+         (req "other" Sc_rollup_repr.Staker.encoding)
+         (req "their_commitment" Sc_rollup_commitment_repr.encoding)
+         (req "our_commitment" Sc_rollup_commitment_repr.encoding)
+         (req "parent_commitment" Sc_rollup_commitment_repr.Hash.encoding)))
+
+let make_conflict ctxt rollup other (our_point, their_point) =
+  let our_hash = our_point.hash and their_hash = their_point.hash in
+  let open Lwt_tzresult_syntax in
+  let get = Sc_rollup_commitment_storage.get_commitment_unsafe ctxt rollup in
+  let* our_commitment, _ = get our_hash in
+  let* their_commitment, _ = get their_hash in
+  let parent_commitment = our_commitment.predecessor in
+  return {other; their_commitment; our_commitment; parent_commitment}
+
+let conflicting_stakers_uncarbonated ctxt rollup staker =
+  let open Lwt_tzresult_syntax in
+  let* stakers = Store.stakers ctxt rollup in
+  List.fold_left_es
+    (fun conflicts (other_staker, _) ->
+      let*! res = get_conflict_point ctxt rollup staker other_staker in
+      match res with
+      | Ok (conflict_point, _) ->
+          let* conflict =
+            make_conflict ctxt rollup other_staker conflict_point
+          in
+          return (conflict :: conflicts)
+      | Error _ -> return conflicts)
+    []
+    stakers

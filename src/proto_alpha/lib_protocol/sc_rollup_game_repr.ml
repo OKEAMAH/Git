@@ -36,6 +36,9 @@ type t = {
   dissection : (State_hash.t option * Sc_rollup_tick_repr.t) list;
 }
 
+let player_equal p1 p2 =
+  match (p1, p2) with Alice, Alice -> true | Bob, Bob -> true | _, _ -> false
+
 let player_encoding =
   let open Data_encoding in
   union
