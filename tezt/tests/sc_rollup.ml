@@ -1225,6 +1225,89 @@ let commitment_not_stored_if_non_final _protocol sc_rollup_node
        %R)" ;
   Lwt.return_unit
 
+let commitment_stored_with_node_stopping _protocol sc_rollup_node
+    sc_rollup_address _node client =
+  (* The rollup is originated at level `init_level`, and it requires
+     `sc_rollup_commitment_period_in_blocks` levels to store a commitment.
+     There is also a delay of `block_finality_time` before storing a
+     commitment, to avoid including wrong commitments due to chain
+     reorganisations. Therefore the commitment will be stored and published
+     when the [Commitment] module processes the block at level
+     `init_level + sc_rollup_commitment_period_in_blocks +
+     levels_to_finalise`.
+  *)
+  let* init_level =
+    RPC.Sc_rollup.get_initial_level ~hooks ~sc_rollup_address client
+  in
+
+  let init_level = init_level |> JSON.as_int in
+  let* levels_to_commitment =
+    get_sc_rollup_commitment_period_in_blocks client
+  in
+  let store_commitment_level =
+    init_level + levels_to_commitment + block_finality_time
+  in
+  let* () = Sc_rollup_node.run sc_rollup_node in
+  let sc_rollup_client = Sc_rollup_client.create sc_rollup_node in
+  let* level = Sc_rollup_node.wait_for_level sc_rollup_node init_level in
+  Check.(level = init_level)
+    Check.int
+    ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+  let* () =
+    (* at init_level + i we publish i messages, therefore at level
+       init_level + i a total of 1+..+i = (i*(i+1))/2 messages will have been
+       sent.
+    *)
+    send_messages (levels_to_commitment - 1) sc_rollup_address client
+  in
+  let* _ =
+    Sc_rollup_node.wait_for_level
+      sc_rollup_node
+      (init_level + levels_to_commitment - 1)
+  in
+  (* Bake [block_finality_time] additional levels to ensure that block number
+     [init_level + sc_rollup_commitment_period_in_blocks] is
+     processed by the rollup node as finalized. *)
+  let* () = Sc_rollup_node.terminate sc_rollup_node in
+  let* () = send_messages 1 sc_rollup_address client in
+  let* () = Sc_rollup_node.run sc_rollup_node in
+
+  let* () = bake_levels block_finality_time client in
+  let* _ =
+    Sc_rollup_node.wait_for_level sc_rollup_node store_commitment_level
+  in
+  let* _ =
+    Sc_rollup_node.wait_for_level
+      sc_rollup_node
+      (init_level + levels_to_commitment)
+  in
+  let* stored_commitment =
+    Sc_rollup_client.last_stored_commitment ~hooks sc_rollup_client
+  in
+  let stored_inbox_level = Option.map inbox_level stored_commitment in
+  Check.(stored_inbox_level = Some (levels_to_commitment + init_level))
+    (Check.option Check.int)
+    ~error_msg:
+      "Commitment has been stored at a level different than expected (%L = %R)" ;
+  let expected_number_of_messages =
+    Some (levels_to_commitment * (levels_to_commitment + 1) / 2)
+  in
+  (let stored_number_of_messages =
+     Option.map number_of_messages stored_commitment
+   in
+   Check.(expected_number_of_messages = stored_number_of_messages)
+     (Check.option Check.int)
+     ~error_msg:
+       "Number of messages processed by commitment is different from the \
+        number of messages expected (%L = %R)") ;
+  let* published_commitment =
+    Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
+  in
+  Option.iter (fun (c1, c2) -> check_eq_commitment c1 c2)
+  @@ Option.bind published_commitment (fun (_hash, c1, _level) ->
+         Option.map (fun (_, c2, _level) -> (c1, c2)) stored_commitment) ;
+  check_published_commitment_in_l1 sc_rollup_address client published_commitment
+
 let commitments_messages_reset _protocol sc_rollup_node sc_rollup_address _node
     client =
   (* For `sc_rollup_commitment_period_in_blocks` levels after the sc rollup
@@ -1939,6 +2022,10 @@ let register ~protocols =
   test_rollup_node_boots_into_initial_state protocols ;
   test_rollup_node_advances_pvm_state protocols ;
   test_commitment_scenario "commitment_is_stored" commitment_stored protocols ;
+  test_commitment_scenario
+    "rollup_node_stops"
+    commitment_stored_with_node_stopping
+    protocols ;
   test_commitment_scenario
     "non_final_level"
     commitment_not_stored_if_non_final
