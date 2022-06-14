@@ -1124,6 +1124,14 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
            'r,
            'f )
          kinstr
+  | IEmit : {
+      kinfo : ('a, 's) kinfo;
+      addr : Contract_event.t;
+      tag : Entrypoint.t;
+      ty : ('a, _) ty;
+      k : (operation, 's, 'r, 'f) kinstr;
+    }
+      -> ('a, 's, 'r, 'f) kinstr
   (*
      Internal control instructions
      -----------------------------
@@ -1384,6 +1392,12 @@ and 'kind manager_operation =
       unparsed_parameters : Script.expr;
     }
       -> Kind.transaction manager_operation
+  | Transaction_to_event : {
+      addr : Contract_event.t;
+      tag : Entrypoint.t;
+      unparsed_data : Script.expr;
+    }
+      -> Kind.transaction manager_operation
   | Origination : {
       delegate : Signature.Public_key_hash.t option;
       code : Script.expr;
@@ -1421,6 +1435,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   function
   | Transaction_to_contract _ -> Kind.Transaction_manager_kind
   | Transaction_to_tx_rollup _ -> Kind.Transaction_manager_kind
+  | Transaction_to_event _ -> Kind.Transaction_manager_kind
   | Origination _ -> Kind.Origination_manager_kind
   | Delegation _ -> Kind.Delegation_manager_kind
 
@@ -1583,6 +1598,7 @@ let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
   | IHalt kinfo -> kinfo
   | ILog (kinfo, _, _, _) -> kinfo
   | IOpen_chest (kinfo, _) -> kinfo
+  | IEmit {kinfo; _} -> kinfo
 
 type kinstr_rewritek = {
   apply : 'b 'u 'r 'f. ('b, 'u, 'r, 'f) kinstr -> ('b, 'u, 'r, 'f) kinstr;
@@ -1791,6 +1807,7 @@ let kinstr_rewritek :
   | IHalt kinfo -> IHalt kinfo
   | ILog (kinfo, event, logger, k) -> ILog (kinfo, event, logger, k)
   | IOpen_chest (kinfo, k) -> IOpen_chest (kinfo, f.apply k)
+  | IEmit instr -> IEmit {instr with k = f.apply instr.k}
 
 let meta_basic = {size = Type_size.one}
 
@@ -2187,6 +2204,7 @@ let kinstr_traverse i init f =
     | ISplit_ticket (_, k) -> (next [@ocaml.tailcall]) k
     | IJoin_tickets (_, _, k) -> (next [@ocaml.tailcall]) k
     | IOpen_chest (_, k) -> (next [@ocaml.tailcall]) k
+    | IEmit {k; _} -> (next [@ocaml.tailcall]) k
     | IHalt _ -> (return [@ocaml.tailcall]) ()
     | ILog (_, _, _, k) -> (next [@ocaml.tailcall]) k
   in

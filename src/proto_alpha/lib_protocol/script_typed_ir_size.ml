@@ -559,6 +559,13 @@ and kinstr_size :
         ret_succ_adding (accu ++ ty_size cty) (base kinfo +! word_size)
     | IOpen_chest (kinfo, _) -> ret_succ_adding accu (base kinfo)
     | IHalt kinfo -> ret_succ_adding accu (h1w +! kinfo_size kinfo)
+    | IEmit {kinfo; tag; ty; addr = _; k = _} ->
+        ret_succ_adding
+          (accu ++ ty_size ty)
+          (base kinfo
+          +! Entrypoint.in_memory_size tag
+          +! (word_size *? 3)
+          +! Saturation_repr.safe_int Contract_event.Hash.size)
     | ILog (_, _, _, _) ->
         (* This instruction is ignored because it is only used for testing. *)
         accu

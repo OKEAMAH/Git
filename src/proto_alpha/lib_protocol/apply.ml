@@ -1189,6 +1189,7 @@ let apply_internal_manager_operation_content :
         ~payer
         ~dst_rollup:destination
         ~since:ctxt_before_op
+  | Transaction_to_event _ -> failwith "TODO"
   | Origination
       {
         delegate;
