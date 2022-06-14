@@ -2924,7 +2924,7 @@ module Sc_rollup : sig
     type t = {pvm_step : wrapped_proof; inbox : Inbox.Proof.t option}
 
     module type PVM_with_context_and_state = sig
-      include Sc_rollups.PVM.S
+      include PVM.S
 
       val context : context
 
@@ -2955,21 +2955,25 @@ module Sc_rollup : sig
       type t = private {alice : Staker.t; bob : Staker.t}
 
       val make : Staker.t -> Staker.t -> t
+
+      val encoding : t Data_encoding.t
     end
 
     val encoding : t Data_encoding.t
 
     val opponent : player -> player
 
-    type step =
-      | Dissection of (State_hash.t option * Tick.t) list
-      | Proof of Proof.t
+    type step = Dissection of dissection | Proof of Proof.t
+
+    and dissection = (State_hash.t option * Tick.t) list
 
     type refutation = {choice : Tick.t; step : step}
 
     val pp_refutation : Format.formatter -> refutation -> unit
 
     type reason = Conflict_resolved | Invalid_move of string | Timeout
+
+    val refutation_encoding : refutation Data_encoding.t
 
     val pp_reason : Format.formatter -> reason -> unit
 

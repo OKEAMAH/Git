@@ -180,9 +180,9 @@ let initial inbox ~pvm_name ~(parent : Sc_rollup_commitment_repr.t)
       ];
   }
 
-type step =
-  | Dissection of (State_hash.t option * Sc_rollup_tick_repr.t) list
-  | Proof of Sc_rollup_proof_repr.t
+type step = Dissection of dissection | Proof of Sc_rollup_proof_repr.t
+
+and dissection = (State_hash.t option * Sc_rollup_tick_repr.t) list
 
 let step_encoding =
   let open Data_encoding in
