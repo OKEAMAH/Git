@@ -177,6 +177,9 @@ let burn_cap_arg =
          | Some t -> return t
          | None -> failwith "Bad burn cap"))
 
+let loser_mode =
+  Clic.switch ~long:"loser" ~doc:"Set the loser mode (for tests only!)." ()
+
 let group =
   {
     Clic.name = "sc_rollup.node";
@@ -188,7 +191,7 @@ let config_init_command =
   command
     ~group
     ~desc:"Configure the smart-contract rollup node."
-    (args9
+    (args10
        data_dir_arg
        rpc_addr_arg
        rpc_port_arg
@@ -197,7 +200,8 @@ let config_init_command =
        minimal_nanotez_per_gas_unit_arg
        force_low_fee_arg
        fee_cap_arg
-       burn_cap_arg)
+       burn_cap_arg
+       loser_mode)
     (prefixes ["config"; "init"; "on"]
     @@ sc_rollup_address_param
     @@ prefixes ["with"; "operator"]
@@ -210,7 +214,8 @@ let config_init_command =
            minimal_nanotez_per_gas_unit,
            force_low_fee,
            fee_cap,
-           burn_cap )
+           burn_cap,
+           loser_mode )
          sc_rollup_address
          sc_rollup_node_operator
          cctxt ->
@@ -231,6 +236,7 @@ let config_init_command =
               fee_cap;
               burn_cap;
             };
+          loser_mode;
         }
       in
       save config >>=? fun () ->

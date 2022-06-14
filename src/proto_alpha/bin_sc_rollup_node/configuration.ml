@@ -33,6 +33,7 @@ type t = {
   rpc_addr : string;
   rpc_port : int;
   fee_parameter : Injection.fee_parameter;
+  loser_mode : bool;
 }
 
 let default_data_dir =
@@ -147,19 +148,22 @@ let encoding : t Data_encoding.t =
            rpc_addr;
            rpc_port;
            fee_parameter;
+           loser_mode;
          } ->
       ( data_dir,
         sc_rollup_address,
         sc_rollup_node_operator,
         rpc_addr,
         rpc_port,
-        fee_parameter ))
+        fee_parameter,
+        loser_mode ))
     (fun ( data_dir,
            sc_rollup_address,
            sc_rollup_node_operator,
            rpc_addr,
            rpc_port,
-           fee_parameter ) ->
+           fee_parameter,
+           loser_mode ) ->
       {
         data_dir;
         sc_rollup_address;
@@ -167,8 +171,9 @@ let encoding : t Data_encoding.t =
         rpc_addr;
         rpc_port;
         fee_parameter;
+        loser_mode;
       })
-    (obj6
+    (obj7
        (dft
           "data-dir"
           ~description:"Location of the data dir"
@@ -189,7 +194,14 @@ let encoding : t Data_encoding.t =
           "fee-parameter"
           ~description:"The fee parameter used when injecting operations in L1"
           fee_parameter_encoding
-          default_fee_parameter))
+          default_fee_parameter)
+       (dft
+          "loser-mode"
+          ~description:
+            "If enabled, the rollup node will issue wrong commitments (for \
+             test only!)"
+          Data_encoding.bool
+          false))
 
 let save config =
   let open Lwt_syntax in

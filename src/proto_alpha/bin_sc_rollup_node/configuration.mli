@@ -31,6 +31,7 @@ type t = {
   rpc_addr : string;
   rpc_port : int;
   fee_parameter : Injection.fee_parameter;
+  loser_mode : bool;
 }
 
 (** [default_data_dir] is the default value for [data_dir]. *)
