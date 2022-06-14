@@ -521,6 +521,9 @@ let pp_transaction_result ppf = function
       pp_balance_updates ppf balance_updates ;
       Format.fprintf ppf "@,Ticket hash: %a" Ticket_hash.pp ticket_hash ;
       pp_paid_storage_size_diff ppf paid_storage_size_diff
+  | Transaction_to_event_result {consumed_gas} ->
+      pp_consumed_gas ppf consumed_gas ;
+      Format.fprintf ppf "@,@[<v 2>Event Applied]"
 
 let pp_operation_result ~operation_name pp_operation_result ppf = function
   | Skipped _ -> Format.fprintf ppf "This operation was skipped."
