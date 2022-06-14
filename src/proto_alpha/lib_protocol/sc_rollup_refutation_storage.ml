@@ -45,6 +45,19 @@ let timeout_level ctxt =
   let level = Raw_context.current_level ctxt in
   Raw_level_repr.add level.level timeout_period_in_blocks
 
+let get_ongoing_game ctxt rollup staker1 staker2 =
+  let open Lwt_tzresult_syntax in
+  let stakers = Sc_rollup_game_repr.Index.normalize (staker1, staker2) in
+  let* ctxt, game = Store.Game.find (ctxt, rollup) stakers in
+  return (game, ctxt)
+
+let get_ongoing_game_for_staker ctxt rollup staker =
+  let open Lwt_tzresult_syntax in
+  let* ctxt, opponent = Store.Opponent.find (ctxt, rollup) staker in
+  match opponent with
+  | Some opponent -> get_ongoing_game ctxt rollup staker opponent
+  | None -> return (None, ctxt)
+
 (** [goto_inbox_level ctxt rollup inbox_level commit] Follows the predecessors of [commit] until it
     arrives at the exact [inbox_level]. The result is the commit hash at the given inbox level. *)
 let goto_inbox_level ctxt rollup inbox_level commit =

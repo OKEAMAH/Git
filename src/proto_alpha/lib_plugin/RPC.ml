@@ -1831,6 +1831,41 @@ module Sc_rollup = struct
         ~query:RPC_query.empty
         ~output:(Data_encoding.list Sc_rollup.Address.encoding)
         path
+
+    let ongoing_refutation_game =
+      let query =
+        let open RPC_query in
+        query Sc_rollup.Staker.of_b58check_exn
+        |+ field "staker" RPC_arg.string "" (fun x ->
+               Format.asprintf "%a" Sc_rollup.Staker.pp x)
+        |> seal
+      in
+      let output =
+        Sc_rollup.(
+          Data_encoding.(option (tup2 Game.encoding Game.Index.encoding)))
+      in
+      RPC_service.get_service
+        ~description:"Ongoing refufation game for a given staker"
+        ~query
+        ~output
+        RPC_path.(path /: Sc_rollup.Address.rpc_arg / "game")
+
+    let conflicts =
+      let query =
+        let open RPC_query in
+        query Sc_rollup.Staker.of_b58check_exn
+        |+ field "staker" RPC_arg.string "" (fun x ->
+               Format.asprintf "%a" Sc_rollup.Staker.pp x)
+        |> seal
+      in
+      let output =
+        Sc_rollup.(Data_encoding.list Refutation_storage.conflict_encoding)
+      in
+      RPC_service.get_service
+        ~description:"List of stakers in conflict with the given staker"
+        ~query
+        ~output
+        RPC_path.(path /: Sc_rollup.Address.rpc_arg / "conflicts")
   end
 
   let kind ctxt block sc_rollup_address =
@@ -1890,6 +1925,30 @@ module Sc_rollup = struct
     Registration.register0 ~chunked:true S.root (fun context () () ->
         Sc_rollup.list context)
 
+  let register_ongoing_refutation_game () =
+    Registration.register1
+      ~chunked:false
+      S.ongoing_refutation_game
+      (fun context rollup staker () ->
+        let open Lwt_tzresult_syntax in
+        let* game, _ =
+          Sc_rollup.Refutation_storage.get_ongoing_game_for_staker
+            context
+            rollup
+            staker
+        in
+        return game)
+
+  let register_conflicts () =
+    Registration.register1
+      ~chunked:false
+      S.conflicts
+      (fun context rollup staker () ->
+        Sc_rollup.Refutation_storage.conflicting_stakers_uncarbonated
+          context
+          rollup
+          staker)
+
   let register () =
     register_kind () ;
     register_inbox () ;
@@ -1897,7 +1956,9 @@ module Sc_rollup = struct
     register_boot_sector () ;
     register_last_cemented_commitment_hash_with_level () ;
     register_commitment () ;
-    register_root ()
+    register_root () ;
+    register_ongoing_refutation_game () ;
+    register_conflicts ()
 
   let list ctxt block = RPC_context.make_call0 S.root ctxt block () ()
 
@@ -1915,6 +1976,17 @@ module Sc_rollup = struct
 
   let boot_sector ctxt block sc_rollup_address =
     RPC_context.make_call1 S.boot_sector ctxt block sc_rollup_address () ()
+
+  let ongoing_refutation_game ctxt block sc_rollup_address staker =
+    RPC_context.make_call1
+      S.ongoing_refutation_game
+      ctxt
+      block
+      sc_rollup_address
+      staker
+
+  let conflicts ctxt block sc_rollup_address staker =
+    RPC_context.make_call1 S.conflicts ctxt block sc_rollup_address staker
 end
 
 module Tx_rollup = struct

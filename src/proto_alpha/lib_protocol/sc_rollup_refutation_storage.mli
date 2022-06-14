@@ -33,6 +33,14 @@ type point = {
 
 type conflict_point = point * point
 
+(** [get_ongoing_game_for_staker ctxt rollup staker] returns [Some game] if [staker]
+    is currently playing a refutation game in the [rollup]. *)
+val get_ongoing_game_for_staker :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  Sc_rollup_repr.Staker.t ->
+  (Sc_rollup_game_repr.t option * Raw_context.t) tzresult Lwt.t
+
 (** [game_move ctxt rollup player opponent refutation is_opening_move]
     handles the storage-side logic for when one of the players makes a
     move in the game. It initializes the game if [is_opening_move] is
@@ -61,7 +69,7 @@ type conflict_point = point * point
       {li [Sc_rollup_wrong_turn] if a player is trying to move out of
          turn}
     }
-    
+
     The [is_opening_move] argument is included here to make sure that an
     operation intended to start a refutation game is never mistaken for
     an operation to play the second move of the game---this may

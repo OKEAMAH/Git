@@ -815,9 +815,11 @@ val sc_rollup_recover_bond :
   fee_parameter:Injection.fee_parameter ->
   sc_rollup:Sc_rollup.t ->
   unit ->
-  Operation_hash.t
+  (Operation_hash.t
   * Kind.sc_rollup_recover_bond Kind.manager contents
-  * Kind.sc_rollup_recover_bond Kind.manager Apply_results.contents_result
+  * Kind.sc_rollup_recover_bond Kind.manager Apply_results.contents_result)
+  tzresult
+  Lwt.t
 
 val sc_rollup_refute :
   #Protocol_client_context.full ->
@@ -833,7 +835,7 @@ val sc_rollup_refute :
   ?counter:counter ->
   source:public_key_hash ->
   rollup:Alpha_context.Sc_rollup.t ->
-  refutation:Alpha_context.Sc_rollup.Game.refutation ->
+  refutation:Alpha_context.Sc_rollup.Game.refutation option ->
   opponent:Alpha_context.Sc_rollup.Staker.t ->
   src_pk:public_key ->
   src_sk:Client_keys.sk_uri ->
