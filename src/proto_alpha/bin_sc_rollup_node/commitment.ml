@@ -230,7 +230,9 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
 
   let update_ticks_and_messages store block_hash =
     let open Lwt_result_syntax in
-    let*! {num_messages; num_ticks} = Store.StateInfo.get store block_hash in
+    let*! {num_messages; num_ticks; initial_tick = _} =
+      Store.StateInfo.get store block_hash
+    in
     let () = Number_of_messages.add num_messages in
     return @@ Number_of_ticks.add num_ticks
 
