@@ -521,6 +521,12 @@ let pp_transaction_result ppf = function
       pp_balance_updates ppf balance_updates ;
       Format.fprintf ppf "@,Ticket hash: %a" Ticket_hash.pp ticket_hash ;
       pp_paid_storage_size_diff ppf paid_storage_size_diff
+  | Transaction_to_event_result {address; data} ->
+      let pp ppf (data, address) =
+        Format.fprintf ppf "@,Data:@ %a" Michelson_v1_printer.print_expr data ;
+        Format.fprintf ppf "@,Address:@ %a" Contract_event.pp address
+      in
+      Format.fprintf ppf "@,@[<v 2>Event:@ %a@]" pp (data, address)
 
 let pp_operation_result ~operation_name pp_operation_result ppf = function
   | Skipped _ -> Format.fprintf ppf "This operation was skipped."

@@ -224,3 +224,13 @@ val print_unreachables :
   parsed:Michelson_v1_parser.parsed ->
   Michelson_v1_primitives.prim list list tzresult ->
   unit tzresult Lwt.t
+
+(** A service implementation to compute the event address
+    for a given event tag and a Michelson event type definition *)
+val get_event_address :
+  #Protocol_client_context.rpc_context ->
+  chain:Chain_services.chain ->
+  block:Block_services.block ->
+  tag:Alpha_context.Entrypoint.t ->
+  ty:Alpha_context.Script.expr ->
+  Alpha_context.Contract_event.address tzresult Lwt.t

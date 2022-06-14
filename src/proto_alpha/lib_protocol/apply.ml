@@ -1189,6 +1189,11 @@ let apply_internal_manager_operation_content :
         ~payer
         ~dst_rollup:destination
         ~since:ctxt_before_op
+  | Transaction_to_event {addr = address; unparsed_data = data; _} ->
+      return
+        ( ctxt,
+          ITransaction_result (Transaction_to_event_result {address; data}),
+          [] )
   | Origination
       {
         delegate;
@@ -2074,18 +2079,7 @@ let burn_transaction_storage_fees ctxt trr ~storage_limit ~payer =
       return
         ( ctxt,
           storage_limit,
-          Transaction_to_contract_result
-            {
-              storage = payload.storage;
-              lazy_storage_diff = payload.lazy_storage_diff;
-              balance_updates;
-              originated_contracts = payload.originated_contracts;
-              consumed_gas = payload.consumed_gas;
-              storage_size = payload.storage_size;
-              paid_storage_size_diff = payload.paid_storage_size_diff;
-              allocated_destination_contract =
-                payload.allocated_destination_contract;
-            } )
+          Transaction_to_contract_result {payload with balance_updates} )
   | Transaction_to_tx_rollup_result payload ->
       let consumed = payload.paid_storage_size_diff in
       Fees.burn_storage_fees ctxt ~storage_limit ~payer consumed
@@ -2095,6 +2089,8 @@ let burn_transaction_storage_fees ctxt trr ~storage_limit ~payer =
         ( ctxt,
           storage_limit,
           Transaction_to_tx_rollup_result {payload with balance_updates} )
+  | Transaction_to_event_result payload ->
+      return (ctxt, storage_limit, Transaction_to_event_result payload)
 
 let burn_origination_storage_fees ctxt
     {

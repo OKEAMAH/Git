@@ -102,6 +102,15 @@ let contents_of_internal_operation (type kind)
             entrypoint = Tx_rollup.deposit_entrypoint;
             parameters = Script.lazy_expr unparsed_parameters;
           }
+    | Transaction_to_event {addr; tag; unparsed_data; _} ->
+        let parameters = Script.lazy_expr unparsed_data in
+        Transaction
+          {
+            destination = Event addr;
+            amount = Tez.zero;
+            entrypoint = tag;
+            parameters;
+          }
     | Origination {delegate; code; unparsed_storage; credit; _} ->
         let script =
           {
@@ -137,6 +146,10 @@ type successful_transaction_result =
       balance_updates : Receipt.balance_updates;
       consumed_gas : Gas.Arith.fp;
       paid_storage_size_diff : Z.t;
+    }
+  | Transaction_to_event_result of {
+      address : Contract_event.address;
+      data : Script.expr;
     }
 
 type successful_origination_result = {
@@ -535,6 +548,16 @@ module Manager_result = struct
                 ticket_hash;
                 paid_storage_size_diff;
               });
+        case
+          ~title:"To_event"
+          (Tag 2)
+          (obj2
+             (req "address" Contract_event.Hash.encoding)
+             (req "data" Script.expr_encoding))
+          (function
+            | Transaction_to_event_result {address; data} -> Some (address, data)
+            | _ -> None)
+          (fun (address, data) -> Transaction_to_event_result {address; data});
       ]
 
   let[@coq_axiom_with_reason "gadt"] transaction_case =
