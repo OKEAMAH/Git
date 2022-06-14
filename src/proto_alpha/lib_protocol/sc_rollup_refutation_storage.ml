@@ -47,9 +47,10 @@ let timeout_level ctxt =
 
 let get_ongoing_game ctxt rollup staker1 staker2 =
   let open Lwt_tzresult_syntax in
-  let stakers = Sc_rollup_game_repr.Index.normalize (staker1, staker2) in
+  let stakers = Sc_rollup_game_repr.Index.make staker1 staker2 in
   let* ctxt, game = Store.Game.find (ctxt, rollup) stakers in
-  return (game, ctxt)
+  let answer = Option.map (fun game -> (game, stakers)) game in
+  return (answer, ctxt)
 
 let get_ongoing_game_for_staker ctxt rollup staker =
   let open Lwt_tzresult_syntax in
@@ -269,9 +270,9 @@ let game_move ctxt rollup ~player ~opponent refutation =
   match move_result with
   | Either.Left outcome -> return (Some outcome, ctxt)
   | Either.Right new_game ->
-      let* ctxt, _ = Store.Game.update (ctxt, rollup) stakers new_game in
+      let* ctxt, _ = Store.Game.update (ctxt, rollup) idx new_game in
       let* ctxt, _ =
-        Store.Game_timeout.update (ctxt, rollup) stakers (timeout_level ctxt)
+        Store.Game_timeout.update (ctxt, rollup) idx (timeout_level ctxt)
       in
       return (None, ctxt)
 

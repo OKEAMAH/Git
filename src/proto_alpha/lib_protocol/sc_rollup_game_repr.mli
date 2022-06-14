@@ -170,6 +170,8 @@ type t = {
 (** Return the other player *)
 val opponent : player -> player
 
+val player_equal : player -> player -> bool
+
 val encoding : t Data_encoding.t
 
 val pp_dissection :
@@ -236,9 +238,9 @@ val initial :
 
 (** A [step] in the game is either a new dissection (if there are
     intermediate ticks remaining to put in it) or a proof. *)
-type step =
-  | Dissection of (State_hash.t option * Sc_rollup_tick_repr.t) list
-  | Proof of Sc_rollup_proof_repr.t
+type step = Dissection of dissection | Proof of Sc_rollup_proof_repr.t
+
+and dissection = (State_hash.t option * Sc_rollup_tick_repr.t) list
 
 (** A [refutation] is a move in the game. [choice] is the final tick
     in the current dissection at which the two players agree. *)
