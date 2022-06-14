@@ -38,7 +38,7 @@ open Script_typed_ir
 open Script_ir_translator
 open Local_gas_counter
 
-type error += Tx_rollup_invalid_transaction_amount
+type error += Tx_rollup_invalid_transaction_amount | Event_invalid_destination
 
 let () =
   register_error_kind
@@ -55,7 +55,22 @@ let () =
         "Transaction amount to a transaction rollup must be zero.")
     Data_encoding.unit
     (function Tx_rollup_invalid_transaction_amount -> Some () | _ -> None)
-    (fun () -> Tx_rollup_invalid_transaction_amount)
+    (fun () -> Tx_rollup_invalid_transaction_amount) ;
+  register_error_kind
+    `Permanent
+    ~id:"operation.event_invalid_destination"
+    ~title:"Event sinks are invalid transaction destination"
+    ~description:
+      "Event sinks are not real transction destination, and therefore \
+       operations targeting a event sink are invalid. To emit events, use EMIT \
+       instead."
+    ~pp:(fun ppf () ->
+      Format.pp_print_string
+        ppf
+        "Event sinks are invalid transaction destination.")
+    Data_encoding.unit
+    (function Event_invalid_destination -> Some () | _ -> None)
+    (fun () -> Event_invalid_destination)
 
 (*
 
@@ -353,6 +368,7 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
   | IOpen_chest _ ->
       let _chest_key = accu and chest, (time, _) = stack in
       Interp_costs.open_chest ~chest ~time:(Script_int.to_zint time)
+  | IEmit _ -> Interp_costs.emit
   | ILog _ -> Gas.free
  [@@ocaml.inline always]
  [@@coq_axiom_with_reason "unreachable expression `.` not handled"]
@@ -582,6 +598,36 @@ let make_transaction_to_tx_rollup (type t tc) ctxt ~destination ~amount
          refactoring away to reach it. *)
       assert false
 
+(** [emit_event] generates an internal operation that will effect an event emission
+    if the contract code returns this successfully. *)
+let emit_event (type t tc) (ctxt, sc) gas ~event_address ~location
+    ~(event_type : (t, tc) ty) ~tag ~(event_data : t) =
+  let ctxt = update_context gas ctxt in
+  collect_lazy_storage ctxt event_type event_data
+  >>?= fun (to_duplicate, ctxt) ->
+  let to_update = no_lazy_storage_id in
+  extract_lazy_storage_diff
+    ctxt
+    Optimized
+    event_type
+    event_data
+    ~to_duplicate
+    ~to_update
+    ~temporary:true
+  >>=? fun (event_data, lazy_storage_diff, ctxt) ->
+  unparse_data ctxt Optimized event_type event_data
+  >>=? fun (unparsed_data, ctxt) ->
+  Gas.consume ctxt (Script.strip_locations_cost unparsed_data) >>?= fun ctxt ->
+  fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
+  let unparsed_data = Micheline.strip_locations unparsed_data in
+  let operation =
+    Transaction_to_event {addr = event_address; location; tag; unparsed_data}
+  in
+  let iop = {source = Contract.Originated sc.self; operation; nonce} in
+  let res = {piop = Internal_operation iop; lazy_storage_diff} in
+  let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
+  return (res, ctxt, gas)
+
 (* [transfer (ctxt, sc) gas tez parameters_ty parameters destination entrypoint]
    creates an operation that transfers an amount of [tez] to a destination and
    an entrypoint instantiated with argument [parameters] of type
@@ -622,7 +668,8 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters
   | Sc_rollup _ ->
       (* TODO #2801
          Implement transfers to sc rollups. *)
-      failwith "Transferring to smart-contract rollups is not yet supported")
+      failwith "Transferring to smart-contract rollups is not yet supported"
+  | Event _ -> fail Event_invalid_destination)
   >>=? fun (operation, ctxt) ->
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let iop = {source = Contract.Originated sc.self; operation; nonce} in

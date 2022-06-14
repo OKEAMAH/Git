@@ -191,6 +191,7 @@ val parse_comparable_data :
   Script.node ->
   ('a * context) tzresult Lwt.t
 
+(* Parsing a Micheline node data into an IR-typed data. *)
 val parse_data :
   ?type_logger:type_logger ->
   context ->
@@ -200,6 +201,7 @@ val parse_data :
   Script.node ->
   ('a * context) tzresult Lwt.t
 
+(* Unparsing an IR-typed data back into a Micheline node data *)
 val unparse_data :
   context ->
   unparsing_mode ->
@@ -424,6 +426,15 @@ val hash_data :
   ('a, _) Script_typed_ir.ty ->
   'a ->
   (Script_expr_hash.t * context) tzresult Lwt.t
+
+(** [hash_event_ty ctxt tag ty_node] generates a contract event address
+    from a event [tag] and the original Michelson type as specified by
+    the original node [ty_node] while accounting for the necessary gas *)
+val hash_event_ty :
+  context ->
+  Entrypoint.t ->
+  Script.expr ->
+  (Contract_event.address * context) tzresult
 
 type lazy_storage_ids
 

@@ -1038,7 +1038,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack
           in
           match c with
-          | Contract (Implicit _) | Tx_rollup _ | Sc_rollup _ ->
+          | Contract (Implicit _) | Tx_rollup _ | Sc_rollup _ | Event _ ->
               (return_none [@ocaml.tailcall]) ctxt
           | Contract (Originated contract_hash as c) -> (
               Contract.get_script ctxt contract_hash
@@ -1497,7 +1497,19 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                 | Bogus_cipher -> R false
                 | Bogus_opening -> R true)
           in
-          (step [@ocaml.tailcall]) g gas k ks accu stack)
+          (step [@ocaml.tailcall]) g gas k ks accu stack
+      | IEmit {tag; ty = event_type; k; addr = event_address; kinfo} ->
+          let event_data = accu in
+          emit_event
+            (ctxt, sc)
+            gas
+            ~event_address
+            ~location:kinfo.iloc
+            ~event_type
+            ~tag
+            ~event_data
+          >>=? fun (accu, ctxt, gas) ->
+          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks accu stack)
 
 (*
 
