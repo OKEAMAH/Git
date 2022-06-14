@@ -2485,6 +2485,8 @@ module Sc_rollup : sig
 
     val next : t -> t
 
+    val jump : t -> Z.t -> t
+
     val distance : t -> t -> Z.t
 
     val of_int : int -> t option
