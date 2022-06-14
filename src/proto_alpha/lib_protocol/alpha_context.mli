@@ -2195,6 +2195,19 @@ module Bond_id : sig
   end
 end
 
+(** Contract_event exposes fields for event data access. See [Contract_event_repr]. *)
+module Contract_event : sig
+  module Hash : module type of Contract_event_repr.Hash
+
+  type t = Hash.t
+
+  val in_memory_size : t -> Cache_memory_helpers.sint
+
+  val to_b58check : t -> string
+
+  val pp : Format.formatter -> t -> unit
+end
+
 module Receipt : sig
   type balance =
     | Contract of Contract.t
@@ -3066,6 +3079,7 @@ module Destination : sig
     | Contract of Contract.t
     | Tx_rollup of Tx_rollup.t
     | Sc_rollup of Sc_rollup.t
+    | Event of Contract_event.t
 
   val encoding : t Data_encoding.t
 

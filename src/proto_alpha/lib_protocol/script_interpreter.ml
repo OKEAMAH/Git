@@ -1038,7 +1038,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack
           in
           match c with
-          | Contract (Implicit _) | Tx_rollup _ | Sc_rollup _ ->
+          | Contract (Implicit _) | Tx_rollup _ | Sc_rollup _ | Event _ ->
               (return_none [@ocaml.tailcall]) ctxt
           | Contract (Originated contract_hash as c) -> (
               Contract.get_script ctxt contract_hash

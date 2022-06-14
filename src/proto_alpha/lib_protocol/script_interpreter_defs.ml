@@ -38,7 +38,7 @@ open Script_typed_ir
 open Script_ir_translator
 open Local_gas_counter
 
-type error += Tx_rollup_invalid_transaction_amount
+type error += Tx_rollup_invalid_transaction_amount | Event_invalid_destination
 
 let () =
   register_error_kind
@@ -55,7 +55,22 @@ let () =
         "Transaction amount to a transaction rollup must be zero.")
     Data_encoding.unit
     (function Tx_rollup_invalid_transaction_amount -> Some () | _ -> None)
-    (fun () -> Tx_rollup_invalid_transaction_amount)
+    (fun () -> Tx_rollup_invalid_transaction_amount) ;
+  register_error_kind
+    `Permanent
+    ~id:"operation.event_invalid_destination"
+    ~title:"Event sinks are invalid transaction destination"
+    ~description:
+      "Event sinks are not real transaction destinations, and therefore \
+       operations targeting a event sink are invalid. To emit events, use EMIT \
+       instead."
+    ~pp:(fun ppf () ->
+      Format.pp_print_string
+        ppf
+        "Event sinks are invalid transaction destination.")
+    Data_encoding.unit
+    (function Event_invalid_destination -> Some () | _ -> None)
+    (fun () -> Event_invalid_destination)
 
 (*
 
@@ -622,7 +637,8 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters
   | Sc_rollup _ ->
       (* TODO #2801
          Implement transfers to sc rollups. *)
-      failwith "Transferring to smart-contract rollups is not yet supported")
+      failwith "Transferring to smart-contract rollups is not yet supported"
+  | Event _ -> fail Event_invalid_destination)
   >>=? fun (operation, ctxt) ->
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let iop = {source = Contract.Originated sc.self; operation; nonce} in
