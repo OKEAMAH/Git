@@ -41,7 +41,7 @@ type 'accu operation_processor = {
     'accu ->
     source:public_key_hash ->
     'kind internal_manager_operation ->
-    'kind Apply_results.successful_manager_operation_result ->
+    'kind Apply_results.successful_internal_manager_operation_result ->
     'accu;
 }
 
