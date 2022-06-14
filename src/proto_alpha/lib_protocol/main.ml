@@ -132,12 +132,10 @@ type validation_state = {
   ctxt : Alpha_context.t;
   op_count : int;
   migration_balance_updates : Alpha_context.Receipt.balance_updates;
-  liquidity_baking_escape_ema : Int32.t;
+  liquidity_baking_toggle_ema : Alpha_context.Liquidity_baking.Toggle_EMA.t;
   implicit_operations_results :
     Apply_results.packed_successful_manager_operation_result list;
 }
-
-let cache_layout = Apply.cache_layout
 
 let begin_partial_application ~chain_id ~ancestor_context:ctxt
     ~predecessor_timestamp ~(predecessor_fitness : Fitness.t)
@@ -167,7 +165,7 @@ let begin_partial_application ~chain_id ~ancestor_context:ctxt
              payload_producer_pk,
              block_producer,
              liquidity_baking_operations_results,
-             liquidity_baking_escape_ema ) ->
+             liquidity_baking_toggle_ema ) ->
   let mode =
     Partial_application
       {
@@ -186,7 +184,7 @@ let begin_partial_application ~chain_id ~ancestor_context:ctxt
       ctxt;
       op_count = 0;
       migration_balance_updates;
-      liquidity_baking_escape_ema;
+      liquidity_baking_toggle_ema;
       implicit_operations_results =
         Apply_results.pack_migration_operation_results
           migration_operation_results
@@ -223,7 +221,7 @@ let begin_application ~chain_id ~predecessor_context:ctxt ~predecessor_timestamp
              payload_producer,
              block_producer,
              liquidity_baking_operations_results,
-             liquidity_baking_escape_ema ) ->
+             liquidity_baking_toggle_ema ) ->
   let mode =
     Application
       {
@@ -242,7 +240,7 @@ let begin_application ~chain_id ~predecessor_context:ctxt ~predecessor_timestamp
       ctxt;
       op_count = 0;
       migration_balance_updates;
-      liquidity_baking_escape_ema;
+      liquidity_baking_toggle_ema;
       implicit_operations_results =
         Apply_results.pack_migration_operation_results
           migration_operation_results
@@ -264,11 +262,11 @@ let begin_construction ~chain_id ~predecessor_context:ctxt
   | None ->
       Alpha_context.Fitness.round_from_raw predecessor_fitness
       >>?= fun predecessor_round ->
-      let escape_vote = false in
-      Apply.begin_partial_construction ctxt ~predecessor_level ~escape_vote
+      let toggle_vote = Alpha_context.Liquidity_baking.LB_pass in
+      Apply.begin_partial_construction ctxt ~predecessor_level ~toggle_vote
       >>=? fun ( ctxt,
                  liquidity_baking_operations_results,
-                 liquidity_baking_escape_ema ) ->
+                 liquidity_baking_toggle_ema ) ->
       let mode =
         Partial_construction
           {
@@ -282,7 +280,7 @@ let begin_construction ~chain_id ~predecessor_context:ctxt
         ( mode,
           ctxt,
           liquidity_baking_operations_results,
-          liquidity_baking_escape_ema )
+          liquidity_baking_toggle_ema )
   | Some proto_header ->
       Alpha_context.Fitness.round_from_raw predecessor_fitness
       >>?= fun predecessor_round ->
@@ -308,7 +306,7 @@ let begin_construction ~chain_id ~predecessor_context:ctxt
                  payload_producer;
                  block_producer;
                  round;
-                 liquidity_baking_escape_ema;
+                 liquidity_baking_toggle_ema;
                  implicit_operations_results =
                    liquidity_baking_operations_results;
                } ->
@@ -329,18 +327,18 @@ let begin_construction ~chain_id ~predecessor_context:ctxt
         ( mode,
           ctxt,
           liquidity_baking_operations_results,
-          liquidity_baking_escape_ema ))
+          liquidity_baking_toggle_ema ))
   >|=? fun ( mode,
              ctxt,
              liquidity_baking_operations_results,
-             liquidity_baking_escape_ema ) ->
+             liquidity_baking_toggle_ema ) ->
   {
     mode;
     chain_id;
     ctxt;
     op_count = 0;
     migration_balance_updates;
-    liquidity_baking_escape_ema;
+    liquidity_baking_toggle_ema;
     implicit_operations_results =
       Apply_results.pack_migration_operation_results migration_operation_results
       @ liquidity_baking_operations_results;
@@ -500,7 +498,7 @@ let cache_nonce_from_block_header shell contents =
   Block_hash.to_bytes (hash x)
 
 let finalize_block_application ctxt round ~cache_nonce finalize_application_mode
-    protocol_data payload_producer block_producer liquidity_baking_escape_ema
+    protocol_data payload_producer block_producer liquidity_baking_toggle_ema
     implicit_operations_results predecessor migration_balance_updates op_count =
   Apply.finalize_application
     ctxt
@@ -508,7 +506,7 @@ let finalize_block_application ctxt round ~cache_nonce finalize_application_mode
     protocol_data
     ~payload_producer
     ~block_producer
-    liquidity_baking_escape_ema
+    liquidity_baking_toggle_ema
     implicit_operations_results
     ~round
     ~predecessor
@@ -560,7 +558,7 @@ let finalize_block
       ctxt;
       op_count;
       migration_balance_updates;
-      liquidity_baking_escape_ema;
+      liquidity_baking_toggle_ema;
       implicit_operations_results;
       _;
     } shell_header =
@@ -583,8 +581,9 @@ let finalize_block
               consumed_gas = Alpha_context.Gas.Arith.zero;
               deactivated = [];
               balance_updates = migration_balance_updates;
-              liquidity_baking_escape_ema;
+              liquidity_baking_toggle_ema;
               implicit_operations_results;
+              dal_slot_availability = None;
             } )
   | Partial_application {fitness; block_producer; _} ->
       (* For partial application we do not completely check the block validity.
@@ -600,8 +599,8 @@ let finalize_block
        Apply.check_minimum_endorsements
          ~endorsing_power:included_endorsements
          ~minimum
-      else return_unit)
-      >>=? fun () ->
+      else Result.return_unit)
+      >>?= fun () ->
       Alpha_context.Voting_period.get_rpc_current_info ctxt
       >|=? fun voting_period_info ->
       let level_info = Alpha_context.Level.current ctxt in
@@ -622,8 +621,9 @@ let finalize_block
             consumed_gas = Alpha_context.Gas.Arith.zero;
             deactivated = [];
             balance_updates = migration_balance_updates;
-            liquidity_baking_escape_ema;
+            liquidity_baking_toggle_ema;
             implicit_operations_results;
+            dal_slot_availability = None;
           } )
   | Application
       {
@@ -643,7 +643,7 @@ let finalize_block
         protocol_data
         payload_producer
         block_producer
-        liquidity_baking_escape_ema
+        liquidity_baking_toggle_ema
         implicit_operations_results
         shell.predecessor
         migration_balance_updates
@@ -675,7 +675,7 @@ let finalize_block
         protocol_data_contents
         payload_producer
         block_producer
-        liquidity_baking_escape_ema
+        liquidity_baking_toggle_ema
         implicit_operations_results
         predecessor
         migration_balance_updates
@@ -686,55 +686,54 @@ let relative_position_within_block op1 op2 =
   let (Operation_data op1) = op1.protocol_data in
   let (Operation_data op2) = op2.protocol_data in
   match[@coq_match_with_default] (op1.contents, op2.contents) with
-  | (Single (Preendorsement _), Single (Preendorsement _)) -> 0
-  | (Single (Preendorsement _), _) -> -1
-  | (_, Single (Preendorsement _)) -> 1
-  | (Single (Endorsement _), Single (Endorsement _)) -> 0
-  | (Single (Endorsement _), _) -> -1
-  | (_, Single (Endorsement _)) -> 1
-  | (Single (Seed_nonce_revelation _), Single (Seed_nonce_revelation _)) -> 0
-  | (_, Single (Seed_nonce_revelation _)) -> 1
-  | (Single (Seed_nonce_revelation _), _) -> -1
+  | Single (Preendorsement _), Single (Preendorsement _) -> 0
+  | Single (Preendorsement _), _ -> -1
+  | _, Single (Preendorsement _) -> 1
+  | Single (Endorsement _), Single (Endorsement _) -> 0
+  | Single (Endorsement _), _ -> -1
+  | _, Single (Endorsement _) -> 1
+  | Single (Dal_slot_availability _), Single (Dal_slot_availability _) -> 0
+  | Single (Dal_slot_availability _), _ -> -1
+  | _, Single (Dal_slot_availability _) -> 1
+  | Single (Seed_nonce_revelation _), Single (Seed_nonce_revelation _) -> 0
+  | _, Single (Seed_nonce_revelation _) -> 1
+  | Single (Seed_nonce_revelation _), _ -> -1
   | ( Single (Double_preendorsement_evidence _),
       Single (Double_preendorsement_evidence _) ) ->
       0
-  | (_, Single (Double_preendorsement_evidence _)) -> 1
-  | (Single (Double_preendorsement_evidence _), _) -> -1
+  | _, Single (Double_preendorsement_evidence _) -> 1
+  | Single (Double_preendorsement_evidence _), _ -> -1
   | ( Single (Double_endorsement_evidence _),
       Single (Double_endorsement_evidence _) ) ->
       0
-  | (_, Single (Double_endorsement_evidence _)) -> 1
-  | (Single (Double_endorsement_evidence _), _) -> -1
-  | (Single (Double_baking_evidence _), Single (Double_baking_evidence _)) -> 0
-  | (_, Single (Double_baking_evidence _)) -> 1
-  | (Single (Double_baking_evidence _), _) -> -1
-  | (Single (Activate_account _), Single (Activate_account _)) -> 0
-  | (_, Single (Activate_account _)) -> 1
-  | (Single (Activate_account _), _) -> -1
-  | (Single (Proposals _), Single (Proposals _)) -> 0
-  | (_, Single (Proposals _)) -> 1
-  | (Single (Proposals _), _) -> -1
-  | (Single (Ballot _), Single (Ballot _)) -> 0
-  | (_, Single (Ballot _)) -> 1
-  | (Single (Ballot _), _) -> -1
-  | (Single (Failing_noop _), Single (Failing_noop _)) -> 0
-  | (_, Single (Failing_noop _)) -> 1
-  | (Single (Failing_noop _), _) -> -1
+  | _, Single (Double_endorsement_evidence _) -> 1
+  | Single (Double_endorsement_evidence _), _ -> -1
+  | Single (Double_baking_evidence _), Single (Double_baking_evidence _) -> 0
+  | _, Single (Double_baking_evidence _) -> 1
+  | Single (Double_baking_evidence _), _ -> -1
+  | Single (Activate_account _), Single (Activate_account _) -> 0
+  | _, Single (Activate_account _) -> 1
+  | Single (Activate_account _), _ -> -1
+  | Single (Proposals _), Single (Proposals _) -> 0
+  | _, Single (Proposals _) -> 1
+  | Single (Proposals _), _ -> -1
+  | Single (Ballot _), Single (Ballot _) -> 0
+  | _, Single (Ballot _) -> 1
+  | Single (Ballot _), _ -> -1
+  | Single (Failing_noop _), Single (Failing_noop _) -> 0
+  | _, Single (Failing_noop _) -> 1
+  | Single (Failing_noop _), _ -> -1
   (* Manager operations with smaller counter are pre-validated first. *)
-  | (Single (Manager_operation op1), Single (Manager_operation op2)) ->
+  | Single (Manager_operation op1), Single (Manager_operation op2) ->
       Z.compare op1.counter op2.counter
-  | (Cons (Manager_operation op1, _), Single (Manager_operation op2)) ->
+  | Cons (Manager_operation op1, _), Single (Manager_operation op2) ->
       Z.compare op1.counter op2.counter
-  | (Single (Manager_operation op1), Cons (Manager_operation op2, _)) ->
+  | Single (Manager_operation op1), Cons (Manager_operation op2, _) ->
       Z.compare op1.counter op2.counter
-  | (Cons (Manager_operation op1, _), Cons (Manager_operation op2, _)) ->
+  | Cons (Manager_operation op1, _), Cons (Manager_operation op2, _) ->
       Z.compare op1.counter op2.counter
 
-let init_cache ctxt =
-  Context.Cache.set_cache_layout ctxt cache_layout >>= fun ctxt ->
-  Lwt.return (Context.Cache.clear ctxt)
-
-let init ctxt block_header =
+let init chain_id ctxt block_header =
   let level = block_header.Block_header.level in
   let timestamp = block_header.timestamp in
   let typecheck (ctxt : Alpha_context.context) (script : Alpha_context.Script.t)
@@ -748,7 +747,7 @@ let init ctxt block_header =
       ~legacy:true
       ~allow_forged_in_storage
       script
-    >>=? fun (Ex_script parsed_script, ctxt) ->
+    >>=? fun (Ex_script (Script parsed_script), ctxt) ->
     Script_ir_translator.extract_lazy_storage_diff
       ctxt
       Optimized
@@ -779,8 +778,7 @@ let init ctxt block_header =
       ~round:Alpha_context.Round.zero
       ~predecessor_round:Alpha_context.Round.zero
   in
-  init_cache ctxt >>= fun ctxt ->
-  Alpha_context.prepare_first_block ~typecheck ~level ~timestamp ctxt
+  Alpha_context.prepare_first_block chain_id ~typecheck ~level ~timestamp ctxt
   >>=? fun ctxt ->
   let cache_nonce =
     cache_nonce_from_block_header
@@ -788,7 +786,7 @@ let init ctxt block_header =
       {
         payload_hash = Block_payload_hash.zero;
         payload_round = Alpha_context.Round.zero;
-        liquidity_baking_escape_vote = false;
+        liquidity_baking_toggle_vote = Alpha_context.Liquidity_baking.LB_pass;
         seed_nonce_hash = None;
         proof_of_work_nonce =
           Bytes.make Constants_repr.proof_of_work_nonce_size '0';

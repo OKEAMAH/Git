@@ -32,6 +32,7 @@ type error +=
       provided_hash : Signature.Public_key_hash.t;
     }
   | (* `Branch *) Previously_revealed_key of Contract_repr.t
+  | (* `Branch *) Missing_manager_contract of Contract_repr.t
 
 let () =
   register_error_kind
@@ -89,37 +90,70 @@ let () =
         s)
     Data_encoding.(obj1 (req "contract" Contract_repr.encoding))
     (function Previously_revealed_key s -> Some s | _ -> None)
-    (fun s -> Previously_revealed_key s)
+    (fun s -> Previously_revealed_key s) ;
+  register_error_kind
+    `Branch
+    ~id:"contract.missing_manager_contract"
+    ~title:"Missing manager contract"
+    ~description:"The manager contract is missing from the storage"
+    ~pp:(fun ppf s ->
+      Format.fprintf
+        ppf
+        "The contract %a is missing from the storage."
+        Contract_repr.pp
+        s)
+    Data_encoding.(obj1 (req "contract" Contract_repr.encoding))
+    (function Missing_manager_contract s -> Some s | _ -> None)
+    (fun s -> Missing_manager_contract s)
 
 let init = Storage.Contract.Manager.init
 
 let is_manager_key_revealed c manager =
-  let contract = Contract_repr.implicit_contract manager in
+  let contract = Contract_repr.Implicit manager in
   Storage.Contract.Manager.find c contract >>=? function
   | None -> return_false
   | Some (Manager_repr.Hash _) -> return_false
   | Some (Manager_repr.Public_key _) -> return_true
 
-let reveal_manager_key c manager public_key =
-  let contract = Contract_repr.implicit_contract manager in
+let check_public_key public_key expected_hash =
+  let provided_hash = Signature.Public_key.hash public_key in
+  error_unless
+    (Signature.Public_key_hash.equal provided_hash expected_hash)
+    (Inconsistent_hash {public_key; expected_hash; provided_hash})
+
+let reveal_manager_key ?(check_consistency = true) c manager public_key =
+  let contract = Contract_repr.Implicit manager in
   Storage.Contract.Manager.get c contract >>=? function
   | Public_key _ -> fail (Previously_revealed_key contract)
-  | Hash v ->
-      let actual_hash = Signature.Public_key.hash public_key in
-      if Signature.Public_key_hash.equal actual_hash v then
-        let v = Manager_repr.Public_key public_key in
-        Storage.Contract.Manager.update c contract v
-      else
-        fail
-          (Inconsistent_hash
-             {public_key; expected_hash = v; provided_hash = actual_hash})
+  | Hash expected_hash ->
+      (* Ensure that the manager is equal to the retrieved hash. *)
+      error_unless
+        (Signature.Public_key_hash.equal manager expected_hash)
+        (Inconsistent_hash {public_key; expected_hash; provided_hash = manager})
+      >>?= fun () ->
+      (* TODO tezos/tezos#3078
+
+         We keep the consistency check and the optional argument to
+         preserve the semantics of reveal_manager_key prior to
+         tezos/tezos!5182, when called outside the scope of
+         [apply_operation].
+
+         Inside appply.ml, it is used with
+         ?check_consistency=false. Ultimately this parameter should go
+         away, and the split check_publick_key / reveal_manager_key
+         pattern has to be exported to usage outside apply.ml *)
+      when_ check_consistency (fun () ->
+          Lwt.return @@ check_public_key public_key expected_hash)
+      >>=? fun () ->
+      let pk = Manager_repr.Public_key public_key in
+      Storage.Contract.Manager.update c contract pk
 
 let get_manager_key ?error ctxt pkh =
-  let contract = Contract_repr.implicit_contract pkh in
+  let contract = Contract_repr.Implicit pkh in
   Storage.Contract.Manager.find ctxt contract >>=? function
   | None -> (
       match error with
-      | None -> failwith "get_manager_key"
+      | None -> fail (Missing_manager_contract contract)
       | Some error -> fail error)
   | Some (Manager_repr.Hash _) -> (
       match error with

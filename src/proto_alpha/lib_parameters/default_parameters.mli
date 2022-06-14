@@ -26,23 +26,26 @@
 
 open Protocol.Alpha_context
 
-val constants_mainnet : Constants.parametric
+val constants_mainnet : Constants.Parametric.t
 
-val constants_sandbox : Constants.parametric
+val constants_sandbox : Constants.Parametric.t
 
-val constants_test : Constants.parametric
+val constants_test : Constants.Parametric.t
 
 val test_commitments : Commitment.t list lazy_t
 
 val make_bootstrap_account :
-  Signature.public_key_hash * Signature.public_key * Tez.t ->
+  Signature.public_key_hash
+  * Signature.public_key
+  * Tez.t
+  * Signature.public_key_hash option ->
   Parameters.bootstrap_account
 
 val parameters_of_constants :
   ?bootstrap_accounts:Parameters.bootstrap_account list ->
   ?bootstrap_contracts:Parameters.bootstrap_contract list ->
   ?commitments:Commitment.t list ->
-  Constants.parametric ->
+  Constants.Parametric.t ->
   Parameters.t
 
 val json_of_parameters : Parameters.t -> Data_encoding.json

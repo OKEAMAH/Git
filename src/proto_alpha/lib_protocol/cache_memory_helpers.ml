@@ -23,6 +23,20 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module type SNodes = sig
+  type t = private int
+
+  val zero : t
+
+  val one : t [@@ocaml.warning "-32"]
+
+  val succ : t -> t
+
+  val add : t -> t -> t
+
+  val to_int : t -> int
+end
+
 (** The [Nodes] module is used to count the number of computation steps
     performed when evaluating the size of the in-memory graph corresponding
     to an OCaml value.
@@ -40,19 +54,7 @@
     are bounded above by the number of nodes traversed when computing
     an OCaml value.
  *)
-module Nodes : sig
-  type t = private int
-
-  val zero : t
-
-  val one : t [@@ocaml.warning "-32"]
-
-  val succ : t -> t
-
-  val add : t -> t -> t
-
-  val to_int : t -> int
-end = struct
+module Nodes : SNodes = struct
   type t = int
 
   let zero = 0
@@ -90,6 +92,8 @@ let word_size = !!8
 
 let header_size = word_size
 
+let int32_size = header_size +! word_size
+
 let int64_size = header_size +! (word_size *? 2)
 
 let h1w = header_size +! word_size
@@ -110,6 +114,12 @@ let hh8w = (word_size *? 8) +! (header_size *? 2)
 
 let z_size z =
   let numbits = Z.numbits z in
+  (*
+      Z does not seem to have a canonical representation of numbers.
+      Hence, even though we observed that 24 works in many cases we
+      sometimes meet numbers with a larger size, hence we use 32 instead
+      of 24 in the following formula.
+  *)
   if Compare.Int.(numbits <= 62) then !!0 else (word_size *? Z.size z) +? 32
 
 let string_size_gen len = header_size +? (len + (8 - (len mod 8)))
@@ -132,8 +142,7 @@ let option_size_vec some x =
   let some x = ret_adding (some x) h1w in
   Option.fold ~none:zero ~some x
 
-let list_cell_size elt_size =
-  header_size +! word_size +! word_size +! elt_size
+let list_cell_size elt_size = header_size +! word_size +! word_size +! elt_size
   [@@ocaml.inline always]
 
 let list_fold_size elt_size list =
@@ -142,8 +151,7 @@ let list_fold_size elt_size list =
     zero
     list
 
-let boxed_tup2 x y =
-  header_size +! word_size +! word_size +! x +! y
+let boxed_tup2 x y = header_size +! word_size +! word_size +! x +! y
   [@@ocaml.inline always]
 
 let node_size =

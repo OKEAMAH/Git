@@ -30,8 +30,8 @@ type contents = {
   payload_round : Round_repr.t;
   seed_nonce_hash : Nonce_hash.t option;
   proof_of_work_nonce : bytes;
-  liquidity_baking_escape_vote : bool;
-      (* set by baker to vote in favor of permanently disabling liquidity baking *)
+  liquidity_baking_toggle_vote :
+    Liquidity_baking_repr.liquidity_baking_toggle_vote;
 }
 
 type protocol_data = {contents : contents; signature : Signature.t}
@@ -71,32 +71,7 @@ val hash : block_header -> Block_hash.t
 
 val hash_raw : raw -> Block_hash.t
 
-type error +=
-  | (* Permanent *)
-      Invalid_block_signature of
-      Block_hash.t * Signature.Public_key_hash.t
-  | (* Permanent *) Invalid_stamp
-  | (* Permanent *)
-      Invalid_payload_hash of {
-      expected : Block_payload_hash.t;
-      provided : Block_payload_hash.t;
-    }
-  | (* Permanent *)
-      Locked_round_after_block_round of {
-      locked_round : Round_repr.t;
-      round : Round_repr.t;
-    }
-  | (* Permanent *)
-      Invalid_payload_round of {
-      payload_round : Round_repr.t;
-      round : Round_repr.t;
-    }
-  | (* Permanent *)
-      Insufficient_locked_round_evidence of {
-      voting_power : int;
-      consensus_threshold : int;
-    }
-  | (* Permanent *) Invalid_commitment of {expected : bool}
+type error += (* Permanent *) Invalid_stamp
 
 (** Checks if the header that would be built from the given components
    is valid for the given difficulty. The signature is not passed as

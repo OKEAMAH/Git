@@ -2,7 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
-(* Copyright (c) 2019-2020 Nomadic Labs <contact@nomadic-labs.com>           *)
+(* Copyright (c) 2019-2022 Nomadic Labs <contact@nomadic-labs.com>           *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,6 +24,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** This module defines RPC services to access the information associated to
+    contracts (balance, delegate, script, etc.).
+*)
+
 open Alpha_context
 
 val list : 'a #RPC_context.simple -> 'a -> Contract.t list shell_tzresult Lwt.t
@@ -38,9 +42,19 @@ type info = {
 val info_encoding : info Data_encoding.t
 
 val info :
-  'a #RPC_context.simple -> 'a -> Contract.t -> info shell_tzresult Lwt.t
+  'a #RPC_context.simple ->
+  'a ->
+  Contract.t ->
+  normalize_types:bool ->
+  info shell_tzresult Lwt.t
 
 val balance :
+  'a #RPC_context.simple -> 'a -> Contract.t -> Tez.t shell_tzresult Lwt.t
+
+val frozen_bonds :
+  'a #RPC_context.simple -> 'a -> Contract.t -> Tez.t shell_tzresult Lwt.t
+
+val balance_and_frozen_bonds :
   'a #RPC_context.simple -> 'a -> Contract.t -> Tez.t shell_tzresult Lwt.t
 
 val manager_key :
@@ -68,28 +82,36 @@ val counter :
   counter shell_tzresult Lwt.t
 
 val script :
-  'a #RPC_context.simple -> 'a -> Contract.t -> Script.t shell_tzresult Lwt.t
+  'a #RPC_context.simple ->
+  'a ->
+  Contract_hash.t ->
+  Script.t shell_tzresult Lwt.t
 
 val script_opt :
   'a #RPC_context.simple ->
   'a ->
-  Contract.t ->
+  Contract_hash.t ->
   Script.t option shell_tzresult Lwt.t
 
 val storage :
-  'a #RPC_context.simple -> 'a -> Contract.t -> Script.expr shell_tzresult Lwt.t
+  'a #RPC_context.simple ->
+  'a ->
+  Contract_hash.t ->
+  Script.expr shell_tzresult Lwt.t
 
 val entrypoint_type :
   'a #RPC_context.simple ->
   'a ->
-  Contract.t ->
-  string ->
+  Contract_hash.t ->
+  Entrypoint.t ->
+  normalize_types:bool ->
   Script.expr shell_tzresult Lwt.t
 
 val list_entrypoints :
   'a #RPC_context.simple ->
   'a ->
-  Contract.t ->
+  Contract_hash.t ->
+  normalize_types:bool ->
   (Michelson_v1_primitives.prim list list * (string * Script.expr) list)
   shell_tzresult
   Lwt.t
@@ -97,7 +119,7 @@ val list_entrypoints :
 val storage_opt :
   'a #RPC_context.simple ->
   'a ->
-  Contract.t ->
+  Contract_hash.t ->
   Script.expr option shell_tzresult Lwt.t
 
 val big_map_get :
@@ -110,14 +132,14 @@ val big_map_get :
 val contract_big_map_get_opt :
   'a #RPC_context.simple ->
   'a ->
-  Contract.t ->
+  Contract_hash.t ->
   Script.expr * Script.expr ->
   Script.expr option shell_tzresult Lwt.t
 
 val single_sapling_get_diff :
   'a #RPC_context.simple ->
   'a ->
-  Contract.t ->
+  Contract_hash.t ->
   ?offset_commitment:int64 ->
   ?offset_nullifier:int64 ->
   unit ->

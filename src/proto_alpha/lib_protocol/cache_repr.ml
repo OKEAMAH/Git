@@ -130,6 +130,48 @@ let value_of_key_handlers : partial_key_handler NamespaceMap.t ref =
 module Admin = struct
   include Raw_context.Cache
 
+  let future_cache_expectation ?blocks_before_activation ctxt ~time_in_blocks =
+    let time_in_blocks' = Int32.of_int time_in_blocks in
+    let blocks_per_voting_period =
+      Int32.(
+        mul
+          (Constants_storage.cycles_per_voting_period ctxt)
+          (Constants_storage.blocks_per_cycle ctxt))
+    in
+    (match blocks_before_activation with
+    | None -> Voting_period_storage.blocks_before_activation ctxt
+    | Some block -> return_some block)
+    >>=? function
+    | Some block
+      when Compare.Int32.(
+             (Compare.Int32.(block >= 0l) && block <= time_in_blocks')
+             || blocks_per_voting_period < time_in_blocks') ->
+        (*
+
+            At each protocol activation, the cache is clear.
+
+            For this reason, if the future block considered for the
+            prediction is after the activation, the predicted cache
+            is set to empty. That way, the predicted gas consumption
+            is guaranteed to be an overapproximation of the actual
+            gas consumption.
+
+            This function implicitly assumes that [time_in_blocks]
+            is less than [blocks_per_voting_period]. (The default
+            value in the simulate_operation RPC is set to 3, and
+            therefore satisfies this condition.) As a defensive
+            protection, we clear the cache if this assumption is
+            not satisfied with user-provided values. Notice that
+            high user-provided values for [time_in_blocks] do not
+            make much sense as the cache prediction only works for
+            blocks in the short-term future.
+
+        *)
+        return @@ Raw_context.Cache.clear ctxt
+    | _ ->
+        return
+        @@ Raw_context.Cache.future_cache_expectation ctxt ~time_in_blocks
+
   let list_keys context ~cache_index =
     Raw_context.Cache.list_keys context ~cache_index
 
@@ -184,7 +226,7 @@ let register_exn (type cvalue)
     (module INTERFACE with type cached_value = cvalue) =
   if
     Compare.Int.(C.cache_index < 0)
-    || Compare.List_length_with.(Constants_repr.cache_layout <= C.cache_index)
+    || Compare.Int.(Constants_repr.cache_layout_size <= C.cache_index)
   then invalid_arg "Cache index is invalid" ;
   let mk = make_key ~cache_index:C.cache_index ~namespace:C.namespace in
   (module struct
@@ -204,7 +246,7 @@ let register_exn (type cvalue)
       @@ Admin.cache_size ctxt ~cache_index:C.cache_index
 
     let size_limit ctxt =
-      Option.value ~default:max_int
+      Option.value ~default:0
       @@ Admin.cache_size_limit ctxt ~cache_index:C.cache_index
 
     let update ctxt id v =

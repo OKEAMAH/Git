@@ -107,6 +107,7 @@ type prim =
   | I_NONE
   | I_NOT
   | I_NOW
+  | I_MIN_BLOCK_TIME
   | I_OR
   | I_PAIR
   | I_UNPAIR
@@ -172,7 +173,9 @@ type prim =
   | T_unit
   | T_operation
   | T_address
+  | T_tx_rollup_l2_address
   | T_sapling_transaction
+  | T_sapling_transaction_deprecated
   | T_sapling_state
   | T_chain_id
   | T_never
@@ -207,20 +210,20 @@ let namespace = function
   | I_IF_LEFT | I_IF_NONE | I_IMPLICIT_ACCOUNT | I_INT | I_ISNAT | I_ITER
   | I_JOIN_TICKETS | I_KECCAK | I_LAMBDA | I_LE | I_LEFT | I_LEVEL | I_LOOP
   | I_LOOP_LEFT | I_LSL | I_LSR | I_LT | I_MAP | I_MEM | I_MUL | I_NEG | I_NEQ
-  | I_NEVER | I_NIL | I_NONE | I_NOT | I_NOW | I_OR | I_PACK | I_PAIR
-  | I_PAIRING_CHECK | I_PUSH | I_READ_TICKET | I_RENAME | I_RIGHT
+  | I_NEVER | I_NIL | I_NONE | I_NOT | I_NOW | I_MIN_BLOCK_TIME | I_OR | I_PACK
+  | I_PAIR | I_PAIRING_CHECK | I_PUSH | I_READ_TICKET | I_RENAME | I_RIGHT
   | I_SAPLING_EMPTY_STATE | I_SAPLING_VERIFY_UPDATE | I_SELF | I_SELF_ADDRESS
   | I_SENDER | I_SET_DELEGATE | I_SHA256 | I_SHA512 | I_SHA3 | I_SIZE | I_SLICE
   | I_SOME | I_SOURCE | I_SPLIT_TICKET | I_STEPS_TO_QUOTA | I_SUB | I_SUB_MUTEZ
   | I_SWAP | I_TICKET | I_TOTAL_VOTING_POWER | I_TRANSFER_TOKENS | I_UNIT
   | I_UNPACK | I_UNPAIR | I_UPDATE | I_VOTING_POWER | I_XOR | I_OPEN_CHEST ->
       Instr_namespace
-  | T_address | T_big_map | T_bool | T_bytes | T_chain_id | T_contract | T_int
-  | T_key | T_key_hash | T_lambda | T_list | T_map | T_mutez | T_nat | T_never
-  | T_operation | T_option | T_or | T_pair | T_sapling_state
-  | T_sapling_transaction | T_set | T_signature | T_string | T_timestamp
-  | T_unit | T_bls12_381_fr | T_bls12_381_g1 | T_bls12_381_g2 | T_ticket
-  | T_chest_key | T_chest ->
+  | T_address | T_tx_rollup_l2_address | T_big_map | T_bool | T_bytes
+  | T_chain_id | T_contract | T_int | T_key | T_key_hash | T_lambda | T_list
+  | T_map | T_mutez | T_nat | T_never | T_operation | T_option | T_or | T_pair
+  | T_sapling_state | T_sapling_transaction | T_sapling_transaction_deprecated
+  | T_set | T_signature | T_string | T_timestamp | T_unit | T_bls12_381_fr
+  | T_bls12_381_g1 | T_bls12_381_g2 | T_ticket | T_chest_key | T_chest ->
       Type_namespace
   | H_constant -> Constant_hash_namespace
 
@@ -310,6 +313,7 @@ let string_of_prim = function
   | I_NONE -> "NONE"
   | I_NOT -> "NOT"
   | I_NOW -> "NOW"
+  | I_MIN_BLOCK_TIME -> "MIN_BLOCK_TIME"
   | I_OR -> "OR"
   | I_PAIR -> "PAIR"
   | I_PUSH -> "PUSH"
@@ -376,8 +380,10 @@ let string_of_prim = function
   | T_unit -> "unit"
   | T_operation -> "operation"
   | T_address -> "address"
+  | T_tx_rollup_l2_address -> "tx_rollup_l2_address"
   | T_sapling_state -> "sapling_state"
   | T_sapling_transaction -> "sapling_transaction"
+  | T_sapling_transaction_deprecated -> "sapling_transaction_deprecated"
   | T_chain_id -> "chain_id"
   | T_never -> "never"
   | T_bls12_381_g1 -> "bls12_381_g1"
@@ -462,6 +468,7 @@ let prim_of_string = function
   | "NONE" -> ok I_NONE
   | "NOT" -> ok I_NOT
   | "NOW" -> ok I_NOW
+  | "MIN_BLOCK_TIME" -> ok I_MIN_BLOCK_TIME
   | "OR" -> ok I_OR
   | "PAIR" -> ok I_PAIR
   | "UNPAIR" -> ok I_UNPAIR
@@ -526,8 +533,10 @@ let prim_of_string = function
   | "unit" -> ok T_unit
   | "operation" -> ok T_operation
   | "address" -> ok T_address
+  | "tx_rollup_l2_address" -> ok T_tx_rollup_l2_address
   | "sapling_state" -> ok T_sapling_state
   | "sapling_transaction" -> ok T_sapling_transaction
+  | "sapling_transaction_deprecated" -> ok T_sapling_transaction_deprecated
   | "chain_id" -> ok T_chain_id
   | "never" -> ok T_never
   | "bls12_381_g1" -> ok T_bls12_381_g1
@@ -727,7 +736,7 @@ let prim_encoding =
          ("bls12_381_g2", T_bls12_381_g2);
          ("bls12_381_fr", T_bls12_381_fr);
          ("sapling_state", T_sapling_state);
-         ("sapling_transaction", T_sapling_transaction);
+         ("sapling_transaction_deprecated", T_sapling_transaction_deprecated);
          ("SAPLING_EMPTY_STATE", I_SAPLING_EMPTY_STATE);
          ("SAPLING_VERIFY_UPDATE", I_SAPLING_VERIFY_UPDATE);
          ("ticket", T_ticket);
@@ -748,8 +757,12 @@ let prim_encoding =
          ("constant", H_constant);
          (* Alpha_012 addition *)
          ("SUB_MUTEZ", I_SUB_MUTEZ);
+         (* Alpha_013 addition *)
+         ("tx_rollup_l2_address", T_tx_rollup_l2_address);
+         ("MIN_BLOCK_TIME", I_MIN_BLOCK_TIME);
+         ("sapling_transaction", T_sapling_transaction)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
-         (* Keep the comment above at the end of the list *)
+         (* Keep the comment above at the end of the list *);
        ]
 
 let () =
