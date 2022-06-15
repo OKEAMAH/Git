@@ -178,7 +178,15 @@ let burn_cap_arg =
          | None -> failwith "Bad burn cap"))
 
 let loser_mode =
-  Clic.switch ~long:"loser" ~doc:"Set the loser mode (for tests only!)." ()
+  Clic.default_arg
+    ~long:"loser-mode"
+    ~placeholder:"mode"
+    ~default:""
+    ~doc:"Set the rollup node failure points (for test only!)."
+    (Clic.parameter (fun _ s ->
+         match Loser_mode.make s with
+         | Some t -> return t
+         | None -> failwith "Invalid syntax for failure points"))
 
 let group =
   {

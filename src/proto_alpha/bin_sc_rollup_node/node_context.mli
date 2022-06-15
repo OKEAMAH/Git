@@ -42,6 +42,9 @@ type t = {
   kind : Sc_rollup.Kind.t;  (** Kind of the smart contract rollup. *)
   fee_parameter : Injection.fee_parameter;
       (** Fee parameter to use when injecting operations in layer 1. *)
+  loser_mode : Loser_mode.t;
+      (** If [true], the rollup node issues wrong commitments (for
+          tests). *)
 }
 
 (** [get_operator_keys cctxt] returns a triple [(pkh, pk, sk)] corresponding
@@ -62,4 +65,5 @@ val init :
   Sc_rollup.t ->
   Signature.Public_key_hash.t ->
   Injection.fee_parameter ->
+  loser_mode:Loser_mode.t ->
   t tzresult Lwt.t

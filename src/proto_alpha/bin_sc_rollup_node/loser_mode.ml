@@ -1,8 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
-(* Copyright (c) 2022 Trili Tech, <contact@trili.tech>                       *)
+(* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,33 +23,52 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = {
-  data_dir : string;
-  sc_rollup_address : Protocol.Alpha_context.Sc_rollup.t;
-  sc_rollup_node_operator : Signature.Public_key_hash.t;
-  rpc_addr : string;
-  rpc_port : int;
-  fee_parameter : Injection.fee_parameter;
-  loser_mode : Loser_mode.t;
-}
+type failure = {level : int; message_index : int; message_tick : int}
 
-(** [default_data_dir] is the default value for [data_dir]. *)
-val default_data_dir : string
+let failure_encoding =
+  let open Data_encoding in
+  conv
+    (fun {level; message_index; message_tick} ->
+      (level, message_index, message_tick))
+    (fun (level, message_index, message_tick) ->
+      {level; message_index; message_tick})
+    (obj3
+       (req "level" int31)
+       (req "message_index" int31)
+       (req "message_tick" int31))
 
-(** [default_rpc_addr] is the default value for [rpc_addr]. *)
-val default_rpc_addr : string
+let compare_failure f1 f2 =
+  let open Compare.Int in
+  match compare f1.level f2.level with
+  | 0 -> (
+      match compare f1.message_index f2.message_index with
+      | 0 -> compare f1.message_tick f2.message_tick
+      | n -> n)
+  | n -> n
 
-(** [default_rpc_port] is the default value for [rpc_port]. *)
-val default_rpc_port : int
+type t = failure list
 
-(** [default_fee_parameter] is the default value for [fee_parameter] *)
-val default_fee_parameter : Injection.fee_parameter
+let encoding = Data_encoding.list failure_encoding
 
-(** [filename configuration] returns the [configuration] filename. *)
-val filename : t -> string
+let no_failures = []
 
-(** [save configuration] overwrites [configuration] file. *)
-val save : t -> unit tzresult Lwt.t
+let make s =
+  let tokens = String.split_on_char ' ' s in
+  let rec chop = function
+    | [] | [""] -> []
+    | level :: message_index :: message_tick :: rest ->
+        {
+          level = int_of_string level;
+          message_index = int_of_string message_index;
+          message_tick = int_of_string message_tick;
+        }
+        :: chop rest
+    | _ -> raise Not_found
+  in
+  try Some (chop tokens |> List.sort compare_failure) with _ -> None
 
-(** [load ~data_dir] loads a configuration stored in [data_dir]. *)
-val load : data_dir:string -> t tzresult Lwt.t
+let is_failure failures ~level ~message_index =
+  List.filter
+    (fun f -> Compare.Int.(f.level = level && f.message_index = message_index))
+    failures
+  |> List.map (fun f -> f.message_tick)

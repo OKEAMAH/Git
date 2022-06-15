@@ -34,6 +34,7 @@ type t = {
   block_finality_time : int;
   kind : Sc_rollup.Kind.t;
   fee_parameter : Injection.fee_parameter;
+  loser_mode : Loser_mode.t;
 }
 
 let get_operator_keys node_ctxt =
@@ -42,7 +43,7 @@ let get_operator_keys node_ctxt =
   (node_ctxt.operator, pk, sk)
 
 let init (cctxt : Protocol_client_context.full) rollup_address operator
-    fee_parameter =
+    fee_parameter ~loser_mode =
   let open Lwt_result_syntax in
   let* initial_level =
     Plugin.RPC.Sc_rollup.initial_level
@@ -61,4 +62,5 @@ let init (cctxt : Protocol_client_context.full) rollup_address operator
     kind;
     block_finality_time = 2;
     fee_parameter;
+    loser_mode;
   }

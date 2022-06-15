@@ -33,7 +33,7 @@ type t = {
   rpc_addr : string;
   rpc_port : int;
   fee_parameter : Injection.fee_parameter;
-  loser_mode : bool;
+  loser_mode : Loser_mode.t;
 }
 
 let default_data_dir =
@@ -200,10 +200,21 @@ let encoding : t Data_encoding.t =
           ~description:
             "If enabled, the rollup node will issue wrong commitments (for \
              test only!)"
-          Data_encoding.bool
-          false))
+          Loser_mode.encoding
+          Loser_mode.no_failures))
+
+let loser_warning_message config =
+  if config.loser_mode <> Loser_mode.no_failures then
+    Format.printf
+      {|
+************ WARNING *************
+This rollup node is in loser mode.
+This should be used for test only!
+************ WARNING *************
+|}
 
 let save config =
+  loser_warning_message config ;
   let open Lwt_syntax in
   let json = Data_encoding.Json.construct encoding config in
   let* () = Lwt_utils_unix.create_dir config.data_dir in
@@ -212,4 +223,6 @@ let save config =
 let load ~data_dir =
   let open Lwt_result_syntax in
   let+ json = Lwt_utils_unix.Json.read_file (relative_filename data_dir) in
-  Data_encoding.Json.destruct encoding json
+  let config = Data_encoding.Json.destruct encoding json in
+  loser_warning_message config ;
+  config
