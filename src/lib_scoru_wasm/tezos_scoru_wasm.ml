@@ -55,18 +55,18 @@ type info = {
 }
 
 module Make (T : TreeS) : sig
-  (** [step] forwards the VM by one compute tick.
+  (** [compute_step] forwards the VM by one compute tick.
 
-      If the VM is not expecting input it gets stuck.
+      If the VM is expecting input, it gets stuck.
 
-      If the VM is stuck, this function may raise an exception. *)
+      If the VM is already stuck, this function may raise an exception. *)
   val compute_step : T.tree -> T.tree Lwt.t
 
-  (** [step] forwards the VM by one input tick .
+  (** [set_input_step] forwards the VM by one input tick.
 
-      If the VM is expecting input it gets stuck.
+      If the VM is not expecting input, it gets stuck.
 
-      If the VM is stuck, this function may raise an exception. *)
+      If the VM is already stuck, this function may raise an exception. *)
   val set_input_step : input -> string -> T.tree -> T.tree Lwt.t
 
   (** [get_output output state] returns the payload associated with the given output.
