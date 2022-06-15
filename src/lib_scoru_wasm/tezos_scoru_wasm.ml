@@ -101,6 +101,6 @@ end = struct
       {
         current_tick = Z.of_int 0;
         last_input_read = None;
-        input_request = Input_required;
+        input_request = No_input_required;
       }
 end
