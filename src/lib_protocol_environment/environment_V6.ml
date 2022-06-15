@@ -1138,7 +1138,7 @@ struct
       let get_output {outbox_level; message_index} (tree : Tree.tree) =
         Wasm.get_output {outbox_level; message_index} tree
 
-      let f : Tezos_scoru_wasm.input -> input = function
+      let convert_input : Tezos_scoru_wasm.input -> input = function
         | {inbox_level; message_counter} -> {inbox_level; message_counter}
 
       let get_info (tree : Tree.tree) =
@@ -1149,7 +1149,7 @@ struct
             Lwt.return
               {
                 current_tick;
-                last_input_read = Option.map f last_input_read;
+                last_input_read = Option.map convert_input last_input_read;
                 input_request =
                   (match input_request with
                   | No_input_required -> No_input_required
