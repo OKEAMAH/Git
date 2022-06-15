@@ -562,10 +562,10 @@ and kinstr_size :
     | ILog (_, _, _, _) ->
         (* This instruction is ignored because it is only used for testing. *)
         accu
-    | IEmit {kinfo; tag; ty; _} ->
+    | IEmit {kinfo; tag; ty; addr = _; k = _} ->
         ret_succ_adding
           (accu ++ ty_size ty)
-          (base kinfo +! Entrypoint.in_memory_size tag +! (word_size *? 2))
+          (base kinfo +! Entrypoint.in_memory_size tag +! (word_size *? 3))
   in
   kinstr_traverse t accu {apply}
 

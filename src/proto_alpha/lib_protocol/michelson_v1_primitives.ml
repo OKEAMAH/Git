@@ -765,6 +765,8 @@ let prim_encoding =
          ("tx_rollup_l2_address", T_tx_rollup_l2_address);
          ("MIN_BLOCK_TIME", I_MIN_BLOCK_TIME);
          ("sapling_transaction", T_sapling_transaction);
+         (* /!\ NEW INSTRUCTIONS MUST BE ADDED AT THE END OF THE STRING_ENUM, FOR BACKWARD COMPATIBILITY OF THE ENCODING. *)
+         (* Alpha_014 addition *)
          ("EMIT", I_EMIT)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *);

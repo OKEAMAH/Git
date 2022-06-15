@@ -1529,7 +1529,6 @@ and 'kind manager_operation =
       addr : Contract_event.address;
       tag : Entrypoint.t;
       unparsed_data : Script.expr;
-      location : Script.location;
     }
       -> Kind.transaction manager_operation
   | Origination : {

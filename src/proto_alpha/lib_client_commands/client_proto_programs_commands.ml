@@ -1065,7 +1065,9 @@ let commands () =
           ~tag
           ~ty:ty.expanded
         >>=? fun addr ->
-        cctxt#message "@[<v 2>Event address: @,%s@]@."
-        @@ Format.asprintf "%a" Contract_event_repr.pp addr
+        cctxt#message
+          "@[<v 2>Event address: @,%a@]@."
+          Contract_event_repr.pp
+          addr
         >|= ok);
   ]

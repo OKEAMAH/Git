@@ -1412,10 +1412,7 @@ val contract_storage :
 (** Get contract code for a contract. Returns a Micheline expression
     representing the code as a string. *)
 val contract_code :
-  ?unparsing_mode:[`Optimized | `Optimized_legacy | `Readable] ->
-  string ->
-  t ->
-  string Lwt.t
+  ?unparsing_mode:normalize_mode -> string -> t -> string Lwt.t
 
 (** Sign a string of bytes with secret key of the given account. *)
 val sign_bytes : signer:string -> data:string -> t -> string Lwt.t

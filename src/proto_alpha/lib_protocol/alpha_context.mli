@@ -2202,24 +2202,11 @@ module Contract_event : sig
 
   type address = Hash.t
 
-  type t = {addr : address; data : Script.expr}
-
-  val encoding : t Data_encoding.t
-
   val in_memory_size : address -> Cache_memory_helpers.sint
 
   val to_b58check : address -> string
 
   val pp : Format.formatter -> address -> unit
-
-  val of_b58data : Base58.data -> address option
-
-  val of_b58check : string -> (address, error trace) result
-
-  val of_b58check_opt : string -> address option
-
-  val ty_encoding :
-    Michelson_v1_primitives.prim Micheline.canonical Data_encoding.t
 end
 
 module Receipt : sig

@@ -50,24 +50,6 @@ end
 
 type address = Hash.t
 
-(* Canonical contract event log entry *)
-type t = {addr : address; data : Script_repr.expr}
-
-let ty_encoding =
-  Micheline.canonical_encoding
-    ~variant:"michelson_v1"
-    Michelson_v1_primitives.prim_encoding
-
-(* Serialization scheme for an event log entry in Micheline format *)
-let encoding =
-  let open Data_encoding in
-  let encoding =
-    obj2 (req "address" Hash.encoding) (req "data" Script_repr.expr_encoding)
-  in
-  let into (addr, data) = {data; addr} in
-  let from {data; addr} = (addr, data) in
-  conv from into encoding
-
 let of_b58data = function Hash.Data hash -> Some hash | _ -> None
 
 let pp = Hash.pp
@@ -77,10 +59,10 @@ let of_b58check_opt s = Option.bind (Base58.decode s) of_b58data
 let of_b58check s =
   match of_b58check_opt s with
   | Some hash -> ok hash
-  | _ -> error (Invalid_event_notation s)
+  | None -> error (Invalid_event_notation s)
 
 let to_b58check hash = Hash.to_b58check hash
 
 let in_memory_size _ =
   let open Cache_memory_helpers in
-  header_size +! word_size +! string_size_gen 32
+  h1w +! string_size_gen Hash.size

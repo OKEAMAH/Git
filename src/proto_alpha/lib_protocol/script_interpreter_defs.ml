@@ -61,7 +61,7 @@ let () =
     ~id:"operation.event_invalid_destination"
     ~title:"Event sinks are invalid transaction destination"
     ~description:
-      "Event sinks are not real transction destination, and therefore \
+      "Event sinks are not real transaction destinations, and therefore \
        operations targeting a event sink are invalid. To emit events, use EMIT \
        instead."
     ~pp:(fun ppf () ->
@@ -600,28 +600,18 @@ let make_transaction_to_tx_rollup (type t tc) ctxt ~destination ~amount
 
 (** [emit_event] generates an internal operation that will effect an event emission
     if the contract code returns this successfully. *)
-let emit_event (type t tc) (ctxt, sc) gas ~event_address ~location
+let emit_event (type t tc) (ctxt, sc) gas ~event_address
     ~(event_type : (t, tc) ty) ~tag ~(event_data : t) =
   let ctxt = update_context gas ctxt in
-  collect_lazy_storage ctxt event_type event_data
-  >>?= fun (to_duplicate, ctxt) ->
-  let to_update = no_lazy_storage_id in
-  extract_lazy_storage_diff
-    ctxt
-    Optimized
-    event_type
-    event_data
-    ~to_duplicate
-    ~to_update
-    ~temporary:true
-  >>=? fun (event_data, lazy_storage_diff, ctxt) ->
+  (* No need to take care of lazy storage as only packable types are allowed *)
+  let lazy_storage_diff = None in
   unparse_data ctxt Optimized event_type event_data
   >>=? fun (unparsed_data, ctxt) ->
   Gas.consume ctxt (Script.strip_locations_cost unparsed_data) >>?= fun ctxt ->
-  fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let unparsed_data = Micheline.strip_locations unparsed_data in
+  fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let operation =
-    Transaction_to_event {addr = event_address; location; tag; unparsed_data}
+    Transaction_to_event {addr = event_address; tag; unparsed_data}
   in
   let iop = {source = Contract.Originated sc.self; operation; nonce} in
   let res = {piop = Internal_operation iop; lazy_storage_diff} in

@@ -31,17 +31,6 @@ end
 
 type address = Hash.t
 
-(** Canonical contract event log entry
-
-  [tag]: the canonical tag of this event
-
-  [data]: the data attachment to this event whose type [event] is declared by emitting contract
-*)
-type t = {addr : address; data : Script_repr.expr}
-
-(** Serialization scheme for an event log entry in Micheline format *)
-val encoding : t Data_encoding.t
-
 (** [in_memory_size event_addr] returns the number of bytes [event_addr]
     uses in RAM. *)
 val in_memory_size : address -> Cache_memory_helpers.sint
@@ -52,18 +41,14 @@ val to_b58check : address -> string
 (** Pretty printer for contract events *)
 val pp : Format.formatter -> address -> unit
 
-(** [of_b58data data] tries to decode an contract event from a Base58 [data] and
+(** [of_b58data data] tries to decode a contract event from a Base58 [data] and
     return [None] if conversion fails *)
 val of_b58data : Base58.data -> address option
 
 (** [of_b58check addr] tries to decode an contract event from a Base58Check string [addr] *)
-val of_b58check : string -> (address, error trace) result
+val of_b58check : string -> address tzresult
 
 (** [of_b58check_opt addr] tries to
     decode an contract event from a Base58Check string [addr]
     and return [None] if conversion fails *)
 val of_b58check_opt : string -> address option
-
-(** Encoding for a Michelson event type *)
-val ty_encoding :
-  Michelson_v1_primitives.prim Micheline.canonical Data_encoding.t

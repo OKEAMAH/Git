@@ -605,7 +605,7 @@ let hash_comparable_data ctxt ty data =
   Lwt.return @@ hash_bytes ctxt bytes
 
 let pack_event_ty unparsed =
-  Data_encoding.Binary.to_bytes_exn Contract_event.ty_encoding unparsed
+  Data_encoding.Binary.to_bytes_exn Script.expr_encoding unparsed
 
 let prefix_header_on_event_ty_bytes tag bytes =
   let buf = Bytes.of_string tag in
@@ -4728,6 +4728,7 @@ and[@coq_axiom_with_reason "gadt"] parse_instr :
       >>?= fun (Ex_ty ty, ctxt) ->
       check_item_ty ctxt ty data loc I_EMIT 1 2 >>?= fun (Eq, ctxt) ->
       parse_entrypoint_annot_strict loc annot >>?= fun tag ->
+      Gas.consume ctxt (Script.strip_locations_cost ty_node) >>?= fun ctxt ->
       let ty_node = strip_locations ty_node in
       hash_event_ty ctxt tag ty_node >>?= fun (addr, ctxt) ->
       let instr =
@@ -4758,7 +4759,7 @@ and[@coq_axiom_with_reason "gadt"] parse_instr :
         ( loc,
           (( I_NONE | I_LEFT | I_RIGHT | I_NIL | I_MAP | I_ITER | I_EMPTY_SET
            | I_LOOP | I_LOOP_LEFT | I_CONTRACT | I_CAST | I_UNPACK
-           | I_CREATE_CONTRACT ) as name),
+           | I_CREATE_CONTRACT | I_EMIT ) as name),
           (([] | _ :: _ :: _) as l),
           _ ),
       _ ) ->

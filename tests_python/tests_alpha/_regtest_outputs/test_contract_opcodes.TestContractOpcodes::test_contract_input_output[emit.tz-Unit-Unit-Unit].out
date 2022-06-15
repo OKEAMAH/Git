@@ -18,56 +18,56 @@ emitted operations
 big_map diff
   
 trace
-  - location: 7 (remaining gas: 1039983.513 units remaining)
+  - location: 7 (remaining gas: 1039983.207 units remaining)
     [ (Pair Unit Unit) ]
-  - location: 7 (remaining gas: 1039983.503 units remaining)
+  - location: 7 (remaining gas: 1039983.197 units remaining)
     [  ]
-  - location: 8 (remaining gas: 1039983.493 units remaining)
+  - location: 8 (remaining gas: 1039983.187 units remaining)
     [ Unit ]
-  - location: 9 (remaining gas: 1039983.483 units remaining)
+  - location: 9 (remaining gas: 1039983.177 units remaining)
     [ 10
       Unit ]
-  - location: 12 (remaining gas: 1039983.473 units remaining)
+  - location: 12 (remaining gas: 1039983.167 units remaining)
     [ (Left 10)
       Unit ]
-  - location: 14 (remaining gas: 1039982.811 units remaining)
+  - location: 14 (remaining gas: 1039982.945 units remaining)
     [ 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a
       Unit ]
-  - location: 18 (remaining gas: 1039982.801 units remaining)
+  - location: 18 (remaining gas: 1039982.935 units remaining)
     [ "lorem ipsum"
       0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a
       Unit ]
-  - location: 21 (remaining gas: 1039982.791 units remaining)
+  - location: 21 (remaining gas: 1039982.925 units remaining)
     [ (Right "lorem ipsum")
       0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a
       Unit ]
-  - location: 23 (remaining gas: 1039982.129 units remaining)
+  - location: 23 (remaining gas: 1039982.703 units remaining)
     [ 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000101000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000120508010000000b6c6f72656d20697073756d
       0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a
       Unit ]
-  - location: 27 (remaining gas: 1039982.119 units remaining)
+  - location: 27 (remaining gas: 1039982.693 units remaining)
     [ {}
       0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000101000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000120508010000000b6c6f72656d20697073756d
       0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a
       Unit ]
-  - location: 29 (remaining gas: 1039982.109 units remaining)
+  - location: 29 (remaining gas: 1039982.683 units remaining)
     [ 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000101000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000120508010000000b6c6f72656d20697073756d
       {}
       0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a
       Unit ]
-  - location: 30 (remaining gas: 1039982.099 units remaining)
+  - location: 30 (remaining gas: 1039982.673 units remaining)
     [ { 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000101000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000120508010000000b6c6f72656d20697073756d }
       0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a
       Unit ]
-  - location: 31 (remaining gas: 1039982.089 units remaining)
+  - location: 31 (remaining gas: 1039982.663 units remaining)
     [ 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a
       { 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000101000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000120508010000000b6c6f72656d20697073756d }
       Unit ]
-  - location: 32 (remaining gas: 1039982.079 units remaining)
+  - location: 32 (remaining gas: 1039982.653 units remaining)
     [ { 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a ;
         0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000101000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000120508010000000b6c6f72656d20697073756d }
       Unit ]
-  - location: 33 (remaining gas: 1039982.069 units remaining)
+  - location: 33 (remaining gas: 1039982.643 units remaining)
     [ (Pair { 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000001000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000040505000a ;
               0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000101000422e284bf7f926deb48fd29f62c48e76bcd05c0658ae110950ef0742a31efbd2700ffff056576656e74000000120508010000000b6c6f72656d20697073756d }
             Unit) ]

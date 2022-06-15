@@ -20,7 +20,7 @@ Rollups supporting execution of smart contracts. (MRs :gl:`!4933`, :gl:`!4812`)
 Contract Event Logging
 ----------------------
 
-Contracts may now emit events thanks to a new EMIT instruction.
+Contracts may now emit events thanks to a new ``EMIT`` instruction.
 
 Event emissions are denoted by internal operations that perform a contract call to a specific class of addresses starting with `ev1`. 
 

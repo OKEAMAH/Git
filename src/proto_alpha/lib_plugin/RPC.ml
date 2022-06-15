@@ -1493,7 +1493,15 @@ module Scripts = struct
                     Micheline.strip_locations original_type_expr )
                   :: acc)
                 map
-                [] ) ))
+                [] ) )) ;
+    Registration.register0
+      ~chunked:false
+      S.get_event_address
+      (fun ctxt () (tag, ty_node) ->
+        let ctxt = Gas.set_unlimited ctxt in
+        let open Script_ir_translator in
+        hash_event_ty ctxt tag ty_node >>?= fun (address, _) ->
+        Lwt.return @@ ok address)
 
   let run_code ?unparsing_mode ?gas ?(entrypoint = Entrypoint.default) ?balance
       ~script ~storage ~input ~amount ~chain_id ~source ~payer ~self ~now ~level
