@@ -484,10 +484,7 @@ let send_messages ?batch_size n sc_rollup_address client =
     messages
 
 let to_text_messages_arg msgs =
-  let text_messages =
-    List.map (fun msg -> Hex.of_string msg |> Hex.show) msgs
-  in
-  let json = Ezjsonm.list Ezjsonm.string text_messages in
+  let json = Ezjsonm.list Ezjsonm.string msgs in
   "text:" ^ Ezjsonm.to_string ~minify:true json
 
 let send_text_messages client sc_rollup_address msgs =
@@ -1913,6 +1910,85 @@ let test_rollup_client_list_keys =
           pp
           maybe_keys)
 
+(* Refutation game scenarios
+   -------------------------
+*)
+let test_refutation_scenario ?commitment_period ?challenge_window variant
+    (loser_mode, inputs, final_level) =
+  test_scenario
+    ?commitment_period
+    ?challenge_window
+    {
+      tags = ["refutation"; "node"];
+      variant;
+      description = "observing the winning strategy of refutation game";
+    }
+  @@ fun _protocol sc_rollup_node sc_rollup_address node client ->
+  let honest = Constant.bootstrap1.public_key_hash
+  and dishonest = Constant.bootstrap2.public_key_hash in
+
+  (* Initialize a dishonest rollup node using the provided loser_mode. *)
+  let sc_rollup_node2 =
+    Sc_rollup_node.create node client ~operator_pkh:dishonest
+  in
+  let* _configuration_filename =
+    Sc_rollup_node.config_init ~loser_mode sc_rollup_node2 sc_rollup_address
+  in
+
+  (*
+     Send messages to the rollup and wait enough time for the conflicting
+     commitments to be published, and refuted.
+  *)
+  let* () = Sc_rollup_node.run sc_rollup_node in
+  let* () = Sc_rollup_node.run sc_rollup_node2 in
+
+  let block inputs =
+    let* () =
+      Lwt_list.iter_s (send_text_messages client sc_rollup_address) inputs
+    in
+    Client.bake_for_and_wait client
+  in
+  let* () = Lwt_list.iter_s block inputs in
+  let* () = bake_levels (final_level - List.length inputs) client in
+
+  (*
+     We verify that the dishonest node has lost its bond while the
+     honest node has its bond untouched.
+  *)
+  let* honest_balances = contract_balances ~pkh:honest client in
+  let* dishonest_balances = contract_balances ~pkh:dishonest client in
+
+  let stake_value = 10_000_000_000 in
+
+  Check.(
+    (honest_balances.frozen = stake_value)
+      int
+      ~error_msg:
+        "Frozen bond of honest player is incorrect, expected value = %R, got %L") ;
+
+  Check.(
+    (dishonest_balances.frozen = 0)
+      int
+      ~error_msg:
+        "Frozen bond of dishonest player is incorrect, expected value = %R, \
+         got %L") ;
+
+  return ()
+
+let rec swap i l =
+  if i <= 0 then l
+  else match l with [_] | [] -> l | x :: y :: l -> y :: swap (i - 1) (x :: l)
+
+let valid_inputs_for_nlevels n =
+  List.init n @@ fun i ->
+  [swap i ["3 3 +"; "1"; "1 1 x"; "3 7 8 + * y"; "2 2 out"]]
+
+let test_refutation protocols =
+  let challenge_window = 50 in
+  [("failure_in_internal_step", ("5 1 3", valid_inputs_for_nlevels 10, 30))]
+  |> List.iter (fun (variant, inputs) ->
+         test_refutation_scenario ~challenge_window variant inputs protocols)
+
 let register ~protocols =
   test_origination protocols ;
   test_rollup_node_configuration protocols ;
@@ -1960,4 +2036,5 @@ let register ~protocols =
   test_rollup_node_uses_boot_sector protocols ;
   test_rollup_client_show_address protocols ;
   test_rollup_client_generate_keys protocols ;
-  test_rollup_client_list_keys protocols
+  test_rollup_client_list_keys protocols ;
+  test_refutation protocols
