@@ -285,7 +285,9 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
       ()
 
   let play_opening_move node_ctxt conflict =
+    let open Lwt_syntax in
     let open Sc_rollup.Refutation_storage in
+    let* () = Refutation_game_event.conflict_detected conflict in
     inject_next_move node_ctxt (None, conflict.other)
 
   let start_game_if_conflict node_ctxt =
