@@ -233,4 +233,4 @@ val get_event_address :
   block:Block_services.block ->
   tag:Alpha_context.Entrypoint.t ->
   ty:Alpha_context.Script.expr ->
-  Alpha_context.Contract_event.address tzresult Lwt.t
+  Alpha_context.Contract_event.t tzresult Lwt.t

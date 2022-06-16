@@ -29,26 +29,26 @@ module Hash : sig
   include S.HASH
 end
 
-type address = Hash.t
+type t = Hash.t
 
 (** [in_memory_size event_addr] returns the number of bytes [event_addr]
     uses in RAM. *)
-val in_memory_size : address -> Cache_memory_helpers.sint
+val in_memory_size : t -> Cache_memory_helpers.sint
 
 (** [to_b58check addr] converts the event address [addr] to the Base58Check string representation *)
-val to_b58check : address -> string
+val to_b58check : t -> string
 
 (** Pretty printer for contract events *)
-val pp : Format.formatter -> address -> unit
+val pp : Format.formatter -> t -> unit
 
 (** [of_b58data data] tries to decode a contract event from a Base58 [data] and
     return [None] if conversion fails *)
-val of_b58data : Base58.data -> address option
+val of_b58data : Base58.data -> t option
 
 (** [of_b58check addr] tries to decode an contract event from a Base58Check string [addr] *)
-val of_b58check : string -> address tzresult
+val of_b58check : string -> t tzresult
 
 (** [of_b58check_opt addr] tries to
     decode an contract event from a Base58Check string [addr]
     and return [None] if conversion fails *)
-val of_b58check_opt : string -> address option
+val of_b58check_opt : string -> t option

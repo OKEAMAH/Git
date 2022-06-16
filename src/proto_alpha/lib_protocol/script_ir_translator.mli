@@ -434,7 +434,7 @@ val hash_event_ty :
   context ->
   Entrypoint.t ->
   Script.expr ->
-  (Contract_event.address * context) tzresult
+  (Contract_event.t * context) tzresult
 
 type lazy_storage_ids
 

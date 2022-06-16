@@ -48,7 +48,7 @@ module Hash = struct
   include Path_encoding.Make_hex (H)
 end
 
-type address = Hash.t
+type t = Hash.t
 
 let of_b58data = function Hash.Data hash -> Some hash | _ -> None
 
