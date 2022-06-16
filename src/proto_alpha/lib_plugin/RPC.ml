@@ -457,14 +457,11 @@ module Scripts = struct
         RPC_path.(path / "entrypoints")
 
     (** [get_event_address] is a RPC service to compute the contract event address
-        for the input tag and Michelson event type definition. *)
+        for an Michelson event type definition. *)
     let get_event_address =
       RPC_service.post_service
         ~description:"Return the event address for the given tag and data type"
-        ~input:
-          (obj2
-             (req "tag" Entrypoint.simple_encoding)
-             (req "type" Script.expr_encoding))
+        ~input:(obj1 (req "type" Script.expr_encoding))
         ~output:(obj1 (req "address" Contract_event.Hash.encoding))
         ~query:RPC_query.empty
         RPC_path.(path / "event_address")
@@ -1497,10 +1494,11 @@ module Scripts = struct
     Registration.register0
       ~chunked:false
       S.get_event_address
-      (fun ctxt () (tag, ty_node) ->
+      (fun ctxt () ty_expr ->
         let ctxt = Gas.set_unlimited ctxt in
         let open Script_ir_translator in
-        hash_event_ty ctxt tag ty_node >>?= fun (address, _) ->
+        let ty_node = Micheline.root ty_expr in
+        hash_event_ty ctxt ty_node >>?= fun (address, _) ->
         Lwt.return @@ ok address)
 
   let run_code ?unparsing_mode ?gas ?(entrypoint = Entrypoint.default) ?balance
@@ -1644,8 +1642,8 @@ module Scripts = struct
     RPC_context.make_call0 S.list_entrypoints ctxt block () script
 
   (** [get_event_address] makes a call to the service to compute an event address *)
-  let get_event_address ~tag ~ty ctxt block =
-    RPC_context.make_call0 S.get_event_address ctxt block () (tag, ty)
+  let get_event_address ~ty ctxt block =
+    RPC_context.make_call0 S.get_event_address ctxt block () ty
 end
 
 module Contract = struct

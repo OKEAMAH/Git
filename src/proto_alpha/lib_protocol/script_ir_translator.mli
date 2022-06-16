@@ -427,14 +427,11 @@ val hash_data :
   'a ->
   (Script_expr_hash.t * context) tzresult Lwt.t
 
-(** [hash_event_ty ctxt tag ty_node] generates a contract event address
-    from a event [tag] and the original Michelson type as specified by
+(** [hash_event_ty ctxt ty_node] generates a contract event address
+    from the original Michelson type as specified by
     the original node [ty_node] while accounting for the necessary gas *)
 val hash_event_ty :
-  context ->
-  Entrypoint.t ->
-  Script.expr ->
-  (Contract_event.t * context) tzresult
+  context -> Script.node -> (Contract_event.t * context) tzresult
 
 type lazy_storage_ids
 

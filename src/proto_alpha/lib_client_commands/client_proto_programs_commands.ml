@@ -1054,15 +1054,13 @@ let commands () =
       ~desc:"Compute the event address associated with a tag and a data type."
       no_options
       (prefixes ["get"; "event"; "address"]
-      @@ param ~name:"tag" ~desc:"the tag of a event" entrypoint_parameter
       @@ param ~name:"type" ~desc:"the type of the event data" data_parameter
       @@ stop)
-      (fun () tag ty cctxt ->
+      (fun () ty cctxt ->
         Client_proto_programs.get_event_address
           cctxt
           ~chain:cctxt#chain
           ~block:cctxt#block
-          ~tag
           ~ty:ty.expanded
         >>=? fun addr ->
         cctxt#message

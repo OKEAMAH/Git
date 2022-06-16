@@ -604,27 +604,10 @@ let hash_comparable_data ctxt ty data =
   pack_comparable_data ctxt ty data >>=? fun (bytes, ctxt) ->
   Lwt.return @@ hash_bytes ctxt bytes
 
-let pack_event_ty unparsed =
-  Data_encoding.Binary.to_bytes_exn Script.expr_encoding unparsed
-
-let prefix_header_on_event_ty_bytes tag bytes =
-  let buf = Bytes.of_string tag in
-  let tag_len = Bytes.length buf in
-  let buf = Bytes.extend buf 0 (1 + Bytes.length bytes) in
-  Bytes.set buf tag_len '\005' ;
-  Bytes.blit bytes 0 buf (1 + tag_len) (Bytes.length bytes) ;
-  buf
-
-let hash_event_ty_bytes bytes = Contract_event.Hash.hash_bytes [bytes]
-
-let hash_event_ty ctxt tag unparsed =
-  let bytes = pack_event_ty unparsed in
-  Gas.consume ctxt (Script.serialized_cost bytes) >>? fun ctxt ->
-  (* append a 0x05 byte before the serialized type data *)
-  let tag = Entrypoint.to_string tag in
-  let bytes = prefix_header_on_event_ty_bytes tag bytes in
+let hash_event_ty ctxt unparsed_ty =
+  pack_node unparsed_ty ctxt >>? fun (bytes, ctxt) ->
   Gas.consume ctxt (Michelson_v1_gas.Cost_of.Interpreter.blake2b bytes)
-  >|? fun ctxt -> (hash_event_ty_bytes bytes, ctxt)
+  >|? fun ctxt -> (Contract_event.Hash.hash_bytes [bytes], ctxt)
 
 (* ---- Tickets ------------------------------------------------------------ *)
 
@@ -4728,9 +4711,7 @@ and[@coq_axiom_with_reason "gadt"] parse_instr :
       >>?= fun (Ex_ty ty, ctxt) ->
       check_item_ty ctxt ty data loc I_EMIT 1 2 >>?= fun (Eq, ctxt) ->
       parse_entrypoint_annot_strict loc annot >>?= fun tag ->
-      Gas.consume ctxt (Script.strip_locations_cost ty_node) >>?= fun ctxt ->
-      let ty_node = strip_locations ty_node in
-      hash_event_ty ctxt tag ty_node >>?= fun (addr, ctxt) ->
+      hash_event_ty ctxt ty_node >>?= fun (addr, ctxt) ->
       let instr =
         {apply = (fun kinfo k -> IEmit {kinfo; tag; ty = data; k; addr})}
       in

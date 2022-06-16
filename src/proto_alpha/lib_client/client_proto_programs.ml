@@ -389,6 +389,5 @@ let print_unreachables (cctxt : #Client_context.printer) ~emacs ?script_name
     ~on_errors:(print_errors cctxt ~show_source ~parsed)
     ty
 
-let get_event_address cctxt ~chain ~block ~tag ~ty =
-  Plugin.RPC.Scripts.get_event_address cctxt (chain, block) ~tag ~ty
-  >>=? fun address -> return address
+let get_event_address cctxt ~chain ~block ~ty =
+  Plugin.RPC.Scripts.get_event_address cctxt (chain, block) ~ty
