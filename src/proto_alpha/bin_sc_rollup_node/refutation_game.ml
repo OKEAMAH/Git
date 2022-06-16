@@ -268,9 +268,12 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     return_unit
 
   let play node_ctxt store (game, players) =
+    let open Lwt_result_syntax in
     match turn node_ctxt game players with
     | Our_turn, opponent -> play_next_move node_ctxt store game opponent
-    | Their_turn, _ -> try_timeout node_ctxt players
+    | Their_turn, _ -> (
+        let*! res = try_timeout node_ctxt players in
+        match res with Ok _ -> return_unit | Error _ -> return_unit)
 
   let ongoing_game node_ctxt =
     let Node_context.{rollup_address; cctxt; operator; _} = node_ctxt in
