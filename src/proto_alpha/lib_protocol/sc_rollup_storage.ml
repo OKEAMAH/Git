@@ -40,6 +40,31 @@ let originate ctxt ~kind ~boot_sector ~parameters_ty =
   >>=? fun (ctxt, param_ty_size_diff, _added) ->
   let inbox = Sc_rollup_inbox_repr.empty address level.level in
   Store.Inbox.init ctxt address inbox >>=? fun (ctxt, inbox_size_diff) ->
+  (* FIXME: #3054
+     This is a temporary code until proper origination commitment is implemented.
+  *)
+  let number_of_messages =
+    match Sc_rollup_repr.Number_of_messages.of_int32 0l with
+    | None -> assert false
+    | Some x -> x
+  in
+  let number_of_ticks =
+    match Sc_rollup_repr.Number_of_ticks.of_int32 0l with
+    | None -> assert false
+    | Some x -> x
+  in
+  let initial_commitment =
+    Sc_rollup_commitment_repr.
+      {
+        compressed_state = Sc_rollup_repr.State_hash.zero;
+        inbox_level = level.level;
+        predecessor = Commitment_hash.zero;
+        number_of_messages;
+        number_of_ticks;
+      }
+  in
+  Store.Commitments.init (ctxt, address) Commitment_hash.zero initial_commitment
+  >>=? fun (ctxt, _size_diff) ->
   Store.Last_cemented_commitment.init ctxt address Commitment_hash.zero
   >>=? fun (ctxt, lcc_size_diff) ->
   Store.Staker_count.init ctxt address 0l >>=? fun (ctxt, stakers_size_diff) ->
