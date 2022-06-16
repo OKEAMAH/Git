@@ -147,10 +147,7 @@ type successful_transaction_result =
       consumed_gas : Gas.Arith.fp;
       paid_storage_size_diff : Z.t;
     }
-  | Transaction_to_event_result of {
-      address : Contract_event.address;
-      data : Script.expr;
-    }
+  | Transaction_to_event_result of {consumed_gas : Gas.Arith.fp}
 
 type successful_origination_result = {
   lazy_storage_diff : Lazy_storage.diffs option;
@@ -551,13 +548,12 @@ module Manager_result = struct
         case
           ~title:"To_event"
           (Tag 2)
-          (obj2
-             (req "address" Contract_event.Hash.encoding)
-             (req "data" Script.expr_encoding))
+          (obj1
+             (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero))
           (function
-            | Transaction_to_event_result {address; data} -> Some (address, data)
+            | Transaction_to_event_result {consumed_gas} -> Some consumed_gas
             | _ -> None)
-          (fun (address, data) -> Transaction_to_event_result {address; data});
+          (fun consumed_gas -> Transaction_to_event_result {consumed_gas});
       ]
 
   let[@coq_axiom_with_reason "gadt"] transaction_case =

@@ -1189,10 +1189,11 @@ let apply_internal_manager_operation_content :
         ~payer
         ~dst_rollup:destination
         ~since:ctxt_before_op
-  | Transaction_to_event {addr = address; unparsed_data = data; _} ->
+  | Transaction_to_event {addr = _; unparsed_data = _; tag = _} ->
       return
         ( ctxt,
-          ITransaction_result (Transaction_to_event_result {address; data}),
+          ITransaction_result
+            (Transaction_to_event_result {consumed_gas = Gas.Arith.zero}),
           [] )
   | Origination
       {
@@ -2100,8 +2101,8 @@ let burn_transaction_storage_fees ctxt trr ~storage_limit ~payer =
         ( ctxt,
           storage_limit,
           Transaction_to_tx_rollup_result {payload with balance_updates} )
-  | Transaction_to_event_result payload ->
-      return (ctxt, storage_limit, Transaction_to_event_result payload)
+  | Transaction_to_event_result {consumed_gas} ->
+      return (ctxt, storage_limit, Transaction_to_event_result {consumed_gas})
 
 let burn_origination_storage_fees ctxt
     {

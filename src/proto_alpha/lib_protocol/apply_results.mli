@@ -181,10 +181,7 @@ and successful_transaction_result =
       consumed_gas : Gas.Arith.fp;
       paid_storage_size_diff : Z.t;
     }
-  | Transaction_to_event_result of {
-      address : Contract_event.address;
-      data : Script.expr;
-    }
+  | Transaction_to_event_result of {consumed_gas : Gas.Arith.fp}
 
 (** Result of applying an origination, either internal or external. *)
 and successful_origination_result = {

@@ -307,10 +307,8 @@ let estimated_gas_single (type kind)
         match res with
         | Transaction_result (Transaction_to_contract_result {consumed_gas; _})
         | Transaction_result (Transaction_to_tx_rollup_result {consumed_gas; _})
-          ->
+        | Transaction_result (Transaction_to_event_result {consumed_gas; _}) ->
             Ok consumed_gas
-        | Transaction_result (Transaction_to_event_result _) ->
-            Ok Gas.Arith.zero
         | Origination_result {consumed_gas; _} -> Ok consumed_gas
         | Reveal_result {consumed_gas} -> Ok consumed_gas
         | Delegation_result {consumed_gas} -> Ok consumed_gas
@@ -348,10 +346,9 @@ let estimated_gas_single (type kind)
         match res with
         | ITransaction_result (Transaction_to_contract_result {consumed_gas; _})
         | ITransaction_result
-            (Transaction_to_tx_rollup_result {consumed_gas; _}) ->
+            (Transaction_to_tx_rollup_result {consumed_gas; _})
+        | ITransaction_result (Transaction_to_event_result {consumed_gas; _}) ->
             Ok consumed_gas
-        | ITransaction_result (Transaction_to_event_result _) ->
-            Ok Gas.Arith.zero
         | IOrigination_result {consumed_gas; _} -> Ok consumed_gas
         | IDelegation_result {consumed_gas} -> Ok consumed_gas)
     | Skipped _ ->

@@ -93,12 +93,12 @@ Here is a sample result from a call.
             "internal_operation_results": [
               {
                 "status": "applied",
-                "source": "KT...",
                 // ... fields elided for brevity
-                "result": {                                         // <~
-                  "status": "applied",                              // <~
-                  "address": "ev1....",                             // <~
-                  "data": {                                         // <~
+                "source": "KT...",
+                "destination": "ev1...",                            // <~
+                "parameters": {                                     // <~
+                  "entrypoint": "event_tag...",                     // <~
+                  "value": {                                        // <~
                     "prim": "Right",                                // <~
                     "args": [                                       // <~
                       {                                             // <~

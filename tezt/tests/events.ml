@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Marigold <team@marigold.dev>                           *)
+(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -71,18 +71,24 @@ let test_emit_event protocol =
     first_manager_operation |-> "contents" |=> 0 |-> "metadata"
     |-> "internal_operation_results"
   in
-  let event = events |=> 0 |-> "result" in
+  let event = events |=> 0 in
   assert (
-    event |-> "address" |> as_string
+    event |-> "destination" |> as_string
     = "ev14AhNYuH5iv4fvjweAdbpqcz67sdjKp9Vkxjq3cUt1A2DkfUbYq") ;
-  assert (event |-> "data" |-> "prim" |> as_string = "Right") ;
-  assert (event |-> "data" |-> "args" |=> 0 |-> "string" |> as_string = "right") ;
-  let event = events |=> 1 |-> "result" in
+  let data = event |-> "parameters" |-> "value" in
+  assert (data |-> "prim" |> as_string = "Right") ;
+  assert (data |-> "args" |=> 0 |-> "string" |> as_string = "right") ;
+  let tag = event |-> "parameters" |-> "entrypoint" |> as_string in
+  assert (tag = "tag1") ;
+  let event = events |=> 1 in
   assert (
-    event |-> "address" |> as_string
+    event |-> "destination" |> as_string
     = "ev13PcznZkDuztTvY6xy4TvjdY6mftxLN2kYzV19WFa1nbuzP71mL") ;
-  assert (event |-> "data" |-> "prim" |> as_string = "Left") ;
-  assert (event |-> "data" |-> "args" |=> 0 |-> "int" |> as_string = "2") ;
+  let data = event |-> "parameters" |-> "value" in
+  assert (data |-> "prim" |> as_string = "Left") ;
+  assert (data |-> "args" |=> 0 |-> "int" |> as_string = "2") ;
+  let tag = event |-> "parameters" |-> "entrypoint" |> as_string in
+  assert (tag = "tag2") ;
   return ()
 
 let check_client_events =

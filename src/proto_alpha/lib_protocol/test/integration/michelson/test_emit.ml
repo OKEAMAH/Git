@@ -83,22 +83,55 @@ let contract_test () =
                internal_operation_results =
                  [
                    Internal_manager_operation_result
-                     ( _,
+                     ( {
+                         operation =
+                           Transaction
+                             {
+                               entrypoint = tag1;
+                               parameters = data1;
+                               amount = amount1;
+                               destination = Destination.Event addr1;
+                             };
+                         _;
+                       },
                        Applied
-                         (ITransaction_result
-                           (Transaction_to_event_result
-                             {address = addr1; data = data1})) );
+                         (ITransaction_result (Transaction_to_event_result _))
+                     );
                    Internal_manager_operation_result
-                     ( _,
+                     ( {
+                         operation =
+                           Transaction
+                             {
+                               entrypoint = tag2;
+                               parameters = data2;
+                               amount = amount2;
+                               destination = Destination.Event addr2;
+                             };
+                         _;
+                       },
                        Applied
-                         (ITransaction_result
-                           (Transaction_to_event_result
-                             {address = addr2; data = data2})) );
+                         (ITransaction_result (Transaction_to_event_result _))
+                     );
                  ];
                _;
              });
      };
   ] ->
+      let ctxt = Gas.set_unlimited (Incremental.alpha_ctxt incr) in
+      let* data1, ctxt =
+        Lwt.return @@ Environment.wrap_tzresult
+        @@ Script.force_decode_in_context
+             ~consume_deserialization_gas:When_needed
+             ctxt
+             data1
+      in
+      let* data2, _ =
+        Lwt.return @@ Environment.wrap_tzresult
+        @@ Script.force_decode_in_context
+             ~consume_deserialization_gas:When_needed
+             ctxt
+             data2
+      in
       let open Micheline in
       ((match root data1 with
        | Prim (_, D_Right, [String (_, "right")], _) -> ()
@@ -109,8 +142,12 @@ let contract_test () =
        | _ -> assert false) ;
       let addr1 = Contract_event.to_b58check addr1 in
       let addr2 = Contract_event.to_b58check addr2 in
+      assert (Entrypoint.to_string tag1 = "tag1") ;
+      assert (Entrypoint.to_string tag2 = "tag2") ;
       assert (addr1 = "ev14AhNYuH5iv4fvjweAdbpqcz67sdjKp9Vkxjq3cUt1A2DkfUbYq") ;
       assert (addr2 = "ev13PcznZkDuztTvY6xy4TvjdY6mftxLN2kYzV19WFa1nbuzP71mL") ;
+      assert (Tez.(amount1 = zero)) ;
+      assert (Tez.(amount2 = zero)) ;
       return_unit
   | _ -> assert false
 
