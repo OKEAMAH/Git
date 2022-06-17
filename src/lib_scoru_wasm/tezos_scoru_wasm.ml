@@ -86,9 +86,59 @@ end = struct
     include T
   end
 
+  (* FIXME: naming of module *)
+  module Decoding = Tree_decoding.Make(T)
+
+  (* Status internal to the PVM 
+   *
+   * From the outside the PVM is either computing or waiting for input. The internal 
+   * status also includes _what_ is done with the input we are expecting - loading a
+   * kernel or waiting for input to a running kernel; and what kind of computation is
+   * running - parsing a kernel image or executing a kernel.
+   *)
+  type internal_status = Parsing | Computing | WaitingForInput | GatheringFloppies
+
+  (* The key to the storage tree where the _internal_ status is stored *)
+  let internal_status_key = ["pvm"; "status"]
+
+  (* Decodes the status as it is stored in the tree *)
+  let internal_status_encoding = failwith "Not implemented yet - how does Data_encoding module work?"
+
+  let get_status = 
+    Decoding.(run (value internal_status_key internal_status_encoding))
+   
+  type initial_boot_pk = string
+
+  let initial_boot_pk_encoding = 
+    failwith "Not implemented yet - Data_encoding again"
+
+  let initial_boot_pk_key = ["pvm"; "public_key"]
+
+  let get_initial_boot_pk =
+    Decoding.(run (value initial_boot_pk_key initial_boot_pk_encoding))
+
+  let kernel_image_key = ["pvm"; "kernel_image"]
+
+  let store_kernel_image_chunk chunk =
+    failwith "Not implemented yet"
+    
+  let kernel_loading_step i chunk = 
+    (* TODO:
+     * If(origination-chunk and we have written no other chunks)
+     * then store public_key and store chunk
+     * else check signature and store chunk
+     *)
+    failwith "Not implemented"
+
   let compute_step = Lwt.return
 
-  let set_input_step _ _ = Lwt.return
+  let set_input_step i chunk t = (* Lwt.return - no more *)
+    Lwt.bind (get_status t) (fun status ->
+        match status with 
+        | GatheringFloppies -> kernel_loading_step i chunk
+        | Parsing -> failwith "Not implemented"
+        | Computing -> failwith "Not implemented"
+        | WaitingForInput -> failwith "Not implemented")
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/3092
 
      Implement handling of input logic.
