@@ -131,4 +131,6 @@ module type T = sig
   module Wasm_2_0_0 : [%sig "v6/wasm_2_0_0.mli"] [@@coq_plain_module]
 
   module Plonk : [%sig "v6/plonk.mli"] [@@coq_plain_module]
+
+  module Dal_cryptobox : [%sig "v6/dal_cryptobox.mli"] [@@coq_plain_module]
 end

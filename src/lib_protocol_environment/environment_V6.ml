@@ -2,7 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
-(* Copyright (c) 2020 Nomadic Labs. <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2020-2022 Nomadic Labs. <contact@nomadic-labs.com>          *)
 (* Copyright (c) 2020 Metastate AG <hello@metastate.dev>                     *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
@@ -277,6 +277,49 @@ struct
     let verify = Aug.verify
 
     let aggregate_verify = Aug.aggregate_verify
+  end
+
+  module Dal_cryptobox = struct
+    include Tezos_crypto_dal
+
+    module type S = sig
+      (** Commitment to a polynomial. *)
+      type commitment
+
+      (** Proof of degree. *)
+      type proof_degree
+
+      (** Proof of evaluation at multiple points. *)
+      type proof_multi
+
+      module Encoding : sig
+        val commitment_encoding : commitment Data_encoding.t
+
+        val proof_degree_encoding : proof_degree Data_encoding.t
+
+        val proof_multi_encoding : proof_multi Data_encoding.t
+      end
+
+      (** Length of the erasure-encoded slot in terms of scalar elements. *)
+      val erasure_encoding_length : int
+
+      (** [verify_degree commitment proof n] returns true if and only if the
+      committed polynomial has degree less than [n]. *)
+      val verify_degree :
+        commitment ->
+        proof_degree ->
+        int ->
+        (bool, [> `Degree_exceeds_srs_length of string]) Result.t
+
+      (** [verify_slot_segment cm ~slot_segment ~offset proof] returns true if the
+      [slot_segment] is correct. *)
+      val verify_slot_segment :
+        commitment -> slot_segment:bytes -> offset:int -> proof_multi -> bool
+    end
+
+    module type Constants = Dal_cryptobox.Params_sig
+
+    module Make (C : Constants) = Dal_cryptobox.Make (C)
   end
 
   module Ed25519 = Ed25519

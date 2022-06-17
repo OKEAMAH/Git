@@ -1814,6 +1814,7 @@ protocols.|}
         ringo;
         ringo_lwt;
         tezos_base |> open_ ~m:"TzPervasives";
+        tezos_crypto_dal;
         tezos_sapling;
         tezos_protocol_environment_sigs;
         tezos_protocol_environment_structs;

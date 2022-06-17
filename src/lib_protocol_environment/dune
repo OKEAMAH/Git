@@ -13,6 +13,7 @@
   ringo
   ringo-lwt
   tezos-base
+  tezos-crypto.dal
   tezos-sapling
   tezos-protocol-environment.sigs
   tezos-protocol-environment.structs
