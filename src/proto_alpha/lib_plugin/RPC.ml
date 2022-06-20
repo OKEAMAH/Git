@@ -43,6 +43,10 @@ let parse_operation (op : Operation.raw) =
 
 let path = RPC_path.(open_root / "helpers")
 
+let elab_conf =
+  Script_ir_translator_config.make
+    ~keep_extra_types_for_interpreter_logging:true
+
 module Registration = struct
   let patched_services =
     ref (RPC_directory.empty : Updater.rpc_context RPC_directory.t)
@@ -564,7 +568,7 @@ module Scripts = struct
        in
        Script_ir_translator.parse_data
          ctxt
-         ~legacy
+         ~elab_conf:(elab_conf ~legacy ())
          ~allow_forged
          exp_ty
          (Micheline.root data))
@@ -1359,8 +1363,9 @@ module Scripts = struct
           | None -> Gas.set_unlimited ctxt
           | Some gas -> Gas.set_limit ctxt gas
         in
+        let elab_conf = elab_conf ~legacy () in
         let code = Script.lazy_expr expr in
-        Script_ir_translator.parse_code ~legacy ctxt ~code
+        Script_ir_translator.parse_code ~elab_conf ctxt ~code
         >>=? fun ( Ex_code
                      (Code
                        {
@@ -1373,7 +1378,7 @@ module Scripts = struct
                        }),
                    ctxt ) ->
         Script_ir_translator.parse_data
-          ~legacy
+          ~elab_conf
           ~allow_forged:true
           ctxt
           storage_type
@@ -1420,7 +1425,7 @@ module Scripts = struct
         >>?= fun (Ex_ty typ, ctxt) ->
         parse_data
           ctxt
-          ~legacy:true
+          ~elab_conf:(elab_conf ~legacy:true ())
           ~allow_forged:true
           typ
           (Micheline.root expr)
@@ -1436,7 +1441,12 @@ module Scripts = struct
         let ctxt = Gas.set_unlimited ctxt in
         Script_ir_translator.parse_any_ty ctxt ~legacy (Micheline.root typ)
         >>?= fun (Ex_ty typ, ctxt) ->
-        parse_data ctxt ~legacy ~allow_forged:true typ (Micheline.root expr)
+        parse_data
+          ctxt
+          ~elab_conf:(elab_conf ~legacy ())
+          ~allow_forged:true
+          typ
+          (Micheline.root expr)
         >>=? fun (data, ctxt) ->
         Script_ir_translator.unparse_data ctxt unparsing_mode typ data
         >|=? fun (normalized, _ctxt) -> Micheline.strip_locations normalized) ;
@@ -1691,7 +1701,7 @@ module Contract = struct
                 let open Script_ir_translator in
                 parse_script
                   ctxt
-                  ~legacy:true
+                  ~elab_conf:(elab_conf ~legacy:true ())
                   ~allow_forged_in_storage:true
                   script
                 >>=? fun (Ex_script (Script {storage; storage_type; _}), ctxt)
@@ -1779,7 +1789,7 @@ module Big_map = struct
             | Some value ->
                 parse_data
                   ctxt
-                  ~legacy:true
+                  ~elab_conf:(elab_conf ~legacy:true ())
                   ~allow_forged:true
                   value_type
                   (Micheline.root value)
