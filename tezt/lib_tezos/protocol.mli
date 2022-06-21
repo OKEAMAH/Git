@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 (** Protocols we may want to test with. *)
-type t = Ithaca | Jakarta | Alpha
+type t = Ithaca | Jakarta | Kashkaval | Alpha
 
 (** Protocol parameters.
 
