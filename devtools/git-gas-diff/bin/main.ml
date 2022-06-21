@@ -175,6 +175,8 @@ module Synth = struct
     | Payload_fee of Decimal.t
     | Storage_fee of Decimal.t
     | Fee of Decimal.t
+    | Expected_size of Decimal.t
+    | Real_measured_size of Decimal.t
     | Hash
     | Tezos_client
     | Operation_hash
@@ -247,6 +249,10 @@ module Synth = struct
   let storage_fee_str = "storage fees ........................... +ꜩ"
 
   let fee_str = "fee = "
+
+  let expected_size_str = "Expected size:      "
+
+  let real_measured_size_str = "Real measured size: "
 
   let hash_strs = ["PUBLIC_KEY_HASH"; "CONTRACT_HASH"]
 
@@ -368,6 +374,11 @@ module Synth = struct
 
   let get_fee = get_dec fee_str (fun v -> Fee v)
 
+  let get_expected_size = get_dec expected_size_str (fun v -> Expected_size v)
+
+  let get_real_measured_size =
+    get_dec real_measured_size_str (fun v -> Real_measured_size v)
+
   let get_discarded strs res =
     (* Lets's leave this line below out of the function so that the expression
        is compiled only once for each [get_*], and not every time we call
@@ -404,6 +415,8 @@ module Synth = struct
         get_payload_fee;
         get_storage_fee;
         get_fee;
+        get_expected_size;
+        get_real_measured_size;
         get_tezos_client;
         get_operation_hash;
         get_new_contract;
@@ -436,6 +449,8 @@ module Synths = struct
     payload_fee : synth;
     storage_fee : synth;
     fee : synth;
+    expected_size : synth;
+    real_measured_size : synth;
     total_lines : int;
     total_degradations : int;
   }
@@ -455,6 +470,8 @@ module Synths = struct
       payload_fee = empty_synth payload_fee_str Dec;
       storage_fee = empty_synth storage_fee_str Dec;
       fee = empty_synth fee_str Dec;
+      expected_size = empty_synth expected_size_str Dec;
+      real_measured_size = empty_synth real_measured_size_str Dec;
       total_lines = 0;
       total_degradations = 0;
     }
@@ -500,6 +517,8 @@ module Synths = struct
     | Payload_fee _, Payload_fee _
     | Storage_fee _, Storage_fee _
     | Fee _, Fee _
+    | Expected_size _, Expected_size _
+    | Real_measured_size _, Real_measured_size _
     | Hash, Hash
     | Tezos_client, Tezos_client
     | Operation_hash, Operation_hash
@@ -567,6 +586,16 @@ module Synths = struct
             fun storage_fee synths -> {synths with storage_fee} )
     | Fee v ->
         Some (v, (fun synth -> synth.fee), fun fee synths -> {synths with fee})
+    | Expected_size v ->
+        Some
+          ( v,
+            (fun synth -> synth.expected_size),
+            fun expected_size synths -> {synths with expected_size} )
+    | Real_measured_size v ->
+        Some
+          ( v,
+            (fun synth -> synth.real_measured_size),
+            fun real_measured_size synths -> {synths with real_measured_size} )
     | Hash | Tezos_client | Operation_hash | New_contract | To | Parameter ->
         None
 
@@ -680,6 +709,8 @@ module Synths = struct
         payload_fee;
         storage_fee;
         fee;
+        expected_size;
+        real_measured_size;
         total_lines;
         total_degradations;
       } =
@@ -700,6 +731,8 @@ module Synths = struct
     Synth.show payload_fee ;
     Synth.show storage_fee ;
     Synth.show fee ;
+    Synth.show expected_size ;
+    Synth.show real_measured_size ;
     Printf.printf "Total number of lines with a change: %d.\n" total_lines ;
     Printf.printf
       "Total number of lines with a degradation: %d.\n\n"
@@ -721,6 +754,8 @@ module Synths = struct
         payload_fee;
         storage_fee;
         fee;
+        expected_size;
+        real_measured_size;
       ] ;
     Printf.printf "\nLines with the following strings were ignored:\n%!" ;
     List.iter
