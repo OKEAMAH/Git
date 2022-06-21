@@ -167,6 +167,15 @@ in the :ref:`introduction <howtoget>`.
 
 .. toctree::
    :maxdepth: 2
+   :caption: kashkaval Kashkaval Protocol doc:
+
+   kashkaval/protocol
+   kashkaval/glossary
+   kashkaval/cli-commands
+   kashkaval/rpc
+
+.. toctree::
+   :maxdepth: 2
    :caption: Alpha Development Protocol doc:
 
    alpha/protocol
@@ -220,6 +229,7 @@ in the :ref:`introduction <howtoget>`.
    protocols/011_hangzhou
    protocols/012_ithaca
    protocols/013_jakarta
+   protocols/014_kashkaval
    protocols/alpha
 
 .. toctree::

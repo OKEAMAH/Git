@@ -1,0 +1,119 @@
+tests_014/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[concat_list.tz-""-{ "Hello" ; " " ; "World" ; "!" }-"Hello World!"]
+
+storage
+  "Hello World!"
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 8 (remaining gas: 1039988.887 units remaining)
+    [ (Pair { "Hello" ; " " ; "World" ; "!" } "") ]
+  - location: 8 (remaining gas: 1039988.877 units remaining)
+    [ { "Hello" ; " " ; "World" ; "!" } ]
+  - location: 9 (remaining gas: 1039988.867 units remaining)
+    [ ""
+      { "Hello" ; " " ; "World" ; "!" } ]
+  - location: 12 (remaining gas: 1039988.857 units remaining)
+    [ { "Hello" ; " " ; "World" ; "!" }
+      "" ]
+  - location: 13 (remaining gas: 1039988.857 units remaining)
+    [ "Hello"
+      "" ]
+  - location: 15 (remaining gas: 1039988.847 units remaining)
+    [ ""
+      "Hello" ]
+  - location: 16 (remaining gas: 1039988.847 units remaining)
+    [ "Hello" ]
+  - location: 18 (remaining gas: 1039988.837 units remaining)
+    [ {}
+      "Hello" ]
+  - location: 20 (remaining gas: 1039988.827 units remaining)
+    [ "Hello"
+      {} ]
+  - location: 21 (remaining gas: 1039988.817 units remaining)
+    [ { "Hello" } ]
+  - location: 16 (remaining gas: 1039988.797 units remaining)
+    [ ""
+      { "Hello" } ]
+  - location: 22 (remaining gas: 1039988.787 units remaining)
+    [ { "" ; "Hello" } ]
+  - location: 23 (remaining gas: 1039988.667 units remaining)
+    [ "Hello" ]
+  - location: 13 (remaining gas: 1039988.657 units remaining)
+    [ " "
+      "Hello" ]
+  - location: 15 (remaining gas: 1039988.647 units remaining)
+    [ "Hello"
+      " " ]
+  - location: 16 (remaining gas: 1039988.647 units remaining)
+    [ " " ]
+  - location: 18 (remaining gas: 1039988.637 units remaining)
+    [ {}
+      " " ]
+  - location: 20 (remaining gas: 1039988.627 units remaining)
+    [ " "
+      {} ]
+  - location: 21 (remaining gas: 1039988.617 units remaining)
+    [ { " " } ]
+  - location: 16 (remaining gas: 1039988.597 units remaining)
+    [ "Hello"
+      { " " } ]
+  - location: 22 (remaining gas: 1039988.587 units remaining)
+    [ { "Hello" ; " " } ]
+  - location: 23 (remaining gas: 1039988.467 units remaining)
+    [ "Hello " ]
+  - location: 13 (remaining gas: 1039988.457 units remaining)
+    [ "World"
+      "Hello " ]
+  - location: 15 (remaining gas: 1039988.447 units remaining)
+    [ "Hello "
+      "World" ]
+  - location: 16 (remaining gas: 1039988.447 units remaining)
+    [ "World" ]
+  - location: 18 (remaining gas: 1039988.437 units remaining)
+    [ {}
+      "World" ]
+  - location: 20 (remaining gas: 1039988.427 units remaining)
+    [ "World"
+      {} ]
+  - location: 21 (remaining gas: 1039988.417 units remaining)
+    [ { "World" } ]
+  - location: 16 (remaining gas: 1039988.397 units remaining)
+    [ "Hello "
+      { "World" } ]
+  - location: 22 (remaining gas: 1039988.387 units remaining)
+    [ { "Hello " ; "World" } ]
+  - location: 23 (remaining gas: 1039988.266 units remaining)
+    [ "Hello World" ]
+  - location: 13 (remaining gas: 1039988.256 units remaining)
+    [ "!"
+      "Hello World" ]
+  - location: 15 (remaining gas: 1039988.246 units remaining)
+    [ "Hello World"
+      "!" ]
+  - location: 16 (remaining gas: 1039988.246 units remaining)
+    [ "!" ]
+  - location: 18 (remaining gas: 1039988.236 units remaining)
+    [ {}
+      "!" ]
+  - location: 20 (remaining gas: 1039988.226 units remaining)
+    [ "!"
+      {} ]
+  - location: 21 (remaining gas: 1039988.216 units remaining)
+    [ { "!" } ]
+  - location: 16 (remaining gas: 1039988.196 units remaining)
+    [ "Hello World"
+      { "!" } ]
+  - location: 22 (remaining gas: 1039988.186 units remaining)
+    [ { "Hello World" ; "!" } ]
+  - location: 23 (remaining gas: 1039988.065 units remaining)
+    [ "Hello World!" ]
+  - location: 13 (remaining gas: 1039988.055 units remaining)
+    [ "Hello World!" ]
+  - location: 24 (remaining gas: 1039988.045 units remaining)
+    [ {}
+      "Hello World!" ]
+  - location: 26 (remaining gas: 1039988.035 units remaining)
+    [ (Pair {} "Hello World!") ]
+
