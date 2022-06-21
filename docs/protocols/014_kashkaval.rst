@@ -1,13 +1,13 @@
 Protocol Alpha
 ==============
 
-This page contains all the relevant information for protocol Alpha
+This page contains all the relevant information for protocol Kashkaval
 (see :ref:`naming_convention`).
 
 The code can be found in the :src:`src/proto_014_PsrBnRgf` directory of the
 ``master`` branch of Tezos.
 
-This page documents the changes brought by protocol Alpha with respect
+This page documents the changes brought by protocol Kashkaval with respect
 to Protocol J.
 
 .. contents::
