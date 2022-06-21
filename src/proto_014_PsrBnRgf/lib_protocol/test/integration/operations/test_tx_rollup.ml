@@ -1921,7 +1921,8 @@ let test_full_inbox () =
       baking_reward_fixed_portion = Tez.zero;
       tx_rollup =
         {
-          Tezos_protocol_014_PsrBnRgf_parameters.Default_parameters.constants_test
+          Tezos_protocol_014_PsrBnRgf_parameters.Default_parameters
+          .constants_test
             .tx_rollup
           with
           enable = true;
