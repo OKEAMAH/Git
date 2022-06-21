@@ -7,16 +7,16 @@
   alcotest-lwt
   tezos-base
   tezos-protocol-014-PsrBnRgf
-  tezos-client-alpha
-  tezos-alpha-test-helpers
+  tezos-client-014-PsrBnRgf
+  tezos-014-PsrBnRgf-test-helpers
   tezos-base-test-helpers)
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_protocol_014_PsrBnRgf
-  -open Tezos_client_alpha
-  -open Tezos_alpha_test_helpers
+  -open Tezos_client_014_PsrBnRgf
+  -open Tezos_014_PsrBnRgf_test_helpers
   -open Tezos_base_test_helpers))
 
 (rule

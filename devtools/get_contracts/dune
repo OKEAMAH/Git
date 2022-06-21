@@ -42,6 +42,20 @@
  (modules get_contracts_013_PtJakart))
 
 (executable
+ (name get_contracts_014_PsrBnRgf)
+ (libraries
+  tezos-protocol-014-PsrBnRgf
+  tezos-client-014-PsrBnRgf
+  get_contracts)
+ (flags
+  (:standard)
+  -open Tezos_base__TzPervasives
+  -open Tezos_raw_protocol_014_PsrBnRgf
+  -open Tezos_protocol_environment_014_PsrBnRgf
+  -open Tezos_client_014_PsrBnRgf)
+ (modules get_contracts_014_PsrBnRgf))
+
+(executable
  (name get_contracts_alpha)
  (libraries
   tezos-protocol-alpha

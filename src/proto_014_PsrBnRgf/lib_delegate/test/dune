@@ -6,13 +6,13 @@
  (libraries
   tezos-base
   tezos-micheline
-  tezos-client-alpha
-  tezos-protocol-alpha
-  tezos-protocol-alpha.environment
+  tezos-client-014-PsrBnRgf
+  tezos-protocol-014-PsrBnRgf
+  tezos-protocol-014-PsrBnRgf.environment
   tezos-base-test-helpers
-  tezos-baking-alpha.mockup-simulator
-  tezos-baking-alpha
-  tezos-protocol-alpha.parameters
+  tezos-baking-014-PsrBnRgf.mockup-simulator
+  tezos-baking-014-PsrBnRgf
+  tezos-protocol-014-PsrBnRgf.parameters
   tezos-crypto
   alcotest-lwt
   uri)
@@ -21,14 +21,14 @@
   -open Tezos_base.TzPervasives
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_micheline
-  -open Tezos_client_alpha
-  -open Tezos_protocol_alpha
-  -open Tezos_protocol_environment_alpha
+  -open Tezos_client_014_PsrBnRgf
+  -open Tezos_protocol_014_PsrBnRgf
+  -open Tezos_protocol_environment_014_PsrBnRgf
   -open Tezos_base_test_helpers
-  -open Tezos_alpha_mockup_simulator
-  -open Tezos_baking_alpha))
+  -open Tezos_014_PsrBnRgf_mockup_simulator
+  -open Tezos_baking_014_PsrBnRgf))
 
 (rule
  (alias runtest)
- (package tezos-baking-alpha)
+ (package tezos-baking-014-PsrBnRgf)
  (action (run %{dep:./main.exe})))

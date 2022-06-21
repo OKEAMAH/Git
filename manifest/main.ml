@@ -4543,6 +4543,8 @@ include Tezos_raw_protocol_%s.Main
 
   let _013_PtJakart = active (Name.v "PtJakart" 013)
 
+  let _014_PsrBnRgf = active (Name.v "PsrBnRgf" 014)
+
   let alpha = active Name.alpha
 
   let all = List.rev !all_rev

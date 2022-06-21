@@ -2,7 +2,7 @@
 ; Edit file manifest/main.ml instead.
 
 (library
- (name tezos_protocol_environment_alpha)
+ (name tezos_protocol_environment_014_PsrBnRgf)
  (public_name tezos-protocol-014-PsrBnRgf.environment)
  (instrumentation (backend bisect_ppx))
  (libraries
@@ -15,7 +15,7 @@
  (action
   (write-file
    %{targets}
-   "module Name = struct let name = \"alpha\" end\ninclude Tezos_protocol_environment.MakeV6(Name)()\nmodule CamlinternalFormatBasics = struct include CamlinternalFormatBasics end\n")))
+   "module Name = struct let name = \"014-PsrBnRgf\" end\ninclude Tezos_protocol_environment.MakeV6(Name)()\nmodule CamlinternalFormatBasics = struct include CamlinternalFormatBasics end\n")))
 
 (library
  (name tezos_raw_protocol_014_PsrBnRgf)
@@ -28,7 +28,7 @@
   (:standard)
   -nostdlib
   -nopervasives
-  -open Tezos_protocol_environment_alpha.Environment
+  -open Tezos_protocol_environment_014_PsrBnRgf.Environment
   -open Pervasives
   -open Error_monad)
  (modules
@@ -461,7 +461,7 @@
  (action
   (write-file
    %{targets}
-   "module Environment = Tezos_protocol_environment_alpha.Environment\nlet hash = Tezos_crypto.Protocol_hash.of_b58check_exn \"ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK\"\nlet name = Environment.Name.name\ninclude Tezos_raw_protocol_014_PsrBnRgf\ninclude Tezos_raw_protocol_alpha.Main\n")))
+   "module Environment = Tezos_protocol_environment_014_PsrBnRgf.Environment\nlet hash = Tezos_crypto.Protocol_hash.of_b58check_exn \"PsrBnRgfNPTdFtYi42S79RUupVNJodJp7snrkEze1hXg9jCDoHG\"\nlet name = Environment.Name.name\ninclude Tezos_raw_protocol_014_PsrBnRgf\ninclude Tezos_raw_protocol_014_PsrBnRgf.Main\n")))
 
 (rule
  (alias runtest_compile_protocol)
@@ -670,7 +670,7 @@
   alpha_services.ml alpha_services.mli
   main.ml main.mli
   (:src_dir TEZOS_PROTOCOL))
- (action (run %{bin:tezos-protocol-compiler} -no-hash-check -warn-error +a .)))
+ (action (run %{bin:tezos-protocol-compiler} -warn-error +a .)))
 
 (library
  (name tezos_protocol_014_PsrBnRgf_functor)
@@ -1118,4 +1118,4 @@
    %{targets}
    (chdir
     %{workspace_root}
-    (run %{bin:tezos-embedded-protocol-packer} %{src_dir} alpha)))))
+    (run %{bin:tezos-embedded-protocol-packer} %{src_dir} 014_PsrBnRgf)))))

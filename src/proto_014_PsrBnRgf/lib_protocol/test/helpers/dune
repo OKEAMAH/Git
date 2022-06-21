@@ -2,8 +2,8 @@
 ; Edit file manifest/main.ml instead.
 
 (library
- (name tezos_alpha_test_helpers)
- (public_name tezos-alpha-test-helpers)
+ (name tezos_014_PsrBnRgf_test_helpers)
+ (public_name tezos-014-PsrBnRgf-test-helpers)
  (instrumentation (backend bisect_ppx))
  (libraries
   alcotest-lwt
@@ -13,10 +13,10 @@
   tezos-micheline
   tezos-stdlib-unix
   tezos-protocol-014-PsrBnRgf
-  tezos-client-alpha
+  tezos-client-014-PsrBnRgf
   tezos-protocol-014-PsrBnRgf.parameters
   tezos-protocol-environment
-  tezos-protocol-plugin-alpha
+  tezos-protocol-plugin-014-PsrBnRgf
   tezos-protocol-014-PsrBnRgf.environment
   tezos-shell-services)
  (flags
@@ -26,7 +26,7 @@
   -open Tezos_micheline
   -open Tezos_stdlib_unix
   -open Tezos_protocol_014_PsrBnRgf
-  -open Tezos_client_alpha
-  -open Tezos_protocol_plugin_alpha
-  -open Tezos_protocol_environment_alpha
+  -open Tezos_client_014_PsrBnRgf
+  -open Tezos_protocol_plugin_014_PsrBnRgf
+  -open Tezos_protocol_environment_014_PsrBnRgf
   -open Tezos_shell_services))

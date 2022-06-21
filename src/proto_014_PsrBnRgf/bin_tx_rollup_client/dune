@@ -2,19 +2,19 @@
 ; Edit file manifest/main.ml instead.
 
 (executable
- (name main_tx_rollup_client_alpha)
- (public_name tezos-tx-rollup-client-alpha)
- (package tezos-tx-rollup-client-alpha)
+ (name main_tx_rollup_client_014_PsrBnRgf)
+ (public_name tezos-tx-rollup-client-014-PsrBnRgf)
+ (package tezos-tx-rollup-client-014-PsrBnRgf)
  (instrumentation (backend bisect_ppx))
  (libraries
   tezos-base
-  tezos-protocol-alpha
-  tezos-client-alpha
-  tezos-client-alpha.commands
+  tezos-protocol-014-PsrBnRgf
+  tezos-client-014-PsrBnRgf
+  tezos-client-014-PsrBnRgf.commands
   tezos-client-base-unix
   tezos-stdlib-unix
-  tezos-tx-rollup-alpha
-  tezos-protocol-alpha.raw
+  tezos-tx-rollup-014-PsrBnRgf
+  tezos-protocol-014-PsrBnRgf.raw
   uri)
  (link_flags
   (:standard)
@@ -23,10 +23,10 @@
   (:standard)
   -open Tezos_base.TzPervasives
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
-  -open Tezos_protocol_alpha
-  -open Tezos_client_alpha
-  -open Tezos_client_alpha_commands
+  -open Tezos_protocol_014_PsrBnRgf
+  -open Tezos_client_014_PsrBnRgf
+  -open Tezos_client_014_PsrBnRgf_commands
   -open Tezos_client_base_unix
   -open Tezos_stdlib_unix
-  -open Tezos_tx_rollup_alpha
-  -open Tezos_raw_protocol_alpha))
+  -open Tezos_tx_rollup_014_PsrBnRgf
+  -open Tezos_raw_protocol_014_PsrBnRgf))
