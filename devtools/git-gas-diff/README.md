@@ -32,9 +32,8 @@ See `git-gas-diff.sh` for more details.
 
 ```
 $ ./git-gas-diff.sh 4a6c91ee 1a28a48ed2c9fa654ed7d601302d551332b52e77
--- LINE NUMBERS REFER TO TEMPORARY FILE /tmp/tmp.L0ATKaPECz. --
+-- LINE NUMBERS REFER TO TEMPORARY FILE /tmp/tmp.zq1shIBAna. --
 
-Entering directory '/home/nayache/Work/tezos'
 Entering directory '/home/nayache/Work/tezos'
 * Could not parse line 6 `-      Origination:`.
 * Could not parse line 7 `+      Internal Origination:`.
@@ -150,18 +149,17 @@ Lines with `payload fees(the block proposer) ....... +ꜩ`:
   Number of lines with a change:      19
   Number of lines with a degradation: 0
 
-Lines with `fee = `:
-  (Better means the value must decrease.)
-  Accumulated value before: 0
-  Accumulated value now:    0
-  Total gain: ~N/A%
-  Maximum loss on a line: 0
-  Maximum gain on a line: 0
-  Number of lines with a change:      0
-  Number of lines with a degradation: 0
-
 Total number of lines with a change: 2402.
 Total number of lines with a degradation: 3.
+
+Lines with the following strings have not changed:
+  `Estimated storage: `
+  `Storage size: `
+  `Storage limit: `
+  `storage fees ........................... +ꜩ`
+  `fee = `
+  `Expected size:      `
+  `Real measured size: `
 
 Lines with the following strings were ignored:
   `PUBLIC_KEY_HASH`
@@ -172,5 +170,5 @@ Lines with the following strings were ignored:
   `To: `
   `Parameter: `
 
--- LINE NUMBERS REFER TO TEMPORARY FILE /tmp/tmp.L0ATKaPECz. --
+-- LINE NUMBERS REFER TO TEMPORARY FILE /tmp/tmp.zq1shIBAna. --
 ```
