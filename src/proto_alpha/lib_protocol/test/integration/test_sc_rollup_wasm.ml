@@ -117,14 +117,27 @@ let eval_and_check ~expected s =
   | Some x ->
       let x = Data_encoding.(Binary.of_bytes_exn int31 x) in
       assert (x = expected)
-  | _ -> ()) ;
+  | _ -> assert false) ;
   return s
+
+let check_boot_sector s boot_sector =
+  let open Lwt_result_syntax in
+  let*! candidate =
+    Context_binary.Tree.find s ["durable"; "kernel"; "boot.wasm"]
+  in
+  (match candidate with
+  | Some candidate ->
+      assert (boot_sector = Data_encoding.(Binary.of_bytes_exn string candidate))
+  | None -> assert false) ;
+  return_unit
 
 let should_boot () =
   let open Lwt_result_syntax in
   let*! index = Context_binary.init "/tmp" in
   let context = Context_binary.empty index in
-  let*! s = Prover.initial_state context "" in
+  let bs = "boot_sector" in
+  let*! s = Prover.initial_state context bs in
+  let* () = check_boot_sector s bs in
   let*! s = eval_and_check ~expected:0 s in
   let*! s = eval_and_check ~expected:1 s in
   let*! p_res = Prover.produce_proof context None s in

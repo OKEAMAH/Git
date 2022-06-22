@@ -1135,6 +1135,9 @@ struct
 
       let compute_step (tree : Tree.tree) = Wasm.compute_step tree
 
+      let boot (ctxt : Tree.t) (boot_sector : string) =
+        Wasm.boot ctxt boot_sector
+
       let set_input_step {inbox_level; message_counter} payload
           (tree : Tree.tree) =
         Wasm.set_input_step {inbox_level; message_counter} payload tree

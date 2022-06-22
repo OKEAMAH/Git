@@ -32,6 +32,8 @@
 
 open Sigs
 
+let ( let*! ) = Lwt.bind
+
 type input = {
   inbox_level : Tezos_base.Bounded.Int32.NonNegative.t;
   message_counter : Z.t;
@@ -55,6 +57,9 @@ type info = {
 }
 
 module Make (T : TreeS) : sig
+  (** [boot ctxt boot_sector] initializes the PVM with a given [boot_sector]. *)
+  val boot : T.t -> string -> T.tree Lwt.t
+
   (** [compute_step] forwards the VM by one compute tick.
 
       If the VM is expecting input, it gets stuck.
@@ -109,11 +114,16 @@ end = struct
   module Thunk = Thunk.Make (Tree)
 
   (* TODO: Should not be [string], but chunked data *)
-  type state = (string * string) * compute_step_kont * int
+  type state =
+    string (* wasm-version *)
+    * (string (* boot sector *) * string (* next kernel *))
+    * compute_step_kont (* label for [compute_step] *)
+    * int (* persistent state of [compute_step] *)
 
   let state_schema : state Thunk.schema =
     let open Thunk.Schema in
-    obj3
+    obj4
+      (req "wasm-version" @@ encoding Data_encoding.string)
       (req "durable" @@ folders ["kernel"]
       @@ obj2
            (req "boot.wasm" @@ encoding Data_encoding.string)
@@ -121,13 +131,32 @@ end = struct
       (req "label" @@ encoding compute_step_kont_encoding)
       (req "counter" @@ encoding Data_encoding.int31)
 
-  let _boot_l = Thunk.(tup3_0 ^. tup2_0)
+  let version_l = Thunk.tup4_0
 
-  let _next_boot_l = Thunk.(tup3_0 ^. tup2_1)
+  let boot_l = Thunk.(tup4_1 ^. tup2_0)
 
-  let label_l = Thunk.tup3_1
+  let _next_boot_l = Thunk.(tup4_1 ^. tup2_1)
 
-  let counter_l = Thunk.tup3_2
+  let label_l = Thunk.tup4_2
+
+  let counter_l = Thunk.tup4_3
+
+  let boot : T.t -> string -> T.tree Lwt.t =
+   fun ctxt boot_sector ->
+    let aux =
+      let open Lwt_result.Syntax in
+      let open Thunk.Syntax in
+      let tree = T.empty ctxt in
+      let thunk = Thunk.decode state_schema tree in
+      let* () = (thunk ^-> version_l) ^:= "2.0.0" in
+      let* () = (thunk ^-> boot_l) ^:= boot_sector in
+      let* () = (thunk ^-> label_l) ^:= CS_Boot_sequence in
+      let*! tree = Thunk.encode tree thunk in
+      Lwt_result.return tree
+    in
+    let open Lwt.Syntax in
+    let* aux = aux in
+    match aux with Ok tree -> Lwt.return tree | Error _ -> assert false
 
   let step :
       int Thunk.t -> compute_step_kont -> compute_step_kont Thunk.result Lwt.t =
@@ -142,14 +171,12 @@ end = struct
         let* () = Thunk.set state (x + 1) in
         Lwt_result.return CS_Runtime
 
-  let ( let*! ) = Lwt.bind
-
   let compute_step tree =
     let aux state_t =
       let open Lwt_result.Syntax in
       let open Thunk.Syntax in
       let*^ kont = state_t ^-> label_l in
-      let* payload_t = counter_l state_t in
+      let* payload_t = state_t ^-> counter_l in
       let* kont' = step payload_t kont in
       (state_t ^-> label_l) ^:= kont'
     in

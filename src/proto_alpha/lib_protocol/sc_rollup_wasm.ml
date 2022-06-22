@@ -177,14 +177,7 @@ module V2_0_0 = struct
 
     open Monad
 
-    let initial_state ctxt boot_sector =
-      let open Lwt_syntax in
-      let state = Tree.empty ctxt in
-      let* state = Tree.add state ["wasm-version"] (Bytes.of_string "2.0.0") in
-      let* state =
-        Tree.add state ["boot-sector"] (Bytes.of_string boot_sector)
-      in
-      Lwt.return state
+    let initial_state ctxt boot_sector = WASM_machine.boot ctxt boot_sector
 
     let state_hash state =
       let m =
