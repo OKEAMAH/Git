@@ -54,6 +54,10 @@ type info = {
   input_request : input_request;  (** The current VM input request. *)
 }
 
+exception Malformed_origination_message
+
+exception Malformed_inbox_message
+
 module Make (T : TreeS) : sig
   (** [compute_step] forwards the VM by one compute tick.
 
@@ -81,64 +85,151 @@ module Make (T : TreeS) : sig
 
       Should not raise. *)
   val get_info : T.tree -> info Lwt.t
+
+
+  val kernel_loading_step : string -> T.tree -> T.tree Lwt.t
 end = struct
   module Tree = struct
     include T
   end
 
-  (* FIXME: naming of module *)
-  module Decoding = Tree_decoding.Make(T)
+  module Decoding = Tree_decoding.Make(Tree)
 
-  (* Status internal to the PVM 
-   *
-   * From the outside the PVM is either computing or waiting for input. The internal 
+  
+  (* Update/set value in tree *)
+
+  let update_set key value t = 
+    Lwt.return t (* TODO *)
+
+  (* TYPES *)
+
+  (* From the outside the PVM is either computing or waiting for input. The internal 
    * status also includes _what_ is done with the input we are expecting - loading a
    * kernel or waiting for input to a running kernel; and what kind of computation is
-   * running - parsing a kernel image or executing a kernel.
-   *)
+   * running - parsing a kernel image or executing a kernel.  *)
   type internal_status = Parsing | Computing | WaitingForInput | GatheringFloppies
+
+  (* The public key that is included in the initial (origination) operation
+   * that created the rollup in case the origination operation contained an
+   * in-complete kernel image. The rest of the kernel image chunks must be 
+   * signed with this key.  *)
+  type initial_boot_pk = bytes
+
+  (* Each chunk of the kernel image needs a signature matching the public key 
+   * included in the origination message - so that not just anyone can add 
+   * arbitrary chunks to the kernel image. *)
+  type kernel_image_signature = bytes
+
+  (* The first message containing the kernel image. In case the whole kernel 
+   * fits (less than 32kb in size) it is a `CompleteKernel`. Otherwise we'll 
+   * also need a public key to check signatures of the following kernel image
+   * chunks. *)
+  type origination_message = 
+    | CompleteKernel of bytes 
+    | InCompleteKernel of bytes * initial_boot_pk
+
+  (* The following messages containing the kernel image. Each chunk must be
+   * signed (validate with public key in origination message). *)
+  type inbox_kernel_message = InboxKernelMessage of bytes * kernel_image_signature 
+
+  (* STORAGE KEYS *)
 
   (* The key to the storage tree where the _internal_ status is stored *)
   let internal_status_key = ["pvm"; "status"]
 
-  (* Decodes the status as it is stored in the tree *)
-  let internal_status_encoding = failwith "Not implemented yet - how does Data_encoding module work?"
-
-  let get_status = 
-    Decoding.(run (value internal_status_key internal_status_encoding))
-   
-  type initial_boot_pk = string
-
-  let initial_boot_pk_encoding = 
-    failwith "Not implemented yet - Data_encoding again"
-
+  (* Where the initial boot public key is stored in the tree *)
   let initial_boot_pk_key = ["pvm"; "public_key"]
 
+  (* Where the chunks are stored *)
+  let kernel_image_chunks_key = ["pvm"; "kernel_image"]
+
+  (* ENCODINGS *)
+
+  (* Decodes the status as it is stored in the tree *)
+  let internal_status_encoding = 
+    let open Data_encoding in 
+    union [
+      case 
+        ~title:"parsing"
+        (Tag 0)
+        unit
+        (function Parsing -> Some () | _ -> None)
+        (fun () -> Parsing);
+      case 
+        ~title:"computing"
+        (Tag 1)
+        unit
+        (function Computing -> Some () | _ -> None)
+        (fun () -> Computing);
+      case
+        ~title:"waiting for input"
+        (Tag 2)
+        unit
+        (function WaitingForInput -> Some () | _ -> None)
+        (fun () -> WaitingForInput);
+      case
+        ~title:"gathering floppies"
+        (Tag 3)
+        unit
+        (function GatheringFloppies -> Some () | _ -> None)
+        (fun () -> GatheringFloppies)
+    ]
+
+  let initial_boot_pk_encoding = Data_encoding.bytes
+
+  let origination_message_encoding = 
+    failwith "not implemented"
+
+  let inbox_kernel_message_encoding =
+    failwith "not implemented"
+
+  (* STORAGE/TREE INTERACTION *)
+
+  let get_internal_status = 
+    Decoding.(run (value internal_status_key internal_status_encoding))
+   
+  let set_internal_status v t =
+    update_set internal_status_key v t
+
+  (* Get the initial boot public key from the tree *)
   let get_initial_boot_pk =
     Decoding.(run (value initial_boot_pk_key initial_boot_pk_encoding))
 
-  let kernel_image_key = ["pvm"; "kernel_image"]
+  let set_initial_boot_pk =
+    update_set initial_boot_pk_key
 
-  let store_kernel_image_chunk chunk =
+  let store_kernel_image_chunk chunk t =
     failwith "Not implemented yet"
     
-  let kernel_loading_step i chunk = 
-    (* TODO:
-     * If(origination-chunk and we have written no other chunks)
-     * then store public_key and store chunk
-     * else check signature and store chunk
-     *)
-    failwith "Not implemented"
+  (* PROCESS MESSAGES *)
+
+  (* Process and store the kernel image in the origination message
+   * This message contains either the entire (small) kernel image or the first
+   * chunk of it. *)
+  let origination_kernel_loading_step message t = 
+    match Data_encoding.Binary.of_string origination_message_encoding message with
+    | Error error -> raise Malformed_origination_message
+    | Ok (CompleteKernel chunk) -> Lwt.Syntax.(
+        let* t2 = store_kernel_image_chunk chunk t in
+        set_internal_status Parsing t2)
+    | Ok (InCompleteKernel (chunk, boot_pk)) -> Lwt.Syntax.(
+        let* t2 = store_kernel_image_chunk chunk t in
+        let* t3 = set_initial_boot_pk boot_pk t2 in
+        set_internal_status GatheringFloppies t3)
+
+  (* Process sub-sequent kernel image chunks. If the chunk has zero length it 
+   * means we're done and we have the entire kernel image. *)
+  let kernel_loading_step message t = 
+    match Data_encoding.Binary.of_string inbox_kernel_message_encoding message with
+    | Error error -> raise Malformed_inbox_message
+    | Ok (InboxKernelMessage (chunk, _signature)) -> 
+      if Bytes.length chunk = 0
+      then set_internal_status Parsing t
+      else store_kernel_image_chunk chunk t
 
   let compute_step = Lwt.return
 
-  let set_input_step i chunk t = (* Lwt.return - no more *)
-    Lwt.bind (get_status t) (fun status ->
-        match status with 
-        | GatheringFloppies -> kernel_loading_step i chunk
-        | Parsing -> failwith "Not implemented"
-        | Computing -> failwith "Not implemented"
-        | WaitingForInput -> failwith "Not implemented")
+  let set_input_step i chunk t = Lwt.return t
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/3092
 
      Implement handling of input logic.
