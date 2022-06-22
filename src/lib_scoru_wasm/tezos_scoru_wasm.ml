@@ -56,6 +56,39 @@ type info = {
   input_request : input_request;  (** The current VM input request. *)
 }
 
+type compute_step_kont =
+  | CS_Parsing of Tezos_webassembly_interpreter.Decode.decode_kont
+  | CS_Runtime of Tezos_webassembly_interpreter.Ast.module_'
+  | CS_Error
+
+let compute_step_kont_encoding =
+  let open Data_encoding in
+  union
+    [
+      case
+        ~title:"boot_sequence"
+        (Tag 0)
+        (obj2
+           (req "kind" @@ constant "boot_sequence")
+           (req "value" Kont_encodings.decode_kont))
+        (function CS_Parsing kont -> Some ((), kont) | _ -> None)
+        (fun ((), kont) -> CS_Parsing kont);
+      case
+        ~title:"runtime"
+        (Tag 1)
+        (obj2
+           (req "kind" (constant "runtime"))
+           (req "ast" Ast_encoding.module_encoding'))
+        (function CS_Runtime m -> Some ((), m) | _ -> None)
+        (fun ((), m) -> CS_Runtime m);
+      case
+        ~title:"error"
+        (Tag 2)
+        (obj1 (req "kind" @@ constant "error"))
+        (function CS_Error -> Some () | _ -> None)
+        (fun () -> CS_Error);
+    ]
+
 module Make (T : TreeS) : sig
   (** [boot ctxt boot_sector] initializes the PVM with a given [boot_sector]. *)
   val boot : T.t -> string -> T.tree Lwt.t
@@ -90,26 +123,6 @@ end = struct
   module Tree = struct
     include T
   end
-
-  type compute_step_kont = CS_Boot_sequence | CS_Runtime
-
-  let compute_step_kont_encoding =
-    let open Data_encoding in
-    union
-      [
-        case
-          ~title:"boot_sequence"
-          (Tag 0)
-          (constant "boot_sequence")
-          (function CS_Boot_sequence -> Some () | _ -> None)
-          (fun () -> CS_Boot_sequence);
-        case
-          ~title:"runtime"
-          (Tag 1)
-          (constant "runtime")
-          (function CS_Runtime -> Some () | _ -> None)
-          (fun () -> CS_Runtime);
-      ]
 
   module Thunk = Thunk.Make (Tree)
 
@@ -150,7 +163,10 @@ end = struct
       let thunk = Thunk.decode state_schema tree in
       let* () = (thunk ^-> version_l) ^:= "2.0.0" in
       let* () = (thunk ^-> boot_l) ^:= boot_sector in
-      let* () = (thunk ^-> label_l) ^:= CS_Boot_sequence in
+      let* () =
+        (thunk ^-> label_l)
+        ^:= CS_Parsing (D_Start {name = "boot.wasm"; input = boot_sector})
+      in
       let*! tree = Thunk.encode tree thunk in
       Lwt_result.return tree
     in
@@ -158,26 +174,40 @@ end = struct
     let* aux = aux in
     match aux with Ok tree -> Lwt.return tree | Error _ -> assert false
 
+  let incr_counter state_t =
+    let open Thunk.Syntax in
+    let*^? cpt = state_t ^-> counter_l in
+    (state_t ^-> counter_l) ^:= (Option.value ~default:0 cpt + 1)
+
   let step :
-      int Thunk.t -> compute_step_kont -> compute_step_kont Thunk.result Lwt.t =
-   fun state ->
+      state Thunk.t -> compute_step_kont -> compute_step_kont Thunk.result Lwt.t
+      =
+   fun state_t ->
     let open Lwt_result.Syntax in
     function
-    | CS_Boot_sequence ->
-        let* () = Thunk.set state 0 in
-        Lwt_result.return CS_Runtime
-    | CS_Runtime ->
-        let* x = Thunk.get state in
-        let* () = Thunk.set state (x + 1) in
-        Lwt_result.return CS_Runtime
+    | CS_Parsing (D_Result res) ->
+        let* () = incr_counter state_t in
+        Lwt_result.return (CS_Runtime res.it)
+    | CS_Parsing kont ->
+        let* () = incr_counter state_t in
+        let kont =
+          try CS_Parsing (Tezos_webassembly_interpreter.Decode.decode_step kont)
+          with _ -> CS_Error
+        in
+        Lwt_result.return kont
+    | CS_Runtime modules ->
+        let* () = incr_counter state_t in
+        Lwt_result.return (CS_Runtime modules)
+    | CS_Error ->
+        let* () = incr_counter state_t in
+        Lwt_result.return CS_Error
 
   let compute_step tree =
     let aux state_t =
       let open Lwt_result.Syntax in
       let open Thunk.Syntax in
       let*^ kont = state_t ^-> label_l in
-      let* payload_t = state_t ^-> counter_l in
-      let* kont' = step payload_t kont in
+      let* kont' = step state_t kont in
       (state_t ^-> label_l) ^:= kont'
     in
 
@@ -205,4 +235,8 @@ end = struct
         last_input_read = None;
         input_request = No_input_required;
       }
+end
+
+module Encoding = struct
+  module Kont = Kont_encodings
 end

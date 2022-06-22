@@ -592,7 +592,7 @@ let byte_vector_kont =
         (Tag 2)
         ~title:"VKStop"
         (obj2
-           (req "kind" @@ constant "VKRead")
+           (req "kind" @@ constant "VKStop")
            (req "buffer" Lazy_encoding.chunked_byte_vector))
         (function VKStop buffer -> Some ((), buffer) | _ -> None)
         (fun ((), buffer) -> VKStop buffer);
@@ -964,7 +964,7 @@ let decode_kont =
         (Tag 1)
         ~title:"D_Next"
         (obj4
-           (req "kind" @@ constant "D_Start")
+           (req "kind" @@ constant "D_Next")
            (req "start" int31)
            (req "input" stream)
            (req "step" module_kont))

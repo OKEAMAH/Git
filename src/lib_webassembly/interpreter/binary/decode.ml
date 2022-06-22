@@ -1517,7 +1517,6 @@ type module_kont =
   { building_state : field list; (** Accumulated parsed sections. *)
     kont : module_kont' }
 
-
 let rec find_vec
   : type t. t field_type -> _ -> t list * int
   = fun ty fields -> match fields with

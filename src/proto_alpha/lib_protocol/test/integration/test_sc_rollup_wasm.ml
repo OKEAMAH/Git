@@ -27,9 +27,9 @@
 (** Testing
     -------
     Component:    sc rollup wasm
-    Invocation:   dune exec \
-                  src/proto_alpha/lib_protocol/test/integration/main.exe \
-                  -- test "^sc rollup wasm$"
+    Invocation:   cd src/proto_alpha/lib_protocol/test/integration/ ; \
+                  dune exec -- ./main.exe \
+                  test "^sc rollup wasm$"
     Subject:      Test the WASM 2.0 PVM.
 *)
 
@@ -113,9 +113,28 @@ let eval_and_check ~expected s =
   let open Lwt_syntax in
   let* s = Prover.eval s in
   let* x = Context_binary.Tree.find s ["counter"] in
+  let* label = Context_binary.Tree.find s ["label"] in
+  let label = WithExceptions.Option.get ~loc:__LOC__ label in
   (match x with
   | Some x ->
       let x = Data_encoding.(Binary.of_bytes_exn int31 x) in
+      Format.(printf "counter = %d@ " x) ;
+      let label =
+        Data_encoding.Binary.of_bytes_exn
+          Tezos_scoru_wasm.compute_step_kont_encoding
+          label
+      in
+      Format.(
+        printf
+          "%a@ "
+          (fun fmt label ->
+            fprintf
+              fmt
+              "%s"
+              Data_encoding.Json.(
+                to_string ~newline:true
+                @@ construct Tezos_scoru_wasm.compute_step_kont_encoding label))
+          label) ;
       assert (x = expected)
   | _ -> assert false) ;
   return s
@@ -135,11 +154,17 @@ let should_boot () =
   let open Lwt_result_syntax in
   let*! index = Context_binary.init "/tmp" in
   let context = Context_binary.empty index in
-  let bs = "boot_sector" in
+  let bs = Contract_helpers.read_file "block.wasm" in
   let*! s = Prover.initial_state context bs in
   let* () = check_boot_sector s bs in
-  let*! s = eval_and_check ~expected:0 s in
   let*! s = eval_and_check ~expected:1 s in
+  let*! s = eval_and_check ~expected:2 s in
+  let*! s = eval_and_check ~expected:3 s in
+  let*! s = eval_and_check ~expected:4 s in
+  let*! s = eval_and_check ~expected:5 s in
+  let*! s = eval_and_check ~expected:6 s in
+  let*! s = eval_and_check ~expected:7 s in
+  let*! s = eval_and_check ~expected:8 s in
   let*! p_res = Prover.produce_proof context None s in
   match p_res with
   | Ok proof ->

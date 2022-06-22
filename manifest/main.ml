@@ -3185,6 +3185,7 @@ end = struct
           "main"
           ~path:(path // "lib_protocol/test/integration")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
+          ~dep_files:(conditional_list [("block.wasm", N.(number >= 014))])
           ~deps:
             [
               octez_context;

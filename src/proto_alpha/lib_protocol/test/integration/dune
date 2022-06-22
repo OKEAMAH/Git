@@ -25,4 +25,5 @@
 (rule
  (alias runtest)
  (package tezos-protocol-alpha-tests)
+ (deps block.wasm)
  (action (run %{dep:./main.exe})))
