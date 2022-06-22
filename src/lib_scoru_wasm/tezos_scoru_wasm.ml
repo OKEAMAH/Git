@@ -86,7 +86,89 @@ end = struct
     include T
   end
 
-  let compute_step = Lwt.return
+  type compute_step_kont = CS_Boot_sequence | CS_Runtime | CS_Fatal_error
+
+  let compute_step_kont_encoding =
+    let open Data_encoding in
+    union
+      [
+        case
+          ~title:"boot_sequence"
+          (Tag 0)
+          (constant "boot_sequence")
+          (function CS_Boot_sequence -> Some () | _ -> None)
+          (fun () -> CS_Boot_sequence);
+        case
+          ~title:"runtime"
+          (Tag 1)
+          (constant "runtime")
+          (function CS_Runtime -> Some () | _ -> None)
+          (fun () -> CS_Runtime);
+        case
+          ~title:"fatal_error"
+          (Tag 2)
+          (constant "fatal_error")
+          (function CS_Fatal_error -> Some () | _ -> None)
+          (fun () -> CS_Fatal_error);
+      ]
+
+  module Thunk = Thunk.Make (Tree)
+
+  (* TODO: Should not be [string], but chunked data *)
+  type state = (string * string) * compute_step_kont * int
+
+  let state_schema : state Thunk.schema =
+    let open Thunk.Schema in
+    obj3
+      (req "durable" @@ folders ["kernel"]
+      @@ obj2
+           (req "boot.wasm" @@ encoding Data_encoding.string)
+           (req "next" @@ encoding Data_encoding.string))
+      (req "label" @@ encoding compute_step_kont_encoding)
+      (req "counter" @@ encoding Data_encoding.int31)
+
+  let _boot_l = Thunk.(tup3_0 ^. tup2_0)
+
+  let _next_boot_l = Thunk.(tup3_0 ^. tup2_1)
+
+  let label_l = Thunk.tup3_1
+
+  let counter_l = Thunk.tup3_2
+
+  let step :
+      int Thunk.t -> compute_step_kont -> compute_step_kont Thunk.result Lwt.t =
+   fun state ->
+    let open Lwt_result.Syntax in
+    function
+    | CS_Boot_sequence ->
+        let* () = Thunk.set state 0 in
+        Lwt_result.return CS_Runtime
+    | CS_Runtime ->
+        let* x = Thunk.get state in
+        let* () = Thunk.set state (x + 1) in
+        Lwt_result.return CS_Runtime
+    | CS_Fatal_error ->
+        (* If [Thunk] is implemented correctly, this should not happen *)
+        Lwt_result.return CS_Fatal_error
+
+  let ( let*! ) = Lwt.bind
+
+  let compute_step tree =
+    let aux state_t =
+      let open Lwt_result.Syntax in
+      let* kont_t = label_l state_t in
+      let* kont = Thunk.get kont_t in
+      let* payload_t = counter_l state_t in
+      let*! res = step payload_t kont in
+      match res with
+      | Ok label' -> Thunk.set kont_t label'
+      | Error _ -> Thunk.set kont_t CS_Fatal_error
+    in
+
+    let open Lwt.Syntax in
+    let state_t = Thunk.decode state_schema tree in
+    let* _ = aux state_t in
+    Thunk.encode tree state_t
 
   let set_input_step _ _ = Lwt.return
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/3092
