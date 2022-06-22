@@ -21,7 +21,21 @@ module type S = sig
 
   val lazy_mapping : ('i -> key) -> 'a t -> ('i -> 'a Lwt.t) t
 
+  type ('tag, 'a) case
+
+  val case : 'tag -> 'b t -> ('b -> 'a) -> ('tag, 'a) case
+
+  val tagged_union : 'tag t -> ('tag, 'a) case list -> 'a t
+
   val return : 'a -> 'a t
+
+  val map : ('a -> 'b) -> 'a t -> 'b t
+
+  val map_lwt : ('a -> 'b Lwt.t) -> 'a t -> 'b t
+
+  val prod : 'a t -> 'b t -> ('a * 'b) t
+
+  val prod3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
   val of_lwt : 'a Lwt.t -> 'a t
 
@@ -56,6 +70,22 @@ module Make (T : TreeS) : S with type tree = T.tree = struct
   let return value _tree _prefix = Lwt.return value
 
   let of_lwt lwt _tree _prefix = lwt
+
+  let map f dec tree prefix = Lwt.map f (dec tree prefix)
+
+  let map_lwt f dec tree prefix = Lwt.bind (dec tree prefix) f
+
+  let prod lhs rhs tree prefix =
+    let open Lwt.Syntax in
+    let+ l = lhs tree prefix and+ r = rhs tree prefix in
+    (l, r)
+
+  let prod3 one two three tree prefix =
+    let open Lwt.Syntax in
+    let+ a = one tree prefix
+    and+ b = two tree prefix
+    and+ c = three tree prefix in
+    (a, b, c)
 
   let ( let+ ) dec f tree prefix = Lwt.map f (dec tree prefix)
 
@@ -93,4 +123,23 @@ module Make (T : TreeS) : S with type tree = T.tree = struct
       tree (to_key index) field_enc input_tree input_prefix
     in
     Lwt.return produce_value
+
+  type ('tag, 'a) case =
+    | Case : {tag : 'tag; extract : 'b -> 'a; decode : 'b t} -> ('tag, 'a) case
+
+  let case tag decode extract = Case {tag; decode; extract}
+
+  let tagged_union decode_tag cases input_tree prefix =
+    let open Lwt.Syntax in
+    let* tag = tree ["tag"] decode_tag input_tree prefix in
+    let rec find_case cases =
+      (* Good ol' linear search! *)
+      match cases with
+      | [] -> failwith "No tag matched"
+      | Case case :: cases ->
+          if case.tag = tag then
+            map case.extract (tree ["value"] case.decode) input_tree prefix
+          else find_case cases
+    in
+    find_case cases
 end

@@ -31,6 +31,8 @@ end
 module type S = sig
   type key
 
+  module Key : KeyS with type t = key
+
   type 'a effect
 
   type 'a producer = key -> 'a effect
@@ -84,6 +86,8 @@ module type S = sig
 
   (** [with_producer morph] lifts a morphism for a [producer] to one on [t]. *)
   val with_producer : ('a producer -> 'a producer) -> 'a t -> 'a t
+
+  val __internal__bindings : 'a t -> (key * 'a) list
 end
 
 (** [UnexpectedAccess] is raised in the default of the [produce_value] argument

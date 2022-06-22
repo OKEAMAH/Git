@@ -39,6 +39,8 @@ end
 module type S = sig
   type key
 
+  module Key : KeyS with type t = key
+
   type 'a effect
 
   type 'a producer = key -> 'a effect
@@ -68,12 +70,20 @@ module type S = sig
   val concat : 'a t -> 'a t -> 'a t
 
   val to_list : 'a t -> 'a list effect
+
+  val __internal__bindings : 'a t -> (key * 'a) list
+
+  val __internal__first : 'a t -> key
+
+  val __internal__create : produce_value:'a producer -> key -> key -> 'a t
 end
 
 module Make (Effect : Effect.S) (Key : KeyS) : S with
   type key = Key.t and
   type 'a effect = 'a Effect.t =
 struct
+  module Key = Key
+
   module Map = Lazy_map.Make (Effect) (Key)
 
   type key = Key.t
@@ -190,6 +200,14 @@ struct
         return (prefix :: acc)
     in
     (unroll [@ocaml.tailcall]) [] (Key.pred map.num_elements)
+
+    let __internal__bindings vector = Map.__internal__bindings vector.values
+
+    let __internal__first vector = vector.first
+
+    let __internal__create ~produce_value first num_elements =
+      let values = Map.create ~produce_value () in
+      { first; num_elements; values }
 end
 
 module Int = struct

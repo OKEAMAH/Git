@@ -47,9 +47,23 @@ module type S = sig
       function to [Lazy_map.create]. *)
   val lazy_mapping : ('i -> key) -> 'a t -> ('i -> 'a Lwt.t) t
 
+  type ('tag, 'a) case
+
+  val case : 'tag -> 'b t -> ('b -> 'a) -> ('tag, 'a) case
+
+  val tagged_union : 'tag t -> ('tag, 'a) case list -> 'a t
+
   (* Combinators below *)
 
   val return : 'a -> 'a t
+
+  val map : ('a -> 'b) -> 'a t -> 'b t
+
+  val map_lwt : ('a -> 'b Lwt.t) -> 'a t -> 'b t
+
+  val prod : 'a t -> 'b t -> ('a * 'b) t
+
+  val prod3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
   val of_lwt : 'a Lwt.t -> 'a t
 

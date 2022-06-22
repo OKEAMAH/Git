@@ -33,6 +33,8 @@ end
 module type S = sig
   type key
 
+  module Key : KeyS with type t = key
+
   type 'a effect
 
   type 'a producer = key -> 'a effect
@@ -59,6 +61,8 @@ module type S = sig
     'a t
 
   val with_producer : ('a producer -> 'a producer) -> 'a t -> 'a t
+
+  val __internal__bindings : 'a t -> (key * 'a) list
 end
 
 exception UnexpectedAccess
@@ -67,6 +71,8 @@ module Make (Effect : Effect.S) (Key : KeyS) : S with
   type key = Key.t and
   type 'a effect = 'a Effect.t =
 struct
+  module Key = Key
+
   module Map = Map.Make (Key)
 
   type key = Key.t
@@ -131,6 +137,8 @@ struct
 
   let with_producer morph map =
     { map with produce_value = morph map.produce_value }
+
+  let __internal__bindings map = Map.bindings map.values
 end
 
 module IntMap = Make (Effect.Identity) (Int)

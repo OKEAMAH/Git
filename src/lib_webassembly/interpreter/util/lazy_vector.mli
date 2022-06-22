@@ -45,6 +45,8 @@ end
 module type S = sig
   type key
 
+  module Key : KeyS with type t = key
+
   type 'a effect
 
   type 'a producer = key -> 'a effect
@@ -104,6 +106,12 @@ module type S = sig
   (** [to_list vector] extracts all values of the given [vector] and
       collects them in a list.  *)
   val to_list : 'a t -> 'a list effect
+
+  val __internal__bindings : 'a t -> (key * 'a) list
+
+  val __internal__first : 'a t -> key
+
+  val __internal__create : produce_value:'a producer -> key -> key -> 'a t
 end
 
 module Make (Effect : Effect.S) (Key : KeyS) : S with
