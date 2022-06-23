@@ -303,6 +303,14 @@ build-deps:
 build-dev-deps:
 	@./scripts/install_build_deps.sh --dev
 
+.PHONY: build-locked-deps
+build-locked-deps:
+	@./scripts/install_lock_build_deps.sh
+
+.PHONY: build-locked-dev-deps
+build-locked-dev-deps:
+	@./scripts/install_lock_build_deps.sh --dev
+
 .PHONY: lift-protocol-limits-patch
 lift-protocol-limits-patch:
 	@git apply -R ./src/bin_tps_evaluation/lift_limits.patch || true
