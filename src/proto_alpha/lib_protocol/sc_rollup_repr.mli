@@ -61,7 +61,11 @@ module Internal_for_tests : sig
   val originated_sc_rollup : Origination_nonce.t -> Address.t
 end
 
-module State_hash : S.HASH
+module State_hash : sig
+  include S.HASH
+
+  val context_hash_to_state_hash : Context_hash.t -> t
+end
 
 (** Number of messages consumed by a single commitment. This represents a claim
     about the shape of the Inbox, which can be disputed as part of a commitment
