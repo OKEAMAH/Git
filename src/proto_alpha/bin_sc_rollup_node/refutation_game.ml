@@ -275,9 +275,25 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let open Lwt_result_syntax in
     match turn node_ctxt game players with
     | Our_turn, opponent -> play_next_move node_ctxt store game opponent
-    | Their_turn, _ -> (
-        let*! res = try_timeout node_ctxt players in
-        match res with Ok _ -> return_unit | Error _ -> return_unit)
+    | Their_turn, _ ->
+        let* is_timeout_reached =
+          let Node_context.{rollup_address; cctxt; _} = node_ctxt in
+          Plugin.RPC.Sc_rollup.is_staker_timeout_reached
+            cctxt
+            (cctxt#chain, cctxt#block)
+            rollup_address
+            players.alice
+            players.bob
+            ()
+        in
+        if is_timeout_reached then
+          let*! res = try_timeout node_ctxt players in
+          match res with
+          | Ok _ -> return_unit
+          | Error _ ->
+              let*! () = Refutation_game_event.timeout_failed players in
+              return_unit
+        else return_unit
 
   let ongoing_game node_ctxt =
     let Node_context.{rollup_address; cctxt; operator; _} = node_ctxt in

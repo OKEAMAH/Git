@@ -1850,6 +1850,29 @@ module Sc_rollup = struct
         ~output
         RPC_path.(path /: Sc_rollup.Address.rpc_arg / "game")
 
+    let is_staker_timeout_reached =
+      let query =
+        let open RPC_query in
+        let open Sc_rollup.Game.Index in
+        query (fun alice bob ->
+            let alice = Sc_rollup.Staker.of_b58check_exn alice
+            and bob = Sc_rollup.Staker.of_b58check_exn bob in
+            make alice bob)
+        |+ field "alice" RPC_arg.string "" (fun x ->
+               Format.asprintf "%a" Sc_rollup.Staker.pp x.alice)
+        |+ field "bob" RPC_arg.string "" (fun x ->
+               Format.asprintf "%a" Sc_rollup.Staker.pp x.bob)
+        |> seal
+      in
+      let output = Data_encoding.bool in
+      RPC_service.get_service
+        ~description:
+          "Determine whether the timeout of the current player in the game \
+           played by the given stakers is reached"
+        ~query
+        ~output
+        RPC_path.(path /: Sc_rollup.Address.rpc_arg / "timeout")
+
     let conflicts =
       let query =
         let open RPC_query in
@@ -1939,6 +1962,17 @@ module Sc_rollup = struct
         in
         return game)
 
+  let register_staker_timeout_reached () =
+    Registration.register1
+      ~chunked:false
+      S.is_staker_timeout_reached
+      (fun context rollup game_index () ->
+        let open Lwt_tzresult_syntax in
+        let*! res =
+          Sc_rollup.Refutation_storage.timeout context rollup game_index
+        in
+        match res with Ok _ -> return true | _ -> return false)
+
   let register_conflicts () =
     Registration.register1
       ~chunked:false
@@ -1958,6 +1992,7 @@ module Sc_rollup = struct
     register_commitment () ;
     register_root () ;
     register_ongoing_refutation_game () ;
+    register_staker_timeout_reached () ;
     register_conflicts ()
 
   let list ctxt block = RPC_context.make_call0 S.root ctxt block () ()
@@ -1984,6 +2019,15 @@ module Sc_rollup = struct
       block
       sc_rollup_address
       staker
+
+  let is_staker_timeout_reached ctxt block sc_rollup_address alice bob =
+    let game_index = Sc_rollup.Game.Index.make alice bob in
+    RPC_context.make_call1
+      S.is_staker_timeout_reached
+      ctxt
+      block
+      sc_rollup_address
+      game_index
 
   let conflicts ctxt block sc_rollup_address staker =
     RPC_context.make_call1 S.conflicts ctxt block sc_rollup_address staker
