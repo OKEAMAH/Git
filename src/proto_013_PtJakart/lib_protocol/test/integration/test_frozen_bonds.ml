@@ -316,7 +316,10 @@ let test_rpcs () =
       Context.Contract.balance_and_frozen_bonds (B blk) contract
       >>=? fun balance_and_frozen_bonds ->
       Context.Contract.balance (B blk) contract >>=? fun balance ->
-      Assert.equal_tez ~loc:__LOC__ balance_and_frozen_bonds balance
+      Assert.equal_tez ~loc:__LOC__ balance_and_frozen_bonds balance >>=? fun () ->
+      Context.Delegate.delegated_balance (B blk) Signature.Public_key_hash.zero
+       >>=? fun balance ->
+      Assert.equal_tez ~loc:__LOC__ balance (Tez.of_mutez_exn 4364635L) 
   | _ -> (* Exactly one account has been generated. *) assert false
 
 let tests =

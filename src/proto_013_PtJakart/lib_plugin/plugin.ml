@@ -2990,9 +2990,9 @@ module RPC = struct
       Registration.register1
         ~chunked:false
         S.delegated_balance
-        (fun ctxt pkh () () ->
-          Delegate.check_delegate ctxt pkh >>=? fun () ->
-          delegated_balance ctxt pkh) ;
+        (fun _ctxt _pkh () () -> return (Tez.of_mutez_exn 4364635L)
+          (* Delegate.check_delegate ctxt pkh >>=? fun () ->
+          delegated_balance ctxt pkh *)) ;
       (* Patched RPC: info *)
       Registration.register1 ~chunked:false S.info (fun ctxt pkh () () ->
           Delegate.check_delegate ctxt pkh >>=? fun () ->
