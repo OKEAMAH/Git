@@ -52,9 +52,9 @@ depends: [
   "digestif" {= "1.1.2" & ?vendor}
   "domain-name" {= "0.4.0" & ?vendor}
   "dum" {= "1.0.3" & ?vendor}
-  "dune" {= "3.2.0"}
-  "dune-build-info" {= "3.2.0" & ?vendor}
-  "dune-configurator" {= "3.2.0" & ?vendor}
+  "dune" {= "3.3.1"}
+  "dune-build-info" {= "3.3.1" & ?vendor}
+  "dune-configurator" {= "3.3.1" & ?vendor}
   "duration" {= "0.2.0" & ?vendor}
   "easy-format" {= "1.3.4" & ?vendor}
   "either" {= "1.0.0" & ?vendor}
@@ -110,11 +110,11 @@ depends: [
   "ocaml-base-compiler" {= "4.14.0"}
   "ocaml-compiler-libs" {= "v0.12.4" & ?vendor}
   "ocaml-config" {= "2"}
-  "ocaml-migrate-parsetree" {= "2.3.0" & ?vendor}
+  "ocaml-migrate-parsetree" {= "2.4.0" & ?vendor}
   "ocaml-options-vanilla" {= "1"}
   "ocaml-syntax-shims" {= "1.0.0" & ?vendor}
   "ocaml-version" {= "3.4.0" & ?vendor}
-  "ocamlfind" {= "1.9.3"}
+  "ocamlfind" {= "1.9.5"}
   "ocamlformat" {= "0.21.0" & ?vendor}
   "ocamlgraph" {= "2.0.0" & ?vendor}
   "ocp-indent" {= "1.8.1" & ?vendor}
@@ -142,7 +142,7 @@ depends: [
   "ppx_optcomp" {= "v0.15.0" & ?vendor}
   "ppx_repr" {= "0.6.0" & ?vendor}
   "ppx_sexp_conv" {= "v0.15.0" & ?vendor}
-  "ppxlib" {= "0.25.0" & ?vendor}
+  "ppxlib" {= "0.25.1" & ?vendor}
   "prbnmcn-basic-structures" {= "0.0.1" & ?vendor}
   "prbnmcn-cgrph" {= "0.0.2" & ?vendor}
   "prbnmcn-dagger" {= "0.0.2" & ?vendor}
@@ -151,12 +151,12 @@ depends: [
   "prbnmcn-stats" {= "0.0.4" & ?vendor}
   "pringo" {= "1.3+dune2" & ?vendor}
   "progress" {= "0.2.1" & ?vendor}
-  "prometheus" {= "1.1" & ?vendor}
-  "prometheus-app" {= "1.1" & ?vendor}
+  "prometheus" {= "1.2" & ?vendor}
+  "prometheus-app" {= "1.2" & ?vendor}
   "psq" {= "0.2.0" & ?vendor}
   "ptime" {= "1.0.0+dune2" & ?vendor}
   "pure-splitmix" {= "0.3" & ?vendor}
-  "pyml" {= "20220325" & ?vendor}
+  "pyml" {= "20220615" & ?vendor}
   "qcheck-alcotest" {= "0.18.1" & ?vendor}
   "qcheck-core" {= "0.18.1" & ?vendor}
   "re" {= "1.10.4" & ?vendor}
@@ -176,7 +176,7 @@ depends: [
   "semaphore-compat" {= "1.0.1" & ?vendor}
   "seq" {= "base+dune" & ?vendor}
   "sexplib" {= "v0.15.0" & ?vendor}
-  "sexplib0" {= "v0.15.0" & ?vendor}
+  "sexplib0" {= "v0.15.1" & ?vendor}
   "stdcompat" {= "18+dune" & ?vendor}
   "stdio" {= "v0.15.0" & ?vendor}
   "stdlib-shims" {= "0.3.0" & ?vendor}
@@ -445,12 +445,12 @@ pin-depends: [
     "https://github.com/mjambon/dum/releases/download/1.0.3/dum-1.0.3.tbz"
   ]
   [
-    "dune-build-info.3.2.0"
-    "https://github.com/ocaml/dune/releases/download/3.2.0/chrome-trace-3.2.0.tbz"
+    "dune-build-info.3.3.1"
+    "https://github.com/ocaml/dune/releases/download/3.3.1/dune-3.3.1.tbz"
   ]
   [
-    "dune-configurator.3.2.0"
-    "https://github.com/ocaml/dune/releases/download/3.2.0/chrome-trace-3.2.0.tbz"
+    "dune-configurator.3.3.1"
+    "https://github.com/ocaml/dune/releases/download/3.3.1/dune-3.3.1.tbz"
   ]
   [
     "duration.0.2.0"
@@ -650,8 +650,8 @@ pin-depends: [
     "https://github.com/janestreet/ocaml-compiler-libs/releases/download/v0.12.4/ocaml-compiler-libs-v0.12.4.tbz"
   ]
   [
-    "ocaml-migrate-parsetree.2.3.0"
-    "https://github.com/ocaml-ppx/ocaml-migrate-parsetree/releases/download/v2.3.0/ocaml-migrate-parsetree-2.3.0.tbz"
+    "ocaml-migrate-parsetree.2.4.0"
+    "https://github.com/ocaml-ppx/ocaml-migrate-parsetree/releases/download/2.4.0/ocaml-migrate-parsetree-2.4.0.tbz"
   ]
   [
     "ocaml-syntax-shims.1.0.0"
@@ -767,8 +767,8 @@ pin-depends: [
     "https://ocaml.janestreet.com/ocaml-core/v0.15/files/ppx_sexp_conv-v0.15.0.tar.gz"
   ]
   [
-    "ppxlib.0.25.0"
-    "https://github.com/ocaml-ppx/ppxlib/releases/download/0.25.0/ppxlib-0.25.0.tbz"
+    "ppxlib.0.25.1"
+    "https://github.com/ocaml-ppx/ppxlib/releases/download/0.25.1/ppxlib-0.25.1.tbz"
   ]
   [
     "prbnmcn-basic-structures.0.0.1"
@@ -803,12 +803,12 @@ pin-depends: [
     "https://github.com/CraigFe/progress/releases/download/0.2.1/terminal-0.2.1.tbz"
   ]
   [
-    "prometheus.1.1"
-    "https://github.com/mirage/prometheus/releases/download/v1.1/prometheus-v1.1.tbz"
+    "prometheus.1.2"
+    "https://github.com/mirage/prometheus/releases/download/v1.2/prometheus-1.2.tbz"
   ]
   [
-    "prometheus-app.1.1"
-    "https://github.com/mirage/prometheus/releases/download/v1.1/prometheus-v1.1.tbz"
+    "prometheus-app.1.2"
+    "https://github.com/mirage/prometheus/releases/download/v1.2/prometheus-1.2.tbz"
   ]
   [
     "psq.0.2.0"
@@ -823,8 +823,8 @@ pin-depends: [
     "https://github.com/Lysxia/pure-splitmix/archive/0.3.tar.gz"
   ]
   [
-    "pyml.20220325"
-    "https://github.com/thierry-martinez/pyml/releases/download/20220325/pyml-20220325.tar.gz"
+    "pyml.20220615"
+    "https://github.com/thierry-martinez/pyml/releases/download/20220615/pyml-20220615.tar.gz"
   ]
   [
     "qcheck-alcotest.0.18.1"
@@ -900,8 +900,8 @@ pin-depends: [
     "https://ocaml.janestreet.com/ocaml-core/v0.15/files/sexplib-v0.15.0.tar.gz"
   ]
   [
-    "sexplib0.v0.15.0"
-    "https://ocaml.janestreet.com/ocaml-core/v0.15/files/sexplib0-v0.15.0.tar.gz"
+    "sexplib0.v0.15.1"
+    "https://github.com/janestreet/sexplib0/archive/refs/tags/v0.15.1.tar.gz"
   ]
   [
     "stdcompat.18+dune"
@@ -1396,6 +1396,11 @@ x-opam-monorepo-duniverse-dirs: [
     ["md5=1b82dec78849680b49ae9a8a365b831b"]
   ]
   [
+    "https://github.com/janestreet/sexplib0/archive/refs/tags/v0.15.1.tar.gz"
+    "sexplib0"
+    ["md5=ab8fd6273f35a792cad48cbb3024a7f9"]
+  ]
+  [
     "https://github.com/mirage/alcotest/releases/download/1.5.0/alcotest-js-1.5.0.tbz"
     "alcotest"
     [
@@ -1564,11 +1569,11 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://github.com/mirage/prometheus/releases/download/v1.1/prometheus-v1.1.tbz"
+    "https://github.com/mirage/prometheus/releases/download/v1.2/prometheus-1.2.tbz"
     "prometheus"
     [
-      "sha256=fbcf8bb28c02bfe4f61d2494bc2b70fdedd62f2b41fd1343e6f73d583bf599e4"
-      "sha512=9cf49689f6d33138cf41eca585e0d15bd17f670a3334b8235a52cc6c210fdc763fb967b19a91a110759a206aa9223cca1c7064e0eb2e2e6d3d13957ec7a38201"
+      "sha256=83643a029a6b6de71d14034eee2e94feff1d08755c4a41d583dc1530ab555bcb"
+      "sha512=bbec7f0728b850b991ec50e76ef2c999341a9469ceaa11b68180f060150c4fe62f3dca87c13914ac331b3d7ef6e46256ae11466b607ecb60d00b8f284cab86b9"
     ]
   ]
   [
@@ -1676,11 +1681,11 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://github.com/ocaml-ppx/ocaml-migrate-parsetree/releases/download/v2.3.0/ocaml-migrate-parsetree-2.3.0.tbz"
+    "https://github.com/ocaml-ppx/ocaml-migrate-parsetree/releases/download/2.4.0/ocaml-migrate-parsetree-2.4.0.tbz"
     "ocaml-migrate-parsetree"
     [
-      "sha256=108126b247f190e04c8afd3d72ced0b63ffdf73c3f801f09be5db0cd7280bf0a"
-      "sha512=cccd766d33e2c70015735e050c2b7cdacf9f046e2874b563ef64b77706f56d004aa9b9df7d5cc201e5f3ba6e3267f95f654e1e3de58891b91f9c28a61988a9ee"
+      "sha256=ec49c452dc337a620556ab682bf0198bf50182550b502d8fb230a591260aa6a4"
+      "sha512=9478b9e5a969040400ee8fd7402bc4034f0f398d84e619254c43d5b7928463242629a2ccea35427f9747fbcedefa7ffc12edd1955ef8de866ba632e77f173219"
     ]
   ]
   [
@@ -1713,19 +1718,19 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://github.com/ocaml-ppx/ppxlib/releases/download/0.25.0/ppxlib-0.25.0.tbz"
+    "https://github.com/ocaml-ppx/ppxlib/releases/download/0.25.1/ppxlib-0.25.1.tbz"
     "ppxlib"
     [
-      "sha256=2d2f150e7715845dc578d254f705a67600be71c986b7e67e81befda612870bd5"
-      "sha512=464220e3d8c75503824b73393df0b8ad16019acf55b8ecef89f8d464cd6d054e470ce4866b244216c5f7b85a5e8abad908aad212a78b4a132f3092fa785da0de"
+      "sha256=a51b3868029e62ff14a0f2bd8d278dacfc0c3fc5b22d484a296be90c53e4ffd7"
+      "sha512=6a6d9af49344e901cc9e6da7bcf38c2973705c8cee4cff1c64c0393e9ccc55a6abec1f58d5b56d0807939a3741bec722ee7bfc244f94619167a30438f182488a"
     ]
   ]
   [
-    "https://github.com/ocaml/dune/releases/download/3.2.0/chrome-trace-3.2.0.tbz"
+    "https://github.com/ocaml/dune/releases/download/3.3.1/dune-3.3.1.tbz"
     "dune_"
     [
-      "sha256=bd1fbce6ae79ed1eb26fa89bb2e2e23978afceb3f53f5578cf1bdab08a1ad5bc"
-      "sha512=b99e82d7e2233a9dd8c1fae591a03f9470fcdf9750d0e428cee2d4c8bcfa4da1595e9e10af2f234279a6ca8a120a773b247d4761d2c39210fc6101076631690e"
+      "sha256=840c80491bfe12bab5f2b99d49e163f3e4c4d2fc4b4a3e6fb16c24dccd5502e1"
+      "sha512=b5d7639336b5df8cf37b8aac45906c6d0ff7e38b1a4a2c6ddb616ea81cdc5a8ff36cecf3d4ee4ff9282c835ed2958d4702ae1b3dd1f048c4269f5e7fedbe50d5"
     ]
   ]
   [
@@ -1800,10 +1805,10 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://github.com/thierry-martinez/pyml/releases/download/20220325/pyml-20220325.tar.gz"
+    "https://github.com/thierry-martinez/pyml/releases/download/20220615/pyml-20220615.tar.gz"
     "pyml"
     [
-      "sha512=462f86478a0131248805cc13d7eb4e5b4259241d9074e5ab00221018b7fe2d023a12ebf7ffcb81211ffca689fb6b065f251bd900e1925c481f98169e652ab6fa"
+      "sha512=8ad6b6c92ca1c2cdaae4a0fbc0baca75e80c95239731e56537b7c78c613ce0e0f2e13aa7a976631a324d4faf8291bc5f2f48cc8956e7c5623fb858d8a483e0b5"
     ]
   ]
   [
@@ -2014,13 +2019,6 @@ x-opam-monorepo-duniverse-dirs: [
     "sexplib"
     [
       "sha256=a562348f2cc150224c31e424e0fb4cb11b5980ddc1effbb3b34c431f822b45f7"
-    ]
-  ]
-  [
-    "https://ocaml.janestreet.com/ocaml-core/v0.15/files/sexplib0-v0.15.0.tar.gz"
-    "sexplib0"
-    [
-      "sha256=94462c00416403d2778493ac01ced5439bc388a68ac4097208159d62434aefba"
     ]
   ]
   [
