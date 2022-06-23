@@ -12,7 +12,7 @@ echo "Done setting up switch"
 "$script_dir"/install_build_deps.rust.sh
 
 # Installs non-vendored dependencies such as ocaml and dune
-opam install --deps-only --ignore-pin-depends ./tezos.opam.locked --yes
+opam install --deps-only --ignore-pin-depends ./tezos.opam.locked --yes 2> /dev/null
 
 # Installs the opam-monorepo plugin
 opam install opam-monorepo.0.3.3 --yes
