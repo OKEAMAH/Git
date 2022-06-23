@@ -135,7 +135,11 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let*! r = Sc_rollup.Proof.produce (module P) inbox game.level in
     match r with
     | Ok r -> return r
-    | Error _err -> failwith "The rollup node cannot produce a proof."
+    | Error err ->
+        failwith
+          "The rollup node cannot produce a proof: %a"
+          Environment.Error_monad.pp
+          err
 
   let new_dissection node_ctxt store last_level ok our_view =
     let open Lwt_result_syntax in
