@@ -51,6 +51,15 @@ let info message =
   let date = Unix.gettimeofday () |> int_of_float |> Int64.of_int in
   Irmin.Info.Default.v ~author:"Tezos smart-contract rollup node" ~message date
 
+let commit ~time ?(message = "") context =
+  let open Lwt_syntax in
+  let info =
+    IStore.Info.v ~author:"Tezos" (Time.Protocol.to_seconds time) ~message
+  in
+  let* tree = IStore.tree context in
+  let* commit = IStore.Commit.v (IStore.repo context) ~info ~parents:[] tree in
+  return @@ IStore.Commit.key commit
+
 module type Mutable_value = sig
   type value
 

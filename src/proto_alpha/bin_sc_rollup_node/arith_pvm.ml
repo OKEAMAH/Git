@@ -55,6 +55,12 @@ module Arith_proof_format = struct
 
   let produce_proof context tree step =
     let open Lwt_syntax in
+    let time = Time.Protocol.epoch in
+    let info () =
+      IStore.Info.v ~author:"Tezos" (Time.Protocol.to_seconds time) ~message:""
+    in
+    let* _ = IStore.set_tree ~info context [] tree in
+    let* _commit_key = Store.commit ~time context in
     match IStoreTree.kinded_key tree with
     | Some k ->
         let* p = IStoreProof.produce_tree_proof (IStore.repo context) k step in
