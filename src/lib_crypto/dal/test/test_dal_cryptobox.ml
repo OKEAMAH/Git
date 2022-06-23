@@ -37,12 +37,12 @@ module Test = struct
     let open Tezos_error_monad.Error_monad.Result_syntax in
     List.iter
       (fun redundancy_factor ->
-        let srs_g1 =
-          Tezt.Base.project_root // Filename.dirname __FILE__ // "srs_zcash_g1"
-        in
-        let srs_g2 =
-          Tezt.Base.project_root // Filename.dirname __FILE__ // "srs_zcash_g2"
-        in
+        (*let srs_g1 =
+            Tezt.Base.project_root // Filename.dirname __FILE__ // "srs_zcash_g1"
+          in
+          let srs_g2 =
+            Tezt.Base.project_root // Filename.dirname __FILE__ // "srs_zcash_g2"
+          in*)
         let module DAL_crypto = Dal_cryptobox.Make (struct
           let redundancy_factor = redundancy_factor
 
@@ -52,9 +52,14 @@ module Test = struct
 
           let shards_amount = shards_amount
 
-          let trusted_setup_g1_file = srs_g1
+          type trusted_setup_files = {
+            srs_g1 : string;
+            srs_g2 : string;
+            log_size : int;
+          }
 
-          let trusted_setup_g2_file = srs_g2
+          let trusted_setup_files = None
+          (*Some {srs_g1; srs_g2; log_size = 21}*)
         end) in
         match
           let* p = DAL_crypto.polynomial_from_bytes msg in
@@ -98,8 +103,6 @@ module Test = struct
           in
 
           let* dec = DAL_crypto.from_shards c in
-
-          let _min a b = if a > b then b else a in
           assert (
             Bytes.compare
               msg
