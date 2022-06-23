@@ -129,6 +129,9 @@ Bug Fixes
 - The ``helpers/scripts/run_operation`` RPC now checks whether all
   operations in a batch have the same source. (MR :gl:`!5557`)
 
+- Fix a discrepancy in gas consumption of contract origination between
+  dry run and actual application (MR :gl:`!5659`)
+
 Minor Changes
 -------------
 
