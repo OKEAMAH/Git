@@ -3716,6 +3716,7 @@ include Tezos_raw_protocol_%s.Main
             tezos_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             main |> open_;
+            tezos_rpc;
           ]
         ~all_modules_except:["Plugin_registerer"]
         ~bisect_ppx:N.(number >= 008)

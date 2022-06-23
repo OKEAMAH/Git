@@ -2877,4 +2877,7 @@ let levels_in_current_cycle ctxt ?(offset = 0l) block =
 
 let rpc_services =
   register () ;
-  RPC_directory.merge rpc_services !Registration.patched_services
+  RPC_directory.merge
+    ~strategy:`Pick_right
+    rpc_services
+    !Registration.patched_services

@@ -4146,5 +4146,8 @@ module RPC = struct
 
   let rpc_services =
     register () ;
-    RPC_directory.merge rpc_services !Registration.patched_services
+    Tezos_rpc.RPC_directory.merge
+      ~strategy:`Pick_right
+      rpc_services
+      !Registration.patched_services
 end

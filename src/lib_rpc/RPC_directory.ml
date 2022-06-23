@@ -26,6 +26,44 @@
 open Error_monad
 include Resto_directory.Make (RPC_encoding)
 
+let string_of_step : step -> string = function
+  | Static s -> s
+  | Dynamic arg -> Format.sprintf "<%s>" arg.name
+  | DynamicTail arg -> Format.sprintf "<%s...>" arg.name
+
+let string_of_conflict_kind = function
+  | CDir -> "Directory conflict"
+  | CBuilder -> "Builder conflict"
+  | CTail -> "Tail conflict"
+  | CService meth ->
+      Format.sprintf "Method conflict for %s" (Resto.string_of_meth meth)
+  | CTypes (arg1, arg2) ->
+      Format.sprintf
+        "Type conflict for argument %s with argument %s"
+        arg1.name
+        arg2.name
+  | CType (arg, names) ->
+      Format.sprintf
+        "Type conflict for %s with argument %s"
+        (String.concat ", " names)
+        arg.name
+
+let string_of_conflict (steps, kind) =
+  Format.sprintf
+    "%s in /%s"
+    (string_of_conflict_kind kind)
+    (String.concat "/" @@ List.map string_of_step steps)
+
+(* Register a special printer for conflicts *)
+let () =
+  Printexc.register_printer @@ function
+  | Conflict (steps, conflict) ->
+      Format.ksprintf
+        Option.some
+        "Conflict in registration of service: %s"
+        (string_of_conflict (steps, conflict))
+  | _ -> None
+
 let gen_register dir service handler =
   register dir service (fun p q i ->
       Lwt.catch
