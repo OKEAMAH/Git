@@ -2619,6 +2619,10 @@ module Sc_rollup : sig
 
       val produce_output_proof :
         context -> state -> output -> (output_proof, error) result Lwt.t
+
+      module Internal_for_tests : sig
+        val insert_failure : state -> state Lwt.t
+      end
     end
 
     type t = (module S)
@@ -2650,6 +2654,8 @@ module Sc_rollup : sig
         Context.TREE with type key = string list and type value = bytes
 
       type tree = Tree.tree
+
+      val hash_tree : tree -> State_hash.t
 
       type proof
 

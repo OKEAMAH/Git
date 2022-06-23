@@ -463,6 +463,14 @@ module V2_0_0 = struct
       let open Lwt_result_syntax in
       let*! output_proof_state = state_hash state in
       return {output_proof_state; output_proof_output}
+
+    module Internal_for_tests = struct
+      let insert_failure state =
+        let add n = Tree.add state ["failures"; string_of_int n] Bytes.empty in
+        let open Lwt_syntax in
+        let* n = Tree.length state ["failures"] in
+        add n
+    end
   end
 
   module ProtocolImplementation = Make (struct

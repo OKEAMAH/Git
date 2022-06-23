@@ -58,12 +58,6 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     | Some 0 -> return (state, fuel)
     | _ -> f (consume_fuel fuel) state
 
-  let loser_noise =
-    let inbox_level =
-      match Raw_level.of_int32 0l with Error _ -> assert false | Ok x -> x
-    in
-    Sc_rollup.{payload = "0xFA11"; inbox_level; message_counter = Z.of_int 0}
-
   (** [eval_until_input level message_index ?fuel start_tick
       failing_ticks state] advances a PVM [state] until it wants more
       inputs or there are no more [fuel] (if [Some fuel] is
@@ -87,7 +81,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
             ~message_tick:tick
             ~internal:true
         in
-        let* state = PVM.set_input loser_noise state in
+        let* state = PVM.Internal_for_tests.insert_failure state in
         return (state, failing_ticks')
       in
       match failing_ticks with

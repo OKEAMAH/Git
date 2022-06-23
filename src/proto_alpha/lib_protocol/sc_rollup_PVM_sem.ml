@@ -323,4 +323,8 @@ module type S = sig
       outbox. *)
   val produce_output_proof :
     context -> state -> output -> (output_proof, error) result Lwt.t
+
+  module Internal_for_tests : sig
+    val insert_failure : state -> state Lwt.t
+  end
 end

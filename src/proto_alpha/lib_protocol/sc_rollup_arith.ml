@@ -31,6 +31,8 @@ module type P = sig
 
   type tree = Tree.tree
 
+  val hash_tree : tree -> State_hash.t
+
   type proof
 
   val proof_encoding : proof Data_encoding.t
@@ -1110,6 +1112,14 @@ module Make (Context : P) :
         return {output_proof; output_proof_state; output_proof_output}
     | Some (_, false) -> fail Arith_invalid_claim_about_outbox
     | None -> fail Arith_output_proof_production_failed
+
+  module Internal_for_tests = struct
+    let insert_failure state =
+      let add n = Tree.add state ["failures"; string_of_int n] Bytes.empty in
+      let open Lwt_syntax in
+      let* n = Tree.length state ["failures"] in
+      add n
+  end
 end
 
 module ProtocolImplementation = Make (struct
@@ -1127,6 +1137,9 @@ module ProtocolImplementation = Make (struct
 
   type tree = Context.tree
 
+  let hash_tree tree =
+    State_hash.context_hash_to_state_hash (Context.Tree.hash tree)
+
   type proof = Context.Proof.tree Context.Proof.t
 
   let verify_proof p f =
@@ -1137,8 +1150,7 @@ module ProtocolImplementation = Make (struct
     Lwt.return None
 
   let kinded_hash_to_state_hash = function
-    | `Value hash | `Node hash ->
-        State_hash.hash_bytes [Context_hash.to_bytes hash]
+    | `Value hash | `Node hash -> State_hash.context_hash_to_state_hash hash
 
   let proof_before proof = kinded_hash_to_state_hash proof.Context.Proof.before
 
