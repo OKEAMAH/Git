@@ -310,7 +310,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let* () = Refutation_game_event.conflict_detected conflict in
     inject_next_move node_ctxt (None, conflict.other)
 
-  let start_game_if_conflict node_ctxt =
+  let start_game_if_conflict (Layer1.Head {level; _}) node_ctxt =
     let open Lwt_result_syntax in
     let Node_context.{rollup_address; cctxt; operator; _} = node_ctxt in
     let* conflicts =
@@ -324,14 +324,34 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let play_new_game conflicts =
       match conflicts with
       | [] -> return ()
-      | conflict :: _conflicts -> play_opening_move node_ctxt conflict
+      | conflict :: _conflicts ->
+          (*
+
+             When two identical implementations of the rollup node are
+             running, they will start the game simultaneously and one
+             of the two injected operations will fail. To prevent
+             this, we introduce a deterministic strategy where the
+             rollup node starts the game depending on a comparison
+             between the adresses of the two operators in conflict and
+             the parity of the level.
+
+          *)
+          let open Sc_rollup.Refutation_storage in
+          let cmp =
+            if Signature.Public_key_hash.compare conflict.other operator < 0
+            then 0
+            else 1
+          in
+          if Int32.to_int level mod 2 = cmp then
+            play_opening_move node_ctxt conflict
+          else return_unit
     in
     play_new_game conflicts
 
-  let process _head node_ctxt store =
+  let process head node_ctxt store =
     let open Lwt_result_syntax in
     let* game = ongoing_game node_ctxt in
     match game with
     | Some game -> play node_ctxt store game
-    | None -> start_game_if_conflict node_ctxt
+    | None -> start_game_if_conflict head node_ctxt
 end
