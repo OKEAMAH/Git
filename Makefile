@@ -303,13 +303,17 @@ build-deps:
 build-dev-deps:
 	@./scripts/install_build_deps.sh --dev
 
-.PHONY: build-locked-deps
-build-locked-deps:
+.PHONY: monorepo-build-deps
+monorepo-build-deps:
 	@./scripts/install_lock_build_deps.sh
 
-.PHONY: build-locked-dev-deps
-build-locked-dev-deps:
+.PHONY: monorepo-build-dev-deps
+monorepo-build-dev-deps:
 	@./scripts/install_lock_build_deps.sh --dev
+
+.PHONY: monorepo-build-tps-deps
+monorepo-build-tps-deps:
+	@./scripts/install_lock_build_deps.sh --tps
 
 .PHONY: lift-protocol-limits-patch
 lift-protocol-limits-patch:
