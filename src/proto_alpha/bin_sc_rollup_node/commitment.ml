@@ -276,7 +276,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
       Store.Commitments.mem store next_level_to_publish
     in
     if is_commitment_available then
-      let*! commitment, commitment_hash =
+      let*! commitment, _commitment_hash =
         Store.Commitments.get store next_level_to_publish
       in
       let* () =
@@ -298,7 +298,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
         else return_unit
       in
       let* source, src_pk, src_sk = Node_context.get_operator_keys node_ctxt in
-      let* _, _, Manager_operation_result {operation_result; _} =
+      let* _oph, _op, _results =
         Client_proto_context.sc_rollup_publish
           cctxt
           ~chain:cctxt#chain
@@ -311,30 +311,10 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
           ~fee_parameter:Configuration.default_fee_parameter
           ()
       in
-      let open Apply_results in
       let*! () =
-        match operation_result with
-        | Applied (Sc_rollup_publish_result {published_at_level; _}) ->
-            let open Lwt_syntax in
-            let* () =
-              Store.Last_published_commitment_level.set
-                store
-                commitment.inbox_level
-            in
-            let* () =
-              Store.Commitments_published_at_level.add
-                store
-                commitment_hash
-                published_at_level
-            in
-            Commitment_event.publish_commitment_injected commitment
-        | Failed (Sc_rollup_publish_manager_kind, _errors) ->
-            Commitment_event.publish_commitment_failed commitment
-        | Backtracked (Sc_rollup_publish_result _, _errors) ->
-            Commitment_event.publish_commitment_backtracked commitment
-        | Skipped Sc_rollup_publish_manager_kind ->
-            Commitment_event.publish_commitment_skipped commitment
+        Store.Last_published_commitment_level.set store commitment.inbox_level
       in
+      let*! () = Commitment_event.publish_commitment_injected commitment in
       return_unit
     else return_unit
 
@@ -403,11 +383,10 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     else return_false
 
   let cement_commitment ({Node_context.cctxt; rollup_address; _} as node_ctxt)
-      ({Sc_rollup.Commitment.inbox_level; _} as commitment) commitment_hash
-      store =
+      commitment commitment_hash =
     let open Lwt_result_syntax in
     let* source, src_pk, src_sk = Node_context.get_operator_keys node_ctxt in
-    let* _, _, Manager_operation_result {operation_result; _} =
+    let* _oph, _op, _results =
       Client_proto_context.sc_rollup_cement
         cctxt
         ~chain:cctxt#chain
@@ -420,25 +399,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
         ~fee_parameter:Configuration.default_fee_parameter
         ()
     in
-    let open Apply_results in
-    let*! () =
-      match operation_result with
-      | Applied (Sc_rollup_cement_result _) ->
-          let open Lwt_syntax in
-          let* () =
-            Store.Last_cemented_commitment_level.set store inbox_level
-          in
-          let* () =
-            Store.Last_cemented_commitment_hash.set store commitment_hash
-          in
-          Commitment_event.cement_commitment_injected commitment
-      | Failed (Sc_rollup_cement_manager_kind, _errors) ->
-          Commitment_event.cement_commitment_failed commitment_hash
-      | Backtracked (Sc_rollup_cement_result _, _errors) ->
-          Commitment_event.cement_commitment_backtracked commitment_hash
-      | Skipped Sc_rollup_cement_manager_kind ->
-          Commitment_event.cement_commitment_skipped commitment_hash
-    in
+    let*! () = Commitment_event.cement_commitment_injected commitment in
     return_unit
 
   (* TODO:  https://gitlab.com/tezos/tezos/-/issues/3008
@@ -476,7 +437,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
                 commitment_hash
             in
             if green_flag then
-              cement_commitment node_ctxt commitment commitment_hash store
+              cement_commitment node_ctxt commitment commitment_hash
             else return ()
         | None -> return ())
     | None -> return ()
