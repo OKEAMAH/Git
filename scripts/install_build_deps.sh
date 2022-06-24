@@ -106,3 +106,4 @@ if [ -n "$dev" ]; then
 fi
 
 "$script_dir"/install_sapling_parameters.sh
+"$script_dir"/install_dal_trusted_setup.sh
