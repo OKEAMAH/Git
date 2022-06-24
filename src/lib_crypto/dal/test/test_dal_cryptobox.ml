@@ -51,20 +51,13 @@ module Test = struct
           let slot_segment_size = slot_segment_size
 
           let shards_amount = shards_amount
-
-          type trusted_setup_files = {
-            srs_g1 : string;
-            srs_g2 : string;
-            log_size : int;
-          }
-
-          let trusted_setup_files = None
-          (*Some {srs_g1; srs_g2; log_size = 21}*)
         end) in
+        let trusted_setup = DAL_crypto.build_trusted_setup_instance None in
+
         match
           let* p = DAL_crypto.polynomial_from_bytes msg in
 
-          let* cm = DAL_crypto.commit p in
+          let* cm = DAL_crypto.commit trusted_setup p in
           (*let precompute_pi_segments =
               DAL_crypto.precompute_slot_segments_proofs ()
             in*)
@@ -87,6 +80,7 @@ module Test = struct
           let slot_segment = Bytes.sub msg 0 slot_segment_size in
           assert (
             DAL_crypto.verify_slot_segment
+              trusted_setup
               cm
               ~slot_segment
               ~slot_segment_index:0
@@ -112,7 +106,7 @@ module Test = struct
                  (min slot_size msg_size))
             = 0) ;
 
-          let* comm = DAL_crypto.commit p in
+          let* comm = DAL_crypto.commit trusted_setup p in
 
           (*let precompute_pi_shards = DAL_crypto.precompute_shards_proofs () in*)
           let filename =
@@ -133,14 +127,23 @@ module Test = struct
           match DAL_crypto.IntMap.find 0 enc_shards with
           | None -> Ok ()
           | Some eval ->
-              assert (DAL_crypto.verify_shard comm (0, eval) shard_proofs.(0)) ;
+              assert (
+                DAL_crypto.verify_shard
+                  trusted_setup
+                  comm
+                  (0, eval)
+                  shard_proofs.(0)) ;
 
               let* pi =
-                DAL_crypto.prove_degree p (DAL_crypto.polynomial_degree p)
+                DAL_crypto.prove_degree
+                  trusted_setup
+                  p
+                  (DAL_crypto.polynomial_degree p)
               in
 
               let* check =
                 DAL_crypto.verify_degree
+                  trusted_setup
                   comm
                   pi
                   (DAL_crypto.polynomial_degree p)
@@ -148,10 +151,11 @@ module Test = struct
               assert check ;
 
               let point = Scalar.random () in
-              let+ pi_slot = DAL_crypto.prove_single p point in
+              let+ pi_slot = DAL_crypto.prove_single trusted_setup p point in
 
               assert (
                 DAL_crypto.verify_single
+                  trusted_setup
                   comm
                   ~point
                   ~evaluation:(DAL_crypto.polynomial_evaluate p point)
