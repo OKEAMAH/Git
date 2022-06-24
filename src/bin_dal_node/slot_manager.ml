@@ -123,11 +123,11 @@ let save store slot_header shards =
       return metadata)
     shards
 
-let split_and_store store slot =
+let split_and_store cryptobox_setup store slot =
   let r =
     let open Result_syntax in
     let* polynomial = Cryptobox.polynomial_from_bytes slot in
-    let* commitment = Cryptobox.commit polynomial in
+    let* commitment = Cryptobox.commit cryptobox_setup polynomial in
     return (polynomial, commitment)
   in
   let open Lwt_result_syntax in

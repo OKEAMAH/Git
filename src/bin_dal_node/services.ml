@@ -54,8 +54,8 @@ let shard () =
     ~output:Cryptobox.Encoding.shard_encoding
     RPC_path.(open_root / "shard" /: slot_header_arg /: shard_arg)
 
-let handle_split_slot store () slot =
-  Slot_manager.split_and_store store (String.to_bytes slot)
+let handle_split_slot cryptobox_setup store () slot =
+  Slot_manager.split_and_store cryptobox_setup store (String.to_bytes slot)
 
 let handle_slot store (_, slot_header) trim () =
   let open Lwt_result_syntax in

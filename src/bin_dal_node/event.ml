@@ -61,6 +61,16 @@ let stored_slot =
     ("size", Data_encoding.int31)
     ("shards", Data_encoding.int31)
 
+let trusted_setup_not_found =
+  declare_1
+    ~section
+    ~name:"trusted_setup_not_found"
+    ~msg:
+      "Trusted setup not found. Using unsafe setup. Following path tries: \
+       {paths}"
+    ~level:Warning
+    ("paths", Data_encoding.(list string))
+
 let fetched_slot =
   declare_2
     ~section

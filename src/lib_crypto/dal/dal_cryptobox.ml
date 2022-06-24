@@ -64,7 +64,11 @@ module type DAL_cryptobox_sig = sig
 
   type trusted_setup
 
-  type trusted_setup_files
+  type trusted_setup_files = {
+    srs_g1_file : string;
+    srs_g2_file : string;
+    log_size : int;
+  }
 
   module Encoding : sig
     val commitment_encoding : commitment Data_encoding.t

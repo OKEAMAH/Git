@@ -33,10 +33,13 @@
 (** [slot_header_of_hex s] decodes the slot_header from an hexadecimal string *)
 val slot_header_of_hex : string -> Dal_types.slot_header tzresult
 
-(** [split_and_store store slot] splits [slot] in shards, stores it onto the
-    disk and returns the corresponding [slot_header] *)
+(** [split_and_store ts store slot] splits [slot] in shards, stores it onto the
+    disk and returns the corresponding [slot_header], using trusted setup [ts] *)
 val split_and_store :
-  Store.t -> Dal_types.slot -> Dal_types.slot_header tzresult Lwt.t
+  Cryptobox.trusted_setup ->
+  Store.t ->
+  Dal_types.slot ->
+  Dal_types.slot_header tzresult Lwt.t
 
 (** [get_shard store slot_header shard_id] gets the shard associated to
     [slot_header] at the range [shard_id] *)

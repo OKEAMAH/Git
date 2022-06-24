@@ -9,7 +9,7 @@ script_dir="$(cd "$(dirname "$0")" && pwd -P)"
 
 # Install DAL trusted setup.
 DAL_TRUSTED_SETUP="${OPAM_SWITCH_PREFIX}/share/dal-trusted-setup"
-URL="https://f001.backblazeb2.com/file/shareshare/"
+URL="https://f001.backblazeb2.com/file/shareshare"
 
 echo "Installing DAL trusted setup in ${DAL_TRUSTED_SETUP}"
 rm -rf "${DAL_TRUSTED_SETUP}"

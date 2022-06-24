@@ -23,12 +23,17 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type ctxt = {
+  config : Configuration.t;
+  cryptobox_setup : Cryptobox.trusted_setup;
+}
+
 module RPC_server = struct
-  let register_split_slot store dir =
+  let register_split_slot ctxt store dir =
     RPC_directory.register0
       dir
       (Services.split_slot ())
-      (Services.handle_split_slot store)
+      (Services.handle_split_slot ctxt store)
 
   let register_show_slot store dir =
     RPC_directory.register dir (Services.slot ()) (Services.handle_slot store)
@@ -36,9 +41,10 @@ module RPC_server = struct
   let register_shard store dir =
     RPC_directory.register dir (Services.shard ()) (Services.handle_shard store)
 
-  let register store _configuration =
-    RPC_directory.empty |> register_split_slot store |> register_show_slot store
-    |> register_shard store
+  let register ctxt store =
+    RPC_directory.empty
+    |> register_split_slot ctxt.cryptobox_setup store
+    |> register_show_slot store |> register_shard store
 
   let start configuration dir =
     let open Lwt_syntax in
@@ -73,15 +79,13 @@ end
 let run ~data_dir _ctxt =
   let open Lwt_result_syntax in
   let*! () = Event.(emit starting_node) () in
-  let* configuration = Configuration.load ~data_dir in
-  let configuration = {configuration with data_dir} in
-  let*! repo = Store.Repo.v (Irmin_pack.config configuration.data_dir) in
+  let* config = Configuration.load ~data_dir in
+  let config = {config with data_dir} in
+  let* cryptobox_setup = Cryptobox.init_setup () in
+  let ctxt = {config; cryptobox_setup} in
+  let*! repo = Store.Repo.v (Irmin_pack.config config.data_dir) in
   let*! store = Store.main repo in
-  let* rpc_server =
-    RPC_server.(start configuration (register store configuration))
-  in
+  let* rpc_server = RPC_server.(start config (register ctxt store)) in
   let _ = RPC_server.install_finalizer rpc_server in
-  let*! () =
-    Event.(emit node_is_ready (configuration.rpc_addr, configuration.rpc_port))
-  in
+  let*! () = Event.(emit node_is_ready (config.rpc_addr, config.rpc_port)) in
   Lwt_utils.never_ending ()
