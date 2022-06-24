@@ -1865,6 +1865,25 @@ let module_step s state =
     (* Stop cannot reduce. *)
     -> assert false
 
+type decode_kont =
+  | D_Start of { name : string; input : string}
+  | D_Next of {start : int; input : stream; step : module_kont}
+  | D_Result of module_
+
+let decode_step = function
+  | D_Start {name; input} ->
+    let input = stream name input in
+    let start = pos input in
+    let step = {building_state = []; kont = MKStart} in
+    D_Next {input; start; step}
+  | D_Next {input; start; step = {kont = MKStop m; _}} ->
+    let stop = pos input in
+    D_Result (Source.(m @@ region input start stop) )
+  | D_Next ({input; step; _ } as k) ->
+    let step = module_step input step in
+    D_Next {k with step}
+  | D_Result _ -> raise (Invalid_argument "decode_step: no more step")
+
 let module_ s =
   let rec loop = function
     | { kont = MKStop m; _ } -> m
