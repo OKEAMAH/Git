@@ -1053,7 +1053,7 @@ let commands () =
       ~group
       ~desc:"Compute the event address associated with a tag and a data type."
       no_options
-      (prefixes ["get"; "event"; "address"]
+      (prefixes ["get"; "event"; "address"; "for"; "type"]
       @@ param ~name:"type" ~desc:"the type of the event data" data_parameter
       @@ stop)
       (fun () ty cctxt ->
