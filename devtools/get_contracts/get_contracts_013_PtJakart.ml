@@ -226,6 +226,12 @@ module Proto = struct
               List.fold_left (fun acc g -> f acc ty_expr @@ g data) acc getters)
   end
 
+  module Code_size = struct
+    type size_record = unit
+    let code_size_summary _ = []
+    let pp_summary_csv _fmt _ = ()
+  end
+
   let is_unpack = function
     | Michelson_v1_primitives.I_UNPACK -> true
     | _ -> false

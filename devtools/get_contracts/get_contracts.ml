@@ -383,7 +383,8 @@ module Make (P : Sigs.PROTOCOL) : Sigs.MAIN = struct
           P.Translator.parse_code ctxt ~legacy:true
           @@ P.Script.lazy_expr ctr.script
         in
-        let size =
+        let size = P.Code_size.code_size_summary script_code in
+        let total_size = 
           Contract_size.
             {
               expected = P.Translator.expected_code_size script_code;
@@ -393,9 +394,9 @@ module Make (P : Sigs.PROTOCOL) : Sigs.MAIN = struct
         File_helpers.print_to_file
           (filename ~ext:"size")
           "%a"
-          Contract_size.pp
+          P.Code_size.pp_summary_csv
           size ;
-        return size)
+        return total_size)
       else return Contract_size.zero
     in
     (if Config.collect_storage then

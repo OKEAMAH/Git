@@ -228,6 +228,8 @@ module Proto = struct
               List.fold_left (fun acc g -> f acc ty_expr @@ g data) acc getters)
   end
 
+  module Code_size = Tezos_protocol_plugin_alpha.Plugin.Code_size
+
   let is_unpack = function
     | Michelson_v1_primitives.I_UNPACK -> true
     | _ -> false

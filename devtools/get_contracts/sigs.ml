@@ -154,6 +154,14 @@ module type PROTOCOL = sig
       'a Lwt.t
   end
 
+  module Code_size : sig
+    type size_record
+    
+    val code_size_summary : Translator.ex_code -> size_record list
+
+    val pp_summary_csv : Format.formatter -> size_record list -> unit
+  end
+
   val code_storage_type : Translator.toplevel -> Script.node
 
   val is_unpack : Script.prim -> bool
