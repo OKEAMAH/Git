@@ -339,6 +339,14 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
       ?holey:bool ->
       string list ->
       Proof.merkle_tree option tzresult Lwt.t
+
+    val merkle_tree_v2 :
+      #simple ->
+      ?chain:chain ->
+      ?block:block ->
+      ?holey:bool ->
+      string list ->
+      Proof.tree Proof.t option tzresult Lwt.t
   end
 
   module Helpers : sig

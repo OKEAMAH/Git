@@ -508,6 +508,8 @@ module Consensus = struct
                  | _ -> QCheck2.assume_fail ()
                else mtree)
         |> Lwt.return_ok
+
+      let merkle_tree_v2 _ _ _ = failwith "not implemented"
     end : Tezos_proxy.Light_proto.PROTO_RPCS)
 
   let mock_printer () =
