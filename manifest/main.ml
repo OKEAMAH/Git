@@ -1303,6 +1303,7 @@ let octez_shell_services =
         octez_p2p_services |> open_;
         octez_version |> open_;
         octez_context_sigs;
+        octez_merkle_proof_encoding;
       ]
     ~linkall:true
     ~js_compatible:true
