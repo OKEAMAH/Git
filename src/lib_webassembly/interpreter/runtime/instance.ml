@@ -7,8 +7,7 @@ module NameMap = Lazy_map.Make (Lazy_map.Effect.Lwt) (struct
 
   let compare = List.compare Int.compare
 
-  let to_string =
-    Format.asprintf "%a" (Format.pp_print_list Format.pp_print_int)
+  let to_string = Utf8.encode
 end)
 
 type module_inst =
