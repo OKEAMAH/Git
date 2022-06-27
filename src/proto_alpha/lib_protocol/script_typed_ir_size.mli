@@ -81,4 +81,7 @@ module Internal_for_tests : sig
       'h )
     Script_typed_ir.stack_prefix_preservation_witness ->
     Cache_memory_helpers.nodes_and_size
+
+  val stack_ty_size :
+    ('a, 'b) Script_typed_ir.stack_ty -> Cache_memory_helpers.nodes_and_size
 end

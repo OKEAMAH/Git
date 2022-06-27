@@ -643,4 +643,6 @@ module Internal_for_tests = struct
 
   let stack_prefix_preservation_witness_size =
     stack_prefix_preservation_witness_size_internal
+
+  let stack_ty_size = stack_ty_size
 end

@@ -493,3 +493,5 @@ val code_size :
     the in-memory representation of [script] in bytes as well as the cost
     associated to computing that overapproximation. *)
 val script_size : ex_script -> int * Gas_limit_repr.cost
+
+val view_size : Script_typed_ir.view -> Cache_memory_helpers.nodes_and_size
