@@ -34,7 +34,8 @@ type seed_computation_status =
   | Computation_finished
 
 type error +=
-  | Unknown of {
+  | (* `Permanent *)
+      Unknown of {
       oldest : Cycle_repr.t;
       cycle : Cycle_repr.t;
       latest : Cycle_repr.t;
@@ -42,8 +43,6 @@ type error +=
   | Already_accepted
   | Unverified_vdf
   | Too_early_revelation
-
-(* `Permanent *)
 
 let () =
   register_error_kind
@@ -208,6 +207,8 @@ let check_vdf_and_update_seed ctxt vdf_solution =
   let cycle_computed = Cycle_repr.add current_cycle (preserved + 1) in
   Storage.Seed.For_cycle.update ctxt cycle_computed new_seed Seed_repr.VDF_seed
 
+let raw_for_cycle = Storage.Seed.For_cycle.get
+
 let for_cycle ctxt cycle =
   let preserved = Constants_storage.preserved_cycles ctxt in
   let current_cycle = (Level_storage.current ctxt).cycle in
@@ -248,3 +249,5 @@ let cycle_end ctxt last_cycle =
   | Some previous_cycle ->
       (* cycle with revelations *)
       purge_nonces_and_get_unrevealed ctxt ~cycle:previous_cycle
+
+let remove_for_cycle = Storage.Seed.For_cycle.remove_existing

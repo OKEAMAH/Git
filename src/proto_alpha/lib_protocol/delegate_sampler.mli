@@ -32,8 +32,8 @@
    The selection of delegates is done by {i sampling} from a particular
    distribution of the stake among the active delegates.
 
-   This module is responsible for maintaining the tables
-   {!Storage.Delegate_sampler_state} and {!Storage.Seed.For_cycle}. *)
+   This module is responsible for maintaining the table
+   {!Storage.Delegate_sampler_state}. *)
 
 (** Participation slots potentially associated to accounts. The
    accounts that didn't place a deposit will be excluded from this
