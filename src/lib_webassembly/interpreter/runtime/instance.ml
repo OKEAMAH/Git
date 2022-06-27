@@ -89,5 +89,5 @@ let export inst name =
       let+ export = NameMap.get name inst.exports in
       Some export)
     (function
-    | Not_found -> Lwt.return None
+    | Not_found | Lazy_map.UnexpectedAccess -> Lwt.return_none
     | exn -> Lwt.fail exn)

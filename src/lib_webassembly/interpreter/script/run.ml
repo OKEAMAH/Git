@@ -121,6 +121,8 @@ let input_from get_script run =
       | IO (at, msg) -> error at "i/o error" msg
       | Assert (at, msg) -> error at "assertion failure" msg
       | Abort _ -> Lwt.return_false
+      | Lazy_map.UnexpectedAccess ->
+        error no_region "unexpected access" "Unexpected access in lazy map"
       | exn -> raise exn)
 
 let input_script start name lexbuf run =
