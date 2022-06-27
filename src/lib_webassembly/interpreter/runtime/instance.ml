@@ -71,7 +71,7 @@ let empty_module_inst =
     tables = Vector.create 0l;
     memories = Vector.create 0l;
     globals = Vector.create 0l;
-    exports = NameMap.create ();
+    exports = NameMap.create ~produce_value:(fun _ -> Lwt.fail Not_found) ();
     elems = Vector.create 0l;
     datas = Vector.create 0l;
   }

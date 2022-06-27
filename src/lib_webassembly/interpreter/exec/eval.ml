@@ -987,7 +987,7 @@ let init (m : module_) (exts : extern list) : module_inst Lwt.t =
            [new_exports]/[exports] should be lazy structures. *)
         List.fold_left
           (fun exports (k, v) -> NameMap.set k v exports)
-          (NameMap.create ())
+          (NameMap.create ~produce_value:(fun _ -> Lwt.fail Not_found) ())
           new_exports;
       elems =
         (* TODO: #3076
