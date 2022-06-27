@@ -44,7 +44,7 @@ module Make (T : TreeS) = struct
        This should return a [Instance.Vector.t] instead of a list. Once the AST
        has been sufficiently adapted to lazy vectors and maps, this change can
        go forward. *)
-    lift (Instance.Vector.to_list vector)
+    of_lwt (Instance.Vector.to_list vector)
 
   let ref_decoding_for ref_type modules =
     let open Tree.Decoding in
@@ -52,7 +52,7 @@ module Make (T : TreeS) = struct
     | FuncRefType ->
         let* modul_id = value ["module"] Data_encoding.int32 in
         let* func_id = value ["function"] Data_encoding.int32 in
-        lift
+        of_lwt
           (let open Lwt.Syntax in
           let* modul = Instance.Vector.get modul_id modules in
           let+ func = Instance.Vector.get func_id modul.Instance.funcs in
@@ -485,16 +485,16 @@ module Make (T : TreeS) = struct
     in
     match export with
     | ExportFunc index ->
-        let+ value = lift (Instance.Vector.get index funcs) in
+        let+ value = of_lwt (Instance.Vector.get index funcs) in
         Instance.ExternFunc value
     | ExportTable index ->
-        let+ value = lift (Instance.Vector.get index tables) in
+        let+ value = of_lwt (Instance.Vector.get index tables) in
         Instance.ExternTable value
     | ExportMemory index ->
-        let+ value = lift (Instance.Vector.get index memories) in
+        let+ value = of_lwt (Instance.Vector.get index memories) in
         Instance.ExternMemory value
     | ExportGlobal index ->
-        let+ value = lift (Instance.Vector.get index globals) in
+        let+ value = of_lwt (Instance.Vector.get index globals) in
         Instance.ExternGlobal value
 
   let export_instance_decoding funcs tables memories globals =

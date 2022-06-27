@@ -23,7 +23,7 @@ module type S = sig
 
   val return : 'a -> 'a t
 
-  val lift : 'a Lwt.t -> 'a t
+  val of_lwt : 'a Lwt.t -> 'a t
 
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
@@ -55,7 +55,7 @@ module Make (T : TreeS) : S with type tree = T.tree = struct
 
   let return value _tree _prefix = Lwt.return value
 
-  let lift lwt _tree _prefix = lwt
+  let of_lwt lwt _tree _prefix = lwt
 
   let ( let+ ) dec f tree prefix = Lwt.map f (dec tree prefix)
 

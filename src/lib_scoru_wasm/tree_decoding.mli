@@ -51,7 +51,7 @@ module type S = sig
 
   val return : 'a -> 'a t
 
-  val lift : 'a Lwt.t -> 'a t
+  val of_lwt : 'a Lwt.t -> 'a t
 
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
