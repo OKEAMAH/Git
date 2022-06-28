@@ -197,7 +197,7 @@ module Manager_result = struct
     in
     MCase {op_case; encoding; kind; iselect; select; proj; inj; t}
 
-  let  reveal_case =
+  let[@coq_axiom_with_reason "gadt"] reveal_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.reveal_case
       ~encoding:
@@ -220,7 +220,7 @@ module Manager_result = struct
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
         Reveal_result {consumed_gas = consumed_milligas})
 
-  let  transaction_case =
+  let[@coq_axiom_with_reason "gadt"] transaction_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.transaction_case
       ~encoding:
@@ -298,7 +298,7 @@ module Manager_result = struct
             allocated_destination_contract;
           })
 
-  let  origination_case =
+  let[@coq_axiom_with_reason "gadt"] origination_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.origination_case
       ~encoding:
@@ -366,7 +366,7 @@ module Manager_result = struct
             paid_storage_size_diff;
           })
 
-  let  register_global_constant_case =
+  let[@coq_axiom_with_reason "gadt"] register_global_constant_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.register_global_constant_case
@@ -412,7 +412,7 @@ module Manager_result = struct
         | Successful_manager_result (Delegation_result _ as op) -> Some op
         | _ -> None)
       ~kind:Kind.Delegation_manager_kind
-      ~proj:(function 
+      ~proj:(function[@coq_match_with_default]
         | Delegation_result {consumed_gas} ->
             (Gas.Arith.ceil consumed_gas, consumed_gas))
       ~inj:(fun (consumed_gas, consumed_milligas) ->
@@ -562,7 +562,7 @@ module Encoding = struct
       (fun x -> match proj x with None -> None | Some x -> Some ((), x))
       (fun ((), x) -> inj x)
 
-  let  endorsement_case =
+  let[@coq_axiom_with_reason "gadt"] endorsement_case =
     Case
       {
         op_case = Operation.Encoding.endorsement_case;
@@ -587,7 +587,7 @@ module Encoding = struct
             Endorsement_result {balance_updates; delegate; slots});
       }
 
-  let  seed_nonce_revelation_case =
+  let[@coq_axiom_with_reason "gadt"] seed_nonce_revelation_case =
     Case
       {
         op_case = Operation.Encoding.seed_nonce_revelation_case;
@@ -605,7 +605,7 @@ module Encoding = struct
         inj = (fun bus -> Seed_nonce_revelation_result bus);
       }
 
-  let  endorsement_with_slot_case =
+  let[@coq_axiom_with_reason "gadt"] endorsement_with_slot_case =
     Case
       {
         op_case = Operation.Encoding.endorsement_with_slot_case;
@@ -634,7 +634,7 @@ module Encoding = struct
               (Endorsement_result {balance_updates; delegate; slots}));
       }
 
-  let  double_endorsement_evidence_case =
+  let[@coq_axiom_with_reason "gadt"] double_endorsement_evidence_case =
     Case
       {
         op_case = Operation.Encoding.double_endorsement_evidence_case;
@@ -653,7 +653,7 @@ module Encoding = struct
         inj = (fun bus -> Double_endorsement_evidence_result bus);
       }
 
-  let  double_baking_evidence_case =
+  let[@coq_axiom_with_reason "gadt"] double_baking_evidence_case =
     Case
       {
         op_case = Operation.Encoding.double_baking_evidence_case;
@@ -671,7 +671,7 @@ module Encoding = struct
         inj = (fun bus -> Double_baking_evidence_result bus);
       }
 
-  let  activate_account_case =
+  let[@coq_axiom_with_reason "gadt"] activate_account_case =
     Case
       {
         op_case = Operation.Encoding.activate_account_case;
@@ -689,7 +689,7 @@ module Encoding = struct
         inj = (fun bus -> Activate_account_result bus);
       }
 
-  let  proposals_case =
+  let[@coq_axiom_with_reason "gadt"] proposals_case =
     Case
       {
         op_case = Operation.Encoding.proposals_case;
@@ -705,7 +705,7 @@ module Encoding = struct
         inj = (fun () -> Proposals_result);
       }
 
-  let  ballot_case =
+  let[@coq_axiom_with_reason "gadt"] ballot_case =
     Case
       {
         op_case = Operation.Encoding.ballot_case;
@@ -721,7 +721,7 @@ module Encoding = struct
         inj = (fun () -> Ballot_result);
       }
 
-  let  make_manager_case (type kind)
+  let[@coq_axiom_with_reason "gadt"] make_manager_case (type kind)
       (Operation.Encoding.Case op_case :
         kind Kind.manager Operation.Encoding.case)
       (Manager_result.MCase res_case : kind Manager_result.case) mselect =
@@ -801,7 +801,7 @@ module Encoding = struct
               });
       }
 
-  let  reveal_case =
+  let[@coq_axiom_with_reason "gadt"] reveal_case =
     make_manager_case
       Operation.Encoding.reveal_case
       Manager_result.reveal_case
@@ -811,7 +811,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  transaction_case =
+  let[@coq_axiom_with_reason "gadt"] transaction_case =
     make_manager_case
       Operation.Encoding.transaction_case
       Manager_result.transaction_case
@@ -821,7 +821,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  origination_case =
+  let[@coq_axiom_with_reason "gadt"] origination_case =
     make_manager_case
       Operation.Encoding.origination_case
       Manager_result.origination_case
@@ -831,7 +831,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  delegation_case =
+  let[@coq_axiom_with_reason "gadt"] delegation_case =
     make_manager_case
       Operation.Encoding.delegation_case
       Manager_result.delegation_case
@@ -841,7 +841,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  register_global_constant_case =
+  let[@coq_axiom_with_reason "gadt"] register_global_constant_case =
     make_manager_case
       Operation.Encoding.register_global_constant_case
       Manager_result.register_global_constant_case
@@ -1190,7 +1190,7 @@ let rec kind_equal_list :
           | Some Eq -> Some Eq))
   | _ -> None
 
-let  rec pack_contents_list :
+let[@coq_axiom_with_reason "gadt"] rec pack_contents_list :
     type kind.
     kind contents_list ->
     kind contents_result_list ->

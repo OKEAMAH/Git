@@ -185,7 +185,7 @@ let minimal_time_fastpath_case minimal_block_delay pred_timestamp =
 (* The function implements the slow-path case in [minimal_time]. (See
    [minimal_valid_time] for the definition of the slow-path.) *)
 let minimal_time_slowpath_case time_between_blocks priority pred_timestamp =
-  let  rec cumsum_time_between_blocks acc durations p =
+  let[@coq_struct "durations"] rec cumsum_time_between_blocks acc durations p =
     if Compare.Int32.( <= ) p 0l then ok acc
     else
       match durations with
@@ -325,7 +325,7 @@ let endorsement_rights ctxt level =
     (0 --> (Constants.endorsers_per_block ctxt - 1))
     Signature.Public_key_hash.Map.empty
 
-let  check_endorsement_right ctxt chain_id ~slot
+let[@coq_axiom_with_reason "gadt"] check_endorsement_right ctxt chain_id ~slot
     (op : Kind.endorsement Operation.t) =
   if
     Compare.Int.(slot < 0 (* should not happen because of binary format *))

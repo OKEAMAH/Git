@@ -97,7 +97,7 @@ let delegate_pubkey ctxt delegate =
 
 let fold ctxt ~f init =
   Storage.Roll_legacy.Next.get ctxt >>=? fun last ->
-  let  rec loop ctxt roll acc =
+  let[@coq_struct "roll"] rec loop ctxt roll acc =
     if Roll_repr_legacy.(roll = last) then return acc
     else
       Storage.Roll_legacy.Owner.find ctxt roll >>=? function
@@ -228,7 +228,7 @@ module Delegate = struct
     Storage.Roll_legacy.Delegate_change.update ctxt delegate change
     >>=? fun ctxt ->
     delegate_pubkey ctxt delegate >>=? fun delegate_pk ->
-    let  rec loop ctxt change =
+    let[@coq_struct "change"] rec loop ctxt change =
       if Tez_repr.(change < tokens_per_roll) then return ctxt
       else
         Tez_repr.(change -? tokens_per_roll) >>?= fun change ->
@@ -248,7 +248,7 @@ module Delegate = struct
 
   let remove_amount ctxt delegate amount =
     let tokens_per_roll = Constants_storage.tokens_per_roll ctxt in
-    let  rec loop ctxt change =
+    let[@coq_struct "change"] rec loop ctxt change =
       if Tez_repr.(amount <= change) then return (ctxt, change)
       else
         pop_roll_from_delegate ctxt delegate >>=? fun (_, ctxt) ->
@@ -280,7 +280,7 @@ module Delegate = struct
     >>= fun ctxt ->
     Storage.Legacy_active_delegates_with_rolls.remove ctxt delegate
     >>= fun ctxt ->
-    let  rec loop ctxt change =
+    let[@coq_struct "change"] rec loop ctxt change =
       Storage.Roll_legacy.Delegate_roll_list.find ctxt delegate >>=? function
       | None -> return (ctxt, change)
       | Some _roll ->
@@ -330,7 +330,7 @@ module Delegate = struct
         (Contract_repr.implicit_contract delegate)
       >>= fun ctxt ->
       delegate_pubkey ctxt delegate >>=? fun delegate_pk ->
-      let  rec loop ctxt change =
+      let[@coq_struct "change"] rec loop ctxt change =
         if Tez_repr.(change < tokens_per_roll) then return ctxt
         else
           Tez_repr.(change -? tokens_per_roll) >>?= fun change ->

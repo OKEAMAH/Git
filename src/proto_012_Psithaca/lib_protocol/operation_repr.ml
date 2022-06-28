@@ -347,7 +347,7 @@ module Encoding = struct
           -> 'kind case
     [@@coq_force_gadt]
 
-    let  reveal_case =
+    let[@coq_axiom_with_reason "gadt"] reveal_case =
       MCase
         {
           tag = 0;
@@ -387,7 +387,7 @@ module Encoding = struct
             (fun s -> s);
         ]
 
-    let  transaction_case =
+    let[@coq_axiom_with_reason "gadt"] transaction_case =
       MCase
         {
           tag = 1;
@@ -424,7 +424,7 @@ module Encoding = struct
               Transaction {amount; destination; parameters; entrypoint});
         }
 
-    let  origination_case =
+    let[@coq_axiom_with_reason "gadt"] origination_case =
       MCase
         {
           tag = 2;
@@ -455,7 +455,7 @@ module Encoding = struct
               Origination {credit; delegate; script; preorigination = None});
         }
 
-    let  delegation_case =
+    let[@coq_axiom_with_reason "gadt"] delegation_case =
       MCase
         {
           tag = 3;
@@ -467,7 +467,7 @@ module Encoding = struct
           inj = (fun key -> Delegation key);
         }
 
-    let  register_global_constant_case =
+    let[@coq_axiom_with_reason "gadt"] register_global_constant_case =
       MCase
         {
           tag = 4;
@@ -480,7 +480,7 @@ module Encoding = struct
           inj = (fun value -> Register_global_constant {value});
         }
 
-    let  set_deposits_limit_case =
+    let[@coq_axiom_with_reason "gadt"] set_deposits_limit_case =
       MCase
         {
           tag = 5;
@@ -582,7 +582,7 @@ module Encoding = struct
         select =
           (function Contents (Endorsement _ as op) -> Some op | _ -> None);
         proj =
-          (fun   (Endorsement consensus_content) ->
+          (fun [@coq_match_with_default] (Endorsement consensus_content) ->
             ( consensus_content.slot,
               consensus_content.level,
               consensus_content.round,
@@ -592,7 +592,7 @@ module Encoding = struct
             Endorsement {slot; level; round; block_payload_hash});
       }
 
-  let  endorsement_encoding =
+  let[@coq_axiom_with_reason "gadt"] endorsement_encoding =
     let make (Case {tag; name; encoding; select = _; proj; inj}) =
       case (Tag tag) name encoding (fun o -> Some (proj o)) (fun x -> inj x)
     in
@@ -614,7 +614,7 @@ module Encoding = struct
                   @@ union [make endorsement_case]))
                (varopt "signature" Signature.encoding)))
 
-  let  seed_nonce_revelation_case =
+  let[@coq_axiom_with_reason "gadt"] seed_nonce_revelation_case =
     Case
       {
         tag = 1;
@@ -630,7 +630,7 @@ module Encoding = struct
         inj = (fun (level, nonce) -> Seed_nonce_revelation {level; nonce});
       }
 
-  let  double_preendorsement_evidence_case :
+  let[@coq_axiom_with_reason "gadt"] double_preendorsement_evidence_case :
       Kind.double_preendorsement_evidence case =
     Case
       {
@@ -648,7 +648,7 @@ module Encoding = struct
         inj = (fun (op1, op2) -> Double_preendorsement_evidence {op1; op2});
       }
 
-  let  double_endorsement_evidence_case :
+  let[@coq_axiom_with_reason "gadt"] double_endorsement_evidence_case :
       Kind.double_endorsement_evidence case =
     Case
       {
@@ -666,7 +666,7 @@ module Encoding = struct
         inj = (fun (op1, op2) -> Double_endorsement_evidence {op1; op2});
       }
 
-  let  double_baking_evidence_case =
+  let[@coq_axiom_with_reason "gadt"] double_baking_evidence_case =
     Case
       {
         tag = 3;
@@ -682,7 +682,7 @@ module Encoding = struct
         inj = (fun (bh1, bh2) -> Double_baking_evidence {bh1; bh2});
       }
 
-  let  activate_account_case =
+  let[@coq_axiom_with_reason "gadt"] activate_account_case =
     Case
       {
         tag = 4;
@@ -701,7 +701,7 @@ module Encoding = struct
           (fun (id, activation_code) -> Activate_account {id; activation_code});
       }
 
-  let  proposals_case =
+  let[@coq_axiom_with_reason "gadt"] proposals_case =
     Case
       {
         tag = 5;
@@ -721,7 +721,7 @@ module Encoding = struct
             Proposals {source; period; proposals});
       }
 
-  let  ballot_case =
+  let[@coq_axiom_with_reason "gadt"] ballot_case =
     Case
       {
         tag = 6;
@@ -751,7 +751,7 @@ module Encoding = struct
         select =
           (function Contents (Failing_noop _ as op) -> Some op | _ -> None);
         proj =
-          (function  Failing_noop message -> message);
+          (function[@coq_match_with_default] Failing_noop message -> message);
         inj = (function message -> Failing_noop message);
       }
 
@@ -764,7 +764,7 @@ module Encoding = struct
       (req "storage_limit" (check_size 10 n))
 
   let extract : type kind. kind Kind.manager contents -> _ =
-    function 
+    function[@coq_match_with_default]
     | Manager_operation
         {source; fee; counter; gas_limit; storage_limit; operation = _} ->
         (source, fee, counter, gas_limit, storage_limit)
@@ -773,7 +773,7 @@ module Encoding = struct
     Manager_operation
       {source; fee; counter; gas_limit; storage_limit; operation}
 
-  let  make_manager_case tag (type kind)
+  let[@coq_axiom_with_reason "gadt"] make_manager_case tag (type kind)
       (Manager_operations.MCase mcase : kind Manager_operations.case) =
     Case
       {

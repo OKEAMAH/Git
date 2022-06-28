@@ -291,7 +291,7 @@ let serialize_ty_for_error ty =
   *)
   unparse_ty_uncarbonated ~loc:() ty |> Micheline.strip_locations
 
-let  check_comparable :
+let[@coq_axiom_with_reason "gadt"] check_comparable :
     type a ac.
     Script.location -> (a, ac) ty -> (ac, Dependent_bool.yes) eq tzresult =
  fun loc ty ->
@@ -521,7 +521,7 @@ let comb_witness2 :
   | Pair_t _ -> Comb_Pair Comb_Any
   | _ -> Comb_Any
 
-let  rec unparse_comparable_data :
+let[@coq_axiom_with_reason "gadt"] rec unparse_comparable_data :
     type a loc.
     loc:loc ->
     context ->
@@ -938,7 +938,7 @@ let parse_memo_size (n : (location, _) Micheline.node) :
   match n with
   | Int (_, z) -> (
       match Sapling.Memo_size.parse_z z with
-      | Ok _ as ok_memo_size -> ok_memo_size  
+      | Ok _ as ok_memo_size -> ok_memo_size [@coq_cast]
       | Error msg ->
           error
           @@ Invalid_syntactic_constant (location n, strip_locations n, msg))
@@ -970,7 +970,7 @@ type ('ret, 'name) parse_ty_ret =
   | Parse_entrypoints
       : (ex_parameter_ty_and_entrypoints_node, Entrypoint.t option) parse_ty_ret
 
-let  rec parse_ty :
+let[@coq_axiom_with_reason "complex mutually recursive definition"] rec parse_ty :
     type ret name.
     context ->
     stack_depth:int ->
@@ -1310,7 +1310,7 @@ let  rec parse_ty :
                T_unit;
              ]
 
-and  parse_comparable_ty
+and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_comparable_ty
     :
     context ->
     stack_depth:int ->
@@ -1334,7 +1334,7 @@ and  parse_comparable_ty
       error
         (Comparable_type_expected (location node, Micheline.strip_locations node))
 
-and  parse_passable_ty :
+and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_passable_ty :
     type ret name.
     context ->
     stack_depth:int ->
@@ -1352,7 +1352,7 @@ and  parse_passable_ty :
     ~allow_contract:true
     ~allow_ticket:true
 
-and  parse_any_ty
+and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_any_ty
     :
     context ->
     stack_depth:int ->
@@ -1370,7 +1370,7 @@ and  parse_any_ty
     ~allow_ticket:true
     ~ret:Don't_parse_entrypoints
 
-and  parse_big_map_ty
+and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_big_map_ty
     ctxt ~stack_depth ~legacy big_map_loc args map_annot =
   Gas.consume ctxt Typecheck_costs.parse_type_cycle >>? fun ctxt ->
   match args with
@@ -1388,7 +1388,7 @@ and  parse_big_map_ty
       (Ex_ty big_map_ty, ctxt)
   | args -> error @@ Invalid_arity (big_map_loc, T_big_map, 2, List.length args)
 
-and  parse_big_map_value_ty
+and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_big_map_value_ty
     ctxt ~stack_depth ~legacy value_ty =
   (parse_ty [@tailcall])
     ctxt
@@ -2306,7 +2306,7 @@ let parse_toplevel :
   - storage after origination
 *)
 
-let  rec parse_data :
+let[@coq_axiom_with_reason "gadt"] rec parse_data :
     type a ac.
     ?type_logger:type_logger ->
     stack_depth:int ->
@@ -2829,7 +2829,7 @@ and parse_views :
   in
   Script_map.map_es_in_context aux ctxt views
 
-and  parse_returning :
+and[@coq_axiom_with_reason "gadt"] parse_returning :
     type arg argc ret retc.
     ?type_logger:type_logger ->
     stack_depth:int ->
@@ -2872,7 +2872,7 @@ and  parse_returning :
             : (arg, ret) lambda),
           ctxt )
 
-and  parse_instr :
+and[@coq_axiom_with_reason "gadt"] parse_instr :
     type a s.
     ?type_logger:type_logger ->
     stack_depth:int ->
@@ -4854,7 +4854,7 @@ and  parse_instr :
              I_XOR;
            ]
 
-and  parse_contract_data :
+and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_contract_data :
     type arg argc.
     stack_depth:int ->
     context ->
@@ -4886,7 +4886,7 @@ and  parse_contract_data :
    The inner [result] is turned into an [option] by [parse_contract_for_script].
    Both [tzresult] are merged by [parse_contract_data].
 *)
-and  parse_contract :
+and[@coq_axiom_with_reason "complex mutually recursive definition"] parse_contract :
     type arg argc err.
     stack_depth:int ->
     context ->
@@ -5128,7 +5128,7 @@ let parse_storage :
        storage_type
        (root storage))
 
-let  parse_script :
+let[@coq_axiom_with_reason "gadt"] parse_script :
     ?type_logger:type_logger ->
     context ->
     legacy:bool ->
@@ -5274,7 +5274,7 @@ let list_entrypoints_uncarbonated (type full fullc) (full : (full, fullc) ty)
 
 (* -- Unparsing data of any type -- *)
 
-let  rec unparse_data :
+let[@coq_axiom_with_reason "gadt"] rec unparse_data :
     type a ac.
     context ->
     stack_depth:int ->
@@ -5478,7 +5478,7 @@ and unparse_items :
     ([], ctxt)
     items
 
-and  unparse_code ctxt ~stack_depth mode code =
+and[@coq_axiom_with_reason "gadt"] unparse_code ctxt ~stack_depth mode code =
   let legacy = true in
   Gas.consume ctxt Unparse_costs.unparse_instr_cycle >>?= fun ctxt ->
   let non_terminal_recursion ctxt mode code =
@@ -5797,7 +5797,7 @@ let rec has_lazy_storage : type t tc. (t, tc) ty -> t has_lazy_storage =
   storage diff to show on the receipt and apply on the storage.
 
 *)
-let  extract_lazy_storage_updates ctxt mode
+let[@coq_axiom_with_reason "gadt"] extract_lazy_storage_updates ctxt mode
     ~temporary ids_to_copy acc ty x =
   let rec aux :
       type a ac.
@@ -5909,7 +5909,7 @@ end
 (** Prematurely abort if [f] generates an error. Use this function without the
     [unit] type for [error] if you are in a case where errors are impossible.
 *)
-let  rec fold_lazy_storage :
+let[@coq_axiom_with_reason "gadt"] rec fold_lazy_storage :
     type a ac error.
     f:('acc, error) Fold_lazy_storage.result Lazy_storage.IdSet.fold_f ->
     init:'acc ->
@@ -5968,7 +5968,7 @@ let  rec fold_lazy_storage :
         m
         (ok (Fold_lazy_storage.Ok init, ctxt))
 
-let  collect_lazy_storage ctxt ty x =
+let[@coq_axiom_with_reason "gadt"] collect_lazy_storage ctxt ty x =
   let has_lazy_storage = has_lazy_storage ty in
   let f kind id (acc : (_, never) Fold_lazy_storage.result) =
     let acc = match acc with Fold_lazy_storage.Ok acc -> acc in
@@ -5978,7 +5978,7 @@ let  collect_lazy_storage ctxt ty x =
   >>? fun (ids, ctxt) ->
   match ids with Fold_lazy_storage.Ok ids -> ok (ids, ctxt)
 
-let  extract_lazy_storage_diff ctxt mode
+let[@coq_axiom_with_reason "gadt"] extract_lazy_storage_diff ctxt mode
     ~temporary ~to_duplicate ~to_update ty v =
   (*
     Basically [to_duplicate] are ids from the argument and [to_update] are ids
@@ -6056,7 +6056,7 @@ let parse_ty = parse_ty ~stack_depth:0 ~ret:Don't_parse_entrypoints
 let parse_parameter_ty_and_entrypoints =
   parse_parameter_ty_and_entrypoints ~stack_depth:0
 
-let  get_single_sapling_state ctxt ty x =
+let[@coq_axiom_with_reason "gadt"] get_single_sapling_state ctxt ty x =
   let has_lazy_storage = has_lazy_storage ty in
   let f (type i a u) (kind : (i, a, u) Lazy_storage.Kind.t) (id : i)
       single_id_opt : (Sapling.Id.t option, unit) Fold_lazy_storage.result =

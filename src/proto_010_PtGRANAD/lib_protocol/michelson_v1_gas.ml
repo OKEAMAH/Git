@@ -1346,7 +1346,7 @@ module Cost_of = struct
 
     let compare : type a. a Script_typed_ir.comparable_ty -> a -> a -> cost =
      fun ty x y ->
-      let  rec compare :
+      let[@coq_axiom_with_reason "gadt"] rec compare :
           type a.
           a Script_typed_ir.comparable_ty -> a -> a -> cost -> cont -> cost =
        fun ty x y acc k ->

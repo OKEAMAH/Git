@@ -232,7 +232,7 @@ let namespace = function
 let valid_case name =
   let is_lower = function '_' | 'a' .. 'z' -> true | _ -> false in
   let is_upper = function '_' | 'A' .. 'Z' -> true | _ -> false in
-  let  rec for_all a b f =
+  let[@coq_struct "a_value"] rec for_all a b f =
     Compare.Int.(a > b) || (f a && for_all (a + 1) b f)
   in
   let len = String.length name in

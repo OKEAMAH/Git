@@ -1096,7 +1096,7 @@ let apply_manager_operation_content :
 type success_or_failure = Success of context | Failure
 
 let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
-  let  rec apply ctxt applied worklist =
+  let[@coq_struct "ctxt"] rec apply ctxt applied worklist =
     match worklist with
     | [] -> Lwt.return (Success ctxt, List.rev applied)
     | Internal_operation ({source; operation; nonce} as op) :: rest -> (
@@ -1137,7 +1137,7 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
 
 let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
     ~(only_batch : bool) : (context * precheck_result) tzresult Lwt.t =
-  let  (Manager_operation
+  let[@coq_match_with_default] (Manager_operation
                                  {
                                    source;
                                    fee;
@@ -1299,7 +1299,7 @@ let apply_manager_contents (type kind) ctxt mode chain_id
     * kind manager_operation_result
     * packed_internal_operation_result list)
     Lwt.t =
-  let  (Manager_operation
+  let[@coq_match_with_default] (Manager_operation
                                  {
                                    source;
                                    operation;
@@ -1387,7 +1387,7 @@ let rec mark_skipped :
     kind Kind.manager prechecked_contents_list ->
     kind Kind.manager contents_result_list =
  fun ~payload_producer level prechecked_contents_list ->
-  match  prechecked_contents_list with
+  match[@coq_match_with_default] prechecked_contents_list with
   | PrecheckedSingle
       {
         contents = Manager_operation {operation; _};
@@ -1425,7 +1425,7 @@ let precheck_manager_contents_list ctxt contents_list ~mempool_mode =
       kind Kind.manager contents_list ->
       (context * kind Kind.manager prechecked_contents_list) tzresult Lwt.t =
    fun ctxt contents_list ->
-    match  contents_list with
+    match[@coq_match_with_default] contents_list with
     | Single contents ->
         precheck_manager_contents ctxt contents ~only_batch:mempool_mode
         >>=? fun (ctxt, result) ->
@@ -1463,7 +1463,7 @@ let check_manager_signature ctxt chain_id (op : _ Kind.manager contents_list)
       (Signature.public_key_hash * Signature.public_key option) option ->
       (Signature.public_key_hash * Signature.public_key option) tzresult =
    fun contents_list manager ->
-    let source (type kind) = function 
+    let source (type kind) = function[@coq_match_with_default]
       | (Manager_operation {source; operation = Reveal key; _} :
           kind Kind.manager contents) ->
           (source, Some key)
@@ -1492,7 +1492,7 @@ let rec apply_manager_contents_list_rec :
     (success_or_failure * kind Kind.manager contents_result_list) Lwt.t =
  fun ctxt mode ~payload_producer chain_id prechecked_contents_list ->
   let level = Level.current ctxt in
-  match  prechecked_contents_list with
+  match[@coq_match_with_default] prechecked_contents_list with
   | PrecheckedSingle
       {
         contents = Manager_operation _ as op;
@@ -2034,7 +2034,7 @@ let apply_contents_list (type kind) ctxt chain_id (apply_mode : apply_mode) mode
     | Partial_construction _ -> true
     | Full_construction _ | Application _ -> false
   in
-  match  contents_list with
+  match[@coq_match_with_default] contents_list with
   | Single (Preendorsement consensus_content) ->
       validate_consensus_contents
         ctxt

@@ -3001,7 +3001,7 @@ module RPC = struct
                }))
 
     module Manager = struct
-      let  operations ctxt block ~branch
+      let[@coq_axiom_with_reason "cast on e"] operations ctxt block ~branch
           ~source ?sourcePubKey ~counter ~fee ~gas_limit ~storage_limit
           operations =
         Contract_services.manager_key ctxt block source >>= function

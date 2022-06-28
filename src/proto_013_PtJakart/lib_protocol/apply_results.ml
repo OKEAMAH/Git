@@ -333,7 +333,7 @@ module Manager_result = struct
     in
     MCase {op_case; encoding; kind; select; proj; inj; t}
 
-  let  reveal_case =
+  let[@coq_axiom_with_reason "gadt"] reveal_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.reveal_case
       ~encoding:
@@ -352,7 +352,7 @@ module Manager_result = struct
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
         Reveal_result {consumed_gas = consumed_milligas})
 
-  let  transaction_contract_variant_cases =
+  let[@coq_axiom_with_reason "gadt"] transaction_contract_variant_cases =
     union
       [
         case
@@ -451,7 +451,7 @@ module Manager_result = struct
               });
       ]
 
-  let  transaction_case =
+  let[@coq_axiom_with_reason "gadt"] transaction_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.transaction_case
       ~encoding:transaction_contract_variant_cases
@@ -462,7 +462,7 @@ module Manager_result = struct
       ~proj:(function Transaction_result x -> x)
       ~inj:(fun x -> Transaction_result x)
 
-  let  origination_case =
+  let[@coq_axiom_with_reason "gadt"] origination_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.origination_case
       ~encoding:
@@ -514,7 +514,7 @@ module Manager_result = struct
             paid_storage_size_diff;
           })
 
-  let  register_global_constant_case =
+  let[@coq_axiom_with_reason "gadt"] register_global_constant_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.register_global_constant_case
@@ -565,7 +565,7 @@ module Manager_result = struct
         | Successful_manager_result (Delegation_result _ as op) -> Some op
         | _ -> None)
       ~kind:Kind.Delegation_manager_kind
-      ~proj:(function 
+      ~proj:(function[@coq_match_with_default]
         | Delegation_result {consumed_gas} ->
             (Gas.Arith.ceil consumed_gas, consumed_gas))
       ~inj:(fun (consumed_gas, consumed_milligas) ->
@@ -592,7 +592,7 @@ module Manager_result = struct
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
         Set_deposits_limit_result {consumed_gas = consumed_milligas})
 
-  let  tx_rollup_origination_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_origination_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_origination_case
       ~encoding:
@@ -627,7 +627,7 @@ module Manager_result = struct
             originated_tx_rollup;
           })
 
-  let  tx_rollup_submit_batch_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_submit_batch_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_submit_batch_case
       ~encoding:
@@ -662,7 +662,7 @@ module Manager_result = struct
             paid_storage_size_diff;
           })
 
-  let  tx_rollup_commit_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_commit_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_commit_case
       ~encoding:
@@ -683,7 +683,7 @@ module Manager_result = struct
         Tx_rollup_commit_result
           {balance_updates; consumed_gas = consumed_milligas})
 
-  let  tx_rollup_return_bond_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_return_bond_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_return_bond_case
       ~encoding:
@@ -705,7 +705,7 @@ module Manager_result = struct
         Tx_rollup_return_bond_result
           {balance_updates; consumed_gas = consumed_milligas})
 
-  let  tx_rollup_finalize_commitment_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_finalize_commitment_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.tx_rollup_finalize_commitment_case
@@ -731,7 +731,7 @@ module Manager_result = struct
         Tx_rollup_finalize_commitment_result
           {balance_updates; consumed_gas = consumed_milligas; level})
 
-  let  tx_rollup_remove_commitment_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_remove_commitment_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.tx_rollup_remove_commitment_case
@@ -757,7 +757,7 @@ module Manager_result = struct
         Tx_rollup_remove_commitment_result
           {balance_updates; consumed_gas = consumed_milligas; level})
 
-  let  tx_rollup_rejection_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_rejection_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_rejection_case
       ~encoding:
@@ -779,7 +779,7 @@ module Manager_result = struct
         Tx_rollup_rejection_result
           {balance_updates; consumed_gas = consumed_milligas})
 
-  let  tx_rollup_dispatch_tickets_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_dispatch_tickets_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.tx_rollup_dispatch_tickets_case
@@ -816,7 +816,7 @@ module Manager_result = struct
             paid_storage_size_diff;
           })
 
-  let  transfer_ticket_case =
+  let[@coq_axiom_with_reason "gadt"] transfer_ticket_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.transfer_ticket_case
       ~encoding:
@@ -850,7 +850,7 @@ module Manager_result = struct
             paid_storage_size_diff;
           })
 
-  let  sc_rollup_originate_case =
+  let[@coq_axiom_with_reason "gadt"] sc_rollup_originate_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.sc_rollup_originate_case
       ~encoding:
@@ -961,7 +961,7 @@ module Internal_result = struct
         -> 'kind case
   [@@coq_force_gadt]
 
-  let  transaction_case =
+  let[@coq_axiom_with_reason "gadt"] transaction_case =
     MCase
       {
         tag = Operation.Encoding.Manager_operations.transaction_tag;
@@ -1004,7 +1004,7 @@ module Internal_result = struct
             Transaction {amount; destination; parameters; entrypoint});
       }
 
-  let  origination_case =
+  let[@coq_axiom_with_reason "gadt"] origination_case =
     MCase
       {
         tag = Operation.Encoding.Manager_operations.origination_tag;
@@ -1030,7 +1030,7 @@ module Internal_result = struct
             Origination {credit; delegate; script});
       }
 
-  let  delegation_case =
+  let[@coq_axiom_with_reason "gadt"] delegation_case =
     MCase
       {
         tag = Operation.Encoding.Manager_operations.delegation_tag;
@@ -1283,7 +1283,7 @@ module Encoding = struct
       (fun x -> match proj x with None -> None | Some x -> Some ((), x))
       (fun ((), x) -> inj x)
 
-  let  preendorsement_case =
+  let[@coq_axiom_with_reason "gadt"] preendorsement_case =
     Case
       {
         op_case = Operation.Encoding.preendorsement_case;
@@ -1311,7 +1311,7 @@ module Encoding = struct
               {balance_updates; delegate; preendorsement_power});
       }
 
-  let  endorsement_case =
+  let[@coq_axiom_with_reason "gadt"] endorsement_case =
     Case
       {
         op_case = Operation.Encoding.endorsement_case;
@@ -1336,7 +1336,7 @@ module Encoding = struct
             Endorsement_result {balance_updates; delegate; endorsement_power});
       }
 
-  let  seed_nonce_revelation_case =
+  let[@coq_axiom_with_reason "gadt"] seed_nonce_revelation_case =
     Case
       {
         op_case = Operation.Encoding.seed_nonce_revelation_case;
@@ -1355,7 +1355,7 @@ module Encoding = struct
         inj = (fun bus -> Seed_nonce_revelation_result bus);
       }
 
-  let  double_endorsement_evidence_case =
+  let[@coq_axiom_with_reason "gadt"] double_endorsement_evidence_case =
     Case
       {
         op_case = Operation.Encoding.double_endorsement_evidence_case;
@@ -1375,7 +1375,7 @@ module Encoding = struct
         inj = (fun bus -> Double_endorsement_evidence_result bus);
       }
 
-  let  double_preendorsement_evidence_case =
+  let[@coq_axiom_with_reason "gadt"] double_preendorsement_evidence_case =
     Case
       {
         op_case = Operation.Encoding.double_preendorsement_evidence_case;
@@ -1396,7 +1396,7 @@ module Encoding = struct
         inj = (fun bus -> Double_preendorsement_evidence_result bus);
       }
 
-  let  double_baking_evidence_case =
+  let[@coq_axiom_with_reason "gadt"] double_baking_evidence_case =
     Case
       {
         op_case = Operation.Encoding.double_baking_evidence_case;
@@ -1415,7 +1415,7 @@ module Encoding = struct
         inj = (fun bus -> Double_baking_evidence_result bus);
       }
 
-  let  activate_account_case =
+  let[@coq_axiom_with_reason "gadt"] activate_account_case =
     Case
       {
         op_case = Operation.Encoding.activate_account_case;
@@ -1434,7 +1434,7 @@ module Encoding = struct
         inj = (fun bus -> Activate_account_result bus);
       }
 
-  let  proposals_case =
+  let[@coq_axiom_with_reason "gadt"] proposals_case =
     Case
       {
         op_case = Operation.Encoding.proposals_case;
@@ -1450,7 +1450,7 @@ module Encoding = struct
         inj = (fun () -> Proposals_result);
       }
 
-  let  ballot_case =
+  let[@coq_axiom_with_reason "gadt"] ballot_case =
     Case
       {
         op_case = Operation.Encoding.ballot_case;
@@ -1466,7 +1466,7 @@ module Encoding = struct
         inj = (fun () -> Ballot_result);
       }
 
-  let  make_manager_case (type kind)
+  let[@coq_axiom_with_reason "gadt"] make_manager_case (type kind)
       (Operation.Encoding.Case op_case :
         kind Kind.manager Operation.Encoding.case)
       (Manager_result.MCase res_case : kind Manager_result.case) mselect =
@@ -1547,7 +1547,7 @@ module Encoding = struct
               });
       }
 
-  let  reveal_case =
+  let[@coq_axiom_with_reason "gadt"] reveal_case =
     make_manager_case
       Operation.Encoding.reveal_case
       Manager_result.reveal_case
@@ -1557,7 +1557,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  transaction_case =
+  let[@coq_axiom_with_reason "gadt"] transaction_case =
     make_manager_case
       Operation.Encoding.transaction_case
       Manager_result.transaction_case
@@ -1567,7 +1567,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  origination_case =
+  let[@coq_axiom_with_reason "gadt"] origination_case =
     make_manager_case
       Operation.Encoding.origination_case
       Manager_result.origination_case
@@ -1577,7 +1577,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  delegation_case =
+  let[@coq_axiom_with_reason "gadt"] delegation_case =
     make_manager_case
       Operation.Encoding.delegation_case
       Manager_result.delegation_case
@@ -1587,7 +1587,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  register_global_constant_case =
+  let[@coq_axiom_with_reason "gadt"] register_global_constant_case =
     make_manager_case
       Operation.Encoding.register_global_constant_case
       Manager_result.register_global_constant_case
@@ -1599,7 +1599,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  set_deposits_limit_case =
+  let[@coq_axiom_with_reason "gadt"] set_deposits_limit_case =
     make_manager_case
       Operation.Encoding.set_deposits_limit_case
       Manager_result.set_deposits_limit_case
@@ -1610,7 +1610,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_origination_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_origination_case =
     make_manager_case
       Operation.Encoding.tx_rollup_origination_case
       Manager_result.tx_rollup_origination_case
@@ -1621,7 +1621,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_submit_batch_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_submit_batch_case =
     make_manager_case
       Operation.Encoding.tx_rollup_submit_batch_case
       Manager_result.tx_rollup_submit_batch_case
@@ -1632,7 +1632,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_commit_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_commit_case =
     make_manager_case
       Operation.Encoding.tx_rollup_commit_case
       Manager_result.tx_rollup_commit_case
@@ -1643,7 +1643,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_return_bond_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_return_bond_case =
     make_manager_case
       Operation.Encoding.tx_rollup_return_bond_case
       Manager_result.tx_rollup_return_bond_case
@@ -1654,7 +1654,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_finalize_commitment_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_finalize_commitment_case =
     make_manager_case
       Operation.Encoding.tx_rollup_finalize_commitment_case
       Manager_result.tx_rollup_finalize_commitment_case
@@ -1666,7 +1666,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_remove_commitment_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_remove_commitment_case =
     make_manager_case
       Operation.Encoding.tx_rollup_remove_commitment_case
       Manager_result.tx_rollup_remove_commitment_case
@@ -1678,7 +1678,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_rejection_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_rejection_case =
     make_manager_case
       Operation.Encoding.tx_rollup_rejection_case
       Manager_result.tx_rollup_rejection_case
@@ -1689,7 +1689,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_dispatch_tickets_case =
+  let[@coq_axiom_with_reason "gadt"] tx_rollup_dispatch_tickets_case =
     make_manager_case
       Operation.Encoding.tx_rollup_dispatch_tickets_case
       Manager_result.tx_rollup_dispatch_tickets_case
@@ -1701,7 +1701,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  transfer_ticket_case =
+  let[@coq_axiom_with_reason "gadt"] transfer_ticket_case =
     make_manager_case
       Operation.Encoding.transfer_ticket_case
       Manager_result.transfer_ticket_case
@@ -1712,7 +1712,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_originate_case =
+  let[@coq_axiom_with_reason "gadt"] sc_rollup_originate_case =
     make_manager_case
       Operation.Encoding.sc_rollup_originate_case
       Manager_result.sc_rollup_originate_case
@@ -1723,7 +1723,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_add_messages_case =
+  let[@coq_axiom_with_reason "gadt"] sc_rollup_add_messages_case =
     make_manager_case
       Operation.Encoding.sc_rollup_add_messages_case
       Manager_result.sc_rollup_add_messages_case
@@ -1734,7 +1734,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_cement_case =
+  let[@coq_axiom_with_reason "gadt"] sc_rollup_cement_case =
     make_manager_case
       Operation.Encoding.sc_rollup_cement_case
       Manager_result.sc_rollup_cement_case
@@ -1745,7 +1745,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_publish_case =
+  let[@coq_axiom_with_reason "gadt"] sc_rollup_publish_case =
     make_manager_case
       Operation.Encoding.sc_rollup_publish_case
       Manager_result.sc_rollup_publish_case
@@ -2504,7 +2504,7 @@ let rec kind_equal_list :
           | Some Eq -> Some Eq))
   | _ -> None
 
-let  rec pack_contents_list :
+let[@coq_axiom_with_reason "gadt"] rec pack_contents_list :
     type kind.
     kind contents_list ->
     kind contents_result_list ->
