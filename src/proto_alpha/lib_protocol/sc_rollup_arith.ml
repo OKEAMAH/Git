@@ -95,6 +95,10 @@ module Make (Context : P) :
 
   type hash = State_hash.t
 
+  let initial_state_hash =
+    State_hash.of_b58check_exn
+      "scs11u2m1ryUc2JPVX3R2EkF7Mzmzx85xuzzwPobXSHKj8strkrZRE"
+
   type proof = {
     tree_proof : Context.proof;
     given : PS.input option;
@@ -727,11 +731,10 @@ module Make (Context : P) :
 
   open Monad
 
-  let initial_state ctxt boot_sector =
+  let initial_state ctxt =
     let state = Tree.empty ctxt in
     let m =
       let open Monad.Syntax in
-      let* () = Boot_sector.set boot_sector in
       let* () = Status.set Halted in
       return ()
     in
@@ -739,19 +742,19 @@ module Make (Context : P) :
     let* state, _ = run m state in
     return state
 
-  let state_hash state =
+  let install_boot_sector state boot_sector =
     let m =
       let open Monad.Syntax in
-      let* status = Status.get in
-      match status with
-      | Halted -> return State_hash.zero
-      | _ -> return @@ State_hash.context_hash_to_state_hash (Tree.hash state)
+      let* () = Boot_sector.set boot_sector in
+      return ()
     in
     let open Lwt_syntax in
-    let* state = Monad.run m state in
-    match state with
-    | _, Some hash -> return hash
-    | _ -> (* Hash computation always succeeds. *) assert false
+    let* state, _ = run m state in
+    return state
+
+  let state_hash state =
+    let context_hash = Tree.hash state in
+    Lwt.return @@ State_hash.hash_bytes [Context_hash.to_bytes context_hash]
 
   let boot =
     let open Monad.Syntax in

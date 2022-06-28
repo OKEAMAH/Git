@@ -101,6 +101,10 @@ module V2_0_0 = struct
 
     type hash = State_hash.t
 
+    let initial_state_hash =
+      State_hash.of_b58check_exn
+        "scs13JvSJYQ6KuacM3CMcQvm6j6gkqvbjPyyvrvRzMMkHwFD8hhhei"
+
     type nonrec proof = Context.proof proof
 
     let proof_input_given p = p.given
@@ -177,23 +181,18 @@ module V2_0_0 = struct
 
     open Monad
 
-    let initial_state ctxt boot_sector =
+    let initial_state ctxt =
       let open Lwt_syntax in
       let state = Tree.empty ctxt in
       let* state = Tree.add state ["wasm-version"] (Bytes.of_string "2.0.0") in
-      let* state =
-        Tree.add state ["boot-sector"] (Bytes.of_string boot_sector)
-      in
       Lwt.return state
 
+    let install_boot_sector state boot_sector =
+      Tree.add state ["boot-sector"] (Bytes.of_string boot_sector)
+
     let state_hash state =
-      let m =
-        Context_hash.to_bytes @@ Tree.hash state |> fun h ->
-        return @@ State_hash.hash_bytes [h]
-      in
-      let open Lwt_syntax in
-      let* state = Monad.run m state in
-      match state with _, hash -> return hash
+      let context_hash = Tree.hash state in
+      Lwt.return @@ State_hash.hash_bytes [Context_hash.to_bytes context_hash]
 
     let result_of m state =
       let open Lwt_syntax in
