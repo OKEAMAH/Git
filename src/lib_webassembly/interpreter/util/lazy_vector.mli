@@ -101,7 +101,7 @@ module type S = sig
   (** [concat lhs rhs] Concatenates two lazy vectors. *)
   val concat : 'a t -> 'a t -> 'a t
 
-  (** [to_list vector] Extracts all values of the underlying vector and
+  (** [to_list vector] extracts all values of the given [vector] and
       collects them in a list.  *)
   val to_list : 'a t -> 'a list effect
 end
