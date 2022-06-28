@@ -3506,6 +3506,8 @@ module Kind : sig
 
   type delegation = Delegation_kind
 
+  type event = Event_kind
+
   type set_deposits_limit = Set_deposits_limit_kind
 
   type failing_noop = Failing_noop_kind
