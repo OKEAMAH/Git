@@ -1781,7 +1781,7 @@ let apply_external_manager_operation_content :
 type success_or_failure = Success of context | Failure
 
 let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
-  let[@coq_struct "ctxt"] rec apply ctxt applied worklist =
+  let  rec apply ctxt applied worklist =
     match worklist with
     | [] -> Lwt.return (Success ctxt, List.rev applied)
     | Script_typed_ir.Internal_operation ({source; operation; nonce} as op)
@@ -1826,7 +1826,7 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
 
 let precheck_manager_contents (type kind) ctxt (op : kind Kind.manager contents)
     ~(only_batch : bool) : (context * precheck_result) tzresult Lwt.t =
-  let[@coq_match_with_default] (Manager_operation
+  let  (Manager_operation
                                  {
                                    source;
                                    fee;
@@ -2140,7 +2140,7 @@ let apply_manager_contents (type kind) ctxt mode chain_id
     * kind manager_operation_result
     * packed_internal_manager_operation_result list)
     Lwt.t =
-  let[@coq_match_with_default] (Manager_operation
+  let  (Manager_operation
                                  {
                                    source;
                                    operation;
@@ -2225,7 +2225,7 @@ let rec mark_skipped :
     kind Kind.manager prechecked_contents_list ->
     kind Kind.manager contents_result_list =
  fun ~payload_producer level prechecked_contents_list ->
-  match[@coq_match_with_default] prechecked_contents_list with
+  match  prechecked_contents_list with
   | PrecheckedSingle
       {
         contents = Manager_operation {operation; _};
@@ -2271,7 +2271,7 @@ let check_counters_consistency contents_list =
       type kind.
       counter option -> kind Kind.manager contents_list -> unit tzresult Lwt.t =
    fun previous_counter contents_list ->
-    match[@coq_match_with_default] contents_list with
+    match  contents_list with
     | Single (Manager_operation {counter; _}) ->
         check_counter ~previous_counter counter
     | Cons (Manager_operation {counter; _}, rest) ->
@@ -2327,7 +2327,7 @@ let find_manager_public_key ctxt (op : _ Kind.manager contents_list) =
       (Signature.public_key_hash * Signature.public_key option) option ->
       (Signature.public_key_hash * Signature.public_key option) tzresult =
    fun contents_list manager ->
-    let source (type kind) = function[@coq_match_with_default]
+    let source (type kind) = function 
       | (Manager_operation {source; operation = Reveal key; _} :
           kind Kind.manager contents) ->
           (source, Some key)
@@ -2359,7 +2359,7 @@ let rec apply_manager_contents_list_rec :
     (success_or_failure * kind Kind.manager contents_result_list) Lwt.t =
  fun ctxt mode ~payload_producer chain_id prechecked_contents_list ->
   let level = Level.current ctxt in
-  match[@coq_match_with_default] prechecked_contents_list with
+  match  prechecked_contents_list with
   | PrecheckedSingle
       {
         contents = Manager_operation _ as op;
@@ -2902,7 +2902,7 @@ let apply_contents_list (type kind) ctxt chain_id (apply_mode : apply_mode) mode
     | Partial_construction _ -> true
     | Full_construction _ | Application _ -> false
   in
-  match[@coq_match_with_default] contents_list with
+  match  contents_list with
   | Single (Preendorsement consensus_content) ->
       validate_consensus_contents
         ctxt
