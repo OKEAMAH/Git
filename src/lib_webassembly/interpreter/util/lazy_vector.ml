@@ -184,12 +184,12 @@ struct
     let rec unroll acc index =
       if Key.unsigned_compare index Key.zero > 0 then
         let* prefix = get index map in
-        unroll (prefix :: acc) (Key.pred index)
+        (unroll [@ocaml.tailcall]) (prefix :: acc) (Key.pred index)
       else
         let* prefix = get Key.zero map in
         return (prefix :: acc)
     in
-    unroll [] (Key.pred map.num_elements)
+    (unroll [@ocaml.tailcall]) [] (Key.pred map.num_elements)
 end
 
 module Int = struct
