@@ -940,8 +940,8 @@ let init (m : module_) (exts : extern list) : module_inst Lwt.t =
     { (List.fold_right2 (add_import m) exts imports empty_module_inst) with
       types =
         (* TODO: #3076
-          [types] should be a lazy structure so we can avoid traversing it
-          whole. *)
+           [types] should be a lazy structure so we can avoid traversing it
+           whole. *)
         List.map (fun type_ -> type_.it) types |> Vector.of_list
     }
   in
