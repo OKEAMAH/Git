@@ -73,6 +73,11 @@ Operation receipts
 
 - Operations that are both manager operations and internal operations returned by Michelson scripts now have different names for receipt encodings. This concerns transations, originations and delegations, where the word "internal" explicitly appears in the case of internal operation receipts. (:gl:`!5149`)
 
+Increase_paid_storage
+---------------------
+
+- Increase_paid_storage is a new operation that enable a payer to increase the paid storage of a smart contract by some bytes amount. (MR :gl:`!5605`)
+
 Bug Fixes
 ---------
 
