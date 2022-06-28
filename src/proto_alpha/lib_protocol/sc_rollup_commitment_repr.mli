@@ -69,6 +69,31 @@ module V1 : sig
   val encoding : t Data_encoding.t
 
   val hash : t -> Hash.t
+
+  (** [genesis_commitment ~origination_level ~genesis_state_hash] is the
+      commitment that the protocol "publish" and "cement" when originating a new
+      rollup. Each rollup have a different [genesis_commitment] because the
+      [compressed_state] is computed after the boot sector is set. It has the
+      following values:
+
+      {ul {li [compressed_state] = [genesis_state_hash]}
+          {li [inbox_level] = [origination_level]}
+          {li [predecessor] = {!Hash.zero}}
+          {li [number_of_messages] = {!Sc_rollup_repr.Number_of_messages.min_value}}
+          {li [number_of_ticks] = {!Sc_rollup_repr.Number_of_ticks.min_value}}}
+
+      where {!Sc_rollup_repr.Number_of_messages.min_value} and
+      {!Sc_rollup_repr.Number_of_ticks.min_value} are equal to [zero].
+
+      See {!Sc_rollup_storage.originate} for the usage. *)
+  val genesis_commitment :
+    origination_level:Raw_level_repr.t ->
+    genesis_state_hash:Sc_rollup_repr.State_hash.t ->
+    t
+
+  type genesis_info = {level : Raw_level_repr.t; commitment_hash : Hash.t}
+
+  val genesis_info_encoding : genesis_info Data_encoding.t
 end
 
 (** Versioning, see {!Sc_rollup_data_version_sig.S} for more information. *)

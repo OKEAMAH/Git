@@ -118,9 +118,9 @@ let withdraw_stake ctxt rollup staker =
 let assert_commitment_not_too_far_ahead ctxt rollup lcc commitment =
   let open Lwt_tzresult_syntax in
   let* ctxt, min_level =
-    if Commitment_hash.(lcc = zero) then
-      let* level = Store.Initial_level.get ctxt rollup in
-      return (ctxt, level)
+    let* genesis_info = Store.Genesis_info.get ctxt rollup in
+    if Commitment_hash.(lcc = genesis_info.commitment_hash) then
+      return (ctxt, genesis_info.level)
     else
       let* lcc, ctxt =
         Commitment_storage.get_commitment_unsafe ctxt rollup lcc
@@ -145,10 +145,10 @@ let assert_commitment_not_too_far_ahead ctxt rollup lcc commitment =
 let assert_commitment_period ctxt rollup commitment =
   let open Lwt_tzresult_syntax in
   let pred_hash = Commitment.(commitment.predecessor) in
+  let* genesis_info = Store.Genesis_info.get ctxt rollup in
   let* ctxt, pred_level =
-    if Commitment_hash.(pred_hash = zero) then
-      let* level = Store.Initial_level.get ctxt rollup in
-      return (ctxt, level)
+    if Commitment_hash.(pred_hash = genesis_info.commitment_hash) then
+      return (ctxt, genesis_info.level)
     else
       let* pred, ctxt =
         Commitment_storage.get_commitment_unsafe ctxt rollup pred_hash
