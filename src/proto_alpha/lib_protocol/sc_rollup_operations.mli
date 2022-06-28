@@ -38,14 +38,24 @@ type execute_outbox_message_result = {
   operations : Script_typed_ir.packed_internal_operation list;
 }
 
-type origination_result = {address : Sc_rollup.Address.t; size : Z.t}
+type origination_result = {
+  address : Sc_rollup.Address.t;
+  size : Z.t;
+  genesis_hash : Sc_rollup.State_hash.t;
+}
 
-(** [originate context ~kind ~boot_sector] adds a new rollup running in a
-    given [kind] initialized with a [boot_sector]. *)
+(** [originate context ~kind ~boot_sector ~origination_proof] adds a
+    new rollup running in a given [kind] initialized with a
+    [boot_sector].
+
+    Returns an error if [origination_proof] is invalid ({i e.g.}, it
+    does not tagret the expected PVM)
+*)
 val originate :
   context ->
   kind:Sc_rollup.Kind.t ->
   boot_sector:string ->
+  origination_proof:Sc_rollup.wrapped_proof ->
   parameters_ty:Script_repr.lazy_expr ->
   (origination_result * context) tzresult Lwt.t
 
