@@ -24,19 +24,7 @@
 (*****************************************************************************)
 
 open Tezos_webassembly_interpreter
-
-let case_incr title enc test pack id =
-  Data_encoding.case ~title (Tag id) enc test pack
-
-let unit_case_incr title value id =
-  Data_encoding.case
-    ~title
-    (Tag id)
-    (Data_encoding.constant title)
-    (fun test -> if test = value then Some () else None)
-    (fun () -> value)
-
-let union_incr cases = Data_encoding.union (List.mapi ( |> ) cases)
+open Data_encoding_utils
 
 let string_enum cases =
   let open Data_encoding in

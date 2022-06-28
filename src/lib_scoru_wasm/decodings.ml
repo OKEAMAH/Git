@@ -26,6 +26,7 @@
 open Tezos_webassembly_interpreter
 open Types
 open Sigs
+open Data_encoding_utils
 
 module Make (T : TreeS) = struct
   module Tree = struct
@@ -454,7 +455,6 @@ module Make (T : TreeS) = struct
 
   let export_decoding funcs tables memories globals =
     let open Tree.Decoding in
-    let open Interpreter_encodings in
     let* export =
       value
         []
