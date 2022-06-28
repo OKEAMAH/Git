@@ -139,7 +139,7 @@ struct
     if
       Key.unsigned_compare (Key.add delta map.num_elements) map.num_elements < 0
     then
-      failwith "Growing the lazy vector would overflow!";
+      raise Memory_exn.SizeOverflow;
 
     let map_produce_value old_produce_value =
       match produce_value with
