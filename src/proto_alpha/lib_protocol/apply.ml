@@ -1884,7 +1884,7 @@ let apply_external_manager_operation_content :
 type success_or_failure = Success of context | Failure
 
 let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
-  let  rec apply ctxt applied worklist =
+  let rec apply ctxt applied worklist =
     match worklist with
     | [] -> Lwt.return (Success ctxt, List.rev applied)
     | Script_typed_ir.Internal_operation ({source; operation; nonce} as op)
@@ -2864,7 +2864,7 @@ let apply_contents_list (type kind) ctxt chain_id (apply_mode : apply_mode) mode
     | Partial_construction _ -> true
     | Full_construction _ | Application _ -> false
   in
-  match  contents_list with
+  match contents_list with
   | Single (Preendorsement consensus_content) ->
       validate_consensus_contents
         ctxt

@@ -274,7 +274,7 @@ module Manager_result = struct
     in
     MCase {op_case; encoding; kind; select; proj; inj; t}
 
-  let  reveal_case =
+  let reveal_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.reveal_case
       ~encoding:
@@ -287,7 +287,7 @@ module Manager_result = struct
       ~proj:(function Reveal_result {consumed_gas} -> consumed_gas)
       ~inj:(fun consumed_gas -> Reveal_result {consumed_gas})
 
-  let  transaction_contract_variant_cases =
+  let transaction_contract_variant_cases =
     union
       [
         case
@@ -400,7 +400,7 @@ module Manager_result = struct
           (fun consumed_gas -> Transaction_to_event_result {consumed_gas});
       ]
 
-  let  transaction_case =
+  let transaction_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.transaction_case
       ~encoding:transaction_contract_variant_cases
@@ -411,7 +411,7 @@ module Manager_result = struct
       ~proj:(function Transaction_result x -> x)
       ~inj:(fun x -> Transaction_result x)
 
-  let  origination_case =
+  let origination_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.origination_case
       ~encoding:
@@ -464,7 +464,7 @@ module Manager_result = struct
             paid_storage_size_diff;
           })
 
-  let  register_global_constant_case =
+  let register_global_constant_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.register_global_constant_case
@@ -498,8 +498,7 @@ module Manager_result = struct
         | Successful_manager_result (Delegation_result _ as op) -> Some op
         | _ -> None)
       ~kind:Kind.Delegation_manager_kind
-      ~proj:(function 
-        | Delegation_result {consumed_gas} -> consumed_gas)
+      ~proj:(function Delegation_result {consumed_gas} -> consumed_gas)
       ~inj:(fun consumed_gas -> Delegation_result {consumed_gas})
 
   let set_deposits_limit_case =
@@ -517,7 +516,7 @@ module Manager_result = struct
         | Set_deposits_limit_result {consumed_gas} -> consumed_gas)
       ~inj:(fun consumed_gas -> Set_deposits_limit_result {consumed_gas})
 
-  let  tx_rollup_origination_case =
+  let tx_rollup_origination_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_origination_case
       ~encoding:
@@ -539,7 +538,7 @@ module Manager_result = struct
         Tx_rollup_origination_result
           {balance_updates; consumed_gas; originated_tx_rollup})
 
-  let  tx_rollup_submit_batch_case =
+  let tx_rollup_submit_batch_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_submit_batch_case
       ~encoding:
@@ -561,7 +560,7 @@ module Manager_result = struct
         Tx_rollup_submit_batch_result
           {balance_updates; consumed_gas; paid_storage_size_diff})
 
-  let  tx_rollup_commit_case =
+  let tx_rollup_commit_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_commit_case
       ~encoding:
@@ -579,7 +578,7 @@ module Manager_result = struct
       ~inj:(fun (balance_updates, consumed_gas) ->
         Tx_rollup_commit_result {balance_updates; consumed_gas})
 
-  let  tx_rollup_return_bond_case =
+  let tx_rollup_return_bond_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_return_bond_case
       ~encoding:
@@ -598,7 +597,7 @@ module Manager_result = struct
       ~inj:(fun (balance_updates, consumed_gas) ->
         Tx_rollup_return_bond_result {balance_updates; consumed_gas})
 
-  let  tx_rollup_finalize_commitment_case =
+  let tx_rollup_finalize_commitment_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.tx_rollup_finalize_commitment_case
@@ -622,7 +621,7 @@ module Manager_result = struct
         Tx_rollup_finalize_commitment_result
           {balance_updates; consumed_gas; level})
 
-  let  tx_rollup_remove_commitment_case =
+  let tx_rollup_remove_commitment_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.tx_rollup_remove_commitment_case
@@ -646,7 +645,7 @@ module Manager_result = struct
         Tx_rollup_remove_commitment_result
           {balance_updates; consumed_gas; level})
 
-  let  tx_rollup_rejection_case =
+  let tx_rollup_rejection_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.tx_rollup_rejection_case
       ~encoding:
@@ -665,7 +664,7 @@ module Manager_result = struct
       ~inj:(fun (balance_updates, consumed_gas) ->
         Tx_rollup_rejection_result {balance_updates; consumed_gas})
 
-  let  tx_rollup_dispatch_tickets_case =
+  let tx_rollup_dispatch_tickets_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.tx_rollup_dispatch_tickets_case
@@ -689,7 +688,7 @@ module Manager_result = struct
         Tx_rollup_dispatch_tickets_result
           {balance_updates; consumed_gas; paid_storage_size_diff})
 
-  let  transfer_ticket_case =
+  let transfer_ticket_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.transfer_ticket_case
       ~encoding:
@@ -710,7 +709,7 @@ module Manager_result = struct
         Transfer_ticket_result
           {balance_updates; consumed_gas; paid_storage_size_diff})
 
-  let  dal_publish_slot_header_case =
+  let dal_publish_slot_header_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.dal_publish_slot_header_case
@@ -725,7 +724,7 @@ module Manager_result = struct
       ~kind:Kind.Dal_publish_slot_header_manager_kind
       ~inj:(fun consumed_gas -> Dal_publish_slot_header_result {consumed_gas})
 
-  let  sc_rollup_originate_case =
+  let sc_rollup_originate_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.sc_rollup_originate_case
       ~encoding:
@@ -863,7 +862,7 @@ module Manager_result = struct
         Sc_rollup_execute_outbox_message_result
           {balance_updates; consumed_gas; paid_storage_size_diff})
 
-  let  sc_rollup_recover_bond_case =
+  let sc_rollup_recover_bond_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.sc_rollup_recover_bond_case
       ~encoding:
@@ -1101,7 +1100,7 @@ module Encoding = struct
       (fun x -> match proj x with None -> None | Some x -> Some ((), x))
       (fun ((), x) -> inj x)
 
-  let  preendorsement_case =
+  let preendorsement_case =
     Case
       {
         op_case = Operation.Encoding.preendorsement_case;
@@ -1129,7 +1128,7 @@ module Encoding = struct
               {balance_updates; delegate; preendorsement_power});
       }
 
-  let  endorsement_case =
+  let endorsement_case =
     Case
       {
         op_case = Operation.Encoding.endorsement_case;
@@ -1154,7 +1153,7 @@ module Encoding = struct
             Endorsement_result {balance_updates; delegate; endorsement_power});
       }
 
-  let  dal_slot_availability_case =
+  let dal_slot_availability_case =
     Case
       {
         op_case = Operation.Encoding.dal_slot_availability_case;
@@ -1172,7 +1171,7 @@ module Encoding = struct
         inj = (fun delegate -> Dal_slot_availability_result {delegate});
       }
 
-  let  seed_nonce_revelation_case =
+  let seed_nonce_revelation_case =
     Case
       {
         op_case = Operation.Encoding.seed_nonce_revelation_case;
@@ -1229,7 +1228,7 @@ module Encoding = struct
         inj = (fun bus -> Double_endorsement_evidence_result bus);
       }
 
-  let  double_preendorsement_evidence_case =
+  let double_preendorsement_evidence_case =
     Case
       {
         op_case = Operation.Encoding.double_preendorsement_evidence_case;
@@ -1250,7 +1249,7 @@ module Encoding = struct
         inj = (fun bus -> Double_preendorsement_evidence_result bus);
       }
 
-  let  double_baking_evidence_case =
+  let double_baking_evidence_case =
     Case
       {
         op_case = Operation.Encoding.double_baking_evidence_case;
@@ -1269,7 +1268,7 @@ module Encoding = struct
         inj = (fun bus -> Double_baking_evidence_result bus);
       }
 
-  let  activate_account_case =
+  let activate_account_case =
     Case
       {
         op_case = Operation.Encoding.activate_account_case;
@@ -1288,7 +1287,7 @@ module Encoding = struct
         inj = (fun bus -> Activate_account_result bus);
       }
 
-  let  proposals_case =
+  let proposals_case =
     Case
       {
         op_case = Operation.Encoding.proposals_case;
@@ -1304,7 +1303,7 @@ module Encoding = struct
         inj = (fun () -> Proposals_result);
       }
 
-  let  ballot_case =
+  let ballot_case =
     Case
       {
         op_case = Operation.Encoding.ballot_case;
@@ -1320,7 +1319,7 @@ module Encoding = struct
         inj = (fun () -> Ballot_result);
       }
 
-  let  make_manager_case (type kind)
+  let make_manager_case (type kind)
       (Operation.Encoding.Case op_case :
         kind Kind.manager Operation.Encoding.case)
       (Manager_result.MCase res_case : kind Manager_result.case) mselect =
@@ -1403,7 +1402,7 @@ module Encoding = struct
               });
       }
 
-  let  reveal_case =
+  let reveal_case =
     make_manager_case
       Operation.Encoding.reveal_case
       Manager_result.reveal_case
@@ -1413,7 +1412,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  transaction_case =
+  let transaction_case =
     make_manager_case
       Operation.Encoding.transaction_case
       Manager_result.transaction_case
@@ -1423,7 +1422,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  origination_case =
+  let origination_case =
     make_manager_case
       Operation.Encoding.origination_case
       Manager_result.origination_case
@@ -1433,7 +1432,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  delegation_case =
+  let delegation_case =
     make_manager_case
       Operation.Encoding.delegation_case
       Manager_result.delegation_case
@@ -1443,7 +1442,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  register_global_constant_case =
+  let register_global_constant_case =
     make_manager_case
       Operation.Encoding.register_global_constant_case
       Manager_result.register_global_constant_case
@@ -1455,7 +1454,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  set_deposits_limit_case =
+  let set_deposits_limit_case =
     make_manager_case
       Operation.Encoding.set_deposits_limit_case
       Manager_result.set_deposits_limit_case
@@ -1466,7 +1465,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_origination_case =
+  let tx_rollup_origination_case =
     make_manager_case
       Operation.Encoding.tx_rollup_origination_case
       Manager_result.tx_rollup_origination_case
@@ -1477,7 +1476,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_submit_batch_case =
+  let tx_rollup_submit_batch_case =
     make_manager_case
       Operation.Encoding.tx_rollup_submit_batch_case
       Manager_result.tx_rollup_submit_batch_case
@@ -1488,7 +1487,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_commit_case =
+  let tx_rollup_commit_case =
     make_manager_case
       Operation.Encoding.tx_rollup_commit_case
       Manager_result.tx_rollup_commit_case
@@ -1499,7 +1498,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_return_bond_case =
+  let tx_rollup_return_bond_case =
     make_manager_case
       Operation.Encoding.tx_rollup_return_bond_case
       Manager_result.tx_rollup_return_bond_case
@@ -1510,7 +1509,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_finalize_commitment_case =
+  let tx_rollup_finalize_commitment_case =
     make_manager_case
       Operation.Encoding.tx_rollup_finalize_commitment_case
       Manager_result.tx_rollup_finalize_commitment_case
@@ -1522,7 +1521,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_remove_commitment_case =
+  let tx_rollup_remove_commitment_case =
     make_manager_case
       Operation.Encoding.tx_rollup_remove_commitment_case
       Manager_result.tx_rollup_remove_commitment_case
@@ -1534,7 +1533,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_rejection_case =
+  let tx_rollup_rejection_case =
     make_manager_case
       Operation.Encoding.tx_rollup_rejection_case
       Manager_result.tx_rollup_rejection_case
@@ -1545,7 +1544,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  tx_rollup_dispatch_tickets_case =
+  let tx_rollup_dispatch_tickets_case =
     make_manager_case
       Operation.Encoding.tx_rollup_dispatch_tickets_case
       Manager_result.tx_rollup_dispatch_tickets_case
@@ -1557,7 +1556,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  transfer_ticket_case =
+  let transfer_ticket_case =
     make_manager_case
       Operation.Encoding.transfer_ticket_case
       Manager_result.transfer_ticket_case
@@ -1568,7 +1567,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  dal_publish_slot_header_case =
+  let dal_publish_slot_header_case =
     make_manager_case
       Operation.Encoding.dal_publish_slot_header_case
       Manager_result.dal_publish_slot_header_case
@@ -1580,7 +1579,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_originate_case =
+  let sc_rollup_originate_case =
     make_manager_case
       Operation.Encoding.sc_rollup_originate_case
       Manager_result.sc_rollup_originate_case
@@ -1591,7 +1590,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_add_messages_case =
+  let sc_rollup_add_messages_case =
     make_manager_case
       Operation.Encoding.sc_rollup_add_messages_case
       Manager_result.sc_rollup_add_messages_case
@@ -1602,7 +1601,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_cement_case =
+  let sc_rollup_cement_case =
     make_manager_case
       Operation.Encoding.sc_rollup_cement_case
       Manager_result.sc_rollup_cement_case
@@ -1613,7 +1612,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_publish_case =
+  let sc_rollup_publish_case =
     make_manager_case
       Operation.Encoding.sc_rollup_publish_case
       Manager_result.sc_rollup_publish_case
@@ -1624,7 +1623,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_refute_case =
+  let sc_rollup_refute_case =
     make_manager_case
       Operation.Encoding.sc_rollup_refute_case
       Manager_result.sc_rollup_refute_case
@@ -1635,7 +1634,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_timeout_case =
+  let sc_rollup_timeout_case =
     make_manager_case
       Operation.Encoding.sc_rollup_timeout_case
       Manager_result.sc_rollup_timeout_case
@@ -1646,7 +1645,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_execute_outbox_message_case =
+  let sc_rollup_execute_outbox_message_case =
     make_manager_case
       Operation.Encoding.sc_rollup_execute_outbox_message_case
       Manager_result.sc_rollup_execute_outbox_message_case
@@ -1658,7 +1657,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let  sc_rollup_recover_bond_case =
+  let sc_rollup_recover_bond_case =
     make_manager_case
       Operation.Encoding.sc_rollup_recover_bond_case
       Manager_result.sc_rollup_recover_bond_case
@@ -2618,7 +2617,7 @@ let rec kind_equal_list :
           | Some Eq -> Some Eq))
   | _ -> None
 
-let  rec pack_contents_list :
+let rec pack_contents_list :
     type kind.
     kind contents_list ->
     kind contents_result_list ->
