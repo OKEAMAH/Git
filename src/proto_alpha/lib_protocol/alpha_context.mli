@@ -2996,6 +2996,11 @@ module Sc_rollup : sig
       val produce_proof :
         context -> input option -> state -> (proof, error) result Lwt.t
 
+      val verify_origination_proof : proof -> string -> bool Lwt.t
+
+      val produce_origination_proof :
+        context -> string -> (proof, error) result Lwt.t
+
       type output_proof
 
       val output_proof_encoding : output_proof Data_encoding.t

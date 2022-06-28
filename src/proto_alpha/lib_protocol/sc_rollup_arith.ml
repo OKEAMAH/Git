@@ -1071,6 +1071,32 @@ module Make (Context : P) :
         return {tree_proof; given = input_given; requested}
     | None -> fail Arith_proof_production_failed
 
+  let verify_origination_proof proof boot_sector =
+    let open Lwt_syntax in
+    let before = Context.proof_before proof.tree_proof in
+    if State_hash.(before <> initial_state_hash) then return false
+    else
+      let* result =
+        Context.verify_proof proof.tree_proof (fun state ->
+            let* state = install_boot_sector state boot_sector in
+            return (state, ()))
+      in
+      match result with None -> return false | Some (_, ()) -> return true
+
+  let produce_origination_proof context boot_sector =
+    let open Lwt_result_syntax in
+    let*! state = initial_state context in
+    let*! result =
+      Context.produce_proof context state (fun state ->
+          let open Lwt_syntax in
+          let* state = install_boot_sector state boot_sector in
+          return (state, ()))
+    in
+    match result with
+    | Some (tree_proof, ()) ->
+        return {tree_proof; given = None; requested = No_input_required}
+    | None -> fail Arith_proof_production_failed
+
   (* TEMPORARY: The following definitions will be extended in a future commit. *)
 
   type output_proof = {
