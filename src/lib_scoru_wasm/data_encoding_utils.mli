@@ -23,14 +23,24 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** [case_incr] is like [Data_encoding.case] but shall be used in unions
+    where the case tags are monotonically increasing. *)
+type 'a case_incr
+
+(** [case_incr title encoding probe extract] creates a [case_incr] similar to
+    [Data_encoding.case ~title auto_tag encoding probe extract] where the
+    [auto_tag] is automatically determined later. *)
 val case_incr :
   string ->
   'a Data_encoding.t ->
   ('b -> 'a option) ->
   ('a -> 'b) ->
-  int ->
-  'b Data_encoding.case
+  'b case_incr
 
-val unit_case_incr : string -> 'a -> int -> 'a Data_encoding.case
+(** [unit_case_incr title value] is a convenience function around [case_incr]
+    to simplify construction of cases with unit-isomorphic bodies. *)
+val unit_case_incr : string -> 'a -> 'a case_incr
 
-val union_incr : (int -> 'a Data_encoding.case) list -> 'a Data_encoding.t
+(** [union_incr cases] creates a data encoding like [Data_encoding.union] for
+    [case_incr] items. *)
+val union_incr : 'a case_incr list -> 'a Data_encoding.t

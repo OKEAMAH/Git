@@ -23,6 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type 'a case_incr = int -> 'a Data_encoding.case
+
 let case_incr title enc test pack id =
   Data_encoding.case ~title (Tag id) enc test pack
 
