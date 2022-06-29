@@ -392,7 +392,7 @@ module Make (T : TreeS) = struct
     Source.(instr @@ no_region)
 
   and instruction_list_decoding () =
-    (* TODO: ???
+    (* TODO: #3149
        Rewrite instruction list encoding using virtual "instruction block"
        pointers. *)
     list_decoding (instruction_decoding ())
