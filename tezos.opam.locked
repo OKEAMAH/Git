@@ -2,8 +2,8 @@ opam-version: "2.0"
 synopsis: "opam-monorepo generated lockfile"
 maintainer: "opam-monorepo"
 depends: [
-  "alcotest" {= "1.5.0" & ?vendor}
-  "alcotest-lwt" {= "1.5.0" & ?vendor}
+  "alcotest" {= "1.6.0" & ?vendor}
+  "alcotest-lwt" {= "1.6.0" & ?vendor}
   "angstrom" {= "0.15.0" & ?vendor}
   "asetmap" {= "0.8.1+dune2" & ?vendor}
   "asn1-combinators" {= "0.2.6" & ?vendor}
@@ -19,13 +19,14 @@ depends: [
   "bigstring" {= "0.3" & ?vendor}
   "bigstringaf" {= "0.9.0" & ?vendor}
   "bisect_ppx" {= "2.8.1" & ?vendor}
-  "bls12-381" {= "3.0.3" & ?vendor}
+  "bls12-381" {= "4.0.0" & ?vendor}
   "bos" {= "0.2.1+dune" & ?vendor}
   "ca-certs" {= "0.2.2" & ?vendor}
   "camlzip" {= "1.11+dune" & ?vendor}
   "caqti" {= "1.8.0" & ?vendor}
   "caqti-driver-postgresql" {= "1.8.0" & ?vendor}
   "caqti-lwt" {= "1.8.0" & ?vendor}
+  "class_group_vdf" {= "0.0.3" & ?vendor}
   "cmdliner" {= "1.1.1+dune" & ?vendor}
   "cohttp" {= "5.0.0" & ?vendor}
   "cohttp-lwt" {= "5.0.0" & ?vendor}
@@ -33,6 +34,7 @@ depends: [
   "conduit" {= "5.1.0" & ?vendor}
   "conduit-lwt" {= "5.1.0" & ?vendor}
   "conduit-lwt-unix" {= "5.1.0" & ?vendor}
+  "conf-g++" {= "1.0"}
   "conf-gmp" {= "4"}
   "conf-gmp-powm-sec" {= "3"}
   "conf-hidapi" {= "0"}
@@ -51,12 +53,10 @@ depends: [
   "data-encoding" {= "0.5.3" & ?vendor}
   "digestif" {= "1.1.2" & ?vendor}
   "domain-name" {= "0.4.0" & ?vendor}
-  "dum" {= "1.0.3" & ?vendor}
   "dune" {= "3.3.1"}
   "dune-build-info" {= "3.3.1" & ?vendor}
   "dune-configurator" {= "3.3.1" & ?vendor}
   "duration" {= "0.2.0" & ?vendor}
-  "easy-format" {= "1.3.4" & ?vendor}
   "either" {= "1.0.0" & ?vendor}
   "eqaf" {= "0.8" & ?vendor}
   "ezjsonm" {= "1.3.0" & ?vendor}
@@ -64,7 +64,6 @@ depends: [
   "fix" {= "20220121" & ?vendor}
   "fmt" {= "0.9.0+dune" & ?vendor}
   "fpath" {= "0.7.3+dune" & ?vendor}
-  "genspio" {= "0.0.3" & ?vendor}
   "gmap" {= "0.3.0" & ?vendor}
   "hacl-star" {= "0.4.5+dune3" & ?vendor}
   "hacl-star-raw" {= "0.4.5+dune3" & ?vendor}
@@ -135,6 +134,7 @@ depends: [
   "ppx_derivers" {= "1.2.1" & ?vendor}
   "ppx_deriving" {= "5.2.1" & ?vendor}
   "ppx_enumerate" {= "v0.15.0" & ?vendor}
+  "ppx_expect" {= "v0.15.0" & ?vendor}
   "ppx_hash" {= "v0.15.0" & ?vendor}
   "ppx_here" {= "v0.15.0" & ?vendor}
   "ppx_inline_test" {= "v0.15.0" & ?vendor}
@@ -184,6 +184,8 @@ depends: [
   "tar" {= "2.0.0" & ?vendor}
   "tar-unix" {= "2.0.0" & ?vendor}
   "terminal" {= "0.2.1" & ?vendor}
+  "tezos-bls12-381-polynomial" {= "0.1.0" & ?vendor}
+  "tezos-plonk" {= "0.1.0" & ?vendor}
   "tezos-rust-libs" {= "1.1"}
   "time_now" {= "v0.15.0" & ?vendor}
   "tls" {= "0.15.3" & ?vendor}
@@ -211,6 +213,14 @@ depexts: [
   ["cargo" "rustc"] {os-distribution = "nixos"}
   ["devel/pkgconf"] {os = "openbsd"}
   ["epel-release" "hidapi-devel"] {os-distribution = "centos"}
+  ["g++"] {os-family = "debian"}
+  ["gcc"] {os-distribution = "arch"}
+  ["gcc"] {os-distribution = "nixos"}
+  ["gcc"] {os = "macos" & os-distribution = "homebrew"}
+  ["gcc-c++"] {os-distribution = "centos"}
+  ["gcc-c++"] {os-distribution = "fedora"}
+  ["gcc-c++"] {os-family = "suse"}
+  ["gcc-g++"] {os = "win32" & os-distribution = "cygwinports"}
   ["gmp"] {os = "freebsd"}
   ["gmp"] {os = "openbsd"}
   ["gmp"] {os-distribution = "nixos"}
@@ -293,12 +303,12 @@ depexts: [
 ]
 pin-depends: [
   [
-    "alcotest.1.5.0"
-    "https://github.com/mirage/alcotest/releases/download/1.5.0/alcotest-js-1.5.0.tbz"
+    "alcotest.1.6.0"
+    "https://github.com/mirage/alcotest/releases/download/1.6.0/alcotest-1.6.0.tbz"
   ]
   [
-    "alcotest-lwt.1.5.0"
-    "https://github.com/mirage/alcotest/releases/download/1.5.0/alcotest-js-1.5.0.tbz"
+    "alcotest-lwt.1.6.0"
+    "https://github.com/mirage/alcotest/releases/download/1.6.0/alcotest-1.6.0.tbz"
   ]
   [
     "angstrom.0.15.0"
@@ -345,8 +355,8 @@ pin-depends: [
     "https://github.com/aantron/bisect_ppx/archive/2.8.1.tar.gz"
   ]
   [
-    "bls12-381.3.0.3"
-    "https://gitlab.com/dannywillems/ocaml-bls12-381/-/archive/3.0.3/ocaml-bls12-381-3.0.3.tar.bz2"
+    "bls12-381.4.0.0"
+    "https://gitlab.com/dannywillems/ocaml-bls12-381/-/archive/4.0.0/ocaml-bls12-381-4.0.0.tar.bz2"
   ]
   [
     "bos.0.2.1+dune"
@@ -371,6 +381,10 @@ pin-depends: [
   [
     "caqti-lwt.1.8.0"
     "https://github.com/paurkedal/ocaml-caqti/releases/download/v1.8.0/caqti-v1.8.0.tbz"
+  ]
+  [
+    "class_group_vdf.0.0.3"
+    "https://gitlab.com/rrtoledo/ocaml-chia-vdf/-/archive/v0.0.3/ocaml-chia-vdf-v0.0.3.tar.gz"
   ]
   [
     "cmdliner.1.1.1+dune"
@@ -441,10 +455,6 @@ pin-depends: [
     "https://github.com/hannesm/domain-name/releases/download/v0.4.0/domain-name-0.4.0.tbz"
   ]
   [
-    "dum.1.0.3"
-    "https://github.com/mjambon/dum/releases/download/1.0.3/dum-1.0.3.tbz"
-  ]
-  [
     "dune-build-info.3.3.1"
     "https://github.com/ocaml/dune/releases/download/3.3.1/dune-3.3.1.tbz"
   ]
@@ -455,10 +465,6 @@ pin-depends: [
   [
     "duration.0.2.0"
     "https://github.com/hannesm/duration/releases/download/0.2.0/duration-0.2.0.tbz"
-  ]
-  [
-    "easy-format.1.3.4"
-    "https://github.com/ocaml-community/easy-format/releases/download/1.3.4/easy-format-1.3.4.tbz"
   ]
   [
     "either.1.0.0"
@@ -487,10 +493,6 @@ pin-depends: [
   [
     "fpath.0.7.3+dune"
     "https://github.com/dune-universe/fpath/archive/v0.7.3+dune.tar.gz"
-  ]
-  [
-    "genspio.0.0.3"
-    "https://github.com/hammerlab/genspio/archive/genspio.0.0.3.tar.gz"
   ]
   [
     "gmap.0.3.0"
@@ -739,6 +741,10 @@ pin-depends: [
     "https://ocaml.janestreet.com/ocaml-core/v0.15/files/ppx_enumerate-v0.15.0.tar.gz"
   ]
   [
+    "ppx_expect.v0.15.0"
+    "https://ocaml.janestreet.com/ocaml-core/v0.15/files/ppx_expect-v0.15.0.tar.gz"
+  ]
+  [
     "ppx_hash.v0.15.0"
     "https://ocaml.janestreet.com/ocaml-core/v0.15/files/ppx_hash-v0.15.0.tar.gz"
   ]
@@ -930,6 +936,14 @@ pin-depends: [
   [
     "terminal.0.2.1"
     "https://github.com/CraigFe/progress/releases/download/0.2.1/terminal-0.2.1.tbz"
+  ]
+  [
+    "tezos-bls12-381-polynomial.0.1.0"
+    "git+https://gitlab.com/nomadic-labs/privacy-team.git#888f23bb1e024d11d7669059553bca56e7e268af"
+  ]
+  [
+    "tezos-plonk.0.1.0"
+    "git+https://gitlab.com/nomadic-labs/privacy-team.git#888f23bb1e024d11d7669059553bca56e7e268af"
   ]
   [
     "time_now.v0.15.0"
@@ -1289,11 +1303,6 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://github.com/hammerlab/genspio/archive/genspio.0.0.3.tar.gz"
-    "genspio"
-    ["md5=09f15208fd7b7853f503c18f2562eb8a"]
-  ]
-  [
     "https://github.com/hannesm/domain-name/releases/download/v0.4.0/domain-name-0.4.0.tbz"
     "domain-name"
     [
@@ -1401,11 +1410,11 @@ x-opam-monorepo-duniverse-dirs: [
     ["md5=ab8fd6273f35a792cad48cbb3024a7f9"]
   ]
   [
-    "https://github.com/mirage/alcotest/releases/download/1.5.0/alcotest-js-1.5.0.tbz"
+    "https://github.com/mirage/alcotest/releases/download/1.6.0/alcotest-1.6.0.tbz"
     "alcotest"
     [
-      "sha256=54281907e02d78995df246dc2e10ed182828294ad2059347a1e3a13354848f6c"
-      "sha512=1aea91de40795ec4f6603d510107e4b663c1a94bd223f162ad231316d8595e9e098cabbe28a46bdcb588942f3d103d8377373d533bcc7413ba3868a577469b45"
+      "sha256=fd00f9668395874ff3b1d7ef566d14efc02fa7dd34123eb25d59355be94b2329"
+      "sha512=69a7ef300ba10a9ccb1e25b1cfdb0a0abf9ca976864a52a22f0e1fae1e5d1cbeb99498c086230b839ee9da4d0fd71e63686e126ca42221537f3fdb6f6c5aae95"
     ]
   ]
   [
@@ -1617,14 +1626,6 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://github.com/mjambon/dum/releases/download/1.0.3/dum-1.0.3.tbz"
-    "dum"
-    [
-      "sha256=645a23503fc8a315530df1b2876c2f785b12cf80f5f692a41eb36e53e2c52651"
-      "sha512=f572326af6c295b8c27a54ef6d82309a71b0e31ab5f167b75ac0193350b2f59c8a355e61e83c6ad46e5562b355115f6a116148db097c648abbdd1d3d5573935c"
-    ]
-  ]
-  [
     "https://github.com/mmottl/postgresql-ocaml/releases/download/5.0.0/postgresql-5.0.0.tbz"
     "postgresql-ocaml"
     [
@@ -1646,14 +1647,6 @@ x-opam-monorepo-duniverse-dirs: [
     [
       "md5=d23ffe85ac7dc8f0afd1ddf622770d09"
       "sha512=26ff5a7b7f38c460661974b23ca190f0feae3a99f1974e0fd12ccf08745bd7d91b7bc168c70a5385b837bfff9530e0e4e41cf269f23dd8cf16ca658008244b44"
-    ]
-  ]
-  [
-    "https://github.com/ocaml-community/easy-format/releases/download/1.3.4/easy-format-1.3.4.tbz"
-    "easy-format"
-    [
-      "sha256=1dbf051e9f68574dde6e2e254a66b9c524ca425e80b36e99af96ed964ab610c3"
-      "sha512=90264864dde4cbf51f60fb5c21cf033e11bdeb662e76b62ce27b496c298ca9102174885ed7a6d29a6b8e43089e27d5bb5be247f88d9739c15cfd8470fec29d33"
     ]
   ]
   [
@@ -1820,11 +1813,11 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "https://gitlab.com/dannywillems/ocaml-bls12-381/-/archive/3.0.3/ocaml-bls12-381-3.0.3.tar.bz2"
+    "https://gitlab.com/dannywillems/ocaml-bls12-381/-/archive/4.0.0/ocaml-bls12-381-4.0.0.tar.bz2"
     "ocaml-bls12-381"
     [
-      "md5=367dcf0ed22d785fd521b838082fa60d"
-      "sha512=dd801c6c642f61191762df0619a9e4a05524b7b85b2cd1bd8ddcfebfe78fca39be571c8b6552d91d3ae149683948a577d08e3f896d688ca6aad0ed5dd15e5799"
+      "md5=82faa0c51f5bf5c846c79f35963ef6f2"
+      "sha512=8b1620f3ccde4017e6205d18c7040b26f3b5affbc71237ffc263fe2d625a7276e20b44617a632736f1426bcc8eb184705360506ff88f0f1ecb28c7a0514fef29"
     ]
   ]
   [
@@ -1892,6 +1885,10 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
+    "git+https://gitlab.com/nomadic-labs/privacy-team.git#888f23bb1e024d11d7669059553bca56e7e268af"
+    "privacy-team"
+  ]
+  [
     "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
     "resto"
     [
@@ -1905,6 +1902,14 @@ x-opam-monorepo-duniverse-dirs: [
     [
       "md5=e3bc59c3738c2d8cd4ef4bcc2ef1a97c"
       "sha512=f34d8bfdf80bca4251dda98706f266e015674f0e5822128b89b6d26c3928e02c37071625f292b5dfa8484cb15a7e530bc33965f6489aa85bd15c2d4d2fd71a54"
+    ]
+  ]
+  [
+    "https://gitlab.com/rrtoledo/ocaml-chia-vdf/-/archive/v0.0.3/ocaml-chia-vdf-v0.0.3.tar.gz"
+    "tezos"
+    [
+      "md5=aa2d03ad4dcd08f481c99e67e1c13561"
+      "sha512=b06b1bf5e81a415a2e3d9c9873bc79b08caa28b65b3d2ddd8e76f20a304b2da6b9f33f1245fb41e93e3a8c77c95e47463aeca4e96cd2fc22f7e06a0d58cf6045"
     ]
   ]
   [
@@ -1980,6 +1985,13 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
+    "https://ocaml.janestreet.com/ocaml-core/v0.15/files/ppx_expect-v0.15.0.tar.gz"
+    "ppx_expect"
+    [
+      "sha256=06315a45b43da72f96719bcb183c0177b5198beae8c3ddce357e180a32f9ca7b"
+    ]
+  ]
+  [
     "https://ocaml.janestreet.com/ocaml-core/v0.15/files/ppx_hash-v0.15.0.tar.gz"
     "ppx_hash"
     [
@@ -2045,7 +2057,6 @@ x-opam-monorepo-duniverse-dirs: [
 ]
 x-opam-monorepo-opam-provided: ["ocamlfind" "tezos-rust-libs"]
 x-opam-monorepo-root-packages: [
-  "flextesa"
   "hidapi"
   "internal-devtools"
   "ledgerwallet"
@@ -2103,6 +2114,7 @@ x-opam-monorepo-root-packages: [
   "tezos-client-genesis"
   "tezos-codec"
   "tezos-context"
+  "tezos-context-ops"
   "tezos-crypto"
   "tezos-embedded-protocol-000-Ps9mPmXa"
   "tezos-embedded-protocol-001-PtCJ7pwo"
@@ -2127,6 +2139,7 @@ x-opam-monorepo-root-packages: [
   "tezos-error-monad"
   "tezos-event-logging"
   "tezos-event-logging-test-helpers"
+  "tezos-expect-helper"
   "tezos-hacl"
   "tezos-injector-013-PtJakart"
   "tezos-injector-alpha"
