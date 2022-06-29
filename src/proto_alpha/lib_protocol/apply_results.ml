@@ -984,7 +984,7 @@ type packed_contents_and_result =
       'kind Operation.contents * 'kind contents_result
       -> packed_contents_and_result
 
-type ('a, 'b) eq = Eq : ('a, 'a) eq [@@coq_force_gadt]
+type ('a, 'b) eq = Eq : ('a, 'a) eq
 
 let equal_manager_kind :
     type a b. a Kind.manager -> b Kind.manager -> (a, b) eq option =

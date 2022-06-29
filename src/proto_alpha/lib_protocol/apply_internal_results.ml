@@ -214,7 +214,6 @@ module Internal_result = struct
         inj : 'a -> 'kind internal_manager_operation;
       }
         -> 'kind case
-  [@@coq_force_gadt]
 
   let transaction_contract_variant_cases =
     union

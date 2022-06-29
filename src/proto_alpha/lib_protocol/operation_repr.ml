@@ -599,7 +599,6 @@ module Encoding = struct
           inj : 'a -> 'kind manager_operation;
         }
           -> 'kind case
-    [@@coq_force_gadt]
 
     let reveal_case =
       MCase
@@ -1815,7 +1814,7 @@ let hash_packed (o : packed_operation) =
   in
   Operation.hash {shell = o.shell; proto}
 
-type ('a, 'b) eq = Eq : ('a, 'a) eq [@@coq_force_gadt]
+type ('a, 'b) eq = Eq : ('a, 'a) eq
 
 let equal_manager_operation_kind :
     type a b. a manager_operation -> b manager_operation -> (a, b) eq option =

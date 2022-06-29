@@ -862,7 +862,6 @@ let rec ty_eq :
     | Chest_key_t, _ -> not_equal ()
   in
   help ty1 ty2
- [@@coq_axiom_with_reason "non-top-level mutual recursion"]
 
 (* Same as ty_eq but for stacks.
    A single error monad is used here because there is no need to
@@ -5264,7 +5263,6 @@ let list_entrypoints_uncarbonated (type full fullc) (full : (full, fullc) ty)
         (Entrypoint.Map.singleton name (Ex_ty full, original_type_expr), true)
   in
   fold_tree full entrypoints.root [] reachable ([], init)
-  [@@coq_axiom_with_reason "unsupported syntax"]
 
 (* ---- Unparsing (Typed IR -> Untyped expressions) --------------------------*)
 
