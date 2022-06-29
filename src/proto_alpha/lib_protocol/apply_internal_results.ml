@@ -216,7 +216,7 @@ module Internal_result = struct
         -> 'kind case
   [@@coq_force_gadt]
 
-  let[@coq_axiom_with_reason "gadt"] transaction_contract_variant_cases =
+  let transaction_contract_variant_cases =
     union
       [
         case
@@ -329,7 +329,7 @@ module Internal_result = struct
           (fun consumed_gas -> Transaction_to_event_result {consumed_gas});
       ]
 
-  let[@coq_axiom_with_reason "gadt"] transaction_case =
+  let transaction_case =
     MCase
       {
         (* This value should be changed with care: maybe receipts are read by
@@ -374,7 +374,7 @@ module Internal_result = struct
             Transaction {amount; destination; parameters; entrypoint});
       }
 
-  let[@coq_axiom_with_reason "gadt"] origination_case =
+  let origination_case =
     MCase
       {
         (* This value should be changed with care: maybe receipts are read by
@@ -402,7 +402,7 @@ module Internal_result = struct
             Origination {credit; delegate; script});
       }
 
-  let[@coq_axiom_with_reason "gadt"] delegation_case =
+  let delegation_case =
     MCase
       {
         (* This value should be changed with care: maybe receipts are read by
@@ -523,7 +523,7 @@ module Internal_manager_result = struct
     in
     MCase {op_case; encoding; kind; select; proj; inj; t}
 
-  let[@coq_axiom_with_reason "gadt"] transaction_case =
+  let transaction_case =
     make
       ~op_case:Internal_result.transaction_case
       ~encoding:Internal_result.transaction_contract_variant_cases
@@ -535,7 +535,7 @@ module Internal_manager_result = struct
       ~proj:(function ITransaction_result x -> x)
       ~inj:(fun x -> ITransaction_result x)
 
-  let[@coq_axiom_with_reason "gadt"] origination_case =
+  let origination_case =
     make
       ~op_case:Internal_result.origination_case
       ~encoding:
@@ -600,8 +600,7 @@ module Internal_manager_result = struct
             Some op
         | _ -> None)
       ~kind:Kind.Delegation_manager_kind
-      ~proj:(function[@coq_match_with_default]
-        | IDelegation_result {consumed_gas} -> consumed_gas)
+      ~proj:(function IDelegation_result {consumed_gas} -> consumed_gas)
       ~inj:(fun consumed_gas -> IDelegation_result {consumed_gas})
 end
 

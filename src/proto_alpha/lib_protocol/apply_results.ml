@@ -881,7 +881,7 @@ module Manager_result = struct
       ~inj:(fun (balance_updates, consumed_gas) ->
         Sc_rollup_recover_bond_result {balance_updates; consumed_gas})
 
-  let[@coq_axiom_with_reason "gadt"] sc_rollup_dal_slot_subscribe_case =
+  let sc_rollup_dal_slot_subscribe_case =
     make
       ~op_case:
         Operation.Encoding.Manager_operations.sc_rollup_dal_slot_subscribe_case
@@ -1190,7 +1190,7 @@ module Encoding = struct
         inj = (fun bus -> Seed_nonce_revelation_result bus);
       }
 
-  let[@coq_axiom_with_reason "gadt"] vdf_revelation_case =
+  let vdf_revelation_case =
     Case
       {
         op_case = Operation.Encoding.vdf_revelation_case;
@@ -1208,7 +1208,7 @@ module Encoding = struct
         inj = (fun bus -> Vdf_revelation_result bus);
       }
 
-  let[@coq_axiom_with_reason "gadt"] double_endorsement_evidence_case =
+  let double_endorsement_evidence_case =
     Case
       {
         op_case = Operation.Encoding.double_endorsement_evidence_case;
@@ -1668,7 +1668,7 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
-  let[@coq_axiom_with_reason "gadt"] sc_rollup_dal_slot_subscribe_case =
+  let sc_rollup_dal_slot_subscribe_case =
     make_manager_case
       Operation.Encoding.sc_rollup_dal_slot_subscribe_case
       Manager_result.sc_rollup_dal_slot_subscribe_case

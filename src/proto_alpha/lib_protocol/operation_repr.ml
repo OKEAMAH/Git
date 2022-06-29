@@ -1149,7 +1149,7 @@ module Encoding = struct
           inj = (fun sc_rollup -> Sc_rollup_recover_bond {sc_rollup});
         }
 
-    let[@coq_axiom_with_reason "gadt"] sc_rollup_dal_slot_subscribe_case =
+    let sc_rollup_dal_slot_subscribe_case =
       MCase
         {
           tag = sc_rollup_operation_dal_slot_subscribe_tag;
@@ -1307,7 +1307,7 @@ module Encoding = struct
         inj = (fun (level, nonce) -> Seed_nonce_revelation {level; nonce});
       }
 
-  let[@coq_axiom_with_reason "gadt"] vdf_revelation_case =
+  let vdf_revelation_case =
     Case
       {
         tag = 8;
@@ -1319,7 +1319,7 @@ module Encoding = struct
         inj = (fun solution -> Vdf_revelation {solution});
       }
 
-  let[@coq_axiom_with_reason "gadt"] double_preendorsement_evidence_case :
+  let double_preendorsement_evidence_case :
       Kind.double_preendorsement_evidence case =
     Case
       {
