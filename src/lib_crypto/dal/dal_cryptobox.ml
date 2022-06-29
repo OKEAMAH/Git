@@ -172,7 +172,7 @@ module type DAL_cryptobox_sig = sig
       shards, using trusted setup [ts]. *)
   val precompute_shards_proofs : trusted_setup -> shards_proofs_precomputation
 
-  (** [save_precompute_shards_proofs precomputation filename ()] saves to file
+  (** [save_precompute_shards_proofs precomputation filename] saves to file
       [filename] the given [precomputation]. *)
   val save_precompute_shards_proofs :
     shards_proofs_precomputation -> string -> unit
@@ -211,7 +211,7 @@ module type DAL_cryptobox_sig = sig
     bool
 
   (** [prove_slot_segments ts p slot_segment_index] where [p] is the output of
-      [polynomial_from_bytes slot], returns proofs for the slot segment] whose
+      [polynomial_from_bytes slot], returns proofs for the slot segment whose
       index is [slot_segment_index], using the trusted setup [ts]. *)
   val prove_slot_segment :
     trusted_setup ->
