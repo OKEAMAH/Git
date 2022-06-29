@@ -34,7 +34,7 @@ module Types : sig
 
   val value_type_encoding : value_type Data_encoding.t
 
-  val result_type_encoding : value_type list Data_encoding.t
+  val result_type_encoding : result_type Data_encoding.t
 
   val func_type_encoding : func_type Data_encoding.t
 
