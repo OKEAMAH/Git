@@ -166,7 +166,7 @@ module type DAL_cryptobox_sig = sig
     commitment ->
     proof_degree ->
     int ->
-    (bool, [> `Degree_exceeds_srs_length of string]) Result.t
+    (bool, [> `Invalid_degree]) Result.t
 
   (** [precompute_shards_proofs ts] returns the precomputation used to prove
       shards, using trusted setup [ts]. *)
@@ -724,11 +724,11 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
     let open Bls12_381 in
     let d = k - 1 in
     let* commit_xk =
-      commit'
-        (module G2)
-        (Polynomials.of_coefficients [(Scalar.(copy one), d - n)])
-        trusted_setup.srs_g2
+      match Array.get trusted_setup.srs_g2 (d - n) with
+      | exception Invalid_argument _ -> Error `Invalid_degree
+      | cm -> Ok cm
     in
+
     Ok
       (Pairing.pairing_check [(cm, commit_xk); (proof, G2.(negate (copy one)))])
 
