@@ -1366,7 +1366,7 @@ and 'kind manager_operation =
     }
       -> Kind.transaction manager_operation
   | Event : {
-      addr : Contract_event.t;
+      ty : Script.expr;
       tag : Entrypoint.t;
       unparsed_data : Script.expr;
     }
