@@ -51,6 +51,9 @@ module type S = sig
     pack_size -> vec_extension -> memory -> address -> offset -> vec_type -> vec Lwt.t
 (* raises Type, Bounds *)
 
+  (** [store_bytes_from_bytes memory offset bytes] copies the contents of
+      [bytes] into [memory] at the provided [offset]. Further modifications to
+      [bytes] are not reflected in [memory]. *)
   val store_bytes_from_bytes : t -> address -> bytes -> unit Lwt.t
 
   val of_chunks : Types.memory_type -> Chunked_byte_vector.Lwt.t -> t
