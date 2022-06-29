@@ -25,6 +25,9 @@ module type S = sig
   val store : table -> index -> ref_ -> unit (* raises Type, Bounds *)
   val blit : table -> index -> ref_ list -> unit (* raises Bounds *)
 
+  (** [alloc_shallow table_ty] is like [alloc] but without a default value for
+      the references in the table. That means accessing any unset element will
+      raise [Lazy_map.UnexpectedAccess]. *)
   val alloc_shallow : table_type -> t
 
   module Vector = Lazy_vector.Mutable.LwtInt32Vector
