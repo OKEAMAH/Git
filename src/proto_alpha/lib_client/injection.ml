@@ -317,6 +317,7 @@ let estimated_gas_single (type kind)
         | Delegation_result {consumed_gas} -> Ok consumed_gas
         | Register_global_constant_result {consumed_gas; _} -> Ok consumed_gas
         | Set_deposits_limit_result {consumed_gas} -> Ok consumed_gas
+        | Increase_paid_storage_result {consumed_gas; _} -> Ok consumed_gas
         | Tx_rollup_origination_result {consumed_gas; _} -> Ok consumed_gas
         | Tx_rollup_submit_batch_result {consumed_gas; _} -> Ok consumed_gas
         | Tx_rollup_commit_result {consumed_gas; _} -> Ok consumed_gas
@@ -396,6 +397,7 @@ let estimated_storage_single (type kind) ~tx_rollup_origination_size
         | Register_global_constant_result {size_of_constant; _} ->
             Ok size_of_constant
         | Set_deposits_limit_result _ -> Ok Z.zero
+        | Increase_paid_storage_result _ -> Ok Z.zero
         | Tx_rollup_origination_result _ -> Ok tx_rollup_origination_size
         | Tx_rollup_submit_batch_result {paid_storage_size_diff; _}
         | Sc_rollup_execute_outbox_message_result {paid_storage_size_diff; _} ->
@@ -500,6 +502,7 @@ let originated_contracts_single (type kind)
         | Reveal_result _ -> Ok []
         | Delegation_result _ -> Ok []
         | Set_deposits_limit_result _ -> Ok []
+        | Increase_paid_storage_result _ -> Ok []
         | Tx_rollup_origination_result _ -> Ok []
         | Tx_rollup_submit_batch_result _ -> Ok []
         | Tx_rollup_commit_result _ -> Ok []
@@ -849,7 +852,8 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
                let safety_guard =
                  match c.operation with
                  | Transaction {destination = Implicit _; _}
-                 | Reveal _ | Delegation _ | Set_deposits_limit _ ->
+                 | Reveal _ | Delegation _ | Set_deposits_limit _
+                 | Increase_paid_storage _ ->
                      Gas.Arith.zero
                  | _ -> safety_guard
                in
