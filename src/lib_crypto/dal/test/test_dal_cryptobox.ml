@@ -46,7 +46,12 @@ module Test = struct
         end) in
         let trusted_setup =
           DAL_crypto.build_trusted_setup_instance `Unsafe_for_test_only
-          (*(`Files {srs_g1_file; srs_g2_file; logarithm_size = 21})*)
+          (*(`Files
+            {
+              srs_g1_file = "./test/srs_zcash_g1";
+              srs_g2_file = "./test/srs_zcash_g2";
+              logarithm_size = 21;
+            })*)
         in
 
         match
@@ -85,8 +90,10 @@ module Test = struct
 
           let* comm = DAL_crypto.commit trusted_setup p in
 
-          (*let precompute_pi_shards = DAL_crypto.precompute_shards_proofs () in*)
-          let filename = "./shard_proofs_precomp" in
+          (*let precompute_pi_shards =
+              DAL_crypto.precompute_shards_proofs trusted_setup
+            in*)
+          let filename = "shard_proofs_precomp" in
           (*let () =
               DAL_crypto.save_precompute_shards_proofs
                 precompute_pi_shards

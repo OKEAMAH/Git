@@ -434,17 +434,14 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
             Bls12_381.G2.of_compressed_bytes_exn buf
           in
           let ic = open_in srsfile in
-          try
-            if in_channel_length ic < d * g2_size_compressed then
-              raise
-                (Failure
-                   (Printf.sprintf "SRS asked (%d) too big for %s" d srsfile)) ;
-            let res = Array.init d (fun _ -> read ic) in
+          if in_channel_length ic < d * g2_size_compressed then (
             close_in ic ;
-            res
-          with e ->
-            close_in ic ;
-            raise e
+            raise
+              (Failure
+                 (Printf.sprintf "SRS asked (%d) too big for %s" d srsfile))) ;
+          let res = Array.init d (fun _ -> read ic) in
+          close_in ic ;
+          res
         in
         let srs_g2 = import_srs_g2 k srs_g2_file in
         {
