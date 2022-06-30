@@ -69,3 +69,7 @@ val cost_deserialize_output_proof : bytes_len:int -> Gas_limit_repr.cost
     serialization of an external inbox message of length [bytes_len]. It is
     equal to the estimated cost of encoding a byte multiplied by [bytes_len]. *)
 val cost_serialize_external_inbox_message : bytes_len:int -> Gas_limit_repr.cost
+
+(** [cost_verify_output_proof ~bytes_len] is the cost of verifying an output
+     proof given as a string of length [bytes_len]. *)
+val cost_verify_output_proof : bytes_len:int -> Gas_limit_repr.cost

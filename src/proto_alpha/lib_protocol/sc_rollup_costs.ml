@@ -56,6 +56,10 @@ module Constants = struct
      by the number of characters of a pkh, i.e. 70/35. To be updated when
      benchmarking is completed. *)
   let cost_encode_string_per_byte = S.safe_int 2
+
+  (* Set to [proof_size_coeff] in {!Tx_rollup_l2_verifier.verify_proof_model}.
+     This is an estimate to be updated when benchmarking is completed. *)
+  let cost_verify_output_proof_per_byte = S.safe_int 152
 end
 
 (* We assume that the gas cost of adding messages [[ m_1; ... ; m_n]] at level
@@ -103,3 +107,7 @@ let cost_deserialize_output_proof ~bytes_len =
 let cost_serialize_external_inbox_message ~bytes_len =
   let len = S.safe_int bytes_len in
   S_syntax.(Constants.cost_encode_string_per_byte * len)
+
+let cost_verify_output_proof ~bytes_len =
+  let open Saturation_repr in
+  S_syntax.(Constants.cost_verify_output_proof_per_byte * safe_int bytes_len)

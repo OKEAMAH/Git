@@ -307,11 +307,12 @@ let validate_and_decode_output_proof ctxt ~cemented_commitment rollup
     let+ kind = Sc_rollup.kind ctxt rollup in
     Sc_rollup.Kind.pvm_of kind
   in
+  let output_proof_length = String.length output_proof in
   let*? ctxt =
     Gas.consume
       ctxt
       (Sc_rollup_costs.cost_deserialize_output_proof
-         ~bytes_len:(String.length output_proof))
+         ~bytes_len:output_proof_length)
   in
   let*? output_proof =
     match
@@ -330,6 +331,12 @@ let validate_and_decode_output_proof ctxt ~cemented_commitment rollup
     fail_unless
       Sc_rollup.State_hash.(output_proof_state = compressed_state)
       Sc_rollup_invalid_output_proof
+  in
+  (* Consume cost of output proof verification *)
+  let*? ctxt =
+    Gas.consume
+      ctxt
+      (Sc_rollup_costs.cost_verify_output_proof ~bytes_len:output_proof_length)
   in
   (* Verify that the proof is valid. *)
   let* () =
