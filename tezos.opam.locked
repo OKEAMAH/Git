@@ -184,8 +184,8 @@ depends: [
   "tar" {= "2.0.0" & ?vendor}
   "tar-unix" {= "2.0.0" & ?vendor}
   "terminal" {= "0.2.1" & ?vendor}
-  "tezos-bls12-381-polynomial" {= "0.1.0" & ?vendor}
-  "tezos-plonk" {= "0.1.0" & ?vendor}
+  "tezos-bls12-381-polynomial" {= "0.1.1" & ?vendor}
+  "tezos-plonk" {= "0.1.1" & ?vendor}
   "tezos-rust-libs" {= "1.1"}
   "time_now" {= "v0.15.0" & ?vendor}
   "tls" {= "0.15.3" & ?vendor}
@@ -938,12 +938,12 @@ pin-depends: [
     "https://github.com/CraigFe/progress/releases/download/0.2.1/terminal-0.2.1.tbz"
   ]
   [
-    "tezos-bls12-381-polynomial.0.1.0"
-    "git+https://gitlab.com/nomadic-labs/privacy-team.git#888f23bb1e024d11d7669059553bca56e7e268af"
+    "tezos-bls12-381-polynomial.0.1.1"
+    "https://gitlab.com/nomadic-labs/privacy-team/-/archive/v0.1.1/privacy-team-v0.1.1.tar.gz"
   ]
   [
-    "tezos-plonk.0.1.0"
-    "git+https://gitlab.com/nomadic-labs/privacy-team.git#888f23bb1e024d11d7669059553bca56e7e268af"
+    "tezos-plonk.0.1.1"
+    "https://gitlab.com/nomadic-labs/privacy-team/-/archive/v0.1.1/privacy-team-v0.1.1.tar.gz"
   ]
   [
     "time_now.v0.15.0"
@@ -1885,8 +1885,12 @@ x-opam-monorepo-duniverse-dirs: [
     ]
   ]
   [
-    "git+https://gitlab.com/nomadic-labs/privacy-team.git#888f23bb1e024d11d7669059553bca56e7e268af"
+    "https://gitlab.com/nomadic-labs/privacy-team/-/archive/v0.1.1/privacy-team-v0.1.1.tar.gz"
     "privacy-team"
+    [
+      "md5=0f4bb3bb889efa92aea1749e274384f6"
+      "sha512=258be93d533de7331c56ffdfc2275ebf7bdc4f10c5ba3e4fe0758147edbbedcf9a5f2e107e45738723b8eda7c405daaec0907d0b6a4193b485301544963f3088"
+    ]
   ]
   [
     "https://gitlab.com/nomadic-labs/resto/-/archive/v0.8/resto-v0.8.tar.gz"
