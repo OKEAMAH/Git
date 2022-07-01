@@ -5073,6 +5073,8 @@ let exclude filename =
   | "vendors" :: _ -> true
   | "scripts" :: _ -> true
   | "docs" :: _ -> true
+  (* Do not scan opam-monorepo included dune files *)
+  | "duniverse" :: _ -> true
   (* opam-repository is used by scripts/opam-release.sh *)
   | "opam-repository" :: _ -> true
   (* Tezt is only partially managed by the manifest.
