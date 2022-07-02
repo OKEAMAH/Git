@@ -457,6 +457,32 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
 
   let polynomial_evaluate = Polynomials.evaluate
 
+  (* problem: this also returns primitive roots of groups of order dividing 152! *)
+  let _primitive_root_152 =
+    (* factorization of 152 into primes *)
+    let factors_152 = [(Z.of_int 2, 3); (Z.of_int 19, 1)] in
+    let multiplicative_group_order = Z.(Scalar.order - one) in
+    let n = ref (Scalar.of_int 1) in
+    List.iter
+      (fun (p, e) ->
+        let res = ref Scalar.one in
+        let r = ref Scalar.one in
+        while Scalar.(eq !res one) do
+          r := Scalar.random () ;
+          let exponent = Z.divexact multiplicative_group_order p in
+          res := Scalar.pow !r exponent
+        done ;
+        let pow =
+          Scalar.pow !r (Z.divexact multiplicative_group_order (Z.pow p e))
+        in
+        n := Scalar.mul !n pow)
+      factors_152 ;
+    !n
+
+  let primitive_root_152 =
+    Scalar.of_string
+      "28201840329643070015467614343020943052054837648709365431353800935819776407072"
+
   let fft_mul d ps =
     let open Evaluations in
     let evaluations = List.map (evaluation_fft d) ps in
