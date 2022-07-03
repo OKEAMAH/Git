@@ -462,11 +462,11 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
     (* factorization of 152 into primes *)
     let factors_152 = [(Z.of_int 2, 3); (Z.of_int 19, 1)] in
     let multiplicative_group_order = Z.(Scalar.order - one) in
-    let n = ref (Scalar.of_int 1) in
+    let n = ref Scalar.(copy one) in
     List.iter
       (fun (p, e) ->
-        let res = ref Scalar.one in
-        let r = ref Scalar.one in
+        let res = ref Scalar.(copy one) in
+        let r = ref Scalar.(copy one) in
         while Scalar.(eq !res one) do
           r := Scalar.random () ;
           let exponent = Z.divexact multiplicative_group_order p in
@@ -479,9 +479,11 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
       factors_152 ;
     !n
 
-  let primitive_root_152 =
+  let _1primitive_root_152 =
     Scalar.of_string
       "28201840329643070015467614343020943052054837648709365431353800935819776407072"
+  (* Or 39312046154427171115869896807489634766777018680485800814935002421353738437385,
+     g^((r-1)/152) with <7>=(Fr)* *)
 
   let fft_mul d ps =
     let open Evaluations in
