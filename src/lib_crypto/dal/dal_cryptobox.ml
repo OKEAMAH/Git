@@ -798,12 +798,11 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
       proof
 
   let prove_single trusted_setup p z =
-    let q =
-      fst
-      @@ Polynomials.(
-           division_xn (p - constant (evaluate p z)) 1 (Scalar.negate z))
+    let quotient, _ =
+      Polynomials.(
+        division_xn (p - constant (evaluate p z)) 1 (Scalar.negate z))
     in
-    commit' (module Bls12_381.G1) q trusted_setup.srs_g1
+    commit' (module Bls12_381.G1) quotient trusted_setup.srs_g1
 
   let verify_single trusted_setup cm ~point ~evaluation proof =
     let h_secret = Array.get trusted_setup.srs_g2 1 in
