@@ -54,15 +54,19 @@ module Test = struct
             })*)
         in
 
+        Printf.eprintf "\n n=%d\n" DAL_crypto.erasure_encoding_length ;
         match
           let* p = DAL_crypto.polynomial_from_bytes msg in
 
           let* cm = DAL_crypto.commit trusted_setup p in
+          let t = Sys.time () in
           let* pi = DAL_crypto.prove_slot_segment trusted_setup p 255 in
+          Printf.eprintf "\n prove=%f \n" (Sys.time () -. t) ;
 
           let slot_segment =
             Bytes.sub msg (255 * slot_segment_size) slot_segment_size
           in
+          let t = Sys.time () in
           let* check =
             DAL_crypto.verify_slot_segment
               trusted_setup
@@ -70,9 +74,11 @@ module Test = struct
               (255, slot_segment)
               pi
           in
+          Printf.eprintf "\n verify=%f \n" (Sys.time () -. t) ;
           assert check ;
+          let t = Sys.time () in
           let enc_shards = DAL_crypto.to_shards p in
-
+          Printf.eprintf "\n to_shards=%f \n" (Sys.time () -. t) ;
           (* Only take half of the buckets *)
           let c_indices = random_indices (2048 - 1) 1024 |> Array.of_list in
 
@@ -82,7 +88,9 @@ module Test = struct
               enc_shards
           in
 
+          let t = Sys.time () in
           let* dec = DAL_crypto.from_shards c in
+          Printf.eprintf "\n from_shards=%f \n" (Sys.time () -. t) ;
           assert (
             Bytes.compare
               msg
