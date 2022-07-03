@@ -58,13 +58,17 @@ module Test = struct
           let* p = DAL_crypto.polynomial_from_bytes msg in
 
           let* cm = DAL_crypto.commit trusted_setup p in
-          let* pi = DAL_crypto.prove_slot_segment trusted_setup p 1 in
+          let* pi = DAL_crypto.prove_slot_segment trusted_setup p 255 in
 
           let slot_segment =
-            Bytes.sub msg slot_segment_size (2 * slot_segment_size)
+            Bytes.sub msg (255 * slot_segment_size) slot_segment_size
           in
           let* check =
-            DAL_crypto.verify_slot_segment trusted_setup cm (1, slot_segment) pi
+            DAL_crypto.verify_slot_segment
+              trusted_setup
+              cm
+              (255, slot_segment)
+              pi
           in
           assert check ;
           let enc_shards = DAL_crypto.to_shards p in
