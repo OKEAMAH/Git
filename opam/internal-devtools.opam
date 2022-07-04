@@ -11,7 +11,7 @@ depends: [
   "dune" { >= "3.0" }
   "num"
   "re" { >= "1.7.2" }
-  "opam-monorepo"
+  "opam-monorepo" { = "0.3.3" }
   "tezos-protocol-compiler"
   "tezos-base"
 ]

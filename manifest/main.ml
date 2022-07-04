@@ -4607,7 +4607,7 @@ let _opam_monorepo =
     "opam-monorepo"
     ~path:"devtools/opam-monorepo/bin"
     ~opam:"internal-devtools"
-    ~deps:[external_lib "opam-monorepo" V.True]
+    ~deps:[external_lib "opam-monorepo" V.(exactly "0.3.3")]
     ~static:false
     ~release:false
     ~bisect_ppx:false
