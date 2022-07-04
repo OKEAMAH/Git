@@ -1,0 +1,7 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(executable
+ (name opam_monorepo)
+ (instrumentation (backend bisect_ppx))
+ (modules))

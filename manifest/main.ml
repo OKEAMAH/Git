@@ -4602,15 +4602,18 @@ let _git_gas_diff =
     ~release:false
     ~bisect_ppx:false
 
+let opam_monorepo = opam_only "opam-monorepo" V.(exactly "0.3.3")
+
 let _opam_monorepo =
   private_exe
-    "opam-monorepo"
+    "opam_monorepo"
     ~path:"devtools/opam-monorepo/bin"
     ~opam:"internal-devtools"
-    ~deps:[external_lib "opam-monorepo" V.(exactly "0.3.3")]
-    ~static:false
-    ~release:false
-    ~bisect_ppx:false
+    ~modules:[]
+    ~opam_only_deps:
+      [
+        opam_monorepo
+      ]
 
 let get_contracts_lib =
   private_lib
