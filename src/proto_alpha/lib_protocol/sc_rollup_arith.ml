@@ -885,7 +885,7 @@ module Make (Context : P) :
           return (String.sub s start len)
         else
           (* XXX *)
-          return "---"
+          return ""
 
   let push_int_literal =
     let open Monad.Syntax in

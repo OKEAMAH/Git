@@ -309,19 +309,6 @@ let setup_node_inbox_with_messages list_of_payloads f =
   | None -> fail (err "setup_inbox_with_messages called with no messages")
   | Some tree -> f ctxt tree history inbox inboxes
 
-let look_in_tree key tree =
-  let open Lwt_syntax in
-  let* x = Tree.Tree.find tree [key] in
-  match x with
-  | Some x -> return (tree, x)
-  | None -> return (tree, Bytes.of_string "nope")
-
-let key_of_level level =
-  let level_bytes =
-    Data_encoding.Binary.to_bytes_exn Raw_level_repr.encoding level
-  in
-  Bytes.to_string level_bytes
-
 let level_of_int n = Raw_level_repr.of_int32_exn (Int32.of_int n)
 
 let level_to_int l = Int32.to_int (Raw_level_repr.to_int32 l)

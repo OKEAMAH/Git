@@ -837,11 +837,29 @@ let refuter_wins = function Refuter_wins _ -> true | _ -> false
 
 let either_wins _ = true
 
-let construct_inbox _payload_lists =
+let construct_inbox payload_lists =
   let rollup = Address.hash_string [""] in
   let level = Raw_level.root in
   let context = Tezos_protocol_environment.Memory_context.empty in
-  Inbox.empty context rollup level
+  let* inbox = Inbox.empty context rollup level in
+  let history = Inbox.history_at_genesis ~bound:10000L in
+  let rec aux level history inbox level_tree = function
+    | [] -> return (level_tree, history, inbox)
+    | payloads :: ps ->
+        let new_level = Raw_level.succ level in
+        (match payloads with
+        | [] -> aux new_level history inbox level_tree ps
+        | _ ->
+            let* result =
+              Inbox.add_messages context history inbox level payloads level_tree
+            in
+            (match result with
+            | Ok (level_tree, history, inbox) ->
+                aux new_level history inbox (Some level_tree) ps
+            | Error _ -> assert false))
+  in
+  aux level history inbox None payload_lists
+
 
 (** This assembles a test from a RandomPVM and a function that chooses the
     type of strategies. *)
@@ -859,7 +877,7 @@ let testing_randomPVM ref_strat def_strat expectation =
     (fun initial_prog ->
       assume (initial_prog <> []) ;
       Lwt_main.run
-      @@ let* inbox = construct_inbox [] in
+      @@ let* _, _, inbox = construct_inbox [] in
          let snapshot = Inbox.take_snapshot inbox in
          let module P = MakeRandomPVM (struct
            let initial_prog = initial_prog
@@ -880,7 +898,7 @@ let testing_countPVM ref_strat def_strat expectation =
   Test.make ~name Gen.small_int (fun target ->
       assume (target > 200) ;
       Lwt_main.run
-      @@ let* inbox = construct_inbox [] in
+      @@ let* _, _, inbox = construct_inbox [] in
          let snapshot = Inbox.take_snapshot inbox in
          let module P = MakeCountingPVM (struct
            let target = target
@@ -902,7 +920,7 @@ let testing_arith ref_strat def_strat expectation =
     (fun (initial_input, pre_evals) ->
       assume (pre_evals < List.length initial_input - 2) ;
       Lwt_main.run
-      @@ let* inbox = construct_inbox [] in
+      @@ let* _, _, inbox = construct_inbox [] in
          let snapshot = Inbox.take_snapshot inbox in
          let module P = TestArith (struct
            let initial_input = String.concat " " initial_input
