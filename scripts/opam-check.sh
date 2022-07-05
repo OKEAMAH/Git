@@ -36,4 +36,18 @@ if [ -n "$(cat opam_repo.patch)" ] ; then
     exit 1
 fi
 
+echo '## Checking lockfile is in sync'
+echo
+
+make lock
+if ! git diff --exit-code --quiet tezos.opam.locked ; then
+    echo
+    echo 'Failure! The lock file is out of sync with the packages defined in the repository'
+    echo 'Please review the lock file and commit a version that is in sync with the packages in the opam files.'
+    echo
+    echo '`make lock` can be used to generate a lock file that is up-to-date with the packages.'
+    echo
+    exit 1
+fi
+
 echo "Ok."
