@@ -71,7 +71,6 @@ include:
   - .gitlab/ci/doc/test-scripts.yml
   - .gitlab/ci/build_release.yml
   - .gitlab/ci/publish_release.yml
-  - .gitlab/ci/lockfile-sync-check.yml
 
   # The job `unified_coverage` must have the same name on merge requests and the default branch
   # /!\ Limitations of using rules with include:
