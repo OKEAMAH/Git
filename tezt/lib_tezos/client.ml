@@ -1749,6 +1749,36 @@ module Sc_rollup = struct
     in
     let parse process = Process.check process in
     {value = process; run = parse}
+
+  let execute_outbox_message ?hooks ?(wait = "none") ~sc_rollup ~src ~commitment
+      ~output_proof client =
+    let process =
+      spawn_command
+        ?hooks
+        client
+        (["--wait"; wait]
+        @ [
+            "execute";
+            "outbox";
+            "message";
+            "of";
+            "sc";
+            "rollup";
+            sc_rollup;
+            "from";
+            src;
+            "for";
+            "commitment";
+            "hash";
+            commitment;
+            "and";
+            "output";
+            "proof";
+            output_proof;
+          ])
+    in
+    let parse process = Process.check process in
+    {value = process; run = parse}
 end
 
 let init ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type () =
