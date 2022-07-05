@@ -3331,7 +3331,6 @@ module Destination : sig
     | Contract of Contract.t
     | Tx_rollup of Tx_rollup.t
     | Sc_rollup of Sc_rollup.t
-    | Event of Contract_event.t
 
   val encoding : t Data_encoding.t
 
@@ -3506,6 +3505,8 @@ module Kind : sig
 
   type delegation = Delegation_kind
 
+  type event = Event_kind
+
   type set_deposits_limit = Set_deposits_limit_kind
 
   type failing_noop = Failing_noop_kind
@@ -3556,6 +3557,7 @@ module Kind : sig
     | Transaction_manager_kind : transaction manager
     | Origination_manager_kind : origination manager
     | Delegation_manager_kind : delegation manager
+    | Event_manager_kind : event manager
     | Register_global_constant_manager_kind : register_global_constant manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
     | Tx_rollup_origination_manager_kind : tx_rollup_origination manager
