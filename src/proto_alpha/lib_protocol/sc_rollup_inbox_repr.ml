@@ -1211,7 +1211,13 @@ struct
 
   let empty context rollup level =
     let open Lwt_syntax in
-    let* initial_level = new_level_tree context level in
+    let* initial_level =
+      (* NB: we use the [root] level here because it makes it very
+         easy to construct a proof of the first message: you call the
+         usual proof production function with [(level = 0, counter = 0)]
+         as the inbox location *)
+      new_level_tree context Raw_level_repr.root
+    in
     let initial_hash = hash_level_tree initial_level in
     return
       {
