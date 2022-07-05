@@ -8,7 +8,8 @@ lockfile_sync_check:
   script:
     - make lock
     - diff tezos.opam.locked /home/tezos/tezos.opam.locked
-  only:
-    changes:
-      - scripts/version.sh
-      - tezos.opam.locked
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - scripts/version.sh
+        - tezos.opam.locked
