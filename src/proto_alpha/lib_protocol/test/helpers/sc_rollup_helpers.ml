@@ -73,7 +73,6 @@ module In_memory_context = struct
     | Some k ->
         let index = Context.index context in
         let* ((proof, _) as p) = Context.produce_tree_proof index k step in
-
         if
           Compare.Int.(
             proof_length proof < Constants_repr.sc_rollup_max_proof_size)
