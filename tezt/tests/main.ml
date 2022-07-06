@@ -129,7 +129,7 @@ let () =
   Client_run_view.register ~protocols:[Alpha; Jakarta] ;
   Multinode_snapshot.register ~protocols:[Alpha] ;
   (* Relies on a feature only available since K. *)
-  Governance_dictator.register ~protocols:[Alpha] ;
+  Testnet_dictator.register ~protocols:[Alpha] ;
   Config.register () ;
   Events.register ~protocols:[Alpha] ;
   (* Relies on a feature only available since K. *)
