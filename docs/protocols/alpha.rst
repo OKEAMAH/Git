@@ -65,6 +65,12 @@ This new class of addresses can be computed with a newly introduced RPC at ``hel
 See :doc:`Event <../alpha/event>` for more information.
 (MR :gl:`!4656`)
 
+Increase_paid_storage
+---------------------
+
+- Increase_paid_storage is a new operation that enable a payer to increase the
+  paid storage of a smart contract by some bytes amount. (MR :gl:`!5605`)
+
 Breaking Changes
 ----------------
 
