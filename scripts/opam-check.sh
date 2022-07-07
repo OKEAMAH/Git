@@ -39,7 +39,7 @@ fi
 echo '## Checking lockfile is in sync'
 echo
 
-make lock
+make lock || exit 1
 if ! git diff --exit-code --quiet tezos.opam.locked ; then
     echo
     echo 'Failure! The lock file is out of sync with the packages defined in the repository'
