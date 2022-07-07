@@ -111,12 +111,16 @@ module Test = struct
                 precompute_pi_shards
                 filename
             in*)
+            let t = Sys.time () in
           let precompute_pi_shards =
             DAL_crypto.load_precompute_shards_proofs filename
           in
+          Printf.eprintf "\n precomp shard=%f \n" (Sys.time () -. t) ;
+          let t = Sys.time () in
           let shard_proofs =
             DAL_crypto.prove_shards p ~preprocess:precompute_pi_shards
           in
+          Printf.eprintf "\n prove shard=%f \n" (Sys.time () -. t) ;
           match DAL_crypto.IntMap.find 0 enc_shards with
           | None -> Ok ()
           | Some eval ->

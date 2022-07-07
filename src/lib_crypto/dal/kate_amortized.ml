@@ -89,26 +89,30 @@ module Kate_amortized = struct
   (* First part of Toeplitz computing trick involving srs. *)
   let build_srs_part_h_list srs domain2m =
     let domain2m = inverse (Domain.inverse domain2m) in
-    G1.fft ~domain:domain2m ~points:srs
+    G1.fft_inplace ~domain:domain2m ~points:srs ;
+    srs
 
   let build_h_list_with_precomputed_srs a_list (domain2m, precomputed_srs) =
     let y = precomputed_srs in
-    let v = Scalar.fft ~domain:domain2m ~points:a_list in
-    Array.map2 (fun yi vi -> G1.mul yi vi) y v
+    Scalar.fft_inplace ~domain:domain2m ~points:a_list ;
+    Array.map2 G1.mul y a_list
 
   (* Final ifft of Toeplitz computation. *)
   let build_h_list_final u domain2m =
-    let res = G1.ifft ~domain:(inverse domain2m) ~points:u in
-    Array.sub res 0 (Array.length domain2m / 2)
+    G1.ifft_inplace ~domain:(inverse domain2m) ~points:u ;
+    Array.sub u 0 (Array.length domain2m / 2)
 
   (* Complete Toeplitz computation. *)
   let build_h_list_complete a_list srs (domain2m : Domain.t) m =
     let domain2m_inv = Domain.inverse domain2m in
     let domain2m = inverse domain2m_inv in
-    let y = G1.fft ~domain:domain2m ~points:srs in
-    let v = Scalar.fft ~domain:domain2m ~points:a_list in
+    G1.fft_inplace ~domain:domain2m ~points:srs ;
+    let y = srs in
+    Scalar.fft_inplace ~domain:domain2m ~points:a_list ;
+    let v = a_list in
     let u = Array.map2 G1.mul y v in
-    let res = G1.ifft ~domain:domain2m_inv ~points:u in
+    G1.ifft_inplace ~domain:domain2m_inv ~points:u ;
+    let res = u in
     Array.sub res 0 m
 
   (* Part 2 *)
@@ -149,7 +153,8 @@ module Kate_amortized = struct
     in
     let domain = Domain.build ~log:nb_proofs in
     let domain = inverse (Domain.inverse domain) in
-    G1.fft ~domain ~points:h_list
+    G1.fft_inplace ~domain ~points:h_list ;
+    h_list
 
   (* part 3.2 *)
 
@@ -247,7 +252,8 @@ module Kate_amortized = struct
     in
     let phidomain = Domain.build ~log:chunk_count in
     let phidomain = inverse (Domain.inverse phidomain) in
-    G1.fft ~domain:phidomain ~points:hl
+    G1.fft_inplace ~domain:phidomain ~points:hl ;
+    hl
 
   (* Generate proofs of part 3.2. *)
   let multiple_multi_reveals ~chunk_len ~chunk_count ~degree ~preprocess f =
@@ -270,7 +276,9 @@ module Kate_amortized = struct
   (* h = polynomial such that h(y×domain[i]) = zi. *)
   let interpolation_h_poly y domain z_list =
     let h =
-      Array.to_list (Scalar.ifft ~domain:(Domain.inverse domain) ~points:z_list)
+      Array.to_list
+        (Scalar.ifft_inplace ~domain:(Domain.inverse domain) ~points:z_list ;
+         z_list)
     in
     let inv_y = Scalar.inverse_exn y in
     let rec mul_h_coefs (inv_yi, acc) h_list =
