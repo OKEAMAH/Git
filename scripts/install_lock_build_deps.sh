@@ -5,7 +5,7 @@ set -eu
 script_dir="$(cd "$(dirname "$0")" && echo "$(pwd -P)/")"
 
 temp_lock_file="tezos-tmp.opam.locked"
-trap cleanup SIGINT SIGQUIT SIGABRT SIGTERM
+trap cleanup INT QUIT ABRT TERM
 
 cleanup () {
     # if any command fails, let's remove our temporary files
@@ -35,10 +35,10 @@ if [ -n "$tps" ]; then
   cp tezos.opam.locked "$temp_lock_file"
 else
   # remove postgres dependency if TPS is not going to be used
-  cat tezos.opam.locked | \
+  < tezos.opam.locked \
   sed '/conf-postgresql/d' | \
-  sed '/\["postgresql/d' | \
-  cat > "$temp_lock_file"
+  sed '/\["postgresql/d' \
+  > "$temp_lock_file"
 fi
 
 # Installs non-vendored dependencies such as ocaml and dune
