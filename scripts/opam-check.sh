@@ -39,6 +39,9 @@ fi
 echo '## Checking lockfile is in sync'
 echo
 
+# Set up local switch for OPAM before running the lock command
+eval $(opam env)
+
 make lock || exit 1
 if ! git diff --exit-code --quiet tezos.opam.locked ; then
     echo

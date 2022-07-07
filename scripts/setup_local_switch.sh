@@ -1,4 +1,6 @@
 #!/bin/sh
+# shellcheck disable=SC2046
+# for omitting quotes in: eval $(opam env)
 
 set -eu
 
@@ -8,18 +10,23 @@ src_dir="$(dirname "$script_dir")"
 #shellcheck source=scripts/version.sh
 . "$script_dir"/version.sh
 
-opam repository set-url tezos --dont-select "$opam_repository" || \
-    opam repository add tezos --dont-select "$opam_repository" > /dev/null 2>&1
+add_tezos_repo () {
+  opam repository set-url tezos --dont-select "$opam_repository" || \
+      opam repository add tezos --dont-select "$opam_repository" > /dev/null 2>&1
+}
 
-dune_universe="git+https://github.com/dune-universe/opam-overlays.git"
+dune_universe="https://github.com/dune-universe/opam-overlays.git"
 
-# Adds the dune-universe/opam-overlays repository for opam-monorepo, allowing it
-# to use dune ports when upstream packages don't build with dune
-opam repository set-url dune-universe --dont-select "$dune_universe" || \
-    opam repository add dune-universe --dont-select "$dune_universe" > /dev/null 2>&1
+add_dune_repo () {
+  # Adds the dune-universe/opam-overlays repository for opam-monorepo, allowing it
+  # to use dune ports when upstream packages don't build with dune
+  opam repository set-url dune-universe --dont-select "$dune_universe" || \
+      opam repository add dune-universe --dont-select "$dune_universe" > /dev/null 2>&1
+}
 
 switch_create () {
   opam switch create ./ --empty -y --repositories=tezos,dune-universe
+  eval $(opam env)
 }
 
 cd "$src_dir"
@@ -37,4 +44,10 @@ else
     switch_create
   fi
 fi
+
+add_tezos_repo
+add_dune_repo
 opam update --quiet > /dev/null
+#TEMP
+opam repository list --all
+#/TEMP

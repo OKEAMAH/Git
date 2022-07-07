@@ -28,6 +28,8 @@ misc_opam_checks:
   extends: .test_template
   needs: []
   script:
+    # fix OPAM issue where packages are not available without apk cache
+    - sudo apk update
     # checks that all deps of opam packages are already installed
     - ./scripts/opam-check.sh
   artifacts:

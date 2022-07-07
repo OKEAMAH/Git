@@ -414,17 +414,9 @@ clean: coverage-clean
 
 .PHONY: lock
 lock:
-	./scripts/setup_local_switch.sh
-	opam monorepo lock \
-		--recurse \
-		--lockfile tezos.opam.locked \
-		--add-opam-provided ocamlfind
+	./scripts/monorepo_lock.sh
 
 .PHONY: update-lock
 update-lock:
-	./scripts/setup_local_switch.sh
-	opam monorepo lock \
-		--recurse \
-		--lockfile tezos.opam.locked \
-		--add-opam-provided ocamlfind \
+	./scripts/monorepo_lock.sh \
 		--minimal-update
