@@ -385,6 +385,7 @@ type invalid_move =
       stop_proof : State_hash.t option;
     }
   | Proof_invalid of string
+  | Proof_too_long
 
 let pp_invalid_move fmt =
   let pp_hash_opt fmt = function
@@ -478,6 +479,7 @@ let pp_invalid_move fmt =
         pp_hash_opt
         stop_proof
   | Proof_invalid s -> Format.fprintf fmt "Invalid proof: %s" s
+  | Proof_too_long -> Format.fprintf fmt "The proof is too long."
 
 let invalid_move_encoding =
   let open Data_encoding in
@@ -628,6 +630,12 @@ let invalid_move_encoding =
         (obj2 (req "kind" (constant "proof_invalid")) (req "message" string))
         (function Proof_invalid s -> Some ((), s) | _ -> None)
         (fun ((), s) -> Proof_invalid s);
+      case
+        ~title:"sc_rollup_proof_too_long"
+        (Tag 13)
+        (obj1 (req "kind" (constant "proof_too_long")))
+        (function Proof_too_long -> Some () | _ -> None)
+        (fun () -> Proof_too_long);
     ]
 
 type reason = Conflict_resolved | Invalid_move of invalid_move | Timeout
@@ -825,6 +833,26 @@ let check_proof_start_stop ~start_chunk ~stop_chunk proof =
     (Proof_stop_state_hash_mismatch
        {stop_state_hash = stop_chunk.state_hash; stop_proof})
 
+let proof_length proof_encoding proof =
+  Bytes.length @@ Data_encoding.Binary.to_bytes_exn proof_encoding proof
+
+let invalid_proof_size Sc_rollup_proof_repr.{pvm_step; inbox} =
+  match pvm_step with
+  | Sc_rollups.Unencodable _ -> false
+  | _ ->
+      let encoded_step_length =
+        proof_length Sc_rollups.wrapped_proof_encoding pvm_step
+      in
+      let inbox_length =
+        match inbox with
+        | None -> 0
+        | Some a ->
+            proof_length Sc_rollup_inbox_repr.serialized_proof_encoding a
+      in
+      Compare.Int.(
+        encoded_step_length > Constants_repr.sc_rollup_max_proof_size
+        && inbox_length > Constants_repr.sc_rollup_max_proof_size)
+
 let play game refutation =
   let open Lwt_result_syntax in
   let*! result =
@@ -849,21 +877,25 @@ let play game refutation =
                default_number_of_sections = game.default_number_of_sections;
              })
     | Proof proof ->
-        let* () = check_proof_start_stop ~start_chunk ~stop_chunk proof in
-        let {inbox_snapshot; level; pvm_name; _} = game in
-        let*! (proof_valid_tzresult : bool tzresult) =
-          Sc_rollup_proof_repr.valid inbox_snapshot level ~pvm_name proof
-        in
-        let* () =
-          match proof_valid_tzresult with
-          | Ok true -> return ()
-          | Ok false -> invalid_move (Proof_invalid "no detail given")
-          | Error e ->
-              invalid_move (Proof_invalid (Format.asprintf "%a" pp_trace e))
-        in
-        return
-          (Either.Left {loser = opponent game.turn; reason = Conflict_resolved})
+        if invalid_proof_size proof then invalid_move Proof_too_long
+        else
+          let* () = check_proof_start_stop ~start_chunk ~stop_chunk proof in
+          let {inbox_snapshot; level; pvm_name; _} = game in
+          let*! (proof_valid_tzresult : bool tzresult) =
+            Sc_rollup_proof_repr.valid inbox_snapshot level ~pvm_name proof
+          in
+          let* () =
+            match proof_valid_tzresult with
+            | Ok true -> return ()
+            | Ok false -> invalid_move (Proof_invalid "no detail given")
+            | Error e ->
+                invalid_move (Proof_invalid (Format.asprintf "%a" pp_trace e))
+          in
+          return
+            (Either.Left
+               {loser = opponent game.turn; reason = Conflict_resolved})
   in
+
   match result with
   | Ok x -> Lwt.return x
   | Error reason -> Lwt.return @@ Either.Left {loser = game.turn; reason}

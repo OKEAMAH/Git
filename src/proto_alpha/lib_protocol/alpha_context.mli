@@ -3524,6 +3524,7 @@ module Sc_rollup : sig
           stop_proof : State_hash.t option;
         }
       | Proof_invalid of string
+      | Proof_too_long
 
     val pp_invalid_move : Format.formatter -> invalid_move -> unit
 

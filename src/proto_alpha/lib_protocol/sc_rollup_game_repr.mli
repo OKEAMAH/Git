@@ -330,6 +330,7 @@ type invalid_move =
       (** The given proof's ending state should not match the state being
           refuted. *)
   | Proof_invalid of string  (** The given proof is not valid. *)
+  | Proof_too_long  (** The given proof is too long. *)
 
 (** Pretty-printer for values of [invalid_move] type *)
 val pp_invalid_move : Format.formatter -> invalid_move -> unit

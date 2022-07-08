@@ -824,9 +824,6 @@ struct
     let open Data_encoding in
     list history_proof_encoding
 
-  let proof_length encoding proof =
-    Bytes.length @@ Data_encoding.Binary.to_bytes_exn encoding proof
-
   let pp_inclusion_proof fmt proof =
     Format.pp_print_list pp_history_proof fmt proof
 
@@ -1194,74 +1191,65 @@ struct
         "failed to produce message proof for level_tree"
         (P.produce_proof ctxt level_tree (payload_and_level n))
     in
-    if
-      Compare.Int.(
-        proof_length P.proof_encoding message_proof
-        >= Constants_repr.sc_rollup_max_proof_size)
-    then Lwt.return (failwith "Inclusion proof is too long")
-    else
-      match payload_opt with
-      | Some payload ->
+    match payload_opt with
+    | Some payload ->
+        return
+          ( Single_level {level; inc; message_proof},
+            Some
+              Sc_rollup_PVM_sem.{inbox_level = l; message_counter = n; payload}
+          )
+    | None ->
+        if equal_history_proof inbox level then
+          return (Single_level {level; inc; message_proof}, None)
+        else
+          let target_index = Skip_list.index level + 1 in
+          let* inc =
+            option_to_result
+              "failed to find path to upper level"
+              (Lwt.return
+                 (Skip_list.back_path ~deref ~cell_ptr ~target_index
+                 |> Option.map (lift_ptr_path deref)
+                 |> Option.join))
+          in
+          let* upper =
+            option_to_result
+              "back_path returned empty list"
+              (Lwt.return (List.last_opt inc))
+          in
+          let* upper_level_tree =
+            option_to_result
+              "could not find upper_level_tree in the inbox_context"
+              (P.lookup_tree ctxt (Skip_list.content upper))
+          in
+          let* upper_message_proof, (payload_opt, upper_level_opt) =
+            option_to_result
+              "failed to produce message proof for upper_level_tree"
+              (P.produce_proof ctxt upper_level_tree (payload_and_level Z.zero))
+          in
+          let* upper_level =
+            option_to_result
+              "upper_level_tree was misformed---could not find level"
+              (Lwt.return upper_level_opt)
+          in
           return
-            ( Single_level {level; inc; message_proof},
-              Some
-                Sc_rollup_PVM_sem.
-                  {inbox_level = l; message_counter = n; payload} )
-      | None ->
-          if equal_history_proof inbox level then
-            return (Single_level {level; inc; message_proof}, None)
-          else
-            let target_index = Skip_list.index level + 1 in
-            let* inc =
-              option_to_result
-                "failed to find path to upper level"
-                (Lwt.return
-                   (Skip_list.back_path ~deref ~cell_ptr ~target_index
-                   |> Option.map (lift_ptr_path deref)
-                   |> Option.join))
-            in
-            let* upper =
-              option_to_result
-                "back_path returned empty list"
-                (Lwt.return (List.last_opt inc))
-            in
-            let* upper_level_tree =
-              option_to_result
-                "could not find upper_level_tree in the inbox_context"
-                (P.lookup_tree ctxt (Skip_list.content upper))
-            in
-            let* upper_message_proof, (payload_opt, upper_level_opt) =
-              option_to_result
-                "failed to produce message proof for upper_level_tree"
-                (P.produce_proof
-                   ctxt
-                   upper_level_tree
-                   (payload_and_level Z.zero))
-            in
-            let* upper_level =
-              option_to_result
-                "upper_level_tree was misformed---could not find level"
-                (Lwt.return upper_level_opt)
-            in
-            return
-              ( Level_crossing
-                  {
-                    lower = level;
-                    upper;
-                    inc;
-                    lower_message_proof = message_proof;
-                    upper_message_proof;
-                    upper_level;
-                  },
-                Option.map
-                  (fun payload ->
-                    Sc_rollup_PVM_sem.
-                      {
-                        inbox_level = upper_level;
-                        message_counter = Z.zero;
-                        payload;
-                      })
-                  payload_opt )
+            ( Level_crossing
+                {
+                  lower = level;
+                  upper;
+                  inc;
+                  lower_message_proof = message_proof;
+                  upper_message_proof;
+                  upper_level;
+                },
+              Option.map
+                (fun payload ->
+                  Sc_rollup_PVM_sem.
+                    {
+                      inbox_level = upper_level;
+                      message_counter = Z.zero;
+                      payload;
+                    })
+                payload_opt )
 
   let empty context rollup level =
     let open Lwt_syntax in

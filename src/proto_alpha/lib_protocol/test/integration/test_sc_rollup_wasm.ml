@@ -82,9 +82,6 @@ module WASM_P :
   let proof_after proof =
     kinded_hash_to_state_hash proof.Context_binary.Proof.after
 
-  let proof_length proof =
-    Bytes.length @@ Data_encoding.Binary.to_bytes_exn proof_encoding proof
-
   let produce_proof context tree step =
     let open Lwt_syntax in
     let* context = Context_binary.add_tree context [] tree in
@@ -92,15 +89,8 @@ module WASM_P :
     let index = Context_binary.index context in
     match Context_binary.Tree.kinded_key tree with
     | Some k ->
-        let* ((proof, _) as p) =
-          Context_binary.produce_tree_proof index k step
-        in
-
-        if proof_length proof < Constants_repr.sc_rollup_max_proof_size then
-          return (Some p)
-        else
-          Stdlib.failwith
-            "produce_proof: internal error, the proof was too long"
+        let* p = Context_binary.produce_tree_proof index k step in
+        return (Some p)
     | None ->
         Stdlib.failwith
           "produce_proof: internal error, [kinded_key] returned [None]"
