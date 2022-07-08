@@ -255,8 +255,6 @@ module Sc_rollup_params : sig
   val commitment_hash_parameter :
     (Sc_rollup.Commitment.Hash.t, full) Clic.parameter
 
-  val unchecked_payload_parameter : (string, full) Clic.parameter
-
   val compressed_state_parameter : (Sc_rollup.State_hash.t, full) Clic.parameter
 
   val number_of_messages_parameter :

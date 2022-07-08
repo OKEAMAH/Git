@@ -314,10 +314,10 @@ let test_evaluation_messages () =
 
 let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
   let open Lwt_result_syntax in
-  let open Sc_rollup_PVM_sem in
+  (* let open Sc_rollup_PVM_sem in *)
   boot "" @@ fun ctxt state ->
   let input =
-    {
+    Sc_rollup_PVM_sem.{
       inbox_level = Raw_level_repr.of_int32_exn (Int32.of_int inbox_level);
       message_counter = Z.zero;
       payload = make_external_inbox_message source;
@@ -331,8 +331,20 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
     if valid then
       match result with
       | Ok proof ->
-          let*! valid = verify_output_proof proof in
-          fail_unless valid (Exn (Failure "An output proof is not valid."))
+          let*! _valid = verify_output_proof proof in
+    let data =
+      Data_encoding.Binary.to_bytes_exn
+        output_proof_encoding
+        proof
+    in
+    let str = Hex.show (Hex.of_bytes data) in
+    (* let str =
+      Data_encoding.Binary.to_string_exn
+        output_proof_encoding
+        proof
+    in
+    let _ = Data_encoding.Binary.of_string_exn output_proof_encoding str in *)
+          fail_unless false (Exn (Failure str))
       | Error _ -> failwith "Error during proof generation"
     else
       match result with
@@ -354,9 +366,9 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
 let make_output ~outbox_level ~message_index n =
   let open Sc_rollup_outbox_message_repr in
   let unparsed_parameters =
-    Micheline.(Int (dummy_location, Z.of_int n) |> strip_locations)
+    Micheline.((Int (dummy_location, Z.of_int n)) |> strip_locations)
   in
-  let destination = Contract_hash.zero in
+  let destination = Contract_hash.of_b58check_exn "KT1TxqZ8QtKvLu3V3JH7Gx58n7Co8pgtpQU5" in
   let entrypoint = Entrypoint_repr.default in
   let transaction = {unparsed_parameters; destination; entrypoint} in
   let transactions = [transaction] in
@@ -369,7 +381,7 @@ let test_valid_output_messages () =
   let test inbox_level =
     let outbox_level = inbox_level in
     [
-      ("1", []);
+      (* ("1", []); *)
       ("1 out", [make_output ~outbox_level ~message_index:0 1]);
       ( "1 out 2 out",
         [

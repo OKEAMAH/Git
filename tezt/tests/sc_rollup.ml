@@ -2035,7 +2035,210 @@ let test_consecutive_commitments =
       in
       unit)
 
+(* output proof for input "1 out" *)
+let output_proof = "0x030002f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec5686f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec5686000e0006d0030170000382066f7574707574810130c895f16114a5fd66d7afdb8d5a54f1eedc64914232d68006146b924d24eda466330c7061727365725f7374617465c8407f958990678e2e9fb06758bc6520dae46d838d39948a4c51a5b19bd079293dc0f942126c2debc764c372a78dd2d2d13d4ff95aabe1e7d714247f0e281c060405c0b84fc364beb6d4c57ceec5cde9144e1bf9162854640b0d867cba0b1f5a4a7454c0aa61121cc317717fe17e6a1a02e2540995e76cdfa06b74fe1895cf4d99974e56f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec56860000000000000000230001010000000000000000000000000000000000000000000000000764656661756c74"
+
+let execute_outbox_message _protocol _sc_rollup_address _sc_rollup_node node
+    client =
+  let* constants = get_sc_rollup_constants client in
+  let _commitment_period = constants.commitment_period_in_blocks in
+  (* Rollup node 1 processes messages, produces and publishes two commitments. *)
+  let bootstrap1_key = Constant.bootstrap1.public_key_hash in
+  with_fresh_rollup
+    (fun sc_rollup_address _sc_rollup_node _filename ->
+      (* let* genesis_info =
+           RPC.Client.call ~hooks client
+           @@ RPC.Sc_rollup.get_genesis_info sc_rollup_address
+         in
+         let init_level = JSON.(genesis_info |-> "level" |> as_int) in
+
+         let* () = Sc_rollup_node.run sc_rollup_node in
+         let* level = Sc_rollup_node.wait_for_level sc_rollup_node init_level in
+         Check.(level = init_level)
+           Check.int
+           ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+         let* () = bake_levels commitment_period client in
+         (* Bake `block_finality_time` additional level to ensure that block number
+            `init_level + sc_rollup_commitment_period_in_blocks` is processed by
+            the rollup node as finalized. *)
+         let* () = bake_levels block_finality_time client in *)
+        (*let contract_code =
+          {|
+              { parameter string;
+                storage string;
+                code { CAR ; NIL operation; PAIR } }
+          |}
+        in
+        let* contract =
+          Client.originate_contract
+            ~hooks
+            ~alias:"simple_contract"
+            ~amount:Tez.zero
+            ~src:"bootstrap1"
+            ~prg:contract_code
+            ~init:"\"\""
+            ~burn_cap:Tez.one
+            client
+        in*)
+      let* commitment, _level =
+        last_cemented_commitment_hash_with_level ~sc_rollup_address client
+      in
+      let*! () =
+        Client.Sc_rollup.execute_outbox_message
+          ~hooks
+          ~sc_rollup:sc_rollup_address
+          ~src:"bootstrap1"
+          ~commitment
+          ~output_proof:output_proof
+          client
+      in
+      return ())
+    node
+    client
+    bootstrap1_key
+(*
+  Client.bake_for_and_wait client
+  let* rollup_node1_stored_commitment =
+    Sc_rollup_client.last_stored_commitment ~hooks sc_rollup_client
+  in
+  let* rollup_node1_published_commitment =
+    Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
+  in
+  let () =
+    Check.(
+      Option.map inbox_level rollup_node1_published_commitment
+      = Some commitment_inbox_level)
+      (Check.option Check.int)
+      ~error_msg:
+        "Commitment has been published at a level different than expected (%L \
+         = %R)"
+  in
+  (* Cement commitment manually: the commitment can be cemented after
+     `challenge_window_levels` have passed since the commitment was published
+     (that is at level `commitment_finalized_level`). Note that at this point
+     we are already at level `commitment_finalized_level`, hence cementation of
+     the commitment can happen. *)
+  let levels_to_cementation = challenge_window + 1 in
+  let cemented_commitment_hash =
+    Option.map hash rollup_node1_published_commitment
+    |> Option.value
+         ~default:"scc12XhSULdV8bAav21e99VYLTpqAjTd7NU8Mn4zFdKPSA8auMbggG"
+  in
+  let* () = bake_levels levels_to_cementation client in
+  let* cemented_commitment_level =
+    Sc_rollup_node.wait_for_level
+      sc_rollup_node
+      (commitment_finalized_level + levels_to_cementation)
+  in
+
+  (* Withdraw stake before cementing should fail *)
+  let* () =
+    attempt_withdraw_stake
+      ~sc_rollup_address
+      client
+      ~expect_failure:
+        "Attempted to withdraw while not staked on the last cemented \
+         commitment."
+  in
+
+  let* () =
+    cement_commitment client ~sc_rollup_address ~hash:cemented_commitment_hash
+  in
+  let* level_after_cementation =
+    Sc_rollup_node.wait_for_level sc_rollup_node (cemented_commitment_level + 1)
+  in
+
+  (* Withdraw stake after cementing should succeed *)
+  let* () = attempt_withdraw_stake ~sc_rollup_address client in
+
+  let* () = Sc_rollup_node.terminate sc_rollup_node in
+  (* Rollup node 2 starts and processes enough levels to publish a commitment.*)
+  let bootstrap2_key = Constant.bootstrap2.public_key_hash in
+  let* client' = Client.init ?endpoint:(Some (Node node)) () in
+  let sc_rollup_node' =
+    Sc_rollup_node.create node client' ~operator_pkh:bootstrap2_key
+  in
+  let sc_rollup_client' = Sc_rollup_client.create sc_rollup_node' in
+  let* _configuration_filename =
+    Sc_rollup_node.config_init sc_rollup_node' sc_rollup_address
+  in
+  let* () = Sc_rollup_node.run sc_rollup_node' in
+
+  let* rollup_node2_catchup_level =
+    Sc_rollup_node.wait_for_level sc_rollup_node' level_after_cementation
+  in
+  Check.(rollup_node2_catchup_level = level_after_cementation)
+    Check.int
+    ~error_msg:"Current level has moved past cementation inbox level (%L = %R)" ;
+  (* Check that no commitment was published. *)
+  let* rollup_node2_last_published_commitment =
+    Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client'
+  in
+  let rollup_node2_last_published_commitment_inbox_level =
+    Option.map inbox_level rollup_node2_last_published_commitment
+  in
+  let () =
+    Check.(rollup_node2_last_published_commitment_inbox_level = None)
+      (Check.option Check.int)
+      ~error_msg:
+        "Commitment has been published at a level different than expected (%L \
+         = %R)"
+  in
+  (* Check that the commitment stored by the second rollup node
+     is the same commmitment stored by the first rollup node. *)
+  let* rollup_node2_stored_commitment =
+    Sc_rollup_client.last_stored_commitment ~hooks sc_rollup_client'
+  in
+  let () =
+    Check.(
+      Option.map hash rollup_node1_stored_commitment
+      = Option.map hash rollup_node2_stored_commitment)
+      (Check.option Check.string)
+      ~error_msg:
+        "Commitment stored by first and second rollup nodes differ (%L = %R)"
+  in
+
+  (* Bake other commitment_period levels and check that rollup_node2 is
+     able to publish a commitment. *)
+  let* () = bake_levels commitment_period client' in
+  let commitment_inbox_level = commitment_inbox_level + commitment_period in
+  let* _ =
+    Sc_rollup_node.wait_for_level
+      sc_rollup_node'
+      (level_after_cementation + commitment_period)
+  in
+  let* rollup_node2_last_published_commitment =
+    Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client'
+  in
+  let rollup_node2_last_published_commitment_inbox_level =
+    Option.map inbox_level rollup_node2_last_published_commitment
+  in
+  let () =
+    Check.(
+      rollup_node2_last_published_commitment_inbox_level
+      = Some commitment_inbox_level)
+      (Check.option Check.int)
+      ~error_msg:
+        "Commitment has been published at a level different than expected (%L \
+         = %R)"
+  in
+  let () =
+    Check.(
+      Option.map predecessor rollup_node2_last_published_commitment
+      = Some cemented_commitment_hash)
+      (Check.option Check.string)
+      ~error_msg:
+        "Predecessor fo commitment published by rollup_node2 should be the \
+         cemented commitment (%L = %R)"
+  in
+  return () *)
+
 let register ~protocols =
+  test_commitment_scenario
+    ~challenge_window:1
+    "execute_outbox_message"
+    execute_outbox_message
+    protocols ;
   test_origination protocols ;
   test_rollup_node_configuration protocols ;
   test_rollup_node_running protocols ;

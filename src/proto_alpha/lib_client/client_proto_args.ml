@@ -951,8 +951,11 @@ module Sc_rollup_params = struct
               commitment_hash
         | Some hash -> return hash)
 
-  let unchecked_payload_parameter = file_or_text_parameter ~from_text:return ()
-
+ (* let unchecked_payload_parameter =
+    file_or_text_parameter
+     ~from_text:return
+     ()
+*)
   let compressed_state_parameter =
     Clic.parameter (fun _ state_hash ->
         match Sc_rollup.State_hash.of_b58check_opt state_hash with
