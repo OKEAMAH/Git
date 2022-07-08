@@ -321,9 +321,16 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
      r~2^255, we restrict ourselves to 248-bit integers (31 bytes). *)
   let scalar_bytes_amount = Scalar.size_in_bytes - 1
 
+  (* Number of slot segments. *)
+  let nb_segments = Params.(slot_size / slot_segment_size)
+
+  let segment_len = Int.div Params.slot_segment_size scalar_bytes_amount + 1
+
+  let remaining_bytes = Params.slot_segment_size mod scalar_bytes_amount
+
   (* k and n are the parameters of the erasure code. *)
-  let k =
-    1 lsl Z.(log2up (of_int Params.slot_size / of_int scalar_bytes_amount))
+
+  let k = nb_segments * (1 lsl Z.(log2up (of_int segment_len)))
 
   let n = Params.redundancy_factor * k
 
@@ -342,13 +349,6 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
 
   (* Length of a shard in terms of scalar elements. *)
   let shard_size = Params.(n / shards_amount)
-
-  (* Number of slot segments. *)
-  let nb_segments = Params.(slot_size / slot_segment_size)
-
-  let segment_len = Int.div Params.slot_segment_size scalar_bytes_amount + 1
-
-  let remaining_bytes = Params.slot_segment_size mod scalar_bytes_amount
 
   (* Log of the number of evaluations that constitute an erasure encoded
      polynomial. *)

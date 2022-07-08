@@ -111,7 +111,7 @@ module Test = struct
                 precompute_pi_shards
                 filename
             in*)
-            let t = Sys.time () in
+          let t = Sys.time () in
           let precompute_pi_shards =
             DAL_crypto.load_precompute_shards_proofs filename
           in
