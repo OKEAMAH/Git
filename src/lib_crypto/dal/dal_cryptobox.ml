@@ -766,7 +766,7 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
       ~chunk_count:proofs_log
       ~degree:k
       ~preprocess
-      (Polynomials.to_dense_coefficients p |> Array.to_list)
+      (Polynomials.to_dense_coefficients p)
 
   let verify_shard trusted_setup cm (shard_index, shard_evaluations) proof =
     let d_n = Kate_amortized.Domain.build ~log:evaluations_log in

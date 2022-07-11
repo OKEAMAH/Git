@@ -66,9 +66,9 @@ module Kate_amortized = struct
     G1.fft ~domain:domain2m ~points:srs
 
   let build_h_list_with_precomputed_srs a_list (domain2m, precomputed_srs) =
-    let points = Array.make (Array.length domain2m) Scalar.(copy zero) in
-    Array.blit a_list 0 points 0 (Array.length a_list) ;
-    Scalar.fft_inplace ~domain:domain2m ~points ;
+    (*let points = Array.make (Array.length domain2m) Scalar.(copy zero) in
+      Array.blit a_list 0 points 0 (Array.length a_list) ;*)
+    let points = Scalar.fft ~domain:domain2m ~points:a_list in
     Array.map2 G1.mul precomputed_srs points
 
   (* First part of Toeplitz computing trick involving srs. *)
@@ -139,42 +139,36 @@ module Kate_amortized = struct
     let compute_h_j j =
       let rest = (degree - j) mod l in
       let quotient = (degree - j) / l in
-      if quotient = 0 then None
-      else
-        (* Padding in case quotient is not a power of 2 to get proper fft in
-           Toeplitz matrix part. *)
-        let padding = diff_next_power_of_two (2 * quotient) in
-        (* fm, 0, …, 0, f₁, f₂, …, fm-1 *)
-        let a_array =
-          Array.init
-            ((2 * quotient) + padding)
-            (fun i ->
-              if i <= quotient + (padding / 2) then Scalar.(copy zero)
-              else coefs.(rest + ((i - (quotient + padding)) * l)))
-        in
-        if j = 0 then a_array.(0) <- Scalar.(copy zero)
-        else a_array.(0) <- coefs.(degree - j) ;
-        Some
-          (build_h_list_with_precomputed_srs
-             a_array
-             (domain2m, precomputed_srs_part.(j)))
+
+      (* Padding in case quotient is not a power of 2 to get proper fft in
+         Toeplitz matrix part. *)
+      let padding = diff_next_power_of_two (2 * quotient) in
+      (* fm, 0, …, 0, f₁, f₂, …, fm-1 *)
+      let a_array =
+        Array.init
+          ((2 * quotient) + padding)
+          (fun i ->
+            if i <= quotient + (padding / 2) then Scalar.(copy zero)
+            else coefs.(rest + ((i - (quotient + padding)) * l)))
+      in
+      if j = 0 then a_array.(0) <- Scalar.(copy zero)
+      else a_array.(0) <- coefs.(degree - j) ;
+      build_h_list_with_precomputed_srs
+        a_array
+        (domain2m, precomputed_srs_part.(j))
     in
+    let sum = compute_h_j 0 in
     let hl =
-      match compute_h_j 0 with
-      | None -> failwith "Nothing to compute."
-      | Some sum ->
-          let rec sum_hj j =
-            if j = l then ()
-            else
-              match compute_h_j j with
-              | None -> ()
-              | Some hj ->
-                  (* sum.(i) <- sum.(i) + hj.(i) *)
-                  Array.iteri (fun i hij -> sum.(i) <- G1.add sum.(i) hij) hj ;
-                  sum_hj (j + 1)
-          in
-          sum_hj 1 ;
-          build_h_list_final sum domain2m
+      let rec sum_hj j =
+        if j = l then ()
+        else
+          let hj = compute_h_j j in
+          (* sum.(i) <- sum.(i) + hj.(i) *)
+          Array.iteri (fun i hij -> sum.(i) <- G1.add sum.(i) hij) hj ;
+          sum_hj (j + 1)
+      in
+      sum_hj 1 ;
+      build_h_list_final sum domain2m
     in
     let phidomain = Domain.build ~log:chunk_count in
     let phidomain = inverse (Domain.inverse phidomain) in

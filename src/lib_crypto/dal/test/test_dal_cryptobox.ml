@@ -101,20 +101,21 @@ module Test = struct
             = 0) ;
 
           let* comm = DAL_crypto.commit trusted_setup p in
+          let t = Sys.time () in
+          let precompute_pi_shards =
+            DAL_crypto.precompute_shards_proofs trusted_setup
+          in
+          let _filename = "shard_proofs_precomp" in
 
-          (*let precompute_pi_shards =
-              DAL_crypto.precompute_shards_proofs trusted_setup
-            in*)
-          let filename = "shard_proofs_precomp" in
           (*let () =
               DAL_crypto.save_precompute_shards_proofs
                 precompute_pi_shards
                 filename
             in*)
-          let t = Sys.time () in
-          let precompute_pi_shards =
-            DAL_crypto.load_precompute_shards_proofs filename
-          in
+
+          (*let precompute_pi_shards =
+              DAL_crypto.load_precompute_shards_proofs filename
+            in*)
           Printf.eprintf "\n precomp shard=%f \n" (Sys.time () -. t) ;
           let t = Sys.time () in
           let shard_proofs =
@@ -160,7 +161,7 @@ module Test = struct
         with
         | Ok () -> ()
         | Error _ -> assert false)
-      [16]
+      [2]
 end
 
 let test =
