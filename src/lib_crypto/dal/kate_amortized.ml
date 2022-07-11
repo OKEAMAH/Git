@@ -42,19 +42,16 @@ module Kate_amortized = struct
   type commitment = G1.t
 
   let commit p (srs1, _) =
-    let commit_kate_amortized srs1 p =
-      if p = [||] then G1.(copy zero)
-      else if Array.(length p > length srs1) then
-        raise
-          (Failure
-             (Printf.sprintf
-                "Kzg.compute_encoded_polynomial : Polynomial degree, %i, \
-                 exceeds srs’ length, %i."
-                (Array.length p)
-                (Array.length srs1)))
-      else G1.pippenger ~start:0 ~len:(Array.length p) srs1 p
-    in
-    commit_kate_amortized srs1 p
+    if p = [||] then G1.(copy zero)
+    else if Array.(length p > length srs1) then
+      raise
+        (Failure
+           (Printf.sprintf
+              "Kzg.compute_encoded_polynomial : Polynomial degree, %i, exceeds \
+               srs’ length, %i."
+              (Array.length p)
+              (Array.length srs1)))
+    else G1.pippenger ~start:0 ~len:(Array.length p) srs1 p
 
   let inverse domain =
     let n = Array.length domain in
