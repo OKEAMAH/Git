@@ -1283,11 +1283,24 @@ let _octez_tooling_opam_lint =
     ~opam:"tezos-tooling"
     ~deps:[octez_tooling_opam_file_format; unix]
 
-let octez_p2p =
+let octez_p2p_shared =
   public_lib
-    "tezos-p2p"
-    ~path:"src/lib_p2p"
-    ~synopsis:"Tezos: library for a pool of P2P connections"
+    "tezos-p2p.shared"
+    ~path:"src/lib_p2p/shared"
+    ~opam:"tezos-p2p"
+    ~deps:
+      [
+        lwt_watcher;
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_shell_services |> open_;
+      ]
+    ~modules:["p2p_params"; "p2p_message"; "p2p_point_state"]
+
+let octez_p2p_unix =
+  public_lib
+    "tezos-p2p.unix"
+    ~path:"src/lib_p2p/unix"
+    ~opam:"tezos-p2p"
     ~deps:
       [
         lwt_watcher;
@@ -1298,9 +1311,32 @@ let octez_p2p =
         octez_stdlib_unix |> open_;
         octez_stdlib |> open_;
         octez_p2p_services |> open_;
+        octez_p2p_shared |> open_;
         octez_version;
         prometheus;
       ]
+
+let octez_p2p =
+  public_lib
+    "tezos-p2p"
+    ~path:"src/lib_p2p"
+    ~synopsis:"Tezos: library for a pool of P2P connections"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_p2p_services |> open_;
+        octez_p2p_shared |> open_;
+      ]
+    ~virtual_modules:["tezos_p2p"]
+    ~default_implementation:"tezos-p2p.real"
+
+let _octez_p2p_real =
+  public_lib
+    "tezos-p2p.real"
+    ~path:"src/lib_p2p/real"
+    ~opam:"tezos-p2p"
+    ~deps:[octez_p2p_shared |> open_; octez_p2p_unix |> open_]
+    ~implements:octez_p2p
 
 let _octez_p2p_tests =
   tests
@@ -1317,7 +1353,7 @@ let _octez_p2p_tests =
       (* "test_p2p_logging"; *)
       "test_p2p_connect_handler";
     ]
-    ~path:"src/lib_p2p/test"
+    ~path:"src/lib_p2p/unix/test"
     ~opam:"tezos-p2p"
     ~deps:
       [
@@ -1325,7 +1361,8 @@ let _octez_p2p_tests =
         octez_base_unix;
         octez_stdlib_unix |> open_;
         octez_stdlib |> open_;
-        octez_p2p |> open_;
+        octez_p2p_shared |> open_;
+        octez_p2p_unix |> open_;
         octez_test_helpers;
         octez_base_test_helpers |> open_;
         octez_event_logging_test_helpers |> open_;
@@ -2210,6 +2247,7 @@ let octez_shell =
         octez_context_ops |> open_;
         octez_shell_context |> open_;
         octez_p2p |> open_;
+        octez_p2p_shared |> open_;
         octez_stdlib_unix |> open_;
         octez_shell_services |> open_;
         octez_p2p_services |> open_;
@@ -2534,7 +2572,8 @@ let octez_mockup =
         resto_cohttp_self_serving_client;
         octez_rpc;
         octez_p2p_services;
-        octez_p2p;
+        octez_p2p |> open_;
+        octez_p2p_shared |> open_;
         octez_protocol_environment;
         octez_stdlib_unix;
         octez_rpc_http;
@@ -4879,6 +4918,7 @@ let _octez_node =
          octez_rpc_http |> open_;
          octez_rpc_http_server |> open_;
          octez_p2p |> open_;
+         octez_p2p_shared |> open_;
          octez_shell |> open_;
          octez_store |> open_;
          octez_store_unix_reconstruction |> open_;

@@ -92,7 +92,6 @@ module Make (E : MENV) = struct
   (* We need to construct a dummy p2p to build the associated
      rpc directory. *)
   let init_fake_p2p =
-    let open Tezos_p2p in
     let peer_meta_config =
       {
         P2p_params.peer_meta_encoding = Tezos_p2p_services.Peer_metadata.encoding;
@@ -118,7 +117,7 @@ module Make (E : MENV) = struct
   (* Create dummy RPC directory for the p2p *)
   let p2p () =
     let fake_p2p = init_fake_p2p () in
-    Tezos_p2p.P2p_directory.build_rpc_directory fake_p2p
+    P2p_directory.build_rpc_directory fake_p2p
 
   let chain () =
     Directory.prefix

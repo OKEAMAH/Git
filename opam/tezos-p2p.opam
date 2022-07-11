@@ -10,9 +10,10 @@ license: "MIT"
 depends: [
   "dune" { >= "3.0" }
   "lwt-watcher" { = "0.2" }
+  "tezos-base"
+  "tezos-shell-services"
   "lwt-canceler" { >= "0.3" & < "0.4" }
   "ringo" { >= "0.9" }
-  "tezos-base"
   "tezos-stdlib-unix"
   "tezos-stdlib"
   "tezos-p2p-services"

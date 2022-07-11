@@ -18,6 +18,7 @@
   tezos-context-ops
   tezos-shell-context
   tezos-p2p
+  tezos-p2p.shared
   tezos-stdlib-unix
   tezos-shell-services
   tezos-p2p-services
@@ -39,6 +40,7 @@
   -open Tezos_context_ops
   -open Tezos_shell_context
   -open Tezos_p2p
+  -open Tezos_p2p_shared
   -open Tezos_stdlib_unix
   -open Tezos_shell_services
   -open Tezos_p2p_services

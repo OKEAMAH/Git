@@ -1,0 +1,27 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_p2p_unix)
+ (public_name tezos-p2p.unix)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  lwt-watcher
+  lwt-canceler
+  ringo
+  tezos-base
+  tezos-base.unix
+  tezos-stdlib-unix
+  tezos-stdlib
+  tezos-p2p-services
+  tezos-p2p.shared
+  tezos-version
+  prometheus)
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives
+  -open Tezos_base_unix
+  -open Tezos_stdlib_unix
+  -open Tezos_stdlib
+  -open Tezos_p2p_services
+  -open Tezos_p2p_shared))

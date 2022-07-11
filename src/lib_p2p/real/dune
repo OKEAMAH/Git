@@ -1,0 +1,15 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_p2p_real)
+ (public_name tezos-p2p.real)
+ (implements tezos-p2p)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-p2p.shared
+  tezos-p2p.unix)
+ (flags
+  (:standard)
+  -open Tezos_p2p_shared
+  -open Tezos_p2p_unix))
