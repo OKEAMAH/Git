@@ -224,7 +224,7 @@ module type DAL_cryptobox_sig = sig
 
   (** [verify_slot_segment cm slot_segment proof] returns true if the [proof]
       certifies that the [slot_segment] is indeed included in the slot committed
-      with commitment [cm],  using the trusted setup [ts]. *)
+      with commitment [cm], using the trusted setup [ts]. *)
   val verify_slot_segment :
     trusted_setup ->
     commitment ->
@@ -491,13 +491,16 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
      The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_from_bytes' slot =
+    Printf.eprintf
+      "\n %d \n"
+      (Int.div Params.slot_segment_size scalar_bytes_amount + 1) ;
     if Bytes.length slot <> Params.slot_size then
       Error
         (`Slot_wrong_size
           (Printf.sprintf "message must be %d bytes long" Params.slot_size))
     else
       let offset = ref 0 in
-      let res = Array.init k (fun _ -> Scalar.(copy zero)) in
+      let res = Array.make k Scalar.(copy zero) in
       for segment = 0 to nb_segments - 1 do
         for elt = 0 to segment_len - 1 do
           if !offset > Params.slot_size then ()
@@ -507,6 +510,7 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
             offset := !offset + remaining_bytes ;
             res.((elt * nb_segments) + segment) <- Scalar.of_bytes_exn dst)
           else
+            (*Printf.eprintf "\n offset = %d \n" !offset ;*)
             let dst = Bytes.create scalar_bytes_amount in
             Bytes.blit slot !offset dst 0 scalar_bytes_amount ;
             offset := !offset + scalar_bytes_amount ;
@@ -536,7 +540,7 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
      amortized. *)
   let polynomial_to_bytes p =
     let eval = Evaluations.(evaluation_fft domain_k p |> to_array) in
-    let slot = Bytes.init Params.slot_size (fun _ -> '0') in
+    let slot = Bytes.make Params.slot_size '0' in
     let offset = ref 0 in
     for segment = 0 to nb_segments - 1 do
       eval_coset eval slot offset segment
@@ -799,7 +803,7 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
     if slot_segment_index < 0 || slot_segment_index >= nb_segments then
       Error `Slot_segment_index_out_of_range
     else
-      let l = 1 lsl Z.(log2up (of_int segment_len)) in
+      let l = (*152*) 1 lsl Z.(log2up (of_int segment_len)) in
       let wi = Domains.get domain_k slot_segment_index in
       let quotient, _ =
         Polynomials.division_xn p l Scalar.(negate (pow wi (Z.of_int l)))
@@ -813,12 +817,23 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
     if slot_segment_index < 0 || slot_segment_index >= nb_segments then
       Error `Slot_segment_index_out_of_range
     else
+      let build_array init next len =
+        let xi = ref init in
+        Array.init len (fun _ ->
+            let i = !xi in
+            xi := next !xi ;
+            i)
+      in
+      let _create_srs : int -> Scalar.t -> Scalar.t array =
+       fun d x -> build_array Scalar.(copy one) (fun s -> Scalar.(mul s x)) d
+      in
       let domain =
         Kate_amortized.Domain.build ~log:Z.(log2up (of_int segment_len))
+        (*create_srs 152 _1primitive_root_152*)
       in
       let slot_segment_evaluations =
         Array.init
-          (1 lsl Z.(log2up (of_int segment_len)))
+          (*152*) (1 lsl Z.(log2up (of_int segment_len)))
           (function
             | i when i < segment_len - 1 ->
                 let dst = Bytes.create scalar_bytes_amount in

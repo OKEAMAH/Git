@@ -60,18 +60,18 @@ module Test = struct
 
           let* cm = DAL_crypto.commit trusted_setup p in
           let t = Sys.time () in
-          let* pi = DAL_crypto.prove_slot_segment trusted_setup p 255 in
+          let* pi = DAL_crypto.prove_slot_segment trusted_setup p 0 in
           Printf.eprintf "\n prove=%f \n" (Sys.time () -. t) ;
 
           let slot_segment =
-            Bytes.sub msg (255 * slot_segment_size) slot_segment_size
+            Bytes.sub msg (0 * slot_segment_size) slot_segment_size
           in
           let t = Sys.time () in
           let* check =
             DAL_crypto.verify_slot_segment
               trusted_setup
               cm
-              (255, slot_segment)
+              (0, slot_segment)
               pi
           in
           Printf.eprintf "\n verify=%f \n" (Sys.time () -. t) ;

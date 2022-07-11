@@ -187,11 +187,34 @@ module Kate_amortized = struct
          Scalar.(copy one)
          h)
 
+  let interpolation_h_poly2 y domain z_list =
+    let h =
+      Scalar.ifft_inplace ~domain:(inverse domain) ~points:z_list ;
+      z_list
+    in
+    let inv_y = Scalar.inverse_exn y in
+    snd
+      (Array.fold_left_map
+         (fun inv_yi h -> (Scalar.mul inv_yi inv_y, Scalar.mul h inv_yi))
+         Scalar.(copy one)
+         h)
+
   (* Part 3.2 verifier : verifies that f(w×domain.(i)) = evaluations.(i). *)
   let verify cm_f (srs1, srs2l) domain (w, evaluations) proof =
     let h = interpolation_h_poly w domain evaluations in
     let cm_h = commit h srs1 in
     let l = Domain.length domain in
+    let sl_min_yl =
+      G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
+    in
+    let diff_commits = G1.(add cm_h (negate cm_f)) in
+    Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
+
+  let verify2 cm_f (srs1, srs2l) (domain : Scalar.t array) (w, evaluations)
+      proof =
+    let h = interpolation_h_poly2 w domain evaluations in
+    let cm_h = commit h srs1 in
+    let l = Array.length domain in
     let sl_min_yl =
       G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
@@ -244,4 +267,12 @@ module type Kate_amortized_sig = sig
      f(w×domain.(i) = evaluations.(i)). *)
   val verify :
     commitment -> srs -> Domain.t -> Scalar.t * Scalar.t array -> proof -> bool
+
+  val verify2 :
+    commitment ->
+    srs ->
+    Scalar.t array ->
+    Scalar.t * Scalar.t array ->
+    proof ->
+    bool
 end
