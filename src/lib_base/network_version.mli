@@ -34,6 +34,8 @@ val pp : Format.formatter -> t -> unit
 
 val encoding : t Data_encoding.t
 
+val equal : t -> t -> bool
+
 (** Get the network protocol version to announce on peer connection.
 
     Use the highest [distributed_db_versions] and the highest [p2p_versions].

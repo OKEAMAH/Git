@@ -194,7 +194,7 @@ module P2p_net = struct
   let name = "activate_network"
 
   let conf identity =
-    P2p.
+    P2p_config.
       {
         listening_port = None;
         listening_addr = None;
@@ -230,7 +230,7 @@ module P2p_net = struct
       }
 
   let limits =
-    P2p.
+    P2p_config.
       {
         connection_timeout = Ptime.Span.zero;
         authentication_timeout = Ptime.Span.of_int_s 60;

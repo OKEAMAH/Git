@@ -508,7 +508,7 @@ let limit : P2p.limits Data_encoding.t =
   let open Data_encoding in
   conv
     (fun {
-           P2p.connection_timeout;
+           P2p_config.connection_timeout;
            authentication_timeout;
            greylist_timeout;
            maintenance_idle_time;

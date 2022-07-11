@@ -1294,7 +1294,6 @@ let octez_p2p_shared =
         octez_base |> open_ ~m:"TzPervasives";
         octez_shell_services |> open_;
       ]
-    ~modules:["p2p_params"; "p2p_message"; "p2p_point_state"]
 
 let octez_p2p_unix =
   public_lib
@@ -1336,6 +1335,19 @@ let _octez_p2p_real =
     ~path:"src/lib_p2p/real"
     ~opam:"tezos-p2p"
     ~deps:[octez_p2p_shared |> open_; octez_p2p_unix |> open_]
+    ~implements:octez_p2p
+
+let _octez_p2p_mocked =
+  public_lib
+    "tezos-p2p.mocked"
+    ~path:"src/lib_p2p/mocked"
+    ~opam:"tezos-p2p"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_stdlib |> open_;
+        octez_p2p_shared |> open_;
+      ]
     ~implements:octez_p2p
 
 let _octez_p2p_tests =

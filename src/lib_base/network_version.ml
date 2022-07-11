@@ -58,6 +58,13 @@ let encoding =
           (req "distributed_db_version" Distributed_db_version.encoding)
           (req "p2p_version" P2p_version.encoding))
 
+let equal (v1 : t) (v2 : t) =
+  Distributed_db_version.Name.equal v1.chain_name v2.chain_name
+  && Distributed_db_version.equal
+       v1.distributed_db_version
+       v2.distributed_db_version
+  && P2p_version.equal v1.p2p_version v2.p2p_version
+
 let greatest = function
   | [] -> raise (Invalid_argument "Network_version.greatest")
   | h :: t -> List.fold_left max h t
