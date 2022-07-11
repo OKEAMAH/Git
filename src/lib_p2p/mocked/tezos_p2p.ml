@@ -322,6 +322,41 @@ module P2p = struct
 
   let greylist_addr _net _addr =
     Stdlib.failwith "greylist_addr: not implemented by mocked p2p"
+
+  module Internal_for_tests = struct
+    type ('msg, 'peer, 'conn) mocked_network =
+      ('msg, 'peer, 'conn) Network.network
+
+    let find_handle_opt = find_handle_opt
+
+    let connect_peers = Network.connect_peers
+
+    let disconnect_peers = Network.disconnect_peers
+
+    let neighbourhood handle peer =
+      let peer_state =
+        Network.get_peer_exn ~s:"iter_neighbourhood" handle peer
+      in
+      List.map (fun {Network.data; peer; _} -> (peer, data)) peer_state.conns
+
+    let iter_neighbourhood handle peer f =
+      let peer_state =
+        Network.get_peer_exn ~s:"iter_neighbourhood" handle peer
+      in
+      List.iter
+        (fun {Network.data = outbound; peer = neighbor; _} ->
+          f ~outbound ~neighbor)
+        peer_state.conns
+
+    let iter_neighbourhood_es handle peer f =
+      let peer_state =
+        Network.get_peer_exn ~s:"iter_neighbourhood" handle peer
+      in
+      List.iter_es
+        (fun {Network.data = outbound; peer = neighbor; _} ->
+          f ~outbound ~neighbor)
+        peer_state.conns
+  end
 end
 
 module P2p_directory = struct

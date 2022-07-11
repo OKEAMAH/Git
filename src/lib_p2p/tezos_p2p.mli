@@ -241,6 +241,52 @@ module P2p : sig
 
   val greylist_peer :
     ('msg, 'peer_meta, 'conn_meta) net -> P2p_peer.Id.t -> unit
+
+  (**/**)
+
+  module Internal_for_tests : sig
+    type ('msg, 'peer, 'conn) mocked_network
+
+    val find_handle_opt :
+      Network_version.t -> ('msg, 'peer, 'conn) mocked_network option
+
+    val connect_peers :
+      ('a, 'b, 'c) mocked_network ->
+      a:P2p_peer.Id.t ->
+      b:P2p_peer.Id.t ->
+      a_meta:'b ->
+      b_meta:'b ->
+      ab_conn_meta:'c ->
+      ba_conn_meta:'c ->
+      (unit, string) result
+
+    val disconnect_peers :
+      ('a, 'b, 'c) mocked_network ->
+      a:P2p_peer.Id.t ->
+      b:P2p_peer.Id.t ->
+      (unit, string) result
+
+    val neighbourhood :
+      ('a, 'b, 'c) mocked_network ->
+      P2p_peer.Id.t ->
+      (P2p_peer.Id.t * 'a Lwt_pipe.Unbounded.t) list
+
+    val iter_neighbourhood :
+      ('a, 'b, 'c) mocked_network ->
+      P2p_peer.Id.t ->
+      (outbound:'a Lwt_pipe.Unbounded.t -> neighbor:P2p_peer.Id.t -> unit) ->
+      unit
+
+    val iter_neighbourhood_es :
+      ('a, 'b, 'c) mocked_network ->
+      P2p_peer.Id.t ->
+      (outbound:'a Lwt_pipe.Unbounded.t ->
+      neighbor:P2p_peer.Id.t ->
+      (unit, 'd) result Lwt.t) ->
+      (unit, 'd) result Lwt.t
+  end
+
+  (**/**)
 end
 
 module P2p_directory : sig
