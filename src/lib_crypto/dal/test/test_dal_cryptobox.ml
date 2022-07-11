@@ -160,7 +160,7 @@ module Test = struct
         with
         | Ok () -> ()
         | Error _ -> assert false)
-      [2]
+      [16]
 end
 
 let test =

@@ -489,7 +489,7 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
 
   (* We encode by segments of [slot_segment_size] bytes each.
      The segments are arranged in cosets to evaluate in batch with Kate
-       amortized. *)
+     amortized. *)
   let polynomial_from_bytes' slot =
     if Bytes.length slot <> Params.slot_size then
       Error
@@ -603,6 +603,7 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
              "there must be at least %d shards to decode"
              (k / shard_size)))
     else
+      let open Result_syntax in
       let split = List.fold_left (fun (l, r) x -> (x :: r, l)) ([], []) in
       (* 1. Computing A(x) = prod_{i=0}^{k-1} (x - w^{z_i}).
          Let w be a primitive nth root of unity and
@@ -659,7 +660,6 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
       let eval_a' = Evaluations.evaluation_fft domain_n a' in
 
       (* 4. Computing N(x). *)
-      let open Result_syntax in
       let* n_poly = compute_n eval_a' shards in
 
       (* 5. Computing B(x). *)
@@ -723,7 +723,6 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
       | exception Invalid_argument _ -> Error `Invalid_degree
       | cm -> Ok cm
     in
-
     Ok
       (Pairing.pairing_check [(cm, commit_xk); (proof, G2.(negate (copy one)))])
 
