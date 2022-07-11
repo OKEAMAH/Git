@@ -364,10 +364,14 @@ let validate_outbox_level ctxt ~outbox_level ~lcc_level =
 let execute_outbox_message ctxt ~validate_and_decode_output_proof rollup
     ~cemented_commitment ~source ~output_proof =
   let open Lwt_tzresult_syntax in
-  (* TODO: #3211
-     Allow older cemented commits as well.
-     This has the benefits of eliminating any race condition where new commits
-     are cemented and makes inclusion proofs obsolete. *)
+  (* We only store the last cemented commitment in the context.
+     Once the proof for an outbox message has been generated, it can be used to
+     execute an outbox message until a new cementation happens. Assuming that
+     the rollup is operating normally, this will take at most 30 blocks, or
+     around 15 minutes time. Because an outbox message is persisted in the
+     state of the rollup PVM, when the cementation of a new commitment happens,
+     a new proof for the outbox message w.r.t. the new cemented commitment can
+     be generated, and it can be used to execute the outbox message on L1. *)
   let* lcc_hash, lcc_level, ctxt =
     Sc_rollup.Commitment.last_cemented_commitment_hash_with_level ctxt rollup
   in
