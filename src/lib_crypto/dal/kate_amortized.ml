@@ -60,26 +60,14 @@ module Kate_amortized = struct
 
   (* First part of Toeplitz computing trick involving srs. *)
   let build_srs_part_h_list srs domain2m =
-    let domain2m = inverse (Domain.inverse domain2m) in
-    (*let points = Array.make (Array.length domain2m) G1.(copy zero) in
-      Array.blit srs 0 points 0 (Array.length srs) ;*)
-    G1.fft ~domain:domain2m ~points:srs
+    let domain2m = inverse @@ Domain.inverse domain2m in
+    assert (Array.length domain2m = Array.length srs) ;
+    G1.fft_inplace ~domain:domain2m ~points:srs ;
+    srs
 
   let build_h_list_with_precomputed_srs a_list (domain2m, precomputed_srs) =
-    (*let points = Array.make (Array.length domain2m) Scalar.(copy zero) in
-      Array.blit a_list 0 points 0 (Array.length a_list) ;*)
-    let points = Scalar.fft ~domain:domain2m ~points:a_list in
-    Array.map2 G1.mul precomputed_srs points
-
-  (* First part of Toeplitz computing trick involving srs. *)
-  (*let build_srs_part_h_list srs domain2m =
-    let domain2m = inverse (Domain.inverse domain2m) in
-    G1.fft ~domain:domain2m ~points:srs*)
-
-  (*let build_h_list_with_precomputed_srs a_list (domain2m, precomputed_srs) =
-    let y = precomputed_srs in
-    let res = Scalar.fft ~domain:domain2m ~points:a_list in
-    Array.map2 G1.mul y res*)
+    Scalar.fft_inplace ~domain:domain2m ~points:a_list ;
+    Array.map2 G1.mul precomputed_srs a_list
 
   (* Final ifft of Toeplitz computation. *)
   let build_h_list_final u domain2m =
@@ -96,7 +84,7 @@ module Kate_amortized = struct
 
   (* Precompute first part of Toeplitz trick, which doesn't depends on the
      polynomial’s coefficients. *)
-  let preprocess_multi_reveals ~chunk_len ~degree (srs1, _srs2) =
+  let preprocess_multi_reveals ~chunk_len ~degree srs1 =
     let l = 1 lsl chunk_len in
     let k =
       let ratio = degree / l in
@@ -106,12 +94,10 @@ module Kate_amortized = struct
     let domain2m = Domain.build ~log:k in
     let precompute_srsj j =
       let quotient = (degree - j) / l in
-      let padding = diff_next_power_of_two (2 * quotient) in
+      let _padding = diff_next_power_of_two (2 * quotient) in
       let srsj =
-        Array.init
-          ((2 * quotient) + padding)
-          (fun i ->
-            if i < quotient then srs1.(degree - j - ((i + 1) * l))
+        Array.init (1 lsl k) (*((2 * quotient) + padding)*) (fun i ->
+            if i < quotient then G1.copy srs1.(degree - j - ((i + 1) * l))
             else G1.(copy zero))
       in
       build_srs_part_h_list srsj domain2m
@@ -134,29 +120,30 @@ module Kate_amortized = struct
     assert (1 lsl chunk_len < degree) ;
     assert (degree <= 1 lsl n) ;
 
+    let len = Array.length domain2m in
     let l = 1 lsl chunk_len in
     (* we don’t need the first coefficient f₀ *)
     let compute_h_j j =
       let rest = (degree - j) mod l in
       let quotient = (degree - j) / l in
-
       (* Padding in case quotient is not a power of 2 to get proper fft in
          Toeplitz matrix part. *)
       let padding = diff_next_power_of_two (2 * quotient) in
       (* fm, 0, …, 0, f₁, f₂, …, fm-1 *)
       let a_array =
-        Array.init
-          ((2 * quotient) + padding)
-          (fun i ->
+        Array.init len (fun i ->
             if i <= quotient + (padding / 2) then Scalar.(copy zero)
-            else coefs.(rest + ((i - (quotient + padding)) * l)))
+            else if i < (2 * quotient) + padding then
+              Scalar.copy coefs.(rest + ((i - (quotient + padding)) * l))
+            else Scalar.(copy zero))
       in
       if j = 0 then a_array.(0) <- Scalar.(copy zero)
-      else a_array.(0) <- coefs.(degree - j) ;
+      else a_array.(0) <- Scalar.copy coefs.(degree - j) ;
       build_h_list_with_precomputed_srs
         a_array
         (domain2m, precomputed_srs_part.(j))
     in
+    let t = Sys.time () in
     let sum = compute_h_j 0 in
     let hl =
       let rec sum_hj j =
@@ -170,9 +157,13 @@ module Kate_amortized = struct
       sum_hj 1 ;
       build_h_list_final sum domain2m
     in
+    Printf.eprintf "\n hl %f \n" (Sys.time () -. t) ;
+    let t = Sys.time () in
     let phidomain = Domain.build ~log:chunk_count in
     let phidomain = inverse (Domain.inverse phidomain) in
-    G1.fft ~domain:phidomain ~points:hl
+    G1.fft_inplace ~domain:phidomain ~points:hl ;
+    Printf.eprintf "\n last FFT %f \n" (Sys.time () -. t) ;
+    hl
 
   (* h = polynomial such that h(y×domain[i]) = zi. *)
   let interpolation_h_poly y domain z_list =

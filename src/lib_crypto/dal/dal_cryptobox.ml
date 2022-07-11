@@ -491,9 +491,6 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
      The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_from_bytes' slot =
-    Printf.eprintf
-      "\n %d \n"
-      (Int.div Params.slot_segment_size scalar_bytes_amount + 1) ;
     if Bytes.length slot <> Params.slot_size then
       Error
         (`Slot_wrong_size
@@ -510,7 +507,6 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
             offset := !offset + remaining_bytes ;
             res.((elt * nb_segments) + segment) <- Scalar.of_bytes_exn dst)
           else
-            (*Printf.eprintf "\n offset = %d \n" !offset ;*)
             let dst = Bytes.create scalar_bytes_amount in
             Bytes.blit slot !offset dst 0 scalar_bytes_amount ;
             offset := !offset + scalar_bytes_amount ;
@@ -731,13 +727,14 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
       (Pairing.pairing_check [(cm, commit_xk); (proof, G2.(negate (copy one)))])
 
   let eval_to_array e = Array.init (Domains.length e) (Domains.get e)
+ 
 
   let precompute_shards_proofs trusted_setup =
     let eval, m =
       Kate_amortized.preprocess_multi_reveals
         ~chunk_len:evaluations_per_proof_log
         ~degree:k
-        (trusted_setup.srs_g1, trusted_setup.kate_amortized_srs_g2_shards)
+        trusted_setup.srs_g1
     in
     (eval_to_array eval, m)
 
