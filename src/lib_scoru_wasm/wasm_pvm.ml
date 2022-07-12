@@ -45,6 +45,38 @@ module Make (T : Tree.S) : Wasm_pvm_sig.S with type tree = T.tree = struct
            Implement handling of input logic.
         *)
         let set_input_step _ _ = Lwt.return
+        (* Plug in state here.
+           Similar to Script but plugging top-level execution logic
+              - Can assume here that chunks_l is set
+              - Also share tick counter
+              - TODO check approach taken in
+                  https://gitlab.com/tezos/tezos/-/merge_requests/5517
+                  makes sense w.r.t. linking
+              - Remaining
+                TODO compare logic in lib_webassembly/bin/script/run.ml, esp
+                  Module
+                    Decode.decode
+                    Valid.check_module (TODO not used)
+                    Import.link
+                    Eval.init
+                  Register
+                    Import.register (TODO necessary? - produces imports to be passed to init)
+                  AssertReturn
+                    Eval.init
+                    Eval.invoke
+                      Eval.eval
+                        Eval.step
+
+              - How do you normally call a func?
+                Either via Call or CallIndirect
+                For CallIndirect
+                  Find the Ref in the relevant table
+                  Values.ref_
+                    which is either a NullRef, a FuncRef, or an ExternRef (not used by us?)
+                  If it is not a FuncRef, fail
+                  If it is, use it to obtain an Instance.func, which wraps an Ast.func, which wraps a reference to a (globally addressed) code block
+
+              *)
 
         let get_output _ _ = Lwt.return ""
 
