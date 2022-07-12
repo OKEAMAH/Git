@@ -23,4 +23,203 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let tests = []
+(** Testing
+    -------
+    Component:    Tree_encoding_decoding
+    Invocation:   dune exec  src/lib_scoru_wasm/test/test_scoru_wasm.exe \
+                    -- test "$Encodings^"
+    Subject:      Encoding tests for the tezos-scoru-wasm library
+*)
+
+open Tztest
+open Tezos_webassembly_interpreter
+open Tezos_scoru_wasm
+
+(* Use context-binary for testing. *)
+module Context = Tezos_context_memory.Context_binary
+
+module Tree :
+  Tezos_context_sigs.Context.TREE
+    with type t = Context.t
+     and type tree = Context.tree
+     and type key = string list
+     and type value = bytes = struct
+  type t = Context.t
+
+  type tree = Context.tree
+
+  type key = Context.key
+
+  type value = Context.value
+
+  include Context.Tree
+end
+
+module Map =
+  Lazy_map.Make
+    (Lazy_map.Effect.Lwt)
+    (struct
+      type t = string
+
+      let compare = String.compare
+
+      let to_string x = x
+    end)
+
+module Vector =
+  Lazy_vector.Make
+    (Lazy_vector.Effect.Lwt)
+    (struct
+      type t = int
+
+      let compare = compare
+
+      let unsigned_compare = compare
+
+      let zero = 0
+
+      let add = ( + )
+
+      let sub = ( - )
+
+      let pred x = x - 1
+
+      let succ x = x + 1
+
+      let to_string = string_of_int
+    end)
+
+module Encoding = Tree_encoding_decoding.Make (Map) (Vector) (Tree)
+
+let empty_tree () =
+  let open Lwt_syntax in
+  let* index = Context.init "/tmp" in
+  let empty_store = Context.empty index in
+  return @@ Context.Tree.empty empty_store
+
+let test_encode_decode enc value f =
+  let open Lwt_result_syntax in
+  let*! empty_tree = empty_tree () in
+  let*! tree = Encoding.encode enc value empty_tree in
+  let*! value' = Encoding.decode enc tree in
+  f value'
+
+let assert_round_trip enc value equal =
+  test_encode_decode enc value (fun value' ->
+      let open Lwt_result_syntax in
+      assert (equal value' value) ;
+      return_unit)
+
+let test_string () =
+  let enc = Encoding.value ["key"] Data_encoding.string in
+  assert_round_trip enc "Hello" String.equal
+
+let test_int () =
+  let enc = Encoding.value ["key"] Data_encoding.int32 in
+  assert_round_trip enc 42l Int32.equal
+
+let test_tree () =
+  let enc =
+    Encoding.tree ["foo"] @@ Encoding.value ["key"] Data_encoding.int32
+  in
+  assert_round_trip enc 42l Int32.equal
+
+let test_raw () =
+  let enc = Encoding.raw ["key"] in
+  assert_round_trip enc (Bytes.of_string "CAFEBABE") Bytes.equal
+
+let test_conv () =
+  let open Encoding in
+  let enc =
+    conv int_of_string string_of_int (value ["key"] Data_encoding.string)
+  in
+  assert_round_trip enc 42 Int.equal
+
+type contact =
+  | Email of string
+  | Address of {street : string; number : int}
+  | No_address
+
+let test_tagged_union () =
+  let open Encoding in
+  let open Lwt_result_syntax in
+  let enc =
+    tagged_union
+      (value [] Data_encoding.string)
+      [
+        case
+          "Email"
+          (value [] Data_encoding.string)
+          (function Email s -> Some s | _ -> None)
+          (fun s -> Email s);
+        case
+          "Address"
+          (tup2
+             (value ["street"] Data_encoding.string)
+             (value ["number"] Data_encoding.int31))
+          (function
+            | Address {street; number} -> Some (street, number) | _ -> None)
+          (fun (street, number) -> Address {street; number});
+        case
+          "No Address"
+          (value [] Data_encoding.unit)
+          (function No_address -> Some () | _ -> None)
+          (fun () -> No_address);
+      ]
+  in
+  let* () = assert_round_trip enc No_address Stdlib.( = ) in
+  let* () = assert_round_trip enc (Email "foo@bar.com") Stdlib.( = ) in
+  let* () =
+    assert_round_trip
+      enc
+      (Address {street = "Main Street"; number = 10})
+      Stdlib.( = )
+  in
+  return_unit
+
+let test_lazy_mapping () =
+  let open Encoding in
+  let open Lwt_result_syntax in
+  let enc = lazy_mapping (value ["key"] Data_encoding.string) in
+  let map = Map.create ~produce_value:(fun key -> Lwt.return key) () in
+  (* Load the key [K1] from the map. *)
+  let*! value = Map.get "K1" map in
+  assert (value = "K1") ;
+  test_encode_decode enc map (fun decoded_map ->
+      (* Load the key [K1] from the decoded map. *)
+      let*! value = Map.get "K1" decoded_map in
+      assert (value = "K1") ;
+      assert (Map.to_string Fun.id map = Map.to_string Fun.id decoded_map) ;
+      return_unit)
+
+let test_lazy_vector () =
+  let open Encoding in
+  let open Lwt_result_syntax in
+  let enc =
+    lazy_vector (value [] Data_encoding.int31) (value [] Data_encoding.string)
+  in
+  let vector =
+    Vector.create ~produce_value:(fun key -> Lwt.return (string_of_int key)) 100
+  in
+  (* Load the key [K1] from the vector . *)
+  let*! value = Vector.get 42 vector in
+  assert (value = "42") ;
+  test_encode_decode enc vector (fun decoded_vector ->
+      (* Load the key [42] from the decoded vector. *)
+      let*! value = Vector.get 42 decoded_vector in
+      assert (value = "42") ;
+      assert (
+        Vector.to_string Fun.id vector = Vector.to_string Fun.id decoded_vector) ;
+      return_unit)
+
+let tests =
+  [
+    tztest "String" `Quick test_string;
+    tztest "Int" `Quick test_int;
+    tztest "Tree" `Quick test_tree;
+    tztest "Raw" `Quick test_raw;
+    tztest "Convert" `Quick test_conv;
+    tztest "Tagged-union" `Quick test_tagged_union;
+    tztest "Lazy mapping" `Quick test_lazy_mapping;
+    tztest "Lazy vector" `Quick test_lazy_vector;
+  ]
