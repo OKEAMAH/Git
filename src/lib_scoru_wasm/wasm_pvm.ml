@@ -67,6 +67,8 @@ module Make (T : Tree.S) : Wasm_pvm_sig.S with type tree = T.tree = struct
                       Eval.eval
                         Eval.step
 
+              - TODO host funcs vs. runtime linking? Can we get rid of the latter completely?
+                Whatever is done - UPDATE DOCS
               - How do you normally call a func?
                 Either via Call or CallIndirect
                 For CallIndirect
