@@ -679,6 +679,7 @@ def _test_create_mockup_init_show_roundtrip(
                     "number_of_shards": 1024,
                     "endorsement_lag": 1,
                     "availability_threshold": 25,
+                    "slot_size": 1_000_000,
                 },
                 "sc_rollup_enable": False,
                 "sc_rollup_origination_size": 6_314,

@@ -149,6 +149,7 @@
   Token
   Delegate_storage
   Bootstrap_storage
+  Dal_verifier
   Vote_storage
   Fees_storage
   Ticket_storage
@@ -391,6 +392,7 @@
   token.ml token.mli
   delegate_storage.ml delegate_storage.mli
   bootstrap_storage.ml bootstrap_storage.mli
+  dal_verifier.ml
   vote_storage.ml vote_storage.mli
   fees_storage.ml fees_storage.mli
   ticket_storage.ml ticket_storage.mli
@@ -613,6 +615,7 @@
   token.ml token.mli
   delegate_storage.ml delegate_storage.mli
   bootstrap_storage.ml bootstrap_storage.mli
+  dal_verifier.ml
   vote_storage.ml vote_storage.mli
   fees_storage.ml fees_storage.mli
   ticket_storage.ml ticket_storage.mli
@@ -840,6 +843,7 @@
   token.ml token.mli
   delegate_storage.ml delegate_storage.mli
   bootstrap_storage.ml bootstrap_storage.mli
+  dal_verifier.ml
   vote_storage.ml vote_storage.mli
   fees_storage.ml fees_storage.mli
   ticket_storage.ml ticket_storage.mli

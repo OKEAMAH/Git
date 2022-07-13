@@ -900,6 +900,7 @@ let prepare_first_block ~level ~timestamp ctxt =
             number_of_shards = 2048;
             endorsement_lag = 1;
             availability_threshold = 50;
+            slot_size = 1 lsl 20;
           }
       in
       let constants =

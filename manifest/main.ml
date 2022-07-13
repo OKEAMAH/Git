@@ -1788,6 +1788,7 @@ let octez_protocol_environment_structs =
         octez_crypto;
         octez_lwt_result_stdlib;
         octez_scoru_wasm;
+        octez_crypto_dal;
         data_encoding;
         bls12_381;
         plonk;

@@ -104,6 +104,47 @@ module type COMMITMENT = sig
     (bool, [> `Degree_exceeds_srs_length of string]) Result.t
 end
 
+module type SEGMENT = sig
+  (** A trusted setup. *)
+  type srs
+
+  (** Commitment to a polynomial. *)
+  type commitment
+
+  (** The original slot can be split into a list of segments of size
+     [segment_size]. A segment is consequently encoded as a pair of an
+     [index] and the content of this segment. *)
+  type segment = {index : int; content : bytes}
+
+  (** A proof that the evaluation of points of a polynomial is part of
+     a commitment. *)
+  type segment_proof
+
+  (** An encoding for the proof of a segment. *)
+  val segment_proof_encoding : segment_proof Data_encoding.t
+
+  (** [verify_segment commitment segment segment_proof] returns [Ok
+     true] if the [proof] certifies that the [slot_segment] is indeed
+     included in the slot committed with commitment
+     [comitment]. Returns [Ok false] otherwise.
+
+      Fails if the index of the segment is out of range. *)
+  val verify_segment :
+    srs ->
+    commitment ->
+    segment ->
+    segment_proof ->
+    (bool, [> `Slot_segment_index_out_of_range]) Result.t
+end
+
+module type VERIFIER = sig
+  include SRS
+
+  include COMMITMENT with type srs := srs
+
+  include SEGMENT with type commitment := commitment and type srs := srs
+end
+
 module type POLYNOMIAL = sig
   module IntMap : Tezos_error_monad.TzLwtreslib.Map.S with type key = int
 
@@ -156,39 +197,6 @@ module type POLYNOMIAL = sig
     srs ->
     polynomial ->
     (commitment, [> `Degree_exceeds_srs_length of string]) Result.t
-end
-
-module type SEGMENT = sig
-  (** A trusted setup. *)
-  type srs
-
-  (** Commitment to a polynomial. *)
-  type commitment
-
-  (** The original slot can be split into a list of segments of size
-     [segment_size]. A segment is consequently encoded as a pair of an
-     [index] and the content of this segment. *)
-  type segment = {index : int; content : bytes}
-
-  (** A proof that the evaluation of points of a polynomial is part of
-     a commitment. *)
-  type segment_proof
-
-  (** An encoding for the proof of a segment. *)
-  val segment_proof_encoding : segment_proof Data_encoding.t
-
-  (** [verify_segment commitment segment segment_proof] returns [Ok
-     true] if the [proof] certifies that the [slot_segment] is indeed
-     included in the slot committed with commitment
-     [comitment]. Returns [Ok false] otherwise.
-
-      Fails if the index of the segment is out of range. *)
-  val verify_segment :
-    srs ->
-    commitment ->
-    segment ->
-    segment_proof ->
-    (bool, [> `Slot_segment_index_out_of_range]) Result.t
 end
 
 module type SHARD = sig

@@ -31,6 +31,7 @@ type dal = {
   number_of_shards : int;
   endorsement_lag : int;
   availability_threshold : int;
+  slot_size : int;
 }
 
 val dal_encoding : dal Data_encoding.t

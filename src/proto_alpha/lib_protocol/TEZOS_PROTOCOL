@@ -126,6 +126,7 @@
         "Token",
         "Delegate_storage",
         "Bootstrap_storage",
+	"Dal_verifier",
 
         "Vote_storage",
         "Fees_storage",

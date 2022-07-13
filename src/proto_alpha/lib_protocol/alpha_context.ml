@@ -91,6 +91,10 @@ module Sc_rollup = struct
 end
 
 module Dal = struct
+  module Verifier = struct
+    include Dal_verifier
+  end
+
   module Slot_index = struct
     include Dal_slot_repr.Index
   end

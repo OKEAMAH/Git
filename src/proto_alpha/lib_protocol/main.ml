@@ -829,6 +829,7 @@ let init chain_id ctxt block_header =
           Bytes.make Constants_repr.proof_of_work_nonce_size '0';
       }
   in
+  Alpha_context.Dal.Verifier.initialisation ctxt >>=? fun ctxt ->
   Alpha_context.Cache.Admin.sync ctxt ~cache_nonce >>= fun ctxt ->
   return
     (Alpha_context.finalize ctxt (Alpha_context.Fitness.to_raw init_fitness))

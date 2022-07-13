@@ -819,5 +819,13 @@ module Make (C : CONSTANTS) = struct
            proof)
 end
 
+module type VERIFIER = sig
+  include SRS
+
+  include COMMITMENT with type srs := srs
+
+  include SEGMENT with type commitment := commitment and type srs := srs
+end
+
 module Verifier (C : CONSTANTS) = Make (C)
 module Builder (C : CONSTANTS) = Make (C)

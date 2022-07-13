@@ -775,6 +775,7 @@ module Constants : sig
       number_of_shards : int;
       endorsement_lag : int;
       availability_threshold : int;
+      slot_size : int;
     }
 
     val dal_encoding : dal Data_encoding.t
@@ -2646,6 +2647,10 @@ module Vote : sig
 end
 
 module Dal : sig
+  module Verifier : sig
+    val initialisation : t -> t tzresult Lwt.t
+  end
+
   module Slot_index : sig
     type t
 
