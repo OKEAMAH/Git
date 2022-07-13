@@ -822,6 +822,36 @@ let _octez_crypto_tests_unix =
         octez_test_helpers;
       ]
 
+let octez_crypto_dal =
+  public_lib
+    "tezos-crypto.dal"
+    ~path:"src/lib_crypto/dal"
+    ~opam:"tezos-crypto"
+    ~deps:
+      [
+        octez_stdlib |> open_;
+        octez_error_monad |> open_;
+        data_encoding |> open_;
+        bls12_381_polynomial;
+      ]
+
+let _octez_crypto_dal_tests =
+  tests
+    ["test_dal_cryptobox"]
+    ~path:"src/lib_crypto/dal/test"
+    ~opam:"tezos-crypto"
+    ~dep_files:["shard_proofs_precomp"]
+    ~deps:
+      [
+        octez_stdlib |> open_;
+        octez_crypto_dal |> open_;
+        octez_error_monad |> open_;
+        data_encoding |> open_;
+        alcotest;
+        qcheck_alcotest;
+        bls12_381_polynomial;
+      ]
+
 let octez_event_logging =
   public_lib
     "tezos-event-logging"
@@ -1786,6 +1816,7 @@ protocols.|}
         zarith_stubs_js;
         bls12_381;
         plonk;
+        octez_crypto_dal;
         vdf;
         ringo;
         ringo_lwt;
@@ -5000,36 +5031,6 @@ let _octez_codec =
              if link then Protocol.client protocol else None);
          ])
     ~linkall:true
-
-let octez_crypto_dal =
-  public_lib
-    "tezos-crypto.dal"
-    ~path:"src/lib_crypto/dal"
-    ~opam:"tezos-crypto"
-    ~deps:
-      [
-        octez_stdlib |> open_;
-        octez_error_monad |> open_;
-        data_encoding |> open_;
-        bls12_381_polynomial;
-      ]
-
-let _octez_crypto_dal_tests =
-  tests
-    ["test_dal_cryptobox"]
-    ~path:"src/lib_crypto/dal/test"
-    ~opam:"tezos-crypto"
-    ~dep_files:["shard_proofs_precomp"]
-    ~deps:
-      [
-        octez_stdlib |> open_;
-        octez_crypto_dal |> open_;
-        octez_error_monad |> open_;
-        data_encoding |> open_;
-        alcotest;
-        qcheck_alcotest;
-        bls12_381_polynomial;
-      ]
 
 let _octez_proxy_server =
   public_exe
