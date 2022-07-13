@@ -45,7 +45,7 @@ module type S = sig
       underlying memory is effectively copied - further modifications to [bytes]
       are not reflected in the chunked byte vector. Use this over [of_string] when
       turning your [bytes] into a [string] would be potentially expensive. *)
-  val of_bytes : bytes -> t effect
+  val of_bytes : bytes -> t
 
   (** [grow vector length_delta] increases the byte vector length by
       [length_delta]. *)

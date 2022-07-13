@@ -60,6 +60,10 @@ module type S = sig
 
   val tup3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
+  val tup4 : 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
+
+  val tup5 : 'a t -> 'b t -> 'c t -> 'd t -> 'e t -> ('a * 'b * 'c * 'd * 'e) t
+
   val raw : key -> bytes t
 
   val value : key -> 'a Data_encoding.t -> 'a t
@@ -130,6 +134,18 @@ module Make
       (fun (a, (b, c)) -> (a, b, c))
       (fun (a, b, c) -> (a, (b, c)))
       (tup2 one (tup2 two three))
+
+  let tup4 one two three four =
+    conv
+      (fun (a, (b, (c, d))) -> (a, b, c, d))
+      (fun (a, b, c, d) -> (a, (b, (c, d))))
+      (tup2 one (tup2 two (tup2 three four)))
+
+  let tup5 one two three four five =
+    conv
+      (fun (a, (b, (c, (d, e)))) -> (a, b, c, d, e))
+      (fun (a, b, c, d, e) -> (a, (b, (c, (d, e)))))
+      (tup2 one (tup2 two (tup2 three (tup2 four five))))
 
   let encode {encode; _} value tree = E.run encode value tree
 
