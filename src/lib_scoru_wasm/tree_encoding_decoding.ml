@@ -153,47 +153,95 @@ module Make
   let conv_lwt d e {encode; decode} =
     {encode = E.contramap_lwt e encode; decode = D.map_lwt d decode}
 
-  let tup2 a b =
+  let scope key {encode; decode} =
+    {encode = E.scope key encode; decode = D.scope key decode}
+
+  let tup2_ a b =
     {
       encode = E.tup2 a.encode b.encode;
       decode = D.Syntax.both a.decode b.decode;
     }
 
-  let tup3 a b c =
+  let tup3_ a b c =
     conv
       (fun (a, (b, c)) -> (a, b, c))
       (fun (a, b, c) -> (a, (b, c)))
-      (tup2 a (tup2 b c))
+      (tup2_ a (tup2_ b c))
 
-  let tup4 a b c d =
+  let tup4_ a b c d =
     conv
       (fun (a, (b, c, d)) -> (a, b, c, d))
       (fun (a, b, c, d) -> (a, (b, c, d)))
-      (tup2 a (tup3 b c d))
+      (tup2_ a (tup3_ b c d))
 
-  let tup5 a b c d e =
+  let tup5_ a b c d e =
     conv
       (fun (a, (b, c, d, e)) -> (a, b, c, d, e))
       (fun (a, b, c, d, e) -> (a, (b, c, d, e)))
-      (tup2 a (tup4 b c d e))
+      (tup2_ a (tup4_ b c d e))
 
-  let tup6 a b c d e f =
+  let tup6_ a b c d e f =
     conv
       (fun (a, (b, c, d, e, f)) -> (a, b, c, d, e, f))
       (fun (a, b, c, d, e, f) -> (a, (b, c, d, e, f)))
-      (tup2 a (tup5 b c d e f))
+      (tup2_ a (tup5_ b c d e f))
 
-  let tup7 a b c d e f g =
+  let tup7_ a b c d e f g =
     conv
       (fun (a, (b, c, d, e, f, g)) -> (a, b, c, d, e, f, g))
       (fun (a, b, c, d, e, f, g) -> (a, (b, c, d, e, f, g)))
-      (tup2 a (tup6 b c d e f g))
+      (tup2_ a (tup6_ b c d e f g))
 
-  let tup8 a b c d e f g h =
+  let tup8_ a b c d e f g h =
     conv
       (fun (a, (b, c, d, e, f, g, h)) -> (a, b, c, d, e, f, g, h))
       (fun (a, b, c, d, e, f, g, h) -> (a, (b, c, d, e, f, g, h)))
-      (tup2 a (tup7 b c d e f g h))
+      (tup2_ a (tup7_ b c d e f g h))
+
+  let tup2 a b = tup2_ (scope ["1"] a) (scope ["2"] b)
+
+  let tup3 a b c = tup3_ (scope ["1"] a) (scope ["2"] b) (scope ["3"] c)
+
+  let tup4 a b c d =
+    tup4_ (scope ["1"] a) (scope ["2"] b) (scope ["3"] c) (scope ["4"] d)
+
+  let tup5 a b c d e =
+    tup5_
+      (scope ["1"] a)
+      (scope ["2"] b)
+      (scope ["3"] c)
+      (scope ["4"] d)
+      (scope ["5"] e)
+
+  let tup6 a b c d e f =
+    tup6_
+      (scope ["1"] a)
+      (scope ["2"] b)
+      (scope ["3"] c)
+      (scope ["4"] d)
+      (scope ["5"] e)
+      (scope ["6"] f)
+
+  let tup7 a b c d e f g =
+    tup7_
+      (scope ["1"] a)
+      (scope ["2"] b)
+      (scope ["3"] c)
+      (scope ["4"] d)
+      (scope ["5"] e)
+      (scope ["6"] f)
+      (scope ["7"] g)
+
+  let tup8 a b c d e f g h =
+    tup8_
+      (scope ["1"] a)
+      (scope ["2"] b)
+      (scope ["3"] c)
+      (scope ["4"] d)
+      (scope ["5"] e)
+      (scope ["6"] f)
+      (scope ["7"] g)
+      (scope ["8"] h)
 
   let encode {encode; _} value tree = E.run encode value tree
 
@@ -202,9 +250,6 @@ module Make
   let raw key = {encode = E.raw key; decode = D.raw key}
 
   let value key de = {encode = E.value key de; decode = D.value key de}
-
-  let scope key {encode; decode} =
-    {encode = E.scope key encode; decode = D.scope key decode}
 
   let lazy_mapping value =
     let to_key k = [M.string_of_key k] in
