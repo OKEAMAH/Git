@@ -267,16 +267,14 @@ let instr_gen =
 let vector_gen gen =
   let* len = int_range 0 10 in
   let* seeds = small_list int in
-  let vec =
-    Lazy_vec.create
-      ~produce_value:(fun _tree ix ->
-        let rand =
-          Random.State.make @@ Array.of_list (Int32.to_int ix :: seeds)
-        in
-        Lwt.return @@ generate1 ~rand gen)
-      (Int32.of_int len)
-  in
-  return vec
+  return
+    (Lazy_vec.create
+       ~produce_value:(fun _tree ix ->
+         let rand =
+           Random.State.make @@ Array.of_list (Int32.to_int ix :: seeds)
+         in
+         Lwt.return @@ generate1 ~rand gen)
+       (Int32.of_int len))
 
 let vector_z_gen gen =
   let* len = int_range 0 10 in
