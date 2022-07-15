@@ -129,7 +129,10 @@ module Make (Effect : Effect.S) : S with type 'a effect = 'a Effect.t = struct
       let current_chunks = Vector.num_elements vector.chunks in
       let chunk_count_delta = Int64.sub new_chunks current_chunks in
       if Int64.compare chunk_count_delta 0L > 0 then
-        Vector.grow chunk_count_delta vector.chunks ;
+        Vector.grow
+          ~produce_value:(fun _ -> Effect.return @@ Chunk.alloc ())
+          chunk_count_delta
+          vector.chunks ;
       vector.length <- new_size)
 
   let length vector = vector.length
