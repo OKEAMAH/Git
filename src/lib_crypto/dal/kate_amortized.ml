@@ -58,12 +58,6 @@ module Kate_amortized = struct
     Array.init n (fun i ->
         if i = 0 then Bls12_381.Fr.(copy one) else Array.get domain (n - i))
 
-  (* First part of Toeplitz computing trick involving srs. *)
-  let build_srs_part_h_list srs domain2m =
-    assert (Array.length domain2m = Array.length srs) ;
-    G1.fft_inplace ~domain:domain2m ~points:srs ;
-    srs
-
   let print_array a =
     Printf.eprintf "\n" ;
     Array.iter
@@ -81,16 +75,6 @@ module Kate_amortized = struct
       a ;
     Printf.eprintf "\n"
 
-  let build_h_list_with_precomputed_srs a_list (domain2m, precomputed_srs) =
-    Scalar.fft_inplace ~domain:domain2m ~points:a_list ;
-    Array.init (Array.length domain2m) (fun i ->
-        G1.mul precomputed_srs.(i) a_list.(i))
-
-  (* Final ifft of Toeplitz computation. *)
-  let build_h_list_final u domain2m =
-    G1.ifft_inplace ~domain:(inverse domain2m) ~points:u ;
-    Array.sub u 0 (Array.length domain2m / 2)
-
   let diff_next_power_of_two x =
     let logx = Z.log2 (Z.of_int x) in
     if 1 lsl logx = x then 0 else (1 lsl (logx + 1)) - x
@@ -99,8 +83,6 @@ module Kate_amortized = struct
     let logx = Z.log2 (Z.of_int x) in
     1 lsl logx = x
 
-  (* Precompute first part of Toeplitz trick, which doesn't depends on the
-     polynomial’s coefficients. *)
   let preprocess_multi_reveals ~chunk_len ~chunk_count ~degree srs1 =
     let l = 1 lsl chunk_len in
     (*let k = chunk_count in*)
@@ -109,24 +91,24 @@ module Kate_amortized = struct
         if 1 lsl log_inf < ratio then log_inf else log_inf + 1
       in*)
     Printf.eprintf "\n k =%d\n" chunk_count ;
-    let domain2m = Domain.build ~log:chunk_count |> Domain.inverse |> inverse in
+    let domain = Domain.build ~log:chunk_count |> Domain.inverse |> inverse in
     let precompute_srsj j =
       let quotient = (degree - j) / l in
       (*let _padding = diff_next_power_of_two (2 * quotient) in*)
-      Printf.eprintf "\n l=%d step j=%d : " l j ;
-      let srsj =
+      (*Printf.eprintf "\n l=%d step j=%d : " l j ;*)
+      let points =
         Array.init (1 lsl chunk_count) (*((2 * quotient) + padding)*) (fun i ->
             if i < quotient then
               (*Printf.eprintf " %d " (degree - j - ((i + 1) * l)) ;*)
               G1.copy srs1.(degree - j - ((i + 1) * l))
             else G1.(copy zero))
       in
-      print_array srsj ;
-      G1.fft_inplace ~domain:domain2m ~points:srsj ;
-      print_array srsj ;
-      srsj
+      (*print_array points ;*)
+      G1.fft_inplace ~domain ~points ;
+      (*print_array points ;*)
+      points
     in
-    (domain2m, Array.init l precompute_srsj)
+    (domain, Array.init l precompute_srsj)
 
   (* Generate proofs of part 3.2. *)
 
@@ -136,59 +118,63 @@ module Kate_amortized = struct
       (domain2m, precomputed_srs_part) = preprocess_multi_reveals r n m (srs1, _srs2)
       returns proofs of part 3.2. *)
   let multiple_multi_reveals ~chunk_len ~chunk_count ~degree
-      ~preprocess:(domain2m, precomputed_srs_part) coefs =
+      ~preprocess:(domain, precomputed_srs_part) coefs =
     let n = chunk_len + chunk_count in
     assert (2 <= chunk_len) ;
     assert (chunk_len < n) ;
     assert (is_pow_of_two degree) ;
     assert (1 lsl chunk_len < degree) ;
     assert (degree <= 1 lsl n) ;
-    Printf.eprintf
+
+    (*Printf.eprintf
       "\n chunk count = %d ; len = %d\n"
       chunk_count
-      (Array.length domain2m) ;
+      (Array.length domain) ;*)
 
-    let len = 1 lsl chunk_count (*Array.length domain2m*) in
+    (*let len = 1 lsl chunk_count (*Array.length domain2m*) in*)
     let l = 1 lsl chunk_len in
+    let domain_size = 1 lsl chunk_count in
     (* we don’t need the first coefficient f₀ *)
-    let compute_h_j j =
+    let compute_h_j j buffer buffer_srs =
       let rest = (degree - j) mod l in
       let quotient = (degree - j) / l in
       (* Padding in case quotient is not a power of 2 to get proper fft in
          Toeplitz matrix part. *)
       let padding = diff_next_power_of_two (2 * quotient) in
       (* fm, 0, …, 0, f₁, f₂, …, fm-1 *)
-      let a_array =
-        Array.init len (fun i ->
-            if i <= quotient + (padding / 2) then Scalar.(copy zero)
-            else if i < (2 * quotient) + padding then
-              Scalar.copy coefs.(rest + ((i - (quotient + padding)) * l))
-            else Scalar.(copy zero))
-      in
-      if j <> 0 then a_array.(0) <- Scalar.copy coefs.(degree - j) ;
-      let res =
-        build_h_list_with_precomputed_srs
-          a_array
-          (domain2m, precomputed_srs_part.(j))
-      in
-      res
+      for i = 0 to domain_size - 1 do
+        if i <= quotient + (padding / 2) then buffer.(i) <- Scalar.(copy zero)
+        else if i < (2 * quotient) + padding then
+          buffer.(i) <-
+            Scalar.copy coefs.(rest + ((i - (quotient + padding)) * l))
+        else buffer.(i) <- Scalar.(copy zero)
+      done ;
+
+      if j <> 0 then buffer.(0) <- Scalar.copy coefs.(degree - j) ;
+
+      Scalar.fft_inplace ~domain ~points:buffer ;
+      for i = 0 to Array.length domain - 1 do
+        buffer_srs.(i) <-
+          G1.(add buffer_srs.(i) (mul precomputed_srs_part.(j).(i) buffer.(i)))
+      done
     in
+
     let t = Sys.time () in
-    let sum = compute_h_j 0 in
-    for j = 1 to l - 1 do
-      let hj = compute_h_j j in
-      (* sum.(i) <- sum.(i) + hj.(i) *)
-      Array.iteri (fun i -> G1.add_inplace sum.(i)) hj
+    let buffer = Array.make domain_size Scalar.(copy zero) in
+    let hl = Array.make domain_size G1.(copy zero) in
+
+    for j = 0 to l - 1 do
+      compute_h_j j buffer hl
     done ;
     (* Toeplitz matrix-vector multiplication *)
     let hl =
-      G1.ifft_inplace ~domain:(inverse domain2m) ~points:sum ;
-      Array.sub sum 0 (Array.length domain2m / 2)
+      G1.ifft_inplace ~domain:(inverse domain) ~points:hl ;
+      Array.sub hl 0 (Array.length domain / 2)
     in
     Printf.eprintf "\n hl %f \n" (Sys.time () -. t) ;
     let t = Sys.time () in
     (* Kate amortized FFT *)
-    G1.fft_inplace ~domain:domain2m ~points:hl ;
+    G1.fft_inplace ~domain ~points:hl ;
     Printf.eprintf "\n last FFT %f \n" (Sys.time () -. t) ;
     hl
 
