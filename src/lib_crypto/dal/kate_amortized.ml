@@ -60,14 +60,31 @@ module Kate_amortized = struct
 
   (* First part of Toeplitz computing trick involving srs. *)
   let build_srs_part_h_list srs domain2m =
-    let domain2m = inverse @@ Domain.inverse domain2m in
     assert (Array.length domain2m = Array.length srs) ;
     G1.fft_inplace ~domain:domain2m ~points:srs ;
     srs
 
+  let print_array a =
+    Printf.eprintf "\n" ;
+    Array.iter
+      (fun i ->
+        if G1.eq i G1.zero then Printf.eprintf " 0 " else Printf.eprintf " x ")
+      a ;
+    Printf.eprintf "\n"
+
+  let print_array2 a =
+    Printf.eprintf "\n" ;
+    Array.iter
+      (fun i ->
+        if Scalar.eq i Scalar.zero then Printf.eprintf " 0 "
+        else Printf.eprintf " x ")
+      a ;
+    Printf.eprintf "\n"
+
   let build_h_list_with_precomputed_srs a_list (domain2m, precomputed_srs) =
     Scalar.fft_inplace ~domain:domain2m ~points:a_list ;
-    Array.map2 G1.mul precomputed_srs a_list
+    Array.init (Array.length domain2m) (fun i ->
+        G1.mul precomputed_srs.(i) a_list.(i))
 
   (* Final ifft of Toeplitz computation. *)
   let build_h_list_final u domain2m =
@@ -84,23 +101,30 @@ module Kate_amortized = struct
 
   (* Precompute first part of Toeplitz trick, which doesn't depends on the
      polynomial’s coefficients. *)
-  let preprocess_multi_reveals ~chunk_len ~degree srs1 =
+  let preprocess_multi_reveals ~chunk_len ~chunk_count ~degree srs1 =
     let l = 1 lsl chunk_len in
-    let k =
-      let ratio = degree / l in
-      let log_inf = Z.log2 (Z.of_int ratio) in
-      if 1 lsl log_inf < ratio then log_inf else log_inf + 1
-    in
-    let domain2m = Domain.build ~log:k in
+    (*let k = chunk_count in*)
+    (*let ratio = degree / l in
+        let log_inf = Z.log2 (Z.of_int ratio) in
+        if 1 lsl log_inf < ratio then log_inf else log_inf + 1
+      in*)
+    Printf.eprintf "\n k =%d\n" chunk_count ;
+    let domain2m = Domain.build ~log:chunk_count |> Domain.inverse |> inverse in
     let precompute_srsj j =
       let quotient = (degree - j) / l in
-      let _padding = diff_next_power_of_two (2 * quotient) in
+      (*let _padding = diff_next_power_of_two (2 * quotient) in*)
+      Printf.eprintf "\n l=%d step j=%d : " l j ;
       let srsj =
-        Array.init (1 lsl k) (*((2 * quotient) + padding)*) (fun i ->
-            if i < quotient then G1.copy srs1.(degree - j - ((i + 1) * l))
+        Array.init (1 lsl chunk_count) (*((2 * quotient) + padding)*) (fun i ->
+            if i < quotient then
+              (*Printf.eprintf " %d " (degree - j - ((i + 1) * l)) ;*)
+              G1.copy srs1.(degree - j - ((i + 1) * l))
             else G1.(copy zero))
       in
-      build_srs_part_h_list srsj domain2m
+      print_array srsj ;
+      G1.fft_inplace ~domain:domain2m ~points:srsj ;
+      print_array srsj ;
+      srsj
     in
     (domain2m, Array.init l precompute_srsj)
 
@@ -119,8 +143,12 @@ module Kate_amortized = struct
     assert (is_pow_of_two degree) ;
     assert (1 lsl chunk_len < degree) ;
     assert (degree <= 1 lsl n) ;
+    Printf.eprintf
+      "\n chunk count = %d ; len = %d\n"
+      chunk_count
+      (Array.length domain2m) ;
 
-    let len = Array.length domain2m in
+    let len = 1 lsl chunk_count (*Array.length domain2m*) in
     let l = 1 lsl chunk_len in
     (* we don’t need the first coefficient f₀ *)
     let compute_h_j j =
@@ -137,31 +165,30 @@ module Kate_amortized = struct
               Scalar.copy coefs.(rest + ((i - (quotient + padding)) * l))
             else Scalar.(copy zero))
       in
-      if j = 0 then a_array.(0) <- Scalar.(copy zero)
-      else a_array.(0) <- Scalar.copy coefs.(degree - j) ;
-      build_h_list_with_precomputed_srs
-        a_array
-        (domain2m, precomputed_srs_part.(j))
+      if j <> 0 then a_array.(0) <- Scalar.copy coefs.(degree - j) ;
+      let res =
+        build_h_list_with_precomputed_srs
+          a_array
+          (domain2m, precomputed_srs_part.(j))
+      in
+      res
     in
     let t = Sys.time () in
     let sum = compute_h_j 0 in
+    for j = 1 to l - 1 do
+      let hj = compute_h_j j in
+      (* sum.(i) <- sum.(i) + hj.(i) *)
+      Array.iteri (fun i -> G1.add_inplace sum.(i)) hj
+    done ;
+    (* Toeplitz matrix-vector multiplication *)
     let hl =
-      let rec sum_hj j =
-        if j = l then ()
-        else
-          let hj = compute_h_j j in
-          (* sum.(i) <- sum.(i) + hj.(i) *)
-          Array.iteri (fun i hij -> sum.(i) <- G1.add sum.(i) hij) hj ;
-          sum_hj (j + 1)
-      in
-      sum_hj 1 ;
-      build_h_list_final sum domain2m
+      G1.ifft_inplace ~domain:(inverse domain2m) ~points:sum ;
+      Array.sub sum 0 (Array.length domain2m / 2)
     in
     Printf.eprintf "\n hl %f \n" (Sys.time () -. t) ;
     let t = Sys.time () in
-    let phidomain = Domain.build ~log:chunk_count in
-    let phidomain = inverse (Domain.inverse phidomain) in
-    G1.fft_inplace ~domain:phidomain ~points:hl ;
+    (* Kate amortized FFT *)
+    G1.fft_inplace ~domain:domain2m ~points:hl ;
     Printf.eprintf "\n last FFT %f \n" (Sys.time () -. t) ;
     hl
 

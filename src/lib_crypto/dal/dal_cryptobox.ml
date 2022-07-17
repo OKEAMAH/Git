@@ -726,17 +726,12 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
     Ok
       (Pairing.pairing_check [(cm, commit_xk); (proof, G2.(negate (copy one)))])
 
-  let eval_to_array e = Array.init (Domains.length e) (Domains.get e)
- 
-
   let precompute_shards_proofs trusted_setup =
-    let eval, m =
-      Kate_amortized.preprocess_multi_reveals
-        ~chunk_len:evaluations_per_proof_log
-        ~degree:k
-        trusted_setup.srs_g1
-    in
-    (eval_to_array eval, m)
+    Kate_amortized.preprocess_multi_reveals
+      ~chunk_len:evaluations_per_proof_log
+      ~chunk_count:proofs_log
+      ~degree:k
+      trusted_setup.srs_g1
 
   let save_precompute_shards_proofs (preprocess : shards_proofs_precomputation)
       filename =

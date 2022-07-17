@@ -24,9 +24,9 @@ module Test = struct
 
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
-    let shards_amount = 2048 in
-    let slot_size = 1048576 in
-    let slot_segment_size = 4096 in
+    let shards_amount = 2048 / 16 in
+    let slot_size = 1048576 / 16 in
+    let slot_segment_size = 4096 / 16 in
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
@@ -68,11 +68,7 @@ module Test = struct
           in
           let t = Sys.time () in
           let* check =
-            DAL_crypto.verify_slot_segment
-              trusted_setup
-              cm
-              (0, slot_segment)
-              pi
+            DAL_crypto.verify_slot_segment trusted_setup cm (0, slot_segment) pi
           in
           Printf.eprintf "\n verify=%f \n" (Sys.time () -. t) ;
           assert check ;
@@ -80,7 +76,10 @@ module Test = struct
           let enc_shards = DAL_crypto.to_shards p in
           Printf.eprintf "\n to_shards=%f \n" (Sys.time () -. t) ;
           (* Only take half of the buckets *)
-          let c_indices = random_indices (2048 - 1) 1024 |> Array.of_list in
+          let c_indices =
+            random_indices (shards_amount - 1) (shards_amount / 2)
+            |> Array.of_list
+          in
 
           let c =
             DAL_crypto.IntMap.filter
