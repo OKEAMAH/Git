@@ -56,15 +56,24 @@ module type S = sig
 
   val conv_lwt : ('a -> 'b Lwt.t) -> ('b -> 'a Lwt.t) -> 'a t -> 'b t
 
-  val tup2 : 'a t -> 'b t -> ('a * 'b) t
+  val tup2 : ?flatten:unit -> 'a t -> 'b t -> ('a * 'b) t
 
-  val tup3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+  val tup3 : ?flatten:unit -> 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
-  val tup4 : 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
+  val tup4 :
+    ?flatten:unit -> 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
 
-  val tup5 : 'a t -> 'b t -> 'c t -> 'd t -> 'e t -> ('a * 'b * 'c * 'd * 'e) t
+  val tup5 :
+    ?flatten:unit ->
+    'a t ->
+    'b t ->
+    'c t ->
+    'd t ->
+    'e t ->
+    ('a * 'b * 'c * 'd * 'e) t
 
   val tup6 :
+    ?flatten:unit ->
     'a t ->
     'b t ->
     'c t ->
@@ -74,6 +83,7 @@ module type S = sig
     ('a * 'b * 'c * 'd * 'e * 'f) t
 
   val tup7 :
+    ?flatten:unit ->
     'a t ->
     'b t ->
     'c t ->
@@ -84,6 +94,7 @@ module type S = sig
     ('a * 'b * 'c * 'd * 'e * 'f * 'g) t
 
   val tup8 :
+    ?flatten:unit ->
     'a t ->
     'b t ->
     'c t ->
@@ -207,50 +218,64 @@ module Make
       (fun (a, b, c, d, e, f, g, h) -> (a, (b, c, d, e, f, g, h)))
       (tup2_ a (tup7_ b c d e f g h))
 
-  let tup2 a b = tup2_ (scope ["1"] a) (scope ["2"] b)
+  (* This is to allow for either flat composition of tuples or  where each
+     element of the tuple is wrapped under an index node. *)
+  let flat_or_wrap ~flatten ix enc =
+    match flatten with Some () -> enc | None -> scope [string_of_int ix] enc
 
-  let tup3 a b c = tup3_ (scope ["1"] a) (scope ["2"] b) (scope ["3"] c)
+  let tup2 ?flatten a b =
+    tup2_ (flat_or_wrap ~flatten 1 a) (flat_or_wrap ~flatten 2 b)
 
-  let tup4 a b c d =
-    tup4_ (scope ["1"] a) (scope ["2"] b) (scope ["3"] c) (scope ["4"] d)
+  let tup3 ?flatten a b c =
+    tup3_
+      (flat_or_wrap ~flatten 1 a)
+      (flat_or_wrap ~flatten 2 b)
+      (flat_or_wrap ~flatten 3 c)
 
-  let tup5 a b c d e =
+  let tup4 ?flatten a b c d =
+    tup4_
+      (flat_or_wrap ~flatten 1 a)
+      (flat_or_wrap ~flatten 2 b)
+      (flat_or_wrap ~flatten 3 c)
+      (flat_or_wrap ~flatten 4 d)
+
+  let tup5 ?flatten a b c d e =
     tup5_
-      (scope ["1"] a)
-      (scope ["2"] b)
-      (scope ["3"] c)
-      (scope ["4"] d)
-      (scope ["5"] e)
+      (flat_or_wrap ~flatten 1 a)
+      (flat_or_wrap ~flatten 2 b)
+      (flat_or_wrap ~flatten 3 c)
+      (flat_or_wrap ~flatten 4 d)
+      (flat_or_wrap ~flatten 5 e)
 
-  let tup6 a b c d e f =
+  let tup6 ?flatten a b c d e f =
     tup6_
-      (scope ["1"] a)
-      (scope ["2"] b)
-      (scope ["3"] c)
-      (scope ["4"] d)
-      (scope ["5"] e)
-      (scope ["6"] f)
+      (flat_or_wrap ~flatten 1 a)
+      (flat_or_wrap ~flatten 2 b)
+      (flat_or_wrap ~flatten 3 c)
+      (flat_or_wrap ~flatten 4 d)
+      (flat_or_wrap ~flatten 5 e)
+      (flat_or_wrap ~flatten 6 f)
 
-  let tup7 a b c d e f g =
+  let tup7 ?flatten a b c d e f g =
     tup7_
-      (scope ["1"] a)
-      (scope ["2"] b)
-      (scope ["3"] c)
-      (scope ["4"] d)
-      (scope ["5"] e)
-      (scope ["6"] f)
-      (scope ["7"] g)
+      (flat_or_wrap ~flatten 1 a)
+      (flat_or_wrap ~flatten 2 b)
+      (flat_or_wrap ~flatten 3 c)
+      (flat_or_wrap ~flatten 4 d)
+      (flat_or_wrap ~flatten 5 e)
+      (flat_or_wrap ~flatten 6 f)
+      (flat_or_wrap ~flatten 7 g)
 
-  let tup8 a b c d e f g h =
+  let tup8 ?flatten a b c d e f g h =
     tup8_
-      (scope ["1"] a)
-      (scope ["2"] b)
-      (scope ["3"] c)
-      (scope ["4"] d)
-      (scope ["5"] e)
-      (scope ["6"] f)
-      (scope ["7"] g)
-      (scope ["8"] h)
+      (flat_or_wrap ~flatten 1 a)
+      (flat_or_wrap ~flatten 2 b)
+      (flat_or_wrap ~flatten 3 c)
+      (flat_or_wrap ~flatten 4 d)
+      (flat_or_wrap ~flatten 5 e)
+      (flat_or_wrap ~flatten 6 f)
+      (flat_or_wrap ~flatten 7 g)
+      (flat_or_wrap ~flatten 8 h)
 
   let encode {encode; _} value tree = E.run encode value tree
 

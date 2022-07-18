@@ -82,24 +82,60 @@ module type S = sig
       effectful (produce lwt promises). *)
   val conv_lwt : ('a -> 'b Lwt.t) -> ('b -> 'a Lwt.t) -> 'a t -> 'b t
 
-  (** [tup2 e1 e2] combines [e1] and [e2] into an encoder for pairs. *)
-  val tup2 : 'a t -> 'b t -> ('a * 'b) t
+  (** [tup2 ?flatten e1 e2] combines [e1] and [e2] into an encoder for pairs.
+      If [flatten] is passed, the elements are encoded directly under the given
+      tree, otherwise each element is wrapped under an index node to avoid
+      colliding keys.
 
-  (** [tup3 e1 e2 e3] combines the given encoders [e1 .. e3] into an
+      Example:
+        [encode
+          (tup2
+             (value [] Data_encoding.int31)
+             (value [] Data_encoding.int31))
+          ((42, 34))]
+
+      Gives a tree:
+        42
+        34
+
+      While
+        [encode
+            (tup2
+                ~flatten:()
+                (value [] Data_encoding.int31)
+                (value [] Data_encoding.int31))
+            ((42, 34))]
+
+      Gives a tree:
+        [1] -> 42
+        [2] -> 34
+    *)
+  val tup2 : ?flatten:unit -> 'a t -> 'b t -> ('a * 'b) t
+
+  (** [tup3 ?flatten e1 e2 e3] combines the given encoders [e1 .. e3] into an
       encoder for a tuple of three elements. *)
-  val tup3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+  val tup3 : ?flatten:unit -> 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
-  (** [tup4 e1 e2 e3 e4] combines the given encoders [e1 .. e4] into an
+  (** [tup4 ?flatten  e1 e2 e3 e4] combines the given encoders [e1 .. e4] into an
       encoder for a tuple of four elements. *)
-  val tup4 : 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
+  val tup4 :
+    ?flatten:unit -> 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
 
-  (** [tup5 e1 e2 e3 e4 e5] combines the given encoders [e1 .. e5] into an
-      encoder for a tuple of five elements. *)
-  val tup5 : 'a t -> 'b t -> 'c t -> 'd t -> 'e t -> ('a * 'b * 'c * 'd * 'e) t
+  (** [tup5 ?flatten e1 e2 e3 e4 e5] combines the given encoders [e1 .. e5] into
+      an encoder for a tuple of five elements. *)
+  val tup5 :
+    ?flatten:unit ->
+    'a t ->
+    'b t ->
+    'c t ->
+    'd t ->
+    'e t ->
+    ('a * 'b * 'c * 'd * 'e) t
 
-  (** [tup6 e1 e2 e3 e4 e5 e6] combines the given encoders [e1 .. e6] into an
-      encoder for a tuple of six elements. *)
+  (** [tup6 ?flatten e1 e2 e3 e4 e5 e6] combines the given encoders [e1 .. e6]
+      into an encoder for a tuple of six elements. *)
   val tup6 :
+    ?flatten:unit ->
     'a t ->
     'b t ->
     'c t ->
@@ -108,9 +144,10 @@ module type S = sig
     'f t ->
     ('a * 'b * 'c * 'd * 'e * 'f) t
 
-  (** [tup7 e1 e2 e3 e4 e5 e6 e7] combines the given encoders [e1 .. e7] into an
-      encoder for a tuple of seven elements. *)
+  (** [tup7 ?flatten e1 e2 e3 e4 e5 e6 e7] combines the given encoders
+      [e1 .. e7] into an encoder for a tuple of seven elements. *)
   val tup7 :
+    ?flatten:unit ->
     'a t ->
     'b t ->
     'c t ->
@@ -120,9 +157,10 @@ module type S = sig
     'g t ->
     ('a * 'b * 'c * 'd * 'e * 'f * 'g) t
 
-  (** [tup8 e1 e2 e3 e4 e5 e6 e7 e8] combines the given encoders [e1 .. e8] into
-       an encoder for a tuple of eight elements. *)
+  (** [tup8 ?flatten e1 e2 e3 e4 e5 e6 e7 e8] combines the given encoders
+      [e1 .. e8] into an encoder for a tuple of eight elements. *)
   val tup8 :
+    ?flatten:unit ->
     'a t ->
     'b t ->
     'c t ->
