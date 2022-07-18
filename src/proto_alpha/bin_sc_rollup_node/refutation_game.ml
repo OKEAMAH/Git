@@ -83,7 +83,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let open Lwt_result_syntax in
     let* source, src_pk, src_sk = Node_context.get_operator_keys node_ctxt in
     let {rollup_address; cctxt; _} = node_ctxt in
-    let* _, _, Manager_operation_result {operation_result; _} =
+    let* _oph, _op, _results =
       Client_proto_context.sc_rollup_refute
         cctxt
         ~chain:cctxt#chain
@@ -96,18 +96,6 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
         ~src_sk
         ~fee_parameter:Configuration.default_fee_parameter
         ()
-    in
-    let open Apply_results in
-    let*! () =
-      match operation_result with
-      | Applied (Sc_rollup_refute_result _) ->
-          Refutation_game_event.refutation_published opponent refutation
-      | Failed (Sc_rollup_refute_manager_kind, _errors) ->
-          Refutation_game_event.refutation_failed opponent refutation
-      | Backtracked (Sc_rollup_refute_result _, _errors) ->
-          Refutation_game_event.refutation_backtracked opponent refutation
-      | Skipped Sc_rollup_refute_manager_kind ->
-          Refutation_game_event.refutation_skipped opponent refutation
     in
     return_unit
 
@@ -287,7 +275,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let open Lwt_result_syntax in
     let* source, src_pk, src_sk = Node_context.get_operator_keys node_ctxt in
     let {rollup_address; cctxt; _} = node_ctxt in
-    let* _, _, Manager_operation_result {operation_result; _} =
+    let* _oph, _op, _results =
       Client_proto_context.sc_rollup_timeout
         cctxt
         ~chain:cctxt#chain
@@ -300,18 +288,6 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
         ~src_sk
         ~fee_parameter:Configuration.default_fee_parameter
         ()
-    in
-    let open Apply_results in
-    let*! () =
-      match operation_result with
-      | Applied (Sc_rollup_timeout_result _) ->
-          Refutation_game_event.timeout_published players
-      | Failed (Sc_rollup_timeout_manager_kind, _errors) ->
-          Refutation_game_event.timeout_failed players
-      | Backtracked (Sc_rollup_timeout_result _, _errors) ->
-          Refutation_game_event.timeout_backtracked players
-      | Skipped Sc_rollup_timeout_manager_kind ->
-          Refutation_game_event.timeout_skipped players
     in
     return_unit
 
