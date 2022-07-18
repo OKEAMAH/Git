@@ -25,6 +25,8 @@
 
 open Tezos_webassembly_interpreter
 
+exception Uninitialized_self_ref
+
 (** A key in the tree is a list of string. *)
 type key = string trace
 
@@ -227,6 +229,12 @@ module type S = sig
        The function ensures that [f] is only ever executed once. This combinator
        can be useful for constructing recursive encoders. *)
   val delayed : (unit -> 'a t) -> 'a t
+
+  (** [with_self_reference f] creates an encoder that allows accessing the
+      encoded/decoded value itself. It's useful for encoding cyclic
+      data-structures. Here, [f] is a function that takes the self-reference as
+      an argument and constructs an encoder. *)
+  val with_self_reference : ('a -> 'a t) -> 'a t
 end
 
 (** Produces an encoder/decoder module with the provided map, vector and tree
