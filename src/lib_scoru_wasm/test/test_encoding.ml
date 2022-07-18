@@ -231,7 +231,7 @@ let test_chunked_byte_vector () =
 let test_tuples () =
   let open Merklizer in
   let open Lwt_result_syntax in
-  let int = value [] Data_encoding.int31 in
+  let int = value ["my_int"] Data_encoding.int31 in
   let* () = assert_round_trip (tup2 int int) (1, 2) Stdlib.( = ) in
   let* () = assert_round_trip (tup3 int int int) (1, 2, 3) Stdlib.( = ) in
   let* () =
@@ -262,6 +262,18 @@ let test_tuples () =
     assert_round_trip
       (tup2 (tup2 int int) (tup2 int int))
       ((1, 2), (3, 4))
+      Stdlib.( = )
+  in
+  (* Without flatten we override the element since the tree [int]s are all
+     stored under the same key [my_int]. *)
+  let*! t3 = encode_decode (tup3 ~flatten:() int int int) (1, 2, 3) in
+  assert (t3 = (3, 3, 3)) ;
+  (* If we wrap the encoders manually we can use flatten to avoid and extra
+     layer. *)
+  let* () =
+    assert_round_trip
+      (tup3 ~flatten:() (scope ["A"] int) (scope ["B"] int) (scope ["C"] int))
+      (1, 2, 3)
       Stdlib.( = )
   in
   return_unit
