@@ -131,6 +131,8 @@ module type S = sig
   val tagged_union : 'tag t -> ('tag, 'a) case list -> 'a t
 
   val option : 'a t -> 'a option t
+
+  val delayed : (unit -> 'a t) -> 'a t
 end
 
 module Make
@@ -383,4 +385,18 @@ module Make
           (function None -> Some () | _ -> None)
           (fun () -> None);
       ]
+
+  let delayed f =
+    let enc = lazy (f ()) in
+    let encode =
+      E.delayed (fun () ->
+          let {encode; _} = Lazy.force enc in
+          encode)
+    in
+    let decode =
+      D.delayed (fun () ->
+          let {decode; _} = Lazy.force enc in
+          decode)
+    in
+    {encode; decode}
 end

@@ -221,6 +221,12 @@ module type S = sig
   (** [option enc] lifts the given encoding [enc] to one that can encode
       optional values. *)
   val option : 'a t -> 'a option t
+
+  (** [delayed f] constructs an encoder from [f] that delays the computation
+       of [f] until either the encoder or the decoder is run the first time.
+       The function ensures that [f] is only ever executed once. This combinator
+       can be useful for constructing recursive encoders. *)
+  val delayed : (unit -> 'a t) -> 'a t
 end
 
 (** Produces an encoder/decoder module with the provided map, vector and tree
