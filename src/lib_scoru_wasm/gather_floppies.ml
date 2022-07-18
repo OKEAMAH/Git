@@ -155,7 +155,10 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
   let increment_ticks : state -> state =
    fun state -> {state with internal_tick = Z.succ state.internal_tick}
 
-  type status = Halted of string | Running of state
+  type status = Halted of string | Running of state | Broken of Z.t
+
+  let broken_schema =
+    Schema.value ["gather-floppies"; "internal-tick"] Data_encoding.n
 
   let read_state tree =
     let open Lwt_syntax in
@@ -164,8 +167,13 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
         let+ state = Schema.decode state_schema tree in
         Running state)
       (fun _exn ->
-        let+ boot_sector = Schema.decode boot_sector_schema tree in
-        Halted boot_sector)
+        Lwt.catch
+          (fun () ->
+            let+ state = Schema.decode broken_schema tree in
+            Broken state)
+          (fun _exn ->
+            let+ boot_sector = Schema.decode boot_sector_schema tree in
+            Halted boot_sector))
 
   (* PROCESS MESSAGES *)
 
@@ -236,7 +244,6 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
           with
           | '\001', Ok (_, {chunk; signature}) ->
               let state = {state with last_input_info = Some input} in
-              let state = increment_ticks state in
               let offset = Chunked_byte_vector.Lwt.length state.kernel in
               let len = Bytes.length chunk in
               if Tezos_crypto.Signature.check pk signature chunk then
@@ -290,16 +297,17 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
   let compute_step tree =
     let open Lwt_syntax in
     let* state = read_state tree in
-    (* let state = Thunk.decode state_schema tree in *)
     match state with
+    | Broken tick -> Schema.encode broken_schema (Z.succ tick) tree
     | Halted origination_message -> (
         match origination_kernel_loading_step origination_message with
         | Some state -> Schema.encode state_schema state tree
         | None ->
             (* We could not interpret [origination_message],
                meaning the PVM is stuck. *)
-            return tree)
+            Schema.encode broken_schema Z.one tree)
     | Running state -> (
+        let state = increment_ticks state in
         match state.internal_status with
         | Gathering_floppies _ -> raise Compute_step_expected_input
         | Not_gathering_floppies -> Wasm.compute_step tree)
@@ -317,8 +325,9 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
     let open Lwt_syntax in
     let* state = read_state tree in
     match state with
-    | Halted _ -> raise Set_input_step_expected_compute_step
+    | Halted _ | Broken _ -> raise Set_input_step_expected_compute_step
     | Running state -> (
+        let state = increment_ticks state in
         match state.internal_status with
         | Gathering_floppies _ ->
             let* state = process_input_step input message state in
@@ -331,6 +340,13 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
     let open Lwt_syntax in
     let* state = read_state tree in
     match state with
+    | Broken current_tick ->
+        return
+          {
+            current_tick;
+            last_input_read = None;
+            input_request = No_input_required;
+          }
     | Halted _ ->
         return
           {
