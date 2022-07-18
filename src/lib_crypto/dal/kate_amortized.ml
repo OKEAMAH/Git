@@ -35,6 +35,42 @@ module Kate_amortized = struct
   module Domain = Bls12_381_polynomial.Polynomial.Domain
   module Polynomial = Bls12_381_polynomial.Polynomial
 
+  external prepare_fft :
+    int -> Scalar.t -> Scalar.t array -> Scalar.t array -> Scalar.t array -> int
+    = "caml_fft_prepare_stubs2"
+
+  external fft_inplace2_stubs :
+    Scalar.t array ->
+    int ->
+    Scalar.t array ->
+    Scalar.t array ->
+    Scalar.t array ->
+    Scalar.t ->
+    int = "caml_fft_fr_inplace_stubs2"
+
+  (* TODO: avoid float conversions *)
+  let log4 a = Float.to_int (floor (Float.of_int (Z.log2 a) /. 2.))
+
+  let prepare_fft ~domain =
+    let n = Array.length domain in
+    let log4dom = log4 (Z.of_int (Array.length domain)) in
+    let multiplicative_group_order = Z.(Scalar.order - one) in
+    let exponent = Z.divexact multiplicative_group_order (Z.of_int (2 * n)) in
+    let phi2N = Scalar.pow (Scalar.of_int 7) exponent in
+    (* TODO*)
+    let w1 = Array.make n Scalar.(copy zero) in
+    let w2 = Array.make n Scalar.(copy zero) in
+    let w3 = Array.make n Scalar.(copy zero) in
+    ignore @@ prepare_fft log4dom phi2N w1 w2 w3 ;
+    (w1, w2, w3)
+
+  let fft_inplace2 ~points ~prepare:(w1, w2, w3) =
+    let log4dom = log4 (Z.of_int (Array.length points)) in
+    let multiplicative_group_order = Z.(Scalar.order - one) in
+    let exponent = Z.divexact multiplicative_group_order (Z.of_int 4) in
+    let primroot4th = Scalar.pow (Scalar.of_int 7) exponent in
+    ignore @@ fft_inplace2_stubs points log4dom w1 w2 w3 primroot4th
+
   type proof = G1.t
 
   type srs = G1.t list * G2.t
@@ -152,10 +188,11 @@ module Kate_amortized = struct
 
       if j <> 0 then buffer.(0) <- Scalar.copy coefs.(degree - j) ;
 
-      Scalar.fft_inplace ~domain ~points:buffer ;
+      let prepare = prepare_fft ~domain in
+      fft_inplace2 ~points:buffer ~prepare ;
+      let v = precomputed_srs_part.(j) in
       for i = 0 to Array.length domain - 1 do
-        buffer_srs.(i) <-
-          G1.(add buffer_srs.(i) (mul precomputed_srs_part.(j).(i) buffer.(i)))
+        buffer_srs.(i) <- G1.(add buffer_srs.(i) (mul v.(i) buffer.(i)))
       done
     in
 

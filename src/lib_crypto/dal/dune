@@ -4,7 +4,8 @@
 (library
  (name tezos_crypto_dal)
  (public_name tezos-crypto.dal)
- (instrumentation (backend bisect_ppx))
+ (instrumentation
+  (backend bisect_ppx))
  (libraries
   tezos-stdlib
   tezos-error-monad
@@ -12,6 +13,13 @@
   tezos-bls12-381-polynomial)
  (flags
   (:standard)
-  -open Tezos_stdlib
-  -open Tezos_error_monad
-  -open Data_encoding))
+  -open
+  Tezos_stdlib
+  -open
+  Tezos_error_monad
+  -open
+  Data_encoding)
+ (library_flags :standard -linkall -ccopt -lpthread)
+ (foreign_stubs
+  (language c)
+  (names fft)))
