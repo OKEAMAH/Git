@@ -187,14 +187,6 @@ FIXME from diff, perhaps wrong:
     'i t ->
     ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h * 'i) t
 
-  (** [tup4 e1 e2 e3 e4] combines [e1], [e2], [e3], and [e4] into an
-      encoder for 4-tuples. *)
-  val tup4 : 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
-
-  (** [tup5 e1 e2 e3 e4 e5] combines [e1], [e2], [e3], [e4], and [e5]
-      into an encoder for 5-tuples. *)
-  val tup5 : 'a t -> 'b t -> 'c t -> 'd t -> 'e t -> ('a * 'b * 'c * 'd * 'e) t
-
   (** [raw key] is an encoder for bytes under the given [key]. *)
   val raw : key -> bytes t
 

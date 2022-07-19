@@ -143,6 +143,7 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
       (fun {internal_status; last_input_info; internal_tick; kernel} ->
         (internal_status, last_input_info, internal_tick, kernel))
     @@ tup4
+         ~flatten:false
          (value ["gather-floppies"; "status"] internal_status_encoding)
          (value ["gather-floppies"; "last-input-info"]
          @@ Data_encoding.option input_info_encoding)

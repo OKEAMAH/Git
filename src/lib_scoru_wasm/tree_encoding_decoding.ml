@@ -120,10 +120,6 @@ module type S = sig
     'i t ->
     ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h * 'i) t
 
-  val tup4 : 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
-
-  val tup5 : 'a t -> 'b t -> 'c t -> 'd t -> 'e t -> ('a * 'b * 'c * 'd * 'e) t
-
   val raw : key -> bytes t
 
   val value : key -> 'a Data_encoding.t -> 'a t
@@ -290,18 +286,6 @@ module Make
   let tup9 ~flatten a b c d e f g h i =
     let _ = flatten in
     tup9_ a b c d e f g h i
-
-  let tup4 one two three four =
-    conv
-      (fun (a, (b, (c, d))) -> (a, b, c, d))
-      (fun (a, b, c, d) -> (a, (b, (c, d))))
-      (tup2 one (tup2 two (tup2 three four)))
-
-  let tup5 one two three four five =
-    conv
-      (fun (a, (b, (c, (d, e)))) -> (a, b, c, d, e))
-      (fun (a, b, c, d, e) -> (a, (b, (c, (d, e)))))
-      (tup2 one (tup2 two (tup2 three (tup2 four five))))
 
   let encode {encode; _} value tree = E.run encode value tree
 
