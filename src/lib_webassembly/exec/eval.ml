@@ -69,7 +69,7 @@ and admin_instr' =
   | Trapping of string
   | Returning of value stack
   | Breaking of int32 * value stack
-  | Label of int32 * instr list * code
+  | Label of int32 * instr option * code
   | Frame of int32 * frame * code
 
 type config = {
@@ -222,7 +222,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
             let n2 = Lazy_vector.LwtInt32Vector.num_elements ts2 in
             let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
             ( vs',
-              [Label (n2, [], (args, [From_block (es', 0l) @@ e.at])) @@ e.at]
+              [Label (n2, None, (args, [From_block (es', 0l) @@ e.at])) @@ e.at]
             )
         | Loop (bt, es'), vs ->
             let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
@@ -230,7 +230,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
             let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
             ( vs',
               [
-                Label (n1, [e' @@ e.at], (args, [From_block (es', 0l) @@ e.at]))
+                Label (n1, Some (e' @@ e.at), (args, [From_block (es', 0l) @@ e.at]))
                 @@ e.at;
               ] )
         | If (bt, es1, es2), Num (I32 i) :: vs' ->
@@ -753,7 +753,9 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
     | Label (n, es0, (vs', {it = Returning vs0; at} :: es')), vs ->
         Lwt.return (vs, [Returning vs0 @@ at])
     | Label (n, es0, (vs', {it = Breaking (0l, vs0); at} :: es')), vs ->
-        Lwt.return (take n vs0 e.at @ vs, List.map plain es0)
+        Lwt.return (take n vs0 e.at @ vs, match es0 with
+          | None -> []
+          | Some x -> [plain x])
     | Label (n, es0, (vs', {it = Breaking (k, vs0); at} :: es')), vs ->
         Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at])
     | Label (n, es0, code'), vs ->
@@ -795,7 +797,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
             let frame' = {inst = !inst'; locals = List.map ref locals'} in
             let instr' =
               [
-                Label (n2, [], ([], [From_block (f.it.body, 0l) @@ f.at]))
+                Label (n2, None, ([], [From_block (f.it.body, 0l) @@ f.at]))
                 @@ f.at;
               ]
             in
