@@ -7,7 +7,15 @@ Goal: Run VM to computation point, produce small computation tick
 
 ## TODO
 - Which kernel?
-- Simple test in lib_scoru_wasm itself?
+  - Use test kernel by Emma
+  - Can we look at it to see what it does?
+
+## WASM utils
+
+### Binary to text
+
+    (dune build src/lib_webassembly && _build/default/src/lib_webassembly/bin/main.exe -i src/proto_alpha/lib_protocol/test/integration/wasm_kernel/computation.wasm -o foo.wast)
+
 
 ## Running WASM tests
 
