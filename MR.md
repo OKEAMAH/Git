@@ -13,6 +13,7 @@ Goal: Run VM to computation point, produce small computation tick
       https://gitlab.com/trili/kernel/-/blob/main/test_kernel/src/lib.rs
     - No input, does not import any host functions
     - Addition and allocations, includes wee_alloc (small allocator)
+    - See `foo.wast` for WAST form, plus some comments
 
 ## WASM utils
 
