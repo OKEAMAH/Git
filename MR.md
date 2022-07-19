@@ -15,12 +15,12 @@ Goal: Run VM to computation point, produce small computation tick
     - Addition and allocations, includes wee_alloc (small allocator)
     - See `foo.wast` for WAST form, plus some comments
 
-  - Encoding for top-level execution state
+  - [ ] Encoding for top-level execution state
 
-  - Load kernel using floppy
-  - Big tick parsing
-  - Big tick init
-  - Some eval steps
+  - [ ] Load kernel using floppy
+  - [ ] Big tick parsing
+  - [ ] Big tick init
+  - [ ] Some eval steps
 
 ## WASM utils
 
