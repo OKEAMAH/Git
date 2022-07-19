@@ -55,7 +55,11 @@ let numeric_error at = function
 
 type 'a stack = 'a list
 
-type frame = {inst : module_inst; locals : value ref list}
+(* Invariants:
+  - config.code initially has no Label or Frame, as we always start with a singleton list [Invoke ...]
+  - consecutive config only pushes Label and Frame at the top of the outer code, or as a singleton Label in a new Frame
+ *)
+type frame_data = {inst : module_inst; locals : value ref list}
 
 type code = value stack * admin_instr list
 
@@ -70,10 +74,10 @@ and admin_instr' =
   | Returning of value stack
   | Breaking of int32 * value stack
   | Label of int32 * instr option * code
-  | Frame of int32 * frame * code
+  | Frame of int32 * frame_data * code
 
 type config = {
-  frame : frame;
+  frame : frame_data;
   input : input_inst;
   code : code;
   budget : int; (* to model stack overflow *)
@@ -118,7 +122,7 @@ let elem (inst : module_inst) x = lookup_intmap "element segment" inst.elems x
 
 let data (inst : module_inst) x = lookup_intmap "data segment" inst.datas x
 
-let local (frame : frame) x = lookup "local" frame.locals x
+let local (frame : frame_data) x = lookup "local" frame.locals x
 
 let any_ref inst x i at =
   Lwt.catch
