@@ -78,9 +78,7 @@ TODO
  *)
 type frame_data = {inst : module_inst; locals : value ref list}
 type label_context = int32 * instr option * value stack
-type frame_context = int32 * frame_data
-
-type code = value stack * admin_instr list
+type frame_context = int32 * frame_data * value stack
 
 and admin_instr = admin_instr' phrase
 
@@ -93,7 +91,7 @@ and admin_instr' =
   | Returning of value stack
   | Breaking of int32 * value stack
   | Label of label_context * admin_instr list
-  | Frame of frame_context * code
+  | Frame of frame_context * admin_instr list
 
 
 
@@ -792,22 +790,22 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
     | Label ((n, es0, vs'), es'), vs ->
         let+ c' = step {c with code = (vs', es')} in
         (vs, [Label ((n, es0, code_stack c'.code), code_cont c'.code) @@ e.at])
-    | Frame ((n, frame'), (vs', [])), vs -> Lwt.return (vs' @ vs, [])
-    | Frame ((n, frame'), (vs', {it = Trapping msg; at} :: es')), vs ->
+    | Frame ((n, frame', vs'), ([])), vs -> Lwt.return (vs' @ vs, [])
+    | Frame ((n, frame', vs'), ({it = Trapping msg; at} :: es')), vs ->
         Lwt.return (vs, [Trapping msg @@ at])
-    | Frame ((n, frame'), (vs', {it = Returning vs0; at} :: es')), vs ->
+    | Frame ((n, frame', vs'), ({it = Returning vs0; at} :: es')), vs ->
         Lwt.return (take n vs0 e.at @ vs, [])
-    | Frame ((n, frame'), code'), vs ->
+    | Frame ((n, frame', vs'), es'), vs ->
         let+ c' =
           step
             {
               frame = frame';
-              code = code';
+              code = vs', es';
               budget = c.budget - 1;
               input = c.input;
             }
         in
-        (vs, [Frame ((n, c'.frame), c'.code) @@ e.at])
+        (vs, [Frame ((n, c'.frame, code_stack c'.code), code_cont c'.code) @@ e.at])
     | Invoke func, vs when c.budget = 0 ->
         Exhaustion.error e.at "call stack exhausted"
     | Invoke func, vs -> (
@@ -832,7 +830,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
                 @@ f.at;
               ]
             in
-            (vs', [Frame ((n2, frame'), ([], instr')) @@ e.at])
+            (vs', [Frame ((n2, frame', []), (instr')) @@ e.at])
         | Func.HostFunc (t, f) ->
             let inst = ref frame.inst in
             Lwt.catch
