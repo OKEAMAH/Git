@@ -260,6 +260,12 @@ let test_tuples () =
   in
   let* () =
     assert_round_trip
+      (tup9 int int int int int int int int int)
+      (1, 2, 3, 4, 5, 6, 7, 8, 9)
+      Stdlib.( = )
+  in
+  let* () =
+    assert_round_trip
       (tup2 (tup2 int int) (tup2 int int))
       ((1, 2), (3, 4))
       Stdlib.( = )
