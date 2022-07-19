@@ -50,7 +50,9 @@ exception Malformed_input_info_record
 (** The instrumented PVM is either in a pre-boot state
     ([Gathering_floppies]), or in its regular functioning state
     ([Not_gathering_floppies]). *)
-type internal_status = Gathering_floppies | Not_gathering_floppies
+type internal_status =
+  | Gathering_floppies of Tezos_crypto.Signature.Public_key.t
+  | Not_gathering_floppies
 
 val internal_status_encoding : internal_status Data_encoding.t
 
@@ -65,7 +67,7 @@ type floppy = {chunk : chunk; signature : Tezos_crypto.Signature.t}
 val floppy_encoding : floppy Data_encoding.t
 
 type origination_message =
-  | Complete_kernel of chunk
+  | Complete_kernel of bytes
   | Incomplete_kernel of chunk * Tezos_crypto.Signature.Public_key.t
 
 val origination_message_encoding : origination_message Data_encoding.t
