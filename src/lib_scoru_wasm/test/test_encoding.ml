@@ -138,6 +138,7 @@ let test_tagged_union () =
         case
           "Address"
           (tup2
+             ~flatten:false
              (value ["street"] Data_encoding.string)
              (value ["number"] Data_encoding.int31))
           (function
@@ -232,47 +233,60 @@ let test_tuples () =
   let open Merklizer in
   let open Lwt_result_syntax in
   let int = value ["my_int"] Data_encoding.int31 in
-  let* () = assert_round_trip (tup2 int int) (1, 2) Stdlib.( = ) in
-  let* () = assert_round_trip (tup3 int int int) (1, 2, 3) Stdlib.( = ) in
   let* () =
-    assert_round_trip (tup4 int int int int) (1, 2, 3, 4) Stdlib.( = )
+    assert_round_trip (tup2 ~flatten:false int int) (1, 2) Stdlib.( = )
   in
   let* () =
-    assert_round_trip (tup5 int int int int int) (1, 2, 3, 4, 5) Stdlib.( = )
+    assert_round_trip (tup3 ~flatten:false int int int) (1, 2, 3) Stdlib.( = )
   in
   let* () =
     assert_round_trip
-      (tup6 int int int int int int)
+      (tup4 ~flatten:false int int int int)
+      (1, 2, 3, 4)
+      Stdlib.( = )
+  in
+  let* () =
+    assert_round_trip
+      (tup5 ~flatten:false int int int int int)
+      (1, 2, 3, 4, 5)
+      Stdlib.( = )
+  in
+  let* () =
+    assert_round_trip
+      (tup6 ~flatten:false int int int int int int)
       (1, 2, 3, 4, 5, 6)
       Stdlib.( = )
   in
   let* () =
     assert_round_trip
-      (tup7 int int int int int int int)
+      (tup7 ~flatten:false int int int int int int int)
       (1, 2, 3, 4, 5, 6, 7)
       Stdlib.( = )
   in
   let* () =
     assert_round_trip
-      (tup8 int int int int int int int int)
+      (tup8 ~flatten:false int int int int int int int int)
       (1, 2, 3, 4, 5, 6, 7, 8)
       Stdlib.( = )
   in
   let* () =
     assert_round_trip
-      (tup2 (tup2 int int) (tup2 int int))
+      (tup2
+         ~flatten:false
+         (tup2 ~flatten:false int int)
+         (tup2 ~flatten:false int int))
       ((1, 2), (3, 4))
       Stdlib.( = )
   in
   (* Without flatten we override the element since the tree [int]s are all
      stored under the same key [my_int]. *)
-  let*! t3 = encode_decode (tup3 ~flatten:() int int int) (1, 2, 3) in
+  let*! t3 = encode_decode (tup3 ~flatten:true int int int) (1, 2, 3) in
   assert (t3 = (3, 3, 3)) ;
   (* If we wrap the encoders manually we can use flatten to avoid and extra
      layer. *)
   let* () =
     assert_round_trip
-      (tup3 ~flatten:() (scope ["A"] int) (scope ["B"] int) (scope ["C"] int))
+      (tup3 ~flatten:true (scope ["A"] int) (scope ["B"] int) (scope ["C"] int))
       (1, 2, 3)
       Stdlib.( = )
   in
@@ -282,7 +296,7 @@ let test_option () =
   let open Merklizer in
   let open Lwt_result_syntax in
   let int = value [] Data_encoding.int31 in
-  let enc = option (tup2 int int) in
+  let enc = option (tup2 ~flatten:false int int) in
   let* () = assert_round_trip enc (Some (1, 2)) Stdlib.( = ) in
   let* () = assert_round_trip enc None Stdlib.( = ) in
   return_unit
