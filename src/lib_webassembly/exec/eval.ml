@@ -803,10 +803,10 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
     | Trapping msg, vs -> assert false
     | Returning vs', vs -> Crash.error e.at "undefined frame"
     | Breaking (k, vs'), vs -> Crash.error e.at "undefined label"
-    | Label ((n, es0, vs'), []), vs -> Lwt.return (vs' @ vs, [])
-    | Label ((n, es0, vs'), ({it = Trapping msg; at} :: es')), vs ->
+    | Label ((_n, _es0, vs'), []), vs -> Lwt.return (vs' @ vs, [])
+    | Label ((_n, _es0, _vs'), ({it = Trapping msg; at} :: _es')), vs ->
         Lwt.return (vs, [Trapping msg @@ at])
-    | Label ((n, es0, vs'), ({it = Returning vs0; at} :: es')), vs ->
+    | Label ((_n, _es0, _vs'), ({it = Returning vs0; at} :: _es')), vs ->
         Lwt.return (vs, [Returning vs0 @@ at])
     | Label ((n, es0, vs'), ({it = Breaking (0l, vs0); at} :: es')), vs ->
         Lwt.return (take n vs0 e.at @ vs, match es0 with
