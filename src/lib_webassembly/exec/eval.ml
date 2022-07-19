@@ -102,7 +102,13 @@ TODO
 - Create frame_context, label_context
 - Move value stack into *_context
 
-ma
+
+------
+STRATEGY 2
+- Move (value stack) into *_context as above
+- Every time we push a new Label or Frame, allocate a new value with admin_instr
+- Store pointer to that
+
  *)
 type frame_data = {inst : module_inst; locals : value ref list}
 type label_context = int32 * instr option * value stack
@@ -131,7 +137,7 @@ let code_cont (_,x) = x
 type config = {
   frame : frame_data;
   input : input_inst;
-  code : value stack * admin_instr' phrase list;
+  code : value stack * admin_instr list;
   budget : int; (* to model stack overflow *)
 }
 
