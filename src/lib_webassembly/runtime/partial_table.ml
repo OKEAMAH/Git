@@ -13,7 +13,7 @@ type table = {mutable ty : table_type; content : ref_ Vector.t}
 
 type t = table
 
-let content {content; _} = content
+let content {content; _} = Vector.snapshot content
 
 include Memory_exn
 
