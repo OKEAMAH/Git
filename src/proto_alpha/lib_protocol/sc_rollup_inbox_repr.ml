@@ -438,6 +438,14 @@ module type MerkelizedOperations = sig
     (proof * Sc_rollup_PVM_sem.input option) tzresult Lwt.t
 
   val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+
+  module Internal_for_tests : sig
+    val eq_tree : tree -> tree -> bool
+
+    val history_at_genesis : capacity:int64 -> next_index:int64 -> history
+
+    val history_hashes : history -> Hash.t list
+  end
 end
 
 module type P = sig
@@ -643,7 +651,7 @@ struct
             let sequence = Int64_map.remove l history.sequence in
             let events = Hash.Map.remove h events in
             {
-              next_index = Int64.pred history.next_index;
+              next_index = (*Int64.pred*) history.next_index;
               capacity = history.capacity;
               sequence;
               events;
@@ -1228,6 +1236,20 @@ struct
         current_level_hash = (fun () -> initial_hash);
         old_levels_messages = Skip_list.genesis (Hash.hash_bytes []);
       }
+
+  module Internal_for_tests = struct
+    let eq_tree = Tree.equal
+
+    let history_at_genesis ~capacity ~next_index =
+      {
+        events = Hash.Map.empty;
+        sequence = Int64_map.empty;
+        capacity;
+        next_index;
+      }
+
+    let history_hashes {events; _} = Hash.Map.bindings events |> List.map fst
+  end
 end
 
 include (

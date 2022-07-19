@@ -406,6 +406,18 @@ module type MerkelizedOperations = sig
   (** [empty ctxt level] is an inbox started at some given [level] with no
       message at all. *)
   val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+
+  module Internal_for_tests : sig
+    val eq_tree : tree -> tree -> bool
+
+    (** a version of {!history_at_genesis} where one specifies next_index for
+        testing purpose *)
+    val history_at_genesis : capacity:int64 -> next_index:int64 -> history
+
+    (** returns the keys of the entries stored in history in the right insertion
+        order. *)
+    val history_hashes : history -> Hash.t list
+  end
 end
 
 module type P = sig
