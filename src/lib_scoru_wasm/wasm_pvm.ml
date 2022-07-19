@@ -37,23 +37,34 @@ module Make (T : Tree.S) : Wasm_pvm_sig.S with type tree = T.tree = struct
       (struct
         type tree = T.tree
 
-        module Decodings = Wasm_decodings.Make (T)
+        module Wasm = Tezos_webassembly_interpreter
+        module Tree_encoding_decoding =
+          Tree_encoding_decoding.Make
+            (Wasm.Instance.NameMap)
+            (Wasm.Instance.Vector)
+            (Wasm.Chunked_byte_vector.Lwt)
+            (T)
+        module Wasm_encoding = Wasm_encoding.Make (Tree_encoding_decoding)
 
-        let compute_step s =
+        (* Get the module instance of the tree. *)
+        let _module_instance_of_tree tree =
+          Tree_encoding_decoding.decode
+            Wasm_encoding.module_instance_encoding
+            tree
+
+        let compute_step state =
           let open Lwt.Syntax in
-          (* register the PVM host funcs wrappers in a module ["rollup_safe_core"]
-             into the WASM linker *)
+          (* Register the PVM host functions wrappers in a module
+             ["rollup_safe_core"] into the WASM linker *)
           let* () =
-            Tezos_webassembly_interpreter.(
-              Import.register ~module_name:(Utf8.decode "rollup_safe_core"))
+            Wasm.Import.register
+              ~module_name:(Wasm.Utf8.decode "rollup_safe_core")
               Host_funcs.lookup
           in
-          (* build the registry of host functions (to be passed to the interpreter via its config *)
-          let host_funcs_registry =
-            Tezos_webassembly_interpreter.Host_funcs.empty ()
-          in
+          (* Interpreter via its config *)
+          let host_funcs_registry = Wasm.Host_funcs.empty () in
           Host_funcs.register_host_funcs host_funcs_registry ;
-          Lwt.return s
+          Lwt.return state
 
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/3092
            Implement handling of input logic.
@@ -70,11 +81,5 @@ module Make (T : Tree.S) : Wasm_pvm_sig.S with type tree = T.tree = struct
                 last_input_read = None;
                 input_request = No_input_required;
               }
-
-        let _module_instance_of_tree modules =
-          Decodings.run (Decodings.module_instance_decoding modules)
-
-        let _module_instances_of_tree =
-          Decodings.run Decodings.module_instances_decoding
       end)
 end
