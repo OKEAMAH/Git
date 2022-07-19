@@ -75,6 +75,15 @@ val origination_message_encoding : origination_message Data_encoding.t
 (** [Make] encapsulates a WASM PVM to give it the ability to load a kernel
     image as either a complete kernel in the origination message or a kernel
     image divided into chunks and provided via both origination- and inbox-
-    messages. *)
+    messages.
+
+    The internal state is kept under
+      /gather-floppies
+    The resulting kernel is put under
+      /durable/kernel/boot.wasm
+    as a Chunked_byte_vector
+
+
+    *)
 module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
   Wasm_pvm_sig.S with type tree = T.tree
