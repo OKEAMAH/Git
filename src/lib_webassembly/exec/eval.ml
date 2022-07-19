@@ -58,8 +58,20 @@ type 'a stack = 'a list
 (* Invariants:
   - config.code initially has no Label or Frame, as we always start with a singleton list [Invoke ...]
   - consecutive config only pushes Label and Frame at the top of the outer code, or as a singleton Label in a new Frame
+So we may have something like
+  {
+    ...
+    code =
+      Frame data1 (Frame data2 (Frame data3 k)::cont2 )::cont1
+  }
+meaning
+  - Run k     with data3 context, then
+  - Run cont2 with data2 context, then
+  - Run cont1 with data1 context
+
  *)
 type frame_data = {inst : module_inst; locals : value ref list}
+type frame_context = int32 * frame_data
 
 type code = value stack * admin_instr list
 
@@ -74,7 +86,10 @@ and admin_instr' =
   | Returning of value stack
   | Breaking of int32 * value stack
   | Label of int32 * instr option * code
-  | Frame of int32 * frame_data * code
+  | Frame of frame_context * code
+
+
+
 
 type config = {
   frame : frame_data;
@@ -765,12 +780,12 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
     | Label (n, es0, code'), vs ->
         let+ c' = step {c with code = code'} in
         (vs, [Label (n, es0, c'.code) @@ e.at])
-    | Frame (n, frame', (vs', [])), vs -> Lwt.return (vs' @ vs, [])
-    | Frame (n, frame', (vs', {it = Trapping msg; at} :: es')), vs ->
+    | Frame ((n, frame'), (vs', [])), vs -> Lwt.return (vs' @ vs, [])
+    | Frame ((n, frame'), (vs', {it = Trapping msg; at} :: es')), vs ->
         Lwt.return (vs, [Trapping msg @@ at])
-    | Frame (n, frame', (vs', {it = Returning vs0; at} :: es')), vs ->
+    | Frame ((n, frame'), (vs', {it = Returning vs0; at} :: es')), vs ->
         Lwt.return (take n vs0 e.at @ vs, [])
-    | Frame (n, frame', code'), vs ->
+    | Frame ((n, frame'), code'), vs ->
         let+ c' =
           step
             {
@@ -780,7 +795,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
               input = c.input;
             }
         in
-        (vs, [Frame (n, c'.frame, c'.code) @@ e.at])
+        (vs, [Frame ((n, c'.frame), c'.code) @@ e.at])
     | Invoke func, vs when c.budget = 0 ->
         Exhaustion.error e.at "call stack exhausted"
     | Invoke func, vs -> (
@@ -805,7 +820,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
                 @@ f.at;
               ]
             in
-            (vs', [Frame (n2, frame', ([], instr')) @@ e.at])
+            (vs', [Frame ((n2, frame'), ([], instr')) @@ e.at])
         | Func.HostFunc (t, f) ->
             let inst = ref frame.inst in
             Lwt.catch
