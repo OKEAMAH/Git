@@ -37,7 +37,12 @@ module Make (T : Tree.S) : Wasm_pvm_sig.S with type tree = T.tree = struct
       (struct
         type tree = T.tree
 
-        module Decodings = Wasm_decodings.Make (T)
+        open Tezos_webassembly_interpreter
+        module Tree_encoding_decoding =
+          Tree_encoding_decoding.Make (Instance.NameMap) (Instance.Vector)
+            (Chunked_byte_vector.Lwt)
+            (T)
+        module Encoding = Wasm_encoding.Make (Tree_encoding_decoding)
 
         let compute_step = Lwt.return
 
@@ -56,11 +61,5 @@ module Make (T : Tree.S) : Wasm_pvm_sig.S with type tree = T.tree = struct
                 last_input_read = None;
                 input_request = No_input_required;
               }
-
-        let _module_instance_of_tree modules =
-          Decodings.run (Decodings.module_instance_decoding modules)
-
-        let _module_instances_of_tree =
-          Decodings.run Decodings.module_instances_decoding
       end)
 end

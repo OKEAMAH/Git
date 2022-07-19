@@ -25,6 +25,8 @@
 
 open Tezos_webassembly_interpreter
 
+exception Uninitialized_self_ref
+
 (** A key in the tree is a list of string. *)
 type key = string trace
 
@@ -98,10 +100,22 @@ module type S = sig
       Gives a tree:
         "A"
         "B"
+=======
+FIXME from diff, perhaps wrong:
+             (value [] Data_encoding.int31)
+             (value [] Data_encoding.int31))
+          ((42, 34))]
+
+      Gives a tree:
+        42
+        34
+=======
 
       While
         [encode
             (tup2
+=======
+FIXME from diff, perhaps wrong:
                 ~flatten:true
                 (value [] Data_encoding.string)
                 (value [] Data_encoding.string))
@@ -113,17 +127,11 @@ module type S = sig
     *)
   val tup2 : flatten:bool -> 'a t -> 'b t -> ('a * 'b) t
 
-  (** [tup3 ?flatten e1 e2 e3] combines the given encoders [e1 .. e3] into an
-      encoder for a tuple of three elements. *)
   val tup3 : flatten:bool -> 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
-  (** [tup4 ?flatten  e1 e2 e3 e4] combines the given encoders [e1 .. e4] into an
-      encoder for a tuple of four elements. *)
   val tup4 :
     flatten:bool -> 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
 
-  (** [tup5 ?flatten e1 e2 e3 e4 e5] combines the given encoders [e1 .. e5] into
-      an encoder for a tuple of five elements. *)
   val tup5 :
     flatten:bool ->
     'a t ->
@@ -133,8 +141,6 @@ module type S = sig
     'e t ->
     ('a * 'b * 'c * 'd * 'e) t
 
-  (** [tup6 ?flatten e1 e2 e3 e4 e5 e6] combines the given encoders [e1 .. e6]
-      into an encoder for a tuple of six elements. *)
   val tup6 :
     flatten:bool ->
     'a t ->
@@ -145,8 +151,6 @@ module type S = sig
     'f t ->
     ('a * 'b * 'c * 'd * 'e * 'f) t
 
-  (** [tup7 ?flatten e1 e2 e3 e4 e5 e6 e7] combines the given encoders
-      [e1 .. e7] into an encoder for a tuple of seven elements. *)
   val tup7 :
     flatten:bool ->
     'a t ->
@@ -158,8 +162,6 @@ module type S = sig
     'g t ->
     ('a * 'b * 'c * 'd * 'e * 'f * 'g) t
 
-  (** [tup8 ?flatten e1 e2 e3 e4 e5 e6 e7 e8] combines the given encoders
-      [e1 .. e8] into an encoder for a tuple of eight elements. *)
   val tup8 :
     flatten:bool ->
     'a t ->
@@ -171,6 +173,19 @@ module type S = sig
     'g t ->
     'h t ->
     ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h) t
+
+  val tup9 :
+    flatten:bool ->
+    'a t ->
+    'b t ->
+    'c t ->
+    'd t ->
+    'e t ->
+    'f t ->
+    'g t ->
+    'h t ->
+    'i t ->
+    ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h * 'i) t
 
   (** [raw key] is an encoder for bytes under the given [key]. *)
   val raw : key -> bytes t
@@ -228,6 +243,18 @@ module type S = sig
   (** [option enc] lifts the given encoding [enc] to one that can encode
       optional values. *)
   val option : 'a t -> 'a option t
+
+  (** [delayed f] constructs an encoder from [f] that delays the computation
+       of [f] until either the encoder or the decoder is run the first time.
+       The function ensures that [f] is only ever executed once. This combinator
+       can be useful for constructing recursive encoders. *)
+  val delayed : (unit -> 'a t) -> 'a t
+
+  (** [with_self_reference f] creates an encoder that allows accessing the
+      encoded/decoded value itself. It's useful for encoding cyclic
+      data-structures. Here, [f] is a function that takes the self-reference as
+      an argument and constructs an encoder. *)
+  val with_self_reference : ('a -> 'a t) -> 'a t
 end
 
 (** Produces an encoder/decoder module with the provided map, vector and tree

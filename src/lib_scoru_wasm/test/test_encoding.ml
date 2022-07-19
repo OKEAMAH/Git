@@ -233,48 +233,41 @@ let test_tuples () =
   let open Merklizer in
   let open Lwt_result_syntax in
   let int = value ["my_int"] Data_encoding.int31 in
+  let* () = assert_round_trip (tup2 int int) (1, 2) Stdlib.( = ) in
+  let* () = assert_round_trip (tup3 int int int) (1, 2, 3) Stdlib.( = ) in
   let* () =
-    assert_round_trip (tup2 ~flatten:false int int) (1, 2) Stdlib.( = )
+    assert_round_trip (tup4 int int int int) (1, 2, 3, 4) Stdlib.( = )
   in
   let* () =
-    assert_round_trip (tup3 ~flatten:false int int int) (1, 2, 3) Stdlib.( = )
-  in
-  let* () =
-    assert_round_trip
-      (tup4 ~flatten:false int int int int)
-      (1, 2, 3, 4)
-      Stdlib.( = )
+    assert_round_trip (tup5 int int int int int) (1, 2, 3, 4, 5) Stdlib.( = )
   in
   let* () =
     assert_round_trip
-      (tup5 ~flatten:false int int int int int)
-      (1, 2, 3, 4, 5)
-      Stdlib.( = )
-  in
-  let* () =
-    assert_round_trip
-      (tup6 ~flatten:false int int int int int int)
+      (tup6 int int int int int int)
       (1, 2, 3, 4, 5, 6)
       Stdlib.( = )
   in
   let* () =
     assert_round_trip
-      (tup7 ~flatten:false int int int int int int int)
+      (tup7 int int int int int int int)
       (1, 2, 3, 4, 5, 6, 7)
       Stdlib.( = )
   in
   let* () =
     assert_round_trip
-      (tup8 ~flatten:false int int int int int int int int)
+      (tup8 int int int int int int int int)
       (1, 2, 3, 4, 5, 6, 7, 8)
       Stdlib.( = )
   in
   let* () =
     assert_round_trip
-      (tup2
-         ~flatten:false
-         (tup2 ~flatten:false int int)
-         (tup2 ~flatten:false int int))
+      (tup9 int int int int int int int int int)
+      (1, 2, 3, 4, 5, 6, 7, 8, 9)
+      Stdlib.( = )
+  in
+  let* () =
+    assert_round_trip
+      (tup2 (tup2 int int) (tup2 int int))
       ((1, 2), (3, 4))
       Stdlib.( = )
   in
@@ -286,7 +279,7 @@ let test_tuples () =
      layer. *)
   let* () =
     assert_round_trip
-      (tup3 ~flatten:true (scope ["A"] int) (scope ["B"] int) (scope ["C"] int))
+      (tup3 ~flatten:() (scope ["A"] int) (scope ["B"] int) (scope ["C"] int))
       (1, 2, 3)
       Stdlib.( = )
   in
@@ -296,7 +289,7 @@ let test_option () =
   let open Merklizer in
   let open Lwt_result_syntax in
   let int = value [] Data_encoding.int31 in
-  let enc = option (tup2 ~flatten:false int int) in
+  let enc = option (tup2 int int) in
   let* () = assert_round_trip enc (Some (1, 2)) Stdlib.( = ) in
   let* () = assert_round_trip enc None Stdlib.( = ) in
   return_unit
@@ -307,6 +300,24 @@ let test_value_option () =
   let enc = value_option [] Data_encoding.int31 in
   let* () = assert_round_trip enc (Some 1) Stdlib.( = ) in
   let* () = assert_round_trip enc None Stdlib.( = ) in
+
+type cyclic = {name : string; self : unit -> cyclic}
+
+let test_with_self_ref () =
+  let open Merklizer in
+  let open Lwt_result_syntax in
+  let enc =
+    with_self_reference (fun cycle ->
+        conv
+          (fun name -> {name; self = (fun () -> cycle)})
+          (fun {name; _} -> name)
+          (value [] Data_encoding.string))
+  in
+  let rec cycle = {name = "Cycle"; self = (fun () -> cycle)} in
+  let*! {name; self} = encode_decode enc cycle in
+  assert (name = "Cycle") ;
+  (* Check that physical equality is preserved. *)
+  assert (cycle == self ()) ;
   return_unit
 
 let tests =
@@ -327,4 +338,5 @@ let tests =
     tztest "Tuples" `Quick test_tuples;
     tztest "Option" `Quick test_option;
     tztest "Value Option" `Quick test_value_option;
+    tztest "Self ref" `Quick test_with_self_ref;
   ]

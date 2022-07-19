@@ -98,6 +98,10 @@ module type S = sig
   (** [tup3 e1 e2] creates an encoder that encodes a triple of elements using
       [e1], [e2], and [e3]. *)
   val tup3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+
+  (** [delayed f] takes a function for constructing an encoding. The evaluation
+      of [f] is delayed until the encoder is run. *)
+  val delayed : (unit -> 'a t) -> 'a t
 end
 
 module Make : functor (T : Tree.S) -> S with type tree = T.tree

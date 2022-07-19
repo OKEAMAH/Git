@@ -59,6 +59,8 @@ module type S = sig
   val tup2 : 'a t -> 'b t -> ('a * 'b) t
 
   val tup3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+
+  val delayed : (unit -> 'a t) -> 'a t
 end
 
 module Make (T : Tree.S) = struct
@@ -143,4 +145,6 @@ module Make (T : Tree.S) = struct
     match tree_opt with
     | None -> raise No_tag_matched_on_encoding
     | Some tree -> return tree
+
+  let delayed f x key tree = f () x key tree
 end

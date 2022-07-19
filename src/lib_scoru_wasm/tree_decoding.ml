@@ -60,6 +60,8 @@ module type S = sig
 
   val tagged_union : 'tag t -> ('tag, 'a) case list -> 'a t
 
+  val delayed : (unit -> 'a t) -> 'a t
+
   module Syntax : sig
     val return : 'a -> 'a t
 
@@ -169,4 +171,6 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
              Some (map_lwt extract (scope ["value"] decode) input_tree prefix)
            else None)
     |> Option.value_f ~default:(fun _ -> raise No_tag_matched_on_decoding)
+
+  let delayed f tree key = f () tree key
 end

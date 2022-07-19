@@ -112,6 +112,11 @@ module type S = sig
       locally in functions. Within the scope of this module, the code can
       include binding operators, leading to a [let]-style syntax. Similar to
       {!Lwt_result_syntax} and other syntax modules. *)
+
+  (** [delayed f] takes a function for constructing a decoding. The evaluation
+      of [f] is delayed until the decoder is run. *)
+  val delayed : (unit -> 'a t) -> 'a t
+
   module Syntax : sig
     (** [return x] returns a value in the decoding monad. *)
     val return : 'a -> 'a t
