@@ -80,9 +80,7 @@ type frame_data = {inst : module_inst; locals : value ref list}
 type label_context = int32 * instr option * value stack
 type frame_context = int32 * frame_data * value stack
 
-and admin_instr = admin_instr' phrase
-
-and admin_instr' =
+type admin_instr' =
   | From_block of block_label * int32
   | Plain of instr'
   | Refer of ref_
@@ -92,6 +90,7 @@ and admin_instr' =
   | Breaking of int32 * value stack
   | Label of label_context * admin_instr list
   | Frame of frame_context * admin_instr list
+and admin_instr = admin_instr' phrase
 
 
 
