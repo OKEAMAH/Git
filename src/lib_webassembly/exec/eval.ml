@@ -69,12 +69,40 @@ meaning
   - Run cont2 with data2 context, then
   - Run cont1 with data1 context
 
+Equivalently, we can keep an actual stack of label_context/frame_context with a special instruction to pop one
+  {
+    ...
+    stack = [data3, data2, data1]
+    code  = [k,     cont2, cont1]
+  }
+
+We will no longer list instructions and *_context in Label/Frame, so the recursive call to [step], with its replacement of ?? goes away.
+Instead we keep executing the first element of [code] with the environment of [stack].
+
+  (Frame ctxt [])
+  (Label ctxt [])
+    copies data3 to data2
+    pops the empty list
+    TODO must bound the length of stack
+  (Frame ctxt (Trapping::_))
+  (Label ctxt (Trapping::_))
+    ignores data3
+    puts a Trapping at the head of cont2
+  (Frame ctxt (Returning::_))
+  (Label ctxt (Returning::_))
+    copies N eleme of data3 to data2
+    pops the empty list
+
+
+  TODO all lookups to [config] have to be carefully refactored to look for the top
+    frame_data, branch instr, value stack
+
 
 TODO
 - Create frame_context, label_context
 - Move value stack into *_context
 
-
+ma
  *)
 type frame_data = {inst : module_inst; locals : value ref list}
 type label_context = int32 * instr option * value stack
