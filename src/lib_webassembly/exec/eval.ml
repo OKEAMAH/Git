@@ -56,63 +56,63 @@ let numeric_error at = function
 type 'a stack = 'a list
 
 (* Invariants:
-  - config.code initially has no Label or Frame, as we always start with a singleton list [Invoke ...]
-  - consecutive config only pushes Label and Frame at the top of the outer code, or as a singleton Label in a new Frame
-So we may have something like
-  {
-    ...
-    code =
-      Frame data1 (Frame data2 (Frame data3 k)::cont2 )::cont1
-  }
-meaning
-  - Run k     with data3 context, then
-  - Run cont2 with data2 context, then
-  - Run cont1 with data1 context
+     - config.code initially has no Label or Frame, as we always start with a singleton list [Invoke ...]
+     - consecutive config only pushes Label and Frame at the top of the outer code, or as a singleton Label in a new Frame
+   So we may have something like
+     {
+       ...
+       code =
+         Frame data1 (Frame data2 (Frame data3 k)::cont2 )::cont1
+     }
+   meaning
+     - Run k     with data3 context, then
+     - Run cont2 with data2 context, then
+     - Run cont1 with data1 context
 
-Equivalently, we can keep an actual stack of label_context/frame_context with a special instruction to pop one
-  {
-    ...
-    stack = [data3, data2, data1]
-    code  = [k,     cont2, cont1]
-  }
+   Equivalently, we can keep an actual stack of label_context/frame_context with a special instruction to pop one
+     {
+       ...
+       stack = [data3, data2, data1]
+       code  = [k,     cont2, cont1]
+     }
 
-We will no longer list instructions and *_context in Label/Frame, so the recursive call to [step], with its replacement of ?? goes away.
-Instead we keep executing the first element of [code] with the environment of [stack].
+   We will no longer list instructions and *_context in Label/Frame, so the recursive call to [step], with its replacement of ?? goes away.
+   Instead we keep executing the first element of [code] with the environment of [stack].
 
-  (Frame ctxt [])
-  (Label ctxt [])
-    copies data3 to data2
-    pops the empty list
-    TODO must bound the length of stack
-  (Frame ctxt (Trapping::_))
-  (Label ctxt (Trapping::_))
-    ignores data3
-    puts a Trapping at the head of cont2
-  (Frame ctxt (Returning::_))
-  (Label ctxt (Returning::_))
-    copies N eleme of data3 to data2
-    pops the empty list
-
-
-  TODO all lookups to [config] have to be carefully refactored to look for the top
-    frame_data, branch instr, value stack
+     (Frame ctxt [])
+     (Label ctxt [])
+       copies data3 to data2
+       pops the empty list
+       TODO must bound the length of stack
+     (Frame ctxt (Trapping::_))
+     (Label ctxt (Trapping::_))
+       ignores data3
+       puts a Trapping at the head of cont2
+     (Frame ctxt (Returning::_))
+     (Label ctxt (Returning::_))
+       copies N eleme of data3 to data2
+       pops the empty list
 
 
-TODO
-- Create frame_context, label_context
-- Move value stack into *_context
+     TODO all lookups to [config] have to be carefully refactored to look for the top
+       frame_data, branch instr, value stack
 
 
-------
-STRATEGY 2
-- Move (value stack) into *_context as above
-- Replace admin_instr part of label/frame w pointer to a blob in the context
-- Carry throug recursive calls to step, allow updating
+   TODO
+   - Create frame_context, label_context
+   - Move value stack into *_context
 
 
- *)
+   ------
+   STRATEGY 2
+   - Move (value stack) into *_context as above
+   - Replace admin_instr part of label/frame w pointer to a blob in the context
+   - Carry throug recursive calls to step, allow updating
+*)
 type frame_data = {inst : module_inst; locals : value ref list}
+
 type label_context = int32 * instr option * value stack
+
 type frame_context = int32 * frame_data * value stack
 
 type admin_instr' =
@@ -125,23 +125,22 @@ type admin_instr' =
   | Breaking of int32 * value stack
   | Label of label_context * admin_instr list
   | Frame of frame_context * admin_instr list
+
 and admin_instr = admin_instr' phrase
 
-
-
 (* TODO move? *)
-let code_stack (x,_) = x
-let code_cont (_,x) = x
+let code_stack (x, _) = x
 
+let code_cont (_, x) = x
 
 (* structurally [step] is
-    a State monad in [code]
-    a Reader in everything else
+     a State monad in [code]
+     a Reader in everything else
 
-  Note that one of the 2 recursive [step] calls (for Frame) effectively uses "local"
-  to overwrite all fields (except input which is carried through unchanged).
-  This is fine because we rely on mutation/pass-by-reference (TODO bad idea?)
- *)
+   Note that one of the 2 recursive [step] calls (for Frame) effectively uses "local"
+   to overwrite all fields (except input which is carried through unchanged).
+   This is fine because we rely on mutation/pass-by-reference (TODO bad idea?)
+*)
 type config = {
   frame : frame_data;
   input : input_inst;
@@ -300,7 +299,8 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
             let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
             ( vs',
               [
-                Label ((n1, Some (e' @@ e.at), args), [From_block (es', 0l) @@ e.at])
+                Label
+                  ((n1, Some (e' @@ e.at), args), [From_block (es', 0l) @@ e.at])
                 @@ e.at;
               ] )
         | If (bt, es1, es2), Num (I32 i) :: vs' ->
@@ -818,35 +818,37 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
     | Returning vs', vs -> Crash.error e.at "undefined frame"
     | Breaking (k, vs'), vs -> Crash.error e.at "undefined label"
     | Label ((_n, _es0, vs'), []), vs -> Lwt.return (vs' @ vs, [])
-    | Label ((_n, _es0, _vs'), ({it = Trapping msg; at} :: _es')), vs ->
+    | Label ((_n, _es0, _vs'), {it = Trapping msg; at} :: _es'), vs ->
         Lwt.return (vs, [Trapping msg @@ at])
-    | Label ((_n, _es0, _vs'), ({it = Returning vs0; at} :: _es')), vs ->
+    | Label ((_n, _es0, _vs'), {it = Returning vs0; at} :: _es'), vs ->
         Lwt.return (vs, [Returning vs0 @@ at])
-    | Label ((n, es0, vs'), ({it = Breaking (0l, vs0); at} :: es')), vs ->
-        Lwt.return (take n vs0 e.at @ vs, match es0 with
-          | None -> []
-          | Some x -> [plain x])
-    | Label ((n, es0, vs'), ({it = Breaking (k, vs0); at} :: es')), vs ->
+    | Label ((n, es0, vs'), {it = Breaking (0l, vs0); at} :: es'), vs ->
+        Lwt.return
+          ( take n vs0 e.at @ vs,
+            match es0 with None -> [] | Some x -> [plain x] )
+    | Label ((n, es0, vs'), {it = Breaking (k, vs0); at} :: es'), vs ->
         Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at])
     | Label ((n, es0, vs'), es'), vs ->
         let+ c' = step {c with code = (vs', es')} in
         (vs, [Label ((n, es0, code_stack c'.code), code_cont c'.code) @@ e.at])
-    | Frame ((n, frame', vs'), ([])), vs -> Lwt.return (vs' @ vs, [])
-    | Frame ((n, frame', vs'), ({it = Trapping msg; at} :: es')), vs ->
+    | Frame ((n, frame', vs'), []), vs -> Lwt.return (vs' @ vs, [])
+    | Frame ((n, frame', vs'), {it = Trapping msg; at} :: es'), vs ->
         Lwt.return (vs, [Trapping msg @@ at])
-    | Frame ((n, frame', vs'), ({it = Returning vs0; at} :: es')), vs ->
+    | Frame ((n, frame', vs'), {it = Returning vs0; at} :: es'), vs ->
         Lwt.return (take n vs0 e.at @ vs, [])
     | Frame ((n, frame', vs'), es'), vs ->
         let+ c' =
           step
             {
               frame = frame';
-              code = vs', es';
+              code = (vs', es');
               budget = c.budget - 1;
               input = c.input;
             }
         in
-        (vs, [Frame ((n, c'.frame, code_stack c'.code), code_cont c'.code) @@ e.at])
+        ( vs,
+          [Frame ((n, c'.frame, code_stack c'.code), code_cont c'.code) @@ e.at]
+        )
     | Invoke func, vs when c.budget = 0 ->
         Exhaustion.error e.at "call stack exhausted"
     | Invoke func, vs -> (
@@ -867,11 +869,11 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
             let frame' = {inst = !inst'; locals = List.map ref locals'} in
             let instr' =
               [
-                Label ((n2, None, []), ([From_block (f.it.body, 0l) @@ f.at]))
+                Label ((n2, None, []), [From_block (f.it.body, 0l) @@ f.at])
                 @@ f.at;
               ]
             in
-            (vs', [Frame ((n2, frame', []), (instr')) @@ e.at])
+            (vs', [Frame ((n2, frame', []), instr') @@ e.at])
         | Func.HostFunc (t, f) ->
             let inst = ref frame.inst in
             Lwt.catch
