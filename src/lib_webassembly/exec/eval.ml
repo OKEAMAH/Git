@@ -106,8 +106,9 @@ TODO
 ------
 STRATEGY 2
 - Move (value stack) into *_context as above
-- Every time we push a new Label or Frame, allocate a new value with admin_instr
-- Store pointer to that
+- Replace admin_instr part of label/frame w pointer to a blob in the context
+- Carry throug recursive calls to step, allow updating
+
 
  *)
 type frame_data = {inst : module_inst; locals : value ref list}
@@ -133,7 +134,14 @@ let code_stack (x,_) = x
 let code_cont (_,x) = x
 
 
+(* structurally [step] is
+    a State monad in [code]
+    a Reader in everything else
 
+  Note that one of the 2 recursive [step] calls (for Frame) effectively uses "local"
+  to overwrite all fields (except input which is carried through unchanged).
+  This is fine because we rely on mutation/pass-by-reference (TODO bad idea?)
+ *)
 type config = {
   frame : frame_data;
   input : input_inst;
