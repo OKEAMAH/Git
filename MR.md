@@ -37,3 +37,17 @@ Hacky way of running a single WASM test suite test
 
 To run all use
     (make && make test-webassembly)
+
+
+
+
+
+## Talk
+10 min, 4 slides
+
+1. Host Functions, input
+2. How are the ticks small? Execution example
+  Merkelized memory
+  Merkelized execution state
+3. trili/kernel - adversarial env
+4. what can a kernel do?
