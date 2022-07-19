@@ -77,7 +77,7 @@ TODO
 
  *)
 type frame_data = {inst : module_inst; locals : value ref list}
-type label_context = int32 * instr option
+type label_context = int32 * instr option * value stack
 type frame_context = int32 * frame_data
 
 type code = value stack * admin_instr list
@@ -92,9 +92,14 @@ and admin_instr' =
   | Trapping of string
   | Returning of value stack
   | Breaking of int32 * value stack
-  | Label of label_context * code
+  | Label of label_context * admin_instr list
   | Frame of frame_context * code
 
+
+
+(* TODO move? *)
+let code_stack (x,_) = x
+let code_cont (_,x) = x
 
 
 
@@ -248,7 +253,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
             let n2 = Lazy_vector.LwtInt32Vector.num_elements ts2 in
             let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
             ( vs',
-              [Label ((n2, None), (args, [From_block (es', 0l) @@ e.at])) @@ e.at]
+              [Label ((n2, None, args), [From_block (es', 0l) @@ e.at]) @@ e.at]
             )
         | Loop (bt, es'), vs ->
             let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
@@ -256,7 +261,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
             let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
             ( vs',
               [
-                Label ((n1, Some (e' @@ e.at)), (args, [From_block (es', 0l) @@ e.at]))
+                Label ((n1, Some (e' @@ e.at), args), [From_block (es', 0l) @@ e.at])
                 @@ e.at;
               ] )
         | If (bt, es1, es2), Num (I32 i) :: vs' ->
@@ -773,20 +778,20 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
     | Trapping msg, vs -> assert false
     | Returning vs', vs -> Crash.error e.at "undefined frame"
     | Breaking (k, vs'), vs -> Crash.error e.at "undefined label"
-    | Label ((n, es0), (vs', [])), vs -> Lwt.return (vs' @ vs, [])
-    | Label ((n, es0), (vs', {it = Trapping msg; at} :: es')), vs ->
+    | Label ((n, es0, vs'), []), vs -> Lwt.return (vs' @ vs, [])
+    | Label ((n, es0, vs'), ({it = Trapping msg; at} :: es')), vs ->
         Lwt.return (vs, [Trapping msg @@ at])
-    | Label ((n, es0), (vs', {it = Returning vs0; at} :: es')), vs ->
+    | Label ((n, es0, vs'), ({it = Returning vs0; at} :: es')), vs ->
         Lwt.return (vs, [Returning vs0 @@ at])
-    | Label ((n, es0), (vs', {it = Breaking (0l, vs0); at} :: es')), vs ->
+    | Label ((n, es0, vs'), ({it = Breaking (0l, vs0); at} :: es')), vs ->
         Lwt.return (take n vs0 e.at @ vs, match es0 with
           | None -> []
           | Some x -> [plain x])
-    | Label ((n, es0), (vs', {it = Breaking (k, vs0); at} :: es')), vs ->
+    | Label ((n, es0, vs'), ({it = Breaking (k, vs0); at} :: es')), vs ->
         Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at])
-    | Label ((n, es0), code'), vs ->
-        let+ c' = step {c with code = code'} in
-        (vs, [Label ((n, es0), c'.code) @@ e.at])
+    | Label ((n, es0, vs'), es'), vs ->
+        let+ c' = step {c with code = (vs', es')} in
+        (vs, [Label ((n, es0, code_stack c'.code), code_cont c'.code) @@ e.at])
     | Frame ((n, frame'), (vs', [])), vs -> Lwt.return (vs' @ vs, [])
     | Frame ((n, frame'), (vs', {it = Trapping msg; at} :: es')), vs ->
         Lwt.return (vs, [Trapping msg @@ at])
@@ -823,7 +828,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
             let frame' = {inst = !inst'; locals = List.map ref locals'} in
             let instr' =
               [
-                Label ((n2, None), ([], [From_block (f.it.body, 0l) @@ f.at]))
+                Label ((n2, None, []), ([From_block (f.it.body, 0l) @@ f.at]))
                 @@ f.at;
               ]
             in
