@@ -9,6 +9,10 @@ Goal: Run VM to computation point, produce small computation tick
 - Which kernel?
   - Use test kernel by Emma
   - Can we look at it to see what it does?
+    - Source code here:
+      https://gitlab.com/trili/kernel/-/blob/main/test_kernel/src/lib.rs
+    - No input, does not import any host functions
+    - Addition and allocations, includes wee_alloc (small allocator)
 
 ## WASM utils
 
