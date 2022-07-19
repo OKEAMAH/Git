@@ -101,7 +101,7 @@ and admin_instr' =
 type config = {
   frame : frame_data;
   input : input_inst;
-  code : code;
+  code : value stack * admin_instr' phrase list;
   budget : int; (* to model stack overflow *)
 }
 
