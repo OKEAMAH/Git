@@ -131,7 +131,7 @@ type config = {
   (* Invariant: outer-list-never-empty
 
      TODO: use a non-empty list type to enforce this
-   *)
+  *)
   code : value stack * admin_instr list list;
   budget : int; (* to model stack overflow *)
 }
@@ -250,122 +250,96 @@ let rec step (c : config) : config Lwt.t =
   let {frame; code = vs, ess; _} = c in
   match ess with
   | [] -> assert false (* outer-list-never-empty *)
-  | es :: ess ->
-    match es with
-    | {it = From_block (Block_label b, i); at} :: es ->
-        let* block = Vector.get b frame.inst.Instance.blocks in
-        let length = Vector.num_elements block in
-        if i = length then Lwt.return {c with code = (vs, es :: ess)}
-        else
-          let* e, es =
-            let* instr = Vector.get i block in
-            Lwt.return
-              ( Plain instr.it @@ instr.at,
-                {it = From_block (Block_label b, Int32.succ i); at} :: es )
-          in
-          step_resolved c frame vs e es ess
-    | e :: es -> step_resolved c frame vs e es ess
-    | [] -> Lwt.return c
+  | es :: ess -> (
+      match es with
+      | {it = From_block (Block_label b, i); at} :: es ->
+          let* block = Vector.get b frame.inst.Instance.blocks in
+          let length = Vector.num_elements block in
+          if i = length then Lwt.return {c with code = (vs, es :: ess)}
+          else
+            let* e, es =
+              let* instr = Vector.get i block in
+              Lwt.return
+                ( Plain instr.it @@ instr.at,
+                  {it = From_block (Block_label b, Int32.succ i); at} :: es )
+            in
+            step_resolved c frame vs e es ess
+      | e :: es -> step_resolved c frame vs e es ess
+      | [] -> Lwt.return c)
 
 and step_resolved (c : config) frame vs e es ess : config Lwt.t =
   (* Steps that may peak one element of ess and update ess *)
   let+ vs', es', ess' =
     match (e.it, vs, ess) with
     (* Just peeking *)
-    | Label ((n, es0, vs')), vs, [] :: _ -> Lwt.return (vs' @ vs, [], ess)
-    | Label ((_n, _es0, _vs')), vs, ({it = Trapping msg; at} :: _es') :: _ ->
+    | Label (n, es0, vs'), vs, [] :: _ -> Lwt.return (vs' @ vs, [], ess)
+    | Label (_n, _es0, _vs'), vs, ({it = Trapping msg; at} :: _es') :: _ ->
         Lwt.return (vs, [Trapping msg @@ at], ess)
-    | Label ((_n, _es0, _vs')), vs, ({it = Returning vs0; at} :: _es') :: _ ->
+    | Label (_n, _es0, _vs'), vs, ({it = Returning vs0; at} :: _es') :: _ ->
         Lwt.return (vs, [Returning vs0 @@ at], ess)
-    | Label ((n, es0, vs')), vs, ({it = Breaking (0l, vs0); at} :: es') :: _ ->
+    | Label (n, es0, vs'), vs, ({it = Breaking (0l, vs0); at} :: es') :: _ ->
         Lwt.return
           ( take n vs0 e.at @ vs,
             (match es0 with None -> [] | Some x -> [plain x]),
             ess )
-    | Label ((n, es0, vs')), vs, ({it = Breaking (k, vs0); at} :: es') :: _ ->
+    | Label (n, es0, vs'), vs, ({it = Breaking (k, vs0); at} :: es') :: _ ->
         Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at], ess)
-    | Frame ((n, frame', vs')), vs, [] :: _ -> Lwt.return (vs' @ vs, [], ess)
-    | Frame ((n, frame', vs')), vs, ({it = Trapping msg; at} :: es') :: _ ->
+    | Frame (n, frame', vs'), vs, [] :: _ -> Lwt.return (vs' @ vs, [], ess)
+    | Frame (n, frame', vs'), vs, ({it = Trapping msg; at} :: es') :: _ ->
         Lwt.return (vs, [Trapping msg @@ at], ess)
-    | Frame ((n, frame', vs')), vs, ({it = Returning vs0; at} :: es') :: _ ->
+    | Frame (n, frame', vs'), vs, ({it = Returning vs0; at} :: es') :: _ ->
         Lwt.return (take n vs0 e.at @ vs, [], ess)
     (* Updating *)
-          | Invoke func, _vs, _ess when c.budget = 0 ->
-              Exhaustion.error e.at "call stack exhausted"
-          | Invoke func, vs, ess -> (
-              let (FuncType (ins, out)) = func_type_of func in
-              let n1, n2 =
-                ( Instance.Vector.num_elements ins,
-                  Instance.Vector.num_elements out )
-              in
-              let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
-              match func with
-              | Func.AstFunc (t, inst', f) ->
-                  (* TODO: https://gitlab.com/tezos/tezos/-/issues/3366 &
-                     https://gitlab.com/tezos/tezos/-/issues/3082
+    | Invoke func, _vs, _ess when c.budget = 0 ->
+        Exhaustion.error e.at "call stack exhausted"
+    | Invoke func, vs, ess -> (
+        let (FuncType (ins, out)) = func_type_of func in
+        let n1, n2 =
+          (Instance.Vector.num_elements ins, Instance.Vector.num_elements out)
+        in
+        let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
+        match func with
+        | Func.AstFunc (t, inst', f) ->
+            (* TODO: https://gitlab.com/tezos/tezos/-/issues/3366 &
+               https://gitlab.com/tezos/tezos/-/issues/3082
 
-                     This conversion to list can probably be avoided by using
-                     Lazy_vector in the config for local variables. *)
-                  let+ locals =
-                    Lazy_vector.LwtInt32Vector.to_list f.it.locals
-                  in
-                  let locals' = List.rev args @ List.map default_value locals in
-                  let frame' = {inst = !inst'; locals = List.map ref locals'} in
-                  let instr' =
-                    [
-                      Label
-                        ((n2, None, [])
-                        )
-                      @@ f.at;
-                    ]
-                  in
-                  (vs', [Frame ((n2, frame', [])) @@ e.at],
-                        (instr'
-                        :: [From_block (f.it.body, 0l) @@ f.at]
-                        :: ess))
-              | Func.HostFunc (t, f) ->
-                  let inst = ref frame.inst in
-                  Lwt.catch
-                    (fun () ->
-                      let+ res = f c.input inst (List.rev args) in
-                      (List.rev res @ vs', [], ess))
-                    (function
-                      | Crash (_, msg) -> Crash.error e.at msg
-                      | exn -> raise exn)
-            )
-              | Plain (Block (bt, es')), vs, ess->
-                  let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
-                  let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
-                  let n2 = Lazy_vector.LwtInt32Vector.num_elements ts2 in
-                  let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
-                  ( vs',
-                    [
-                      Label ((n2, None, args))
-                      @@ e.at;
-                    ],
-                    ([From_block (es', 0l) @@ e.at] ::
-                    ess))
-              | Plain (Loop (bt, es') as e'), vs, ess ->
-                  let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
-                  let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
-                  let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
-                  ( vs',
-                    [
-                      Label
-                        ( (n1, Some (e' @@ e.at), args)
-                          )
-                      @@ e.at;
-                    ],
-
-                          ([From_block (es', 0l) @@ e.at]  ::
-                    ess))
+               This conversion to list can probably be avoided by using
+               Lazy_vector in the config for local variables. *)
+            let+ locals = Lazy_vector.LwtInt32Vector.to_list f.it.locals in
+            let locals' = List.rev args @ List.map default_value locals in
+            let frame' = {inst = !inst'; locals = List.map ref locals'} in
+            let instr' = [Label (n2, None, []) @@ f.at] in
+            ( vs',
+              [Frame (n2, frame', []) @@ e.at],
+              instr' :: [From_block (f.it.body, 0l) @@ f.at] :: ess )
+        | Func.HostFunc (t, f) ->
+            let inst = ref frame.inst in
+            Lwt.catch
+              (fun () ->
+                let+ res = f c.input inst (List.rev args) in
+                (List.rev res @ vs', [], ess))
+              (function
+                | Crash (_, msg) -> Crash.error e.at msg | exn -> raise exn))
+    | Plain (Block (bt, es')), vs, ess ->
+        let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
+        let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
+        let n2 = Lazy_vector.LwtInt32Vector.num_elements ts2 in
+        let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
+        ( vs',
+          [Label (n2, None, args) @@ e.at],
+          [From_block (es', 0l) @@ e.at] :: ess )
+    | Plain (Loop (bt, es') as e'), vs, ess ->
+        let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
+        let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
+        let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
+        ( vs',
+          [Label (n1, Some (e' @@ e.at), args) @@ e.at],
+          [From_block (es', 0l) @@ e.at] :: ess )
     (* Updating *)
-    | Label ((n, es0, vs')), vs, ess ->
+    | Label (n, es0, vs'), vs, ess ->
         let+ c' = step {c with code = (vs', ess)} in
-        ( vs,
-          [Label ((n, es0, code_stack c'.code)) @@ e.at],
-          code_cont c'.code )
-    | Frame ((n, frame', vs')), vs, ess ->
+        (vs, [Label (n, es0, code_stack c'.code) @@ e.at], code_cont c'.code)
+    | Frame (n, frame', vs'), vs, ess ->
         let+ c' =
           step
             {
@@ -376,7 +350,7 @@ and step_resolved (c : config) frame vs e es ess : config Lwt.t =
             }
         in
         ( vs,
-          [Frame ((n, c'.frame, code_stack c'.code)) @@ e.at],
+          [Frame (n, c'.frame, code_stack c'.code) @@ e.at],
           code_cont c'.code )
     | _ ->
         (* Steps that may not rewrite ess, as in original interpreter *)
@@ -962,11 +936,11 @@ and step_resolved (c : config) frame vs e es ess : config Lwt.t =
         in
         (vs', es', ess)
   in
-  {c with code = (vs', (es' @ es) :: ess' )}
+  {c with code = (vs', (es' @ es) :: ess')}
 
 let rec eval (c : config) : value stack Lwt.t =
   match c.code with
-  | vs, [] :: _-> Lwt.return vs
+  | vs, [] :: _ -> Lwt.return vs
   | vs, ({it = Trapping msg; at} :: _) :: _ -> Trap.error at msg
   | vs, es ->
       let* c = step c in
@@ -1263,6 +1237,6 @@ let init (m : module_) (exts : extern list) : module_inst Lwt.t =
   let es_data = List.concat (Lib.List32.mapi (run_data inst) datas) in
   let es_start = Lib.Option.get (Lib.Option.map run_start start) [] in
   let+ (_ : Values.value stack) =
-    eval (config inst [] [(es_elem @ es_data @ es_start)])
+    eval (config inst [] [es_elem @ es_data @ es_start])
   in
   inst
