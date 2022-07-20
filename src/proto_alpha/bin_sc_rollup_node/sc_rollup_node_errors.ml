@@ -34,6 +34,8 @@ type error += Unreliable_tezos_node_returning_inconsistent_game
 type error +=
   | Cannot_produce_proof of Store.Inbox.t * Store.Inbox.history * Raw_level.t
 
+type error += Missing_PVM_state of Block_hash.t * Raw_level.t
+
 let () =
   register_error_kind
     `Permanent
@@ -107,4 +109,23 @@ let () =
           Some (inbox, history, level)
       | _ -> None)
     (fun (inbox, history, level) ->
-      Cannot_produce_proof (inbox, history, level))
+      Cannot_produce_proof (inbox, history, level)) ;
+
+  register_error_kind
+    `Permanent
+    ~id:"internal.missing_pvm_state"
+    ~title:"Internal error: Missing PVM state"
+    ~description:"The rollup node cannot retrieve the state of the PVM."
+    ~pp:(fun ppf (block, level) ->
+      Format.fprintf
+        ppf
+        "Cannot retrieve PVM state for block %a at level %a"
+        Block_hash.pp
+        block
+        Raw_level.pp
+        level)
+    Data_encoding.(
+      obj2 (req "block" Block_hash.encoding) (req "level" Raw_level.encoding))
+    (function
+      | Missing_PVM_state (block, level) -> Some (block, level) | _ -> None)
+    (fun (block, level) -> Missing_PVM_state (block, level))
