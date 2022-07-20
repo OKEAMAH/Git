@@ -35,41 +35,93 @@ module Kate_amortized = struct
   module Domain = Bls12_381_polynomial.Polynomial.Domain
   module Polynomial = Bls12_381_polynomial.Polynomial
 
-  external prepare_fft :
-    int -> Scalar.t -> Scalar.t array -> Scalar.t array -> Scalar.t array -> int
+  external prepare_fft : int -> int -> Scalar.t -> Scalar.t array -> int
     = "caml_fft_prepare_stubs2"
 
   external fft_inplace2_stubs :
+    Scalar.t array -> int -> int -> Scalar.t array -> Scalar.t -> int
+    = "caml_fft_fr_inplace_stubs2"
+
+  external fft_inplace3_stubs :
+    Scalar.t array -> Scalar.t array -> int -> int -> int
+    = "caml_fft_fr_inplace_stubs3"
+
+  external mul_map_inplace3 : Scalar.t array -> Scalar.t -> int -> int
+    = "caml_mul_map_fr_inplace_stubs3"
+
+  (*external fft_inplace4_stubs :
+    Scalar.t array ->
+    Scalar.t array ->
+    Scalar.t array ->
     Scalar.t array ->
     int ->
-    Scalar.t array ->
-    Scalar.t array ->
-    Scalar.t array ->
-    Scalar.t ->
-    int = "caml_fft_fr_inplace_stubs2"
+    int = "fft_fr_inplaceRadix4"*)
 
   (* TODO: avoid float conversions *)
   let log4 a = Float.to_int (floor (Float.of_int (Z.log2 a) /. 2.))
 
-  let prepare_fft ~domain =
-    let n = Array.length domain in
-    let log4dom = log4 (Z.of_int (Array.length domain)) in
-    let multiplicative_group_order = Z.(Scalar.order - one) in
-    let exponent = Z.divexact multiplicative_group_order (Z.of_int (2 * n)) in
-    let phi2N = Scalar.pow (Scalar.of_int 7) exponent in
-    (* TODO*)
-    let w1 = Array.make n Scalar.(copy zero) in
-    let w2 = Array.make n Scalar.(copy zero) in
-    let w3 = Array.make n Scalar.(copy zero) in
-    ignore @@ prepare_fft log4dom phi2N w1 w2 w3 ;
-    (w1, w2, w3)
+  let prepare_fft ~phi2N ~domlen () =
+    Printf.eprintf "\n 24 = " ;
+    String.iter
+      (fun c -> if c = '1' then Printf.eprintf "1" else Printf.eprintf "0")
+      (Z.to_bits @@ Z.of_int 24) ;
+    let n = domlen in
 
-  let fft_inplace2 ~points ~prepare:(w1, w2, w3) =
-    let log4dom = log4 (Z.of_int (Array.length points)) in
+    let log4dom = log4 (Z.of_int n) in
+    Printf.eprintf "\nn=%d ;%d \n" n log4dom ;
+
+    (* TODO*)
+    let len =
+      3
+      * (((domlen - (domlen / (Z.to_int @@ Z.pow (Z.of_int 4) log4dom))) / 3)
+        + 1)
+    in
+
+    Printf.eprintf "\n len = %d \n" len ;
+    let w = Array.make len Scalar.(copy zero) in
+    ignore @@ prepare_fft domlen log4dom phi2N w ;
+    w
+
+  let fft_inplace2 ~points ~prepare =
+    let n = Array.length points in
+    let log4dom = log4 (Z.of_int n) in
     let multiplicative_group_order = Z.(Scalar.order - one) in
     let exponent = Z.divexact multiplicative_group_order (Z.of_int 4) in
     let primroot4th = Scalar.pow (Scalar.of_int 7) exponent in
-    ignore @@ fft_inplace2_stubs points log4dom w1 w2 w3 primroot4th
+    ignore @@ fft_inplace2_stubs points n log4dom prepare primroot4th
+
+  let fft_inplace3 ~domain ~points =
+    let n = Z.of_int (Array.length points) in
+    Printf.eprintf "\n n=%d \n" (Array.length points) ;
+    let log2 = Z.log2 n in
+    let log4 = log4 n in
+    ignore @@ fft_inplace3_stubs points domain log2 log4
+
+  let ifft_inplace3 ~domain ~points =
+    let n = Array.length points in
+    let logn = Z.log2 (Z.of_int n) in
+    let log4 = log4 @@ Z.of_int n in
+    let n_inv = Scalar.inverse_exn (Scalar.of_z (Z.of_int n)) in
+    ignore @@ fft_inplace3_stubs points domain logn log4 ;
+    ignore @@ mul_map_inplace3 points n_inv n
+
+  let build_array w j len =
+    Array.init len (fun i -> Scalar.pow w (Z.of_int @@ (j * i)))
+
+  (*let fft_inplace4 ~domain ~points =
+    let n' = Array.length points in
+    let n = Z.of_int n' in
+    Printf.eprintf "\n n=%d ; %d\n" (Array.length points) (Array.length domain) ;
+    let log2 = Z.log2 n in
+    let _log4 = log4 n in
+    let w = Array.get domain 1 in
+    ignore
+    @@ fft_inplace4_stubs
+         points
+         domain
+         (build_array w 2 n')
+         (build_array w 3 n')
+         log2*)
 
   type proof = G1.t
 
@@ -107,7 +159,7 @@ module Kate_amortized = struct
     Array.iter
       (fun i ->
         if Scalar.eq i Scalar.zero then Printf.eprintf " 0 "
-        else Printf.eprintf " x ")
+        else Printf.eprintf " %s " (Scalar.to_string i))
       a ;
     Printf.eprintf "\n"
 
@@ -188,8 +240,7 @@ module Kate_amortized = struct
 
       if j <> 0 then buffer.(0) <- Scalar.copy coefs.(degree - j) ;
 
-      let prepare = prepare_fft ~domain in
-      fft_inplace2 ~points:buffer ~prepare ;
+      Scalar.fft_inplace ~domain ~points:buffer ;
       let v = precomputed_srs_part.(j) in
       for i = 0 to Array.length domain - 1 do
         buffer_srs.(i) <- G1.(add buffer_srs.(i) (mul v.(i) buffer.(i)))

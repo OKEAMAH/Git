@@ -24,9 +24,9 @@ module Test = struct
 
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
-    let shards_amount = 2048 / 16 in
-    let slot_size = 1048576 / 16 in
-    let slot_segment_size = 4096 / 16 in
+    let shards_amount = 2048 / 32 in
+    let slot_size = 1048576 / 32 in
+    let slot_segment_size = 4096 / 32 in
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
@@ -44,6 +44,78 @@ module Test = struct
 
           let shards_amount = shards_amount
         end) in
+        let l = 3 in
+        (* l must be power of 2 divisible by 4 *)
+        let sz = 1 lsl l in
+        let buffer' =
+          Array.init sz (fun i ->
+              if i < sz then Scalar.of_int i else Scalar.(copy zero))
+        in
+        let d' = Kate_amortized.Kate_amortized.Domain.build ~log:l in
+        let _dom4 = Kate_amortized.Kate_amortized.Domain.subgroup ~log:2 d' in
+        let domrev = Kate_amortized.Kate_amortized.Domain.inverse d' in
+        let dom = Kate_amortized.Kate_amortized.inverse domrev in
+
+        let t = Sys.time () in
+        Kate_amortized.Kate_amortized.fft_inplace3 ~domain:dom ~points:buffer' ;
+
+        Kate_amortized.Kate_amortized.ifft_inplace3
+          ~domain:domrev
+          ~points:buffer' ;
+        Kate_amortized.Kate_amortized.print_array2 buffer' ;
+        Printf.eprintf "\n ntt radix 2 : %f \n" (Sys.time () -. t) ;
+
+        (*Array.iter2
+          (fun a b ->
+            if not (Scalar.eq a b) then
+              Printf.eprintf
+                "\n %s != %s \n"
+                (Scalar.to_string a)
+                (Scalar.to_string b))
+          buffer
+          buffer' ;*)
+        (*Kate_amortized.Kate_amortized.print_array2
+          (Bls12_381_polynomial.Polynomial.Polynomial.to_dense_coefficients res) ;*)
+        let buffer =
+          Array.init sz (fun i ->
+              if i < sz then Scalar.of_int i else Scalar.(copy zero))
+        in
+
+        (*let _prepare =
+            Kate_amortized.Kate_amortized.prepare_fft
+              ~phi2N:(Bls12_381_polynomial.Polynomial.Domain.get dom4 1)
+              ~domlen:(1 lsl l)
+              ()
+          in*)
+        (*let multiplicative_group_order = Z.(Scalar.order - one) in
+          let exponent = Z.divexact multiplicative_group_order (Z.of_int 4) in
+          let primroot4th = Scalar.pow (Array.get dom 1) exponent in*)
+        Printf.eprintf
+          "\n %s ; %s \n "
+          (Scalar.to_string (Kate_amortized.Kate_amortized.Domain.get _dom4 1))
+          (Scalar.to_string (Array.get dom 1)) ;
+        let t = Sys.time () in
+        Scalar.fft_inplace ~domain:dom ~points:buffer ;
+
+        Scalar.ifft_inplace ~domain:domrev ~points:buffer ;
+
+        (*Kate_amortized.Kate_amortized.fft_inplace2 ~points:buffer ~prepare ;*)
+        Kate_amortized.Kate_amortized.print_array2 buffer ;
+
+        Printf.eprintf "\n ntt radix 4 : %f \n" (Sys.time () -. t) ;
+
+        (*Array.iter2
+          (fun a b ->
+            if not (Scalar.eq a b) then
+              Printf.eprintf
+                "\n %s != %s \n"
+                (Scalar.to_string a)
+                (Scalar.to_string b))
+          buffer
+          buffer' ;*)
+        let r = false in
+        assert r ;
+
         let trusted_setup =
           DAL_crypto.build_trusted_setup_instance `Unsafe_for_test_only
           (*(`Files

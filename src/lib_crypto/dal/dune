@@ -19,7 +19,7 @@
   Tezos_error_monad
   -open
   Data_encoding)
- (library_flags :standard -linkall -ccopt -lpthread)
+ (library_flags :standard -linkall -ccopt -lpthread -g)
  (foreign_stubs
   (language c)
   (names fft)))
