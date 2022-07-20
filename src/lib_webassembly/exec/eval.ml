@@ -335,16 +335,15 @@ and step_resolved (c : config) frame vs e es ess : config Lwt.t =
                         (instr'
                         :: [From_block (f.it.body, 0l) @@ f.at]
                         :: ess))
-              | Func.HostFunc (t, f) -> assert false (* TODO *)
-              (*
+              | Func.HostFunc (t, f) ->
                   let inst = ref frame.inst in
                   Lwt.catch
                     (fun () ->
                       let+ res = f c.input inst (List.rev args) in
-                      (List.rev res @ vs', []))
+                      (List.rev res @ vs', [], ess))
                     (function
                       | Crash (_, msg) -> Crash.error e.at msg
-                      | exn -> raise exn) *)
+                      | exn -> raise exn)
             )
               | Plain (Block (bt, es')), vs, ess->
                   let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
