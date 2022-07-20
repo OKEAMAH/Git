@@ -55,10 +55,24 @@ let numeric_error at = function
 
 type 'a stack = 'a list
 
-(* Invariants:
-     - config.code initially has no Label or Frame, as we always start with a singleton list [Invoke ...]
-     - consecutive config only pushes Label and Frame at the top of the outer code, or as a singleton Label in a new Frame
-   So we may have something like
+(**
+
+[admin_instr] are meta-instructions used to determine execution state.
+
+In the original Reference Interpreter [admin_instr] is a recursive type:
+[Frame] and [Label] contain a continuation (list of admin instructions).
+
+Observe that [Label] and [Frame] always exist at the top of a [code]
+continutation as
+
+     - config.code initially has no [Label] or [Frame], as we always start with
+a singleton list [Invoke ...]
+
+     - consecutive config only pushes [Label] and
+[Frame] at the top of the outer code, or as a singleton Label in a new Frame
+
+Example [config]:
+
      {
        ...
        code =
@@ -69,45 +83,17 @@ type 'a stack = 'a list
      - Run cont2 with data2 context, then
      - Run cont1 with data1 context
 
-   Equivalently, we can keep an actual stack of label_context/frame_context with a special instruction to pop one
+We can therefore reorganize the code to represent the continuations explicitly as a vector
+at the top-level:
+
      {
        ...
        stack = [data3, data2, data1]
        code  = [k,     cont2, cont1]
      }
 
-   We will no longer list instructions and *_context in Label/Frame, so the recursive call to [step], with its replacement of ?? goes away.
-   Instead we keep executing the first element of [code] with the environment of [stack].
-
-     (Frame ctxt [])
-     (Label ctxt [])
-       copies data3 to data2
-       pops the empty list
-       TODO must bound the length of stack
-     (Frame ctxt (Trapping::_))
-     (Label ctxt (Trapping::_))
-       ignores data3
-       puts a Trapping at the head of cont2
-     (Frame ctxt (Returning::_))
-     (Label ctxt (Returning::_))
-       copies N eleme of data3 to data2
-       pops the empty list
-
-
-     TODO all lookups to [config] have to be carefully refactored to look for the top
-       frame_data, branch instr, value stack
-
-
-   TODO
-   - Create frame_context, label_context
-   - Move value stack into *_context
-
-
-   ------
-   STRATEGY 2
-   - Move (value stack) into *_context as above
-   - Replace admin_instr part of label/frame w pointer to a blob in the context
-   - Carry throug recursive calls to step, allow updating
+Current the refactoring is minimal, keeping [Label] and [Frame], and storing [value stack] explicitly
+in those. Only code is moved to the top-level.
 *)
 type frame_data = {inst : module_inst; locals : value ref list}
 
@@ -115,7 +101,7 @@ type label_context = int32 * instr option * value stack
 
 type frame_context = int32 * frame_data * value stack
 
-type admin_instr' =
+type nonrec admin_instr' =
   | From_block of block_label * int32
   | Plain of instr'
   | Refer of ref_
@@ -126,9 +112,8 @@ type admin_instr' =
   | Label of label_context
   | Frame of frame_context
 
-and admin_instr = admin_instr' phrase
+type nonrec admin_instr = admin_instr' phrase
 
-(* TODO move? *)
 let code_stack (x, _) = x
 
 let code_cont (_, x) = x
@@ -139,11 +124,14 @@ let code_cont (_, x) = x
 
    Note that one of the 2 recursive [step] calls (for Frame) effectively uses "local"
    to overwrite all fields (except input which is carried through unchanged).
-   This is fine because we rely on mutation/pass-by-reference (TODO bad idea?)
 *)
 type config = {
   frame : frame_data;
   input : input_inst;
+  (* Invariant: outer-list-never-empty
+
+     TODO: use a non-empty list type to enforce this
+   *)
   code : value stack * admin_instr list list;
   budget : int; (* to model stack overflow *)
 }
@@ -261,7 +249,7 @@ let elem_oob frame x i n =
 let rec step (c : config) : config Lwt.t =
   let {frame; code = vs, ess; _} = c in
   match ess with
-  | [] -> assert false (* outer list never empty *)
+  | [] -> assert false (* outer-list-never-empty *)
   | es :: ess ->
     match es with
     | {it = From_block (Block_label b, i); at} :: es ->
