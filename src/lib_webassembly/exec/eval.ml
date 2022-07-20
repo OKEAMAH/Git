@@ -123,8 +123,8 @@ type admin_instr' =
   | Trapping of string
   | Returning of value stack
   | Breaking of int32 * value stack
-  | Label of label_context * admin_instr list
-  | Frame of frame_context * admin_instr list
+  | Label of label_context
+  | Frame of frame_context
 
 and admin_instr = admin_instr' phrase
 
@@ -144,7 +144,7 @@ let code_cont (_, x) = x
 type config = {
   frame : frame_data;
   input : input_inst;
-  code : value stack * admin_instr list;
+  code : value stack * admin_instr list list;
   budget : int; (* to model stack overflow *)
 }
 
@@ -259,12 +259,13 @@ let elem_oob frame x i n =
     (Int64.of_int32 (Instance.Vector.num_elements !elem))
 
 let rec step (c : config) : config Lwt.t =
-  let {frame; code = vs, es; _} = c in
+  (* TODO can use this unsafe (es::ess) pattern as outer list is always empty *)
+  let {frame; code = vs, (es :: ess); _} = c in
   match es with
   | {it = From_block (Block_label b, i); at} :: es ->
       let* block = Vector.get b frame.inst.Instance.blocks in
       let length = Vector.num_elements block in
-      if i = length then Lwt.return {c with code = (vs, es)}
+      if i = length then Lwt.return {c with code = (vs, es :: ess)}
       else
         let* e, es =
           let* instr = Vector.get i block in
@@ -272,50 +273,78 @@ let rec step (c : config) : config Lwt.t =
             ( Plain instr.it @@ instr.at,
               {it = From_block (Block_label b, Int32.succ i); at} :: es )
         in
-        step_resolved c frame vs e es
-  | e :: es -> step_resolved c frame vs e es
+        step_resolved c frame vs e es ess
+  | e :: es -> step_resolved c frame vs e es ess
   | [] -> Lwt.return c
 
-and step_resolved (c : config) frame vs e es : config Lwt.t =
-  let ess = [] in
-  (* Steps that may rewrite ess *)
+and step_resolved (c : config) frame vs e es ess : config Lwt.t =
+  (* Steps that may peak one element of ess and update ess *)
   let+ vs', es', ess' =
-    match (e.it, vs) with
-    | Label ((_n, _es0, vs'), []), vs -> Lwt.return (vs' @ vs, [], ess)
-    | Label ((_n, _es0, _vs'), {it = Trapping msg; at} :: _es'), vs ->
+    match (e.it, vs, ess) with
+    (* Just peeking *)
+    | Label ((n, es0, vs')), vs, [] :: _ -> Lwt.return (vs' @ vs, [], ess)
+    | Label ((_n, _es0, _vs')), vs, ({it = Trapping msg; at} :: _es') :: _ ->
         Lwt.return (vs, [Trapping msg @@ at], ess)
-    | Label ((_n, _es0, _vs'), {it = Returning vs0; at} :: _es'), vs ->
+    | Label ((_n, _es0, _vs')), vs, ({it = Returning vs0; at} :: _es') :: _ ->
         Lwt.return (vs, [Returning vs0 @@ at], ess)
-    | Label ((n, es0, vs'), {it = Breaking (0l, vs0); at} :: es'), vs ->
+    | Label ((n, es0, vs')), vs, ({it = Breaking (0l, vs0); at} :: es') :: _ ->
         Lwt.return
           ( take n vs0 e.at @ vs,
             (match es0 with None -> [] | Some x -> [plain x]),
             ess )
-    | Label ((n, es0, vs'), {it = Breaking (k, vs0); at} :: es'), vs ->
+    | Label ((n, es0, vs')), vs, ({it = Breaking (k, vs0); at} :: es') :: _ ->
         Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at], ess)
-    | Frame ((n, frame', vs'), []), vs -> Lwt.return (vs' @ vs, [], ess)
-    | Frame ((n, frame', vs'), {it = Trapping msg; at} :: es'), vs ->
+    | Frame ((n, frame', vs')), vs, [] :: _ -> Lwt.return (vs' @ vs, [], ess)
+    | Frame ((n, frame', vs')), vs, ({it = Trapping msg; at} :: es') :: _ ->
         Lwt.return (vs, [Trapping msg @@ at], ess)
-    | Frame ((n, frame', vs'), {it = Returning vs0; at} :: es'), vs ->
+    | Frame ((n, frame', vs')), vs, ({it = Returning vs0; at} :: es') :: _ ->
         Lwt.return (take n vs0 e.at @ vs, [], ess)
-    | Label ((n, es0, vs'), es'), vs ->
-        let+ c' = step {c with code = (vs', es')} in
+    (* Updating *)
+              | Plain (Block (bt, es')), vs, ess->
+                  let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
+                  let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
+                  let n2 = Lazy_vector.LwtInt32Vector.num_elements ts2 in
+                  let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
+                  ( vs',
+                    [
+                      Label ((n2, None, args))
+                      @@ e.at;
+                    ],
+                    ([From_block (es', 0l) @@ e.at] ::
+                    ess))
+              | Plain (Loop (bt, es') as e'), vs, ess ->
+                  let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
+                  let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
+                  let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
+                  ( vs',
+                    [
+                      Label
+                        ( (n1, Some (e' @@ e.at), args)
+                          )
+                      @@ e.at;
+                    ],
+
+                          ([From_block (es', 0l) @@ e.at]  ::
+                    ess))
+    (* Updating *)
+    | Label ((n, es0, vs')), vs, ess ->
+        let+ c' = step {c with code = (vs', ess)} in
         ( vs,
-          [Label ((n, es0, code_stack c'.code), code_cont c'.code) @@ e.at],
-          ess )
-    | Frame ((n, frame', vs'), es'), vs ->
+          [Label ((n, es0, code_stack c'.code)) @@ e.at],
+          code_cont c'.code )
+    | Frame ((n, frame', vs')), vs, ess ->
         let+ c' =
           step
             {
               frame = frame';
-              code = (vs', es');
+              code = (vs', ess);
               budget = c.budget - 1;
               input = c.input;
             }
         in
         ( vs,
-          [Frame ((n, c'.frame, code_stack c'.code), code_cont c'.code) @@ e.at],
-          ess )
+          [Frame ((n, c'.frame, code_stack c'.code)) @@ e.at],
+          code_cont c'.code )
     | _ ->
         (* Steps that may not rewrite ess, as in original interpreter *)
         let+ vs', es' =
@@ -326,27 +355,6 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
               | Unreachable, vs ->
                   Lwt.return (vs, [Trapping "unreachable executed" @@ e.at])
               | Nop, vs -> Lwt.return (vs, [])
-              | Block (bt, es'), vs ->
-                  let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
-                  let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
-                  let n2 = Lazy_vector.LwtInt32Vector.num_elements ts2 in
-                  let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
-                  ( vs',
-                    [
-                      Label ((n2, None, args), [From_block (es', 0l) @@ e.at])
-                      @@ e.at;
-                    ] )
-              | Loop (bt, es'), vs ->
-                  let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
-                  let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
-                  let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
-                  ( vs',
-                    [
-                      Label
-                        ( (n1, Some (e' @@ e.at), args),
-                          [From_block (es', 0l) @@ e.at] )
-                      @@ e.at;
-                    ] )
               | If (bt, es1, es2), Num (I32 i) :: vs' ->
                   Lwt.return
                     (if i = 0l then (vs', [Plain (Block (bt, es2)) @@ e.at])
@@ -959,8 +967,7 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
         in
         (vs', es', ess)
   in
-  let _ = ess' in
-  {c with code = (vs', es' @ es)}
+  {c with code = (vs', (es' @ es) :: ess' )}
 
 let rec eval (c : config) : value stack Lwt.t =
   match c.code with
