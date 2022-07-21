@@ -33,5 +33,9 @@
 let () =
   Alcotest_lwt.run
     "test lib scoru wasm"
-    [("Input", Test_input.tests); ("Encodings", Test_encoding.tests)]
+    [
+      ("Input", Test_input.tests);
+      ("Encodings", Test_encoding.tests);
+      ("WASM Encodings", Test_wasm_encoding.tests);
+    ]
   |> Lwt_main.run
