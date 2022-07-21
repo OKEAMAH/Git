@@ -25,42 +25,28 @@
 
 (* Testing
    -------
-   Component: All
-   Invocation: dune exec tezt/long_tests/main.exe
-   Subject: This file is the entrypoint of all long Tezt tests. It dispatches to
-            other files. Long tests do not run on the CI but on a custom
-            architecture which is particularly suited for performance regression tests.
+   Component: Dal_node
+   Invocation: dune exec tezt/long_tests/main.exe -- --file dal.ml
+   Subject: Dal Node execution checks
 *)
 
-(* This module runs the tests implemented in all other modules of this directory.
-   Each module defines tests which are thematically related,
-   as functions to be called here. *)
+let env = String_map.singleton "DAL_TRUSTED_SETUP" (Long_test.test_data_path ())
 
-(* Warning: Please, be sure this function is called at first before using
-   any function from [Long_test] to avoid undesired behaviour regarding
-   the loading of the configuration. *)
-let () = Long_test.init ()
+let check_dal_node_slot_management _protocol =
+  let dal_node = Dal_node.create () in
+  let* _dir = Dal_node.init_config dal_node in
+  let* () = Dal_node.run dal_node in
+  let slot_content = "test" in
+  let* slot_header = Dal_node.split_slot_rpc dal_node slot_content in
+  let* received_slot_content = Dal_node.slot_content_rpc dal_node slot_header in
+  assert (slot_content = received_slot_content) ;
+  return ()
 
-let () =
-  Long_test.update_grafana_dashboard
-    {
-      uid = "longtezts";
-      title = "Long Tezts";
-      description = "Measurements from tests in tezt/long_tests.";
-      panels = Prt_client.grafana_panels @ Block_validation.grafana_panels;
-    }
-
-(* Executor for tests that don't take that long to run.
-   Very long tests (e.g. tests that take days to run) should run on their own executor. *)
-let default_executors = Long_test.[x86_executor1]
-
-let () =
-  (* Register your tests here. *)
-  (* This test depends on [Tezos_protocol_alpha.*] Tezos libraries *)
-  Qcheck_rpc.register_for_alpha ~executors:default_executors () ;
-  Prt_client.register ~executors:default_executors ~protocols:[Alpha] ;
-  Script_cache.register ~executors:default_executors ~protocols:[Jakarta; Alpha] ;
-  Block_validation.register ~executors:default_executors () ;
-  Dal.register ~executors:default_executors () ;
-  (* [Test.run] must be the last function to be called. *)
-  Test.run ()
+let register ~executors () =
+  Long_test.register
+    ~__FILE__
+    ~title:"dal node slot management"
+    ~tags:["dal"; "dal_node"]
+    ~timeout:(Long_test.Minutes 5)
+    ~executors
+    check_dal_node_slot_management

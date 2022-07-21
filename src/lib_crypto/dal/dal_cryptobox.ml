@@ -336,6 +336,7 @@ module Inner = struct
       @ env "HOME" ".dal-trusted-setup"
       @ env "HOME" ".local/share/dal-trusted-setup"
       @ env "HOMEBREW_PREFIX" "share/dal-trusted-setup"
+      @ env "DAL_TRUSTED_SETUP" ""
       @ ["/usr/local/share/dal-trusted-setup"; "/usr/share/dal-trusted-setup"]
     in
     (* Files we are looking for. *)
