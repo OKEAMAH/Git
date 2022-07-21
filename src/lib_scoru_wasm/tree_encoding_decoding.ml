@@ -25,6 +25,8 @@
 
 open Tezos_webassembly_interpreter
 
+module type LwtVector = Lazy_vector.S with type 'a effect = 'a Lwt.t
+
 exception Uninitialized_self_ref
 
 type key = string list
@@ -33,10 +35,6 @@ module type S = sig
   type tree
 
   type 'a map
-
-  type vector_key
-
-  type 'a vector
 
   type chunked_byte_vector
 
@@ -130,7 +128,26 @@ module type S = sig
 
   val lazy_mapping : 'a t -> 'a map t
 
-  val lazy_vector : vector_key t -> 'a t -> 'a vector t
+  module LazyVector : sig
+    module type S = sig
+      type key
+
+      type 'a vector
+
+      val lazy_vector : key t -> 'a t -> 'a vector t
+    end
+
+    module Make (Vector : LwtVector) :
+      S with type key := Vector.key and type 'a vector := 'a Vector.t
+
+    module Int32 :
+      S
+        with type key := int32
+         and type 'a vector := 'a Lazy_vector.LwtInt32Vector.t
+
+    module Z :
+      S with type key := Z.t and type 'a vector := 'a Lazy_vector.LwtZVector.t
+  end
 
   val chunk : Chunked_byte_vector.Chunk.t t
 
@@ -154,14 +171,11 @@ end
 
 module Make
     (M : Lazy_map.S with type 'a effect = 'a Lwt.t)
-    (V : Lazy_vector.S with type 'a effect = 'a Lwt.t)
     (C : Chunked_byte_vector.S with type 'a effect = 'a Lwt.t)
     (T : Tree.S) :
   S
     with type tree = T.tree
      and type 'a map = 'a M.t
-     and type vector_key = V.key
-     and type 'a vector = 'a V.t
      and type chunked_byte_vector = C.t = struct
   module Encoding = Tree_encoding.Make (T)
   module Decoding = Tree_decoding.Make (T)
@@ -169,10 +183,6 @@ module Make
   module D = Decoding
 
   type tree = T.tree
-
-  type vector_key = V.key
-
-  type 'a vector = 'a V.t
 
   type 'a map = 'a M.t
 
@@ -336,12 +346,13 @@ module Make
     in
     {encode; decode}
 
-  let lazy_vector with_key value =
-    let to_key k = [V.string_of_key k] in
+  let lazy_vector_imp ~string_of_key ~loaded_bindings ~num_elements ~first_key
+      ~create with_key value =
+    let to_key k = [string_of_key k] in
     let encode =
       E.contramap
         (fun vector ->
-          (V.loaded_bindings vector, V.num_elements vector, V.first_key vector))
+          (loaded_bindings vector, num_elements vector, first_key vector))
         (E.tup3
            (E.lazy_mapping to_key value.encode)
            (E.scope ["length"] with_key.encode)
@@ -350,7 +361,7 @@ module Make
     let decode =
       D.map
         (fun (produce_value, len, head) ->
-          V.create ~produce_value ~first_key:head len)
+          create ~produce_value ~first_key:head len)
         (let open D.Syntax in
         let+ x = D.lazy_mapping to_key value.decode
         and+ y = D.scope ["length"] with_key.decode
@@ -358,6 +369,33 @@ module Make
         (x, y, z))
     in
     {encode; decode}
+
+  module LazyVector = struct
+    module type S = sig
+      type key
+
+      type 'a vector
+
+      val lazy_vector : key t -> 'a t -> 'a vector t
+    end
+
+    module Make (Vector : LwtVector) = struct
+      let lazy_vector with_key encode_value =
+        let open Vector in
+        lazy_vector_imp
+          ~string_of_key
+          ~loaded_bindings
+          ~num_elements
+          ~first_key
+          ~create:(fun ~produce_value ~first_key len ->
+            create ~produce_value ~first_key len)
+          with_key
+          encode_value
+    end
+
+    module Int32 = Make (Lazy_vector.LwtInt32Vector)
+    module Z = Make (Lazy_vector.LwtZVector)
+  end
 
   let chunk =
     let open Chunked_byte_vector.Chunk in

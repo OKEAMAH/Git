@@ -59,8 +59,7 @@ module Tree = struct
 end
 
 module Merklizer =
-  Tree_encoding_decoding.Make (Instance.NameMap) (Instance.Vector)
-    (Chunked_byte_vector.Lwt)
+  Tree_encoding_decoding.Make (Instance.NameMap) (Chunked_byte_vector.Lwt)
     (Tree)
 module Wasm_encoding = Wasm_encoding.Make (Merklizer)
 

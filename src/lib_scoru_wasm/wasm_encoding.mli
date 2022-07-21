@@ -29,9 +29,7 @@ exception Uninitialized_current_module
 
 module Make
     (M : Tree_encoding_decoding.S
-           with type vector_key = int32
-            and type 'a vector = 'a Instance.Vector.t
-            and type 'a map = 'a Instance.NameMap.t
+           with type 'a map = 'a Instance.NameMap.t
             and type chunked_byte_vector = Chunked_byte_vector.Lwt.t) : sig
   type tree = M.tree
 

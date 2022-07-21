@@ -25,6 +25,8 @@
 
 open Tezos_webassembly_interpreter
 
+module type LwtVector = Lazy_vector.S with type 'a effect = 'a Lwt.t
+
 exception Uninitialized_self_ref
 
 (** A key in the tree is a list of string. *)
@@ -38,12 +40,6 @@ module type S = sig
 
   (** The map structure used. *)
   type 'a map
-
-  (** The type of vector keys. *)
-  type vector_key
-
-  (** The vector structure used. *)
-  type 'a vector
 
   (** The chunked byte vector structure used. *)
   type chunked_byte_vector
@@ -210,9 +206,30 @@ module type S = sig
       [enc] for encoding values. *)
   val lazy_mapping : 'a t -> 'a map t
 
-  (** [lazy_vector key_enc enc] produces an encoder for [vector]s that uses the
-      given [key_enc] for encoding keys and [enc] for the values. *)
-  val lazy_vector : vector_key t -> 'a t -> 'a vector t
+  module LazyVector : sig
+    module type S = sig
+      type key
+
+      type 'a vector
+
+      (** [lazy_vector key_enc enc] produces an encoder for [vector]s that uses
+          the given [key_enc] for encoding the keys and [enc] for values. *)
+      val lazy_vector : key t -> 'a t -> 'a vector t
+    end
+
+    (** [Make (YourVector)] creates a module with the [lazy_vector]
+        combinator which can be used to decode [YourVector] specifically. *)
+    module Make (Vector : LwtVector) :
+      S with type key := Vector.key and type 'a vector := 'a Vector.t
+
+    module Int32 :
+      S
+        with type key := int32
+         and type 'a vector := 'a Lazy_vector.LwtInt32Vector.t
+
+    module Z :
+      S with type key := Z.t and type 'a vector := 'a Lazy_vector.LwtZVector.t
+  end
 
   (** [chunk] is an encoder for the chunks used by [chunked_by_vector]. *)
   val chunk : Chunked_byte_vector.Chunk.t t
@@ -257,12 +274,9 @@ end
     structures. *)
 module Make
     (M : Lazy_map.S with type 'a effect = 'a Lwt.t)
-    (V : Lazy_vector.S with type 'a effect = 'a Lwt.t)
     (C : Chunked_byte_vector.S with type 'a effect = 'a Lwt.t)
     (T : Tree.S) :
   S
     with type tree = T.tree
      and type 'a map = 'a M.t
-     and type vector_key = V.key
-     and type 'a vector = 'a V.t
      and type chunked_byte_vector = C.t

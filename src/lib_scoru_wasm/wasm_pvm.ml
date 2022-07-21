@@ -41,7 +41,6 @@ module Make (T : Tree.S) : Wasm_pvm_sig.S with type tree = T.tree = struct
         module Tree_encoding_decoding =
           Tree_encoding_decoding.Make
             (Wasm.Instance.NameMap)
-            (Wasm.Instance.Vector)
             (Wasm.Chunked_byte_vector.Lwt)
             (T)
         module Wasm_encoding = Wasm_encoding.Make (Tree_encoding_decoding)

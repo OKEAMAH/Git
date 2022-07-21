@@ -29,9 +29,7 @@ exception Uninitialized_current_module
 
 module Make
     (Tree_encoding_decoding : Tree_encoding_decoding.S
-                                with type vector_key = int32
-                                 and type 'a vector = 'a Instance.Vector.t
-                                 and type 'a map = 'a Instance.NameMap.t
+                                with type 'a map = 'a Instance.NameMap.t
                                  and type chunked_byte_vector =
                                   Chunked_byte_vector.Lwt.t) =
 struct
@@ -44,7 +42,9 @@ struct
   let string_tag = value [] Data_encoding.string
 
   let list_encoding item_enc =
-    let vector = lazy_vector (value [] Data_encoding.int32) item_enc in
+    let vector =
+      LazyVector.Int32.lazy_vector (value [] Data_encoding.int32) item_enc
+    in
     (* TODO: #3076
        This should return a [Instance.Vector.t] instead of a list. Once the AST
        has been sufficiently adapted to lazy vectors and maps, this change can
@@ -52,7 +52,9 @@ struct
     conv_lwt V.to_list (fun list -> Lwt.return (V.of_list list)) vector
 
   let lazy_vector_encoding field_name tree_encoding =
-    lazy_vector (value ["num-" ^ field_name] Data_encoding.int32) tree_encoding
+    LazyVector.Int32.lazy_vector
+      (value ["num-" ^ field_name] Data_encoding.int32)
+      tree_encoding
 
   let function_type_encoding =
     conv
