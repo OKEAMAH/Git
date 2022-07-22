@@ -2221,12 +2221,51 @@ let contract_t loc t = Contract_type.t loc t
 
 let contract_unit_t = Contract_type.known_t unit_t Type_size.two
 
-let sapling_transaction_t ~memo_size = Sapling_transaction_t memo_size
+module SaplingLikeType (T : sig
+  type t
 
-let sapling_transaction_deprecated_t ~memo_size =
-  Sapling_transaction_deprecated_t memo_size
+  val constructor : Sapling.Memo_size.t -> (t, no) ty
+end) : sig
+  val t : Sapling.Memo_size.t -> (T.t, no) ty
+end = struct
+  let table = Hashtbl.create 10
 
-let sapling_state_t ~memo_size = Sapling_state_t memo_size
+  let t : Sapling.Memo_size.t -> (T.t, no) ty =
+   fun i ->
+    let res = Hashtbl.find_opt table i in
+    match res with
+    | Some r -> r
+    | None ->
+        let r = T.constructor i in
+        Hashtbl.add table i r ;
+        r
+end
+
+module Sapling_transaction_type = SaplingLikeType (struct
+  type t = Sapling.transaction
+
+  let constructor i = {id = Id.gen (); value = Sapling_transaction_t i}
+end)
+
+let sapling_transaction_t ~memo_size:i = Sapling_transaction_type.t i
+
+module Sapling_transaction_deprecated_type = SaplingLikeType (struct
+  type t = Sapling.Legacy.transaction
+
+  let constructor i =
+    {id = Id.gen (); value = Sapling_transaction_deprecated_t i}
+end)
+
+let sapling_transaction_deprecated_t ~memo_size:i =
+  Sapling_transaction_deprecated_type.t i
+
+module Sapling_state_type = SaplingLikeType (struct
+  type t = Sapling.state
+
+  let constructor i = {id = Id.gen (); value = Sapling_state_t i}
+end)
+
+let sapling_state_t ~memo_size:i = Sapling_state_type.t i
 
 let chain_id_t = {id = Id.gen (); value = Chain_id_t}
 
