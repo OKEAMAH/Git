@@ -1934,45 +1934,113 @@ end)
 
 let lambda_t loc a r = Lambda_type.t loc a r
 
-let option_t loc t =
-  Type_size.compound1 loc (ty_size t) >|? fun size ->
-  let cmp = is_comparable t in
-  Option_t (t, {size}, cmp)
+module OptionLikeType (T : sig
+  type 'a t
 
-let option_mutez_t = Option_t (mutez_t, {size = Type_size.two}, Yes)
+  val deconstructor : ('a t, 'ac) ty -> ('a, 'ac) ty * 'ac dbool
 
-let option_string_t = Option_t (string_t, {size = Type_size.two}, Yes)
+  val constructor : ('a, 'ac) ty * 'a t Type_size.t -> ('a t, 'ac) ty
+end) : sig
+  val t : Script.location -> ('a, 'ac) ty -> ('a T.t, 'ac) ty tzresult
 
-let option_bytes_t = Option_t (bytes_t, {size = Type_size.two}, Yes)
+  val comparable_t :
+    Script.location -> 'a comparable_ty -> 'a T.t comparable_ty tzresult
 
-let option_nat_t = Option_t (nat_t, {size = Type_size.two}, Yes)
+  val known_t :
+    ('a, 'ac) ty -> 'a T.t Type_size.t -> 'ac dbool -> ('a T.t, 'ac) ty
+end = struct
+  type x = X : (_ T.t, _) ty -> x
+
+  let table = Hashtbl.create 10
+
+  let t : type a ac. Script.location -> (a, ac) ty -> (a T.t, ac) ty tzresult =
+   fun loc a ->
+    let open Result_syntax in
+    let res = Hashtbl.find_opt table (Id.Xid a.id) in
+    match res with
+    | Some (X r) -> (
+        let a', _ = T.deconstructor r in
+        match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
+    | None ->
+        let+ size = Type_size.compound1 loc (ty_size a) in
+        let r = T.constructor (a, size) in
+        Hashtbl.add table (Id.Xid a.id) (X r) ;
+        r
+
+  let comparable_t :
+      type a. Script.location -> a comparable_ty -> a T.t comparable_ty tzresult
+      =
+   fun loc a ->
+    let open Result_syntax in
+    let res = Hashtbl.find_opt table (Id.Xid a.id) in
+    match res with
+    | Some (X r) -> (
+        let a', _ = T.deconstructor r in
+        match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
+    | None ->
+        let+ size = Type_size.compound1 loc (ty_size a) in
+        let r = T.constructor (a, size) in
+        Hashtbl.add table (Id.Xid a.id) (X r) ;
+        r
+
+  let known_t :
+      type a ac. (a, ac) ty -> a T.t Type_size.t -> ac dbool -> (a T.t, ac) ty =
+   fun a size ac ->
+    let res = Hashtbl.find_opt table (Id.Xid a.id) in
+    match res with
+    | Some (X r) -> (
+        let a', ac' = T.deconstructor r in
+        match (Id.eq_id a.id a'.id, eq_dbool ac ac') with
+        | Some Eq, Some Eq -> r
+        | _ -> assert false)
+    | None ->
+        let r = T.constructor (a, size) in
+        Hashtbl.add table (Id.Xid a.id) (X r) ;
+        r
+end
+
+module Option_type = OptionLikeType (struct
+  type 'a t = 'a option
+
+  let deconstructor o =
+    let (Option_t (v, _, c)) = o.value in
+    (v, c)
+
+  let constructor (v, size) =
+    {id = Id.gen (); value = Option_t (v, {size}, is_comparable v)}
+end)
+
+let option_t loc t = Option_type.t loc t
+
+let comparable_option_t loc t = Option_type.comparable_t loc t
+
+let option_mutez_t = Option_type.known_t mutez_t Type_size.two Yes
+
+let option_string_t = Option_type.known_t string_t Type_size.two Yes
+
+let option_bytes_t = Option_type.known_t bytes_t Type_size.two Yes
+
+let option_nat_t = Option_type.known_t nat_t Type_size.two Yes
 
 let option_pair_nat_nat_t =
-  Option_t
-    ( Pair_t (nat_t, nat_t, {size = Type_size.three}, YesYes),
-      {size = Type_size.four},
-      Yes )
+  let pair_nat_nat_t = Pair_type.known_t nat_t nat_t Type_size.three YesYes in
+  Option_type.known_t pair_nat_nat_t Type_size.four Yes
 
 let option_pair_nat_mutez_t =
-  Option_t
-    ( Pair_t (nat_t, mutez_t, {size = Type_size.three}, YesYes),
-      {size = Type_size.four},
-      Yes )
+  let pair_nat_mutez_t =
+    Pair_type.known_t nat_t mutez_t Type_size.three YesYes
+  in
+  Option_type.known_t pair_nat_mutez_t Type_size.four Yes
 
 let option_pair_mutez_mutez_t =
-  Option_t
-    ( Pair_t (mutez_t, mutez_t, {size = Type_size.three}, YesYes),
-      {size = Type_size.four},
-      Yes )
+  let pair_mutez_mutez_t =
+    Pair_type.known_t mutez_t mutez_t Type_size.three YesYes
+  in
+  Option_type.known_t pair_mutez_mutez_t Type_size.four Yes
 
 let option_pair_int_nat_t =
-  Option_t
-    ( Pair_t (int_t, nat_t, {size = Type_size.three}, YesYes),
-      {size = Type_size.four},
-      Yes )
-
-let comparable_option_t loc t =
-  Type_size.compound1 loc (ty_size t) >|? fun size -> Option_t (t, {size}, Yes)
+  let pair_int_nat_t = Pair_type.known_t int_t nat_t Type_size.three YesYes in
+  Option_type.known_t pair_int_nat_t Type_size.four Yes
 
 let list_t loc t =
   Type_size.compound1 loc (ty_size t) >|? fun size -> List_t (t, {size})
