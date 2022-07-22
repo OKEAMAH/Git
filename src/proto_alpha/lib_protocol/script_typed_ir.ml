@@ -1720,31 +1720,31 @@ let is_comparable : type v c. (v, c) ty -> c dbool =
 
 type 'v ty_ex_c = Ty_ex_c : ('v, _) ty -> 'v ty_ex_c [@@ocaml.unboxed]
 
-let unit_t = Unit_t
+let unit_t = {id = Id.gen (); value = Unit_t}
 
-let int_t = Int_t
+let int_t = {id = Id.gen (); value = Int_t}
 
-let nat_t = Nat_t
+let nat_t = {id = Id.gen (); value = Nat_t}
 
-let signature_t = Signature_t
+let signature_t = {id = Id.gen (); value = Signature_t}
 
-let string_t = String_t
+let string_t = {id = Id.gen (); value = String_t}
 
-let bytes_t = Bytes_t
+let bytes_t = {id = Id.gen (); value = Bytes_t}
 
-let mutez_t = Mutez_t
+let mutez_t = {id = Id.gen (); value = Mutez_t}
 
-let key_hash_t = Key_hash_t
+let key_hash_t = {id = Id.gen (); value = Key_hash_t}
 
-let key_t = Key_t
+let key_t = {id = Id.gen (); value = Key_t}
 
-let timestamp_t = Timestamp_t
+let timestamp_t = {id = Id.gen (); value = Timestamp_t}
 
-let address_t = Address_t
+let address_t = {id = Id.gen (); value = Address_t}
 
-let bool_t = Bool_t
+let bool_t = {id = Id.gen (); value = Bool_t}
 
-let tx_rollup_l2_address_t = Tx_rollup_l2_address_t
+let tx_rollup_l2_address_t = {id = Id.gen (); value = Tx_rollup_l2_address_t}
 
 let pair_t :
     type a ac b bc.
@@ -1827,7 +1827,7 @@ let comparable_option_t loc t =
 let list_t loc t =
   Type_size.compound1 loc (ty_size t) >|? fun size -> List_t (t, {size})
 
-let operation_t = Operation_t
+let operation_t = {id = Id.gen (); value = Operation_t}
 
 let list_operation_t = List_t (operation_t, {size = Type_size.two})
 
@@ -1854,22 +1854,22 @@ let sapling_transaction_deprecated_t ~memo_size =
 
 let sapling_state_t ~memo_size = Sapling_state_t memo_size
 
-let chain_id_t = Chain_id_t
+let chain_id_t = {id = Id.gen (); value = Chain_id_t}
 
-let never_t = Never_t
+let never_t = {id = Id.gen (); value = Never_t}
 
-let bls12_381_g1_t = Bls12_381_g1_t
+let bls12_381_g1_t = {id = Id.gen (); value = Bls12_381_g1_t}
 
-let bls12_381_g2_t = Bls12_381_g2_t
+let bls12_381_g2_t = {id = Id.gen (); value = Bls12_381_g2_t}
 
-let bls12_381_fr_t = Bls12_381_fr_t
+let bls12_381_fr_t = {id = Id.gen (); value = Bls12_381_fr_t}
 
 let ticket_t loc t =
   Type_size.compound1 loc (ty_size t) >|? fun size -> Ticket_t (t, {size})
 
-let chest_key_t = Chest_key_t
+let chest_key_t = {id = Id.gen (); value = Chest_key_t}
 
-let chest_t = Chest_t
+let chest_t = {id = Id.gen (); value = Chest_t}
 
 type 'a kinstr_traverse = {
   apply : 'b 'u 'r 'f. 'a -> ('b, 'u, 'r, 'f) kinstr -> 'a;
