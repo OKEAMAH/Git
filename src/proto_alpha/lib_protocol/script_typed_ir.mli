@@ -46,6 +46,30 @@ type never = |
 
 type address = {destination : Destination.t; entrypoint : Entrypoint.t}
 
+module Id : sig
+  type _ id = ..
+
+  module type SGen = sig
+    type u
+
+    type _ id += Self : u id
+
+    val eq : 'v id -> (u, 'v) eq option
+  end
+
+  module Gen (X : sig
+    type u
+  end) : SGen with type u = X.u
+
+  type 'a gid = (module SGen with type u = 'a)
+
+  val eq_id : 'a gid -> 'b gid -> ('a, 'b) eq option
+
+  val gen : unit -> 'a gid
+
+  type xid = Xid : 'a gid -> xid
+end
+
 module Script_signature : sig
   (** [t] is made algebraic in order to distinguish it from the other type
       parameters of [Script_typed_ir.ty]. *)

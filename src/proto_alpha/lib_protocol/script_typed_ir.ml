@@ -65,6 +65,42 @@ type never = |
 
 type address = {destination : Destination.t; entrypoint : Entrypoint.t}
 
+module Id = struct
+  type _ id = ..
+
+  module type SGen = sig
+    type u
+
+    type _ id += Self : u id
+
+    val eq : 'v id -> (u, 'v) eq option
+  end
+
+  module Gen (X : sig
+    type u
+  end) : SGen with type u = X.u = struct
+    type u = X.u
+
+    type _ id += Self : X.u id
+
+    let eq (type u') (this : u' id) : (X.u, u') eq option =
+      match this with Self -> Some Eq | _ -> None
+  end
+
+  type 'a gid = (module SGen with type u = 'a)
+
+  let eq_id : type a b. a gid -> b gid -> (a, b) eq option =
+   fun (module G) (module O) -> G.eq O.Self
+
+  let gen (type a) () : a gid =
+    (module Gen (struct
+      type u = a
+    end) : SGen
+      with type u = a)
+
+  type xid = Xid : 'a gid -> xid
+end
+
 module Script_signature = struct
   type t = Signature_tag of signature [@@ocaml.unboxed]
 
