@@ -611,6 +611,7 @@ let _octez_webassembly_test =
         qcheck_core;
         qcheck_alcotest;
         alcotest;
+        lwt_unix;
       ]
 
 let octez_hacl =

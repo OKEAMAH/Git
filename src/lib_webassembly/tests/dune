@@ -7,7 +7,8 @@
   tezos-webassembly-interpreter
   qcheck-core
   qcheck-alcotest
-  alcotest)
+  alcotest
+  lwt.unix)
  (flags
   (:standard)
   -open Tezos_webassembly_interpreter))
