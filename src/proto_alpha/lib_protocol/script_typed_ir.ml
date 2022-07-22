@@ -2042,12 +2042,63 @@ let option_pair_int_nat_t =
   let pair_int_nat_t = Pair_type.known_t int_t nat_t Type_size.three YesYes in
   Option_type.known_t pair_int_nat_t Type_size.four Yes
 
-let list_t loc t =
-  Type_size.compound1 loc (ty_size t) >|? fun size -> List_t (t, {size})
+module ListLikeType (T : sig
+  type 'a t
+
+  val deconstructor : ('a t, no) ty -> 'a ty_ex_c
+
+  val constructor : ('a, _) ty * 'a t Type_size.t -> ('a t, no) ty
+end) : sig
+  val t : Script.location -> ('a, _) ty -> ('a T.t, no) ty tzresult
+
+  val known_t : ('a, _) ty -> 'a T.t Type_size.t -> ('a T.t, no) ty
+end = struct
+  type x = X : (_ T.t, no) ty -> x
+
+  let table = Hashtbl.create 10
+
+  let t : type a ac. Script.location -> (a, ac) ty -> (a T.t, no) ty tzresult =
+   fun loc a ->
+    let open Result_syntax in
+    let res = Hashtbl.find_opt table (Id.Xid a.id) in
+    match res with
+    | Some (X r) -> (
+        let (Ty_ex_c a') = T.deconstructor r in
+        match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
+    | None ->
+        let+ size = Type_size.compound1 loc (ty_size a) in
+        let r = T.constructor (a, size) in
+        Hashtbl.add table (Id.Xid a.id) (X r) ;
+        r
+
+  let known_t : type a ac. (a, ac) ty -> a T.t Type_size.t -> (a T.t, no) ty =
+   fun a size ->
+    let res = Hashtbl.find_opt table (Id.Xid a.id) in
+    match res with
+    | Some (X r) -> (
+        let (Ty_ex_c a') = T.deconstructor r in
+        match Id.eq_id a.id a'.id with Some Eq -> r | None -> assert false)
+    | None ->
+        let r = T.constructor (a, size) in
+        Hashtbl.add table (Id.Xid a.id) (X r) ;
+        r
+end
+
+module List_type = ListLikeType (struct
+  type 'a t = 'a boxed_list
+
+  let deconstructor l =
+    let (List_t (v, _)) = l.value in
+    Ty_ex_c v
+
+  let constructor (v, size) = {id = Id.gen (); value = List_t (v, {size})}
+end)
+
+let list_t loc t = List_type.t loc t
 
 let operation_t = {id = Id.gen (); value = Operation_t}
 
-let list_operation_t = List_t (operation_t, {size = Type_size.two})
+let list_operation_t = List_type.known_t operation_t Type_size.two
 
 let set_t loc t =
   Type_size.compound1 loc (ty_size t) >|? fun size -> Set_t (t, {size})
@@ -2060,10 +2111,19 @@ let big_map_t loc l r =
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
   Big_map_t (l, r, {size})
 
-let contract_t loc t =
-  Type_size.compound1 loc (ty_size t) >|? fun size -> Contract_t (t, {size})
+module Contract_type = ListLikeType (struct
+  type 'a t = 'a typed_contract
 
-let contract_unit_t = Contract_t (unit_t, {size = Type_size.two})
+  let deconstructor c =
+    let (Contract_t (a, _)) = c.value in
+    Ty_ex_c a
+
+  let constructor (a, size) = {id = Id.gen (); value = Contract_t (a, {size})}
+end)
+
+let contract_t loc t = Contract_type.t loc t
+
+let contract_unit_t = Contract_type.known_t unit_t Type_size.two
 
 let sapling_transaction_t ~memo_size = Sapling_transaction_t memo_size
 
