@@ -1746,39 +1746,140 @@ let bool_t = {id = Id.gen (); value = Bool_t}
 
 let tx_rollup_l2_address_t = {id = Id.gen (); value = Tx_rollup_l2_address_t}
 
-let pair_t :
-    type a ac b bc.
-    Script.location -> (a, ac) ty -> (b, bc) ty -> (a, b) pair ty_ex_c tzresult
-    =
- fun loc l r ->
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  let (Ex_dand cmp) = dand (is_comparable l) (is_comparable r) in
-  Ty_ex_c (Pair_t (l, r, {size}, cmp))
+module PairLikeType (T : sig
+  type ('a, 'b) t
 
-let pair_3_t loc l m r = pair_t loc m r >>? fun (Ty_ex_c r) -> pair_t loc l r
+  val deconstructor :
+    (('a, 'b) t, 'rc) ty -> 'a ty_ex_c * 'b ty_ex_c * 'rc dbool
 
-let comparable_pair_t loc l r =
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  Pair_t (l, r, {size}, YesYes)
+  val constructor :
+    ('a, 'ac) ty * ('b, 'bc) ty * ('a, 'b) t Type_size.t * ('ac, 'bc, 'rc) dand ->
+    (('a, 'b) t, 'rc) ty
+end) : sig
+  val t :
+    Script.location -> ('a, _) ty -> ('b, _) ty -> ('a, 'b) T.t ty_ex_c tzresult
+
+  val comparable_t :
+    Script.location ->
+    'a comparable_ty ->
+    'b comparable_ty ->
+    ('a, 'b) T.t comparable_ty tzresult
+
+  val known_t :
+    ('a, 'ac) ty ->
+    ('b, 'bc) ty ->
+    ('a, 'b) T.t Type_size.t ->
+    ('ac, 'bc, 'rc) dand ->
+    (('a, 'b) T.t, 'rc) ty
+end = struct
+  type x = X : ((_, _) T.t, _) ty -> x
+
+  let table = Hashtbl.create 10
+
+  let t :
+      type a ac b bc.
+      Script.location -> (a, ac) ty -> (b, bc) ty -> (a, b) T.t ty_ex_c tzresult
+      =
+   fun loc a b ->
+    let open Result_syntax in
+    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
+    match res with
+    | Some (X r) -> (
+        let Ty_ex_c a', Ty_ex_c b', _ = T.deconstructor r in
+        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
+        | Some Eq, Some Eq -> Ok (Ty_ex_c r)
+        | _ -> assert false)
+    | None ->
+        let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
+        let (Ex_dand cmp) = dand (is_comparable a) (is_comparable b) in
+        let r = T.constructor (a, b, size, cmp) in
+        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
+        Ty_ex_c r
+
+  let comparable_t :
+      type a b.
+      Script.location ->
+      a comparable_ty ->
+      b comparable_ty ->
+      (a, b) T.t comparable_ty tzresult =
+   fun loc a b ->
+    let open Result_syntax in
+    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
+    match res with
+    | Some (X r) -> (
+        let Ty_ex_c a', Ty_ex_c b', d' = T.deconstructor r in
+        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id, eq_dbool Yes d') with
+        | Some Eq, Some Eq, Some Eq -> Ok r
+        | _ -> assert false)
+    | None ->
+        let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
+        let r = T.constructor (a, b, size, YesYes) in
+        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
+        r
+
+  let known_t :
+      type a ac b bc rc.
+      (a, ac) ty ->
+      (b, bc) ty ->
+      (a, b) T.t Type_size.t ->
+      (ac, bc, rc) dand ->
+      ((a, b) T.t, rc) ty =
+   fun a b size cmp ->
+    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
+    match res with
+    | Some (X r) -> (
+        let Ty_ex_c a', Ty_ex_c b', d' = T.deconstructor r in
+        let d = dbool_of_dand cmp in
+        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id, eq_dbool d d') with
+        | Some Eq, Some Eq, Some Eq -> r
+        | _ -> assert false)
+    | None ->
+        let r = T.constructor (a, b, size, cmp) in
+        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
+        r
+end
+
+module Pair_type = PairLikeType (struct
+  type ('l, 'r) t = ('l, 'r) pair
+
+  let deconstructor p =
+    let (Pair_t (l, r, _, cmp)) = p.value in
+    (Ty_ex_c l, Ty_ex_c r, dbool_of_dand cmp)
+
+  let constructor (l, r, size, cmp) =
+    {id = Id.gen (); value = Pair_t (l, r, {size}, cmp)}
+end)
+
+let pair_t loc l r = Pair_type.t loc l r
+
+let pair_3_t loc l m r =
+  let open Result_syntax in
+  let* (Ty_ex_c r) = pair_t loc m r in
+  pair_t loc l r
+
+let comparable_pair_t loc l r = Pair_type.comparable_t loc l r
 
 let comparable_pair_3_t loc l m r =
-  comparable_pair_t loc m r >>? fun r -> comparable_pair_t loc l r
+  let open Result_syntax in
+  let* r = comparable_pair_t loc m r in
+  comparable_pair_t loc l r
 
-let union_t :
-    type a ac b bc.
-    Script.location -> (a, ac) ty -> (b, bc) ty -> (a, b) union ty_ex_c tzresult
-    =
- fun loc l r ->
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  let (Ex_dand cmp) = dand (is_comparable l) (is_comparable r) in
-  Ty_ex_c (Union_t (l, r, {size}, cmp))
+module Union_type = PairLikeType (struct
+  type ('l, 'r) t = ('l, 'r) union
 
-let union_bytes_bool_t =
-  Union_t (bytes_t, bool_t, {size = Type_size.three}, YesYes)
+  let deconstructor u =
+    let (Union_t (l, r, _, cmp)) = u.value in
+    (Ty_ex_c l, Ty_ex_c r, dbool_of_dand cmp)
 
-let comparable_union_t loc l r =
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  Union_t (l, r, {size}, YesYes)
+  let constructor (l, r, size, cmp) =
+    {id = Id.gen (); value = Union_t (l, r, {size}, cmp)}
+end)
+
+let union_t loc l r = Union_type.t loc l r
+
+let union_bytes_bool_t = Union_type.known_t bytes_t bool_t Type_size.two YesYes
+
+let comparable_union_t loc l r = Union_type.comparable_t loc l r
 
 let lambda_t loc l r =
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
