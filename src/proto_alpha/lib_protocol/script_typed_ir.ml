@@ -2141,13 +2141,71 @@ end)
 
 let set_t loc t = Set_type.t loc t
 
-let map_t loc l r =
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  Map_t (l, r, {size})
+module MapLikeType (T : sig
+  type ('a, 'b) t
 
-let big_map_t loc l r =
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  Big_map_t (l, r, {size})
+  val deconstructor : (('a, 'b) t, no) ty -> 'a comparable_ty * 'b ty_ex_c
+
+  val constructor :
+    'a comparable_ty * ('b, _) ty * ('a, 'b) t Type_size.t ->
+    (('a, 'b) t, no) ty
+end) : sig
+  val t :
+    Script.location ->
+    'a comparable_ty ->
+    ('b, _) ty ->
+    (('a, 'b) T.t, no) ty tzresult
+end = struct
+  type x = X : ((_, _) T.t, no) ty -> x
+
+  let table = Hashtbl.create 10
+
+  let t :
+      type a b bc.
+      Script.location ->
+      a comparable_ty ->
+      (b, bc) ty ->
+      ((a, b) T.t, no) ty tzresult =
+   fun loc a b ->
+    let open Result_syntax in
+    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
+    match res with
+    | Some (X r) -> (
+        let a', Ty_ex_c b' = T.deconstructor r in
+        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
+        | Some Eq, Some Eq -> Ok r
+        | _ -> assert false)
+    | None ->
+        let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
+        let r = T.constructor (a, b, size) in
+        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
+        r
+end
+
+module Map_type = MapLikeType (struct
+  type ('k, 'v) t = ('k, 'v) map
+
+  let deconstructor m =
+    let (Map_t (k, v, _)) = m.value in
+    (k, Ty_ex_c v)
+
+  let constructor (k, v, size) = {id = Id.gen (); value = Map_t (k, v, {size})}
+end)
+
+let map_t loc k v = Map_type.t loc k v
+
+module Big_map_type = MapLikeType (struct
+  type ('k, 'v) t = ('k, 'v) big_map
+
+  let deconstructor bm =
+    let (Big_map_t (k, v, _)) = bm.value in
+    (k, Ty_ex_c v)
+
+  let constructor (k, v, size) =
+    {id = Id.gen (); value = Big_map_t (k, v, {size})}
+end)
+
+let big_map_t loc k v = Big_map_type.t loc k v
 
 module Contract_type = ListLikeType (struct
   type 'a t = 'a typed_contract
