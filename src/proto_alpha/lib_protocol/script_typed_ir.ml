@@ -1881,9 +1881,58 @@ let union_bytes_bool_t = Union_type.known_t bytes_t bool_t Type_size.two YesYes
 
 let comparable_union_t loc l r = Union_type.comparable_t loc l r
 
-let lambda_t loc l r =
-  Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  Lambda_t (l, r, {size})
+module LambdaLikeType (T : sig
+  type ('a, 'b) t
+
+  val deconstructor : (('a, 'b) t, no) ty -> 'a ty_ex_c * 'b ty_ex_c
+
+  val constructor :
+    ('a, _) ty * ('b, _) ty * ('a, 'b) t Type_size.t -> (('a, 'b) t, no) ty
+end) : sig
+  val t :
+    Script.location ->
+    ('a, _) ty ->
+    ('b, _) ty ->
+    (('a, 'b) T.t, no) ty tzresult
+end = struct
+  type x = X : ((_, _) T.t, no) ty -> x
+
+  let table = Hashtbl.create 10
+
+  let t :
+      type a ac b bc.
+      Script.location ->
+      (a, ac) ty ->
+      (b, bc) ty ->
+      ((a, b) T.t, no) ty tzresult =
+   fun loc a b ->
+    let open Result_syntax in
+    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
+    match res with
+    | Some (X r) -> (
+        let Ty_ex_c a', Ty_ex_c b' = T.deconstructor r in
+        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
+        | Some Eq, Some Eq -> Ok r
+        | _ -> assert false)
+    | None ->
+        let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
+        let r = T.constructor (a, b, size) in
+        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
+        r
+end
+
+module Lambda_type = LambdaLikeType (struct
+  type ('a, 'r) t = ('a, 'r) lambda
+
+  let deconstructor l =
+    let (Lambda_t (a, r, _)) = l.value in
+    (Ty_ex_c a, Ty_ex_c r)
+
+  let constructor (a, r, size) =
+    {id = Id.gen (); value = Lambda_t (a, r, {size})}
+end)
+
+let lambda_t loc a r = Lambda_type.t loc a r
 
 let option_t loc t =
   Type_size.compound1 loc (ty_size t) >|? fun size ->
