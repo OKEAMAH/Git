@@ -49,8 +49,7 @@ open Alpha_context
 module type S = sig
   module PVM : Pvm.S
 
-  val process :
-    Layer1.head -> Node_context.t -> PVM.context -> unit tzresult Lwt.t
+  val process : Layer1.head -> Node_context.t -> unit tzresult Lwt.t
 end
 
 module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
@@ -111,19 +110,23 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     in
     return_unit
 
-  let generate_proof node_ctxt store game start_state =
+  let generate_proof node_ctxt game start_state =
     let open Lwt_result_syntax in
-    let*! hash = Layer1.hash_of_level store (Raw_level.to_int32 game.level) in
-    let* history = Inbox.history_of_hash node_ctxt store hash in
-    let* inbox = Inbox.inbox_of_hash node_ctxt store hash in
-    let*! messages_tree = Inbox.find_message_tree store hash in
+    let*! hash =
+      Layer1.hash_of_level
+        node_ctxt.Node_context.store
+        (Raw_level.to_int32 game.level)
+    in
+    let* history = Inbox.history_of_hash node_ctxt hash in
+    let* inbox = Inbox.inbox_of_hash node_ctxt hash in
+    let*! messages_tree = Inbox.find_message_tree node_ctxt.store hash in
     let*! history, history_proof =
-      Store.Inbox.form_history_proof store history inbox messages_tree
+      Store.Inbox.form_history_proof node_ctxt.store history inbox messages_tree
     in
     let module P = struct
       include PVM
 
-      let context = store
+      let context = node_ctxt.store
 
       let state = start_state
 
@@ -148,7 +151,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     assert check ;
     r
 
-  let new_dissection node_ctxt store last_level ok our_view =
+  let new_dissection node_ctxt last_level ok our_view =
     let open Lwt_result_syntax in
     let _start_hash, start_tick = ok in
     let our_state, stop_tick = our_view in
@@ -174,18 +177,18 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
         @@ List.rev
              ({state_hash = our_state; tick = stop_tick} :: rev_dissection)
       else
-        let* r = Interpreter.state_of_tick node_ctxt store tick last_level in
+        let* r = Interpreter.state_of_tick node_ctxt tick last_level in
         let state_hash = Option.map snd r in
         let next_tick = Sc_rollup.Tick.jump tick section_length in
         make ({state_hash; tick} :: rev_dissection) (Z.succ k) next_tick
     in
     make [] Z.zero start_tick
 
-  (** [generate_from_dissection node_ctxt store game]
-      traverses the current [game.dissection] and returns a move which
-      performs a new dissection of the execution trace or provides a
-      refutation proof to serve as the next move of the [game]. *)
-  let generate_next_dissection node_ctxt store game =
+  (** [generate_from_dissection node_ctxt game] traverses the current
+      [game.dissection] and returns a move which performs a new dissection of
+      the execution trace or provides a refutation proof to serve as the next
+      move of the [game]. *)
+  let generate_next_dissection node_ctxt game =
     let open Lwt_result_syntax in
     let rec traverse ok = function
       | [] ->
@@ -198,9 +201,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
             .Unreliable_tezos_node_returning_inconsistent_game
       | {state_hash = their_hash; tick} :: dissection -> (
           let open Lwt_result_syntax in
-          let* our =
-            Interpreter.state_of_tick node_ctxt store tick game.level
-          in
+          let* our = Interpreter.state_of_tick node_ctxt tick game.level in
           match (their_hash, our) with
           | None, None ->
               (* This case is absurd since: [None] can only occur at the
@@ -217,7 +218,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     | {state_hash = Some hash; tick} :: dissection ->
         let* ok, ko = traverse (hash, tick) dissection in
         let choice = snd ok in
-        let* dissection = new_dissection node_ctxt store game.level ok ko in
+        let* dissection = new_dissection node_ctxt game.level ok ko in
         let chosen_section_len = Sc_rollup.Tick.distance (snd ko) choice in
         return (choice, chosen_section_len, dissection)
     | [] | {state_hash = None; _} :: _ ->
@@ -230,11 +231,11 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
           Sc_rollup_node_errors
           .Unreliable_tezos_node_returning_inconsistent_game
 
-  let next_move node_ctxt store game =
+  let next_move node_ctxt game =
     let open Lwt_result_syntax in
     let final_move start_tick =
       let* start_state =
-        Interpreter.state_of_tick node_ctxt store start_tick game.level
+        Interpreter.state_of_tick node_ctxt start_tick game.level
       in
       match start_state with
       | None ->
@@ -242,12 +243,12 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
             Sc_rollup_node_errors
             .Unreliable_tezos_node_returning_inconsistent_game
       | Some (start_state, _start_hash) ->
-          let* proof = generate_proof node_ctxt store game start_state in
+          let* proof = generate_proof node_ctxt game start_state in
           let choice = start_tick in
           return {choice; step = Proof proof}
     in
     let* choice, chosen_section_len, dissection =
-      generate_next_dissection node_ctxt store game
+      generate_next_dissection node_ctxt game
     in
     if Z.(equal chosen_section_len one) then final_move choice
     else return {choice; step = Dissection dissection}
@@ -257,9 +258,9 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let*! _res = f () in
     return_unit
 
-  let play_next_move node_ctxt store game opponent =
+  let play_next_move node_ctxt game opponent =
     let open Lwt_result_syntax in
-    let* refutation = next_move node_ctxt store game in
+    let* refutation = next_move node_ctxt game in
     (* FIXME: #3008
 
        We currently do not remember that we already have
@@ -323,12 +324,12 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     | None -> return_false
     | Some _myself -> return_false
 
-  let play head_block node_ctxt store game staker1 staker2 =
+  let play head_block node_ctxt game staker1 staker2 =
     let open Lwt_result_syntax in
     let players = (staker1, staker2) in
     let index = Sc_rollup.Game.Index.make staker1 staker2 in
     match turn node_ctxt game index with
-    | Our_turn {opponent} -> play_next_move node_ctxt store game opponent
+    | Our_turn {opponent} -> play_next_move node_ctxt game opponent
     | Their_turn ->
         let* timeout_reached = timeout_reached head_block node_ctxt players in
         unless timeout_reached @@ fun () ->
@@ -375,12 +376,12 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
         return_unit
     | Error errs -> Lwt.return (Error errs)
 
-  let process (Layer1.Head {hash; _}) node_ctxt store =
+  let process (Layer1.Head {hash; _}) node_ctxt =
     let head_block = `Hash (hash, 0) in
     let open Lwt_result_syntax in
     let* res = ongoing_game head_block node_ctxt in
     match res with
     | Some (game, staker1, staker2) ->
-        play head_block node_ctxt store game staker1 staker2
+        play head_block node_ctxt game staker1 staker2
     | None -> start_game_if_conflict head_block node_ctxt
 end

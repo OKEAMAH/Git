@@ -99,15 +99,15 @@ let last_commitment_with_hash
   return commitment_with_hash
 
 let next_commitment_level node_ctxt
-    (module Last_commitment_level : Mutable_level_store) store =
+    (module Last_commitment_level : Mutable_level_store) =
   let open Lwt_syntax in
   let+ last_commitment_level_opt =
-    last_commitment_level (module Last_commitment_level) store
+    last_commitment_level
+      (module Last_commitment_level)
+      node_ctxt.Node_context.store
   in
   let last_commitment_level =
-    Option.value
-      last_commitment_level_opt
-      ~default:node_ctxt.Node_context.genesis_info.level
+    Option.value last_commitment_level_opt ~default:node_ctxt.genesis_info.level
   in
   Raw_level.of_int32
   @@ Int32.add
@@ -115,24 +115,23 @@ let next_commitment_level node_ctxt
        (sc_rollup_commitment_period node_ctxt)
 
 let last_commitment_hash node_ctxt
-    (module Last_commitment_level : Mutable_level_store) store =
+    (module Last_commitment_level : Mutable_level_store) =
   let open Lwt_syntax in
   let+ last_commitment =
-    last_commitment_with_hash (module Last_commitment_level) store
+    last_commitment_with_hash
+      (module Last_commitment_level)
+      node_ctxt.Node_context.store
   in
   match last_commitment with
   | Some (_commitment, hash) -> hash
-  | None ->
-      node_ctxt.Node_context.genesis_info.Sc_rollup.Commitment.commitment_hash
+  | None -> node_ctxt.genesis_info.Sc_rollup.Commitment.commitment_hash
 
-let must_store_commitment node_ctxt current_level store =
+let must_store_commitment node_ctxt current_level =
   let open Lwt_result_syntax in
   let+ next_commitment_level =
-    next_commitment_level
-      node_ctxt
-      (module Store.Last_stored_commitment_level)
-      store
+    next_commitment_level node_ctxt (module Store.Last_stored_commitment_level)
   in
+
   Raw_level.equal current_level next_commitment_level
 
 let update_last_stored_commitment store (commitment : Sc_rollup.Commitment.t) =
@@ -156,17 +155,16 @@ let update_last_stored_commitment store (commitment : Sc_rollup.Commitment.t) =
 module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
   module PVM = PVM
 
-  let build_commitment node_ctxt store block_hash =
+  let build_commitment node_ctxt block_hash =
     let open Lwt_result_syntax in
     let lsc =
       (module Store.Last_stored_commitment_level : Mutable_level_store)
     in
-    let*! predecessor = last_commitment_hash node_ctxt lsc store in
+    let*! predecessor = last_commitment_hash node_ctxt lsc in
     let* inbox_level =
-      Lwt.map Environment.wrap_tzresult
-      @@ next_commitment_level node_ctxt lsc store
+      Lwt.map Environment.wrap_tzresult @@ next_commitment_level node_ctxt lsc
     in
-    let*! pvm_state = Store.PVMState.find store block_hash in
+    let*! pvm_state = Store.PVMState.find node_ctxt.store block_hash in
     let* compressed_state =
       match pvm_state with
       | Some pvm_state ->
@@ -194,16 +192,16 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     Sc_rollup.Commitment.
       {predecessor; inbox_level; number_of_ticks; compressed_state}
 
-  let store_commitment_if_necessary node_ctxt store current_level block_hash =
+  let store_commitment_if_necessary node_ctxt current_level block_hash =
     let open Lwt_result_syntax in
     let* must_store_commitment =
       Lwt.map Environment.wrap_tzresult
-      @@ must_store_commitment node_ctxt current_level store
+      @@ must_store_commitment node_ctxt current_level
     in
     if must_store_commitment then
       let*! () = Commitment_event.compute_commitment block_hash current_level in
-      let* commitment = build_commitment node_ctxt store block_hash in
-      let*! () = update_last_stored_commitment store commitment in
+      let* commitment = build_commitment node_ctxt block_hash in
+      let*! () = update_last_stored_commitment node_ctxt.store commitment in
       return_unit
     else return_unit
 
@@ -213,15 +211,14 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     let () = Number_of_messages.add num_messages in
     return @@ Number_of_ticks.add num_ticks
 
-  let process_head (node_ctxt : Node_context.t) store
-      Layer1.(Head {level; hash}) =
+  let process_head (node_ctxt : Node_context.t) Layer1.(Head {level; hash}) =
     let open Lwt_result_syntax in
     let current_level = Raw_level.of_int32_exn level in
-    let* () = update_ticks_and_messages store hash in
-    store_commitment_if_necessary node_ctxt store current_level hash
+    let* () = update_ticks_and_messages node_ctxt.store hash in
+    store_commitment_if_necessary node_ctxt current_level hash
 
   let sync_last_cemented_commitment_hash_with_level
-      ({cctxt; rollup_address; _} : Node_context.t) store =
+      ({cctxt; rollup_address; store; _} : Node_context.t) =
     let open Lwt_result_syntax in
     let* hash, inbox_level =
       Plugin.RPC.Sc_rollup.last_cemented_commitment_hash_with_level
@@ -237,8 +234,8 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     return_unit
 
   let get_commitment_and_publish ~check_lcc_hash
-      ({cctxt; rollup_address; _} as node_ctxt : Node_context.t)
-      next_level_to_publish store =
+      ({cctxt; rollup_address; store; _} as node_ctxt : Node_context.t)
+      next_level_to_publish =
     let open Lwt_result_syntax in
     let*! is_commitment_available =
       Store.Commitments.mem store next_level_to_publish
@@ -308,7 +305,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2869
      use the Injector to publish commitments. *)
-  let publish_commitment node_ctxt store =
+  let publish_commitment node_ctxt =
     let open Lwt_result_syntax in
     (* Check level of next publishable commitment and avoid publishing if it is
        on or before the last cemented commitment.
@@ -318,14 +315,12 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
       @@ next_commitment_level
            node_ctxt
            (module Store.Last_cemented_commitment_level)
-           store
     in
     let* next_publishable_level =
       Lwt.map Environment.wrap_tzresult
       @@ next_commitment_level
            node_ctxt
            (module Store.Last_published_commitment_level)
-           store
     in
     let check_lcc_hash, level_to_publish =
       if Raw_level.(next_publishable_level < next_lcc_level) then
@@ -346,12 +341,14 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
         (true, next_lcc_level)
       else (false, next_publishable_level)
     in
-    get_commitment_and_publish node_ctxt level_to_publish store ~check_lcc_hash
+    get_commitment_and_publish node_ctxt level_to_publish ~check_lcc_hash
 
-  let earliest_cementing_level node_ctxt store commitment_hash =
+  let earliest_cementing_level node_ctxt commitment_hash =
     let open Lwt_option_syntax in
     let+ published_at_level =
-      Store.Commitments_published_at_level.find store commitment_hash
+      Store.Commitments_published_at_level.find
+        node_ctxt.Node_context.store
+        commitment_hash
     in
     Int32.add
       (Raw_level.to_int32 published_at_level)
@@ -371,8 +368,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     else return_false
 
   let cement_commitment ({Node_context.cctxt; rollup_address; _} as node_ctxt)
-      ({Sc_rollup.Commitment.inbox_level; _} as commitment) commitment_hash
-      store =
+      ({Sc_rollup.Commitment.inbox_level; _} as commitment) commitment_hash =
     let open Lwt_result_syntax in
     let* source, src_pk, src_sk = Node_context.get_operator_keys node_ctxt in
     let* _, _, Manager_operation_result {operation_result; _} =
@@ -394,10 +390,12 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
       | Applied (Sc_rollup_cement_result _) ->
           let open Lwt_syntax in
           let* () =
-            Store.Last_cemented_commitment_level.set store inbox_level
+            Store.Last_cemented_commitment_level.set node_ctxt.store inbox_level
           in
           let* () =
-            Store.Last_cemented_commitment_hash.set store commitment_hash
+            Store.Last_cemented_commitment_hash.set
+              node_ctxt.store
+              commitment_hash
           in
           Commitment_event.cement_commitment_injected commitment
       | Failed (Sc_rollup_cement_manager_kind, _errors) ->
@@ -411,7 +409,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
 
   (* TODO:  https://gitlab.com/tezos/tezos/-/issues/3008
      Use the injector to cement commitments. *)
-  let cement_commitment_if_possible node_ctxt store
+  let cement_commitment_if_possible node_ctxt
       (Layer1.Head {level = head_level; _}) =
     let open Lwt_result_syntax in
     let* next_level_to_cement =
@@ -419,17 +417,16 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
       @@ next_commitment_level
            node_ctxt
            (module Store.Last_cemented_commitment_level)
-           store
     in
     let*! commitment_with_hash =
-      Store.Commitments.find store next_level_to_cement
+      Store.Commitments.find node_ctxt.store next_level_to_cement
     in
     match commitment_with_hash with
     (* If `commitment_with_hash` is defined, the commitment to be cemented has
        been stored but not necessarily published by the rollup node. *)
     | Some (commitment, commitment_hash) -> (
         let*! earliest_cementing_level =
-          earliest_cementing_level node_ctxt store commitment_hash
+          earliest_cementing_level node_ctxt commitment_hash
         in
         match earliest_cementing_level with
         (* If `earliest_cementing_level` is well defined, then the rollup node
@@ -444,7 +441,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
                 commitment_hash
             in
             if green_flag then
-              cement_commitment node_ctxt commitment commitment_hash store
+              cement_commitment node_ctxt commitment commitment_hash
             else return ()
         | None -> return ())
     | None -> return ()
