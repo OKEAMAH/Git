@@ -49,6 +49,141 @@ module Kate_amortized = struct
   external mul_map_inplace3 : Scalar.t array -> Scalar.t -> int -> int
     = "caml_mul_map_fr_inplace_stubs3"
 
+  let rec fftRadix4 domain points primroot4th =
+    let n = Array.length points in
+    if n < 4 then points
+    else
+      let f0 = Array.make (n / 4) Scalar.(copy zero) in
+      let f1 = Array.make (n / 4) Scalar.(copy zero) in
+      let f2 = Array.make (n / 4) Scalar.(copy zero) in
+      let f3 = Array.make (n / 4) Scalar.(copy zero) in
+      for k = 0 to (n / 4) - 1 do
+        f0.(k) <- points.(4 * k) ;
+        f1.(k) <- points.((4 * k) + 1) ;
+        f2.(k) <- points.((4 * k) + 2) ;
+        f3.(k) <- points.((4 * k) + 3)
+      done ;
+      let q = fftRadix4 domain f0 primroot4th in
+      let r = fftRadix4 domain f1 primroot4th in
+      let s = fftRadix4 domain f2 primroot4th in
+      let t = fftRadix4 domain f3 primroot4th in
+      let y = Array.make n Scalar.(copy zero) in
+      for k = 0 to (n / 4) - 1 do
+        let a = q.(k) in
+        let b = Scalar.mul r.(k) domain.(k) in
+        let c = Scalar.mul s.(k) domain.(2 * k) in
+        let d = Scalar.mul t.(k) domain.(3 * k) in
+        y.(k) <- Scalar.add_bulk [a; b; c; d] ;
+        y.(k + (n / 4)) <-
+          Scalar.add_bulk
+            [
+              a;
+              Scalar.mul primroot4th b;
+              Scalar.negate c;
+              Scalar.(negate (mul primroot4th d));
+            ] ;
+        y.(k + (n / 2)) <-
+          Scalar.add_bulk [a; Scalar.negate b; c; Scalar.negate d] ;
+        y.(k + (3 * n / 4)) <-
+          Scalar.add_bulk
+            [
+              a;
+              Scalar.(negate (mul b primroot4th));
+              Scalar.(negate c);
+              Scalar.(mul primroot4th d);
+            ]
+      done ;
+      y
+
+  let fftRadix4_iter' domain points primroot4th log4 =
+    let n = Array.length points in
+    if n >= 4 then
+      let m = ref 1 in
+      for _i = 0 to log4 - 1 do
+        let _exponent = n / (4 * !m) in
+
+        let k = ref 0 in
+        while !k < n do
+          for j = 0 to !m - 1 do
+            let y = points.(!k + j) in
+            let g =
+              Scalar.mul points.(!k + j + !m) domain.(_exponent * 2 * !m)
+            in
+            let z =
+              Scalar.mul points.(!k + j + (2 * !m)) domain.(_exponent * !m)
+            in
+            let h =
+              Scalar.mul points.(!k + j + (3 * !m)) domain.(_exponent * 3 * !m)
+            in
+            points.(!k + j) <- Scalar.add_bulk [y; g; z; h] ;
+            points.(!k + j + !m) <-
+              Scalar.add_bulk
+                [
+                  y;
+                  Scalar.mul primroot4th z;
+                  Scalar.negate g;
+                  Scalar.(negate (mul primroot4th h));
+                ] ;
+            points.(!k + j + (2 * !m)) <-
+              Scalar.add_bulk [y; Scalar.negate z; g; Scalar.negate h] ;
+            points.(!k + j + (3 * !m)) <-
+              Scalar.add_bulk
+                [
+                  y;
+                  Scalar.(negate (mul z primroot4th));
+                  Scalar.(negate g);
+                  Scalar.(mul primroot4th h);
+                ]
+          done ;
+          k := !k + (!m * 4)
+        done ;
+        m := !m * 4
+      done
+
+  let fftRadix4_iter domain points primroot4th _log4 =
+    let n = Array.length points in
+    if n >= 4 then
+      let transformSize = ref 4 in
+      while !transformSize <= n do
+        let xDist = !transformSize / 4 in
+        let twiddleFactorStep = n / !transformSize in
+        let i = ref 0 in
+        while !i < n do
+          let k = ref 0 in
+          let j = ref 0 in
+          j := !i ;
+          while !j < !i + xDist do
+            let y = points.(!j) in
+            let g = Scalar.mul points.(!j + xDist) domain.(2 * !k) in
+            let z = Scalar.mul points.(!j + (2 * xDist)) domain.(!k) in
+            let h = Scalar.mul points.(!j + (3 * xDist)) domain.(3 * !k) in
+            points.(!j) <- Scalar.add_bulk [y; g; z; h] ;
+            points.(!j + xDist) <-
+              Scalar.add_bulk
+                [
+                  y;
+                  Scalar.mul primroot4th z;
+                  Scalar.negate g;
+                  Scalar.(negate (mul primroot4th h));
+                ] ;
+            points.(!j + (2 * xDist)) <-
+              Scalar.add_bulk [y; Scalar.negate z; g; Scalar.negate h] ;
+            points.(!j + (3 * xDist)) <-
+              Scalar.add_bulk
+                [
+                  y;
+                  Scalar.(negate (mul z primroot4th));
+                  Scalar.(negate g);
+                  Scalar.(mul primroot4th h);
+                ] ;
+            j := !j + 1 ;
+            k := !k + twiddleFactorStep
+          done ;
+          i := !i + !transformSize
+        done ;
+        transformSize := !transformSize * 4
+      done
+
   (*external fft_inplace4_stubs :
     Scalar.t array ->
     Scalar.t array ->
@@ -90,12 +225,50 @@ module Kate_amortized = struct
     let primroot4th = Scalar.pow (Scalar.of_int 7) exponent in
     ignore @@ fft_inplace2_stubs points n log4dom prepare primroot4th
 
+  let bitreverse n' l =
+    let r = ref 0 in
+    let n = ref n' in
+    for _i = 0 to l - 1 do
+      r := (!r lsl 1) lor (!n land 1) ;
+      n := !n lsr 1
+    done ;
+    !r
+
+  let reorg_coefficients n logn values =
+    for i = 0 to n - 1 do
+      let reverse_i = bitreverse i logn in
+      if i < reverse_i then (
+        let a_i = values.(i) in
+        let a_ri = values.(reverse_i) in
+        values.(i) <- a_ri ;
+        values.(reverse_i) <- a_i)
+    done
+
   let fft_inplace3 ~domain ~points =
     let n = Z.of_int (Array.length points) in
     Printf.eprintf "\n n=%d \n" (Array.length points) ;
-    let log2 = Z.log2 n in
-    let log4 = log4 n in
-    ignore @@ fft_inplace3_stubs points domain log2 log4
+    let _log2 = Z.log2 n in
+    let _log4 = log4 n in
+    let _n' = Array.length points in
+    (*reorg_coefficients _n' _log2 points ;*)
+    ignore @@ fft_inplace3_stubs points domain _log2 _log4
+  (*let _n' = Array.length points in
+    (*reorg_coefficients n' _log2 points ;*)
+    fftRadix4 domain points (Array.get domain (Array.length points / 4))*)
+
+  let fft_3 ~domain ~points =
+    let n = Z.of_int (Array.length points) in
+    Printf.eprintf "\n n=%d \n" (Array.length points) ;
+    let _log2 = Z.log2 n in
+    let _log4 = log4 n in
+    (*ignore @@ fft_inplace3_stubs points domain _log2 _log4*)
+    let _n' = Array.length points in
+    reorg_coefficients _n' _log2 points ;
+    fftRadix4_iter'
+      domain
+      points
+      (Array.get domain (Array.length points / 4))
+      _log4
 
   let ifft_inplace3 ~domain ~points =
     let n = Array.length points in
@@ -191,7 +364,9 @@ module Kate_amortized = struct
               G1.copy srs1.(degree - j - ((i + 1) * l))
             else G1.(copy zero))
       in
+
       (*print_array points ;*)
+      Printf.eprintf "\n len G1 FFT = %d \n" (Array.length domain) ;
       G1.fft_inplace ~domain ~points ;
       (*print_array points ;*)
       points
@@ -239,7 +414,7 @@ module Kate_amortized = struct
       done ;
 
       if j <> 0 then buffer.(0) <- Scalar.copy coefs.(degree - j) ;
-
+      Printf.eprintf "\n len scalar/G1 FFT = %d \n" (Array.length domain) ;
       Scalar.fft_inplace ~domain ~points:buffer ;
       let v = precomputed_srs_part.(j) in
       for i = 0 to Array.length domain - 1 do

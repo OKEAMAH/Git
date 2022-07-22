@@ -9,6 +9,8 @@
 #include <string.h>
 #include <math.h>
 
+#include <time.h>
+
 #include <caml/custom.h>
 
 // IMPROVEME: can be improve it with lookups?
@@ -283,11 +285,21 @@ void fft_fr_inplaceRadix4(value coefficients, value domain, int log_domain_size,
     blst_fr T0, T1, T2, T3;
     blst_fr tmp0, tmp1;
 
+    time_t start_t, end_t;
+    double diff_t;
+
     int domain_size = 1 << log_domain_size;
 
     blst_fr *primroot4th = Fr_val_k(domain, domain_size / 4);
 
+    time(&start_t);
     reorg_fr_coefficients__(domain_size, coefficients);
+
+
+    time(&end_t);
+    diff_t = difftime(end_t, start_t);
+
+    printf("\nExecution time = %f\n", diff_t);
 
     int j, k;
     for (int transformSize = 4; transformSize <= domain_size; transformSize *= 4)
@@ -299,38 +311,37 @@ void fft_fr_inplaceRadix4(value coefficients, value domain, int log_domain_size,
         {
             for (j = i, k = 0; j < i + xDist; j++, k += twiddleFactorStep)
             {
-                // A[k+j+2m] * w_N^(2j*exponent)
-                blst_fr_mul(&tmp0, Fr_val_k(coefficients, j + 2 * xDist), Fr_val_k(domain, 2 * k));
+                // A[k+j+m] * w_N^(2j*exponent)
+                blst_fr_mul(&tmp0, Fr_val_k(coefficients, j + xDist), Fr_val_k(domain, 2 * k));
 
-                // T0 = A[k+j] + A[k+j+2*m] * w_N^(2j*exponent)
+                // T0 = A[k+j] + A[k+j+m] * w_N^(2j*exponent)
                 blst_fr_add(&T0, Fr_val_k(coefficients, j), &tmp0);
 
-                // T1 = A[k+j] - A[k+j+2*m] * w_N^(2j*exponent)
-                blst_fr_sub(&T1, Fr_val_k(coefficients, j), &tmp0);
+                // T2 = A[k+j]  - A[k+j+2m] * w_N(j*exponent)
+                blst_fr_sub(&T2, Fr_val_k(coefficients, j), &tmp0);
 
-                // A[k+j+m] * w_N^(j*exponent)
-                blst_fr_mul(&tmp0, Fr_val_k(coefficients, j + xDist), Fr_val_k(domain, k));
-                // A[k+j+3*m] * w_N^(3j*exponent)
+                blst_fr_mul(&tmp0, Fr_val_k(coefficients, j + 2 * xDist), Fr_val_k(domain, k));
+
                 blst_fr_mul(&tmp1, Fr_val_k(coefficients, j + 3 * xDist), Fr_val_k(domain, 3 * k));
 
-                // T2 = A[k+j+m] * w_N^(j*exponent) + A[k+j+3*m] * w_N^(3j*exponent)
-                blst_fr_add(&T2, &tmp0, &tmp1);
-                // T3 = A[k+j+m] * w_N^(j*exponent) - A[k+j+3*m] * w_N^(3j*exponent)
+                // T1 = A[k+j+m] * w_N(2j*exponent) + A[k+j+3m] * w_N(3j*exponent)
+                blst_fr_add(&T1, &tmp0, &tmp1);
+
+                // T3
                 blst_fr_sub(&T3, &tmp0, &tmp1);
+                blst_fr_mul(&T3, primroot4th, &T3);
 
-                // F0'=A[k+j]=T0+T2
-                blst_fr_add(Fr_val_k(coefficients, j), &T0, &T2);
-
-                blst_fr_mul(&tmp0, &T3, primroot4th);
+                // F0'=A[k+j]=T0+T1
+                blst_fr_add(Fr_val_k(coefficients, j), &T0, &T1);
 
                 // F1'=A[k+j+m]= T1+T3*primroot4th
-                blst_fr_add(Fr_val_k(coefficients, j + xDist), &T1, &tmp0);
+                blst_fr_add(Fr_val_k(coefficients, j + xDist), &T2, &T3);
 
-                // F2'=A[k+j+2*m]=T0-T2
-                blst_fr_sub(Fr_val_k(coefficients, j + 2 * xDist), &T0, &T2);
+                // F2'=A[k+j+2*m]=T0-T1
+                blst_fr_sub(Fr_val_k(coefficients, j + 2 * xDist), &T0, &T1);
 
                 // F3'=A[k+j+3*m]=T1-T3*primroot4th
-                blst_fr_sub(Fr_val_k(coefficients, j + 3 * xDist), &T1, &tmp0);
+                blst_fr_sub(Fr_val_k(coefficients, j + 3 * xDist), &T2, &T3);
             }
         }
     }
@@ -358,61 +369,38 @@ void fft_fr_inplace3(value coefficients, value domain, int log_domain_size, int 
             for (int j = 0; j < m; j++)
             {
                 c++;
-                // A[k+j+2m] * w_N^(2j*exponent)
-                blst_fr_mul(&tmp0, Fr_val_k(coefficients, k + j + 2 * m), Fr_val_k(domain, exponent * 2 * j));
+                // A[k+j+2m] * w_N^(j*exponent)
+                blst_fr_mul(&tmp0, Fr_val_k(coefficients, k + j + 2 * m), Fr_val_k(domain, exponent * j));
 
-                // T0 = A[k+j] + A[k+j+2*m] * w_N^(2j*exponent)
+                // T0 = A[k+j] + A[k+j+2*m] * w_N^(j*exponent)
                 blst_fr_add(&T0, Fr_val_k(coefficients, k + j), &tmp0);
 
-                // T1 = A[k+j] - A[k+j+2*m] * w_N^(2j*exponent)
-                blst_fr_sub(&T1, Fr_val_k(coefficients, k + j), &tmp0);
+                // T2 = A[k+j]  - A[k+j+2m] * w_N(j*exponent)
+                blst_fr_sub(&T2, Fr_val_k(coefficients, k + j), &tmp0);
 
-                // A[k+j+m] * w_N^(j*exponent)
-                blst_fr_mul(&tmp0, Fr_val_k(coefficients, k + j + m), Fr_val_k(domain, exponent * j));
-                // A[k+j+3*m] * w_N^(3j*exponent)
+                blst_fr_mul(&tmp0, Fr_val_k(coefficients, k + j + m), Fr_val_k(domain, exponent * 2 * j));
+
                 blst_fr_mul(&tmp1, Fr_val_k(coefficients, k + j + 3 * m), Fr_val_k(domain, exponent * 3 * j));
 
-                // T2 = A[k+j+m] * w_N^(j*exponent) + A[k+j+3*m] * w_N^(3j*exponent)
-                blst_fr_add(&T2, &tmp0, &tmp1);
-                // T3 = A[k+j+m] * w_N^(j*exponent) - A[k+j+3*m] * w_N^(3j*exponent)
-                blst_fr_sub(&T3, &tmp0, &tmp1);
+                // T1 = A[k+j+m] * w_N(2j*exponent) + A[k+j+3m] * w_N(3j*exponent)
+                blst_fr_add(&T1, &tmp0, &tmp1);
 
-                // F0'=A[k+j]=T0+T2
-                blst_fr_add(Fr_val_k(coefficients, k + j), &T0, &T2);
+                // T3
+                blst_fr_sub(&T3, &tmp0, &tmp1);
 
                 blst_fr_mul(&tmp0, primroot4th, &T3);
 
-                // F1'=A[k+j+m]= T1+T3*primroot4th
-                blst_fr_add(Fr_val_k(coefficients, k + j + m), &T1, &tmp0);
+                // F0'=A[k+j]=T0+T1
+                blst_fr_add(Fr_val_k(coefficients, k + j), &T0, &T1);
 
-                // F2'=A[k+j+2*m]=T0-T2
-                blst_fr_sub(Fr_val_k(coefficients, k + j + 2 * m), &T0, &T2);
+                // F1'=A[k+j+m]= T1+T3*primroot4th
+                blst_fr_add(Fr_val_k(coefficients, k + j + m), &T2, &tmp0);
+
+                // F2'=A[k+j+2*m]=T0-T1
+                blst_fr_sub(Fr_val_k(coefficients, k + j + 2 * m), &T0, &T1);
 
                 // F3'=A[k+j+3*m]=T1-T3*primroot4th
-                blst_fr_sub(Fr_val_k(coefficients, k + j + 3 * m), &T1, &tmp0);
-                /*blst_fr_mul(&T0, Fr_val_k(coefficients, j + k + m), Fr_val_k(domain, j));
-                blst_fr_mul(&T1, Fr_val_k(coefficients, j + k + 2 * m), Fr_val_k(domain, 2 * j));
-                blst_fr_mul(&T2, Fr_val_k(coefficients, j + k + 3 * m), Fr_val_k(domain, 3 * j));
-
-                blst_fr_add(Fr_val_k(coefficients, j + k), Fr_val_k(coefficients, j + k), &T0);
-                blst_fr_add(Fr_val_k(coefficients, j + k), Fr_val_k(coefficients, j + k), &T1);
-                blst_fr_add(Fr_val_k(coefficients, j + k), Fr_val_k(coefficients, j + k), &T2);
-
-                blst_fr_add(Fr_val_k(coefficients, j + k + 2 * m), Fr_val_k(coefficients, j + k), &T1);
-                blst_fr_sub(Fr_val_k(coefficients, j + k + 2 * m), Fr_val_k(coefficients, j + k + 2 * m), &T0);
-                blst_fr_sub(Fr_val_k(coefficients, j + k + 2 * m), Fr_val_k(coefficients, j + k + 2 * m), &T2);
-
-                blst_fr_sub(Fr_val_k(coefficients, j + k + m), Fr_val_k(coefficients, j + k), &T1);
-                blst_fr_sub(Fr_val_k(coefficients, j + k + 3 * m), Fr_val_k(coefficients, j + k), &T1);
-
-                blst_fr_mul(&tmp0, primroot4th, &T0);
-                blst_fr_mul(&tmp1, primroot4th, &T2);
-
-                blst_fr_add(Fr_val_k(coefficients, j + k + m), Fr_val_k(coefficients, j + k + m), &tmp0);
-                blst_fr_sub(Fr_val_k(coefficients, j + k + m), Fr_val_k(coefficients, j + k + m), &tmp1);
-
-                blst_fr_add(Fr_val_k(coefficients, j + k + 3 * m), Fr_val_k(coefficients, j + k + 3 * m), &tmp1);
-                blst_fr_sub(Fr_val_k(coefficients, j + k + 3 * m), Fr_val_k(coefficients, j + k + 3 * m), &tmp0);*/
+                blst_fr_sub(Fr_val_k(coefficients, k + j + 3 * m), &T2, &tmp0);
             }
         }
         m = 4 * m;
@@ -420,11 +408,42 @@ void fft_fr_inplace3(value coefficients, value domain, int log_domain_size, int 
     printf("n iter = %d", c);
 }
 
+void fft_fr_inplaceRadix2(value coefficients, value domain, int log_domain_size)
+{
+    // FIXME: add a check on the domain_size to avoid ariane crash
+    blst_fr *buffer = (blst_fr *)calloc(1, sizeof(blst_fr));
+
+    int domain_size = 1 << log_domain_size;
+    int m = 1;
+    reorg_fr_coefficients__(domain_size, coefficients);
+
+    for (int i = 0; i < log_domain_size; i++)
+    {
+        int exponent = domain_size / (2 * m);
+        int k = 0;
+        while (k < domain_size)
+        {
+            for (int j = 0; j < m; j++)
+            {
+                blst_fr_mul(buffer, Fr_val_k(coefficients, k + j + m),
+                            Fr_val_k(domain, exponent * j));
+                blst_fr_sub(Fr_val_k(coefficients, k + j + m),
+                            Fr_val_k(coefficients, k + j), buffer);
+                blst_fr_add(Fr_val_k(coefficients, k + j),
+                            Fr_val_k(coefficients, k + j), buffer);
+            }
+            k = k + (2 * m);
+        }
+        m = 2 * m;
+    }
+    free(buffer);
+}
+
 CAMLprim value caml_fft_fr_inplace_stubs3(value coefficients, value domain,
                                           value log_domain_size, value log4_domain_size)
 {
     CAMLparam4(coefficients, domain, log_domain_size, log4_domain_size);
-    fft_fr_inplace3(coefficients, domain, Int_val(log_domain_size), Int_val(log4_domain_size));
+    fft_fr_inplaceRadix4(coefficients, domain, Int_val(log_domain_size), Int_val(log4_domain_size));
     CAMLreturn(Val_unit);
 }
 
