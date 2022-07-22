@@ -2100,8 +2100,46 @@ let operation_t = {id = Id.gen (); value = Operation_t}
 
 let list_operation_t = List_type.known_t operation_t Type_size.two
 
-let set_t loc t =
-  Type_size.compound1 loc (ty_size t) >|? fun size -> Set_t (t, {size})
+module SetLikeType (T : sig
+  type 'a t
+
+  val deconstructor : ('a t, no) ty -> 'a comparable_ty
+
+  val constructor : 'a comparable_ty * 'a t Type_size.t -> ('a t, no) ty
+end) : sig
+  val t : Script.location -> 'a comparable_ty -> ('a T.t, no) ty tzresult
+end = struct
+  type x = X : (_ T.t, no) ty -> x
+
+  let table = Hashtbl.create 10
+
+  let t : type a. Script.location -> a comparable_ty -> (a T.t, no) ty tzresult
+      =
+   fun loc a ->
+    let open Result_syntax in
+    let res = Hashtbl.find_opt table (Id.Xid a.id) in
+    match res with
+    | Some (X r) -> (
+        let a' = T.deconstructor r in
+        match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
+    | None ->
+        let+ size = Type_size.compound1 loc (ty_size a) in
+        let r = T.constructor (a, size) in
+        Hashtbl.add table (Id.Xid a.id) (X r) ;
+        r
+end
+
+module Set_type = SetLikeType (struct
+  type 'a t = 'a set
+
+  let deconstructor s =
+    let (Set_t (v, _)) = s.value in
+    v
+
+  let constructor (v, size) = {id = Id.gen (); value = Set_t (v, {size})}
+end)
+
+let set_t loc t = Set_type.t loc t
 
 let map_t loc l r =
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
@@ -2142,8 +2180,17 @@ let bls12_381_g2_t = {id = Id.gen (); value = Bls12_381_g2_t}
 
 let bls12_381_fr_t = {id = Id.gen (); value = Bls12_381_fr_t}
 
-let ticket_t loc t =
-  Type_size.compound1 loc (ty_size t) >|? fun size -> Ticket_t (t, {size})
+module Ticket_type = SetLikeType (struct
+  type 'a t = 'a ticket
+
+  let deconstructor t =
+    let (Ticket_t (a, _)) = t.value in
+    a
+
+  let constructor (a, size) = {id = Id.gen (); value = Ticket_t (a, {size})}
+end)
+
+let ticket_t loc t = Ticket_type.t loc t
 
 let chest_key_t = {id = Id.gen (); value = Chest_key_t}
 
