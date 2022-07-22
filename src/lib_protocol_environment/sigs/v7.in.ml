@@ -131,5 +131,7 @@ module type T = sig
 
   module Plonk : [%sig "v7/plonk.mli"]
 
+  module Hashtbl : [%sig "v7/hashtbl.mli"]
+
   module Dal : [%sig "v7/dal.mli"]
 end
