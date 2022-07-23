@@ -278,6 +278,15 @@ module Kate_amortized = struct
     ignore @@ fft_inplace3_stubs points domain logn log4 ;
     ignore @@ mul_map_inplace3 points n_inv n
 
+  (* jacobian array for domain? *)
+  external fft_g1_inplace_stubs :
+    Bls12_381.G1.t array -> Scalar.t array -> int -> int
+    = "caml_fft_g1_inplace_stubs3"
+
+  let fft_g1_inplace2 ~domain ~points =
+    let logn = Z.log2 (Z.of_int (Array.length points)) in
+    ignore @@ fft_g1_inplace_stubs points domain logn
+
   let build_array w j len =
     Array.init len (fun i -> Scalar.pow w (Z.of_int @@ (j * i)))
 

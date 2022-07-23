@@ -295,7 +295,6 @@ void fft_fr_inplaceRadix4(value coefficients, value domain, int log_domain_size,
     time(&start_t);
     reorg_fr_coefficients__(domain_size, coefficients);
 
-
     time(&end_t);
     diff_t = difftime(end_t, start_t);
 
@@ -342,6 +341,117 @@ void fft_fr_inplaceRadix4(value coefficients, value domain, int log_domain_size,
 
                 // F3'=A[k+j+3*m]=T1-T3*primroot4th
                 blst_fr_sub(Fr_val_k(coefficients, j + 3 * xDist), &T2, &T3);
+            }
+        }
+    }
+}
+
+void reorg_g1_coefficients__(int n, value coefficients)
+{
+    /*for (int i = 0; i < n; i++)
+    {
+        int reverse_i = bitreverse__(i, logn);
+        if (i < reverse_i)
+        {
+            memcpy(buffer, Fr_val_k(coefficients, i), sizeof(blst_fr));
+            memcpy(Fr_val_k(coefficients, i), Fr_val_k(coefficients, reverse_i),
+                   sizeof(blst_fr));
+            memcpy(Fr_val_k(coefficients, reverse_i), buffer, sizeof(blst_fr));
+        }
+    }*/
+    blst_p1 buffer;
+    for (int i = 1, j = 0; i < n; i++)
+    {
+        int bit = n >> 1;
+        for (; j & bit; bit >>= 1)
+            j ^= bit;
+        j ^= bit;
+
+        if (i < j)
+        {
+            memcpy(&buffer, G1_val_k(coefficients, i), sizeof(blst_p1));
+            memcpy(G1_val_k(coefficients, i), G1_val_k(coefficients, j),
+                   sizeof(blst_p1));
+            memcpy(G1_val_k(coefficients, j), &buffer, sizeof(blst_p1));
+        }
+    }
+}
+
+void fft_g1_inplaceRadix4(value coefficients, value domain, int log_domain_size, int log4_domain_size)
+{
+
+    blst_p1 T0, T1, T2, T3;
+    blst_p1 tmp0, tmp1;
+
+    int scalar_size = 256;
+
+    time_t start_t, end_t;
+    double diff_t;
+
+    int domain_size = 1 << log_domain_size;
+
+    byte primroot4th[32];
+    blst_lendian_from_fr(primroot4th, Fr_val_k(domain, domain_size / 4));
+
+    byte le_scalar[32];
+
+    time(&start_t);
+    reorg_g1_coefficients__(domain_size, coefficients);
+
+    time(&end_t);
+    diff_t = difftime(end_t, start_t);
+
+    printf("\nExecution time = %f\n", diff_t);
+
+    int j, k;
+    for (int transformSize = 4; transformSize <= domain_size; transformSize *= 4)
+    {
+        int xDist = transformSize / 4;
+        int twiddleFactorStep = domain_size / transformSize;
+
+        for (int i = 0; i < domain_size; i += transformSize)
+        {
+            for (j = i, k = 0; j < i + xDist; j++, k += twiddleFactorStep)
+            {
+                blst_lendian_from_fr(le_scalar, Fr_val_k(domain, 2 * k));
+                // A[k+j+m] * w_N^(2j*exponent)
+                blst_p1_mult(&tmp0, G1_val_k(coefficients, j + xDist), le_scalar, scalar_size);
+
+                // T0 = A[k+j] + A[k+j+m] * w_N^(2j*exponent)
+                blst_p1_add_or_double(&T0, G1_val_k(coefficients, j), &tmp0);
+
+                blst_p1_cneg(&tmp0, 1);
+                // T2 = A[k+j] - A[k+j+2m] * w_N(j*exponent)
+                blst_p1_add_or_double(&T2, G1_val_k(coefficients, j), &tmp0);
+
+                blst_lendian_from_fr(le_scalar, Fr_val_k(domain, 2 * k));
+                blst_p1_mult(&tmp0, G1_val_k(coefficients, j + 2 * xDist), le_scalar, scalar_size);
+
+                blst_lendian_from_fr(le_scalar, Fr_val_k(domain, 3 * k));
+                blst_p1_mult(&tmp1, G1_val_k(coefficients, j + 3 * xDist), le_scalar, scalar_size);
+
+                // T1 = A[k+j+m] * w_N(2j*exponent) + A[k+j+3m] * w_N(3j*exponent)
+                blst_p1_add_or_double(&T1, &tmp0, &tmp1);
+
+                blst_p1_cneg(&tmp1, 1);
+                // T3
+                blst_p1_add_or_double(&T3, &tmp0, &tmp1);
+
+                blst_p1_mult(&T3, &T3, primroot4th, scalar_size);
+
+                // F0'=A[k+j]=T0+T1
+                blst_p1_add_or_double(G1_val_k(coefficients, j), &T0, &T1);
+
+                // F1'=A[k+j+m]= T1+T3*primroot4th
+                blst_p1_add_or_double(G1_val_k(coefficients, j + xDist), &T2, &T3);
+
+                blst_p1_cneg(&T1, 1);
+                // F2'=A[k+j+2*m]=T0-T1
+                blst_p1_add_or_double(G1_val_k(coefficients, j + 2 * xDist), &T0, &T1);
+
+                blst_p1_cneg(&T3, 1);
+                // F3'=A[k+j+3*m]=T1-T3*primroot4th
+                blst_p1_add_or_double(G1_val_k(coefficients, j + 3 * xDist), &T2, &T3);
             }
         }
     }
@@ -444,6 +554,67 @@ CAMLprim value caml_fft_fr_inplace_stubs3(value coefficients, value domain,
 {
     CAMLparam4(coefficients, domain, log_domain_size, log4_domain_size);
     fft_fr_inplaceRadix4(coefficients, domain, Int_val(log_domain_size), Int_val(log4_domain_size));
+    CAMLreturn(Val_unit);
+}
+
+void reorg_g1_coefficients_____(int n, int logn, value coefficients)
+{
+    blst_p1 buffer;
+    for (int i = 0; i < n; i++)
+    {
+        int reverse_i = bitreverse__(i, logn);
+        if (i < reverse_i)
+        {
+            memcpy(&buffer, G1_val_k(coefficients, i), sizeof(blst_p1));
+            memcpy(G1_val_k(coefficients, i), G1_val_k(coefficients, reverse_i),
+                   sizeof(blst_p1));
+            memcpy(G1_val_k(coefficients, reverse_i), &buffer, sizeof(blst_p1));
+        }
+    }
+}
+
+void fft_g1_inplaceRadix2(value coefficients, value domain, int log_domain_size)
+{
+    // FIXME: add a check on the domain_size to avoid ariane crash
+    blst_p1 buffer;
+    blst_p1 buffer_neg;
+    blst_scalar scalar;
+    byte le_scalar[32];
+
+    int domain_size = 1 << log_domain_size;
+    int m = 1;
+    reorg_g1_coefficients__(domain_size, coefficients);
+
+    for (int i = 0; i < log_domain_size; i++)
+    {
+        int exponent = domain_size / (2 * m);
+        int k = 0;
+        while (k < domain_size)
+        {
+            for (int j = 0; j < m; j++)
+            {
+                blst_lendian_from_fr(le_scalar, Fr_val_k(domain, exponent * j));
+                blst_p1_mult(&buffer, G1_val_k(coefficients, k + j + m), le_scalar, 256);
+
+                buffer_neg = buffer;
+                blst_p1_cneg(&buffer_neg, 1);
+                blst_p1_add_or_double(G1_val_k(coefficients, k + j + m),
+                                      G1_val_k(coefficients, k + j), &buffer_neg);
+
+                blst_p1_add_or_double(G1_val_k(coefficients, k + j),
+                                      G1_val_k(coefficients, k + j), &buffer);
+            }
+            k = k + (2 * m);
+        }
+        m = 2 * m;
+    }
+}
+
+CAMLprim value caml_fft_g1_inplace_stubs3(value coefficients, value domain,
+                                          value log_domain_size, value log4_domain_size)
+{
+    CAMLparam4(coefficients, domain, log_domain_size, log4_domain_size);
+    fft_g1_inplaceRadix4(coefficients, domain, Int_val(log_domain_size), Int_val(log4_domain_size));
     CAMLreturn(Val_unit);
 }
 
