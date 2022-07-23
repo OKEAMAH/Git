@@ -76,10 +76,10 @@ module Make (PVM : Pvm.S) = struct
       (* Avoid processing inbox again if it has been processed before for this head *)
       if seen_before then return_unit
       else
-        let* () = Inbox.process_head node_ctxt head in
+        let* ctxt = Inbox.process_head node_ctxt head in
         (* Avoid storing and publishing commitments if the head is not final *)
         (* Avoid triggering the pvm execution if this has been done before for this head *)
-        let* () = Components.Interpreter.process_head node_ctxt head in
+        let* () = Components.Interpreter.process_head node_ctxt ctxt head in
 
         (* DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/3166
 
@@ -238,6 +238,7 @@ let run ~data_dir (cctxt : Protocol_client_context.full) =
   let* configuration = Configuration.load ~data_dir in
   let open Configuration in
   let*! store = Store.load configuration in
+  let*! context = Context.load configuration in
   let* l1_ctxt, genesis_info, kind = Layer1.start configuration cctxt store in
   let* node_ctxt =
     Node_context.init
@@ -250,6 +251,7 @@ let run ~data_dir (cctxt : Protocol_client_context.full) =
       configuration.fee_parameter
       ~loser_mode:configuration.loser_mode
       store
+      context
   in
   let* _pkh, _pk, _skh = Node_context.get_operator_keys node_ctxt in
   (* Check that the public key hash is valid. *)

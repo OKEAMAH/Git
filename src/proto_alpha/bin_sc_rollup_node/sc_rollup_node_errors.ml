@@ -32,7 +32,8 @@ type error += Commitment_predecessor_should_be_LCC of Sc_rollup.Commitment.t
 type error += Unreliable_tezos_node_returning_inconsistent_game
 
 type error +=
-  | Cannot_produce_proof of Store.Inbox.t * Store.Inbox.history * Raw_level.t
+  | Cannot_produce_proof of
+      Context.Inbox.t * Context.Inbox.history * Raw_level.t
 
 type error += Missing_PVM_state of Block_hash.t * Raw_level.t
 
@@ -93,16 +94,16 @@ let () =
       Format.fprintf
         ppf
         "cannot produce proof for inbox %a of level %a with history %a"
-        Store.Inbox.pp
+        Context.Inbox.pp
         inbox
         Raw_level.pp
         level
-        Store.Inbox.pp_history
+        Context.Inbox.pp_history
         history)
     Data_encoding.(
       obj3
-        (req "inbox" Store.Inbox.encoding)
-        (req "history" Store.Inbox.history_encoding)
+        (req "inbox" Context.Inbox.encoding)
+        (req "history" Context.Inbox.history_encoding)
         (req "level" Raw_level.encoding))
     (function
       | Cannot_produce_proof (inbox, history, level) ->

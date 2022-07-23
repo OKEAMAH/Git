@@ -65,8 +65,8 @@ module State = struct
         let block_level = Raw_level.of_int32_exn block_level in
         if Raw_level.(block_level <= node_ctxt.genesis_info.level) then
           let*! inbox =
-            Store.Inbox.empty
-              node_ctxt.store
+            Context.Inbox.empty
+              node_ctxt.context
               node_ctxt.rollup_address
               Raw_level.root
           in
@@ -94,19 +94,13 @@ module State = struct
         let*! block_level = Layer1.level_of_hash node_ctxt.store block_hash in
         let block_level = Raw_level.of_int32_exn block_level in
         if Raw_level.(block_level <= node_ctxt.genesis_info.level) then
-          return @@ Store.Inbox.history_at_genesis ~bound:(Int64.of_int 60000)
+          return @@ Context.Inbox.history_at_genesis ~bound:(Int64.of_int 60000)
         else
           failwith
             "The inbox history for hash %a is missing."
             Block_hash.pp
             block_hash
-
-  let find_message_tree = Store.MessageTrees.find
-
-  let set_message_tree = Store.MessageTrees.set
 end
-
-let find_message_tree = State.find_message_tree
 
 let get_messages Node_context.{l1_ctxt; rollup_address; _} head =
   let open Lwt_result_syntax in
@@ -120,7 +114,7 @@ let get_messages Node_context.{l1_ctxt; rollup_address; _} head =
       when Sc_rollup.Address.(rollup = rollup_address) ->
         let messages =
           List.map
-            (fun message -> Store.Inbox.Message.External message)
+            (fun message -> Sc_rollup.Inbox.Message.External message)
             messages
         in
         List.rev_append messages accu
@@ -143,8 +137,8 @@ let get_messages Node_context.{l1_ctxt; rollup_address; _} head =
         let+ payload =
           Environment.wrap_tzresult @@ Script_repr.force_decode parameters
         in
-        let message = Store.Inbox.Message.{payload; sender; source} in
-        Store.Inbox.Message.Internal message :: accu
+        let message = Sc_rollup.Inbox.Message.{payload; sender; source} in
+        Sc_rollup.Inbox.Message.Internal message :: accu
     | _ -> return accu
   in
   let*? messages =
@@ -176,32 +170,31 @@ let process_head node_ctxt Layer1.(Head {level; hash = head_hash} as head) =
       let*! predecessor = Layer1.predecessor node_ctxt.store head in
       let* inbox = State.inbox_of_hash node_ctxt predecessor in
       let* history = State.history_of_hash node_ctxt predecessor in
+      let* ctxt = Node_context.checkout_context node_ctxt predecessor in
+      let*! messages_tree = Context.MessageTrees.find ctxt in
       lift
-      @@ let*! messages_tree =
-           State.find_message_tree node_ctxt.store predecessor
+      @@ let*? level = Raw_level.of_int32 level in
+         let*? messages =
+           List.map_e Sc_rollup.Inbox.Message.serialize messages
          in
-         let*? level = Raw_level.of_int32 level in
-         let*? messages = List.map_e Store.Inbox.Message.serialize messages in
-         let* history, inbox =
-           if messages = [] then return (history, inbox)
+         let* history, inbox, ctxt =
+           if messages = [] then return (history, inbox, ctxt)
            else
              let* messages_tree, history, inbox =
-               Store.Inbox.add_messages
-                 node_ctxt.store
+               Context.Inbox.add_messages
+                 node_ctxt.context
                  history
                  inbox
                  level
                  messages
                  messages_tree
              in
-             let*! () =
-               State.set_message_tree node_ctxt.store head_hash messages_tree
-             in
-             return (history, inbox)
+             let*! ctxt = Context.MessageTrees.set ctxt messages_tree in
+             return (history, inbox, ctxt)
          in
          let*! () = State.add_inbox node_ctxt.store head_hash inbox in
          let*! () = State.add_history node_ctxt.store head_hash history in
-         return_unit
+         return ctxt
 
 let inbox_of_hash = State.inbox_of_hash
 

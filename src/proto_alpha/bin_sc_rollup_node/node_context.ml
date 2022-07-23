@@ -38,6 +38,7 @@ type t = {
   protocol_constants : Constants.t;
   loser_mode : Loser_mode.t;
   store : Store.t;
+  context : Context.index;
 }
 
 let get_operator_keys node_ctxt =
@@ -55,7 +56,7 @@ let retrieve_constants cctxt =
   Protocol.Constants_services.all cctxt (cctxt#chain, cctxt#block)
 
 let init (cctxt : Protocol_client_context.full) l1_ctxt rollup_address
-    genesis_info kind operator fee_parameter ~loser_mode store =
+    genesis_info kind operator fee_parameter ~loser_mode store context =
   let open Lwt_result_syntax in
   let+ protocol_constants = retrieve_constants cctxt in
   {
@@ -70,4 +71,23 @@ let init (cctxt : Protocol_client_context.full) l1_ctxt rollup_address
     protocol_constants;
     loser_mode;
     store;
+    context;
   }
+
+let checkout_context node_ctxt block_hash =
+  (* TODO improve *)
+  let open Lwt_result_syntax in
+  let*! context_hash = Store.Contexts.find node_ctxt.store block_hash in
+  (* let* context_hash = *)
+  (*   match context_hash with *)
+  (*   | None -> failwith "No context for block" *)
+  (*   | Some context_hash -> return context_hash *)
+  (* in *)
+  let*! ctxt =
+    match context_hash with
+    | None -> Lwt.return_some @@ Context.empty node_ctxt.context
+    | Some context_hash -> Context.checkout node_ctxt.context context_hash
+  in
+  match ctxt with
+  | None -> failwith "Cannot checkout context"
+  | Some ctxt -> return ctxt
