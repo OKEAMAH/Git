@@ -213,7 +213,7 @@ module Kate_amortized = struct
     in
 
     Printf.eprintf "\n len = %d \n" len ;
-    let w = Array.make len Scalar.(copy zero) in
+    let w = Array.init len (fun _ -> Scalar.(copy zero)) in
     ignore @@ prepare_fft domlen log4dom phi2N w ;
     w
 
@@ -283,9 +283,19 @@ module Kate_amortized = struct
     Bls12_381.G1.t array -> Scalar.t array -> int -> int
     = "caml_fft_g1_inplace_stubs3"
 
+  external mul_map_g1_inplace2 : G1.t array -> Scalar.t -> int -> int
+    = "caml_mul_map_g1_inplace_stubs2"
+
   let fft_g1_inplace2 ~domain ~points =
     let logn = Z.log2 (Z.of_int (Array.length points)) in
     ignore @@ fft_g1_inplace_stubs points domain logn
+
+  let ifft_g1_inplace2 ~domain ~points =
+    let n = Array.length points in
+    let logn = Z.log2 (Z.of_int n) in
+    let n_inv = Scalar.inverse_exn (Scalar.of_z (Z.of_int n)) in
+    ignore @@ fft_g1_inplace_stubs points domain logn ;
+    ignore @@ mul_map_g1_inplace2 points n_inv n
 
   let build_array w j len =
     Array.init len (fun i -> Scalar.pow w (Z.of_int @@ (j * i)))
@@ -376,7 +386,7 @@ module Kate_amortized = struct
 
       (*print_array points ;*)
       Printf.eprintf "\n len G1 FFT = %d \n" (Array.length domain) ;
-      G1.fft_inplace ~domain ~points ;
+      fft_g1_inplace2 ~domain ~points ;
       (*print_array points ;*)
       points
     in
@@ -432,21 +442,25 @@ module Kate_amortized = struct
     in
 
     let t = Sys.time () in
-    let buffer = Array.make domain_size Scalar.(copy zero) in
-    let hl = Array.make domain_size G1.(copy zero) in
+    let buffer = Array.init domain_size (fun _ -> Scalar.(copy zero)) in
+    let hl = Array.init domain_size (fun _ -> G1.(copy zero)) in
 
     for j = 0 to l - 1 do
       compute_h_j j buffer hl
     done ;
+
     (* Toeplitz matrix-vector multiplication *)
-    let hl =
-      G1.ifft_inplace ~domain:(inverse domain) ~points:hl ;
-      Array.sub hl 0 (Array.length domain / 2)
-    in
-    Printf.eprintf "\n hl %f \n" (Sys.time () -. t) ;
+    ifft_g1_inplace2 ~domain:(inverse domain) ~points:hl ;
+
+    let hl' = Array.init (Array.length domain) (fun _ -> G1.zero) in
+    Array.blit hl 0 hl' 0 (Array.length domain / 2) ;
+    Printf.eprintf
+      "\n hl %f ; len dom=%d \n"
+      (Sys.time () -. t)
+      (Array.length domain) ;
     let t = Sys.time () in
     (* Kate amortized FFT *)
-    G1.fft_inplace ~domain ~points:hl ;
+    fft_g1_inplace2 ~domain ~points:hl' ;
     Printf.eprintf "\n last FFT %f \n" (Sys.time () -. t) ;
     hl
 

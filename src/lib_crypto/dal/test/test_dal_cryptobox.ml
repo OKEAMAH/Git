@@ -24,9 +24,9 @@ module Test = struct
 
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
-    let shards_amount = 2048 / 16 in
-    let slot_size = 1048576 / 16 in
-    let slot_segment_size = 4096 / 16 in
+    let shards_amount = 4096 in
+    let slot_size = 1048576 in
+    let slot_segment_size = 4096 in
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
@@ -44,7 +44,7 @@ module Test = struct
 
           let shards_amount = shards_amount
         end) in
-        let l = 10 in
+        let l = 12 in
         (* l must be power of 2 divisible by 4 *)
         let sz = 1 lsl l in
         let _buffer' =
@@ -155,12 +155,12 @@ module Test = struct
         (*Kate_amortized.Kate_amortized.print_array2 buffer ;*)
         Printf.eprintf "\n ntt radix 2 : %f \n" (Sys.time () -. t) ;
 
-        let coefficients = Array.make sz Bls12_381.G1.(copy one) in
+        let coefficients = Array.init sz (fun _ -> Bls12_381.G1.(random ())) in
         let t = Sys.time () in
         let res = Bls12_381.G1.fft ~domain:dom ~points:coefficients in
         Printf.eprintf "\n G1 fft = %f \n" (Sys.time () -. t) ;
 
-        let coefficients = Array.init sz (fun _ -> Bls12_381.G1.(copy one)) in
+        (*let coefficients = Array.init sz (fun _ -> Bls12_381.G1.(copy one)) in*)
         let t = Sys.time () in
         (*Kate_amortized.Kate_amortized.fft_g1_inplace2*)
         Kate_amortized.Kate_amortized.fft_g1_inplace2
@@ -169,13 +169,9 @@ module Test = struct
         (*let res2 = Bls12_381.G1.fft ~domain:dom ~points:coefficients in*)
         Printf.eprintf "\n custom G1 fft inplace = %f \n" (Sys.time () -. t) ;
 
-        let c = ref 0 in
-        Array.iter2
-          (fun a b ->
-            if not (Bls12_381.G1.eq a b) then Printf.eprintf "\n c =%d \n" !c ;
-            c := !c + 1)
-          coefficients
-          res ;
+        let _c = ref 0 in
+        Array.iter2 (fun a b -> assert (Bls12_381.G1.eq a b)) coefficients res ;
+
         (*Array.iter2
           (fun a b ->
             if not (Scalar.eq a b) then
@@ -185,9 +181,8 @@ module Test = struct
                 (Scalar.to_string b))
           buffer
           buffer' ;*)
-        let r = false in
-        assert r ;
-
+        (*let r = false in
+          assert r ;*)
         let trusted_setup =
           DAL_crypto.build_trusted_setup_instance `Unsafe_for_test_only
           (*(`Files
