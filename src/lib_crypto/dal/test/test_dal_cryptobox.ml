@@ -44,7 +44,7 @@ module Test = struct
 
           let shards_amount = shards_amount
         end) in
-        let l = 12 in
+        let l = 7 in
         (* l must be power of 2 divisible by 4 *)
         let sz = 1 lsl l in
         let _buffer' =
@@ -98,6 +98,23 @@ module Test = struct
           res
         in
 
+        let dft_g1 ~domain ~coefficients =
+          let open Bls12_381 in
+          let n = Array.length domain in
+          let res = Array.make n G1.(copy zero) in
+          for i = 0 to n - 1 do
+            for j = 0 to n - 1 do
+              let mul =
+                G1.mul
+                  coefficients.(j)
+                  (Scalar.mul (Array.get domain 1) (Scalar.of_int (i * j)))
+              in
+              res.(i) <- G1.add res.(i) mul
+            done
+          done ;
+          res
+        in
+
         let get_root order =
           let multiplicative_group_order = Z.(Scalar.order - one) in
           let exponent =
@@ -115,6 +132,82 @@ module Test = struct
                 i)
           in
           build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
+        in
+
+        let _pfa_g1_inplace n1 n2 ~coefficients =
+          let n = n1 * n2 in
+          assert (Array.length coefficients = n) ;
+          let domain_n1 = make_domain (get_root n1) n1 in
+          let domain_n2 = make_domain (get_root n2) n2 in
+          let columns =
+            Array.init n1 (fun _ ->
+                Array.init n2 (fun _ -> Bls12_381.G1.(copy zero)))
+          in
+          let rows =
+            Array.init n2 (fun _ ->
+                Array.init n1 (fun _ -> Bls12_381.G1.(copy zero)))
+          in
+
+          for z = 0 to n - 1 do
+            columns.(z mod n1).(z mod n2) <- coefficients.(z)
+          done ;
+
+          for k1 = 0 to n1 - 1 do
+            columns.(k1) <- dft_g1 ~domain:domain_n2 ~coefficients:columns.(k1)
+          done ;
+
+          for k1 = 0 to n1 - 1 do
+            for k2 = 0 to n2 - 1 do
+              rows.(k2).(k1) <- columns.(k1).(k2)
+            done
+          done ;
+
+          for k2 = 0 to n2 - 1 do
+            rows.(k2) <- dft_g1 ~domain:domain_n1 ~coefficients:rows.(k2)
+          done ;
+
+          for k1 = 0 to n1 - 1 do
+            for k2 = 0 to n2 - 1 do
+              coefficients.(((n1 * k2) + (n2 * k1)) mod n) <- rows.(k2).(k1)
+            done
+          done
+        in
+
+        let _pfa_fr_inplace n1 n2 ~coefficients =
+          let n = n1 * n2 in
+          assert (Array.length coefficients = n) ;
+          let domain_n1 = make_domain (get_root n1) n1 in
+          let domain_n2 = make_domain (get_root n2) n2 in
+          let columns =
+            Array.init n1 (fun _ -> Array.init n2 (fun _ -> Scalar.(copy zero)))
+          in
+          let rows =
+            Array.init n2 (fun _ -> Array.init n1 (fun _ -> Scalar.(copy zero)))
+          in
+
+          for z = 0 to n - 1 do
+            columns.(z mod n1).(z mod n2) <- coefficients.(z)
+          done ;
+
+          for k1 = 0 to n1 - 1 do
+            columns.(k1) <- dft ~domain:domain_n2 ~coefficients:columns.(k1)
+          done ;
+
+          for k1 = 0 to n1 - 1 do
+            for k2 = 0 to n2 - 1 do
+              rows.(k2).(k1) <- columns.(k1).(k2)
+            done
+          done ;
+
+          for k2 = 0 to n2 - 1 do
+            rows.(k2) <- dft ~domain:domain_n1 ~coefficients:rows.(k2)
+          done ;
+
+          for k1 = 0 to n1 - 1 do
+            for k2 = 0 to n2 - 1 do
+              coefficients.(((n1 * k2) + (n2 * k1)) mod n) <- rows.(k2).(k1)
+            done
+          done
         in
 
         Printf.eprintf "\n %s \n" (Scalar.to_string (get_root 3)) ;
@@ -155,12 +248,17 @@ module Test = struct
         (*Kate_amortized.Kate_amortized.print_array2 buffer ;*)
         Printf.eprintf "\n ntt radix 2 : %f \n" (Sys.time () -. t) ;
 
-        let coefficients = Array.init sz (fun _ -> Bls12_381.G1.(random ())) in
+        let coefficients = Array.init sz (fun _ -> Scalar.(random ())) in
         let t = Sys.time () in
-        let res = Bls12_381.G1.fft ~domain:dom ~points:coefficients in
+        let _res = Scalar.fft ~domain:dom ~points:coefficients in
         Printf.eprintf "\n G1 fft = %f \n" (Sys.time () -. t) ;
 
-        (*let coefficients = Array.init sz (fun _ -> Bls12_381.G1.(copy one)) in*)
+        let coefficients = Array.init (19 * 8) (fun _ -> Scalar.(random ())) in
+        let t = Sys.time () in
+        _pfa_fr_inplace 19 8 ~coefficients ;
+        Printf.eprintf "\n G1 FFT PFA = %f \n" (Sys.time () -. t) ;
+
+        let coefficients = Array.init sz (fun _ -> Bls12_381.G1.(copy one)) in
         let t = Sys.time () in
         (*Kate_amortized.Kate_amortized.fft_g1_inplace2*)
         Kate_amortized.Kate_amortized.fft_g1_inplace2
@@ -170,7 +268,8 @@ module Test = struct
         Printf.eprintf "\n custom G1 fft inplace = %f \n" (Sys.time () -. t) ;
 
         let _c = ref 0 in
-        Array.iter2 (fun a b -> assert (Bls12_381.G1.eq a b)) coefficients res ;
+
+        (*Array.iter2 (fun a b -> assert (Bls12_381.G1.eq a b)) coefficients res ;*)
 
         (*Array.iter2
           (fun a b ->
@@ -181,8 +280,8 @@ module Test = struct
                 (Scalar.to_string b))
           buffer
           buffer' ;*)
-        (*let r = false in
-          assert r ;*)
+        let r = false in
+        assert r ;
         let trusted_setup =
           DAL_crypto.build_trusted_setup_instance `Unsafe_for_test_only
           (*(`Files

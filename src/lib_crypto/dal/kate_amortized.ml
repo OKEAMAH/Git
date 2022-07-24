@@ -365,12 +365,13 @@ module Kate_amortized = struct
 
   let preprocess_multi_reveals ~chunk_len ~chunk_count ~degree srs1 =
     let l = 1 lsl chunk_len in
+
     (*let k = chunk_count in*)
     (*let ratio = degree / l in
         let log_inf = Z.log2 (Z.of_int ratio) in
         if 1 lsl log_inf < ratio then log_inf else log_inf + 1
       in*)
-    Printf.eprintf "\n k =%d\n" chunk_count ;
+    Printf.eprintf "\n k =%d, l=%d \n" chunk_count chunk_len ;
     let domain = Domain.build ~log:chunk_count |> Domain.inverse |> inverse in
     let precompute_srsj j =
       let quotient = (degree - j) / l in
@@ -466,28 +467,22 @@ module Kate_amortized = struct
 
   (* h = polynomial such that h(y×domain[i]) = zi. *)
   let interpolation_h_poly y domain z_list =
-    let h =
-      Scalar.ifft_inplace ~domain:(Domain.inverse domain) ~points:z_list ;
-      z_list
-    in
+    Scalar.ifft_inplace ~domain:(Domain.inverse domain) ~points:z_list ;
     let inv_y = Scalar.inverse_exn y in
-    snd
-      (Array.fold_left_map
-         (fun inv_yi h -> (Scalar.mul inv_yi inv_y, Scalar.mul h inv_yi))
-         Scalar.(copy one)
-         h)
+    Array.fold_left_map
+      (fun inv_yi h -> (Scalar.mul inv_yi inv_y, Scalar.mul h inv_yi))
+      Scalar.(copy one)
+      z_list
+    |> snd
 
   let interpolation_h_poly2 y domain z_list =
-    let h =
-      Scalar.ifft_inplace ~domain:(inverse domain) ~points:z_list ;
-      z_list
-    in
+    Scalar.ifft_inplace ~domain:(inverse domain) ~points:z_list ;
     let inv_y = Scalar.inverse_exn y in
-    snd
-      (Array.fold_left_map
-         (fun inv_yi h -> (Scalar.mul inv_yi inv_y, Scalar.mul h inv_yi))
-         Scalar.(copy one)
-         h)
+    Array.fold_left_map
+      (fun inv_yi h -> (Scalar.mul inv_yi inv_y, Scalar.mul h inv_yi))
+      Scalar.(copy one)
+      z_list
+    |> snd
 
   (* Part 3.2 verifier : verifies that f(w×domain.(i)) = evaluations.(i). *)
   let verify cm_f (srs1, srs2l) domain (w, evaluations) proof =
