@@ -173,11 +173,11 @@ module Test = struct
           done
         in
 
-        let _pfa_fr_inplace n1 n2 ~coefficients =
+        let _pfa_fr_inplace n1 n2 root1 root2 ~coefficients =
           let n = n1 * n2 in
           assert (Array.length coefficients = n) ;
-          let domain_n1 = make_domain (get_root n1) n1 in
-          let domain_n2 = make_domain (get_root n2) n2 in
+          let domain_n1 = make_domain root1 n1 in
+          let domain_n2 = make_domain root2 n2 in
           let columns =
             Array.init n1 (fun _ -> Array.init n2 (fun _ -> Scalar.(copy zero)))
           in
@@ -205,6 +205,7 @@ module Test = struct
 
           for k1 = 0 to n1 - 1 do
             for k2 = 0 to n2 - 1 do
+              Printf.eprintf " %d | " (((n1 * k2) + (n2 * k1)) mod n) ;
               coefficients.(((n1 * k2) + (n2 * k1)) mod n) <- rows.(k2).(k1)
             done
           done
@@ -253,10 +254,34 @@ module Test = struct
         let _res = Scalar.fft ~domain:dom ~points:coefficients in
         Printf.eprintf "\n G1 fft = %f \n" (Sys.time () -. t) ;
 
-        let coefficients = Array.init (19 * 8) (fun _ -> Scalar.(random ())) in
+        let coefficients = Array.init (2 * 3) (fun _ -> Scalar.(random ())) in
+        let coefficients2 = Array.copy coefficients in
+        let rt = get_root (2 * 3) in
+        let rt1 = Scalar.pow rt (Z.of_int (-3)) in
+        let rt2 = Scalar.pow rt (Z.of_int (-2)) in
+        Printf.eprintf
+          "\n rt = %s ; rt5 = %s ; rt3 = %s\n"
+          (Scalar.to_string rt)
+          (Scalar.to_string rt1)
+          (Scalar.to_string rt2) ;
         let t = Sys.time () in
-        _pfa_fr_inplace 19 8 ~coefficients ;
+        _pfa_fr_inplace 2 3 rt1 rt2 ~coefficients ;
         Printf.eprintf "\n G1 FFT PFA = %f \n" (Sys.time () -. t) ;
+
+        for i = 0 to (2 * 3) - 1 do
+          Printf.eprintf
+            "\n fft.(%d)=%s \n"
+            i
+            (Scalar.to_string coefficients.(i))
+        done ;
+        for i = 0 to (2 * 3) - 1 do
+          Printf.eprintf
+            "\n eval.(%d)=%s \n"
+            i
+            (Scalar.to_string
+               Bls12_381_polynomial.Polynomial.Polynomial.(
+                 evaluate (of_dense coefficients2) (Scalar.pow rt (Z.of_int i))))
+        done ;
 
         let coefficients = Array.init sz (fun _ -> Bls12_381.G1.(copy one)) in
         let t = Sys.time () in
