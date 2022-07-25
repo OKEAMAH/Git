@@ -194,11 +194,9 @@ module Make (PVM : Pvm.S) = struct
     in
     let* () =
       when_ finalized @@ fun () ->
-      Components.Commitment.process_head node_ctxt store head
+      let* () = Components.Commitment.process_head node_ctxt store head in
+      Components.Commitment.publish_commitment node_ctxt store
     in
-    (* Publishing a commitment when one is available does not depend on the state of
-       the current head. *)
-    let* () = Components.Commitment.publish_commitment node_ctxt store in
     let* () =
       Components.Commitment.cement_commitment_if_possible node_ctxt store head
     in
@@ -252,13 +250,18 @@ module Make (PVM : Pvm.S) = struct
             Daemon_event.processing_heads_iteration old_heads new_heads
           in
           let head_states = categorise_heads node_ctxt old_heads new_heads in
-          let* () = List.iter_es (process_head node_ctxt store) head_states in
+          let final_head_states, non_final_head_states =
+            List.partition (fun head_state -> head_state.finalized) head_states
+          in
+          let* () =
+            List.iter_es (process_head node_ctxt store) non_final_head_states
+          in
+          let* () =
+            List.iter_es (process_head node_ctxt store) final_head_states
+          in
           (* Return new_head to be processed as finalized head if the
              next chain event is of type SameBranch.
           *)
-          let non_final_head_states =
-            List.filter (fun head_state -> not head_state.finalized) head_states
-          in
           let*! () = emit_heads_not_processed_event non_final_head_states in
           let non_final_heads =
             List.map (fun head_state -> head_state.head) non_final_head_states
