@@ -1,7 +1,7 @@
 (* Decoding stream *)
 
 open Binary_exn
-module Vector = Lazy_vector.LwtInt32Vector
+module Vector = Lazy_vector.Immutable.LwtInt32Vector
 
 type stream = {name : string; bytes : string; pos : int ref}
 

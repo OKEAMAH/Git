@@ -67,7 +67,7 @@ module Map =
     end)
 
 module Merklizer =
-  Tree_encoding_decoding.Make (Map) (Lazy_vector.LwtIntVector)
+  Tree_encoding_decoding.Make (Map) (Lazy_vector.Immutable.LwtIntVector)
     (Chunked_byte_vector.Lwt)
     (Tree)
 
@@ -197,18 +197,18 @@ let test_lazy_vector () =
   let enc =
     lazy_vector (value [] Data_encoding.int31) (value [] Data_encoding.string)
   in
-  let vector = Lazy_vector.LwtIntVector.create 100 in
+  let vector = Lazy_vector.Immutable.LwtIntVector.create 100 in
   (* Load the key [K1] from the vector . *)
-  let vector = Lazy_vector.LwtIntVector.set 42 "42" vector in
-  let*! value = Lazy_vector.LwtIntVector.get 42 vector in
+  let vector = Lazy_vector.Immutable.LwtIntVector.set 42 "42" vector in
+  let*! value = Lazy_vector.Immutable.LwtIntVector.get 42 vector in
   assert (value = "42") ;
   let*! decoded_vector = encode_decode enc vector in
   (* Load the key [42] from the decoded vector. *)
-  let*! value = Lazy_vector.LwtIntVector.get 42 decoded_vector in
+  let*! value = Lazy_vector.Immutable.LwtIntVector.get 42 decoded_vector in
   assert (value = "42") ;
   assert (
-    Lazy_vector.LwtIntVector.to_string Fun.id vector
-    = Lazy_vector.LwtIntVector.to_string Fun.id decoded_vector) ;
+    Lazy_vector.Immutable.LwtIntVector.to_string Fun.id vector
+    = Lazy_vector.Immutable.LwtIntVector.to_string Fun.id decoded_vector) ;
   return_unit
 
 let test_chunked_byte_vector () =

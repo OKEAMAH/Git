@@ -234,7 +234,7 @@ end
     structures. *)
 module Make
     (M : Lazy_map.S with type 'a effect = 'a Lwt.t)
-    (V : Lazy_vector.S with type 'a effect = 'a Lwt.t)
+    (V : Lazy_vector.Immutable.S with type 'a effect = 'a Lwt.t)
     (C : Chunked_byte_vector.S with type 'a effect = 'a Lwt.t)
     (T : Tree.S) :
   S

@@ -142,8 +142,10 @@ let func_type_of = function
   | Func.HostFunc (t, _) -> t
 
 let block_type inst bt =
-  let empty () = Lazy_vector.LwtInt32Vector.create 0l in
-  let singleton i = Lazy_vector.LwtInt32Vector.(create 1l |> set 0l i) in
+  let empty () = Lazy_vector.Immutable.LwtInt32Vector.create 0l in
+  let singleton i =
+    Lazy_vector.Immutable.LwtInt32Vector.(create 1l |> set 0l i)
+  in
   match bt with
   | VarBlockType x -> type_ inst x
   | ValBlockType None -> FuncType (empty (), empty ()) |> Lwt.return
@@ -219,15 +221,15 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
         | Nop, vs -> Lwt.return (vs, [])
         | Block (bt, es'), vs ->
             let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
-            let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
-            let n2 = Lazy_vector.LwtInt32Vector.num_elements ts2 in
+            let n1 = Lazy_vector.Immutable.LwtInt32Vector.num_elements ts1 in
+            let n2 = Lazy_vector.Immutable.LwtInt32Vector.num_elements ts2 in
             let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
             ( vs',
               [Label (n2, [], (args, [From_block (es', 0l) @@ e.at])) @@ e.at]
             )
         | Loop (bt, es'), vs ->
             let+ (FuncType (ts1, ts2)) = block_type frame.inst bt in
-            let n1 = Lazy_vector.LwtInt32Vector.num_elements ts1 in
+            let n1 = Lazy_vector.Immutable.LwtInt32Vector.num_elements ts1 in
             let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
             ( vs',
               [
@@ -792,7 +794,9 @@ and step_resolved (c : config) frame vs e es : config Lwt.t =
 
                This conversion to list can probably be avoided by using
                Lazy_vector in the config for local variables. *)
-            let+ locals = Lazy_vector.LwtInt32Vector.to_list f.it.locals in
+            let+ locals =
+              Lazy_vector.Immutable.LwtInt32Vector.to_list f.it.locals
+            in
             let locals' = List.rev args @ List.map default_value locals in
             let frame' = {inst = !inst'; locals = List.map ref locals'} in
             let instr' =
@@ -831,10 +835,10 @@ let invoke ?(module_inst = empty_module_inst) ?(input = Input_buffer.alloc ())
     (module_inst * value list) Lwt.t =
   let at = match func with Func.AstFunc (_, _, f) -> f.at | _ -> no_region in
   let (FuncType (ins, out)) = Func.type_of func in
-  let* ins_l = Lazy_vector.LwtInt32Vector.to_list ins in
+  let* ins_l = Lazy_vector.Immutable.LwtInt32Vector.to_list ins in
   if
     List.length vs
-    <> (Lazy_vector.LwtInt32Vector.num_elements ins |> Int32.to_int)
+    <> (Lazy_vector.Immutable.LwtInt32Vector.num_elements ins |> Int32.to_int)
   then Crash.error at "wrong number of arguments" ;
   (* TODO: tickify? *)
   if not (List.for_all2 (fun v -> ( = ) (type_of_value v)) vs ins_l) then
@@ -913,7 +917,7 @@ let create_elem (inst : module_inst) (seg : elem_segment) : elem_inst Lwt.t =
   (* TODO: #3076
      [einit] should be changed to a lazy structure. We want to avoid traversing
      it whole. *)
-  let* einit = Lazy_vector.LwtInt32Vector.to_list einit in
+  let* einit = Lazy_vector.Immutable.LwtInt32Vector.to_list einit in
   let+ init =
     TzStdLib.List.map_s
       (fun v ->
@@ -967,7 +971,9 @@ let run_elem inst i elem =
            [
              Const (I32 0l @@ at) @@ at;
              Const
-               (I32 (Lazy_vector.LwtInt32Vector.num_elements elem.it.einit)
+               (I32
+                  (Lazy_vector.Immutable.LwtInt32Vector.num_elements
+                     elem.it.einit)
                @@ at)
              @@ at;
              TableInit (index, x) @@ at;

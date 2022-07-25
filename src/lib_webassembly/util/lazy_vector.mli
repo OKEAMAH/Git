@@ -41,130 +41,132 @@ module type KeyS = sig
   val to_string : t -> string
 end
 
-(* [S] is the signature of an instantiated lazy vector. *)
-module type S = sig
-  type key
+module Immutable : sig
+  (* [S] is the signature of an instantiated lazy vector. *)
+  module type S = sig
+    type key
 
-  type 'a effect
+    type 'a effect
 
-  type 'a producer = key -> 'a effect
+    type 'a producer = key -> 'a effect
 
-  module Map : Lazy_map.S with type key = key and type 'a effect = 'a effect
+    module Map : Lazy_map.S with type key = key and type 'a effect = 'a effect
 
-  type 'a t
+    type 'a t
 
-  (** [pp pp_value] gives you a pretty-printer. This function is a witness of
+    (** [pp pp_value] gives you a pretty-printer. This function is a witness of
       internal mutation. *)
-  val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+    val pp :
+      (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 
-  (** [to_string show vector] generates a string representation of [vector] by
+    (** [to_string show vector] generates a string representation of [vector] by
       using [show] for its values. Like [pp] this function is witness of
       internal mutation. *)
-  val to_string : ('a -> string) -> 'a t -> string
+    val to_string : ('a -> string) -> 'a t -> string
 
-  (** [string_of_key key] turns the given [key] into a string. *)
-  val string_of_key : key -> string
+    (** [string_of_key key] turns the given [key] into a string. *)
+    val string_of_key : key -> string
 
-  (** [num_elements vector] returns the maximum number of elements in the lazy
+    (** [num_elements vector] returns the maximum number of elements in the lazy
       vector. *)
-  val num_elements : 'a t -> key
+    val num_elements : 'a t -> key
 
-  (** [create ?first_key ?values ?produce_value num_elements] produces a lazy
+    (** [create ?first_key ?values ?produce_value num_elements] produces a lazy
       vector with [num_elements] entries where each is created using
       [produce_value]. [values] may be provided to supply an initial set of
       entries. [first_key] specifies the first index of the vector if given and
       defaults to zero. *)
-  val create :
-    ?first_key:key ->
-    ?values:'a Map.Map.t ->
-    ?produce_value:'a producer ->
-    key ->
-    'a t
+    val create :
+      ?first_key:key ->
+      ?values:'a Map.Map.t ->
+      ?produce_value:'a producer ->
+      key ->
+      'a t
 
-  (** [empty ()] creates a vector of size zero. This is used in conjunction with
+    (** [empty ()] creates a vector of size zero. This is used in conjunction with
       {!cons} to model list-like structure. *)
-  val empty : unit -> 'a t
+    val empty : unit -> 'a t
 
-  (** [singleton v] creates a vector of size one containing only [v]. *)
-  val singleton : 'a -> 'a t
+    (** [singleton v] creates a vector of size one containing only [v]. *)
+    val singleton : 'a -> 'a t
 
-  (** [of_list values] creates a vector where each association is the index in
+    (** [of_list values] creates a vector where each association is the index in
       the list to its value. The first item's key is [zero], the second is
       [succ zero] and so on. *)
-  val of_list : 'a list -> 'a t
+    val of_list : 'a list -> 'a t
 
-  (** [get key vector] retrieves the element at [key].
+    (** [get key vector] retrieves the element at [key].
 
       @raises Memory_exn.Bounds when trying to access an invalid key  *)
-  val get : key -> 'a t -> 'a effect
+    val get : key -> 'a t -> 'a effect
 
-  (** [set key value vector] sets the element at [key] to [value].
+    (** [set key value vector] sets the element at [key] to [value].
 
       @raises Memory_exn.Bounds when trying to set an invalid key *)
-  val set : key -> 'a -> 'a t -> 'a t
+    val set : key -> 'a -> 'a t -> 'a t
 
-  (** [cons value vector] prepends a value to the front and grows the vector by
+    (** [cons value vector] prepends a value to the front and grows the vector by
       one. That value can then be accessed using the [zero] key.
 
       Time complexity: O(log(instantiated_elements_in_vector)) *)
-  val cons : 'a -> 'a t -> 'a t
+    val cons : 'a -> 'a t -> 'a t
 
-  (** [grow delta ?produce_value vector] creates a new lazy vector that has
+    (** [grow delta ?produce_value vector] creates a new lazy vector that has
       [delta] more items than [vector]. This also retains all values that have
       previously been created. New values will be created with [produce_values]
       if provided, starting with [Key.zero] for the new values. *)
-  val grow : ?produce_value:'a producer -> key -> 'a t -> 'a t
+    val grow : ?produce_value:'a producer -> key -> 'a t -> 'a t
 
-  (** [append elt vector] creates a new lazy vector that has one
+    (** [append elt vector] creates a new lazy vector that has one
       more item than [vector] whose value is [elt]. This is a shortcut
       for [vector |> grow Key.(succ zero) |> set (num_elements vector) elt].
       Also returns the key of the added element. *)
-  val append : 'a -> 'a t -> 'a t * key
+    val append : 'a -> 'a t -> 'a t * key
 
-  (** [concat lhs rhs] Concatenates two lazy vectors. *)
-  val concat : 'a t -> 'a t -> 'a t
+    (** [concat lhs rhs] Concatenates two lazy vectors. *)
+    val concat : 'a t -> 'a t -> 'a t
 
-  (** [to_list vector] extracts all values of the given [vector] and
+    (** [to_list vector] extracts all values of the given [vector] and
       collects them in a list.  *)
-  val to_list : 'a t -> 'a list effect
+    val to_list : 'a t -> 'a list effect
 
-  (** [loaded_bindings vector] returns the [(key * 'a) list] representation of
+    (** [loaded_bindings vector] returns the [(key * 'a) list] representation of
       the vector [vector] containing only the loaded values, in order of
       increasing keys. This function is a witness of internal mutations. *)
-  val loaded_bindings : 'a t -> (key * 'a) list
+    val loaded_bindings : 'a t -> (key * 'a) list
 
-  (** [first_key v] returns the first key of the given vector [v]. *)
-  val first_key : 'a t -> key
+    (** [first_key v] returns the first key of the given vector [v]. *)
+    val first_key : 'a t -> key
+  end
+
+  module Make (Effect : Effect.S) (Key : KeyS) :
+    S with type key = Key.t and type 'a effect = 'a Effect.t
+
+  module IntVector : S with type key = int and type 'a effect = 'a
+
+  module Int32Vector : S with type key = int32 and type 'a effect = 'a
+
+  module Int64Vector : S with type key = int64 and type 'a effect = 'a
+
+  module LwtIntVector : S with type key = int and type 'a effect = 'a Lwt.t
+
+  module LwtInt32Vector : S with type key = int32 and type 'a effect = 'a Lwt.t
+
+  module LwtInt64Vector : S with type key = int64 and type 'a effect = 'a Lwt.t
+
+  module LwtZVector : S with type key = Z.t and type 'a effect = 'a Lwt.t
 end
-
-module Make (Effect : Effect.S) (Key : KeyS) :
-  S with type key = Key.t and type 'a effect = 'a Effect.t
-
-module IntVector : S with type key = int and type 'a effect = 'a
-
-module Int32Vector : S with type key = int32 and type 'a effect = 'a
-
-module Int64Vector : S with type key = int64 and type 'a effect = 'a
-
-module LwtIntVector : S with type key = int and type 'a effect = 'a Lwt.t
-
-module LwtInt32Vector : S with type key = int32 and type 'a effect = 'a Lwt.t
-
-module LwtInt64Vector : S with type key = int64 and type 'a effect = 'a Lwt.t
-
-module LwtZVector : S with type key = Z.t and type 'a effect = 'a Lwt.t
 
 (** [Make] generates a lazy vector module using a given [Key] module. *)
 module Mutable : sig
-  module type ImmutableS = S
-
   (** [S] is the signature of a mutable lazy vector module. *)
   module type S = sig
     type key
 
     type 'a effect
 
-    module Vector : S with type key = key and type 'a effect = 'a effect
+    module Vector :
+      Immutable.S with type key = key and type 'a effect = 'a effect
 
     type 'a t
 
@@ -191,48 +193,51 @@ module Mutable : sig
     val snapshot : 'a t -> 'a Vector.t
   end
 
-  module Make (Vector : ImmutableS) :
+  module Make (Vector : Immutable.S) :
     S
       with type key = Vector.key
        and type 'a effect = 'a Vector.effect
        and module Vector = Vector
 
   module IntVector :
-    S with type key = int and type 'a effect = 'a and module Vector = IntVector
+    S
+      with type key = int
+       and type 'a effect = 'a
+       and module Vector = Immutable.IntVector
 
   module Int32Vector :
     S
       with type key = int32
        and type 'a effect = 'a
-       and module Vector = Int32Vector
+       and module Vector = Immutable.Int32Vector
 
   module Int64Vector :
     S
       with type key = int64
        and type 'a effect = 'a
-       and module Vector = Int64Vector
+       and module Vector = Immutable.Int64Vector
 
   module LwtIntVector :
     S
       with type key = int
        and type 'a effect = 'a Lwt.t
-       and module Vector = LwtIntVector
+       and module Vector = Immutable.LwtIntVector
 
   module LwtInt32Vector :
     S
       with type key = int32
        and type 'a effect = 'a Lwt.t
-       and module Vector = LwtInt32Vector
+       and module Vector = Immutable.LwtInt32Vector
 
   module LwtInt64Vector :
     S
       with type key = int64
        and type 'a effect = 'a Lwt.t
-       and module Vector = LwtInt64Vector
+       and module Vector = Immutable.LwtInt64Vector
 
   module LwtZVector :
     S
       with type key = Z.t
        and type 'a effect = 'a Lwt.t
-       and module Vector = LwtZVector
+       and module Vector = Immutable.LwtZVector
 end

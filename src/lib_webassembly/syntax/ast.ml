@@ -18,7 +18,7 @@
 
 open Types
 module TzStdLib = Tezos_lwt_result_stdlib.Lwtreslib.Bare
-module Vector = Lazy_vector.LwtInt32Vector
+module Vector = Lazy_vector.Immutable.LwtInt32Vector
 
 type void = Lib.void
 

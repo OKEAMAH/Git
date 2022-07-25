@@ -4,7 +4,7 @@
    fully loaded. *)
 
 module TzStdLib = Tezos_lwt_result_stdlib.Lwtreslib.Bare
-module Vector = Lazy_vector.Int32Vector
+module Vector = Lazy_vector.Immutable.Int32Vector
 
 (* Version *)
 
@@ -170,7 +170,7 @@ struct
   let func_type = function
     | FuncType (ts1, ts2) ->
         let to_list m =
-          List.map snd (Lazy_vector.LwtInt32Vector.loaded_bindings m)
+          List.map snd (Lazy_vector.Immutable.LwtInt32Vector.loaded_bindings m)
         in
         vs7 (-0x20) ;
         vec value_type (to_list ts1) ;
@@ -1065,7 +1065,7 @@ struct
   let code f =
     let {locals; body; _} = f.it in
     let locals =
-      List.map snd (Lazy_vector.LwtInt32Vector.loaded_bindings locals)
+      List.map snd (Lazy_vector.Immutable.LwtInt32Vector.loaded_bindings locals)
     in
     let g = gap32 () in
     let p = pos s in
@@ -1092,7 +1092,7 @@ struct
   let elem seg =
     let {etype; einit; emode} = seg.it in
     let einit =
-      List.map snd (Lazy_vector.LwtInt32Vector.loaded_bindings einit)
+      List.map snd (Lazy_vector.Immutable.LwtInt32Vector.loaded_bindings einit)
     in
     if is_elem_kind etype && List.for_all is_elem_index einit then (
       match emode.it with
@@ -1169,7 +1169,7 @@ struct
   let module_ m =
     let open Lwt.Syntax in
     let to_list m =
-      List.map snd (Lazy_vector.LwtInt32Vector.loaded_bindings m)
+      List.map snd (Lazy_vector.Immutable.LwtInt32Vector.loaded_bindings m)
     in
     u32 0x6d736100l ;
     u32 version ;

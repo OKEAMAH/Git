@@ -142,7 +142,7 @@ let test_host_fun () =
   in
   let module_inst = Tezos_webassembly_interpreter.Instance.empty_module_inst in
   let memories =
-    Tezos_webassembly_interpreter.Lazy_vector.LwtInt32Vector.cons
+    Tezos_webassembly_interpreter.Lazy_vector.Immutable.LwtInt32Vector.cons
       (Memory.alloc (MemoryType Types.{min = 20l; max = Some 3600l}))
       module_inst.memories
   in
@@ -165,7 +165,7 @@ let test_host_fun () =
       values
   in
   let* memory =
-    Tezos_webassembly_interpreter.Lazy_vector.LwtInt32Vector.get
+    Tezos_webassembly_interpreter.Lazy_vector.Immutable.LwtInt32Vector.get
       0l
       module_inst.memories
   in
