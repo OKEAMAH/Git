@@ -69,7 +69,7 @@ module Make (PVM : Pvm.S) = struct
   (** Process an L1 SCORU operation (for the node's rollup) which is included
       for the first time. {b Note}: this function does not process inboxes for
       the rollup, which is done instead by {!Inbox.process_head}. *)
-  let process_included_l1_operation (type kind) _node_ctxt store ~source:_
+  let process_included_l1_operation (type kind) node_ctxt store ~source
       (operation : kind manager_operation)
       (result : kind successful_manager_operation_result) =
     let open Lwt_syntax in
@@ -80,10 +80,17 @@ module Make (PVM : Pvm.S) = struct
         let commitment_hash =
           Sc_rollup.Commitment.hash_uncarbonated commitment
         in
-        Store.Commitments_published_at_level.add
-          store
-          commitment_hash
-          published_at_level
+        let* () =
+          Store.Commitments_published_at_level.add
+            store
+            commitment_hash
+            published_at_level
+        in
+        if Signature.Public_key_hash.(source = node_ctxt.Node_context.operator)
+        then
+          (* This is our own commitment, remember its level *)
+          Store.Last_published_commitment_level.set store commitment.inbox_level
+        else return_unit
     | Sc_rollup_cement {commitment; _}, Sc_rollup_cement_result {inbox_level; _}
       ->
         (* Cemented commitment ---------------------------------------------- *)

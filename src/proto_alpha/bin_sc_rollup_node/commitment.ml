@@ -311,9 +311,6 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
           ~fee_parameter:Configuration.default_fee_parameter
           ()
       in
-      let*! () =
-        Store.Last_published_commitment_level.set store commitment.inbox_level
-      in
       let*! () = Commitment_event.publish_commitment_injected commitment in
       return_unit
     else return_unit
