@@ -1260,7 +1260,7 @@ let commitment_not_stored_if_non_final _protocol sc_rollup_node sc_rollup _node
        %R)" ;
   Lwt.return_unit
 
-let commitments_messages_reset _protocol sc_rollup_node sc_rollup _node client =
+let commitments_messages_reset _protocol sc_rollup_node sc_rollup node client =
   (* For `sc_rollup_commitment_period_in_blocks` levels after the sc rollup
      origination, i messages are sent to the rollup, for a total of
      `sc_rollup_commitment_period_in_blocks *
@@ -1321,6 +1321,9 @@ let commitments_messages_reset _protocol sc_rollup_node sc_rollup _node client =
      ~error_msg:
        "Number of messages processed by commitment is different from the \
         number of messages expected (%L = %R)") ;
+  (* Bake one block for commitment to be included *)
+  let* () = Client.bake_for_and_wait client in
+  let* _ = Sc_rollup_node.wait_for_level sc_rollup_node (Node.get_level node) in
   let* published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
   in
@@ -1515,6 +1518,9 @@ let commitments_reorgs protocol sc_rollup_node sc_rollup node client =
      ~error_msg:
        "Number of messages processed by commitment is different from the \
         number of messages expected (%L = %R)") ;
+  (* Bake one block for commitment to be included *)
+  let* () = Client.bake_for_and_wait client in
+  let* _ = Sc_rollup_node.wait_for_level sc_rollup_node (Node.get_level node) in
   let* published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
   in
@@ -1601,12 +1607,11 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
   in
   (* Bake `block_finality_time` additional level to ensure that block number
      `init_level + sc_rollup_commitment_period_in_blocks` is processed by
-     the rollup node as finalized. *)
-  let* () = bake_levels block_finality_time client in
-  let* commitment_finalized_level =
-    Sc_rollup_node.wait_for_level
-      sc_rollup_node
-      (commitment_inbox_level + block_finality_time)
+     the rollup node as finalized, +1 for commitment to be included. *)
+  let* () = bake_levels (block_finality_time + 1) client in
+  let* _ = Sc_rollup_node.wait_for_level sc_rollup_node (Node.get_level node) in
+  let commitment_finalized_level =
+    commitment_inbox_level + block_finality_time
   in
   let* rollup_node1_stored_commitment =
     Sc_rollup_client.last_stored_commitment ~hooks sc_rollup_client
@@ -1620,8 +1625,8 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
       = Some commitment_inbox_level)
       (Check.option Check.int)
       ~error_msg:
-        "Commitment has been published at a level different than expected (%L \
-         = %R)"
+        "Commitment has been published by node 1 at a level different than \
+         expected (%L = %R)"
   in
   (* Cement commitment manually: the commitment can be cemented after
      `challenge_window_levels` have passed since the commitment was published
@@ -1634,11 +1639,11 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
     |> Option.value
          ~default:"scc12XhSULdV8bAav21e99VYLTpqAjTd7NU8Mn4zFdKPSA8auMbggG"
   in
-  let* () = bake_levels levels_to_cementation client in
-  let* cemented_commitment_level =
-    Sc_rollup_node.wait_for_level
-      sc_rollup_node
-      (commitment_finalized_level + levels_to_cementation)
+  (* We have already baked one extra block before *)
+  let* () = bake_levels (levels_to_cementation - 1) client in
+  let* _ = Sc_rollup_node.wait_for_level sc_rollup_node (Node.get_level node) in
+  let cemented_commitment_level =
+    commitment_finalized_level + levels_to_cementation
   in
 
   (* Withdraw stake before cementing should fail *)
@@ -1691,8 +1696,8 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
     Check.(rollup_node2_last_published_commitment_inbox_level = None)
       (Check.option Check.int)
       ~error_msg:
-        "Commitment has been published at a level different than expected (%L \
-         = %R)"
+        "Commitment has been published by node 2 at a level different than \
+         expected (%L = %R)"
   in
   (* Check that the commitment stored by the second rollup node
      is the same commmitment stored by the first rollup node. *)
@@ -1708,15 +1713,13 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
         "Commitment stored by first and second rollup nodes differ (%L = %R)"
   in
 
-  (* Bake other commitment_period levels and check that rollup_node2 is
-     able to publish a commitment. *)
+  (* Bake other commitment_period levels (+1 for injection/inclusion) and check
+     that rollup_node2 is able to publish a commitment. *)
   let* () = bake_levels commitment_period client' in
-  let commitment_inbox_level = commitment_inbox_level + commitment_period in
   let* _ =
-    Sc_rollup_node.wait_for_level
-      sc_rollup_node'
-      (level_after_cementation + commitment_period)
+    Sc_rollup_node.wait_for_level sc_rollup_node' (Node.get_level node)
   in
+  let commitment_inbox_level = commitment_inbox_level + commitment_period in
   let* rollup_node2_last_published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client'
   in
@@ -1765,13 +1768,12 @@ let first_published_level_is_global _protocol sc_rollup_node sc_rollup node
     Sc_rollup_node.wait_for_level sc_rollup_node (init_level + commitment_period)
   in
   (* Bake `block_finality_time` additional level to ensure that block number
-     `init_level + sc_rollup_commitment_period_in_blocks` is processed by
-     the rollup node as finalized. *)
-  let* () = bake_levels block_finality_time client in
-  let* commitment_finalized_level =
-    Sc_rollup_node.wait_for_level
-      sc_rollup_node
-      (commitment_inbox_level + block_finality_time)
+     `init_level + sc_rollup_commitment_period_in_blocks` is processed by the
+     rollup node as finalized, + 1 for injection/inclusion of commitment. *)
+  let* () = bake_levels (block_finality_time + 1) client in
+  let* _ = Sc_rollup_node.wait_for_level sc_rollup_node (Node.get_level node) in
+  let commitment_finalized_level =
+    commitment_inbox_level + block_finality_time
   in
   let* rollup_node1_published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
@@ -1783,10 +1785,8 @@ let first_published_level_is_global _protocol sc_rollup_node sc_rollup node
     ~error_msg:
       "Commitment has been published at a level different than expected (%L = \
        %R)" ;
-  (* Bake an additional block for the commitment to be included. *)
-  let* () = Client.bake_for_and_wait client in
   let* commitment_publish_level =
-    Sc_rollup_node.wait_for_level sc_rollup_node (commitment_finalized_level + 1)
+    Sc_rollup_node.wait_for_level sc_rollup_node commitment_finalized_level
   in
   let* rollup_node1_published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
@@ -1817,6 +1817,11 @@ let first_published_level_is_global _protocol sc_rollup_node sc_rollup node
   Check.(rollup_node2_catchup_level = commitment_finalized_level)
     Check.int
     ~error_msg:"Current level has moved past cementation inbox level (%L = %R)" ;
+  (* Bake an additional block for node 2's commitment to be included. *)
+  let* () = Client.bake_for_and_wait client' in
+  let* _ =
+    Sc_rollup_node.wait_for_level sc_rollup_node' (Node.get_level node)
+  in
   (* Check that no commitment was published. *)
   let* rollup_node2_published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client'
