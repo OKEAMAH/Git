@@ -82,7 +82,7 @@ module Test = struct
               if i < sz then Scalar.of_int i else Scalar.(copy zero))
         in
 
-        let dft ~domain ~coefficients =
+        let dft ~inverse ~domain ~coefficients =
           let n = Array.length domain in
           let res = Array.make n Scalar.(copy zero) in
           for i = 0 to n - 1 do
@@ -95,6 +95,11 @@ module Test = struct
               res.(i) <- Scalar.add res.(i) mul
             done
           done ;
+          if inverse then
+            for i = 0 to n - 1 do
+              res.(i) <-
+                Scalar.mul (Scalar.inverse_exn @@ Scalar.of_int n) res.(i)
+            done ;
           res
         in
 
@@ -133,6 +138,8 @@ module Test = struct
           in
           build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
         in
+
+        let _inv_root root = Scalar.inverse_exn root in
 
         let _pfa_g1_inplace n1 n2 ~coefficients =
           let n = n1 * n2 in
@@ -173,7 +180,7 @@ module Test = struct
           done
         in
 
-        let _pfa_fr_inplace n1 n2 root1 root2 ~coefficients =
+        let _pfa_fr_inplace ~inverse n1 n2 root1 root2 ~coefficients =
           let n = n1 * n2 in
           assert (Array.length coefficients = n) ;
           let domain_n1 = make_domain root1 n1 in
@@ -190,7 +197,8 @@ module Test = struct
           done ;
 
           for k1 = 0 to n1 - 1 do
-            columns.(k1) <- dft ~domain:domain_n2 ~coefficients:columns.(k1)
+            columns.(k1) <-
+              dft ~inverse ~domain:domain_n2 ~coefficients:columns.(k1)
           done ;
 
           for k1 = 0 to n1 - 1 do
@@ -200,15 +208,25 @@ module Test = struct
           done ;
 
           for k2 = 0 to n2 - 1 do
-            rows.(k2) <- dft ~domain:domain_n1 ~coefficients:rows.(k2)
+            rows.(k2) <- dft ~inverse ~domain:domain_n1 ~coefficients:rows.(k2)
           done ;
 
           for k1 = 0 to n1 - 1 do
             for k2 = 0 to n2 - 1 do
-              Printf.eprintf " %d | " (((n1 * k2) + (n2 * k1)) mod n) ;
               coefficients.(((n1 * k2) + (n2 * k1)) mod n) <- rows.(k2).(k1)
             done
-          done
+          done ;
+          let _inverse' domain =
+            let n = Array.length domain in
+            Array.init n (fun i ->
+                if i = 0 then Array.get domain 0 else Array.get domain (n - i))
+          in
+          if inverse then
+            (* TODO: get rid of allocation *)
+            (*let res = Array.copy coefficients in
+              inverse' res*)
+            coefficients
+          else coefficients
         in
 
         Printf.eprintf "\n %s \n" (Scalar.to_string (get_root 3)) ;
@@ -222,7 +240,7 @@ module Test = struct
           (fun a -> Printf.eprintf " %s | " (Scalar.to_string a))
           domain ;*)
         let t = Sys.time () in
-        let dft' = dft ~domain ~coefficients in
+        let dft' = dft ~inverse:false ~domain ~coefficients in
         Printf.eprintf "\n elapsed dft = %f \n" (Sys.time () -. t) ;
 
         Array.iter (fun a -> Printf.eprintf " %s | " (Scalar.to_string a)) dft' ;
@@ -256,24 +274,57 @@ module Test = struct
 
         let coefficients = Array.init (2 * 3) (fun _ -> Scalar.(random ())) in
         let coefficients2 = Array.copy coefficients in
+        let _coefficients3 = Array.copy coefficients in
         let rt = get_root (2 * 3) in
-        let rt1 = Scalar.pow rt (Z.of_int (-3)) in
-        let rt2 = Scalar.pow rt (Z.of_int (-2)) in
+        let rt1 = Scalar.pow rt (Z.of_int @@ 3) in
+        let rt2 = Scalar.pow rt (Z.of_int @@ 2) in
         Printf.eprintf
           "\n rt = %s ; rt5 = %s ; rt3 = %s\n"
           (Scalar.to_string rt)
           (Scalar.to_string rt1)
           (Scalar.to_string rt2) ;
         let t = Sys.time () in
-        _pfa_fr_inplace 2 3 rt1 rt2 ~coefficients ;
+        let coefficients =
+          _pfa_fr_inplace 2 3 rt1 rt2 ~coefficients ~inverse:false
+        in
+
+        for i = 0 to (2 * 3) - 1 do
+          Printf.eprintf
+            "\n  fft.(%d)=%s \n"
+            i
+            (Scalar.to_string coefficients.(i))
+        done ;
+        let _inverse' domain =
+          let n = Array.length domain in
+          Array.init n (fun i ->
+              if i = 0 then Array.get domain 0 else Array.get domain (n - i))
+        in
+        (*let coefficients = inverse' coefficients in*)
+        let coefficients =
+          _pfa_fr_inplace
+            2
+            3
+            (_inv_root rt1)
+            (_inv_root rt2)
+            ~coefficients
+            ~inverse:true
+        in
         Printf.eprintf "\n G1 FFT PFA = %f \n" (Sys.time () -. t) ;
 
         for i = 0 to (2 * 3) - 1 do
           Printf.eprintf
-            "\n fft.(%d)=%s \n"
+            "\n ifft o fft.(%d)=%s \n"
             i
             (Scalar.to_string coefficients.(i))
         done ;
+
+        for i = 0 to (2 * 3) - 1 do
+          Printf.eprintf
+            "\n origin.(%d)=%s \n"
+            i
+            (Scalar.to_string coefficients2.(i))
+        done ;
+
         for i = 0 to (2 * 3) - 1 do
           Printf.eprintf
             "\n eval.(%d)=%s \n"
@@ -283,6 +334,26 @@ module Test = struct
                  evaluate (of_dense coefficients2) (Scalar.pow rt (Z.of_int i))))
         done ;
 
+        (*let i = ref 0 in
+          Array.iter
+            (fun a ->
+              let b =
+                Bls12_381_polynomial.Polynomial.Polynomial.(
+                  evaluate
+                    (of_dense coefficients2)
+                    (Scalar.pow (_inv_root rt) (Z.of_int !i)))
+              in
+              assert (Scalar.eq a b) ;
+              i := !i + 1)
+            coefficients4 ;*)
+        (* let t = Sys.time () in
+           let res =
+             dft ~domain:(make_domain rt (2 * 3)) ~coefficients:coefficients3
+           in
+           for i = 0 to (2 * 3) - 1 do
+             Printf.eprintf "\n DFT.(%d)=%s \n" i (Scalar.to_string res.(i))
+           done ;
+           Printf.eprintf "\n G1 FFT dft = %f \n" (Sys.time () -. t) ;*)
         let coefficients = Array.init sz (fun _ -> Bls12_381.G1.(copy one)) in
         let t = Sys.time () in
         (*Kate_amortized.Kate_amortized.fft_g1_inplace2*)
@@ -305,8 +376,8 @@ module Test = struct
                 (Scalar.to_string b))
           buffer
           buffer' ;*)
-        let r = false in
-        assert r ;
+        (*let r = false in
+          assert r ;*)
         let trusted_setup =
           DAL_crypto.build_trusted_setup_instance `Unsafe_for_test_only
           (*(`Files

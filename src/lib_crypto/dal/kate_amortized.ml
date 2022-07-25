@@ -475,13 +475,111 @@ module Kate_amortized = struct
       z_list
     |> snd
 
+  let dft ~inverse ~domain ~coefficients =
+    let n = Array.length domain in
+    let res = Array.make n Scalar.(copy zero) in
+    for i = 0 to n - 1 do
+      for j = 0 to n - 1 do
+        let mul =
+          Scalar.mul
+            coefficients.(j)
+            (Scalar.pow (Array.get domain 1) (Z.of_int (i * j)))
+        in
+        res.(i) <- Scalar.add res.(i) mul
+      done
+    done ;
+    if inverse then
+      for i = 0 to n - 1 do
+        res.(i) <- Scalar.mul (Scalar.inverse_exn @@ Scalar.of_int n) res.(i)
+      done ;
+    res
+
+  let get_root order =
+    let multiplicative_group_order = Z.(Scalar.order - one) in
+    let exponent = Z.divexact multiplicative_group_order (Z.of_int order) in
+    Scalar.pow (Scalar.of_int 7) exponent
+
+  let make_domain root d =
+    let build_array init next len =
+      let xi = ref init in
+      Array.init len (fun _ ->
+          let i = !xi in
+          xi := next !xi ;
+          i)
+    in
+    build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
+
+  let inv_root root = Scalar.inverse_exn root
+
+  let pfa_fr_inplace ~inverse n1 n2 root1 root2 ~coefficients =
+    let n = n1 * n2 in
+    assert (Array.length coefficients = n) ;
+    let domain_n1 = make_domain root1 n1 in
+    let domain_n2 = make_domain root2 n2 in
+    let columns =
+      Array.init n1 (fun _ -> Array.init n2 (fun _ -> Scalar.(copy zero)))
+    in
+    let rows =
+      Array.init n2 (fun _ -> Array.init n1 (fun _ -> Scalar.(copy zero)))
+    in
+
+    for z = 0 to n - 1 do
+      columns.(z mod n1).(z mod n2) <- coefficients.(z)
+    done ;
+
+    for k1 = 0 to n1 - 1 do
+      columns.(k1) <- dft ~inverse ~domain:domain_n2 ~coefficients:columns.(k1)
+    done ;
+
+    for k1 = 0 to n1 - 1 do
+      for k2 = 0 to n2 - 1 do
+        rows.(k2).(k1) <- columns.(k1).(k2)
+      done
+    done ;
+
+    for k2 = 0 to n2 - 1 do
+      rows.(k2) <- dft ~inverse ~domain:domain_n1 ~coefficients:rows.(k2)
+    done ;
+
+    for k1 = 0 to n1 - 1 do
+      for k2 = 0 to n2 - 1 do
+        coefficients.(((n1 * k2) + (n2 * k1)) mod n) <- rows.(k2).(k1)
+      done
+    done ;
+    let _inverse' domain =
+      let n = Array.length domain in
+      Array.init n (fun i ->
+          if i = 0 then Array.get domain 0 else Array.get domain (n - i))
+    in
+    if inverse then
+      (* TODO: get rid of allocation *)
+      (*let res = Array.copy coefficients in
+        inverse' res*)
+      coefficients
+    else coefficients
+
   let interpolation_h_poly2 y domain z_list =
-    Scalar.ifft_inplace ~domain:(inverse domain) ~points:z_list ;
+    let rt = Array.get domain 1 in
+    Printf.eprintf
+      "\n %s ; 1?=%s \n"
+      (Scalar.to_string rt)
+      (Scalar.to_string (Scalar.pow rt (Z.of_int 152))) ;
+    let rt1 = Scalar.pow rt (Z.of_int 19) in
+    let rt2 = Scalar.pow rt (Z.of_int 8) in
+    let h =
+      pfa_fr_inplace
+        8
+        19
+        (inv_root rt1)
+        (inv_root rt2)
+        ~coefficients:z_list
+        ~inverse:true
+    in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
       (fun inv_yi h -> (Scalar.mul inv_yi inv_y, Scalar.mul h inv_yi))
       Scalar.(copy one)
-      z_list
+      h
     |> snd
 
   (* Part 3.2 verifier : verifies that f(w×domain.(i)) = evaluations.(i). *)

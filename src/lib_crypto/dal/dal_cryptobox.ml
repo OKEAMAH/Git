@@ -326,11 +326,17 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
 
   let segment_len = Int.div Params.slot_segment_size scalar_bytes_amount + 1
 
+  let _ =
+    Printf.eprintf
+      "\n nb_segments = %d ; other = %d\n"
+      segment_len
+      (Int.div Params.slot_segment_size scalar_bytes_amount + 1)
+
   let remaining_bytes = Params.slot_segment_size mod scalar_bytes_amount
 
   (* k and n are the parameters of the erasure code. *)
 
-  let k = nb_segments * (1 lsl Z.(log2up (of_int segment_len)))
+  let k = nb_segments * 256 (*(1 lsl Z.(log2up (of_int segment_len)))*)
 
   let n = Params.redundancy_factor * k
 
@@ -477,8 +483,14 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
     !n
 
   let _1primitive_root_152 =
-    Scalar.of_string
-      "28201840329643070015467614343020943052054837648709365431353800935819776407072"
+    (*Scalar.of_string
+      "39312046154427171115869896807489634766777018680485800814935002421353738437385"*)
+    let multiplicative_group_order = Z.(Scalar.order - one) in
+    let exponent =
+      Z.divexact multiplicative_group_order (Z.of_int (2048 * 19))
+    in
+    Scalar.pow (Scalar.of_int 7) exponent
+  (*"28201840329643070015467614343020943052054837648709365431353800935819776407072"*)
   (* Or 39312046154427171115869896807489634766777018680485800814935002421353738437385,
      g^((r-1)/152) with <7>=(Fr)* *)
 
@@ -497,6 +509,14 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
           (Printf.sprintf "message must be %d bytes long" Params.slot_size))
     else
       let offset = ref 0 in
+      Printf.eprintf
+        "\n\
+        \ k = %d ; nb_seg = %d ; seg_len = %d ; max deg = %d ; slot sz = %d \n"
+        k
+        nb_segments
+        segment_len
+        (nb_segments - 1 + ((segment_len - 1) * nb_segments))
+        (Params.slot_size / 31) ;
       let res = Array.make k Scalar.(copy zero) in
       for segment = 0 to nb_segments - 1 do
         for elt = 0 to segment_len - 1 do
@@ -518,7 +538,21 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
   let polynomial_from_bytes slot =
     let open Result_syntax in
     let* data = polynomial_from_bytes' slot in
-    Ok (Evaluations.interpolation_fft2 domain_k data)
+    let data = Array.sub data 0 (19 * 2048) in
+    let res = Array.init k (fun _ -> Scalar.(copy zero)) in
+    Array.blit
+      (Kate_amortized.pfa_fr_inplace
+         2048
+         19
+         (Scalar.inverse_exn @@ Scalar.pow _1primitive_root_152 (Z.of_int 19))
+         (Scalar.inverse_exn @@ Scalar.pow _1primitive_root_152 (Z.of_int 2048))
+         ~coefficients:data
+         ~inverse:true)
+      0
+      res
+      0
+      (2048 * 19) ;
+    Ok (Polynomials.of_dense res)
 
   let eval_coset eval slot offset segment =
     for elt = 0 to segment_len - 1 do
@@ -535,7 +569,21 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
   (* The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_to_bytes p =
-    let eval = Evaluations.(evaluation_fft domain_k p |> to_array) in
+    let eval = Array.init k (fun _ -> Scalar.(copy zero)) in
+    Array.blit
+      (Kate_amortized.pfa_fr_inplace
+         2048
+         19
+         (Scalar.pow _1primitive_root_152 (Z.of_int 19))
+         (Scalar.pow _1primitive_root_152 (Z.of_int 2048))
+         ~coefficients:
+           (Array.sub (Polynomials.to_dense_coefficients p) 0 (2048 * 19))
+         ~inverse:false)
+      0
+      eval
+      0
+      k ;
+    (*let eval = Evaluations.(evaluation_fft domain_k p |> to_array) in*)
     let slot = Bytes.make Params.slot_size '0' in
     let offset = ref 0 in
     for segment = 0 to nb_segments - 1 do
@@ -795,7 +843,7 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
     if slot_segment_index < 0 || slot_segment_index >= nb_segments then
       Error `Slot_segment_index_out_of_range
     else
-      let l = (*152*) 1 lsl Z.(log2up (of_int segment_len)) in
+      let l = 152 (*1 lsl Z.(log2up (of_int segment_len))*) in
       let wi = Domains.get domain_k slot_segment_index in
       let quotient, _ =
         Polynomials.division_xn p l Scalar.(negate (pow wi (Z.of_int l)))
@@ -820,13 +868,11 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
        fun d x -> build_array Scalar.(copy one) (fun s -> Scalar.(mul s x)) d
       in
       let domain =
-        Kate_amortized.Domain.build ~log:Z.(log2up (of_int segment_len))
-        (*create_srs 152 _1primitive_root_152*)
+        (*Kate_amortized.Domain.build ~log:Z.(log2up (of_int segment_len))*)
+        _create_srs 152 (Scalar.pow _1primitive_root_152 (Z.of_int 256))
       in
       let slot_segment_evaluations =
-        Array.init
-          (*152*) (1 lsl Z.(log2up (of_int segment_len)))
-          (function
+        Array.init 152 (*(1 lsl Z.(log2up (of_int segment_len)))*) (function
             | i when i < segment_len - 1 ->
                 let dst = Bytes.create scalar_bytes_amount in
                 Bytes.blit
@@ -848,7 +894,7 @@ module Make (Params : CONFIGURATION) : DAL_cryptobox_sig = struct
             | _ -> Scalar.(copy zero))
       in
       Ok
-        (Kate_amortized.verify
+        (Kate_amortized.verify2
            cm
            (trusted_setup.srs_g1, trusted_setup.kate_amortized_srs_g2_segments)
            domain
