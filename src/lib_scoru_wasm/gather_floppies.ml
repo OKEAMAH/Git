@@ -114,7 +114,7 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
   type tree = Wasm.tree
 
   open Tezos_webassembly_interpreter
-  module Merklizer = Tree_encoding_decoding.Make (T)
+  module EncDec = Tree_encoding_decoding.Make (T)
 
   (** The tick state of the [Gathering_floppies] instrumentation. *)
   type state = {
@@ -131,11 +131,11 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
             PVM. *)
   }
 
-  let boot_sector_merklizer : string Merklizer.t =
-    Merklizer.(value ["boot-sector"] Data_encoding.string)
+  let boot_sector_merklizer : string EncDec.t =
+    EncDec.(value ["boot-sector"] Data_encoding.string)
 
-  let state_merklizer : state Merklizer.t =
-    let open Merklizer in
+  let state_merklizer : state EncDec.t =
+    let open EncDec in
     conv
       (fun (internal_status, last_input_info, internal_tick, kernel) ->
         {internal_status; last_input_info; internal_tick; kernel})
@@ -173,7 +173,7 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
       It only tries to fetch the current tick (with the same key as
       the one used in [state_merklizer]. *)
   let broken_merklizer =
-    Merklizer.value ["gather-floppies"; "internal-tick"] Data_encoding.n
+    EncDec.value ["gather-floppies"; "internal-tick"] Data_encoding.n
 
   (** [read_state tree] fetches the current state of the PVM from
       [tree]. *)
@@ -182,18 +182,18 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
     Lwt.catch
       (fun () ->
         (* First, we try to interpret [tree] as a [state]. *)
-        let+ state = Merklizer.decode state_merklizer tree in
+        let+ state = EncDec.decode state_merklizer tree in
         Running state)
       (fun _exn ->
         Lwt.catch
           (fun () ->
             (* If it fails, it means the PVM may be stuck. *)
-            let+ current_tick = Merklizer.decode broken_merklizer tree in
+            let+ current_tick = EncDec.decode broken_merklizer tree in
             Broken {current_tick})
           (fun _exn ->
             (* In case both previous attempts have failed, it means
                this is probably the very first tick of the PVM. *)
-            let+ boot_sector = Merklizer.decode boot_sector_merklizer tree in
+            let+ boot_sector = EncDec.decode boot_sector_merklizer tree in
             Halted boot_sector))
 
   (* PROCESS MESSAGES *)
@@ -320,14 +320,14 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
     let* state = read_state tree in
     match state with
     | Broken {current_tick} ->
-        Merklizer.encode broken_merklizer (Z.succ current_tick) tree
+        EncDec.encode broken_merklizer (Z.succ current_tick) tree
     | Halted origination_message -> (
         match origination_kernel_loading_step origination_message with
-        | Some state -> Merklizer.encode state_merklizer state tree
+        | Some state -> EncDec.encode state_merklizer state tree
         | None ->
             (* We could not interpret [origination_message],
                meaning the PVM is stuck. *)
-            Merklizer.encode broken_merklizer Z.one tree)
+            EncDec.encode broken_merklizer Z.one tree)
     | Running state -> (
         let state = increment_ticks state in
         match state.internal_status with
@@ -353,7 +353,7 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
         match state.internal_status with
         | Gathering_floppies _ ->
             let* state = process_input_step input message state in
-            Merklizer.encode state_merklizer state tree
+            EncDec.encode state_merklizer state tree
         | Not_gathering_floppies -> Wasm.set_input_step input message tree)
 
   let get_output = Wasm.get_output
@@ -408,9 +408,11 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
   module Internal_for_tests = struct
     let initial_tree_from_boot_sector ~empty_tree boot_sector =
       match origination_kernel_loading_step boot_sector with
-      | Some state -> Merklizer.encode state_merklizer state empty_tree
+      | Some state -> EncDec.encode state_merklizer state empty_tree
       | None ->
           raise
             (Invalid_argument "initial_tree_from_boot_sector: wrong boot sector")
   end
+
+  let initialize ?host_function_registry:_ _ tree _ = Lwt.return tree
 end

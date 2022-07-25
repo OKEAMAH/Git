@@ -22,6 +22,7 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+open Tezos_webassembly_interpreter
 
 (** Represents the location of an input message. *)
 type input_info = {
@@ -56,6 +57,8 @@ type info = {
 module type S = sig
   type tree
 
+  module EncDec : Tree_encoding_decoding.S with type tree = tree
+
   (** [compute_step] forwards the VM by one compute tick. If the VM is expecting
       input, it gets stuck. If the VM is already stuck, this function may
       raise an exception. *)
@@ -77,6 +80,13 @@ module type S = sig
   (** [get_info] provides a typed view of the current machine state. Should not
       raise. *)
   val get_info : tree -> info Lwt.t
+
+  val initialize :
+    ?host_function_registry:Host_funcs.registry ->
+    Ast.module_ Instance.NameMap.t ->
+    tree ->
+    Ast.name_list ->
+    tree Lwt.t
 end
 
 (* Encodings *)

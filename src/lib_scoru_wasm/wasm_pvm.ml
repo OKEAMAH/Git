@@ -29,6 +29,7 @@
   must be exposed to the protocol via the environment shall be added here.
 
 *)
+open Tezos_webassembly_interpreter
 
 module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
   include
@@ -115,5 +116,58 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
           in
           let* tree = EncDec.encode status_encoding false tree in
           EncDec.encode (inp_encoding level id) message tree
+
+        let _module_instance_of_tree modules =
+          EncDec.decode Wasm_encoding.module_instance_encoding modules
+
+        let _module_instances_of_tree =
+          EncDec.decode Wasm_encoding.module_instance_encoding
+
+        let transitive_closure (module_map : Ast.module_ Instance.NameMap.t)
+            module_name =
+          let open Lwt_syntax in
+          let rec aux module_map added_list remaining_list =
+            match remaining_list with
+            | [] -> Lwt.return added_list
+            | h :: tl ->
+                let* head = h in
+                let* mod_ = Instance.NameMap.get head module_map in
+                let Ast.{imports; _} = mod_.Source.it in
+                let* imports = Ast.Vector.to_list imports in
+                let keys =
+                  List.map
+                    Ast.(
+                      fun x ->
+                        let {module_name; _} = x.Source.it in
+                        Vector.to_list module_name)
+                    imports
+                in
+                let new_added_list = mod_ :: added_list in
+                let new_remaining = List.rev_append keys tl in
+                aux module_map new_added_list new_remaining
+          in
+          aux module_map [] [Lwt.return module_name]
+
+        let initialize ?(host_function_registry = Host_funcs.empty ())
+            module_map tree main_module_name =
+          let open Lwt_syntax in
+          let* modules = transitive_closure module_map main_module_name in
+          let s =
+            List.fold_left
+              (fun tree m ->
+                let* imports = Import.link m in
+                let* mod_inst = Eval.init host_function_registry m imports in
+                let* tree = tree in
+                let* t =
+                  EncDec.encode
+                    Wasm_encoding.module_instance_encoding
+                    mod_inst
+                    tree
+                in
+                Lwt.return t)
+              (Lwt.return tree)
+              modules
+          in
+          s
       end)
 end
