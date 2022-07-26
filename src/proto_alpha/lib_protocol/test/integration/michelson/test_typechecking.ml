@@ -798,7 +798,7 @@ let test_parse_contract_data_for_unit_rollup () =
          (Destination.Sc_rollup rollup)
          ~entrypoint:Entrypoint.default
   in
-  let (Ty_ex_c Script_typed_ir.Unit_t) =
+  let (Ty_ex_c {value = Script_typed_ir.Unit_t; _}) =
     Script_typed_ir.Typed_contract.arg_ty typed_contract
   in
   let destination = Script_typed_ir.Typed_contract.destination typed_contract in

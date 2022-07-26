@@ -128,7 +128,7 @@ let test_stack_overflow () =
     let rec aux n acc =
       if n = 0 then acc
       else
-        aux (n - 1) (IConst (dummy_loc, Bool_t, true, IDrop (dummy_loc, acc)))
+        aux (n - 1) (IConst (dummy_loc, bool_t, true, IDrop (dummy_loc, acc)))
     in
     aux n (IHalt dummy_loc)
   in
@@ -165,7 +165,7 @@ let test_stack_overflow_in_lwt () =
              ( dummy_loc,
                IConst
                  ( dummy_loc,
-                   Unit_t,
+                   unit_t,
                    (),
                    IBig_map_mem (dummy_loc, IDrop (dummy_loc, acc)) ) ))
     in

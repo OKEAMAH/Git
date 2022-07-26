@@ -133,7 +133,7 @@ let test_encode_decode_internal_inbox_message () =
     wrap
     @@ Sc_rollup_management_protocol.make_internal_inbox_message
          ctxt
-         String_t
+         string_t
          ~payload
          ~sender
          ~source

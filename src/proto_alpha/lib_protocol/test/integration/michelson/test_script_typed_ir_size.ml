@@ -184,51 +184,51 @@ let check_value_size () =
         Unit_t
         ======
      *)
-     [ex "() : unit" Unit_t ()]
+     [ex "() : unit" unit_t ()]
     (*
         Int_t
         =====
     *)
     @ (let error = 8 in
        [
-         ex ~error "0 : int" Int_t Script_int.zero;
-         ex ~error "2^63 : int" Int_t (Script_int.of_int max_int);
+         ex ~error "0 : int" int_t Script_int.zero;
+         ex ~error "2^63 : int" int_t (Script_int.of_int max_int);
          ex
            ~error
            "37^73 : int"
-           Int_t
+           int_t
            (Script_int.of_zint Z.(pow (of_int 37) 73));
          ex
            ~error
            "-37^73 : int"
-           Int_t
+           int_t
            (Script_int.of_zint Z.(neg (pow (of_int 37) 73)));
          ex
            ~error
            "13270006022583112970 : int"
-           Int_t
+           int_t
            (get @@ Script_int.of_string "13270006022583112970");
        ]
-       @ exs ~error nsample show_script_int Int_t ": int")
+       @ exs ~error nsample show_script_int int_t ": int")
     (*
         Nat_t
         =====
     *)
     @ (let error = 8 in
        [
-         ex ~error "0 : nat" Nat_t Script_int.zero_n;
+         ex ~error "0 : nat" nat_t Script_int.zero_n;
          ex
            ~error
            "2^63 : nat"
-           Nat_t
+           nat_t
            (get Script_int.(is_nat @@ of_int max_int));
          ex
            ~error
            "37^73 : int"
-           Nat_t
+           nat_t
            (get Script_int.(is_nat @@ of_zint Z.(pow (of_int 37) 73)));
        ]
-       @ exs ~error nsample show_script_int Nat_t ": nat")
+       @ exs ~error nsample show_script_int nat_t ": nat")
     (*
        Signature_t
        ===========
@@ -236,37 +236,37 @@ let check_value_size () =
     @ (let show fmt (Script_typed_ir.Script_signature.Signature_tag s) =
          Signature.pp fmt s
        in
-       exs ~error:8 nsample show Signature_t ": signature")
+       exs ~error:8 nsample show signature_t ": signature")
     (*
        String_t
        ========
     *)
     @ (let show fmt s = Format.fprintf fmt "%s" (Script_string.to_string s) in
-       exs nsample show String_t ": string")
+       exs nsample show string_t ": string")
     (*
        Bytes_t
        =======
     *)
     @ (let show fmt s = Format.fprintf fmt "%s" (Bytes.to_string s) in
-       exs nsample show Bytes_t ": bytes")
+       exs nsample show bytes_t ": bytes")
     (*
        Mutez_t
        =======
     *)
     @ (let show fmt t = Format.fprintf fmt "%s" (Tez.to_string t) in
-       exs nsample show Mutez_t ": mutez")
+       exs nsample show mutez_t ": mutez")
     (*
        Key_hash_t
        ==========
     *)
     @ (let show = Signature.Public_key_hash.pp in
-       exs nsample show Key_hash_t ": key_hash")
+       exs nsample show key_hash_t ": key_hash")
     (*
        Key_t
        =====
     *)
     @ (let show = Signature.Public_key.pp in
-       exs nsample show Key_t ": key_t")
+       exs nsample show key_t ": key_t")
     (*
        Timestamp_t
        ===========
@@ -274,23 +274,23 @@ let check_value_size () =
     @ (let show fmt s =
          Format.fprintf fmt "%s" (Script_timestamp.to_string s)
        in
-       exs ~error:8 nsample show Timestamp_t ": timestamp_t")
+       exs ~error:8 nsample show timestamp_t ": timestamp_t")
     (*
        Address_t
        =========
     *)
-    @ exs nsample show_address Address_t ": address_t"
+    @ exs nsample show_address address_t ": address_t"
     (*
        Tx_rollup_l2_address_t
        ======================
     *)
     @ (let show = Indexable.pp Tx_rollup_l2_address.pp in
-       exs nsample show Tx_rollup_l2_address_t ": tx_rollup_l2_t")
+       exs nsample show tx_rollup_l2_address_t ": tx_rollup_l2_t")
     (*
        Bool_t
        ======
     *)
-    @ [ex "true : bool" Bool_t true; ex "false : bool" Bool_t false]
+    @ [ex "true : bool" bool_t true; ex "false : bool" bool_t false]
     (*
        Pair_t
        ======
@@ -715,7 +715,7 @@ let check_kinstr_size () =
   let cdr = ICdr (loc, halt ()) in
   let const ty v = IConst (loc, ty, v, halt ()) in
   let unit_option_t () =
-    WithExceptions.Result.get_ok ~loc:__LOC__ @@ option_t loc Unit_t
+    WithExceptions.Result.get_ok ~loc:__LOC__ @@ option_t loc unit_t
   in
   let stack_type () = Item_t (unit_option_t (), Bot_t) in
   let id_lambda () =
@@ -730,13 +730,13 @@ let check_kinstr_size () =
   in
   (* Following constants are used but once. *)
   let* str_list_t =
-    Lwt.return @@ Environment.wrap_tzresult @@ list_t loc String_t
+    Lwt.return @@ Environment.wrap_tzresult @@ list_t loc string_t
   in
   let* nat_str_map_t =
-    Lwt.return @@ Environment.wrap_tzresult @@ map_t loc Nat_t String_t
+    Lwt.return @@ Environment.wrap_tzresult @@ map_t loc nat_t string_t
   in
   let* (Ty_ex_c nat_str_pair_t) =
-    Lwt.return @@ Environment.wrap_tzresult @@ pair_t loc Nat_t String_t
+    Lwt.return @@ Environment.wrap_tzresult @@ pair_t loc nat_t string_t
   in
   let zero_memo_size =
     WithExceptions.Result.get_ok ~loc:__LOC__
@@ -756,13 +756,13 @@ let check_kinstr_size () =
       Kinstr ("IDrop", drop ());
       Kinstr ("IDup", IDup (loc, halt ()));
       Kinstr ("ISwap", ISwap (loc, halt ()));
-      Kinstr ("IConst", const String_t @@ str "tezos");
+      Kinstr ("IConst", const string_t @@ str "tezos");
       Kinstr ("ICons_pair", ICons_pair (loc, halt ()));
       Kinstr ("ICar", ICar (loc, halt ()));
       Kinstr ("ICdr", cdr);
       Kinstr ("IUnpair", IUnpair (loc, halt ()));
       Kinstr ("ICons_some", ICons_some (loc, halt ()));
-      Kinstr ("ICons_none", ICons_none (loc, Int_t, halt ()));
+      Kinstr ("ICons_none", ICons_none (loc, int_t, halt ()));
       Kinstr
         ( "IIf_none",
           IIf_none
@@ -773,8 +773,8 @@ let check_kinstr_size () =
               k = halt ();
             } );
       Kinstr ("IOpt_map", IOpt_map {loc; body = halt (); k = halt ()});
-      Kinstr ("ICons_left", ICons_left (loc, Nat_t, halt ()));
-      Kinstr ("ICons_right", ICons_right (loc, Int_t, halt ()));
+      Kinstr ("ICons_left", ICons_left (loc, nat_t, halt ()));
+      Kinstr ("ICons_right", ICons_right (loc, int_t, halt ()));
       Kinstr
         ( "IIf_left",
           IIf_left
@@ -785,7 +785,7 @@ let check_kinstr_size () =
               k = halt ();
             } );
       Kinstr ("ICons_list", ICons_list (loc, halt ()));
-      Kinstr ("INil", INil (loc, Bytes_t, halt ()));
+      Kinstr ("INil", INil (loc, bytes_t, halt ()));
       Kinstr
         ( "IIf_cons",
           IIf_cons
@@ -798,12 +798,12 @@ let check_kinstr_size () =
       Kinstr ("IList_map", IList_map (loc, halt (), str_list_t, halt ()));
       Kinstr ("IList_iter", IList_iter (loc, str_list_t, drop (), halt ()));
       Kinstr ("IList_size", IList_size (loc, halt ()));
-      Kinstr ("IEmpty_set", IEmpty_set (loc, String_t, halt ()));
-      Kinstr ("ISet_iter", ISet_iter (loc, String_t, drop (), halt ()));
+      Kinstr ("IEmpty_set", IEmpty_set (loc, string_t, halt ()));
+      Kinstr ("ISet_iter", ISet_iter (loc, string_t, drop (), halt ()));
       Kinstr ("ISet_mem", ISet_mem (loc, halt ()));
       Kinstr ("ISet_update", ISet_update (loc, halt ()));
       Kinstr ("ISet_size", ISet_size (loc, halt ()));
-      Kinstr ("IEmpty_map", IEmpty_map (loc, Nat_t, String_t, halt ()));
+      Kinstr ("IEmpty_map", IEmpty_map (loc, nat_t, string_t, halt ()));
       Kinstr ("IMap_map", IMap_map (loc, nat_str_map_t, cdr, halt ()));
       Kinstr ("IMap_iter", IMap_iter (loc, nat_str_pair_t, drop (), halt ()));
       Kinstr ("IMap_mem", IMap_mem (loc, halt ()));
@@ -811,7 +811,7 @@ let check_kinstr_size () =
       Kinstr ("IMap_update", IMap_update (loc, halt ()));
       Kinstr ("IMap_get_and_update", IMap_get_and_update (loc, halt ()));
       Kinstr ("IMap_size", IMap_size (loc, halt ()));
-      Kinstr ("IEmpty_big_map", IEmpty_big_map (loc, Nat_t, String_t, halt ()));
+      Kinstr ("IEmpty_big_map", IEmpty_big_map (loc, nat_t, string_t, halt ()));
       Kinstr ("IBig_map_mem", IBig_map_mem (loc, halt ()));
       Kinstr ("IBig_map_get", IBig_map_get (loc, halt ()));
       Kinstr ("IBig_map_update", IBig_map_update (loc, halt ()));
@@ -868,14 +868,14 @@ let check_kinstr_size () =
               branch_if_false = halt ();
               k = halt ();
             } );
-      Kinstr ("ILoop", ILoop (loc, const Bool_t true, halt ()));
+      Kinstr ("ILoop", ILoop (loc, const bool_t true, halt ()));
       Kinstr ("ILoop_left", ILoop_left (loc, INever loc, halt ()));
-      Kinstr ("IDip", IDip (loc, halt (), String_t, halt ()));
+      Kinstr ("IDip", IDip (loc, halt (), string_t, halt ()));
       Kinstr ("IExec", IExec (loc, Bot_t, halt ()));
-      Kinstr ("IApply", IApply (loc, String_t, halt ()));
+      Kinstr ("IApply", IApply (loc, string_t, halt ()));
       Kinstr ("ILambda", ILambda (loc, id_lambda (), halt ()));
-      Kinstr ("IFailwith", IFailwith (loc, String_t));
-      Kinstr ("ICompare", ICompare (loc, String_t, halt ()));
+      Kinstr ("IFailwith", IFailwith (loc, string_t));
+      Kinstr ("ICompare", ICompare (loc, string_t, halt ()));
       Kinstr ("IEq", IEq (loc, halt ()));
       Kinstr ("INeq", INeq (loc, halt ()));
       Kinstr ("ILt", ILt (loc, halt ()));
@@ -883,7 +883,7 @@ let check_kinstr_size () =
       Kinstr ("ILe", ILe (loc, halt ()));
       Kinstr ("IGe", IGe (loc, halt ()));
       Kinstr ("IAddress", IAddress (loc, halt ()));
-      Kinstr ("IContract", IContract (loc, Unit_t, entrypoint "entry", halt ()));
+      Kinstr ("IContract", IContract (loc, unit_t, entrypoint "entry", halt ()));
       Kinstr
         ( "IView",
           IView
@@ -903,7 +903,7 @@ let check_kinstr_size () =
           ICreate_contract
             {
               loc;
-              storage_type = Unit_t;
+              storage_type = unit_t;
               code = Micheline.(strip_locations @@ Seq (loc, []));
               k = halt ();
             } );
@@ -914,14 +914,14 @@ let check_kinstr_size () =
       Kinstr ("ILevel", ILevel (loc, halt ()));
       Kinstr ("ICheck_signature", ICheck_signature (loc, halt ()));
       Kinstr ("IHash_key", IHash_key (loc, halt ()));
-      Kinstr ("IPack", IPack (loc, Int_t, halt ()));
-      Kinstr ("IUnpack", IUnpack (loc, Int_t, halt ()));
+      Kinstr ("IPack", IPack (loc, int_t, halt ()));
+      Kinstr ("IUnpack", IUnpack (loc, int_t, halt ()));
       Kinstr ("IBlake2b", IBlake2b (loc, halt ()));
       Kinstr ("ISha_256", ISha256 (loc, halt ()));
       Kinstr ("ISha512", ISha512 (loc, halt ()));
       Kinstr ("ISource", ISource (loc, halt ()));
       Kinstr ("ISender", ISender (loc, halt ()));
-      Kinstr ("ISelf", ISelf (loc, Unit_t, entrypoint "entry", halt ()));
+      Kinstr ("ISelf", ISelf (loc, unit_t, entrypoint "entry", halt ()));
       Kinstr ("ISelf_address", ISelf_address (loc, halt ()));
       Kinstr ("IAmount", IAmount (loc, halt ()));
       Kinstr
@@ -961,10 +961,10 @@ let check_kinstr_size () =
       Kinstr ("IComb_get", IComb_get (loc, 0, Comb_get_zero, halt ()));
       Kinstr ("IComb_set", IComb_set (loc, 0, Comb_set_zero, halt ()));
       Kinstr ("IDup_n", IDup_n (loc, 0, Dup_n_zero, halt ()));
-      Kinstr ("ITicket", ITicket (loc, Nat_t, halt ()));
-      Kinstr ("IRead_ticket", IRead_ticket (loc, Unit_t, halt ()));
+      Kinstr ("ITicket", ITicket (loc, nat_t, halt ()));
+      Kinstr ("IRead_ticket", IRead_ticket (loc, unit_t, halt ()));
       Kinstr ("ISplit_ticket", ISplit_ticket (loc, halt ()));
-      Kinstr ("IJoin_tickets", IJoin_tickets (loc, Unit_t, halt ()));
+      Kinstr ("IJoin_tickets", IJoin_tickets (loc, unit_t, halt ()));
       Kinstr ("IOpen_chest", IOpen_chest (loc, halt ()));
       Kinstr
         ( "IEmit",
@@ -972,7 +972,7 @@ let check_kinstr_size () =
             {
               loc;
               tag = entrypoint "entry";
-              ty = Unit_t;
+              ty = unit_t;
               unparsed_ty = Micheline.(strip_locations @@ Seq (loc, []));
               k = halt ();
             } );
@@ -984,23 +984,23 @@ let check_witness_sizes () =
   let stack_prefix_preservation =
     KPrefix
       ( loc,
-        Unit_t,
+        unit_t,
         KPrefix
           ( loc,
-            Unit_t,
+            unit_t,
             KPrefix
               ( loc,
-                Unit_t,
+                unit_t,
                 KPrefix
                   ( loc,
-                    Unit_t,
+                    unit_t,
                     KPrefix
                       ( loc,
-                        Unit_t,
+                        unit_t,
                         KPrefix
                           ( loc,
-                            Unit_t,
-                            KPrefix (loc, Unit_t, KPrefix (loc, Unit_t, KRest))
+                            unit_t,
+                            KPrefix (loc, unit_t, KPrefix (loc, unit_t, KRest))
                           ) ) ) ) ) )
   in
   check_size

@@ -49,7 +49,7 @@ let normalize_compare c =
 let rec reference_compare_comparable : type a. a comparable_ty -> a -> a -> int
     =
  fun ty x y ->
-  match (ty, x, y) with
+  match (ty.value, x, y) with
   | Unit_t, (), () -> 0
   | Never_t, _, _ -> .
   | Signature_t, x, y -> normalize_compare @@ Script_signature.compare x y
