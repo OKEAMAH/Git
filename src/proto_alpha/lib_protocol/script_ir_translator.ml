@@ -257,15 +257,6 @@ let check_dupable_ty ctxt loc ty =
   Gas_monad.run ctxt gas >>? fun (res, ctxt) ->
   match res with Ok () -> ok ctxt | Error e -> error e
 
-let type_metadata_eq :
-    type error_trace.
-    error_details:(_, error_trace) error_details ->
-    'a ty_metadata ->
-    'b ty_metadata ->
-    (unit, error_trace) result =
- fun ~error_details {size = size_a} {size = size_b} ->
-  Type_size.check_eq ~error_details size_a size_b
-
 let default_ty_eq_error loc ty1 ty2 =
   let ty1 = serialize_ty_for_error ty1 in
   let ty2 = serialize_ty_for_error ty2 in
@@ -290,161 +281,24 @@ let memo_size_eq :
    The result is an equality witness between the types of the two inputs within
    the gas monad (for gas consumption).
 *)
-let rec ty_eq :
+let ty_eq :
     type a ac b bc error_trace.
     error_details:(Script.location, error_trace) error_details ->
     (a, ac) ty ->
     (b, bc) ty ->
     (((a, ac) ty, (b, bc) ty) eq, error_trace) Gas_monad.t =
  fun ~error_details ty1 ty2 ->
-  let type_metadata_eq meta1 meta2 =
-    Gas_monad.of_result (type_metadata_eq ~error_details meta1 meta2)
-    |> Gas_monad.record_trace_eval ~error_details (fun loc ->
-           default_ty_eq_error loc ty1 ty2)
-  in
-  let memo_size_eq ms1 ms2 =
-    Gas_monad.of_result (memo_size_eq ~error_details ms1 ms2)
-  in
-  let rec help :
-      type ta tac tb tbc.
-      (ta, tac) ty ->
-      (tb, tbc) ty ->
-      (((ta, tac) ty, (tb, tbc) ty) eq, error_trace) Gas_monad.t =
-   fun ty1 ty2 ->
-    help0 ty1 ty2
-    |> Gas_monad.record_trace_eval ~error_details (fun loc ->
-           default_ty_eq_error loc ty1 ty2)
-  and help0 :
-      type ta tac tb tbc.
-      (ta, tac) ty ->
-      (tb, tbc) ty ->
-      (((ta, tac) ty, (tb, tbc) ty) eq, error_trace) Gas_monad.t =
-   fun ty1 ty2 ->
-    let open Gas_monad.Syntax in
-    let* () = Gas_monad.consume_gas Typecheck_costs.merge_cycle in
-    let not_equal () =
+  let open Gas_monad.Syntax in
+  let* () = Gas_monad.consume_gas Typecheck_costs.merge_cycle in
+  match Id.eq_id ty1.id ty2.id with
+  | Some Eq -> return (Eq : ((a, ac) ty, (b, bc) ty) eq)
+  | None ->
       Gas_monad.of_result
       @@ Error
            (match error_details with
            | Fast -> (Inconsistent_types_fast : error_trace)
            | Informative loc ->
                trace_of_error @@ default_ty_eq_error loc ty1 ty2)
-    in
-    match (ty1.value, ty2.value) with
-    | Unit_t, Unit_t -> return (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Unit_t, _ -> not_equal ()
-    | Int_t, Int_t -> return Eq
-    | Int_t, _ -> not_equal ()
-    | Nat_t, Nat_t -> return Eq
-    | Nat_t, _ -> not_equal ()
-    | Key_t, Key_t -> return Eq
-    | Key_t, _ -> not_equal ()
-    | Key_hash_t, Key_hash_t -> return Eq
-    | Key_hash_t, _ -> not_equal ()
-    | String_t, String_t -> return Eq
-    | String_t, _ -> not_equal ()
-    | Bytes_t, Bytes_t -> return Eq
-    | Bytes_t, _ -> not_equal ()
-    | Signature_t, Signature_t -> return Eq
-    | Signature_t, _ -> not_equal ()
-    | Mutez_t, Mutez_t -> return Eq
-    | Mutez_t, _ -> not_equal ()
-    | Timestamp_t, Timestamp_t -> return Eq
-    | Timestamp_t, _ -> not_equal ()
-    | Address_t, Address_t -> return Eq
-    | Address_t, _ -> not_equal ()
-    | Tx_rollup_l2_address_t, Tx_rollup_l2_address_t -> return Eq
-    | Tx_rollup_l2_address_t, _ -> not_equal ()
-    | Bool_t, Bool_t -> return Eq
-    | Bool_t, _ -> not_equal ()
-    | Chain_id_t, Chain_id_t -> return Eq
-    | Chain_id_t, _ -> not_equal ()
-    | Never_t, Never_t -> return Eq
-    | Never_t, _ -> not_equal ()
-    | Operation_t, Operation_t -> return Eq
-    | Operation_t, _ -> not_equal ()
-    | Bls12_381_g1_t, Bls12_381_g1_t -> return Eq
-    | Bls12_381_g1_t, _ -> not_equal ()
-    | Bls12_381_g2_t, Bls12_381_g2_t -> return Eq
-    | Bls12_381_g2_t, _ -> not_equal ()
-    | Bls12_381_fr_t, Bls12_381_fr_t -> return Eq
-    | Bls12_381_fr_t, _ -> not_equal ()
-    | Map_t (tal, tar, meta1), Map_t (tbl, tbr, meta2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let* Eq = help tar tbr in
-        let+ Eq = ty_eq ~error_details tal tbl in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Map_t _, _ -> not_equal ()
-    | Big_map_t (tal, tar, meta1), Big_map_t (tbl, tbr, meta2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let* Eq = help tar tbr in
-        let+ Eq = ty_eq ~error_details tal tbl in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Big_map_t _, _ -> not_equal ()
-    | Set_t (ea, meta1), Set_t (eb, meta2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let+ Eq = ty_eq ~error_details ea eb in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Set_t _, _ -> not_equal ()
-    | Ticket_t (ea, meta1), Ticket_t (eb, meta2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let+ Eq = ty_eq ~error_details ea eb in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Ticket_t _, _ -> not_equal ()
-    | Pair_t (tal, tar, meta1, cmp1), Pair_t (tbl, tbr, meta2, cmp2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let* Eq = help tal tbl in
-        let+ Eq = help tar tbr in
-        let Eq = Dependent_bool.merge_dand cmp1 cmp2 in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Pair_t _, _ -> not_equal ()
-    | Union_t (tal, tar, meta1, cmp1), Union_t (tbl, tbr, meta2, cmp2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let* Eq = help tal tbl in
-        let+ Eq = help tar tbr in
-        let Eq = Dependent_bool.merge_dand cmp1 cmp2 in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Union_t _, _ -> not_equal ()
-    | Lambda_t (tal, tar, meta1), Lambda_t (tbl, tbr, meta2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let* Eq = help tal tbl in
-        let+ Eq = help tar tbr in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Lambda_t _, _ -> not_equal ()
-    | Contract_t (tal, meta1), Contract_t (tbl, meta2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let+ Eq = help tal tbl in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Contract_t _, _ -> not_equal ()
-    | Option_t (tva, meta1, _), Option_t (tvb, meta2, _) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let+ Eq = help tva tvb in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | Option_t _, _ -> not_equal ()
-    | List_t (tva, meta1), List_t (tvb, meta2) ->
-        let* () = type_metadata_eq meta1 meta2 in
-        let+ Eq = help tva tvb in
-        (Eq : ((ta, tac) ty, (tb, tbc) ty) eq)
-    | List_t _, _ -> not_equal ()
-    | Sapling_state_t ms1, Sapling_state_t ms2 ->
-        let+ () = memo_size_eq ms1 ms2 in
-        Eq
-    | Sapling_state_t _, _ -> not_equal ()
-    | Sapling_transaction_t ms1, Sapling_transaction_t ms2 ->
-        let+ () = memo_size_eq ms1 ms2 in
-        Eq
-    | Sapling_transaction_t _, _ -> not_equal ()
-    | Sapling_transaction_deprecated_t ms1, Sapling_transaction_deprecated_t ms2
-      ->
-        let+ () = memo_size_eq ms1 ms2 in
-        Eq
-    | Sapling_transaction_deprecated_t _, _ -> not_equal ()
-    | Chest_t, Chest_t -> return Eq
-    | Chest_t, _ -> not_equal ()
-    | Chest_key_t, Chest_key_t -> return Eq
-    | Chest_key_t, _ -> not_equal ()
-  in
-  help ty1 ty2
 
 (* Same as ty_eq but for stacks.
    A single error monad is used here because there is no need to
@@ -4691,7 +4545,11 @@ and parse_contract :
         (* /!\ This pattern matching needs to remain in sync with
            [parse_tx_rollup_deposit_parameters]. *)
         match arg.value with
-        | Pair_t ({value = Ticket_t (_, _); _}, {value = Tx_rollup_l2_address_t; _}, _, _) ->
+        | Pair_t
+            ( {value = Ticket_t (_, _); _},
+              {value = Tx_rollup_l2_address_t; _},
+              _,
+              _ ) ->
             ( ctxt,
               ok
               @@ (Typed_tx_rollup {arg_ty = arg; tx_rollup}

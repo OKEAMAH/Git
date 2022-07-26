@@ -200,12 +200,6 @@ type end_of_stack = empty_cell * empty_cell
 module Type_size : sig
   type 'a t
 
-  val check_eq :
-    error_details:('error_context, 'error_trace) Script_tc_errors.error_details ->
-    'a t ->
-    'b t ->
-    (unit, 'error_trace) result
-
   val to_int : 'a t -> Saturation_repr.mul_safe Saturation_repr.t
 end
 

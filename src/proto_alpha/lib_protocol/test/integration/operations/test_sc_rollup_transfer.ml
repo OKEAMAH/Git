@@ -230,7 +230,6 @@ let test_transfer_to_wrongly_typed_sc_rollup () =
              Script_interpreter.Bad_contract_parameter _;
              Script_tc_errors.Invalid_constant _;
              Script_tc_errors.Inconsistent_types _;
-             Script_tc_errors.Inconsistent_types _;
            ] ->
              return_unit
          | _ -> raise Unexpected_error)

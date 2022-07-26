@@ -279,12 +279,6 @@ module type TYPE_SIZE = sig
   *)
   type 'a t
 
-  val check_eq :
-    error_details:('error_context, 'error_trace) Script_tc_errors.error_details ->
-    'a t ->
-    'b t ->
-    (unit, 'error_trace) result
-
   val to_int : 'a t -> Saturation_repr.mul_safe Saturation_repr.t
 
   (* Unsafe constructors, to be used only safely and inside this module *)
@@ -321,21 +315,6 @@ module Type_size : TYPE_SIZE = struct
   let three = 3
 
   let four = 4
-
-  let check_eq :
-      type a b error_trace.
-      error_details:(_, error_trace) Script_tc_errors.error_details ->
-      a t ->
-      b t ->
-      (unit, error_trace) result =
-   fun ~error_details x y ->
-    if Compare.Int.(x = y) then Result.return_unit
-    else
-      Error
-        (match error_details with
-        | Fast -> Inconsistent_types_fast
-        | Informative _ ->
-            trace_of_error @@ Script_tc_errors.Inconsistent_type_sizes (x, y))
 
   let of_int loc size =
     let max_size = Constants.michelson_maximum_type_size in
