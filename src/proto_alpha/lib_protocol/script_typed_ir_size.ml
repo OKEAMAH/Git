@@ -40,7 +40,7 @@ let ty_traverse_f =
   let base_compound _meta = h1w in
   let apply : type a ac. nodes_and_size -> (a, ac) ty -> nodes_and_size =
    fun accu ty ->
-    match ty with
+    match ty.value with
     | Unit_t -> ret_succ_adding accu base_basic
     | Int_t -> ret_succ_adding accu base_basic
     | Nat_t -> ret_succ_adding accu base_basic
@@ -244,7 +244,7 @@ let rec value_size :
  fun ~count_lambda_nodes accu ty x ->
   let apply : type a ac. nodes_and_size -> (a, ac) ty -> a -> nodes_and_size =
    fun accu ty x ->
-    match ty with
+    match ty.value with
     | Unit_t -> ret_succ accu
     | Int_t -> ret_succ_adding accu (script_int_size x)
     | Nat_t -> ret_succ_adding accu (script_nat_size x)

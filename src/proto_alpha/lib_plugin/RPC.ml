@@ -587,7 +587,7 @@ module Scripts = struct
         loc:loc -> (a, ac) ty -> (loc, Script.prim) Micheline.node =
      fun ~loc ty ->
       let return (name, args, annot) = Prim (loc, name, args, annot) in
-      match ty with
+      match ty.value with
       | Unit_t -> return (T_unit, [], [])
       | Int_t -> return (T_int, [], [])
       | Nat_t -> return (T_nat, [], [])

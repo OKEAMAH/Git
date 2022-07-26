@@ -2858,7 +2858,7 @@ let apply_liquidity_baking_subsidy ctxt ~toggle_vote =
              step_constants
              ~script
              ~parameter:()
-             ~parameter_ty:Unit_t
+             ~parameter_ty:Script_typed_ir.unit_t
              ~cached_script:(Some script_ir)
              ~location:Micheline.dummy_location
              ~entrypoint:Entrypoint.default

@@ -1389,7 +1389,7 @@ module Cost_of = struct
           type a.
           a Script_typed_ir.comparable_ty -> a -> a -> cost -> cont -> cost =
        fun ty x y acc k ->
-        match ty with
+        match ty.value with
         | Unit_t -> (apply [@tailcall]) Gas.(acc +@ compare_unit) k
         | Never_t -> ( match x with _ -> .)
         | Bool_t -> (apply [@tailcall]) Gas.(acc +@ compare_bool) k

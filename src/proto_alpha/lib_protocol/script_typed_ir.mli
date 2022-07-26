@@ -1333,65 +1333,76 @@ and logger = {
 }
 
 (* ---- Auxiliary types -----------------------------------------------------*)
-and ('ty, 'comparable) ty =
-  | Unit_t : (unit, yes) ty
-  | Int_t : (z num, yes) ty
-  | Nat_t : (n num, yes) ty
-  | Signature_t : (signature, yes) ty
-  | String_t : (Script_string.t, yes) ty
-  | Bytes_t : (bytes, yes) ty
-  | Mutez_t : (Tez.t, yes) ty
-  | Key_hash_t : (public_key_hash, yes) ty
-  | Key_t : (public_key, yes) ty
-  | Timestamp_t : (Script_timestamp.t, yes) ty
-  | Address_t : (address, yes) ty
-  | Tx_rollup_l2_address_t : (tx_rollup_l2_address, yes) ty
-  | Bool_t : (bool, yes) ty
+and ('ty, 'comparable) ty_value =
+  | Unit_t : (unit, yes) ty_value
+  | Int_t : (z num, yes) ty_value
+  | Nat_t : (n num, yes) ty_value
+  | Signature_t : (signature, yes) ty_value
+  | String_t : (Script_string.t, yes) ty_value
+  | Bytes_t : (bytes, yes) ty_value
+  | Mutez_t : (Tez.t, yes) ty_value
+  | Key_hash_t : (public_key_hash, yes) ty_value
+  | Key_t : (public_key, yes) ty_value
+  | Timestamp_t : (Script_timestamp.t, yes) ty_value
+  | Address_t : (address, yes) ty_value
+  | Tx_rollup_l2_address_t : (tx_rollup_l2_address, yes) ty_value
+  | Bool_t : (bool, yes) ty_value
   | Pair_t :
       ('a, 'ac) ty
       * ('b, 'bc) ty
       * ('a, 'b) pair ty_metadata
       * ('ac, 'bc, 'rc) dand
-      -> (('a, 'b) pair, 'rc) ty
+      -> (('a, 'b) pair, 'rc) ty_value
   | Union_t :
       ('a, 'ac) ty
       * ('b, 'bc) ty
       * ('a, 'b) union ty_metadata
       * ('ac, 'bc, 'rc) dand
-      -> (('a, 'b) union, 'rc) ty
+      -> (('a, 'b) union, 'rc) ty_value
   | Lambda_t :
       ('arg, _) ty * ('ret, _) ty * ('arg, 'ret) lambda ty_metadata
-      -> (('arg, 'ret) lambda, no) ty
+      -> (('arg, 'ret) lambda, no) ty_value
   | Option_t :
       ('v, 'c) ty * 'v option ty_metadata * 'c dbool
-      -> ('v option, 'c) ty
-  | List_t : ('v, _) ty * 'v boxed_list ty_metadata -> ('v boxed_list, no) ty
-  | Set_t : 'v comparable_ty * 'v set ty_metadata -> ('v set, no) ty
+      -> ('v option, 'c) ty_value
+  | List_t :
+      ('v, _) ty * 'v boxed_list ty_metadata
+      -> ('v boxed_list, no) ty_value
+  | Set_t : 'v comparable_ty * 'v set ty_metadata -> ('v set, no) ty_value
   | Map_t :
       'k comparable_ty * ('v, _) ty * ('k, 'v) map ty_metadata
-      -> (('k, 'v) map, no) ty
+      -> (('k, 'v) map, no) ty_value
   | Big_map_t :
       'k comparable_ty * ('v, _) ty * ('k, 'v) big_map ty_metadata
-      -> (('k, 'v) big_map, no) ty
+      -> (('k, 'v) big_map, no) ty_value
   | Contract_t :
       ('arg, _) ty * 'arg typed_contract ty_metadata
-      -> ('arg typed_contract, no) ty
-  | Sapling_transaction_t : Sapling.Memo_size.t -> (Sapling.transaction, no) ty
+      -> ('arg typed_contract, no) ty_value
+  | Sapling_transaction_t :
+      Sapling.Memo_size.t
+      -> (Sapling.transaction, no) ty_value
   | Sapling_transaction_deprecated_t :
       Sapling.Memo_size.t
-      -> (Sapling.Legacy.transaction, no) ty
-  | Sapling_state_t : Sapling.Memo_size.t -> (Sapling.state, no) ty
-  | Operation_t : (operation, no) ty
-  | Chain_id_t : (Script_chain_id.t, yes) ty
-  | Never_t : (never, yes) ty
-  | Bls12_381_g1_t : (Script_bls.G1.t, no) ty
-  | Bls12_381_g2_t : (Script_bls.G2.t, no) ty
-  | Bls12_381_fr_t : (Script_bls.Fr.t, no) ty
-  | Ticket_t : 'a comparable_ty * 'a ticket ty_metadata -> ('a ticket, no) ty
-  | Chest_key_t : (Script_timelock.chest_key, no) ty
-  | Chest_t : (Script_timelock.chest, no) ty
+      -> (Sapling.Legacy.transaction, no) ty_value
+  | Sapling_state_t : Sapling.Memo_size.t -> (Sapling.state, no) ty_value
+  | Operation_t : (operation, no) ty_value
+  | Chain_id_t : (Script_chain_id.t, yes) ty_value
+  | Never_t : (never, yes) ty_value
+  | Bls12_381_g1_t : (Script_bls.G1.t, no) ty_value
+  | Bls12_381_g2_t : (Script_bls.G2.t, no) ty_value
+  | Bls12_381_fr_t : (Script_bls.Fr.t, no) ty_value
+  | Ticket_t :
+      'a comparable_ty * 'a ticket ty_metadata
+      -> ('a ticket, no) ty_value
+  | Chest_key_t : (Script_timelock.chest_key, no) ty_value
+  | Chest_t : (Script_timelock.chest, no) ty_value
 
 and 'ty comparable_ty = ('ty, yes) ty
+
+and ('ty, 'comparable) ty = {
+  id : ('ty * 'comparable) Id.gid;
+  value : ('ty, 'comparable) ty_value;
+}
 
 and ('top_ty, 'resty) stack_ty =
   | Item_t :

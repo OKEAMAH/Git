@@ -120,7 +120,7 @@ module Ticket_inspection = struct
       a Script_typed_ir.comparable_ty -> (a has_tickets -> ret) -> ret =
    fun key_ty k ->
     let open Script_typed_ir in
-    match key_ty with
+    match key_ty.value with
     | Unit_t -> (k [@ocaml.tailcall]) False_ht
     | Never_t -> (k [@ocaml.tailcall]) False_ht
     | Int_t -> (k [@ocaml.tailcall]) False_ht
@@ -160,7 +160,7 @@ module Ticket_inspection = struct
       (a, ac) Script_typed_ir.ty -> (a, ret) continuation -> ret tzresult =
    fun ty k ->
     let open Script_typed_ir in
-    match ty with
+    match ty.value with
     | Ticket_t _ -> (k [@ocaml.tailcall]) True_ht
     | Unit_t -> (k [@ocaml.tailcall]) False_ht
     | Int_t -> (k [@ocaml.tailcall]) False_ht
@@ -285,7 +285,7 @@ module Ticket_collection = struct
       ret tzresult Lwt.t =
    fun ctxt comp_ty acc k ->
     let open Script_typed_ir in
-    match comp_ty with
+    match comp_ty.value with
     | Unit_t -> (k [@ocaml.tailcall]) ctxt acc
     | Never_t -> (k [@ocaml.tailcall]) ctxt acc
     | Int_t -> (k [@ocaml.tailcall]) ctxt acc
@@ -333,7 +333,7 @@ module Ticket_collection = struct
    fun ~include_lazy ~allow_zero_amount_tickets ctxt hty ty x acc k ->
     let open Script_typed_ir in
     consume_gas_steps ctxt ~num_steps:1 >>?= fun ctxt ->
-    match (hty, ty) with
+    match (hty, ty.value) with
     | False_ht, _ -> (k [@ocaml.tailcall]) ctxt acc
     | Pair_ht (hty1, hty2), Pair_t (ty1, ty2, _, _) ->
         let l, r = x in

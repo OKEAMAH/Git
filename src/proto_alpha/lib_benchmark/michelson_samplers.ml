@@ -575,7 +575,7 @@ end)
         arg Script_typed_ir.typed_contract sampler =
      fun arg_ty ->
       let open M in
-      match arg_ty with
+      match arg_ty.value with
       | Unit_t ->
           let* b = Base_samplers.uniform_bool in
           if b then
@@ -590,7 +590,9 @@ end)
                  destination
                  entrypoint)
           else generate_any_type_contract arg_ty
-      | Pair_t (Ticket_t _, Tx_rollup_l2_address_t, _, _) ->
+      | Pair_t
+          ({value = Ticket_t _; _}, {value = Tx_rollup_l2_address_t; _}, _, _)
+        ->
           let* b = Base_samplers.uniform_bool in
           if b then
             let* tx_rollup = tx_rollup in
@@ -622,7 +624,7 @@ end)
     let rec value : type a ac. (a, ac) Script_typed_ir.ty -> a sampler =
       let open Script_typed_ir in
       fun typ ->
-        match typ with
+        match typ.value with
         | Never_t -> assert false
         | Unit_t -> M.return ()
         | Int_t -> Michelson_base.int

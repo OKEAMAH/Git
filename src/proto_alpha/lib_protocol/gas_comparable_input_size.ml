@@ -108,7 +108,7 @@ let timestamp (tstamp : Script_timestamp.t) : t =
 let rec size_of_comparable_value :
     type a. a Script_typed_ir.comparable_ty -> a -> t =
   fun (type a) (wit : a Script_typed_ir.comparable_ty) (v : a) ->
-   match wit with
+   match wit.value with
    | Never_t -> ( match v with _ -> .)
    | Unit_t -> unit
    | Int_t -> integer v

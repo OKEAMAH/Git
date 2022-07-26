@@ -1248,65 +1248,76 @@ and logger = {
 }
 
 (* ---- Auxiliary types -----------------------------------------------------*)
-and ('ty, 'comparable) ty =
-  | Unit_t : (unit, yes) ty
-  | Int_t : (z num, yes) ty
-  | Nat_t : (n num, yes) ty
-  | Signature_t : (signature, yes) ty
-  | String_t : (Script_string.t, yes) ty
-  | Bytes_t : (bytes, yes) ty
-  | Mutez_t : (Tez.t, yes) ty
-  | Key_hash_t : (public_key_hash, yes) ty
-  | Key_t : (public_key, yes) ty
-  | Timestamp_t : (Script_timestamp.t, yes) ty
-  | Address_t : (address, yes) ty
-  | Tx_rollup_l2_address_t : (tx_rollup_l2_address, yes) ty
-  | Bool_t : (bool, yes) ty
+and ('ty, 'comparable) ty_value =
+  | Unit_t : (unit, yes) ty_value
+  | Int_t : (z num, yes) ty_value
+  | Nat_t : (n num, yes) ty_value
+  | Signature_t : (signature, yes) ty_value
+  | String_t : (Script_string.t, yes) ty_value
+  | Bytes_t : (bytes, yes) ty_value
+  | Mutez_t : (Tez.t, yes) ty_value
+  | Key_hash_t : (public_key_hash, yes) ty_value
+  | Key_t : (public_key, yes) ty_value
+  | Timestamp_t : (Script_timestamp.t, yes) ty_value
+  | Address_t : (address, yes) ty_value
+  | Tx_rollup_l2_address_t : (tx_rollup_l2_address, yes) ty_value
+  | Bool_t : (bool, yes) ty_value
   | Pair_t :
       ('a, 'ac) ty
       * ('b, 'bc) ty
       * ('a, 'b) pair ty_metadata
       * ('ac, 'bc, 'rc) dand
-      -> (('a, 'b) pair, 'rc) ty
+      -> (('a, 'b) pair, 'rc) ty_value
   | Union_t :
       ('a, 'ac) ty
       * ('b, 'bc) ty
       * ('a, 'b) union ty_metadata
       * ('ac, 'bc, 'rc) dand
-      -> (('a, 'b) union, 'rc) ty
+      -> (('a, 'b) union, 'rc) ty_value
   | Lambda_t :
       ('arg, _) ty * ('ret, _) ty * ('arg, 'ret) lambda ty_metadata
-      -> (('arg, 'ret) lambda, no) ty
+      -> (('arg, 'ret) lambda, no) ty_value
   | Option_t :
       ('v, 'c) ty * 'v option ty_metadata * 'c dbool
-      -> ('v option, 'c) ty
-  | List_t : ('v, _) ty * 'v boxed_list ty_metadata -> ('v boxed_list, no) ty
-  | Set_t : 'v comparable_ty * 'v set ty_metadata -> ('v set, no) ty
+      -> ('v option, 'c) ty_value
+  | List_t :
+      ('v, _) ty * 'v boxed_list ty_metadata
+      -> ('v boxed_list, no) ty_value
+  | Set_t : 'v comparable_ty * 'v set ty_metadata -> ('v set, no) ty_value
   | Map_t :
       'k comparable_ty * ('v, _) ty * ('k, 'v) map ty_metadata
-      -> (('k, 'v) map, no) ty
+      -> (('k, 'v) map, no) ty_value
   | Big_map_t :
       'k comparable_ty * ('v, _) ty * ('k, 'v) big_map ty_metadata
-      -> (('k, 'v) big_map, no) ty
+      -> (('k, 'v) big_map, no) ty_value
   | Contract_t :
       ('arg, _) ty * 'arg typed_contract ty_metadata
-      -> ('arg typed_contract, no) ty
-  | Sapling_transaction_t : Sapling.Memo_size.t -> (Sapling.transaction, no) ty
+      -> ('arg typed_contract, no) ty_value
+  | Sapling_transaction_t :
+      Sapling.Memo_size.t
+      -> (Sapling.transaction, no) ty_value
   | Sapling_transaction_deprecated_t :
       Sapling.Memo_size.t
-      -> (Sapling.Legacy.transaction, no) ty
-  | Sapling_state_t : Sapling.Memo_size.t -> (Sapling.state, no) ty
-  | Operation_t : (operation, no) ty
-  | Chain_id_t : (Script_chain_id.t, yes) ty
-  | Never_t : (never, yes) ty
-  | Bls12_381_g1_t : (Script_bls.G1.t, no) ty
-  | Bls12_381_g2_t : (Script_bls.G2.t, no) ty
-  | Bls12_381_fr_t : (Script_bls.Fr.t, no) ty
-  | Ticket_t : 'a comparable_ty * 'a ticket ty_metadata -> ('a ticket, no) ty
-  | Chest_key_t : (Script_timelock.chest_key, no) ty
-  | Chest_t : (Script_timelock.chest, no) ty
+      -> (Sapling.Legacy.transaction, no) ty_value
+  | Sapling_state_t : Sapling.Memo_size.t -> (Sapling.state, no) ty_value
+  | Operation_t : (operation, no) ty_value
+  | Chain_id_t : (Script_chain_id.t, yes) ty_value
+  | Never_t : (never, yes) ty_value
+  | Bls12_381_g1_t : (Script_bls.G1.t, no) ty_value
+  | Bls12_381_g2_t : (Script_bls.G2.t, no) ty_value
+  | Bls12_381_fr_t : (Script_bls.Fr.t, no) ty_value
+  | Ticket_t :
+      'a comparable_ty * 'a ticket ty_metadata
+      -> ('a ticket, no) ty_value
+  | Chest_key_t : (Script_timelock.chest_key, no) ty_value
+  | Chest_t : (Script_timelock.chest, no) ty_value
 
 and 'ty comparable_ty = ('ty, yes) ty
+
+and ('ty, 'comparable) ty = {
+  id : ('ty * 'comparable) Id.gid;
+  value : ('ty, 'comparable) ty_value;
+}
 
 and ('top_ty, 'resty) stack_ty =
   | Item_t :
@@ -1645,7 +1656,9 @@ let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
 
 let meta_basic = {size = Type_size.one}
 
-let ty_metadata : type a ac. (a, ac) ty -> a ty_metadata = function
+let ty_metadata : type a ac. (a, ac) ty -> a ty_metadata =
+ fun ty ->
+  match ty.value with
   | Unit_t | Never_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t
   | Mutez_t | Bool_t | Key_hash_t | Key_t | Timestamp_t | Chain_id_t | Address_t
   | Tx_rollup_l2_address_t ->
@@ -1667,7 +1680,9 @@ let ty_metadata : type a ac. (a, ac) ty -> a ty_metadata = function
 
 let ty_size t = (ty_metadata t).size
 
-let is_comparable : type v c. (v, c) ty -> c dbool = function
+let is_comparable : type v c. (v, c) ty -> c dbool =
+ fun ty ->
+  match ty.value with
   | Never_t -> Yes
   | Unit_t -> Yes
   | Int_t -> Yes
@@ -2054,7 +2069,7 @@ let ty_traverse =
       accu ty_traverse -> accu -> (t, tc) ty -> (accu -> ret) -> ret =
    fun f accu ty continue ->
     let accu = f.apply accu ty in
-    match ty with
+    match ty.value with
     | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
     | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
     | Bool_t | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
@@ -2136,7 +2151,7 @@ let value_traverse (type t tc) (ty : (t, tc) ty) (x : t) init f =
           (aux [@ocaml.tailcall]) accu ty' x (fun accu ->
               (on_list [@ocaml.tailcall]) ty' accu xs)
     in
-    match ty with
+    match ty.value with
     | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
     | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
     | Bool_t | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
@@ -2199,7 +2214,7 @@ module Typed_contract = struct
     | Typed_sc_rollup {sc_rollup; _} -> Destination.Sc_rollup sc_rollup
 
   let arg_ty : type a. a typed_contract -> a ty_ex_c = function
-    | Typed_implicit _ -> (Ty_ex_c Unit_t : a ty_ex_c)
+    | Typed_implicit _ -> (Ty_ex_c unit_t : a ty_ex_c)
     | Typed_originated {arg_ty; _} -> Ty_ex_c arg_ty
     | Typed_tx_rollup {arg_ty; _} -> Ty_ex_c arg_ty
     | Typed_sc_rollup {arg_ty; _} -> Ty_ex_c arg_ty
@@ -2215,14 +2230,16 @@ module Typed_contract = struct
         type a ac.
         (a, ac) ty -> Destination.t -> Entrypoint.t -> a typed_contract =
      fun arg_ty destination entrypoint ->
-      match (destination, arg_ty) with
+      match (destination, arg_ty.value) with
       | Contract (Implicit pkh), Unit_t -> Typed_implicit pkh
       | Contract (Implicit _), _ ->
           invalid_arg "Implicit contracts expect type unit"
       | Contract (Originated contract_hash), _ ->
           Typed_originated {arg_ty; contract_hash; entrypoint}
-      | Tx_rollup tx_rollup, Pair_t (Ticket_t _, Tx_rollup_l2_address_t, _, _)
-        ->
+      | ( Tx_rollup tx_rollup,
+          Pair_t
+            ({value = Ticket_t _; _}, {value = Tx_rollup_l2_address_t; _}, _, _)
+        ) ->
           (Typed_tx_rollup {arg_ty; tx_rollup} : a typed_contract)
       | Tx_rollup _, _ ->
           invalid_arg

@@ -44,7 +44,7 @@ let rec unparse_ty_and_entrypoints_uncarbonated :
     loc:loc -> (a, ac) ty -> a entrypoints_node -> loc Script.michelson_node =
  fun ~loc ty {nested = nested_entrypoints; at_node} ->
   let name, args =
-    match ty with
+    match ty.value with
     | Unit_t -> (T_unit, [])
     | Int_t -> (T_int, [])
     | Nat_t -> (T_nat, [])
@@ -391,8 +391,10 @@ let unparse_option ~loc unparse_v ctxt = function
 (* -- Unparsing data of comparable types -- *)
 
 let comb_witness2 :
-    type t tc. (t, tc) ty -> (t, unit -> unit -> unit) comb_witness = function
-  | Pair_t (_, Pair_t _, _, _) -> Comb_Pair (Comb_Pair Comb_Any)
+    type t tc. (t, tc) ty -> (t, unit -> unit -> unit) comb_witness =
+ fun ty ->
+  match ty.value with
+  | Pair_t (_, {value = Pair_t _; _}, _, _) -> Comb_Pair (Comb_Pair Comb_Any)
   | Pair_t _ -> Comb_Pair Comb_Any
   | _ -> Comb_Any
 
@@ -414,7 +416,7 @@ let rec unparse_comparable_data :
      [unparse_data] for now. *)
   >>?=
   fun ctxt ->
-  match (ty, a) with
+  match (ty.value, a) with
   | Unit_t, v -> Lwt.return @@ unparse_unit ~loc ctxt v
   | Int_t, v -> Lwt.return @@ unparse_int ~loc ctxt v
   | Nat_t, v -> Lwt.return @@ unparse_nat ~loc ctxt v
@@ -491,7 +493,7 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
       else unparse_data ctxt ~stack_depth:(stack_depth + 1) mode ty a
     in
     let loc = Micheline.dummy_location in
-    match (ty, a) with
+    match (ty.value, a) with
     | Unit_t, v -> Lwt.return @@ unparse_unit ~loc ctxt v
     | Int_t, v -> Lwt.return @@ unparse_int ~loc ctxt v
     | Nat_t, v -> Lwt.return @@ unparse_nat ~loc ctxt v

@@ -178,7 +178,7 @@ let kinstr_split :
           continuation = k;
           reconstruct = (fun k -> ICons_pair (loc, k));
         }
-  | ICar (loc, k), Item_t (Pair_t (a, _b, _meta, _), s) ->
+  | ICar (loc, k), Item_t ({value = Pair_t (a, _b, _meta, _); _}, s) ->
       let s = Item_t (a, s) in
       ok
       @@ Ex_split_kinstr
@@ -187,7 +187,7 @@ let kinstr_split :
              continuation = k;
              reconstruct = (fun k -> ICar (loc, k));
            }
-  | ICdr (loc, k), Item_t (Pair_t (_a, b, _meta, _), s) ->
+  | ICdr (loc, k), Item_t ({value = Pair_t (_a, b, _meta, _); _}, s) ->
       let s = Item_t (b, s) in
       ok
       @@ Ex_split_kinstr
@@ -196,7 +196,7 @@ let kinstr_split :
              continuation = k;
              reconstruct = (fun k -> ICdr (loc, k));
            }
-  | IUnpair (loc, k), Item_t (Pair_t (a, b, _meta, _), s) ->
+  | IUnpair (loc, k), Item_t ({value = Pair_t (a, b, _meta, _); _}, s) ->
       let s = Item_t (a, Item_t (b, s)) in
       ok
       @@ Ex_split_kinstr
@@ -224,7 +224,7 @@ let kinstr_split :
           reconstruct = (fun k -> ICons_none (loc, a, k));
         }
   | ( IIf_none {loc; branch_if_none; branch_if_some; k},
-      Item_t (Option_t (a, _meta, _), s) ) ->
+      Item_t ({value = Option_t (a, _meta, _); _}, s) ) ->
       ok
       @@ Ex_split_if
            {
@@ -237,7 +237,7 @@ let kinstr_split :
                (fun branch_if_none branch_if_some k ->
                  IIf_none {loc; branch_if_none; branch_if_some; k});
            }
-  | IOpt_map {loc; body; k}, Item_t (Option_t (a, _meta, _), s) ->
+  | IOpt_map {loc; body; k}, Item_t ({value = Option_t (a, _meta, _); _}, s) ->
       ok
       @@ Ex_split_loop_may_not_fail
            {
@@ -268,7 +268,7 @@ let kinstr_split :
           reconstruct = (fun k -> ICons_right (loc, a, k));
         }
   | ( IIf_left {loc; branch_if_left; branch_if_right; k},
-      Item_t (Union_t (a, b, _meta, _), s) ) ->
+      Item_t ({value = Union_t (a, b, _meta, _); _}, s) ) ->
       ok
       @@ Ex_split_if
            {
@@ -300,7 +300,7 @@ let kinstr_split :
           reconstruct = (fun k -> INil (loc, a, k));
         }
   | ( IIf_cons {loc; branch_if_cons; branch_if_nil; k},
-      Item_t ((List_t (a, _meta) as l), s) ) ->
+      Item_t (({value = List_t (a, _meta); _} as l), s) ) ->
       ok
       @@ Ex_split_if
            {
@@ -313,7 +313,7 @@ let kinstr_split :
                (fun branch_if_cons branch_if_nil k ->
                  IIf_cons {loc; branch_if_cons; branch_if_nil; k});
            }
-  | IList_map (loc, body, ty, k), Item_t (List_t (a, _meta), s) ->
+  | IList_map (loc, body, ty, k), Item_t ({value = List_t (a, _meta); _}, s) ->
       let s = Item_t (a, s) in
       ok
       @@ Ex_split_loop_may_not_fail
@@ -326,7 +326,7 @@ let kinstr_split :
                | Item_t (b, s) -> list_t dummy b >|? fun l -> Item_t (l, s));
              reconstruct = (fun body k -> IList_map (loc, body, ty, k));
            }
-  | IList_iter (loc, ty, body, k), Item_t (List_t (a, _meta), s) ->
+  | IList_iter (loc, ty, body, k), Item_t ({value = List_t (a, _meta); _}, s) ->
       ok
       @@ Ex_split_loop_may_fail
            {
@@ -399,8 +399,9 @@ let kinstr_split :
           continuation = k;
           reconstruct = (fun k -> IEmpty_map (loc, cty, vty, k));
         }
-  | IMap_map (loc, ty, body, k), Item_t (Map_t (kty, vty, _meta), s) ->
-      let (Map_t (key_ty, _, _)) = ty in
+  | IMap_map (loc, ty, body, k), Item_t ({value = Map_t (kty, vty, _meta); _}, s)
+    ->
+      let {value = Map_t (key_ty, _, _); _} = ty in
       pair_t dummy key_ty vty >|? fun (Ty_ex_c p) ->
       Ex_split_loop_may_not_fail
         {
@@ -431,7 +432,8 @@ let kinstr_split :
              continuation = k;
              reconstruct = (fun k -> IMap_mem (loc, k));
            }
-  | IMap_get (loc, k), Item_t (_, Item_t (Map_t (_kty, vty, _meta), s)) ->
+  | ( IMap_get (loc, k),
+      Item_t (_, Item_t ({value = Map_t (_kty, vty, _meta); _}, s)) ) ->
       option_t dummy vty >|? fun o ->
       let s = Item_t (o, s) in
       Ex_split_kinstr
@@ -483,8 +485,8 @@ let kinstr_split :
              continuation = k;
              reconstruct = (fun k -> IBig_map_mem (loc, k));
            }
-  | IBig_map_get (loc, k), Item_t (_, Item_t (Big_map_t (_kty, vty, _meta), s))
-    ->
+  | ( IBig_map_get (loc, k),
+      Item_t (_, Item_t ({value = Big_map_t (_kty, vty, _meta); _}, s)) ) ->
       option_t dummy vty >|? fun o ->
       let s = Item_t (o, s) in
       Ex_split_kinstr
@@ -884,7 +886,8 @@ let kinstr_split :
              continuation = k;
              reconstruct = (fun body k -> ILoop (loc, body, k));
            }
-  | ILoop_left (loc, kl, kr), Item_t (Union_t (a, b, _meta, _), s) ->
+  | ILoop_left (loc, kl, kr), Item_t ({value = Union_t (a, b, _meta, _); _}, s)
+    ->
       ok
       @@ Ex_split_loop_may_fail
            {
@@ -904,7 +907,8 @@ let kinstr_split :
              aft_body_stack_transform = (fun s -> ok @@ Item_t (a, s));
              reconstruct = (fun body k -> IDip (loc, body, ty, k));
            }
-  | IExec (loc, sty, k), Item_t (_, Item_t (Lambda_t (_, b, _meta), s)) ->
+  | ( IExec (loc, sty, k),
+      Item_t (_, Item_t ({value = Lambda_t (_, b, _meta); _}, s)) ) ->
       let s = Item_t (b, s) in
       ok
       @@ Ex_split_kinstr
@@ -914,7 +918,11 @@ let kinstr_split :
              reconstruct = (fun k -> IExec (loc, sty, k));
            }
   | ( IApply (loc, ty, k),
-      Item_t (_, Item_t (Lambda_t (Pair_t (_, a, _, _), b, _), s)) ) ->
+      Item_t
+        ( _,
+          Item_t
+            ({value = Lambda_t ({value = Pair_t (_, a, _, _); _}, b, _); _}, s)
+        ) ) ->
       lambda_t dummy a b >|? fun l ->
       let s = Item_t (l, s) in
       Ex_split_kinstr
@@ -1456,7 +1464,7 @@ let kinstr_split :
        fun s w ->
         match (w, s) with
         | Uncomb_one, s -> s
-        | Uncomb_succ w, Item_t (Pair_t (a, b, _meta, _), s) ->
+        | Uncomb_succ w, Item_t ({value = Pair_t (a, b, _meta, _); _}, s) ->
             let s = aux (Item_t (b, s)) w in
             Item_t (a, s)
       in
@@ -1474,8 +1482,9 @@ let kinstr_split :
        fun c w ->
         match (w, c) with
         | Comb_get_zero, c -> Ty_ex_c c
-        | Comb_get_one, Pair_t (hd, _tl, _meta, _) -> Ty_ex_c hd
-        | Comb_get_plus_two w, Pair_t (_hd, tl, _meta, _) -> aux tl w
+        | Comb_get_one, {value = Pair_t (hd, _tl, _meta, _); _} -> Ty_ex_c hd
+        | Comb_get_plus_two w, {value = Pair_t (_hd, tl, _meta, _); _} ->
+            aux tl w
       in
       let s =
         let (Ty_ex_c ty) = aux c p in
@@ -1498,8 +1507,9 @@ let kinstr_split :
        fun a b w ->
         match (w, b) with
         | Comb_set_zero, _ -> ok (Ty_ex_c a)
-        | Comb_set_one, Pair_t (_hd, tl, _meta, _) -> pair_t dummy a tl
-        | Comb_set_plus_two w, Pair_t (hd, tl, _meta, _) ->
+        | Comb_set_one, {value = Pair_t (_hd, tl, _meta, _); _} ->
+            pair_t dummy a tl
+        | Comb_set_plus_two w, {value = Pair_t (hd, tl, _meta, _); _} ->
             aux a tl w >>? fun (Ty_ex_c c) -> pair_t dummy hd c
       in
       aux a b p >|? fun (Ty_ex_c c) ->
@@ -1559,7 +1569,8 @@ let kinstr_split :
           continuation = k;
           reconstruct = (fun k -> ISplit_ticket (loc, k));
         }
-  | IJoin_tickets (loc, ty, k), Item_t (Pair_t (t, _t, _meta, _), s) ->
+  | IJoin_tickets (loc, ty, k), Item_t ({value = Pair_t (t, _t, _meta, _); _}, s)
+    ->
       option_t dummy t >|? fun o ->
       let s = Item_t (o, s) in
       Ex_split_kinstr
@@ -1770,13 +1781,13 @@ let log_next_continuation :
       | None -> KCons (ki', k)
       | Some sty -> KCons (ki', instrument_cont logger sty k))
   | KLoop_in (ki, k) ->
-      let (Item_t (Bool_t, sty)) = stack_ty in
+      let (Item_t ({value = Bool_t; _}, sty)) = stack_ty in
       ok @@ KLoop_in (enable_log sty ki, instrument_cont logger sty k)
   | KReturn (stack, sty, k) ->
       let k' = instrument_cont logger sty k in
       ok @@ KReturn (stack, sty, k')
   | KLoop_in_left (ki, k) ->
-      let (Item_t (Union_t (a_ty, b_ty, _, _), rest)) = stack_ty in
+      let (Item_t ({value = Union_t (a_ty, b_ty, _, _); _}, rest)) = stack_ty in
       let ki' = enable_log (Item_t (a_ty, rest)) ki in
       let k' = instrument_cont logger (Item_t (b_ty, rest)) k in
       ok @@ KLoop_in_left (ki', k')

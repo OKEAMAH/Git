@@ -95,7 +95,7 @@ let rec validate_ty :
     (a, ac) Script_typed_ir.ty -> ret continuation -> ret tzresult =
  fun ty k ->
   let open Script_typed_ir in
-  match ty with
+  match ty.value with
   (* Valid primitive types. *)
   | Unit_t -> (k [@ocaml.tailcall]) ()
   | Int_t -> (k [@ocaml.tailcall]) ()

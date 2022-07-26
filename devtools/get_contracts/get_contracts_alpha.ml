@@ -171,7 +171,7 @@ module Proto = struct
         type a c. (a, c) Script_typed_ir.ty -> (a -> ex_lambda list) list =
      fun ty ->
       let open Script_typed_ir in
-      match ty with
+      match ty.value with
       | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
       | Key_hash_t | Key_t | Timestamp_t | Address_t | Bool_t | Set_t _
       | Big_map_t _ | Contract_t _ | Operation_t | Sapling_transaction_t _

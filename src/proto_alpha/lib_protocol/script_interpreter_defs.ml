@@ -434,7 +434,7 @@ let apply ctxt gas capture_ty capture lam =
   unparse_data ctxt Optimized capture_ty capture >>=? fun (const_expr, ctxt) ->
   let loc = Micheline.dummy_location in
   Script_ir_unparser.unparse_ty ~loc ctxt capture_ty >>?= fun (ty_expr, ctxt) ->
-  match full_arg_ty with
+  match full_arg_ty.value with
   | Pair_t (capture_ty, arg_ty, _, _) ->
       let arg_stack_ty = Item_t (arg_ty, Bot_t) in
       let full_descr =
@@ -479,7 +479,9 @@ let make_transaction_to_tx_rollup (type t) ctxt ~destination ~amount
      the type of the ticket. *)
   error_unless Tez.(amount = zero) Rollup_invalid_transaction_amount
   >>?= fun () ->
-  let (Pair_t (Ticket_t (tp, _), _, _, _)) = parameters_ty in
+  let {value = Pair_t ({value = Ticket_t (tp, _); _}, _, _, _); _} =
+    parameters_ty
+  in
   unparse_data ctxt Optimized parameters_ty parameters
   >>=? fun (unparsed_parameters, ctxt) ->
   Lwt.return

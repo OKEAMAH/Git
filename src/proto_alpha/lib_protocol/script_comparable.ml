@@ -46,7 +46,7 @@ let compare_comparable : type a. a comparable_ty -> a -> a -> int =
   let rec compare_comparable :
       type a. a comparable_ty -> compare_comparable_cont -> a -> a -> int =
    fun kind k x y ->
-    match (kind, x, y) with
+    match (kind.value, x, y) with
     | Unit_t, (), () -> (apply [@tailcall]) 0 k
     | Never_t, _, _ -> .
     | Signature_t, x, y -> (apply [@tailcall]) (Script_signature.compare x y) k

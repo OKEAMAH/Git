@@ -1583,7 +1583,7 @@ and log :
      [step], as they don't require any special treatment. *)
   match k with
   | IIf_none {branch_if_none; branch_if_some; k; _} -> (
-      let (Item_t (Option_t (ty, _, _), rest)) = sty in
+      let (Item_t ({value = Option_t (ty, _, _); _}, rest)) = sty in
       Script_interpreter_logging.branched_final_stack_type
         [
           Ex_init_stack_ty (rest, branch_if_none);
@@ -1606,7 +1606,7 @@ and log :
       match accu with
       | None -> (step [@ocaml.tailcall]) g gas k ks None stack
       | Some v ->
-          let (Item_t (Option_t (ty, _, _), rest)) = sty in
+          let (Item_t ({value = Option_t (ty, _, _); _}, rest)) = sty in
           let bsty = Item_t (ty, rest) in
           let kmap_head = KMap_head (Option.some, KCons (k, ks)) in
           Script_interpreter_logging.kinstr_final_stack_type bsty body
@@ -1619,7 +1619,7 @@ and log :
           in
           (step [@ocaml.tailcall]) g gas body ks' v stack)
   | IIf_left {branch_if_left; branch_if_right; k; _} -> (
-      let (Item_t (Union_t (lty, rty, _, _), rest)) = sty in
+      let (Item_t ({value = Union_t (lty, rty, _, _); _}, rest)) = sty in
       Script_interpreter_logging.branched_final_stack_type
         [
           Ex_init_stack_ty (Item_t (lty, rest), branch_if_left);
@@ -1637,7 +1637,7 @@ and log :
       | L v -> (step [@ocaml.tailcall]) g gas branch_if_left k' v stack
       | R v -> (step [@ocaml.tailcall]) g gas branch_if_right k' v stack)
   | IIf_cons {branch_if_cons; branch_if_nil; k; _} -> (
-      let (Item_t ((List_t (elty, _) as lty), rest)) = sty in
+      let (Item_t (({value = List_t (elty, _); _} as lty), rest)) = sty in
       Script_interpreter_logging.branched_final_stack_type
         [
           Ex_init_stack_ty (rest, branch_if_nil);
@@ -1687,7 +1687,7 @@ and log :
   | ILsr_nat (loc, k) ->
       (ilsr_nat [@ocaml.tailcall]) (Some logger) g gas loc k ks accu stack
   | IIf {branch_if_true; branch_if_false; k; _} ->
-      let (Item_t (Bool_t, rest)) = sty in
+      let (Item_t ({value = Bool_t; _}, rest)) = sty in
       Script_interpreter_logging.branched_final_stack_type
         [
           Ex_init_stack_ty (rest, branch_if_true);
@@ -1733,7 +1733,7 @@ and log :
       let accu, stack = stack in
       (step [@ocaml.tailcall]) g gas b ks accu stack
   | IExec (_, stack_ty, k) ->
-      let (Item_t (_, Item_t (Lambda_t (_, ret, _), _))) = sty in
+      let (Item_t (_, Item_t ({value = Lambda_t (_, ret, _); _}, _))) = sty in
       let sty' = Item_t (ret, Bot_t) in
       let instrument = Script_interpreter_logging.instrument_cont logger sty' in
       iexec instrument (Some logger) g gas stack_ty k ks accu stack
@@ -1798,7 +1798,7 @@ and klog :
       in
       (kiter [@ocaml.tailcall]) instrument g gas body xty xs k accu stack
   | KList_enter_body (body, xs, ys, ty, len, k) ->
-      let (List_t (vty, _)) = ty in
+      let {value = List_t (vty, _); _} = ty in
       let sty = Item_t (vty, stack_ty) in
       let instrument = Script_interpreter_logging.instrument_cont logger sty in
       (klist_enter [@ocaml.tailcall])
@@ -1829,7 +1829,7 @@ and klog :
         accu
         stack
   | KMap_enter_body (body, xs, ys, ty, k) ->
-      let (Map_t (_, vty, _)) = ty in
+      let {value = Map_t (_, vty, _); _} = ty in
       let sty = Item_t (vty, stack_ty) in
       let instrument = Script_interpreter_logging.instrument_cont logger sty in
       (kmap_enter [@ocaml.tailcall]) instrument g gas body xs ty ys k accu stack

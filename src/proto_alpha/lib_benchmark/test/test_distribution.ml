@@ -54,7 +54,7 @@ module Type_name_hashtbl = Hashtbl.Make (Type_name)
 let rec tnames_of_type :
     type a ac. (a, ac) Script_typed_ir.ty -> type_name list -> type_name list =
  fun t acc ->
-  match t with
+  match t.value with
   | Script_typed_ir.Unit_t -> `TUnit :: acc
   | Script_typed_ir.Int_t -> `TInt :: acc
   | Script_typed_ir.Nat_t -> `TNat :: acc
