@@ -62,3 +62,11 @@ let merge_dand :
   | NoYes, NoYes -> Eq
   | YesNo, YesNo -> Eq
   | YesYes, YesYes -> Eq
+
+let eq_dbool : type c1 c2. c1 dbool -> c2 dbool -> (c1, c2) eq option =
+ fun w1 w2 ->
+  match (w1, w2) with
+  | Yes, Yes -> Some Eq
+  | Yes, No -> None
+  | No, Yes -> None
+  | No, No -> Some Eq

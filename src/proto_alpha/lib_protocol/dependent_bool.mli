@@ -63,3 +63,5 @@ type (_, _) eq = Eq : ('a, 'a) eq
     given ['a] and a given ['b].
 *)
 val merge_dand : ('a, 'b, 'c1) dand -> ('a, 'b, 'c2) dand -> ('c1, 'c2) eq
+
+val eq_dbool : 'c1 dbool -> 'c2 dbool -> ('c1, 'c2) eq option
