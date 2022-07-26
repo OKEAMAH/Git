@@ -29,6 +29,7 @@ let level_index ctxt level =
     Constants_storage.sc_rollup_max_active_outbox_levels ctxt
   in
   Int32.rem (Raw_level_repr.to_int32 level) max_active_levels
+  |> Raw_level_repr.of_int32
 
 let record_applied_message ctxt rollup level ~message_index =
   let open Lwt_tzresult_syntax in
@@ -43,7 +44,7 @@ let record_applied_message ctxt rollup level ~message_index =
         0 <= message_index && message_index < max_outbox_messages_per_level)
       Sc_rollup_errors.Sc_rollup_invalid_outbox_message_index
   in
-  let level_index = level_index ctxt level in
+  let*? level_index = level_index ctxt level in
   let* ctxt, level_and_bitset_opt =
     Storage.Sc_rollup.Applied_outbox_messages.find (ctxt, rollup) level_index
   in

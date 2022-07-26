@@ -848,7 +848,7 @@ module Sc_rollup : sig
   module Applied_outbox_messages :
     Non_iterable_indexed_carbonated_data_storage
       with type t = Raw_context.t * Sc_rollup_repr.t
-       and type key = int32
+       and type key = Raw_level_repr.t
        and type value = Raw_level_repr.t * Bitset.t
 
   (** An indexed data storage for keeping track of dal slots to which

@@ -1780,49 +1780,13 @@ module Sc_rollup = struct
         let encoding = Sc_rollup_repr.Staker.encoding
       end)
 
-  (** An index used for a SCORU's outbox levels. An outbox level is mapped to
-     the index through: [outbox_level % sc_rollup_max_active_outbox_levels].
-     That way we keep a limited number of entries. The current value of an
-     entry contains the most recently added level that maps to the index. *)
-  module Level_index = struct
-    type t = int32
-
-    let rpc_arg =
-      let construct = Int32.to_string in
-      let destruct hash =
-        Int32.of_string_opt hash
-        |> Result.of_option ~error:"Cannot parse level index"
-      in
-      RPC_arg.make
-        ~descr:"The level index for applied outbox message records"
-        ~name:"level_index"
-        ~construct
-        ~destruct
-        ()
-
-    let encoding =
-      Data_encoding.def
-        "level_index"
-        ~title:"Level index"
-        ~description:"The level index for applied outbox message records"
-        Data_encoding.int32
-
-    let compare = Compare.Int32.compare
-
-    let path_length = 1
-
-    let to_path c l = Int32.to_string c :: l
-
-    let of_path = function [c] -> Int32.of_string_opt c | _ -> None
-  end
-
   module Level_index_context =
     Make_indexed_subcontext
       (Make_subcontext (Registered) (Indexed_context.Raw_context)
          (struct
            let name = ["level_index"]
          end))
-         (Make_index (Level_index))
+         (Make_index (Raw_level_repr.Index))
 
   module Bitset_and_level = struct
     type t = Raw_level_repr.t * Bitset.t
@@ -1834,6 +1798,11 @@ module Sc_rollup = struct
           (req "bitset" Bitset.encoding))
   end
 
+  (** A level indexed map to sotre applied outbox messages. An outbox level
+     is mapped to the index through:
+     [outbox_level % sc_rollup_max_active_outbox_levels]. That way we keep a
+     limited number of entries. The current value of an entry contains the most
+     recently added level that maps to the index. *)
   module Applied_outbox_messages =
     Level_index_context.Make_carbonated_map
       (struct
@@ -1846,16 +1815,8 @@ module Sc_rollup = struct
   (* We map levels into (non-empty) list of slots. If a rollup is subscribed to a slot
      index s at level l, then the slot index s will appear in the map entry for level l.
   *)
-  module Dal_level_index =
-    Make_indexed_subcontext
-      (Make_subcontext (Registered) (Indexed_context.Raw_context)
-         (struct
-           let name = ["dal"; "level"]
-         end))
-         (Make_index (Raw_level_repr.Index))
-
   module Slot_subscriptions =
-    Dal_level_index.Make_map
+    Level_index_context.Make_map
       (struct
         let name = ["slot_subscriptions"]
       end)
