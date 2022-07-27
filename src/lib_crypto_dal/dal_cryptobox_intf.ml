@@ -23,9 +23,39 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module type COMMITMENT = sig
+  (** Commitment to a polynomial. *)
+  type t
+
+  (** An encoding for a commitment. *)
+  val encoding : t Data_encoding.t
+
+  (** [commitment_to_b58check commitment] returns a b58 representation
+        of [commitment]. *)
+  val to_b58check : t -> string
+
+  (** [commitment_of_b58check_opt bytes] computes a commitment from
+        its b58 representation. Returns [None] if it is not a valid
+        representation. *)
+  val of_b58check_opt : string -> t option
+
+  val pp : Format.formatter -> t -> unit
+
+  val zero : t
+end
+
 module type VERIFIER = sig
   (** A precomputed set of constants *)
   type t
+
+  (** [make] precomputes the set of values needed by cryptographic primitives
+    defined in this module and store them in a value of type [t] *)
+  val make :
+    redundancy_factor:int ->
+    slot_size:int ->
+    segment_size:int ->
+    shards_amount:int ->
+    t
 
   (** A trusted setup. *)
   type srs
@@ -49,20 +79,7 @@ module type VERIFIER = sig
   (** Commitment to a polynomial. *)
   type commitment
 
-  (** An encoding for a commitment. *)
-  val commitment_encoding : commitment Data_encoding.t
-
-  (** [commitment_to_bytes commitment] returns a byte representation
-     of [commitment]. *)
-  val commitment_to_bytes : commitment -> Bytes.t
-
-  (** [commitment_size] is the size in bytes of the commitment. *)
-  val commitment_size : int
-
-  (** [commitment_of_bytes_opt bytes] computes a commitment from its
-     bytes representation. Returns [None] if [bytes] is not a valid
-     representation. *)
-  val commitment_of_bytes_opt : Bytes.t -> commitment option
+  module Commitment : COMMITMENT with type t := commitment
 
   (** A proof that the polynomial associated to some commitment is
      bounded by a constant. *)
