@@ -2652,6 +2652,14 @@ module Vote : sig
 end
 
 module Dal : sig
+  type t
+
+  type srs
+
+  val load_srs : t -> srs shell_tzresult
+
+  val make : context -> t
+
   module Slot_index : sig
     type t
 

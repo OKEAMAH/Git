@@ -223,6 +223,7 @@
   Script_interpreter
   Sc_rollup_management_protocol
   Sc_rollup_operations
+  Dal_cache
   Dal_apply
   Baking
   Amendment
@@ -466,6 +467,7 @@
   script_interpreter.ml script_interpreter.mli
   sc_rollup_management_protocol.ml sc_rollup_management_protocol.mli
   sc_rollup_operations.ml sc_rollup_operations.mli
+  dal_cache.ml dal_cache.mli
   dal_apply.ml dal_apply.mli
   baking.ml baking.mli
   amendment.ml amendment.mli
@@ -689,6 +691,7 @@
   script_interpreter.ml script_interpreter.mli
   sc_rollup_management_protocol.ml sc_rollup_management_protocol.mli
   sc_rollup_operations.ml sc_rollup_operations.mli
+  dal_cache.ml dal_cache.mli
   dal_apply.ml dal_apply.mli
   baking.ml baking.mli
   amendment.ml amendment.mli
@@ -917,6 +920,7 @@
   script_interpreter.ml script_interpreter.mli
   sc_rollup_management_protocol.ml sc_rollup_management_protocol.mli
   sc_rollup_operations.ml sc_rollup_operations.mli
+  dal_cache.ml dal_cache.mli
   dal_apply.ml dal_apply.mli
   baking.ml baking.mli
   amendment.ml amendment.mli

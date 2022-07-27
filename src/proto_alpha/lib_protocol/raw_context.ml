@@ -1556,4 +1556,19 @@ module Dal = struct
     | Error shards -> shards
 
   let shards ctxt ~endorser = compute_shards ~index:0 ctxt ~endorser
+
+  let make ctxt =
+    let Constants_parametric_repr.
+          {
+            dal =
+              {number_of_shards; slot_size; redundancy_factor; segment_size; _};
+            _;
+          } =
+      constants ctxt
+    in
+    Dal.make
+      ~redundancy_factor
+      ~slot_size
+      ~shards_amount:number_of_shards
+      ~segment_size
 end

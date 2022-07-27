@@ -59,7 +59,7 @@ let michelson_maximum_type_size = 2001
 
 (* This constant declares the number of subcaches used by the cache
    mechanism (see {Context.Cache}). *)
-let cache_layout_size = 3
+let cache_layout_size = 5
 
 (* The {!Sc_rollups.wrapped_proof_encoding} uses unbounded sub-encodings.
    To avoid attacks through too large proofs and long decoding times on public
@@ -369,4 +369,6 @@ let cache_layout p =
       p.cache_script_size;
       p.cache_stake_distribution_cycles;
       p.cache_sampler_state_cycles;
+      1;
+      1;
     ]

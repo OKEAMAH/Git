@@ -412,4 +412,6 @@ module Dal : sig
   (** [shards ctxt ~endorser] returns the shard assignment for the
      [endorser] for the current level. *)
   val shards : t -> endorser:Signature.Public_key_hash.t -> int list
+
+  val make : t -> Dal.t
 end
