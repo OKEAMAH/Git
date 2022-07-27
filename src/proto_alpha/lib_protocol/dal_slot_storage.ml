@@ -56,3 +56,16 @@ let finalize_pending_slots ctxt =
              SCORU inboxes *)
           Storage.Dal.Slot_headers.remove ctxt level_endorsed >>= fun ctxt ->
           return (ctxt, available_slots))
+
+type error += Dal_verify_commitment
+
+type error += Dal_invalid_proof
+
+type header_proof = Dal.commitment_proof
+
+let verify_commitment ctxt header proof =
+  Dal_cache.find_srs ctxt >>=? fun srs ->
+  match Dal_slot_repr.Proof.verify srs header proof with
+  | Error (`Degree_exceeds_srs_length _str) -> fail Dal_verify_commitment
+  | Ok false -> fail Dal_invalid_proof
+  | Ok true -> return_unit

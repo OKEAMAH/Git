@@ -2709,6 +2709,10 @@ module Dal : sig
 
     val finalize_pending_slots :
       context -> (context * Endorsement.t) tzresult Lwt.t
+
+    type proof
+
+    val verify_commitment : context -> header -> proof -> unit tzresult Lwt.t
   end
 end
 

@@ -52,6 +52,18 @@ module Header : sig
   val encoding : t Data_encoding.t
 end
 
+module Proof : sig
+  type t
+
+  val encoding : t Data_encoding.t
+
+  val verify :
+    Dal.srs ->
+    Header.t ->
+    t ->
+    (bool, [> `Degree_exceeds_srs_length of string]) result
+end
+
 (** An `Index.t` is a possible value for a slot index. We assume this value
     to be a positive 8-bit integer. Note that this is a hard constraint,
     which is independent of protocol constants. If a choice is ever made to
@@ -83,6 +95,8 @@ module Index : sig
 end
 
 type header = Header.t
+
+type proof = Proof.t
 
 type t = {level : Raw_level_repr.t; index : Index.t; header : header}
 

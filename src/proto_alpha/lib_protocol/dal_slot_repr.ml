@@ -36,6 +36,14 @@ module Header = struct
     Format.fprintf ppf "%s" (Dal.Commitment.to_b58check commitment)
 end
 
+module Proof = struct
+  type t = Dal.commitment_proof
+
+  let encoding = Dal.commitment_proof_encoding
+
+  let verify srs header proof = Dal.verify_commitment srs header proof
+end
+
 module Index = struct
   type t = int
 
@@ -58,6 +66,8 @@ module Index = struct
 end
 
 type header = Header.t
+
+type proof = Proof.t
 
 let zero = Dal.Commitment.zero
 

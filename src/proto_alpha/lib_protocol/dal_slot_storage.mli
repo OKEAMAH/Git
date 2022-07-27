@@ -63,3 +63,11 @@ val finalize_current_slots : Raw_context.t -> Raw_context.t Lwt.t
    [current_level - lag] level are removed from the context. *)
 val finalize_pending_slots :
   Raw_context.t -> (Raw_context.t * Dal_endorsement_repr.t) tzresult Lwt.t
+
+type header_proof
+
+val verify_commitment :
+  Raw_context.t ->
+  Dal_slot_repr.header ->
+  Dal_slot_repr.proof ->
+  unit tzresult Lwt.t
