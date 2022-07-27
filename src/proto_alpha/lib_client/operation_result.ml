@@ -406,7 +406,7 @@ let pp_manager_operation_content (type kind) source ppf
         slot_index
         Sc_rollup.Address.pp
         rollup
-  | Dal_publish_slot_header {slot} ->
+  | Dal_publish_slot_header {slot; proof = _} ->
       Format.fprintf
         ppf
         "Data availability slot header publishing:@,Slot: %a"

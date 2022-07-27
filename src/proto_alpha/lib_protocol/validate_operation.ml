@@ -596,8 +596,8 @@ module Manager = struct
           let* () = assert_sc_rollup_feature_enabled vi in
           let* () = assert_dal_feature_enabled vi in
           return remaining_gas
-      | Dal_publish_slot_header {slot} ->
-          let* () = Dal_apply.validate_publish_slot_header vi.ctxt slot in
+      | Dal_publish_slot_header {slot; proof} ->
+          let* () = Dal_apply.validate_publish_slot_header vi.ctxt slot proof in
           return remaining_gas
     in
     let* balance, is_allocated =

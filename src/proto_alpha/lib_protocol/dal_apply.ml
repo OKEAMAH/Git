@@ -62,7 +62,7 @@ let apply_data_availability ctxt data_availability ~endorser =
   Dal.Endorsement.record_available_shards ctxt data_availability shards
   |> return
 
-let validate_publish_slot_header ctxt Dal.Slot.{index; _} =
+let validate_publish_slot_header ctxt Dal.Slot.{index; _} _proof =
   assert_dal_feature_enabled ctxt >>? fun () ->
   let open Tzresult_syntax in
   let open Constants in
@@ -75,10 +75,12 @@ let validate_publish_slot_header ctxt Dal.Slot.{index; _} =
     (Dal_publish_slot_header_invalid_index
        {given = index; maximum = number_of_slots})
 
-let apply_publish_slot_header ctxt slot =
-  assert_dal_feature_enabled ctxt >>? fun () ->
-  Dal.Slot.register_slot ctxt slot >>? fun (ctxt, updated) ->
-  if updated then ok ctxt else error (Dal_publish_slot_header_duplicate {slot})
+let apply_publish_slot_header ctxt slot proof =
+  assert_dal_feature_enabled ctxt >>?= fun () ->
+  Dal.Slot.verify_header ctxt slot.Dal.Slot.header proof >>=? fun () ->
+  Dal.Slot.register_slot ctxt slot >>?= fun (ctxt, updated) ->
+  if updated then return ctxt
+  else fail (Dal_publish_slot_header_duplicate {slot})
 
 let dal_finalisation ctxt =
   only_if_dal_feature_enabled

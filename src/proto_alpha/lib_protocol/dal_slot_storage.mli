@@ -66,7 +66,7 @@ val finalize_pending_slots :
 
 type header_proof
 
-val verify_commitment :
+val verify_header :
   Raw_context.t ->
   Dal_slot_repr.header ->
   Dal_slot_repr.proof ->

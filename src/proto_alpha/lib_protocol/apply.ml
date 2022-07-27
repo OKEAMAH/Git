@@ -1777,8 +1777,8 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
-  | Dal_publish_slot_header {slot} ->
-      Dal_apply.apply_publish_slot_header ctxt slot >>?= fun ctxt ->
+  | Dal_publish_slot_header {slot; proof} ->
+      Dal_apply.apply_publish_slot_header ctxt slot proof >>=? fun ctxt ->
       let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
       let result = Dal_publish_slot_header_result {consumed_gas} in
       return (ctxt, result, [])

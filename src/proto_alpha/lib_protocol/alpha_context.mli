@@ -2712,7 +2712,7 @@ module Dal : sig
 
     type proof
 
-    val verify_commitment : context -> header -> proof -> unit tzresult Lwt.t
+    val verify_header : context -> header -> proof -> unit tzresult Lwt.t
   end
 end
 
@@ -3995,6 +3995,7 @@ and _ manager_operation =
       -> Kind.transfer_ticket manager_operation
   | Dal_publish_slot_header : {
       slot : Dal.Slot.t;
+      proof : Dal.Slot.proof;
     }
       -> Kind.dal_publish_slot_header manager_operation
   | Sc_rollup_originate : {

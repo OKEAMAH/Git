@@ -43,16 +43,20 @@ val apply_data_availability :
   endorser:Signature.Public_key_hash.t ->
   t tzresult Lwt.t
 
+(* FIXME DOC *)
+
 (** [validate_publish_slot_header ctxt slot] ensures that [slot] is
    valid and cannot prevent an operation containing [slot] to be
    refused on top of [ctxt]. If an [Error _] is returned, the [slot]
-   is not valid. *)
-val validate_publish_slot_header : t -> Dal.Slot.t -> unit tzresult
+    is not valid. *)
+val validate_publish_slot_header :
+  t -> Dal.Slot.t -> Dal.Slot.proof -> unit tzresult
 
 (** [apply_publish_slot_header ctxt slot] applies the publication of
    slot header [slot] on top of [ctxt]. Fails if the slot contains
    already a slot header. *)
-val apply_publish_slot_header : t -> Dal.Slot.t -> t tzresult
+val apply_publish_slot_header :
+  t -> Dal.Slot.t -> Dal.Slot.proof -> t tzresult Lwt.t
 
 (** [dal_finalisation ctxt] should be executed at block finalisation
    time. A set of slots available at level [ctxt.current_level - lag]

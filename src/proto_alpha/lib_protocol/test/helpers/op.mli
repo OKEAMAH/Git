@@ -643,4 +643,5 @@ val dal_publish_slot_header :
   Context.t ->
   Contract.t ->
   Dal.Slot.t ->
+  Dal.Slot.proof ->
   (packed_operation, tztrace) result Lwt.t
