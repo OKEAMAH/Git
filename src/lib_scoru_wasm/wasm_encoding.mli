@@ -89,5 +89,6 @@ module Make (M : Tree_encoding_decoding.S) : sig
 
   val allocations_encoding : Ast.allocations t
 
-  val module_instance_encoding : Instance.module_inst t
+  val module_instance_encoding :
+    ?module_name:string -> unit -> Instance.module_inst t
 end

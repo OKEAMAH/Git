@@ -118,10 +118,10 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
           EncDec.encode (inp_encoding level id) message tree
 
         let _module_instance_of_tree modules =
-          EncDec.decode Wasm_encoding.module_instance_encoding modules
+          EncDec.decode (Wasm_encoding.module_instance_encoding ()) modules
 
         let _module_instances_of_tree =
-          EncDec.decode Wasm_encoding.module_instance_encoding
+          EncDec.decode (Wasm_encoding.module_instance_encoding ())
 
         let transitive_closure (module_map : Ast.module_ Instance.NameMap.t)
             module_name =
@@ -142,7 +142,7 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
                         Vector.to_list module_name)
                     imports
                 in
-                let new_added_list = mod_ :: added_list in
+                let new_added_list = (head, mod_) :: added_list in
                 let new_remaining = List.rev_append keys tl in
                 aux module_map new_added_list new_remaining
           in
@@ -154,13 +154,17 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
           let* modules = transitive_closure module_map main_module_name in
           let s =
             List.fold_left
-              (fun tree m ->
+              (fun tree (mod_name, m) ->
                 let* imports = Import.link m in
                 let* mod_inst = Eval.init host_function_registry m imports in
                 let* tree = tree in
                 let* t =
                   EncDec.encode
-                    Wasm_encoding.module_instance_encoding
+                    (Wasm_encoding.module_instance_encoding
+                       ?module_name:
+                         (Some
+                            (String.concat "" (List.map string_of_int mod_name)))
+                       ())
                     mod_inst
                     tree
                 in

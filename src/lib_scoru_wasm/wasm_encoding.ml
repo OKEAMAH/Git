@@ -651,7 +651,9 @@ module Make (Tree_encoding_decoding : Tree_encoding_decoding.S) = struct
       (fun {blocks; datas} -> (blocks, datas))
       (tup2 ~flatten:false block_table_encoding datas_table_encoding)
 
-  let module_instance_encoding =
+  (** adhoc modification of the module_encoding to allow for several modules.
+      This is needed in the initialization function in `wasm_pvm`*)
+  let module_instance_encoding ?(module_name = "main_module") () =
     let open Lwt_syntax in
     let gen_encoding current_module =
       let current_module = Lazy.map (fun x -> ref x) current_module in
@@ -711,5 +713,5 @@ module Make (Tree_encoding_decoding : Tree_encoding_decoding.S) = struct
            data_instance_encoding
            allocations_encoding)
     in
-    scope ["module"] @@ with_self_reference gen_encoding
+    scope ["module"; module_name] @@ with_self_reference gen_encoding
 end

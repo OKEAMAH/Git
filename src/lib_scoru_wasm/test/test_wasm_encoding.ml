@@ -93,11 +93,11 @@ let test_module_roundtrip () =
       (* We need to print here in order to force lazy bindings to be evaluated. *)
       let module1_str = print module1 in
       let*! module2 =
-        encode_decode Wasm_encoding.module_instance_encoding module1
+        encode_decode (Wasm_encoding.module_instance_encoding ()) module1
       in
       let module2_str = print module2 in
       let*! module3 =
-        encode_decode Wasm_encoding.module_instance_encoding module2
+        encode_decode (Wasm_encoding.module_instance_encoding ()) module2
       in
       let module3_str = print module3 in
       (* Check that modules match. *)
@@ -114,18 +114,18 @@ let test_module_tree () =
       let _ = print module1 in
       let*! tree1 =
         Merklizer.encode
-          Wasm_encoding.module_instance_encoding
+          (Wasm_encoding.module_instance_encoding ())
           module1
           empty_tree
       in
       let*! module2 =
-        Merklizer.decode Wasm_encoding.module_instance_encoding tree1
+        Merklizer.decode (Wasm_encoding.module_instance_encoding ()) tree1
       in
       (* We need to print here in order to force lazy bindings to be evaluated. *)
       let _ = print module2 in
       let*! tree2 =
         Merklizer.encode
-          Wasm_encoding.module_instance_encoding
+          (Wasm_encoding.module_instance_encoding ())
           module2
           empty_tree
       in
