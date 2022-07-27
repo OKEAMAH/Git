@@ -69,6 +69,9 @@ let default_dal =
       number_of_shards = 2048;
       endorsement_lag = 1;
       availability_threshold = 50;
+      slot_size = 1 lsl 20;
+      redundancy_factor = 16;
+      segment_size = 4096;
     }
 
 let constants_mainnet =
@@ -235,6 +238,9 @@ let default_dal_sandbox =
       number_of_shards = 256;
       endorsement_lag = 1;
       availability_threshold = 50;
+      slot_size = 1 lsl 16;
+      redundancy_factor = 4;
+      segment_size = 4096;
     }
 
 let constants_sandbox =
