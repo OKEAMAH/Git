@@ -150,7 +150,3 @@ val manager_pubkey :
   Raw_context.t ->
   Signature.Public_key_hash.t ->
   Signature.Public_key.t tzresult Lwt.t
-
-module Migration_from_Kathmandu : sig
-  val update : Raw_context.t -> Raw_context.t tzresult Lwt.t
-end

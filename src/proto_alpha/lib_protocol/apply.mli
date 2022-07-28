@@ -57,8 +57,8 @@ val begin_partial_construction :
 type 'a full_construction = {
   ctxt : context;
   protocol_data : 'a;
-  payload_producer : Signature.public_key_hash;
-  block_producer : Signature.public_key_hash;
+  payload_producer : Consensus_key.t;
+  block_producer : Consensus_key.t;
   round : Round.t;
   implicit_operations_results : packed_successful_manager_operation_result list;
   liquidity_baking_toggle_ema : Liquidity_baking.Toggle_EMA.t;
@@ -82,8 +82,8 @@ val begin_application :
   predecessor_level:Level.t ->
   predecessor_round:Round.t ->
   (t
-  * Signature.public_key
-  * Signature.public_key_hash
+  * Consensus_key.t
+  * Consensus_key.t
   * packed_successful_manager_operation_result list
   * Liquidity_baking.Toggle_EMA.t)
   tzresult
@@ -138,7 +138,7 @@ val apply_operation :
   context ->
   Chain_id.t ->
   apply_mode ->
-  payload_producer:public_key_hash ->
+  payload_producer:Consensus_key.t ->
   Validate_operation.stamp ->
   Operation_hash.t ->
   'a operation ->
@@ -155,8 +155,8 @@ val finalize_application :
   context ->
   finalize_application_mode ->
   Block_header.contents ->
-  payload_producer:public_key_hash ->
-  block_producer:public_key_hash ->
+  payload_producer:Consensus_key.t ->
+  block_producer:Consensus_key.t ->
   Liquidity_baking.Toggle_EMA.t ->
   packed_successful_manager_operation_result list ->
   round:Round.t ->

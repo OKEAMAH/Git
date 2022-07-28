@@ -94,16 +94,16 @@ type validation_mode =
   | Application of {
       block_header : Alpha_context.Block_header.t;
       fitness : Alpha_context.Fitness.t;
-      payload_producer : Alpha_context.public_key_hash;
-      block_producer : Alpha_context.public_key_hash;
+      payload_producer : Alpha_context.Consensus_key.t;
+      block_producer : Alpha_context.Consensus_key.t;
       predecessor_round : Alpha_context.Round.t;
       predecessor_level : Alpha_context.Level.t;
     }
   | Partial_application of {
       block_header : Alpha_context.Block_header.t;
       fitness : Alpha_context.Fitness.t;
-      payload_producer : Alpha_context.public_key_hash;
-      block_producer : Alpha_context.public_key_hash;
+      payload_producer : Alpha_context.Consensus_key.t;
+      block_producer : Alpha_context.Consensus_key.t;
       predecessor_level : Alpha_context.Level.t;
       predecessor_round : Alpha_context.Round.t;
     }
@@ -117,8 +117,8 @@ type validation_mode =
   (* Baker only *)
   | Full_construction of {
       predecessor : Block_hash.t;
-      payload_producer : Alpha_context.public_key_hash;
-      block_producer : Alpha_context.public_key_hash;
+      payload_producer : Alpha_context.Consensus_key.t;
+      block_producer : Alpha_context.Consensus_key.t;
       protocol_data_contents : Alpha_context.Block_header.contents;
       level : Int32.t;
       round : Alpha_context.Round.t;
@@ -164,7 +164,7 @@ let begin_partial_application ~chain_id ~ancestor_context:ctxt
     ~predecessor_level
     ~predecessor_round
   >>=? fun ( ctxt,
-             payload_producer_pk,
+             payload_producer,
              block_producer,
              liquidity_baking_operations_results,
              liquidity_baking_toggle_ema ) ->
@@ -175,7 +175,7 @@ let begin_partial_application ~chain_id ~ancestor_context:ctxt
         fitness;
         predecessor_level;
         predecessor_round;
-        payload_producer = Signature.Public_key.hash payload_producer_pk;
+        payload_producer;
         block_producer;
       }
   in
@@ -243,7 +243,7 @@ let begin_application ~chain_id ~predecessor_context:ctxt ~predecessor_timestamp
         fitness;
         predecessor_round;
         predecessor_level;
-        payload_producer = Signature.Public_key.hash payload_producer;
+        payload_producer;
         block_producer;
       }
   in
@@ -463,7 +463,7 @@ let apply_operation ({mode; chain_id; ctxt; op_count; _} as data)
         data
         op_count
         operation
-        ~payload_producer:Signature.Public_key_hash.zero
+        ~payload_producer:Alpha_context.Consensus_key.zero
   | Full_construction {payload_producer; _} ->
       apply_operation_with_mode
         Apply.Full_construction
@@ -577,8 +577,8 @@ let finalize_block
         ( ctxt,
           Apply_results.
             {
-              proposer = Signature.Public_key_hash.zero;
-              baker = Signature.Public_key_hash.zero;
+              proposer = Alpha_context.Consensus_key.zero;
+              baker = Alpha_context.Consensus_key.zero;
               level_info;
               voting_period_info;
               nonce_hash = None;
@@ -614,7 +614,7 @@ let finalize_block
       ( ctxt,
         Apply_results.
           {
-            proposer = Signature.Public_key_hash.zero;
+            proposer = Alpha_context.Consensus_key.zero;
             (* We cannot retrieve the proposer as it requires the
                frozen deposit that might not be available depending on
                the context given to the partial application. *)

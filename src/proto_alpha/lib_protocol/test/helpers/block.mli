@@ -63,7 +63,7 @@ type baking_mode = Application | Baking
 val get_next_baker :
   ?policy:baker_policy ->
   t ->
-  (public_key_hash * int * Time.Protocol.t) tzresult Lwt.t
+  (public_key_hash * public_key_hash * int * Time.Protocol.t) tzresult Lwt.t
 
 val get_round : block -> Round.t tzresult
 
@@ -97,7 +97,11 @@ module Forge : sig
   val set_seed_nonce_hash : Nonce_hash.t option -> header -> header
 
   (** Sets the baker that will sign the header to an arbitrary pkh *)
-  val set_baker : public_key_hash -> header -> header
+  val set_baker :
+    public_key_hash ->
+    ?consensus_key:Signature.public_key_hash ->
+    header ->
+    header
 
   (** Signs the header with the key of the baker configured in the header.
       The header can no longer be modified, only applied. *)

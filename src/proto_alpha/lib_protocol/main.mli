@@ -56,8 +56,8 @@ type validation_mode =
   | Application of {
       block_header : Alpha_context.Block_header.t;
       fitness : Alpha_context.Fitness.t;
-      payload_producer : Alpha_context.public_key_hash;
-      block_producer : Alpha_context.public_key_hash;
+      payload_producer : Alpha_context.Consensus_key.t;
+      block_producer : Alpha_context.Consensus_key.t;
       predecessor_round : Alpha_context.Round.t;
       predecessor_level : Alpha_context.Level.t;
     }
@@ -66,8 +66,8 @@ type validation_mode =
   | Partial_application of {
       block_header : Alpha_context.Block_header.t;
       fitness : Alpha_context.Fitness.t;
-      payload_producer : Alpha_context.public_key_hash;
-      block_producer : Alpha_context.public_key_hash;
+      payload_producer : Alpha_context.Consensus_key.t;
+      block_producer : Alpha_context.Consensus_key.t;
       predecessor_level : Alpha_context.Level.t;
       predecessor_round : Alpha_context.Round.t;
     }
@@ -86,8 +86,8 @@ type validation_mode =
           {!val:Tezos_protocol_environment_sigs.V5.T.Updater.PROTOCOL.begin_construction} *)
   | Full_construction of {
       predecessor : Block_hash.t;
-      payload_producer : Alpha_context.public_key_hash;
-      block_producer : Alpha_context.public_key_hash;
+      payload_producer : Alpha_context.Consensus_key.t;
+      block_producer : Alpha_context.Consensus_key.t;
       protocol_data_contents : Alpha_context.Block_header.contents;
       level : Int32.t;
       round : Alpha_context.Round.t;
