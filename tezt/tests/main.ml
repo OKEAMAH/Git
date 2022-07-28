@@ -119,7 +119,8 @@ let register_protocol_agnostic_tests () =
   Signer_test.register ~protocols:[Alpha] ;
   Stresstest_command.register ~protocols:[Alpha] ;
   Synchronisation_heuristic.register ~protocols:[Alpha] ;
-  Tenderbake.register ~protocols:[Alpha]
+  Tenderbake.register ~protocols:[Alpha] ;
+  Timelock.register ~protocols
 
 let register_J_plus_tests () =
   (* Relies on a feature only available since J.
