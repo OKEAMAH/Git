@@ -520,7 +520,7 @@ let module_ref_and_instance_gen ?(module_reg : Instance.module_reg option) () :
 let module_gen ?module_reg () =
   map snd (module_ref_and_instance_gen ?module_reg ())
 
-let frame_gen ~module_reg =
+let frame_gen ~(module_reg : int) : bool =
   let* inst, _ = module_ref_and_instance_gen ~module_reg () in
   let+ locals = small_list (map ref value_gen) in
   Eval.{inst; locals}

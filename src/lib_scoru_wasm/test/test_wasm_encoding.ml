@@ -174,14 +174,14 @@ let test_module_tree () =
 let test_frame_tree () =
   test_generic_tree
     ~pp:Ast_printer.pp_frame
-    ~gen:(fun ~host_funcs:_ -> Ast_generators.frame_gen)
+    ~gen:(fun ~host_funcs:_ -> Stdlib.failwith "frame_gen")
     ~encoding:(fun ~host_funcs:_ -> Wasm_encoding.frame_encoding)
 
 (** Test serialize/deserialize input buffers and compare trees. *)
 let test_input_buffer_tree () =
   test_generic_tree
     ~pp:Ast_printer.pp_input_buffer
-    ~gen:(fun ~host_funcs:_ ~module_reg:_ -> Ast_generators.input_buffer_gen)
+    ~gen:(fun ~host_funcs:_ ~module_reg:_ -> Stdlib.failwith "input_buffer_gen")
     ~encoding:(fun ~host_funcs:_ ~module_reg:_ ->
       Wasm_encoding.input_buffer_encoding)
 
@@ -190,7 +190,7 @@ let test_values_tree () =
   test_generic_tree
     ~pp:(Format.pp_print_list Ast_printer.pp_value)
     ~gen:(fun ~host_funcs:_ ~module_reg:_ ->
-      QCheck2.Gen.list Ast_generators.value_gen)
+      QCheck2.Gen.list (Stdlib.failwith "value_gen"))
     ~encoding:(fun ~host_funcs:_ ~module_reg ->
       Wasm_encoding.(values_encoding ~module_reg))
 
@@ -199,14 +199,15 @@ let test_admin_instr_tree () =
   test_generic_tree
     ~pp:Ast_printer.pp_admin_instr
     ~gen:(fun ~host_funcs:_ ~module_reg ->
-      Ast_generators.admin_instr_gen ~module_reg)
+      let _ = module_reg in
+      Stdlib.failwith "Ast_generators.admin_instr_gen ~module_reg")
     ~encoding:(fun ~host_funcs:_ -> Wasm_encoding.admin_instr_encoding)
 
 (** Test serialize/deserialize evaluation configuration and compare trees. *)
 let test_config_tree () =
   test_generic_tree
     ~pp:Ast_printer.pp_config
-    ~gen:Ast_generators.config_gen
+    ~gen:(Stdlib.failwith "Ast_generators.config_gen")
     ~encoding:Wasm_encoding.config_encoding
 
 let tests =

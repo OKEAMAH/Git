@@ -78,6 +78,12 @@ let test_decode_encode_decode tree enc f =
   let* value = Tree_encoding.decode enc tree in
   let* tree = Tree_encoding.encode enc value tree in
   let* value' = Tree_encoding.decode enc tree in
+  (* TODO remove
+  let open Lwt_result_syntax in
+  let*! value = Merklizer.decode enc tree in
+  let*! tree = Merklizer.encode enc value tree in
+  let*! value' = Merklizer.decode enc tree in
+  *)
   f value value'
 
 let encode_decode enc value = test_encode_decode enc value Lwt.return
@@ -362,6 +368,26 @@ let test_value_option () =
   let*! tree = Tree_encoding.encode enc (Some 0) tree in
   let* () = assert_value tree enc (Some 0) in
   let*! tree = Tree_encoding.encode enc None tree in
+  let* () = assert_missing_value tree key in
+  return_unit
+
+let test_value_default () =
+  let open Merklizer in
+  let open Lwt_result_syntax in
+  let*! tree = empty_tree () in
+  let enc = value ~default:0 [] Data_encoding.int31 in
+  let* () = assert_decode_round_trip tree enc Stdlib.( = ) in
+  return_unit
+
+let test_optional () =
+  let open Merklizer in
+  let open Lwt_result_syntax in
+  let key = [] in
+  let enc = optional key Data_encoding.int31 in
+  let*! tree = empty_tree () in
+  let*! tree = Merklizer.encode enc (Some 0) tree in
+  let* () = assert_value tree enc (Some 0) in
+  let*! tree = Merklizer.encode enc None tree in
   let* () = assert_missing_value tree key in
   return_unit
 
