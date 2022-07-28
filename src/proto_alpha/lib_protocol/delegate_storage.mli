@@ -146,7 +146,7 @@ val delegated_balance :
 
 (** Returns the public key of a registered delegate. Returns the error
    {!Contract.Unregistered_delegate} if the delegate is not registered.  *)
-val pubkey :
+val manager_pubkey :
   Raw_context.t ->
   Signature.Public_key_hash.t ->
   Signature.Public_key.t tzresult Lwt.t
