@@ -4175,9 +4175,15 @@ and parse_instr :
       check_var_annot loc annot >>?= fun () ->
       check_comparable loc t >>?= fun Eq ->
       ticket_t loc t >>?= fun res_ty ->
-      let instr = {apply = (fun k -> ITicket (loc, t, k))} in
-      let stack = Item_t (res_ty, rest) in
-      typed ctxt loc instr stack
+      if legacy then
+        let instr = {apply = (fun k -> ITicket_deprecated (loc, t, k))} in
+        let stack = Item_t (res_ty, rest) in
+        typed ctxt loc instr stack
+      else
+        option_t loc res_ty >>?= fun res_ty ->
+        let instr = {apply = (fun k -> ITicket (loc, t, k))} in
+        let stack = Item_t (res_ty, rest) in
+        typed ctxt loc instr stack
   | ( Prim (loc, I_READ_TICKET, [], annot),
       (Item_t (Ticket_t (t, _), _) as full_stack) ) ->
       check_var_annot loc annot >>?= fun () ->

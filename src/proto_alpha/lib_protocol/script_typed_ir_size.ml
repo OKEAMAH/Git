@@ -618,6 +618,8 @@ and kinstr_size :
         ret_succ_adding
           accu
           (base1 loc k +! (word_size *? 2) +! dup_n_gadt_witness_size n w)
+    | ITicket_deprecated (loc, cty, k) ->
+        ret_succ_adding (accu ++ ty_size cty) (base1 loc k +! word_size)
     | ITicket (loc, cty, k) ->
         ret_succ_adding (accu ++ ty_size cty) (base1 loc k +! word_size)
     | IRead_ticket (loc, ty, k) ->

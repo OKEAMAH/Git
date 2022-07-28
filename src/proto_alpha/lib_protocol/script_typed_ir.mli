@@ -1059,8 +1059,11 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       * ('a, 'b, 's, 't) dup_n_gadt_witness
       * ('t, 'a * ('b * 's), 'r, 'f) kinstr
       -> ('a, 'b * 's, 'r, 'f) kinstr
-  | ITicket :
+  | ITicket_deprecated :
       Script.location * 'a comparable_ty * ('a ticket, 's, 'r, 'f) kinstr
+      -> ('a, n num * 's, 'r, 'f) kinstr
+  | ITicket :
+      Script.location * 'a comparable_ty * ('a ticket option, 's, 'r, 'f) kinstr
       -> ('a, n num * 's, 'r, 'f) kinstr
   | IRead_ticket :
       Script.location

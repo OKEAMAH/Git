@@ -1530,8 +1530,17 @@ let kinstr_split :
              continuation = k;
              reconstruct = (fun k -> IDup_n (loc, n, p, k));
            }
-  | ITicket (loc, cty, k), Item_t (_, Item_t (_, s)) ->
+  | ITicket_deprecated (loc, cty, k), Item_t (_, Item_t (_, s)) ->
       ticket_t dummy cty >|? fun t ->
+      let s = Item_t (t, s) in
+      Ex_split_kinstr
+        {
+          cont_init_stack = s;
+          continuation = k;
+          reconstruct = (fun k -> ITicket_deprecated (loc, cty, k));
+        }
+  | ITicket (loc, cty, k), Item_t (_, Item_t (_, s)) ->
+      ticket_t dummy cty >>? option_t loc >|? fun t ->
       let s = Item_t (t, s) in
       Ex_split_kinstr
         {

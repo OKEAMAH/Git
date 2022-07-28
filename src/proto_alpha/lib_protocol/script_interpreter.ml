@@ -116,6 +116,8 @@ type error += Cannot_serialize_storage
 
 type error += Michelson_too_many_recursive_calls
 
+type error += Ticket_amount_zero of Script.location
+
 let () =
   let open Data_encoding in
   let trace_encoding =
@@ -192,7 +194,17 @@ let () =
       "The returned storage was too big to be serialized with the provided gas"
     Data_encoding.empty
     (function Cannot_serialize_storage -> Some () | _ -> None)
-    (fun () -> Cannot_serialize_storage)
+    (fun () -> Cannot_serialize_storage) ;
+  register_error_kind
+    `Temporary
+    ~id:"michelson_v1.ticket_amount_zero"
+    ~title:"Ticket amount is zero"
+    ~description:
+      "Ticket of amount zero is not supported, you may want to use event \
+       logging instead"
+    (obj1 (req "location" Script.location_encoding))
+    (function Ticket_amount_zero loc -> Some loc | _ -> None)
+    (fun loc -> Ticket_amount_zero loc)
 
 (*
 
@@ -1464,10 +1476,21 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let accu = aux witness stack in
           (step [@ocaml.tailcall]) g gas k ks accu stack
       (* Tickets *)
+      | ITicket_deprecated (loc, _, k) ->
+          let contents = accu and amount, stack = stack in
+          if Compare.Int.(Script_int.(compare amount zero_n) = 0) then
+            fail (Ticket_amount_zero loc)
+          else
+            let ticketer = Contract.Originated sc.self in
+            let accu = {ticketer; contents; amount} in
+            (step [@ocaml.tailcall]) g gas k ks accu stack
       | ITicket (_, _, k) ->
           let contents = accu and amount, stack = stack in
           let ticketer = Contract.Originated sc.self in
-          let accu = {ticketer; contents; amount} in
+          let accu =
+            if Compare.Int.(Script_int.(compare amount zero_n) = 0) then None
+            else Some {ticketer; contents; amount}
+          in
           (step [@ocaml.tailcall]) g gas k ks accu stack
       | IRead_ticket (_, _, k) ->
           let {ticketer; contents; amount} = accu in
