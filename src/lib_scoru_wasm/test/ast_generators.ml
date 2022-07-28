@@ -285,7 +285,7 @@ let block_label_gen =
   let+ n = int32 in
   Ast.Block_label n
 
-let func_gen =
+let func'_gen =
   let* ftype = var_gen in
   let* locals = vector_gen value_type_gen in
   let* body = block_label_gen in
@@ -294,7 +294,7 @@ let func_gen =
 let func_gen current_module =
   let ast_func () =
     let* func_type = func_type_gen in
-    let* func = func_gen in
+    let* func = func'_gen in
     return @@ Func.AstFunc (func_type, current_module (), func)
   in
   oneof
@@ -314,12 +314,15 @@ let ref_gen =
       map (fun n -> Values.ExternRef n) int32;
     ]
 
-let table_gen =
-  let* len = frequency [(10, int_range 1 10); (1, int_range 100 200)] in
+let table_type_gen len =
   let* max = opt @@ map Int32.of_int @@ int_range 1 len in
   let limit = {Types.min = 0l; max} in
   let* ref_type = ref_type_gen in
-  let ty = Types.TableType (limit, ref_type) in
+  return @@ Types.TableType (limit, ref_type)
+
+let table_gen =
+  let* len = frequency [(10, int_range 1 10); (1, int_range 100 200)] in
+  let* ty = table_type_gen len in
   let* seeds = small_list (int_range 0 10_000) in
   let table_entries =
     Table.Vector.Vector.create
