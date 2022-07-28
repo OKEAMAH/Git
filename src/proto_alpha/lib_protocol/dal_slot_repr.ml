@@ -54,6 +54,8 @@ module Index = struct
   let to_int slot_index = slot_index [@@ocaml.inline always]
 
   let compare = Compare.Int.compare
+
+  let ( --> ) = Misc.( --> )
 end
 
 type header = Header.t

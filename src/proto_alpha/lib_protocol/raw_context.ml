@@ -1578,6 +1578,5 @@ module Dal = struct
         in
         aux index
 
-  let shards ctxt ~endorser =
-    compute_shards ~index:Dal_shard_repr.Index.zero ctxt ~endorser
+  let shards ctxt ~endorser = compute_shards ctxt ~endorser
 end

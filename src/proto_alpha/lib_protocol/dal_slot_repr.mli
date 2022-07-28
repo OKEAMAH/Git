@@ -77,6 +77,8 @@ module Index : sig
   val to_int : t -> int
 
   val compare : t -> t -> int
+
+  val ( --> ) : t -> t -> t list
 end
 
 type header = Header.t
