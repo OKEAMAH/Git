@@ -85,9 +85,6 @@ module Accountability : sig
      Consider using the [Bounded] module. In particular, change the
      semantics of [is_slot_available] accordingly. *)
 
-  (** A shard aims to be a positive number. *)
-  type shard = int
-
   (** [init ~length] initialises a new accountability data-structures
      with at most [length] slots and where for every slot, no shard is
      available. *)
@@ -98,7 +95,8 @@ module Accountability : sig
      are available. It is the responsibility of the caller to ensure
      the shard indices are positive numbers. A negative shard index is
      ignored. *)
-  val record_shards_availability : t -> available_slots -> shard list -> t
+  val record_shards_availability :
+    t -> available_slots -> Dal_shard_repr.Index.t list -> t
 
   (** [is_slot_available t ~threshold ~number_of_shards slot] returns
      [true] if the number of shards recorded in [t] for the [slot] is

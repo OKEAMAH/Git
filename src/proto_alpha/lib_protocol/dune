@@ -104,6 +104,7 @@
   Tx_rollup_commitment_repr
   Tx_rollup_errors_repr
   Tx_rollup_state_repr
+  Dal_shard_repr
   Dal_slot_repr
   Dal_endorsement_repr
   Dal_errors_repr
@@ -348,6 +349,7 @@
   tx_rollup_commitment_repr.ml tx_rollup_commitment_repr.mli
   tx_rollup_errors_repr.ml
   tx_rollup_state_repr.ml tx_rollup_state_repr.mli
+  dal_shard_repr.ml dal_shard_repr.mli
   dal_slot_repr.ml dal_slot_repr.mli
   dal_endorsement_repr.ml dal_endorsement_repr.mli
   dal_errors_repr.ml
@@ -572,6 +574,7 @@
   tx_rollup_commitment_repr.ml tx_rollup_commitment_repr.mli
   tx_rollup_errors_repr.ml
   tx_rollup_state_repr.ml tx_rollup_state_repr.mli
+  dal_shard_repr.ml dal_shard_repr.mli
   dal_slot_repr.ml dal_slot_repr.mli
   dal_endorsement_repr.ml dal_endorsement_repr.mli
   dal_errors_repr.ml
@@ -801,6 +804,7 @@
   tx_rollup_commitment_repr.ml tx_rollup_commitment_repr.mli
   tx_rollup_errors_repr.ml
   tx_rollup_state_repr.ml tx_rollup_state_repr.mli
+  dal_shard_repr.ml dal_shard_repr.mli
   dal_slot_repr.ml dal_slot_repr.mli
   dal_endorsement_repr.ml dal_endorsement_repr.mli
   dal_errors_repr.ml

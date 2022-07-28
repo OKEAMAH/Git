@@ -2649,6 +2649,20 @@ module Vote : sig
 end
 
 module Dal : sig
+  module Shard_index : sig
+    type t
+
+    val pp : Format.formatter -> t -> unit
+
+    val zero : t
+
+    val encoding : t Data_encoding.t
+
+    val of_int : int -> t option
+
+    val compare : t -> t -> int
+  end
+
   module Slot_index : sig
     type t
 
@@ -2674,9 +2688,10 @@ module Dal : sig
 
     val expected_size_in_bits : max_index:Slot_index.t -> int
 
-    val shards : context -> endorser:Signature.Public_key_hash.t -> int list
+    val shards :
+      context -> endorser:Signature.Public_key_hash.t -> Shard_index.t list
 
-    val record_available_shards : context -> t -> int list -> context
+    val record_available_shards : context -> t -> Shard_index.t list -> context
   end
 
   module Slot : sig

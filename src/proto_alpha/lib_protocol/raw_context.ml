@@ -1530,27 +1530,54 @@ module Dal = struct
      the consensus which is hackish and probably not what we want at
      the end. However, it should be enough for a prototype. This has a
      very bad complexity too. *)
-  let rec compute_shards ?(index = 0) ctxt ~endorser =
+  let compute_shards ?(index = Dal_shard_repr.Index.zero) ctxt ~endorser =
     let max_shards = ctxt.back.constants.dal.number_of_shards in
-    Slot_repr.Map.fold_e
-      (fun _ (_, public_key_hash, power) (index, shards) ->
-        let limit = Compare.Int.min (index + power) max_shards in
-        (* Early fail when we have reached the desired number of shards *)
-        if Compare.Int.(index >= max_shards) then Error shards
-        else if Signature.Public_key_hash.(public_key_hash = endorser) then
-          let shards = Misc.(index --> (limit - 1)) in
-          Ok (index + power, shards)
-        else Ok (index + power, shards))
-      ctxt.back.consensus.allowed_endorsements
-      (index, [])
-    |> function
-    | Ok (index, []) ->
-        (* This happens if the number of Tenderbake slots is below the
-           number of shards. Therefore, we reuse the committee using a
-           shift (index being the size of the committee). *)
-        compute_shards ~index ctxt ~endorser
-    | Ok (_index, shards) -> shards
-    | Error shards -> shards
+    let max_shard_index = Dal_shard_repr.Index.of_int (max_shards - 1) in
+    match max_shard_index with
+    | None -> (* cannot happen *) assert false
+    | Some max_shard_index ->
+        let rec aux index =
+          Slot_repr.Map.fold_e
+            (fun _ (_, public_key_hash, power) (index, shards) ->
+              (* Early fail when we have reached the desired number of shards *)
+              if Dal_shard_repr.Index.(index > max_shard_index) then
+                Error shards
+              else
+                let until_shard_opt =
+                  Dal_shard_repr.Index.add_int index (power - 1)
+                in
+                let until_shard =
+                  match until_shard_opt with
+                  | None -> max_shard_index
+                  | Some until_shard -> until_shard
+                in
+                let limit =
+                  Dal_shard_repr.Index.min until_shard max_shard_index
+                in
+                let shards =
+                  if Signature.Public_key_hash.(public_key_hash = endorser) then
+                    Dal_shard_repr.Index.(index --> limit)
+                  else shards
+                in
+                let next_index = Dal_shard_repr.Index.add_int index 1 in
+                match next_index with
+                | None ->
+                    (* we are above the hard limit for shards, we fail with shards. *)
+                    Error shards
+                | Some next_index -> Ok (next_index, shards))
+            ctxt.back.consensus.allowed_endorsements
+            (index, [])
+          |> function
+          | Ok (index, []) ->
+              (* This happens if the number of Tenderbake slots is below the
+                 number of shards. Therefore, we reuse the committee using a
+                 shift (index being the size of the committee). *)
+              aux index
+          | Ok (_index, shards) -> shards
+          | Error shards -> shards
+        in
+        aux index
 
-  let shards ctxt ~endorser = compute_shards ~index:0 ctxt ~endorser
+  let shards ctxt ~endorser =
+    compute_shards ~index:Dal_shard_repr.Index.zero ctxt ~endorser
 end

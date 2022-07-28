@@ -76,6 +76,7 @@
         "Tx_rollup_errors_repr",
         "Tx_rollup_state_repr",
 
+        "Dal_shard_repr",
         "Dal_slot_repr",
         "Dal_endorsement_repr",
         "Dal_errors_repr",

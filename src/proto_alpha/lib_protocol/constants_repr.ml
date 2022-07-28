@@ -321,6 +321,13 @@ let check_constants constants =
       constants.dal.number_of_slots > 0 && constants.dal.number_of_slots <= 256)
     (Invalid_protocol_constants
        "The number of data availability slot must be between 1 and 256")
+  >>? fun () ->
+  error_unless
+    Compare.Int.(
+      constants.dal.number_of_shards > 0
+      && constants.dal.number_of_slots <= 32_768)
+    (Invalid_protocol_constants
+       "The number of data availability shards must be between 1 and 32_768")
   >>? fun () -> Result.return_unit
 
 module Generated = struct

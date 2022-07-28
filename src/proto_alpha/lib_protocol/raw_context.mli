@@ -389,7 +389,8 @@ module Dal : sig
      assumes that a shard belongs to the interval [0; number_of_shards
      - 1]. Otherwise, for each shard outside this interval, it is a
      no-op. *)
-  val record_available_shards : t -> Dal_endorsement_repr.t -> int list -> t
+  val record_available_shards :
+    t -> Dal_endorsement_repr.t -> Dal_shard_repr.Index.t list -> t
 
   (** [register_slot ctxt slot] returns a new context where the new
      candidate [slot] have been taken into account. Returns [Some
@@ -411,5 +412,6 @@ module Dal : sig
 
   (** [shards ctxt ~endorser] returns the shard assignment for the
      [endorser] for the current level. *)
-  val shards : t -> endorser:Signature.Public_key_hash.t -> int list
+  val shards :
+    t -> endorser:Signature.Public_key_hash.t -> Dal_shard_repr.Index.t list
 end

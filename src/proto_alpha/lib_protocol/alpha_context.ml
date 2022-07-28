@@ -91,6 +91,10 @@ module Sc_rollup = struct
 end
 
 module Dal = struct
+  module Shard_index = struct
+    include Dal_shard_repr.Index
+  end
+
   module Slot_index = struct
     include Dal_slot_repr.Index
   end

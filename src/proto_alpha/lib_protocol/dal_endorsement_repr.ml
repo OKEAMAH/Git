@@ -86,8 +86,6 @@ module Accountability = struct
   *)
   type t = Bitset.t list
 
-  type shard = int
-
   let init ~length =
     let l =
       List.init
@@ -101,6 +99,7 @@ module Accountability = struct
   let record_slot_shard_availability bitset shards =
     List.fold_left
       (fun bitset shard ->
+        let shard = Dal_shard_repr.Index.to_int shard in
         Bitset.add bitset shard |> Result.value ~default:bitset)
       bitset
       shards
