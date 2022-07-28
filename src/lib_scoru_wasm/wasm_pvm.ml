@@ -23,6 +23,20 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Tezos_webassembly_interpreter
+
+type tick_state = Decode of Decode.decode_kont | Eval of Eval.config
+
+type pvm_state = {
+  kernel : Chunked_byte_vector.Lwt.t;
+  current_tick : Z.t;
+  last_input_info : Wasm_pvm_sig.input_info option;
+  consuming : bool;
+  (* TODO: Remove the field as soon as we know how to implement
+     [waiting_for_input : Eval.config -> bool] *)
+  tick : tick_state;
+}
+
 module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
   module Raw = struct
     type tree = T.tree
@@ -34,14 +48,67 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
         (T)
     module Wasm_encoding = Wasm_encoding.Make (EncDec)
 
-    let compute_step = Lwt.return
+    let decode_kont : Decode.decode_kont EncDec.t = assert false
+
+    let config : Eval.config EncDec.t = assert false
+
+    let tick_state : tick_state EncDec.t =
+      let open EncDec in
+      tagged_union
+        (value [] Data_encoding.string)
+        [
+          case
+            "decode"
+            decode_kont
+            (function Decode k -> Some k | _ -> None)
+            (fun k -> Decode k);
+          case
+            "eval"
+            config
+            (function Eval c -> Some c | _ -> None)
+            (fun c -> Eval c);
+        ]
+
+    let pvm_state : pvm_state EncDec.t =
+      let open EncDec in
+      conv
+        (fun (current_tick, kernel, last_input_info, consuming, tick) ->
+          {current_tick; kernel; last_input_info; consuming; tick})
+        (fun {current_tick; kernel; last_input_info; consuming; tick} ->
+          (current_tick, kernel, last_input_info, consuming, tick))
+        (tup5
+           ~flatten:true
+           (value ~default:Z.zero ["wasm"; "current_tick"] Data_encoding.n)
+           (scope ["durable"; "kernel"; "boot.wasm"] chunked_byte_vector)
+           (optional ["wasm"; "input"] Wasm_pvm_sig.input_info_encoding)
+           (value ~default:true ["wasm"; "consuming"] Data_encoding.bool)
+           (scope ["wasm"] tick_state))
+
+    let compute_step state =
+      let open Lwt_syntax in
+      match state.tick with
+      | Decode k -> (
+          let* k = Decode.module_step state.stream k in
+          match k.module_kont with
+          | Decode.MKStop m ->
+              (* Decoding phase is done, moving on to eval *)
+              (* TODO: https://gitlab.com/tezos/tezos/-/issues/3076
+                 Rather than doing one big tick, we should tickify
+                 [Eval.init] *)
+              let minst = Eval.init _ m _ in
+              assert false
+          | _ ->
+              (* Decoding still progressing *)
+              {state with tick = Decode k})
+      | _ -> _
+
+    let compute_step tree =
+      let open Lwt_syntax in
+      let* state = EncDec.decode pvm_state tree in
+      let state = {state with current_tick = Z.succ state.current_tick} in
+      EncDec.encode pvm_state state tree
 
     let get_output _ _ = Lwt.return ""
-
-    (* TODO: #3444
-       Create a may-fail tree-encoding-decoding combinator.
-       https://gitlab.com/tezos/tezos/-/issues/3444
-    *)
 
     (* TODO: #3448
        Remove the mention of exceptions from lib_scoru_wasm Make signature.
@@ -49,64 +116,28 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
        stuck state instead. https://gitlab.com/tezos/tezos/-/issues/3448
     *)
 
-    let current_tick_encoding =
-      EncDec.value ["wasm"; "current_tick"] Data_encoding.z
-
-    let level_encoding =
-      EncDec.value ["input"; "level"] Bounded.Int32.NonNegative.encoding
-
-    let id_encoding = EncDec.value ["input"; "id"] Data_encoding.z
-
-    let last_input_read_encoder =
-      EncDec.tup2 ~flatten:true level_encoding id_encoding
-
-    let status_encoding = EncDec.value ["input"; "consuming"] Data_encoding.bool
-
-    let inp_encoding level id =
-      EncDec.value ["input"; level; id] Data_encoding.string
-
     let get_info tree =
       let open Lwt_syntax in
-      let* waiting =
-        try EncDec.decode status_encoding tree with _ -> Lwt.return false
-      in
-      let input_request =
-        if waiting then Wasm_pvm_sig.Input_required
-        else Wasm_pvm_sig.No_input_required
-      in
-      let* input =
-        try
-          let* t = EncDec.decode last_input_read_encoder tree in
-          Lwt.return @@ Some t
-        with _ -> Lwt.return_none
-      in
-      let last_input_read =
-        Option.map
-          (fun (inbox_level, message_counter) ->
-            Wasm_pvm_sig.{inbox_level; message_counter})
-          input
-      in
+      let+ state = EncDec.decode pvm_state tree in
+      Wasm_pvm_sig.
+        {
+          current_tick = state.current_tick;
+          last_input_read = state.last_input_info;
+          input_request =
+            (if state.consuming then Input_required else No_input_required);
+        }
 
-      let* current_tick =
-        try EncDec.decode current_tick_encoding tree
-        with _ -> Lwt.return Z.zero
-      in
-      Lwt.return Wasm_pvm_sig.{current_tick; last_input_read; input_request}
-
-    let set_input_step input_info message tree =
+    let set_input_step input_info _message tree =
       let open Lwt_syntax in
-      let open Wasm_pvm_sig in
-      let {inbox_level; message_counter} = input_info in
-      let level =
-        Int32.to_string @@ Bounded.Int32.NonNegative.to_int32 inbox_level
+      let* state = EncDec.decode pvm_state tree in
+      let state =
+        {
+          state with
+          last_input_info = Some input_info;
+          current_tick = Z.succ state.current_tick;
+        }
       in
-      let id = Z.to_string message_counter in
-      let* current_tick = EncDec.decode current_tick_encoding tree in
-      let* tree =
-        EncDec.encode current_tick_encoding (Z.succ current_tick) tree
-      in
-      let* tree = EncDec.encode status_encoding false tree in
-      EncDec.encode (inp_encoding level id) message tree
+      EncDec.encode pvm_state state tree
   end
 
   include Gather_floppies.Make (T) (Raw)

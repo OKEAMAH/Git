@@ -262,6 +262,8 @@ type building_state = {
   datas : Ast.data_segment Vector.t;
 }
 
+val empty_building_state : building_state
+
 (** Decoding continuation step. *)
 type decode_kont = {
   building_state : building_state;

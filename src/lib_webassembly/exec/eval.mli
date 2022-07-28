@@ -22,3 +22,5 @@ val invoke :
   func_inst ->
   value list ->
   (module_inst * value list) Lwt.t (* raises Trap *)
+
+type config
