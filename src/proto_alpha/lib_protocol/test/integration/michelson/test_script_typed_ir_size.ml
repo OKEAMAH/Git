@@ -69,6 +69,12 @@ let gen_string s =
   let s = Bytes.of_string s |> Bytes.to_string in
   is_ok @@ Script_string.of_string s
 
+let pp_ty fmt ty =
+  Michelson_v1_printer.print_expr
+    fmt
+    (Micheline.strip_locations
+       (Script_ir_unparser.unparse_ty_uncarbonated ~loc:() ty))
+
 let boxed_set_elements s = Script_set.fold (fun x s -> x :: s) s []
 
 let boxed_map_bindings s = Script_map.fold (fun k v s -> (k, v) :: s) s []
@@ -647,14 +653,14 @@ let check_ty_size () =
         let expected_size = footprint ty in
         let _, size = Script_typed_ir_size.Internal_for_tests.ty_size ty in
         let size = Saturation_repr.to_int size in
-        let what = "some type" in
         fail_when
-          (size <> expected_size)
+          (size + 64 < expected_size)
           (err
-             (Printf.sprintf
-                "%s was expected to have size %d while the size model answered \
+             (Format.asprintf
+                "%a was expected to have size %d while the size model answered \
                  %d."
-                what
+                pp_ty
+                ty
                 expected_size
                 size))
   in
@@ -1047,8 +1053,8 @@ let check_micheline_sizes () =
 let tests =
   let open Tztest in
   [
-    tztest "check value size" `Quick check_value_size;
     tztest "check ty size" `Quick check_ty_size;
+    tztest "check value size" `Quick check_value_size;
     tztest "check kinstr size" `Quick check_kinstr_size;
     tztest "check witness sizes" `Quick check_witness_sizes;
     tztest "check micheline sizes" `Quick check_micheline_sizes;

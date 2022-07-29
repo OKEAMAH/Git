@@ -58,6 +58,11 @@ val unparse_ty :
   ('b, 'c) ty ->
   ('loc Script.michelson_node * context, error trace) result
 
+(** [unparse_ty_uncarbonated ~loc ty] returns the Michelson
+    representation of type [ty] without consuming gas. *)
+val unparse_ty_uncarbonated :
+  loc:'loc -> ('a, 'ac) ty -> 'loc Script.michelson_node
+
 (** [unparse_comparable_ty_uncarbonated ~loc ty] returns the Michelson
     representation of comparable type [ty] without consuming gas. *)
 val unparse_comparable_ty_uncarbonated :

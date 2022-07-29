@@ -29,171 +29,86 @@ include Cache_memory_helpers
 
 let script_string_size s = Script_string.to_string s |> string_size
 
-let eq_xid : Id.xid -> Id.xid -> bool =
- fun a b ->
-  let Id.Xid aid, Id.Xid bid = (a, b) in
-  match Id.eq_id aid bid with Some Eq -> true | None -> false
-
-let eq_nodes_and_size : nodes_and_size -> nodes_and_size -> bool =
- fun a b ->
-  let (na, sa), (nb, sb) = (a, b) in
-  let ina = Nodes.to_int na and inb = Nodes.to_int nb in
-  Compare.Int.(ina = inb) && Saturation_repr.(sa = sb)
-
-let merge_type_list :
-    (Id.xid * nodes_and_size) list ->
-    (Id.xid * nodes_and_size) list ->
-    (Id.xid * nodes_and_size) list =
- fun ll rl ->
-  let rec in_list (xid, nodes_and_size) l =
-    match l with
-    | [] -> false
-    | (x, ns) :: _ when eq_xid x xid && eq_nodes_and_size ns nodes_and_size ->
-        true
-    | _ :: q -> in_list (xid, nodes_and_size) q
+let ty_traverse_f =
+  let base_basic =
+    !!64
+    (* Basic types count for 64 because they are all ty which is a block with
+       3 fields : 5 words for id, and 3 words for headers, hence 64. The rest
+       of the function calculates the size of the value field.
+       On the other hand compound types are functions, hence not shared. *)
   in
-  let rec trim_list l1 l2 =
-    match l1 with
-    | [] -> l2
-    | x :: q when in_list x l2 -> trim_list q l2
-    | x :: q -> trim_list q (x :: l2)
-  in
-  trim_list ll rl
-
-let rec make_type_list :
-    type a ac. nodes_and_size -> (a, ac) ty -> (Id.xid * nodes_and_size) list =
- fun accu ty ->
-  let base_basic = !!64 in
-  let base_compound _meta = h1w in
   let base_compound_no_meta = header_size in
-  match ty.value with
-  | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
-  | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
-  | Bool_t | Operation_t | Chain_id_t | Never_t | Bls12_381_g1_t
-  | Bls12_381_g2_t | Bls12_381_fr_t | Chest_key_t | Chest_t ->
-      [(Id.Xid ty.id, ret_succ_adding accu base_basic)]
-  | Pair_t (ty1, ty2, a, _) ->
-      let ll = make_type_list accu ty1 and rl = make_type_list accu ty2 in
-      let q = merge_type_list ll rl in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! (word_size *? 3) +! base_basic) )
-      in
-      x :: q
-  | Union_t (ty1, ty2, a, _) ->
-      let ll = make_type_list accu ty1 and rl = make_type_list accu ty2 in
-      let q = merge_type_list ll rl in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! (word_size *? 3) +! base_basic) )
-      in
-      x :: q
-  | Lambda_t (ty1, ty2, a) ->
-      let ll = make_type_list accu ty1 and rl = make_type_list accu ty2 in
-      let q = merge_type_list ll rl in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! (word_size *? 2) +! base_basic) )
-      in
-      x :: q
-  | Option_t (ty, a, _) ->
-      let q = make_type_list accu ty in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! (word_size *? 2) +! base_basic) )
-      in
-      x :: q
-  | List_t (ty, a) ->
-      let q = make_type_list accu ty in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! word_size +! base_basic) )
-      in
-      x :: q
-  | Set_t (ty, a) ->
-      let q = make_type_list accu ty in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! word_size +! base_basic) )
-      in
-      x :: q
-  | Map_t (ty1, ty2, a) ->
-      let ll = make_type_list accu ty1 and rl = make_type_list accu ty2 in
-      let q = merge_type_list ll rl in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! (word_size *? 2) +! base_basic) )
-      in
-      x :: q
-  | Big_map_t (ty1, ty2, a) ->
-      let ll = make_type_list accu ty1 and rl = make_type_list accu ty2 in
-      let q = merge_type_list ll rl in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! (word_size *? 2) +! base_basic) )
-      in
-      x :: q
-  | Contract_t (ty, a) ->
-      let q = make_type_list accu ty in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! word_size +! base_basic) )
-      in
-      x :: q
-  | Sapling_transaction_t m ->
-      [
-        ( Id.Xid ty.id,
-          ret_succ_adding accu
-          @@ base_compound_no_meta
-             +! Sapling.Memo_size.in_memory_size m
-             +! word_size +! base_basic );
-      ]
-  | Sapling_transaction_deprecated_t m ->
-      [
-        ( Id.Xid ty.id,
-          ret_succ_adding accu
-          @@ base_compound_no_meta
-             +! Sapling.Memo_size.in_memory_size m
-             +! word_size +! base_basic );
-      ]
-  | Sapling_state_t m ->
-      [
-        ( Id.Xid ty.id,
-          ret_succ_adding accu
-          @@ base_compound_no_meta
-             +! Sapling.Memo_size.in_memory_size m
-             +! word_size +! base_basic );
-      ]
-  | Ticket_t (ty, a) ->
-      let q = make_type_list accu ty in
-      let x =
-        ( Id.Xid ty.id,
-          ret_succ_adding (ret_succ accu)
-          @@ (base_compound a +! word_size +! base_basic) )
-      in
-      x :: q
+  let base_compound _meta = h1w in
+  let apply : type a ac. nodes_and_size -> (a, ac) ty -> nodes_and_size =
+   fun accu ty ->
+    match ty.value with
+    | Unit_t -> ret_succ_adding accu base_basic
+    | Int_t -> ret_succ_adding accu base_basic
+    | Nat_t -> ret_succ_adding accu base_basic
+    | Signature_t -> ret_succ_adding accu base_basic
+    | String_t -> ret_succ_adding accu base_basic
+    | Bytes_t -> ret_succ_adding accu base_basic
+    | Mutez_t -> ret_succ_adding accu base_basic
+    | Key_hash_t -> ret_succ_adding accu base_basic
+    | Key_t -> ret_succ_adding accu base_basic
+    | Timestamp_t -> ret_succ_adding accu base_basic
+    | Address_t -> ret_succ_adding accu base_basic
+    | Tx_rollup_l2_address_t -> ret_succ_adding accu base_basic
+    | Bool_t -> ret_succ_adding accu base_basic
+    | Operation_t -> ret_succ_adding accu base_basic
+    | Chain_id_t -> ret_succ_adding accu base_basic
+    | Never_t -> ret_succ_adding accu base_basic
+    | Bls12_381_g1_t -> ret_succ_adding accu base_basic
+    | Bls12_381_g2_t -> ret_succ_adding accu base_basic
+    | Bls12_381_fr_t -> ret_succ_adding accu base_basic
+    | Chest_key_t -> ret_succ_adding accu base_basic
+    | Chest_t -> ret_succ_adding accu base_basic
+    | Pair_t (_ty1, _ty2, a, _) ->
+        ret_succ_adding accu
+        @@ (base_compound a +! (word_size *? 3) +! base_basic)
+    | Union_t (_ty1, _ty2, a, _) ->
+        ret_succ_adding accu
+        @@ (base_compound a +! (word_size *? 3) +! base_basic)
+    | Lambda_t (_ty1, _ty2, a) ->
+        ret_succ_adding accu
+        @@ (base_compound a +! (word_size *? 2) +! base_basic)
+    | Option_t (_ty, a, _) ->
+        ret_succ_adding accu
+        @@ (base_compound a +! (word_size *? 2) +! base_basic)
+    | List_t (_ty, a) ->
+        ret_succ_adding accu @@ (base_compound a +! word_size +! base_basic)
+    | Set_t (_cty, a) ->
+        ret_succ_adding accu @@ (base_compound a +! word_size +! base_basic)
+    | Map_t (_cty, _ty, a) ->
+        ret_succ_adding accu
+        @@ (base_compound a +! (word_size *? 2) +! base_basic)
+    | Big_map_t (_cty, _ty, a) ->
+        ret_succ_adding accu
+        @@ (base_compound a +! (word_size *? 2) +! base_basic)
+    | Contract_t (_ty, a) ->
+        ret_succ_adding accu @@ (base_compound a +! word_size +! base_basic)
+    | Sapling_transaction_t m ->
+        ret_succ_adding accu
+        @@ base_compound_no_meta
+           +! Sapling.Memo_size.in_memory_size m
+           +! word_size +! base_basic
+    | Sapling_transaction_deprecated_t m ->
+        ret_succ_adding accu
+        @@ base_compound_no_meta
+           +! Sapling.Memo_size.in_memory_size m
+           +! word_size +! base_basic
+    | Sapling_state_t m ->
+        ret_succ_adding accu
+        @@ base_compound_no_meta
+           +! Sapling.Memo_size.in_memory_size m
+           +! word_size +! base_basic
+    | Ticket_t (_cty, a) ->
+        ret_succ_adding accu @@ (base_compound a +! word_size +! base_basic)
+  in
+  ({apply} : nodes_and_size ty_traverse)
 
 let ty_size : type a ac. (a, ac) ty -> nodes_and_size =
- fun ty ->
-  let rec sum accu l =
-    match l with [] -> accu | (_, (_, size)) :: q -> sum (accu +! size) q
-  in
-  let first l =
-    match l with (_, (nodes, _)) :: _ -> nodes | _ -> Nodes.zero
-  in
-  let type_list = make_type_list zero ty in
-  let size = sum Saturation_repr.zero type_list in
-  let nodes = first type_list in
-  (nodes, size +! !!64)
+ fun ty -> ty_traverse ty zero ty_traverse_f
 
 let stack_ty_size s =
   let apply : type a s. nodes_and_size -> (a, s) stack_ty -> nodes_and_size =
