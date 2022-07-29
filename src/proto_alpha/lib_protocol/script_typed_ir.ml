@@ -72,8 +72,6 @@ module Id = struct
     type u
 
     type _ id += Self : u id
-
-    val eq : 'v id -> (u, 'v) eq option
   end
 
   module Gen (X : sig
@@ -82,15 +80,13 @@ module Id = struct
     type u = X.u
 
     type _ id += Self : X.u id
-
-    let eq (type u') (this : u' id) : (X.u, u') eq option =
-      match this with Self -> Some Eq | _ -> None
   end
 
   type 'a gid = (module SGen with type u = 'a)
 
   let eq_id : type a b. a gid -> b gid -> (a, b) eq option =
-   fun (module G) (module O) -> G.eq O.Self
+   fun (module G) (module O) ->
+    match G.Self with O.Self -> Some Eq | _ -> None
 
   let gen (type a) () : a gid =
     (module Gen (struct

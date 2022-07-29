@@ -53,8 +53,6 @@ module Id : sig
     type u
 
     type _ id += Self : u id
-
-    val eq : 'v id -> (u, 'v) eq option
   end
 
   module Gen (X : sig
