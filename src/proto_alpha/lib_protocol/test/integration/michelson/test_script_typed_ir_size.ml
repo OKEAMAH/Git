@@ -169,17 +169,18 @@ type ex_kinstr = Kinstr : string * ('a, 'b, 'c, 'd) kinstr -> ex_kinstr
    also check that the overapproximation is at least well understood
    on the values for which size model is not exact. *)
 let check_value_size () =
-  let check (Ex (what, ty, v, error)) =
+  let check (Ex (_, ty, v, error)) =
     let expected_size = footprint v in
     let _, size = Script_typed_ir_size.value_size ty v in
     let size = Saturation_repr.to_int size in
     fail_when
       (expected_size + error < size || size < expected_size)
       (err
-         (Printf.sprintf
-            "%s was expected to have size %d while the size model answered %d \
+         (Format.asprintf
+            "%a was expected to have size %d while the size model answered %d \
              (with +%d accepted over approximation error)"
-            what
+            pp_ty
+            ty
             expected_size
             size
             error))

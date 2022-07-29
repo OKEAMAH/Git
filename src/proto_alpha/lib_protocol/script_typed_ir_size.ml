@@ -251,6 +251,13 @@ let rec value_size :
     a ->
     nodes_and_size =
  fun ~count_lambda_nodes accu ty x ->
+  let base_basic =
+    !!64
+    (* Basic types count for 64 because they are all ty which is a block with
+       3 fields : 5 words for id, and 3 words for headers, hence 64. The rest
+       of the function calculates the size of the value field.
+       On the other hand compound types are functions, hence not shared. *)
+  in
   let apply : type a ac. nodes_and_size -> (a, ac) ty -> a -> nodes_and_size =
    fun accu ty x ->
     match ty.value with
@@ -276,11 +283,11 @@ let rec value_size :
     | List_t (_, _) -> ret_succ_adding accu (h2w +! (h2w *? x.length))
     | Set_t (_, _) ->
         let module M = (val Script_set.get x) in
-        let boxing_space = !!536 (* By Obj.reachable_words. *) in
+        let boxing_space = !!664 (* By Obj.reachable_words. *) in
         ret_succ_adding accu (boxing_space +! (h4w *? M.size))
     | Map_t (_, _, _) ->
         let module M = (val Script_map.get_module x) in
-        let boxing_space = !!696 (* By Obj.reachable_words. *) in
+        let boxing_space = !!824 (* By Obj.reachable_words. *) in
         ret_succ_adding accu (boxing_space +! (h5w *? M.size))
     | Big_map_t (cty, ty', _) ->
         (big_map_size [@ocaml.tailcall])
@@ -289,7 +296,7 @@ let rec value_size :
           cty
           ty'
           x
-    | Contract_t (_, _) -> ret_succ (accu ++ contract_size x)
+    | Contract_t (_, _) -> ret_succ_adding (accu ++ contract_size x) base_basic
     | Sapling_transaction_t _ ->
         ret_succ_adding accu (Sapling.transaction_in_memory_size x)
     | Sapling_transaction_deprecated_t _ ->
