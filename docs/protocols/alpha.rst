@@ -23,7 +23,7 @@ Breaking Changes
 - The Baking rights RPC, when called with a list of levels, now has a
   limit of (by default) 128 levels.  This should not affect most users,
   since most users will want either a small number of levels, or a full
-  cycle.
+  cycle (and in this latter case, they can still use the whole cycle API).
 
 RPC Changes
 -----------
