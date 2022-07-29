@@ -31,7 +31,23 @@ module Make (Tree_encoding : Tree_encoding.S) = struct
   module M = Instance.NameMap
   module C = Chunked_byte_vector.Lwt
   module Wasm_encoding = Wasm_encoding.Make (Tree_encoding)
+  module Vec = Tree_encoding.Lazy_vector_encoding.Make (V)
   include Tree_encoding
+
+  module Lazy_vec = struct
+    let vector_encoding value_enc =
+      Vec.lazy_vector (value [] Data_encoding.int32) value_enc
+
+    let raw_encoding vector_encoding =
+      let offset = value ["offset"] Data_encoding.int32 in
+      let vector = scope ["vector"] vector_encoding in
+      conv
+        (fun (offset, vector) -> Decode.LazyVec {offset; vector})
+        (fun (LazyVec {offset; vector}) -> (offset, vector))
+        (tup2 ~flatten:true offset vector)
+
+    let encoding value_encoding = raw_encoding (vector_encoding value_encoding)
+  end
 
   module Byte_vector = struct
     type t' = Decode.byte_vector_kont
