@@ -795,7 +795,7 @@ module Inner = struct
       let l = 1 lsl Z.(log2up (of_int t.segment_length)) in
       let wi = Domains.get t.domain_k segment_index in
       let quotient, _ =
-        Polynomials.(division_xn p l Scalar.(negate (pow wi (Z.of_int l))))
+        Polynomials.division_xn p l Scalar.(negate (pow wi (Z.of_int l)))
       in
       Ok (commit t quotient)
 
