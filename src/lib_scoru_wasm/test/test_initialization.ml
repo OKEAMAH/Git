@@ -1,167 +1,34 @@
-(* open Tztest *)
 open Tezos_webassembly_interpreter
-
-(* open Tezos_scoru_wasm *)
+open Instance
+open Tezos_scoru_wasm
+module Context = Tezos_context_memory.Context_binary
 open QCheck2.Gen
-
-let gen_names : Ast.name_list t = list int
-
-let types_gen = Ast_generators.(map no_region func_type_gen)
-
-let global_type_gen =
-  let* value = Ast_generators.value_type_gen in
-  let* mt = oneofl [Types.Immutable; Types.Mutable] in
-  let ty = Types.GlobalType (value, mt) in
-  return ty
-
-let const_gen = Ast_generators.(map no_region block_label_gen)
-
-let glob_gen =
-  let* gtype = global_type_gen in
-  let* ginit = const_gen in
-  return @@ Ast_generators.no_region Ast.{gtype; ginit}
-
-let table'_gen =
-  let* len = frequency [(10, int_range 1 10); (1, int_range 100 200)] in
-  let* ttype = Ast_generators.table_type_gen len in
-  return @@ Ast_generators.no_region Ast.{ttype}
-
-let mem_gen =
-  let open Ast_generators in
-  let* mtype = memory_type_gen in
-  let memory' = Ast.{mtype} in
-  return @@ no_region memory'
-
-let start_gen =
-  let open Ast_generators in
-  let* sfunc = var_gen in
-  let start' = Ast.{sfunc} in
-  oneof [return None; return @@ Some (no_region start')]
-
-let segm_mode_gen =
-  let open Ast_generators in
-  let index = no_region 0l in
-  let* offset = const_gen in
-  map no_region @@ oneofl Ast.[Passive; Active {index; offset}]
-
-let elm_seg_gen =
-  let open Ast_generators in
-  let* etype = ref_type_gen in
-  let* einit = vector_gen const_gen in
-  let* emode = segm_mode_gen in
-  return @@ Ast_generators.no_region Ast.{etype; einit; emode}
-
-let data_segm_gen =
-  let* bs = string in
-  let dinit = Chunked_byte_vector.Lwt.of_string bs in
-  let* dmode = segm_mode_gen in
-  return @@ Ast_generators.no_region Ast.{dinit; dmode}
-
-let import_desc_gen =
-  let open Ast_generators in
-  let* var = var_gen in
-  let* len = frequency [(10, int_range 1 10); (1, int_range 100 200)] in
-  let* table_type = table_type_gen len in
-  let* memory_type = memory_type_gen in
-  let* global_type = global_type_gen in
-  map no_region
-  @@ oneofl
-       Ast.
-         [
-           FuncImport var;
-           TableImport table_type;
-           MemoryImport memory_type;
-           GlobalImport global_type;
-         ]
-
-let name_gen = Ast_generators.vector_gen int
-
-let import_gen =
-  let open Ast_generators in
-  let* module_name = name_gen in
-  let* item_name = name_gen in
-  let* idesc = import_desc_gen in
-  return @@ no_region @@ Ast.{module_name; item_name; idesc}
+open Tztest
 
 let det_import_gen list_of_imports =
   let open Ast_generators in
-  let rand = Random.State.make_self_init () in
+  let memory_type = Types.(MemoryType {min = 1l; max = Some 3l}) in
   let importsl =
     List.map
       (fun module_name ->
-        let item_name = generate1 ~rand name_gen in
-        let idesc = generate1 ~rand import_desc_gen in
+        let item_name = Utf8.decode "memory" in
+        let idesc = no_region @@ Ast.MemoryImport memory_type in
         no_region @@ Ast.{module_name; item_name; idesc})
       list_of_imports
   in
   Lazy_vector.LwtInt32Vector.of_list importsl
 
-let export_desc_gen =
-  let open Ast_generators in
-  let* var = var_gen in
-
-  map no_region
-  @@ oneofl
-       Ast.[FuncExport var; TableExport var; MemoryExport var; GlobalExport var]
-
-let export_gen =
-  let* name = name_gen in
-  let* edesc = export_desc_gen in
-  return @@ Ast_generators.no_region Ast.{name; edesc}
-
-let block_table_gen =
-  let open Ast_generators in
-  let instr_g =
-    let* instr = instr_gen in
-    return @@ Ast_generators.no_region instr.it
-  in
-  vector_gen @@ vector_gen instr_g
-
-let module_generator =
-  let open Ast_generators in
-  let* types = vector_gen types_gen in
-  let* globals = vector_gen glob_gen in
-  let* tables = vector_gen table'_gen in
-  let* memories = vector_gen mem_gen in
-  let* funcs = vector_gen func'_gen in
-  let* start = start_gen in
-  let* elems = vector_gen elm_seg_gen in
-  let* datas = vector_gen data_segm_gen in
-  let* imports = vector_gen import_gen in
-  let* exports = vector_gen export_gen in
-  let* blocks = block_table_gen in
-
-  return
-    Ast.
-      {
-        types;
-        globals;
-        tables;
-        memories;
-        funcs;
-        start;
-        elems;
-        datas;
-        imports;
-        exports;
-        blocks;
-      }
-
 module Vector = Lazy_vector.LwtInt32Vector
 
 let module_generator_det list_of_imports =
-  let open Ast_generators in
-  let* _types = vector_gen types_gen in
-  let* _globals = vector_gen glob_gen in
-  let* _tables = vector_gen table'_gen in
-  let* _memories = vector_gen mem_gen in
-  let* _funcs = vector_gen func'_gen in
-  let* _start = start_gen in
-  let* _elems = vector_gen elm_seg_gen in
-  let* datas = vector_gen data_segm_gen in
+  let allocations =
+    let blocks = Vector.create 0l in
+    let datas = Vector.create 0l in
+    Ast.{blocks; datas}
+  in
+
+  (* let b = Vector.num_elements allocations.blocks in *)
   let imports = det_import_gen list_of_imports in
-  let* _exports = vector_gen export_gen in
-  let* _blocks = block_table_gen in
 
   return
     Ast.
@@ -173,8 +40,173 @@ let module_generator_det list_of_imports =
         funcs = Vector.create 0l;
         start = None;
         elems = Vector.create 0l;
-        datas;
+        datas = Vector.create 0l;
         imports;
         exports = Vector.create 0l;
-        blocks = Vector.create 0l;
+        allocations;
       }
+
+module Tree = struct
+  type t = Context.t
+
+  type tree = Context.tree
+
+  type key = Context.key
+
+  type value = Context.value
+
+  include Context.Tree
+end
+
+module Wasm = Wasm_pvm.Make (Tree)
+module EncDec = Tree_encoding_decoding.Make (Tree)
+module Wasm_encoding = Wasm_encoding.Make (EncDec)
+
+let current_tick_encoding =
+  EncDec.value ["wasm"; "current_tick"] Data_encoding.z
+
+let status_encoding = EncDec.value ["input"; "consuming"] Data_encoding.bool
+
+let floppy_encoding =
+  EncDec.value
+    ["gather-floppies"; "status"]
+    Gather_floppies.internal_status_encoding
+
+let initialise_tree () =
+  let open Lwt_syntax in
+  let* tree =
+    let open Lwt_syntax in
+    let* index = Context.init "/tmp" in
+    let empty_store = Context.empty index in
+    return (Context.Tree.empty empty_store)
+  in
+
+  let* tree = EncDec.encode current_tick_encoding Z.zero tree in
+  let* tree =
+    EncDec.encode floppy_encoding Gather_floppies.Not_gathering_floppies tree
+  in
+  let* tree = EncDec.encode status_encoding true tree in
+  Lwt.return tree
+
+let x0 =
+  QCheck2.Gen.generate1
+    ~rand:(Random.State.make_self_init ())
+    (module_generator_det [Utf8.decode "m1"; Utf8.decode "m2"])
+
+let x1 =
+  QCheck2.Gen.generate1
+    ~rand:(Random.State.make_self_init ())
+    (module_generator_det [Utf8.decode "m3"])
+
+let x2 =
+  QCheck2.Gen.generate1
+    ~rand:(Random.State.make_self_init ())
+    (module_generator_det [])
+
+let x3 =
+  QCheck2.Gen.generate1
+    ~rand:(Random.State.make_self_init ())
+    (module_generator_det [])
+
+let name_list name = Lwt_main.run @@ Ast.Vector.to_list @@ Utf8.decode name
+
+let maps =
+  Ast_generators.
+    [
+      (name_list "m0", no_region x0);
+      (name_list "m1", no_region x1);
+      (name_list "m2", no_region x2);
+      (name_list "m3", no_region x3);
+    ]
+
+let map =
+  List.fold_left (fun m (a, b) -> NameMap.(set a b m)) (NameMap.create ()) maps
+
+let memory_gen =
+  let ty = Types.(MemoryType {min = 1l; max = Some 3l}) in
+  let bs = "hello" in
+  let chunks = Chunked_byte_vector.Lwt.of_string bs in
+  return @@ Memory.of_chunks ty chunks
+
+let memory = QCheck2.Gen.generate1 memory_gen
+
+let lookup name =
+  let open Lwt.Syntax in
+  let+ name = Utf8.encode name in
+  match name with "memory" -> ExternMemory memory | _ -> assert false
+
+let print = Format.asprintf "%a" Ast_printer.pp_module
+
+let check_modules module_name tree =
+  let open Lwt_result_syntax in
+  let host_function_registry =
+    Tezos_webassembly_interpreter.Host_funcs.empty ()
+  in
+  let*! decoded =
+    EncDec.(
+      decode (Wasm_encoding.module_instance_encoding ~module_name ()) tree)
+  in
+  let*! module_ = NameMap.get (name_list module_name) map in
+  let*! initialised =
+    let m = Ast_generators.no_region module_.it in
+    let*! imports = Import.link m in
+    Eval.init host_function_registry m imports
+  in
+  assert (print decoded = print initialised) ;
+  return_unit
+
+let test () =
+  let open Lwt_result_syntax in
+  let*! _ =
+    List.fold_left
+      (fun _ x -> Import.register ~module_name:(Utf8.decode x) lookup)
+      Lwt.return_unit
+      ["m0"; "m1"; "m2"; "m3"]
+  in
+
+  let*! tree = initialise_tree () in
+  let host_function_registry =
+    Tezos_webassembly_interpreter.Host_funcs.empty ()
+  in
+
+  let*! tree =
+    Wasm.initialize ~host_function_registry map tree (Utf8.decode "m0")
+  in
+  let*! _ = check_modules "m0" tree in
+  let*! _ = check_modules "m1" tree in
+  let*! _ = check_modules "m2" tree in
+  let*! _ = check_modules "m3" tree in
+
+  return_unit
+
+(* let decode_encode enc x =
+     let open Lwt_syntax in
+     let* t =
+       let open Lwt_syntax in
+       let* index = Context.init "/tmp" in
+       let empty_store = Context.empty index in
+       return @@ Context.Tree.empty empty_store
+     in
+     let* t1 = EncDec.encode enc x t in
+     EncDec.decode enc t1
+
+   let assert_string_equal s1 s2 =
+     let open Lwt_result_syntax in
+     if String.equal s1 s2 then return_unit else failwith "Not equal"
+
+   (** Test serialize/deserialize empty_mem. *)
+   let test_mem () =
+     let open Lwt_result_syntax in
+     let print = Format.asprintf "%a" Ast_printer.pp_memory in
+     let mem1 =
+       let ty = Types.(MemoryType {min = 1l; max = Some 3l}) in
+       Memory.alloc ty
+     in
+     let mem1_str = print mem1 in
+     let*! mem2 = decode_encode Wasm_encoding.memory_encoding mem1 in
+     let mem2_str = print mem2 in
+
+     assert_string_equal mem1_str mem2_str *)
+
+let tests =
+  [tztest "initialisation" `Quick test (* tztest "memory" `Quick test_mem *)]

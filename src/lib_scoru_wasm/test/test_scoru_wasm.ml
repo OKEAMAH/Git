@@ -38,5 +38,6 @@ let () =
       ("Encodings", Test_encoding.tests);
       ("AST Generators", Test_ast_generators.tests);
       ("WASM Encodings", Test_wasm_encoding.tests);
+      ("Initialize", Test_initialization.tests);
     ]
   |> Lwt_main.run

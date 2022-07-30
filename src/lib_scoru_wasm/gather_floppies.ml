@@ -414,5 +414,5 @@ module Make (T : Tree.S) (Wasm : Wasm_pvm_sig.S with type tree = T.tree) :
             (Invalid_argument "initial_tree_from_boot_sector: wrong boot sector")
   end
 
-  let initialize ?host_function_registry:_ _ tree _ = Lwt.return tree
+  let initialize = Wasm.initialize
 end

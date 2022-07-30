@@ -130,7 +130,7 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
             match remaining_list with
             | [] -> Lwt.return added_list
             | h :: tl ->
-                let* head = h in
+                let* head = Ast.Vector.to_list h in
                 let* mod_ = Instance.NameMap.get head module_map in
                 let Ast.{imports; _} = mod_.Source.it in
                 let* imports = Ast.Vector.to_list imports in
@@ -139,14 +139,14 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
                     Ast.(
                       fun x ->
                         let {module_name; _} = x.Source.it in
-                        Vector.to_list module_name)
+                        module_name)
                     imports
                 in
-                let new_added_list = (head, mod_) :: added_list in
+                let new_added_list = (h, mod_) :: added_list in
                 let new_remaining = List.rev_append keys tl in
                 aux module_map new_added_list new_remaining
           in
-          aux module_map [] [Lwt.return module_name]
+          aux module_map [] [module_name]
 
         let initialize ?(host_function_registry = Host_funcs.empty ())
             module_map tree main_module_name =
@@ -158,13 +158,11 @@ module Make (T : Tree.S) : Gather_floppies.S with type tree = T.tree = struct
                 let* imports = Import.link m in
                 let* mod_inst = Eval.init host_function_registry m imports in
                 let* tree = tree in
+                let* module_name = Utf8.encode mod_name in
+
                 let* t =
                   EncDec.encode
-                    (Wasm_encoding.module_instance_encoding
-                       ?module_name:
-                         (Some
-                            (String.concat "" (List.map string_of_int mod_name)))
-                       ())
+                    (Wasm_encoding.module_instance_encoding ~module_name ())
                     mod_inst
                     tree
                 in

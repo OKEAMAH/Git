@@ -85,7 +85,7 @@ module type S = sig
     ?host_function_registry:Host_funcs.registry ->
     Ast.module_ Instance.NameMap.t ->
     tree ->
-    Ast.name_list ->
+    Ast.name ->
     tree Lwt.t
 end
 
