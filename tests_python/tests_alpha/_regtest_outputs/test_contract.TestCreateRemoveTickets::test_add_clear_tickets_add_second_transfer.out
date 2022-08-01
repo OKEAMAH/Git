@@ -27,7 +27,7 @@ This sequence of operations was run:
       Parameter: (Pair 1 "B")
       This transaction was successfully applied
       Updated storage:
-        { Pair 0x0134d794a355dbb7027075d278a68494e91c6709ed00 (Pair "B" 1) }
+        { Pair 0x01ba9b0bcb6d2339f2046b1623ce47dc6e707f086700 (Pair "B" 1) }
       Storage size: 154 bytes
       Consumed gas: 1657.462
 

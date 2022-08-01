@@ -7,36 +7,36 @@ emitted operations
 big_map diff
   
 trace
-  - location: 9 (remaining gas: 1039992.627 units remaining)
+  - location: 9 (remaining gas: 1039992.927 units remaining)
     [ (Pair { "c" ; "b" ; "a" } { "" }) ]
-  - location: 9 (remaining gas: 1039992.617 units remaining)
+  - location: 9 (remaining gas: 1039992.917 units remaining)
     [ { "c" ; "b" ; "a" } ]
-  - location: 10 (remaining gas: 1039992.607 units remaining)
+  - location: 10 (remaining gas: 1039992.907 units remaining)
     [ {}
       { "c" ; "b" ; "a" } ]
-  - location: 12 (remaining gas: 1039992.597 units remaining)
+  - location: 12 (remaining gas: 1039992.897 units remaining)
     [ { "c" ; "b" ; "a" }
       {} ]
-  - location: 13 (remaining gas: 1039992.597 units remaining)
+  - location: 13 (remaining gas: 1039992.897 units remaining)
     [ "c"
       {} ]
-  - location: 15 (remaining gas: 1039992.587 units remaining)
+  - location: 15 (remaining gas: 1039992.887 units remaining)
     [ { "c" } ]
-  - location: 13 (remaining gas: 1039992.577 units remaining)
+  - location: 13 (remaining gas: 1039992.877 units remaining)
     [ "b"
       { "c" } ]
-  - location: 15 (remaining gas: 1039992.567 units remaining)
+  - location: 15 (remaining gas: 1039992.867 units remaining)
     [ { "b" ; "c" } ]
-  - location: 13 (remaining gas: 1039992.557 units remaining)
+  - location: 13 (remaining gas: 1039992.857 units remaining)
     [ "a"
       { "b" ; "c" } ]
-  - location: 15 (remaining gas: 1039992.547 units remaining)
+  - location: 15 (remaining gas: 1039992.847 units remaining)
     [ { "a" ; "b" ; "c" } ]
-  - location: 13 (remaining gas: 1039992.537 units remaining)
+  - location: 13 (remaining gas: 1039992.837 units remaining)
     [ { "a" ; "b" ; "c" } ]
-  - location: 16 (remaining gas: 1039992.527 units remaining)
+  - location: 16 (remaining gas: 1039992.827 units remaining)
     [ {}
       { "a" ; "b" ; "c" } ]
-  - location: 18 (remaining gas: 1039992.517 units remaining)
+  - location: 18 (remaining gas: 1039992.817 units remaining)
     [ (Pair {} { "a" ; "b" ; "c" }) ]
 

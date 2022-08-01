@@ -1,7 +1,7 @@
 tests_alpha/test_contract.py::TestTypecheck::test_typecheck[mini_scenarios/add_clear_tickets.tz]
 
 Well typed
-Gas remaining: 1039990.715 units remaining
+Gas remaining: 1039991.375 units remaining
 { parameter (or (pair %add nat string) (unit %clear)) ;
   storage (list (ticket string)) ;
   code { UNPAIR

@@ -1,7 +1,7 @@
 tests_alpha/test_contract.py::TestTypecheck::test_typecheck[mini_scenarios/send_tickets_in_big_map.tz]
 
 Well typed
-Gas remaining: 1039969.352 units remaining
+Gas remaining: 1039971.452 units remaining
 { parameter address ;
   storage unit ;
   code { CAR
