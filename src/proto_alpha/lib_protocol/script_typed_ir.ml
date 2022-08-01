@@ -1725,11 +1725,14 @@ module PairLikeType (T : sig
   type ('a, 'b) t
 
   val deconstructor :
-    (('a, 'b) t, 'rc) ty -> 'a ty_ex_c * 'b ty_ex_c * 'rc dbool
+    (('a, 'b) t, 'rc) ty_value -> 'a ty_ex_c * 'b ty_ex_c * 'rc dbool
 
   val constructor :
-    ('a, 'ac) ty * ('b, 'bc) ty * ('a, 'b) t Type_size.t * ('ac, 'bc, 'rc) dand ->
-    (('a, 'b) t, 'rc) ty
+    ('a, 'ac) ty ->
+    ('b, 'bc) ty ->
+    ('a, 'b) t Type_size.t ->
+    ('ac, 'bc, 'rc) dand ->
+    (('a, 'b) t, 'rc) ty_value
 end) : sig
   val t :
     Script.location -> ('a, _) ty -> ('b, _) ty -> ('a, 'b) T.t ty_ex_c tzresult
@@ -1760,14 +1763,15 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
     match res with
     | Some (X r) -> (
-        let Ty_ex_c a', Ty_ex_c b', _ = T.deconstructor r in
+        let rv = r.value in
+        let Ty_ex_c a', Ty_ex_c b', _ = T.deconstructor rv in
         match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
         | Some Eq, Some Eq -> Ok (Ty_ex_c r)
         | _ -> assert false)
     | None ->
         let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
         let (Ex_dand cmp) = dand (is_comparable a) (is_comparable b) in
-        let r = T.constructor (a, b, size, cmp) in
+        let r = {id = Id.gen (); value = T.constructor a b size cmp} in
         Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
         Ty_ex_c r
 
@@ -1782,13 +1786,14 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
     match res with
     | Some (X r) -> (
-        let Ty_ex_c a', Ty_ex_c b', d' = T.deconstructor r in
+        let rv = r.value in
+        let Ty_ex_c a', Ty_ex_c b', d' = T.deconstructor rv in
         match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id, eq_dbool Yes d') with
         | Some Eq, Some Eq, Some Eq -> Ok r
         | _ -> assert false)
     | None ->
         let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
-        let r = T.constructor (a, b, size, YesYes) in
+        let r = {id = Id.gen (); value = T.constructor a b size YesYes} in
         Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
         r
 
@@ -1803,13 +1808,14 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
     match res with
     | Some (X r) -> (
-        let Ty_ex_c a', Ty_ex_c b', d' = T.deconstructor r in
+        let rv = r.value in
+        let Ty_ex_c a', Ty_ex_c b', d' = T.deconstructor rv in
         let d = dbool_of_dand cmp in
         match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id, eq_dbool d d') with
         | Some Eq, Some Eq, Some Eq -> r
         | _ -> assert false)
     | None ->
-        let r = T.constructor (a, b, size, cmp) in
+        let r = {id = Id.gen (); value = T.constructor a b size cmp} in
         Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
         r
 end
@@ -1817,12 +1823,10 @@ end
 module Pair_type = PairLikeType (struct
   type ('l, 'r) t = ('l, 'r) pair
 
-  let deconstructor p =
-    let (Pair_t (l, r, _, cmp)) = p.value in
+  let deconstructor (Pair_t (l, r, _, cmp)) =
     (Ty_ex_c l, Ty_ex_c r, dbool_of_dand cmp)
 
-  let constructor (l, r, size, cmp) =
-    {id = Id.gen (); value = Pair_t (l, r, {size}, cmp)}
+  let constructor l r size cmp = Pair_t (l, r, {size}, cmp)
 end)
 
 let pair_t loc l r = Pair_type.t loc l r
@@ -1842,12 +1846,10 @@ let comparable_pair_3_t loc l m r =
 module Union_type = PairLikeType (struct
   type ('l, 'r) t = ('l, 'r) union
 
-  let deconstructor u =
-    let (Union_t (l, r, _, cmp)) = u.value in
+  let deconstructor (Union_t (l, r, _, cmp)) =
     (Ty_ex_c l, Ty_ex_c r, dbool_of_dand cmp)
 
-  let constructor (l, r, size, cmp) =
-    {id = Id.gen (); value = Union_t (l, r, {size}, cmp)}
+  let constructor l r size cmp = Union_t (l, r, {size}, cmp)
 end)
 
 let union_t loc l r = Union_type.t loc l r
@@ -1859,10 +1861,13 @@ let comparable_union_t loc l r = Union_type.comparable_t loc l r
 module LambdaLikeType (T : sig
   type ('a, 'b) t
 
-  val deconstructor : (('a, 'b) t, no) ty -> 'a ty_ex_c * 'b ty_ex_c
+  val deconstructor : (('a, 'b) t, no) ty_value -> 'a ty_ex_c * 'b ty_ex_c
 
   val constructor :
-    ('a, _) ty * ('b, _) ty * ('a, 'b) t Type_size.t -> (('a, 'b) t, no) ty
+    ('a, _) ty ->
+    ('b, _) ty ->
+    ('a, 'b) t Type_size.t ->
+    (('a, 'b) t, no) ty_value
 end) : sig
   val t :
     Script.location ->
@@ -1885,13 +1890,14 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
     match res with
     | Some (X r) -> (
-        let Ty_ex_c a', Ty_ex_c b' = T.deconstructor r in
+        let rv = r.value in
+        let Ty_ex_c a', Ty_ex_c b' = T.deconstructor rv in
         match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
         | Some Eq, Some Eq -> Ok r
         | _ -> assert false)
     | None ->
         let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
-        let r = T.constructor (a, b, size) in
+        let r = {id = Id.gen (); value = T.constructor a b size} in
         Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
         r
 end
@@ -1899,12 +1905,9 @@ end
 module Lambda_type = LambdaLikeType (struct
   type ('a, 'r) t = ('a, 'r) lambda
 
-  let deconstructor l =
-    let (Lambda_t (a, r, _)) = l.value in
-    (Ty_ex_c a, Ty_ex_c r)
+  let deconstructor (Lambda_t (a, r, _)) = (Ty_ex_c a, Ty_ex_c r)
 
-  let constructor (a, r, size) =
-    {id = Id.gen (); value = Lambda_t (a, r, {size})}
+  let constructor a r size = Lambda_t (a, r, {size})
 end)
 
 let lambda_t loc a r = Lambda_type.t loc a r
@@ -1912,9 +1915,9 @@ let lambda_t loc a r = Lambda_type.t loc a r
 module OptionLikeType (T : sig
   type 'a t
 
-  val deconstructor : ('a t, 'ac) ty -> ('a, 'ac) ty * 'ac dbool
+  val deconstructor : ('a t, 'ac) ty_value -> ('a, 'ac) ty * 'ac dbool
 
-  val constructor : ('a, 'ac) ty * 'a t Type_size.t -> ('a t, 'ac) ty
+  val constructor : ('a, 'ac) ty -> 'a t Type_size.t -> ('a t, 'ac) ty_value
 end) : sig
   val t : Script.location -> ('a, 'ac) ty -> ('a T.t, 'ac) ty tzresult
 
@@ -1934,11 +1937,12 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id) in
     match res with
     | Some (X r) -> (
-        let a', _ = T.deconstructor r in
+        let rv = r.value in
+        let a', _ = T.deconstructor rv in
         match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
     | None ->
         let+ size = Type_size.compound1 loc (ty_size a) in
-        let r = T.constructor (a, size) in
+        let r = {id = Id.gen (); value = T.constructor a size} in
         Hashtbl.add table (Id.Xid a.id) (X r) ;
         r
 
@@ -1950,11 +1954,12 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id) in
     match res with
     | Some (X r) -> (
-        let a', _ = T.deconstructor r in
+        let rv = r.value in
+        let a', _ = T.deconstructor rv in
         match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
     | None ->
         let+ size = Type_size.compound1 loc (ty_size a) in
-        let r = T.constructor (a, size) in
+        let r = {id = Id.gen (); value = T.constructor a size} in
         Hashtbl.add table (Id.Xid a.id) (X r) ;
         r
 
@@ -1964,12 +1969,13 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id) in
     match res with
     | Some (X r) -> (
-        let a', ac' = T.deconstructor r in
+        let rv = r.value in
+        let a', ac' = T.deconstructor rv in
         match (Id.eq_id a.id a'.id, eq_dbool ac ac') with
         | Some Eq, Some Eq -> r
         | _ -> assert false)
     | None ->
-        let r = T.constructor (a, size) in
+        let r = {id = Id.gen (); value = T.constructor a size} in
         Hashtbl.add table (Id.Xid a.id) (X r) ;
         r
 end
@@ -1977,12 +1983,9 @@ end
 module Option_type = OptionLikeType (struct
   type 'a t = 'a option
 
-  let deconstructor o =
-    let (Option_t (v, _, c)) = o.value in
-    (v, c)
+  let deconstructor (Option_t (v, _, c)) = (v, c)
 
-  let constructor (v, size) =
-    {id = Id.gen (); value = Option_t (v, {size}, is_comparable v)}
+  let constructor v size = Option_t (v, {size}, is_comparable v)
 end)
 
 let option_t loc t = Option_type.t loc t
@@ -2020,9 +2023,9 @@ let option_pair_int_nat_t =
 module ListLikeType (T : sig
   type 'a t
 
-  val deconstructor : ('a t, no) ty -> 'a ty_ex_c
+  val deconstructor : ('a t, no) ty_value -> 'a ty_ex_c
 
-  val constructor : ('a, _) ty * 'a t Type_size.t -> ('a t, no) ty
+  val constructor : ('a, _) ty -> 'a t Type_size.t -> ('a t, no) ty_value
 end) : sig
   val t : Script.location -> ('a, _) ty -> ('a T.t, no) ty tzresult
 
@@ -2038,11 +2041,12 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id) in
     match res with
     | Some (X r) -> (
-        let (Ty_ex_c a') = T.deconstructor r in
+        let rv = r.value in
+        let (Ty_ex_c a') = T.deconstructor rv in
         match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
     | None ->
         let+ size = Type_size.compound1 loc (ty_size a) in
-        let r = T.constructor (a, size) in
+        let r = {id = Id.gen (); value = T.constructor a size} in
         Hashtbl.add table (Id.Xid a.id) (X r) ;
         r
 
@@ -2051,10 +2055,11 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id) in
     match res with
     | Some (X r) -> (
-        let (Ty_ex_c a') = T.deconstructor r in
+        let rv = r.value in
+        let (Ty_ex_c a') = T.deconstructor rv in
         match Id.eq_id a.id a'.id with Some Eq -> r | None -> assert false)
     | None ->
-        let r = T.constructor (a, size) in
+        let r = {id = Id.gen (); value = T.constructor a size} in
         Hashtbl.add table (Id.Xid a.id) (X r) ;
         r
 end
@@ -2062,11 +2067,9 @@ end
 module List_type = ListLikeType (struct
   type 'a t = 'a boxed_list
 
-  let deconstructor l =
-    let (List_t (v, _)) = l.value in
-    Ty_ex_c v
+  let deconstructor (List_t (v, _)) = Ty_ex_c v
 
-  let constructor (v, size) = {id = Id.gen (); value = List_t (v, {size})}
+  let constructor v size = List_t (v, {size})
 end)
 
 let list_t loc t = List_type.t loc t
@@ -2078,9 +2081,9 @@ let list_operation_t = List_type.known_t operation_t Type_size.two
 module SetLikeType (T : sig
   type 'a t
 
-  val deconstructor : ('a t, no) ty -> 'a comparable_ty
+  val deconstructor : ('a t, no) ty_value -> 'a comparable_ty
 
-  val constructor : 'a comparable_ty * 'a t Type_size.t -> ('a t, no) ty
+  val constructor : 'a comparable_ty -> 'a t Type_size.t -> ('a t, no) ty_value
 end) : sig
   val t : Script.location -> 'a comparable_ty -> ('a T.t, no) ty tzresult
 end = struct
@@ -2095,11 +2098,12 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id) in
     match res with
     | Some (X r) -> (
-        let a' = T.deconstructor r in
+        let rv = r.value in
+        let a' = T.deconstructor rv in
         match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
     | None ->
         let+ size = Type_size.compound1 loc (ty_size a) in
-        let r = T.constructor (a, size) in
+        let r = {id = Id.gen (); value = T.constructor a size} in
         Hashtbl.add table (Id.Xid a.id) (X r) ;
         r
 end
@@ -2107,11 +2111,9 @@ end
 module Set_type = SetLikeType (struct
   type 'a t = 'a set
 
-  let deconstructor s =
-    let (Set_t (v, _)) = s.value in
-    v
+  let deconstructor (Set_t (v, _)) = v
 
-  let constructor (v, size) = {id = Id.gen (); value = Set_t (v, {size})}
+  let constructor v size = Set_t (v, {size})
 end)
 
 let set_t loc t = Set_type.t loc t
@@ -2119,11 +2121,13 @@ let set_t loc t = Set_type.t loc t
 module MapLikeType (T : sig
   type ('a, 'b) t
 
-  val deconstructor : (('a, 'b) t, no) ty -> 'a comparable_ty * 'b ty_ex_c
+  val deconstructor : (('a, 'b) t, no) ty_value -> 'a comparable_ty * 'b ty_ex_c
 
   val constructor :
-    'a comparable_ty * ('b, _) ty * ('a, 'b) t Type_size.t ->
-    (('a, 'b) t, no) ty
+    'a comparable_ty ->
+    ('b, _) ty ->
+    ('a, 'b) t Type_size.t ->
+    (('a, 'b) t, no) ty_value
 end) : sig
   val t :
     Script.location ->
@@ -2146,13 +2150,14 @@ end = struct
     let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
     match res with
     | Some (X r) -> (
-        let a', Ty_ex_c b' = T.deconstructor r in
+        let rv = r.value in
+        let a', Ty_ex_c b' = T.deconstructor rv in
         match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
         | Some Eq, Some Eq -> Ok r
         | _ -> assert false)
     | None ->
         let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
-        let r = T.constructor (a, b, size) in
+        let r = {id = Id.gen (); value = T.constructor a b size} in
         Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
         r
 end
@@ -2160,11 +2165,9 @@ end
 module Map_type = MapLikeType (struct
   type ('k, 'v) t = ('k, 'v) map
 
-  let deconstructor m =
-    let (Map_t (k, v, _)) = m.value in
-    (k, Ty_ex_c v)
+  let deconstructor (Map_t (k, v, _)) = (k, Ty_ex_c v)
 
-  let constructor (k, v, size) = {id = Id.gen (); value = Map_t (k, v, {size})}
+  let constructor k v size = Map_t (k, v, {size})
 end)
 
 let map_t loc k v = Map_type.t loc k v
@@ -2172,12 +2175,9 @@ let map_t loc k v = Map_type.t loc k v
 module Big_map_type = MapLikeType (struct
   type ('k, 'v) t = ('k, 'v) big_map
 
-  let deconstructor bm =
-    let (Big_map_t (k, v, _)) = bm.value in
-    (k, Ty_ex_c v)
+  let deconstructor (Big_map_t (k, v, _)) = (k, Ty_ex_c v)
 
-  let constructor (k, v, size) =
-    {id = Id.gen (); value = Big_map_t (k, v, {size})}
+  let constructor k v size = Big_map_t (k, v, {size})
 end)
 
 let big_map_t loc k v = Big_map_type.t loc k v
@@ -2185,11 +2185,9 @@ let big_map_t loc k v = Big_map_type.t loc k v
 module Contract_type = ListLikeType (struct
   type 'a t = 'a typed_contract
 
-  let deconstructor c =
-    let (Contract_t (a, _)) = c.value in
-    Ty_ex_c a
+  let deconstructor (Contract_t (a, _)) = Ty_ex_c a
 
-  let constructor (a, size) = {id = Id.gen (); value = Contract_t (a, {size})}
+  let constructor a size = Contract_t (a, {size})
 end)
 
 let contract_t loc t = Contract_type.t loc t
@@ -2199,7 +2197,7 @@ let contract_unit_t = Contract_type.known_t unit_t Type_size.two
 module SaplingLikeType (T : sig
   type t
 
-  val constructor : Sapling.Memo_size.t -> (t, no) ty
+  val constructor : Sapling.Memo_size.t -> (t, no) ty_value
 end) : sig
   val t : Sapling.Memo_size.t -> (T.t, no) ty
 end = struct
@@ -2211,7 +2209,7 @@ end = struct
     match res with
     | Some r -> r
     | None ->
-        let r = T.constructor i in
+        let r = {id = Id.gen (); value = T.constructor i} in
         Hashtbl.add table i r ;
         r
 end
@@ -2219,7 +2217,7 @@ end
 module Sapling_transaction_type = SaplingLikeType (struct
   type t = Sapling.transaction
 
-  let constructor i = {id = Id.gen (); value = Sapling_transaction_t i}
+  let constructor i = Sapling_transaction_t i
 end)
 
 let sapling_transaction_t ~memo_size:i = Sapling_transaction_type.t i
@@ -2227,8 +2225,7 @@ let sapling_transaction_t ~memo_size:i = Sapling_transaction_type.t i
 module Sapling_transaction_deprecated_type = SaplingLikeType (struct
   type t = Sapling.Legacy.transaction
 
-  let constructor i =
-    {id = Id.gen (); value = Sapling_transaction_deprecated_t i}
+  let constructor i = Sapling_transaction_deprecated_t i
 end)
 
 let sapling_transaction_deprecated_t ~memo_size:i =
@@ -2237,7 +2234,7 @@ let sapling_transaction_deprecated_t ~memo_size:i =
 module Sapling_state_type = SaplingLikeType (struct
   type t = Sapling.state
 
-  let constructor i = {id = Id.gen (); value = Sapling_state_t i}
+  let constructor i = Sapling_state_t i
 end)
 
 let sapling_state_t ~memo_size:i = Sapling_state_type.t i
@@ -2255,11 +2252,9 @@ let bls12_381_fr_t = {id = Id.gen (); value = Bls12_381_fr_t}
 module Ticket_type = SetLikeType (struct
   type 'a t = 'a ticket
 
-  let deconstructor t =
-    let (Ticket_t (a, _)) = t.value in
-    a
+  let deconstructor (Ticket_t (a, _)) = a
 
-  let constructor (a, size) = {id = Id.gen (); value = Ticket_t (a, {size})}
+  let constructor a size = Ticket_t (a, {size})
 end)
 
 let ticket_t loc t = Ticket_type.t loc t
