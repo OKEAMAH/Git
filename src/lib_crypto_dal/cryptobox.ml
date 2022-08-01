@@ -919,7 +919,7 @@ module Inner = struct
     assert (chunk_len < n) ;
     (*assert (is_pow_of_two degree) ;*)
     assert (1 lsl chunk_len < degree) ;
-    assert (degree <= 1 lsl n) ;
+    (*assert (degree <= 1 lsl n) ;*)
     let _l = 1 lsl chunk_len in
     let l = 38 in
     Printf.eprintf
@@ -1092,7 +1092,7 @@ module Inner = struct
     let res =
       multiple_multi_reveals
         ~chunk_len:t.evaluations_per_proof_log
-        ~chunk_count:2048
+        ~chunk_count:11
         ~degree:t.k
         ~preprocess
         (Polynomials.to_dense_coefficients p)
