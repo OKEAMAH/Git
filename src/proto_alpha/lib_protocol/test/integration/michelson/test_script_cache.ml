@@ -128,7 +128,8 @@ let int_store_contract_size = 592
 *)
 let assert_cache_size expected_size ctxt =
   fail_unless
-    (Script_cache.size ctxt = expected_size)
+    (Script_cache.size ctxt >= expected_size)
+    (* For the moment we overestimate the type size. *)
     (err
        (Printf.sprintf
           "Invalid script cache size, expecting %d, got %d"
@@ -287,7 +288,8 @@ let test_size_adds_entries_sizes () =
       liquidity_baking_contract_size + (ncontracts * int_store_contract_size)
     in
     fail_unless
-      (Script_cache.size ctxt = expected_size)
+      (Script_cache.size ctxt >= expected_size)
+      (* For the moment we overestimate the type size. *)
       (err
          (Printf.sprintf
             "Invalid script cache size, expecting %d, got %d"
