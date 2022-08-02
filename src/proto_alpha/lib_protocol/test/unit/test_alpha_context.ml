@@ -199,11 +199,12 @@ module Test_Big_map = struct
       let expected_key_hash_values =
         (* A negative length is interpreted as 0 *)
         let length =
-          match length with
-          | Some l -> max l 0
-          | None -> List.length sorted_key_values
+          match (length, offset) with
+          | _, Some o when o < 0 -> 0
+          | Some l, _ when l > 0 -> min l num_elements
+          | _ -> num_elements
         in
-        let offset = match offset with Some o -> max o 0 | None -> 0 in
+        let offset = match offset with Some o -> max o 0 | _ -> 0 in
         let expected =
           List.take_n length @@ List.drop_n offset sorted_key_values
         in
@@ -244,15 +245,25 @@ module Test_Big_map = struct
     (* Offset greater than the length. *)
     let* kvs = check_key_values ~loc:__LOC__ ~num_elements:10 ~offset:100 () in
     let* () = assert_equal_key_values ~loc:__LOC__ kvs [] in
-    (* Negative length is treated as zero. *)
-    let* kvs = check_key_values ~loc:__LOC__ ~num_elements:10 ~length:(-1) () in
-    let* () = assert_equal_key_values ~loc:__LOC__ kvs [] in
-    (* Negative offset is treated as zero. *)
+    (* Negative length is ignored. *)
     let* kvs1 =
-      check_key_values ~loc:__LOC__ ~num_elements:10 ~offset:(-5) ()
+      check_key_values ~loc:__LOC__ ~num_elements:10 ~length:(-1) ()
     in
-    let* kvs2 = check_key_values ~loc:__LOC__ ~num_elements:10 () in
+    let* kvs2 =
+      check_key_values ~loc:__LOC__ ~num_elements:10 ~length:(-100) ()
+    in
+    let* kvs3 = check_key_values ~loc:__LOC__ ~num_elements:10 () in
     let* () = assert_equal_key_values ~loc:__LOC__ kvs1 kvs2 in
+    let* () = assert_equal_key_values ~loc:__LOC__ kvs2 kvs3 in
+    (* Negative offset means no elements are returned. *)
+    let* kvs1 =
+      check_key_values ~loc:__LOC__ ~num_elements:10 ~offset:(-1) ()
+    in
+    let* kvs2 =
+      check_key_values ~loc:__LOC__ ~num_elements:10 ~offset:(-100) ()
+    in
+    let* () = assert_equal_key_values ~loc:__LOC__ kvs1 [] in
+    let* () = assert_equal_key_values ~loc:__LOC__ kvs2 [] in
     return_unit
 end
 

@@ -484,52 +484,40 @@ module Make_indexed_carbonated_data_storage_INTERNAL
   let add_or_remove s i v =
     match v with None -> remove s i | Some v -> add s i v
 
-  (* TODO https://gitlab.com/tezos/tezos/-/issues/3318
-     Switch implementation to use [C.list].
-     Given that MR !2771 which flattens paths is done, we should use
-     [C.list] to avoid having to iterate over all keys when [length] and/or
-     [offset] is passed.
-  *)
-  let list_key_values ?(offset = 0) ?(length = max_int) s =
+  let list_key_values ?(offset = 0) ?length ctxt =
     let root = [] in
-    let depth = `Eq I.path_length in
-    C.length s root >>= fun size ->
-    (* Regardless of the [length] argument, all elements stored in the context
-       are traversed. We therefore pay a gas cost proportional to the number of
-       elements, given by [size], upfront. We also pay gas for decoding elements
-       whenever they are loaded in the body of the fold. *)
-    C.consume_gas s (Storage_costs.list_key_values_traverse ~size) >>?= fun s ->
-    C.fold
-      s
-      root
-      ~depth
-      ~order:`Sorted
-      ~init:(ok (s, [], offset, length))
-      ~f:(fun file tree acc ->
-        match (C.Tree.kind tree, acc) with
-        | `Tree, Ok (s, rev_values, offset, length) -> (
-            if Compare.Int.(length <= 0) then
-              (* Keep going until the end, we have no means of short-circuiting *)
-              Lwt.return acc
-            else if Compare.Int.(offset > 0) then
-              (* Offset (first element) not reached yet *)
-              let offset = pred offset in
-              Lwt.return (Ok (s, rev_values, offset, length))
-            else
-              (* Nominal case *)
-              match I.of_path file with
-              | None -> assert false
-              | Some key ->
-                  (* This also accounts for gas for loading the element. *)
-                  get_unprojected s key >|=? fun (s, value) ->
-                  (s, (key, value) :: rev_values, 0, pred length))
-        | _ ->
-            (* Even if we run out of gas or fail in some other way, we still
-               traverse the whole tree. In this case there is no context to
-               update. *)
-            Lwt.return acc)
-    >|=? fun (s, rev_values, _offset, _length) ->
-    (C.project s, List.rev rev_values)
+    (* Consume gas for traversing the tree upfront. We're going to traverse at
+       most [length] elements if passed.
+       - When [offset] is negative, no elements are traversed and returned.
+       - When [length] is negative it is ignored.
+       - When [length] is positive, at most [length] elements are traversed.
+       - Otherwise, all elements ([num_elements]) are traversed.
+    *)
+    C.length ctxt root >>= fun num_elements ->
+    let size =
+      match (offset, length) with
+      | offset, _ when Compare.Int.(offset < 0) -> 0
+      | _, Some length when Compare.Int.(length < 0) -> num_elements
+      | _, Some length -> Compare.Int.min num_elements length
+      | _, None -> num_elements
+    in
+    C.consume_gas ctxt (Storage_costs.list_key_values_traverse ~size)
+    >>?= fun ctxt ->
+    C.list ctxt ~offset ?length root >>= fun files ->
+    List.fold_left_es
+      (fun (rev_values, ctxt) (file, tree) ->
+        match C.Tree.kind tree with
+        | `Tree -> (
+            (* Nominal case *)
+            match I.of_path [file] with
+            | None -> assert false
+            | Some key ->
+                get_unprojected ctxt key >|=? fun (ctxt, value) ->
+                ((key, value) :: rev_values, ctxt))
+        | _ -> return (rev_values, ctxt))
+      ([], ctxt)
+      files
+    >|=? fun (rev_values, ctxt) -> (C.project ctxt, List.rev rev_values)
 
   let fold_keys_unaccounted s ~order ~init ~f =
     C.fold
