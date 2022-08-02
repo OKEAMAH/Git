@@ -125,13 +125,14 @@ module Indexed_context =
        end))
        (Int32.Index)
 
+module Context =
+  Make_subcontext (Registered) (Raw_context)
+    (struct
+      let name = ["table_for_list_key_values"]
+    end)
+
 module Table =
-  Make_indexed_carbonated_data_storage
-    (Make_subcontext (Registered) (Raw_context)
-       (struct
-         let name = ["table_for_list_key_values"]
-       end))
-       (Int32.Index)
+  Make_indexed_carbonated_data_storage (Context) (Int32.Index)
     (struct
       type t = string
 
@@ -182,31 +183,32 @@ module List_key_values_benchmark = struct
   include List_key_values_benchmark_boilerplate
 
   let benchmark rng_state {max_size} () =
-    let wrap m = m >|= Environment.wrap_tzresult in
     let size =
       Base_samplers.sample_in_interval
         ~range:{min = 1; max = max_size}
         rng_state
     in
     let ctxt =
-      let fill_table =
+      let fill_context =
         let open Lwt_result_syntax in
         let* ctxt = default_raw_context () in
         List.fold_left_es
           (fun ctxt (key, value) ->
-            let* ctxt, _, _ = wrap @@ Table.add ctxt key value in
+            let value = Bytes.of_string value in
+            let*! ctxt = Context.add ctxt [string_of_int key] value in
             return ctxt)
           ctxt
           (Stdlib.List.init size (fun key -> (key, string_of_int key)))
       in
-      match Lwt_main.run fill_table with Ok ctxt -> ctxt | _ -> assert false
+      match Lwt_main.run fill_context with Ok ctxt -> ctxt | _ -> assert false
     in
     let workload = {size} in
     let closure () =
-      (* We pass length [0] so that none of the steps of the fold over the
-         key-value pairs load any values. That is isolate the cost of iterating
-         over the tree without loading values. *)
-      Table.list_key_values ~length:0 ctxt |> Lwt_main.run |> ignore
+      (* We can't benchmark [list_key_values] directly because it also involves
+         loading values from the tree. Instead we benchmark the time to
+         call [Context.list] which is used internally. It returns a list of
+         key and tree pairs for the top-level of the context. *)
+      Context.list ctxt [] |> Lwt_main.run |> ignore
     in
     Generator.Plain {workload; closure}
 
@@ -227,9 +229,7 @@ module List_key_values_benchmark_intercept = struct
     in
     let workload = {size = 0} in
     let closure () =
-      (* We pass length [0] so that none of the steps of the fold over the
-         key-value pairs load any values. That is isolate the cost of iterating
-         over the tree without loading values. *)
+      (* No key-values are iterated over. *)
       Table.list_key_values ~length:0 ctxt |> Lwt_main.run |> ignore
     in
     Generator.Plain {workload; closure}
