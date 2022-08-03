@@ -213,8 +213,7 @@ type module_kont =
   | MKBuild of Ast.func Vector.t option * bool
       (** Accumulating the parsed sections vectors into a module and checking
       invariants. *)
-  | MKStop of Ast.module_' (* TODO (#3120): actually, should be module_ *)
-      (** Final step of the parsing, cannot reduce. *)
+  | MKStop of Ast.module_  (** Final step of the parsing, cannot reduce. *)
   | MKTypes of func_type_kont * pos * size * Ast.type_ lazy_vec_kont
       (** Function types section parsing. *)
   | MKImport of import_kont * pos * size * Ast.import lazy_vec_kont
@@ -274,6 +273,8 @@ type decode_kont = {
 
 (** [make_stream filename bytes] returns a new stream to decode. *)
 val make_stream : name:string -> bytes:Chunked_byte_vector.Lwt.t -> stream
+
+val initial_decode_kont : string -> decode_kont
 
 (** [module_step stream kont] takes one step of parsing from a
    continuation and returns a new continuation. Fails when the

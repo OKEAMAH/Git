@@ -743,6 +743,42 @@ let literal mode lit =
   | Vec v -> Node (vec_constop v ^ " " ^ vec mode v, [])
   | Ref r -> ref_ r
 
+module Context = Tezos_context_memory.Context_binary
+
+module Tree = struct
+  type tree = Context.tree
+
+  include Context.Tree
+end
+
+module Tree_encoding = Tree_encoding.Make (Tree)
+module Binary_parser_encodings =
+  Tezos_scoru_wasm.Binary_parser_encodings.Make (Tree_encoding)
+
+let rec decode_loop bytes tree =
+  let open Lwt.Syntax in
+  let* k = Tree_encoding.decode Binary_parser_encodings.Decode.encoding tree in
+  match k with
+  | {module_kont = MKStop m; _} -> Lwt.return m
+  | k ->
+      let* k = Decode.module_step bytes k in
+      let* tree =
+        Tree_encoding.encode Binary_parser_encodings.Decode.encoding k tree
+      in
+      decode_loop bytes tree
+
+let decode name bytes =
+  let open Lwt.Syntax in
+  let* index = Context.init "foo" in
+  let ctxt = Context.empty index in
+  let tree = Context.Tree.empty ctxt in
+  let bytes = Chunked_byte_vector.Lwt.of_string bytes in
+  let init = Decode.initial_decode_kont name in
+  let* tree =
+    Tree_encoding.encode Binary_parser_encodings.Decode.encoding init tree
+  in
+  decode_loop bytes tree
+
 let definition mode x_opt def =
   let open Lwt.Syntax in
   Lwt.catch
@@ -752,10 +788,7 @@ let definition mode x_opt def =
           let rec unquote def =
             match def.it with
             | Textual m -> Lwt.return m
-            | Encoded (_, bytes) ->
-                Decode.decode
-                  ~name:""
-                  ~bytes:(Chunked_byte_vector.Lwt.of_string bytes)
+            | Encoded (_, bytes) -> decode "" bytes
             | Quoted (_, s) -> unquote (Parse.string_to_module s)
           in
           let* unquoted = unquote def in
@@ -765,11 +798,7 @@ let definition mode x_opt def =
             match def.it with
             | Textual m -> Encode.encode m
             | Encoded (_, bytes) ->
-                let* m =
-                  Decode.decode
-                    ~name:""
-                    ~bytes:(Chunked_byte_vector.Lwt.of_string bytes)
-                in
+                let* m = decode "" bytes in
                 Encode.encode m
             | Quoted (_, s) -> unquote (Parse.string_to_module s)
           in

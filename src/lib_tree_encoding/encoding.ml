@@ -102,8 +102,17 @@ module Make (T : Tree.S) = struct
 
   let raw suffix bytes prefix tree = T.add tree (prefix suffix) bytes
 
-  let value suffix enc =
-    contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix)
+  let value suffix enc v prefix tree =
+    Format.printf "E: %s\n" (String.concat "/" (prefix suffix)) ;
+    contramap
+      (fun x ->
+        let x = Data_encoding.Binary.to_bytes_exn enc x in
+        Format.printf "EV: %S\n" (String.of_bytes x) ;
+        x)
+      (raw suffix)
+      v
+      prefix
+      tree
 
   let optional key encoding v prefix tree =
     match v with

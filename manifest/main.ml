@@ -1121,21 +1121,6 @@ let octez_webassembly_interpreter =
     ~dune:Dune.[[S "include_subdirs"; S "unqualified"]]
     ~deps:[octez_lwt_result_stdlib; zarith; lazy_containers |> open_]
 
-let _octez_webassembly_repl =
-  private_exe
-    "main"
-    ~path:"src/lib_webassembly/bin"
-    ~opam:""
-    ~flags:(Flags.standard ~disable_warnings:[27] ())
-    ~dune:Dune.[[S "include"; S "dune.inc"]]
-    ~deps:
-      [
-        octez_webassembly_interpreter |> open_;
-        lwt_unix;
-        tree_encoding |> open_;
-        lazy_containers |> open_;
-      ]
-
 let _octez_webassembly_test =
   test
     "main"
@@ -1580,6 +1565,23 @@ let octez_context_memory =
         octez_context_sigs;
         octez_context_encoding;
         octez_context_helpers;
+      ]
+
+let _octez_webassembly_repl =
+  private_exe
+    "main"
+    ~path:"src/lib_webassembly/bin"
+    ~opam:""
+    ~flags:(Flags.standard ~disable_warnings:[27] ())
+    ~dune:Dune.[[S "include"; S "dune.inc"]]
+    ~deps:
+      [
+        octez_webassembly_interpreter |> open_;
+        octez_scoru_wasm;
+        octez_context_memory;
+        lwt_unix;
+        tree_encoding |> open_;
+        lazy_containers |> open_;
       ]
 
 let octez_context_disk =

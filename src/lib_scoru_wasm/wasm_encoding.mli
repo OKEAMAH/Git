@@ -66,6 +66,8 @@ module Make (M : Tree_encoding.S) : sig
     module_reg:Instance.module_reg Lazy.t ->
     Instance.func_inst Instance.Vector.t t
 
+  val func_type_encoding : Types.func_type t
+
   val function_type_vector_encoding : Types.func_type Instance.Vector.t t
 
   val value_ref_vector_encoding :

@@ -118,7 +118,16 @@ let input_from get_script run =
       | Abort (at, msg) -> error at "unexpected error" msg
       | Lazy_map.UnexpectedAccess ->
           error no_region "unexpected access" "Unexpected access in lazy map"
-      | exn -> raise exn)
+      | Data_encoding.Binary.Write_error err ->
+          error
+            no_region
+            "data encoding error"
+            Format.(
+              asprintf
+                "data encoding error: %a"
+                Data_encoding.Binary.pp_write_error
+                err)
+      | exn -> Lwt.fail exn)
 
 let input_script start name lexbuf run =
   input_from (fun _ -> Parse.parse name lexbuf start) run
@@ -412,7 +421,7 @@ let rec run_definition def : Ast.module_ Lwt.t =
   | Textual m -> Lwt.return m
   | Encoded (name, bytes) ->
       let* () = trace_lwt "Decoding..." in
-      Decode.decode ~name ~bytes:(Chunked_byte_vector.Lwt.of_string bytes)
+      Arrange.decode name bytes
   | Quoted (_, s) ->
       let* () = trace_lwt "Parsing quote..." in
       let def' = Parse.string_to_module s in

@@ -10,3 +10,5 @@ val func : block_table -> Ast.func -> sexpr
 val module_ : Ast.module_ -> sexpr Lwt.t
 
 val script : [`Textual | `Binary] -> Script.script -> sexpr list Lwt.t
+
+val decode : string -> string -> Ast.module_ Lwt.t

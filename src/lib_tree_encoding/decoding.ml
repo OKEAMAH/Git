@@ -140,6 +140,7 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
   let optional key decoder tree prefix =
     let open Lwt_syntax in
     let key = prefix key in
+    Format.printf "D: %s\n" (String.concat "/" key) ;
     let* value = Tree.find tree key in
     match value with
     | Some value -> (
