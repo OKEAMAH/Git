@@ -38,6 +38,8 @@ module type S = sig
   (** Represents a partial encoder for specific constructor of a sum-type. *)
   type ('tag, 'a) case
 
+  val delayed : (unit -> 'a t) -> 'a t
+
   (** [contramap f e] is contravariant map operation that creates a new decoder
       that maps its input using [f] before feeding it to [e]. *)
   val contramap : ('a -> 'b) -> 'b t -> 'a t

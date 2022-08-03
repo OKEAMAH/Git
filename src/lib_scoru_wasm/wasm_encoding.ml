@@ -816,7 +816,7 @@ module Make (Tree_encoding : Tree_encoding.S) = struct
     conv
       Source.(at no_region)
       Source.(fun x -> x.it)
-      (admin_instr'_encoding ~module_reg)
+      (delayed @@ fun () -> admin_instr'_encoding ~module_reg)
 
   let input_buffer_message_encoding =
     conv_lwt
