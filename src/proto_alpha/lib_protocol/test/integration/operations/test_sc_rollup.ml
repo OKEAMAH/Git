@@ -1572,6 +1572,56 @@ let test_timeout () =
       return_unit
   | _ -> assert false
 
+(** Test that an inbox message can be added in the same block as the
+origination.*)
+let test_valid_inbox_in_origination_block () =
+  let* block, (account1, account2) = context_init Context.T2 in
+  let* origination_operation, rollup =
+    Op.sc_rollup_origination
+      (B block)
+      account1
+      Sc_rollup.Kind.Example_arith
+      ~boot_sector:"boot sector"
+      ~parameters_ty:(Script.lazy_expr @@ Expr.from_string "unit")
+  in
+  let* inbox_operation =
+    Op.sc_rollup_add_messages (B block) account2 rollup ["payload"]
+  in
+  let* incr = Incremental.begin_construction block in
+  let* incr = Incremental.add_operation incr origination_operation in
+  let* incr = Incremental.add_operation incr inbox_operation in
+  let* () =
+    match Incremental.rev_tickets incr with
+    | [
+     Operation_metadata
+       {
+         contents =
+           Single_result
+             (Manager_operation_result
+               {
+                 operation_result =
+                   Applied (Sc_rollup_add_messages_result {inbox_after = _; _});
+                 _;
+               });
+       };
+     Operation_metadata
+       {
+         contents =
+           Single_result
+             (Manager_operation_result
+               {operation_result = Applied (Sc_rollup_originate_result _); _});
+       };
+    ] ->
+        return_unit
+    | _ -> failwith "unexpected operation result list"
+  in
+  let*! block_res =
+    Block.bake ~operations:[origination_operation; inbox_operation] block
+  in
+  match block_res with
+  | Ok _ -> return_unit
+  | Error _ -> failwith "unexpected error"
+
 let tests =
   [
     Tztest.tztest
@@ -1657,4 +1707,8 @@ let tests =
        and related timeout value."
       `Quick
       test_timeout;
+    Tztest.tztest
+      "Test to originate a rollup and add a message in the same block."
+      `Quick
+      test_valid_inbox_in_origination_block;
   ]
