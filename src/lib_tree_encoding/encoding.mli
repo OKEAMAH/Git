@@ -100,6 +100,8 @@ module type S = sig
       fail with a [No_tag_matched] error when [run].  *)
   val tagged_union : 'tag t -> ('tag, 'a) case list -> 'a t
 
+  val lazy_dict : 'a t -> ('k, 'a) Lazy_containers.Lazy_dict.t t
+
   (** [lwt enc] promotes the given encoder [enc] to one that can handle lwt
       values. *)
   val lwt : 'a t -> 'a Lwt.t t

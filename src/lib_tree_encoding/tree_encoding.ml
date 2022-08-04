@@ -24,8 +24,9 @@
 (*****************************************************************************)
 
 open Lazy_containers
+include Tree
 
-module type TREE = Tree.S
+module type TREE = S
 
 module type Lwt_vector = Lazy_vector.S with type 'a effect = 'a Lwt.t
 
@@ -170,6 +171,11 @@ module type S = sig
     ('tag, 'a) case
 
   val tagged_union : ?default:'a -> 'tag t -> ('tag, 'a) case list -> 'a t
+
+  val lazy_dict :
+    ('k -> string) -> 'a t -> ('k, 'a) Lazy_containers.Lazy_dict.t t
+
+  val lazy_vec : 'a t -> 'a Lazy_containers.Lazy_vec.t t
 
   val option : 'a t -> 'a option t
 
@@ -447,6 +453,23 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
       D.tagged_union ?default decode (List.map to_decode_case cases)
     in
     {encode; decode}
+
+  let lazy_dict string_of_key {encode; decode} =
+    {
+      decode = Decoding.lazy_dict string_of_key decode;
+      encode = Encoding.lazy_dict encode;
+    }
+
+  let lazy_vec enc =
+    let open Lazy_containers in
+    conv
+      (fun (first, last, dict) -> Lazy_vec.{first; last; dict})
+      (fun {first; last; dict} -> (first, last, dict))
+      (tup3
+         ~flatten:true
+         (value ["first"] Data_encoding.int32)
+         (value ["last"] Data_encoding.int32)
+         (scope ["contents"] @@ lazy_dict Int32.to_string enc))
 
   let value_option key encoding =
     let encode = E.value_option key encoding in

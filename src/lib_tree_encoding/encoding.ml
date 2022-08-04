@@ -60,6 +60,8 @@ module type S = sig
 
   val tagged_union : 'tag t -> ('tag, 'a) case list -> 'a t
 
+  val lazy_dict : 'a t -> ('k, 'a) Lazy_containers.Lazy_dict.t t
+
   val lwt : 'a t -> 'a Lwt.t t
 
   val tup2 : 'a t -> 'b t -> ('a * 'b) t
@@ -110,8 +112,15 @@ module Make (T : Tree.S) = struct
 
   let raw suffix bytes prefix tree = T.add tree (prefix suffix) bytes
 
-  let value suffix enc =
-    contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix)
+  let value suffix enc v prefix tree =
+    contramap
+      (fun x ->
+        let x = Data_encoding.Binary.to_bytes_exn enc x in
+        x)
+      (raw suffix)
+      v
+      prefix
+      tree
 
   let value_option key encoding v prefix tree =
     match v with
@@ -158,4 +167,21 @@ module Make (T : Tree.S) = struct
     match tree_opt with
     | None -> raise No_tag_matched_on_encoding
     | Some tree -> return tree
+
+  let lazy_dict : 'a t -> ('k, 'a) Lazy_containers.Lazy_dict.t t =
+   fun enc (dict : ('k, 'a) Lazy_containers.Lazy_dict.t) prefix target_tree ->
+    let open Lazy_containers in
+    let open Lwt_syntax in
+    let* target_tree = T.remove target_tree (prefix []) in
+    let* target_tree =
+      match dict.origin with
+      | Some origin -> T.add_tree target_tree (prefix []) (T.select origin)
+      | None -> Lwt.return target_tree
+    in
+    let bindings = Lazy_dict.loaded_bindings dict in
+    Lwt_list.fold_left_s
+      (fun target_tree (key, value) ->
+        enc value (append_key prefix [key]) target_tree)
+      target_tree
+      bindings
 end
