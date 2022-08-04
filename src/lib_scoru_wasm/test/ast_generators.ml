@@ -33,6 +33,10 @@ let var_gen =
   let+ n = int32 in
   no_region n
 
+(* TODO HANS need a test to verify this is in fact the case.
+   That is, chek that the float types should are rejected in the parsing state.
+   Should be an entry in #3117
+*)
 (* The types [F32Type] and [F64Type] are not currently supported. *)
 let num_type_gen =
   let open Types in
