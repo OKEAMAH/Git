@@ -459,12 +459,13 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
 
   let option enc =
     tagged_union
+      ~default:None
       (value [] Data_encoding.string)
       [
         case "Some" enc Fun.id Option.some;
         case
           "None"
-          (value [] Data_encoding.unit)
+          (const ())
           (function None -> Some () | _ -> None)
           (fun () -> None);
       ]
