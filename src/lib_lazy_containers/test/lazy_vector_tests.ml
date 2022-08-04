@@ -23,6 +23,16 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* TODO HANS: This file should be renamed test_ something *)
+(* TODO HANS: Check for all tests in
+       lib_scoru_wasm
+       lib_tree_encoding
+       lib_lazy_containers.
+
+   - Use Alcotest or QCheck2
+   - Have a proper "dune exec" invocation comment
+*)
+
 open QCheck_alcotest
 open QCheck2
 open Lazy_vector
