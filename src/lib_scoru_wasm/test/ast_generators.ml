@@ -412,7 +412,7 @@ let allocations_gen =
   let+ datas = datas_table_gen in
   Ast.{blocks; datas}
 
-let module_gen' ?module_reg () =
+let module_ref_and_instance_gen ?module_reg () =
   let module_reg =
     match module_reg with
     | None -> Instance.ModuleMap.create ()
@@ -448,10 +448,10 @@ let module_gen' ?module_reg () =
   return (module_ref, module_)
 
 let module_gen ?module_reg () =
-  map (fun (_, m) -> m) (module_gen' ?module_reg ())
+  map (fun (_, m) -> m) (module_ref_and_instance_gen ?module_reg ())
 
 let frame_gen ~module_reg =
-  let* inst, _ = module_gen' ~module_reg () in
+  let* inst, _ = module_ref_and_instance_gen ~module_reg () in
   let+ locals = small_list (map ref value_gen) in
   Eval.{inst; locals}
 
@@ -471,7 +471,7 @@ let rec admin_instr'_gen ~module_reg depth =
     Refer ref_
   in
   let invoke_gen =
-    let* inst, _ = module_gen' ~module_reg () in
+    let* inst, _ = module_ref_and_instance_gen ~module_reg () in
     let+ func = func_gen inst in
     Invoke func
   in
