@@ -44,6 +44,10 @@ module type S = sig
   (** Represents a partial encoder for a specific constructor of a sum-type. *)
   type ('tag, 'a) case
 
+  (* [const x] is a decoder that ignores the tree and always returns the value
+     [x]. *)
+  val const : 'a -> 'a t
+
   (** [run decoder tree] runs the tree decoder against the tree. May raise a
       [Key_not_found] or a [No_tag_matched] exception. *)
   val run : 'a t -> tree -> 'a Lwt.t

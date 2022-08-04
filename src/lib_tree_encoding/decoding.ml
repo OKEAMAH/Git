@@ -38,6 +38,8 @@ module type S = sig
 
   type ('tag, 'a) case
 
+  val const : 'a -> 'a t
+
   val run : 'a t -> tree -> 'a Lwt.t
 
   val raw : key -> bytes t
@@ -132,6 +134,8 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
 
     let ( and* ) = ( and+ )
   end
+
+  let const x _tree _key = Lwt.return x
 
   let run dec tree = dec tree Fun.id
 
