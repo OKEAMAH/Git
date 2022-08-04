@@ -30,6 +30,10 @@
     Subject:      Tests for the tree-encoding library
 *)
 
+(* TODO HANS try to break the API via tests, esp. these functions:
+   https://gitlab.com/tezos/tezos/-/issues/3378
+*)
+
 let () =
   Alcotest_lwt.run "test lib tree encoding" [("Encodings", Test_encoding.tests)]
   |> Lwt_main.run
