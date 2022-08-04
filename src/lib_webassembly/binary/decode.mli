@@ -1,4 +1,4 @@
-module Vector = Lazy_vector.LwtInt32Vector
+module Vector = Lazy_vec
 
 exception Code of Source.region * string
 

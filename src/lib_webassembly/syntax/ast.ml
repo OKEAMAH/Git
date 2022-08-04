@@ -18,7 +18,7 @@
 
 open Types
 module TzStdLib = Tezos_lwt_result_stdlib.Lwtreslib.Bare
-module Vector = Lazy_vector.LwtInt32Vector
+module Vector = Lazy_vec
 
 type void = Lib.void
 
@@ -541,9 +541,9 @@ let export_type (m : module_) (ex : export) : extern_type Lwt.t =
       ExternGlobalType (nth gts x.it)
 
 let string_of_name n =
-  let n = Vector.loaded_bindings n in
+  let n = Vector.Unsafe_for_tick.to_list n in
   let b = Buffer.create 16 in
-  let escape (_, uc) =
+  let escape uc =
     if uc < 0x20 || uc >= 0x7f then
       Buffer.add_string b (Printf.sprintf "\\u{%02x}" uc)
     else

@@ -50,12 +50,9 @@ let register_host_funcs registry =
 
 let lookup name =
   let open Lwt.Syntax in
+  let open Vector in
   let+ name = Utf8.encode name in
-  let empty () = Lazy_vector.LwtInt32Vector.create 0l in
-  let singleton i = Lazy_vector.LwtInt32Vector.(create 1l |> set 0l i) in
-  let two i j =
-    Lazy_vector.LwtInt32Vector.(create 2l |> set 0l i |> set 1l j)
-  in
+  let two i j = empty () |> append i |> fst |> append j |> fst in
   match name with
   | "print" ->
       ExternFunc

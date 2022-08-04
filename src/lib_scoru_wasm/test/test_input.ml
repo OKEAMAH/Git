@@ -141,7 +141,7 @@ let test_host_fun () =
   in
   let module_inst = Tezos_webassembly_interpreter.Instance.empty_module_inst in
   let memories =
-    Lazy_vector.LwtInt32Vector.cons
+    Lazy_vec.cons
       (Memory.alloc (MemoryType Types.{min = 20l; max = Some 3600l}))
       module_inst.memories
   in
@@ -169,7 +169,7 @@ let test_host_fun () =
       values
   in
   let* module_inst = Instance.resolve_module_ref module_ref in
-  let* memory = Lazy_vector.LwtInt32Vector.get 0l module_inst.memories in
+  let* memory = Lazy_vec.get 0l module_inst.memories in
   assert (Input_buffer.num_elements input = Z.zero) ;
   let* m = Memory.load_bytes memory 0l 1 in
   assert (m = "\001") ;
@@ -191,10 +191,18 @@ let empty_tree () =
   let empty_store = Context.empty index in
   return @@ Context.Tree.empty empty_store
 
+type Lazy_containers.Lazy_dict.tree += Tree of Context.tree
+
 module Tree : Tree_encoding.TREE with type tree = Context.tree = struct
   type tree = Context.tree
 
   include Context.Tree
+
+  let select = function
+    | Tree t -> t
+    | _ -> raise Tree_encoding.Incorrect_tree_type
+
+  let wrap t = Tree t
 end
 
 module Wasm = Wasm_pvm.Make (Tree)

@@ -9,7 +9,7 @@ module ModuleMap =
       let to_string = Fun.id
     end)
 
-module Vector = Lazy_vector.LwtInt32Vector
+module Vector = Lazy_vec
 
 module NameMap =
   Lazy_map.Make

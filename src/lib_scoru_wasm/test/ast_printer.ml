@@ -345,8 +345,8 @@ let pp_instr = pp_phrase pp_instr'
 
 let pp_vector pp out v =
   (* Force evaluation of the vector. *)
-  let _ = Lwt_main.run @@ Lazy_vector.LwtInt32Vector.to_list v in
-  Lazy_vector.LwtInt32Vector.pp pp out v
+  let () = Lwt_main.run @@ Lazy_vec.Unsafe_for_tick.fetch_all v in
+  Lazy_vec.pp pp out v
 
 let pp_vector_z pp out v =
   (* Force evaluation of the vector. *)

@@ -143,7 +143,7 @@ let vec_to_list v =
 
      The validation is never used in the rollup (in a context were values can be
      shallow), hence the vectors will be fully loaded. *)
-  Stdlib.List.map snd (Lazy_vector.LwtInt32Vector.loaded_bindings v)
+  Lazy_vec.Unsafe_for_tick.to_list v
 
 (* Type Synthesis *)
 
@@ -323,7 +323,7 @@ let rec check_instr (c : context) (e : instr) (s : infer_result_type) : op_type
   | BrTable (xs, x) ->
       let lx = label c x in
       let lx_l = vec_to_list lx in
-      let n = Lazy_vector.LwtInt32Vector.num_elements lx |> Int32.to_int in
+      let n = Lazy_vec.num_elements lx |> Int32.to_int in
       let ts = Lib.List.table n (fun i -> peek (n - i) s) in
       check_stack ts (known lx_l) x.at ;
       List.iter
@@ -624,7 +624,7 @@ let check_func (c : context) (f : func) =
   let c' =
     {
       c with
-      locals = Lazy_vector.LwtInt32Vector.concat ts1 locals |> vec_to_list;
+      locals = vec_to_list ts1 @ vec_to_list locals;
       results = vec_to_list ts2;
       labels = [ts2];
     }
@@ -762,14 +762,19 @@ let check_module (m : module_) =
     m.it
   in
   let build_blocks bl =
-    let* bls = Ast.Vector.to_list bl in
-    let+ bls_l = TzStdLib.List.map_s Ast.Vector.to_list bls in
+    let* bls = Ast.Vector.Unsafe_for_tick.fetch_to_list bl in
+    let+ bls_l =
+      TzStdLib.List.map_s Ast.Vector.Unsafe_for_tick.fetch_to_list bls
+    in
     let bls_v = List.map Vector.of_list bls_l in
     Vector.of_list bls_v
   in
 
   let* blocks = build_blocks blocks in
-  let* allocated_datas = Ast.Vector.to_list allocated_datas in
+  (* TODO: Why does this start raising a warning with this patch? *)
+  let* allocated_datas =
+    Ast.Vector.Unsafe_for_tick.fetch_to_list allocated_datas
+  in
   let types = vec_to_list types in
   let imports = vec_to_list imports in
   let tables = vec_to_list tables in
@@ -780,9 +785,7 @@ let check_module (m : module_) =
   let datas = vec_to_list datas in
   let exports = vec_to_list exports in
   let+ refs =
-    Free.module_
-      ({m.it with funcs = Lazy_vector.LwtInt32Vector.create 0l; start = None}
-      @@ m.at)
+    Free.module_ ({m.it with funcs = Lazy_vec.empty (); start = None} @@ m.at)
   in
   let c0 =
     List.fold_right

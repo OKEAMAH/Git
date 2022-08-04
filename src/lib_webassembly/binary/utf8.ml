@@ -13,8 +13,8 @@ let encode_int = function
 
 let rec encode ns =
   let open Lwt.Syntax in
-  let+ ns = Lazy_vector.LwtInt32Vector.to_list ns in
-  Lib.String.implode (List.map Char.chr (encode' ns))
+  let* ns = Lazy_vec.Unsafe_for_tick.fetch_to_list ns in
+  Lwt.return @@ Lib.String.implode (List.map Char.chr (encode' ns))
 
 and encode' = function
   | [] -> []
@@ -31,7 +31,7 @@ and encode' = function
       encode_int n @ encode' ns
 
 let encode_unsafe ns =
-  let ns = List.map snd (Lazy_vector.LwtInt32Vector.loaded_bindings ns) in
+  let ns = Lazy_vec.Unsafe_for_tick.to_list ns in
   encode_list ns
 
 let con b = if b land 0xc0 = 0x80 then b land 0x3f else raise Utf8
@@ -82,8 +82,7 @@ let decode_step get s =
   Lwt.return (code, !i)
 
 let rec decode s =
-  Lazy_vector.LwtInt32Vector.of_list
-    (decode' (List.map Char.code (Lib.String.explode s)))
+  Lazy_vec.of_list (decode' (List.map Char.code (Lib.String.explode s)))
 
 and decode' = function
   | [] -> []
