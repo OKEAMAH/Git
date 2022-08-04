@@ -1,7 +1,7 @@
 (* Decoding stream *)
 
 open Binary_exn
-module Vector = Lazy_vector.LwtInt32Vector
+module Vector = Lazy_vec
 
 let lwt_ignore p =
   let open Lwt.Syntax in

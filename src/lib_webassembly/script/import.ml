@@ -16,11 +16,11 @@ end)
 
 let registry = ref Registry.empty
 
-let from_ast_name name = Lazy_vector.LwtInt32Vector.to_list name
+let from_ast_name name = Lazy_vec.Unsafe_for_tick.fetch_to_list name
 
 let register ~module_name lookup =
   let open Lwt.Syntax in
-  let lookup name = lookup (Lazy_vector.LwtInt32Vector.of_list name) in
+  let lookup name = lookup (Vector.of_list name) in
   let* name = from_ast_name module_name in
   registry := Registry.add name lookup !registry ;
   Lwt.return_unit
@@ -41,6 +41,5 @@ let lookup (m : module_) (im : import) : Instance.extern Lwt.t =
       | exn -> raise exn)
 
 let link m =
-  let open Lwt.Syntax in
-  let* imports = Lazy_vector.LwtInt32Vector.to_list m.it.imports in
+  let imports = Vector.Unsafe_for_tick.to_list m.it.imports in
   TzStdLib.List.map_s (lookup m) imports

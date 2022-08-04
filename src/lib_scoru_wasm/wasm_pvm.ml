@@ -118,7 +118,8 @@ module Make (T : Tree_encoding.TREE) :
                 Wasm.Instance.ModuleMap.get wasm_main_module_name module_reg
               in
               let* main_name =
-                Wasm.Instance.Vector.to_list @@ Wasm.Utf8.decode wasm_entrypoint
+                Wasm.Instance.Vector.Unsafe_for_tick.fetch_to_list
+                @@ Wasm.Utf8.decode wasm_entrypoint
               in
               let* extern =
                 Wasm.Instance.NameMap.get

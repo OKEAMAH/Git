@@ -41,17 +41,18 @@ module Make (Tree_encoding : Tree_encoding.S) = struct
   let string_tag = value [] Data_encoding.string
 
   let list_encoding item_enc =
-    let vector = lazy_vector (value [] Data_encoding.int32) item_enc in
+    let vector = lazy_vec item_enc in
     (* TODO: #3076
        This should return a [Instance.Vector.t] instead of a list. Once the AST
        has been sufficiently adapted to lazy vectors and maps, this change can
        go forward. *)
-    conv_lwt V.to_list (fun list -> Lwt.return (V.of_list list)) vector
+    conv_lwt
+      V.Unsafe_for_tick.fetch_to_list
+      (fun list -> Lwt.return @@ V.of_list list)
+      vector
 
   let lazy_vector_encoding field_name tree_encoding =
-    scope
-      [field_name]
-      (lazy_vector (value [] Data_encoding.int32) tree_encoding)
+    scope [field_name] (lazy_vec tree_encoding)
 
   let function_type_encoding =
     conv

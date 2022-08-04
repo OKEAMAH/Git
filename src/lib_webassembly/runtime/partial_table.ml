@@ -7,13 +7,13 @@ type index = int32
 
 type count = int32
 
-module Vector = Lazy_vector.Mutable.LwtInt32Vector
+module Vector = Lazy_mut_vec
 
 type table = {mutable ty : table_type; content : ref_ Vector.t}
 
 type t = table
 
-let content {content; _} = Vector.snapshot content
+let content {content; _} = !content
 
 include Memory_exn
 
@@ -21,7 +21,7 @@ let valid_limits {min; max} =
   match max with None -> true | Some m -> I32.le_u min m
 
 let create size r =
-  try Vector.create ~produce_value:(fun _ -> Lwt.return r) size
+  try Vector.alloc ~default:r size
   with Out_of_memory | Invalid_argument _ -> raise OutOfMemory
 
 let create_shallow size =
@@ -34,7 +34,7 @@ let alloc (TableType (lim, _) as ty) r =
 
 let of_lazy_vector (TableType (lim, _) as ty) content =
   if not (valid_limits lim) then raise Type ;
-  {ty; content = Vector.of_immutable content}
+  {ty; content = ref content}
 
 let alloc_shallow (TableType (lim, _) as ty) =
   if not (valid_limits lim) then raise Type ;
@@ -53,7 +53,7 @@ let grow tab delta r =
   else
     let lim' = {lim with min = new_size} in
     if not (valid_limits lim') then raise SizeLimit
-    else Vector.grow delta ~produce_value:(fun _ -> Lwt.return r) tab.content ;
+    else Vector.grow delta ~default:r tab.content ;
     tab.ty <- TableType (lim', t) ;
     ()
 

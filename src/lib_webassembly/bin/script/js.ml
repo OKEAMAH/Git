@@ -3,7 +3,7 @@ open Ast
 open Script
 open Source
 module TzStdLib = Tezos_lwt_result_stdlib.Lwtreslib.Bare
-module Vector = Lazy_vector.LwtInt32Vector
+module Vector = Lazy_vec
 
 (* Harness *)
 
@@ -208,7 +208,7 @@ let exports m : exports Lwt.t =
       let+ t = export_type m exp in
       NameMap.add exp.it.name t map)
     NameMap.empty
-    (Lazy_vector.LwtInt32Vector.loaded_bindings m.it.exports)
+    (Lazy_vec.loaded_bindings m.it.exports)
 
 let modules () : modules = {env = Map.empty; current = 0}
 
@@ -246,7 +246,7 @@ let lookup (mods : modules) x_opt name at =
 
 let vec_two i j = Vector.(create 2l |> set 0l i |> set 1l j)
 
-let vec_to_list v = Stdlib.List.map snd (Vector.loaded_bindings v)
+let vec_to_list v = Vector.Unsafe_for_tick.to_list v
 
 (* Wrappers *)
 
@@ -454,7 +454,7 @@ let wrap item_name wrap_action wrap_assertion at =
             Vector.singleton (NumType I32Type) )
        @@ at)
     :: itypes
-    |> Lazy_vector.LwtInt32Vector.of_list
+    |> Vector.of_list
   in
   let imports_list =
     [
@@ -499,18 +499,14 @@ let wrap item_name wrap_action wrap_assertion at =
       imports_list
     @@ at
   in
-  let imports = imports_list |> Lazy_vector.LwtInt32Vector.of_list in
+  let imports = imports_list |> Vector.of_list in
   let edesc = FuncExport item @@ at in
-  let exports =
-    [{name = Utf8.decode "run"; edesc} @@ at]
-    |> Lazy_vector.LwtInt32Vector.of_list
-  in
+  let exports = [{name = Utf8.decode "run"; edesc} @@ at] |> Vector.of_list in
   let body =
     [Block (ValBlockType None, Block_label 1l) @@ at; Unreachable @@ at]
   in
   let funcs =
-    [{ftype = 0l @@ at; locals; body = Block_label 0l} @@ at]
-    |> Lazy_vector.LwtInt32Vector.of_list
+    [{ftype = 0l @@ at; locals; body = Block_label 0l} @@ at] |> Vector.of_list
   in
   let blocks =
     Vector.of_list
@@ -566,7 +562,7 @@ let of_string_with iter add_char s =
 let of_bytes = of_string_with String.iter add_hex_char
 
 let of_name n =
-  let n = Lazy_vector.LwtInt32Vector.loaded_bindings n in
+  let n = Vector.loaded_bindings n in
   of_string_with List.iter (fun buf (_, uc) -> add_unicode_char buf uc) n
 
 let of_float z =

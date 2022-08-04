@@ -42,7 +42,7 @@ let bytes = string_with String.iter add_hex_char
 let string = string_with String.iter add_char
 
 let name n =
-  let n = Lazy_vector.LwtInt32Vector.loaded_bindings n in
+  let n = Lazy_vec.loaded_bindings n in
   string_with List.iter (fun buf (_, uc) -> add_unicode_char buf uc) n
 
 let list_of_opt = function None -> [] | Some x -> [x]
@@ -60,17 +60,17 @@ let list f xs = List.map f xs
 let opt f xo = list f (list_of_opt xo)
 
 let lazy_vector f map =
-  List.map (fun (_, v) -> f v) (Lazy_vector.LwtInt32Vector.loaded_bindings map)
+  List.map (fun (_, v) -> f v) (Lazy_vec.loaded_bindings map)
 
 let lazy_vectori f map =
   List.map
-    (fun (i32, v) -> f (Int32.to_int i32) v)
-    (Lazy_vector.LwtInt32Vector.loaded_bindings map)
+    (fun (i32, v) -> f Int32.(to_int (of_string i32)) v)
+    (Lazy_vec.loaded_bindings map)
 
 let lazy_vectori_lwt f map =
   TzStdLib.List.map_s
-    (fun (i32, v) -> f (Int32.to_int i32) v)
-    (Lazy_vector.LwtInt32Vector.loaded_bindings map)
+    (fun (i32, v) -> f Int32.(to_int (of_string i32)) v)
+    (Lazy_vec.loaded_bindings map)
 
 let tab head f xs = if xs = [] then [] else [Node (head, list f xs)]
 
@@ -697,8 +697,12 @@ let module_with_var_opt x_opt m =
   let gx = ref 0 in
   let imports = lazy_vector (import fx tx mx gx) m.it.imports in
   let* blocks =
-    let* bls = Ast.Vector.to_list m.it.allocations.blocks in
-    let+ bls_l = TzStdLib.List.map_s Ast.Vector.to_list bls in
+    let* bls =
+      Ast.Vector.Unsafe_for_tick.fetch_to_list m.it.allocations.blocks
+    in
+    let+ bls_l =
+      TzStdLib.List.map_s Ast.Vector.Unsafe_for_tick.fetch_to_list bls
+    in
     let bls_v = List.map Vector.of_list bls_l in
     Vector.of_list bls_v
   in

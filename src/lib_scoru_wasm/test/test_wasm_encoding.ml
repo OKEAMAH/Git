@@ -58,13 +58,13 @@ module Tree = struct
 
   type value = Context.value
 
-  include Context.Tree
-
   let select = function
     | Tree t -> t
     | _ -> raise Tree_encoding.Incorrect_tree_type
 
   let wrap t = Tree t
+
+  include Context.Tree
 end
 
 module Tree_encoding = Tree_encoding.Make (Tree)
