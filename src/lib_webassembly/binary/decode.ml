@@ -1457,8 +1457,9 @@ let local s =
   let+ t = value_type s in
   (n, t)
 
-(** Code section parsing. *)
 (* TODO HANS *)
+
+(** Code section parsing. *)
 type code_kont =
   | CKStart  (** Starting point of a function parsing. *)
   | CKLocalsParse of {
@@ -1923,8 +1924,9 @@ type field =
   | VecField : ('a, vec_repr) field_type * 'a Vector.t -> field
   | SingleField : ('a, opt_repr) field_type * 'a option -> field
 
-(** Module parsing steps *)
 (* TODO HANS *)
+
+(** Module parsing steps *)
 type module_kont =
   | MKStart  (** Initial state of a module parsing *)
   | MKSkipCustom : ('a, 'repr) field_type option -> module_kont
