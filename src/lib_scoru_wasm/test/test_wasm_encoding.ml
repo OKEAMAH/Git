@@ -121,6 +121,11 @@ let test_module_roundtrip () =
       let* () = assert_string_equal module1_str module2_str in
       assert_string_equal module2_str module3_str)
 
+(** Test serialize/deserialize an encodable values and compare trees.
+
+    More formally, test that for all values, encoding, decoding and
+    re-encoding yields the same tree.
+ *)
 let test_generic_tree ~pp ~gen ~encoding =
   let print = Format.asprintf "%a" pp in
   let open Lwt_result_syntax in
