@@ -23,6 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+exception Incorrect_tree_type
+
 module type TREE = sig
   type tree
 
@@ -30,11 +32,20 @@ module type TREE = sig
 
   type value := bytes
 
+  (** @raise Incorrect_tree_type *)
+  val select : Lazy_containers.Lazy_dict.tree -> tree
+
+  val wrap : tree -> Lazy_containers.Lazy_dict.tree
+
   val remove : tree -> key -> tree Lwt.t
 
   val add : tree -> key -> value -> tree Lwt.t
 
+  val add_tree : tree -> key -> tree -> tree Lwt.t
+
   val find : tree -> key -> value option Lwt.t
+
+  val find_tree : tree -> key -> tree option Lwt.t
 end
 
 module type Lwt_vector =
@@ -279,6 +290,11 @@ module type S = sig
       The [default] labeled argument can be provided to have a
       fallback in case the value is missing from the tree. *)
   val tagged_union : ?default:'a -> 'tag t -> ('tag, 'a) case list -> 'a t
+
+  val lazy_dict :
+    ('k -> string) -> 'a t -> ('k, 'a) Lazy_containers.Lazy_dict.t t
+
+  val lazy_vec : 'a t -> 'a Lazy_containers.Lazy_vec.t t
 
   (** [option enc] lifts the given encoding [enc] to one that can encode
       optional values. *)

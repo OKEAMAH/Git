@@ -132,6 +132,9 @@ module type S = sig
       fail with a [No_tag_matched] error when [run].  *)
   val tagged_union : ?default:'a -> 'tag t -> ('tag, 'a) case list -> 'a t
 
+  val lazy_dict :
+    ('k -> string) -> 'a t -> ('k, 'a) Lazy_containers.Lazy_dict.t t
+
   (** Syntax module for the {!Tree_decoding}. This is intended to be opened
       locally in functions. Within the scope of this module, the code can
       include binding operators, leading to a [let]-style syntax. Similar to

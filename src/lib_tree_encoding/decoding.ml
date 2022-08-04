@@ -64,6 +64,9 @@ module type S = sig
 
   val tagged_union : ?default:'a -> 'tag t -> ('tag, 'a) case list -> 'a t
 
+  val lazy_dict :
+    ('k -> string) -> 'a t -> ('k, 'a) Lazy_containers.Lazy_dict.t t
+
   module Syntax : sig
     val return : 'a -> 'a t
 
@@ -81,7 +84,7 @@ module type S = sig
   end
 end
 
-module Make (T : Tree.S) : S with type tree = T.tree = struct
+module Make (T : Tree.S) = struct
   (** Given the tail key, construct a full key. *)
   type prefix_key = key -> key
 
@@ -197,4 +200,19 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
             | Some default -> return default
             | None -> raise exn)
         | exn -> raise exn)
+
+  let lazy_dict string_of_key dec input_tree prefix =
+    let open Lwt.Syntax in
+    let open Lazy_containers in
+    let* origin = T.find_tree input_tree (prefix []) in
+    let produce_value _tree key =
+      match origin with
+      | Some origin -> dec origin (of_key [key])
+      | None -> raise (Lazy_containers.Lazy_dict.Missing_key key)
+    in
+    Lwt.return
+      (Lazy_dict.create
+         ?origin:(Option.map T.wrap origin)
+         ~produce_value
+         string_of_key)
 end
