@@ -233,7 +233,7 @@ end) : S = struct
   (*
     [back_pointers] are sorted in decreasing order of their pointing cell index
     in the list. So we can do a [binary_search] to find the [cell] with the
-    smallest index that is greater than [target] in the list. 
+    smallest index that is greater than [target] in the list.
 
     More formally, min({c : cell | c.index >= target.index}) where [c] is one of
     the pointed cells in the array of back pointers of the [cell] parameter.
@@ -256,9 +256,9 @@ end) : S = struct
           else if Compare.Int.(prev_mid_cell_index < target_index) then
             (*
               If (mid_cell_index > target_index) &&
-                 (prev_mid_cell_index < target_index) 
-              then we found the closest cell to the target, which is mid_cell. 
-              so we return its index [mid_idx] in the array of back_pointers. 
+                 (prev_mid_cell_index < target_index)
+              then we found the closest cell to the target, which is mid_cell.
+              so we return its index [mid_idx] in the array of back_pointers.
             *)
             Some mid_idx
           else binary_search (mid_idx + 1) end_idx
