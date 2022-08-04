@@ -69,6 +69,10 @@ module type S = sig
       provided [tree]. *)
   val decode : 'a t -> tree -> 'a Lwt.t
 
+  (** [const x] is an encoder that does nothing on encoding. On decoding it
+      ignores the tree and returns [x]. *)
+  val const : 'a -> 'a t
+
   (** [conv f g enc] transforms from one encoding to a different one using
       [f] for mapping the results decoded using [enc], and [g] for mapping from
       the input. *)
