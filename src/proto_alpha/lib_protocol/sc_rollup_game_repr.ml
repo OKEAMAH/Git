@@ -322,19 +322,23 @@ let step_encoding =
 let pp_step ppf step =
   match step with
   | Dissection states ->
-      Format.fprintf ppf "Dissection:@ " ;
-      Format.pp_print_list
-        ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ";\n\n")
-        (fun ppf {state_hash; tick} ->
-          Format.fprintf
-            ppf
-            "Tick: %a,@ State: %a\n"
-            Sc_rollup_tick_repr.pp
-            tick
-            (Format.pp_print_option State_hash.pp)
-            state_hash)
+      Format.fprintf
         ppf
-        states
+        "@[<v 2>Dissection:@,%a@]"
+        (Format.pp_print_list (fun ppf {state_hash; tick} ->
+             Format.fprintf
+               ppf
+               "%a"
+               (Format.pp_print_option (fun ppf hash ->
+                    Format.fprintf
+                      ppf
+                      "Tick: %a,State: %a"
+                      Sc_rollup_tick_repr.pp
+                      tick
+                      State_hash.pp
+                      hash))
+               state_hash))
+        (List.filter (fun {state_hash; _} -> Option.is_some state_hash) states)
   | Proof proof -> Format.fprintf ppf "proof: %a" Sc_rollup_proof_repr.pp proof
 
 type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
@@ -342,7 +346,7 @@ type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
 let pp_refutation ppf {choice; step} =
   Format.fprintf
     ppf
-    "Tick: %a@ Step: %a"
+    "Choosen tick: %a@,@[<v 2>Step:@,%a@]"
     Sc_rollup_tick_repr.pp
     choice
     pp_step
@@ -477,7 +481,7 @@ let pp_invalid_move fmt =
         stop_state_hash
         pp_hash_opt
         stop_proof
-  | Proof_invalid s -> Format.fprintf fmt "Invalid proof: %s" s
+  | Proof_invalid s -> Format.fprintf fmt "Invalid proof1: %s" s
 
 let invalid_move_encoding =
   let open Data_encoding in
@@ -635,7 +639,7 @@ type reason = Conflict_resolved | Invalid_move of invalid_move | Timeout
 let pp_reason ppf reason =
   match reason with
   | Conflict_resolved -> Format.fprintf ppf "conflict resolved"
-  | Invalid_move mv -> Format.fprintf ppf "invalid move(%a)" pp_invalid_move mv
+  | Invalid_move mv -> Format.fprintf ppf "invalid move:@ %a" pp_invalid_move mv
   | Timeout -> Format.fprintf ppf "timeout"
 
 let reason_encoding =
@@ -671,7 +675,7 @@ let pp_status ppf status =
   | Ended (reason, staker) ->
       Format.fprintf
         ppf
-        "Game ended due to %a, %a loses their stake"
+        "Game ended:@, Reason: %a@,Looser: %a (lost their stake)"
         pp_reason
         reason
         Staker.pp

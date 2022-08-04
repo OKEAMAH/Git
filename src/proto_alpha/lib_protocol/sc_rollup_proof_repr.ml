@@ -67,7 +67,7 @@ let () =
     ~id:"Sc_rollup_proof_check"
     ~title:"Invalid proof"
     ~description:"An invalid proof has been submitted"
-    ~pp:(fun fmt msg -> Format.fprintf fmt "Invalid proof: %s" msg)
+    ~pp:(fun fmt msg -> Format.fprintf fmt "Invalid proof2: %s" msg)
     Data_encoding.(obj1 @@ req "reason" string)
     (function Sc_rollup_proof_check msg -> Some msg | _ -> None)
     (fun msg -> Sc_rollup_proof_check msg)
@@ -151,22 +151,22 @@ let of_lwt_result result =
 let produce pvm_and_state commit_level =
   let open Lwt_tzresult_syntax in
   let (module P : PVM_with_context_and_state) = pvm_and_state in
-  let open P in
   let*! request = P.is_input_state P.state in
   let* inbox, input_given =
     match request with
     | Sc_rollup_PVM_sem.No_input_required -> return (None, None)
     | Sc_rollup_PVM_sem.Initial ->
         let* p, i =
-          Inbox_with_history.(
-            produce_proof context history inbox (Raw_level_repr.root, Z.zero))
+          P.Inbox_with_history.(
+            produce_proof P.context history inbox (Raw_level_repr.root, Z.zero))
         in
-        return (Some (Inbox_with_history.to_serialized_proof p), i)
+        return (Some (P.Inbox_with_history.to_serialized_proof p), i)
     | Sc_rollup_PVM_sem.First_after (l, n) ->
         let* p, i =
-          Inbox_with_history.(produce_proof context history inbox (l, Z.succ n))
+          P.Inbox_with_history.(
+            produce_proof P.context history inbox (l, Z.succ n))
         in
-        return (Some (Inbox_with_history.to_serialized_proof p), i)
+        return (Some (P.Inbox_with_history.to_serialized_proof p), i)
   in
   let input_given = Option.bind input_given (cut_at_level commit_level) in
   let* pvm_step_proof =
