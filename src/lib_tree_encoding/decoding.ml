@@ -44,7 +44,7 @@ module type S = sig
 
   val raw : key -> bytes t
 
-  val optional : key -> 'a Data_encoding.t -> 'a option t
+  val value_option : key -> 'a Data_encoding.t -> 'a option t
 
   val value : ?default:'a -> key -> 'a Data_encoding.t -> 'a t
 
@@ -145,7 +145,7 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
     let+ value = Tree.find tree key in
     match value with Some value -> value | None -> raise (Key_not_found key)
 
-  let optional key decoder tree prefix =
+  let value_option key decoder tree prefix =
     let open Lwt_syntax in
     let key = prefix key in
     let* value = Tree.find tree key in
@@ -158,7 +158,7 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
 
   let value ?default key decoder tree prefix =
     let open Lwt_syntax in
-    let* value = optional key decoder tree prefix in
+    let* value = value_option key decoder tree prefix in
     match (value, default) with
     | Some value, _ -> return value
     | None, Some default -> return default
