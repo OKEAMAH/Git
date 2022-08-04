@@ -194,7 +194,7 @@ let test_admin_instr_tree () =
   test_generic_tree
     ~pp:Ast_printer.pp_admin_instr
     ~gen:(fun ~host_funcs:_ ~module_reg ->
-      Ast_generators.admin_instr_gen ~module_reg ())
+      Ast_generators.admin_instr_gen ~module_reg)
     ~encoding:(fun ~host_funcs:_ -> Wasm_encoding.admin_instr_encoding)
 
 (** Test serialize/deserialize evaluation configuration and compare trees. *)

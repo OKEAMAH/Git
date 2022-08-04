@@ -492,18 +492,14 @@ let rec admin_instr'_gen ~module_reg depth =
     let* index = int32 in
     let* final_instrs = small_list instr_gen in
     let* values = small_list value_gen in
-    let+ instrs =
-      small_list (admin_instr_gen ~depth:(depth - 1) ~module_reg ())
-    in
+    let+ instrs = small_list (admin_instr_gen ~module_reg (depth - 1)) in
     Label (index, final_instrs, (values, instrs))
   in
   let frame_gen' =
     let* index = int32 in
     let* frame = frame_gen ~module_reg in
     let* values = small_list value_gen in
-    let+ instrs =
-      small_list (admin_instr_gen ~depth:(depth - 1) ~module_reg ())
-    in
+    let+ instrs = small_list (admin_instr_gen ~module_reg (depth - 1)) in
     Frame (index, frame, (values, instrs))
   in
   oneof
@@ -518,13 +514,12 @@ let rec admin_instr'_gen ~module_reg depth =
      ]
     @ if depth > 0 then [label_gen; frame_gen'] else [])
 
-and admin_instr_gen ?depth ~module_reg () =
-  let inner =
-    match depth with
-    | None -> sized_size (int_bound 3) (admin_instr'_gen ~module_reg)
-    | Some depth -> (admin_instr'_gen ~module_reg) depth
-  in
-  map Source.(at no_region) inner
+and admin_instr_gen ~module_reg depth =
+  map Source.(at no_region) (admin_instr'_gen ~module_reg depth)
+
+let admin_instr_gen ~module_reg =
+  let gen = admin_instr_gen ~module_reg in
+  sized_size (int_bound 3) gen
 
 let input_buffer_gen =
   let gen_message =
@@ -544,7 +539,7 @@ let input_buffer_gen =
 let config_gen ~host_funcs ~module_reg =
   let* frame = frame_gen ~module_reg in
   let* input = input_buffer_gen in
-  let* instrs = small_list (admin_instr_gen ~module_reg ()) in
+  let* instrs = small_list (admin_instr_gen ~module_reg) in
   let* values = small_list value_gen in
   let+ budget = small_int in
   Eval.{frame; input; code = (values, instrs); host_funcs; budget}
