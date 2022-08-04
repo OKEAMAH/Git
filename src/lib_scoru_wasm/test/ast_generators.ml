@@ -448,7 +448,7 @@ let module_ref_and_instance_gen ?module_reg () =
   return (module_ref, module_)
 
 let module_gen ?module_reg () =
-  map (fun (_, m) -> m) (module_ref_and_instance_gen ?module_reg ())
+  map snd (module_ref_and_instance_gen ?module_reg ())
 
 let frame_gen ~module_reg =
   let* inst, _ = module_ref_and_instance_gen ~module_reg () in
