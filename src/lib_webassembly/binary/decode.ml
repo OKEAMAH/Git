@@ -253,7 +253,8 @@ let sized f s =
   require (pos s = start + size) s start "section size mismatch" ;
   x
 
-(** Incremental chunked byte vector creation (from implicit input). *)
+(** Incremental chunked byte vector creation (from implicit input).
+    TODO HANS*)
 type byte_vector_kont =
   | VKStart  (** Initial step. *)
   | VKRead of Ast.data_label * int64 * int64
@@ -422,7 +423,8 @@ let pop_at_most n stack =
   let+ values, stack = fold [] n stack in
   (List.rev values, stack)
 
-(** Instruction parsing continuations. *)
+(** Instruction parsing continuations.
+    TODO HANS*)
 type instr_block_kont =
   | IKStop of block_label  (** Final step of a block parsing. *)
   | IKNext of block_label
@@ -1172,6 +1174,7 @@ let instr_block_step s allocs cont =
   (* The empty continuation cannot reduce. *)
   | [] -> assert false
 
+(* TODO HANS *)
 type block_kont =
   | BlockStart
   | BlockParse of instr_block_kont lazy_stack
@@ -1199,6 +1202,7 @@ let block_step s allocs =
 
 (** Vector and size continuations *)
 
+(* TODO HANS *)
 type 'a lazy_vec_kont = LazyVec of {offset : int32; vector : 'a Vector.t}
 
 let is_end_of_vec (LazyVec {offset; vector}) =
@@ -1307,6 +1311,7 @@ let section tag f default s = section_with_size tag (fun _ -> f) default s
 
 (* Type section *)
 
+(* TODO HANS *)
 type func_type_kont =
   | FKStart
   | FKIns of value_type lazy_vec_kont
@@ -1357,6 +1362,7 @@ let import_desc s =
       GlobalImport x
   | _ -> error s (pos s - 1) "malformed import kind"
 
+(* TODO HANS *)
 type import_kont =
   | ImpKStart  (** Import parsing starting point. *)
   | ImpKModuleName of name_step
@@ -1416,6 +1422,7 @@ let export_desc s =
       GlobalExport x
   | _ -> error s (pos s - 1) "malformed export kind"
 
+(* TODO HANS *)
 type export_kont =
   | ExpKStart  (** Export parsing starting point. *)
   | ExpKName of name_step  (** Export name parsing UTF8 char per char step. *)
@@ -1451,6 +1458,7 @@ let local s =
   (n, t)
 
 (** Code section parsing. *)
+(* TODO HANS *)
 type code_kont =
   | CKStart  (** Starting point of a function parsing. *)
   | CKLocalsParse of {
@@ -1595,6 +1603,7 @@ let elem_kind s =
 
 type index_kind = Indexed | Const
 
+(* TODO HANS *)
 type elem_kont =
   | EKStart  (** Starting point of an element segment parsing. *)
   | EKMode of {
@@ -1798,6 +1807,7 @@ let elem_step s allocs =
 
 (* Data section *)
 
+(* TODO HANS *)
 type data_kont =
   | DKStart  (** Starting point of a data segment parsing. *)
   | DKMode of {
@@ -1914,6 +1924,7 @@ type field =
   | SingleField : ('a, opt_repr) field_type * 'a option -> field
 
 (** Module parsing steps *)
+(* TODO HANS *)
 type module_kont =
   | MKStart  (** Initial state of a module parsing *)
   | MKSkipCustom : ('a, 'repr) field_type option -> module_kont
@@ -2002,6 +2013,7 @@ let add_field field state =
   | VecField (CodeField, code) -> {state with code}
   | VecField (DataField, datas) -> {state with datas}
 
+(* TODO HANS *)
 type decode_kont = {
   building_state : building_state;  (** Accumulated parsed sections. *)
   module_kont : module_kont;
