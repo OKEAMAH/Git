@@ -623,7 +623,7 @@ let pp_input_buffer out input =
     out
     "@[<v 2>{content = %a;@;num_elements = %s;@;}@]"
     (pp_vector_z pp_input_message)
-    (Vector.snapshot input.content)
+    (Lazy_vector.Mutable.LwtZVector.snapshot input.content)
     (Z.to_string input.num_elements)
 
 let pp_config out config =

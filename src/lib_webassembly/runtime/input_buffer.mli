@@ -1,8 +1,6 @@
 (** This module implements a FIFO queue to model the input. The messages are
     queued in an input_buffer in their order of appearance in the inbox. *)
 
-module Vector = Lazy_vector.Mutable.LwtZVector
-
 type message = {
   rtype : int32;
   raw_level : int32;
@@ -15,7 +13,10 @@ type message = {
     there is no cleanup operation so an input_buffer content will likely have
     more than [num_elements] messages (see #3340). *)
 
-type t = {content : message Vector.t; mutable num_elements : Z.t}
+type t = {
+  content : message Lazy_vector.Mutable.LwtZVector.t;
+  mutable num_elements : Z.t;
+}
 
 exception Cannot_store_an_earlier_message
 

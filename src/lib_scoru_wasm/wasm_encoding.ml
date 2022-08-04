@@ -834,17 +834,20 @@ module Make (Tree_encoding : Tree_encoding.S) = struct
          (value ["message-counter"] Data_encoding.z)
          chunked_byte_vector)
 
-  module InputBufferVec = Lazy_vector_encoding.Make (Input_buffer.Vector.Vector)
+  module InputBufferVec = Lazy_vector_encoding.Make (Lazy_vector.LwtZVector)
 
   let input_buffer_encoding =
     conv
       (fun (content, num_elements) ->
         {
-          Input_buffer.content = Input_buffer.Vector.of_immutable content;
+          Input_buffer.content =
+            Lazy_vector.Mutable.LwtZVector.of_immutable content;
           num_elements;
         })
       (fun buffer ->
-        Input_buffer.(Vector.snapshot buffer.content, buffer.num_elements))
+        Input_buffer.
+          ( Lazy_vector.Mutable.LwtZVector.snapshot buffer.content,
+            buffer.num_elements ))
       (tup2
          ~flatten:true
          (scope
