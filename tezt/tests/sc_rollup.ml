@@ -275,7 +275,7 @@ let publish_commitment ?(src = Constant.bootstrap1.public_key_hash) ~commitment
 
 *)
 
-(* Originate a new SCORU of the arithmetic kind
+(* Originate a new SCORU of the given PVM kind
    --------------------------------------------
 
    - Rollup addresses are fully determined by operation hashes and origination nonce.
@@ -2302,15 +2302,20 @@ let test_refutation protocols ~kind =
            inputs
            protocols)
 
+
 let register_shared_test ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
   test_rollup_get_genesis_info ~kind protocols ;
+  (* Not using rollup node: *)
   test_rollup_get_chain_block_context_sc_rollup_last_cemented_commitment_hash_with_level
     ~kind
     protocols ;
+  (* Not using rollup node: *)
   test_rollup_inbox_size ~kind protocols ;
+  (* Not using rollup node: *)
   test_rollup_inbox_current_messages_hash ~kind protocols ;
+  (* USING rollup node: *)
   test_rollup_inbox_of_rollup_node ~kind "basic" basic_scenario protocols ;
   test_rollup_inbox_of_rollup_node
     ~kind
@@ -2322,8 +2327,12 @@ let register_shared_test ~kind ~protocols =
     "handles_chain_reorg"
     sc_rollup_node_handles_chain_reorg
     protocols ;
+  (* USING rollup node: *)
   test_rollup_node_boots_into_initial_state protocols ~kind ;
+  (* TODO needs test logic for Wasm : *)
+  (* USING rollup node: *)
   test_rollup_node_advances_pvm_state protocols ~kind ;
+
   test_commitment_scenario
     "commitment_is_stored"
     commitment_stored
@@ -2394,6 +2403,7 @@ let register_shared_test ~kind ~protocols =
     protocols
     ~kind ;
   test_consecutive_commitments protocols ~kind ;
+  (* TODO hans: out of scope for demo *)
   test_refutation protocols ~kind
 
 let register ~protocols =
