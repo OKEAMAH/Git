@@ -2302,7 +2302,7 @@ let test_refutation protocols ~kind =
            inputs
            protocols)
 
-let register ~kind ~protocols =
+let register_shared_test ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
   test_rollup_get_genesis_info ~kind protocols ;
@@ -2410,5 +2410,5 @@ let register ~protocols =
   test_rollup_arith_origination_boot_sector protocols ;
   test_rollup_node_uses_arith_boot_sector protocols ;
   (* Shared tezts - will be executed for both PVMs. *)
-  register ~kind:"wasm_2_0_0" ~protocols ;
-  register ~kind:"arith" ~protocols
+  register_shared_test ~kind:"wasm_2_0_0" ~protocols ;
+  register_shared_test ~kind:"arith" ~protocols
