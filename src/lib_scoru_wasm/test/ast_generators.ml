@@ -473,9 +473,12 @@ let start_gen =
   let+ sfunc = var_gen in
   no_region Ast.{sfunc}
 
+<<<<<<< HEAD
 let module_gen ?module_reg () =
-*)
 let module_ref_and_instance_gen ?module_reg () =
+*)
+let module_ref_and_instance_gen ?(module_reg : Instance.module_reg option) () :
+    Instance.module_inst t =
   let module_reg =
     match module_reg with
     | None -> Instance.ModuleMap.create ()
