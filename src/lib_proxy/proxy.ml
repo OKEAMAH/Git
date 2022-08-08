@@ -100,5 +100,6 @@ module type CORE = sig
   val get : Local.key -> Local.tree option Lwt.t
 
   (* Retrieves the data for the given key *)
-  val do_rpc : proxy_getter_input -> Local.key -> unit tzresult Lwt.t
+  val do_rpc :
+    ?use_v2:bool -> proxy_getter_input -> Local.key -> unit tzresult Lwt.t
 end

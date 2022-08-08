@@ -38,6 +38,16 @@ type input = {
   tree : Store.tree;
 }
 
+type input_v2 = {
+  printer : Tezos_client_base.Client_context.printer;
+  min_agreement : float;
+  chain : Tezos_shell_services.Block_services.chain;
+  block : Tezos_shell_services.Block_services.block;
+  key : string list;
+  mproof : Proof.tree Proof.t;
+  tree : Store.tree;
+}
+
 let min_agreeing_endpoints min_agreement nb_endpoints =
   min_agreement *. float_of_int nb_endpoints |> Float.ceil |> int_of_float
 
@@ -162,4 +172,6 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
           min_agreement
     in
     return agreement_reached
+
+  let consensus_v2 (_ : input_v2) _ = Stdlib.failwith "not implemented"
 end
