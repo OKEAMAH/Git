@@ -1008,6 +1008,14 @@ let test_rollup_node_boots_into_initial_state ~kind =
 
    When the rollup node receives messages, we like to see evidence that the PVM
    has advanced.
+
+   ---
+   FIXME:
+    To run just this test:
+
+    $ # dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with messages"
+
+    $ # dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with internal messages"
 *)
 let test_rollup_node_advances_pvm_state protocols ~kind =
   let go ~internal client sc_rollup sc_rollup_node =
