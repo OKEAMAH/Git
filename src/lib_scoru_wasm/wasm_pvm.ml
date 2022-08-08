@@ -23,9 +23,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Tezos_webassembly_interpreter
+module Wasm = Tezos_webassembly_interpreter
 
-type eval_state = {module_reg : Instance.module_reg; eval_config : Eval.config}
+type eval_state = {
+  module_reg : Wasm.Instance.module_reg;
+  eval_config : Wasm.Eval.config;
+}
 
 type tick_state = Decode | Eval of eval_state
 
@@ -44,13 +47,16 @@ module Make (T : Tree_encoding.TREE) :
   module Raw = struct
     type tree = T.tree
 
-    module Wasm = Tezos_webassembly_interpreter
     module Tree_encoding = Tree_encoding.Make (T)
     module Wasm_encoding = Wasm_encoding.Make (Tree_encoding)
 
+    let host_funcs =
+      let registry = Wasm.Host_funcs.empty () in
+      Host_funcs.register_host_funcs (Wasm.Host_funcs.empty ()) ;
+      registry
+
     let tick_state_encoding ~module_reg =
       let open Tree_encoding in
-      let host_funcs = Host_funcs.empty () in
       tagged_union
         (value [] Data_encoding.string)
         [
@@ -85,51 +91,63 @@ module Make (T : Tree_encoding.TREE) :
 
     let next_state state =
       let open Lwt_syntax in
-      let make_invoke_main_instr module_inst =
-        let* name = Instance.Vector.to_list @@ Utf8.decode "main" in
-        let* extern = Instance.NameMap.get name module_inst.Instance.exports in
-        let main_func =
-          match extern with
-          | Instance.ExternFunc func -> func
-          | _ ->
-              (* We require a function with the name [main] to be exported
-                 rather than any other structure. *)
-              assert false
-        in
-        let admin_instr' = Eval.Invoke main_func in
-        return Source.{it = admin_instr'; at = no_region}
-      in
       match state.tick with
       | Decode ->
-          let* ast_module = Decode.decode ~name:"name" ~bytes:state.kernel in
-          let module_reg = Instance.ModuleMap.create () in
-          let self =
-            Instance.alloc_module_ref (Instance.Module_key "name") module_reg
+          let* ast_module =
+            Wasm.Decode.decode ~name:"name" ~bytes:state.kernel
           in
-          let host_funs = Host_funcs.empty () in
-          let* module_inst = Eval.init ~self host_funs ast_module [] in
-          let* admin_instr = make_invoke_main_instr module_inst in
-          let eval_config = Eval.config host_funs self [] [admin_instr] in
+          let module_reg = Wasm.Instance.ModuleMap.create () in
+          let self =
+            Wasm.Instance.alloc_module_ref
+              (Wasm.Instance.Module_key "main")
+              module_reg
+          in
+          let* module_inst = Wasm.Eval.init ~self host_funcs ast_module [] in
+          let eval_config = Wasm.Eval.config host_funcs self [] [] in
           (* Write the module instance to the module registry map. *)
-          let () = Instance.ModuleMap.set "main" module_inst module_reg in
+          let () = Wasm.Instance.ModuleMap.set "main" module_inst module_reg in
           Lwt.return {state with tick = Eval {eval_config; module_reg}}
-      | Eval {eval_config = {Eval.frame; code; _} as eval_config; module_reg}
+      | Eval
+          {eval_config = {Wasm.Eval.frame; code; _} as eval_config; module_reg}
         -> (
           match code with
           | _values, [] ->
               (* We have an empty set of admin instructions so we create one
                  that invokes the main function. *)
-              let* module_inst = Instance.ModuleMap.get "main" module_reg in
-              let* admin_instr = make_invoke_main_instr module_inst in
+              let* module_inst =
+                Wasm.Instance.ModuleMap.get "main" module_reg
+              in
+              let* name =
+                Wasm.Instance.Vector.to_list @@ Wasm.Utf8.decode "main"
+              in
+              let* extern =
+                Wasm.Instance.NameMap.get name module_inst.Wasm.Instance.exports
+              in
+              let main_func =
+                match extern with
+                | Wasm.Instance.ExternFunc func -> func
+                | _ ->
+                    (* We require a function with the name [main] to be exported
+                       rather than any other structure. *)
+                    assert false
+              in
+              let admin_instr' = Wasm.Eval.Invoke main_func in
+              let admin_instr =
+                Wasm.Source.{it = admin_instr'; at = no_region}
+              in
               (* Clear the values and the locals in the frame. *)
               let code = ([], [admin_instr]) in
               let eval_config =
-                {eval_config with Eval.frame = {frame with locals = []}; code}
+                {
+                  eval_config with
+                  Wasm.Eval.frame = {frame with locals = []};
+                  code;
+                }
               in
               Lwt.return {state with tick = Eval {eval_config; module_reg}}
           | _ ->
               (* Continue execution. *)
-              let* eval_config = Eval.step eval_config in
+              let* eval_config = Wasm.Eval.step eval_config in
               Lwt.return {state with tick = Eval {eval_config; module_reg}})
 
     let module_reg_encoding =
@@ -149,7 +167,7 @@ module Make (T : Tree_encoding.TREE) :
       (* Try to decode the module registry. *)
       let* module_reg_opt = module_reg_from_tree tree in
       let module_reg =
-        Option.value_f ~default:Instance.ModuleMap.create module_reg_opt
+        Option.value_f ~default:Wasm.Instance.ModuleMap.create module_reg_opt
       in
       let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
       let* state = next_state state in
