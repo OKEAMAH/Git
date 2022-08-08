@@ -291,8 +291,8 @@ let publish_commitment ?(src = Constant.bootstrap1.public_key_hash) ~commitment
 
 *)
 
-(* Originate a new SCORU of the arithmetic kind
-   --------------------------------------------
+(* Originate a new SCORU
+   ---------------------
 
    - Rollup addresses are fully determined by operation hashes and origination nonce.
 *)
@@ -306,6 +306,11 @@ let test_origination ~kind =
       let* _sc_rollup = originate_sc_rollup ~kind ~src:bootstrap1_key client in
       unit)
 
+(* Initialize configuration
+   ------------------------
+
+   Can use CLI to initialize the rollup node config file
+ *)
 let test_rollup_node_configuration ~kind =
   regression_test
     ~__FILE__
@@ -637,6 +642,9 @@ let fetch_messages_from_block sc_rollup client =
   in
   return messages
 
+(* TODO what does it test?
+   It doesn't use the rollup node.
+ *)
 let test_rollup_inbox_current_messages_hash ~kind =
   regression_test
     ~__FILE__
@@ -780,6 +788,7 @@ let basic_scenario _protocol sc_rollup_node sc_rollup _node client =
   let* _ = Sc_rollup_node.wait_for_level sc_rollup_node expected_level in
   return ()
 
+(* We can terminate the rollup node. *)
 let sc_rollup_node_stops_scenario _protocol sc_rollup_node sc_rollup _node
     client =
   let num_messages = 2 in
@@ -796,6 +805,7 @@ let sc_rollup_node_stops_scenario _protocol sc_rollup_node sc_rollup _node
   let* _ = Sc_rollup_node.wait_for_level sc_rollup_node expected_level in
   return ()
 
+(* TODO what does this test? Does it use the rollup node? *)
 let sc_rollup_node_handles_chain_reorg protocol sc_rollup_node sc_rollup node
     client =
   let num_messages = 1 in
@@ -930,6 +940,7 @@ let test_rollup_node_boots_into_initial_state ~kind =
     let expected_status =
       match kind with
       | "arith" -> "Halted"
+      (* TODO better check here *)
       | "wasm_2_0_0" -> "Computing"
       | _ -> raise (Invalid_argument kind)
     in
@@ -994,11 +1005,15 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
           contract_id ;
         return (level + 1, Some contract_id)
     in
+    (* Called with monotonically increasing [i] *)
     let test_message i =
       let* prev_state_hash =
         Sc_rollup_client.state_hash ~hooks sc_rollup_client
       in
       let* prev_ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
+      (* TODO Wasm PVM needs different messages
+         Note [sf = Printf.sprintf]
+         *)
       let message = sf "%d %d + value" i ((i + 2) * 2) in
       let* () =
         match forwarder with
