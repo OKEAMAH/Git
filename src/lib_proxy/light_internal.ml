@@ -195,6 +195,8 @@ module Merkle = struct
     let tree = Option.value ~default:tree tree_opt in
     return tree
 
+  let union_irmin_tree_merkle_proof _ _ _ = Stdlib.failwith "not implemented"
+
   let sequence_result_unit (results : (unit, 'b) result list) :
       (unit, 'b) result =
     (* ignore the [()]s with [Fun.id], simply stop on the first [Error] with
