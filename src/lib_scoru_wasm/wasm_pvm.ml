@@ -25,12 +25,7 @@
 
 module Wasm = Tezos_webassembly_interpreter
 
-type eval_state = {
-  module_reg : Wasm.Instance.module_reg;
-  eval_config : Wasm.Eval.config;
-}
-
-type tick_state = Decode | Eval of eval_state
+type tick_state = Decode | Eval of Wasm.Eval.config
 
 type pvm_state = {
   kernel : Lazy_containers.Chunked_byte_vector.Lwt.t;
@@ -70,8 +65,8 @@ module Make (T : Tree_encoding.TREE) :
             (Wasm_encoding.config_encoding
                ~host_funcs
                ~module_reg:(Lazy.from_val module_reg))
-            (function Eval {eval_config; _} -> Some eval_config | _ -> None)
-            (fun eval_config -> Eval {eval_config; module_reg});
+            (function Eval eval_config -> Some eval_config | _ -> None)
+            (fun eval_config -> Eval eval_config);
         ]
 
     let pvm_state_encoding ~module_reg =
@@ -89,27 +84,24 @@ module Make (T : Tree_encoding.TREE) :
            (value ~default:true ["wasm"; "consuming"] Data_encoding.bool)
            (scope ["wasm"] (tick_state_encoding ~module_reg)))
 
-    let next_state state =
+    let next_state ~module_reg state =
       let open Lwt_syntax in
       match state.tick with
       | Decode ->
           let* ast_module =
             Wasm.Decode.decode ~name:"name" ~bytes:state.kernel
           in
-          let module_reg = Wasm.Instance.ModuleMap.create () in
           let self =
             Wasm.Instance.alloc_module_ref
               (Wasm.Instance.Module_key "main")
               module_reg
           in
-          let* module_inst = Wasm.Eval.init ~self host_funcs ast_module [] in
+          (* The module instance is registered in [self] that contains the
+             module registry, why we can ignore the result here. *)
+          let* _module_inst = Wasm.Eval.init ~self host_funcs ast_module [] in
           let eval_config = Wasm.Eval.config host_funcs self [] [] in
-          (* Write the module instance to the module registry map. *)
-          let () = Wasm.Instance.ModuleMap.set "main" module_inst module_reg in
-          Lwt.return {state with tick = Eval {eval_config; module_reg}}
-      | Eval
-          {eval_config = {Wasm.Eval.frame; code; _} as eval_config; module_reg}
-        -> (
+          Lwt.return {state with tick = Eval eval_config}
+      | Eval ({Wasm.Eval.frame; code; _} as eval_config) -> (
           match code with
           | _values, [] ->
               (* We have an empty set of admin instructions so we create one
@@ -144,11 +136,11 @@ module Make (T : Tree_encoding.TREE) :
                   code;
                 }
               in
-              Lwt.return {state with tick = Eval {eval_config; module_reg}}
+              Lwt.return {state with tick = Eval eval_config}
           | _ ->
               (* Continue execution. *)
               let* eval_config = Wasm.Eval.step eval_config in
-              Lwt.return {state with tick = Eval {eval_config; module_reg}})
+              Lwt.return {state with tick = Eval eval_config})
 
     let module_reg_encoding =
       Tree_encoding.scope
@@ -170,13 +162,13 @@ module Make (T : Tree_encoding.TREE) :
         Option.value_f ~default:Wasm.Instance.ModuleMap.create module_reg_opt
       in
       let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
-      let* state = next_state state in
+      let* state = next_state state ~module_reg in
       let state = {state with current_tick = Z.succ state.current_tick} in
       (* Write the module registry to the tree in case it did not exist
          before. *)
       let* tree =
         match (state.tick, module_reg_opt) with
-        | Eval {module_reg; _}, None ->
+        | Eval _, None ->
             Tree_encoding.encode module_reg_encoding module_reg tree
         | _ -> return tree
       in
