@@ -149,7 +149,7 @@ end
 module Values = struct
   open Values
 
-  let op_encoding i32 i64 =
+  let op_encoding i32 i64 f32 f64 =
     union_incr
       [
         case_incr
@@ -162,15 +162,29 @@ module Values = struct
           i64
           (function I64 x -> Some x | _ -> None)
           (fun x -> I64 x);
+        case_incr
+          "I32"
+          f32
+          (function F32 x -> Some x | _ -> None)
+          (fun x -> F32 x);
+        case_incr
+          "F64"
+          f64
+          (function F64 x -> Some x | _ -> None)
+          (fun x -> F64 x);
       ]
 
   let vecop_encoding v128 =
     union_incr
       [case_incr "V128" v128 (function V128 x -> Some x) (fun x -> V128 x)]
 
+  let f32_encoding = Data_encoding.(conv F32.to_string F32.of_string string)
+
+  let f64_encoding = Data_encoding.(conv F64.to_string F64.of_string string)
+
   let num_encoding : num Data_encoding.t =
     let open Data_encoding in
-    op_encoding int32 int64
+    op_encoding int32 int64 f32_encoding f64_encoding
 
   let vec_encoding =
     let open Data_encoding in
@@ -277,6 +291,64 @@ module Ast = struct
           unit_case_incr "TruncSatSF64" TruncSatSF64;
           unit_case_incr "TruncSatUF64" TruncSatUF64;
           unit_case_incr "ReinterpretFloat" ReinterpretFloat;
+        ]
+  end
+
+  module FloatOp = struct
+    open FloatOp
+
+    let unop_encoding =
+      union_incr
+        [
+          unit_case_incr "Neg" Neg;
+          unit_case_incr "Abs" Abs;
+          unit_case_incr "Ceil" Ceil;
+          unit_case_incr "Floor" Floor;
+          unit_case_incr "Trunc" Trunc;
+          unit_case_incr "Nearest" Nearest;
+          unit_case_incr "Sqrt" Sqrt;
+        ]
+
+    let binop_encoding =
+      union_incr
+        [
+          unit_case_incr "Add" Add;
+          unit_case_incr "Sub" Sub;
+          unit_case_incr "Mul" Mul;
+          unit_case_incr "Div" Div;
+          unit_case_incr "Min" Min;
+          unit_case_incr "Max" Max;
+          unit_case_incr "CopySign" CopySign;
+        ]
+
+    let testop_encoding =
+      Data_encoding.(
+        conv_with_guard
+          (fun (x : testop) -> match x with _ -> .)
+          (fun () -> Error "no possible inhabitant for void")
+          empty)
+
+    let relop_encoding =
+      union_incr
+        [
+          unit_case_incr "Eq" Eq;
+          unit_case_incr "Ne" Ne;
+          unit_case_incr "Lt" Lt;
+          unit_case_incr "Gt" Gt;
+          unit_case_incr "Le" Le;
+          unit_case_incr "Ge" Ge;
+        ]
+
+    let cvtop_encoding =
+      union_incr
+        [
+          unit_case_incr "ConvertSI32" ConvertSI32;
+          unit_case_incr "ConvertUI32" ConvertUI32;
+          unit_case_incr "ConvertSI64" ConvertSI64;
+          unit_case_incr "ConvertUI64" ConvertUI64;
+          unit_case_incr "PromoteF32" PromoteF32;
+          unit_case_incr "DemoteF64" DemoteF64;
+          unit_case_incr "ReinterpretInt" ReinterpretInt;
         ]
   end
 
@@ -476,19 +548,39 @@ module Ast = struct
   end
 
   let testop_encoding : Ast.testop Data_encoding.t =
-    Values.op_encoding IntOp.testop_encoding IntOp.testop_encoding
+    Values.op_encoding
+      IntOp.testop_encoding
+      IntOp.testop_encoding
+      FloatOp.testop_encoding
+      FloatOp.testop_encoding
 
   let unop_encoding : Ast.unop Data_encoding.t =
-    Values.op_encoding IntOp.unop_encoding IntOp.unop_encoding
+    Values.op_encoding
+      IntOp.unop_encoding
+      IntOp.unop_encoding
+      FloatOp.unop_encoding
+      FloatOp.unop_encoding
 
   let binop_encoding : Ast.binop Data_encoding.t =
-    Values.op_encoding IntOp.binop_encoding IntOp.binop_encoding
+    Values.op_encoding
+      IntOp.binop_encoding
+      IntOp.binop_encoding
+      FloatOp.binop_encoding
+      FloatOp.binop_encoding
 
   let relop_encoding : Ast.relop Data_encoding.t =
-    Values.op_encoding IntOp.relop_encoding IntOp.relop_encoding
+    Values.op_encoding
+      IntOp.relop_encoding
+      IntOp.relop_encoding
+      FloatOp.relop_encoding
+      FloatOp.relop_encoding
 
   let cvtop_encoding : Ast.cvtop Data_encoding.t =
-    Values.op_encoding IntOp.cvtop_encoding IntOp.cvtop_encoding
+    Values.op_encoding
+      IntOp.cvtop_encoding
+      IntOp.cvtop_encoding
+      FloatOp.cvtop_encoding
+      FloatOp.cvtop_encoding
 
   let vec_testop_encoding = Values.vecop_encoding V128Op.testop_encoding
 
