@@ -23,104 +23,168 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(*
+open Tezos_webassembly_interpreter
 
-  This library acts as a dependency to the protocol environment. Everything that
-  must be exposed to the protocol via the environment shall be added here.
+type eval_state = {module_reg : Instance.module_reg; eval_config : Eval.config}
 
-*)
+type tick_state = Decode | Eval of eval_state
+
+type pvm_state = {
+  kernel : Lazy_containers.Chunked_byte_vector.Lwt.t;
+  current_tick : Z.t;
+  last_input_info : Wasm_pvm_sig.input_info option;
+  consuming : bool;
+  (* TODO: Remove the field as soon as we know how to implement
+     [waiting_for_input : Eval.config -> bool] *)
+  tick : tick_state;
+}
 
 module Make (T : Tree_encoding.TREE) :
   Gather_floppies.S with type tree = T.tree = struct
-  include
-    Gather_floppies.Make
-      (T)
-      (struct
-        type tree = T.tree
+  module Raw = struct
+    type tree = T.tree
 
-        module Wasm = Tezos_webassembly_interpreter
-        module Tree_encoding = Tree_encoding.Make (T)
-        module Wasm_encoding = Wasm_encoding.Make (Tree_encoding)
+    module Wasm = Tezos_webassembly_interpreter
+    module Tree_encoding = Tree_encoding.Make (T)
+    module Wasm_encoding = Wasm_encoding.Make (Tree_encoding)
 
-        let compute_step = Lwt.return
+    let tick_state_encoding ~module_reg =
+      let open Tree_encoding in
+      let host_funcs = Host_funcs.empty () in
+      tagged_union
+        (value [] Data_encoding.string)
+        [
+          case
+            "decode"
+            (value [] Data_encoding.unit)
+            (function Decode -> Some () | _ -> None)
+            (fun () -> Decode);
+          case
+            "eval"
+            (Wasm_encoding.config_encoding
+               ~host_funcs
+               ~module_reg:(Lazy.from_val module_reg))
+            (function Eval {eval_config; _} -> Some eval_config | _ -> None)
+            (fun eval_config -> Eval {eval_config; module_reg});
+        ]
 
-        let get_output _ _ = Lwt.return ""
+    let pvm_state_encoding ~module_reg =
+      let open Tree_encoding in
+      conv
+        (fun (current_tick, kernel, last_input_info, consuming, tick) ->
+          {current_tick; kernel; last_input_info; consuming; tick})
+        (fun {current_tick; kernel; last_input_info; consuming; tick} ->
+          (current_tick, kernel, last_input_info, consuming, tick))
+        (tup5
+           ~flatten:true
+           (value ~default:Z.zero ["wasm"; "current_tick"] Data_encoding.n)
+           (scope ["durable"; "kernel"; "boot.wasm"] chunked_byte_vector)
+           (optional ["wasm"; "input"] Wasm_pvm_sig.input_info_encoding)
+           (value ~default:true ["wasm"; "consuming"] Data_encoding.bool)
+           (scope ["wasm"] (tick_state_encoding ~module_reg)))
 
-        (* TODO: #3444
-           Create a may-fail tree-encoding-decoding combinator.
-           https://gitlab.com/tezos/tezos/-/issues/3444
-        *)
-
-        (* TODO: #3448
-           Remove the mention of exceptions from lib_scoru_wasm Make signature.
-           Add try_with or similar to catch exceptions and put the machine in a
-           stuck state instead. https://gitlab.com/tezos/tezos/-/issues/3448
-        *)
-
-        let current_tick_encoding =
-          Tree_encoding.value ["wasm"; "current_tick"] Data_encoding.z
-
-        let level_encoding =
-          Tree_encoding.value
-            ["input"; "level"]
-            Bounded.Int32.NonNegative.encoding
-
-        let id_encoding = Tree_encoding.value ["input"; "id"] Data_encoding.z
-
-        let last_input_read_encoder =
-          Tree_encoding.tup2 ~flatten:true level_encoding id_encoding
-
-        let status_encoding =
-          Tree_encoding.value ["input"; "consuming"] Data_encoding.bool
-
-        let inp_encoding level id =
-          Tree_encoding.value ["input"; level; id] Data_encoding.string
-
-        let get_info tree =
-          let open Lwt_syntax in
-          let* waiting =
-            try Tree_encoding.decode status_encoding tree
-            with _ -> Lwt.return false
+    let next_state state =
+      let open Lwt_syntax in
+      match state.tick with
+      | Decode ->
+          let* ast_module = Decode.decode ~name:"name" ~bytes:state.kernel in
+          let module_reg = Instance.ModuleMap.create () in
+          let self =
+            Instance.alloc_module_ref (Instance.Module_key "name") module_reg
           in
-          let input_request =
-            if waiting then Wasm_pvm_sig.Input_required
-            else Wasm_pvm_sig.No_input_required
+          let host_funs = Host_funcs.empty () in
+          let* module_inst = Eval.init ~self host_funs ast_module [] in
+          let* name = Instance.Vector.to_list @@ Utf8.decode "main" in
+          let* extern =
+            Instance.NameMap.get name module_inst.Instance.exports
           in
-          let* input =
-            try
-              let* t = Tree_encoding.decode last_input_read_encoder tree in
-              Lwt.return @@ Some t
-            with _ -> Lwt.return_none
+          let main_func =
+            match extern with Instance.ExternFunc f -> f | _ -> assert false
           in
-          let last_input_read =
-            Option.map
-              (fun (inbox_level, message_counter) ->
-                Wasm_pvm_sig.{inbox_level; message_counter})
-              input
-          in
+          let admin_instrs = Eval.Invoke main_func in
+          let admin_instr = Source.{it = admin_instrs; at = no_region} in
+          let eval_config = Eval.config host_funs self [] [admin_instr] in
+          let () = Instance.ModuleMap.set "main" module_inst module_reg in
+          Lwt.return {state with tick = Eval {eval_config; module_reg}}
+      | Eval
+          {
+            eval_config =
+              {
+                Eval.frame = {inst = _; locals};
+                input;
+                code = _;
+                host_funcs;
+                budget = _;
+              };
+            _;
+          } ->
+          let values = List.map (fun v -> !v) locals in
+          (* TODO: How to get func-instance? *)
+          let func_inst = assert false in
+          let _ = Eval.invoke ~input host_funcs func_inst values in
+          assert false
 
-          let* current_tick =
-            try Tree_encoding.decode current_tick_encoding tree
-            with _ -> Lwt.return Z.zero
-          in
-          Lwt.return Wasm_pvm_sig.{current_tick; last_input_read; input_request}
+    let module_reg_from_tree tree =
+      let open Lwt_syntax in
+      try
+        let* module_reg =
+          Tree_encoding.decode Wasm_encoding.module_instances_encoding tree
+        in
+        return (module_reg, true)
+      with _ -> return (Instance.ModuleMap.create (), false)
 
-        let set_input_step input_info message tree =
-          let open Lwt_syntax in
-          let open Wasm_pvm_sig in
-          let {inbox_level; message_counter} = input_info in
-          let level =
-            Int32.to_string @@ Bounded.Int32.NonNegative.to_int32 inbox_level
-          in
-          let id = Z.to_string message_counter in
-          let* current_tick = Tree_encoding.decode current_tick_encoding tree in
-          let* tree =
+    let compute_step tree =
+      let open Lwt_syntax in
+      (* Try to decode the module registry. *)
+      let* module_reg, module_reg_existed = module_reg_from_tree tree in
+      let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
+      let* state = next_state state in
+      let state = {state with current_tick = Z.succ state.current_tick} in
+      (* Write the module registry to the tree. *)
+      let* tree =
+        match (state.tick, module_reg_existed) with
+        | Eval {module_reg; _}, false ->
             Tree_encoding.encode
-              current_tick_encoding
-              (Z.succ current_tick)
+              Wasm_encoding.module_instances_encoding
+              module_reg
               tree
-          in
-          let* tree = Tree_encoding.encode status_encoding false tree in
-          Tree_encoding.encode (inp_encoding level id) message tree
-      end)
+        | _ -> return tree
+      in
+      Tree_encoding.encode (pvm_state_encoding ~module_reg) state tree
+
+    let get_output _ _ = Lwt.return ""
+
+    (* TODO: #3448
+       Remove the mention of exceptions from lib_scoru_wasm Make signature.
+       Add try_with or similar to catch exceptions and put the machine in a
+       stuck state instead. https://gitlab.com/tezos/tezos/-/issues/3448
+    *)
+    let get_info tree =
+      let open Lwt_syntax in
+      let* module_reg, _ = module_reg_from_tree tree in
+      let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
+      return
+        Wasm_pvm_sig.
+          {
+            current_tick = state.current_tick;
+            last_input_read = state.last_input_info;
+            input_request =
+              (if state.consuming then Input_required else No_input_required);
+          }
+
+    let set_input_step input_info _message tree =
+      let open Lwt_syntax in
+      let* module_reg, _ = module_reg_from_tree tree in
+      let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
+      let state =
+        {
+          state with
+          last_input_info = Some input_info;
+          current_tick = Z.succ state.current_tick;
+        }
+      in
+      Tree_encoding.encode (pvm_state_encoding ~module_reg) state tree
+  end
+
+  include Gather_floppies.Make (T) (Raw)
 end
