@@ -67,6 +67,8 @@ module Values : sig
   val op_encoding :
     'a Data_encoding.t ->
     'b Data_encoding.t ->
+    'c Data_encoding.t ->
+    'd Data_encoding.t ->
     ('a, 'b, 'c, 'd) op Data_encoding.t
 
   val vecop_encoding : 'a Data_encoding.t -> 'a vecop Data_encoding.t
