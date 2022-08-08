@@ -1009,6 +1009,13 @@ let test_rollup_node_boots_into_initial_state ~kind =
    When the rollup node receives messages, we like to see evidence that the PVM
    has advanced.
 
+   TODO meaning of [forwarder] and [internal]?
+
+   TODO understand exact code path of
+    Sc_rollup_client.state_value
+   in rollup node. Verify that it means the node actually committed to a state
+   hash of this value (definition of success).
+
    ---
    FIXME:
     To run just this test:
@@ -1016,6 +1023,9 @@ let test_rollup_node_boots_into_initial_state ~kind =
     $ # dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with messages"
 
     $ # dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with internal messages"
+   ----
+   TODO:
+      Live demo from this.
 *)
 let test_rollup_node_advances_pvm_state protocols ~kind =
   let go ~internal client sc_rollup sc_rollup_node =
