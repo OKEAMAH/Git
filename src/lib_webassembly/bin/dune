@@ -6,6 +6,8 @@
  (instrumentation (backend bisect_ppx))
  (libraries
   tezos-webassembly-interpreter
+  tezos-scoru-wasm
+  tezos-context.memory
   lwt.unix
   tree-encoding
   lazy-containers)
