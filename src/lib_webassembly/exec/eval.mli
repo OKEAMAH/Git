@@ -49,6 +49,8 @@ type config = {
   budget : int; (* to model stack overflow *)
 }
 
+val step : config -> config Lwt.t
+
 val config :
   ?input:input_inst ->
   Host_funcs.registry ->

@@ -85,6 +85,20 @@ module Make (T : Tree_encoding.TREE) :
 
     let next_state state =
       let open Lwt_syntax in
+      let make_invoke_main_instr module_inst =
+        let* name = Instance.Vector.to_list @@ Utf8.decode "main" in
+        let* extern = Instance.NameMap.get name module_inst.Instance.exports in
+        let main_func =
+          match extern with
+          | Instance.ExternFunc func -> func
+          | _ ->
+              (* We require a function with the name [main] to be exported
+                 rather than any other structure. *)
+              assert false
+        in
+        let admin_instr' = Eval.Invoke main_func in
+        return Source.{it = admin_instr'; at = no_region}
+      in
       match state.tick with
       | Decode ->
           let* ast_module = Decode.decode ~name:"name" ~bytes:state.kernel in
@@ -94,96 +108,132 @@ module Make (T : Tree_encoding.TREE) :
           in
           let host_funs = Host_funcs.empty () in
           let* module_inst = Eval.init ~self host_funs ast_module [] in
-          let* name = Instance.Vector.to_list @@ Utf8.decode "main" in
-          let* extern =
-            Instance.NameMap.get name module_inst.Instance.exports
-          in
-          let main_func =
-            match extern with Instance.ExternFunc f -> f | _ -> assert false
-          in
-          let admin_instrs = Eval.Invoke main_func in
-          let admin_instr = Source.{it = admin_instrs; at = no_region} in
+          let* admin_instr = make_invoke_main_instr module_inst in
           let eval_config = Eval.config host_funs self [] [admin_instr] in
+          (* Write the module instance to the module registry map. *)
           let () = Instance.ModuleMap.set "main" module_inst module_reg in
           Lwt.return {state with tick = Eval {eval_config; module_reg}}
-      | Eval
-          {
-            eval_config =
-              {
-                Eval.frame = {inst = _; locals};
-                input;
-                code = _;
-                host_funcs;
-                budget = _;
-              };
-            _;
-          } ->
-          let values = List.map (fun v -> !v) locals in
-          (* TODO: How to get func-instance? *)
-          let func_inst = assert false in
-          let _ = Eval.invoke ~input host_funcs func_inst values in
-          assert false
+      | Eval {eval_config = {Eval.frame; code; _} as eval_config; module_reg}
+        -> (
+          match code with
+          | _values, [] ->
+              (* We have an empty set of admin instructions so we create one
+                 that invokes the main function. *)
+              let* module_inst = Instance.ModuleMap.get "main" module_reg in
+              let* admin_instr = make_invoke_main_instr module_inst in
+              (* Clear the values and the locals in the frame. *)
+              let code = ([], [admin_instr]) in
+              let eval_config =
+                {eval_config with Eval.frame = {frame with locals = []}; code}
+              in
+              Lwt.return {state with tick = Eval {eval_config; module_reg}}
+          | _ ->
+              (* Continue execution. *)
+              let* eval_config = Eval.step eval_config in
+              Lwt.return {state with tick = Eval {eval_config; module_reg}})
+
+    let module_reg_encoding =
+      Tree_encoding.scope
+        ["module-registry"]
+        Wasm_encoding.module_instances_encoding
 
     let module_reg_from_tree tree =
       let open Lwt_syntax in
       try
-        let* module_reg =
-          Tree_encoding.decode Wasm_encoding.module_instances_encoding tree
-        in
-        return (module_reg, true)
-      with _ -> return (Instance.ModuleMap.create (), false)
+        let* module_reg = Tree_encoding.decode module_reg_encoding tree in
+        return (Some module_reg)
+      with _ -> return None
 
     let compute_step tree =
       let open Lwt_syntax in
       (* Try to decode the module registry. *)
-      let* module_reg, module_reg_existed = module_reg_from_tree tree in
+      let* module_reg_opt = module_reg_from_tree tree in
+      let module_reg =
+        Option.value_f ~default:Instance.ModuleMap.create module_reg_opt
+      in
       let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
       let* state = next_state state in
       let state = {state with current_tick = Z.succ state.current_tick} in
-      (* Write the module registry to the tree. *)
+      (* Write the module registry to the tree in case it did not exist
+         before. *)
       let* tree =
-        match (state.tick, module_reg_existed) with
-        | Eval {module_reg; _}, false ->
-            Tree_encoding.encode
-              Wasm_encoding.module_instances_encoding
-              module_reg
-              tree
+        match (state.tick, module_reg_opt) with
+        | Eval {module_reg; _}, None ->
+            Tree_encoding.encode module_reg_encoding module_reg tree
         | _ -> return tree
       in
       Tree_encoding.encode (pvm_state_encoding ~module_reg) state tree
 
     let get_output _ _ = Lwt.return ""
 
+    (* TODO: #3444
+       Create a may-fail tree-encoding-decoding combinator.
+       https://gitlab.com/tezos/tezos/-/issues/3444
+    *)
     (* TODO: #3448
        Remove the mention of exceptions from lib_scoru_wasm Make signature.
        Add try_with or similar to catch exceptions and put the machine in a
        stuck state instead. https://gitlab.com/tezos/tezos/-/issues/3448
     *)
+    let current_tick_encoding =
+      Tree_encoding.value ["wasm"; "current_tick"] Data_encoding.z
+
+    let level_encoding =
+      Tree_encoding.value ["input"; "level"] Bounded.Int32.NonNegative.encoding
+
+    let id_encoding = Tree_encoding.value ["input"; "id"] Data_encoding.z
+
+    let last_input_read_encoder =
+      Tree_encoding.tup2 ~flatten:true level_encoding id_encoding
+
+    let status_encoding =
+      Tree_encoding.value ["input"; "consuming"] Data_encoding.bool
+
+    let inp_encoding level id =
+      Tree_encoding.value ["input"; level; id] Data_encoding.string
+
     let get_info tree =
       let open Lwt_syntax in
-      let* module_reg, _ = module_reg_from_tree tree in
-      let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
-      return
-        Wasm_pvm_sig.
-          {
-            current_tick = state.current_tick;
-            last_input_read = state.last_input_info;
-            input_request =
-              (if state.consuming then Input_required else No_input_required);
-          }
-
-    let set_input_step input_info _message tree =
-      let open Lwt_syntax in
-      let* module_reg, _ = module_reg_from_tree tree in
-      let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
-      let state =
-        {
-          state with
-          last_input_info = Some input_info;
-          current_tick = Z.succ state.current_tick;
-        }
+      let* waiting =
+        try Tree_encoding.decode status_encoding tree
+        with _ -> Lwt.return false
       in
-      Tree_encoding.encode (pvm_state_encoding ~module_reg) state tree
+      let input_request =
+        if waiting then Wasm_pvm_sig.Input_required
+        else Wasm_pvm_sig.No_input_required
+      in
+      let* input =
+        try
+          let* t = Tree_encoding.decode last_input_read_encoder tree in
+          Lwt.return @@ Some t
+        with _ -> Lwt.return_none
+      in
+      let last_input_read =
+        Option.map
+          (fun (inbox_level, message_counter) ->
+            Wasm_pvm_sig.{inbox_level; message_counter})
+          input
+      in
+      let* current_tick =
+        try Tree_encoding.decode current_tick_encoding tree
+        with _ -> Lwt.return Z.zero
+      in
+      Lwt.return Wasm_pvm_sig.{current_tick; last_input_read; input_request}
+
+    let set_input_step input_info message tree =
+      let open Lwt_syntax in
+      let open Wasm_pvm_sig in
+      let {inbox_level; message_counter} = input_info in
+      let level =
+        Int32.to_string @@ Bounded.Int32.NonNegative.to_int32 inbox_level
+      in
+      let id = Z.to_string message_counter in
+      let* current_tick = Tree_encoding.decode current_tick_encoding tree in
+      let* tree =
+        Tree_encoding.encode current_tick_encoding (Z.succ current_tick) tree
+      in
+      let* tree = Tree_encoding.encode status_encoding false tree in
+      Tree_encoding.encode (inp_encoding level id) message tree
   end
 
   include Gather_floppies.Make (T) (Raw)
