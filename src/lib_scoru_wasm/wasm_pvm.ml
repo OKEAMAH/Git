@@ -84,6 +84,9 @@ module Make (T : Tree_encoding.TREE) :
            (value ~default:true ["wasm"; "consuming"] Data_encoding.bool)
            (scope ["wasm"] (tick_state_encoding ~module_reg)))
 
+    let status_encoding =
+      Tree_encoding.value ["input"; "consuming"] Data_encoding.bool
+
     let next_state ~module_reg state =
       let open Lwt_syntax in
       match state.tick with
@@ -154,24 +157,34 @@ module Make (T : Tree_encoding.TREE) :
         return (Some module_reg)
       with _ -> return None
 
-    let compute_step tree =
+    let decode_state tree =
       let open Lwt_syntax in
       (* Try to decode the module registry. *)
       let* module_reg_opt = module_reg_from_tree tree in
       let module_reg =
         Option.value_f ~default:Wasm.Instance.ModuleMap.create module_reg_opt
       in
-      let* state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
+      let+ state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
+      (state, module_reg)
+
+    let compute_step tree =
+      let open Lwt_syntax in
+      let* state, module_reg = decode_state tree in
       let* state = next_state state ~module_reg in
       let state = {state with current_tick = Z.succ state.current_tick} in
       (* Write the module registry to the tree in case it did not exist
          before. *)
-      let* tree =
-        match (state.tick, module_reg_opt) with
-        | Eval _, None ->
-            Tree_encoding.encode module_reg_encoding module_reg tree
-        | _ -> return tree
+      let* tree = Tree_encoding.encode module_reg_encoding module_reg tree in
+      let want_more_input =
+        match state.tick with
+        | Eval {input; code = _, []; _} ->
+            (* Ask for more input if the kernel has yielded (empty admin
+               instructions) and there are no element in the input buffer any
+               more. *)
+            Wasm.Input_buffer.num_elements input < Z.one
+        | _ -> false
       in
+      let* tree = Tree_encoding.encode status_encoding want_more_input tree in
       Tree_encoding.encode (pvm_state_encoding ~module_reg) state tree
 
     let get_output _ _ = Lwt.return ""
@@ -195,9 +208,6 @@ module Make (T : Tree_encoding.TREE) :
 
     let last_input_read_encoder =
       Tree_encoding.tup2 ~flatten:true level_encoding id_encoding
-
-    let status_encoding =
-      Tree_encoding.value ["input"; "consuming"] Data_encoding.bool
 
     let inp_encoding level id =
       Tree_encoding.value ["input"; level; id] Data_encoding.string
@@ -234,11 +244,30 @@ module Make (T : Tree_encoding.TREE) :
       let open Lwt_syntax in
       let open Wasm_pvm_sig in
       let {inbox_level; message_counter} = input_info in
-      let level =
-        Int32.to_string @@ Bounded.Int32.NonNegative.to_int32 inbox_level
-      in
+      let raw_level = Bounded.Int32.NonNegative.to_int32 inbox_level in
+      let level = Int32.to_string raw_level in
       let id = Z.to_string message_counter in
       let* current_tick = Tree_encoding.decode current_tick_encoding tree in
+      let* state, module_reg = decode_state tree in
+      let* () =
+        match state.tick with
+        | Eval config ->
+            Wasm.Input_buffer.(
+              enqueue
+                config.input
+                {
+                  rtype = 0l (* TODO: What is rtype? *);
+                  raw_level;
+                  message_counter;
+                  payload = String.to_bytes message;
+                })
+        | _ ->
+            (* TODO: Invalid to submit input in this state? *)
+            assert false
+      in
+      let* tree =
+        Tree_encoding.encode (pvm_state_encoding ~module_reg) state tree
+      in
       let* tree =
         Tree_encoding.encode current_tick_encoding (Z.succ current_tick) tree
       in
