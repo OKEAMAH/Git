@@ -974,8 +974,25 @@ let test_rollup_node_boots_into_initial_state ~kind =
 
    TODO understand exact code path of
     Sc_rollup_client.state_value
-   in rollup node. Verify that it means the node actually committed to a state
-   hash of this value (definition of success).
+   in rollup node. It checks state computed in rollup node - not committed to.
+   Need to show this seprately, see tests below.
+
+   - Tezt: Sc_rollup_client.state_value
+   - CLI [get state value for KEY] implemented in
+      src/proto_alpha/bin_sc_rollup_client/commands.ml
+    - src/proto_alpha/bin_sc_rollup_client/RPC.ml
+      get_state_value_command
+    - src/proto_alpha/lib_sc_rollup/sc_rollup_services.ml
+      current_state_value
+    - bin_sc_rollup_node/RPC_server
+         register_current_state_value
+         Store.PVMState.find
+    ~~~~
+    Concurrently:
+    ~~~~
+    - src/proto_alpha/bin_sc_rollup_node/interpreter.ml
+      - Store.PVMState.set
+
 
    ---
    FIXME:
