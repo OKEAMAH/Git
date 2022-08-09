@@ -1,9 +1,9 @@
 { "tree_proof":
     { "version": 2,
       "before":
-        { "node": "CoWb3XnBouzUH6nHxoewwBZ7jwGBk5neNSYq13o6MzTFD1rD3y2d" },
+        { "node": "CoWEXnp2eGLyCfSHYhZPALKe3jTGpXH1D4FcX2BAZ6r8VwnLWqwG" },
       "after":
-        { "node": "CoUkHvfv5ugswzbv39dDVXiZ8GYhipmCjF6BGm2pgNpxH9Em15wG" },
+        { "node": "CoWGjH1kB8z6A9gqmxAgHw82RCvWwxMJBMZW1S3W3CwSsE849VQz" },
       "state":
         { "inode":
             { "length": "4",
@@ -58,7 +58,7 @@
                                                   { "other_trees":
                                                       { "other_trees":
                                                           { "blinded_value":
-                                                              "CoV9aPcXW4XHvqRvE56KQnUSJ7ihy5oipyucACT1AhZqdde6cEmM" } } } ] ] } },
+                                                              "CoWPXmBfT3ZtzXFQqDQYWMfqUixHfdz2Xg8W2HHiTu7W55EHTwai" } } } ] ] } },
                                       { "other_inode_trees":
                                           { "inode_values":
                                               [ [ "6761746865722d666c6f7070696573",
@@ -206,10 +206,10 @@
               1, 16, 0, 28, 0, 0, 0, 6, 2, 0, 0, 5, 0, 0, 0, 66, 111, 114,
               114, 111, 119, 77, 117, 116, 69, 114, 114, 111, 114, 0, 0, 27,
               0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 28, 0, 0, 0, 58, 32, 0, 0,
-              172, 1, 16, 0, 0, 0, 0, 0, 204, 1, 16, 0, 2, 0, 0, 0, 76, 133,
-              18, 86, 3, 92, 207, 222, 60, 136, 107, 144, 158, 160, 164, 3,
-              87, 144, 29, 0, 103, 245, 37, 12, 94, 139, 199, 226, 156, 154,
-              30, 15, 166, 33, 160, 100, 96, 251, 249, 94, 249, 185, 97, 181,
-              86, 250, 21, 189, 238, 15, 5, 91, 243, 231, 17, 121, 33, 38,
-              134, 90, 88, 112, 245, 2 ] } },
+              172, 1, 16, 0, 0, 0, 0, 0, 204, 1, 16, 0, 2, 0, 0, 0, 161, 190,
+              215, 42, 159, 161, 16, 145, 255, 251, 152, 123, 33, 58, 122,
+              34, 222, 82, 68, 172, 236, 221, 189, 88, 120, 212, 204, 231,
+              225, 8, 168, 243, 137, 118, 33, 34, 55, 55, 121, 108, 235, 88,
+              240, 166, 120, 244, 53, 122, 139, 233, 45, 64, 1, 27, 195, 63,
+              62, 154, 74, 37, 195, 140, 170, 7 ] } },
   "requested": { "kind": "no_input_required" } }

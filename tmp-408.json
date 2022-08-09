@@ -1,9 +1,9 @@
 { "tree_proof":
     { "version": 2,
       "before":
-        { "node": "CoUkHvfv5ugswzbv39dDVXiZ8GYhipmCjF6BGm2pgNpxH9Em15wG" },
+        { "node": "CoWGjH1kB8z6A9gqmxAgHw82RCvWwxMJBMZW1S3W3CwSsE849VQz" },
       "after":
-        { "node": "CoUkHvfv5ugswzbv39dDVXiZ8GYhipmCjF6BGm2pgNpxH9Em15wG" },
+        { "node": "CoWGjH1kB8z6A9gqmxAgHw82RCvWwxMJBMZW1S3W3CwSsE849VQz" },
       "state":
         { "inode":
             { "length": "7",
@@ -65,7 +65,7 @@
                                                   { "other_trees":
                                                       { "other_trees":
                                                           { "blinded_value":
-                                                              "CoV9aPcXW4XHvqRvE56KQnUSJ7ihy5oipyucACT1AhZqdde6cEmM" } } } ],
+                                                              "CoWPXmBfT3ZtzXFQqDQYWMfqUixHfdz2Xg8W2HHiTu7W55EHTwai" } } } ],
                                                 [ "7761736d",
                                                   { "inode":
                                                       { "length": "3",
