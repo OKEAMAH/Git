@@ -31,7 +31,6 @@ type pvm_state = {
   kernel : Lazy_containers.Chunked_byte_vector.Lwt.t;
   current_tick : Z.t;
   last_input_info : Wasm_pvm_sig.input_info option;
-  consuming : bool;
   (* TODO: Remove the field as soon as we know how to implement
      [waiting_for_input : Eval.config -> bool] *)
   tick : tick_state;
@@ -73,16 +72,15 @@ module Make (T : Tree_encoding.TREE) :
     let pvm_state_encoding ~module_reg =
       let open Tree_encoding in
       conv
-        (fun (current_tick, kernel, last_input_info, consuming, tick) ->
-          {current_tick; kernel; last_input_info; consuming; tick})
-        (fun {current_tick; kernel; last_input_info; consuming; tick} ->
-          (current_tick, kernel, last_input_info, consuming, tick))
-        (tup5
+        (fun (current_tick, kernel, last_input_info, tick) ->
+          {current_tick; kernel; last_input_info; tick})
+        (fun {current_tick; kernel; last_input_info; tick} ->
+          (current_tick, kernel, last_input_info, tick))
+        (tup4
            ~flatten:true
            (value ~default:Z.zero ["wasm"; "current_tick"] Data_encoding.n)
            (scope ["durable"; "kernel"; "boot.wasm"] chunked_byte_vector)
            (value_option ["wasm"; "input"] Wasm_pvm_sig.input_info_encoding)
-           (value ~default:true ["wasm"; "consuming"] Data_encoding.bool)
            (scope ["wasm"] (tick_state_encoding ~module_reg)))
 
     let status_encoding =
