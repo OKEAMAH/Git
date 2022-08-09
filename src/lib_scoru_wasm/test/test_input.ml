@@ -277,44 +277,6 @@ let test_get_info () =
   assert (actual_info = expected_info) ;
   Lwt_result_syntax.return_unit
 
-(** Tests that, after set_input th resulting tree decodes to the correct values.
-    In particular it does check that [get_info] produces the expected value. *)
-
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/3524
-   Enable/fix test.
-   This test needs to be modifying in order to work with the WASM PVM.
-*)
-let _test_set_input () =
-  let open Lwt_syntax in
-  let* tree = initialise_tree () in
-  let* tree = add_level_id tree in
-  let* tree = Tree_encoding.encode status_encoding false tree in
-  let* tree = Tree_encoding.encode status_encoding true tree in
-  let* tree =
-    Wasm.set_input_step
-      {inbox_level = zero; message_counter = Z.of_int 1}
-      "hello"
-      tree
-  in
-  let* result_input = Tree_encoding.decode inp_encoding tree in
-  let* waiting_for_input = Tree_encoding.decode status_encoding tree in
-  let* current_tick = Tree_encoding.decode current_tick_encoding tree in
-  let expected_info =
-    let open Wasm_pvm_sig in
-    let last_input_read = Some {inbox_level = zero; message_counter = Z.zero} in
-    {
-      current_tick = Z.(succ one);
-      last_input_read;
-      input_request = No_input_required;
-    }
-  in
-  let* actual_info = Wasm.get_info tree in
-  assert (actual_info = expected_info) ;
-  assert (current_tick = Z.one) ;
-  assert (not waiting_for_input) ;
-  assert (result_input = "hello") ;
-  Lwt_result_syntax.return_unit
-
 let tests =
   [
     tztest "Write input" `Quick write_input;
