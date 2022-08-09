@@ -31,8 +31,6 @@ type pvm_state = {
   kernel : Lazy_containers.Chunked_byte_vector.Lwt.t;
   current_tick : Z.t;
   last_input_info : Wasm_pvm_sig.input_info option;
-  (* TODO: Remove the field as soon as we know how to implement
-     [waiting_for_input : Eval.config -> bool] *)
   tick : tick_state;
 }
 
@@ -127,6 +125,11 @@ module Make (T : Tree_encoding.TREE) :
                 | _ ->
                     (* We require a function with the name [main] to be exported
                        rather than any other structure. *)
+                    (* TODO: https://gitlab.com/tezos/tezos/-/issues/3448
+                       Avoid throwing exceptions.
+                       Possibly use a a new state to indicate, such as
+                       [Invalid_module].
+                    *)
                     assert false
               in
               let admin_instr' = Wasm.Eval.Invoke main_func in
@@ -268,6 +271,10 @@ module Make (T : Tree_encoding.TREE) :
                 })
         | _ ->
             (* TODO: Invalid to submit input in this state? *)
+            (* TODO: https://gitlab.com/tezos/tezos/-/issues/3448
+                Avoid throwing exceptions.
+                Possibly use a a new state to indicate, such as [Stuck].
+            *)
             assert false
       in
       let* tree =
