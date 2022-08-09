@@ -1,9 +1,9 @@
 { "tree_proof":
     { "version": 2,
       "before":
-        { "node": "CoWRvhA3K1sE9q2663FdkeX5cmJyAqcg4NuUyxCMvQ4gyuyJ7KkG" },
+        { "node": "CoV19WkVfbcYhVVioDP3MnwJUuXsNmW8n9qrdPsU3KM2ik8iTgVh" },
       "after":
-        { "node": "CoWL4er93NDiwNDJaa57sKTuxHipnEAbPRFkeUegcLe1LyuBkZrd" },
+        { "node": "CoVbzkB4d2i3GuZum14KpsAo7417xDfpXzQPccvo4htsC9KDDkr8" },
       "state":
         { "inode":
             { "length": "4",
@@ -43,7 +43,7 @@
                                                   { "other_trees":
                                                       { "other_trees":
                                                           { "blinded_value":
-                                                              "CoVZ3RB8Pp5c9EKyG73zDvHdcNE1ZSuqcfpHBu7DFSxWsvAssbFs" } } } ] ] } },
+                                                              "CoVra6TFAibECZBDqyajGXbfKBu9H95ZwnoekYq6YakKwGbuwHTm" } } } ] ] } },
                                       { "other_inode_trees":
                                           { "inode_values":
                                               [ [ "6761746865722d666c6f7070696573",

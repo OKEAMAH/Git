@@ -1,9 +1,9 @@
 { "tree_proof":
     { "version": 2,
       "before":
-        { "node": "CoW1xxXu3M4NSjFdL88ZNTSySHcez6msySTraMacfHMKLhFwHfSz" },
+        { "node": "CoVsuXFkPWPDeQAZAgQ589rNMar4aVa5Tx51hPzKRvu9JcVUSZzx" },
       "after":
-        { "node": "CoW1xxXu3M4NSjFdL88ZNTSySHcez6msySTraMacfHMKLhFwHfSz" },
+        { "node": "CoVsuXFkPWPDeQAZAgQ589rNMar4aVa5Tx51hPzKRvu9JcVUSZzx" },
       "state":
         { "inode":
             { "length": "4",
@@ -40,7 +40,7 @@
                                     [ { "other_inode_trees":
                                           { "other_inode_trees":
                                               { "blinded_inode":
-                                                  "CoVQnRLe5i4LLJWGtBeGHAbsdMJo92Y75142QXoLX2uGREGBRVbQ" } } },
+                                                  "CoWFtPHW9rkzpCHAxpdjXGrArSCdzMvDuu4FWGovmjSXBqjyK6Qn" } } },
                                       { "other_inode_trees":
                                           { "inode_values":
                                               [ [ "6761746865722d666c6f7070696573",
@@ -65,7 +65,7 @@
                                                                     { "other_trees":
                                                                     { "other_trees":
                                                                     { "value":
-                                                                    "00002458eb0254920221a5f67f60842fcafb6a6e00844e32415115a97eec45da180f" } } } ] ] } } ] } } ],
+                                                                    "00003606c7a7d95f1028196ff9b145d3d6f24205bc588cbbca0996197eb60827ee2e" } } } ] ] } } ] } } ],
                                                 [ "7761736d2d76657273696f6e",
                                                   { "other_trees":
                                                       { "other_trees":
