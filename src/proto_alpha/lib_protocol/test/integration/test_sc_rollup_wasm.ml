@@ -122,8 +122,15 @@ let check_proof_size ~loc context input_opt s : unit tzresult Environment.Lwt.t 
   match proof with
   | Error _ -> Stdlib.failwith "missing proof"
   | Ok proof ->
-      let _json =
+      let json : string =
         Data_encoding.Json.(construct Prover.proof_encoding proof |> to_string ~newline:true)
+      in
+      let* () =
+        Lwt.(Lwt_io.open_file
+              ~mode:Lwt_io.Output
+              "tmp.json"
+          >>= fun channel ->
+          Lwt_io.write channel json >>= fun _ -> return (Ok ()))
       in
       let bytes =
         Data_encoding.Binary.to_bytes_exn Prover.proof_encoding proof
