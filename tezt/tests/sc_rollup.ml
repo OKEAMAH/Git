@@ -1044,7 +1044,9 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
                 int
                 ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
             return ()
-        | "wasm_2_0_0" -> return ()
+        | "wasm_2_0_0" ->
+            (* TODO do something here *)
+            return ()
         | _otherwise -> raise (Invalid_argument kind)
       in
 
