@@ -54,6 +54,11 @@ let min_agreeing_endpoints min_agreement nb_endpoints =
 module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
   type validation_result = Valid | Invalid of string
 
+  let validate_v2 _uri _key _store_tree (_data_tree : Proof.tree Proof.t)
+      (_incoming_mtree : Proof.tree Proof.t option tzresult) =
+    (* FIXME: can't use irmin [verify_proof] yet *)
+    assert false
+
   (** Checks that the data-less merkle tree [incoming_mtree]
       provided by the endpoint [uri] meets these two conditions:
 
@@ -173,5 +178,49 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
     in
     return agreement_reached
 
-  let consensus_v2 (_ : input_v2) _ = Stdlib.failwith "not implemented"
+  let consensus_v2 ({printer; min_agreement; chain; block; key; tree; mproof} : input_v2)
+      validating_endpoints =
+    let open Lwt_syntax in
+    (* + 1 because there's the endpoint that provides data, that doesn't
+       validate *)
+    let nb_endpoints = List.length validating_endpoints + 1 in
+    let min_agreeing_endpoints =
+      min_agreeing_endpoints min_agreement nb_endpoints
+    in
+    assert (min_agreeing_endpoints <= nb_endpoints) ;
+    (* When checking that shapes agree, we must ignore the key where the
+       data is, because the validating endpoints return trees that do NOT
+       contain this key. *)
+    let check_merkle_tree_with_endpoint (uri, rpc_context) =
+      let* other_mproof =
+        Light_proto.merkle_tree_v2
+          {rpc_context; chain; block; mode = Client}
+          key
+          Proof.Hole
+      in
+      validate_v2 uri key tree mproof other_mproof
+    in
+    let* validations =
+      Lwt_list.map_p check_merkle_tree_with_endpoint validating_endpoints
+    in
+    (* +1 because the endpoint that provided data obviously agrees *)
+    let nb_agreements = count_valids validations + 1 in
+    let agreement_reached = nb_agreements >= min_agreeing_endpoints in
+    let* () = warn_invalids printer validations in
+    let* () =
+      if agreement_reached then Lwt.return_unit
+      else
+        printer#warning
+          "Light mode: min_agreement=%f, %d endpoints, %s%d agreeing \
+           endpoints, whereas %d (%d*%f rounded up) is the minimum; so about \
+           to fail."
+          min_agreement
+          nb_endpoints
+          (if nb_agreements > 0 then "only " else "")
+          nb_agreements
+          min_agreeing_endpoints
+          nb_endpoints
+          min_agreement
+    in
+    return agreement_reached
 end
