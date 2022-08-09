@@ -171,3 +171,12 @@ module Make (Context : P) :
     with type context = Context.Tree.t
      and type state = Context.tree
      and type proof = Context.proof proof
+
+val init_contract :
+  Raw_context.t ->
+  typecheck:
+    (Raw_context.t ->
+    Script_repr.t ->
+    ((Script_repr.t * Lazy_storage_diff.diffs option) * Raw_context.t) tzresult
+    Lwt.t) ->
+  (Raw_context.t * Migration_repr.origination_result) tzresult Lwt.t

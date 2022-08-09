@@ -1217,3 +1217,41 @@ module ProtocolImplementation = Make (struct
 
   let proof_encoding = Context.Proof_encoding.V2.Tree2.tree_proof_encoding
 end)
+
+let init_contract ctxt ~typecheck =
+  let originate ctxt address_hash script =
+    Contract_storage.raw_originate
+      ctxt
+      ~prepaid_bootstrap_storage:true
+      address_hash
+      ~script
+    >>=? fun ctxt ->
+    let address = Contract_repr.Originated address_hash in
+    Contract_storage.used_storage_space ctxt address >>=? fun size ->
+    Fees_storage.burn_origination_fees
+      ~origin:Protocol_migration
+      ctxt
+      ~storage_limit:(Z.of_int64 Int64.max_int)
+      ~payer:`Liquidity_baking_subsidies
+    >>=? fun (ctxt, _, origination_updates) ->
+    Fees_storage.burn_storage_fees
+      ~origin:Protocol_migration
+      ctxt
+      ~storage_limit:(Z.of_int64 Int64.max_int)
+      ~payer:`Minted
+      size
+    >>=? fun (ctxt, _, storage_updates) ->
+    let balance_updates = origination_updates @ storage_updates in
+    let result : Migration_repr.origination_result =
+      {
+        balance_updates;
+        originated_contracts = [address_hash];
+        storage_size = size;
+        paid_storage_size_diff = size;
+      }
+    in
+    return (ctxt, result)
+  in
+  let script = "" in
+  typecheck ctxt script >>=? fun (script, ctxt) ->
+  originate ctxt Contract_hash.zero script

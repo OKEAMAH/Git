@@ -317,11 +317,12 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
   (* let open Sc_rollup_PVM_sem in *)
   boot "" @@ fun ctxt state ->
   let input =
-    Sc_rollup_PVM_sem.{
-      inbox_level = Raw_level_repr.of_int32_exn (Int32.of_int inbox_level);
-      message_counter = Z.zero;
-      payload = make_external_inbox_message source;
-    }
+    Sc_rollup_PVM_sem.
+      {
+        inbox_level = Raw_level_repr.of_int32_exn (Int32.of_int inbox_level);
+        message_counter = Z.zero;
+        payload = make_external_inbox_message source;
+      }
   in
   let*! state = set_input input state in
   let*! state = eval state in
@@ -332,18 +333,16 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
       match result with
       | Ok proof ->
           let*! _valid = verify_output_proof proof in
-    let data =
-      Data_encoding.Binary.to_bytes_exn
-        output_proof_encoding
-        proof
-    in
-    let str = Hex.show (Hex.of_bytes data) in
-    (* let str =
-      Data_encoding.Binary.to_string_exn
-        output_proof_encoding
-        proof
-    in
-    let _ = Data_encoding.Binary.of_string_exn output_proof_encoding str in *)
+          let data =
+            Data_encoding.Binary.to_bytes_exn output_proof_encoding proof
+          in
+          let str = Hex.show (Hex.of_bytes data) in
+          (* let str =
+               Data_encoding.Binary.to_string_exn
+                 output_proof_encoding
+                 proof
+             in
+             let _ = Data_encoding.Binary.of_string_exn output_proof_encoding str in *)
           fail_unless false (Exn (Failure str))
       | Error _ -> failwith "Error during proof generation"
     else
@@ -366,9 +365,9 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
 let make_output ~outbox_level ~message_index n =
   let open Sc_rollup_outbox_message_repr in
   let unparsed_parameters =
-    Micheline.((Int (dummy_location, Z.of_int n)) |> strip_locations)
+    Micheline.(Int (dummy_location, Z.of_int n) |> strip_locations)
   in
-  let destination = Contract_hash.of_b58check_exn "KT1TxqZ8QtKvLu3V3JH7Gx58n7Co8pgtpQU5" in
+  let destination = Contract_hash.zero in
   let entrypoint = Entrypoint_repr.default in
   let transaction = {unparsed_parameters; destination; entrypoint} in
   let transactions = [transaction] in
@@ -457,16 +456,16 @@ let test_initial_state_hash_arith_pvm () =
 
 let tests =
   [
-    Tztest.tztest "PreBoot" `Quick test_preboot;
-    Tztest.tztest "Boot" `Quick test_boot;
-    Tztest.tztest "Input message" `Quick test_input_message;
-    Tztest.tztest "Parsing message" `Quick test_parsing_messages;
-    Tztest.tztest "Evaluating message" `Quick test_evaluation_messages;
-    Tztest.tztest "Valid output messages" `Quick test_valid_output_messages;
-    Tztest.tztest "Invalid output messages" `Quick test_invalid_output_messages;
-    Tztest.tztest "Invalid outbox level" `Quick test_invalid_outbox_level;
-    Tztest.tztest
-      "Initial state hash for Arith"
-      `Quick
-      test_initial_state_hash_arith_pvm;
+    (*Tztest.tztest "PreBoot" `Quick test_preboot;
+      Tztest.tztest "Boot" `Quick test_boot;
+      Tztest.tztest "Input message" `Quick test_input_message;
+      Tztest.tztest "Parsing message" `Quick test_parsing_messages;
+      Tztest.tztest "Evaluating message" `Quick test_evaluation_messages; *)
+    Tztest.tztest "Valid output messages" `Quick test_valid_output_messages
+    (*Tztest.tztest "Invalid output messages" `Quick test_invalid_output_messages;
+      Tztest.tztest "Invalid outbox level" `Quick test_invalid_outbox_level;
+      Tztest.tztest
+        "Initial state hash for Arith"
+        `Quick
+        test_initial_state_hash_arith_pvm; *);
   ]

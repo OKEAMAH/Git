@@ -2036,7 +2036,8 @@ let test_consecutive_commitments =
       unit)
 
 (* output proof for input "1 out" *)
-let output_proof = "0x030002f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec5686f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec5686000e0006d0030170000382066f7574707574810130c895f16114a5fd66d7afdb8d5a54f1eedc64914232d68006146b924d24eda466330c7061727365725f7374617465c8407f958990678e2e9fb06758bc6520dae46d838d39948a4c51a5b19bd079293dc0f942126c2debc764c372a78dd2d2d13d4ff95aabe1e7d714247f0e281c060405c0b84fc364beb6d4c57ceec5cde9144e1bf9162854640b0d867cba0b1f5a4a7454c0aa61121cc317717fe17e6a1a02e2540995e76cdfa06b74fe1895cf4d99974e56f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec56860000000000000000230001010000000000000000000000000000000000000000000000000764656661756c74"
+let output_proof =
+  "0x030002f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec5686f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec5686000e0006d0030170000382066f7574707574810130c895f16114a5fd66d7afdb8d5a54f1eedc64914232d68006146b924d24eda466330c7061727365725f7374617465c8407f958990678e2e9fb06758bc6520dae46d838d39948a4c51a5b19bd079293dc0f942126c2debc764c372a78dd2d2d13d4ff95aabe1e7d714247f0e281c060405c0b84fc364beb6d4c57ceec5cde9144e1bf9162854640b0d867cba0b1f5a4a7454c0aa61121cc317717fe17e6a1a02e2540995e76cdfa06b74fe1895cf4d99974e56f852164382e2f538a266a4368c70ecdbf4dde52fec0e3f7be31ffedfd7ec56860000000000000000230001010000000000000000000000000000000000000000000000000764656661756c74"
 
 let execute_outbox_message _protocol _sc_rollup_address _sc_rollup_node node
     client =
@@ -2062,7 +2063,7 @@ let execute_outbox_message _protocol _sc_rollup_address _sc_rollup_node node
             `init_level + sc_rollup_commitment_period_in_blocks` is processed by
             the rollup node as finalized. *)
          let* () = bake_levels block_finality_time client in *)
-        (*let contract_code =
+      (*let contract_code =
           {|
               { parameter string;
                 storage string;
@@ -2089,7 +2090,7 @@ let execute_outbox_message _protocol _sc_rollup_address _sc_rollup_node node
           ~sc_rollup:sc_rollup_address
           ~src:"bootstrap1"
           ~commitment
-          ~output_proof:output_proof
+          ~output_proof
           client
       in
       return ())
