@@ -47,7 +47,7 @@ module Make (T : Tree_encoding.TREE) :
 
     let host_funcs =
       let registry = Wasm.Host_funcs.empty () in
-      Host_funcs.register_host_funcs (Wasm.Host_funcs.empty ()) ;
+      Host_funcs.register_host_funcs registry ;
       registry
 
     let tick_state_encoding ~module_reg =
