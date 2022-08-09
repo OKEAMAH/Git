@@ -138,15 +138,22 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
   let raw key tree prefix =
     let open Lwt_syntax in
     let key = prefix key in
+    Format.printf "D %s\n" (String.concat "/" key) ;
     let+ value = Tree.find tree key in
-    match value with Some value -> value | None -> raise (Key_not_found key)
+    match value with
+    | Some value ->
+        Format.printf "v %S\n" (String.of_bytes value) ;
+        value
+    | None -> raise (Key_not_found key)
 
   let value_option key decoder tree prefix =
     let open Lwt_syntax in
     let key = prefix key in
+    Format.printf "D %s\n" (String.concat "/" key) ;
     let* value = Tree.find tree key in
     match value with
     | Some value -> (
+        Format.printf "v %S\n" (String.of_bytes value) ;
         match Data_encoding.Binary.of_bytes decoder value with
         | Ok value -> return_some value
         | Error error -> raise (Decode_error {key; error}))
