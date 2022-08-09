@@ -28,8 +28,11 @@ module Wasm = Tezos_webassembly_interpreter
 type tick_state = Decode | Eval of Wasm.Eval.config
 
 type pvm_state = {
+  (* The Wasm kernel as a binary-encoded Wasm module. *)
   kernel : Lazy_containers.Chunked_byte_vector.Lwt.t;
+  (* The number of ticks processed by the VM *)
   current_tick : Z.t;
+  (* The last input read by the VM *)
   last_input_info : Wasm_pvm_sig.input_info option;
   tick : tick_state;
 }
