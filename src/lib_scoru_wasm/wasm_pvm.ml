@@ -186,7 +186,7 @@ module Make (T : Tree_encoding.TREE) :
             (* Ask for more input if the kernel has yielded (empty admin
                instructions) and there are no element in the input buffer any
                more. *)
-            Wasm.Input_buffer.num_elements input < Z.one
+            Z.(compare (Wasm.Input_buffer.num_elements input) one < 0)
         | _ -> false
       in
       let* tree = Tree_encoding.encode status_encoding want_more_input tree in
