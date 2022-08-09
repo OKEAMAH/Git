@@ -87,7 +87,7 @@ module Make (T : Tree_encoding.TREE) :
     let status_encoding =
       Tree_encoding.value ["input"; "consuming"] Data_encoding.bool
 
-    let wasm_main_module_name = "main"
+    let wasm_main_module_name = "kernel_next"
 
     let next_state ~module_reg state =
       let open Lwt_syntax in
@@ -115,7 +115,8 @@ module Make (T : Tree_encoding.TREE) :
                 Wasm.Instance.ModuleMap.get wasm_main_module_name module_reg
               in
               let* main_name =
-                Wasm.Instance.Vector.to_list @@ Wasm.Utf8.decode "main"
+                Wasm.Instance.Vector.to_list
+                @@ Wasm.Utf8.decode wasm_main_module_name
               in
               let* extern =
                 Wasm.Instance.NameMap.get
