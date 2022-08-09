@@ -53,6 +53,7 @@ module Make (T : Tree_encoding.TREE) :
     let tick_state_encoding ~module_reg =
       let open Tree_encoding in
       tagged_union
+        ~default:Decode
         (value [] Data_encoding.string)
         [
           case
@@ -80,23 +81,25 @@ module Make (T : Tree_encoding.TREE) :
            ~flatten:true
            (value ~default:Z.zero ["wasm"; "current_tick"] Data_encoding.n)
            (scope ["durable"; "kernel"; "boot.wasm"] chunked_byte_vector)
-           (optional ["wasm"; "input"] Wasm_pvm_sig.input_info_encoding)
+           (value_option ["wasm"; "input"] Wasm_pvm_sig.input_info_encoding)
            (value ~default:true ["wasm"; "consuming"] Data_encoding.bool)
            (scope ["wasm"] (tick_state_encoding ~module_reg)))
 
     let status_encoding =
       Tree_encoding.value ["input"; "consuming"] Data_encoding.bool
 
+    let wasm_main_module_name = "main"
+
     let next_state ~module_reg state =
       let open Lwt_syntax in
       match state.tick with
       | Decode ->
           let* ast_module =
-            Wasm.Decode.decode ~name:"name" ~bytes:state.kernel
+            Wasm.Decode.decode ~name:wasm_main_module_name ~bytes:state.kernel
           in
           let self =
             Wasm.Instance.alloc_module_ref
-              (Wasm.Instance.Module_key "main")
+              (Wasm.Instance.Module_key wasm_main_module_name)
               module_reg
           in
           (* The module instance is registered in [self] that contains the
@@ -110,13 +113,15 @@ module Make (T : Tree_encoding.TREE) :
               (* We have an empty set of admin instructions so we create one
                  that invokes the main function. *)
               let* module_inst =
-                Wasm.Instance.ModuleMap.get "main" module_reg
+                Wasm.Instance.ModuleMap.get wasm_main_module_name module_reg
               in
-              let* name =
+              let* main_name =
                 Wasm.Instance.Vector.to_list @@ Wasm.Utf8.decode "main"
               in
               let* extern =
-                Wasm.Instance.NameMap.get name module_inst.Wasm.Instance.exports
+                Wasm.Instance.NameMap.get
+                  main_name
+                  module_inst.Wasm.Instance.exports
               in
               let main_func =
                 match extern with
