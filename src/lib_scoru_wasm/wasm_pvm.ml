@@ -28,8 +28,11 @@ module Wasm = Tezos_webassembly_interpreter
 type tick_state = Decode | Eval of Wasm.Eval.config
 
 type pvm_state = {
+  (* The Wasm kernel as a binary-encoded Wasm module. *)
   kernel : Lazy_containers.Chunked_byte_vector.Lwt.t;
+  (* The number of ticks processed by the VM *)
   current_tick : Z.t;
+  (* The last input read by the VM *)
   last_input_info : Wasm_pvm_sig.input_info option;
   tick : tick_state;
 }
@@ -180,26 +183,6 @@ module Make (T : Tree_encoding.TREE) :
       let+ state = Tree_encoding.decode (pvm_state_encoding ~module_reg) tree in
       (state, module_reg)
 
-    let compute_step tree =
-      let open Lwt_syntax in
-      let* state, module_reg = decode_state tree in
-      let* state = next_state state ~module_reg in
-      let state = {state with current_tick = Z.succ state.current_tick} in
-      (* Write the module registry to the tree in case it did not exist
-         before. *)
-      let* tree = Tree_encoding.encode module_reg_encoding module_reg tree in
-      let want_more_input =
-        match state.tick with
-        | Eval {input; code = _, []; _} ->
-            (* Ask for more input if the kernel has yielded (empty admin
-               instructions) and there are no element in the input buffer any
-               more. *)
-            Z.(lt (Wasm.Input_buffer.num_elements input) one)
-        | _ -> false
-      in
-      let* tree = Tree_encoding.encode status_encoding want_more_input tree in
-      Tree_encoding.encode (pvm_state_encoding ~module_reg) state tree
-
     let get_output _ _ = Lwt.return ""
 
     (* TODO: #3444
@@ -252,6 +235,26 @@ module Make (T : Tree_encoding.TREE) :
         with _ -> Lwt.return Z.zero
       in
       Lwt.return Wasm_pvm_sig.{current_tick; last_input_read; input_request}
+
+    let compute_step tree =
+      let open Lwt_syntax in
+      let* state, module_reg = decode_state tree in
+      let* state = next_state state ~module_reg in
+      let state = {state with current_tick = Z.succ state.current_tick} in
+      (* Write the module registry to the tree in case it did not exist
+         before. *)
+      let* tree = Tree_encoding.encode module_reg_encoding module_reg tree in
+      let want_more_input =
+        match state.tick with
+        | Eval {input; code = _, []; _} ->
+            (* Ask for more input if the kernel has yielded (empty admin
+               instructions) and there are no element in the input buffer any
+               more. *)
+            Wasm.Input_buffer.num_elements input < Z.one
+        | _ -> false
+      in
+      let* tree = Tree_encoding.encode status_encoding want_more_input tree in
+      Tree_encoding.encode (pvm_state_encoding ~module_reg) state tree
 
     let set_input_step input_info message tree =
       let open Lwt_syntax in

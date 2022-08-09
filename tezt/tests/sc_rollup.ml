@@ -291,8 +291,8 @@ let publish_commitment ?(src = Constant.bootstrap1.public_key_hash) ~commitment
 
 *)
 
-(* Originate a new SCORU of the arithmetic kind
-   --------------------------------------------
+(* Originate a new SCORU
+   ---------------------
 
    - Rollup addresses are fully determined by operation hashes and origination nonce.
 *)
@@ -306,6 +306,11 @@ let test_origination ~kind =
       let* _sc_rollup = originate_sc_rollup ~kind ~src:bootstrap1_key client in
       unit)
 
+(* Initialize configuration
+   ------------------------
+
+   Can use CLI to initialize the rollup node config file
+ *)
 let test_rollup_node_configuration ~kind =
   regression_test
     ~__FILE__
@@ -637,6 +642,9 @@ let fetch_messages_from_block sc_rollup client =
   in
   return messages
 
+(* TODO what does it test?
+   It doesn't use the rollup node.
+ *)
 let test_rollup_inbox_current_messages_hash ~kind =
   regression_test
     ~__FILE__
@@ -780,6 +788,7 @@ let basic_scenario _protocol sc_rollup_node sc_rollup _node client =
   let* _ = Sc_rollup_node.wait_for_level sc_rollup_node expected_level in
   return ()
 
+(* We can terminate the rollup node. *)
 let sc_rollup_node_stops_scenario _protocol sc_rollup_node sc_rollup _node
     client =
   let num_messages = 2 in
@@ -796,6 +805,7 @@ let sc_rollup_node_stops_scenario _protocol sc_rollup_node sc_rollup _node
   let* _ = Sc_rollup_node.wait_for_level sc_rollup_node expected_level in
   return ()
 
+(* TODO what does this test? Does it use the rollup node? *)
 let sc_rollup_node_handles_chain_reorg protocol sc_rollup_node sc_rollup node
     client =
   let num_messages = 1 in
@@ -930,6 +940,7 @@ let test_rollup_node_boots_into_initial_state ~kind =
     let expected_status =
       match kind with
       | "arith" -> "Halted"
+      (* TODO better check here *)
       | "wasm_2_0_0" -> "Computing"
       | _ -> raise (Invalid_argument kind)
     in
@@ -958,6 +969,41 @@ let test_rollup_node_boots_into_initial_state ~kind =
 
    When the rollup node receives messages, we like to see evidence that the PVM
    has advanced.
+
+   TODO meaning of [forwarder] and [internal]?
+
+   TODO understand exact code path of
+    Sc_rollup_client.state_value
+   in rollup node. It checks state computed in rollup node - not committed to.
+   Need to show this seprately, see tests below.
+
+   - Tezt: Sc_rollup_client.state_value
+   - CLI [get state value for KEY] implemented in
+      src/proto_alpha/bin_sc_rollup_client/commands.ml
+    - src/proto_alpha/bin_sc_rollup_client/RPC.ml
+      get_state_value_command
+    - src/proto_alpha/lib_sc_rollup/sc_rollup_services.ml
+      current_state_value
+    - bin_sc_rollup_node/RPC_server
+         register_current_state_value
+         Store.PVMState.find
+    ~~~~
+    Concurrently:
+    ~~~~
+    - src/proto_alpha/bin_sc_rollup_node/interpreter.ml
+      - Store.PVMState.set
+
+
+   ---
+   FIXME:
+    To run just this test:
+
+    $ # dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with messages"
+
+    $ # dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with internal messages"
+   ----
+   TODO:
+      Live demo from this.
 *)
 let test_rollup_node_advances_pvm_state protocols ~kind =
   let go ~internal client sc_rollup sc_rollup_node =
@@ -994,11 +1040,15 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
           contract_id ;
         return (level + 1, Some contract_id)
     in
+    (* Called with monotonically increasing [i] *)
     let test_message i =
       let* prev_state_hash =
         Sc_rollup_client.state_hash ~hooks sc_rollup_client
       in
       let* prev_ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
+      (* TODO Wasm PVM needs different messages
+         Note [sf = Printf.sprintf]
+         *)
       let message = sf "%d %d + value" i ((i + 2) * 2) in
       let* () =
         match forwarder with
@@ -1044,7 +1094,9 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
                 int
                 ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
             return ()
-        | "wasm_2_0_0" -> return ()
+        | "wasm_2_0_0" ->
+            (* TODO do something here *)
+            return ()
         | _otherwise -> raise (Invalid_argument kind)
       in
 

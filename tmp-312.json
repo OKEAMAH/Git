@@ -1,0 +1,74 @@
+{ "tree_proof":
+    { "version": 2,
+      "before":
+        { "node": "CoVTchDBUwoDQb6ne1gYQzsYxsABFZERmkdfQEjyFFV14JwV1ebe" },
+      "after":
+        { "node": "CoVTchDBUwoDQb6ne1gYQzsYxsABFZERmkdfQEjyFFV14JwV1ebe" },
+      "state":
+        { "inode":
+            { "length": "4",
+              "proofs":
+                [ { "other_inode_trees":
+                      { "inode_values":
+                          [ [ "64757261626c65",
+                              { "other_trees":
+                                  { "node":
+                                      [ [ "6b65726e656c",
+                                          { "other_trees":
+                                              { "node":
+                                                  [ [ "626f6f742e7761736d",
+                                                      { "other_trees":
+                                                          { "node":
+                                                              [ [ "30",
+                                                                  { "other_trees":
+                                                                    { "other_trees":
+                                                                    { "blinded_value":
+                                                                    "CoUoZk6R7CgX9iKQUPGqJgD8jsSE9XWYeQGRJE4riNhhsDyKXDJA" } } } ],
+                                                                [ "6c656e677468",
+                                                                  { "other_trees":
+                                                                    { "other_trees":
+                                                                    { "value":
+                                                                    "0000000000000fa0" } } } ] ] } } ] ] } } ] ] } } ] ] } },
+                  { "inode_tree":
+                      { "length": "3",
+                        "proofs":
+                          [ { "other_inode_trees":
+                                { "other_inode_trees": { "none": {} } } },
+                            { "inode_tree":
+                                { "length": "3",
+                                  "proofs":
+                                    [ { "other_inode_trees":
+                                          { "other_inode_trees":
+                                              { "blinded_inode":
+                                                  "CoVuMrh6S3KPMM9zCLnhiuXLnBr311sFu3C6K8ivQ4wi1jtrFFNd" } } },
+                                      { "other_inode_trees":
+                                          { "inode_values":
+                                              [ [ "6761746865722d666c6f7070696573",
+                                                  { "inode":
+                                                      { "length": "3",
+                                                        "proofs":
+                                                          [ { "other_inode_trees":
+                                                                { "inode_values":
+                                                                    [ [ "6c6173742d696e7075742d696e666f",
+                                                                    { "other_trees":
+                                                                    { "other_trees":
+                                                                    { "value":
+                                                                    "00" } } } ] ] } },
+                                                            { "other_inode_trees":
+                                                                { "inode_values":
+                                                                    [ [ "696e7465726e616c2d7469636b",
+                                                                    { "other_trees":
+                                                                    { "other_trees":
+                                                                    { "value":
+                                                                    "01" } } } ],
+                                                                    [ "737461747573",
+                                                                    { "other_trees":
+                                                                    { "other_trees":
+                                                                    { "value":
+                                                                    "0000f52a2615a11880777927a816fe6d5589c1af46e54ea367116886bacf0cba806f" } } } ] ] } } ] } } ],
+                                                [ "7761736d2d76657273696f6e",
+                                                  { "other_trees":
+                                                      { "other_trees":
+                                                          { "blinded_value":
+                                                              "CoUs4h7rxcdibtJvPtG5x1WrxdxtQBP14cer64ySYUqAcmYggpKN" } } } ] ] } } ] } } ] } } ] } } },
+  "requested": { "kind": "initial" } }
