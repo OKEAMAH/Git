@@ -172,7 +172,7 @@ let get_chunks_count tree =
   in
   Option.fold ~none:0 ~some:Int64.to_int len
 
-let check_status tree expected =
+let check_gather_floppies_status tree (expected : Tezos_scoru_wasm.Gather_floppies.internal_status option) =
   let open Lwt.Syntax in
   let* status = find_status tree in
   match (status, expected) with
@@ -212,14 +212,14 @@ let should_boot_complete_boot_sector boot_sector () =
   (* After this first step, the PVM has just loaded the boot sector in
      "/boot-sector", and nothing more.  As a consequence, most of the
      step of the [Gather_floppies] instrumentation is not set. *)
-  let*! () = check_status s None in
+  let*! () = check_gather_floppies_status s None in
   let* () = check_chunks_count s 0 in
   (* At this step, the [eval] function of the PVM will interpret the
      origination message encoded in [boot_sector]. *)
   let* s = checked_eval ~loc:__LOC__ context s in
   (* We expect that the WASM does not expect more floppies, and that
      the kernel as been correctly splitted into several chunks. *)
-  let*! () = check_status s (Some Not_gathering_floppies) in
+  let*! () = check_gather_floppies_status s (Some Not_gathering_floppies) in
   let* () = check_chunks_count s boot_sector_len in
   return_unit
 
@@ -298,19 +298,23 @@ let should_refuse_chunks_with_incorrect_signature () =
   let*! s = Prover.install_boot_sector s origination_message in
   (* Intererptation of the origination message *)
   let* s = checked_eval ~loc:__LOC__ context s in
-  let*! () = check_status s (Some (Gathering_floppies good_op.pk)) in
+  let*! () = check_gather_floppies_status s (Some (Gathering_floppies good_op.pk)) in
   let* () = check_chunks_count s chunk_size in
   (* Try to interpret the incorrect input (badly signed) *)
   let* s = checked_set_input ~loc:__LOC__ context incorrect_input s in
-  let*! () = check_status s (Some (Gathering_floppies good_op.pk)) in
+  let*! () = check_gather_floppies_status s (Some (Gathering_floppies good_op.pk)) in
   (* We still have 1 chunk. *)
   let* () = check_chunks_count s chunk_size in
   (* Try to interpret the correct input (correctly signed) *)
   let* s = checked_set_input ~loc:__LOC__ context correct_input s in
-  let*! () = check_status s (Some (Gathering_floppies good_op.pk)) in
+  let*! () = check_gather_floppies_status s (Some (Gathering_floppies good_op.pk)) in
   (* We now have 2 chunks. *)
   let* () = check_chunks_count s (2 * chunk_size) in
   return_unit
+
+(* TODO use the right library function instead *)
+let assert_false ~loc=
+      Assert.leq_int ~loc 1 0
 
 let should_boot_incomplete_boot_sector kernel () =
   let open Lwt_result_syntax in
@@ -355,12 +359,12 @@ let should_boot_incomplete_boot_sector kernel () =
   let*! s = Prover.initial_state empty_context in
   let*! s = Prover.install_boot_sector s initial_chunk in
   let* () = check_proof_size ~loc:__LOC__ empty_context None s in
-  let*! () = check_status s None in
+  let*! () = check_gather_floppies_status s None in
   let* () = check_chunks_count s 0 in
   (* First tick, to interpret the boot sector. One chunk have been
      provided, and the PVM expects more chunk to come. *)
   let* s = checked_eval ~loc:__LOC__ empty_context s in
-  let*! () = check_status s (Some (Gathering_floppies operator.pk)) in
+  let*! () = check_gather_floppies_status s (Some (Gathering_floppies operator.pk)) in
   let* () = check_chunks_count s chunk_size in
   (* Then, installing the additional chunks. *)
   let* s =
@@ -380,10 +384,14 @@ let should_boot_incomplete_boot_sector kernel () =
   let len = List.length chunks in
   let* input = floppy_input len operator final_chunk in
   let* s = checked_set_input ~loc:__LOC__ empty_context input s in
-  let*! () = check_status s (Some Not_gathering_floppies) in
+  let*! () = check_gather_floppies_status s (Some Not_gathering_floppies) in
   let* () =
     check_chunks_count s (((len + 1) * chunk_size) + final_chunk_size)
   in
+  (* TODO factor out the rest into a separate test: *)
+  (*
+  assert_false ~loc:__LOC__
+  *)
   return_unit
 
 (* Read the chosen `wasm_kernel` into memory. *)
@@ -411,7 +419,7 @@ let tests =
         (incomplete_boot_sector "\x00asm\x01\x00\x00\x00" operator)
         () );
     Tztest.tztest
-      "should boot an incomplete boot sector with floppies"
+      "TODO extra stuff + should boot an incomplete boot sector with floppies"
       `Quick
       (should_boot_incomplete_boot_sector @@ computation_kernel ());
     Tztest.tztest
