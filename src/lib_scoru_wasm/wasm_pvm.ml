@@ -261,7 +261,9 @@ module Make (T : Tree_encoding.TREE) :
               enqueue
                 config.input
                 {
-                  rtype = 0l (* TODO: What is rtype? *);
+                  (* This is to distinguish (0) Inbox inputs from (1)
+                     DAL/Slot_header inputs. *)
+                  rtype = 0l;
                   raw_level;
                   message_counter;
                   payload = String.to_bytes message;
