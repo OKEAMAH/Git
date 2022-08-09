@@ -116,12 +116,15 @@ module Prover = Alpha_context.Sc_rollup.Wasm_2_0_0PVM.Make (WASM_P)
 *)
 let proof_size_limit = 1024 * 1024 * 16
 
-let check_proof_size ~loc context input_opt s =
+let check_proof_size ~loc context input_opt s : unit tzresult Environment.Lwt.t =
   let open Lwt_result_syntax in
   let*! proof = Prover.produce_proof context input_opt s in
   match proof with
   | Error _ -> Stdlib.failwith "missing proof"
   | Ok proof ->
+      let _json =
+        Data_encoding.Json.(construct Prover.proof_encoding proof |> to_string ~newline:true)
+      in
       let bytes =
         Data_encoding.Binary.to_bytes_exn Prover.proof_encoding proof
       in
