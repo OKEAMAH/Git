@@ -392,6 +392,11 @@ let should_boot_incomplete_boot_sector kernel () =
   (*
   assert_false ~loc:__LOC__
   *)
+  (* OK *)
+  let* s = checked_eval ~loc:__LOC__ empty_context s in
+  (* NOT OK *)
+  let* s = checked_eval ~loc:__LOC__ empty_context s in
+  let _ = s in
   return_unit
 
 (* Read the chosen `wasm_kernel` into memory. *)
