@@ -246,6 +246,37 @@ let floppy_input i operator chunk =
       Format.printf "%a@," Environment.Error_monad.pp_trace err ;
       assert false
 
+let should_interpret_empty_chunk () =
+  let open Lwt_result_syntax in
+  let op = operator () in
+  let chunk_size = Tezos_scoru_wasm.Gather_floppies.chunk_size in
+  let origination_message =
+    Data_encoding.Binary.to_string_exn
+      Tezos_scoru_wasm__Gather_floppies.origination_message_encoding
+    @@ incomplete_boot_sector (String.make chunk_size 'a') op
+  in
+  let chunk = Bytes.empty in
+  let* correct_input = floppy_input 0 op chunk in
+
+  (* Init the PVM *)
+  Format.printf "init\n" ;
+  let*! index = Context_binary.init "/tmp" in
+  let context = Context_binary.empty index in
+  let*! s = Prover.initial_state context in
+  Format.printf "install boot\n" ;
+  let*! s = Prover.install_boot_sector s origination_message in
+  (* Intererptation of the origination message *)
+  Format.printf "eval\n" ;
+  let* s = checked_eval ~loc:__LOC__ context s in
+  let*! () = check_status s (Some (Gathering_floppies op.pk)) in
+  let* () = check_chunks_count s chunk_size in
+  (* Try to interpret the empty input (correctly signed) *)
+  let*! s = Prover.set_input correct_input s in
+  let*! () = check_status s (Some Not_gathering_floppies) in
+  (* We still have 1 chunk. *)
+  let* () = check_chunks_count s chunk_size in
+  return_unit
+
 let should_refuse_chunks_with_incorrect_signature () =
   let open Lwt_result_syntax in
   let good_op = operator () in
@@ -383,6 +414,10 @@ let tests =
       "should boot an incomplete boot sector with floppies"
       `Quick
       (should_boot_incomplete_boot_sector @@ computation_kernel ());
+    Tztest.tztest
+      "should interpret an empty chunk as EOF"
+      `Quick
+      should_interpret_empty_chunk;
     Tztest.tztest
       "should refuse chunks with an incorrect signature"
       `Quick
