@@ -116,7 +116,8 @@ module Prover = Alpha_context.Sc_rollup.Wasm_2_0_0PVM.Make (WASM_P)
 *)
 let proof_size_limit = 1024 * 1024 * 16
 
-let check_proof_size ~loc context input_opt s =
+let check_proof_size ~loc context input_opt s : unit tzresult Environment.Lwt.t
+    =
   let open Lwt_result_syntax in
   let*! proof = Prover.produce_proof context input_opt s in
   match proof with
@@ -172,7 +173,8 @@ let get_chunks_count tree =
   in
   Option.fold ~none:0 ~some:Int64.to_int len
 
-let check_status tree expected =
+let check_status tree
+    (expected : Tezos_scoru_wasm.Gather_floppies.internal_status option) =
   let open Lwt.Syntax in
   let* status = find_status tree in
   match (status, expected) with
@@ -308,7 +310,24 @@ let should_refuse_chunks_with_incorrect_signature () =
   let* () = check_chunks_count s (2 * chunk_size) in
   return_unit
 
-let should_boot_incomplete_boot_sector kernel () =
+(* TODO https://gitlab.com/tezos/tezos/-/issues/3532
+   Use the right library function *)
+let assert_false ~loc = Assert.leq_int ~loc 1 0
+
+(* TODO https://gitlab.com/tezos/tezos/-/issues/3532
+   Use the right library function *)
+let rec replicate (n : int) s k =
+  let open Lwt_result_syntax in
+  if n <= 0 then return s
+  else
+    let* s = k s in
+    (replicate [@ocaml.tailcall]) (n - 1) s k
+
+(** Boot, parse and initialize the given kernel.
+
+    Return a dummy empty context and the PVM state after initialization.
+  *)
+let boot_parse_and_initialize kernel =
   let open Lwt_result_syntax in
   let operator = operator () in
   let chunk_size = Tezos_scoru_wasm.Gather_floppies.chunk_size in
@@ -380,6 +399,18 @@ let should_boot_incomplete_boot_sector kernel () =
   let* () =
     check_chunks_count s (((len + 1) * chunk_size) + final_chunk_size)
   in
+  return (context, s)
+
+let should_boot_incomplete_boot_sector kernel () =
+  let open Lwt_result_syntax in
+  let* _context, _s = boot_parse_and_initialize kernel in
+  return_unit
+
+let should_boot_parse_initialize_and_evaluate_n_ticks n kernel () =
+  let open Lwt_result_syntax in
+  let* context, s = boot_parse_and_initialize kernel in
+  let* s = replicate n s (checked_eval ~loc:__LOC__ context) in
+  let _ = s in
   return_unit
 
 (* Read the chosen `wasm_kernel` into memory. *)
@@ -451,6 +482,16 @@ let tests =
       "should refuse chunks with an incorrect signature"
       `Quick
       should_refuse_chunks_with_incorrect_signature;
+    Tztest.tztest
+      "should boot, parse, initialize and evaluate 75 ticks"
+      `Quick
+      (should_boot_parse_initialize_and_evaluate_n_ticks 75
+      @@ computation_kernel ());
+    Tztest.tztest
+      "should boot, parse, initialize and evaluate 750 ticks"
+      `Quick
+      (should_boot_parse_initialize_and_evaluate_n_ticks 750
+      @@ computation_kernel ());
     Tztest.tztest
       "should boot a valid kernel until reading inputs"
       `Quick
