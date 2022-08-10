@@ -150,3 +150,10 @@ val manager_pubkey :
   Raw_context.t ->
   Signature.Public_key_hash.t ->
   Signature.Public_key.t tzresult Lwt.t
+
+val drain :
+  Raw_context.t ->
+  delegate:Signature.Public_key_hash.t ->
+  destination:Signature.Public_key_hash.t ->
+  (Raw_context.t * bool * Tez_repr.t * Receipt_repr.balance_updates) tzresult
+  Lwt.t

@@ -253,3 +253,51 @@ let manager_pubkey ctxt delegate =
     ctxt
     delegate
     ~error:(Unregistered_delegate delegate)
+
+type error += (* `Temporary *) Invalid_drain
+
+let () =
+  register_error_kind
+    `Temporary
+    ~id:"delegate.invalid_drain"
+    ~title:"Invalid Drain operation"
+    ~description:
+      "The drain operation is not signed by the active consensus key."
+    ~pp:(fun ppf () ->
+      Format.fprintf
+        ppf
+        "The drain operation is invalid: not signed by the active consensus key")
+    Data_encoding.empty
+    (function Invalid_drain -> Some () | _ -> None)
+    (fun () -> Invalid_drain)
+
+let drain ctxt ~delegate ~destination =
+  let open Lwt_tzresult_syntax in
+  let*! is_destination_allocated =
+    Contract_storage.allocated ctxt (Contract_repr.Implicit destination)
+  in
+  let delegate_contract = Contract_repr.Implicit delegate in
+  let* ctxt, _, balance_updates1 =
+    if not is_destination_allocated then
+      Fees_storage.burn_origination_fees
+        ctxt
+        ~storage_limit:(Z.of_int (Constants_storage.origination_size ctxt))
+        ~payer:(`Contract delegate_contract)
+    else return (ctxt, Z.zero, [])
+  in
+  let* manager_balance = spendable_balance ctxt delegate in
+  let*? one_percent = Tez_repr.(manager_balance /? 100L) in
+  let fees = Tez_repr.(min one one_percent) in
+  let*? transfered = Tez_repr.(manager_balance -? fees) in
+  let* ctxt, balance_updates2 =
+    Token.transfer
+      ctxt
+      (`Contract delegate_contract)
+      (`Contract (Contract_repr.Implicit destination))
+      transfered
+  in
+  return
+    ( ctxt,
+      not is_destination_allocated,
+      fees,
+      balance_updates1 @ balance_updates2 )

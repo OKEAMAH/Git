@@ -854,6 +854,7 @@ let pre_filter config ~(filter_state : state) ?validation_state_before
   | Single (Activate_account _)
   | Single (Proposals _)
   | Single (Vdf_revelation _)
+  | Single (Drain_delegate _)
   | Single (Ballot _) ->
       Lwt.return @@ `Passed_prefilter other_prio
   | Single (Manager_operation _) as op -> prefilter_manager_op op
@@ -1374,6 +1375,7 @@ let post_filter config ~(filter_state : state) ~validation_state_before:_
       | Single_result (Activate_account_result _)
       | Single_result Proposals_result
       | Single_result (Vdf_revelation_result _)
+      | Single_result (Drain_delegate_result _)
       | Single_result Ballot_result ->
           Lwt.return (`Passed_postfilter filter_state)
       | Single_result (Manager_operation_result _) as result ->
