@@ -1335,7 +1335,7 @@ include (
 
     type proof = Context.Proof.tree Context.Proof.t
 
-    let proof_encoding = Context.Proof_encoding.V1.Tree32.tree_proof_encoding
+    let proof_encoding = Context.Proof_encoding.V2.Tree32.tree_proof_encoding
 
     let proof_before proof =
       match proof.Context.Proof.before with
