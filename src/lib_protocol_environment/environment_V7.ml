@@ -1461,4 +1461,348 @@ struct
   module Equality_witness = Environment_context.Equality_witness
   module Plonk = Tezos_protocol_environment_structs.V7.Plonk
   module Dal = Tezos_crypto_dal.Dal_cryptobox.Verifier
+
+  module Michelson_type_constructor = struct
+    type (_, _) eq = Refl : ('a, 'a) eq
+
+    module type Hashcons_base = sig
+      type 'i input
+
+      type 'o output
+
+      type ('i, 'o) witness
+
+      val mk : 'i input -> ('i, 'o) witness -> 'o output
+    end
+
+    module type Binding = sig
+      include Hashcons_base
+
+      val witness_is_a_function :
+        ('i, 'o1) witness -> ('i, 'o2) witness -> ('o1, 'o2) eq
+
+      type 'i input_id
+
+      val id : 'i input -> 'i input_id
+
+      val eq_id : 'i input_id -> 'j input_id -> ('i, 'j) eq option
+
+      val hash : 'i input_id -> int -> int
+    end
+
+    module Hashcons_base (B : Binding) :
+      Hashcons_base
+        with type 'i input := 'i B.input
+         and type 'o output := 'o B.output
+         and type ('i, 'o) witness := ('i, 'o) B.witness = struct
+      type element =
+        | Element : {
+            input_id : 'i B.input_id;
+            witness : ('i, 'o) B.witness;
+            weak_output : (unit, 'o B.output) Ephemeron.K1.t;
+          }
+            -> element
+
+      type tbl = {mutable size : int; mutable data : element bucketlist array}
+
+      and 'a bucketlist = Empty | Cons of 'a * 'a bucketlist
+
+      let table = {size = 0; data = Array.make 32 Empty}
+
+      let resize () =
+        let odata = table.data in
+        let osize = Array.length odata in
+        let nsize = osize * 2 in
+        if nsize < Sys.max_array_length then (
+          let ndata = Array.make nsize Empty in
+          table.data <- ndata ;
+          let rec insert_bucket = function
+            | Empty -> ()
+            | Cons (Element el, rest) ->
+                insert_bucket rest ;
+                let idx = B.hash el.input_id nsize in
+                ndata.(idx) <- Cons (Element el, ndata.(idx))
+          in
+          for i = 0 to osize - 1 do
+            insert_bucket odata.(i)
+          done)
+
+      let mk : type i o. i B.input -> (i, o) B.witness -> o B.output =
+       fun input witness ->
+        let input_id = B.id input in
+        let table_size = Array.length table.data in
+        let idx = B.hash input_id table_size in
+        let remove () =
+          let table_size = Array.length table.data in
+          let ridx = B.hash input_id table_size in
+          let rec remove_bucket = function
+            | Empty -> Empty
+            | Cons (Element el, rest) -> (
+                match B.eq_id input_id el.input_id with
+                | Some Refl ->
+                    table.size <- table.size - 1 ;
+                    rest
+                | None -> Cons (Element el, remove_bucket rest))
+          in
+          table.data.(ridx) <- remove_bucket table.data.(idx)
+        in
+        let add () =
+          let output = B.mk input witness in
+          let weak_output = Ephemeron.K1.make () output in
+          let elt = Element {input_id; witness; weak_output} in
+          let finalise_weak_output : (unit, o B.output) Ephemeron.K1.t -> unit =
+           fun _weak_output -> remove ()
+          in
+          Gc.finalise finalise_weak_output weak_output ;
+          table.data.(idx) <- Cons (elt, table.data.(idx)) ;
+          table.size <- table.size + 1 ;
+          if table.size > Array.length table.data lsl 1 then resize () ;
+          output
+        in
+        let rec find_and_insert_bucket = function
+          | Empty -> add ()
+          | Cons
+              ( Element {input_id = input_id2; witness = witness2; weak_output},
+                rest ) -> (
+              match B.eq_id input_id input_id2 with
+              | Some Refl -> (
+                  let Refl = B.witness_is_a_function witness witness2 in
+                  match Ephemeron.K1.query weak_output () with
+                  (* Have to make sure the () in argument is always the same physically. *)
+                  | Some output -> output
+                  | None ->
+                      remove () ;
+                      add ())
+              | None -> find_and_insert_bucket rest)
+        in
+        find_and_insert_bucket table.data.(idx)
+    end
+
+    type 'a gid = 'a Equality_witness.t
+
+    let eq_id a b = Equality_witness.eq a b
+
+    let gen () = Equality_witness.make ()
+
+    let hash1_int i table_size = i mod table_size
+
+    let hash1 a table_size =
+      let hash = Equality_witness.hash a in
+      hash mod table_size
+
+    let hash2 a b table_size =
+      let hasha, hashb = (Equality_witness.hash a, Equality_witness.hash b) in
+      (hasha + hashb) mod table_size
+
+    module type HashConsingInput = sig
+      type 'a t
+    end
+
+    module type Constr1_Int = sig
+      type v
+
+      type 'a res
+
+      val mk : int -> v res
+    end
+
+    module type Constr1 = sig
+      type 'a t
+
+      type ('a, 'b) witness
+
+      type 'a res
+
+      val mk : 'a t -> ('a, 'b) witness -> 'b res
+    end
+
+    module type Constr2 = sig
+      type 'a t
+
+      type ('a, 'b, 'c) witness
+
+      type 'a res
+
+      val mk : 'a t -> 'b t -> ('a, 'b, 'c) witness -> 'c res
+    end
+
+    module type HashConsing = sig
+      type 'a id
+
+      type 'a value
+
+      type 'a t = private {id : 'a id; value : 'a value}
+
+      val constant : 'a value -> 'a t
+
+      module Parametric1_Int : functor
+        (C : Constr1_Int with type 'a res := 'a value)
+        -> Constr1_Int with type v := C.v and type 'a res := 'a t
+
+      module type Constr1 := Constr1 with type 'a t := 'a t
+
+      module type Constr1_Input := sig
+        include Constr1
+
+        val witness_is_a_function :
+          ('a, 'b1) witness -> ('a, 'b2) witness -> ('b1, 'b2) eq
+      end
+
+      module Parametric1 : functor
+        (C : Constr1_Input with type 'a res := 'a value)
+        ->
+        Constr1
+          with type ('a, 'b) witness := ('a, 'b) C.witness
+           and type 'a res := 'a t
+
+      module type Constr2 := Constr2 with type 'a t := 'a t
+
+      module type Constr2_Input := sig
+        include Constr2
+
+        val witness_is_a_function :
+          ('a, 'b, 'c1) witness -> ('a, 'b, 'c2) witness -> ('c1, 'c2) eq
+      end
+
+      module Parametric2 : functor
+        (C : Constr2_Input with type 'a res := 'a value)
+        ->
+        Constr2
+          with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
+           and type 'a res := 'a t
+    end
+
+    module HashConsing (V : HashConsingInput) :
+      HashConsing with type 'a value := 'a V.t = struct
+      type 'a id = 'a gid
+
+      type 'a value = 'a V.t
+
+      type 'a t = {id : 'a id; value : 'a value}
+
+      let constant value = {id = gen (); value}
+
+      module Parametric1_Int (C : Constr1_Int with type 'a res := 'a value) :
+        Constr1_Int with type v := C.v and type 'a res := 'a t = struct
+        module Binding = struct
+          type _ input = In : int -> unit input [@@unboxed]
+
+          type _ output = C.v t
+
+          type (_, _) witness = W : (unit, C.v t) witness
+
+          let mk : type i o. i input -> (i, o) witness -> o output =
+           fun (In input) W -> {id = gen (); value = C.mk input}
+
+          let witness_is_a_function :
+              type i o1 o2. (i, o1) witness -> (i, o2) witness -> (o1, o2) eq =
+           fun W W -> Refl
+
+          type _ input_id = Id : int -> unit input_id [@@unboxed]
+
+          let id : type i. i input -> i input_id = fun (In i) -> Id i
+
+          let eq_id : type i j. i input_id -> j input_id -> (i, j) eq option =
+           fun (Id id1) (Id id2) -> if id1 = id2 then Some Refl else None
+
+          let hash : type i. i input_id -> int -> int =
+           fun (Id id) size -> hash1_int id size
+        end
+
+        include Hashcons_base (Binding)
+
+        let mk input = mk (Binding.In input) Binding.W
+      end
+
+      module type Constr1 = Constr1 with type 'a t := 'a t
+
+      module type Constr1_Input = sig
+        include Constr1
+
+        val witness_is_a_function :
+          ('a, 'b1) witness -> ('a, 'b2) witness -> ('b1, 'b2) eq
+      end
+
+      module Parametric1 (C : Constr1_Input with type 'a res := 'a value) :
+        Constr1
+          with type ('a, 'b) witness := ('a, 'b) C.witness
+           and type 'a res := 'a t = struct
+        module Binding = struct
+          type 'i input = 'i t
+
+          type 'o output = 'o t
+
+          type ('i, 'o) witness = ('i, 'o) C.witness
+
+          let mk : type i o. i input -> (i, o) witness -> o output =
+           fun input witness -> {id = gen (); value = C.mk input witness}
+
+          let witness_is_a_function = C.witness_is_a_function
+
+          type 'i input_id = 'i id
+
+          let id : type i. i input -> i input_id = fun {id; _} -> id
+
+          let eq_id : type i j. i input_id -> j input_id -> (i, j) eq option =
+           fun ida idb ->
+            match eq_id ida idb with Some Refl -> Some Refl | None -> None
+
+          let hash = hash1
+        end
+
+        include Hashcons_base (Binding)
+
+        let mk input witness = mk input witness
+      end
+
+      module type Constr2 = Constr2 with type 'a t := 'a t
+
+      module type Constr2_Input = sig
+        include Constr2
+
+        val witness_is_a_function :
+          ('a, 'b, 'c1) witness -> ('a, 'b, 'c2) witness -> ('c1, 'c2) eq
+      end
+
+      module Parametric2 (C : Constr2_Input with type 'a res := 'a value) :
+        Constr2
+          with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
+           and type 'a res := 'a t = struct
+        module Binding = struct
+          type _ input = In : 'a t * 'b t -> ('a * 'b) input
+
+          type 'o output = 'o t
+
+          type (_, _) witness =
+            | W : ('i, 'j, 'o) C.witness -> ('i * 'j, 'o) witness
+          [@@unboxed]
+
+          let mk : type i o. i input -> (i, o) witness -> o output =
+           fun (In (i1, i2)) (W w) -> {id = gen (); value = C.mk i1 i2 w}
+
+          let witness_is_a_function :
+              type i o1 o2. (i, o1) witness -> (i, o2) witness -> (o1, o2) eq =
+           fun (W w1) (W w2) -> C.witness_is_a_function w1 w2
+
+          type _ input_id = Id : 'a id * 'b id -> ('a * 'b) input_id
+
+          let id : type i. i input -> i input_id =
+           fun (In ({id = id1; _}, {id = id2; _})) -> Id (id1, id2)
+
+          let eq_id : type i j. i input_id -> j input_id -> (i, j) eq option =
+           fun (Id (ida1, ida2)) (Id (idb1, idb2)) ->
+            match (eq_id ida1 idb1, eq_id ida2 idb2) with
+            | Some Refl, Some Refl -> Some Refl
+            | _ -> None
+
+          let hash : type i. i input_id -> int -> int =
+           fun (Id (id1, id2)) table_size -> hash2 id1 id2 table_size
+        end
+
+        include Hashcons_base (Binding)
+
+        let mk i1 i2 w = mk (Binding.In (i1, i2)) (Binding.W w)
+      end
+    end
+  end
 end

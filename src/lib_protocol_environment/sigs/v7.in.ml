@@ -131,7 +131,7 @@ module type T = sig
 
   module Plonk : [%sig "v7/plonk.mli"]
 
-  module Hashtbl : [%sig "v7/hashtbl.mli"]
-
   module Dal : [%sig "v7/dal.mli"]
+
+  module Michelson_type_constructor : [%sig "v7/michelson_type_constructor.mli"]
 end
