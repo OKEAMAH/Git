@@ -42,6 +42,8 @@ let default_rpc_addr = "127.0.0.1"
 
 let default_rpc_port = 10732
 
+let default_unsafe_srs = false
+
 let encoding : t Data_encoding.t =
   let open Data_encoding in
   conv
