@@ -513,37 +513,39 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
 
   let produce_stream_proof index = produce_stream_proof index.repo
 
+  let get_data leaf_kind key tree : (tree * tree) Lwt.t =
+    let open Lwt_syntax in
+    match leaf_kind with
+    | Proof.Hole -> return (tree, tree)
+    | Proof.Raw_context ->
+        let key_to_string k = String.concat ";" k in
+        let rec explore tree target =
+          match (Store.Tree.destruct tree, target) with
+          | _, [] -> return (tree, tree)
+          | `Node _, hd :: tl -> (
+              Lwt.(
+                Store.Tree.find_tree tree [hd] >>= function
+                (* If the tree doesn't contain the key, we mirror the previous implementation
+                   and return a proof that *some* part of the key is in the tree. This may not
+                   be the desired behaviour.
+                   TODO: discuss *)
+                | None -> return (tree, tree)
+                | Some subtree -> explore subtree tl))
+          | `Contents _, _ ->
+              raise
+                (Invalid_argument
+                   (Printf.sprintf
+                      "(`Contents _, l) when l <> [_] (in other words: found a \
+                       leaf node whereas key %s (top-level key: %s) wasn't \
+                       fully consumed)"
+                      (key_to_string target)
+                      (key_to_string key)))
+        in
+        explore tree key
+
   let merkle_tree_v2 ctx leaf_kind key =
     let open Lwt_syntax in
-    let get_data tree : (tree * tree) Lwt.t =
-      match leaf_kind with
-      | Proof.Hole -> return (tree, tree)
-      | Proof.Raw_context ->
-          let key_to_string k = String.concat ";" k in
-          let rec explore tree target =
-            match (Store.Tree.destruct tree, target) with
-            | _, [] -> return (tree, tree)
-            | `Node _, hd :: tl -> (
-                Lwt.(
-                  Store.Tree.find_tree tree [hd] >>= function
-                  (* If the tree doesn't contain the key, we mirror the previous implementation
-                     and return a proof that *some* part of the key is in the tree. This may not
-                     be the desired behaviour.
-                     TODO: discuss *)
-                  | None -> return (tree, tree)
-                  | Some subtree -> explore subtree tl))
-            | `Contents _, _ ->
-                raise
-                  (Invalid_argument
-                     (Printf.sprintf
-                        "(`Contents _, l) when l <> [_] (in other words: found \
-                         a leaf node whereas key %s (top-level key: %s) wasn't \
-                         fully consumed)"
-                        (key_to_string target)
-                        (key_to_string key)))
-          in
-          explore tree key
-    in
+    let get_data = get_data leaf_kind key in
     match Tree.kinded_key ctx.tree with
     | None -> raise (Invalid_argument "On-disk context.tree has no kinded_key")
     | Some kinded_key ->
