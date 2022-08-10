@@ -54,10 +54,35 @@ let min_agreeing_endpoints min_agreement nb_endpoints =
 module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
   type validation_result = Valid | Invalid of string
 
-  let validate_v2 _uri _key _store_tree (_data_tree : Proof.tree Proof.t)
-      (_incoming_mtree : Proof.tree Proof.t option tzresult) =
+  let validate_v2 uri key _store_tree (data_proof : Proof.tree Proof.t)
+      (incoming_mproof : Proof.tree Proof.t option tzresult) =
     (* FIXME: can't use irmin [verify_proof] yet *)
-    assert false
+    (* Store.verify_tree_proof  *)
+    match incoming_mproof with
+    | Error trace ->
+        Lwt.return
+        @@ Invalid
+             (Format.asprintf
+                "Light mode: endpoint %s failed to provide merkle tree for key \
+                 %s. Error is: %a"
+                (Uri.to_string uri)
+                (Internal.key_to_string key)
+                pp_print_trace
+                trace)
+    | Ok None ->
+        Lwt.return
+        @@ Invalid
+             (Format.asprintf
+                "Light mode: endpoint %s doesn't contain key %s"
+                (Uri.to_string uri)
+                (Internal.key_to_string key))
+    | Ok (Some _mproof) -> (
+        let f = assert false in
+        let open Lwt_syntax in
+        let* res = Store.verify_tree_proof data_proof f in
+        match res with
+        | Ok _ -> return Valid
+        | Error _ -> return (Invalid "FIXME"))
 
   (** Checks that the data-less merkle tree [incoming_mtree]
       provided by the endpoint [uri] meets these two conditions:
@@ -132,8 +157,8 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
       validations
 
   (* FIXME ugly *)
-  let g_consensus printer min_agreement chain block key tree mtree validating_endpoints
-    build_merkle_tree validate =
+  let g_consensus printer min_agreement chain block key tree mtree
+      validating_endpoints build_merkle_tree validate =
     let open Lwt_syntax in
     (* + 1 because there's the endpoint that provides data, that doesn't
        validate *)
@@ -148,7 +173,8 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
     let check_merkle_tree_with_endpoint (uri, rpc_context) =
       let* other_mtree =
         build_merkle_tree
-          ({rpc_context; chain; block; mode = Client} : Proxy.proxy_getter_input)
+          ({rpc_context; chain; block; mode = Client}
+            : Proxy.proxy_getter_input)
           key
           Proof.Hole
       in
@@ -181,11 +207,30 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
   let consensus
       ({printer; min_agreement; chain; block; key; tree; mtree} : input)
       validating_endpoints =
-    g_consensus printer min_agreement chain block key tree mtree
-      validating_endpoints Light_proto.merkle_tree validate
+    g_consensus
+      printer
+      min_agreement
+      chain
+      block
+      key
+      tree
+      mtree
+      validating_endpoints
+      Light_proto.merkle_tree
+      validate
 
-  let consensus_v2 ({printer; min_agreement; chain; block; key; tree; mproof} : input_v2)
+  let consensus_v2
+      ({printer; min_agreement; chain; block; key; tree; mproof} : input_v2)
       validating_endpoints =
-    g_consensus printer min_agreement chain block key tree mproof
-      validating_endpoints Light_proto.merkle_tree_v2 validate_v2
+    g_consensus
+      printer
+      min_agreement
+      chain
+      block
+      key
+      tree
+      mproof
+      validating_endpoints
+      Light_proto.merkle_tree_v2
+      validate_v2
 end
