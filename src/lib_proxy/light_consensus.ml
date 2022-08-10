@@ -131,9 +131,9 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
         | Invalid errmsg -> printer#warning "%s\n" errmsg)
       validations
 
-  let consensus
-      ({printer; min_agreement; chain; block; key; mtree; tree} : input)
-      validating_endpoints =
+  (* FIXME ugly *)
+  let g_consensus printer min_agreement chain block key tree mtree validating_endpoints
+    build_merkle_tree validate =
     let open Lwt_syntax in
     (* + 1 because there's the endpoint that provides data, that doesn't
        validate *)
@@ -147,8 +147,8 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
        contain this key. *)
     let check_merkle_tree_with_endpoint (uri, rpc_context) =
       let* other_mtree =
-        Light_proto.merkle_tree
-          {rpc_context; chain; block; mode = Client}
+        build_merkle_tree
+          ({rpc_context; chain; block; mode = Client} : Proxy.proxy_getter_input)
           key
           Proof.Hole
       in
@@ -178,49 +178,14 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
     in
     return agreement_reached
 
+  let consensus
+      ({printer; min_agreement; chain; block; key; tree; mtree} : input)
+      validating_endpoints =
+    g_consensus printer min_agreement chain block key tree mtree
+      validating_endpoints Light_proto.merkle_tree validate
+
   let consensus_v2 ({printer; min_agreement; chain; block; key; tree; mproof} : input_v2)
       validating_endpoints =
-    let open Lwt_syntax in
-    (* + 1 because there's the endpoint that provides data, that doesn't
-       validate *)
-    let nb_endpoints = List.length validating_endpoints + 1 in
-    let min_agreeing_endpoints =
-      min_agreeing_endpoints min_agreement nb_endpoints
-    in
-    assert (min_agreeing_endpoints <= nb_endpoints) ;
-    (* When checking that shapes agree, we must ignore the key where the
-       data is, because the validating endpoints return trees that do NOT
-       contain this key. *)
-    let check_merkle_tree_with_endpoint (uri, rpc_context) =
-      let* other_mproof =
-        Light_proto.merkle_tree_v2
-          {rpc_context; chain; block; mode = Client}
-          key
-          Proof.Hole
-      in
-      validate_v2 uri key tree mproof other_mproof
-    in
-    let* validations =
-      Lwt_list.map_p check_merkle_tree_with_endpoint validating_endpoints
-    in
-    (* +1 because the endpoint that provided data obviously agrees *)
-    let nb_agreements = count_valids validations + 1 in
-    let agreement_reached = nb_agreements >= min_agreeing_endpoints in
-    let* () = warn_invalids printer validations in
-    let* () =
-      if agreement_reached then Lwt.return_unit
-      else
-        printer#warning
-          "Light mode: min_agreement=%f, %d endpoints, %s%d agreeing \
-           endpoints, whereas %d (%d*%f rounded up) is the minimum; so about \
-           to fail."
-          min_agreement
-          nb_endpoints
-          (if nb_agreements > 0 then "only " else "")
-          nb_agreements
-          min_agreeing_endpoints
-          nb_endpoints
-          min_agreement
-    in
-    return agreement_reached
+    g_consensus printer min_agreement chain block key tree mproof
+      validating_endpoints Light_proto.merkle_tree_v2 validate_v2
 end
