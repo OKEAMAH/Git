@@ -49,9 +49,16 @@ type t
    that both the [Verifier] and the [Builder] are instantiated with the
    same parameters and use the same trusted setup. *)
 
-module Verifier : VERIFIER
+type parameters = {
+  redundancy_factor : int;
+  segment_size : int;
+  slot_size : int;
+  number_of_shards : int;
+}
 
-include VERIFIER with type t := t
+module Verifier : VERIFIER with type parameters = parameters
+
+include VERIFIER with type t := t and type parameters := parameters
 
 (** The primitives exposed in this modules require some
    preprocessing. This preprocessing generates data from an unknown

@@ -30,33 +30,38 @@
    - reading a slot means rebuild it from the shards
    *)
 
+type slot = bytes
+
 (** [split_and_store dal_constants ts store slot] splits [slot] in shards, stores
     it onto the disk and returns the corresponding [slot_header], using
     [dal_constants] and trusted setup [ts] *)
 val split_and_store :
-  Cryptobox.t ->
+  Dal_cryptobox.t ->
   Store.t ->
-  Cryptobox.slot ->
-  Cryptobox.slot_header tzresult Lwt.t
+  slot ->
+  Dal_cryptobox.Commitment.t tzresult Lwt.t
 
 (** [get_shard store slot_header shard_id] gets the shard associated to
     [slot_header] at the range [shard_id] *)
 val get_shard :
-  Store.t -> Cryptobox.slot_header -> int -> Cryptobox.shard tzresult Lwt.t
+  Store.t ->
+  Dal_cryptobox.commitment ->
+  int ->
+  Dal_cryptobox.shard tzresult Lwt.t
 
 (** [get_slot dal_parameters dal_constants store slot_header] fetches from
     disk the shards associated to [slot_header], gathers them, rebuilds and
     returns the [slot]. *)
 val get_slot :
-  Cryptobox.parameters ->
-  Cryptobox.t ->
+  Dal_cryptobox.parameters ->
+  Dal_cryptobox.t ->
   Store.t ->
-  Cryptobox.slot_header ->
-  Cryptobox.slot tzresult Lwt.t
+  Dal_cryptobox.commitment ->
+  slot tzresult Lwt.t
 
 module Utils : sig
   (** [trim_x00 b] removes trailing '\000' at the end of a [b] and returns a new
-      [bytes]. This function in needed to debug the fetching a slot and remove
+      [bytes]. This function is needed to debug the fetched slot and remove
       spurious uneeded data form it. *)
   val trim_x00 : bytes -> bytes
 
