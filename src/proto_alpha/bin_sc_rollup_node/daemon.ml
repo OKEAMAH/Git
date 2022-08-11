@@ -421,6 +421,8 @@ module Make
       in
 
       let*! () =
+        let*! _ = Logging.append_result (Printf.sprintf
+        "%s:%d\n" configuration.rpc_addr configuration.rpc_port) in
         Event.node_is_ready
           ~rpc_addr:configuration.rpc_addr
           ~rpc_port:configuration.rpc_port
