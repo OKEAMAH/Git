@@ -34,7 +34,7 @@ let jump tick z = max initial (add tick z)
 
 let pp = pp_print
 
-let encoding = Data_encoding.n
+let encoding = Data_encoding.z
 
 let distance tick1 tick2 = Z.abs (Z.sub tick1 tick2)
 
