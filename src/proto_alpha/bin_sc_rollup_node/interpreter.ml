@@ -96,8 +96,8 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
       | _ -> normal_eval state
     in
     let rec go fuel tick failing_ticks state =
+		  let* () = Logging.append (Printf.sprintf "%s: Checking if PVM needs input: %d\n" PVM_name.name 0) in
       let* input_request = PVM.is_input_state state in
-		  let* () = Logging.append (Format.asprintf "%s: PVM expectation: %a\n" PVM_name.name Sc_rollup.pp_input_request input_request) in
       match fuel with
       | Some 0 -> return (state, fuel, tick, failing_ticks)
       | None | Some _ -> (
