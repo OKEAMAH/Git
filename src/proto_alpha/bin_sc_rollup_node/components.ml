@@ -25,6 +25,8 @@
 (*****************************************************************************)
 
 module type S = sig
+  module PVM_name : sig val name : string end
+
   module PVM : Pvm.S
 
   module Interpreter : Interpreter.S with module PVM = PVM
@@ -36,13 +38,22 @@ module type S = sig
   module Refutation_game : Refutation_game.S with module PVM = PVM
 end
 
-module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
+module Make
+  (PVM_name : sig val name : string end)
+  (PVM : Pvm.S) :
+  (S with module PVM_name = PVM_name and module PVM = PVM) = struct
+  module PVM_name = PVM_name
   module PVM = PVM
-  module Interpreter = Interpreter.Make (PVM)
+  module Interpreter = Interpreter.Make (PVM_name) (PVM)
   module Commitment = Commitment.Make (PVM)
   module RPC_server = RPC_server.Make (PVM)
-  module Refutation_game = Refutation_game.Make (Interpreter)
+  module Refutation_game = Refutation_game.Make (PVM_name) (Interpreter) (* TODO-MERGE Interpreter vs PVM? *)
 end
+
+let pvm_name_of_kind : Protocol.Alpha_context.Sc_rollup.Kind.t -> string =
+  function
+  | Example_arith -> "arith"
+  | Wasm_2_0_0 -> "wasm"
 
 let pvm_of_kind : Protocol.Alpha_context.Sc_rollup.Kind.t -> (module Pvm.S) =
   function

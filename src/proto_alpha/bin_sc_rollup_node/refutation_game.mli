@@ -31,4 +31,6 @@ module type S = sig
   val process : Layer1.head -> Node_context.t -> unit tzresult Lwt.t
 end
 
-module Make (Interpreter : Interpreter.S) : S with module PVM = Interpreter.PVM
+module Make
+  (PVM_name : sig val name : string end)
+  (Interpreter : Interpreter.S) : S with module PVM = Interpreter.PVM (* TODO-MERGE Interpreter vs PVM? *)
