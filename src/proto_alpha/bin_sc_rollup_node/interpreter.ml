@@ -62,6 +62,13 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
     | Some 0 -> return (state, fuel)
     | _ -> f (consume_fuel fuel) state
 
+  let print_state_hash state =
+    let open Lwt_syntax in
+    let* hash = PVM.state_hash state in
+    let* () = Logging.append (Format.asprintf "%s: State hash is %a\n" PVM_name.name
+            Protocol.Alpha_context.Sc_rollup.State_hash.pp hash) in
+    return ()
+
   (** [eval_until_input level message_index ~fuel start_tick
       failing_ticks state] advances a PVM [state] until it wants more
       inputs or there are no more [fuel] (if [Some fuel] is
@@ -75,6 +82,7 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
     let eval_tick tick failing_ticks state =
       let normal_eval state =
 		    let* () = Logging.append (Printf.sprintf "%s: Evaluating 1 tick\n" PVM_name.name) in
+        let* () = print_state_hash state in
         let* state = PVM.eval state in
         return (state, failing_ticks)
       in
@@ -87,6 +95,7 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
             ~internal:true
         in
 		    let* () = Logging.append (Printf.sprintf "%s: ERROR Inserting failure in PVM\n" PVM_name.name) in
+        let* () = print_state_hash state in
         let* state = PVM.Internal_for_tests.insert_failure state in
         return (state, failing_ticks')
       in
@@ -98,6 +107,7 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
     let rec go fuel tick failing_ticks state =
       let* input_request = PVM.is_input_state state in
       let* () = Logging.append (Format.asprintf "%s: PVM expectation: %a\n" PVM_name.name Sc_rollup.pp_input_request input_request) in
+      let* () = print_state_hash state in
       match fuel with
       | Some 0 -> return (state, fuel, tick, failing_ticks)
       | None | Some _ -> (
