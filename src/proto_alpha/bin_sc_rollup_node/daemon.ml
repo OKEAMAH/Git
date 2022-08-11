@@ -60,8 +60,10 @@ let categorise_heads (node_ctxt : Node_context.t) old_heads new_heads =
   in
   head_states
 
-module Make (PVM : Pvm.S) = struct
-  module Components = Components.Make (PVM)
+module Make
+    (PVM_name : sig val name : string end)
+   (PVM : Pvm.S) = struct
+  module Components = Components.Make (PVM_name) (PVM)
   open Protocol
   open Alpha_context
   open Apply_results
@@ -419,5 +421,5 @@ let run ~data_dir (cctxt : Protocol_client_context.full) =
       configuration.fee_parameter
       ~loser_mode:configuration.loser_mode
   in
-  let module Daemon = Make ((val Components.pvm_of_kind node_ctxt.kind)) in
+  let module Daemon = Make (struct let name = Components.pvm_name_of_kind node_ctxt.kind end) ((val Components.pvm_of_kind node_ctxt.kind)) in
   Daemon.run node_ctxt configuration store

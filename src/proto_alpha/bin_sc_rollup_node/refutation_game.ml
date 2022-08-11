@@ -53,9 +53,9 @@ module type S = sig
     Layer1.head -> Node_context.t -> PVM.context -> unit tzresult Lwt.t
 end
 
-module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
+module Make (PVM_name : sig val name : string end) (PVM : Pvm.S) : S with module PVM = PVM = struct
   module PVM = PVM
-  module Interpreter = Interpreter.Make (PVM)
+  module Interpreter = Interpreter.Make (PVM_name) (PVM)
   open Sc_rollup.Game
 
   let node_role ~self Sc_rollup.Game.Index.{alice; bob} =
