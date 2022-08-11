@@ -4,6 +4,12 @@
 - Look as hans@scoru-wip-{23,24}
   - Useful things from there?
   - Adapt TLs test to tezt
+       launching the L2 node
+       see that L1 node and L2 node is running (indexer?)
+       using the L2 CLI to originate a SCORU
+       CLI to look at commitment production
+       using CLI to observe execution state
+
   - Try to run some of these commands manually
   - Demo kernel compilation?
   - Visualize state transitions
