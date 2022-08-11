@@ -1,6 +1,16 @@
 
 # TODO
 
+Share all screens
+
+Term 1 (git-shell):
+	less +F scoru-node-debug-log.txt
+
+Term 2 (Tezos Nix):
+	./scoru-test.sh compute
+
+----
+
 - Look as hans@scoru-wip-{23,24}
   - Useful things from there?
   - Adapt TLs test to tezt
@@ -26,6 +36,7 @@ Observing commitments on L1
 Note:
 Will use a minimal Test kernel, not the TX kernel
 Run from a sandbox/locally - but functionality is in next Mondaynet
+
 
 
 
