@@ -1044,6 +1044,22 @@ let test_rollup_node_boots_into_initial_state ~kind =
    TODO:
       Live demo from this.
 *)
+
+(* Read the chosen `wasm_kernel` into memory. *)
+let read_kernel name =
+  let open Tezt.Base in
+  let kernel_file =
+    project_root // Filename.dirname __FILE__ // "wasm_kernel"
+    // (name ^ ".wasm")
+  in
+  read_file kernel_file
+
+(* Kernel with allocation & simple computation only.
+   9863 bytes long - will be split into 3 chunks. *)
+let computation_kernel () = read_kernel "computation"
+
+
+
 let test_rollup_node_advances_pvm_state protocols ~kind =
   let go ~internal client sc_rollup sc_rollup_node =
     let* genesis_info =
