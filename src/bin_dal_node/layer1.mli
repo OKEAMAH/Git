@@ -23,7 +23,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** [iter_events cctxt handler] runs [handler] each time a new head is received
+    by the targeted layer 1 node *)
 val iter_events :
   #RPC_context.streamed ->
   (Block_hash.t * Block_header.t -> (unit, tztrace) result Lwt.t) ->
-  (unit, tztrace) result Lwt.t
+  ((unit, error trace) result Lwt.t * (unit -> unit), error trace) result Lwt.t

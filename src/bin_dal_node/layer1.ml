@@ -29,7 +29,7 @@
 *)
 let iter_events cctxt handle =
   let open Lwt_result_syntax in
-  let* stream, _stopper =
+  let* stream, stopper =
     Tezos_shell_services.Monitor_services.heads cctxt `Main
   in
   let rec go () =
@@ -40,4 +40,4 @@ let iter_events cctxt handle =
         let* () = handle element in
         go ()
   in
-  go ()
+  return (go (), stopper)
