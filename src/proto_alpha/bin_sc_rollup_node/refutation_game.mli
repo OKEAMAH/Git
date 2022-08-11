@@ -32,4 +32,7 @@ module type S = sig
     Layer1.head -> Node_context.t -> PVM.context -> unit tzresult Lwt.t
 end
 
-module Make (PVM : Pvm.S) : S with module PVM = PVM
+
+module Make
+  (PVM_name : sig val name : string end)
+  (PVM : Pvm.S) : S with module PVM = PVM
