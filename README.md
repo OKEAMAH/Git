@@ -35,8 +35,7 @@ Launching the L2 node
 Using CLI to originate a SCORU
 Using CLI to feed inputs (kernel chunks)
 Using CLI to observe execution state in L2 node
-Observing commitments on L1
-Note:
+
 Will use a minimal Test kernel, not the TX kernel
 Run from a sandbox/locally - but functionality is in next Mondaynet
 
