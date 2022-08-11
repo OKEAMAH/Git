@@ -23,21 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** FIXME: https://gitlab.com/tezos/tezos/-/issues/3517
-
-    If the layer1 node reboots, the rpc stream breaks.
-*)
-let iter_events cctxt handle =
-  let open Lwt_result_syntax in
-  let* stream, _stopper =
-    Tezos_shell_services.Monitor_services.heads cctxt `Main
-  in
-  let rec go () =
-    Lwt.bind (Lwt_stream.get stream) @@ fun tok ->
-    match tok with
-    | None -> return_unit
-    | Some element ->
-        let* () = handle element in
-        go ()
-  in
-  go ()
+val iter_events :
+  #RPC_context.streamed ->
+  (Block_hash.t * Block_header.t -> (unit, tztrace) result Lwt.t) ->
+  (unit, tztrace) result Lwt.t
