@@ -3,11 +3,11 @@ case $1 in
 
   compute)
     echo
-    (make &&  dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with messages")
+    (dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with messages")
     ;;
   commit)
     echo
-    (make &&  dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - rollup node - correct handling of commitments (operator_publishes)")
+    (dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - rollup node - correct handling of commitments (operator_publishes)")
     ;;
 
   *)
