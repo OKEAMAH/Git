@@ -3,10 +3,13 @@
 
 Share all screens
 
-Term 1 (git-shell):
-	less +F scoru-node-debug-log.txt
+nixos-shell:
+	less +F /home/nixos/tezos/scoru-node-debug-log.txt
 
-Term 2 (Tezos Nix):
+git-shell:
+	ps -fe | grep tezos
+
+tezos-shell:
 	./scoru-test.sh compute
 
 ----
