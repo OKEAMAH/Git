@@ -1,3 +1,19 @@
+
+# TODO
+
+- Look as hans@scoru-wip-{23,24}
+  - Useful things from there?
+  - Adapt TLs test to tezt
+  - Try to run some of these commands manually
+  - Demo kernel compilation?
+  - Visualize state transitions
+
+
+
+
+
+----
+
 # Tezos Octez implementation
 
 ## Introduction
