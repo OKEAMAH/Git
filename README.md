@@ -15,6 +15,18 @@
   - Visualize state transitions
 
 
+----
+
+Here is the plan for the demo:
+Launching the L2 node
+Using the L2 CLI to originate a SCORU
+Feed boot sector chunks as inputs
+Observe commitments in L1
+Using CLI to observe execution state
+Use the Test kernel, not the TX kernel - will do that in a future demo
+Run from a sandbox/locally - but functionality is in next Mondaynet
+
+
 
 
 
