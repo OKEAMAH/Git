@@ -41,7 +41,7 @@ let max_anon_ops_per_block = 132
 
 let max_proposals_per_delegate = 20
 
-let max_operation_data_length = 32 * 1024 (* 32kB *)
+let max_operation_data_length = 1000 * 32 * 1024 (* 32kB *)
 
 let max_micheline_node_count = 50_000
 
