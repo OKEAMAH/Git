@@ -74,6 +74,7 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
     let open Lwt_syntax in
     let eval_tick tick failing_ticks state =
       let normal_eval state =
+		    let* () = Logging.append (Printf.sprintf "%s: Evaluating 1 tick\n" PVM_name.name) in
         let* state = PVM.eval state in
         return (state, failing_ticks)
       in
@@ -85,6 +86,7 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
             ~message_tick:tick
             ~internal:true
         in
+		    let* () = Logging.append (Printf.sprintf "%s: ERROR Inserting failure in PVM\n" PVM_name.name) in
         let* state = PVM.Internal_for_tests.insert_failure state in
         return (state, failing_ticks')
       in
@@ -94,6 +96,7 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
       | _ -> normal_eval state
     in
     let rec go fuel tick failing_ticks state =
+		  let* () = Logging.append (Printf.sprintf "%s: Checking if PVM needs input: %d\n" PVM_name.name 0) in
       let* input_request = PVM.is_input_state state in
       match fuel with
       | Some 0 -> return (state, fuel, tick, failing_ticks)
