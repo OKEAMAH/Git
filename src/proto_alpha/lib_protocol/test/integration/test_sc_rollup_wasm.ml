@@ -459,6 +459,8 @@ let should_boot_computation_kernel () =
   in
   (* running until waiting for input *)
   let* _s = eval_until_set_input context s in
+  (* should fail *)
+  let* _s = eval_until_set_input context s in
   return_unit
 
 let tests =

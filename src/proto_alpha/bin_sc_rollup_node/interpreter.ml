@@ -115,7 +115,10 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
       step that requires an input. This function is controlled by
       some [fuel] and may introduce intended failures at some given
       [failing_ticks]. *)
-  let feed_input level message_index ~fuel ~failing_ticks state input =
+  let feed_input :
+      int ->
+        int -> fuel:(int option) -> failing_ticks:(int list) -> PVM.state -> Sc_rollup.input ->  (PVM.state * int option) Environment.Lwt.t
+    = fun level message_index ~fuel ~failing_ticks state input ->
     let open Lwt_syntax in
     let* state, fuel, tick, failing_ticks =
       eval_until_input level message_index ~fuel 0 failing_ticks state
