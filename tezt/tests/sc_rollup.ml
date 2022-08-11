@@ -979,7 +979,6 @@ let test_rollup_node_boots_into_initial_state ~kind =
     let expected_status =
       match kind with
       | "arith" -> "Halted"
-      (* TODO better check here *)
       | "wasm_2_0_0" -> "Computing"
       | _ -> raise (Invalid_argument kind)
     in
@@ -1009,40 +1008,6 @@ let test_rollup_node_boots_into_initial_state ~kind =
    When the rollup node receives messages, we like to see evidence that the PVM
    has advanced.
 
-   TODO meaning of [forwarder] and [internal]?
-
-   TODO understand exact code path of
-    Sc_rollup_client.state_value
-   in rollup node. It checks state computed in rollup node - not committed to.
-   Need to show this seprately, see tests below.
-
-   - Tezt: Sc_rollup_client.state_value
-   - CLI [get state value for KEY] implemented in
-      src/proto_alpha/bin_sc_rollup_client/commands.ml
-    - src/proto_alpha/bin_sc_rollup_client/RPC.ml
-      get_state_value_command
-    - src/proto_alpha/lib_sc_rollup/sc_rollup_services.ml
-      current_state_value
-    - bin_sc_rollup_node/RPC_server
-         register_current_state_value
-         Store.PVMState.find
-    ~~~~
-    Concurrently:
-    ~~~~
-    - src/proto_alpha/bin_sc_rollup_node/interpreter.ml
-      - Store.PVMState.set
-
-
-   ---
-   FIXME:
-    To run just this test:
-
-    $ # dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with messages"
-
-    $ # dune exec tezt/tests/main.exe -- --file sc_rollup.ml --title="Alpha: wasm_2_0_0 - node advances PVM state with internal messages"
-   ----
-   TODO:
-      Live demo from this.
 *)
 
 (* Read the chosen `wasm_kernel` into memory. *)
@@ -1057,8 +1022,6 @@ let read_kernel name =
 (* Kernel with allocation & simple computation only.
    9863 bytes long - will be split into 3 chunks. *)
 let computation_kernel () = read_kernel "computation"
-
-
 
 let test_rollup_node_advances_pvm_state protocols ~kind =
   let go ~internal client sc_rollup sc_rollup_node =
@@ -1154,7 +1117,6 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
                 ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
             return ()
         | "wasm_2_0_0" -> return ()
-          (* TODO HANS something here *)
         | _otherwise -> raise (Invalid_argument kind)
       in
 
@@ -1174,6 +1136,7 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
     Lwt.return_unit
   in
 
+  (* DEMO *)
   regression_test
     ~__FILE__
     ~tags:["sc_rollup"; "run"; "node"; kind]
