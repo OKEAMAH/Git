@@ -431,6 +431,7 @@ end
 let run ~data_dir (cctxt : Protocol_client_context.full) =
   let open Lwt_result_syntax in
   Random.self_init () (* Initialize random state (for reconnection delays) *) ;
+  let* () = Logging.append_result (Printf.sprintf "================ STARTING NODE ==================\n") in
   let*! () = Event.starting_node () in
   let* configuration = Configuration.load ~data_dir in
   let open Configuration in

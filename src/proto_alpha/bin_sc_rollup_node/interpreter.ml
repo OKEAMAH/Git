@@ -109,6 +109,8 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let payload = Inbox.Message.unsafe_of_string "0xC4C4" in
     {input with Sc_rollup.payload}
 
+
+
   (** [feed_input level message_index ~fuel ~failing_ticks state
       input] feeds [input] (that has a given [message_index] in inbox
       of [level]) to the PVM in order to advance [state] to the next
@@ -117,9 +119,10 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
       [failing_ticks]. *)
   let feed_input :
       int ->
-        int -> fuel:(int option) -> failing_ticks:(int list) -> PVM.state -> Sc_rollup.input ->  (PVM.state * int option) Environment.Lwt.t
+        int -> fuel:(int option) -> failing_ticks:(int list) -> PVM.state -> Sc_rollup.input ->  (PVM.state * int option) Lwt.t
     = fun level message_index ~fuel ~failing_ticks state input ->
     let open Lwt_syntax in
+		let* () = Logging.append (Printf.sprintf "Feeding input: %d\n" 0) in
     let* state, fuel, tick, failing_ticks =
       eval_until_input level message_index ~fuel 0 failing_ticks state
     in
