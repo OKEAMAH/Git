@@ -2996,6 +2996,8 @@ module Sc_rollup : sig
     | Initial
     | First_after of Raw_level.t * Z.t
 
+  val pp_input_request : Format.formatter -> input_request -> unit
+
   val input_request_encoding : input_request Data_encoding.t
 
   val input_request_equal : input_request -> input_request -> bool
