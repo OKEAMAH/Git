@@ -124,7 +124,10 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
     let bind dec f tree prefix =
       Lwt.bind (dec tree prefix) (fun x -> f x tree prefix)
 
-    let both lhs rhs tree prefix = Lwt.both (lhs tree prefix) (rhs tree prefix)
+    let both lhs rhs tree prefix =
+      (* Lwt.both (lhs tree prefix) (rhs tree prefix) *)
+      Lwt.bind (lhs tree prefix) (fun x ->
+          Lwt.bind (rhs tree prefix) (fun y -> Lwt.return (x, y)))
 
     let ( let+ ) m f = map f m
 
@@ -140,15 +143,30 @@ module Make (T : Tree.S) : S with type tree = T.tree = struct
   let raw key tree prefix =
     let open Lwt_syntax in
     let key = prefix key in
+    Format.printf "d %s" (String.concat "/" key) ;
     let+ value = Tree.find tree key in
-    match value with Some value -> value | None -> raise (Key_not_found key)
+    match value with
+    | Some value ->
+        Format.printf
+          " -> %S\n"
+          (if 25 < Bytes.length value then
+           String.sub (String.of_bytes value) 0 25 ^ "..."
+          else String.of_bytes value) ;
+        value
+    | None -> raise (Key_not_found key)
 
   let value_option key decoder tree prefix =
     let open Lwt_syntax in
     let key = prefix key in
+    Format.printf "d %s" (String.concat "/" key) ;
     let* value = Tree.find tree key in
     match value with
     | Some value -> (
+        Format.printf
+          " -> %S\n"
+          (if 25 < Bytes.length value then
+           String.sub (String.of_bytes value) 0 25 ^ "..."
+          else String.of_bytes value) ;
         match Data_encoding.Binary.of_bytes decoder value with
         | Ok value -> return_some value
         | Error error -> raise (Decode_error {key; error}))

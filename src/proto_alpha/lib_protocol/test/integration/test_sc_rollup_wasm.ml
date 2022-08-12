@@ -395,13 +395,13 @@ let read_kernel name =
    9863 bytes long - will be split into 3 chunks. *)
 let computation_kernel () = read_kernel "computation"
 
-let rec eval_until_set_input context s =
-  let open Lwt_result_syntax in
-  let*! info = Prover.get_status s in
+let rec eval_until_set_input s =
+  let open Lwt_syntax in
+  let* info = Prover.get_status s in
   match info with
   | Computing ->
-      let* s = checked_eval ~loc:__LOC__ context s in
-      eval_until_set_input context s
+      let* s = Prover.eval s in
+      eval_until_set_input s
   | Waiting_for_input_message -> return s
 
 let should_boot_computation_kernel () =
@@ -420,13 +420,11 @@ let should_boot_computation_kernel () =
   (* Make the first ticks of the WASM PVM (parsing of origination
      message, parsing and init of the kernel), to switch it to
      “waiting for input” mode. *)
-  let* s = eval_until_set_input context s in
+  let*! s = eval_until_set_input s in
   (* Feeding it with one input *)
-  let* s =
-    checked_set_input ~loc:__LOC__ context (arbitrary_input 0 "test") s
-  in
+  let*! s = Prover.set_input (arbitrary_input 0 "test") s in
   (* running until waiting for input *)
-  let* _s = eval_until_set_input context s in
+  let*! _s = eval_until_set_input s in
   return_unit
 
 let tests =

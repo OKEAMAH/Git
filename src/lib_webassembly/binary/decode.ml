@@ -2289,6 +2289,15 @@ let module_step bytes state =
               "function and code section have inconsistent lengths"
         | Some l -> l
       in
+      let* l = Vector.to_list funcs in
+      let* _ =
+        Lwt_list.iteri_s
+          (fun i f ->
+            Format.printf "fetching locals of functions %d\n" i ;
+            let* _ = Vector.to_list f.Source.it.locals in
+            Lwt.return ())
+          l
+      in
       require
         (data_count <> None || no_datas_in_func)
         s

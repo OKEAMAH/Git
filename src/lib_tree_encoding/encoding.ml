@@ -88,9 +88,9 @@ module Make (T : Tree.S) = struct
 
   let with_subtree get_subtree enc value prefix input_tree =
     let open Lwt.Syntax in
+    let* input_tree = T.remove input_tree (prefix []) in
     match get_subtree value with
     | Some tree ->
-        let* input_tree = T.remove input_tree (prefix []) in
         let* input_tree = T.add_tree input_tree (prefix []) (T.select tree) in
         enc value prefix input_tree
     | None -> enc value prefix input_tree
@@ -120,7 +120,14 @@ module Make (T : Tree.S) = struct
     let* tree = encode_b b prefix tree in
     encode_c c prefix tree
 
-  let raw suffix bytes prefix tree = T.add tree (prefix suffix) bytes
+  let raw suffix bytes prefix tree =
+    Format.printf
+      "e %s <- %S\n"
+      (String.concat "/" @@ prefix suffix)
+      (if 25 < Bytes.length bytes then
+       String.sub (String.of_bytes bytes) 0 25 ^ "..."
+      else String.of_bytes bytes) ;
+    T.add tree (prefix suffix) bytes
 
   let value suffix enc v prefix tree =
     contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix) v prefix tree

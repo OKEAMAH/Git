@@ -21,7 +21,10 @@ let valid_limits {min; max} =
   match max with None -> true | Some m -> I32.le_u min m
 
 let create size r =
-  try Vector.create ~produce_value:(fun _ -> Lwt.return r) size
+  try
+    let v = Vector.create 0l in
+    Vector.grow ~default:(fun _ -> r) size v ;
+    v
   with Out_of_memory | Invalid_argument _ -> raise OutOfMemory
 
 let create_shallow size =
