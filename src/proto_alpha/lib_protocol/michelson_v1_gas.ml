@@ -970,6 +970,27 @@ module Cost_of = struct
   module Interpreter = struct
     open Generated_costs
 
+    (*
+
+       To make a rational usage of memory, we maintain the following
+       invariant:
+
+       No Michelson instruction should be able to push a value on the
+       stack which cannot be serialized to Micheline without going
+       beyond the hard limit of gas (for one operation).
+
+       We implement this invariant by adding a threshold to the gas
+       model of every instruction that can generate a value of dynamic
+       length.
+
+    *)
+    let cost_of_dynamic_values size =
+      (* We estimate to 100 mgas per byte the cost of serializing the
+         value to Micheline and storing the resulting serialized
+         data. *)
+      if Compare.Int.(S.to_int size > 1_040_000_000 / 100) then S.saturated
+      else S.safe_int 0
+
     let drop = atomic_step_cost cost_N_IDrop
 
     let dup = atomic_step_cost cost_N_IDup
@@ -1077,10 +1098,12 @@ module Cost_of = struct
       atomic_step_cost (cost_N_IDiff_timestamps t1_bytes t2_bytes)
 
     let concat_string_pair s1 s2 =
+      let s1_size = Script_string.length s1
+      and s2_size = Script_string.length s2 in
       atomic_step_cost
-        (cost_N_IConcat_string_pair
-           (Script_string.length s1)
-           (Script_string.length s2))
+        (S.add
+           (cost_of_dynamic_values (S.safe_int (s1_size + s2_size)))
+           (cost_N_IConcat_string_pair s1_size s2_size))
 
     let slice_string s =
       atomic_step_cost (cost_N_ISlice_string (Script_string.length s))
@@ -1088,8 +1111,11 @@ module Cost_of = struct
     let string_size = atomic_step_cost cost_N_IString_size
 
     let concat_bytes_pair b1 b2 =
+      let b1_size = Bytes.length b1 and b2_size = Bytes.length b2 in
       atomic_step_cost
-        (cost_N_IConcat_bytes_pair (Bytes.length b1) (Bytes.length b2))
+        (S.add
+           (cost_of_dynamic_values (S.safe_int (b1_size + b2_size)))
+           (cost_N_IConcat_bytes_pair b1_size b2_size))
 
     let slice_bytes b = atomic_step_cost (cost_N_ISlice_bytes (Bytes.length b))
 
@@ -1563,12 +1589,18 @@ module Cost_of = struct
     (* This is the cost of allocating a string and blitting existing ones into it. *)
     let concat_string total_bytes =
       atomic_step_cost
-        S.(add (S.safe_int 100) (S.ediv total_bytes (S.safe_int 10)))
+        S.(
+          add
+            (cost_of_dynamic_values total_bytes)
+            (add (S.safe_int 100) (S.ediv total_bytes (S.safe_int 10))))
 
     (* Same story as Concat_string. *)
     let concat_bytes total_bytes =
       atomic_step_cost
-        S.(add (S.safe_int 100) (S.ediv total_bytes (S.safe_int 10)))
+        S.(
+          add
+            (cost_of_dynamic_values total_bytes)
+            (add (S.safe_int 100) (S.ediv total_bytes (S.safe_int 10))))
 
     (* Cost of access taken care of in Contract_storage.get_balance_carbonated *)
     let balance = Gas.free
