@@ -30,6 +30,7 @@ type tick_state = Decode | Eval of Wasm.Eval.config
 type pvm_state = {
   kernel : Lazy_containers.Chunked_byte_vector.Lwt.t;
   current_tick : Z.t;
+  phase_start_tick : Z.t;
   last_input_info : Wasm_pvm_sig.input_info option;
   module_reg : Wasm.Instance.module_reg;
   tick : tick_state;
@@ -69,13 +70,38 @@ module Make (T : Tree_encoding.TREE) :
     let pvm_state_encoding =
       let open Tree_encoding in
       conv
-        (fun (current_tick, kernel, last_input_info, tick, module_reg) ->
-          {current_tick; kernel; last_input_info; tick; module_reg})
-        (fun {current_tick; kernel; last_input_info; tick; module_reg} ->
-          (current_tick, kernel, last_input_info, tick, module_reg))
-        (tup5
+        (fun ( current_tick,
+               phase_start_tick,
+               kernel,
+               last_input_info,
+               tick,
+               module_reg ) ->
+          {
+            current_tick;
+            phase_start_tick;
+            kernel;
+            last_input_info;
+            tick;
+            module_reg;
+          })
+        (fun {
+               current_tick;
+               phase_start_tick;
+               kernel;
+               last_input_info;
+               tick;
+               module_reg;
+             } ->
+          ( current_tick,
+            phase_start_tick,
+            kernel,
+            last_input_info,
+            tick,
+            module_reg ))
+        (tup6
            ~flatten:true
            (value ~default:Z.zero ["wasm"; "current_tick"] Data_encoding.n)
+           (value ~default:Z.zero ["wasm"; "phase_start_tick"] Data_encoding.n)
            (scope ["durable"; "kernel"; "boot.wasm"] chunked_byte_vector)
            (value_option ["wasm"; "input"] Wasm_pvm_sig.input_info_encoding)
            (scope ["wasm"] tick_state_encoding)
@@ -92,8 +118,19 @@ module Make (T : Tree_encoding.TREE) :
        kernel to expose a function named [kernel_next]. *)
     let wasm_entrypoint = "kernel_next"
 
+    let phase_length =
+      (* XXX: Come up with a sensible number! *)
+      Z.of_int 1_000_000
+
     let next_state state =
       let open Lwt_syntax in
+      (* Ensure the current phase is not longer than allowed. *)
+      let current_phase_length =
+        Z.sub state.current_tick state.phase_start_tick
+      in
+      assert (Z.leq current_phase_length phase_length) ;
+      let is_end_of_phase = Z.geq current_phase_length phase_length in
+
       match state.tick with
       | Decode ->
           let* ast_module =
@@ -111,9 +148,17 @@ module Make (T : Tree_encoding.TREE) :
               []
           in
           let eval_config = Wasm.Eval.config host_funcs self [] [] in
-          Lwt.return {state with tick = Eval eval_config}
+          Lwt.return
+            {
+              state with
+              tick = Eval eval_config;
+              phase_start_tick = state.current_tick;
+            }
       | Eval ({Wasm.Eval.frame; code; _} as eval_config) -> (
           match code with
+          | _values, [] when not is_end_of_phase ->
+              (* We do nothing until we've reached the phase end. *)
+              Lwt.return state
           | _values, [] ->
               (* We have an empty set of admin instructions so we create one
                  that invokes the main function. *)
@@ -156,7 +201,12 @@ module Make (T : Tree_encoding.TREE) :
                   code;
                 }
               in
-              Lwt.return {state with tick = Eval eval_config}
+              Lwt.return
+                {
+                  state with
+                  tick = Eval eval_config;
+                  phase_start_tick = state.current_tick;
+                }
           | _ ->
               (* Continue execution. *)
               let* eval_config = Wasm.Eval.step state.module_reg eval_config in
