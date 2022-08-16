@@ -134,6 +134,9 @@ let test_boot () =
         "After booting, the machine should be waiting for the initial input."
   | No_input_required ->
       failwith "After booting, the machine must be waiting for input."
+  | First_after_slot_input _ ->
+      (* FIXME TODO *)
+      assert false
 
 let make_external_inbox_message str =
   WithExceptions.Result.get_ok
@@ -157,6 +160,9 @@ let test_input_message () =
       failwith
         "After receiving a message, the rollup must not be waiting for input."
   | No_input_required -> return ()
+  | First_after_slot_input _ ->
+      (* FIXME TODO *)
+      assert false
 
 let go ~max_steps target_status state =
   let rec aux i state =

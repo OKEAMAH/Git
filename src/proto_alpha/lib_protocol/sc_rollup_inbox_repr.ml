@@ -396,6 +396,10 @@ type serialized_proof = bytes
 
 let serialized_proof_encoding = Data_encoding.bytes
 
+type serialized_slot_proof = bytes
+
+let serialized_slot_proof_encoding = Data_encoding.bytes
+
 module type Merkelized_operations = sig
   type inbox_context
 
@@ -476,6 +480,16 @@ module type Merkelized_operations = sig
     (proof * Sc_rollup_PVM_sem.input option) tzresult Lwt.t
 
   val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+
+  type slot_proof
+
+  val to_serialized_slot_proof : slot_proof -> serialized_proof
+
+  val of_serialized_slot_proof : serialized_slot_proof -> slot_proof option
+
+  val produce_slot_proof :
+    Raw_level_repr.t * Dal_slot_repr.Page.t ->
+    (slot_proof * Sc_rollup_PVM_sem.input option) tzresult Lwt.t
 
   module Internal_for_tests : sig
     val eq_tree : tree -> tree -> bool
@@ -1285,6 +1299,18 @@ struct
         current_level_hash = (fun () -> initial_hash);
         old_levels_messages = Skip_list.genesis initial_hash;
       }
+
+  type slot_proof = unit
+
+  let slot_proof_encoding = Data_encoding.unit
+
+  let to_serialized_slot_proof =
+    Data_encoding.Binary.to_bytes_exn slot_proof_encoding
+
+  let of_serialized_slot_proof =
+    Data_encoding.Binary.of_bytes_opt slot_proof_encoding
+
+  let produce_slot_proof (_level, _page) = (* FIXME TODO *) assert false
 
   module Internal_for_tests = struct
     let eq_tree = Tree.equal

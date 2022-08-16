@@ -80,6 +80,8 @@ module Index : sig
   val to_int : t -> int
 
   val compare : t -> t -> int
+
+  val equal : t -> t -> bool
 end
 
 type header = Header.t
@@ -87,6 +89,32 @@ type header = Header.t
 type t = {level : Raw_level_repr.t; index : Index.t; header : header}
 
 type slot = t
+
+type slot_index = Index.t
+
+module Page : sig
+  type content = Bytes.t
+
+  module Index : sig
+    type t = int
+
+    val encoding : int Data_encoding.t
+
+    val pp : Format.formatter -> int -> unit
+
+    val compare : int -> int -> int
+
+    val equal : int -> int -> bool
+  end
+
+  type t = {slot_index : slot_index; page_index : Index.t}
+
+  val equal : t -> t -> bool
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+end
 
 (** The encoding ensures the slot is always a non-negative number. *)
 val encoding : t Data_encoding.t

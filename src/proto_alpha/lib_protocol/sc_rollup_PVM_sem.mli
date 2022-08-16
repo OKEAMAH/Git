@@ -74,6 +74,10 @@ type input_request =
   | No_input_required
   | Initial
   | First_after of Raw_level_repr.t * Z.t
+  | First_after_slot_input of {
+      level : Raw_level_repr.t;
+      page : Dal_slot_repr.Page.t;
+    }
 
 (** [input_request_encoding] encoding value for {!input_requests}. *)
 val input_request_encoding : input_request Data_encoding.t

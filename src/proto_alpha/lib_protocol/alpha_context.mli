@@ -2798,6 +2798,30 @@ module Dal : sig
     val record_available_shards : context -> t -> int list -> context
   end
 
+  module Page : sig
+    type content = bytes
+
+    module Index : sig
+      type t = int
+
+      val encoding : int Data_encoding.t
+
+      val pp : Format.formatter -> int -> unit
+
+      val compare : int -> int -> int
+
+      val equal : int -> int -> bool
+    end
+
+    type t = {slot_index : Slot_index.t; page_index : Index.t}
+
+    val equal : t -> t -> bool
+
+    val encoding : t Data_encoding.t
+
+    val pp : Format.formatter -> t -> unit
+  end
+
   module Slot : sig
     type header
 
@@ -2903,7 +2927,17 @@ module Sc_rollup : sig
         source : Signature.public_key_hash;
       }
 
-      type t = Internal of internal_inbox_message | External of string
+      type dal_message = {
+        slot_index : Dal_slot_repr.Index.t;
+        content : Dal_slot_repr.Page.content;
+        first_page : bool;
+        last_page : bool;
+      }
+
+      type t =
+        | Internal of internal_inbox_message
+        | External of string
+        | Dal of dal_message
 
       type serialized = private string
 
@@ -2942,6 +2976,10 @@ module Sc_rollup : sig
     type serialized_proof
 
     val serialized_proof_encoding : serialized_proof Data_encoding.t
+
+    type serialized_slot_proof
+
+    val serialized_slot_proof_encoding : serialized_slot_proof Data_encoding.t
 
     module type Merkelized_operations = sig
       type tree
@@ -3024,6 +3062,16 @@ module Sc_rollup : sig
 
       val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level.t -> t Lwt.t
 
+      type slot_proof
+
+      val to_serialized_slot_proof : slot_proof -> serialized_slot_proof
+
+      val of_serialized_slot_proof : serialized_slot_proof -> slot_proof option
+
+      val produce_slot_proof :
+        Raw_level_repr.t * Dal_slot_repr.Page.t ->
+        (slot_proof * Sc_rollup_PVM_sem.input option) tzresult Lwt.t
+
       module Internal_for_tests : sig
         val eq_tree : tree -> tree -> bool
 
@@ -3097,6 +3145,10 @@ module Sc_rollup : sig
     | No_input_required
     | Initial
     | First_after of Raw_level.t * Z.t
+    | First_after_slot_input of {
+        level : Raw_level_repr.t;
+        page : Dal_slot_repr.Page.t;
+      }
 
   val input_request_encoding : input_request Data_encoding.t
 
@@ -3419,7 +3471,11 @@ module Sc_rollup : sig
   val wrapped_proof_module : wrapped_proof -> (module PVM_with_proof)
 
   module Proof : sig
-    type t = {pvm_step : wrapped_proof; inbox : Inbox.serialized_proof option}
+    type t = {
+      pvm_step : wrapped_proof;
+      inbox : Inbox.serialized_proof option;
+      slot : Inbox.serialized_slot_proof option;
+    }
 
     module type PVM_with_context_and_state = sig
       include PVM.S

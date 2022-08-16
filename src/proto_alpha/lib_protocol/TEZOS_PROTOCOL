@@ -44,6 +44,8 @@
         "Contract_repr",
         "Indexable",
         "Entrypoint_repr",
+        "Dal_slot_repr",
+        "Dal_endorsement_repr",	
         "Sc_rollup_repr",
         "Sc_rollup_tick_repr",
         "Sc_rollup_inbox_message_repr",
@@ -76,8 +78,6 @@
         "Tx_rollup_errors_repr",
         "Tx_rollup_state_repr",
 
-        "Dal_slot_repr",
-        "Dal_endorsement_repr",
         "Dal_errors_repr",
 
         "Zk_rollup_scalar",

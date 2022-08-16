@@ -60,6 +60,7 @@ open Sc_rollup_repr
 type t = {
   pvm_step : Sc_rollups.wrapped_proof;
   inbox : Sc_rollup_inbox_repr.serialized_proof option;
+  slot : Sc_rollup_inbox_repr.serialized_slot_proof option;
 }
 
 type error += Sc_rollup_proof_check of string

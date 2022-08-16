@@ -56,10 +56,21 @@ type internal_inbox_message = {
       (** The implicit account that originated the transaction. *)
 }
 
+(* FIXME DOC *)
+type dal_message = {
+  slot_index : Dal_slot_repr.Index.t;
+  content : Dal_slot_repr.Page.content;
+  first_page : bool;
+  last_page : bool;
+}
+
 (** A type representing messages from Layer 1 to Layer 2. Internal ones are
     originated from Layer 1 smart-contracts and external ones are messages from
     an external manager operation. *)
-type t = Internal of internal_inbox_message | External of string
+type t =
+  | Internal of internal_inbox_message
+  | External of string
+  | Dal of dal_message
 
 type serialized = private string
 

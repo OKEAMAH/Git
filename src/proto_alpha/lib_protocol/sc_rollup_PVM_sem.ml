@@ -58,6 +58,10 @@ type input_request =
   | No_input_required
   | Initial
   | First_after of Raw_level_repr.t * Z.t
+  | First_after_slot_input of {
+      level : Raw_level_repr.t;
+      page : Dal_slot_repr.Page.t;
+    }
 
 let input_request_encoding =
   let open Data_encoding in
@@ -87,6 +91,17 @@ let input_request_encoding =
           | First_after (level, counter) -> Some ((), level, counter)
           | _ -> None)
         (fun ((), level, counter) -> First_after (level, counter));
+      case
+        ~title:"Slot_input_after"
+        (Tag 3)
+        (obj3
+           (req "kind" (constant "slot_input_after"))
+           (req "level" Raw_level_repr.encoding)
+           (req "page" Dal_slot_repr.Page.encoding))
+        (function
+          | First_after_slot_input {level; page} -> Some ((), level, page)
+          | _ -> None)
+        (fun ((), level, page) -> First_after_slot_input {level; page});
     ]
 
 let pp_input_request fmt request =
@@ -101,6 +116,14 @@ let pp_input_request fmt request =
         l
         Z.pp_print
         n
+  | First_after_slot_input {level; page} ->
+      Format.fprintf
+        fmt
+        "Slot_input_after (level = %a, page = %a)"
+        Raw_level_repr.pp
+        level
+        Dal_slot_repr.Page.pp
+        page
 
 let input_request_equal a b =
   match (a, b) with
@@ -111,6 +134,10 @@ let input_request_equal a b =
   | First_after (l, n), First_after (m, o) ->
       Raw_level_repr.equal l m && Z.equal n o
   | First_after _, _ -> false
+  | First_after_slot_input input, First_after_slot_input input' ->
+      Raw_level_repr.equal input.level input'.level
+      && Dal_slot_repr.Page.equal input'.page input'.page
+  | First_after_slot_input _, _ -> false
 
 type output = {
   outbox_level : Raw_level_repr.t;

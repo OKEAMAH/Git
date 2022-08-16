@@ -27,16 +27,18 @@
 type t = {
   pvm_step : Sc_rollups.wrapped_proof;
   inbox : Sc_rollup_inbox_repr.serialized_proof option;
+  slot : Sc_rollup_inbox_repr.serialized_slot_proof option;
 }
 
 let encoding =
   let open Data_encoding in
   conv
-    (fun {pvm_step; inbox} -> (pvm_step, inbox))
-    (fun (pvm_step, inbox) -> {pvm_step; inbox})
-    (obj2
+    (fun {pvm_step; inbox; slot} -> (pvm_step, inbox, slot))
+    (fun (pvm_step, inbox, slot) -> {pvm_step; inbox; slot})
+    (obj3
        (req "pvm_step" Sc_rollups.wrapped_proof_encoding)
-       (opt "inbox" Sc_rollup_inbox_repr.serialized_proof_encoding))
+       (opt "inbox" Sc_rollup_inbox_repr.serialized_proof_encoding)
+       (opt "slot" Sc_rollup_inbox_repr.serialized_slot_proof_encoding))
 
 let pp ppf _ = Format.fprintf ppf "Refutation game proof"
 
@@ -153,20 +155,24 @@ let produce pvm_and_state commit_level =
   let (module P : PVM_with_context_and_state) = pvm_and_state in
   let open P in
   let*! request = P.is_input_state P.state in
-  let* inbox, input_given =
+  let* slot, inbox, input_given =
     match request with
-    | Sc_rollup_PVM_sem.No_input_required -> return (None, None)
+    | Sc_rollup_PVM_sem.No_input_required -> return (None, None, None)
     | Sc_rollup_PVM_sem.Initial ->
         let* p, i =
           Inbox_with_history.(
             produce_proof context history inbox (Raw_level_repr.root, Z.zero))
         in
-        return (Some (Inbox_with_history.to_serialized_proof p), i)
+        (* FIXME Should be modified if the DAL operations need to be taken first. *)
+        return (None, Some (Inbox_with_history.to_serialized_proof p), i)
     | Sc_rollup_PVM_sem.First_after (l, n) ->
         let* p, i =
           Inbox_with_history.(produce_proof context history inbox (l, Z.succ n))
         in
-        return (Some (Inbox_with_history.to_serialized_proof p), i)
+        return (None, Some (Inbox_with_history.to_serialized_proof p), i)
+    | Sc_rollup_PVM_sem.First_after_slot_input {level; page} ->
+        let* slot, i = Inbox_with_history.(produce_slot_proof (level, page)) in
+        return (Some (Inbox_with_history.to_serialized_slot_proof slot), None, i)
   in
   let input_given = Option.bind input_given (cut_at_level commit_level) in
   let* pvm_step_proof =
@@ -178,5 +184,5 @@ let produce pvm_and_state commit_level =
     let proof = pvm_step_proof
   end in
   match Sc_rollups.wrap_proof (module P_with_proof) with
-  | Some pvm_step -> return {pvm_step; inbox}
+  | Some pvm_step -> return {pvm_step; inbox; slot}
   | None -> proof_error "Could not wrap proof"

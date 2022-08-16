@@ -55,6 +55,8 @@ module Index = struct
   let to_int slot_index = slot_index [@@ocaml.inline always]
 
   let compare = Compare.Int.compare
+
+  let equal = Compare.Int.equal
 end
 
 type header = Header.t
@@ -64,6 +66,50 @@ let zero = Dal.Commitment.zero
 type t = {level : Raw_level_repr.t; index : Index.t; header : header}
 
 type slot = t
+
+type slot_index = Index.t
+
+module Slot_index = Index
+
+module Page = struct
+  type content = Bytes.t
+
+  module Index = struct
+    type t = int
+
+    let encoding = Data_encoding.int16
+
+    let pp = Format.pp_print_int
+
+    let compare = Compare.Int.compare
+
+    let equal = Compare.Int.equal
+  end
+
+  type t = {slot_index : Slot_index.t; page_index : Index.t}
+
+  let encoding =
+    let open Data_encoding in
+    conv
+      (fun {slot_index; page_index} -> (slot_index, page_index))
+      (fun (slot_index, page_index) -> {slot_index; page_index})
+      (obj2
+         (req "slot_index" Slot_index.encoding)
+         (req "page_index" Index.encoding))
+
+  let equal page page' =
+    Slot_index.equal page.slot_index page'.slot_index
+    && Index.equal page.page_index page'.page_index
+
+  let pp fmt {slot_index; page_index} =
+    Format.fprintf
+      fmt
+      "(index: %a, page: %a)"
+      Slot_index.pp
+      slot_index
+      Index.pp
+      page_index
+end
 
 let encoding =
   let open Data_encoding in

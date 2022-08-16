@@ -227,6 +227,10 @@ type serialized_proof
 
 val serialized_proof_encoding : serialized_proof Data_encoding.t
 
+type serialized_slot_proof
+
+val serialized_slot_proof_encoding : serialized_slot_proof Data_encoding.t
+
 (** The following operations are subject to cross-validation between
     rollup nodes and the layer 1. *)
 module type Merkelized_operations = sig
@@ -405,6 +409,16 @@ module type Merkelized_operations = sig
   (** [empty ctxt level] is an inbox started at some given [level] with no
       message at all. *)
   val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+
+  type slot_proof
+
+  val to_serialized_slot_proof : slot_proof -> serialized_slot_proof
+
+  val of_serialized_slot_proof : serialized_slot_proof -> slot_proof option
+
+  val produce_slot_proof :
+    Raw_level_repr.t * Dal_slot_repr.Page.t ->
+    (slot_proof * Sc_rollup_PVM_sem.input option) tzresult Lwt.t
 
   module Internal_for_tests : sig
     val eq_tree : tree -> tree -> bool

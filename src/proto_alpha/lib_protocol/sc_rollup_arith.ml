@@ -580,6 +580,26 @@ module Make (Context : P) :
       let pp = Raw_level_repr.pp
     end)
 
+    module Current_page = Make_var (struct
+      type t = Dal_slot_repr.Page.t option
+
+      let initial = None
+
+      let encoding = Data_encoding.option Dal_slot_repr.Page.encoding
+
+      let name = "current_page"
+
+      let pp = Format.pp_print_option Dal_slot_repr.Page.pp
+    end)
+
+    module Current_slot = Make_deque (struct
+      type t = Dal_slot_repr.Page.content
+
+      let encoding = Data_encoding.bytes
+
+      let name = "current_slot"
+    end)
+
     module Message_counter = Make_var (struct
       type t = Z.t option
 
@@ -815,10 +835,14 @@ module Make (Context : P) :
     match status with
     | Waiting_for_input_message -> (
         let* level = Current_level.get in
-        let* counter = Message_counter.get in
-        match counter with
-        | Some n -> return (PS.First_after (level, n))
-        | None -> return PS.Initial)
+        let* page = Current_page.get in
+        match page with
+        | None -> (
+            let* counter = Message_counter.get in
+            match counter with
+            | Some n -> return (PS.First_after (level, n))
+            | None -> return PS.Initial)
+        | Some page -> return (PS.First_after_slot_input {level; page}))
     | _ -> return PS.No_input_required
 
   let is_input_state =
@@ -852,21 +876,63 @@ module Make (Context : P) :
     let payload =
       match Sc_rollup_inbox_message_repr.deserialize payload with
       | Error _ -> None
-      | Ok (External payload) -> Some payload
+      | Ok (External payload) -> Some (`Payload payload)
       | Ok (Internal {payload; _}) -> (
           match Micheline.root payload with
-          | String (_, payload) -> Some payload
+          | String (_, payload) -> Some (`Payload payload)
           | _ -> None)
+      | Ok (Dal dal_message) -> Some (`Dal dal_message)
+    in
+    let* () =
+      match payload with
+      | Some _ ->
+          let* () = Current_page.set None in
+          let* () = Current_level.set inbox_level in
+          let* () = Message_counter.set (Some message_counter) in
+          return ()
+      | None -> return ()
     in
     match payload with
-    | Some payload ->
+    | Some (`Payload payload) ->
         let* boot_sector = Boot_sector.get in
         let msg = boot_sector ^ payload in
-        let* () = Current_level.set inbox_level in
-        let* () = Message_counter.set (Some message_counter) in
         let* () = Next_message.set (Some msg) in
         let* () = start_parsing in
         return ()
+    | Some (`Dal {slot_index; content; first_page; last_page}) ->
+        let* () =
+          if first_page then
+            Current_page.set (Some {slot_index; page_index = 0})
+          else
+            let* page = Current_page.get in
+            match page with
+            | None -> internal_error "Page where not given in the correct order"
+            | Some page
+              when Dal_slot_repr.Index.(not @@ equal slot_index page.slot_index)
+              ->
+                internal_error "Page where not given in the correct order"
+            | Some page ->
+                Current_page.set
+                  (Some {slot_index; page_index = page.page_index + 1})
+        in
+        let* () = Current_slot.inject content in
+        if last_page then
+          let* boot_sect = Boot_sector.get in
+          let* bytes = Current_slot.to_list in
+          let* () = Current_slot.clear in
+          let payload =
+            List.fold_left
+              (fun acc b ->
+                let str = Bytes.to_string b in
+                acc ^ str)
+              ""
+              bytes
+          in
+          let msg = boot_sect ^ payload in
+          let* () = Next_message.set (Some msg) in
+          let* () = start_parsing in
+          return ()
+        else return ()
     | None ->
         let* () = Current_level.set inbox_level in
         let* () = Message_counter.set (Some message_counter) in
