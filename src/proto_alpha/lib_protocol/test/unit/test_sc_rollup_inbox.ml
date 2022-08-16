@@ -183,19 +183,6 @@ let encode_external_message message =
   let prefix = "\001" in
   Bytes.of_string (prefix ^ message)
 
-let check_payload messages external_message =
-  Environment.Context.Tree.find messages ["payload"] >>= function
-  | None -> fail (err "No payload in messages")
-  | Some payload ->
-      let expected_payload = encode_external_message external_message in
-      fail_unless
-        (expected_payload = payload)
-        (err
-           (Printf.sprintf
-              "Expected payload %s, got %s"
-              (Bytes.to_string expected_payload)
-              (Bytes.to_string payload)))
-
 (** In the tests below we use the {!Node} inbox above to generate proofs,
 but we need to test that they can be interpreted and validated by
 the protocol instance of the inbox code. We rely on the two
@@ -207,19 +194,6 @@ let node_proof_to_protocol_proof p =
   let bytes = Node.to_serialized_proof p |> to_bytes_exn enc in
   of_bytes_exn enc bytes |> of_serialized_proof
   |> WithExceptions.Option.get ~loc:__LOC__
-
-let look_in_tree key tree =
-  let open Lwt_syntax in
-  let* x = Tree.Tree.find tree [key] in
-  match x with
-  | Some x -> return (tree, x)
-  | None -> return (tree, Bytes.of_string "nope")
-
-let key_of_level level =
-  let level_bytes =
-    Data_encoding.Binary.to_bytes_exn Raw_level_repr.encoding level
-  in
-  Bytes.to_string level_bytes
 
 let level_of_int n = Raw_level_repr.of_int32_exn (Int32.of_int n)
 
