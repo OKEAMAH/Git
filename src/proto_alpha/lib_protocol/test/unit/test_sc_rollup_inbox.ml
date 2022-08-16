@@ -169,9 +169,9 @@ let setup_node_inbox_with_messages ?(origination_level = Raw_level_repr.root)
         | _ ->
             add_messages ctxt history inbox level payloads level_tree
             >|= Environment.wrap_tzresult
-            >>=? fun (level_tree, history, inbox') ->
+            >>=? fun (level_tree, history, new_inbox) ->
             let level = Raw_level_repr.succ level in
-            aux level history inbox' (inbox :: inboxes) (Some level_tree) ps)
+            aux level history new_inbox (inbox :: inboxes) (Some level_tree) ps)
   in
   aux origination_level history inbox [] None list_of_payloads
   >>=? fun (level_tree, history, inbox, inboxes) ->
@@ -232,7 +232,7 @@ let test_get_message_payload payloads =
 
 let test_inclusion_proof_production (list_of_payloads, n) =
   setup_node_inbox_with_messages list_of_payloads
-  @@ fun _ctxt _messages history inbox inboxes ->
+  @@ fun _ctxt _current_level_tree history inbox inboxes ->
   let old_inbox = Stdlib.List.nth inboxes n in
   produce_inclusion_proof
     history
@@ -246,9 +246,9 @@ let test_inclusion_proof_production (list_of_payloads, n) =
             versions of the same inbox."
   | Some proof ->
       setup_inbox_with_messages list_of_payloads
-      @@ fun _ctxt _current_level_tree inbox' ->
+      @@ fun _ctxt _current_level_tree proto_inbox ->
       fail_unless
-        (equal inbox inbox'
+        (equal inbox proto_inbox
         && verify_inclusion_proof
              proof
              (old_levels_messages old_inbox)
@@ -257,7 +257,7 @@ let test_inclusion_proof_production (list_of_payloads, n) =
 
 let test_inclusion_proof_verification (list_of_payloads, n) =
   setup_node_inbox_with_messages list_of_payloads
-  @@ fun _ctxt _messages history inbox inboxes ->
+  @@ fun _ctxt _current_level_tree history inbox inboxes ->
   let old_inbox = Stdlib.List.nth inboxes n in
   produce_inclusion_proof
     history
@@ -272,10 +272,10 @@ let test_inclusion_proof_verification (list_of_payloads, n) =
   | Some proof ->
       let old_inbox' = Stdlib.List.nth inboxes (Random.int (1 + n)) in
       setup_inbox_with_messages list_of_payloads
-      @@ fun _ctxt _current_level_tree inbox' ->
+      @@ fun _ctxt _current_level_tree proto_inbox ->
       fail_unless
         (equal old_inbox old_inbox'
-        || (not (equal inbox inbox'))
+        || (not (equal inbox proto_inbox))
         || not
              (verify_inclusion_proof
                 proof
@@ -406,9 +406,9 @@ let test_empty_inbox_proof (origination_level, n) =
   | Ok (proof, input) -> (
       (* We now switch to a protocol inbox for verification. *)
       setup_inbox_with_messages ~origination_level []
-      @@ fun _ctxt current_level_tree inbox ->
+      @@ fun _ctxt current_level_tree proto_inbox ->
       assert (current_level_tree = None) ;
-      let snapshot = take_snapshot inbox in
+      let snapshot = take_snapshot proto_inbox in
       let proof = node_proof_to_protocol_proof proof in
       let* verification =
         verify_proof (Raw_level_repr.root, n) snapshot proof
