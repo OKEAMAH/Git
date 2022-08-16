@@ -62,7 +62,7 @@ let setup_inbox_with_messages list_of_payloads f =
     | [] -> return (ok (level_tree, inbox))
     | [] :: ps ->
         let level = Raw_level_repr.succ level in
-        aux level inbox level_tree ps
+        aux level inbox None ps
     | payloads :: ps ->
         Lwt.return
           (List.map_e
@@ -71,16 +71,14 @@ let setup_inbox_with_messages list_of_payloads f =
              payloads)
         >|= Environment.wrap_tzresult
         >>=? fun payloads ->
-        add_messages_no_history ctxt inbox level payloads level_tree
+        add_messages_no_history ctxt inbox level payloads None
         >|= Environment.wrap_tzresult
         >>=? fun (level_tree, inbox) ->
         let level = Raw_level_repr.succ level in
         aux level inbox (Some level_tree) ps
   in
-  aux level inbox None list_of_payloads >>=? fun (level_tree, inbox) ->
-  match level_tree with
-  | None -> fail (err "setup_inbox_with_messages called with no messages")
-  | Some tree -> f ctxt tree inbox
+  aux level inbox None list_of_payloads >>=? fun (current_level_tree, inbox) ->
+  f ctxt current_level_tree inbox
 
 module Tree = struct
   open Tezos_context_memory.Context
@@ -184,7 +182,7 @@ let setup_node_inbox_with_messages list_of_payloads f =
 
 let test_add_messages payloads =
   let nb_payloads = List.length payloads in
-  setup_inbox_with_messages [payloads] @@ fun _ctxt _messages inbox ->
+  setup_inbox_with_messages [payloads] @@ fun _ctxt _current_level_tree inbox ->
   fail_unless
     Compare.Int64.(
       equal
@@ -212,19 +210,27 @@ let check_payload messages external_message =
               (Bytes.to_string payload)))
 
 let test_get_message_payload payloads =
-  setup_inbox_with_messages [payloads] @@ fun _ctxt messages _inbox ->
+  setup_inbox_with_messages [payloads] @@ fun _ctxt current_level_tree _inbox ->
   List.iteri_es
     (fun i message ->
       let expected_payload = encode_external_message message in
-      get_message_payload messages (Z.of_int i) >>= function
-      | Some payload ->
-          let payload = Sc_rollup_inbox_message_repr.unsafe_to_string payload in
-          fail_unless
-            (String.equal payload (Bytes.to_string expected_payload))
-            (err (Printf.sprintf "Expected %s, got %s" message payload))
-      | None ->
-          fail
-            (err (Printf.sprintf "No message payload number %d in messages" i)))
+      match current_level_tree with
+      | Some messages -> (
+          get_message_payload messages (Z.of_int i) >>= fun payload ->
+          match payload with
+          | Some payload ->
+              let payload =
+                Sc_rollup_inbox_message_repr.unsafe_to_string payload
+              in
+              fail_unless
+                (String.equal payload (Bytes.to_string expected_payload))
+                (err (Printf.sprintf "Expected %s, got %s" message payload))
+          | None ->
+              fail
+                (err
+                   (Printf.sprintf "No message payload number %d in messages" i))
+          )
+      | None -> fail (err (Printf.sprintf "current message tree is empty")))
     payloads
 
 let test_inclusion_proof_production (list_of_payloads, n) =
@@ -243,7 +249,7 @@ let test_inclusion_proof_production (list_of_payloads, n) =
             versions of the same inbox."
   | Some proof ->
       setup_inbox_with_messages list_of_payloads
-      @@ fun _ctxt _messages inbox' ->
+      @@ fun _ctxt _current_level_tree inbox' ->
       fail_unless
         (equal inbox inbox'
         && verify_inclusion_proof
@@ -269,7 +275,7 @@ let test_inclusion_proof_verification (list_of_payloads, n) =
   | Some proof ->
       let old_inbox' = Stdlib.List.nth inboxes (Random.int (1 + n)) in
       setup_inbox_with_messages list_of_payloads
-      @@ fun _ctxt _messages inbox' ->
+      @@ fun _ctxt _current_level_tree inbox' ->
       fail_unless
         (equal old_inbox old_inbox'
         || (not (equal inbox inbox'))
