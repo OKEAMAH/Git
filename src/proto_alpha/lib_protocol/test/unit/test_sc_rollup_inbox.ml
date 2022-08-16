@@ -84,6 +84,106 @@ let setup_inbox_with_messages list_of_payloads f =
   | None -> fail (err "setup_inbox_with_messages called with no messages")
   | Some tree -> f ctxt tree history inbox inboxes
 
+module Tree = struct
+  open Tezos_context_memory.Context
+
+  type nonrec t = t
+
+  type nonrec tree = tree
+
+  module Tree = struct
+    include Tezos_context_memory.Context.Tree
+
+    type nonrec t = t
+
+    type nonrec tree = tree
+
+    type key = string list
+
+    type value = bytes
+  end
+
+  let commit_tree context key tree =
+    let open Lwt_syntax in
+    let* ctxt = Tezos_context_memory.Context.add_tree context key tree in
+    let* _ = commit ~time:Time.Protocol.epoch ~message:"" ctxt in
+    return ()
+
+  let lookup_tree context hash =
+    let open Lwt_syntax in
+    let* _, tree =
+      produce_tree_proof
+        (index context)
+        (`Node (Hash.to_context_hash hash))
+        (fun x -> Lwt.return (x, x))
+    in
+    return (Some tree)
+
+  type proof = Proof.tree Proof.t
+
+  let verify_proof proof f =
+    Lwt.map Result.to_option (verify_tree_proof proof f)
+
+  let produce_proof context tree f =
+    let open Lwt_syntax in
+    let* proof =
+      produce_tree_proof (index context) (`Node (Tree.hash tree)) f
+    in
+    return (Some proof)
+
+  let kinded_hash_to_inbox_hash = function
+    | `Value hash | `Node hash -> Hash.of_context_hash hash
+
+  let proof_before proof = kinded_hash_to_inbox_hash proof.Proof.before
+
+  let proof_encoding =
+    Tezos_context_helpers.Context.Proof_encoding.V1.Tree32.tree_proof_encoding
+end
+
+(** This is a second instance of the inbox module. It uses the {!Tree}
+    module above for its Irmin interface, which gives it a full context
+    and the ability to generate tree proofs.
+
+    It is intended to resemble (at least well enough for these tests)
+    the rollup node's inbox instance. *)
+module Node = Make_hashing_scheme (Tree)
+
+(** This is basically identical to {!setup_inbox_with_messages}, except
+    that it uses the {!Node} instance instead of the protocol instance. *)
+let setup_node_inbox_with_messages list_of_payloads f =
+  let open Node in
+  let open Lwt_syntax in
+  let* index = Tezos_context_memory.Context.init "foo" in
+  let ctxt = Tezos_context_memory.Context.empty index in
+  let* inbox = empty ctxt rollup level in
+  let history = history_at_genesis ~capacity:10000L in
+  let rec aux level history inbox inboxes level_tree = function
+    | [] -> return (ok (level_tree, history, inbox, inboxes))
+    | payloads :: ps -> (
+        Lwt.return
+          (List.map_e
+             (fun payload ->
+               Sc_rollup_inbox_message_repr.(serialize @@ External payload))
+             payloads)
+        >|= Environment.wrap_tzresult
+        >>=? fun payloads ->
+        match payloads with
+        | [] ->
+            let level = Raw_level_repr.succ level in
+            aux level history inbox inboxes level_tree ps
+        | _ ->
+            add_messages ctxt history inbox level payloads level_tree
+            >|= Environment.wrap_tzresult
+            >>=? fun (level_tree, history, inbox') ->
+            let level = Raw_level_repr.succ level in
+            aux level history inbox' (inbox :: inboxes) (Some level_tree) ps)
+  in
+  aux level history inbox [] None list_of_payloads
+  >>=? fun (level_tree, history, inbox, inboxes) ->
+  match level_tree with
+  | None -> fail (err "setup_inbox_with_messages called with no messages")
+  | Some tree -> f ctxt tree history inbox inboxes
+
 let test_add_messages payloads =
   let nb_payloads = List.length payloads in
   setup_inbox_with_messages [payloads]
@@ -182,70 +282,6 @@ let test_inclusion_proof_verification (list_of_payloads, n) =
            "Verification should rule out a valid proof which is not about the \
             given inboxes.")
 
-module Tree = struct
-  open Tezos_context_memory.Context
-
-  type nonrec t = t
-
-  type nonrec tree = tree
-
-  module Tree = struct
-    include Tezos_context_memory.Context.Tree
-
-    type nonrec t = t
-
-    type nonrec tree = tree
-
-    type key = string list
-
-    type value = bytes
-  end
-
-  let commit_tree context key tree =
-    let open Lwt_syntax in
-    let* ctxt = Tezos_context_memory.Context.add_tree context key tree in
-    let* _ = commit ~time:Time.Protocol.epoch ~message:"" ctxt in
-    return ()
-
-  let lookup_tree context hash =
-    let open Lwt_syntax in
-    let* _, tree =
-      produce_tree_proof
-        (index context)
-        (`Node (Hash.to_context_hash hash))
-        (fun x -> Lwt.return (x, x))
-    in
-    return (Some tree)
-
-  type proof = Proof.tree Proof.t
-
-  let verify_proof proof f =
-    Lwt.map Result.to_option (verify_tree_proof proof f)
-
-  let produce_proof context tree f =
-    let open Lwt_syntax in
-    let* proof =
-      produce_tree_proof (index context) (`Node (Tree.hash tree)) f
-    in
-    return (Some proof)
-
-  let kinded_hash_to_inbox_hash = function
-    | `Value hash | `Node hash -> Hash.of_context_hash hash
-
-  let proof_before proof = kinded_hash_to_inbox_hash proof.Proof.before
-
-  let proof_encoding =
-    Tezos_context_helpers.Context.Proof_encoding.V1.Tree32.tree_proof_encoding
-end
-
-(** This is a second instance of the inbox module. It uses the {!Tree}
-    module above for its Irmin interface, which gives it a full context
-    and the ability to generate tree proofs.
-
-    It is intended to resemble (at least well enough for these tests)
-    the rollup node's inbox instance. *)
-module Node = Make_hashing_scheme (Tree)
-
 (** In the tests below we use the {!Node} inbox above to generate proofs,
     but we need to test that they can be interpreted and validated by
     the protocol instance of the inbox code. We rely on the two
@@ -257,42 +293,6 @@ let node_proof_to_protocol_proof p =
   let bytes = Node.to_serialized_proof p |> to_bytes_exn enc in
   of_bytes_exn enc bytes |> of_serialized_proof
   |> WithExceptions.Option.get ~loc:__LOC__
-
-(** This is basically identical to {!setup_inbox_with_messages}, except
-    that it uses the {!Node} instance instead of the protocol instance. *)
-let setup_node_inbox_with_messages list_of_payloads f =
-  let open Node in
-  let open Lwt_syntax in
-  let* index = Tezos_context_memory.Context.init "foo" in
-  let ctxt = Tezos_context_memory.Context.empty index in
-  let* inbox = empty ctxt rollup level in
-  let history = history_at_genesis ~capacity:10000L in
-  let rec aux level history inbox inboxes level_tree = function
-    | [] -> return (ok (level_tree, history, inbox, inboxes))
-    | payloads :: ps -> (
-        Lwt.return
-          (List.map_e
-             (fun payload ->
-               Sc_rollup_inbox_message_repr.(serialize @@ External payload))
-             payloads)
-        >|= Environment.wrap_tzresult
-        >>=? fun payloads ->
-        match payloads with
-        | [] ->
-            let level = Raw_level_repr.succ level in
-            aux level history inbox inboxes level_tree ps
-        | _ ->
-            add_messages ctxt history inbox level payloads level_tree
-            >|= Environment.wrap_tzresult
-            >>=? fun (level_tree, history, inbox') ->
-            let level = Raw_level_repr.succ level in
-            aux level history inbox' (inbox :: inboxes) (Some level_tree) ps)
-  in
-  aux level history inbox [] None list_of_payloads
-  >>=? fun (level_tree, history, inbox, inboxes) ->
-  match level_tree with
-  | None -> fail (err "setup_inbox_with_messages called with no messages")
-  | Some tree -> f ctxt tree history inbox inboxes
 
 let look_in_tree key tree =
   let open Lwt_syntax in
