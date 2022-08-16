@@ -1151,7 +1151,7 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
     ~tags:["sc_rollup"; "run"; "node"; kind]
     (Format.asprintf "%s - node advances PVM state with messages" kind)
     (fun protocol ->
-      setup_mondaynet ~protocol @@ fun node client ->
+      setup ~protocol @@ fun node client ->
       with_fresh_rollup
         ~kind
         ~boot_sector:(computation_kernel ())
