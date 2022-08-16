@@ -51,7 +51,8 @@ module type PVM_name = sig
   val name : string
 end
 
-module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = struct
+module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM =
+struct
   module PVM = PVM
 
   let consume_fuel = Option.map pred
@@ -65,8 +66,14 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
   let print_state_hash state =
     let open Lwt_syntax in
     let* hash = PVM.state_hash state in
-    let* () = Logging.append (Format.asprintf "%s: State hash is %a\n" PVM_name.name
-            Protocol.Alpha_context.Sc_rollup.State_hash.pp hash) in
+    let* () =
+      Logging.append
+        (Format.asprintf
+           "%s: State hash is %a\n"
+           PVM_name.name
+           Protocol.Alpha_context.Sc_rollup.State_hash.pp
+           hash)
+    in
     return ()
 
   (** [eval_until_input level message_index ~fuel start_tick
@@ -81,7 +88,10 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
     let open Lwt_syntax in
     let eval_tick tick failing_ticks state =
       let normal_eval state =
-		    let* () = Logging.append (Printf.sprintf "%s: Evaluating 1 tick\n" PVM_name.name) in
+        let* () =
+          Logging.append
+            (Printf.sprintf "%s: Evaluating 1 tick\n" PVM_name.name)
+        in
         let* () = print_state_hash state in
         let* state = PVM.eval state in
         return (state, failing_ticks)
@@ -94,7 +104,12 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
             ~message_tick:tick
             ~internal:true
         in
-		    let* () = Logging.append (Printf.sprintf "%s: ERROR Inserting failure in PVM\n" PVM_name.name) in
+        let* () =
+          Logging.append
+            (Printf.sprintf
+               "%s: ERROR Inserting failure in PVM\n"
+               PVM_name.name)
+        in
         let* () = print_state_hash state in
         let* state = PVM.Internal_for_tests.insert_failure state in
         return (state, failing_ticks')
@@ -106,7 +121,14 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
     in
     let rec go fuel tick failing_ticks state =
       let* input_request = PVM.is_input_state state in
-      let* () = Logging.append (Format.asprintf "%s: PVM expectation: %a\n" PVM_name.name Sc_rollup.pp_input_request input_request) in
+      let* () =
+        Logging.append
+          (Format.asprintf
+             "%s: PVM expectation: %a\n"
+             PVM_name.name
+             Sc_rollup.pp_input_request
+             input_request)
+      in
       let* () = print_state_hash state in
       match fuel with
       | Some 0 -> return (state, fuel, tick, failing_ticks)
@@ -126,8 +148,6 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
     let payload = Inbox.Message.unsafe_of_string "0xC4C4" in
     {input with Sc_rollup.payload}
 
-
-
   (** [feed_input level message_index ~fuel ~failing_ticks state
       input] feeds [input] (that has a given [message_index] in inbox
       of [level]) to the PVM in order to advance [state] to the next
@@ -136,10 +156,17 @@ module Make (PVM_name : PVM_name) (PVM : Pvm.S) : S with module PVM = PVM = stru
       [failing_ticks]. *)
   let feed_input :
       int ->
-        int -> fuel:(int option) -> failing_ticks:(int list) -> PVM.state -> Sc_rollup.input ->  (PVM.state * int option) Lwt.t
-    = fun level message_index ~fuel ~failing_ticks state input ->
+      int ->
+      fuel:int option ->
+      failing_ticks:int list ->
+      PVM.state ->
+      Sc_rollup.input ->
+      (PVM.state * int option) Lwt.t =
+   fun level message_index ~fuel ~failing_ticks state input ->
     let open Lwt_syntax in
-		let* () = Logging.append (Printf.sprintf "%s: Feeding input\n" PVM_name.name) in
+    let* () =
+      Logging.append (Printf.sprintf "%s: Feeding input\n" PVM_name.name)
+    in
     let* state, fuel, tick, failing_ticks =
       eval_until_input level message_index ~fuel 0 failing_ticks state
     in

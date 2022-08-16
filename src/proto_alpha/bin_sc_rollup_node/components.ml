@@ -25,7 +25,9 @@
 (*****************************************************************************)
 
 module type S = sig
-  module PVM_name : sig val name : string end
+  module PVM_name : sig
+    val name : string
+  end
 
   module PVM : Pvm.S
 
@@ -38,10 +40,10 @@ module type S = sig
   module Refutation_game : Refutation_game.S with module PVM = PVM
 end
 
-module Make
-  (PVM_name : sig val name : string end)
-  (PVM : Pvm.S) :
-  (S with module PVM_name = PVM_name and module PVM = PVM) = struct
+module Make (PVM_name : sig
+  val name : string
+end)
+(PVM : Pvm.S) : S with module PVM_name = PVM_name and module PVM = PVM = struct
   module PVM_name = PVM_name
   module PVM = PVM
   module Interpreter = Interpreter.Make (PVM_name) (PVM)
