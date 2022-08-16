@@ -41,23 +41,21 @@ let err x = Exn (Sc_rollup_inbox_test_error x)
 
 let rollup = Sc_rollup_repr.Address.hash_string [""]
 
-let level =
-  Raw_level_repr.of_int32 0l |> function Ok x -> x | _ -> assert false
-
 let create_context () =
   Context.init1 () >>=? fun (block, _contract) -> return block.context
 
 let test_empty () =
   create_context () >>=? fun ctxt ->
-  empty ctxt rollup level >>= fun inbox ->
+  empty ctxt rollup Raw_level_repr.root >>= fun inbox ->
   fail_unless
     Compare.Int64.(equal (number_of_messages_during_commitment_period inbox) 0L)
     (err "An empty inbox should have no available message.")
 
-let setup_inbox_with_messages ?(level = level) list_of_payloads f =
+let setup_inbox_with_messages ?(origination_level = Raw_level_repr.root)
+    list_of_payloads f =
   let open Lwt_syntax in
   create_context () >>=? fun ctxt ->
-  let* inbox = empty ctxt rollup level in
+  let* inbox = empty ctxt rollup origination_level in
   let rec aux level inbox level_tree = function
     | [] -> return (ok (level_tree, inbox))
     | [] :: ps ->
@@ -77,8 +75,8 @@ let setup_inbox_with_messages ?(level = level) list_of_payloads f =
         let level = Raw_level_repr.succ level in
         aux level inbox (Some level_tree) ps
   in
-  aux level inbox None list_of_payloads >>=? fun (current_level_tree, inbox) ->
-  f ctxt current_level_tree inbox
+  aux origination_level inbox None list_of_payloads
+  >>=? fun (current_level_tree, inbox) -> f ctxt current_level_tree inbox
 
 module Tree = struct
   open Tezos_context_memory.Context
@@ -146,12 +144,13 @@ module Node = Make_hashing_scheme (Tree)
 
 (** This is basically identical to {!setup_inbox_with_messages}, except
     that it uses the {!Node} instance instead of the protocol instance. *)
-let setup_node_inbox_with_messages list_of_payloads f =
+let setup_node_inbox_with_messages ?(origination_level = Raw_level_repr.root)
+    list_of_payloads f =
   let open Node in
   let open Lwt_syntax in
   let* index = Tezos_context_memory.Context.init "foo" in
   let ctxt = Tezos_context_memory.Context.empty index in
-  let* inbox = empty ctxt rollup level in
+  let* inbox = empty ctxt rollup origination_level in
   let history = history_at_genesis ~capacity:10000L in
   let rec aux level history inbox inboxes level_tree = function
     | [] -> return (ok (level_tree, history, inbox, inboxes))
@@ -174,7 +173,7 @@ let setup_node_inbox_with_messages list_of_payloads f =
             let level = Raw_level_repr.succ level in
             aux level history inbox' (inbox :: inboxes) (Some level_tree) ps)
   in
-  aux level history inbox [] None list_of_payloads
+  aux origination_level history inbox [] None list_of_payloads
   >>=? fun (level_tree, history, inbox, inboxes) ->
   f ctxt level_tree history inbox inboxes
 
@@ -391,11 +390,12 @@ let test_inbox_proof_verification (list_of_payloads, l, n) =
       | Error _ -> return (ok ()))
   | Error _ -> fail (err "Proof production failed")
 
-let test_empty_inbox_proof (level, n) =
+let test_empty_inbox_proof (origination_level, n) =
   let open Lwt_syntax in
-  setup_node_inbox_with_messages []
-  @@ fun ctxt current_level_tree history inbox _inboxes ->
+  setup_node_inbox_with_messages ~origination_level []
+  @@ fun ctxt current_level_tree history inbox inboxes ->
   assert (current_level_tree = None) ;
+  assert (inboxes = []) ;
   let* history, history_proof =
     Node.form_history_proof ctxt history inbox current_level_tree
   in
@@ -405,8 +405,9 @@ let test_empty_inbox_proof (level, n) =
   match result with
   | Ok (proof, input) -> (
       (* We now switch to a protocol inbox for verification. *)
-      setup_inbox_with_messages ~level []
-      @@ fun _ctxt _current_level_tree inbox ->
+      setup_inbox_with_messages ~origination_level []
+      @@ fun _ctxt current_level_tree inbox ->
+      assert (current_level_tree = None) ;
       let snapshot = take_snapshot inbox in
       let proof = node_proof_to_protocol_proof proof in
       let* verification =
