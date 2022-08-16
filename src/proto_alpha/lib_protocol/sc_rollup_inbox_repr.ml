@@ -562,14 +562,10 @@ struct
     return (level_tree, inbox)
 
   let get_message_payload level_tree message_index =
-    let open Lwt_syntax in
+    let open Lwt_option_syntax in
     let key = key_of_message message_index in
-    let* bytes = Tree.(find level_tree key) in
-    return
-    @@ Option.map
-         (fun bs ->
-           Sc_rollup_inbox_message_repr.unsafe_of_string (Bytes.to_string bs))
-         bytes
+    let+ bytes = Tree.(find level_tree key) in
+    Sc_rollup_inbox_message_repr.unsafe_of_string (Bytes.to_string bytes)
 
   let history_encoding : history Data_encoding.t =
     let open Data_encoding in
