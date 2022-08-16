@@ -174,6 +174,23 @@ let setup ?(commitment_period : int option) ?(challenge_window : int option)
   let operator = Constant.bootstrap1.alias in
   f node client operator
 
+let setup_mondaynet
+    ?(commitment_period : int option)
+    ?(challenge_window : int option)
+    ?(timeout : int option)
+    (f :
+      Node.t ->
+      Client.t ->
+      string ->
+      'a Lwt.t)
+    ~protocol =
+  let _unused = commitment_period, challenge_window, timeout, f, protocol in
+  let node : Node.t = Stdlib.failwith "TODO node" in
+  let client : Client.t = Stdlib.failwith "TODO client" in
+  let operator = Constant.bootstrap1.alias in
+  f node client operator
+
+
 let get_sc_rollup_commitment_period_in_blocks client =
   let* constants = get_sc_rollup_constants client in
   return constants.commitment_period_in_blocks
@@ -1134,7 +1151,7 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
     ~tags:["sc_rollup"; "run"; "node"; kind]
     (Format.asprintf "%s - node advances PVM state with messages" kind)
     (fun protocol ->
-      setup ~protocol @@ fun node client ->
+      setup_mondaynet ~protocol @@ fun node client ->
       with_fresh_rollup
         ~kind
         ~boot_sector:(computation_kernel ())
