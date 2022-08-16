@@ -147,10 +147,12 @@ let regression_test ~__FILE__ ?(tags = []) title f =
   let tags = "sc_rollup" :: tags in
   Protocol.register_regression_test ~__FILE__ ~title ~tags f
 
+type 'a delay = unit -> 'a
+
 let setup ?(commitment_period : int option) ?(challenge_window : int option)
     ?(timeout : int option)
     (f :
-      Node.t ->
+      Node.t delay ->
       Client.t ->
       string ->
       'a Lwt.t) ~protocol =
@@ -172,20 +174,20 @@ let setup ?(commitment_period : int option) ?(challenge_window : int option)
     Client.init_with_protocol ~parameter_file `Client ~protocol ~nodes_args ()
   in
   let operator = Constant.bootstrap1.alias in
-  f node client operator
+  f (fun () -> node) client operator
 
 let setup_mondaynet
     ?(commitment_period : int option)
     ?(challenge_window : int option)
     ?(timeout : int option)
     (f :
-      Node.t ->
+      Node.t delay ->
       Client.t ->
       string ->
       'a Lwt.t)
     ~protocol =
   let _unused = commitment_period, challenge_window, timeout, f, protocol in
-  let node : Node.t = Stdlib.failwith "TODO node" in
+  let node : Node.t delay = (fun () -> Stdlib.failwith "TODO node") in
   let client : Client.t = Stdlib.failwith "TODO client" in
   let operator = Constant.bootstrap1.alias in
   f node client operator
@@ -233,7 +235,7 @@ let with_fresh_rollup ?kind ?boot_sector f tezos_node tezos_client operator =
   let sc_rollup_node =
     Sc_rollup_node.create
       Operator
-      tezos_node
+      (tezos_node ())
       tezos_client
       ~default_operator:operator
   in
@@ -245,7 +247,8 @@ let with_fresh_rollup ?kind ?boot_sector f tezos_node tezos_client operator =
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/2933
    Many tests can be refactored using test_scenario. *)
 let test_scenario ~kind ?boot_sector ?commitment_period ?challenge_window
-    ?timeout {variant; tags; description} scenario =
+    ?timeout {variant; tags; description} (scenario : Protocol.t -> Sc_rollup_node.t -> string -> Node.t -> Client.t -> 'a Lwt.t)
+    =
   let tags = tags @ [kind; variant] in
   regression_test
     ~__FILE__
@@ -256,7 +259,7 @@ let test_scenario ~kind ?boot_sector ?commitment_period ?challenge_window
       @@ fun node client ->
       ( with_fresh_rollup ~kind ?boot_sector
       @@ fun sc_rollup sc_rollup_node _filename ->
-        scenario protocol sc_rollup_node sc_rollup node client )
+        scenario protocol sc_rollup_node sc_rollup (node ()) client )
         node
         client)
 
@@ -809,7 +812,7 @@ let test_rollup_inbox_of_rollup_node variant scenario ~kind =
              (inbox_from_sc_rollup_node = inbox_from_tezos_node)
                (tuple2 string int)
                ~error_msg:"expected value %R, got %L") )
-        node
+        (Stdlib.failwith "TODO node")
         client)
 
 let basic_scenario _protocol sc_rollup_node sc_rollup _node client =
@@ -876,7 +879,8 @@ let sc_rollup_node_handles_chain_reorg protocol sc_rollup_node sc_rollup node
     client =
   let num_messages = 1 in
 
-  setup ~protocol @@ fun node' client' _ ->
+  setup ~protocol @@ fun node'' client' _ ->
+  let node' = node'' () in
   let* () = Client.Admin.trust_address client ~peer:node'
   and* () = Client.Admin.trust_address client' ~peer:node in
   let* () = Client.Admin.connect_address client ~peer:node' in
@@ -1343,7 +1347,8 @@ let commitment_stored _protocol sc_rollup_node sc_rollup _node client =
   check_published_commitment_in_l1 sc_rollup client published_commitment
 
 let mode_publish mode publishes protocol sc_rollup_node sc_rollup node client =
-  setup ~protocol @@ fun other_node other_client _ ->
+  setup ~protocol @@ fun other_node' other_client _ ->
+  let other_node = other_node' () in
   let* () = Client.Admin.trust_address client ~peer:other_node
   and* () = Client.Admin.trust_address other_client ~peer:node in
   let* () = Client.Admin.connect_address client ~peer:other_node in
@@ -1655,6 +1660,7 @@ let commitments_reorgs protocol sc_rollup_node sc_rollup node client =
   let sc_rollup_client = Sc_rollup_client.create sc_rollup_node in
 
   setup ~protocol @@ fun node' client' _ ->
+  let node' = node' () in
   let* () = Client.Admin.trust_address client ~peer:node'
   and* () = Client.Admin.trust_address client' ~peer:node in
   let* () = Client.Admin.connect_address client ~peer:node' in
@@ -2554,6 +2560,7 @@ let test_forking_scenario ~title ~scenario protocols =
       let challenge_window = commitment_period * 7 in
       setup ~commitment_period ~challenge_window ~protocol
       @@ fun node client _bootstrap1_key ->
+      let node = node () in
       (* Originate a Sc rollup. *)
       let* sc_rollup = originate_sc_rollup client ~parameters_ty:"unit" in
       (* Building a forking commitments tree. *)
