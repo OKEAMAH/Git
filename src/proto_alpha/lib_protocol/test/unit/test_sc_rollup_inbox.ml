@@ -58,12 +58,11 @@ let setup_inbox_with_messages list_of_payloads f =
   let open Lwt_syntax in
   create_context () >>=? fun ctxt ->
   let* inbox = empty ctxt rollup level in
-  let history = history_at_genesis ~capacity:10000L in
-  let rec aux level history inbox inboxes level_tree = function
-    | [] -> return (ok (level_tree, history, inbox, inboxes))
+  let rec aux level inbox level_tree = function
+    | [] -> return (ok (level_tree, inbox))
     | [] :: ps ->
         let level = Raw_level_repr.succ level in
-        aux level history inbox inboxes level_tree ps
+        aux level inbox level_tree ps
     | payloads :: ps ->
         Lwt.return
           (List.map_e
@@ -72,17 +71,16 @@ let setup_inbox_with_messages list_of_payloads f =
              payloads)
         >|= Environment.wrap_tzresult
         >>=? fun payloads ->
-        add_messages ctxt history inbox level payloads level_tree
+        add_messages_no_history ctxt inbox level payloads level_tree
         >|= Environment.wrap_tzresult
-        >>=? fun (level_tree, history, inbox') ->
+        >>=? fun (level_tree, inbox) ->
         let level = Raw_level_repr.succ level in
-        aux level history inbox' (inbox :: inboxes) (Some level_tree) ps
+        aux level inbox (Some level_tree) ps
   in
-  aux level history inbox [] None list_of_payloads
-  >>=? fun (level_tree, history, inbox, inboxes) ->
+  aux level inbox None list_of_payloads >>=? fun (level_tree, inbox) ->
   match level_tree with
   | None -> fail (err "setup_inbox_with_messages called with no messages")
-  | Some tree -> f ctxt tree history inbox inboxes
+  | Some tree -> f ctxt tree inbox
 
 module Tree = struct
   open Tezos_context_memory.Context
@@ -186,8 +184,7 @@ let setup_node_inbox_with_messages list_of_payloads f =
 
 let test_add_messages payloads =
   let nb_payloads = List.length payloads in
-  setup_inbox_with_messages [payloads]
-  @@ fun _ctxt _messages _history inbox _inboxes ->
+  setup_inbox_with_messages [payloads] @@ fun _ctxt _messages inbox ->
   fail_unless
     Compare.Int64.(
       equal
@@ -215,8 +212,7 @@ let check_payload messages external_message =
               (Bytes.to_string payload)))
 
 let test_get_message_payload payloads =
-  setup_inbox_with_messages [payloads]
-  @@ fun _ctxt messages _history _inbox _inboxes ->
+  setup_inbox_with_messages [payloads] @@ fun _ctxt messages _inbox ->
   List.iteri_es
     (fun i message ->
       let expected_payload = encode_external_message message in
@@ -232,9 +228,8 @@ let test_get_message_payload payloads =
     payloads
 
 let test_inclusion_proof_production (list_of_payloads, n) =
-  setup_inbox_with_messages list_of_payloads
-  @@ fun _ctxt _messages history _inbox inboxes ->
-  let inbox = Stdlib.List.hd inboxes in
+  setup_node_inbox_with_messages list_of_payloads
+  @@ fun _ctxt _messages history inbox inboxes ->
   let old_inbox = Stdlib.List.nth inboxes n in
   produce_inclusion_proof
     history
@@ -247,17 +242,19 @@ let test_inclusion_proof_production (list_of_payloads, n) =
            "It should be possible to produce an inclusion proof between two \
             versions of the same inbox."
   | Some proof ->
+      setup_inbox_with_messages list_of_payloads
+      @@ fun _ctxt _messages inbox' ->
       fail_unless
-        (verify_inclusion_proof
-           proof
-           (old_levels_messages old_inbox)
-           (old_levels_messages inbox))
-        (err "The produced inclusion proof is invalid.")
+        (equal inbox inbox'
+        && verify_inclusion_proof
+             proof
+             (old_levels_messages old_inbox)
+             (old_levels_messages inbox))
+        (err "The produced inclusion proof is invalid for the protocol.")
 
 let test_inclusion_proof_verification (list_of_payloads, n) =
-  setup_inbox_with_messages list_of_payloads
-  @@ fun _ctxt _messages history _inbox inboxes ->
-  let inbox = Stdlib.List.hd inboxes in
+  setup_node_inbox_with_messages list_of_payloads
+  @@ fun _ctxt _messages history inbox inboxes ->
   let old_inbox = Stdlib.List.nth inboxes n in
   produce_inclusion_proof
     history
@@ -271,8 +268,11 @@ let test_inclusion_proof_verification (list_of_payloads, n) =
             versions of the same inbox."
   | Some proof ->
       let old_inbox' = Stdlib.List.nth inboxes (Random.int (1 + n)) in
+      setup_inbox_with_messages list_of_payloads
+      @@ fun _ctxt _messages inbox' ->
       fail_unless
         (equal old_inbox old_inbox'
+        || (not (equal inbox inbox'))
         || not
              (verify_inclusion_proof
                 proof
@@ -354,7 +354,7 @@ let test_inbox_proof_production (list_of_payloads, l, n) =
       (* We now switch to a protocol inbox built from the same messages
          for verification. *)
       setup_inbox_with_messages list_of_payloads
-      @@ fun _ctxt _current_level_tree _history inbox _inboxes ->
+      @@ fun _ctxt _current_level_tree inbox ->
       let snapshot = take_snapshot inbox in
       let proof = node_proof_to_protocol_proof proof in
       let* verification = verify_proof (l, n) snapshot proof in
@@ -369,7 +369,7 @@ let test_inbox_proof_production (list_of_payloads, l, n) =
 let test_inbox_proof_verification (list_of_payloads, l, n) =
   (* We begin with a Node inbox so we can produce a proof. *)
   setup_node_inbox_with_messages list_of_payloads
-  @@ fun ctxt current_level_tree history inbox _inboxes ->
+  @@ fun ctxt current_level_tree history inbox inboxes ->
   let open Lwt_syntax in
   let* history, history_proof =
     Node.form_history_proof ctxt history inbox (Some current_level_tree)
@@ -377,20 +377,14 @@ let test_inbox_proof_verification (list_of_payloads, l, n) =
   let* result = Node.produce_proof ctxt history history_proof (l, n) in
   match result with
   | Ok (proof, _input) -> (
-      (* We now switch to a protocol inbox built from the same messages
-         for verification. *)
-      setup_inbox_with_messages list_of_payloads
-      @@ fun _ctxt _current_level_tree _history _inbox inboxes ->
       (* Use the incorrect inbox *)
-      match List.hd inboxes with
-      | Some inbox -> (
-          let snapshot = take_snapshot inbox in
-          let proof = node_proof_to_protocol_proof proof in
-          let* verification = verify_proof (l, n) snapshot proof in
-          match verification with
-          | Ok _ -> fail (err "Proof should not be valid")
-          | Error _ -> return (ok ()))
-      | None -> fail (err "inboxes was empty"))
+      let inbox = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd inboxes in
+      let snapshot = take_snapshot inbox in
+      let proof = node_proof_to_protocol_proof proof in
+      let* verification = verify_proof (l, n) snapshot proof in
+      match verification with
+      | Ok _ -> fail (err "Proof should not be valid")
+      | Error _ -> return (ok ()))
   | Error _ -> fail (err "Proof production failed")
 
 let test_empty_inbox_proof (level, n) =
