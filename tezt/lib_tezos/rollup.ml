@@ -578,6 +578,65 @@ module Dal = struct
     | Ok cryptobox -> cryptobox
     | Error (`Fail msg) -> on_error msg
 
+  (* DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/3173
+     The functions below are duplicated from sc_rollup.ml.
+     They should be moved to a common submodule. *)
+  let make_int_parameter name value =
+    Option.map (fun v -> (name, Option.some @@ Int.to_string v)) value
+    |> Option.to_list
+
+  let make_bool_parameter name value =
+    Option.map (fun v -> (name, Option.some @@ Bool.to_string v)) value
+    |> Option.to_list
+
+  let setup ?commitment_period ?challenge_window ?dal_enable ~protocol f =
+    let parameters =
+      make_int_parameter
+        ["sc_rollup_commitment_period_in_blocks"]
+        commitment_period
+      @ make_int_parameter
+          ["sc_rollup_challenge_window_in_blocks"]
+          challenge_window
+      (* this will produce the empty list if dal_enable is not passed to the function invocation,
+         hence the value from the protocol constants will be used. *)
+      @ make_bool_parameter ["dal_parametric"; "feature_enable"] dal_enable
+      @ [(["sc_rollup_enable"], Some "true")]
+    in
+    let base = Either.right (protocol, None) in
+    let* parameter_file = Protocol.write_parameter_file ~base parameters in
+    let nodes_args =
+      Node.
+        [
+          Synchronisation_threshold 0;
+          History_mode (Full None);
+          No_bootstrap_peers;
+        ]
+    in
+    let* client = Client.init_mockup ~parameter_file ~protocol () in
+    let* parameters = Parameters.from_client client in
+    let cryptobox = make parameters in
+    let node = Node.create nodes_args in
+    let* () = Node.config_init node [] in
+    Node.Config_file.update node (fun json ->
+        let value =
+          JSON.annotate
+            ~origin:"dal_initialisation"
+            (`O
+              [
+                ("srs_size", `Float (float_of_int parameters.slot_size));
+                ("activated", `Bool true);
+              ])
+        in
+        let json = JSON.put ("dal", value) json in
+        json) ;
+    let* () = Node.run node [] in
+    let* () = Node.wait_for_ready node in
+    let* client = Client.init ~endpoint:(Node node) () in
+    let* () =
+      Client.activate_protocol_and_wait ~parameter_file ~protocol client
+    in
+    f parameters cryptobox node client
+
   module Commitment = struct
     let pad n message =
       let prefix = String.make n '\000' in

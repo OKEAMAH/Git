@@ -240,6 +240,14 @@ module Dal : sig
 
   val make : ?on_error:(string -> Cryptobox.t) -> Parameters.t -> Cryptobox.t
 
+  val setup :
+    ?commitment_period:int ->
+    ?challenge_window:int ->
+    ?dal_enable:bool ->
+    protocol:Protocol.t ->
+    (Parameters.t -> Cryptobox.t -> Node.t -> Client.t -> 'a Lwt.t) ->
+    'a Lwt.t
+
   module Commitment : sig
     val dummy_commitment :
       ?on_error:(string -> Cryptobox.commitment) ->

@@ -32,17 +32,6 @@
 
 let hooks = Tezos_regression.hooks
 
-(* DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/3173
-   The functions below are duplicated from sc_rollup.ml.
-   They should be moved to a common submodule. *)
-let make_int_parameter name value =
-  Option.map (fun v -> (name, Option.some @@ Int.to_string v)) value
-  |> Option.to_list
-
-let make_bool_parameter name value =
-  Option.map (fun v -> (name, Option.some @@ Bool.to_string v)) value
-  |> Option.to_list
-
 let test ~__FILE__ ?(tags = []) title f =
   let tags = "dal" :: tags in
   Protocol.register_test ~__FILE__ ~title ~tags f
@@ -51,56 +40,10 @@ let regression_test ~__FILE__ ?(tags = []) title f =
   let tags = "dal" :: tags in
   Protocol.register_regression_test ~__FILE__ ~title ~tags f
 
-let setup ?commitment_period ?challenge_window ?dal_enable f ~protocol =
-  let parameters =
-    make_int_parameter
-      ["sc_rollup_commitment_period_in_blocks"]
-      commitment_period
-    @ make_int_parameter
-        ["sc_rollup_challenge_window_in_blocks"]
-        challenge_window
-    (* this will produce the empty list if dal_enable is not passed to the function invocation,
-       hence the value from the protocol constants will be used. *)
-    @ make_bool_parameter ["dal_parametric"; "feature_enable"] dal_enable
-    @ [(["sc_rollup_enable"], Some "true")]
-  in
-  let base = Either.right (protocol, None) in
-  let* parameter_file = Protocol.write_parameter_file ~base parameters in
-  let nodes_args =
-    Node.
-      [
-        Synchronisation_threshold 0; History_mode (Full None); No_bootstrap_peers;
-      ]
-  in
-  let* client = Client.init_mockup ~parameter_file ~protocol () in
-  let* parameters = Rollup.Dal.Parameters.from_client client in
-  let cryptobox = Rollup.Dal.make parameters in
-  let node = Node.create nodes_args in
-  let* () = Node.config_init node [] in
-  Node.Config_file.update node (fun json ->
-      let value =
-        JSON.annotate
-          ~origin:"dal_initialisation"
-          (`O
-            [
-              ("srs_size", `Float (float_of_int parameters.slot_size));
-              ("activated", `Bool true);
-            ])
-      in
-      let json = JSON.put ("dal", value) json in
-      json) ;
-  let* () = Node.run node [] in
-  let* () = Node.wait_for_ready node in
-  let* client = Client.init ~endpoint:(Node node) () in
-  let* () =
-    Client.activate_protocol_and_wait ~parameter_file ~protocol client
-  in
-  let bootstrap1_key = Constant.bootstrap1.public_key_hash in
-  f parameters cryptobox node client bootstrap1_key
-
 type test = {variant : string; tags : string list; description : string}
 
-let with_fresh_rollup f tezos_node tezos_client bootstrap1_key =
+let with_fresh_rollup f tezos_node tezos_client =
+  let bootstrap1_key = Constant.bootstrap1.public_key_hash in
   let* rollup_address =
     Client.Sc_rollup.originate
       ~hooks
@@ -132,7 +75,11 @@ let test_scenario ?commitment_period ?challenge_window ?dal_enable
     ~tags
     (Printf.sprintf "%s (%s)" description variant)
     (fun protocol ->
-      setup ?commitment_period ?challenge_window ~protocol ?dal_enable
+      Rollup.Dal.setup
+        ?commitment_period
+        ?challenge_window
+        ~protocol
+        ?dal_enable
       @@ fun _parameters _cryptobox node client ->
       ( with_fresh_rollup @@ fun sc_rollup_address sc_rollup_node _filename ->
         scenario protocol sc_rollup_node sc_rollup_address node client )
@@ -280,8 +227,8 @@ let test_slot_management_logic =
     ~tags:["dal"]
     ~supports:Protocol.(From_protocol (Protocol.number Alpha))
   @@ fun protocol ->
-  setup ~dal_enable:true ~protocol
-  @@ fun parameters cryptobox node client _bootstrap ->
+  Rollup.Dal.setup ~dal_enable:true ~protocol
+  @@ fun parameters cryptobox node client ->
   let* (`OpHash oph1) =
     publish_slot
       ~source:Constant.bootstrap1
