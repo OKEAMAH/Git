@@ -54,7 +54,7 @@ let test_empty () =
     Compare.Int64.(equal (number_of_messages_during_commitment_period inbox) 0L)
     (err "An empty inbox should have no available message.")
 
-let setup_inbox_with_messages list_of_payloads f =
+let setup_inbox_with_messages ?(level = level) list_of_payloads f =
   let open Lwt_syntax in
   create_context () >>=? fun ctxt ->
   let* inbox = empty ctxt rollup level in
@@ -176,9 +176,7 @@ let setup_node_inbox_with_messages list_of_payloads f =
   in
   aux level history inbox [] None list_of_payloads
   >>=? fun (level_tree, history, inbox, inboxes) ->
-  match level_tree with
-  | None -> fail (err "setup_inbox_with_messages called with no messages")
-  | Some tree -> f ctxt tree history inbox inboxes
+  f ctxt level_tree history inbox inboxes
 
 let test_add_messages payloads =
   let nb_payloads = List.length payloads in
@@ -352,7 +350,7 @@ let test_inbox_proof_production (list_of_payloads, l, n) =
   @@ fun ctxt current_level_tree history inbox _inboxes ->
   let open Lwt_syntax in
   let* history, history_proof =
-    Node.form_history_proof ctxt history inbox (Some current_level_tree)
+    Node.form_history_proof ctxt history inbox current_level_tree
   in
   let* result = Node.produce_proof ctxt history history_proof (l, n) in
   match result with
@@ -378,7 +376,7 @@ let test_inbox_proof_verification (list_of_payloads, l, n) =
   @@ fun ctxt current_level_tree history inbox inboxes ->
   let open Lwt_syntax in
   let* history, history_proof =
-    Node.form_history_proof ctxt history inbox (Some current_level_tree)
+    Node.form_history_proof ctxt history inbox current_level_tree
   in
   let* result = Node.produce_proof ctxt history history_proof (l, n) in
   match result with
@@ -395,12 +393,11 @@ let test_inbox_proof_verification (list_of_payloads, l, n) =
 
 let test_empty_inbox_proof (level, n) =
   let open Lwt_syntax in
-  let* index = Tezos_context_memory.Context.init "foo" in
-  let ctxt = Tezos_context_memory.Context.empty index in
-  let* inbox = Node.empty ctxt rollup level in
-  let history = Node.history_at_genesis ~capacity:10000L in
+  setup_node_inbox_with_messages []
+  @@ fun ctxt current_level_tree history inbox _inboxes ->
+  assert (current_level_tree = None) ;
   let* history, history_proof =
-    Node.form_history_proof ctxt history inbox None
+    Node.form_history_proof ctxt history inbox current_level_tree
   in
   let* result =
     Node.produce_proof ctxt history history_proof (Raw_level_repr.root, n)
@@ -408,9 +405,8 @@ let test_empty_inbox_proof (level, n) =
   match result with
   | Ok (proof, input) -> (
       (* We now switch to a protocol inbox for verification. *)
-      create_context ()
-      >>=? fun ctxt ->
-      let* inbox = empty ctxt rollup level in
+      setup_inbox_with_messages ~level []
+      @@ fun _ctxt _current_level_tree inbox ->
       let snapshot = take_snapshot inbox in
       let proof = node_proof_to_protocol_proof proof in
       let* verification =
