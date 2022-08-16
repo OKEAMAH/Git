@@ -534,10 +534,10 @@ struct
     set_level tree level
 
   let add_message inbox payload level_tree =
-    let open Lwt_tzresult_syntax in
+    let open Lwt_syntax in
     let message_index = inbox.message_counter in
     let message_counter = Z.succ message_index in
-    let*! level_tree =
+    let* level_tree =
       Tree.add
         level_tree
         (key_of_message message_index)
@@ -756,21 +756,21 @@ struct
 
   let add_messages_aux ctxt history inbox level payloads level_tree =
     let open Lwt_tzresult_syntax in
-    let* () =
-      fail_when
+    let*? () =
+      error_when
         (match payloads with [] -> true | _ -> false)
         Tried_to_add_zero_messages
     in
-    let* () =
-      fail_when
+    let*? () =
+      error_when
         Raw_level_repr.(level < inbox.level)
         (Invalid_level_add_messages level)
     in
     let*! history, inbox, level_tree =
       archive_if_needed ctxt history inbox level level_tree
     in
-    let* level_tree, inbox =
-      List.fold_left_es
+    let*! level_tree, inbox =
+      List.fold_left_s
         (fun (level_tree, inbox) payload ->
           add_message inbox payload level_tree)
         (level_tree, inbox)
