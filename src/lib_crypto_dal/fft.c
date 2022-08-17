@@ -76,6 +76,7 @@ void reorg_fr_coefficients_(int n, blst_fr *coefficients)
 }
 
 // Taken from https://gitlab.com/dannywillems/ocaml-bls12-381/
+
 void fft_fr_inplace_(blst_fr *coefficients, blst_fr *domain, int log_domain_size)
 {
   // FIXME: add a check on the domain_size to avoid ariane crash
@@ -107,21 +108,18 @@ void fft_fr_inplace_(blst_fr *coefficients, blst_fr *domain, int log_domain_size
 }
 
 // TODO: get rid of transpose, read coefficients in the FFT in the correct order through a flag
-void transpose(blst_fr *matrix, int rows, int columns)
+void transpose(blst_fr *rows, blst_fr *columns, int n1, int n2)
 {
-  blst_fr tmp;
-  for (int i = 0; i < rows; i++)
+  for (int i = 0; i < n1; i++)
   {
-    for (int j = i + 1; j < columns; j++)
+    for (int j = 0; j < n2; j++)
     {
-      tmp = matrix[j * rows + i];
-      matrix[j * rows + i] = matrix[j + i * columns];
-      matrix[j + i * columns] = tmp;
+      rows[j * n1 + i] = columns[j + i * n2];
     }
   }
 }
 
-// The scratch zone must have size at least |domain1| * |domain2|
+// The scratch zone must have size at least 2 * |domain1| * |domain2|
 void prime_factor_algorithm_fft_(blst_fr *domain1, blst_fr *domain2, int length1_log, int length2, blst_fr *coefficients, blst_fr *scratch, int inverse)
 {
   int length1 = 1 << length1_log;
@@ -137,18 +135,19 @@ void prime_factor_algorithm_fft_(blst_fr *domain1, blst_fr *domain2, int length1
     dft_inplace(domain2, scratch + (i * length2), scratch_dft, length2, inverse);
   }
 
-  transpose(scratch, length2, length1);
+  blst_fr *new_scratch = scratch + length;
+  transpose(new_scratch, scratch, length1, length2);
 
   for (int i = 0; i < length2; i++)
   {
-    fft_fr_inplace_(scratch + (i * length1), domain1, length1_log);
+    fft_fr_inplace_(new_scratch + (i * length1), domain1, length1_log);
   }
 
   for (int i = 0; i < length1; i++)
   {
     for (int j = 0; j < length2; j++)
     {
-      coefficients[(length1 * j + length2 * i) % length] = scratch[j * length1 + i];
+      coefficients[(length1 * j + length2 * i) % length] = new_scratch[j * length1 + i];
     }
   }
 }

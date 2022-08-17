@@ -71,6 +71,8 @@ module Test = struct
       coefficients
       scratch_zone
 
+  let range a b = List.init (b - a) (( + ) a)
+
   let get_primitive_root n =
     let multiplicative_group_order = Z.(Scalar.order - one) in
     let n = Z.of_int n in
@@ -128,7 +130,7 @@ module Test = struct
                 (Scalar_array.get _domain i)
             in
             Printf.eprintf " %s " (Scalar.to_string eval))
-          [0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18] ;
+          (range 0 19) ;
         Printf.eprintf " -- zero : %s \n" Scalar.(to_string zero) ;
         let t' = Sys.time () in
         _dft_c ~inverse:false ~length:19 ~domain:_domain ~coefficients ;
@@ -136,25 +138,33 @@ module Test = struct
 
         _print_array coefficients ;
 
-        let t' = Sys.time () in
-        let rt = get_primitive_root (4 * 19) in
-        let domain1 = make_domain (Scalar.pow rt (Z.of_int 19)) 4 in
-        let domain2 = make_domain (Scalar.pow rt (Z.of_int 4)) 19 in
+        Printf.eprintf "\n ==================== \n" ;
+
+        let size = 2048 in
+        let rt = get_primitive_root (size * 19) in
+        let domain = make_domain rt (size * 19) in
+        let domain1 = make_domain (Scalar.pow rt (Z.of_int 19)) size in
+        let domain2 = make_domain (Scalar.pow rt (Z.of_int size)) 19 in
         let coefficients =
-          Array.init (4 * 19) (fun _ -> Scalar.random ())
+          Array.init (size * 19) (fun _ -> Scalar.(random ()))
           |> Scalar_array.of_array
         in
-        let eval =
-          Bls12_381_polynomial.Polynomial.Polynomial.evaluate
-            (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
-               (Scalar_array.to_array coefficients))
-            (Scalar.pow rt (Z.of_int 0))
-        in
-        Printf.eprintf " hey:%s " (Scalar.to_string eval) ;
-        let scratch_zone = Scalar_array.allocate (4 * 19) in
+        let scratch_zone = Scalar_array.allocate (2 * size * 19) in
 
+        List.iter
+          (fun i ->
+            let eval =
+              Bls12_381_polynomial.Polynomial.Polynomial.evaluate
+                (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
+                   (Scalar_array.to_array coefficients))
+                (Scalar_array.get domain i)
+            in
+            Printf.eprintf " %s " (Scalar.to_string eval))
+          (range 0 4) ;
+
+        let t' = Sys.time () in
         prime_factor_algorithm_fft
-          ~domain1_length_log:2
+          ~domain1_length_log:11
           ~domain2_length:19
           ~domain1
           ~domain2
@@ -165,8 +175,9 @@ module Test = struct
 
         (*_print_array coefficients ;*)
         Printf.eprintf
-          " got: %s "
-          (Scalar.to_string (Scalar_array.get coefficients 0)) ;
+          "\n %s \n"
+          (Scalar.to_string @@ Scalar_array.get coefficients 1) ;
+
         let asrt = false in
         assert asrt ;
 
