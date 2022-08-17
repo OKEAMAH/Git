@@ -1,5 +1,8 @@
 module Test = struct
   module Scalar = Bls12_381.Fr
+  module Scalar_array = Bls12_381_polynomial.Fr_carray
+
+  type scalar_array = Scalar_array.t
 
   let random_indices bound k =
     Random.self_init () ;
@@ -21,6 +24,30 @@ module Test = struct
     in
 
     aux [] k
+
+  let _print_array a =
+    let a = Scalar_array.to_array a in
+    Printf.eprintf "\n\n Array:\n" ;
+    Array.iter (fun s -> Printf.eprintf " %s ;" (Scalar.to_string s)) a ;
+    Printf.eprintf "\n"
+
+  let make_domain root d =
+    let build_array init next len =
+      let xi = ref init in
+      Array.init len (fun _ ->
+          let i = !xi in
+          xi := next !xi ;
+          i)
+    in
+    build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
+    |> Scalar_array.of_array
+
+  external dft_c :
+    scalar_array -> bool -> int -> scalar_array -> scalar_array -> unit
+    = "dft_c"
+
+  let _dft_c ~domain ~inverse ~length ~coefficients =
+    dft_c domain inverse length coefficients (Scalar_array.allocate length)
 
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
@@ -52,6 +79,33 @@ module Test = struct
         let* check =
           Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
         in
+        let coefficients = Scalar_array.allocate 19 in
+        let _domain =
+          make_domain
+            (Scalar.of_string
+               "33954097614611596975476204725091907054106918505758578373023360834096706151438")
+            19
+        in
+        _print_array coefficients ;
+        _print_array _domain ;
+        List.iter
+          (fun i ->
+            let eval =
+              Bls12_381_polynomial.Polynomial.Polynomial.evaluate
+                (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
+                   (Scalar_array.to_array coefficients))
+                (Scalar_array.get _domain i)
+            in
+            Printf.eprintf " %s " (Scalar.to_string eval))
+          [0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18] ;
+        Printf.eprintf " -- zero : %s \n" Scalar.(to_string zero) ;
+        let t' = Sys.time () in
+        _dft_c ~inverse:false ~length:19 ~domain:_domain ~coefficients ;
+        Printf.eprintf "\n dftC 19 = %f \n" (Sys.time () -. t') ;
+
+        _print_array coefficients ;
+        let asrt = false in
+        assert asrt ;
 
         assert check ;
         let enc_shards = Dal_cryptobox.shards_from_polynomial t p in
