@@ -12,8 +12,11 @@
   tezos-crypto
   tezos-bls12-381-polynomial
   lwt.unix)
+ (library_flags (:standard -linkall))
  (flags
   (:standard)
   -open Tezos_stdlib
   -open Tezos_error_monad
-  -open Data_encoding))
+  -open Data_encoding)
+ (foreign_stubs (language c) (names fft))
+ (c_library_flags (-lpthread)))
