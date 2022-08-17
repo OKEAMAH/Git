@@ -1215,9 +1215,29 @@ struct
               Sc_rollup_PVM_sem.{inbox_level = l; message_counter = n; payload}
           )
     | None ->
+        (* We check the equality for history proof to handle the
+           following scenario:
+
+              - Assume the number of inbox messages at level [l] for
+           this rollup is [m].
+
+              - Assume a committer posts a commitment where it applies
+           correctly the [m] messages and applied one more message.
+
+               Consequently, the state of the PVM will be
+           [First_after(l,m)]. To be able to refute this, we want to
+           give a prove of what the next message should be. Note that
+           in this case, we have [n=m+1] where [n] is the parameter of
+           this function. *)
         if equal_history_proof inbox level then
+          (* This case can happen only if the level is also the last
+             level of the inbox. *)
           return (Single_level {level; inc; message_proof}, None)
         else
+          (* Otherwise, we look for the inbox at the next level
+             containing a non-empty inbox. This level must exist
+             otherwise the equality check above would have
+             succeeded. *)
           let target_index = Skip_list.index level + 1 in
           let* inc =
             option_to_result
@@ -1237,6 +1257,11 @@ struct
               "could not find upper_level_tree in the inbox_context"
               (P.lookup_tree ctxt (Skip_list.content upper))
           in
+          (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3627
+
+             Following invariants of [payload_and_level] function,
+             this inbox may be empty. However, it should not be
+             possible. *)
           let* upper_message_proof, (payload_opt, upper_level_opt) =
             option_to_result
               "failed to produce message proof for upper_level_tree"
