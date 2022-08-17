@@ -259,6 +259,164 @@ let test_memory_footprint_concat_string () =
   let parameter = "7" in
   test_memory_footprint script storage parameter ()
 
+let test_memory_footprint_of_nested_list () =
+  let open Environment.Error_monad.Lwt_result_syntax in
+  let* ctxt = test_context () in
+  let script =
+    {|
+    { parameter int; # K
+  storage unit;
+  code
+    {
+      UNPAIR;
+      DUP;
+      DUP;
+      DUP;
+      DUP;
+      DUP;
+      DUP;
+      DUP;
+
+      NIL bytes;
+      SWAP;
+      DUP;
+      GT;
+      LOOP {
+                SWAP;
+                PUSH bytes 0x00000000000000000000;
+                CONS;
+                PUSH bytes 0x00000000000000000000;
+                CONS;
+                PUSH bytes 0x00000000000000000000;
+                CONS;
+                SWAP;
+                PUSH int -1; ADD; DUP; GT
+           };
+      DROP;
+      # A list of len K at the top.
+      SWAP;
+      NIL (list bytes);
+      SWAP;
+      DUP;
+      GT;
+      LOOP {
+                 SWAP;
+                 DUP 3;
+                 CONS;
+                 SWAP;
+                 PUSH int -1; ADD; DUP; GT
+           };
+      DROP;
+      DIG 1; DROP;
+      # A list of len K^2 at the top.
+
+      SWAP;
+      NIL (list (list bytes));
+      SWAP;
+      DUP;
+      GT;
+      LOOP {
+                 SWAP;
+                 DUP 3;
+                 CONS;
+                 SWAP;
+                 PUSH int -1; ADD; DUP; GT
+           };
+      DROP;
+      DIG 1; DROP;
+      # A list of len K^3
+
+      SWAP;
+      NIL (list (list (list bytes)));
+      SWAP;
+      DUP;
+      GT;
+      LOOP {
+                 SWAP;
+                 DUP 3;
+                 CONS;
+                 SWAP;
+                 PUSH int -1; ADD; DUP; GT
+           };
+      DROP;
+      DIG 1; DROP;
+
+      SWAP;
+      NIL (list (list (list (list bytes))));
+      SWAP;
+      DUP;
+      GT;
+      LOOP {
+                 SWAP;
+                 DUP 3;
+                 CONS;
+                 SWAP;
+                 PUSH int -1; ADD; DUP; GT
+           };
+      DROP;
+      DIG 1; DROP;
+
+      SWAP;
+      NIL (list (list (list (list (list bytes)))));
+      SWAP;
+      DUP;
+      GT;
+      LOOP {
+                 SWAP;
+                 DUP 3;
+                 CONS;
+                 SWAP;
+                 PUSH int -1; ADD; DUP; GT
+           };
+      DROP;
+      DIG 1; DROP;
+
+      SWAP;
+      NIL (list (list (list (list (list (list bytes))))));
+      SWAP;
+      DUP;
+      GT;
+      LOOP {
+                 SWAP;
+                 DUP 3;
+                 CONS;
+                 SWAP;
+                 PUSH int -1; ADD; DUP; GT
+           };
+      DROP;
+      DIG 1; DROP;
+
+      SWAP;
+      NIL (list (list (list (list (list (list (list bytes)))))));
+      SWAP;
+      DUP;
+      GT;
+      LOOP {
+                 SWAP;
+                 DUP 3;
+                 CONS;
+                 SWAP;
+                 PUSH int -1; ADD; DUP; GT
+           };
+      DROP;
+      DIG 1; DROP;
+
+      EMIT;
+      NIL operation; SWAP; CONS;
+      PAIR };
+ } |}
+  in
+  let storage = "Unit" in
+  let parameter = "6" in
+  let*! _res = Contract_helpers.run_script ctxt script ~storage ~parameter () in
+  match _res with
+  | Ok (_res, _ctxt) ->
+      let footprint = Obj.(reachable_words (repr _res.operations) * 8) in
+      Alcotest.failf
+        "The memory footprint of this Michelson script is too high (%d)."
+        footprint
+  | Error _ -> return_unit
+
 (** Test the encoding/decoding of script_interpreter.ml specific errors *)
 let test_json_roundtrip name testable enc v =
   let v' =
@@ -383,6 +541,10 @@ let tests =
       "check memory footprint (concat_string)"
       `Slow
       test_memory_footprint_concat_string;
+    Tztest.tztest
+      "check memory footprint (nested lists)"
+      `Slow
+      test_memory_footprint_of_nested_list;
     Tztest.tztest
       "test multiplication no illegitimate overflow"
       `Quick
