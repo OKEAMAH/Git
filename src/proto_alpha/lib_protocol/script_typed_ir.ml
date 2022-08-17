@@ -950,6 +950,15 @@ and Ty : sig
   val chest_key_t : (Script_timelock.chest_key * no) t
 
   val chest_t : (Script_timelock.chest * no) t
+
+  type 'a traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'a}
+
+  val traverse : ('a * 'ac) t -> 'accu -> 'accu traverse -> 'accu
+
+  type 'a value_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'b -> 'a}
+
+  val value_traverse :
+    ('a * 'ac) t -> 'a -> 'accu -> 'accu value_traverse -> 'accu
 end = struct
   include Michelson_type_constructor.HashConsing (Ty_value)
 
@@ -1400,6 +1409,135 @@ end = struct
   let chest_key_t = constant Chest_key_t
 
   let chest_t = constant Chest_t
+
+  type 'a traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'a}
+
+  let traverse =
+    let rec aux :
+        type ret a ac accu.
+        accu traverse -> accu -> (a * ac) t -> (accu -> ret) -> ret =
+     fun f accu ty continue ->
+      let accu = f.apply accu ty in
+      match ty.value with
+      | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
+      | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
+      | Bool_t | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
+      | Sapling_state_t _ | Operation_t | Chain_id_t | Never_t | Bls12_381_g1_t
+      | Bls12_381_g2_t | Bls12_381_fr_t ->
+          (continue [@ocaml.tailcall]) accu
+      | Ticket_t (cty, _) -> aux f accu cty continue
+      | Chest_key_t | Chest_t -> (continue [@ocaml.tailcall]) accu
+      | Pair_t (ty1, ty2, _, _) ->
+          (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
+      | Union_t (ty1, ty2, _, _) ->
+          (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
+      | Lambda_t (ty1, ty2, _) ->
+          (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
+      | Option_t (ty1, _, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
+      | List_t (ty1, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
+      | Set_t (cty, _) -> (aux [@ocaml.tailcall]) f accu cty continue
+      | Map_t (cty, ty1, _) ->
+          (aux [@ocaml.tailcall]) f accu cty (fun accu ->
+              (next [@ocaml.tailcall]) f accu ty1 continue)
+      | Big_map_t (cty, ty1, _) ->
+          (aux [@ocaml.tailcall]) f accu cty (fun accu ->
+              (next [@ocaml.tailcall]) f accu ty1 continue)
+      | Contract_t (ty1, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
+    and next2 :
+        type a ac b bc ret accu.
+        accu traverse ->
+        accu ->
+        (a * ac) t ->
+        (b * bc) t ->
+        (accu -> ret) ->
+        ret =
+     fun f accu ty1 ty2 continue ->
+      (aux [@ocaml.tailcall]) f accu ty1 (fun accu ->
+          (aux [@ocaml.tailcall]) f accu ty2 (fun accu ->
+              (continue [@ocaml.tailcall]) accu))
+    and next :
+        type a ac ret accu.
+        accu traverse -> accu -> (a * ac) t -> (accu -> ret) -> ret =
+     fun f accu ty1 continue ->
+      (aux [@ocaml.tailcall]) f accu ty1 (fun accu ->
+          (continue [@ocaml.tailcall]) accu)
+    in
+    fun ty init f -> aux f init ty (fun accu -> accu)
+
+  type 'a value_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'b -> 'a}
+
+  let value_traverse (type a ac) (ty : (a * ac) t) (x : a) init f =
+    let rec aux :
+        type ret a ac. 'accu -> (a * ac) t -> a -> ('accu -> ret) -> ret =
+     fun accu ty x continue ->
+      let accu = f.apply accu ty x in
+      let next2 ty1 ty2 x1 x2 =
+        (aux [@ocaml.tailcall]) accu ty1 x1 (fun accu ->
+            (aux [@ocaml.tailcall]) accu ty2 x2 (fun accu ->
+                (continue [@ocaml.tailcall]) accu))
+      in
+      let next ty1 x1 =
+        (aux [@ocaml.tailcall]) accu ty1 x1 (fun accu ->
+            (continue [@ocaml.tailcall]) accu)
+      in
+      let return () = (continue [@ocaml.tailcall]) accu in
+      let rec on_list ty' accu = function
+        | [] -> (continue [@ocaml.tailcall]) accu
+        | x :: xs ->
+            (aux [@ocaml.tailcall]) accu ty' x (fun accu ->
+                (on_list [@ocaml.tailcall]) ty' accu xs)
+      in
+      match ty.value with
+      | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
+      | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
+      | Bool_t | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
+      | Sapling_state_t _ | Operation_t | Chain_id_t | Never_t | Bls12_381_g1_t
+      | Bls12_381_g2_t | Bls12_381_fr_t | Chest_key_t | Chest_t
+      | Lambda_t (_, _, _) ->
+          (return [@ocaml.tailcall]) ()
+      | Pair_t (ty1, ty2, _, _) ->
+          (next2 [@ocaml.tailcall]) ty1 ty2 (fst x) (snd x)
+      | Union_t (ty1, ty2, _, _) -> (
+          match x with
+          | L l -> (next [@ocaml.tailcall]) ty1 l
+          | R r -> (next [@ocaml.tailcall]) ty2 r)
+      | Option_t (ty, _, _) -> (
+          match x with
+          | None -> return ()
+          | Some v -> (next [@ocaml.tailcall]) ty v)
+      | Ticket_t (cty, _) ->
+          (aux [@ocaml.tailcall]) accu cty x.contents continue
+      | List_t (ty', _) -> on_list ty' accu x.elements
+      | Map_t (kty, ty', _) ->
+          let (Map_tag (module M)) = x in
+          let bindings = M.OPS.fold (fun k v bs -> (k, v) :: bs) M.boxed [] in
+          on_bindings accu kty ty' continue bindings
+      | Set_t (ty', _) ->
+          let (Set_tag (module M)) = x in
+          let elements = M.OPS.fold (fun x s -> x :: s) M.boxed [] in
+          on_list ty' accu elements
+      | Big_map_t (_, _, _) ->
+          (* For big maps, there is no obvious recursion scheme so we
+             delegate this case to the client. *)
+          (return [@ocaml.tailcall]) ()
+      | Contract_t (_, _) -> (return [@ocaml.tailcall]) ()
+    and on_bindings :
+        type ret k v vc.
+        'accu ->
+        k comparable ->
+        (v * vc) t ->
+        ('accu -> ret) ->
+        (k * v) list ->
+        ret =
+     fun accu kty ty' continue xs ->
+      match xs with
+      | [] -> (continue [@ocaml.tailcall]) accu
+      | (k, v) :: xs ->
+          (aux [@ocaml.tailcall]) accu kty k (fun accu ->
+              (aux [@ocaml.tailcall]) accu ty' v (fun accu ->
+                  (on_bindings [@ocaml.tailcall]) accu kty ty' continue xs))
+    in
+    aux init ty x (fun accu -> accu)
 end
 
 (* ---- Instructions --------------------------------------------------------*)
@@ -2586,60 +2724,6 @@ let kinstr_traverse i init f =
   in
   aux init i (fun accu -> accu)
 
-type 'a ty_traverse = {apply : 't 'tc. 'a -> ('t, 'tc) ty -> 'a}
-
-let ty_traverse =
-  let rec aux :
-      type ret t tc accu.
-      accu ty_traverse -> accu -> (t, tc) ty -> (accu -> ret) -> ret =
-   fun f accu ty continue ->
-    let accu = f.apply accu ty in
-    match ty.value with
-    | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
-    | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
-    | Bool_t | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
-    | Sapling_state_t _ | Operation_t | Chain_id_t | Never_t | Bls12_381_g1_t
-    | Bls12_381_g2_t | Bls12_381_fr_t ->
-        (continue [@ocaml.tailcall]) accu
-    | Ticket_t (cty, _) -> aux f accu cty continue
-    | Chest_key_t | Chest_t -> (continue [@ocaml.tailcall]) accu
-    | Pair_t (ty1, ty2, _, _) ->
-        (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
-    | Union_t (ty1, ty2, _, _) ->
-        (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
-    | Lambda_t (ty1, ty2, _) ->
-        (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
-    | Option_t (ty1, _, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
-    | List_t (ty1, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
-    | Set_t (cty, _) -> (aux [@ocaml.tailcall]) f accu cty continue
-    | Map_t (cty, ty1, _) ->
-        (aux [@ocaml.tailcall]) f accu cty (fun accu ->
-            (next [@ocaml.tailcall]) f accu ty1 continue)
-    | Big_map_t (cty, ty1, _) ->
-        (aux [@ocaml.tailcall]) f accu cty (fun accu ->
-            (next [@ocaml.tailcall]) f accu ty1 continue)
-    | Contract_t (ty1, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
-  and next2 :
-      type a ac b bc ret accu.
-      accu ty_traverse ->
-      accu ->
-      (a, ac) ty ->
-      (b, bc) ty ->
-      (accu -> ret) ->
-      ret =
-   fun f accu ty1 ty2 continue ->
-    (aux [@ocaml.tailcall]) f accu ty1 (fun accu ->
-        (aux [@ocaml.tailcall]) f accu ty2 (fun accu ->
-            (continue [@ocaml.tailcall]) accu))
-  and next :
-      type a ac ret accu.
-      accu ty_traverse -> accu -> (a, ac) ty -> (accu -> ret) -> ret =
-   fun f accu ty1 continue ->
-    (aux [@ocaml.tailcall]) f accu ty1 (fun accu ->
-        (continue [@ocaml.tailcall]) accu)
-  in
-  fun ty init f -> aux f init ty (fun accu -> accu)
-
 type 'accu stack_ty_traverse = {
   apply : 'ty 's. 'accu -> ('ty, 's) stack_ty -> 'accu;
 }
@@ -2652,80 +2736,6 @@ let stack_ty_traverse (type a t) (sty : (a, t) stack_ty) init f =
     | Item_t (_, sty') -> aux (f.apply accu sty) sty'
   in
   aux init sty
-
-type 'a value_traverse = {apply : 't 'tc. 'a -> ('t, 'tc) ty -> 't -> 'a}
-
-let value_traverse (type t tc) (ty : (t, tc) ty) (x : t) init f =
-  let rec aux : type ret t tc. 'accu -> (t, tc) ty -> t -> ('accu -> ret) -> ret
-      =
-   fun accu ty x continue ->
-    let accu = f.apply accu ty x in
-    let next2 ty1 ty2 x1 x2 =
-      (aux [@ocaml.tailcall]) accu ty1 x1 (fun accu ->
-          (aux [@ocaml.tailcall]) accu ty2 x2 (fun accu ->
-              (continue [@ocaml.tailcall]) accu))
-    in
-    let next ty1 x1 =
-      (aux [@ocaml.tailcall]) accu ty1 x1 (fun accu ->
-          (continue [@ocaml.tailcall]) accu)
-    in
-    let return () = (continue [@ocaml.tailcall]) accu in
-    let rec on_list ty' accu = function
-      | [] -> (continue [@ocaml.tailcall]) accu
-      | x :: xs ->
-          (aux [@ocaml.tailcall]) accu ty' x (fun accu ->
-              (on_list [@ocaml.tailcall]) ty' accu xs)
-    in
-    match ty.value with
-    | Unit_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t | Mutez_t
-    | Key_hash_t | Key_t | Timestamp_t | Address_t | Tx_rollup_l2_address_t
-    | Bool_t | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
-    | Sapling_state_t _ | Operation_t | Chain_id_t | Never_t | Bls12_381_g1_t
-    | Bls12_381_g2_t | Bls12_381_fr_t | Chest_key_t | Chest_t
-    | Lambda_t (_, _, _) ->
-        (return [@ocaml.tailcall]) ()
-    | Pair_t (ty1, ty2, _, _) ->
-        (next2 [@ocaml.tailcall]) ty1 ty2 (fst x) (snd x)
-    | Union_t (ty1, ty2, _, _) -> (
-        match x with
-        | L l -> (next [@ocaml.tailcall]) ty1 l
-        | R r -> (next [@ocaml.tailcall]) ty2 r)
-    | Option_t (ty, _, _) -> (
-        match x with
-        | None -> return ()
-        | Some v -> (next [@ocaml.tailcall]) ty v)
-    | Ticket_t (cty, _) -> (aux [@ocaml.tailcall]) accu cty x.contents continue
-    | List_t (ty', _) -> on_list ty' accu x.elements
-    | Map_t (kty, ty', _) ->
-        let (Map_tag (module M)) = x in
-        let bindings = M.OPS.fold (fun k v bs -> (k, v) :: bs) M.boxed [] in
-        on_bindings accu kty ty' continue bindings
-    | Set_t (ty', _) ->
-        let (Set_tag (module M)) = x in
-        let elements = M.OPS.fold (fun x s -> x :: s) M.boxed [] in
-        on_list ty' accu elements
-    | Big_map_t (_, _, _) ->
-        (* For big maps, there is no obvious recursion scheme so we
-           delegate this case to the client. *)
-        (return [@ocaml.tailcall]) ()
-    | Contract_t (_, _) -> (return [@ocaml.tailcall]) ()
-  and on_bindings :
-      type ret k v vc.
-      'accu ->
-      k comparable_ty ->
-      (v, vc) ty ->
-      ('accu -> ret) ->
-      (k * v) list ->
-      ret =
-   fun accu kty ty' continue xs ->
-    match xs with
-    | [] -> (continue [@ocaml.tailcall]) accu
-    | (k, v) :: xs ->
-        (aux [@ocaml.tailcall]) accu kty k (fun accu ->
-            (aux [@ocaml.tailcall]) accu ty' v (fun accu ->
-                (on_bindings [@ocaml.tailcall]) accu kty ty' continue xs))
-  in
-  aux init ty x (fun accu -> accu)
 
 let stack_top_ty : type a b s. (a, b * s) stack_ty -> a ty_ex_c = function
   | Item_t (ty, _) -> Ty_ex_c ty
