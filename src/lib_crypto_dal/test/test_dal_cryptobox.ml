@@ -61,6 +61,37 @@ module Test = struct
   let _dft_c ~domain ~inverse ~length ~coefficients =
     dft_c domain inverse length coefficients (Scalar_array.allocate length)
 
+  external prime_factor_algorithm_fft_ext :
+    bool ->
+    scalar_array ->
+    scalar_array ->
+    int ->
+    int ->
+    scalar_array ->
+    scalar_array ->
+    unit
+    = "prime_factor_algorithm_fft_bytecode" "prime_factor_algorithm_fft_native"
+
+  let prime_factor_algorithm_fft ~inverse ~domain1 ~domain2 ~domain1_length_log
+      ~domain2_length ~coefficients ~scratch_zone =
+    prime_factor_algorithm_fft_ext
+      inverse
+      domain1
+      domain2
+      domain1_length_log
+      domain2_length
+      coefficients
+      scratch_zone
+
+  let range a b = List.init (b - a) (( + ) a)
+
+  let get_primitive_root n =
+    let multiplicative_group_order = Z.(Scalar.order - one) in
+    let n = Z.of_int n in
+    assert (Z.divisible multiplicative_group_order n) ;
+    let exponent = Z.divexact multiplicative_group_order n in
+    Scalar.pow (Scalar.of_int 7) exponent
+
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
     let open Tezos_error_monad.Error_monad.Result_syntax in
@@ -93,13 +124,6 @@ module Test = struct
         in
         Printf.eprintf "\n make = %f \n" (Sys.time () -. t') ;
 
-        let get_primitive_root n =
-          let multiplicative_group_order = Z.(Scalar.order - one) in
-          let n = Z.of_int n in
-          assert (Z.divisible multiplicative_group_order n) ;
-          let exponent = Z.divexact multiplicative_group_order n in
-          Scalar.pow (Scalar.of_int 7) exponent
-        in
         let dft ~inverse ~domain ~coefficients =
           let n = Array.length domain in
           let res = Array.make n Scalar.(copy zero) in
@@ -175,6 +199,7 @@ module Test = struct
         in
         Printf.eprintf "\n verify_segment = %f \n" (Sys.time () -. t') ;
         let coefficients = Scalar_array.allocate 19 in
+
         let _domain =
           make_domain
             (Scalar.of_string
@@ -192,13 +217,54 @@ module Test = struct
                 (Scalar_array.get _domain i)
             in
             Printf.eprintf " %s " (Scalar.to_string eval))
-          [0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18] ;
+          (range 0 19) ;
         Printf.eprintf " -- zero : %s \n" Scalar.(to_string zero) ;
         let t' = Sys.time () in
         _dft_c ~inverse:false ~length:19 ~domain:_domain ~coefficients ;
         Printf.eprintf "\n dftC 19 = %f \n" (Sys.time () -. t') ;
 
         _print_array coefficients ;
+
+        Printf.eprintf "\n ==================== \n" ;
+
+        let size = 2048 in
+        let rt = get_primitive_root (size * 19) in
+        let domain = make_domain rt (size * 19) in
+        let domain1 = make_domain (Scalar.pow rt (Z.of_int 19)) size in
+        let domain2 = make_domain (Scalar.pow rt (Z.of_int size)) 19 in
+        let coefficients =
+          Array.init (size * 19) (fun _ -> Scalar.(random ()))
+          |> Scalar_array.of_array
+        in
+        let scratch_zone = Scalar_array.allocate (2 * size * 19) in
+
+        List.iter
+          (fun i ->
+            let eval =
+              Bls12_381_polynomial.Polynomial.Polynomial.evaluate
+                (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
+                   (Scalar_array.to_array coefficients))
+                (Scalar_array.get domain i)
+            in
+            Printf.eprintf " %s " (Scalar.to_string eval))
+          (range 0 4) ;
+
+        let t' = Sys.time () in
+        prime_factor_algorithm_fft
+          ~domain1_length_log:11
+          ~domain2_length:19
+          ~domain1
+          ~domain2
+          ~coefficients
+          ~inverse:false
+          ~scratch_zone ;
+        Printf.eprintf "\n fftC 2^15*16 = %f \n" (Sys.time () -. t') ;
+
+        (*_print_array coefficients ;*)
+        Printf.eprintf
+          "\n %s \n"
+          (Scalar.to_string @@ Scalar_array.get coefficients 1) ;
+
         let asrt = false in
         assert asrt ;
 
