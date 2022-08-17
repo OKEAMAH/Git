@@ -178,9 +178,6 @@ module Test = struct
           "\n %s \n"
           (Scalar.to_string @@ Scalar_array.get coefficients 1) ;
 
-        let asrt = false in
-        assert asrt ;
-
         assert check ;
         let enc_shards = Dal_cryptobox.shards_from_polynomial t p in
         let c_indices =
