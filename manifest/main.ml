@@ -804,6 +804,9 @@ let octez_crypto_dal =
         bls12_381_polynomial;
         lwt_unix;
       ]
+    ~linkall:true
+    ~c_library_flags:["-lpthread"]
+    ~foreign_stubs:{language = C; flags = []; names = ["fft"]}
 
 let _octez_crypto_dal_tests =
   tests
