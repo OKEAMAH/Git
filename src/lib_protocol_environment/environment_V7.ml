@@ -1499,7 +1499,7 @@ struct
         | Element : {
             input_id : 'i B.input_id;
             witness : ('i, 'o) B.witness;
-            weak_output : (unit, 'o B.output) Ephemeron.K1.t;
+            weak_output : 'o B.output Weak.t;
           }
             -> element
 
@@ -1548,12 +1548,11 @@ struct
         in
         let add () =
           let output = B.mk input witness in
-          let weak_output = Ephemeron.K1.make () output in
+          let weak_output = Weak.create 1 in
+          Weak.set weak_output 0 (Some output) ;
           let elt = Element {input_id; witness; weak_output} in
-          let finalise_weak_output : (unit, o B.output) Ephemeron.K1.t -> unit =
-           fun _weak_output -> remove ()
-          in
-          Gc.finalise finalise_weak_output weak_output ;
+          let finalise_output : o B.output -> unit = fun _output -> remove () in
+          Gc.finalise finalise_output output ;
           table.data.(idx) <- Cons (elt, table.data.(idx)) ;
           table.size <- table.size + 1 ;
           if table.size > Array.length table.data lsl 1 then resize () ;
@@ -1567,8 +1566,7 @@ struct
               match B.eq_id input_id input_id2 with
               | Some Refl -> (
                   let Refl = B.witness_is_a_function witness witness2 in
-                  match Ephemeron.K1.query weak_output () with
-                  (* Have to make sure the () in argument is always the same physically. *)
+                  match Weak.get weak_output 0 with
                   | Some output -> output
                   | None ->
                       remove () ;
