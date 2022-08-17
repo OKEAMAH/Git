@@ -429,13 +429,7 @@ type 'arg entrypoints = {
   original_type_expr : Script.node;
 }
 
-type ('arg, 'ret) lambda = Something
-
-type ('k, 'v) big_map = Something
-
-type 'arg typed_contract = Something
-
-type operation = Something
+type (_, _, _, _) kde = Kde
 
 module rec Ty_value : sig
   type _ t =
@@ -499,6 +493,106 @@ module rec Ty_value : sig
     | Ticket_t : ('a * yes) Ty.t * 'a ticket ty_metadata -> ('a ticket * no) t
     | Chest_key_t : (Script_timelock.chest_key * no) t
     | Chest_t : (Script_timelock.chest * no) t
+
+  and ('arg, 'ret) lambda =
+    | Lam :
+        ('arg, end_of_stack, 'ret, end_of_stack) kde * Script.node
+        -> ('arg, 'ret) lambda
+
+  and 'arg typed_contract =
+    | Typed_implicit : public_key_hash -> unit typed_contract
+    | Typed_originated : {
+        arg_ty : ('arg * _) Ty.t;
+        contract_hash : Contract_hash.t;
+        entrypoint : Entrypoint.t;
+      }
+        -> 'arg typed_contract
+    | Typed_tx_rollup : {
+        arg_ty : (('a ticket, tx_rollup_l2_address) pair * _) Ty.t;
+        tx_rollup : Tx_rollup.t;
+      }
+        -> ('a ticket, tx_rollup_l2_address) pair typed_contract
+    | Typed_sc_rollup : {
+        arg_ty : ('arg * _) Ty.t;
+        sc_rollup : Sc_rollup.t;
+        entrypoint : Entrypoint.t;
+      }
+        -> 'arg typed_contract
+
+  and 'kind internal_operation_contents =
+    | Transaction_to_implicit : {
+        destination : Signature.Public_key_hash.t;
+        amount : Tez.tez;
+      }
+        -> Kind.transaction internal_operation_contents
+    | Transaction_to_smart_contract : {
+        destination : Contract_hash.t;
+        amount : Tez.tez;
+        entrypoint : Entrypoint.t;
+        location : Script.location;
+        parameters_ty : ('a * _) Ty.t;
+        parameters : 'a;
+        unparsed_parameters : Script.expr;
+      }
+        -> Kind.transaction internal_operation_contents
+    | Transaction_to_tx_rollup : {
+        destination : Tx_rollup.t;
+        parameters_ty : (('a ticket, tx_rollup_l2_address) pair * _) Ty.t;
+        parameters : ('a ticket, tx_rollup_l2_address) pair;
+        unparsed_parameters : Script.expr;
+      }
+        -> Kind.transaction internal_operation_contents
+    | Transaction_to_sc_rollup : {
+        destination : Sc_rollup.t;
+        entrypoint : Entrypoint.t;
+        parameters_ty : ('a * _) Ty.t;
+        parameters : 'a;
+        unparsed_parameters : Script.expr;
+      }
+        -> Kind.transaction internal_operation_contents
+    | Event : {
+        ty : Script.expr;
+        tag : Entrypoint.t;
+        unparsed_data : Script.expr;
+      }
+        -> Kind.event internal_operation_contents
+    | Origination : {
+        delegate : Signature.Public_key_hash.t option;
+        code : Script.expr;
+        unparsed_storage : Script.expr;
+        credit : Tez.tez;
+        preorigination : Contract_hash.t;
+        storage_type : ('storage * _) Ty.t;
+        storage : 'storage;
+      }
+        -> Kind.origination internal_operation_contents
+    | Delegation :
+        Signature.Public_key_hash.t option
+        -> Kind.delegation internal_operation_contents
+
+  and 'kind internal_operation = {
+    source : Contract.t;
+    operation : 'kind internal_operation_contents;
+    nonce : int;
+  }
+
+  and packed_internal_operation =
+    | Internal_operation : 'kind internal_operation -> packed_internal_operation
+  [@@ocaml.unboxed]
+
+  and operation = {
+    piop : packed_internal_operation;
+    lazy_storage_diff : Lazy_storage.diffs option;
+  }
+
+  and ('key, 'value) big_map =
+    | Big_map : {
+        id : Alpha_context.Big_map.Id.t option;
+        diff : ('key, 'value) big_map_overlay;
+        key_type : 'key Ty.comparable_t;
+        value_type : ('value * _) Ty.t;
+      }
+        -> ('key, 'value) big_map
 
   val is_comparable : ('v * 'c) t -> 'c dbool
 end = struct
@@ -564,6 +658,106 @@ end = struct
     | Chest_key_t : (Script_timelock.chest_key * no) t
     | Chest_t : (Script_timelock.chest * no) t
 
+  and ('arg, 'ret) lambda =
+    | Lam :
+        ('arg, end_of_stack, 'ret, end_of_stack) kde * Script.node
+        -> ('arg, 'ret) lambda
+
+  and 'arg typed_contract =
+    | Typed_implicit : public_key_hash -> unit typed_contract
+    | Typed_originated : {
+        arg_ty : ('arg * _) Ty.t;
+        contract_hash : Contract_hash.t;
+        entrypoint : Entrypoint.t;
+      }
+        -> 'arg typed_contract
+    | Typed_tx_rollup : {
+        arg_ty : (('a ticket, tx_rollup_l2_address) pair * _) Ty.t;
+        tx_rollup : Tx_rollup.t;
+      }
+        -> ('a ticket, tx_rollup_l2_address) pair typed_contract
+    | Typed_sc_rollup : {
+        arg_ty : ('arg * _) Ty.t;
+        sc_rollup : Sc_rollup.t;
+        entrypoint : Entrypoint.t;
+      }
+        -> 'arg typed_contract
+
+  and 'kind internal_operation_contents =
+    | Transaction_to_implicit : {
+        destination : Signature.Public_key_hash.t;
+        amount : Tez.tez;
+      }
+        -> Kind.transaction internal_operation_contents
+    | Transaction_to_smart_contract : {
+        destination : Contract_hash.t;
+        amount : Tez.tez;
+        entrypoint : Entrypoint.t;
+        location : Script.location;
+        parameters_ty : ('a * _) Ty.t;
+        parameters : 'a;
+        unparsed_parameters : Script.expr;
+      }
+        -> Kind.transaction internal_operation_contents
+    | Transaction_to_tx_rollup : {
+        destination : Tx_rollup.t;
+        parameters_ty : (('a ticket, tx_rollup_l2_address) pair * _) Ty.t;
+        parameters : ('a ticket, tx_rollup_l2_address) pair;
+        unparsed_parameters : Script.expr;
+      }
+        -> Kind.transaction internal_operation_contents
+    | Transaction_to_sc_rollup : {
+        destination : Sc_rollup.t;
+        entrypoint : Entrypoint.t;
+        parameters_ty : ('a * _) Ty.t;
+        parameters : 'a;
+        unparsed_parameters : Script.expr;
+      }
+        -> Kind.transaction internal_operation_contents
+    | Event : {
+        ty : Script.expr;
+        tag : Entrypoint.t;
+        unparsed_data : Script.expr;
+      }
+        -> Kind.event internal_operation_contents
+    | Origination : {
+        delegate : Signature.Public_key_hash.t option;
+        code : Script.expr;
+        unparsed_storage : Script.expr;
+        credit : Tez.tez;
+        preorigination : Contract_hash.t;
+        storage_type : ('storage * _) Ty.t;
+        storage : 'storage;
+      }
+        -> Kind.origination internal_operation_contents
+    | Delegation :
+        Signature.Public_key_hash.t option
+        -> Kind.delegation internal_operation_contents
+
+  and 'kind internal_operation = {
+    source : Contract.t;
+    operation : 'kind internal_operation_contents;
+    nonce : int;
+  }
+
+  and packed_internal_operation =
+    | Internal_operation : 'kind internal_operation -> packed_internal_operation
+  [@@ocaml.unboxed]
+
+  and operation = {
+    piop : packed_internal_operation;
+    lazy_storage_diff : Lazy_storage.diffs option;
+  }
+
+  and ('key, 'value) big_map =
+    | Big_map : {
+        id : Alpha_context.Big_map.Id.t option;
+        diff : ('key, 'value) big_map_overlay;
+        key_type : 'key Ty.comparable_t;
+        value_type : ('value * _) Ty.t;
+      }
+        -> ('key, 'value) big_map
+
   let is_comparable : type v c. (v * c) t -> c dbool = function
     | Unit_t -> Yes
     | Int_t -> Yes
@@ -603,6 +797,8 @@ end
 
 and Ty : sig
   type 'a t = 'a Michelson_type_constructor.HashConsing(Ty_value).t
+
+  type 'a comparable_t = ('a * yes) t
 
   type _ ty_ex_c = Ty_ex_c : ('a * _) t -> 'a ty_ex_c [@@unboxed]
 
@@ -680,7 +876,7 @@ and Ty : sig
     Script.location ->
     ('arg * _) t ->
     ('ret * _) t ->
-    (('arg, 'ret) lambda * no) t tzresult
+    (('arg, 'ret) Ty_value.lambda * no) t tzresult
 
   val option_t : Script.location -> ('v * 'c) t -> ('v option * 'c) t tzresult
 
@@ -705,9 +901,9 @@ and Ty : sig
 
   val list_t : Script.location -> ('v * _) t -> ('v boxed_list * no) t tzresult
 
-  val operation_t : (operation * no) t
+  val operation_t : (Ty_value.operation * no) t
 
-  val list_operation_t : (operation boxed_list * no) t
+  val list_operation_t : (Ty_value.operation boxed_list * no) t
 
   val set_t : Script.location -> ('v * yes) t -> ('v set * no) t tzresult
 
@@ -721,12 +917,14 @@ and Ty : sig
     Script.location ->
     ('k * yes) t ->
     ('v * _) t ->
-    (('k, 'v) big_map * no) t tzresult
+    (('k, 'v) Ty_value.big_map * no) t tzresult
 
   val contract_t :
-    Script.location -> ('arg * _) t -> ('arg typed_contract * no) t tzresult
+    Script.location ->
+    ('arg * _) t ->
+    ('arg Ty_value.typed_contract * no) t tzresult
 
-  val contract_unit_t : (unit typed_contract * no) t
+  val contract_unit_t : (unit Ty_value.typed_contract * no) t
 
   val sapling_transaction_t :
     memo_size:Sapling.Memo_size.t -> (Sapling.transaction * no) t
@@ -754,6 +952,8 @@ and Ty : sig
   val chest_t : (Script_timelock.chest * no) t
 end = struct
   include Michelson_type_constructor.HashConsing (Ty_value)
+
+  type 'a comparable_t = ('a * yes) t
 
   type _ ty_ex_c = Ty_ex_c : ('a * _) t -> 'a ty_ex_c [@@unboxed]
 
@@ -893,8 +1093,8 @@ end = struct
   module Lambda_Input = struct
     type (_, _, _) witness =
       | W :
-          ('a, 'b) lambda ty_metadata
-          -> ('a * _, 'b * _, ('a, 'b) lambda * no) witness
+          ('a, 'b) Ty_value.lambda ty_metadata
+          -> ('a * _, 'b * _, ('a, 'b) Ty_value.lambda * no) witness
     [@@unboxed]
 
     let witness_is_a_function :
@@ -1078,8 +1278,8 @@ end = struct
   module Big_map_Input = struct
     type (_, _, _) witness =
       | W :
-          ('a, 'b) big_map ty_metadata
-          -> ('a * yes, 'b * _, ('a, 'b) big_map * no) witness
+          ('a, 'b) Ty_value.big_map ty_metadata
+          -> ('a * yes, 'b * _, ('a, 'b) Ty_value.big_map * no) witness
     [@@unboxed]
 
     let witness_is_a_function :
@@ -1104,8 +1304,8 @@ end = struct
   module Contract_Input = struct
     type (_, _) witness =
       | W :
-          'a typed_contract ty_metadata
-          -> ('a * _, 'a typed_contract * no) witness
+          'a Ty_value.typed_contract ty_metadata
+          -> ('a * _, 'a Ty_value.typed_contract * no) witness
     [@@unboxed]
 
     let witness_is_a_function :
@@ -1856,31 +2056,6 @@ type ('before_top, 'before, 'result_top, 'result) kinstr =
       * ('a, 's, 'r, 'f) kinstr
       -> ('a, 's, 'r, 'f) kinstr
 
-and ('arg, 'ret) lambda =
-  | Lam :
-      ('arg, end_of_stack, 'ret, end_of_stack) kdescr * Script.node
-      -> ('arg, 'ret) lambda
-
-and 'arg typed_contract =
-  | Typed_implicit : public_key_hash -> unit typed_contract
-  | Typed_originated : {
-      arg_ty : ('arg, _) ty;
-      contract_hash : Contract_hash.t;
-      entrypoint : Entrypoint.t;
-    }
-      -> 'arg typed_contract
-  | Typed_tx_rollup : {
-      arg_ty : (('a ticket, tx_rollup_l2_address) pair, _) ty;
-      tx_rollup : Tx_rollup.t;
-    }
-      -> ('a ticket, tx_rollup_l2_address) pair typed_contract
-  | Typed_sc_rollup : {
-      arg_ty : ('arg, _) ty;
-      sc_rollup : Sc_rollup.t;
-      entrypoint : Entrypoint.t;
-    }
-      -> 'arg typed_contract
-
 and (_, _, _, _) continuation =
   | KNil : ('r, 'f, 'r, 'f) continuation
   | KCons :
@@ -1969,15 +2144,6 @@ and ('top_ty, 'resty) stack_ty =
       -> ('ty, 'ty2 * 'rest) stack_ty
   | Bot_t : (empty_cell, empty_cell) stack_ty
 
-and ('key, 'value) big_map =
-  | Big_map : {
-      id : Big_map.Id.t option;
-      diff : ('key, 'value) big_map_overlay;
-      key_type : 'key comparable_ty;
-      value_type : ('value, _) ty;
-    }
-      -> ('key, 'value) big_map
-
 and ('a, 's, 'r, 'f) kdescr = {
   kloc : Script.location;
   kbef : ('a, 's) stack_ty;
@@ -2040,72 +2206,6 @@ and ('input, 'output) view_signature =
       output_ty : ('output, _) ty;
     }
       -> ('input, 'output) view_signature
-
-and 'kind internal_operation_contents =
-  | Transaction_to_implicit : {
-      destination : Signature.Public_key_hash.t;
-      amount : Tez.tez;
-    }
-      -> Kind.transaction internal_operation_contents
-  | Transaction_to_smart_contract : {
-      destination : Contract_hash.t;
-      amount : Tez.tez;
-      entrypoint : Entrypoint.t;
-      location : Script.location;
-      parameters_ty : ('a, _) ty;
-      parameters : 'a;
-      unparsed_parameters : Script.expr;
-    }
-      -> Kind.transaction internal_operation_contents
-  | Transaction_to_tx_rollup : {
-      destination : Tx_rollup.t;
-      parameters_ty : (('a ticket, tx_rollup_l2_address) pair, _) ty;
-      parameters : ('a ticket, tx_rollup_l2_address) pair;
-      unparsed_parameters : Script.expr;
-    }
-      -> Kind.transaction internal_operation_contents
-  | Transaction_to_sc_rollup : {
-      destination : Sc_rollup.t;
-      entrypoint : Entrypoint.t;
-      parameters_ty : ('a, _) ty;
-      parameters : 'a;
-      unparsed_parameters : Script.expr;
-    }
-      -> Kind.transaction internal_operation_contents
-  | Event : {
-      ty : Script.expr;
-      tag : Entrypoint.t;
-      unparsed_data : Script.expr;
-    }
-      -> Kind.event internal_operation_contents
-  | Origination : {
-      delegate : Signature.Public_key_hash.t option;
-      code : Script.expr;
-      unparsed_storage : Script.expr;
-      credit : Tez.tez;
-      preorigination : Contract_hash.t;
-      storage_type : ('storage, _) ty;
-      storage : 'storage;
-    }
-      -> Kind.origination internal_operation_contents
-  | Delegation :
-      Signature.Public_key_hash.t option
-      -> Kind.delegation internal_operation_contents
-
-and 'kind internal_operation = {
-  source : Contract.t;
-  operation : 'kind internal_operation_contents;
-  nonce : int;
-}
-
-and packed_internal_operation =
-  | Internal_operation : 'kind internal_operation -> packed_internal_operation
-[@@ocaml.unboxed]
-
-and operation = {
-  piop : packed_internal_operation;
-  lazy_storage_diff : Lazy_storage.diffs option;
-}
 
 type ('arg, 'storage) script =
   | Script : {
