@@ -2697,6 +2697,9 @@ let octez_proxy =
         octez_shell_services;
         octez_context_memory;
         uri;
+        irmin;
+        irmin_pack;
+        irmin_pack_unix;
       ]
 
 let octez_proxy_rpc =

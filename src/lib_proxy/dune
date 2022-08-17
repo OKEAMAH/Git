@@ -14,7 +14,10 @@
   tezos-rpc
   tezos-shell-services
   tezos-context.memory
-  uri)
+  uri
+  irmin
+  irmin-pack
+  irmin-pack.unix)
  (flags
   (:standard)
   -open Tezos_base.TzPervasives))

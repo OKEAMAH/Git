@@ -18,6 +18,8 @@ depends: [
   "tezos-shell-services"
   "tezos-context"
   "uri" { >= "2.2.0" }
+  "irmin" { >= "3.3.2" & < "3.4.0" }
+  "irmin-pack" { >= "3.3.1" & < "3.4.0" }
   "tezos-mockup-proxy"
   "tezos-stdlib-unix" {with-test}
   "tezos-base-test-helpers" {with-test}

@@ -27,6 +27,17 @@ module Internal = Light_internal
 module Store = Local_context
 module Merkle = Internal.Merkle
 module Proof = Tezos_context_sigs.Context.Proof_types
+module Schema = Tezos_context_encoding.Context.Schema
+module Conf = Tezos_context_encoding.Context.Conf
+module Context = Tezos_context_sigs.Context
+
+module Store_v2 = struct
+  module Maker = Irmin_pack_unix.Maker (Conf)
+  include Maker.Make (Schema)
+  module Schema = Tezos_context_encoding.Context.Schema
+end
+
+module Proof_v2 = Store_v2.Tree.Proof
 
 type input = {
   printer : Tezos_client_base.Client_context.printer;
@@ -44,6 +55,7 @@ type input_v2 = {
   chain : Tezos_shell_services.Block_services.chain;
   block : Tezos_shell_services.Block_services.block;
   key : string list;
+  (* FIXME *)
   mproof : Proof.tree Proof.t;
   tree : Store.tree;
 }
@@ -51,13 +63,44 @@ type input_v2 = {
 let min_agreeing_endpoints min_agreement nb_endpoints =
   min_agreement *. float_of_int nb_endpoints |> Float.ceil |> int_of_float
 
+let get_data leaf_kind key tree : (Store_v2.tree * Store_v2.tree) Lwt.t =
+  let open Lwt_syntax in
+  match leaf_kind with
+  | Proof.Hole -> return (tree, tree)
+  | Proof.Raw_context ->
+      let key_to_string k = String.concat ";" k in
+      let rec explore tree target =
+        match (Store_v2.Tree.destruct tree, target) with
+        | _, [] -> return (tree, tree)
+        | `Node _, hd :: tl -> (
+            Lwt.(
+              Store_v2.Tree.find_tree tree [hd] >>= function
+              (* If the tree doesn't contain the key, we mirror the previous implementation
+                  and return a proof that *some* part of the key is in the tree. This may not
+                  be the desired behaviour.
+                  TODO: discuss *)
+              | None -> return (tree, tree)
+              | Some subtree -> explore subtree tl))
+        | `Contents _, _ ->
+            raise
+              (Invalid_argument
+                  (Printf.sprintf
+                    "(`Contents _, l) when l <> [_] (in other words: found a \
+                      leaf node whereas key %s (top-level key: %s) wasn't \
+                      fully consumed)"
+                    (key_to_string target)
+                    (key_to_string key)))
+      in
+      explore tree key
+
+
 module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
   type validation_result = Valid | Invalid of string
 
   let validate_v2 uri key _store_tree (data_proof : Proof.tree Proof.t)
       (incoming_mproof : Proof.tree Proof.t option tzresult) =
     (* FIXME: can't use irmin [verify_proof] yet *)
-    (* Store.verify_tree_proof  *)
+    (* Store.verify_tree_proof *)
     match incoming_mproof with
     | Error trace ->
         Lwt.return
@@ -79,7 +122,8 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
     | Ok (Some _mproof) -> (
         let f = assert false in
         let open Lwt_syntax in
-        let* res = Store.verify_tree_proof data_proof f in
+        let get_data = get_data (assert false) (assert false) in
+        let* res = Store.verify_tree_proof data_proof get_data in
         match res with
         | Ok _ -> return Valid
         | Error _ -> return (Invalid "FIXME"))
