@@ -73,19 +73,13 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
 
     let shallow_tree_within repo mtree =
       let open Lwt_result_syntax in
-      match mtree with
-      | Either.Left mtree ->
-          let* tree = Merkle.merkle_tree_to_irmin_tree repo mtree in
-          return (Store.shallow_of_tree repo tree)
-      | Either.Right _ -> Stdlib.failwith "not implemented"
+      let* tree = Merkle.merkle_tree_to_irmin_tree repo mtree in
+      return (Store.shallow_of_tree repo tree)
 
     let hash_within repo mtree =
       let open Lwt_result_syntax in
-      match mtree with
-      | Either.Left mtree ->
-          let* tree = Merkle.merkle_tree_to_irmin_tree repo mtree in
-          return (Store.Tree.hash tree)
-      | Either.Right _ -> Stdlib.failwith "not implemented"
+      let* tree = Merkle.merkle_tree_to_irmin_tree repo mtree in
+      return (Store.Tree.hash tree)
 
     let get_irmin_and_update_root pgi mtree =
       let open Lwt_syntax in
@@ -115,6 +109,83 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                      merkle_hash
               else Lwt.return_ok res
           | Error msg -> light_failwith pgi msg)
+
+    let mk_empty_irmin () : irmin Lwt.t =
+      let open Lwt_syntax in
+      let+ repo = Store.Tree.make_repo () in
+      let root = Store.Tree.empty Store.empty in
+      {repo; root}
+
+    (* FIXME: This is one of the three (!) copies of the (almost) same `get_data` function.
+       the other ones are in `lib_context/disk/context.ml` and `lib_proxy/light_consensus.ml`.
+       This code **really** ought to be shared, as the correctness of the protocol requires
+       that all three `get_data` function **must** be the same.
+
+       TODO: `get_data` could just be a wrapper around `Store.Tree.find_tree`,
+       but we do the tree walking manually to keep backward compatibility with the old behaviour
+       when the key is missing, or leads to a content node before consumption. *)
+    let get_data leaf_kind key tree : (Store.tree * Store.tree) Lwt.t =
+      let open Lwt_syntax in
+      match leaf_kind with
+      | Proof.Hole -> return (tree, tree)
+      | Proof.Raw_context ->
+          let key_to_string k = String.concat ";" k in
+          let rec explore tree target =
+            match target with
+            | [] -> return (tree, tree)
+            | hd :: tl -> (
+                let open Lwt in
+                Store.Tree.mem tree [] >>= function
+                | true ->
+                    raise
+                      (Invalid_argument
+                         (Printf.sprintf
+                            "Found a leaf node when key %s (top-level key: %s) \
+                             wasn't fully consumed)"
+                            (key_to_string target)
+                            (key_to_string key)))
+                | false -> (
+                    Store.Tree.find_tree tree [hd] >>= function
+                    (* If the tree doesn't contain the key, we mirror the previous implementation
+                       and return a proof that *some* part of the key is in the tree. This may not
+                       be the desired behaviour.
+
+                       TODO: in the *verification* case, we want to raise an error if the key is
+                       missing from the proof *)
+                    | None -> return (tree, tree)
+                    | Some subtree -> explore subtree tl))
+          in
+          explore tree key
+
+    (** Returns an {!irmin} value but don't update {!irmin_ref}. We want to
+        update only when the consensus has been checked, not before! *)
+    let stage pgi key (mproof : Store.Proof.tree Store.Proof.t) =
+      let open Lwt_syntax in
+      let* verification =
+        Store.verify_tree_proof mproof (get_data Proof.Raw_context key)
+      in
+      match verification with
+      | Error (`Proof_mismatch msg) -> light_failwith pgi msg
+      | Error _ ->
+          Stdlib.failwith
+            "IMPOSSIBLE: encountered a *stream* verification error when doing \
+             a *tree* verification"
+      | Ok (_, tree) ->
+          let* irmin =
+            match !irmin_ref with
+            | None -> mk_empty_irmin ()
+            | Some irmin -> Lwt.return irmin
+          and* value_o = Store.Tree.find tree []
+          and* node_o = Store.Tree.find_tree tree [] in
+          let* root =
+            match (value_o, node_o) with
+            | Some value, _ -> Store.Tree.add irmin.root key value
+            | _, Some node -> Store.Tree.add_tree irmin.root key node
+            | _ ->
+                Stdlib.failwith
+                  "IMPOSSIBLE: a tree must be either a node or a value"
+          in
+          return_ok {irmin with root}
 
     (* Don't update the irmin ref when looking for key, so as not to add the
        empty tree. *)
@@ -270,12 +341,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                  nb_endpoints
                  (key_to_string key)
         | Some (mproof, validating_endpoints) -> (
-            let* {root; repo} =
-              get_irmin_and_update_root pgi @@ Either.Right mproof
-            in
-            let** root' =
-              Merkle.union_irmin_tree_merkle_proof repo root mproof
-            in
+            let* {root; repo} = stage pgi key mproof in
             let*! () =
               Logger.(
                 emit
@@ -283,7 +349,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                   (key_to_string key, List.length validating_endpoints))
             in
             let input : Light_consensus.input_v2 =
-              {printer; min_agreement; chain; block; key; mproof; tree = root'}
+              {printer; min_agreement; chain; block; key; mproof; tree = root}
             in
             let*! r = Consensus.consensus_v2 input validating_endpoints in
             match r with
@@ -292,7 +358,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                 @@ Format.sprintf "Consensus cannot be reached for key: %s"
                 @@ key_to_string key
             | true ->
-                irmin_ref := Some {repo; root = root'} ;
+                irmin_ref := Some {repo; root} ;
                 return_unit)
       else
         let*! mtree_and_i_opt =
@@ -307,9 +373,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                  nb_endpoints
                  (key_to_string key)
         | Some (mtree, validating_endpoints) -> (
-            let* {root; repo} =
-              get_irmin_and_update_root pgi @@ Either.Left mtree
-            in
+            let* {root; repo} = get_irmin_and_update_root pgi mtree in
             let** root' = Merkle.union_irmin_tree_merkle_tree repo root mtree in
             let*! () =
               Logger.(

@@ -67,21 +67,6 @@ module Merkle : sig
     Proof.merkle_tree ->
     (Local_context.tree, string) result Lwt.t
 
-  (** Union an Irmin tree and an Irmin Merkle proof. Parameters are:
-
-      * The repo where the Irmin tree is stored (necessary to create shallow
-        trees from Merkle hashes)
-      * The Irmin tree
-      * The Merkle proof
-
-      Returns: an augmented variant of the input Irmin tree or an error
-               message. *)
-  val union_irmin_tree_merkle_proof :
-    Local_context.Tree.repo ->
-    Local_context.tree ->
-    Proof.tree Proof.t ->
-    (Local_context.tree, string) result Lwt.t
-
   (** [trees_shape_match path t1 t2] returns [Ok ()] if [t1] and [t2] have the same shape
       (tree of keys), otherwise an [Error] explaining how the shapes differ.
       The shape check tolerates a shape difference for nodes along the key's
