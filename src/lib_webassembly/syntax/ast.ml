@@ -43,6 +43,7 @@ module IntOp = struct
     | ShrU
     | Rotl
     | Rotr
+    [@@deriving show]
 
   type testop = Eqz
 
