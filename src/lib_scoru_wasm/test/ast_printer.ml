@@ -199,8 +199,6 @@ let float_relop_gen out op =
     | Gt -> "Gt"
     | Ge -> "Ge")
 
-let pp_relop = pp_value_op pp_int_relop pp_int_relop
-
 let pp_int_unop out op =
   match op with
   | Ast.IntOp.Clz -> Format.pp_print_string out "Clz"

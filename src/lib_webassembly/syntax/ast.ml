@@ -48,6 +48,7 @@ module IntOp = struct
   type testop = Eqz
 
   type relop = Eq | Ne | LtS | LtU | GtS | GtU | LeS | LeU | GeS | GeU
+  [@@deriving show]
 
   type cvtop =
     | ExtendSI32
@@ -73,7 +74,7 @@ module FloatOp = struct
 
   type testop = |
 
-  type relop = Eq | Ne | Lt | Gt | Le | Ge
+  type relop = Eq | Ne | Lt | Gt | Le | Ge [@@deriving show]
 
   type cvtop =
     | ConvertSI32
@@ -211,6 +212,7 @@ type binop = (I32Op.binop, I64Op.binop, F32Op.binop, F64Op.binop) Values.op
 [@@deriving show]
 
 type relop = (I32Op.relop, I64Op.relop, F32Op.relop, F64Op.relop) Values.op
+[@@deriving show]
 
 type cvtop = (I32Op.cvtop, I64Op.cvtop, F32Op.cvtop, F64Op.cvtop) Values.op
 [@@deriving show]
