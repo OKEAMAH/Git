@@ -628,8 +628,15 @@ module Inner = struct
 
   (* The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)
-  let polynomial_to_bytes t p =
+  let polynomial_to_bytes (t : t) p =
     let coefficients = Polynomials.to_carray p in
+    let eval = Scalar_array.allocate t.k in
+    Scalar_array.blit
+      coefficients
+      ~src_off:0
+      eval
+      ~dst_off:0
+      ~len:(Scalar_array.length coefficients) ;
     let eval = evaluation_fft_k t coefficients in
     (*let eval = Evaluations.(evaluation_fft t.domain_k p |> to_array) in*)
     let slot = Bytes.init t.slot_size (fun _ -> '0') in

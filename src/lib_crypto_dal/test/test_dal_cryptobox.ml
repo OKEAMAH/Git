@@ -137,15 +137,23 @@ module Test = struct
         _print_array coefficients ;
 
         let* p = Dal_cryptobox.polynomial_from_slot t msg in
+        assert (
+          Bytes.compare
+            msg
+            (Bytes.sub
+               (Dal_cryptobox.polynomial_to_bytes t p)
+               0
+               (min slot_size msg_size))
+          = 0) ;
         let _cm = Dal_cryptobox.commit t p in
         let* _pi = Dal_cryptobox.prove_segment t p 1 in
         let _segment = Bytes.sub msg segment_size segment_size in
+
         (*let* check =
-          Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
-        in
+            Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
+          in
 
-        assert check ;*)
-
+          assert check ;*)
         let enc_shards = Dal_cryptobox.shards_from_polynomial t p in
         let c_indices =
           random_indices
