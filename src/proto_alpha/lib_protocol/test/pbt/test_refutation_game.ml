@@ -1680,11 +1680,6 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       let* operation_add_messages_2 =
         Op.sc_rollup_add_messages (B block) contract3 rollup last_inputs2
       in
-      let* block =
-        Block.bake
-          ~operations:[operation_add_messages_1; operation_add_messages_2]
-          block
-      in
       let* operation_start_game =
         Op.sc_rollup_refute
           (B block)
@@ -1693,7 +1688,16 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
           defender.player.pkh
           None
       in
-      let* block = Block.bake ~operations:[operation_start_game] block in
+      let* block =
+        Block.bake
+          ~operations:
+            [
+              operation_add_messages_1;
+              operation_start_game;
+              operation_add_messages_2;
+            ]
+          block
+      in
       let number_of_sections =
         Tezos_protocol_alpha_parameters.Default_parameters.constants_mainnet
           .sc_rollup
