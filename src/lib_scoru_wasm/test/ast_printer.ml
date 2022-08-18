@@ -141,7 +141,8 @@ let pp_pack_shape out p =
     | Pack32x2 -> "Pack32x2")
 
 let pp_vec_extension out = function
-  | Types.ExtLane (ps, e) -> (pp_pair pp_pack_shape Types.pp_extension) out (ps, e)
+  | Types.ExtLane (ps, e) ->
+      (pp_pair pp_pack_shape Types.pp_extension) out (ps, e)
   | ExtSplat -> Format.pp_print_string out "ExtSplat"
   | ExtZero -> Format.pp_print_string out "ExZero"
 
