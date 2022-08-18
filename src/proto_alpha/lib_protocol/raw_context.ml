@@ -247,6 +247,11 @@ type back = {
   tx_rollup_current_messages :
     Tx_rollup_inbox_repr.Merkle.tree Tx_rollup_repr.Map.t;
   sc_rollup_current_messages : Context.tree Sc_rollup_address_map_builder.t;
+  sc_rollup_new_game_in_block :
+    (Sc_rollup_game_repr.Index.t
+    * Sc_rollup_repr.t
+    * (Sc_rollup_inbox_repr.history_proof -> Sc_rollup_game_repr.t))
+    list;
   dal_slot_fee_market : Dal_slot_repr.Slot_market.t;
   (* DAL/FIXME https://gitlab.com/tezos/tezos/-/issues/3105
 
@@ -818,6 +823,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ctxt =
         stake_distribution_for_current_cycle = None;
         tx_rollup_current_messages = Tx_rollup_repr.Map.empty;
         sc_rollup_current_messages = Sc_rollup_carbonated_map.empty;
+        sc_rollup_new_game_in_block = [];
         dal_slot_fee_market =
           Dal_slot_repr.Slot_market.init
             ~length:constants.Constants_parametric_repr.dal.number_of_slots;
@@ -1496,6 +1502,21 @@ module Sc_rollup_in_memory_inbox = struct
     let back = {ctxt.back with sc_rollup_current_messages} in
     {ctxt with back}
 end
+
+let[@inline] sc_rollup_new_game_in_block ctxt =
+  ctxt.back.sc_rollup_new_game_in_block
+
+let[@inline] sc_rollup_add_new_game_in_block ctxt stakers rollup create_game =
+  {
+    ctxt with
+    back =
+      {
+        ctxt.back with
+        sc_rollup_new_game_in_block =
+          (stakers, rollup, create_game)
+          :: ctxt.back.sc_rollup_new_game_in_block;
+      };
+  }
 
 module Dal = struct
   type error +=

@@ -2613,6 +2613,7 @@ let finalize_application ctxt (mode : finalize_application_mode) protocol_data
   >>=? fun (ctxt, cycle_end_balance_updates, deactivated) ->
   Amendment.may_start_new_voting_period ctxt >>=? fun ctxt ->
   Dal_apply.dal_finalisation ctxt >>=? fun (ctxt, dal_slot_availability) ->
+  Sc_rollup.Refutation_storage.new_game_finalisation ctxt >>=? fun ctxt ->
   let balance_updates =
     migration_balance_updates @ baking_receipts @ cycle_end_balance_updates
   in

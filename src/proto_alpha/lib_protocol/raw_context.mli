@@ -383,6 +383,20 @@ module Sc_rollup_in_memory_inbox : sig
   val set_current_messages : t -> Sc_rollup_repr.t -> Context.tree -> t tzresult
 end
 
+val sc_rollup_new_game_in_block :
+  t ->
+  (Sc_rollup_game_repr.Index.t
+  * Sc_rollup_repr.t
+  * (Sc_rollup_inbox_repr.history_proof -> Sc_rollup_game_repr.t))
+  list
+
+val sc_rollup_add_new_game_in_block :
+  t ->
+  Sc_rollup_game_repr.Index.t ->
+  Sc_rollup_repr.t ->
+  (Sc_rollup_inbox_repr.history_proof -> Sc_rollup_game_repr.t) ->
+  t
+
 module Dal : sig
   (** [record_available_shards ctxt slots shards] records that the
      list of shards [shards] were declared available. The function

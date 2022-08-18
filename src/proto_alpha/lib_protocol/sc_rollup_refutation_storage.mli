@@ -181,6 +181,8 @@ val apply_outcome :
   tzresult
   Lwt.t
 
+val new_game_finalisation : Raw_context.t -> Raw_context.t tzresult Lwt.t
+
 (**/**)
 
 module Internal_for_tests : sig

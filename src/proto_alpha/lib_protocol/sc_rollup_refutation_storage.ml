@@ -251,15 +251,13 @@ let start_game ctxt rollup ~player:refuter ~opponent:defender =
   let* parent_info, ctxt =
     Commitment_storage.get_commitment_unsafe ctxt rollup child_info.predecessor
   in
-  let* ctxt, inbox = Store.Inbox.get ctxt rollup in
   let* ctxt, kind = Store.PVM_kind.get ctxt rollup in
   let default_number_of_sections =
     Constants_storage.sc_rollup_number_of_sections_in_dissection ctxt
   in
-
-  let game =
+  let create_game inbox_snapshot =
     Sc_rollup_game_repr.initial
-      (Sc_rollup_inbox_repr.take_snapshot inbox)
+      inbox_snapshot
       ~pvm_name:(Sc_rollups.Kind.name_of kind)
       ~parent:parent_info
       ~child:child_info
@@ -267,7 +265,9 @@ let start_game ctxt rollup ~player:refuter ~opponent:defender =
       ~defender
       ~default_number_of_sections
   in
-  let* ctxt, _ = Store.Game.init (ctxt, rollup) stakers game in
+  let ctxt =
+    Raw_context.sc_rollup_add_new_game_in_block ctxt stakers rollup create_game
+  in
   let* ctxt, _ =
     Store.Game_timeout.init (ctxt, rollup) stakers (initial_timeout ctxt)
   in
@@ -385,3 +385,15 @@ let conflicting_stakers_uncarbonated ctxt rollup staker =
       | Error _ -> return conflicts)
     []
     stakers
+
+let new_game_finalisation ctxt =
+  List.fold_left_es
+    (fun ctxt (stakers, rollup, create_game) ->
+      let open Lwt_tzresult_syntax in
+      let* ctxt, inbox = Store.Inbox.get ctxt rollup in
+      let inbox_snapshot = Sc_rollup_inbox_repr.take_snapshot inbox in
+      let game = create_game inbox_snapshot in
+      let+ ctxt, _ = Store.Game.init (ctxt, rollup) stakers game in
+      ctxt)
+    ctxt
+    (Raw_context.sc_rollup_new_game_in_block ctxt)

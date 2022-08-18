@@ -3561,6 +3561,8 @@ module Sc_rollup : sig
       Game.Index.t ->
       Game.outcome ->
       (Game.status * context * Receipt.balance_updates) tzresult Lwt.t
+
+    val new_game_finalisation : context -> context tzresult Lwt.t
   end
 
   val rpc_arg : t RPC_arg.t
