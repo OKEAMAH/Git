@@ -1287,10 +1287,10 @@ let operation_publish_commitment ctxt rollup predecessor inbox_level
   in
   Op.sc_rollup_publish ctxt player_client.player.contract rollup commitment
 
-(** [build_proof ~player_client start_tick game] builds a valid proof
+(** [produce_proof ~player_client start_tick game] builds a valid proof
     regarding the vision [player_client] has. The proof refutes the
     [start_tick]. *)
-let build_proof ~player_client start_tick (game : Game.t) =
+let produce_proof ~player_client start_tick (game : Game.t) =
   let open Lwt_result_syntax in
   let inbox_context, messages_tree, history, inbox = player_client.inbox in
   let*! history, history_proof =
@@ -1342,7 +1342,7 @@ let next_move ~number_of_sections ~player_client (game : Game.t) =
   match single_tick_disputed_sections with
   | (start_chunk, _stop_chunk) :: _ ->
       let tick = start_chunk.tick in
-      let+ proof = build_proof ~player_client tick game in
+      let+ proof = produce_proof ~player_client tick game in
       Game.{choice = tick; step = Proof proof}
   | [] ->
       (* If we reach this case, there is necessarily a disputed section. *)
