@@ -328,12 +328,23 @@ let gen_arith_pvm_inputs ~gen_size =
   snd inputs |> List.rev |> String.concat " "
 
 (** Generate a list of arith pvm inputs for a level *)
+let gen_arith_pvm_inputs ?(nonempty = false) () =
+  let rec aux () =
+    let open QCheck2.Gen in
+    let* input = gen_arith_pvm_inputs ~gen_size:(pure 0) in
+    let* rest_inputs = small_list (gen_arith_pvm_inputs ~gen_size:(pure 0)) in
+    let all_inputs = input :: rest_inputs in
+    if nonempty && Compare.List_length_with.(all_inputs = 0) then aux ()
+    else return all_inputs
+  in
+  aux ()
+
+(** Generate a list of arith pvm inputs for a level *)
 let gen_arith_pvm_inputs_for_level ?(level_min = 0) ?(level_max = 1_000) () =
   let open QCheck2.Gen in
   let* level = level_min -- level_max in
-  let* input = gen_arith_pvm_inputs ~gen_size:(pure 0) in
-  let* inputs = small_list (gen_arith_pvm_inputs ~gen_size:(pure 0)) in
-  return (level, input :: inputs)
+  let* inputs = gen_arith_pvm_inputs () in
+  return (level, inputs)
 
 (** Generate a list of level and associated arith pvm inputs. *)
 let gen_arith_pvm_inputs_for_levels ?(nonempty_inputs = false) ?level_min
@@ -811,7 +822,7 @@ module Dissection = struct
 
         return (expect_invalid_move expected_reason res))
 
-  let tests =
+  let _tests =
     ( "Dissection",
       qcheck_wrap
         [
@@ -1006,6 +1017,7 @@ let construct_inbox_proto block rollup levels_and_inputs contract =
     (fun block (level, payloads) ->
       let*? current_level = Context.get_level (B block) in
       let diff_with_level =
+        (* TODO: we should use Raw_level.t in levels_and_inputs *)
         Raw_level.(diff (of_int32_exn (Int32.of_int level)) current_level)
         |> Int32.to_int
       in
@@ -1211,11 +1223,12 @@ module Player_client = struct
         in
         return new_levels_and_inputs
     | Keen ->
-        (* Keen player will add more messages. *)
+        (* Keen player will add more messages in between. *)
         let rec aux () =
           let* new_levels_and_inputs =
             gen_arith_pvm_inputs_for_levels
               ~nonempty_inputs:true
+                (* otherwise we could end up with the same list *)
               ?level_min
               ?level_max
               ()
@@ -1449,11 +1462,7 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
   let open QCheck2.Gen in
   (* If there is no good player, we do not care about the outcome. *)
   assert (p1_strategy = Perfect || p2_strategy = Perfect) ;
-  let* first_inputs =
-    let* input = gen_arith_pvm_inputs ~gen_size:(pure 0) in
-    let* inputs = small_list (gen_arith_pvm_inputs ~gen_size:(pure 0)) in
-    return (input :: inputs)
-  in
+  let* first_inputs = gen_arith_pvm_inputs ~nonempty:true () in
   let block, rollup, genesis_info, (contract1, contract2, contract3) =
     create_ctxt ~first_inputs
   in
@@ -1469,9 +1478,12 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
     Raw_level.to_int32 genesis_info.level |> Int32.to_int
   in
   let level_min = origination_level + 1 in
-  let level_max = origination_level + commitment_period - 1 in
-  let* levels_and_inputs =
+  let level_max = origination_level + commitment_period - 2 in
+  let* rest_levels_and_inputs =
     gen_arith_pvm_inputs_for_levels ?nonempty_inputs ~level_min ~level_max ()
+  in
+  let levels_and_inputs =
+    (origination_level, first_inputs) :: rest_levels_and_inputs
   in
   let* p1_client =
     Player_client.gen
@@ -1480,7 +1492,7 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       ~level_max
       ~rollup
       p1
-      ((origination_level, first_inputs) :: levels_and_inputs)
+      levels_and_inputs
   in
   let* p2_client =
     Player_client.gen
@@ -1489,7 +1501,7 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       ~level_max
       ~rollup
       p2
-      ((origination_level, first_inputs) :: levels_and_inputs)
+      levels_and_inputs
   in
   let* p1_start = bool in
   let commitment_level = origination_level + commitment_period in
@@ -1503,7 +1515,7 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       contract3,
       p1_start,
       first_inputs,
-      levels_and_inputs )
+      rest_levels_and_inputs )
 
 (** [prepare_game block lcc originated_level p1_client p2_client
     inputs_and_levels] prepares a context where [p1_client] and [p2_client]
@@ -1579,7 +1591,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
         (if p1_start then "p1" else "p2")
         pp_levels_and_inputs
         ((1, first_inputs) :: levels_and_inputs))
-    ~count:1_000
+    ~count:8_000
     ~name
     ~gen:(gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy ())
     (fun ( block,
@@ -1605,9 +1617,40 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       assert (
         not
           (List.equal
-             (fun (l, is) (l', is') -> l = l' && List.equal String.equal is is')
+             (fun (l, is) (l', is') ->
+               Int.equal l l' && List.equal String.equal is is')
              p1_client.levels_and_inputs
              p2_client.levels_and_inputs)) ;
+      let*? () =
+        List.iter2
+          ~when_different_lengths:[]
+          (fun (l, is) (l', is') ->
+            if not (Int.equal l l' && List.equal String.equal is is') then
+              Format.(
+                printf
+                  "@[<v 0>DIFF : (%d,[%a]) <> (%d,[%a])@,@]"
+                  l
+                  (pp_print_list
+                     ~pp_sep:(fun ppf () -> pp_print_string ppf "; ")
+                     pp_print_string)
+                  is
+                  l'
+                  (pp_print_list
+                     ~pp_sep:(fun ppf () -> pp_print_string ppf "; ")
+                     pp_print_string)
+                  is')
+            else
+              Format.(
+                printf
+                  "@[<v 0>EQ: (%d,[%a]) @,@]"
+                  l
+                  (pp_print_list
+                     ~pp_sep:(fun ppf () -> pp_print_string ppf "; ")
+                     pp_print_string)
+                  is))
+          p1_client.levels_and_inputs
+          p2_client.levels_and_inputs
+      in
       let* block =
         prepare_game
           block
@@ -1648,25 +1691,25 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       | Defender_wins -> return (defender.player.strategy = Perfect)
       | Refuter_wins -> return (refuter.player.strategy = Perfect))
 
-let test_perfect_against_random =
+let _test_perfect_against_random =
   test_game ~p1_strategy:Perfect ~p2_strategy:Random ()
 
-let test_random_against_perfect =
+let _test_random_against_perfect =
   test_game ~p1_strategy:Random ~p2_strategy:Perfect ()
 
-let test_perfect_against_lazy =
+let _test_perfect_against_lazy =
   test_game ~nonempty_inputs:true ~p1_strategy:Perfect ~p2_strategy:Lazy ()
 
-let test_lazy_against_perfect =
+let _test_lazy_against_perfect =
   test_game ~nonempty_inputs:true ~p1_strategy:Lazy ~p2_strategy:Perfect ()
 
-let test_perfect_against_eager =
+let _test_perfect_against_eager =
   test_game ~nonempty_inputs:true ~p1_strategy:Perfect ~p2_strategy:Eager ()
 
-let test_eager_against_perfect =
+let _test_eager_against_perfect =
   test_game ~nonempty_inputs:true ~p1_strategy:Eager ~p2_strategy:Perfect ()
 
-let test_perfect_against_keen =
+let _test_perfect_against_keen =
   test_game ~p1_strategy:Perfect ~p2_strategy:Keen ()
 
 let test_keen_against_perfect =
@@ -1676,18 +1719,18 @@ let tests =
   ( "Refutation",
     qcheck_wrap
       [
-        test_perfect_against_random;
-        test_random_against_perfect;
-        test_perfect_against_lazy;
-        test_lazy_against_perfect;
-        test_perfect_against_eager;
-        test_eager_against_perfect;
-        test_perfect_against_keen;
+        (* test_perfect_against_random; *)
+        (* test_random_against_perfect; *)
+        (* test_perfect_against_lazy; *)
+        (* test_lazy_against_perfect; *)
+        (* test_perfect_against_eager; *)
+        (* test_eager_against_perfect; *)
+        (* test_perfect_against_keen; *)
         test_keen_against_perfect;
       ] )
 
 (** {2 Entry point} *)
 
-let tests = [tests; Dissection.tests]
+let tests = [tests]
 
 let () = Alcotest.run "Refutation_game" tests
