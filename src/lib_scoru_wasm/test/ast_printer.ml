@@ -52,24 +52,11 @@ let pp_int64 out n = Format.fprintf out "%Ld" n
 
 let pp_var = pp_phrase pp_int32
 
-let pp_num_type out num =
-  Format.fprintf
-    out
-    "%s"
-    (match num with
-    | Types.I32Type -> "I32Type"
-    | I64Type -> "I64Type"
-    | F32Type -> "F32Type"
-    | F64Type -> "F64Type")
-
-let pp_vec_type out = function
-  | Types.V128Type -> Format.pp_print_string out "V128Type"
-
 let pp_value_type out vt =
   let open Types in
   match vt with
-  | NumType nt -> Format.fprintf out "NumType%a" pp_num_type nt
-  | VecType vt -> Format.fprintf out "VecType %a" pp_vec_type vt
+  | NumType nt -> Format.fprintf out "NumType%a" Types.pp_num_type nt
+  | VecType vt -> Format.fprintf out "VecType %a" Types.pp_vec_type vt
   | RefType rt -> Format.fprintf out "RefType %a" Types.pp_ref_type rt
 
 let pp_list pp out x =
