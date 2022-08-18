@@ -32,7 +32,7 @@ type extern_type =
   | ExternGlobalType of global_type
 
 (* TODO: these types should move somewhere else *)
-type pack_size = Pack8 | Pack16 | Pack32 | Pack64
+type pack_size = Pack8 | Pack16 | Pack32 | Pack64 [@@deriving show]
 
 type extension = SX | ZX
 

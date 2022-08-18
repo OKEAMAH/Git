@@ -247,8 +247,6 @@ let pp_int_cvtop out op =
 
 let pp_cvtop = pp_value_op pp_int_cvtop pp_int_cvtop
 
-let pp_unop = pp_value_op pp_int_unop pp_int_unop
-
 let pp_vec =
   let pp out = function
     | Values.V128 bits ->

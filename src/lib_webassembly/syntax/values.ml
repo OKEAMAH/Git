@@ -7,6 +7,7 @@ type ('i32, 'i64, 'f32, 'f64) op =
   | I64 of 'i64
   | F32 of 'f32
   | F64 of 'f64
+[@@deriving show]
 
 type 'v128 vecop = V128 of 'v128
 

@@ -25,7 +25,7 @@ type void = Lib.void
 (* Operators *)
 
 module IntOp = struct
-  type unop = Clz | Ctz | Popcnt | ExtendS of pack_size
+  type unop = Clz | Ctz | Popcnt | ExtendS of pack_size [@@deriving show]
 
   type binop =
     | Add
@@ -43,7 +43,7 @@ module IntOp = struct
     | ShrU
     | Rotl
     | Rotr
-    [@@deriving show]
+  [@@deriving show]
 
   type testop = Eqz
 
@@ -66,8 +66,9 @@ end
 
 module FloatOp = struct
   type unop = Neg | Abs | Ceil | Floor | Trunc | Nearest | Sqrt
+  [@@deriving show]
 
-  type binop = Add | Sub | Mul | Div | Min | Max | CopySign
+  type binop = Add | Sub | Mul | Div | Min | Max | CopySign [@@deriving show]
 
   type testop = |
 
@@ -202,8 +203,10 @@ end
 type testop = (I32Op.testop, I64Op.testop, F32Op.testop, F64Op.testop) Values.op
 
 type unop = (I32Op.unop, I64Op.unop, F32Op.unop, F64Op.unop) Values.op
+[@@deriving show]
 
 type binop = (I32Op.binop, I64Op.binop, F32Op.binop, F64Op.binop) Values.op
+[@@deriving show]
 
 type relop = (I32Op.relop, I64Op.relop, F32Op.relop, F64Op.relop) Values.op
 
