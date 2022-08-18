@@ -135,9 +135,6 @@ let pp_vec_extension out = function
   | ExtSplat -> Format.pp_print_string out "ExtSplat"
   | ExtZero -> Format.pp_print_string out "ExZero"
 
-let pp_vec_load_op =
-  pp_memop pp_vec_type (pp_opt @@ pp_pair pp_pack_size pp_vec_extension)
-
 let pp_vec_store_op = pp_memop pp_vec_type pp_unit
 
 let pp_value_op pp_int32 pp_int64 out = function
@@ -294,7 +291,7 @@ let pp_instr' out instr =
       Format.fprintf out "CallIndirect(%a, %a)" pp_var v1 pp_var v2
   | Load o -> Format.fprintf out "Load(%a)" pp_loadop o
   | Store o -> Format.fprintf out "Store(%a)" pp_storeop o
-  | VecLoad o -> Format.fprintf out "VecLoad(%a)" pp_vec_load_op o
+  | VecLoad o -> Format.fprintf out "VecLoad(%a)" pp_vec_loadop o
   | VecStore o -> Format.fprintf out "VecSore(%a)" pp_vec_store_op o
   | VecLoadLane o -> Format.fprintf out "VecLoadLane(%a)" pp_vec_laneop o
   | VecStoreLane o -> Format.fprintf out "VecSoreLane(%a)" pp_vec_laneop o

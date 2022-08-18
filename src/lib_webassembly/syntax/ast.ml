@@ -253,6 +253,7 @@ type loadop = (num_type, (pack_size * extension) option) memop [@@deriving show]
 type storeop = (num_type, pack_size option) memop [@@deriving show]
 
 type vec_loadop = (vec_type, (pack_size * vec_extension) option) memop
+[@@deriving show]
 
 type vec_storeop = (vec_type, unit) memop
 
