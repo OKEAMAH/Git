@@ -156,9 +156,6 @@ let pp_vec_load_op =
 
 let pp_vec_store_op = pp_memop pp_vec_type pp_unit
 
-let pp_vec_laneop =
-  pp_pair (pp_memop pp_vec_type pp_pack_size) Format.pp_print_int
-
 let pp_value_op pp_int32 pp_int64 out = function
   | Values.I32 x -> pp_int32 out x
   | I64 x -> pp_int64 out x

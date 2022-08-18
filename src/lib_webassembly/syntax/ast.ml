@@ -256,7 +256,7 @@ type vec_loadop = (vec_type, (pack_size * vec_extension) option) memop
 
 type vec_storeop = (vec_type, unit) memop
 
-type vec_laneop = (vec_type, pack_size) memop * int
+type vec_laneop = (vec_type, pack_size) memop * int [@@deriving show]
 
 (* Expressions *)
 

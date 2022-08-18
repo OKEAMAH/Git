@@ -2,7 +2,7 @@
 
 type num_type = I32Type | I64Type | F32Type | F64Type [@@deriving show]
 
-type vec_type = V128Type
+type vec_type = V128Type [@@deriving show]
 
 type ref_type = FuncRefType | ExternRefType
 
