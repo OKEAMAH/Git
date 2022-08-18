@@ -4,27 +4,6 @@ module Test = struct
 
   type scalar_array = Scalar_array.t
 
-  let random_indices bound k =
-    Random.self_init () ;
-
-    let rand_elt l =
-      let rec loop i = function
-        | true -> i
-        | false ->
-            let n = Random.int bound in
-            loop n (not @@ List.mem n l)
-      in
-      loop 0 false
-    in
-
-    let rec aux l n =
-      match List.length l with
-      | x when x = n -> l
-      | _ -> aux (rand_elt l :: l) n
-    in
-
-    aux [] k
-
   let _print_array a =
     let a = Scalar_array.to_array a in
     Printf.eprintf "\n\n Array:\n" ;
@@ -49,30 +28,6 @@ module Test = struct
   let _dft_c ~domain ~inverse ~length ~coefficients =
     dft_c domain inverse length coefficients (Scalar_array.allocate length)
 
-  external prime_factor_algorithm_fft_ext :
-    bool ->
-    scalar_array ->
-    scalar_array ->
-    int ->
-    int ->
-    scalar_array ->
-    scalar_array ->
-    unit
-    = "prime_factor_algorithm_fft_bytecode" "prime_factor_algorithm_fft_native"
-
-  let prime_factor_algorithm_fft ~inverse ~domain1 ~domain2 ~domain1_length_log
-      ~domain2_length ~coefficients ~scratch_zone =
-    prime_factor_algorithm_fft_ext
-      inverse
-      domain1
-      domain2
-      domain1_length_log
-      domain2_length
-      coefficients
-      scratch_zone
-
-  let range a b = List.init (b - a) (( + ) a)
-
   let get_primitive_root n =
     let multiplicative_group_order = Z.(Scalar.order - one) in
     let n = Z.of_int n in
@@ -80,13 +35,36 @@ module Test = struct
     let exponent = Z.divexact multiplicative_group_order n in
     Scalar.pow (Scalar.of_int 7) exponent
 
+  let _range a b = List.init (b - a) (( + ) a)
+
+  let random_indices bound k =
+    Random.self_init () ;
+
+    let rand_elt l =
+      let rec loop i = function
+        | true -> i
+        | false ->
+            let n = Random.int bound in
+            loop n (not @@ List.mem n l)
+      in
+      loop 0 false
+    in
+
+    let rec aux l n =
+      match List.length l with
+      | x when x = n -> l
+      | _ -> aux (rand_elt l :: l) n
+    in
+
+    aux [] k
+
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
     let open Tezos_error_monad.Error_monad.Result_syntax in
     (* We take mainnet parameters we divide by [16] to speed up the test. *)
-    let number_of_shards = 2048 / 16 in
-    let slot_size = 1048576 / 16 in
-    let segment_size = 4096 / 16 in
+    let number_of_shards = 2048 in
+    let slot_size = 1048576 in
+    let segment_size = 4096 in
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
@@ -103,25 +81,16 @@ module Test = struct
           Dal_cryptobox.make
             {redundancy_factor; slot_size; segment_size; number_of_shards}
         in
-        let* p = Dal_cryptobox.polynomial_from_slot t msg in
-        let cm = Dal_cryptobox.commit t p in
-        let* pi = Dal_cryptobox.prove_segment t p 1 in
-        let segment = Bytes.sub msg segment_size segment_size in
-        let* check =
-          Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
-        in
+
         let coefficients =
           Array.init 19 (fun _ -> Scalar.random ()) |> Scalar_array.of_array
         in
-        let _domain =
-          make_domain
-            (Scalar.of_string
-               "33954097614611596975476204725091907054106918505758578373023360834096706151438")
-            19
-        in
+        let _coefficients2 = Scalar_array.copy coefficients in
+        let rt = get_primitive_root 19 in
+        let domain = make_domain (Scalar.inverse_exn rt) 19 in
         _print_array coefficients ;
-        _print_array _domain ;
-        List.iter
+
+        (*List.iter
           (fun i ->
             let eval =
               Bls12_381_polynomial.Polynomial.Polynomial.evaluate
@@ -130,55 +99,53 @@ module Test = struct
                 (Scalar_array.get _domain i)
             in
             Printf.eprintf " %s " (Scalar.to_string eval))
-          (range 0 19) ;
-        Printf.eprintf " -- zero : %s \n" Scalar.(to_string zero) ;
+          (range 0 19) ;*)
+        let dft ~inverse ~domain ~coefficients =
+          let n = Array.length domain in
+          let res = Array.make n Scalar.(copy zero) in
+          for i = 0 to n - 1 do
+            for j = 0 to n - 1 do
+              let mul =
+                Scalar.mul coefficients.(j) (Array.get domain (i * j mod n))
+              in
+              res.(i) <- Scalar.add res.(i) mul
+            done
+          done ;
+          if inverse then
+            for i = 0 to n - 1 do
+              res.(i) <- Scalar.(mul (inverse_exn (of_int n)) res.(i))
+            done ;
+          res
+        in
+        let coefficients = Scalar_array.to_array coefficients in
         let t' = Sys.time () in
-        _dft_c ~inverse:false ~length:19 ~domain:_domain ~coefficients ;
+        let coefficients =
+          dft
+            ~inverse:false
+            ~domain:(Scalar_array.to_array (make_domain rt 19))
+            ~coefficients
+        in
+        Printf.eprintf "\n dft 19 = %f \n" (Sys.time () -. t') ;
+        _print_array (Scalar_array.of_array coefficients) ;
+
+        let coefficients = Scalar_array.of_array coefficients in
+
+        let t' = Sys.time () in
+        _dft_c ~inverse:true ~length:19 ~domain ~coefficients ;
         Printf.eprintf "\n dftC 19 = %f \n" (Sys.time () -. t') ;
 
         _print_array coefficients ;
 
-        Printf.eprintf "\n ==================== \n" ;
-
-        let size = 2048 in
-        let rt = get_primitive_root (size * 19) in
-        let domain = make_domain rt (size * 19) in
-        let domain1 = make_domain (Scalar.pow rt (Z.of_int 19)) size in
-        let domain2 = make_domain (Scalar.pow rt (Z.of_int size)) 19 in
-        let coefficients =
-          Array.init (size * 19) (fun _ -> Scalar.(random ()))
-          |> Scalar_array.of_array
+        let* p = Dal_cryptobox.polynomial_from_slot t msg in
+        let cm = Dal_cryptobox.commit t p in
+        let* pi = Dal_cryptobox.prove_segment t p 1 in
+        let segment = Bytes.sub msg segment_size segment_size in
+        let* check =
+          Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
         in
-        let scratch_zone = Scalar_array.allocate (2 * size * 19) in
-
-        List.iter
-          (fun i ->
-            let eval =
-              Bls12_381_polynomial.Polynomial.Polynomial.evaluate
-                (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
-                   (Scalar_array.to_array coefficients))
-                (Scalar_array.get domain i)
-            in
-            Printf.eprintf " %s " (Scalar.to_string eval))
-          (range 0 4) ;
-
-        let t' = Sys.time () in
-        prime_factor_algorithm_fft
-          ~domain1_length_log:11
-          ~domain2_length:19
-          ~domain1
-          ~domain2
-          ~coefficients
-          ~inverse:false
-          ~scratch_zone ;
-        Printf.eprintf "\n fftC 2^15*16 = %f \n" (Sys.time () -. t') ;
-
-        (*_print_array coefficients ;*)
-        Printf.eprintf
-          "\n %s \n"
-          (Scalar.to_string @@ Scalar_array.get coefficients 1) ;
 
         assert check ;
+
         let enc_shards = Dal_cryptobox.shards_from_polynomial t p in
         let c_indices =
           random_indices
@@ -228,7 +195,14 @@ module Test = struct
          *     ~evaluation:(Dal_cryptobox.polynomial_evaluate p point)
          *     pi_slot) *))
       [2]
-    |> fun x -> match x with Ok () -> () | Error _ -> assert false
+    |> function
+    | Ok () -> ()
+    | Error (`Fail s) -> Printf.eprintf "\n%s\n" s
+    | Error (`Invert_zero s) -> Printf.eprintf "\n%s\n" s
+    | Error (`Not_enough_shards s) -> Printf.eprintf "\n%s\n" s
+    | Error `Segment_index_out_of_range -> Printf.eprintf "\nOOB\n"
+    | Error `Slot_segment_index_out_of_range -> Printf.eprintf "\nOOB 2\n"
+    | Error (`Slot_wrong_size s) -> Printf.eprintf "\n%s\n" s
 end
 
 let test =
