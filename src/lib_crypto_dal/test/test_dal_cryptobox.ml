@@ -22,6 +22,18 @@ module Test = struct
 
     aux [] k
 
+  let computed_hash bs =
+    let st =
+      Hacl_star.EverCrypt.Hash.init ~alg:Hacl_star.SharedDefs.HashDefs.BLAKE2b
+    in
+    let len = 48 in
+    let msg = Bytes.create len in
+    for i = 0 to (Bytes.length bs / len) - 1 do
+      Bytes.blit bs (i * len) msg 0 len ;
+      Hacl_star.EverCrypt.Hash.update ~st ~msg
+    done ;
+    Hacl_star.EverCrypt.Hash.finish ~st
+
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
     let open Tezos_error_monad.Error_monad.Result_syntax in
@@ -34,6 +46,7 @@ module Test = struct
     for i = 0 to (msg_size / 8) - 1 do
       Bytes.set_int64_le msg (i * 8) (Random.int64 Int64.max_int)
     done ;
+    Printf.eprintf "\n %s \n" (Bytes.to_string @@ computed_hash msg) ;
     let parameters =
       Cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
         ~slot_size
