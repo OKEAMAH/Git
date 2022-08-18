@@ -1429,6 +1429,12 @@ let make_players ~p1_strategy ~contract1 ~p2_strategy ~contract2 =
       game_player = player2;
     } )
 
+let get_commitment_period ctxt =
+  let open Lwt_result_syntax in
+  lwt_result_run ~__LOC__
+  @@ let+ (constant : Constants.t) = Context.get_constants ctxt in
+     constant.parametric.sc_rollup.commitment_period_in_blocks
+
 (** [gen_game ~p1_strategy ~p2_strategy] generates a context where a rollup
     was originated.
     It generates inputs for the rollup, and creates the players' interpretation
@@ -1449,15 +1455,11 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
   let p1, p2 = make_players ~p1_strategy ~contract1 ~p2_strategy ~contract2 in
 
   (* Create a context with a rollup originated. *)
-  let commitment_period =
-    Tezos_protocol_alpha_parameters.Default_parameters.constants_mainnet
-      .sc_rollup
-      .commitment_period_in_blocks
-  in
   let origination_level =
     Raw_level.to_int32 genesis_info.level |> Int32.to_int
   in
   let level_min = origination_level + 1 in
+  let commitment_period = get_commitment_period (B block) in
   let level_max = origination_level + commitment_period - 1 in
   let* levels_and_inputs =
     gen_arith_pvm_inputs_for_levels ?nonempty_inputs ~level_min ~level_max ()
