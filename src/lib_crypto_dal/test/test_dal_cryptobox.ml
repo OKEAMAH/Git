@@ -74,6 +74,12 @@ module Test = struct
         let* p = Dal_cryptobox.polynomial_from_slot t msg in
         Printf.eprintf "\n polynomial_from_slot = %f \n" (Sys.time () -. t') ;
         let t' = Sys.time () in
+        let msg' =
+          Bytes.sub (Dal_cryptobox.polynomial_to_bytes t p) 0 msg_size
+        in
+        Printf.eprintf "\n polynomial_to_bytes = %f \n" (Sys.time () -. t') ;
+        assert (Bytes.compare msg msg' = 0) ;
+        let t' = Sys.time () in
         let cm = Dal_cryptobox.commit t p in
         Printf.eprintf "\n commit = %f \n" (Sys.time () -. t') ;
         let t' = Sys.time () in
