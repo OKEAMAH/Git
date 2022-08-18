@@ -129,8 +129,6 @@ let pp_pack_size out ps =
     | Pack32 -> "Pack32"
     | Pack64 -> "Pack64")
 
-let pp_store_op = pp_memop pp_num_type (pp_opt pp_pack_size)
-
 let pp_vec_extension out = function
   | Types.ExtLane (ps, e) ->
       (pp_pair Types.pp_pack_shape Types.pp_extension) out (ps, e)
@@ -295,7 +293,7 @@ let pp_instr' out instr =
   | CallIndirect (v1, v2) ->
       Format.fprintf out "CallIndirect(%a, %a)" pp_var v1 pp_var v2
   | Load o -> Format.fprintf out "Load(%a)" pp_loadop o
-  | Store o -> Format.fprintf out "Store(%a)" pp_store_op o
+  | Store o -> Format.fprintf out "Store(%a)" pp_storeop o
   | VecLoad o -> Format.fprintf out "VecLoad(%a)" pp_vec_load_op o
   | VecStore o -> Format.fprintf out "VecSore(%a)" pp_vec_store_op o
   | VecLoadLane o -> Format.fprintf out "VecLoadLane(%a)" pp_vec_laneop o
