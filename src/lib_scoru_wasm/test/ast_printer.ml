@@ -129,12 +129,6 @@ let pp_pack_size out ps =
     | Pack32 -> "Pack32"
     | Pack64 -> "Pack64")
 
-let pp_extension out ex =
-  Format.fprintf out "%s" (match ex with Types.SX -> "SX" | ZX -> "ZX")
-
-(* let pp_load_op =
-   pp_memop pp_num_type (pp_opt (pp_pair pp_pack_size pp_extension)) *)
-
 let pp_store_op = pp_memop pp_num_type (pp_opt pp_pack_size)
 
 let pp_pack_shape out p =
@@ -147,7 +141,7 @@ let pp_pack_shape out p =
     | Pack32x2 -> "Pack32x2")
 
 let pp_vec_extension out = function
-  | Types.ExtLane (ps, e) -> (pp_pair pp_pack_shape pp_extension) out (ps, e)
+  | Types.ExtLane (ps, e) -> (pp_pair pp_pack_shape Types.pp_extension) out (ps, e)
   | ExtSplat -> Format.pp_print_string out "ExtSplat"
   | ExtZero -> Format.pp_print_string out "ExZero"
 
