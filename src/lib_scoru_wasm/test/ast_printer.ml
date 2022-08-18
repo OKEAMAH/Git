@@ -132,8 +132,8 @@ let pp_pack_size out ps =
 let pp_extension out ex =
   Format.fprintf out "%s" (match ex with Types.SX -> "SX" | ZX -> "ZX")
 
-let pp_load_op =
-  pp_memop pp_num_type (pp_opt (pp_pair pp_pack_size pp_extension))
+(* let pp_load_op =
+   pp_memop pp_num_type (pp_opt (pp_pair pp_pack_size pp_extension)) *)
 
 let pp_store_op = pp_memop pp_num_type (pp_opt pp_pack_size)
 
@@ -318,7 +318,7 @@ let pp_instr' out instr =
       Format.fprintf out "BrTable(%a, %a)" (pp_list pp_var) vs pp_var v
   | CallIndirect (v1, v2) ->
       Format.fprintf out "CallIndirect(%a, %a)" pp_var v1 pp_var v2
-  | Load o -> Format.fprintf out "Load(%a)" pp_load_op o
+  | Load o -> Format.fprintf out "Load(%a)" pp_loadop o
   | Store o -> Format.fprintf out "Store(%a)" pp_store_op o
   | VecLoad o -> Format.fprintf out "VecLoad(%a)" pp_vec_load_op o
   | VecStore o -> Format.fprintf out "VecSore(%a)" pp_vec_store_op o

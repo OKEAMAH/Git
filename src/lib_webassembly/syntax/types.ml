@@ -1,6 +1,6 @@
 (* Types *)
 
-type num_type = I32Type | I64Type | F32Type | F64Type
+type num_type = I32Type | I64Type | F32Type | F64Type [@@deriving show]
 
 type vec_type = V128Type
 
@@ -34,7 +34,7 @@ type extern_type =
 (* TODO: these types should move somewhere else *)
 type pack_size = Pack8 | Pack16 | Pack32 | Pack64 [@@deriving show]
 
-type extension = SX | ZX
+type extension = SX | ZX [@@deriving show]
 
 type pack_shape = Pack8x8 | Pack16x4 | Pack32x2
 

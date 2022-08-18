@@ -246,8 +246,9 @@ type vec_extractop = V128Op.extractop Values.vecop
 type vec_replaceop = V128Op.replaceop Values.vecop
 
 type ('t, 'p) memop = {ty : 't; align : int; offset : int32; pack : 'p}
+[@@deriving show]
 
-type loadop = (num_type, (pack_size * extension) option) memop
+type loadop = (num_type, (pack_size * extension) option) memop [@@deriving show]
 
 type storeop = (num_type, pack_size option) memop
 
