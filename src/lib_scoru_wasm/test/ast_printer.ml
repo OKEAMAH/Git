@@ -166,13 +166,6 @@ let pp_value_op pp_int32 pp_int64 out = function
 
 let pp_num = pp_phrase (pp_value_op pp_int32 pp_int64)
 
-let pp_laneop pp_i8x16 pp_i16x8 pp_i32x4 pp_i64x2 out = function
-  | V128.I8x16 x -> pp_i8x16 x out
-  | V128.I16x8 x -> pp_i16x8 x out
-  | V128.I32x4 x -> pp_i32x4 x out
-  | V128.I64x2 x -> pp_i64x2 x out
-  | _ -> Stdlib.failwith "Floating point ops are not supported"
-
 let pp_int_relop out op =
   Format.pp_print_string
     out
