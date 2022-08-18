@@ -4,7 +4,7 @@ type num_type = I32Type | I64Type | F32Type | F64Type [@@deriving show]
 
 type vec_type = V128Type [@@deriving show]
 
-type ref_type = FuncRefType | ExternRefType
+type ref_type = FuncRefType | ExternRefType [@@deriving show]
 
 type value_type =
   | NumType of num_type

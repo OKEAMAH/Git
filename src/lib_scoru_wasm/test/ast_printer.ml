@@ -62,14 +62,6 @@ let pp_num_type out num =
     | F32Type -> "F32Type"
     | F64Type -> "F64Type")
 
-let pp_ref_type out ref =
-  Format.fprintf
-    out
-    "%s"
-    (match ref with
-    | Types.FuncRefType -> "FuncRefType"
-    | ExternRefType -> "ExternRefType")
-
 let pp_vec_type out = function
   | Types.V128Type -> Format.pp_print_string out "V128Type"
 
@@ -78,7 +70,7 @@ let pp_value_type out vt =
   match vt with
   | NumType nt -> Format.fprintf out "NumType%a" pp_num_type nt
   | VecType vt -> Format.fprintf out "VecType %a" pp_vec_type vt
-  | RefType rt -> Format.fprintf out "RefType %a" pp_ref_type rt
+  | RefType rt -> Format.fprintf out "RefType %a" Types.pp_ref_type rt
 
 let pp_list pp out x =
   Format.fprintf
@@ -295,7 +287,7 @@ let pp_instr' out instr =
   | VecStore o -> Format.fprintf out "VecSore(%a)" pp_vec_store_op o
   | VecLoadLane o -> Format.fprintf out "VecLoadLane(%a)" pp_vec_laneop o
   | VecStoreLane o -> Format.fprintf out "VecSoreLane(%a)" pp_vec_laneop o
-  | RefNull rt -> Format.fprintf out "RefNull (%a)" pp_ref_type rt
+  | RefNull rt -> Format.fprintf out "RefNull (%a)" Types.pp_ref_type rt
   | Const c -> Format.fprintf out "Const(%a)" pp_num c
   | Compare c -> Format.fprintf out "Compare(%a)" pp_relop c
   | Unary c -> Format.fprintf out "Unary (%a)" pp_unop c
