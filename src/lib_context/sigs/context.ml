@@ -794,3 +794,67 @@ module type TEZOS_CONTEXT = sig
     parents_contexts:Context_hash.t list ->
     bool Lwt.t
 end
+
+(** Functor `With_get_data` adds a `get_data` function to modules of signature `S`.
+    Note that the partially applied `get_data kind key` function has the correct
+    type to be provided to {produce,verify}_tree_proof, which is its intended goal.
+
+    It could just be a wrapper around `Store.Tree.find` and `Store.Tree.find_tree`.
+    However, for backwards compatibility reasons, we must distinguish between two
+    error cases:
+    - finding a content node before the key is totally consumed,
+    - finding an internal node with no key part corresponding to the current search.
+    Hence, this function.
+
+    TODO: discuss if this backwards compatibility is really needed, and rewrite
+    `get_data` with `find` and `find_tree` if it's not. *)
+module type Storelike = sig
+  type key = string list
+
+  type t
+
+  val mem : t -> key -> bool Lwt.t
+
+  val find_tree : t -> key -> t option Lwt.t
+end
+
+module With_get_data (Store : Storelike) = struct
+  exception Found_content_tree of string
+
+  exception Key_partially_found of string
+
+  let get_data (leaf_kind : Proof_types.merkle_leaf_kind) (key : Store.key)
+      (tree : Store.t) : (Store.t * Store.t) Lwt.t =
+    let open Lwt_syntax in
+    match leaf_kind with
+    | Proof_types.Hole -> return (tree, tree)
+    | Proof_types.Raw_context ->
+        let key_to_string k = String.concat ";" k in
+        let rec explore subtree target =
+          match target with
+          | [] -> return (tree, subtree)
+          | hd :: tl -> (
+              let open Lwt in
+              (* `mem subtree []` return `true` iff `subtree` is a *content* tree, i.e. a leaf *)
+              Store.mem subtree [] >>= function
+              | true ->
+                  raise
+                  @@ Found_content_tree
+                       (Printf.sprintf
+                          "Found a leaf node when key %s (top-level key: %s) \
+                           wasn't fully consumed)"
+                          (key_to_string target)
+                          (key_to_string key))
+              | false -> (
+                  Store.find_tree subtree [hd] >>= function
+                  | None ->
+                      raise
+                      @@ Key_partially_found
+                           (Printf.sprintf
+                              "Key %s partially found:\nPart \"%s\" is missing"
+                              (key_to_string key)
+                              hd)
+                  | Some subtree' -> explore subtree' tl))
+        in
+        explore tree key
+end

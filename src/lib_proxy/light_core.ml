@@ -116,53 +116,25 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
       let root = Store.Tree.empty Store.empty in
       {repo; root}
 
-    (* FIXME: This is one of the three (!) copies of the (almost) same `get_data` function.
-       the other ones are in `lib_context/disk/context.ml` and `lib_proxy/light_consensus.ml`.
-       This code **really** ought to be shared, as the correctness of the protocol requires
-       that all three `get_data` function **must** be the same.
+    module Storelike = struct
+      type key = string list
 
-       TODO: `get_data` could just be a wrapper around `Store.Tree.find_tree`,
-       but we do the tree walking manually to keep backward compatibility with the old behaviour
-       when the key is missing, or leads to a content node before consumption. *)
-    let get_data leaf_kind key tree : (Store.tree * Store.tree) Lwt.t =
-      let open Lwt_syntax in
-      match leaf_kind with
-      | Proof.Hole -> return (tree, tree)
-      | Proof.Raw_context ->
-          let key_to_string k = String.concat ";" k in
-          let rec explore tree target =
-            match target with
-            | [] -> return (tree, tree)
-            | hd :: tl -> (
-                let open Lwt in
-                Store.Tree.mem tree [] >>= function
-                | true ->
-                    raise
-                      (Invalid_argument
-                         (Printf.sprintf
-                            "Found a leaf node when key %s (top-level key: %s) \
-                             wasn't fully consumed)"
-                            (key_to_string target)
-                            (key_to_string key)))
-                | false -> (
-                    Store.Tree.find_tree tree [hd] >>= function
-                    (* If the tree doesn't contain the key, we mirror the previous implementation
-                       and return a proof that *some* part of the key is in the tree. This may not
-                       be the desired behaviour.
+      type t = Local_context.tree
 
-                       TODO: in the *verification* case, we want to raise an error if the key is
-                       missing from the proof *)
-                    | None -> return (tree, tree)
-                    | Some subtree -> explore subtree tl))
-          in
-          explore tree key
+      let mem = Local_context.Tree.mem
+
+      let find_tree = Local_context.Tree.find_tree
+    end
+
+    module Get_data = Tezos_context_sigs.Context.With_get_data ((
+      Storelike : Tezos_context_sigs.Context.Storelike))
 
     (** Returns an {!irmin} value but don't update {!irmin_ref}. We want to
         update only when the consensus has been checked, not before! *)
     let stage pgi key (mproof : Store.Proof.tree Store.Proof.t) =
       let open Lwt_syntax in
       let* verification =
-        Store.verify_tree_proof mproof (get_data Proof.Raw_context key)
+        Store.verify_tree_proof mproof (Get_data.get_data Proof.Raw_context key)
       in
       match verification with
       | Error (`Proof_mismatch msg) -> light_failwith pgi msg
