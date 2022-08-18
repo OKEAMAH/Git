@@ -1076,7 +1076,9 @@ let pp_levels_and_inputs ppf levels_and_inputs =
            ppf
            "level %d, inputs %a"
            level
-           (pp_print_list pp_print_string)
+           (pp_print_list
+              ~pp_sep:(fun ppf () -> pp_print_string ppf "; ")
+              pp_print_string)
            inputs)
        ppf)
       levels_and_inputs)
@@ -1087,25 +1089,21 @@ let pp_player_client ppf
     ppf
     "@[<v 2>player:@,\
      %a@]@,\
-     @[<v 2>states:@,\
+     @[<v 2>ticks and states:@,\
      %a@]@,\
      final tick: %a@,\
      @[<v 2>levels and inputs:@,\
      %a@]@,"
     pp_player
     player
-    (Format.pp_print_list (fun ppf (tick, hash) ->
-         Format.fprintf
-           ppf
-           "tick %a, state hash %a"
-           Tick.pp
-           tick
-           State_hash.pp_short
-           hash))
+    Format.(
+      pp_print_list
+        ~pp_sep:(fun ppf () -> pp_print_string ppf "; ")
+        (fun ppf (tick, hash) ->
+          fprintf ppf "(%a, %a)" Tick.pp tick State_hash.pp_short hash))
     states
     Tick.pp
     final_tick
-    (* inbox *)
     pp_levels_and_inputs
     levels_and_inputs
 
