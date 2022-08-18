@@ -26,9 +26,9 @@ module Test = struct
   let bench_DAL_crypto_params () =
     let open Tezos_error_monad.Error_monad.Result_syntax in
     (* We take mainnet parameters we divide by [16] to speed up the test. *)
-    let number_of_shards = 2048 / 16 in
-    let slot_size = 1048576 / 16 in
-    let segment_size = 4096 / 16 in
+    let number_of_shards = 2048 in
+    let slot_size = 1048576 in
+    let segment_size = 4096 in
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
@@ -41,6 +41,7 @@ module Test = struct
     let () = Cryptobox.Internal_for_tests.load_parameters parameters in
     Tezos_lwt_result_stdlib.Lwtreslib.Bare.List.iter_e
       (fun redundancy_factor ->
+        let t' = Sys.time () in
         let* t =
           Cryptobox.make
             {redundancy_factor; slot_size; segment_size; number_of_shards}
@@ -52,7 +53,7 @@ module Test = struct
         let* check =
           Cryptobox.verify_segment t cm {index = 1; content = segment} pi
         in
-
+        Printf.eprintf "\n srs = %f \n" (Sys.time () -. t') ;
         assert check ;
         let enc_shards = Cryptobox.shards_from_polynomial t p in
         let c_indices =
@@ -61,6 +62,7 @@ module Test = struct
             (number_of_shards / redundancy_factor)
           |> Array.of_list
         in
+
         let c =
           Cryptobox.IntMap.filter (fun i _ -> Array.mem i c_indices) enc_shards
         in
@@ -78,6 +80,7 @@ module Test = struct
         match Cryptobox.IntMap.find 0 enc_shards with
         | None -> Ok ()
         | Some eval ->
+            let t' = Sys.time () in
             let check =
               Cryptobox.verify_shard
                 t
@@ -85,6 +88,7 @@ module Test = struct
                 {index = 0; share = eval}
                 shard_proofs.(0)
             in
+            Printf.eprintf "\n verify_shard = %f \n" (Sys.time () -. t') ;
             assert check ;
             let pi = Cryptobox.prove_commitment t p in
             let check = Cryptobox.verify_commitment t comm pi in
