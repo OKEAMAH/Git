@@ -26,8 +26,37 @@
 open Error_monad
 include Dal_cryptobox_intf
 module Base58 = Tezos_crypto.Base58
-module Srs_g1 = Bls12_381_polynomial.Polynomial.Srs_g1
-module Srs_g2 = Bls12_381_polynomial.Polynomial.Srs_g2
+module Srs_g1 = Bls12_381_polynomial.Polynomial.M.Srs_g1
+module Srs_g2 = Bls12_381_polynomial.Polynomial.M.Srs_g2
+
+(* TODO: find better place for this piece of code *)
+module Scalar_array = Bls12_381_polynomial.Fr_carray
+
+type scalar_array = Scalar_array.t
+
+external prime_factor_algorithm_fft_ext :
+  bool ->
+  scalar_array ->
+  scalar_array ->
+  int ->
+  int ->
+  scalar_array ->
+  scalar_array ->
+  unit
+  = "prime_factor_algorithm_fft_bytecode" "prime_factor_algorithm_fft_native"
+
+let prime_factor_algorithm_fft ~inverse ~domain1 ~domain2 ~domain1_length_log
+    ~domain2_length ~coefficients ~scratch_zone =
+  prime_factor_algorithm_fft_ext
+    inverse
+    domain1
+    domain2
+    domain1_length_log
+    domain2_length
+    coefficients
+    scratch_zone
+
+(* END TODO: find better place for this piece of code *)
 
 type error += Failed_to_load_trusted_setup of string
 
@@ -111,14 +140,14 @@ type srs = {
 module Inner = struct
   (* Scalars are elements of the prime field Fr from BLS. *)
   module Scalar = Bls12_381.Fr
-  module Polynomial = Bls12_381_polynomial.Polynomial
+  module Polynomial = Bls12_381_polynomial.Polynomial.M
 
   (* Operations on vector of scalars *)
   module Evaluations = Polynomial.Evaluations
 
   (* Domains for the Fast Fourier Transform (FTT). *)
   module Domains = Polynomial.Domain
-  module Polynomials = Polynomial.Polynomial
+  module Polynomials = Polynomial.Polynomial.Polynomial_unsafe
   module IntMap = Tezos_error_monad.TzLwtreslib.Map.Make (Int)
 
   type slot = bytes
@@ -594,7 +623,7 @@ module Inner = struct
       let res = Array.init t.k (fun _ -> Scalar.(copy zero)) in
       for segment = 0 to t.nb_segments - 1 do
         for elt = 0 to t.segment_length - 1 do
-          if !offset > t.slot_size then ()
+          if !offset >= t.slot_size then ()
           else if elt = t.segment_length - 1 then (
             let dst = Bytes.create t.remaining_bytes in
             Bytes.blit slot !offset dst 0 t.remaining_bytes ;
@@ -636,19 +665,49 @@ module Inner = struct
         offset := !offset + scalar_bytes_amount)
     done
 
+  let make_domain2 root d =
+    let module Scalar = Bls12_381.Fr in
+    let build_array init next len =
+      let xi = ref init in
+      Array.init len (fun _ ->
+          let i = !xi in
+          xi := next !xi ;
+          i)
+    in
+    build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
+    |> Scalar_array.of_array
+
+  let evaluation_fft_k t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:11
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2 Scalar.(pow (Array.get t.domain_k 1) (Z.of_int 19)) 2048)
+      ~domain2:
+        (make_domain2 Scalar.(pow (Array.get t.domain_k 1) (Z.of_int 2048)) 19)
+      ~coefficients
+      ~inverse:false
+      ~scratch_zone:(Scalar_array.allocate (2 * 2048 * 19)) ;
+    coefficients
+
   (* The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_to_bytes t p =
     (*TODO: remove blit since size is already correct *)
-    let eval =
-      pfa_fr_inplace
-        2048
-        19
-        (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 19))
-        (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 2048))
-        ~coefficients:(Polynomials.to_dense_coefficients p)
-        ~inverse:false
+    (*let eval =
+        pfa_fr_inplace
+          2048
+          19
+          (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 19))
+          (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 2048))
+          ~coefficients:(Polynomials.to_dense_coefficients p)
+          ~inverse:false
+      in*)
+    let coefficients =
+      Polynomials.to_dense_coefficients p |> Scalar_array.of_array
     in
+    let eval = evaluation_fft_k t coefficients |> Scalar_array.to_array in
+
     (*let eval = Evaluations.(evaluation_fft t.domain_k p |> to_array) in*)
     let slot = Bytes.init t.slot_size (fun _ -> '0') in
     let offset = ref 0 in

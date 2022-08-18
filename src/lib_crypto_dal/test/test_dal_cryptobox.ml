@@ -265,9 +265,8 @@ module Test = struct
           "\n %s \n"
           (Scalar.to_string @@ Scalar_array.get coefficients 1) ;
 
-        let asrt = false in
-        assert asrt ;
-
+        (*let asrt = false in
+          assert asrt ;*)
         assert check ;
         let t' = Sys.time () in
         let enc_shards = Dal_cryptobox.shards_from_polynomial t p in
@@ -305,6 +304,9 @@ module Test = struct
           "\n %s \n"
           (Tezos_crypto.Blake2B.to_string @@ computed_hash msg') ;
         assert (Bytes.compare msg msg' = 0) ;
+
+        (*let asrt = false in
+        assert asrt ;*)
 
         let comm = Dal_cryptobox.commit t p in
 
