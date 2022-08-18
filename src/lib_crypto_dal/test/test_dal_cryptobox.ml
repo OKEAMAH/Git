@@ -26,9 +26,9 @@ module Test = struct
   let bench_DAL_crypto_params () =
     let open Tezos_error_monad.Error_monad.Result_syntax in
     (* We take mainnet parameters we divide by [16] to speed up the test. *)
-    let number_of_shards = 2048 / 16 in
-    let slot_size = 1048576 / 16 in
-    let segment_size = 4096 / 16 in
+    let number_of_shards = 2048 in
+    let slot_size = 1048576 in
+    let segment_size = 4096 in
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
@@ -41,6 +41,7 @@ module Test = struct
     let () = Dal_cryptobox.Internal_for_tests.load_parameters parameters in
     Tezos_lwt_result_stdlib.Lwtreslib.Bare.List.iter_e
       (fun redundancy_factor ->
+        let t' = Sys.time () in
         let* t =
           Dal_cryptobox.make
             {redundancy_factor; slot_size; segment_size; number_of_shards}
@@ -52,21 +53,46 @@ module Test = struct
         let* check =
           Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
         in
-
+        Printf.eprintf "\n srs = %f \n" (Sys.time () -. t') ;
         assert check ;
+
+        let t' = Sys.time () in
+        let* p = Dal_cryptobox.polynomial_from_slot t msg in
+        Printf.eprintf "\n polynomial_from_slot = %f \n" (Sys.time () -. t') ;
+        let t' = Sys.time () in
+        let cm = Dal_cryptobox.commit t p in
+        Printf.eprintf "\n commit = %f \n" (Sys.time () -. t') ;
+        let t' = Sys.time () in
+        let* pi = Dal_cryptobox.prove_segment t p 1 in
+        Printf.eprintf "\n prove_segment = %f \n" (Sys.time () -. t') ;
+        let segment = Bytes.sub msg segment_size segment_size in
+        let t' = Sys.time () in
+        let* check =
+          Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
+        in
+        Printf.eprintf "\n verify_segment = %f \n" (Sys.time () -. t') ;
+        assert check ;
+        let t' = Sys.time () in
         let enc_shards = Dal_cryptobox.shards_from_polynomial t p in
+        Printf.eprintf "\n shard_from_polynomial = %f \n" (Sys.time () -. t') ;
+
+        (* Only take half of the buckets *)
         let c_indices =
           random_indices
             (number_of_shards - 1)
             (number_of_shards / redundancy_factor)
           |> Array.of_list
         in
+
         let c =
           Dal_cryptobox.IntMap.filter
             (fun i _ -> Array.mem i c_indices)
             enc_shards
         in
+
+        let t' = Sys.time () in
         let* dec = Dal_cryptobox.polynomial_from_shards t c in
+        Printf.eprintf "\n polynomial_from_shards = %f \n" (Sys.time () -. t') ;
         assert (
           Bytes.compare
             msg
@@ -75,11 +101,16 @@ module Test = struct
                0
                (min slot_size msg_size))
           = 0) ;
+
         let comm = Dal_cryptobox.commit t p in
+
+        let t' = Sys.time () in
         let shard_proofs = Dal_cryptobox.prove_shards t p in
+        Printf.eprintf "\n prove_shards = %f \n" (Sys.time () -. t') ;
         match Dal_cryptobox.IntMap.find 0 enc_shards with
         | None -> Ok ()
         | Some eval ->
+            let t' = Sys.time () in
             let check =
               Dal_cryptobox.verify_shard
                 t
@@ -87,9 +118,15 @@ module Test = struct
                 {index = 0; share = eval}
                 shard_proofs.(0)
             in
+            Printf.eprintf "\n verify_shard = %f \n" (Sys.time () -. t') ;
             assert check ;
+
+            let t' = Sys.time () in
             let pi = Dal_cryptobox.prove_commitment t p in
+            Printf.eprintf "\n prove_degree = %f \n" (Sys.time () -. t') ;
+            let t' = Sys.time () in
             let check = Dal_cryptobox.verify_commitment t comm pi in
+            Printf.eprintf "\n verify_commitment = %f \n" (Sys.time () -. t') ;
             assert check ;
             Ok ()
         (* let point = Scalar.random () in *)
