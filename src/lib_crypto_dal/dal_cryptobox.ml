@@ -262,7 +262,24 @@ module Inner = struct
   let scalar_bytes_amount = Scalar.size_in_bytes - 1
 
   (* Builds group of nth roots of unity, a valid domain for the FFT. *)
-  let make_domain n = Domains.build ~log:Z.(log2up (of_int n))
+  (*let make_domain n = Domains.build ~log:Z.(log2up (of_int n))*)
+
+  let make_domain root d =
+    let build_array init next len =
+      let xi = ref init in
+      Array.init len (fun _ ->
+          let i = !xi in
+          xi := next !xi ;
+          i)
+    in
+    build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
+
+  let get_primitive_root n =
+    let multiplicative_group_order = Z.(Scalar.order - one) in
+    let n = Z.of_int n in
+    assert (Z.divisible multiplicative_group_order n) ;
+    let exponent = Z.divexact multiplicative_group_order n in
+    Scalar.pow (Scalar.of_int 7) exponent
 
   type t = {
     redundancy_factor : int;
@@ -272,10 +289,10 @@ module Inner = struct
     k : int;
     n : int;
     (* k and n are the parameters of the erasure code. *)
-    domain_k : Domains.t;
+    domain_k : scalar array;
     (* Domain for the FFT on slots as polynomials to be erasure encoded. *)
-    domain_2k : Domains.t;
-    domain_n : Domains.t;
+    domain_2k : scalar array;
+    domain_n : scalar array;
     (* Domain for the FFT on erasure encoded slots (as polynomials). *)
     shard_size : int;
     (* Length of a shard in terms of scalar elements. *)
@@ -302,17 +319,16 @@ module Inner = struct
     if
       not
         (is_pow_of_two t.slot_size
-        && is_pow_of_two t.segment_size
-        && is_pow_of_two t.n)
+        && is_pow_of_two t.segment_size (*&& is_pow_of_two t.n*))
     then
       (* According to the specification the lengths of a slot a slot segment are
          in MiB *)
       fail (`Fail "Wrong slot size: expected MiB")
-    else if not (Z.(log2 (of_int t.n)) <= 32 && is_pow_of_two t.k && t.n > t.k)
-    then
-      (* n must be at most 2^32, the biggest subgroup of 2^i roots of unity in the
-         multiplicative group of Fr, because the FFTs operate on such groups. *)
-      fail (`Fail "Wrong computed size for n")
+      (*else if not (Z.(log2 (of_int t.n)) <= 32 && is_pow_of_two t.k && t.n > t.k)
+        then
+          (* n must be at most 2^32, the biggest subgroup of 2^i roots of unity in the
+             multiplicative group of Fr, because the FFTs operate on such groups. *)
+          fail (`Fail "Wrong computed size for n")*)
     else if t.k > srs_size then
       fail
         (`Fail
@@ -320,6 +336,9 @@ module Inner = struct
              "SRS size is too small. Expected more than %d. Got %d"
              t.k
              srs_size))
+    else if not (is_pow_of_two t.number_of_shards && t.n > t.number_of_shards)
+    then invalid_arg "Shards not containing at least two elements"
+      (* Shards must contain at least two elements. *)
     else return t
 
   let slot_as_polynomial_length ~slot_size =
@@ -342,6 +361,13 @@ module Inner = struct
     let evaluations_log = Z.(log2 (of_int n)) in
     let evaluations_per_proof_log = Z.(log2 (of_int shard_size)) in
     let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
+    let k = 2048 * 19 in
+    let n = redundancy_factor * k in
+    let shard_size = n / number_of_shards in
+    let rt_n = get_primitive_root n in
+    let rt_k = Scalar.pow rt_n (Z.of_int redundancy_factor) in
+    let rt_2k = Scalar.pow rt_n (Z.of_int (redundancy_factor / 2)) in
+    Printf.eprintf "\nshard size = %d \n" shard_size ;
     let* srs =
       match !initialisation_parameters with
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
@@ -363,9 +389,9 @@ module Inner = struct
         number_of_shards;
         k;
         n;
-        domain_k = make_domain k;
-        domain_2k = make_domain (2 * k);
-        domain_n = make_domain n;
+        domain_k = make_domain rt_k k;
+        domain_2k = make_domain rt_2k (2 * k);
+        domain_n = make_domain rt_n n;
         shard_size;
         nb_segments = slot_size / segment_size;
         segment_length;
@@ -382,27 +408,12 @@ module Inner = struct
 
   let polynomial_evaluate = Polynomials.evaluate
 
-  let fft_mul d ps =
+  let _fft_mul d ps =
     let open Evaluations in
     let evaluations = List.map (evaluation_fft d) ps in
     interpolation_fft d (mul_c ~evaluations ())
 
-  let primitive_root_38912 =
-    let multiplicative_group_order = Z.(Scalar.order - one) in
-    let exponent =
-      Z.divexact multiplicative_group_order (Z.of_int (2048 * 19))
-    in
-    Scalar.pow (Scalar.of_int 7) exponent
-
-  let make_domain root d =
-    let build_array init next len =
-      let xi = ref init in
-      Array.init len (fun _ ->
-          let i = !xi in
-          xi := next !xi ;
-          i)
-    in
-    build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
+  let primitive_root_38912 = get_primitive_root (2048 * 19)
 
   let dft ~inverse ~domain ~coefficients =
     let n = Array.length domain in
@@ -419,7 +430,7 @@ module Inner = struct
     done ;
     if inverse then
       for i = 0 to n - 1 do
-        res.(i) <- Scalar.mul (Scalar.inverse_exn @@ Scalar.of_int n) res.(i)
+        res.(i) <- Scalar.(mul (inverse_exn (of_int n)) res.(i))
       done ;
     res
 
@@ -464,6 +475,114 @@ module Inner = struct
     done ;
     coefficients
 
+  let pfa_fr_inplace2 ~inverse n1 n2 root1 root2 ~coefficients =
+    let n = n1 * n2 in
+    Printf.eprintf "\n len = %d ; n = %d \n" (Array.length coefficients) n ;
+    assert (Array.length coefficients = n) ;
+    let domain_n1 = make_domain root1 n1 in
+    let domain_n2 = make_domain root2 n2 in
+    let columns =
+      Array.init n1 (fun _ -> Array.init n2 (fun _ -> Scalar.(copy zero)))
+    in
+    let rows =
+      Array.init n2 (fun _ -> Array.init n1 (fun _ -> Scalar.(copy zero)))
+    in
+
+    for z = 0 to n - 1 do
+      columns.(z mod n1).(z mod n2) <- coefficients.(z)
+    done ;
+
+    for k1 = 0 to n1 - 1 do
+      columns.(k1) <- dft ~inverse ~domain:domain_n2 ~coefficients:columns.(k1)
+    done ;
+
+    for k1 = 0 to n1 - 1 do
+      for k2 = 0 to n2 - 1 do
+        rows.(k2).(k1) <- columns.(k1).(k2)
+      done
+    done ;
+
+    for k2 = 0 to n2 - 1 do
+      rows.(k2) <- dft ~inverse ~domain:domain_n1 ~coefficients:rows.(k2)
+    done ;
+
+    for k1 = 0 to n1 - 1 do
+      for k2 = 0 to n2 - 1 do
+        coefficients.(((n1 * k2) + (n2 * k1)) mod n) <- rows.(k2).(k1)
+      done
+    done ;
+    coefficients
+
+  let resize s p ps =
+    let res = Array.init s (fun _ -> Scalar.(copy zero)) in
+    Array.blit p 0 res 0 ps ;
+    res
+
+  let fft_mul2k_2 t a b =
+    let a = resize (2 * t.k) a (Array.length a) in
+    let b = resize (2 * t.k) b (Array.length b) in
+    let evaluation_fft coefficients =
+      pfa_fr_inplace
+        (2 * 2048)
+        19
+        (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int 19))
+        (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int (2 * 2048)))
+        ~coefficients
+        ~inverse:false
+    in
+    let interpolation_fft coefficients =
+      pfa_fr_inplace
+        (2 * 2048)
+        19
+        Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
+        Scalar.(
+          inverse_exn
+            (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
+        ~coefficients
+        ~inverse:true
+    in
+    let eval_a = evaluation_fft a in
+    let eval_b = evaluation_fft b in
+    for i = 0 to (2 * t.k) - 1 do
+      eval_a.(i) <- Scalar.mul eval_a.(i) eval_b.(i)
+    done ;
+    interpolation_fft eval_a
+
+  let _fft_mul2k_4 t a b c d =
+    let a = resize (2 * t.k) a (Array.length a) in
+    let b = resize (2 * t.k) b (Array.length b) in
+    let c = resize (2 * t.k) c (Array.length c) in
+    let d = resize (2 * t.k) d (Array.length d) in
+    let evaluation_fft coefficients =
+      pfa_fr_inplace
+        (2 * 2048)
+        19
+        (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int 19))
+        (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int (2 * 2048)))
+        ~coefficients
+        ~inverse:false
+    in
+    let interpolation_fft coefficients =
+      pfa_fr_inplace
+        (2 * 2048)
+        19
+        Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
+        Scalar.(
+          inverse_exn
+            (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
+        ~coefficients
+        ~inverse:true
+    in
+    let eval_a = evaluation_fft a in
+    let eval_b = evaluation_fft b in
+    let eval_c = evaluation_fft c in
+    let eval_d = evaluation_fft d in
+    for i = 0 to (2 * t.k) - 1 do
+      eval_a.(i) <-
+        Scalar.mul_bulk [eval_a.(i); eval_b.(i); eval_c.(i); eval_d.(i)]
+    done ;
+    interpolation_fft eval_a
+
   (* We encode by segments of [segment_size] bytes each.  The segments
      are arranged in cosets to evaluate in batch with Kate
      amortized. *)
@@ -495,20 +614,15 @@ module Inner = struct
   let polynomial_from_slot t slot =
     let open Result_syntax in
     let* data = polynomial_from_bytes' t slot in
-    let data = Array.sub data 0 (19 * 2048) in
-    let res = Array.init t.k (fun _ -> Scalar.(copy zero)) in
-    Array.blit
-      (pfa_fr_inplace
-         2048
-         19
-         (Scalar.inverse_exn @@ Scalar.pow primitive_root_38912 (Z.of_int 19))
-         (Scalar.inverse_exn @@ Scalar.pow primitive_root_38912 (Z.of_int 2048))
-         ~coefficients:data
-         ~inverse:true)
-      0
-      res
-      0
-      (2048 * 19) ;
+    let res =
+      pfa_fr_inplace
+        2048
+        19
+        Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 19)))
+        Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 2048)))
+        ~coefficients:data
+        ~inverse:true
+    in
     Ok (Polynomials.of_dense res)
   (*Evaluations.interpolation_fft2 t.domain_k data*)
 
@@ -527,20 +641,16 @@ module Inner = struct
   (* The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_to_bytes t p =
-    let eval = Array.init t.k (fun _ -> Scalar.(copy zero)) in
-    Array.blit
-      (pfa_fr_inplace
-         2048
-         19
-         (Scalar.pow primitive_root_38912 (Z.of_int 19))
-         (Scalar.pow primitive_root_38912 (Z.of_int 2048))
-         ~coefficients:
-           (Array.sub (Polynomials.to_dense_coefficients p) 0 (2048 * 19))
-         ~inverse:false)
-      0
-      eval
-      0
-      (2048 * 19) ;
+    (*TODO: remove blit since size is already correct *)
+    let eval =
+      pfa_fr_inplace
+        2048
+        19
+        (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 19))
+        (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 2048))
+        ~coefficients:(Polynomials.to_dense_coefficients p)
+        ~inverse:false
+    in
     (*let eval = Evaluations.(evaluation_fft t.domain_k p |> to_array) in*)
     let slot = Bytes.init t.slot_size (fun _ -> '0') in
     let offset = ref 0 in
@@ -549,18 +659,27 @@ module Inner = struct
     done ;
     slot
 
-  let encode t p = Evaluations.(evaluation_fft t.domain_n p |> to_array)
+  let encode t p =
+    (*Evaluations.(evaluation_fft t.domain_n p |> to_array)*)
+    let coefficients = Array.init t.n (fun _ -> Scalar.(copy zero)) in
+    Array.blit (Polynomials.to_dense_coefficients p) 0 coefficients 0 t.k ;
+    pfa_fr_inplace
+      (2 * 2048)
+      19
+      (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
+      (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
+      ~coefficients
+      ~inverse:false
 
   (* The shards are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let shards_from_polynomial t p =
     let codeword = encode t p in
-    let len_shard = t.n / t.number_of_shards in
     let rec loop i map =
       if i = t.number_of_shards then map
       else
-        let shard = Array.init len_shard (fun _ -> Scalar.(copy zero)) in
-        for j = 0 to len_shard - 1 do
+        let shard = Array.init t.shard_size (fun _ -> Scalar.(copy zero)) in
+        for j = 0 to t.shard_size - 1 do
           shard.(j) <- codeword.((t.number_of_shards * j) + i)
         done ;
         loop (i + 1) (IntMap.add i shard map)
@@ -569,7 +688,7 @@ module Inner = struct
 
   (* Computes the polynomial N(X) := \sum_{i=0}^{k-1} n_i x_i^{-1} X^{z_i}. *)
   let compute_n t eval_a' shards =
-    let w = Domains.get t.domain_n 1 in
+    let w = Array.get t.domain_n 1 in
     let n_poly = Array.init t.n (fun _ -> Scalar.(copy zero)) in
     let open Result_syntax in
     let c = ref 0 in
@@ -585,7 +704,7 @@ module Inner = struct
                   let c_i = arr.(j) in
                   let z_i = (t.number_of_shards * j) + z_i in
                   let x_i = Scalar.pow w (Z.of_int z_i) in
-                  let tmp = Evaluations.get eval_a' z_i in
+                  let tmp = Array.get eval_a' z_i in
                   Scalar.mul_inplace tmp tmp x_i ;
                   match Scalar.inverse_exn_inplace tmp tmp with
                   | exception _ -> Error (`Invert_zero "can't inverse element")
@@ -639,41 +758,78 @@ module Inner = struct
         |> Tezos_stdlib.TzList.take_n (t.k / t.shard_size)
         |> split
       in
-      let f11, f12 = split f1 in
-      let f21, f22 = split f2 in
 
+      (*let f11, f12 = split f1 in
+        let f21, f22 = split f2 in*)
       let prod =
         List.fold_left
           (fun acc (i, _) ->
             Polynomials.mul_xn
               acc
               t.shard_size
-              (Scalar.negate (Domains.get t.domain_n (i * t.shard_size))))
+              (Scalar.negate (Array.get t.domain_n (i * t.shard_size))))
           Polynomials.one
       in
-      let p11 = prod f11 in
-      let p12 = prod f12 in
-      let p21 = prod f21 in
-      let p22 = prod f22 in
+      (*let p11 = prod f11 |> Polynomials.to_dense_coefficients in
+        let p12 = prod f12 |> Polynomials.to_dense_coefficients in
+        let p21 = prod f21 |> Polynomials.to_dense_coefficients in
+        let p22 = prod f22 |> Polynomials.to_dense_coefficients in*)
+      let p1 = prod f1 |> Polynomials.to_dense_coefficients in
+      let p2 = prod f2 |> Polynomials.to_dense_coefficients in
 
-      let a_poly = fft_mul t.domain_2k [p11; p12; p21; p22] in
-
+      (*let a_poly = fft_mul t.domain_2k [p11; p12; p21; p22] in*)
+      (*let a_poly = fft_mul2k_4 t p11 p12 p21 p22 |> Polynomials.of_dense in*)
+      let a_poly = fft_mul2k_2 t p1 p2 |> Polynomials.of_dense in
       (* 2. Computing formal derivative of A(x). *)
+      (*TODO: add derivative that keeps length? *)
       let a' = Polynomials.derivative a_poly in
 
       (* 3. Computing A'(w^i) = A_i(w^i). *)
-      let eval_a' = Evaluations.evaluation_fft t.domain_n a' in
+      (*let eval_a' = Evaluations.evaluation_fft t.domain_n a' in*)
+      let eval_a' =
+        pfa_fr_inplace
+          (2 * 2048)
+          19
+          (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
+          (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
+          ~coefficients:
+            (resize
+               t.n
+               (Polynomials.to_dense_coefficients a')
+               (Polynomials.degree a'))
+          ~inverse:false
+      in
 
       (* 4. Computing N(x). *)
       let* n_poly = compute_n t eval_a' shards in
 
       (* 5. Computing B(x). *)
-      let b = Evaluations.interpolation_fft2 t.domain_n n_poly in
+      (*let b = Evaluations.interpolation_fft2 t.domain_n n_poly in*)
+      let b =
+        pfa_fr_inplace
+          (2 * 2048)
+          19
+          Scalar.(inverse_exn (pow (Array.get t.domain_n 1) (Z.of_int 19)))
+          Scalar.(
+            inverse_exn
+              (pow (Array.get t.domain_n 1) (Z.of_int (Int.mul 2 2048))))
+          ~coefficients:n_poly
+          ~inverse:true
+        |> Polynomials.of_dense
+      in
       let b = Polynomials.copy ~len:t.k b in
+
       Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
 
       (* 6. Computing Lagrange interpolation polynomial P(x). *)
-      let p = fft_mul t.domain_2k [a_poly; b] in
+      (*let p = fft_mul t.domain_2k [a_poly; b] in*)
+      let p =
+        fft_mul2k_2
+          t
+          (Polynomials.to_dense_coefficients a_poly)
+          (Polynomials.to_dense_coefficients b)
+        |> Polynomials.of_dense
+      in
       let p = Polynomials.copy ~len:t.k p in
       Polynomials.opposite_inplace p ;
       Ok p
@@ -717,7 +873,7 @@ module Inner = struct
     let logx = Z.log2 (Z.of_int x) in
     if 1 lsl logx = x then 0 else (1 lsl (logx + 1)) - x
 
-  let is_pow_of_two x =
+  let _is_pow_of_two x =
     let logx = Z.log2 (Z.of_int x) in
     1 lsl logx = x
 
@@ -726,9 +882,10 @@ module Inner = struct
 
   (* Precompute first part of Toeplitz trick, which doesn't depends on the
      polynomial’s coefficients. *)
-  let preprocess_multi_reveals ~chunk_len ~degree srs =
+  let preprocess_multi_reveals ~chunk_len ~shard_size ~degree srs =
     let open Bls12_381 in
-    let l = 1 lsl chunk_len in
+    let _l = 1 lsl chunk_len in
+    let l = shard_size in
     let k =
       let ratio = degree / l in
       let log_inf = Z.log2 (Z.of_int ratio) in
@@ -763,11 +920,17 @@ module Inner = struct
     let n = chunk_len + chunk_count in
     assert (2 <= chunk_len) ;
     assert (chunk_len < n) ;
-    assert (is_pow_of_two degree) ;
+    (*assert (is_pow_of_two degree) ;*)
     assert (1 lsl chunk_len < degree) ;
     assert (degree <= 1 lsl n) ;
-    let l = 1 lsl chunk_len in
-    Printf.eprintf "\n len coeffs = %d \n" (Array.length coefs) ;
+    let _l = 1 lsl chunk_len in
+    let l = 38 in
+    Printf.eprintf
+      "\n len coeffs = %d ; deg=%d; l =%d ; 2k/l=%d\n"
+      (Array.length coefs)
+      degree
+      l
+      (2 * degree / l) ;
     (* We don’t need the first coefficient f₀. *)
     let compute_h_j j =
       let rest = (degree - j) mod l in
@@ -842,7 +1005,7 @@ module Inner = struct
     |> snd
 
   (* Part 3.2 verifier : verifies that f(w×domain.(i)) = evaluations.(i). *)
-  let verify t cm_f srs_point domain (w, evaluations) proof =
+  let _verify t cm_f srs_point domain (w, evaluations) proof =
     let open Bls12_381 in
     let h = interpolation_h_poly w domain evaluations in
     let cm_h = commit t h in
@@ -851,6 +1014,38 @@ module Inner = struct
       G2.(add srs_point (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
     let diff_commits = G1.(add cm_h (negate cm_f)) in
+    Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
+
+  let interpolation_h_poly3 y domain z_list =
+    let rt = Array.get domain 1 in
+    let rt1 = Scalar.pow rt (Z.of_int 19) in
+    let rt2 = Scalar.pow rt (Z.of_int 2) in
+    let h =
+      pfa_fr_inplace2
+        2
+        19
+        (inv_root rt1)
+        (inv_root rt2)
+        ~coefficients:z_list
+        ~inverse:true
+    in
+    let inv_y = Scalar.inverse_exn y in
+    Array.fold_left_map
+      (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
+      Scalar.(copy one)
+      h
+    |> snd
+
+  let verify3 t cm_f srs2l domain (w, evaluations) proof =
+    let open Bls12_381 in
+    let h = interpolation_h_poly3 w domain evaluations in
+    let cm_h = commit t (Polynomials.of_dense h) in
+    let l = 38 (*Array.length domain*) in
+    let sl_min_yl =
+      G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
+    in
+    let diff_commits = G1.(add cm_h (negate cm_f)) in
+
     Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
 
   let verify2 (t : t) cm_f srs2l domain (w, evaluations) proof =
@@ -867,6 +1062,7 @@ module Inner = struct
   let precompute_shards_proofs t =
     preprocess_multi_reveals
       ~chunk_len:t.evaluations_per_proof_log
+      ~shard_size:t.shard_size
       ~degree:t.k
       t.srs.raw.srs_g1
 
@@ -895,22 +1091,31 @@ module Inner = struct
 
   let prove_shards t p =
     let preprocess = precompute_shards_proofs t in
-    multiple_multi_reveals
-      ~chunk_len:t.evaluations_per_proof_log
-      ~chunk_count:t.proofs_log
-      ~degree:t.k
-      ~preprocess
-      (Polynomials.to_dense_coefficients p)
+    let t' = Sys.time () in
+    let res =
+      multiple_multi_reveals
+        ~chunk_len:t.evaluations_per_proof_log
+        ~chunk_count:2048
+        ~degree:t.k
+        ~preprocess
+        (Polynomials.to_dense_coefficients p)
+    in
+    Printf.eprintf "\n prove_shards reveal = %f\n" (Sys.time () -. t') ;
+    res
 
   let verify_shard t cm {index = shard_index; share = shard_evaluations} proof =
-    let d_n = Domains.build ~log:t.evaluations_log in
-    let domain = Domains.build ~log:t.evaluations_per_proof_log in
-    verify
+    (*let d_n = Domains.build ~log:t.evaluations_log in
+      let domain = Domains.build ~log:t.evaluations_per_proof_log in*)
+    Printf.eprintf "\n len share = %d \n" (Array.length shard_evaluations) ;
+    let rt = Array.get t.domain_n 1 in
+    let domain = make_domain (Scalar.pow rt (Z.of_int 2048)) t.shard_size in
+    let wi = Scalar.pow rt (Z.of_int shard_index) in
+    verify3
       t
       cm
-      t.srs.kate_amortized_srs_g2_shards
+      (Srs_g2.get t.srs.raw.srs_g2 t.shard_size)
       domain
-      (Domains.get d_n shard_index, shard_evaluations)
+      (wi, shard_evaluations)
       proof
 
   let _prove_single t p z =

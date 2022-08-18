@@ -22,6 +22,18 @@ module Test = struct
 
     aux [] k
 
+  let computed_hash bs =
+    let st =
+      Hacl_star.EverCrypt.Hash.init ~alg:Hacl_star.SharedDefs.HashDefs.BLAKE2b
+    in
+    let len = 48 in
+    let msg = Bytes.create len in
+    for i = 0 to (Bytes.length bs / len) - 1 do
+      Bytes.blit bs (i * len) msg 0 len ;
+      Hacl_star.EverCrypt.Hash.update ~st ~msg
+    done ;
+    Hacl_star.EverCrypt.Hash.finish ~st
+
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
     let open Tezos_error_monad.Error_monad.Result_syntax in
@@ -34,11 +46,13 @@ module Test = struct
     for i = 0 to (msg_size / 8) - 1 do
       Bytes.set_int64_le msg (i * 8) (Random.int64 Int64.max_int)
     done ;
+    Printf.eprintf "\n %s \n" (Bytes.to_string @@ computed_hash msg) ;
     let parameters =
       Dal_cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
         ~slot_size
     in
     let () = Dal_cryptobox.Internal_for_tests.load_parameters parameters in
+
     Tezos_lwt_result_stdlib.Lwtreslib.Bare.List.iter_e
       (fun redundancy_factor ->
         let t' = Sys.time () in
@@ -76,6 +90,12 @@ module Test = struct
         let enc_shards = Dal_cryptobox.shards_from_polynomial t p in
         Printf.eprintf "\n shard_from_polynomial = %f \n" (Sys.time () -. t') ;
 
+        (match Dal_cryptobox.IntMap.find 0 enc_shards with
+        | None -> ()
+        | Some eval ->
+            let eval = Obj.magic eval in
+            Printf.eprintf "\n len share =%d \n" (Array.length eval)) ;
+
         (* Only take half of the buckets *)
         let c_indices =
           random_indices
@@ -92,15 +112,12 @@ module Test = struct
 
         let t' = Sys.time () in
         let* dec = Dal_cryptobox.polynomial_from_shards t c in
+        let msg' =
+          Bytes.sub (Dal_cryptobox.polynomial_to_bytes t dec) 0 msg_size
+        in
         Printf.eprintf "\n polynomial_from_shards = %f \n" (Sys.time () -. t') ;
-        assert (
-          Bytes.compare
-            msg
-            (Bytes.sub
-               (Dal_cryptobox.polynomial_to_bytes t dec)
-               0
-               (min slot_size msg_size))
-          = 0) ;
+        Printf.eprintf "\n %s \n" (Bytes.to_string @@ computed_hash msg') ;
+        assert (Bytes.compare msg msg' = 0) ;
 
         let comm = Dal_cryptobox.commit t p in
 
