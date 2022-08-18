@@ -388,6 +388,7 @@ module Inner = struct
     let evaluations_log = Z.(log2 (of_int n)) in
     let evaluations_per_proof_log = Z.(log2 (of_int shard_size)) in
     let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
+    (* TODO: compute tight bound *)
     let k = 2048 * 19 in
     let n = redundancy_factor * k in
     let shard_size = n / number_of_shards in
@@ -494,10 +495,8 @@ module Inner = struct
     coefficients
 
   let fft_mul2k_2 t a b =
-    (* TODO: move duplicated code evaluation_fft & interpolation_fft *)
     let a = resize (2 * t.k) a (Scalar_array.length a) in
     let b = resize (2 * t.k) b (Scalar_array.length b) in
-
     let eval_a = evaluation_fft_2k t a in
     let eval_b = evaluation_fft_2k t b in
     for i = 0 to (2 * t.k) - 1 do
@@ -508,7 +507,7 @@ module Inner = struct
     done ;
     interpolation_fft_2k t eval_a
 
-  let _fft_mul2k_4 t a b c d =
+  let fft_mul2k_4 t a b c d =
     (* TODO: remove extra conversions *)
     (* TODO: put in cache some domains *)
     (* TODO: less arguments to the prime_factor_algorithm_fft thanks
@@ -758,7 +757,7 @@ module Inner = struct
       let p12 = prod f12 in
       let p21 = prod f21 in
       let p22 = prod f22 in
-      let a_poly = _fft_mul2k_4 t p11 p12 p21 p22 |> Polynomials.of_carray in
+      let a_poly = fft_mul2k_4 t p11 p12 p21 p22 |> Polynomials.of_carray in
 
       (* 2. Computing formal derivative of A(x). *)
       (* TODO: remove conversions *)
