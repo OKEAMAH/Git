@@ -986,7 +986,6 @@ module Inner = struct
       ~coefficients
       ~inverse:true
       ~scratch_zone:t.scratch_zone ;
-
     let inv_y = Scalar.inverse_exn y in
     (* TODO: add Scalar_array.fold_left_map *)
     Array.fold_left_map
@@ -998,9 +997,8 @@ module Inner = struct
   let verify3 t cm_f srs_point (domain : scalar_array) (w, evaluations) proof =
     let open Bls12_381 in
     let h = interpolation_h_poly3 t w domain evaluations in
-    (* TODO: remove conversion *)
     let cm_h = commit t h in
-    let l = t.shard_size (*Array.length domain*) in
+    let l = t.shard_size in
     let sl_min_yl =
       G2.(add srs_point (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
@@ -1051,8 +1049,6 @@ module Inner = struct
     if segment_index < 0 || segment_index >= t.nb_segments then
       Error `Segment_index_out_of_range
     else
-      (*let l = 1 lsl Z.(log2up (of_int t.segment_length)) in
-        let wi = Scalar_array.get t.domain_k segment_index in*)
       let l = t.segment_length_with_padding in
       let wi = Scalar_array.get t.domain_k segment_index in
       let quotient, _ =
@@ -1083,9 +1079,8 @@ module Inner = struct
   let verify2 t cm_f srs_point (domain : scalar_array) (w, evaluations) proof =
     let open Bls12_381 in
     let h = interpolation_h_poly2 t w domain evaluations in
-
     let cm_h = commit t h in
-    let l = t.segment_length_with_padding (*Array.length domain*) in
+    let l = t.segment_length_with_padding in
     let sl_min_yl =
       G2.(add srs_point (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
