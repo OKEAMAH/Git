@@ -108,18 +108,7 @@ let pp_pack_size out ps =
     | Pack32 -> "Pack32"
     | Pack64 -> "Pack64")
 
-let pp_vec_extension out = function
-  | Types.ExtLane (ps, e) ->
-      (pp_pair Types.pp_pack_shape Types.pp_extension) out (ps, e)
-  | ExtSplat -> Format.pp_print_string out "ExtSplat"
-  | ExtZero -> Format.pp_print_string out "ExZero"
-
 let pp_vec_store_op = pp_memop Types.pp_vec_type pp_unit
-
-let pp_value_op pp_int32 pp_int64 out = function
-  | Values.I32 x -> pp_int32 out x
-  | I64 x -> pp_int64 out x
-  | _ -> Stdlib.failwith "Floating point values are not supported"
 
 let pp_num = pp_phrase (pp_value_op pp_int32 pp_int64)
 
