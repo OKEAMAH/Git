@@ -1132,33 +1132,36 @@ module Player_client = struct
      test/unit/test_sc_rollup_inbox. The main difference is: we use
      [Alpha_context.Sc_rollup.Inbox] instead of [Sc_rollup_repr_inbox] in the
      former. *)
-  let construct_inbox ctxt levels_and_payloads ~rollup ~origination_level =
-    let open Lwt_syntax in
-    let open Store_inbox in
-    let* inbox = empty ctxt rollup origination_level in
-    let history = history_at_genesis ~capacity:10000L in
+  let add_messages_to_inbox ctxt history inbox levels_and_payloads =
+    let open Lwt_result_syntax in
     let rec aux history inbox level_tree = function
       | [] -> return (ctxt, level_tree, history, inbox)
       | (level, payloads) :: rst ->
           let level = Int32.of_int level |> Raw_level.of_int32_exn in
-          let () = assert (Raw_level.(origination_level <= level)) in
-          let* res =
-            lift @@ add_messages ctxt history inbox level payloads level_tree
-          in
-          let level_tree, history, inbox =
-            WithExceptions.Result.get_ok ~loc:__LOC__ res
+          let* level_tree, history, inbox =
+            lift
+            @@ Store_inbox.add_messages
+                 ctxt
+                 history
+                 inbox
+                 level
+                 payloads
+                 level_tree
           in
           aux history inbox (Some level_tree) rst
     in
     aux history inbox None levels_and_payloads
 
   (** Construct an inbox based on [levels_and_inputs] in the player context. *)
-  let construct_inbox ~origination_level ctxt rollup levels_and_inputs =
-    lwt_run
-    @@ construct_inbox
-         ~origination_level
-         ctxt
-         ~rollup
+  let construct_inbox ~origination_level inbox_ctxt rollup levels_and_inputs =
+    let open Lwt_syntax in
+    lwt_result_run ~__LOC__
+    @@ let* inbox = Store_inbox.empty inbox_ctxt rollup origination_level in
+       let history = Store_inbox.history_at_genesis ~capacity:10000L in
+       add_messages_to_inbox
+         inbox_ctxt
+         history
+         inbox
          (levels_and_payloads levels_and_inputs)
 
   (** Generate [our_states] for [levels_and_inputs] based on the strategy.
