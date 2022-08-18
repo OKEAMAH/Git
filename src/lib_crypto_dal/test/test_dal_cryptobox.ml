@@ -1,7 +1,7 @@
 module Test = struct
   module Scalar = Bls12_381.Fr
 
-  let random_indices bound k =
+  let _random_indices bound k =
     Random.self_init () ;
 
     let rand_elt l =
@@ -22,8 +22,8 @@ module Test = struct
 
     aux [] k
 
-  let computed_hash bs =
-    let st =
+  let computed_hash bs = Tezos_crypto.Blake2B.hash_bytes [bs]
+  (*let st =
       Hacl_star.EverCrypt.Hash.init ~alg:Hacl_star.SharedDefs.HashDefs.BLAKE2b
     in
     let len = 48 in
@@ -32,7 +32,7 @@ module Test = struct
       Bytes.blit bs (i * len) msg 0 len ;
       Hacl_star.EverCrypt.Hash.update ~st ~msg
     done ;
-    Hacl_star.EverCrypt.Hash.finish ~st
+    Hacl_star.EverCrypt.Hash.finish ~st*)
 
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
@@ -44,9 +44,13 @@ module Test = struct
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
-      Bytes.set_int64_le msg (i * 8) (Random.int64 Int64.max_int)
+      Bytes.set_int64_le msg (i * 8) Int64.max_int
     done ;
-    Printf.eprintf "\n %s \n" (Bytes.to_string @@ computed_hash msg) ;
+
+    Printf.eprintf
+      "\n %s \n"
+      (Tezos_crypto.Blake2B.to_string @@ computed_hash msg) ;
+
     let parameters =
       Cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
         ~slot_size
@@ -70,10 +74,11 @@ module Test = struct
         assert check ;
         let enc_shards = Cryptobox.shards_from_polynomial t p in
         let c_indices =
-          random_indices
-            (number_of_shards - 1)
-            (number_of_shards / redundancy_factor)
-          |> Array.of_list
+          0 -- (number_of_shards / redundancy_factor)
+          (*random_indices
+              (shards_amount - 1)
+              ((shards_amount / redundancy_factor) + 1)
+            |> Array.of_list*)
         in
 
         let c =
