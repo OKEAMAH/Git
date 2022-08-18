@@ -18,7 +18,7 @@ type func_type = FuncType of result_type * result_type
 
 type 'a limits = {min : 'a; max : 'a option}
 
-type mutability = Immutable | Mutable
+type mutability = Immutable | Mutable [@@deriving show]
 
 type table_type = TableType of Int32.t limits * ref_type
 

@@ -340,17 +340,13 @@ let pp_table out t =
     (pp_vector pp_ref)
     c
 
-let pp_mutable out = function
-  | Types.Immutable -> Format.pp_print_string out "Immutable"
-  | Types.Mutable -> Format.pp_print_string out "Mutable"
-
 let pp_global_type out (Types.GlobalType (vt, mt)) =
   Format.fprintf
     out
     "GlobalType @[<hv 2>(%a, %a)@]"
     Types.pp_value_type
     vt
-    pp_mutable
+    Types.pp_mutability
     mt
 
 let pp_value_num = pp_value_op pp_int32 pp_int64
