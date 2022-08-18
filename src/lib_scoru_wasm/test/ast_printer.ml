@@ -303,10 +303,6 @@ let pp_func out func =
   | Func.HostFunc (ft, n) ->
       Format.fprintf out "HostFunc @[<hv 2>(%a,@; %s)@]" pp_func_type ft n
 
-let pp_ref_type out = function
-  | Types.FuncRefType -> Format.fprintf out "FuncRefType"
-  | Types.ExternRefType -> Format.fprintf out "ExternRefType"
-
 let pp_limit pp out {Types.min; Types.max} =
   Format.fprintf out "{min = %a; max = %a}" pp min (pp_opt pp) max
 
@@ -316,11 +312,11 @@ let pp_table_type out (Types.TableType (limit, ref_type)) =
     "Types.TableType (%a, %a)"
     (pp_limit pp_int32)
     limit
-    pp_ref_type
+    Types.pp_ref_type
     ref_type
 
 let pp_ref out = function
-  | Values.NullRef rt -> Format.fprintf out "NullRef (%a)" pp_ref_type rt
+  | Values.NullRef rt -> Format.fprintf out "NullRef (%a)" Types.pp_ref_type rt
   | Values.ExternRef n -> Format.fprintf out "ExternRef(%a)" pp_int32 n
   | _ -> Stdlib.failwith "Unsupported value ref"
 
