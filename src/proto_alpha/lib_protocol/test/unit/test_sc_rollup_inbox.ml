@@ -43,35 +43,38 @@ let err x = Exn (Sc_rollup_inbox_test_error x)
 
 let rollup = Sc_rollup_repr.Address.zero
 
-let create_context () =
-  Context.init1 () >>=? fun (block, _contract) -> return block.context
+let wrap_lwt v = Lwt.map Environment.wrap_tzresult v
+
+let wrap m = Environment.wrap_tzresult m
 
 let setup_inbox_with_messages ?(origination_level = Raw_level_repr.root)
     list_of_payloads f =
-  let open Lwt_syntax in
-  create_context () >>=? fun ctxt ->
-  let* inbox = empty ctxt rollup origination_level in
+  let open Lwt_result_syntax in
+  let* {context = ctxt; _}, _contract = Context.init1 () in
+  let*! inbox = empty ctxt rollup origination_level in
   let rec aux level inbox level_tree = function
-    | [] -> return (ok (level_tree, inbox))
+    | [] -> return (level_tree, inbox)
     | [] :: ps ->
         let level = Raw_level_repr.succ level in
         aux level inbox None ps
     | payloads :: ps ->
-        Lwt.return
-          (List.map_e
-             (fun payload ->
-               Sc_rollup_inbox_message_repr.(serialize @@ External payload))
-             payloads)
-        >|= Environment.wrap_tzresult
-        >>=? fun payloads ->
-        add_messages_no_history ctxt inbox level payloads None
-        >|= Environment.wrap_tzresult
-        >>=? fun (level_tree, inbox) ->
+        let*? payloads =
+          List.map_e
+            (fun payload ->
+              Sc_rollup_inbox_message_repr.(serialize @@ External payload)
+              |> wrap)
+            payloads
+        in
+        let* level_tree, inbox =
+          add_messages_no_history ctxt inbox level payloads None |> wrap_lwt
+        in
         let level = Raw_level_repr.succ level in
         aux level inbox (Some level_tree) ps
   in
-  aux origination_level inbox None list_of_payloads
-  >>=? fun (current_level_tree, inbox) -> f ctxt current_level_tree inbox
+  let* current_level_tree, inbox =
+    aux origination_level inbox None list_of_payloads
+  in
+  f ctxt current_level_tree inbox
 
 module Tree = struct
   open Tezos_context_memory.Context
@@ -142,34 +145,36 @@ module Node = Make_hashing_scheme (Tree)
 let setup_node_inbox_with_messages ?(origination_level = Raw_level_repr.root)
     list_of_payloads f =
   let open Node in
-  let open Lwt_syntax in
-  let* index = Tezos_context_memory.Context.init "foo" in
+  let open Lwt_result_syntax in
+  let*! index = Tezos_context_memory.Context.init "foo" in
   let ctxt = Tezos_context_memory.Context.empty index in
-  let* inbox = empty ctxt rollup origination_level in
+  let*! inbox = empty ctxt rollup origination_level in
   let history = history_at_genesis ~capacity:10000L in
   let rec aux level history inbox inboxes level_tree = function
-    | [] -> return (ok (level_tree, history, inbox, inboxes))
+    | [] -> return (level_tree, history, inbox, inboxes)
     | payloads :: ps -> (
-        Lwt.return
-          (List.map_e
-             (fun payload ->
-               Sc_rollup_inbox_message_repr.(serialize @@ External payload))
-             payloads)
-        >|= Environment.wrap_tzresult
-        >>=? fun payloads ->
+        let*? payloads =
+          List.map_e
+            (fun payload ->
+              Sc_rollup_inbox_message_repr.(serialize @@ External payload)
+              |> wrap)
+            payloads
+        in
         match payloads with
         | [] ->
             let level = Raw_level_repr.succ level in
             aux level history inbox inboxes level_tree ps
         | _ ->
-            add_messages ctxt history inbox level payloads level_tree
-            >|= Environment.wrap_tzresult
-            >>=? fun (level_tree, history, new_inbox) ->
+            let* level_tree, history, new_inbox =
+              add_messages ctxt history inbox level payloads level_tree
+              |> wrap_lwt
+            in
             let level = Raw_level_repr.succ level in
             aux level history new_inbox (inbox :: inboxes) (Some level_tree) ps)
   in
-  aux origination_level history inbox [] None list_of_payloads
-  >>=? fun (level_tree, history, inbox, inboxes) ->
+  let* level_tree, history, inbox, inboxes =
+    aux origination_level history inbox [] None list_of_payloads
+  in
   f ctxt level_tree history inbox inboxes
 
 (* An external message is prefixed with a tag whose length is one byte, and
@@ -269,13 +274,14 @@ let test_add_messages payloads =
     (err "Invalid number of messages during commitment period.")
 
 let test_get_message_payload payloads =
+  let open Lwt_syntax in
   setup_inbox_with_messages [payloads] @@ fun _ctxt current_level_tree _inbox ->
   List.iteri_es
     (fun i message ->
       let expected_payload = encode_external_message message in
       match current_level_tree with
       | Some messages -> (
-          get_message_payload messages (Z.of_int i) >>= fun payload ->
+          let* payload = get_message_payload messages (Z.of_int i) in
           match payload with
           | Some payload ->
               let payload =
