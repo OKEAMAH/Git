@@ -10,6 +10,7 @@ type value_type =
   | NumType of num_type
   | VecType of vec_type
   | RefType of ref_type
+[@@deriving show]
 
 type result_type = value_type Lazy_vector.LwtInt32Vector.t
 

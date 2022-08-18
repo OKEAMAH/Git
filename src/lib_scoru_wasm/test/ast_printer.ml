@@ -52,13 +52,6 @@ let pp_int64 out n = Format.fprintf out "%Ld" n
 
 let pp_var = pp_phrase pp_int32
 
-let pp_value_type out vt =
-  let open Types in
-  match vt with
-  | NumType nt -> Format.fprintf out "NumType%a" Types.pp_num_type nt
-  | VecType vt -> Format.fprintf out "VecType %a" Types.pp_vec_type vt
-  | RefType rt -> Format.fprintf out "RefType %a" Types.pp_ref_type rt
-
 let pp_list pp out x =
   Format.fprintf
     out
@@ -66,7 +59,7 @@ let pp_list pp out x =
     (Format.pp_print_list ~pp_sep:(fun out () -> Format.fprintf out ";@;") pp)
     x
 
-let pp_value_type_list = pp_list pp_value_type
+let pp_value_type_list = pp_list Types.pp_value_type
 
 let pp_block_label out (Ast.Block_label l) =
   Format.fprintf out "Block_label @[<hv 2>(%ld)@]" l
@@ -84,7 +77,7 @@ let pp_pair pp1 pp2 out (x, y) = Format.fprintf out "(%a, %a)" pp1 x pp2 y
 
 let pp_block_type out = function
   | Ast.VarBlockType v -> pp_var out v
-  | Ast.ValBlockType v -> pp_opt pp_value_type out v
+  | Ast.ValBlockType v -> pp_opt Types.pp_value_type out v
 
 let pp_memop pp_ty pp_pack out {Ast.ty; align; pack; offset} =
   Format.fprintf
@@ -279,7 +272,7 @@ let pp_vector_z pp out v =
   let _ = Lwt_main.run @@ Lazy_vector.LwtZVector.to_list v in
   Lazy_vector.LwtZVector.pp pp out v
 
-let pp_resul_type = pp_vector pp_value_type
+let pp_resul_type = pp_vector Types.pp_value_type
 
 let pp_func_type out = function
   | Types.FuncType (pt, rt) ->
@@ -292,7 +285,7 @@ let pp_func =
     "@[<hv 2>{ftype = %a;@; locals = %a;@; body = %a}@]"
     pp_var
     ftype
-    (pp_vector pp_value_type)
+    (pp_vector Types.pp_value_type)
     locals
     pp_block_label
     body
@@ -359,7 +352,7 @@ let pp_global_type out (Types.GlobalType (vt, mt)) =
   Format.fprintf
     out
     "GlobalType @[<hv 2>(%a, %a)@]"
-    pp_value_type
+    Types.pp_value_type
     vt
     pp_mutable
     mt
