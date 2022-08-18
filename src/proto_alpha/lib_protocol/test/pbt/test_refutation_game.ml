@@ -1024,17 +1024,17 @@ let construct_inbox_proto block rollup levels_and_inputs contract =
     the protocol.
 *)
 type strategy =
-  | Random  (** A random player will execute its own random vision of inputs. *)
   | Perfect
       (** A perfect player, never lies, always win.
           GSW 73-9 2014-2015 mindset. *)
+  | Random  (** A random player will execute its own random vision of inputs. *)
   | Lazy  (** A lazy player will not execute all messages. *)
   | Eager  (** A eager player will not cheat until a certain point. *)
   | Keen  (** A keen player will execute more messages. *)
 
 let pp_strategy fmt = function
-  | Random -> Format.pp_print_string fmt "Random"
   | Perfect -> Format.pp_print_string fmt "Perfect"
+  | Random -> Format.pp_print_string fmt "Random"
   | Lazy -> Format.pp_print_string fmt "Lazy"
   | Eager -> Format.pp_print_string fmt "Eager"
   | Keen -> Format.pp_print_string fmt "Keen"
@@ -1121,6 +1121,13 @@ module Player_client = struct
     @@ let+ index = Tezos_context_memory.Context.init id in
        Tezos_context_memory.Context.empty index
 
+  let eval_inputs ctxt levels_and_inputs =
+    Lwt_main.run
+    @@
+    let open Lwt_result_syntax in
+    let*! r = Arith_test_pvm.eval_levels_and_inputs ctxt levels_and_inputs in
+    Lwt.return @@ WithExceptions.Result.get_ok ~loc:__LOC__ r
+
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/3529
 
      Factor code for the unit test.
@@ -1160,27 +1167,16 @@ module Player_client = struct
   (** Generate [our_states] for [levels_and_inputs] based on the strategy.
       It needs [level_min] and [level_max] in case it will need to generate
       new inputs. *)
-  let gen_our_states ctxt strategy ?level_min ?level_max levels_and_inputs =
+  let gen_our_levels_and_inputs strategy ?level_min ?level_max levels_and_inputs
+      =
     let open QCheck2.Gen in
-    let eval_inputs levels_and_inputs =
-      Lwt_main.run
-      @@
-      let open Lwt_result_syntax in
-      let*! r = Arith_test_pvm.eval_levels_and_inputs ctxt levels_and_inputs in
-      Lwt.return @@ WithExceptions.Result.get_ok ~loc:__LOC__ r
-    in
     match strategy with
     | Perfect ->
         (* The perfect player does not lie, evaluates correctly the inputs. *)
-        let _state, tick, our_states = eval_inputs levels_and_inputs in
-        return (tick, our_states, levels_and_inputs)
+        return levels_and_inputs
     | Random ->
         (* Random player generates its own list of inputs. *)
-        let* new_levels_and_inputs =
-          gen_arith_pvm_inputs_for_levels ?level_min ?level_max ()
-        in
-        let _state, tick, our_states = eval_inputs new_levels_and_inputs in
-        return (tick, our_states, new_levels_and_inputs)
+        gen_arith_pvm_inputs_for_levels ?level_min ?level_max ()
     | Lazy ->
         (* Lazy player removes inputs from [levels_and_inputs]. *)
         let n = List.length levels_and_inputs in
@@ -1188,8 +1184,7 @@ module Player_client = struct
         let new_levels_and_inputs =
           List.take_n (n - remove_k) levels_and_inputs
         in
-        let _state, tick, our_states = eval_inputs new_levels_and_inputs in
-        return (tick, our_states, new_levels_and_inputs)
+        return new_levels_and_inputs
     | Eager ->
         (* Eager player executes correctly the inbox until a certain point. *)
         let nb_of_input =
@@ -1214,8 +1209,7 @@ module Player_client = struct
                   inputs ))
             levels_and_inputs
         in
-        let _state, tick, our_states = eval_inputs new_levels_and_inputs in
-        return (tick, our_states, new_levels_and_inputs)
+        return new_levels_and_inputs
     | Keen ->
         (* Keen player will add more messages. *)
         let* new_levels_and_inputs =
@@ -1227,28 +1221,33 @@ module Player_client = struct
             (fun (l, _) (l', _) -> Compare.Int.compare l l')
             new_levels_and_inputs
         in
-        let _state, tick, our_states = eval_inputs new_levels_and_inputs in
-        return (tick, our_states, new_levels_and_inputs)
+        return new_levels_and_inputs
 
   (** [gen ~rollup ~level_min ~level_max player levels_and_inputs] generates
       a {!player_client} based on {!player.strategy}. *)
   let gen ~rollup ~origination_level ~level_min ~level_max player
       levels_and_inputs =
     let open QCheck2.Gen in
-    let ctxt = empty_memory_ctxt "foo" in
-    let* tick, our_states, levels_and_inputs =
-      gen_our_states
-        ctxt
+    let* our_levels_and_inputs =
+      gen_our_levels_and_inputs
         player.strategy
         ~level_min
         ~level_max
         levels_and_inputs
     in
+    let ctxt = empty_memory_ctxt "foo" in
+    let _state, tick, our_states = eval_inputs ctxt our_levels_and_inputs in
     let inbox =
-      construct_inbox ~origination_level ctxt rollup levels_and_inputs
+      construct_inbox ~origination_level ctxt rollup our_levels_and_inputs
     in
     return
-      {player; final_tick = tick; states = our_states; inbox; levels_and_inputs}
+      {
+        player;
+        final_tick = tick;
+        states = our_states;
+        inbox;
+        levels_and_inputs = our_levels_and_inputs;
+      }
 end
 
 (** [create_commitment ~predecessor ~inbox_level ~our_states] creates
