@@ -1277,9 +1277,9 @@ let create_commitment ~predecessor ~inbox_level ~our_states =
   in
   Commitment.{compressed_state; inbox_level; predecessor; number_of_ticks}
 
-(** [operation_publish_commitment block rollup lcc inbox_level p1_client]
-    creates a commitment and stake on it. *)
-let operation_publish_commitment ctxt rollup predecessor inbox_level
+(** [operation_publish_commitment block rollup predecessor inbox_level
+    p1_client] creates a commitment and stake on it. *)
+let operation_publish_commitment ctxt rollup ~predecessor ~inbox_level
     player_client =
   let open Lwt_result_syntax in
   let*! commitment =
@@ -1483,31 +1483,44 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       ((origination_level, first_inputs) :: levels_and_inputs)
   in
   let* p1_start = bool in
-  let commitment_level = origination_level + commitment_period in
   return
     ( block,
       rollup,
-      commitment_level,
-      genesis_info.commitment_hash,
+      genesis_info,
       p1_client,
       p2_client,
       contract3,
       p1_start,
       levels_and_inputs )
 
-(** [prepare_game block lcc originated_level p1_client p2_client
+(** [prepare_game block genesis_info p1_client p2_client
     inputs_and_levels] prepares a context where [p1_client] and [p2_client]
     are in conflict for one commitment.
     It creates the protocol inbox using [inputs_and_levels]. *)
-let prepare_game block rollup lcc commitment_level p1_client p2_client contract
-    levels_and_inputs =
+let prepare_game block rollup (genesis_info : Sc_rollup.Commitment.genesis_info)
+    p1_client p2_client contract levels_and_inputs =
   let open Lwt_result_syntax in
   let* block = construct_inbox_proto block rollup levels_and_inputs contract in
+  let commitment_period = get_commitment_period (B block) in
+  let origination_level =
+    genesis_info.level |> Raw_level.to_int32 |> Int32.to_int
+  in
+  let inbox_level = origination_level + commitment_period in
   let* operation_publish_commitment_p1 =
-    operation_publish_commitment (B block) rollup lcc commitment_level p1_client
+    operation_publish_commitment
+      (B block)
+      rollup
+      ~predecessor:genesis_info.commitment_hash
+      ~inbox_level
+      p1_client
   in
   let* operation_publish_commitment_p2 =
-    operation_publish_commitment (B block) rollup lcc commitment_level p2_client
+    operation_publish_commitment
+      (B block)
+      rollup
+      ~predecessor:genesis_info.commitment_hash
+      ~inbox_level
+      p2_client
   in
   Block.bake
     ~operations:
@@ -1530,8 +1543,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
     ~print:
       (fun ( block,
              rollup,
-             commitment_level,
-             lcc,
+             (genesis_info : Sc_rollup.Commitment.genesis_info),
              p1_client,
              p2_client,
              _contract3,
@@ -1544,8 +1556,9 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
         "@[<v>@,\
          current level: %a@,\
          rollup: %a@,\
-         commitment_level: %d@,\
-         last cemented commitment: %a@,\
+         [<v 2>genesis_info:@,\
+         level: %a@,\
+         hash: %a]@,\
          @[<v 2>p1:@,\
          %a@]@,\
          @[<v 2>p2:@,\
@@ -1558,9 +1571,10 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
         level
         Sc_rollup.Address.pp_short
         rollup
-        commitment_level
-        Sc_rollup.Commitment.Hash.pp_short
-        lcc
+        Raw_level.pp
+        genesis_info.level
+        Sc_rollup.Commitment.Hash.pp
+        genesis_info.commitment_hash
         pp_player_client
         p1_client
         pp_player_client
@@ -1573,8 +1587,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
     ~gen:(gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy ())
     (fun ( block,
            rollup,
-           commitment_level,
-           lcc,
+           genesis_info,
            p1_client,
            p2_client,
            contract3,
@@ -1587,8 +1600,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
         prepare_game
           block
           rollup
-          lcc
-          commitment_level
+          genesis_info
           p1_client
           p2_client
           contract3
