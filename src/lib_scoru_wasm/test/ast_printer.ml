@@ -98,17 +98,12 @@ let pp_memop pp_ty pp_pack out {Ast.ty; align; pack; offset} =
     pp_int32
     offset
 
-let pp_pack_size out ps =
-  Format.fprintf
-    out
-    "%s"
-    (match ps with
-    | Types.Pack8 -> "Pack8"
-    | Pack16 -> "Pack16"
-    | Pack32 -> "Pack32"
-    | Pack64 -> "Pack64")
-
 let pp_vec_store_op = pp_memop Types.pp_vec_type pp_unit
+
+let pp_value_op pp_int32 pp_int64 out = function
+  | Values.I32 x -> pp_int32 out x
+  | I64 x -> pp_int64 out x
+  | _ -> Stdlib.failwith "Floating point values are not supported"
 
 let pp_num = pp_phrase (pp_value_op pp_int32 pp_int64)
 
@@ -143,7 +138,7 @@ let pp_int_unop out op =
   | Ast.IntOp.Clz -> Format.pp_print_string out "Clz"
   | Ctz -> Format.pp_print_string out "Ctz"
   | Popcnt -> Format.pp_print_string out "Popcnt"
-  | ExtendS ps -> Format.fprintf out "Extend %a" pp_pack_size ps
+  | ExtendS ps -> Format.fprintf out "Extend %a" Types.pp_pack_size ps
 
 let pp_int_binop out op =
   Format.pp_print_string
