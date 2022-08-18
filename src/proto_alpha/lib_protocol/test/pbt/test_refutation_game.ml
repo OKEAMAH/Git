@@ -1213,7 +1213,11 @@ module Player_client = struct
     | Keen ->
         (* Keen player will add more messages. *)
         let* new_levels_and_inputs =
-          gen_arith_pvm_inputs_for_levels ?level_min ?level_max ()
+          gen_arith_pvm_inputs_for_levels
+            ~nonempty_inputs:true
+            ?level_min
+            ?level_max
+            ()
         in
         let new_levels_and_inputs = new_levels_and_inputs @ levels_and_inputs in
         let new_levels_and_inputs =
