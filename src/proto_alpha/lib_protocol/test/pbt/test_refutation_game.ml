@@ -1212,20 +1212,32 @@ module Player_client = struct
         return new_levels_and_inputs
     | Keen ->
         (* Keen player will add more messages. *)
-        let* new_levels_and_inputs =
-          gen_arith_pvm_inputs_for_levels
-            ~nonempty_inputs:true
-            ?level_min
-            ?level_max
-            ()
+        let rec aux () =
+          let* new_levels_and_inputs =
+            gen_arith_pvm_inputs_for_levels
+              ~nonempty_inputs:true
+              ?level_min
+              ?level_max
+              ()
+          in
+          let new_levels_and_inputs =
+            new_levels_and_inputs @ levels_and_inputs
+          in
+          let new_levels_and_inputs =
+            List.sort_uniq
+              (fun (l, _) (l', _) -> Compare.Int.compare l l')
+              new_levels_and_inputs
+          in
+          if
+            List.equal
+              (fun (l, is) (l', is') ->
+                l = l' && List.equal String.equal is is')
+              new_levels_and_inputs
+              levels_and_inputs
+          then aux ()
+          else return new_levels_and_inputs
         in
-        let new_levels_and_inputs = new_levels_and_inputs @ levels_and_inputs in
-        let new_levels_and_inputs =
-          List.sort_uniq
-            (fun (l, _) (l', _) -> Compare.Int.compare l l')
-            new_levels_and_inputs
-        in
-        return new_levels_and_inputs
+        aux ()
 
   (** [gen ~rollup ~level_min ~level_max player levels_and_inputs] generates
       a {!player_client} based on {!player.strategy}. *)
@@ -1490,6 +1502,7 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       p2_client,
       contract3,
       p1_start,
+      first_inputs,
       levels_and_inputs )
 
 (** [prepare_game block lcc originated_level p1_client p2_client
@@ -1533,6 +1546,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
              p2_client,
              _contract3,
              p1_start,
+             first_inputs,
              levels_and_inputs ) ->
       let level =
         WithExceptions.Result.get_ok ~loc:__LOC__ @@ Context.get_level (B block)
@@ -1564,7 +1578,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
         p2_client
         (if p1_start then "p1" else "p2")
         pp_levels_and_inputs
-        levels_and_inputs)
+        ((1, first_inputs) :: levels_and_inputs))
     ~count:1_000
     ~name
     ~gen:(gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy ())
@@ -1576,6 +1590,8 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
            p2_client,
            contract3,
            p1_start,
+           (* no need as it has already been added in the same level as origination *)
+           _first_inputs,
            levels_and_inputs ) ->
       let open Lwt_result_syntax in
       (* Otherwise, there is no conflict. *)
