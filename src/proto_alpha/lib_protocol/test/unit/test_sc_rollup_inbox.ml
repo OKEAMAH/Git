@@ -35,6 +35,8 @@
 open Protocol
 open Sc_rollup_inbox_repr
 
+(* HELPERS *)
+
 exception Sc_rollup_inbox_test_error of string
 
 let err x = Exn (Sc_rollup_inbox_test_error x)
@@ -43,13 +45,6 @@ let rollup = Sc_rollup_repr.Address.hash_string [""]
 
 let create_context () =
   Context.init1 () >>=? fun (block, _contract) -> return block.context
-
-let test_empty () =
-  create_context () >>=? fun ctxt ->
-  empty ctxt rollup Raw_level_repr.root >>= fun inbox ->
-  fail_unless
-    Compare.Int64.(equal (number_of_messages_during_commitment_period inbox) 0L)
-    (err "An empty inbox should have no available message.")
 
 let setup_inbox_with_messages ?(origination_level = Raw_level_repr.root)
     list_of_payloads f =
@@ -177,16 +172,6 @@ let setup_node_inbox_with_messages ?(origination_level = Raw_level_repr.root)
   >>=? fun (level_tree, history, inbox, inboxes) ->
   f ctxt level_tree history inbox inboxes
 
-let test_add_messages payloads =
-  let nb_payloads = List.length payloads in
-  setup_inbox_with_messages [payloads] @@ fun _ctxt _current_level_tree inbox ->
-  fail_unless
-    Compare.Int64.(
-      equal
-        (number_of_messages_during_commitment_period inbox)
-        (Int64.of_int nb_payloads))
-    (err "Invalid number of messages during commitment period.")
-
 (* An external message is prefixed with a tag whose length is one byte, and
    whose value is 1. *)
 let encode_external_message message =
@@ -205,6 +190,83 @@ let check_payload messages external_message =
               "Expected payload %s, got %s"
               (Bytes.to_string expected_payload)
               (Bytes.to_string payload)))
+
+(** In the tests below we use the {!Node} inbox above to generate proofs,
+but we need to test that they can be interpreted and validated by
+the protocol instance of the inbox code. We rely on the two
+instances having the same encoding, and use this function to
+convert. *)
+let node_proof_to_protocol_proof p =
+  let open Data_encoding.Binary in
+  let enc = serialized_proof_encoding in
+  let bytes = Node.to_serialized_proof p |> to_bytes_exn enc in
+  of_bytes_exn enc bytes |> of_serialized_proof
+  |> WithExceptions.Option.get ~loc:__LOC__
+
+let look_in_tree key tree =
+  let open Lwt_syntax in
+  let* x = Tree.Tree.find tree [key] in
+  match x with
+  | Some x -> return (tree, x)
+  | None -> return (tree, Bytes.of_string "nope")
+
+let key_of_level level =
+  let level_bytes =
+    Data_encoding.Binary.to_bytes_exn Raw_level_repr.encoding level
+  in
+  Bytes.to_string level_bytes
+
+let level_of_int n = Raw_level_repr.of_int32_exn (Int32.of_int n)
+
+let level_to_int l = Int32.to_int (Raw_level_repr.to_int32 l)
+
+let payload_string msg =
+  Sc_rollup_inbox_message_repr.unsafe_of_string
+    (Bytes.to_string (encode_external_message msg))
+
+let next_input ps l n =
+  let ( let* ) = Option.bind in
+  let* level = List.nth ps (level_to_int l) in
+  match List.nth level (Z.to_int n) with
+  | Some msg ->
+      let payload = payload_string msg in
+      Some Sc_rollup_PVM_sem.{inbox_level = l; message_counter = n; payload}
+  | None ->
+      let rec aux l =
+        let* payloads = List.nth ps l in
+        match List.hd payloads with
+        | Some msg ->
+            let payload = payload_string msg in
+            Some
+              Sc_rollup_PVM_sem.
+                {
+                  inbox_level = level_of_int l;
+                  message_counter = Z.zero;
+                  payload;
+                }
+        | None -> aux (l + 1)
+      in
+      aux (level_to_int l + 1)
+
+(* TEST *)
+
+let test_empty () =
+  setup_inbox_with_messages [] @@ fun _ctxt current_level_tree inbox ->
+  fail_unless
+    (Compare.Int64.(
+       equal (number_of_messages_during_commitment_period inbox) 0L)
+    && Option.is_none current_level_tree)
+    (err "An empty inbox should have no available message.")
+
+let test_add_messages payloads =
+  let nb_payloads = List.length payloads in
+  setup_inbox_with_messages [payloads] @@ fun _ctxt _current_level_tree inbox ->
+  fail_unless
+    Compare.Int64.(
+      equal
+        (number_of_messages_during_commitment_period inbox)
+        (Int64.of_int nb_payloads))
+    (err "Invalid number of messages during commitment period.")
 
 let test_get_message_payload payloads =
   setup_inbox_with_messages [payloads] @@ fun _ctxt current_level_tree _inbox ->
@@ -284,63 +346,6 @@ let test_inclusion_proof_verification (list_of_payloads, n) =
         (err
            "Verification should rule out a valid proof which is not about the \
             given inboxes.")
-
-(** In the tests below we use the {!Node} inbox above to generate proofs,
-    but we need to test that they can be interpreted and validated by
-    the protocol instance of the inbox code. We rely on the two
-    instances having the same encoding, and use this function to
-    convert. *)
-let node_proof_to_protocol_proof p =
-  let open Data_encoding.Binary in
-  let enc = serialized_proof_encoding in
-  let bytes = Node.to_serialized_proof p |> to_bytes_exn enc in
-  of_bytes_exn enc bytes |> of_serialized_proof
-  |> WithExceptions.Option.get ~loc:__LOC__
-
-let look_in_tree key tree =
-  let open Lwt_syntax in
-  let* x = Tree.Tree.find tree [key] in
-  match x with
-  | Some x -> return (tree, x)
-  | None -> return (tree, Bytes.of_string "nope")
-
-let key_of_level level =
-  let level_bytes =
-    Data_encoding.Binary.to_bytes_exn Raw_level_repr.encoding level
-  in
-  Bytes.to_string level_bytes
-
-let level_of_int n = Raw_level_repr.of_int32_exn (Int32.of_int n)
-
-let level_to_int l = Int32.to_int (Raw_level_repr.to_int32 l)
-
-let payload_string msg =
-  Sc_rollup_inbox_message_repr.unsafe_of_string
-    (Bytes.to_string (encode_external_message msg))
-
-let next_input ps l n =
-  let ( let* ) = Option.bind in
-  let* level = List.nth ps (level_to_int l) in
-  match List.nth level (Z.to_int n) with
-  | Some msg ->
-      let payload = payload_string msg in
-      Some Sc_rollup_PVM_sem.{inbox_level = l; message_counter = n; payload}
-  | None ->
-      let rec aux l =
-        let* payloads = List.nth ps l in
-        match List.hd payloads with
-        | Some msg ->
-            let payload = payload_string msg in
-            Some
-              Sc_rollup_PVM_sem.
-                {
-                  inbox_level = level_of_int l;
-                  message_counter = Z.zero;
-                  payload;
-                }
-        | None -> aux (l + 1)
-      in
-      aux (level_to_int l + 1)
 
 let test_inbox_proof_production (list_of_payloads, l, n) =
   (* We begin with a Node inbox so we can produce a proof. *)
