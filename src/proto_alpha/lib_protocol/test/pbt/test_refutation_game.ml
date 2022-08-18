@@ -1579,7 +1579,19 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
            levels_and_inputs ) ->
       let open Lwt_result_syntax in
       (* Otherwise, there is no conflict. *)
-      QCheck2.assume (not (p1_client.states = p2_client.states)) ;
+      assert (
+        not
+          (List.equal
+             (fun (t, s) (t', s') ->
+               Tick.equal t t' && Sc_rollup.State_hash.equal s s')
+             p1_client.states
+             p2_client.states)) ;
+      assert (
+        not
+          (List.equal
+             (fun (l, is) (l', is') -> l = l' && List.equal String.equal is is')
+             p1_client.levels_and_inputs
+             p2_client.levels_and_inputs)) ;
       let* block =
         prepare_game
           block
