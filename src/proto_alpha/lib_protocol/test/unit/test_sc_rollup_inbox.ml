@@ -41,7 +41,7 @@ exception Sc_rollup_inbox_test_error of string
 
 let err x = Exn (Sc_rollup_inbox_test_error x)
 
-let rollup = Sc_rollup_repr.Address.hash_string [""]
+let rollup = Sc_rollup_repr.Address.zero
 
 let create_context () =
   Context.init1 () >>=? fun (block, _contract) -> return block.context
