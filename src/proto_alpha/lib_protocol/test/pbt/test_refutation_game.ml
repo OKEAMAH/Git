@@ -53,6 +53,11 @@ let qcheck_make_lwt_res ?print ?count ~name ~gen f =
 (** Lift a computation using environment errors to use shell errors. *)
 let lift k = Lwt.map Environment.wrap_tzresult k
 
+let lwt_run k = Lwt_main.run k
+
+let lwt_result_run ~__LOC__ k =
+  Lwt_main.run @@ Lwt.map (WithExceptions.Result.get_ok ~loc:__LOC__) k
+
 let tick_to_int_exn ?(__LOC__ = __LOC__) t =
   WithExceptions.Option.get ~loc:__LOC__ (Tick.to_int t)
 
@@ -195,15 +200,12 @@ let build_dissection ~number_of_sections ~start_chunk ~stop_chunk ~our_states =
      This dissection's building does not check the number of sections. Checks should
      be added to verify that we don't generate invalid dissection and test the
      incorrect cases. *)
-  Lwt_main.run
-  @@ let*! r =
-       Game_helpers.new_dissection
-         ~start_chunk
-         ~our_stop_chunk
-         ~default_number_of_sections:number_of_sections
-         ~state_hash_from_tick
-     in
-     Lwt.return @@ WithExceptions.Result.get_ok ~loc:__LOC__ r
+  lwt_result_run ~__LOC__
+  @@ Game_helpers.new_dissection
+       ~start_chunk
+       ~our_stop_chunk
+       ~default_number_of_sections:number_of_sections
+       ~state_hash_from_tick
 
 let originate_rollup originator messager ~first_inputs block =
   let open Lwt_result_syntax in
@@ -228,8 +230,7 @@ let originate_rollup originator messager ~first_inputs block =
     an arith rollup was originated, and both [account1] and [account2] owns
     enough tez to stake on a commitment. *)
 let create_ctxt ~first_inputs =
-  WithExceptions.Result.get_ok ~loc:__LOC__
-  @@ Lwt_main.run
+  lwt_result_run ~__LOC__
   @@
   let open Lwt_result_syntax in
   let* block, (account1, account2, account3) =
@@ -1118,10 +1119,11 @@ module Player_client = struct
       levels_and_inputs
 
   let empty_memory_ctxt id =
+    lwt_run
+    @@
     let open Lwt_syntax in
-    Lwt_main.run
-    @@ let+ index = Tezos_context_memory.Context.init id in
-       Tezos_context_memory.Context.empty index
+    let+ index = Tezos_context_memory.Context.init id in
+    Tezos_context_memory.Context.empty index
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/3529
 
@@ -1152,7 +1154,7 @@ module Player_client = struct
 
   (** Construct an inbox based on [levels_and_inputs] in the player context. *)
   let construct_inbox ~origination_level ctxt rollup levels_and_inputs =
-    Lwt_main.run
+    lwt_run
     @@ construct_inbox
          ~origination_level
          ctxt
@@ -1165,11 +1167,8 @@ module Player_client = struct
   let gen_our_states ctxt strategy ?level_min ?level_max levels_and_inputs =
     let open QCheck2.Gen in
     let eval_inputs levels_and_inputs =
-      Lwt_main.run
-      @@
-      let open Lwt_result_syntax in
-      let*! r = Arith_test_pvm.eval_levels_and_inputs ctxt levels_and_inputs in
-      Lwt.return @@ WithExceptions.Result.get_ok ~loc:__LOC__ r
+      lwt_result_run ~__LOC__
+      @@ Arith_test_pvm.eval_levels_and_inputs ctxt levels_and_inputs
     in
     match strategy with
     | Perfect ->
