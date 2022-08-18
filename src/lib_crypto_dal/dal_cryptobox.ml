@@ -421,9 +421,7 @@ module Inner = struct
     for i = 0 to n - 1 do
       for j = 0 to n - 1 do
         let mul =
-          Scalar.mul
-            coefficients.(j)
-            (Scalar.pow (Array.get domain 1) (Z.of_int (i * j)))
+          Scalar.mul coefficients.(j) (Array.get domain (i * j mod n))
         in
         res.(i) <- Scalar.add res.(i) mul
       done
@@ -437,7 +435,7 @@ module Inner = struct
   let inv_root root = Scalar.inverse_exn root
 
   let pfa_fr_inplace ~inverse n1 n2 root1 root2 ~coefficients =
-    let fft = if inverse then Scalar.ifft else Scalar.fft in
+    let fft = if inverse then Scalar.ifft_inplace else Scalar.fft_inplace in
     let n = n1 * n2 in
     Printf.eprintf "\n len = %d ; n = %d \n" (Array.length coefficients) n ;
     assert (Array.length coefficients = n) ;
@@ -465,7 +463,7 @@ module Inner = struct
     done ;
 
     for k2 = 0 to n2 - 1 do
-      rows.(k2) <- fft ~domain:domain_n1 ~points:rows.(k2)
+      fft ~domain:domain_n1 ~points:rows.(k2)
     done ;
 
     for k1 = 0 to n1 - 1 do
@@ -664,10 +662,12 @@ module Inner = struct
     let coefficients = Array.init t.n (fun _ -> Scalar.(copy zero)) in
     Array.blit (Polynomials.to_dense_coefficients p) 0 coefficients 0 t.k ;
     pfa_fr_inplace
-      (2 * 2048)
+      (t.redundancy_factor * 2048)
       19
       (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
-      (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
+      (Scalar.pow
+         (Array.get t.domain_n 1)
+         (Z.of_int (t.redundancy_factor * 2048)))
       ~coefficients
       ~inverse:false
 
@@ -789,10 +789,12 @@ module Inner = struct
       let a' = Polynomials.to_dense_coefficients a' in
       let eval_a' =
         pfa_fr_inplace
-          (2 * 2048)
+          (t.redundancy_factor * 2048)
           19
           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
-          (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
+          (Scalar.pow
+             (Array.get t.domain_n 1)
+             (Z.of_int (t.redundancy_factor * 2048)))
           ~coefficients:(resize t.n a' (Array.length a'))
           ~inverse:false
       in
@@ -804,12 +806,14 @@ module Inner = struct
       (*let b = Evaluations.interpolation_fft2 t.domain_n n_poly in*)
       let b =
         pfa_fr_inplace
-          (2 * 2048)
+          (t.redundancy_factor * 2048)
           19
           Scalar.(inverse_exn (pow (Array.get t.domain_n 1) (Z.of_int 19)))
           Scalar.(
             inverse_exn
-              (pow (Array.get t.domain_n 1) (Z.of_int (Int.mul 2 2048))))
+              (pow
+                 (Array.get t.domain_n 1)
+                 (Z.of_int (Int.mul t.redundancy_factor 2048))))
           ~coefficients:n_poly
           ~inverse:true
         |> Polynomials.of_dense
@@ -884,10 +888,12 @@ module Inner = struct
     let _l = 1 lsl chunk_len in
     let l = shard_size in
     let k =
-      let ratio = degree / l in
-      let log_inf = Z.log2 (Z.of_int ratio) in
-      if 1 lsl log_inf < ratio then log_inf else log_inf + 1
+      (*let ratio = degree / l in
+        let log_inf = Z.log2 (Z.of_int ratio) in
+        if 1 lsl log_inf < ratio then log_inf else log_inf + 1*)
+      Z.(log2 (of_int (Int.div 77824 l)))
     in
+    Printf.eprintf "\n k=%d\n" k ;
     let domain = Domains.build ~log:k |> Domains.inverse |> inverse in
     let precompute_srsj j =
       let quotient = (degree - j) / l in
@@ -921,7 +927,7 @@ module Inner = struct
     assert (1 lsl chunk_len < degree) ;
     (*assert (degree <= 1 lsl n) ;*)
     let _l = 1 lsl chunk_len in
-    let l = 38 in
+    let l = 16 * 38912 / 2048 in
     Printf.eprintf
       "\n len coeffs = %d ; deg=%d; l =%d ; 2k/l=%d\n"
       (Array.length coefs)
@@ -936,6 +942,7 @@ module Inner = struct
          Toeplitz matrix part. *)
       let padding = diff_next_power_of_two (2 * quotient) in
       (* fm, 0, …, 0, f₁, f₂, …, fm-1 *)
+      (*Printf.eprintf "\n pad=%d\n" padding ;*)
       let points =
         Array.init
           ((2 * quotient) + padding)
@@ -943,7 +950,20 @@ module Inner = struct
             if i <= quotient + (padding / 2) then Scalar.(copy zero)
             else
               let j = rest + ((i - (quotient + padding)) * l) in
-              if j < Array.length coefs then Scalar.copy coefs.(j)
+              if j < Array.length coefs then
+                (*Printf.eprintf
+                  "\n\
+                  \ j=%d ; i=%d ; q=%d ; rest=%d ; l=%d ; (r=%d)+(i=%d)(l=%d)=%d\n"
+                  j
+                  i
+                  (quotient + padding)
+                  rest
+                  l
+                  rest
+                  (i - (quotient + padding))
+                  l
+                  j ;*)
+                Scalar.copy coefs.(j)
               else Scalar.(copy zero))
       in
       if j <> 0 && degree - j < Array.length coefs then
@@ -1014,12 +1034,13 @@ module Inner = struct
     Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
 
   let interpolation_h_poly3 y domain z_list =
+    (* 16=t.redundancy_factor*)
     let rt = Array.get domain 1 in
     let rt1 = Scalar.pow rt (Z.of_int 19) in
-    let rt2 = Scalar.pow rt (Z.of_int 2) in
+    let rt2 = Scalar.pow rt (Z.of_int 16) in
     let h =
       pfa_fr_inplace2
-        2
+        16
         19
         (inv_root rt1)
         (inv_root rt2)
@@ -1037,7 +1058,7 @@ module Inner = struct
     let open Bls12_381 in
     let h = interpolation_h_poly3 w domain evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
-    let l = 38 (*Array.length domain*) in
+    let l = 16 * 38912 / 2048 (*Array.length domain*) in
     let sl_min_yl =
       G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in

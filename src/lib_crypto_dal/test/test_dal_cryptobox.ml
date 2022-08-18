@@ -64,15 +64,74 @@ module Test = struct
           Dal_cryptobox.make
             {redundancy_factor; slot_size; segment_size; number_of_shards}
         in
-        let* p = Dal_cryptobox.polynomial_from_slot t msg in
-        let cm = Dal_cryptobox.commit t p in
-        let* pi = Dal_cryptobox.prove_segment t p 1 in
-        let segment = Bytes.sub msg segment_size segment_size in
-        let* check =
-          Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
+        Printf.eprintf "\n make = %f \n" (Sys.time () -. t') ;
+
+        let make_domain root d =
+          let build_array init next len =
+            let xi = ref init in
+            Array.init len (fun _ ->
+                let i = !xi in
+                xi := next !xi ;
+                i)
+          in
+          build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
         in
+        let get_primitive_root n =
+          let multiplicative_group_order = Z.(Scalar.order - one) in
+          let n = Z.of_int n in
+          assert (Z.divisible multiplicative_group_order n) ;
+          let exponent = Z.divexact multiplicative_group_order n in
+          Scalar.pow (Scalar.of_int 7) exponent
+        in
+        let dft ~inverse ~domain ~coefficients =
+          let n = Array.length domain in
+          let res = Array.make n Scalar.(copy zero) in
+          for i = 0 to n - 1 do
+            for j = 0 to n - 1 do
+              let mul =
+                Scalar.mul coefficients.(j) (Array.get domain (i * j mod n))
+              in
+              res.(i) <- Scalar.add res.(i) mul
+            done
+          done ;
+          if inverse then
+            for i = 0 to n - 1 do
+              res.(i) <- Scalar.(mul (inverse_exn (of_int n)) res.(i))
+            done ;
+          res
+        in
+        let coefficients = Array.init 19 (fun _ -> Scalar.random ()) in
+        let t' = Sys.time () in
+        let _ =
+          dft
+            ~inverse:false
+            ~domain:(make_domain (get_primitive_root 19) 19)
+            ~coefficients
+        in
+        Printf.eprintf "\n dft 19 = %f \n" (Sys.time () -. t') ;
+
+        let points = Array.init 32768 (fun _ -> Scalar.random ()) in
+        let t' = Sys.time () in
+        let _ =
+          Bls12_381.Fr.fft_inplace
+            ~domain:(make_domain (get_primitive_root 32768) 32768)
+            ~points
+        in
+        Printf.eprintf "\n fft 2^11*16 = %f \n" (Sys.time () -. t') ;
+
+        let points = Array.init 1048576 (fun _ -> Scalar.random ()) in
+        let t' = Sys.time () in
+        let _ =
+          Bls12_381.Fr.fft_inplace
+            ~domain:(make_domain (get_primitive_root 1048576) 1048576)
+            ~points
+        in
+        Printf.eprintf "\n fft 2^16*16 = %f \n" (Sys.time () -. t') ;
+
+        (*let asrt = false in
+          assert asrt ;
+          let t' = Sys.time () in*)
         Printf.eprintf "\n srs = %f \n" (Sys.time () -. t') ;
-        assert check ;
 
         let t' = Sys.time () in
         let* p = Dal_cryptobox.polynomial_from_slot t msg in
@@ -140,7 +199,7 @@ module Test = struct
         | None -> Ok ()
         | Some eval ->
             let t' = Sys.time () in
-            let check =
+            let _check =
               Dal_cryptobox.verify_shard
                 t
                 comm
@@ -148,6 +207,7 @@ module Test = struct
                 shard_proofs.(0)
             in
             Printf.eprintf "\n verify_shard = %f \n" (Sys.time () -. t') ;
+
             assert check ;
 
             let t' = Sys.time () in
@@ -168,7 +228,7 @@ module Test = struct
          *     ~point
          *     ~evaluation:(Dal_cryptobox.polynomial_evaluate p point)
          *     pi_slot) *))
-      [2]
+      [16]
     |> fun x -> match x with Ok () -> () | Error _ -> assert false
 end
 
