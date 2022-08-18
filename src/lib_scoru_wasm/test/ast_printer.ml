@@ -245,8 +245,6 @@ let pp_int_cvtop out op =
     | TruncSatUF64 -> "TruncSatUF64"
     | ReinterpretFloat -> "ReinterpretFloat")
 
-let pp_cvtop = pp_value_op pp_int_cvtop pp_int_cvtop
-
 let pp_vec =
   let pp out = function
     | Values.V128 bits ->

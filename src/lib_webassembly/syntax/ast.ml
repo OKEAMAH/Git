@@ -62,6 +62,7 @@ module IntOp = struct
     | TruncSatSF64
     | TruncSatUF64
     | ReinterpretFloat
+  [@@deriving show]
 end
 
 module FloatOp = struct
@@ -82,6 +83,7 @@ module FloatOp = struct
     | PromoteF32
     | DemoteF64
     | ReinterpretInt
+  [@@deriving show]
 end
 
 module I32Op = IntOp
@@ -211,6 +213,7 @@ type binop = (I32Op.binop, I64Op.binop, F32Op.binop, F64Op.binop) Values.op
 type relop = (I32Op.relop, I64Op.relop, F32Op.relop, F64Op.relop) Values.op
 
 type cvtop = (I32Op.cvtop, I64Op.cvtop, F32Op.cvtop, F64Op.cvtop) Values.op
+[@@deriving show]
 
 type vec_testop = V128Op.testop Values.vecop
 
