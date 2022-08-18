@@ -786,17 +786,14 @@ module Inner = struct
 
       (* 3. Computing A'(w^i) = A_i(w^i). *)
       (*let eval_a' = Evaluations.evaluation_fft t.domain_n a' in*)
+      let a' = Polynomials.to_dense_coefficients a' in
       let eval_a' =
         pfa_fr_inplace
           (2 * 2048)
           19
           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
-          ~coefficients:
-            (resize
-               t.n
-               (Polynomials.to_dense_coefficients a')
-               (Polynomials.degree a'))
+          ~coefficients:(resize t.n a' (Array.length a'))
           ~inverse:false
       in
 

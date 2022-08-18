@@ -1,7 +1,7 @@
 module Test = struct
   module Scalar = Bls12_381.Fr
 
-  let random_indices bound k =
+  let _random_indices bound k =
     Random.self_init () ;
 
     let rand_elt l =
@@ -22,8 +22,8 @@ module Test = struct
 
     aux [] k
 
-  let computed_hash bs =
-    let st =
+  let computed_hash bs = Tezos_crypto.Blake2B.hash_bytes [bs]
+  (*let st =
       Hacl_star.EverCrypt.Hash.init ~alg:Hacl_star.SharedDefs.HashDefs.BLAKE2b
     in
     let len = 48 in
@@ -32,7 +32,7 @@ module Test = struct
       Bytes.blit bs (i * len) msg 0 len ;
       Hacl_star.EverCrypt.Hash.update ~st ~msg
     done ;
-    Hacl_star.EverCrypt.Hash.finish ~st
+    Hacl_star.EverCrypt.Hash.finish ~st*)
 
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
   let bench_DAL_crypto_params () =
@@ -44,9 +44,13 @@ module Test = struct
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
-      Bytes.set_int64_le msg (i * 8) (Random.int64 Int64.max_int)
+      Bytes.set_int64_le msg (i * 8) Int64.max_int
     done ;
-    Printf.eprintf "\n %s \n" (Bytes.to_string @@ computed_hash msg) ;
+
+    Printf.eprintf
+      "\n %s \n"
+      (Tezos_crypto.Blake2B.to_string @@ computed_hash msg) ;
+
     let parameters =
       Dal_cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
         ~slot_size
@@ -74,9 +78,7 @@ module Test = struct
         let* p = Dal_cryptobox.polynomial_from_slot t msg in
         Printf.eprintf "\n polynomial_from_slot = %f \n" (Sys.time () -. t') ;
         let t' = Sys.time () in
-        let msg' =
-          Bytes.sub (Dal_cryptobox.polynomial_to_bytes t p) 0 msg_size
-        in
+        let msg' = Dal_cryptobox.polynomial_to_bytes t p in
         Printf.eprintf "\n polynomial_to_bytes = %f \n" (Sys.time () -. t') ;
         assert (Bytes.compare msg msg' = 0) ;
         let t' = Sys.time () in
@@ -102,12 +104,15 @@ module Test = struct
             let eval = Obj.magic eval in
             Printf.eprintf "\n len share =%d \n" (Array.length eval)) ;
 
+        let ( -- ) _ b = Array.init b (fun i -> i) in
+
         (* Only take half of the buckets *)
         let c_indices =
-          random_indices
-            (number_of_shards - 1)
-            (number_of_shards / redundancy_factor)
-          |> Array.of_list
+          0 -- (number_of_shards / redundancy_factor)
+          (*random_indices
+              (shards_amount - 1)
+              ((shards_amount / redundancy_factor) + 1)
+            |> Array.of_list*)
         in
 
         let c =
@@ -118,11 +123,12 @@ module Test = struct
 
         let t' = Sys.time () in
         let* dec = Dal_cryptobox.polynomial_from_shards t c in
-        let msg' =
-          Bytes.sub (Dal_cryptobox.polynomial_to_bytes t dec) 0 msg_size
-        in
+        let msg' = Dal_cryptobox.polynomial_to_bytes t dec in
         Printf.eprintf "\n polynomial_from_shards = %f \n" (Sys.time () -. t') ;
-        Printf.eprintf "\n %s \n" (Bytes.to_string @@ computed_hash msg') ;
+
+        Printf.eprintf
+          "\n %s \n"
+          (Tezos_crypto.Blake2B.to_string @@ computed_hash msg') ;
         assert (Bytes.compare msg msg' = 0) ;
 
         let comm = Dal_cryptobox.commit t p in
