@@ -146,6 +146,14 @@ val valid :
   (Sc_rollup_PVM_sig.input option * Sc_rollup_PVM_sig.input_request) tzresult
   Lwt.t
 
+(** [cost_valid history_proof level ~pvm_name proof] returns the cost of
+    refutation proof validation. *)
+val cost_valid :
+  Sc_rollup_inbox_repr.history_proof ->
+  pvm_name:string ->
+  t ->
+  Gas_limit_repr.cost
+
 module type PVM_with_context_and_state = sig
   include Sc_rollups.PVM.S
 

@@ -346,6 +346,11 @@ let valid ~metadata snapshot commit_level dal_snapshot dal_parameters
   in
   return (input, input_requested)
 
+let cost_valid _snapshot ~pvm_name:_ _proof =
+  let open Gas_limit_repr in
+  (* FIXME: This will be changed in forthcoming commits. *)
+  free
+
 module type PVM_with_context_and_state = sig
   include Sc_rollups.PVM.S
 

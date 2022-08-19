@@ -900,10 +900,19 @@ let play dal_parameters ~dal_attestation_lag ~stakers metadata game refutation =
         return @@ mk_loser (opponent game.turn)
       else return (Either.Left Draw)
 
-let cost_play _game _refutation =
+let cost_play ~number_of_sections game refutation =
   let open Gas_limit_repr in
-  (* FIXME: Is to be changed in forthcoming commits. *)
-  free
+  (* The gas cost is defined over the structure of [play]. *)
+  Sc_rollup_costs.cost_find_choice ~number_of_sections
+  +@
+  match refutation.step with
+  | Dissection states ->
+      let number_of_states = List.length states in
+      Sc_rollup_costs.cost_check_dissection ~number_of_states
+  | Proof proof ->
+      let {inbox_snapshot; pvm_name; _} = game in
+      Sc_rollup_costs.Constants.cost_check_proof_start_stop
+      +@ Sc_rollup_proof_repr.cost_valid inbox_snapshot ~pvm_name proof
 
 module Internal_for_tests = struct
   let find_choice = find_choice

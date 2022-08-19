@@ -42,6 +42,8 @@ module Constants : sig
   val cost_serialize_commitment : Gas_limit_repr.cost
 
   val cost_serialize_nonce : Gas_limit_repr.cost
+
+  val cost_check_proof_start_stop : Gas_limit_repr.cost
 end
 
 (** [is_valid_parameters_ty_cost ty] returns the cost of checking whether a type
@@ -80,3 +82,12 @@ val cost_serialize_external_inbox_message : bytes_len:int -> Gas_limit_repr.cost
 
 (** [cost_hash_bytes ~bytes_len] is the cost of hashing [bytes_len] bytes. *)
 val cost_hash_bytes : bytes_len:int -> Gas_limit_repr.cost
+
+(** [cost_check_dissection ~number_of_states] is the cost of checking
+   that a dissection with a given [number_of_states] used in a
+   refutation game is well-formed. *)
+val cost_check_dissection : number_of_states:int -> Gas_limit_repr.cost
+
+(** [cost_find_choice ~number_of_sections] is the cost of searching for
+    a choice within a given [number_of_sections]. *)
+val cost_find_choice : number_of_sections:int -> Gas_limit_repr.cost
