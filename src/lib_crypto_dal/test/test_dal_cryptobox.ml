@@ -44,7 +44,7 @@ module Test = struct
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
-      Bytes.set_int64_le msg (i * 8) Int64.max_int
+      Bytes.set_int64_le msg (i * 8) (Random.int64 Int64.max_int)
     done ;
 
     Printf.eprintf
@@ -65,6 +65,8 @@ module Test = struct
             {redundancy_factor; slot_size; segment_size; number_of_shards}
         in
         let* p = Dal_cryptobox.polynomial_from_slot t msg in
+        let res = Dal_cryptobox.polynomial_to_bytes t p in
+        assert (Bytes.compare msg res = 0) ;
         let cm = Dal_cryptobox.commit t p in
         let* pi = Dal_cryptobox.prove_segment t p 1 in
         let segment = Bytes.sub msg segment_size segment_size in
