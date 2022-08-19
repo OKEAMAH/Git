@@ -123,6 +123,11 @@ let valid snapshot commit_level ~pvm_name proof =
   in
   Lwt.map Result.ok (P.verify_proof P.proof)
 
+let cost_valid _snapshot _commit_level ~pvm_name:_ _proof =
+  let open Gas_limit_repr in
+  (* FIXME: This will be changed in forthcoming commits. *)
+  free
+
 module type PVM_with_context_and_state = sig
   include Sc_rollups.PVM.S
 
