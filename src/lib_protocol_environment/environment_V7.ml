@@ -1594,6 +1594,8 @@ struct
 
     module type HashConsingInput = sig
       type 'a t
+
+      type 'a s
     end
 
     module type Constr1_Type = sig
@@ -1626,17 +1628,33 @@ struct
       val mk : 'a t -> 'b t -> ('a, 'b, 'c) witness -> 'c res
     end
 
+    module type Constr_Stack = sig
+      type 'a t
+
+      type 'a s
+
+      type ('a, 'b, 'c) witness
+
+      type 'a res
+
+      val mk : 'a t -> 'b s -> ('a, 'b, 'c) witness -> 'c res
+    end
+
     module type HashConsing = sig
       type 'a id
 
-      type 'a value
+      module Value : HashConsingInput
 
-      type 'a t = private {id : 'a id; value : 'a value}
+      type 'a t = private {id : 'a id; value : 'a Value.t}
 
-      val constant : 'a value -> 'a t
+      type 'a s = private {id : 'a id; value : 'a Value.s}
+
+      val constant_t : 'a Value.t -> 'a t
+
+      val constant_s : 'a Value.s -> 'a s
 
       module Parametric1_Type : functor
-        (C : Constr1_Type with type 'a res := 'a value)
+        (C : Constr1_Type with type 'a res := 'a Value.t)
         ->
         Constr1_Type
           with type t := C.t
@@ -1653,7 +1671,7 @@ struct
       end
 
       module Parametric1 : functor
-        (C : Constr1_Input with type 'a res := 'a value)
+        (C : Constr1_Input with type 'a res := 'a Value.t)
         ->
         Constr1
           with type ('a, 'b) witness := ('a, 'b) C.witness
@@ -1669,24 +1687,47 @@ struct
       end
 
       module Parametric2 : functor
-        (C : Constr2_Input with type 'a res := 'a value)
+        (C : Constr2_Input with type 'a res := 'a Value.t)
         ->
         Constr2
           with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
            and type 'a res := 'a t
+
+      module type Constr_Stack :=
+        Constr_Stack with type 'a t := 'a t and type 'a s := 'a s
+
+      module type Constr_Stack_Input := sig
+        include Constr_Stack
+
+        val witness_is_a_function :
+          ('a, 'b, 'c1) witness -> ('a, 'b, 'c2) witness -> ('c1, 'c2) eq
+      end
+
+      module Parametric_Stack : functor
+        (C : Constr_Stack_Input with type 'a res := 'a Value.s)
+        ->
+        Constr_Stack
+          with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
+           and type 'a res := 'a s
     end
 
     module HashConsing (V : HashConsingInput) :
-      HashConsing with type 'a value := 'a V.t = struct
+      HashConsing with module Value := V = struct
       type 'a id = 'a gid
 
-      type 'a value = 'a V.t
+      module Value = V
 
-      type 'a t = {id : 'a id; value : 'a value}
+      type 'a t = {id : 'a id; value : 'a Value.t}
 
-      let constant value = {id = gen (); value}
+      type 'a s = {id : 'a id; value : 'a Value.s}
 
-      module Parametric1_Type (C : Constr1_Type with type 'a res := 'a value) :
+      let constant_t : type a. a Value.t -> a t =
+       fun value -> {id = gen (); value}
+
+      let constant_s : type a. a Value.s -> a s =
+       fun value -> {id = gen (); value}
+
+      module Parametric1_Type (C : Constr1_Type with type 'a res := 'a Value.t) :
         Constr1_Type
           with type t := C.t
            and type v := C.v
@@ -1730,7 +1771,7 @@ struct
           ('a, 'b1) witness -> ('a, 'b2) witness -> ('b1, 'b2) eq
       end
 
-      module Parametric1 (C : Constr1_Input with type 'a res := 'a value) :
+      module Parametric1 (C : Constr1_Input with type 'a res := 'a Value.t) :
         Constr1
           with type ('a, 'b) witness := ('a, 'b) C.witness
            and type 'a res := 'a t = struct
@@ -1771,7 +1812,7 @@ struct
           ('a, 'b, 'c1) witness -> ('a, 'b, 'c2) witness -> ('c1, 'c2) eq
       end
 
-      module Parametric2 (C : Constr2_Input with type 'a res := 'a value) :
+      module Parametric2 (C : Constr2_Input with type 'a res := 'a Value.t) :
         Constr2
           with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
            and type 'a res := 'a t = struct
@@ -1779,6 +1820,57 @@ struct
           type _ input = In : 'a t * 'b t -> ('a * 'b) input
 
           type 'o output = 'o t
+
+          type (_, _) witness =
+            | W : ('i, 'j, 'o) C.witness -> ('i * 'j, 'o) witness
+          [@@unboxed]
+
+          let mk : type i o. i input -> (i, o) witness -> o output =
+           fun (In (i1, i2)) (W w) -> {id = gen (); value = C.mk i1 i2 w}
+
+          let witness_is_a_function :
+              type i o1 o2. (i, o1) witness -> (i, o2) witness -> (o1, o2) eq =
+           fun (W w1) (W w2) -> C.witness_is_a_function w1 w2
+
+          type _ input_id = Id : 'a id * 'b id -> ('a * 'b) input_id
+
+          let id : type i. i input -> i input_id =
+           fun (In ({id = id1; _}, {id = id2; _})) -> Id (id1, id2)
+
+          let eq_id : type i j. i input_id -> j input_id -> (i, j) eq option =
+           fun (Id (ida1, ida2)) (Id (idb1, idb2)) ->
+            match (eq_id ida1 idb1, eq_id ida2 idb2) with
+            | Some Refl, Some Refl -> Some Refl
+            | _ -> None
+
+          let hash : type i. i input_id -> int -> int =
+           fun (Id (id1, id2)) table_size -> hash2 id1 id2 table_size
+        end
+
+        include Hashcons_base (Binding)
+
+        let mk i1 i2 w = mk (Binding.In (i1, i2)) (Binding.W w)
+      end
+
+      module type Constr_Stack =
+        Constr_Stack with type 'a t := 'a t and type 'a s := 'a s
+
+      module type Constr_Stack_Input = sig
+        include Constr_Stack
+
+        val witness_is_a_function :
+          ('a, 'b, 'c1) witness -> ('a, 'b, 'c2) witness -> ('c1, 'c2) eq
+      end
+
+      module Parametric_Stack
+          (C : Constr_Stack_Input with type 'a res := 'a V.s) :
+        Constr_Stack
+          with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
+           and type 'a res := 'a s = struct
+        module Binding = struct
+          type _ input = In : 'a t * 'b s -> ('a * 'b) input
+
+          type 'o output = 'o s
 
           type (_, _) witness =
             | W : ('i, 'j, 'o) C.witness -> ('i * 'j, 'o) witness

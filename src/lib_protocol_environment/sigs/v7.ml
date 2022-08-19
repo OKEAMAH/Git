@@ -11406,6 +11406,8 @@ type (_, _) eq = Refl : ('a, 'a) eq
 
 module type HashConsingInput = sig
   type 'a t
+
+  type 'a s
 end
 
 module type Constr1_Type = sig
@@ -11438,17 +11440,33 @@ module type Constr2 = sig
   val mk : 'a t -> 'b t -> ('a, 'b, 'c) witness -> 'c res
 end
 
+module type Constr_Stack = sig
+  type 'a t
+
+  type 'a s
+
+  type ('a, 'b, 'c) witness
+
+  type 'a res
+
+  val mk : 'a t -> 'b s -> ('a, 'b, 'c) witness -> 'c res
+end
+
 module type HashConsing = sig
   type 'a id
 
-  type 'a value
+  module Value : HashConsingInput
 
-  type 'a t = private {id : 'a id; value : 'a value}
+  type 'a t = private {id : 'a id; value : 'a Value.t}
 
-  val constant : 'a value -> 'a t
+  type 'a s = private {id : 'a id; value : 'a Value.s}
+
+  val constant_t : 'a Value.t -> 'a t
+
+  val constant_s : 'a Value.s -> 'a s
 
   module Parametric1_Type : functor
-    (C : Constr1_Type with type 'a res := 'a value)
+    (C : Constr1_Type with type 'a res := 'a Value.t)
     ->
     Constr1_Type with type t := C.t and type v := C.v and type 'a res := 'a t
 
@@ -11462,7 +11480,7 @@ module type HashConsing = sig
   end
 
   module Parametric1 : functor
-    (C : Constr1_Input with type 'a res := 'a value)
+    (C : Constr1_Input with type 'a res := 'a Value.t)
     ->
     Constr1
       with type ('a, 'b) witness := ('a, 'b) C.witness
@@ -11478,15 +11496,31 @@ module type HashConsing = sig
   end
 
   module Parametric2 : functor
-    (C : Constr2_Input with type 'a res := 'a value)
+    (C : Constr2_Input with type 'a res := 'a Value.t)
     ->
     Constr2
       with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
        and type 'a res := 'a t
+
+  module type Constr_Stack :=
+    Constr_Stack with type 'a t := 'a t and type 'a s := 'a s
+
+  module type Constr_Stack_Input := sig
+    include Constr_Stack
+
+    val witness_is_a_function :
+      ('a, 'b, 'c1) witness -> ('a, 'b, 'c2) witness -> ('c1, 'c2) eq
+  end
+
+  module Parametric_Stack : functor
+    (C : Constr_Stack_Input with type 'a res := 'a Value.s)
+    ->
+    Constr_Stack
+      with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
+       and type 'a res := 'a s
 end
 
-module HashConsing (V : HashConsingInput) :
-  HashConsing with type 'a value := 'a V.t
+module HashConsing (V : HashConsingInput) : HashConsing with module Value := V
 end
 # 136 "v7.in.ml"
 
