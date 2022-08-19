@@ -26,31 +26,11 @@
 open Lazy_containers
 open Tezos_webassembly_interpreter
 
-let pp_pos out {Source.file; line; column} =
-  Format.fprintf
-    out
-    "@[<hv 2>{file = %S;@; line = %d;@; column = %d}@]"
-    (String.escaped file)
-    line
-    column
-
-let pp_region out {Source.left; right} =
-  Format.fprintf
-    out
-    "@[<hv 2>{left = %a;@; right = %a}@]"
-    pp_pos
-    left
-    pp_pos
-    right
-
-let pp_phrase pp_it out Source.{it; at} =
-  Format.fprintf out "@[<hv 2>{it = %a;@; at = %a}@]" pp_it it pp_region at
-
 let pp_int32 out n = Format.fprintf out "%ld" n
 
 let pp_int64 out n = Format.fprintf out "%Ld" n
 
-let pp_var = pp_phrase pp_int32
+let pp_var = Source.pp_phrase pp_int32
 
 let pp_list pp out x =
   Format.fprintf
@@ -98,7 +78,7 @@ let pp_value_op pp_int32 pp_int64 out = function
   | I64 x -> pp_int64 out x
   | _ -> Stdlib.failwith "Floating point values are not supported"
 
-let pp_num = pp_phrase (pp_value_op pp_int32 pp_int64)
+let pp_num = Source.pp_phrase (pp_value_op pp_int32 pp_int64)
 
 let pp_int_relop out op =
   Format.pp_print_string
@@ -176,7 +156,7 @@ let pp_vec =
         let hash = Hashtbl.hash bits in
         Format.fprintf out "V128 (#%d)" hash
   in
-  pp_phrase pp
+  Source.pp_phrase pp
 
 (*
   Generate instructions. The following are missing:
@@ -260,7 +240,7 @@ let pp_instr' out instr =
   | VecConst c -> Format.fprintf out "VecConst (%a)" pp_vec c
   | _ -> Stdlib.failwith "Unsupported instruction"
 
-let pp_instr = pp_phrase pp_instr'
+let pp_instr = Source.pp_phrase pp_instr'
 
 let pp_vector pp out v =
   (* Force evaluation of the vector. *)
@@ -279,7 +259,7 @@ let pp_func_type out = function
       Format.fprintf out "FuncType (%a, %a)" pp_resul_type pt pp_resul_type rt
 
 let pp_func =
-  pp_phrase @@ fun out {Ast.ftype; locals; body} ->
+  Source.pp_phrase @@ fun out {Ast.ftype; locals; body} ->
   Format.fprintf
     out
     "@[<hv 2>{ftype = %a;@; locals = %a;@; body = %a}@]"
