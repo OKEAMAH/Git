@@ -29,6 +29,35 @@ module Base58 = Tezos_crypto.Base58
 module Srs_g1 = Bls12_381_polynomial.Polynomial.M.Srs_g1
 module Srs_g2 = Bls12_381_polynomial.Polynomial.M.Srs_g2
 
+(* TODO: find better place for this piece of code *)
+module Scalar_array = Bls12_381_polynomial.Fr_carray
+
+type scalar_array = Scalar_array.t
+
+external prime_factor_algorithm_fft_ext :
+  bool ->
+  scalar_array ->
+  scalar_array ->
+  int ->
+  int ->
+  scalar_array ->
+  scalar_array ->
+  unit
+  = "prime_factor_algorithm_fft_bytecode" "prime_factor_algorithm_fft_native"
+
+let prime_factor_algorithm_fft ~inverse ~domain1 ~domain2 ~domain1_length_log
+    ~domain2_length ~coefficients ~scratch_zone =
+  prime_factor_algorithm_fft_ext
+    inverse
+    domain1
+    domain2
+    domain1_length_log
+    domain2_length
+    coefficients
+    scratch_zone
+
+(* END TODO: find better place for this piece of code *)
+
 type error += Failed_to_load_trusted_setup of string
 
 let () =
@@ -293,6 +322,7 @@ module Inner = struct
     (* Domain for the FFT on slots as polynomials to be erasure encoded. *)
     domain_2k : scalar array;
     domain_n : scalar array;
+    scratch_zone : scalar_array;
     (* Domain for the FFT on erasure encoded slots (as polynomials). *)
     shard_size : int;
     (* Length of a shard in terms of scalar elements. *)
@@ -308,6 +338,35 @@ module Inner = struct
     proofs_log : int; (* Log of th number of shards proofs. *)
     srs : srs;
   }
+
+  let make_domain2 root d =
+    let module Scalar = Bls12_381.Fr in
+    let build_array init next len =
+      let xi = ref init in
+      Array.init len (fun _ ->
+          let i = !xi in
+          xi := next !xi ;
+          i)
+    in
+    build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
+    |> Scalar_array.of_array
+
+  let evaluation_fft_n t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:12
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2
+           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
+           (2 * 2048))
+      ~domain2:
+        (make_domain2
+           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
+           19)
+      ~coefficients
+      ~inverse:false
+      ~scratch_zone:t.scratch_zone ;
+    coefficients
 
   let ensure_validity t =
     let open Result_syntax in
@@ -392,6 +451,7 @@ module Inner = struct
         domain_k = make_domain rt_k k;
         domain_2k = make_domain rt_2k (2 * k);
         domain_n = make_domain rt_n n;
+        scratch_zone = Scalar_array.allocate (2 * n);
         shard_size;
         nb_segments = slot_size / segment_size;
         segment_length;
@@ -659,7 +719,7 @@ module Inner = struct
     done ;
     slot
 
-  let encode t p =
+  (*let encode t p =
     (*Evaluations.(evaluation_fft t.domain_n p |> to_array)*)
     let coefficients = Array.init t.n (fun _ -> Scalar.(copy zero)) in
     Array.blit (Polynomials.to_dense_coefficients p) 0 coefficients 0 t.k ;
@@ -669,7 +729,18 @@ module Inner = struct
       (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
       (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
       ~coefficients
-      ~inverse:false
+      ~inverse:false*)
+
+  (* Doesn't modify p *)
+  let encode t p =
+    let coefficients = Scalar_array.allocate t.n in
+    Scalar_array.blit
+      Polynomials.(to_carray p)
+      ~src_off:0
+      coefficients
+      ~dst_off:0
+      ~len:t.k ;
+    evaluation_fft_n t coefficients
 
   (* The shards are arranged in cosets to evaluate in batch with Kate
      amortized. *)
@@ -680,7 +751,7 @@ module Inner = struct
       else
         let shard = Array.init t.shard_size (fun _ -> Scalar.(copy zero)) in
         for j = 0 to t.shard_size - 1 do
-          shard.(j) <- codeword.((t.number_of_shards * j) + i)
+          shard.(j) <- Scalar_array.get codeword ((t.number_of_shards * j) + i)
         done ;
         loop (i + 1) (IntMap.add i shard map)
     in
