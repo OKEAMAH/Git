@@ -62,6 +62,8 @@ val input_encoding : input Data_encoding.t
 (** [input_equal i1 i2] return whether [i1] and [i2] are equal. *)
 val input_equal : input -> input -> bool
 
+val cost_input_equal : input -> input -> Gas_limit_repr.cost
+
 (** The PVM's current input expectations:
     - [No_input_required] if the machine is busy and has no need for new input.
 
@@ -232,6 +234,8 @@ module type S = sig
   (** [verify_proof p] checks the proof [p]. See the doc-string for the [proof]
       type. *)
   val verify_proof : proof -> bool Lwt.t
+
+  val cost_verify_proof : proof -> Gas_limit_repr.cost
 
   (** [produce_proof ctxt input_given state] should return a [proof] for
       the PVM step starting from [state], if possible. This may fail for

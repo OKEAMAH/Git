@@ -86,6 +86,11 @@ let check_inbox_proof snapshot serialized_inbox_proof (level, counter) =
   | Some inbox_proof ->
       Sc_rollup_inbox_repr.verify_proof (level, counter) snapshot inbox_proof
 
+let cost_check_inbox_proof _snapshot _inbox_proof =
+  let open Gas_limit_repr in
+  (* FIXME: To be defined by forthcoming commits. *)
+  free
+
 let pp_proof fmt serialized_inbox_proof =
   match Sc_rollup_inbox_repr.of_serialized_proof serialized_inbox_proof with
   | None -> Format.pp_print_string fmt "<invalid-proof-serialization>"
@@ -123,10 +128,33 @@ let valid snapshot commit_level ~pvm_name proof =
   in
   Lwt.map Result.ok (P.verify_proof P.proof)
 
-let cost_valid _snapshot _commit_level ~pvm_name:_ _proof =
+let cost_valid snapshot _commit_level ~pvm_name:_ proof =
   let open Gas_limit_repr in
-  (* FIXME: This will be changed in forthcoming commits. *)
-  free
+  (* The cost is defined over the structure of [valid]. *)
+  let (module P) = Sc_rollups.wrapped_proof_module proof.pvm_step in
+  let cost_check_pvm_name_equality =
+    (* The cost of the equality is bounded by the cost of comparing
+       with the longest PVM name. *)
+    Saturation_repr.safe_int 35
+  in
+  let input_requested = P.proof_input_requested P.proof in
+  let cost_input =
+    match (input_requested, proof.inbox) with
+    | Sc_rollup_PVM_sem.No_input_required, _ -> free
+    | _, Some inbox_proof -> cost_check_inbox_proof snapshot inbox_proof
+    | _, _ ->
+        (* The function will fail. *)
+        free
+  in
+  let cost_check_input_equality =
+    match P.proof_input_given P.proof with
+    | None -> free
+    | Some input_given ->
+        Sc_rollup_PVM_sem.cost_input_equal input_given input_given
+  in
+  let ( + ) = Saturation_repr.add in
+  cost_check_pvm_name_equality + cost_input + cost_check_input_equality
+  + P.cost_verify_proof P.proof
 
 module type PVM_with_context_and_state = sig
   include Sc_rollups.PVM.S

@@ -1103,6 +1103,11 @@ module Make (Context : P) :
     | Some (_, request) ->
         return (PS.input_request_equal request proof.requested)
 
+  let cost_verify_proof _proof =
+    let open Gas_limit_repr in
+    (* FIXME: To be defined by forthcoming commits. *)
+    free
+
   type error += Arith_proof_production_failed
 
   let produce_proof context input_given state =

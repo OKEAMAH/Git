@@ -3181,6 +3181,8 @@ module Sc_rollup : sig
 
       val verify_proof : proof -> bool Lwt.t
 
+      val cost_verify_proof : proof -> Gas.cost
+
       val produce_proof :
         context -> input option -> state -> (proof, error) result Lwt.t
 

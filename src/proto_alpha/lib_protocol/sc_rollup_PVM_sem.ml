@@ -54,6 +54,13 @@ let input_equal (a : input) (b : input) : bool =
   && Z.equal message_counter b.message_counter
   && String.equal (payload :> string) (b.payload :> string)
 
+let input_size_in_bytes a =
+  let payload_size_in_bytes = String.length (a.payload :> string) in
+  8 + ((7 + Z.numbits a.message_counter) / 8) + payload_size_in_bytes
+
+let cost_input_equal (a : input) (b : input) : Gas_limit_repr.cost =
+  Sc_rollup_costs.cost_compare (input_size_in_bytes a) (input_size_in_bytes b)
+
 type input_request =
   | No_input_required
   | Initial
@@ -175,6 +182,8 @@ module type S = sig
   val eval : state -> state Lwt.t
 
   val verify_proof : proof -> bool Lwt.t
+
+  val cost_verify_proof : proof -> Gas_limit_repr.cost
 
   val produce_proof :
     context -> input option -> state -> (proof, error) result Lwt.t
