@@ -900,6 +900,11 @@ let play dal_parameters ~dal_attestation_lag ~stakers metadata game refutation =
         return @@ mk_loser (opponent game.turn)
       else return (Either.Left Draw)
 
+let cost_play _game _refutation =
+  let open Gas_limit_repr in
+  (* FIXME: Is to be changed in forthcoming commits. *)
+  free
+
 module Internal_for_tests = struct
   let find_choice = find_choice
 

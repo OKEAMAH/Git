@@ -392,6 +392,10 @@ val play :
   refutation ->
   (game_result, t) Either.t tzresult Lwt.t
 
+(** [cost_play game refutation] is the gas cost of playing a
+    refutation game move. *)
+val cost_play : t -> refutation -> Gas_limit_repr.cost
+
 (** A type that represents the number of blocks left for players to play. Each
     player has her timeout value. `timeout` is expressed in the number of
     blocks.
