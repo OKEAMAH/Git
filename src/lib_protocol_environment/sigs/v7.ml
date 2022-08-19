@@ -11408,12 +11408,14 @@ module type HashConsingInput = sig
   type 'a t
 end
 
-module type Constr1_Int = sig
+module type Constr1_Type = sig
+  type t
+
   type v
 
   type 'a res
 
-  val mk : int -> v res
+  val mk : t -> v res
 end
 
 module type Constr1 = sig
@@ -11445,9 +11447,10 @@ module type HashConsing = sig
 
   val constant : 'a value -> 'a t
 
-  module Parametric1_Int : functor
-    (C : Constr1_Int with type 'a res := 'a value)
-    -> Constr1_Int with type v := C.v and type 'a res := 'a t
+  module Parametric1_Type : functor
+    (C : Constr1_Type with type 'a res := 'a value)
+    ->
+    Constr1_Type with type t := C.t and type v := C.v and type 'a res := 'a t
 
   module type Constr1 := Constr1 with type 'a t := 'a t
 

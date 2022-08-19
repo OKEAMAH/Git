@@ -1584,7 +1584,7 @@ struct
 
     let gen () = Equality_witness.make ()
 
-    let hash1_int i table_size = i mod table_size
+    let hash1_type i table_size = Hashtbl.hash i mod table_size
 
     let hash1 a table_size =
       let hash = Equality_witness.hash a in
@@ -1598,12 +1598,14 @@ struct
       type 'a t
     end
 
-    module type Constr1_Int = sig
+    module type Constr1_Type = sig
+      type t
+
       type v
 
       type 'a res
 
-      val mk : int -> v res
+      val mk : t -> v res
     end
 
     module type Constr1 = sig
@@ -1635,9 +1637,13 @@ struct
 
       val constant : 'a value -> 'a t
 
-      module Parametric1_Int : functor
-        (C : Constr1_Int with type 'a res := 'a value)
-        -> Constr1_Int with type v := C.v and type 'a res := 'a t
+      module Parametric1_Type : functor
+        (C : Constr1_Type with type 'a res := 'a value)
+        ->
+        Constr1_Type
+          with type t := C.t
+           and type v := C.v
+           and type 'a res := 'a t
 
       module type Constr1 := Constr1 with type 'a t := 'a t
 
@@ -1682,10 +1688,13 @@ struct
 
       let constant value = {id = gen (); value}
 
-      module Parametric1_Int (C : Constr1_Int with type 'a res := 'a value) :
-        Constr1_Int with type v := C.v and type 'a res := 'a t = struct
+      module Parametric1_Type (C : Constr1_Type with type 'a res := 'a value) :
+        Constr1_Type
+          with type t := C.t
+           and type v := C.v
+           and type 'a res := 'a t = struct
         module Binding = struct
-          type _ input = In : int -> unit input [@@unboxed]
+          type _ input = In : C.t -> unit input [@@unboxed]
 
           type _ output = C.v t
 
@@ -1698,7 +1707,7 @@ struct
               type i o1 o2. (i, o1) witness -> (i, o2) witness -> (o1, o2) eq =
            fun W W -> Refl
 
-          type _ input_id = Id : int -> unit input_id [@@unboxed]
+          type _ input_id = Id : C.t -> unit input_id [@@unboxed]
 
           let id : type i. i input -> i input_id = fun (In i) -> Id i
 
@@ -1706,7 +1715,7 @@ struct
            fun (Id id1) (Id id2) -> if id1 = id2 then Some Refl else None
 
           let hash : type i. i input_id -> int -> int =
-           fun (Id id) size -> hash1_int id size
+           fun (Id id) size -> hash1_type id size
         end
 
         include Hashcons_base (Binding)
