@@ -274,7 +274,7 @@ type name_list = int list
 type block_type = VarBlockType of var | ValBlockType of value_type option
 [@@deriving show]
 
-type block_label = Block_label of int32
+type block_label = Block_label of int32 [@@deriving show]
 
 type nonrec instr' =
   | Unreachable (* trap unconditionally *)

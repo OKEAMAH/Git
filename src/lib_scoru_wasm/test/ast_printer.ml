@@ -41,9 +41,6 @@ let pp_list pp out x =
 
 let pp_value_type_list = pp_list Types.pp_value_type
 
-let pp_block_label out (Ast.Block_label l) =
-  Format.fprintf out "Block_label @[<hv 2>(%ld)@]" l
-
 let pp_data_label out (Ast.Data_label l) =
   Format.fprintf out "Data_label @[<hv 2>(%ld)@]" l
 
@@ -255,7 +252,7 @@ let pp_func =
     ftype
     (pp_vector Types.pp_value_type)
     locals
-    pp_block_label
+    Ast.pp_block_label
     body
 
 let pp_func out func =
@@ -426,7 +423,7 @@ let rec pp_admin_instr' out instr =
       Format.fprintf
         out
         "From_block @[<hv 2>(%a,@; %li)@]"
-        pp_block_label
+        Ast.pp_block_label
         block
         index
   | Plain instr -> Format.fprintf out "Plain @[<hv 2>%a@]" pp_instr' instr
