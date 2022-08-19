@@ -83,13 +83,16 @@ val cost_serialize_external_inbox_message : bytes_len:int -> Gas_limit_repr.cost
 (** [cost_hash_bytes ~bytes_len] is the cost of hashing [bytes_len] bytes. *)
 val cost_hash_bytes : bytes_len:int -> Gas_limit_repr.cost
 
-(** [cost_check_dissection ~number_of_states] is the cost of checking
-   that a dissection with a given [number_of_states] used in a
-   refutation game is well-formed. *)
-val cost_check_dissection : number_of_states:int -> Gas_limit_repr.cost
+(** [cost_check_dissection ~number_of_states ~tick_size ~hash_size] is
+   the cost of checking that a dissection with a given
+   [number_of_states] used in a refutation game is well-formed. This
+   includes the comparison of a linear number of ticks as well as the
+   verification of two hashes of given [hash_size]. *)
+val cost_check_dissection :
+  number_of_states:int -> tick_size:int -> hash_size:int -> Gas_limit_repr.cost
 
-(** [cost_find_choice ~number_of_sections ~tick_size] is the cost of
-   searching for a tick of a give [tick_size] within a given
-   [number_of_sections]. *)
+(** [cost_find_choice ~number_of_sections ~tick_size ~hash_size] is
+    the cost of searching for a tick of a give [tick_size] within a
+    given [number_of_sections]. *)
 val cost_find_choice :
   number_of_sections:int -> tick_size:int -> Gas_limit_repr.cost
