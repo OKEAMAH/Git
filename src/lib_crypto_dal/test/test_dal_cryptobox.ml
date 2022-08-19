@@ -211,8 +211,6 @@ module Test = struct
         Printf.eprintf "\n fftC 2^15*16 = %f \n" (Sys.time () -. t') ;
         _print_array coefficients ;
 
-        let asrt = false in
-        assert asrt ;
         let dft ~inverse ~domain ~coefficients =
           let n = Array.length domain in
           let res = Array.make n Scalar.(copy zero) in
@@ -275,8 +273,7 @@ module Test = struct
         let msg' = Dal_cryptobox.polynomial_to_bytes t p in
         Printf.eprintf "\n polynomial_to_bytes = %f \n" (Sys.time () -. t') ;
         assert (Bytes.compare msg msg' = 0) ;
-        let asrt = false in
-        assert asrt ;
+
         let t' = Sys.time () in
         let cm = Dal_cryptobox.commit t p in
         Printf.eprintf "\n commit = %f \n" (Sys.time () -. t') ;
