@@ -429,8 +429,6 @@ type 'arg entrypoints = {
   original_type_expr : Script.node;
 }
 
-type (_, _, _, _) kde = Kde
-
 module rec Ty_value : sig
   type _ t =
     | Unit_t : (unit * yes) t
@@ -496,7 +494,8 @@ module rec Ty_value : sig
 
   and ('arg, 'ret) lambda =
     | Lam :
-        ('arg, end_of_stack, 'ret, end_of_stack) kde * Script.node
+        ('arg, end_of_stack, 'ret, end_of_stack) Instruction.kdescr
+        * Script.node
         -> ('arg, 'ret) lambda
 
   and 'arg typed_contract =
@@ -664,7 +663,8 @@ end = struct
 
   and ('arg, 'ret) lambda =
     | Lam :
-        ('arg, end_of_stack, 'ret, end_of_stack) kde * Script.node
+        ('arg, end_of_stack, 'ret, end_of_stack) Instruction.kdescr
+        * Script.node
         -> ('arg, 'ret) lambda
 
   and 'arg typed_contract =
@@ -1609,824 +1609,1971 @@ end = struct
 end
 
 (* ---- Instructions --------------------------------------------------------*)
-type ('before_top, 'before, 'result_top, 'result) kinstr =
-  (*
+and Instruction : sig
+  type ('before_top, 'before, 'result_top, 'result) kinstr =
+    (*
      Stack
      -----
   *)
-  | IDrop :
-      Script.location * ('b, 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | IDup :
-      Script.location * ('a, 'a * ('b * 's), 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | ISwap :
-      Script.location * ('b, 'a * ('c * 's), 'r, 'f) kinstr
-      -> ('a, 'b * ('c * 's), 'r, 'f) kinstr
-  | IConst :
-      Script.location * ('ty, _) ty * 'ty * ('ty, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  (*
+    | IDrop :
+        Script.location * ('b, 's, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IDup :
+        Script.location * ('a, 'a * ('b * 's), 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | ISwap :
+        Script.location * ('b, 'a * ('c * 's), 'r, 'f) kinstr
+        -> ('a, 'b * ('c * 's), 'r, 'f) kinstr
+    | IConst :
+        Script.location * ('ty, _) Ty.ty * 'ty * ('ty, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    (*
      Pairs
      -----
   *)
-  | ICons_pair :
-      Script.location * ('a * 'b, 'c * 's, 'r, 'f) kinstr
-      -> ('a, 'b * ('c * 's), 'r, 'f) kinstr
-  | ICar :
-      Script.location * ('a, 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
-  | ICdr :
-      Script.location * ('b, 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
-  | IUnpair :
-      Script.location * ('a, 'b * 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
-  (*
+    | ICons_pair :
+        Script.location * ('a * 'b, 'c * 's, 'r, 'f) kinstr
+        -> ('a, 'b * ('c * 's), 'r, 'f) kinstr
+    | ICar :
+        Script.location * ('a, 's, 'r, 'f) kinstr
+        -> ('a * 'b, 's, 'r, 'f) kinstr
+    | ICdr :
+        Script.location * ('b, 's, 'r, 'f) kinstr
+        -> ('a * 'b, 's, 'r, 'f) kinstr
+    | IUnpair :
+        Script.location * ('a, 'b * 's, 'r, 'f) kinstr
+        -> ('a * 'b, 's, 'r, 'f) kinstr
+    (*
      Options
      -------
    *)
-  | ICons_some :
-      Script.location * ('v option, 'a * 's, 'r, 'f) kinstr
-      -> ('v, 'a * 's, 'r, 'f) kinstr
-  | ICons_none :
-      Script.location * ('b, _) ty * ('b option, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IIf_none : {
-      loc : Script.location;
-      branch_if_none : ('b, 's, 'c, 't) kinstr;
-      branch_if_some : ('a, 'b * 's, 'c, 't) kinstr;
-      k : ('c, 't, 'r, 'f) kinstr;
-    }
-      -> ('a option, 'b * 's, 'r, 'f) kinstr
-  | IOpt_map : {
-      loc : Script.location;
-      body : ('a, 's, 'b, 's) kinstr;
-      k : ('b option, 's, 'c, 't) kinstr;
-    }
-      -> ('a option, 's, 'c, 't) kinstr
-  (*
+    | ICons_some :
+        Script.location * ('v option, 'a * 's, 'r, 'f) kinstr
+        -> ('v, 'a * 's, 'r, 'f) kinstr
+    | ICons_none :
+        Script.location * ('b, _) Ty.ty * ('b option, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IIf_none : {
+        loc : Script.location;
+        branch_if_none : ('b, 's, 'c, 't) kinstr;
+        branch_if_some : ('a, 'b * 's, 'c, 't) kinstr;
+        k : ('c, 't, 'r, 'f) kinstr;
+      }
+        -> ('a option, 'b * 's, 'r, 'f) kinstr
+    | IOpt_map : {
+        loc : Script.location;
+        body : ('a, 's, 'b, 's) kinstr;
+        k : ('b option, 's, 'c, 't) kinstr;
+      }
+        -> ('a option, 's, 'c, 't) kinstr
+    (*
      Unions
      ------
    *)
-  | ICons_left :
-      Script.location * ('b, _) ty * (('a, 'b) union, 'c * 's, 'r, 'f) kinstr
-      -> ('a, 'c * 's, 'r, 'f) kinstr
-  | ICons_right :
-      Script.location * ('a, _) ty * (('a, 'b) union, 'c * 's, 'r, 'f) kinstr
-      -> ('b, 'c * 's, 'r, 'f) kinstr
-  | IIf_left : {
-      loc : Script.location;
-      branch_if_left : ('a, 's, 'c, 't) kinstr;
-      branch_if_right : ('b, 's, 'c, 't) kinstr;
-      k : ('c, 't, 'r, 'f) kinstr;
-    }
-      -> (('a, 'b) union, 's, 'r, 'f) kinstr
-  (*
+    | ICons_left :
+        Script.location
+        * ('b, _) Ty.ty
+        * (('a, 'b) union, 'c * 's, 'r, 'f) kinstr
+        -> ('a, 'c * 's, 'r, 'f) kinstr
+    | ICons_right :
+        Script.location
+        * ('a, _) Ty.ty
+        * (('a, 'b) union, 'c * 's, 'r, 'f) kinstr
+        -> ('b, 'c * 's, 'r, 'f) kinstr
+    | IIf_left : {
+        loc : Script.location;
+        branch_if_left : ('a, 's, 'c, 't) kinstr;
+        branch_if_right : ('b, 's, 'c, 't) kinstr;
+        k : ('c, 't, 'r, 'f) kinstr;
+      }
+        -> (('a, 'b) union, 's, 'r, 'f) kinstr
+    (*
      Lists
      -----
   *)
-  | ICons_list :
-      Script.location * ('a boxed_list, 's, 'r, 'f) kinstr
-      -> ('a, 'a boxed_list * 's, 'r, 'f) kinstr
-  | INil :
-      Script.location * ('b, _) ty * ('b boxed_list, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IIf_cons : {
-      loc : Script.location;
-      branch_if_cons : ('a, 'a boxed_list * ('b * 's), 'c, 't) kinstr;
-      branch_if_nil : ('b, 's, 'c, 't) kinstr;
-      k : ('c, 't, 'r, 'f) kinstr;
-    }
-      -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
-  | IList_map :
-      Script.location
-      * ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * ('b boxed_list, _) ty
-      * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 'c * 's, 'r, 'f) kinstr
-  | IList_iter :
-      Script.location
-      * ('a, _) ty
-      * ('a, 'b * 's, 'b, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
-  | IList_size :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 's, 'r, 'f) kinstr
-  (*
+    | ICons_list :
+        Script.location * ('a boxed_list, 's, 'r, 'f) kinstr
+        -> ('a, 'a boxed_list * 's, 'r, 'f) kinstr
+    | INil :
+        Script.location
+        * ('b, _) Ty.ty
+        * ('b boxed_list, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IIf_cons : {
+        loc : Script.location;
+        branch_if_cons : ('a, 'a boxed_list * ('b * 's), 'c, 't) kinstr;
+        branch_if_nil : ('b, 's, 'c, 't) kinstr;
+        k : ('c, 't, 'r, 'f) kinstr;
+      }
+        -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
+    | IList_map :
+        Script.location
+        * ('a, 'c * 's, 'b, 'c * 's) kinstr
+        * ('b boxed_list, _) Ty.ty
+        * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
+        -> ('a boxed_list, 'c * 's, 'r, 'f) kinstr
+    | IList_iter :
+        Script.location
+        * ('a, _) Ty.ty
+        * ('a, 'b * 's, 'b, 's) kinstr
+        * ('b, 's, 'r, 'f) kinstr
+        -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
+    | IList_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> ('a boxed_list, 's, 'r, 'f) kinstr
+    (*
     Sets
     ----
   *)
-  | IEmpty_set :
-      Script.location * 'b comparable_ty * ('b set, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | ISet_iter :
-      Script.location
-      * 'a comparable_ty
-      * ('a, 'b * 's, 'b, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('a set, 'b * 's, 'r, 'f) kinstr
-  | ISet_mem :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> ('a, 'a set * 's, 'r, 'f) kinstr
-  | ISet_update :
-      Script.location * ('a set, 's, 'r, 'f) kinstr
-      -> ('a, bool * ('a set * 's), 'r, 'f) kinstr
-  | ISet_size :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> ('a set, 's, 'r, 'f) kinstr
-  (*
+    | IEmpty_set :
+        Script.location * 'b Ty.comparable_ty * ('b set, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISet_iter :
+        Script.location
+        * 'a Ty.comparable_ty
+        * ('a, 'b * 's, 'b, 's) kinstr
+        * ('b, 's, 'r, 'f) kinstr
+        -> ('a set, 'b * 's, 'r, 'f) kinstr
+    | ISet_mem :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> ('a, 'a set * 's, 'r, 'f) kinstr
+    | ISet_update :
+        Script.location * ('a set, 's, 'r, 'f) kinstr
+        -> ('a, bool * ('a set * 's), 'r, 'f) kinstr
+    | ISet_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> ('a set, 's, 'r, 'f) kinstr
+    (*
      Maps
      ----
    *)
-  | IEmpty_map :
-      Script.location
-      * 'b comparable_ty
-      * ('c, _) ty
-      * (('b, 'c) map, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IMap_map :
-      Script.location
-      * (('a, 'c) map, _) ty
-      * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 'd * 's, 'r, 'f) kinstr
-  | IMap_iter :
-      Script.location
-      * ('a * 'b, _) ty
-      * ('a * 'b, 'c * 's, 'c, 's) kinstr
-      * ('c, 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 'c * 's, 'r, 'f) kinstr
-  | IMap_mem :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
-  | IMap_get :
-      Script.location * ('b option, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
-  | IMap_update :
-      Script.location * (('a, 'b) map, 's, 'r, 'f) kinstr
-      -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f) kinstr
-  | IMap_get_and_update :
-      Script.location * ('b option, ('a, 'b) map * 's, 'r, 'f) kinstr
-      -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f) kinstr
-  | IMap_size :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 's, 'r, 'f) kinstr
-  (*
+    | IEmpty_map :
+        Script.location
+        * 'b Ty.comparable_ty
+        * ('c, _) Ty.ty
+        * (('b, 'c) map, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IMap_map :
+        Script.location
+        * (('a, 'c) map, _) Ty.ty
+        * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+        * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
+        -> (('a, 'b) map, 'd * 's, 'r, 'f) kinstr
+    | IMap_iter :
+        Script.location
+        * ('a * 'b, _) Ty.ty
+        * ('a * 'b, 'c * 's, 'c, 's) kinstr
+        * ('c, 's, 'r, 'f) kinstr
+        -> (('a, 'b) map, 'c * 's, 'r, 'f) kinstr
+    | IMap_mem :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
+    | IMap_get :
+        Script.location * ('b option, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
+    | IMap_update :
+        Script.location * (('a, 'b) map, 's, 'r, 'f) kinstr
+        -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f) kinstr
+    | IMap_get_and_update :
+        Script.location * ('b option, ('a, 'b) map * 's, 'r, 'f) kinstr
+        -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f) kinstr
+    | IMap_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (('a, 'b) map, 's, 'r, 'f) kinstr
+    (*
      Big maps
      --------
   *)
-  | IEmpty_big_map :
-      Script.location
-      * 'b comparable_ty
-      * ('c, _) ty
-      * (('b, 'c) big_map, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IBig_map_mem :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) big_map * 's, 'r, 'f) kinstr
-  | IBig_map_get :
-      Script.location * ('b option, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) big_map * 's, 'r, 'f) kinstr
-  | IBig_map_update :
-      Script.location * (('a, 'b) big_map, 's, 'r, 'f) kinstr
-      -> ('a, 'b option * (('a, 'b) big_map * 's), 'r, 'f) kinstr
-  | IBig_map_get_and_update :
-      Script.location * ('b option, ('a, 'b) big_map * 's, 'r, 'f) kinstr
-      -> ('a, 'b option * (('a, 'b) big_map * 's), 'r, 'f) kinstr
-  (*
+    | IEmpty_big_map :
+        Script.location
+        * 'b Ty.comparable_ty
+        * ('c, _) Ty.ty
+        * (('b, 'c) Ty_value.big_map, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IBig_map_mem :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) Ty_value.big_map * 's, 'r, 'f) kinstr
+    | IBig_map_get :
+        Script.location * ('b option, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) Ty_value.big_map * 's, 'r, 'f) kinstr
+    | IBig_map_update :
+        Script.location * (('a, 'b) Ty_value.big_map, 's, 'r, 'f) kinstr
+        -> ('a, 'b option * (('a, 'b) Ty_value.big_map * 's), 'r, 'f) kinstr
+    | IBig_map_get_and_update :
+        Script.location
+        * ('b option, ('a, 'b) Ty_value.big_map * 's, 'r, 'f) kinstr
+        -> ('a, 'b option * (('a, 'b) Ty_value.big_map * 's), 'r, 'f) kinstr
+    (*
      Strings
      -------
   *)
-  | IConcat_string :
-      Script.location * (Script_string.t, 's, 'r, 'f) kinstr
-      -> (Script_string.t boxed_list, 's, 'r, 'f) kinstr
-  | IConcat_string_pair :
-      Script.location * (Script_string.t, 's, 'r, 'f) kinstr
-      -> (Script_string.t, Script_string.t * 's, 'r, 'f) kinstr
-  | ISlice_string :
-      Script.location * (Script_string.t option, 's, 'r, 'f) kinstr
-      -> (n num, n num * (Script_string.t * 's), 'r, 'f) kinstr
-  | IString_size :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (Script_string.t, 's, 'r, 'f) kinstr
-  (*
+    | IConcat_string :
+        Script.location * (Script_string.t, 's, 'r, 'f) kinstr
+        -> (Script_string.t boxed_list, 's, 'r, 'f) kinstr
+    | IConcat_string_pair :
+        Script.location * (Script_string.t, 's, 'r, 'f) kinstr
+        -> (Script_string.t, Script_string.t * 's, 'r, 'f) kinstr
+    | ISlice_string :
+        Script.location * (Script_string.t option, 's, 'r, 'f) kinstr
+        -> (n num, n num * (Script_string.t * 's), 'r, 'f) kinstr
+    | IString_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (Script_string.t, 's, 'r, 'f) kinstr
+    (*
      Bytes
      -----
   *)
-  | IConcat_bytes :
-      Script.location * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes boxed_list, 's, 'r, 'f) kinstr
-  | IConcat_bytes_pair :
-      Script.location * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, bytes * 's, 'r, 'f) kinstr
-  | ISlice_bytes :
-      Script.location * (bytes option, 's, 'r, 'f) kinstr
-      -> (n num, n num * (bytes * 's), 'r, 'f) kinstr
-  | IBytes_size :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  (*
+    | IConcat_bytes :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes boxed_list, 's, 'r, 'f) kinstr
+    | IConcat_bytes_pair :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, bytes * 's, 'r, 'f) kinstr
+    | ISlice_bytes :
+        Script.location * (bytes option, 's, 'r, 'f) kinstr
+        -> (n num, n num * (bytes * 's), 'r, 'f) kinstr
+    | IBytes_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    (*
      Timestamps
      ----------
    *)
-  | IAdd_seconds_to_timestamp :
-      Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (z num, Script_timestamp.t * 's, 'r, 'f) kinstr
-  | IAdd_timestamp_to_seconds :
-      Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
-  | ISub_timestamp_seconds :
-      Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
-  | IDiff_timestamps :
-      Script.location * (z num, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, Script_timestamp.t * 's, 'r, 'f) kinstr
-  (*
+    | IAdd_seconds_to_timestamp :
+        Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
+        -> (z num, Script_timestamp.t * 's, 'r, 'f) kinstr
+    | IAdd_timestamp_to_seconds :
+        Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
+        -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
+    | ISub_timestamp_seconds :
+        Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
+        -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
+    | IDiff_timestamps :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> (Script_timestamp.t, Script_timestamp.t * 's, 'r, 'f) kinstr
+    (*
      Tez
      ---
     *)
-  | IAdd_tez :
-      Script.location * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
-  | ISub_tez :
-      Script.location * (Tez.t option, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
-  | ISub_tez_legacy :
-      Script.location * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
-  | IMul_teznat :
-      Script.location * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, n num * 's, 'r, 'f) kinstr
-  | IMul_nattez :
-      Script.location * (Tez.t, 's, 'r, 'f) kinstr
-      -> (n num, Tez.t * 's, 'r, 'f) kinstr
-  | IEdiv_teznat :
-      Script.location * ((Tez.t, Tez.t) pair option, 's, 'r, 'f) kinstr
-      -> (Tez.t, n num * 's, 'r, 'f) kinstr
-  | IEdiv_tez :
-      Script.location * ((n num, Tez.t) pair option, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
-  (*
+    | IAdd_tez :
+        Script.location * (Tez.t, 's, 'r, 'f) kinstr
+        -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+    | ISub_tez :
+        Script.location * (Tez.t option, 's, 'r, 'f) kinstr
+        -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+    | ISub_tez_legacy :
+        Script.location * (Tez.t, 's, 'r, 'f) kinstr
+        -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+    | IMul_teznat :
+        Script.location * (Tez.t, 's, 'r, 'f) kinstr
+        -> (Tez.t, n num * 's, 'r, 'f) kinstr
+    | IMul_nattez :
+        Script.location * (Tez.t, 's, 'r, 'f) kinstr
+        -> (n num, Tez.t * 's, 'r, 'f) kinstr
+    | IEdiv_teznat :
+        Script.location * ((Tez.t, Tez.t) pair option, 's, 'r, 'f) kinstr
+        -> (Tez.t, n num * 's, 'r, 'f) kinstr
+    | IEdiv_tez :
+        Script.location * ((n num, Tez.t) pair option, 's, 'r, 'f) kinstr
+        -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+    (*
      Booleans
      --------
    *)
-  | IOr :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
-  | IAnd :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
-  | IXor :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
-  | INot :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (bool, 's, 'r, 'f) kinstr
-  (*
+    | IOr :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (bool, bool * 's, 'r, 'f) kinstr
+    | IAnd :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (bool, bool * 's, 'r, 'f) kinstr
+    | IXor :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (bool, bool * 's, 'r, 'f) kinstr
+    | INot :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (bool, 's, 'r, 'f) kinstr
+    (*
      Integers
      --------
   *)
-  | IIs_nat :
-      Script.location * (n num option, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | INeg :
-      Script.location * (z num, 's, 'r, 'f) kinstr
-      -> ('a num, 's, 'r, 'f) kinstr
-  | IAbs_int :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | IInt_nat :
-      Script.location * (z num, 's, 'r, 'f) kinstr
-      -> (n num, 's, 'r, 'f) kinstr
-  | IAdd_int :
-      Script.location * (z num, 's, 'r, 'f) kinstr
-      -> ('a num, 'b num * 's, 'r, 'f) kinstr
-  | IAdd_nat :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | ISub_int :
-      Script.location * (z num, 's, 'r, 'f) kinstr
-      -> ('a num, 'b num * 's, 'r, 'f) kinstr
-  | IMul_int :
-      Script.location * (z num, 's, 'r, 'f) kinstr
-      -> ('a num, 'b num * 's, 'r, 'f) kinstr
-  | IMul_nat :
-      Script.location * ('a num, 's, 'r, 'f) kinstr
-      -> (n num, 'a num * 's, 'r, 'f) kinstr
-  | IEdiv_int :
-      Script.location * ((z num, n num) pair option, 's, 'r, 'f) kinstr
-      -> ('a num, 'b num * 's, 'r, 'f) kinstr
-  | IEdiv_nat :
-      Script.location * (('a num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (n num, 'a num * 's, 'r, 'f) kinstr
-  | ILsl_nat :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | ILsr_nat :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | IOr_nat :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  (* Even though `IAnd_nat` and `IAnd_int_nat` could be merged into a single
-     instruction from both the type and behavior point of views, their gas costs
-     differ too much (see `cost_N_IAnd_nat` and `cost_N_IAnd_int_nat` in
-     `Michelson_v1_gas.Cost_of.Generated_costs`), so we keep them separated. *)
-  | IAnd_nat :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | IAnd_int_nat :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
-  | IXor_nat :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | INot_int :
-      Script.location * (z num, 's, 'r, 'f) kinstr
-      -> ('a num, 's, 'r, 'f) kinstr
-  (*
+    | IIs_nat :
+        Script.location * (n num option, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | INeg :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 's, 'r, 'f) kinstr
+    | IAbs_int :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | IInt_nat :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> (n num, 's, 'r, 'f) kinstr
+    | IAdd_int :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 'b num * 's, 'r, 'f) kinstr
+    | IAdd_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | ISub_int :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 'b num * 's, 'r, 'f) kinstr
+    | IMul_int :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 'b num * 's, 'r, 'f) kinstr
+    | IMul_nat :
+        Script.location * ('a num, 's, 'r, 'f) kinstr
+        -> (n num, 'a num * 's, 'r, 'f) kinstr
+    | IEdiv_int :
+        Script.location * ((z num, n num) pair option, 's, 'r, 'f) kinstr
+        -> ('a num, 'b num * 's, 'r, 'f) kinstr
+    | IEdiv_nat :
+        Script.location * (('a num, n num) pair option, 's, 'r, 'f) kinstr
+        -> (n num, 'a num * 's, 'r, 'f) kinstr
+    | ILsl_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | ILsr_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | IOr_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    (* Even though `IAnd_nat` and `IAnd_int_nat` could be merged into a single
+       instruction from both the type and behavior point of views, their gas costs
+       differ too much (see `cost_N_IAnd_nat` and `cost_N_IAnd_int_nat` in
+       `Michelson_v1_gas.Cost_of.Generated_costs`), so we keep them separated. *)
+    | IAnd_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | IAnd_int_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (z num, n num * 's, 'r, 'f) kinstr
+    | IXor_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | INot_int :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 's, 'r, 'f) kinstr
+    (*
      Control
      -------
   *)
-  | IIf : {
-      loc : Script.location;
-      branch_if_true : ('a, 's, 'b, 'u) kinstr;
-      branch_if_false : ('a, 's, 'b, 'u) kinstr;
-      k : ('b, 'u, 'r, 'f) kinstr;
-    }
-      -> (bool, 'a * 's, 'r, 'f) kinstr
-  | ILoop :
-      Script.location * ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) kinstr
-      -> (bool, 'a * 's, 'r, 'f) kinstr
-  | ILoop_left :
-      Script.location
-      * ('a, 's, ('a, 'b) union, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> (('a, 'b) union, 's, 'r, 'f) kinstr
-  | IDip :
-      Script.location
-      * ('b, 's, 'c, 't) kinstr
-      * ('a, _) ty
-      * ('a, 'c * 't, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | IExec :
-      Script.location * ('b, 's) stack_ty * ('b, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) lambda * 's, 'r, 'f) kinstr
-  | IApply :
-      Script.location * ('a, _) ty * (('b, 'c) lambda, 's, 'r, 'f) kinstr
-      -> ('a, ('a * 'b, 'c) lambda * 's, 'r, 'f) kinstr
-  | ILambda :
-      Script.location
-      * ('b, 'c) lambda
-      * (('b, 'c) lambda, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IFailwith : Script.location * ('a, _) ty -> ('a, 's, 'r, 'f) kinstr
-  (*
+    | IIf : {
+        loc : Script.location;
+        branch_if_true : ('a, 's, 'b, 'u) kinstr;
+        branch_if_false : ('a, 's, 'b, 'u) kinstr;
+        k : ('b, 'u, 'r, 'f) kinstr;
+      }
+        -> (bool, 'a * 's, 'r, 'f) kinstr
+    | ILoop :
+        Script.location
+        * ('a, 's, bool, 'a * 's) kinstr
+        * ('a, 's, 'r, 'f) kinstr
+        -> (bool, 'a * 's, 'r, 'f) kinstr
+    | ILoop_left :
+        Script.location
+        * ('a, 's, ('a, 'b) union, 's) kinstr
+        * ('b, 's, 'r, 'f) kinstr
+        -> (('a, 'b) union, 's, 'r, 'f) kinstr
+    | IDip :
+        Script.location
+        * ('b, 's, 'c, 't) kinstr
+        * ('a, _) Ty.ty
+        * ('a, 'c * 't, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IExec :
+        Script.location * ('b, 's) Ty.stack * ('b, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) Ty_value.lambda * 's, 'r, 'f) kinstr
+    | IApply :
+        Script.location
+        * ('a, _) Ty.ty
+        * (('b, 'c) Ty_value.lambda, 's, 'r, 'f) kinstr
+        -> ('a, ('a * 'b, 'c) Ty_value.lambda * 's, 'r, 'f) kinstr
+    | ILambda :
+        Script.location
+        * ('b, 'c) Ty_value.lambda
+        * (('b, 'c) Ty_value.lambda, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IFailwith : Script.location * ('a, _) Ty.ty -> ('a, 's, 'r, 'f) kinstr
+    (*
      Comparison
      ----------
   *)
-  | ICompare :
-      Script.location * 'a comparable_ty * (z num, 'b * 's, 'r, 'f) kinstr
-      -> ('a, 'a * ('b * 's), 'r, 'f) kinstr
-  (*
+    | ICompare :
+        Script.location * 'a Ty.comparable_ty * (z num, 'b * 's, 'r, 'f) kinstr
+        -> ('a, 'a * ('b * 's), 'r, 'f) kinstr
+    (*
      Comparators
      -----------
   *)
-  | IEq :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | INeq :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | ILt :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | IGt :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | ILe :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | IGe :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  (*
+    | IEq :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | INeq :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | ILt :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | IGt :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | ILe :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | IGe :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    (*
      Protocol
      --------
   *)
-  | IAddress :
-      Script.location * (address, 's, 'r, 'f) kinstr
-      -> ('a typed_contract, 's, 'r, 'f) kinstr
-  | IContract :
-      Script.location
-      * ('a, _) ty
-      * Entrypoint.t
-      * ('a typed_contract option, 's, 'r, 'f) kinstr
-      -> (address, 's, 'r, 'f) kinstr
-  | IView :
-      Script.location
-      * ('a, 'b) view_signature
-      * ('b, 'c * 's) stack_ty
-      * ('b option, 'c * 's, 'r, 'f) kinstr
-      -> ('a, address * ('c * 's), 'r, 'f) kinstr
-  | ITransfer_tokens :
-      Script.location * (operation, 's, 'r, 'f) kinstr
-      -> ('a, Tez.t * ('a typed_contract * 's), 'r, 'f) kinstr
-  | IImplicit_account :
-      Script.location * (unit typed_contract, 's, 'r, 'f) kinstr
-      -> (public_key_hash, 's, 'r, 'f) kinstr
-  | ICreate_contract : {
-      loc : Script.location;
-      storage_type : ('a, _) ty;
-      code : Script.expr;
-      k : (operation, address * ('c * 's), 'r, 'f) kinstr;
-    }
-      -> (public_key_hash option, Tez.t * ('a * ('c * 's)), 'r, 'f) kinstr
-  | ISet_delegate :
-      Script.location * (operation, 's, 'r, 'f) kinstr
-      -> (public_key_hash option, 's, 'r, 'f) kinstr
-  | INow :
-      Script.location * (Script_timestamp.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IMin_block_time :
-      Script.location * (n num, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IBalance :
-      Script.location * (Tez.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | ILevel :
-      Script.location * (n num, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | ICheck_signature :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> (public_key, signature * (bytes * 's), 'r, 'f) kinstr
-  | IHash_key :
-      Script.location * (public_key_hash, 's, 'r, 'f) kinstr
-      -> (public_key, 's, 'r, 'f) kinstr
-  | IPack :
-      Script.location * ('a, _) ty * (bytes, 'b * 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | IUnpack :
-      Script.location * ('a, _) ty * ('a option, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | IBlake2b :
-      Script.location * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | ISha256 :
-      Script.location * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | ISha512 :
-      Script.location * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | ISource :
-      Script.location * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | ISender :
-      Script.location * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | ISelf :
-      Script.location
-      * ('b, _) ty
-      * Entrypoint.t
-      * ('b typed_contract, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | ISelf_address :
-      Script.location * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IAmount :
-      Script.location * (Tez.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | ISapling_empty_state :
-      Script.location
-      * Sapling.Memo_size.t
-      * (Sapling.state, 'a * 's, 'b, 'f) kinstr
-      -> ('a, 's, 'b, 'f) kinstr
-  | ISapling_verify_update :
-      Script.location
-      * ((bytes, (z num, Sapling.state) pair) pair option, 's, 'r, 'f) kinstr
-      -> (Sapling.transaction, Sapling.state * 's, 'r, 'f) kinstr
-  | ISapling_verify_update_deprecated :
-      Script.location * ((z num, Sapling.state) pair option, 's, 'r, 'f) kinstr
-      -> (Sapling.Legacy.transaction, Sapling.state * 's, 'r, 'f) kinstr
-  | IDig :
-      Script.location
-      * int
-      * ('b, 'c * 't, 'c, 't, 'a, 's, 'd, 'u) stack_prefix_preservation_witness
-      * ('b, 'd * 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IDug :
-      Script.location
-      * int
-      * ('c, 't, 'a, 'c * 't, 'b, 's, 'd, 'u) stack_prefix_preservation_witness
-      * ('d, 'u, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | IDipn :
-      Script.location
-      * int
-      * ('c, 't, 'd, 'v, 'a, 's, 'b, 'u) stack_prefix_preservation_witness
-      * ('c, 't, 'd, 'v) kinstr
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IDropn :
-      Script.location
-      * int
-      * ('b, 'u, 'b, 'u, 'a, 's, 'a, 's) stack_prefix_preservation_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IChainId :
-      Script.location * (Script_chain_id.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | INever : Script.location -> (never, 's, 'r, 'f) kinstr
-  | IVoting_power :
-      Script.location * (n num, 's, 'r, 'f) kinstr
-      -> (public_key_hash, 's, 'r, 'f) kinstr
-  | ITotal_voting_power :
-      Script.location * (n num, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | IKeccak :
-      Script.location * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | ISha3 :
-      Script.location * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | IAdd_bls12_381_g1 :
-      Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.G1.t, Script_bls.G1.t * 's, 'r, 'f) kinstr
-  | IAdd_bls12_381_g2 :
-      Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.G2.t, Script_bls.G2.t * 's, 'r, 'f) kinstr
-  | IAdd_bls12_381_fr :
-      Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.Fr.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
-  | IMul_bls12_381_g1 :
-      Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.G1.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
-  | IMul_bls12_381_g2 :
-      Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.G2.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
-  | IMul_bls12_381_fr :
-      Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.Fr.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
-  | IMul_bls12_381_z_fr :
-      Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.Fr.t, 'a num * 's, 'r, 'f) kinstr
-  | IMul_bls12_381_fr_z :
-      Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
-      -> ('a num, Script_bls.Fr.t * 's, 'r, 'f) kinstr
-  | IInt_bls12_381_fr :
-      Script.location * (z num, 's, 'r, 'f) kinstr
-      -> (Script_bls.Fr.t, 's, 'r, 'f) kinstr
-  | INeg_bls12_381_g1 :
-      Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.G1.t, 's, 'r, 'f) kinstr
-  | INeg_bls12_381_g2 :
-      Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.G2.t, 's, 'r, 'f) kinstr
-  | INeg_bls12_381_fr :
-      Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
-      -> (Script_bls.Fr.t, 's, 'r, 'f) kinstr
-  | IPairing_check_bls12_381 :
-      Script.location * (bool, 's, 'r, 'f) kinstr
-      -> ((Script_bls.G1.t, Script_bls.G2.t) pair boxed_list, 's, 'r, 'f) kinstr
-  | IComb :
-      Script.location
-      * int
-      * ('a, 'b, 's, 'c, 'd, 't) comb_gadt_witness
-      * ('c, 'd * 't, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | IUncomb :
-      Script.location
-      * int
-      * ('a, 'b, 's, 'c, 'd, 't) uncomb_gadt_witness
-      * ('c, 'd * 't, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | IComb_get :
-      Script.location
-      * int
-      * ('t, 'v) comb_get_gadt_witness
-      * ('v, 'a * 's, 'r, 'f) kinstr
-      -> ('t, 'a * 's, 'r, 'f) kinstr
-  | IComb_set :
-      Script.location
-      * int
-      * ('a, 'b, 'c) comb_set_gadt_witness
-      * ('c, 'd * 's, 'r, 'f) kinstr
-      -> ('a, 'b * ('d * 's), 'r, 'f) kinstr
-  | IDup_n :
-      Script.location
-      * int
-      * ('a, 'b, 's, 't) dup_n_gadt_witness
-      * ('t, 'a * ('b * 's), 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | ITicket :
-      Script.location * 'a comparable_ty * ('a ticket, 's, 'r, 'f) kinstr
-      -> ('a, n num * 's, 'r, 'f) kinstr
-  | IRead_ticket :
-      Script.location
-      * 'a comparable_ty
-      * (address * ('a * n num), 'a ticket * 's, 'r, 'f) kinstr
-      -> ('a ticket, 's, 'r, 'f) kinstr
-  | ISplit_ticket :
-      Script.location * (('a ticket * 'a ticket) option, 's, 'r, 'f) kinstr
-      -> ('a ticket, (n num * n num) * 's, 'r, 'f) kinstr
-  | IJoin_tickets :
-      Script.location * 'a comparable_ty * ('a ticket option, 's, 'r, 'f) kinstr
-      -> ('a ticket * 'a ticket, 's, 'r, 'f) kinstr
-  | IOpen_chest :
-      Script.location * ((bytes, bool) union, 's, 'r, 'f) kinstr
-      -> ( Script_timelock.chest_key,
-           Script_timelock.chest * (n num * 's),
-           'r,
-           'f )
-         kinstr
-  | IEmit : {
-      loc : Script.location;
-      tag : Entrypoint.t;
-      ty : ('a, _) ty;
-      unparsed_ty : Script.expr;
-      k : (operation, 's, 'r, 'f) kinstr;
-    }
-      -> ('a, 's, 'r, 'f) kinstr
-  (*
+    | IAddress :
+        Script.location * (address, 's, 'r, 'f) kinstr
+        -> ('a Ty_value.typed_contract, 's, 'r, 'f) kinstr
+    | IContract :
+        Script.location
+        * ('a, _) Ty.ty
+        * Entrypoint.t
+        * ('a Ty_value.typed_contract option, 's, 'r, 'f) kinstr
+        -> (address, 's, 'r, 'f) kinstr
+    | IView :
+        Script.location
+        * ('a, 'b) view_signature
+        * ('b, 'c * 's) Ty.stack
+        * ('b option, 'c * 's, 'r, 'f) kinstr
+        -> ('a, address * ('c * 's), 'r, 'f) kinstr
+    | ITransfer_tokens :
+        Script.location * (Ty_value.operation, 's, 'r, 'f) kinstr
+        -> ('a, Tez.t * ('a Ty_value.typed_contract * 's), 'r, 'f) kinstr
+    | IImplicit_account :
+        Script.location * (unit Ty_value.typed_contract, 's, 'r, 'f) kinstr
+        -> (public_key_hash, 's, 'r, 'f) kinstr
+    | ICreate_contract : {
+        loc : Script.location;
+        storage_type : ('a, _) Ty.ty;
+        code : Script.expr;
+        k : (Ty_value.operation, address * ('c * 's), 'r, 'f) kinstr;
+      }
+        -> (public_key_hash option, Tez.t * ('a * ('c * 's)), 'r, 'f) kinstr
+    | ISet_delegate :
+        Script.location * (Ty_value.operation, 's, 'r, 'f) kinstr
+        -> (public_key_hash option, 's, 'r, 'f) kinstr
+    | INow :
+        Script.location * (Script_timestamp.t, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IMin_block_time :
+        Script.location * (n num, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IBalance :
+        Script.location * (Tez.t, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ILevel :
+        Script.location * (n num, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ICheck_signature :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (public_key, signature * (bytes * 's), 'r, 'f) kinstr
+    | IHash_key :
+        Script.location * (public_key_hash, 's, 'r, 'f) kinstr
+        -> (public_key, 's, 'r, 'f) kinstr
+    | IPack :
+        Script.location * ('a, _) Ty.ty * (bytes, 'b * 's, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IUnpack :
+        Script.location * ('a, _) Ty.ty * ('a option, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | IBlake2b :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | ISha256 :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | ISha512 :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | ISource :
+        Script.location * (address, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISender :
+        Script.location * (address, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISelf :
+        Script.location
+        * ('b, _) Ty.ty
+        * Entrypoint.t
+        * ('b Ty_value.typed_contract, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISelf_address :
+        Script.location * (address, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IAmount :
+        Script.location * (Tez.t, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISapling_empty_state :
+        Script.location
+        * Sapling.Memo_size.t
+        * (Sapling.state, 'a * 's, 'b, 'f) kinstr
+        -> ('a, 's, 'b, 'f) kinstr
+    | ISapling_verify_update :
+        Script.location
+        * ((bytes, (z num, Sapling.state) pair) pair option, 's, 'r, 'f) kinstr
+        -> (Sapling.transaction, Sapling.state * 's, 'r, 'f) kinstr
+    | ISapling_verify_update_deprecated :
+        Script.location
+        * ((z num, Sapling.state) pair option, 's, 'r, 'f) kinstr
+        -> (Sapling.Legacy.transaction, Sapling.state * 's, 'r, 'f) kinstr
+    | IDig :
+        Script.location
+        * int
+        * ( 'b,
+            'c * 't,
+            'c,
+            't,
+            'a,
+            's,
+            'd,
+            'u )
+          stack_prefix_preservation_witness
+        * ('b, 'd * 'u, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IDug :
+        Script.location
+        * int
+        * ( 'c,
+            't,
+            'a,
+            'c * 't,
+            'b,
+            's,
+            'd,
+            'u )
+          stack_prefix_preservation_witness
+        * ('d, 'u, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IDipn :
+        Script.location
+        * int
+        * ('c, 't, 'd, 'v, 'a, 's, 'b, 'u) stack_prefix_preservation_witness
+        * ('c, 't, 'd, 'v) kinstr
+        * ('b, 'u, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IDropn :
+        Script.location
+        * int
+        * ('b, 'u, 'b, 'u, 'a, 's, 'a, 's) stack_prefix_preservation_witness
+        * ('b, 'u, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IChainId :
+        Script.location * (Script_chain_id.t, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | INever : Script.location -> (never, 's, 'r, 'f) kinstr
+    | IVoting_power :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (public_key_hash, 's, 'r, 'f) kinstr
+    | ITotal_voting_power :
+        Script.location * (n num, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IKeccak :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | ISha3 :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | IAdd_bls12_381_g1 :
+        Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G1.t, Script_bls.G1.t * 's, 'r, 'f) kinstr
+    | IAdd_bls12_381_g2 :
+        Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G2.t, Script_bls.G2.t * 's, 'r, 'f) kinstr
+    | IAdd_bls12_381_fr :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_g1 :
+        Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G1.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_g2 :
+        Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G2.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_fr :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_z_fr :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, 'a num * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_fr_z :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> ('a num, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IInt_bls12_381_fr :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+    | INeg_bls12_381_g1 :
+        Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G1.t, 's, 'r, 'f) kinstr
+    | INeg_bls12_381_g2 :
+        Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G2.t, 's, 'r, 'f) kinstr
+    | INeg_bls12_381_fr :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+    | IPairing_check_bls12_381 :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> ( (Script_bls.G1.t, Script_bls.G2.t) pair boxed_list,
+             's,
+             'r,
+             'f )
+           kinstr
+    | IComb :
+        Script.location
+        * int
+        * ('a, 'b, 's, 'c, 'd, 't) comb_gadt_witness
+        * ('c, 'd * 't, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IUncomb :
+        Script.location
+        * int
+        * ('a, 'b, 's, 'c, 'd, 't) uncomb_gadt_witness
+        * ('c, 'd * 't, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IComb_get :
+        Script.location
+        * int
+        * ('t, 'v) comb_get_gadt_witness
+        * ('v, 'a * 's, 'r, 'f) kinstr
+        -> ('t, 'a * 's, 'r, 'f) kinstr
+    | IComb_set :
+        Script.location
+        * int
+        * ('a, 'b, 'c) comb_set_gadt_witness
+        * ('c, 'd * 's, 'r, 'f) kinstr
+        -> ('a, 'b * ('d * 's), 'r, 'f) kinstr
+    | IDup_n :
+        Script.location
+        * int
+        * ('a, 'b, 's, 't) dup_n_gadt_witness
+        * ('t, 'a * ('b * 's), 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | ITicket :
+        Script.location * 'a Ty.comparable_ty * ('a ticket, 's, 'r, 'f) kinstr
+        -> ('a, n num * 's, 'r, 'f) kinstr
+    | IRead_ticket :
+        Script.location
+        * 'a Ty.comparable_ty
+        * (address * ('a * n num), 'a ticket * 's, 'r, 'f) kinstr
+        -> ('a ticket, 's, 'r, 'f) kinstr
+    | ISplit_ticket :
+        Script.location * (('a ticket * 'a ticket) option, 's, 'r, 'f) kinstr
+        -> ('a ticket, (n num * n num) * 's, 'r, 'f) kinstr
+    | IJoin_tickets :
+        Script.location
+        * 'a Ty.comparable_ty
+        * ('a ticket option, 's, 'r, 'f) kinstr
+        -> ('a ticket * 'a ticket, 's, 'r, 'f) kinstr
+    | IOpen_chest :
+        Script.location * ((bytes, bool) union, 's, 'r, 'f) kinstr
+        -> ( Script_timelock.chest_key,
+             Script_timelock.chest * (n num * 's),
+             'r,
+             'f )
+           kinstr
+    | IEmit : {
+        loc : Script.location;
+        tag : Entrypoint.t;
+        ty : ('a, _) Ty.ty;
+        unparsed_ty : Script.expr;
+        k : (Ty_value.operation, 's, 'r, 'f) kinstr;
+      }
+        -> ('a, 's, 'r, 'f) kinstr
+    (*
      Internal control instructions
      -----------------------------
   *)
-  | IHalt : Script.location -> ('a, 's, 'a, 's) kinstr
-  | ILog :
-      Script.location
-      * ('a, 's) stack_ty
-      * logging_event
-      * logger
-      * ('a, 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+    | IHalt : Script.location -> ('a, 's, 'a, 's) kinstr
+    | ILog :
+        Script.location
+        * ('a, 's) Ty.stack
+        * logging_event
+        * logger
+        * ('a, 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
 
-and (_, _, _, _) continuation =
-  | KNil : ('r, 'f, 'r, 'f) continuation
-  | KCons :
-      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
-      -> ('a, 's, 'r, 'f) continuation
-  | KReturn :
-      's * ('a, 's) stack_ty * ('a, 's, 'r, 'f) continuation
-      -> ('a, end_of_stack, 'r, 'f) continuation
-  | KMap_head :
-      ('a -> 'b) * ('b, 's, 'r, 'f) continuation
-      -> ('a, 's, 'r, 'f) continuation
-  | KUndip :
-      'b * ('b, _) ty * ('b, 'a * 's, 'r, 'f) continuation
-      -> ('a, 's, 'r, 'f) continuation
-  | KLoop_in :
-      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
-      -> (bool, 'a * 's, 'r, 'f) continuation
-  | KLoop_in_left :
-      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) continuation
-      -> (('a, 'b) union, 's, 'r, 'f) continuation
-  | KIter :
-      ('a, 'b * 's, 'b, 's) kinstr
-      * ('a, _) ty
-      * 'a list
-      * ('b, 's, 'r, 'f) continuation
-      -> ('b, 's, 'r, 'f) continuation
-  | KList_enter_body :
-      ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * 'a list
-      * 'b list
-      * ('b boxed_list, _) ty
-      * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) continuation
-      -> ('c, 's, 'r, 'f) continuation
-  | KList_exit_body :
-      ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * 'a list
-      * 'b list
-      * ('b boxed_list, _) ty
-      * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) continuation
-      -> ('b, 'c * 's, 'r, 'f) continuation
-  | KMap_enter_body :
-      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * ('a * 'b) list
-      * ('a, 'c) map
-      * (('a, 'c) map, _) ty
-      * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
-      -> ('d, 's, 'r, 'f) continuation
-  | KMap_exit_body :
-      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * ('a * 'b) list
-      * ('a, 'c) map
-      * 'a
-      * (('a, 'c) map, _) ty
-      * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
-      -> ('c, 'd * 's, 'r, 'f) continuation
-  | KView_exit :
-      step_constants * ('a, 's, 'r, 'f) continuation
-      -> ('a, 's, 'r, 'f) continuation
-  | KLog :
-      ('a, 's, 'r, 'f) continuation * ('a, 's) stack_ty * logger
-      -> ('a, 's, 'r, 'f) continuation
+  and (_, _, _, _) continuation =
+    | KNil : ('r, 'f, 'r, 'f) continuation
+    | KCons :
+        ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
+        -> ('a, 's, 'r, 'f) continuation
+    | KReturn :
+        's * ('a, 's) Ty.stack * ('a, 's, 'r, 'f) continuation
+        -> ('a, end_of_stack, 'r, 'f) continuation
+    | KMap_head :
+        ('a -> 'b) * ('b, 's, 'r, 'f) continuation
+        -> ('a, 's, 'r, 'f) continuation
+    | KUndip :
+        'b * ('b, _) Ty.ty * ('b, 'a * 's, 'r, 'f) continuation
+        -> ('a, 's, 'r, 'f) continuation
+    | KLoop_in :
+        ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
+        -> (bool, 'a * 's, 'r, 'f) continuation
+    | KLoop_in_left :
+        ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) continuation
+        -> (('a, 'b) union, 's, 'r, 'f) continuation
+    | KIter :
+        ('a, 'b * 's, 'b, 's) kinstr
+        * ('a, _) Ty.ty
+        * 'a list
+        * ('b, 's, 'r, 'f) continuation
+        -> ('b, 's, 'r, 'f) continuation
+    | KList_enter_body :
+        ('a, 'c * 's, 'b, 'c * 's) kinstr
+        * 'a list
+        * 'b list
+        * ('b boxed_list, _) Ty.ty
+        * int
+        * ('b boxed_list, 'c * 's, 'r, 'f) continuation
+        -> ('c, 's, 'r, 'f) continuation
+    | KList_exit_body :
+        ('a, 'c * 's, 'b, 'c * 's) kinstr
+        * 'a list
+        * 'b list
+        * ('b boxed_list, _) Ty.ty
+        * int
+        * ('b boxed_list, 'c * 's, 'r, 'f) continuation
+        -> ('b, 'c * 's, 'r, 'f) continuation
+    | KMap_enter_body :
+        ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+        * ('a * 'b) list
+        * ('a, 'c) map
+        * (('a, 'c) map, _) Ty.ty
+        * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
+        -> ('d, 's, 'r, 'f) continuation
+    | KMap_exit_body :
+        ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+        * ('a * 'b) list
+        * ('a, 'c) map
+        * 'a
+        * (('a, 'c) map, _) Ty.ty
+        * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
+        -> ('c, 'd * 's, 'r, 'f) continuation
+    | KView_exit :
+        step_constants * ('a, 's, 'r, 'f) continuation
+        -> ('a, 's, 'r, 'f) continuation
+    | KLog :
+        ('a, 's, 'r, 'f) continuation * ('a, 's) Ty.stack * logger
+        -> ('a, 's, 'r, 'f) continuation
 
-and ('a, 's, 'b, 'f, 'c, 'u) logging_function =
-  ('a, 's, 'b, 'f) kinstr ->
-  context ->
-  Script.location ->
-  ('c, 'u) stack_ty ->
-  'c * 'u ->
-  unit
+  and ('a, 's, 'b, 'f, 'c, 'u) logging_function =
+    ('a, 's, 'b, 'f) kinstr ->
+    context ->
+    Script.location ->
+    ('c, 'u) Ty.stack ->
+    'c * 'u ->
+    unit
 
-and execution_trace = (Script.location * Gas.t * Script.expr list) list
+  and execution_trace = (Script.location * Gas.t * Script.expr list) list
 
-and logger = {
-  log_interp : 'a 's 'b 'f 'c 'u. ('a, 's, 'b, 'f, 'c, 'u) logging_function;
-  log_entry : 'a 's 'b 'f. ('a, 's, 'b, 'f, 'a, 's) logging_function;
-  log_control : 'a 's 'b 'f. ('a, 's, 'b, 'f) continuation -> unit;
-  log_exit : 'a 's 'b 'f 'c 'u. ('a, 's, 'b, 'f, 'c, 'u) logging_function;
-  get_log : unit -> execution_trace option tzresult Lwt.t;
-}
+  and logger = {
+    log_interp : 'a 's 'b 'f 'c 'u. ('a, 's, 'b, 'f, 'c, 'u) logging_function;
+    log_entry : 'a 's 'b 'f. ('a, 's, 'b, 'f, 'a, 's) logging_function;
+    log_control : 'a 's 'b 'f. ('a, 's, 'b, 'f) continuation -> unit;
+    log_exit : 'a 's 'b 'f 'c 'u. ('a, 's, 'b, 'f, 'c, 'u) logging_function;
+    get_log : unit -> execution_trace option tzresult Lwt.t;
+  }
 
-and ('a, 's, 'r, 'f) kdescr = {
-  kloc : Script.location;
-  kbef : ('a, 's) stack_ty;
-  kaft : ('r, 'f) stack_ty;
-  kinstr : ('a, 's, 'r, 'f) kinstr;
-}
+  and ('a, 's, 'r, 'f) kdescr = {
+    kloc : Script.location;
+    kbef : ('a, 's) Ty.stack;
+    kaft : ('r, 'f) Ty.stack;
+    kinstr : ('a, 's, 'r, 'f) kinstr;
+  }
 
-and (_, _, _, _, _, _, _, _) stack_prefix_preservation_witness =
-  | KPrefix :
-      Script.location
-      * ('a, _) ty
-      * ('c, 'v, 'd, 'w, 'x, 's, 'y, 'u) stack_prefix_preservation_witness
-      -> ( 'c,
-           'v,
-           'd,
-           'w,
-           'a,
-           'x * 's,
-           'a,
-           'y * 'u )
-         stack_prefix_preservation_witness
-  | KRest : ('a, 's, 'b, 'u, 'a, 's, 'b, 'u) stack_prefix_preservation_witness
+  and (_, _, _, _, _, _, _, _) stack_prefix_preservation_witness =
+    | KPrefix :
+        Script.location
+        * ('a, _) Ty.ty
+        * ('c, 'v, 'd, 'w, 'x, 's, 'y, 'u) stack_prefix_preservation_witness
+        -> ( 'c,
+             'v,
+             'd,
+             'w,
+             'a,
+             'x * 's,
+             'a,
+             'y * 'u )
+           stack_prefix_preservation_witness
+    | KRest : ('a, 's, 'b, 'u, 'a, 's, 'b, 'u) stack_prefix_preservation_witness
 
-and (_, _, _, _, _, _) comb_gadt_witness =
-  | Comb_one : ('a, 'x, 'before, 'a, 'x, 'before) comb_gadt_witness
-  | Comb_succ :
-      ('b, 'c, 's, 'd, 'e, 't) comb_gadt_witness
-      -> ('a, 'b, 'c * 's, 'a * 'd, 'e, 't) comb_gadt_witness
+  and (_, _, _, _, _, _) comb_gadt_witness =
+    | Comb_one : ('a, 'x, 'before, 'a, 'x, 'before) comb_gadt_witness
+    | Comb_succ :
+        ('b, 'c, 's, 'd, 'e, 't) comb_gadt_witness
+        -> ('a, 'b, 'c * 's, 'a * 'd, 'e, 't) comb_gadt_witness
 
-and (_, _, _, _, _, _) uncomb_gadt_witness =
-  | Uncomb_one : ('a, 'x, 'before, 'a, 'x, 'before) uncomb_gadt_witness
-  | Uncomb_succ :
-      ('b, 'c, 's, 'd, 'e, 't) uncomb_gadt_witness
-      -> ('a * 'b, 'c, 's, 'a, 'd, 'e * 't) uncomb_gadt_witness
+  and (_, _, _, _, _, _) uncomb_gadt_witness =
+    | Uncomb_one : ('a, 'x, 'before, 'a, 'x, 'before) uncomb_gadt_witness
+    | Uncomb_succ :
+        ('b, 'c, 's, 'd, 'e, 't) uncomb_gadt_witness
+        -> ('a * 'b, 'c, 's, 'a, 'd, 'e * 't) uncomb_gadt_witness
 
-and ('before, 'after) comb_get_gadt_witness =
-  | Comb_get_zero : ('b, 'b) comb_get_gadt_witness
-  | Comb_get_one : ('a * 'b, 'a) comb_get_gadt_witness
-  | Comb_get_plus_two :
-      ('before, 'after) comb_get_gadt_witness
-      -> ('a * 'before, 'after) comb_get_gadt_witness
+  and ('before, 'after) comb_get_gadt_witness =
+    | Comb_get_zero : ('b, 'b) comb_get_gadt_witness
+    | Comb_get_one : ('a * 'b, 'a) comb_get_gadt_witness
+    | Comb_get_plus_two :
+        ('before, 'after) comb_get_gadt_witness
+        -> ('a * 'before, 'after) comb_get_gadt_witness
 
-and ('value, 'before, 'after) comb_set_gadt_witness =
-  | Comb_set_zero : ('value, _, 'value) comb_set_gadt_witness
-  | Comb_set_one : ('value, 'hd * 'tl, 'value * 'tl) comb_set_gadt_witness
-  | Comb_set_plus_two :
-      ('value, 'before, 'after) comb_set_gadt_witness
-      -> ('value, 'a * 'before, 'a * 'after) comb_set_gadt_witness
+  and ('value, 'before, 'after) comb_set_gadt_witness =
+    | Comb_set_zero : ('value, _, 'value) comb_set_gadt_witness
+    | Comb_set_one : ('value, 'hd * 'tl, 'value * 'tl) comb_set_gadt_witness
+    | Comb_set_plus_two :
+        ('value, 'before, 'after) comb_set_gadt_witness
+        -> ('value, 'a * 'before, 'a * 'after) comb_set_gadt_witness
 
-and (_, _, _, _) dup_n_gadt_witness =
-  | Dup_n_zero : ('a, _, _, 'a) dup_n_gadt_witness
-  | Dup_n_succ :
-      ('b, 'c, 'stack, 'd) dup_n_gadt_witness
-      -> ('a, 'b, 'c * 'stack, 'd) dup_n_gadt_witness
+  and (_, _, _, _) dup_n_gadt_witness =
+    | Dup_n_zero : ('a, _, _, 'a) dup_n_gadt_witness
+    | Dup_n_succ :
+        ('b, 'c, 'stack, 'd) dup_n_gadt_witness
+        -> ('a, 'b, 'c * 'stack, 'd) dup_n_gadt_witness
 
-and ('input, 'output) view_signature =
-  | View_signature : {
-      name : Script_string.t;
-      input_ty : ('input, _) ty;
-      output_ty : ('output, _) ty;
-    }
-      -> ('input, 'output) view_signature
+  and ('input, 'output) view_signature =
+    | View_signature : {
+        name : Script_string.t;
+        input_ty : ('input, _) Ty.ty;
+        output_ty : ('output, _) Ty.ty;
+      }
+        -> ('input, 'output) view_signature
+
+  val kinstr_location : ('a, 's, 'b, 'f) kinstr -> Script.location
+
+  type 'a kinstr_traverse = {
+    apply : 'b 'u 'r 'f. 'a -> ('b, 'u, 'r, 'f) kinstr -> 'a;
+  }
+
+  val kinstr_traverse :
+    ('a, 's, 'b, 'f) kinstr -> 'accu -> 'accu kinstr_traverse -> 'accu
+end = struct
+  type ('before_top, 'before, 'result_top, 'result) kinstr =
+    | IDrop :
+        Script.location * ('b, 's, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IDup :
+        Script.location * ('a, 'a * ('b * 's), 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | ISwap :
+        Script.location * ('b, 'a * ('c * 's), 'r, 'f) kinstr
+        -> ('a, 'b * ('c * 's), 'r, 'f) kinstr
+    | IConst :
+        Script.location * ('ty, _) Ty.ty * 'ty * ('ty, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ICons_pair :
+        Script.location * ('a * 'b, 'c * 's, 'r, 'f) kinstr
+        -> ('a, 'b * ('c * 's), 'r, 'f) kinstr
+    | ICar :
+        Script.location * ('a, 's, 'r, 'f) kinstr
+        -> ('a * 'b, 's, 'r, 'f) kinstr
+    | ICdr :
+        Script.location * ('b, 's, 'r, 'f) kinstr
+        -> ('a * 'b, 's, 'r, 'f) kinstr
+    | IUnpair :
+        Script.location * ('a, 'b * 's, 'r, 'f) kinstr
+        -> ('a * 'b, 's, 'r, 'f) kinstr
+    | ICons_some :
+        Script.location * ('v option, 'a * 's, 'r, 'f) kinstr
+        -> ('v, 'a * 's, 'r, 'f) kinstr
+    | ICons_none :
+        Script.location * ('b, _) Ty.ty * ('b option, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IIf_none : {
+        loc : Script.location;
+        branch_if_none : ('b, 's, 'c, 't) kinstr;
+        branch_if_some : ('a, 'b * 's, 'c, 't) kinstr;
+        k : ('c, 't, 'r, 'f) kinstr;
+      }
+        -> ('a option, 'b * 's, 'r, 'f) kinstr
+    | IOpt_map : {
+        loc : Script.location;
+        body : ('a, 's, 'b, 's) kinstr;
+        k : ('b option, 's, 'c, 't) kinstr;
+      }
+        -> ('a option, 's, 'c, 't) kinstr
+    | ICons_left :
+        Script.location
+        * ('b, _) Ty.ty
+        * (('a, 'b) union, 'c * 's, 'r, 'f) kinstr
+        -> ('a, 'c * 's, 'r, 'f) kinstr
+    | ICons_right :
+        Script.location
+        * ('a, _) Ty.ty
+        * (('a, 'b) union, 'c * 's, 'r, 'f) kinstr
+        -> ('b, 'c * 's, 'r, 'f) kinstr
+    | IIf_left : {
+        loc : Script.location;
+        branch_if_left : ('a, 's, 'c, 't) kinstr;
+        branch_if_right : ('b, 's, 'c, 't) kinstr;
+        k : ('c, 't, 'r, 'f) kinstr;
+      }
+        -> (('a, 'b) union, 's, 'r, 'f) kinstr
+    | ICons_list :
+        Script.location * ('a boxed_list, 's, 'r, 'f) kinstr
+        -> ('a, 'a boxed_list * 's, 'r, 'f) kinstr
+    | INil :
+        Script.location
+        * ('b, _) Ty.ty
+        * ('b boxed_list, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IIf_cons : {
+        loc : Script.location;
+        branch_if_cons : ('a, 'a boxed_list * ('b * 's), 'c, 't) kinstr;
+        branch_if_nil : ('b, 's, 'c, 't) kinstr;
+        k : ('c, 't, 'r, 'f) kinstr;
+      }
+        -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
+    | IList_map :
+        Script.location
+        * ('a, 'c * 's, 'b, 'c * 's) kinstr
+        * ('b boxed_list, _) Ty.ty
+        * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
+        -> ('a boxed_list, 'c * 's, 'r, 'f) kinstr
+    | IList_iter :
+        Script.location
+        * ('a, _) Ty.ty
+        * ('a, 'b * 's, 'b, 's) kinstr
+        * ('b, 's, 'r, 'f) kinstr
+        -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
+    | IList_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> ('a boxed_list, 's, 'r, 'f) kinstr
+    | IEmpty_set :
+        Script.location * 'b Ty.comparable_ty * ('b set, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISet_iter :
+        Script.location
+        * 'a Ty.comparable_ty
+        * ('a, 'b * 's, 'b, 's) kinstr
+        * ('b, 's, 'r, 'f) kinstr
+        -> ('a set, 'b * 's, 'r, 'f) kinstr
+    | ISet_mem :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> ('a, 'a set * 's, 'r, 'f) kinstr
+    | ISet_update :
+        Script.location * ('a set, 's, 'r, 'f) kinstr
+        -> ('a, bool * ('a set * 's), 'r, 'f) kinstr
+    | ISet_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> ('a set, 's, 'r, 'f) kinstr
+    | IEmpty_map :
+        Script.location
+        * 'b Ty.comparable_ty
+        * ('c, _) Ty.ty
+        * (('b, 'c) map, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IMap_map :
+        Script.location
+        * (('a, 'c) map, _) Ty.ty
+        * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+        * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
+        -> (('a, 'b) map, 'd * 's, 'r, 'f) kinstr
+    | IMap_iter :
+        Script.location
+        * ('a * 'b, _) Ty.ty
+        * ('a * 'b, 'c * 's, 'c, 's) kinstr
+        * ('c, 's, 'r, 'f) kinstr
+        -> (('a, 'b) map, 'c * 's, 'r, 'f) kinstr
+    | IMap_mem :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
+    | IMap_get :
+        Script.location * ('b option, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
+    | IMap_update :
+        Script.location * (('a, 'b) map, 's, 'r, 'f) kinstr
+        -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f) kinstr
+    | IMap_get_and_update :
+        Script.location * ('b option, ('a, 'b) map * 's, 'r, 'f) kinstr
+        -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f) kinstr
+    | IMap_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (('a, 'b) map, 's, 'r, 'f) kinstr
+    | IEmpty_big_map :
+        Script.location
+        * 'b Ty.comparable_ty
+        * ('c, _) Ty.ty
+        * (('b, 'c) Ty_value.big_map, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IBig_map_mem :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) Ty_value.big_map * 's, 'r, 'f) kinstr
+    | IBig_map_get :
+        Script.location * ('b option, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) Ty_value.big_map * 's, 'r, 'f) kinstr
+    | IBig_map_update :
+        Script.location * (('a, 'b) Ty_value.big_map, 's, 'r, 'f) kinstr
+        -> ('a, 'b option * (('a, 'b) Ty_value.big_map * 's), 'r, 'f) kinstr
+    | IBig_map_get_and_update :
+        Script.location
+        * ('b option, ('a, 'b) Ty_value.big_map * 's, 'r, 'f) kinstr
+        -> ('a, 'b option * (('a, 'b) Ty_value.big_map * 's), 'r, 'f) kinstr
+    | IConcat_string :
+        Script.location * (Script_string.t, 's, 'r, 'f) kinstr
+        -> (Script_string.t boxed_list, 's, 'r, 'f) kinstr
+    | IConcat_string_pair :
+        Script.location * (Script_string.t, 's, 'r, 'f) kinstr
+        -> (Script_string.t, Script_string.t * 's, 'r, 'f) kinstr
+    | ISlice_string :
+        Script.location * (Script_string.t option, 's, 'r, 'f) kinstr
+        -> (n num, n num * (Script_string.t * 's), 'r, 'f) kinstr
+    | IString_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (Script_string.t, 's, 'r, 'f) kinstr
+    | IConcat_bytes :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes boxed_list, 's, 'r, 'f) kinstr
+    | IConcat_bytes_pair :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, bytes * 's, 'r, 'f) kinstr
+    | ISlice_bytes :
+        Script.location * (bytes option, 's, 'r, 'f) kinstr
+        -> (n num, n num * (bytes * 's), 'r, 'f) kinstr
+    | IBytes_size :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | IAdd_seconds_to_timestamp :
+        Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
+        -> (z num, Script_timestamp.t * 's, 'r, 'f) kinstr
+    | IAdd_timestamp_to_seconds :
+        Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
+        -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
+    | ISub_timestamp_seconds :
+        Script.location * (Script_timestamp.t, 's, 'r, 'f) kinstr
+        -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
+    | IDiff_timestamps :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> (Script_timestamp.t, Script_timestamp.t * 's, 'r, 'f) kinstr
+    | IAdd_tez :
+        Script.location * (Tez.t, 's, 'r, 'f) kinstr
+        -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+    | ISub_tez :
+        Script.location * (Tez.t option, 's, 'r, 'f) kinstr
+        -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+    | ISub_tez_legacy :
+        Script.location * (Tez.t, 's, 'r, 'f) kinstr
+        -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+    | IMul_teznat :
+        Script.location * (Tez.t, 's, 'r, 'f) kinstr
+        -> (Tez.t, n num * 's, 'r, 'f) kinstr
+    | IMul_nattez :
+        Script.location * (Tez.t, 's, 'r, 'f) kinstr
+        -> (n num, Tez.t * 's, 'r, 'f) kinstr
+    | IEdiv_teznat :
+        Script.location * ((Tez.t, Tez.t) pair option, 's, 'r, 'f) kinstr
+        -> (Tez.t, n num * 's, 'r, 'f) kinstr
+    | IEdiv_tez :
+        Script.location * ((n num, Tez.t) pair option, 's, 'r, 'f) kinstr
+        -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+    | IOr :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (bool, bool * 's, 'r, 'f) kinstr
+    | IAnd :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (bool, bool * 's, 'r, 'f) kinstr
+    | IXor :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (bool, bool * 's, 'r, 'f) kinstr
+    | INot :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (bool, 's, 'r, 'f) kinstr
+    | IIs_nat :
+        Script.location * (n num option, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | INeg :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 's, 'r, 'f) kinstr
+    | IAbs_int :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | IInt_nat :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> (n num, 's, 'r, 'f) kinstr
+    | IAdd_int :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 'b num * 's, 'r, 'f) kinstr
+    | IAdd_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | ISub_int :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 'b num * 's, 'r, 'f) kinstr
+    | IMul_int :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 'b num * 's, 'r, 'f) kinstr
+    | IMul_nat :
+        Script.location * ('a num, 's, 'r, 'f) kinstr
+        -> (n num, 'a num * 's, 'r, 'f) kinstr
+    | IEdiv_int :
+        Script.location * ((z num, n num) pair option, 's, 'r, 'f) kinstr
+        -> ('a num, 'b num * 's, 'r, 'f) kinstr
+    | IEdiv_nat :
+        Script.location * (('a num, n num) pair option, 's, 'r, 'f) kinstr
+        -> (n num, 'a num * 's, 'r, 'f) kinstr
+    | ILsl_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | ILsr_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | IOr_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | IAnd_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | IAnd_int_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (z num, n num * 's, 'r, 'f) kinstr
+    | IXor_nat :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (n num, n num * 's, 'r, 'f) kinstr
+    | INot_int :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> ('a num, 's, 'r, 'f) kinstr
+    | IIf : {
+        loc : Script.location;
+        branch_if_true : ('a, 's, 'b, 'u) kinstr;
+        branch_if_false : ('a, 's, 'b, 'u) kinstr;
+        k : ('b, 'u, 'r, 'f) kinstr;
+      }
+        -> (bool, 'a * 's, 'r, 'f) kinstr
+    | ILoop :
+        Script.location
+        * ('a, 's, bool, 'a * 's) kinstr
+        * ('a, 's, 'r, 'f) kinstr
+        -> (bool, 'a * 's, 'r, 'f) kinstr
+    | ILoop_left :
+        Script.location
+        * ('a, 's, ('a, 'b) union, 's) kinstr
+        * ('b, 's, 'r, 'f) kinstr
+        -> (('a, 'b) union, 's, 'r, 'f) kinstr
+    | IDip :
+        Script.location
+        * ('b, 's, 'c, 't) kinstr
+        * ('a, _) Ty.ty
+        * ('a, 'c * 't, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IExec :
+        Script.location * ('b, 's) Ty.stack * ('b, 's, 'r, 'f) kinstr
+        -> ('a, ('a, 'b) Ty_value.lambda * 's, 'r, 'f) kinstr
+    | IApply :
+        Script.location
+        * ('a, _) Ty.ty
+        * (('b, 'c) Ty_value.lambda, 's, 'r, 'f) kinstr
+        -> ('a, ('a * 'b, 'c) Ty_value.lambda * 's, 'r, 'f) kinstr
+    | ILambda :
+        Script.location
+        * ('b, 'c) Ty_value.lambda
+        * (('b, 'c) Ty_value.lambda, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IFailwith : Script.location * ('a, _) Ty.ty -> ('a, 's, 'r, 'f) kinstr
+    | ICompare :
+        Script.location * 'a Ty.comparable_ty * (z num, 'b * 's, 'r, 'f) kinstr
+        -> ('a, 'a * ('b * 's), 'r, 'f) kinstr
+    | IEq :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | INeq :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | ILt :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | IGt :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | ILe :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | IGe :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (z num, 's, 'r, 'f) kinstr
+    | IAddress :
+        Script.location * (address, 's, 'r, 'f) kinstr
+        -> ('a Ty_value.typed_contract, 's, 'r, 'f) kinstr
+    | IContract :
+        Script.location
+        * ('a, _) Ty.ty
+        * Entrypoint.t
+        * ('a Ty_value.typed_contract option, 's, 'r, 'f) kinstr
+        -> (address, 's, 'r, 'f) kinstr
+    | IView :
+        Script.location
+        * ('a, 'b) view_signature
+        * ('b, 'c * 's) Ty.stack
+        * ('b option, 'c * 's, 'r, 'f) kinstr
+        -> ('a, address * ('c * 's), 'r, 'f) kinstr
+    | ITransfer_tokens :
+        Script.location * (Ty_value.operation, 's, 'r, 'f) kinstr
+        -> ('a, Tez.t * ('a Ty_value.typed_contract * 's), 'r, 'f) kinstr
+    | IImplicit_account :
+        Script.location * (unit Ty_value.typed_contract, 's, 'r, 'f) kinstr
+        -> (public_key_hash, 's, 'r, 'f) kinstr
+    | ICreate_contract : {
+        loc : Script.location;
+        storage_type : ('a, _) Ty.ty;
+        code : Script.expr;
+        k : (Ty_value.operation, address * ('c * 's), 'r, 'f) kinstr;
+      }
+        -> (public_key_hash option, Tez.t * ('a * ('c * 's)), 'r, 'f) kinstr
+    | ISet_delegate :
+        Script.location * (Ty_value.operation, 's, 'r, 'f) kinstr
+        -> (public_key_hash option, 's, 'r, 'f) kinstr
+    | INow :
+        Script.location * (Script_timestamp.t, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IMin_block_time :
+        Script.location * (n num, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IBalance :
+        Script.location * (Tez.t, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ILevel :
+        Script.location * (n num, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ICheck_signature :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> (public_key, signature * (bytes * 's), 'r, 'f) kinstr
+    | IHash_key :
+        Script.location * (public_key_hash, 's, 'r, 'f) kinstr
+        -> (public_key, 's, 'r, 'f) kinstr
+    | IPack :
+        Script.location * ('a, _) Ty.ty * (bytes, 'b * 's, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IUnpack :
+        Script.location * ('a, _) Ty.ty * ('a option, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | IBlake2b :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | ISha256 :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | ISha512 :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | ISource :
+        Script.location * (address, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISender :
+        Script.location * (address, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISelf :
+        Script.location
+        * ('b, _) Ty.ty
+        * Entrypoint.t
+        * ('b Ty_value.typed_contract, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISelf_address :
+        Script.location * (address, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IAmount :
+        Script.location * (Tez.t, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | ISapling_empty_state :
+        Script.location
+        * Sapling.Memo_size.t
+        * (Sapling.state, 'a * 's, 'b, 'f) kinstr
+        -> ('a, 's, 'b, 'f) kinstr
+    | ISapling_verify_update :
+        Script.location
+        * ((bytes, (z num, Sapling.state) pair) pair option, 's, 'r, 'f) kinstr
+        -> (Sapling.transaction, Sapling.state * 's, 'r, 'f) kinstr
+    | ISapling_verify_update_deprecated :
+        Script.location
+        * ((z num, Sapling.state) pair option, 's, 'r, 'f) kinstr
+        -> (Sapling.Legacy.transaction, Sapling.state * 's, 'r, 'f) kinstr
+    | IDig :
+        Script.location
+        * int
+        * ( 'b,
+            'c * 't,
+            'c,
+            't,
+            'a,
+            's,
+            'd,
+            'u )
+          stack_prefix_preservation_witness
+        * ('b, 'd * 'u, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IDug :
+        Script.location
+        * int
+        * ( 'c,
+            't,
+            'a,
+            'c * 't,
+            'b,
+            's,
+            'd,
+            'u )
+          stack_prefix_preservation_witness
+        * ('d, 'u, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IDipn :
+        Script.location
+        * int
+        * ('c, 't, 'd, 'v, 'a, 's, 'b, 'u) stack_prefix_preservation_witness
+        * ('c, 't, 'd, 'v) kinstr
+        * ('b, 'u, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IDropn :
+        Script.location
+        * int
+        * ('b, 'u, 'b, 'u, 'a, 's, 'a, 's) stack_prefix_preservation_witness
+        * ('b, 'u, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IChainId :
+        Script.location * (Script_chain_id.t, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | INever : Script.location -> (never, 's, 'r, 'f) kinstr
+    | IVoting_power :
+        Script.location * (n num, 's, 'r, 'f) kinstr
+        -> (public_key_hash, 's, 'r, 'f) kinstr
+    | ITotal_voting_power :
+        Script.location * (n num, 'a * 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+    | IKeccak :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | ISha3 :
+        Script.location * (bytes, 's, 'r, 'f) kinstr
+        -> (bytes, 's, 'r, 'f) kinstr
+    | IAdd_bls12_381_g1 :
+        Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G1.t, Script_bls.G1.t * 's, 'r, 'f) kinstr
+    | IAdd_bls12_381_g2 :
+        Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G2.t, Script_bls.G2.t * 's, 'r, 'f) kinstr
+    | IAdd_bls12_381_fr :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_g1 :
+        Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G1.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_g2 :
+        Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G2.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_fr :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_z_fr :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, 'a num * 's, 'r, 'f) kinstr
+    | IMul_bls12_381_fr_z :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> ('a num, Script_bls.Fr.t * 's, 'r, 'f) kinstr
+    | IInt_bls12_381_fr :
+        Script.location * (z num, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+    | INeg_bls12_381_g1 :
+        Script.location * (Script_bls.G1.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G1.t, 's, 'r, 'f) kinstr
+    | INeg_bls12_381_g2 :
+        Script.location * (Script_bls.G2.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.G2.t, 's, 'r, 'f) kinstr
+    | INeg_bls12_381_fr :
+        Script.location * (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+        -> (Script_bls.Fr.t, 's, 'r, 'f) kinstr
+    | IPairing_check_bls12_381 :
+        Script.location * (bool, 's, 'r, 'f) kinstr
+        -> ( (Script_bls.G1.t, Script_bls.G2.t) pair boxed_list,
+             's,
+             'r,
+             'f )
+           kinstr
+    | IComb :
+        Script.location
+        * int
+        * ('a, 'b, 's, 'c, 'd, 't) comb_gadt_witness
+        * ('c, 'd * 't, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IUncomb :
+        Script.location
+        * int
+        * ('a, 'b, 's, 'c, 'd, 't) uncomb_gadt_witness
+        * ('c, 'd * 't, 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | IComb_get :
+        Script.location
+        * int
+        * ('t, 'v) comb_get_gadt_witness
+        * ('v, 'a * 's, 'r, 'f) kinstr
+        -> ('t, 'a * 's, 'r, 'f) kinstr
+    | IComb_set :
+        Script.location
+        * int
+        * ('a, 'b, 'c) comb_set_gadt_witness
+        * ('c, 'd * 's, 'r, 'f) kinstr
+        -> ('a, 'b * ('d * 's), 'r, 'f) kinstr
+    | IDup_n :
+        Script.location
+        * int
+        * ('a, 'b, 's, 't) dup_n_gadt_witness
+        * ('t, 'a * ('b * 's), 'r, 'f) kinstr
+        -> ('a, 'b * 's, 'r, 'f) kinstr
+    | ITicket :
+        Script.location * 'a Ty.comparable_ty * ('a ticket, 's, 'r, 'f) kinstr
+        -> ('a, n num * 's, 'r, 'f) kinstr
+    | IRead_ticket :
+        Script.location
+        * 'a Ty.comparable_ty
+        * (address * ('a * n num), 'a ticket * 's, 'r, 'f) kinstr
+        -> ('a ticket, 's, 'r, 'f) kinstr
+    | ISplit_ticket :
+        Script.location * (('a ticket * 'a ticket) option, 's, 'r, 'f) kinstr
+        -> ('a ticket, (n num * n num) * 's, 'r, 'f) kinstr
+    | IJoin_tickets :
+        Script.location
+        * 'a Ty.comparable_ty
+        * ('a ticket option, 's, 'r, 'f) kinstr
+        -> ('a ticket * 'a ticket, 's, 'r, 'f) kinstr
+    | IOpen_chest :
+        Script.location * ((bytes, bool) union, 's, 'r, 'f) kinstr
+        -> ( Script_timelock.chest_key,
+             Script_timelock.chest * (n num * 's),
+             'r,
+             'f )
+           kinstr
+    | IEmit : {
+        loc : Script.location;
+        tag : Entrypoint.t;
+        ty : ('a, _) Ty.ty;
+        unparsed_ty : Script.expr;
+        k : (Ty_value.operation, 's, 'r, 'f) kinstr;
+      }
+        -> ('a, 's, 'r, 'f) kinstr
+    | IHalt : Script.location -> ('a, 's, 'a, 's) kinstr
+    | ILog :
+        Script.location
+        * ('a, 's) Ty.stack
+        * logging_event
+        * logger
+        * ('a, 's, 'r, 'f) kinstr
+        -> ('a, 's, 'r, 'f) kinstr
+
+  and (_, _, _, _) continuation =
+    | KNil : ('r, 'f, 'r, 'f) continuation
+    | KCons :
+        ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
+        -> ('a, 's, 'r, 'f) continuation
+    | KReturn :
+        's * ('a, 's) Ty.stack * ('a, 's, 'r, 'f) continuation
+        -> ('a, end_of_stack, 'r, 'f) continuation
+    | KMap_head :
+        ('a -> 'b) * ('b, 's, 'r, 'f) continuation
+        -> ('a, 's, 'r, 'f) continuation
+    | KUndip :
+        'b * ('b, _) Ty.ty * ('b, 'a * 's, 'r, 'f) continuation
+        -> ('a, 's, 'r, 'f) continuation
+    | KLoop_in :
+        ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
+        -> (bool, 'a * 's, 'r, 'f) continuation
+    | KLoop_in_left :
+        ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) continuation
+        -> (('a, 'b) union, 's, 'r, 'f) continuation
+    | KIter :
+        ('a, 'b * 's, 'b, 's) kinstr
+        * ('a, _) Ty.ty
+        * 'a list
+        * ('b, 's, 'r, 'f) continuation
+        -> ('b, 's, 'r, 'f) continuation
+    | KList_enter_body :
+        ('a, 'c * 's, 'b, 'c * 's) kinstr
+        * 'a list
+        * 'b list
+        * ('b boxed_list, _) Ty.ty
+        * int
+        * ('b boxed_list, 'c * 's, 'r, 'f) continuation
+        -> ('c, 's, 'r, 'f) continuation
+    | KList_exit_body :
+        ('a, 'c * 's, 'b, 'c * 's) kinstr
+        * 'a list
+        * 'b list
+        * ('b boxed_list, _) Ty.ty
+        * int
+        * ('b boxed_list, 'c * 's, 'r, 'f) continuation
+        -> ('b, 'c * 's, 'r, 'f) continuation
+    | KMap_enter_body :
+        ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+        * ('a * 'b) list
+        * ('a, 'c) map
+        * (('a, 'c) map, _) Ty.ty
+        * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
+        -> ('d, 's, 'r, 'f) continuation
+    | KMap_exit_body :
+        ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+        * ('a * 'b) list
+        * ('a, 'c) map
+        * 'a
+        * (('a, 'c) map, _) Ty.ty
+        * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
+        -> ('c, 'd * 's, 'r, 'f) continuation
+    | KView_exit :
+        step_constants * ('a, 's, 'r, 'f) continuation
+        -> ('a, 's, 'r, 'f) continuation
+    | KLog :
+        ('a, 's, 'r, 'f) continuation * ('a, 's) Ty.stack * logger
+        -> ('a, 's, 'r, 'f) continuation
+
+  and ('a, 's, 'b, 'f, 'c, 'u) logging_function =
+    ('a, 's, 'b, 'f) kinstr ->
+    context ->
+    Script.location ->
+    ('c, 'u) Ty.stack ->
+    'c * 'u ->
+    unit
+
+  and execution_trace = (Script.location * Gas.t * Script.expr list) list
+
+  and logger = {
+    log_interp : 'a 's 'b 'f 'c 'u. ('a, 's, 'b, 'f, 'c, 'u) logging_function;
+    log_entry : 'a 's 'b 'f. ('a, 's, 'b, 'f, 'a, 's) logging_function;
+    log_control : 'a 's 'b 'f. ('a, 's, 'b, 'f) continuation -> unit;
+    log_exit : 'a 's 'b 'f 'c 'u. ('a, 's, 'b, 'f, 'c, 'u) logging_function;
+    get_log : unit -> execution_trace option tzresult Lwt.t;
+  }
+
+  and ('a, 's, 'r, 'f) kdescr = {
+    kloc : Script.location;
+    kbef : ('a, 's) Ty.stack;
+    kaft : ('r, 'f) Ty.stack;
+    kinstr : ('a, 's, 'r, 'f) kinstr;
+  }
+
+  and (_, _, _, _, _, _, _, _) stack_prefix_preservation_witness =
+    | KPrefix :
+        Script.location
+        * ('a, _) Ty.ty
+        * ('c, 'v, 'd, 'w, 'x, 's, 'y, 'u) stack_prefix_preservation_witness
+        -> ( 'c,
+             'v,
+             'd,
+             'w,
+             'a,
+             'x * 's,
+             'a,
+             'y * 'u )
+           stack_prefix_preservation_witness
+    | KRest : ('a, 's, 'b, 'u, 'a, 's, 'b, 'u) stack_prefix_preservation_witness
+
+  and (_, _, _, _, _, _) comb_gadt_witness =
+    | Comb_one : ('a, 'x, 'before, 'a, 'x, 'before) comb_gadt_witness
+    | Comb_succ :
+        ('b, 'c, 's, 'd, 'e, 't) comb_gadt_witness
+        -> ('a, 'b, 'c * 's, 'a * 'd, 'e, 't) comb_gadt_witness
+
+  and (_, _, _, _, _, _) uncomb_gadt_witness =
+    | Uncomb_one : ('a, 'x, 'before, 'a, 'x, 'before) uncomb_gadt_witness
+    | Uncomb_succ :
+        ('b, 'c, 's, 'd, 'e, 't) uncomb_gadt_witness
+        -> ('a * 'b, 'c, 's, 'a, 'd, 'e * 't) uncomb_gadt_witness
+
+  and ('before, 'after) comb_get_gadt_witness =
+    | Comb_get_zero : ('b, 'b) comb_get_gadt_witness
+    | Comb_get_one : ('a * 'b, 'a) comb_get_gadt_witness
+    | Comb_get_plus_two :
+        ('before, 'after) comb_get_gadt_witness
+        -> ('a * 'before, 'after) comb_get_gadt_witness
+
+  and ('value, 'before, 'after) comb_set_gadt_witness =
+    | Comb_set_zero : ('value, _, 'value) comb_set_gadt_witness
+    | Comb_set_one : ('value, 'hd * 'tl, 'value * 'tl) comb_set_gadt_witness
+    | Comb_set_plus_two :
+        ('value, 'before, 'after) comb_set_gadt_witness
+        -> ('value, 'a * 'before, 'a * 'after) comb_set_gadt_witness
+
+  and (_, _, _, _) dup_n_gadt_witness =
+    | Dup_n_zero : ('a, _, _, 'a) dup_n_gadt_witness
+    | Dup_n_succ :
+        ('b, 'c, 'stack, 'd) dup_n_gadt_witness
+        -> ('a, 'b, 'c * 'stack, 'd) dup_n_gadt_witness
+
+  and ('input, 'output) view_signature =
+    | View_signature : {
+        name : Script_string.t;
+        input_ty : ('input, _) Ty.ty;
+        output_ty : ('output, _) Ty.ty;
+      }
+        -> ('input, 'output) view_signature
+
+  let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
+   fun i ->
+    match i with
+    | IDrop (loc, _) -> loc
+    | IDup (loc, _) -> loc
+    | ISwap (loc, _) -> loc
+    | IConst (loc, _, _, _) -> loc
+    | ICons_pair (loc, _) -> loc
+    | ICar (loc, _) -> loc
+    | ICdr (loc, _) -> loc
+    | IUnpair (loc, _) -> loc
+    | ICons_some (loc, _) -> loc
+    | ICons_none (loc, _, _) -> loc
+    | IIf_none {loc; _} -> loc
+    | IOpt_map {loc; _} -> loc
+    | ICons_left (loc, _, _) -> loc
+    | ICons_right (loc, _, _) -> loc
+    | IIf_left {loc; _} -> loc
+    | ICons_list (loc, _) -> loc
+    | INil (loc, _, _) -> loc
+    | IIf_cons {loc; _} -> loc
+    | IList_map (loc, _, _, _) -> loc
+    | IList_iter (loc, _, _, _) -> loc
+    | IList_size (loc, _) -> loc
+    | IEmpty_set (loc, _, _) -> loc
+    | ISet_iter (loc, _, _, _) -> loc
+    | ISet_mem (loc, _) -> loc
+    | ISet_update (loc, _) -> loc
+    | ISet_size (loc, _) -> loc
+    | IEmpty_map (loc, _, _, _) -> loc
+    | IMap_map (loc, _, _, _) -> loc
+    | IMap_iter (loc, _, _, _) -> loc
+    | IMap_mem (loc, _) -> loc
+    | IMap_get (loc, _) -> loc
+    | IMap_update (loc, _) -> loc
+    | IMap_get_and_update (loc, _) -> loc
+    | IMap_size (loc, _) -> loc
+    | IEmpty_big_map (loc, _, _, _) -> loc
+    | IBig_map_mem (loc, _) -> loc
+    | IBig_map_get (loc, _) -> loc
+    | IBig_map_update (loc, _) -> loc
+    | IBig_map_get_and_update (loc, _) -> loc
+    | IConcat_string (loc, _) -> loc
+    | IConcat_string_pair (loc, _) -> loc
+    | ISlice_string (loc, _) -> loc
+    | IString_size (loc, _) -> loc
+    | IConcat_bytes (loc, _) -> loc
+    | IConcat_bytes_pair (loc, _) -> loc
+    | ISlice_bytes (loc, _) -> loc
+    | IBytes_size (loc, _) -> loc
+    | IAdd_seconds_to_timestamp (loc, _) -> loc
+    | IAdd_timestamp_to_seconds (loc, _) -> loc
+    | ISub_timestamp_seconds (loc, _) -> loc
+    | IDiff_timestamps (loc, _) -> loc
+    | IAdd_tez (loc, _) -> loc
+    | ISub_tez (loc, _) -> loc
+    | ISub_tez_legacy (loc, _) -> loc
+    | IMul_teznat (loc, _) -> loc
+    | IMul_nattez (loc, _) -> loc
+    | IEdiv_teznat (loc, _) -> loc
+    | IEdiv_tez (loc, _) -> loc
+    | IOr (loc, _) -> loc
+    | IAnd (loc, _) -> loc
+    | IXor (loc, _) -> loc
+    | INot (loc, _) -> loc
+    | IIs_nat (loc, _) -> loc
+    | INeg (loc, _) -> loc
+    | IAbs_int (loc, _) -> loc
+    | IInt_nat (loc, _) -> loc
+    | IAdd_int (loc, _) -> loc
+    | IAdd_nat (loc, _) -> loc
+    | ISub_int (loc, _) -> loc
+    | IMul_int (loc, _) -> loc
+    | IMul_nat (loc, _) -> loc
+    | IEdiv_int (loc, _) -> loc
+    | IEdiv_nat (loc, _) -> loc
+    | ILsl_nat (loc, _) -> loc
+    | ILsr_nat (loc, _) -> loc
+    | IOr_nat (loc, _) -> loc
+    | IAnd_nat (loc, _) -> loc
+    | IAnd_int_nat (loc, _) -> loc
+    | IXor_nat (loc, _) -> loc
+    | INot_int (loc, _) -> loc
+    | IIf {loc; _} -> loc
+    | ILoop (loc, _, _) -> loc
+    | ILoop_left (loc, _, _) -> loc
+    | IDip (loc, _, _, _) -> loc
+    | IExec (loc, _, _) -> loc
+    | IApply (loc, _, _) -> loc
+    | ILambda (loc, _, _) -> loc
+    | IFailwith (loc, _) -> loc
+    | ICompare (loc, _, _) -> loc
+    | IEq (loc, _) -> loc
+    | INeq (loc, _) -> loc
+    | ILt (loc, _) -> loc
+    | IGt (loc, _) -> loc
+    | ILe (loc, _) -> loc
+    | IGe (loc, _) -> loc
+    | IAddress (loc, _) -> loc
+    | IContract (loc, _, _, _) -> loc
+    | ITransfer_tokens (loc, _) -> loc
+    | IView (loc, _, _, _) -> loc
+    | IImplicit_account (loc, _) -> loc
+    | ICreate_contract {loc; _} -> loc
+    | ISet_delegate (loc, _) -> loc
+    | INow (loc, _) -> loc
+    | IMin_block_time (loc, _) -> loc
+    | IBalance (loc, _) -> loc
+    | ILevel (loc, _) -> loc
+    | ICheck_signature (loc, _) -> loc
+    | IHash_key (loc, _) -> loc
+    | IPack (loc, _, _) -> loc
+    | IUnpack (loc, _, _) -> loc
+    | IBlake2b (loc, _) -> loc
+    | ISha256 (loc, _) -> loc
+    | ISha512 (loc, _) -> loc
+    | ISource (loc, _) -> loc
+    | ISender (loc, _) -> loc
+    | ISelf (loc, _, _, _) -> loc
+    | ISelf_address (loc, _) -> loc
+    | IAmount (loc, _) -> loc
+    | ISapling_empty_state (loc, _, _) -> loc
+    | ISapling_verify_update (loc, _) -> loc
+    | ISapling_verify_update_deprecated (loc, _) -> loc
+    | IDig (loc, _, _, _) -> loc
+    | IDug (loc, _, _, _) -> loc
+    | IDipn (loc, _, _, _, _) -> loc
+    | IDropn (loc, _, _, _) -> loc
+    | IChainId (loc, _) -> loc
+    | INever loc -> loc
+    | IVoting_power (loc, _) -> loc
+    | ITotal_voting_power (loc, _) -> loc
+    | IKeccak (loc, _) -> loc
+    | ISha3 (loc, _) -> loc
+    | IAdd_bls12_381_g1 (loc, _) -> loc
+    | IAdd_bls12_381_g2 (loc, _) -> loc
+    | IAdd_bls12_381_fr (loc, _) -> loc
+    | IMul_bls12_381_g1 (loc, _) -> loc
+    | IMul_bls12_381_g2 (loc, _) -> loc
+    | IMul_bls12_381_fr (loc, _) -> loc
+    | IMul_bls12_381_z_fr (loc, _) -> loc
+    | IMul_bls12_381_fr_z (loc, _) -> loc
+    | IInt_bls12_381_fr (loc, _) -> loc
+    | INeg_bls12_381_g1 (loc, _) -> loc
+    | INeg_bls12_381_g2 (loc, _) -> loc
+    | INeg_bls12_381_fr (loc, _) -> loc
+    | IPairing_check_bls12_381 (loc, _) -> loc
+    | IComb (loc, _, _, _) -> loc
+    | IUncomb (loc, _, _, _) -> loc
+    | IComb_get (loc, _, _, _) -> loc
+    | IComb_set (loc, _, _, _) -> loc
+    | IDup_n (loc, _, _, _) -> loc
+    | ITicket (loc, _, _) -> loc
+    | IRead_ticket (loc, _, _) -> loc
+    | ISplit_ticket (loc, _) -> loc
+    | IJoin_tickets (loc, _, _) -> loc
+    | IOpen_chest (loc, _) -> loc
+    | IEmit {loc; _} -> loc
+    | IHalt loc -> loc
+    | ILog (loc, _, _, _, _) -> loc
+
+  type 'a kinstr_traverse = {
+    apply : 'b 'u 'r 'f. 'a -> ('b, 'u, 'r, 'f) kinstr -> 'a;
+  }
+
+  let kinstr_traverse i init f =
+    let rec aux :
+        type ret a s r f. 'accu -> (a, s, r, f) kinstr -> ('accu -> ret) -> ret
+        =
+     fun accu t continue ->
+      let accu = f.apply accu t in
+      let next k =
+        (aux [@ocaml.tailcall]) accu k (fun accu ->
+            (continue [@ocaml.tailcall]) accu)
+      in
+      let next2 k1 k2 =
+        (aux [@ocaml.tailcall]) accu k1 (fun accu ->
+            (aux [@ocaml.tailcall]) accu k2 (fun accu ->
+                (continue [@ocaml.tailcall]) accu))
+      in
+      let next3 k1 k2 k3 =
+        (aux [@ocaml.tailcall]) accu k1 (fun accu ->
+            (aux [@ocaml.tailcall]) accu k2 (fun accu ->
+                (aux [@ocaml.tailcall]) accu k3 (fun accu ->
+                    (continue [@ocaml.tailcall]) accu)))
+      in
+      let return () = (continue [@ocaml.tailcall]) accu in
+      match t with
+      | IDrop (_, k) -> (next [@ocaml.tailcall]) k
+      | IDup (_, k) -> (next [@ocaml.tailcall]) k
+      | ISwap (_, k) -> (next [@ocaml.tailcall]) k
+      | IConst (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | ICons_pair (_, k) -> (next [@ocaml.tailcall]) k
+      | ICar (_, k) -> (next [@ocaml.tailcall]) k
+      | ICdr (_, k) -> (next [@ocaml.tailcall]) k
+      | IUnpair (_, k) -> (next [@ocaml.tailcall]) k
+      | ICons_some (_, k) -> (next [@ocaml.tailcall]) k
+      | ICons_none (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IIf_none {loc = _; branch_if_none = k1; branch_if_some = k2; k} ->
+          (next3 [@ocaml.tailcall]) k1 k2 k
+      | IOpt_map {loc = _; body; k} -> (next2 [@ocaml.tailcall]) body k
+      | ICons_left (_, _, k) -> (next [@ocaml.tailcall]) k
+      | ICons_right (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IIf_left {loc = _; branch_if_left = k1; branch_if_right = k2; k} ->
+          (next3 [@ocaml.tailcall]) k1 k2 k
+      | ICons_list (_, k) -> (next [@ocaml.tailcall]) k
+      | INil (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IIf_cons {loc = _; branch_if_nil = k1; branch_if_cons = k2; k} ->
+          (next3 [@ocaml.tailcall]) k1 k2 k
+      | IList_map (_, k1, _, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | IList_iter (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | IList_size (_, k) -> (next [@ocaml.tailcall]) k
+      | IEmpty_set (_, _, k) -> (next [@ocaml.tailcall]) k
+      | ISet_iter (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | ISet_mem (_, k) -> (next [@ocaml.tailcall]) k
+      | ISet_update (_, k) -> (next [@ocaml.tailcall]) k
+      | ISet_size (_, k) -> (next [@ocaml.tailcall]) k
+      | IEmpty_map (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IMap_map (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | IMap_iter (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | IMap_mem (_, k) -> (next [@ocaml.tailcall]) k
+      | IMap_get (_, k) -> (next [@ocaml.tailcall]) k
+      | IMap_update (_, k) -> (next [@ocaml.tailcall]) k
+      | IMap_get_and_update (_, k) -> (next [@ocaml.tailcall]) k
+      | IMap_size (_, k) -> (next [@ocaml.tailcall]) k
+      | IEmpty_big_map (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IBig_map_mem (_, k) -> (next [@ocaml.tailcall]) k
+      | IBig_map_get (_, k) -> (next [@ocaml.tailcall]) k
+      | IBig_map_update (_, k) -> (next [@ocaml.tailcall]) k
+      | IBig_map_get_and_update (_, k) -> (next [@ocaml.tailcall]) k
+      | IConcat_string (_, k) -> (next [@ocaml.tailcall]) k
+      | IConcat_string_pair (_, k) -> (next [@ocaml.tailcall]) k
+      | ISlice_string (_, k) -> (next [@ocaml.tailcall]) k
+      | IString_size (_, k) -> (next [@ocaml.tailcall]) k
+      | IConcat_bytes (_, k) -> (next [@ocaml.tailcall]) k
+      | IConcat_bytes_pair (_, k) -> (next [@ocaml.tailcall]) k
+      | ISlice_bytes (_, k) -> (next [@ocaml.tailcall]) k
+      | IBytes_size (_, k) -> (next [@ocaml.tailcall]) k
+      | IAdd_seconds_to_timestamp (_, k) -> (next [@ocaml.tailcall]) k
+      | IAdd_timestamp_to_seconds (_, k) -> (next [@ocaml.tailcall]) k
+      | ISub_timestamp_seconds (_, k) -> (next [@ocaml.tailcall]) k
+      | IDiff_timestamps (_, k) -> (next [@ocaml.tailcall]) k
+      | IAdd_tez (_, k) -> (next [@ocaml.tailcall]) k
+      | ISub_tez (_, k) -> (next [@ocaml.tailcall]) k
+      | ISub_tez_legacy (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_teznat (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_nattez (_, k) -> (next [@ocaml.tailcall]) k
+      | IEdiv_teznat (_, k) -> (next [@ocaml.tailcall]) k
+      | IEdiv_tez (_, k) -> (next [@ocaml.tailcall]) k
+      | IOr (_, k) -> (next [@ocaml.tailcall]) k
+      | IAnd (_, k) -> (next [@ocaml.tailcall]) k
+      | IXor (_, k) -> (next [@ocaml.tailcall]) k
+      | INot (_, k) -> (next [@ocaml.tailcall]) k
+      | IIs_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | INeg (_, k) -> (next [@ocaml.tailcall]) k
+      | IAbs_int (_, k) -> (next [@ocaml.tailcall]) k
+      | IInt_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | IAdd_int (_, k) -> (next [@ocaml.tailcall]) k
+      | IAdd_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | ISub_int (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_int (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | IEdiv_int (_, k) -> (next [@ocaml.tailcall]) k
+      | IEdiv_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | ILsl_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | ILsr_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | IOr_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | IAnd_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | IAnd_int_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | IXor_nat (_, k) -> (next [@ocaml.tailcall]) k
+      | INot_int (_, k) -> (next [@ocaml.tailcall]) k
+      | IIf {loc = _; branch_if_true = k1; branch_if_false = k2; k} ->
+          (next3 [@ocaml.tailcall]) k1 k2 k
+      | ILoop (_, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | ILoop_left (_, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | IDip (_, k1, _, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | IExec (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IApply (_, _, k) -> (next [@ocaml.tailcall]) k
+      | ILambda (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IFailwith (_, _) -> (return [@ocaml.tailcall]) ()
+      | ICompare (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IEq (_, k) -> (next [@ocaml.tailcall]) k
+      | INeq (_, k) -> (next [@ocaml.tailcall]) k
+      | ILt (_, k) -> (next [@ocaml.tailcall]) k
+      | IGt (_, k) -> (next [@ocaml.tailcall]) k
+      | ILe (_, k) -> (next [@ocaml.tailcall]) k
+      | IGe (_, k) -> (next [@ocaml.tailcall]) k
+      | IAddress (_, k) -> (next [@ocaml.tailcall]) k
+      | IContract (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IView (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | ITransfer_tokens (_, k) -> (next [@ocaml.tailcall]) k
+      | IImplicit_account (_, k) -> (next [@ocaml.tailcall]) k
+      | ICreate_contract {k; _} -> (next [@ocaml.tailcall]) k
+      | ISet_delegate (_, k) -> (next [@ocaml.tailcall]) k
+      | INow (_, k) -> (next [@ocaml.tailcall]) k
+      | IMin_block_time (_, k) -> (next [@ocaml.tailcall]) k
+      | IBalance (_, k) -> (next [@ocaml.tailcall]) k
+      | ILevel (_, k) -> (next [@ocaml.tailcall]) k
+      | ICheck_signature (_, k) -> (next [@ocaml.tailcall]) k
+      | IHash_key (_, k) -> (next [@ocaml.tailcall]) k
+      | IPack (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IUnpack (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IBlake2b (_, k) -> (next [@ocaml.tailcall]) k
+      | ISha256 (_, k) -> (next [@ocaml.tailcall]) k
+      | ISha512 (_, k) -> (next [@ocaml.tailcall]) k
+      | ISource (_, k) -> (next [@ocaml.tailcall]) k
+      | ISender (_, k) -> (next [@ocaml.tailcall]) k
+      | ISelf (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | ISelf_address (_, k) -> (next [@ocaml.tailcall]) k
+      | IAmount (_, k) -> (next [@ocaml.tailcall]) k
+      | ISapling_empty_state (_, _, k) -> (next [@ocaml.tailcall]) k
+      | ISapling_verify_update (_, k) -> (next [@ocaml.tailcall]) k
+      | ISapling_verify_update_deprecated (_, k) -> (next [@ocaml.tailcall]) k
+      | IDig (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IDug (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IDipn (_, _, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
+      | IDropn (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IChainId (_, k) -> (next [@ocaml.tailcall]) k
+      | INever _ -> (return [@ocaml.tailcall]) ()
+      | IVoting_power (_, k) -> (next [@ocaml.tailcall]) k
+      | ITotal_voting_power (_, k) -> (next [@ocaml.tailcall]) k
+      | IKeccak (_, k) -> (next [@ocaml.tailcall]) k
+      | ISha3 (_, k) -> (next [@ocaml.tailcall]) k
+      | IAdd_bls12_381_g1 (_, k) -> (next [@ocaml.tailcall]) k
+      | IAdd_bls12_381_g2 (_, k) -> (next [@ocaml.tailcall]) k
+      | IAdd_bls12_381_fr (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_bls12_381_g1 (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_bls12_381_g2 (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_bls12_381_fr (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_bls12_381_z_fr (_, k) -> (next [@ocaml.tailcall]) k
+      | IMul_bls12_381_fr_z (_, k) -> (next [@ocaml.tailcall]) k
+      | IInt_bls12_381_fr (_, k) -> (next [@ocaml.tailcall]) k
+      | INeg_bls12_381_g1 (_, k) -> (next [@ocaml.tailcall]) k
+      | INeg_bls12_381_g2 (_, k) -> (next [@ocaml.tailcall]) k
+      | INeg_bls12_381_fr (_, k) -> (next [@ocaml.tailcall]) k
+      | IPairing_check_bls12_381 (_, k) -> (next [@ocaml.tailcall]) k
+      | IComb (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IUncomb (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IComb_get (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IComb_set (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | IDup_n (_, _, _, k) -> (next [@ocaml.tailcall]) k
+      | ITicket (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IRead_ticket (_, _, k) -> (next [@ocaml.tailcall]) k
+      | ISplit_ticket (_, k) -> (next [@ocaml.tailcall]) k
+      | IJoin_tickets (_, _, k) -> (next [@ocaml.tailcall]) k
+      | IOpen_chest (_, k) -> (next [@ocaml.tailcall]) k
+      | IEmit {k; _} -> (next [@ocaml.tailcall]) k
+      | IHalt _ -> (return [@ocaml.tailcall]) ()
+      | ILog (_, _, _, _, k) -> (next [@ocaml.tailcall]) k
+    in
+    aux init i (fun accu -> accu)
+end
 
 type ('arg, 'storage) script =
   | Script : {
       code :
-        (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;
-      arg_type : ('arg, _) ty;
+        ( ('arg, 'storage) pair,
+          (Ty_value.operation boxed_list, 'storage) pair )
+        Ty_value.lambda;
+      arg_type : ('arg, _) Ty.ty;
       storage : 'storage;
-      storage_type : ('storage, _) ty;
+      storage_type : ('storage, _) Ty.ty;
       views : view_map;
       entrypoints : 'arg entrypoints;
       code_size : Cache_memory_helpers.sint;
-          (* This is an over-approximation of the value size in memory, in
-             bytes, of the contract's static part, that is its source
-             code. This includes the code of the contract as well as the code
-             of the views. The storage size is not taken into account by this
-             field as it has a dynamic size. *)
     }
       -> ('arg, 'storage) script
 
 let manager_kind :
-    type kind. kind internal_operation_contents -> kind Kind.manager = function
+    type kind. kind Ty_value.internal_operation_contents -> kind Kind.manager =
+  function
   | Transaction_to_implicit _ -> Kind.Transaction_manager_kind
   | Transaction_to_smart_contract _ -> Kind.Transaction_manager_kind
   | Transaction_to_tx_rollup _ -> Kind.Transaction_manager_kind
@@ -2434,357 +3581,6 @@ let manager_kind :
   | Event _ -> Kind.Event_manager_kind
   | Origination _ -> Kind.Origination_manager_kind
   | Delegation _ -> Kind.Delegation_manager_kind
-
-let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
- fun i ->
-  match i with
-  | IDrop (loc, _) -> loc
-  | IDup (loc, _) -> loc
-  | ISwap (loc, _) -> loc
-  | IConst (loc, _, _, _) -> loc
-  | ICons_pair (loc, _) -> loc
-  | ICar (loc, _) -> loc
-  | ICdr (loc, _) -> loc
-  | IUnpair (loc, _) -> loc
-  | ICons_some (loc, _) -> loc
-  | ICons_none (loc, _, _) -> loc
-  | IIf_none {loc; _} -> loc
-  | IOpt_map {loc; _} -> loc
-  | ICons_left (loc, _, _) -> loc
-  | ICons_right (loc, _, _) -> loc
-  | IIf_left {loc; _} -> loc
-  | ICons_list (loc, _) -> loc
-  | INil (loc, _, _) -> loc
-  | IIf_cons {loc; _} -> loc
-  | IList_map (loc, _, _, _) -> loc
-  | IList_iter (loc, _, _, _) -> loc
-  | IList_size (loc, _) -> loc
-  | IEmpty_set (loc, _, _) -> loc
-  | ISet_iter (loc, _, _, _) -> loc
-  | ISet_mem (loc, _) -> loc
-  | ISet_update (loc, _) -> loc
-  | ISet_size (loc, _) -> loc
-  | IEmpty_map (loc, _, _, _) -> loc
-  | IMap_map (loc, _, _, _) -> loc
-  | IMap_iter (loc, _, _, _) -> loc
-  | IMap_mem (loc, _) -> loc
-  | IMap_get (loc, _) -> loc
-  | IMap_update (loc, _) -> loc
-  | IMap_get_and_update (loc, _) -> loc
-  | IMap_size (loc, _) -> loc
-  | IEmpty_big_map (loc, _, _, _) -> loc
-  | IBig_map_mem (loc, _) -> loc
-  | IBig_map_get (loc, _) -> loc
-  | IBig_map_update (loc, _) -> loc
-  | IBig_map_get_and_update (loc, _) -> loc
-  | IConcat_string (loc, _) -> loc
-  | IConcat_string_pair (loc, _) -> loc
-  | ISlice_string (loc, _) -> loc
-  | IString_size (loc, _) -> loc
-  | IConcat_bytes (loc, _) -> loc
-  | IConcat_bytes_pair (loc, _) -> loc
-  | ISlice_bytes (loc, _) -> loc
-  | IBytes_size (loc, _) -> loc
-  | IAdd_seconds_to_timestamp (loc, _) -> loc
-  | IAdd_timestamp_to_seconds (loc, _) -> loc
-  | ISub_timestamp_seconds (loc, _) -> loc
-  | IDiff_timestamps (loc, _) -> loc
-  | IAdd_tez (loc, _) -> loc
-  | ISub_tez (loc, _) -> loc
-  | ISub_tez_legacy (loc, _) -> loc
-  | IMul_teznat (loc, _) -> loc
-  | IMul_nattez (loc, _) -> loc
-  | IEdiv_teznat (loc, _) -> loc
-  | IEdiv_tez (loc, _) -> loc
-  | IOr (loc, _) -> loc
-  | IAnd (loc, _) -> loc
-  | IXor (loc, _) -> loc
-  | INot (loc, _) -> loc
-  | IIs_nat (loc, _) -> loc
-  | INeg (loc, _) -> loc
-  | IAbs_int (loc, _) -> loc
-  | IInt_nat (loc, _) -> loc
-  | IAdd_int (loc, _) -> loc
-  | IAdd_nat (loc, _) -> loc
-  | ISub_int (loc, _) -> loc
-  | IMul_int (loc, _) -> loc
-  | IMul_nat (loc, _) -> loc
-  | IEdiv_int (loc, _) -> loc
-  | IEdiv_nat (loc, _) -> loc
-  | ILsl_nat (loc, _) -> loc
-  | ILsr_nat (loc, _) -> loc
-  | IOr_nat (loc, _) -> loc
-  | IAnd_nat (loc, _) -> loc
-  | IAnd_int_nat (loc, _) -> loc
-  | IXor_nat (loc, _) -> loc
-  | INot_int (loc, _) -> loc
-  | IIf {loc; _} -> loc
-  | ILoop (loc, _, _) -> loc
-  | ILoop_left (loc, _, _) -> loc
-  | IDip (loc, _, _, _) -> loc
-  | IExec (loc, _, _) -> loc
-  | IApply (loc, _, _) -> loc
-  | ILambda (loc, _, _) -> loc
-  | IFailwith (loc, _) -> loc
-  | ICompare (loc, _, _) -> loc
-  | IEq (loc, _) -> loc
-  | INeq (loc, _) -> loc
-  | ILt (loc, _) -> loc
-  | IGt (loc, _) -> loc
-  | ILe (loc, _) -> loc
-  | IGe (loc, _) -> loc
-  | IAddress (loc, _) -> loc
-  | IContract (loc, _, _, _) -> loc
-  | ITransfer_tokens (loc, _) -> loc
-  | IView (loc, _, _, _) -> loc
-  | IImplicit_account (loc, _) -> loc
-  | ICreate_contract {loc; _} -> loc
-  | ISet_delegate (loc, _) -> loc
-  | INow (loc, _) -> loc
-  | IMin_block_time (loc, _) -> loc
-  | IBalance (loc, _) -> loc
-  | ILevel (loc, _) -> loc
-  | ICheck_signature (loc, _) -> loc
-  | IHash_key (loc, _) -> loc
-  | IPack (loc, _, _) -> loc
-  | IUnpack (loc, _, _) -> loc
-  | IBlake2b (loc, _) -> loc
-  | ISha256 (loc, _) -> loc
-  | ISha512 (loc, _) -> loc
-  | ISource (loc, _) -> loc
-  | ISender (loc, _) -> loc
-  | ISelf (loc, _, _, _) -> loc
-  | ISelf_address (loc, _) -> loc
-  | IAmount (loc, _) -> loc
-  | ISapling_empty_state (loc, _, _) -> loc
-  | ISapling_verify_update (loc, _) -> loc
-  | ISapling_verify_update_deprecated (loc, _) -> loc
-  | IDig (loc, _, _, _) -> loc
-  | IDug (loc, _, _, _) -> loc
-  | IDipn (loc, _, _, _, _) -> loc
-  | IDropn (loc, _, _, _) -> loc
-  | IChainId (loc, _) -> loc
-  | INever loc -> loc
-  | IVoting_power (loc, _) -> loc
-  | ITotal_voting_power (loc, _) -> loc
-  | IKeccak (loc, _) -> loc
-  | ISha3 (loc, _) -> loc
-  | IAdd_bls12_381_g1 (loc, _) -> loc
-  | IAdd_bls12_381_g2 (loc, _) -> loc
-  | IAdd_bls12_381_fr (loc, _) -> loc
-  | IMul_bls12_381_g1 (loc, _) -> loc
-  | IMul_bls12_381_g2 (loc, _) -> loc
-  | IMul_bls12_381_fr (loc, _) -> loc
-  | IMul_bls12_381_z_fr (loc, _) -> loc
-  | IMul_bls12_381_fr_z (loc, _) -> loc
-  | IInt_bls12_381_fr (loc, _) -> loc
-  | INeg_bls12_381_g1 (loc, _) -> loc
-  | INeg_bls12_381_g2 (loc, _) -> loc
-  | INeg_bls12_381_fr (loc, _) -> loc
-  | IPairing_check_bls12_381 (loc, _) -> loc
-  | IComb (loc, _, _, _) -> loc
-  | IUncomb (loc, _, _, _) -> loc
-  | IComb_get (loc, _, _, _) -> loc
-  | IComb_set (loc, _, _, _) -> loc
-  | IDup_n (loc, _, _, _) -> loc
-  | ITicket (loc, _, _) -> loc
-  | IRead_ticket (loc, _, _) -> loc
-  | ISplit_ticket (loc, _) -> loc
-  | IJoin_tickets (loc, _, _) -> loc
-  | IOpen_chest (loc, _) -> loc
-  | IEmit {loc; _} -> loc
-  | IHalt loc -> loc
-  | ILog (loc, _, _, _, _) -> loc
-
-type 'a kinstr_traverse = {
-  apply : 'b 'u 'r 'f. 'a -> ('b, 'u, 'r, 'f) kinstr -> 'a;
-}
-
-let kinstr_traverse i init f =
-  let rec aux :
-      type ret a s r f. 'accu -> (a, s, r, f) kinstr -> ('accu -> ret) -> ret =
-   fun accu t continue ->
-    let accu = f.apply accu t in
-    let next k =
-      (aux [@ocaml.tailcall]) accu k (fun accu ->
-          (continue [@ocaml.tailcall]) accu)
-    in
-    let next2 k1 k2 =
-      (aux [@ocaml.tailcall]) accu k1 (fun accu ->
-          (aux [@ocaml.tailcall]) accu k2 (fun accu ->
-              (continue [@ocaml.tailcall]) accu))
-    in
-    let next3 k1 k2 k3 =
-      (aux [@ocaml.tailcall]) accu k1 (fun accu ->
-          (aux [@ocaml.tailcall]) accu k2 (fun accu ->
-              (aux [@ocaml.tailcall]) accu k3 (fun accu ->
-                  (continue [@ocaml.tailcall]) accu)))
-    in
-    let return () = (continue [@ocaml.tailcall]) accu in
-    match t with
-    | IDrop (_, k) -> (next [@ocaml.tailcall]) k
-    | IDup (_, k) -> (next [@ocaml.tailcall]) k
-    | ISwap (_, k) -> (next [@ocaml.tailcall]) k
-    | IConst (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | ICons_pair (_, k) -> (next [@ocaml.tailcall]) k
-    | ICar (_, k) -> (next [@ocaml.tailcall]) k
-    | ICdr (_, k) -> (next [@ocaml.tailcall]) k
-    | IUnpair (_, k) -> (next [@ocaml.tailcall]) k
-    | ICons_some (_, k) -> (next [@ocaml.tailcall]) k
-    | ICons_none (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IIf_none {loc = _; branch_if_none = k1; branch_if_some = k2; k} ->
-        (next3 [@ocaml.tailcall]) k1 k2 k
-    | IOpt_map {loc = _; body; k} -> (next2 [@ocaml.tailcall]) body k
-    | ICons_left (_, _, k) -> (next [@ocaml.tailcall]) k
-    | ICons_right (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IIf_left {loc = _; branch_if_left = k1; branch_if_right = k2; k} ->
-        (next3 [@ocaml.tailcall]) k1 k2 k
-    | ICons_list (_, k) -> (next [@ocaml.tailcall]) k
-    | INil (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IIf_cons {loc = _; branch_if_nil = k1; branch_if_cons = k2; k} ->
-        (next3 [@ocaml.tailcall]) k1 k2 k
-    | IList_map (_, k1, _, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | IList_iter (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | IList_size (_, k) -> (next [@ocaml.tailcall]) k
-    | IEmpty_set (_, _, k) -> (next [@ocaml.tailcall]) k
-    | ISet_iter (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | ISet_mem (_, k) -> (next [@ocaml.tailcall]) k
-    | ISet_update (_, k) -> (next [@ocaml.tailcall]) k
-    | ISet_size (_, k) -> (next [@ocaml.tailcall]) k
-    | IEmpty_map (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IMap_map (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | IMap_iter (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | IMap_mem (_, k) -> (next [@ocaml.tailcall]) k
-    | IMap_get (_, k) -> (next [@ocaml.tailcall]) k
-    | IMap_update (_, k) -> (next [@ocaml.tailcall]) k
-    | IMap_get_and_update (_, k) -> (next [@ocaml.tailcall]) k
-    | IMap_size (_, k) -> (next [@ocaml.tailcall]) k
-    | IEmpty_big_map (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IBig_map_mem (_, k) -> (next [@ocaml.tailcall]) k
-    | IBig_map_get (_, k) -> (next [@ocaml.tailcall]) k
-    | IBig_map_update (_, k) -> (next [@ocaml.tailcall]) k
-    | IBig_map_get_and_update (_, k) -> (next [@ocaml.tailcall]) k
-    | IConcat_string (_, k) -> (next [@ocaml.tailcall]) k
-    | IConcat_string_pair (_, k) -> (next [@ocaml.tailcall]) k
-    | ISlice_string (_, k) -> (next [@ocaml.tailcall]) k
-    | IString_size (_, k) -> (next [@ocaml.tailcall]) k
-    | IConcat_bytes (_, k) -> (next [@ocaml.tailcall]) k
-    | IConcat_bytes_pair (_, k) -> (next [@ocaml.tailcall]) k
-    | ISlice_bytes (_, k) -> (next [@ocaml.tailcall]) k
-    | IBytes_size (_, k) -> (next [@ocaml.tailcall]) k
-    | IAdd_seconds_to_timestamp (_, k) -> (next [@ocaml.tailcall]) k
-    | IAdd_timestamp_to_seconds (_, k) -> (next [@ocaml.tailcall]) k
-    | ISub_timestamp_seconds (_, k) -> (next [@ocaml.tailcall]) k
-    | IDiff_timestamps (_, k) -> (next [@ocaml.tailcall]) k
-    | IAdd_tez (_, k) -> (next [@ocaml.tailcall]) k
-    | ISub_tez (_, k) -> (next [@ocaml.tailcall]) k
-    | ISub_tez_legacy (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_teznat (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_nattez (_, k) -> (next [@ocaml.tailcall]) k
-    | IEdiv_teznat (_, k) -> (next [@ocaml.tailcall]) k
-    | IEdiv_tez (_, k) -> (next [@ocaml.tailcall]) k
-    | IOr (_, k) -> (next [@ocaml.tailcall]) k
-    | IAnd (_, k) -> (next [@ocaml.tailcall]) k
-    | IXor (_, k) -> (next [@ocaml.tailcall]) k
-    | INot (_, k) -> (next [@ocaml.tailcall]) k
-    | IIs_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | INeg (_, k) -> (next [@ocaml.tailcall]) k
-    | IAbs_int (_, k) -> (next [@ocaml.tailcall]) k
-    | IInt_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | IAdd_int (_, k) -> (next [@ocaml.tailcall]) k
-    | IAdd_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | ISub_int (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_int (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | IEdiv_int (_, k) -> (next [@ocaml.tailcall]) k
-    | IEdiv_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | ILsl_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | ILsr_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | IOr_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | IAnd_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | IAnd_int_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | IXor_nat (_, k) -> (next [@ocaml.tailcall]) k
-    | INot_int (_, k) -> (next [@ocaml.tailcall]) k
-    | IIf {loc = _; branch_if_true = k1; branch_if_false = k2; k} ->
-        (next3 [@ocaml.tailcall]) k1 k2 k
-    | ILoop (_, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | ILoop_left (_, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | IDip (_, k1, _, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | IExec (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IApply (_, _, k) -> (next [@ocaml.tailcall]) k
-    | ILambda (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IFailwith (_, _) -> (return [@ocaml.tailcall]) ()
-    | ICompare (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IEq (_, k) -> (next [@ocaml.tailcall]) k
-    | INeq (_, k) -> (next [@ocaml.tailcall]) k
-    | ILt (_, k) -> (next [@ocaml.tailcall]) k
-    | IGt (_, k) -> (next [@ocaml.tailcall]) k
-    | ILe (_, k) -> (next [@ocaml.tailcall]) k
-    | IGe (_, k) -> (next [@ocaml.tailcall]) k
-    | IAddress (_, k) -> (next [@ocaml.tailcall]) k
-    | IContract (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IView (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | ITransfer_tokens (_, k) -> (next [@ocaml.tailcall]) k
-    | IImplicit_account (_, k) -> (next [@ocaml.tailcall]) k
-    | ICreate_contract {k; _} -> (next [@ocaml.tailcall]) k
-    | ISet_delegate (_, k) -> (next [@ocaml.tailcall]) k
-    | INow (_, k) -> (next [@ocaml.tailcall]) k
-    | IMin_block_time (_, k) -> (next [@ocaml.tailcall]) k
-    | IBalance (_, k) -> (next [@ocaml.tailcall]) k
-    | ILevel (_, k) -> (next [@ocaml.tailcall]) k
-    | ICheck_signature (_, k) -> (next [@ocaml.tailcall]) k
-    | IHash_key (_, k) -> (next [@ocaml.tailcall]) k
-    | IPack (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IUnpack (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IBlake2b (_, k) -> (next [@ocaml.tailcall]) k
-    | ISha256 (_, k) -> (next [@ocaml.tailcall]) k
-    | ISha512 (_, k) -> (next [@ocaml.tailcall]) k
-    | ISource (_, k) -> (next [@ocaml.tailcall]) k
-    | ISender (_, k) -> (next [@ocaml.tailcall]) k
-    | ISelf (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | ISelf_address (_, k) -> (next [@ocaml.tailcall]) k
-    | IAmount (_, k) -> (next [@ocaml.tailcall]) k
-    | ISapling_empty_state (_, _, k) -> (next [@ocaml.tailcall]) k
-    | ISapling_verify_update (_, k) -> (next [@ocaml.tailcall]) k
-    | ISapling_verify_update_deprecated (_, k) -> (next [@ocaml.tailcall]) k
-    | IDig (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IDug (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IDipn (_, _, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
-    | IDropn (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IChainId (_, k) -> (next [@ocaml.tailcall]) k
-    | INever _ -> (return [@ocaml.tailcall]) ()
-    | IVoting_power (_, k) -> (next [@ocaml.tailcall]) k
-    | ITotal_voting_power (_, k) -> (next [@ocaml.tailcall]) k
-    | IKeccak (_, k) -> (next [@ocaml.tailcall]) k
-    | ISha3 (_, k) -> (next [@ocaml.tailcall]) k
-    | IAdd_bls12_381_g1 (_, k) -> (next [@ocaml.tailcall]) k
-    | IAdd_bls12_381_g2 (_, k) -> (next [@ocaml.tailcall]) k
-    | IAdd_bls12_381_fr (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_bls12_381_g1 (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_bls12_381_g2 (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_bls12_381_fr (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_bls12_381_z_fr (_, k) -> (next [@ocaml.tailcall]) k
-    | IMul_bls12_381_fr_z (_, k) -> (next [@ocaml.tailcall]) k
-    | IInt_bls12_381_fr (_, k) -> (next [@ocaml.tailcall]) k
-    | INeg_bls12_381_g1 (_, k) -> (next [@ocaml.tailcall]) k
-    | INeg_bls12_381_g2 (_, k) -> (next [@ocaml.tailcall]) k
-    | INeg_bls12_381_fr (_, k) -> (next [@ocaml.tailcall]) k
-    | IPairing_check_bls12_381 (_, k) -> (next [@ocaml.tailcall]) k
-    | IComb (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IUncomb (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IComb_get (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IComb_set (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | IDup_n (_, _, _, k) -> (next [@ocaml.tailcall]) k
-    | ITicket (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IRead_ticket (_, _, k) -> (next [@ocaml.tailcall]) k
-    | ISplit_ticket (_, k) -> (next [@ocaml.tailcall]) k
-    | IJoin_tickets (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IOpen_chest (_, k) -> (next [@ocaml.tailcall]) k
-    | IEmit {k; _} -> (next [@ocaml.tailcall]) k
-    | IHalt _ -> (return [@ocaml.tailcall]) ()
-    | ILog (_, _, _, _, k) -> (next [@ocaml.tailcall]) k
-  in
-  aux init i (fun accu -> accu)
 
 module Typed_contract = struct
   let destination : type a. a Ty_value.typed_contract -> Destination.t =
