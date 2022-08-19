@@ -297,14 +297,14 @@ let pp_table out t =
     "@[<hv 2>{ty = %a;@; content = (%a)}@]"
     pp_table_type
     ty
-    (pp_vector Values.pp_ref)
+    (pp_vector Values.pp_ref_)
     c
 
 let pp_value_num = pp_value_op pp_int32 pp_int64
 
 let pp_value out = function
   | Values.Num n -> Format.fprintf out "Num %a" pp_value_num n
-  | Values.Ref r -> Format.fprintf out "Ref %a" Values.pp_ref r
+  | Values.Ref r -> Format.fprintf out "Ref %a" Values.pp_ref_ r
   | Values.Vec (V128 v) ->
       let hash = Hashtbl.hash @@ V128.to_string v in
       Format.fprintf out "Vec (V128 (#%d))" hash
@@ -341,7 +341,7 @@ let pp_map pp out map =
   let pp_name_list = pp_list Format.pp_print_int in
   pp_list (pp_pair pp_name_list pp) out (Instance.NameMap.loaded_bindings map)
 
-let pp_elems out ref = pp_vector Values.pp_ref out !ref
+let pp_elems out ref = pp_vector Values.pp_ref_ out !ref
 
 let pp_blocks_table = pp_vector (pp_vector pp_instr)
 
@@ -422,7 +422,7 @@ let rec pp_admin_instr' out instr =
         block
         index
   | Plain instr -> Format.fprintf out "Plain @[<hv 2>%a@]" pp_instr' instr
-  | Refer ref_ -> Format.fprintf out "Refer @[<hv 2>%a@]" Values.pp_ref ref_
+  | Refer ref_ -> Format.fprintf out "Refer @[<hv 2>%a@]" Values.pp_ref_ ref_
   | Invoke func -> Format.fprintf out "Invoke @[<hv 2>%a@]" pp_func func
   | Trapping msg ->
       Format.fprintf out "Trapping @[<hv 2>%a@]" Format.pp_print_string msg

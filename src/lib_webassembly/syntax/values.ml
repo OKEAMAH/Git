@@ -19,7 +19,7 @@ type ref_ = ..
 
 type ref_ += NullRef of ref_type | ExternRef of int32
 
-let pp_ref out ref =
+let pp_ref_ out ref =
   let pp_int32 out n = Format.fprintf out "%ld" n in
 
   match ref with
