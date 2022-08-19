@@ -810,6 +810,8 @@ and Ty : sig
 
   type 'a s = 'a Michelson_type_constructor.HashConsing(Ty_value).s
 
+  type ('top, 'rest) stack = ('top * 'rest) s
+
   type 'a comparable_ty = ('a, yes) ty
 
   type _ ty_ex_c = Ty_ex_c : ('a, _) ty -> 'a ty_ex_c [@@unboxed]
@@ -972,19 +974,23 @@ and Ty : sig
   val ty_value_traverse :
     ('a, 'ac) ty -> 'a -> 'accu -> 'accu ty_value_traverse -> 'accu
 
-  val bot_t : (empty_cell * empty_cell) s
+  val bot_t : (empty_cell, empty_cell) stack
 
-  val stack_t : ('a, _) ty -> ('top * 'rest) s -> ('a * ('top * 'rest)) s
+  val stack_t : ('a, _) ty -> ('top, 'rest) stack -> ('a, 'top * 'rest) stack
 
-  val stack_top : ('a * ('b * 'r)) s -> 'a ty_ex_c
+  val stack_top : ('a, 'b * 'r) stack -> 'a ty_ex_c
 
-  type 'accu stack_traverse = {apply : 'ty 'r. 'accu -> ('ty * 'r) s -> 'accu}
+  type 'accu stack_traverse = {
+    apply : 'ty 'r. 'accu -> ('ty, 'r) stack -> 'accu;
+  }
 
-  val stack_traverse : ('a * 'r) s -> 'accu -> 'accu stack_traverse -> 'accu
+  val stack_traverse : ('a, 'r) stack -> 'accu -> 'accu stack_traverse -> 'accu
 end = struct
   include Michelson_type_constructor.HashConsing (Ty_value)
 
   type ('a, 'ac) ty = ('a * 'ac) t
+
+  type ('top, 'rest) stack = ('top * 'rest) s
 
   type 'a comparable_ty = ('a, yes) ty
 
@@ -1435,12 +1441,12 @@ end = struct
 
   let chest_t = constant_t Chest_t
 
-  type 'a ty_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'a}
+  type 'a ty_traverse = {apply : 'b 'bc. 'a -> ('b, 'bc) ty -> 'a}
 
   let ty_traverse =
     let rec aux :
         type ret a ac accu.
-        accu ty_traverse -> accu -> (a * ac) t -> (accu -> ret) -> ret =
+        accu ty_traverse -> accu -> (a, ac) ty -> (accu -> ret) -> ret =
      fun f accu ty continue ->
       let accu = f.apply accu ty in
       match ty.value with
@@ -1489,11 +1495,11 @@ end = struct
     in
     fun ty init f -> aux f init ty (fun accu -> accu)
 
-  type 'a ty_value_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'b -> 'a}
+  type 'a ty_value_traverse = {apply : 'b 'bc. 'a -> ('b, 'bc) ty -> 'b -> 'a}
 
-  let ty_value_traverse (type a ac) (ty : (a * ac) t) (x : a) init f =
+  let ty_value_traverse (type a ac) (ty : (a, ac) ty) (x : a) init f =
     let rec aux :
-        type ret a ac. 'accu -> (a * ac) t -> a -> ('accu -> ret) -> ret =
+        type ret a ac. 'accu -> (a, ac) ty -> a -> ('accu -> ret) -> ret =
      fun accu ty x continue ->
       let accu = f.apply accu ty x in
       let next2 ty1 ty2 x1 x2 =
@@ -1585,13 +1591,15 @@ end = struct
 
   let stack_t ty s = Stack.mk ty s W
 
-  let stack_top : type a b r. (a * (b * r)) s -> a ty_ex_c =
+  let stack_top : type a b r. (a, b * r) stack -> a ty_ex_c =
    fun {value = Item_t (t, _); _} -> Ty_ex_c t
 
-  type 'accu stack_traverse = {apply : 'ty 's. 'accu -> ('ty * 's) s -> 'accu}
+  type 'accu stack_traverse = {
+    apply : 'ty 's. 'accu -> ('ty, 's) stack -> 'accu;
+  }
 
-  let stack_traverse (type a r) (sty : (a * r) s) init f =
-    let rec aux : type b u. 'accu -> (b * u) s -> 'accu =
+  let stack_traverse (type a r) (sty : (a, r) stack) init f =
+    let rec aux : type b u. 'accu -> (b, u) stack -> 'accu =
      fun accu sty ->
       match sty.value with
       | Bot_t -> f.apply accu sty
