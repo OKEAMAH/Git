@@ -340,15 +340,6 @@ let pp_table out t =
     (pp_vector pp_ref)
     c
 
-let pp_global_type out (Types.GlobalType (vt, mt)) =
-  Format.fprintf
-    out
-    "GlobalType @[<hv 2>(%a, %a)@]"
-    Types.pp_value_type
-    vt
-    Types.pp_mutability
-    mt
-
 let pp_value_num = pp_value_op pp_int32 pp_int64
 
 let pp_value out = function
@@ -375,7 +366,7 @@ let pp_global out global =
   Format.fprintf
     out
     "@[<hv 2>{ty = %a;@; content = %a}@]"
-    pp_global_type
+    Types.pp_global_type
     ty
     pp_value
     content
