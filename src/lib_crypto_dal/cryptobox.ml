@@ -417,6 +417,60 @@ module Inner = struct
       ~scratch_zone:t.scratch_zone ;
     coefficients
 
+  let evaluation_fft_2k t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:12
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2
+           (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int 19))
+           (2 * 2048))
+      ~domain2:
+        (make_domain2
+           (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int (2 * 2048)))
+           19)
+      ~coefficients
+      ~inverse:false
+      ~scratch_zone:t.scratch_zone ;
+    coefficients
+
+  let interpolation_fft_2k t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:12
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2
+           Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
+           (2 * 2048))
+      ~domain2:
+        (make_domain2
+           Scalar.(
+             inverse_exn
+               (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
+           19)
+      ~coefficients
+      ~inverse:true
+      ~scratch_zone:t.scratch_zone ;
+    coefficients
+
+  let resize' s p ps =
+    let res = Scalar_array.allocate s in
+    Scalar_array.blit p ~src_off:0 res ~dst_off:0 ~len:ps ;
+    res
+
+  let fft_mul2k_2' t a b =
+    let a = resize' (2 * t.k) a (Scalar_array.length a) in
+    let b = resize' (2 * t.k) b (Scalar_array.length b) in
+    let eval_a = evaluation_fft_2k t a in
+    let eval_b = evaluation_fft_2k t b in
+    for i = 0 to (2 * t.k) - 1 do
+      Scalar_array.set
+        eval_a
+        (Scalar.mul (Scalar_array.get eval_a i) (Scalar_array.get eval_b i))
+        i
+    done ;
+    interpolation_fft_2k t eval_a
+
   let ensure_validity t =
     let open Result_syntax in
     let srs_size = Srs_g1.size t.srs.raw.srs_g1 in
@@ -811,11 +865,6 @@ module Inner = struct
     in
     Ok n_poly
 
-  let resize' s p ps =
-    let res = Scalar_array.allocate s in
-    Scalar_array.blit p ~src_off:0 res ~dst_off:0 ~len:ps ;
-    res
-
   let polynomial_from_shards t shards =
     let open Result_syntax in
     if t.k > IntMap.cardinal shards * t.shard_size then
@@ -924,14 +973,19 @@ module Inner = struct
 
       (* 6. Computing Lagrange interpolation polynomial P(x). *)
       (*let p = fft_mul t.domain_2k [a_poly; b] in*)
+      (*let p =
+          fft_mul2k_2
+            t
+            (Polynomials.to_dense_coefficients a_poly)
+            (Polynomials.to_dense_coefficients b)
+          |> Polynomials.of_dense
+        in
+        let p = Polynomials.copy ~len:t.k p in*)
       let p =
-        fft_mul2k_2
-          t
-          (Polynomials.to_dense_coefficients a_poly)
-          (Polynomials.to_dense_coefficients b)
-        |> Polynomials.of_dense
+        fft_mul2k_2' t (Polynomials.to_carray a_poly) (Polynomials.to_carray b)
+        |> Scalar_array.copy ~len:t.k |> Polynomials.of_carray
       in
-      let p = Polynomials.copy ~len:t.k p in
+
       Polynomials.opposite_inplace p ;
       Ok p
 
