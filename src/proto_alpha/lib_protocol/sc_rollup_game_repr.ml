@@ -903,7 +903,8 @@ let play dal_parameters ~dal_attestation_lag ~stakers metadata game refutation =
 let cost_play ~number_of_sections game refutation =
   let open Gas_limit_repr in
   (* The gas cost is defined over the structure of [play]. *)
-  Sc_rollup_costs.cost_find_choice ~number_of_sections
+  let tick_size = Sc_rollup_tick_repr.size_in_bytes refutation.choice in
+  Sc_rollup_costs.cost_find_choice ~number_of_sections ~tick_size
   +@
   match refutation.step with
   | Dissection states ->

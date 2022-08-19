@@ -150,6 +150,10 @@ let cost_check_dissection ~number_of_states:_ =
   (* FIXME: To be changed in forthcoming commits. *)
   S.safe_int 0
 
-let cost_find_choice ~number_of_sections:_ =
-  (* FIXME: To be changed in forthcoming commits. *)
-  S.safe_int 0
+let cost_find_choice ~number_of_sections ~tick_size =
+  let open S_syntax in
+  let cost_comparison_with_tick =
+    let v0 = S.safe_int tick_size in
+    S.safe_int 35 + ((v0 lsr 6) + (v0 lsr 7))
+  in
+  S.safe_int number_of_sections * cost_comparison_with_tick

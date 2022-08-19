@@ -59,6 +59,10 @@ val of_number_of_ticks : Sc_rollup_repr.Number_of_ticks.t -> t
 
 val of_z : Z.t -> t
 
+(** [size_in_bytes tick] is the size in bytes of [tick] internal
+   representation. This function is used by the gas model. *)
+val size_in_bytes : t -> int
+
 val encoding : t Data_encoding.t
 
 val pp : Format.formatter -> t -> unit
