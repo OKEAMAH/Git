@@ -30,6 +30,12 @@ let pp_int32 out n = Format.fprintf out "%ld" n
 
 let pp_int64 out n = Format.fprintf out "%Ld" n
 
+let pp_f32 _out _f32 =
+  Stdlib.failwith "32bit floating point values are not supported"
+
+let pp_f64 _out _f64 =
+  Stdlib.failwith "64bit floating point values are not supported"
+
 let pp_var = Source.pp_phrase pp_int32
 
 let pp_list pp out x =
@@ -66,12 +72,7 @@ let pp_memop pp_ty pp_pack out {Ast.ty; align; pack; offset} =
 
 let pp_vec_store_op = pp_memop Types.pp_vec_type pp_unit
 
-let pp_value_op pp_int32 pp_int64 out = function
-  | Values.I32 x -> pp_int32 out x
-  | I64 x -> pp_int64 out x
-  | _ -> Stdlib.failwith "Floating point values are not supported"
-
-let pp_num = Source.pp_phrase (pp_value_op pp_int32 pp_int64)
+let pp_num = Source.pp_phrase (Values.pp_op pp_int32 pp_int64 pp_f32 pp_f64)
 
 let pp_int_relop out op =
   Format.pp_print_string
@@ -300,7 +301,7 @@ let pp_table out t =
     (pp_vector Values.pp_ref_)
     c
 
-let pp_value_num = pp_value_op pp_int32 pp_int64
+let pp_value_num = Values.pp_op pp_int32 pp_int64 pp_f32 pp_f64
 
 let pp_value out = function
   | Values.Num n -> Format.fprintf out "Num %a" pp_value_num n
