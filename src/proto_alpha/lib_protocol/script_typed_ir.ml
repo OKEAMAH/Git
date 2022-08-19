@@ -65,38 +65,6 @@ type never = |
 
 type address = {destination : Destination.t; entrypoint : Entrypoint.t}
 
-module Id = struct
-  type _ id = ..
-
-  module type SGen = sig
-    type u
-
-    type _ id += Self : u id
-  end
-
-  module Gen (X : sig
-    type u
-  end) : SGen with type u = X.u = struct
-    type u = X.u
-
-    type _ id += Self : X.u id
-  end
-
-  type 'a gid = (module SGen with type u = 'a)
-
-  let eq_id : type a b. a gid -> b gid -> (a, b) eq option =
-   fun (module G) (module O) ->
-    match G.Self with O.Self -> Some Eq | _ -> None
-
-  let gen (type a) () : a gid =
-    (module Gen (struct
-      type u = a
-    end) : SGen
-      with type u = a)
-
-  type xid = Xid : 'a gid -> xid
-end
-
 module Script_signature = struct
   type t = Signature_tag of signature [@@ocaml.unboxed]
 
@@ -461,8 +429,781 @@ type 'arg entrypoints = {
   original_type_expr : Script.node;
 }
 
+type ('arg, 'ret) lambda = Something
+
+type ('k, 'v) big_map = Something
+
+type 'arg typed_contract = Something
+
+type operation = Something
+
+module rec Ty_value : sig
+  type _ t =
+    | Unit_t : (unit * yes) t
+    | Int_t : (z num * yes) t
+    | Nat_t : (n num * yes) t
+    | Signature_t : (signature * yes) t
+    | String_t : (Script_string.t * yes) t
+    | Bytes_t : (bytes * yes) t
+    | Mutez_t : (Tez.t * yes) t
+    | Key_hash_t : (public_key_hash * yes) t
+    | Key_t : (public_key * yes) t
+    | Timestamp_t : (Script_timestamp.t * yes) t
+    | Address_t : (address * yes) t
+    | Tx_rollup_l2_address_t : (tx_rollup_l2_address * yes) t
+    | Bool_t : (bool * yes) t
+    | Pair_t :
+        ('a * 'ac) Ty.t
+        * ('b * 'bc) Ty.t
+        * ('a, 'b) pair ty_metadata
+        * ('ac, 'bc, 'rc) dand
+        -> (('a, 'b) pair * 'rc) t
+    | Union_t :
+        ('a * 'ac) Ty.t
+        * ('b * 'bc) Ty.t
+        * ('a, 'b) union ty_metadata
+        * ('ac, 'bc, 'rc) dand
+        -> (('a, 'b) union * 'rc) t
+    | Lambda_t :
+        ('arg * _) Ty.t * ('ret * _) Ty.t * ('arg, 'ret) lambda ty_metadata
+        -> (('arg, 'ret) lambda * no) t
+    | Option_t :
+        ('v * 'c) Ty.t * 'v option ty_metadata * 'c dbool
+        -> ('v option * 'c) t
+    | List_t :
+        ('v * _) Ty.t * 'v boxed_list ty_metadata
+        -> ('v boxed_list * no) t
+    | Set_t : ('v * yes) Ty.t * 'v set ty_metadata -> ('v set * no) t
+    | Map_t :
+        ('k * yes) Ty.t * ('v * _) Ty.t * ('k, 'v) map ty_metadata
+        -> (('k, 'v) map * no) t
+    | Big_map_t :
+        ('k * yes) Ty.t * ('v * _) Ty.t * ('k, 'v) big_map ty_metadata
+        -> (('k, 'v) big_map * no) t
+    | Contract_t :
+        ('arg * _) Ty.t * 'arg typed_contract ty_metadata
+        -> ('arg typed_contract * no) t
+    | Sapling_transaction_t :
+        Sapling.Memo_size.t
+        -> (Sapling.transaction * no) t
+    | Sapling_transaction_deprecated_t :
+        Sapling.Memo_size.t
+        -> (Sapling.Legacy.transaction * no) t
+    | Sapling_state_t : Sapling.Memo_size.t -> (Sapling.state * no) t
+    | Operation_t : (operation * no) t
+    | Chain_id_t : (Script_chain_id.t * yes) t
+    | Never_t : (never * yes) t
+    | Bls12_381_g1_t : (Script_bls.G1.t * no) t
+    | Bls12_381_g2_t : (Script_bls.G2.t * no) t
+    | Bls12_381_fr_t : (Script_bls.Fr.t * no) t
+    | Ticket_t : ('a * yes) Ty.t * 'a ticket ty_metadata -> ('a ticket * no) t
+    | Chest_key_t : (Script_timelock.chest_key * no) t
+    | Chest_t : (Script_timelock.chest * no) t
+
+  val is_comparable : ('v * 'c) t -> 'c dbool
+end = struct
+  type _ t =
+    | Unit_t : (unit * yes) t
+    | Int_t : (z num * yes) t
+    | Nat_t : (n num * yes) t
+    | Signature_t : (signature * yes) t
+    | String_t : (Script_string.t * yes) t
+    | Bytes_t : (bytes * yes) t
+    | Mutez_t : (Tez.t * yes) t
+    | Key_hash_t : (public_key_hash * yes) t
+    | Key_t : (public_key * yes) t
+    | Timestamp_t : (Script_timestamp.t * yes) t
+    | Address_t : (address * yes) t
+    | Tx_rollup_l2_address_t : (tx_rollup_l2_address * yes) t
+    | Bool_t : (bool * yes) t
+    | Pair_t :
+        ('a * 'ac) Ty.t
+        * ('b * 'bc) Ty.t
+        * ('a, 'b) pair ty_metadata
+        * ('ac, 'bc, 'rc) dand
+        -> (('a, 'b) pair * 'rc) t
+    | Union_t :
+        ('a * 'ac) Ty.t
+        * ('b * 'bc) Ty.t
+        * ('a, 'b) union ty_metadata
+        * ('ac, 'bc, 'rc) dand
+        -> (('a, 'b) union * 'rc) t
+    | Lambda_t :
+        ('arg * _) Ty.t * ('ret * _) Ty.t * ('arg, 'ret) lambda ty_metadata
+        -> (('arg, 'ret) lambda * no) t
+    | Option_t :
+        ('v * 'c) Ty.t * 'v option ty_metadata * 'c dbool
+        -> ('v option * 'c) t
+    | List_t :
+        ('v * _) Ty.t * 'v boxed_list ty_metadata
+        -> ('v boxed_list * no) t
+    | Set_t : ('v * yes) Ty.t * 'v set ty_metadata -> ('v set * no) t
+    | Map_t :
+        ('k * yes) Ty.t * ('v * _) Ty.t * ('k, 'v) map ty_metadata
+        -> (('k, 'v) map * no) t
+    | Big_map_t :
+        ('k * yes) Ty.t * ('v * _) Ty.t * ('k, 'v) big_map ty_metadata
+        -> (('k, 'v) big_map * no) t
+    | Contract_t :
+        ('arg * _) Ty.t * 'arg typed_contract ty_metadata
+        -> ('arg typed_contract * no) t
+    | Sapling_transaction_t :
+        Sapling.Memo_size.t
+        -> (Sapling.transaction * no) t
+    | Sapling_transaction_deprecated_t :
+        Sapling.Memo_size.t
+        -> (Sapling.Legacy.transaction * no) t
+    | Sapling_state_t : Sapling.Memo_size.t -> (Sapling.state * no) t
+    | Operation_t : (operation * no) t
+    | Chain_id_t : (Script_chain_id.t * yes) t
+    | Never_t : (never * yes) t
+    | Bls12_381_g1_t : (Script_bls.G1.t * no) t
+    | Bls12_381_g2_t : (Script_bls.G2.t * no) t
+    | Bls12_381_fr_t : (Script_bls.Fr.t * no) t
+    | Ticket_t : ('a * yes) Ty.t * 'a ticket ty_metadata -> ('a ticket * no) t
+    | Chest_key_t : (Script_timelock.chest_key * no) t
+    | Chest_t : (Script_timelock.chest * no) t
+
+  let is_comparable : type v c. (v * c) t -> c dbool = function
+    | Unit_t -> Yes
+    | Int_t -> Yes
+    | Nat_t -> Yes
+    | Signature_t -> Yes
+    | String_t -> Yes
+    | Bytes_t -> Yes
+    | Mutez_t -> Yes
+    | Key_hash_t -> Yes
+    | Key_t -> Yes
+    | Timestamp_t -> Yes
+    | Address_t -> Yes
+    | Tx_rollup_l2_address_t -> Yes
+    | Bool_t -> Yes
+    | Pair_t (_, _, _, dand) -> dbool_of_dand dand
+    | Union_t (_, _, _, dand) -> dbool_of_dand dand
+    | Lambda_t _ -> No
+    | Option_t (_, _, cmp) -> cmp
+    | List_t _ -> No
+    | Set_t _ -> No
+    | Map_t _ -> No
+    | Big_map_t _ -> No
+    | Contract_t _ -> No
+    | Sapling_transaction_t _ -> No
+    | Sapling_transaction_deprecated_t _ -> No
+    | Sapling_state_t _ -> No
+    | Operation_t -> No
+    | Chain_id_t -> Yes
+    | Never_t -> Yes
+    | Bls12_381_g1_t -> No
+    | Bls12_381_g2_t -> No
+    | Bls12_381_fr_t -> No
+    | Ticket_t _ -> No
+    | Chest_key_t -> No
+    | Chest_t -> No
+end
+
+and Ty : sig
+  type 'a t = 'a Michelson_type_constructor.HashConsing(Ty_value).t
+
+  type _ ty_ex_c = Ty_ex_c : ('a * _) t -> 'a ty_ex_c [@@unboxed]
+
+  val is_comparable : ('v * 'c) t -> 'c dbool
+
+  val ty_size : ('v * _) t -> 'v Type_size.t
+
+  val unit_t : (unit * yes) t
+
+  val int_t : (z num * yes) t
+
+  val nat_t : (n num * yes) t
+
+  val signature_t : (signature * yes) t
+
+  val string_t : (Script_string.t * yes) t
+
+  val bytes_t : (bytes * yes) t
+
+  val mutez_t : (Tez.t * yes) t
+
+  val key_hash_t : (public_key_hash * yes) t
+
+  val key_t : (public_key * yes) t
+
+  val timestamp_t : (Script_timestamp.t * yes) t
+
+  val address_t : (address * yes) t
+
+  val tx_rollup_l2_address_t : (tx_rollup_l2_address * yes) t
+
+  val bool_t : (bool * yes) t
+
+  val pair_t :
+    Script.location ->
+    ('a * _) t ->
+    ('b * _) t ->
+    ('a, 'b) pair ty_ex_c tzresult
+
+  val pair_3_t :
+    Script.location ->
+    ('a * _) t ->
+    ('b * _) t ->
+    ('c * _) t ->
+    ('a, ('b, 'c) pair) pair ty_ex_c tzresult
+
+  val comparable_pair_t :
+    Script.location ->
+    ('a * yes) t ->
+    ('b * yes) t ->
+    (('a, 'b) pair * yes) t tzresult
+
+  val comparable_pair_3_t :
+    Script.location ->
+    ('a * yes) t ->
+    ('b * yes) t ->
+    ('c * yes) t ->
+    (('a, ('b, 'c) pair) pair * yes) t tzresult
+
+  val union_t :
+    Script.location ->
+    ('a * _) t ->
+    ('b * _) t ->
+    ('a, 'b) union ty_ex_c tzresult
+
+  val comparable_union_t :
+    Script.location ->
+    ('a * yes) t ->
+    ('b * yes) t ->
+    (('a, 'b) union * yes) t tzresult
+
+  val union_bytes_bool_t : ((bytes, bool) union, yes) ty
+
+  val lambda_t :
+    Script.location ->
+    ('arg * _) t ->
+    ('ret * _) t ->
+    (('arg, 'ret) lambda * no) t tzresult
+
+  val option_t : Script.location -> ('v * 'c) t -> ('v option * 'c) t tzresult
+
+  val comparable_option_t :
+    Script.location -> ('v * yes) t -> ('v option * yes) t tzresult
+
+  val option_mutez_t : (Tez.t option * yes) t
+
+  val option_string_t : (Script_string.t option * yes) t
+
+  val option_bytes_t : (Bytes.t option * yes) t
+
+  val option_nat_t : (n num option * yes) t
+
+  val option_pair_nat_nat_t : ((n num, n num) pair option * yes) t
+
+  val option_pair_nat_mutez_t : ((n num, Tez.t) pair option * yes) t
+
+  val option_pair_mutez_mutez_t : ((Tez.t, Tez.t) pair option * yes) t
+
+  val option_pair_int_nat_t : ((z num, n num) pair option * yes) t
+
+  val list_t : Script.location -> ('v * _) t -> ('v boxed_list * no) t tzresult
+
+  val operation_t : (operation * no) t
+
+  val list_operation_t : (operation boxed_list * no) t
+
+  val set_t : Script.location -> ('v * yes) t -> ('v set * no) t tzresult
+
+  val map_t :
+    Script.location ->
+    ('k * yes) t ->
+    ('v * _) t ->
+    (('k, 'v) map * no) t tzresult
+
+  val big_map_t :
+    Script.location ->
+    ('k * yes) t ->
+    ('v * _) t ->
+    (('k, 'v) big_map * no) t tzresult
+
+  val contract_t :
+    Script.location -> ('arg * _) t -> ('arg typed_contract * no) t tzresult
+
+  val contract_unit_t : (unit typed_contract * no) t
+
+  val sapling_transaction_t :
+    memo_size:Sapling.Memo_size.t -> (Sapling.transaction * no) t
+
+  val sapling_transaction_deprecated_t :
+    memo_size:Sapling.Memo_size.t -> (Sapling.Legacy.transaction * no) t
+
+  val sapling_state_t : memo_size:Sapling.Memo_size.t -> (Sapling.state * no) t
+
+  val chain_id_t : (Script_chain_id.t * yes) t
+
+  val never_t : (never * yes) t
+
+  val bls12_381_g1_t : (Script_bls.G1.t * no) t
+
+  val bls12_381_g2_t : (Script_bls.G2.t * no) t
+
+  val bls12_381_fr_t : (Script_bls.Fr.t * no) t
+
+  val ticket_t :
+    Script.location -> ('arg * yes) t -> ('arg ticket * no) t tzresult
+
+  val chest_key_t : (Script_timelock.chest_key * no) t
+
+  val chest_t : (Script_timelock.chest * no) t
+end = struct
+  include Michelson_type_constructor.HashConsing (Ty_value)
+
+  type _ ty_ex_c = Ty_ex_c : ('a * _) t -> 'a ty_ex_c [@@unboxed]
+
+  let is_comparable {value; _} = Ty_value.is_comparable value
+
+  let ty_size : type v c. (v * c) t -> v Type_size.t =
+   fun {value; _} ->
+    match value with
+    | Unit_t | Never_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t
+    | Mutez_t | Bool_t | Key_hash_t | Key_t | Timestamp_t | Chain_id_t
+    | Address_t | Tx_rollup_l2_address_t ->
+        Type_size.one
+    | Pair_t (_, _, meta, _) -> meta.size
+    | Union_t (_, _, meta, _) -> meta.size
+    | Option_t (_, meta, _) -> meta.size
+    | Lambda_t (_, _, meta) -> meta.size
+    | List_t (_, meta) -> meta.size
+    | Set_t (_, meta) -> meta.size
+    | Map_t (_, _, meta) -> meta.size
+    | Big_map_t (_, _, meta) -> meta.size
+    | Ticket_t (_, meta) -> meta.size
+    | Contract_t (_, meta) -> meta.size
+    | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
+    | Sapling_state_t _ | Operation_t | Bls12_381_g1_t | Bls12_381_g2_t
+    | Bls12_381_fr_t | Chest_t | Chest_key_t ->
+        Type_size.one
+
+  let unit_t = constant Unit_t
+
+  let int_t = constant Int_t
+
+  let nat_t = constant Nat_t
+
+  let signature_t = constant Signature_t
+
+  let string_t = constant String_t
+
+  let bytes_t = constant Bytes_t
+
+  let mutez_t = constant Mutez_t
+
+  let key_hash_t = constant Key_hash_t
+
+  let key_t = constant Key_t
+
+  let timestamp_t = constant Timestamp_t
+
+  let address_t = constant Address_t
+
+  let tx_rollup_l2_address_t = constant Tx_rollup_l2_address_t
+
+  let bool_t = constant Bool_t
+
+  module Pair_Input = struct
+    type (_, _, _) witness =
+      | W :
+          ('a, 'b) pair ty_metadata * ('ac, 'bc, 'rc) dand
+          -> ('a * 'ac, 'b * 'bc, ('a, 'b) pair * 'rc) witness
+
+    let witness_is_a_function :
+        type a b c1 c2.
+        (a, b, c1) witness ->
+        (a, b, c2) witness ->
+        (c1, c2) Michelson_type_constructor.eq =
+     fun (W (_m1, d1)) (W (_m2, d2)) ->
+      let Eq = merge_dand d1 d2 in
+      Michelson_type_constructor.Refl
+
+    let mk : type a b c. a t -> b t -> (a, b, c) witness -> c Ty_value.t =
+     fun i1 i2 (W (m, d)) -> Ty_value.Pair_t (i1, i2, m, d)
+  end
+
+  module Pair = Parametric2 (Pair_Input)
+
+  let pair_t loc i1 i2 =
+    let open Result_syntax in
+    let+ size = Type_size.compound2 loc (ty_size i1) (ty_size i2) in
+    let m = {size} in
+    let (Ex_dand d) = dand (is_comparable i1) (is_comparable i2) in
+    Ty_ex_c (Pair.mk i1 i2 (W (m, d)))
+
+  let pair_3_t loc i1 i2 i3 =
+    let open Result_syntax in
+    let* (Ty_ex_c i2) = pair_t loc i2 i3 in
+    pair_t loc i1 i2
+
+  let comparable_pair_t loc i1 i2 =
+    let open Result_syntax in
+    let+ size = Type_size.compound2 loc (ty_size i1) (ty_size i2) in
+    let m = {size} in
+    Pair.mk i1 i2 (W (m, YesYes))
+
+  let comparable_pair_3_t loc i1 i2 i3 =
+    let open Result_syntax in
+    let* i2 = comparable_pair_t loc i2 i3 in
+    comparable_pair_t loc i1 i2
+
+  module Union_Input = struct
+    type (_, _, _) witness =
+      | W :
+          ('a, 'b) union ty_metadata * ('ac, 'bc, 'rc) dand
+          -> ('a * 'ac, 'b * 'bc, ('a, 'b) union * 'rc) witness
+
+    let witness_is_a_function :
+        type a b c1 c2.
+        (a, b, c1) witness ->
+        (a, b, c2) witness ->
+        (c1, c2) Michelson_type_constructor.eq =
+     fun (W (_m1, d1)) (W (_m2, d2)) ->
+      let Eq = merge_dand d1 d2 in
+      Michelson_type_constructor.Refl
+
+    let mk : type a b c. a t -> b t -> (a, b, c) witness -> c Ty_value.t =
+     fun i1 i2 (W (m, d)) -> Ty_value.Union_t (i1, i2, m, d)
+  end
+
+  module Union = Parametric2 (Union_Input)
+
+  let union_t loc i1 i2 =
+    let open Result_syntax in
+    let+ size = Type_size.compound2 loc (ty_size i1) (ty_size i2) in
+    let m = {size} in
+    let (Ex_dand d) = dand (is_comparable i1) (is_comparable i2) in
+    Ty_ex_c (Union.mk i1 i2 (W (m, d)))
+
+  let comparable_union_t loc i1 i2 =
+    let open Result_syntax in
+    let+ size = Type_size.compound2 loc (ty_size i1) (ty_size i2) in
+    let m = {size} in
+    Union.mk i1 i2 (W (m, YesYes))
+
+  let union_bytes_bool_t =
+    let size = Type_size.three in
+    let m = {size} in
+    Union.mk bytes_t bool_t (W (m, YesYes))
+
+  module Lambda_Input = struct
+    type (_, _, _) witness =
+      | W :
+          ('a, 'b) lambda ty_metadata
+          -> ('a * _, 'b * _, ('a, 'b) lambda * no) witness
+    [@@unboxed]
+
+    let witness_is_a_function :
+        type a b c1 c2.
+        (a, b, c1) witness ->
+        (a, b, c2) witness ->
+        (c1, c2) Michelson_type_constructor.eq =
+     fun (W _m1) (W _m2) -> Michelson_type_constructor.Refl
+
+    let mk : type a b c. a t -> b t -> (a, b, c) witness -> c Ty_value.t =
+     fun i1 i2 (W m) -> Ty_value.Lambda_t (i1, i2, m)
+  end
+
+  module Lambda = Parametric2 (Lambda_Input)
+
+  let lambda_t loc i1 i2 =
+    let open Result_syntax in
+    let+ size = Type_size.compound2 loc (ty_size i1) (ty_size i2) in
+    let m = {size} in
+    Lambda.mk i1 i2 (W m)
+
+  module Option_Input = struct
+    type (_, _) witness =
+      | W : 'a option ty_metadata -> ('a * 'ac, 'a option * 'ac) witness
+    [@@unboxed]
+
+    let witness_is_a_function :
+        type a b1 b2.
+        (a, b1) witness ->
+        (a, b2) witness ->
+        (b1, b2) Michelson_type_constructor.eq =
+     fun (W _m1) (W _m2) -> Michelson_type_constructor.Refl
+
+    let mk : type a b. a t -> (a, b) witness -> b Ty_value.t =
+     fun i (W m) -> Ty_value.Option_t (i, m, is_comparable i)
+  end
+
+  module Option = Parametric1 (Option_Input)
+
+  let option_t loc i =
+    let open Result_syntax in
+    let+ size = Type_size.compound1 loc (ty_size i) in
+    let m = {size} in
+    Option.mk i (W m)
+
+  let comparable_option_t = option_t
+
+  let option_mutez_t =
+    let size = Type_size.two in
+    let m = {size} in
+    Option.mk mutez_t (W m)
+
+  let option_string_t =
+    let size = Type_size.two in
+    let m = {size} in
+    Option.mk string_t (W m)
+
+  let option_bytes_t =
+    let size = Type_size.two in
+    let m = {size} in
+    Option.mk bytes_t (W m)
+
+  let option_nat_t =
+    let size = Type_size.two in
+    let m = {size} in
+    Option.mk nat_t (W m)
+
+  let option_pair_nat_nat_t =
+    let size = Type_size.three in
+    let m = {size} in
+    let pair_nat_nat_t = Pair.mk nat_t nat_t (W (m, YesYes)) in
+    let size = Type_size.four in
+    let m = {size} in
+    Option.mk pair_nat_nat_t (W m)
+
+  let option_pair_nat_mutez_t =
+    let size = Type_size.three in
+    let m = {size} in
+    let pair_nat_mutez_t = Pair.mk nat_t mutez_t (W (m, YesYes)) in
+    let size = Type_size.four in
+    let m = {size} in
+    Option.mk pair_nat_mutez_t (W m)
+
+  let option_pair_mutez_mutez_t =
+    let size = Type_size.three in
+    let m = {size} in
+    let pair_mutez_mutez_t = Pair.mk mutez_t mutez_t (W (m, YesYes)) in
+    let size = Type_size.four in
+    let m = {size} in
+    Option.mk pair_mutez_mutez_t (W m)
+
+  let option_pair_int_nat_t =
+    let size = Type_size.three in
+    let m = {size} in
+    let pair_int_nat_t = Pair.mk int_t nat_t (W (m, YesYes)) in
+    let size = Type_size.four in
+    let m = {size} in
+    Option.mk pair_int_nat_t (W m)
+
+  module List_Input = struct
+    type (_, _) witness =
+      | W : 'a boxed_list ty_metadata -> ('a * _, 'a boxed_list * no) witness
+    [@@unboxed]
+
+    let witness_is_a_function :
+        type a b1 b2.
+        (a, b1) witness ->
+        (a, b2) witness ->
+        (b1, b2) Michelson_type_constructor.eq =
+     fun (W _m1) (W _m2) -> Michelson_type_constructor.Refl
+
+    let mk : type a b. a t -> (a, b) witness -> b Ty_value.t =
+     fun i (W m) -> Ty_value.List_t (i, m)
+  end
+
+  module List = Parametric1 (List_Input)
+
+  let list_t loc i =
+    let open Result_syntax in
+    let+ size = Type_size.compound1 loc (ty_size i) in
+    let m = {size} in
+    List.mk i (W m)
+
+  let operation_t = constant Operation_t
+
+  let list_operation_t =
+    let size = Type_size.two in
+    let m = {size} in
+    List.mk operation_t (W m)
+
+  module Set_Input = struct
+    type (_, _) witness =
+      | W : 'a set ty_metadata -> ('a * yes, 'a set * no) witness
+    [@@unboxed]
+
+    let witness_is_a_function :
+        type a b1 b2.
+        (a, b1) witness ->
+        (a, b2) witness ->
+        (b1, b2) Michelson_type_constructor.eq =
+     fun (W _m1) (W _m2) -> Michelson_type_constructor.Refl
+
+    let mk : type a b. a t -> (a, b) witness -> b Ty_value.t =
+     fun i (W m) -> Ty_value.Set_t (i, m)
+  end
+
+  module Set = Parametric1 (Set_Input)
+
+  let set_t loc i =
+    let open Result_syntax in
+    let+ size = Type_size.compound1 loc (ty_size i) in
+    let m = {size} in
+    Set.mk i (W m)
+
+  module Map_Input = struct
+    type (_, _, _) witness =
+      | W :
+          ('a, 'b) map ty_metadata
+          -> ('a * yes, 'b * _, ('a, 'b) map * no) witness
+    [@@unboxed]
+
+    let witness_is_a_function :
+        type a b c1 c2.
+        (a, b, c1) witness ->
+        (a, b, c2) witness ->
+        (c1, c2) Michelson_type_constructor.eq =
+     fun (W _m1) (W _m2) -> Michelson_type_constructor.Refl
+
+    let mk : type a b c. a t -> b t -> (a, b, c) witness -> c Ty_value.t =
+     fun i1 i2 (W m) -> Ty_value.Map_t (i1, i2, m)
+  end
+
+  module Map = Parametric2 (Map_Input)
+
+  let map_t loc i1 i2 =
+    let open Result_syntax in
+    let+ size = Type_size.compound2 loc (ty_size i1) (ty_size i2) in
+    let m = {size} in
+    Map.mk i1 i2 (W m)
+
+  module Big_map_Input = struct
+    type (_, _, _) witness =
+      | W :
+          ('a, 'b) big_map ty_metadata
+          -> ('a * yes, 'b * _, ('a, 'b) big_map * no) witness
+    [@@unboxed]
+
+    let witness_is_a_function :
+        type a b c1 c2.
+        (a, b, c1) witness ->
+        (a, b, c2) witness ->
+        (c1, c2) Michelson_type_constructor.eq =
+     fun (W _m1) (W _m2) -> Michelson_type_constructor.Refl
+
+    let mk : type a b c. a t -> b t -> (a, b, c) witness -> c Ty_value.t =
+     fun i1 i2 (W m) -> Ty_value.Big_map_t (i1, i2, m)
+  end
+
+  module Big_map = Parametric2 (Big_map_Input)
+
+  let big_map_t loc i1 i2 =
+    let open Result_syntax in
+    let+ size = Type_size.compound2 loc (ty_size i1) (ty_size i2) in
+    let m = {size} in
+    Big_map.mk i1 i2 (W m)
+
+  module Contract_Input = struct
+    type (_, _) witness =
+      | W :
+          'a typed_contract ty_metadata
+          -> ('a * _, 'a typed_contract * no) witness
+    [@@unboxed]
+
+    let witness_is_a_function :
+        type a b1 b2.
+        (a, b1) witness ->
+        (a, b2) witness ->
+        (b1, b2) Michelson_type_constructor.eq =
+     fun (W _m1) (W _m2) -> Michelson_type_constructor.Refl
+
+    let mk : type a b. a t -> (a, b) witness -> b Ty_value.t =
+     fun i (W m) -> Ty_value.Contract_t (i, m)
+  end
+
+  module Contract = Parametric1 (Contract_Input)
+
+  let contract_t loc i =
+    let open Result_syntax in
+    let+ size = Type_size.compound1 loc (ty_size i) in
+    let m = {size} in
+    Contract.mk i (W m)
+
+  let contract_unit_t =
+    let size = Type_size.two in
+    let m = {size} in
+    Contract.mk unit_t (W m)
+
+  module Sapling_transaction = Parametric1_Type (struct
+    type t = Sapling.Memo_size.t
+
+    type v = Sapling.transaction * no
+
+    let mk i = Ty_value.Sapling_transaction_t i
+  end)
+
+  let sapling_transaction_t ~memo_size:i = Sapling_transaction.mk i
+
+  module Sapling_transaction_deprecated = Parametric1_Type (struct
+    type t = Sapling.Memo_size.t
+
+    type v = Sapling.Legacy.transaction * no
+
+    let mk i = Ty_value.Sapling_transaction_deprecated_t i
+  end)
+
+  let sapling_transaction_deprecated_t ~memo_size:i =
+    Sapling_transaction_deprecated.mk i
+
+  module Sapling_state = Parametric1_Type (struct
+    type t = Sapling.Memo_size.t
+
+    type v = Sapling.state * no
+
+    let mk i = Ty_value.Sapling_state_t i
+  end)
+
+  let sapling_state_t ~memo_size:i = Sapling_state.mk i
+
+  let chain_id_t = constant Chain_id_t
+
+  let never_t = constant Never_t
+
+  let bls12_381_g1_t = constant Bls12_381_g1_t
+
+  let bls12_381_g2_t = constant Bls12_381_g2_t
+
+  let bls12_381_fr_t = constant Bls12_381_fr_t
+
+  module Ticket_Input = struct
+    type (_, _) witness =
+      | W : 'a ticket ty_metadata -> ('a * yes, 'a ticket * no) witness
+    [@@unboxed]
+
+    let witness_is_a_function :
+        type a b1 b2.
+        (a, b1) witness ->
+        (a, b2) witness ->
+        (b1, b2) Michelson_type_constructor.eq =
+     fun (W _m1) (W _m2) -> Michelson_type_constructor.Refl
+
+    let mk : type a b. a t -> (a, b) witness -> b Ty_value.t =
+     fun i (W m) -> Ty_value.Ticket_t (i, m)
+  end
+
+  module Ticket = Parametric1 (Ticket_Input)
+
+  let ticket_t loc i =
+    let open Result_syntax in
+    let+ size = Type_size.compound1 loc (ty_size i) in
+    let m = {size} in
+    Ticket.mk i (W m)
+
+  let chest_key_t = constant Chest_key_t
+
+  let chest_t = constant Chest_t
+end
+
 (* ---- Instructions --------------------------------------------------------*)
-and ('before_top, 'before, 'result_top, 'result) kinstr =
+type ('before_top, 'before, 'result_top, 'result) kinstr =
   (*
      Stack
      -----
@@ -1222,78 +1963,6 @@ and logger = {
   get_log : unit -> execution_trace option tzresult Lwt.t;
 }
 
-(* ---- Auxiliary types -----------------------------------------------------*)
-and ('ty, 'comparable) ty_value =
-  | Unit_t : (unit, yes) ty_value
-  | Int_t : (z num, yes) ty_value
-  | Nat_t : (n num, yes) ty_value
-  | Signature_t : (signature, yes) ty_value
-  | String_t : (Script_string.t, yes) ty_value
-  | Bytes_t : (bytes, yes) ty_value
-  | Mutez_t : (Tez.t, yes) ty_value
-  | Key_hash_t : (public_key_hash, yes) ty_value
-  | Key_t : (public_key, yes) ty_value
-  | Timestamp_t : (Script_timestamp.t, yes) ty_value
-  | Address_t : (address, yes) ty_value
-  | Tx_rollup_l2_address_t : (tx_rollup_l2_address, yes) ty_value
-  | Bool_t : (bool, yes) ty_value
-  | Pair_t :
-      ('a, 'ac) ty
-      * ('b, 'bc) ty
-      * ('a, 'b) pair ty_metadata
-      * ('ac, 'bc, 'rc) dand
-      -> (('a, 'b) pair, 'rc) ty_value
-  | Union_t :
-      ('a, 'ac) ty
-      * ('b, 'bc) ty
-      * ('a, 'b) union ty_metadata
-      * ('ac, 'bc, 'rc) dand
-      -> (('a, 'b) union, 'rc) ty_value
-  | Lambda_t :
-      ('arg, _) ty * ('ret, _) ty * ('arg, 'ret) lambda ty_metadata
-      -> (('arg, 'ret) lambda, no) ty_value
-  | Option_t :
-      ('v, 'c) ty * 'v option ty_metadata * 'c dbool
-      -> ('v option, 'c) ty_value
-  | List_t :
-      ('v, _) ty * 'v boxed_list ty_metadata
-      -> ('v boxed_list, no) ty_value
-  | Set_t : 'v comparable_ty * 'v set ty_metadata -> ('v set, no) ty_value
-  | Map_t :
-      'k comparable_ty * ('v, _) ty * ('k, 'v) map ty_metadata
-      -> (('k, 'v) map, no) ty_value
-  | Big_map_t :
-      'k comparable_ty * ('v, _) ty * ('k, 'v) big_map ty_metadata
-      -> (('k, 'v) big_map, no) ty_value
-  | Contract_t :
-      ('arg, _) ty * 'arg typed_contract ty_metadata
-      -> ('arg typed_contract, no) ty_value
-  | Sapling_transaction_t :
-      Sapling.Memo_size.t
-      -> (Sapling.transaction, no) ty_value
-  | Sapling_transaction_deprecated_t :
-      Sapling.Memo_size.t
-      -> (Sapling.Legacy.transaction, no) ty_value
-  | Sapling_state_t : Sapling.Memo_size.t -> (Sapling.state, no) ty_value
-  | Operation_t : (operation, no) ty_value
-  | Chain_id_t : (Script_chain_id.t, yes) ty_value
-  | Never_t : (never, yes) ty_value
-  | Bls12_381_g1_t : (Script_bls.G1.t, no) ty_value
-  | Bls12_381_g2_t : (Script_bls.G2.t, no) ty_value
-  | Bls12_381_fr_t : (Script_bls.Fr.t, no) ty_value
-  | Ticket_t :
-      'a comparable_ty * 'a ticket ty_metadata
-      -> ('a ticket, no) ty_value
-  | Chest_key_t : (Script_timelock.chest_key, no) ty_value
-  | Chest_t : (Script_timelock.chest, no) ty_value
-
-and 'ty comparable_ty = ('ty, yes) ty
-
-and ('ty, 'comparable) ty = {
-  id : ('ty * 'comparable) Id.gid;
-  value : ('ty, 'comparable) ty_value;
-}
-
 and ('top_ty, 'resty) stack_ty =
   | Item_t :
       ('ty, _) ty * ('ty2, 'rest) stack_ty
@@ -1437,8 +2106,6 @@ and operation = {
   piop : packed_internal_operation;
   lazy_storage_diff : Lazy_storage.diffs option;
 }
-
-type ex_ty = Ex_ty : ('a, _) ty -> ex_ty
 
 type ('arg, 'storage) script =
   | Script : {
@@ -1628,640 +2295,6 @@ let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
   | IEmit {loc; _} -> loc
   | IHalt loc -> loc
   | ILog (loc, _, _, _, _) -> loc
-
-let meta_basic = {size = Type_size.one}
-
-let ty_metadata : type a ac. (a, ac) ty -> a ty_metadata =
- fun ty ->
-  match ty.value with
-  | Unit_t | Never_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t
-  | Mutez_t | Bool_t | Key_hash_t | Key_t | Timestamp_t | Chain_id_t | Address_t
-  | Tx_rollup_l2_address_t ->
-      meta_basic
-  | Pair_t (_, _, meta, _) -> meta
-  | Union_t (_, _, meta, _) -> meta
-  | Option_t (_, meta, _) -> meta
-  | Lambda_t (_, _, meta) -> meta
-  | List_t (_, meta) -> meta
-  | Set_t (_, meta) -> meta
-  | Map_t (_, _, meta) -> meta
-  | Big_map_t (_, _, meta) -> meta
-  | Ticket_t (_, meta) -> meta
-  | Contract_t (_, meta) -> meta
-  | Sapling_transaction_t _ | Sapling_transaction_deprecated_t _
-  | Sapling_state_t _ | Operation_t | Bls12_381_g1_t | Bls12_381_g2_t
-  | Bls12_381_fr_t | Chest_t | Chest_key_t ->
-      meta_basic
-
-let ty_size t = (ty_metadata t).size
-
-let is_comparable : type v c. (v, c) ty -> c dbool =
- fun ty ->
-  match ty.value with
-  | Never_t -> Yes
-  | Unit_t -> Yes
-  | Int_t -> Yes
-  | Nat_t -> Yes
-  | Signature_t -> Yes
-  | String_t -> Yes
-  | Bytes_t -> Yes
-  | Mutez_t -> Yes
-  | Bool_t -> Yes
-  | Key_hash_t -> Yes
-  | Key_t -> Yes
-  | Timestamp_t -> Yes
-  | Chain_id_t -> Yes
-  | Address_t -> Yes
-  | Tx_rollup_l2_address_t -> Yes
-  | Pair_t (_, _, _, dand) -> dbool_of_dand dand
-  | Union_t (_, _, _, dand) -> dbool_of_dand dand
-  | Option_t (_, _, cmp) -> cmp
-  | Lambda_t _ -> No
-  | List_t _ -> No
-  | Set_t _ -> No
-  | Map_t _ -> No
-  | Big_map_t _ -> No
-  | Ticket_t _ -> No
-  | Contract_t _ -> No
-  | Sapling_transaction_t _ -> No
-  | Sapling_transaction_deprecated_t _ -> No
-  | Sapling_state_t _ -> No
-  | Operation_t -> No
-  | Bls12_381_g1_t -> No
-  | Bls12_381_g2_t -> No
-  | Bls12_381_fr_t -> No
-  | Chest_t -> No
-  | Chest_key_t -> No
-
-type 'v ty_ex_c = Ty_ex_c : ('v, _) ty -> 'v ty_ex_c [@@ocaml.unboxed]
-
-let unit_t = {id = Id.gen (); value = Unit_t}
-
-let int_t = {id = Id.gen (); value = Int_t}
-
-let nat_t = {id = Id.gen (); value = Nat_t}
-
-let signature_t = {id = Id.gen (); value = Signature_t}
-
-let string_t = {id = Id.gen (); value = String_t}
-
-let bytes_t = {id = Id.gen (); value = Bytes_t}
-
-let mutez_t = {id = Id.gen (); value = Mutez_t}
-
-let key_hash_t = {id = Id.gen (); value = Key_hash_t}
-
-let key_t = {id = Id.gen (); value = Key_t}
-
-let timestamp_t = {id = Id.gen (); value = Timestamp_t}
-
-let address_t = {id = Id.gen (); value = Address_t}
-
-let bool_t = {id = Id.gen (); value = Bool_t}
-
-let tx_rollup_l2_address_t = {id = Id.gen (); value = Tx_rollup_l2_address_t}
-
-module PairLikeType (T : sig
-  type ('a, 'b) t
-
-  val deconstructor :
-    (('a, 'b) t, 'rc) ty_value -> 'a ty_ex_c * 'b ty_ex_c * 'rc dbool
-
-  val constructor :
-    ('a, 'ac) ty ->
-    ('b, 'bc) ty ->
-    ('a, 'b) t Type_size.t ->
-    ('ac, 'bc, 'rc) dand ->
-    (('a, 'b) t, 'rc) ty_value
-end) : sig
-  val t :
-    Script.location -> ('a, _) ty -> ('b, _) ty -> ('a, 'b) T.t ty_ex_c tzresult
-
-  val comparable_t :
-    Script.location ->
-    'a comparable_ty ->
-    'b comparable_ty ->
-    ('a, 'b) T.t comparable_ty tzresult
-
-  val known_t :
-    ('a, 'ac) ty ->
-    ('b, 'bc) ty ->
-    ('a, 'b) T.t Type_size.t ->
-    ('ac, 'bc, 'rc) dand ->
-    (('a, 'b) T.t, 'rc) ty
-end = struct
-  type x = X : ((_, _) T.t, _) ty -> x
-
-  let table = Hashtbl.create 10
-
-  let t :
-      type a ac b bc.
-      Script.location -> (a, ac) ty -> (b, bc) ty -> (a, b) T.t ty_ex_c tzresult
-      =
-   fun loc a b ->
-    let open Result_syntax in
-    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let Ty_ex_c a', Ty_ex_c b', _ = T.deconstructor rv in
-        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
-        | Some Eq, Some Eq -> Ok (Ty_ex_c r)
-        | _ -> assert false)
-    | None ->
-        let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
-        let (Ex_dand cmp) = dand (is_comparable a) (is_comparable b) in
-        let r = {id = Id.gen (); value = T.constructor a b size cmp} in
-        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
-        Ty_ex_c r
-
-  let comparable_t :
-      type a b.
-      Script.location ->
-      a comparable_ty ->
-      b comparable_ty ->
-      (a, b) T.t comparable_ty tzresult =
-   fun loc a b ->
-    let open Result_syntax in
-    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let Ty_ex_c a', Ty_ex_c b', d' = T.deconstructor rv in
-        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id, eq_dbool Yes d') with
-        | Some Eq, Some Eq, Some Eq -> Ok r
-        | _ -> assert false)
-    | None ->
-        let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
-        let r = {id = Id.gen (); value = T.constructor a b size YesYes} in
-        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
-        r
-
-  let known_t :
-      type a ac b bc rc.
-      (a, ac) ty ->
-      (b, bc) ty ->
-      (a, b) T.t Type_size.t ->
-      (ac, bc, rc) dand ->
-      ((a, b) T.t, rc) ty =
-   fun a b size cmp ->
-    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let Ty_ex_c a', Ty_ex_c b', d' = T.deconstructor rv in
-        let d = dbool_of_dand cmp in
-        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id, eq_dbool d d') with
-        | Some Eq, Some Eq, Some Eq -> r
-        | _ -> assert false)
-    | None ->
-        let r = {id = Id.gen (); value = T.constructor a b size cmp} in
-        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
-        r
-end
-
-module Pair_type = PairLikeType (struct
-  type ('l, 'r) t = ('l, 'r) pair
-
-  let deconstructor (Pair_t (l, r, _, cmp)) =
-    (Ty_ex_c l, Ty_ex_c r, dbool_of_dand cmp)
-
-  let constructor l r size cmp = Pair_t (l, r, {size}, cmp)
-end)
-
-let pair_t loc l r = Pair_type.t loc l r
-
-let pair_3_t loc l m r =
-  let open Result_syntax in
-  let* (Ty_ex_c r) = pair_t loc m r in
-  pair_t loc l r
-
-let comparable_pair_t loc l r = Pair_type.comparable_t loc l r
-
-let comparable_pair_3_t loc l m r =
-  let open Result_syntax in
-  let* r = comparable_pair_t loc m r in
-  comparable_pair_t loc l r
-
-module Union_type = PairLikeType (struct
-  type ('l, 'r) t = ('l, 'r) union
-
-  let deconstructor (Union_t (l, r, _, cmp)) =
-    (Ty_ex_c l, Ty_ex_c r, dbool_of_dand cmp)
-
-  let constructor l r size cmp = Union_t (l, r, {size}, cmp)
-end)
-
-let union_t loc l r = Union_type.t loc l r
-
-let union_bytes_bool_t = Union_type.known_t bytes_t bool_t Type_size.two YesYes
-
-let comparable_union_t loc l r = Union_type.comparable_t loc l r
-
-module LambdaLikeType (T : sig
-  type ('a, 'b) t
-
-  val deconstructor : (('a, 'b) t, no) ty_value -> 'a ty_ex_c * 'b ty_ex_c
-
-  val constructor :
-    ('a, _) ty ->
-    ('b, _) ty ->
-    ('a, 'b) t Type_size.t ->
-    (('a, 'b) t, no) ty_value
-end) : sig
-  val t :
-    Script.location ->
-    ('a, _) ty ->
-    ('b, _) ty ->
-    (('a, 'b) T.t, no) ty tzresult
-end = struct
-  type x = X : ((_, _) T.t, no) ty -> x
-
-  let table = Hashtbl.create 10
-
-  let t :
-      type a ac b bc.
-      Script.location ->
-      (a, ac) ty ->
-      (b, bc) ty ->
-      ((a, b) T.t, no) ty tzresult =
-   fun loc a b ->
-    let open Result_syntax in
-    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let Ty_ex_c a', Ty_ex_c b' = T.deconstructor rv in
-        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
-        | Some Eq, Some Eq -> Ok r
-        | _ -> assert false)
-    | None ->
-        let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
-        let r = {id = Id.gen (); value = T.constructor a b size} in
-        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
-        r
-end
-
-module Lambda_type = LambdaLikeType (struct
-  type ('a, 'r) t = ('a, 'r) lambda
-
-  let deconstructor (Lambda_t (a, r, _)) = (Ty_ex_c a, Ty_ex_c r)
-
-  let constructor a r size = Lambda_t (a, r, {size})
-end)
-
-let lambda_t loc a r = Lambda_type.t loc a r
-
-module OptionLikeType (T : sig
-  type 'a t
-
-  val deconstructor : ('a t, 'ac) ty_value -> ('a, 'ac) ty * 'ac dbool
-
-  val constructor : ('a, 'ac) ty -> 'a t Type_size.t -> ('a t, 'ac) ty_value
-end) : sig
-  val t : Script.location -> ('a, 'ac) ty -> ('a T.t, 'ac) ty tzresult
-
-  val comparable_t :
-    Script.location -> 'a comparable_ty -> 'a T.t comparable_ty tzresult
-
-  val known_t :
-    ('a, 'ac) ty -> 'a T.t Type_size.t -> 'ac dbool -> ('a T.t, 'ac) ty
-end = struct
-  type x = X : (_ T.t, _) ty -> x
-
-  let table = Hashtbl.create 10
-
-  let t : type a ac. Script.location -> (a, ac) ty -> (a T.t, ac) ty tzresult =
-   fun loc a ->
-    let open Result_syntax in
-    let res = Hashtbl.find_opt table (Id.Xid a.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let a', _ = T.deconstructor rv in
-        match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
-    | None ->
-        let+ size = Type_size.compound1 loc (ty_size a) in
-        let r = {id = Id.gen (); value = T.constructor a size} in
-        Hashtbl.add table (Id.Xid a.id) (X r) ;
-        r
-
-  let comparable_t :
-      type a. Script.location -> a comparable_ty -> a T.t comparable_ty tzresult
-      =
-   fun loc a ->
-    let open Result_syntax in
-    let res = Hashtbl.find_opt table (Id.Xid a.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let a', _ = T.deconstructor rv in
-        match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
-    | None ->
-        let+ size = Type_size.compound1 loc (ty_size a) in
-        let r = {id = Id.gen (); value = T.constructor a size} in
-        Hashtbl.add table (Id.Xid a.id) (X r) ;
-        r
-
-  let known_t :
-      type a ac. (a, ac) ty -> a T.t Type_size.t -> ac dbool -> (a T.t, ac) ty =
-   fun a size ac ->
-    let res = Hashtbl.find_opt table (Id.Xid a.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let a', ac' = T.deconstructor rv in
-        match (Id.eq_id a.id a'.id, eq_dbool ac ac') with
-        | Some Eq, Some Eq -> r
-        | _ -> assert false)
-    | None ->
-        let r = {id = Id.gen (); value = T.constructor a size} in
-        Hashtbl.add table (Id.Xid a.id) (X r) ;
-        r
-end
-
-module Option_type = OptionLikeType (struct
-  type 'a t = 'a option
-
-  let deconstructor (Option_t (v, _, c)) = (v, c)
-
-  let constructor v size = Option_t (v, {size}, is_comparable v)
-end)
-
-let option_t loc t = Option_type.t loc t
-
-let comparable_option_t loc t = Option_type.comparable_t loc t
-
-let option_mutez_t = Option_type.known_t mutez_t Type_size.two Yes
-
-let option_string_t = Option_type.known_t string_t Type_size.two Yes
-
-let option_bytes_t = Option_type.known_t bytes_t Type_size.two Yes
-
-let option_nat_t = Option_type.known_t nat_t Type_size.two Yes
-
-let option_pair_nat_nat_t =
-  let pair_nat_nat_t = Pair_type.known_t nat_t nat_t Type_size.three YesYes in
-  Option_type.known_t pair_nat_nat_t Type_size.four Yes
-
-let option_pair_nat_mutez_t =
-  let pair_nat_mutez_t =
-    Pair_type.known_t nat_t mutez_t Type_size.three YesYes
-  in
-  Option_type.known_t pair_nat_mutez_t Type_size.four Yes
-
-let option_pair_mutez_mutez_t =
-  let pair_mutez_mutez_t =
-    Pair_type.known_t mutez_t mutez_t Type_size.three YesYes
-  in
-  Option_type.known_t pair_mutez_mutez_t Type_size.four Yes
-
-let option_pair_int_nat_t =
-  let pair_int_nat_t = Pair_type.known_t int_t nat_t Type_size.three YesYes in
-  Option_type.known_t pair_int_nat_t Type_size.four Yes
-
-module ListLikeType (T : sig
-  type 'a t
-
-  val deconstructor : ('a t, no) ty_value -> 'a ty_ex_c
-
-  val constructor : ('a, _) ty -> 'a t Type_size.t -> ('a t, no) ty_value
-end) : sig
-  val t : Script.location -> ('a, _) ty -> ('a T.t, no) ty tzresult
-
-  val known_t : ('a, _) ty -> 'a T.t Type_size.t -> ('a T.t, no) ty
-end = struct
-  type x = X : (_ T.t, no) ty -> x
-
-  let table = Hashtbl.create 10
-
-  let t : type a ac. Script.location -> (a, ac) ty -> (a T.t, no) ty tzresult =
-   fun loc a ->
-    let open Result_syntax in
-    let res = Hashtbl.find_opt table (Id.Xid a.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let (Ty_ex_c a') = T.deconstructor rv in
-        match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
-    | None ->
-        let+ size = Type_size.compound1 loc (ty_size a) in
-        let r = {id = Id.gen (); value = T.constructor a size} in
-        Hashtbl.add table (Id.Xid a.id) (X r) ;
-        r
-
-  let known_t : type a ac. (a, ac) ty -> a T.t Type_size.t -> (a T.t, no) ty =
-   fun a size ->
-    let res = Hashtbl.find_opt table (Id.Xid a.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let (Ty_ex_c a') = T.deconstructor rv in
-        match Id.eq_id a.id a'.id with Some Eq -> r | None -> assert false)
-    | None ->
-        let r = {id = Id.gen (); value = T.constructor a size} in
-        Hashtbl.add table (Id.Xid a.id) (X r) ;
-        r
-end
-
-module List_type = ListLikeType (struct
-  type 'a t = 'a boxed_list
-
-  let deconstructor (List_t (v, _)) = Ty_ex_c v
-
-  let constructor v size = List_t (v, {size})
-end)
-
-let list_t loc t = List_type.t loc t
-
-let operation_t = {id = Id.gen (); value = Operation_t}
-
-let list_operation_t = List_type.known_t operation_t Type_size.two
-
-module SetLikeType (T : sig
-  type 'a t
-
-  val deconstructor : ('a t, no) ty_value -> 'a comparable_ty
-
-  val constructor : 'a comparable_ty -> 'a t Type_size.t -> ('a t, no) ty_value
-end) : sig
-  val t : Script.location -> 'a comparable_ty -> ('a T.t, no) ty tzresult
-end = struct
-  type x = X : (_ T.t, no) ty -> x
-
-  let table = Hashtbl.create 10
-
-  let t : type a. Script.location -> a comparable_ty -> (a T.t, no) ty tzresult
-      =
-   fun loc a ->
-    let open Result_syntax in
-    let res = Hashtbl.find_opt table (Id.Xid a.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let a' = T.deconstructor rv in
-        match Id.eq_id a.id a'.id with Some Eq -> Ok r | None -> assert false)
-    | None ->
-        let+ size = Type_size.compound1 loc (ty_size a) in
-        let r = {id = Id.gen (); value = T.constructor a size} in
-        Hashtbl.add table (Id.Xid a.id) (X r) ;
-        r
-end
-
-module Set_type = SetLikeType (struct
-  type 'a t = 'a set
-
-  let deconstructor (Set_t (v, _)) = v
-
-  let constructor v size = Set_t (v, {size})
-end)
-
-let set_t loc t = Set_type.t loc t
-
-module MapLikeType (T : sig
-  type ('a, 'b) t
-
-  val deconstructor : (('a, 'b) t, no) ty_value -> 'a comparable_ty * 'b ty_ex_c
-
-  val constructor :
-    'a comparable_ty ->
-    ('b, _) ty ->
-    ('a, 'b) t Type_size.t ->
-    (('a, 'b) t, no) ty_value
-end) : sig
-  val t :
-    Script.location ->
-    'a comparable_ty ->
-    ('b, _) ty ->
-    (('a, 'b) T.t, no) ty tzresult
-end = struct
-  type x = X : ((_, _) T.t, no) ty -> x
-
-  let table = Hashtbl.create 10
-
-  let t :
-      type a b bc.
-      Script.location ->
-      a comparable_ty ->
-      (b, bc) ty ->
-      ((a, b) T.t, no) ty tzresult =
-   fun loc a b ->
-    let open Result_syntax in
-    let res = Hashtbl.find_opt table (Id.Xid a.id, Id.Xid b.id) in
-    match res with
-    | Some (X r) -> (
-        let rv = r.value in
-        let a', Ty_ex_c b' = T.deconstructor rv in
-        match (Id.eq_id a.id a'.id, Id.eq_id b.id b'.id) with
-        | Some Eq, Some Eq -> Ok r
-        | _ -> assert false)
-    | None ->
-        let+ size = Type_size.compound2 loc (ty_size a) (ty_size b) in
-        let r = {id = Id.gen (); value = T.constructor a b size} in
-        Hashtbl.add table (Id.Xid a.id, Id.Xid b.id) (X r) ;
-        r
-end
-
-module Map_type = MapLikeType (struct
-  type ('k, 'v) t = ('k, 'v) map
-
-  let deconstructor (Map_t (k, v, _)) = (k, Ty_ex_c v)
-
-  let constructor k v size = Map_t (k, v, {size})
-end)
-
-let map_t loc k v = Map_type.t loc k v
-
-module Big_map_type = MapLikeType (struct
-  type ('k, 'v) t = ('k, 'v) big_map
-
-  let deconstructor (Big_map_t (k, v, _)) = (k, Ty_ex_c v)
-
-  let constructor k v size = Big_map_t (k, v, {size})
-end)
-
-let big_map_t loc k v = Big_map_type.t loc k v
-
-module Contract_type = ListLikeType (struct
-  type 'a t = 'a typed_contract
-
-  let deconstructor (Contract_t (a, _)) = Ty_ex_c a
-
-  let constructor a size = Contract_t (a, {size})
-end)
-
-let contract_t loc t = Contract_type.t loc t
-
-let contract_unit_t = Contract_type.known_t unit_t Type_size.two
-
-module SaplingLikeType (T : sig
-  type t
-
-  val constructor : Sapling.Memo_size.t -> (t, no) ty_value
-end) : sig
-  val t : Sapling.Memo_size.t -> (T.t, no) ty
-end = struct
-  let table = Hashtbl.create 10
-
-  let t : Sapling.Memo_size.t -> (T.t, no) ty =
-   fun i ->
-    let res = Hashtbl.find_opt table i in
-    match res with
-    | Some r -> r
-    | None ->
-        let r = {id = Id.gen (); value = T.constructor i} in
-        Hashtbl.add table i r ;
-        r
-end
-
-module Sapling_transaction_type = SaplingLikeType (struct
-  type t = Sapling.transaction
-
-  let constructor i = Sapling_transaction_t i
-end)
-
-let sapling_transaction_t ~memo_size:i = Sapling_transaction_type.t i
-
-module Sapling_transaction_deprecated_type = SaplingLikeType (struct
-  type t = Sapling.Legacy.transaction
-
-  let constructor i = Sapling_transaction_deprecated_t i
-end)
-
-let sapling_transaction_deprecated_t ~memo_size:i =
-  Sapling_transaction_deprecated_type.t i
-
-module Sapling_state_type = SaplingLikeType (struct
-  type t = Sapling.state
-
-  let constructor i = Sapling_state_t i
-end)
-
-let sapling_state_t ~memo_size:i = Sapling_state_type.t i
-
-let chain_id_t = {id = Id.gen (); value = Chain_id_t}
-
-let never_t = {id = Id.gen (); value = Never_t}
-
-let bls12_381_g1_t = {id = Id.gen (); value = Bls12_381_g1_t}
-
-let bls12_381_g2_t = {id = Id.gen (); value = Bls12_381_g2_t}
-
-let bls12_381_fr_t = {id = Id.gen (); value = Bls12_381_fr_t}
-
-module Ticket_type = SetLikeType (struct
-  type 'a t = 'a ticket
-
-  let deconstructor (Ticket_t (a, _)) = a
-
-  let constructor a size = Ticket_t (a, {size})
-end)
-
-let ticket_t loc t = Ticket_type.t loc t
-
-let chest_key_t = {id = Id.gen (); value = Chest_key_t}
-
-let chest_t = {id = Id.gen (); value = Chest_t}
 
 type 'a kinstr_traverse = {
   apply : 'b 'u 'r 'f. 'a -> ('b, 'u, 'r, 'f) kinstr -> 'a;
