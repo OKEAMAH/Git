@@ -594,7 +594,11 @@ module rec Ty_value : sig
       }
         -> ('key, 'value) big_map
 
-  val is_comparable : ('v * 'c) t -> 'c dbool
+  type _ s =
+    | Bot_t : (empty_cell * empty_cell) s
+    | Item_t : ('a * _) Ty.t * ('top * 'rest) Ty.s -> ('a * ('top * 'rest)) s
+
+  val is_comparable : ('a * 'ac) t -> 'ac dbool
 end = struct
   type _ t =
     | Unit_t : (unit * yes) t
@@ -758,7 +762,11 @@ end = struct
       }
         -> ('key, 'value) big_map
 
-  let is_comparable : type v c. (v * c) t -> c dbool = function
+  type _ s =
+    | Bot_t : (empty_cell * empty_cell) s
+    | Item_t : ('a * _) Ty.t * ('top * 'rest) Ty.s -> ('a * ('top * 'rest)) s
+
+  let is_comparable : type a ac. (a * ac) t -> ac dbool = function
     | Unit_t -> Yes
     | Int_t -> Yes
     | Nat_t -> Yes
@@ -798,13 +806,15 @@ end
 and Ty : sig
   type 'a t = 'a Michelson_type_constructor.HashConsing(Ty_value).t
 
+  type 'a s = 'a Michelson_type_constructor.HashConsing(Ty_value).s
+
   type 'a comparable_t = ('a * yes) t
 
   type _ ty_ex_c = Ty_ex_c : ('a * _) t -> 'a ty_ex_c [@@unboxed]
 
-  val is_comparable : ('v * 'c) t -> 'c dbool
+  val is_comparable : ('a * 'ac) t -> 'ac dbool
 
-  val ty_size : ('v * _) t -> 'v Type_size.t
+  val ty_size : ('a * _) t -> 'a Type_size.t
 
   val unit_t : (unit * yes) t
 
@@ -951,14 +961,24 @@ and Ty : sig
 
   val chest_t : (Script_timelock.chest * no) t
 
-  type 'a traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'a}
+  type 'a ty_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'a}
 
-  val traverse : ('a * 'ac) t -> 'accu -> 'accu traverse -> 'accu
+  val ty_traverse : ('a * 'ac) t -> 'accu -> 'accu ty_traverse -> 'accu
 
-  type 'a value_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'b -> 'a}
+  type 'a ty_value_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'b -> 'a}
 
-  val value_traverse :
-    ('a * 'ac) t -> 'a -> 'accu -> 'accu value_traverse -> 'accu
+  val ty_value_traverse :
+    ('a * 'ac) t -> 'a -> 'accu -> 'accu ty_value_traverse -> 'accu
+
+  val bot_t : (empty_cell * empty_cell) s
+
+  val stack_t : ('a * _) t -> ('top * 'rest) s -> ('a * ('top * 'rest)) s
+
+  val stack_top : ('a * ('b * 'r)) s -> 'a ty_ex_c
+
+  type 'accu stack_traverse = {apply : 'ty 'r. 'accu -> ('ty * 'r) s -> 'accu}
+
+  val stack_traverse : ('a * 'r) s -> 'accu -> 'accu stack_traverse -> 'accu
 end = struct
   include Michelson_type_constructor.HashConsing (Ty_value)
 
@@ -966,9 +986,10 @@ end = struct
 
   type _ ty_ex_c = Ty_ex_c : ('a * _) t -> 'a ty_ex_c [@@unboxed]
 
-  let is_comparable {value; _} = Ty_value.is_comparable value
+  let is_comparable : type a ac. (a * ac) t -> ac dbool =
+   fun {value; _} -> Ty_value.is_comparable value
 
-  let ty_size : type v c. (v * c) t -> v Type_size.t =
+  let ty_size : type a ac. (a * ac) t -> a Type_size.t =
    fun {value; _} ->
     match value with
     | Unit_t | Never_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t
@@ -990,31 +1011,31 @@ end = struct
     | Bls12_381_fr_t | Chest_t | Chest_key_t ->
         Type_size.one
 
-  let unit_t = constant Unit_t
+  let unit_t = constant_t Unit_t
 
-  let int_t = constant Int_t
+  let int_t = constant_t Int_t
 
-  let nat_t = constant Nat_t
+  let nat_t = constant_t Nat_t
 
-  let signature_t = constant Signature_t
+  let signature_t = constant_t Signature_t
 
-  let string_t = constant String_t
+  let string_t = constant_t String_t
 
-  let bytes_t = constant Bytes_t
+  let bytes_t = constant_t Bytes_t
 
-  let mutez_t = constant Mutez_t
+  let mutez_t = constant_t Mutez_t
 
-  let key_hash_t = constant Key_hash_t
+  let key_hash_t = constant_t Key_hash_t
 
-  let key_t = constant Key_t
+  let key_t = constant_t Key_t
 
-  let timestamp_t = constant Timestamp_t
+  let timestamp_t = constant_t Timestamp_t
 
-  let address_t = constant Address_t
+  let address_t = constant_t Address_t
 
-  let tx_rollup_l2_address_t = constant Tx_rollup_l2_address_t
+  let tx_rollup_l2_address_t = constant_t Tx_rollup_l2_address_t
 
-  let bool_t = constant Bool_t
+  let bool_t = constant_t Bool_t
 
   module Pair_Input = struct
     type (_, _, _) witness =
@@ -1227,7 +1248,7 @@ end = struct
     let m = {size} in
     List.mk i (W m)
 
-  let operation_t = constant Operation_t
+  let operation_t = constant_t Operation_t
 
   let list_operation_t =
     let size = Type_size.two in
@@ -1372,15 +1393,15 @@ end = struct
 
   let sapling_state_t ~memo_size:i = Sapling_state.mk i
 
-  let chain_id_t = constant Chain_id_t
+  let chain_id_t = constant_t Chain_id_t
 
-  let never_t = constant Never_t
+  let never_t = constant_t Never_t
 
-  let bls12_381_g1_t = constant Bls12_381_g1_t
+  let bls12_381_g1_t = constant_t Bls12_381_g1_t
 
-  let bls12_381_g2_t = constant Bls12_381_g2_t
+  let bls12_381_g2_t = constant_t Bls12_381_g2_t
 
-  let bls12_381_fr_t = constant Bls12_381_fr_t
+  let bls12_381_fr_t = constant_t Bls12_381_fr_t
 
   module Ticket_Input = struct
     type (_, _) witness =
@@ -1406,16 +1427,16 @@ end = struct
     let m = {size} in
     Ticket.mk i (W m)
 
-  let chest_key_t = constant Chest_key_t
+  let chest_key_t = constant_t Chest_key_t
 
-  let chest_t = constant Chest_t
+  let chest_t = constant_t Chest_t
 
-  type 'a traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'a}
+  type 'a ty_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'a}
 
-  let traverse =
+  let ty_traverse =
     let rec aux :
         type ret a ac accu.
-        accu traverse -> accu -> (a * ac) t -> (accu -> ret) -> ret =
+        accu ty_traverse -> accu -> (a * ac) t -> (accu -> ret) -> ret =
      fun f accu ty continue ->
       let accu = f.apply accu ty in
       match ty.value with
@@ -1445,7 +1466,7 @@ end = struct
       | Contract_t (ty1, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
     and next2 :
         type a ac b bc ret accu.
-        accu traverse ->
+        accu ty_traverse ->
         accu ->
         (a * ac) t ->
         (b * bc) t ->
@@ -1457,16 +1478,16 @@ end = struct
               (continue [@ocaml.tailcall]) accu))
     and next :
         type a ac ret accu.
-        accu traverse -> accu -> (a * ac) t -> (accu -> ret) -> ret =
+        accu ty_traverse -> accu -> (a * ac) t -> (accu -> ret) -> ret =
      fun f accu ty1 continue ->
       (aux [@ocaml.tailcall]) f accu ty1 (fun accu ->
           (continue [@ocaml.tailcall]) accu)
     in
     fun ty init f -> aux f init ty (fun accu -> accu)
 
-  type 'a value_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'b -> 'a}
+  type 'a ty_value_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'b -> 'a}
 
-  let value_traverse (type a ac) (ty : (a * ac) t) (x : a) init f =
+  let ty_value_traverse (type a ac) (ty : (a * ac) t) (x : a) init f =
     let rec aux :
         type ret a ac. 'accu -> (a * ac) t -> a -> ('accu -> ret) -> ret =
      fun accu ty x continue ->
@@ -1524,7 +1545,7 @@ end = struct
     and on_bindings :
         type ret k v vc.
         'accu ->
-        k comparable ->
+        k comparable_t ->
         (v * vc) t ->
         ('accu -> ret) ->
         (k * v) list ->
@@ -1538,6 +1559,41 @@ end = struct
                   (on_bindings [@ocaml.tailcall]) accu kty ty' continue xs))
     in
     aux init ty x (fun accu -> accu)
+
+  let bot_t = constant_s Bot_t
+
+  module Stack_Input = struct
+    type (_, _, _) witness =
+      | W : ('a * _, 'top * 'rest, 'a * ('top * 'rest)) witness
+
+    let witness_is_a_function :
+        type a b c1 c2.
+        (a, b, c1) witness ->
+        (a, b, c2) witness ->
+        (c1, c2) Michelson_type_constructor.eq =
+     fun W W -> Michelson_type_constructor.Refl
+
+    let mk : type a b c. a t -> b s -> (a, b, c) witness -> c Ty_value.s =
+     fun ty s W -> Ty_value.Item_t (ty, s)
+  end
+
+  module Stack = Parametric_Stack (Stack_Input)
+
+  let stack_t ty s = Stack.mk ty s W
+
+  let stack_top : type a b r. (a * (b * r)) s -> a ty_ex_c =
+   fun {value = Item_t (t, _); _} -> Ty_ex_c t
+
+  type 'accu stack_traverse = {apply : 'ty 's. 'accu -> ('ty * 's) s -> 'accu}
+
+  let stack_traverse (type a r) (sty : (a * r) s) init f =
+    let rec aux : type b u. 'accu -> (b * u) s -> 'accu =
+     fun accu sty ->
+      match sty.value with
+      | Bot_t -> f.apply accu sty
+      | Item_t (_, sty') -> aux (f.apply accu sty) sty'
+    in
+    aux init sty
 end
 
 (* ---- Instructions --------------------------------------------------------*)
@@ -2276,12 +2332,6 @@ and logger = {
   get_log : unit -> execution_trace option tzresult Lwt.t;
 }
 
-and ('top_ty, 'resty) stack_ty =
-  | Item_t :
-      ('ty, _) ty * ('ty2, 'rest) stack_ty
-      -> ('ty, 'ty2 * 'rest) stack_ty
-  | Bot_t : (empty_cell, empty_cell) stack_ty
-
 and ('a, 's, 'r, 'f) kdescr = {
   kloc : Script.location;
   kbef : ('a, 's) stack_ty;
@@ -2723,22 +2773,6 @@ let kinstr_traverse i init f =
     | ILog (_, _, _, _, k) -> (next [@ocaml.tailcall]) k
   in
   aux init i (fun accu -> accu)
-
-type 'accu stack_ty_traverse = {
-  apply : 'ty 's. 'accu -> ('ty, 's) stack_ty -> 'accu;
-}
-
-let stack_ty_traverse (type a t) (sty : (a, t) stack_ty) init f =
-  let rec aux : type b u. 'accu -> (b, u) stack_ty -> 'accu =
-   fun accu sty ->
-    match sty with
-    | Bot_t -> f.apply accu sty
-    | Item_t (_, sty') -> aux (f.apply accu sty) sty'
-  in
-  aux init sty
-
-let stack_top_ty : type a b s. (a, b * s) stack_ty -> a ty_ex_c = function
-  | Item_t (ty, _) -> Ty_ex_c ty
 
 module Typed_contract = struct
   let destination : type a. a Ty_value.typed_contract -> Destination.t =
