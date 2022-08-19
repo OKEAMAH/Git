@@ -368,6 +368,36 @@ module Inner = struct
       ~scratch_zone:t.scratch_zone ;
     coefficients
 
+  let evaluation_fft_k t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:11
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2 Scalar.(pow (Array.get t.domain_k 1) (Z.of_int 19)) 2048)
+      ~domain2:
+        (make_domain2 Scalar.(pow (Array.get t.domain_k 1) (Z.of_int 2048)) 19)
+      ~coefficients
+      ~inverse:false
+      ~scratch_zone:t.scratch_zone ;
+    coefficients
+
+  let interpolation_fft_k t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:11
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2
+           Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 19)))
+           2048)
+      ~domain2:
+        (make_domain2
+           Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 2048)))
+           19)
+      ~coefficients
+      ~inverse:true
+      ~scratch_zone:t.scratch_zone ;
+    coefficients
+
   let ensure_validity t =
     let open Result_syntax in
     let srs_size = Srs_g1.size t.srs.raw.srs_g1 in
@@ -674,17 +704,9 @@ module Inner = struct
   let polynomial_from_slot t slot =
     let open Result_syntax in
     let* data = polynomial_from_bytes' t slot in
-    let res =
-      pfa_fr_inplace
-        2048
-        19
-        Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 19)))
-        Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 2048)))
-        ~coefficients:data
-        ~inverse:true
-    in
-    Ok (Polynomials.of_dense res)
-  (*Evaluations.interpolation_fft2 t.domain_k data*)
+    Ok
+      (Polynomials.of_carray
+         (interpolation_fft_k t (Scalar_array.of_array data)))
 
   let eval_coset t eval slot offset segment =
     for elt = 0 to t.segment_length - 1 do
@@ -701,35 +723,15 @@ module Inner = struct
   (* The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_to_bytes t p =
-    (*TODO: remove blit since size is already correct *)
-    let eval =
-      pfa_fr_inplace
-        2048
-        19
-        (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 19))
-        (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 2048))
-        ~coefficients:(Polynomials.to_dense_coefficients p)
-        ~inverse:false
-    in
-    (*let eval = Evaluations.(evaluation_fft t.domain_k p |> to_array) in*)
+    (* We copy the polynomial p so that the function doesn't modify it *)
+    let coefficients = Polynomials.(to_carray (copy p)) in
+    let eval = evaluation_fft_k t coefficients |> Scalar_array.to_array in
     let slot = Bytes.init t.slot_size (fun _ -> '0') in
     let offset = ref 0 in
     for segment = 0 to t.nb_segments - 1 do
       eval_coset t eval slot offset segment
     done ;
     slot
-
-  (*let encode t p =
-    (*Evaluations.(evaluation_fft t.domain_n p |> to_array)*)
-    let coefficients = Array.init t.n (fun _ -> Scalar.(copy zero)) in
-    Array.blit (Polynomials.to_dense_coefficients p) 0 coefficients 0 t.k ;
-    pfa_fr_inplace
-      (2 * 2048)
-      19
-      (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
-      (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
-      ~coefficients
-      ~inverse:false*)
 
   (* Doesn't modify p *)
   let encode t p =
