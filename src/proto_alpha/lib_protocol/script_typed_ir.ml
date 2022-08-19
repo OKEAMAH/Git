@@ -589,7 +589,7 @@ module rec Ty_value : sig
     | Big_map : {
         id : Alpha_context.Big_map.Id.t option;
         diff : ('key, 'value) big_map_overlay;
-        key_type : 'key Ty.comparable_t;
+        key_type : 'key Ty.comparable_ty;
         value_type : ('value * _) Ty.t;
       }
         -> ('key, 'value) big_map
@@ -757,7 +757,7 @@ end = struct
     | Big_map : {
         id : Alpha_context.Big_map.Id.t option;
         diff : ('key, 'value) big_map_overlay;
-        key_type : 'key Ty.comparable_t;
+        key_type : 'key Ty.comparable_ty;
         value_type : ('value * _) Ty.t;
       }
         -> ('key, 'value) big_map
@@ -806,173 +806,175 @@ end
 and Ty : sig
   type 'a t = 'a Michelson_type_constructor.HashConsing(Ty_value).t
 
+  type ('a, 'ac) ty = ('a * 'ac) t
+
   type 'a s = 'a Michelson_type_constructor.HashConsing(Ty_value).s
 
-  type 'a comparable_t = ('a * yes) t
+  type 'a comparable_ty = ('a, yes) ty
 
-  type _ ty_ex_c = Ty_ex_c : ('a * _) t -> 'a ty_ex_c [@@unboxed]
+  type _ ty_ex_c = Ty_ex_c : ('a, _) ty -> 'a ty_ex_c [@@unboxed]
 
-  val is_comparable : ('a * 'ac) t -> 'ac dbool
+  val is_comparable : ('a, 'ac) ty -> 'ac dbool
 
-  val ty_size : ('a * _) t -> 'a Type_size.t
+  val ty_size : ('a, _) ty -> 'a Type_size.t
 
-  val unit_t : (unit * yes) t
+  val unit_t : (unit, yes) ty
 
-  val int_t : (z num * yes) t
+  val int_t : (z num, yes) ty
 
-  val nat_t : (n num * yes) t
+  val nat_t : (n num, yes) ty
 
-  val signature_t : (signature * yes) t
+  val signature_t : (signature, yes) ty
 
-  val string_t : (Script_string.t * yes) t
+  val string_t : (Script_string.t, yes) ty
 
-  val bytes_t : (bytes * yes) t
+  val bytes_t : (bytes, yes) ty
 
-  val mutez_t : (Tez.t * yes) t
+  val mutez_t : (Tez.t, yes) ty
 
-  val key_hash_t : (public_key_hash * yes) t
+  val key_hash_t : (public_key_hash, yes) ty
 
-  val key_t : (public_key * yes) t
+  val key_t : (public_key, yes) ty
 
-  val timestamp_t : (Script_timestamp.t * yes) t
+  val timestamp_t : (Script_timestamp.t, yes) ty
 
-  val address_t : (address * yes) t
+  val address_t : (address, yes) ty
 
-  val tx_rollup_l2_address_t : (tx_rollup_l2_address * yes) t
+  val tx_rollup_l2_address_t : (tx_rollup_l2_address, yes) ty
 
-  val bool_t : (bool * yes) t
+  val bool_t : (bool, yes) ty
 
   val pair_t :
     Script.location ->
-    ('a * _) t ->
-    ('b * _) t ->
+    ('a, _) ty ->
+    ('b, _) ty ->
     ('a, 'b) pair ty_ex_c tzresult
 
   val pair_3_t :
     Script.location ->
-    ('a * _) t ->
-    ('b * _) t ->
-    ('c * _) t ->
+    ('a, _) ty ->
+    ('b, _) ty ->
+    ('c, _) ty ->
     ('a, ('b, 'c) pair) pair ty_ex_c tzresult
 
   val comparable_pair_t :
     Script.location ->
-    ('a * yes) t ->
-    ('b * yes) t ->
-    (('a, 'b) pair * yes) t tzresult
+    ('a, yes) ty ->
+    ('b, yes) ty ->
+    (('a, 'b) pair, yes) ty tzresult
 
   val comparable_pair_3_t :
     Script.location ->
-    ('a * yes) t ->
-    ('b * yes) t ->
-    ('c * yes) t ->
-    (('a, ('b, 'c) pair) pair * yes) t tzresult
+    ('a, yes) ty ->
+    ('b, yes) ty ->
+    ('c, yes) ty ->
+    (('a, ('b, 'c) pair) pair, yes) ty tzresult
 
   val union_t :
     Script.location ->
-    ('a * _) t ->
-    ('b * _) t ->
+    ('a, _) ty ->
+    ('b, _) ty ->
     ('a, 'b) union ty_ex_c tzresult
 
   val comparable_union_t :
     Script.location ->
-    ('a * yes) t ->
-    ('b * yes) t ->
-    (('a, 'b) union * yes) t tzresult
+    ('a, yes) ty ->
+    ('b, yes) ty ->
+    (('a, 'b) union, yes) ty tzresult
 
   val union_bytes_bool_t : ((bytes, bool) union, yes) ty
 
   val lambda_t :
     Script.location ->
-    ('arg * _) t ->
-    ('ret * _) t ->
-    (('arg, 'ret) Ty_value.lambda * no) t tzresult
+    ('arg, _) ty ->
+    ('ret, _) ty ->
+    (('arg, 'ret) Ty_value.lambda, no) ty tzresult
 
-  val option_t : Script.location -> ('v * 'c) t -> ('v option * 'c) t tzresult
+  val option_t : Script.location -> ('v, 'c) ty -> ('v option, 'c) ty tzresult
 
   val comparable_option_t :
-    Script.location -> ('v * yes) t -> ('v option * yes) t tzresult
+    Script.location -> ('v, yes) ty -> ('v option, yes) ty tzresult
 
-  val option_mutez_t : (Tez.t option * yes) t
+  val option_mutez_t : (Tez.t option, yes) ty
 
-  val option_string_t : (Script_string.t option * yes) t
+  val option_string_t : (Script_string.t option, yes) ty
 
-  val option_bytes_t : (Bytes.t option * yes) t
+  val option_bytes_t : (Bytes.t option, yes) ty
 
-  val option_nat_t : (n num option * yes) t
+  val option_nat_t : (n num option, yes) ty
 
-  val option_pair_nat_nat_t : ((n num, n num) pair option * yes) t
+  val option_pair_nat_nat_t : ((n num, n num) pair option, yes) ty
 
-  val option_pair_nat_mutez_t : ((n num, Tez.t) pair option * yes) t
+  val option_pair_nat_mutez_t : ((n num, Tez.t) pair option, yes) ty
 
-  val option_pair_mutez_mutez_t : ((Tez.t, Tez.t) pair option * yes) t
+  val option_pair_mutez_mutez_t : ((Tez.t, Tez.t) pair option, yes) ty
 
-  val option_pair_int_nat_t : ((z num, n num) pair option * yes) t
+  val option_pair_int_nat_t : ((z num, n num) pair option, yes) ty
 
-  val list_t : Script.location -> ('v * _) t -> ('v boxed_list * no) t tzresult
+  val list_t : Script.location -> ('v, _) ty -> ('v boxed_list, no) ty tzresult
 
-  val operation_t : (Ty_value.operation * no) t
+  val operation_t : (Ty_value.operation, no) ty
 
-  val list_operation_t : (Ty_value.operation boxed_list * no) t
+  val list_operation_t : (Ty_value.operation boxed_list, no) ty
 
-  val set_t : Script.location -> ('v * yes) t -> ('v set * no) t tzresult
+  val set_t : Script.location -> ('v, yes) ty -> ('v set, no) ty tzresult
 
   val map_t :
     Script.location ->
-    ('k * yes) t ->
-    ('v * _) t ->
-    (('k, 'v) map * no) t tzresult
+    ('k, yes) ty ->
+    ('v, _) ty ->
+    (('k, 'v) map, no) ty tzresult
 
   val big_map_t :
     Script.location ->
-    ('k * yes) t ->
-    ('v * _) t ->
-    (('k, 'v) Ty_value.big_map * no) t tzresult
+    ('k, yes) ty ->
+    ('v, _) ty ->
+    (('k, 'v) Ty_value.big_map, no) ty tzresult
 
   val contract_t :
     Script.location ->
-    ('arg * _) t ->
-    ('arg Ty_value.typed_contract * no) t tzresult
+    ('arg, _) ty ->
+    ('arg Ty_value.typed_contract, no) ty tzresult
 
-  val contract_unit_t : (unit Ty_value.typed_contract * no) t
+  val contract_unit_t : (unit Ty_value.typed_contract, no) ty
 
   val sapling_transaction_t :
-    memo_size:Sapling.Memo_size.t -> (Sapling.transaction * no) t
+    memo_size:Sapling.Memo_size.t -> (Sapling.transaction, no) ty
 
   val sapling_transaction_deprecated_t :
-    memo_size:Sapling.Memo_size.t -> (Sapling.Legacy.transaction * no) t
+    memo_size:Sapling.Memo_size.t -> (Sapling.Legacy.transaction, no) ty
 
-  val sapling_state_t : memo_size:Sapling.Memo_size.t -> (Sapling.state * no) t
+  val sapling_state_t : memo_size:Sapling.Memo_size.t -> (Sapling.state, no) ty
 
-  val chain_id_t : (Script_chain_id.t * yes) t
+  val chain_id_t : (Script_chain_id.t, yes) ty
 
-  val never_t : (never * yes) t
+  val never_t : (never, yes) ty
 
-  val bls12_381_g1_t : (Script_bls.G1.t * no) t
+  val bls12_381_g1_t : (Script_bls.G1.t, no) ty
 
-  val bls12_381_g2_t : (Script_bls.G2.t * no) t
+  val bls12_381_g2_t : (Script_bls.G2.t, no) ty
 
-  val bls12_381_fr_t : (Script_bls.Fr.t * no) t
+  val bls12_381_fr_t : (Script_bls.Fr.t, no) ty
 
   val ticket_t :
-    Script.location -> ('arg * yes) t -> ('arg ticket * no) t tzresult
+    Script.location -> ('arg, yes) ty -> ('arg ticket, no) ty tzresult
 
-  val chest_key_t : (Script_timelock.chest_key * no) t
+  val chest_key_t : (Script_timelock.chest_key, no) ty
 
-  val chest_t : (Script_timelock.chest * no) t
+  val chest_t : (Script_timelock.chest, no) ty
 
-  type 'a ty_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'a}
+  type 'a ty_traverse = {apply : 'b 'bc. 'a -> ('b, 'bc) ty -> 'a}
 
-  val ty_traverse : ('a * 'ac) t -> 'accu -> 'accu ty_traverse -> 'accu
+  val ty_traverse : ('a, 'ac) ty -> 'accu -> 'accu ty_traverse -> 'accu
 
-  type 'a ty_value_traverse = {apply : 'b 'bc. 'a -> ('b * 'bc) t -> 'b -> 'a}
+  type 'a ty_value_traverse = {apply : 'b 'bc. 'a -> ('b, 'bc) ty -> 'b -> 'a}
 
   val ty_value_traverse :
-    ('a * 'ac) t -> 'a -> 'accu -> 'accu ty_value_traverse -> 'accu
+    ('a, 'ac) ty -> 'a -> 'accu -> 'accu ty_value_traverse -> 'accu
 
   val bot_t : (empty_cell * empty_cell) s
 
-  val stack_t : ('a * _) t -> ('top * 'rest) s -> ('a * ('top * 'rest)) s
+  val stack_t : ('a, _) ty -> ('top * 'rest) s -> ('a * ('top * 'rest)) s
 
   val stack_top : ('a * ('b * 'r)) s -> 'a ty_ex_c
 
@@ -982,14 +984,16 @@ and Ty : sig
 end = struct
   include Michelson_type_constructor.HashConsing (Ty_value)
 
-  type 'a comparable_t = ('a * yes) t
+  type ('a, 'ac) ty = ('a * 'ac) t
 
-  type _ ty_ex_c = Ty_ex_c : ('a * _) t -> 'a ty_ex_c [@@unboxed]
+  type 'a comparable_ty = ('a, yes) ty
 
-  let is_comparable : type a ac. (a * ac) t -> ac dbool =
+  type _ ty_ex_c = Ty_ex_c : ('a, _) ty -> 'a ty_ex_c [@@unboxed]
+
+  let is_comparable : type a ac. (a, ac) ty -> ac dbool =
    fun {value; _} -> Ty_value.is_comparable value
 
-  let ty_size : type a ac. (a * ac) t -> a Type_size.t =
+  let ty_size : type a ac. (a, ac) ty -> a Type_size.t =
    fun {value; _} ->
     match value with
     | Unit_t | Never_t | Int_t | Nat_t | Signature_t | String_t | Bytes_t
@@ -1545,7 +1549,7 @@ end = struct
     and on_bindings :
         type ret k v vc.
         'accu ->
-        k comparable_t ->
+        k comparable_ty ->
         (v * vc) t ->
         ('accu -> ret) ->
         (k * v) list ->
@@ -2798,7 +2802,7 @@ module Typed_contract = struct
   module Internal_for_tests = struct
     let typed_exn :
         type a ac.
-        (a * ac) Ty.t ->
+        (a, ac) Ty.ty ->
         Destination.t ->
         Entrypoint.t ->
         a Ty_value.typed_contract =
