@@ -868,6 +868,11 @@ let play game refutation =
   | Ok x -> Lwt.return x
   | Error reason -> Lwt.return @@ Either.Left {loser = game.turn; reason}
 
+let cost_play _game _refutation =
+  let open Gas_limit_repr in
+  (* FIXME: Is to be changed in forthcoming commits. *)
+  free
+
 module Internal_for_tests = struct
   let find_choice = find_choice
 
