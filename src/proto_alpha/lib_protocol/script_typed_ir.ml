@@ -2731,20 +2731,21 @@ let stack_top_ty : type a b s. (a, b * s) stack_ty -> a ty_ex_c = function
   | Item_t (ty, _) -> Ty_ex_c ty
 
 module Typed_contract = struct
-  let destination : type a. a typed_contract -> Destination.t = function
+  let destination : type a. a Ty_value.typed_contract -> Destination.t =
+    function
     | Typed_implicit pkh -> Destination.Contract (Implicit pkh)
     | Typed_originated {contract_hash; _} ->
         Destination.Contract (Originated contract_hash)
     | Typed_tx_rollup {tx_rollup; _} -> Destination.Tx_rollup tx_rollup
     | Typed_sc_rollup {sc_rollup; _} -> Destination.Sc_rollup sc_rollup
 
-  let arg_ty : type a. a typed_contract -> a ty_ex_c = function
-    | Typed_implicit _ -> (Ty_ex_c unit_t : a ty_ex_c)
+  let arg_ty : type a. a Ty_value.typed_contract -> a Ty.ty_ex_c = function
+    | Typed_implicit _ -> (Ty.Ty_ex_c Ty.unit_t : a Ty.ty_ex_c)
     | Typed_originated {arg_ty; _} -> Ty_ex_c arg_ty
     | Typed_tx_rollup {arg_ty; _} -> Ty_ex_c arg_ty
     | Typed_sc_rollup {arg_ty; _} -> Ty_ex_c arg_ty
 
-  let entrypoint : type a. a typed_contract -> Entrypoint.t = function
+  let entrypoint : type a. a Ty_value.typed_contract -> Entrypoint.t = function
     | Typed_implicit _ -> Entrypoint.default
     | Typed_tx_rollup _ -> Tx_rollup.deposit_entrypoint
     | Typed_originated {entrypoint; _} | Typed_sc_rollup {entrypoint; _} ->
@@ -2753,19 +2754,22 @@ module Typed_contract = struct
   module Internal_for_tests = struct
     let typed_exn :
         type a ac.
-        (a, ac) ty -> Destination.t -> Entrypoint.t -> a typed_contract =
+        (a * ac) Ty.t ->
+        Destination.t ->
+        Entrypoint.t ->
+        a Ty_value.typed_contract =
      fun arg_ty destination entrypoint ->
       match (destination, arg_ty.value) with
-      | Contract (Implicit pkh), Unit_t -> Typed_implicit pkh
+      | Contract (Implicit pkh), Ty_value.Unit_t -> Typed_implicit pkh
       | Contract (Implicit _), _ ->
           invalid_arg "Implicit contracts expect type unit"
       | Contract (Originated contract_hash), _ ->
           Typed_originated {arg_ty; contract_hash; entrypoint}
       | ( Tx_rollup tx_rollup,
-          Pair_t
+          Ty_value.Pair_t
             ({value = Ticket_t _; _}, {value = Tx_rollup_l2_address_t; _}, _, _)
         ) ->
-          (Typed_tx_rollup {arg_ty; tx_rollup} : a typed_contract)
+          (Typed_tx_rollup {arg_ty; tx_rollup} : a Ty_value.typed_contract)
       | Tx_rollup _, _ ->
           invalid_arg
             "Transaction rollups expect type (pair (ticket _) \
