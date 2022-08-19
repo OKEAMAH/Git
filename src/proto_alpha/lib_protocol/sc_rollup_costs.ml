@@ -146,14 +146,18 @@ let cost_hash_bytes ~bytes_len =
   let v0 = S.safe_int bytes_len in
   S.safe_int 430 + v0 + (v0 lsr 3)
 
-let cost_check_dissection ~number_of_states:_ =
-  (* FIXME: To be changed in forthcoming commits. *)
-  S.safe_int 0
+let cost_compare size_in_bytes =
+  let open S_syntax in
+  let v0 = S.safe_int size_in_bytes in
+  S.safe_int 35 + ((v0 lsr 6) + (v0 lsr 7))
+
+let search_in_tick_list len tick_size =
+  S_syntax.(S.safe_int len * cost_compare tick_size)
 
 let cost_find_choice ~number_of_sections ~tick_size =
+  search_in_tick_list number_of_sections tick_size
+
+let cost_check_dissection ~number_of_states ~tick_size ~hash_size =
   let open S_syntax in
-  let cost_comparison_with_tick =
-    let v0 = S.safe_int tick_size in
-    S.safe_int 35 + ((v0 lsr 6) + (v0 lsr 7))
-  in
-  S.safe_int number_of_sections * cost_comparison_with_tick
+  search_in_tick_list number_of_states tick_size
+  + (S.safe_int 2 * cost_compare hash_size)

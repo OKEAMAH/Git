@@ -909,7 +909,11 @@ let cost_play ~number_of_sections game refutation =
   match refutation.step with
   | Dissection states ->
       let number_of_states = List.length states in
-      Sc_rollup_costs.cost_check_dissection ~number_of_states
+      let hash_size = State_hash.size in
+      Sc_rollup_costs.cost_check_dissection
+        ~number_of_states
+        ~tick_size
+        ~hash_size
   | Proof proof ->
       let {inbox_snapshot; pvm_name; _} = game in
       Sc_rollup_costs.Constants.cost_check_proof_start_stop
