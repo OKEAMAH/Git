@@ -150,14 +150,6 @@ let pp_int_cvtop out op =
     | TruncSatUF64 -> "TruncSatUF64"
     | ReinterpretFloat -> "ReinterpretFloat")
 
-let pp_vec =
-  let pp out = function
-    | Values.V128 bits ->
-        let hash = Hashtbl.hash bits in
-        Format.fprintf out "V128 (#%d)" hash
-  in
-  Source.pp_phrase pp
-
 (*
   Generate instructions. The following are missing:
   - [VecTest]

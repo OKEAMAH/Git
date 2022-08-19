@@ -266,6 +266,7 @@ type var = int32 Source.phrase
 type num = Values.num Source.phrase
 
 type vec = Values.vec Source.phrase
+[@@deriving show]
 
 type name = int Vector.t
 
