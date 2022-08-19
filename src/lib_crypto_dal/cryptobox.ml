@@ -26,8 +26,8 @@
 open Error_monad
 include Cryptobox_intf
 module Base58 = Tezos_crypto.Base58
-module Srs_g1 = Bls12_381_polynomial.Polynomial.Srs_g1
-module Srs_g2 = Bls12_381_polynomial.Polynomial.Srs_g2
+module Srs_g1 = Bls12_381_polynomial.Polynomial.M.Srs_g1
+module Srs_g2 = Bls12_381_polynomial.Polynomial.M.Srs_g2
 
 type error += Failed_to_load_trusted_setup of string
 
@@ -111,14 +111,14 @@ type srs = {
 module Inner = struct
   (* Scalars are elements of the prime field Fr from BLS. *)
   module Scalar = Bls12_381.Fr
-  module Polynomial = Bls12_381_polynomial.Polynomial
+  module Polynomial = Bls12_381_polynomial.Polynomial.M
 
   (* Operations on vector of scalars *)
   module Evaluations = Polynomial.Evaluations
 
   (* Domains for the Fast Fourier Transform (FTT). *)
   module Domains = Polynomial.Domain
-  module Polynomials = Polynomial.Polynomial
+  module Polynomials = Polynomial.Polynomial.Polynomial_unsafe
   module IntMap = Tezos_error_monad.TzLwtreslib.Map.Make (Int)
 
   type slot = bytes
