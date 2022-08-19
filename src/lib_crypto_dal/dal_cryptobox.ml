@@ -693,22 +693,9 @@ module Inner = struct
   (* The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_to_bytes t p =
-    (*TODO: remove blit since size is already correct *)
-    (*let eval =
-        pfa_fr_inplace
-          2048
-          19
-          (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 19))
-          (Scalar.pow (Array.get t.domain_k 1) (Z.of_int 2048))
-          ~coefficients:(Polynomials.to_dense_coefficients p)
-          ~inverse:false
-      in*)
-    let coefficients =
-      Polynomials.to_dense_coefficients p |> Scalar_array.of_array
-    in
+    (* We copy the polynomial p so that the function doesn't modify it *)
+    let coefficients = Polynomials.(to_carray (copy p)) in
     let eval = evaluation_fft_k t coefficients |> Scalar_array.to_array in
-
-    (*let eval = Evaluations.(evaluation_fft t.domain_k p |> to_array) in*)
     let slot = Bytes.init t.slot_size (fun _ -> '0') in
     let offset = ref 0 in
     for segment = 0 to t.nb_segments - 1 do
