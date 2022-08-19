@@ -368,6 +368,25 @@ module Inner = struct
       ~scratch_zone:t.scratch_zone ;
     coefficients
 
+  let interpolation_fft_n t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:12
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2
+           Scalar.(inverse_exn (pow (Array.get t.domain_n 1) (Z.of_int 19)))
+           (2 * 2048))
+      ~domain2:
+        (make_domain2
+           Scalar.(
+             inverse_exn
+               (pow (Array.get t.domain_n 1) (Z.of_int (Int.mul 2 2048))))
+           19)
+      ~coefficients
+      ~inverse:true
+      ~scratch_zone:t.scratch_zone ;
+    coefficients
+
   let evaluation_fft_k t coefficients =
     prime_factor_algorithm_fft
       ~domain1_length_log:11
@@ -884,20 +903,23 @@ module Inner = struct
 
       (* 5. Computing B(x). *)
       (*let b = Evaluations.interpolation_fft2 t.domain_n n_poly in*)
+      (*let b =
+          pfa_fr_inplace
+            (2 * 2048)
+            19
+            Scalar.(inverse_exn (pow (Array.get t.domain_n 1) (Z.of_int 19)))
+            Scalar.(
+              inverse_exn
+                (pow (Array.get t.domain_n 1) (Z.of_int (Int.mul 2 2048))))
+            ~coefficients:(Scalar_array.to_array n_poly)
+            ~inverse:true
+          |> Polynomials.of_dense
+        in
+        let b = Polynomials.copy ~len:t.k b in*)
       let b =
-        pfa_fr_inplace
-          (2 * 2048)
-          19
-          Scalar.(inverse_exn (pow (Array.get t.domain_n 1) (Z.of_int 19)))
-          Scalar.(
-            inverse_exn
-              (pow (Array.get t.domain_n 1) (Z.of_int (Int.mul 2 2048))))
-          ~coefficients:(Scalar_array.to_array n_poly)
-          ~inverse:true
-        |> Polynomials.of_dense
+        interpolation_fft_n t n_poly
+        |> Scalar_array.copy ~len:t.k |> Polynomials.of_carray
       in
-      let b = Polynomials.copy ~len:t.k b in
-
       Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
 
       (* 6. Computing Lagrange interpolation polynomial P(x). *)
