@@ -703,19 +703,33 @@ module Inner = struct
     done ;
     slot
 
-  let encode t p =
-    (*Evaluations.(evaluation_fft t.domain_n p |> to_array)*)
-    let coefficients = Array.init t.n (fun _ -> Scalar.(copy zero)) in
-    Array.blit (Polynomials.to_dense_coefficients p) 0 coefficients 0 t.k ;
-    pfa_fr_inplace
-      (t.redundancy_factor * 2048)
-      19
-      (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
-      (Scalar.pow
-         (Array.get t.domain_n 1)
-         (Z.of_int (t.redundancy_factor * 2048)))
+  let evaluation_fft_n t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:15
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2
+           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
+           (16 * 2048))
+      ~domain2:
+        (make_domain2
+           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (16 * 2048)))
+           19)
       ~coefficients
       ~inverse:false
+      ~scratch_zone:(Scalar_array.allocate (2 * 16 * 2048 * 19)) ;
+    coefficients
+
+  (* Doesn't modify p *)
+  let encode t p =
+    let coefficients = Scalar_array.allocate t.n in
+    Scalar_array.blit
+      Polynomials.(to_carray p)
+      ~src_off:0
+      coefficients
+      ~dst_off:0
+      ~len:t.k ;
+    evaluation_fft_n t coefficients
 
   (* The shards are arranged in cosets to evaluate in batch with Kate
      amortized. *)
@@ -726,7 +740,7 @@ module Inner = struct
       else
         let shard = Array.init t.shard_size (fun _ -> Scalar.(copy zero)) in
         for j = 0 to t.shard_size - 1 do
-          shard.(j) <- codeword.((t.number_of_shards * j) + i)
+          shard.(j) <- Scalar_array.get codeword ((t.number_of_shards * j) + i)
         done ;
         loop (i + 1) (IntMap.add i shard map)
     in
