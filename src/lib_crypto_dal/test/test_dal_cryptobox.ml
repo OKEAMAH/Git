@@ -124,6 +124,95 @@ module Test = struct
         in
         Printf.eprintf "\n make = %f \n" (Sys.time () -. t') ;
 
+        let coefficients = Scalar_array.allocate 19 in
+        _print_array coefficients ;
+
+        let domain = make_domain (get_primitive_root 19) 19 in
+        let domain_inv =
+          make_domain (Scalar.inverse_exn (get_primitive_root 19)) 19
+        in
+
+        List.iter
+          (fun i ->
+            let eval =
+              Bls12_381_polynomial.Polynomial.Polynomial.evaluate
+                (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
+                   (Scalar_array.to_array coefficients))
+                (Scalar_array.get domain i)
+            in
+            Printf.eprintf " %s " (Scalar.to_string eval))
+          (range 0 19) ;
+
+        let t' = Sys.time () in
+        _dft_c ~inverse:false ~length:19 ~domain ~coefficients ;
+        Printf.eprintf "\n dftC 19 = %f \n" (Sys.time () -. t') ;
+
+        _print_array coefficients ;
+
+        let t' = Sys.time () in
+        _dft_c ~inverse:true ~length:19 ~domain:domain_inv ~coefficients ;
+        Printf.eprintf "\n dftC 19 = %f \n" (Sys.time () -. t') ;
+
+        _print_array coefficients ;
+
+        Printf.eprintf "\n ==================== \n" ;
+
+        let size = 2 in
+        let rt = get_primitive_root (size * 19) in
+        let domain = make_domain rt (size * 19) in
+        let domain1 = make_domain (Scalar.pow rt (Z.of_int 19)) size in
+        let domain1_inv =
+          make_domain (Scalar.inverse_exn (Scalar.pow rt (Z.of_int 19))) size
+        in
+        let domain2 = make_domain (Scalar.pow rt (Z.of_int size)) 19 in
+        let domain2_inv =
+          make_domain (Scalar.inverse_exn (Scalar.pow rt (Z.of_int size))) 19
+        in
+        let coefficients =
+          Array.init (size * 19) (fun _ -> Scalar.(random ()))
+          |> Scalar_array.of_array
+        in
+        let scratch_zone = Scalar_array.allocate (2 * size * 19) in
+
+        _print_array coefficients ;
+        List.iter
+          (fun i ->
+            let eval =
+              Bls12_381_polynomial.Polynomial.Polynomial.evaluate
+                (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
+                   (Scalar_array.to_array coefficients))
+                (Scalar_array.get domain i)
+            in
+            Printf.eprintf " %s " (Scalar.to_string eval))
+          (range 0 (2 * 19)) ;
+
+        let t' = Sys.time () in
+        prime_factor_algorithm_fft
+          ~domain1_length_log:1
+          ~domain2_length:19
+          ~domain1
+          ~domain2
+          ~coefficients
+          ~inverse:false
+          ~scratch_zone ;
+        Printf.eprintf "\n fftC 2^15*16 = %f \n" (Sys.time () -. t') ;
+
+        _print_array coefficients ;
+
+        let t' = Sys.time () in
+        prime_factor_algorithm_fft
+          ~domain1_length_log:1
+          ~domain2_length:19
+          ~domain1:domain1_inv
+          ~domain2:domain2_inv
+          ~coefficients
+          ~inverse:true
+          ~scratch_zone ;
+        Printf.eprintf "\n fftC 2^15*16 = %f \n" (Sys.time () -. t') ;
+        _print_array coefficients ;
+
+        let asrt = false in
+        assert asrt ;
         let dft ~inverse ~domain ~coefficients =
           let n = Array.length domain in
           let res = Array.make n Scalar.(copy zero) in
@@ -186,6 +275,8 @@ module Test = struct
         let msg' = Dal_cryptobox.polynomial_to_bytes t p in
         Printf.eprintf "\n polynomial_to_bytes = %f \n" (Sys.time () -. t') ;
         assert (Bytes.compare msg msg' = 0) ;
+        let asrt = false in
+        assert asrt ;
         let t' = Sys.time () in
         let cm = Dal_cryptobox.commit t p in
         Printf.eprintf "\n commit = %f \n" (Sys.time () -. t') ;
@@ -198,75 +289,7 @@ module Test = struct
           Dal_cryptobox.verify_segment t cm {index = 1; content = segment} pi
         in
         Printf.eprintf "\n verify_segment = %f \n" (Sys.time () -. t') ;
-        let coefficients = Scalar_array.allocate 19 in
 
-        let _domain =
-          make_domain
-            (Scalar.of_string
-               "33954097614611596975476204725091907054106918505758578373023360834096706151438")
-            19
-        in
-        _print_array coefficients ;
-        _print_array _domain ;
-        List.iter
-          (fun i ->
-            let eval =
-              Bls12_381_polynomial.Polynomial.Polynomial.evaluate
-                (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
-                   (Scalar_array.to_array coefficients))
-                (Scalar_array.get _domain i)
-            in
-            Printf.eprintf " %s " (Scalar.to_string eval))
-          (range 0 19) ;
-        Printf.eprintf " -- zero : %s \n" Scalar.(to_string zero) ;
-        let t' = Sys.time () in
-        _dft_c ~inverse:false ~length:19 ~domain:_domain ~coefficients ;
-        Printf.eprintf "\n dftC 19 = %f \n" (Sys.time () -. t') ;
-
-        _print_array coefficients ;
-
-        Printf.eprintf "\n ==================== \n" ;
-
-        let size = 2048 in
-        let rt = get_primitive_root (size * 19) in
-        let domain = make_domain rt (size * 19) in
-        let domain1 = make_domain (Scalar.pow rt (Z.of_int 19)) size in
-        let domain2 = make_domain (Scalar.pow rt (Z.of_int size)) 19 in
-        let coefficients =
-          Array.init (size * 19) (fun _ -> Scalar.(random ()))
-          |> Scalar_array.of_array
-        in
-        let scratch_zone = Scalar_array.allocate (2 * size * 19) in
-
-        List.iter
-          (fun i ->
-            let eval =
-              Bls12_381_polynomial.Polynomial.Polynomial.evaluate
-                (Bls12_381_polynomial.Polynomial.Polynomial.of_dense
-                   (Scalar_array.to_array coefficients))
-                (Scalar_array.get domain i)
-            in
-            Printf.eprintf " %s " (Scalar.to_string eval))
-          (range 0 4) ;
-
-        let t' = Sys.time () in
-        prime_factor_algorithm_fft
-          ~domain1_length_log:11
-          ~domain2_length:19
-          ~domain1
-          ~domain2
-          ~coefficients
-          ~inverse:false
-          ~scratch_zone ;
-        Printf.eprintf "\n fftC 2^15*16 = %f \n" (Sys.time () -. t') ;
-
-        (*_print_array coefficients ;*)
-        Printf.eprintf
-          "\n %s \n"
-          (Scalar.to_string @@ Scalar_array.get coefficients 1) ;
-
-        (*let asrt = false in
-          assert asrt ;*)
         assert check ;
         let t' = Sys.time () in
         let enc_shards = Dal_cryptobox.shards_from_polynomial t p in
@@ -306,8 +329,7 @@ module Test = struct
         assert (Bytes.compare msg msg' = 0) ;
 
         (*let asrt = false in
-        assert asrt ;*)
-
+          assert asrt ;*)
         let comm = Dal_cryptobox.commit t p in
 
         let t' = Sys.time () in

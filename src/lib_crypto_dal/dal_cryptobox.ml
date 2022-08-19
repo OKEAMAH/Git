@@ -638,33 +638,6 @@ module Inner = struct
       done ;
       Ok res
 
-  let polynomial_from_slot t slot =
-    let open Result_syntax in
-    let* data = polynomial_from_bytes' t slot in
-    let res =
-      pfa_fr_inplace
-        2048
-        19
-        Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 19)))
-        Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 2048)))
-        ~coefficients:data
-        ~inverse:true
-    in
-    Ok (Polynomials.of_dense res)
-  (*Evaluations.interpolation_fft2 t.domain_k data*)
-
-  let eval_coset t eval slot offset segment =
-    for elt = 0 to t.segment_length - 1 do
-      let idx = (elt * t.nb_segments) + segment in
-      let coeff = Scalar.to_bytes (Array.get eval idx) in
-      if elt = t.segment_length - 1 then (
-        Bytes.blit coeff 0 slot !offset t.remaining_bytes ;
-        offset := !offset + t.remaining_bytes)
-      else (
-        Bytes.blit coeff 0 slot !offset scalar_bytes_amount ;
-        offset := !offset + scalar_bytes_amount)
-    done
-
   let make_domain2 root d =
     let module Scalar = Bls12_381.Fr in
     let build_array init next len =
@@ -689,6 +662,52 @@ module Inner = struct
       ~inverse:false
       ~scratch_zone:(Scalar_array.allocate (2 * 2048 * 19)) ;
     coefficients
+
+  let _interpolation_fft_k t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:11
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2
+           Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 19)))
+           2048)
+      ~domain2:
+        (make_domain2
+           Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 2048)))
+           19)
+      ~coefficients
+      ~inverse:true
+      ~scratch_zone:(Scalar_array.allocate (2 * 2048 * 19)) ;
+    coefficients
+
+  let polynomial_from_slot t slot =
+    let open Result_syntax in
+    let* data = polynomial_from_bytes' t slot in
+    (*let data = Scalar_array.of_array data in
+    let res = interpolation_fft_k t data in*)
+    let res =
+        pfa_fr_inplace
+          2048
+          19
+          Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 19)))
+          Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 2048)))
+          ~coefficients:data
+          ~inverse:true
+      in
+    Ok (Polynomials.of_dense res)
+  (*Evaluations.interpolation_fft2 t.domain_k data*)
+
+  let eval_coset t eval slot offset segment =
+    for elt = 0 to t.segment_length - 1 do
+      let idx = (elt * t.nb_segments) + segment in
+      let coeff = Scalar.to_bytes (Array.get eval idx) in
+      if elt = t.segment_length - 1 then (
+        Bytes.blit coeff 0 slot !offset t.remaining_bytes ;
+        offset := !offset + t.remaining_bytes)
+      else (
+        Bytes.blit coeff 0 slot !offset scalar_bytes_amount ;
+        offset := !offset + scalar_bytes_amount)
+    done
 
   (* The segments are arranged in cosets to evaluate in batch with Kate
      amortized. *)

@@ -77,7 +77,7 @@ void reorg_fr_coefficients_(int n, blst_fr *coefficients)
 
 // Taken from https://gitlab.com/dannywillems/ocaml-bls12-381/
 
-void fft_fr_inplace_(blst_fr *coefficients, blst_fr *domain, int log_domain_size)
+void fft_fr_inplace_(blst_fr *coefficients, blst_fr *domain, int log_domain_size, int inverse)
 {
   // FIXME: add a check on the domain_size to avoid ariane crash
   blst_fr buffer;
@@ -104,6 +104,21 @@ void fft_fr_inplace_(blst_fr *coefficients, blst_fr *domain, int log_domain_size
       k = k + (2 * m);
     }
     m = 2 * m;
+  }
+  if (inverse)
+  {
+    blst_fr inv_n, n;
+    // blst_scalar_from_uint64 -> representation décimale
+    // blst_fr_from_scalar -> conversion Montgomery
+    //  pb: length pas élément de Fr
+    //  l'allouer une fois pour toute
+    blst_fr_from_uint64(&n, (uint64_t[4]){domain_size, 0, 0, 0});
+    // passer par les conversions du dessus
+    blst_fr_inverse(&inv_n, &n);
+    for (int i = 0; i < domain_size; i++)
+    {
+      blst_fr_mul(coefficients + i, coefficients + i, &inv_n);
+    }
   }
 }
 
@@ -140,7 +155,7 @@ void prime_factor_algorithm_fft_(blst_fr *domain1, blst_fr *domain2, int length1
 
   for (int i = 0; i < length2; i++)
   {
-    fft_fr_inplace_(new_scratch + (i * length1), domain1, length1_log);
+    fft_fr_inplace_(new_scratch + (i * length1), domain1, length1_log, inverse);
   }
 
   for (int i = 0; i < length1; i++)
