@@ -760,9 +760,9 @@ module Inner = struct
     loop 0 IntMap.empty
 
   (* Computes the polynomial N(X) := \sum_{i=0}^{k-1} n_i x_i^{-1} X^{z_i}. *)
-  let compute_n t eval_a' shards =
+  let compute_n t (eval_a' : scalar_array) shards =
     let w = Array.get t.domain_n 1 in
-    let n_poly = Array.init t.n (fun _ -> Scalar.(copy zero)) in
+    let n_poly = Scalar_array.allocate t.n in
     let open Result_syntax in
     let c = ref 0 in
     let* () =
@@ -777,13 +777,13 @@ module Inner = struct
                   let c_i = arr.(j) in
                   let z_i = (t.number_of_shards * j) + z_i in
                   let x_i = Scalar.pow w (Z.of_int z_i) in
-                  let tmp = Array.get eval_a' z_i in
+                  let tmp = Scalar.copy (Scalar_array.get eval_a' z_i) in
                   Scalar.mul_inplace tmp tmp x_i ;
                   match Scalar.inverse_exn_inplace tmp tmp with
                   | exception _ -> Error (`Invert_zero "can't inverse element")
                   | () ->
                       Scalar.mul_inplace tmp tmp c_i ;
-                      n_poly.(z_i) <- tmp ;
+                      Scalar_array.set n_poly tmp z_i ;
                       c := !c + 1 ;
                       loop (j + 1))
             in
@@ -791,6 +791,11 @@ module Inner = struct
         shards
     in
     Ok n_poly
+
+  let resize' s p ps =
+    let res = Scalar_array.allocate s in
+    Scalar_array.blit p ~src_off:0 res ~dst_off:0 ~len:ps ;
+    res
 
   let polynomial_from_shards t shards =
     let open Result_syntax in
@@ -859,15 +864,19 @@ module Inner = struct
 
       (* 3. Computing A'(w^i) = A_i(w^i). *)
       (*let eval_a' = Evaluations.evaluation_fft t.domain_n a' in*)
-      let a' = Polynomials.to_dense_coefficients a' in
+      (*let a' = Polynomials.to_dense_coefficients a' in
+        let eval_a' =
+          pfa_fr_inplace
+            (2 * 2048)
+            19
+            (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
+            (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
+            ~coefficients:(resize t.n a' (Array.length a'))
+            ~inverse:false
+        in*)
+      let a' = Polynomials.to_carray a' in
       let eval_a' =
-        pfa_fr_inplace
-          (2 * 2048)
-          19
-          (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
-          (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
-          ~coefficients:(resize t.n a' (Array.length a'))
-          ~inverse:false
+        evaluation_fft_n t (resize' t.n a' (Scalar_array.length a'))
       in
 
       (* 4. Computing N(x). *)
@@ -883,7 +892,7 @@ module Inner = struct
           Scalar.(
             inverse_exn
               (pow (Array.get t.domain_n 1) (Z.of_int (Int.mul 2 2048))))
-          ~coefficients:n_poly
+          ~coefficients:(Scalar_array.to_array n_poly)
           ~inverse:true
         |> Polynomials.of_dense
       in
