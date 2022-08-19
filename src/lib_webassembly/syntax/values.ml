@@ -19,6 +19,14 @@ type ref_ = ..
 
 type ref_ += NullRef of ref_type | ExternRef of int32
 
+let pp_ref out ref =
+  let pp_int32 out n = Format.fprintf out "%ld" n in
+
+  match ref with
+  | NullRef rt -> Format.fprintf out "NullRef (%a)" Types.pp_ref_type rt
+  | ExternRef n -> Format.fprintf out "ExternRef(%a)" pp_int32 n
+  | _ -> Stdlib.failwith "Unsupported value ref"
+
 type value = Num of num | Vec of vec | Ref of ref_
 
 (* Injection & projection *)
