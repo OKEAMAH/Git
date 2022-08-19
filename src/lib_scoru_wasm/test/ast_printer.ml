@@ -55,10 +55,6 @@ let pp_unit out () = Format.pp_print_string out "()"
 
 let pp_pair pp1 pp2 out (x, y) = Format.fprintf out "(%a, %a)" pp1 x pp2 y
 
-let pp_block_type out = function
-  | Ast.VarBlockType v -> pp_var out v
-  | Ast.ValBlockType v -> pp_opt Types.pp_value_type out v
-
 let pp_memop pp_ty pp_pack out {Ast.ty; align; pack; offset} =
   Format.fprintf
     out

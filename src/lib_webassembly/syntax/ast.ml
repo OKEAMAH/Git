@@ -261,18 +261,18 @@ type vec_laneop = (vec_type, pack_size) memop * int [@@deriving show]
 
 (* Expressions *)
 
-type var = int32 Source.phrase
+type var = int32 Source.phrase [@@deriving show]
 
 type num = Values.num Source.phrase
 
-type vec = Values.vec Source.phrase
-[@@deriving show]
+type vec = Values.vec Source.phrase [@@deriving show]
 
 type name = int Vector.t
 
 type name_list = int list
 
 type block_type = VarBlockType of var | ValBlockType of value_type option
+[@@deriving show]
 
 type block_label = Block_label of int32
 
