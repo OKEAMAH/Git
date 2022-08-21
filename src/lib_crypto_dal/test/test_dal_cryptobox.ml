@@ -44,7 +44,7 @@ module Test = struct
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
-      Bytes.set_int64_le msg (i * 8) (Random.int64 Int64.max_int)
+      Bytes.set_int64_le msg (i * 8) Int64.max_int
     done ;
 
     Printf.eprintf
