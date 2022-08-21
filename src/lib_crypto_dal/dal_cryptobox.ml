@@ -47,14 +47,22 @@ external prime_factor_algorithm_fft_ext :
 
 let prime_factor_algorithm_fft ~inverse ~domain1 ~domain2 ~domain1_length_log
     ~domain2_length ~coefficients ~scratch_zone =
+  let res = Scalar_array.allocate (Scalar_array.length coefficients) in
+  Scalar_array.blit
+    coefficients
+    ~src_off:0
+    res
+    ~dst_off:0
+    ~len:(Scalar_array.length coefficients) ;
   prime_factor_algorithm_fft_ext
     inverse
     domain1
     domain2
     domain1_length_log
     domain2_length
-    coefficients
-    scratch_zone
+    res
+    scratch_zone ;
+  res
 
 (* END TODO: find better place for this piece of code *)
 
@@ -365,8 +373,7 @@ module Inner = struct
            19)
       ~coefficients
       ~inverse:false
-      ~scratch_zone:t.scratch_zone ;
-    coefficients
+      ~scratch_zone:t.scratch_zone
 
   let _interpolation_fft_n t coefficients =
     prime_factor_algorithm_fft
@@ -384,8 +391,7 @@ module Inner = struct
            19)
       ~coefficients
       ~inverse:true
-      ~scratch_zone:t.scratch_zone ;
-    coefficients
+      ~scratch_zone:t.scratch_zone
 
   let evaluation_fft_k t coefficients =
     prime_factor_algorithm_fft
@@ -397,8 +403,7 @@ module Inner = struct
         (make_domain2 Scalar.(pow (Array.get t.domain_k 1) (Z.of_int 2048)) 19)
       ~coefficients
       ~inverse:false
-      ~scratch_zone:t.scratch_zone ;
-    coefficients
+      ~scratch_zone:t.scratch_zone
 
   let interpolation_fft_k t coefficients =
     prime_factor_algorithm_fft
@@ -414,8 +419,7 @@ module Inner = struct
            19)
       ~coefficients
       ~inverse:true
-      ~scratch_zone:t.scratch_zone ;
-    coefficients
+      ~scratch_zone:t.scratch_zone
 
   let evaluation_fft_2k t coefficients =
     prime_factor_algorithm_fft
@@ -431,8 +435,7 @@ module Inner = struct
            19)
       ~coefficients
       ~inverse:false
-      ~scratch_zone:t.scratch_zone ;
-    coefficients
+      ~scratch_zone:t.scratch_zone
 
   let interpolation_fft_2k t coefficients =
     prime_factor_algorithm_fft
@@ -450,8 +453,7 @@ module Inner = struct
            19)
       ~coefficients
       ~inverse:true
-      ~scratch_zone:t.scratch_zone ;
-    coefficients
+      ~scratch_zone:t.scratch_zone
 
   let resize' s p ps =
     let res = Scalar_array.allocate s in
@@ -867,10 +869,10 @@ module Inner = struct
     for i = 0 to (2 * t.k) - 1 do
       eval_a.(i) <- Scalar.mul eval_a.(i) eval_b.(i)
     done ;
-    let res = _interpolation_fft eval_a in
-    Scalar_array.of_array res
-  (*let res = interpolation_fft_2k t Scalar_array.(copy (of_array eval_a)) in
-    Scalar_array.copy res*)
+    (*let res = _interpolation_fft eval_a in
+      Scalar_array.of_array res*)
+    let res = interpolation_fft_2k t Scalar_array.(copy (of_array eval_a)) in
+    Scalar_array.copy res
 
   let polynomial_from_shards t shards =
     let open Result_syntax in

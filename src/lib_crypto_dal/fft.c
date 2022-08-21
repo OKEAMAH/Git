@@ -108,13 +108,11 @@ void fft_fr_inplace_(blst_fr *coefficients, blst_fr *domain, int log_domain_size
   if (inverse)
   {
     blst_fr inv_n, n;
-    blst_scalar nn;
     // blst_scalar_from_uint64 -> representation décimale
     // blst_fr_from_scalar -> conversion Montgomery
     //  pb: length pas élément de Fr
     //  l'allouer une fois pour toute
-    blst_scalar_from_uint64(&nn, (uint64_t[4]){domain_size, 0, 0, 0});
-    blst_fr_from_scalar(&n, &nn);
+    blst_fr_from_uint64(&n, (uint64_t[4]){domain_size, 0, 0, 0});
     // passer par les conversions du dessus
     blst_fr_inverse(&inv_n, &n);
     for (int i = 0; i < domain_size; i++)
