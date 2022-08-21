@@ -368,7 +368,7 @@ module Inner = struct
       ~scratch_zone:t.scratch_zone ;
     coefficients
 
-  let interpolation_fft_n t coefficients =
+  let _interpolation_fft_n t coefficients =
     prime_factor_algorithm_fft
       ~domain1_length_log:12
       ~domain2_length:19
@@ -461,15 +461,13 @@ module Inner = struct
   let fft_mul2k_2' t a b =
     let a = resize' (2 * t.k) a (Scalar_array.length a) in
     let b = resize' (2 * t.k) b (Scalar_array.length b) in
-    let eval_a = evaluation_fft_2k t a in
-    let eval_b = evaluation_fft_2k t b in
+    let eval_a = evaluation_fft_2k t a |> Scalar_array.to_array in
+    let eval_b = evaluation_fft_2k t b |> Scalar_array.to_array in
+
     for i = 0 to (2 * t.k) - 1 do
-      Scalar_array.set
-        eval_a
-        (Scalar.mul (Scalar_array.get eval_a i) (Scalar_array.get eval_b i))
-        i
+      eval_a.(i) <- Scalar.mul eval_a.(i) eval_b.(i)
     done ;
-    interpolation_fft_2k t eval_a
+    interpolation_fft_2k t (Scalar_array.of_array eval_a) |> Scalar_array.copy
 
   let ensure_validity t =
     let open Result_syntax in
@@ -681,36 +679,6 @@ module Inner = struct
     Array.blit p 0 res 0 ps ;
     res
 
-  let fft_mul2k_2 t a b =
-    let a = resize (2 * t.k) a (Array.length a) in
-    let b = resize (2 * t.k) b (Array.length b) in
-    let evaluation_fft coefficients =
-      pfa_fr_inplace
-        (2 * 2048)
-        19
-        (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int 19))
-        (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int (2 * 2048)))
-        ~coefficients
-        ~inverse:false
-    in
-    let interpolation_fft coefficients =
-      pfa_fr_inplace
-        (2 * 2048)
-        19
-        Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
-        Scalar.(
-          inverse_exn
-            (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
-        ~coefficients
-        ~inverse:true
-    in
-    let eval_a = evaluation_fft a in
-    let eval_b = evaluation_fft b in
-    for i = 0 to (2 * t.k) - 1 do
-      eval_a.(i) <- Scalar.mul eval_a.(i) eval_b.(i)
-    done ;
-    interpolation_fft eval_a
-
   let _fft_mul2k_4 t a b c d =
     let a = resize (2 * t.k) a (Array.length a) in
     let b = resize (2 * t.k) b (Array.length b) in
@@ -865,6 +833,45 @@ module Inner = struct
     in
     Ok n_poly
 
+  let interpolation_fft_n' t coefficients =
+    pfa_fr_inplace
+      (2 * 2048)
+      19
+      Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
+      Scalar.(
+        inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
+      ~coefficients
+      ~inverse:true
+
+  let _fft_mul2k_2 t a b =
+    let a = resize (2 * t.k) a (Array.length a) in
+    let b = resize (2 * t.k) b (Array.length b) in
+
+    let _interpolation_fft coefficients =
+      pfa_fr_inplace
+        (2 * 2048)
+        19
+        Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
+        Scalar.(
+          inverse_exn
+            (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
+        ~coefficients
+        ~inverse:true
+    in
+    let eval_a =
+      evaluation_fft_2k t (Scalar_array.of_array a) |> Scalar_array.to_array
+    in
+    let eval_b =
+      evaluation_fft_2k t (Scalar_array.of_array b) |> Scalar_array.to_array
+    in
+    for i = 0 to (2 * t.k) - 1 do
+      eval_a.(i) <- Scalar.mul eval_a.(i) eval_b.(i)
+    done ;
+    let res = _interpolation_fft eval_a in
+    Scalar_array.of_array res
+  (*let res = interpolation_fft_2k t Scalar_array.(copy (of_array eval_a)) in
+    Scalar_array.copy res*)
+
   let polynomial_from_shards t shards =
     let open Result_syntax in
     if t.k > IntMap.cardinal shards * t.shard_size then
@@ -914,8 +921,9 @@ module Inner = struct
               acc
               t.shard_size
               (Scalar.negate (Array.get t.domain_n (i * t.shard_size))))
-          Polynomials.one
+          (Polynomials.of_dense [|Scalar.(copy one)|])
       in
+
       (*let p11 = prod f11 |> Polynomials.to_dense_coefficients in
         let p12 = prod f12 |> Polynomials.to_dense_coefficients in
         let p21 = prod f21 |> Polynomials.to_dense_coefficients in
@@ -923,12 +931,28 @@ module Inner = struct
       let p1 = prod f1 |> Polynomials.to_dense_coefficients in
       let p2 = prod f2 |> Polynomials.to_dense_coefficients in
 
+      (*let p1 =
+          prod f1 |> Polynomials.to_dense_coefficients |> Scalar_array.of_array
+        in
+        let p2 =
+          prod f2 |> Polynomials.to_dense_coefficients |> Scalar_array.of_array
+        in*)
+
       (*let a_poly = fft_mul t.domain_2k [p11; p12; p21; p22] in*)
       (*let a_poly = fft_mul2k_4 t p11 p12 p21 p22 |> Polynomials.of_dense in*)
-      let a_poly = fft_mul2k_2 t p1 p2 |> Polynomials.of_dense in
+      let a_poly = _fft_mul2k_2 t p1 p2 |> Polynomials.of_carray in
+
+      (*Printf.eprintf "\n %s \n" (Polynomials.to_string a_poly) ;*)
+
+      (*let a_poly =
+          fft_mul2k_2' t p1 p2 |> Scalar_array.copy |> Polynomials.of_carray
+        in*)
+
       (* 2. Computing formal derivative of A(x). *)
       (*TODO: add derivative that keeps length? *)
       let a' = Polynomials.derivative a_poly in
+
+      (*Printf.eprintf "\na'= %s \n" (Polynomials.to_string a') ;*)
 
       (* 3. Computing A'(w^i) = A_i(w^i). *)
       (*let eval_a' = Evaluations.evaluation_fft t.domain_n a' in*)
@@ -948,7 +972,12 @@ module Inner = struct
       in
 
       (* 4. Computing N(x). *)
-      let* n_poly = compute_n t eval_a' shards in
+      let* n_poly = compute_n t (Scalar_array.copy eval_a') shards in
+
+      Printf.eprintf
+        "\nn_poly= %s \n"
+        (Polynomials.to_string
+           (Polynomials.of_dense @@ Scalar_array.to_array n_poly)) ;
 
       (* 5. Computing B(x). *)
       (*let b = Evaluations.interpolation_fft2 t.domain_n n_poly in*)
@@ -966,9 +995,12 @@ module Inner = struct
         in
         let b = Polynomials.copy ~len:t.k b in*)
       let b =
-        interpolation_fft_n t n_poly
-        |> Scalar_array.copy ~len:t.k |> Polynomials.of_carray
+        interpolation_fft_n' t (Scalar_array.to_array n_poly)
+        |> Scalar_array.of_array
       in
+
+      let b = Scalar_array.copy ~len:t.k b |> Polynomials.of_carray in
+      (*Printf.eprintf "\nb= %s \n" (Polynomials.to_string b) ;*)
       Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
 
       (* 6. Computing Lagrange interpolation polynomial P(x). *)
@@ -981,6 +1013,7 @@ module Inner = struct
           |> Polynomials.of_dense
         in
         let p = Polynomials.copy ~len:t.k p in*)
+      (*Printf.eprintf "\n %s \n" (Polynomials.to_string a_poly) ;*)
       let p =
         fft_mul2k_2' t (Polynomials.to_carray a_poly) (Polynomials.to_carray b)
         |> Scalar_array.copy ~len:t.k |> Polynomials.of_carray
