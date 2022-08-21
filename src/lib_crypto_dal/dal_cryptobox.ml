@@ -848,30 +848,15 @@ module Inner = struct
   let _fft_mul2k_2 t a b =
     let a = resize (2 * t.k) a (Array.length a) in
     let b = resize (2 * t.k) b (Array.length b) in
-
-    let _interpolation_fft coefficients =
-      pfa_fr_inplace
-        (2 * 2048)
-        19
-        Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
-        Scalar.(
-          inverse_exn
-            (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
-        ~coefficients
-        ~inverse:true
-    in
-    let eval_a =
-      evaluation_fft_2k t (Scalar_array.of_array a) |> Scalar_array.to_array
-    in
-    let eval_b =
-      evaluation_fft_2k t (Scalar_array.of_array b) |> Scalar_array.to_array
-    in
+    let eval_a = evaluation_fft_2k t (Scalar_array.of_array a) in
+    let eval_b = evaluation_fft_2k t (Scalar_array.of_array b) in
     for i = 0 to (2 * t.k) - 1 do
-      eval_a.(i) <- Scalar.mul eval_a.(i) eval_b.(i)
+      Scalar_array.set
+        eval_a
+        (Scalar.mul (Scalar_array.get eval_a i) (Scalar_array.get eval_b i))
+        i
     done ;
-    (*let res = _interpolation_fft eval_a in
-      Scalar_array.of_array res*)
-    let res = interpolation_fft_2k t Scalar_array.(copy (of_array eval_a)) in
+    let res = interpolation_fft_2k t eval_a in
     Scalar_array.copy res
 
   let polynomial_from_shards t shards =
