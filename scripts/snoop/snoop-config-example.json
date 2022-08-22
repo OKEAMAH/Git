@@ -1,0 +1,72 @@
+[
+    {
+        "name": "TIMER_LATENCY",
+        "nsamples": 100000,
+        "bench_num": 1,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "N_IAdd_int_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "N_IConst_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "N_IHalt_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "N_IDipN_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "N_IDipN_intercept_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "N_KCons_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "N_KReturn_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "N_KNil_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    },
+    {
+        "name": "amplification_loop_alpha",
+        "nsamples": 500,
+        "bench_num": 300,
+        "seed": 128979,
+        "ncores": 1
+    }
+]
