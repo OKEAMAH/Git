@@ -505,6 +505,51 @@ module Inner = struct
       (* Shards must contain at least two elements. *)
     else return t
 
+  let select_fft_domain domain_size =
+    let rec powerset = function
+      | [] -> [[]]
+      | x :: xs ->
+          let ps = powerset xs in
+          List.concat [ps; List.map (fun ss -> x :: ss) ps]
+    in
+    let rec multiply_by_two domain_size target_domain_size pow_two =
+      if domain_size >= target_domain_size then pow_two
+      else multiply_by_two (2 * domain_size) target_domain_size (2 * pow_two)
+    in
+    let candidate_domains =
+      List.map
+        (fun factors ->
+          let prod1 = List.fold_left ( * ) 1 factors in
+          let prod2 = multiply_by_two prod1 domain_size 1 in
+          (prod1 * prod2, prod2 :: factors))
+        (powerset [3; 11; 19])
+    in
+    List.fold_left
+      (fun e acc -> if fst e < fst acc then e else acc)
+      (List.hd candidate_domains)
+      candidate_domains
+
+  type fft_configuration = {
+    buffer : scalar_array;
+    domains : scalar_array IntMap.t;
+  }
+
+  let make_fft_configuration domain_size =
+    let fft_domain_size, domains = select_fft_domain domain_size in
+    let primitive_root = get_primitive_root fft_domain_size in
+    let make_domains (domains : int list) =
+      List.fold_left
+        (fun map d ->
+          let rt = Scalar.pow primitive_root (Z.of_int (fft_domain_size / d)) in
+          IntMap.add d (make_domain2 rt d) map)
+        IntMap.empty
+        domains
+    in
+    {
+      buffer = Scalar_array.allocate (2 * fft_domain_size);
+      domains = make_domains domains;
+    }
+
   let slot_as_polynomial_length ~slot_size =
     1 lsl Z.(log2up (of_int slot_size / of_int scalar_bytes_amount))
 
@@ -817,8 +862,6 @@ module Inner = struct
         |> split
       in
 
-      (*let f11, f12 = split f1 in
-        let f21, f22 = split f2 in*)
       let prod =
         List.fold_left
           (fun acc (i, _) ->
@@ -829,48 +872,15 @@ module Inner = struct
           (Polynomials.of_dense [|Scalar.(copy one)|])
       in
 
-      (*let p11 = prod f11 |> Polynomials.to_dense_coefficients in
-        let p12 = prod f12 |> Polynomials.to_dense_coefficients in
-        let p21 = prod f21 |> Polynomials.to_dense_coefficients in
-        let p22 = prod f22 |> Polynomials.to_dense_coefficients in*)
       let p1 = prod f1 |> Polynomials.to_dense_coefficients in
       let p2 = prod f2 |> Polynomials.to_dense_coefficients in
 
-      (*let p1 =
-          prod f1 |> Polynomials.to_dense_coefficients |> Scalar_array.of_array
-        in
-        let p2 =
-          prod f2 |> Polynomials.to_dense_coefficients |> Scalar_array.of_array
-        in*)
-
-      (*let a_poly = fft_mul t.domain_2k [p11; p12; p21; p22] in*)
-      (*let a_poly = fft_mul2k_4 t p11 p12 p21 p22 |> Polynomials.of_dense in*)
       let a_poly = _fft_mul2k_2 t p1 p2 |> Polynomials.of_carray in
 
-      (*Printf.eprintf "\n %s \n" (Polynomials.to_string a_poly) ;*)
-
-      (*let a_poly =
-          fft_mul2k_2' t p1 p2 |> Scalar_array.copy |> Polynomials.of_carray
-        in*)
-
       (* 2. Computing formal derivative of A(x). *)
-      (*TODO: add derivative that keeps length? *)
       let a' = Polynomials.derivative a_poly in
 
-      (*Printf.eprintf "\na'= %s \n" (Polynomials.to_string a') ;*)
-
       (* 3. Computing A'(w^i) = A_i(w^i). *)
-      (*let eval_a' = Evaluations.evaluation_fft t.domain_n a' in*)
-      (*let a' = Polynomials.to_dense_coefficients a' in
-        let eval_a' =
-          pfa_fr_inplace
-            (2 * 2048)
-            19
-            (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
-            (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
-            ~coefficients:(resize t.n a' (Array.length a'))
-            ~inverse:false
-        in*)
       let a' = Polynomials.to_carray a' in
       let eval_a' =
         evaluation_fft_n t (resize' t.n a' (Scalar_array.length a'))
@@ -885,37 +895,12 @@ module Inner = struct
            (Polynomials.of_dense @@ Scalar_array.to_array n_poly)) ;
 
       (* 5. Computing B(x). *)
-      (*let b = Evaluations.interpolation_fft2 t.domain_n n_poly in*)
-      (*let b =
-          pfa_fr_inplace
-            (2 * 2048)
-            19
-            Scalar.(inverse_exn (pow (Array.get t.domain_n 1) (Z.of_int 19)))
-            Scalar.(
-              inverse_exn
-                (pow (Array.get t.domain_n 1) (Z.of_int (Int.mul 2 2048))))
-            ~coefficients:(Scalar_array.to_array n_poly)
-            ~inverse:true
-          |> Polynomials.of_dense
-        in
-        let b = Polynomials.copy ~len:t.k b in*)
       let b = interpolation_fft_n t n_poly in
 
       let b = Scalar_array.copy ~len:t.k b |> Polynomials.of_carray in
-      (*Printf.eprintf "\nb= %s \n" (Polynomials.to_string b) ;*)
       Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
 
       (* 6. Computing Lagrange interpolation polynomial P(x). *)
-      (*let p = fft_mul t.domain_2k [a_poly; b] in*)
-      (*let p =
-          fft_mul2k_2
-            t
-            (Polynomials.to_dense_coefficients a_poly)
-            (Polynomials.to_dense_coefficients b)
-          |> Polynomials.of_dense
-        in
-        let p = Polynomials.copy ~len:t.k p in*)
-      (*Printf.eprintf "\n %s \n" (Polynomials.to_string a_poly) ;*)
       let p =
         fft_mul2k_2' t (Polynomials.to_carray a_poly) (Polynomials.to_carray b)
         |> Scalar_array.copy ~len:t.k |> Polynomials.of_carray
@@ -972,9 +957,8 @@ module Inner = struct
 
   (* Precompute first part of Toeplitz trick, which doesn't depends on the
      polynomial’s coefficients. *)
-  let preprocess_multi_reveals ~chunk_len ~shard_size ~degree srs =
+  let preprocess_multi_reveals ~shard_size ~degree srs =
     let open Bls12_381 in
-    let _l = 1 lsl chunk_len in
     let l = shard_size in
     let k =
       let ratio = degree / l in
@@ -1152,7 +1136,6 @@ module Inner = struct
 
   let precompute_shards_proofs t =
     preprocess_multi_reveals
-      ~chunk_len:t.evaluations_per_proof_log
       ~shard_size:t.shard_size
       ~degree:t.k
       t.srs.raw.srs_g1
