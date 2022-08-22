@@ -42,8 +42,6 @@ module Constants : sig
   val cost_serialize_commitment : Gas_limit_repr.cost
 
   val cost_serialize_nonce : Gas_limit_repr.cost
-
-  val cost_check_proof_start_stop : Gas_limit_repr.cost
 end
 
 (** [is_valid_parameters_ty_cost ty] returns the cost of checking whether a type

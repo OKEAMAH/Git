@@ -82,11 +82,6 @@ module Constants = struct
   (* Cost of serializing a nonce. The cost of serializing the index (an int32)
      is negligible. *)
   let cost_serialize_nonce = cost_serialize_operation_hash
-
-  (* Cost of checking the start and stop hashes of a proof. *)
-  let cost_check_proof_start_stop =
-    (* FIXME: To be changed in forthcoming commits. *)
-    S.safe_int 0
 end
 
 (* We assume that the gas cost of adding messages [[ m_1; ... ; m_n]] at level

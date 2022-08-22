@@ -868,6 +868,11 @@ let play game refutation =
   | Ok x -> Lwt.return x
   | Error reason -> Lwt.return @@ Either.Left {loser = game.turn; reason}
 
+(* Cost of checking the start and stop hashes of a proof. *)
+let cost_check_proof_start_stop =
+  let size = State_hash.size in
+  Saturation_repr.(mul (safe_int 2) (Sc_rollup_costs.cost_compare size size))
+
 let cost_play game refutation =
   let open Gas_limit_repr in
   (* The gas cost is defined over the structure of [play]. *)
@@ -885,7 +890,7 @@ let cost_play game refutation =
         ~hash_size
   | Proof proof ->
       let {inbox_snapshot; level; pvm_name; _} = game in
-      Sc_rollup_costs.Constants.cost_check_proof_start_stop
+      cost_check_proof_start_stop
       +@ Sc_rollup_proof_repr.cost_valid inbox_snapshot level ~pvm_name proof
 
 module Internal_for_tests = struct
