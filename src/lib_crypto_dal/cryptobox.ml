@@ -375,7 +375,7 @@ module Inner = struct
       ~inverse:false
       ~scratch_zone:t.scratch_zone
 
-  let _interpolation_fft_n t coefficients =
+  let interpolation_fft_n t coefficients =
     prime_factor_algorithm_fft
       ~domain1_length_log:12
       ~domain2_length:19
@@ -837,15 +837,6 @@ module Inner = struct
     in
     Ok n_poly
 
-  let interpolation_fft_n' t coefficients =
-    pfa_fr_inplace
-      (2 * 2048)
-      19
-      Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
-      Scalar.(
-        inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
-      ~coefficients
-      ~inverse:true
 
   let _fft_mul2k_2 t a b =
     let a = resize (2 * t.k) a (Array.length a) in
@@ -983,10 +974,7 @@ module Inner = struct
           |> Polynomials.of_dense
         in
         let b = Polynomials.copy ~len:t.k b in*)
-      let b =
-        interpolation_fft_n' t (Scalar_array.to_array n_poly)
-        |> Scalar_array.of_array
-      in
+      let b = interpolation_fft_n t n_poly in
 
       let b = Scalar_array.copy ~len:t.k b |> Polynomials.of_carray in
       (*Printf.eprintf "\nb= %s \n" (Polynomials.to_string b) ;*)
