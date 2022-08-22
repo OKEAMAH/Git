@@ -683,41 +683,6 @@ module Inner = struct
     Array.blit p 0 res 0 ps ;
     res
 
-  let _fft_mul2k_4 t a b c d =
-    let a = resize (2 * t.k) a (Array.length a) in
-    let b = resize (2 * t.k) b (Array.length b) in
-    let c = resize (2 * t.k) c (Array.length c) in
-    let d = resize (2 * t.k) d (Array.length d) in
-    let evaluation_fft coefficients =
-      pfa_fr_inplace
-        (2 * 2048)
-        19
-        (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int 19))
-        (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int (2 * 2048)))
-        ~coefficients
-        ~inverse:false
-    in
-    let interpolation_fft coefficients =
-      pfa_fr_inplace
-        (2 * 2048)
-        19
-        Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
-        Scalar.(
-          inverse_exn
-            (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
-        ~coefficients
-        ~inverse:true
-    in
-    let eval_a = evaluation_fft a in
-    let eval_b = evaluation_fft b in
-    let eval_c = evaluation_fft c in
-    let eval_d = evaluation_fft d in
-    for i = 0 to (2 * t.k) - 1 do
-      eval_a.(i) <-
-        Scalar.mul_bulk [eval_a.(i); eval_b.(i); eval_c.(i); eval_d.(i)]
-    done ;
-    interpolation_fft eval_a
-
   (* We encode by segments of [segment_size] bytes each.  The segments
      are arranged in cosets to evaluate in batch with Kate
      amortized. *)
@@ -836,7 +801,6 @@ module Inner = struct
         shards
     in
     Ok n_poly
-
 
   let _fft_mul2k_2 t a b =
     let a = resize (2 * t.k) a (Array.length a) in
