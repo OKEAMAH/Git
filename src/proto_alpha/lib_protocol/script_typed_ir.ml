@@ -3646,3 +3646,191 @@ let manager_kind :
   | Event _ -> Kind.Event_manager_kind
   | Origination _ -> Kind.Origination_manager_kind
   | Delegation _ -> Kind.Delegation_manager_kind
+
+type ('before_top, 'before, 'result_top, 'result) kinstr =
+  ('before_top, 'before, 'result_top, 'result) Instruction.kinstr
+
+and ('arg, 'ret) lambda = ('arg, 'ret) Lambda.t
+
+and 'arg typed_contract = 'arg Typed_contract.t
+
+and ('a, 'b, 'c, 'd) continuation = ('a, 'b, 'c, 'd) Instruction.continuation
+
+and ('a, 's, 'b, 'f, 'c, 'u) logging_function =
+  ('a, 's, 'b, 'f, 'c, 'u) Instruction.logging_function
+
+and execution_trace = Instruction.execution_trace
+
+and logger = Instruction.logger
+
+and ('ty, 'comparable) ty_value = ('ty * 'comparable) Ty_value.t
+
+and 'ty comparable_ty = 'ty Ty.comparable_ty
+
+and ('ty, 'comparable) ty = ('ty, 'comparable) Ty.ty
+
+and ('top_ty, 'resty) stack_ty_value = ('top_ty * 'resty) Ty_value.s
+
+and ('top_ty, 'resty) stack_ty = ('top_ty, 'resty) Ty.stack
+
+and ('key, 'value) big_map = ('key, 'value) Big_map.t
+
+and ('a, 's, 'r, 'f) kdescr = ('a, 's, 'r, 'f) Instruction.kdescr
+
+and ('c, 'v, 'd, 'w, 'a, 'x, 'b, 'y) stack_prefix_preservation_witness =
+  ('c, 'v, 'd, 'w, 'a, 'x, 'b, 'y) Instruction.stack_prefix_preservation_witness
+
+and ('a, 'b, 'c, 'd, 'e, 'f) comb_gadt_witness =
+  ('a, 'b, 'c, 'd, 'e, 'f) Instruction.comb_gadt_witness
+
+and ('a, 'b, 'c, 'd, 'e, 'f) uncomb_gadt_witness =
+  ('a, 'b, 'c, 'd, 'e, 'f) Instruction.uncomb_gadt_witness
+
+and ('before, 'after) comb_get_gadt_witness =
+  ('before, 'after) Instruction.comb_get_gadt_witness
+
+and ('value, 'before, 'after) comb_set_gadt_witness =
+  ('value, 'before, 'after) Instruction.comb_set_gadt_witness
+
+and ('a, 'b, 'c, 'd) dup_n_gadt_witness =
+  ('a, 'b, 'c, 'd) Instruction.dup_n_gadt_witness
+
+and ('input, 'output) view_signature =
+  ('input, 'output) Instruction.view_signature
+
+and 'kind internal_operation_contents =
+  'kind Operation.internal_operation_contents
+
+and 'kind internal_operation = 'kind Operation.internal_operation
+
+and packed_internal_operation = Operation.packed_internal_operation
+
+and operation = Operation.t
+
+let kinstr_location = Instruction.kinstr_location
+
+let ty_size = Ty.ty_size
+
+let is_comparable = Ty.is_comparable
+
+type 'v ty_ex_c = 'v Ty.ty_ex_c
+
+type ex_ty = Ex_ty : ('a, _) ty -> ex_ty
+
+let unit_t = Ty.unit_t
+
+let int_t = Ty.int_t
+
+let nat_t = Ty.nat_t
+
+let signature_t = Ty.signature_t
+
+let string_t = Ty.string_t
+
+let bytes_t = Ty.bytes_t
+
+let mutez_t = Ty.mutez_t
+
+let key_hash_t = Ty.key_hash_t
+
+let key_t = Ty.key_t
+
+let timestamp_t = Ty.timestamp_t
+
+let address_t = Ty.address_t
+
+let tx_rollup_l2_address_t = Ty.tx_rollup_l2_address_t
+
+let bool_t = Ty.bool_t
+
+let pair_t = Ty.pair_t
+
+let pair_3_t = Ty.pair_3_t
+
+let comparable_pair_t = Ty.comparable_pair_t
+
+let comparable_pair_3_t = Ty.comparable_pair_3_t
+
+let union_t = Ty.union_t
+
+let comparable_union_t = Ty.comparable_union_t
+
+let union_bytes_bool_t = Ty.union_bytes_bool_t
+
+let lambda_t = Ty.lambda_t
+
+let option_t = Ty.option_t
+
+let comparable_option_t = Ty.comparable_option_t
+
+let option_mutez_t = Ty.option_mutez_t
+
+let option_string_t = Ty.option_string_t
+
+let option_bytes_t = Ty.option_bytes_t
+
+let option_nat_t = Ty.option_nat_t
+
+let option_pair_nat_nat_t = Ty.option_pair_nat_nat_t
+
+let option_pair_nat_mutez_t = Ty.option_pair_nat_mutez_t
+
+let option_pair_mutez_mutez_t = Ty.option_pair_mutez_mutez_t
+
+let option_pair_int_nat_t = Ty.option_pair_int_nat_t
+
+let list_t = Ty.list_t
+
+let list_operation_t = Ty.list_operation_t
+
+let set_t = Ty.set_t
+
+let map_t = Ty.map_t
+
+let big_map_t = Ty.big_map_t
+
+let contract_t = Ty.contract_t
+
+let contract_unit_t = Ty.contract_unit_t
+
+let sapling_transaction_t = Ty.sapling_transaction_t
+
+let sapling_transaction_deprecated_t = Ty.sapling_transaction_deprecated_t
+
+let sapling_state_t = Ty.sapling_state_t
+
+let operation_t = Ty.operation_t
+
+let chain_id_t = Ty.chain_id_t
+
+let never_t = Ty.never_t
+
+let bls12_381_g1_t = Ty.bls12_381_g1_t
+
+let bls12_381_g2_t = Ty.bls12_381_g2_t
+
+let bls12_381_fr_t = Ty.bls12_381_fr_t
+
+let ticket_t = Ty.ticket_t
+
+let chest_key_t = Ty.chest_key_t
+
+let chest_t = Ty.chest_t
+
+type 'a kinstr_traverse = 'a Instruction.kinstr_traverse
+
+let kinstr_traverse = Instruction.kinstr_traverse
+
+type 'a ty_traverse = 'a Ty.ty_traverse
+
+let ty_traverse = Ty.ty_traverse
+
+type 'accu stack_ty_traverse = 'accu Ty.stack_traverse
+
+let stack_ty_traverse = Ty.stack_traverse
+
+type 'a value_traverse = 'a Ty.ty_value_traverse
+
+let value_traverse = Ty.ty_value_traverse
+
+let stack_top_ty = Ty.stack_top

@@ -1851,3 +1851,248 @@ type ('arg, 'storage) script =
 
 val manager_kind :
   'kind Operation.internal_operation_contents -> 'kind Kind.manager
+
+type ('before_top, 'before, 'result_top, 'result) kinstr =
+  ('before_top, 'before, 'result_top, 'result) Instruction.kinstr
+
+and ('arg, 'ret) lambda = ('arg, 'ret) Lambda.t
+
+and 'arg typed_contract = 'arg Typed_contract.t
+
+and ('a, 'b, 'c, 'd) continuation = ('a, 'b, 'c, 'd) Instruction.continuation
+
+and ('a, 's, 'b, 'f, 'c, 'u) logging_function =
+  ('a, 's, 'b, 'f, 'c, 'u) Instruction.logging_function
+
+and execution_trace = Instruction.execution_trace
+
+and logger = Instruction.logger
+
+and ('ty, 'comparable) ty_value = ('ty * 'comparable) Ty_value.t
+
+and 'ty comparable_ty = 'ty Ty.comparable_ty
+
+and ('ty, 'comparable) ty = ('ty, 'comparable) Ty.ty
+
+and ('top_ty, 'resty) stack_ty_value = ('top_ty * 'resty) Ty_value.s
+
+and ('top_ty, 'resty) stack_ty = ('top_ty, 'resty) Ty.stack
+
+and ('key, 'value) big_map = ('key, 'value) Big_map.t
+
+and ('a, 's, 'r, 'f) kdescr = ('a, 's, 'r, 'f) Instruction.kdescr
+
+and ('c, 'v, 'd, 'w, 'a, 'x, 'b, 'y) stack_prefix_preservation_witness =
+  ('c, 'v, 'd, 'w, 'a, 'x, 'b, 'y) Instruction.stack_prefix_preservation_witness
+
+and ('a, 'b, 'c, 'd, 'e, 'f) comb_gadt_witness =
+  ('a, 'b, 'c, 'd, 'e, 'f) Instruction.comb_gadt_witness
+
+and ('a, 'b, 'c, 'd, 'e, 'f) uncomb_gadt_witness =
+  ('a, 'b, 'c, 'd, 'e, 'f) Instruction.uncomb_gadt_witness
+
+and ('before, 'after) comb_get_gadt_witness =
+  ('before, 'after) Instruction.comb_get_gadt_witness
+
+and ('value, 'before, 'after) comb_set_gadt_witness =
+  ('value, 'before, 'after) Instruction.comb_set_gadt_witness
+
+and ('a, 'b, 'c, 'd) dup_n_gadt_witness =
+  ('a, 'b, 'c, 'd) Instruction.dup_n_gadt_witness
+
+and ('input, 'output) view_signature =
+  ('input, 'output) Instruction.view_signature
+
+and 'kind internal_operation_contents =
+  'kind Operation.internal_operation_contents
+
+and 'kind internal_operation = 'kind Operation.internal_operation
+
+and packed_internal_operation = Operation.packed_internal_operation
+
+and operation = Operation.t
+
+val kinstr_location : (_, _, _, _) kinstr -> Script.location
+
+val ty_size : ('a, _) ty -> 'a Type_size.t
+
+val is_comparable : ('v, 'c) ty -> 'c dbool
+
+type 'v ty_ex_c = 'v Ty.ty_ex_c
+
+type ex_ty = Ex_ty : ('a, _) ty -> ex_ty
+
+val unit_t : unit comparable_ty
+
+val int_t : z num comparable_ty
+
+val nat_t : n num comparable_ty
+
+val signature_t : signature comparable_ty
+
+val string_t : Script_string.t comparable_ty
+
+val bytes_t : Bytes.t comparable_ty
+
+val mutez_t : Tez.t comparable_ty
+
+val key_hash_t : public_key_hash comparable_ty
+
+val key_t : public_key comparable_ty
+
+val timestamp_t : Script_timestamp.t comparable_ty
+
+val address_t : address comparable_ty
+
+val tx_rollup_l2_address_t : tx_rollup_l2_address comparable_ty
+
+val bool_t : bool comparable_ty
+
+val pair_t :
+  Script.location -> ('a, _) ty -> ('b, _) ty -> ('a, 'b) pair ty_ex_c tzresult
+
+val pair_3_t :
+  Script.location ->
+  ('a, _) ty ->
+  ('b, _) ty ->
+  ('c, _) ty ->
+  ('a, ('b, 'c) pair) pair ty_ex_c tzresult
+
+val comparable_pair_t :
+  Script.location ->
+  'a comparable_ty ->
+  'b comparable_ty ->
+  ('a, 'b) pair comparable_ty tzresult
+
+val comparable_pair_3_t :
+  Script.location ->
+  'a comparable_ty ->
+  'b comparable_ty ->
+  'c comparable_ty ->
+  ('a, ('b, 'c) pair) pair comparable_ty tzresult
+
+val union_t :
+  Script.location -> ('a, _) ty -> ('b, _) ty -> ('a, 'b) union ty_ex_c tzresult
+
+val comparable_union_t :
+  Script.location ->
+  'a comparable_ty ->
+  'b comparable_ty ->
+  ('a, 'b) union comparable_ty tzresult
+
+val union_bytes_bool_t : (Bytes.t, bool) union comparable_ty
+
+val lambda_t :
+  Script.location ->
+  ('arg, _) ty ->
+  ('ret, _) ty ->
+  (('arg, 'ret) lambda, no) ty tzresult
+
+val option_t : Script.location -> ('v, 'c) ty -> ('v option, 'c) ty tzresult
+
+val comparable_option_t :
+  Script.location -> 'v comparable_ty -> 'v option comparable_ty tzresult
+
+val option_mutez_t : Tez.t option comparable_ty
+
+val option_string_t : Script_string.t option comparable_ty
+
+val option_bytes_t : Bytes.t option comparable_ty
+
+val option_nat_t : n num option comparable_ty
+
+val option_pair_nat_nat_t : (n num, n num) pair option comparable_ty
+
+val option_pair_nat_mutez_t : (n num, Tez.t) pair option comparable_ty
+
+val option_pair_mutez_mutez_t : (Tez.t, Tez.t) pair option comparable_ty
+
+val option_pair_int_nat_t : (z num, n num) pair option comparable_ty
+
+val list_t : Script.location -> ('v, _) ty -> ('v boxed_list, no) ty tzresult
+
+val list_operation_t : (operation boxed_list, no) ty
+
+val set_t : Script.location -> 'v comparable_ty -> ('v set, no) ty tzresult
+
+val map_t :
+  Script.location ->
+  'k comparable_ty ->
+  ('v, _) ty ->
+  (('k, 'v) map, no) ty tzresult
+
+val big_map_t :
+  Script.location ->
+  'k comparable_ty ->
+  ('v, _) ty ->
+  (('k, 'v) big_map, no) ty tzresult
+
+val contract_t :
+  Script.location -> ('arg, _) ty -> ('arg typed_contract, no) ty tzresult
+
+val contract_unit_t : (unit typed_contract, no) ty
+
+val sapling_transaction_t :
+  memo_size:Sapling.Memo_size.t -> (Sapling.transaction, no) ty
+
+val sapling_transaction_deprecated_t :
+  memo_size:Sapling.Memo_size.t -> (Sapling.Legacy.transaction, no) ty
+
+val sapling_state_t : memo_size:Sapling.Memo_size.t -> (Sapling.state, no) ty
+
+val operation_t : (operation, no) ty
+
+val chain_id_t : Script_chain_id.t comparable_ty
+
+val never_t : never comparable_ty
+
+val bls12_381_g1_t : (Script_bls.G1.t, no) ty
+
+val bls12_381_g2_t : (Script_bls.G2.t, no) ty
+
+val bls12_381_fr_t : (Script_bls.Fr.t, no) ty
+
+val ticket_t :
+  Script.location -> 'a comparable_ty -> ('a ticket, no) ty tzresult
+
+val chest_key_t : (Script_timelock.chest_key, no) ty
+
+val chest_t : (Script_timelock.chest, no) ty
+
+(**
+
+   The following functions named `X_traverse` for X in
+   [{ kinstr, ty, comparable_ty, value }] provide tail recursive top down
+   traversals over the values of these types.
+
+   The traversal goes through a value and rewrites an accumulator
+   along the way starting from some [init]ial value for the
+   accumulator.
+
+   All these traversals follow the same recursion scheme: the
+   user-provided function is first called on the toplevel value, then
+   the traversal recurses on the direct subvalues of the same type.
+
+   Hence, the user-provided function must only compute the
+   contribution of the value on the accumulator minus the contribution
+   of its subvalues of the same type.
+
+*)
+type 'a kinstr_traverse = 'a Instruction.kinstr_traverse
+
+val kinstr_traverse :
+  ('a, 'b, 'c, 'd) kinstr -> 'ret -> 'ret kinstr_traverse -> 'ret
+
+type 'a ty_traverse = 'a Ty.ty_traverse
+
+val ty_traverse : ('a, _) ty -> 'r -> 'r ty_traverse -> 'r
+
+type 'accu stack_ty_traverse = 'accu Ty.stack_traverse
+
+val stack_ty_traverse : ('a, 's) stack_ty -> 'r -> 'r stack_ty_traverse -> 'r
+
+type 'a value_traverse = 'a Ty.ty_value_traverse
+
+val value_traverse : ('t, _) ty -> 't -> 'r -> 'r value_traverse -> 'r
+
+val stack_top_ty : ('a, 'b * 's) stack_ty -> 'a ty_ex_c
