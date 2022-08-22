@@ -463,13 +463,15 @@ module Inner = struct
   let fft_mul2k_2' t a b =
     let a = resize' (2 * t.k) a (Scalar_array.length a) in
     let b = resize' (2 * t.k) b (Scalar_array.length b) in
-    let eval_a = evaluation_fft_2k t a |> Scalar_array.to_array in
-    let eval_b = evaluation_fft_2k t b |> Scalar_array.to_array in
-
+    let eval_a = evaluation_fft_2k t a in
+    let eval_b = evaluation_fft_2k t b in
     for i = 0 to (2 * t.k) - 1 do
-      eval_a.(i) <- Scalar.mul eval_a.(i) eval_b.(i)
+      Scalar_array.set
+        eval_a
+        (Scalar.mul (Scalar_array.get eval_a i) (Scalar_array.get eval_b i))
+        i
     done ;
-    interpolation_fft_2k t (Scalar_array.of_array eval_a) |> Scalar_array.copy
+    interpolation_fft_2k t eval_a |> Scalar_array.copy
 
   let ensure_validity t =
     let open Result_syntax in
