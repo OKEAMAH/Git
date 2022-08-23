@@ -184,6 +184,13 @@ let originate_sc_rollup ?(hooks = hooks) ?(burn_cap = Tez.(of_int 9999999))
   let* () = Client.bake_for_and_wait client in
   return sc_rollup
 
+(** Wait for the rollup node to detect a conflict *)
+let wait_for_conflict_detected sc_node =
+  Sc_rollup_node.wait_for
+    sc_node
+    "sc_rollup_node_conflict_detected.v0"
+    (fun _ -> Some ())
+
 (* Configuration of a rollup node
    ------------------------------
 
@@ -2320,6 +2327,13 @@ let test_refutation_scenario ?commitment_period ?challenge_window variant ~kind
   let bootstrap1_key = Constant.bootstrap1.public_key_hash in
   let bootstrap2_key = Constant.bootstrap2.public_key_hash in
 
+  let conflict_detected = ref false in
+  let _ =
+    let* () = wait_for_conflict_detected sc_rollup_node in
+    conflict_detected := true ;
+    unit
+  in
+
   let sc_rollup_node2 =
     Sc_rollup_node.create Operator node client ~default_operator:bootstrap2_key
   in
@@ -2361,6 +2375,9 @@ let test_refutation_scenario ?commitment_period ?challenge_window variant ~kind
     stop_loser level
   in
   let* () = bake_levels ~hook (final_level - List.length inputs) client in
+
+  if not !conflict_detected then
+    Test.fail "Honest node did not detect the conflict" ;
 
   let*! honest_deposit =
     RPC.Contracts.get_frozen_bonds ~contract_id:bootstrap1_key client
