@@ -563,7 +563,8 @@ module Consensus = struct
         chain;
         block;
         key;
-        mtree;
+        (* FIXME(evertedsphere,nbacquey) *)
+        mproof = assert false;
         tree;
       }
     in

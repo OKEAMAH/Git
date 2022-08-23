@@ -71,45 +71,6 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
     (** Do not access directly, use [get_irmin] instead *)
     let irmin_ref : irmin option ref = ref None
 
-    let shallow_tree_within repo mtree =
-      let open Lwt_result_syntax in
-      let* tree = Merkle.merkle_tree_to_irmin_tree repo mtree in
-      return (Store.shallow_of_tree repo tree)
-
-    let hash_within repo mtree =
-      let open Lwt_result_syntax in
-      let* tree = Merkle.merkle_tree_to_irmin_tree repo mtree in
-      return (Store.Tree.hash tree)
-
-    let get_irmin_and_update_root pgi mtree =
-      let open Lwt_syntax in
-      match !irmin_ref with
-      | None -> (
-          let* repo = Store.Tree.make_repo () in
-          let* r = shallow_tree_within repo mtree in
-          match r with
-          | Ok root ->
-              let irmin = {repo; root} in
-              irmin_ref := Some irmin ;
-              Lwt.return_ok irmin
-          | Error msg -> light_failwith pgi msg)
-      | Some res -> (
-          let* r = hash_within res.repo mtree in
-          match r with
-          | Ok merkle_hash ->
-              let tree_hash = Store.Tree.hash res.root in
-              if not (Context_hash.equal tree_hash merkle_hash) then
-                light_failwith pgi
-                @@ Format.asprintf
-                     "Hash of the irmin tree %a does not correspond to hash of \
-                      the merkle tree %a"
-                     Context_hash.pp
-                     tree_hash
-                     Context_hash.pp
-                     merkle_hash
-              else Lwt.return_ok res
-          | Error msg -> light_failwith pgi msg)
-
     let mk_empty_irmin () : irmin Lwt.t =
       let open Lwt_syntax in
       let+ repo = Store.Tree.make_repo () in
@@ -243,29 +204,6 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
 
         If [Some (mtree, other_endpoints)] is returned, it is guaranteed that
         [List.length endpoints = List.length other_endpoints + 1] *)
-    let get_first_merkle_tree chain block key leaf_kind :
-        (Proof.merkle_tree * (Uri.t * RPC_context.simple) list) option Lwt.t =
-      Lwt.map
-        (Option.map (function
-            | Either.Left a, b -> (a, b)
-            | _ ->
-                Stdlib.failwith
-                  "Should never encounter `Right` with `use_v2:false`"))
-      @@ get_first_merkle_tree_choice
-           ~use_v2:false
-           chain
-           block
-           key
-           leaf_kind
-           []
-           endpoints
-
-    (** Returns the Merkle tree of the first successful call to an endpoint
-        in [endpoints], together with the other [endpoints] so that the caller
-        is able to ask these endpoints whether they agree Merkle-hash wise.
-
-        If [Some (mtree, other_endpoints)] is returned, it is guaranteed that
-        [List.length endpoints = List.length other_endpoints + 1] *)
     let get_first_merkle_tree_v2 chain block key leaf_kind :
         (Proof.tree Proof.t * (Uri.t * RPC_context.simple) list) option Lwt.t =
       Lwt.map
@@ -291,16 +229,10 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
 
     module Consensus = Light_consensus.Make (Light_proto)
 
-    let do_rpc ?(use_v2 = false)
+    let do_rpc
         ({chain; block; _} as pgi : Proxy.proxy_getter_input) key =
       let open Lwt_result_syntax in
-      let ( let** ) v f =
-        Lwt.bind v (function
-            | Error msg -> light_failwith pgi msg
-            | Ok x -> f x)
-      in
       let*! () = Logger.(emit api_do_rpc @@ key_to_string key) in
-      if use_v2 then
         let*! mproof_and_i_opt =
           get_first_merkle_tree_v2 chain block key Proof.Raw_context
         in
@@ -320,41 +252,8 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                   staged_data
                   (key_to_string key, List.length validating_endpoints))
             in
-            let input : Light_consensus.input_v2 =
-              {printer; min_agreement; chain; block; key; mproof; tree = root}
-            in
-            let*! r = Consensus.consensus_v2 input validating_endpoints in
-            match r with
-            | false ->
-                light_failwith pgi ~warn_symbolic:true
-                @@ Format.sprintf "Consensus cannot be reached for key: %s"
-                @@ key_to_string key
-            | true ->
-                irmin_ref := Some {repo; root} ;
-                return_unit)
-      else
-        let*! mtree_and_i_opt =
-          get_first_merkle_tree chain block key Proof.Raw_context
-        in
-        let nb_endpoints = List.length endpoints in
-        match mtree_and_i_opt with
-        | None ->
-            light_failwith pgi
-            @@ Format.sprintf
-                 "None of the %d endpoints could provide data for key: %s"
-                 nb_endpoints
-                 (key_to_string key)
-        | Some (mtree, validating_endpoints) -> (
-            let* {root; repo} = get_irmin_and_update_root pgi mtree in
-            let** root' = Merkle.union_irmin_tree_merkle_tree repo root mtree in
-            let*! () =
-              Logger.(
-                emit
-                  staged_data
-                  (key_to_string key, List.length validating_endpoints))
-            in
             let input : Light_consensus.input =
-              {printer; min_agreement; chain; block; key; mtree; tree = root'}
+              {printer; min_agreement; chain; block; key; mproof; tree = root}
             in
             let*! r = Consensus.consensus input validating_endpoints in
             match r with
@@ -363,6 +262,6 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                 @@ Format.sprintf "Consensus cannot be reached for key: %s"
                 @@ key_to_string key
             | true ->
-                irmin_ref := Some {repo; root = root'} ;
+                irmin_ref := Some {repo; root} ;
                 return_unit)
   end : Proxy.CORE)

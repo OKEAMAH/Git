@@ -101,5 +101,5 @@ module type CORE = sig
 
   (* Retrieves the data for the given key *)
   val do_rpc :
-    ?use_v2:bool -> proxy_getter_input -> Local.key -> unit tzresult Lwt.t
+    proxy_getter_input -> Local.key -> unit tzresult Lwt.t
 end
