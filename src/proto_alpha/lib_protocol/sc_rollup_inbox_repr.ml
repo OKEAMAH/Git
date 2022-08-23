@@ -881,10 +881,10 @@ struct
 
   let of_serialized_proof = Data_encoding.Binary.of_bytes_opt proof_encoding
 
-  let cost_of_serialized_proof _p =
-    let open Gas_limit_repr in
-    (* FIXME: To be defined by forthcoming commits. *)
-    free
+  let cost_of_serialized_proof p =
+    let blen = Bytes.length p in
+    (* The following model is copied from {!Michelson_v1_gas.Cost_of.unpack}. *)
+    Saturation_repr.(Syntax.(safe_int 260 + safe_int (blen lsr 3)))
 
   let to_serialized_proof = Data_encoding.Binary.to_bytes_exn proof_encoding
 
