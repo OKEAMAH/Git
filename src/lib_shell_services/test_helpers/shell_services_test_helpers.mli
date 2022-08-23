@@ -38,4 +38,7 @@ val print_merkle_node : merkle_node -> string
 (** [merkle_tree_gen] is a {!QCheck2.Gen.t} for [merkle_tree]. *)
 val merkle_tree_gen : merkle_tree QCheck2.Gen.t
 
+(** [merkle_proof_gen] is a {!QCheck2.Gen.t} for [Proof.tree Proof.t]. *)
+val merkle_proof_gen : tree t QCheck2.Gen.t
+
 val print_merkle_tree : merkle_tree -> string

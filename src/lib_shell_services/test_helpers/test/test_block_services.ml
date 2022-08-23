@@ -48,10 +48,17 @@ let merkle_tree_eq_tests =
     ~gen:merkle_tree_gen
     ~eq_name:"merkle_tree_eq"
 
+let merkle_proof_eq_tests =
+  qcheck_eq_tests
+    ~eq:tree_proof_eq
+    ~gen:merkle_proof_gen
+    ~eq_name:"merkle_proof_eq"
+
 let () =
   Alcotest.run
     "Block_services"
     [
       ("raw_context_eq", qcheck_wrap raw_context_eq_tests);
       ("merkle_tree_eq", qcheck_wrap merkle_tree_eq_tests);
+      ("merkle_proof_eq", qcheck_wrap merkle_proof_eq_tests);
     ]
