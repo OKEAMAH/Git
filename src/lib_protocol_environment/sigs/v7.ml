@@ -11410,7 +11410,7 @@ module type HashConsingInput = sig
   type 'a s
 end
 
-module type Constr1_Type = sig
+module type Constr1_Type_Base = sig
   type t
 
   type v
@@ -11420,7 +11420,7 @@ module type Constr1_Type = sig
   val mk : t -> v res
 end
 
-module type Constr1 = sig
+module type Constr1_Base = sig
   type 'a t
 
   type ('a, 'b) witness
@@ -11430,7 +11430,7 @@ module type Constr1 = sig
   val mk : 'a t -> ('a, 'b) witness -> 'b res
 end
 
-module type Constr2 = sig
+module type Constr2_Base = sig
   type 'a t
 
   type ('a, 'b, 'c) witness
@@ -11440,7 +11440,7 @@ module type Constr2 = sig
   val mk : 'a t -> 'b t -> ('a, 'b, 'c) witness -> 'c res
 end
 
-module type Constr_Stack = sig
+module type Constr_Stack_Base = sig
   type 'a t
 
   type 'a s
@@ -11466,13 +11466,16 @@ module type HashConsing = sig
   val constant_s : 'a Value.s -> 'a s
 
   module Parametric1_Type : functor
-    (C : Constr1_Type with type 'a res := 'a Value.t)
+    (C : Constr1_Type_Base with type 'a res := 'a Value.t)
     ->
-    Constr1_Type with type t := C.t and type v := C.v and type 'a res := 'a t
+    Constr1_Type_Base
+      with type t := C.t
+       and type v := C.v
+       and type 'a res := 'a t
 
-  module type Constr1 := Constr1 with type 'a t := 'a t
+  module type Constr1 = Constr1_Base with type 'a t := 'a t
 
-  module type Constr1_Input := sig
+  module type Constr1_Input = sig
     include Constr1
 
     val witness_is_a_function :
@@ -11486,9 +11489,9 @@ module type HashConsing = sig
       with type ('a, 'b) witness := ('a, 'b) C.witness
        and type 'a res := 'a t
 
-  module type Constr2 := Constr2 with type 'a t := 'a t
+  module type Constr2 = Constr2_Base with type 'a t := 'a t
 
-  module type Constr2_Input := sig
+  module type Constr2_Input = sig
     include Constr2
 
     val witness_is_a_function :
@@ -11502,10 +11505,10 @@ module type HashConsing = sig
       with type ('a, 'b, 'c) witness := ('a, 'b, 'c) C.witness
        and type 'a res := 'a t
 
-  module type Constr_Stack :=
-    Constr_Stack with type 'a t := 'a t and type 'a s := 'a s
+  module type Constr_Stack =
+    Constr_Stack_Base with type 'a t := 'a t and type 'a s := 'a s
 
-  module type Constr_Stack_Input := sig
+  module type Constr_Stack_Input = sig
     include Constr_Stack
 
     val witness_is_a_function :
