@@ -186,3 +186,55 @@ CAMLprim value prime_factor_algorithm_fft_bytecode(value *argv, int argn)
   prime_factor_algorithm_fft_native(argv[0], argv[1], argv[2], argv[3],
                                     argv[4], argv[5], argv[6]);
 }
+
+// The scratch zone must have size at least 2 * |domain1| * |domain2|
+void prime_factor_algorithm_fft_2(blst_fr *domain1, blst_fr *domain2, int length1, int length2, blst_fr *coefficients, blst_fr *scratch, int inverse)
+{
+  blst_fr scratch_dft[length2];
+  int length = length1 * length2;
+  for (int i = 0; i < length; i++)
+  {
+    scratch[(i % length1) * length2 + (i % length2)] = coefficients[i];
+  }
+
+  for (int i = 0; i < length1; i++)
+  {
+    dft_inplace(domain2, scratch + (i * length2), scratch_dft, length2, inverse);
+  }
+
+  blst_fr *new_scratch = scratch + length;
+  transpose(new_scratch, scratch, length1, length2);
+
+  for (int i = 0; i < length2; i++)
+  {
+    dft_inplace(new_scratch + (i * length1), domain1, scratch_dft, length1, inverse);
+  }
+
+  for (int i = 0; i < length1; i++)
+  {
+    for (int j = 0; j < length2; j++)
+    {
+      coefficients[(length1 * j + length2 * i) % length] = new_scratch[j * length1 + i];
+    }
+  }
+}
+
+CAMLprim value prime_factor_algorithm_fft_native2(value inverse, value domain1, value domain2,
+                                                  value length1, value length2,
+                                                  value coefficients, value scratch)
+{
+  CAMLparam5(domain1, domain2, length1, length2, coefficients);
+  CAMLxparam2(scratch, inverse);
+  prime_factor_algorithm_fft_2(Blst_fr_array_val(domain1), Blst_fr_array_val(domain2),
+                               Int_val(length1), Int_val(length2),
+                               Blst_fr_array_val(coefficients),
+                               Blst_fr_array_val(scratch),
+                               Bool_val(inverse));
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value prime_factor_algorithm_fft_bytecode2(value *argv, int argn)
+{
+  prime_factor_algorithm_fft_native2(argv[0], argv[1], argv[2], argv[3],
+                                     argv[4], argv[5], argv[6]);
+}

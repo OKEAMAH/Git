@@ -64,6 +64,36 @@ let prime_factor_algorithm_fft ~inverse ~domain1 ~domain2 ~domain1_length_log
     scratch_zone ;
   res
 
+external _prime_factor_algorithm_fft_ext2 :
+  bool ->
+  scalar_array ->
+  scalar_array ->
+  int ->
+  int ->
+  scalar_array ->
+  scalar_array ->
+  unit
+  = "prime_factor_algorithm_fft_bytecode2" "prime_factor_algorithm_fft_native2"
+
+let _prime_factor_algorithm_fft2 ~inverse ~domain1 ~domain2 ~domain1_length
+    ~domain2_length ~coefficients ~scratch_zone =
+  let res = Scalar_array.allocate (Scalar_array.length coefficients) in
+  Scalar_array.blit
+    coefficients
+    ~src_off:0
+    res
+    ~dst_off:0
+    ~len:(Scalar_array.length coefficients) ;
+  prime_factor_algorithm_fft_ext
+    inverse
+    domain1
+    domain2
+    domain1_length
+    domain2_length
+    res
+    scratch_zone ;
+  res
+
 (* END TODO: find better place for this piece of code *)
 
 type error += Failed_to_load_trusted_setup of string
@@ -318,6 +348,11 @@ module Inner = struct
     let exponent = Z.divexact multiplicative_group_order n in
     Scalar.pow (Scalar.of_int 7) exponent
 
+  type fft_configuration = {
+    buffer : scalar_array;
+    domain_k : int * int list; (*domains : scalar_array IntMap.t;*)
+  }
+
   type t = {
     redundancy_factor : int;
     slot_size : int;
@@ -338,13 +373,9 @@ module Inner = struct
     (* Number of slot segments. *)
     segment_length : int;
     remaining_bytes : int;
-    evaluations_log : int;
-    (* Log of the number of evaluations that constitute an erasure encoded
-       polynomial. *)
-    evaluations_per_proof_log : int;
     (* Log of the number of evaluations contained in a shard. *)
-    proofs_log : int; (* Log of th number of shards proofs. *)
     srs : srs;
+    fft_configuration : fft_configuration;
   }
 
   let make_domain2 root d =
@@ -437,42 +468,6 @@ module Inner = struct
       ~inverse:false
       ~scratch_zone:t.scratch_zone
 
-  let interpolation_fft_2k t coefficients =
-    prime_factor_algorithm_fft
-      ~domain1_length_log:12
-      ~domain2_length:19
-      ~domain1:
-        (make_domain2
-           Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
-           (2 * 2048))
-      ~domain2:
-        (make_domain2
-           Scalar.(
-             inverse_exn
-               (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
-           19)
-      ~coefficients
-      ~inverse:true
-      ~scratch_zone:t.scratch_zone
-
-  let resize' s p ps =
-    let res = Scalar_array.allocate s in
-    Scalar_array.blit p ~src_off:0 res ~dst_off:0 ~len:ps ;
-    res
-
-  let fft_mul2k_2' t a b =
-    let a = resize' (2 * t.k) a (Scalar_array.length a) in
-    let b = resize' (2 * t.k) b (Scalar_array.length b) in
-    let eval_a = evaluation_fft_2k t a in
-    let eval_b = evaluation_fft_2k t b in
-    for i = 0 to (2 * t.k) - 1 do
-      Scalar_array.set
-        eval_a
-        (Scalar.mul (Scalar_array.get eval_a i) (Scalar_array.get eval_b i))
-        i
-    done ;
-    interpolation_fft_2k t eval_a |> Scalar_array.copy
-
   let ensure_validity t =
     let open Result_syntax in
     let srs_size = Srs_g1.size t.srs.raw.srs_g1 in
@@ -529,26 +524,105 @@ module Inner = struct
       (List.hd candidate_domains)
       candidate_domains
 
-  type fft_configuration = {
-    buffer : scalar_array;
-    domains : scalar_array IntMap.t;
-  }
-
-  let _make_fft_configuration domain_size =
+  let _make_fft_configuration redundancy_factor domain_size =
     let fft_domain_size, domains = select_fft_domain domain_size in
-    let primitive_root = get_primitive_root fft_domain_size in
-    let make_domains (domains : int list) =
-      List.fold_left
-        (fun map d ->
-          let rt = Scalar.pow primitive_root (Z.of_int (fft_domain_size / d)) in
-          IntMap.add d (make_domain2 rt d) map)
-        IntMap.empty
-        domains
-    in
+    (*let primitive_root =
+        get_primitive_root (redundancy_factor * fft_domain_size)
+      in
+      let is_pow_of_two x =
+        let logx = Z.(log2 (of_int x)) in
+        1 lsl logx = x
+      in
+      let make_domains domains =
+        List.fold_left
+          (fun map d ->
+            let d = if is_pow_of_two d then redundancy_factor * d else d in
+            let rt = Scalar.pow primitive_root (Z.of_int (fft_domain_size / d)) in
+            IntMap.add d (make_domain2 rt d) map)
+          IntMap.empty
+          domains
+      in*)
     {
-      buffer = Scalar_array.allocate (2 * fft_domain_size);
-      domains = make_domains domains;
+      buffer = Scalar_array.allocate (redundancy_factor * fft_domain_size);
+      domain_k = (fft_domain_size, domains (*domains = make_domains domains;*));
     }
+
+  (*let fft (t : t) coefficients domain inverse =
+    let is_pow_of_two x =
+      let logx = Z.(log2 (of_int x)) in
+      1 lsl logx = x
+    in
+    t.fft_configuration.domains |> IntMap.bindings |> fun l ->
+    List.fold_left
+      (fun ((d_e, a_e), coefficients) (d_acc, a_acc) ->
+        if is_pow_of_two d_acc then
+          ( d_e * d_acc,
+            prime_factor_algorithm_fft
+              ~domain1:a_acc
+              ~domain2:a_e
+              ~domain1_length_log:Z.(log2 (of_int d_acc))
+              ~domain2_length:d_e
+              ~scratch_zone:t.scratch_zone
+              ~inverse
+              ~coefficients )
+        else if is_pow_of_two d_e then
+          ( d_e * d_acc,
+            prime_factor_algorithm_fft
+              ~domain1:a_e
+              ~domain2:a_acc
+              ~domain1_length_log:Z.(log2 (of_int d_e))
+              ~domain2_length:d_acc
+              ~scratch_zone:t.scratch_zone
+              ~coefficients
+              ~inverse )
+        else
+          ( d_e * d_acc,
+            prime_factor_algorithm_fft2
+              ~domain1:a_acc
+              ~domain2:a_e
+              ~domain1_length:d_acc
+              ~domain2_length:d_e
+              ~scratch_zone:t.scratch_zone
+              ~inverse
+              ~coefficients ))
+      (List.hd l)
+      (List.tl l)*)
+
+  let interpolation_fft_2k t coefficients =
+    prime_factor_algorithm_fft
+      ~domain1_length_log:12
+      ~domain2_length:19
+      ~domain1:
+        (make_domain2
+           Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
+           (2 * 2048))
+      ~domain2:
+        (make_domain2
+           Scalar.(
+             inverse_exn
+               (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
+           19)
+      ~coefficients
+      ~inverse:true
+      ~scratch_zone:t.scratch_zone
+
+  let resize' s p ps =
+    let res = Scalar_array.allocate s in
+    Scalar_array.blit p ~src_off:0 res ~dst_off:0 ~len:ps ;
+    res
+
+  let fft_mul2k_2' t a b =
+    let a = resize' (2 * t.k) a (Scalar_array.length a) in
+    let b = resize' (2 * t.k) b (Scalar_array.length b) in
+    let eval_a = evaluation_fft_2k t a in
+    let eval_b = evaluation_fft_2k t b in
+    for i = 0 to (2 * t.k) - 1 do
+      Scalar_array.set
+        eval_a
+        (Scalar.mul (Scalar_array.get eval_a i) (Scalar_array.get eval_b i))
+        i
+    done ;
+    interpolation_fft_2k t eval_a |> Scalar_array.copy
 
   let slot_as_polynomial_length ~slot_size =
     1 lsl Z.(log2up (of_int slot_size / of_int scalar_bytes_amount))
@@ -564,19 +638,14 @@ module Inner = struct
      `tzresult` for modularity reasons. *)
   let make {redundancy_factor; slot_size; segment_size; number_of_shards} =
     let open Result_syntax in
-    let k = slot_as_polynomial_length ~slot_size in
+    let k, _ = select_fft_domain (slot_size / scalar_bytes_amount) in
+    Printf.eprintf "\n k = %d \n" k ;
     let n = redundancy_factor * k in
     let shard_size = n / number_of_shards in
-    let evaluations_log = Z.(log2 (of_int n)) in
-    let evaluations_per_proof_log = Z.(log2 (of_int shard_size)) in
     let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
-    let k = 2048 * 19 in
-    let n = redundancy_factor * k in
-    let shard_size = n / number_of_shards in
     let rt_n = get_primitive_root n in
     let rt_k = Scalar.pow rt_n (Z.of_int redundancy_factor) in
     let rt_2k = Scalar.pow rt_n (Z.of_int (redundancy_factor / 2)) in
-    Printf.eprintf "\nshard size = %d \n" shard_size ;
     let* srs =
       match !initialisation_parameters with
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
@@ -584,10 +653,9 @@ module Inner = struct
           return
             {
               raw;
-              kate_amortized_srs_g2_shards =
-                Srs_g2.get raw.srs_g2 (1 lsl evaluations_per_proof_log);
+              kate_amortized_srs_g2_shards = Srs_g2.get raw.srs_g2 shard_size;
               kate_amortized_srs_g2_segments =
-                Srs_g2.get raw.srs_g2 (1 lsl Z.(log2up (of_int segment_length)));
+                Srs_g2.get raw.srs_g2 (k / segment_size);
             }
     in
     let t =
@@ -606,10 +674,8 @@ module Inner = struct
         nb_segments = slot_size / segment_size;
         segment_length;
         remaining_bytes = segment_size mod scalar_bytes_amount;
-        evaluations_log;
-        evaluations_per_proof_log;
-        proofs_log = evaluations_log - evaluations_per_proof_log;
         srs;
+        fft_configuration = _make_fft_configuration redundancy_factor k;
       }
     in
     ensure_validity t
@@ -617,13 +683,6 @@ module Inner = struct
   let polynomial_degree = Polynomials.degree
 
   let polynomial_evaluate = Polynomials.evaluate
-
-  let _fft_mul d ps =
-    let open Evaluations in
-    let evaluations = List.map (evaluation_fft d) ps in
-    interpolation_fft d (mul_c ~evaluations ())
-
-  let primitive_root_38912 = get_primitive_root (2048 * 19)
 
   let dft ~inverse ~domain ~coefficients =
     let n = Array.length domain in
@@ -996,9 +1055,7 @@ module Inner = struct
     assert (chunk_len < n) ;
     (*assert (is_pow_of_two degree) ;*)
     assert (1 lsl chunk_len < degree) ;
-    (*assert (degree <= 1 lsl n) ;*)
-    let _l = 1 lsl chunk_len in
-    let l = 38 in
+    let l = chunk_len in
     Printf.eprintf
       "\n len coeffs = %d ; deg=%d; l =%d ; 2k/l=%d\n"
       (Array.length coefs)
@@ -1115,7 +1172,7 @@ module Inner = struct
     let open Bls12_381 in
     let h = interpolation_h_poly3 w domain evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
-    let l = 38 (*Array.length domain*) in
+    let l = t.n / t.number_of_shards in
     let sl_min_yl =
       G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
@@ -1127,7 +1184,7 @@ module Inner = struct
     let open Bls12_381 in
     let h = interpolation_h_poly2 t w domain evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
-    let l = 152 (*Array.length domain*) in
+    let l = fst t.fft_configuration.domain_k / t.segment_size in
     let sl_min_yl =
       G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
@@ -1168,8 +1225,8 @@ module Inner = struct
     let t' = Sys.time () in
     let res =
       multiple_multi_reveals
-        ~chunk_len:t.evaluations_per_proof_log
-        ~chunk_count:11
+        ~chunk_len:(t.n / t.number_of_shards)
+        ~chunk_count:Z.(log2 (of_int t.number_of_shards))
         ~degree:t.k
         ~preprocess
         (Polynomials.to_dense_coefficients p)
@@ -1178,18 +1235,19 @@ module Inner = struct
     res
 
   let verify_shard t cm {index = shard_index; share = shard_evaluations} proof =
-    (*let d_n = Domains.build ~log:t.evaluations_log in
-      let domain = Domains.build ~log:t.evaluations_per_proof_log in*)
-    Printf.eprintf "\n len share = %d \n" (Array.length shard_evaluations) ;
-    let rt = Array.get t.domain_n 1 in
-    let domain = make_domain (Scalar.pow rt (Z.of_int 2048)) t.shard_size in
-    let wi = Scalar.pow rt (Z.of_int shard_index) in
+    let generator_domain_n = Array.get t.domain_n 1 in
+    let domain =
+      make_domain
+        (Scalar.pow generator_domain_n (Z.of_int t.number_of_shards))
+        t.shard_size
+    in
+    let power_coset = Scalar.pow generator_domain_n (Z.of_int shard_index) in
     verify3
       t
       cm
-      (Srs_g2.get t.srs.raw.srs_g2 t.shard_size)
+      t.srs.kate_amortized_srs_g2_shards
       domain
-      (wi, shard_evaluations)
+      (power_coset, shard_evaluations)
       proof
 
   let _prove_single t p z =
@@ -1213,12 +1271,11 @@ module Inner = struct
     if segment_index < 0 || segment_index >= t.nb_segments then
       Error `Segment_index_out_of_range
     else
-      let l = 152 (*1 lsl Z.(log2up (of_int t.segment_len))*) in
-      (* no need to create domain & then Array.get *)
-      let domain = Scalar.pow primitive_root_38912 (Z.of_int segment_index) in
-      let wi = domain in
+      let l = fst t.fft_configuration.domain_k / t.segment_size in
+      let generator_domain_k = Array.get t.domain_k 1 in
+      let power = Scalar.pow generator_domain_k (Z.of_int segment_index) in
       let quotient, _ =
-        Polynomials.(division_xn p l Scalar.(negate (pow wi (Z.of_int l))))
+        Polynomials.(division_xn p l Scalar.(negate (pow power (Z.of_int l))))
       in
       Ok (commit t quotient)
 
@@ -1229,13 +1286,16 @@ module Inner = struct
     if slot_segment_index < 0 || slot_segment_index >= t.nb_segments then
       Error `Segment_index_out_of_range
     else
-      (*let domain = Domains.build ~log:Z.(log2up (of_int t.segment_len)) in*)
+      let coset_size = fst t.fft_configuration.domain_k / t.segment_size in
+      let generator_domain_k = Array.get t.domain_k 1 in
       let domain =
-        make_domain (Scalar.pow primitive_root_38912 (Z.of_int 256)) 152
+        make_domain
+          (Scalar.pow generator_domain_k (Z.of_int (t.k / coset_size)))
+          coset_size
       in
-      let wi = Scalar.pow primitive_root_38912 (Z.of_int slot_segment_index) in
+      let power = Scalar.pow generator_domain_k (Z.of_int slot_segment_index) in
       let slot_segment_evaluations =
-        Array.init 152 (*(1 lsl Z.(log2up (of_int t.segment_len)))*) (function
+        Array.init coset_size (function
             | i when i < t.segment_length - 1 ->
                 let dst = Bytes.create scalar_bytes_amount in
                 Bytes.blit
@@ -1256,14 +1316,13 @@ module Inner = struct
                 Scalar.of_bytes_exn dst
             | _ -> Scalar.(copy zero))
       in
-      (* Array get not needed *)
       Ok
         (verify2
            t
            cm
-           (Srs_g2.get t.srs.raw.srs_g2 152)
+           t.srs.kate_amortized_srs_g2_segments
            domain
-           (wi, Scalar_array.of_array slot_segment_evaluations)
+           (power, Scalar_array.of_array slot_segment_evaluations)
            proof)
 end
 
