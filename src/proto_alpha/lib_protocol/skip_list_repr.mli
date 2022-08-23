@@ -84,6 +84,10 @@ module type S = sig
   (** [back_pointers cell] returns the back pointers of [cell]. *)
   val back_pointers : ('content, 'ptr) cell -> 'ptr list
 
+  (** [number_of_back_pointers cell] returns the number of back
+      pointers of [cell]. *)
+  val number_of_back_pointers : ('content, 'ptr) cell -> int
+
   (** [genesis content] is the first cell of a skip list. It has
       no back pointers. *)
   val genesis : 'content -> ('content, 'ptr) cell

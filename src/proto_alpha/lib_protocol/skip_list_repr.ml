@@ -53,6 +53,8 @@ module type S = sig
 
   val back_pointers : ('content, 'ptr) cell -> 'ptr list
 
+  val number_of_back_pointers : ('content, 'ptr) cell -> int
+
   val genesis : 'content -> ('content, 'ptr) cell
 
   val next :
@@ -137,6 +139,8 @@ end) : S = struct
     equal_content content cell2.content
     && Compare.Int.equal index cell2.index
     && equal_back_pointers back_pointers cell2.back_pointers
+
+  let number_of_back_pointers cell = FallbackArray.length cell.back_pointers
 
   let index cell = cell.index
 
@@ -257,7 +261,7 @@ end) : S = struct
             (*
               If (mid_cell_index > target_index) &&
                  (prev_mid_cell_index < target_index)
-              then we found the closest cell to the target, which is mid_cell,
+              then we found the closest cell to the target, which is mid_cell.
               so we return its index [mid_idx] in the array of back_pointers.
             *)
             Some mid_idx
