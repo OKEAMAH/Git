@@ -825,7 +825,11 @@ let check_proof_start_stop ~start_chunk ~stop_chunk proof =
     (Proof_stop_state_hash_mismatch
        {stop_state_hash = stop_chunk.state_hash; stop_proof})
 
-let play game refutation =
+let wrap_reason game = function
+  | Ok x -> Lwt.return x
+  | Error reason -> Lwt.return @@ Either.Left {loser = game.turn; reason}
+
+let play_aux game refutation inbox_proof_opt =
   let open Lwt_result_syntax in
   let*! result =
     let* start_chunk, stop_chunk = find_choice game refutation.choice in
@@ -851,21 +855,13 @@ let play game refutation =
     | Proof proof ->
         let* () = check_proof_start_stop ~start_chunk ~stop_chunk proof in
         let {inbox_snapshot; level; pvm_name; _} = game in
-        let* inbox_proof =
-          Option.map_es
-            (fun p ->
-              match Sc_rollup_inbox_repr.of_serialized_proof p with
-              | None -> invalid_move (Proof_invalid "unreadable proof")
-              | Some inbox_proof -> return inbox_proof)
-            proof.inbox
-        in
         let*! (proof_valid_tzresult : bool tzresult) =
           Sc_rollup_proof_repr.valid
             inbox_snapshot
             level
             ~pvm_name
             proof
-            inbox_proof
+            inbox_proof_opt
         in
         let* () =
           match proof_valid_tzresult with
@@ -877,16 +873,14 @@ let play game refutation =
         return
           (Either.Left {loser = opponent game.turn; reason = Conflict_resolved})
   in
-  match result with
-  | Ok x -> Lwt.return x
-  | Error reason -> Lwt.return @@ Either.Left {loser = game.turn; reason}
+  wrap_reason game result
 
 (* Cost of checking the start and stop hashes of a proof. *)
 let cost_check_proof_start_stop =
   let size = State_hash.size in
   Saturation_repr.(mul (safe_int 2) (Sc_rollup_costs.cost_compare size size))
 
-let cost_play game refutation =
+let cost_play game refutation inbox_proof_opt =
   let open Gas_limit_repr in
   (* The gas cost is defined over the structure of [play]. *)
   let number_of_sections = List.length game.dissection in
@@ -904,7 +898,43 @@ let cost_play game refutation =
   | Proof proof ->
       let {inbox_snapshot; level; pvm_name; _} = game in
       cost_check_proof_start_stop
-      +@ Sc_rollup_proof_repr.cost_valid inbox_snapshot level ~pvm_name proof
+      +@ Sc_rollup_proof_repr.cost_valid
+           inbox_snapshot
+           level
+           ~pvm_name
+           proof
+           inbox_proof_opt
+
+let play ctxt game refutation =
+  let open Lwt_tzresult_syntax in
+  let* inbox_proof_opt, ctxt =
+    match refutation.step with
+    | Proof proof -> (
+        match proof.inbox with
+        | None -> return @@ (Either.Left None, ctxt)
+        | Some p -> (
+            let*? ctxt =
+              Raw_context.consume_gas
+                ctxt
+                (Sc_rollup_inbox_repr.cost_of_serialized_proof p)
+            in
+            match Sc_rollup_inbox_repr.of_serialized_proof p with
+            | None ->
+                return
+                @@ ( Either.Right
+                       (Invalid_move (Proof_invalid "unreadable proof")),
+                     ctxt )
+            | Some p -> return @@ (Either.Left (Some p), ctxt)))
+    | Dissection _ -> return @@ (Either.Left None, ctxt)
+  in
+  match inbox_proof_opt with
+  | Either.Left inbox_proof_opt ->
+      let*? ctxt =
+        Raw_context.consume_gas ctxt (cost_play game refutation inbox_proof_opt)
+      in
+      let*! result = play_aux game refutation inbox_proof_opt in
+      return (result, ctxt)
+  | Either.Right reason -> return (Either.Left {loser = game.turn; reason}, ctxt)
 
 module Internal_for_tests = struct
   let find_choice = find_choice

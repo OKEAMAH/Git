@@ -3005,11 +3005,16 @@ module Sc_rollup : sig
 
       val of_serialized_proof : serialized_proof -> proof option
 
+      val cost_of_serialized_proof : serialized_proof -> Gas.cost
+
       val verify_proof :
         Raw_level.t * Z.t ->
         history_proof ->
         proof ->
         Sc_rollup_PVM_sem.input option tzresult Lwt.t
+
+      val cost_verify_proof :
+        Raw_level_repr.t * Z.t -> history_proof -> proof -> Gas.cost
 
       val produce_proof :
         inbox_context ->
@@ -3557,7 +3562,11 @@ module Sc_rollup : sig
       default_number_of_sections:int ->
       t
 
-    val play : t -> refutation -> (outcome, t) Either.t Lwt.t
+    val play :
+      context ->
+      t ->
+      refutation ->
+      ((outcome, t) Either.t * context) tzresult Lwt.t
 
     type timeout = {alice : int; bob : int; last_turn_level : Raw_level_repr.t}
 

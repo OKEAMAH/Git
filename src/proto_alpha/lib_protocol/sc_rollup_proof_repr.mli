@@ -106,6 +106,7 @@ val cost_valid :
   Raw_level_repr.t ->
   pvm_name:string ->
   t ->
+  Sc_rollup_inbox_repr.proof option ->
   Gas_limit_repr.cost
 
 module type PVM_with_context_and_state = sig

@@ -374,11 +374,11 @@ val outcome_encoding : outcome Data_encoding.t
     In the case of the game continuing, this swaps the current
     player and updates the [dissection]. In the case of a [Proof]
     being provided this returns an [outcome]. *)
-val play : t -> refutation -> (outcome, t) Either.t Lwt.t
-
-(** [cost_play game refutation] is the gas cost of playing a
-    refutation game move. *)
-val cost_play : t -> refutation -> Gas_limit_repr.cost
+val play :
+  Raw_context.t ->
+  t ->
+  refutation ->
+  ((outcome, t) Either.t * Raw_context.t) tzresult Lwt.t
 
 (** A type that represents the number of blocks left for players to play. Each
     player has her timeout value. `timeout` is expressed in the number of

@@ -128,7 +128,7 @@ let valid snapshot commit_level ~pvm_name proof inbox_proof =
   in
   Lwt.map Result.ok (P.verify_proof P.proof)
 
-let cost_valid snapshot _commit_level ~pvm_name:_ proof =
+let cost_valid snapshot _commit_level ~pvm_name:_ proof inbox_proof_opt =
   let open Gas_limit_repr in
   (* The cost is defined over the structure of [valid]. *)
   let (module P) = Sc_rollups.wrapped_proof_module proof.pvm_step in
@@ -139,7 +139,7 @@ let cost_valid snapshot _commit_level ~pvm_name:_ proof =
   in
   let input_requested = P.proof_input_requested P.proof in
   let cost_input =
-    match (input_requested, proof.inbox) with
+    match (input_requested, inbox_proof_opt) with
     | Sc_rollup_PVM_sem.No_input_required, _ -> free
     | _, Some inbox_proof -> cost_check_inbox_proof snapshot inbox_proof
     | _, _ ->

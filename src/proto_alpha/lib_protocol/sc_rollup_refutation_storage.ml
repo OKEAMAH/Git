@@ -286,9 +286,7 @@ let game_move ctxt rollup ~player ~opponent refutation =
          (Sc_rollup_game_repr.Index.staker idx game.turn))
       Sc_rollup_wrong_turn
   in
-  let game_cost = Sc_rollup_game_repr.cost_play game refutation in
-  let*? ctxt = Raw_context.consume_gas ctxt game_cost in
-  let*! move_result = Sc_rollup_game_repr.play game refutation in
+  let* move_result, ctxt = Sc_rollup_game_repr.play ctxt game refutation in
   match move_result with
   | Either.Left outcome -> return (Some outcome, ctxt)
   | Either.Right new_game ->

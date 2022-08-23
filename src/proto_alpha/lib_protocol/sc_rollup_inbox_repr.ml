@@ -147,6 +147,11 @@ module V1 = struct
 
   let equal_history_proof = Skip_list.equal Hash.equal Hash.equal
 
+  let cost_equal_history_proof _h1 _h2 =
+    let open Gas_limit_repr in
+    (* FIXME: To be defined in forthcoming commits. *)
+    free
+
   let history_proof_encoding : history_proof Data_encoding.t =
     Skip_list.encoding Hash.encoding Hash.encoding
 
@@ -448,11 +453,16 @@ module type Merkelized_operations = sig
 
   val of_serialized_proof : serialized_proof -> proof option
 
+  val cost_of_serialized_proof : serialized_proof -> Gas_limit_repr.cost
+
   val verify_proof :
     Raw_level_repr.t * Z.t ->
     history_proof ->
     proof ->
     Sc_rollup_PVM_sem.input option tzresult Lwt.t
+
+  val cost_verify_proof :
+    Raw_level_repr.t * Z.t -> history_proof -> proof -> Gas_limit_repr.cost
 
   val produce_proof :
     inbox_context ->
@@ -865,6 +875,11 @@ struct
 
   let of_serialized_proof = Data_encoding.Binary.of_bytes_opt proof_encoding
 
+  let cost_of_serialized_proof _p =
+    let open Gas_limit_repr in
+    (* FIXME: To be defined by forthcoming commits. *)
+    free
+
   let to_serialized_proof = Data_encoding.Binary.to_bytes_exn proof_encoding
 
   let proof_error reason =
@@ -899,6 +914,11 @@ struct
               verify_inclusion_proof inc upper snapshot
               && Hash.equal p (hash_skip_list_cell lower)))
       "invalid inclusions"
+
+  let cost_check_inclusions _proof _snapshot =
+    let open Gas_limit_repr in
+    (* FIXME: To be defined in forthcoming commits. *)
+    free
 
   (** To construct or verify a tree proof we need a function of type
 
@@ -949,6 +969,11 @@ struct
             (Format.sprintf "incorrect level in message_proof (%s)" label)
         in
         return payload_opt
+
+  let cost_check_message_proof _message_proof _level_hash (_l, _n) =
+    let open Gas_limit_repr in
+    (* FIXME: To be defined in forthcoming commits. *)
+    free
 
   let verify_proof (l, n) snapshot proof =
     assert (Z.(geq n zero)) ;
@@ -1004,6 +1029,28 @@ struct
                      message_counter = Z.zero;
                      payload;
                    })
+
+  let cost_verify_proof (l, n) snapshot proof =
+    let open Saturation_repr.Syntax in
+    (* This function is defined over the structure of [verify_proof]. *)
+    let cost_message_proof_verification =
+      match proof with
+      | Single_level p ->
+          let level_hash = Skip_list.content p.level in
+          cost_check_message_proof p.message_proof level_hash (l, n)
+          + cost_equal_history_proof snapshot p.level
+      | Level_crossing p ->
+          let lower_level_hash = Skip_list.content p.lower in
+          let upper_level_hash = Skip_list.content p.upper in
+          cost_check_message_proof p.lower_message_proof lower_level_hash (l, n)
+          + cost_check_message_proof
+              p.upper_message_proof
+              upper_level_hash
+              (p.upper_level, Z.zero)
+          + cost_equal_history_proof snapshot p.upper
+    in
+
+    cost_check_inclusions proof snapshot + cost_message_proof_verification
 
   (** Utility function; we convert all our calls to be consistent with
       [Lwt_tzresult_syntax]. *)

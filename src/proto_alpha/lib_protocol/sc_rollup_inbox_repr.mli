@@ -367,6 +367,8 @@ module type Merkelized_operations = sig
 
   val of_serialized_proof : serialized_proof -> proof option
 
+  val cost_of_serialized_proof : serialized_proof -> Gas_limit_repr.cost
+
   (** See the docstring for the [proof] type for details of proof semantics.
 
       [verify_proof starting_point inbox proof] will return the third
@@ -376,6 +378,11 @@ module type Merkelized_operations = sig
     history_proof ->
     proof ->
     Sc_rollup_PVM_sem.input option tzresult Lwt.t
+
+  (** [cost_verify_proof starting_point inbox proof] returns the gas cost
+      for the execution of [verify_proof starting_point inbox proof]. *)
+  val cost_verify_proof :
+    Raw_level_repr.t * Z.t -> history_proof -> proof -> Gas_limit_repr.cost
 
   (** [produce_proof ctxt history inbox (level, counter)] creates an
       inbox proof proving the first message after the index [counter] at
