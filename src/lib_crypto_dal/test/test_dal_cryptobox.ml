@@ -65,9 +65,6 @@ module Test = struct
             {redundancy_factor; slot_size; segment_size; number_of_shards}
         in
 
-        let f = false in
-        assert f ;
-
         let* p = Dal_cryptobox.polynomial_from_slot t msg in
         let res = Dal_cryptobox.polynomial_to_bytes t p in
         assert (Bytes.compare msg res = 0) ;

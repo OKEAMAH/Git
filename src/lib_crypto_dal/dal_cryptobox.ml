@@ -372,6 +372,7 @@ module Inner = struct
     nb_segments : int;
     (* Number of slot segments. *)
     segment_length : int;
+    segment_length_domain : int;
     remaining_bytes : int;
     (* Log of the number of evaluations contained in a shard. *)
     srs : srs;
@@ -638,11 +639,29 @@ module Inner = struct
      `tzresult` for modularity reasons. *)
   let make {redundancy_factor; slot_size; segment_size; number_of_shards} =
     let open Result_syntax in
-    let k, _ = select_fft_domain (slot_size / scalar_bytes_amount) in
-    Printf.eprintf "\n k = %d \n" k ;
+    let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
+    let segment_length_domain, _ = select_fft_domain segment_length in
+
+    let mul =
+      let rec multiply_by_two domain_size target_domain_size pow_two =
+        if domain_size >= target_domain_size then pow_two
+        else multiply_by_two (2 * domain_size) target_domain_size (2 * pow_two)
+      in
+      multiply_by_two
+        segment_length_domain
+        (let r = slot_size / scalar_bytes_amount in
+         r + if slot_size mod scalar_bytes_amount = 0 then 0 else 1)
+        1
+    in
+    let k = mul * segment_length_domain in
+    Printf.eprintf
+      "\n k = %d ; mul = %d; seg len = %d \n"
+      k
+      mul
+      segment_length_domain ;
     let n = redundancy_factor * k in
     let shard_size = n / number_of_shards in
-    let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
+
     let rt_n = get_primitive_root n in
     let rt_k = Scalar.pow rt_n (Z.of_int redundancy_factor) in
     let rt_2k = Scalar.pow rt_n (Z.of_int (redundancy_factor / 2)) in
@@ -655,7 +674,7 @@ module Inner = struct
               raw;
               kate_amortized_srs_g2_shards = Srs_g2.get raw.srs_g2 shard_size;
               kate_amortized_srs_g2_segments =
-                Srs_g2.get raw.srs_g2 (k / segment_size);
+                Srs_g2.get raw.srs_g2 segment_length_domain;
             }
     in
     let t =
@@ -673,6 +692,7 @@ module Inner = struct
         shard_size;
         nb_segments = slot_size / segment_size;
         segment_length;
+        segment_length_domain;
         remaining_bytes = segment_size mod scalar_bytes_amount;
         srs;
         fft_configuration = _make_fft_configuration redundancy_factor k;
@@ -1050,11 +1070,12 @@ module Inner = struct
   let multiple_multi_reveals ~chunk_len ~chunk_count ~degree
       ~preprocess:(domain2m, precomputed_srs_part) coefs =
     let open Bls12_381 in
-    let n = chunk_len + chunk_count in
-    assert (2 <= chunk_len) ;
-    assert (chunk_len < n) ;
-    (*assert (is_pow_of_two degree) ;*)
-    assert (1 lsl chunk_len < degree) ;
+    (* TODO : restore checks *)
+    (*let n = chunk_len + chunk_count in
+      assert (2 <= chunk_len) ;
+      assert (chunk_len < n) ;
+      (*assert (is_pow_of_two degree) ;*)
+      assert (chunk_len < degree) ;*)
     let l = chunk_len in
     Printf.eprintf
       "\n len coeffs = %d ; deg=%d; l =%d ; 2k/l=%d\n"
@@ -1172,7 +1193,7 @@ module Inner = struct
     let open Bls12_381 in
     let h = interpolation_h_poly3 w domain evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
-    let l = t.n / t.number_of_shards in
+    let l = t.shard_size in
     let sl_min_yl =
       G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
@@ -1184,7 +1205,7 @@ module Inner = struct
     let open Bls12_381 in
     let h = interpolation_h_poly2 t w domain evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
-    let l = fst t.fft_configuration.domain_k / t.segment_size in
+    let l = t.segment_length_domain in
     let sl_min_yl =
       G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
@@ -1225,7 +1246,7 @@ module Inner = struct
     let t' = Sys.time () in
     let res =
       multiple_multi_reveals
-        ~chunk_len:(t.n / t.number_of_shards)
+        ~chunk_len:t.shard_size
         ~chunk_count:Z.(log2 (of_int t.number_of_shards))
         ~degree:t.k
         ~preprocess
@@ -1271,7 +1292,7 @@ module Inner = struct
     if segment_index < 0 || segment_index >= t.nb_segments then
       Error `Segment_index_out_of_range
     else
-      let l = fst t.fft_configuration.domain_k / t.segment_size in
+      let l = t.segment_length_domain in
       let generator_domain_k = Array.get t.domain_k 1 in
       let power = Scalar.pow generator_domain_k (Z.of_int segment_index) in
       let quotient, _ =
@@ -1286,7 +1307,7 @@ module Inner = struct
     if slot_segment_index < 0 || slot_segment_index >= t.nb_segments then
       Error `Segment_index_out_of_range
     else
-      let coset_size = fst t.fft_configuration.domain_k / t.segment_size in
+      let coset_size = t.segment_length_domain in
       let generator_domain_k = Array.get t.domain_k 1 in
       let domain =
         make_domain
