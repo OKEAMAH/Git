@@ -851,8 +851,21 @@ let play game refutation =
     | Proof proof ->
         let* () = check_proof_start_stop ~start_chunk ~stop_chunk proof in
         let {inbox_snapshot; level; pvm_name; _} = game in
+        let* inbox_proof =
+          Option.map_es
+            (fun p ->
+              match Sc_rollup_inbox_repr.of_serialized_proof p with
+              | None -> invalid_move (Proof_invalid "unreadable proof")
+              | Some inbox_proof -> return inbox_proof)
+            proof.inbox
+        in
         let*! (proof_valid_tzresult : bool tzresult) =
-          Sc_rollup_proof_repr.valid inbox_snapshot level ~pvm_name proof
+          Sc_rollup_proof_repr.valid
+            inbox_snapshot
+            level
+            ~pvm_name
+            proof
+            inbox_proof
         in
         let* () =
           match proof_valid_tzresult with

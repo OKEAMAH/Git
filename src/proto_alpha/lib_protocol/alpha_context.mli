@@ -3447,6 +3447,7 @@ module Sc_rollup : sig
       Raw_level.t ->
       pvm_name:string ->
       t ->
+      Inbox.proof option ->
       bool tzresult Lwt.t
 
     val produce :

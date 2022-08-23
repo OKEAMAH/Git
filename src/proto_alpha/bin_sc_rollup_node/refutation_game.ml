@@ -123,8 +123,21 @@ module Make (Interpreter : Interpreter.S) :
       @@ (Sc_rollup.Proof.produce (module P) game.level
          >|= Environment.wrap_tzresult)
     in
+    let* inbox_proof_opt =
+      match r.inbox with
+      | None -> return_none
+      | Some serialized_proof -> (
+          match Sc_rollup.Inbox.of_serialized_proof serialized_proof with
+          | None -> assert false
+          | Some inbox_proof -> return_some inbox_proof)
+    in
     let+ check =
-      Sc_rollup.Proof.valid history_proof game.level ~pvm_name:game.pvm_name r
+      Sc_rollup.Proof.valid
+        history_proof
+        game.level
+        ~pvm_name:game.pvm_name
+        r
+        inbox_proof_opt
       >|= Environment.wrap_tzresult
     in
     assert check ;

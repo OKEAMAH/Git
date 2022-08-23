@@ -96,10 +96,11 @@ val valid :
   Raw_level_repr.t ->
   pvm_name:string ->
   t ->
+  Sc_rollup_inbox_repr.proof option ->
   bool tzresult Lwt.t
 
-(** [cost_valid history_proof level ~pvm_name proof] returns the cost of
-    refutation proof validation. *)
+(** [cost_valid history_proof level ~pvm_name proof inbox_proof]
+   returns the cost of refutation proof validation. *)
 val cost_valid :
   Sc_rollup_inbox_repr.history_proof ->
   Raw_level_repr.t ->
