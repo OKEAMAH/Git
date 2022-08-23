@@ -147,10 +147,16 @@ module V1 = struct
 
   let equal_history_proof = Skip_list.equal Hash.equal Hash.equal
 
-  let cost_equal_history_proof _h1 _h2 =
-    let open Gas_limit_repr in
-    (* FIXME: To be defined in forthcoming commits. *)
-    free
+  let cost_hash_equal = Sc_rollup_costs.cost_compare Hash.size Hash.size
+
+  let cost_equal_history_proof h1 h2 =
+    let n1 = Skip_list.number_of_back_pointers h1
+    and n2 = Skip_list.number_of_back_pointers h2 in
+    if Compare.Int.(n1 = n2) then
+      let n = Compare.Int.(min n1 n2) in
+      Saturation_repr.(
+        Syntax.(safe_int n * (cost_hash_equal + cost_hash_equal)))
+    else Gas_limit_repr.free
 
   let history_proof_encoding : history_proof Data_encoding.t =
     Skip_list.encoding Hash.encoding Hash.encoding
