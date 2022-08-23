@@ -733,6 +733,11 @@ struct
       ~target_ptr
       path
 
+  let cost_verify_inclusion_proof _proof _a _b =
+    let open Gas_limit_repr in
+    (* FIXME: To be defined by a forthcoming commit. *)
+    free
+
   type proof =
     (* See the main docstring for this type (in the mli file) for
        definitions of the three proof parameters [starting_point],
@@ -921,10 +926,17 @@ struct
               && Hash.equal p (hash_skip_list_cell lower)))
       "invalid inclusions"
 
-  let cost_check_inclusions _proof _snapshot =
+  let cost_check_inclusions proof snapshot =
     let open Gas_limit_repr in
-    (* FIXME: To be defined in forthcoming commits. *)
-    free
+    (* This function is defined over the structure of [check_inclusions]. *)
+    match proof with
+    | Single_level {inc; level; _} ->
+        cost_verify_inclusion_proof inc level snapshot
+    | Level_crossing {inc; lower = _; upper; _} -> (
+        let prev_cell = Skip_list.back_pointer upper 0 in
+        match prev_cell with
+        | None -> free
+        | Some _p -> cost_verify_inclusion_proof inc upper snapshot)
 
   (** To construct or verify a tree proof we need a function of type
 
