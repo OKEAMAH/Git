@@ -29,6 +29,9 @@ type key = string list
     matching branch. *)
 exception No_tag_matched_on_encoding
 
+(** Raised when an encoder exceeds the maximum number of steps allowed. *)
+exception Exceeded_max_num_encoding_steps
+
 (** Tree encoder type. *)
 type -'a t
 
@@ -51,10 +54,15 @@ val contramap_lwt : ('a -> 'b Lwt.t) -> 'b t -> 'a t
 (** [ignore] is an encoder that ignores its value. *)
 val ignore : 'a t
 
-(** [run enc x tree] encodes the given value [x] using the encoder [enc] and
-    writes it to the tree [tree]. May raise a [Key_not_found] or a
-    [No_tag_matched] exception. *)
-val run : 'tree Tree.backend -> 'a t -> 'a -> 'tree -> 'tree Lwt.t
+(** [run ?max_num_steps backend enc x tree] encodes the given value [x] using
+    the encoder [enc], backend [backend] and writes it to the tree [tree].
+
+    If [max_num_steps] is passed, an [Exceeded_max_num_encoding_steps] error is
+    raised in case the computation executes more steps than the provided limit.
+
+    May also raise a [Key_not_found] or a [No_tag_matched] exception. *)
+val run :
+  ?max_num_steps:int -> 'tree Tree.backend -> 'a t -> 'a -> 'tree -> 'tree Lwt.t
 
 (** [with_subtree get_subtree enc] will use [get_subtree] to fetch
     the tree of origin of a value to be encoded with [enc], to place

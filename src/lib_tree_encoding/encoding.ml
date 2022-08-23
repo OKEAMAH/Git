@@ -27,6 +27,8 @@ type key = string list
 
 exception No_tag_matched_on_encoding
 
+exception Exceeded_max_num_encoding_steps
+
 (** [append_key prefix key] append [key] to [prefix] in order to create a new
       [prefix_key]. *)
 let append_key prefix key tail = prefix (List.append key tail)
@@ -35,21 +37,50 @@ let append_key prefix key tail = prefix (List.append key tail)
 type prefix_key = key -> key
 
 type -'a t = {
-  encode : 'tree. 'tree Tree.backend -> 'a -> prefix_key -> 'tree -> 'tree Lwt.t;
+  encode :
+    'tree.
+    (* Backend with the tree implementation. *)
+    'tree Tree.backend ->
+    (* Remaining number of computation steps. *)
+    int option ->
+    (* The value to encode. *)
+    'a ->
+    (* The key for where to encode the value. *)
+    prefix_key ->
+    (* The input tree. *)
+    'tree ->
+    (* Returns a new tree with the encoded value and the remaining number of
+       steps. *)
+    ('tree * int option) Lwt.t;
 }
 [@@unboxed]
 
-let ignore = {encode = (fun _backend _val _key tree -> Lwt.return tree)}
+(* Decrement the remaining rem_steps budget if given. *)
+let consume_step = function
+  | None -> None
+  | Some n when n <= 0 -> raise Exceeded_max_num_encoding_steps
+  | Some n -> Some (n - 1)
 
-let run backend {encode} value tree = encode backend value Fun.id tree
+let ignore =
+  {
+    encode =
+      (fun _backend rem_steps _val _key tree ->
+        Lwt.return (tree, consume_step rem_steps));
+  }
+
+let run ?max_num_steps backend {encode} value tree =
+  Lwt.map fst @@ encode backend max_num_steps value Fun.id tree
 
 let with_subtree get_subtree {encode} =
   {
     encode =
-      (fun backend value prefix input_tree ->
-        let open Lwt.Syntax in
+      (fun backend rem_steps value prefix input_tree ->
+        let rem_steps = consume_step rem_steps in
+        let open Lwt_syntax in
         match get_subtree value with
         | Some tree ->
+            (* Update the rem_steps twice. One for each tree operation. *)
+            let rem_steps = consume_step @@ consume_step rem_steps in
             let* input_tree = Tree.remove backend input_tree (prefix []) in
             let* input_tree =
               Tree.add_tree
@@ -58,96 +89,129 @@ let with_subtree get_subtree {encode} =
                 (prefix [])
                 (Tree.select backend tree)
             in
-            encode backend value prefix input_tree
-        | None -> encode backend value prefix input_tree);
+            encode backend rem_steps value prefix input_tree
+        | None -> encode backend rem_steps value prefix input_tree);
   }
 
 let lwt {encode} =
   {
     encode =
-      (fun backend value prefix tree ->
+      (fun backend rem_steps value prefix tree ->
         let open Lwt_syntax in
+        let rem_steps = consume_step rem_steps in
         let* v = value in
-        encode backend v prefix tree);
+        encode backend rem_steps v prefix tree);
   }
 
 let delayed f =
-  {encode = (fun backend x key tree -> (f ()).encode backend x key tree)}
+  {
+    encode =
+      (fun backend rem_steps x key tree ->
+        let rem_steps = consume_step rem_steps in
+        let {encode} = f () in
+        encode backend rem_steps x key tree);
+  }
 
 let contramap f {encode} =
-  {encode = (fun backend value -> encode backend (f value))}
+  {
+    encode =
+      (fun backend rem_steps value ->
+        let rem_steps = consume_step rem_steps in
+        encode backend rem_steps @@ f value);
+  }
 
 let contramap_lwt f {encode} =
   {
     encode =
-      (fun backend value prefix tree ->
+      (fun backend rem_steps value prefix tree ->
         let open Lwt_syntax in
+        let rem_steps = consume_step rem_steps in
         let* v = f value in
-        encode backend v prefix tree);
+        encode backend rem_steps v prefix tree);
   }
 
 let tup2 lhs rhs =
   {
     encode =
-      (fun backend (l, r) prefix tree ->
-        let open Lwt.Syntax in
-        let* tree = lhs.encode backend l prefix tree in
-        rhs.encode backend r prefix tree);
+      (fun backend rem_steps (l, r) prefix tree ->
+        let open Lwt_syntax in
+        let rem_steps = consume_step rem_steps in
+        let* tree, rem_steps = lhs.encode backend rem_steps l prefix tree in
+        rhs.encode backend rem_steps r prefix tree);
   }
 
 let tup3 encode_a encode_b encode_c =
   {
     encode =
-      (fun backend (a, b, c) prefix tree ->
-        let open Lwt.Syntax in
-        let* tree = encode_a.encode backend a prefix tree in
-        let* tree = encode_b.encode backend b prefix tree in
-        encode_c.encode backend c prefix tree);
+      (fun backend rem_steps (a, b, c) prefix tree ->
+        let open Lwt_syntax in
+        let rem_steps = consume_step @@ consume_step rem_steps in
+        let* tree, rem_steps =
+          encode_a.encode backend rem_steps a prefix tree
+        in
+        let* tree, rem_steps =
+          encode_b.encode backend rem_steps b prefix tree
+        in
+        encode_c.encode backend rem_steps c prefix tree);
   }
 
 let raw suffix =
   {
     encode =
-      (fun backend bytes prefix tree ->
-        Tree.add backend tree (prefix suffix) bytes);
+      (fun backend rem_steps bytes prefix tree ->
+        let open Lwt_syntax in
+        let rem_steps = consume_step rem_steps in
+        let* tree = Tree.add backend tree (prefix suffix) bytes in
+        return (tree, rem_steps));
   }
 
 let value suffix enc =
   {
     encode =
-      (fun backend v prefix tree ->
-        (contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix)).encode
-          backend
-          v
-          prefix
-          tree);
+      (fun backend rem_steps v prefix tree ->
+        let rem_steps = consume_step rem_steps in
+        let {encode} =
+          contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix)
+        in
+        encode backend rem_steps v prefix tree);
   }
 
 let value_option key encoding =
   {
     encode =
-      (fun backend v prefix tree ->
+      (fun backend rem_steps v prefix tree ->
+        let rem_steps = consume_step rem_steps in
         match v with
-        | Some v -> (value key encoding).encode backend v prefix tree
-        | None -> Tree.remove backend tree (prefix key));
+        | Some v -> (value key encoding).encode backend rem_steps v prefix tree
+        | None ->
+            let open Lwt_syntax in
+            let rem_steps = consume_step rem_steps in
+            let* tree = Tree.remove backend tree (prefix key) in
+            return (tree, rem_steps));
   }
 
 let scope key {encode} =
   {
     encode =
-      (fun backend value prefix tree ->
-        encode backend value (append_key prefix key) tree);
+      (fun backend rem_steps value prefix tree ->
+        encode
+          backend
+          (consume_step rem_steps)
+          value
+          (append_key prefix key)
+          tree);
   }
 
 let lazy_mapping to_key enc_value =
   {
     encode =
-      (fun backend bindings prefix tree ->
+      (fun backend rem_steps bindings prefix tree ->
         List.fold_left_s
-          (fun tree (k, v) ->
+          (fun (tree, rem_steps) (k, v) ->
+            let rem_steps = consume_step rem_steps in
             let key = append_key prefix (to_key k) in
-            enc_value.encode backend v key tree)
-          tree
+            enc_value.encode backend rem_steps v key tree)
+          (tree, rem_steps)
           bindings);
   }
 
@@ -168,24 +232,32 @@ let case tag encode probe =
 let tagged_union encode_tag cases =
   {
     encode =
-      (fun backend value prefix target_tree ->
+      (fun backend rem_steps value prefix target_tree ->
         let open Lwt_syntax in
+        let rem_steps = consume_step rem_steps in
         let encode_tag = scope ["tag"] encode_tag in
-        let match_case (Case {probe; tag; encode}) =
-          match probe value with
-          | Some res ->
-              let* target_tree =
-                encode_tag.encode backend tag prefix target_tree
-              in
-              let* value = res in
-              let* x =
-                (scope ["value"] encode).encode backend value prefix target_tree
-              in
-              return (Some x)
-          | None -> return None
+        let match_case (found_value, rem_steps) (Case {probe; tag; encode}) =
+          let rem_steps = consume_step rem_steps in
+          match found_value with
+          | Some value -> return (Some value, rem_steps)
+          | None -> (
+              match probe value with
+              | Some res ->
+                  let* target_tree, rem_steps =
+                    encode_tag.encode backend rem_steps tag prefix target_tree
+                  in
+                  let* value = res in
+                  let* tree, rem_steps =
+                    let {encode} = scope ["value"] encode in
+                    encode backend rem_steps value prefix target_tree
+                  in
+                  return (Some tree, rem_steps)
+              | None -> return (None, rem_steps))
         in
-        let* tree_opt = List.find_map_s match_case cases in
+        let* tree_opt, rem_steps =
+          List.fold_left_s match_case (None, rem_steps) cases
+        in
         match tree_opt with
         | None -> raise No_tag_matched_on_encoding
-        | Some tree -> return tree);
+        | Some tree -> return (tree, rem_steps));
   }
