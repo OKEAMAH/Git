@@ -642,23 +642,8 @@ module Inner = struct
     let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
     let segment_length_domain, _ = select_fft_domain segment_length in
 
-    let mul =
-      let rec multiply_by_two domain_size target_domain_size pow_two =
-        if domain_size >= target_domain_size then pow_two
-        else multiply_by_two (2 * domain_size) target_domain_size (2 * pow_two)
-      in
-      multiply_by_two
-        segment_length_domain
-        (let r = slot_size / scalar_bytes_amount in
-         r + if slot_size mod scalar_bytes_amount = 0 then 0 else 1)
-        1
-    in
+    let mul = slot_size / segment_size in
     let k = mul * segment_length_domain in
-    Printf.eprintf
-      "\n k = %d ; mul = %d; seg len = %d \n"
-      k
-      mul
-      segment_length_domain ;
     let n = redundancy_factor * k in
     let shard_size = n / number_of_shards in
 
