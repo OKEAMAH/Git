@@ -534,7 +534,7 @@ module Inner = struct
     domains : scalar_array IntMap.t;
   }
 
-  let make_fft_configuration domain_size =
+  let _make_fft_configuration domain_size =
     let fft_domain_size, domains = select_fft_domain domain_size in
     let primitive_root = get_primitive_root fft_domain_size in
     let make_domains (domains : int list) =
