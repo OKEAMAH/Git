@@ -173,3 +173,13 @@ let z_encoding = Data_encoding.(check_size 9 (conv to_z t_to_z_exn z))
 let n_encoding = Data_encoding.(check_size 9 (conv to_z t_to_z_exn n))
 
 let pp fmt x = Format.pp_print_int fmt x
+
+module Syntax = struct
+  let ( + ) = add
+
+  let ( * ) = mul
+
+  let ( - ) = sub
+
+  let ( / ) = ediv
+end

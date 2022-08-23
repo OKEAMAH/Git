@@ -205,3 +205,13 @@ val n_encoding : _ t Data_encoding.t
 
 (** A pretty-printer for native integers. *)
 val pp : Format.formatter -> _ t -> unit
+
+module Syntax : sig
+  val ( + ) : _ t -> _ t -> may_saturate t
+
+  val ( * ) : _ t -> _ t -> may_saturate t
+
+  val ( - ) : 'a t -> _ t -> 'a t
+
+  val ( / ) : 'a t -> _ t -> 'a t
+end
