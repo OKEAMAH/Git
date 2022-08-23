@@ -47,8 +47,14 @@ type ('tag, 'a) case
 (** [run ?max_num_steps decoder tree] runs the tree decoder against the tree.
     If [max_num_steps] is passed, an [Exceeded_max_num_decoding_steps] error is
     raised in case the computation executes more steps than the provided limit.
+    The decoded value along with the remaining number of steps are returned.
     May raise a [Key_not_found] or a [No_tag_matched] exception. *)
-val run : ?max_num_steps:int -> 'tree Tree.backend -> 'a t -> 'tree -> 'a Lwt.t
+val run :
+  ?max_num_steps:int ->
+  'tree Tree.backend ->
+  'a t ->
+  'tree ->
+  ('a * int option) Lwt.t
 
 (** [raw key] retrieves the raw value at the given [key].
 

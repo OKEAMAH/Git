@@ -55,14 +55,21 @@ val contramap_lwt : ('a -> 'b Lwt.t) -> 'b t -> 'a t
 val ignore : 'a t
 
 (** [run ?max_num_steps backend enc x tree] encodes the given value [x] using
-    the encoder [enc], backend [backend] and writes it to the tree [tree].
+    the encoder [enc], backend [backend] and writes it to the tree [tree]. The
+    new tree along with the remaining maximum number of steps (if given) are
+    returned.
 
     If [max_num_steps] is passed, an [Exceeded_max_num_encoding_steps] error is
     raised in case the computation executes more steps than the provided limit.
 
     May also raise a [Key_not_found] or a [No_tag_matched] exception. *)
 val run :
-  ?max_num_steps:int -> 'tree Tree.backend -> 'a t -> 'a -> 'tree -> 'tree Lwt.t
+  ?max_num_steps:int ->
+  'tree Tree.backend ->
+  'a t ->
+  'a ->
+  'tree ->
+  ('tree * int option) Lwt.t
 
 (** [with_subtree get_subtree enc] will use [get_subtree] to fetch
     the tree of origin of a value to be encoded with [enc], to place

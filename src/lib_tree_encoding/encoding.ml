@@ -69,7 +69,7 @@ let ignore =
   }
 
 let run ?max_num_steps backend {encode} value tree =
-  Lwt.map fst @@ encode backend max_num_steps value Fun.id tree
+  encode backend max_num_steps value Fun.id tree
 
 let with_subtree get_subtree {encode} =
   {

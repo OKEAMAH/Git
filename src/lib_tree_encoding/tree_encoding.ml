@@ -328,11 +328,39 @@ let delayed f =
   {encode; decode}
 
 module Runner = struct
+  exception Exceeded_max_num_steps
+
   module type TREE = S
 
   module Make (T : TREE) = struct
-    let encode {encode; _} value tree = E.run (module T) encode value tree
+    let encode ?max_num_steps {encode; _} value tree =
+      try Lwt.map fst @@ E.run ?max_num_steps (module T) encode value tree with
+      | Encoding.Exceeded_max_num_encoding_steps -> raise Exceeded_max_num_steps
+      | e -> raise e
 
-    let decode {decode; _} tree = D.run (module T) decode tree
+    let decode ?max_num_steps {decode; _} tree =
+      try Lwt.map fst @@ D.run ?max_num_steps (module T) decode tree with
+      | Decoding.Exceeded_max_num_decoding_steps -> raise Exceeded_max_num_steps
+      | e -> raise e
+
+    module Internal_for_tests = struct
+      let encode_and_count_steps {encode; _} value tree =
+        let open Lwt_syntax in
+        let+ tree, rem_steps =
+          E.run ~max_num_steps:max_int (module T) encode value tree
+        in
+        match rem_steps with
+        | Some rem_steps -> (tree, max_int - rem_steps)
+        | None -> assert false
+
+      let decode_and_count_steps {decode; _} tree =
+        let open Lwt_syntax in
+        let+ value, rem_steps =
+          D.run ~max_num_steps:max_int (module T) decode tree
+        in
+        match rem_steps with
+        | Some rem_steps -> (value, max_int - rem_steps)
+        | None -> assert false
+    end
   end
 end

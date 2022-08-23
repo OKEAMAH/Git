@@ -235,6 +235,8 @@ val option : 'a t -> 'a option t
 val delayed : (unit -> 'a t) -> 'a t
 
 module Runner : sig
+  exception Exceeded_max_num_steps
+
   module type TREE = sig
     type tree
 
@@ -260,12 +262,25 @@ module Runner : sig
 
   (** Builds a new runner for encoders using a specific tree. *)
   module Make (T : TREE) : sig
-    (** [encode enc x tree] encodes a value [x] using the encoder [enc]
-    into the provided [tree]. *)
-    val encode : 'a t -> 'a -> T.tree -> T.tree Lwt.t
+    (** [encode ?max_num_steps enc x tree] encodes a value [x] using the encoder
+        [enc] into the provided [tree].  If [max_num_steps] is provided it fails
+        with an [Exceeded_max_num_steps] error if the number of encode steps
+        exceeds the given value. *)
+    val encode : ?max_num_steps:int -> 'a t -> 'a -> T.tree -> T.tree Lwt.t
 
-    (** [decode enc x tree] decodes a value using the encoder [enc] from
-    the provided [tree]. *)
-    val decode : 'a t -> T.tree -> 'a Lwt.t
+    (** [decode ?max_num_steps enc x tree] decodes a value using the encoder [enc] from
+        the provided [tree]. If [max_num_steps] is provided it fails with an
+        [Exceeded_max_num_steps] error if the number of decode steps exceeds the
+        given value. *)
+    val decode : ?max_num_steps:int -> 'a t -> T.tree -> 'a Lwt.t
+
+    (** Functions for internal tests. *)
+    module Internal_for_tests : sig
+      (** A version of [encode] that also counts the number of compute steps. *)
+      val encode_and_count_steps : 'a t -> 'a -> T.tree -> (T.tree * int) Lwt.t
+
+      (** A version of [decode] that also counts the number of compute steps. *)
+      val decode_and_count_steps : 'a t -> T.tree -> ('a * int) Lwt.t
+    end
   end
 end

@@ -159,7 +159,7 @@ module Syntax = struct
 end
 
 let run ?max_num_steps backend {decode} tree =
-  Lwt.map fst @@ decode backend max_num_steps tree Fun.id
+  decode backend max_num_steps tree Fun.id
 
 let raw key =
   {
