@@ -233,6 +233,34 @@ let handle_event sc_node {name; value} =
       update_level sc_node level
   | _ -> ()
 
+let wait_for_full ?where node name filter =
+  let promise, resolver = Lwt.task () in
+  let current_events =
+    String_map.find_opt name node.one_shot_event_handlers
+    |> Option.value ~default:[]
+  in
+  node.one_shot_event_handlers <-
+    String_map.add
+      name
+      (Event_handler {filter; resolver} :: current_events)
+      node.one_shot_event_handlers ;
+  let* result = promise in
+  match result with
+  | None ->
+      raise (Terminated_before_event {daemon = node.name; event = name; where})
+  | Some x -> return x
+
+let event_from_full_event_filter filter json =
+  let raw = get_event_from_full_event json in
+  (* If [json] does not match the correct JSON structure, it
+     will be filtered out, which will result in ignoring
+     the current event.
+     @see raw_event_from_event *)
+  Option.bind raw (fun {value; _} -> filter value)
+
+let wait_for ?where node name filter =
+  wait_for_full ?where node name (event_from_full_event_filter filter)
+
 let create ?(path = Constant.sc_rollup_node) ?name ?color ?data_dir ?event_pipe
     ?(rpc_host = "127.0.0.1") ?rpc_port ?(operators = []) ?default_operator mode
     (node : Node.t) (client : Client.t) =
