@@ -35,15 +35,20 @@ exception No_tag_matched_on_decoding
 (** Raised when data-encoding fails to decode a certain value. *)
 exception Decode_error of {key : key; error : Data_encoding.Binary.read_error}
 
+(** Raised when a decoder exceeds the maximum number of steps allowed. *)
+exception Exceeded_max_num_decoding_steps
+
 (** Tree decoder type *)
 type 'a t
 
 (** Represents a partial encoder for a specific constructor of a sum-type. *)
 type ('tag, 'a) case
 
-(** [run decoder tree] runs the tree decoder against the tree. May raise a
-    [Key_not_found] or a [No_tag_matched] exception. *)
-val run : 'tree Tree.backend -> 'a t -> 'tree -> 'a Lwt.t
+(** [run ?max_num_steps decoder tree] runs the tree decoder against the tree.
+    If [max_num_steps] is passed, an [Exceeded_max_num_decoding_steps] error is
+    raised in case the computation executes more steps than the provided limit.
+    May raise a [Key_not_found] or a [No_tag_matched] exception. *)
+val run : ?max_num_steps:int -> 'tree Tree.backend -> 'a t -> 'tree -> 'a Lwt.t
 
 (** [raw key] retrieves the raw value at the given [key].
 
