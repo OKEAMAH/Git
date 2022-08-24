@@ -500,7 +500,6 @@ module Inner = struct
     | [domain1_length; domain2_length]
       when Z.(gcd (of_int domain1_length) (of_int domain2_length) = one)
            && is_pow_of_two domain1_length ->
-        Printf.eprintf "\n hello \n" ;
         let domain1, domain2 =
           if inverse then
             ( make_domain2
@@ -517,16 +516,6 @@ module Inner = struct
                 (Scalar.pow primroot (Z.of_int (t.n / len * domain1_length))) )
         in
         let domain1_length_log = Z.(log2 (of_int domain1_length)) in
-        Printf.eprintf
-          "\n dom1 = %d; rt1 = %s ; rt2 = %s ; inv = %b\n"
-          domain1_length_log
-          (Scalar.to_string
-             (Scalar.inverse_exn
-                (Scalar.pow primroot (Z.of_int (t.n / len * domain2_length)))))
-          (Scalar.to_string
-             (Scalar.inverse_exn
-                (Scalar.pow primroot (Z.of_int (t.n / len * domain1_length)))))
-          inverse ;
         prime_factor_algorithm_fft
           ~domain1:(domain1 domain1_length)
           ~domain2:(domain2 domain2_length)
