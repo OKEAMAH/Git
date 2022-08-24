@@ -1035,15 +1035,6 @@ module Inner = struct
       z_list
     |> snd |> Polynomials.of_dense
 
-  let interpolation_h_poly2 t y coefficients =
-    let h = fft t ~coefficients ~domains:[8; 19] ~inverse:true in
-    let inv_y = Scalar.inverse_exn y in
-    Array.fold_left_map
-      (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
-      Scalar.(copy one)
-      (Scalar_array.to_array h)
-    |> snd
-
   (* Part 3.2 verifier : verifies that f(w×domain.(i)) = evaluations.(i). *)
   let _verify t cm_f srs_point domain (w, evaluations) proof =
     let open Bls12_381 in
@@ -1056,8 +1047,8 @@ module Inner = struct
     let diff_commits = G1.(add cm_h (negate cm_f)) in
     Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
 
-  let interpolation_h_poly3 t y coefficients =
-    let h = fft t ~domains:[2; 19] ~coefficients ~inverse:true in
+  let interpolation_h_poly_segments t y coefficients =
+    let h = fft t ~domains:[8; 19] ~coefficients ~inverse:true in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
       (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
@@ -1065,23 +1056,21 @@ module Inner = struct
       (Scalar_array.to_array h)
     |> snd
 
-  let verify3 t cm_f srs2l (w, evaluations) proof =
-    let open Bls12_381 in
-    let h = interpolation_h_poly3 t w evaluations in
-    let cm_h = commit t (Polynomials.of_dense h) in
-    let l = t.shard_size in
-    let sl_min_yl =
-      G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
-    in
-    let diff_commits = G1.(add cm_h (negate cm_f)) in
+  let interpolation_h_poly_shards t y coefficients =
+    let h = fft t ~coefficients ~domains:[2; 19] ~inverse:true in
+    let inv_y = Scalar.inverse_exn y in
+    Array.fold_left_map
+      (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
+      Scalar.(copy one)
+      (Scalar_array.to_array h)
+    |> snd
 
-    Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
-
-  let verify2 (t : t) cm_f srs2l (w, evaluations) proof =
+  let verify t cm_f srs2l (w, evaluations)
+      (interpolation_h_poly : t -> scalar -> scalar_array -> scalar array) l
+      (proof : Bls12_381.G1.t) =
     let open Bls12_381 in
-    let h = interpolation_h_poly2 t w evaluations in
+    let h = interpolation_h_poly t w evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
-    let l = t.segment_length_domain in
     let sl_min_yl =
       G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
@@ -1133,13 +1122,14 @@ module Inner = struct
 
   let verify_shard t cm {index = shard_index; share = shard_evaluations} proof =
     let generator_domain_n = Array.get t.domain_n 1 in
-
     let power_coset = Scalar.pow generator_domain_n (Z.of_int shard_index) in
-    verify3
+    verify
       t
       cm
       t.srs.kate_amortized_srs_g2_shards
       (power_coset, Scalar_array.of_array shard_evaluations)
+      interpolation_h_poly_shards
+      t.shard_size
       proof
 
   let _prove_single t p z =
@@ -1204,11 +1194,13 @@ module Inner = struct
             | _ -> Scalar.(copy zero))
       in
       Ok
-        (verify2
+        (verify
            t
            cm
            t.srs.kate_amortized_srs_g2_segments
            (power, Scalar_array.of_array slot_segment_evaluations)
+           interpolation_h_poly_segments
+           t.segment_length_domain
            proof)
 end
 
