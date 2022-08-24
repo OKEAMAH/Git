@@ -331,7 +331,7 @@ module Inner = struct
   (* Builds group of nth roots of unity, a valid domain for the FFT. *)
   (*let make_domain n = Domains.build ~log:Z.(log2up (of_int n))*)
 
-  let make_domain root d =
+  let _make_domain root d =
     let build_array init next len =
       let xi = ref init in
       Array.init len (fun _ ->
