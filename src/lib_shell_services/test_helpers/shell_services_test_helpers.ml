@@ -163,4 +163,7 @@ let merkle_proof_gen =
             return (t, ()))
         |> Lwt_main.run
       in
-      return proof
+      return (proof, tree)
+
+let print_merkle_proof (_, tree) =
+  Format.asprintf "<Merkle proof> on tree\n%a" Store.Tree.pp tree

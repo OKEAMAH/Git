@@ -63,28 +63,6 @@ let irmin_tree_gen =
 
 let print_tree = Format.asprintf "%a" Store.Tree.pp
 
-let get_ok = function Ok x -> x | Error s -> QCheck2.Test.fail_report s
-
-let filter_none : 'a option list -> 'a list = List.filter_map Fun.id
-
-let rec remove_data_in_node =
-  let open Proof in
-  function
-  | Hash _ as x -> Some x
-  | Data _ -> None
-  | Continue mtree ->
-      let mtree' = remove_data_in_tree mtree in
-      if String.Map.is_empty mtree' then None else Some (Continue mtree')
-
-and remove_data_in_tree mtree =
-  let pairs = String.Map.bindings mtree in
-  let pairs' = Light_lib.Bifunctor.second remove_data_in_node pairs in
-  let lift_opt (x, y_opt) =
-    match y_opt with None -> None | Some y -> Some (x, y)
-  in
-  let pairs'' = List.map lift_opt pairs' |> filter_none in
-  List.to_seq pairs'' |> String.Map.of_seq
-
 module HashStability = struct
   let make_tree_shallow repo tree =
     let hash = Store.Tree.hash tree in
@@ -211,41 +189,38 @@ module Consensus = struct
         assert false
     end
 
-  let mk_rogue_tree (mtree : Proof.merkle_tree) (seed : int list) :
-      (Proof.merkle_tree, string) result =
-    let merkle_tree_eq = Proof.merkle_tree_eq in
+  let mk_rogue_tree (mproof : Proof.tree Proof.t) (seed : int list) :
+      (Proof.tree Proof.t, string) result =
+    let tree_proof_eq = Proof.tree_proof_eq in
     let rec gen_rec ~rand attempts_left =
       if attempts_left = 0 then Error "mk_rogue_tree: giving up"
       else
-        let gen = merkle_tree_gen in
-        let generated = QCheck2.Gen.generate1 ~rand gen in
-        if merkle_tree_eq mtree generated then gen_rec ~rand (attempts_left - 1)
+        let gen = merkle_proof_gen in
+        let generated, _ = QCheck2.Gen.generate1 ~rand gen in
+        if tree_proof_eq mproof generated then gen_rec ~rand (attempts_left - 1)
         else Ok generated
     in
     let rand = Random.State.make (Array.of_list seed) in
-    if (not String.Map.(is_empty mtree)) && Random.State.int rand 10 = 0 then
-      (* The empty tree is an important edge case, hence this conditional *)
-      Ok String.Map.empty
-    else gen_rec ~rand 128
+    gen_rec ~rand 128
 
-  (* [mock_light_rpc mtree [(endpoint1, true); (endpoint2, false)] seed]
+  (* [mock_light_rpc mproof [(endpoint1, true); (endpoint2, false)] seed]
      returns an instance of [Tezos_proxy.Light_proto.PROTO_RPCS]
-     that always returns a rogue (illegal) variant of [mtree] when querying [endpoint1],
-     [mtree] when querying [endpoint2], and [None] otherwise *)
-  let mock_light_rpc mtree endpoints_and_rogueness seed =
+     that always returns a rogue (illegal) variant of [mproof] when querying [endpoint1],
+     [mproof] when querying [endpoint2], and [None] otherwise *)
+  let mock_light_rpc mproof endpoints_and_rogueness seed =
     (module struct
       (** Use physical equality on [rpc_context] because they are identical objects. *)
-      let merkle_tree (pgi : Tezos_proxy.Proxy.proxy_getter_input) _ _ =
+      let merkle_tree_v2 (pgi : Tezos_proxy.Proxy.proxy_getter_input) _ _ =
         List.assq pgi.rpc_context endpoints_and_rogueness
         |> Option.map (fun is_rogue ->
                if is_rogue then
-                 match mk_rogue_tree mtree seed with
+                 match mk_rogue_tree mproof seed with
                  | Ok rogue_mtree -> rogue_mtree
                  | _ -> QCheck2.assume_fail ()
-               else mtree)
+               else mproof)
         |> Lwt.return_ok
 
-      let merkle_tree_v2 _ _ _ = failwith "not implemented"
+      let merkle_tree _ _ _ = failwith "not implemented"
     end : Tezos_proxy.Light_proto.PROTO_RPCS)
 
   let mock_printer () =
@@ -265,18 +240,15 @@ module Consensus = struct
     let l = List.map (fun s -> "\"" ^ s ^ "\"") l in
     "[" ^ String.concat "; " l ^ "]"
 
-  (** [test_consensus min_agreement nb_honest nb_rogue key mtree randoms consensus_expected]
-      checks that a consensus run with [nb_honest] honest nodes (i.e. that return [mtree] when requesting [key]),
+  (** [test_consensus min_agreement nb_honest nb_rogue key mproof randoms consensus_expected]
+      checks that a consensus run with [nb_honest] honest nodes (i.e. that return [mproof] when requesting [key]),
       [nb_rogue] rogue nodes (i.e. that falsify data with the [mk_rogue_*] functions when requesting [key])
       returns [consensus_expected]. [randoms] is used to inject randomness in the rogue behaviour. *)
-  let test_consensus min_agreement nb_honest nb_rogue key mtree randoms
+  let test_consensus min_agreement nb_honest nb_rogue key mproof tree randoms
       consensus_expected =
     let open Lwt_syntax in
     assert (nb_honest >= 0) ;
     assert (nb_rogue >= 0) ;
-    (* Because the consensus algorithm expects the merkle tree not to contain
-       data: *)
-    let mtree = remove_data_in_tree mtree in
     let honests = List.repeat nb_honest false in
     let rogues = List.repeat nb_rogue true in
     let endpoints_and_rogueness =
@@ -285,16 +257,10 @@ module Consensus = struct
         (honests @ rogues)
     in
     let (module Light_proto) =
-      mock_light_rpc mtree endpoints_and_rogueness randoms
+      mock_light_rpc mproof endpoints_and_rogueness randoms
     in
     let module Consensus = Tezos_proxy.Light_consensus.Make (Light_proto) in
     let printer = mock_printer () in
-    (* FIXME(evertedsphere,nbacquey) *)
-    (* let repo = Lwt_main.run (Store.Tree.make_repo ()) in *)
-    let* tree_r =
-      Stdlib.failwith "Internal.Merkle.merkle_tree_to_irmin_tree repo mtree"
-    in
-    let tree = get_ok tree_r in
     let input : Tezos_proxy.Light_consensus.input =
       {
         printer = (printer :> Tezos_client_base.Client_context.printer);
@@ -302,8 +268,7 @@ module Consensus = struct
         chain;
         block;
         key;
-        (* FIXME(evertedsphere,nbacquey) *)
-        mproof = assert false;
+        mproof;
         tree;
       }
     in
@@ -333,19 +298,20 @@ let add_test_consensus (min_agreement, honest, rogue, consensus_expected) =
          honest
          rogue
          consensus_expected)
-    ~print:Print.(triple print_merkle_tree (list string) (list int))
+    ~print:Print.(triple print_merkle_proof (list string) (list int))
     Gen.(
       triple
-        merkle_tree_gen
+        merkle_proof_gen
         (small_list (small_string ?gen:None))
         (small_list int))
-  @@ fun (mtree, key, randoms) ->
+  @@ fun ((mproof, tree), key, randoms) ->
   Consensus.test_consensus
     min_agreement
     honest
     rogue
     key
-    mtree
+    mproof
+    tree
     randoms
     consensus_expected
   |> Lwt_main.run
@@ -365,11 +331,11 @@ let test_consensus_spec =
       Print.(
         pair
           (quad int int int (list string))
-          (pair print_merkle_tree (list int)))
+          (pair print_merkle_proof (list int)))
     (pair
        (quad min_agreement_gen honest_gen rogue_gen key_gen)
-       (pair merkle_tree_gen (small_list int)))
-  @@ fun ((min_agreement_int, honest, rogue, key), (mtree, seed)) ->
+       (pair merkle_proof_gen (small_list int)))
+  @@ fun ((min_agreement_int, honest, rogue, key), ((mproof, tree), seed)) ->
   assert (0 <= min_agreement_int && min_agreement_int <= 100) ;
   let min_agreement = Float.of_int min_agreement_int /. 100. in
   assert (0.0 <= min_agreement && min_agreement <= 1.0) ;
@@ -389,7 +355,8 @@ let test_consensus_spec =
     honest
     rogue
     key
-    mtree
+    mproof
+    tree
     seed
     consensus_expected
   |> Lwt_main.run
