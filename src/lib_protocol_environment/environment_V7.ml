@@ -1465,6 +1465,10 @@ struct
   module Michelson_type_constructor = struct
     type (_, _) eq = Refl : ('a, 'a) eq
 
+    (** [Hashcons_Base] will be used as output for the Hashcons_Base functor. 
+        It is a very generic form that will be used to create the mk function
+        for the Parametric modules. This mk function will then be used to create 
+        Michelson types and stacks. *)
     module type Hashcons_base = sig
       type 'i input
 
@@ -1475,6 +1479,9 @@ struct
       val mk : 'i input -> ('i, 'o) witness -> 'o output
     end
 
+    (** [Binding] will serve as input for the Hashcons_Base functor, we have
+        all the types and functions needed to make a hash consing for the generic 
+        form of [Hashcons_Base]. *)
     module type Binding = sig
       include Hashcons_base
 
@@ -1490,11 +1497,19 @@ struct
       val hash : 'i input_id -> int -> int
     end
 
+    (** This functor is called in Parametric modules to create a hash table for
+        a specific type or stack that can't be created with juste constant_t or 
+        constant_s (ex: option, pair, sapling transaction, stack, ...). *)
     module Hashcons_base (B : Binding) :
       Hashcons_base
         with type 'i input := 'i B.input
          and type 'o output := 'o B.output
          and type ('i, 'o) witness := ('i, 'o) B.witness = struct
+      (** The type element contains the data needed in the hash table, we use the
+          weak module of Ocaml for the output so the elements in the hash table
+          are those who are used in tezos smart contracts. 
+          If the output does no longer appear in a smart contract, the element is 
+          removed of the hash table. *)
       type element =
         | Element : {
             input_id : 'i B.input_id;
@@ -1503,12 +1518,15 @@ struct
           }
             -> element
 
+      (** This is the type for hash table. *)
       type tbl = {mutable size : int; mutable data : element bucketlist array}
 
       and 'a bucketlist = Empty | Cons of 'a * 'a bucketlist
 
       let table = {size = 0; data = Array.make 32 Empty}
 
+      (** Resize is imported from the Hashtbl module of Ocaml, it is used when the table
+          size reaches the array length. *)
       let resize () =
         let odata = table.data in
         let osize = Array.length odata in
@@ -1527,6 +1545,11 @@ struct
             insert_bucket odata.(i)
           done)
 
+      (** The mk function will first search for the element corresponding to the input,
+          then if we find it we return its output, if we do not, we add a new element
+          corresponding to the input to the hash table and return its output. 
+          Furthermore, we make sure that for each element added, if the weak_output is
+          no longer present in a smart contract code, we delete the element. *)
       let mk : type i o. i B.input -> (i, o) B.witness -> o B.output =
        fun input witness ->
         let input_id = B.id input in
