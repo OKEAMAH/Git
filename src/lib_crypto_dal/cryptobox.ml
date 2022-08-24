@@ -580,19 +580,6 @@ module Inner = struct
     Scalar_array.blit p ~src_off:0 res ~dst_off:0 ~len:ps ;
     res
 
-  let fft_mul2k_2' t a b =
-    let a = resize' (2 * t.k) a (Scalar_array.length a) in
-    let b = resize' (2 * t.k) b (Scalar_array.length b) in
-    let eval_a = evaluation_fft_2k t a in
-    let eval_b = evaluation_fft_2k t b in
-    for i = 0 to (2 * t.k) - 1 do
-      Scalar_array.set
-        eval_a
-        (Scalar.mul (Scalar_array.get eval_a i) (Scalar_array.get eval_b i))
-        i
-    done ;
-    interpolation_fft_2k t eval_a |> Scalar_array.copy
-
   let slot_as_polynomial_length ~slot_size =
     1 lsl Z.(log2up (of_int slot_size / of_int scalar_bytes_amount))
 
@@ -781,7 +768,7 @@ module Inner = struct
     in
     Ok n_poly
 
-  let _fft_mul2k_2 t a b =
+  let fft_mul2k_2 t a b =
     let a = resize (2 * t.k) a (Array.length a) in
     let b = resize (2 * t.k) b (Array.length b) in
     let eval_a = evaluation_fft_2k t (Scalar_array.of_array a) in
@@ -848,7 +835,7 @@ module Inner = struct
       let p1 = prod f1 |> Polynomials.to_dense_coefficients in
       let p2 = prod f2 |> Polynomials.to_dense_coefficients in
 
-      let a_poly = _fft_mul2k_2 t p1 p2 |> Polynomials.of_carray in
+      let a_poly = fft_mul2k_2 t p1 p2 |> Polynomials.of_carray in
 
       (* 2. Computing formal derivative of A(x). *)
       let a' = Polynomials.derivative a_poly in
@@ -862,11 +849,6 @@ module Inner = struct
       (* 4. Computing N(x). *)
       let* n_poly = compute_n t (Scalar_array.copy eval_a') shards in
 
-      Printf.eprintf
-        "\nn_poly= %s \n"
-        (Polynomials.to_string
-           (Polynomials.of_dense @@ Scalar_array.to_array n_poly)) ;
-
       (* 5. Computing B(x). *)
       let b = interpolation_fft_n t n_poly in
 
@@ -875,7 +857,10 @@ module Inner = struct
 
       (* 6. Computing Lagrange interpolation polynomial P(x). *)
       let p =
-        fft_mul2k_2' t (Polynomials.to_carray a_poly) (Polynomials.to_carray b)
+        fft_mul2k_2
+          t
+          (Polynomials.to_dense_coefficients a_poly)
+          (Polynomials.to_dense_coefficients b)
         |> Scalar_array.copy ~len:t.k |> Polynomials.of_carray
       in
 
