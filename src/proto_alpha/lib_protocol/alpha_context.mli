@@ -2927,17 +2927,7 @@ module Sc_rollup : sig
         source : Signature.public_key_hash;
       }
 
-      type dal_message = {
-        slot_index : Dal_slot_repr.Index.t;
-        content : Dal_slot_repr.Page.content;
-        first_page : bool;
-        last_page : bool;
-      }
-
-      type t =
-        | Internal of internal_inbox_message
-        | External of string
-        | Dal of dal_message
+      type t = Internal of internal_inbox_message | External of string
 
       type serialized = private string
 

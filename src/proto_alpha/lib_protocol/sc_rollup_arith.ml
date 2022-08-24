@@ -881,7 +881,6 @@ module Make (Context : P) :
           match Micheline.root payload with
           | String (_, payload) -> Some (`Payload payload)
           | _ -> None)
-      | Ok (Dal dal_message) -> Some (`Dal dal_message)
     in
     let* () =
       match payload with
@@ -899,40 +898,6 @@ module Make (Context : P) :
         let* () = Next_message.set (Some msg) in
         let* () = start_parsing in
         return ()
-    | Some (`Dal {slot_index; content; first_page; last_page}) ->
-        let* () =
-          if first_page then
-            Current_page.set (Some {slot_index; page_index = 0})
-          else
-            let* page = Current_page.get in
-            match page with
-            | None -> internal_error "Page where not given in the correct order"
-            | Some page
-              when Dal_slot_repr.Index.(not @@ equal slot_index page.slot_index)
-              ->
-                internal_error "Page where not given in the correct order"
-            | Some page ->
-                Current_page.set
-                  (Some {slot_index; page_index = page.page_index + 1})
-        in
-        let* () = Current_slot.inject content in
-        if last_page then
-          let* boot_sect = Boot_sector.get in
-          let* bytes = Current_slot.to_list in
-          let* () = Current_slot.clear in
-          let payload =
-            List.fold_left
-              (fun acc b ->
-                let str = Bytes.to_string b in
-                acc ^ str)
-              ""
-              bytes
-          in
-          let msg = boot_sect ^ payload in
-          let* () = Next_message.set (Some msg) in
-          let* () = start_parsing in
-          return ()
-        else return ()
     | None ->
         let* () = Current_level.set inbox_level in
         let* () = Message_counter.set (Some message_counter) in

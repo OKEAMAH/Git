@@ -60,31 +60,7 @@ type internal_inbox_message = {
   source : Signature.public_key_hash;
 }
 
-type dal_message = {
-  slot_index : Dal_slot_repr.Index.t;
-  content : Dal_slot_repr.Page.content;
-  first_page : bool;
-  last_page : bool;
-}
-
-(* FIXME: Should it be put into a variant? *)
-let dal_message_encoding =
-  let open Data_encoding in
-  conv
-    (fun {slot_index; content; first_page; last_page} ->
-      (slot_index, content, first_page, last_page))
-    (fun (slot_index, content, first_page, last_page) ->
-      {slot_index; content; first_page; last_page})
-    (obj4
-       (req "slot_index" Dal_slot_repr.Index.encoding)
-       (req "content" Data_encoding.bytes)
-       (req "first_page" Data_encoding.bool)
-       (req "last_page" Data_encoding.bool))
-
-type t =
-  | Internal of internal_inbox_message
-  | External of string
-  | Dal of dal_message
+type t = Internal of internal_inbox_message | External of string
 
 let encoding =
   let open Data_encoding in
@@ -102,22 +78,14 @@ let encoding =
            (function
              | Internal {payload; sender; source} ->
                  Some (payload, sender, source)
-             | External _ | Dal _ -> None)
+             | _ -> None)
            (fun (payload, sender, source) -> Internal {payload; sender; source});
          case
            (Tag 1)
            ~title:"External"
            Variable.string
-           (function External msg -> Some msg | Internal _ | Dal _ -> None)
+           (function External msg -> Some msg | _ -> None)
            (fun msg -> External msg);
-         case
-           (Tag 2)
-           ~title:"Dal"
-           dal_message_encoding
-           (function
-             | Dal dal_message -> Some dal_message
-             | Internal _ | External _ -> None)
-           (fun dal_message -> Dal dal_message);
        ])
 
 type serialized = string
