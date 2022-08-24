@@ -23,9 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Internal = Light_internal
 module Store = Local_context
-module Merkle = Internal.Merkle
 module Proof = Tezos_context_sigs.Context.Proof_types
 
 module Storelike = struct
@@ -51,6 +49,8 @@ type input = {
   tree : Store.tree;
 }
 
+let key_to_string = String.concat ";"
+
 let min_agreeing_endpoints min_agreement nb_endpoints =
   min_agreement *. float_of_int nb_endpoints |> Float.ceil |> int_of_float
 
@@ -70,7 +70,7 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
                 "Light mode: endpoint %s failed to provide merkle tree for key \
                  %s. Error is: %a"
                 (Uri.to_string uri)
-                (Internal.key_to_string key)
+                (key_to_string key)
                 pp_print_trace
                 trace)
     | Ok None ->
@@ -79,7 +79,7 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
              (Format.asprintf
                 "Light mode: endpoint %s doesn't contain key %s"
                 (Uri.to_string uri)
-                (Internal.key_to_string key))
+                (key_to_string key))
     | Ok (Some mproof) -> (
         let open Lwt_syntax in
         (* FIXME does verify_tree_proof take care of whatever we were using this for...? *)

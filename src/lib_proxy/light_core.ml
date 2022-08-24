@@ -25,15 +25,13 @@
 
 (** Module providing the light's mode implementation of Proxy.CORE *)
 
-module Internal = Light_internal
 module Logger = Light_logger.Logger
-module Merkle = Internal.Merkle
 module Store = Local_context
 module Consensus = Light_consensus
 module Block_services = Tezos_shell_services.Block_services
 module Proof = Tezos_context_sigs.Context.Proof_types
 
-let key_to_string = Internal.key_to_string
+let key_to_string = String.concat ";"
 
 let chain_n_block_to_string chain block =
   Format.asprintf
@@ -229,39 +227,38 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
 
     module Consensus = Light_consensus.Make (Light_proto)
 
-    let do_rpc
-        ({chain; block; _} as pgi : Proxy.proxy_getter_input) key =
+    let do_rpc ({chain; block; _} as pgi : Proxy.proxy_getter_input) key =
       let open Lwt_result_syntax in
       let*! () = Logger.(emit api_do_rpc @@ key_to_string key) in
-        let*! mproof_and_i_opt =
-          get_first_merkle_tree_v2 chain block key Proof.Raw_context
-        in
-        let nb_endpoints = List.length endpoints in
-        match mproof_and_i_opt with
-        | None ->
-            light_failwith pgi
-            @@ Format.sprintf
-                 "None of the %d endpoints could provide data for key: %s"
-                 nb_endpoints
-                 (key_to_string key)
-        | Some (mproof, validating_endpoints) -> (
-            let* {root; repo} = stage pgi key mproof in
-            let*! () =
-              Logger.(
-                emit
-                  staged_data
-                  (key_to_string key, List.length validating_endpoints))
-            in
-            let input : Light_consensus.input =
-              {printer; min_agreement; chain; block; key; mproof; tree = root}
-            in
-            let*! r = Consensus.consensus input validating_endpoints in
-            match r with
-            | false ->
-                light_failwith pgi ~warn_symbolic:true
-                @@ Format.sprintf "Consensus cannot be reached for key: %s"
-                @@ key_to_string key
-            | true ->
-                irmin_ref := Some {repo; root} ;
-                return_unit)
+      let*! mproof_and_i_opt =
+        get_first_merkle_tree_v2 chain block key Proof.Raw_context
+      in
+      let nb_endpoints = List.length endpoints in
+      match mproof_and_i_opt with
+      | None ->
+          light_failwith pgi
+          @@ Format.sprintf
+               "None of the %d endpoints could provide data for key: %s"
+               nb_endpoints
+               (key_to_string key)
+      | Some (mproof, validating_endpoints) -> (
+          let* {root; repo} = stage pgi key mproof in
+          let*! () =
+            Logger.(
+              emit
+                staged_data
+                (key_to_string key, List.length validating_endpoints))
+          in
+          let input : Light_consensus.input =
+            {printer; min_agreement; chain; block; key; mproof; tree = root}
+          in
+          let*! r = Consensus.consensus input validating_endpoints in
+          match r with
+          | false ->
+              light_failwith pgi ~warn_symbolic:true
+              @@ Format.sprintf "Consensus cannot be reached for key: %s"
+              @@ key_to_string key
+          | true ->
+              irmin_ref := Some {repo; root} ;
+              return_unit)
   end : Proxy.CORE)
