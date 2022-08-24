@@ -710,6 +710,7 @@ module Inner = struct
     slot
 
   (* Doesn't modify p *)
+  (* TODO:  evaluation_fft_n t (Polynomials.to_carray p) doesn't work *)
   let encode t p =
     let coefficients = Scalar_array.allocate t.n in
     Scalar_array.blit
