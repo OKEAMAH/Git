@@ -64,7 +64,7 @@ let prime_factor_algorithm_fft ~inverse ~domain1 ~domain2 ~domain1_length_log
     scratch_zone ;
   res
 
-external _prime_factor_algorithm_fft_ext2 :
+external prime_factor_algorithm_fft_ext2 :
   bool ->
   scalar_array ->
   scalar_array ->
@@ -75,7 +75,7 @@ external _prime_factor_algorithm_fft_ext2 :
   unit
   = "prime_factor_algorithm_fft_bytecode2" "prime_factor_algorithm_fft_native2"
 
-let _prime_factor_algorithm_fft2 ~inverse ~domain1 ~domain2 ~domain1_length
+let prime_factor_algorithm_fft2 ~inverse ~domain1 ~domain2 ~domain1_length
     ~domain2_length ~coefficients ~scratch_zone =
   let res = Scalar_array.allocate (Scalar_array.length coefficients) in
   Scalar_array.blit
@@ -84,7 +84,7 @@ let _prime_factor_algorithm_fft2 ~inverse ~domain1 ~domain2 ~domain1_length
     res
     ~dst_off:0
     ~len:(Scalar_array.length coefficients) ;
-  prime_factor_algorithm_fft_ext
+  prime_factor_algorithm_fft_ext2
     inverse
     domain1
     domain2
@@ -391,84 +391,6 @@ module Inner = struct
     build_array Scalar.(copy one) (fun g -> Scalar.(mul g root)) d
     |> Scalar_array.of_array
 
-  let evaluation_fft_n t coefficients =
-    prime_factor_algorithm_fft
-      ~domain1_length_log:12
-      ~domain2_length:19
-      ~domain1:
-        (make_domain2
-           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int 19))
-           (2 * 2048))
-      ~domain2:
-        (make_domain2
-           (Scalar.pow (Array.get t.domain_n 1) (Z.of_int (2 * 2048)))
-           19)
-      ~coefficients
-      ~inverse:false
-      ~scratch_zone:t.scratch_zone
-
-  let interpolation_fft_n t coefficients =
-    prime_factor_algorithm_fft
-      ~domain1_length_log:12
-      ~domain2_length:19
-      ~domain1:
-        (make_domain2
-           Scalar.(inverse_exn (pow (Array.get t.domain_n 1) (Z.of_int 19)))
-           (2 * 2048))
-      ~domain2:
-        (make_domain2
-           Scalar.(
-             inverse_exn
-               (pow (Array.get t.domain_n 1) (Z.of_int (Int.mul 2 2048))))
-           19)
-      ~coefficients
-      ~inverse:true
-      ~scratch_zone:t.scratch_zone
-
-  let evaluation_fft_k t coefficients =
-    prime_factor_algorithm_fft
-      ~domain1_length_log:11
-      ~domain2_length:19
-      ~domain1:
-        (make_domain2 Scalar.(pow (Array.get t.domain_k 1) (Z.of_int 19)) 2048)
-      ~domain2:
-        (make_domain2 Scalar.(pow (Array.get t.domain_k 1) (Z.of_int 2048)) 19)
-      ~coefficients
-      ~inverse:false
-      ~scratch_zone:t.scratch_zone
-
-  let interpolation_fft_k t coefficients =
-    prime_factor_algorithm_fft
-      ~domain1_length_log:11
-      ~domain2_length:19
-      ~domain1:
-        (make_domain2
-           Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 19)))
-           2048)
-      ~domain2:
-        (make_domain2
-           Scalar.(inverse_exn (pow (Array.get t.domain_k 1) (Z.of_int 2048)))
-           19)
-      ~coefficients
-      ~inverse:true
-      ~scratch_zone:t.scratch_zone
-
-  let evaluation_fft_2k t coefficients =
-    prime_factor_algorithm_fft
-      ~domain1_length_log:12
-      ~domain2_length:19
-      ~domain1:
-        (make_domain2
-           (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int 19))
-           (2 * 2048))
-      ~domain2:
-        (make_domain2
-           (Scalar.pow (Array.get t.domain_2k 1) (Z.of_int (2 * 2048)))
-           19)
-      ~coefficients
-      ~inverse:false
-      ~scratch_zone:t.scratch_zone
-
   let ensure_validity t =
     let open Result_syntax in
     let srs_size = Srs_g1.size t.srs.raw.srs_g1 in
@@ -548,64 +470,115 @@ module Inner = struct
       domain_k = (fft_domain_size, domains (*domains = make_domains domains;*));
     }
 
-  (*let fft (t : t) coefficients domain inverse =
+  external dft_c :
+    scalar_array -> bool -> int -> scalar_array -> scalar_array -> unit
+    = "dft_c"
+
+  let dft_c ~domain ~inverse ~length ~coefficients =
+    let res = Scalar_array.allocate length in
+    dft_c domain inverse length coefficients (Scalar_array.allocate length) ;
+    res
+
+  let fft (t : t) ~coefficients ~domains ~inverse =
+    (* For now *)
+    assert (List.length domains <= 2) ;
+    let len = Scalar_array.length coefficients in
+    let primroot = Scalar.copy @@ Array.get t.domain_n 1 in
     let is_pow_of_two x =
       let logx = Z.(log2 (of_int x)) in
       1 lsl logx = x
     in
-    t.fft_configuration.domains |> IntMap.bindings |> fun l ->
-    List.fold_left
-      (fun ((d_e, a_e), coefficients) (d_acc, a_acc) ->
-        if is_pow_of_two d_acc then
-          ( d_e * d_acc,
-            prime_factor_algorithm_fft
-              ~domain1:a_acc
-              ~domain2:a_e
-              ~domain1_length_log:Z.(log2 (of_int d_acc))
-              ~domain2_length:d_e
-              ~scratch_zone:t.scratch_zone
-              ~inverse
-              ~coefficients )
-        else if is_pow_of_two d_e then
-          ( d_e * d_acc,
-            prime_factor_algorithm_fft
-              ~domain1:a_e
-              ~domain2:a_acc
-              ~domain1_length_log:Z.(log2 (of_int d_e))
-              ~domain2_length:d_acc
-              ~scratch_zone:t.scratch_zone
-              ~coefficients
-              ~inverse )
-        else
-          ( d_e * d_acc,
-            prime_factor_algorithm_fft2
-              ~domain1:a_acc
-              ~domain2:a_e
-              ~domain1_length:d_acc
-              ~domain2_length:d_e
-              ~scratch_zone:t.scratch_zone
-              ~inverse
-              ~coefficients ))
-      (List.hd l)
-      (List.tl l)*)
+    match domains with
+    | [d] ->
+        let domain =
+          if inverse then
+            make_domain2
+              (Scalar.inverse_exn (Scalar.pow primroot (Z.of_int (t.n / d))))
+          else make_domain2 (Scalar.pow primroot (Z.of_int (t.n / d)))
+        in
+        dft_c ~domain:(domain d) ~inverse ~coefficients ~length:d
+    | [domain1_length; domain2_length]
+      when Z.(gcd (of_int domain1_length) (of_int domain2_length) = one)
+           && is_pow_of_two domain1_length ->
+        Printf.eprintf "\n hello \n" ;
+        let domain1, domain2 =
+          if inverse then
+            ( make_domain2
+                (Scalar.inverse_exn
+                   (Scalar.pow primroot (Z.of_int (t.n / len * domain2_length)))),
+              make_domain2
+                (Scalar.inverse_exn
+                   (Scalar.pow primroot (Z.of_int (t.n / len * domain1_length))))
+            )
+          else
+            ( make_domain2
+                (Scalar.pow primroot (Z.of_int (t.n / len * domain2_length))),
+              make_domain2
+                (Scalar.pow primroot (Z.of_int (t.n / len * domain1_length))) )
+        in
+        let domain1_length_log = Z.(log2 (of_int domain1_length)) in
+        Printf.eprintf
+          "\n dom1 = %d; rt1 = %s ; rt2 = %s ; inv = %b\n"
+          domain1_length_log
+          (Scalar.to_string
+             (Scalar.inverse_exn
+                (Scalar.pow primroot (Z.of_int (t.n / len * domain2_length)))))
+          (Scalar.to_string
+             (Scalar.inverse_exn
+                (Scalar.pow primroot (Z.of_int (t.n / len * domain1_length)))))
+          inverse ;
+        prime_factor_algorithm_fft
+          ~domain1:(domain1 domain1_length)
+          ~domain2:(domain2 domain2_length)
+          ~domain1_length_log
+          ~domain2_length
+          ~scratch_zone:t.scratch_zone
+          ~coefficients
+          ~inverse
+    | [domain1_length; domain2_length]
+      when Z.(gcd (of_int domain1_length) (of_int domain2_length) = one) ->
+        let domain1, domain2 =
+          if inverse then
+            ( make_domain2
+                (Scalar.inverse_exn
+                   (Scalar.pow primroot (Z.of_int (t.n / len * domain2_length)))),
+              make_domain2
+                (Scalar.inverse_exn
+                   (Scalar.pow primroot (Z.of_int (t.n / len * domain1_length))))
+            )
+          else
+            ( make_domain2
+                (Scalar.pow primroot (Z.of_int (t.n / len * domain2_length))),
+              make_domain2
+                (Scalar.pow primroot (Z.of_int (t.n / len * domain1_length))) )
+        in
+        prime_factor_algorithm_fft2
+          ~domain1:(domain1 domain1_length)
+          ~domain2:(domain2 domain2_length)
+          ~domain1_length
+          ~domain2_length
+          ~scratch_zone:t.scratch_zone
+          ~inverse
+          ~coefficients
+    | _ -> assert false
+
+  let evaluation_fft_n t coefficients =
+    fft t ~coefficients ~domains:[t.redundancy_factor * 2048; 19] ~inverse:false
+
+  let interpolation_fft_n t coefficients =
+    fft t ~coefficients ~domains:[t.redundancy_factor * 2048; 19] ~inverse:true
+
+  let evaluation_fft_k t coefficients =
+    fft t ~coefficients ~domains:[2048; 19] ~inverse:false
+
+  let interpolation_fft_k t coefficients =
+    fft t ~coefficients ~domains:[2048; 19] ~inverse:true
+
+  let evaluation_fft_2k t coefficients =
+    fft t ~coefficients ~domains:[2 * 2048; 19] ~inverse:false
 
   let interpolation_fft_2k t coefficients =
-    prime_factor_algorithm_fft
-      ~domain1_length_log:12
-      ~domain2_length:19
-      ~domain1:
-        (make_domain2
-           Scalar.(inverse_exn (pow (Array.get t.domain_2k 1) (Z.of_int 19)))
-           (2 * 2048))
-      ~domain2:
-        (make_domain2
-           Scalar.(
-             inverse_exn
-               (pow (Array.get t.domain_2k 1) (Z.of_int (Int.mul 2 2048))))
-           19)
-      ~coefficients
-      ~inverse:true
-      ~scratch_zone:t.scratch_zone
+    fft t ~coefficients ~domains:[2 * 2048; 19] ~inverse:true
 
   let resize' s p ps =
     let res = Scalar_array.allocate s in
