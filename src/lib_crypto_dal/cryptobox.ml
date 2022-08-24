@@ -479,7 +479,7 @@ module Inner = struct
     dft_c domain inverse length coefficients (Scalar_array.allocate length) ;
     res
 
-  let fft (t : t) ~coefficients ~domains ~inverse =
+  let fft t ~coefficients ~domains ~inverse =
     (* For now *)
     assert (List.length domains <= 2) ;
     let len = Scalar_array.length coefficients in
@@ -563,22 +563,28 @@ module Inner = struct
     | _ -> assert false
 
   let evaluation_fft_n t coefficients =
-    fft t ~coefficients ~domains:[t.redundancy_factor * 2048; 19] ~inverse:false
+    let _, domains = select_fft_domain t.n in
+    fft t ~coefficients ~domains ~inverse:false
 
   let interpolation_fft_n t coefficients =
-    fft t ~coefficients ~domains:[t.redundancy_factor * 2048; 19] ~inverse:true
+    let _, domains = select_fft_domain t.n in
+    fft t ~coefficients ~domains ~inverse:true
 
   let evaluation_fft_k t coefficients =
-    fft t ~coefficients ~domains:[2048; 19] ~inverse:false
+    let _, domains = select_fft_domain t.k in
+    fft t ~coefficients ~domains ~inverse:false
 
   let interpolation_fft_k t coefficients =
-    fft t ~coefficients ~domains:[2048; 19] ~inverse:true
+    let _, domains = select_fft_domain t.k in
+    fft t ~coefficients ~domains ~inverse:true
 
   let evaluation_fft_2k t coefficients =
-    fft t ~coefficients ~domains:[2 * 2048; 19] ~inverse:false
+    let _, domains = select_fft_domain (2 * t.k) in
+    fft t ~coefficients ~domains ~inverse:false
 
   let interpolation_fft_2k t coefficients =
-    fft t ~coefficients ~domains:[2 * 2048; 19] ~inverse:true
+    let _, domains = select_fft_domain (2 * t.k) in
+    fft t ~coefficients ~domains ~inverse:true
 
   let resize' s p ps =
     let res = Scalar_array.allocate s in
@@ -1048,7 +1054,8 @@ module Inner = struct
     Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
 
   let interpolation_h_poly_segments t y coefficients =
-    let h = fft t ~domains:[8; 19] ~coefficients ~inverse:true in
+    let _, domains = select_fft_domain t.segment_length in
+    let h = fft t ~domains ~coefficients ~inverse:true in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
       (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
@@ -1057,7 +1064,8 @@ module Inner = struct
     |> snd
 
   let interpolation_h_poly_shards t y coefficients =
-    let h = fft t ~coefficients ~domains:[2; 19] ~inverse:true in
+    let _, domains = select_fft_domain t.shard_size in
+    let h = fft t ~coefficients ~domains ~inverse:true in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
       (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
@@ -1065,9 +1073,7 @@ module Inner = struct
       (Scalar_array.to_array h)
     |> snd
 
-  let verify t cm_f srs2l (w, evaluations)
-      (interpolation_h_poly : t -> scalar -> scalar_array -> scalar array) l
-      (proof : Bls12_381.G1.t) =
+  let verify t cm_f srs2l (w, evaluations) interpolation_h_poly l proof =
     let open Bls12_381 in
     let h = interpolation_h_poly t w evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
