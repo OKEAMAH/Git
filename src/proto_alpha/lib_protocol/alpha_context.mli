@@ -2797,6 +2797,8 @@ module Sc_rollup : sig
 
   type t = Sc_rollup_repr.t
 
+  val encoding : t Data_encoding.t
+
   type rollup := t
 
   val in_memory_size : t -> Cache_memory_helpers.sint
