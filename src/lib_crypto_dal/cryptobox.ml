@@ -732,7 +732,7 @@ module Inner = struct
   (* Computes the polynomial N(X) := \sum_{i=0}^{k-1} n_i x_i^{-1} X^{z_i}. *)
   let compute_n t (eval_a' : scalar array) shards =
     let w = Scalar_array.get t.domain_n 1 in
-    let n_poly = Array.init t.n (fun _ -> Scalar.(copy zero)) in
+    let n_poly = Scalar_array.allocate t.n in
     let open Result_syntax in
     let c = ref 0 in
     let* () =
@@ -753,7 +753,7 @@ module Inner = struct
                   | exception _ -> Error (`Invert_zero "can't inverse element")
                   | () ->
                       Scalar.mul_inplace tmp tmp c_i ;
-                      n_poly.(z_i) <- tmp ;
+                      Scalar_array.set n_poly tmp z_i ;
                       c := !c + 1 ;
                       loop (j + 1))
             in
@@ -847,10 +847,7 @@ module Inner = struct
       let* n_poly = compute_n t eval_a' shards in
 
       (* 5. Computing B(x). *)
-      let b =
-        interpolation_fft_n t (Scalar_array.of_array n_poly)
-        |> Polynomials.of_carray
-      in
+      let b = interpolation_fft_n t n_poly |> Polynomials.of_carray in
 
       let b = Polynomials.copy ~len:t.k b in
       Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
