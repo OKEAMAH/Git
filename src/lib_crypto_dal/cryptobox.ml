@@ -575,7 +575,7 @@ module Inner = struct
     let _, domains = select_fft_domain (2 * t.k) in
     fft t ~coefficients ~domains ~inverse:true
 
-  let resize' s p ps =
+  let _resize' s p ps =
     let res = Scalar_array.allocate s in
     Scalar_array.blit p ~src_off:0 res ~dst_off:0 ~len:ps ;
     res
@@ -739,7 +739,7 @@ module Inner = struct
     loop 0 IntMap.empty
 
   (* Computes the polynomial N(X) := \sum_{i=0}^{k-1} n_i x_i^{-1} X^{z_i}. *)
-  let compute_n t (eval_a' : scalar_array) shards =
+  let compute_n t (eval_a' : scalar array) shards =
     let w = Array.get t.domain_n 1 in
     let n_poly = Scalar_array.allocate t.n in
     let open Result_syntax in
@@ -756,7 +756,7 @@ module Inner = struct
                   let c_i = arr.(j) in
                   let z_i = (t.number_of_shards * j) + z_i in
                   let x_i = Scalar.pow w (Z.of_int z_i) in
-                  let tmp = Scalar.copy (Scalar_array.get eval_a' z_i) in
+                  let tmp = Array.get eval_a' z_i in
                   Scalar.mul_inplace tmp tmp x_i ;
                   match Scalar.inverse_exn_inplace tmp tmp with
                   | exception _ -> Error (`Invert_zero "can't inverse element")
@@ -844,18 +844,21 @@ module Inner = struct
       let a' = Polynomials.derivative a_poly in
 
       (* 3. Computing A'(w^i) = A_i(w^i). *)
-      let a' = Polynomials.to_carray a' in
+      let a' = Polynomials.to_dense_coefficients a' in
       let eval_a' =
-        evaluation_fft_n t (resize' t.n a' (Scalar_array.length a'))
+        evaluation_fft_n
+          t
+          (resize t.n a' (Array.length a') |> Scalar_array.of_array)
+        |> Scalar_array.to_array
       in
 
       (* 4. Computing N(x). *)
-      let* n_poly = compute_n t (Scalar_array.copy eval_a') shards in
+      let* n_poly = compute_n t eval_a' shards in
 
       (* 5. Computing B(x). *)
-      let b = interpolation_fft_n t n_poly in
+      let b = interpolation_fft_n t n_poly |> Polynomials.of_carray in
 
-      let b = Scalar_array.copy ~len:t.k b |> Polynomials.of_carray in
+      let b = Polynomials.copy ~len:t.k b in
       Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
 
       (* 6. Computing Lagrange interpolation polynomial P(x). *)
@@ -864,7 +867,7 @@ module Inner = struct
           t
           (Polynomials.to_dense_coefficients a_poly)
           (Polynomials.to_dense_coefficients b)
-        |> Scalar_array.copy ~len:t.k |> Polynomials.of_carray
+        |> Polynomials.of_carray |> Polynomials.copy ~len:t.k
       in
 
       Polynomials.opposite_inplace p ;

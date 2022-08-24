@@ -123,7 +123,7 @@ module Test = struct
          *     ~point
          *     ~evaluation:(Cryptobox.polynomial_evaluate p point)
          *     pi_slot) *))
-      [2]
+      [16]
     |> fun x -> match x with Ok () -> () | Error _ -> assert false
 end
 
