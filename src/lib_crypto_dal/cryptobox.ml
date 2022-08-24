@@ -483,7 +483,7 @@ module Inner = struct
     (* For now *)
     assert (List.length domains <= 2) ;
     let len = Scalar_array.length coefficients in
-    let primroot = Scalar.copy @@ Array.get t.domain_n 1 in
+    let primroot = Array.get t.domain_n 1 in
     let is_pow_of_two x =
       let logx = Z.(log2 (of_int x)) in
       1 lsl logx = x
@@ -711,17 +711,8 @@ module Inner = struct
     done ;
     slot
 
-  (* Doesn't modify p *)
-  (* TODO:  evaluation_fft_n t (Polynomials.to_carray p) doesn't work *)
   let encode t p =
-    let coefficients = Scalar_array.allocate t.n in
-    Scalar_array.blit
-      Polynomials.(to_carray p)
-      ~src_off:0
-      coefficients
-      ~dst_off:0
-      ~len:t.k ;
-    evaluation_fft_n t coefficients
+    evaluation_fft_n t (_resize' t.n Polynomials.(to_carray p) t.k)
 
   (* The shards are arranged in cosets to evaluate in batch with Kate
      amortized. *)
@@ -741,7 +732,7 @@ module Inner = struct
   (* Computes the polynomial N(X) := \sum_{i=0}^{k-1} n_i x_i^{-1} X^{z_i}. *)
   let compute_n t (eval_a' : scalar array) shards =
     let w = Array.get t.domain_n 1 in
-    let n_poly = Scalar_array.allocate t.n in
+    let n_poly = Array.init t.n (fun _ -> Scalar.(copy zero)) in
     let open Result_syntax in
     let c = ref 0 in
     let* () =
@@ -762,7 +753,7 @@ module Inner = struct
                   | exception _ -> Error (`Invert_zero "can't inverse element")
                   | () ->
                       Scalar.mul_inplace tmp tmp c_i ;
-                      Scalar_array.set n_poly tmp z_i ;
+                      n_poly.(z_i) <- tmp ;
                       c := !c + 1 ;
                       loop (j + 1))
             in
@@ -856,7 +847,10 @@ module Inner = struct
       let* n_poly = compute_n t eval_a' shards in
 
       (* 5. Computing B(x). *)
-      let b = interpolation_fft_n t n_poly |> Polynomials.of_carray in
+      let b =
+        interpolation_fft_n t (Scalar_array.of_array n_poly)
+        |> Polynomials.of_carray
+      in
 
       let b = Polynomials.copy ~len:t.k b in
       Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
@@ -1033,18 +1027,7 @@ module Inner = struct
     let diff_commits = G1.(add cm_h (negate cm_f)) in
     Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
 
-  let interpolation_h_poly_segments t y coefficients =
-    let _, domains = select_fft_domain t.segment_length in
-    let h = fft t ~domains ~coefficients ~inverse:true in
-    let inv_y = Scalar.inverse_exn y in
-    Array.fold_left_map
-      (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
-      Scalar.(copy one)
-      (Scalar_array.to_array h)
-    |> snd
-
-  let interpolation_h_poly_shards t y coefficients =
-    let _, domains = select_fft_domain t.shard_size in
+  let interpolation_h_poly t y domains coefficients =
     let h = fft t ~coefficients ~domains ~inverse:true in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
@@ -1053,9 +1036,9 @@ module Inner = struct
       (Scalar_array.to_array h)
     |> snd
 
-  let verify t cm_f srs2l (w, evaluations) interpolation_h_poly l proof =
+  let verify t cm_f srs2l (w, evaluations) domains l proof =
     let open Bls12_381 in
-    let h = interpolation_h_poly t w evaluations in
+    let h = interpolation_h_poly t w domains evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
     let sl_min_yl =
       G2.(add srs2l (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
@@ -1114,7 +1097,7 @@ module Inner = struct
       cm
       t.srs.kate_amortized_srs_g2_shards
       (power_coset, Scalar_array.of_array shard_evaluations)
-      interpolation_h_poly_shards
+      (snd (select_fft_domain t.shard_size))
       t.shard_size
       proof
 
@@ -1185,7 +1168,7 @@ module Inner = struct
            cm
            t.srs.kate_amortized_srs_g2_segments
            (power, Scalar_array.of_array slot_segment_evaluations)
-           interpolation_h_poly_segments
+           (snd (select_fft_domain t.segment_length_domain))
            t.segment_length_domain
            proof)
 end

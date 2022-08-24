@@ -108,6 +108,10 @@ type scalar
       (typically [segment_size]) is part of the original slot. *)
 type polynomial
 
+module Polynomials :
+  Bls12_381_polynomial.Polynomial.M.Polynomial.Polynomial_unsafe_sig
+    with type t = polynomial
+
 (** [polynomial_degree polynomial] returns the degree of the
      polynomial. *)
 val polynomial_degree : polynomial -> int

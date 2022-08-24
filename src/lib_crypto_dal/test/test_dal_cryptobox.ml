@@ -1,7 +1,7 @@
 module Test = struct
   module Scalar = Bls12_381.Fr
 
-  let _random_indices bound k =
+  let random_indices bound k =
     Random.self_init () ;
 
     let rand_elt l =
@@ -35,6 +35,7 @@ module Test = struct
     Hacl_star.EverCrypt.Hash.finish ~st*)
 
   (* Encoding and decoding of Reed-Solomon codes on the erasure channel. *)
+
   let bench_DAL_crypto_params () =
     let open Tezos_error_monad.Error_monad.Result_syntax in
     (* We take mainnet parameters we divide by [16] to speed up the test. *)
@@ -75,11 +76,10 @@ module Test = struct
         assert check ;
         let enc_shards = Cryptobox.shards_from_polynomial t p in
         let c_indices =
-          0 -- (number_of_shards / redundancy_factor)
-          (*random_indices
-              (shards_amount - 1)
-              ((shards_amount / redundancy_factor) + 1)
-            |> Array.of_list*)
+          random_indices
+            (number_of_shards - 1)
+            ((number_of_shards / redundancy_factor) + 1)
+          |> Array.of_list
         in
 
         let c =
@@ -125,10 +125,78 @@ module Test = struct
          *     pi_slot) *))
       [16]
     |> fun x -> match x with Ok () -> () | Error _ -> assert false
+
+  let _ = ignore bench_DAL_crypto_params
+
+  let test () =
+    match
+      let redundancy_factor = 16 in
+      let number_of_shards = 2048 in
+      let slot_size = 1048576 in
+      let segment_size = 4096 in
+
+      let parameters =
+        Cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
+          ~slot_size
+          ~segment_size
+      in
+      let () = Cryptobox.Internal_for_tests.load_parameters parameters in
+
+      let msg_size = slot_size in
+      let msg = Bytes.create msg_size in
+      for i = 0 to (msg_size / 8) - 1 do
+        Bytes.set_int64_le msg (i * 8) Int64.max_int
+      done ;
+
+      let open Error_monad.Result_syntax in
+      let* t =
+        Cryptobox.make
+          {redundancy_factor; slot_size; segment_size; number_of_shards}
+      in
+      let* p = Cryptobox.polynomial_from_slot t msg in
+
+      let enc_shards = Cryptobox.shards_from_polynomial t p in
+      let c_indices =
+        random_indices
+          (number_of_shards - 1)
+          ((number_of_shards / redundancy_factor) + 1)
+        |> Array.of_list
+      in
+
+      let c =
+        Cryptobox.IntMap.filter (fun i _ -> Array.mem i c_indices) enc_shards
+      in
+      let* dec = Cryptobox.polynomial_from_shards t c in
+      assert (Cryptobox.Polynomials.equal p dec) ;
+      (*assert (Bytes.equal msg (Cryptobox.polynomial_to_bytes t dec)) ;*)
+      return_unit
+    with
+    | Ok _ -> ()
+    | Error (`Fail s) ->
+        Printf.eprintf "\n fail %s \n" s ;
+        let f = false in
+        assert f
+    | Error (`Invert_zero s) ->
+        Printf.eprintf "\n no inverse %s \n" s ;
+        let f = false in
+        assert f
+    | Error (`Not_enough_shards s) ->
+        Printf.eprintf "\n not enough shards %s \n" s ;
+        let f = false in
+        assert f
+    | Error (`Slot_wrong_size s) ->
+        Printf.eprintf "\n slot wrong size %s \n" s ;
+        let f = false in
+        assert f
 end
 
 let test =
-  [Alcotest.test_case "test_DAL_cryptobox" `Quick Test.bench_DAL_crypto_params]
+  [
+    (*Alcotest.test_case "test_DAL_cryptobox" `Quick Test.bench_DAL_crypto_params
+
+      ;*)
+    Alcotest.test_case "test_DAL_cryptobox" `Quick Test.test;
+  ]
 
 let () =
   (* Seed for deterministic pseudo-randomness:
