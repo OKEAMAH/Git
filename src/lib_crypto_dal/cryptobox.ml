@@ -361,10 +361,10 @@ module Inner = struct
     k : int;
     n : int;
     (* k and n are the parameters of the erasure code. *)
-    domain_k : scalar array;
+    domain_k : scalar_array;
     (* Domain for the FFT on slots as polynomials to be erasure encoded. *)
-    domain_2k : scalar array;
-    domain_n : scalar array;
+    domain_2k : scalar_array;
+    domain_n : scalar_array;
     scratch_zone : scalar_array;
     (* Domain for the FFT on erasure encoded slots (as polynomials). *)
     shard_size : int;
@@ -483,7 +483,7 @@ module Inner = struct
     (* For now *)
     assert (List.length domains <= 2) ;
     let len = Scalar_array.length coefficients in
-    let primroot = Array.get t.domain_n 1 in
+    let primroot = Scalar_array.get t.domain_n 1 in
     let is_pow_of_two x =
       let logx = Z.(log2 (of_int x)) in
       1 lsl logx = x
@@ -627,9 +627,9 @@ module Inner = struct
         number_of_shards;
         k;
         n;
-        domain_k = make_domain rt_k k;
-        domain_2k = make_domain rt_2k (2 * k);
-        domain_n = make_domain rt_n n;
+        domain_k = make_domain2 rt_k k;
+        domain_2k = make_domain2 rt_2k (2 * k);
+        domain_n = make_domain2 rt_n n;
         scratch_zone = Scalar_array.allocate (2 * n);
         shard_size;
         nb_segments = slot_size / segment_size;
@@ -731,7 +731,7 @@ module Inner = struct
 
   (* Computes the polynomial N(X) := \sum_{i=0}^{k-1} n_i x_i^{-1} X^{z_i}. *)
   let compute_n t (eval_a' : scalar array) shards =
-    let w = Array.get t.domain_n 1 in
+    let w = Scalar_array.get t.domain_n 1 in
     let n_poly = Array.init t.n (fun _ -> Scalar.(copy zero)) in
     let open Result_syntax in
     let c = ref 0 in
@@ -822,7 +822,7 @@ module Inner = struct
             Polynomials.mul_xn
               acc
               t.shard_size
-              (Scalar.negate (Array.get t.domain_n (i * t.shard_size))))
+              (Scalar.negate (Scalar_array.get t.domain_n (i * t.shard_size))))
           (Polynomials.of_dense [|Scalar.(copy one)|])
       in
 
@@ -1090,7 +1090,7 @@ module Inner = struct
     res
 
   let verify_shard t cm {index = shard_index; share = shard_evaluations} proof =
-    let generator_domain_n = Array.get t.domain_n 1 in
+    let generator_domain_n = Scalar_array.get t.domain_n 1 in
     let power_coset = Scalar.pow generator_domain_n (Z.of_int shard_index) in
     verify
       t
@@ -1123,7 +1123,7 @@ module Inner = struct
       Error `Segment_index_out_of_range
     else
       let l = t.segment_length_domain in
-      let generator_domain_k = Array.get t.domain_k 1 in
+      let generator_domain_k = Scalar_array.get t.domain_k 1 in
       let power = Scalar.pow generator_domain_k (Z.of_int segment_index) in
       let quotient, _ =
         Polynomials.(division_xn p l Scalar.(negate (pow power (Z.of_int l))))
@@ -1138,7 +1138,7 @@ module Inner = struct
       Error `Segment_index_out_of_range
     else
       let coset_size = t.segment_length_domain in
-      let generator_domain_k = Array.get t.domain_k 1 in
+      let generator_domain_k = Scalar_array.get t.domain_k 1 in
       let power = Scalar.pow generator_domain_k (Z.of_int slot_segment_index) in
       let slot_segment_evaluations =
         Array.init coset_size (function
