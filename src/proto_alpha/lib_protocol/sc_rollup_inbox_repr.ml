@@ -142,10 +142,11 @@ let hash_skip_list_cell cell =
   :: List.map Hash.to_bytes back_pointers_hashes
   |> Hash.hash_bytes
 
-let cost_hash_skip_list_cell _cell =
-  let open Gas_limit_repr in
-  (* FIXME: This function will be defined in forthcoming commits. *)
-  free
+let cost_hash_skip_list_cell cell =
+  (* From model Sc_rollup_inbox_hash_skip_list_cell. *)
+  let open Saturation_repr in
+  let nb_backpointers = Skip_list.number_of_back_pointers cell in
+  Syntax.((safe_int 31 * safe_int nb_backpointers) + safe_int 725)
 
 module V1 = struct
   type history_proof = (Hash.t, Hash.t) Skip_list.cell
@@ -376,6 +377,12 @@ module V1 = struct
         = 0l) ;
       start_new_commitment_period inbox new_starting_level)
     else inbox
+
+  module Internal_for_snoop = struct
+    module Skip_list = Skip_list
+
+    let hash_skip_list_cell = hash_skip_list_cell
+  end
 end
 
 type versioned = V1 of V1.t

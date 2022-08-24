@@ -304,6 +304,86 @@ module Sc_rollup_add_external_messages_benchmark = struct
     Registration.register_for_codegen name (Model.For_codegen add_message_model)
 end
 
+(* A model to estimate [Sc_rollup_inbox_repr.hash_skip_list_cell]. *)
+module Sc_rollup_inbox_repr_hash_skip_list_cell = struct
+  let name = "Sc_rollup_inbox_hash_skip_list_cell"
+
+  let info = "Estimating the costs of hashing a skip list cell"
+
+  let tags = ["scoru"]
+
+  open Sc_rollup_inbox_repr.Internal_for_snoop
+  module Hash = Sc_rollup_inbox_repr.Hash
+
+  type config = {max_index : int}
+
+  let config_encoding =
+    let open Data_encoding in
+    conv
+      (fun {max_index} -> max_index)
+      (fun max_index -> {max_index})
+      (obj1 (req "max_index" int31))
+
+  let default_config = {max_index = 65536}
+
+  type workload = {max_nb_backpointers : int}
+
+  let workload_encoding =
+    let open Data_encoding in
+    conv
+      (fun {max_nb_backpointers} -> max_nb_backpointers)
+      (fun max_nb_backpointers -> {max_nb_backpointers})
+      (obj1 (req "max_nb_backpointers" int31))
+
+  let workload_to_vector {max_nb_backpointers} =
+    Sparse_vec.String.of_list
+      [("max_nb_backpointers", float_of_int max_nb_backpointers)]
+
+  let hash_skip_list_cell_model =
+    Model.make
+      ~conv:(fun {max_nb_backpointers} -> (max_nb_backpointers, ()))
+      ~model:
+        (Model.affine
+           ~intercept:(Free_variable.of_string "cost_hash_skip_list_cell")
+           ~coeff:(Free_variable.of_string "cost_hash_skip_list_cell_coef"))
+
+  let models = [("scoru", hash_skip_list_cell_model)]
+
+  let benchmark rng_state conf () =
+    let skip_list_len =
+      Base_samplers.sample_in_interval
+        ~range:{min = 1; max = conf.max_index}
+        rng_state
+    in
+    let random_hash () =
+      Hash.hash_string
+        [Base_samplers.string ~size:{min = 1; max = 25} rng_state]
+    in
+    let cell =
+      let rec repeat n cell =
+        if n = 0 then cell
+        else
+          let prev_cell = cell and prev_cell_ptr = hash_skip_list_cell cell in
+          repeat
+            (n - 1)
+            (Skip_list.next ~prev_cell ~prev_cell_ptr (random_hash ()))
+      in
+      repeat skip_list_len (Skip_list.genesis (random_hash ()))
+    in
+    let max_nb_backpointers = Skip_list.number_of_back_pointers cell in
+    let workload = {max_nb_backpointers} in
+    let closure () = ignore (hash_skip_list_cell cell) in
+    Generator.Plain {workload; closure}
+
+  let create_benchmarks ~rng_state ~bench_num config =
+    List.repeat bench_num (benchmark rng_state config)
+
+  let () =
+    Registration.register_for_codegen
+      name
+      (Model.For_codegen hash_skip_list_cell_model)
+end
+
 let () =
   Registration_helpers.register
     (module Sc_rollup_add_external_messages_benchmark)
@@ -311,3 +391,7 @@ let () =
 let () =
   Registration_helpers.register
     (module Sc_rollup_update_num_and_size_of_messages_benchmark)
+
+let () =
+  Registration_helpers.register
+    (module Sc_rollup_inbox_repr_hash_skip_list_cell)

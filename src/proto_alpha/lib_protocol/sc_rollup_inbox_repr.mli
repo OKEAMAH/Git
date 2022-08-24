@@ -218,6 +218,12 @@ include Sc_rollup_data_version_sig.S with type t = V1.t
 
 include module type of V1 with type t = V1.t
 
+module Internal_for_snoop : sig
+  module Skip_list : Skip_list_repr.S
+
+  val hash_skip_list_cell : (Hash.t, Hash.t) Skip_list.cell -> Hash.t
+end
+
 (** This extracts the current level hash from the inbox. Note: the
     current level hash is stored lazily as [fun () -> ...], and this
     function will call that function. So don't use this if you want to
