@@ -1700,7 +1700,8 @@ let apply_internal_operations ctxt ~payer ~chain_id ops =
   let rec apply ctxt applied worklist =
     match worklist with
     | [] -> Lwt.return (Success ctxt, List.rev applied)
-    | Script_typed_ir.Internal_operation ({source; operation; nonce} as op)
+    | Script_typed_ir.Operation.Internal_operation
+        ({source; operation; nonce} as op)
       :: rest -> (
         (if internal_nonce_already_recorded ctxt nonce then
          let op_res = Apply_internal_results.internal_operation op in
@@ -1722,7 +1723,7 @@ let apply_internal_operations ctxt ~payer ~chain_id ops =
             in
             let skipped =
               List.rev_map
-                (fun (Script_typed_ir.Internal_operation op) ->
+                (fun (Script_typed_ir.Operation.Internal_operation op) ->
                   pack_internal_operation_result
                     op
                     (Skipped (Script_typed_ir.manager_kind op.operation)))

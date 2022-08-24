@@ -2059,6 +2059,11 @@ val chest_key_t : (Script_timelock.chest_key, no) ty
 
 val chest_t : (Script_timelock.chest, no) ty
 
+val bot_t : (empty_cell, empty_cell) stack_ty
+
+val item_t :
+  ('a, _) ty -> ('top_ty, 'resty) stack_ty -> ('a, 'top_ty * 'resty) stack_ty
+
 (**
 
    The following functions named `X_traverse` for X in

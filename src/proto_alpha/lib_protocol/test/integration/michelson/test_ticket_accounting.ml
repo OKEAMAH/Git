@@ -147,7 +147,7 @@ let updates_of_key_values ctxt ~key_type ~value_type key_values =
             return (Some value, ctxt)
       in
       let key = Micheline.strip_locations key_node in
-      return ({Big_map.key; key_hash; value} :: kvs, ctxt))
+      return ({Alpha_context.Big_map.key; key_hash; value} :: kvs, ctxt))
     key_values
     ([], ctxt)
 
@@ -190,7 +190,9 @@ let ticket_list_script =
 
 let setup ctxt ~key_type ~value_type entries =
   let open Lwt_result_syntax in
-  let* ctxt, big_map_id = wrap @@ Big_map.fresh ~temporary:false ctxt in
+  let* ctxt, big_map_id =
+    wrap @@ Alpha_context.Big_map.fresh ~temporary:false ctxt
+  in
   let* updates, ctxt =
     updates_of_key_values
       ctxt
@@ -211,7 +213,7 @@ let setup ctxt ~key_type ~value_type entries =
   in
   let key_type = Micheline.strip_locations key_type_node in
   let value_type = Micheline.strip_locations value_type_node in
-  let alloc = make_alloc big_map_id Big_map.{key_type; value_type} updates in
+  let alloc = make_alloc big_map_id {key_type; value_type} updates in
   return (alloc, big_map_id, ctxt)
 
 let new_big_map ctxt contract ~key_type ~value_type entries =
@@ -243,7 +245,9 @@ let copy_diff ctxt contract ~key_type ~value_type ~existing_entries ~updates =
   let* updates, ctxt =
     updates_of_key_values ctxt ~key_type ~value_type updates
   in
-  let* ctxt, new_big_map_id = wrap @@ Big_map.fresh ctxt ~temporary:false in
+  let* ctxt, new_big_map_id =
+    wrap @@ Alpha_context.Big_map.fresh ctxt ~temporary:false
+  in
   return
     ( Lazy_storage.make
         Lazy_storage.Kind.Big_map
@@ -270,9 +274,11 @@ let existing_diff ctxt contract ~key_type ~value_type ~existing_entries ~updates
 let empty_big_map ctxt ~key_type ~value_type =
   let open Lwt_result_syntax in
   let open Script_typed_ir in
-  let* ctxt, big_map_id = wrap @@ Big_map.fresh ~temporary:false ctxt in
+  let* ctxt, big_map_id =
+    wrap @@ Alpha_context.Big_map.fresh ~temporary:false ctxt
+  in
   return
-    ( Big_map
+    ( Big_map.Big_map
         {
           id = Some big_map_id;
           diff = {map = Big_map_overlay.empty; size = 0};
@@ -288,7 +294,7 @@ let make_big_map ctxt contract ~key_type ~value_type entries =
     new_big_map ctxt contract ~key_type ~value_type entries
   in
   return
-    ( Big_map
+    ( Big_map.Big_map
         {
           id = Some big_map_id;
           diff = {map = Big_map_overlay.empty; size = 0};
@@ -344,7 +350,7 @@ let origination_operation ctxt ~src ~script:(code, storage) ~orig_contract =
          script
   in
   let operation =
-    Internal_operation
+    Operation.Internal_operation
       {
         source = src;
         operation =
@@ -384,7 +390,7 @@ let transfer_operation ctxt ~src ~destination ~arg_type ~arg =
          arg)
   in
   return
-    ( Internal_operation
+    ( Operation.Internal_operation
         {
           source = src;
           operation =

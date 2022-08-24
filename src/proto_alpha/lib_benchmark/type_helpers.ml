@@ -61,14 +61,13 @@ let rec michelson_type_list_to_ex_stack_ty
   let open Script_ir_translator in
   let open Script_typed_ir in
   match stack_ty with
-  | [] -> Ex_stack_ty Bot_t
+  | [] -> Ex_stack_ty bot_t
   | hd :: tl -> (
       let ex_ty = michelson_type_to_ex_ty hd ctxt in
       match ex_ty with
       | Ex_ty ty -> (
           let ex_stack_ty = michelson_type_list_to_ex_stack_ty tl ctxt in
-          match ex_stack_ty with
-          | Ex_stack_ty tl -> Ex_stack_ty (Item_t (ty, tl))))
+          match ex_stack_ty with Ex_stack_ty tl -> Ex_stack_ty (item_t ty tl)))
 
 let base_type_to_michelson_type (typ : Type.Base.t) =
   let typ = Mikhailsky.map_var (fun _ -> Mikhailsky.unit_ty) typ in

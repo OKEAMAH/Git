@@ -1486,7 +1486,9 @@ let extract_deps (type bef_top bef aft_top aft) ctxt step_constants
   let log_control kont = trace := extract_control_trace kont :: !trace in
   let log_exit _instr _ctxt _log _stack_ty _stack = () in
   let get_log () = Environment.Error_monad.return_none in
-  let logger = {log_interp; log_entry; log_control; log_exit; get_log} in
+  let logger =
+    Instruction.{log_interp; log_entry; log_control; log_exit; get_log}
+  in
   try
     let res =
       Lwt_main.run
@@ -1524,7 +1526,9 @@ let extract_deps_continuation (type bef_top bef aft_top aft) ctxt step_constants
   let log_control kont = trace := extract_control_trace kont :: !trace in
   let log_exit _instr _ctxt _log _stack_ty _stack = () in
   let get_log () = Environment.Error_monad.return_none in
-  let logger = {log_interp; log_entry; log_control; log_exit; get_log} in
+  let logger =
+    Instruction.{log_interp; log_entry; log_control; log_exit; get_log}
+  in
   try
     let res =
       let _gas_counter, outdated_ctxt =

@@ -119,7 +119,6 @@ module Ticket_inspection = struct
       type a ret.
       a Script_typed_ir.comparable_ty -> (a has_tickets -> ret) -> ret =
    fun key_ty k ->
-    let open Script_typed_ir in
     match key_ty.value with
     | Unit_t -> (k [@ocaml.tailcall]) False_ht
     | Never_t -> (k [@ocaml.tailcall]) False_ht
@@ -159,7 +158,6 @@ module Ticket_inspection = struct
       type a ac ret.
       (a, ac) Script_typed_ir.ty -> (a, ret) continuation -> ret tzresult =
    fun ty k ->
-    let open Script_typed_ir in
     match ty.value with
     | Ticket_t _ -> (k [@ocaml.tailcall]) True_ht
     | Unit_t -> (k [@ocaml.tailcall]) False_ht
@@ -284,7 +282,6 @@ module Ticket_collection = struct
       ret continuation ->
       ret tzresult Lwt.t =
    fun ctxt comp_ty acc k ->
-    let open Script_typed_ir in
     match comp_ty.value with
     | Unit_t -> (k [@ocaml.tailcall]) ctxt acc
     | Never_t -> (k [@ocaml.tailcall]) ctxt acc

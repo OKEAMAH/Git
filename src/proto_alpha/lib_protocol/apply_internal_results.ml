@@ -118,7 +118,8 @@ let internal_operation (type kind)
   in
   {source; operation; nonce}
 
-let packed_internal_operation (Script_typed_ir.Internal_operation op) =
+let packed_internal_operation (Script_typed_ir.Operation.Internal_operation op)
+    =
   Internal_operation (internal_operation op)
 
 let packed_internal_operations = List.map packed_internal_operation

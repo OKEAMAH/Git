@@ -486,7 +486,9 @@ module Scripts = struct
       let rec unparse_stack :
           type a s.
           (a, s) Script_typed_ir.stack_ty * (a * s) ->
-          Script.expr list tzresult Lwt.t = function
+          Script.expr list tzresult Lwt.t =
+       fun (s, e) ->
+        match (s.value, e) with
         | Bot_t, (EmptyCell, EmptyCell) -> return_nil
         | Item_t (ty, rest_ty), (v, rest) ->
             Script_ir_translator.unparse_data
@@ -661,7 +663,6 @@ module Scripts = struct
   let rec pp_instr_name :
       type a b c d.
       Format.formatter -> (a, b, c, d) Script_typed_ir.kinstr -> unit =
-    let open Script_typed_ir in
     let open Format in
     fun fmt -> function
       | IDrop _ -> pp_print_string fmt "DROP"

@@ -84,7 +84,7 @@ let big_map_updates_of_key_values ctxt key_values =
       in
       return
         ( {
-            Big_map.key = Expr.from_string @@ string_of_int key;
+            Alpha_context.Big_map.key = Expr.from_string @@ string_of_int key;
             key_hash;
             value = Option.map Expr.from_string value;
           }
@@ -94,7 +94,9 @@ let big_map_updates_of_key_values ctxt key_values =
     ([], ctxt)
 
 let new_int_key_big_map ctxt contract ~value_type entries =
-  let* ctxt, big_map_id = wrap @@ Big_map.fresh ~temporary:false ctxt in
+  let* ctxt, big_map_id =
+    wrap @@ Alpha_context.Big_map.fresh ~temporary:false ctxt
+  in
   let key_type = Expr.from_string "int" in
   let value_type = Expr.from_string value_type in
   let* updates, ctxt =
@@ -105,8 +107,7 @@ let new_int_key_big_map ctxt contract ~value_type entries =
     Lazy_storage.make
       Lazy_storage.Kind.Big_map
       big_map_id
-      (Update
-         {init = Lazy_storage.Alloc Big_map.{key_type; value_type}; updates})
+      (Update {init = Lazy_storage.Alloc {key_type; value_type}; updates})
   in
   let storage = Expr.from_string "{}" in
   let* ctxt =
@@ -270,7 +271,7 @@ let origination_operation block ~src ~baker ~script ~storage ~forges_tickets =
          script
   in
   let operation =
-    Script_typed_ir.Internal_operation
+    Script_typed_ir.Operation.Internal_operation
       {
         source = src;
         operation =
@@ -291,7 +292,7 @@ let origination_operation block ~src ~baker ~script ~storage ~forges_tickets =
   return (Contract.Originated orig_contract, operation, incr)
 
 let delegation_operation ~src =
-  Script_typed_ir.Internal_operation
+  Script_typed_ir.Operation.Internal_operation
     {source = src; operation = Delegation None; nonce = 1}
 
 let originate block ~src ~baker ~script ~storage ~forges_tickets =
@@ -316,7 +317,7 @@ let transfer_operation ~incr ~src ~destination ~parameters_ty ~parameters =
   in
   let incr = Incremental.set_alpha_ctxt incr ctxt in
   return
-    ( Script_typed_ir.Internal_operation
+    ( Script_typed_ir.Operation.Internal_operation
         {
           source = src;
           operation =
@@ -348,7 +349,7 @@ let transfer_operation_to_tx_rollup ~incr ~src ~parameters_ty ~parameters
   in
   let incr = Incremental.set_alpha_ctxt incr ctxt in
   return
-    ( Script_typed_ir.Internal_operation
+    ( Script_typed_ir.Operation.Internal_operation
         {
           source = src;
           operation =
@@ -1080,7 +1081,8 @@ let test_originate_big_map_with_tickets () =
   let* block = Incremental.finalize_block incr in
   let* orig_contract, operation, incr =
     let storage =
-      Printf.sprintf "%d" @@ Z.to_int (Big_map.Id.unparse_to_z big_map_id)
+      Printf.sprintf "%d"
+      @@ Z.to_int (Alpha_context.Big_map.Id.unparse_to_z big_map_id)
     in
     origination_operation
       block
@@ -1156,7 +1158,7 @@ let test_transfer_big_map_with_tickets () =
     @@ big_map_t Micheline.dummy_location int_t value_type
   in
   let parameters =
-    Big_map
+    Big_map.Big_map
       {
         id = Some big_map_id;
         diff = {map = Big_map_overlay.empty; size = 0};

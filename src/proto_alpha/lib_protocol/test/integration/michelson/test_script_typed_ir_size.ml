@@ -79,7 +79,7 @@ let boxed_set_elements s = Script_set.fold (fun x s -> x :: s) s []
 
 let boxed_map_bindings s = Script_map.fold (fun k v s -> (k, v) :: s) s []
 
-let big_map_bindings (Big_map s) = Big_map_overlay.bindings s.diff.map
+let big_map_bindings (Big_map.Big_map s) = Big_map_overlay.bindings s.diff.map
 
 let show_script_int fmt x = Z.pp_print fmt (Script_int.to_zint x)
 
@@ -715,6 +715,7 @@ let check_kinstr_size () =
   in
   (* Constants below are wrapped in functions to force recomputation and
      discourage sharing. *)
+  let open Instruction in
   let halt () = IHalt loc in
   let drop () = IDrop (loc, halt ()) in
   let cdr = ICdr (loc, halt ()) in
@@ -722,9 +723,9 @@ let check_kinstr_size () =
   let unit_option_t () =
     WithExceptions.Result.get_ok ~loc:__LOC__ @@ option_t loc unit_t
   in
-  let stack_type () = Item_t (unit_option_t (), Bot_t) in
+  let stack_type () = item_t (unit_option_t ()) bot_t in
   let id_lambda () =
-    Lam
+    Lambda.Lam
       ( {
           kloc = loc;
           kbef = stack_type ();
@@ -876,7 +877,7 @@ let check_kinstr_size () =
       Kinstr ("ILoop", ILoop (loc, const bool_t true, halt ()));
       Kinstr ("ILoop_left", ILoop_left (loc, INever loc, halt ()));
       Kinstr ("IDip", IDip (loc, halt (), string_t, halt ()));
-      Kinstr ("IExec", IExec (loc, Bot_t, halt ()));
+      Kinstr ("IExec", IExec (loc, bot_t, halt ()));
       Kinstr ("IApply", IApply (loc, string_t, halt ()));
       Kinstr ("ILambda", ILambda (loc, id_lambda (), halt ()));
       Kinstr ("IFailwith", IFailwith (loc, string_t));
@@ -987,7 +988,7 @@ let check_kinstr_size () =
 let check_witness_sizes () =
   let loc = Micheline.dummy_location in
   let stack_prefix_preservation =
-    KPrefix
+    Instruction.KPrefix
       ( loc,
         unit_t,
         KPrefix

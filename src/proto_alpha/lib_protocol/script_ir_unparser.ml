@@ -174,7 +174,9 @@ let serialize_ty_for_error ty =
   unparse_ty_uncarbonated ~loc:() ty |> Micheline.strip_locations
 
 let rec unparse_stack_uncarbonated :
-    type a s. (a, s) stack_ty -> Script.expr list = function
+    type a s. (a, s) stack_ty -> Script.expr list =
+ fun s ->
+  match s.value with
   | Bot_t -> []
   | Item_t (ty, rest) ->
       let uty = unparse_ty_uncarbonated ~loc:() ty in
@@ -290,7 +292,7 @@ let unparse_key_hash ~loc ctxt mode k =
 
 (* Operations are only unparsed during the production of execution traces of
    the interpreter. *)
-let unparse_operation ~loc ctxt {piop; lazy_storage_diff = _} =
+let unparse_operation ~loc ctxt Operation.{piop; lazy_storage_diff = _} =
   let iop = Apply_internal_results.packed_internal_operation piop in
   let bytes =
     Data_encoding.Binary.to_bytes_exn
@@ -562,7 +564,8 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
         >|=? fun (items, ctxt) -> (Micheline.Seq (loc, items), ctxt)
     | Big_map_t (_kt, _vt, _), Big_map {id = Some id; diff = {size; _}; _}
       when Compare.Int.( = ) size 0 ->
-        return (Micheline.Int (loc, Big_map.Id.unparse_to_z id), ctxt)
+        return
+          (Micheline.Int (loc, Alpha_context.Big_map.Id.unparse_to_z id), ctxt)
     | Big_map_t (kt, vt, _), Big_map {id = Some id; diff = {map; _}; _} ->
         let items =
           Big_map_overlay.fold (fun _ (k, v) acc -> (k, v) :: acc) map []
@@ -585,7 +588,10 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
         ( Micheline.Prim
             ( loc,
               D_Pair,
-              [Int (loc, Big_map.Id.unparse_to_z id); Seq (loc, items)],
+              [
+                Int (loc, Alpha_context.Big_map.Id.unparse_to_z id);
+                Seq (loc, items);
+              ],
               [] ),
           ctxt )
     | Big_map_t (kt, vt, _), Big_map {id = None; diff = {map; _}; _} ->

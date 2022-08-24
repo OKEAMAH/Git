@@ -206,7 +206,9 @@ end = struct
         with
         | Error _ | (exception _) -> bad_code name expr stack In_protocol
         | Ok (Failed {descr}, _) ->
-            let kdescr = Script_ir_translator.close_descr (descr Bot_t) in
+            let kdescr =
+              Script_ir_translator.close_descr (descr Script_typed_ir.bot_t)
+            in
             let kinstr = kdescr.kinstr in
             let open Script_typed_ir_size.Internal_for_tests in
             let workload =

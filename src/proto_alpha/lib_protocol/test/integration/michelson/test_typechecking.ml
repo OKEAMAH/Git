@@ -480,12 +480,13 @@ let test_parse_comb_data () =
      so that the following test fails for the good reason and not because
      the big map doesn't exist
   *)
-  let id_z = Big_map.Id.unparse_to_z big_map_id in
+  let id_z = Alpha_context.Big_map.Id.unparse_to_z big_map_id in
   let id_prim = Int (-1, id_z) in
   let expected_big_map =
     let open Script_typed_ir in
     let diff = {map = Big_map_overlay.empty; size = 0} in
-    Big_map {id = Some big_map_id; diff; key_type = nat_ty; value_type = nat_ty}
+    Big_map.Big_map
+      {id = Some big_map_id; diff; key_type = nat_ty; value_type = nat_ty}
   in
   let ty_equal :
       type a ac1 ac2.
@@ -503,7 +504,7 @@ let test_parse_comb_data () =
       in the protocol for the moment.
    *)
   in
-  let equal (nat1, Big_map big_map1) (nat2, Big_map big_map2) =
+  let equal (nat1, Big_map.Big_map big_map1) (nat2, Big_map.Big_map big_map2) =
     (* Custom equal needed because big maps contain boxed maps containing functional values *)
     nat1 = nat2 && big_map1.id = big_map2.id
     && big_map1.key_type = big_map2.key_type
@@ -744,7 +745,7 @@ let test_contract_not_packable () =
      ctxt
      ~legacy:false
      (Prim (0, I_UNPACK, [Prim (0, T_unit, [], [])], []))
-     (Item_t (Script_typed_ir.bytes_t, Bot_t))
+     (Script_typed_ir.item_t Script_typed_ir.bytes_t Script_typed_ir.bot_t)
    >>= function
    | Ok _ -> return_unit
    | Error _ -> Alcotest.failf "Could not parse UNPACK unit")
@@ -755,7 +756,7 @@ let test_contract_not_packable () =
     ctxt
     ~legacy:false
     (Prim (0, I_UNPACK, [contract_unit], []))
-    (Item_t (Script_typed_ir.bytes_t, Bot_t))
+    (Script_typed_ir.item_t Script_typed_ir.bytes_t Script_typed_ir.bot_t)
   >>= function
   | Ok _ ->
       Alcotest.failf
@@ -798,7 +799,7 @@ let test_parse_contract_data_for_unit_rollup () =
          (Destination.Sc_rollup rollup)
          ~entrypoint:Entrypoint.default
   in
-  let (Ty_ex_c {value = Script_typed_ir.Unit_t; _}) =
+  let (Ty_ex_c {value = Script_typed_ir.Ty_value.Unit_t; _}) =
     Script_typed_ir.Typed_contract.arg_ty typed_contract
   in
   let destination = Script_typed_ir.Typed_contract.destination typed_contract in
@@ -827,7 +828,7 @@ let test_parse_contract_data_for_rollup_with_entrypoints () =
   let* incr = Incremental.begin_construction block in
   let ctxt = Incremental.alpha_ctxt incr in
   let* ctxt, typed_contract =
-    let*? (Script_typed_ir.Ty_ex_c nat_pair) =
+    let*? (Script_typed_ir.Ty.Ty_ex_c nat_pair) =
       Environment.wrap_tzresult Script_typed_ir.(pair_t (-1) nat_t nat_t)
     in
     wrap_error_lwt

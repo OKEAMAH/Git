@@ -172,7 +172,8 @@ let tickets_of_origination ctxt ~allow_zero_amount_tickets ~preorigination
   (Some {tickets; destination}, ctxt)
 
 let tickets_of_operation ctxt ~allow_zero_amount_tickets
-    (Script_typed_ir.Internal_operation {source = _; operation; nonce = _}) =
+    (Script_typed_ir.Operation.Internal_operation
+      {source = _; operation; nonce = _}) =
   match operation with
   | Transaction_to_implicit _ -> return (None, ctxt)
   | Transaction_to_smart_contract

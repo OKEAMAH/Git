@@ -94,7 +94,6 @@ let rec validate_ty :
     type a ac ret.
     (a, ac) Script_typed_ir.ty -> ret continuation -> ret tzresult =
  fun ty k ->
-  let open Script_typed_ir in
   match ty.value with
   (* Valid primitive types. *)
   | Unit_t -> (k [@ocaml.tailcall]) ()
@@ -240,7 +239,7 @@ let to_transaction_operation ctxt ~source
   *)
   let* ctxt = validate_parameters_ty ctxt parameters_ty in
   let operation =
-    Script_typed_ir.Transaction_to_smart_contract
+    Script_typed_ir.Operation.Transaction_to_smart_contract
       {
         destination;
         amount = Tez.zero;
@@ -252,7 +251,7 @@ let to_transaction_operation ctxt ~source
       }
   in
   return
-    ( Script_typed_ir.Internal_operation
+    ( Script_typed_ir.Operation.Internal_operation
         {source = Contract.Implicit source; operation; nonce},
       ctxt )
 

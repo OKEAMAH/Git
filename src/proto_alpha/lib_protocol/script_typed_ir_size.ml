@@ -113,7 +113,7 @@ let ty_size : type a ac. (a, ac) ty -> nodes_and_size =
 let stack_ty_size s =
   let apply : type a s. nodes_and_size -> (a, s) stack_ty -> nodes_and_size =
    fun accu s ->
-    match s with
+    match s.value with
     | Bot_t -> ret_succ accu
     | Item_t (ty, _) -> ret_succ_adding (accu ++ ty_size ty) h2w
   in
@@ -145,7 +145,8 @@ let address_size addr =
 let tx_rollup_l2_address_size (tx : tx_rollup_l2_address) =
   Tx_rollup_l2_address.Indexable.in_memory_size @@ Indexable.forget tx
 
-let view_signature_size (View_signature {name; input_ty; output_ty}) =
+let view_signature_size (Instruction.View_signature {name; input_ty; output_ty})
+    =
   ret_adding
     (ty_size input_ty ++ ty_size output_ty)
     (h3w +! script_string_size name)
@@ -348,7 +349,7 @@ and big_map_size :
     in
     ret_adding map_size h2w
   in
-  let big_map_id_size s = z_size (Big_map.Id.unparse_to_z s) in
+  let big_map_id_size s = z_size (Alpha_context.Big_map.Id.unparse_to_z s) in
   let id_size = option_size big_map_id_size id in
   ret_adding
     (ty_size key_type ++ ty_size value_type ++ diff_size)

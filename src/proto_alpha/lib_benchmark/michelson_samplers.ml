@@ -770,7 +770,7 @@ end)
     and generate_operation : Script_typed_ir.operation sampler =
      fun rng_state ->
       let transfer = generate_transfer_tokens rng_state in
-      Script_typed_ir.{piop = transfer; lazy_storage_diff = None}
+      Script_typed_ir.Operation.{piop = transfer; lazy_storage_diff = None}
 
     and generate_transfer_tokens :
         Script_typed_ir.packed_internal_operation sampler =
@@ -816,7 +816,7 @@ end)
       let open M in
       let open Script_typed_ir in
       fun stack_ty ->
-        match stack_ty with
+        match stack_ty.value with
         | Item_t (ty, tl) ->
             let* elt = value ty in
             let* tl = stack tl in

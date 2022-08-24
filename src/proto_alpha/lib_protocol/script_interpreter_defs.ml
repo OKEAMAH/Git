@@ -396,7 +396,7 @@ let consume_control local_gas_counter ks =
   consume_opt local_gas_counter cost
   [@@ocaml.inline always]
 
-let get_log = function
+let get_log : logger option -> execution_trace option tzresult Lwt.t = function
   | None -> Lwt.return (Ok None)
   | Some logger -> logger.get_log ()
   [@@ocaml.inline always]
@@ -420,7 +420,7 @@ let rec kundip :
  fun w accu stack k ->
   match w with
   | KPrefix (loc, ty, w) ->
-      let k = IConst (loc, ty, accu, k) in
+      let k = Instruction.IConst (loc, ty, accu, k) in
       let accu, stack = stack in
       kundip w accu stack k
   | KRest -> (accu, stack, k)
@@ -428,27 +428,28 @@ let rec kundip :
 (* [apply ctxt gas ty v lam] specializes [lam] by fixing its first
    formal argument to [v]. The type of [v] is represented by [ty]. *)
 let apply ctxt gas capture_ty capture lam =
-  let (Lam (descr, expr)) = lam in
-  let (Item_t (full_arg_ty, _)) = descr.kbef in
+  let (Lambda.Lam (descr, expr)) = lam in
+  let (Item_t (full_arg_ty, _)) = descr.kbef.value in
   let ctxt = update_context gas ctxt in
   unparse_data ctxt Optimized capture_ty capture >>=? fun (const_expr, ctxt) ->
   let loc = Micheline.dummy_location in
   Script_ir_unparser.unparse_ty ~loc ctxt capture_ty >>?= fun (ty_expr, ctxt) ->
   match full_arg_ty.value with
   | Pair_t (capture_ty, arg_ty, _, _) ->
-      let arg_stack_ty = Item_t (arg_ty, Bot_t) in
+      let arg_stack_ty = item_t arg_ty bot_t in
       let full_descr =
-        {
-          kloc = descr.kloc;
-          kbef = arg_stack_ty;
-          kaft = descr.kaft;
-          kinstr =
-            IConst
-              ( descr.kloc,
-                capture_ty,
-                capture,
-                ICons_pair (descr.kloc, descr.kinstr) );
-        }
+        Instruction.
+          {
+            kloc = descr.kloc;
+            kbef = arg_stack_ty;
+            kaft = descr.kaft;
+            kinstr =
+              IConst
+                ( descr.kloc,
+                  capture_ty,
+                  capture,
+                  ICons_pair (descr.kloc, descr.kinstr) );
+          }
       in
       let full_expr =
         Micheline.Seq
@@ -459,7 +460,7 @@ let apply ctxt gas capture_ty capture lam =
               expr;
             ] )
       in
-      let lam' = Lam (full_descr, full_expr) in
+      let lam' = Lambda.Lam (full_descr, full_expr) in
       let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
       return (lam', ctxt, gas)
 
@@ -493,7 +494,7 @@ let make_transaction_to_tx_rollup (type t) ctxt ~destination ~amount
       Gas.consume ctxt (Script.strip_locations_cost unparsed_parameters)
       >|? fun ctxt ->
       let unparsed_parameters = Micheline.strip_locations unparsed_parameters in
-      ( Transaction_to_tx_rollup
+      ( Operation.Transaction_to_tx_rollup
           {destination; parameters_ty; parameters; unparsed_parameters},
         ctxt ) )
 
@@ -507,7 +508,7 @@ let make_transaction_to_sc_rollup ctxt ~destination ~amount ~entrypoint
     ( Gas.consume ctxt (Script.strip_locations_cost unparsed_parameters)
     >|? fun ctxt ->
       let unparsed_parameters = Micheline.strip_locations unparsed_parameters in
-      ( Transaction_to_sc_rollup
+      ( Operation.Transaction_to_sc_rollup
           {
             destination;
             entrypoint;
@@ -529,9 +530,11 @@ let emit_event (type t tc) (ctxt, sc) gas ~(event_type : (t, tc) ty)
   Gas.consume ctxt (Script.strip_locations_cost unparsed_data) >>?= fun ctxt ->
   let unparsed_data = Micheline.strip_locations unparsed_data in
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
-  let operation = Event {ty = unparsed_ty; tag; unparsed_data} in
-  let iop = {source = Contract.Originated sc.self; operation; nonce} in
-  let res = {piop = Internal_operation iop; lazy_storage_diff} in
+  let operation = Operation.Event {ty = unparsed_ty; tag; unparsed_data} in
+  let iop =
+    Operation.{source = Contract.Originated sc.self; operation; nonce}
+  in
+  let res = Operation.{piop = Internal_operation iop; lazy_storage_diff} in
   let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
   return (res, ctxt, gas)
 
@@ -545,7 +548,8 @@ let transfer (type t) (ctxt, sc) gas amount location
   (match typed_contract with
   | Typed_implicit destination ->
       let () = parameters in
-      return (Transaction_to_implicit {destination; amount}, None, ctxt)
+      return
+        (Operation.Transaction_to_implicit {destination; amount}, None, ctxt)
   | Typed_originated
       {arg_ty = parameters_ty; contract_hash = destination; entrypoint} ->
       collect_lazy_storage ctxt parameters_ty parameters
@@ -568,7 +572,7 @@ let transfer (type t) (ctxt, sc) gas amount location
           let unparsed_parameters =
             Micheline.strip_locations unparsed_parameters
           in
-          ( Transaction_to_smart_contract
+          ( Operation.Transaction_to_smart_contract
               {
                 destination;
                 amount;
@@ -600,8 +604,10 @@ let transfer (type t) (ctxt, sc) gas amount location
       >|=? fun (operation, ctxt) -> (operation, None, ctxt))
   >>=? fun (operation, lazy_storage_diff, ctxt) ->
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
-  let iop = {source = Contract.Originated sc.self; operation; nonce} in
-  let res = {piop = Internal_operation iop; lazy_storage_diff} in
+  let iop =
+    Operation.{source = Contract.Originated sc.self; operation; nonce}
+  in
+  let res = Operation.{piop = Internal_operation iop; lazy_storage_diff} in
   let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
   return (res, ctxt, gas)
 
@@ -628,7 +634,7 @@ let create_contract (ctxt, sc) gas storage_type code delegate credit init =
   Contract.fresh_contract_from_current_nonce ctxt
   >>?= fun (ctxt, preorigination) ->
   let operation =
-    Origination
+    Operation.Origination
       {
         credit;
         delegate;
@@ -641,8 +647,8 @@ let create_contract (ctxt, sc) gas storage_type code delegate credit init =
   in
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let source = Contract.Originated sc.self in
-  let piop = Internal_operation {source; operation; nonce} in
-  let res = {piop; lazy_storage_diff} in
+  let piop = Operation.Internal_operation {source; operation; nonce} in
+  let res = Operation.{piop; lazy_storage_diff} in
   let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
   return (res, preorigination, ctxt, gas)
 

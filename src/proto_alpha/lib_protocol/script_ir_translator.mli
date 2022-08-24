@@ -408,7 +408,7 @@ val collect_lazy_storage :
   'a ->
   (lazy_storage_ids * context) tzresult
 
-val list_of_big_map_ids : lazy_storage_ids -> Big_map.Id.t list
+val list_of_big_map_ids : lazy_storage_ids -> Alpha_context.Big_map.Id.t list
 
 (** Produce a lazy storage diff, containing in-memory writes to
     lazy data structures such as big_maps yet to be committed.

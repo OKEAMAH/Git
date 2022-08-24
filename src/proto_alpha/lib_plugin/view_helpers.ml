@@ -217,7 +217,7 @@ let extract_parameter_from_operations entrypoint operations callback =
   in
   match operations with
   | [
-   Script_typed_ir.Internal_operation
+   Script_typed_ir.Operation.Internal_operation
      {
        operation =
          Transaction_to_smart_contract

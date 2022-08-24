@@ -235,7 +235,7 @@ let verify_execute_outbox_message_operations incr ~loc ~source ~operations
   let ctxt = Incremental.alpha_ctxt incr in
   let validate_and_extract_operation_params ctxt op =
     match op with
-    | Script_typed_ir.Internal_operation
+    | Script_typed_ir.Operation.Internal_operation
         {
           source = op_source;
           operation =

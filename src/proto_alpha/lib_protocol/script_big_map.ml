@@ -30,7 +30,7 @@ open Script_typed_ir
 open Script_ir_translator
 
 let empty key_type value_type =
-  Big_map
+  Big_map.Big_map
     {
       id = None;
       diff = {map = Big_map_overlay.empty; size = 0};
@@ -38,7 +38,7 @@ let empty key_type value_type =
       value_type;
     }
 
-let mem ctxt key (Big_map {id; diff; key_type; _}) =
+let mem ctxt key (Big_map.Big_map {id; diff; key_type; _}) =
   hash_comparable_data ctxt key_type key >>=? fun (key_hash, ctxt) ->
   match (Big_map_overlay.find key_hash diff.map, id) with
   | None, None -> return (false, ctxt)
@@ -48,7 +48,7 @@ let mem ctxt key (Big_map {id; diff; key_type; _}) =
   | Some (_, None), _ -> return (false, ctxt)
   | Some (_, Some _), _ -> return (true, ctxt)
 
-let get_by_hash ctxt key (Big_map {id; diff; value_type; _}) =
+let get_by_hash ctxt key (Big_map.Big_map {id; diff; value_type; _}) =
   match (Big_map_overlay.find key diff.map, id) with
   | Some (_, x), _ -> return (x, ctxt)
   | None, None -> return (None, ctxt)
@@ -64,13 +64,13 @@ let get_by_hash ctxt key (Big_map {id; diff; value_type; _}) =
             (Micheline.root value)
           >|=? fun (x, ctxt) -> (Some x, ctxt))
 
-let get ctxt key (Big_map {key_type; _} as map) =
+let get ctxt key (Big_map.Big_map {key_type; _} as map) =
   hash_comparable_data ctxt key_type key >>=? fun (key_hash, ctxt) ->
   get_by_hash ctxt key_hash map
 
-let update_by_hash key_hash key value (Big_map map) =
+let update_by_hash key_hash key value (Big_map.Big_map map) =
   let contains = Big_map_overlay.mem key_hash map.diff.map in
-  Big_map
+  Big_map.Big_map
     {
       map with
       diff =
@@ -80,12 +80,12 @@ let update_by_hash key_hash key value (Big_map map) =
         };
     }
 
-let update ctxt key value (Big_map {key_type; _} as map) =
+let update ctxt key value (Big_map.Big_map {key_type; _} as map) =
   hash_comparable_data ctxt key_type key >>=? fun (key_hash, ctxt) ->
   let map = update_by_hash key_hash key value map in
   return (map, ctxt)
 
-let get_and_update ctxt key value (Big_map {key_type; _} as map) =
+let get_and_update ctxt key value (Big_map.Big_map {key_type; _} as map) =
   hash_comparable_data ctxt key_type key >>=? fun (key_hash, ctxt) ->
   let new_map = update_by_hash key_hash key value map in
   get_by_hash ctxt key_hash map >>=? fun (old_value, ctxt) ->

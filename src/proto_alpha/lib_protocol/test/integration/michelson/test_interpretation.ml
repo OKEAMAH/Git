@@ -43,7 +43,7 @@ let test_context () =
   return (Incremental.alpha_ctxt v)
 
 let logger =
-  Script_typed_ir.
+  Script_typed_ir.Instruction.
     {
       log_interp = (fun _ _ _ _ _ -> ());
       log_entry = (fun _ _ _ _ _ -> ());
@@ -122,13 +122,17 @@ let test_stack_overflow () =
     Gas.update_remaining_operation_gas ctxt
     @@ Gas.fp_of_milligas_int (Saturation_repr.saturated :> int)
   in
-  let stack = Bot_t in
-  let descr kinstr = {kloc = 0; kbef = stack; kaft = stack; kinstr} in
+  let stack = bot_t in
+  let descr kinstr =
+    Instruction.{kloc = 0; kbef = stack; kaft = stack; kinstr}
+  in
   let enorme_et_seq n =
     let rec aux n acc =
       if n = 0 then acc
       else
-        aux (n - 1) (IConst (dummy_loc, bool_t, true, IDrop (dummy_loc, acc)))
+        aux
+          (n - 1)
+          (Instruction.IConst (dummy_loc, bool_t, true, IDrop (dummy_loc, acc)))
     in
     aux n (IHalt dummy_loc)
   in
@@ -152,16 +156,20 @@ let test_stack_overflow_in_lwt () =
     Gas.update_remaining_operation_gas ctxt
     @@ Gas.fp_of_milligas_int (Saturation_repr.saturated :> int)
   in
-  let stack = Bot_t in
-  let descr kinstr = {kloc = 0; kbef = stack; kaft = stack; kinstr} in
-  let push_empty_big_map k = IEmpty_big_map (dummy_loc, unit_t, unit_t, k) in
+  let stack = bot_t in
+  let descr kinstr =
+    Instruction.{kloc = 0; kbef = stack; kaft = stack; kinstr}
+  in
+  let push_empty_big_map k =
+    Instruction.IEmpty_big_map (dummy_loc, unit_t, unit_t, k)
+  in
   let large_mem_seq n =
     let rec aux n acc =
       if n = 0 then acc
       else
         aux
           (n - 1)
-          (IDup
+          (Instruction.IDup
              ( dummy_loc,
                IConst
                  ( dummy_loc,

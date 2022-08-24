@@ -73,7 +73,7 @@ let parse_ticket_and_operation ~consume_deserialization_gas ~ticketer ~contents
   let unparsed_parameters = Micheline.strip_locations parameters_expr in
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let op =
-    Script_typed_ir.Internal_operation
+    Script_typed_ir.Operation.Internal_operation
       {
         source;
         nonce;

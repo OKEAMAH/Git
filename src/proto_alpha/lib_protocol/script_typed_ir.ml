@@ -3817,6 +3817,10 @@ let chest_key_t = Ty.chest_key_t
 
 let chest_t = Ty.chest_t
 
+let bot_t = Ty.bot_t
+
+let item_t = Ty.stack_t
+
 type 'a kinstr_traverse = 'a Instruction.kinstr_traverse
 
 let kinstr_traverse = Instruction.kinstr_traverse

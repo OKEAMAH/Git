@@ -112,7 +112,7 @@ val unparse_bls12_381_fr :
 val unparse_operation :
   loc:'loc ->
   context ->
-  Script_typed_ir.operation ->
+  Script_typed_ir.Operation.t ->
   ('loc Script.michelson_node * context, error trace) result
 
 (** [unparse_with_data_encoding ~loc ctxt v gas_cost enc] returns the bytes

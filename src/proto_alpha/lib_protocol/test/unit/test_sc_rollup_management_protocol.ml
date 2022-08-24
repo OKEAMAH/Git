@@ -104,7 +104,7 @@ let test_encode_decode_internal_inbox_message () =
       (Signature.Public_key_hash.of_b58check
          "tz1RjtZUVeLhADFHDL8UwDZA6vjWWhojpu5w")
   in
-  let*? (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
+  let*? (Script_typed_ir.Ty.Ty_ex_c pair_nat_ticket_string_ty) =
     Environment.wrap_tzresult
       (let open Result_syntax in
       let open Script_typed_ir in
@@ -239,7 +239,7 @@ let test_encode_decode_outbox_message () =
   in
   (* Transaction to ticket receiver. *)
   let* transaction1, ctxt =
-    let*? (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
+    let*? (Script_typed_ir.Ty.Ty_ex_c pair_nat_ticket_string_ty) =
       Environment.wrap_tzresult
         (let open Result_syntax in
         let open Script_typed_ir in
@@ -260,7 +260,7 @@ let test_encode_decode_outbox_message () =
   in
   (* Transaction to the `add` endpoint of add-or-clear contract. *)
   let* transaction2, ctxt =
-    let*? (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
+    let*? (Script_typed_ir.Ty.Ty_ex_c pair_nat_ticket_string_ty) =
       Environment.wrap_tzresult Script_typed_ir.(pair_t (-1) nat_t string_t)
     in
     let*? content =

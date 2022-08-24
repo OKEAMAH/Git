@@ -629,7 +629,7 @@ module Registration_section = struct
 
   let dummy_loc = 0
 
-  let halt = IHalt dummy_loc
+  let halt = Instruction.IHalt dummy_loc
 
   let () =
     (* KHalt *)
@@ -731,7 +731,7 @@ module Registration_section = struct
 
     let rec make_stack (depth : int) =
       if depth = 0 then assert false
-      else if depth = 1 then Ex_stack (unit @$ Script_typed_ir.Bot_t, ((), eos))
+      else if depth = 1 then Ex_stack (unit @$ Script_typed_ir.bot_t, ((), eos))
       else
         let stack = make_stack (depth - 1) in
         match stack with
@@ -1149,7 +1149,8 @@ module Registration_section = struct
         ~kinstr:(IEmpty_set (dummy_loc, unit, halt))
         ()
 
-    let set_iter_code = ISet_iter (dummy_loc, int, IDrop (dummy_loc, halt), halt)
+    let set_iter_code =
+      Instruction.ISet_iter (dummy_loc, int, IDrop (dummy_loc, halt), halt)
 
     let () =
       (*
@@ -1276,7 +1277,7 @@ module Registration_section = struct
      *)
 
     let map_map_code () =
-      IMap_map
+      Instruction.IMap_map
         (dummy_loc, map int unit, IFailwith (dummy_loc, cpair int unit), halt)
 
     let () =
@@ -1296,7 +1297,8 @@ module Registration_section = struct
         ()
 
     let kmap_iter_code =
-      IMap_iter (dummy_loc, cpair int unit, IDrop (dummy_loc, halt), halt)
+      Instruction.IMap_iter
+        (dummy_loc, cpair int unit, IDrop (dummy_loc, halt), halt)
 
     let () =
       (*
@@ -1976,7 +1978,7 @@ module Registration_section = struct
         - IHalt (false on top of stack)
         - IConst false ; IHalt (true on top of stack)
        *)
-      let push_false = IConst (dummy_loc, bool, false, halt) in
+      let push_false = Instruction.IConst (dummy_loc, bool, false, halt) in
       simple_benchmark
         ~name:Interpreter_workload.N_ILoop
         ~stack_type:(bool @$ bot)
@@ -1989,7 +1991,7 @@ module Registration_section = struct
         ICons_right ->
         IHalt
        *)
-      let cons_r = ICons_right (dummy_loc, unit, halt) in
+      let cons_r = Instruction.ICons_right (dummy_loc, unit, halt) in
       simple_benchmark
         ~name:Interpreter_workload.N_ILoop_left
         ~stack_type:(cunion unit unit @$ bot)
@@ -2012,9 +2014,10 @@ module Registration_section = struct
     let dummy_lambda =
       let open Script_typed_ir in
       let descr =
-        {kloc = 0; kbef = unit @$ bot; kaft = unit @$ bot; kinstr = halt}
+        Instruction.
+          {kloc = 0; kbef = unit @$ bot; kaft = unit @$ bot; kinstr = halt}
       in
-      Lam (descr, Micheline.Int (0, Z.zero))
+      Lambda.Lam (descr, Micheline.Int (0, Z.zero))
 
     let () =
       (*
@@ -2041,14 +2044,15 @@ module Registration_section = struct
       let code =
         let open Script_typed_ir in
         let descr =
-          {
-            kloc = 0;
-            kbef = cpair unit unit @$ bot;
-            kaft = unit @$ bot;
-            kinstr = ICdr (dummy_loc, halt);
-          }
+          Instruction.
+            {
+              kloc = 0;
+              kbef = cpair unit unit @$ bot;
+              kaft = unit @$ bot;
+              kinstr = ICdr (dummy_loc, halt);
+            }
         in
-        Lam (descr, Micheline.Int (0, Z.zero))
+        Lambda.Lam (descr, Micheline.Int (0, Z.zero))
       in
       simple_benchmark_with_stack_sampler
         ~name:Interpreter_workload.N_IApply
@@ -2099,7 +2103,7 @@ module Registration_section = struct
               Samplers.Random_type.m_comparable_type ~size rng_state
             in
             let value = Samplers.Random_value.comparable ty rng_state in
-            let kinstr = ICompare (dummy_loc, ty, halt) in
+            let kinstr = Instruction.ICompare (dummy_loc, ty, halt) in
             Ex_stack_and_kinstr
               {
                 stack = (value, (value, eos));
@@ -2311,7 +2315,7 @@ module Registration_section = struct
       benchmark
         ~name:Interpreter_workload.N_IPack
         ~kinstr_and_stack_sampler:(fun _cfg _rng_state ->
-          let kinstr = IPack (dummy_loc, unit, halt) in
+          let kinstr = Instruction.IPack (dummy_loc, unit, halt) in
           fun () ->
             Ex_stack_and_kinstr
               {stack = ((), eos); stack_type = unit @$ bot; kinstr})
@@ -2329,7 +2333,7 @@ module Registration_section = struct
                    >|= Environment.wrap_tzresult
                    >>=? fun (bytes, _) -> return bytes ))
           in
-          let kinstr = IUnpack (dummy_loc, unit, halt) in
+          let kinstr = Instruction.IUnpack (dummy_loc, unit, halt) in
           fun () ->
             Ex_stack_and_kinstr
               {stack = (b, eos); stack_type = bytes @$ bot; kinstr})
@@ -2485,7 +2489,7 @@ module Registration_section = struct
           let spl_tx = sapling_transaction memo_size in
           spl_tx @$ spl_state @$ bot
 
-        let kinstr = ISapling_verify_update (dummy_loc, halt)
+        let kinstr = Instruction.ISapling_verify_update (dummy_loc, halt)
 
         let prepare_sapling_execution_environment sapling_forge_rng_seed
             sapling_transition =
@@ -2779,7 +2783,7 @@ module Registration_section = struct
         ~kinstr:(IRead_ticket (dummy_loc, unit, halt))
         ()
 
-    let split_ticket_instr = ISplit_ticket (dummy_loc, halt)
+    let split_ticket_instr = Instruction.ISplit_ticket (dummy_loc, halt)
 
     let stack_type = ticket unit @$ cpair nat nat @$ bot
 
@@ -2822,7 +2826,7 @@ module Registration_section = struct
               })
         ()
 
-    let join_tickets_instr = IJoin_tickets (dummy_loc, string, halt)
+    let join_tickets_instr = Instruction.IJoin_tickets (dummy_loc, string, halt)
 
     let ticket_str = ticket string
 
@@ -2885,7 +2889,7 @@ module Registration_section = struct
     let stack_type =
       Michelson_types.chest_key @$ Michelson_types.chest @$ nat @$ bot
 
-    let kinstr = IOpen_chest (dummy_loc, halt)
+    let kinstr = Instruction.IOpen_chest (dummy_loc, halt)
 
     let resulting_stack chest chest_key time =
       let chest = Script_timelock.make_chest chest in
@@ -2943,7 +2947,7 @@ module Registration_section = struct
         ~amplification:100
         ~name:Interpreter_workload.N_KNil
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
-          let cont = KNil in
+          let cont = Instruction.KNil in
           let stack = eos in
           let stack_type = bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
@@ -2959,7 +2963,7 @@ module Registration_section = struct
         ~amplification:100
         ~name:Interpreter_workload.N_KCons
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
-          let cont = KCons (halt, KNil) in
+          let cont = Instruction.KCons (halt, KNil) in
           let stack = ((), eos) in
           let stack_type = unit @$ bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
@@ -2974,7 +2978,7 @@ module Registration_section = struct
         ~amplification:100
         ~name:Interpreter_workload.N_KReturn
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
-          let cont = KReturn (eos, unit @$ bot, KNil) in
+          let cont = Instruction.KReturn (eos, unit @$ bot, KNil) in
           let stack = ((), eos) in
           let stack_type = unit @$ bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
@@ -3003,7 +3007,7 @@ module Registration_section = struct
               level = Script_int.zero_n;
             }
           in
-          let cont = KView_exit (step_constants, KNil) in
+          let cont = Instruction.KView_exit (step_constants, KNil) in
           let stack = ((), eos) in
           let stack_type = unit @$ bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
@@ -3018,7 +3022,9 @@ module Registration_section = struct
         ~amplification:100
         ~name:Interpreter_workload.N_KLoop_in
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
-          let cont = KLoop_in (IConst (dummy_loc, bool, false, halt), KNil) in
+          let cont =
+            Instruction.KLoop_in (IConst (dummy_loc, bool, false, halt), KNil)
+          in
           let stack = (false, ((), eos)) in
           let stack_type = bool @$ unit @$ bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
@@ -3034,7 +3040,7 @@ module Registration_section = struct
         ~name:Interpreter_workload.N_KLoop_in_left
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let cont =
-            KLoop_in_left (ICons_right (dummy_loc, unit, halt), KNil)
+            Instruction.KLoop_in_left (ICons_right (dummy_loc, unit, halt), KNil)
           in
           let stack = (R (), eos) in
           let stack_type = cunion unit unit @$ bot in
@@ -3050,7 +3056,7 @@ module Registration_section = struct
         ~amplification:100
         ~name:Interpreter_workload.N_KUndip
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
-          let cont = KUndip ((), unit, KNil) in
+          let cont = Instruction.KUndip ((), unit, KNil) in
           let stack = eos in
           let stack_type = bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
@@ -3066,7 +3072,9 @@ module Registration_section = struct
         ~name:Interpreter_workload.N_KIter
         ~salt:"_empty"
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
-          let cont = KIter (IDrop (dummy_loc, halt), unit, [], KNil) in
+          let cont =
+            Instruction.KIter (IDrop (dummy_loc, halt), unit, [], KNil)
+          in
           let stack = ((), eos) in
           let stack_type = unit @$ bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
@@ -3085,7 +3093,9 @@ module Registration_section = struct
         ~name:Interpreter_workload.N_KIter
         ~salt:"_nonempty"
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
-          let cont = KIter (IDrop (dummy_loc, halt), unit, [()], KNil) in
+          let cont =
+            Instruction.KIter (IDrop (dummy_loc, halt), unit, [()], KNil)
+          in
           let stack = ((), eos) in
           let stack_type = unit @$ bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
@@ -3107,7 +3117,9 @@ module Registration_section = struct
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let kbody = halt in
           fun () ->
-            let cont = KList_enter_body (kbody, [()], [], list unit, 1, KNil) in
+            let cont =
+              Instruction.KList_enter_body (kbody, [()], [], list unit, 1, KNil)
+            in
             Ex_stack_and_cont
               {stack = ((), eos); stack_type = unit @$ bot; cont})
         ()
@@ -3128,7 +3140,7 @@ module Registration_section = struct
           fun () ->
             let ys = Samplers.Random_value.value (list unit) rng_state in
             let cont =
-              KList_enter_body
+              Instruction.KList_enter_body
                 (kbody, [], ys.elements, list unit, ys.length, KNil)
             in
             Ex_stack_and_cont
@@ -3149,7 +3161,9 @@ module Registration_section = struct
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let kbody = halt in
           fun () ->
-            let cont = KList_enter_body (kbody, [], [], list unit, 1, KNil) in
+            let cont =
+              Instruction.KList_enter_body (kbody, [], [], list unit, 1, KNil)
+            in
             Ex_stack_and_cont
               {stack = ((), eos); stack_type = unit @$ bot; cont})
         ()
@@ -3168,7 +3182,9 @@ module Registration_section = struct
         ~salt:"_terminal"
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let kbody = halt in
-          let cont = KList_exit_body (kbody, [], [], list unit, 1, KNil) in
+          let cont =
+            Instruction.KList_exit_body (kbody, [], [], list unit, 1, KNil)
+          in
           fun () ->
             Ex_stack_and_cont
               {stack = ((), ((), eos)); stack_type = unit @$ unit @$ bot; cont})
@@ -3177,9 +3193,10 @@ module Registration_section = struct
     let stack_type = cpair int unit @$ unit @$ bot
 
     let map_enter_body_code =
-      let kbody = ICdr (dummy_loc, halt) in
+      let kbody = Instruction.ICdr (dummy_loc, halt) in
       fun accu ->
-        KMap_enter_body (kbody, accu, Script_map.empty int, map int unit, KNil)
+        Instruction.KMap_enter_body
+          (kbody, accu, Script_map.empty int, map int unit, KNil)
 
     let () =
       (*
@@ -3233,11 +3250,13 @@ module Registration_section = struct
         ~amplification:100
         ~name:Interpreter_workload.N_KMap_exit_body
         ~cont_and_stack_sampler:(fun cfg rng_state ->
-          let kbody = ICdr (dummy_loc, halt) in
+          let kbody = Instruction.ICdr (dummy_loc, halt) in
           fun () ->
             let ty = map int unit in
             let key, map = Maps.generate_map_and_key_in_map cfg rng_state in
-            let cont = KMap_exit_body (kbody, [], map, key, ty, KNil) in
+            let cont =
+              Instruction.KMap_exit_body (kbody, [], map, key, ty, KNil)
+            in
             Ex_stack_and_cont
               {stack = ((), ((), eos)); stack_type = unit @$ unit @$ bot; cont})
         ()
@@ -3248,7 +3267,7 @@ module Registration_section = struct
         ~amplification:100
         ~name:Interpreter_workload.N_KMap_head
         ~cont_and_stack_sampler:(fun _cfg _rng_state () ->
-          let cont = KMap_head (Option.some, KNil) in
+          let cont = Instruction.KMap_head (Option.some, KNil) in
           Ex_stack_and_cont
             {stack = ((), ((), eos)); stack_type = unit @$ unit @$ bot; cont})
         ()

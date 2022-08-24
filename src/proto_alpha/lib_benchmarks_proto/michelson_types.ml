@@ -28,9 +28,9 @@ open Script_typed_ir
 
 [@@@ocaml.warning "-32"]
 
-let ( @$ ) x y = Item_t (x, y)
+let ( @$ ) x y = item_t x y
 
-let bot = Bot_t
+let bot = bot_t
 
 let unit = unit_t
 
