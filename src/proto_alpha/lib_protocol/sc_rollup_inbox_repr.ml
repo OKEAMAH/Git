@@ -142,6 +142,11 @@ let hash_skip_list_cell cell =
   :: List.map Hash.to_bytes back_pointers_hashes
   |> Hash.hash_bytes
 
+let cost_hash_skip_list_cell _cell =
+  let open Gas_limit_repr in
+  (* FIXME: This function will be defined in forthcoming commits. *)
+  free
+
 module V1 = struct
   type history_proof = (Hash.t, Hash.t) Skip_list.cell
 
@@ -733,10 +738,31 @@ struct
       ~target_ptr
       path
 
-  let cost_verify_inclusion_proof _proof _a _b =
+  let cost_valid_back_path _proof_len _max_nb_backpointers =
     let open Gas_limit_repr in
-    (* FIXME: To be defined by a forthcoming commit. *)
+    (* FIXME: This function will be defined in forthcoming commits. *)
     free
+
+  let cost_verify_inclusion_proof proof a b =
+    let open Saturation_repr in
+    let open Syntax in
+    (* This function is defined over the structure of [verify_inclusion_proof]. *)
+    let cost_hash_skip_list_cells =
+      cost_hash_skip_list_cell a + cost_hash_skip_list_cell b
+      + List.fold_left
+          (fun accu c -> accu + cost_hash_skip_list_cell c)
+          (safe_int 0)
+          proof
+    in
+    let max_nb_backpointers =
+      List.fold_left
+        (fun accu c ->
+          Compare.Int.max accu (Skip_list.number_of_back_pointers c))
+        0
+        proof
+    in
+    cost_hash_skip_list_cells
+    + cost_valid_back_path (List.length proof) max_nb_backpointers
 
   type proof =
     (* See the main docstring for this type (in the mli file) for
