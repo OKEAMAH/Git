@@ -276,6 +276,7 @@ let perform_big_map_benchmarks snoop proto =
   in
   perform_benchmarks [] snoop benches
 
+
 let main protocol =
   Log.info "Entering Perform_inference.main" ;
   let snoop = Snoop.create () in

@@ -26,7 +26,19 @@
 (* This module runs the scripts implemented in all other modules of this
    directory. *)
 
+let pre_check () =
+  Log.info "Check pre conditions for running benchmark" ;
+
+  (* Fixme just run through all models and run their check.
+     The tezt harness is wierd
+  *)
+  Tezos_benchmarks_proto_alpha.Interpreter_benchmarks.Registration_section
+  .Bls12_381
+  .check
+    ()
+
 let run proto =
+  pre_check () ;
   Lwt_main.run
     (let* () = Prepare_data.main proto in
      let* () = Perform_benchmarks.main proto in

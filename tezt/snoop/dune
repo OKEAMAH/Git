@@ -1,5 +1,6 @@
 (executable
  (name main)
  (libraries
+   tezos_benchmarks_proto_alpha
    tezt-tezos)
  (flags (:standard -open Tezt -open Tezt_tezos -open Tezt.Base)))
