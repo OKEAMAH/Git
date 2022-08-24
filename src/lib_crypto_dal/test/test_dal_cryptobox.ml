@@ -44,7 +44,7 @@ module Test = struct
     let msg_size = slot_size in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
-      Bytes.set_int64_le msg (i * 8) (Random.int64 Int64.max_int)
+      Bytes.set_int64_le msg (i * 8) Int64.max_int
     done ;
 
     Printf.eprintf
@@ -54,6 +54,7 @@ module Test = struct
     let parameters =
       Cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
         ~slot_size
+        ~segment_size
     in
     let () = Cryptobox.Internal_for_tests.load_parameters parameters in
     Tezos_lwt_result_stdlib.Lwtreslib.Bare.List.iter_e

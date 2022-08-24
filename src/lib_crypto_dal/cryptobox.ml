@@ -580,8 +580,10 @@ module Inner = struct
     Scalar_array.blit p ~src_off:0 res ~dst_off:0 ~len:ps ;
     res
 
-  let slot_as_polynomial_length ~slot_size =
-    1 lsl Z.(log2up (of_int slot_size / of_int scalar_bytes_amount))
+  let slot_as_polynomial_length ~slot_size ~segment_size =
+    let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
+    let segment_length_domain, _ = select_fft_domain segment_length in
+    slot_size / segment_size * segment_length_domain
 
   type parameters = {
     redundancy_factor : int;
@@ -1189,8 +1191,8 @@ include Inner
 module Verifier = Inner
 
 module Internal_for_tests = struct
-  let initialisation_parameters_from_slot_size ~slot_size =
-    let size = slot_as_polynomial_length ~slot_size in
+  let initialisation_parameters_from_slot_size ~slot_size ~segment_size =
+    let size = slot_as_polynomial_length ~slot_size ~segment_size in
     let secret =
       Bls12_381.Fr.of_string
         "20812168509434597367146703229805575690060615791308155437936410982393987532344"
