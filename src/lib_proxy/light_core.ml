@@ -130,25 +130,18 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
           Lwt.return irmin
       | Some res -> Lwt.return res
 
-    let rec get_first_merkle_tree_choice ?(use_v2 : bool = false) chain block
-        key leaf_kind tried_endpoints_rev remaining_endpoints =
+    let rec get_first_merkle_tree_choice chain block key leaf_kind
+        tried_endpoints_rev remaining_endpoints =
       let open Lwt_syntax in
       match remaining_endpoints with
       | [] -> Lwt.return_none
       | ((uri, rpc_context) as hd_endpoint) :: tl_remaining_endpoints -> (
           let* raw_context =
-            if use_v2 then
-              Lwt.map (Result.map (Option.map Either.right))
-              @@ Light_proto.merkle_tree_v2
-                   Proxy.{rpc_context; chain; block; mode = Client}
-                   key
-                   leaf_kind
-            else
-              Lwt.map (Result.map (Option.map Either.left))
-              @@ Light_proto.merkle_tree
-                   Proxy.{rpc_context; chain; block; mode = Client}
-                   key
-                   leaf_kind
+            Lwt.map (Result.map (Option.map Either.right))
+            @@ Light_proto.merkle_tree_v2
+                 Proxy.{rpc_context; chain; block; mode = Client}
+                 key
+                 leaf_kind
           in
           match raw_context with
           | Ok (Some mtree) ->
@@ -169,7 +162,6 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                   (chain_n_block_to_string chain block)
               in
               get_first_merkle_tree_choice
-                ~use_v2
                 chain
                 block
                 key
@@ -188,7 +180,6 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                   trace
               in
               get_first_merkle_tree_choice
-                ~use_v2
                 chain
                 block
                 key
@@ -202,7 +193,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
 
         If [Some (mtree, other_endpoints)] is returned, it is guaranteed that
         [List.length endpoints = List.length other_endpoints + 1] *)
-    let get_first_merkle_tree_v2 chain block key leaf_kind :
+    let get_first_merkle_tree chain block key leaf_kind :
         (Proof.tree Proof.t * (Uri.t * RPC_context.simple) list) option Lwt.t =
       Lwt.map
         (Option.map (function
@@ -210,14 +201,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
             | _ ->
                 Stdlib.failwith
                   "Should never encounter `Left` with `use_v2:true`"))
-      @@ get_first_merkle_tree_choice
-           ~use_v2:true
-           chain
-           block
-           key
-           leaf_kind
-           []
-           endpoints
+      @@ get_first_merkle_tree_choice chain block key leaf_kind [] endpoints
 
     let get key =
       let open Lwt_syntax in
@@ -231,7 +215,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
       let open Lwt_result_syntax in
       let*! () = Logger.(emit api_do_rpc @@ key_to_string key) in
       let*! mproof_and_i_opt =
-        get_first_merkle_tree_v2 chain block key Proof.Raw_context
+        get_first_merkle_tree chain block key Proof.Raw_context
       in
       let nb_endpoints = List.length endpoints in
       match mproof_and_i_opt with
