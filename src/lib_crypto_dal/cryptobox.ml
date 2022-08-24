@@ -662,65 +662,6 @@ module Inner = struct
 
   let polynomial_evaluate = Polynomials.evaluate
 
-  let dft ~inverse ~domain ~coefficients =
-    let n = Array.length domain in
-    let res = Array.make n Scalar.(copy zero) in
-    for i = 0 to n - 1 do
-      for j = 0 to n - 1 do
-        let mul =
-          Scalar.mul
-            coefficients.(j)
-            (Scalar.pow (Array.get domain 1) (Z.of_int (i * j)))
-        in
-        res.(i) <- Scalar.add res.(i) mul
-      done
-    done ;
-    if inverse then
-      for i = 0 to n - 1 do
-        res.(i) <- Scalar.(mul (inverse_exn (of_int n)) res.(i))
-      done ;
-    res
-
-  let inv_root root = Scalar.inverse_exn root
-
-  let pfa_fr_inplace2 ~inverse n1 n2 root1 root2 ~coefficients =
-    let n = n1 * n2 in
-    Printf.eprintf "\n len = %d ; n = %d \n" (Array.length coefficients) n ;
-    assert (Array.length coefficients = n) ;
-    let domain_n1 = make_domain root1 n1 in
-    let domain_n2 = make_domain root2 n2 in
-    let columns =
-      Array.init n1 (fun _ -> Array.init n2 (fun _ -> Scalar.(copy zero)))
-    in
-    let rows =
-      Array.init n2 (fun _ -> Array.init n1 (fun _ -> Scalar.(copy zero)))
-    in
-
-    for z = 0 to n - 1 do
-      columns.(z mod n1).(z mod n2) <- coefficients.(z)
-    done ;
-
-    for k1 = 0 to n1 - 1 do
-      columns.(k1) <- dft ~inverse ~domain:domain_n2 ~coefficients:columns.(k1)
-    done ;
-
-    for k1 = 0 to n1 - 1 do
-      for k2 = 0 to n2 - 1 do
-        rows.(k2).(k1) <- columns.(k1).(k2)
-      done
-    done ;
-
-    for k2 = 0 to n2 - 1 do
-      rows.(k2) <- dft ~inverse ~domain:domain_n1 ~coefficients:rows.(k2)
-    done ;
-
-    for k1 = 0 to n1 - 1 do
-      for k2 = 0 to n2 - 1 do
-        coefficients.(((n1 * k2) + (n2 * k1)) mod n) <- rows.(k2).(k1)
-      done
-    done ;
-    coefficients
-
   let resize s p ps =
     let res = Array.init s (fun _ -> Scalar.(copy zero)) in
     Array.blit p 0 res 0 ps ;
@@ -1094,20 +1035,8 @@ module Inner = struct
       z_list
     |> snd |> Polynomials.of_dense
 
-  let interpolation_h_poly2 t y domain z_list =
-    let rt = Array.get domain 1 in
-    let rt1 = Scalar.pow rt (Z.of_int 19) in
-    let rt2 = Scalar.pow rt (Z.of_int 8) in
-    let h =
-      prime_factor_algorithm_fft
-        ~domain1_length_log:3
-        ~domain2_length:19
-        ~domain1:(make_domain2 (inv_root rt1) 8)
-        ~domain2:(make_domain2 (inv_root rt2) 19)
-        ~coefficients:z_list
-        ~inverse:true
-        ~scratch_zone:t.scratch_zone
-    in
+  let interpolation_h_poly2 t y coefficients =
+    let h = fft t ~coefficients ~domains:[8; 19] ~inverse:true in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
       (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
@@ -1127,29 +1056,18 @@ module Inner = struct
     let diff_commits = G1.(add cm_h (negate cm_f)) in
     Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
 
-  let interpolation_h_poly3 y domain z_list =
-    let rt = Array.get domain 1 in
-    let rt1 = Scalar.pow rt (Z.of_int 19) in
-    let rt2 = Scalar.pow rt (Z.of_int 2) in
-    let h =
-      pfa_fr_inplace2
-        2
-        19
-        (inv_root rt1)
-        (inv_root rt2)
-        ~coefficients:z_list
-        ~inverse:true
-    in
+  let interpolation_h_poly3 t y coefficients =
+    let h = fft t ~domains:[2; 19] ~coefficients ~inverse:true in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
       (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
       Scalar.(copy one)
-      h
+      (Scalar_array.to_array h)
     |> snd
 
-  let verify3 t cm_f srs2l domain (w, evaluations) proof =
+  let verify3 t cm_f srs2l (w, evaluations) proof =
     let open Bls12_381 in
-    let h = interpolation_h_poly3 w domain evaluations in
+    let h = interpolation_h_poly3 t w evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
     let l = t.shard_size in
     let sl_min_yl =
@@ -1159,9 +1077,9 @@ module Inner = struct
 
     Pairing.pairing_check [(diff_commits, G2.(copy one)); (proof, sl_min_yl)]
 
-  let verify2 (t : t) cm_f srs2l domain (w, evaluations) proof =
+  let verify2 (t : t) cm_f srs2l (w, evaluations) proof =
     let open Bls12_381 in
-    let h = interpolation_h_poly2 t w domain evaluations in
+    let h = interpolation_h_poly2 t w evaluations in
     let cm_h = commit t (Polynomials.of_dense h) in
     let l = t.segment_length_domain in
     let sl_min_yl =
@@ -1215,18 +1133,13 @@ module Inner = struct
 
   let verify_shard t cm {index = shard_index; share = shard_evaluations} proof =
     let generator_domain_n = Array.get t.domain_n 1 in
-    let domain =
-      make_domain
-        (Scalar.pow generator_domain_n (Z.of_int t.number_of_shards))
-        t.shard_size
-    in
+
     let power_coset = Scalar.pow generator_domain_n (Z.of_int shard_index) in
     verify3
       t
       cm
       t.srs.kate_amortized_srs_g2_shards
-      domain
-      (power_coset, shard_evaluations)
+      (power_coset, Scalar_array.of_array shard_evaluations)
       proof
 
   let _prove_single t p z =
@@ -1267,11 +1180,6 @@ module Inner = struct
     else
       let coset_size = t.segment_length_domain in
       let generator_domain_k = Array.get t.domain_k 1 in
-      let domain =
-        make_domain
-          (Scalar.pow generator_domain_k (Z.of_int (t.k / coset_size)))
-          coset_size
-      in
       let power = Scalar.pow generator_domain_k (Z.of_int slot_segment_index) in
       let slot_segment_evaluations =
         Array.init coset_size (function
@@ -1300,7 +1208,6 @@ module Inner = struct
            t
            cm
            t.srs.kate_amortized_srs_g2_segments
-           domain
            (power, Scalar_array.of_array slot_segment_evaluations)
            proof)
 end
