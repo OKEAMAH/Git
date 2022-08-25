@@ -3,8 +3,6 @@
    This module should never be part of the PVM since it assumes lazy vectors are
    fully loaded. *)
 
-module TzStdLib = Tezos_lwt_result_stdlib.Lwtreslib.Bare
-
 (* Version *)
 
 let version = 1l
@@ -121,7 +119,7 @@ struct
 
   let list f xs = List.iter f xs
 
-  let list_lwt f xs = TzStdLib.List.iter_s f xs
+  let list_action f xs = Action.List.iter_s f xs
 
   let opt f xo = Lib.Option.app f xo
 
@@ -129,9 +127,9 @@ struct
     len (List.length xs) ;
     list f xs
 
-  let vec_lwt f xs =
+  let vec_action f xs =
     len (List.length xs) ;
-    list_lwt f xs
+    list_action f xs
 
   let gap32 () =
     let p = pos s in
@@ -958,14 +956,14 @@ struct
       patch_gap32 g (pos s - p))
 
   let section_lwt id f x needed =
-    let open Lwt.Syntax in
+    let open Action.Syntax in
     if needed then (
       u8 id ;
       let g = gap32 () in
       let p = pos s in
       let+ () = f x in
       patch_gap32 g (pos s - p))
-    else Lwt.return_unit
+    else Action.return_unit
 
   (* Type section *)
   let type_ t = func_type t.it
@@ -1140,10 +1138,10 @@ struct
 
   (* Data section *)
   let data seg =
-    let open Lwt.Syntax in
+    let open Action.Syntax in
     let {dinit; dmode} = seg.it in
     let* dinit = Ast.get_data dinit S.datas in
-    let+ dinit = Chunked_byte_vector.to_string dinit in
+    let+ dinit = Action.of_lwt (Chunked_byte_vector.to_string dinit) in
     match dmode.it with
     | Passive ->
         vu32 0x01l ;
@@ -1159,17 +1157,17 @@ struct
         string dinit
     | Declarative -> assert false
 
-  let data_section datas = section_lwt 11 (vec_lwt data) datas (datas <> [])
+  let data_section datas = section_lwt 11 (vec_action data) datas (datas <> [])
 
   (* Data count section *)
   let data_count_section datas m =
-    let open Lwt.Syntax in
+    let open Action.Syntax in
     let+ modl = Free.module_ m in
     section 12 len (List.length datas) Free.(modl.datas <> Set.empty)
 
   (* Module *)
   let module_ m =
-    let open Lwt.Syntax in
+    let open Action.Syntax in
     let to_list m = List.map snd (Lazy_vector.Int32Vector.loaded_bindings m) in
     u32 0x6d736100l ;
     u32 version ;
@@ -1188,10 +1186,12 @@ struct
 end
 
 let encode m =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* blocks =
-    let* bls = Ast.Vector.to_list m.Source.it.Ast.allocations.Ast.blocks in
-    TzStdLib.List.map_s Ast.Vector.to_list bls
+    let* bls =
+      Action.of_lwt @@ Ast.Vector.to_list m.Source.it.Ast.allocations.Ast.blocks
+    in
+    Action.List.map_s (fun x -> Action.of_lwt @@ Ast.Vector.to_list x) bls
   in
   let module E = E (struct
     let stream = stream ()

@@ -118,26 +118,28 @@ let test_write_host_fun () =
   Instance.update_module_ref module_reg module_key module_inst ;
 
   let* _ =
-    Eval.invoke
-      ~module_reg
-      ~caller:module_key
-      host_funcs_registry
-      ~input
-      ~output
-      Host_funcs.Internal_for_tests.read_input
-      values
+    Action.run
+      (Eval.invoke
+         ~module_reg
+         ~caller:module_key
+         host_funcs_registry
+         ~input
+         ~output
+         Host_funcs.Internal_for_tests.read_input
+         values)
   in
   let values = Values.[Num (I32 50l); Num (I32 5l)] in
 
   let* result =
-    Eval.invoke
-      ~module_reg
-      ~caller:module_key
-      host_funcs_registry
-      ~input
-      ~output
-      Host_funcs.Internal_for_tests.write_output
-      values
+    Action.run
+      (Eval.invoke
+         ~module_reg
+         ~caller:module_key
+         host_funcs_registry
+         ~input
+         ~output
+         Host_funcs.Internal_for_tests.write_output
+         values)
   in
   let* z = Output_buffer.get output 2l Z.zero in
   let* level, id = Output_buffer.get_id output in
@@ -147,14 +149,15 @@ let test_write_host_fun () =
   assert (id = Z.zero) ;
   let values = Values.[Num (I32 50l); Num (I32 5000l)] in
   let* result =
-    Eval.invoke
-      ~module_reg
-      ~caller:module_key
-      host_funcs_registry
-      ~input
-      ~output
-      Host_funcs.Internal_for_tests.write_output
-      values
+    Action.run
+      (Eval.invoke
+         ~module_reg
+         ~caller:module_key
+         host_funcs_registry
+         ~input
+         ~output
+         Host_funcs.Internal_for_tests.write_output
+         values)
   in
   let* level, id = Output_buffer.get_id output in
   assert (result = Values.[Num (I32 1l)]) ;

@@ -13,7 +13,7 @@ depends: [
   "tezos-lwt-result-stdlib"
   "zarith" { >= "1.12" & < "1.13" }
   "lazy-containers"
-  "alcotest" { with-test & >= "1.5.0" }
+  "alcotest-lwt" { with-test & >= "1.5.0" }
 ]
 build: [
   ["rm" "-r" "vendors"]

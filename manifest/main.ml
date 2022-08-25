@@ -1173,7 +1173,7 @@ let _octez_webassembly_test =
     ~path:"src/lib_webassembly/tests"
     ~opam:"tezos-webassembly-interpreter"
     ~dune:Dune.[[S "include_subdirs"; S "no"]]
-    ~deps:[octez_webassembly_interpreter |> open_; alcotest]
+    ~deps:[octez_webassembly_interpreter |> open_; alcotest_lwt]
 
 let octez_version_parser =
   public_lib

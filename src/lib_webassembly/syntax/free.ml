@@ -40,23 +40,23 @@ let union (s1 : t) (s2 : t) : t =
     labels = Set.union s1.labels s2.labels;
   }
 
-let types s = {empty with types = s} |> Lwt.return
+let types s = {empty with types = s} |> Action.return
 
-let globals s = {empty with globals = s} |> Lwt.return
+let globals s = {empty with globals = s} |> Action.return
 
-let tables s = {empty with tables = s} |> Lwt.return
+let tables s = {empty with tables = s} |> Action.return
 
-let memories s = {empty with memories = s} |> Lwt.return
+let memories s = {empty with memories = s} |> Action.return
 
-let funcs s = {empty with funcs = s} |> Lwt.return
+let funcs s = {empty with funcs = s} |> Action.return
 
-let elems s = {empty with elems = s} |> Lwt.return
+let elems s = {empty with elems = s} |> Action.return
 
-let datas s = {empty with datas = s} |> Lwt.return
+let datas s = {empty with datas = s} |> Action.return
 
-let locals s = {empty with locals = s} |> Lwt.return
+let locals s = {empty with locals = s} |> Action.return
 
-let labels s = {empty with labels = s} |> Lwt.return
+let labels s = {empty with labels = s} |> Action.return
 
 let var x = Set.singleton x.it
 
@@ -65,7 +65,7 @@ let zero = Set.singleton 0l
 let shift s = Set.map (Int32.add (-1l)) (Set.remove 0l s)
 
 let ( ++* ) x y =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x' = x in
   let+ y' = y in
   union x' y'
@@ -73,9 +73,8 @@ let ( ++* ) x y =
 let list free xs = List.fold_left union empty (List.map free xs)
 
 let list_s free xs =
-  let open Lwt.Syntax in
-  let open Tezos_lwt_result_stdlib.Lwtreslib.Bare in
-  List.fold_left_s
+  let open Action.Syntax in
+  Action.List.fold_left_s
     (fun acc s ->
       let+ f = free s in
       union acc f)
@@ -87,26 +86,26 @@ let list_s free xs =
    This function is used during parsing (`MKElaborateFunc`), hence it will
    load entire vectors at once. *)
 let vector_s free v =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let rec fold acc n =
-    if n < 0l then Lwt.return acc
+    if n < 0l then Action.return acc
     else
-      let* s = Vector.get n v in
+      let* s = Action.of_lwt (Vector.get n v) in
       let* f = free s in
       fold (union acc f) (Int32.pred n)
   in
   fold empty (Int32.pred (Vector.num_elements v))
 
-let vector free v = vector_s (fun x -> Lwt.return (free x)) v
+let vector free v = vector_s (fun x -> Action.return (free x)) v
 
-let opt free xo = match xo with None -> Lwt.return empty | Some v -> free v
+let opt free xo = match xo with None -> Action.return empty | Some v -> free v
 
 let block_type = function
   | VarBlockType x -> types (var x)
-  | ValBlockType _ -> empty |> Lwt.return
+  | ValBlockType _ -> empty |> Action.return
 
-let rec instr blocks (e : instr) : t Lwt.t =
-  let empty = Lwt.return empty in
+let rec instr blocks (e : instr) : t Action.t =
+  let empty = Action.return empty in
   match e.it with
   | Unreachable | Nop | Drop | Select _ -> empty
   | RefNull _ | RefIsNull -> empty
@@ -138,8 +137,8 @@ let rec instr blocks (e : instr) : t Lwt.t =
   | DataDrop x -> datas (var x)
 
 and block blocks (Block_label es : block_label) =
-  let open Lwt.Syntax in
-  let* bl = Vector.get es blocks in
+  let open Action.Syntax in
+  let* bl = Action.of_lwt (Vector.get es blocks) in
   let+ free = vector_s (instr blocks) bl in
   {free with labels = shift free.labels}
 
@@ -148,7 +147,7 @@ let const blocks (c : const) = block blocks c.it
 let global blocks (g : global) = const blocks g.it.ginit
 
 let func blocks (f : func) =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ body = block blocks f.it.body in
   {body with locals = Set.empty}
 
@@ -158,7 +157,7 @@ let memory (_ : memory) = empty
 
 let segment_mode blocks f (m : segment_mode) =
   match m.it with
-  | Passive | Declarative -> empty |> Lwt.return
+  | Passive | Declarative -> empty |> Action.return
   | Active {index; offset} -> f (var index) ++* const blocks offset
 
 let elem blocks (s : elem_segment) =
@@ -179,7 +178,7 @@ let export_desc (d : export_desc) =
 let import_desc (d : import_desc) =
   match d.it with
   | FuncImport x -> types (var x)
-  | TableImport _ | MemoryImport _ | GlobalImport _ -> empty |> Lwt.return
+  | TableImport _ | MemoryImport _ | GlobalImport _ -> empty |> Action.return
 
 let export (e : export) = export_desc e.it.edesc
 

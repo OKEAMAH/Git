@@ -38,11 +38,11 @@ val push_rev_values : 'a list -> 'a lazy_stack -> 'a lazy_stack
 
 (** [pop_stack s] returns the value at [s.length - 1] and a new stack with
     length decreased by one. *)
-val pop_stack : 'a lazy_stack -> ('a * 'a lazy_stack) option Lwt.t
+val pop_stack : 'a lazy_stack -> ('a * 'a lazy_stack) option Action.t
 
 (** [pop_at_most n s] returns at most the [n] values on top of the stack, and
     the resulting stack. *)
-val pop_at_most : int -> 'a lazy_stack -> ('a list * 'a lazy_stack) Lwt.t
+val pop_at_most : int -> 'a lazy_stack -> ('a list * 'a lazy_stack) Action.t
 
 (** Instruction parsing continuations. *)
 type instr_block_kont =
@@ -296,16 +296,16 @@ val initial_decode_kont : name:string -> decode_kont
 (** [module_step stream kont] takes one step of parsing from a
    continuation and returns a new continuation. Fails when the
    continuation of the module is [MKStop] since it cannot reduce. *)
-val module_step : Chunked_byte_vector.t -> decode_kont -> decode_kont Lwt.t
+val module_step : Chunked_byte_vector.t -> decode_kont -> decode_kont Action.t
 
 (** [decode ~name ~bytes] decodes a module [name] from its [bytes] encoding.
 
     @raise Code on parsing errors. *)
-val decode : name:string -> bytes:Chunked_byte_vector.t -> Ast.module_ Lwt.t
+val decode : name:string -> bytes:Chunked_byte_vector.t -> Ast.module_ Action.t
 
 (** [decode ~name ~bytes] decodes a custom section of name [name] from its
     [bytes] encoding.
 
     @raise Code on parsing errors. *)
 val decode_custom :
-  Ast.name -> name:string -> bytes:Chunked_byte_vector.t -> string list Lwt.t
+  Ast.name -> name:string -> bytes:Chunked_byte_vector.t -> string list Action.t

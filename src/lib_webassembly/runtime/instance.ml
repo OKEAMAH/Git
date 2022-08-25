@@ -96,7 +96,8 @@ let empty_module_inst =
 let update_module_ref registry (Module_key key) module_inst =
   ModuleMap.set key module_inst registry
 
-let resolve_module_ref registry (Module_key key) = ModuleMap.get key registry
+let resolve_module_ref registry (Module_key key) =
+  Action.of_lwt @@ ModuleMap.get key registry
 
 let extern_type_of = function
   | ExternFunc func -> ExternFuncType (Func.type_of func)
@@ -105,11 +106,11 @@ let extern_type_of = function
   | ExternGlobal glob -> ExternGlobalType (Global.type_of glob)
 
 let export inst name =
-  let open Lwt.Syntax in
-  Lwt.catch
+  let open Action.Syntax in
+  Action.catch
     (fun () ->
-      let+ export = NameMap.get name inst.exports in
+      let+ export = Action.of_lwt @@ NameMap.get name inst.exports in
       Some export)
     (function
-      | Not_found | Lazy_map.UnexpectedAccess -> Lwt.return_none
-      | exn -> Lwt.fail exn)
+      | Not_found | Lazy_map.UnexpectedAccess -> Action.return_none
+      | exn -> Action.fail exn)

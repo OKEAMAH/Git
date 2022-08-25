@@ -137,7 +137,7 @@ val init_step :
   Ast.module_ ->
   extern list ->
   init_kont ->
-  init_kont Lwt.t
+  init_kont Action.t
 
 val init :
   module_reg:module_reg ->
@@ -145,7 +145,7 @@ val init :
   Host_funcs.registry ->
   Ast.module_ ->
   extern list ->
-  module_inst Lwt.t (* raises Link, Trap *)
+  module_inst Action.t (* raises Link, Trap *)
 
 val invoke :
   module_reg:module_reg ->
@@ -155,9 +155,9 @@ val invoke :
   Host_funcs.registry ->
   func_inst ->
   value list ->
-  value list Lwt.t (* raises Trap *)
+  value list Action.t (* raises Trap *)
 
-val step : module_reg -> config -> config Lwt.t
+val step : module_reg -> config -> config Action.t
 
 val config :
   ?input:input_inst ->

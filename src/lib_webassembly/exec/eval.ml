@@ -1,4 +1,4 @@
-open Lwt.Syntax
+open Action.Syntax
 open Values
 open Types
 open Instance
@@ -111,8 +111,8 @@ let lookup category list x =
     Crash.error x.at ("undefined " ^ category ^ " " ^ Int32.to_string x.it)
 
 let lookup_intmap category store x =
-  Lwt.catch
-    (fun () -> Instance.Vector.get x.it store)
+  Action.catch
+    (fun () -> Action.of_lwt (Instance.Vector.get x.it store))
     (function
       | Lazy_vector.Bounds ->
           Crash.error x.at ("undefined " ^ category ^ " " ^ Int32.to_string x.it)
@@ -121,7 +121,7 @@ let lookup_intmap category store x =
             x.at
             ("unexpected access in lazy map for " ^ category ^ " "
            ^ Int32.to_string x.it)
-      | exn -> Lwt.fail exn)
+      | exn -> Action.fail exn)
 
 let type_ (inst : module_inst) x = lookup_intmap "type" inst.types x
 
@@ -140,13 +140,13 @@ let data (inst : module_inst) x = lookup_intmap "data segment" inst.datas x
 let local (frame : frame) x = lookup "local" frame.locals x
 
 let any_ref inst x i at =
-  Lwt.catch
+  Action.catch
     (fun () ->
       let* tbl = table inst x in
-      Table.load tbl i)
+      Action.of_lwt (Table.load tbl i))
     (function
       | Table.Bounds -> Trap.error at ("undefined element " ^ Int32.to_string i)
-      | exn -> Lwt.fail exn)
+      | exn -> Action.fail exn)
 
 let func_ref inst x i at =
   let+ value = any_ref inst x i at in
@@ -164,8 +164,8 @@ let block_type inst bt =
   let singleton i = Lazy_vector.Int32Vector.(create 1l |> set 0l i) in
   match bt with
   | VarBlockType x -> type_ inst x
-  | ValBlockType None -> FuncType (empty (), empty ()) |> Lwt.return
-  | ValBlockType (Some t) -> FuncType (empty (), singleton t) |> Lwt.return
+  | ValBlockType None -> FuncType (empty (), empty ()) |> Action.return
+  | ValBlockType (Some t) -> FuncType (empty (), singleton t) |> Action.return
 
 let take n (vs : 'a stack) at =
   try Lib.List32.take n vs with Failure _ -> Crash.error at "stack underflow"
@@ -213,16 +213,16 @@ let elem_oob module_reg frame x i n =
     (I64.add (I64_convert.extend_i32_u i) (I64_convert.extend_i32_u n))
     (Int64.of_int32 (Instance.Vector.num_elements !elem))
 
-let rec step (module_reg : module_reg) (c : config) : config Lwt.t =
+let rec step (module_reg : module_reg) (c : config) : config Action.t =
   let {frame; code = vs, es; _} = c in
   match es with
   | {it = From_block (Block_label b, i); at} :: es ->
       let* inst = resolve_module_ref module_reg frame.inst in
-      let* block = Vector.get b inst.allocations.blocks in
+      let* block = Action.of_lwt (Vector.get b inst.allocations.blocks) in
       let length = Vector.num_elements block in
-      if i = length then Lwt.return {c with code = (vs, es)}
+      if i = length then Action.return {c with code = (vs, es)}
       else
-        let+ instr = Vector.get i block in
+        let+ instr = Action.of_lwt (Vector.get i block) in
         {
           c with
           code =
@@ -232,17 +232,17 @@ let rec step (module_reg : module_reg) (c : config) : config Lwt.t =
               :: es );
         }
   | e :: es -> step_resolved module_reg c frame vs e es
-  | [] -> Lwt.return c
+  | [] -> Action.return c
 
-and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
+and step_resolved module_reg (c : config) frame vs e es : config Action.t =
   let+ vs', es' =
     match (e.it, vs) with
     | From_block _, _ -> assert false (* resolved by [step] *)
     | Plain e', vs -> (
         match (e', vs) with
         | Unreachable, vs ->
-            Lwt.return (vs, [Trapping "unreachable executed" @@ e.at])
-        | Nop, vs -> Lwt.return (vs, [])
+            Action.return (vs, [Trapping "unreachable executed" @@ e.at])
+        | Nop, vs -> Action.return (vs, [])
         | Block (bt, es'), vs ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ (FuncType (ts1, ts2)) = block_type inst bt in
@@ -263,19 +263,19 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                 @@ e.at;
               ] )
         | If (bt, es1, es2), Num (I32 i) :: vs' ->
-            Lwt.return
+            Action.return
               (if i = 0l then (vs', [Plain (Block (bt, es2)) @@ e.at])
               else (vs', [Plain (Block (bt, es1)) @@ e.at]))
-        | Br x, vs -> Lwt.return ([], [Breaking (x.it, vs) @@ e.at])
+        | Br x, vs -> Action.return ([], [Breaking (x.it, vs) @@ e.at])
         | BrIf x, Num (I32 i) :: vs' ->
-            Lwt.return
+            Action.return
               (if i = 0l then (vs', []) else (vs', [Plain (Br x) @@ e.at]))
         | BrTable (xs, x), Num (I32 i) :: vs' ->
-            Lwt.return
+            Action.return
               (if I32.ge_u i (Lib.List32.length xs) then
                (vs', [Plain (Br x) @@ e.at])
               else (vs', [Plain (Br (Lib.List32.nth xs i)) @@ e.at]))
-        | Return, vs -> Lwt.return ([], [Returning vs @@ e.at])
+        | Return, vs -> Action.return ([], [Returning vs @@ e.at])
         | Call x, vs ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ func = func inst x in
@@ -287,16 +287,16 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             if not check_eq then
               (vs, [Trapping "indirect call type mismatch" @@ e.at])
             else (vs, [Invoke func @@ e.at])
-        | Drop, _ :: vs' -> Lwt.return (vs', [])
+        | Drop, _ :: vs' -> Action.return (vs', [])
         | Select _, Num (I32 i) :: v2 :: v1 :: vs' ->
-            Lwt.return (if i = 0l then (v2 :: vs', []) else (v1 :: vs', []))
-        | LocalGet x, vs -> Lwt.return (!(local frame x) :: vs, [])
+            Action.return (if i = 0l then (v2 :: vs', []) else (v1 :: vs', []))
+        | LocalGet x, vs -> Action.return (!(local frame x) :: vs, [])
         | LocalSet x, v :: vs' ->
-            Lwt.return
+            Action.return
               (local frame x := v ;
                (vs', []))
         | LocalTee x, v :: vs' ->
-            Lwt.return
+            Action.return
               (local frame x := v ;
                (v :: vs', []))
         | GlobalGet x, vs ->
@@ -305,7 +305,7 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             let value = Global.load glob in
             (value :: vs, [])
         | GlobalSet x, v :: vs' ->
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let* inst = resolve_module_ref module_reg frame.inst in
                 let+ glob = global inst x in
@@ -316,25 +316,25 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                     Crash.error e.at "write to immutable global"
                 | Global.Type ->
                     Crash.error e.at "type mismatch at global write"
-                | exn -> Lwt.fail exn)
+                | exn -> Action.fail exn)
         | TableGet x, Num (I32 i) :: vs' ->
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let* inst = resolve_module_ref module_reg frame.inst in
                 let* tbl = table inst x in
-                let+ value = Table.load tbl i in
+                let+ value = Action.of_lwt (Table.load tbl i) in
                 (Ref value :: vs', []))
               (fun exn ->
-                Lwt.return (vs', [Trapping (table_error e.at exn) @@ e.at]))
+                Action.return (vs', [Trapping (table_error e.at exn) @@ e.at]))
         | TableSet x, Ref r :: Num (I32 i) :: vs' ->
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let* inst = resolve_module_ref module_reg frame.inst in
                 let+ tbl = table inst x in
                 Table.store tbl i r ;
                 (vs', []))
               (fun exn ->
-                Lwt.return (vs', [Trapping (table_error e.at exn) @@ e.at]))
+                Action.return (vs', [Trapping (table_error e.at exn) @@ e.at]))
         | TableSize x, vs ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ tbl = table inst x in
@@ -408,13 +408,13 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             let* oob_d = table_oob module_reg frame x d n in
             let* oob_s = elem_oob module_reg frame y s n in
             if oob_d || oob_s then
-              Lwt.return
+              Action.return
                 (vs', [Trapping (table_error e.at Table.Bounds) @@ e.at])
-            else if n = 0l then Lwt.return (vs', [])
+            else if n = 0l then Action.return (vs', [])
             else
               let* inst = resolve_module_ref module_reg frame.inst in
               let* seg = elem inst y in
-              let+ value = Instance.Vector.get s !seg in
+              let+ value = Action.of_lwt (Instance.Vector.get s !seg) in
               ( vs',
                 List.map
                   (at e.at)
@@ -439,119 +439,138 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
         | Load {offset; ty; pack; _}, Num (I32 i) :: vs' ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let+ n =
                   match pack with
-                  | None -> Memory.load_num mem i offset ty
+                  | None -> Action.of_lwt (Memory.load_num mem i offset ty)
                   | Some (sz, ext) ->
-                      Memory.load_num_packed sz ext mem i offset ty
+                      Action.of_lwt
+                        (Memory.load_num_packed sz ext mem i offset ty)
                 in
                 (Num n :: vs', []))
               (fun exn ->
-                Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
+                Action.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
         | Store {offset; pack; _}, Num n :: Num (I32 i) :: vs' ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let+ () =
                   match pack with
-                  | None -> Memory.store_num mem i offset n
-                  | Some sz -> Memory.store_num_packed sz mem i offset n
+                  | None -> Action.of_lwt (Memory.store_num mem i offset n)
+                  | Some sz ->
+                      Action.of_lwt (Memory.store_num_packed sz mem i offset n)
                 in
                 (vs', []))
               (fun exn ->
-                Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
+                Action.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
         | VecLoad {offset; ty; pack; _}, Num (I32 i) :: vs' ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let+ v =
                   match pack with
-                  | None -> Memory.load_vec mem i offset ty
+                  | None -> Action.of_lwt (Memory.load_vec mem i offset ty)
                   | Some (sz, ext) ->
-                      Memory.load_vec_packed sz ext mem i offset ty
+                      Action.of_lwt
+                        (Memory.load_vec_packed sz ext mem i offset ty)
                 in
                 (Vec v :: vs', []))
               (fun exn ->
-                Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
+                Action.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
         | VecStore {offset; _}, Vec v :: Num (I32 i) :: vs' ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
-            Lwt.catch
+            Action.catch
               (fun () ->
-                let+ () = Memory.store_vec mem i offset v in
+                let+ () = Action.of_lwt (Memory.store_vec mem i offset v) in
                 (vs', []))
               (fun exn ->
-                Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
+                Action.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
         | VecLoadLane ({offset; pack; _}, j), Vec (V128 v) :: Num (I32 i) :: vs'
           ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let+ v =
                   match pack with
                   | Pack8 ->
                       let+ mem =
-                        Memory.load_num_packed Pack8 SX mem i offset I32Type
+                        Action.of_lwt
+                          (Memory.load_num_packed Pack8 SX mem i offset I32Type)
                       in
                       V128.I8x16.replace_lane j v (I32Num.of_num 0 mem)
                   | Pack16 ->
                       let+ mem =
-                        Memory.load_num_packed Pack16 SX mem i offset I32Type
+                        Action.of_lwt
+                          (Memory.load_num_packed
+                             Pack16
+                             SX
+                             mem
+                             i
+                             offset
+                             I32Type)
                       in
                       V128.I16x8.replace_lane j v (I32Num.of_num 0 mem)
                   | Pack32 ->
-                      let+ mem = Memory.load_num mem i offset I32Type in
+                      let+ mem =
+                        Action.of_lwt (Memory.load_num mem i offset I32Type)
+                      in
                       V128.I32x4.replace_lane j v (I32Num.of_num 0 mem)
                   | Pack64 ->
-                      let+ mem = Memory.load_num mem i offset I64Type in
+                      let+ mem =
+                        Action.of_lwt (Memory.load_num mem i offset I64Type)
+                      in
                       V128.I64x2.replace_lane j v (I64Num.of_num 0 mem)
                 in
                 (Vec (V128 v) :: vs', []))
               (fun exn ->
-                Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
+                Action.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
         | ( VecStoreLane ({offset; pack; _}, j),
             Vec (V128 v) :: Num (I32 i) :: vs' ) ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let+ () =
                   match pack with
                   | Pack8 ->
-                      Memory.store_num_packed
-                        Pack8
-                        mem
-                        i
-                        offset
-                        (I32 (V128.I8x16.extract_lane_s j v))
+                      Action.of_lwt
+                        (Memory.store_num_packed
+                           Pack8
+                           mem
+                           i
+                           offset
+                           (I32 (V128.I8x16.extract_lane_s j v)))
                   | Pack16 ->
-                      Memory.store_num_packed
-                        Pack16
-                        mem
-                        i
-                        offset
-                        (I32 (V128.I16x8.extract_lane_s j v))
+                      Action.of_lwt
+                        (Memory.store_num_packed
+                           Pack16
+                           mem
+                           i
+                           offset
+                           (I32 (V128.I16x8.extract_lane_s j v)))
                   | Pack32 ->
-                      Memory.store_num
-                        mem
-                        i
-                        offset
-                        (I32 (V128.I32x4.extract_lane_s j v))
+                      Action.of_lwt
+                        (Memory.store_num
+                           mem
+                           i
+                           offset
+                           (I32 (V128.I32x4.extract_lane_s j v)))
                   | Pack64 ->
-                      Memory.store_num
-                        mem
-                        i
-                        offset
-                        (I64 (V128.I64x2.extract_lane_s j v))
+                      Action.of_lwt
+                        (Memory.store_num
+                           mem
+                           i
+                           offset
+                           (I64 (V128.I64x2.extract_lane_s j v)))
                 in
                 (vs', []))
               (fun exn ->
-                Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
+                Action.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
         | MemorySize, vs ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ mem = memory inst (0l @@ e.at) in
@@ -661,14 +680,17 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             let* mem_oob = mem_oob module_reg frame (0l @@ e.at) d n in
             let* data_oob = data_oob module_reg frame x s n in
             if mem_oob || data_oob then
-              Lwt.return
+              Action.return
                 (vs', [Trapping (memory_error e.at Memory.Bounds) @@ e.at])
-            else if n = 0l then Lwt.return (vs', [])
+            else if n = 0l then Action.return (vs', [])
             else
               let* inst = resolve_module_ref module_reg frame.inst in
               let* seg = data inst x in
               let* seg = Ast.get_data !seg inst.allocations.datas in
-              let+ b = Chunked_byte_vector.load_byte seg (Int64.of_int32 s) in
+              let+ b =
+                Action.of_lwt
+                  (Chunked_byte_vector.load_byte seg (Int64.of_int32 s))
+              in
               let b = Int32.of_int b in
               ( vs',
                 List.map
@@ -694,9 +716,9 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             let+ seg = data inst x in
             seg := Data_label 0l ;
             (vs, [])
-        | RefNull t, vs' -> Lwt.return (Ref (NullRef t) :: vs', [])
+        | RefNull t, vs' -> Action.return (Ref (NullRef t) :: vs', [])
         | RefIsNull, Ref r :: vs' ->
-            Lwt.return
+            Action.return
               (match r with
               | NullRef _ -> (Num (I32 1l) :: vs', [])
               | _ -> (Num (I32 0l) :: vs', []))
@@ -704,82 +726,82 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ f = func inst x in
             (Ref (FuncRef f) :: vs', [])
-        | Const n, vs -> Lwt.return (Num n.it :: vs, [])
+        | Const n, vs -> Action.return (Num n.it :: vs, [])
         | Test testop, Num n :: vs' ->
-            Lwt.return
+            Action.return
               (try (value_of_bool (Eval_num.eval_testop testop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | Compare relop, Num n2 :: Num n1 :: vs' ->
-            Lwt.return
+            Action.return
               (try (value_of_bool (Eval_num.eval_relop relop n1 n2) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | Unary unop, Num n :: vs' ->
-            Lwt.return
+            Action.return
               (try (Num (Eval_num.eval_unop unop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | Binary binop, Num n2 :: Num n1 :: vs' ->
-            Lwt.return
+            Action.return
               (try (Num (Eval_num.eval_binop binop n1 n2) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | Convert cvtop, Num n :: vs' ->
-            Lwt.return
+            Action.return
               (try (Num (Eval_num.eval_cvtop cvtop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecConst v, vs -> Lwt.return (Vec v.it :: vs, [])
+        | VecConst v, vs -> Action.return (Vec v.it :: vs, [])
         | VecTest testop, Vec n :: vs' ->
-            Lwt.return
+            Action.return
               (try (value_of_bool (Eval_vec.eval_testop testop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecUnary unop, Vec n :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_unop unop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecBinary binop, Vec n2 :: Vec n1 :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_binop binop n1 n2) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecCompare relop, Vec n2 :: Vec n1 :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_relop relop n1 n2) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecConvert cvtop, Vec n :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_cvtop cvtop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecShift shiftop, Num s :: Vec v :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_shiftop shiftop v s) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecBitmask bitmaskop, Vec v :: vs' ->
-            Lwt.return
+            Action.return
               (try (Num (Eval_vec.eval_bitmaskop bitmaskop v) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecTestBits vtestop, Vec n :: vs' ->
-            Lwt.return
+            Action.return
               (try (value_of_bool (Eval_vec.eval_vtestop vtestop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecUnaryBits vunop, Vec n :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_vunop vunop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecBinaryBits vbinop, Vec n2 :: Vec n1 :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_vbinop vbinop n1 n2) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecTernaryBits vternop, Vec v3 :: Vec v2 :: Vec v1 :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_vternop vternop v1 v2 v3) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecSplat splatop, Num n :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_splatop splatop n) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecExtract extractop, Vec v :: vs' ->
-            Lwt.return
+            Action.return
               (try (Num (Eval_vec.eval_extractop extractop v) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | VecReplace replaceop, Num r :: Vec v :: vs' ->
-            Lwt.return
+            Action.return
               (try (Vec (Eval_vec.eval_replaceop replaceop v r) :: vs', [])
                with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
         | _ ->
@@ -791,27 +813,27 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
               e.at
               ("missing or ill-typed operand on stack (" ^ s1 ^ " : " ^ s2 ^ ")")
         )
-    | Refer r, vs -> Lwt.return (Ref r :: vs, [])
     | Trapping msg, _ -> Trap.error e.at msg
+    | Refer r, vs -> Action.return (Ref r :: vs, [])
     | Returning _, _ -> Crash.error e.at "undefined frame"
     | Breaking _, _ -> Crash.error e.at "undefined label"
-    | Label (_, _, (vs', [])), vs -> Lwt.return (vs' @ vs, [])
+    | Label (_, _, (vs', [])), vs -> Action.return (vs' @ vs, [])
     | Label (_, _, (_, {it = Trapping msg; at} :: _)), vs ->
-        Lwt.return (vs, [Trapping msg @@ at])
+        Action.return (vs, [Trapping msg @@ at])
     | Label (_, _, (_, {it = Returning vs0; at} :: _)), vs ->
-        Lwt.return (vs, [Returning vs0 @@ at])
+        Action.return (vs, [Returning vs0 @@ at])
     | Label (n, es0, (_, {it = Breaking (0l, vs0); _} :: _)), vs ->
-        Lwt.return (take n vs0 e.at @ vs, List.map plain es0)
+        Action.return (take n vs0 e.at @ vs, List.map plain es0)
     | Label (_, _, (_, {it = Breaking (k, vs0); at} :: _)), vs ->
-        Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at])
+        Action.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at])
     | Label (n, es0, code'), vs ->
         let+ c' = step module_reg {c with code = code'} in
         (vs, [Label (n, es0, c'.code) @@ e.at])
-    | Frame (_, _, (vs', [])), vs -> Lwt.return (vs' @ vs, [])
+    | Frame (_, _, (vs', [])), vs -> Action.return (vs' @ vs, [])
     | Frame (_, _, (_, {it = Trapping msg; at} :: _)), vs ->
-        Lwt.return (vs, [Trapping msg @@ at])
+        Action.return (vs, [Trapping msg @@ at])
     | Frame (n, _, (_, {it = Returning vs0; _} :: _)), vs ->
-        Lwt.return (take n vs0 e.at @ vs, [])
+        Action.return (take n vs0 e.at @ vs, [])
     | Frame (n, frame', code'), vs ->
         let+ c' =
           step
@@ -841,7 +863,9 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
 
                This conversion to list can probably be avoided by using
                Lazy_vector in the config for local variables. *)
-            let+ locals = Lazy_vector.Int32Vector.to_list f.it.locals in
+            let+ locals =
+              Action.of_lwt (Lazy_vector.Int32Vector.to_list f.it.locals)
+            in
             let locals' = List.rev args @ List.map default_value locals in
             let frame' = {inst = inst'; locals = List.map ref locals'} in
             let instr' =
@@ -852,22 +876,26 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             in
             (vs', [Frame (n2, frame', ([], instr')) @@ e.at])
         | Func.HostFunc (_, global_name) ->
-            Lwt.catch
+            Action.catch
               (fun () ->
                 let (Host_funcs.Host_func f) =
                   Host_funcs.lookup ~global_name c.host_funcs
                 in
                 let* inst = resolve_module_ref module_reg frame.inst in
-                let+ res = f c.input c.output inst.memories (List.rev args) in
+                let+ res =
+                  Action.of_lwt
+                    (f c.input c.output inst.memories (List.rev args))
+                in
                 (List.rev res @ vs', []))
               (function
                 | Crash (_, msg) -> Crash.error e.at msg | exn -> raise exn))
   in
+
   {c with code = (vs', es' @ es)}
 
-let rec eval module_reg (c : config) : value stack Lwt.t =
+let rec eval module_reg (c : config) : value stack Action.t =
   match c.code with
-  | vs, [] -> Lwt.return vs
+  | vs, [] -> Action.return vs
   | _, {it = Trapping msg; at} :: _ -> Trap.error at msg
   | _, _ ->
       let* c = step module_reg c in
@@ -877,10 +905,10 @@ let rec eval module_reg (c : config) : value stack Lwt.t =
 
 let invoke ~module_reg ~caller ?(input = Input_buffer.alloc ())
     ?(output = Output_buffer.alloc ()) host_funcs (func : func_inst)
-    (vs : value list) : value list Lwt.t =
+    (vs : value list) : value list Action.t =
   let at = match func with Func.AstFunc (_, _, f) -> f.at | _ -> no_region in
   let (FuncType (ins, _out)) = Func.type_of func in
-  let* ins_l = Lazy_vector.Int32Vector.to_list ins in
+  let* ins_l = Action.of_lwt (Lazy_vector.Int32Vector.to_list ins) in
   if List.length vs <> (Lazy_vector.Int32Vector.num_elements ins |> Int32.to_int)
   then Crash.error at "wrong number of arguments" ;
   (* Invoke is only used to call individual functions from a module,
@@ -896,13 +924,13 @@ let invoke ~module_reg ~caller ?(input = Input_buffer.alloc ())
   let c =
     config ~input ~output host_funcs inst (List.rev vs) [Invoke func @@ at]
   in
-  Lwt.catch
+  Action.catch
     (fun () ->
       let+ values = eval module_reg c in
       List.rev values)
     (function
       | Stack_overflow -> Exhaustion.error at "call stack exhausted"
-      | exn -> Lwt.fail exn)
+      | exn -> Action.fail exn)
 
 type eval_const_kont = EC_Next of config | EC_Stop of value
 
@@ -917,7 +945,7 @@ let eval_const_completed = function EC_Stop v -> Some v | _ -> None
 let eval_const_step module_reg = function
   | EC_Next {code = vs, []; _} -> (
       match vs with
-      | [v] -> Lwt.return (EC_Stop v)
+      | [v] -> Action.return (EC_Stop v)
       | _ -> Crash.error Source.no_region "wrong number of results on stack")
   | EC_Next c ->
       let+ c = step module_reg c in
@@ -926,8 +954,8 @@ let eval_const_step module_reg = function
 
 (* Modules *)
 
-let create_func module_reg (inst_ref : module_key) (f : func) : func_inst Lwt.t
-    =
+let create_func module_reg (inst_ref : module_key) (f : func) :
+    func_inst Action.t =
   let* inst = resolve_module_ref module_reg inst_ref in
   let+ type_ = type_ inst f.it.ftype in
   Func.alloc type_ inst_ref f
@@ -958,7 +986,7 @@ let create_global_step module_reg ((gtype, ekont) as kont) =
       let+ ekont = eval_const_step module_reg ekont in
       (gtype, ekont)
 
-let create_export (inst : module_inst) (ex : export) : export_inst Lwt.t =
+let create_export (inst : module_inst) (ex : export) : export_inst Action.t =
   let {name; edesc} = ex.it in
   let+ ext =
     match edesc.it with
@@ -982,7 +1010,7 @@ let create_data (seg : data_segment) : data_inst =
   ref dinit
 
 let add_import (m : module_) (ext : extern) (im : import) (inst : module_inst) :
-    module_inst Lwt.t =
+    module_inst Action.t =
   let* t = import_type m im in
   let* type_match = match_extern_type (extern_type_of ext) t in
   let+ () =
@@ -996,7 +1024,7 @@ let add_import (m : module_) (ext : extern) (im : import) (inst : module_inst) :
         ^ Types.string_of_extern_type t
         ^ ", got "
         ^ Types.string_of_extern_type (extern_type_of ext))
-    else Lwt.return_unit
+    else Action.return_unit
   in
   match ext with
   | ExternFunc func -> {inst with funcs = Vector.cons func inst.funcs}
@@ -1027,7 +1055,7 @@ let run_data (inst : module_inst) i data =
   let at = data.it.dmode.at in
   let x = i @@ at in
   match data.it.dmode.it with
-  | Passive -> Lwt.return []
+  | Passive -> Action.return []
   | Active {index; offset} ->
       assert (index.it = 0l) ;
       let+ data = Ast.get_data data.it.dinit inst.allocations.datas in
@@ -1064,9 +1092,9 @@ let fold_right2_kont (m : module_) acc lv rv =
 let fold_right2_completed {offset; _} = offset = -1l
 
 let fold_right2_step {acc; lv; rv; offset} f =
-  let open Lwt.Syntax in
-  let* x = Vector.get offset lv in
-  let* y = Vector.get offset rv in
+  let open Action.Syntax in
+  let* x = Action.of_lwt (Vector.get offset lv) in
+  let* y = Action.of_lwt (Vector.get offset rv) in
   let+ acc = f x y acc in
   {acc; lv; rv; offset = Int32.pred offset}
 
@@ -1082,20 +1110,20 @@ let map_kont v =
 let map_completed {origin; offset; _} = offset = Vector.num_elements origin
 
 let map_step {origin; destination; offset} f =
-  let open Lwt.Syntax in
-  let+ x = Vector.get offset origin in
+  let open Action.Syntax in
+  let+ x = Action.of_lwt (Vector.get offset origin) in
   let destination = Vector.set offset (f x) destination in
   {origin; destination; offset = Int32.succ offset}
 
 let map_i_step {origin; destination; offset} f =
-  let open Lwt.Syntax in
-  let+ x = Vector.get offset origin in
+  let open Action.Syntax in
+  let+ x = Action.of_lwt (Vector.get offset origin) in
   let destination = Vector.set offset (f offset x) destination in
   {origin; destination; offset = Int32.succ offset}
 
 let map_i_s_step {origin; destination; offset} f =
-  let open Lwt.Syntax in
-  let* x = Vector.get offset origin in
+  let open Action.Syntax in
+  let* x = Action.of_lwt (Vector.get offset origin) in
   let+ y = f offset x in
   let destination = Vector.set offset y destination in
   {origin; destination; offset = Int32.succ offset}
@@ -1118,8 +1146,8 @@ let concat_kont lv rv =
 let concat_step {lv; rv; res; offset} =
   let lv_len = Vector.num_elements lv in
   let+ x =
-    if offset < lv_len then Vector.get offset lv
-    else Vector.get Int32.(sub offset lv_len) rv
+    if offset < lv_len then Action.of_lwt (Vector.get offset lv)
+    else Action.of_lwt (Vector.get Int32.(sub offset lv_len) rv)
   in
   {lv; rv; res = Vector.set offset x res; offset = Int32.succ offset}
 
@@ -1136,8 +1164,8 @@ let fold_left_completed {origin; offset; _} =
   offset = Vector.num_elements origin
 
 let fold_left_s_step {origin; acc; offset} f =
-  let open Lwt.Syntax in
-  let* x = Vector.get offset origin in
+  let open Action.Syntax in
+  let* x = Action.of_lwt (Vector.get offset origin) in
   let+ acc = f acc x in
   {origin; acc; offset = Int32.succ offset}
 
@@ -1153,7 +1181,7 @@ let tick_map_kont v = {tick = None; map = map_kont v}
 let tick_map_step first_kont kont_completed kont_step = function
   | {map; _} when map_completed map -> raise (Init_step_error Map_step)
   | {tick = None; map} ->
-      let+ x = Vector.get map.offset map.origin in
+      let+ x = Action.of_lwt (Vector.get map.offset map.origin) in
       let tick = first_kont x in
       {tick = Some tick; map}
   | {tick = Some tick; map} -> (
@@ -1166,7 +1194,7 @@ let tick_map_step first_kont kont_completed kont_step = function
               offset = Int32.succ map.offset;
             }
           in
-          Lwt.return {tick = None; map}
+          Action.return {tick = None; map}
       | None ->
           let+ tick = kont_step tick in
           {tick = Some tick; map})
@@ -1209,20 +1237,20 @@ let join_completed = function
   | _ -> None
 
 let join_step =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
   | J_Init v when 1l < Vector.num_elements v ->
-      let* x, v = Vector.pop v in
-      let+ y, v = Vector.pop v in
+      let* x, v = Action.of_lwt (Vector.pop v) in
+      let+ y, v = Action.of_lwt (Vector.pop v) in
       J_Next (concat_kont x y, v)
   | J_Init v when Vector.num_elements v = 1l ->
-      let+ v = Vector.get 0l v in
+      let+ v = Action.of_lwt (Vector.get 0l v) in
       J_Stop v
   | J_Next (tick, acc)
     when concat_completed tick && Vector.num_elements acc = 0l ->
-      Lwt.return (J_Stop tick.res)
+      Action.return (J_Stop tick.res)
   | J_Next (tick, acc) when concat_completed tick ->
-      let+ x, acc = Vector.pop acc in
+      let+ x, acc = Action.of_lwt (Vector.pop acc) in
       J_Next (concat_kont tick.res x, acc)
   | J_Next (tick, acc) ->
       let+ tick = concat_step tick in
@@ -1242,7 +1270,7 @@ let map_concat_completed = function MC_Join v -> join_completed v | _ -> None
 
 let map_concat_step f = function
   | MC_Map map when map_completed map ->
-      Lwt.return (MC_Join (join_kont map.destination))
+      Action.return (MC_Join (join_kont map.destination))
   | MC_Map map ->
       let+ map = f map in
       MC_Map map
@@ -1265,7 +1293,7 @@ let create_elem_completed : create_elem_kont -> elem_inst option =
   if tick_map_completed kont then Some (ref kont.map.destination) else None
 
 let create_elem_step ~module_reg inst :
-    create_elem_kont -> create_elem_kont Lwt.t =
+    create_elem_kont -> create_elem_kont Action.t =
  fun tick ->
   tick_map_step
     (eval_const_kont inst)
@@ -1334,7 +1362,7 @@ let section_inner_step :
     module_key ->
     (kont, a, b) init_section ->
     kont ->
-    kont Lwt.t =
+    kont Action.t =
  fun module_reg self ->
   let lift_either f =
     let open Either in
@@ -1347,8 +1375,8 @@ let section_inner_step :
   function
   | Func -> lift_either (create_func module_reg self)
   | Global -> create_global_step module_reg
-  | Table -> lift_either (fun x -> Lwt.return (create_table x))
-  | Memory -> lift_either (fun x -> Lwt.return (create_memory x))
+  | Table -> lift_either (fun x -> Action.return (create_table x))
+  | Memory -> lift_either (fun x -> Action.return (create_memory x))
 
 let section_update_module_ref : type kont a b. (kont, a, b) init_section -> bool
     = function
@@ -1362,7 +1390,7 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
   | IK_Start ->
       (* Initialize as empty module. *)
       update_module_ref module_reg self empty_module_inst ;
-      Lwt.return
+      Action.return
         (IK_Add_import
            (fold_right2_kont
               m
@@ -1373,7 +1401,7 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
               m.it.imports))
   | IK_Add_import tick when fold_right2_completed tick ->
       update_module_ref module_reg self tick.acc ;
-      Lwt.return (IK_Type (tick.acc, map_kont m.it.types))
+      Action.return (IK_Type (tick.acc, map_kont m.it.types))
   | IK_Add_import tick ->
       let+ tick = fold_right2_step tick (add_import m) in
       IK_Add_import tick
@@ -1382,12 +1410,12 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
         {inst0 with types = tick.destination; allocations = m.it.allocations}
       in
       update_module_ref module_reg self inst0 ;
-      Lwt.return (IK_Aggregate (inst0, Func, tick_map_kont m.it.funcs))
+      Action.return (IK_Aggregate (inst0, Func, tick_map_kont m.it.funcs))
   | IK_Type (inst0, tick) ->
       let+ tick = map_step tick (fun x -> x.it) in
       IK_Type (inst0, tick)
   | IK_Aggregate (inst0, sec, tick) when tick_map_completed tick ->
-      Lwt.return
+      Action.return
         (IK_Aggregate_concat
            ( inst0,
              sec,
@@ -1405,24 +1433,24 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
       let inst1 = section_set_vec inst0 sec tick.res in
       if section_update_module_ref sec then
         update_module_ref module_reg self inst1 ;
-      Lwt.return (section_next_init_kont m inst1 sec)
+      Action.return (section_next_init_kont m inst1 sec)
   | IK_Aggregate_concat (inst0, sec, tick) ->
       let+ tick = concat_step tick in
       IK_Aggregate_concat (inst0, sec, tick)
   | IK_Exports (inst0, tick) when fold_left_completed tick ->
       let inst0 = {inst0 with exports = tick.acc} in
-      Lwt.return (IK_Elems (inst0, tick_map_kont m.it.elems))
+      Action.return (IK_Elems (inst0, tick_map_kont m.it.elems))
   | IK_Exports (inst0, tick) ->
       let+ tick =
         fold_left_s_step tick (fun map export ->
             let* k, v = create_export inst0 export in
-            let+ k = Instance.Vector.to_list k in
+            let+ k = Action.of_lwt (Instance.Vector.to_list k) in
             NameMap.set k v map)
       in
       IK_Exports (inst0, tick)
   | IK_Elems (inst0, tick) when tick_map_completed tick ->
       let inst0 = {inst0 with elems = tick.map.destination} in
-      Lwt.return (IK_Datas (inst0, map_kont m.it.datas))
+      Action.return (IK_Datas (inst0, map_kont m.it.datas))
   | IK_Elems (inst0, tick) ->
       let+ tick =
         tick_map_step
@@ -1435,14 +1463,15 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
   | IK_Datas (inst0, tick) when map_completed tick ->
       let inst = {inst0 with datas = tick.destination} in
       update_module_ref module_reg self inst ;
-      Lwt.return (IK_Es_elems (inst, map_concat_kont m.it.elems))
+      Action.return (IK_Es_elems (inst, map_concat_kont m.it.elems))
   | IK_Datas (inst0, tick) ->
       let+ tick = map_step tick create_data in
       IK_Datas (inst0, tick)
   | IK_Es_elems (inst0, tick) -> (
       match map_concat_completed tick with
       | Some es_elem ->
-          Lwt.return (IK_Es_datas (inst0, map_concat_kont m.it.datas, es_elem))
+          Action.return
+            (IK_Es_datas (inst0, map_concat_kont m.it.datas, es_elem))
       | None ->
           let+ tick =
             map_concat_step
@@ -1459,7 +1488,7 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
               (Lib.Option.get (Lib.Option.map run_start m.it.start) [])
           in
           let v = Vector.of_list [es_elem; es_data; es_start] in
-          Lwt.return (IK_Join_admin (inst0, join_kont v))
+          Action.return (IK_Join_admin (inst0, join_kont v))
       | None ->
           let+ tick =
             map_concat_step
@@ -1477,7 +1506,7 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
       | Some res ->
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/3076
              [config] should use lazy vector, not lists *)
-          let+ res = Vector.to_list res in
+          let+ res = Action.of_lwt (Vector.to_list res) in
           IK_Eval (inst0, config host_funcs self [] res)
       | None ->
           let+ tick = join_step tick in
@@ -1485,7 +1514,7 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
   | IK_Eval (inst, {code = _, []; _}) ->
       (* No more admin instr, which means that we have returned from
          the _start function. *)
-      Lwt.return (IK_Stop inst)
+      Action.return (IK_Stop inst)
   | IK_Eval (_, {code = _, {it = Trapping msg; at} :: _; _}) ->
       Trap.error at msg
   | IK_Eval (inst, config) ->
@@ -1494,10 +1523,10 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
   | IK_Stop _ -> raise (Init_step_error Init_step)
 
 let init ~module_reg ~self host_funcs (m : module_) (exts : extern list) :
-    module_inst Lwt.t =
-  let open Lwt.Syntax in
+    module_inst Action.t =
+  let open Action.Syntax in
   let rec go = function
-    | IK_Stop inst -> Lwt.return inst
+    | IK_Stop inst -> Action.return inst
     | kont ->
         let* kont = init_step ~module_reg ~self host_funcs m exts kont in
         go kont

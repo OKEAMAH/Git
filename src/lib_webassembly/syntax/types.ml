@@ -95,19 +95,19 @@ let func_type_empty (FuncType (ins, out)) =
    This function should probably be tickified, or the check removed from the
    evaluation. *)
 let func_types_equal (FuncType (ins, out)) (FuncType (ins', out')) =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let ins_len = Lazy_vector.Int32Vector.num_elements ins in
   let out_len = Lazy_vector.Int32Vector.num_elements out in
   if
     ins_len <> Lazy_vector.Int32Vector.num_elements ins'
     || out_len <> Lazy_vector.Int32Vector.num_elements out'
-  then Lwt.return_false
+  then Action.return_false
   else
     let rec for_all acc i len vec vec' =
-      if i >= len || not acc then Lwt.return acc
+      if i >= len || not acc then Action.return acc
       else
-        let* t = Lazy_vector.Int32Vector.get i vec in
-        let* t' = Lazy_vector.Int32Vector.get i vec' in
+        let* t = Action.of_lwt @@ Lazy_vector.Int32Vector.get i vec in
+        let* t' = Action.of_lwt @@ Lazy_vector.Int32Vector.get i vec' in
         for_all (t = t') (Int32.succ i) len vec vec'
     in
     let* ins_eq = for_all true 0l ins_len ins ins' in
@@ -128,12 +128,12 @@ let match_extern_type et1 et2 =
   match (et1, et2) with
   | ExternFuncType ft1, ExternFuncType ft2 -> match_func_type ft1 ft2
   | ExternTableType tt1, ExternTableType tt2 ->
-      Lwt.return (match_table_type tt1 tt2)
+      Action.return (match_table_type tt1 tt2)
   | ExternMemoryType mt1, ExternMemoryType mt2 ->
-      Lwt.return (match_memory_type mt1 mt2)
+      Action.return (match_memory_type mt1 mt2)
   | ExternGlobalType gt1, ExternGlobalType gt2 ->
-      Lwt.return (match_global_type gt1 gt2)
-  | _, _ -> Lwt.return_false
+      Action.return (match_global_type gt1 gt2)
+  | _, _ -> Action.return_false
 
 (* String conversion *)
 

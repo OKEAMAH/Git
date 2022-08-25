@@ -4,7 +4,7 @@
 
     @raise Binary_exn.Utf8 in case the encoding is illformed with regards to the Utf8
       conventions. *)
-val decode_step : ('a -> int Lwt.t) -> 'a -> (int * int) Lwt.t
+val decode_step : ('a -> int Action.t) -> 'a -> (int * int) Action.t
 
 (** [encode_int i] encodes an Utf8 represented into an integer into its char
     codes.
@@ -23,7 +23,7 @@ val decode : string -> int Lazy_vector.Int32Vector.t
 
     @raise Binary_exn.Utf8 in case the encoding is illformed with regards to the Utf8
       conventions. *)
-val encode : int Lazy_vector.Int32Vector.t -> string Lwt.t
+val encode : int Lazy_vector.Int32Vector.t -> string Action.t
 
 (** [encode_unsafe vec] encodes an UTF8 vector into its string representation
     without forcing the values in the lazy_vector. This function is witness of

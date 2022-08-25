@@ -475,8 +475,8 @@ let alloc_block allocs =
   Block_label b
 
 let add_to_block allocs (Block_label b) instr =
-  let open Lwt.Syntax in
-  let+ block = Vector.get b allocs.blocks in
+  let open Action.Syntax in
+  let+ block = Action.of_lwt @@ Vector.get b allocs.blocks in
   let block, _ = Vector.(append instr block) in
   allocs.blocks <- Vector.set b block allocs.blocks
 
@@ -488,9 +488,9 @@ let alloc_data (allocs : allocations) len =
   Data_label d
 
 let add_to_data (allocs : allocations) (Data_label d) index byte =
-  let open Lwt.Syntax in
-  let* data = Vector.get d allocs.datas in
-  Chunked_byte_vector.store_byte data index byte
+  let open Action.Syntax in
+  let* data = Action.of_lwt @@ Vector.get d allocs.datas in
+  Action.of_lwt @@ Chunked_byte_vector.store_byte data index byte
 
 let empty_module () =
   {
@@ -509,31 +509,31 @@ let empty_module () =
 
 open Source
 
-let get_data (Data_label d) datas = Vector.get d datas
+let get_data (Data_label d) datas = Action.of_lwt (Vector.get d datas)
 
-let func_type_for (m : module_) (x : var) : func_type Lwt.t =
-  let open Lwt.Syntax in
-  let+ ty = Vector.get x.it m.it.types in
+let func_type_for (m : module_) (x : var) : func_type Action.t =
+  let open Action.Syntax in
+  let+ ty = Action.of_lwt (Vector.get x.it m.it.types) in
   ty.it
 
-let import_type (m : module_) (im : import) : extern_type Lwt.t =
-  let open Lwt.Syntax in
+let import_type (m : module_) (im : import) : extern_type Action.t =
+  let open Action.Syntax in
   let {idesc; _} = im.it in
   match idesc.it with
   | FuncImport x ->
       let+ ty = func_type_for m x in
       ExternFuncType ty
-  | TableImport t -> Lwt.return (ExternTableType t)
-  | MemoryImport t -> Lwt.return (ExternMemoryType t)
-  | GlobalImport t -> Lwt.return (ExternGlobalType t)
+  | TableImport t -> return (ExternTableType t)
+  | MemoryImport t -> return (ExternMemoryType t)
+  | GlobalImport t -> return (ExternGlobalType t)
 
 (* This function is only used to printing types for debugging purpose, as such
    it is safe to use conversions to lists. *)
-let export_type (m : module_) (ex : export) : extern_type Lwt.t =
-  let open Lwt.Syntax in
+let export_type (m : module_) (ex : export) : extern_type Action.t =
+  let open Action.Syntax in
   let {edesc; _} = ex.it in
   let* its =
-    TzStdLib.List.map_s
+    Action.List.map_s
       (fun (_, i) -> import_type m i)
       (Vector.loaded_bindings m.it.imports)
   in
@@ -541,7 +541,7 @@ let export_type (m : module_) (ex : export) : extern_type Lwt.t =
   match edesc.it with
   | FuncExport x ->
       let+ fts' =
-        TzStdLib.List.map_s
+        Action.List.map_s
           (fun (_, f) -> func_type_for m f.it.ftype)
           (Vector.loaded_bindings m.it.funcs)
       in
@@ -549,24 +549,24 @@ let export_type (m : module_) (ex : export) : extern_type Lwt.t =
       ExternFuncType (nth fts x.it)
   | TableExport x ->
       let+ tts' =
-        TzStdLib.List.map_s
-          (fun (_, t) -> Lwt.return t.it.ttype)
+        Action.List.map_s
+          (fun (_, t) -> return t.it.ttype)
           (Vector.loaded_bindings m.it.tables)
       in
       let tts = tables its @ tts' in
       ExternTableType (nth tts x.it)
   | MemoryExport x ->
       let+ mts' =
-        TzStdLib.List.map_s
-          (fun (_, m) -> Lwt.return m.it.mtype)
+        Action.List.map_s
+          (fun (_, m) -> return m.it.mtype)
           (Vector.loaded_bindings m.it.memories)
       in
       let mts = memories its @ mts' in
       ExternMemoryType (nth mts x.it)
   | GlobalExport x ->
       let+ gts' =
-        TzStdLib.List.map_s
-          (fun (_, g) -> Lwt.return g.it.gtype)
+        Action.List.map_s
+          (fun (_, g) -> return g.it.gtype)
           (Vector.loaded_bindings m.it.globals)
       in
       let gts = globals its @ gts' in

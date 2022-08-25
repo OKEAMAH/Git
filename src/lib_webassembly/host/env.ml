@@ -42,7 +42,7 @@ let register_host_funcs registry =
   Host_funcs.register ~global_name:"abort" exit registry
 
 let lookup name =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ name = Utf8.encode name in
   match name with
   | "abort" ->

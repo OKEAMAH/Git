@@ -8,10 +8,10 @@ let func oc lookup_block width f =
 
 let module_ oc width m =
   let open Lwt.Syntax in
-  let* m = Arrange.module_ m in
+  let* m = Action.run (Arrange.module_ m) in
   Sexpr.output oc width m
 
 let script oc width mode s =
   let open Lwt.Syntax in
-  let* script = Arrange.script mode s in
+  let* script = Action.run (Arrange.script mode s) in
   TzStdLib.List.iter_s (Sexpr.output oc width) script

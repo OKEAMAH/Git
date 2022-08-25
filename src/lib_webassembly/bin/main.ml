@@ -3,11 +3,15 @@ let name = "wasm"
 let version = "2.0"
 
 let configure () =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* () =
-    Import.register ~module_name:(Utf8.decode "spectest") Spectest.lookup
+    Import.register ~module_name:(Utf8.decode "spectest") (fun name ->
+        Spectest.lookup name)
   in
-  let+ () = Import.register ~module_name:(Utf8.decode "env") Env.lookup in
+  let+ () =
+    Import.register ~module_name:(Utf8.decode "env") (fun name ->
+        Env.lookup name)
+  in
   Spectest.register_host_funcs Run.host_funcs_registry ;
   Env.register_host_funcs Run.host_funcs_registry
 
@@ -43,17 +47,17 @@ let argspec =
     ]
 
 let run () =
-  let open Lwt.Syntax in
-  Lwt.catch
+  let open Action.Syntax in
+  Action.catch
     (fun () ->
       let* _ = configure () in
       Arg.parse
         argspec
         (fun file -> add_arg ("(input " ^ quote file ^ ")"))
         usage ;
-      Lwt_list.iter_s
+      Action.List.iter_s
         (fun arg ->
-          let+ res = Run.run_string arg in
+          let+ res = Action.of_lwt @@ Run.run_string arg in
           if not res then exit 1)
         !args)
     (fun exn ->
@@ -63,4 +67,4 @@ let run () =
       Printexc.print_backtrace stderr ;
       exit 2)
 
-let _ = Lwt_main.run (run ())
+let _ = Lwt_main.run (Action.run (run ()))

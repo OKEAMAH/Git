@@ -14,8 +14,8 @@ type t = {
 
 val empty : t
 
-val func : Ast.block_table -> Ast.func -> t Lwt.t
+val func : Ast.block_table -> Ast.func -> t Action.t
 
-val module_ : Ast.module_ -> t Lwt.t
+val module_ : Ast.module_ -> t Action.t
 
 val list : ('a -> t) -> 'a list -> t

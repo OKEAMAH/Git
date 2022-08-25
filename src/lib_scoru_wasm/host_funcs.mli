@@ -29,7 +29,8 @@
     Used to plug host function wrappers in the WASN interpreter linker. *)
 val lookup :
   Tezos_webassembly_interpreter.Ast.name ->
-  Tezos_webassembly_interpreter.Instance.extern Lwt.t
+  Tezos_webassembly_interpreter.Instance.extern
+  Tezos_webassembly_interpreter.Action.t
 
 (** [register_host_funcs] registers all the PVMs host functions into a WASM
     interpreter's registry, using the names expected by {!lookup}.

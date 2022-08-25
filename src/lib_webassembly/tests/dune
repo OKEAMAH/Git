@@ -5,7 +5,7 @@
  (name main)
  (libraries
   tezos-webassembly-interpreter
-  alcotest)
+  alcotest-lwt)
  (flags
   (:standard)
   -open Tezos_webassembly_interpreter))

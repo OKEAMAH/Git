@@ -4,7 +4,6 @@ open Script
 open Values
 open Types
 open Sexpr
-module TzStdLib = Tezos_lwt_result_stdlib.Lwtreslib.Bare
 
 type block_table = Ast.instr list list
 
@@ -67,7 +66,7 @@ let lazy_vectori f map =
     (Lazy_vector.Int32Vector.loaded_bindings map)
 
 let lazy_vectori_lwt f map =
-  TzStdLib.List.map_s
+  Action.List.map_s
     (fun (i32, v) -> f (Int32.to_int i32) v)
     (Lazy_vector.Int32Vector.loaded_bindings map)
 
@@ -632,10 +631,10 @@ let elem blocks i seg =
       else atom ref_type etype :: list (const blocks "item") einit )
 
 let data blocks datas i seg =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let {dinit; dmode} = seg.it in
   let* dinit = Ast.get_data dinit datas in
-  let+ dinit = Chunked_byte_vector.to_string dinit in
+  let+ dinit = Action.of_lwt (Chunked_byte_vector.to_string dinit) in
   Node ("data $" ^ nat i, segment_mode blocks "memory" dmode @ break_bytes dinit)
 
 (* Modules *)
@@ -689,15 +688,15 @@ let start s = Node ("start " ^ var s.it.sfunc, [])
 let var_opt = function None -> "" | Some x -> " " ^ x.it
 
 let module_with_var_opt x_opt m =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let fx = ref 0 in
   let tx = ref 0 in
   let mx = ref 0 in
   let gx = ref 0 in
   let imports = lazy_vector (import fx tx mx gx) m.it.imports in
   let* blocks =
-    let* bls = Ast.Vector.to_list m.it.allocations.blocks in
-    TzStdLib.List.map_s Ast.Vector.to_list bls
+    let* bls = Action.of_lwt (Ast.Vector.to_list m.it.allocations.blocks) in
+    Action.List.map_s (fun x -> Action.of_lwt (Ast.Vector.to_list x)) bls
   in
   let+ datas =
     lazy_vectori_lwt (data blocks m.it.allocations.datas) m.it.datas
@@ -741,14 +740,14 @@ let literal mode lit =
   | Ref r -> ref_ r
 
 let definition mode x_opt def =
-  let open Lwt.Syntax in
-  Lwt.catch
+  let open Action.Syntax in
+  Action.catch
     (fun () ->
       match mode with
       | `Textual ->
           let rec unquote def =
             match def.it with
-            | Textual m -> Lwt.return m
+            | Textual m -> return m
             | Encoded (_, bytes) ->
                 Decode.decode
                   ~name:""
@@ -775,12 +774,14 @@ let definition mode x_opt def =
       | `Original -> (
           match def.it with
           | Textual m -> module_with_var_opt x_opt m
-          | Encoded (_, bs) -> binary_module_with_var_opt x_opt bs |> Lwt.return
-          | Quoted (_, s) -> quoted_module_with_var_opt x_opt s |> Lwt.return))
+          | Encoded (_, bs) ->
+              binary_module_with_var_opt x_opt bs |> Action.return
+          | Quoted (_, s) -> quoted_module_with_var_opt x_opt s |> Action.return
+          ))
     (function
       | Parse.Syntax _ ->
-          quoted_module_with_var_opt x_opt "<invalid module>" |> Lwt.return
-      | e -> Lwt.fail e)
+          quoted_module_with_var_opt x_opt "<invalid module>" |> Action.return
+      | e -> Action.fail e)
 
 let access x_opt n = String.concat " " [var_opt x_opt; name n]
 
@@ -826,11 +827,11 @@ let result mode res =
   | RefResult rp -> ref_pat rp
 
 let assertion mode ass =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   match ass.it with
   | AssertMalformed (def, re) -> (
       match (mode, def.it) with
-      | `Binary, Quoted _ -> Lwt.return []
+      | `Binary, Quoted _ -> Action.return []
       | _ ->
           let+ def = definition `Original None def in
           [Node ("assert_malformed", [def; Atom (string re)])])
@@ -844,27 +845,27 @@ let assertion mode ass =
       let+ def = definition mode None def in
       [Node ("assert_trap", [def; Atom (string re)])]
   | AssertReturn (act, results) ->
-      Lwt.return
+      Action.return
         [
           Node
             ("assert_return", action mode act :: List.map (result mode) results);
         ]
   | AssertTrap (act, re) ->
-      Lwt.return [Node ("assert_trap", [action mode act; Atom (string re)])]
+      Action.return [Node ("assert_trap", [action mode act; Atom (string re)])]
   | AssertExhaustion (act, re) ->
-      Lwt.return
+      Action.return
         [Node ("assert_exhaustion", [action mode act; Atom (string re)])]
 
 let command mode cmd =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   match cmd.it with
   | Module (x_opt, def) ->
       let+ def = definition mode x_opt def in
       [def]
   | Register (n, x_opt) ->
-      Lwt.return [Node ("register " ^ name n ^ var_opt x_opt, [])]
-  | Action act -> Lwt.return [action mode act]
+      Action.return [Node ("register " ^ name n ^ var_opt x_opt, [])]
+  | Action act -> Action.return [action mode act]
   | Assertion ass -> assertion mode ass
   | Meta _ -> assert false
 
-let script mode scr = Lib.List.concat_map_s (command mode) scr
+let script mode scr = Action.List.concat_map_s (command mode) scr

@@ -34,11 +34,11 @@ let wasm_entrypoint = "kernel_next"
 module Wasm = Tezos_webassembly_interpreter
 
 type tick_state =
-  | Decode of Tezos_webassembly_interpreter.Decode.decode_kont
+  | Decode of Wasm.Decode.decode_kont
   | Init of {
       self : Wasm.Instance.module_key;
-      ast_module : Tezos_webassembly_interpreter.Ast.module_;
-      init_kont : Tezos_webassembly_interpreter.Eval.init_kont;
+      ast_module : Wasm.Ast.module_;
+      init_kont : Wasm.Eval.init_kont;
     }
   | Eval of Wasm.Eval.config
   | Stuck of Wasm_pvm_errors.t
@@ -75,9 +75,7 @@ struct
       let open Tree_encoding in
       tagged_union
         ~default:
-          (Decode
-             (Tezos_webassembly_interpreter.Decode.initial_decode_kont
-                ~name:wasm_main_module_name))
+          (Decode (Wasm.Decode.initial_decode_kont ~name:wasm_main_module_name))
         (value [] Data_encoding.string)
         [
           case
@@ -164,19 +162,19 @@ struct
            (scope ["input"; "consuming"] input_request_encoding))
 
     let unsafe_next_tick_state {module_reg; kernel; tick_state; _} =
-      let open Lwt_syntax in
+      let open Wasm.Action.Syntax in
       match tick_state with
       | Decode {module_kont = MKStop ast_module; _} ->
           let self = Wasm.Instance.Module_key wasm_main_module_name in
           (* The module instance is registered in [self] that contains the
              module registry, why we can ignore the result here. *)
-          Lwt.return (Init {self; ast_module; init_kont = IK_Start})
+          return (Init {self; ast_module; init_kont = IK_Start})
       | Decode m ->
-          let+ m = Tezos_webassembly_interpreter.Decode.module_step kernel m in
+          let+ m = Wasm.Decode.module_step kernel m in
           Decode m
       | Init {self; ast_module = _; init_kont = IK_Stop _module_inst} ->
           let eval_config = Wasm.Eval.config host_funcs self [] [] in
-          Lwt.return (Eval eval_config)
+          return (Eval eval_config)
       | Init {self; ast_module; init_kont} ->
           let* init_kont =
             Wasm.Eval.init_step
@@ -187,24 +185,26 @@ struct
               []
               init_kont
           in
-          Lwt.return (Init {self; ast_module; init_kont})
+          return (Init {self; ast_module; init_kont})
       | Eval ({Wasm.Eval.frame; code; _} as eval_config) -> (
           match code with
           | _values, [] -> (
               (* We have an empty set of admin instructions so we create one
                  that invokes the main function. *)
               let* module_inst =
-                Wasm.Instance.ModuleMap.get wasm_main_module_name module_reg
+                Wasm.Action.of_lwt
+                @@ Wasm.Instance.ModuleMap.get wasm_main_module_name module_reg
               in
               let* main_name =
-                Wasm.Instance.Vector.to_list @@ Wasm.Utf8.decode wasm_entrypoint
+                Wasm.Action.of_lwt @@ Wasm.Instance.Vector.to_list
+                @@ Wasm.Utf8.decode wasm_entrypoint
               in
               let* extern =
-                Wasm.Instance.NameMap.get
-                  main_name
-                  module_inst.Wasm.Instance.exports
+                Wasm.Action.of_lwt
+                @@ Wasm.Instance.NameMap.get
+                     main_name
+                     module_inst.Wasm.Instance.exports
               in
-
               match extern with
               | Wasm.Instance.ExternFunc main_func ->
                   let admin_instr' = Wasm.Eval.Invoke main_func in
@@ -220,19 +220,19 @@ struct
                       code;
                     }
                   in
-                  Lwt.return (Eval eval_config)
+                  return (Eval eval_config)
               | _ ->
                   (* We require a function with the name [main] to be exported
                      rather than any other structure. *)
-                  Lwt.return
+                  return
                     (Stuck
                        (Invalid_state
                           "Invalid_module: no `main` function exported")))
           | _ ->
               (* Continue execution. *)
               let* eval_config = Wasm.Eval.step module_reg eval_config in
-              Lwt.return (Eval eval_config))
-      | Stuck e -> Lwt.return (Stuck e)
+              return (Eval eval_config))
+      | Stuck e -> return (Stuck e)
 
     let next_tick_state pvm_state =
       let to_stuck exn =
@@ -246,15 +246,15 @@ struct
             | Stuck _ -> Unknown_error error.raw_exception
           else Unknown_error error.raw_exception
         in
-        Lwt.return (Stuck wasm_error)
+        Wasm.Action.return (Stuck wasm_error)
       in
-      Lwt.catch (fun () -> unsafe_next_tick_state pvm_state) to_stuck
+      Wasm.Action.catch (fun () -> unsafe_next_tick_state pvm_state) to_stuck
 
     let compute_step tree =
       let open Lwt_syntax in
       let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
       (* Calculate the next tick state. *)
-      let* tick_state = next_tick_state pvm_state in
+      let* tick_state = Wasm.Action.run @@ next_tick_state pvm_state in
       let input_request =
         match pvm_state.tick_state with
         | Eval {code = _, []; _} | Stuck _ ->

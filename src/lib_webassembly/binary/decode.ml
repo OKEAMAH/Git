@@ -4,9 +4,9 @@ open Binary_exn
 module Vector = Lazy_vector.Int32Vector
 
 let lwt_ignore p =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* _ = p in
-  Lwt.return ()
+  Action.return ()
 
 type stream = {name : string; bytes : Chunked_byte_vector.t; mutable pos : int}
 
@@ -45,20 +45,19 @@ let get s =
   b
 
 let get_string n s =
-  let open Lwt.Syntax in
-  let rec ( -- ) x y () =
-    Lwt.return @@ if x = y then Lwt_seq.Nil else Lwt_seq.Cons (x, x + 1 -- y)
-  in
+  let open Action.Syntax in
   if n < 0 then raise EOS else check n s ;
   let buffer = Bytes.make n '\000' in
   let+ () =
-    Lwt_seq.iter_s
-      (fun i ->
-        let+ b = get s in
+    Action.iter_range ~first_index:0 ~last_index:(n - 1) (fun i ->
+        let+ b = Action.of_lwt (get s) in
         Bytes.set buffer i (Char.chr b))
-      (0 -- n)
   in
   Bytes.to_string buffer
+
+let get s = Action.of_lwt (get s)
+
+let peek s = Action.of_lwt (peek s)
 
 (* Errors *)
 
@@ -105,7 +104,7 @@ let get_string n = guard (get_string n)
 let skip n = guard (skip n)
 
 let expect b s msg =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = guard get s in
   require (x = b) s (pos s - 1) msg
 
@@ -115,14 +114,14 @@ let illegal2 s pos b n =
   error s pos ("illegal opcode " ^ string_of_byte b ^ " " ^ string_of_multi n)
 
 let at f s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let left = pos s in
   let+ x = f s in
   let right = pos s in
   Source.(x @@ region s left right)
 
 let at_s f s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let left = pos s in
   let+ x = f s in
   let right = pos s in
@@ -133,13 +132,13 @@ let at_s f s =
 let u8 s = get s
 
 let u16 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* lo = u8 s in
   let+ hi = u8 s in
   (hi lsl 8) + lo
 
 let u32 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* lo = u16 s in
   let lo = Int32.of_int lo in
   let+ hi = u16 s in
@@ -147,7 +146,7 @@ let u32 s =
   Int32.(add lo (shift_left hi 16))
 
 let u64 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* lo = u32 s in
   let lo = I64_convert.extend_i32_u lo in
   let+ hi = u32 s in
@@ -155,18 +154,18 @@ let u64 s =
   Int64.(add lo (shift_left hi 32))
 
 let rec vuN n s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   require (n > 0) s (pos s) "integer representation too long" ;
   let* b = u8 s in
   require (n >= 7 || b land 0x7f < 1 lsl n) s (pos s - 1) "integer too large" ;
   let x = Int64.of_int (b land 0x7f) in
-  if b land 0x80 = 0 then Lwt.return x
+  if b land 0x80 = 0 then Action.return x
   else
     let+ v = vuN (n - 7) s in
     Int64.(logor x (shift_left v 7))
 
 let rec vsN n s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   require (n > 0) s (pos s) "integer representation too long" ;
   let* b = u8 s in
   let mask = (-1 lsl (n - 1)) land 0x7f in
@@ -177,88 +176,88 @@ let rec vsN n s =
     "integer too large" ;
   let x = Int64.of_int (b land 0x7f) in
   if b land 0x80 = 0 then
-    if b land 0x40 = 0 then Lwt.return x
-    else Lwt.return Int64.(logor x (logxor (-1L) 0x7fL))
+    if b land 0x40 = 0 then Action.return x
+    else Action.return Int64.(logor x (logxor (-1L) 0x7fL))
   else
     let+ v = vsN (n - 7) s in
     Int64.(logor x (shift_left v 7))
 
 let vu1 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vuN 1 s in
   Int64.to_int x
 
 let vu32 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vuN 32 s in
   Int64.to_int32 x
 
 let vs7 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vsN 7 s in
   Int64.to_int x
 
 let vs32 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vsN 32 s in
   Int64.to_int32 x
 
 let vs33 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vsN 33 s in
   I32_convert.wrap_i64 x
 
 let vs64 s = vsN 64 s
 
 let f32 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = u32 s in
   F32.of_bits x
 
 let f64 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = u64 s in
   F64.of_bits x
 
 let v128 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = get_string (Types.vec_size Types.V128Type) s in
   V128.of_bits x
 
 let len32 s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let pos = pos s in
   let+ n = vu32 s in
   if I32.le_u n (Int32.of_int (len s - pos)) then Int32.to_int n
   else error s pos "length out of bounds"
 
 let bool s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vu1 s in
   x = 1
 
 let rec list f n s =
-  let open Lwt.Syntax in
-  if n = 0 then Lwt.return []
+  let open Action.Syntax in
+  if n = 0 then Action.return []
   else
     let* x = f s in
     let+ rst = list f (n - 1) s in
     x :: rst
 
 let opt f b s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   if b then
     let+ x = f s in
     Some x
-  else Lwt.return None
+  else Action.return None
 
 let vec f s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* n = len32 s in
   list f n s
 
 let sized f s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* size = len32 s in
   let start = pos s in
   let+ x = f size s in
@@ -274,15 +273,15 @@ type byte_vector_kont =
   | VKStop of Ast.data_label  (** Final step, cannot reduce. *)
 
 let byte_vector_step vecs s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
   | VKStart ->
       let* len = len32 s in
       let len = Int64.of_int len in
       let vector = Ast.alloc_data vecs len in
-      VKRead (vector, 0L, len) |> Lwt.return
+      VKRead (vector, 0L, len) |> Action.return
   | VKRead (vector, index, len) when Int64.compare index len >= 0 ->
-      VKStop vector |> Lwt.return
+      VKStop vector |> Action.return
   | VKRead (vector, index, len) ->
       let* c = get s in
       let+ () = Ast.add_to_data vecs vector index c in
@@ -295,7 +294,7 @@ let byte_vector_step vecs s =
 open Types
 
 let num_type s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vs7 s in
   match x with
   | -0x01 -> I32Type
@@ -305,14 +304,14 @@ let num_type s =
   | _ -> error s (pos s - 1) "malformed number type"
 
 let vec_type s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vs7 s in
   match x with
   | -0x05 -> V128Type
   | _ -> error s (pos s - 1) "malformed vector type"
 
 let ref_type s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vs7 s in
   match x with
   | -0x10 -> FuncRefType
@@ -320,7 +319,7 @@ let ref_type s =
   | _ -> error s (pos s - 1) "malformed reference type"
 
 let value_type s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = peek s in
   match x with
   | Some n when n >= -0x04 land 0x7f ->
@@ -334,25 +333,25 @@ let value_type s =
       RefType x
 
 let limits vu s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* has_max = bool s in
   let* min = vu s in
   let+ max = opt vu has_max s in
   {min; max}
 
 let table_type s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* t = ref_type s in
   let+ lim = limits vu32 s in
   TableType (lim, t)
 
 let memory_type s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ lim = limits vu32 s in
   MemoryType lim
 
 let mutability s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = u8 s in
   match x with
   | 0 -> Immutable
@@ -360,7 +359,7 @@ let mutability s =
   | _ -> error s (pos s - 1) "malformed mutability"
 
 let global_type s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* t = value_type s in
   let+ mut = mutability s in
   GlobalType (t, mut)
@@ -379,19 +378,19 @@ let end_ s = expect 0x0b s "END opcode expected"
 let zero s = expect 0x00 s "zero byte expected"
 
 let memop s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* align = vu32 s in
   require (I32.le_u align 32l) s (pos s - 1) "malformed memop flags" ;
   let+ offset = vu32 s in
   (Int32.to_int align, offset)
 
 let block_type s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = peek s in
   match x with
   | Some 0x40 ->
       skip 1 s ;
-      Lwt.return @@ ValBlockType None
+      Action.return @@ ValBlockType None
   | Some b when b land 0xc0 = 0x40 ->
       let+ x = value_type s in
       ValBlockType (Some x)
@@ -414,21 +413,21 @@ let push_rev_values values stack =
   List.fold_left (fun stack v -> push_stack v stack) stack (List.rev values)
 
 let pop_stack (LazyStack {length; vector}) =
-  let open Lwt.Syntax in
-  if length = 0l then Lwt.return_none
+  let open Action.Syntax in
+  if length = 0l then Action.return_none
   else
     let length = Int32.pred length in
-    let+ value = Vector.get length vector in
+    let+ value = Action.of_lwt @@ Vector.get length vector in
     Some (value, LazyStack {length; vector})
 
 let pop_at_most n stack =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let rec fold acc n stack =
-    if n = 0 then Lwt.return (acc, stack)
+    if n = 0 then Action.return (acc, stack)
     else
       let* value = pop_stack stack in
       match value with
-      | None -> Lwt.return (acc, stack)
+      | None -> Action.return (acc, stack)
       | Some (v, stack) -> (fold [@ocaml.tailcall]) (v :: acc) (n - 1) stack
   in
   let+ values, stack = fold [] n stack in
@@ -445,13 +444,13 @@ type instr_block_kont =
   | IKIf2 of block_type * int * block_label  (** If .. else parsing step. *)
 
 let instr s pos tag =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   match tag with
   (* These tags corresponds to resp. block, loop and if, and are now handled
      directly by the main step loop (see `IKBlock`, `IKLoop` and `IKIf1`. *)
   | 0x02 | 0x03 | 0x04 -> raise (Step_error Instr_step)
-  | 0x00 -> Lwt.return unreachable
-  | 0x01 -> Lwt.return nop
+  | 0x00 -> Action.return unreachable
+  | 0x01 -> Action.return nop
   | 0x05 -> error s pos "misplaced ELSE opcode"
   | (0x06 | 0x07 | 0x08 | 0x09 | 0x0a) as b -> illegal s pos b
   | 0x0b -> error s pos "misplaced END opcode"
@@ -465,7 +464,7 @@ let instr s pos tag =
       let* xs = vec (at var) s in
       let+ x = at var s in
       br_table xs x
-  | 0x0f -> Lwt.return return
+  | 0x0f -> Action.return Operators.return
   | 0x10 ->
       let+ x = at var s in
       call x
@@ -475,8 +474,8 @@ let instr s pos tag =
       call_indirect x y
   | (0x12 | 0x13 | 0x14 | 0x15 | 0x16 | 0x17 | 0x18 | 0x19) as b ->
       illegal s pos b
-  | 0x1a -> Lwt.return drop
-  | 0x1b -> Lwt.return @@ select None
+  | 0x1a -> Action.return drop
+  | 0x1b -> Action.return @@ select None
   | 0x1c ->
       let+ x = vec value_type s in
       select (Some x)
@@ -590,155 +589,155 @@ let instr s pos tag =
   | 0x44 ->
       let+ x = at f64 s in
       f64_const x
-  | 0x45 -> Lwt.return i32_eqz
-  | 0x46 -> Lwt.return i32_eq
-  | 0x47 -> Lwt.return i32_ne
-  | 0x48 -> Lwt.return i32_lt_s
-  | 0x49 -> Lwt.return i32_lt_u
-  | 0x4a -> Lwt.return i32_gt_s
-  | 0x4b -> Lwt.return i32_gt_u
-  | 0x4c -> Lwt.return i32_le_s
-  | 0x4d -> Lwt.return i32_le_u
-  | 0x4e -> Lwt.return i32_ge_s
-  | 0x4f -> Lwt.return i32_ge_u
-  | 0x50 -> Lwt.return i64_eqz
-  | 0x51 -> Lwt.return i64_eq
-  | 0x52 -> Lwt.return i64_ne
-  | 0x53 -> Lwt.return i64_lt_s
-  | 0x54 -> Lwt.return i64_lt_u
-  | 0x55 -> Lwt.return i64_gt_s
-  | 0x56 -> Lwt.return i64_gt_u
-  | 0x57 -> Lwt.return i64_le_s
-  | 0x58 -> Lwt.return i64_le_u
-  | 0x59 -> Lwt.return i64_ge_s
-  | 0x5a -> Lwt.return i64_ge_u
-  | 0x5b -> Lwt.return f32_eq
-  | 0x5c -> Lwt.return f32_ne
-  | 0x5d -> Lwt.return f32_lt
-  | 0x5e -> Lwt.return f32_gt
-  | 0x5f -> Lwt.return f32_le
-  | 0x60 -> Lwt.return f32_ge
-  | 0x61 -> Lwt.return f64_eq
-  | 0x62 -> Lwt.return f64_ne
-  | 0x63 -> Lwt.return f64_lt
-  | 0x64 -> Lwt.return f64_gt
-  | 0x65 -> Lwt.return f64_le
-  | 0x66 -> Lwt.return f64_ge
-  | 0x67 -> Lwt.return i32_clz
-  | 0x68 -> Lwt.return i32_ctz
-  | 0x69 -> Lwt.return i32_popcnt
-  | 0x6a -> Lwt.return i32_add
-  | 0x6b -> Lwt.return i32_sub
-  | 0x6c -> Lwt.return i32_mul
-  | 0x6d -> Lwt.return i32_div_s
-  | 0x6e -> Lwt.return i32_div_u
-  | 0x6f -> Lwt.return i32_rem_s
-  | 0x70 -> Lwt.return i32_rem_u
-  | 0x71 -> Lwt.return i32_and
-  | 0x72 -> Lwt.return i32_or
-  | 0x73 -> Lwt.return i32_xor
-  | 0x74 -> Lwt.return i32_shl
-  | 0x75 -> Lwt.return i32_shr_s
-  | 0x76 -> Lwt.return i32_shr_u
-  | 0x77 -> Lwt.return i32_rotl
-  | 0x78 -> Lwt.return i32_rotr
-  | 0x79 -> Lwt.return i64_clz
-  | 0x7a -> Lwt.return i64_ctz
-  | 0x7b -> Lwt.return i64_popcnt
-  | 0x7c -> Lwt.return i64_add
-  | 0x7d -> Lwt.return i64_sub
-  | 0x7e -> Lwt.return i64_mul
-  | 0x7f -> Lwt.return i64_div_s
-  | 0x80 -> Lwt.return i64_div_u
-  | 0x81 -> Lwt.return i64_rem_s
-  | 0x82 -> Lwt.return i64_rem_u
-  | 0x83 -> Lwt.return i64_and
-  | 0x84 -> Lwt.return i64_or
-  | 0x85 -> Lwt.return i64_xor
-  | 0x86 -> Lwt.return i64_shl
-  | 0x87 -> Lwt.return i64_shr_s
-  | 0x88 -> Lwt.return i64_shr_u
-  | 0x89 -> Lwt.return i64_rotl
-  | 0x8a -> Lwt.return i64_rotr
-  | 0x8b -> Lwt.return f32_abs
-  | 0x8c -> Lwt.return f32_neg
-  | 0x8d -> Lwt.return f32_ceil
-  | 0x8e -> Lwt.return f32_floor
-  | 0x8f -> Lwt.return f32_trunc
-  | 0x90 -> Lwt.return f32_nearest
-  | 0x91 -> Lwt.return f32_sqrt
-  | 0x92 -> Lwt.return f32_add
-  | 0x93 -> Lwt.return f32_sub
-  | 0x94 -> Lwt.return f32_mul
-  | 0x95 -> Lwt.return f32_div
-  | 0x96 -> Lwt.return f32_min
-  | 0x97 -> Lwt.return f32_max
-  | 0x98 -> Lwt.return f32_copysign
-  | 0x99 -> Lwt.return f64_abs
-  | 0x9a -> Lwt.return f64_neg
-  | 0x9b -> Lwt.return f64_ceil
-  | 0x9c -> Lwt.return f64_floor
-  | 0x9d -> Lwt.return f64_trunc
-  | 0x9e -> Lwt.return f64_nearest
-  | 0x9f -> Lwt.return f64_sqrt
-  | 0xa0 -> Lwt.return f64_add
-  | 0xa1 -> Lwt.return f64_sub
-  | 0xa2 -> Lwt.return f64_mul
-  | 0xa3 -> Lwt.return f64_div
-  | 0xa4 -> Lwt.return f64_min
-  | 0xa5 -> Lwt.return f64_max
-  | 0xa6 -> Lwt.return f64_copysign
-  | 0xa7 -> Lwt.return i32_wrap_i64
-  | 0xa8 -> Lwt.return i32_trunc_f32_s
-  | 0xa9 -> Lwt.return i32_trunc_f32_u
-  | 0xaa -> Lwt.return i32_trunc_f64_s
-  | 0xab -> Lwt.return i32_trunc_f64_u
-  | 0xac -> Lwt.return i64_extend_i32_s
-  | 0xad -> Lwt.return i64_extend_i32_u
-  | 0xae -> Lwt.return i64_trunc_f32_s
-  | 0xaf -> Lwt.return i64_trunc_f32_u
-  | 0xb0 -> Lwt.return i64_trunc_f64_s
-  | 0xb1 -> Lwt.return i64_trunc_f64_u
-  | 0xb2 -> Lwt.return f32_convert_i32_s
-  | 0xb3 -> Lwt.return f32_convert_i32_u
-  | 0xb4 -> Lwt.return f32_convert_i64_s
-  | 0xb5 -> Lwt.return f32_convert_i64_u
-  | 0xb6 -> Lwt.return f32_demote_f64
-  | 0xb7 -> Lwt.return f64_convert_i32_s
-  | 0xb8 -> Lwt.return f64_convert_i32_u
-  | 0xb9 -> Lwt.return f64_convert_i64_s
-  | 0xba -> Lwt.return f64_convert_i64_u
-  | 0xbb -> Lwt.return f64_promote_f32
-  | 0xbc -> Lwt.return i32_reinterpret_f32
-  | 0xbd -> Lwt.return i64_reinterpret_f64
-  | 0xbe -> Lwt.return f32_reinterpret_i32
-  | 0xbf -> Lwt.return f64_reinterpret_i64
-  | 0xc0 -> Lwt.return i32_extend8_s
-  | 0xc1 -> Lwt.return i32_extend16_s
-  | 0xc2 -> Lwt.return i64_extend8_s
-  | 0xc3 -> Lwt.return i64_extend16_s
-  | 0xc4 -> Lwt.return i64_extend32_s
+  | 0x45 -> Action.return i32_eqz
+  | 0x46 -> Action.return i32_eq
+  | 0x47 -> Action.return i32_ne
+  | 0x48 -> Action.return i32_lt_s
+  | 0x49 -> Action.return i32_lt_u
+  | 0x4a -> Action.return i32_gt_s
+  | 0x4b -> Action.return i32_gt_u
+  | 0x4c -> Action.return i32_le_s
+  | 0x4d -> Action.return i32_le_u
+  | 0x4e -> Action.return i32_ge_s
+  | 0x4f -> Action.return i32_ge_u
+  | 0x50 -> Action.return i64_eqz
+  | 0x51 -> Action.return i64_eq
+  | 0x52 -> Action.return i64_ne
+  | 0x53 -> Action.return i64_lt_s
+  | 0x54 -> Action.return i64_lt_u
+  | 0x55 -> Action.return i64_gt_s
+  | 0x56 -> Action.return i64_gt_u
+  | 0x57 -> Action.return i64_le_s
+  | 0x58 -> Action.return i64_le_u
+  | 0x59 -> Action.return i64_ge_s
+  | 0x5a -> Action.return i64_ge_u
+  | 0x5b -> Action.return f32_eq
+  | 0x5c -> Action.return f32_ne
+  | 0x5d -> Action.return f32_lt
+  | 0x5e -> Action.return f32_gt
+  | 0x5f -> Action.return f32_le
+  | 0x60 -> Action.return f32_ge
+  | 0x61 -> Action.return f64_eq
+  | 0x62 -> Action.return f64_ne
+  | 0x63 -> Action.return f64_lt
+  | 0x64 -> Action.return f64_gt
+  | 0x65 -> Action.return f64_le
+  | 0x66 -> Action.return f64_ge
+  | 0x67 -> Action.return i32_clz
+  | 0x68 -> Action.return i32_ctz
+  | 0x69 -> Action.return i32_popcnt
+  | 0x6a -> Action.return i32_add
+  | 0x6b -> Action.return i32_sub
+  | 0x6c -> Action.return i32_mul
+  | 0x6d -> Action.return i32_div_s
+  | 0x6e -> Action.return i32_div_u
+  | 0x6f -> Action.return i32_rem_s
+  | 0x70 -> Action.return i32_rem_u
+  | 0x71 -> Action.return i32_and
+  | 0x72 -> Action.return i32_or
+  | 0x73 -> Action.return i32_xor
+  | 0x74 -> Action.return i32_shl
+  | 0x75 -> Action.return i32_shr_s
+  | 0x76 -> Action.return i32_shr_u
+  | 0x77 -> Action.return i32_rotl
+  | 0x78 -> Action.return i32_rotr
+  | 0x79 -> Action.return i64_clz
+  | 0x7a -> Action.return i64_ctz
+  | 0x7b -> Action.return i64_popcnt
+  | 0x7c -> Action.return i64_add
+  | 0x7d -> Action.return i64_sub
+  | 0x7e -> Action.return i64_mul
+  | 0x7f -> Action.return i64_div_s
+  | 0x80 -> Action.return i64_div_u
+  | 0x81 -> Action.return i64_rem_s
+  | 0x82 -> Action.return i64_rem_u
+  | 0x83 -> Action.return i64_and
+  | 0x84 -> Action.return i64_or
+  | 0x85 -> Action.return i64_xor
+  | 0x86 -> Action.return i64_shl
+  | 0x87 -> Action.return i64_shr_s
+  | 0x88 -> Action.return i64_shr_u
+  | 0x89 -> Action.return i64_rotl
+  | 0x8a -> Action.return i64_rotr
+  | 0x8b -> Action.return f32_abs
+  | 0x8c -> Action.return f32_neg
+  | 0x8d -> Action.return f32_ceil
+  | 0x8e -> Action.return f32_floor
+  | 0x8f -> Action.return f32_trunc
+  | 0x90 -> Action.return f32_nearest
+  | 0x91 -> Action.return f32_sqrt
+  | 0x92 -> Action.return f32_add
+  | 0x93 -> Action.return f32_sub
+  | 0x94 -> Action.return f32_mul
+  | 0x95 -> Action.return f32_div
+  | 0x96 -> Action.return f32_min
+  | 0x97 -> Action.return f32_max
+  | 0x98 -> Action.return f32_copysign
+  | 0x99 -> Action.return f64_abs
+  | 0x9a -> Action.return f64_neg
+  | 0x9b -> Action.return f64_ceil
+  | 0x9c -> Action.return f64_floor
+  | 0x9d -> Action.return f64_trunc
+  | 0x9e -> Action.return f64_nearest
+  | 0x9f -> Action.return f64_sqrt
+  | 0xa0 -> Action.return f64_add
+  | 0xa1 -> Action.return f64_sub
+  | 0xa2 -> Action.return f64_mul
+  | 0xa3 -> Action.return f64_div
+  | 0xa4 -> Action.return f64_min
+  | 0xa5 -> Action.return f64_max
+  | 0xa6 -> Action.return f64_copysign
+  | 0xa7 -> Action.return i32_wrap_i64
+  | 0xa8 -> Action.return i32_trunc_f32_s
+  | 0xa9 -> Action.return i32_trunc_f32_u
+  | 0xaa -> Action.return i32_trunc_f64_s
+  | 0xab -> Action.return i32_trunc_f64_u
+  | 0xac -> Action.return i64_extend_i32_s
+  | 0xad -> Action.return i64_extend_i32_u
+  | 0xae -> Action.return i64_trunc_f32_s
+  | 0xaf -> Action.return i64_trunc_f32_u
+  | 0xb0 -> Action.return i64_trunc_f64_s
+  | 0xb1 -> Action.return i64_trunc_f64_u
+  | 0xb2 -> Action.return f32_convert_i32_s
+  | 0xb3 -> Action.return f32_convert_i32_u
+  | 0xb4 -> Action.return f32_convert_i64_s
+  | 0xb5 -> Action.return f32_convert_i64_u
+  | 0xb6 -> Action.return f32_demote_f64
+  | 0xb7 -> Action.return f64_convert_i32_s
+  | 0xb8 -> Action.return f64_convert_i32_u
+  | 0xb9 -> Action.return f64_convert_i64_s
+  | 0xba -> Action.return f64_convert_i64_u
+  | 0xbb -> Action.return f64_promote_f32
+  | 0xbc -> Action.return i32_reinterpret_f32
+  | 0xbd -> Action.return i64_reinterpret_f64
+  | 0xbe -> Action.return f32_reinterpret_i32
+  | 0xbf -> Action.return f64_reinterpret_i64
+  | 0xc0 -> Action.return i32_extend8_s
+  | 0xc1 -> Action.return i32_extend16_s
+  | 0xc2 -> Action.return i64_extend8_s
+  | 0xc3 -> Action.return i64_extend16_s
+  | 0xc4 -> Action.return i64_extend32_s
   | (0xc5 | 0xc6 | 0xc7 | 0xc8 | 0xc9 | 0xca | 0xcb | 0xcc | 0xcd | 0xce | 0xcf)
     as b ->
       illegal s pos b
   | 0xd0 ->
       let+ x = ref_type s in
       ref_null x
-  | 0xd1 -> Lwt.return ref_is_null
+  | 0xd1 -> Action.return ref_is_null
   | 0xd2 ->
       let+ x = at var s in
       ref_func x
   | 0xfc as b -> (
       let* x = vu32 s in
       match x with
-      | 0x00l -> Lwt.return i32_trunc_sat_f32_s
-      | 0x01l -> Lwt.return i32_trunc_sat_f32_u
-      | 0x02l -> Lwt.return i32_trunc_sat_f64_s
-      | 0x03l -> Lwt.return i32_trunc_sat_f64_u
-      | 0x04l -> Lwt.return i64_trunc_sat_f32_s
-      | 0x05l -> Lwt.return i64_trunc_sat_f32_u
-      | 0x06l -> Lwt.return i64_trunc_sat_f64_s
-      | 0x07l -> Lwt.return i64_trunc_sat_f64_u
+      | 0x00l -> Action.return i32_trunc_sat_f32_s
+      | 0x01l -> Action.return i32_trunc_sat_f32_u
+      | 0x02l -> Action.return i32_trunc_sat_f64_s
+      | 0x03l -> Action.return i32_trunc_sat_f64_u
+      | 0x04l -> Action.return i64_trunc_sat_f32_s
+      | 0x05l -> Action.return i64_trunc_sat_f32_u
+      | 0x06l -> Action.return i64_trunc_sat_f64_s
+      | 0x07l -> Action.return i64_trunc_sat_f64_u
       | 0x08l ->
           let* x = at var s in
           let+ () = zero s in
@@ -818,16 +817,16 @@ let instr s pos tag =
           v128_const x
       | 0x0dl ->
           let+ l =
-            Lwt_list.map_s (fun () -> u8 s) (List.init 16 (fun _ -> ()))
+            Action.List.map_s (fun () -> u8 s) (List.init 16 (fun _ -> ()))
           in
           i8x16_shuffle l
-      | 0x0el -> Lwt.return i8x16_swizzle
-      | 0x0fl -> Lwt.return i8x16_splat
-      | 0x10l -> Lwt.return i16x8_splat
-      | 0x11l -> Lwt.return i32x4_splat
-      | 0x12l -> Lwt.return i64x2_splat
-      | 0x13l -> Lwt.return f32x4_splat
-      | 0x14l -> Lwt.return f64x2_splat
+      | 0x0el -> Action.return i8x16_swizzle
+      | 0x0fl -> Action.return i8x16_splat
+      | 0x10l -> Action.return i16x8_splat
+      | 0x11l -> Action.return i32x4_splat
+      | 0x12l -> Action.return i64x2_splat
+      | 0x13l -> Action.return f32x4_splat
+      | 0x14l -> Action.return f64x2_splat
       | 0x15l ->
           let+ i = u8 s in
           i8x16_extract_lane_s i
@@ -870,55 +869,55 @@ let instr s pos tag =
       | 0x22l ->
           let+ i = u8 s in
           f64x2_replace_lane i
-      | 0x23l -> Lwt.return i8x16_eq
-      | 0x24l -> Lwt.return i8x16_ne
-      | 0x25l -> Lwt.return i8x16_lt_s
-      | 0x26l -> Lwt.return i8x16_lt_u
-      | 0x27l -> Lwt.return i8x16_gt_s
-      | 0x28l -> Lwt.return i8x16_gt_u
-      | 0x29l -> Lwt.return i8x16_le_s
-      | 0x2al -> Lwt.return i8x16_le_u
-      | 0x2bl -> Lwt.return i8x16_ge_s
-      | 0x2cl -> Lwt.return i8x16_ge_u
-      | 0x2dl -> Lwt.return i16x8_eq
-      | 0x2el -> Lwt.return i16x8_ne
-      | 0x2fl -> Lwt.return i16x8_lt_s
-      | 0x30l -> Lwt.return i16x8_lt_u
-      | 0x31l -> Lwt.return i16x8_gt_s
-      | 0x32l -> Lwt.return i16x8_gt_u
-      | 0x33l -> Lwt.return i16x8_le_s
-      | 0x34l -> Lwt.return i16x8_le_u
-      | 0x35l -> Lwt.return i16x8_ge_s
-      | 0x36l -> Lwt.return i16x8_ge_u
-      | 0x37l -> Lwt.return i32x4_eq
-      | 0x38l -> Lwt.return i32x4_ne
-      | 0x39l -> Lwt.return i32x4_lt_s
-      | 0x3al -> Lwt.return i32x4_lt_u
-      | 0x3bl -> Lwt.return i32x4_gt_s
-      | 0x3cl -> Lwt.return i32x4_gt_u
-      | 0x3dl -> Lwt.return i32x4_le_s
-      | 0x3el -> Lwt.return i32x4_le_u
-      | 0x3fl -> Lwt.return i32x4_ge_s
-      | 0x40l -> Lwt.return i32x4_ge_u
-      | 0x41l -> Lwt.return f32x4_eq
-      | 0x42l -> Lwt.return f32x4_ne
-      | 0x43l -> Lwt.return f32x4_lt
-      | 0x44l -> Lwt.return f32x4_gt
-      | 0x45l -> Lwt.return f32x4_le
-      | 0x46l -> Lwt.return f32x4_ge
-      | 0x47l -> Lwt.return f64x2_eq
-      | 0x48l -> Lwt.return f64x2_ne
-      | 0x49l -> Lwt.return f64x2_lt
-      | 0x4al -> Lwt.return f64x2_gt
-      | 0x4bl -> Lwt.return f64x2_le
-      | 0x4cl -> Lwt.return f64x2_ge
-      | 0x4dl -> Lwt.return v128_not
-      | 0x4el -> Lwt.return v128_and
-      | 0x4fl -> Lwt.return v128_andnot
-      | 0x50l -> Lwt.return v128_or
-      | 0x51l -> Lwt.return v128_xor
-      | 0x52l -> Lwt.return v128_bitselect
-      | 0x53l -> Lwt.return v128_any_true
+      | 0x23l -> Action.return i8x16_eq
+      | 0x24l -> Action.return i8x16_ne
+      | 0x25l -> Action.return i8x16_lt_s
+      | 0x26l -> Action.return i8x16_lt_u
+      | 0x27l -> Action.return i8x16_gt_s
+      | 0x28l -> Action.return i8x16_gt_u
+      | 0x29l -> Action.return i8x16_le_s
+      | 0x2al -> Action.return i8x16_le_u
+      | 0x2bl -> Action.return i8x16_ge_s
+      | 0x2cl -> Action.return i8x16_ge_u
+      | 0x2dl -> Action.return i16x8_eq
+      | 0x2el -> Action.return i16x8_ne
+      | 0x2fl -> Action.return i16x8_lt_s
+      | 0x30l -> Action.return i16x8_lt_u
+      | 0x31l -> Action.return i16x8_gt_s
+      | 0x32l -> Action.return i16x8_gt_u
+      | 0x33l -> Action.return i16x8_le_s
+      | 0x34l -> Action.return i16x8_le_u
+      | 0x35l -> Action.return i16x8_ge_s
+      | 0x36l -> Action.return i16x8_ge_u
+      | 0x37l -> Action.return i32x4_eq
+      | 0x38l -> Action.return i32x4_ne
+      | 0x39l -> Action.return i32x4_lt_s
+      | 0x3al -> Action.return i32x4_lt_u
+      | 0x3bl -> Action.return i32x4_gt_s
+      | 0x3cl -> Action.return i32x4_gt_u
+      | 0x3dl -> Action.return i32x4_le_s
+      | 0x3el -> Action.return i32x4_le_u
+      | 0x3fl -> Action.return i32x4_ge_s
+      | 0x40l -> Action.return i32x4_ge_u
+      | 0x41l -> Action.return f32x4_eq
+      | 0x42l -> Action.return f32x4_ne
+      | 0x43l -> Action.return f32x4_lt
+      | 0x44l -> Action.return f32x4_gt
+      | 0x45l -> Action.return f32x4_le
+      | 0x46l -> Action.return f32x4_ge
+      | 0x47l -> Action.return f64x2_eq
+      | 0x48l -> Action.return f64x2_ne
+      | 0x49l -> Action.return f64x2_lt
+      | 0x4al -> Action.return f64x2_gt
+      | 0x4bl -> Action.return f64x2_le
+      | 0x4cl -> Action.return f64x2_ge
+      | 0x4dl -> Action.return v128_not
+      | 0x4el -> Action.return v128_and
+      | 0x4fl -> Action.return v128_andnot
+      | 0x50l -> Action.return v128_or
+      | 0x51l -> Action.return v128_xor
+      | 0x52l -> Action.return v128_bitselect
+      | 0x53l -> Action.return v128_any_true
       | 0x54l ->
           let* a, o = memop s in
           let+ lane = u8 s in
@@ -957,153 +956,153 @@ let instr s pos tag =
       | 0x5dl ->
           let+ a, o = memop s in
           v128_load64_zero a o
-      | 0x5el -> Lwt.return f32x4_demote_f64x2_zero
-      | 0x5fl -> Lwt.return f64x2_promote_low_f32x4
-      | 0x60l -> Lwt.return i8x16_abs
-      | 0x61l -> Lwt.return i8x16_neg
-      | 0x62l -> Lwt.return i8x16_popcnt
-      | 0x63l -> Lwt.return i8x16_all_true
-      | 0x64l -> Lwt.return i8x16_bitmask
-      | 0x65l -> Lwt.return i8x16_narrow_i16x8_s
-      | 0x66l -> Lwt.return i8x16_narrow_i16x8_u
-      | 0x67l -> Lwt.return f32x4_ceil
-      | 0x68l -> Lwt.return f32x4_floor
-      | 0x69l -> Lwt.return f32x4_trunc
-      | 0x6al -> Lwt.return f32x4_nearest
-      | 0x6bl -> Lwt.return i8x16_shl
-      | 0x6cl -> Lwt.return i8x16_shr_s
-      | 0x6dl -> Lwt.return i8x16_shr_u
-      | 0x6el -> Lwt.return i8x16_add
-      | 0x6fl -> Lwt.return i8x16_add_sat_s
-      | 0x70l -> Lwt.return i8x16_add_sat_u
-      | 0x71l -> Lwt.return i8x16_sub
-      | 0x72l -> Lwt.return i8x16_sub_sat_s
-      | 0x73l -> Lwt.return i8x16_sub_sat_u
-      | 0x74l -> Lwt.return f64x2_ceil
-      | 0x75l -> Lwt.return f64x2_floor
-      | 0x76l -> Lwt.return i8x16_min_s
-      | 0x77l -> Lwt.return i8x16_min_u
-      | 0x78l -> Lwt.return i8x16_max_s
-      | 0x79l -> Lwt.return i8x16_max_u
-      | 0x7al -> Lwt.return f64x2_trunc
-      | 0x7bl -> Lwt.return i8x16_avgr_u
-      | 0x7cl -> Lwt.return i16x8_extadd_pairwise_i8x16_s
-      | 0x7dl -> Lwt.return i16x8_extadd_pairwise_i8x16_u
-      | 0x7el -> Lwt.return i32x4_extadd_pairwise_i16x8_s
-      | 0x7fl -> Lwt.return i32x4_extadd_pairwise_i16x8_u
-      | 0x80l -> Lwt.return i16x8_abs
-      | 0x81l -> Lwt.return i16x8_neg
-      | 0x82l -> Lwt.return i16x8_q15mulr_sat_s
-      | 0x83l -> Lwt.return i16x8_all_true
-      | 0x84l -> Lwt.return i16x8_bitmask
-      | 0x85l -> Lwt.return i16x8_narrow_i32x4_s
-      | 0x86l -> Lwt.return i16x8_narrow_i32x4_u
-      | 0x87l -> Lwt.return i16x8_extend_low_i8x16_s
-      | 0x88l -> Lwt.return i16x8_extend_high_i8x16_s
-      | 0x89l -> Lwt.return i16x8_extend_low_i8x16_u
-      | 0x8al -> Lwt.return i16x8_extend_high_i8x16_u
-      | 0x8bl -> Lwt.return i16x8_shl
-      | 0x8cl -> Lwt.return i16x8_shr_s
-      | 0x8dl -> Lwt.return i16x8_shr_u
-      | 0x8el -> Lwt.return i16x8_add
-      | 0x8fl -> Lwt.return i16x8_add_sat_s
-      | 0x90l -> Lwt.return i16x8_add_sat_u
-      | 0x91l -> Lwt.return i16x8_sub
-      | 0x92l -> Lwt.return i16x8_sub_sat_s
-      | 0x93l -> Lwt.return i16x8_sub_sat_u
-      | 0x94l -> Lwt.return f64x2_nearest
-      | 0x95l -> Lwt.return i16x8_mul
-      | 0x96l -> Lwt.return i16x8_min_s
-      | 0x97l -> Lwt.return i16x8_min_u
-      | 0x98l -> Lwt.return i16x8_max_s
-      | 0x99l -> Lwt.return i16x8_max_u
-      | 0x9bl -> Lwt.return i16x8_avgr_u
-      | 0x9cl -> Lwt.return i16x8_extmul_low_i8x16_s
-      | 0x9dl -> Lwt.return i16x8_extmul_high_i8x16_s
-      | 0x9el -> Lwt.return i16x8_extmul_low_i8x16_u
-      | 0x9fl -> Lwt.return i16x8_extmul_high_i8x16_u
-      | 0xa0l -> Lwt.return i32x4_abs
-      | 0xa1l -> Lwt.return i32x4_neg
-      | 0xa3l -> Lwt.return i32x4_all_true
-      | 0xa4l -> Lwt.return i32x4_bitmask
-      | 0xa7l -> Lwt.return i32x4_extend_low_i16x8_s
-      | 0xa8l -> Lwt.return i32x4_extend_high_i16x8_s
-      | 0xa9l -> Lwt.return i32x4_extend_low_i16x8_u
-      | 0xaal -> Lwt.return i32x4_extend_high_i16x8_u
-      | 0xabl -> Lwt.return i32x4_shl
-      | 0xacl -> Lwt.return i32x4_shr_s
-      | 0xadl -> Lwt.return i32x4_shr_u
-      | 0xael -> Lwt.return i32x4_add
-      | 0xb1l -> Lwt.return i32x4_sub
-      | 0xb5l -> Lwt.return i32x4_mul
-      | 0xb6l -> Lwt.return i32x4_min_s
-      | 0xb7l -> Lwt.return i32x4_min_u
-      | 0xb8l -> Lwt.return i32x4_max_s
-      | 0xb9l -> Lwt.return i32x4_max_u
-      | 0xbal -> Lwt.return i32x4_dot_i16x8_s
-      | 0xbcl -> Lwt.return i32x4_extmul_low_i16x8_s
-      | 0xbdl -> Lwt.return i32x4_extmul_high_i16x8_s
-      | 0xbel -> Lwt.return i32x4_extmul_low_i16x8_u
-      | 0xbfl -> Lwt.return i32x4_extmul_high_i16x8_u
-      | 0xc0l -> Lwt.return i64x2_abs
-      | 0xc1l -> Lwt.return i64x2_neg
-      | 0xc3l -> Lwt.return i64x2_all_true
-      | 0xc4l -> Lwt.return i64x2_bitmask
-      | 0xc7l -> Lwt.return i64x2_extend_low_i32x4_s
-      | 0xc8l -> Lwt.return i64x2_extend_high_i32x4_s
-      | 0xc9l -> Lwt.return i64x2_extend_low_i32x4_u
-      | 0xcal -> Lwt.return i64x2_extend_high_i32x4_u
-      | 0xcbl -> Lwt.return i64x2_shl
-      | 0xccl -> Lwt.return i64x2_shr_s
-      | 0xcdl -> Lwt.return i64x2_shr_u
-      | 0xcel -> Lwt.return i64x2_add
-      | 0xd1l -> Lwt.return i64x2_sub
-      | 0xd5l -> Lwt.return i64x2_mul
-      | 0xd6l -> Lwt.return i64x2_eq
-      | 0xd7l -> Lwt.return i64x2_ne
-      | 0xd8l -> Lwt.return i64x2_lt_s
-      | 0xd9l -> Lwt.return i64x2_gt_s
-      | 0xdal -> Lwt.return i64x2_le_s
-      | 0xdbl -> Lwt.return i64x2_ge_s
-      | 0xdcl -> Lwt.return i64x2_extmul_low_i32x4_s
-      | 0xddl -> Lwt.return i64x2_extmul_high_i32x4_s
-      | 0xdel -> Lwt.return i64x2_extmul_low_i32x4_u
-      | 0xdfl -> Lwt.return i64x2_extmul_high_i32x4_u
-      | 0xe0l -> Lwt.return f32x4_abs
-      | 0xe1l -> Lwt.return f32x4_neg
-      | 0xe3l -> Lwt.return f32x4_sqrt
-      | 0xe4l -> Lwt.return f32x4_add
-      | 0xe5l -> Lwt.return f32x4_sub
-      | 0xe6l -> Lwt.return f32x4_mul
-      | 0xe7l -> Lwt.return f32x4_div
-      | 0xe8l -> Lwt.return f32x4_min
-      | 0xe9l -> Lwt.return f32x4_max
-      | 0xeal -> Lwt.return f32x4_pmin
-      | 0xebl -> Lwt.return f32x4_pmax
-      | 0xecl -> Lwt.return f64x2_abs
-      | 0xedl -> Lwt.return f64x2_neg
-      | 0xefl -> Lwt.return f64x2_sqrt
-      | 0xf0l -> Lwt.return f64x2_add
-      | 0xf1l -> Lwt.return f64x2_sub
-      | 0xf2l -> Lwt.return f64x2_mul
-      | 0xf3l -> Lwt.return f64x2_div
-      | 0xf4l -> Lwt.return f64x2_min
-      | 0xf5l -> Lwt.return f64x2_max
-      | 0xf6l -> Lwt.return f64x2_pmin
-      | 0xf7l -> Lwt.return f64x2_pmax
-      | 0xf8l -> Lwt.return i32x4_trunc_sat_f32x4_s
-      | 0xf9l -> Lwt.return i32x4_trunc_sat_f32x4_u
-      | 0xfal -> Lwt.return f32x4_convert_i32x4_s
-      | 0xfbl -> Lwt.return f32x4_convert_i32x4_u
-      | 0xfcl -> Lwt.return i32x4_trunc_sat_f64x2_s_zero
-      | 0xfdl -> Lwt.return i32x4_trunc_sat_f64x2_u_zero
-      | 0xfel -> Lwt.return f64x2_convert_low_i32x4_s
-      | 0xffl -> Lwt.return f64x2_convert_low_i32x4_u
+      | 0x5el -> Action.return f32x4_demote_f64x2_zero
+      | 0x5fl -> Action.return f64x2_promote_low_f32x4
+      | 0x60l -> Action.return i8x16_abs
+      | 0x61l -> Action.return i8x16_neg
+      | 0x62l -> Action.return i8x16_popcnt
+      | 0x63l -> Action.return i8x16_all_true
+      | 0x64l -> Action.return i8x16_bitmask
+      | 0x65l -> Action.return i8x16_narrow_i16x8_s
+      | 0x66l -> Action.return i8x16_narrow_i16x8_u
+      | 0x67l -> Action.return f32x4_ceil
+      | 0x68l -> Action.return f32x4_floor
+      | 0x69l -> Action.return f32x4_trunc
+      | 0x6al -> Action.return f32x4_nearest
+      | 0x6bl -> Action.return i8x16_shl
+      | 0x6cl -> Action.return i8x16_shr_s
+      | 0x6dl -> Action.return i8x16_shr_u
+      | 0x6el -> Action.return i8x16_add
+      | 0x6fl -> Action.return i8x16_add_sat_s
+      | 0x70l -> Action.return i8x16_add_sat_u
+      | 0x71l -> Action.return i8x16_sub
+      | 0x72l -> Action.return i8x16_sub_sat_s
+      | 0x73l -> Action.return i8x16_sub_sat_u
+      | 0x74l -> Action.return f64x2_ceil
+      | 0x75l -> Action.return f64x2_floor
+      | 0x76l -> Action.return i8x16_min_s
+      | 0x77l -> Action.return i8x16_min_u
+      | 0x78l -> Action.return i8x16_max_s
+      | 0x79l -> Action.return i8x16_max_u
+      | 0x7al -> Action.return f64x2_trunc
+      | 0x7bl -> Action.return i8x16_avgr_u
+      | 0x7cl -> Action.return i16x8_extadd_pairwise_i8x16_s
+      | 0x7dl -> Action.return i16x8_extadd_pairwise_i8x16_u
+      | 0x7el -> Action.return i32x4_extadd_pairwise_i16x8_s
+      | 0x7fl -> Action.return i32x4_extadd_pairwise_i16x8_u
+      | 0x80l -> Action.return i16x8_abs
+      | 0x81l -> Action.return i16x8_neg
+      | 0x82l -> Action.return i16x8_q15mulr_sat_s
+      | 0x83l -> Action.return i16x8_all_true
+      | 0x84l -> Action.return i16x8_bitmask
+      | 0x85l -> Action.return i16x8_narrow_i32x4_s
+      | 0x86l -> Action.return i16x8_narrow_i32x4_u
+      | 0x87l -> Action.return i16x8_extend_low_i8x16_s
+      | 0x88l -> Action.return i16x8_extend_high_i8x16_s
+      | 0x89l -> Action.return i16x8_extend_low_i8x16_u
+      | 0x8al -> Action.return i16x8_extend_high_i8x16_u
+      | 0x8bl -> Action.return i16x8_shl
+      | 0x8cl -> Action.return i16x8_shr_s
+      | 0x8dl -> Action.return i16x8_shr_u
+      | 0x8el -> Action.return i16x8_add
+      | 0x8fl -> Action.return i16x8_add_sat_s
+      | 0x90l -> Action.return i16x8_add_sat_u
+      | 0x91l -> Action.return i16x8_sub
+      | 0x92l -> Action.return i16x8_sub_sat_s
+      | 0x93l -> Action.return i16x8_sub_sat_u
+      | 0x94l -> Action.return f64x2_nearest
+      | 0x95l -> Action.return i16x8_mul
+      | 0x96l -> Action.return i16x8_min_s
+      | 0x97l -> Action.return i16x8_min_u
+      | 0x98l -> Action.return i16x8_max_s
+      | 0x99l -> Action.return i16x8_max_u
+      | 0x9bl -> Action.return i16x8_avgr_u
+      | 0x9cl -> Action.return i16x8_extmul_low_i8x16_s
+      | 0x9dl -> Action.return i16x8_extmul_high_i8x16_s
+      | 0x9el -> Action.return i16x8_extmul_low_i8x16_u
+      | 0x9fl -> Action.return i16x8_extmul_high_i8x16_u
+      | 0xa0l -> Action.return i32x4_abs
+      | 0xa1l -> Action.return i32x4_neg
+      | 0xa3l -> Action.return i32x4_all_true
+      | 0xa4l -> Action.return i32x4_bitmask
+      | 0xa7l -> Action.return i32x4_extend_low_i16x8_s
+      | 0xa8l -> Action.return i32x4_extend_high_i16x8_s
+      | 0xa9l -> Action.return i32x4_extend_low_i16x8_u
+      | 0xaal -> Action.return i32x4_extend_high_i16x8_u
+      | 0xabl -> Action.return i32x4_shl
+      | 0xacl -> Action.return i32x4_shr_s
+      | 0xadl -> Action.return i32x4_shr_u
+      | 0xael -> Action.return i32x4_add
+      | 0xb1l -> Action.return i32x4_sub
+      | 0xb5l -> Action.return i32x4_mul
+      | 0xb6l -> Action.return i32x4_min_s
+      | 0xb7l -> Action.return i32x4_min_u
+      | 0xb8l -> Action.return i32x4_max_s
+      | 0xb9l -> Action.return i32x4_max_u
+      | 0xbal -> Action.return i32x4_dot_i16x8_s
+      | 0xbcl -> Action.return i32x4_extmul_low_i16x8_s
+      | 0xbdl -> Action.return i32x4_extmul_high_i16x8_s
+      | 0xbel -> Action.return i32x4_extmul_low_i16x8_u
+      | 0xbfl -> Action.return i32x4_extmul_high_i16x8_u
+      | 0xc0l -> Action.return i64x2_abs
+      | 0xc1l -> Action.return i64x2_neg
+      | 0xc3l -> Action.return i64x2_all_true
+      | 0xc4l -> Action.return i64x2_bitmask
+      | 0xc7l -> Action.return i64x2_extend_low_i32x4_s
+      | 0xc8l -> Action.return i64x2_extend_high_i32x4_s
+      | 0xc9l -> Action.return i64x2_extend_low_i32x4_u
+      | 0xcal -> Action.return i64x2_extend_high_i32x4_u
+      | 0xcbl -> Action.return i64x2_shl
+      | 0xccl -> Action.return i64x2_shr_s
+      | 0xcdl -> Action.return i64x2_shr_u
+      | 0xcel -> Action.return i64x2_add
+      | 0xd1l -> Action.return i64x2_sub
+      | 0xd5l -> Action.return i64x2_mul
+      | 0xd6l -> Action.return i64x2_eq
+      | 0xd7l -> Action.return i64x2_ne
+      | 0xd8l -> Action.return i64x2_lt_s
+      | 0xd9l -> Action.return i64x2_gt_s
+      | 0xdal -> Action.return i64x2_le_s
+      | 0xdbl -> Action.return i64x2_ge_s
+      | 0xdcl -> Action.return i64x2_extmul_low_i32x4_s
+      | 0xddl -> Action.return i64x2_extmul_high_i32x4_s
+      | 0xdel -> Action.return i64x2_extmul_low_i32x4_u
+      | 0xdfl -> Action.return i64x2_extmul_high_i32x4_u
+      | 0xe0l -> Action.return f32x4_abs
+      | 0xe1l -> Action.return f32x4_neg
+      | 0xe3l -> Action.return f32x4_sqrt
+      | 0xe4l -> Action.return f32x4_add
+      | 0xe5l -> Action.return f32x4_sub
+      | 0xe6l -> Action.return f32x4_mul
+      | 0xe7l -> Action.return f32x4_div
+      | 0xe8l -> Action.return f32x4_min
+      | 0xe9l -> Action.return f32x4_max
+      | 0xeal -> Action.return f32x4_pmin
+      | 0xebl -> Action.return f32x4_pmax
+      | 0xecl -> Action.return f64x2_abs
+      | 0xedl -> Action.return f64x2_neg
+      | 0xefl -> Action.return f64x2_sqrt
+      | 0xf0l -> Action.return f64x2_add
+      | 0xf1l -> Action.return f64x2_sub
+      | 0xf2l -> Action.return f64x2_mul
+      | 0xf3l -> Action.return f64x2_div
+      | 0xf4l -> Action.return f64x2_min
+      | 0xf5l -> Action.return f64x2_max
+      | 0xf6l -> Action.return f64x2_pmin
+      | 0xf7l -> Action.return f64x2_pmax
+      | 0xf8l -> Action.return i32x4_trunc_sat_f32x4_s
+      | 0xf9l -> Action.return i32x4_trunc_sat_f32x4_u
+      | 0xfal -> Action.return f32x4_convert_i32x4_s
+      | 0xfbl -> Action.return f32x4_convert_i32x4_u
+      | 0xfcl -> Action.return i32x4_trunc_sat_f64x2_s_zero
+      | 0xfdl -> Action.return i32x4_trunc_sat_f64x2_u_zero
+      | 0xfel -> Action.return f64x2_convert_low_i32x4_s
+      | 0xffl -> Action.return f64x2_convert_low_i32x4_u
       | n -> illegal s pos (I32.to_int_u n))
   | b -> illegal s pos b
 
 let instr_block_step s allocs cont =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* cont, stack = pop_at_most 3 cont in
   match cont with
   | _ :: _ :: _ :: _ :: _ ->
@@ -1127,7 +1126,7 @@ let instr_block_step s allocs cont =
          push_rev_values
            [IKNext (alloc_block allocs); IKIf2 (bt, pos, lbl1); IKNext plbl]
            stack)
-        |> Lwt.return
+        |> Action.return
       else
         let* () = end_ s in
         let e = Source.(if_ bt lbl1 empty_block @@ region s pos pos) in
@@ -1142,7 +1141,7 @@ let instr_block_step s allocs cont =
       let* x = peek s in
       match x with
       | None | Some (0x05 | 0x0b) ->
-          push_rev_values (IKStop lbl :: ks) stack |> Lwt.return
+          push_rev_values (IKStop lbl :: ks) stack |> Action.return
       | _ -> (
           let pos = pos s in
           let* tag = op s in
@@ -1154,7 +1153,7 @@ let instr_block_step s allocs cont =
                 :: IKBlock (bt, pos)
                 :: IKNext lbl :: ks)
                 stack
-              |> Lwt.return
+              |> Action.return
           | 0x03 ->
               let* bt = block_type s in
               push_rev_values
@@ -1162,7 +1161,7 @@ let instr_block_step s allocs cont =
                 :: IKLoop (bt, pos)
                 :: IKNext lbl :: ks)
                 stack
-              |> Lwt.return
+              |> Action.return
           | 0x04 ->
               let* bt = block_type s in
               push_rev_values
@@ -1170,7 +1169,7 @@ let instr_block_step s allocs cont =
                 :: IKIf1 (bt, pos)
                 :: IKNext lbl :: ks)
                 stack
-              |> Lwt.return
+              |> Action.return
           | _ ->
               let* i = instr s pos tag in
               let e = Source.(i @@ region s pos pos) in
@@ -1191,17 +1190,17 @@ type block_kont =
   | BlockStop of block_label
 
 let block_step s allocs =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
   | BlockStart ->
       let lbl = alloc_block allocs in
       let vector = empty_stack () |> push_stack (IKNext lbl) in
-      Lwt.return (BlockParse vector)
+      Action.return (BlockParse vector)
   | BlockParse (LazyStack {length; vector} as kont) ->
       if length = 1l then
-        let* head = Vector.get 0l vector in
+        let* head = Action.of_lwt @@ Vector.get 0l vector in
         match head with
-        | IKStop lbl -> Lwt.return (BlockStop lbl)
+        | IKStop lbl -> Action.return (BlockStop lbl)
         | _ ->
             let+ kont = instr_block_step s allocs kont in
             BlockParse kont
@@ -1228,7 +1227,7 @@ type pos = int
 type size = {size : int; start : pos}
 
 let size s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ size = len32 s in
   let start = pos s in
   {size; start}
@@ -1242,27 +1241,29 @@ type name_step =
   | NKStop of int Vector.t  (** UTF8 name final step.*)
 
 let name_step s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
   | NKStart ->
       let pos = pos s in
       let+ len = len32 s in
       NKParse (pos, init_lazy_vec 0l, len)
-  | NKParse (_, LazyVec {vector; _}, 0) -> Lwt.return @@ NKStop vector
+  | NKParse (_, LazyVec {vector; _}, 0) -> Action.return @@ NKStop vector
   | NKParse (pos, LazyVec lv, len) ->
       let* d, offset =
-        try Utf8.decode_step get s
-        with Utf8 -> error s pos "malformed UTF-8 encoding"
+        Action.catch
+          (fun () -> Utf8.decode_step get s)
+          (function
+            | Utf8 -> error s pos "malformed UTF-8 encoding" | _ -> assert false)
       in
       let vec = LazyVec {lv with vector = Vector.grow 1l lv.vector} in
-      Lwt.return @@ NKParse (pos, lazy_vec_step d vec, len - offset)
-  (* final step, cannot reduce. *)
+      (* final step, cannot reduce. *)
+      Action.return @@ NKParse (pos, lazy_vec_step d vec, len - offset)
   | NKStop _ -> raise (Step_error Name_step)
 
 let name s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let rec step = function
-    | NKStop n -> Lwt.return n
+    | NKStop n -> Action.return n
     | k ->
         let* x = name_step s k in
         step x
@@ -1288,7 +1289,7 @@ type section_tag =
   | `TypeSection ]
 
 let id s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ bo = peek s in
   Lib.Option.map
     (function
@@ -1309,13 +1310,13 @@ let id s =
     bo
 
 let section_with_size tag f default s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = id s in
   match x with
   | Some tag' when tag' = tag ->
       let* () = lwt_ignore @@ u8 s in
       sized f s
-  | _ -> Lwt.return default
+  | _ -> Action.return default
 
 let section tag f default s = section_with_size tag (fun _ -> f) default s
 
@@ -1328,7 +1329,7 @@ type func_type_kont =
   | FKStop of func_type
 
 let func_type_step s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
   | FKStart ->
       let* tag = vs7 s in
@@ -1343,7 +1344,7 @@ let func_type_step s =
       FKIns (lazy_vec_step vt ins)
   | FKOut (ins, (LazyVec {vector = out; _} as out_vec))
     when is_end_of_vec out_vec ->
-      Lwt.return @@ FKStop (FuncType (ins, out))
+      Action.return @@ FKStop (FuncType (ins, out))
   | FKOut (ins, out_vec) ->
       let+ vt = value_type s in
       FKOut (ins, lazy_vec_step vt out_vec)
@@ -1355,7 +1356,7 @@ let func_type_step s =
 (* Import section *)
 
 let import_desc s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = u8 s in
   match x with
   | 0x00 ->
@@ -1381,11 +1382,11 @@ type import_kont =
   | ImpKStop of import'  (** Import final step. *)
 
 let import_step s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
-  | ImpKStart -> Lwt.return @@ ImpKModuleName NKStart
+  | ImpKStart -> Action.return @@ ImpKModuleName NKStart
   | ImpKModuleName (NKStop module_name) ->
-      Lwt.return @@ ImpKItemName (module_name, NKStart)
+      Action.return @@ ImpKItemName (module_name, NKStart)
   | ImpKModuleName nk ->
       let+ x = name_step s nk in
       ImpKModuleName x
@@ -1401,21 +1402,21 @@ let import_step s =
 (* Table section *)
 
 let table s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ ttype = table_type s in
   {ttype}
 
 (* Memory section *)
 
 let memory s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ mtype = memory_type s in
   {mtype}
 
 (* Export section *)
 
 let export_desc s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = u8 s in
   match x with
   | 0x00 ->
@@ -1438,9 +1439,9 @@ type export_kont =
   | ExpKStop of export'  (** Export final step. *)
 
 let export_step s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
-  | ExpKStart -> Lwt.return @@ ExpKName NKStart
+  | ExpKStart -> Action.return @@ ExpKName NKStart
   | ExpKName (NKStop name) ->
       let+ edesc = at export_desc s in
       ExpKStop {name; edesc}
@@ -1453,7 +1454,7 @@ let export_step s =
 (* Start section *)
 
 let start s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ sfunc = at var s in
   {sfunc}
 
@@ -1462,7 +1463,7 @@ let start_section s = section `StartSection (opt (at start) true) None s
 (* Code section *)
 
 let local s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* n = vu32 s in
   let+ t = value_type s in
   (n, t)
@@ -1498,7 +1499,7 @@ let at' left s x =
   Source.(x @@ region s left right)
 
 let code_step s allocs =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
   | CKStart ->
       (* `at` left *)
@@ -1535,7 +1536,7 @@ let code_step s allocs =
           type_vec = LazyVec {offset = 0l; vector = types};
           curr_type = None;
         }
-      |> Lwt.return
+      |> Action.return
   | CKLocalsParse {left; size; pos; vec_kont; locals_size} ->
       let* local = local s in
       (* small enough to fit in a tick *)
@@ -1544,11 +1545,11 @@ let code_step s allocs =
       in
       CKLocalsParse
         {left; size; pos; vec_kont = lazy_vec_step local vec_kont; locals_size}
-      |> Lwt.return
+      |> Action.return
   | CKLocalsAccumulate
       {left; size; vec_kont = LazyVec {vector = locals; _} as vec_kont; _}
     when is_end_of_vec vec_kont ->
-      CKBody {left; size; locals; const_kont = BlockStart} |> Lwt.return
+      CKBody {left; size; locals; const_kont = BlockStart} |> Action.return
   | CKLocalsAccumulate
       {
         left;
@@ -1558,7 +1559,7 @@ let code_step s allocs =
         curr_type = None | Some (0l, _);
         type_vec = LazyVec {offset = n; vector = types};
       } ->
-      let+ next_type = Vector.get n types in
+      let+ next_type = Action.of_lwt @@ Vector.get n types in
       CKLocalsAccumulate
         {
           left;
@@ -1581,14 +1582,14 @@ let code_step s allocs =
           curr_type = Some (remaining_occurences, ty);
           type_vec;
         }
-      |> Lwt.return
+      |> Action.return
   | CKBody {left; size; locals; const_kont = BlockStop body} ->
       let* () = end_ s in
       check_size size s ;
       let func =
         at' left s @@ {locals; body; ftype = Source.(-1l @@ Source.no_region)}
       in
-      CKStop func |> Lwt.return
+      CKStop func |> Action.return
   | CKBody {left; size; locals; const_kont} ->
       let+ const_kont = block_step s allocs const_kont in
       CKBody {left; size; locals; const_kont}
@@ -1598,14 +1599,14 @@ let code_step s allocs =
 (* Element section *)
 
 let elem_index allocs s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = at var s in
   let b = alloc_block allocs in
   let+ () = add_to_block allocs b Source.(ref_func x @@ x.at) in
   b
 
 let elem_kind s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = u8 s in
   match x with
   | 0x00 -> FuncRefType
@@ -1638,14 +1639,14 @@ type elem_kont =
   | EKStop of elem_segment'  (** Final step of a segment parsing. *)
 
 let ek_start s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* v = vu32 s in
   match v with
   | 0x00l ->
       (* active_zero *)
       let index = Source.(0l @@ Source.no_region) in
       let left = pos s in
-      Lwt.return
+      Action.return
       @@ EKMode
            {
              left;
@@ -1685,7 +1686,7 @@ let ek_start s =
       (* active_zero *)
       let index = Source.(0l @@ Source.no_region) in
       let left = pos s in
-      Lwt.return
+      Action.return
       @@ EKMode
            {
              left;
@@ -1738,7 +1739,7 @@ let ek_start s =
   | _ -> error s (pos s - 1) "malformed elements segment kind"
 
 let elem_step s allocs =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
   | EKStart -> ek_start s
   | EKMode
@@ -1755,7 +1756,7 @@ let elem_step s allocs =
       let mode = Source.(Active {index; offset} @@ region s left right) in
       let* ref_type =
         match early_ref_type with
-        | Some t -> Lwt.return t
+        | Some t -> Action.return t
         | None -> if index_kind = Indexed then elem_kind s else ref_type s
       in
       (* `vec` size *)
@@ -1789,7 +1790,7 @@ let elem_step s allocs =
   | EKInitIndexed
       {mode; ref_type; einit_vec = LazyVec {vector = einit; _} as einit_vec}
     when is_end_of_vec einit_vec ->
-      EKStop {etype = ref_type; einit; emode = mode} |> Lwt.return
+      EKStop {etype = ref_type; einit; emode = mode} |> Action.return
   (* Indexed *)
   | EKInitIndexed {mode; ref_type; einit_vec} ->
       let+ elem_index = at_s (elem_index allocs) s in
@@ -1808,7 +1809,7 @@ let elem_step s allocs =
           einit_vec = lazy_vec_step einit einit_vec;
           einit_kont = (right, BlockStart);
         }
-      |> Lwt.return
+      |> Action.return
   | EKInitConst {mode; ref_type; einit_vec; einit_kont = left, k} ->
       let+ k' = block_step s allocs k in
       EKInitConst {mode; ref_type; einit_vec; einit_kont = (left, k')}
@@ -1828,19 +1829,19 @@ type data_kont =
   | DKStop of data_segment'  (** Final step of a data segment parsing. *)
 
 let data_start s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = vu32 s in
   match x with
   | 0x00l ->
       (* active_zero *)
       let index = Source.(0l @@ Source.no_region) in
       let left = pos s in
-      Lwt.return @@ DKMode {left; index; offset_kont = (left, BlockStart)}
+      Action.return @@ DKMode {left; index; offset_kont = (left, BlockStart)}
   | 0x01l ->
       (* passive *)
       let mode_pos = pos s in
       let dmode = Source.(Passive @@ region s mode_pos mode_pos) in
-      Lwt.return @@ DKInit {dmode; init_kont = VKStart}
+      Action.return @@ DKInit {dmode; init_kont = VKStart}
   | 0x02l ->
       (* active *)
       let left = pos s in
@@ -1850,7 +1851,7 @@ let data_start s =
   | _ -> error s (pos s - 1) "malformed data segment kind"
 
 let data_step s allocs =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   function
   | DKStart -> data_start s
   | DKMode {left; index; offset_kont = left_offset, BlockStop offset} ->
@@ -1858,12 +1859,12 @@ let data_step s allocs =
       let right = pos s in
       let offset = Source.(offset @@ region s left_offset right) in
       let dmode = Source.(Active {index; offset} @@ region s left right) in
-      DKInit {dmode; init_kont = VKStart} |> Lwt.return
+      DKInit {dmode; init_kont = VKStart} |> Action.return
   | DKMode {left; index; offset_kont = left_offset, k} ->
       let+ k' = block_step s allocs k in
       DKMode {left; index; offset_kont = (left_offset, k')}
   | DKInit {dmode; init_kont = VKStop dinit} ->
-      DKStop {dmode; dinit} |> Lwt.return
+      DKStop {dmode; dinit} |> Action.return
   | DKInit {dmode; init_kont} ->
       let+ init_kont = byte_vector_step allocs s init_kont in
       DKInit {dmode; init_kont}
@@ -1873,7 +1874,7 @@ let data_step s allocs =
 (* DataCount section *)
 
 let data_count s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let+ x = vu32 s in
   Some x
 
@@ -1882,7 +1883,7 @@ let data_count_section s = section `DataCountSection data_count None s
 (* Custom section *)
 
 let custom size s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let start = pos s in
   let* id = name s in
   let+ bs = get_string (size - (pos s - start)) s in
@@ -1891,21 +1892,21 @@ let custom size s =
 let custom_section s = section_with_size `CustomSection custom None s
 
 let non_custom_section s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = id s in
   match x with
-  | None | Some `CustomSection -> Lwt.return None
+  | None | Some `CustomSection -> Action.return None
   | _ ->
       skip 1 s ;
-      let+ () = sized (fun pos s -> skip pos s |> Lwt.return) s in
+      let+ () = sized (fun pos s -> skip pos s |> Action.return) s in
       Some ()
 
 (* Modules *)
 
 let rec iterate f s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* x = f s in
-  if x <> None then iterate f s else Lwt.return ()
+  if x <> None then iterate f s else Action.return ()
 
 let magic = 0x6d736100l
 
@@ -2049,13 +2050,13 @@ let tag_of_field : type t repr. (t, repr) field_type -> section_tag = function
 let vec_field ty (LazyVec {vector; _}) = VecField (ty, vector)
 
 let module_step bytes state =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let s = {name = state.stream_name; bytes; pos = state.stream_pos} in
   let next module_kont =
-    Lwt.return {state with module_kont; stream_pos = s.pos}
+    Action.return {state with module_kont; stream_pos = s.pos}
   in
   let next_with_field field module_kont =
-    Lwt.return
+    Action.return
       {
         state with
         building_state = add_field field state.building_state;
@@ -2083,8 +2084,8 @@ let module_step bytes state =
           let* l = len32 s in
           (* custom *)
           let start = pos s in
-          let _id = name s in
-          let _bs = get_string (l - (pos s - start)) s in
+          let* _id = name s in
+          let* _bs = get_string (l - (pos s - start)) s in
           next @@ MKSkipCustom k
       | _ -> (
           match k with
@@ -2265,8 +2266,8 @@ let module_step bytes state =
       next @@ MKBuild (Some func_types, no_datas_in_func)
   | MKElaborateFunc (fts, fbs, (LazyVec {offset; _} as vec), no_datas_in_func)
     ->
-      let* ft = Vector.get offset fts in
-      let* fb = Vector.get offset fbs in
+      let* ft = Action.of_lwt @@ Vector.get offset fts in
+      let* fb = Action.of_lwt @@ Vector.get offset fbs in
       let fb' = Source.({fb.it with ftype = ft} @@ fb.at) in
       (* TODO: https://gitlab.com/tezos/tezos/-/issues/3387
          `Free` shouldn't be part of the PVM.
@@ -2335,7 +2336,7 @@ let module_step bytes state =
           }
           @@ region_ state.stream_name 0 state.stream_pos)
       in
-      {state with module_kont = MKStop m} |> Lwt.return
+      {state with module_kont = MKStop m} |> Action.return
   | MKStop _ (* Stop cannot reduce. *) -> raise (Step_error Module_step)
 
 let initial_decode_kont ~name =
@@ -2349,9 +2350,9 @@ let initial_decode_kont ~name =
   }
 
 let module_ name bytes =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let rec loop = function
-    | {module_kont = MKStop m; _} -> Lwt.return m
+    | {module_kont = MKStop m; _} -> Action.return m
     | k ->
         let* next_state = module_step bytes k in
         loop next_state
@@ -2361,7 +2362,7 @@ let module_ name bytes =
 let decode ~name ~bytes = module_ name bytes
 
 let all_custom tag s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let* header = u32 s in
   require (header = magic) s 0 "magic header not detected" ;
   let* version = u32 s in
@@ -2370,7 +2371,7 @@ let all_custom tag s =
     let* () = iterate non_custom_section s in
     let* x = custom_section s in
     match x with
-    | None -> Lwt.return []
+    | None -> Action.return []
     | Some (n, s) when n = tag ->
         let+ rst = collect () in
         s :: rst

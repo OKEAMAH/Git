@@ -155,15 +155,18 @@ let test_host_fun () =
   Instance.update_module_ref module_reg module_key module_inst ;
 
   let* result =
-    Eval.invoke
-      ~module_reg
-      ~caller:module_key
-      host_funcs_registry
-      ~input
-      Host_funcs.Internal_for_tests.read_input
-      values
+    Action.run
+      (Eval.invoke
+         ~module_reg
+         ~caller:module_key
+         host_funcs_registry
+         ~input
+         Host_funcs.Internal_for_tests.read_input
+         values)
   in
-  let* module_inst = Instance.resolve_module_ref module_reg module_key in
+  let* module_inst =
+    Action.run (Instance.resolve_module_ref module_reg module_key)
+  in
   let* memory = Lazy_vector.Int32Vector.get 0l module_inst.memories in
   assert (Input_buffer.num_elements input = Z.zero) ;
   let* m = Memory.load_bytes memory 0l 1 in

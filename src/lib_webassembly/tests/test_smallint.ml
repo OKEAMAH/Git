@@ -29,7 +29,7 @@ let assert_equal x y =
   if x <> y then
     raise (Failure (Printf.sprintf "Expected: %ld, but got %ld." x y))
 
-let check () =
+let check _ () =
   (* test addition wrap around *)
   assert_equal u32min (I32.add u32max 1l) ;
   assert_equal u16min (I16.add u16max 1l) ;
@@ -114,6 +114,7 @@ let check () =
     assert_equal 16l (I16.popcnt (-1l)) ;
     assert_equal 8l (I8.popcnt (-1l)) ;
     assert_equal 15l (I16.popcnt s16max) ;
-    assert_equal 7l (I8.popcnt s8max)
+    assert_equal 7l (I8.popcnt s8max) ;
+    Lwt.return ()
 
-let tests = [Alcotest.test_case "Check_smallint" `Quick check]
+let tests = [Alcotest_lwt.test_case "Check_smallint" `Quick check]

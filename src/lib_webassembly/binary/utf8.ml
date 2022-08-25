@@ -12,8 +12,8 @@ let encode_int = function
   | _ -> raise Utf8
 
 let rec encode ns =
-  let open Lwt.Syntax in
-  let+ ns = Lazy_vector.Int32Vector.to_list ns in
+  let open Action.Syntax in
+  let+ ns = Action.of_lwt @@ Lazy_vector.Int32Vector.to_list ns in
   Lib.String.implode (List.map Char.chr (encode' ns))
 
 and encode' = function
@@ -41,7 +41,7 @@ let code min n =
   else n
 
 let decode_step get s =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let i = ref 0 in
   let get s =
     (* In the testsuite, some tests are supposed to break during reading the
@@ -57,20 +57,21 @@ let decode_step get s =
   in
   let* b1 = get s in
   let* code =
-    if b1 < 0x80 then Lwt.return @@ code 0x0 b1
+    if b1 < 0x80 then Action.return @@ code 0x0 b1
     else if b1 < 0xc0 then raise Utf8
     else
       let* b2 = get s in
-      if b1 < 0xe0 then Lwt.return @@ code 0x80 (((b1 land 0x1f) lsl 6) + con b2)
+      if b1 < 0xe0 then
+        Action.return @@ code 0x80 (((b1 land 0x1f) lsl 6) + con b2)
       else
         let* b3 = get s in
         if b1 < 0xf0 then
-          Lwt.return
+          Action.return
           @@ code 0x800 (((b1 land 0x0f) lsl 12) + (con b2 lsl 6) + con b3)
         else
           let* b4 = get s in
           if b1 < 0xf8 then
-            Lwt.return
+            Action.return
             @@ code
                  0x10000
                  (((b1 land 0x07) lsl 18)
@@ -79,7 +80,7 @@ let decode_step get s =
                  + con b4)
           else raise Utf8
   in
-  Lwt.return (code, !i)
+  Action.return (code, !i)
 
 let rec decode s =
   Lazy_vector.Int32Vector.of_list

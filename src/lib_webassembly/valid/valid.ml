@@ -740,7 +740,7 @@ let check_export (c : context) (set : NameSet.t) (ex : export) : NameSet.t =
   NameSet.add name set
 
 let check_module (m : module_) =
-  let open Lwt.Syntax in
+  let open Action.Syntax in
   let {
     types;
     imports;
@@ -757,8 +757,8 @@ let check_module (m : module_) =
     m.it
   in
   let build_blocks bl =
-    let* bls = Ast.Vector.to_list bl in
-    TzStdLib.List.map_s Ast.Vector.to_list bls
+    let* bls = Action.of_lwt (Ast.Vector.to_list bl) in
+    Action.List.map_s (fun x -> Action.of_lwt (Ast.Vector.to_list x)) bls
   in
 
   let* blocks = build_blocks blocks in

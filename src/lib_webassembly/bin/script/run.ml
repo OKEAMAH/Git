@@ -1,7 +1,6 @@
 open Lwt.Syntax
 module TzStdLib = Tezos_lwt_result_stdlib.Lwtreslib.Bare
 open Script
-open Source
 
 (* Errors & Tracing *)
 
@@ -49,7 +48,7 @@ let dispatch_file_ext on_binary on_sexpr on_script_binary on_script on_js file =
 
 let create_binary_file file _ get_module =
   let* () = trace_lwt ("Encoding (" ^ file ^ ")...") in
-  let* s = Encode.encode (get_module ()) in
+  let* s = Action.run @@ Encode.encode (get_module ()) in
   Lwt_io.(
     with_file ~mode:Output file (fun oc ->
         let* () = trace_lwt "Writing..." in
@@ -117,7 +116,10 @@ let input_from get_script run =
       | Assert (at, msg) -> error at "assertion failure" msg
       | Abort (at, msg) -> error at "unexpected error" msg
       | Lazy_map.UnexpectedAccess ->
-          error no_region "unexpected access" "Unexpected access in lazy map"
+          error
+            Source.no_region
+            "unexpected access"
+            "Unexpected access in lazy map"
       | exn -> raise exn)
 
 let input_script start name lexbuf run =
@@ -127,7 +129,7 @@ let input_sexpr name lexbuf run =
   input_from
     (fun _ ->
       let var_opt, def = Parse.parse name lexbuf Parse.Module in
-      [Module (var_opt, def) @@ no_region])
+      Source.[Module (var_opt, def) @@ no_region])
     run
 
 let input_binary name buf run =
@@ -183,7 +185,7 @@ let print_import m im =
   let open Types in
   let open Lwt.Syntax in
   let+ category, annotation =
-    let+ t = Ast.import_type m im in
+    let+ t = Action.run @@ Ast.import_type m im in
     match t with
     | ExternFuncType t -> ("func", string_of_func_type t)
     | ExternTableType t -> ("table", string_of_table_type t)
@@ -201,7 +203,7 @@ let print_export m ex =
   let open Types in
   let open Lwt.Syntax in
   let+ category, annotation =
-    let+ t = Ast.export_type m ex in
+    let+ t = Action.run @@ Ast.export_type m ex in
     match t with
     | ExternFuncType t -> ("func", string_of_func_type t)
     | ExternTableType t -> ("table", string_of_table_type t)
@@ -217,7 +219,7 @@ let print_export m ex =
 let print_module x_opt m =
   Printf.printf
     "module%s :\n"
-    (match x_opt with None -> "" | Some x -> " " ^ x.it) ;
+    (match x_opt with None -> "" | Some x -> " " ^ x.Source.it) ;
   let* () =
     TzStdLib.List.iter_s (print_import m) (map_to_list m.it.Ast.imports)
   in
@@ -323,22 +325,24 @@ let instantiate_module x_opt m imports =
         let index = !unnamed_instance_counter in
         unnamed_instance_counter := !unnamed_instance_counter + 1 ;
         Instance.Module_key (Printf.sprintf "__unnamed_%i" index)
-    | Some name -> Instance.Module_key name.it
+    | Some name -> Instance.Module_key name.Source.it
   in
   Eval.init ~module_reg:instances ~self host_funcs_registry m imports
 
 let bind_lazy module_reg name instance =
   Option.iter
-    (fun name -> Instance.ModuleMap.set name.it instance module_reg)
+    (fun name -> Instance.ModuleMap.set name.Source.it instance module_reg)
     name ;
   Instance.ModuleMap.set "" instance module_reg
 
 let bind map x_opt y =
-  let map' = match x_opt with None -> !map | Some x -> Map.add x.it y !map in
+  let map' =
+    match x_opt with None -> !map | Some x -> Map.add x.Source.it y !map
+  in
   map := Map.add "" y map'
 
 let lookup category map x_opt at =
-  let key = match x_opt with None -> "" | Some x -> x.it in
+  let key = match x_opt with None -> "" | Some x -> x.Source.it in
   try Map.find key !map
   with Not_found ->
     IO.error
@@ -352,7 +356,7 @@ let lookup_module = lookup "module" modules
 
 let lookup_instance name at =
   let category = "instance" in
-  let key = match name with Some name -> name.it | None -> "" in
+  let key = match name with Some name -> name.Source.it | None -> "" in
   Lwt.catch
     (fun () -> Instance.ModuleMap.get key instances)
     (function
@@ -365,31 +369,34 @@ let lookup_instance name at =
 
 let lookup_registry module_name item_name =
   let* item_name = Lazy_vector.Int32Vector.to_list item_name in
-  let+ value = Instance.export (Map.find module_name !registry) item_name in
+  let+ value =
+    Action.run @@ Instance.export (Map.find module_name !registry) item_name
+  in
   match value with Some ext -> ext | None -> raise Not_found
 
 (* Running *)
 
 let rec run_definition def : Ast.module_ Lwt.t =
-  match def.it with
+  match def.Source.it with
   | Textual m -> Lwt.return m
   | Encoded (name, bytes) ->
       let* () = trace_lwt "Decoding..." in
-      Decode.decode ~name ~bytes:(Chunked_byte_vector.of_string bytes)
+      Action.run
+      @@ Decode.decode ~name ~bytes:(Chunked_byte_vector.of_string bytes)
   | Quoted (_, s) ->
       let* () = trace_lwt "Parsing quote..." in
       let def' = Parse.string_to_module s in
       run_definition def'
 
 let run_action act : Values.value list Lwt.t =
-  match act.it with
+  match act.Source.it with
   | Invoke (x_opt, name, vs) -> (
       let* () =
         trace_lwt ("Invoking function \"" ^ Ast.string_of_name name ^ "\"...")
       in
       let* inst = lookup_instance x_opt act.at in
       let* name = Lazy_vector.Int32Vector.to_list name in
-      let* export = Instance.export inst name in
+      let* export = Action.run @@ Instance.export inst name in
       match export with
       | Some (Instance.ExternFunc f) ->
           let (Types.FuncType (ins, _)) = Func.type_of f in
@@ -398,17 +405,18 @@ let run_action act : Values.value list Lwt.t =
             Script.error act.at "wrong number of arguments" ;
           List.iter2
             (fun v t ->
-              if Values.type_of_value v.it <> t then
+              if Values.type_of_value v.Source.it <> t then
                 Script.error v.at "wrong type of argument")
             vs
             ins_l ;
           let+ result =
-            Eval.invoke
-              ~module_reg:instances
-              ~caller:(Module_key "__empty")
-              host_funcs_registry
-              f
-              (List.map (fun v -> v.it) vs)
+            Action.run
+            @@ Eval.invoke
+                 ~module_reg:instances
+                 ~caller:(Module_key "__empty")
+                 host_funcs_registry
+                 f
+                 (List.map (fun v -> v.Source.it) vs)
           in
           result
       | Some _ -> Assert.error act.at "export is not a function"
@@ -419,7 +427,7 @@ let run_action act : Values.value list Lwt.t =
       in
       let* inst = lookup_instance x_opt act.at in
       let* name = Lazy_vector.Int32Vector.to_list name in
-      let+ export = Instance.export inst name in
+      let+ export = Action.run @@ Instance.export inst name in
       match export with
       | Some (Instance.ExternGlobal gl) -> [Global.load gl]
       | Some _ -> Assert.error act.at "export is not a global"
@@ -427,7 +435,7 @@ let run_action act : Values.value list Lwt.t =
 
 let assert_nan_pat n nan =
   let open Values in
-  match (n, nan.it) with
+  match (n, nan.Source.it) with
   | F32 z, F32 CanonicalNan -> z = F32.pos_nan || z = F32.neg_nan
   | F64 z, F64 CanonicalNan -> z = F64.pos_nan || z = F64.neg_nan
   | F32 z, F32 ArithmeticNan ->
@@ -440,7 +448,7 @@ let assert_nan_pat n nan =
 
 let assert_num_pat n np =
   match np with
-  | NumPat n' -> n = n'.it
+  | NumPat n' -> n = n'.Source.it
   | NanPat nanop -> assert_nan_pat n nanop
 
 let assert_vec_pat v p =
@@ -499,7 +507,7 @@ let assert_message at name msg re =
   Lwt.return_unit
 
 let run_assertion ass : unit Lwt.t =
-  match ass.it with
+  match ass.Source.it with
   | AssertMalformed (def, re) ->
       let* () = trace_lwt "Asserting malformed..." in
       Lwt.try_bind
@@ -514,7 +522,7 @@ let run_assertion ass : unit Lwt.t =
       Lwt.try_bind
         (fun () ->
           let* m = run_definition def in
-          Valid.check_module m)
+          Action.run @@ Valid.check_module m)
         (fun _ -> Assert.error ass.at "expected validation error")
         (function
           | Valid.Invalid (_, msg) -> assert_message ass.at "validation" msg re
@@ -523,12 +531,13 @@ let run_assertion ass : unit Lwt.t =
       let* () = trace_lwt "Asserting unlinkable..." in
       let* m = run_definition def in
       let* () =
-        if not !Flags.unchecked then Valid.check_module m else Lwt.return_unit
+        if not !Flags.unchecked then Action.run @@ Valid.check_module m
+        else Lwt.return_unit
       in
       Lwt.try_bind
         (fun () ->
-          let* imports = Import.link m in
-          instantiate_module None m imports)
+          let* imports = Action.run @@ Import.link m in
+          Action.run @@ instantiate_module None m imports)
         (fun _ -> Assert.error ass.at "expected linking error")
         (function
           | Import.Unknown (_, msg) | Eval.Link (_, msg) ->
@@ -538,12 +547,13 @@ let run_assertion ass : unit Lwt.t =
       let* () = trace_lwt "Asserting trap..." in
       let* m = run_definition def in
       let* () =
-        if not !Flags.unchecked then Valid.check_module m else Lwt.return_unit
+        if not !Flags.unchecked then Action.run @@ Valid.check_module m
+        else Lwt.return_unit
       in
       Lwt.try_bind
         (fun () ->
-          let* imports = Import.link m in
-          instantiate_module None m imports)
+          let* imports = Action.run @@ Import.link m in
+          Action.run @@ instantiate_module None m imports)
         (fun _ -> Assert.error ass.at "expected instantiation error")
         (function
           | Eval.Trap (_, msg) -> assert_message ass.at "instantiation" msg re
@@ -551,7 +561,7 @@ let run_assertion ass : unit Lwt.t =
   | AssertReturn (act, rs) ->
       let* () = trace_lwt "Asserting return..." in
       let+ got_vs = run_action act in
-      let expect_rs = List.map (fun r -> r.it) rs in
+      let expect_rs = List.map (fun r -> r.Source.it) rs in
       assert_result ass.at got_vs expect_rs
   | AssertTrap (act, re) ->
       let* () = trace_lwt "Asserting trap..." in
@@ -572,14 +582,14 @@ let run_assertion ass : unit Lwt.t =
           | exn -> raise exn)
 
 let rec run_command cmd : unit Lwt.t =
-  match cmd.it with
+  match cmd.Source.it with
   | Module (x_opt, def) ->
       quote := cmd :: !quote ;
       let* m = run_definition def in
       let* () =
         if not !Flags.unchecked then
           let* () = trace_lwt "Checking..." in
-          let* () = Valid.check_module m in
+          let* () = Action.run @@ Valid.check_module m in
           if !Flags.print_sig then
             let* () = trace_lwt "Signature:" in
             print_module x_opt m
@@ -590,8 +600,8 @@ let rec run_command cmd : unit Lwt.t =
       bind modules x_opt m ;
       if not !Flags.dry then
         let* () = trace_lwt "Initializing..." in
-        let* imports = Import.link m in
-        let+ inst = instantiate_module x_opt m imports in
+        let* imports = Action.run @@ Import.link m in
+        let+ inst = Action.run @@ instantiate_module x_opt m imports in
         bind_lazy instances x_opt inst
       else Lwt.return_unit
   | Register (name, x_opt) ->
@@ -599,9 +609,11 @@ let rec run_command cmd : unit Lwt.t =
       if not !Flags.dry then (
         trace ("Registering module \"" ^ Ast.string_of_name name ^ "\"...") ;
         let* inst = lookup_instance x_opt cmd.at in
-        let* utf8_name = Utf8.encode name in
+        let* utf8_name = Action.run @@ Utf8.encode name in
         registry := Map.add utf8_name inst !registry ;
-        Import.register ~module_name:name (lookup_registry utf8_name))
+        Action.run
+        @@ Import.register ~module_name:name (fun x ->
+               Action.of_lwt @@ lookup_registry utf8_name x))
       else Lwt.return_unit
   | Action act ->
       quote := cmd :: !quote ;

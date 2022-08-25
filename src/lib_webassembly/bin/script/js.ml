@@ -205,7 +205,7 @@ let exports m : exports Lwt.t =
   let open Lwt.Syntax in
   TzStdLib.List.fold_left_s
     (fun map (_, exp) ->
-      let+ t = export_type m exp in
+      let+ t = Action.run (export_type m exp) in
       NameMap.add exp.it.name t map)
     NameMap.empty
     (Lazy_vector.Int32Vector.loaded_bindings m.it.exports)
@@ -630,7 +630,7 @@ let rec of_definition def =
   let open Lwt.Syntax in
   match def.it with
   | Textual m ->
-      let+ m = Encode.encode m in
+      let+ m = Action.run (Encode.encode m) in
       of_bytes m
   | Encoded (_, bs) -> of_bytes bs |> Lwt.return
   | Quoted (_, s) ->
@@ -643,7 +643,7 @@ let rec of_definition def =
 let of_wrapper mods x_opt name wrap_action wrap_assertion at =
   let open Lwt.Syntax in
   let x = of_var_opt mods x_opt in
-  let+ bs = wrap name wrap_action wrap_assertion at in
+  let+ bs = Action.run (wrap name wrap_action wrap_assertion at) in
   "call(instance(" ^ of_bytes bs ^ ", " ^ "exports(" ^ x ^ ")), "
   ^ " \"run\", [])"
 
@@ -716,9 +716,10 @@ let of_command mods cmd =
           match def.it with
           | Textual m -> Lwt.return m
           | Encoded (_, bytes) ->
-              Decode.decode
-                ~name:"binary"
-                ~bytes:(Chunked_byte_vector.of_string bytes)
+              Action.run
+                (Decode.decode
+                   ~name:"binary"
+                   ~bytes:(Chunked_byte_vector.of_string bytes))
           | Quoted (_, s) -> unquote (Parse.string_to_module s)
         in
         let* unquoted = unquote def in
