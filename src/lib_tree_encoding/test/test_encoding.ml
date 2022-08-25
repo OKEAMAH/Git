@@ -110,6 +110,19 @@ let assert_round_trip enc value equal =
   assert (equal value' value) ;
   return_unit
 
+let assert_exception ~loc exc f =
+  let open Lwt_result_syntax in
+  try
+    let*! _ = f () in
+    failwith "Expected error at %s" loc
+  with
+  | e when e = exc -> return ()
+  | _ ->
+      failwith
+        "Expected a different error [%s] at %s"
+        (Printexc.to_string exc)
+        loc
+
 let assert_decode_round_trip tree enc equal =
   let open Lwt_result_syntax in
   let*! value, value' = decode_encode_decode tree enc in
@@ -479,6 +492,214 @@ let test_swap_vectors () =
   let* () = assert_value_at_index ~ix:2 (fst swapped_vec_pair) 102 in
   return_unit
 
+let assert_encode_steps ~loc enc value ~num_steps =
+  let open Lwt_result_syntax in
+  let*! tree = empty_tree () in
+  let*! _, real_num_encode_steps =
+    Tree_encoding.Internal_for_tests.encode_and_count_steps enc value tree
+  in
+  let* () =
+    if real_num_encode_steps = num_steps then return_unit
+    else
+      failwith
+        "[%s]: Expected %d encode steps but took %d "
+        loc
+        num_steps
+        real_num_encode_steps
+  in
+  (* Check that encoding with a too small budget of compute steps fails. *)
+  let* () =
+    assert_exception ~loc Tree_encoding.Runner.Exceeded_max_num_steps (fun () ->
+        Tree_encoding.encode
+          ~max_num_steps:(real_num_encode_steps - 1)
+          enc
+          value
+          tree)
+  in
+  (* Check that encoding with enough budget of compute steps succeeds. *)
+  let*! _ = Tree_encoding.encode ~max_num_steps:num_steps enc value tree in
+  return_unit
+
+let assert_decode_steps ~loc enc value ~num_steps =
+  let open Lwt_result_syntax in
+  let*! tree = empty_tree () in
+  let*! tree = Tree_encoding.encode enc value tree in
+  let*! _, real_num_decode_steps =
+    Tree_encoding.Internal_for_tests.decode_and_count_steps enc tree
+  in
+  let* () =
+    if real_num_decode_steps <> num_steps then
+      failwith
+        "[%s]: Expected %d decode steps but took %d "
+        loc
+        num_steps
+        real_num_decode_steps
+    else return_unit
+  in
+  (* Check that decoding with a budget too small budget of compute steps fails. *)
+  let* () =
+    assert_exception ~loc Tree_encoding.Runner.Exceeded_max_num_steps (fun () ->
+        Tree_encoding.decode ~max_num_steps:(num_steps - 1) enc tree)
+  in
+  (* Check that decoding with high enough budget succeeds. *)
+  let*! value' = Tree_encoding.decode ~max_num_steps:num_steps enc tree in
+  assert (value = value') ;
+  return_unit
+
+let test_max_encode_steps () =
+  let open Lwt_result_syntax in
+  let* () =
+    assert_encode_steps ~loc:__LOC__ (Tree_encoding.return 0) 0 ~num_steps:1
+  in
+  let* () =
+    assert_encode_steps
+      ~loc:__LOC__
+      Tree_encoding.(conv (Fun.const 0) (fun _ -> ()) @@ return ())
+      0
+      ~num_steps:2
+  in
+  let* () =
+    assert_encode_steps
+      ~loc:__LOC__
+      Tree_encoding.(
+        conv_lwt (fun () -> Lwt.return 0) (fun _ -> Lwt.return ()) @@ return ())
+      0
+      ~num_steps:2
+  in
+  let* () =
+    assert_encode_steps
+      ~loc:__LOC__
+      (Tree_encoding.value [] Data_encoding.string)
+      "Hello"
+      ~num_steps:3
+  in
+  let* () =
+    let int = Tree_encoding.value [] Data_encoding.int31 in
+    assert_encode_steps
+      ~loc:__LOC__
+      (Tree_encoding.tup3 ~flatten:false int int int)
+      (1, 2, 3)
+      ~num_steps:15
+  in
+  let* () =
+    assert_encode_steps
+      ~loc:__LOC__
+      (contact_enc ())
+      (Email "foo@bar.com")
+      ~num_steps:12
+  in
+  let* () =
+    assert_encode_steps
+      ~loc:__LOC__
+      (Tree_encoding.tup2
+         ~flatten:false
+         (Tree_encoding.return ())
+         (Tree_encoding.return ()))
+      ((), ())
+      ~num_steps:5
+  in
+  let* () =
+    assert_encode_steps
+      ~loc:__LOC__
+      (Tree_encoding.tup3
+         ~flatten:false
+         (Tree_encoding.return ())
+         (Tree_encoding.return ())
+         (Tree_encoding.return ()))
+      ((), (), ())
+      ~num_steps:9
+  in
+  let* () =
+    assert_encode_steps
+      ~loc:__LOC__
+      (Tree_encoding.tup4
+         ~flatten:false
+         (Tree_encoding.return ())
+         (Tree_encoding.return ())
+         (Tree_encoding.return ())
+         (Tree_encoding.return ()))
+      ((), (), (), ())
+      ~num_steps:13
+  in
+  return_unit
+
+let test_max_decode_steps () =
+  let open Lwt_result_syntax in
+  let* () =
+    assert_decode_steps ~loc:__LOC__ (Tree_encoding.return 0) 0 ~num_steps:1
+  in
+  let* () =
+    assert_decode_steps
+      ~loc:__LOC__
+      Tree_encoding.(conv (Fun.const 0) (fun _ -> ()) @@ return ())
+      0
+      ~num_steps:2
+  in
+  let* () =
+    assert_decode_steps
+      ~loc:__LOC__
+      Tree_encoding.(
+        conv_lwt (fun () -> Lwt.return 0) (fun _ -> Lwt.return ()) @@ return ())
+      0
+      ~num_steps:3
+  in
+  let* () =
+    assert_decode_steps
+      ~loc:__LOC__
+      (Tree_encoding.value [] Data_encoding.string)
+      "Hello"
+      ~num_steps:4
+  in
+  let* () =
+    let int = Tree_encoding.value [] Data_encoding.int31 in
+    assert_decode_steps
+      ~loc:__LOC__
+      (Tree_encoding.tup3 ~flatten:false int int int)
+      (1, 2, 3)
+      ~num_steps:20
+  in
+  let* () =
+    assert_decode_steps
+      ~loc:__LOC__
+      (contact_enc ())
+      (Email "foo@bar.com")
+      ~num_steps:17
+  in
+  let* () =
+    assert_decode_steps
+      ~loc:__LOC__
+      (Tree_encoding.tup2
+         ~flatten:false
+         (Tree_encoding.return ())
+         (Tree_encoding.return ()))
+      ((), ())
+      ~num_steps:6
+  in
+  let* () =
+    assert_decode_steps
+      ~loc:__LOC__
+      (Tree_encoding.tup3
+         ~flatten:false
+         (Tree_encoding.return ())
+         (Tree_encoding.return ())
+         (Tree_encoding.return ()))
+      ((), (), ())
+      ~num_steps:11
+  in
+  let* () =
+    assert_decode_steps
+      ~loc:__LOC__
+      (Tree_encoding.tup4
+         ~flatten:false
+         (Tree_encoding.return ())
+         (Tree_encoding.return ())
+         (Tree_encoding.return ())
+         (Tree_encoding.return ()))
+      ((), (), (), ())
+      ~num_steps:16
+  in
+  return_unit
+
 let tests =
   [
     tztest "String" `Quick test_string;
@@ -503,4 +724,6 @@ let tests =
     tztest "Return" `Quick test_return;
     tztest "Swap maps" `Quick test_swap_maps;
     tztest "Swap vectors" `Quick test_swap_vectors;
+    tztest "Max encode steps" `Quick test_max_encode_steps;
+    tztest "Max decode steps" `Quick test_max_decode_steps;
   ]
