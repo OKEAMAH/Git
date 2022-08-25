@@ -188,6 +188,187 @@ module Test = struct
         Printf.eprintf "\n slot wrong size %s \n" s ;
         let f = false in
         assert f
+
+  let test_compute_n () =
+    let select_fft_domain domain_size =
+      let rec powerset = function
+        | [] -> [[]]
+        | x :: xs ->
+            let ps = powerset xs in
+            List.concat [ps; List.map (fun ss -> x :: ss) ps]
+      in
+      let rec multiply_by_two domain_size target_domain_size pow_two =
+        if domain_size >= target_domain_size then pow_two
+        else multiply_by_two (2 * domain_size) target_domain_size (2 * pow_two)
+      in
+      let candidate_domains =
+        List.map
+          (fun factors ->
+            let prod1 = List.fold_left ( * ) 1 factors in
+            let prod2 = multiply_by_two prod1 domain_size 1 in
+            (prod1 * prod2, prod2 :: factors))
+          (powerset [3; 11; 19])
+      in
+      List.fold_left
+        (fun e acc -> if fst e < fst acc then e else acc)
+        (List.hd candidate_domains)
+        candidate_domains
+    in
+    let redundancy_factor = 16 in
+
+    let number_of_shards = 2048 in
+    let slot_size = 1048576 in
+    let segment_size = 4096 in
+    let scalar_bytes_amount = Scalar.size_in_bytes - 1 in
+    let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
+    let segment_length_domain, _ = select_fft_domain segment_length in
+
+    let mul = slot_size / segment_size in
+    let k = mul * segment_length_domain in
+    let n = redundancy_factor * k in
+
+    let module IntMap = Tezos_error_monad.TzLwtreslib.Map.Make (Int) in
+    let module Scalar_array = Bls12_381_polynomial.Fr_carray in
+    (* Computes the polynomial N(X) := \sum_{i=0}^{k-1} n_i x_i^{-1} X^{z_i}. *)
+    let domain_n = Bls12_381_polynomial.Domain.build ~log:8 in
+    let compute_n_works (eval_a' : Scalar.t array) shards =
+      let w = Bls12_381_polynomial.Domain.get domain_n 1 in
+      let n_poly = Array.init n (fun _ -> Scalar.(copy zero)) in
+      let c = ref 0 in
+      let () =
+        IntMap.iter
+          (fun z_i arr ->
+            if !c >= k then ()
+            else
+              let rec loop j =
+                match j with
+                | j when j = Array.length arr -> ()
+                | _ -> (
+                    let c_i = arr.(j) in
+                    let z_i = (number_of_shards * j) + z_i in
+                    let x_i = Scalar.pow w (Z.of_int z_i) in
+                    let tmp = Array.get eval_a' z_i in
+                    Scalar.mul_inplace tmp tmp x_i ;
+                    match Scalar.inverse_exn_inplace tmp tmp with
+                    | exception _ -> assert false
+                    | () ->
+                        Scalar.mul_inplace tmp tmp c_i ;
+                        n_poly.(z_i) <- tmp ;
+                        c := !c + 1 ;
+                        loop (j + 1))
+              in
+              loop 0)
+          shards
+      in
+      n_poly
+    in
+    let compute_n_break (eval_a' : Scalar.t array) shards =
+      let w = Bls12_381_polynomial.Domain.get domain_n 1 in
+      let n_poly = Scalar_array.allocate n in
+      let c = ref 0 in
+      let () =
+        IntMap.iter
+          (fun z_i arr ->
+            if !c >= k then ()
+            else
+              let rec loop j =
+                match j with
+                | j when j = Array.length arr -> ()
+                | _ -> (
+                    let c_i = arr.(j) in
+                    let z_i = (number_of_shards * j) + z_i in
+                    let x_i = Scalar.pow w (Z.of_int z_i) in
+                    let tmp = Array.get eval_a' z_i in
+                    Scalar.mul_inplace tmp tmp x_i ;
+                    match Scalar.inverse_exn_inplace tmp tmp with
+                    | exception _ -> assert false
+                    | () ->
+                        Scalar.mul_inplace tmp tmp c_i ;
+                        Scalar_array.set n_poly tmp z_i ;
+                        c := !c + 1 ;
+                        loop (j + 1))
+              in
+              loop 0)
+          shards
+      in
+      n_poly |> Scalar_array.to_array
+    in
+    let eval_a = Array.init n (fun _ -> Scalar.random ()) in
+    let shard =
+      let rec loop i map =
+        if i = 10 then map
+        else
+          loop
+            (i + 1)
+            (IntMap.add i (Array.init 304 (fun _ -> Scalar.random ())) map)
+      in
+      loop 0 IntMap.empty
+    in
+    let works = compute_n_works eval_a shard in
+    let breaks = compute_n_break eval_a shard in
+    assert (Array.for_all2 Scalar.eq works breaks) ;
+    ()
+
+  let test_compute_b () =
+    let select_fft_domain domain_size =
+      let rec powerset = function
+        | [] -> [[]]
+        | x :: xs ->
+            let ps = powerset xs in
+            List.concat [ps; List.map (fun ss -> x :: ss) ps]
+      in
+      let rec multiply_by_two domain_size target_domain_size pow_two =
+        if domain_size >= target_domain_size then pow_two
+        else multiply_by_two (2 * domain_size) target_domain_size (2 * pow_two)
+      in
+      let candidate_domains =
+        List.map
+          (fun factors ->
+            let prod1 = List.fold_left ( * ) 1 factors in
+            let prod2 = multiply_by_two prod1 domain_size 1 in
+            (prod1 * prod2, prod2 :: factors))
+          (powerset [3; 11; 19])
+      in
+      List.fold_left
+        (fun e acc -> if fst e < fst acc then e else acc)
+        (List.hd candidate_domains)
+        candidate_domains
+    in
+
+    let module Scalar_array = Bls12_381_polynomial.Fr_carray in
+    let slot_size = 1048576 in
+    let segment_size = 4096 in
+    let number_of_shards = 2048 in
+    let redundancy_factor = 16 in
+    let scalar_bytes_amount = Scalar.size_in_bytes - 1 in
+    let segment_length = Int.div segment_size scalar_bytes_amount + 1 in
+    let segment_length_domain, _ = select_fft_domain segment_length in
+    let mul = slot_size / segment_size in
+    let k = mul * segment_length_domain in
+    let n = redundancy_factor * k in
+    let t =
+      match
+        Cryptobox.make
+          {redundancy_factor; segment_size; slot_size; number_of_shards}
+      with
+      | Ok x -> x
+      | _ -> assert false
+    in
+
+    let n_poly = Array.init n (fun _ -> Scalar.random ()) in
+    let works = Cryptobox.Internal_for_tests.b_works t n_poly in
+    let breaks =
+      Cryptobox.Internal_for_tests.b_breaks t (Scalar_array.of_array n_poly)
+    in
+    assert (Cryptobox.Polynomials.equal works breaks) ;
+    let works_array =
+      Cryptobox.Polynomials.to_carray works |> Scalar_array.to_array
+    in
+    let breaks_array =
+      Cryptobox.Polynomials.to_carray breaks |> Scalar_array.to_array
+    in
+    assert (Array.for_all2 Scalar.eq works_array breaks_array) ;
+    ()
 end
 
 let test =
@@ -196,6 +377,8 @@ let test =
 
       ;*)
     Alcotest.test_case "test_DAL_cryptobox" `Quick Test.test;
+    Alcotest.test_case "test_compute_n" `Quick Test.test_compute_n;
+    Alcotest.test_case "test_compute_b" `Quick Test.test_compute_b;
   ]
 
 let () =
