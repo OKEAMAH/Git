@@ -1363,11 +1363,14 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
       | None ->
           let+ tick = join_step tick in
           IK_Join_admin (inst0, tick))
+  | IK_Eval (inst, {code = _, []; _}) ->
+      (* no more admin instr, which means the code has yield *)
+      Lwt.return (IK_Stop inst)
+  | IK_Eval (_, {code = _, {it = Trapping msg; at} :: _; _}) ->
+      Trap.error at msg
   | IK_Eval (inst, config) ->
-      (* TODO: https://gitlab.com/tezos/tezos/-/issues/3076
-         The call to [eval] should be tickify. *)
-      let+ (_ : Values.value stack) = eval module_reg config in
-      IK_Stop inst
+      let+ config = step module_reg config in
+      IK_Eval (inst, config)
   | IK_Stop _ -> raise (Invalid_argument "init_step")
 
 let init ~module_reg ~self host_funcs (m : module_) (exts : extern list) :
