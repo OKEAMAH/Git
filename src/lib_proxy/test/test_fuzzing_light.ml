@@ -196,7 +196,7 @@ module Consensus = struct
       if attempts_left = 0 then Error "mk_rogue_tree: giving up"
       else
         let gen = merkle_proof_gen in
-        let generated, _ = QCheck2.Gen.generate1 ~rand gen in
+        let generated, _, _ = QCheck2.Gen.generate1 ~rand gen in
         if tree_proof_eq mproof generated then gen_rec ~rand (attempts_left - 1)
         else Ok generated
     in
@@ -296,13 +296,9 @@ let add_test_consensus (min_agreement, honest, rogue, consensus_expected) =
          honest
          rogue
          consensus_expected)
-    ~print:Print.(triple print_merkle_proof (list string) (list int))
-    Gen.(
-      triple
-        merkle_proof_gen
-        (small_list (small_string ?gen:None))
-        (small_list int))
-  @@ fun ((mproof, tree), key, randoms) ->
+    ~print:Print.(pair print_merkle_proof (list int))
+    Gen.(pair merkle_proof_gen (small_list int))
+  @@ fun ((mproof, tree, key), randoms) ->
   Consensus.test_consensus
     min_agreement
     honest
@@ -320,20 +316,16 @@ let test_consensus_spec =
   let min_agreement_gen = 0 -- 100 in
   let honest_gen = 1 -- 1000 in
   let rogue_gen = 0 -- 1000 in
-  let key_gen = small_list (small_string ?gen:None) in
   Test.make
     ~name:
       "test_consensus min_agreement honest rogue ... = min_agreeing_endpoints \
        min_agreement (honest + rogue + 1) <= honest"
     ~print:
-      Print.(
-        pair
-          (quad int int int (list string))
-          (pair print_merkle_proof (list int)))
+      Print.(pair (triple int int int) (pair print_merkle_proof (list int)))
     (pair
-       (quad min_agreement_gen honest_gen rogue_gen key_gen)
+       (triple min_agreement_gen honest_gen rogue_gen)
        (pair merkle_proof_gen (small_list int)))
-  @@ fun ((min_agreement_int, honest, rogue, key), ((mproof, tree), seed)) ->
+  @@ fun ((min_agreement_int, honest, rogue), ((mproof, tree, key), seed)) ->
   assert (0 <= min_agreement_int && min_agreement_int <= 100) ;
   let min_agreement = Float.of_int min_agreement_int /. 100. in
   assert (0.0 <= min_agreement && min_agreement <= 1.0) ;

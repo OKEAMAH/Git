@@ -884,9 +884,11 @@ module With_get_data (Store : Storelike) = struct
                   @@ Found_content_tree
                        (Printf.sprintf
                           "Found a leaf node when key %s (top-level key: %s) \
-                           wasn't fully consumed)"
+                           wasn't fully consumed %d %d)"
                           (key_to_string target)
-                          (key_to_string key))
+                          (key_to_string key)
+                          (List.length target)
+                          (List.length key))
               | false -> (
                   Store.find_tree subtree [hd] >>= function
                   | None ->

@@ -60,8 +60,6 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
   let validate uri key (store_tree : Storelike.t)
       (data_proof : Proof.tree Proof.t)
       (incoming_mproof : Proof.tree Proof.t option tzresult) =
-    (* FIXME: can't use irmin [verify_proof] yet *)
-    (* Store.verify_tree_proof  *)
     match incoming_mproof with
     | Error trace ->
         Lwt.return
@@ -82,12 +80,17 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
                 (key_to_string key))
     | Ok (Some mproof) -> (
         let open Lwt_syntax in
-        (* FIXME does verify_tree_proof take care of whatever we were using this for...? *)
         let _x = data_proof in
         let* res =
-          Store.verify_tree_proof
-            mproof
-            (Get_data.get_data Proof.Raw_context key)
+          try
+            Store.verify_tree_proof
+              mproof
+              (Get_data.get_data Proof.Raw_context key)
+          with
+          | Get_data.Found_content_tree msg ->
+              return @@ Error (`Proof_mismatch msg)
+          | Get_data.Key_partially_found msg ->
+              return @@ Error (`Proof_mismatch msg)
         in
         match res with
         | Ok (_, tree) ->

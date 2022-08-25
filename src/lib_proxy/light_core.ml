@@ -93,7 +93,15 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
     let stage pgi key (mproof : Store.Proof.tree Store.Proof.t) =
       let open Lwt_syntax in
       let* verification =
-        Store.verify_tree_proof mproof (Get_data.get_data Proof.Raw_context key)
+        try
+          Store.verify_tree_proof
+            mproof
+            (Get_data.get_data Proof.Raw_context key)
+        with
+        | Get_data.Found_content_tree msg ->
+            return @@ Error (`Proof_mismatch msg)
+        | Get_data.Key_partially_found msg ->
+            return @@ Error (`Proof_mismatch msg)
       in
       match verification with
       | Error (`Proof_mismatch msg) -> light_failwith pgi msg

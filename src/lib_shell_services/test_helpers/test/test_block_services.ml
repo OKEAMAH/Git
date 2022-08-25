@@ -50,7 +50,7 @@ let merkle_tree_eq_tests =
 
 let merkle_proof_eq_tests =
   qcheck_eq_tests
-    ~eq:(fun (a, _) (b, _) -> tree_proof_eq a b)
+    ~eq:(fun (a, _, _) (b, _, _) -> tree_proof_eq a b)
     ~gen:merkle_proof_gen
     ~eq_name:"merkle_proof_eq"
 
