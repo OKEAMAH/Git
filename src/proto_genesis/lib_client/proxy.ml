@@ -46,8 +46,6 @@ let () =
 
     let merkle_tree _ _ _ = failwith "%s" msg
 
-    let merkle_tree_v2 _ _ _ = failwith "%s" msg
-
     let time_between_blocks _ _ _ = failwith "%s" msg
   end in
   register_proxy_context (module M)

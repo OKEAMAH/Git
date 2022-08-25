@@ -138,7 +138,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
       | ((uri, rpc_context) as hd_endpoint) :: tl_remaining_endpoints -> (
           let* raw_context =
             Lwt.map (Result.map (Option.map Either.right))
-            @@ Light_proto.merkle_tree_v2
+            @@ Light_proto.merkle_tree
                  Proxy.{rpc_context; chain; block; mode = Client}
                  key
                  leaf_kind

@@ -32,11 +32,5 @@ module type PROTO_RPCS = sig
     Proxy.proxy_getter_input ->
     Tezos_protocol_environment.Proxy_context.M.key ->
     Proof.merkle_leaf_kind ->
-    Proof.merkle_tree option tzresult Lwt.t
-
-  val merkle_tree_v2 :
-    Proxy.proxy_getter_input ->
-    Tezos_protocol_environment.Proxy_context.M.key ->
-    Proof.merkle_leaf_kind ->
     Proof.tree Proof.t option tzresult Lwt.t
 end

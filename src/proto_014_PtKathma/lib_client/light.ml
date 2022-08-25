@@ -27,18 +27,6 @@ module Proof = Tezos_context_sigs.Context.Proof_types
 
 module M : Tezos_proxy.Light_proto.PROTO_RPCS = struct
   let merkle_tree (pgi : Tezos_proxy.Proxy.proxy_getter_input) key leaf_kind =
-    Protocol_client_context.Alpha_block_services.Context.merkle_tree
-      pgi.rpc_context
-      ~chain:pgi.chain
-      ~block:pgi.block
-      ~holey:
-        (match leaf_kind with
-        | Tezos_context_sigs.Context.Proof_types.Hole -> true
-        | Tezos_context_sigs.Context.Proof_types.Raw_context -> false)
-      key
-
-  let merkle_tree_v2 (pgi : Tezos_proxy.Proxy.proxy_getter_input) key leaf_kind
-      =
     Protocol_client_context.Alpha_block_services.Context.merkle_tree_v2
       pgi.rpc_context
       ~chain:pgi.chain

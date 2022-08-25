@@ -135,7 +135,7 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
        contain this key. *)
     let check_merkle_tree_with_endpoint (uri, rpc_context) =
       let* other_mproof =
-        Light_proto.merkle_tree_v2
+        Light_proto.merkle_tree
           ({rpc_context; chain; block; mode = Client}
             : Proxy.proxy_getter_input)
           key

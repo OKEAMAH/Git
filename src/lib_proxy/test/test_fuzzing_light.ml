@@ -210,7 +210,7 @@ module Consensus = struct
   let mock_light_rpc mproof endpoints_and_rogueness seed =
     (module struct
       (** Use physical equality on [rpc_context] because they are identical objects. *)
-      let merkle_tree_v2 (pgi : Tezos_proxy.Proxy.proxy_getter_input) _ _ =
+      let merkle_tree (pgi : Tezos_proxy.Proxy.proxy_getter_input) _ _ =
         List.assq pgi.rpc_context endpoints_and_rogueness
         |> Option.map (fun is_rogue ->
                if is_rogue then
@@ -219,8 +219,6 @@ module Consensus = struct
                  | _ -> QCheck2.assume_fail ()
                else mproof)
         |> Lwt.return_ok
-
-      let merkle_tree _ _ _ = failwith "not implemented"
     end : Tezos_proxy.Light_proto.PROTO_RPCS)
 
   let mock_printer () =
