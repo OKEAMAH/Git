@@ -733,6 +733,9 @@ module Inner = struct
   let compute_n t (eval_a' : scalar array) shards =
     let w = Scalar_array.get t.domain_n 1 in
     let n_poly = Scalar_array.allocate t.n in
+    for i = 0 to Scalar_array.length n_poly - 1 do
+      Scalar_array.set n_poly (Scalar.copy Scalar.zero) i
+    done ;
     let open Result_syntax in
     let c = ref 0 in
     let* () =
