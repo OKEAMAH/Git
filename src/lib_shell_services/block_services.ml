@@ -1528,18 +1528,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           ()
 
     let merkle_tree ctxt =
-      let f = make_call1 S.merkle_tree ctxt in
-      fun ?(chain = `Main) ?(block = `Head 0) ?holey path ->
-        f
-          chain
-          block
-          path
-          (object
-             method holey = holey
-          end)
-          ()
-
-    let merkle_tree_v2 ctxt =
       let f = make_call1 S.merkle_tree_v2 ctxt in
       fun ?(chain = `Main) ?(block = `Head 0) ?holey path ->
         f
