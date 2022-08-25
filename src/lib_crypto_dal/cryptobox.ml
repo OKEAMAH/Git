@@ -1185,4 +1185,10 @@ module Internal_for_tests = struct
     {srs_g1; srs_g2}
 
   let load_parameters parameters = initialisation_parameters := Some parameters
+
+  let b_breaks t n_poly = interpolation_fft_n t n_poly |> Polynomials.of_carray
+
+  let b_works t n_poly =
+    interpolation_fft_n t (Scalar_array.of_array n_poly)
+    |> Polynomials.of_carray
 end

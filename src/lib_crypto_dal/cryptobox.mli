@@ -212,4 +212,8 @@ module Internal_for_tests : sig
      from test frameworks where tests with various parameters could be
      run using the same binary. *)
   val load_parameters : initialisation_parameters -> unit
+
+  val b_breaks : t -> Bls12_381_polynomial.Fr_carray.t -> polynomial
+
+  val b_works : t -> Bls12_381.Fr.t array -> polynomial
 end
