@@ -840,9 +840,9 @@ module Make (Context : P) :
         | None -> (
             let* counter = Message_counter.get in
             match counter with
-            | Some n -> return (PS.First_after (level, n))
+            | Some n -> return (PS.First_after (level, Inbox_counter n))
             | None -> return PS.Initial)
-        | Some page -> return (PS.First_after_slot_input {level; page}))
+        | Some _page -> assert false)
     | _ -> return PS.No_input_required
 
   let is_input_state =

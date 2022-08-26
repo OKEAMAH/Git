@@ -104,7 +104,8 @@ let valid snapshot commit_level ~pvm_name proof =
     | Sc_rollup_PVM_sem.No_input_required, None -> return None
     | Sc_rollup_PVM_sem.Initial, Some inbox_proof ->
         check_inbox_proof snapshot inbox_proof (Raw_level_repr.root, Z.zero)
-    | Sc_rollup_PVM_sem.First_after (level, counter), Some inbox_proof ->
+    | ( Sc_rollup_PVM_sem.First_after (level, Inbox_counter counter),
+        Some inbox_proof ) ->
         check_inbox_proof snapshot inbox_proof (level, Z.succ counter)
     | _ ->
         proof_error
@@ -165,12 +166,12 @@ let produce pvm_and_state commit_level =
         in
         (* FIXME Should be modified if the DAL operations need to be taken first. *)
         return (None, Some (Inbox_with_history.to_serialized_proof p), i)
-    | Sc_rollup_PVM_sem.First_after (l, n) ->
+    | Sc_rollup_PVM_sem.First_after (l, Inbox_counter n) ->
         let* p, i =
           Inbox_with_history.(produce_proof context history inbox (l, Z.succ n))
         in
         return (None, Some (Inbox_with_history.to_serialized_proof p), i)
-    | Sc_rollup_PVM_sem.First_after_slot_input {level; page} ->
+    | Sc_rollup_PVM_sem.First_after (level, Dal_page page) ->
         let* slot, i = Inbox_with_history.(produce_slot_proof (level, page)) in
         return (Some (Inbox_with_history.to_serialized_slot_proof slot), None, i)
   in

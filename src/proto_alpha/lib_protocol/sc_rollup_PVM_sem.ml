@@ -53,15 +53,45 @@ let input_equal (a : input) (b : input) : bool =
   Raw_level_repr.equal inbox_level b.inbox_level
   && Z.equal message_counter b.message_counter
   && String.equal (payload :> string) (b.payload :> string)
+type input_position = Inbox_counter of Z.t | Dal_page of Dal_slot_repr.Page.t
+
+let pp_input_position fmt = function
+  | Inbox_counter n -> Format.fprintf fmt "Inbox (counter: %a)" Z.pp_print n
+  | Dal_page p -> Format.fprintf fmt "DAL (page: %a)" Dal_slot_repr.Page.pp p
+
+let input_position_encoding =
+  let open Data_encoding in
+  union
+    ~tag_size:`Uint8
+    [
+      case
+        ~title:"Inbox_counter"
+        (Tag 0)
+        (obj2 (req "kind" (constant "inbox")) (req "message_counter" n))
+        (function
+          | Inbox_counter message_counter -> Some ((), message_counter)
+          | _ -> None)
+        (fun ((), message_counter) -> Inbox_counter message_counter);
+      case
+        ~title:"Dal_page"
+        (Tag 1)
+        (obj2
+           (req "kind" (constant "dal"))
+           (req "page" Dal_slot_repr.Page.encoding))
+        (function Dal_page page -> Some ((), page) | _ -> None)
+        (fun ((), page) -> Dal_page page);
+    ]
+
+let input_position_equal a b =
+  match (a, b) with
+  | Inbox_counter a, Inbox_counter b -> Z.equal a b
+  | Dal_page a, Dal_page b -> Dal_slot_repr.Page.equal a b
+  | _ -> false
 
 type input_request =
   | No_input_required
   | Initial
-  | First_after of Raw_level_repr.t * Z.t
-  | First_after_slot_input of {
-      level : Raw_level_repr.t;
-      page : Dal_slot_repr.Page.t;
-    }
+  | First_after of Raw_level_repr.t * input_position
 
 let input_request_encoding =
   let open Data_encoding in
@@ -86,44 +116,25 @@ let input_request_encoding =
         (obj3
            (req "kind" (constant "first_after"))
            (req "level" Raw_level_repr.encoding)
-           (req "counter" n))
+           (req "input_position" input_position_encoding))
         (function
-          | First_after (level, counter) -> Some ((), level, counter)
+          | First_after (level, input_pos) -> Some ((), level, input_pos)
           | _ -> None)
-        (fun ((), level, counter) -> First_after (level, counter));
-      case
-        ~title:"Slot_input_after"
-        (Tag 3)
-        (obj3
-           (req "kind" (constant "slot_input_after"))
-           (req "level" Raw_level_repr.encoding)
-           (req "page" Dal_slot_repr.Page.encoding))
-        (function
-          | First_after_slot_input {level; page} -> Some ((), level, page)
-          | _ -> None)
-        (fun ((), level, page) -> First_after_slot_input {level; page});
+        (fun ((), level, input_pos) -> First_after (level, input_pos));
     ]
 
 let pp_input_request fmt request =
   match request with
   | No_input_required -> Format.fprintf fmt "No_input_required"
   | Initial -> Format.fprintf fmt "Initial"
-  | First_after (l, n) ->
+  | First_after (l, p) ->
       Format.fprintf
         fmt
-        "First_after (level = %a, counter = %a)"
+        "First_after (level = %a, input_position = %a)"
         Raw_level_repr.pp
         l
-        Z.pp_print
-        n
-  | First_after_slot_input {level; page} ->
-      Format.fprintf
-        fmt
-        "Slot_input_after (level = %a, page = %a)"
-        Raw_level_repr.pp
-        level
-        Dal_slot_repr.Page.pp
-        page
+        pp_input_position
+        p
 
 let input_request_equal a b =
   match (a, b) with
@@ -132,12 +143,8 @@ let input_request_equal a b =
   | Initial, Initial -> true
   | Initial, _ -> false
   | First_after (l, n), First_after (m, o) ->
-      Raw_level_repr.equal l m && Z.equal n o
+      Raw_level_repr.equal l m && input_position_equal n o
   | First_after _, _ -> false
-  | First_after_slot_input input, First_after_slot_input input' ->
-      Raw_level_repr.equal input.level input'.level
-      && Dal_slot_repr.Page.equal input'.page input'.page
-  | First_after_slot_input _, _ -> false
 
 type output = {
   outbox_level : Raw_level_repr.t;

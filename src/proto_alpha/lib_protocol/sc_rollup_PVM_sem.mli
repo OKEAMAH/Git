@@ -62,22 +62,33 @@ val input_encoding : input Data_encoding.t
 (** [input_equal i1 i2] return whether [i1] and [i2] are equal. *)
 val input_equal : input -> input -> bool
 
+(** The position of an {!input} is the position of its {!raw_input} field. It is
+    either the message's counter of an inbox input or the page's position of
+    a DAL input. *)
+type input_position = Inbox_counter of Z.t | Dal_page of Dal_slot_repr.Page.t
+
+(** [input_position_encoding] encoding value for {!input_position}. *)
+val input_position_encoding : input_position Data_encoding.t
+
+(** [pp_input_position fmt i] pretty prints the given position [p] to the
+    formatter [fmt]. *)
+val pp_input_position : Format.formatter -> input_position -> unit
+
+(** [input_position_equal p1 p2] return whether [p1] and [p2] are equal. *)
+val input_position_equal : input_position -> input_position -> bool
+
 (** The PVM's current input expectations:
     - [No_input_required] if the machine is busy and has no need for new input.
 
     - [Initial] if the machine has never received an input so expects the very
       first item in the inbox.
 
-    - [First_after (level, counter)] expects whatever comes next after that
-      position in the inbox. *)
+    - [First_after (level, input_position)] expects whatever comes next after
+      that position in the inbox or the DAL. *)
 type input_request =
   | No_input_required
   | Initial
-  | First_after of Raw_level_repr.t * Z.t
-  | First_after_slot_input of {
-      level : Raw_level_repr.t;
-      page : Dal_slot_repr.Page.t;
-    }
+  | First_after of Raw_level_repr.t * input_position
 
 (** [input_request_encoding] encoding value for {!input_requests}. *)
 val input_request_encoding : input_request Data_encoding.t

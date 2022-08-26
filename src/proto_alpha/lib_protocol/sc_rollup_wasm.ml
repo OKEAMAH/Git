@@ -270,7 +270,9 @@ module V2_0_0 = struct
       | Waiting_for_input_message -> (
           let* last_read = get_last_message_read in
           match last_read with
-          | Some (level, n) -> return (PS.First_after (level, n))
+          | Some (level, n) ->
+              (* TODO-DAL: Handle Dal_pas case *)
+              return (PS.First_after (level, Inbox_counter n))
           | None -> return PS.Initial)
       | Computing -> return PS.No_input_required
 

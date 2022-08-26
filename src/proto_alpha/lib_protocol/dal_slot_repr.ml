@@ -104,7 +104,7 @@ module Page = struct
   let pp fmt {slot_index; page_index} =
     Format.fprintf
       fmt
-      "(index: %a, page: %a)"
+      "(slot_index: %a, page_index: %a)"
       Slot_index.pp
       slot_index
       Index.pp

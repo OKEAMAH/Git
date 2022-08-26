@@ -3131,14 +3131,18 @@ module Sc_rollup : sig
 
   val input_encoding : input Data_encoding.t
 
+  type input_position =
+    | Inbox_counter of Z.t
+    | Dal_page of Dal_slot_repr.Page.t
+
+  val input_position_encoding : input_position Data_encoding.t
+
+  val pp_input_position : Format.formatter -> input_position -> unit
+
   type input_request =
     | No_input_required
     | Initial
-    | First_after of Raw_level.t * Z.t
-    | First_after_slot_input of {
-        level : Raw_level_repr.t;
-        page : Dal_slot_repr.Page.t;
-      }
+    | First_after of Raw_level_repr.t * input_position
 
   val input_request_encoding : input_request Data_encoding.t
 
