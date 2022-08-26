@@ -997,6 +997,14 @@ struct
     let* level = find_level tree in
     return (tree, (payload, level))
 
+  let verify_proof_about_payload_and_level message_proof n =
+    P.verify_proof message_proof (payload_and_level n)
+
+  let cost_verify_about_payload_and_level _message_proof _n =
+    let open Gas_limit_repr in
+    (* FIXME: This function will be defined by forthcoming commits. *)
+    free
+
   (** Utility function that handles all the verification needed for a
       particular message proof at a particular level. It calls
       [P.verify_proof], but also checks the proof has the correct
@@ -1009,7 +1017,7 @@ struct
         (Hash.equal level_hash (P.proof_before message_proof))
         (Format.sprintf "message_proof (%s) does not match history" label)
     in
-    let*! result = P.verify_proof message_proof (payload_and_level n) in
+    let*! result = verify_proof_about_payload_and_level message_proof n in
     match result with
     | None -> proof_error (Format.sprintf "message_proof is invalid (%s)" label)
     | Some (_, (_, None)) ->
@@ -1023,10 +1031,12 @@ struct
         in
         return payload_opt
 
-  let cost_check_message_proof _message_proof _level_hash (_l, _n) =
-    let open Gas_limit_repr in
-    (* FIXME: To be defined in forthcoming commits. *)
-    free
+  let cost_check_message_proof message_proof _level_hash (_l, n) =
+    (* This function is defined over the structure of [check_message_proof]. *)
+    let open Saturation_repr in
+    let open Syntax in
+    (safe_int 2 * cost_hash_equal)
+    + cost_verify_about_payload_and_level message_proof n
 
   let verify_proof (l, n) snapshot proof =
     assert (Z.(geq n zero)) ;
