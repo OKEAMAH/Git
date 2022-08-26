@@ -284,18 +284,6 @@ end) : S = struct
     in
     aux [] cell_ptr
 
-  let mem equal x l =
-    let open FallbackArray in
-    let n = length l in
-    let rec aux idx =
-      if Compare.Int.(idx >= n) then false
-      else
-        match get l idx with
-        | None -> aux (idx + 1)
-        | Some y -> if equal x y then true else aux (idx + 1)
-    in
-    aux 0
-
   let assume_some o f = match o with None -> false | Some x -> f x
 
   let valid_back_path ~equal_ptr ~deref ~cell_ptr ~target_ptr path =
@@ -311,12 +299,11 @@ end) : S = struct
       | cell_ptr, cell_ptr' :: path ->
           assume_some (deref cell_ptr) @@ fun cell ->
           assume_some (deref cell_ptr') @@ fun cell' ->
-          mem equal_ptr cell_ptr' cell.back_pointers
-          && assume_some (best_skip cell target_index powers) @@ fun best_idx ->
-             assume_some (back_pointer cell best_idx) @@ fun best_ptr ->
-             let minimal = equal_ptr best_ptr cell_ptr' in
-             let index' = cell'.index in
-             minimal && valid_path index' cell_ptr' path
+          assume_some (best_skip cell target_index powers) @@ fun best_idx ->
+          assume_some (back_pointer cell best_idx) @@ fun best_ptr ->
+          let minimal = equal_ptr best_ptr cell_ptr' in
+          let index' = cell'.index in
+          minimal && valid_path index' cell_ptr' path
     in
     match path with
     | [] -> false
