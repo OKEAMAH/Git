@@ -105,9 +105,15 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     go fuel start_tick failing_ticks state
 
   (** [mutate input] corrupts the payload of [input] for testing purposes. *)
-  let mutate input =
-    let payload = Inbox.Message.unsafe_of_string "0xC4C4" in
-    {input with Sc_rollup.payload}
+  let mutate {Sc_rollup.raw_input; inbox_level} =
+    let open Sc_rollup in
+    match raw_input with
+    | Inbox_input {payload = _; message_counter} ->
+        let payload = Inbox.Message.unsafe_of_string "0xC4C4" in
+        {inbox_level; raw_input = Inbox_input {message_counter; payload}}
+    | Dal_input {content; page; last_page} ->
+        let content = Bytes.make (Bytes.length content) 'a' in
+        {inbox_level; raw_input = Dal_input {content; page; last_page}}
 
   (** [feed_input level message_index ~fuel ~failing_ticks state
       input] feeds [input] (that has a given [message_index] in inbox
@@ -166,12 +172,15 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
                 Sc_rollup.Inbox.Message.(
                   message |> serialize |> Environment.wrap_tzresult)
               in
+              (* TODO-DAL: Currently, only inbox messages are interpreted by
+                 the rollup node, not Dal messages. *)
               let input =
                 Sc_rollup.
                   {
                     inbox_level;
-                    message_counter = Z.of_int message_counter;
-                    payload;
+                    raw_input =
+                      Inbox_input
+                        {message_counter = Z.of_int message_counter; payload};
                   }
               in
               let level = Raw_level.to_int32 inbox_level |> Int32.to_int in

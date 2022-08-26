@@ -1116,6 +1116,9 @@ struct
         in
         return payload_opt
 
+  let mk_inbox_input payload message_counter =
+    Sc_rollup_PVM_sem.Inbox_input {payload; message_counter}
+
   let verify_proof (l, n) snapshot proof =
     assert (Z.(geq n zero)) ;
     let open Lwt_tzresult_syntax in
@@ -1134,7 +1137,7 @@ struct
             return
             @@ Some
                  Sc_rollup_PVM_sem.
-                   {inbox_level = l; message_counter = n; payload})
+                   {inbox_level = l; raw_input = mk_inbox_input payload n})
     | Level_crossing p -> (
         let lower_level_hash = Skip_list.content p.lower in
         let* should_be_none =
@@ -1167,8 +1170,7 @@ struct
                  Sc_rollup_PVM_sem.
                    {
                      inbox_level = p.upper_level;
-                     message_counter = Z.zero;
-                     payload;
+                     raw_input = mk_inbox_input payload Z.zero;
                    })
 
   (** Utility function; we convert all our calls to be consistent with
@@ -1226,8 +1228,8 @@ struct
         return
           ( Single_level {level; inc; message_proof},
             Some
-              Sc_rollup_PVM_sem.{inbox_level = l; message_counter = n; payload}
-          )
+              Sc_rollup_PVM_sem.
+                {inbox_level = l; raw_input = mk_inbox_input payload n} )
     | None ->
         if equal_history_proof inbox level then
           return (Single_level {level; inc; message_proof}, None)
@@ -1276,8 +1278,7 @@ struct
                   Sc_rollup_PVM_sem.
                     {
                       inbox_level = upper_level;
-                      message_counter = Z.zero;
-                      payload;
+                      raw_input = mk_inbox_input payload Z.zero;
                     })
                 payload_opt )
 

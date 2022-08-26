@@ -321,13 +321,15 @@ let payload_string msg =
   Sc_rollup_inbox_message_repr.unsafe_of_string
     (Bytes.to_string (encode_external_message msg))
 
-let next_input ps l n =
+let next_input ps l message_counter =
   let ( let* ) = Option.bind in
   let* level = List.nth ps (level_to_int l) in
-  match List.nth level (Z.to_int n) with
+  match List.nth level (Z.to_int message_counter) with
   | Some msg ->
       let payload = payload_string msg in
-      Some Sc_rollup_PVM_sem.{inbox_level = l; message_counter = n; payload}
+      Some
+        Sc_rollup_PVM_sem.
+          {inbox_level = l; raw_input = Inbox_input {message_counter; payload}}
   | None ->
       let rec aux l =
         let* payloads = List.nth ps l in
@@ -338,8 +340,7 @@ let next_input ps l n =
               Sc_rollup_PVM_sem.
                 {
                   inbox_level = level_of_int l;
-                  message_counter = Z.zero;
-                  payload;
+                  raw_input = Inbox_input {message_counter = Z.zero; payload};
                 }
         | None -> aux (l + 1)
       in

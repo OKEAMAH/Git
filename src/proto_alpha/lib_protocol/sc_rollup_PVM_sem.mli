@@ -44,17 +44,33 @@
       of truth about the nature of these messages).
 *)
 
-(** An input to a PVM is the [message_counter] element of an inbox at
-    a given [inbox_level] and contains a given [payload].
-
+(** A serialized inbox [payload] fed to a PVM along with its [message_counter].
     According the rollup management protocol, the payload must be obtained
     through {!Sc_rollup_inbox_message_repr.serialize} which follows a documented
-    format. *)
-type input = {
-  inbox_level : Raw_level_repr.t;
-  message_counter : Z.t;
+    format.
+*)
+type inbox_input = {
   payload : Sc_rollup_inbox_message_repr.serialized;
+  message_counter : Z.t;
 }
+
+(** A DAL page fed to a PVM. It consists in providing its [content] and its
+    [page_index] to indicate the page's slot and the page's position in the slot.
+    The [last_page] flag indicate whether this is latest page of the slot.
+*)
+type dal_input = {
+  content : Dal_slot_repr.Page.content;
+  page : Dal_slot_repr.Page.t;
+  last_page : bool;
+}
+
+(** An raw input to a PVM is either a inbox input or a DAL input. *)
+type raw_input = Inbox_input of inbox_input | Dal_input of dal_input
+
+(** An input to a PVM is composed of a [raw_input] and
+    an [inbox_level] that indicates the level at which the input will be
+    evaluated. *)
+type input = {inbox_level : Raw_level_repr.t; raw_input : raw_input}
 
 (** [input_encoding] encoding value for {!input}. *)
 val input_encoding : input Data_encoding.t

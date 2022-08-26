@@ -140,16 +140,14 @@ let make_external_inbox_message str =
     ~loc:__LOC__
     Sc_rollup_inbox_message_repr.(External str |> serialize)
 
-let test_input_message () =
+let make_inbox_input message_counter payload =
+  Sc_rollup_PVM_sem.{message_counter; payload}
+
+let test_inbox_input_message () =
   let open Sc_rollup_PVM_sem in
   boot "" @@ fun _ctxt state ->
-  let input =
-    {
-      inbox_level = Raw_level_repr.root;
-      message_counter = Z.zero;
-      payload = make_external_inbox_message "MESSAGE";
-    }
-  in
+  let i = make_inbox_input Z.zero @@ make_external_inbox_message "MESSAGE" in
+  let input = {inbox_level = Raw_level_repr.root; raw_input = Inbox_input i} in
   set_input input state >>= fun state ->
   eval state >>= fun state ->
   is_input_state state >>= function
@@ -171,16 +169,11 @@ let go ~max_steps target_status state =
   in
   aux 0 state
 
-let test_parsing_message ~valid (source, expected_code) =
+let test_parsing_inbox_message ~valid (source, expected_code) =
   let open Sc_rollup_PVM_sem in
   boot "" @@ fun _ctxt state ->
-  let input =
-    {
-      inbox_level = Raw_level_repr.root;
-      message_counter = Z.zero;
-      payload = make_external_inbox_message source;
-    }
-  in
+  let i = make_inbox_input Z.zero (make_external_inbox_message source) in
+  let input = {inbox_level = Raw_level_repr.root; raw_input = Inbox_input i} in
   set_input input state >>= fun state ->
   eval state >>= fun state ->
   go ~max_steps:10000 Evaluating state >>=? fun state ->
@@ -231,24 +224,21 @@ let syntactically_invalid_messages =
     (fun s -> (s, []))
     ["@"; "  @"; "  @  "; "---"; "12 +++ --"; "1a"; "a1"]
 
-let test_parsing_messages () =
-  List.iter_es (test_parsing_message ~valid:true) syntactically_valid_messages
+let test_parsing_inbox_messages () =
+  List.iter_es
+    (test_parsing_inbox_message ~valid:true)
+    syntactically_valid_messages
   >>=? fun () ->
   List.iter_es
-    (test_parsing_message ~valid:false)
+    (test_parsing_inbox_message ~valid:false)
     syntactically_invalid_messages
 
-let test_evaluation_message ~valid
+let test_evaluation_inbox_message ~valid
     (boot_sector, source, expected_stack, expected_vars) =
   let open Sc_rollup_PVM_sem in
   boot boot_sector @@ fun _ctxt state ->
-  let input =
-    {
-      inbox_level = Raw_level_repr.root;
-      message_counter = Z.zero;
-      payload = make_external_inbox_message source;
-    }
-  in
+  let i = make_inbox_input Z.zero (make_external_inbox_message source) in
+  let input = {inbox_level = Raw_level_repr.root; raw_input = Inbox_input i} in
   set_input input state >>= fun state ->
   eval state >>= fun state ->
   go ~max_steps:10000 Waiting_for_input_message state >>=? fun state ->
@@ -308,20 +298,20 @@ let invalid_messages =
     (fun s -> ("", s, [], []))
     ["+"; "1 +"; "1 1 + +"; "1 1 + 1 1 + + +"; "a"]
 
-let test_evaluation_messages () =
-  List.iter_es (test_evaluation_message ~valid:true) valid_messages
+let test_evaluation_inbox_messages () =
+  List.iter_es (test_evaluation_inbox_message ~valid:true) valid_messages
   >>=? fun () ->
-  List.iter_es (test_evaluation_message ~valid:false) invalid_messages
+  List.iter_es (test_evaluation_inbox_message ~valid:false) invalid_messages
 
 let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
   let open Lwt_result_syntax in
   let open Sc_rollup_PVM_sem in
   boot "" @@ fun ctxt state ->
+  let i = make_inbox_input Z.zero (make_external_inbox_message source) in
   let input =
     {
       inbox_level = Raw_level_repr.of_int32_exn (Int32.of_int inbox_level);
-      message_counter = Z.zero;
-      payload = make_external_inbox_message source;
+      raw_input = Inbox_input i;
     }
   in
   let*! state = set_input input state in
@@ -448,11 +438,19 @@ let tests =
   [
     Tztest.tztest "PreBoot" `Quick test_preboot;
     Tztest.tztest "Boot" `Quick test_boot;
-    Tztest.tztest "Input message" `Quick test_input_message;
-    Tztest.tztest "Parsing message" `Quick test_parsing_messages;
-    Tztest.tztest "Evaluating message" `Quick test_evaluation_messages;
+    Tztest.tztest "Inbox input message" `Quick test_inbox_input_message;
+    (* WIP-DAL: Add test for "DAL input message" *)
+    Tztest.tztest "Parsing Inbox message" `Quick test_parsing_inbox_messages;
+    (* WIP-DAL: Add test for "Parsing DAL message" *)
+    Tztest.tztest
+      "Evaluating inbox message"
+      `Quick
+      test_evaluation_inbox_messages;
+    (* WIP-DAL: Add test for "Evaluating DAL message" *)
     Tztest.tztest "Valid output messages" `Quick test_valid_output_messages;
+    (* WIP-DAL: Should we have DAL tests for this? *)
     Tztest.tztest "Invalid output messages" `Quick test_invalid_output_messages;
+    (* WIP-DAL: Should we have DAL tests for this? *)
     Tztest.tztest "Invalid outbox level" `Quick test_invalid_outbox_level;
     Tztest.tztest
       "Initial state hash for Arith"

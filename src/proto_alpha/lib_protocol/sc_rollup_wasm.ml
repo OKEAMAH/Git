@@ -283,7 +283,14 @@ module V2_0_0 = struct
     let set_input_state input =
       let open PS in
       let open Monad.Syntax in
-      let {inbox_level; message_counter; payload} = input in
+      let {inbox_level; raw_input} = input in
+      let {message_counter; payload} =
+        match raw_input with
+        | Inbox_input i -> i
+        | Dal_input _ ->
+            (* TODO-DAL: TODO: handle DAL in wasm *)
+            assert false
+      in
       let* s = get in
       let* s =
         lift

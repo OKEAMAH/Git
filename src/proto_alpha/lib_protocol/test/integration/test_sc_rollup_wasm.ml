@@ -230,8 +230,7 @@ let arbitrary_input i payload =
       Sc_rollup.
         {
           inbox_level = Raw_level.of_int32_exn 0l;
-          message_counter = Z.of_int i;
-          payload;
+          raw_input = Inbox_input {message_counter = Z.of_int i; payload};
         }
   | Error err ->
       Format.printf "%a@," Environment.Error_monad.pp_trace err ;

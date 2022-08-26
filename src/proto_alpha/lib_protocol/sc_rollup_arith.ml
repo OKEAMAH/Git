@@ -580,18 +580,6 @@ module Make (Context : P) :
       let pp = Raw_level_repr.pp
     end)
 
-    module Current_page = Make_var (struct
-      type t = Dal_slot_repr.Page.t option
-
-      let initial = None
-
-      let encoding = Data_encoding.option Dal_slot_repr.Page.encoding
-
-      let name = "current_page"
-
-      let pp = Format.pp_print_option Dal_slot_repr.Page.pp
-    end)
-
     module Current_slot = Make_deque (struct
       type t = Dal_slot_repr.Page.content
 
@@ -600,18 +588,18 @@ module Make (Context : P) :
       let name = "current_slot"
     end)
 
-    module Message_counter = Make_var (struct
-      type t = Z.t option
+    module Input_position = Make_var (struct
+      type t = PS.input_position option
 
       let initial = None
 
-      let encoding = Data_encoding.option Data_encoding.n
+      let encoding = Data_encoding.option PS.input_position_encoding
 
-      let name = "message_counter"
+      let name = "input_position"
 
       let pp fmt = function
         | None -> Format.fprintf fmt "None"
-        | Some c -> Format.fprintf fmt "Some %a" Z.pp_print c
+        | Some c -> Format.fprintf fmt "Some %a" PS.pp_input_position c
     end)
 
     module Next_message = Make_var (struct
@@ -719,7 +707,7 @@ module Make (Context : P) :
     let pp =
       let open Monad.Syntax in
       let* status_pp = Status.pp in
-      let* message_counter_pp = Message_counter.pp in
+      let* input_position_pp = Input_position.pp in
       let* next_message_pp = Next_message.pp in
       let* parsing_result_pp = Parsing_result.pp in
       let* parser_state_pp = Parser_state.pp in
@@ -747,7 +735,7 @@ module Make (Context : P) :
          @]"
         status_pp
         ()
-        message_counter_pp
+        input_position_pp
         ()
         next_message_pp
         ()
@@ -835,14 +823,10 @@ module Make (Context : P) :
     match status with
     | Waiting_for_input_message -> (
         let* level = Current_level.get in
-        let* page = Current_page.get in
-        match page with
-        | None -> (
-            let* counter = Message_counter.get in
-            match counter with
-            | Some n -> return (PS.First_after (level, Inbox_counter n))
-            | None -> return PS.Initial)
-        | Some _page -> assert false)
+        let* input_position = Input_position.get in
+        match input_position with
+        | Some input_position -> return (PS.First_after (level, input_position))
+        | None -> return PS.Initial)
     | _ -> return PS.No_input_required
 
   let is_input_state =
@@ -871,38 +855,49 @@ module Make (Context : P) :
     let* () = Code.clear in
     return ()
 
-  let set_input_monadic {PS.inbox_level; message_counter; payload} =
+  let set_input_monadic {PS.inbox_level; raw_input} =
     let open Monad.Syntax in
-    let payload =
-      match Sc_rollup_inbox_message_repr.deserialize payload with
-      | Error _ -> None
-      | Ok (External payload) -> Some (`Payload payload)
-      | Ok (Internal {payload; _}) -> (
-          match Micheline.root payload with
-          | String (_, payload) -> Some (`Payload payload)
-          | _ -> None)
+    let input_position, payload =
+      match raw_input with
+      | Inbox_input {payload; message_counter} -> (
+          ( PS.Inbox_counter message_counter,
+            match Sc_rollup_inbox_message_repr.deserialize payload with
+            | Error _ -> None
+            | Ok (External payload) -> Some (`Payload payload)
+            | Ok (Internal {payload; _}) -> (
+                match Micheline.root payload with
+                | String (_, payload) -> Some (`Payload payload)
+                | _ -> None) ))
+      | Dal_input {content; page; last_page} ->
+          (Dal_page page, Some (`Dal (content, last_page)))
     in
-    let* () =
-      match payload with
-      | Some _ ->
-          let* () = Current_page.set None in
-          let* () = Current_level.set inbox_level in
-          let* () = Message_counter.set (Some message_counter) in
-          return ()
-      | None -> return ()
-    in
+    let* () = Current_level.set inbox_level in
+    let* () = Input_position.set (Some input_position) in
     match payload with
     | Some (`Payload payload) ->
         let* boot_sector = Boot_sector.get in
         let msg = boot_sector ^ payload in
         let* () = Next_message.set (Some msg) in
-        let* () = start_parsing in
-        return ()
-    | None ->
-        let* () = Current_level.set inbox_level in
-        let* () = Message_counter.set (Some message_counter) in
-        let* () = Status.set Waiting_for_input_message in
-        return ()
+        start_parsing
+    | Some (`Dal (page_content, is_last_page)) ->
+        let* () = Current_slot.inject page_content in
+        if is_last_page then
+          let* boot_sect = Boot_sector.get in
+          let* bytes = Current_slot.to_list in
+          let* () = Current_slot.clear in
+          let payload =
+            List.fold_left
+              (fun acc b ->
+                let str = Bytes.to_string b in
+                acc ^ str)
+              ""
+              bytes
+          in
+          let msg = boot_sect ^ payload in
+          let* () = Next_message.set (Some msg) in
+          start_parsing
+        else return ()
+    | None -> Status.set Waiting_for_input_message
 
   let ticked m =
     let open Monad.Syntax in

@@ -3121,11 +3121,18 @@ module Sc_rollup : sig
     val inbox : context -> rollup -> (t * context) tzresult Lwt.t
   end
 
-  type input = {
-    inbox_level : Raw_level.t;
-    message_counter : Z.t;
-    payload : Inbox.Message.serialized;
+  type inbox_input = {payload : Inbox.Message.serialized; message_counter : Z.t}
+
+  (* TODO-DAL: abstract suffix _repr in Dal_slot_repr. *)
+  type dal_input = {
+    content : Dal_slot_repr.Page.content;
+    page : Dal_slot_repr.Page.t;
+    last_page : bool;
   }
+
+  type raw_input = Inbox_input of inbox_input | Dal_input of dal_input
+
+  type input = {inbox_level : Raw_level.t; raw_input : raw_input}
 
   val input_equal : input -> input -> bool
 

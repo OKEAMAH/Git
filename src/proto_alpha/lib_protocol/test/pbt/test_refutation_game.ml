@@ -907,10 +907,13 @@ module Arith_test_pvm = struct
     let* state = initial_state (init_context ()) in
     state_hash state
 
-  let mk_input level message_counter msg =
+  let mk_inbox_input level message_counter msg =
     let payload = make_external_inbox_message msg in
     let level = Int32.of_int level in
-    {payload; message_counter; inbox_level = Raw_level.of_int32_exn level}
+    {
+      raw_input = Inbox_input {payload; message_counter};
+      inbox_level = Raw_level.of_int32_exn level;
+    }
 
   let consume_fuel = Option.map pred
 
@@ -962,7 +965,7 @@ module Arith_test_pvm = struct
     let open Lwt_result_syntax in
     List.fold_left_i_es
       (fun message_counter (state, fuel, tick, our_states) input ->
-        let input = mk_input level (Z.of_int message_counter) input in
+        let input = mk_inbox_input level (Z.of_int message_counter) input in
         let*! state, fuel, tick, our_states =
           feed_input ~fuel ~our_states ~tick state input
         in

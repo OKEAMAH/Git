@@ -24,35 +24,86 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type inbox_input = {
+  payload : Sc_rollup_inbox_message_repr.serialized;
+  message_counter : Z.t;
+}
+
+type dal_input = {
+  content : Dal_slot_repr.Page.content;
+  page : Dal_slot_repr.Page.t;
+  last_page : bool;
+}
+
+type raw_input = Inbox_input of inbox_input | Dal_input of dal_input
+
 (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3649
 
    This type cannot be extended in a retro-compatible way. It should
    be put into a variant. *)
-type input = {
-  inbox_level : Raw_level_repr.t;
-  message_counter : Z.t;
-  payload : Sc_rollup_inbox_message_repr.serialized;
-}
+type input = {inbox_level : Raw_level_repr.t; raw_input : raw_input}
+
+let raw_input_encoding =
+  let open Data_encoding in
+  union
+    ~tag_size:`Uint8
+    [
+      case
+        ~title:"Inbox_input"
+        (Tag 0)
+        (obj3
+           (req "kind" (constant "inbox"))
+           (req "message" string)
+           (req "message_counter" n))
+        (function
+          | Inbox_input {payload; message_counter} ->
+              Some ((), (payload :> string), message_counter)
+          | _ -> None)
+        (fun ((), payload, message_counter) ->
+          let payload = Sc_rollup_inbox_message_repr.unsafe_of_string payload in
+          Inbox_input {payload; message_counter});
+      case
+        ~title:"Dal_input"
+        (Tag 1)
+        (obj4
+           (req "kind" (constant "dal"))
+           (req "content" bytes)
+           (req "page" Dal_slot_repr.Page.encoding)
+           (req "last_page" bool))
+        (function
+          | Dal_input {content; page; last_page} ->
+              Some ((), content, page, last_page)
+          | _ -> None)
+        (fun ((), content, page, last_page) ->
+          Dal_input {content; page; last_page});
+    ]
 
 let input_encoding =
   let open Data_encoding in
   conv
-    (fun {inbox_level; message_counter; payload} ->
-      (inbox_level, message_counter, (payload :> string)))
-    (fun (inbox_level, message_counter, payload) ->
-      let payload = Sc_rollup_inbox_message_repr.unsafe_of_string payload in
-      {inbox_level; message_counter; payload})
-    (obj3
+    (fun {inbox_level; raw_input} -> (inbox_level, raw_input))
+    (fun (inbox_level, raw_input) -> {inbox_level; raw_input})
+    (obj2
        (req "inbox_level" Raw_level_repr.encoding)
-       (req "message_counter" n)
-       (req "payload" string))
+       (req "raw_input" raw_input_encoding))
+
+let raw_input_equal a b =
+  match (a, b) with
+  | Inbox_input {payload; message_counter}, Inbox_input i ->
+      String.equal (payload :> string) (i.payload :> string)
+      && Z.equal message_counter i.message_counter
+  | Dal_input {content; page; last_page}, Dal_input d ->
+      Bytes.equal content d.content
+      && Dal_slot_repr.Page.equal page d.page
+      && Compare.Bool.equal last_page d.last_page
+  | _ -> false
 
 let input_equal (a : input) (b : input) : bool =
-  let {inbox_level; message_counter; payload} = a in
+  let {inbox_level; raw_input} = a in
   (* To be robust to the addition of fields in [input] *)
   Raw_level_repr.equal inbox_level b.inbox_level
-  && Z.equal message_counter b.message_counter
-  && String.equal (payload :> string) (b.payload :> string)
+  && raw_input_equal raw_input b.raw_input
+
 type input_position = Inbox_counter of Z.t | Dal_page of Dal_slot_repr.Page.t
 
 let pp_input_position fmt = function
