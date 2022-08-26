@@ -2948,6 +2948,34 @@ module Sc_rollup : sig
 
     val serialized_proof_encoding : serialized_proof Data_encoding.t
 
+    module type P = sig
+      module Tree :
+        Context.TREE with type key = string list and type value = bytes
+
+      type t = Tree.t
+
+      type tree = Tree.tree
+
+      val commit_tree : t -> string list -> tree -> unit Lwt.t
+
+      val lookup_tree : t -> Hash.t -> tree option Lwt.t
+
+      type proof
+
+      val proof_encoding : proof Data_encoding.t
+
+      val proof_before : proof -> Hash.t
+
+      val verify_proof :
+        proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
+
+      val produce_proof :
+        Tree.t ->
+        tree ->
+        (tree -> (tree * 'a) Lwt.t) ->
+        (proof * 'a) option Lwt.t
+    end
+
     module type Merkelized_operations = sig
       type tree
 
@@ -3025,7 +3053,15 @@ module Sc_rollup : sig
 
       val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level.t -> t Lwt.t
 
-      (*xx*)
+      module P : P
+
+      module Internal_MerkelizedOperations_for_snoop : sig
+        val produce_proof_about_payload_and_level :
+          inbox_context -> int -> Z.t -> P.proof option Lwt.t
+
+        val verify_proof_about_payload_and_level : P.proof -> Z.t -> bool Lwt.t
+      end
+
       module Internal_for_tests : sig
         val eq_tree : tree -> tree -> bool
 
@@ -3041,34 +3077,6 @@ module Sc_rollup : sig
       Merkelized_operations
         with type tree = Context.tree
          and type inbox_context = Context.t
-
-    module type P = sig
-      module Tree :
-        Context.TREE with type key = string list and type value = bytes
-
-      type t = Tree.t
-
-      type tree = Tree.tree
-
-      val commit_tree : t -> string list -> tree -> unit Lwt.t
-
-      val lookup_tree : t -> Hash.t -> tree option Lwt.t
-
-      type proof
-
-      val proof_encoding : proof Data_encoding.t
-
-      val proof_before : proof -> Hash.t
-
-      val verify_proof :
-        proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
-
-      val produce_proof :
-        Tree.t ->
-        tree ->
-        (tree -> (tree * 'a) Lwt.t) ->
-        (proof * 'a) option Lwt.t
-    end
 
     module Make_hashing_scheme (P : P) :
       Merkelized_operations with type tree = P.tree and type inbox_context = P.t

@@ -414,6 +414,30 @@ type serialized_proof = bytes
 
 let serialized_proof_encoding = Data_encoding.bytes
 
+module type P = sig
+  module Tree : Context.TREE with type key = string list and type value = bytes
+
+  type t = Tree.t
+
+  type tree = Tree.tree
+
+  val commit_tree : Tree.t -> string list -> Tree.tree -> unit Lwt.t
+
+  val lookup_tree : Tree.t -> Hash.t -> tree option Lwt.t
+
+  type proof
+
+  val proof_encoding : proof Data_encoding.t
+
+  val proof_before : proof -> Hash.t
+
+  val verify_proof :
+    proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
+
+  val produce_proof :
+    Tree.t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
+end
+
 module type Merkelized_operations = sig
   type inbox_context
 
@@ -491,6 +515,15 @@ module type Merkelized_operations = sig
 
   val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
 
+  module P : P
+
+  module Internal_MerkelizedOperations_for_snoop : sig
+    val produce_proof_about_payload_and_level :
+      inbox_context -> int -> Z.t -> P.proof option Lwt.t
+
+    val verify_proof_about_payload_and_level : P.proof -> Z.t -> bool Lwt.t
+  end
+
   module Internal_for_tests : sig
     val eq_tree : tree -> tree -> bool
 
@@ -502,33 +535,11 @@ module type Merkelized_operations = sig
   end
 end
 
-module type P = sig
-  module Tree : Context.TREE with type key = string list and type value = bytes
-
-  type t = Tree.t
-
-  type tree = Tree.tree
-
-  val commit_tree : Tree.t -> string list -> Tree.tree -> unit Lwt.t
-
-  val lookup_tree : Tree.t -> Hash.t -> tree option Lwt.t
-
-  type proof
-
-  val proof_encoding : proof Data_encoding.t
-
-  val proof_before : proof -> Hash.t
-
-  val verify_proof :
-    proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
-
-  val produce_proof :
-    Tree.t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
-end
-
 module Make_hashing_scheme (P : P) :
-  Merkelized_operations with type tree = P.tree and type inbox_context = P.t =
-struct
+  Merkelized_operations
+    with type tree = P.tree
+     and type inbox_context = P.t
+     and module P = P = struct
   module Tree = P.Tree
 
   type inbox_context = P.t
@@ -557,16 +568,19 @@ struct
     let tree = Tree.empty ctxt in
     set_level tree level
 
+  let add_message_in_level_tree level_tree message_index payload =
+    Tree.add
+      level_tree
+      (key_of_message message_index)
+      (Bytes.of_string
+         (payload : Sc_rollup_inbox_message_repr.serialized :> string))
+
   let add_message inbox payload level_tree =
     let open Lwt_tzresult_syntax in
     let message_index = inbox.message_counter in
     let message_counter = Z.succ message_index in
     let*! level_tree =
-      Tree.add
-        level_tree
-        (key_of_message message_index)
-        (Bytes.of_string
-           (payload : Sc_rollup_inbox_message_repr.serialized :> string))
+      add_message_in_level_tree level_tree message_index payload
     in
     let nb_messages_in_commitment_period =
       Int64.succ inbox.nb_messages_in_commitment_period
@@ -1244,6 +1258,40 @@ struct
         old_levels_messages = Skip_list.genesis initial_hash;
       }
 
+  module P = P
+
+  module Internal_MerkelizedOperations_for_snoop = struct
+    (* The size of the proof depends on the [number_of_messages]
+       pushed in the level tree. *)
+    let produce_proof_about_payload_and_level ctxt number_of_messages pn =
+      let open Lwt_syntax in
+      let payload =
+        Sc_rollup_inbox_message_repr.unsafe_of_string "dummy_payload"
+      in
+      let* tree =
+        let* initial_tree = new_level_tree ctxt Raw_level_repr.root in
+        let rec aux index tree =
+          if Compare.Int.(index = number_of_messages) then return tree
+          else
+            let* tree =
+              add_message_in_level_tree tree (Z.of_int index) payload
+            in
+            aux (index + 1) tree
+        in
+        aux 0 initial_tree
+      in
+      let* () = P.commit_tree ctxt ["level_tree"] tree in
+      let* res = P.produce_proof ctxt tree (payload_and_level pn) in
+      match res with
+      | None -> return_none
+      | Some (proof, (_, _)) -> return_some proof
+
+    let verify_proof_about_payload_and_level proof pn =
+      let open Lwt_syntax in
+      let* res = verify_proof_about_payload_and_level proof pn in
+      match res with None -> return_false | Some _ -> return_true
+  end
+
   module Internal_for_tests = struct
     let eq_tree = Tree.equal
 
@@ -1259,49 +1307,55 @@ struct
   end
 end
 
+module ProtoContextTree = struct
+  include Context.Tree
+
+  type t = Context.t
+
+  type tree = Context.tree
+
+  type value = bytes
+
+  type key = string list
+end
+
+module ProtoP : P with module Tree = ProtoContextTree = struct
+  module Tree = ProtoContextTree
+
+  type t = Context.t
+
+  type tree = Context.tree
+
+  let commit_tree _ctxt _key _tree =
+    (* This is a no-op in the protocol inbox implementation *)
+    Lwt.return ()
+
+  let lookup_tree _ctxt _hash =
+    (* We cannot find the tree without a full inbox_context *)
+    Lwt.return None
+
+  type proof = Context.Proof.tree Context.Proof.t
+
+  let proof_encoding = Context.Proof_encoding.V1.Tree32.tree_proof_encoding
+
+  let proof_before proof =
+    match proof.Context.Proof.before with
+    | `Value hash | `Node hash -> Hash.of_context_hash hash
+
+  let verify_proof p f =
+    Lwt.map Result.to_option (Context.verify_tree_proof p f)
+
+  let produce_proof _ _ _ =
+    (* We cannot produce a proof without full inbox_context *)
+    Lwt.return None
+end
+
 include (
-  Make_hashing_scheme (struct
-    module Tree = struct
-      include Context.Tree
-
-      type t = Context.t
-
-      type tree = Context.tree
-
-      type value = bytes
-
-      type key = string list
-    end
-
-    type t = Context.t
-
-    type tree = Context.tree
-
-    let commit_tree _ctxt _key _tree =
-      (* This is a no-op in the protocol inbox implementation *)
-      Lwt.return ()
-
-    let lookup_tree _ctxt _hash =
-      (* We cannot find the tree without a full inbox_context *)
-      Lwt.return None
-
-    type proof = Context.Proof.tree Context.Proof.t
-
-    let proof_encoding = Context.Proof_encoding.V1.Tree32.tree_proof_encoding
-
-    let proof_before proof =
-      match proof.Context.Proof.before with
-      | `Value hash | `Node hash -> Hash.of_context_hash hash
-
-    let verify_proof p f =
-      Lwt.map Result.to_option (Context.verify_tree_proof p f)
-
-    let produce_proof _ _ _ =
-      (* We cannot produce a proof without full inbox_context *)
-      Lwt.return None
-  end) :
-    Merkelized_operations
-      with type tree = Context.tree
-       and type inbox_context = Context.t)
+  Make_hashing_scheme
+    (ProtoP) :
+      Merkelized_operations
+        with type tree = Context.tree
+         and type inbox_context = Context.t
+         and module P = ProtoP)
 
 type inbox = t
