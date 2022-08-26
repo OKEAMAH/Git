@@ -745,10 +745,12 @@ struct
       ~target_ptr
       path
 
-  let cost_valid_back_path _proof_len _max_nb_backpointers =
-    let open Gas_limit_repr in
-    (* FIXME: This function will be defined in forthcoming commits. *)
-    free
+  let cost_valid_back_path proof_len _max_nb_backpointers =
+    (* The following cost function comes from snoop's
+       [model_Skip_list_valid_back_path_hash_equal]. *)
+    let open Saturation_repr in
+    let size = safe_int proof_len in
+    Syntax.(safe_int 30 * (size * (safe_int @@ numbits (safe_int 1 + size))))
 
   let cost_verify_inclusion_proof proof a b =
     let open Saturation_repr in

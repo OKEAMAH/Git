@@ -384,6 +384,126 @@ module Sc_rollup_inbox_repr_hash_skip_list_cell = struct
       (Model.For_codegen hash_skip_list_cell_model)
 end
 
+(* A model to estimate [Skip_list_valid_back_path ~equal_ptr:Hash.equal]
+   as used in [Sc_rollup_inbox_repr]. *)
+module Skip_list_valid_back_path_hash_equal = struct
+  let name = "Skip_list_valid_back_path_hash_equal"
+
+  let info =
+    "Estimating the costs of validating a path in a merkelized skip list"
+
+  let tags = ["scoru"]
+
+  open Sc_rollup_inbox_repr.Internal_for_snoop
+  module Hash = Sc_rollup_inbox_repr.Hash
+
+  type config = {max_index : int}
+
+  let config_encoding =
+    let open Data_encoding in
+    conv
+      (fun {max_index} -> max_index)
+      (fun max_index -> {max_index})
+      (obj1 (req "max_index" int31))
+
+  let default_config = {max_index = 18}
+
+  type workload = {path_len : int}
+
+  let workload_encoding =
+    let open Data_encoding in
+    conv
+      (fun {path_len} -> path_len)
+      (fun path_len -> {path_len})
+      (obj1 (req "path_len" int31))
+
+  let workload_to_vector {path_len} =
+    Sparse_vec.String.of_list [("path_len", float_of_int path_len)]
+
+  let skip_list_valid_back_path_hash_equal_model =
+    Model.make
+      ~conv:(fun {path_len; _} -> (path_len, ()))
+      ~model:
+        (Model.nlogn
+           ~intercept:
+             (Free_variable.of_string
+                "cost_skip_list_valid_back_path_hash_equal")
+           ~coeff:
+             (Free_variable.of_string
+                "cost_skip_list_valid_back_path_hash_equal_coeff"))
+
+  let models = [("scoru", skip_list_valid_back_path_hash_equal_model)]
+
+  let benchmark rng_state conf () =
+    let skip_list_len =
+      1
+      lsl Base_samplers.sample_in_interval
+            ~range:{min = 1; max = conf.max_index}
+            rng_state
+      - 1
+    in
+    let random_hash () =
+      Hash.hash_string
+        [Base_samplers.string ~size:{min = 1; max = 25} rng_state]
+    in
+    let genesis_cell = Skip_list.genesis (random_hash ()) in
+    let cell, map =
+      let rec repeat n (cell, map) =
+        if n = 0 then (cell, map)
+        else
+          let prev_cell = cell and prev_cell_ptr = hash_skip_list_cell cell in
+          let map = (prev_cell_ptr, prev_cell) :: map in
+          let cell =
+            Skip_list.next ~prev_cell ~prev_cell_ptr (random_hash ())
+          in
+          repeat (n - 1) (cell, map)
+      in
+      repeat skip_list_len (genesis_cell, [])
+    in
+    let cell_ptr = hash_skip_list_cell cell in
+    let deref_of_map map =
+      let map = Hash.Map.of_seq (List.to_seq @@ ((cell_ptr, cell) :: map)) in
+      fun k -> Hash.Map.find k map
+    in
+    let deref = deref_of_map map in
+    let target_index = 0 in
+    let equal_ptr = Hash.equal in
+    let target_ptr = hash_skip_list_cell genesis_cell in
+    let path_opt = Skip_list.back_path ~deref ~cell_ptr ~target_index in
+    let path =
+      match path_opt with
+      | None ->
+          (* Absurd by construction of [cell]. *)
+          assert false
+      | Some path -> path
+    in
+    let deref =
+      deref_of_map
+      @@ List.map
+           (fun h ->
+             match deref h with
+             | None ->
+                 (* Impossible because the path is taken in the reachable cells from [deref]. *)
+                 assert false
+             | Some c -> (h, c))
+           path
+    in
+    let workload = {path_len = 1 + List.length path} in
+    let closure () =
+      let open Skip_list in
+      ignore (valid_back_path ~equal_ptr ~deref ~cell_ptr ~target_ptr path)
+    in
+    Generator.Plain {workload; closure}
+
+  let create_benchmarks ~rng_state ~bench_num config =
+    List.repeat bench_num (benchmark rng_state config)
+
+  let () =
+    Registration.register_for_codegen
+      name
+      (Model.For_codegen skip_list_valid_back_path_hash_equal_model)
+end
+
 let () =
   Registration_helpers.register
     (module Sc_rollup_add_external_messages_benchmark)
@@ -395,3 +515,6 @@ let () =
 let () =
   Registration_helpers.register
     (module Sc_rollup_inbox_repr_hash_skip_list_cell)
+
+let () =
+  Registration_helpers.register (module Skip_list_valid_back_path_hash_equal)
