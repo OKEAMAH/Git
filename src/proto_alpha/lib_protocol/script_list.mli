@@ -27,5 +27,10 @@
 (** Empty list. *)
 val empty : 'a Script_typed_ir.boxed_list
 
-(** Prepend an element. *)
-val cons : 'a -> 'a Script_typed_ir.boxed_list -> 'a Script_typed_ir.boxed_list
+(** [cons ty a l] returns a list with head [a] of type [ty] following by the
+    elements of [l]. *)
+val cons :
+  ('a, _) Script_typed_ir.ty ->
+  'a ->
+  'a Script_typed_ir.boxed_list ->
+  'a Script_typed_ir.boxed_list

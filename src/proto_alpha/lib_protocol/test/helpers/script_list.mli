@@ -25,4 +25,7 @@
 (*****************************************************************************)
 
 (** Convert a standard list to a Script IR list. *)
-val of_list : 'a list -> 'a Protocol.Script_typed_ir.boxed_list
+val of_list :
+  ('a, 'b) Protocol.Script_typed_ir.ty ->
+  'a list ->
+  'a Protocol.Script_typed_ir.boxed_list

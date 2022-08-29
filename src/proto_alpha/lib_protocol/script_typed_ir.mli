@@ -269,7 +269,11 @@ type ('key, 'value) big_map_overlay = {
   size : int;
 }
 
-type 'elt boxed_list = {elements : 'elt list; length : int}
+(** Michelson lists incrementally maintain:
+    - [length]: the number of elements they contain ;
+    - [size]: the number of internal nodes of their Micheline representation.
+*)
+type 'elt boxed_list = {elements : 'elt list; length : int; size : int}
 
 type view = {
   input_ty : Script.node;
@@ -490,13 +494,14 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
      -----
   *)
   | ICons_list :
-      Script.location * ('a boxed_list, 's, 'r, 'f) kinstr
+      Script.location * ('a, _) ty * ('a boxed_list, 's, 'r, 'f) kinstr
       -> ('a, 'a boxed_list * 's, 'r, 'f) kinstr
   | INil :
       Script.location * ('b, _) ty * ('b boxed_list, 'a * 's, 'r, 'f) kinstr
       -> ('a, 's, 'r, 'f) kinstr
   | IIf_cons : {
       loc : Script.location;
+      ty : ('a, _) ty;
       branch_if_cons : ('a, 'a boxed_list * ('b * 's), 'c, 't) kinstr;
       branch_if_nil : ('b, 's, 'c, 't) kinstr;
       k : ('c, 't, 'r, 'f) kinstr;
@@ -1224,6 +1229,7 @@ and (_, _, _, _) continuation =
       * 'b list
       * ('b boxed_list, _) ty
       * int
+      * int
       * ('b boxed_list, 'c * 's, 'r, 'f) continuation
       -> ('c, 's, 'r, 'f) continuation
   (* This continuation represents what is done after each step of a List.map. *)
@@ -1232,6 +1238,7 @@ and (_, _, _, _) continuation =
       * 'a list
       * 'b list
       * ('b boxed_list, _) ty
+      * int
       * int
       * ('b boxed_list, 'c * 's, 'r, 'f) continuation
       -> ('b, 'c * 's, 'r, 'f) continuation
@@ -1771,3 +1778,7 @@ module Typed_contract : sig
       ('a, _) ty -> Destination.t -> Entrypoint.t -> 'a typed_contract
   end
 end
+
+(** [micheline_size ty v] returns the number of nodes of the micheline
+    representation of [v] of type [ty]. *)
+val micheline_size : ('a, 'b) ty -> 'a -> int

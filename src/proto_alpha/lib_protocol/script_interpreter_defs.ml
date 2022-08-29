@@ -261,7 +261,10 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
   | ICons_left _ -> Interp_costs.cons_left
   | ICons_right _ -> Interp_costs.cons_right
   | IIf_left _ -> Interp_costs.if_left
-  | ICons_list _ -> Interp_costs.cons_list
+  | ICons_list (_, ty, _) ->
+      let l, _ = stack in
+      let l = Script_list.cons ty accu l in
+      Interp_costs.cons_list l
   | INil _ -> Interp_costs.nil
   | IIf_cons _ -> Interp_costs.if_cons
   | IList_size _ -> Interp_costs.list_size
@@ -367,9 +370,9 @@ let cost_of_control : type a s r f. (a, s, r, f) continuation -> Gas.cost =
   | KLoop_in (_, _) -> Interp_costs.Control.loop_in
   | KLoop_in_left (_, _) -> Interp_costs.Control.loop_in_left
   | KIter (_, _, _, _) -> Interp_costs.Control.iter
-  | KList_enter_body (_, xs, _, _, len, _) ->
+  | KList_enter_body (_, xs, _, _, len, _, _) ->
       Interp_costs.Control.list_enter_body xs len
-  | KList_exit_body (_, _, _, _, _, _) -> Interp_costs.Control.list_exit_body
+  | KList_exit_body (_, _, _, _, _, _, _) -> Interp_costs.Control.list_exit_body
   | KMap_enter_body (_, _, _, _, _) -> Interp_costs.Control.map_enter_body
   | KMap_exit_body (_, _, map, key, _, _) ->
       Interp_costs.Control.map_exit_body key map
@@ -754,6 +757,7 @@ type ('a, 'b, 'c, 'd, 'e, 'i, 'j) klist_exit_type =
   'j list ->
   ('j boxed_list, 'e) ty ->
   int ->
+  int ->
   ('j boxed_list, 'a * 'b, 'c, 'd) continuation ->
   'j ->
   'a * 'b ->
@@ -767,6 +771,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'j) klist_enter_type =
   'j list ->
   'b list ->
   ('b boxed_list, 'f) ty ->
+  int ->
   int ->
   ('b boxed_list, 'a * 'c, 'd, 'e) continuation ->
   'a ->

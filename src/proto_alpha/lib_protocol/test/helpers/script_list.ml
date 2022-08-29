@@ -26,4 +26,12 @@
 
 open Protocol.Script_typed_ir (* For record fields *)
 
-let of_list xs = {elements = xs; length = List.length xs}
+let of_list (type a b) (ty : (a, b) Protocol.Script_typed_ir.ty) (xs : a list) =
+  let length = List.length xs in
+  let size =
+    List.fold_left
+      (fun accu x -> Protocol.Script_typed_ir.micheline_size ty x + accu)
+      0
+      xs
+  in
+  {elements = xs; length; size}

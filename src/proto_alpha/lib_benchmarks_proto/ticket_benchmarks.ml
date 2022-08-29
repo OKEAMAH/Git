@@ -275,7 +275,14 @@ module Collect_tickets_benchmark : Benchmark.S = struct
         ~sampler:ticket_sampler
         rng_state
     in
-    let boxed_ticket_list = {elements; length} in
+    let size =
+      List.fold_left
+        (fun accu x ->
+          accu + Protocol.Script_typed_ir.micheline_size ticket_ty x)
+        0
+        elements
+    in
+    let boxed_ticket_list = {elements; length; size} in
     Environment.wrap_tzresult
     @@ let* has_tickets, ctxt = Ticket_scanner.type_has_tickets ctxt ty in
        let workload = {nodes = length} in

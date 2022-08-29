@@ -416,7 +416,7 @@ type ('key, 'value) big_map_overlay = {
   size : int;
 }
 
-type 'elt boxed_list = {elements : 'elt list; length : int}
+type 'elt boxed_list = {elements : 'elt list; length : int; size : int}
 
 type view = {
   input_ty : Script.node;
@@ -529,13 +529,14 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
      -----
   *)
   | ICons_list :
-      Script.location * ('a boxed_list, 's, 'r, 'f) kinstr
+      Script.location * ('a, _) ty * ('a boxed_list, 's, 'r, 'f) kinstr
       -> ('a, 'a boxed_list * 's, 'r, 'f) kinstr
   | INil :
       Script.location * ('b, _) ty * ('b boxed_list, 'a * 's, 'r, 'f) kinstr
       -> ('a, 's, 'r, 'f) kinstr
   | IIf_cons : {
       loc : Script.location;
+      ty : ('a, _) ty;
       branch_if_cons : ('a, 'a boxed_list * ('b * 's), 'c, 't) kinstr;
       branch_if_nil : ('b, 's, 'c, 't) kinstr;
       k : ('c, 't, 'r, 'f) kinstr;
@@ -1161,6 +1162,7 @@ and (_, _, _, _) continuation =
       * 'b list
       * ('b boxed_list, _) ty
       * int
+      * int
       * ('b boxed_list, 'c * 's, 'r, 'f) continuation
       -> ('c, 's, 'r, 'f) continuation
   | KList_exit_body :
@@ -1168,6 +1170,7 @@ and (_, _, _, _) continuation =
       * 'a list
       * 'b list
       * ('b boxed_list, _) ty
+      * int
       * int
       * ('b boxed_list, 'c * 's, 'r, 'f) continuation
       -> ('b, 'c * 's, 'r, 'f) continuation
@@ -1464,7 +1467,7 @@ let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
   | ICons_left (loc, _, _) -> loc
   | ICons_right (loc, _, _) -> loc
   | IIf_left {loc; _} -> loc
-  | ICons_list (loc, _) -> loc
+  | ICons_list (loc, _, _) -> loc
   | INil (loc, _, _) -> loc
   | IIf_cons {loc; _} -> loc
   | IList_map (loc, _, _, _) -> loc
@@ -1863,9 +1866,9 @@ let kinstr_traverse i init f =
     | ICons_right (_, _, k) -> (next [@ocaml.tailcall]) k
     | IIf_left {loc = _; branch_if_left = k1; branch_if_right = k2; k} ->
         (next3 [@ocaml.tailcall]) k1 k2 k
-    | ICons_list (_, k) -> (next [@ocaml.tailcall]) k
+    | ICons_list (_, _, k) -> (next [@ocaml.tailcall]) k
     | INil (_, _, k) -> (next [@ocaml.tailcall]) k
-    | IIf_cons {loc = _; branch_if_nil = k1; branch_if_cons = k2; k} ->
+    | IIf_cons {loc = _; ty = _; branch_if_nil = k1; branch_if_cons = k2; k} ->
         (next3 [@ocaml.tailcall]) k1 k2 k
     | IList_map (_, k1, _, k2) -> (next2 [@ocaml.tailcall]) k1 k2
     | IList_iter (_, _, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
@@ -2196,3 +2199,42 @@ module Typed_contract = struct
           Typed_sc_rollup {arg_ty; sc_rollup; entrypoint}
   end
 end
+
+let micheline_size : type a b. (a, b) ty -> a -> int =
+ fun ty v ->
+  (* FIXME: Refine me!*)
+  match (ty : (a, b) ty) with
+  | Unit_t -> 1
+  | Int_t -> 1
+  | Nat_t -> 1
+  | Signature_t -> 1
+  | String_t -> 1
+  | Bytes_t -> Bytes.length v
+  | Mutez_t -> 1
+  | Key_hash_t -> 1
+  | Key_t -> 1
+  | Timestamp_t -> 1
+  | Address_t -> 1
+  | Tx_rollup_l2_address_t -> 1
+  | Bool_t -> 1
+  | Pair_t (_, _, _, _) -> 1
+  | Union_t (_, _, _, _) -> 1
+  | Lambda_t (_, _, _) -> 1
+  | Option_t (_, _, _) -> 1
+  | List_t (_, _) -> v.size
+  | Set_t (_, _) -> 1
+  | Map_t (_, _, _) -> 1
+  | Big_map_t (_, _, _) -> 1
+  | Contract_t (_, _) -> 1
+  | Sapling_transaction_t _ -> 1
+  | Sapling_transaction_deprecated_t _ -> 1
+  | Sapling_state_t _ -> 1
+  | Operation_t -> 1
+  | Chain_id_t -> 1
+  | Never_t -> 1
+  | Bls12_381_g1_t -> 1
+  | Bls12_381_g2_t -> 1
+  | Bls12_381_fr_t -> 1
+  | Ticket_t (_, _) -> 1
+  | Chest_key_t -> 1
+  | Chest_t -> 1

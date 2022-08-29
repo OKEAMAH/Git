@@ -1081,7 +1081,7 @@ module Registration_section = struct
       simple_benchmark
         ~name:Interpreter_workload.N_ICons_list
         ~stack_type:(unit @$ list unit @$ bot)
-        ~kinstr:(ICons_list (dummy_loc, halt))
+        ~kinstr:(ICons_list (dummy_loc, unit, halt))
         ()
 
     let () =
@@ -1099,6 +1099,7 @@ module Registration_section = struct
           (IIf_cons
              {
                loc = dummy_loc;
+               ty = unit;
                branch_if_cons = IDrop (dummy_loc, IDrop (dummy_loc, halt));
                branch_if_nil = halt;
                k = halt;
@@ -3107,7 +3108,9 @@ module Registration_section = struct
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let kbody = halt in
           fun () ->
-            let cont = KList_enter_body (kbody, [()], [], list unit, 1, KNil) in
+            let cont =
+              KList_enter_body (kbody, [()], [], list unit, 1, 1, KNil)
+            in
             Ex_stack_and_cont
               {stack = ((), eos); stack_type = unit @$ bot; cont})
         ()
@@ -3129,7 +3132,7 @@ module Registration_section = struct
             let ys = Samplers.Random_value.value (list unit) rng_state in
             let cont =
               KList_enter_body
-                (kbody, [], ys.elements, list unit, ys.length, KNil)
+                (kbody, [], ys.elements, list unit, ys.length, ys.length, KNil)
             in
             Ex_stack_and_cont
               {stack = ((), eos); stack_type = unit @$ bot; cont})
@@ -3149,7 +3152,9 @@ module Registration_section = struct
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let kbody = halt in
           fun () ->
-            let cont = KList_enter_body (kbody, [], [], list unit, 1, KNil) in
+            let cont =
+              KList_enter_body (kbody, [], [], list unit, 1, 1, KNil)
+            in
             Ex_stack_and_cont
               {stack = ((), eos); stack_type = unit @$ bot; cont})
         ()
@@ -3168,7 +3173,7 @@ module Registration_section = struct
         ~salt:"_terminal"
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let kbody = halt in
-          let cont = KList_exit_body (kbody, [], [], list unit, 1, KNil) in
+          let cont = KList_exit_body (kbody, [], [], list unit, 1, 1, KNil) in
           fun () ->
             Ex_stack_and_cont
               {stack = ((), ((), eos)); stack_type = unit @$ unit @$ bot; cont})

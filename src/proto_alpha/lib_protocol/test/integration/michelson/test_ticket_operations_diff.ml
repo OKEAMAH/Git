@@ -400,8 +400,13 @@ let make_ticket (ticketer, contents, amount) =
   return {ticketer; contents; amount = nat amount}
 
 let make_tickets ts =
+  let open Environment.Error_monad.Lwt_tzresult_syntax in
   let* elements = List.map_es make_ticket ts in
-  return {elements; length = List.length elements}
+  let*? ty = ticket_t Micheline.dummy_location string_t in
+  let size =
+    List.fold_left (fun accu x -> accu + micheline_size ty x) 0 elements
+  in
+  return {elements; length = List.length elements; size}
 
 let transfer_tickets_operation ~incr ~src ~destination tickets =
   let open Lwt_result_syntax in

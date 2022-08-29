@@ -281,14 +281,14 @@ let kinstr_split :
                (fun branch_if_left branch_if_right k ->
                  IIf_left {loc; branch_if_left; branch_if_right; k});
            }
-  | ICons_list (loc, k), Item_t (_a, Item_t (l, s)) ->
+  | ICons_list (loc, ty, k), Item_t (_a, Item_t (l, s)) ->
       let s = Item_t (l, s) in
       ok
       @@ Ex_split_kinstr
            {
              cont_init_stack = s;
              continuation = k;
-             reconstruct = (fun k -> ICons_list (loc, k));
+             reconstruct = (fun k -> ICons_list (loc, ty, k));
            }
   | INil (loc, a, k), s ->
       list_t dummy a >|? fun l ->
@@ -299,7 +299,7 @@ let kinstr_split :
           continuation = k;
           reconstruct = (fun k -> INil (loc, a, k));
         }
-  | ( IIf_cons {loc; branch_if_cons; branch_if_nil; k},
+  | ( IIf_cons {loc; ty; branch_if_cons; branch_if_nil; k},
       Item_t ((List_t (a, _meta) as l), s) ) ->
       ok
       @@ Ex_split_if
@@ -311,7 +311,7 @@ let kinstr_split :
              continuation = k;
              reconstruct =
                (fun branch_if_cons branch_if_nil k ->
-                 IIf_cons {loc; branch_if_cons; branch_if_nil; k});
+                 IIf_cons {loc; ty; branch_if_cons; branch_if_nil; k});
            }
   | IList_map (loc, body, ty, k), Item_t (List_t (a, _meta), s) ->
       let s = Item_t (a, s) in
@@ -1787,13 +1787,13 @@ let log_next_continuation :
       let body' = enable_log (Item_t (xty, stack_ty)) body in
       let k' = instrument_cont logger stack_ty k in
       ok @@ KIter (body', xty, xs, k')
-  | KList_enter_body (body, xs, ys, ty, len, k) ->
+  | KList_enter_body (body, xs, ys, ty, len, size, k) ->
       let k' = instrument_cont logger (Item_t (ty, stack_ty)) k in
-      ok @@ KList_enter_body (body, xs, ys, ty, len, k')
-  | KList_exit_body (body, xs, ys, ty, len, k) ->
+      ok @@ KList_enter_body (body, xs, ys, ty, len, size, k')
+  | KList_exit_body (body, xs, ys, ty, len, size, k) ->
       let (Item_t (_, sty)) = stack_ty in
       let k' = instrument_cont logger (Item_t (ty, sty)) k in
-      ok @@ KList_exit_body (body, xs, ys, ty, len, k')
+      ok @@ KList_exit_body (body, xs, ys, ty, len, size, k')
   | KMap_enter_body (body, xs, ys, ty, k) ->
       let k' = instrument_cont logger (Item_t (ty, stack_ty)) k in
       ok @@ KMap_enter_body (body, xs, ys, ty, k')

@@ -694,7 +694,13 @@ end)
           ~range:P.parameters.list_size
           ~sampler:(value elt_type)
       in
-      return Script_typed_ir.{elements; length}
+      let size =
+        List.fold_left
+          (fun accu x -> Script_typed_ir.micheline_size elt_type x + accu)
+          0
+          elements
+      in
+      return Script_typed_ir.{elements; length; size}
 
     (* Note that we might very well generate sets smaller than the specified range (consider the
        case of a set of type [unit]). *)

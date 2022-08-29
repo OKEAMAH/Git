@@ -410,8 +410,14 @@ let ticket_string_list_type =
   Result.value_f ~default:(fun _ -> assert false)
   @@ Script_typed_ir.list_t (-1) ticket_string_type
 
-let boxed_list elements =
-  {Script_typed_ir.elements; length = List.length elements}
+let boxed_list ty elements =
+  let size =
+    List.fold_left
+      (fun accu x -> accu + Script_typed_ir.micheline_size ty x)
+      0
+      elements
+  in
+  {Script_typed_ir.elements; length = List.length elements; size}
 
 let big_map_type ~key_type ~value_type =
   Environment.wrap_tzresult
@@ -510,8 +516,8 @@ let test_diffs_tickets_in_args_and_storage () =
     ~arg_type:ticket_string_type
     ~storage_type:ticket_string_list_type
     ~arg
-    ~old_storage:(boxed_list [])
-    ~new_storage:(boxed_list [arg])
+    ~old_storage:(boxed_list ticket_string_type [])
+    ~new_storage:(boxed_list ticket_string_type [arg])
     ~lazy_storage_diff:[]
     [(("KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq", "red"), 0)]
 
@@ -522,13 +528,16 @@ let test_diffs_drop_one_ticket () =
   let* _contract, ctxt = init () in
   let arg =
     boxed_list
+      ticket_string_type
       [
         string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1;
         string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "blue" 1;
       ]
   in
   let new_storage =
-    boxed_list [string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1]
+    boxed_list
+      ticket_string_type
+      [string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1]
   in
   assert_ticket_diffs
     ctxt
@@ -536,7 +545,7 @@ let test_diffs_drop_one_ticket () =
     ~arg_type:ticket_string_list_type
     ~storage_type:ticket_string_list_type
     ~arg
-    ~old_storage:(boxed_list [])
+    ~old_storage:(boxed_list ticket_string_type [])
     ~new_storage
     ~lazy_storage_diff:[]
     [
@@ -550,7 +559,9 @@ let test_diffs_adding_new_ticket_to_storage () =
   let open Lwt_result_syntax in
   let* _contract, ctxt = init () in
   let new_storage =
-    boxed_list [string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1]
+    boxed_list
+      ticket_string_type
+      [string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1]
   in
   assert_ticket_diffs
     ctxt
@@ -558,7 +569,7 @@ let test_diffs_adding_new_ticket_to_storage () =
     ~arg_type:Script_typed_ir.unit_t
     ~storage_type:ticket_string_list_type
     ~arg:()
-    ~old_storage:(boxed_list [])
+    ~old_storage:(boxed_list ticket_string_type [])
     ~new_storage
     ~lazy_storage_diff:[]
     [(("KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq", "red"), 1)]
@@ -570,13 +581,16 @@ let test_diffs_remove_from_storage () =
   let* _contract, ctxt = init () in
   let old_storage =
     boxed_list
+      ticket_string_type
       [
         string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1;
         string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "blue" 2;
       ]
   in
   let new_storage =
-    boxed_list [string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1]
+    boxed_list
+      ticket_string_type
+      [string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1]
   in
   assert_ticket_diffs
     ctxt
@@ -793,6 +807,7 @@ let test_diffs_args_storage_and_lazy_diffs () =
   (* We send two tickets in the args. *)
   let arg =
     boxed_list
+      ticket_string_type
       [
         string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1;
         string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "blue" 1;
@@ -823,6 +838,7 @@ let test_diffs_args_storage_and_lazy_diffs () =
   (* We have three tickets in the old storage. *)
   let old_storage =
     ( boxed_list
+        ticket_string_type
         [
           string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1;
           string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "blue" 1;
@@ -832,6 +848,7 @@ let test_diffs_args_storage_and_lazy_diffs () =
   in
   let new_storage =
     ( boxed_list
+        ticket_string_type
         [
           string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "green" 1;
           string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "yellow" 1;
@@ -882,7 +899,9 @@ let test_update_invalid_transfer () =
   let ctxt = Incremental.alpha_ctxt incr in
   let arg_type = ticket_string_list_type in
   let arg =
-    boxed_list [string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1]
+    boxed_list
+      ticket_string_type
+      [string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1]
   in
   let* operation, ctxt =
     transfer_operation ctxt ~src ~destination ~arg_type ~arg
@@ -959,6 +978,7 @@ let test_update_self_ticket_transfer () =
     let arg_type = ticket_string_list_type in
     let arg =
       boxed_list
+        ticket_string_type
         [
           (* Send a total of 10 units of ticket-tokens. *)
           string_ticket ticketer "red" 1;
@@ -1033,7 +1053,7 @@ let test_update_valid_transfer () =
   in
   let* operation, ctxt =
     let arg_type = ticket_string_list_type in
-    let arg = boxed_list [string_ticket ticketer "red" 1] in
+    let arg = boxed_list ticket_string_type [string_ticket ticketer "red" 1] in
     transfer_operation ctxt ~src:self ~destination ~arg_type ~arg
   in
   let* _, ctxt =
@@ -1093,7 +1113,7 @@ let test_update_transfer_tickets_to_self () =
   in
   let* operation, ctxt =
     let arg_type = ticket_string_list_type in
-    let arg = boxed_list [string_ticket ticketer "red" 1] in
+    let arg = boxed_list ticket_string_type [string_ticket ticketer "red" 1] in
     transfer_operation ctxt ~src:self ~destination:self_hash ~arg_type ~arg
   in
   let* _, ctxt =

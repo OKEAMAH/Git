@@ -1019,7 +1019,9 @@ module Cost_of = struct
 
     let if_left = atomic_step_cost cost_N_IIf_left
 
-    let cons_list = atomic_step_cost cost_N_ICons_list
+    let cons_list (l : _ Script_typed_ir.boxed_list) =
+      cost_of_dynamic_values (S.safe_int l.size)
+      +@ atomic_step_cost cost_N_ICons_list
 
     let nil = atomic_step_cost cost_N_INil
 

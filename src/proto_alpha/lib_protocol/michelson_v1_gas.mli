@@ -63,7 +63,7 @@ module Cost_of : sig
 
     val if_left : Gas.cost
 
-    val cons_list : Gas.cost
+    val cons_list : 'a Script_typed_ir.boxed_list -> Gas.cost
 
     val nil : Gas.cost
 

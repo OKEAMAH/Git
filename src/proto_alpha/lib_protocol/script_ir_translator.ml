@@ -2105,7 +2105,7 @@ let rec parse_data :
       @@ List.fold_right_es
            (fun v (rest, ctxt) ->
              non_terminal_recursion ?type_logger ctxt ~legacy t v
-             >|=? fun (v, ctxt) -> (Script_list.cons v rest, ctxt))
+             >|=? fun (v, ctxt) -> (Script_list.cons t v rest, ctxt))
            items
            (Script_list.empty, ctxt)
   | List_t _, expr ->
@@ -2862,7 +2862,7 @@ and parse_instr :
       Item_t (tv, (Item_t (List_t (t, _), _) as stack)) ) ->
       check_item_ty ctxt tv t loc I_CONS 1 2 >>?= fun (Eq, ctxt) ->
       check_var_annot loc annot >>?= fun () ->
-      let cons_list = {apply = (fun k -> ICons_list (loc, k))} in
+      let cons_list = {apply = (fun k -> ICons_list (loc, t, k))} in
       (typed ctxt loc cons_list stack
         : ((a, s) judgement * context) tzresult Lwt.t)
   | ( Prim (loc, I_IF_CONS, [bt; bf], annot),
@@ -2888,7 +2888,7 @@ and parse_instr :
                 let hloc = kinstr_location k in
                 let branch_if_cons = ibt.instr.apply (IHalt hloc)
                 and branch_if_nil = ibf.instr.apply (IHalt hloc) in
-                IIf_cons {loc; branch_if_nil; branch_if_cons; k});
+                IIf_cons {ty = t; loc; branch_if_nil; branch_if_cons; k});
           }
         in
         {loc; instr; bef; aft = ibt.aft}
@@ -5193,11 +5193,13 @@ let extract_lazy_storage_updates ctxt mode ~temporary ids_to_copy acc ty x =
           (fun (ctxt, l, ids_to_copy, acc) x ->
             aux ctxt mode ~temporary ids_to_copy acc ty x ~has_lazy_storage
             >|=? fun (ctxt, x, ids_to_copy, acc) ->
-            (ctxt, Script_list.cons x l, ids_to_copy, acc))
+            (ctxt, Script_list.cons ty x l, ids_to_copy, acc))
           (ctxt, Script_list.empty, ids_to_copy, acc)
           l.elements
         >|=? fun (ctxt, l, ids_to_copy, acc) ->
-        let reversed = {length = l.length; elements = List.rev l.elements} in
+        let reversed =
+          {length = l.length; elements = List.rev l.elements; size = l.size}
+        in
         (ctxt, reversed, ids_to_copy, acc)
     | Map_f has_lazy_storage, Map_t (_, ty, _), map ->
         let (module M) = Script_map.get_module map in

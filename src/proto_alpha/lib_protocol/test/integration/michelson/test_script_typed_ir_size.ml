@@ -784,13 +784,14 @@ let check_kinstr_size () =
               branch_if_right = drop ();
               k = halt ();
             } );
-      Kinstr ("ICons_list", ICons_list (loc, halt ()));
+      Kinstr ("ICons_list", ICons_list (loc, Bytes_t, halt ()));
       Kinstr ("INil", INil (loc, Bytes_t, halt ()));
       Kinstr
         ( "IIf_cons",
           IIf_cons
             {
               loc;
+              ty = Bytes_t;
               branch_if_cons = IDrop (loc, drop ());
               branch_if_nil = halt ();
               k = halt ();

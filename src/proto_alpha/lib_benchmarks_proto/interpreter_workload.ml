@@ -1172,7 +1172,7 @@ let extract_ir_sized_step :
   | ICons_left (_, _, _), _ -> Instructions.left
   | ICons_right (_, _, _), _ -> Instructions.right
   | IIf_left _, _ -> Instructions.if_left
-  | ICons_list (_, _), _ -> Instructions.cons_list
+  | ICons_list (_, _, _), _ -> Instructions.cons_list
   | INil (_, _, _), _ -> Instructions.nil
   | IIf_cons _, _ -> Instructions.if_cons
   | IList_iter (_, _, _, _), _ -> Instructions.list_iter
@@ -1445,11 +1445,11 @@ let extract_control_trace (type bef_top bef aft_top aft)
   | KLoop_in _ -> Control.loop_in
   | KLoop_in_left _ -> Control.loop_in_left
   | KIter (_, _, xs, _) -> Control.iter (Size.of_int (List.length xs))
-  | KList_enter_body (_, xs, ys, _, _, _) ->
+  | KList_enter_body (_, xs, ys, _, _, _, _) ->
       Control.list_enter_body
         (Size.of_int (List.length xs))
         (Size.of_int (List.length ys))
-  | KList_exit_body (_, _, _, _, _, _) -> Control.list_exit_body
+  | KList_exit_body (_, _, _, _, _, _, _) -> Control.list_exit_body
   | KMap_enter_body (_, xs, _, _, _) ->
       Control.map_enter_body (Size.of_int (List.length xs))
   | KMap_exit_body (_, _, map, k, _, _) ->

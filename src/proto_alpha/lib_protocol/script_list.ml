@@ -26,7 +26,9 @@
 
 open Script_typed_ir
 
-let empty : 'a boxed_list = {elements = []; length = 0}
+let empty : 'a boxed_list = {elements = []; length = 0; size = 1}
 
-let cons : 'a -> 'a boxed_list -> 'a boxed_list =
- fun elt l -> {length = 1 + l.length; elements = elt :: l.elements}
+let cons : type a b. (a, b) ty -> a -> a boxed_list -> a boxed_list =
+ fun ty elt l ->
+  let size = Script_typed_ir.micheline_size ty elt + l.size in
+  {length = 1 + l.length; elements = elt :: l.elements; size}
