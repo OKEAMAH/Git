@@ -69,3 +69,54 @@ let find : type tree. tree backend -> tree -> key -> value option Lwt.t =
 
 let find_tree : type tree. tree backend -> tree -> key -> tree option Lwt.t =
  fun (module T) tree key -> T.find_tree tree key
+
+type wrapped_tree = Wrapped_tree : 'tree * 'tree backend -> wrapped_tree
+
+type Lazy_containers.Lazy_map.tree += Wrapped of wrapped_tree
+
+module Wrap : S with type tree = wrapped_tree = struct
+  type tree = wrapped_tree
+
+  let remove = function
+    | Wrapped_tree (t, b) ->
+        fun key ->
+          let open Lwt.Syntax in
+          let+ t = remove b t key in
+          Wrapped_tree (t, b)
+
+  let add = function
+    | Wrapped_tree (t, b) ->
+        fun key v ->
+          let open Lwt.Syntax in
+          let+ t = add b t key v in
+          Wrapped_tree (t, b)
+
+  let add_tree = function
+    | Wrapped_tree (t, b) ->
+        fun key (Wrapped_tree (t', b')) ->
+          let open Lwt.Syntax in
+          let t' = select b (wrap b' t') in
+          let+ t = add_tree b t key t' in
+          Wrapped_tree (t, b)
+
+  let find_tree = function
+    | Wrapped_tree (t, b) -> (
+        fun key ->
+          let open Lwt.Syntax in
+          let+ t' = find_tree b t key in
+          match t' with Some t' -> Some (Wrapped_tree (t', b)) | None -> None)
+
+  let find = function
+    | Wrapped_tree (t, b) ->
+        fun key ->
+          let open Lwt.Syntax in
+          find b t key
+
+  let select = function
+    | Wrapped (Wrapped_tree (_, _) as wt) -> wt
+    | _ -> raise Incorrect_tree_type
+
+  let wrap t = Wrapped t
+end
+
+let wrapped_backend : wrapped_tree backend = (module Wrap)

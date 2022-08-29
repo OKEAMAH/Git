@@ -327,9 +327,16 @@ let delayed f =
   in
   {encode; decode}
 
-module Runner = struct
-  module type TREE = S
+module type TREE = S
 
+type wrapped_tree = Tree.wrapped_tree
+
+module Wrapped : TREE with type tree = wrapped_tree = Tree.Wrapped
+
+let wrapped_tree : wrapped_tree t =
+  {encode = E.wrapped_tree; decode = D.wrapped_tree}
+
+module Runner = struct
   module Make (T : TREE) = struct
     let encode {encode; _} value tree = E.run (module T) encode value tree
 

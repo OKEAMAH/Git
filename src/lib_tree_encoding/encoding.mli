@@ -113,3 +113,5 @@ val tup2 : 'a t -> 'b t -> ('a * 'b) t
 (** [tup3 e1 e2] creates an encoder that encodes a triple of elements using
     [e1], [e2], and [e3]. *)
 val tup3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+
+val wrapped_tree : Tree.wrapped_tree t

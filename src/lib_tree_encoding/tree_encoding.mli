@@ -234,30 +234,36 @@ val option : 'a t -> 'a option t
     to allow for directly recursive encoders/decoders. *)
 val delayed : (unit -> 'a t) -> 'a t
 
+module type TREE = sig
+  type tree
+
+  type key := string list
+
+  type value := bytes
+
+  (** @raise Incorrect_tree_type *)
+  val select : Lazy_containers.Lazy_map.tree -> tree
+
+  val wrap : tree -> Lazy_containers.Lazy_map.tree
+
+  val remove : tree -> key -> tree Lwt.t
+
+  val add : tree -> key -> value -> tree Lwt.t
+
+  val add_tree : tree -> key -> tree -> tree Lwt.t
+
+  val find : tree -> key -> value option Lwt.t
+
+  val find_tree : tree -> key -> tree option Lwt.t
+end
+
+type wrapped_tree
+
+module Wrapped : TREE with type tree = wrapped_tree
+
+val wrapped_tree : wrapped_tree t
+
 module Runner : sig
-  module type TREE = sig
-    type tree
-
-    type key := string list
-
-    type value := bytes
-
-    (** @raise Incorrect_tree_type *)
-    val select : Lazy_containers.Lazy_map.tree -> tree
-
-    val wrap : tree -> Lazy_containers.Lazy_map.tree
-
-    val remove : tree -> key -> tree Lwt.t
-
-    val add : tree -> key -> value -> tree Lwt.t
-
-    val add_tree : tree -> key -> tree -> tree Lwt.t
-
-    val find : tree -> key -> value option Lwt.t
-
-    val find_tree : tree -> key -> tree option Lwt.t
-  end
-
   (** Builds a new runner for encoders using a specific tree. *)
   module Make (T : TREE) : sig
     (** [encode enc x tree] encodes a value [x] using the encoder [enc]

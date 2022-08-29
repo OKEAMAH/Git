@@ -203,3 +203,15 @@ let tagged_union ?default decode_tag cases =
                 | None -> raise exn)
             | exn -> raise exn));
   }
+
+let wrapped_tree =
+  {
+    decode =
+      (fun backend tree prefix ->
+        let open Lwt.Syntax in
+        let+ tree = subtree.decode backend tree prefix in
+        match tree with
+        | Some subtree ->
+            Tree.Wrapped_tree (Tree.select backend subtree, backend)
+        | _ -> raise Not_found);
+  }

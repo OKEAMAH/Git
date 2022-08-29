@@ -189,3 +189,12 @@ let tagged_union encode_tag cases =
         | None -> raise No_tag_matched_on_encoding
         | Some tree -> return tree);
   }
+
+let wrapped_tree =
+  {
+    encode =
+      (fun backend (Tree.Wrapped_tree (subtree, backend')) prefix target_tree ->
+        let subtree = Tree.select backend (Tree.wrap backend' subtree) in
+        let key = prefix [] in
+        Tree.add_tree backend target_tree key subtree);
+  }

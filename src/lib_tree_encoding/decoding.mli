@@ -129,6 +129,8 @@ val case_lwt : 'tag -> 'b t -> ('b -> 'a Lwt.t) -> ('tag, 'a) case
     fail with a [No_tag_matched] error when [run].  *)
 val tagged_union : ?default:'a -> 'tag t -> ('tag, 'a) case list -> 'a t
 
+val wrapped_tree : Tree.wrapped_tree t
+
 (** Syntax module for the {!Tree_decoding}. This is intended to be opened
     locally in functions. Within the scope of this module, the code can
     include binding operators, leading to a [let]-style syntax. Similar to

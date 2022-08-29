@@ -66,3 +66,7 @@ val add_tree : 'tree backend -> 'tree -> key -> 'tree -> 'tree Lwt.t
 val find : 'tree backend -> 'tree -> key -> value option Lwt.t
 
 val find_tree : 'tree backend -> 'tree -> key -> 'tree option Lwt.t
+
+type wrapped_tree = Wrapped_tree : 'tree * 'tree backend -> wrapped_tree
+
+module Wrapped : S with type tree = wrapped_tree
