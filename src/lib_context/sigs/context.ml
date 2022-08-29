@@ -855,15 +855,11 @@ module type Storelike = sig
 
   type t
 
-  val mem : t -> key -> bool Lwt.t
-
-  val find_tree : t -> key -> t option Lwt.t
+  val has_key : t -> key -> bool Lwt.t
 end
 
 module With_get_data (Store : Storelike) = struct
-  exception Found_content_tree of string
-
-  exception Key_partially_found of string
+  exception Key_not_found of string
 
   let get_data (leaf_kind : Proof_types.merkle_leaf_kind) (key : Store.key)
       (tree : Store.t) : (Store.t * Store.t) Lwt.t =
@@ -872,33 +868,7 @@ module With_get_data (Store : Storelike) = struct
     | Proof_types.Hole -> return (tree, tree)
     | Proof_types.Raw_context ->
         let key_to_string k = String.concat ";" k in
-        let rec explore subtree target =
-          match target with
-          | [] -> return (tree, subtree)
-          | hd :: tl -> (
-              let open Lwt in
-              (* `mem subtree []` return `true` iff `subtree` is a *content* tree, i.e. a leaf *)
-              Store.mem subtree [] >>= function
-              | true ->
-                  raise
-                  @@ Found_content_tree
-                       (Printf.sprintf
-                          "Found a leaf node when key %s (top-level key: %s) \
-                           wasn't fully consumed %d %d)"
-                          (key_to_string target)
-                          (key_to_string key)
-                          (List.length target)
-                          (List.length key))
-              | false -> (
-                  Store.find_tree subtree [hd] >>= function
-                  | None ->
-                      raise
-                      @@ Key_partially_found
-                           (Printf.sprintf
-                              "Key %s partially found:\nPart \"%s\" is missing"
-                              (key_to_string key)
-                              hd)
-                  | Some subtree' -> explore subtree' tl))
-        in
-        explore tree key
+        let* has_key = Store.has_key tree key in
+        if has_key then return (tree, tree)
+        else raise @@ Key_not_found (key_to_string key)
 end

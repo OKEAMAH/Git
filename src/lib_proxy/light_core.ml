@@ -80,9 +80,11 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
 
       type t = Local_context.tree
 
-      let mem = Local_context.Tree.mem
-
-      let find_tree = Local_context.Tree.find_tree
+      let has_key tree key =
+        let open Lwt_syntax in
+        let* has_tree = Local_context.Tree.mem_tree tree key
+        and* has_content = Local_context.Tree.mem tree key in
+        return (has_tree || has_content)
     end
 
     module Get_data = Tezos_context_sigs.Context.With_get_data ((
@@ -97,11 +99,9 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
           Store.verify_tree_proof
             mproof
             (Get_data.get_data Proof.Raw_context key)
-        with
-        | Get_data.Found_content_tree msg ->
-            return @@ Error (`Proof_mismatch msg)
-        | Get_data.Key_partially_found msg ->
-            return @@ Error (`Proof_mismatch msg)
+        with Get_data.Key_not_found msg ->
+          return
+          @@ Error (`Proof_mismatch (Printf.sprintf "Key \"%s\" not found" msg))
       in
       match verification with
       | Error (`Proof_mismatch msg) -> light_failwith pgi msg

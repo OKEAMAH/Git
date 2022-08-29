@@ -518,9 +518,11 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
 
     type t = Store.tree
 
-    let mem tree key = Tree.mem tree (data_key key)
-
-    let find_tree tree key = Tree.find_tree tree (data_key key)
+    let has_key tree key =
+      let open Lwt_syntax in
+      let* has_tree = Tree.mem_tree tree key
+      and* has_content = Tree.mem tree key in
+      return (has_tree || has_content)
   end
 
   module Get_data = Tezos_context_sigs.Context.With_get_data ((
@@ -530,10 +532,9 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
     let open Lwt_syntax in
     let get_data tree =
       try Get_data.get_data leaf_kind key tree
-      with
-      (* For backwards compatibility, we raise nothing on Key_partially_found*)
-      | Get_data.Key_partially_found _ ->
-        return (ctx.tree, ctx.tree)
+      with Get_data.Key_not_found msg ->
+        raise
+        @@ Invalid_argument (Printf.sprintf "Key \"%s\" not found in tree" msg)
     in
     match Tree.kinded_key ctx.tree with
     | None -> raise (Invalid_argument "On-disk context.tree has no kinded_key")

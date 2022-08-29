@@ -117,34 +117,28 @@ let empty = Tezos_context_memory.make_empty_context ()
 let irmin_tree_gen =
   let open QCheck2.Gen in
   let+ entries =
-    (* we want the list of entries to be nonempty *)
+    (* we want the list of entries to be nonempty, hence the "+1" *)
     list_size (map (( + ) 1) small_nat) (pair (small_list string) bytes_gen)
   in
-  List.fold_left_s
-    (fun built_tree (path, bytes) -> Store.Tree.add built_tree path bytes)
-    (Store.Tree.empty empty)
-    entries
-  |> Lwt_main.run
+  let tree =
+    List.fold_left_s
+      (fun built_tree (path, bytes) -> Store.Tree.add built_tree path bytes)
+      (Store.Tree.empty empty)
+      entries
+    |> Lwt_main.run
+  in
+  (tree, entries)
 
 let ( let** ) = Lwt_syntax.( let* )
 
 let merkle_proof_gen =
   let open QCheck2.Gen in
-  let* tree = irmin_tree_gen and* root = string in
+  let* tree, entries = irmin_tree_gen and* root = string in
   let store =
-    Lwt_main.run
-    @@ let** store = Store.add_tree empty [root] tree in
-       let** _ = Store.commit ~time:Time.Protocol.epoch store in
-       Lwt.return store
-  in
-  let rec random_path_gen tree =
-    match Store.Tree.find tree [] |> Lwt_main.run with
-    | Some _ -> return []
-    | None ->
-        let subtrees = Store.Tree.list tree [] |> Lwt_main.run in
-        let* k, subtree = oneofl subtrees in
-        let* subpath = random_path_gen subtree in
-        return (k :: subpath)
+    (let** store = Store.add_tree empty [root] tree in
+     let** _ = Store.commit ~time:Time.Protocol.epoch store in
+     Lwt.return store)
+    |> Lwt_main.run
   in
   match Store.Tree.kinded_key tree with
   | None ->
@@ -152,7 +146,7 @@ let merkle_proof_gen =
         (Invalid_argument
            "In-memory context.tree has no kinded_key after commit")
   | Some kinded_key ->
-      let* path = random_path_gen tree in
+      let* path = map fst @@ oneofl entries in
       let proof, _ =
         Store.produce_tree_proof
           (Store.index store)
