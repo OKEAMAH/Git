@@ -1266,7 +1266,14 @@ module Make_hashing_scheme (P : P) :
     let produce_proof_about_payload_and_level ctxt number_of_messages pn =
       let open Lwt_syntax in
       let payload =
-        Sc_rollup_inbox_message_repr.unsafe_of_string "dummy_payload"
+        let open Sc_rollup_inbox_message_repr in
+        (* FIXME: The size of the payload may count! *)
+        let serialized = serialize (External "Some payload") in
+        match serialized with
+        | Ok s -> s
+        | Error _ ->
+            (* By construction of serialized. *)
+            assert false
       in
       let* tree =
         let* initial_tree = new_level_tree ctxt Raw_level_repr.root in

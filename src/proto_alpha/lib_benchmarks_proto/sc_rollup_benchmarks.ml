@@ -25,6 +25,9 @@
 
 open Protocol
 
+let assert_ok_lwt x =
+  match Lwt_main.run x with Ok x -> x | Error _ -> assert false
+
 (** A benchmark for estimating the gas cost of
     {!Sc_rollup_costs.Constants.cost_update_num_and_size_of_messages}. This
     value is used to consume the gas cost internally in
@@ -324,7 +327,7 @@ module Sc_rollup_inbox_repr_hash_skip_list_cell = struct
       (fun max_index -> {max_index})
       (obj1 (req "max_index" int31))
 
-  let default_config = {max_index = 65536}
+  let default_config = {max_index = 1_000_000}
 
   type workload = {max_nb_backpointers : int}
 
@@ -504,6 +507,162 @@ module Skip_list_valid_back_path_hash_equal = struct
       (Model.For_codegen skip_list_valid_back_path_hash_equal_model)
 end
 
+(* A model to estimate [verify_proof_about_payload_and_level] as used
+   in [Sc_rollup_inbox_repr]. *)
+module Sc_rollup_verify_proof_about_payload_and_level = struct
+  let name = "Sc_rollup_verify_proof_about_payload_and_level"
+
+  let info =
+    "Estimating the costs of verifying a proof about level tree contents"
+
+  let tags = ["scoru"]
+
+  module Hash = Sc_rollup_inbox_repr.Hash
+
+  module Tree = struct
+    open Tezos_context_memory.Context
+
+    type nonrec t = t
+
+    type nonrec tree = tree
+
+    module Tree = struct
+      include Tezos_context_memory.Context.Tree
+
+      type nonrec t = t
+
+      type nonrec tree = tree
+
+      type key = string list
+
+      type value = bytes
+    end
+
+    let commit_tree context key tree =
+      let open Lwt_syntax in
+      let* ctxt = Tezos_context_memory.Context.add_tree context key tree in
+      let* _ = commit ~time:Time.Protocol.epoch ~message:"" ctxt in
+      return ()
+
+    let lookup_tree context hash =
+      let open Lwt_syntax in
+      let* _, tree =
+        produce_tree_proof
+          (index context)
+          (`Node (Hash.to_context_hash hash))
+          (fun x -> Lwt.return (x, x))
+      in
+      return (Some tree)
+
+    type proof = Proof.tree Proof.t
+
+    let verify_proof proof f =
+      Lwt.map Result.to_option (verify_tree_proof proof f)
+
+    let produce_proof context tree f =
+      let open Lwt_syntax in
+      let* proof =
+        produce_tree_proof (index context) (`Node (Tree.hash tree)) f
+      in
+      return (Some proof)
+
+    let kinded_hash_to_inbox_hash = function
+      | `Value hash | `Node hash -> Hash.of_context_hash hash
+
+    let proof_before proof = kinded_hash_to_inbox_hash proof.Proof.before
+
+    let proof_encoding =
+      Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V2.Tree32
+      .tree_proof_encoding
+  end
+
+  module Op = Sc_rollup_inbox_repr.Make_hashing_scheme (Tree)
+  open Op.Internal_MerkelizedOperations_for_snoop
+
+  type config = {max_number_of_messages : int}
+
+  let config_encoding =
+    let open Data_encoding in
+    conv
+      (fun {max_number_of_messages} -> max_number_of_messages)
+      (fun max_number_of_messages -> {max_number_of_messages})
+      (obj1 (req "max_number_of_messages" int31))
+
+  let default_config = {max_number_of_messages = (1 lsl 16) - 1}
+
+  type workload = {number_of_messages : int; proof : Op.P.proof; index : Z.t}
+
+  let workload_encoding =
+    let open Data_encoding in
+    conv
+      (fun {number_of_messages; proof; index} ->
+        (number_of_messages, proof, index))
+      (fun (number_of_messages, proof, index) ->
+        {number_of_messages; proof; index})
+      (obj3
+         (req "number_of_messages" int31)
+         (req "proof" Op.P.proof_encoding)
+         (req "index" Data_encoding.z))
+
+  let workload_to_vector {number_of_messages; proof = _; index = _} =
+    Sparse_vec.String.of_list
+      [("number_of_messages", float_of_int number_of_messages)]
+
+  let verify_proof_about_payload_and_level_model =
+    Model.make
+      ~conv:(fun {number_of_messages; _} -> (number_of_messages, ()))
+      ~model:
+        (Model.logn
+         (* ~intercept:
+          *   (Free_variable.of_string
+          *      "cost_verify_proof_about_payload_and_level") *)
+           ~coeff:
+             (Free_variable.of_string
+                "cost_verify_proof_about_payload_and_level_coeff"))
+
+  let models = [("scoru", verify_proof_about_payload_and_level_model)]
+
+  let benchmark rng_state conf () =
+    let number_of_messages =
+      Base_samplers.sample_in_interval
+        ~range:{min = 1; max = conf.max_number_of_messages}
+        rng_state
+    in
+    let ctxt =
+      let open Lwt_syntax in
+      Lwt_main.run
+      @@ let* index = Tezos_context_memory.Context.init "foo" in
+         return @@ Tezos_context_memory.Context.empty index
+    in
+    let index =
+      Z.of_int
+        (Base_samplers.sample_in_interval
+           ~range:{min = 0; max = number_of_messages - 1}
+           rng_state)
+    in
+    let proof =
+      Lwt_main.run
+      @@ produce_proof_about_payload_and_level ctxt number_of_messages index
+      |> function
+      | None -> assert false
+      | Some proof -> proof
+    in
+    let workload = {number_of_messages; proof; index} in
+    let closure () =
+      Lwt_main.run @@ verify_proof_about_payload_and_level proof index
+      |> fun b -> assert b
+    in
+    Generator.Plain {workload; closure}
+
+  let create_benchmarks ~rng_state ~bench_num config =
+    List.repeat bench_num (benchmark rng_state config)
+
+  let () =
+    Registration.register_for_codegen
+      name
+      (Model.For_codegen verify_proof_about_payload_and_level_model)
+end
+
 let () =
   Registration_helpers.register
     (module Sc_rollup_add_external_messages_benchmark)
@@ -518,3 +677,7 @@ let () =
 
 let () =
   Registration_helpers.register (module Skip_list_valid_back_path_hash_equal)
+
+let () =
+  Registration_helpers.register
+    (module Sc_rollup_verify_proof_about_payload_and_level)
