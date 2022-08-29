@@ -1886,6 +1886,9 @@ module Dal = struct
 
      This is only for prototyping. Probably something smarter would be
      to index each header directly. *)
+  (* DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/3684
+
+     This storage should be carbonated. *)
   module Slot_headers =
     Level_context.Make_map
       (struct
@@ -1895,6 +1898,17 @@ module Dal = struct
         type t = Dal_slot_repr.t list
 
         let encoding = Data_encoding.(list Dal_slot_repr.encoding)
+      end)
+
+  module Slots_history =
+    Level_context.Make_map
+      (struct
+        let name = ["skip_list"]
+      end)
+      (struct
+        type t = Dal_slot_repr.Slots_history.t
+
+        let encoding = Dal_slot_repr.Slots_history.encoding
       end)
 end
 

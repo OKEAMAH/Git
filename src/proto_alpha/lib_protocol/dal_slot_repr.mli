@@ -152,3 +152,20 @@ module Slot_market : sig
   (** [candidates t] returns a list of slot candidates. *)
   val candidates : t -> slot list
 end
+
+(** An efficient storage *)
+module Slots_history : sig
+  (** Abstract representation of a skip list specialized for
+       confirmed slot headers. *)
+  type t
+
+  (** Encoding of the datatype. *)
+  val encoding : t Data_encoding.t
+
+  (** First cell of this skip list. *)
+  val genesis : t
+
+  (** [add_confirmed_slots slots cell] builds a new cell with
+       contents is the list of confirmed slots. *)
+  val add_confirmed_slots : slot list -> t -> t
+end

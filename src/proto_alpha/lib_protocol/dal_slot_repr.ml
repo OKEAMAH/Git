@@ -168,3 +168,85 @@ module Slot_market = struct
   let candidates t =
     t.slots |> Slot_index_map.to_seq |> Seq.map snd |> List.of_seq
 end
+
+module Slots_history = struct
+  (* History is represented via a skip list. The content of the cell
+     is the hash of a markle proof. *)
+
+  (* A leaf of the markle tree is a slot. *)
+  module Leaf = struct
+    type t = slot
+
+    let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
+  end
+
+  module Content_prefix = struct
+    let _prefix = "dash1"
+
+    (* 32 *)
+    let b58check_prefix = "\002\224\072\094\219" (* dash1(55) *)
+
+    let size = Some 32
+
+    let name = "dal_skip_list_content"
+
+    let title = "A hash to represent the content of a cell in the skip list"
+  end
+
+  module Content_hash = Blake2B.Make (Base58) (Content_prefix)
+  module Merkle_list = Merkle_list.Make (Leaf) (Content_hash)
+
+  (* Pointers of the skip lists are used to encode the content and the
+     backpointers. *)
+  module Pointer_prefix = struct
+    let _prefix = "dask1"
+
+    (* 32 *)
+    let b58check_prefix = "\002\224\072\115\035" (* dask1(55) *)
+
+    let size = Some 32
+
+    let name = "dal_skip_list_pointer"
+
+    let title = "A hash that represents the skip list pointers"
+  end
+
+  module Pointer_hash = Blake2B.Make (Base58) (Pointer_prefix)
+
+  module Skip_list_parameters = struct
+    let basis = 2
+  end
+
+  module Skip_list = Skip_list_repr.Make (Skip_list_parameters)
+
+  module V1 = struct
+    (* The content of a cell is the hash of all the slot headers
+       represented as a merkle list. *)
+    type content = Content_hash.t
+
+    (* A pointer to a cell is the hash of its content and all the back
+       pointers. *)
+    type ptr = Pointer_hash.t
+
+    type t = (content, ptr) Skip_list.cell
+
+    let encoding =
+      Skip_list.encoding Pointer_hash.encoding Content_hash.encoding
+
+    let genesis : t = Skip_list.genesis Merkle_list.empty
+
+    let hash_skip_list_cell cell =
+      let current_level_hash = Skip_list.content cell in
+      let back_pointers_hashes = Skip_list.back_pointers cell in
+      Content_hash.to_bytes current_level_hash
+      :: List.map Pointer_hash.to_bytes back_pointers_hashes
+      |> Pointer_hash.hash_bytes
+
+    let add_confirmed_slots slots t =
+      let content_hash = Merkle_list.compute slots in
+      let prev_cell_ptr = hash_skip_list_cell t in
+      Skip_list.next ~prev_cell:t ~prev_cell_ptr content_hash
+  end
+
+  include V1
+end
