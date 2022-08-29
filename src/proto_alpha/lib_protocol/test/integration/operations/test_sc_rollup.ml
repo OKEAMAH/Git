@@ -783,7 +783,7 @@ let test_originating_with_invalid_kind_proof () =
   let*! origination_proof =
     Sc_rollup_helpers.origination_proof
       ~boot_sector:"a boot sector"
-      Sc_rollup.Kind.Wasm_2_0_0
+      Sc_rollup.Kind.Wasm_beta
   in
   let*! res =
     init_and_originate

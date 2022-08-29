@@ -24,7 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module V2_0_0 = struct
+module Beta = struct
   (*
     This is the state hash of reference that both the prover of the
     node and the verifier of the protocol {!Protocol_implementation}
@@ -144,7 +144,7 @@ module V2_0_0 = struct
       | None, _ -> None
       | _ -> Some (Context.proof_after p.tree_proof)
 
-    let name = "wasm_2_0_0"
+    let name = "wasm_beta"
 
     let parse_boot_sector s = Hex.to_string @@ `Hex s
 

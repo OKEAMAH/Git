@@ -24,14 +24,20 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module V2_0_0 : sig
-  (** This module provides Proof-Generating Virtual Machine (PVM) running
-    WebAssembly (version 2.0.0). *)
+module Beta : sig
+  (** This module provides Proof-Generating Virtual Machine (PVM)
+      running WebAssembly (version 2.0.0).
+
+      It is expected to be part of the initial release of SCORU.
+
+      It will either be renamed into [V2_0_0] in further protocol
+      proposals, or deprecated in favor of a [V2_0_0] kind with
+      breaking changes. *)
 
   module type S = sig
     include Sc_rollup_PVM_sem.S
 
-    (** [name] is "wasm_2_0_0".
+    (** [name] is "wasm_beta".
 
       WebAssembly is an "evergreen" specification. We aim to track
       the latest major version, 2.0 at the time of writing. We

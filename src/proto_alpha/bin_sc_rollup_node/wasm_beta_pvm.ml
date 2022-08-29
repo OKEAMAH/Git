@@ -1,8 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
-(* Copyright (c) 2022 Trili Tech, <contact@trili.tech>                       *)
+(* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,27 +23,27 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module type S = sig
-  module PVM : Pvm.S
+open Protocol
+open Alpha_context
 
-  module Interpreter : Interpreter.S with module PVM = PVM
+(** This module manifests the proof format used by the Wasm PVM as defined by
+    the Layer 1 implementation for it.
 
-  module Commitment : Commitment_sig.S with module PVM = PVM
+    It is imperative that this is aligned with the protocol's implementation.
+*)
+module Wasm_beta_proof_format = Context.Proof (struct
+  include Sc_rollup.State_hash
 
-  module RPC_server : RPC_server.S with module PVM = PVM
+  let of_context_hash = Sc_rollup.State_hash.context_hash_to_state_hash
+end)
 
-  module Refutation_game : Refutation_game.S with module PVM = PVM
+module Impl : Pvm.S = struct
+  include Sc_rollup.Wasm_betaPVM.Make (Wasm_beta_proof_format)
+  module State = Context.PVMState
+
+  let string_of_status : status -> string = function
+    | Waiting_for_input_message -> "Waiting for input message"
+    | Computing -> "Computing"
 end
 
-module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
-  module PVM = PVM
-  module Interpreter = Interpreter.Make (PVM)
-  module Commitment = Commitment.Make (PVM)
-  module RPC_server = RPC_server.Make (PVM)
-  module Refutation_game = Refutation_game.Make (Interpreter)
-end
-
-let pvm_of_kind : Protocol.Alpha_context.Sc_rollup.Kind.t -> (module Pvm.S) =
-  function
-  | Example_arith -> (module Arith_pvm)
-  | Wasm_beta -> (module Wasm_beta_pvm)
+include Impl

@@ -64,7 +64,7 @@ type sc_rollup_constants = {
     kind [kind]. *)
 let boot_sector_of = function
   | "arith" -> ""
-  | "wasm_2_0_0" -> Constant.wasm_incomplete_kernel_boot_sector
+  | "wasm_beta" -> Constant.wasm_incomplete_kernel_boot_sector
   | kind -> raise (Invalid_argument kind)
 
 let get_sc_rollup_constants client =
@@ -971,7 +971,7 @@ let test_rollup_node_boots_into_initial_state ~kind =
     let expected_status =
       match kind with
       | "arith" -> "Halted"
-      | "wasm_2_0_0" -> "Computing"
+      | "wasm_beta" -> "Computing"
       | _ -> raise (Invalid_argument kind)
     in
     Check.(status = expected_status)
@@ -1089,7 +1089,7 @@ let test_rollup_node_advances_pvm_state protocols ~kind =
                 int
                 ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
             return ()
-        | "wasm_2_0_0" -> return ()
+        | "wasm_beta" -> return ()
         | _otherwise -> raise (Invalid_argument kind)
       in
 
@@ -2999,17 +2999,17 @@ let register ~protocols =
   (* PVM-independent tests. We still need to specify a PVM kind
      because the tezt will need to originate a rollup. However,
      the tezt will not test for PVM kind specific featued. *)
-  test_rollup_client_gets_address protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_node_configuration protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_list protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_show_address protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_generate_keys protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_list_keys protocols ~kind:"wasm_2_0_0" ;
+  test_rollup_client_gets_address protocols ~kind:"wasm_beta" ;
+  test_rollup_node_configuration protocols ~kind:"wasm_beta" ;
+  test_rollup_list protocols ~kind:"wasm_beta" ;
+  test_rollup_client_show_address protocols ~kind:"wasm_beta" ;
+  test_rollup_client_generate_keys protocols ~kind:"wasm_beta" ;
+  test_rollup_client_list_keys protocols ~kind:"wasm_beta" ;
   (* Specific Arith PVM tezts *)
   test_rollup_arith_origination_boot_sector protocols ;
   test_rollup_node_uses_arith_boot_sector protocols ;
   (* Shared tezts - will be executed for both PVMs. *)
-  register ~kind:"wasm_2_0_0" ~protocols ;
+  register ~kind:"wasm_beta" ~protocols ;
   register ~kind:"arith" ~protocols ;
   test_no_cementation_if_parent_not_lcc_or_if_disputed_commit protocols ;
   test_valid_dispute_dissection protocols ;

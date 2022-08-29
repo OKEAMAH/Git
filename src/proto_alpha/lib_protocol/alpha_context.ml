@@ -58,7 +58,7 @@ module Sc_rollup = struct
   include Sc_rollup_repr
   include Sc_rollup_PVM_sem
   module ArithPVM = Sc_rollup_arith
-  module Wasm_2_0_0PVM = Sc_rollup_wasm.V2_0_0
+  module Wasm_betaPVM = Sc_rollup_wasm.Beta
 
   module Inbox = struct
     include Sc_rollup_inbox_repr

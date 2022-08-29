@@ -2002,8 +2002,8 @@ module Sc_rollup = struct
     match kind with
     | Sc_rollup.Kind.Example_arith ->
         Some Sc_rollup.ArithPVM.reference_initial_state_hash
-    | Sc_rollup.Kind.Wasm_2_0_0 ->
-        Some Sc_rollup.Wasm_2_0_0PVM.reference_initial_state_hash
+    | Sc_rollup.Kind.Wasm_beta ->
+        Some Sc_rollup.Wasm_betaPVM.reference_initial_state_hash
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2688 *)
   let register_genesis_info () =

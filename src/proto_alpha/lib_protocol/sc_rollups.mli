@@ -51,7 +51,7 @@ module Kind : sig
 
      This list must only be appended for backward compatibility.
   *)
-  type t = Example_arith | Wasm_2_0_0
+  type t = Example_arith | Wasm_beta
 
   val encoding : t Data_encoding.t
 
@@ -99,9 +99,9 @@ type wrapped_proof =
   | Arith_pvm_with_proof of
       (module PVM_with_proof
          with type proof = Sc_rollup_arith.Protocol_implementation.proof)
-  | Wasm_2_0_0_pvm_with_proof of
+  | Wasm_beta_pvm_with_proof of
       (module PVM_with_proof
-         with type proof = Sc_rollup_wasm.V2_0_0.Protocol_implementation.proof)
+         with type proof = Sc_rollup_wasm.Beta.Protocol_implementation.proof)
 
 (** Unwrap a [wrapped_proof] into a first-class module. *)
 val wrapped_proof_module : wrapped_proof -> (module PVM_with_proof)

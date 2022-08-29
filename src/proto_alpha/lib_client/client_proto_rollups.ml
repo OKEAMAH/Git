@@ -112,8 +112,8 @@ module ScRollup = struct
        and type proof =
         Tezos_context_memory.Context.Proof.tree
         Tezos_context_memory.Context.Proof.t
-        Sc_rollup.Wasm_2_0_0PVM.proof =
-    Sc_rollup.Wasm_2_0_0PVM.Make (In_memory_context)
+        Sc_rollup.Wasm_betaPVM.proof =
+    Sc_rollup.Wasm_betaPVM.Make (In_memory_context)
 
   let origination_proof_exn ~boot_sector kind =
     let aux = function
@@ -130,12 +130,12 @@ module ScRollup = struct
 
                  let proof = proof
                end))
-      | Sc_rollup.Kind.Wasm_2_0_0 ->
+      | Sc_rollup.Kind.Wasm_beta ->
           let open Lwt_result_syntax in
           let context = Tezos_context_memory.make_empty_context () in
           let* proof = Wasm_pvm.produce_origination_proof context boot_sector in
           return
-            (Sc_rollup.Wasm_2_0_0_pvm_with_proof
+            (Sc_rollup.Wasm_beta_pvm_with_proof
                (module struct
                  include Wasm_pvm
 

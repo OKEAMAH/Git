@@ -55,7 +55,7 @@ module Tree :
 end
 
 module WASM_P :
-  Protocol.Alpha_context.Sc_rollup.Wasm_2_0_0PVM.P
+  Protocol.Alpha_context.Sc_rollup.Wasm_betaPVM.P
     with type Tree.t = Context_binary.t
      and type Tree.tree = Context_binary.tree
      and type Tree.key = string list
@@ -106,9 +106,9 @@ module WASM_P :
         return None
 end
 
-module Verifier = Alpha_context.Sc_rollup.Wasm_2_0_0PVM.Protocol_implementation
+module Verifier = Alpha_context.Sc_rollup.Wasm_betaPVM.Protocol_implementation
 
-module Prover = Alpha_context.Sc_rollup.Wasm_2_0_0PVM.Make (WASM_P)
+module Prover = Alpha_context.Sc_rollup.Wasm_betaPVM.Make (WASM_P)
 (* Helpers *)
 
 (* FIXME: https://gitlab.com/tezos/tezos/-/issues/2198

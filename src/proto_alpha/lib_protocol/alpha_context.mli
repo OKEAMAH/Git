@@ -3212,7 +3212,7 @@ module Sc_rollup : sig
   end
 
   module Kind : sig
-    type t = Example_arith | Wasm_2_0_0
+    type t = Example_arith | Wasm_beta
 
     val encoding : t Data_encoding.t
 
@@ -3287,7 +3287,7 @@ module Sc_rollup : sig
          and type proof = Context.Proof.tree Context.Proof.t proof
   end
 
-  module Wasm_2_0_0PVM : sig
+  module Wasm_betaPVM : sig
     module type P = sig
       module Tree :
         Context.TREE with type key = string list and type value = bytes
@@ -3410,9 +3410,9 @@ module Sc_rollup : sig
     | Arith_pvm_with_proof of
         (module PVM_with_proof
            with type proof = ArithPVM.Protocol_implementation.proof)
-    | Wasm_2_0_0_pvm_with_proof of
+    | Wasm_beta_pvm_with_proof of
         (module PVM_with_proof
-           with type proof = Wasm_2_0_0PVM.Protocol_implementation.proof)
+           with type proof = Wasm_betaPVM.Protocol_implementation.proof)
 
   val wrapped_proof_kind_exn : wrapped_proof -> Kind.t
 
