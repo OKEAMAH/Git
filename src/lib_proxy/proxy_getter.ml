@@ -241,10 +241,7 @@ module Core
     let* store = lazy_load_store () in
     T.get store key
 
-  let do_rpc :
-      Proxy.proxy_getter_input ->
-      Local.key ->
-      unit tzresult Lwt.t =
+  let do_rpc : Proxy.proxy_getter_input -> Local.key -> unit tzresult Lwt.t =
    fun pgi key ->
     let open Lwt_result_syntax in
     let* tree = X.do_rpc pgi key in
