@@ -184,10 +184,10 @@ let encode_external_message message =
   Bytes.of_string (prefix ^ message)
 
 (** In the tests below we use the {!Node} inbox above to generate proofs,
-but we need to test that they can be interpreted and validated by
-the protocol instance of the inbox code. We rely on the two
-instances having the same encoding, and use this function to
-convert. *)
+    but we need to test that they can be interpreted and validated by
+    the protocol instance of the inbox code. We rely on the two
+    instances having the same encoding, and use this function to
+    convert. *)
 let node_proof_to_protocol_proof p =
   let open Data_encoding.Binary in
   let enc = serialized_proof_encoding in
