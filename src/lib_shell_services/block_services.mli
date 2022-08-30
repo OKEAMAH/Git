@@ -631,6 +631,15 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
           unit,
           Proof.merkle_tree option )
         RPC_service.t
+
+      val merkle_tree_v2 :
+        ( [`GET],
+          prefix,
+          prefix * string list,
+          < holey : bool option >,
+          unit,
+          Proof.tree Proof.t option )
+        RPC_service.t
     end
 
     module Helpers : sig

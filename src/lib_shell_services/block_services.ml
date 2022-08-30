@@ -896,7 +896,9 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
 
       let raw_bytes_path = RPC_path.(path / "raw" / "bytes")
 
-      let merkle_tree_path = RPC_path.(path / "merkle_tree")
+      let merkle_tree_v1_path = RPC_path.(path / "merkle_tree_v1")
+
+      let merkle_tree_v2_path = RPC_path.(path / "merkle_tree")
 
       let context_path_arg : string RPC_arg.t =
         let name = "context_path" in
@@ -939,14 +941,14 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           ~description:"Returns the merkle tree of a piece of context."
           ~query:merkle_tree_query
           ~output:(option merkle_tree_encoding)
-          RPC_path.(merkle_tree_path /:* context_path_arg)
+          RPC_path.(merkle_tree_v1_path /:* context_path_arg)
 
       let merkle_tree_v2 =
         RPC_service.get_service
           ~description:"Returns the Irmin merkle tree of a piece of context."
           ~query:merkle_tree_query
           ~output:(option Encoding.tree_proof_encoding)
-          RPC_path.(merkle_tree_path /:* context_path_arg)
+          RPC_path.(merkle_tree_v2_path /:* context_path_arg)
     end
 
     let info =
