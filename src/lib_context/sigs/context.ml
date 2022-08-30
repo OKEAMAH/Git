@@ -511,6 +511,9 @@ module Proof_types = struct
   let tree_proof_eq p1 p2 =
     p1.version = p2.version && p1.before = p2.before && p1.after = p2.before
     && tree_eq p1.state p2.state
+
+  let proof_hash_eq p1 p2 =
+    p1.version = p2.version && p1.before = p2.before && p1.after = p2.before
 end
 
 module type PROOF = sig

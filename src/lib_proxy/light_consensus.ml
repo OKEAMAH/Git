@@ -59,7 +59,8 @@ let min_agreeing_endpoints min_agreement nb_endpoints =
 module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
   type validation_result = Valid | Invalid of string
 
-  let validate uri key (store_tree : Storelike.t)
+  (* TODO: refactor and get rid of _store_tree *)
+  let validate uri key (_store_tree : Storelike.t)
       (data_proof : Proof.tree Proof.t)
       (incoming_mproof : Proof.tree Proof.t option tzresult) =
     match incoming_mproof with
@@ -82,26 +83,17 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
                 (key_to_string key))
     | Ok (Some mproof) -> (
         let open Lwt_syntax in
-        let _x = data_proof in
         let* res =
-          try
-            Store.verify_tree_proof
-              mproof
-              (Get_data.get_data Proof.Raw_context key)
+          try Store.verify_tree_proof mproof (Get_data.get_data Proof.Hole key)
           with Get_data.Key_not_found msg ->
             return
             @@ Error
                  (`Proof_mismatch (Printf.sprintf "Key \"%s\" not found" msg))
         in
         match res with
-        | Ok (_, tree) ->
-            let* found_tree = Store.Tree.find_tree store_tree key in
-            return
-              (match found_tree with
-              | Some store_tree ->
-                  if Store.Tree.equal tree store_tree then Valid
-                  else Invalid "Light mode: trees were not equal"
-              | None -> Invalid "Light mode: no tree found")
+        | Ok _ ->
+            if Proof.proof_hash_eq mproof data_proof then return Valid
+            else return @@ Invalid "Light mode: proofs were not equal"
         | Error _ ->
             return
               (Invalid
