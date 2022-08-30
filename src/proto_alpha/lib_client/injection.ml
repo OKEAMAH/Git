@@ -628,7 +628,7 @@ let signature_size_of_algo : Signature.algo -> int = function
   | Ed25519 -> Ed25519.size
   | Secp256k1 -> Secp256k1.size
   | P256 -> P256.size
-  | Bls -> Bls.size
+  | Bls -> Bls.size + 2
 
 (* This value is used as a safety guard for gas limit. *)
 let safety_guard = Gas.Arith.(integral_of_int_exn 100)
