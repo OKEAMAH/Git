@@ -27,15 +27,15 @@ module Store = Local_context
 module Proof = Tezos_context_sigs.Context.Proof_types
 
 module Storelike = struct
-  type key = string list
+  include Store
 
-  type t = Local_context.tree
+  type t = Store.tree
 
-  let has_key tree key =
-    let open Lwt_syntax in
-    let* has_tree = Local_context.Tree.mem_tree tree key
-    and* has_content = Local_context.Tree.mem tree key in
-    return (has_tree || has_content)
+  type tree = Store.tree
+
+  let find = Store.Tree.find
+
+  let find_tree = Store.Tree.find_tree
 end
 
 module Get_data = Tezos_context_sigs.Context.With_get_data ((
@@ -60,7 +60,7 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
   type validation_result = Valid | Invalid of string
 
   (* TODO: refactor and get rid of _store_tree *)
-  let validate uri key (_store_tree : Storelike.t)
+  let validate uri key (_store_tree : Store.tree)
       (data_proof : Proof.tree Proof.t)
       (incoming_mproof : Proof.tree Proof.t option tzresult) =
     match incoming_mproof with
@@ -84,16 +84,16 @@ module Make (Light_proto : Light_proto.PROTO_RPCS) = struct
     | Ok (Some mproof) -> (
         let open Lwt_syntax in
         let* res =
-          try Store.verify_tree_proof mproof (Get_data.get_data Proof.Hole key)
-          with Get_data.Key_not_found msg ->
-            return
-            @@ Error
-                 (`Proof_mismatch (Printf.sprintf "Key \"%s\" not found" msg))
+          Store.verify_tree_proof mproof (Get_data.get_data Proof.Hole [key])
         in
         match res with
-        | Ok _ ->
+        | Ok (_, [(k, _)]) when k = key ->
             if Proof.proof_hash_eq mproof data_proof then return Valid
             else return @@ Invalid "Light mode: proofs were not equal"
+        | Ok _ ->
+            return
+              (Invalid
+                 (Printf.sprintf "Key \"%s\" not found" (String.concat ";" key)))
         | Error _ ->
             return
               (Invalid

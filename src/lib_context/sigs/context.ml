@@ -858,20 +858,31 @@ module type Storelike = sig
 
   type t
 
-  val has_key : t -> key -> bool Lwt.t
+  type tree
+
+  type value
+
+  val find : t -> key -> value option Lwt.t
+
+  val find_tree : t -> key -> tree option Lwt.t
 end
 
 module With_get_data (Store : Storelike) = struct
-  exception Key_not_found of string
-
-  let get_data (leaf_kind : Proof_types.merkle_leaf_kind) (key : Store.key)
-      (tree : Store.t) : (Store.t * Store.t) Lwt.t =
+  let get_data (leaf_kind : Proof_types.merkle_leaf_kind)
+      (keys : Store.key list) (tree : Store.t) :
+      (Store.t * (Store.key * (Store.tree, Store.value) Either.t Option.t) list)
+      Lwt.t =
     let open Lwt_syntax in
-    match leaf_kind with
-    | Proof_types.Hole -> return (tree, tree)
-    | Proof_types.Raw_context ->
-        let key_to_string k = String.concat ";" k in
-        let* has_key = Store.has_key tree key in
-        if has_key then return (tree, tree)
-        else raise @@ Key_not_found (key_to_string key)
+    let find k =
+      match leaf_kind with
+      | Proof_types.Hole -> return [(k, None)]
+      | Proof_types.Raw_context -> (
+          let* val_o = Store.find tree k and* tree_o = Store.find_tree tree k in
+          match (val_o, tree_o) with
+          | Some value, _ -> return [(k, Some (Either.Right value))]
+          | _, Some tree -> return [(k, Some (Either.Left tree))]
+          | _ -> return [])
+    in
+    let* values = Lwt_list.map_p find keys in
+    return (tree, List.concat values)
 end

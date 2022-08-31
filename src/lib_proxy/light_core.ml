@@ -76,15 +76,13 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
       {repo; root}
 
     module Storelike = struct
-      type key = string list
+      include Store
 
-      type t = Local_context.tree
+      type t = Store.tree
 
-      let has_key tree key =
-        let open Lwt_syntax in
-        let* has_tree = Local_context.Tree.mem_tree tree key
-        and* has_content = Local_context.Tree.mem tree key in
-        return (has_tree || has_content)
+      let find = Store.Tree.find
+
+      let find_tree = Store.Tree.find_tree
     end
 
     module Get_data = Tezos_context_sigs.Context.With_get_data ((
@@ -95,13 +93,9 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
     let stage pgi key (mproof : Store.Proof.tree Store.Proof.t) =
       let open Lwt_syntax in
       let* verification =
-        try
-          Store.verify_tree_proof
-            mproof
-            (Get_data.get_data Proof.Raw_context key)
-        with Get_data.Key_not_found msg ->
-          return
-          @@ Error (`Proof_mismatch (Printf.sprintf "Key \"%s\" not found" msg))
+        Store.verify_tree_proof
+          mproof
+          (Get_data.get_data Proof.Raw_context [key])
       in
       match verification with
       | Error (`Proof_mismatch msg) -> light_failwith pgi msg
@@ -109,22 +103,21 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
           Stdlib.failwith
             "IMPOSSIBLE: encountered a *stream* verification error when doing \
              a *tree* verification"
-      | Ok (_, tree) ->
+      | Ok (_, [(k, Some tree)]) when k = key ->
           let* irmin =
             match !irmin_ref with
             | None -> mk_empty_irmin ()
             | Some irmin -> Lwt.return irmin
-          and* value_o = Store.Tree.find tree []
-          and* node_o = Store.Tree.find_tree tree [] in
+          in
           let* root =
-            match (value_o, node_o) with
-            | Some value, _ -> Store.Tree.add irmin.root key value
-            | _, Some node -> Store.Tree.add_tree irmin.root key node
-            | _ ->
-                Stdlib.failwith
-                  "IMPOSSIBLE: a tree must be either a node or a value"
+            match tree with
+            | Either.Left tree -> Store.Tree.add_tree irmin.root key tree
+            | Either.Right value -> Store.Tree.add irmin.root key value
           in
           return_ok {irmin with root}
+      | Ok _ ->
+          light_failwith pgi
+          @@ Printf.sprintf "Key \"%s\" not found" (String.concat ";" key)
 
     (* Don't update the irmin ref when looking for key, so as not to add the
        empty tree. *)
