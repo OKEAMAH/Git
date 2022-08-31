@@ -162,7 +162,8 @@ let regression_test ~__FILE__ ?(tags = []) title f =
   let tags = "sc_rollup" :: tags in
   Protocol.register_regression_test ~__FILE__ ~title ~tags f
 
-let setup ?commitment_period ?challenge_window ?timeout f ~protocol =
+let setup ?node_patch_config ?commitment_period ?challenge_window ?timeout f
+    ~protocol =
   let parameters =
     make_parameter "sc_rollup_commitment_period_in_blocks" commitment_period
     @ make_parameter "sc_rollup_challenge_window_in_blocks" challenge_window
@@ -175,7 +176,13 @@ let setup ?commitment_period ?challenge_window ?timeout f ~protocol =
     Node.[Synchronisation_threshold 0; History_mode Archive; No_bootstrap_peers]
   in
   let* node, client =
-    Client.init_with_protocol ~parameter_file `Client ~protocol ~nodes_args ()
+    Client.init_with_protocol
+      ?node_patch_config
+      ~parameter_file
+      `Client
+      ~protocol
+      ~nodes_args
+      ()
   in
   let operator = Constant.bootstrap1.alias in
   f node client operator
@@ -248,6 +255,35 @@ let test_scenario ~kind ?boot_sector ?commitment_period ?challenge_window
         scenario protocol sc_rollup_node sc_rollup node client )
         node
         client)
+
+let test_migration_scenario ~kind ?commitment_period ?challenge_window ?timeout
+    ~migration_level ~migrate_from ~migrate_to {variant; tags; description}
+    ~scenario_prior ~scenario_after =
+  let node_patch_config =
+    Node.Config_file.set_sandbox_network_with_user_activated_upgrades
+      [(migration_level, migrate_to)]
+  in
+  let tags = "sc_rollup" :: "migration" :: kind :: tags in
+  Test.register
+    ~__FILE__
+    ~title:(Printf.sprintf "%s - %s: %s" kind description variant)
+    ~tags
+  @@ fun () ->
+  setup
+    ~node_patch_config
+    ?commitment_period
+    ?challenge_window
+    ?timeout
+    ~protocol:migrate_from
+  @@ fun tezos_node tezos_client ->
+  ( with_fresh_rollup ~kind @@ fun sc_rollup sc_rollup_node _filename ->
+    let* a = scenario_prior tezos_client ~sc_rollup sc_rollup_node in
+    let* () =
+      repeat migration_level (fun () -> Client.bake_for_and_wait tezos_client)
+    in
+    scenario_after tezos_client ~sc_rollup sc_rollup_node a )
+    tezos_node
+    tezos_client
 
 let inbox_level (_hash, (commitment : Sc_rollup_client.commitment), _level) =
   commitment.inbox_level
