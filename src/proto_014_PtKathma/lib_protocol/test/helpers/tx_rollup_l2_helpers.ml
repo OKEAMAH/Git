@@ -165,7 +165,7 @@ let sign_transaction :
       Tx_rollup_l2_batch.V1.transaction_encoding
       transaction
   in
-  List.map (fun sk -> Bls.sign sk buf) sks
+  List.map (fun sk -> Bls.sign_raw sk buf) sks
 
 type Environment.Error_monad.error += Test_error of string
 
