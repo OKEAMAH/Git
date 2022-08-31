@@ -76,6 +76,7 @@ module type T = sig
        and type Bls.t = Bls.t
        and type Signature.public_key_hash = Signature.V1.public_key_hash
        and type Signature.public_key = Signature.V1.public_key
+       and type Signature.signature = Signature.V1.signature
        and type Signature.t = Signature.V1.t
        and type Signature.watermark = Signature.V1.watermark
        and type Micheline.canonical_location = Micheline.canonical_location
