@@ -118,7 +118,9 @@ let irmin_tree_gen =
   let open QCheck2.Gen in
   let+ entries =
     (* we want the list of entries to be nonempty, hence the "+1" *)
-    list_size (map (( + ) 1) small_nat) (pair (small_list string) bytes_gen)
+    list_size
+      (map (( + ) 1) small_nat)
+      (pair (small_list (small_string ~gen:char)) small_bytes_gen)
   in
   let tree =
     List.fold_left_s
@@ -133,7 +135,7 @@ let ( let** ) = Lwt_syntax.( let* )
 
 let merkle_proof_gen =
   let open QCheck2.Gen in
-  let* tree, entries = irmin_tree_gen and* root = string in
+  let* tree, entries = irmin_tree_gen and* root = small_string ~gen:char in
   let store =
     (let** store = Store.add_tree empty [root] tree in
      let** _ = Store.commit ~time:Time.Protocol.epoch store in
