@@ -373,7 +373,7 @@ let test_rollup_node_configuration ~kind =
 let test_rollup_node_running ~kind =
   test
     ~__FILE__
-    ~tags:["sc_rollup"; "run"; kind]
+    ~tags:["run"; kind]
     (Format.asprintf "%s - running a smart contract rollup node" kind)
     (fun protocol ->
       setup ~protocol @@ with_fresh_rollup ~kind
@@ -3089,7 +3089,7 @@ let register ~kind ~protocols =
 let register ~protocols =
   (* PVM-independent tests. We still need to specify a PVM kind
      because the tezt will need to originate a rollup. However,
-     the tezt will not test for PVM kind specific featued. *)
+     the tezt will not test for PVM kind specific featured. *)
   test_rollup_client_gets_address protocols ~kind:"wasm_2_0_0" ;
   test_rollup_node_configuration protocols ~kind:"wasm_2_0_0" ;
   test_rollup_list protocols ~kind:"wasm_2_0_0" ;
