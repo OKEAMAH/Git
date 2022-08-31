@@ -1416,6 +1416,7 @@ val init_with_node :
   ?base_dir:string ->
   ?event_level:Daemon.Level.default_level ->
   ?event_sections_levels:(string * Daemon.Level.level) list ->
+  ?node_patch_config:(JSON.t -> JSON.t) ->
   ?nodes_args:Node.argument list ->
   ?keys:Account.key list ->
   [`Client | `Light | `Proxy] ->
@@ -1443,6 +1444,7 @@ val init_with_protocol :
   ?base_dir:string ->
   ?event_level:Daemon.Level.default_level ->
   ?event_sections_levels:(string * Daemon.Level.level) list ->
+  ?node_patch_config:(JSON.t -> JSON.t) ->
   ?nodes_args:Node.argument list ->
   ?additional_bootstrap_account_count:int ->
   ?default_accounts_balance:int ->

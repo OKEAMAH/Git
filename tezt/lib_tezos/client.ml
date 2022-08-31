@@ -1996,12 +1996,18 @@ let get_parameter_file ?additional_bootstrap_accounts ?default_accounts_balance
       return (Some parameter_file)
 
 let init_with_node ?path ?admin_path ?name ?color ?base_dir ?event_level
-    ?event_sections_levels
+    ?event_sections_levels ?node_patch_config
     ?(nodes_args = Node.[Connections 0; Synchronisation_threshold 0])
     ?(keys = Constant.all_secret_keys) tag () =
   match tag with
   | (`Client | `Proxy) as mode ->
-      let* node = Node.init ?event_level ?event_sections_levels nodes_args in
+      let* node =
+        Node.init
+          ?event_level
+          ?event_sections_levels
+          ?patch_config:node_patch_config
+          nodes_args
+      in
       let endpoint = Node node in
       let mode =
         match mode with
@@ -2020,9 +2026,9 @@ let init_with_node ?path ?admin_path ?name ?color ?base_dir ?event_level
       return (node1, client)
 
 let init_with_protocol ?path ?admin_path ?name ?color ?base_dir ?event_level
-    ?event_sections_levels ?nodes_args ?additional_bootstrap_account_count
-    ?default_accounts_balance ?parameter_file ?timestamp ?keys tag ~protocol ()
-    =
+    ?event_sections_levels ?node_patch_config ?nodes_args
+    ?additional_bootstrap_account_count ?default_accounts_balance
+    ?parameter_file ?timestamp ?keys tag ~protocol () =
   let* node, client =
     init_with_node
       ?path
@@ -2032,6 +2038,7 @@ let init_with_protocol ?path ?admin_path ?name ?color ?base_dir ?event_level
       ?base_dir
       ?event_level
       ?event_sections_levels
+      ?node_patch_config
       ?nodes_args
       ?keys
       tag
