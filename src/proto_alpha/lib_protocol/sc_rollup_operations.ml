@@ -427,10 +427,7 @@ let execute_outbox_message ctxt ~validate_and_decode_output_proof rollup
      as they cannot be tracked by the ticket-balance table.
   *)
   let* ticket_token_diffs, ctxt =
-    Ticket_operations_diff.ticket_diffs_of_operations
-      ctxt
-      ~allow_zero_amount_tickets:false
-      operations
+    Ticket_operations_diff.ticket_diffs_of_operations ctxt operations
   in
   (* Update the ticket-balance table by transferring ticket-tokens to new
      destinations for each transaction. This fails in case the rollup does not
