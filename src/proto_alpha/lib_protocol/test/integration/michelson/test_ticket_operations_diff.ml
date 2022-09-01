@@ -363,11 +363,10 @@ let transfer_operation_to_tx_rollup ~incr ~src ~parameters_ty ~parameters
         },
       incr )
 
-let ticket_diffs_of_operations incr ~allow_zero_amount_tickets operations =
+let ticket_diffs_of_operations incr operations =
   wrap
   @@ Ticket_operations_diff.ticket_diffs_of_operations
        (Incremental.alpha_ctxt incr)
-       ~allow_zero_amount_tickets
        operations
 
 let unit_script =
@@ -415,9 +414,7 @@ let test_non_ticket_operations () =
   let* _baker, src, block = init () in
   let* incr = Incremental.begin_construction block in
   let operations = [delegation_operation ~src] in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true operations
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr operations in
   assert_equal_ticket_token_diffs ctxt ~loc:__LOC__ ticket_diffs ~expected:[]
 
 (** Test transfer to a contract that does not take tickets. *)
@@ -440,9 +437,7 @@ let test_transfer_to_non_ticket_contract () =
       ~parameters_ty:unit_t
       ~parameters:()
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   assert_equal_ticket_token_diffs ctxt ~loc:__LOC__ ticket_diffs ~expected:[]
 
 (** Test transfer an empty list of tickets. *)
@@ -460,9 +455,7 @@ let test_transfer_empty_ticket_list () =
   let* operation, incr =
     transfer_tickets_operation ~incr ~src ~destination:orig_contract []
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   assert_equal_ticket_token_diffs ctxt ~loc:__LOC__ ticket_diffs ~expected:[]
 
 (** Test transfer a list of one ticket. *)
@@ -485,9 +478,7 @@ let test_transfer_one_ticket () =
       ~destination:orig_contract
       [(ticketer, "white", 1)]
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -530,36 +521,29 @@ let test_transfer_multiple_tickets () =
       ]
   in
   let orig_contract = Contract.Originated orig_contract in
-  let test allow_zero_amount_tickets =
-    let* ticket_diffs, ctxt =
-      ticket_diffs_of_operations incr ~allow_zero_amount_tickets [operation]
-    in
-    assert_equal_ticket_token_diffs
-      ctxt
-      ~loc:__LOC__
-      ticket_diffs
-      ~expected:
-        [
-          {
-            ticket_token = string_token ~ticketer "red";
-            total_amount = nat 5;
-            destinations = [(Destination.Contract orig_contract, nat 5)];
-          };
-          {
-            ticket_token = string_token ~ticketer "blue";
-            total_amount = nat 2;
-            destinations = [(Destination.Contract orig_contract, nat 2)];
-          };
-          {
-            ticket_token = string_token ~ticketer "green";
-            total_amount = nat 3;
-            destinations = [(Destination.Contract orig_contract, nat 3)];
-          };
-        ]
-  in
-  (* Check for both value of the allow-zero-amount-tickets flag. *)
-  let* () = test true in
-  test false
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
+  assert_equal_ticket_token_diffs
+    ctxt
+    ~loc:__LOC__
+    ticket_diffs
+    ~expected:
+      [
+        {
+          ticket_token = string_token ~ticketer "red";
+          total_amount = nat 5;
+          destinations = [(Destination.Contract orig_contract, nat 5)];
+        };
+        {
+          ticket_token = string_token ~ticketer "blue";
+          total_amount = nat 2;
+          destinations = [(Destination.Contract orig_contract, nat 2)];
+        };
+        {
+          ticket_token = string_token ~ticketer "green";
+          total_amount = nat 3;
+          destinations = [(Destination.Contract orig_contract, nat 3)];
+        };
+      ]
 
 (** Test transfer a list of tickets of different types. *)
 let test_transfer_different_tickets () =
@@ -592,9 +576,7 @@ let test_transfer_different_tickets () =
       ]
   in
   let destination = Destination.Contract (Originated destination) in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -666,10 +648,7 @@ let test_transfer_to_two_contracts_with_different_tickets () =
     transfer_tickets_operation ~incr ~src ~destination:destination2 parameters
   in
   let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations
-      incr
-      ~allow_zero_amount_tickets:true
-      [operation1; operation2]
+    ticket_diffs_of_operations incr [operation1; operation2]
   in
   assert_equal_ticket_token_diffs
     ctxt
@@ -718,9 +697,7 @@ let test_originate_non_ticket_contract () =
       ~storage:"Unit"
       ~forges_tickets:false
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   assert_equal_ticket_token_diffs ctxt ~loc:__LOC__ ticket_diffs ~expected:[]
 
 (** Test originate a contract with an empty list of tickets. *)
@@ -736,9 +713,7 @@ let test_originate_with_empty_tickets_list () =
       ~storage
       ~forges_tickets:false
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   assert_equal_ticket_token_diffs ctxt ~loc:__LOC__ ticket_diffs ~expected:[]
 
 (** Test originate a contract with a single ticket. *)
@@ -757,9 +732,7 @@ let test_originate_with_one_ticket () =
       ~storage
       ~forges_tickets:true
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations ctxt ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations ctxt [operation] in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -800,9 +773,7 @@ let test_originate_with_multiple_tickets () =
       ~storage
       ~forges_tickets:true
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations ctxt ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations ctxt [operation] in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -864,9 +835,7 @@ let test_originate_with_different_tickets () =
       ~storage
       ~forges_tickets:true
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations ctxt ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations ctxt [operation] in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -937,10 +906,7 @@ let test_originate_two_contracts_with_different_tickets () =
       ~forges_tickets:true
   in
   let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations
-      incr
-      ~allow_zero_amount_tickets:true
-      [operation1; operations2]
+    ticket_diffs_of_operations incr [operation1; operations2]
   in
   assert_equal_ticket_token_diffs
     ctxt
@@ -1016,10 +982,7 @@ let test_originate_and_transfer () =
       [(ticketer, "red", 1); (ticketer, "green", 1); (ticketer, "blue", 1)]
   in
   let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations
-      incr
-      ~allow_zero_amount_tickets:true
-      [operation1; operation2]
+    ticket_diffs_of_operations incr [operation1; operation2]
   in
   assert_equal_ticket_token_diffs
     ctxt
@@ -1090,9 +1053,7 @@ let test_originate_big_map_with_tickets () =
       ~storage
       ~forges_tickets:true
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -1172,9 +1133,7 @@ let test_transfer_big_map_with_tickets () =
       ~parameters_ty
       ~parameters
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   let destination = Destination.Contract (Originated orig_contract) in
   assert_equal_ticket_token_diffs
     ctxt
@@ -1242,9 +1201,7 @@ let test_tx_rollup_deposit_one_ticket () =
       ~parameters_ty
       ~parameters
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
+  let* ticket_diffs, ctxt = ticket_diffs_of_operations incr [operation] in
   assert_equal_ticket_token_diffs
     ctxt
     ~loc:__LOC__
@@ -1259,8 +1216,8 @@ let test_tx_rollup_deposit_one_ticket () =
       ]
 
 (** Test transferring a list of multiple tickets where two of them have zero
-    amounts. This should work when zero-tickets are enabled. *)
-let test_transfer_multiple_zero_tickets () =
+    amounts fails. *)
+let test_transfer_fails_on_multiple_zero_tickets () =
   let* baker, src, block = init () in
   let* ticketer = one_ticketer block in
   let* orig_contract, incr =
@@ -1285,35 +1242,10 @@ let test_transfer_multiple_zero_tickets () =
         (ticketer, "green", 3);
       ]
   in
-  let* ticket_diffs, ctxt =
-    ticket_diffs_of_operations incr ~allow_zero_amount_tickets:true [operation]
-  in
-  let orig_contract = Contract.Originated orig_contract in
-  assert_equal_ticket_token_diffs
-    ctxt
-    ~loc:__LOC__
-    ticket_diffs
-    ~expected:
-      [
-        {
-          ticket_token = string_token ~ticketer "blue";
-          total_amount = nat 0;
-          destinations = [(Destination.Contract orig_contract, nat 0)];
-        };
-        {
-          ticket_token = string_token ~ticketer "red";
-          total_amount = nat 1;
-          destinations = [(Destination.Contract orig_contract, nat 1)];
-        };
-        {
-          ticket_token = string_token ~ticketer "green";
-          total_amount = nat 5;
-          destinations = [(Destination.Contract orig_contract, nat 5)];
-        };
-      ]
+  assert_fails ~loc:__LOC__ ~error:Ticket_scanner.Forbidden_zero_ticket_quantity
+  @@ ticket_diffs_of_operations incr [operation]
 
-(** Test that zero-amount tickets are detected and that an error is yielded
-    when the [allow_zero_amount_tickets] flag is set to [false]. *)
+(** Test that zero-amount tickets are detected and that an error is yielded. *)
 let test_fail_on_zero_amount_tickets () =
   let* baker, src, block = init () in
   let* ticketer = one_ticketer block in
@@ -1345,10 +1277,7 @@ let test_fail_on_zero_amount_tickets () =
   assert_fails
     ~loc:__LOC__
     ~error:Ticket_scanner.Forbidden_zero_ticket_quantity
-    (ticket_diffs_of_operations
-       ctxt
-       ~allow_zero_amount_tickets:false
-       [operation])
+    (ticket_diffs_of_operations ctxt [operation])
 
 let tests =
   [
@@ -1418,9 +1347,9 @@ let tests =
       `Quick
       test_tx_rollup_deposit_one_ticket;
     Tztest.tztest
-      "Test transfer multiple zero tickets"
+      "Test transfer fails on multiple zero tickets"
       `Quick
-      test_transfer_multiple_zero_tickets;
+      test_transfer_fails_on_multiple_zero_tickets;
     Tztest.tztest
       "Test fail in zero-amount tickets"
       `Quick

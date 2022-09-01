@@ -202,7 +202,7 @@ let add_or_clear =
       storage (list (ticket string)) ;
       code { UNPAIR ;
             IF_LEFT
-            { UNPAIR ; DIG 2 ; SWAP ; DIG 2 ; TICKET ; CONS ; NIL operation ; PAIR }
+            { UNPAIR ; DIG 2 ; SWAP ; DIG 2 ; TICKET ; ASSERT_SOME ; CONS ; NIL operation ; PAIR }
             { DROP 2 ; NIL (ticket string) ; NIL operation ; PAIR } } }
   |}
 
