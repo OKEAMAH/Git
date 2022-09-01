@@ -2538,7 +2538,7 @@ let test_refutation protocols ~kind =
 
 (** Helper to check that the operation whose hash is given is successfully
     included (applied) in the current head block. *)
-let check_op_included =
+let check_op_included ~__LOC__ =
   let get_op_status op =
     JSON.(op |-> "metadata" |-> "operation_result" |-> "status" |> as_string)
   in
@@ -2567,6 +2567,7 @@ let check_op_included =
             status
     | _ ->
         Test.fail
+          ~__LOC__
           "Expected to have one operation with hash %s, but got %d"
           oph
           (List.length op_contents)
@@ -2574,10 +2575,10 @@ let check_op_included =
 (** Helper function that allows to inject the given operation in a node, bake a
     block, and check that the operation is successfully applied in the baked
     block. *)
-let bake_operation_via_rpc client op =
+let bake_operation_via_rpc ~__LOC__ client op =
   let* (`OpHash oph) = Operation.Manager.inject [op] client in
   let* () = Client.bake_for_and_wait client in
-  check_op_included ~oph client
+  check_op_included ~__LOC__ ~oph client
 
 (** This helper function constructs the following commitment tree by baking and
     publishing commitments (but without cementing them):
@@ -2722,7 +2723,7 @@ let test_no_cementation_if_parent_not_lcc_or_if_disputed_commit protocols =
       (* [operator1] starts a dispute. *)
       let module M = Operation.Manager in
       let* () =
-        bake_operation_via_rpc client
+        bake_operation_via_rpc ~__LOC__ client
         @@ M.make ~source:operator2
         @@ M.sc_rollup_refute ~sc_rollup ~opponent:operator1.public_key_hash ()
       in
@@ -2730,7 +2731,7 @@ let test_no_cementation_if_parent_not_lcc_or_if_disputed_commit protocols =
          is ill-formed. *)
       let refutation = M.{choice_tick = 0; refutation_step = Dissection []} in
       let* () =
-        bake_operation_via_rpc client
+        bake_operation_via_rpc ~__LOC__ client
         @@ M.make ~source:operator2
         @@ M.sc_rollup_refute
              ~sc_rollup
@@ -2771,7 +2772,7 @@ let test_valid_dispute_dissection protocols =
       let source = operator2 in
       let opponent = operator1.public_key_hash in
       let* () =
-        bake_operation_via_rpc client
+        bake_operation_via_rpc ~__LOC__ client
         @@ M.make ~source
         @@ M.sc_rollup_refute ~sc_rollup ~opponent ()
       in
@@ -2797,7 +2798,7 @@ let test_valid_dispute_dissection protocols =
       in
 
       let* () =
-        bake_operation_via_rpc client
+        bake_operation_via_rpc ~__LOC__ client
         @@ M.make ~source
         @@ M.sc_rollup_refute ~sc_rollup ~opponent ~refutation ()
       in
@@ -2875,7 +2876,7 @@ let test_timeout protocols =
       let module M = Operation.Manager in
       (* [operator2] starts a dispute, but won't be playing then. *)
       let* () =
-        bake_operation_via_rpc client
+        bake_operation_via_rpc ~__LOC__ client
         @@ M.make ~source:operator2
         @@ M.sc_rollup_refute ~sc_rollup ~opponent:operator1.public_key_hash ()
       in
@@ -2971,7 +2972,7 @@ let test_refutation_reward_and_punishment protocols =
       let module M = Operation.Manager in
       (* [operator1] starts a dispute, but will never play. *)
       let* () =
-        bake_operation_via_rpc client
+        bake_operation_via_rpc ~__LOC__ client
         @@ M.make ~source:operator1
         @@ M.sc_rollup_refute ~sc_rollup ~opponent:operator2.public_key_hash ()
       in
