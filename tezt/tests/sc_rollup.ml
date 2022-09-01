@@ -2132,7 +2132,7 @@ let client_with_initial_keys ~protocol ~kind =
   setup ~protocol @@ with_fresh_rollup ~kind
   @@ fun _sc_rollup sc_rollup_node _filename ->
   let sc_client = Sc_rollup_client.create sc_rollup_node in
-  let account = Constant.tz4_account in
+  let account = Constant.aggregate_tz4_account in
   let* () = Sc_rollup_client.import_secret_key account sc_client in
   return (sc_client, account)
 
