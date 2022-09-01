@@ -532,21 +532,15 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
 
   let merkle_tree_v2 ctx leaf_kind key =
     let open Lwt_syntax in
-    let get_data tree =
-      let* data = Get_data.get_data leaf_kind [key] tree in
-      match data with
-      | _, [(k, _)] when k = key -> return data
-      | _ ->
-          raise
-          @@ Invalid_argument
-               (Printf.sprintf
-                  "Key \"%s\" not found in tree"
-                  (String.concat ";" key))
-    in
     match Tree.kinded_key ctx.tree with
     | None -> raise (Invalid_argument "On-disk context.tree has no kinded_key")
     | Some kinded_key ->
-        let* proof, _ = produce_tree_proof ctx.index kinded_key get_data in
+        let* proof, _ =
+          produce_tree_proof
+            ctx.index
+            kinded_key
+            (Get_data.get_data leaf_kind [key])
+        in
         return proof
 
   (*-- Predefined Fields -------------------------------------------------------*)
