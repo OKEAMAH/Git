@@ -1,0 +1,32 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(executable
+ (name main)
+ (libraries
+  tezos-base
+  tezos-micheline
+  tezos-client-015-PtBsEUgi
+  tezos-protocol-015-PtBsEUgi
+  tezos-base-test-helpers
+  tezos-baking-015-PtBsEUgi.mockup-simulator
+  tezos-baking-015-PtBsEUgi
+  tezos-protocol-015-PtBsEUgi.parameters
+  tezos-crypto
+  alcotest-lwt
+  uri)
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+  -open Tezos_micheline
+  -open Tezos_client_015_PtBsEUgi
+  -open Tezos_protocol_015_PtBsEUgi
+  -open Tezos_base_test_helpers
+  -open Tezos_015_PtBsEUgi_mockup_simulator
+  -open Tezos_baking_015_PtBsEUgi))
+
+(rule
+ (alias runtest)
+ (package tezos-baking-015-PtBsEUgi)
+ (action (run %{dep:./main.exe})))
