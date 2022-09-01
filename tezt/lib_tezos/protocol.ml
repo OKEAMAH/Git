@@ -25,29 +25,36 @@
 (*****************************************************************************)
 
 (* Declaration order must respect the version order. *)
-type t = Jakarta | Kathmandu | Alpha
+type t = Jakarta | Kathmandu | LAlpha | Alpha
 
 type constants = Constants_sandbox | Constants_mainnet | Constants_test
 
 let name = function
   | Alpha -> "Alpha"
+  | LAlpha -> "LAlpha"
   | Jakarta -> "Jakarta"
   | Kathmandu -> "Kathmandu"
 
-let number = function Jakarta -> 013 | Kathmandu -> 014 | Alpha -> 015
+let number = function
+  | Jakarta -> 013
+  | Kathmandu -> 014
+  | LAlpha -> 015
+  | Alpha -> 016
 
 let directory = function
-  | Alpha -> "proto_alpha"
   | Jakarta -> "proto_013_PtJakart"
   | Kathmandu -> "proto_014_PtKathma"
+  | LAlpha -> "proto_015_PrnJXeU4"
+  | Alpha -> "proto_alpha"
 
 (* Test tags must be lowercase. *)
 let tag protocol = String.lowercase_ascii (name protocol)
 
 let hash = function
-  | Alpha -> "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK"
   | Jakarta -> "PtJakart2xVj7pYXJBXrqHgd82rdkLey5ZeeGwDgPp9rhQUbSqY"
   | Kathmandu -> "PtKathmankSpLLDALzWw7CGD2j2MtyveTwboEYokqUCP4a1LxMg"
+  | LAlpha -> "PrnJXeU4v7EpcwXSFDciqWCqh8pMBZCHgaFnHZUXkdFs5nPYDcr"
+  | Alpha -> "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK"
 
 let genesis_hash = "ProtoGenesisGenesisGenesisGenesisGenesisGenesk612im"
 
@@ -67,9 +74,10 @@ let parameter_file ?(constants = default_constants) protocol =
   sf "src/%s/parameters/%s-parameters.json" (directory protocol) name
 
 let daemon_name = function
-  | Alpha -> "alpha"
   | Jakarta -> "013-PtJakart"
   | Kathmandu -> "014-PtKathma"
+  | LAlpha -> "015-PrnJXeU4"
+  | Alpha -> "alpha"
 
 let accuser proto = "./tezos-accuser-" ^ daemon_name proto
 
@@ -131,11 +139,13 @@ let write_parameter_file :
 
 let next_protocol = function
   | Jakarta -> Some Kathmandu
-  | Kathmandu -> Some Alpha
+  | Kathmandu -> Some LAlpha
+  | LAlpha -> Some Alpha
   | Alpha -> None
 
 let previous_protocol = function
-  | Alpha -> Some Kathmandu
+  | Alpha -> Some LAlpha
+  | LAlpha -> Some Kathmandu
   | Kathmandu -> Some Jakarta
   | Jakarta -> None
 
