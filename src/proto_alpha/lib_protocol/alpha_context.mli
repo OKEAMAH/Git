@@ -633,6 +633,7 @@ module Script : sig
     | I_SHA3
     | I_PAIRING_CHECK
     | I_TICKET
+    | I_TICKET_DEPRECATED
     | I_READ_TICKET
     | I_SPLIT_TICKET
     | I_JOIN_TICKETS

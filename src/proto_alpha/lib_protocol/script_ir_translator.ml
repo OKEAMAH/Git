@@ -4158,8 +4158,21 @@ and parse_instr :
       check_comparable loc t >>?= fun Eq ->
       ticket_t loc t >>?= fun res_ty ->
       let instr = {apply = (fun k -> ITicket (loc, for_logging_only t, k))} in
+      option_t loc res_ty >>?= fun res_ty ->
       let stack = Item_t (res_ty, rest) in
       typed ctxt loc instr stack
+  | Prim (loc, I_TICKET_DEPRECATED, [], annot), Item_t (t, Item_t (Nat_t, rest))
+    ->
+      if legacy then
+        check_var_annot loc annot >>?= fun () ->
+        check_comparable loc t >>?= fun Eq ->
+        ticket_t loc t >>?= fun res_ty ->
+        let instr =
+          {apply = (fun k -> ITicket_deprecated (loc, for_logging_only t, k))}
+        in
+        let stack = Item_t (res_ty, rest) in
+        typed ctxt loc instr stack
+      else fail (Deprecated_instruction I_TICKET_DEPRECATED)
   | ( Prim (loc, I_READ_TICKET, [], annot),
       (Item_t (Ticket_t (t, _), _) as full_stack) ) ->
       check_var_annot loc annot >>?= fun () ->

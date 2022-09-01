@@ -653,6 +653,10 @@ and kinstr_size :
         ret_succ_adding
           accu
           (base1 loc k +! ty_for_logging_size cty +! word_size)
+    | ITicket_deprecated (loc, cty, k) ->
+        ret_succ_adding
+          accu
+          (base1 loc k +! ty_for_logging_size cty +! word_size)
     | IRead_ticket (loc, ty, k) ->
         ret_succ_adding accu (base1 loc k +! ty_for_logging_size ty +! word_size)
     | ISplit_ticket (loc, k) -> ret_succ_adding accu (base1 loc k)

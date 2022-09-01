@@ -1417,7 +1417,8 @@ let extract_ir_sized_step :
   | IComb_get (_, n, _, _), _ -> Instructions.comb_get (Size.of_int n)
   | IComb_set (_, n, _, _), _ -> Instructions.comb_set (Size.of_int n)
   | IDup_n (_, n, _, _), _ -> Instructions.dupn (Size.of_int n)
-  | ITicket (_, _, _), _ -> Instructions.ticket
+  | ITicket (_, _, _), _ | ITicket_deprecated (_, _, _), _ ->
+      Instructions.ticket
   | IRead_ticket (_, _, _), _ -> Instructions.read_ticket
   | ISplit_ticket (_, _), (_ticket, ((amount_a, amount_b), _)) ->
       Instructions.split_ticket (Size.integer amount_a) (Size.integer amount_b)

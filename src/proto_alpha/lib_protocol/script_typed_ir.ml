@@ -1063,6 +1063,11 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       * ('t, 'a * ('b * 's), 'r, 'f) kinstr
       -> ('a, 'b * 's, 'r, 'f) kinstr
   | ITicket :
+      Script.location
+      * 'a comparable_ty option
+      * ('a ticket option, 's, 'r, 'f) kinstr
+      -> ('a, n num * 's, 'r, 'f) kinstr
+  | ITicket_deprecated :
       Script.location * 'a comparable_ty option * ('a ticket, 's, 'r, 'f) kinstr
       -> ('a, n num * 's, 'r, 'f) kinstr
   | IRead_ticket :
@@ -1603,6 +1608,7 @@ let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
   | IComb_set (loc, _, _, _) -> loc
   | IDup_n (loc, _, _, _) -> loc
   | ITicket (loc, _, _) -> loc
+  | ITicket_deprecated (loc, _, _) -> loc
   | IRead_ticket (loc, _, _) -> loc
   | ISplit_ticket (loc, _) -> loc
   | IJoin_tickets (loc, _, _) -> loc
@@ -2004,6 +2010,7 @@ let kinstr_traverse i init f =
     | IComb_set (_, _, _, k) -> (next [@ocaml.tailcall]) k
     | IDup_n (_, _, _, k) -> (next [@ocaml.tailcall]) k
     | ITicket (_, _, k) -> (next [@ocaml.tailcall]) k
+    | ITicket_deprecated (_, _, k) -> (next [@ocaml.tailcall]) k
     | IRead_ticket (_, _, k) -> (next [@ocaml.tailcall]) k
     | ISplit_ticket (_, k) -> (next [@ocaml.tailcall]) k
     | IJoin_tickets (_, _, k) -> (next [@ocaml.tailcall]) k

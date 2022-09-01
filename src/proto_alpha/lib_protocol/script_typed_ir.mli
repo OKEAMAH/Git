@@ -1060,6 +1060,11 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       * ('t, 'a * ('b * 's), 'r, 'f) kinstr
       -> ('a, 'b * 's, 'r, 'f) kinstr
   | ITicket :
+      Script.location
+      * 'a comparable_ty option
+      * ('a ticket option, 's, 'r, 'f) kinstr
+      -> ('a, n num * 's, 'r, 'f) kinstr
+  | ITicket_deprecated :
       Script.location * 'a comparable_ty option * ('a ticket, 's, 'r, 'f) kinstr
       -> ('a, n num * 's, 'r, 'f) kinstr
   | IRead_ticket :
