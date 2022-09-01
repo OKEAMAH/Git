@@ -3098,6 +3098,59 @@ let test_migration_cement_commitment ~challenge_window ~commitment_period ~kind
     ~scenario_after
     {tags; variant; description}
 
+(* Test to refute a commitment pre-migration. *)
+let test_migration_refute_commitment ~commitment_period ~kind ~migration_level
+    ~migrate_from ~migrate_to ~description =
+  let tags = ["refutation"]
+  and variant = "Refuting a commitment pre-migration."
+  and scenario_prior tezos_client ~sc_rollup _sc_rollup_node =
+    let* predecessor, starting_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
+    in
+    let inbox_level = starting_level + commitment_period in
+    let* () =
+      repeat commitment_period (fun () -> Client.bake_for_and_wait tezos_client)
+    in
+    let* _hash =
+      publish_dummy_commitment
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~number_of_ticks:1
+        ~src:Constant.bootstrap1.public_key_hash
+        tezos_client
+    in
+    let* _hash =
+      publish_dummy_commitment
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~number_of_ticks:2
+        ~src:Constant.bootstrap2.public_key_hash
+        tezos_client
+    in
+    unit
+  and scenario_after tezos_client ~sc_rollup _sc_rollup_node () =
+    let* () =
+      bake_operation_via_rpc ~__LOC__ tezos_client
+      @@ Operation.Manager.make ~source:Constant.bootstrap2
+      @@ Operation.Manager.sc_rollup_refute
+           ~sc_rollup
+           ~opponent:Constant.bootstrap1.public_key_hash
+           ()
+    in
+    unit
+  in
+  test_migration_scenario
+    ~commitment_period
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    {tags; variant; description}
+
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -3272,6 +3325,13 @@ let register_migration ~migrate_from ~migrate_to =
   test_migration_cement_commitment
     ~commitment_period
     ~challenge_window
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~description ;
+  test_migration_refute_commitment
+    ~commitment_period
     ~kind
     ~migration_level
     ~migrate_from
