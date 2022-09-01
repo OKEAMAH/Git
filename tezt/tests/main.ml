@@ -79,7 +79,8 @@ let register_protocol_migration_tests () =
   Voting.register
     ~from_protocol:migrate_to
     ~to_protocol:Demo
-    ~loser_protocols:[migrate_from]
+    ~loser_protocols:[migrate_from] ;
+  Sc_rollup.register_migration ~migrate_from:LAlpha ~migrate_to:Alpha
 
 let register_protocol_agnostic_tests () =
   (* Tests that are relatively protocol-agnostic.

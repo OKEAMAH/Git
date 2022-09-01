@@ -3011,6 +3011,29 @@ let test_refutation_reward_and_punishment protocols =
       unit)
     protocols
 
+(* Test to stop a node after a migration. If the node already stoped this will
+   fails *)
+let test_migration_node_running ~kind ~migration_level ~migrate_from ~migrate_to
+    ~description =
+  let tags = ["node"]
+  and variant = "Rollup node keep running post-migration."
+  and scenario_prior _tezos_client ~sc_rollup:_ sc_rollup_node =
+    Sc_rollup_node.run sc_rollup_node
+  and scenario_after _tezos_client ~sc_rollup:_ sc_rollup_node () =
+    let* _level =
+      Sc_rollup_node.wait_for_level sc_rollup_node migration_level
+    in
+    Sc_rollup_node.terminate sc_rollup_node
+  in
+  test_migration_scenario
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    {tags; variant; description}
+
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -3161,3 +3184,16 @@ let register ~protocols =
   test_valid_dispute_dissection protocols ;
   test_timeout protocols ;
   test_refutation_reward_and_punishment protocols
+
+let register_migration ~migrate_from ~migrate_to =
+  let kind = "arith"
+  and description = "Test persistence across Tezos protocol upgrade" in
+  let parameters = JSON.parse_file (Protocol.parameter_file migrate_from) in
+  let blocks_per_cycle = JSON.(get "blocks_per_cycle" parameters |> as_int) in
+  let migration_level = blocks_per_cycle in
+  test_migration_node_running
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~description
