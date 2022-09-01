@@ -1,0 +1,13 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_wasm_kernels)
+ (package tezos-wasm-kernels)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-base
+  tezos-base.unix)
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives))

@@ -3056,6 +3056,14 @@ let octez_dal_node_lib =
         octez_protocol_updater |> open_;
       ]
 
+let octez_wasm_kernels =
+  private_lib
+    "tezos_wasm_kernels"
+    ~path:"src/lib_wasm_kernels"
+    ~opam:"tezos-wasm-kernels"
+    ~synopsis:"WASM kernels for the scoru-wasm functionality"
+    ~deps:[octez_base |> open_ ~m:"TzPervasives"; octez_base_unix]
+
 let _octez_scoru_wasm_tests =
   test
     "test_scoru_wasm"

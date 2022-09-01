@@ -213,6 +213,7 @@
 (package (name tezos-validation))
 (package (name tezos-validator))
 (package (name tezos-version))
+(package (name tezos-wasm-kernels)(allow_empty))
 (package (name tezos-webassembly-interpreter))
 (package (name tezos-workers))
 (package (name tezt))

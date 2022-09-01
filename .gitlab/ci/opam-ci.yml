@@ -39,6 +39,8 @@
 
 # Ignoring package tezos-tps-evaluation, it only contains tests or private targets
 
+# Ignoring package tezos-wasm-kernels, it only contains tests or private targets
+
 # Ignoring package tezt-self-tests, it only contains tests or private targets
 
 # Ignoring package tree-encoding-test, it only contains tests or private targets
