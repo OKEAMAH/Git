@@ -3081,7 +3081,7 @@ let _octez_scoru_wasm_tests =
         octez_scoru_wasm;
         qcheck_alcotest;
         alcotest_lwt;
-        tezt_lib;
+        octez_wasm_kernels;
       ]
 
 (* PROTOCOL PACKAGES *)
@@ -3465,7 +3465,8 @@ end = struct
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~deps:
             [
-              (if N.(number >= 015) then Some tezt_lib else None) |> if_some;
+              (if N.(number >= 015) then Some octez_wasm_kernels else None)
+              |> if_some;
               octez_context;
               alcotest_lwt;
               octez_base |> open_ ~m:"TzPervasives"

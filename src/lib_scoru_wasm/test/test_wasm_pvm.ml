@@ -73,8 +73,9 @@ let set_input_step message message_counter tree =
   in
   Wasm.set_input_step input_info message tree
 
-let should_boot_unreachable_kernel kernel =
+let should_boot_unreachable_kernel () =
   let open Lwt_syntax in
+  let kernel = Tezos_wasm_kernels.Kernels.(read_kernel Test.unreachable) in
   let* tree = initial_boot_sector_from_kernel kernel in
   (* Make the first ticks of the WASM PVM (parsing of origination
      message, parsing and init of the kernel), to switch it to
@@ -106,28 +107,7 @@ let should_boot_unreachable_kernel kernel =
       info_after_first_message.current_tick
       info_after_second_message.current_tick) ;
   assert (is_stuck state_after_second_message) ;
-  return_unit
-
-let test_with_kernel kernel test () =
-  let open Lwt_result_syntax in
-  let open Tezt.Base in
-  (* Reading files using `Tezt_lib` can be fragile and not future-proof, see
-     issue https://gitlab.com/tezos/tezos/-/issues/3746. *)
-  let kernel_file =
-    project_root // Filename.dirname __FILE__ // "wasm_kernels"
-    // (kernel ^ ".wasm")
-  in
-  let*! () =
-    Lwt_io.with_file ~mode:Lwt_io.Input kernel_file (fun channel ->
-        let*! kernel = Lwt_io.read channel in
-        test kernel)
-  in
-  return_unit
+  return_ok ()
 
 let tests =
-  [
-    tztest
-      "Test unreachable kernel"
-      `Quick
-      (test_with_kernel unreachable_kernel should_boot_unreachable_kernel);
-  ]
+  [tztest "Test unreachable kernel" `Quick should_boot_unreachable_kernel]

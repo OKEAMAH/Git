@@ -4,7 +4,7 @@
 (executable
  (name main)
  (libraries
-  tezt
+  tezos_wasm_kernels
   tezos-context
   alcotest-lwt
   tezos-base

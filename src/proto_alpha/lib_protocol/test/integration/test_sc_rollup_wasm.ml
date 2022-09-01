@@ -383,19 +383,6 @@ let should_boot_incomplete_boot_sector kernel () =
   in
   return_unit
 
-(* Read the chosen `wasm_kernel` into memory. *)
-let read_kernel name =
-  let open Tezt.Base in
-  let kernel_file =
-    project_root // Filename.dirname __FILE__ // "wasm_kernel"
-    // (name ^ ".wasm")
-  in
-  read_file kernel_file
-
-(* Kernel with allocation & simple computation only.
-   9863 bytes long - will be split into 3 chunks. *)
-let computation_kernel () = read_kernel "computation"
-
 let rec eval_until_set_input context s =
   let open Lwt_result_syntax in
   let*! info = Prover.get_status s in
@@ -405,12 +392,15 @@ let rec eval_until_set_input context s =
       eval_until_set_input context s
   | Waiting_for_input_message -> return s
 
+let computation_kernel () =
+  Tezos_wasm_kernels.Kernels.(read_kernel Test.computation)
+
 let should_boot_computation_kernel () =
   let open Lwt_result_syntax in
   let boot_sector =
     Data_encoding.Binary.to_string_exn
       Tezos_scoru_wasm.Gather_floppies.origination_message_encoding
-      (complete_boot_sector (String.to_bytes (computation_kernel ())))
+      (complete_boot_sector (String.to_bytes @@ computation_kernel ()))
   in
   let*! index = Context_binary.init "/tmp" in
   let context = Context_binary.empty index in

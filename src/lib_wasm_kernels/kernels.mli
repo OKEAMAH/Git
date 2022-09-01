@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Trili Tech, <contact@trili.tech>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -30,7 +31,15 @@ type t
 module Stable : sig end
 
 (** Collection of kernels used for testing. *)
-module Test : sig end
+module Test : sig
+  (* Kernel with allocation & simple computation only.
+     9863 bytes long - will be split into 3 chunks. *)
+  val computation : t
+
+  (* Kernel yeilding into an unreachable instruction, leading to an error in the
+     PVM. *)
+  val unreachable : t
+end
 
 (** [read_kernel k] returns the binary content of a kernel. *)
 val read_kernel : t -> string

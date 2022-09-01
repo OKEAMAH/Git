@@ -25,7 +25,11 @@
 
 type t = string
 
-module Test = struct end
+module Test = struct
+  let computation = "computation"
+
+  let unreachable = "unreachable"
+end
 
 module Stable = struct end
 
