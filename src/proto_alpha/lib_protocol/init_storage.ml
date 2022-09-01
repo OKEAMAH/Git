@@ -157,7 +157,7 @@ let prepare_first_block _chain_id ctxt ~typecheck ~level ~timestamp =
         ( ctxt,
           commitments_balance_updates @ bootstrap_balance_updates
           @ deposits_balance_updates )
-  | Kathmandu_014
+  | LAlpha_015
   (* Please update [next_protocol] and [previous_protocol] in
      [tezt/lib_tezos/protocol.ml] when you update this value. *) ->
       (* TODO (#2704): possibly handle endorsements for migration block (in bakers);
