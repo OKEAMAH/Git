@@ -11,7 +11,7 @@ exception Exhaustion of Source.region * string
 
 type frame = {inst : module_key; locals : value ref Vector.t}
 
-type code = value Vector.t * admin_instr list
+type code = value Vector.t * admin_instr Vector.t
 
 and admin_instr = admin_instr' Source.phrase
 
@@ -153,5 +153,5 @@ val config :
   Host_funcs.registry ->
   module_key ->
   value Vector.t ->
-  admin_instr list ->
+  admin_instr Vector.t ->
   config

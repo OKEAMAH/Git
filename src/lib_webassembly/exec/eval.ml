@@ -55,7 +55,7 @@ let numeric_error at = function
 
 type frame = {inst : module_key; locals : value ref Vector.t}
 
-type code = value Vector.t * admin_instr list
+type code = value Vector.t * admin_instr Vector.t
 
 and admin_instr = admin_instr' phrase
 
@@ -211,25 +211,29 @@ let vec_v128 = function Vec (V128 v) -> Some v | _ -> None
 
 let rec step (module_reg : module_reg) (c : config) : config Lwt.t =
   let {frame; code = vs, es; _} = c in
-  match es with
-  | {it = From_block (Block_label b, i); at} :: es ->
-      let* inst = resolve_module_ref module_reg frame.inst in
-      let* block = Vector.get b inst.allocations.blocks in
-      let length = Vector.num_elements block in
-      if i = length then Lwt.return {c with code = (vs, es)}
-      else
-        let* e, es =
-          let* instr = Vector.get i block in
-          Lwt.return
-            ( Plain instr.it @@ instr.at,
-              {it = From_block (Block_label b, Int32.succ i); at} :: es )
-        in
-        step_resolved module_reg c frame vs e es
-  | e :: es -> step_resolved module_reg c frame vs e es
-  | [] -> Lwt.return c
+  if 0l < Vector.num_elements es then
+    let* e, es = Vector.pop es in
+    match e with
+    | {it = From_block (Block_label b, i); at} ->
+        let* inst = resolve_module_ref module_reg frame.inst in
+        let* block = Vector.get b inst.allocations.blocks in
+        let length = Vector.num_elements block in
+        if i = length then Lwt.return {c with code = (vs, es)}
+        else
+          let* e, es =
+            let* instr = Vector.get i block in
+            Lwt.return
+              ( Plain instr.it @@ instr.at,
+                Vector.cons
+                  {it = From_block (Block_label b, Int32.succ i); at}
+                  es )
+          in
+          step_resolved module_reg c frame vs e es
+    | e -> step_resolved module_reg c frame vs e es
+  else Lwt.return c
 
 and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
-  let+ vs', es' =
+  let* vs', es' =
     match e.it with
     | From_block _ -> assert false (* resolved by [step] *)
     | Plain e' -> (
@@ -244,8 +248,13 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             let n2 = Lazy_vector.Int32Vector.num_elements ts2 in
             let args, vs' = Vector.split vs n1 in
             ( vs',
-              [Label (n2, [], (args, [From_block (es', 0l) @@ e.at])) @@ e.at]
-            )
+              [
+                Label
+                  ( n2,
+                    [],
+                    (args, Vector.singleton (From_block (es', 0l) @@ e.at)) )
+                @@ e.at;
+              ] )
         | Loop (bt, es') ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ (FuncType (ts1, _)) = block_type inst bt in
@@ -253,7 +262,10 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             let args, vs' = Vector.split vs n1 in
             ( vs',
               [
-                Label (n1, [e' @@ e.at], (args, [From_block (es', 0l) @@ e.at]))
+                Label
+                  ( n1,
+                    [e' @@ e.at],
+                    (args, Vector.singleton (From_block (es', 0l) @@ e.at)) )
                 @@ e.at;
               ] )
         | If (bt, es1, es2) ->
@@ -846,46 +858,50 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
     | Trapping _ -> assert false
     | Returning _ -> Crash.error e.at "undefined frame"
     | Breaking _ -> Crash.error e.at "undefined label"
-    | Label (_, _, (vs', [])) ->
+    | Label (_, _, (vs', es)) when Vector.num_elements es = 0l ->
         (* TODO: Tick *)
         let+ v = Vector.concat vs' vs in
         (v, [])
-    | Label (_, _, (_, {it = Trapping msg; at} :: _)) ->
-        Lwt.return (vs, [Trapping msg @@ at])
-    | Label (_, _, (_, {it = Returning vs0; at} :: _)) ->
-        Lwt.return (vs, [Returning vs0 @@ at])
-    | Label (n, es0, (_, {it = Breaking (0l, vs0); _} :: _)) ->
-        let v, _ = Vector.split vs0 n in
-        let+ v = Vector.concat v vs in
-        (v, List.map plain es0)
-    | Label (_, _, (_, {it = Breaking (k, vs0); at} :: _)) ->
-        Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at])
-    | Label (n, es0, code') ->
-        let+ c' = step module_reg {c with code = code'} in
-        (vs, [Label (n, es0, c'.code) @@ e.at])
-    | Frame (_, _, (vs', [])) ->
+    | Label (n, es0, ((_, es) as code')) -> (
+        let* hd, _ = Vector.pop es in
+        match hd with
+        | {it = Trapping msg; at} -> Lwt.return (vs, [Trapping msg @@ at])
+        | {it = Returning vs0; at} -> Lwt.return (vs, [Returning vs0 @@ at])
+        | {it = Breaking (0l, vs0); _} ->
+            let v, _ = Vector.split vs0 n in
+            let+ v = Vector.concat v vs in
+            (v, List.map plain es0)
+        | {it = Breaking (k, vs0); at} ->
+            Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at])
+        | _ ->
+            let+ c' = step module_reg {c with code = code'} in
+            (vs, [Label (n, es0, c'.code) @@ e.at]))
+    | Frame (_, _, (vs', es)) when Vector.num_elements es = 0l ->
         let+ v = Vector.concat vs' vs in
         (v, [])
-    | Frame (_, _, (_, {it = Trapping msg; at} :: _)) ->
-        Lwt.return (vs, [Trapping msg @@ at])
-    | Frame (n, _, (_, {it = Returning vs0; _} :: _)) ->
-        let v, _ = Vector.split vs0 n in
-        let+ v = Vector.concat v vs in
-        (v, [])
-    | Frame (n, frame', code') ->
-        let+ c' =
-          step
-            module_reg
-            {
-              frame = frame';
-              code = code';
-              budget = c.budget - 1;
-              output = c.output;
-              input = c.input;
-              host_funcs = c.host_funcs;
-            }
-        in
-        (vs, [Frame (n, c'.frame, c'.code) @@ e.at])
+    | Frame (n, frame', ((_, es) as code')) -> (
+        let* hd, _ = Vector.pop es in
+        match hd with
+        | {it = Trapping msg; at} -> Lwt.return (vs, [Trapping msg @@ at])
+        | {it = Returning vs0; _} ->
+            let v, _ = Vector.split vs0 n in
+            (* TODO: Tick *)
+            let+ v = Vector.concat v vs in
+            (v, [])
+        | _ ->
+            let+ c' =
+              step
+                module_reg
+                {
+                  frame = frame';
+                  code = code';
+                  budget = c.budget - 1;
+                  output = c.output;
+                  input = c.input;
+                  host_funcs = c.host_funcs;
+                }
+            in
+            (vs, [Frame (n, c'.frame, c'.code) @@ e.at]))
     | Invoke _ when c.budget = 0 -> Exhaustion.error e.at "call stack exhausted"
     | Invoke func -> (
         let (FuncType (ins, out)) = func_type_of func in
@@ -908,13 +924,14 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
               {inst = inst'; locals = Vector.of_list (List.map ref locals')}
             in
             let instr' =
-              [
-                Label
-                  ( n2,
-                    [],
-                    (Vector.empty (), [From_block (f.it.body, 0l) @@ f.at]) )
-                @@ f.at;
-              ]
+              Vector.singleton
+                (Label
+                   ( n2,
+                     [],
+                     ( Vector.empty (),
+                       Vector.singleton (From_block (f.it.body, 0l) @@ f.at) )
+                   )
+                @@ f.at)
             in
             (vs', [Frame (n2, frame', (Vector.empty (), instr')) @@ e.at])
         | Func.HostFunc (_, global_name) ->
@@ -932,15 +949,19 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
               (function
                 | Crash (_, msg) -> Crash.error e.at msg | exn -> raise exn))
   in
-  {c with code = (vs', es' @ es)}
+  let+ es = Vector.to_list es in
+  {c with code = (vs', Vector.of_list (es' @ es))}
 
 let rec eval module_reg (c : config) : value Vector.t Lwt.t =
   match c.code with
-  | vs, [] -> Lwt.return vs
-  | _, {it = Trapping msg; at} :: _ -> Trap.error at msg
-  | _, _ ->
-      let* c = step module_reg c in
-      eval module_reg c
+  | vs, es when Vector.num_elements es = 0l -> Lwt.return vs
+  | _, es -> (
+      let* hd, _ = Vector.pop es in
+      match hd with
+      | {it = Trapping msg; at} -> Trap.error at msg
+      | _ ->
+          let* c = step module_reg c in
+          eval module_reg c)
 
 (* Functions & Constants *)
 
@@ -963,7 +984,15 @@ let invoke ~module_reg ~caller ?(input = Input_buffer.alloc ())
     | Func.HostFunc (_, _) -> caller
   in
   let v = Vector.of_list (List.rev vs) in
-  let c = config ~input ~output host_funcs inst v [Invoke func @@ at] in
+  let c =
+    config
+      ~input
+      ~output
+      host_funcs
+      inst
+      v
+      (Vector.singleton (Invoke func @@ at))
+  in
   Lwt.catch
     (fun () ->
       let* values = eval module_reg c in
@@ -981,14 +1010,14 @@ let eval_const_kont inst (const : const) =
       (Host_funcs.empty ())
       inst
       (Vector.empty ())
-      [From_block (const.it, 0l) @@ const.at]
+      (Vector.singleton (From_block (const.it, 0l) @@ const.at))
   in
   EC_Next c
 
 let eval_const_completed = function EC_Stop v -> Some v | _ -> None
 
 let eval_const_step module_reg = function
-  | EC_Next {code = vs, []; _} ->
+  | EC_Next {code = vs, es; _} when Vector.num_elements es = 0l ->
       let+ v, _ = select_head vs Option.some (() @@ no_region) in
       EC_Stop v
   | EC_Next c ->
@@ -1547,22 +1576,22 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
   | IK_Join_admin (inst0, tick) -> (
       match join_completed tick with
       | Some res ->
-          (* TODO: https://gitlab.com/tezos/tezos/-/issues/3076
-             [config] should use lazy vector, not lists *)
-          let+ res = Vector.to_list res in
-          IK_Eval (inst0, config host_funcs self (Vector.empty ()) res)
+          Lwt.return
+            (IK_Eval (inst0, config host_funcs self (Vector.empty ()) res))
       | None ->
           let+ tick = join_step tick in
           IK_Join_admin (inst0, tick))
-  | IK_Eval (inst, {code = _, []; _}) ->
+  | IK_Eval (inst, {code = _, es; _}) when Vector.num_elements es = 0l ->
       (* No more admin instr, which means that we have returned from
          the _start function. *)
       Lwt.return (IK_Stop inst)
-  | IK_Eval (_, {code = _, {it = Trapping msg; at} :: _; _}) ->
-      Trap.error at msg
-  | IK_Eval (inst, config) ->
-      let+ config = step module_reg config in
-      IK_Eval (inst, config)
+  | IK_Eval (inst, ({code = _, es; _} as config)) -> (
+      let* hd = Vector.get 0l es in
+      match hd with
+      | {it = Trapping msg; at} -> Trap.error at msg
+      | _ ->
+          let+ config = step module_reg config in
+          IK_Eval (inst, config))
   | IK_Stop _ -> raise (Invalid_argument "init_step")
 
 let init ~module_reg ~self host_funcs (m : module_) (exts : extern list) :

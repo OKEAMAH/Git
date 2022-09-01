@@ -171,7 +171,7 @@ module Make (T : Tree_encoding.TREE) :
               host_funcs
               self
               (Lazy_containers.Lazy_vector.Int32Vector.empty ())
-              []
+              (Lazy_containers.Lazy_vector.Int32Vector.empty ())
           in
           Lwt.return (Eval eval_config)
       | Init {self; ast_module; init_kont} ->
@@ -187,7 +187,8 @@ module Make (T : Tree_encoding.TREE) :
           Lwt.return (Init {self; ast_module; init_kont})
       | Eval ({Wasm.Eval.frame; code; _} as eval_config) -> (
           match code with
-          | _values, [] ->
+          | _values, es
+            when Lazy_containers.Lazy_vector.Int32Vector.num_elements es = 0l ->
               (* We have an empty set of admin instructions so we create one
                  that invokes the main function. *)
               let* module_inst =
@@ -221,7 +222,8 @@ module Make (T : Tree_encoding.TREE) :
               (* Clear the values and the locals in the frame. *)
               let code =
                 ( Lazy_containers.Lazy_vector.Int32Vector.create 0l,
-                  [admin_instr] )
+                  Lazy_containers.Lazy_vector.Int32Vector.singleton admin_instr
+                )
               in
               let eval_config =
                 {
@@ -247,7 +249,8 @@ module Make (T : Tree_encoding.TREE) :
       let* tick_state = next_tick_state pvm_state in
       let input_request =
         match pvm_state.tick_state with
-        | Eval {code = _, []; _} ->
+        | Eval {code = _, es; _}
+          when Lazy_containers.Lazy_vector.Int32Vector.num_elements es = 0l ->
             (* Ask for more input if the kernel has yielded (empty admin
                instructions). *)
             Wasm_pvm_sig.Input_required

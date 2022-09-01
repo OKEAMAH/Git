@@ -773,7 +773,7 @@ let rec admin_instr'_encoding () =
            (value [] Data_encoding.int32)
            (list_encoding instruction_encoding)
            (values_encoding "values")
-           (list_encoding (admin_instr_encoding ())))
+           (lazy_vector_encoding "code" (admin_instr_encoding ())))
         (function
           | Label (index, final_instrs, (values, instrs)) ->
               Some (index, final_instrs, values, instrs)
@@ -787,7 +787,7 @@ let rec admin_instr'_encoding () =
            (value [] Data_encoding.int32)
            frame_encoding
            (values_encoding "values")
-           (list_encoding (admin_instr_encoding ())))
+           (lazy_vector_encoding "code" (admin_instr_encoding ())))
         (function
           | Frame (index, frame, (values, instrs)) ->
               Some (index, frame, values, instrs)
@@ -863,6 +863,6 @@ let config_encoding ~host_funcs =
        (scope ["frame"] frame_encoding)
        (scope ["input"] input_buffer_encoding)
        (scope ["output"] output_buffer_encoding)
-       (scope ["instructions"] (list_encoding admin_instr_encoding))
+       (lazy_vector_encoding "instructions" admin_instr_encoding)
        (values_encoding "values")
        (value ["budget"] Data_encoding.int31))
