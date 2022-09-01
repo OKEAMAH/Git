@@ -2938,20 +2938,25 @@ module Sc_rollup : sig
     val deserialize : serialized -> t tzresult
   end
 
-  type input = {
+  type inbox_message = {
     inbox_level : Raw_level.t;
     message_counter : Z.t;
     payload : Inbox_message.serialized;
   }
 
+  type input = Inbox_message of inbox_message | Preimage_revelation of string
+
   val input_equal : input -> input -> bool
 
   val input_encoding : input Data_encoding.t
+
+  module Input_hash : S.HASH
 
   type input_request =
     | No_input_required
     | Initial
     | First_after of Raw_level.t * Z.t
+    | Needs_pre_image of Input_hash.t
 
   val input_request_encoding : input_request Data_encoding.t
 
@@ -3051,14 +3056,14 @@ module Sc_rollup : sig
         Raw_level.t * Z.t ->
         history_proof ->
         proof ->
-        input option tzresult Lwt.t
+        inbox_message option tzresult Lwt.t
 
       val produce_proof :
         inbox_context ->
         History.t ->
         history_proof ->
         Raw_level.t * Z.t ->
-        (proof * input option) tzresult Lwt.t
+        (proof * inbox_message option) tzresult Lwt.t
 
       val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level.t -> t Lwt.t
 
@@ -3287,7 +3292,12 @@ module Sc_rollup : sig
 
       val get_tick : state -> Tick.t Lwt.t
 
-      type status = Halted | Waiting_for_input_message | Parsing | Evaluating
+      type status =
+        | Halted
+        | Waiting_for_input_message
+        | Waiting_for_pre_image
+        | Parsing
+        | Evaluating
 
       val get_status : state -> status Lwt.t
     end
@@ -3429,7 +3439,11 @@ module Sc_rollup : sig
   val wrapped_proof_module : wrapped_proof -> (module PVM_with_proof)
 
   module Proof : sig
-    type t = {pvm_step : wrapped_proof; inbox : Inbox.serialized_proof option}
+    type input_proof =
+      | Inbox_proof of Inbox.serialized_proof
+      | Preimage_proof of string
+
+    type t = {pvm_step : wrapped_proof; input_proof : input_proof option}
 
     module type PVM_with_context_and_state = sig
       include PVM.S
@@ -3439,6 +3453,8 @@ module Sc_rollup : sig
       val state : state
 
       val proof_encoding : proof Data_encoding.t
+
+      val pre_image : Input_hash.t -> string option
 
       module Inbox_with_history : sig
         include Inbox.Merkelized_operations with type inbox_context = context

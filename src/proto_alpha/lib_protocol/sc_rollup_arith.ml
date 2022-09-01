@@ -88,7 +88,12 @@ module type S = sig
 
   val get_tick : state -> Sc_rollup_tick_repr.t Lwt.t
 
-  type status = Halted | Waiting_for_input_message | Parsing | Evaluating
+  type status =
+    | Halted
+    | Waiting_for_input_message
+    | Waiting_for_pre_image
+    | Parsing
+    | Evaluating
 
   val get_status : state -> status Lwt.t
 
@@ -159,7 +164,12 @@ module Make (Context : P) :
 
   type tree = Tree.tree
 
-  type status = Halted | Waiting_for_input_message | Parsing | Evaluating
+  type status =
+    | Halted
+    | Waiting_for_input_message
+    | Waiting_for_pre_image
+    | Parsing
+    | Evaluating
 
   type instruction =
     | IPush : int -> instruction
@@ -546,6 +556,7 @@ module Make (Context : P) :
           [
             ("Halted", Halted);
             ("Waiting_for_input_message", Waiting_for_input_message);
+            ("Waiting_for_preimage", Waiting_for_pre_image);
             ("Parsing", Parsing);
             ("Evaluating", Evaluating);
           ]
@@ -555,10 +566,26 @@ module Make (Context : P) :
       let string_of_status = function
         | Halted -> "Halted"
         | Waiting_for_input_message -> "Waiting for input message"
+        | Waiting_for_pre_image -> Format.asprintf "Waiting for pre image"
         | Parsing -> "Parsing"
         | Evaluating -> "Evaluating"
 
       let pp fmt status = Format.fprintf fmt "%s" (string_of_status status)
+    end)
+
+    module Required_pre_image_hash = Make_var (struct
+      type t = PS.Input_hash.t option
+
+      let initial = None
+
+      let encoding = Data_encoding.option PS.Input_hash.encoding
+
+      let name = "required_pre_image_hash"
+
+      let pp fmt v =
+        match v with
+        | None -> Format.fprintf fmt "<none>"
+        | Some h -> PS.Input_hash.pp fmt h
     end)
 
     module Current_level = Make_var (struct
@@ -812,6 +839,11 @@ module Make (Context : P) :
         match counter with
         | Some n -> return (PS.First_after (level, n))
         | None -> return PS.Initial)
+    | Waiting_for_pre_image -> (
+        let* h = Required_pre_image_hash.get in
+        match h with
+        | None -> internal_error "Internal error: Preimage invariant broken"
+        | Some h -> return (PS.Needs_pre_image h))
     | _ -> return PS.No_input_required
 
   let is_input_state =
@@ -840,7 +872,7 @@ module Make (Context : P) :
     let* () = Code.clear in
     return ()
 
-  let set_input_monadic {PS.inbox_level; message_counter; payload} =
+  let set_inbox_message_monadic {PS.inbox_level; message_counter; payload} =
     let open Monad.Syntax in
     let payload =
       match Sc_rollup_inbox_message_repr.deserialize payload with
@@ -866,11 +898,40 @@ module Make (Context : P) :
         let* () = Status.set Waiting_for_input_message in
         return ()
 
+  let reveal_pre_image_monadic data =
+    (*
+
+       The inbox cursor is unchanged as the message comes from the
+       outer world.
+
+       We don't have to check that the data hash is the one we
+       expected as we decided to trust the initial witness.
+
+       It is the responsibility of the rollup node to check it if it
+       does not want to publish a wrong commitment.
+
+       Notice that a multi-page transmission is possible by embedding
+       a continuation encoded as an optional hash in [data].
+
+    *)
+    let open Monad.Syntax in
+    let* () = Next_message.set (Some data) in
+    let* () = start_parsing in
+    return ()
+
   let ticked m =
     let open Monad.Syntax in
     let* tick = Current_tick.get in
     let* () = Current_tick.set (Sc_rollup_tick_repr.next tick) in
     m
+
+  let reveal_pre_image data =
+    reveal_pre_image_monadic data |> ticked |> state_of
+
+  let set_input_monadic input =
+    match input with
+    | PS.Inbox_message m -> set_inbox_message_monadic m
+    | PS.Preimage_revelation s -> reveal_pre_image_monadic s
 
   let set_input input = set_input_monadic input |> ticked |> state_of
 
@@ -920,7 +981,6 @@ module Make (Context : P) :
     let open Monad.Syntax in
     let* () = Status.set Evaluating in
     let* () = Evaluation_result.set None in
-    let* () = Stack.clear in
     return ()
 
   let stop_parsing outcome =
@@ -931,6 +991,7 @@ module Make (Context : P) :
   let stop_evaluating outcome =
     let open Monad.Syntax in
     let* () = Evaluation_result.set (Some outcome) in
+    let* () = Stack.clear in
     Status.set Waiting_for_input_message
 
   let parse : unit t =
@@ -952,7 +1013,10 @@ module Make (Context : P) :
       return ()
     in
     let is_digit d = Compare.Char.(d >= '0' && d <= '9') in
-    let is_letter d = Compare.Char.(d >= 'a' && d <= 'z') in
+    let is_letter d =
+      Compare.Char.(d >= 'a' && d <= 'z') || Compare.Char.(d >= 'A' && d <= 'Z')
+    in
+    let is_var_char d = is_letter d || is_digit d || Compare.Char.(d = ':') in
     let* parser_state = Parser_state.get in
     match parser_state with
     | ParseInt -> (
@@ -963,7 +1027,7 @@ module Make (Context : P) :
             let* () = produce_int in
             let* () = produce_add in
             return ()
-        | Some ' ' ->
+        | Some (' ' | '\n') ->
             let* () = produce_int in
             let* () = next_char in
             return ()
@@ -974,12 +1038,12 @@ module Make (Context : P) :
     | ParseVar -> (
         let* char = current_char in
         match char with
-        | Some d when is_letter d -> next_char
+        | Some d when is_var_char d -> next_char
         | Some '+' ->
             let* () = produce_var in
             let* () = produce_add in
             return ()
-        | Some ' ' ->
+        | Some (' ' | '\n') ->
             let* () = produce_var in
             let* () = next_char in
             return ()
@@ -990,7 +1054,7 @@ module Make (Context : P) :
     | SkipLayout -> (
         let* char = current_char in
         match char with
-        | Some ' ' -> next_char
+        | Some (' ' | '\n') -> next_char
         | Some '+' -> produce_add
         | Some d when is_digit d ->
             let* _ = lexeme in
@@ -1030,11 +1094,20 @@ module Make (Context : P) :
     | None -> stop_evaluating true
     | Some (IPush x) -> Stack.push x
     | Some (IStore x) -> (
-        let* v = Stack.top in
-        match v with
-        | None -> stop_evaluating false
-        | Some v ->
-            if Compare.String.(x = "out") then output v else Vars.set x v)
+        let len = String.length x in
+        if Compare.Int.(len > 5) && Compare.String.(String.sub x 0 5 = "hash:")
+        then
+          let hash = String.sub x 5 (len - 5) in
+          let hash = PS.Input_hash.of_b58check_exn hash in
+          let* () = Required_pre_image_hash.set (Some hash) in
+          let* () = Status.set Waiting_for_pre_image in
+          return ()
+        else
+          let* v = Stack.top in
+          match v with
+          | None -> stop_evaluating false
+          | Some v ->
+              if Compare.String.(x = "out") then output v else Vars.set x v)
     | Some IAdd -> (
         let* v = Stack.pop in
         match v with
@@ -1061,12 +1134,10 @@ module Make (Context : P) :
         let* status = Status.get in
         match status with
         | Halted -> boot
-        | Waiting_for_input_message -> (
+        | Waiting_for_input_message | Waiting_for_pre_image -> (
             let* msg = Next_message.get in
             match msg with
-            | None ->
-                internal_error
-                  "An input state was not provided an input message."
+            | None -> internal_error "An input state was not provided an input."
             | Some _ -> start_parsing)
         | Parsing -> parse
         | Evaluating -> evaluate)
@@ -1079,10 +1150,24 @@ module Make (Context : P) :
     let* state =
       match request with
       | PS.No_input_required -> eval state
-      | _ -> (
+      | PS.Initial | PS.First_after _ -> (
           match input_given with
-          | Some input -> set_input input state
-          | None -> return state)
+          | Some (PS.Inbox_message _ as input_given) ->
+              set_input input_given state
+          | None | Some (PS.Preimage_revelation _) ->
+              state_of
+                (internal_error
+                   "Invalid set_input: expecting inbox message, got a preimage.")
+                state)
+      | PS.Needs_pre_image _hash -> (
+          match input_given with
+          | Some (PS.Preimage_revelation data) -> reveal_pre_image data state
+          | None | Some (PS.Inbox_message _) ->
+              state_of
+                (internal_error
+                   "Invalid set_input: expecting a preimage, got an inbox \
+                    message.")
+                state)
     in
     return (state, request)
 

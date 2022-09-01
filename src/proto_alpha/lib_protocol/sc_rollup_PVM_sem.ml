@@ -28,13 +28,15 @@
 
    This type cannot be extended in a retro-compatible way. It should
    be put into a variant. *)
-type input = {
+type inbox_message = {
   inbox_level : Raw_level_repr.t;
   message_counter : Z.t;
   payload : Sc_rollup_inbox_message_repr.serialized;
 }
 
-let input_encoding =
+type input = Inbox_message of inbox_message | Preimage_revelation of string
+
+let inbox_message_encoding =
   let open Data_encoding in
   conv
     (fun {inbox_level; message_counter; payload} ->
@@ -47,17 +49,57 @@ let input_encoding =
        (req "message_counter" n)
        (req "payload" string))
 
-let input_equal (a : input) (b : input) : bool =
+let input_encoding =
+  let open Data_encoding in
+  let case_inbox_message =
+    case
+      ~title:"inbox msg"
+      (Tag 0)
+      inbox_message_encoding
+      (function Inbox_message m -> Some m | _ -> None)
+      (fun m -> Inbox_message m)
+  and case_preimage_revelation =
+    case
+      ~title:"preimage"
+      (Tag 1)
+      string
+      (function Preimage_revelation d -> Some d | _ -> None)
+      (fun d -> Preimage_revelation d)
+  in
+  union [case_inbox_message; case_preimage_revelation]
+
+let inbox_message_equal (a : inbox_message) (b : inbox_message) : bool =
   let {inbox_level; message_counter; payload} = a in
   (* To be robust to the addition of fields in [input] *)
   Raw_level_repr.equal inbox_level b.inbox_level
   && Z.equal message_counter b.message_counter
   && String.equal (payload :> string) (b.payload :> string)
 
+let input_equal a b =
+  match (a, b) with
+  | Inbox_message a, Inbox_message b -> inbox_message_equal a b
+  | Preimage_revelation a, Preimage_revelation b -> String.equal a b
+  | _, _ -> false
+
+module Input_hash =
+  Blake2B.Make
+    (Base58)
+    (struct
+      let name = "Sc_rollup_input_hash"
+
+      let title = "A smart contract rollup input hash"
+
+      let b58check_prefix =
+        "\001\118\125\135" (* "scd1(37)" decoded from base 58. *)
+
+      let size = Some 20
+    end)
+
 type input_request =
   | No_input_required
   | Initial
   | First_after of Raw_level_repr.t * Z.t
+  | Needs_pre_image of Input_hash.t
 
 let input_request_encoding =
   let open Data_encoding in
@@ -101,6 +143,8 @@ let pp_input_request fmt request =
         l
         Z.pp_print
         n
+  | Needs_pre_image hash ->
+      Format.fprintf fmt "Needs pre image of %a" Input_hash.pp hash
 
 let input_request_equal a b =
   match (a, b) with
@@ -111,6 +155,8 @@ let input_request_equal a b =
   | First_after (l, n), First_after (m, o) ->
       Raw_level_repr.equal l m && Z.equal n o
   | First_after _, _ -> false
+  | Needs_pre_image h1, Needs_pre_image h2 -> Input_hash.equal h1 h2
+  | Needs_pre_image _, _ -> false
 
 type output = {
   outbox_level : Raw_level_repr.t;

@@ -270,21 +270,28 @@ module V2_0_0 = struct
     let get_status : state -> status Lwt.t = result_of get_status
 
     let set_input_state input =
-      let open PS in
-      let open Monad.Syntax in
-      let {inbox_level; message_counter; payload} = input in
-      let* s = get in
-      let* s =
-        lift
-          (WASM_machine.set_input_step
-             {
-               inbox_level = Raw_level_repr.to_int32_non_negative inbox_level;
-               message_counter;
-             }
-             (payload :> string)
-             s)
-      in
-      set s
+      match input with
+      | PS.Inbox_message input ->
+          let open PS in
+          let open Monad.Syntax in
+          let {inbox_level; message_counter; payload} = input in
+          let* s = get in
+          let* s =
+            lift
+              (WASM_machine.set_input_step
+                 {
+                   inbox_level = Raw_level_repr.to_int32_non_negative inbox_level;
+                   message_counter;
+                 }
+                 (payload :> string)
+                 s)
+          in
+          set s
+      | PS.Preimage_revelation _ ->
+          (* The WASM PVM does not produce [Needs_pre_image] input
+             requests.  Thus, no [set_input_state] should transmit a
+             [Preimage_revelation]. *)
+          assert false
 
     let set_input input = state_of @@ set_input_state input
 

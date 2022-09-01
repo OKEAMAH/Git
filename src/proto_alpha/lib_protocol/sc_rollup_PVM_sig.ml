@@ -57,14 +57,16 @@
     be put into a variant.
 *)
 
-type input = {
+type inbox_message = {
   inbox_level : Raw_level_repr.t;
   message_counter : Z.t;
   payload : Sc_rollup_inbox_message_repr.serialized;
 }
 
-(** [input_encoding] encoding value for {!input}. *)
-let input_encoding =
+type input = Inbox_message of inbox_message | Preimage_revelation of string
+
+(** [inbox_message_encoding] encoding value for {!inbox_message}. *)
+let inbox_message_encoding =
   let open Data_encoding in
   conv
     (fun {inbox_level; message_counter; payload} ->
@@ -77,13 +79,52 @@ let input_encoding =
        (req "message_counter" n)
        (req "payload" string))
 
+let input_encoding =
+  let open Data_encoding in
+  let case_inbox_message =
+    case
+      ~title:"inbox msg"
+      (Tag 0)
+      inbox_message_encoding
+      (function Inbox_message m -> Some m | _ -> None)
+      (fun m -> Inbox_message m)
+  and case_preimage_revelation =
+    case
+      ~title:"preimage"
+      (Tag 1)
+      string
+      (function Preimage_revelation d -> Some d | _ -> None)
+      (fun d -> Preimage_revelation d)
+  in
+  union [case_inbox_message; case_preimage_revelation]
+
 (** [input_equal i1 i2] return whether [i1] and [i2] are equal. *)
-let input_equal (a : input) (b : input) : bool =
+let inbox_message_equal a b =
   let {inbox_level; message_counter; payload} = a in
   (* To be robust to the addition of fields in [input] *)
   Raw_level_repr.equal inbox_level b.inbox_level
   && Z.equal message_counter b.message_counter
   && String.equal (payload :> string) (b.payload :> string)
+
+let input_equal a b =
+  match (a, b) with
+  | Inbox_message a, Inbox_message b -> inbox_message_equal a b
+  | Preimage_revelation a, Preimage_revelation b -> String.equal a b
+  | _, _ -> false
+
+module Input_hash =
+  Blake2B.Make
+    (Base58)
+    (struct
+      let name = "Sc_rollup_input_hash"
+
+      let title = "A smart contract rollup input hash"
+
+      let b58check_prefix =
+        "\001\118\125\135" (* "scd1(37)" decoded from base 58. *)
+
+      let size = Some 20
+    end)
 
 (** The PVM's current input expectations:
     - [No_input_required] if the machine is busy and has no need for new input.
@@ -97,6 +138,7 @@ type input_request =
   | No_input_required
   | Initial
   | First_after of Raw_level_repr.t * Z.t
+  | Needs_pre_image of Input_hash.t
 
 (** [input_request_encoding] encoding value for {!input_request}. *)
 let input_request_encoding =
@@ -143,6 +185,8 @@ let pp_input_request fmt request =
         l
         Z.pp_print
         n
+  | Needs_pre_image hash ->
+      Format.fprintf fmt "Needs pre image of %a" Input_hash.pp hash
 
 (** [input_request_equal i1 i2] return whether [i1] and [i2] are equal. *)
 let input_request_equal a b =
@@ -154,6 +198,8 @@ let input_request_equal a b =
   | First_after (l, n), First_after (m, o) ->
       Raw_level_repr.equal l m && Z.equal n o
   | First_after _, _ -> false
+  | Needs_pre_image h1, Needs_pre_image h2 -> Input_hash.equal h1 h2
+  | Needs_pre_image _, _ -> false
 
 (** Type that describes output values. *)
 type output = {
@@ -303,10 +349,9 @@ module type S = sig
       has it read so far? *)
   val is_input_state : state -> input_request Lwt.t
 
-  (** [set_input (level, n, msg) state] sets [msg] in [state] as the next
-      message to be processed. This input message is assumed to be the number
-      [n] in the inbox messages at the given [level]. The input message must be
-      the message next to the previous message processed by the rollup. *)
+  (** [set_input input state] sets [input] in [state] as the next
+      input to be processed. This must answer the [input_request]
+      from [is_input_state state]. *)
   val set_input : input -> state -> state Lwt.t
 
   (** [eval s0] returns a state [s1] resulting from the

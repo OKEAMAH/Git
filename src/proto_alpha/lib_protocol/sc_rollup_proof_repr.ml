@@ -49,19 +49,40 @@ let () =
     (function Sc_rollup_invalid_serialized_inbox_proof -> Some () | _ -> None)
     (fun () -> Sc_rollup_invalid_serialized_inbox_proof)
 
-type t = {
-  pvm_step : Sc_rollups.wrapped_proof;
-  inbox : Sc_rollup_inbox_repr.serialized_proof option;
-}
+type input_proof =
+  | Inbox_proof of Sc_rollup_inbox_repr.serialized_proof
+  | Preimage_proof of string
+
+let input_proof_encoding =
+  let open Data_encoding in
+  let case_inbox_proof =
+    case
+      ~title:"inbox proof"
+      (Tag 0)
+      Sc_rollup_inbox_repr.serialized_proof_encoding
+      (function Inbox_proof s -> Some s | _ -> None)
+      (fun s -> Inbox_proof s)
+  in
+  let case_preimage_proof =
+    case
+      ~title:"preimage proof"
+      (Tag 1)
+      string
+      (function Preimage_proof s -> Some s | _ -> None)
+      (fun s -> Preimage_proof s)
+  in
+  union [case_inbox_proof; case_preimage_proof]
+
+type t = {pvm_step : Sc_rollups.wrapped_proof; input_proof : input_proof option}
 
 let encoding =
   let open Data_encoding in
   conv
-    (fun {pvm_step; inbox} -> (pvm_step, inbox))
-    (fun (pvm_step, inbox) -> {pvm_step; inbox})
+    (fun {pvm_step; input_proof} -> (pvm_step, input_proof))
+    (fun (pvm_step, input_proof) -> {pvm_step; input_proof})
     (obj2
        (req "pvm_step" Sc_rollups.wrapped_proof_encoding)
-       (opt "inbox" Sc_rollup_inbox_repr.serialized_proof_encoding))
+       (opt "input_proof" input_proof_encoding))
 
 let pp ppf _ = Format.fprintf ppf "Refutation game proof"
 
@@ -81,8 +102,12 @@ let stop input proof =
    above [commit_level] the [input_given] in the PVM proof should be
    [None]. *)
 let cut_at_level level input =
-  let input_level = Sc_rollup_PVM_sig.(input.inbox_level) in
-  if Raw_level_repr.(level <= input_level) then None else Some input
+  match input with
+  | Sc_rollup_PVM_sig.Inbox_message input ->
+      let input_level = Sc_rollup_PVM_sig.(input.inbox_level) in
+      if Raw_level_repr.(level <= input_level) then None
+      else Some (Sc_rollup_PVM_sig.Inbox_message input)
+  | Sc_rollup_PVM_sig.Preimage_revelation _data -> Some input
 
 let proof_error reason =
   let open Lwt_tzresult_syntax in
@@ -98,10 +123,14 @@ let check_inbox_proof snapshot serialized_inbox_proof (level, counter) =
   | Some inbox_proof ->
       Sc_rollup_inbox_repr.verify_proof (level, counter) snapshot inbox_proof
 
-let pp_proof fmt serialized_inbox_proof =
+let pp_inbox_proof fmt serialized_inbox_proof =
   match Sc_rollup_inbox_repr.of_serialized_proof serialized_inbox_proof with
   | None -> Format.pp_print_string fmt "<invalid-proof-serialization>"
   | Some proof -> Sc_rollup_inbox_repr.pp_proof fmt proof
+
+let pp_proof fmt = function
+  | Inbox_proof p -> pp_inbox_proof fmt p
+  | Preimage_proof d -> Format.fprintf fmt "preimage:%s" d
 
 let valid snapshot commit_level ~pvm_name proof =
   let open Lwt_tzresult_syntax in
@@ -111,20 +140,35 @@ let valid snapshot commit_level ~pvm_name proof =
     P.proof_input_requested P.proof
   in
   let* input =
-    match (input_requested, proof.inbox) with
+    match (input_requested, proof.input_proof) with
     | No_input_required, None -> return None
-    | Initial, Some inbox_proof ->
-        check_inbox_proof snapshot inbox_proof (Raw_level_repr.root, Z.zero)
-    | First_after (level, counter), Some inbox_proof ->
-        check_inbox_proof snapshot inbox_proof (level, Z.succ counter)
-    | No_input_required, Some _ | Initial, None | First_after _, None ->
+    | Initial, Some (Inbox_proof inbox_proof) -> (
+        let* input =
+          check_inbox_proof snapshot inbox_proof (Raw_level_repr.root, Z.zero)
+        in
+        match input with
+        | None -> return_none
+        | Some input -> return_some (Sc_rollup_PVM_sig.Inbox_message input))
+    | First_after (level, counter), Some (Inbox_proof inbox_proof) -> (
+        let* input =
+          check_inbox_proof snapshot inbox_proof (level, Z.succ counter)
+        in
+        match input with
+        | None -> return_none
+        | Some input -> return_some (Sc_rollup_PVM_sig.Inbox_message input))
+    | Needs_pre_image expected_hash, Some (Preimage_proof data) ->
+        let data_hash = Sc_rollup_PVM_sig.Input_hash.hash_string [data] in
+        if Sc_rollup_PVM_sig.Input_hash.equal data_hash expected_hash then
+          return (Some (Sc_rollup_PVM_sig.Preimage_revelation data))
+        else proof_error "Invalid preimage"
+    | _ ->
         proof_error
           (Format.asprintf
-             "input_requested is %a, inbox proof is %a"
+             "input_requested is %a, input proof is %a"
              Sc_rollup_PVM_sig.pp_input_request
              input_requested
              (Format.pp_print_option pp_proof)
-             proof.inbox)
+             proof.input_proof)
   in
   let input = Option.bind input (cut_at_level commit_level) in
   let*! valid = P.verify_proof input P.proof in
@@ -138,6 +182,8 @@ module type PVM_with_context_and_state = sig
   val state : state
 
   val proof_encoding : proof Data_encoding.t
+
+  val pre_image : Sc_rollup_PVM_sig.Input_hash.t -> string option
 
   module Inbox_with_history : sig
     include
@@ -157,29 +203,37 @@ let produce pvm_and_state commit_level =
   let*! (request : Sc_rollup_PVM_sig.input_request) =
     P.is_input_state P.state
   in
-  let* proof, input =
+  let* input_proof, input_given =
     match request with
     | No_input_required -> return (None, None)
     | Initial ->
-        let* proof, input =
+        let* p, i =
           Inbox_with_history.(
             produce_proof context history inbox (Raw_level_repr.root, Z.zero))
         in
-        return (Some proof, input)
+        let i = Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) i in
+        return (Some (Inbox_proof (Inbox_with_history.to_serialized_proof p)), i)
     | First_after (l, n) ->
-        let* proof, input =
+        let* p, i =
           Inbox_with_history.(produce_proof context history inbox (l, Z.succ n))
         in
-        return (Some proof, input)
+        let i = Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) i in
+        return (Some (Inbox_proof (Inbox_with_history.to_serialized_proof p)), i)
+    | Sc_rollup_PVM_sig.Needs_pre_image h -> (
+        match pre_image h with
+        | None -> proof_error "No preimage"
+        | Some data ->
+            return
+              ( Some (Preimage_proof data),
+                Some (Sc_rollup_PVM_sig.Preimage_revelation data) ))
   in
-  let input_given = Option.bind input (cut_at_level commit_level) in
+  let input_given = Option.bind input_given @@ cut_at_level commit_level in
   let* pvm_step_proof = P.produce_proof P.context input_given P.state in
   let module P_with_proof = struct
     include P
 
     let proof = pvm_step_proof
   end in
-  let inbox = Option.map Inbox_with_history.to_serialized_proof proof in
   match Sc_rollups.wrap_proof (module P_with_proof) with
-  | Some pvm_step -> return {pvm_step; inbox}
+  | Some pvm_step -> return {pvm_step; input_proof}
   | None -> proof_error "Could not wrap proof"
