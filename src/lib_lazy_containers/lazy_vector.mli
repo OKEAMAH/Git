@@ -137,6 +137,11 @@ module type S = sig
       one. That value can then be accessed using the [zero] key. *)
   val cons : 'a -> 'a t -> 'a t
 
+  (** [split vec at] splits [vec] into two sub vectors at element [at].
+
+      @raise Bounds iff [at >= num_elements vec] *)
+  val split : 'a t -> key -> 'a t * 'a t
+
   (** [grow delta ?default vector] creates a new lazy vector that has
       [delta] more items than [vector]. This also retains all values that have
       previously been created. New values will be created with [default]

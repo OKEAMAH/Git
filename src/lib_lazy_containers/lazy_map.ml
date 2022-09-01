@@ -59,6 +59,8 @@ module type S = sig
 
   val set : key -> 'a -> 'a t -> 'a t
 
+  val dup : 'a t -> 'a t
+
   val loaded_bindings : 'a t -> (key * 'a) list
 end
 
@@ -78,6 +80,8 @@ module Make (Key : KeyS) : S with type key = Key.t = struct
   }
 
   let origin {origin; _} = origin
+
+  let dup {origin; produce_value; values} = {origin; produce_value; values}
 
   let string_of_key = Key.to_string
 

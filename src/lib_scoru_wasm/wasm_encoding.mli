@@ -39,7 +39,9 @@ val value_ref_encoding : Values.ref_ Tree_encoding.t
 
 val value_encoding : Values.value Tree_encoding.t
 
-val values_encoding : Values.value list Tree_encoding.t
+val values_encoding :
+  string ->
+  Values.value Lazy_containers.Lazy_vector.Int32Vector.t Tree_encoding.t
 
 val memory_encoding : Partial_memory.memory Tree_encoding.t
 

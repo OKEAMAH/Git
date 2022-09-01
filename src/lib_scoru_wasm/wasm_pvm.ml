@@ -166,7 +166,13 @@ module Make (T : Tree_encoding.TREE) :
           let+ m = Tezos_webassembly_interpreter.Decode.module_step kernel m in
           Decode m
       | Init {self; ast_module = _; init_kont = IK_Stop _module_inst} ->
-          let eval_config = Wasm.Eval.config host_funcs self [] [] in
+          let eval_config =
+            Wasm.Eval.config
+              host_funcs
+              self
+              (Lazy_containers.Lazy_vector.Int32Vector.empty ())
+              []
+          in
           Lwt.return (Eval eval_config)
       | Init {self; ast_module; init_kont} ->
           let* init_kont =
@@ -213,7 +219,10 @@ module Make (T : Tree_encoding.TREE) :
                 Wasm.Source.{it = admin_instr'; at = no_region}
               in
               (* Clear the values and the locals in the frame. *)
-              let code = ([], [admin_instr]) in
+              let code =
+                ( Lazy_containers.Lazy_vector.Int32Vector.create 0l,
+                  [admin_instr] )
+              in
               let eval_config =
                 {
                   eval_config with

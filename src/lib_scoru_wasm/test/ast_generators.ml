@@ -539,26 +539,26 @@ let rec admin_instr'_gen ~module_reg depth =
   in
   let returning_gen =
     let+ values = small_list value_gen in
-    Returning values
+    Returning (Lazy_vector.Int32Vector.of_list values)
   in
   let breaking_gen =
     let* index = int32 in
     let+ values = small_list value_gen in
-    Breaking (index, values)
+    Breaking (index, Lazy_vector.Int32Vector.of_list values)
   in
   let label_gen =
     let* index = int32 in
     let* final_instrs = small_list instr_gen in
     let* values = small_list value_gen in
     let+ instrs = small_list (admin_instr_gen ~module_reg (depth - 1)) in
-    Label (index, final_instrs, (values, instrs))
+    Label (index, final_instrs, (Lazy_vector.Int32Vector.of_list values, instrs))
   in
   let frame_gen' =
     let* index = int32 in
     let* frame = frame_gen ~module_reg in
     let* values = small_list value_gen in
     let+ instrs = small_list (admin_instr_gen ~module_reg (depth - 1)) in
-    Frame (index, frame, (values, instrs))
+    Frame (index, frame, (Lazy_vector.Int32Vector.of_list values, instrs))
   in
   oneof
     ([
@@ -625,4 +625,12 @@ let config_gen ~host_funcs ~module_reg =
   let* instrs = small_list (admin_instr_gen ~module_reg) in
   let* values = small_list value_gen in
   let+ budget = small_int in
-  Eval.{frame; input; output; code = (values, instrs); host_funcs; budget}
+  Eval.
+    {
+      frame;
+      input;
+      output;
+      code = (Lazy_vector.Int32Vector.of_list values, instrs);
+      host_funcs;
+      budget;
+    }

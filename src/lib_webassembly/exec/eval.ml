@@ -53,11 +53,9 @@ let numeric_error at = function
 
 (* Administrative Expressions & Configurations *)
 
-type 'a stack = 'a list
-
 type frame = {inst : module_key; locals : value ref Vector.t}
 
-type code = value stack * admin_instr list
+type code = value Vector.t * admin_instr list
 
 and admin_instr = admin_instr' phrase
 
@@ -67,8 +65,8 @@ and admin_instr' =
   | Refer of ref_
   | Invoke of func_inst
   | Trapping of string
-  | Returning of value stack
-  | Breaking of int32 * value stack
+  | Returning of value Vector.t
+  | Breaking of int32 * value Vector.t
   | Label of int32 * instr list * code
   | Frame of int32 * frame * code
 
@@ -153,12 +151,6 @@ let block_type inst bt =
   | ValBlockType None -> FuncType (empty (), empty ()) |> Lwt.return
   | ValBlockType (Some t) -> FuncType (empty (), singleton t) |> Lwt.return
 
-let take n (vs : 'a stack) at =
-  try Lib.List32.take n vs with Failure _ -> Crash.error at "stack underflow"
-
-let drop n (vs : 'a stack) at =
-  try Lib.List32.drop n vs with Failure _ -> Crash.error at "stack underflow"
-
 (* Evaluation *)
 
 (*
@@ -199,6 +191,24 @@ let elem_oob module_reg frame x i n =
     (I64.add (I64_convert.extend_i32_u i) (I64_convert.extend_i32_u n))
     (Int64.of_int32 (Instance.Vector.num_elements !elem))
 
+let select_head v f e =
+  if 1l <= Vector.num_elements v then
+    let+ hd, v = Vector.pop v in
+    match f hd with
+    | Some r -> (r, v)
+    | None -> Crash.error e.at "missing or ill-typed operand on stack"
+  else Crash.error e.at "missing or ill-typed operand on stack"
+
+let num = function Num n -> Some n | _ -> None
+
+let num_i32 = function Num (I32 i) -> Some i | _ -> None
+
+let ref_ = function Ref r -> Some r | _ -> None
+
+let vec = function Vec v -> Some v | _ -> None
+
+let vec_v128 = function Vec (V128 v) -> Some v | _ -> None
+
 let rec step (module_reg : module_reg) (c : config) : config Lwt.t =
   let {frame; code = vs, es; _} = c in
   match es with
@@ -220,77 +230,88 @@ let rec step (module_reg : module_reg) (c : config) : config Lwt.t =
 
 and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
   let+ vs', es' =
-    match (e.it, vs) with
-    | From_block _, _ -> assert false (* resolved by [step] *)
-    | Plain e', vs -> (
-        match (e', vs) with
-        | Unreachable, vs ->
+    match e.it with
+    | From_block _ -> assert false (* resolved by [step] *)
+    | Plain e' -> (
+        match e' with
+        | Unreachable ->
             Lwt.return (vs, [Trapping "unreachable executed" @@ e.at])
-        | Nop, vs -> Lwt.return (vs, [])
-        | Block (bt, es'), vs ->
+        | Nop -> Lwt.return (vs, [])
+        | Block (bt, es') ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ (FuncType (ts1, ts2)) = block_type inst bt in
             let n1 = Lazy_vector.Int32Vector.num_elements ts1 in
             let n2 = Lazy_vector.Int32Vector.num_elements ts2 in
-            let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
+            let args, vs' = Vector.split vs n1 in
             ( vs',
               [Label (n2, [], (args, [From_block (es', 0l) @@ e.at])) @@ e.at]
             )
-        | Loop (bt, es'), vs ->
+        | Loop (bt, es') ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ (FuncType (ts1, _)) = block_type inst bt in
             let n1 = Lazy_vector.Int32Vector.num_elements ts1 in
-            let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
+            let args, vs' = Vector.split vs n1 in
             ( vs',
               [
                 Label (n1, [e' @@ e.at], (args, [From_block (es', 0l) @@ e.at]))
                 @@ e.at;
               ] )
-        | If (bt, es1, es2), Num (I32 i) :: vs' ->
-            Lwt.return
-              (if i = 0l then (vs', [Plain (Block (bt, es2)) @@ e.at])
-              else (vs', [Plain (Block (bt, es1)) @@ e.at]))
-        | Br x, vs -> Lwt.return ([], [Breaking (x.it, vs) @@ e.at])
-        | BrIf x, Num (I32 i) :: vs' ->
-            Lwt.return
-              (if i = 0l then (vs', []) else (vs', [Plain (Br x) @@ e.at]))
-        | BrTable (xs, x), Num (I32 i) :: vs' ->
-            Lwt.return
-              (if I32.ge_u i (Lib.List32.length xs) then
-               (vs', [Plain (Br x) @@ e.at])
-              else (vs', [Plain (Br (Lib.List32.nth xs i)) @@ e.at]))
-        | Return, vs -> Lwt.return ([], [Returning vs @@ e.at])
-        | Call x, vs ->
+        | If (bt, es1, es2) ->
+            let+ i, vs' = select_head vs num_i32 e in
+            if i = 0l then (vs', [Plain (Block (bt, es2)) @@ e.at])
+            else (vs', [Plain (Block (bt, es1)) @@ e.at])
+        | Br x -> Lwt.return (Vector.empty (), [Breaking (x.it, vs) @@ e.at])
+        | BrIf x ->
+            let+ i, vs' = select_head vs num_i32 e in
+            if i = 0l then (vs', []) else (vs', [Plain (Br x) @@ e.at])
+        | BrTable (xs, x) ->
+            let+ i, vs' = select_head vs num_i32 e in
+            if I32.ge_u i (Lib.List32.length xs) then
+              (vs', [Plain (Br x) @@ e.at])
+            else (vs', [Plain (Br (Lib.List32.nth xs i)) @@ e.at])
+        | Return -> Lwt.return (Vector.empty (), [Returning vs @@ e.at])
+        | Call x ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ func = func inst x in
             (vs, [Invoke func @@ e.at])
-        | CallIndirect (x, y), Num (I32 i) :: vs ->
+        | CallIndirect (x, y) ->
+            let* i, vs = select_head vs num_i32 e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let* func = func_ref inst x i e.at and* type_ = type_ inst y in
             let+ check_eq = Types.func_types_equal type_ (Func.type_of func) in
             if not check_eq then
               (vs, [Trapping "indirect call type mismatch" @@ e.at])
             else (vs, [Invoke func @@ e.at])
-        | Drop, _ :: vs' -> Lwt.return (vs', [])
-        | Select _, Num (I32 i) :: v2 :: v1 :: vs' ->
-            Lwt.return (if i = 0l then (v2 :: vs', []) else (v1 :: vs', []))
-        | LocalGet x, vs ->
+        | Drop ->
+            let+ _, vs' = select_head vs num_i32 e in
+            (vs', [])
+        | Select _ (* , Num (I32 i) :: v2 :: v1 :: vs' *) ->
+            let* i, vs = select_head vs num_i32 e in
+            let* v2, vs = select_head vs Option.some e in
+            let* v1, vs' = select_head vs Option.some e in
+            Lwt.return
+              (if i = 0l then (Vector.cons v2 vs', [])
+              else (Vector.cons v1 vs', []))
+        | LocalGet x ->
             let+ f = local frame x in
-            (!f :: vs, [])
-        | LocalSet x, v :: vs' ->
+            (Vector.cons !f vs, [])
+        | LocalSet x ->
+            let* v, vs' = select_head vs Option.some e in
             let+ f = local frame x in
             f := v ;
             (vs', [])
-        | LocalTee x, v :: vs' ->
+        | LocalTee x ->
+            let* v, vs' = select_head vs Option.some e in
             let+ f = local frame x in
             f := v ;
-            (v :: vs', [])
-        | GlobalGet x, vs ->
+            (Vector.cons v vs', [])
+        | GlobalGet x ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ glob = global inst x in
             let value = Global.load glob in
-            (value :: vs, [])
-        | GlobalSet x, v :: vs' ->
+            (Vector.cons value vs, [])
+        | GlobalSet x ->
+            let* v, vs' = select_head vs Option.some e in
             Lwt.catch
               (fun () ->
                 let* inst = resolve_module_ref module_reg frame.inst in
@@ -303,16 +324,19 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                 | Global.Type ->
                     Crash.error e.at "type mismatch at global write"
                 | exn -> Lwt.fail exn)
-        | TableGet x, Num (I32 i) :: vs' ->
+        | TableGet x ->
+            let* i, vs' = select_head vs num_i32 e in
             Lwt.catch
               (fun () ->
                 let* inst = resolve_module_ref module_reg frame.inst in
                 let* tbl = table inst x in
                 let+ value = Table.load tbl i in
-                (Ref value :: vs', []))
+                (Vector.cons (Ref value) vs', []))
               (fun exn ->
                 Lwt.return (vs', [Trapping (table_error e.at exn) @@ e.at]))
-        | TableSet x, Ref r :: Num (I32 i) :: vs' ->
+        | TableSet x ->
+            let* r, vs = select_head vs ref_ e in
+            let* i, vs' = select_head vs num_i32 e in
             Lwt.catch
               (fun () ->
                 let* inst = resolve_module_ref module_reg frame.inst in
@@ -321,11 +345,13 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                 (vs', []))
               (fun exn ->
                 Lwt.return (vs', [Trapping (table_error e.at exn) @@ e.at]))
-        | TableSize x, vs ->
+        | TableSize x ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ tbl = table inst x in
-            (Num (I32 (Table.size tbl)) :: vs, [])
-        | TableGrow x, Num (I32 delta) :: Ref r :: vs' ->
+            (Vector.cons (Num (I32 (Table.size tbl))) vs, [])
+        | TableGrow x (* , Num (I32 delta) :: Ref r :: vs' *) ->
+            let* delta, vs = select_head vs num_i32 e in
+            let* r, vs' = select_head vs ref_ e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ tab = table inst x in
             let old_size = Table.size tab in
@@ -336,8 +362,11 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
               with Table.SizeOverflow | Table.SizeLimit | Table.OutOfMemory ->
                 -1l
             in
-            (Num (I32 result) :: vs', [])
-        | TableFill x, Num (I32 n) :: Ref r :: Num (I32 i) :: vs' ->
+            (Vector.cons (Num (I32 result)) vs', [])
+        | TableFill x (* , Num (I32 n) :: Ref r :: Num (I32 i) :: vs' *) ->
+            let* n, vs = select_head vs num_i32 e in
+            let* r, vs = select_head vs ref_ e in
+            let* i, vs' = select_head vs num_i32 e in
             let+ oob = table_oob module_reg frame x i n in
             if oob then (vs', [Trapping (table_error e.at Table.Bounds) @@ e.at])
             else if n = 0l then (vs', [])
@@ -355,7 +384,10 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                     Plain (Const (I32 (I32.sub n 1l) @@ e.at));
                     Plain (TableFill x);
                   ] )
-        | TableCopy (x, y), Num (I32 n) :: Num (I32 s) :: Num (I32 d) :: vs' ->
+        | TableCopy (x, y) ->
+            let* n, vs = select_head vs num_i32 e in
+            let* s, vs = select_head vs num_i32 e in
+            let* d, vs' = select_head vs num_i32 e in
             let+ oob_d = table_oob module_reg frame x d n
             and+ oob_s = table_oob module_reg frame y s n in
             if oob_d || oob_s then
@@ -390,7 +422,10 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                     Plain (TableGet y);
                     Plain (TableSet x);
                   ] )
-        | TableInit (x, y), Num (I32 n) :: Num (I32 s) :: Num (I32 d) :: vs' ->
+        | TableInit (x, y) ->
+            let* n, vs = select_head vs num_i32 e in
+            let* s, vs = select_head vs num_i32 e in
+            let* d, vs' = select_head vs num_i32 e in
             let* oob_d = table_oob module_reg frame x d n in
             let* oob_s = elem_oob module_reg frame y s n in
             if oob_d || oob_s then
@@ -417,12 +452,13 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                     Plain (Const (I32 (I32.sub n 1l) @@ e.at));
                     Plain (TableInit (x, y));
                   ] )
-        | ElemDrop x, vs ->
+        | ElemDrop x ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ seg = elem inst x in
             seg := Instance.Vector.create 0l ;
             (vs, [])
-        | Load {offset; ty; pack; _}, Num (I32 i) :: vs' ->
+        | Load {offset; ty; pack; _} ->
+            let* i, vs' = select_head vs num_i32 e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
             Lwt.catch
@@ -433,10 +469,12 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                   | Some (sz, ext) ->
                       Memory.load_num_packed sz ext mem i offset ty
                 in
-                (Num n :: vs', []))
+                (Vector.cons (Num n) vs', []))
               (fun exn ->
                 Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
-        | Store {offset; pack; _}, Num n :: Num (I32 i) :: vs' ->
+        | Store {offset; pack; _} ->
+            let* n, vs = select_head vs num e in
+            let* i, vs' = select_head vs num_i32 e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
             Lwt.catch
@@ -449,7 +487,8 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                 (vs', []))
               (fun exn ->
                 Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
-        | VecLoad {offset; ty; pack; _}, Num (I32 i) :: vs' ->
+        | VecLoad {offset; ty; pack; _} ->
+            let* i, vs' = select_head vs num_i32 e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
             Lwt.catch
@@ -460,10 +499,12 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                   | Some (sz, ext) ->
                       Memory.load_vec_packed sz ext mem i offset ty
                 in
-                (Vec v :: vs', []))
+                (Vector.cons (Vec v) vs', []))
               (fun exn ->
                 Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
-        | VecStore {offset; _}, Vec v :: Num (I32 i) :: vs' ->
+        | VecStore {offset; _} (* , Vec v :: Num (I32 i) :: vs' *) ->
+            let* v, vs = select_head vs vec e in
+            let* i, vs' = select_head vs num_i32 e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
             Lwt.catch
@@ -472,8 +513,9 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                 (vs', []))
               (fun exn ->
                 Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
-        | VecLoadLane ({offset; pack; _}, j), Vec (V128 v) :: Num (I32 i) :: vs'
-          ->
+        | VecLoadLane ({offset; pack; _}, j) ->
+            let* v, vs = select_head vs vec_v128 e in
+            let* i, vs' = select_head vs num_i32 e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
             Lwt.catch
@@ -497,11 +539,12 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                       let+ mem = Memory.load_num mem i offset I64Type in
                       V128.I64x2.replace_lane j v (I64Num.of_num 0 mem)
                 in
-                (Vec (V128 v) :: vs', []))
+                (Vector.cons (Vec (V128 v)) vs', []))
               (fun exn ->
                 Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
-        | ( VecStoreLane ({offset; pack; _}, j),
-            Vec (V128 v) :: Num (I32 i) :: vs' ) ->
+        | VecStoreLane ({offset; pack; _}, j) ->
+            let* v, vs = select_head vs vec_v128 e in
+            let* i, vs' = select_head vs num_i32 e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let* mem = memory inst (0l @@ e.at) in
             Lwt.catch
@@ -538,11 +581,12 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                 (vs', []))
               (fun exn ->
                 Lwt.return (vs', [Trapping (memory_error e.at exn) @@ e.at]))
-        | MemorySize, vs ->
+        | MemorySize ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ mem = memory inst (0l @@ e.at) in
-            (Num (I32 (Memory.size mem)) :: vs, [])
-        | MemoryGrow, Num (I32 delta) :: vs' ->
+            (Vector.cons (Num (I32 (Memory.size mem))) vs, [])
+        | MemoryGrow ->
+            let* delta, vs' = select_head vs num_i32 e in
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ mem = memory inst (0l @@ e.at) in
             let old_size = Memory.size mem in
@@ -554,8 +598,11 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
               | Memory.SizeOverflow | Memory.SizeLimit | Memory.OutOfMemory ->
                 -1l
             in
-            (Num (I32 result) :: vs', [])
-        | MemoryFill, Num (I32 n) :: Num k :: Num (I32 i) :: vs' ->
+            (Vector.cons (Num (I32 result)) vs', [])
+        | MemoryFill (* , Num (I32 n) :: Num k :: Num (I32 i) :: vs' *) ->
+            let* n, vs = select_head vs num_i32 e in
+            let* k, vs = select_head vs num e in
+            let* i, vs' = select_head vs num_i32 e in
             let+ oob = mem_oob module_reg frame (0l @@ e.at) i n in
             if oob then
               (vs', [Trapping (memory_error e.at Memory.Bounds) @@ e.at])
@@ -580,7 +627,10 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                     Plain (Const (I32 (I32.sub n 1l) @@ e.at));
                     Plain MemoryFill;
                   ] )
-        | MemoryCopy, Num (I32 n) :: Num (I32 s) :: Num (I32 d) :: vs' ->
+        | MemoryCopy ->
+            let* n, vs = select_head vs num_i32 e in
+            let* s, vs = select_head vs num_i32 e in
+            let* d, vs' = select_head vs num_i32 e in
             let+ oob_s = mem_oob module_reg frame (0l @@ e.at) s n
             and+ oob_d = mem_oob module_reg frame (0l @@ e.at) d n in
             if oob_s || oob_d then
@@ -643,7 +693,11 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                            pack = Some Pack8;
                          });
                   ] )
-        | MemoryInit x, Num (I32 n) :: Num (I32 s) :: Num (I32 d) :: vs' ->
+        | MemoryInit x (* , Num (I32 n) :: Num (I32 s) :: Num (I32 d) :: vs' *)
+          ->
+            let* n, vs = select_head vs num_i32 e in
+            let* s, vs = select_head vs num_i32 e in
+            let* d, vs' = select_head vs num_i32 e in
             let* mem_oob = mem_oob module_reg frame (0l @@ e.at) d n in
             let* data_oob = data_oob module_reg frame x s n in
             if mem_oob || data_oob then
@@ -675,130 +729,150 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                     Plain (Const (I32 (I32.sub n 1l) @@ e.at));
                     Plain (MemoryInit x);
                   ] )
-        | DataDrop x, vs ->
+        | DataDrop x ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ seg = data inst x in
             seg := Data_label 0l ;
             (vs, [])
-        | RefNull t, vs' -> Lwt.return (Ref (NullRef t) :: vs', [])
-        | RefIsNull, Ref r :: vs' ->
-            Lwt.return
-              (match r with
-              | NullRef _ -> (Num (I32 1l) :: vs', [])
-              | _ -> (Num (I32 0l) :: vs', []))
-        | RefFunc x, vs' ->
+        | RefNull t -> Lwt.return (Vector.cons (Ref (NullRef t)) vs, [])
+        | RefIsNull -> (
+            let+ r, vs' = select_head vs ref_ e in
+            match r with
+            | NullRef _ -> (Vector.cons (Num (I32 1l)) vs', [])
+            | _ -> (Vector.cons (Num (I32 0l)) vs', []))
+        | RefFunc x ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ f = func inst x in
-            (Ref (FuncRef f) :: vs', [])
-        | Const n, vs -> Lwt.return (Num n.it :: vs, [])
-        | Test testop, Num n :: vs' ->
-            Lwt.return
-              (try (value_of_bool (Eval_num.eval_testop testop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | Compare relop, Num n2 :: Num n1 :: vs' ->
-            Lwt.return
-              (try (value_of_bool (Eval_num.eval_relop relop n1 n2) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | Unary unop, Num n :: vs' ->
-            Lwt.return
-              (try (Num (Eval_num.eval_unop unop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | Binary binop, Num n2 :: Num n1 :: vs' ->
-            Lwt.return
-              (try (Num (Eval_num.eval_binop binop n1 n2) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | Convert cvtop, Num n :: vs' ->
-            Lwt.return
-              (try (Num (Eval_num.eval_cvtop cvtop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecConst v, vs -> Lwt.return (Vec v.it :: vs, [])
-        | VecTest testop, Vec n :: vs' ->
-            Lwt.return
-              (try (value_of_bool (Eval_vec.eval_testop testop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecUnary unop, Vec n :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_unop unop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecBinary binop, Vec n2 :: Vec n1 :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_binop binop n1 n2) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecCompare relop, Vec n2 :: Vec n1 :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_relop relop n1 n2) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecConvert cvtop, Vec n :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_cvtop cvtop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecShift shiftop, Num s :: Vec v :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_shiftop shiftop v s) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecBitmask bitmaskop, Vec v :: vs' ->
-            Lwt.return
-              (try (Num (Eval_vec.eval_bitmaskop bitmaskop v) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecTestBits vtestop, Vec n :: vs' ->
-            Lwt.return
-              (try (value_of_bool (Eval_vec.eval_vtestop vtestop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecUnaryBits vunop, Vec n :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_vunop vunop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecBinaryBits vbinop, Vec n2 :: Vec n1 :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_vbinop vbinop n1 n2) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecTernaryBits vternop, Vec v3 :: Vec v2 :: Vec v1 :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_vternop vternop v1 v2 v3) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecSplat splatop, Num n :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_splatop splatop n) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecExtract extractop, Vec v :: vs' ->
-            Lwt.return
-              (try (Num (Eval_vec.eval_extractop extractop v) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | VecReplace replaceop, Num r :: Vec v :: vs' ->
-            Lwt.return
-              (try (Vec (Eval_vec.eval_replaceop replaceop v r) :: vs', [])
-               with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
-        | _ ->
-            let s1 = string_of_values (List.rev vs) in
-            let s2 =
-              string_of_value_types (List.map type_of_value (List.rev vs))
-            in
-            Crash.error
-              e.at
-              ("missing or ill-typed operand on stack (" ^ s1 ^ " : " ^ s2 ^ ")")
-        )
-    | Refer r, vs -> Lwt.return (Ref r :: vs, [])
-    | Trapping _, _ -> assert false
-    | Returning _, _ -> Crash.error e.at "undefined frame"
-    | Breaking _, _ -> Crash.error e.at "undefined label"
-    | Label (_, _, (vs', [])), vs -> Lwt.return (vs' @ vs, [])
-    | Label (_, _, (_, {it = Trapping msg; at} :: _)), vs ->
+            (Vector.cons (Ref (FuncRef f)) vs, [])
+        | Const n -> Lwt.return (Vector.cons (Num n.it) vs, [])
+        | Test testop (* , Num n :: vs' *) -> (
+            let+ n, vs' = select_head vs num e in
+            try
+              ( Vector.cons (value_of_bool (Eval_num.eval_testop testop n)) vs',
+                [] )
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | Compare relop (* , Num n2 :: Num n1 :: vs' *) -> (
+            let* n2, vs = select_head vs num e in
+            let+ n1, vs' = select_head vs num e in
+            try
+              ( Vector.cons (value_of_bool (Eval_num.eval_relop relop n1 n2)) vs',
+                [] )
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | Unary unop -> (
+            let+ n, vs' = select_head vs num e in
+            try (Vector.cons (Num (Eval_num.eval_unop unop n)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | Binary binop (* , Num n2 :: Num n1 :: vs' *) -> (
+            let* n2, vs = select_head vs num e in
+            let+ n1, vs' = select_head vs num e in
+            try (Vector.cons (Num (Eval_num.eval_binop binop n1 n2)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | Convert cvtop -> (
+            let+ n, vs' = select_head vs num e in
+            try (Vector.cons (Num (Eval_num.eval_cvtop cvtop n)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecConst v -> Lwt.return (Vector.cons (Vec v.it) vs, [])
+        | VecTest testop -> (
+            let+ n, vs' = select_head vs vec e in
+            try
+              ( Vector.cons (value_of_bool (Eval_vec.eval_testop testop n)) vs',
+                [] )
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecUnary unop -> (
+            let+ n, vs' = select_head vs vec e in
+            try (Vector.cons (Vec (Eval_vec.eval_unop unop n)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecBinary binop -> (
+            let* n2, vs = select_head vs vec e in
+            let+ n1, vs' = select_head vs vec e in
+            try (Vector.cons (Vec (Eval_vec.eval_binop binop n1 n2)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecCompare relop -> (
+            let* n2, vs = select_head vs vec e in
+            let+ n1, vs' = select_head vs vec e in
+            try (Vector.cons (Vec (Eval_vec.eval_relop relop n1 n2)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecConvert cvtop -> (
+            let+ n, vs' = select_head vs vec e in
+            try (Vector.cons (Vec (Eval_vec.eval_cvtop cvtop n)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecShift shiftop -> (
+            let* s, vs = select_head vs num e in
+            let+ v, vs' = select_head vs vec e in
+            try (Vector.cons (Vec (Eval_vec.eval_shiftop shiftop v s)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecBitmask bitmaskop -> (
+            let+ v, vs' = select_head vs vec e in
+            try (Vector.cons (Num (Eval_vec.eval_bitmaskop bitmaskop v)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecTestBits vtestop -> (
+            let+ n, vs' = select_head vs vec e in
+            try
+              ( Vector.cons (value_of_bool (Eval_vec.eval_vtestop vtestop n)) vs',
+                [] )
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecUnaryBits vunop -> (
+            let+ n, vs' = select_head vs vec e in
+            try (Vector.cons (Vec (Eval_vec.eval_vunop vunop n)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecBinaryBits vbinop -> (
+            let* n2, vs = select_head vs vec e in
+            let+ n1, vs' = select_head vs vec e in
+            try (Vector.cons (Vec (Eval_vec.eval_vbinop vbinop n1 n2)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecTernaryBits vternop -> (
+            let* v3, vs = select_head vs vec e in
+            let* v2, vs = select_head vs vec e in
+            let+ v1, vs' = select_head vs vec e in
+            try
+              ( Vector.cons (Vec (Eval_vec.eval_vternop vternop v1 v2 v3)) vs',
+                [] )
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecSplat splatop -> (
+            let+ n, vs' = select_head vs num e in
+            try (Vector.cons (Vec (Eval_vec.eval_splatop splatop n)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecExtract extractop -> (
+            let+ v, vs' = select_head vs vec e in
+            try (Vector.cons (Num (Eval_vec.eval_extractop extractop v)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at]))
+        | VecReplace replaceop -> (
+            let* r, vs = select_head vs num e in
+            let+ v, vs' = select_head vs vec e in
+            try
+              (Vector.cons (Vec (Eval_vec.eval_replaceop replaceop v r)) vs', [])
+            with exn -> (vs', [Trapping (numeric_error e.at exn) @@ e.at])))
+    | Refer r -> Lwt.return (Vector.cons (Ref r) vs, [])
+    | Trapping _ -> assert false
+    | Returning _ -> Crash.error e.at "undefined frame"
+    | Breaking _ -> Crash.error e.at "undefined label"
+    | Label (_, _, (vs', [])) ->
+        (* TODO: Tick *)
+        let+ v = Vector.concat vs' vs in
+        (v, [])
+    | Label (_, _, (_, {it = Trapping msg; at} :: _)) ->
         Lwt.return (vs, [Trapping msg @@ at])
-    | Label (_, _, (_, {it = Returning vs0; at} :: _)), vs ->
+    | Label (_, _, (_, {it = Returning vs0; at} :: _)) ->
         Lwt.return (vs, [Returning vs0 @@ at])
-    | Label (n, es0, (_, {it = Breaking (0l, vs0); _} :: _)), vs ->
-        Lwt.return (take n vs0 e.at @ vs, List.map plain es0)
-    | Label (_, _, (_, {it = Breaking (k, vs0); at} :: _)), vs ->
+    | Label (n, es0, (_, {it = Breaking (0l, vs0); _} :: _)) ->
+        let v, _ = Vector.split vs0 n in
+        let+ v = Vector.concat v vs in
+        (v, List.map plain es0)
+    | Label (_, _, (_, {it = Breaking (k, vs0); at} :: _)) ->
         Lwt.return (vs, [Breaking (Int32.sub k 1l, vs0) @@ at])
-    | Label (n, es0, code'), vs ->
+    | Label (n, es0, code') ->
         let+ c' = step module_reg {c with code = code'} in
         (vs, [Label (n, es0, c'.code) @@ e.at])
-    | Frame (_, _, (vs', [])), vs -> Lwt.return (vs' @ vs, [])
-    | Frame (_, _, (_, {it = Trapping msg; at} :: _)), vs ->
+    | Frame (_, _, (vs', [])) ->
+        let+ v = Vector.concat vs' vs in
+        (v, [])
+    | Frame (_, _, (_, {it = Trapping msg; at} :: _)) ->
         Lwt.return (vs, [Trapping msg @@ at])
-    | Frame (n, _, (_, {it = Returning vs0; _} :: _)), vs ->
-        Lwt.return (take n vs0 e.at @ vs, [])
-    | Frame (n, frame', code'), vs ->
+    | Frame (n, _, (_, {it = Returning vs0; _} :: _)) ->
+        let v, _ = Vector.split vs0 n in
+        let+ v = Vector.concat v vs in
+        (v, [])
+    | Frame (n, frame', code') ->
         let+ c' =
           step
             module_reg
@@ -812,14 +886,14 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
             }
         in
         (vs, [Frame (n, c'.frame, c'.code) @@ e.at])
-    | Invoke _, _ when c.budget = 0 ->
-        Exhaustion.error e.at "call stack exhausted"
-    | Invoke func, vs -> (
+    | Invoke _ when c.budget = 0 -> Exhaustion.error e.at "call stack exhausted"
+    | Invoke func -> (
         let (FuncType (ins, out)) = func_type_of func in
         let n1, n2 =
           (Instance.Vector.num_elements ins, Instance.Vector.num_elements out)
         in
-        let args, vs' = (take n1 vs e.at, drop n1 vs e.at) in
+        let args, vs' = Vector.split vs n1 in
+        (* (take n1 vs e.at, drop n1 vs e.at) in *)
         match func with
         | Func.AstFunc (_, inst', f) ->
             (* TODO: https://gitlab.com/tezos/tezos/-/issues/3366 &
@@ -827,18 +901,22 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
 
                This conversion to list can probably be avoided by using
                Lazy_vector in the config for local variables. *)
-            let+ locals = Lazy_vector.Int32Vector.to_list f.it.locals in
+            let* locals = Lazy_vector.Int32Vector.to_list f.it.locals in
+            let+ args = Lazy_vector.Int32Vector.to_list args in
             let locals' = List.rev args @ List.map default_value locals in
             let frame' =
               {inst = inst'; locals = Vector.of_list (List.map ref locals')}
             in
             let instr' =
               [
-                Label (n2, [], ([], [From_block (f.it.body, 0l) @@ f.at]))
+                Label
+                  ( n2,
+                    [],
+                    (Vector.empty (), [From_block (f.it.body, 0l) @@ f.at]) )
                 @@ f.at;
               ]
             in
-            (vs', [Frame (n2, frame', ([], instr')) @@ e.at])
+            (vs', [Frame (n2, frame', (Vector.empty (), instr')) @@ e.at])
         | Func.HostFunc (_, global_name) ->
             Lwt.catch
               (fun () ->
@@ -846,14 +924,17 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                   Host_funcs.lookup ~global_name c.host_funcs
                 in
                 let* inst = resolve_module_ref module_reg frame.inst in
+                let* args = Lazy_vector.Int32Vector.to_list args in
+                let* vs' = Lazy_vector.Int32Vector.to_list vs' in
                 let+ res = f c.input c.output inst (List.rev args) in
-                (List.rev res @ vs', []))
+                let v = Lazy_vector.Int32Vector.of_list (List.rev res @ vs') in
+                (v, []))
               (function
                 | Crash (_, msg) -> Crash.error e.at msg | exn -> raise exn))
   in
   {c with code = (vs', es' @ es)}
 
-let rec eval module_reg (c : config) : value stack Lwt.t =
+let rec eval module_reg (c : config) : value Vector.t Lwt.t =
   match c.code with
   | vs, [] -> Lwt.return vs
   | _, {it = Trapping msg; at} :: _ -> Trap.error at msg
@@ -881,12 +962,12 @@ let invoke ~module_reg ~caller ?(input = Input_buffer.alloc ())
     | Func.AstFunc (_, inst, _) -> inst
     | Func.HostFunc (_, _) -> caller
   in
-  let c =
-    config ~input ~output host_funcs inst (List.rev vs) [Invoke func @@ at]
-  in
+  let v = Vector.of_list (List.rev vs) in
+  let c = config ~input ~output host_funcs inst v [Invoke func @@ at] in
   Lwt.catch
     (fun () ->
-      let+ values = eval module_reg c in
+      let* values = eval module_reg c in
+      let+ values = Vector.to_list values in
       List.rev values)
     (function
       | Stack_overflow -> Exhaustion.error at "call stack exhausted"
@@ -896,17 +977,20 @@ type eval_const_kont = EC_Next of config | EC_Stop of value
 
 let eval_const_kont inst (const : const) =
   let c =
-    config (Host_funcs.empty ()) inst [] [From_block (const.it, 0l) @@ const.at]
+    config
+      (Host_funcs.empty ())
+      inst
+      (Vector.empty ())
+      [From_block (const.it, 0l) @@ const.at]
   in
   EC_Next c
 
 let eval_const_completed = function EC_Stop v -> Some v | _ -> None
 
 let eval_const_step module_reg = function
-  | EC_Next {code = vs, []; _} -> (
-      match vs with
-      | [v] -> Lwt.return (EC_Stop v)
-      | _ -> Crash.error Source.no_region "wrong number of results on stack")
+  | EC_Next {code = vs, []; _} ->
+      let+ v, _ = select_head vs Option.some (() @@ no_region) in
+      EC_Stop v
   | EC_Next c ->
       let+ c = step module_reg c in
       EC_Next c
@@ -1466,7 +1550,7 @@ let init_step ~module_reg ~self host_funcs (m : module_) (exts : extern list) =
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/3076
              [config] should use lazy vector, not lists *)
           let+ res = Vector.to_list res in
-          IK_Eval (inst0, config host_funcs self [] res)
+          IK_Eval (inst0, config host_funcs self (Vector.empty ()) res)
       | None ->
           let+ tick = join_step tick in
           IK_Join_admin (inst0, tick))

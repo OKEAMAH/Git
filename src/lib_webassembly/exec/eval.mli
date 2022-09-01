@@ -11,7 +11,7 @@ exception Exhaustion of Source.region * string
 
 type frame = {inst : module_key; locals : value ref Vector.t}
 
-type code = value list * admin_instr list
+type code = value Vector.t * admin_instr list
 
 and admin_instr = admin_instr' Source.phrase
 
@@ -21,8 +21,8 @@ and admin_instr' =
   | Refer of ref_
   | Invoke of func_inst
   | Trapping of string
-  | Returning of value list
-  | Breaking of int32 * value list
+  | Returning of value Vector.t
+  | Breaking of int32 * value Vector.t
   | Label of int32 * Ast.instr list * code
   | Frame of int32 * frame * code
 
@@ -152,6 +152,6 @@ val config :
   ?output:output_inst ->
   Host_funcs.registry ->
   module_key ->
-  value list ->
+  value Vector.t ->
   admin_instr list ->
   config

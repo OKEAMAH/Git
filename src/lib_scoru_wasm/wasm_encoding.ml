@@ -533,7 +533,7 @@ let value_encoding =
         (fun r -> Values.Ref r);
     ]
 
-let values_encoding = list_encoding value_encoding
+let values_encoding field = lazy_vector_encoding field value_encoding
 
 let name_encoding key = lazy_vector_encoding key (value [] Data_encoding.int31)
 
@@ -754,12 +754,15 @@ let rec admin_instr'_encoding () =
         (fun x -> Trapping x);
       case
         "Returning"
-        values_encoding
+        (values_encoding "values")
         (function Returning x -> Some x | _ -> None)
         (fun x -> Returning x);
       case
         "Breaking"
-        (tup2 ~flatten:false (value [] Data_encoding.int32) values_encoding)
+        (tup2
+           ~flatten:true
+           (value ["label"] Data_encoding.int32)
+           (values_encoding "values"))
         (function
           | Breaking (index, values) -> Some (index, values) | _ -> None)
         (fun (index, values) -> Breaking (index, values));
@@ -769,7 +772,7 @@ let rec admin_instr'_encoding () =
            ~flatten:false
            (value [] Data_encoding.int32)
            (list_encoding instruction_encoding)
-           values_encoding
+           (values_encoding "values")
            (list_encoding (admin_instr_encoding ())))
         (function
           | Label (index, final_instrs, (values, instrs)) ->
@@ -783,7 +786,7 @@ let rec admin_instr'_encoding () =
            ~flatten:false
            (value [] Data_encoding.int32)
            frame_encoding
-           values_encoding
+           (values_encoding "values")
            (list_encoding (admin_instr_encoding ())))
         (function
           | Frame (index, frame, (values, instrs)) ->
@@ -861,5 +864,5 @@ let config_encoding ~host_funcs =
        (scope ["input"] input_buffer_encoding)
        (scope ["output"] output_buffer_encoding)
        (scope ["instructions"] (list_encoding admin_instr_encoding))
-       (scope ["values"] values_encoding)
+       (values_encoding "values")
        (value ["budget"] Data_encoding.int31))

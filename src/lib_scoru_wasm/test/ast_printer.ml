@@ -349,14 +349,18 @@ let rec pp_admin_instr' out instr =
         out
         "Returning @[<hv 2>%a@]"
         (Format.pp_print_list pp_value)
-        values
+        (List.map
+           snd
+           (Lazy_containers.Lazy_vector.Int32Vector.loaded_bindings values))
   | Breaking (index, values) ->
       Format.fprintf
         out
         "Breaking @[<hv 2>(%li,@; %a)@]"
         index
         (Format.pp_print_list pp_value)
-        values
+        (List.map
+           snd
+           (Lazy_containers.Lazy_vector.Int32Vector.loaded_bindings values))
   | Label (index, final_instrs, (values, instrs)) ->
       Format.fprintf
         out
@@ -365,7 +369,9 @@ let rec pp_admin_instr' out instr =
         (Format.pp_print_list pp_instr)
         final_instrs
         (Format.pp_print_list pp_value)
-        values
+        (List.map
+           snd
+           (Lazy_containers.Lazy_vector.Int32Vector.loaded_bindings values))
         (Format.pp_print_list pp_admin_instr)
         instrs
   | Frame (index, frame, (values, instrs)) ->
@@ -376,7 +382,9 @@ let rec pp_admin_instr' out instr =
         pp_frame
         frame
         (Format.pp_print_list pp_value)
-        values
+        (List.map
+           snd
+           (Lazy_containers.Lazy_vector.Int32Vector.loaded_bindings values))
         (Format.pp_print_list pp_admin_instr)
         instrs
 
@@ -425,5 +433,7 @@ let pp_config out
     (Format.pp_print_list pp_admin_instr)
     instrs
     (Format.pp_print_list pp_value)
-    values
+    (List.map
+       snd
+       (Lazy_containers.Lazy_vector.Int32Vector.loaded_bindings values))
     budget

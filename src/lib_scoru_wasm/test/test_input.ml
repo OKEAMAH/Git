@@ -371,7 +371,7 @@ let test_set_input () =
           {inst = Module_key "main"; locals = Lazy_vector.Int32Vector.empty ()};
         input = Input_buffer.alloc ();
         output = Output_buffer.alloc ();
-        code = ([], []);
+        code = (Lazy_vector.Int32Vector.empty (), []);
         host_funcs;
         budget = 1000;
       }
