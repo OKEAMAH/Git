@@ -3220,6 +3220,61 @@ let test_migration_game_move ~commitment_period ~kind ~migration_level
     ~scenario_after
     {tags; variant; description}
 
+(* Test to recover stake from a commitment make prior to a migration. *)
+let test_migration_recover_stake ~challenge_window ~commitment_period ~kind
+    ~migration_level ~migrate_from ~migrate_to ~description =
+  let tags = ["commitment"; "stake"]
+  and variant = "Cementing a commitment pre-migration."
+  and scenario_prior tezos_client ~sc_rollup _sc_rollup_node =
+    let* predecessor, starting_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
+    in
+    let inbox_level = starting_level + commitment_period in
+    let* () =
+      repeat commitment_period (fun () -> Client.bake_for_and_wait tezos_client)
+    in
+    let* hash =
+      publish_dummy_commitment
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~number_of_ticks:1
+        ~src:Constant.bootstrap1.public_key_hash
+        tezos_client
+    in
+    let* current_level = Client.level tezos_client in
+    let* _llc_hash, llc_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
+    in
+    let missing_blocks_to_cement =
+      llc_level + commitment_period + challenge_window - current_level + 1
+    in
+    let* () =
+      repeat missing_blocks_to_cement (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    cement_commitment ~sc_rollup ~hash tezos_client
+  and scenario_after tezos_client ~sc_rollup _sc_rollup_node () =
+    let*! () =
+      Client.Sc_rollup.submit_recover_bond
+        ~hooks
+        ~rollup:sc_rollup
+        ~src:Constant.bootstrap1.public_key_hash
+        tezos_client
+    in
+    Client.bake_for_and_wait tezos_client
+  in
+  test_migration_scenario
+    ~commitment_period
+    ~challenge_window
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    {tags; variant; description}
+
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -3407,6 +3462,14 @@ let register_migration ~migrate_from ~migrate_to =
     ~migrate_to
     ~description ;
   test_migration_game_move
+    ~commitment_period
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~description ;
+  test_migration_recover_stake
+    ~challenge_window
     ~commitment_period
     ~kind
     ~migration_level
