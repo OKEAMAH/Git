@@ -55,7 +55,7 @@ let numeric_error at = function
 
 type 'a stack = 'a list
 
-type frame = {inst : module_key; locals : value ref list}
+type frame = {inst : module_key; locals : value ref Vector.t}
 
 type code = value stack * admin_instr list
 
@@ -86,7 +86,7 @@ let frame inst locals = {inst; locals}
 let config ?(input = Input_buffer.alloc ()) ?(output = Output_buffer.alloc ())
     host_funcs inst vs es =
   {
-    frame = frame inst [];
+    frame = frame inst (Vector.create 0l);
     input;
     output;
     code = (vs, es);
@@ -95,11 +95,6 @@ let config ?(input = Input_buffer.alloc ()) ?(output = Output_buffer.alloc ())
   }
 
 let plain e = Plain e.it @@ e.at
-
-let lookup category list x =
-  try Lib.List32.nth list x.it
-  with Failure _ ->
-    Crash.error x.at ("undefined " ^ category ^ " " ^ Int32.to_string x.it)
 
 let lookup_intmap category store x =
   Lwt.catch
@@ -128,7 +123,7 @@ let elem (inst : module_inst) x = lookup_intmap "element segment" inst.elems x
 
 let data (inst : module_inst) x = lookup_intmap "data segment" inst.datas x
 
-let local (frame : frame) x = lookup "local" frame.locals x
+let local (frame : frame) x = lookup_intmap "local" frame.locals x
 
 let any_ref inst x i at =
   Lwt.catch
@@ -279,15 +274,17 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
         | Drop, _ :: vs' -> Lwt.return (vs', [])
         | Select _, Num (I32 i) :: v2 :: v1 :: vs' ->
             Lwt.return (if i = 0l then (v2 :: vs', []) else (v1 :: vs', []))
-        | LocalGet x, vs -> Lwt.return (!(local frame x) :: vs, [])
+        | LocalGet x, vs ->
+            let+ f = local frame x in
+            (!f :: vs, [])
         | LocalSet x, v :: vs' ->
-            Lwt.return
-              (local frame x := v ;
-               (vs', []))
+            let+ f = local frame x in
+            f := v ;
+            (vs', [])
         | LocalTee x, v :: vs' ->
-            Lwt.return
-              (local frame x := v ;
-               (v :: vs', []))
+            let+ f = local frame x in
+            f := v ;
+            (v :: vs', [])
         | GlobalGet x, vs ->
             let* inst = resolve_module_ref module_reg frame.inst in
             let+ glob = global inst x in
@@ -832,7 +829,9 @@ and step_resolved module_reg (c : config) frame vs e es : config Lwt.t =
                Lazy_vector in the config for local variables. *)
             let+ locals = Lazy_vector.Int32Vector.to_list f.it.locals in
             let locals' = List.rev args @ List.map default_value locals in
-            let frame' = {inst = inst'; locals = List.map ref locals'} in
+            let frame' =
+              {inst = inst'; locals = Vector.of_list (List.map ref locals')}
+            in
             let instr' =
               [
                 Label (n2, [], ([], [From_block (f.it.body, 0l) @@ f.at]))

@@ -710,14 +710,13 @@ let module_instances_encoding =
     (scope ["modules"] (ModuleMap.lazy_map module_instance_encoding))
 
 let frame_encoding =
-  let locals_encoding = list_encoding @@ conv ref ( ! ) @@ value_encoding in
+  let locals_encoding =
+    lazy_vector_encoding "locals" @@ conv ref ( ! ) @@ value_encoding
+  in
   conv
     (fun (inst, locals) -> Eval.{inst; locals})
     (fun Eval.{inst; locals} -> (inst, locals))
-    (tup2
-       ~flatten:true
-       (scope ["module"] module_key_encoding)
-       (scope ["locals"] locals_encoding))
+    (tup2 ~flatten:true (scope ["module"] module_key_encoding) locals_encoding)
 
 let rec admin_instr'_encoding () =
   let open Eval in

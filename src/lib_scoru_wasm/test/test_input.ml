@@ -367,7 +367,8 @@ let test_set_input () =
     let open Instance in
     Eval.
       {
-        frame = {inst = Module_key "main"; locals = []};
+        frame =
+          {inst = Module_key "main"; locals = Lazy_vector.Int32Vector.empty ()};
         input = Input_buffer.alloc ();
         output = Output_buffer.alloc ();
         code = ([], []);

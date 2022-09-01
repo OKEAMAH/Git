@@ -9,7 +9,7 @@ exception Crash of Source.region * string
 
 exception Exhaustion of Source.region * string
 
-type frame = {inst : module_key; locals : value ref list}
+type frame = {inst : module_key; locals : value ref Vector.t}
 
 type code = value list * admin_instr list
 

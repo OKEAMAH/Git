@@ -325,7 +325,9 @@ let pp_frame out frame =
     "@[<v 2>{module = %s;@;locals = %a;@;}@]"
     key
     (Format.pp_print_list pp_value)
-    (List.map ( ! ) frame.locals)
+    (List.map
+       (fun (_, x) -> !x)
+       (Lazy_containers.Lazy_vector.Int32Vector.loaded_bindings frame.locals))
 
 let rec pp_admin_instr' out instr =
   let open Eval in

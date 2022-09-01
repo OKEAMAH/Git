@@ -217,7 +217,11 @@ module Make (T : Tree_encoding.TREE) :
               let eval_config =
                 {
                   eval_config with
-                  Wasm.Eval.frame = {frame with locals = []};
+                  Wasm.Eval.frame =
+                    {
+                      frame with
+                      locals = Lazy_containers.Lazy_vector.Int32Vector.create 0l;
+                    };
                   code;
                 }
               in

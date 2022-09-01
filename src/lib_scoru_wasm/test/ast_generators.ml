@@ -511,7 +511,7 @@ let module_gen ?module_reg () =
 let frame_gen ~module_reg =
   let* inst, _ = module_key_and_instance_gen ~module_reg () in
   let+ locals = small_list (map ref value_gen) in
-  Eval.{inst; locals}
+  Eval.{inst; locals = Lazy_containers.Lazy_vector.Int32Vector.of_list locals}
 
 let rec admin_instr'_gen ~module_reg depth =
   let open Eval in
