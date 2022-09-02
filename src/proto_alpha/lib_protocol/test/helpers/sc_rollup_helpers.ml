@@ -89,7 +89,8 @@ module In_memory_context = struct
     let encoded_proof =
       Data_encoding.Binary.to_bytes_exn proof_encoding proof
     in
-    Compare.Int.(Bytes.length encoded_proof < 1024)
+    Compare.Int.(
+      Bytes.length encoded_proof < Constants_repr.sc_rollup_max_proof_size)
 end
 
 module Arith_pvm :
