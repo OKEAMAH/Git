@@ -170,6 +170,7 @@ type instruction_name =
   | N_ICheck_signature_ed25519
   | N_ICheck_signature_secp256k1
   | N_ICheck_signature_p256
+  | N_ICheck_signature_bls
   | N_IHash_key
   | N_IPack
   | N_IUnpack
@@ -357,6 +358,7 @@ let string_of_instruction_name : instruction_name -> string =
   | N_ICheck_signature_ed25519 -> "N_ICheck_signature_ed25519"
   | N_ICheck_signature_secp256k1 -> "N_ICheck_signature_secp256k1"
   | N_ICheck_signature_p256 -> "N_ICheck_signature_p256"
+  | N_ICheck_signature_bls -> "N_ICheck_signature_bls"
   | N_IHash_key -> "N_IHash_key"
   | N_IPack -> "N_IPack"
   | N_IUnpack -> "N_IUnpack"
@@ -578,6 +580,7 @@ let all_instructions =
     N_ICheck_signature_ed25519;
     N_ICheck_signature_secp256k1;
     N_ICheck_signature_p256;
+    N_ICheck_signature_bls;
     N_IHash_key;
     N_IPack;
     N_IUnpack;
@@ -964,6 +967,9 @@ module Instructions = struct
   let check_signature_p256 _pk _signature message =
     ir_sized_step N_ICheck_signature_p256 (unary "message" message)
 
+  let check_signature_bls _pk _signature message =
+    ir_sized_step N_ICheck_signature_bls (unary "message" message)
+
   let hash_key = ir_sized_step N_IHash_key nullary
 
   let pack (micheline_size : Size.micheline_size) =
@@ -1341,21 +1347,26 @@ let extract_ir_sized_step :
   | ILevel (_, _), _ -> Instructions.level
   | ICheck_signature (_, _), (public_key, (_signature, (message, _))) -> (
       match public_key with
-      | Signature.Ed25519 _pk ->
-          let pk = Size.of_int Ed25519.size in
-          let signature = Size.of_int Signature.size in
+      | Signature.Ed25519 pk ->
+          let pk = Size.of_int (Ed25519.Public_key.size pk) in
+          let signature = Size.of_int Ed25519.size in
           let message = Size.bytes message in
           Instructions.check_signature_ed25519 pk signature message
-      | Signature.Secp256k1 _pk ->
-          let pk = Size.of_int Secp256k1.size in
-          let signature = Size.of_int Signature.size in
+      | Signature.Secp256k1 pk ->
+          let pk = Size.of_int (Secp256k1.Public_key.size pk) in
+          let signature = Size.of_int Secp256k1.size in
           let message = Size.bytes message in
           Instructions.check_signature_secp256k1 pk signature message
-      | Signature.P256 _pk ->
-          let pk = Size.of_int P256.size in
-          let signature = Size.of_int Signature.size in
+      | Signature.P256 pk ->
+          let pk = Size.of_int (P256.Public_key.size pk) in
+          let signature = Size.of_int P256.size in
           let message = Size.bytes message in
-          Instructions.check_signature_p256 pk signature message)
+          Instructions.check_signature_p256 pk signature message
+      | Signature.Bls pk ->
+          let pk = Size.of_int (Bls.Public_key.size pk) in
+          let signature = Size.of_int Bls.size in
+          let message = Size.bytes message in
+          Instructions.check_signature_bls pk signature message)
   | IHash_key (_, _), _ -> Instructions.hash_key
   | IPack (_, ty, _), (v, _) -> (
       let script_res =

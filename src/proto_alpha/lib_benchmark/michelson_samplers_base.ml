@@ -98,10 +98,18 @@ end) : S = struct
         match of_bytes_opt bytes with
         | None -> assert false
         | Some s -> Signature.of_p256 s)
-    | _ -> (
-        let open Signature in
+    | 3 -> (
+        let open Bls in
         let bytes = Base_samplers.uniform_bytes ~nbytes:size rng_state in
-        match of_bytes_opt bytes with None -> assert false | Some s -> s)
+        match of_bytes_opt bytes with
+        | None -> assert false
+        | Some s -> Signature.of_bls s)
+    | _ ->
+        let open Signature in
+        let bytes =
+          Base_samplers.uniform_bytes ~nbytes:Ed25519.size rng_state
+        in
+        Unknown bytes
 
   let string rng_state =
     let s =
