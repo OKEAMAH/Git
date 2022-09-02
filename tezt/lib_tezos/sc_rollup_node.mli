@@ -146,3 +146,5 @@ val wait_for_ready : t -> unit Lwt.t
    If [timeout] is provided, stop waiting if [timeout] seconds have
    passed. *)
 val wait_for_level : ?timeout:float -> t -> int -> int Lwt.t
+
+val import : t -> pvm_name:string -> filename:string -> string Lwt.t
