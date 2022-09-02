@@ -28,7 +28,8 @@
 module type S = sig
   module PVM : Pvm.S
 
-  val process : Layer1.head -> Node_context.t -> unit tzresult Lwt.t
+  val process :
+    Layer1.head -> Configuration.t -> Node_context.t -> unit tzresult Lwt.t
 end
 
 module Make (Interpreter : Interpreter.S) : S with module PVM = Interpreter.PVM
