@@ -405,9 +405,9 @@ let level_key = ["level"]
 
 let number_of_messages_key = ["number_of_messages"]
 
-type serialized_proof = bytes
+type serialized_proof = string
 
-let serialized_proof_encoding = Data_encoding.bytes
+let serialized_proof_encoding = Data_encoding.string
 
 module type Merkelized_operations = sig
   type inbox_context
@@ -894,9 +894,9 @@ struct
               });
       ]
 
-  let of_serialized_proof = Data_encoding.Binary.of_bytes_opt proof_encoding
+  let of_serialized_proof = Data_encoding.Binary.of_string_opt proof_encoding
 
-  let to_serialized_proof = Data_encoding.Binary.to_bytes_exn proof_encoding
+  let to_serialized_proof = Data_encoding.Binary.to_string_exn proof_encoding
 
   let proof_error reason =
     let open Lwt_tzresult_syntax in
