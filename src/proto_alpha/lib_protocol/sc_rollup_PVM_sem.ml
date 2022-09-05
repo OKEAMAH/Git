@@ -24,6 +24,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type payload = Inbox of Sc_rollup_inbox_message_repr.serialized | EOL
+
 (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3649
 
    This type cannot be extended in a retro-compatible way. It should
@@ -31,28 +33,56 @@
 type input = {
   inbox_level : Raw_level_repr.t;
   message_counter : Z.t;
-  payload : Sc_rollup_inbox_message_repr.serialized;
+  payload : payload;
 }
+
+let payload_encoding =
+  let open Data_encoding in
+  union
+    [
+      case
+        ~title:"inbox"
+        (Tag 0)
+        string
+        (function
+          | Inbox (payload : Sc_rollup_inbox_message_repr.serialized) ->
+              Some (payload :> string)
+          | EOL -> None)
+        (fun payload ->
+          let payload = Sc_rollup_inbox_message_repr.unsafe_of_string payload in
+          Inbox payload);
+      case
+        ~title:"eol"
+        (Tag 1)
+        unit
+        (function EOL -> Some () | Inbox _ -> None)
+        (fun () -> EOL);
+    ]
 
 let input_encoding =
   let open Data_encoding in
   conv
     (fun {inbox_level; message_counter; payload} ->
-      (inbox_level, message_counter, (payload :> string)))
+      (inbox_level, message_counter, payload))
     (fun (inbox_level, message_counter, payload) ->
-      let payload = Sc_rollup_inbox_message_repr.unsafe_of_string payload in
       {inbox_level; message_counter; payload})
     (obj3
        (req "inbox_level" Raw_level_repr.encoding)
        (req "message_counter" n)
-       (req "payload" string))
+       (req "payload" payload_encoding))
+
+let payload_equal (a : payload) (b : payload) : bool =
+  match (a, b) with
+  | Inbox left, Inbox right -> String.equal (left :> string) (right :> string)
+  | Inbox _, _ -> false
+  | EOL, EOL -> true
+  | EOL, _ -> false
 
 let input_equal (a : input) (b : input) : bool =
-  let {inbox_level; message_counter; payload} = a in
   (* To be robust to the addition of fields in [input] *)
-  Raw_level_repr.equal inbox_level b.inbox_level
-  && Z.equal message_counter b.message_counter
-  && String.equal (payload :> string) (b.payload :> string)
+  Raw_level_repr.equal a.inbox_level b.inbox_level
+  && Z.equal a.message_counter b.message_counter
+  && payload_equal a.payload b.payload
 
 type input_request =
   | No_input_required

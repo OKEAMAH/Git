@@ -132,7 +132,7 @@ module type S = sig
     deref:('ptr -> ('content, 'ptr) cell option) ->
     compare:('content -> int Lwt.t) ->
     cell_ptr:'ptr ->
-    'ptr list option Lwt.t
+    (bool * 'ptr list) option Lwt.t
 end
 
 module Make (_ : sig

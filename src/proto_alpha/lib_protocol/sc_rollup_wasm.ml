@@ -282,6 +282,11 @@ module V2_0_0 = struct
       let open PS in
       let open Monad.Syntax in
       let {inbox_level; message_counter; payload} = input in
+      let payload =
+        match payload with
+        | Inbox payload -> payload
+        | EOL -> failwith "FIXME/EOL"
+      in
       let* s = get in
       let* s =
         lift

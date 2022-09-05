@@ -452,12 +452,14 @@ module type Merkelized_operations = sig
   val of_serialized_proof : serialized_proof -> proof option
 
   val verify_proof :
+    commit_level:Raw_level_repr.t ->
     Raw_level_repr.t * Z.t ->
     history_proof ->
     proof ->
     Sc_rollup_PVM_sem.input option tzresult Lwt.t
 
   val produce_proof :
+    commit_level:Raw_level_repr.t ->
     inbox_context ->
     History.t ->
     history_proof ->
@@ -720,6 +722,21 @@ struct
       ~target_ptr
       path
 
+  (* This datatype aims to ensure that a message at level [l] and
+     position [n] is valid.  We assume [n] and [l] to be non-negative
+     numbers.
+
+     - if [n < List.length (inbox[l])] then it is a message of the
+     inbox (see [Single_level])
+
+     - if [n = List.length (inbox[l])] then the message is EOL(l)
+
+     - if [n > List.length (inbox[l])] then the message is either:
+
+       - EOL(l+1) if [List.length (inbox[l+1]) = 0]
+
+       - List.hd (inbox[l+1])
+  *)
   type proof =
     (* See the main docstring for this type (in the mli file) for
        definitions of the three proof parameters [starting_point],
@@ -744,45 +761,50 @@ struct
         inc : inclusion_proof;
         message_proof : P.proof;
       }
-    (* See the main docstring for this type (in the mli file) for
-       definitions of the three proof parameters [starting_point],
-       [message] and [snapshot]. In the below we deconstruct
-       [starting_point] as [(l, n)] where [l] is a level and [n] is a
-       message index.
+    | Cross_level of {
+        (* This cross_level proof is used to show the case when the
+           message at level [l] and possition [n] does not exist in
+           the inbox of level [l] and is not [EOL] either. In that
+           case, this message is another representation for the next
+           message to process. Either the first message of the inbox
+           at level [l+1], or, if the inbox is empty, EOL at level
+           [l+1].
 
-       In a [Level_crossing] proof, [lower] is the skip list cell for
-       the level [l] and [upper] must be the skip list cell that comes
-       immediately after it in [snapshot]. If the inbox has been
-       constructed correctly using the functions in this module that
-       will be the next non-empty level in the inbox.
+           To do so, we provide two bounds [k] and [k'] such that [k <
+           l+1 <= k']. The inclusion proof carries that the inbox
+           cells for levels [k] and [k'] are consecutive.
 
-       [inc] is an inclusion proof of [upper] into [snapshot].
-       [upper_level] is the level of [upper].
-
-       The tree proof [lower_message_proof] shows the following:
-
-         [exists level_tree .
-               (hash_level_tree level_tree = lower.content)
-           AND (payload_and_level n level_tree = (_, (None, l)))]
-
-       in other words, there is no message at index [n] in
-       level [l]. This means that level has been fully read.
-
-       The tree proof [upper_message_proof] shows the following:
-
-         [exists level_tree .
-               (hash_level_tree level_tree = upper.content)
-           AND (payload_and_level 0 level_tree = (_, (message, upper_level)))]
-
-       in other words, if we look in the next non-empty level the
-       message at index zero is [message]. *)
-    | Level_crossing of {
+           if [k'=l+1] then the next message to process is the first
+           message of the inbox at level [l+1]. Otherwise it is EOL.
+        *)
+        lower_level : Raw_level_repr.t;
+        upper_level : Raw_level_repr.t;
         lower : history_proof;
         upper : history_proof;
         inc : inclusion_proof;
         lower_message_proof : P.proof;
         upper_message_proof : P.proof;
-        upper_level : Raw_level_repr.t;
+      }
+    | EOL_post_inbox of {
+        (* The EOL is for a level strictly superior to the last
+           non-empty inbox level. Consequently, [message_proof]
+           encodes the proof of the first message at the inbox at
+           [message_level] which should be the last non-empty inbox level.
+        *)
+        level : history_proof;
+        inc : inclusion_proof;
+        message_proof : P.proof;
+        message_level : Raw_level_repr.t;
+      }
+    | EOL of {
+        (* The EOL is for a level with a non-empty
+           inbox. [lower_message_proof] is a proof with a non-empty
+           payload for position [pred n]. [upper_message_proof] is a
+           proof of an empty payload for [n]. *)
+        level : history_proof;
+        inc : inclusion_proof;
+        lower_message_proof : P.proof;
+        upper_message_proof : P.proof;
       }
 
   let pp_proof fmt proof =
@@ -790,18 +812,11 @@ struct
     | Single_level {level; _} ->
         let hash = Skip_list.content level in
         Format.fprintf fmt "Single_level inbox proof at %a" Hash.pp hash
-    | Level_crossing {lower; upper; upper_level; _} ->
-        let lower_hash = Skip_list.content lower in
-        let upper_hash = Skip_list.content upper in
-        Format.fprintf
-          fmt
-          "Level_crossing inbox proof between %a and %a (upper_level %a)"
-          Hash.pp
-          lower_hash
-          Hash.pp
-          upper_hash
-          Raw_level_repr.pp
-          upper_level
+    | EOL {level; _} ->
+        let level_hash = Skip_list.content level in
+        Format.fprintf fmt "EOL inbox proof for level %a" Hash.pp level_hash
+    | Cross_level _ -> Format.fprintf fmt "TODO/cross_level"
+    | EOL_post_inbox _ -> Format.fprintf fmt "TODO/post_inbox"
 
   let proof_encoding =
     let open Data_encoding in
@@ -822,48 +837,81 @@ struct
           (fun (level, inc, message_proof) ->
             Single_level {level; inc; message_proof});
         case
-          ~title:"Level_crossing"
+          ~title:"EOL"
           (Tag 1)
-          (obj6
+          (obj4
+             (req "level" history_proof_encoding)
+             (req "inclusion_proof" inclusion_proof_encoding)
+             (req "lower_message_proof" P.proof_encoding)
+             (req "upper_message_proof" P.proof_encoding))
+          (function
+            | EOL {level; inc; lower_message_proof; upper_message_proof} ->
+                Some (level, inc, lower_message_proof, upper_message_proof)
+            | _ -> None)
+          (fun (level, inc, lower_message_proof, upper_message_proof) ->
+            EOL {level; inc; lower_message_proof; upper_message_proof});
+        case
+          ~title:"EOL_no_inbox"
+          (Tag 2)
+          (obj7
+             (req "lower_level" Raw_level_repr.encoding)
+             (req "upper_level" Raw_level_repr.encoding)
              (req "lower" history_proof_encoding)
              (req "upper" history_proof_encoding)
              (req "inclusion_proof" inclusion_proof_encoding)
              (req "lower_message_proof" P.proof_encoding)
-             (req "upper_message_proof" P.proof_encoding)
-             (req "upper_level" Raw_level_repr.encoding))
+             (req "upper_message_proof" P.proof_encoding))
           (function
-            | Level_crossing
+            | Cross_level
                 {
+                  lower_level;
+                  upper_level;
                   lower;
                   upper;
                   inc;
                   lower_message_proof;
                   upper_message_proof;
-                  upper_level;
                 } ->
                 Some
-                  ( lower,
+                  ( lower_level,
+                    upper_level,
+                    lower,
                     upper,
                     inc,
                     lower_message_proof,
-                    upper_message_proof,
-                    upper_level )
+                    upper_message_proof )
             | _ -> None)
-          (fun ( lower,
+          (fun ( lower_level,
+                 upper_level,
+                 lower,
                  upper,
                  inc,
                  lower_message_proof,
-                 upper_message_proof,
-                 upper_level ) ->
-            Level_crossing
+                 upper_message_proof ) ->
+            Cross_level
               {
+                lower_level;
+                upper_level;
                 lower;
                 upper;
                 inc;
                 lower_message_proof;
                 upper_message_proof;
-                upper_level;
               });
+        case
+          ~title:"EOL_post_inbox"
+          (Tag 3)
+          (obj4
+             (req "level" history_proof_encoding)
+             (req "inclusion_proof" inclusion_proof_encoding)
+             (req "message_level" Raw_level_repr.encoding)
+             (req "message_proof" P.proof_encoding))
+          (function
+            | EOL_post_inbox {level; inc; message_level; message_proof} ->
+                Some (level, inc, message_level, message_proof)
+            | _ -> None)
+          (fun (level, inc, message_level, message_proof) ->
+            EOL_post_inbox {level; inc; message_level; message_proof});
       ]
 
   let of_serialized_proof = Data_encoding.Binary.of_bytes_opt proof_encoding
@@ -892,9 +940,11 @@ struct
   let check_inclusions proof snapshot =
     check
       (match proof with
-      | Single_level {inc; level; _} ->
+      | Single_level {inc; level; _}
+      | EOL {inc; level; _}
+      | EOL_post_inbox {inc; level; _} ->
           verify_inclusion_proof inc level snapshot
-      | Level_crossing {inc; lower; upper; _} -> (
+      | Cross_level {inc; lower; upper; _} -> (
           let prev_cell = Skip_list.back_pointer upper 0 in
           match prev_cell with
           | None -> false
@@ -953,7 +1003,7 @@ struct
         in
         return payload_opt
 
-  let verify_proof (l, n) snapshot proof =
+  let verify_proof ~commit_level (l, n) snapshot proof =
     assert (Z.(geq n zero)) ;
     let open Lwt_tzresult_syntax in
     let* () = check_inclusions proof snapshot in
@@ -965,48 +1015,163 @@ struct
         in
         match payload_opt with
         | None ->
-            if equal_history_proof snapshot p.level then return None
-            else proof_error "payload is None but proof.level not top level"
-        | Some payload ->
-            return
-            @@ Some
-                 Sc_rollup_PVM_sem.
-                   {inbox_level = l; message_counter = n; payload})
-    | Level_crossing p -> (
-        let lower_level_hash = Skip_list.content p.lower in
-        let* should_be_none =
-          check_message_proof
-            p.lower_message_proof
-            lower_level_hash
-            (l, n)
-            "lower"
-        in
-        let* () =
-          match should_be_none with
-          | None -> return ()
-          | Some _ -> proof_error "more messages to read in lower level"
-        in
-        let upper_level_hash = Skip_list.content p.upper in
-        let* payload_opt =
-          check_message_proof
-            p.upper_message_proof
-            upper_level_hash
-            (p.upper_level, Z.zero)
-            "upper"
-        in
-        match payload_opt with
-        | None ->
-            if equal_history_proof snapshot p.upper then return None
-            else proof_error "payload is None but proof.upper is not top level"
+            (* For the genesis case. *)
+            if equal_history_proof snapshot p.level then return_none
+            else
+              proof_error
+                "single level: payload is None but proof.level not top level"
         | Some payload ->
             return
             @@ Some
                  Sc_rollup_PVM_sem.
                    {
-                     inbox_level = p.upper_level;
-                     message_counter = Z.zero;
-                     payload;
+                     inbox_level = l;
+                     message_counter = n;
+                     payload = Inbox payload;
                    })
+    | EOL_post_inbox {level; message_proof; message_level; _} -> (
+        let level_hash = Skip_list.content level in
+        let* payload_opt =
+          check_message_proof
+            message_proof
+            level_hash
+            (message_level, Z.zero)
+            "EOL post inbox payload hash"
+        in
+        match payload_opt with
+        | None ->
+            if equal_history_proof snapshot level then return None
+            else proof_error "EOL_post_inbox: payload is None but should not be"
+        | Some _ ->
+            if equal_history_proof level snapshot then
+              (* EOL should be at counter 0. Otherwise, the message is for the successor level. *)
+              let next_message_level =
+                if Compare.Z.(n = Z.zero) then l else Raw_level_repr.(succ l)
+              in
+              if
+                Raw_level_repr.(
+                  message_level < next_message_level
+                  && next_message_level <= commit_level)
+              then
+                return
+                @@ Some
+                     Sc_rollup_PVM_sem.
+                       {
+                         inbox_level = next_message_level;
+                         message_counter = Z.zero;
+                         payload = EOL;
+                       }
+              else return_none
+            else
+              proof_error
+                "EOL_post_inbox: invalid proof. The level is not the expected \
+                 one.")
+    | Cross_level
+        {
+          lower_level;
+          upper_level;
+          upper_message_proof;
+          lower_message_proof;
+          lower;
+          upper;
+          _;
+        } -> (
+        let lower_level_hash = Skip_list.content lower in
+        let* payload_opt =
+          check_message_proof
+            lower_message_proof
+            lower_level_hash
+            (lower_level, Z.zero)
+            "Cross_level: no inbox lower"
+        in
+        match payload_opt with
+        | None ->
+            proof_error
+              "Cross_level: payload is None but proof.level not top level"
+        | Some _ -> (
+            let upper_level_hash = Skip_list.content upper in
+            let* payload_opt =
+              check_message_proof
+                upper_message_proof
+                upper_level_hash
+                (upper_level, Z.zero)
+                "Cross_level: no inbox upper"
+            in
+            match payload_opt with
+            | None ->
+                proof_error
+                  "Cross_level: payload is None but proof.level not top level"
+            | Some payload ->
+                if Raw_level_repr.(lower_level = l) then
+                  return
+                  @@ Some
+                       Sc_rollup_PVM_sem.
+                         {
+                           inbox_level = Raw_level_repr.succ l;
+                           message_counter = Z.zero;
+                           payload = Inbox payload;
+                         }
+                else if Raw_level_repr.(lower_level < l && l < upper_level) then
+                  return
+                  @@ Some
+                       Sc_rollup_PVM_sem.
+                         {
+                           inbox_level = Raw_level_repr.succ l;
+                           message_counter = Z.zero;
+                           payload = EOL;
+                         }
+                else (
+                  assert (Raw_level_repr.(l = upper_level)) ;
+                  return
+                  @@ Some
+                       Sc_rollup_PVM_sem.
+                         {
+                           inbox_level = l;
+                           message_counter = Z.zero;
+                           payload = Inbox payload;
+                         })))
+    | EOL p -> (
+        let lower_level_hash = Skip_list.content p.level in
+        let* should_be_none =
+          check_message_proof
+            p.upper_message_proof
+            lower_level_hash
+            (l, n)
+            "EOL: lower"
+        in
+        let* () =
+          match should_be_none with
+          | None -> return ()
+          | Some _ -> proof_error "EOL: more messages to read in lower level"
+        in
+        if Compare.Z.(n = Z.zero) then
+          (* The first message of the inbox is EOL. *)
+          return
+            (Some
+               Sc_rollup_PVM_sem.
+                 {inbox_level = l; message_counter = Z.zero; payload = EOL})
+        else
+          let pred = Z.pred n in
+          let* should_be_some =
+            check_message_proof
+              p.lower_message_proof
+              lower_level_hash
+              (l, pred)
+              "EOL: lower"
+          in
+          match should_be_some with
+          | None ->
+              (* Should be some except if we are at the end of the inbox. *)
+              if equal_history_proof snapshot p.level then return_none
+              else
+                proof_error
+                  "EOL: Predecessor message of EOL must be an inbox message"
+          | Some _payload ->
+              (* The nth message of the inbox is indeed EOL. *)
+              return
+                (Some
+                   Sc_rollup_PVM_sem.
+                     {inbox_level = l; message_counter = n; payload = EOL}))
 
   (** Utility function; we convert all our calls to be consistent with
       [Lwt_tzresult_syntax]. *)
@@ -1015,12 +1180,13 @@ struct
     let* opt = lwt_opt in
     match opt with None -> proof_error e | Some x -> return (ok x)
 
-  let produce_proof ctxt history inbox (l, n) =
+  let produce_proof ~commit_level ctxt history inbox (l, n) =
+    assert (Compare.Z.(n >= Z.zero)) ;
     let open Lwt_tzresult_syntax in
     let cell_ptr = hash_skip_list_cell inbox in
     let*? history = History.remember cell_ptr inbox history in
     let deref ptr = History.find ptr history in
-    let compare hash =
+    let compare ~target hash =
       let*! tree = P.lookup_tree ctxt hash in
       match tree with
       | None -> Lwt.return (-1)
@@ -1029,94 +1195,306 @@ struct
           let+ level = find_level tree in
           match level with
           | None -> -1
-          | Some level -> Raw_level_repr.compare level l)
+          | Some level -> Raw_level_repr.compare level target)
     in
-    let* path =
+    let* exact, path =
       option_to_result
         (Format.sprintf
            "Skip_list.search failed to find path to requested level (%ld)"
            (Raw_level_repr.to_int32 l))
-        (Skip_list.search ~deref ~compare ~cell_ptr)
+        (Skip_list.search ~deref ~compare:(compare ~target:l) ~cell_ptr)
     in
     let* inc =
       option_to_result
         "failed to deref some level in the path"
         (Lwt.return (lift_ptr_path deref path))
     in
-    let* level =
+    let* lower_level =
       option_to_result
         "Skip_list.search returned empty list"
         (Lwt.return (List.last_opt inc))
     in
-    let* level_tree =
+    let* lower_level_tree =
       option_to_result
         "could not find level_tree in the inbox_context"
-        (P.lookup_tree ctxt (Skip_list.content level))
+        (P.lookup_tree ctxt (Skip_list.content lower_level))
     in
-    let* message_proof, (payload_opt, _) =
-      option_to_result
-        "failed to produce message proof for level_tree"
-        (P.produce_proof ctxt level_tree (payload_and_level n))
-    in
-    match payload_opt with
-    | Some payload ->
-        return
-          ( Single_level {level; inc; message_proof},
-            Some
-              Sc_rollup_PVM_sem.{inbox_level = l; message_counter = n; payload}
-          )
-    | None ->
-        if equal_history_proof inbox level then
-          return (Single_level {level; inc; message_proof}, None)
-        else
-          let target_index = Skip_list.index level + 1 in
-          let* inc =
-            option_to_result
-              "failed to find path to upper level"
-              (Lwt.return
-                 (Skip_list.back_path ~deref ~cell_ptr ~target_index
-                 |> Option.map (lift_ptr_path deref)
-                 |> Option.join))
-          in
-          let* upper =
-            option_to_result
-              "back_path returned empty list"
-              (Lwt.return (List.last_opt inc))
-          in
-          let* upper_level_tree =
-            option_to_result
-              "could not find upper_level_tree in the inbox_context"
-              (P.lookup_tree ctxt (Skip_list.content upper))
-          in
-          let* upper_message_proof, (payload_opt, upper_level_opt) =
-            option_to_result
-              "failed to produce message proof for upper_level_tree"
-              (P.produce_proof ctxt upper_level_tree (payload_and_level Z.zero))
-          in
-          let* upper_level =
-            option_to_result
-              "upper_level_tree was misformed---could not find level"
-              (Lwt.return upper_level_opt)
-          in
+    let is_last_inbox = equal_history_proof lower_level inbox in
+    match (exact, is_last_inbox) with
+    | false, true ->
+        let next_message_level =
+          if Compare.Z.(n = Z.zero) then l else Raw_level_repr.succ l
+        in
+        let* message_proof, (_lower_payload_opt, lower_level_opt) =
+          option_to_result
+            "failed to produce message proof for level_tree"
+            (P.produce_proof ctxt lower_level_tree (payload_and_level Z.zero))
+        in
+        let message_level =
+          match lower_level_opt with
+          | None -> assert false
+          | Some level -> level
+        in
+        let level = lower_level in
+        if Raw_level_repr.(next_message_level > commit_level) then
           return
-            ( Level_crossing
-                {
-                  lower = level;
-                  upper;
-                  inc;
-                  lower_message_proof = message_proof;
-                  upper_message_proof;
-                  upper_level;
-                },
-              Option.map
-                (fun payload ->
+            (EOL_post_inbox {level; inc; message_level; message_proof}, None)
+        else
+          return
+            ( EOL_post_inbox {level; inc; message_level; message_proof},
+              Some
+                Sc_rollup_PVM_sem.
+                  {
+                    inbox_level = next_message_level;
+                    message_counter = Z.zero;
+                    payload = EOL;
+                  } )
+    | false, false ->
+        let target_index = Skip_list.index lower_level + 1 in
+        let* inc =
+          option_to_result
+            "failed to find path to upper level"
+            (Lwt.return
+               (Skip_list.back_path ~deref ~cell_ptr ~target_index
+               |> Option.map (lift_ptr_path deref)
+               |> Option.join))
+        in
+        let* upper_level =
+          option_to_result
+            "back_path returned empty list"
+            (Lwt.return (List.last_opt inc))
+        in
+        let* upper_level_tree =
+          option_to_result
+            "could not find upper_level_tree in the inbox_context"
+            (P.lookup_tree ctxt (Skip_list.content upper_level))
+        in
+        let* upper_message_proof, (upper_payload_opt, upper_level_opt) =
+          option_to_result
+            "failed to produce message proof for level_tree"
+            (P.produce_proof ctxt upper_level_tree (payload_and_level Z.zero))
+        in
+        let* lower_message_proof, (_lower_payload_opt, lower_level_opt) =
+          option_to_result
+            "failed to produce message proof for level_tree"
+            (P.produce_proof ctxt lower_level_tree (payload_and_level Z.zero))
+        in
+        let* lower_raw_level =
+          option_to_result "assert false" (Lwt.return lower_level_opt)
+        in
+        let* upper_raw_level =
+          option_to_result "assert false" (Lwt.return upper_level_opt)
+        in
+        let* upper_payload =
+          option_to_result "assert false" (Lwt.return upper_payload_opt)
+        in
+        let next_message_level =
+          if Compare.Z.(n = Z.zero) then l else Raw_level_repr.succ l
+        in
+        let proof =
+          Cross_level
+            {
+              lower_level = lower_raw_level;
+              upper_level = upper_raw_level;
+              inc;
+              lower = lower_level;
+              upper = upper_level;
+              lower_message_proof;
+              upper_message_proof;
+            }
+        in
+        if Raw_level_repr.(next_message_level = upper_raw_level) then
+          return
+            ( proof,
+              Some
+                Sc_rollup_PVM_sem.
+                  {
+                    inbox_level = next_message_level;
+                    message_counter = Z.zero;
+                    payload = Inbox upper_payload;
+                  } )
+        else
+          return
+            ( proof,
+              Some
+                Sc_rollup_PVM_sem.
+                  {inbox_level = l; message_counter = Z.zero; payload = EOL} )
+    | true, _ -> (
+        let* message_proof, (payload_opt, _level_opt) =
+          option_to_result
+            "failed to produce message proof for level_tree"
+            (P.produce_proof ctxt lower_level_tree (payload_and_level n))
+        in
+        match payload_opt with
+        | Some payload ->
+            return
+              ( Single_level {level = lower_level; inc; message_proof},
+                Some
                   Sc_rollup_PVM_sem.
                     {
-                      inbox_level = upper_level;
-                      message_counter = Z.zero;
-                      payload;
-                    })
-                payload_opt )
+                      inbox_level = l;
+                      message_counter = n;
+                      payload = Inbox payload;
+                    } )
+        | None -> (
+            if Compare.Z.(n = Z.zero) then
+              (* This sounds possible only for the genesis
+                 case. Probably an assert should be added. *)
+              return
+                (Single_level {level = lower_level; inc; message_proof}, None)
+            else
+              let pred = Z.pred n in
+              let* pred_message_proof, (pred_payload_opt, _pred_level_opt) =
+                option_to_result
+                  "failed to produce message proof for level_tree"
+                  (P.produce_proof
+                     ctxt
+                     lower_level_tree
+                     (payload_and_level pred))
+              in
+              match pred_payload_opt with
+              | Some _payload ->
+                  (* Current message is EOL *)
+                  return
+                    ( EOL
+                        {
+                          level = lower_level;
+                          inc;
+                          lower_message_proof = pred_message_proof;
+                          upper_message_proof = message_proof;
+                        },
+                      Some
+                        Sc_rollup_PVM_sem.
+                          {inbox_level = l; message_counter = n; payload = EOL}
+                    )
+              | None ->
+                  (* Current message is at the next level. *)
+                  let next_message_level = Raw_level_repr.succ l in
+                  if is_last_inbox then
+                    let* message_proof, (_payload_opt, _level_opt) =
+                      option_to_result
+                        "failed to produce message proof for level_tree"
+                        (P.produce_proof
+                           ctxt
+                           lower_level_tree
+                           (payload_and_level Z.zero))
+                    in
+                    if Raw_level_repr.(next_message_level > commit_level) then
+                      return
+                        ( EOL_post_inbox
+                            {
+                              level = lower_level;
+                              inc;
+                              message_level = l;
+                              message_proof;
+                            },
+                          None )
+                    else
+                      return
+                        ( EOL_post_inbox
+                            {
+                              level = lower_level;
+                              inc;
+                              message_level = l;
+                              message_proof;
+                            },
+                          Some
+                            Sc_rollup_PVM_sem.
+                              {
+                                inbox_level = next_message_level;
+                                message_counter = Z.zero;
+                                payload = EOL;
+                              } )
+                  else
+                    let target_index = Skip_list.index lower_level + 1 in
+                    let* inc =
+                      option_to_result
+                        "failed to find path to upper level"
+                        (Lwt.return
+                           (Skip_list.back_path ~deref ~cell_ptr ~target_index
+                           |> Option.map (lift_ptr_path deref)
+                           |> Option.join))
+                    in
+                    let* upper_level =
+                      option_to_result
+                        "back_path returned empty list"
+                        (Lwt.return (List.last_opt inc))
+                    in
+                    let* upper_level_tree =
+                      option_to_result
+                        "could not find upper_level_tree in the inbox_context"
+                        (P.lookup_tree ctxt (Skip_list.content upper_level))
+                    in
+                    let* ( upper_message_proof,
+                           (upper_payload_opt, upper_level_opt) ) =
+                      option_to_result
+                        "failed to produce message proof for level_tree"
+                        (P.produce_proof
+                           ctxt
+                           upper_level_tree
+                           (payload_and_level Z.zero))
+                    in
+                    let* ( lower_message_proof,
+                           (_lower_payload_opt, lower_level_opt) ) =
+                      option_to_result
+                        "failed to produce message proof for level_tree"
+                        (P.produce_proof
+                           ctxt
+                           lower_level_tree
+                           (payload_and_level Z.zero))
+                    in
+                    let* lower_raw_level =
+                      option_to_result
+                        "assert false"
+                        (Lwt.return lower_level_opt)
+                    in
+                    let* upper_raw_level =
+                      option_to_result
+                        "assert false"
+                        (Lwt.return upper_level_opt)
+                    in
+                    let* upper_payload =
+                      option_to_result
+                        "assert false"
+                        (Lwt.return upper_payload_opt)
+                    in
+                    let proof =
+                      Cross_level
+                        {
+                          lower_level = lower_raw_level;
+                          upper_level = upper_raw_level;
+                          inc;
+                          lower = lower_level;
+                          upper = upper_level;
+                          lower_message_proof;
+                          upper_message_proof;
+                        }
+                    in
+                    assert (
+                      Raw_level_repr.(lower_raw_level < next_message_level)) ;
+                    assert (
+                      Raw_level_repr.(next_message_level <= upper_raw_level)) ;
+                    if Raw_level_repr.(next_message_level = upper_raw_level)
+                    then
+                      return
+                        ( proof,
+                          Some
+                            Sc_rollup_PVM_sem.
+                              {
+                                inbox_level = next_message_level;
+                                message_counter = Z.zero;
+                                payload = Inbox upper_payload;
+                              } )
+                    else
+                      return
+                        ( proof,
+                          Some
+                            Sc_rollup_PVM_sem.
+                              {
+                                inbox_level = next_message_level;
+                                message_counter = Z.zero;
+                                payload = EOL;
+                              } )))
 
   let empty context rollup level =
     let open Lwt_syntax in

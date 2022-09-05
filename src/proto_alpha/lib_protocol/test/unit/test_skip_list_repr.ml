@@ -225,7 +225,7 @@ let test_skip_list_nat_check_path_with_search (basis, i, j) =
   let module M = TestNat (struct
     let basis = basis
   end) in
-  M.check_path i j (fun l i j -> M.search l i (j * 2))
+  M.check_path i j (fun l i j -> M.search l i (j * 2) |> Option.map snd)
 
 let test_skip_list_nat_check_invalid_path_with_search (basis, i) =
   let module M = TestNat (struct

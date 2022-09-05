@@ -3037,12 +3037,14 @@ module Sc_rollup : sig
       val of_serialized_proof : serialized_proof -> proof option
 
       val verify_proof :
+        commit_level:Raw_level.t ->
         Raw_level.t * Z.t ->
         history_proof ->
         proof ->
         Sc_rollup_PVM_sem.input option tzresult Lwt.t
 
       val produce_proof :
+        commit_level:Raw_level.t ->
         inbox_context ->
         History.t ->
         history_proof ->
@@ -3113,10 +3115,12 @@ module Sc_rollup : sig
     val inbox : context -> rollup -> (t * context) tzresult Lwt.t
   end
 
+  type payload = Inbox of Inbox.Message.serialized | EOL
+
   type input = {
     inbox_level : Raw_level.t;
     message_counter : Z.t;
-    payload : Inbox.Message.serialized;
+    payload : payload;
   }
 
   val input_equal : input -> input -> bool

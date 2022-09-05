@@ -147,7 +147,7 @@ let test_input_message () =
     {
       inbox_level = Raw_level_repr.root;
       message_counter = Z.zero;
-      payload = make_external_inbox_message "MESSAGE";
+      payload = Inbox (make_external_inbox_message "MESSAGE");
     }
   in
   set_input input state >>= fun state ->
@@ -178,7 +178,7 @@ let test_parsing_message ~valid (source, expected_code) =
     {
       inbox_level = Raw_level_repr.root;
       message_counter = Z.zero;
-      payload = make_external_inbox_message source;
+      payload = Inbox (make_external_inbox_message source);
     }
   in
   set_input input state >>= fun state ->
@@ -246,7 +246,7 @@ let test_evaluation_message ~valid
     {
       inbox_level = Raw_level_repr.root;
       message_counter = Z.zero;
-      payload = make_external_inbox_message source;
+      payload = Inbox (make_external_inbox_message source);
     }
   in
   set_input input state >>= fun state ->
@@ -321,7 +321,7 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
     {
       inbox_level = Raw_level_repr.of_int32_exn (Int32.of_int inbox_level);
       message_counter = Z.zero;
-      payload = make_external_inbox_message source;
+      payload = Inbox (make_external_inbox_message source);
     }
   in
   let*! state = set_input input state in
