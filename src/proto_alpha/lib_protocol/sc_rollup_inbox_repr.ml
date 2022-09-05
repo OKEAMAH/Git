@@ -378,7 +378,57 @@ module V1 = struct
     else inbox
 end
 
-type versioned = V1 of V1.t
+module V2 = struct
+  include V1
+
+  let encoding =
+    Data_encoding.(
+      conv
+        (fun {
+               rollup;
+               message_counter;
+               nb_messages_in_commitment_period;
+               starting_level_of_current_commitment_period;
+               level;
+               current_level_hash;
+               old_levels_messages;
+             } ->
+          ( rollup,
+            message_counter,
+            nb_messages_in_commitment_period,
+            starting_level_of_current_commitment_period,
+            level,
+            current_level_hash (),
+            old_levels_messages ))
+        (fun ( rollup,
+               message_counter,
+               nb_messages_in_commitment_period,
+               starting_level_of_current_commitment_period,
+               level,
+               current_level_hash,
+               old_levels_messages ) ->
+          {
+            rollup;
+            message_counter;
+            nb_messages_in_commitment_period;
+            starting_level_of_current_commitment_period;
+            level;
+            current_level_hash = (fun () -> current_level_hash);
+            old_levels_messages;
+          })
+        (obj7
+           (req "sc_rollup" Sc_rollup_repr.encoding)
+           (req "message_counter" n)
+           (req "nb_messages_in_commitment_period" int64)
+           (req
+              "starting_level_of_current_commitment_period"
+              Raw_level_repr.encoding)
+           (req "level" Raw_level_repr.encoding)
+           (req "current_level_hash" Hash.encoding)
+           (req "old_levels_messages" old_levels_messages_encoding)))
+end
+
+type versioned = V1 of V1.t | V2 of V2.t
 
 let versioned_encoding =
   let open Data_encoding in
@@ -388,15 +438,21 @@ let versioned_encoding =
         ~title:"V1"
         (Tag 0)
         V1.encoding
-        (function V1 inbox -> Some inbox)
+        (function V1 inbox -> Some inbox | _ -> None)
         (fun inbox -> V1 inbox);
+      case
+        ~title:"V2"
+        (Tag 1)
+        V2.encoding
+        (function V2 inbox -> Some inbox | _ -> None)
+        (fun inbox -> V2 inbox);
     ]
 
-include V1
+include V2
 
-let of_versioned = function V1 inbox -> inbox [@@inline]
+let of_versioned = function V1 inbox -> inbox | V2 inbox -> inbox [@@inline]
 
-let to_versioned inbox = V1 inbox [@@inline]
+let to_versioned inbox = V2 inbox [@@inline]
 
 let key_of_message ix =
   ["message"; Data_encoding.Binary.to_string_exn Data_encoding.n ix]

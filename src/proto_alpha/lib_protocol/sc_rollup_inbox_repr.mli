@@ -213,10 +213,12 @@ module V1 : sig
     commitment_period:int32 -> level:Raw_level_repr.t -> t -> t
 end
 
-(** Versioning, see {!Sc_rollup_data_version_sig.S} for more information. *)
-include Sc_rollup_data_version_sig.S with type t = V1.t
+module V2 : module type of V1
 
-include module type of V1 with type t = V1.t
+(** Versioning, see {!Sc_rollup_data_version_sig.S} for more information. *)
+include Sc_rollup_data_version_sig.S with type t = V2.t
+
+include module type of V2 with type t = V2.t
 
 (** This extracts the current level hash from the inbox. Note: the
     current level hash is stored lazily as [fun () -> ...], and this
