@@ -39,22 +39,23 @@ open Alpha_context
 let assert_fails ~loc ?error m =
   let open Lwt_result_syntax in
   let*! res = m in
+  let rec aux err_res =
+    match (err_res, error) with
+    | Environment.Ecoproto_error err' :: rest, Some err ->
+        if err = err' then return_unit else aux rest
+    | _, Some _ ->
+        (* Expected a different error. *)
+        let msg =
+          Printf.sprintf "Expected a different error at location %s" loc
+        in
+        Stdlib.failwith msg
+    | _, None ->
+        (* Any error is ok. *)
+        return ()
+  in
   match res with
   | Ok _ -> Stdlib.failwith "Expected failure"
-  | Error err_res -> (
-      match (err_res, error) with
-      | Environment.Ecoproto_error err' :: _, Some err when err = err' ->
-          (* Matched exact error. *)
-          return_unit
-      | _, Some _ ->
-          (* Expected a different error. *)
-          let msg =
-            Printf.sprintf "Expected a different error at location %s" loc
-          in
-          Stdlib.failwith msg
-      | _, None ->
-          (* Any error is ok. *)
-          return ())
+  | Error err_res -> aux err_res
 
 let ( let* ) m f = m >>=? f
 
@@ -95,7 +96,7 @@ let string_list_of_ex_tickets ctxt tickets =
         ticketer
         content
         Z.pp_print
-        (Script_int.to_zint amount)
+        Script_int.(to_zint (amount :> n num))
     in
     return (str :: xs, ctxt)
   in
@@ -113,6 +114,10 @@ let make_ex_ticket ctxt ~ticketer ~type_exp ~content_exp ~amount =
     wrap @@ Script_ir_translator.parse_comparable_data ctxt cty node
   in
   let amount = Script_int.(abs @@ of_int amount) in
+  let amount =
+    WithExceptions.Option.get ~loc:__LOC__
+    @@ Script_typed_ir.Ticket_amount.of_n amount
+  in
   let ticket = Script_typed_ir.{ticketer; contents; amount} in
   return (Ticket_scanner.Ex_ticket (cty, ticket), ctxt)
 
@@ -303,7 +308,7 @@ let test_tickets_in_unit_ticket () =
 let assert_string_tickets_fail_on_zero_amount ~loc ~include_lazy ~type_exp
     ~value_exp =
   let* ctxt = new_ctxt () in
-  assert_fails ~loc ~error:Ticket_scanner.Forbidden_zero_ticket_quantity
+  assert_fails ~loc ~error:Script_tc_errors.Forbidden_zero_ticket_quantity
   @@ tickets_of_value ctxt ~include_lazy ~type_exp ~value_exp
 
 let test_tickets_in_list_with_zero_amount () =
@@ -437,7 +442,7 @@ let test_tickets_in_big_map_strict_only () =
         {
           Elt 1 (Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1);
           Elt 2 (Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "green" 2);
-          Elt 3 (Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "blue" 0);
+          Elt 3 (Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "blue" 3);
         }
       |}
     ~expected:[]

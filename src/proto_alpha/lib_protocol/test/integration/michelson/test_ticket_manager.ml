@@ -57,7 +57,7 @@ let init_env () =
 let collect_token_amounts ctxt tickets =
   let accum (tokens, ctxt) ticket =
     let token, amount = Ticket_token.token_and_amount_of_ex_ticket ticket in
-    let tokens = (token, Script_int.to_zint amount) :: tokens in
+    let tokens = (token, Script_int.(to_zint (amount :> n num))) :: tokens in
     return (tokens, ctxt)
   in
   List.fold_left_es accum ([], ctxt) tickets

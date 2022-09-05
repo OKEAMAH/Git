@@ -26,8 +26,6 @@
 (** This module provides an API for extracting tickets of arbitrary types
     from an OCaml values, given a type-witness. *)
 
-type error += (* Permanent *) Forbidden_zero_ticket_quantity
-
 (** A type for representing existentially quantified tickets (tickets with
     different types of payloads). An [ex_ticket] value consists of:
      - A type-witness representing the type of the content of the ticket.

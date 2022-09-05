@@ -2109,10 +2109,13 @@ let rec parse_data :
         opened_ticket_type (location expr) t >>?= fun ty ->
         non_terminal_recursion ctxt ty expr
         >>=? fun (({destination; entrypoint = _}, (contents, amount)), ctxt) ->
-        match destination with
-        | Contract ticketer -> return ({ticketer; contents; amount}, ctxt)
-        | Tx_rollup _ | Sc_rollup _ ->
-            fail (Unexpected_ticket_owner destination)
+        match Ticket_amount.of_n amount with
+        | Some amount -> (
+            match destination with
+            | Contract ticketer -> return ({ticketer; contents; amount}, ctxt)
+            | Tx_rollup _ | Sc_rollup _ ->
+                fail (Unexpected_ticket_owner destination))
+        | None -> traced_fail Forbidden_zero_ticket_quantity
       else traced_fail (Unexpected_forged_value (location expr))
   (* Sets *)
   | Set_t (t, _ty_name), (Seq (loc, vs) as expr) ->

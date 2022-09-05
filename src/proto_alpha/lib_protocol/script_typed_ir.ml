@@ -217,7 +217,27 @@ module Script_timelock = struct
   let get_plaintext_size (Chest_tag x) = Timelock.get_plaintext_size x
 end
 
-type 'a ticket = {ticketer : Contract.t; contents : 'a; amount : n num}
+module Ticket_amount = struct
+  type t = n num
+
+  let of_n n =
+    if Compare.Int.(Script_int.(compare n zero_n) > 0) then Some (n : t)
+    else None
+
+  open Script_int
+
+  let of_z z = Option.bind (is_nat z) of_n
+
+  let add a b = add_n a b
+
+  let sub a b = of_z @@ sub a b
+
+  let one = one_n
+end
+
+type ticket_amount = Ticket_amount.t
+
+type 'a ticket = {ticketer : Contract.t; contents : 'a; amount : ticket_amount}
 
 module type TYPE_SIZE = sig
   (* A type size represents the size of its type parameter.

@@ -167,7 +167,23 @@ module Script_timelock : sig
   val get_plaintext_size : chest -> int
 end
 
-type 'a ticket = {ticketer : Contract.t; contents : 'a; amount : n num}
+module Ticket_amount : sig
+  type t = private n num
+
+  val of_n : n num -> t option
+
+  val of_z : z num -> t option
+
+  val add : t -> t -> t
+
+  val sub : t -> t -> t option
+
+  val one : t
+end
+
+type ticket_amount = Ticket_amount.t
+
+type 'a ticket = {ticketer : Contract.t; contents : 'a; amount : ticket_amount}
 
 type empty_cell = EmptyCell
 

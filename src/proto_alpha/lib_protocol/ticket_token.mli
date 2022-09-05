@@ -41,4 +41,4 @@ type ex_token =
 (** [token_and_amount_of_ex_ticket ex_ticket] returns the token and amount of
     the given ticket [ex_ticket]. *)
 val token_and_amount_of_ex_ticket :
-  Ticket_scanner.ex_ticket -> ex_token * Script_int.n Script_int.num
+  Ticket_scanner.ex_ticket -> ex_token * Script_typed_ir.ticket_amount

@@ -286,13 +286,14 @@ let transfer_ticket_tokens ctxt ~source_destination ~acc_storage_diff
     {Ticket_operations_diff.ticket_token; total_amount = _; destinations} =
   let open Lwt_tzresult_syntax in
   List.fold_left_es
-    (fun (acc_storage_diff, ctxt) (target_destination, amount) ->
+    (fun (acc_storage_diff, ctxt)
+         (target_destination, (amount : Script_typed_ir.ticket_amount)) ->
       let* storage_diff, ctxt =
         transfer_ticket_token
           ctxt
           ~source_destination
           ~target_destination
-          ~amount:(Script_int.to_zint amount)
+          ~amount:Script_int.(to_zint (amount :> n num))
           ticket_token
       in
       return (Z.(add acc_storage_diff storage_diff), ctxt))

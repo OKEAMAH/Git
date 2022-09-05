@@ -214,7 +214,9 @@ let chain_id_size = !!16 (* by Obj.reachable_words. *)
 
 (* [contents] is handled by the recursion scheme in [value_size]. *)
 let ticket_size {ticketer; contents = _; amount} =
-  h3w +! Contract.in_memory_size ticketer +! script_nat_size amount
+  h3w
+  +! Contract.in_memory_size ticketer
+  +! script_nat_size (amount :> Script_int.n Script_int.num)
 
 let chest_size chest =
   (*

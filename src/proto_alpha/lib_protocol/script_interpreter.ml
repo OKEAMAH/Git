@@ -1489,37 +1489,44 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let accu = aux witness stack in
           (step [@ocaml.tailcall]) g gas k ks accu stack
       (* Tickets *)
-      | ITicket_deprecated (loc, _, k) ->
+      | ITicket_deprecated (_, _, k) ->
           let contents = accu and amount, stack = stack in
-          if Compare.Int.(Script_int.(compare amount zero_n) = 0) then
-            fail (Ticket_amount_zero loc)
-          else
-            let ticketer = Contract.Originated sc.self in
-            let accu = {ticketer; contents; amount} in
-            (step [@ocaml.tailcall]) g gas k ks accu stack
-      | ITicket (_, _, k) ->
+          Option.value_e
+            ~error:
+              (Error_monad.trace_of_error
+                 Script_tc_errors.Forbidden_zero_ticket_quantity)
+          @@ Script_typed_ir.Ticket_amount.of_n amount
+          >>?= fun amount ->
+          let ticketer = Contract.Originated sc.self in
+          let accu = {ticketer; contents; amount} in
+          (step [@ocaml.tailcall]) g gas k ks accu stack
+      | ITicket (_, _, k) -> (
           let contents = accu and amount, stack = stack in
-          if Compare.Int.(Script_int.(compare amount zero_n) = 0) then
-            (step [@ocaml.tailcall]) g gas k ks None stack
-          else
-            let ticketer = Contract.Originated sc.self in
-            let accu = Some {ticketer; contents; amount} in
-            (step [@ocaml.tailcall]) g gas k ks accu stack
+          match Script_typed_ir.Ticket_amount.of_n amount with
+          | Some amount ->
+              let ticketer = Contract.Originated sc.self in
+              let accu = Some {ticketer; contents; amount} in
+              (step [@ocaml.tailcall]) g gas k ks accu stack
+          | None -> (step [@ocaml.tailcall]) g gas k ks None stack)
       | IRead_ticket (_, _, k) ->
           let {ticketer; contents; amount} = accu in
           let stack = (accu, stack) in
           let destination : Destination.t = Contract ticketer in
           let addr = {destination; entrypoint = Entrypoint.default} in
-          let accu = (addr, (contents, amount)) in
+          let accu =
+            (addr, (contents, (amount :> Script_int.n Script_int.num)))
+          in
           (step [@ocaml.tailcall]) g gas k ks accu stack
       | ISplit_ticket (_, k) ->
           let ticket = accu and (amount_a, amount_b), stack = stack in
           let result =
+            Option.bind (Ticket_amount.of_n amount_a) @@ fun amount_a ->
+            Option.bind (Ticket_amount.of_n amount_b) @@ fun amount_b ->
+            let amount = Ticket_amount.add amount_a amount_b in
             if
               Compare.Int.(
-                Script_int.(compare (add_n amount_a amount_b) ticket.amount) = 0)
-              && Compare.Int.(Script_int.(compare amount_a zero_n) > 0)
-              && Compare.Int.(Script_int.(compare amount_b zero_n) > 0)
+                Script_int.(compare (amount :> n num) (ticket.amount :> n num))
+                = 0)
             then
               Some
                 ( {ticket with amount = amount_a},
@@ -1543,7 +1550,7 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
                 {
                   ticketer = ticket_a.ticketer;
                   contents = ticket_a.contents;
-                  amount = Script_int.add_n ticket_a.amount ticket_b.amount;
+                  amount = Ticket_amount.add ticket_a.amount ticket_b.amount;
                 }
             else None
           in

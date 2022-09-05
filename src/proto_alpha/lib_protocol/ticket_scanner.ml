@@ -29,7 +29,6 @@ open Alpha_context
 type error +=
   | (* Permanent *) Unsupported_non_empty_overlay
   | (* Permanent *) Unsupported_type_operation
-  | (* Permanent *) Forbidden_zero_ticket_quantity
 
 let () =
   register_error_kind
@@ -51,16 +50,7 @@ let () =
       Format.fprintf ppf "Types embedding operations are not supported")
     Data_encoding.empty
     (function Unsupported_type_operation -> Some () | _ -> None)
-    (fun () -> Unsupported_type_operation) ;
-  register_error_kind
-    `Permanent
-    ~id:"forbidden_zero_amount_ticket"
-    ~title:"Zero ticket amount is not allowed"
-    ~description:
-      "It is not allowed to use a zero amount ticket in this operation."
-    Data_encoding.empty
-    (function Forbidden_zero_ticket_quantity -> Some () | _ -> None)
-    (fun () -> Forbidden_zero_ticket_quantity)
+    (fun () -> Unsupported_type_operation)
 
 type ex_ticket =
   | Ex_ticket :
@@ -415,11 +405,7 @@ module Ticket_collection = struct
           (tickets_of_big_map [@ocaml.tailcall]) ctxt val_hty key_ty x acc k
         else (k [@ocaml.tailcall]) ctxt acc
     | True_ht, Ticket_t (comp_ty, _) ->
-        let Script_typed_ir.{ticketer = _; contents = _; amount} = x in
-        fail_when
-          Compare.Int.(Script_int.compare amount Script_int.zero_n = 0)
-          Forbidden_zero_ticket_quantity
-        >>=? fun () -> (k [@ocaml.tailcall]) ctxt (Ex_ticket (comp_ty, x) :: acc)
+        (k [@ocaml.tailcall]) ctxt (Ex_ticket (comp_ty, x) :: acc)
 
   and tickets_of_list :
       type a ac ret.

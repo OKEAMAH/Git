@@ -24,6 +24,9 @@
 (*****************************************************************************)
 
 open Alpha_context
+module Ticket_amount = Script_typed_ir.Ticket_amount
+
+type ticket_amount = Script_typed_ir.ticket_amount
 
 type ticket_transfer = {
   destination : Destination.t;
@@ -33,7 +36,7 @@ type ticket_transfer = {
 type ticket_token_diff = {
   ticket_token : Ticket_token.ex_token;
   total_amount : Script_int.n Script_int.num;
-  destinations : (Destination.t * Script_int.n Script_int.num) list;
+  destinations : (Destination.t * ticket_amount) list;
 }
 
 type error += Failed_to_get_script of Contract.t | Contract_not_originated
@@ -115,7 +118,7 @@ module Ticket_token_map = struct
         - The internal contract-indexed map cannot be empty.
 
    *)
-  let add ctxt ~ticket_token ~destination ~amount map =
+  let add ctxt ~ticket_token ~destination ~(amount : ticket_amount) map =
     Ticket_token_map.update
       ctxt
       ticket_token
@@ -129,12 +132,15 @@ module Ticket_token_map = struct
             (* Update the inner contract map *)
             let update ctxt prev_amt_opt =
               match prev_amt_opt with
-              | Some prev_amount ->
+              | Some (prev_amount : ticket_amount) ->
                   Gas.consume
                     ctxt
-                    (Ticket_costs.add_int_cost prev_amount amount)
+                    Script_int.(
+                      Ticket_costs.add_int_cost
+                        (prev_amount :> n num)
+                        (amount :> n num))
                   >|? fun ctxt ->
-                  (Some (Script_int.add_n prev_amount amount), ctxt)
+                  (Some (Ticket_amount.add prev_amount amount), ctxt)
               | None -> ok (Some amount, ctxt)
             in
             Destination_map.update ctxt destination update destination_map
@@ -248,9 +254,13 @@ let ticket_diffs_of_operations ctxt operations =
          ticket-token. *)
       Destination_map.fold
         ctxt
-        (fun ctxt total_amount _destination amount ->
-          Gas.consume ctxt (Ticket_costs.add_int_cost total_amount amount)
-          >|? fun ctxt -> (Script_int.add_n total_amount amount, ctxt))
+        (fun ctxt total_amount _destination (amount : ticket_amount) ->
+          Gas.consume
+            ctxt
+            Script_int.(
+              Ticket_costs.add_int_cost total_amount (amount :> n num))
+          >|? fun ctxt ->
+          (Script_int.(add_n total_amount (amount :> n num)), ctxt))
         Script_int.zero_n
         destination_map
       >>? fun (total_amount, ctxt) ->

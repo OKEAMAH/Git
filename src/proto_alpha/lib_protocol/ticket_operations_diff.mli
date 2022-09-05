@@ -36,7 +36,7 @@ type ticket_token_diff = private {
   ticket_token : Ticket_token.ex_token;
   total_amount : Script_int.n Script_int.num;
   destinations :
-    (Alpha_context.Destination.t * Script_int.n Script_int.num) list;
+    (Alpha_context.Destination.t * Script_typed_ir.ticket_amount) list;
 }
 
 (** [ticket_diffs_of_operations ctxt ops] returns a

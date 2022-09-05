@@ -2848,7 +2848,7 @@ module Registration_section = struct
             Alpha_context.Contract.Implicit
               Environment.Signature.Public_key_hash.zero;
           contents = ();
-          amount = zero;
+          amount = Script_typed_ir.Ticket_amount.one;
         }
       in
       benchmark_with_fixed_stack
@@ -2869,6 +2869,13 @@ module Registration_section = struct
           fun () ->
             let half_amount = Samplers.Random_value.value nat rng_state in
             let amount = Script_int.add_n half_amount half_amount in
+            let amount =
+              let open Script_typed_ir.Ticket_amount in
+              let two = add one one in
+              match of_n amount with
+              | Some amount -> add two amount
+              | None -> add one one
+            in
             let ticket = Samplers.Random_value.value (ticket unit) rng_state in
             let ticket = {ticket with amount} in
             Ex_stack_and_kinstr
@@ -2903,7 +2910,7 @@ module Registration_section = struct
               {
                 ticket with
                 contents = Script_string.empty;
-                amount = Script_int.zero_n;
+                amount = Script_typed_ir.Ticket_amount.one;
               }
             in
             Ex_stack_and_kinstr
@@ -2925,7 +2932,13 @@ module Registration_section = struct
             let ticket =
               Samplers.Random_value.value (ticket string) rng_state
             in
-            let alt_amount = Samplers.Random_value.value nat rng_state in
+            let alt_amount =
+              let amount = Samplers.Random_value.value nat rng_state in
+              let open Script_typed_ir.Ticket_amount in
+              match of_n amount with
+              | Some amount -> add amount one
+              | None -> one
+            in
             let ticket' = {ticket with amount = alt_amount} in
             Ex_stack_and_kinstr
               {
