@@ -58,6 +58,7 @@ let light_failwith (pgi : Proxy.proxy_getter_input) ?(warn_symbolic = false) msg
       else "")
   in
   let* () = Logger.(emit failing full_msg) in
+  Stdlib.prerr_string @@ Format.sprintf "%s\n" full_msg ;
   failwith "%s" full_msg
 
 let get_core (module Light_proto : Light_proto.PROTO_RPCS)
@@ -237,7 +238,10 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                nb_endpoints
                (key_to_string key)
       | Some (mproof, validating_endpoints) -> (
+          let*! {root; _} = get_irmin () in
+          let root_old = root in
           let* {root; repo} = stage pgi key mproof in
+          Stdlib.prerr_string @@ Format.asprintf "ROOT BEFORE\n%a\nROOT AFTER\n%a" Store.Tree.pp root_old Store.Tree.pp root ;
           let*! () =
             Logger.(
               emit

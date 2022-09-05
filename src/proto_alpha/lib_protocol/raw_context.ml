@@ -764,17 +764,32 @@ let add_constants ctxt constants =
   in
   Context.add ctxt constants_key bytes
 
-let get_constants ctxt =
-  Context.find ctxt constants_key >|= function
-  | None -> failwith "Internal error: cannot read constants in context."
-  | Some bytes -> (
+let ( let* ) = Lwt_syntax.( let* )
+
+let ( and* ) = Lwt_syntax.( and* )
+
+let get_constants (over_ctxt : Context.t) =
+  let (Context {ops = (module Ops); ctxt; _}) = over_ctxt in
+  let* constants_opt = Context.find over_ctxt constants_key
+  and* tree = Ops.find_tree ctxt [] in
+  Lwt.return (constants_opt, tree) >|= function
+  | None, Some tree ->
+      failwith
+      @@ Format.asprintf
+           "Internal error: cannot read constants in context.\n%a"
+           Ops.Tree.pp
+           tree
+  | Some bytes, Some tree -> (
       match
         Data_encoding.Binary.of_bytes_opt
           Constants_parametric_repr.encoding
           bytes
       with
       | None -> failwith "Internal error: cannot parse constants in context."
-      | Some constants -> ok constants)
+      | Some constants ->
+        Logging.log Logging.Warning "Found constants:\n%a" Ops.Tree.pp tree ;
+        ok constants)
+  | _ -> failwith "FATAL: NO TREE"
 
 let patch_constants ctxt f =
   let constants = f (constants ctxt) in

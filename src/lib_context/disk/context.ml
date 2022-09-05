@@ -440,6 +440,7 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
     Proof.Hash (merkle_hash_kind, hash_str)
 
   let merkle_tree t leaf_kind key =
+    Stdlib.prerr_string @@ "Entering merkle_tree v1" ;
     let open Lwt_syntax in
     let* subtree_opt = Store.Tree.find_tree t.tree (data_key []) in
     match subtree_opt with
@@ -531,10 +532,12 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
     Storelike : Tezos_context_sigs.Context.Storelike))
 
   let merkle_tree_v2 ctx leaf_kind key =
+    Stdlib.prerr_string @@ "Entering merkle_tree v2\n" ;
     let open Lwt_syntax in
     match Tree.kinded_key ctx.tree with
     | None -> raise (Invalid_argument "On-disk context.tree has no kinded_key")
     | Some kinded_key ->
+        Stdlib.prerr_string @@ Format.asprintf "tree is\n%a\n" Tree.pp ctx.tree ;
         let* proof, _ =
           produce_tree_proof
             ctx.index

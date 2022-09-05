@@ -873,13 +873,17 @@ module With_get_data (Store : Storelike) = struct
       (Store.t * (Store.key * (Store.tree, Store.value) Either.t Option.t) list)
       Lwt.t =
     let open Lwt_syntax in
+    Stdlib.prerr_string "start get_data\n" ;
     let find k =
+      Stdlib.prerr_string @@ Format.asprintf "searching data for %s\n" (String.concat "/" k) ;
       match leaf_kind with
       | Proof_types.Hole -> return [(k, None)]
       | Proof_types.Raw_context -> (
           let* val_o = Store.find tree k and* tree_o = Store.find_tree tree k in
           match (val_o, tree_o) with
-          | Some value, _ -> return [(k, Some (Either.Right value))]
+          | Some value, _ ->
+            Stdlib.prerr_string @@ Format.asprintf "found data for %s\n" (String.concat "/" k) ;
+            return [(k, Some (Either.Right value))]
           | _, Some tree -> return [(k, Some (Either.Left tree))]
           | _ -> return [])
     in
