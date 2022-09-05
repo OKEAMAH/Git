@@ -3034,6 +3034,25 @@ let test_migration_node_running ~kind ~migration_level ~migrate_from ~migrate_to
     ~scenario_after
     {tags; variant; description}
 
+(* Test to continue to send messages after a migration. *)
+let test_migration_send_messages ~kind ~migration_level ~migrate_from
+    ~migrate_to ~description =
+  let tags = ["message"; "inbox"]
+  and variant = "Sending message post-migration."
+  and scenario_prior tezos_client ~sc_rollup _sc_rollup_node =
+    send_messages 10 sc_rollup tezos_client
+  and scenario_after tezos_client ~sc_rollup _sc_rollup_node () =
+    send_messages 10 sc_rollup tezos_client
+  in
+  test_migration_scenario
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    {tags; variant; description}
+
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -3192,6 +3211,12 @@ let register_migration ~migrate_from ~migrate_to =
   let blocks_per_cycle = JSON.(get "blocks_per_cycle" parameters |> as_int) in
   let migration_level = blocks_per_cycle in
   test_migration_node_running
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~description ;
+  test_migration_send_messages
     ~kind
     ~migration_level
     ~migrate_from
