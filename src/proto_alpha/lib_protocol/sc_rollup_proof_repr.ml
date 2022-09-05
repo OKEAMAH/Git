@@ -92,11 +92,16 @@ let check p reason =
   let open Lwt_tzresult_syntax in
   if p then return () else proof_error reason
 
-let check_inbox_proof snapshot serialized_inbox_proof (level, counter) =
+let check_inbox_proof snapshot commit_level serialized_inbox_proof
+    (level, counter) =
   match Sc_rollup_inbox_repr.of_serialized_proof serialized_inbox_proof with
   | None -> fail Sc_rollup_invalid_serialized_inbox_proof
   | Some inbox_proof ->
-      Sc_rollup_inbox_repr.verify_proof (level, counter) snapshot inbox_proof
+      Sc_rollup_inbox_repr.verify_proof
+        ~commit_level
+        (level, counter)
+        snapshot
+        inbox_proof
 
 let pp_proof fmt serialized_inbox_proof =
   match Sc_rollup_inbox_repr.of_serialized_proof serialized_inbox_proof with
@@ -115,9 +120,17 @@ let valid snapshot commit_level ~pvm_name proof =
     match (input_requested, proof.inbox) with
     | No_input_required, None -> return None
     | Initial, Some inbox_proof ->
-        check_inbox_proof snapshot inbox_proof (Raw_level_repr.root, Z.zero)
+        check_inbox_proof
+          snapshot
+          commit_level
+          inbox_proof
+          (Raw_level_repr.root, Z.zero)
     | First_after (level, counter), Some inbox_proof ->
-        check_inbox_proof snapshot inbox_proof (level, Z.succ counter)
+        check_inbox_proof
+          snapshot
+          commit_level
+          inbox_proof
+          (level, Z.succ counter)
     | No_input_required, Some _ | Initial, None | First_after _, None ->
         proof_error
           (Format.asprintf
@@ -170,12 +183,18 @@ let produce pvm_and_state commit_level =
     | Initial ->
         let* p, i =
           Inbox_with_history.(
-            produce_proof context history inbox (Raw_level_repr.root, Z.zero))
+            produce_proof
+              ~commit_level
+              context
+              history
+              inbox
+              (Raw_level_repr.root, Z.zero))
         in
         return (Some (Inbox_with_history.to_serialized_proof p), i)
     | First_after (l, n) ->
         let* p, i =
-          Inbox_with_history.(produce_proof context history inbox (l, Z.succ n))
+          Inbox_with_history.(
+            produce_proof ~commit_level context history inbox (l, Z.succ n))
         in
         return (Some (Inbox_with_history.to_serialized_proof p), i)
   in

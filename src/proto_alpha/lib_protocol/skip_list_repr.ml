@@ -79,7 +79,7 @@ module type S = sig
     deref:('ptr -> ('content, 'ptr) cell option) ->
     compare:('content -> int Lwt.t) ->
     cell_ptr:'ptr ->
-    'ptr list option Lwt.t
+    (bool * 'ptr list) option Lwt.t
 end
 
 module Make (Parameters : sig
@@ -328,12 +328,12 @@ end) : S = struct
       let*! comparison = compare candidate_cell.content in
       if Compare.Int.(comparison = 0) then
         (* In this case, we have reached our target cell. *)
-        return (List.rev (candidate_ptr :: ptr :: path))
+        return (true, List.rev (candidate_ptr :: ptr :: path))
       else if Compare.Int.(comparison < 0) then
         if Compare.Int.(ix = 0) then
           (* If the first back pointer is 'too far' ([comparison < 0]),
              that means we won't find a valid target cell. *)
-          fail
+          return (false, List.rev (candidate_ptr :: ptr :: path))
         else
           (* If a back pointer other than the first is 'too far'
              we can then backtrack to the previous back pointer. *)
@@ -352,6 +352,6 @@ end) : S = struct
     let*! comparison = compare cell.content in
     (* We must check that we aren't already at the target cell before
        starting the recursion. *)
-    if Compare.Int.(comparison = 0) then return [cell_ptr]
+    if Compare.Int.(comparison = 0) then return (true, [cell_ptr])
     else aux [] cell_ptr 0
 end

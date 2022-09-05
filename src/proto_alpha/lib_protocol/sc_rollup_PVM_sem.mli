@@ -44,6 +44,8 @@
       of truth about the nature of these messages).
 *)
 
+type payload = Inbox of Sc_rollup_inbox_message_repr.serialized | EOL
+
 (** An input to a PVM is the [message_counter] element of an inbox at
     a given [inbox_level] and contains a given [payload].
 
@@ -53,7 +55,7 @@
 type input = {
   inbox_level : Raw_level_repr.t;
   message_counter : Z.t;
-  payload : Sc_rollup_inbox_message_repr.serialized;
+  payload : payload;
 }
 
 (** [input_encoding] encoding value for {!input}. *)

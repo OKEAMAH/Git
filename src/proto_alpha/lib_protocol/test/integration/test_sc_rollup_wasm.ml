@@ -231,7 +231,7 @@ let arbitrary_input i payload =
         {
           inbox_level = Raw_level.of_int32_exn 0l;
           message_counter = Z.of_int i;
-          payload;
+          payload = Inbox payload;
         }
   | Error err ->
       Format.printf "%a@," Environment.Error_monad.pp_trace err ;

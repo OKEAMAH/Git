@@ -163,14 +163,16 @@ struct
         let t = (2 * j) + 1 in
         (match search l i t with
         | None -> return ()
-        | Some _path ->
-            fail
-              (err
-                 (Printf.sprintf
-                    "There should be no search path connecting %d to a node \
-                     with content %d"
-                    i
-                    t)))
+        | Some (is_exact, _path) ->
+            if not is_exact then return ()
+            else
+              fail
+                (err
+                   (Printf.sprintf
+                      "There should be no search path connecting %d to a node \
+                       with content %d"
+                      i
+                      t)))
         >>=? fun () -> aux (j + 1)
     in
     aux 0
@@ -225,7 +227,7 @@ let test_skip_list_nat_check_path_with_search (basis, i, j) =
   let module M = TestNat (struct
     let basis = basis
   end) in
-  M.check_path i j (fun l i j -> M.search l i (j * 2))
+  M.check_path i j (fun l i j -> M.search l i (j * 2) |> Option.map snd)
 
 let test_skip_list_nat_check_invalid_path_with_search (basis, i) =
   let module M = TestNat (struct

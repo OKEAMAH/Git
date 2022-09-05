@@ -333,29 +333,71 @@ let payload_string msg =
   Sc_rollup_inbox_message_repr.unsafe_of_string
     (Bytes.to_string (encode_external_message msg))
 
+let pp_input fmt = function
+  | Some Sc_rollup_PVM_sem.{inbox_level; message_counter; payload = Inbox _} ->
+      Format.fprintf
+        fmt
+        "%a;%a (INBOX)"
+        Raw_level_repr.pp
+        inbox_level
+        Z.pp_print
+        message_counter
+  | Some Sc_rollup_PVM_sem.{inbox_level; message_counter; payload = EOL} ->
+      Format.fprintf
+        fmt
+        "%a;%a (EOL)"
+        Raw_level_repr.pp
+        inbox_level
+        Z.pp_print
+        message_counter
+  | None -> Format.fprintf fmt "None"
+
 let next_input ps l n =
   let ( let* ) = Option.bind in
   let* level = List.nth ps (level_to_int l) in
+  Format.eprintf
+    "DEBUG: l(ps): %d; ilevel: %a; length: %d; position %a@."
+    (List.length ps)
+    Raw_level_repr.pp
+    l
+    (List.length level)
+    Z.pp_print
+    n ;
   match List.nth level (Z.to_int n) with
   | Some msg ->
-      let payload = payload_string msg in
+      let payload = Sc_rollup_PVM_sem.Inbox (payload_string msg) in
       Some Sc_rollup_PVM_sem.{inbox_level = l; message_counter = n; payload}
-  | None ->
-      let rec aux l =
-        let* payloads = List.nth ps l in
-        match List.hd payloads with
-        | Some msg ->
-            let payload = payload_string msg in
-            Some
-              Sc_rollup_PVM_sem.
-                {
-                  inbox_level = level_of_int l;
-                  message_counter = Z.zero;
-                  payload;
-                }
-        | None -> aux (l + 1)
-      in
-      aux (level_to_int l + 1)
+  | None -> (
+      if List.length level = Z.to_int n then
+        (* EOL *)
+        Some
+          Sc_rollup_PVM_sem.
+            {inbox_level = l; message_counter = n; payload = EOL}
+      else
+        match List.nth ps (1 + level_to_int l) with
+        | None ->
+            (* No messages after EOL *)
+            None
+        | Some level' -> (
+            match List.hd level' with
+            | None ->
+                (* Next message is EOL because inbox is empty *)
+                Some
+                  Sc_rollup_PVM_sem.
+                    {
+                      inbox_level = Raw_level_repr.succ l;
+                      message_counter = Z.zero;
+                      payload = EOL;
+                    }
+            | Some msg ->
+                let payload = Sc_rollup_PVM_sem.Inbox (payload_string msg) in
+                Some
+                  Sc_rollup_PVM_sem.
+                    {
+                      inbox_level = Raw_level_repr.succ l;
+                      message_counter = Z.zero;
+                      payload;
+                    }))
 
 let test_inbox_proof_production (list_of_payloads, l, n) =
   (* We begin with a Node inbox so we can produce a proof. *)
@@ -367,10 +409,15 @@ let test_inbox_proof_production (list_of_payloads, l, n) =
     Node.form_history_proof ctxt history inbox (Some current_level_tree)
     >|= Environment.wrap_tzresult
   in
+  let commit_level =
+    Raw_level_repr.of_int32_exn
+      (Int32.of_int (List.length list_of_payloads - 1))
+  in
   let*! result =
-    Node.produce_proof ctxt history history_proof (l, n)
+    Node.produce_proof ~commit_level ctxt history history_proof (l, n)
     >|= Environment.wrap_tzresult
   in
+  Format.eprintf "EXP: %a@." pp_input exp_input ;
   match result with
   | Ok (proof, input) -> (
       (* We now switch to a protocol inbox built from the same messages
@@ -380,15 +427,30 @@ let test_inbox_proof_production (list_of_payloads, l, n) =
       let snapshot = take_snapshot inbox in
       let proof = node_proof_to_protocol_proof proof in
       let*! verification =
-        verify_proof (l, n) snapshot proof >|= Environment.wrap_tzresult
+        verify_proof ~commit_level (l, n) snapshot proof
+        >|= Environment.wrap_tzresult
       in
+      Format.eprintf "INPUT: %a@." pp_input input ;
       match verification with
       | Ok v_input ->
+          Format.eprintf "V_INPUT: %a@." pp_input v_input ;
+          let x =
+            if not (v_input = input && v_input = exp_input) then "A" else "B"
+          in
+          Format.eprintf
+            "V/I: %b; V/E: %b %s@."
+            (v_input = input)
+            (v_input = exp_input)
+            x ;
           fail_unless
             (v_input = input && v_input = exp_input)
             (err "Proof verified but did not match")
-      | Error _ -> fail [err "Proof verification failed"])
-  | Error _ -> fail [err "Proof production failed"]
+      | Error e ->
+          Format.eprintf "%a@." pp_print_trace e ;
+          fail [err "Proof verification failed"])
+  | Error e ->
+      Format.eprintf "%a@." pp_print_trace e ;
+      fail [err "Proof production failed"]
 
 let test_inbox_proof_verification (list_of_payloads, l, n) =
   (* We begin with a Node inbox so we can produce a proof. *)
@@ -399,7 +461,9 @@ let test_inbox_proof_verification (list_of_payloads, l, n) =
     Node.form_history_proof ctxt history inbox (Some current_level_tree)
     >|= Environment.wrap_tzresult
   in
-  let*! result = Node.produce_proof ctxt history history_proof (l, n) in
+  let*! result =
+    Node.produce_proof ~commit_level:l ctxt history history_proof (l, n)
+  in
   match result with
   | Ok (proof, _input) -> (
       (* We now switch to a protocol inbox built from the same messages
@@ -412,7 +476,8 @@ let test_inbox_proof_verification (list_of_payloads, l, n) =
           let snapshot = take_snapshot inbox in
           let proof = node_proof_to_protocol_proof proof in
           let*! verification =
-            verify_proof (l, n) snapshot proof >|= Environment.wrap_tzresult
+            verify_proof ~commit_level:l (l, n) snapshot proof
+            >|= Environment.wrap_tzresult
           in
           match verification with
           | Ok _ -> fail [err "Proof should not be valid"]
@@ -431,7 +496,12 @@ let test_empty_inbox_proof (level, n) =
     >|= Environment.wrap_tzresult
   in
   let*! result =
-    Node.produce_proof ctxt history history_proof (Raw_level_repr.root, n)
+    Node.produce_proof
+      ~commit_level:Raw_level_repr.root
+      ctxt
+      history
+      history_proof
+      (Raw_level_repr.root, n)
     >|= Environment.wrap_tzresult
   in
   match result with
@@ -443,7 +513,11 @@ let test_empty_inbox_proof (level, n) =
       let snapshot = take_snapshot inbox in
       let proof = node_proof_to_protocol_proof proof in
       let*! verification =
-        verify_proof (Raw_level_repr.root, n) snapshot proof
+        verify_proof
+          ~commit_level:Raw_level_repr.root
+          (Raw_level_repr.root, n)
+          snapshot
+          proof
         >|= Environment.wrap_tzresult
       in
       match verification with
@@ -451,7 +525,9 @@ let test_empty_inbox_proof (level, n) =
           fail_unless
             (v_input = input && v_input = None)
             (err "Proof verified but did not match")
-      | Error _ -> fail [err "Proof verification failed"])
+      | Error e ->
+          Format.eprintf "%a@." pp_print_trace e ;
+          fail [err "Proof verification failed"])
   | Error _ -> fail [err "Proof production failed"]
 
 (** This helper function initializes inboxes and histories with different

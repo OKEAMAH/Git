@@ -372,6 +372,7 @@ module type Merkelized_operations = sig
       [verify_proof starting_point inbox proof] will return the third
       parameter of the proof, [message], iff the proof is valid. *)
   val verify_proof :
+    commit_level:Raw_level_repr.t ->
     Raw_level_repr.t * Z.t ->
     history_proof ->
     proof ->
@@ -383,6 +384,7 @@ module type Merkelized_operations = sig
       sufficient data (it needs to be run on an [inbox_context] with the
       full history). *)
   val produce_proof :
+    commit_level:Raw_level_repr.t ->
     inbox_context ->
     History.t ->
     history_proof ->

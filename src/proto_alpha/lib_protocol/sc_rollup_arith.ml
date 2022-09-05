@@ -850,13 +850,19 @@ module Make (Context : P) :
   let set_input_monadic {PS.inbox_level; message_counter; payload} =
     let open Monad.Syntax in
     let payload =
-      match Sc_rollup_inbox_message_repr.deserialize payload with
-      | Error _ -> None
-      | Ok (External payload) -> Some payload
-      | Ok (Internal {payload; _}) -> (
-          match Micheline.root payload with
-          | String (_, payload) -> Some payload
-          | _ -> None)
+      match payload with
+      | EOL ->
+          (* For this PVM, semantics of EOL is to do nothing. It
+             could be refined for test purposes. *)
+          None
+      | Inbox payload -> (
+          match Sc_rollup_inbox_message_repr.deserialize payload with
+          | Error _ -> None
+          | Ok (External payload) -> Some payload
+          | Ok (Internal {payload; _}) -> (
+              match Micheline.root payload with
+              | String (_, payload) -> Some payload
+              | _ -> None))
     in
     match payload with
     | Some payload ->

@@ -908,7 +908,7 @@ module Arith_test_pvm = struct
     state_hash state
 
   let mk_input level message_counter msg =
-    let payload = make_external_inbox_message msg in
+    let payload = Inbox (make_external_inbox_message msg) in
     let level = Int32.of_int level in
     {payload; message_counter; inbox_level = Raw_level.of_int32_exn level}
 
