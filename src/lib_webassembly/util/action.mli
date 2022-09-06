@@ -52,6 +52,10 @@ type 'a t
     [Exceeded_max_num_steps] is thrown. *)
 val run : ?max_num_steps:int -> 'a t -> 'a Lwt.t
 
+(** [weighted ~steps x] attaches a weight to the given computation [x]. That
+    means executing it consumes [steps] more. *)
+val weighted : steps:int -> 'a t -> 'a t
+
 (** [return x] an action that always produces [x]. *)
 val return : 'a -> 'a t
 

@@ -35,10 +35,10 @@ let run ?max_num_steps (Run run) =
 let return x = Run (fun n -> Lwt.return (x, n))
 
 (* Decrement the remaining step budget if a budget exists. *)
-let consume_step = function
+let consume_step ?(steps = 1) = function
   | None -> None
-  | Some n when n <= 0 -> raise Exceeded_max_num_steps
-  | Some n -> Some (n - 1)
+  | Some n when n < steps -> raise Exceeded_max_num_steps
+  | Some n -> Some (n - steps)
 
 let map f (Run run) =
   Run
@@ -55,6 +55,14 @@ let bind (Run run) f =
       let rem_steps = consume_step rem_steps in
       let (Run run) = f x in
       run rem_steps)
+
+let weighted ~steps f =
+  Run
+    (fun rem_steps ->
+      let open Lwt.Syntax in
+      let (Run run) = f in
+      let+ x, rem_steps = run rem_steps in
+      (x, consume_step ~steps rem_steps))
 
 let both m1 m2 = bind m1 (fun x -> bind m2 (fun y -> return (x, y)))
 
