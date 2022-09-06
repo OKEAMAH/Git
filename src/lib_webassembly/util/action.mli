@@ -68,6 +68,6 @@ module Syntax : sig
 end
 
 module Internal_for_tests : sig
-  (** Same as [run] but returns the number of steps. *)
+  (** Same as [run] but allow running [max_int] steps. Returns the number of steps used. *)
   val run : 'a t -> ('a * int) Lwt.t
 end
