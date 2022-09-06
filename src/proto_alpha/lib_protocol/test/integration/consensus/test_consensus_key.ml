@@ -92,7 +92,7 @@ let reveal_manager_key blk pk =
   Op.revelation (B blk) pk >>=? fun reveal_op ->
   Block.bake ~operation:reveal_op blk
 
-let drain_delegate ~policy blk ~consensus_key ~delegate ~destination
+let drain_delegate ~policy blk consensus_key delegate destination
     expected_final_balance =
   Op.drain_delegate (B blk) ~consensus_key ~delegate ~destination
   >>=? fun drain_del ->
@@ -105,7 +105,7 @@ let drain_delegate ~policy blk ~consensus_key ~delegate ~destination
 let get_first_2_accounts_contracts (a1, a2) =
   ((a1, Context.Contract.pkh a1), (a2, Context.Contract.pkh a2))
 
-let test_drain_delegate ~exclude_ck ~ck_delegates () =
+let test_drain_delegate_scenario f =
   Context.init_with_constants2 constants >>=? fun (genesis, contracts) ->
   let (_contract1, account1_pkh), (_contract2, account2_pkh) =
     get_first_2_accounts_contracts contracts
@@ -115,42 +115,126 @@ let test_drain_delegate ~exclude_ck ~ck_delegates () =
   let consensus_pk = consensus_account.pk in
   let consensus_pkh = consensus_account.pkh in
   transfer_tokens genesis account2_pkh consensus_pkh Tez.one_mutez
-  >>=? fun blk ->
-  update_consensus_key blk delegate consensus_pk >>=? fun blk' ->
-  let policy, expected_final_balance =
-    if exclude_ck then (Block.Excluding [consensus_pkh], Tez.zero)
-    else (Block.By_account delegate, Tez.one)
-  in
-  (if ck_delegates then
-   reveal_manager_key blk' consensus_pk >>=? fun blk' ->
-   delegate_stake blk' consensus_pkh delegate
-  else return blk')
   >>=? fun blk' ->
-  drain_delegate
-    ~policy
-    blk'
-    ~consensus_key:consensus_pkh
-    ~delegate
-    ~destination:consensus_pkh
-    expected_final_balance
+  update_consensus_key blk' delegate consensus_pk >>=? fun blk' ->
+  f blk' consensus_pkh consensus_pk delegate
+
+let test_drain_delegate ~low_balance ~exclude_ck ~ck_delegates () =
+  test_drain_delegate_scenario (fun blk consensus_pkh consensus_pk delegate ->
+      let policy =
+        if exclude_ck then Block.Excluding [consensus_pkh]
+        else Block.By_account delegate
+      in
+      (if ck_delegates then
+       reveal_manager_key blk consensus_pk >>=? fun blk ->
+       delegate_stake blk consensus_pkh delegate
+      else return blk)
+      >>=? fun blk ->
+      Context.Contract.balance (B blk) (Contract.Implicit delegate)
+      >>=? fun delegate_balance ->
+      (if low_balance then
+       transfer_tokens blk delegate consensus_pkh delegate_balance
+       >>=? fun blk ->
+       transfer_tokens blk consensus_pkh delegate Tez.(of_mutez_exn 1_000_000L)
+      else return blk)
+      >>=? fun blk ->
+      Context.Contract.balance (B blk) (Contract.Implicit delegate)
+      >>=? fun delegate_balance ->
+      let expected_final_balance =
+        if exclude_ck then Tez.zero
+        else Tez.(max one (div_exn delegate_balance 100))
+      in
+      drain_delegate
+        ~policy
+        blk
+        consensus_pkh
+        delegate
+        consensus_pkh
+        expected_final_balance)
+
+let test_drain_empty_delegate ~exclude_ck () =
+  test_drain_delegate_scenario (fun blk consensus_pkh _consensus_pk delegate ->
+      let policy =
+        if exclude_ck then Block.Excluding [consensus_pkh]
+        else Block.By_account delegate
+      in
+      Context.Contract.balance (B blk) (Contract.Implicit delegate)
+      >>=? fun delegate_balance ->
+      transfer_tokens blk delegate consensus_pkh delegate_balance
+      >>=? fun blk ->
+      drain_delegate ~policy blk consensus_pkh delegate consensus_pkh Tez.zero
+      >>= fun res ->
+      Assert.proto_error_with_info
+        ~loc:__LOC__
+        res
+        "Drain delegate without enough balance for allocation burn or drain \
+         fees")
 
 let tests =
   Tztest.
     [
       tztest
-        "test drain delegate excluding ck, ck delegates"
+        "test drain delegate high balance, excluding ck, ck delegates"
         `Quick
-        (test_drain_delegate ~exclude_ck:true ~ck_delegates:true);
+        (test_drain_delegate
+           ~low_balance:false
+           ~exclude_ck:true
+           ~ck_delegates:true);
       tztest
-        "test drain delegate excluding ck, ck does not delegates"
+        "test drain delegate high balance, excluding ck, ck does not delegate"
         `Quick
-        (test_drain_delegate ~exclude_ck:true ~ck_delegates:false);
+        (test_drain_delegate
+           ~low_balance:false
+           ~exclude_ck:true
+           ~ck_delegates:false);
       tztest
-        "test drain delegate with ck, ck delegates"
+        "test drain delegate high balance, with ck, ck delegates"
         `Quick
-        (test_drain_delegate ~exclude_ck:false ~ck_delegates:true);
+        (test_drain_delegate
+           ~low_balance:false
+           ~exclude_ck:false
+           ~ck_delegates:true);
       tztest
-        "test drain delegate with ck, ck does not delegates"
+        "test drain delegate high balance, with ck, ck does not delegate"
         `Quick
-        (test_drain_delegate ~exclude_ck:false ~ck_delegates:false);
+        (test_drain_delegate
+           ~low_balance:false
+           ~exclude_ck:false
+           ~ck_delegates:false);
+      tztest
+        "test drain delegate low balance, excluding ck, ck delegates"
+        `Quick
+        (test_drain_delegate
+           ~low_balance:true
+           ~exclude_ck:true
+           ~ck_delegates:true);
+      tztest
+        "test drain delegate low balance, excluding ck, ck does not delegate"
+        `Quick
+        (test_drain_delegate
+           ~low_balance:true
+           ~exclude_ck:true
+           ~ck_delegates:false);
+      tztest
+        "test drain delegate low balance, with ck, ck delegates"
+        `Quick
+        (test_drain_delegate
+           ~low_balance:true
+           ~exclude_ck:false
+           ~ck_delegates:true);
+      tztest
+        "test drain delegate low balance, with ck, ck does not delegate"
+        `Quick
+        (test_drain_delegate
+           ~low_balance:true
+           ~exclude_ck:false
+           ~ck_delegates:false);
+      tztest
+        "test empty drain delegate excluding ck"
+        `Quick
+        (test_drain_empty_delegate ~exclude_ck:true);
+      tztest
+        "test empty drain delegate with ck"
+        `Quick
+        (test_drain_empty_delegate ~exclude_ck:false);
     ]
