@@ -43,6 +43,8 @@ type tick_state =
   | Eval of Wasm.Eval.config
   | Stuck of Wasm_pvm_errors.t
 
+let max_top_level_call = Z.of_int Int.max_int
+
 type pvm_state = {
   last_input_info : Wasm_pvm_sig.input_info option;
       (** Info about last read input. *)
@@ -53,6 +55,7 @@ type pvm_state = {
   tick_state : tick_state;  (** The current tick state. *)
   input_request : Wasm_pvm_sig.input_request;
       (** Signals whether or not the PVM needs input. *)
+  last_top_level_call : Z.t;
 }
 
 module Make (T : Tree_encoding.TREE) :
@@ -131,7 +134,8 @@ struct
                kernel,
                module_reg,
                tick_state,
-               input_request ) ->
+               input_request,
+               last_top_level_call ) ->
           {
             last_input_info;
             current_tick;
@@ -139,6 +143,7 @@ struct
             module_reg;
             tick_state;
             input_request;
+            last_top_level_call;
           })
         (fun {
                last_input_info;
@@ -147,36 +152,47 @@ struct
                module_reg;
                tick_state;
                input_request;
+               last_top_level_call;
              } ->
           ( last_input_info,
             current_tick,
             kernel,
             module_reg,
             tick_state,
-            input_request ))
-        (tup6
+            input_request,
+            last_top_level_call ))
+        (tup7
            ~flatten:true
            (value_option ["wasm"; "input"] Wasm_pvm_sig.input_info_encoding)
            (value ~default:Z.zero ["wasm"; "current_tick"] Data_encoding.n)
            (scope ["durable"; "kernel"; "boot.wasm"] chunked_byte_vector)
            (scope ["modules"] Wasm_encoding.module_instances_encoding)
            (scope ["wasm"] tick_state_encoding)
-           (scope ["input"; "consuming"] input_request_encoding))
+           (scope ["input"; "consuming"] input_request_encoding)
+           (value
+              ~default:Z.zero
+              ["wasm"; "last_top_level_call"]
+              Data_encoding.n))
 
-    let unsafe_next_tick_state {module_reg; kernel; tick_state; _} =
+    let unsafe_next_tick_state
+        {module_reg; kernel; tick_state; last_top_level_call; current_tick; _} =
       let open Lwt_syntax in
+      let return_state ?(restarted = false) state =
+        Lwt.return (state, restarted)
+      in
+      let top_level_tick = Z.sub current_tick last_top_level_call in
       match tick_state with
       | Decode {module_kont = MKStop ast_module; _} ->
           let self = Wasm.Instance.Module_key wasm_main_module_name in
           (* The module instance is registered in [self] that contains the
              module registry, why we can ignore the result here. *)
-          Lwt.return (Init {self; ast_module; init_kont = IK_Start})
+          return_state (Init {self; ast_module; init_kont = IK_Start})
       | Decode m ->
-          let+ m = Tezos_webassembly_interpreter.Decode.module_step kernel m in
-          Decode m
+          let* m = Tezos_webassembly_interpreter.Decode.module_step kernel m in
+          return_state (Decode m)
       | Init {self; ast_module = _; init_kont = IK_Stop _module_inst} ->
           let eval_config = Wasm.Eval.config host_funcs self [] [] in
-          Lwt.return (Eval eval_config)
+          return_state (Eval eval_config)
       | Init {self; ast_module; init_kont} ->
           let* init_kont =
             Wasm.Eval.init_step
@@ -187,10 +203,10 @@ struct
               []
               init_kont
           in
-          Lwt.return (Init {self; ast_module; init_kont})
+          return_state (Init {self; ast_module; init_kont})
       | Eval ({Wasm.Eval.frame; code; _} as eval_config) -> (
           match code with
-          | _values, [] -> (
+          | _values, [] when Z.equal top_level_tick max_top_level_call -> (
               (* We have an empty set of admin instructions so we create one
                  that invokes the main function. *)
               let* module_inst =
@@ -220,19 +236,20 @@ struct
                       code;
                     }
                   in
-                  Lwt.return (Eval eval_config)
+                  return_state ~restarted:true (Eval eval_config)
               | _ ->
                   (* We require a function with the name [main] to be exported
                      rather than any other structure. *)
-                  Lwt.return
+                  return_state
                     (Stuck
                        (Invalid_state
                           "Invalid_module: no `main` function exported")))
+          | _values, [] -> return_state (Eval eval_config)
           | _ ->
               (* Continue execution. *)
               let* eval_config = Wasm.Eval.step module_reg eval_config in
-              Lwt.return (Eval eval_config))
-      | Stuck e -> Lwt.return (Stuck e)
+              return_state (Eval eval_config))
+      | Stuck e -> return_state (Stuck e)
 
     let next_tick_state pvm_state =
       let to_stuck exn =
@@ -246,22 +263,42 @@ struct
             | Stuck _ -> Unknown_error error.raw_exception
           else Unknown_error error.raw_exception
         in
-        Lwt.return (Stuck wasm_error)
+        Lwt.return (Stuck wasm_error, true)
       in
       Lwt.catch (fun () -> unsafe_next_tick_state pvm_state) to_stuck
 
     let compute_step tree =
       let open Lwt_syntax in
       let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
+      let exceeded_top_level_call =
+        Z.(
+          gt
+            (sub pvm_state.current_tick pvm_state.last_top_level_call)
+            max_top_level_call)
+      in
       (* Calculate the next tick state. *)
-      let* tick_state = next_tick_state pvm_state in
+      let* tick_state, restarted =
+        if exceeded_top_level_call then
+          let msg = "Exceeded maximum number of ticks for a top-level call" in
+          Lwt.return
+            ( Stuck (Eval_error {raw_exception = msg; explanation = Some msg}),
+              true )
+        else next_tick_state pvm_state
+      in
       let input_request =
-        match pvm_state.tick_state with
-        | Eval {code = _, []; _} | Stuck _ ->
+        match tick_state with
+        | Eval {code = _, []; _} when restarted ->
             (* Ask for more input if the kernel has yielded (empty admin
-               instructions). *)
+               instructions) and is not in the no-op phase. *)
+            Wasm_pvm_sig.Input_required
+        | Stuck _ ->
+            (* Ask for more input if the PVM is stuck. *)
             Wasm_pvm_sig.Input_required
         | _ -> Wasm_pvm_sig.No_input_required
+      in
+      let last_top_level_call =
+        if restarted then Z.succ pvm_state.current_tick
+        else pvm_state.last_top_level_call
       in
       (* Update the tick state and input-request and increment the current tick *)
       let pvm_state =
@@ -270,6 +307,7 @@ struct
           tick_state;
           input_request;
           current_tick = Z.succ pvm_state.current_tick;
+          last_top_level_call;
         }
       in
       Tree_encoding_runner.encode pvm_state_encoding pvm_state tree
