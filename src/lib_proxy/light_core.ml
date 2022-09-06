@@ -75,6 +75,13 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
       let root = Store.Tree.empty Store.empty in
       {repo; root}
 
+    (* Don't update the irmin ref when looking for key, so as not to add the
+    empty tree. *)
+    let get_irmin () : irmin Lwt.t =
+      match !irmin_ref with
+      | None -> mk_empty_irmin ()
+      | Some res -> Lwt.return res
+
     module Storelike = struct
       include Store
 
@@ -104,11 +111,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
             "IMPOSSIBLE: encountered a *stream* verification error when doing \
              a *tree* verification"
       | Ok (_, [(k, Some tree)]) when k = key ->
-          let* irmin =
-            match !irmin_ref with
-            | None -> mk_empty_irmin ()
-            | Some irmin -> Lwt.return irmin
-          in
+          let* irmin = get_irmin () in
           let* root =
             match tree with
             | Either.Left tree -> Store.Tree.add_tree irmin.root key tree
@@ -118,18 +121,6 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
       | Ok _ ->
           light_failwith pgi
           @@ Printf.sprintf "Key \"%s\" not found" (String.concat ";" key)
-
-    (* Don't update the irmin ref when looking for key, so as not to add the
-       empty tree. *)
-    let get_irmin_key () : irmin Lwt.t =
-      let open Lwt_syntax in
-      match !irmin_ref with
-      | None ->
-          let* repo = Store.Tree.make_repo () in
-          let root = Store.Tree.empty Store.empty in
-          let irmin = {repo; root} in
-          Lwt.return irmin
-      | Some res -> Lwt.return res
 
     let rec get_first_merkle_tree_choice chain block key leaf_kind
         tried_endpoints_rev remaining_endpoints =
@@ -207,7 +198,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
     let get key =
       let open Lwt_syntax in
       let* () = Logger.(emit api_get @@ key_to_string key) in
-      let* {root; _} = get_irmin_key () in
+      let* {root; _} = get_irmin () in
       Store.Tree.find_tree root key
 
     module Consensus = Light_consensus.Make (Light_proto)
