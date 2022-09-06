@@ -23,6 +23,25 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(**
+
+  Action is a monad transformer over Lwt.
+  The combinators in this module are aimed to mimic Lwt.
+
+  The goal of the Action monad is to count the number of Lwt [bind] and [map]
+  combinations. This is far from a perfect measure but in light of the fact that
+  the WebAssembly interpreter library composes primarily through a monadic
+  Lwt-like interface it can gives us a rough idea of whether a computation is
+  running away in a time complexity sense.
+
+  How you compose a program using this Action monad affects the number of steps
+  it counts.
+  For example: [let* x = return y in f x] is not the same as [let x = y in f x].
+  The latter is 0 steps, the former is 1 step. The same is true for mapping:
+  [let+ x = return y in f x] is 1 step, but [let x = y in f x] is 0.
+
+*)
+
 (** Raised when the counter exceeds its maximum. *)
 exception Exceeded_max_num_steps
 
