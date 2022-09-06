@@ -2,7 +2,7 @@
 
 # Minimal script to spawn aws machine with snoop.
 #
-set -u
+#set -u
 ARGC=$#
 
 if [ $ARGC -ne 1 ]; then
@@ -11,9 +11,9 @@ if [ $ARGC -ne 1 ]; then
 fi
 
 EC2_INIT_SCRIPT=$1
-INSTANCE_TYPE={$2:c6i.8xlarge}
+# INSTANCE_TYPE={$2:=c6i.8xlarge}
 #INSTANCE_TYPE="c5.metal"
-#INSTANCE_TYPE=c6i.8xlarge	# This is much cheaper for just running the benchmark.
+INSTANCE_TYPE=c6i.8xlarge	# This is much cheaper for just running the benchmark.
 
 AWS_REGION=us-east-1
 AMI="ami-052efd3df9dad4825"
