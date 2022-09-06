@@ -287,7 +287,7 @@ let drain ctxt ~delegate ~destination =
   in
   let* manager_balance = spendable_balance ctxt delegate in
   let*? one_percent = Tez_repr.(manager_balance /? 100L) in
-  let fees = Tez_repr.(min one one_percent) in
+  let fees = Tez_repr.(max one one_percent) in
   let*? transfered = Tez_repr.(manager_balance -? fees) in
   let* ctxt, balance_updates2 =
     Token.transfer
