@@ -315,7 +315,11 @@ let test_update_consensus_key =
       client
   in
 
+  Log.info "Drain bootstrap4 to key_c..." ;
   let* old_balance = Client.get_balance_for ~account:destination.alias client in
+  let* old_balance5 =
+    Client.get_balance_for ~account:Constant.bootstrap5.alias client
+  in
   let* () =
     Client.drain_delegate
       ~delegate:Constant.bootstrap4.alias
@@ -323,20 +327,47 @@ let test_update_consensus_key =
       ~destination:destination.alias
       client
   in
+  let* () =
+    Client.transfer
+      ~burn_cap:Tez.one
+      ~amount:(Tez.of_int 1)
+      ~giver:Constant.bootstrap4.alias
+      ~receiver:Constant.bootstrap5.alias
+      client
+  in
   let* () = Client.bake_for_and_wait ~keys:[Constant.bootstrap1.alias] client in
-
+  Log.info
+    "Check that other manager operations are not included after a drain..." ;
+  let* () =
+    let* json =
+      RPC.get_chain_mempool_pending_operations () |> RPC.Client.call client
+    in
+    let delayed_op_kind =
+      JSON.(
+        json |-> "branch_delayed" |> geti 0 |> geti 1 |-> "contents" |> geti 0
+        |-> "kind" |> encode)
+    in
+    Check.((delayed_op_kind = "\"transaction\"") string)
+      ~error_msg:
+        "The transaction is not in the branch_delayed pool (expected %R, got \
+         %L)" ;
+    Lwt.return_unit
+  in
   Log.info "The manager account has been drained..." ;
   let* b = Client.get_balance_for ~account:Constant.bootstrap4.alias client in
   Check.((Tez.to_mutez b = 0) int) ~error_msg:"Manager balance is not empty" ;
-
   let* new_balance = Client.get_balance_for ~account:destination.alias client in
   Check.((Tez.to_mutez old_balance < Tez.to_mutez new_balance) int)
     ~error_msg:"Destination account has not been credited" ;
-
-  Log.info "Check if drain is prefered over a operation from the delegate..." ;
-  let* old_balance5 =
+  let* new_balance5 =
     Client.get_balance_for ~account:Constant.bootstrap5.alias client
   in
+  Check.((Tez.to_mutez new_balance5 = Tez.to_mutez old_balance5) int)
+    ~error_msg:"Manager operation was included" ;
+
+  Log.info
+    "Check that a drain conflicts with (ie is not included after) a manager \
+     operation of the same delegate..." ;
   let* () =
     Client.transfer
       ~burn_cap:Tez.one
@@ -345,29 +376,35 @@ let test_update_consensus_key =
       ~receiver:Constant.bootstrap5.alias
       client
   in
-
-  let* old_balance = Client.get_balance_for ~account:destination.alias client in
   let* () =
     Client.drain_delegate
+      ~expect_failure:true
       ~delegate:Constant.bootstrap3.alias
       ~consensus_key:key_a.alias
       ~destination:destination.alias
       client
   in
-  let* () = Client.bake_for_and_wait ~keys:[Constant.bootstrap1.alias] client in
+  let* old_balance3 =
+    Client.get_balance_for ~account:Constant.bootstrap3.alias client
+  in
+  let* old_balance5 =
+    Client.get_balance_for ~account:Constant.bootstrap5.alias client
+  in
+  let* old_balance = Client.get_balance_for ~account:destination.alias client in
 
-  Log.info "The manager account has been drained..." ;
-  let* b = Client.get_balance_for ~account:Constant.bootstrap3.alias client in
-  Check.((Tez.to_mutez b = 0) int) ~error_msg:"Manager balance is not empty" ;
+  let* () = Client.bake_for_and_wait ~keys:[Constant.bootstrap1.alias] client in
 
   let* new_balance5 =
     Client.get_balance_for ~account:Constant.bootstrap5.alias client
   in
-  Check.((Tez.to_mutez new_balance5 = Tez.to_mutez old_balance5) int)
-    ~error_msg:"Manager operation was included" ;
-
   let* new_balance = Client.get_balance_for ~account:destination.alias client in
-  Check.((Tez.to_mutez old_balance < Tez.to_mutez new_balance) int)
+  Check.((Tez.to_mutez old_balance = Tez.to_mutez new_balance) int)
+    ~error_msg:"Drain operation was included (destination balance changed)" ;
+  Check.((Tez.to_mutez old_balance3 > 0) int)
+    ~error_msg:
+      "Drain operation was included (delegate balance changed: old %L versus \
+       new %R)" ;
+  Check.((Tez.to_mutez old_balance5 < Tez.to_mutez new_balance5) int)
     ~error_msg:"Destination account has not been credited" ;
 
   unit
