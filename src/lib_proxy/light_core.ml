@@ -122,18 +122,17 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
           light_failwith pgi
           @@ Printf.sprintf "Key \"%s\" not found" (String.concat ";" key)
 
-    let rec get_first_merkle_tree_choice chain block key leaf_kind
+    let rec get_first_merkle_tree chain block key leaf_kind
         tried_endpoints_rev remaining_endpoints =
       let open Lwt_syntax in
       match remaining_endpoints with
       | [] -> Lwt.return_none
       | ((uri, rpc_context) as hd_endpoint) :: tl_remaining_endpoints -> (
           let* raw_context =
-            Lwt.map (Result.map (Option.map Either.right))
-            @@ Light_proto.merkle_tree
-                 Proxy.{rpc_context; chain; block; mode = Client}
-                 key
-                 leaf_kind
+            Light_proto.merkle_tree
+              Proxy.{rpc_context; chain; block; mode = Client}
+              key
+              leaf_kind
           in
           match raw_context with
           | Ok (Some mtree) ->
@@ -153,7 +152,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                   (key_to_string key)
                   (chain_n_block_to_string chain block)
               in
-              get_first_merkle_tree_choice
+              get_first_merkle_tree
                 chain
                 block
                 key
@@ -171,7 +170,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
                   pp_print_trace
                   trace
               in
-              get_first_merkle_tree_choice
+              get_first_merkle_tree
                 chain
                 block
                 key
@@ -187,13 +186,7 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
         [List.length endpoints = List.length other_endpoints + 1] *)
     let get_first_merkle_tree chain block key leaf_kind :
         (Proof.tree Proof.t * (Uri.t * RPC_context.simple) list) option Lwt.t =
-      Lwt.map
-        (Option.map (function
-            | Either.Right a, b -> (a, b)
-            | _ ->
-                Stdlib.failwith
-                  "Should never encounter `Left` with `use_v2:true`"))
-      @@ get_first_merkle_tree_choice chain block key leaf_kind [] endpoints
+        get_first_merkle_tree chain block key leaf_kind [] endpoints
 
     let get key =
       let open Lwt_syntax in
