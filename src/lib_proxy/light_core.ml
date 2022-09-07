@@ -135,11 +135,37 @@ let get_core (module Light_proto : Light_proto.PROTO_RPCS)
               leaf_kind
           in
           match raw_context with
-          | Ok (Some mtree) ->
-              let other_endpoints =
-                List.rev tried_endpoints_rev @ tl_remaining_endpoints
-              in
-              Lwt.return_some (mtree, other_endpoints)
+          | Ok (Some mproof) -> (
+            let* verification =
+              Store.verify_tree_proof
+                mproof
+                (Get_data.get_data Proof.Raw_context [key])
+            in
+              match verification with
+              | Ok (_, [(k, _)]) when k = key ->
+                let other_endpoints =
+                  List.rev tried_endpoints_rev @ tl_remaining_endpoints
+                in
+                Lwt.return_some (mproof, other_endpoints)
+              | _ ->
+                (* Here we ignore an endpoint that succeeded with a proof
+                which doesn't verifies. the endpoint's context does not map 'key'.
+                It's okay. *)
+                let* () =
+                printer#warning
+                  "Light mode: endpoint %s does not map key %s (%s). Skipping \
+                  it."
+                  (Uri.to_string uri)
+                  (key_to_string key)
+                  (chain_n_block_to_string chain block)
+                in
+                get_first_merkle_tree
+                  chain
+                  block
+                  key
+                  leaf_kind
+                  (hd_endpoint :: tried_endpoints_rev)
+                  tl_remaining_endpoints)
           | Ok None ->
               (* Here we ignore an endpoint that succeeded but returned None
                  This means the endpoint's context does not map 'key'.
