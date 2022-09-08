@@ -416,6 +416,7 @@ struct
       let should_continue pvm_state =
         match (pvm_state.input_request, pvm_state.tick_state) with
         | Wasm_pvm_sig.Input_required, _ -> false
+        | _, Eval {step_kont = SK_Result _; _} -> false
         | _, Stuck _ -> false
         | _ -> true
       in

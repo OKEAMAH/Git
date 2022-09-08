@@ -1,0 +1,20 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(executable
+ (name csv)
+ (public_name octez-scoru-wasm-csv)
+ (package octez-scoru-wasm-csv)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-base
+  tezos-webassembly-interpreter
+  tezos-context.memory
+  tezos-scoru-wasm
+  lwt.unix)
+ (link_flags
+  (:standard)
+  (:include %{workspace_root}/static-link-flags.sexp))
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives))
