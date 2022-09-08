@@ -87,6 +87,8 @@ val stop : Sc_rollup_PVM_sig.input option -> t -> State_hash.t option
 
       - a snapshot of the inbox, used by the [inbox] proof ;
 
+      - a snapshot of the confirmed DAL slots history, used by the DAL proof ;
+
       - the inbox level of the commitment, used to determine if an
       output from the [inbox] proof is too recent to be allowed into the
       PVM proof ;
@@ -98,6 +100,7 @@ val stop : Sc_rollup_PVM_sig.input option -> t -> State_hash.t option
 *)
 val valid :
   Sc_rollup_inbox_repr.history_proof ->
+  Dal_slot_repr.Slots_history.t ->
   Raw_level_repr.t ->
   pvm_name:string ->
   t ->
@@ -123,14 +126,16 @@ module type PVM_with_context_and_state = sig
   end
 end
 
-(** [produce pvm_and_state inbox_context inbox_history commit_level]
-    will construct a full refutation game proof out of the [state] given
-    in [pvm_and_state].  It uses the [inbox] if necessary to provide
-    input in the proof. If the input is above or at [commit_level] it
-    will block it, and produce a proof that the PVM is blocked.
+(** [produce pvm_and_state inbox_context inbox_history commit_level
+    dal_slots_history_cache] will construct a full refutation game proof
+    out of the [state] given in [pvm_and_state]. It uses the [inbox] if
+    necessary to provide inbox input in the proof and the
+    [dal_slots_history_cache] to provide DAL input in the proof, if needed.
+    If the input is above or at [commit_level] it will block it, and produce
+    a proof that the PVM is blocked.
 
-    This will fail if any of the [context], [inbox_context] or
-    [inbox_history] given don't have enough data to make the proof. For
+    This will fail if any of the [context], [inbox_context], [inbox_history] or
+    [dal_slots_history_cache] given don't have enough data to make the proof. For
     example, the 'protocol implementation' version of each PVM won't be
     able to run this function. Similarly, the version of the inbox
     stored in the L1 won't be enough because it forgets old levels.
@@ -139,4 +144,7 @@ end
     encodable [wrapped_proof] if possible. See the [wrap_proof] function
     in [Sc_rollups]. *)
 val produce :
-  (module PVM_with_context_and_state) -> Raw_level_repr.t -> t tzresult Lwt.t
+  (module PVM_with_context_and_state) ->
+  Raw_level_repr.t ->
+  Dal_slot_repr.Slots_history.History_cache.t ->
+  t tzresult Lwt.t

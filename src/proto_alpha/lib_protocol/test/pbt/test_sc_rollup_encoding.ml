@@ -141,6 +141,11 @@ let gen_game =
   let* level = gen_raw_level in
   let* rollup = gen_rollup in
   let* inbox_snapshot = gen_inbox_history_proof rollup level in
+  (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3806
+     Generate a non-empty dal Slots_history.t if/when Dal
+     is tested here. Otherwise, empty Dal snapshot means that no Dal slot
+     is confirmed. *)
+  let dal_snapshot = Dal_slot_repr.Slots_history.genesis in
   let* pvm_name = gen_pvm_name in
   let* dissection = gen_dissection in
   let* default_number_of_sections = int_range 4 100 in
@@ -154,6 +159,7 @@ let gen_game =
       {
         turn;
         inbox_snapshot;
+        dal_snapshot;
         level;
         pvm_name;
         dissection;

@@ -51,6 +51,9 @@ module V1 = struct
   type t = {
     turn : player;
     inbox_snapshot : Sc_rollup_inbox_repr.history_proof;
+    (* A snapshot of the scoru inbox. *)
+    dal_snapshot : Dal_slot_repr.Slots_history.t;
+    (* A snapshot of the confirmed DAL slots. *)
     level : Raw_level_repr.t;
     pvm_name : string;
     dissection : dissection_chunk list;
@@ -90,6 +93,7 @@ module V1 = struct
       {
         turn = turn1;
         inbox_snapshot = inbox_snapshot1;
+        dal_snapshot = dal_snapshot1;
         level = level1;
         pvm_name = pvm_name1;
         dissection = dissection1;
@@ -98,6 +102,7 @@ module V1 = struct
       {
         turn = turn2;
         inbox_snapshot = inbox_snapshot2;
+        dal_snapshot = dal_snapshot2;
         level = level2;
         pvm_name = pvm_name2;
         dissection = dissection2;
@@ -106,6 +111,7 @@ module V1 = struct
     player_equal turn1 turn2
     && Compare.Int.equal default_number_of_sections1 default_number_of_sections2
     && Sc_rollup_inbox_repr.equal_history_proof inbox_snapshot1 inbox_snapshot2
+    && Dal_slot_repr.Slots_history.equal dal_snapshot1 dal_snapshot2
     && Raw_level_repr.equal level1 level2
     && String.equal pvm_name1 pvm_name2
     && List.equal dissection_chunk_equal dissection1 dissection2
@@ -132,6 +138,7 @@ module V1 = struct
       (fun {
              turn;
              inbox_snapshot;
+             dal_snapshot;
              level;
              pvm_name;
              dissection;
@@ -139,12 +146,14 @@ module V1 = struct
            } ->
         ( turn,
           inbox_snapshot,
+          dal_snapshot,
           level,
           pvm_name,
           dissection,
           default_number_of_sections ))
       (fun ( turn,
              inbox_snapshot,
+             dal_snapshot,
              level,
              pvm_name,
              dissection,
@@ -152,14 +161,16 @@ module V1 = struct
         {
           turn;
           inbox_snapshot;
+          dal_snapshot;
           level;
           pvm_name;
           dissection;
           default_number_of_sections;
         })
-      (obj6
+      (obj7
          (req "turn" player_encoding)
          (req "inbox_snapshot" Sc_rollup_inbox_repr.history_proof_encoding)
+         (req "dal_snapshot" Dal_slot_repr.Slots_history.encoding)
          (req "level" Raw_level_repr.encoding)
          (req "pvm_name" string)
          (req "dissection" dissection_encoding)
@@ -269,7 +280,7 @@ end
 
 let make_chunk state_hash tick = {state_hash; tick}
 
-let initial inbox ~pvm_name ~(parent : Sc_rollup_commitment_repr.t)
+let initial inbox dal_snapshot ~pvm_name ~(parent : Sc_rollup_commitment_repr.t)
     ~(child : Sc_rollup_commitment_repr.t) ~refuter ~defender
     ~default_number_of_sections =
   let ({alice; _} : Index.t) = Index.make refuter defender in
@@ -279,6 +290,7 @@ let initial inbox ~pvm_name ~(parent : Sc_rollup_commitment_repr.t)
   {
     turn = (if alice_to_play then Alice else Bob);
     inbox_snapshot = inbox;
+    dal_snapshot;
     level = child.inbox_level;
     pvm_name;
     dissection =
@@ -843,15 +855,21 @@ let play game refutation =
              {
                turn = opponent game.turn;
                inbox_snapshot = game.inbox_snapshot;
+               dal_snapshot = game.dal_snapshot;
                level = game.level;
                pvm_name = game.pvm_name;
                dissection = states;
                default_number_of_sections = game.default_number_of_sections;
              })
     | Proof proof ->
-        let {inbox_snapshot; level; pvm_name; _} = game in
+        let {inbox_snapshot; dal_snapshot; level; pvm_name; _} = game in
         let*! valid =
-          Sc_rollup_proof_repr.valid inbox_snapshot level ~pvm_name proof
+          Sc_rollup_proof_repr.valid
+            inbox_snapshot
+            dal_snapshot
+            level
+            ~pvm_name
+            proof
         in
         let* () =
           match valid with

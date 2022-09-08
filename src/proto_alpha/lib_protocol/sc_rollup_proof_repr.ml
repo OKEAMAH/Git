@@ -103,8 +103,11 @@ let pp_proof fmt serialized_inbox_proof =
   | None -> Format.pp_print_string fmt "<invalid-proof-serialization>"
   | Some proof -> Sc_rollup_inbox_repr.pp_proof fmt proof
 
-let valid snapshot commit_level ~pvm_name proof =
+let valid snapshot dal_snapshot commit_level ~pvm_name proof =
   let open Lwt_tzresult_syntax in
+  (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3805
+     Use the variable dal_snapshot below. *)
+  ignore dal_snapshot ;
   let (module P) = Sc_rollups.wrapped_proof_module proof.pvm_step in
   let* () = check (String.equal P.name pvm_name) "Incorrect PVM kind" in
   let (input_requested : Sc_rollup_PVM_sig.input_request) =
@@ -150,8 +153,11 @@ module type PVM_with_context_and_state = sig
   end
 end
 
-let produce pvm_and_state commit_level =
+let produce pvm_and_state commit_level dal_cache_history =
   let open Lwt_tzresult_syntax in
+  (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3805
+     Use the variable dal_cache_history below. *)
+  ignore dal_cache_history ;
   let (module P : PVM_with_context_and_state) = pvm_and_state in
   let open P in
   let*! (request : Sc_rollup_PVM_sig.input_request) =

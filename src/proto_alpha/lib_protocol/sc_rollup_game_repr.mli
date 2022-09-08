@@ -178,6 +178,7 @@ module V1 : sig
   type t = {
     turn : player;
     inbox_snapshot : Sc_rollup_inbox_repr.history_proof;
+    dal_snapshot : Dal_slot_repr.Slots_history.t;
     level : Raw_level_repr.t;
     pvm_name : string;
     dissection : dissection_chunk list;
@@ -236,8 +237,8 @@ end
 (** To begin a game, first the conflict point in the commit tree is
     found, and then this function is applied.
 
-    [initial inbox parent child refuter defender] will construct an
-    initial game where [refuter] is next to play. The game has
+    [initial inbox dal_slots_history parent child refuter defender] will construct
+    an initial game where [refuter] is next to play. The game has
     [dissection] with three states:
 
       - firstly, the state (with tick zero) of [parent], the commitment
@@ -257,6 +258,7 @@ end
     increment from that state to its successor. *)
 val initial :
   Sc_rollup_inbox_repr.history_proof ->
+  Dal_slot_repr.Slots_history.t ->
   pvm_name:string ->
   parent:Sc_rollup_commitment_repr.t ->
   child:Sc_rollup_commitment_repr.t ->

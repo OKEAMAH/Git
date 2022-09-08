@@ -3451,13 +3451,17 @@ module Sc_rollup : sig
 
     val valid :
       Inbox.history_proof ->
+      Dal.Slots_history.t ->
       Raw_level.t ->
       pvm_name:string ->
       t ->
       (bool * input option) tzresult Lwt.t
 
     val produce :
-      (module PVM_with_context_and_state) -> Raw_level.t -> t tzresult Lwt.t
+      (module PVM_with_context_and_state) ->
+      Raw_level.t ->
+      Dal.Slots_history.History_cache.t ->
+      t tzresult Lwt.t
   end
 
   module Game : sig
@@ -3474,6 +3478,7 @@ module Sc_rollup : sig
     type t = {
       turn : player;
       inbox_snapshot : Inbox.history_proof;
+      dal_snapshot : Dal.Slots_history.t;
       level : Raw_level.t;
       pvm_name : string;
       dissection : dissection_chunk list;
@@ -3555,6 +3560,7 @@ module Sc_rollup : sig
 
     val initial :
       Inbox.history_proof ->
+      Dal.Slots_history.t ->
       pvm_name:string ->
       parent:Commitment.t ->
       child:Commitment.t ->

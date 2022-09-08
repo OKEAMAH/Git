@@ -117,14 +117,28 @@ module Make (Interpreter : Interpreter.S) :
         let inbox = history_proof
       end
     end in
+    (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3807
+       Provide the correct DAL confirmed slots skip list here. *)
+    let dal_confirmed_slots_history = Alpha_context.Dal.Slots_history.genesis in
+    let dal_confirmed_slots_history_cache =
+      Alpha_context.Dal.Slots_history.History_cache.empty ~capacity:42L
+    in
     let* r =
       trace
         (Sc_rollup_node_errors.Cannot_produce_proof (inbox, history, game.level))
-      @@ (Sc_rollup.Proof.produce (module P) game.level
+      @@ (Sc_rollup.Proof.produce
+            (module P)
+            game.level
+            dal_confirmed_slots_history_cache
          >|= Environment.wrap_tzresult)
     in
     let+ check, _ =
-      Sc_rollup.Proof.valid history_proof game.level ~pvm_name:game.pvm_name r
+      Sc_rollup.Proof.valid
+        history_proof
+        dal_confirmed_slots_history
+        game.level
+        ~pvm_name:game.pvm_name
+        r
       >|= Environment.wrap_tzresult
     in
     assert check ;
