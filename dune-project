@@ -4,6 +4,7 @@
 (package (name internal-devtools))
 (package (name lazy-containers))
 (package (name lazy-containers-tests)(allow_empty))
+(package (name octez-scoru-wasm-csv))
 (package (name tezos-012-Psithaca-test-helpers))
 (package (name tezos-013-PtJakart-test-helpers))
 (package (name tezos-014-PtKathma-test-helpers))

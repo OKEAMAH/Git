@@ -3134,6 +3134,22 @@ let octez_dal_node_lib =
         octez_protocol_updater |> open_;
       ]
 
+let _octez_scoru_wasm_csv =
+  public_exe
+    "octez-scoru-wasm-csv"
+    ~path:"src/lib_scoru_wasm/bin"
+    ~internal_name:"csv"
+    ~synopsis:"Tezos: `octez-scoru-wasm-csv` binary"
+    ~release:true
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_webassembly_interpreter;
+        octez_context_memory;
+        octez_scoru_wasm;
+        lwt_unix;
+      ]
+
 let _octez_scoru_wasm_tests =
   test
     "test_scoru_wasm"

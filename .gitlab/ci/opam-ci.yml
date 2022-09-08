@@ -304,6 +304,13 @@ opam:lazy-containers:
   variables:
     package: lazy-containers
 
+opam:octez-scoru-wasm-csv:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_6
+  variables:
+    package: octez-scoru-wasm-csv
+
 opam:tezos-012-Psithaca-test-helpers:
   extends:
     - .opam_template
