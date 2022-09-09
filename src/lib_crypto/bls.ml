@@ -326,17 +326,31 @@ let zero =
   @@ Bytes.of_string
        "\192\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"
 
-let sign ?watermark sk msg =
+let sign_aux ~blake2b ?watermark sk msg =
   let msg =
     match watermark with None -> msg | Some prefix -> Bytes.cat prefix msg
+  in
+  let msg =
+    if blake2b then Blake2B.to_bytes @@ Blake2B.hash_bytes [msg] else msg
   in
   Bls12_381.Signature.MinPk.Aug.sign sk msg
 
-let check ?watermark pk signature msg =
+let sign_raw = sign_aux ~blake2b:false
+
+let sign = sign_aux ~blake2b:true
+
+let check_aux ~blake2b ?watermark pk signature msg =
   let msg =
     match watermark with None -> msg | Some prefix -> Bytes.cat prefix msg
   in
+  let msg =
+    if blake2b then Blake2B.to_bytes @@ Blake2B.hash_bytes [msg] else msg
+  in
   Bls12_381.Signature.MinPk.Aug.verify pk msg signature
+
+let check_raw = check_aux ~blake2b:false
+
+let check = check_aux ~blake2b:true
 
 (* [seed] must be at least of 32 bytes or [Bls12_381.Signature.generate_sk] will
    throw an error. *)
@@ -361,7 +375,7 @@ let deterministic_nonce sk msg =
 let deterministic_nonce_hash sk msg =
   Blake2B.to_bytes (Blake2B.hash_bytes [deterministic_nonce sk msg])
 
-let aggregate_check pk_msg_list signature =
+let aggregate_check_aux ~blake2b pk_msg_list signature =
   let pk_msg_list =
     List.map
       (fun (pk, watermark, msg) ->
@@ -370,9 +384,16 @@ let aggregate_check pk_msg_list signature =
           | None -> msg
           | Some prefix -> Bytes.cat prefix msg
         in
+        let msg =
+          if blake2b then Blake2B.to_bytes @@ Blake2B.hash_bytes [msg] else msg
+        in
         (pk, msg))
       pk_msg_list
   in
   Bls12_381.Signature.MinPk.Aug.aggregate_verify pk_msg_list signature
+
+let aggregate_check_raw = aggregate_check_aux ~blake2b:false
+
+let aggregate_check = aggregate_check_aux ~blake2b:true
 
 let aggregate_signature_opt = Bls12_381.Signature.MinPk.aggregate_signature_opt
