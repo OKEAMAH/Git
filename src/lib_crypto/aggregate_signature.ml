@@ -461,16 +461,19 @@ let pp ppf t = Format.fprintf ppf "%s" (to_b58check t)
 let zero = Bls12_381 Bls.zero
 
 let sign ?watermark (Secret_key.Bls12_381 sk) bytes =
-  Bls12_381 (Bls.sign ?watermark sk bytes)
+  (* NOTE: Not hashing for compatibility with TORU *)
+  Bls12_381 (Bls.sign_raw ?watermark sk bytes)
 
 let check ?watermark pk signature message =
+  (* NOTE: Not hashing for compatibility with TORU *)
   match (pk, signature) with
   | Public_key.Bls12_381 pk, Unknown signature ->
       Bls.of_bytes_opt signature
-      |> Option.map (fun signature -> Bls.check ?watermark pk signature message)
+      |> Option.map (fun signature ->
+             Bls.check_raw ?watermark pk signature message)
       |> Option.value ~default:false
   | Public_key.Bls12_381 pk, Bls12_381 signature ->
-      Bls.check ?watermark pk signature message
+      Bls.check_raw ?watermark pk signature message
 
 let generate_key ?seed () =
   let pkh, pk, sk = Bls.generate_key ?seed () in
@@ -491,11 +494,12 @@ let aggregate_check pks signature =
         (pk, watermark, bytes))
       pks
   in
+  (* NOTE: Not hashing for compatibility with TORU *)
   match signature with
-  | Bls12_381 signature -> Bls.aggregate_check pks signature
+  | Bls12_381 signature -> Bls.aggregate_check_raw pks signature
   | Unknown signature ->
       Bls.of_bytes_opt signature
-      |> Option.map (Bls.aggregate_check pks)
+      |> Option.map (Bls.aggregate_check_raw pks)
       |> Option.value ~default:false
 
 let aggregate_signature_opt signatures =
