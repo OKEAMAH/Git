@@ -281,6 +281,8 @@ module V1 = struct
 
   let inbox_level inbox = inbox.level
 
+  let number_of_messages inbox = inbox.message_counter
+
   let old_levels_messages inbox = inbox.old_levels_messages
 
   let current_level_hash inbox = inbox.current_level_hash ()

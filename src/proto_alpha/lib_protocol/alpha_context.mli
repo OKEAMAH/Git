@@ -2968,6 +2968,8 @@ module Sc_rollup : sig
 
     val inbox_level : t -> Raw_level.t
 
+    val number_of_messages : t -> Z.t
+
     val refresh_commitment_period :
       commitment_period:int32 -> level:Raw_level.t -> t -> t
 

@@ -144,6 +144,8 @@ module V1 : sig
     [inbox] or its initial level. *)
   val inbox_level : t -> Raw_level_repr.t
 
+  val number_of_messages : t -> Z.t
+
   (** A [history_proof] is a [Skip_list.cell] that stores multiple
     hashes. [Skip_list.content history_proof] gives the hash of the
     level tree for this cell, while [Skip_list.back_pointers

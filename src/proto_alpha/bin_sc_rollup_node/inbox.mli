@@ -52,3 +52,8 @@ val history_of_hash :
 
 (** [start ()] initializes the inbox to track the messages being published. *)
 val start : unit -> unit Lwt.t
+
+(** [successor node_ctxt (level,position)] returns the next expected
+   message to handle. *)
+val successor :
+  Node_context.t -> Raw_level.t * Z.t -> (Raw_level.t * Z.t) tzresult Lwt.t

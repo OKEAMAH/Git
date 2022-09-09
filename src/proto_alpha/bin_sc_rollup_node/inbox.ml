@@ -231,3 +231,25 @@ let inbox_of_hash = State.inbox_of_hash
 let history_of_hash = State.history_of_hash
 
 let start () = Inbox_event.starting ()
+
+let successor node_ctxt (level, position) =
+  let open Lwt_result_syntax in
+  let open Node_context in
+  let*! block_hash =
+    Layer1.hash_of_level node_ctxt.store (Raw_level.to_int32 level)
+  in
+  let*! possible_inbox = Store.Inboxes.find node_ctxt.store block_hash in
+  match possible_inbox with
+  | None ->
+      assert (Compare.Z.(position = Z.zero)) ;
+      (* If there is no inbox, the successor is the first message at
+         the next level and the current message is EOL. *)
+      return (Raw_level.succ level, Z.zero)
+  | Some inbox ->
+      let number_of_messages =
+        Alpha_context.Sc_rollup.Inbox.number_of_messages inbox
+      in
+      (* If Z.succ position = number_of_messages, the message is EOL. *)
+      if Compare.Z.(Z.succ position <= number_of_messages) then
+        return (level, Z.succ position)
+      else return (Raw_level.succ level, Z.zero)
