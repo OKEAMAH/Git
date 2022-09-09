@@ -771,7 +771,6 @@ let baker_process ~(delegates : Baking_state.delegate list) ~base_dir
   List.iter_es
     (fun ({alias; public_key; public_key_hash; secret_key_uri} :
            Baking_state.delegate) ->
-      let open Tezos_client_base in
       let name = alias |> WithExceptions.Option.get ~loc:__LOC__ in
       Client_keys.neuterize secret_key_uri >>=? fun public_key_uri ->
       Client_keys.register_key
