@@ -64,6 +64,12 @@ module type Internal_for_tests = sig
   val compute_step_many : ?max_steps:int64 -> tree -> tree Lwt.t
 
   val set_max_nb_ticks : Z.t -> tree -> tree Lwt.t
+
+  val get_input_buffer :
+    tree -> Tezos_webassembly_interpreter.Input_buffer.t Lwt.t
+
+  val get_output_buffer :
+    tree -> Tezos_webassembly_interpreter.Output_buffer.t Lwt.t
 end
 
 (** This module type defines a WASM VM API used for smart-contract rollups. *)

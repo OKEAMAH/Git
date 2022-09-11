@@ -551,6 +551,16 @@ struct
 
       let compute_step_many = compute_step_many
 
+      let get_output_buffer tree =
+        let open Lwt.Syntax in
+        let+ pvm = Tree_encoding_runner.decode pvm_state_encoding tree in
+        pvm.buffers.output
+
+      let get_input_buffer tree =
+        let open Lwt.Syntax in
+        let+ pvm = Tree_encoding_runner.decode pvm_state_encoding tree in
+        pvm.buffers.input
+
       let set_max_nb_ticks n tree =
         let open Lwt_syntax in
         let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in

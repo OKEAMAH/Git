@@ -36,6 +36,14 @@ open Tztest
 open Tezos_scoru_wasm
 open Wasm_utils
 
+let read_message name =
+  let open Tezt.Base in
+  let kernel_file =
+    project_root // Filename.dirname __FILE__ // "wasm_kernels"
+    // (name ^ ".out")
+  in
+  read_file kernel_file
+
 (* Kernel failing at `kernel_next` invocation. *)
 let unreachable_kernel = "unreachable"
 
@@ -96,6 +104,40 @@ let check_error expected_kind expected_reason error =
 let is_stuck ?step ?reason = function
   | Wasm_pvm.Stuck err -> check_error step reason err
   | _ -> false
+
+(* Kernel implementing TORU in SCORU *)
+let tx_kernel = "tx_kernel_nocrypto"
+
+let is_not_stuck = function
+  | Wasm_pvm.Stuck e ->
+      let where, why, more =
+        match e with
+        | Wasm_pvm_errors.Decode_error e ->
+            ("decode", e.raw_exception, e.explanation)
+        | Init_error e -> ("init", e.raw_exception, e.explanation)
+        | Eval_error e -> ("eval", e.raw_exception, e.explanation)
+        | Link_error e -> ("link", e, None)
+        | Too_many_ticks -> ("too_many_ticks", "", None)
+        | Invalid_state e -> ("invalid", e, None)
+        | Unknown_error e -> ("unknown", e, None)
+      in
+      Format.printf
+        "stuck(%s): %s\n%a\n"
+        where
+        why
+        Format.(pp_print_option pp_print_string)
+        more ;
+      false
+  | _ -> true
+
+let rec eval_until_input_requested ?(max_steps = Int64.max_int) tree =
+  let open Lwt_syntax in
+  let* info = Wasm.get_info tree in
+  match info.input_request with
+  | No_input_required ->
+      let* tree = Wasm.Internal_for_tests.compute_step_many ~max_steps tree in
+      eval_until_input_requested ~max_steps tree
+  | Input_required -> return tree
 
 let set_input_step message message_counter tree =
   let input_info =
@@ -242,6 +284,44 @@ let should_run_store_list_size_kernel kernel =
   (* The kernel is now expected to fail, the PVM should be in stuck state. *)
   assert (is_stuck state_after_second_message)
 
+let should_boot_tx_kernel kernel =
+  let open Lwt_syntax in
+  let* tree = initial_tree ~max_tick:50_000_000L ~from_binary:true kernel in
+  (* Make the first ticks of the WASM PVM (parsing of origination
+     message, parsing and init of the kernel), to switch it to
+     “Input_requested” mode. *)
+  let* tree = eval_until_input_requested tree in
+  (* Feeding it with one input *)
+  let msg = read_message "deposit" in
+  let* tree = set_input_step msg 0 tree in
+  let* input = Wasm.Internal_for_tests.get_input_buffer tree in
+  assert (input.num_elements = Z.one) ;
+  (* running until waiting for input *)
+  let* tree = eval_until_input_requested tree in
+  let* state_after_first_message =
+    Wasm.Internal_for_tests.get_tick_state tree
+  in
+  (* The kernel is expected to fail, then ths PVM should be in stuck state. *)
+  assert (is_not_stuck state_after_first_message) ;
+  let* input = Wasm.Internal_for_tests.get_input_buffer tree in
+  assert (input.num_elements = Z.zero) ;
+  let msg = read_message "withdrawal" in
+  let* tree = set_input_step msg 1 tree in
+  let* input = Wasm.Internal_for_tests.get_input_buffer tree in
+  assert (input.num_elements = Z.one) ;
+  let* tree = eval_until_input_requested tree in
+  let* state_after_second_message =
+    Wasm.Internal_for_tests.get_tick_state tree
+  in
+  (* The kernel is expected to fail, then ths PVM should be in stuck state. *)
+  assert (is_not_stuck state_after_second_message) ;
+  let* output = Wasm.Internal_for_tests.get_output_buffer tree in
+  let* level, id = Tezos_webassembly_interpreter.Output_buffer.get_id output in
+  let* _bytes =
+    Tezos_webassembly_interpreter.Output_buffer.get output level id
+  in
+  return_unit
+
 let test_with_kernel kernel test () =
   let open Lwt_result_syntax in
   let open Tezt.Base in
@@ -260,36 +340,40 @@ let test_with_kernel kernel test () =
 
 let tests =
   [
+    (* tztest *)
+    (*   "Test unreachable kernel (tick per tick)" *)
+    (*   `Quick *)
+    (*   (test_with_kernel *)
+    (*      unreachable_kernel *)
+    (*      (should_boot_unreachable_kernel ~max_steps:1L)); *)
+    (* tztest *)
+    (*   "Test unreachable kernel (10 ticks at a time)" *)
+    (*   `Quick *)
+    (*   (test_with_kernel *)
+    (*      unreachable_kernel *)
+    (*      (should_boot_unreachable_kernel ~max_steps:10L)); *)
+    (* tztest *)
+    (*   "Test unreachable kernel (in one go)" *)
+    (*   `Quick *)
+    (*   (test_with_kernel *)
+    (*      unreachable_kernel *)
+    (*      (should_boot_unreachable_kernel ~max_steps:Int64.max_int)); *)
+    (* tztest *)
+    (*   "Test write_debug kernel" *)
+    (*   `Quick *)
+    (*   (test_with_kernel test_write_debug_kernel should_run_debug_kernel); *)
+    (* tztest *)
+    (*   "Test store-has kernel" *)
+    (*   `Quick *)
+    (*   (test_with_kernel test_store_has_kernel should_run_store_has_kernel); *)
+    (* tztest *)
+    (*   "Test store-list-size kernel" *)
+    (*   `Quick *)
+    (*   (test_with_kernel *)
+    (*      test_store_list_size_kernel *)
+    (*      should_run_store_list_size_kernel); *)
     tztest
-      "Test unreachable kernel (tick per tick)"
+      "Test tx-only kernel, but without crypto"
       `Quick
-      (test_with_kernel
-         unreachable_kernel
-         (should_boot_unreachable_kernel ~max_steps:1L));
-    tztest
-      "Test unreachable kernel (10 ticks at a time)"
-      `Quick
-      (test_with_kernel
-         unreachable_kernel
-         (should_boot_unreachable_kernel ~max_steps:10L));
-    tztest
-      "Test unreachable kernel (in one go)"
-      `Quick
-      (test_with_kernel
-         unreachable_kernel
-         (should_boot_unreachable_kernel ~max_steps:Int64.max_int));
-    tztest
-      "Test write_debug kernel"
-      `Quick
-      (test_with_kernel test_write_debug_kernel should_run_debug_kernel);
-    tztest
-      "Test store-has kernel"
-      `Quick
-      (test_with_kernel test_store_has_kernel should_run_store_has_kernel);
-    tztest
-      "Test store-list-size kernel"
-      `Quick
-      (test_with_kernel
-         test_store_list_size_kernel
-         should_run_store_list_size_kernel);
+      (test_with_kernel tx_kernel should_boot_tx_kernel);
   ]
