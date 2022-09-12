@@ -33,6 +33,9 @@ It requires protocol environment V7, compared to V6 for Kathmandu.
 - Introduce an Q module, making a subset of Zarith.Q available to the
   protocol (MR :gl:`!6042`)
 
+- Support for BLS as a first class cryptographic curve (MR :gl:`!5444`) and
+  introduction of a ``Bls`` module to gather both high and low level functions.
+
 Consensus key
 -------------
 
