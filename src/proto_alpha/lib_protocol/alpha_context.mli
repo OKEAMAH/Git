@@ -3461,7 +3461,10 @@ module Sc_rollup : sig
       (bool * input option) tzresult Lwt.t
 
     val produce :
-      (module PVM_with_context_and_state) -> Raw_level.t -> t tzresult Lwt.t
+      (module PVM_with_context_and_state) ->
+      Commitment.genesis_info ->
+      Raw_level.t ->
+      t tzresult Lwt.t
   end
 
   module Game : sig

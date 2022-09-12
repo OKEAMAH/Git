@@ -1289,7 +1289,7 @@ let operation_publish_commitment ctxt rollup predecessor inbox_level
 (** [build_proof ~player_client start_tick game] builds a valid proof
     regarding the vision [player_client] has. The proof refutes the
     [start_tick]. *)
-let build_proof ~player_client start_tick (game : Game.t) =
+let build_proof ~player_client start_tick genesis_info (game : Game.t) =
   let open Lwt_result_syntax in
   let inbox_context, messages_tree, history, inbox = player_client.inbox in
   let* history, history_proof =
@@ -1321,7 +1321,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
       let inbox = history_proof
     end
   end in
-  let*! proof = Sc_rollup.Proof.produce (module P) game.level in
+  let*! proof = Sc_rollup.Proof.produce (module P) genesis_info game.level in
   return (WithExceptions.Result.get_ok ~loc:__LOC__ proof)
 
 (** [next_move ~number_of_sections ~player_client game] produces
@@ -1330,7 +1330,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
     If there is a disputed section where the distance is one tick, it
     produces a proof. Otherwise, provides another dissection.
 *)
-let next_move ~number_of_sections ~player_client (game : Game.t) =
+let next_move ~number_of_sections ~player_client genesis_info (game : Game.t) =
   let open Lwt_result_syntax in
   let disputed_sections =
     disputed_sections ~our_states:player_client.states game.dissection
@@ -1342,7 +1342,7 @@ let next_move ~number_of_sections ~player_client (game : Game.t) =
   match single_tick_disputed_sections with
   | (start_chunk, _stop_chunk) :: _ ->
       let tick = start_chunk.tick in
-      let+ proof = build_proof ~player_client tick game in
+      let+ proof = build_proof ~player_client tick genesis_info game in
       Game.{choice = tick; step = Proof proof}
   | [] ->
       (* If we reach this case, there is necessarily a disputed section. *)
@@ -1367,7 +1367,7 @@ type outcome_for_tests = Defender_wins | Refuter_wins
       protocol.
 *)
 let play_until_outcome ~number_of_sections ~refuter_client ~defender_client
-    ~rollup block =
+    ~rollup block genesis_info =
   let rec play ~player_turn ~opponent block =
     let open Lwt_result_syntax in
     let* game_opt =
@@ -1378,7 +1378,7 @@ let play_until_outcome ~number_of_sections ~refuter_client ~defender_client
     in
     let game, _, _ = WithExceptions.Option.get ~loc:__LOC__ game_opt in
     let* refutation =
-      next_move ~number_of_sections ~player_client:player_turn game
+      next_move ~number_of_sections ~player_client:player_turn genesis_info game
     in
     let* incr = Incremental.begin_construction block in
     let* operation_refutation =
@@ -1486,7 +1486,7 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
     ( block,
       rollup,
       commitment_level,
-      genesis_info.commitment_hash,
+      genesis_info,
       p1_client,
       p2_client,
       contract3,
@@ -1529,7 +1529,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       (fun ( block,
              rollup,
              commitment_level,
-             lcc,
+             genesis_info,
              p1_client,
              p2_client,
              _contract3,
@@ -1558,7 +1558,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
         rollup
         commitment_level
         Sc_rollup.Commitment.Hash.pp_short
-        lcc
+        genesis_info.Sc_rollup.Commitment.commitment_hash
         pp_player_client
         p1_client
         pp_player_client
@@ -1572,7 +1572,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
     (fun ( block,
            rollup,
            commitment_level,
-           lcc,
+           genesis_info,
            p1_client,
            p2_client,
            contract3,
@@ -1593,7 +1593,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
         prepare_game
           block
           rollup
-          lcc
+          genesis_info.Sc_rollup.Commitment.commitment_hash
           commitment_level
           p1_client
           p2_client
@@ -1624,6 +1624,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
           ~refuter_client:refuter
           ~defender_client:defender
           block
+          genesis_info
       in
       match outcome with
       | Defender_wins -> return (defender.player.strategy = Perfect)

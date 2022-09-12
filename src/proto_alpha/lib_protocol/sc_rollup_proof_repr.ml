@@ -150,7 +150,7 @@ module type PVM_with_context_and_state = sig
   end
 end
 
-let produce pvm_and_state commit_level =
+let produce pvm_and_state _genesis_info commit_level =
   let open Lwt_tzresult_syntax in
   let (module P : PVM_with_context_and_state) = pvm_and_state in
   let open P in

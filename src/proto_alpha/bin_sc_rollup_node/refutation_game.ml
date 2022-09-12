@@ -117,10 +117,11 @@ module Make (Interpreter : Interpreter.S) :
         let inbox = history_proof
       end
     end in
+    let genesis_info = node_ctxt.l1_ctxt.Layer1.genesis_info in
     let* r =
       trace
         (Sc_rollup_node_errors.Cannot_produce_proof (inbox, history, game.level))
-      @@ (Sc_rollup.Proof.produce (module P) game.level
+      @@ (Sc_rollup.Proof.produce (module P) genesis_info game.level
          >|= Environment.wrap_tzresult)
     in
     let+ check, _ =

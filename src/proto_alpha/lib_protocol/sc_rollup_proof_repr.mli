@@ -139,4 +139,7 @@ end
     encodable [wrapped_proof] if possible. See the [wrap_proof] function
     in [Sc_rollups]. *)
 val produce :
-  (module PVM_with_context_and_state) -> Raw_level_repr.t -> t tzresult Lwt.t
+  (module PVM_with_context_and_state) ->
+  Sc_rollup_commitment_repr.genesis_info ->
+  Raw_level_repr.t ->
+  t tzresult Lwt.t
