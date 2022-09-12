@@ -66,3 +66,6 @@ Rollups
 
 Miscellaneous
 -------------
+
+- Versioning of signature module for protocol specific support and future
+  extensibility.
