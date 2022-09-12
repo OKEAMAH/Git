@@ -80,9 +80,10 @@ let stop input proof =
    correctly---if the message obtained from the inbox proof is at or
    above [commit_level] the [input_given] in the PVM proof should be
    [None]. *)
-let cut_at_level level input =
-  let input_level = Sc_rollup_PVM_sig.(input.inbox_level) in
-  if Raw_level_repr.(level <= input_level) then None else Some input
+let cut_at_level _level input =
+  let _input_level = Sc_rollup_PVM_sig.(input.inbox_level) in
+  (* if Raw_level_repr.(level <= input_level) then None else Some input *)
+  Some input
 
 let proof_error reason =
   let open Lwt_tzresult_syntax in
