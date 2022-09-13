@@ -2216,7 +2216,7 @@ let test_rollup_node_uses_arith_boot_sector =
 
       Lwt.return_unit)
 
-let test_rollup_arith_uses_preimages =
+let test_rollup_arith_uses_postulates =
   let nadd = 32 * 1024 in
   let go_boot client sc_rollup sc_rollup_node =
     let filename =
@@ -2272,7 +2272,7 @@ let test_rollup_arith_uses_preimages =
   test_scenario
     ~timeout:120
     {
-      tags = ["preimages"];
+      tags = ["postulates"];
       variant = "arith";
       description = "rollup node - correct handling of commitments";
     }
@@ -3176,7 +3176,7 @@ let register ~protocols =
        ~kernel_name:"no_parse_bad_fingerprint"
        ~internal:false ;
   *)
-  test_rollup_arith_uses_preimages protocols ~kind:"arith" ;
+  test_rollup_arith_uses_postulates protocols ~kind:"arith" ;
   (* Shared tezts - will be executed for both PVMs. *)
   register ~kind:"wasm_2_0_0" ~protocols ;
   register ~kind:"arith" ~protocols ;
