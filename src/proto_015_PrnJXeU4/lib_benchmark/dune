@@ -1,0 +1,35 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_benchmark_015_PrnJXeU4)
+ (public_name tezos-benchmark-015-PrnJXeU4)
+ (libraries
+  tezos-stdlib
+  tezos-base
+  tezos-error-monad
+  tezos-micheline
+  tezos-micheline-rewriting
+  tezos-benchmark
+  tezos-benchmark-type-inference-015-PrnJXeU4
+  tezos-protocol-015-PrnJXeU4
+  tezos-crypto
+  tezos-protocol-015-PrnJXeU4.parameters
+  hashcons
+  tezos-015-PrnJXeU4-test-helpers
+  prbnmcn-stats)
+ (library_flags (:standard -linkall))
+ (flags
+  (:standard)
+  -open Tezos_stdlib
+  -open Tezos_base
+  -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+  -open Tezos_error_monad
+  -open Tezos_micheline
+  -open Tezos_micheline_rewriting
+  -open Tezos_benchmark
+  -open Tezos_benchmark_type_inference_015_PrnJXeU4
+  -open Tezos_protocol_015_PrnJXeU4
+  -open Tezos_crypto
+  -open Tezos_015_PrnJXeU4_test_helpers)
+ (private_modules kernel rules state_space))

@@ -1,0 +1,26 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_dal_015_PrnJXeU4)
+ (public_name tezos-dal-015-PrnJXeU4)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-base
+  tezos-protocol-compiler.registerer
+  tezos_dal_node_lib
+  tezos-client-015-PrnJXeU4
+  tezos-embedded-protocol-015-PrnJXeU4
+  tezos-protocol-015-PrnJXeU4)
+ (inline_tests (flags -verbose) (modes native))
+ (preprocess (pps ppx_expect))
+ (library_flags (:standard -linkall))
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+  -open Tezos_protocol_registerer
+  -open Tezos_dal_node_lib
+  -open Tezos_client_015_PrnJXeU4
+  -open Tezos_embedded_protocol_015_PrnJXeU4
+  -open Tezos_protocol_015_PrnJXeU4))

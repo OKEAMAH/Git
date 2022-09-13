@@ -1,0 +1,53 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_tx_rollup_015_PrnJXeU4)
+ (public_name tezos-tx-rollup-015-PrnJXeU4)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  index
+  tezos-base
+  tezos-crypto
+  tezos-protocol-015-PrnJXeU4
+  tezos-client-015-PrnJXeU4
+  tezos-client-commands
+  tezos-context.encoding
+  tezos-baking-015-PrnJXeU4-commands
+  tezos-stdlib-unix
+  tezos-rpc
+  tezos-rpc-http
+  tezos-rpc-http-client-unix
+  tezos-rpc-http-server
+  tezos-micheline
+  tezos-client-base
+  tezos-client-base-unix
+  tezos-shell
+  tezos-store
+  tezos-workers
+  tezos-protocol-plugin-015-PrnJXeU4
+  tezos-injector-015-PrnJXeU4)
+ (inline_tests (flags -verbose) (modes native))
+ (preprocess (pps ppx_expect))
+ (library_flags (:standard -linkall))
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives
+  -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
+  -open Tezos_base
+  -open Tezos_crypto
+  -open Tezos_protocol_015_PrnJXeU4
+  -open Tezos_client_015_PrnJXeU4
+  -open Tezos_client_commands
+  -open Tezos_baking_015_PrnJXeU4_commands
+  -open Tezos_stdlib_unix
+  -open Tezos_rpc
+  -open Tezos_rpc_http
+  -open Tezos_rpc_http_client_unix
+  -open Tezos_rpc_http_server
+  -open Tezos_micheline
+  -open Tezos_client_base
+  -open Tezos_client_base_unix
+  -open Tezos_workers
+  -open Tezos_protocol_plugin_015_PrnJXeU4
+  -open Tezos_injector_015_PrnJXeU4))
