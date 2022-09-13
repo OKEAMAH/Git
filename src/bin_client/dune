@@ -85,9 +85,6 @@
   tezos-client-014-PtKathma.commands-registration
   tezos-baking-014-PtKathma-commands.registration
   tezos-protocol-plugin-014-PtKathma
-  tezos-client-015-PtBsEUgi.commands-registration
-  tezos-baking-015-PtBsEUgi-commands.registration
-  tezos-protocol-plugin-015-PtBsEUgi
   (select void_for_linking-tezos-client-alpha-commands-registration from
    (tezos-client-alpha.commands-registration -> void_for_linking-tezos-client-alpha-commands-registration.empty)
    (-> void_for_linking-tezos-client-alpha-commands-registration.empty))

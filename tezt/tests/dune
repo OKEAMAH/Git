@@ -15,7 +15,6 @@
   tezos-stdlib-unix
   tezos-protocol-alpha
   src_proto_alpha_lib_protocol_test_regression_tezt_lib
-  src_proto_015_PtBsEUgi_lib_protocol_test_regression_tezt_lib
   src_proto_014_PtKathma_lib_protocol_test_regression_tezt_lib)
  (flags
   (:standard)
