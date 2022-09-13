@@ -317,6 +317,86 @@ module Slots_history = struct
       let no_cache = History_cache.empty ~capacity:0L in
       fun t slots ->
         List.fold_left_e add_confirmed_slot (t, no_cache) slots >|? fst
+
+    (** FIXME/DAL-REFUTATION: Proofs section *)
+
+    type inclusion_proof = history list
+
+    type proof =
+      | Page_confirmed of {
+          page_content : Page.content;
+          slot_kate : Header.t;
+          inc_proof : inclusion_proof;
+        }
+      | Page_unconfirmed of {
+          prev_confirmed_slot : slot;
+          next_confirmed_slot : slot;
+          inc_proof : inclusion_proof;
+        }
+
+    let proof_encoding =
+      let open Data_encoding in
+      let case_page_confirmed =
+        case
+          ~title:"dal page confirmed"
+          (Tag 0)
+          (obj4
+             (req "kind" (constant "confirmed"))
+             (req "content" string)
+             (req "slot_kate" Header.encoding)
+             (req "inc_proof" (list history_encoding)))
+          (function
+            | Page_confirmed {page_content; slot_kate; inc_proof} ->
+                Some ((), page_content, slot_kate, inc_proof)
+            | _ -> None)
+          (fun ((), page_content, slot_kate, inc_proof) ->
+            Page_confirmed {page_content; slot_kate; inc_proof})
+      and case_page_unconfirmed =
+        case
+          ~title:"dal page unconfirmed"
+          (Tag 1)
+          (obj4
+             (req "kind" (constant "unconfirmed"))
+             (req "prev_confirmed_slot" slot_encoding)
+             (req "next_confirmed_slot" slot_encoding)
+             (req "inc_proof" (list history_encoding)))
+          (function
+            | Page_unconfirmed
+                {prev_confirmed_slot; next_confirmed_slot; inc_proof} ->
+                Some ((), prev_confirmed_slot, next_confirmed_slot, inc_proof)
+            | _ -> None)
+          (fun ((), prev_confirmed_slot, next_confirmed_slot, inc_proof) ->
+            Page_unconfirmed
+              {prev_confirmed_slot; next_confirmed_slot; inc_proof})
+      in
+
+      union [case_page_confirmed; case_page_unconfirmed]
+
+    let pp_proof fmt p =
+      (* FIXME/DAL: pp inclusion proofs *)
+      match p with
+      | Page_confirmed {page_content; slot_kate; inc_proof = _} ->
+          Format.fprintf
+            fmt
+            "Page_confirmed (content=%s, slot's kate= %a, inc_proof=())"
+            page_content
+            Header.pp
+            slot_kate
+      | Page_unconfirmed
+          {prev_confirmed_slot; next_confirmed_slot; inc_proof = _} ->
+          Format.fprintf
+            fmt
+            "Page_unconfirmed (prev_confirmed_slot=%a, \
+             next_confirmed_slot=%a,inc_proof=())"
+            pp_slot
+            prev_confirmed_slot
+            pp_slot
+            next_confirmed_slot
+
+    let produce_proof ~page_content_of:_ _page_id slots_history _history_cache =
+      match slots_history with
+      | None -> assert false (* Cannot produce proof here. skip list is empty *)
+      | Some _slots_history -> assert false
   end
 
   include V1

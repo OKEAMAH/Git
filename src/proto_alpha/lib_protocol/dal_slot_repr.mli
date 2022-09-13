@@ -202,4 +202,19 @@ module Slots_history : sig
 
   (** [equal a b] returns true iff a is equal to b. *)
   val equal : t -> t -> bool
+
+  (* FIXME/DAL-REFUTATION: add doc *)
+
+  type proof
+
+  val proof_encoding : proof Data_encoding.t
+
+  val pp_proof : Format.formatter -> proof -> unit
+
+  val produce_proof :
+    page_content_of:(Page.id -> Page.content option) ->
+    Page.id ->
+    t ->
+    History_cache.t ->
+    (proof * Page.content option) tzresult Lwt.t
 end

@@ -2846,6 +2846,8 @@ module Dal : sig
 
     val add_confirmed_slots :
       t -> History_cache.t -> Slot.t list -> (t * History_cache.t) tzresult
+
+    type proof
   end
 end
 
