@@ -2216,6 +2216,7 @@ let test_rollup_node_uses_arith_boot_sector =
 
       Lwt.return_unit)
 
+(* FIXME/DAL-REFUT-ARITH Test to adapt *)
 let test_rollup_arith_uses_postulates =
   let nadd = 32 * 1024 in
   let go_boot client sc_rollup sc_rollup_node =

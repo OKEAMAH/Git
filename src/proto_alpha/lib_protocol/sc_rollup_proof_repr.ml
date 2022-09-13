@@ -51,7 +51,31 @@ let () =
 
 type input_proof =
   | Inbox_proof of Sc_rollup_inbox_repr.serialized_proof
-  | Postulate_proof of string
+  | Postulate_proof of [`Preimage_proof of string | `Dal_page_proof of unit]
+
+let postulate_proof_encoding =
+  let open Data_encoding in
+  let case_preimage_proof =
+    case
+      ~title:"preimage proof"
+      (Tag 0)
+      string
+      (function `Preimage_proof m -> Some m | _ -> None)
+      (fun m -> `Preimage_proof m)
+  and case_dal_page_proof =
+    case
+      ~title:"dal_page proof"
+      (Tag 1)
+      unit
+      (*
+         (obj3
+            (req "kind" (constant "first_after"))
+            (req "slot" Slot.Index.encoding)
+            (req "page" Slot.Page.Index.encoding))*)
+        (function `Dal_page_proof () -> Some () | _ -> None)
+      (fun () -> `Dal_page_proof ())
+  in
+  union [case_preimage_proof; case_dal_page_proof]
 
 let input_proof_encoding =
   let open Data_encoding in
@@ -63,15 +87,15 @@ let input_proof_encoding =
       (function Inbox_proof s -> Some s | _ -> None)
       (fun s -> Inbox_proof s)
   in
-  let case_preimage_proof =
+  let case_postulate_proof =
     case
       ~title:"postulate proof"
       (Tag 1)
-      string
+      postulate_proof_encoding
       (function Postulate_proof s -> Some s | _ -> None)
       (fun s -> Postulate_proof s)
   in
-  union [case_inbox_proof; case_preimage_proof]
+  union [case_inbox_proof; case_postulate_proof]
 
 type t = {pvm_step : Sc_rollups.wrapped_proof; input_proof : input_proof option}
 
@@ -130,7 +154,10 @@ let pp_inbox_proof fmt serialized_inbox_proof =
 
 let pp_proof fmt = function
   | Inbox_proof p -> pp_inbox_proof fmt p
-  | Postulate_proof d -> Format.fprintf fmt "postulate:%s" d
+  | Postulate_proof (`Preimage_proof p) ->
+      Format.fprintf fmt "postulate: Preimage (%s)" p
+  | Postulate_proof (`Dal_page_proof ()) ->
+      Format.fprintf fmt "postulate: Dal_page()"
 
 let valid snapshot commit_level ~pvm_name proof =
   let open Lwt_tzresult_syntax in
@@ -156,12 +183,25 @@ let valid snapshot commit_level ~pvm_name proof =
         match input with
         | None -> return_none
         | Some input -> return_some (Sc_rollup_PVM_sig.Inbox_message input))
-    | Needs_postulate expected_hash, Some (Postulate_proof data) ->
+    | ( Needs_postulate (`Preimage_hash expected_hash),
+        Some (Postulate_proof (`Preimage_proof data)) ) ->
         let data_hash = Sc_rollup_PVM_sig.Input_hash.hash_string [data] in
         if Sc_rollup_PVM_sig.Input_hash.equal data_hash expected_hash then
-          return (Some (Sc_rollup_PVM_sig.Postulate_revelation data))
+          return
+            (Some (Sc_rollup_PVM_sig.Postulate_revelation (`Preimage data)))
         else proof_error "Invalid postulate"
-    | _ ->
+    | ( Needs_postulate (`Dal_page_request _p_id),
+        Some (Postulate_proof (`Dal_page_proof _p_proof)) ) ->
+        (* FIXME/DAL-REFUTATION: TODO *)
+        assert false
+    | No_input_required, Some _
+    | Initial, _
+    | First_after (_, _), (Some (Postulate_proof _) | None)
+    | Needs_postulate _, (Some (Inbox_proof _) | None)
+    | ( Needs_postulate (`Preimage_hash _),
+        Some (Postulate_proof (`Dal_page_proof _)) )
+    | ( Needs_postulate (`Dal_page_request _),
+        Some (Postulate_proof (`Preimage_proof _)) ) ->
         proof_error
           (Format.asprintf
              "input_requested is %a, input proof is %a"
@@ -174,6 +214,11 @@ let valid snapshot commit_level ~pvm_name proof =
   let*! valid = P.verify_proof input P.proof in
   return (valid, input)
 
+(*
+Needs_postulate
+Postulate_proof
+Postulate_revelation
+*)
 module type PVM_with_context_and_state = sig
   include Sc_rollups.PVM.S
 
@@ -219,13 +264,16 @@ let produce pvm_and_state commit_level =
         in
         let i = Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) i in
         return (Some (Inbox_proof (Inbox_with_history.to_serialized_proof p)), i)
-    | Sc_rollup_PVM_sig.Needs_postulate h -> (
+    | Sc_rollup_PVM_sig.Needs_postulate (`Preimage_hash h) -> (
         match postulate h with
         | None -> proof_error "No postulate"
         | Some data ->
             return
-              ( Some (Postulate_proof data),
-                Some (Sc_rollup_PVM_sig.Postulate_revelation data) ))
+              ( Some (Postulate_proof (`Preimage_proof data)),
+                Some (Sc_rollup_PVM_sig.Postulate_revelation (`Preimage data))
+              ))
+    | Sc_rollup_PVM_sig.Needs_postulate (`Dal_page_request _p_id) ->
+        assert false (* FIXME/DAL-REFUTATION *)
   in
   let input_given = Option.bind input_given @@ cut_at_level commit_level in
   let* pvm_step_proof = P.produce_proof P.context input_given P.state in

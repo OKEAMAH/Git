@@ -65,7 +65,7 @@ open Sc_rollup_repr
 *)
 type input_proof =
   | Inbox_proof of Sc_rollup_inbox_repr.serialized_proof
-  | Postulate_proof of string
+  | Postulate_proof of [`Preimage_proof of string | `Dal_page_proof of unit]
 
 type t = {pvm_step : Sc_rollups.wrapped_proof; input_proof : input_proof option}
 

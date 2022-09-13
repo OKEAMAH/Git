@@ -100,15 +100,17 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
                 eval_tick tick failing_ticks state
               in
               go (consume_fuel fuel) (tick + 1) failing_ticks next_state
-          | Needs_postulate hash -> (
+          | Needs_postulate (`Preimage_hash hash) -> (
               match Preimages.get ~data_dir ~pvm_name:PVM.name ~hash with
               | None ->
                   tzfail (Sc_rollup_node_errors.Cannot_retrieve_preimage hash)
               | Some data ->
                   let*! next_state =
-                    PVM.set_input (Postulate_revelation data) state
+                    PVM.set_input (Postulate_revelation (`Preimage data)) state
                   in
                   go (consume_fuel fuel) (tick + 1) failing_ticks next_state)
+          | Needs_postulate (`Dal_page_request _p) ->
+              (* FIXME/DAL *) assert false
           | _ -> return (state, fuel, tick, failing_ticks))
     in
     go fuel start_tick failing_ticks state

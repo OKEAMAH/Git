@@ -2948,7 +2948,10 @@ module Sc_rollup : sig
     payload : Inbox_message.serialized;
   }
 
-  type input = Inbox_message of inbox_message | Postulate_revelation of string
+  type input =
+    | Inbox_message of inbox_message
+    | Postulate_revelation of
+        [`Preimage of string | `Dal_page of Dal.Page.content option]
 
   val input_equal : input -> input -> bool
 
@@ -2959,8 +2962,9 @@ module Sc_rollup : sig
   type input_request =
     | No_input_required
     | Initial
-    | First_after of Raw_level.t * Z.t
-    | Needs_postulate of Input_hash.t
+    | First_after of Raw_level_repr.t * Z.t
+    | Needs_postulate of
+        [`Preimage_hash of Input_hash.t | `Dal_page_request of Dal.Page.id]
 
   val input_request_encoding : input_request Data_encoding.t
 
@@ -3445,7 +3449,7 @@ module Sc_rollup : sig
   module Proof : sig
     type input_proof =
       | Inbox_proof of Inbox.serialized_proof
-      | Postulate_proof of string
+      | Postulate_proof of [`Preimage_proof of string | `Dal_page_proof of unit]
 
     type t = {pvm_step : wrapped_proof; input_proof : input_proof option}
 

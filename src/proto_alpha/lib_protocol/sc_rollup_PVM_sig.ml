@@ -57,13 +57,18 @@
     be put into a variant.
 *)
 
+module Slot = Dal_slot_repr
+
 type inbox_message = {
   inbox_level : Raw_level_repr.t;
   message_counter : Z.t;
   payload : Sc_rollup_inbox_message_repr.serialized;
 }
 
-type input = Inbox_message of inbox_message | Postulate_revelation of string
+type input =
+  | Inbox_message of inbox_message
+  | Postulate_revelation of
+      [`Preimage of string | `Dal_page of Slot.Page.content option]
 
 (** [inbox_message_encoding] encoding value for {!inbox_message}. *)
 let inbox_message_encoding =
@@ -79,6 +84,25 @@ let inbox_message_encoding =
        (req "message_counter" n)
        (req "payload" string))
 
+let postulate_revelation_encoding =
+  let open Data_encoding in
+  let case_preimage_revelation =
+    case
+      ~title:"preimage"
+      (Tag 0)
+      string
+      (function `Preimage m -> Some m | _ -> None)
+      (fun m -> `Preimage m)
+  and case_dal_page =
+    case
+      ~title:"dal_page"
+      (Tag 1)
+      (obj2 (req "kind" (constant "dal_page")) (req "content" (option string)))
+      (function `Dal_page c -> Some ((), c) | _ -> None)
+      (fun ((), c) -> `Dal_page c)
+  in
+  union [case_preimage_revelation; case_dal_page]
+
 let input_encoding =
   let open Data_encoding in
   let case_inbox_message =
@@ -90,9 +114,9 @@ let input_encoding =
       (fun m -> Inbox_message m)
   and case_preimage_revelation =
     case
-      ~title:"preimage"
+      ~title:"postulate"
       (Tag 1)
-      string
+      postulate_revelation_encoding
       (function Postulate_revelation d -> Some d | _ -> None)
       (fun d -> Postulate_revelation d)
   in
@@ -106,10 +130,17 @@ let inbox_message_equal a b =
   && Z.equal message_counter b.message_counter
   && String.equal (payload :> string) (b.payload :> string)
 
+let postulate_revelation_equal a b =
+  match (a, b) with
+  | `Preimage a, `Preimage b -> String.equal a b
+  | `Dal_page a, `Dal_page b -> Option.equal String.equal a b
+  | _ -> false
+
 let input_equal a b =
   match (a, b) with
   | Inbox_message a, Inbox_message b -> inbox_message_equal a b
-  | Postulate_revelation a, Postulate_revelation b -> String.equal a b
+  | Postulate_revelation a, Postulate_revelation b ->
+      postulate_revelation_equal a b
   | _, _ -> false
 
 module Input_hash =
@@ -138,7 +169,31 @@ type input_request =
   | No_input_required
   | Initial
   | First_after of Raw_level_repr.t * Z.t
-  | Needs_postulate of Input_hash.t
+  | Needs_postulate of
+      [`Preimage_hash of Input_hash.t | `Dal_page_request of Slot.Page.id]
+
+let needs_postulate_encoding =
+  let open Data_encoding in
+  union
+    ~tag_size:`Uint8
+    [
+      case
+        ~title:"Preimage_hash"
+        (Tag 0)
+        (obj2
+           (req "kind" (constant "preimage_hash"))
+           (req "value" Input_hash.encoding))
+        (function `Preimage_hash h -> Some ((), h) | _ -> None)
+        (fun ((), h) -> `Preimage_hash h);
+      case
+        ~title:"Dal_page_request"
+        (Tag 1)
+        (obj2
+           (req "kind" (constant "dal_page_request"))
+           (req "value" Slot.Page.id_encoding))
+        (function `Dal_page_request pid -> Some ((), pid) | _ -> None)
+        (fun ((), pid) -> `Dal_page_request pid);
+    ]
 
 (** [input_request_encoding] encoding value for {!input_request}. *)
 let input_request_encoding =
@@ -169,7 +224,20 @@ let input_request_encoding =
           | First_after (level, counter) -> Some ((), level, counter)
           | _ -> None)
         (fun ((), level, counter) -> First_after (level, counter));
+      case
+        ~title:"Needs_postulate"
+        (Tag 3)
+        (obj2
+           (req "kind" (constant "needs_postulate"))
+           (req "value" needs_postulate_encoding))
+        (function Needs_postulate p -> Some ((), p) | _ -> None)
+        (fun ((), p) -> Needs_postulate p);
     ]
+
+let pp_postulate_request fmt = function
+  | `Preimage_hash hash ->
+      Format.fprintf fmt "Pre image of %a" Input_hash.pp hash
+  | `Dal_page_request p -> Format.fprintf fmt "Dal page of %a" Slot.Page.pp_id p
 
 (** [pp_input_request fmt i] pretty prints the given input [i] to the formatter
     [fmt]. *)
@@ -185,8 +253,8 @@ let pp_input_request fmt request =
         l
         Z.pp_print
         n
-  | Needs_postulate hash ->
-      Format.fprintf fmt "Needs pre image of %a" Input_hash.pp hash
+  | Needs_postulate p ->
+      Format.fprintf fmt "Needs_postulate: %a" pp_postulate_request p
 
 (** [input_request_equal i1 i2] return whether [i1] and [i2] are equal. *)
 let input_request_equal a b =
@@ -198,7 +266,11 @@ let input_request_equal a b =
   | First_after (l, n), First_after (m, o) ->
       Raw_level_repr.equal l m && Z.equal n o
   | First_after _, _ -> false
-  | Needs_postulate h1, Needs_postulate h2 -> Input_hash.equal h1 h2
+  | Needs_postulate (`Preimage_hash h1), Needs_postulate (`Preimage_hash h2) ->
+      Input_hash.equal h1 h2
+  | ( Needs_postulate (`Dal_page_request p1),
+      Needs_postulate (`Dal_page_request p2) ) ->
+      Slot.Page.equal_id p1 p2
   | Needs_postulate _, _ -> false
 
 (** Type that describes output values. *)

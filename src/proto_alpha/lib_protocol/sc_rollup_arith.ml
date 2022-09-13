@@ -574,18 +574,25 @@ module Make (Context : P) :
     end)
 
     module Required_postulate = Make_var (struct
-      type t = PS.Input_hash.t option
+      type t =
+        [ `Preimage_hash of PS.Input_hash.t
+        | `Dal_page_request of Dal_slot_repr.Page.id ]
+        option
 
       let initial = None
 
-      let encoding = Data_encoding.option PS.Input_hash.encoding
+      let encoding = Data_encoding.option @@ PS.needs_postulate_encoding
 
       let name = "required_pre_image_hash"
 
-      let pp fmt v =
-        match v with
+      let pp fmt = function
         | None -> Format.fprintf fmt "<none>"
-        | Some h -> PS.Input_hash.pp fmt h
+        | Some p ->
+            Format.fprintf
+              fmt
+              "Reqauired_postulate: %a"
+              PS.pp_postulate_request
+              p
     end)
 
     module Current_level = Make_var (struct
@@ -898,7 +905,7 @@ module Make (Context : P) :
         let* () = Status.set Waiting_for_input_message in
         return ()
 
-  let reveal_postulate_monadic data =
+  let reveal_preimage_monadic data =
     (*
 
        The inbox cursor is unchanged as the message comes from the
@@ -918,6 +925,39 @@ module Make (Context : P) :
     let* () = Next_message.set (Some data) in
     let* () = start_parsing in
     return ()
+
+  let dal_page_monadic dal_page_content =
+    (*
+
+       The inbox cursor is unchanged as the message comes from the
+       outer world.
+
+       We don't have to check that the data hash is the one we
+       expected as we decided to trust the initial witness.
+
+       It is the responsibility of the rollup node to check it if it
+       does not want to publish a wrong commitment.
+
+       Notice that a multi-page transmission is possible by embedding
+       a continuation encoded as an optional hash in [data].
+
+    *)
+    let open Monad.Syntax in
+    (* FIXME/DAL-REFUT-ARITH: dal_page.p_id is probably not needed *)
+    (* FIXME/DAL-REFUT-ARITH: handle the case in which we should read all the
+       pages (more than one) before parsing) *)
+    match dal_page_content with
+    | None ->
+        (* FIXME/DAL-REFUT-ARITH: Handle the case where the page is not available/confirmed *)
+        assert false
+    | Some content ->
+        let* () = Next_message.set (Some content) in
+        let* () = start_parsing in
+        return ()
+
+  let reveal_postulate_monadic = function
+    | `Preimage data -> reveal_preimage_monadic data
+    | `Dal_page p -> dal_page_monadic p
 
   let ticked m =
     let open Monad.Syntax in
@@ -1095,11 +1135,12 @@ module Make (Context : P) :
     | Some (IPush x) -> Stack.push x
     | Some (IStore x) -> (
         let len = String.length x in
+        (* FIXME/DAL-REFUT-ARITH: Should we do something similar for DAL pages in PVM arith? *)
         if Compare.Int.(len > 5) && Compare.String.(String.sub x 0 5 = "hash:")
         then
           let hash = String.sub x 5 (len - 5) in
           let hash = PS.Input_hash.of_b58check_exn hash in
-          let* () = Required_postulate.set (Some hash) in
+          let* () = Required_postulate.set (Some (`Preimage_hash hash)) in
           let* () = Status.set Waiting_for_postulate in
           return ()
         else
