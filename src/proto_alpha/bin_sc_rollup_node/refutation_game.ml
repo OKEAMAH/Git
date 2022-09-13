@@ -110,7 +110,7 @@ module Make (Interpreter : Interpreter.S) :
 
       let state = start_state
 
-      let pre_image hash =
+      let postulate hash =
         Preimages.get
           ~data_dir:configuration.Configuration.data_dir
           ~pvm_name:PVM.name

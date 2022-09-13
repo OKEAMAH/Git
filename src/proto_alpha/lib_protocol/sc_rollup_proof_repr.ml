@@ -51,7 +51,7 @@ let () =
 
 type input_proof =
   | Inbox_proof of Sc_rollup_inbox_repr.serialized_proof
-  | Preimage_proof of string
+  | Postulate_proof of string
 
 let input_proof_encoding =
   let open Data_encoding in
@@ -65,11 +65,11 @@ let input_proof_encoding =
   in
   let case_preimage_proof =
     case
-      ~title:"preimage proof"
+      ~title:"postulate proof"
       (Tag 1)
       string
-      (function Preimage_proof s -> Some s | _ -> None)
-      (fun s -> Preimage_proof s)
+      (function Postulate_proof s -> Some s | _ -> None)
+      (fun s -> Postulate_proof s)
   in
   union [case_inbox_proof; case_preimage_proof]
 
@@ -107,7 +107,7 @@ let cut_at_level level input =
       let input_level = Sc_rollup_PVM_sig.(input.inbox_level) in
       if Raw_level_repr.(level <= input_level) then None
       else Some (Sc_rollup_PVM_sig.Inbox_message input)
-  | Sc_rollup_PVM_sig.Preimage_revelation _data -> Some input
+  | Sc_rollup_PVM_sig.Postulate_revelation _data -> Some input
 
 let proof_error reason =
   let open Lwt_tzresult_syntax in
@@ -130,7 +130,7 @@ let pp_inbox_proof fmt serialized_inbox_proof =
 
 let pp_proof fmt = function
   | Inbox_proof p -> pp_inbox_proof fmt p
-  | Preimage_proof d -> Format.fprintf fmt "preimage:%s" d
+  | Postulate_proof d -> Format.fprintf fmt "postulate:%s" d
 
 let valid snapshot commit_level ~pvm_name proof =
   let open Lwt_tzresult_syntax in
@@ -156,11 +156,11 @@ let valid snapshot commit_level ~pvm_name proof =
         match input with
         | None -> return_none
         | Some input -> return_some (Sc_rollup_PVM_sig.Inbox_message input))
-    | Needs_pre_image expected_hash, Some (Preimage_proof data) ->
+    | Needs_postulate expected_hash, Some (Postulate_proof data) ->
         let data_hash = Sc_rollup_PVM_sig.Input_hash.hash_string [data] in
         if Sc_rollup_PVM_sig.Input_hash.equal data_hash expected_hash then
-          return (Some (Sc_rollup_PVM_sig.Preimage_revelation data))
-        else proof_error "Invalid preimage"
+          return (Some (Sc_rollup_PVM_sig.Postulate_revelation data))
+        else proof_error "Invalid postulate"
     | _ ->
         proof_error
           (Format.asprintf
@@ -183,7 +183,7 @@ module type PVM_with_context_and_state = sig
 
   val proof_encoding : proof Data_encoding.t
 
-  val pre_image : Sc_rollup_PVM_sig.Input_hash.t -> string option
+  val postulate : Sc_rollup_PVM_sig.Input_hash.t -> string option
 
   module Inbox_with_history : sig
     include
@@ -219,13 +219,13 @@ let produce pvm_and_state commit_level =
         in
         let i = Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) i in
         return (Some (Inbox_proof (Inbox_with_history.to_serialized_proof p)), i)
-    | Sc_rollup_PVM_sig.Needs_pre_image h -> (
-        match pre_image h with
-        | None -> proof_error "No preimage"
+    | Sc_rollup_PVM_sig.Needs_postulate h -> (
+        match postulate h with
+        | None -> proof_error "No postulate"
         | Some data ->
             return
-              ( Some (Preimage_proof data),
-                Some (Sc_rollup_PVM_sig.Preimage_revelation data) ))
+              ( Some (Postulate_proof data),
+                Some (Sc_rollup_PVM_sig.Postulate_revelation data) ))
   in
   let input_given = Option.bind input_given @@ cut_at_level commit_level in
   let* pvm_step_proof = P.produce_proof P.context input_given P.state in

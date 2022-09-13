@@ -287,10 +287,10 @@ module V2_0_0 = struct
                  s)
           in
           set s
-      | PS.Preimage_revelation _ ->
-          (* The WASM PVM does not produce [Needs_pre_image] input
+      | PS.Postulate_revelation _ ->
+          (* The WASM PVM does not produce [Needs_postulate] input
              requests.  Thus, no [set_input_state] should transmit a
-             [Preimage_revelation]. *)
+             [Postulate_revelation]. *)
           assert false
 
     let set_input input = state_of @@ set_input_state input

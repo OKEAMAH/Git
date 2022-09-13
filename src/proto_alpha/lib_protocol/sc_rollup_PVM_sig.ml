@@ -63,7 +63,7 @@ type inbox_message = {
   payload : Sc_rollup_inbox_message_repr.serialized;
 }
 
-type input = Inbox_message of inbox_message | Preimage_revelation of string
+type input = Inbox_message of inbox_message | Postulate_revelation of string
 
 (** [inbox_message_encoding] encoding value for {!inbox_message}. *)
 let inbox_message_encoding =
@@ -93,8 +93,8 @@ let input_encoding =
       ~title:"preimage"
       (Tag 1)
       string
-      (function Preimage_revelation d -> Some d | _ -> None)
-      (fun d -> Preimage_revelation d)
+      (function Postulate_revelation d -> Some d | _ -> None)
+      (fun d -> Postulate_revelation d)
   in
   union [case_inbox_message; case_preimage_revelation]
 
@@ -109,7 +109,7 @@ let inbox_message_equal a b =
 let input_equal a b =
   match (a, b) with
   | Inbox_message a, Inbox_message b -> inbox_message_equal a b
-  | Preimage_revelation a, Preimage_revelation b -> String.equal a b
+  | Postulate_revelation a, Postulate_revelation b -> String.equal a b
   | _, _ -> false
 
 module Input_hash =
@@ -138,7 +138,7 @@ type input_request =
   | No_input_required
   | Initial
   | First_after of Raw_level_repr.t * Z.t
-  | Needs_pre_image of Input_hash.t
+  | Needs_postulate of Input_hash.t
 
 (** [input_request_encoding] encoding value for {!input_request}. *)
 let input_request_encoding =
@@ -185,7 +185,7 @@ let pp_input_request fmt request =
         l
         Z.pp_print
         n
-  | Needs_pre_image hash ->
+  | Needs_postulate hash ->
       Format.fprintf fmt "Needs pre image of %a" Input_hash.pp hash
 
 (** [input_request_equal i1 i2] return whether [i1] and [i2] are equal. *)
@@ -198,8 +198,8 @@ let input_request_equal a b =
   | First_after (l, n), First_after (m, o) ->
       Raw_level_repr.equal l m && Z.equal n o
   | First_after _, _ -> false
-  | Needs_pre_image h1, Needs_pre_image h2 -> Input_hash.equal h1 h2
-  | Needs_pre_image _, _ -> false
+  | Needs_postulate h1, Needs_postulate h2 -> Input_hash.equal h1 h2
+  | Needs_postulate _, _ -> false
 
 (** Type that describes output values. *)
 type output = {

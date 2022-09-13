@@ -2944,7 +2944,7 @@ module Sc_rollup : sig
     payload : Inbox_message.serialized;
   }
 
-  type input = Inbox_message of inbox_message | Preimage_revelation of string
+  type input = Inbox_message of inbox_message | Postulate_revelation of string
 
   val input_equal : input -> input -> bool
 
@@ -2956,7 +2956,7 @@ module Sc_rollup : sig
     | No_input_required
     | Initial
     | First_after of Raw_level.t * Z.t
-    | Needs_pre_image of Input_hash.t
+    | Needs_postulate of Input_hash.t
 
   val input_request_encoding : input_request Data_encoding.t
 
@@ -3295,7 +3295,7 @@ module Sc_rollup : sig
       type status =
         | Halted
         | Waiting_for_input_message
-        | Waiting_for_pre_image
+        | Waiting_for_postulate
         | Parsing
         | Evaluating
 
@@ -3441,7 +3441,7 @@ module Sc_rollup : sig
   module Proof : sig
     type input_proof =
       | Inbox_proof of Inbox.serialized_proof
-      | Preimage_proof of string
+      | Postulate_proof of string
 
     type t = {pvm_step : wrapped_proof; input_proof : input_proof option}
 
@@ -3454,7 +3454,7 @@ module Sc_rollup : sig
 
       val proof_encoding : proof Data_encoding.t
 
-      val pre_image : Input_hash.t -> string option
+      val postulate : Input_hash.t -> string option
 
       module Inbox_with_history : sig
         include Inbox.Merkelized_operations with type inbox_context = context

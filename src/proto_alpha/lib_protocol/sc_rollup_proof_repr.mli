@@ -65,7 +65,7 @@ open Sc_rollup_repr
 *)
 type input_proof =
   | Inbox_proof of Sc_rollup_inbox_repr.serialized_proof
-  | Preimage_proof of string
+  | Postulate_proof of string
 
 type t = {pvm_step : Sc_rollups.wrapped_proof; input_proof : input_proof option}
 
@@ -117,7 +117,7 @@ module type PVM_with_context_and_state = sig
 
   val proof_encoding : proof Data_encoding.t
 
-  val pre_image : Sc_rollup_PVM_sig.Input_hash.t -> string option
+  val postulate : Sc_rollup_PVM_sig.Input_hash.t -> string option
 
   module Inbox_with_history : sig
     include

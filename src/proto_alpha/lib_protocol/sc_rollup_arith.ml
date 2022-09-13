@@ -91,7 +91,7 @@ module type S = sig
   type status =
     | Halted
     | Waiting_for_input_message
-    | Waiting_for_pre_image
+    | Waiting_for_postulate
     | Parsing
     | Evaluating
 
@@ -167,7 +167,7 @@ module Make (Context : P) :
   type status =
     | Halted
     | Waiting_for_input_message
-    | Waiting_for_pre_image
+    | Waiting_for_postulate
     | Parsing
     | Evaluating
 
@@ -556,7 +556,7 @@ module Make (Context : P) :
           [
             ("Halted", Halted);
             ("Waiting_for_input_message", Waiting_for_input_message);
-            ("Waiting_for_preimage", Waiting_for_pre_image);
+            ("Waiting_for_postulate", Waiting_for_postulate);
             ("Parsing", Parsing);
             ("Evaluating", Evaluating);
           ]
@@ -566,14 +566,14 @@ module Make (Context : P) :
       let string_of_status = function
         | Halted -> "Halted"
         | Waiting_for_input_message -> "Waiting for input message"
-        | Waiting_for_pre_image -> Format.asprintf "Waiting for pre image"
+        | Waiting_for_postulate -> Format.asprintf "Waiting for postulate"
         | Parsing -> "Parsing"
         | Evaluating -> "Evaluating"
 
       let pp fmt status = Format.fprintf fmt "%s" (string_of_status status)
     end)
 
-    module Required_pre_image_hash = Make_var (struct
+    module Required_postulate = Make_var (struct
       type t = PS.Input_hash.t option
 
       let initial = None
@@ -839,11 +839,11 @@ module Make (Context : P) :
         match counter with
         | Some n -> return (PS.First_after (level, n))
         | None -> return PS.Initial)
-    | Waiting_for_pre_image -> (
-        let* h = Required_pre_image_hash.get in
+    | Waiting_for_postulate -> (
+        let* h = Required_postulate.get in
         match h with
         | None -> internal_error "Internal error: Preimage invariant broken"
-        | Some h -> return (PS.Needs_pre_image h))
+        | Some h -> return (PS.Needs_postulate h))
     | _ -> return PS.No_input_required
 
   let is_input_state =
@@ -898,7 +898,7 @@ module Make (Context : P) :
         let* () = Status.set Waiting_for_input_message in
         return ()
 
-  let reveal_pre_image_monadic data =
+  let reveal_postulate_monadic data =
     (*
 
        The inbox cursor is unchanged as the message comes from the
@@ -925,13 +925,13 @@ module Make (Context : P) :
     let* () = Current_tick.set (Sc_rollup_tick_repr.next tick) in
     m
 
-  let reveal_pre_image data =
-    reveal_pre_image_monadic data |> ticked |> state_of
+  let reveal_postulate data =
+    reveal_postulate_monadic data |> ticked |> state_of
 
   let set_input_monadic input =
     match input with
     | PS.Inbox_message m -> set_inbox_message_monadic m
-    | PS.Preimage_revelation s -> reveal_pre_image_monadic s
+    | PS.Postulate_revelation s -> reveal_postulate_monadic s
 
   let set_input input = set_input_monadic input |> ticked |> state_of
 
@@ -1099,8 +1099,8 @@ module Make (Context : P) :
         then
           let hash = String.sub x 5 (len - 5) in
           let hash = PS.Input_hash.of_b58check_exn hash in
-          let* () = Required_pre_image_hash.set (Some hash) in
-          let* () = Status.set Waiting_for_pre_image in
+          let* () = Required_postulate.set (Some hash) in
+          let* () = Status.set Waiting_for_postulate in
           return ()
         else
           let* v = Stack.top in
@@ -1134,7 +1134,7 @@ module Make (Context : P) :
         let* status = Status.get in
         match status with
         | Halted -> boot
-        | Waiting_for_input_message | Waiting_for_pre_image -> (
+        | Waiting_for_input_message | Waiting_for_postulate -> (
             let* msg = Next_message.get in
             match msg with
             | None -> internal_error "An input state was not provided an input."
@@ -1154,14 +1154,15 @@ module Make (Context : P) :
           match input_given with
           | Some (PS.Inbox_message _ as input_given) ->
               set_input input_given state
-          | None | Some (PS.Preimage_revelation _) ->
+          | None | Some (PS.Postulate_revelation _) ->
               state_of
                 (internal_error
-                   "Invalid set_input: expecting inbox message, got a preimage.")
+                   "Invalid set_input: expecting inbox message, got a \
+                    postulate.")
                 state)
-      | PS.Needs_pre_image _hash -> (
+      | PS.Needs_postulate _hash -> (
           match input_given with
-          | Some (PS.Preimage_revelation data) -> reveal_pre_image data state
+          | Some (PS.Postulate_revelation data) -> reveal_postulate data state
           | None | Some (PS.Inbox_message _) ->
               state_of
                 (internal_error

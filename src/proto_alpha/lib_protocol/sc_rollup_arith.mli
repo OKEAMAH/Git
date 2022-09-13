@@ -83,7 +83,7 @@ module type S = sig
   type status =
     | Halted
     | Waiting_for_input_message
-    | Waiting_for_pre_image
+    | Waiting_for_postulate
     | Parsing
     | Evaluating
 
