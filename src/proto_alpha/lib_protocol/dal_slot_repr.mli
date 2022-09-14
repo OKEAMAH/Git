@@ -213,7 +213,8 @@ module Slots_history : sig
 
   val produce_proof :
     page_content_of:
-      (Page.id -> [`Attested of Page.content | `Unattested of slot * slot]) ->
+      (Page.id ->
+      [`Attested of Page.content | `Unattested of slot option * slot option]) ->
     Page.id ->
     t ->
     History_cache.t ->

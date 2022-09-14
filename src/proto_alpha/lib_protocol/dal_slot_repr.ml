@@ -34,6 +34,8 @@ module Header = struct
 
   let encoding = Dal.Commitment.encoding
 
+  let zero = Dal.Commitment.zero
+
   let pp ppf commitment =
     Format.fprintf ppf "%s" (Dal.Commitment.to_b58check commitment)
 end
@@ -331,8 +333,8 @@ module Slots_history = struct
           inc_proof : inclusion_proof;
         }
       | Page_unconfirmed of {
-          prev_confirmed_slot : slot;
-          next_confirmed_slot : slot;
+          prev_confirmed_slot : slot option;
+          next_confirmed_slot : slot option;
           next_inc_proof : inclusion_proof;
         }
 
@@ -359,8 +361,8 @@ module Slots_history = struct
           (Tag 1)
           (obj4
              (req "kind" (constant "unconfirmed"))
-             (req "prev_confirmed_slot" slot_encoding)
-             (req "next_confirmed_slot" slot_encoding)
+             (req "prev_confirmed_slot" (option slot_encoding))
+             (req "next_confirmed_slot" (option slot_encoding))
              (req "inc_proof" (list history_encoding)))
           (function
             | Page_unconfirmed
@@ -374,6 +376,10 @@ module Slots_history = struct
       in
 
       union [case_page_confirmed; case_page_unconfirmed]
+
+    let pp_slot_opt fmt = function
+      | None -> Format.fprintf fmt "<no-slot>"
+      | Some s -> Format.fprintf fmt "%a" pp_slot s
 
     let pp_proof fmt p =
       (* FIXME/DAL: pp inclusion proofs *)
@@ -391,9 +397,9 @@ module Slots_history = struct
             fmt
             "Page_unconfirmed (prev_confirmed_slot=%a, \
              next_confirmed_slot=%a,inc_proof=())"
-            pp_slot
+            pp_slot_opt
             prev_confirmed_slot
-            pp_slot
+            pp_slot_opt
             next_confirmed_slot
 
     type error += Dal_proof_error of string
@@ -444,7 +450,11 @@ module Slots_history = struct
         Header.pp
         slot_header
 
-    let produce_proof_aux ~page_content_of page_id slots_history history_cache =
+    let check_true bool = fail_unless bool (dal_proof_error "invariant broken")
+
+    let check_false bool = check_true (not bool)
+
+    let produce_proof_aux page_content_opt page_id slots_history history_cache =
       let open Lwt_tzresult_syntax in
       let {Page.published_level; slot_index; page_index = _} = page_id in
       let cell_ptr = hash_skip_list_cell slots_history in
@@ -465,7 +475,6 @@ module Slots_history = struct
           ~compare:(compare published_level slot_index)
           ~cell_ptr
       in
-      let page_content_opt = page_content_of page_id in
       match (slot_path, page_content_opt) with
       | Some _path, `Unattested _ ->
           proof_error
@@ -507,30 +516,33 @@ module Slots_history = struct
              and SCORU origination (this second part is maybe done in proof_repr?).
           *)
           let check_slot_witness kind s =
-            option_to_result
-              (Format.kasprintf
-                 proof_error
-                 "%s attested slot witness not found in slots history cache"
-                 kind)
-              (Skip_list.search
-                 ~deref
-                 ~compare:(compare s.published_level s.index)
-                 ~cell_ptr)
+            match s with
+            | None -> return []
+            | Some s ->
+                option_to_result
+                  (Format.kasprintf
+                     proof_error
+                     "%s attested slot witness not found in slots history cache"
+                     kind)
+                  (Skip_list.search
+                     ~deref
+                     ~compare:(compare s.published_level s.index)
+                     ~cell_ptr)
           in
           let ( <|< ) s1 s2 =
-            Raw_level_repr.(s1.published_level < s2.published_level)
-            || Raw_level_repr.(s1.published_level = s2.published_level)
-               && Slot_index.(s1.index < s2.index)
+            match (s1, s2) with
+            | None, None -> assert false
+            | Some s1, Some s2 ->
+                Raw_level_repr.(s1.published_level < s2.published_level)
+                || Raw_level_repr.(s1.published_level = s2.published_level)
+                   && Slot_index.(s1.index < s2.index)
+            | None, Some _ -> true
+            | Some _, None -> true (* XXX *)
           in
-
           let* prev_path = check_slot_witness "prev" prev_confirmed_slot in
           let* next_path = check_slot_witness "next" next_confirmed_slot in
           let tmp_slot =
-            {
-              published_level;
-              index = slot_index;
-              header = prev_confirmed_slot.header;
-            }
+            Some {published_level; index = slot_index; header = Header.zero}
           in
           let* () =
             fail_unless
@@ -539,7 +551,7 @@ module Slots_history = struct
                  dal_proof_error
                  "prev given attested slot witness %a is greater than or equal \
                   to target page's slot %a"
-                 pp_slot
+                 pp_slot_opt
                  prev_confirmed_slot
                  Page.pp_id
                  page_id)
@@ -551,18 +563,10 @@ module Slots_history = struct
                  dal_proof_error
                  "next given attested slot witness %a is smaller than or equal \
                   to target page's slot %a"
-                 pp_slot
+                 pp_slot_opt
                  next_confirmed_slot
                  Page.pp_id
                  page_id)
-          in
-          let* prev_ptr =
-            option_to_result
-              (Format.kasprintf
-                 proof_error
-                 "Skip_list.search returned an empty list for prev confirmed \
-                  slot witness")
-              (Lwt.return (List.last_opt prev_path))
           in
           let* next_inc_proof =
             option_to_result
@@ -571,7 +575,7 @@ module Slots_history = struct
                  "failed to deref some pointer in the path of next witness")
               (Lwt.return (lift_ptr_path deref next_path))
           in
-          let* next_slots_history =
+          let next_slots_history () =
             option_to_result
               (Format.kasprintf
                  proof_error
@@ -579,15 +583,74 @@ module Slots_history = struct
                   slot witness")
               (Lwt.return (List.last_opt next_inc_proof))
           in
+          let prev_ptr () =
+            option_to_result
+              (Format.kasprintf
+                 proof_error
+                 "Skip_list.search returned an empty list for prev confirmed \
+                  slot witness")
+              (Lwt.return (List.last_opt prev_path))
+          in
           let* () =
-            match Skip_list.back_pointer next_slots_history 0 with
-            | None -> proof_error "next slot witness has no back-pointers"
-            | Some prev_history_ptr ->
+            match (prev_path, next_path) with
+            | [], [] ->
+                let* () = check_true (Option.is_none prev_confirmed_slot) in
+                let* () = check_true (Option.is_none next_confirmed_slot) in
+                (* This should be handled by case
+                   ```
+                                  | Some _slots_history, `Unattested (None, None) ->
+                   ```
+                   in function {!produce_proof} below.
+                *)
+                proof_error "should be unreachable"
+            | [], _ ->
+                (* We don't have a prev_slot witness. *)
+                let* () = check_true (Option.is_none prev_confirmed_slot) in
+                let* () = check_false (Option.is_none next_confirmed_slot) in
+                let* next_slots_history = next_slots_history () in
                 fail_unless
-                  (Pointer_hash.equal prev_history_ptr prev_ptr)
+                  (match Skip_list.back_pointers next_slots_history with
+                  | [] -> true
+                  | _ -> false)
+                  (* FIXME/DAL: This is not true if we decide to put an dummy
+                     element in the skip list  to get rid of genesis's option / None. *)
                   (dal_proof_error
-                     "the prev slot witness is not the direct predecessor of \
-                      the next slot witness")
+                     "If there is no lower slot witness, the upper version is \
+                      supposed to be the first cell of the skip list")
+            | _, [] ->
+                (* We don't have a next_slot witness. *)
+                let* () = check_false (Option.is_none prev_confirmed_slot) in
+                let* () = check_true (Option.is_none next_confirmed_slot) in
+                let* prev_ptr = prev_ptr () in
+                let* prev_slots_history =
+                  option_to_result
+                    (Format.kasprintf
+                       proof_error
+                       "Finding skip list of prev_ptr failed")
+                    (Lwt.return (deref prev_ptr))
+                in
+                fail_unless
+                  (equal_history prev_slots_history slots_history)
+                  (dal_proof_error
+                     "prev slots history skip list should be equal to \
+                      snapshotted skip list if there are no next slots added.")
+            | _ :: _, _ :: _ ->
+                let* () = check_false (Option.is_none prev_confirmed_slot) in
+                let* () = check_false (Option.is_none next_confirmed_slot) in
+
+                let* prev_ptr = prev_ptr () in
+                let* next_slots_history = next_slots_history () in
+                let* () =
+                  match Skip_list.back_pointer next_slots_history 0 with
+                  | None -> proof_error "next slot witness has no back-pointers"
+                  | Some prev_history_ptr ->
+                      fail_unless
+                        (Pointer_hash.equal prev_history_ptr prev_ptr)
+                        (dal_proof_error
+                           "the prev slot witness is not the direct \
+                            predecessor of the next slot witness")
+                in
+                return_unit
           in
           return
           @@ ( Page_unconfirmed
@@ -595,10 +658,32 @@ module Slots_history = struct
                None )
 
     let produce_proof ~page_content_of page_id slots_history history_cache =
-      match slots_history with
-      | None -> assert false (* Cannot produce proof here. skip list is empty *)
-      | Some slots_history ->
-          produce_proof_aux ~page_content_of page_id slots_history history_cache
+      let page_content_opt = page_content_of page_id in
+      match (slots_history, page_content_opt) with
+      | None, `Attested _ ->
+          proof_error
+            "Cannot provide a confirmation proof while the slots history is \
+             empty"
+      | None, `Unattested (_, Some _ | Some _, _) ->
+          proof_error
+            "provided lower/upper slot witness cannot be in an empty skip list"
+      | None, `Unattested (None, None) ->
+          (* FIXME/DAL: particular case: make a proof of non-confirmation with
+             an empty slots_history skip list *)
+          return
+          @@ ( Page_unconfirmed
+                 {
+                   prev_confirmed_slot = None;
+                   next_confirmed_slot = None;
+                   next_inc_proof = assert false (* empty or singleton ? *);
+                 },
+               None )
+      | Some _slots_history, `Unattested (None, None) ->
+          proof_error
+            "cannot have both lower and upper to None if slots_history is not \
+             empty"
+      | Some slots_history, _ ->
+          produce_proof_aux page_content_opt page_id slots_history history_cache
   end
 
   include V1

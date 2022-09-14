@@ -3484,7 +3484,7 @@ module Sc_rollup : sig
         val page_content_of :
           Dal.Page.id ->
           [ `Attested of Dal.Page.content
-          | `Unattested of Dal.Slot.t * Dal.Slot.t ]
+          | `Unattested of Dal.Slot.t option * Dal.Slot.t option ]
       end
     end
 
