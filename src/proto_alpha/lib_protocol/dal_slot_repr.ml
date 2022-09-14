@@ -85,6 +85,8 @@ module Slot_index = Index
 module Page = struct
   type content = string
 
+  type proof = Dal.segment_proof
+
   module Index = struct
     type t = int
 
@@ -324,6 +326,13 @@ module Slots_history = struct
 
     (** FIXME/DAL-REFUTATION: Proofs section *)
 
+    type dal_parameters = Tezos_crypto_dal.Cryptobox.parameters = {
+      redundancy_factor : int;
+      segment_size : int;
+      slot_size : int;
+      number_of_shards : int;
+    }
+
     type inclusion_proof = history list
 
     type proof =
@@ -438,8 +447,23 @@ module Slots_history = struct
       in
       aux [] ptr_path
 
-    let verify_page page_content page_id slot_header =
-      (* FIXME/DAL-REFUTATION: to be implemented *)
+    let verify_page dal_params page_proof page_content page_id slot_header =
+      let open Lwt_tzresult_syntax in
+      let* dal =
+        match Dal.make dal_params with
+        | Ok dal -> return dal
+        | Error (`Fail s) -> proof_error s
+      in
+      let _ =
+        Dal.verify_segment
+          dal
+          slot_header
+          {
+            Dal.content = Bytes.of_string page_content;
+            index = page_id.Page.page_index;
+          }
+          page_proof
+      in
       Format.kasprintf
         proof_error
         "Provided content (%s) doesn't match the expected one for page %a in \
@@ -454,7 +478,8 @@ module Slots_history = struct
 
     let check_false bool = check_true (not bool)
 
-    let produce_proof_aux page_content_opt page_id slots_history history_cache =
+    let produce_proof_aux dal_params page_content_opt page_id slots_history
+        history_cache =
       let open Lwt_tzresult_syntax in
       let {Page.published_level; slot_index; page_index = _} = page_id in
       let cell_ptr = hash_skip_list_cell slots_history in
@@ -481,10 +506,11 @@ module Slots_history = struct
             "found a path to the slot target in the skip list, but failed to \
              retrieve the page's content"
       | None, `Attested _ ->
+          (* FIXME/DAL-REFUTATION: We should ignore the page content in this case. *)
           proof_error
             "found no path to the slot target in the skip list, but \n\
             \             retrieved the page's content"
-      | Some path, `Attested page_content ->
+      | Some path, `Attested (page_content, page_proof) ->
           let* inc =
             option_to_result
               (Format.kasprintf
@@ -500,7 +526,14 @@ module Slots_history = struct
               (Lwt.return (List.last_opt inc))
           in
           let target_slot = Skip_list.content last_slots_history in
-          let* () = verify_page page_content page_id target_slot.header in
+          let* () =
+            verify_page
+              dal_params
+              page_proof
+              page_content
+              page_id
+              target_slot.header
+          in
           (* FIXME/DAL-REFUTATION: Why do we return page_content in both the proof and as
              input? *)
           return
@@ -657,7 +690,8 @@ module Slots_history = struct
                  {prev_confirmed_slot; next_confirmed_slot; next_inc_proof},
                None )
 
-    let produce_proof ~page_content_of page_id slots_history history_cache =
+    let produce_proof dal_params ~page_content_of page_id slots_history
+        history_cache =
       let page_content_opt = page_content_of page_id in
       match (slots_history, page_content_opt) with
       | None, `Attested _ ->
@@ -683,7 +717,12 @@ module Slots_history = struct
             "cannot have both lower and upper to None if slots_history is not \
              empty"
       | Some slots_history, _ ->
-          produce_proof_aux page_content_opt page_id slots_history history_cache
+          produce_proof_aux
+            dal_params
+            page_content_opt
+            page_id
+            slots_history
+            history_cache
   end
 
   include V1

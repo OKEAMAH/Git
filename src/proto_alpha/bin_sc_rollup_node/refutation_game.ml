@@ -131,6 +131,15 @@ module Make (Interpreter : Interpreter.S) :
         let history_cache = assert false
 
         let page_content_of _page_id = assert false
+
+        let dal_parameters =
+          (* FIXME/DAL-REFUTATION: fetch L1 parameters *)
+          {
+            Dal.Slots_history.redundancy_factor = 0;
+            segment_size = 0;
+            slot_size = 0;
+            number_of_shards = 0;
+          }
       end
     end in
     let* r =

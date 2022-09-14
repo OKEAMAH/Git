@@ -2775,6 +2775,8 @@ module Dal : sig
   module Page : sig
     type content = string
 
+    type proof
+
     module Index : sig
       type t = int
 
@@ -2848,6 +2850,13 @@ module Dal : sig
       t -> History_cache.t -> Slot.t list -> (t * History_cache.t) tzresult
 
     type proof
+
+    type dal_parameters = {
+      redundancy_factor : int;
+      segment_size : int;
+      slot_size : int;
+      number_of_shards : int;
+    }
   end
 end
 
@@ -3483,8 +3492,10 @@ module Sc_rollup : sig
 
         val page_content_of :
           Dal.Page.id ->
-          [ `Attested of Dal.Page.content
+          [ `Attested of Dal.Page.content * Dal.Page.proof
           | `Unattested of Dal.Slot.t option * Dal.Slot.t option ]
+
+        val dal_parameters : Dal.Slots_history.dal_parameters
       end
     end
 

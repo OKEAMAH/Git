@@ -104,6 +104,8 @@ type slot_index = Index.t
 module Page : sig
   type content = string
 
+  type proof
+
   module Index : sig
     type t = int
 
@@ -205,6 +207,13 @@ module Slots_history : sig
 
   (* FIXME/DAL-REFUTATION: add doc *)
 
+  type dal_parameters = {
+    redundancy_factor : int;
+    segment_size : int;
+    slot_size : int;
+    number_of_shards : int;
+  }
+
   type proof
 
   val proof_encoding : proof Data_encoding.t
@@ -212,9 +221,11 @@ module Slots_history : sig
   val pp_proof : Format.formatter -> proof -> unit
 
   val produce_proof :
+    dal_parameters ->
     page_content_of:
       (Page.id ->
-      [`Attested of Page.content | `Unattested of slot option * slot option]) ->
+      [ `Attested of Page.content * Page.proof
+      | `Unattested of slot option * slot option ]) ->
     Page.id ->
     t ->
     History_cache.t ->

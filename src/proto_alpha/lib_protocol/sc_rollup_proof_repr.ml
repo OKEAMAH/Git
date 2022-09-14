@@ -245,8 +245,10 @@ module type PVM_with_context_and_state = sig
 
     val page_content_of :
       Dal_slot_repr.Page.id ->
-      [ `Attested of Dal_slot_repr.Page.content
+      [ `Attested of Dal_slot_repr.Page.content * Dal_slot_repr.Page.proof
       | `Unattested of Dal_slot_repr.t option * Dal_slot_repr.t option ]
+
+    val dal_parameters : Dal_slot_repr.Slots_history.dal_parameters
   end
 end
 
@@ -287,6 +289,7 @@ let produce pvm_and_state commit_level =
         let open Dal_with_history in
         let* proof, page_opt =
           Dal_proofs.produce_proof
+            dal_parameters
             ~page_content_of
             page_id
             confirmed_slots_history

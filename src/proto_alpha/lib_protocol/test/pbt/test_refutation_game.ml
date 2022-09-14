@@ -1329,6 +1329,10 @@ let build_proof ~player_client start_tick (game : Game.t) =
       let confirmed_slots_history = assert false
 
       let history_cache = assert false
+
+      let page_content_of _page_id = assert false
+
+      let dal_parameters = assert false
     end
   end in
   let*! proof = Sc_rollup.Proof.produce (module P) game.level in

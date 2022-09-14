@@ -138,8 +138,10 @@ module type PVM_with_context_and_state = sig
 
     val page_content_of :
       Dal_slot_repr.Page.id ->
-      [ `Attested of Dal_slot_repr.Page.content
+      [ `Attested of Dal_slot_repr.Page.content * Dal_slot_repr.Page.proof
       | `Unattested of Dal_slot_repr.t option * Dal_slot_repr.t option ]
+
+    val dal_parameters : Dal_slot_repr.Slots_history.dal_parameters
   end
 end
 
