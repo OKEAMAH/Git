@@ -244,7 +244,9 @@ module type PVM_with_context_and_state = sig
     val history_cache : Dal_slot_repr.Slots_history.History_cache.t
 
     val page_content_of :
-      Dal_slot_repr.Page.id -> Dal_slot_repr.Page.content option
+      Dal_slot_repr.Page.id ->
+      [ `Attested of Dal_slot_repr.Page.content
+      | `Unattested of Dal_slot_repr.t * Dal_slot_repr.t ]
   end
 end
 

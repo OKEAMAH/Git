@@ -212,7 +212,8 @@ module Slots_history : sig
   val pp_proof : Format.formatter -> proof -> unit
 
   val produce_proof :
-    page_content_of:(Page.id -> Page.content option) ->
+    page_content_of:
+      (Page.id -> [`Attested of Page.content | `Unattested of slot * slot]) ->
     Page.id ->
     t ->
     History_cache.t ->

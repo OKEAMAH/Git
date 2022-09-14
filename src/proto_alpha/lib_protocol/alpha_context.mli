@@ -3482,7 +3482,9 @@ module Sc_rollup : sig
         val history_cache : Dal_slot_repr.Slots_history.History_cache.t
 
         val page_content_of :
-          Dal_slot_repr.Page.id -> Dal_slot_repr.Page.content option
+          Dal.Page.id ->
+          [ `Attested of Dal.Page.content
+          | `Unattested of Dal.Slot.t * Dal.Slot.t ]
       end
     end
 

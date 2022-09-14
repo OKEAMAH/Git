@@ -331,7 +331,7 @@ module Slots_history = struct
       | Page_unconfirmed of {
           prev_confirmed_slot : slot;
           next_confirmed_slot : slot;
-          inc_proof : inclusion_proof;
+          next_inc_proof : inclusion_proof;
         }
 
     let proof_encoding =
@@ -362,12 +362,13 @@ module Slots_history = struct
              (req "inc_proof" (list history_encoding)))
           (function
             | Page_unconfirmed
-                {prev_confirmed_slot; next_confirmed_slot; inc_proof} ->
-                Some ((), prev_confirmed_slot, next_confirmed_slot, inc_proof)
+                {prev_confirmed_slot; next_confirmed_slot; next_inc_proof} ->
+                Some
+                  ((), prev_confirmed_slot, next_confirmed_slot, next_inc_proof)
             | _ -> None)
-          (fun ((), prev_confirmed_slot, next_confirmed_slot, inc_proof) ->
+          (fun ((), prev_confirmed_slot, next_confirmed_slot, next_inc_proof) ->
             Page_unconfirmed
-              {prev_confirmed_slot; next_confirmed_slot; inc_proof})
+              {prev_confirmed_slot; next_confirmed_slot; next_inc_proof})
       in
 
       union [case_page_confirmed; case_page_unconfirmed]
@@ -383,7 +384,7 @@ module Slots_history = struct
             Header.pp
             slot_kate
       | Page_unconfirmed
-          {prev_confirmed_slot; next_confirmed_slot; inc_proof = _} ->
+          {prev_confirmed_slot; next_confirmed_slot; next_inc_proof = _} ->
           Format.fprintf
             fmt
             "Page_unconfirmed (prev_confirmed_slot=%a, \
@@ -409,16 +410,18 @@ module Slots_history = struct
         (function Dal_proof_error e -> Some e | _ -> None)
         (fun e -> Dal_proof_error e)
 
+    let dal_proof_error reason = Dal_proof_error reason
+
     let proof_error reason =
       let open Lwt_tzresult_syntax in
-      fail (Dal_proof_error reason)
+      fail @@ dal_proof_error reason
 
     (** Utility function; we convert all our calls to be consistent with
       [Lwt_tzresult_syntax]. *)
-    let option_to_result e lwt_opt =
+    let option_to_result error_case lwt_opt =
       let open Lwt_syntax in
       let* opt = lwt_opt in
-      match opt with None -> proof_error e | Some x -> return (ok x)
+      match opt with None -> error_case | Some x -> return (ok x)
 
     let lift_ptr_path deref ptr_path =
       let rec aux accu = function
@@ -447,32 +450,42 @@ module Slots_history = struct
         History_cache.remember cell_ptr slots_history history_cache
       in
       let deref ptr = History_cache.find ptr history_cache in
-      let compare (s : slot) =
+      let compare target_level target_slot_index (s : slot) =
         Lwt.return
         @@
-        let c = Raw_level_repr.compare published_level s.published_level in
-        if Compare.Int.(c <> 0) then c else Index.compare slot_index s.index
+        let c = Raw_level_repr.compare target_level s.published_level in
+        if Compare.Int.(c <> 0) then c
+        else Index.compare target_slot_index s.index
       in
-      let*! slot_path = Skip_list.search ~deref ~compare ~cell_ptr in
+      let*! slot_path =
+        Skip_list.search
+          ~deref
+          ~compare:(compare published_level slot_index)
+          ~cell_ptr
+      in
       let page_content_opt = page_content_of page_id in
       match (slot_path, page_content_opt) with
-      | Some _path, None ->
+      | Some _path, `Unattested _ ->
           proof_error
             "found a path to the slot target in the skip list, but failed to \
              retrieve the page's content"
-      | None, Some _content ->
+      | None, `Attested _ ->
           proof_error
             "found no path to the slot target in the skip list, but \n\
             \             retrieved the page's content"
-      | Some path, Some page_content ->
+      | Some path, `Attested page_content ->
           let* inc =
             option_to_result
-              "failed to deref some level in the path"
+              (Format.kasprintf
+                 proof_error
+                 "failed to deref some level in the path")
               (Lwt.return (lift_ptr_path deref path))
           in
           let* last_slots_history (* aka level *) =
             option_to_result
-              "Skip_list.search returned empty list"
+              (Format.kasprintf
+                 proof_error
+                 "Skip_list.search returned empty list")
               (Lwt.return (List.last_opt inc))
           in
           let target_slot = Skip_list.content last_slots_history in
@@ -483,7 +496,84 @@ module Slots_history = struct
           @@ ( Page_confirmed
                  {page_content; slot_kate = target_slot.header; inc_proof = inc},
                Some page_content )
-      | None, None -> assert false (*TODO*)
+      | None, `Unattested (prev_confirmed_slot, next_confirmed_slot) ->
+          let check_slot_witness kind s =
+            option_to_result
+              (Format.kasprintf
+                 proof_error
+                 "%s attested slot witness not found in slots history cache"
+                 kind)
+              (Skip_list.search
+                 ~deref
+                 ~compare:(compare s.published_level s.index)
+                 ~cell_ptr)
+          in
+
+          let* prev_path = check_slot_witness "prev" prev_confirmed_slot in
+          let* next_path = check_slot_witness "next" next_confirmed_slot in
+          let* () =
+            fail_unless
+              Raw_level_repr.(
+                prev_confirmed_slot.published_level < published_level)
+              (Format.kasprintf
+                 dal_proof_error
+                 "prev given attested slot witness %a is greater than or equal \
+                  to target page's slot %a"
+                 pp_slot
+                 prev_confirmed_slot
+                 Page.pp_id
+                 page_id)
+          in
+          let* () =
+            fail_unless
+              Raw_level_repr.(
+                published_level < next_confirmed_slot.published_level)
+              (Format.kasprintf
+                 dal_proof_error
+                 "next given attested slot witness %a is smaller than or equal \
+                  to target page's slot %a"
+                 pp_slot
+                 next_confirmed_slot
+                 Page.pp_id
+                 page_id)
+          in
+          let* prev_ptr =
+            option_to_result
+              (Format.kasprintf
+                 proof_error
+                 "Skip_list.search returned an empty list for prev confirmed \
+                  slot witness")
+              (Lwt.return (List.last_opt prev_path))
+          in
+          let* next_inc_proof =
+            option_to_result
+              (Format.kasprintf
+                 proof_error
+                 "failed to deref some pointer in the path of next witness")
+              (Lwt.return (lift_ptr_path deref next_path))
+          in
+          let* next_slots_history =
+            option_to_result
+              (Format.kasprintf
+                 proof_error
+                 "Skip_list.search returned an empty list for next confirmed \
+                  slot witness")
+              (Lwt.return (List.last_opt next_inc_proof))
+          in
+          let* () =
+            match Skip_list.back_pointer next_slots_history 0 with
+            | None -> proof_error "next slot witness has no back-pointers"
+            | Some prev_history_ptr ->
+                fail_unless
+                  (Pointer_hash.equal prev_history_ptr prev_ptr)
+                  (dal_proof_error
+                     "the prev slot witness is not the direct predecessor of \
+                      the next slot witness")
+          in
+          return
+          @@ ( Page_unconfirmed
+                 {prev_confirmed_slot; next_confirmed_slot; next_inc_proof},
+               None )
 
     let produce_proof ~page_content_of page_id slots_history history_cache =
       match slots_history with
