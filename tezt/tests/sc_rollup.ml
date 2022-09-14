@@ -3048,7 +3048,15 @@ let test_migration_node_running ~kind ~migration_level ~migrate_from ~migrate_to
   and scenario_prior tezos_client ~sc_rollup (sc_rollup_node, sc_rollup_client)
       =
     let* () = Sc_rollup_node.run sc_rollup_node in
-    let* () = send_messages 10 sc_rollup tezos_client in
+    let* current_level = Client.level tezos_client in
+    let* () = send_messages commitment_period sc_rollup tezos_client in
+    let* () =
+      repeat challenge_window (fun () -> Client.bake_for_and_wait tezos_client)
+    in
+    let current_level =
+      current_level + (commitment_period + challenge_window)
+    in
+    let* _level = Sc_rollup_node.wait_for_level sc_rollup_node current_level in
     let* state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
     let* ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
     let* lcc_hash, lcc_level =
@@ -3119,6 +3127,48 @@ let test_migration_node_running ~kind ~migration_level ~migrate_from ~migrate_to
     in
     let* () = Sc_rollup_node.terminate sc_rollup_node_from in
     Sc_rollup_node.terminate sc_rollup_node_to
+  in
+  test_migration_scenario
+    ~commitment_period
+    ~challenge_window
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    {tags; variant; description}
+
+(* Test to start a node after a migration. Checks that it's able to commit *)
+let test_migration_node_started_after_migration ~kind ~migration_level
+    ~migrate_from ~migrate_to ~description ~commitment_period ~challenge_window
+    =
+  let tags = ["node"; "delay"]
+  and variant = "Rollup node can start post-migration."
+  and scenario_prior tezos_client ~sc_rollup (_sc_rollup_node, _sc_rollup_client)
+      =
+    let* () = send_messages commitment_period sc_rollup tezos_client in
+    let* () =
+      repeat (challenge_window + 1) (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    unit
+  and scenario_after tezos_client ~sc_rollup
+      (sc_rollup_node_from, _sc_rollup_client_from)
+      (_sc_rollup_node_to, _sc_rollup_client_to) () =
+    let* () = Sc_rollup_node.run sc_rollup_node_from in
+    let* current_level = Client.level tezos_client in
+    let* () = send_messages commitment_period sc_rollup tezos_client in
+    let* () =
+      repeat challenge_window (fun () -> Client.bake_for_and_wait tezos_client)
+    in
+    let current_level =
+      current_level + (commitment_period + challenge_window)
+    in
+    let* _level =
+      Sc_rollup_node.wait_for_level sc_rollup_node_from current_level
+    in
+    Sc_rollup_node.terminate sc_rollup_node_from
   in
   test_migration_scenario
     ~commitment_period
@@ -3291,6 +3341,14 @@ let register_migration ~migrate_from ~migrate_to =
   let blocks_per_cycle = JSON.(get "blocks_per_cycle" parameters |> as_int) in
   let migration_level = blocks_per_cycle in
   test_migration_node_running
+    ~kind
+    ~migration_level
+    ~migrate_from
+    ~migrate_to
+    ~description
+    ~commitment_period
+    ~challenge_window ;
+  test_migration_node_started_after_migration
     ~kind
     ~migration_level
     ~migrate_from
