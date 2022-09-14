@@ -497,6 +497,13 @@ module Slots_history = struct
                  {page_content; slot_kate = target_slot.header; inc_proof = inc},
                Some page_content )
       | None, `Unattested (prev_confirmed_slot, next_confirmed_slot) ->
+          (* FIXME/DAL-REFUTATION:
+             This version doesn't handle the case where:
+             - the skip list is empty (no slot is confirmed yet)
+             - there now no prev_confirmed_slot or next_confirmed_slot
+             - we never check that the givel level is consistent wrt. DAL activation
+             and SCORU origination (this second part is maybe done in proof_repr?).
+          *)
           let check_slot_witness kind s =
             option_to_result
               (Format.kasprintf
