@@ -323,7 +323,7 @@ let () =
     Data_encoding.(
       obj4
         (req "destination" Contract.encoding)
-        (req "entrypoint" Entrypoint.simple_encoding)
+        (req "entrypoint" Entrypoint.smart_encoding)
         (req "parameter_ty" Script.expr_encoding)
         (req "parameter" Script.expr_encoding))
     (function

@@ -104,11 +104,6 @@ val unparse_as_field_annot : t -> string
 (** Pretty-print an entrypoint *)
 val pp : Format.formatter -> t -> unit
 
-(** An encoding of entrypoints reusing the lax semantics.
-    Decoding fails if the string is too long. "" is decoded into "default".
-    "default" is encoded into "default". *)
-val simple_encoding : t Data_encoding.t
-
 (** An encoding of entrypoints reusing the strict semantics.
     Decoding fails if the string is too long or is "default".
     "" is decoded into "default".

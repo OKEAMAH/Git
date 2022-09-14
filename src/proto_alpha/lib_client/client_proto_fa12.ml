@@ -140,7 +140,7 @@ let () =
         "Entrypoint %a is not viewable."
         Entrypoint.pp
         entrypoint)
-    Data_encoding.(obj1 (req "entrypoint" Entrypoint.simple_encoding))
+    Data_encoding.(obj1 (req "entrypoint" Entrypoint.smart_encoding))
     (function Not_a_viewable_entrypoint e -> Some e | _ -> None)
     (fun e -> Not_a_viewable_entrypoint e) ;
   register_error_kind

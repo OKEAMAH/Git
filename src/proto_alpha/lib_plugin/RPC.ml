@@ -170,7 +170,7 @@ module Scripts = struct
            (opt "source" Contract.encoding)
            (opt "payer" Contract.implicit_encoding)
            (opt "self" Contract.originated_encoding)
-           (dft "entrypoint" Entrypoint.simple_encoding Entrypoint.default))
+           (dft "entrypoint" Entrypoint.smart_encoding Entrypoint.default))
         (obj4
            (opt "unparsing_mode" unparsing_mode_encoding)
            (opt "gas" Gas.Arith.z_integral_encoding)
@@ -217,7 +217,7 @@ module Scripts = struct
       let open Data_encoding in
       obj10
         (req "contract" Contract.originated_encoding)
-        (req "entrypoint" Entrypoint.simple_encoding)
+        (req "entrypoint" Entrypoint.smart_encoding)
         (req "input" Script.expr_encoding)
         (req "chain_id" Chain_id.encoding)
         (opt "source" Contract.encoding)
@@ -442,7 +442,7 @@ module Scripts = struct
         ~input:
           (obj2
              (req "script" Script.expr_encoding)
-             (dft "entrypoint" Entrypoint.simple_encoding Entrypoint.default))
+             (dft "entrypoint" Entrypoint.smart_encoding Entrypoint.default))
         ~output:(obj1 (req "entrypoint_type" Script.expr_encoding))
         RPC_path.(path / "entrypoint")
 

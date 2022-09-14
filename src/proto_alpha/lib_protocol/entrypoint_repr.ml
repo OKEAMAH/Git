@@ -173,12 +173,6 @@ let of_string_lax_exn str =
 
 let pp fmt (name : t) = Format.pp_print_string fmt (name :> string)
 
-let simple_encoding =
-  Data_encoding.conv_with_guard
-    (fun (name : t) -> (name :> string))
-    of_string_lax'
-    Data_encoding.string
-
 let value_encoding =
   Data_encoding.conv_with_guard
     (fun name -> if is_default name then "" else (name :> string))

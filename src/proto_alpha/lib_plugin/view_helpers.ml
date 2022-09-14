@@ -84,7 +84,7 @@ let () =
            (Michelson_v1_primitives.strings_of_prims typ)))
     Data_encoding.(
       obj2
-        (req "entrypoint" Entrypoint.simple_encoding)
+        (req "entrypoint" Entrypoint.smart_encoding)
         (req "type" Script.expr_encoding))
     (function Illformed_view_type (etp, exp) -> Some (etp, exp) | _ -> None)
     (fun (etp, exp) -> Illformed_view_type (etp, exp)) ;
@@ -105,7 +105,7 @@ let () =
         callback)
     Data_encoding.(
       obj2
-        (req "entrypoint" Entrypoint.simple_encoding)
+        (req "entrypoint" Entrypoint.smart_encoding)
         (req "callback" Contract.originated_encoding))
     (function View_never_returns (e, c) -> Some (e, c) | _ -> None)
     (fun (e, c) -> View_never_returns (e, c)) ;
@@ -127,7 +127,7 @@ let () =
         callback)
     Data_encoding.(
       obj2
-        (req "entrypoint" Entrypoint.simple_encoding)
+        (req "entrypoint" Entrypoint.smart_encoding)
         (req "callback" Contract.originated_encoding))
     (function View_unexpected_return (e, c) -> Some (e, c) | _ -> None)
     (fun (e, c) -> View_unexpected_return (e, c)) ;

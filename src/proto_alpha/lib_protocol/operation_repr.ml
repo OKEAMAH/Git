@@ -1037,7 +1037,7 @@ module Encoding = struct
               (req "ticket_ticketer" Contract_repr.encoding)
               (req "ticket_amount" Ticket_amount.encoding)
               (req "destination" Contract_repr.encoding)
-              (req "entrypoint" Entrypoint_repr.simple_encoding);
+              (req "entrypoint" Entrypoint_repr.smart_encoding);
           select =
             (function
             | Manager (Transfer_ticket _ as op) -> Some op | _ -> None);
