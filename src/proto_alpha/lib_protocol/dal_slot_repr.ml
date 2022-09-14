@@ -393,10 +393,103 @@ module Slots_history = struct
             pp_slot
             next_confirmed_slot
 
-    let produce_proof ~page_content_of:_ _page_id slots_history _history_cache =
+    type error += Dal_proof_error of string
+
+    let () =
+      let open Data_encoding in
+      register_error_kind
+        `Permanent
+        ~id:"dal_slot_repr.slots_history.proof"
+        ~title:
+          "Internal error: error occurred during Dal proof production or \
+           validation"
+        ~description:"A Dal proof error."
+        ~pp:(fun ppf e -> Format.fprintf ppf "Dal proof error: %s" e)
+        (obj1 (req "error" string))
+        (function Dal_proof_error e -> Some e | _ -> None)
+        (fun e -> Dal_proof_error e)
+
+    let proof_error reason =
+      let open Lwt_tzresult_syntax in
+      fail (Dal_proof_error reason)
+
+    (** Utility function; we convert all our calls to be consistent with
+      [Lwt_tzresult_syntax]. *)
+    let option_to_result e lwt_opt =
+      let open Lwt_syntax in
+      let* opt = lwt_opt in
+      match opt with None -> proof_error e | Some x -> return (ok x)
+
+    let lift_ptr_path deref ptr_path =
+      let rec aux accu = function
+        | [] -> Some (List.rev accu)
+        | x :: xs -> Option.bind (deref x) @@ fun c -> aux (c :: accu) xs
+      in
+      aux [] ptr_path
+
+    let verify_page page_content page_id slot_header =
+      (* FIXME/DAL-REFUTATION: to be implemented *)
+      Format.kasprintf
+        proof_error
+        "Provided content (%s) doesn't match the expected one for page %a in \
+         KATE commitment %a."
+        page_content
+        Page.pp_id
+        page_id
+        Header.pp
+        slot_header
+
+    let produce_proof_aux ~page_content_of page_id slots_history history_cache =
+      let open Lwt_tzresult_syntax in
+      let {Page.published_level; slot_index; page_index = _} = page_id in
+      let cell_ptr = hash_skip_list_cell slots_history in
+      let*? history_cache =
+        History_cache.remember cell_ptr slots_history history_cache
+      in
+      let deref ptr = History_cache.find ptr history_cache in
+      let compare (s : slot) =
+        Lwt.return
+        @@
+        let c = Raw_level_repr.compare published_level s.published_level in
+        if Compare.Int.(c <> 0) then c else Index.compare slot_index s.index
+      in
+      let*! slot_path = Skip_list.search ~deref ~compare ~cell_ptr in
+      let page_content_opt = page_content_of page_id in
+      match (slot_path, page_content_opt) with
+      | Some _path, None ->
+          proof_error
+            "found a path to the slot target in the skip list, but failed to \
+             retrieve the page's content"
+      | None, Some _content ->
+          proof_error
+            "found no path to the slot target in the skip list, but \n\
+            \             retrieved the page's content"
+      | Some path, Some page_content ->
+          let* inc =
+            option_to_result
+              "failed to deref some level in the path"
+              (Lwt.return (lift_ptr_path deref path))
+          in
+          let* last_slots_history (* aka level *) =
+            option_to_result
+              "Skip_list.search returned empty list"
+              (Lwt.return (List.last_opt inc))
+          in
+          let target_slot = Skip_list.content last_slots_history in
+          let* () = verify_page page_content page_id target_slot.header in
+          (* FIXME/DAL-REFUTATION: Why do we return page_content in both the proof and as
+             input? *)
+          return
+          @@ ( Page_confirmed
+                 {page_content; slot_kate = target_slot.header; inc_proof = inc},
+               Some page_content )
+      | None, None -> assert false (*TODO*)
+
+    let produce_proof ~page_content_of page_id slots_history history_cache =
       match slots_history with
       | None -> assert false (* Cannot produce proof here. skip list is empty *)
-      | Some _slots_history -> assert false
+      | Some slots_history ->
+          produce_proof_aux ~page_content_of page_id slots_history history_cache
   end
 
   include V1
