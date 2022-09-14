@@ -102,7 +102,7 @@ type slot_index = Index.t
    L1 operation if needed during the proof phase of a refutation game.
 *)
 module Page : sig
-  type content = Bytes.t
+  type content = string
 
   module Index : sig
     type t = int
@@ -120,13 +120,17 @@ module Page : sig
 
   (** A page is identified by its slots index and by its own index in the list
      of pages of the slot. *)
-  type t = {slot_index : slot_index; page_index : Index.t}
+  type id = {
+    published_level : Raw_level_repr.t;
+    slot_index : slot_index;
+    page_index : Index.t;
+  }
 
-  val equal : t -> t -> bool
+  val equal_id : id -> id -> bool
 
-  val encoding : t Data_encoding.t
+  val id_encoding : id Data_encoding.t
 
-  val pp : Format.formatter -> t -> unit
+  val pp_id : Format.formatter -> id -> unit
 end
 
 (** The encoding ensures the slot is always a non-negative number. *)

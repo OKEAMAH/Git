@@ -79,7 +79,7 @@ let slot_equal ({published_level; index; header} : t) s2 =
 module Slot_index = Index
 
 module Page = struct
-  type content = Bytes.t
+  type content = string
 
   module Index = struct
     type t = int
@@ -95,25 +95,35 @@ module Page = struct
     let equal = Compare.Int.equal
   end
 
-  type t = {slot_index : Slot_index.t; page_index : Index.t}
+  type id = {
+    published_level : Raw_level_repr.t;
+    slot_index : Slot_index.t;
+    page_index : Index.t;
+  }
 
-  let encoding =
+  let id_encoding =
     let open Data_encoding in
     conv
-      (fun {slot_index; page_index} -> (slot_index, page_index))
-      (fun (slot_index, page_index) -> {slot_index; page_index})
-      (obj2
+      (fun {published_level; slot_index; page_index} ->
+        (published_level, slot_index, page_index))
+      (fun (published_level, slot_index, page_index) ->
+        {published_level; slot_index; page_index})
+      (obj3
+         (req "published_level" Raw_level_repr.encoding)
          (req "slot_index" Slot_index.encoding)
          (req "page_index" Index.encoding))
 
-  let equal page page' =
-    Slot_index.equal page.slot_index page'.slot_index
-    && Index.equal page.page_index page'.page_index
+  let equal_id {published_level; slot_index; page_index} p =
+    Raw_level_repr.equal published_level p.published_level
+    && Slot_index.equal slot_index p.slot_index
+    && Index.equal page_index p.page_index
 
-  let pp fmt {slot_index; page_index} =
+  let pp_id fmt {published_level; slot_index; page_index} =
     Format.fprintf
       fmt
-      "(slot_index: %a, page_index: %a)"
+      "(published_level: %a, slot_index: %a, page_index: %a)"
+      Raw_level_repr.pp
+      published_level
       Slot_index.pp
       slot_index
       Index.pp

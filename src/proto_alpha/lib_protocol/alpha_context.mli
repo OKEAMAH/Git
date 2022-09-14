@@ -2773,7 +2773,7 @@ module Dal : sig
   end
 
   module Page : sig
-    type content = bytes
+    type content = string
 
     module Index : sig
       type t = int
@@ -2787,13 +2787,17 @@ module Dal : sig
       val equal : int -> int -> bool
     end
 
-    type t = {slot_index : Slot_index.t; page_index : Index.t}
+    type id = {
+      published_level : Raw_level.t;
+      slot_index : Slot_index.t;
+      page_index : Index.t;
+    }
 
-    val encoding : t Data_encoding.t
+    val id_encoding : id Data_encoding.t
 
-    val pp : Format.formatter -> t -> unit
+    val pp_id : Format.formatter -> id -> unit
 
-    val equal : t -> t -> bool
+    val equal_id : id -> id -> bool
   end
 
   (** This module re-exports definitions from {!Dal_slot_repr},
