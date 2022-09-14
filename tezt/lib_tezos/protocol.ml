@@ -83,6 +83,8 @@ let accuser proto = "./tezos-accuser-" ^ daemon_name proto
 
 let baker proto = "./tezos-baker-" ^ daemon_name proto
 
+let sc_rollup_node proto = "./tezos-sc-rollup-node-" ^ daemon_name proto
+
 let encoding_prefix = daemon_name
 
 type parameter_overrides = (string list * string option) list

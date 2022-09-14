@@ -222,12 +222,15 @@ let originate_sc_rollup ?(hooks = hooks) ?(burn_cap = Tez.(of_int 9999999))
 
    A rollup node has a configuration file that must be initialized.
 *)
-let with_fresh_rollup ?kind ?boot_sector f tezos_node tezos_client operator =
+let with_fresh_rollup ?kind ?boot_sector ?protocol f tezos_node tezos_client
+    operator =
   let* sc_rollup =
     originate_sc_rollup ?kind ?boot_sector ~src:operator tezos_client
   in
   let sc_rollup_node =
+    let path = Option.map Protocol.sc_rollup_node protocol in
     Sc_rollup_node.create
+      ?path
       Operator
       tezos_node
       tezos_client
@@ -276,12 +279,37 @@ let test_migration_scenario ~kind ?commitment_period ?challenge_window ?timeout
     ?timeout
     ~protocol:migrate_from
   @@ fun tezos_node tezos_client ->
-  ( with_fresh_rollup ~kind @@ fun sc_rollup sc_rollup_node _filename ->
-    let* a = scenario_prior tezos_client ~sc_rollup sc_rollup_node in
+  ( with_fresh_rollup ~protocol:migrate_from ~kind
+  @@ fun sc_rollup sc_rollup_node_from _filename ->
+    let sc_rollup_client_from = Sc_rollup_client.create sc_rollup_node_from in
+    let* a =
+      scenario_prior
+        tezos_client
+        ~sc_rollup
+        (sc_rollup_node_from, sc_rollup_client_from)
+    in
     let* () =
       repeat migration_level (fun () -> Client.bake_for_and_wait tezos_client)
     in
-    scenario_after tezos_client ~sc_rollup sc_rollup_node a )
+    let sc_rollup_node_to =
+      let path = Protocol.sc_rollup_node migrate_to in
+      Sc_rollup_node.create
+        ~path
+        Operator
+        tezos_node
+        tezos_client
+        ~default_operator:Constant.bootstrap1.alias
+    in
+    let* _configuration_filename =
+      Sc_rollup_node.config_init sc_rollup_node_to sc_rollup
+    in
+    let sc_rollup_client_to = Sc_rollup_client.create sc_rollup_node_to in
+    scenario_after
+      tezos_client
+      ~sc_rollup
+      (sc_rollup_node_from, sc_rollup_client_from)
+      (sc_rollup_node_to, sc_rollup_client_to)
+      a )
     tezos_node
     tezos_client
 
@@ -3014,18 +3042,87 @@ let test_refutation_reward_and_punishment protocols =
 (* Test to stop a node after a migration. If the node already stoped this will
    fails *)
 let test_migration_node_running ~kind ~migration_level ~migrate_from ~migrate_to
-    ~description =
+    ~description ~commitment_period ~challenge_window =
   let tags = ["node"]
   and variant = "Rollup node keep running post-migration."
-  and scenario_prior _tezos_client ~sc_rollup:_ sc_rollup_node =
-    Sc_rollup_node.run sc_rollup_node
-  and scenario_after _tezos_client ~sc_rollup:_ sc_rollup_node () =
-    let* _level =
-      Sc_rollup_node.wait_for_level sc_rollup_node migration_level
+  and scenario_prior tezos_client ~sc_rollup (sc_rollup_node, sc_rollup_client)
+      =
+    let* () = Sc_rollup_node.run sc_rollup_node in
+    let* () = send_messages 10 sc_rollup tezos_client in
+    let* state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+    let* ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
+    let* lcc_hash, lcc_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
     in
-    Sc_rollup_node.terminate sc_rollup_node
+    return (state_hash, ticks, lcc_hash, lcc_level)
+  and scenario_after tezos_client ~sc_rollup
+      (sc_rollup_node_from, sc_rollup_client_from)
+      (sc_rollup_node_to, sc_rollup_client_to)
+      (prev_state_hash, prev_ticks, prev_lcc_hash, prev_lcc_level) =
+    let* current_level = Client.level tezos_client in
+    let* () = send_messages commitment_period sc_rollup tezos_client in
+    let* () =
+      repeat challenge_window (fun () -> Client.bake_for_and_wait tezos_client)
+    in
+    let current_level =
+      current_level + (commitment_period + challenge_window)
+    in
+    let* _level =
+      Sc_rollup_node.wait_for_level sc_rollup_node_from current_level
+    in
+    let* state_hash_from =
+      Sc_rollup_client.state_hash ~hooks sc_rollup_client_from
+    in
+    let* ticks_from =
+      Sc_rollup_client.total_ticks ~hooks sc_rollup_client_from
+    in
+    let () =
+      Check.(state_hash_from <> prev_state_hash)
+        Check.string
+        ~error_msg:"State hash has not changed (%L <> %R)"
+    in
+    let () =
+      Check.(ticks_from >= prev_ticks)
+        Check.int
+        ~error_msg:"Tick counter did not advance (%L >= %R)"
+    in
+    let* lcc_hash, lcc_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
+    in
+    let () =
+      Check.(lcc_hash <> prev_lcc_hash)
+        Check.string
+        ~error_msg:"last commitment cemented hash has not changed (%L <> %R)"
+    in
+    let () =
+      Check.(lcc_level > prev_lcc_level)
+        Check.int
+        ~error_msg:"last commitment cemented level is not superior (%L <> %R)"
+    in
+    let* () = Sc_rollup_node.run sc_rollup_node_to in
+    let* _level =
+      Sc_rollup_node.wait_for_level sc_rollup_node_to current_level
+    in
+    let* ticks_to = Sc_rollup_client.total_ticks ~hooks sc_rollup_client_to in
+    let* state_hash_to =
+      Sc_rollup_client.state_hash ~hooks sc_rollup_client_to
+    in
+    let () =
+      Check.(state_hash_from = state_hash_to)
+        Check.string
+        ~error_msg:"State hash differs between the nodes (%L = %R)"
+    in
+    let () =
+      Check.(ticks_from = ticks_to)
+        Check.int
+        ~error_msg:"Tick counter differs between the nodes (%L = %R)"
+    in
+    let* () = Sc_rollup_node.terminate sc_rollup_node_from in
+    Sc_rollup_node.terminate sc_rollup_node_to
   in
   test_migration_scenario
+    ~commitment_period
+    ~challenge_window
     ~kind
     ~migration_level
     ~migrate_from
@@ -3189,7 +3286,7 @@ let register_migration ~migrate_from ~migrate_to =
   let kind = "arith"
   and description = "Test persistence across Tezos protocol upgrade"
   and commitment_period = 3 in
-  let challenge_window = commitment_period * 7 in
+  let challenge_window = commitment_period + 7 in
   let parameters = JSON.parse_file (Protocol.parameter_file migrate_from) in
   let blocks_per_cycle = JSON.(get "blocks_per_cycle" parameters |> as_int) in
   let migration_level = blocks_per_cycle in
@@ -3198,4 +3295,6 @@ let register_migration ~migrate_from ~migrate_to =
     ~migration_level
     ~migrate_from
     ~migrate_to
-    ~description ;
+    ~description
+    ~commitment_period
+    ~challenge_window

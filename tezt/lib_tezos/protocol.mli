@@ -77,6 +77,10 @@ val accuser : t -> string
 (** Get the path of the baker of a protocol, such as ["./tezos-baker-alpha"]. *)
 val baker : t -> string
 
+(** Get the path of the smart contract rollup node of a protocol, such as
+        ["./tezos-sc-rollup-node-alpha"]. *)
+val sc_rollup_node : t -> string
+
 (** Get the part of the daemon name that is specific to a protocol (e.g. ["008-PtEdo2Zk"]). *)
 val daemon_name : t -> string
 
