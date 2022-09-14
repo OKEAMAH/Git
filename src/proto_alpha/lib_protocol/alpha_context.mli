@@ -3451,7 +3451,9 @@ module Sc_rollup : sig
   module Proof : sig
     type input_proof =
       | Inbox_proof of Inbox.serialized_proof
-      | Postulate_proof of [`Preimage_proof of string | `Dal_page_proof of unit]
+      | Postulate_proof of
+          [ `Preimage_proof of string
+          | `Dal_page_proof of Dal.Slots_history.proof ]
 
     type t = {pvm_step : wrapped_proof; input_proof : input_proof option}
 
@@ -3472,6 +3474,15 @@ module Sc_rollup : sig
         val inbox : Inbox.history_proof
 
         val history : Inbox.History.t
+      end
+
+      module Dal_with_history : sig
+        val confirmed_slots_history : Dal_slot_repr.Slots_history.t
+
+        val history_cache : Dal_slot_repr.Slots_history.History_cache.t
+
+        val page_content_of :
+          Dal_slot_repr.Page.id -> Dal_slot_repr.Page.content option
       end
     end
 

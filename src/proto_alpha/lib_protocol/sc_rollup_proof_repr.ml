@@ -49,9 +49,12 @@ let () =
     (function Sc_rollup_invalid_serialized_inbox_proof -> Some () | _ -> None)
     (fun () -> Sc_rollup_invalid_serialized_inbox_proof)
 
+module Dal_proofs = Dal_slot_repr.Slots_history
+
 type input_proof =
   | Inbox_proof of Sc_rollup_inbox_repr.serialized_proof
-  | Postulate_proof of [`Preimage_proof of string | `Dal_page_proof of unit]
+  | Postulate_proof of
+      [`Preimage_proof of string | `Dal_page_proof of Dal_proofs.proof]
 
 let postulate_proof_encoding =
   let open Data_encoding in
@@ -66,14 +69,9 @@ let postulate_proof_encoding =
     case
       ~title:"dal_page proof"
       (Tag 1)
-      unit
-      (*
-         (obj3
-            (req "kind" (constant "first_after"))
-            (req "slot" Slot.Index.encoding)
-            (req "page" Slot.Page.Index.encoding))*)
-        (function `Dal_page_proof () -> Some () | _ -> None)
-      (fun () -> `Dal_page_proof ())
+      Dal_proofs.proof_encoding
+      (function `Dal_page_proof p -> Some p | _ -> None)
+      (fun p -> `Dal_page_proof p)
   in
   union [case_preimage_proof; case_dal_page_proof]
 
@@ -156,8 +154,8 @@ let pp_proof fmt = function
   | Inbox_proof p -> pp_inbox_proof fmt p
   | Postulate_proof (`Preimage_proof p) ->
       Format.fprintf fmt "postulate: Preimage (%s)" p
-  | Postulate_proof (`Dal_page_proof ()) ->
-      Format.fprintf fmt "postulate: Dal_page()"
+  | Postulate_proof (`Dal_page_proof p) ->
+      Format.fprintf fmt "postulate: Dal_page(%a)" Dal_proofs.pp_proof p
 
 let valid snapshot commit_level ~pvm_name proof =
   let open Lwt_tzresult_syntax in
@@ -239,6 +237,15 @@ module type PVM_with_context_and_state = sig
 
     val history : Sc_rollup_inbox_repr.History.t
   end
+
+  module Dal_with_history : sig
+    val confirmed_slots_history : Dal_slot_repr.Slots_history.t
+
+    val history_cache : Dal_slot_repr.Slots_history.History_cache.t
+
+    val page_content_of :
+      Dal_slot_repr.Page.id -> Dal_slot_repr.Page.content option
+  end
 end
 
 let produce pvm_and_state commit_level =
@@ -272,9 +279,27 @@ let produce pvm_and_state commit_level =
               ( Some (Postulate_proof (`Preimage_proof data)),
                 Some (Sc_rollup_PVM_sig.Postulate_revelation (`Preimage data))
               ))
-    | Sc_rollup_PVM_sig.Needs_postulate (`Dal_page_request _p_id) ->
-        assert false (* FIXME/DAL-REFUTATION *)
+    | Sc_rollup_PVM_sig.Needs_postulate (`Dal_page_request page_id) ->
+        (* should provide the page + the proof of ?    *)
+        (* FIXME/DAL-REFUTATION *)
+        let open Dal_with_history in
+        let* proof, page_opt =
+          Dal_proofs.produce_proof
+            ~page_content_of
+            page_id
+            confirmed_slots_history
+            history_cache
+        in
+        let i =
+          Option.map
+            (fun msg ->
+              Sc_rollup_PVM_sig.Postulate_revelation (`Dal_page (Some msg)))
+            page_opt
+        in
+        (* FIXME/DAL-REFUTATION: proof should be serialized? *)
+        return (Some (Postulate_proof (`Dal_page_proof proof)), i)
   in
+
   let input_given = Option.bind input_given @@ cut_at_level commit_level in
   let* pvm_step_proof = P.produce_proof P.context input_given P.state in
   let module P_with_proof = struct

@@ -123,6 +123,15 @@ module Make (Interpreter : Interpreter.S) :
 
         let inbox = history_proof
       end
+
+      (* FIXME/DAL-REFUTATION: correct implementation of this module *)
+      module Dal_with_history = struct
+        let confirmed_slots_history = assert false
+
+        let history_cache = assert false
+
+        let page_content_of _page_id = assert false
+      end
     end in
     let* r =
       trace

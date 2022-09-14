@@ -1323,6 +1323,13 @@ let build_proof ~player_client start_tick (game : Game.t) =
 
       let inbox = history_proof
     end
+
+    (* FIXME/DAL-REFUTATION: correct implementation of this module *)
+    module Dal_with_history = struct
+      let confirmed_slots_history = assert false
+
+      let history_cache = assert false
+    end
   end in
   let*! proof = Sc_rollup.Proof.produce (module P) game.level in
   return (WithExceptions.Result.get_ok ~loc:__LOC__ proof)
