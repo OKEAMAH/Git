@@ -58,6 +58,8 @@ module Index = struct
 
   let compare = Compare.Int.compare
 
+  let ( < ) = Compare.Int.( < )
+
   let equal = Compare.Int.equal
 end
 
@@ -515,13 +517,24 @@ module Slots_history = struct
                  ~compare:(compare s.published_level s.index)
                  ~cell_ptr)
           in
+          let ( <|< ) s1 s2 =
+            Raw_level_repr.(s1.published_level < s2.published_level)
+            || Raw_level_repr.(s1.published_level = s2.published_level)
+               && Slot_index.(s1.index < s2.index)
+          in
 
           let* prev_path = check_slot_witness "prev" prev_confirmed_slot in
           let* next_path = check_slot_witness "next" next_confirmed_slot in
+          let tmp_slot =
+            {
+              published_level;
+              index = slot_index;
+              header = prev_confirmed_slot.header;
+            }
+          in
           let* () =
             fail_unless
-              Raw_level_repr.(
-                prev_confirmed_slot.published_level < published_level)
+              (prev_confirmed_slot <|< tmp_slot)
               (Format.kasprintf
                  dal_proof_error
                  "prev given attested slot witness %a is greater than or equal \
@@ -533,8 +546,7 @@ module Slots_history = struct
           in
           let* () =
             fail_unless
-              Raw_level_repr.(
-                published_level < next_confirmed_slot.published_level)
+              (tmp_slot <|< next_confirmed_slot)
               (Format.kasprintf
                  dal_proof_error
                  "next given attested slot witness %a is smaller than or equal \
