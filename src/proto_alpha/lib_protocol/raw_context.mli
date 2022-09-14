@@ -67,15 +67,15 @@ val storage_error : storage_error -> 'a tzresult
 (** {1 Abstract Context} *)
 
 (** Abstract view of the context.
-    Includes a handle to the functional key-value database
-    ({!Context.t}) along with some in-memory values (gas, etc.). *)
+Includes a handle to the functional key-value database
+({!Context.t}) along with some in-memory values (gas, etc.). *)
 type t
 
 type root = t
 
 (** Retrieves the state of the database and gives its abstract view.
-    It also returns wether this is the first block validated
-    with this version of the protocol. *)
+It also returns wether this is the first block validated
+with this version of the protocol. *)
 val prepare :
   level:Int32.t ->
   predecessor_timestamp:Time.t ->
@@ -94,7 +94,7 @@ val prepare_first_block :
 val activate : t -> Protocol_hash.t -> t Lwt.t
 
 (** Returns the state of the database resulting of operations on its
-    abstract view *)
+abstract view *)
 val recover : t -> Context.t
 
 val current_level : t -> Level_repr.t
@@ -120,28 +120,28 @@ val round_durations : t -> Round_repr.Durations.t
 val cycle_eras : t -> Level_repr.cycle_eras
 
 (** Increment the current block fee stash that will be credited to the payload
-    producer's account at finalize_application *)
+producer's account at finalize_application *)
 val credit_collected_fees_only_call_from_token : t -> Tez_repr.t -> t tzresult
 
 (** Decrement the current block fee stash that will be credited to the payload
-    producer's account at finalize_application *)
+producer's account at finalize_application *)
 val spend_collected_fees_only_call_from_token : t -> Tez_repr.t -> t tzresult
 
 (** Returns the current block fee stash that will be credited to the payload
-    producer's account at finalize_application *)
+producer's account at finalize_application *)
 val get_collected_fees : t -> Tez_repr.t
 
 (** [consume_gas_limit_in_block ctxt gas_limit] checks that
-    [gas_limit] is well-formed (i.e. it does not exceed the hard gas
-    limit per operation as defined in [ctxt], and it is positive), then
-    consumes [gas_limit] in the current block gas level of [ctxt].
+[gas_limit] is well-formed (i.e. it does not exceed the hard gas
+limit per operation as defined in [ctxt], and it is positive), then
+consumes [gas_limit] in the current block gas level of [ctxt].
 
-    @return [Error Gas_limit_repr.Gas_limit_too_high] if [gas_limit]
-    is greater than the allowed limit for operation gas level or
-    negative.
+@return [Error Gas_limit_repr.Gas_limit_too_high] if [gas_limit]
+is greater than the allowed limit for operation gas level or
+negative.
 
-    @return [Error Block_quota_exceeded] if not enough gas remains in
-    the block. *)
+@return [Error Block_quota_exceeded] if not enough gas remains in
+the block. *)
 val consume_gas_limit_in_block : t -> 'a Gas_limit_repr.Arith.t -> t tzresult
 
 val set_gas_limit : t -> 'a Gas_limit_repr.Arith.t -> t
@@ -163,7 +163,7 @@ val update_remaining_block_gas : t -> Gas_limit_repr.Arith.fp -> t
 type error += Undefined_operation_nonce (* `Permanent *)
 
 (** [init_origination_nonce ctxt hash] initialise the origination nonce in
-    memory from [hash]. See [Origination_nonce.t] for more information. *)
+memory from [hash]. See [Origination_nonce.t] for more information. *)
 val init_origination_nonce : t -> Operation_hash.t -> t
 
 val get_origination_nonce : t -> Origination_nonce.t tzresult
@@ -171,8 +171,8 @@ val get_origination_nonce : t -> Origination_nonce.t tzresult
 val increment_origination_nonce : t -> (t * Origination_nonce.t) tzresult
 
 (** [unset_origination_nonce ctxt] unset the origination nonce in memory. To be
-    used only when no more origination can be done in that operation. See
-    [Origination_nonce.t] for more information. *)
+used only when no more origination can be done in that operation. See
+[Origination_nonce.t] for more information. *)
 val unset_origination_nonce : t -> t
 
 (** {1 Generic accessors} *)
@@ -193,7 +193,7 @@ module type T =
 include T with type t := t
 
 (** Initialize the local nonce used for preventing a script to
-    duplicate an internal operation to replay it. *)
+duplicate an internal operation to replay it. *)
 val reset_internal_nonce : t -> t
 
 (** Increments the internal operation nonce. *)
@@ -243,16 +243,16 @@ type consensus_pk = {
 val consensus_pk_encoding : consensus_pk Data_encoding.t
 
 (** [init_sampler_for_cycle ctxt cycle seed state] caches the seeded stake
-    sampler (a.k.a. [seed, state]) for [cycle] in memory for quick access. *)
+sampler (a.k.a. [seed, state]) for [cycle] in memory for quick access. *)
 val init_sampler_for_cycle :
   t -> Cycle_repr.t -> Seed_repr.seed -> consensus_pk Sampler.t -> t tzresult
 
 (** [sampler_for_cycle ~read ctxt cycle] returns the seeded stake
-    sampler for [cycle]. The sampler is read in memory if
-    [init_sampler_for_cycle] or [sampler_for_cycle] was previously
-    called for the same [cycle]. Otherwise, it is read "on-disk" with
-    the [read] function and then cached in [ctxt] like
-    [init_sampler_for_cycle]. *)
+sampler for [cycle]. The sampler is read in memory if
+[init_sampler_for_cycle] or [sampler_for_cycle] was previously
+called for the same [cycle]. Otherwise, it is read "on-disk" with
+the [read] function and then cached in [ctxt] like
+[init_sampler_for_cycle]. *)
 val sampler_for_cycle :
   read:(t -> (Seed_repr.seed * consensus_pk Sampler.t) tzresult Lwt.t) ->
   t ->
@@ -287,22 +287,22 @@ module type CONSENSUS = sig
   type consensus_pk
 
   (** Returns a map where each endorser's pkh is associated to the
-     list of its endorsing slots (in decreasing order) for a given
-     level. *)
+      list of its endorsing slots (in decreasing order) for a given
+      level. *)
   val allowed_endorsements : t -> (consensus_pk * int) slot_map
 
   (** Returns a map where each endorser's pkh is associated to the
-     list of its endorsing slots (in decreasing order) for a given
-     level. *)
+      list of its endorsing slots (in decreasing order) for a given
+      level. *)
   val allowed_preendorsements : t -> (consensus_pk * int) slot_map
 
   (** [endorsement power ctx] returns the endorsement power of the
-     current block. *)
+      current block. *)
   val current_endorsement_power : t -> int
 
   (** Initializes the map of allowed endorsements and preendorsements,
-     this function must be called only once and before applying
-     any consensus operation.  *)
+      this function must be called only once and before applying
+      any consensus operation.  *)
   val initialize_consensus_operation :
     t ->
     allowed_endorsements:(consensus_pk * int) slot_map ->
@@ -316,7 +316,7 @@ module type CONSENSUS = sig
     t -> Signature.Public_key_hash.t -> t tzresult
 
   (** [record_endorsement ctx ~initial_slot ~power] records an
-     endorsement for the current block.
+      endorsement for the current block.
 
       The endorsement should be valid in the sense that
       [Int_map.find_opt initial_slot allowed_endorsement ctx = Some
@@ -324,32 +324,32 @@ module type CONSENSUS = sig
   val record_endorsement : t -> initial_slot:slot -> power:int -> t tzresult
 
   (** [record_preendorsement ctx ~initial_slot ~power round
-     payload_hash power] records a preendorsement for a proposal at
-     [round] with payload [payload_hash].
+      payload_hash power] records a preendorsement for a proposal at
+      [round] with payload [payload_hash].
 
       The preendorsement should be valid in the sense that
-     [Int_map.find_opt initial_slot allowed_preendorsement ctx = Some
-     (pkh, power)].  *)
+      [Int_map.find_opt initial_slot allowed_preendorsement ctx = Some
+      (pkh, power)].  *)
   val record_preendorsement :
     t -> initial_slot:slot -> power:int -> round -> t tzresult
 
   val endorsements_seen : t -> slot_set
 
   (** [get_preendorsements_quorum_round ctx] returns [None] if no
-     preendorsement are included in the current block. Otherwise,
-     return [Some r] where [r] is the round of the preendorsements
-     included in the block. *)
+      preendorsement are included in the current block. Otherwise,
+      return [Some r] where [r] is the round of the preendorsements
+      included in the block. *)
   val get_preendorsements_quorum_round : t -> round option
 
   (** [set_preendorsements_quorum_round ctx round] sets the round for
-     preendorsements included in this block. This function should be
-     called only once.
+      preendorsements included in this block. This function should be
+      called only once.
 
       This function is only used in [Full_construction] mode.  *)
   val set_preendorsements_quorum_round : t -> round -> t
 
   (** [locked_round_evidence ctx] returns the round of the recorded
-     preendorsements as well as their power. *)
+      preendorsements as well as their power. *)
   val locked_round_evidence : t -> (round * int) option
 
   val set_endorsement_branch : t -> Block_hash.t * Block_payload_hash.t -> t
@@ -387,35 +387,31 @@ end
 
 module Dal : sig
   (** [record_available_shards ctxt slots shards] records that the
-     list of shards [shards] were declared available. The function
-     assumes that a shard belongs to the interval [0; number_of_shards
-     - 1]. Otherwise, for each shard outside this interval, it is a
-     no-op. *)
+      list of shards [shards] were declared available. The function
+      assumes that a shard belongs to the interval [0; number_of_shards
+      - 1]. Otherwise, for each shard outside this interval, it is a
+        no-op. *)
   val record_available_shards : t -> Dal_endorsement_repr.t -> int list -> t
 
   (** [register_slot ctxt slot] returns a new context where the new
-     candidate [slot] have been taken into account. Returns [Some
-     (ctxt,updated)] where [updated=true] if the candidate is
-     registered. [Some (ctxt,false)] if another candidate was already
-     registered previously. Returns an error if the slot is
-     invalid. *)
+      candidate [slot] have been taken into account. Returns [Some
+      (ctxt,updated)] where [updated=true] if the candidate is
+      registered. [Some (ctxt,false)] if another candidate was already
+      registered previously. Returns an error if the slot is
+      invalid. *)
   val register_slot : t -> Dal_slot_repr.t -> (t * bool) tzresult
 
   (** [candidates ctxt] returns the current list of slot for which
-     there is at least one candidate. *)
+      there is at least one candidate. *)
   val candidates : t -> Dal_slot_repr.t list
 
   (** [is_slot_available ctxt slot_index] returns [true] if the
-     [slot_index] is declared available by the protocol. [false]
-     otherwise. If the [index] is out of the interval
-     [0;number_of_slots - 1], returns [false]. *)
+      [slot_index] is declared available by the protocol. [false]
+      otherwise. If the [index] is out of the interval
+      [0;number_of_slots - 1], returns [false]. *)
   val is_slot_available : t -> Dal_slot_repr.Index.t -> bool
 
   (** [shards ctxt ~endorser] returns the shard assignment for the
-     [endorser] for the current level. *)
+      [endorser] for the current level. *)
   val shards : t -> endorser:Signature.Public_key_hash.t -> int list
-end
-
-module Migration_from_Kathmandu : sig
-  val reset_samplers : t -> t tzresult
 end

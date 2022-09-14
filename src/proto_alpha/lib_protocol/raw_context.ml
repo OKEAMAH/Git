@@ -1262,12 +1262,6 @@ let record_non_consensus_operation_hash ctxt operation_hash =
 
 let non_consensus_operations ctxt = List.rev (non_consensus_operations_rev ctxt)
 
-module Migration_from_Kathmandu = struct
-  let reset_samplers ctxt =
-    let ctxt = update_sampler_state ctxt Cycle_repr.Map.empty in
-    ok ctxt
-end
-
 let init_sampler_for_cycle ctxt cycle seed state =
   let map = sampler_state ctxt in
   if Cycle_repr.Map.mem cycle map then error (Sampler_already_set cycle)
