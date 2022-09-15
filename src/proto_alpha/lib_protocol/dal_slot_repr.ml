@@ -67,11 +67,11 @@ module Index = struct
   let equal = Compare.Int.equal
 end
 
-type header = Header.t
-
-let zero = Dal.Commitment.zero
-
-type t = {published_level : Raw_level_repr.t; index : Index.t; header : header}
+type t = {
+  published_level : Raw_level_repr.t;
+  index : Index.t;
+  header : Header.t;
+}
 
 type slot = t
 
@@ -82,7 +82,7 @@ let slot_equal ({published_level; index; header} : t) s2 =
   && Index.equal index s2.index
   && Header.equal header s2.header
 
-let zero_slot =
+let zero =
   {
     (* We don't expect to have any published slot at level
        Raw_level_repr.root. *)
@@ -280,7 +280,7 @@ module Slots_history = struct
 
     let equal : t -> t -> bool = equal_history
 
-    let genesis : t = Skip_list.genesis (zero_slot : slot)
+    let genesis : t = Skip_list.genesis (zero : slot)
 
     let hash_skip_list_cell cell =
       let current_slot = Skip_list.content cell in
@@ -319,7 +319,7 @@ module Slots_history = struct
       let open Tzresult_syntax in
       let* () =
         error_when
-          Raw_level_repr.(slot.published_level <= zero_slot.published_level)
+          Raw_level_repr.(slot.published_level <= zero.published_level)
           (failwith
              "No slot is supposed to be published at level \
               'Raw_level_repr.root'")
