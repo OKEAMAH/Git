@@ -166,6 +166,15 @@ in the :ref:`introduction <howtoget>`.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Dryrun Protocol doc:
+
+   dryrun/protocol
+   dryrun/glossary
+   dryrun/cli-commands
+   dryrun/rpc
+
+.. toctree::
+   :maxdepth: 2
    :caption: Alpha Development Protocol doc:
 
    alpha/protocol
@@ -219,6 +228,7 @@ in the :ref:`introduction <howtoget>`.
    protocols/012_ithaca
    protocols/013_jakarta
    protocols/014_kathmandu
+   protocols/015_dryrun
    protocols/alpha
 
 .. toctree::
