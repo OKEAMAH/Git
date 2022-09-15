@@ -3,6 +3,10 @@
     Component:    Wasm PVM
     Invocation:   dune exec src/lib_scoru_wasm/bin/csv.exe src/lib_scoru_wasm/test/wasm_kernels/unreachable.wasm
     Subject:      Measure nb of ticks
+
+    Kernels: 
+    -  src/lib_scoru_wasm/test/wasm_kernels/
+    - src/proto_alpha/lib_protocol/test/integration/wasm_kernel/
 *)
 open Tezos_scoru_wasm
 
@@ -151,6 +155,6 @@ let () =
   @@ run kernel (fun kernel ->
          let open Lwt_syntax in
          let* context, tree = initial_boot_sector_from_kernel kernel in
-         let+ tree = eval_until_input_requested context tree in
+         let+ tree = eval_until_input_requested ~tick_info:false context tree in
          let _ = print_info tree in
          ())
