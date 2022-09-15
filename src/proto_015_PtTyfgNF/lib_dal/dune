@@ -2,16 +2,16 @@
 ; Edit file manifest/main.ml instead.
 
 (library
- (name tezos_dal_alpha)
- (public_name tezos-dal-alpha)
+ (name tezos_dal_015_PtTyfgNF)
+ (public_name tezos-dal-015-PtTyfgNF)
  (instrumentation (backend bisect_ppx))
  (libraries
   tezos-base
   tezos-protocol-compiler.registerer
   tezos_dal_node_lib
-  tezos-client-alpha
-  tezos-embedded-protocol-alpha
-  tezos-protocol-alpha)
+  tezos-client-015-PtTyfgNF
+  tezos-embedded-protocol-015-PtTyfgNF
+  tezos-protocol-015-PtTyfgNF)
  (inline_tests (flags -verbose) (modes native))
  (preprocess (pps ppx_expect))
  (library_flags (:standard -linkall))
@@ -21,6 +21,6 @@
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_protocol_registerer
   -open Tezos_dal_node_lib
-  -open Tezos_client_alpha
-  -open Tezos_embedded_protocol_alpha
-  -open Tezos_protocol_alpha))
+  -open Tezos_client_015_PtTyfgNF
+  -open Tezos_embedded_protocol_015_PtTyfgNF
+  -open Tezos_protocol_015_PtTyfgNF))

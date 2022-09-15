@@ -2,33 +2,33 @@
 ; Edit file manifest/main.ml instead.
 
 (library
- (name tezos_protocol_alpha_parameters)
- (public_name tezos-protocol-alpha.parameters)
+ (name tezos_protocol_015_PtTyfgNF_parameters)
+ (public_name tezos-protocol-015-PtTyfgNF.parameters)
  (instrumentation (backend bisect_ppx))
  (libraries
   tezos-base
   tezos-protocol-environment
-  tezos-protocol-alpha)
+  tezos-protocol-015-PtTyfgNF)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
-  -open Tezos_protocol_alpha)
+  -open Tezos_protocol_015_PtTyfgNF)
  (modules (:standard \ gen)))
 
 (executable
  (name gen)
  (libraries
   tezos-base
-  tezos-protocol-alpha.parameters
-  tezos-protocol-alpha)
+  tezos-protocol-015-PtTyfgNF.parameters
+  tezos-protocol-015-PtTyfgNF)
  (link_flags
   (:standard -linkall))
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
-  -open Tezos_protocol_alpha_parameters
-  -open Tezos_protocol_alpha)
+  -open Tezos_protocol_015_PtTyfgNF_parameters
+  -open Tezos_protocol_015_PtTyfgNF)
  (modules gen))
 
 (rule
@@ -47,6 +47,6 @@
  (action (run %{deps} --mainnet)))
 
 (install
- (package tezos-protocol-alpha)
+ (package tezos-protocol-015-PtTyfgNF)
  (section lib)
  (files sandbox-parameters.json test-parameters.json mainnet-parameters.json))

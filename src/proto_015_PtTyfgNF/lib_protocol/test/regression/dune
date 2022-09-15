@@ -2,16 +2,16 @@
 ; Edit file manifest/main.ml instead.
 
 (library
- (name src_proto_alpha_lib_protocol_test_regression_tezt_lib)
+ (name src_proto_015_PtTyfgNF_lib_protocol_test_regression_tezt_lib)
  (instrumentation (backend bisect_ppx))
  (libraries
   tezt
   tezos-base
   tezt-tezos
   tezos-protocol-015-PtTyfgNF
-  tezos-client-alpha
-  tezos-protocol-plugin-alpha
-  tezos-alpha-test-helpers
+  tezos-client-015-PtTyfgNF
+  tezos-protocol-plugin-015-PtTyfgNF
+  tezos-015-PtTyfgNF-test-helpers
   tezos-micheline)
  (library_flags (:standard -linkall))
  (flags
@@ -21,16 +21,16 @@
   -open Tezos_base.TzPervasives
   -open Tezt_tezos
   -open Tezos_protocol_015_PtTyfgNF
-  -open Tezos_client_alpha
-  -open Tezos_protocol_plugin_alpha
-  -open Tezos_alpha_test_helpers
+  -open Tezos_client_015_PtTyfgNF
+  -open Tezos_protocol_plugin_015_PtTyfgNF
+  -open Tezos_015_PtTyfgNF_test_helpers
   -open Tezos_micheline)
  (modules test_logging))
 
 (executable
  (name main)
  (libraries
-  src_proto_alpha_lib_protocol_test_regression_tezt_lib)
+  src_proto_015_PtTyfgNF_lib_protocol_test_regression_tezt_lib)
  (modules main))
 
 (rule

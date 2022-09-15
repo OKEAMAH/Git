@@ -8,16 +8,16 @@
   tezos-base
   tezos-protocol-015-PtTyfgNF
   qcheck-alcotest
-  tezos-client-alpha
-  tezos-alpha-test-helpers
+  tezos-client-015-PtTyfgNF
+  tezos-015-PtTyfgNF-test-helpers
   tezos-base-test-helpers)
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
   -open Tezos_base.TzPervasives.Error_monad.Legacy_monad_globals
   -open Tezos_protocol_015_PtTyfgNF
-  -open Tezos_client_alpha
-  -open Tezos_alpha_test_helpers
+  -open Tezos_client_015_PtTyfgNF
+  -open Tezos_015_PtTyfgNF_test_helpers
   -open Tezos_base_test_helpers))
 
 (rule
