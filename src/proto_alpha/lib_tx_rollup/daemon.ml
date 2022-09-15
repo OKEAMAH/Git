@@ -1000,6 +1000,50 @@ let is_connection_error trace =
       | _ -> false)
     trace
 
+let wait_for_first_block configuration (cctxt : #Client_context.printer) =
+  let open Lwt_result_syntax in
+  let rec loop () =
+    let*! () =
+      cctxt#message
+        "Waiting for first block of protocol %s (%a)"
+        Protocol.name
+        Protocol_hash.pp_short
+        Protocol.hash
+    in
+    let* block_stream, interupt =
+      connect ~delay:configuration.Node_config.reconnection_delay cctxt
+    in
+    let*! res =
+      Lwt_stream.find_s
+        (fun (block, _) ->
+          let open Lwt_syntax in
+          let+ protocols =
+            Tezos_shell_services.Block_services.protocols
+              cctxt
+              ~block:(`Hash (block, 0))
+              ()
+          in
+          match protocols with
+          | Error _ -> false
+          | Ok {current_protocol; _} ->
+              Protocol_hash.(current_protocol = Protocol.hash))
+        block_stream
+    in
+    match res with
+    | None ->
+        let*! () = Event.(emit connection_lost) () in
+        loop ()
+    | Some _ ->
+        let*! () =
+          cctxt#message
+            "Reached a block of protocol %s. The node will start"
+            Protocol.name
+        in
+        interupt () ;
+        return_unit
+  in
+  loop ()
+
 (* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/1845
    Clean exit *)
 let run configuration cctxt =
@@ -1009,6 +1053,7 @@ let run configuration cctxt =
       =
     configuration
   in
+  let* () = wait_for_first_block configuration cctxt in
   let* state = State.init cctxt configuration in
   let* () = check_operator_deposit state configuration in
   let* () =
