@@ -127,7 +127,8 @@ let print_tick_info context tree =
 let print_info tree =
   let open Lwt_syntax in
   let* info = Wasm.get_info tree in
-  Format.printf "%s\n%!" (Z.to_string info.current_tick) ;
+  let* tick = Wasm.Internal_for_tests.get_tick_state tree in
+  Format.printf "%s (%s)\n%!" (Z.to_string info.current_tick) (tick_label tick);
   return ()
 
 let rec eval_until_input_requested ?(tick_info = false) context tree =
