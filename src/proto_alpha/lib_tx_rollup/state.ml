@@ -303,7 +303,7 @@ let set_rollup_info state rollup_id ~origination_level =
   let rollup_info = {rollup_id; origination_level = Some origination_level} in
   Stores.Rollup_info_store.write state.stores.Stores.rollup_info rollup_info
 
-let init_rollup_info stores ?origination_level rollup_id =
+let init_rollup_info stores ~readonly ?origination_level rollup_id =
   let open Lwt_result_syntax in
   let*! stored_info = Stores.Rollup_info_store.read stores.Stores.rollup_info in
   let* rollup_info =
@@ -314,15 +314,16 @@ let init_rollup_info stores ?origination_level rollup_id =
     | None ->
         let rollup_info = {rollup_id; origination_level} in
         let* () =
+          unless readonly @@ fun () ->
           Stores.Rollup_info_store.write stores.rollup_info rollup_info
         in
         return rollup_info
   in
   return rollup_info
 
-let init_context ~data_dir =
+let init_context ~readonly ~data_dir =
   let open Lwt_result_syntax in
-  let*! index = Context.init (Node_data.context_dir data_dir) in
+  let*! index = Context.init ~readonly (Node_data.context_dir data_dir) in
   return index
 
 let read_head (stores : Stores.t) =
@@ -354,8 +355,8 @@ let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
   in
   let* rollup_info, context_index =
     both
-      (init_rollup_info stores ?origination_level rollup_id)
-      (init_context ~data_dir)
+      (init_rollup_info stores ~readonly ?origination_level rollup_id)
+      (init_context ~readonly ~data_dir)
     |> lwt_map_error (function [] -> [] | trace :: _ -> trace)
   in
   let*! head = read_head stores in
