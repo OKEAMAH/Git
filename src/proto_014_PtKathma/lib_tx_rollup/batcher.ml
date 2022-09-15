@@ -310,16 +310,25 @@ let table = Worker.create_table Queue
 
 let worker_promise, worker_waker = Lwt.task ()
 
-let init ~rollup ~signer ~batch_burn_limit index constants =
+let init cctxt ~rollup ~signer ~batch_burn_limit index =
   let open Lwt_result_syntax in
-  let+ worker =
-    Worker.launch
-      table
-      rollup
-      {signer; index; constants; batch_burn_limit}
-      (module Handlers)
+  let*! constants =
+    Protocol.Constants_services.all cctxt (cctxt#chain, cctxt#block)
   in
-  Lwt.wakeup worker_waker worker
+  match constants with
+  | Error _ ->
+      (* Don't start batcher if constants cannot be retrieved, i.e. if they are of
+         the wrong protocol, most likely. *)
+      return_unit
+  | Ok constants ->
+      let+ worker =
+        Worker.launch
+          table
+          rollup
+          {signer; index; constants; batch_burn_limit}
+          (module Handlers)
+      in
+      Lwt.wakeup worker_waker worker
 
 (* This is a batcher worker for a single tx rollup *)
 let worker =

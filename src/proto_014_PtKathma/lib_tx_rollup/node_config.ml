@@ -61,6 +61,7 @@ type t = {
   l2_blocks_cache_size : int;
   caps : caps;
   batch_burn_limit : Protocol.Alpha_context.Tez.t option;
+  wait_proto : bool;
 }
 
 let default_data_dir rollup_id =
@@ -284,6 +285,7 @@ let encoding data_dir =
            l2_blocks_cache_size;
            caps;
            batch_burn_limit;
+           wait_proto;
          } ->
       ( ( (),
           rollup_id,
@@ -295,7 +297,7 @@ let encoding data_dir =
           allow_deposit,
           l2_blocks_cache_size,
           caps ),
-        (batch_burn_limit, cors_origins, cors_headers) ))
+        (batch_burn_limit, cors_origins, cors_headers, wait_proto) ))
     (fun ( ( (),
              rollup_id,
              origination_level,
@@ -306,7 +308,7 @@ let encoding data_dir =
              allow_deposit,
              l2_blocks_cache_size,
              caps ),
-           (batch_burn_limit, cors_origins, cors_headers) ) ->
+           (batch_burn_limit, cors_origins, cors_headers, wait_proto) ) ->
       {
         data_dir;
         rollup_id;
@@ -321,6 +323,7 @@ let encoding data_dir =
         l2_blocks_cache_size;
         caps;
         batch_burn_limit;
+        wait_proto;
       })
   @@ merge_objs
        (obj10
@@ -374,7 +377,7 @@ let encoding data_dir =
              "caps"
              caps_encoding
              default_caps))
-       (obj3
+       (obj4
           (opt
              ~description:
                "The burn limit in for a batch (to be paid for the submission \
@@ -394,7 +397,13 @@ let encoding data_dir =
                 during CORS"
              "cors-headers"
              (list string)
-             []))
+             [])
+          (dft
+             ~description:
+               "Wait for rollup node's protocol to be reached before starting."
+             "wait-proto"
+             bool
+             true))
 
 let get_configuration_filename data_dir =
   let filename = "config.json" in

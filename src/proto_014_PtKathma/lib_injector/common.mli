@@ -52,23 +52,35 @@ val reorg_encoding : 'a Data_encoding.t -> 'a reorg Data_encoding.t
 
 type block_info := Alpha_block_services.block_info
 
-(** [fetch_tezos_block ~find_in_cache cctxt hash] returns a block info given a
-    block hash. Looks for the block using [find_in_cache] first, and fetches
-    it from the L1 node otherwise. *)
+(** [fetch_tezos_block ~find_in_cache cctxt hash] returns [Some block_info]
+    given a block hash. Looks for the block using [find_in_cache] first, and
+    fetches it from the L1 node otherwise. Returns [None] if no such block hash
+    exists. [find_in_cache] should be from an instance of
+    {!Ringo_lwt.Sigs.CACHE_MAP_RESULT}. *)
 val fetch_tezos_block :
   find_in_cache:
     (Block_hash.t ->
-    (Block_hash.t -> block_info tzresult Lwt.t) ->
-    block_info tzresult Lwt.t) ->
+    (Block_hash.t -> block_info option Lwt.t) ->
+    block_info option Lwt.t) ->
   #full ->
   Block_hash.t ->
   block_info tzresult Lwt.t
+
+val fetch_tezos_header :
+  find_in_cache:
+    (Block_hash.t ->
+    (Block_hash.t -> Block_header.shell_header option Lwt.t) ->
+    Block_header.shell_header option Lwt.t) ->
+  #full ->
+  Block_hash.t ->
+  Block_header.shell_header tzresult Lwt.t
 
 (** [tezos_reorg fetch ~old_head_hash ~new_head_hash] computes the
     reorganization of L1 blocks from the chain whose head is [old_head_hash] and
     the chain whose head [new_head_hash]. *)
 val tezos_reorg :
-  (Block_hash.t -> block_info tzresult Lwt.t) ->
+  (Block_hash.t -> ('a, 'b) result Lwt.t) ->
+  ('a -> Block_header.shell_header) ->
   old_head_hash:Block_hash.t ->
   new_head_hash:Block_hash.t ->
-  block_info reorg tzresult Lwt.t
+  (Block_hash.t reorg, 'b) result Lwt.t

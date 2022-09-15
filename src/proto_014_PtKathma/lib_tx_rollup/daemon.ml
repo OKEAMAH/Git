@@ -313,11 +313,12 @@ let process_messages_and_inboxes (state : State.t)
         | Some predecessor ->
             Context.checkout state.context_index predecessor.header.context)
   in
+  let* constants = State.get_constants state current_hash in
   let parameters =
     Protocol.Tx_rollup_l2_apply.
       {
         tx_rollup_max_withdrawals_per_batch =
-          state.constants.parametric.tx_rollup.max_withdrawals_per_batch;
+          constants.parametric.tx_rollup.max_withdrawals_per_batch;
       }
   in
   let context = predecessor_context in
@@ -326,7 +327,7 @@ let process_messages_and_inboxes (state : State.t)
       context
       parameters
       ~rejection_max_proof_size:
-        state.constants.parametric.tx_rollup.rejection_max_proof_size
+        constants.parametric.tx_rollup.rejection_max_proof_size
       messages
   in
   let* context =
@@ -424,6 +425,16 @@ let originated_in_block rollup_id block =
   | None -> false
   | Some ops -> List.exists has_rollup_origination ops
 
+exception Quit_wrong_proto
+
+let check_proto state (header : Tezos_base.Block_header.shell_header) =
+  match state.State.proto_level with
+  | None -> ()
+  | Some proto_level ->
+      if header.proto_level > proto_level then (
+        Format.eprintf "Moved to proto %d > %d@." header.proto_level proto_level ;
+        raise Quit_wrong_proto)
+
 let rec process_block state current_hash =
   let open Lwt_result_syntax in
   let rollup_id = state.State.rollup_info.rollup_id in
@@ -437,7 +448,7 @@ let rec process_block state current_hash =
         | Some l2_block -> set_head state l2_block
         | None -> return_unit
       in
-      return (maybe_l2_block, None, [])
+      return (maybe_l2_block, None, [], None)
   | `Unknown ->
       state.State.sync.synchronized <- false ;
       let* block_info = State.fetch_tezos_block state current_hash in
@@ -454,7 +465,7 @@ let rec process_block state current_hash =
         Event.(emit processing_block_predecessor)
           (predecessor_hash, Int32.pred block_level)
       in
-      let* l2_predecessor, predecessor_context, blocks_to_commit =
+      let* l2_predecessor, predecessor_context, blocks_to_commit, _ =
         if originated_in_block rollup_id block_info then
           let*! () =
             Event.(emit detected_origination) (rollup_id, current_hash)
@@ -462,7 +473,7 @@ let rec process_block state current_hash =
           let* () =
             State.set_rollup_info state rollup_id ~origination_level:block_level
           in
-          return (None, None, [])
+          return (None, None, [], None)
         else process_block state predecessor_hash
       in
       let*! () =
@@ -504,13 +515,19 @@ let rec process_block state current_hash =
       let*! () =
         Event.(emit tezos_block_processed) (current_hash, block_level)
       in
-      return (l2_block, Some context, blocks_to_commit)
+      return (l2_block, Some context, blocks_to_commit, Some block_info)
 
 let batch () = if Batcher.active () then Batcher.batch () else return_unit
 
 let notify_head state head reorg =
   let open Lwt_result_syntax in
   let* head = State.fetch_tezos_block state head in
+  let* old_chain =
+    List.map_ep (State.fetch_tezos_block state) reorg.Common.old_chain
+  and* new_chain =
+    List.map_ep (State.fetch_tezos_block state) reorg.Common.new_chain
+  in
+  let reorg = Common.{old_chain; new_chain} in
   let*! () = Injector.new_tezos_head head reorg in
   return_unit
 
@@ -536,12 +553,14 @@ let queue_gc_operations state =
   let* () = queue_finalize_commitment state in
   queue_remove_commitment state
 
-let time_until_next_block state (header : Tezos_base.Block_header.t) =
-  let open Result_syntax in
+let time_until_next_block state hash (header : Tezos_base.Block_header.t) =
+  let open Lwt_result_syntax in
+  let+ constants = State.get_constants state hash in
   let Constants.Parametric.{minimal_block_delay; delay_increment_per_round; _} =
-    state.State.constants.parametric
+    constants.parametric
   in
   let next_level_timestamp =
+    let open Result_syntax in
     let* durations =
       Round.Durations.create
         ~first_round_duration:minimal_block_delay
@@ -566,21 +585,22 @@ let time_until_next_block state (header : Tezos_base.Block_header.t) =
     (Time.System.of_protocol_exn next_level_timestamp)
     (Time.System.now ())
 
-let trigger_injection state header =
-  let open Lwt_syntax in
+let trigger_injection state hash header =
   (* Queue request for injection of operation that must be delayed *)
   (* Waiting only half the time until next block to allow for propagation *)
   let promise =
-    let delay =
-      Ptime.Span.to_float_s (time_until_next_block state header) /. 2.
-    in
-    let* () =
+    let open Lwt_result_syntax in
+    let* time = time_until_next_block state hash header in
+    let delay = Ptime.Span.to_float_s time /. 2. in
+    let*! () =
+      let open Lwt_syntax in
       if delay <= 0. then return_unit
       else
-        let* () = Event.(emit inject_wait) delay in
+        let*! () = Event.(emit inject_wait) delay in
         Lwt_unix.sleep delay
     in
-    Injector.inject ~strategy:`Delay_block ()
+    let*! () = Injector.inject ~strategy:`Delay_block () in
+    return_unit
   in
   ignore promise ;
   (* Queue request for injection of operation that must be injected each block *)
@@ -758,7 +778,9 @@ let handle_l1_operation direction (block : Alpha_block_services.block_info)
           in
           handle_list acc operation_and_result)
 
-let handle_l1_block direction state acc block =
+let handle_l1_block direction state acc block_hash =
+  let open Lwt_result_syntax in
+  let* block = State.fetch_tezos_block state block_hash in
   List.fold_left_es
     (List.fold_left_es (handle_l1_operation direction block state))
     acc
@@ -795,7 +817,7 @@ let process_head ?(notify_sync = true) state
    | Some current_header ->
        State.set_known_tezos_level state current_header.shell.level) ;
   let*! () = Event.(emit new_block) current_hash in
-  let* _, _, blocks_to_commit = process_block state current_hash in
+  let* _, _, blocks_to_commit, block = process_block state current_hash in
   let* l1_reorg = State.set_tezos_head state current_hash in
   if notify_sync then notify_synchronized state ;
   let* () = handle_l1_reorg state () l1_reorg in
@@ -806,8 +828,11 @@ let process_head ?(notify_sync = true) state
   let*! () =
     match current_header with
     | None -> Lwt.return_unit
-    | Some current_header -> trigger_injection state current_header
+    | Some current_header -> trigger_injection state current_hash current_header
   in
+  (match block with
+  | None -> ()
+  | Some block -> check_proto state block.header.shell) ;
   return_unit
 
 let look_for_origination_block state block_list =
@@ -893,11 +918,11 @@ let catch_up_on_commitments state =
 
 let catch_up_on_blocks (state : State.t) origination_level =
   let open Lwt_result_syntax in
-  let* head = Alpha_block_services.Header.shell_header state.cctxt () in
-  let* last_tezos_block = State.get_tezos_head state in
+  let* head = Chain_services.Blocks.Header.shell_header state.cctxt () in
+  let* last_tezos_block = State.get_tezos_head_header state in
   let first_handle_level =
     match last_tezos_block with
-    | Some b -> Some (Int32.succ b.header.shell.level)
+    | Some b -> Some (Int32.succ b.level)
     | None -> origination_level
   in
   match first_handle_level with
@@ -981,10 +1006,7 @@ let main_exit_callback state rpc_server _exit_status =
   let* () = Injector.shutdown () in
   let* () = state.State.cctxt#message "Stopping batcher ..." in
   let* () = Batcher.shutdown () in
-  let* () = state.State.cctxt#message "Closing stores ..." in
-  let* () = Stores.close state.State.stores in
-  let* () = state.State.cctxt#message "Closing context ..." in
-  let* () = Context.close state.State.context_index in
+  let* () = State.close state in
   let* () = state.State.cctxt#message "Shutting down" in
   return_unit
 
@@ -1006,14 +1028,67 @@ let is_connection_error trace =
       | _ -> false)
     trace
 
+let wait_for_first_block configuration (cctxt : #Client_context.printer) =
+  let open Lwt_result_syntax in
+  let rec loop () =
+    let*! () =
+      cctxt#message
+        "Waiting for first block of protocol %s (%a)"
+        Protocol.name
+        Protocol_hash.pp_short
+        Protocol.hash
+    in
+    let* block_stream, interupt =
+      connect ~delay:configuration.Node_config.reconnection_delay cctxt
+    in
+    let*! res =
+      Lwt_stream.find_s
+        (fun (block, _) ->
+          let open Lwt_syntax in
+          let+ protocols =
+            Tezos_shell_services.Block_services.protocols
+              cctxt
+              ~block:(`Hash (block, 0))
+              ()
+          in
+          match protocols with
+          | Error _ -> false
+          | Ok {current_protocol; _} ->
+              Protocol_hash.(current_protocol = Protocol.hash))
+        block_stream
+    in
+    match res with
+    | None ->
+        let*! () = Event.(emit connection_lost) () in
+        loop ()
+    | Some _ ->
+        let*! () =
+          cctxt#message
+            "Reached a block of protocol %s. The node will start"
+            Protocol.name
+        in
+        interupt () ;
+        return_unit
+  in
+  loop ()
+
 (* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/1845
    Clean exit *)
 let run configuration cctxt =
   let open Lwt_result_syntax in
   let*! () = Event.(emit starting_node) () in
-  let {Node_config.signers; reconnection_delay; rollup_id; batch_burn_limit; _}
-      =
+  let {
+    Node_config.signers;
+    reconnection_delay;
+    rollup_id;
+    batch_burn_limit;
+    wait_proto;
+    _;
+  } =
     configuration
+  in
+  let* () =
+    when_ wait_proto @@ fun () -> wait_for_first_block configuration cctxt
   in
   let* state = State.init cctxt configuration in
   let* () = check_operator_deposit state configuration in
@@ -1043,11 +1118,11 @@ let run configuration cctxt =
     Option.iter_es
       (fun signer ->
         Batcher.init
+          cctxt
           ~rollup:rollup_id
           ~signer
           ~batch_burn_limit
-          state.State.context_index
-          state.State.constants)
+          state.State.context_index)
       signers.submit_batch
   in
   let* rpc_server = RPC.start_server configuration state in
@@ -1058,36 +1133,35 @@ let run configuration cctxt =
       (main_exit_callback state rpc_server)
   in
   let*! () = Event.(emit node_is_ready) () in
-  let* () = catch_up state in
-  let rec loop () =
-    let* () =
-      Lwt.catch
-        (fun () ->
-          let* block_stream, interupt =
-            connect ~delay:reconnection_delay cctxt
-          in
-          let*! () =
-            Lwt_stream.iter_s
-              (fun (head, header) ->
-                let*! r = process_head state (head, Some header) in
-                match r with
-                | Ok _ -> Lwt.return ()
-                | Error trace when is_connection_error trace ->
-                    Format.eprintf
-                      "@[<v 2>Connection error:@ %a@]@."
-                      pp_print_trace
-                      trace ;
-                    interupt () ;
-                    Lwt.return ()
-                | Error e ->
-                    Format.eprintf "%a@.Exiting.@." pp_print_trace e ;
-                    Lwt_exit.exit_and_raise 1)
-              block_stream
-          in
-          let*! () = Event.(emit connection_lost) () in
-          loop ())
-        fail_with_exn
+  let process_promise () =
+    let* () = catch_up state in
+    let rec loop () =
+      let* block_stream, interupt = connect ~delay:reconnection_delay cctxt in
+      let*! () =
+        Lwt_stream.iter_s
+          (fun (head, header) ->
+            let*! r = process_head state (head, Some header) in
+            match r with
+            | Ok _ -> Lwt.return ()
+            | Error trace when is_connection_error trace ->
+                Format.eprintf
+                  "@[<v 2>Connection error:@ %a@]@."
+                  pp_print_trace
+                  trace ;
+                interupt () ;
+                Lwt.return ()
+            | Error e ->
+                Format.eprintf "%a@.Exiting.@." pp_print_trace e ;
+                Lwt_exit.exit_and_raise 1)
+          block_stream
+      in
+      let*! () = Event.(emit connection_lost) () in
+      loop ()
     in
-    Lwt_utils.never_ending ()
+    loop ()
   in
-  loop ()
+  Lwt.catch process_promise @@ function
+  | Quit_wrong_proto ->
+      let*! () = main_exit_callback state rpc_server 0 in
+      return_unit
+  | e -> fail_with_exn e

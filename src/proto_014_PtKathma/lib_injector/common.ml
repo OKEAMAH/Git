@@ -50,22 +50,47 @@ let reorg_encoding block_encoding =
        (req "old_chain" (list block_encoding))
        (req "new_chain" (list block_encoding))
 
-let fetch_tezos_block ~find_in_cache (cctxt : #full) hash :
-    (Alpha_block_services.block_info, error trace) result Lwt.t =
+let fetch_tezos_block ~find_in_cache (cctxt : #full) hash rpc =
+  let open Lwt_syntax in
+  let errors = ref None in
   let fetch hash =
-    Alpha_block_services.info
-      cctxt
-      ~chain:cctxt#chain
-      ~block:(`Hash (hash, 0))
-      ~metadata:`Always
-      ()
+    let* block = rpc cctxt cctxt#chain (`Hash (hash, 0)) in
+    match block with
+    | Error errs ->
+        errors := Some errs ;
+        return_none
+    | Ok block -> return_some block
   in
-  find_in_cache hash fetch
+  let+ block = find_in_cache hash fetch in
+  match (block, !errors) with
+  | None, None ->
+      (* This should not happen if {!find_in_cache} behaves correctly,
+         i.e. calls {!fetch} for cache misses. *)
+      error_with
+        "Fetching Tezos block %a failed unexpectedly"
+        Block_hash.pp
+        hash
+  | None, Some errs -> Error errs
+  | Some block, _ -> Ok block
+
+let fetch_tezos_header ~find_in_cache (cctxt : #full) hash =
+  fetch_tezos_block ~find_in_cache (cctxt : #full) hash
+  @@ fun cctxt chain block ->
+  Tezos_shell_services.Shell_services.Blocks.Header.shell_header
+    cctxt
+    ~chain
+    ~block
+    ()
+
+let fetch_tezos_block ~find_in_cache (cctxt : #full) hash =
+  fetch_tezos_block ~find_in_cache (cctxt : #full) hash
+  @@ fun cctxt chain block ->
+  Alpha_block_services.info cctxt ~chain ~block ~metadata:`Always ()
 
 (* Compute the reorganization of L1 blocks from the chain whose head is
    [old_head_hash] and the chain whose head [new_head_hash]. *)
-let tezos_reorg fetch_tezos_block ~old_head_hash ~new_head_hash =
-  let open Alpha_block_services in
+let tezos_reorg fetch_tezos_block get_shell_header ~old_head_hash ~new_head_hash
+    =
   let open Lwt_result_syntax in
   let rec loop old_chain new_chain old_head_hash new_head_hash =
     if Block_hash.(old_head_hash = new_head_hash) then
@@ -73,26 +98,28 @@ let tezos_reorg fetch_tezos_block ~old_head_hash ~new_head_hash =
     else
       let* new_head = fetch_tezos_block new_head_hash in
       let* old_head = fetch_tezos_block old_head_hash in
-      let old_level = old_head.header.shell.level in
-      let new_level = new_head.header.shell.level in
+      let old_header : Block_header.shell_header = get_shell_header old_head in
+      let new_header : Block_header.shell_header = get_shell_header new_head in
+      let old_level = old_header.level in
+      let new_level = new_header.level in
       let diff = Int32.sub new_level old_level in
       let old_chain, new_chain, old, new_ =
         if diff = 0l then
           (* Heads at same level *)
-          let new_chain = new_head :: new_chain in
-          let old_chain = old_head :: old_chain in
-          let new_head_hash = new_head.header.shell.predecessor in
-          let old_head_hash = old_head.header.shell.predecessor in
+          let new_chain = new_head_hash :: new_chain in
+          let old_chain = old_head_hash :: old_chain in
+          let new_head_hash = new_header.predecessor in
+          let old_head_hash = old_header.predecessor in
           (old_chain, new_chain, old_head_hash, new_head_hash)
         else if diff > 0l then
           (* New chain is longer *)
-          let new_chain = new_head :: new_chain in
-          let new_head_hash = new_head.header.shell.predecessor in
+          let new_chain = new_head_hash :: new_chain in
+          let new_head_hash = new_header.predecessor in
           (old_chain, new_chain, old_head_hash, new_head_hash)
         else
           (* Old chain was longer *)
-          let old_chain = old_head :: old_chain in
-          let old_head_hash = old_head.header.shell.predecessor in
+          let old_chain = old_head_hash :: old_chain in
+          let old_head_hash = old_header.predecessor in
           (old_chain, new_chain, old_head_hash, new_head_hash)
       in
       loop old_chain new_chain old new_

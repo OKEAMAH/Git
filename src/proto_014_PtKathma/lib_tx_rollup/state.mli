@@ -55,9 +55,11 @@ type t = private {
   cctxt : Protocol_client_context.full;
   context_index : Context.index;
   mutable head : L2block.t option;
+  mutable proto_level : int option;
   rollup_info : rollup_info;
   tezos_blocks_cache : Alpha_block_services.block_info Tezos_blocks_cache.t;
-  constants : Constants.t;
+  tezos_header_cache : Block_header.shell_header Tezos_blocks_cache.t;
+  mutable constants : Constants.t option;
   signers : Node_config.signers;
   caps : Node_config.caps;
   sync : sync_info;
@@ -83,6 +85,8 @@ val init :
 val get_head : t -> L2block.t option
 
 val get_tezos_head : t -> Alpha_block_services.block_info option tzresult Lwt.t
+
+val get_tezos_head_header : t -> Block_header.shell_header option tzresult Lwt.t
 
 (** Retrieve an L2 block by its hash *)
 val get_block : t -> L2block.hash -> L2block.t option Lwt.t
@@ -144,8 +148,7 @@ val get_block_and_metadata :
 val set_head : t -> L2block.t -> L2block.t reorg tzresult Lwt.t
 
 (** Set the Tezos head and returns the reorganization of L1 blocks. *)
-val set_tezos_head :
-  t -> Block_hash.t -> Alpha_block_services.block_info reorg tzresult Lwt.t
+val set_tezos_head : t -> Block_hash.t -> Block_hash.t reorg tzresult Lwt.t
 
 (** Save an L2 block to disk:
     - Save both the header and the inbox
@@ -214,3 +217,10 @@ val notify_processed_tezos_level : t -> int32 -> unit
 
 (** Set the latest known Tezos level but do not notify sync levels input. *)
 val set_known_tezos_level : t -> int32 -> unit
+
+(** Get constants from the state or for the given block if not already
+    computed.  *)
+val get_constants : t -> Block_hash.t -> Constants.t tzresult Lwt.t
+
+(** Close store and context *)
+val close : t -> unit Lwt.t

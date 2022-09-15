@@ -54,9 +54,11 @@ type t = {
   cctxt : Protocol_client_context.full;
   context_index : Context.index;
   mutable head : L2block.t option;
+  mutable proto_level : int option;
   rollup_info : rollup_info;
   tezos_blocks_cache : Alpha_block_services.block_info Tezos_blocks_cache.t;
-  constants : Constants.t;
+  tezos_header_cache : Block_header.shell_header Tezos_blocks_cache.t;
+  mutable constants : Constants.t option;
   signers : Node_config.signers;
   caps : Node_config.caps;
   sync : sync_info;
@@ -68,26 +70,63 @@ let rollup_operation_index = 3
 
 let get_head state = state.head
 
-let fetch_tezos_block state hash =
-  let open Lwt_syntax in
-  let errors = ref [] in
-  let find_in_cache hash fetch =
-    let fetch hash =
-      let* block = fetch hash in
-      match block with
-      | Error errs ->
-          errors := errs ;
-          return_none
-      | Ok block -> return_some block
-    in
-    let+ block =
-      Tezos_blocks_cache.find_or_replace state.tezos_blocks_cache hash fetch
-    in
-    Result.of_option ~error:!errors block
-    |> record_trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
-  in
+let set_proto state =
+  match state.proto_level with
+  | Some _ -> fun _ -> ()
+  | None ->
+      fun (block : Alpha_block_services.block_info) ->
+        (* Parsed block, so of correct protocol *)
+        state.proto_level <- Some block.header.shell.proto_level
 
-  fetch_tezos_block ~find_in_cache state.cctxt hash
+let is_decoding_error trace =
+  List.exists
+    (function
+      | RPC_client_errors.(Request_failed {error = Unexpected_content _; _}) ->
+          true
+      | _ -> false)
+    trace
+
+let fetch_tezos_block state hash =
+  let open Lwt_result_syntax in
+  let*! block =
+    trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
+    @@ fetch_tezos_block
+         state.cctxt
+         hash
+         ~find_in_cache:
+           (Tezos_blocks_cache.find_or_replace state.tezos_blocks_cache)
+  in
+  match block with
+  | Ok block ->
+      set_proto state block ;
+      return block
+  | Error err when is_decoding_error err ->
+      let* {current_protocol; _} =
+        Tezos_shell_services.Block_services.protocols
+          state.cctxt
+          ~block:(`Hash (hash, 0))
+          ()
+      in
+      if Protocol_hash.(current_protocol <> Protocol.hash) then
+        failwith
+          "Tried to retrieve block %a for protocol %a but the rollup node only \
+           works with protocol %a."
+          Block_hash.pp
+          hash
+          Protocol_hash.pp
+          current_protocol
+          Protocol_hash.pp
+          Protocol.hash
+      else fail err
+  | Error _ as e -> Lwt.return e
+
+let fetch_tezos_header state hash =
+  trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
+  @@ fetch_tezos_header
+       state.cctxt
+       hash
+       ~find_in_cache:
+         (Tezos_blocks_cache.find_or_replace state.tezos_header_cache)
 
 let set_tezos_head state new_head_hash =
   let open Lwt_result_syntax in
@@ -95,12 +134,15 @@ let set_tezos_head state new_head_hash =
   let* reorg =
     match old_head_hash with
     | None ->
-        (* No known tezos head, consider the new head as being on top of a previous
-           tezos block. *)
-        let+ new_head = fetch_tezos_block state new_head_hash in
-        {old_chain = []; new_chain = [new_head]}
+        (* No known tezos head, consider the new head as being on top of a
+           previous tezos block. *)
+        return {old_chain = []; new_chain = [new_head_hash]}
     | Some old_head_hash ->
-        tezos_reorg (fetch_tezos_block state) ~old_head_hash ~new_head_hash
+        tezos_reorg
+          (fetch_tezos_header state)
+          Fun.id
+          ~old_head_hash
+          ~new_head_hash
   in
   let* () =
     Stores.Tezos_head_store.write state.stores.tezos_head new_head_hash
@@ -114,6 +156,15 @@ let get_tezos_head state =
   | None -> return None
   | Some block ->
       let+ block = fetch_tezos_block state block in
+      Some block
+
+let get_tezos_head_header state =
+  let open Lwt_result_syntax in
+  let*! block = Stores.Tezos_head_store.read state.stores.tezos_head in
+  match block with
+  | None -> return None
+  | Some block ->
+      let+ block = fetch_tezos_header state block in
       Some block
 
 let save_tezos_block_info state block l2_block ~level ~predecessor =
@@ -316,7 +367,7 @@ let set_rollup_info state rollup_id ~origination_level =
   let rollup_info = {rollup_id; origination_level = Some origination_level} in
   Stores.Rollup_info_store.write state.stores.Stores.rollup_info rollup_info
 
-let init_rollup_info stores ?origination_level rollup_id =
+let init_rollup_info stores ~readonly ?origination_level rollup_id =
   let open Lwt_result_syntax in
   let*! stored_info = Stores.Rollup_info_store.read stores.Stores.rollup_info in
   let* rollup_info =
@@ -327,15 +378,16 @@ let init_rollup_info stores ?origination_level rollup_id =
     | None ->
         let rollup_info = {rollup_id; origination_level} in
         let* () =
+          unless readonly @@ fun () ->
           Stores.Rollup_info_store.write stores.rollup_info rollup_info
         in
         return rollup_info
   in
   return rollup_info
 
-let init_context ~data_dir =
+let init_context ~readonly ~data_dir =
   let open Lwt_result_syntax in
-  let*! index = Context.init (Node_data.context_dir data_dir) in
+  let*! index = Context.init ~readonly (Node_data.context_dir data_dir) in
   return index
 
 let read_head (stores : Stores.t) =
@@ -345,8 +397,19 @@ let read_head (stores : Stores.t) =
   | None -> return_none
   | Some hash -> get_block_store stores hash
 
-let retrieve_constants cctxt =
-  Protocol.Constants_services.all cctxt (cctxt#chain, cctxt#block)
+let get_constants state =
+  let open Lwt_result_syntax in
+  match state.constants with
+  | None ->
+      fun block ->
+        let* constants =
+          Protocol.Constants_services.all
+            state.cctxt
+            (state.cctxt#chain, `Hash (block, 0))
+        in
+        state.constants <- Some constants ;
+        return constants
+  | Some constants -> fun _ -> return constants
 
 let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
     configuration =
@@ -367,14 +430,14 @@ let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
   in
   let* rollup_info, context_index =
     both
-      (init_rollup_info stores ?origination_level rollup_id)
-      (init_context ~data_dir)
+      (init_rollup_info stores ~readonly ?origination_level rollup_id)
+      (init_context ~readonly ~data_dir)
     |> lwt_map_error (function [] -> [] | trace :: _ -> trace)
   in
   let*! head = read_head stores in
-  let* constants = retrieve_constants cctxt in
   (* L1 blocks are cached to handle reorganizations efficiently *)
   let tezos_blocks_cache = Tezos_blocks_cache.create 32 in
+  let tezos_header_cache = Tezos_blocks_cache.create 32 in
   let sync =
     {
       synchronized = false;
@@ -389,9 +452,11 @@ let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
       cctxt = (cctxt :> Protocol_client_context.full);
       context_index;
       head;
+      proto_level = None;
       rollup_info;
       tezos_blocks_cache;
-      constants;
+      tezos_header_cache;
+      constants = None;
       signers;
       caps;
       sync;
@@ -409,3 +474,10 @@ let set_known_tezos_level state known_tezos_level =
 let synchronized state =
   if state.sync.synchronized then Lwt.return_unit
   else Lwt_condition.wait state.sync.on_synchronized
+
+let close state =
+  let open Lwt_syntax in
+  let* () = state.cctxt#message "Closing stores ..." in
+  let* () = Stores.close state.stores in
+  let* () = state.cctxt#message "Closing context ..." in
+  Context.close state.context_index
