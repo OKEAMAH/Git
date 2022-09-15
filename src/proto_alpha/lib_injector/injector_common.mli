@@ -66,11 +66,21 @@ val fetch_tezos_block :
   Block_hash.t ->
   block_info tzresult Lwt.t
 
+val fetch_tezos_header :
+  find_in_cache:
+    (Block_hash.t ->
+    (Block_hash.t -> Block_header.shell_header option Lwt.t) ->
+    Block_header.shell_header option Lwt.t) ->
+  #full ->
+  Block_hash.t ->
+  Block_header.shell_header tzresult Lwt.t
+
 (** [tezos_reorg fetch ~old_head_hash ~new_head_hash] computes the
     reorganization of L1 blocks from the chain whose head is [old_head_hash] and
     the chain whose head [new_head_hash]. *)
 val tezos_reorg :
-  (Block_hash.t -> block_info tzresult Lwt.t) ->
+  (Block_hash.t -> ('a, 'b) result Lwt.t) ->
+  ('a -> Block_header.shell_header) ->
   old_head_hash:Block_hash.t ->
   new_head_hash:Block_hash.t ->
-  block_info reorg tzresult Lwt.t
+  (Block_hash.t reorg, 'b) result Lwt.t

@@ -508,6 +508,12 @@ let batch () = if Batcher.active () then Batcher.batch () else return_unit
 let notify_head state head reorg =
   let open Lwt_result_syntax in
   let* head = State.fetch_tezos_block state head in
+  let* old_chain =
+    List.map_ep (State.fetch_tezos_block state) reorg.Injector_common.old_chain
+  and* new_chain =
+    List.map_ep (State.fetch_tezos_block state) reorg.Injector_common.new_chain
+  in
+  let reorg = Injector_common.{old_chain; new_chain} in
   let*! () = Injector.new_tezos_head head reorg in
   return_unit
 
@@ -755,7 +761,9 @@ let handle_l1_operation direction (block : Alpha_block_services.block_info)
           in
           handle_list acc operation_and_result)
 
-let handle_l1_block direction state acc block =
+let handle_l1_block direction state acc block_hash =
+  let open Lwt_result_syntax in
+  let* block = State.fetch_tezos_block state block_hash in
   List.fold_left_es
     (List.fold_left_es (handle_l1_operation direction block state))
     acc
@@ -890,11 +898,11 @@ let catch_up_on_commitments state =
 
 let catch_up_on_blocks (state : State.t) origination_level =
   let open Lwt_result_syntax in
-  let* head = Alpha_block_services.Header.shell_header state.cctxt () in
-  let* last_tezos_block = State.get_tezos_head state in
+  let* head = Chain_services.Blocks.Header.shell_header state.cctxt () in
+  let* last_tezos_block = State.get_tezos_head_header state in
   let first_handle_level =
     match last_tezos_block with
-    | Some b -> Some (Int32.succ b.header.shell.level)
+    | Some b -> Some (Int32.succ b.level)
     | None -> origination_level
   in
   match first_handle_level with
@@ -1098,6 +1106,7 @@ let run configuration cctxt =
   in
   let*! () = Event.(emit node_is_ready) () in
   let* () = catch_up state in
+  Format.eprintf "catch up done @." ;
   let rec loop () =
     let* () =
       Lwt.catch

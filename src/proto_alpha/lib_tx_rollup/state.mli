@@ -57,6 +57,7 @@ type t = private {
   mutable head : L2block.t option;
   rollup_info : rollup_info;
   tezos_blocks_cache : Alpha_block_services.block_info Tezos_blocks_cache.t;
+  tezos_header_cache : Block_header.shell_header Tezos_blocks_cache.t;
   constants : Constants.t;
   signers : Node_config.signers;
   caps : Node_config.caps;
@@ -83,6 +84,8 @@ val init :
 val get_head : t -> L2block.t option
 
 val get_tezos_head : t -> Alpha_block_services.block_info option tzresult Lwt.t
+
+val get_tezos_head_header : t -> Block_header.shell_header option tzresult Lwt.t
 
 (** Retrieve an L2 block by its hash *)
 val get_block : t -> L2block.hash -> L2block.t option Lwt.t
@@ -144,8 +147,7 @@ val get_block_and_metadata :
 val set_head : t -> L2block.t -> L2block.t reorg tzresult Lwt.t
 
 (** Set the Tezos head and returns the reorganization of L1 blocks. *)
-val set_tezos_head :
-  t -> Block_hash.t -> Alpha_block_services.block_info reorg tzresult Lwt.t
+val set_tezos_head : t -> Block_hash.t -> Block_hash.t reorg tzresult Lwt.t
 
 (** Save an L2 block to disk:
     - Save both the header and the inbox

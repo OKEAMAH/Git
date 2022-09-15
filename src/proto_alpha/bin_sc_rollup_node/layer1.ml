@@ -202,6 +202,8 @@ end
 type blocks_cache =
   Protocol_client_context.Alpha_block_services.block_info State.Blocks_cache.t
 
+type block_headers_cache = Block_header.shell_header State.Blocks_cache.t
+
 (**
 
    Chain events
@@ -220,6 +222,7 @@ let rollback new_head = Rollback {new_head}
 
 type t = {
   blocks_cache : blocks_cache;
+  block_headers_cache : block_headers_cache;
   events : chain_event Lwt_stream.t;
   cctxt : Protocol_client_context.full;
   stopper : RPC_context.stopper;
@@ -461,6 +464,7 @@ let start configuration (cctxt : Protocol_client_context.full) store =
       cctxt;
       events;
       blocks_cache = State.Blocks_cache.create 32;
+      block_headers_cache = State.Blocks_cache.create 32;
       stopper;
       genesis_info;
     },
@@ -547,6 +551,14 @@ let fetch_tezos_block l1_ctxt hash =
        hash
        ~find_in_cache:(State.Blocks_cache.find_or_replace l1_ctxt.blocks_cache)
 
+let fetch_tezos_header l1_ctxt hash =
+  trace (Cannot_find_block hash)
+  @@ fetch_tezos_header
+       l1_ctxt.cctxt
+       hash
+       ~find_in_cache:
+         (State.Blocks_cache.find_or_replace l1_ctxt.block_headers_cache)
+
 (** Returns the reorganization of L1 blocks (if any) for [new_head]. *)
 let get_tezos_reorg_for_new_head l1_state store new_head_hash =
   let open Lwt_result_syntax in
@@ -558,4 +570,17 @@ let get_tezos_reorg_for_new_head l1_state store new_head_hash =
       let+ new_head = fetch_tezos_block l1_state new_head_hash in
       {old_chain = []; new_chain = [new_head]}
   | Some old_head_hash ->
-      tezos_reorg (fetch_tezos_block l1_state) ~old_head_hash ~new_head_hash
+      let* reorg =
+        tezos_reorg
+          (fetch_tezos_header l1_state)
+          Fun.id
+          ~old_head_hash
+          ~new_head_hash
+      in
+      let* old_chain =
+        List.map_ep (fetch_tezos_block l1_state) reorg.Injector_common.old_chain
+      and* new_chain =
+        List.map_ep (fetch_tezos_block l1_state) reorg.Injector_common.new_chain
+      in
+      let reorg = Injector_common.{old_chain; new_chain} in
+      return reorg

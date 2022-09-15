@@ -46,11 +46,15 @@ type chain_event =
       (** A chain reorganization occurred since the previous
           synchronization. The rollback set [new_head] to an old block. *)
 
-(** Type of cache holding the last 32 blocks, with their operations. *)
+(** Type of LRU cache holding Tezos blocks, with their operations. *)
 type blocks_cache
+
+(** Type of LRU cache holding Tezos block headers. *)
+type block_headers_cache
 
 type t = private {
   blocks_cache : blocks_cache;
+  block_headers_cache : block_headers_cache;
   events : chain_event Lwt_stream.t;
   cctxt : Protocol_client_context.full;
   stopper : RPC_context.stopper;

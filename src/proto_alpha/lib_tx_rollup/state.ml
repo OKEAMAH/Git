@@ -56,6 +56,7 @@ type t = {
   mutable head : L2block.t option;
   rollup_info : rollup_info;
   tezos_blocks_cache : Alpha_block_services.block_info Tezos_blocks_cache.t;
+  tezos_header_cache : Block_header.shell_header Tezos_blocks_cache.t;
   constants : Constants.t;
   signers : Node_config.signers;
   caps : Node_config.caps;
@@ -76,18 +77,29 @@ let fetch_tezos_block state hash =
        ~find_in_cache:
          (Tezos_blocks_cache.find_or_replace state.tezos_blocks_cache)
 
+let fetch_tezos_header state hash =
+  trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
+  @@ fetch_tezos_header
+       state.cctxt
+       hash
+       ~find_in_cache:
+         (Tezos_blocks_cache.find_or_replace state.tezos_header_cache)
+
 let set_tezos_head state new_head_hash =
   let open Lwt_result_syntax in
   let*! old_head_hash = Stores.Tezos_head_store.read state.stores.tezos_head in
   let* reorg =
     match old_head_hash with
     | None ->
-        (* No known tezos head, consider the new head as being on top of a previous
-           tezos block. *)
-        let+ new_head = fetch_tezos_block state new_head_hash in
-        {old_chain = []; new_chain = [new_head]}
+        (* No known tezos head, consider the new head as being on top of a
+           previous tezos block. *)
+        return {old_chain = []; new_chain = [new_head_hash]}
     | Some old_head_hash ->
-        tezos_reorg (fetch_tezos_block state) ~old_head_hash ~new_head_hash
+        tezos_reorg
+          (fetch_tezos_header state)
+          Fun.id
+          ~old_head_hash
+          ~new_head_hash
   in
   let* () =
     Stores.Tezos_head_store.write state.stores.tezos_head new_head_hash
@@ -101,6 +113,15 @@ let get_tezos_head state =
   | None -> return None
   | Some block ->
       let+ block = fetch_tezos_block state block in
+      Some block
+
+let get_tezos_head_header state =
+  let open Lwt_result_syntax in
+  let*! block = Stores.Tezos_head_store.read state.stores.tezos_head in
+  match block with
+  | None -> return None
+  | Some block ->
+      let+ block = fetch_tezos_header state block in
       Some block
 
 let save_tezos_block_info state block l2_block ~level ~predecessor =
@@ -363,6 +384,7 @@ let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
   let* constants = retrieve_constants cctxt in
   (* L1 blocks are cached to handle reorganizations efficiently *)
   let tezos_blocks_cache = Tezos_blocks_cache.create 32 in
+  let tezos_header_cache = Tezos_blocks_cache.create 32 in
   let sync =
     {
       synchronized = false;
@@ -379,6 +401,7 @@ let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
       head;
       rollup_info;
       tezos_blocks_cache;
+      tezos_header_cache;
       constants;
       signers;
       caps;
