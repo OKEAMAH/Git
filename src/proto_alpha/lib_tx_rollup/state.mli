@@ -214,3 +214,6 @@ val notify_processed_tezos_level : t -> int32 -> unit
 
 (** Set the latest known Tezos level but do not notify sync levels input. *)
 val set_known_tezos_level : t -> int32 -> unit
+
+(** Close store and context *)
+val close : t -> unit Lwt.t

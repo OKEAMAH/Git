@@ -396,3 +396,10 @@ let set_known_tezos_level state known_tezos_level =
 let synchronized state =
   if state.sync.synchronized then Lwt.return_unit
   else Lwt_condition.wait state.sync.on_synchronized
+
+let close state =
+  let open Lwt_syntax in
+  let* () = state.cctxt#message "Closing stores ..." in
+  let* () = Stores.close state.stores in
+  let* () = state.cctxt#message "Closing context ..." in
+  Context.close state.context_index

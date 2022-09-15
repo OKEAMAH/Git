@@ -978,10 +978,7 @@ let main_exit_callback state rpc_server _exit_status =
   let* () = Injector.shutdown () in
   let* () = state.State.cctxt#message "Stopping batcher ..." in
   let* () = Batcher.shutdown () in
-  let* () = state.State.cctxt#message "Closing stores ..." in
-  let* () = Stores.close state.State.stores in
-  let* () = state.State.cctxt#message "Closing context ..." in
-  let* () = Context.close state.State.context_index in
+  let* () = State.close state in
   let* () = state.State.cctxt#message "Shutting down" in
   return_unit
 
