@@ -745,7 +745,8 @@ module Dissection = struct
         (* The test is not general enough to support all kind of number of
            sections. *)
         let number_of_sections =
-          Tezos_protocol_015_PtTyfgNF_parameters.Default_parameters.constants_mainnet
+          Tezos_protocol_015_PtTyfgNF_parameters.Default_parameters
+          .constants_mainnet
             .sc_rollup
             .number_of_sections_in_dissection
         in
@@ -1613,7 +1614,8 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       in
       let* block = Block.bake ~operation:operation_start_game block in
       let number_of_sections =
-        Tezos_protocol_015_PtTyfgNF_parameters.Default_parameters.constants_mainnet
+        Tezos_protocol_015_PtTyfgNF_parameters.Default_parameters
+        .constants_mainnet
           .sc_rollup
           .number_of_sections_in_dissection
       in
