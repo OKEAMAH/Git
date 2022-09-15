@@ -41,6 +41,10 @@ let protocols =
       "Kathmandu",
       Some "/include/rpc_introduction.rst.inc",
       "PtKathmankSpLLDALzWw7CGD2j2MtyveTwboEYokqUCP4a1LxMg" );
+    ( "dryrun",
+      "Dryrun",
+      Some "/include/rpc_introduction.rst.inc",
+      "PtTyfgNFqQ4piEvKFNa7v9xAn71EQJT9ZsmYy6MceeRYRYb4wh3" );
   ]
 
 let pp_name ppf = function
