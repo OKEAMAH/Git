@@ -1,4 +1,11 @@
+(** Benchmarking
+    -------
+    Component:    Wasm PVM
+    Invocation:   dune exec src/lib_scoru_wasm/bin/csv.exe src/lib_scoru_wasm/test/wasm_kernels/unreachable.wasm
+    Subject:      Measure nb of ticks
+*)
 open Tezos_scoru_wasm
+
 open Tezos_webassembly_interpreter
 module Context = Tezos_context_memory.Context_binary
 
@@ -97,20 +104,36 @@ let tick_label = function
   | Eval {step_kont; _} -> "eval:" ^ step_kont_label step_kont
   | Stuck _ -> "stuck"
 
-let rec eval_until_input_requested context tree =
+let print_tick_info context tree =
+  let open Lwt_syntax in
+  let* proof, _ =
+    produce_proof context tree (fun tree ->
+        let* tree = Wasm.compute_step tree in
+        return (tree, ()))
+  in
+  let* tick = Wasm.Internal_for_tests.get_tick_state tree in
+  let* info = Wasm.get_info tree in
+  Format.printf
+    "%s: %s, %d\n"
+    (Z.to_string info.current_tick)
+    (tick_label tick)
+    (proof_size proof) ;
+  return ()
+
+let print_info tree =
+  let open Lwt_syntax in
+  let* info = Wasm.get_info tree in
+  Format.printf "%s\n%!" (Z.to_string info.current_tick) ;
+  return ()
+
+let rec eval_until_input_requested ?(tick_info = false) context tree =
   let open Lwt_syntax in
   let* info = Wasm.get_info tree in
   match info.input_request with
   | No_input_required ->
-      let* proof, _ =
-        produce_proof context tree (fun tree ->
-            let* tree = Wasm.compute_step tree in
-            return (tree, ()))
-      in
-      let* tick = Wasm.Internal_for_tests.get_tick_state tree in
-      Format.printf "%s, %d\n" (tick_label tick) (proof_size proof) ;
+      let _ = if tick_info then print_tick_info context tree else return () in
       let* tree = Wasm.compute_step tree in
-      eval_until_input_requested context tree
+      eval_until_input_requested ~tick_info context tree
   | Input_required -> return tree
 
 let run kernel k =
@@ -128,5 +151,6 @@ let () =
   @@ run kernel (fun kernel ->
          let open Lwt_syntax in
          let* context, tree = initial_boot_sector_from_kernel kernel in
-         let+ _tree = eval_until_input_requested context tree in
+         let+ tree = eval_until_input_requested context tree in
+         let _ = print_info tree in
          ())
