@@ -1,0 +1,12 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(executable
+ (name tezos_scoru_wasm_fast)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-wasmer
+  tezos-scoru-wasm
+  tezos-crypto
+  tezos-lazy-containers
+  tezos-context.memory))

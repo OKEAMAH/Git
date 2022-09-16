@@ -23,8 +23,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type decode_wrapper =
+  | Starting_decode
+  | Actual_decode of Tezos_webassembly_interpreter.Decode.decode_kont
+
 type tick_state =
-  | Decode of Tezos_webassembly_interpreter.Decode.decode_kont
+  | Decode of decode_wrapper
   | Link of {
       ast_module : Tezos_webassembly_interpreter.Ast.module_;
       externs :
