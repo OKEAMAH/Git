@@ -125,7 +125,7 @@ let with_blocks f =
   }
   in
   let res = f c in
-  let allocations = Ast.{ blocks = !(c.new_blocks); datas = !(c.new_datas) } in
+  let allocations = Ast.{ allocations with blocks = !(c.new_blocks); datas = !(c.new_datas) } in
   {res.it with allocations}
   @@ res.at
 

@@ -413,10 +413,13 @@ let blocks_table_gen = vector_gen (vector_gen instr_gen)
 
 let datas_table_gen = vector_gen chunked_byte_vector_gen
 
+let values_table_gen = vector_gen value_gen
+
 let allocations_gen =
   let* blocks = blocks_table_gen in
-  let+ datas = datas_table_gen in
-  Ast.{blocks; datas}
+  let* datas = datas_table_gen in
+  let+ values = values_table_gen in
+  Ast.{blocks; datas; values}
 
 let limit_gen gen =
   let* min = gen in

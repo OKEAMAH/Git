@@ -658,11 +658,17 @@ let block_table_encoding =
 let datas_table_encoding =
   lazy_vector_encoding "datas-table" chunked_byte_vector
 
+let values_table_encoding = lazy_vector_encoding "datas-table" value_encoding
+
 let allocations_encoding =
   conv
-    (fun (blocks, datas) -> Ast.{blocks; datas})
-    (fun {blocks; datas} -> (blocks, datas))
-    (tup2 ~flatten:false block_table_encoding datas_table_encoding)
+    (fun (blocks, datas, values) -> Ast.{blocks; datas; values})
+    (fun {blocks; datas; values} -> (blocks, datas, values))
+    (tup3
+       ~flatten:false
+       block_table_encoding
+       datas_table_encoding
+       values_table_encoding)
 
 let module_instance_encoding =
   conv

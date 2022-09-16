@@ -405,6 +405,8 @@ type data_segment = data_segment' Source.phrase
 
 and data_segment' = {dinit : data_label; dmode : segment_mode}
 
+type value_label = Value_label of int32 [@@deriving show]
+
 (* Modules *)
 
 type type_ = func_type Source.phrase
@@ -441,7 +443,13 @@ type block_table = instr Vector.t Vector.t
 
 type datas_table = Chunked_byte_vector.t Vector.t
 
-type allocations = {mutable blocks : block_table; mutable datas : datas_table}
+type values_table = Values.value Vector.t
+
+type allocations = {
+  mutable blocks : block_table;
+  mutable datas : datas_table;
+  mutable values : values_table;
+}
 
 type module_ = module_' Source.phrase
 
@@ -465,9 +473,10 @@ let empty_allocations () =
   {
     blocks = Vector.(singleton (empty ()));
     datas = Vector.(singleton (Chunked_byte_vector.create 0L));
+    values = Vector.(singleton (Values.Num (I32 0l)));
   }
 
-let make_allocation_state blocks datas = {blocks; datas}
+let make_allocation_state blocks datas values = {blocks; datas; values}
 
 let alloc_block allocs =
   let blocks, b = Vector.(append (empty ()) allocs.blocks) in
@@ -491,6 +500,18 @@ let add_to_data (allocs : allocations) (Data_label d) index byte =
   let open Lwt.Syntax in
   let* data = Vector.get d allocs.datas in
   Chunked_byte_vector.store_byte data index byte
+
+let alloc_value (allocs : allocations) v =
+  let values, d = Vector.append v allocs.values in
+  allocs.values <- values ;
+  Value_label d
+
+let get_value (allocs : allocations) (Value_label l) =
+  Vector.get l allocs.values
+
+let set_value (allocs : allocations) (Value_label l) v =
+  let values = Vector.set l v allocs.values in
+  allocs.values <- values
 
 let empty_module () =
   {

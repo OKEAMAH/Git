@@ -1025,8 +1025,9 @@ module Module = struct
   let allocations_gen =
     let open QCheck2.Gen in
     let* blocks = Vec.gen (Vec.gen Ast_generators.instr_gen) in
-    let+ datas = Vec.gen Byte_vector.gen_chunked_byte_vector in
-    Ast.{blocks; datas}
+    let* datas = Vec.gen Byte_vector.gen_chunked_byte_vector in
+    let+ values = Vec.gen Ast_generators.value_gen in
+    Ast.{blocks; datas; values}
 
   let module_gen =
     let open QCheck2.Gen in
