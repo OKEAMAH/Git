@@ -485,6 +485,22 @@ module Flags : sig
   val disabled_warnings_to_string : int list -> string
 end
 
+module Ctypes : sig
+  type t
+
+  val stubs :
+    library_name:string ->
+    extra_search_dir:string ->
+    include_header:string ->
+    type_inst:string ->
+    type_functor:string ->
+    func_inst:string ->
+    func_functor:string ->
+    generated_types_mod:string ->
+    generated_mod:string ->
+    t
+end
+
 (** Preprocessors. *)
 type preprocessor
 
@@ -666,6 +682,7 @@ type 'a maker =
   ?dune:Dune.s_expr ->
   ?flags:Flags.t ->
   ?foreign_stubs:Dune.foreign_stubs ->
+  ?ctypes:Ctypes.t ->
   ?implements:target ->
   ?inline_tests:inline_tests ->
   ?js_compatible:bool ->
