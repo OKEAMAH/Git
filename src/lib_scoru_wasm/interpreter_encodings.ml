@@ -599,6 +599,11 @@ module Ast = struct
     let open Ast in
     conv (fun (Data_label l) -> l) (fun l -> Data_label l) int32
 
+  let value_label_encoding =
+    let open Data_encoding in
+    let open Ast in
+    conv (fun (Value_label l) -> l) (fun l -> Value_label l) int32
+
   let import_desc_encoding =
     let open Ast in
     let unannotated_encoding =

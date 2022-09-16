@@ -36,7 +36,7 @@ type init_state =
     initialization. *)
 exception Init_step_error of init_state
 
-type frame = {inst : module_key; locals : value ref Vector.t}
+type frame = {inst : module_key; locals : Ast.value_label Vector.t}
 
 type admin_instr = admin_instr' Source.phrase
 
@@ -88,7 +88,7 @@ type invoke_step_kont =
       instructions : admin_instr Vector.t;
       inst : module_key;
       func : Ast.func;
-      locals_kont : (Types.value_type, value ref) map_kont;
+      locals_kont : (Types.value_type, Ast.value_label) map_kont;
     }
   | Inv_prepare_args of {
       arity : int32;
@@ -96,8 +96,8 @@ type invoke_step_kont =
       instructions : admin_instr Vector.t;
       inst : module_key;
       func : Ast.func;
-      locals : value ref Vector.t;
-      args_kont : (value, value ref) map_kont;
+      locals : Ast.value_label Vector.t;
+      args_kont : (value, Ast.value_label) map_kont;
     }
   | Inv_concat of {
       arity : int32;
@@ -105,7 +105,7 @@ type invoke_step_kont =
       instructions : admin_instr Vector.t;
       inst : module_key;
       func : Ast.func;
-      concat_kont : value ref concat_kont;
+      concat_kont : Ast.value_label concat_kont;
     }
   | Inv_stop of {code : code; fresh_frame : ongoing frame_stack option}
 

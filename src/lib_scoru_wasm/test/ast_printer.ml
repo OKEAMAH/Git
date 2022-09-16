@@ -252,8 +252,8 @@ let pp_frame out frame =
     out
     "@[<v 2>{module = %s;@;locals = %a;@;}@]"
     key
-    (pp_vector Values.pp_value)
-    (Lazy_containers.Lazy_vector.Int32Vector.of_list (List.map ( ! ) locals))
+    (pp_vector Ast.pp_value_label)
+    (Lazy_containers.Lazy_vector.Int32Vector.of_list locals)
 
 let rec pp_admin_instr' out instr =
   let open Eval in
@@ -461,7 +461,7 @@ let pp_invoke_step_kont out = function
         inst
         Ast.pp_func
         func
-        (pp_map_kont Types.pp_value_type (fun out x -> Values.pp_value out !x))
+        (pp_map_kont Types.pp_value_type (fun out x -> Ast.pp_value_label out x))
         locals_kont
   | Inv_prepare_args
       {arity; vs; instructions; inst = Module_key inst; func; locals; args_kont}
@@ -484,9 +484,9 @@ let pp_invoke_step_kont out = function
         inst
         Ast.pp_func
         func
-        (pp_vector (fun out x -> Values.pp_value out !x))
+        (pp_vector (fun out x -> Ast.pp_value_label out x))
         locals
-        (pp_map_kont Values.pp_value (fun out x -> Values.pp_value out !x))
+        (pp_map_kont Values.pp_value (fun out x -> Ast.pp_value_label out x))
         args_kont
   | Inv_concat
       {arity; vs; instructions; inst = Module_key inst; func; concat_kont} ->
@@ -507,7 +507,7 @@ let pp_invoke_step_kont out = function
         inst
         Ast.pp_func
         func
-        (pp_concat_kont (fun out x -> Values.pp_value out !x))
+        (pp_concat_kont (fun out x -> Ast.pp_value_label out x))
         concat_kont
   | Inv_stop {code = vs, es; fresh_frame} ->
       Format.fprintf

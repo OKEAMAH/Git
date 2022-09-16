@@ -64,6 +64,10 @@ let data_label_gen =
   let+ l = int32 in
   Ast.Data_label l
 
+let value_label_gen =
+  let+ l = int32 in
+  Ast.Value_label l
+
 let block_type_gen =
   let open Ast in
   oneof
@@ -519,7 +523,7 @@ let module_gen ?module_reg () =
 
 let frame_gen ~module_reg =
   let* inst, _ = module_key_and_instance_gen ~module_reg () in
-  let+ locals = small_vector_gen (map ref value_gen) in
+  let+ locals = small_vector_gen value_label_gen in
   Eval.{inst; locals}
 
 let rec admin_instr'_gen ~module_reg =
@@ -738,7 +742,7 @@ let inv_prepare_locals_gen ~module_reg =
   let* module_name = string_printable in
   let inst = Instance.Module_key module_name in
   let* func = ast_func_gen in
-  let+ locals_kont = map_kont_gen value_type_gen (ref <$> value_gen) in
+  let+ locals_kont = map_kont_gen value_type_gen value_label_gen in
   Eval.Inv_prepare_locals
     {arity; args; vs; instructions; inst; func; locals_kont}
 
@@ -749,8 +753,8 @@ let inv_prepare_args_gen ~module_reg =
   let* module_name = string_printable in
   let inst = Instance.Module_key module_name in
   let* func = ast_func_gen in
-  let* locals = small_vector_gen (ref <$> value_gen) in
-  let+ args_kont = map_kont_gen value_gen (ref <$> value_gen) in
+  let* locals = small_vector_gen value_label_gen in
+  let+ args_kont = map_kont_gen value_gen value_label_gen in
   Eval.Inv_prepare_args {arity; vs; instructions; inst; func; locals; args_kont}
 
 let inv_concat_gen ~module_reg =
@@ -760,7 +764,7 @@ let inv_concat_gen ~module_reg =
   let* module_name = string_printable in
   let inst = Instance.Module_key module_name in
   let* func = ast_func_gen in
-  let+ concat_kont = concat_kont_gen (ref <$> value_gen) in
+  let+ concat_kont = concat_kont_gen value_label_gen in
   Eval.Inv_concat {arity; vs; instructions; inst; func; concat_kont}
 
 let inv_stop_gen ~module_reg =

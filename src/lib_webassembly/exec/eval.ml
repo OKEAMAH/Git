@@ -134,7 +134,7 @@ let numeric_error at = function
 
 (* Administrative Expressions & Configurations *)
 
-type frame = {inst : module_key; locals : value ref Vector.t}
+type frame = {inst : module_key; locals : value_label Vector.t}
 
 type admin_instr = admin_instr' phrase
 
@@ -332,7 +332,7 @@ type invoke_step_kont =
       instructions : admin_instr Vector.t;
       inst : module_key;
       func : func;
-      locals_kont : (value_type, value ref) map_kont;
+      locals_kont : (value_type, value_label) map_kont;
     }
   | Inv_prepare_args of {
       arity : int32;
@@ -340,8 +340,8 @@ type invoke_step_kont =
       instructions : admin_instr Vector.t;
       inst : module_key;
       func : func;
-      locals : value ref Vector.t;
-      args_kont : (value, value ref) map_kont;
+      locals : value_label Vector.t;
+      args_kont : (value, value_label) map_kont;
     }
   | Inv_concat of {
       arity : int32;
@@ -349,7 +349,7 @@ type invoke_step_kont =
       instructions : admin_instr Vector.t;
       inst : module_key;
       func : func;
-      concat_kont : value ref concat_kont;
+      concat_kont : value_label concat_kont;
     }
   | Inv_stop of {code : code; fresh_frame : ongoing frame_stack option}
 
@@ -472,7 +472,7 @@ let block_type inst bt =
 let vmtake n vs = match n with Some n -> Vector.split vs n |> fst | None -> vs
 
 let invoke_step ?(durable = Durable_storage.empty) (module_reg : module_reg) c
-    buffers frame at = function
+    allocations buffers frame at = function
   | Inv_stop _ -> assert false
   | Inv_start {func; code = vs, es} -> (
       let (FuncType (ins, out)) = func_type_of func in
@@ -539,7 +539,8 @@ let invoke_step ?(durable = Durable_storage.empty) (module_reg : module_reg) c
   | Inv_prepare_locals {arity; args; vs; instructions; inst; func; locals_kont}
     ->
       let+ locals_kont =
-        map_step locals_kont (fun x -> ref (default_value x))
+        map_step locals_kont (fun x ->
+            alloc_value allocations (default_value x))
       in
       ( durable,
         Inv_prepare_locals
@@ -558,7 +559,9 @@ let invoke_step ?(durable = Durable_storage.empty) (module_reg : module_reg) c
               concat_kont = concat_kont args_kont.destination locals;
             } )
   | Inv_prepare_args tick ->
-      let+ args_kont = map_rev_step tick.args_kont ref in
+      let+ args_kont =
+        map_rev_step tick.args_kont (fun x -> alloc_value allocations x)
+      in
       (durable, Inv_prepare_args {tick with args_kont})
   | Inv_concat
       {
@@ -637,6 +640,14 @@ let elem_oob module_reg frame x i n =
   I64.gt_u
     (I64.add (I64_convert.extend_i32_u i) (I64_convert.extend_i32_u n))
     (Int64.of_int32 (Instance.Vector.num_elements !elem))
+
+let get_value (module_reg : module_inst ModuleMap.t) frame x =
+  let* inst = resolve_module_ref module_reg frame.inst in
+  get_value inst.allocations x
+
+let set_value (module_reg : module_inst ModuleMap.t) frame x v =
+  let+ inst = resolve_module_ref module_reg frame.inst in
+  set_value inst.allocations x v
 
 let vector_pop_map v f at =
   if 1l <= Vector.num_elements v then
@@ -758,19 +769,20 @@ let step_instr module_reg label vs at e' es_rst stack : 'a label_kont Lwt.t =
         (if i = 0l then Vector.cons v2 vs' else Vector.cons v1 vs')
         []
   | LocalGet x ->
-      let+ r = local frame x in
-      label_kont_with_code (Vector.cons !r vs) []
+      let* r = local frame x in
+      let+ v = get_value module_reg frame r in
+      label_kont_with_code (Vector.cons v vs) []
   | LocalSet x ->
       (* v :: vs' *)
       let* v, vs' = vector_pop_map vs Option.some at in
-      let+ r = local frame x in
-      r := v ;
+      let* r = local frame x in
+      let+ () = set_value module_reg frame r v in
       label_kont_with_code vs' []
   | LocalTee x ->
       (* v :: vs' *)
       let* v, vs' = vector_pop_map vs Option.some at in
-      let+ r = local frame x in
-      r := v ;
+      let* r = local frame x in
+      let+ () = set_value module_reg frame r v in
       label_kont_with_code (Vector.cons v vs') []
   | GlobalGet x ->
       let* inst = resolve_module_ref module_reg frame.inst in
@@ -1418,8 +1430,17 @@ let label_step :
           | Some frame_stack -> LS_Push_frame (label_kont, frame_stack)
           | None -> LS_Modify_top label_kont )
   | LS_Craft_frame (label, istep) ->
+      let* inst = resolve_module_ref module_reg frame.inst in
       let+ durable, istep =
-        invoke_step ~durable module_reg c buffers frame no_region istep
+        invoke_step
+          ~durable
+          module_reg
+          c
+          inst.allocations
+          buffers
+          frame
+          no_region
+          istep
       in
       (durable, LS_Craft_frame (label, istep))
 

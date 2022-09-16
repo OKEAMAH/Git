@@ -87,6 +87,9 @@ let block_label_encoding =
 
 let data_label_encoding = value [] Interpreter_encodings.Ast.data_label_encoding
 
+let value_label_encoding =
+  value [] Interpreter_encodings.Ast.value_label_encoding
+
 let instruction_encoding =
   let unit_encoding = value [] Data_encoding.unit in
   let open Ast in
@@ -737,7 +740,7 @@ let frame_encoding =
     (tup2
        ~flatten:true
        (scope ["module"] module_key_encoding)
-       (lazy_vector_encoding "locals" (conv ref ( ! ) @@ value_encoding)))
+       (lazy_vector_encoding "locals" value_label_encoding))
 
 let rec admin_instr'_encoding () =
   let open Eval in
@@ -1030,7 +1033,7 @@ let invoke_step_kont_encoding =
                  (lazy_vector_encoding
                     "x"
                     (value [] Interpreter_encodings.Types.value_type_encoding))
-                 (lazy_vector_encoding "y" (conv ref ( ! ) @@ value_encoding)))))
+                 (lazy_vector_encoding "y" value_label_encoding))))
         (function
           | Eval.Inv_prepare_locals
               {arity; args; vs; instructions; inst; func; locals_kont} ->
@@ -1048,12 +1051,12 @@ let invoke_step_kont_encoding =
            (lazy_vector_encoding "instructions" admin_instr_encoding)
            (scope ["inst"] module_key_encoding)
            (scope ["func"] func_encoding)
-           (lazy_vector_encoding "locals" (conv ref ( ! ) @@ value_encoding))
+           (lazy_vector_encoding "locals" value_label_encoding)
            (scope
               ["kont"]
               (map_kont_encoding
                  (lazy_vector_encoding "1" value_encoding)
-                 (lazy_vector_encoding "2" (conv ref ( ! ) @@ value_encoding)))))
+                 (lazy_vector_encoding "2" value_label_encoding))))
         (function
           | Eval.Inv_prepare_args
               {arity; vs; instructions; inst; func; locals; args_kont} ->
@@ -1074,7 +1077,7 @@ let invoke_step_kont_encoding =
            (scope
               ["kont"]
               (concat_kont_encoding
-                 (lazy_vector_encoding "2" (conv ref ( ! ) @@ value_encoding)))))
+                 (lazy_vector_encoding "2" value_label_encoding))))
         (function
           | Eval.Inv_concat {arity; vs; instructions; inst; func; concat_kont}
             ->
@@ -1186,12 +1189,12 @@ let step_kont_encoding =
           SK_Consolidate_label_result (frame', stack, label, vs, es, lstack));
       case
         "SK_Result"
-        values_encoding
+        (scope ["sk_result_values"] values_encoding)
         (function Eval.SK_Result vs -> Some vs | _ -> None)
         (fun vs -> SK_Result vs);
       case
         "SK_Trapped"
-        (value [] Data_encoding.string)
+        (value ["sk_trapped_value"] Data_encoding.string)
         (function Eval.SK_Trapped msg -> Some msg.it | _ -> None)
         (fun msg -> SK_Trapped Source.(msg @@ no_region));
     ]
