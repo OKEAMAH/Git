@@ -61,21 +61,26 @@ let register store configuration =
   |> register_current_inbox store
 
 let start store configuration =
+  let open Lwt_syntax in
   let Configuration.{rpc_addr; rpc_port; _} = configuration in
   let rpc_addr = P2p_addr.of_string_exn rpc_addr in
   let host = Ipaddr.V6.to_string rpc_addr in
   let dir = register store configuration in
   let node = `TCP (`Port rpc_port) in
   let acl = RPC_server.Acl.default rpc_addr in
+  let server =
+    RPC_server.init_server dir ~acl ~media_types:Media_type.all_media_types
+  in
   Lwt.catch
     (fun () ->
-      RPC_server.launch
-        ~media_types:Media_type.all_media_types
-        ~host
-        ~acl
-        node
-        dir
-      >>= return)
+      let* () =
+        RPC_server.launch
+          ~host
+          server
+          ~callback:(RPC_server.resto_callback server)
+          node
+      in
+      return_ok server)
     fail_with_exn
 
 let shutdown = RPC_server.shutdown

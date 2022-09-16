@@ -780,19 +780,23 @@ let start_server configuration state =
   let cors_headers =
     sanitize_cors_headers ~default:["Content-Type"] cors_headers
   in
+  let server =
+    RPC_server.init_server
+      dir
+      ~acl
+      ~cors:{allowed_headers = cors_headers; allowed_origins = cors_origins}
+      ~media_types:Media_type.all_media_types
+  in
+  let lwt_return_response r = Lwt.return (`Response r) in
+  let callback _ _ body =
+    let response = (Cohttp_lwt_unix.Response.make ~status:`OK (), body) in
+    lwt_return_response response
+  in
   Lwt.catch
     (fun () ->
-      let*! rpc_server =
-        RPC_server.launch
-          ~media_types:Media_type.all_media_types
-          ~host
-          ~acl
-          ~cors:{allowed_headers = cors_headers; allowed_origins = cors_origins}
-          node
-          dir
-      in
+      let*! () = RPC_server.launch ~host server ~callback node in
       let*! () = Event.(emit rpc_server_is_ready) rpc_addr in
-      return rpc_server)
+      return server)
     fail_with_exn
 
 let balance ctxt (block : block_id) ticket tz4 =
