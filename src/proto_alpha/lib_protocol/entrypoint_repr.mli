@@ -104,14 +104,14 @@ val unparse_as_field_annot : t -> string
 (** Pretty-print an entrypoint *)
 val pp : Format.formatter -> t -> unit
 
+(** An optimized encoding of entrypoints. *)
+val smart_encoding : t Data_encoding.t
+
 (** An encoding of entrypoints reusing the strict semantics.
     Decoding fails if the string is too long or is "default".
     "" is decoded into "default".
     "default" is encoded into "". *)
 val value_encoding : t Data_encoding.t
-
-(** An optimized encoding of entrypoints, used for operations. *)
-val smart_encoding : t Data_encoding.t
 
 (** Entrypoint RPC arg. *)
 val rpc_arg : t RPC_arg.t
