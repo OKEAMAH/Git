@@ -244,6 +244,8 @@ module Gas = struct
   let cost_of_repr cost = cost
 end
 
+module Script_int = Script_int
+
 module Script = struct
   include Michelson_v1_primitives
   include Script_repr
@@ -607,6 +609,8 @@ end
 module Ticket_balance = struct
   include Ticket_storage
 end
+
+module Ticket_amount = Ticket_amount
 
 module Ticket_receipt = struct
   include Ticket_receipt_repr

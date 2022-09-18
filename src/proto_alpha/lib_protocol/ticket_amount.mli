@@ -28,6 +28,7 @@ open Script_int
 (* A type for ticket amount values to ensure positivity *)
 type t = private n num
 
+(* Canonical encoding of ticket amount values via [Script_int.n_encoding] *)
 val encoding : t Data_encoding.t
 
 (* Converts a natural number to a ticket amount value unless the input is zero *)
@@ -36,11 +37,14 @@ val of_n : n num -> t option
 (* Converts a integral number to a ticket amount value unless the input is not positive *)
 val of_z : z num -> t option
 
+(* Converts a big number to a ticket amount value unless the input is not positive *)
 val of_zint : Z.t -> t option
 
+(* Add two ticket amounts *)
 val add : t -> t -> t
 
 (* Subtract among ticket amount values unless the resultant amount is not positive *)
 val sub : t -> t -> t option
 
+(* Unit ticket amount *)
 val one : t

@@ -511,6 +511,8 @@ end
 
 module Entrypoint : module type of Entrypoint_repr
 
+module Script_int : module type of Script_int
+
 (** This module re-exports definitions from {!Script_repr} and
     {!Michelson_v1_primitives}. *)
 module Script : sig
@@ -4865,6 +4867,8 @@ module Ticket_receipt : sig
 
   val encoding : t Data_encoding.t
 end
+
+module Ticket_amount : module type of Ticket_amount
 
 module First_level_of_protocol : sig
   (** Get the level of the first block of this protocol. *)
