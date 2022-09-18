@@ -207,6 +207,10 @@ Breaking Changes
   Note that it is not possible to originate contracts containing ``TICKET_DEPRECATED``
   after the migration.
   (MR :gl:`!5963`)
+- Deprecation of ``Entrypoint_repr.simple_encoding``.
+  This is encoding is inefficient compared to ``Entrypoint_repr.smart_encoding``.
+  Developers are strongly encouraged to use ``Entrypoint_repr.smart_encoding`` instead.
+  (MR :gl:`!6311`)
 
 RPC Changes
 -----------
