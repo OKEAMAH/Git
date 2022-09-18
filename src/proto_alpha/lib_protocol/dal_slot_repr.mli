@@ -224,10 +224,7 @@ module Slots_history : sig
 
   val produce_proof :
     dal_parameters ->
-    page_content_of:
-      (Page.id ->
-      [ `Attested of Page.content * Page.proof
-      | `Unattested of slot option * slot option ]) ->
+    page_content_of:(Page.id -> (Page.content * Page.proof) tzresult Lwt.t) ->
     Page.id ->
     t ->
     History_cache.t ->

@@ -3494,9 +3494,7 @@ module Sc_rollup : sig
         val history_cache : Dal_slot_repr.Slots_history.History_cache.t
 
         val page_content_of :
-          Dal.Page.id ->
-          [ `Attested of Dal.Page.content * Dal.Page.proof
-          | `Unattested of Dal.Slot.t option * Dal.Slot.t option ]
+          Dal.Page.id -> (Dal.Page.content * Dal.Page.proof) tzresult Lwt.t
 
         val dal_parameters : Dal.Slots_history.dal_parameters
       end

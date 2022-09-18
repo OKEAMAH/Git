@@ -728,8 +728,9 @@ module Slots_history = struct
                  {prev_confirmed_slot; next_confirmed_slot; next_inc_proof},
                None )
 
-    let produce_proof dal_params ~page_content_of page_id _slots_history
+    let produce_proof dal_params ~page_content_of:_ page_id _slots_history
         history_cache =
+      let page_content_of _ = assert false in
       let page_content_opt = page_content_of page_id in
       let slots_history = assert false in
       match (slots_history, page_content_opt) with
