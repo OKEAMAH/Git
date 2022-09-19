@@ -73,6 +73,7 @@ type t = {
   l2_blocks_cache_size : int;
   caps : caps;
   batch_burn_limit : Protocol.Alpha_context.Tez.t option;
+  wait_proto : bool;
 }
 
 (** [default_data_dir] creates and returns the default value for [data_dir]. *)

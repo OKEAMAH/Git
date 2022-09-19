@@ -238,6 +238,7 @@ let config_from_args data_dir (rollup_id : Client_proto_rollups.TxRollupAlias.t)
       l2_blocks_cache_size = default_l2_blocks_cache_size;
       caps = default_caps;
       batch_burn_limit = None;
+      wait_proto = true;
     }
 
 let patch_config_from_args config

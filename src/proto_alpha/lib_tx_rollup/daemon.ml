@@ -1057,11 +1057,19 @@ let wait_for_first_block configuration (cctxt : #Client_context.printer) =
 let run configuration cctxt =
   let open Lwt_result_syntax in
   let*! () = Event.(emit starting_node) () in
-  let {Node_config.signers; reconnection_delay; rollup_id; batch_burn_limit; _}
-      =
+  let {
+    Node_config.signers;
+    reconnection_delay;
+    rollup_id;
+    batch_burn_limit;
+    wait_proto;
+    _;
+  } =
     configuration
   in
-  let* () = wait_for_first_block configuration cctxt in
+  let* () =
+    when_ wait_proto @@ fun () -> wait_for_first_block configuration cctxt
+  in
   let* state = State.init cctxt configuration in
   let* () = check_operator_deposit state configuration in
   let* () =
