@@ -31,6 +31,12 @@ let force_switch =
     ~doc:"Overwrites the configuration file when it exists."
     ()
 
+let no_wait_proto_switch =
+  Clic.switch
+    ~long:"no-wait-proto"
+    ~doc:"Do not wait for protocol to be reached before starting rollup node."
+    ()
+
 let data_dir_doc =
   Format.sprintf "The directory path to the transaction rollup node data."
 
@@ -198,7 +204,7 @@ let config_from_args data_dir (rollup_id : Client_proto_rollups.TxRollupAlias.t)
     mode operator batch_signer finalize_commitment_signer
     remove_commitment_signer rejection_signer dispatch_withdrawals_signer
     origination_level rpc_addr cors_origins cors_headers allow_deposit
-    reconnection_delay =
+    reconnection_delay no_wait_proto =
   let open Lwt_syntax in
   let origination_level =
     Option.either rollup_id.origination_level origination_level
@@ -238,14 +244,14 @@ let config_from_args data_dir (rollup_id : Client_proto_rollups.TxRollupAlias.t)
       l2_blocks_cache_size = default_l2_blocks_cache_size;
       caps = default_caps;
       batch_burn_limit = None;
-      wait_proto = true;
+      wait_proto = not no_wait_proto;
     }
 
 let patch_config_from_args config
     (rollup_id : Client_proto_rollups.TxRollupAlias.t) mode operator
     batch_signer finalize_commitment_signer remove_commitment_signer
     rejection_signer dispatch_withdrawals_signer origination_level rpc_addr
-    cors_origins cors_headers allow_deposit reconnection_delay =
+    cors_origins cors_headers allow_deposit reconnection_delay no_wait_proto =
   let origination_level =
     Option.either rollup_id.origination_level origination_level
   in
@@ -307,6 +313,7 @@ let patch_config_from_args config
         cors_headers;
         reconnection_delay;
         allow_deposit;
+        wait_proto = not no_wait_proto;
       }
     in
     ok config
@@ -316,7 +323,7 @@ let configuration_init_command =
   command
     ~group
     ~desc:"Configure the transaction rollup daemon."
-    (args14
+    (args15
        force_switch
        data_dir_arg
        operator_arg
@@ -330,7 +337,8 @@ let configuration_init_command =
        cors_origins_arg
        cors_headers_arg
        allow_deposit_arg
-       reconnection_delay_arg)
+       reconnection_delay_arg
+       no_wait_proto_switch)
     (prefix "init" @@ mode_param
     @@ prefixes ["config"; "for"]
     @@ Clic.param
@@ -351,7 +359,8 @@ let configuration_init_command =
            cors_origins,
            cors_headers,
            allow_deposit,
-           reconnection_delay )
+           reconnection_delay,
+           no_wait_proto )
          mode
          rollup_id
          cctxt ->
@@ -374,6 +383,7 @@ let configuration_init_command =
           cors_headers
           allow_deposit
           reconnection_delay
+          no_wait_proto
       in
       let*? config = Node_config.check_mode config in
       let* file = Node_config.save ~force config in
@@ -389,7 +399,7 @@ let run_command =
   command
     ~group
     ~desc:"Run the transaction rollup daemon."
-    (args13
+    (args14
        data_dir_arg
        operator_arg
        batch_signer_arg
@@ -402,7 +412,8 @@ let run_command =
        cors_origins_arg
        cors_headers_arg
        allow_deposit_arg
-       reconnection_delay_arg)
+       reconnection_delay_arg
+       no_wait_proto_switch)
     (prefix "run" @@ mode_param @@ prefix "for"
     @@ Clic.param
          ~name:"rollup-id"
@@ -421,7 +432,8 @@ let run_command =
            cors_origins,
            cors_headers,
            allow_deposit,
-           reconnection_delay )
+           reconnection_delay,
+           no_wait_proto )
          mode
          rollup_id
          cctxt ->
@@ -443,6 +455,7 @@ let run_command =
           cors_headers
           allow_deposit
           reconnection_delay
+          no_wait_proto
       in
       let* config =
         match data_dir with
@@ -472,6 +485,7 @@ let run_command =
                     cors_headers
                     allow_deposit
                     reconnection_delay
+                    no_wait_proto
                 in
                 return config)
       in
