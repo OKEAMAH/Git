@@ -140,6 +140,9 @@ val terminate : ?kill:bool -> t -> unit Lwt.t
 (** Get the RPC address given as [--rpc-addr] to a node. *)
 val rpc_addr : t -> string
 
+(** Get the data_dir for the rollup node. *)
+val data_dir : t -> string
+
 module Inbox : sig
   type l2_context_hash = {irmin_hash : string; tree_hash : string}
 
