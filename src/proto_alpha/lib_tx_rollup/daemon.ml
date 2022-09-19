@@ -421,6 +421,16 @@ let originated_in_block rollup_id block =
   | None -> false
   | Some ops -> List.exists has_rollup_origination ops
 
+exception Quit_wrong_proto
+
+let check_proto state (header : Tezos_base.Block_header.shell_header) =
+  match state.State.proto_level with
+  | None -> ()
+  | Some proto_level ->
+      if header.proto_level > proto_level then (
+        Format.eprintf "Moved to proto %d > %d@." header.proto_level proto_level ;
+        raise Quit_wrong_proto)
+
 let rec process_block state current_hash =
   let open Lwt_result_syntax in
   let rollup_id = state.State.rollup_info.rollup_id in
@@ -434,7 +444,7 @@ let rec process_block state current_hash =
         | Some l2_block -> set_head state l2_block
         | None -> return_unit
       in
-      return (maybe_l2_block, None, [])
+      return (maybe_l2_block, None, [], None)
   | `Unknown ->
       state.State.sync.synchronized <- false ;
       let* block_info = State.fetch_tezos_block state current_hash in
@@ -451,7 +461,7 @@ let rec process_block state current_hash =
         Event.(emit processing_block_predecessor)
           (predecessor_hash, Int32.pred block_level)
       in
-      let* l2_predecessor, predecessor_context, blocks_to_commit =
+      let* l2_predecessor, predecessor_context, blocks_to_commit, _ =
         if originated_in_block rollup_id block_info then
           let*! () =
             Event.(emit detected_origination) (rollup_id, current_hash)
@@ -459,7 +469,7 @@ let rec process_block state current_hash =
           let* () =
             State.set_rollup_info state rollup_id ~origination_level:block_level
           in
-          return (None, None, [])
+          return (None, None, [], None)
         else process_block state predecessor_hash
       in
       let*! () =
@@ -501,7 +511,7 @@ let rec process_block state current_hash =
       let*! () =
         Event.(emit tezos_block_processed) (current_hash, block_level)
       in
-      return (l2_block, Some context, blocks_to_commit)
+      return (l2_block, Some context, blocks_to_commit, Some block_info)
 
 let batch () = if Batcher.active () then Batcher.batch () else return_unit
 
@@ -800,7 +810,7 @@ let process_head ?(notify_sync = true) state
    | Some current_header ->
        State.set_known_tezos_level state current_header.shell.level) ;
   let*! () = Event.(emit new_block) current_hash in
-  let* _, _, blocks_to_commit = process_block state current_hash in
+  let* _, _, blocks_to_commit, block = process_block state current_hash in
   let* l1_reorg = State.set_tezos_head state current_hash in
   if notify_sync then notify_synchronized state ;
   let* () = handle_l1_reorg state () l1_reorg in
@@ -813,6 +823,9 @@ let process_head ?(notify_sync = true) state
     | None -> Lwt.return_unit
     | Some current_header -> trigger_injection state current_header
   in
+  (match block with
+  | None -> ()
+  | Some block -> check_proto state block.header.shell) ;
   return_unit
 
 let look_for_origination_block state block_list =
@@ -1113,37 +1126,35 @@ let run configuration cctxt =
       (main_exit_callback state rpc_server)
   in
   let*! () = Event.(emit node_is_ready) () in
-  let* () = catch_up state in
-  Format.eprintf "catch up done @." ;
-  let rec loop () =
-    let* () =
-      Lwt.catch
-        (fun () ->
-          let* block_stream, interupt =
-            connect ~delay:reconnection_delay cctxt
-          in
-          let*! () =
-            Lwt_stream.iter_s
-              (fun (head, header) ->
-                let*! r = process_head state (head, Some header) in
-                match r with
-                | Ok _ -> Lwt.return ()
-                | Error trace when is_connection_error trace ->
-                    Format.eprintf
-                      "@[<v 2>Connection error:@ %a@]@."
-                      pp_print_trace
-                      trace ;
-                    interupt () ;
-                    Lwt.return ()
-                | Error e ->
-                    Format.eprintf "%a@.Exiting.@." pp_print_trace e ;
-                    Lwt_exit.exit_and_raise 1)
-              block_stream
-          in
-          let*! () = Event.(emit connection_lost) () in
-          loop ())
-        fail_with_exn
+  let process_promise () =
+    let* () = catch_up state in
+    let rec loop () =
+      let* block_stream, interupt = connect ~delay:reconnection_delay cctxt in
+      let*! () =
+        Lwt_stream.iter_s
+          (fun (head, header) ->
+            let*! r = process_head state (head, Some header) in
+            match r with
+            | Ok _ -> Lwt.return ()
+            | Error trace when is_connection_error trace ->
+                Format.eprintf
+                  "@[<v 2>Connection error:@ %a@]@."
+                  pp_print_trace
+                  trace ;
+                interupt () ;
+                Lwt.return ()
+            | Error e ->
+                Format.eprintf "%a@.Exiting.@." pp_print_trace e ;
+                Lwt_exit.exit_and_raise 1)
+          block_stream
+      in
+      let*! () = Event.(emit connection_lost) () in
+      loop ()
     in
-    Lwt_utils.never_ending ()
+    loop ()
   in
-  loop ()
+  Lwt.catch process_promise @@ function
+  | Quit_wrong_proto ->
+      let*! () = main_exit_callback state rpc_server 0 in
+      return_unit
+  | e -> fail_with_exn e

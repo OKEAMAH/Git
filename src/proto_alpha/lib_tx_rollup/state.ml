@@ -54,6 +54,7 @@ type t = {
   cctxt : Protocol_client_context.full;
   context_index : Context.index;
   mutable head : L2block.t option;
+  mutable proto_level : int option;
   rollup_info : rollup_info;
   tezos_blocks_cache : Alpha_block_services.block_info Tezos_blocks_cache.t;
   tezos_header_cache : Block_header.shell_header Tezos_blocks_cache.t;
@@ -69,13 +70,26 @@ let rollup_operation_index = 3
 
 let get_head state = state.head
 
+let set_proto state =
+  match state.proto_level with
+  | Some _ -> fun _ -> ()
+  | None ->
+      fun (block : Alpha_block_services.block_info) ->
+        (* Parsed block, so of correct protocol *)
+        state.proto_level <- Some block.header.shell.proto_level
+
 let fetch_tezos_block state hash =
-  trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
-  @@ fetch_tezos_block
-       state.cctxt
-       hash
-       ~find_in_cache:
-         (Tezos_blocks_cache.find_or_replace state.tezos_blocks_cache)
+  let open Lwt_result_syntax in
+  let+ block =
+    trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
+    @@ fetch_tezos_block
+         state.cctxt
+         hash
+         ~find_in_cache:
+           (Tezos_blocks_cache.find_or_replace state.tezos_blocks_cache)
+  in
+  set_proto state block ;
+  block
 
 let fetch_tezos_header state hash =
   trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
@@ -399,6 +413,7 @@ let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
       cctxt = (cctxt :> Protocol_client_context.full);
       context_index;
       head;
+      proto_level = None;
       rollup_info;
       tezos_blocks_cache;
       tezos_header_cache;

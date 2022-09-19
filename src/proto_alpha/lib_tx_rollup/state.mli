@@ -55,6 +55,7 @@ type t = private {
   cctxt : Protocol_client_context.full;
   context_index : Context.index;
   mutable head : L2block.t option;
+  mutable proto_level : int option;
   rollup_info : rollup_info;
   tezos_blocks_cache : Alpha_block_services.block_info Tezos_blocks_cache.t;
   tezos_header_cache : Block_header.shell_header Tezos_blocks_cache.t;
