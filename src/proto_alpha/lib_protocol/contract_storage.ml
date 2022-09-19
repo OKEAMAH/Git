@@ -611,6 +611,10 @@ let check_emptiable c contract =
             Lwt.return (error (Empty_implicit_delegated_contract pkh))
       | None -> return_unit)
 
+let get_frozen_bonds ctxt contract =
+  Storage.Contract.Total_frozen_bonds.find ctxt contract
+  >|=? Option.value ~default:Tez_repr.zero
+
 let spend_only_call_from_token c contract amount =
   let open Lwt_tzresult_syntax in
   let* balance = Storage.Contract.Spendable_balance.find c contract in
@@ -618,12 +622,17 @@ let spend_only_call_from_token c contract amount =
   let*? new_balance = spend_from_balance contract balance amount in
   let* c = Storage.Contract.Spendable_balance.update c contract new_balance in
   let* c = Stake_storage.remove_contract_stake c contract amount in
-  let+ () =
-    when_
-      Tez_repr.(new_balance <= Tez_repr.zero)
-      (fun () -> check_emptiable c contract)
-  in
-  c
+  match contract with
+  | Implicit pkh ->
+      if Tez_repr.(new_balance <= Tez_repr.zero) then
+        let* () = check_emptiable c contract in
+        (* Schedule the empty implicit account for potential de-allocation. *)
+        get_frozen_bonds c contract >>=? fun frozen_bonds ->
+        if Tez_repr.(frozen_bonds <= zero) then
+          return @@ Raw_context.add_to_empty_implicit_accounts c pkh
+        else return c
+      else return c
+  | Originated _ -> return c
 
 (* [Tez_repr.(amount <> zero)] is a precondition of this function. It ensures that
    no entry associating a null balance to an implicit contract exists in the map
@@ -634,10 +643,14 @@ let credit_only_call_from_token c contract amount =
       match contract with
       | Originated _ -> fail (Non_existing_contract contract)
       | Implicit manager -> create_implicit c manager ~balance:amount)
-  | Some balance ->
-      Tez_repr.(amount +? balance) >>?= fun balance ->
+  | Some old_balance -> (
+      Tez_repr.(amount +? old_balance) >>?= fun balance ->
       Storage.Contract.Spendable_balance.update c contract balance >>=? fun c ->
-      Stake_storage.add_contract_stake c contract amount
+      Stake_storage.add_contract_stake c contract amount >|=? fun c ->
+      match contract with
+      | Implicit pkh when Tez_repr.(old_balance <= zero) ->
+          Raw_context.remove_from_empty_implicit_accounts c pkh
+      | Implicit _ | Originated _ -> c)
 
 let init c =
   Storage.Contract.Global_counter.init c Manager_counter_repr.init >>=? fun c ->
@@ -672,15 +685,20 @@ let update_balance ctxt contract f amount =
   f balance amount >>?= fun new_balance ->
   Storage.Contract.Spendable_balance.update ctxt contract new_balance
 
+(* Note that at the difference of [spend_only_call_from_token] this function
+   does not update the list of empty implicit accounts to be deleted at
+   [Apply.finalize_block]. There are two reasons for this. First, this function
+   is only invoked on delegates, and delegate accounts must not be deleted. The
+   second reason is that once an account is a delegate, it remains a delegate
+   forever. *)
 let increase_balance_only_call_from_token ctxt contract amount =
   update_balance ctxt contract Tez_repr.( +? ) amount
 
+(* This function does not update the list of empty implicit accounts to be
+   deleted at [Apply.finalize_block]. The reasons are the same as for the
+   function [increase_balance_only_call_from_token]. *)
 let decrease_balance_only_call_from_token ctxt contract amount =
   update_balance ctxt contract Tez_repr.( -? ) amount
-
-let get_frozen_bonds ctxt contract =
-  Storage.Contract.Total_frozen_bonds.find ctxt contract
-  >|=? Option.value ~default:Tez_repr.zero
 
 let get_balance_and_frozen_bonds ctxt contract =
   Storage.Contract.Spendable_balance.get ctxt contract >>=? fun balance ->
@@ -710,6 +728,14 @@ let spend_bond_only_call_from_token ctxt contract bond_id amount =
   Tez_repr.(total -? amount) >>?= fun new_total ->
   if Tez_repr.(new_total = zero) then
     Storage.Contract.Total_frozen_bonds.remove_existing ctxt contract
+    >>=? fun ctxt ->
+    match contract with
+    | Implicit pkh ->
+        get_balance ctxt contract >>=? fun balance ->
+        if Tez_repr.(balance <= zero) then
+          return @@ Raw_context.add_to_empty_implicit_accounts ctxt pkh
+        else return ctxt
+    | Originated _ -> return ctxt
   else Storage.Contract.Total_frozen_bonds.update ctxt contract new_total
 
 (** PRE : [amount > 0], fulfilled by unique caller [Token.transfer]. *)
@@ -720,7 +746,14 @@ let credit_bond_only_call_from_token ctxt contract bond_id amount =
   ( Storage.Contract.Frozen_bonds.find (ctxt, contract) bond_id
   >>=? fun (ctxt, frozen_bonds_opt) ->
     match frozen_bonds_opt with
-    | None -> Storage.Contract.Frozen_bonds.init (ctxt, contract) bond_id amount
+    | None ->
+        let ctxt =
+          match contract with
+          | Implicit pkh ->
+              Raw_context.remove_from_empty_implicit_accounts ctxt pkh
+          | Originated _ -> ctxt
+        in
+        Storage.Contract.Frozen_bonds.init (ctxt, contract) bond_id amount
     | Some frozen_bonds ->
         Tez_repr.(frozen_bonds +? amount) >>?= fun new_amount ->
         Storage.Contract.Frozen_bonds.update (ctxt, contract) bond_id new_amount

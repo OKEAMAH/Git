@@ -275,6 +275,11 @@ type back = {
      dummy slot headers. *)
   dal_endorsement_slot_accountability : Dal_endorsement_repr.Accountability.t;
   dal_committee : dal_committee;
+  (* Set of empty implicit accounts. An account is in this set iff it is
+     allocated, has an empty balance, and has no frozen bonds. This set is
+     cleared at [Apply.finalize_block], and all the accounts it contains are
+     deleted at that point if they are not delegates. *)
+  empty_implicit_accounts : Signature.Public_key_hash.Set.t;
 }
 
 (*
@@ -383,6 +388,9 @@ let[@inline] update_dictator_proposal_seen ctxt dictator_proposal_seen =
 
 let[@inline] update_sampler_state ctxt sampler_state =
   update_back ctxt {ctxt.back with sampler_state}
+
+let[@inline] update_empty_implicit_accounts ctxt empty_implicit_accounts =
+  update_back ctxt {ctxt.back with empty_implicit_accounts}
 
 type error += Too_many_internal_operations (* `Permanent *)
 
@@ -833,6 +841,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ctxt =
           Dal_endorsement_repr.Accountability.init
             ~length:constants.Constants_parametric_repr.dal.number_of_slots;
         dal_committee = empty_dal_committee;
+        empty_implicit_accounts = Signature.Public_key_hash.Set.empty;
       };
   }
 
@@ -1758,3 +1767,25 @@ end = struct
 
   let length local i = Tree.length (tree local) i
 end
+
+let get_empty_implicit_accounts ctxt = ctxt.back.empty_implicit_accounts
+
+let add_to_empty_implicit_accounts ctxt pkh =
+  let empty_implicit_accounts =
+    Signature.Public_key_hash.Set.add pkh ctxt.back.empty_implicit_accounts
+  in
+  update_empty_implicit_accounts ctxt empty_implicit_accounts
+
+let remove_from_empty_implicit_accounts ctxt pkh =
+  let empty_implicit_accounts =
+    Signature.Public_key_hash.Set.remove pkh ctxt.back.empty_implicit_accounts
+  in
+  update_empty_implicit_accounts ctxt empty_implicit_accounts
+
+let clear_empty_implicit_accounts ctxt =
+  update_back
+    ctxt
+    {
+      ctxt.back with
+      empty_implicit_accounts = Signature.Public_key_hash.Set.empty;
+    }

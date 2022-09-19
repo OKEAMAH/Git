@@ -567,6 +567,7 @@ let prepare ctxt ~level ~predecessor_timestamp ~timestamp =
   return (ctxt, balance_updates, origination_results)
 
 let finalize ?commit_message:message c fitness =
+  let c = Raw_context.clear_empty_implicit_accounts c in
   let context = Raw_context.recover c in
   {
     Updater.context;
