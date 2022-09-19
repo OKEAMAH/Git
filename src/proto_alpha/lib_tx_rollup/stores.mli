@@ -186,6 +186,7 @@ type t = {
   tezos_head : Tezos_head_store.t;
   rollup_info : Rollup_info_store.t;
   finalized_level : Finalized_level_store.t;
+  lockfile : Lwt_unix.file_descr;
 }
 
 (** [init ~data_dir ~readonly ~blocks_cache_size] creates or loads existing

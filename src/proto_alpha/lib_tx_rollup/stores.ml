@@ -757,11 +757,28 @@ type t = {
   tezos_head : Tezos_head_store.t;
   rollup_info : Rollup_info_store.t;
   finalized_level : Finalized_level_store.t;
+  lockfile : Lwt_unix.file_descr;
 }
+
+let create_lockfile data_dir =
+  Lwt_unix.openfile
+    (Node_data.lock_file data_dir)
+    [Unix.O_CREAT; O_RDWR; O_CLOEXEC; O_SYNC]
+    0o644
+
+let lock_for_write lockfile = Lwt_unix.lockf lockfile Unix.F_LOCK 0
+
+let lock_for_read lockfile = Lwt_unix.lockf lockfile Unix.F_RLOCK 0
+
+let unlock lockfile = Lwt_unix.lockf lockfile Unix.F_ULOCK 0
 
 let init ~data_dir ~readonly ~blocks_cache_size =
   let open Lwt_syntax in
   let* () = Node_data.mk_store_dir data_dir in
+  let* lockfile = create_lockfile data_dir in
+  let* () =
+    if readonly then lock_for_read lockfile else lock_for_write lockfile
+  in
   let* blocks =
     L2_block_store.init ~data_dir ~readonly ~cache_size:blocks_cache_size
   and* tezos_blocks = Tezos_block_store.init ~data_dir ~readonly
@@ -781,6 +798,7 @@ let init ~data_dir ~readonly ~blocks_cache_size =
       tezos_head;
       rollup_info;
       finalized_level;
+      lockfile;
     }
 
 let close stores =
@@ -789,4 +807,5 @@ let close stores =
   and* () = Tezos_block_store.close stores.tezos_blocks
   and* () = Level_store.close stores.levels
   and* () = Commitment_store.close stores.commitments in
+  let* () = unlock stores.lockfile in
   return_unit

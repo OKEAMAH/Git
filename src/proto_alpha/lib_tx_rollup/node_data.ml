@@ -43,6 +43,8 @@ let levels_index data_dir = store_dir data_dir // "levels_index"
 
 let head_file data_dir = store_dir data_dir // "head"
 
+let lock_file data_dir = store_dir data_dir // "lock"
+
 let mkdir ?(perm = 0o777) dir =
   let open Lwt_syntax in
   let* b = Lwt_unix.file_exists dir in
