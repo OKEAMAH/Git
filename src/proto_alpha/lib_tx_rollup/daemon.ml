@@ -310,11 +310,12 @@ let process_messages_and_inboxes (state : State.t)
         | Some predecessor ->
             Context.checkout state.context_index predecessor.header.context)
   in
+  let* constants = State.get_constants state current_hash in
   let parameters =
     Protocol.Tx_rollup_l2_apply.
       {
         tx_rollup_max_withdrawals_per_batch =
-          state.constants.parametric.tx_rollup.max_withdrawals_per_batch;
+          constants.parametric.tx_rollup.max_withdrawals_per_batch;
       }
   in
   let context = predecessor_context in
@@ -323,7 +324,7 @@ let process_messages_and_inboxes (state : State.t)
       context
       parameters
       ~rejection_max_proof_size:
-        state.constants.parametric.tx_rollup.rejection_max_proof_size
+        constants.parametric.tx_rollup.rejection_max_proof_size
       messages
   in
   let* context =
@@ -549,12 +550,14 @@ let queue_gc_operations state =
   let* () = queue_finalize_commitment state in
   queue_remove_commitment state
 
-let time_until_next_block state (header : Tezos_base.Block_header.t) =
-  let open Result_syntax in
+let time_until_next_block state hash (header : Tezos_base.Block_header.t) =
+  let open Lwt_result_syntax in
+  let+ constants = State.get_constants state hash in
   let Constants.Parametric.{minimal_block_delay; delay_increment_per_round; _} =
-    state.State.constants.parametric
+    constants.parametric
   in
   let next_level_timestamp =
+    let open Result_syntax in
     let* durations =
       Round.Durations.create
         ~first_round_duration:minimal_block_delay
@@ -579,21 +582,22 @@ let time_until_next_block state (header : Tezos_base.Block_header.t) =
     (Time.System.of_protocol_exn next_level_timestamp)
     (Time.System.now ())
 
-let trigger_injection state header =
-  let open Lwt_syntax in
+let trigger_injection state hash header =
   (* Queue request for injection of operation that must be delayed *)
   (* Waiting only half the time until next block to allow for propagation *)
   let promise =
-    let delay =
-      Ptime.Span.to_float_s (time_until_next_block state header) /. 2.
-    in
-    let* () =
+    let open Lwt_result_syntax in
+    let* time = time_until_next_block state hash header in
+    let delay = Ptime.Span.to_float_s time /. 2. in
+    let*! () =
+      let open Lwt_syntax in
       if delay <= 0. then return_unit
       else
-        let* () = Event.(emit inject_wait) delay in
+        let*! () = Event.(emit inject_wait) delay in
         Lwt_unix.sleep delay
     in
-    Injector.inject ~strategy:`Delay_block ()
+    let*! () = Injector.inject ~strategy:`Delay_block () in
+    return_unit
   in
   ignore promise ;
   (* Queue request for injection of operation that must be injected each block *)
@@ -821,7 +825,7 @@ let process_head ?(notify_sync = true) state
   let*! () =
     match current_header with
     | None -> Lwt.return_unit
-    | Some current_header -> trigger_injection state current_header
+    | Some current_header -> trigger_injection state current_hash current_header
   in
   (match block with
   | None -> ()
@@ -1111,11 +1115,11 @@ let run configuration cctxt =
     Option.iter_es
       (fun signer ->
         Batcher.init
+          cctxt
           ~rollup:rollup_id
           ~signer
           ~batch_burn_limit
-          state.State.context_index
-          state.State.constants)
+          state.State.context_index)
       signers.submit_batch
   in
   let* rpc_server = RPC.start_server configuration state in

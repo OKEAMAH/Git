@@ -59,7 +59,7 @@ type t = private {
   rollup_info : rollup_info;
   tezos_blocks_cache : Alpha_block_services.block_info Tezos_blocks_cache.t;
   tezos_header_cache : Block_header.shell_header Tezos_blocks_cache.t;
-  constants : Constants.t;
+  mutable constants : Constants.t option;
   signers : Node_config.signers;
   caps : Node_config.caps;
   sync : sync_info;
@@ -217,6 +217,10 @@ val notify_processed_tezos_level : t -> int32 -> unit
 
 (** Set the latest known Tezos level but do not notify sync levels input. *)
 val set_known_tezos_level : t -> int32 -> unit
+
+(** Get constants from the state or for the given block if not already
+    computed.  *)
+val get_constants : t -> Block_hash.t -> Constants.t tzresult Lwt.t
 
 (** Close store and context *)
 val close : t -> unit Lwt.t

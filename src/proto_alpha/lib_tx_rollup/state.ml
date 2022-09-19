@@ -58,7 +58,7 @@ type t = {
   rollup_info : rollup_info;
   tezos_blocks_cache : Alpha_block_services.block_info Tezos_blocks_cache.t;
   tezos_header_cache : Block_header.shell_header Tezos_blocks_cache.t;
-  constants : Constants.t;
+  mutable constants : Constants.t option;
   signers : Node_config.signers;
   caps : Node_config.caps;
   sync : sync_info;
@@ -368,8 +368,19 @@ let read_head (stores : Stores.t) =
   | None -> return_none
   | Some hash -> get_block_store stores hash
 
-let retrieve_constants cctxt =
-  Protocol.Constants_services.all cctxt (cctxt#chain, cctxt#block)
+let get_constants state =
+  let open Lwt_result_syntax in
+  match state.constants with
+  | None ->
+      fun block ->
+        let* constants =
+          Protocol.Constants_services.all
+            state.cctxt
+            (state.cctxt#chain, `Hash (block, 0))
+        in
+        state.constants <- Some constants ;
+        return constants
+  | Some constants -> fun _ -> return constants
 
 let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
     configuration =
@@ -395,7 +406,6 @@ let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
     |> lwt_map_error (function [] -> [] | trace :: _ -> trace)
   in
   let*! head = read_head stores in
-  let* constants = retrieve_constants cctxt in
   (* L1 blocks are cached to handle reorganizations efficiently *)
   let tezos_blocks_cache = Tezos_blocks_cache.create 32 in
   let tezos_header_cache = Tezos_blocks_cache.create 32 in
@@ -417,7 +427,7 @@ let init (cctxt : #Protocol_client_context.full) ?(readonly = false)
       rollup_info;
       tezos_blocks_cache;
       tezos_header_cache;
-      constants;
+      constants = None;
       signers;
       caps;
       sync;

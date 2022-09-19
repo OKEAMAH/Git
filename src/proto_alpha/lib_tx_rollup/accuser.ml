@@ -204,11 +204,12 @@ let build_rejection state ~(reject_commitment : Tx_rollup_commitment.Full.t)
     Environment.wrap_tzresult
     @@ Tx_rollup_inbox.Merkle.compute_path message_hashes position
   in
+  let* constants = State.get_constants state block.header.tezos_block in
   let l2_parameters =
     Protocol.Tx_rollup_l2_apply.
       {
         tx_rollup_max_withdrawals_per_batch =
-          state.constants.parametric.tx_rollup.max_withdrawals_per_batch;
+          constants.parametric.tx_rollup.max_withdrawals_per_batch;
       }
   in
   let+ proof, _ =
