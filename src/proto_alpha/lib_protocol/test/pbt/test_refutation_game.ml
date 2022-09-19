@@ -838,8 +838,6 @@ module Tree_inbox = struct
 
     type tree = Store.tree
 
-    type t = Store.t
-
     type key = string list
 
     type value = bytes

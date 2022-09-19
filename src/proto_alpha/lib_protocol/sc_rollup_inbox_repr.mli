@@ -414,11 +414,27 @@ module type Merkelized_operations = sig
 end
 
 module type P = sig
-  module Tree : Context.TREE with type key = string list and type value = bytes
+  type t
+
+  module Tree : sig
+    type tree
+
+    type key = string list
+
+    type value = bytes
+
+    val hash : tree -> Context_hash.t
+
+    val add : tree -> key -> value -> tree Lwt.t
+
+    val find : tree -> key -> value option Lwt.t
+
+    val empty : t -> tree
+
+    val equal : tree -> tree -> bool
+  end
 
   type tree = Tree.tree
-
-  type t = Tree.t
 
   val commit_tree : t -> string list -> tree -> unit Lwt.t
 
@@ -434,7 +450,7 @@ module type P = sig
     proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
 
   val produce_proof :
-    Tree.t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
+    t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
 end
 
 (**

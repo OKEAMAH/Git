@@ -495,15 +495,31 @@ module type Merkelized_operations = sig
 end
 
 module type P = sig
-  module Tree : Context.TREE with type key = string list and type value = bytes
+  type t
 
-  type t = Tree.t
+  module Tree : sig
+    type tree
+
+    type key = string list
+
+    type value = bytes
+
+    val hash : tree -> Context_hash.t
+
+    val add : tree -> key -> value -> tree Lwt.t
+
+    val find : tree -> key -> value option Lwt.t
+
+    val empty : t -> tree
+
+    val equal : tree -> tree -> bool
+  end
 
   type tree = Tree.tree
 
-  val commit_tree : Tree.t -> string list -> Tree.tree -> unit Lwt.t
+  val commit_tree : t -> string list -> tree -> unit Lwt.t
 
-  val lookup_tree : Tree.t -> Hash.t -> tree option Lwt.t
+  val lookup_tree : t -> Hash.t -> tree option Lwt.t
 
   type proof
 
@@ -515,7 +531,7 @@ module type P = sig
     proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
 
   val produce_proof :
-    Tree.t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
+    t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
 end
 
 module Make_hashing_scheme (P : P) :
@@ -1216,8 +1232,6 @@ include (
     module Tree = struct
       include Context.Tree
 
-      type t = Context.t
-
       type tree = Context.tree
 
       type value = bytes
@@ -1227,7 +1241,7 @@ include (
 
     type t = Context.t
 
-    type tree = Context.tree
+    type tree = Tree.tree
 
     let commit_tree _ctxt _key _tree =
       (* This is a no-op in the protocol inbox implementation *)
