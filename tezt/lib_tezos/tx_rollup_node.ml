@@ -44,6 +44,7 @@ module Parameters = struct
     origination_level : int option;
     rpc_addr : string;
     allow_deposit : bool;
+    no_wait_proto : bool;
     dormant_mode : bool;
     mode : mode;
     mutable pending_ready : unit option Lwt.u list;
@@ -101,7 +102,8 @@ let spawn_init_config ?(force = false) node =
         rpc_addr node;
       ]
      @ (if force then ["--force"] else [])
-     @ if node.persistent_state.allow_deposit then ["--allow-deposit"] else [])
+     @ (if node.persistent_state.allow_deposit then ["--allow-deposit"] else [])
+     @ if node.persistent_state.no_wait_proto then ["--no-wait-proto"] else [])
     |> add_option "--origination-level"
        @@ Option.map string_of_int node.persistent_state.origination_level
     |> add_option "--operator" @@ operator node
@@ -231,7 +233,7 @@ let create ~protocol ?runner ?data_dir ?(addr = "127.0.0.1")
     ?(dormant_mode = false) ?color ?event_pipe ?name mode ~rollup_id
     ?origination_level ?operator ?batch_signer ?finalize_commitment_signer
     ?remove_commitment_signer ?dispatch_withdrawals_signer ?rejection_signer
-    ?(allow_deposit = false) client tezos_node =
+    ?(allow_deposit = false) ?(no_wait_proto = false) client tezos_node =
   let name = match name with None -> fresh_name () | Some name -> name in
   let rpc_addr =
     match String.rindex_opt addr ':' with
@@ -266,6 +268,7 @@ let create ~protocol ?runner ?data_dir ?(addr = "127.0.0.1")
         dispatch_withdrawals_signer;
         rejection_signer;
         allow_deposit;
+        no_wait_proto;
         client;
         pending_ready = [];
         pending_level = [];
@@ -310,7 +313,8 @@ let run node =
         "--rpc-addr";
         rpc_addr node;
       ]
-     @ if node.persistent_state.allow_deposit then ["--allow-deposit"] else [])
+     @ (if node.persistent_state.allow_deposit then ["--allow-deposit"] else [])
+     @ if node.persistent_state.no_wait_proto then ["--no-wait-proto"] else [])
     |> add_option "--origination-level"
        @@ Option.map string_of_int node.persistent_state.origination_level
     |> add_option "--operator" @@ operator node

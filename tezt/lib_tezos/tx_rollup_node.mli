@@ -48,6 +48,7 @@ val create :
   ?dispatch_withdrawals_signer:string ->
   ?rejection_signer:string ->
   ?allow_deposit:bool ->
+  ?no_wait_proto:bool ->
   Client.t ->
   Node.t ->
   t

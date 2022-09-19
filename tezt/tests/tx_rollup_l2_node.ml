@@ -2971,6 +2971,7 @@ let test_migration =
           Observer
           ~rollup_id:rollup
           ~origination_level
+          ~allow_deposit:true
           ~no_wait_proto:true
           client
           node
