@@ -78,9 +78,17 @@ let set_proto state =
         (* Parsed block, so of correct protocol *)
         state.proto_level <- Some block.header.shell.proto_level
 
+let is_decoding_error trace =
+  List.exists
+    (function
+      | RPC_client_errors.(Request_failed {error = Unexpected_content _; _}) ->
+          true
+      | _ -> false)
+    trace
+
 let fetch_tezos_block state hash =
   let open Lwt_result_syntax in
-  let+ block =
+  let*! block =
     trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
     @@ fetch_tezos_block
          state.cctxt
@@ -88,8 +96,29 @@ let fetch_tezos_block state hash =
          ~find_in_cache:
            (Tezos_blocks_cache.find_or_replace state.tezos_blocks_cache)
   in
-  set_proto state block ;
-  block
+  match block with
+  | Ok block ->
+      set_proto state block ;
+      return block
+  | Error err when is_decoding_error err ->
+      let* {current_protocol; _} =
+        Tezos_shell_services.Block_services.protocols
+          state.cctxt
+          ~block:(`Hash (hash, 0))
+          ()
+      in
+      if Protocol_hash.(current_protocol <> Protocol.hash) then
+        failwith
+          "Tried to retrieve block %a for protocol %a but the rollup node only \
+           works with protocol %a."
+          Block_hash.pp
+          hash
+          Protocol_hash.pp
+          current_protocol
+          Protocol_hash.pp
+          Protocol.hash
+      else fail err
+  | Error _ as e -> Lwt.return e
 
 let fetch_tezos_header state hash =
   trace (Error.Tx_rollup_cannot_fetch_tezos_block hash)
