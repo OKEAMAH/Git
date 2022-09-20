@@ -614,22 +614,13 @@ struct
     let* tree = set_number_of_messages tree Z.zero in
     set_level tree level
 
-  let add_message inbox payload level_tree =
-    let open Lwt_tzresult_syntax in
+  let add_message inbox payload level_messages =
+    let open Lwt_syntax in
     let message_index = inbox.message_counter in
     let message_counter = Z.succ message_index in
-    let*! level_messages = Tree.find_tree level_tree messages_key in
-    let*! level_messages =
-      match level_messages with
-      | Some level_messages -> Lwt.return level_messages
-      | None ->
-          assert false (* this assert false is removed in a following commit *)
-    in
-    let*! level_messages =
+    let* level_messages =
       Level_messages_inbox.add_message level_messages message_index payload
     in
-    let*! level_tree = Tree.add_tree level_tree messages_key level_messages in
-    let*! level_tree = set_number_of_messages level_tree message_counter in
     let nb_messages_in_commitment_period =
       Int64.succ inbox.nb_messages_in_commitment_period
     in
@@ -645,7 +636,7 @@ struct
         nb_messages_in_commitment_period;
       }
     in
-    return (level_tree, inbox)
+    return (level_messages, inbox)
 
   let get_message_payload level_tree message_counter =
     let open Lwt_syntax in
@@ -759,12 +750,24 @@ struct
     let* history, inbox, level_tree =
       archive_if_needed ctxt history inbox level level_tree
     in
-    let* level_tree, inbox =
-      List.fold_left_es
-        (fun (level_tree, inbox) payload ->
-          add_message inbox payload level_tree)
-        (level_tree, inbox)
+
+    let*! level_messages = Tree.find_tree level_tree messages_key in
+    let*! level_messages =
+      match level_messages with
+      | Some level_messages -> Lwt.return level_messages
+      | None ->
+          assert false (* this assert false is removed in a following commit *)
+    in
+    let*! level_messages, inbox =
+      List.fold_left_s
+        (fun (level_messages, inbox) payload ->
+          add_message inbox payload level_messages)
+        (level_messages, inbox)
         payloads
+    in
+    let*! level_tree = Tree.add_tree level_tree messages_key level_messages in
+    let*! level_tree =
+      set_number_of_messages level_tree inbox.message_counter
     in
     let current_level_hash () = hash_level_tree level_tree in
     return (level_tree, history, {inbox with current_level_hash})
@@ -1280,6 +1283,8 @@ include (
       type value = bytes
 
       type key = string list
+
+      let add_tree = add_tree
     end
 
     type t = Context.t
