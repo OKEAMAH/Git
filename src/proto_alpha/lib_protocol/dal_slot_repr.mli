@@ -108,6 +108,8 @@ type slot_index = Index.t
 module Page : sig
   type content = string
 
+  type content_opt = content option
+
   type proof
 
   module Index : sig
@@ -229,4 +231,11 @@ module Slots_history : sig
     t ->
     History_cache.t ->
     (proof * Page.content option) tzresult Lwt.t
+
+  val verify_proof :
+    dal_parameters ->
+    Page.id ->
+    t ->
+    proof ->
+    Page.content_opt option tzresult Lwt.t
 end

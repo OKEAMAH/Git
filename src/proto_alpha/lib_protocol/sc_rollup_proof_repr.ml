@@ -188,10 +188,19 @@ let valid snapshot commit_level ~pvm_name proof =
           return
             (Some (Sc_rollup_PVM_sig.Postulate_revelation (`Preimage data)))
         else proof_error "Invalid postulate"
-    | ( Needs_postulate (`Dal_page_request _p_id),
-        Some (Postulate_proof (`Dal_page_proof _p_proof)) ) ->
+    | ( Needs_postulate (`Dal_page_request page_id),
+        Some (Postulate_proof (`Dal_page_proof dal_proof)) ) -> (
         (* FIXME/DAL-REFUTATION: TODO *)
-        assert false
+        let dal_snapshot = assert false in
+        let dal_parameters = assert false in
+        let* input =
+          Dal_proofs.verify_proof dal_parameters page_id dal_snapshot dal_proof
+        in
+        match input with
+        | None -> return_none
+        | Some input ->
+            return_some
+              (Sc_rollup_PVM_sig.Postulate_revelation (`Dal_page input)))
     | No_input_required, Some _
     | Initial, _
     | First_after (_, _), (Some (Postulate_proof _) | None)

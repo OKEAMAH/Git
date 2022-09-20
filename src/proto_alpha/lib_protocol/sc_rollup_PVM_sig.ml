@@ -68,7 +68,7 @@ type inbox_message = {
 type input =
   | Inbox_message of inbox_message
   | Postulate_revelation of
-      [`Preimage of string | `Dal_page of Slot.Page.content option]
+      [`Preimage of string | `Dal_page of Slot.Page.content_opt]
 
 (** [inbox_message_encoding] encoding value for {!inbox_message}. *)
 let inbox_message_encoding =

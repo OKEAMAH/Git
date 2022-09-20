@@ -96,6 +96,8 @@ module Slot_index = Index
 module Page = struct
   type content = string
 
+  type content_opt = content option
+
   type proof = Dal.segment_proof
 
   module Index = struct
@@ -359,10 +361,10 @@ module Slots_history = struct
     let add_confirmed_slots (t : t) cache slots =
       List.fold_left_e add_confirmed_slot (t, cache) slots
 
-    let add_confirmed_slots_no_cache =
-      let no_cache = History_cache.empty ~capacity:0L in
-      fun t slots ->
-        List.fold_left_e add_confirmed_slot (t, no_cache) slots >|? fst
+    let no_history_cache = History_cache.empty ~capacity:0L
+
+    let add_confirmed_slots_no_cache t slots =
+      List.fold_left_e add_confirmed_slot (t, no_history_cache) slots >|? fst
 
     (** FIXME/DAL-REFUTATION: Proofs section *)
 
@@ -378,14 +380,10 @@ module Slots_history = struct
     type proof =
       | Page_confirmed of {
           page_content : Page.content;
-          slot_kate : Header.t;
+          page_proof : Page.proof;
           inc_proof : inclusion_proof;
         }
-      | Page_unconfirmed of {
-          prev_confirmed_slot : slot;
-          next_confirmed_slot : slot;
-          next_inc_proof : inclusion_proof;
-        }
+      | Page_unconfirmed of {prev_inc_proof : inclusion_proof}
 
     let proof_encoding =
       let open Data_encoding in
@@ -396,56 +394,39 @@ module Slots_history = struct
           (obj4
              (req "kind" (constant "confirmed"))
              (req "content" string)
-             (req "slot_kate" Header.encoding)
+             (req "page_proof" Dal.segment_proof_encoding)
              (req "inc_proof" (list history_encoding)))
           (function
-            | Page_confirmed {page_content; slot_kate; inc_proof} ->
-                Some ((), page_content, slot_kate, inc_proof)
+            | Page_confirmed {page_content; page_proof; inc_proof} ->
+                Some ((), page_content, page_proof, inc_proof)
             | _ -> None)
-          (fun ((), page_content, slot_kate, inc_proof) ->
-            Page_confirmed {page_content; slot_kate; inc_proof})
+          (fun ((), page_content, page_proof, inc_proof) ->
+            Page_confirmed {page_content; page_proof; inc_proof})
       and case_page_unconfirmed =
         case
           ~title:"dal page unconfirmed"
           (Tag 1)
-          (obj4
+          (obj2
              (req "kind" (constant "unconfirmed"))
-             (req "prev_confirmed_slot" slot_encoding)
-             (req "next_confirmed_slot" slot_encoding)
-             (req "inc_proof" (list history_encoding)))
+             (req "prev_inc_proof" (list history_encoding)))
           (function
-            | Page_unconfirmed
-                {prev_confirmed_slot; next_confirmed_slot; next_inc_proof} ->
-                Some
-                  ((), prev_confirmed_slot, next_confirmed_slot, next_inc_proof)
+            | Page_unconfirmed {prev_inc_proof} -> Some ((), prev_inc_proof)
             | _ -> None)
-          (fun ((), prev_confirmed_slot, next_confirmed_slot, next_inc_proof) ->
-            Page_unconfirmed
-              {prev_confirmed_slot; next_confirmed_slot; next_inc_proof})
+          (fun ((), prev_inc_proof) -> Page_unconfirmed {prev_inc_proof})
       in
 
       union [case_page_confirmed; case_page_unconfirmed]
 
     let pp_proof fmt p =
-      (* FIXME/DAL: pp inclusion proofs *)
+      (* FIXME/DAL: pp inclusion proofs and page_proof *)
       match p with
-      | Page_confirmed {page_content; slot_kate; inc_proof = _} ->
+      | Page_confirmed {page_content; page_proof = _; inc_proof = _} ->
           Format.fprintf
             fmt
-            "Page_confirmed (content=%s, slot's kate= %a, inc_proof=())"
+            "Page_confirmed (content=%s, inc_proof=())"
             page_content
-            Header.pp
-            slot_kate
-      | Page_unconfirmed
-          {prev_confirmed_slot; next_confirmed_slot; next_inc_proof = _} ->
-          Format.fprintf
-            fmt
-            "Page_unconfirmed (prev_confirmed_slot=%a, \
-             next_confirmed_slot=%a,inc_proof=())"
-            pp_slot
-            prev_confirmed_slot
-            pp_slot
-            next_confirmed_slot
+      | Page_unconfirmed {prev_inc_proof = _} ->
+          Format.fprintf fmt "Page_unconfirmed (prev_inc_proof=())"
 
     type error += Dal_proof_error of string
 
@@ -496,7 +477,15 @@ module Slots_history = struct
         Header.pp
         slot_header
 
-    let prepare_produce_proof published_level slots_history history_cache =
+    let check_not_dummy_slots target zero dummy_upper_slot =
+      fail_when
+        (Compare.Int.( = ) (slot_id_compare target zero) 0
+        || Compare.Int.( = ) (slot_id_compare target dummy_upper_slot) 0)
+        (dal_proof_error
+           "Skip_list.search returned 'Found <dummy_slot>': No existence proof \
+            should be constructed with the zero or uppper dummy slot.")
+
+    let push_upper_dummy_slot published_level slots_history history_cache =
       let open Tzresult_syntax in
       let dummy_upper_slot =
         {zero with published_level = Raw_level_repr.succ published_level}
@@ -516,7 +505,7 @@ module Slots_history = struct
       let open Lwt_tzresult_syntax in
       let {Page.published_level; slot_index; page_index = _} = page_id in
       let*? dummy_upper_slots_history, dummy_upper_slot, deref =
-        prepare_produce_proof published_level slots_history history_cache
+        push_upper_dummy_slot published_level slots_history history_cache
       in
       let compare target_level target_slot_index (s : slot) =
         Lwt.return
@@ -543,15 +532,7 @@ module Slots_history = struct
              initialized with a min elt (slot zero)."
       | Found last_slots_history ->
           let target = Skip_list.content last_slots_history in
-          let* () =
-            fail_when
-              (Compare.Int.( = ) (slot_id_compare target zero) 0
-              || Compare.Int.( = ) (slot_id_compare target dummy_upper_slot) 0)
-              (dal_proof_error
-                 "Skip_list.search returned 'Found <dummy_slot>': No existence \
-                  proof should be constructed with the zero or uppper dummy \
-                  slot.")
-          in
+          let* () = check_not_dummy_slots target zero dummy_upper_slot in
           let* page_content, page_proof = page_content_of page_id in
           let* () =
             verify_page dal_params page_proof page_content page_id target.header
@@ -559,28 +540,104 @@ module Slots_history = struct
           (* FIXME/DAL-REFUTATION: Why do we return page_content in both the proof and as
              input? *)
           return
-            ( Page_confirmed {page_content; slot_kate = target.header; inc_proof},
+            ( Page_confirmed {page_content; page_proof; inc_proof},
               Some page_content )
-      | Nearest_lower lower ->
-          let upper, next_inc_proof =
-            match inc_proof with
-            | _lower :: (upper :: _ as proof) -> (upper, proof)
-            | _ ->
-                (* Should not be reachable, as the skip list has at least two elements
-                   dummy_upper_slot and zero such that:
-                   `zero.published_level < page_id.published_level` AND
-                   `page_id.published_level < dummy_upper_slot.published_level`
-                *)
-                assert false
+      | Nearest_lower _lower ->
+          return (Page_unconfirmed {prev_inc_proof = inc_proof}, None)
+
+    (* FIXME/DAL: copined from inbox_repr *)
+    let verify_inclusion_proof proof a b =
+      let assoc = List.map (fun c -> (hash_skip_list_cell c, c)) proof in
+      let path = List.split assoc |> fst in
+      let deref =
+        let open Map.Make (Pointer_hash) in
+        let map = of_seq (List.to_seq assoc) in
+        fun ptr -> find_opt ptr map
+      in
+      let cell_ptr = hash_skip_list_cell b in
+      let target_ptr = hash_skip_list_cell a in
+      fail_unless
+        (Skip_list.valid_back_path
+           ~equal_ptr:Pointer_hash.equal
+           ~deref
+           ~cell_ptr
+           ~target_ptr
+           path)
+        (dal_proof_error "verify_proof: invalid Dal inclusion proof")
+
+    let verify_proof dal_params page_id snapshot proof =
+      let open Lwt_tzresult_syntax in
+      let {Page.published_level; slot_index; page_index = _} = page_id in
+      let*? snapshot, dummy_upper_slot, _deref =
+        push_upper_dummy_slot published_level snapshot no_history_cache
+      in
+      match proof with
+      | Page_confirmed {page_content; page_proof; inc_proof} ->
+          let* target =
+            match List.last_opt inc_proof with
+            | Some e -> return e
+            | None -> proof_error "verify_proof: inc_proof is empty"
           in
-          return
-            ( Page_unconfirmed
-                {
-                  prev_confirmed_slot = Skip_list.content lower;
-                  next_confirmed_slot = Skip_list.content upper;
-                  next_inc_proof;
-                },
-              None )
+          let* () =
+            check_not_dummy_slots
+              (Skip_list.content target)
+              zero
+              dummy_upper_slot
+          in
+          let* () = verify_inclusion_proof inc_proof target snapshot in
+          let* () =
+            verify_page
+              dal_params
+              page_proof
+              page_content
+              page_id
+              (Skip_list.content target).header
+          in
+          (* FIXME/DAL: Not sure this is sufficient. In the input_repr version,
+             there are much more checks *)
+          return_some (Some page_content)
+      | Page_unconfirmed {prev_inc_proof} ->
+          let* prev_history, next_history =
+            match List.rev prev_inc_proof with
+            | prev :: next :: _ -> return (prev, next)
+            | _ ->
+                (* An unconfirmation proof should contain at least two elements,
+                   as
+                   - our skip list is initialized with the slot zero
+                   - a dummy upper slot is inserted (by produce_proof) before
+                   producing the proof.
+                   These two slots verify:
+                     `zero.published_level < page_id.published_level` AND
+                     `page_id.published_level < dummy_upper_slot.published_level`
+                   So a proof that the target doesn't exist should include them.
+                *)
+                proof_error "verify_proof: invalid prev_inc_proof"
+          in
+          let* () =
+            verify_inclusion_proof prev_inc_proof prev_history snapshot
+          in
+          let* () =
+            fail_unless
+              (let prev_cell_pointer = Skip_list.back_pointer next_history 0 in
+               match prev_cell_pointer with
+               | None -> false
+               | Some prev_ptr ->
+                   Pointer_hash.equal
+                     prev_ptr
+                     (hash_skip_list_cell prev_history))
+              (dal_proof_error "verify_proof: invalid prev_inc_proof")
+          in
+          let* () =
+            fail_unless
+              Compare.Int.(
+                let fake_target =
+                  {published_level; index = slot_index; header = Header.zero}
+                in
+                slot_id_compare fake_target zero > 0
+                || slot_id_compare fake_target dummy_upper_slot < 0)
+              (dal_proof_error "verify_proof: invalid prev_inc_proof")
+          in
+          return_none
   end
 
   include V1
