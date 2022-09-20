@@ -162,7 +162,7 @@ let slot_encoding =
 let pp_slot fmt {published_level; index; header} =
   Format.fprintf
     fmt
-    "published_level: %a index: %a header: %a"
+    "slot:{published_level: %a; index: %a; header: %a}"
     Raw_level_repr.pp
     published_level
     Format.pp_print_int
