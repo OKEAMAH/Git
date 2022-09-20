@@ -2730,6 +2730,10 @@ let () =
     (function Missing_shell_header -> Some () | _ -> None)
     (fun () -> Missing_shell_header)
 
+let finalize_context ?commit_message ctxt fitness =
+  let open Lwt_tzresult_syntax in
+  return (finalize ?commit_message ctxt fitness)
+
 let finalize_with_commit_message ctxt ~cache_nonce fitness round op_count =
   let open Lwt_syntax in
   let* ctxt = Cache.Admin.sync ctxt cache_nonce in
@@ -2744,10 +2748,7 @@ let finalize_with_commit_message ctxt ~cache_nonce fitness round op_count =
       round
       op_count
   in
-  let validation_result =
-    finalize ~commit_message ctxt (Fitness.to_raw fitness)
-  in
-  return validation_result
+  finalize_context ~commit_message ctxt (Fitness.to_raw fitness)
 
 let finalize_block (application_state : application_state) shell_header_opt =
   let open Lwt_tzresult_syntax in
@@ -2807,30 +2808,29 @@ let finalize_block (application_state : application_state) shell_header_opt =
           ~block_producer
           ~payload_producer
       in
-      let*! result =
+      let+ result =
         finalize_with_commit_message ctxt ~cache_nonce fitness round op_count
       in
-      return (result, receipt)
+      (result, receipt)
   | Partial_construction {predecessor_fitness; _} ->
       let* voting_period_info = Voting_period.get_rpc_current_info ctxt in
       let level_info = Level.current ctxt in
-      let result = finalize ctxt predecessor_fitness in
-      return
-        ( result,
-          Apply_results.
-            {
-              proposer = Consensus_key.zero;
-              baker = Consensus_key.zero;
-              level_info;
-              voting_period_info;
-              nonce_hash = None;
-              consumed_gas = Gas.Arith.zero;
-              deactivated = [];
-              balance_updates = migration_balance_updates;
-              liquidity_baking_toggle_ema;
-              implicit_operations_results;
-              dal_slot_availability = None;
-            } )
+      let+ result = finalize_context ctxt predecessor_fitness in
+      ( result,
+        Apply_results.
+          {
+            proposer = Consensus_key.zero;
+            baker = Consensus_key.zero;
+            level_info;
+            voting_period_info;
+            nonce_hash = None;
+            consumed_gas = Gas.Arith.zero;
+            deactivated = [];
+            balance_updates = migration_balance_updates;
+            liquidity_baking_toggle_ema;
+            implicit_operations_results;
+            dal_slot_availability = None;
+          } )
   | Application
       {
         fitness;
@@ -2855,9 +2855,9 @@ let finalize_block (application_state : application_state) shell_header_opt =
           ~block_producer
           ~payload_producer
       in
-      let*! result =
+      let+ result =
         finalize_with_commit_message ctxt ~cache_nonce fitness round op_count
       in
-      return (result, receipt)
+      (result, receipt)
 
 let value_of_key ctxt k = Cache.Admin.value_of_key ctxt k
