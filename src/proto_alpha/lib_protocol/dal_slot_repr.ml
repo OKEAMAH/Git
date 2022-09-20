@@ -417,16 +417,26 @@ module Slots_history = struct
 
       union [case_page_confirmed; case_page_unconfirmed]
 
+    let pp_inclusion_proof fmt proof = Format.pp_print_list pp_history fmt proof
+
     let pp_proof fmt p =
       (* FIXME/DAL: pp inclusion proofs and page_proof *)
       match p with
-      | Page_confirmed {page_content; page_proof = _; inc_proof = _} ->
+      | Page_confirmed {page_content; page_proof = _; inc_proof} ->
           Format.fprintf
             fmt
-            "Page_confirmed (content=%s, inc_proof=())"
+            "Page_confirmed (content=%s, inc_proof:[size=%d | data=%a])"
             page_content
-      | Page_unconfirmed {prev_inc_proof = _} ->
-          Format.fprintf fmt "Page_unconfirmed (prev_inc_proof=())"
+            (List.length inc_proof)
+            pp_inclusion_proof
+            inc_proof
+      | Page_unconfirmed {prev_inc_proof} ->
+          Format.fprintf
+            fmt
+            "Page_unconfirmed (prev_inc_proof:[size=%d | data=%a])"
+            (List.length prev_inc_proof)
+            pp_inclusion_proof
+            prev_inc_proof
 
     type error += Dal_proof_error of string
 
