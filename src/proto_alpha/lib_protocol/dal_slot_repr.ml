@@ -368,7 +368,7 @@ module Slots_history = struct
 
     (** FIXME/DAL-REFUTATION: Proofs section *)
 
-    type dal_parameters = Tezos_crypto_dal.Cryptobox.parameters = {
+    type dal_parameters = Dal.parameters = {
       redundancy_factor : int;
       segment_size : int;
       slot_size : int;

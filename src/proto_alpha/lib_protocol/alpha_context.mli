@@ -2854,7 +2854,7 @@ module Dal : sig
 
     type proof
 
-    type dal_parameters = {
+    type dal_parameters = Dal.parameters = {
       redundancy_factor : int;
       segment_size : int;
       slot_size : int;

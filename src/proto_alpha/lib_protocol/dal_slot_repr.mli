@@ -211,7 +211,7 @@ module Slots_history : sig
 
   (* FIXME/DAL-REFUTATION: add doc *)
 
-  type dal_parameters = {
+  type dal_parameters = Dal.parameters = {
     redundancy_factor : int;
     segment_size : int;
     slot_size : int;
