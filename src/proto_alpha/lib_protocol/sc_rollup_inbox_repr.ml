@@ -545,7 +545,7 @@ struct
   module Level_messages_inbox : sig
     type t
 
-    val empty : inbox_context -> t
+    val empty : t
 
     val add_message :
       t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t Lwt.t
@@ -576,7 +576,7 @@ struct
       :: List.map Hash.to_bytes back_pointers_hashes
       |> Hash.hash_bytes
 
-    let empty _ =
+    let empty =
       let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
       Skip_list.genesis first_msg
 
@@ -618,7 +618,7 @@ struct
   let new_level_tree ctxt level =
     let open Lwt_syntax in
     let tree = Tree.empty ctxt in
-    let level_inbox = Level_messages_inbox.empty ctxt in
+    let level_inbox = Level_messages_inbox.empty in
     let level_inbox = Level_messages_inbox.to_bytes level_inbox in
     let* tree = Tree.add tree messages_key level_inbox in
     let* tree = set_number_of_messages tree Z.zero in
