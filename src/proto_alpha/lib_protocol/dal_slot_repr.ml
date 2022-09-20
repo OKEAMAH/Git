@@ -647,7 +647,7 @@ module Slots_history = struct
                 || slot_id_compare fake_target dummy_upper_slot < 0)
               (dal_proof_error "verify_proof: invalid prev_inc_proof")
           in
-          return_none
+          return_some None
   end
 
   include V1
