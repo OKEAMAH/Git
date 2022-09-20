@@ -3140,11 +3140,7 @@ module Sc_rollup : sig
 
         val add : tree -> key -> value -> tree Lwt.t
 
-        val add_tree : tree -> key -> tree -> tree Lwt.t
-
         val find : tree -> key -> value option Lwt.t
-
-        val find_tree : tree -> key -> tree option Lwt.t
 
         val empty : t -> tree
 

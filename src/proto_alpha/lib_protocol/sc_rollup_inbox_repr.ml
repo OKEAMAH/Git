@@ -507,11 +507,7 @@ module type P = sig
 
     val add : tree -> key -> value -> tree Lwt.t
 
-    val add_tree : tree -> key -> tree -> tree Lwt.t
-
     val find : tree -> key -> value option Lwt.t
-
-    val find_tree : tree -> key -> tree option Lwt.t
 
     val empty : t -> tree
 
@@ -549,8 +545,6 @@ struct
   module Level_messages_inbox : sig
     type t
 
-    val hash : t -> Hash.t
-
     val empty : inbox_context -> t
 
     val add_message :
@@ -559,39 +553,42 @@ struct
     val get_message_payload :
       t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
 
-    val to_tree : t -> tree
+    val to_bytes : t -> bytes
 
-    val of_tree : tree -> t
+    val of_bytes : bytes -> t option
   end = struct
-    type t = tree
+    type value = Sc_rollup_inbox_message_repr.serialized
 
-    let hash level_tree = Tree.hash level_tree |> Hash.of_context_hash
+    type ptr = Hash.t
 
-    let key_of_message ix =
-      ["message"; Data_encoding.Binary.to_string_exn Data_encoding.n ix]
+    type t = (value, ptr) Skip_list.cell
 
-    let empty = Tree.empty
+    let encoding =
+      Skip_list.encoding
+        Hash.encoding
+        Sc_rollup_inbox_message_repr.serialized_encoding
 
-    let add_message level_tree message_index payload =
-      Tree.add
-        level_tree
-        (key_of_message message_index)
-        (Bytes.of_string
-           (payload : Sc_rollup_inbox_message_repr.serialized :> string))
+    let hash cell =
+      let payload = Skip_list.content cell in
+      let back_pointers_hashes = Skip_list.back_pointers cell in
+      Bytes.of_string
+        (payload : Sc_rollup_inbox_message_repr.serialized :> string)
+      :: List.map Hash.to_bytes back_pointers_hashes
+      |> Hash.hash_bytes
 
-    let get_message_payload level_tree message_index =
-      let open Lwt_syntax in
-      let key = key_of_message message_index in
-      let* bytes = Tree.(find level_tree key) in
-      return
-      @@ Option.map
-           (fun bs ->
-             Sc_rollup_inbox_message_repr.unsafe_of_string (Bytes.to_string bs))
-           bytes
+    let empty _ =
+      let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
+      Skip_list.genesis first_msg
 
-    let to_tree t = t
+    let add_message prev_cell _message_index payload =
+      let prev_cell_ptr = hash prev_cell in
+      Lwt.return @@ Skip_list.next ~prev_cell ~prev_cell_ptr payload
 
-    let of_tree t = t
+    let get_message_payload _skip_list _message_index = Lwt.return_none
+
+    let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
+
+    let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
   end
 
   let hash_level_tree level_tree = Hash.of_context_hash (Tree.hash level_tree)
@@ -622,8 +619,8 @@ struct
     let open Lwt_syntax in
     let tree = Tree.empty ctxt in
     let level_inbox = Level_messages_inbox.empty ctxt in
-    let level_inbox_tree = Level_messages_inbox.to_tree level_inbox in
-    let* tree = Tree.add_tree tree messages_key level_inbox_tree in
+    let level_inbox = Level_messages_inbox.to_bytes level_inbox in
+    let* tree = Tree.add tree messages_key level_inbox in
     let* tree = set_number_of_messages tree Z.zero in
     set_level tree level
 
@@ -653,13 +650,16 @@ struct
 
   let get_message_payload level_tree message_counter =
     let open Lwt_syntax in
-    let* level_messages_tree = Tree.find_tree level_tree messages_key in
-    match level_messages_tree with
-    | None ->
-        return_none (* this case can't happens and will be removed later *)
-    | Some level_messages_tree ->
-        let level_messages = Level_messages_inbox.of_tree level_messages_tree in
-        Level_messages_inbox.get_message_payload level_messages message_counter
+    let* level_messages_opt = Tree.find level_tree messages_key in
+    match level_messages_opt with
+    | Some level_messages_bytes -> (
+        match Level_messages_inbox.of_bytes level_messages_bytes with
+        | Some level_messages ->
+            Level_messages_inbox.get_message_payload
+              level_messages
+              message_counter
+        | None -> assert false)
+    | None -> assert false
 
   (** [no_history] creates an empty history with [capacity] set to
       zero---this makes the [remember] function a no-op. We want this
@@ -766,11 +766,15 @@ struct
       archive_if_needed ctxt history inbox level level_tree
     in
 
-    let*! level_messages = Tree.find_tree level_tree messages_key in
+    let*! level_messages = Tree.find level_tree messages_key in
     let*! level_messages =
       match level_messages with
-      | Some level_messages ->
-          Lwt.return @@ Level_messages_inbox.of_tree level_messages
+      | Some level_messages_bytes -> (
+          match Level_messages_inbox.of_bytes level_messages_bytes with
+          | Some level_messages -> Lwt.return @@ level_messages
+          | None ->
+              assert
+                false (* this assert false is removed in a following commit *))
       | None ->
           assert false (* this assert false is removed in a following commit *)
     in
@@ -782,10 +786,10 @@ struct
         payloads
     in
     let*! level_tree =
-      Tree.add_tree
+      Tree.add
         level_tree
         messages_key
-        (Level_messages_inbox.to_tree level_messages)
+        (Level_messages_inbox.to_bytes level_messages)
     in
     let*! level_tree =
       set_number_of_messages level_tree inbox.message_counter
@@ -1304,8 +1308,6 @@ include (
       type value = bytes
 
       type key = string list
-
-      let add_tree = add_tree
     end
 
     type t = Context.t

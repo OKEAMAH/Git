@@ -90,6 +90,8 @@ let encoding =
 
 type serialized = string
 
+let serialized_encoding = Data_encoding.string
+
 let serialize msg =
   let open Tzresult_syntax in
   match Data_encoding.Binary.to_string_opt encoding msg with

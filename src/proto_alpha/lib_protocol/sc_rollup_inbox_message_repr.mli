@@ -63,6 +63,8 @@ type t = Internal of internal_inbox_message | External of string
 
 type serialized = private string
 
+val serialized_encoding : serialized Data_encoding.t
+
 (** Encoding for messages from Layer 1 to Layer 2 *)
 val encoding : t Data_encoding.t
 
