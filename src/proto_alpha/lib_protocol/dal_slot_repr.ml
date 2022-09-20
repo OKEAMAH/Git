@@ -651,6 +651,10 @@ module Slots_history = struct
   end
 
   include V1
+
+  module Internal_for_tests = struct
+    let content = Skip_list.content
+  end
 end
 
 let encoding = slot_encoding

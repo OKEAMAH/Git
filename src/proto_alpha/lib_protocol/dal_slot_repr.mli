@@ -238,4 +238,8 @@ module Slots_history : sig
     t ->
     proof ->
     Page.content_opt option tzresult Lwt.t
+
+  module Internal_for_tests : sig
+    val content : t -> slot
+  end
 end

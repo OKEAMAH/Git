@@ -30,6 +30,7 @@ depends: [
   "tezos-protocol-environment" {with-test}
   "tezos-stdlib-unix" {with-test}
   "tezos-stdlib" {with-test}
+  "tezos-crypto-dal" {with-test}
   "tezt-tezos" {with-test}
 ]
 build: [

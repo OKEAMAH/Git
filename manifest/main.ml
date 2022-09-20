@@ -3577,6 +3577,7 @@ end = struct
               test_helpers |> if_some |> open_;
               alcotest_lwt;
               octez_stdlib |> if_ N.(number >= 013) |> open_;
+              octez_crypto_dal |> if_ N.(number >= 015) |> open_;
             ]
           ~dune:
             Dune.
