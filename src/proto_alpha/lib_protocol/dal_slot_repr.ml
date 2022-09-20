@@ -520,9 +520,9 @@ module Slots_history = struct
       let compare target_level target_slot_index (s : slot) =
         Lwt.return
         @@
-        let c = Raw_level_repr.compare target_level s.published_level in
+        let c = Raw_level_repr.compare s.published_level target_level in
         if Compare.Int.(c <> 0) then c
-        else Index.compare target_slot_index s.index
+        else Index.compare s.index target_slot_index
       in
       let*! search_result =
         Skip_list.search
