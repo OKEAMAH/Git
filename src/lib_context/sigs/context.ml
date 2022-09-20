@@ -811,3 +811,46 @@ module type TEZOS_CONTEXT = sig
     parents_contexts:Context_hash.t list ->
     bool Lwt.t
 end
+
+(** Functor `With_get_data` adds a `get_data` function to modules of signature `S`.
+    Note that the partially applied `get_data kind key` function has the correct
+    type to be provided to {produce,verify}_tree_proof, which is its intended goal. *)
+module type Storelike = sig
+  type key = string list
+
+  type tree
+
+  type value
+
+  val find : tree -> key -> value option Lwt.t
+
+  val find_tree : tree -> key -> tree option Lwt.t
+
+  val unshallow : tree -> tree Lwt.t
+end
+
+module With_get_data (Store : Storelike) = struct
+  let get_data (leaf_kind : Proof_types.merkle_leaf_kind)
+      (keys : Store.key list) (tree : Store.tree) :
+      (Store.tree
+      * (Store.key * (Store.tree, Store.value) Either.t Option.t) list)
+      Lwt.t =
+    let open Lwt_syntax in
+    let data_key k = "data" :: k in
+    let find k =
+      match leaf_kind with
+      | Proof_types.Hole -> return [(k, None)]
+      | Proof_types.Raw_context -> (
+          let key = data_key k in
+          let* val_o = Store.find tree key
+          and* tree_o = Store.find_tree tree key in
+          match (val_o, tree_o) with
+          | Some value, _ -> return [(k, Some (Either.Right value))]
+          | _, Some tree ->
+              let* tree = Store.unshallow tree in
+              return [(k, Some (Either.Left tree))]
+          | _ -> return [])
+    in
+    let* values = Lwt_list.map_p find keys in
+    return (tree, List.concat values)
+end
