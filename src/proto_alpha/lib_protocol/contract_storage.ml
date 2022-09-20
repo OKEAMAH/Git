@@ -632,7 +632,7 @@ let spend_only_call_from_token c contract amount =
           return @@ Raw_context.add_to_empty_implicit_accounts c pkh
         else return c
       else return c
-  | Originated _ -> return c
+  | Originated _ -> (* Never delete originated contracts *) return c
 
 (* [Tez_repr.(amount <> zero)] is a precondition of this function. It ensures that
    no entry associating a null balance to an implicit contract exists in the map
@@ -780,37 +780,31 @@ let should_keep_empty_implicit_contract ctxt contract =
   else
     (* full balance of contract is zero. *)
     Contract_delegate_storage.find ctxt contract >>=? function
-    | Some _ ->
-        (* Here, we know that the contract delegates to itself.
-           Indeed, it does not delegate to a different one, because
-           the balance of such contracts cannot be zero (see
-           {!spend_only_call_from_token}), hence the stake of such
-           contracts cannot be zero either. *)
-        return_true
+    | Some _ -> (
+        (* keep iff the contract delegates to itself *)
+        let* delegate = Contract_delegate_storage.find ctxt contract in
+        match delegate with
+        | Some pkh' -> return Contract_repr.(contract = Implicit pkh')
+        | None -> return_false)
     | None ->
         (* Delete empty implicit contract. *)
         return_false
 
-let ensure_deallocated_if_empty ctxt contract =
+let ensure_deallocated_if_empty ctxt pkh =
   let open Lwt_tzresult_syntax in
-  match contract with
-  | Contract_repr.Originated _ ->
-      return ctxt (* Never delete originated contracts *)
-  | Implicit _ -> (
-      let* balance_opt =
-        Storage.Contract.Spendable_balance.find ctxt contract
-      in
-      match balance_opt with
-      | None ->
-          (* Nothing to do, contract is not allocated. *)
-          return ctxt
-      | Some balance ->
-          if Tez_repr.(balance <> zero) then return ctxt
-          else
-            let* keep_contract =
-              should_keep_empty_implicit_contract ctxt contract
-            in
-            if keep_contract then return ctxt else delete ctxt contract)
+  let contract = Contract_repr.Implicit pkh in
+  let* balance_opt = Storage.Contract.Spendable_balance.find ctxt contract in
+  match balance_opt with
+  | None ->
+      (* Nothing to do, contract is not allocated. *)
+      return ctxt
+  | Some balance ->
+      if Tez_repr.(balance <> zero) then return ctxt
+      else
+        let* keep_contract =
+          should_keep_empty_implicit_contract ctxt contract
+        in
+        if keep_contract then return ctxt else delete ctxt contract
 
 let simulate_spending ctxt ~balance ~amount source =
   let open Lwt_tzresult_syntax in

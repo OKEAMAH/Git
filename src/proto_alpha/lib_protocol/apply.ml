@@ -2732,6 +2732,15 @@ let () =
 
 let finalize_context ?commit_message ctxt fitness =
   let open Lwt_tzresult_syntax in
+  (* Deallocate implicit contracts with no stake. *)
+  let candidates_to_deletion = get_empty_implicit_accounts ctxt in
+  let* ctxt =
+    Signature.Public_key_hash.Set.fold_es
+      (fun pkh ctxt -> Contract.ensure_deallocated_if_empty ctxt pkh)
+      candidates_to_deletion
+      ctxt
+  in
+  let ctxt = clear_empty_implicit_accounts ctxt in
   return (finalize ?commit_message ctxt fitness)
 
 let finalize_with_commit_message ctxt ~cache_nonce fitness round op_count =

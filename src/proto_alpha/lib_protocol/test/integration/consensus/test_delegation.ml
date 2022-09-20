@@ -1334,7 +1334,8 @@ let test_self_delegation_emptying_contract () =
      debited but it is expected to fail in the apply-part. *)
   Incremental.add_operation ~expect_apply_failure:(fun _ -> return_unit) i op
   >>=? fun i ->
-  Context.Contract.is_manager_key_revealed (I i) contract >>=? function
+  Incremental.finalize_block i >>=? fun b ->
+  Context.Contract.is_manager_key_revealed (B b) contract >>=? function
   | false -> return_unit
   | true -> failwith "contract should have been removed"
 

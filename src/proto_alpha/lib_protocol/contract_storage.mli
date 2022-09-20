@@ -302,10 +302,10 @@ val fold_on_bond_ids :
   f:(Bond_id_repr.t -> 'a -> 'a Lwt.t) ->
   'a Lwt.t
 
-(** [ensure_deallocated_if_empty ctxt contract] de-allocates [contract] if its
-    full balance is zero, and it does not delegate. *)
+(** [ensure_deallocated_if_empty ctxt pkh] de-allocates the contract designated
+    by [pkh] if its full balance is zero, and it does not delegate. *)
 val ensure_deallocated_if_empty :
-  Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
+  Raw_context.t -> Signature.Public_key_hash.t -> Raw_context.t tzresult Lwt.t
 
 (** [simulate_spending ctxt ~balance ~amount source] removes [amount]
     from [balance] as if it were the balance of the implicit contract

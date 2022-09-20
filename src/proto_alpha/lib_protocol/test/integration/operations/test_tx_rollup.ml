@@ -3754,7 +3754,7 @@ module Single_message_inbox = struct
     Op.tx_rollup_submit_batch (B b) account tx_rollup contents
     >>=? fun operation -> Block.bake b ~operation
 
-  let reject ?expect_apply_failure b tx_rollup account level commitment =
+  let reject ?fee ?expect_apply_failure b tx_rollup account level commitment =
     Format.printf
       "Rejecting level %a (%s)\n"
       Tx_rollup_level.pp
@@ -3768,6 +3768,7 @@ module Single_message_inbox = struct
     in
     Op.tx_rollup_reject
       (B b)
+      ?fee
       account
       tx_rollup
       level

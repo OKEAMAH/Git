@@ -515,16 +515,16 @@ let test_emptying_account_gas () =
   (* The delegation operation should be valid as the operation effect
      would be to remove [contract] and should not generate any extra
      gas cost. *)
-  let expect_apply_failure = function
-    | [Environment.Ecoproto_error (Storage_error (Raw_context.Missing_key _))]
-      ->
-        (* The delegation is expected to fail in the apply part as the
-           contract was emptied when fees were retrieved. *)
-        return_unit
-    | err -> failwith "got unexpected error: %a" pp_print_trace err
-  in
-  Incremental.add_operation ~expect_apply_failure i op
-  >>=? fun (_i : Incremental.t) -> return_unit
+  Incremental.add_operation i op >>=? fun i ->
+  Incremental.finalize_block i >>=? fun b ->
+  (* After block finalization, the account should disappear as it has no
+     balance, and does not delegate to itself. So, reading the balance
+     should trigger a storage error. *)
+  Context.Contract.balance_and_frozen_bonds (B b) contract >>= fun res ->
+  Assert.proto_error_with_info
+    ~loc:__LOC__
+    res
+    "Storage error (fatal internal error)"
 
 let quick (what, how) = Tztest.tztest what `Quick how
 

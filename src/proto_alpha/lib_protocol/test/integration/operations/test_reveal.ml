@@ -73,18 +73,13 @@ let test_empty_account_on_reveal () =
   (* Reveal the contract *)
   Op.revelation ~fee:amount (B blk) new_c.pk >>=? fun operation ->
   Incremental.begin_construction blk >>=? fun inc ->
-  let expect_apply_failure = function
-    | [
-        Environment.Ecoproto_error (Contract_storage.Empty_implicit_contract pkh);
-      ]
-      when pkh = new_c.pkh ->
-        return_unit
-    | _ -> assert false
-  in
-  Incremental.add_operation ~expect_apply_failure inc operation >>=? fun inc ->
+  (* Operation is expected to succeed since there are enough funds
+     to pay the fees. *)
+  Incremental.add_operation inc operation >>=? fun inc ->
   Context.Contract.balance (I inc) new_contract >>=? fun balance ->
   Assert.equal_tez ~loc:__LOC__ balance Tez.zero >>=? fun () ->
-  Context.Contract.is_manager_key_revealed (I inc) new_contract >|=? function
+  Incremental.finalize_block inc >>=? fun blk ->
+  Context.Contract.is_manager_key_revealed (B blk) new_contract >|=? function
   | false -> ()
   | true -> Stdlib.failwith "Empty account still exists and is revealed."
 
@@ -120,9 +115,12 @@ let test_transfer_fees_emptying_after_reveal_batched () =
   >>=? fun op ->
   let expect_apply_failure = function
     | [
-        Environment.Ecoproto_error (Contract_storage.Empty_implicit_contract pkh);
+        Environment.Ecoproto_error
+          (Contract.Balance_too_low (contract, balance, amount));
+        _;
       ]
-      when pkh = new_c.pkh ->
+      when contract = Contract.Implicit new_c.pkh
+           && balance = Tez.zero && amount = Tez.one ->
         return_unit
     | _ -> assert false
   in

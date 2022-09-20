@@ -208,10 +208,8 @@ let test_transfer_zero_implicit_with_bal_src_as_fee () =
   (* Transferring zero tez should result in an application failure as
      the implicit contract has been depleted. *)
   let expect_apply_failure = function
-    | [
-        Environment.Ecoproto_error (Contract_storage.Empty_implicit_contract pkh);
-      ]
-      when pkh = src_pkh ->
+    | [Environment.Ecoproto_error (Apply.Empty_transaction contract_of_err)]
+      when contract_of_err = dest ->
         return_unit
     | _ -> assert false
   in
@@ -221,8 +219,9 @@ let test_transfer_zero_implicit_with_bal_src_as_fee () =
   (* We assert that the failing operation was included and that the
      fees were taken, effectively depleting the contract. *)
   Assert.equal_tez ~loc:__LOC__ balance Tez.zero >>=? fun () ->
+  Incremental.finalize_block inc >>=? fun b ->
   (* Empty contracts should be unrevealed *)
-  Context.Contract.is_manager_key_revealed (I inc) src >>=? fun revelead ->
+  Context.Contract.is_manager_key_revealed (B b) src >>=? fun revelead ->
   when_ revelead (fun () ->
       Stdlib.failwith "Empty account still exists and is revealed.")
 
@@ -864,12 +863,12 @@ let make_tx_rollup_commitment b tx_rollup contract =
   Tx_rollup.commit b tx_rollup contract wrong_commit >|=? fun b ->
   (b, wrong_commit)
 
-(** [reject_tx_rollup_commitment b contract tx_rollup commitment] makes a
-    tx-rollup rejection with specified [contract], [tx_rollup] and [commitment].
-*)
-let reject_tx_rollup_commitment b contract tx_rollup commitment =
+(** [reject_tx_rollup_commitment ?fee b contract tx_rollup commitment] makes a
+    tx-rollup rejection with specified [?fee], [contract], [tx_rollup] and
+    [commitment]. *)
+let reject_tx_rollup_commitment ?fee b contract tx_rollup commitment =
   let module Tx_rollup = Test_tx_rollup.Single_message_inbox in
-  Tx_rollup.reject b tx_rollup contract Tx_rollup_level.root commitment
+  Tx_rollup.reject ?fee b tx_rollup contract Tx_rollup_level.root commitment
 
 (** Asserts that [contract] is allocated with the [expected_balance] by fetching
     the contract's balance and frozen bonds. If [contract is not allocated,
@@ -904,13 +903,11 @@ let configure_new_account b contract ~delegate =
     random_amount
   >>=? fun operation ->
   bake ~operation b >>=? fun b ->
+  (* Reveal its manager key. *)
+  Op.revelation ~fee:Tez.zero (B b) new_account.pk >>=? fun operation ->
+  bake ~operation b >>=? fun b ->
   (if delegate then
-   Op.delegation
-     ~force_reveal:true
-     ~fee:Tez.zero
-     (B b)
-     new_contract
-     (Some new_contract_pkh)
+   Op.delegation ~fee:Tez.zero (B b) new_contract (Some new_contract_pkh)
    >>=? fun operation -> bake ~operation b
   else return b)
   >>=? fun b ->
@@ -960,7 +957,24 @@ let test_allocation_status_when_empty b source ~with_frozen_bonds dest =
     match wrong_commit_opt with
     | None -> return_unit
     | Some wrong_commit ->
-        reject_tx_rollup_commitment b dest tx_rollup wrong_commit >>=? fun b ->
+        (* Inject a rejection operations with [fee = available balance]. *)
+        Context.Contract.balance (B b) dest >>=? fun dest_balance ->
+        reject_tx_rollup_commitment
+          b
+          ~fee:dest_balance
+          dest
+          tx_rollup
+          wrong_commit
+        >>=? fun b ->
+        (* Check that [rejection reward = available balance] since all previous
+           balance went into fees. *)
+        Assert.balance_is ~loc:__LOC__ (B b) dest (commitment_bond /! 2L)
+        >>=? fun () ->
+        (* Check that [dest] was not de-allocated and then re-allocated by
+           ensuring that its manager key remains revealed. *)
+        Context.Contract.is_manager_key_revealed (B b) dest
+        >>=? fun still_revealed ->
+        Assert.equal_bool ~loc:__LOC__ still_revealed true >>=? fun () ->
         if source_is_delegate then
           assert_allocated ~loc:__LOC__ (B b) source Tez.zero
         else assert_not_allocated ~loc:__LOC__ (B b) source
@@ -973,6 +987,8 @@ let test_allocation_status_when_empty_for_delegate () =
   Context.init1 ~consensus_threshold:0 () >>=? fun (b, contract) ->
   (* Allocate a new contract and make it a delegate. *)
   configure_new_account b contract ~delegate:true >>=? fun (b, source) ->
+  (* Allocate another new contract. *)
+  configure_new_account b contract ~delegate:false >>=? fun (b, contract) ->
   (* Check allocation status for a delegate w/o frozen bonds. *)
   test_allocation_status_when_empty b source ~with_frozen_bonds:false contract
   >>=? fun () ->
@@ -985,6 +1001,8 @@ let test_allocation_status_when_empty_for_not_delegated () =
   Context.init1 ~consensus_threshold:0 () >>=? fun (b, contract) ->
   (* Allocate a new contract and do not make it a delegate. *)
   configure_new_account b contract ~delegate:false >>=? fun (b, source) ->
+  (* Allocate another new contract. *)
+  configure_new_account b contract ~delegate:false >>=? fun (b, contract) ->
   (* Test allocation status of the not delegated account w/o frozen bonds. *)
   test_allocation_status_when_empty b source ~with_frozen_bonds:false contract
   >>=? fun () ->

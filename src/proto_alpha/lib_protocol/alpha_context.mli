@@ -1629,7 +1629,9 @@ module Contract : sig
 
   (** Functions related to contracts address. *)
 
-  type error += Non_existing_contract of t
+  type error +=
+    | Non_existing_contract of t
+    | Balance_too_low of t * Tez.t * Tez.t
 
   include BASIC_DATA with type t := t
 
@@ -1656,6 +1658,10 @@ module Contract : sig
   val must_be_allocated : context -> t -> unit tzresult Lwt.t
 
   val list : context -> t list Lwt.t
+
+  (** See {Contract_storage.ensure_deallocated_if_empty}. *)
+  val ensure_deallocated_if_empty :
+    context -> public_key_hash -> context tzresult Lwt.t
 
   (** Functions related to both implicit accounts and originated contracts. *)
 
@@ -4919,6 +4925,10 @@ val dictator_proposal_seen : t -> bool
  *)
 val finalize :
   ?commit_message:string -> context -> Fitness.raw -> Updater.validation_result
+
+val get_empty_implicit_accounts : context -> Signature.Public_key_hash.Set.t
+
+val clear_empty_implicit_accounts : context -> context
 
 (** Should only be used by [Main.current_context] to return a context usable for RPCs *)
 val current_context : context -> Context.t
