@@ -398,9 +398,6 @@ let of_versioned = function V1 inbox -> inbox [@@inline]
 
 let to_versioned inbox = V1 inbox [@@inline]
 
-let key_of_message ix =
-  ["message"; Data_encoding.Binary.to_string_exn Data_encoding.n ix]
-
 let level_key = ["level"]
 
 let number_of_messages_key = ["number_of_messages"]
@@ -543,6 +540,12 @@ struct
 
   type tree = P.tree
 
+  module Level_messages_inbox = Sc_rollup_inbox_message_repr.Make (struct
+    include Tree
+
+    type nonrec inbox_context = inbox_context
+  end)
+
   let hash_level_tree level_tree = Hash.of_context_hash (Tree.hash level_tree)
 
   let set_level tree level =
@@ -569,7 +572,7 @@ struct
       forged by a malicious rollup node. *)
   let new_level_tree ctxt level =
     let open Lwt_syntax in
-    let tree = Tree.empty ctxt in
+    let tree = Level_messages_inbox.empty ctxt in
     let* tree = set_number_of_messages tree Z.zero in
     set_level tree level
 
@@ -578,11 +581,7 @@ struct
     let message_index = inbox.message_counter in
     let message_counter = Z.succ message_index in
     let*! level_tree =
-      Tree.add
-        level_tree
-        (key_of_message message_index)
-        (Bytes.of_string
-           (payload : Sc_rollup_inbox_message_repr.serialized :> string))
+      Level_messages_inbox.add_message level_tree message_index payload
     in
     let*! level_tree = set_number_of_messages level_tree message_counter in
     let nb_messages_in_commitment_period =
@@ -602,15 +601,7 @@ struct
     in
     return (level_tree, inbox)
 
-  let get_message_payload level_tree message_index =
-    let open Lwt_syntax in
-    let key = key_of_message message_index in
-    let* bytes = Tree.(find level_tree key) in
-    return
-    @@ Option.map
-         (fun bs ->
-           Sc_rollup_inbox_message_repr.unsafe_of_string (Bytes.to_string bs))
-         bytes
+  let get_message_payload = Level_messages_inbox.get_message_payload
 
   (** [no_history] creates an empty history with [capacity] set to
       zero---this makes the [remember] function a no-op. We want this
