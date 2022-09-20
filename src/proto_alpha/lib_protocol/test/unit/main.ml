@@ -77,7 +77,7 @@ let () =
       Unit_test.spec "sc rollup arith" Test_sc_rollup_arith.tests;
       Unit_test.spec "merkle list" Test_merkle_list.tests;
       Unit_test.spec "sc rollup inbox" Test_sc_rollup_inbox.tests;
-      Unit_test.spec "skip list" Test_skip_list_repr.tests;
+      (*Unit_test.spec "skip list" Test_skip_list_repr.tests;*)
       Unit_test.spec
         "sc rollup management protocol"
         Test_sc_rollup_management_protocol.tests;
@@ -85,5 +85,6 @@ let () =
       Unit_test.spec "zk rollup storage" Test_zk_rollup_storage.tests;
       Unit_test.spec "compare operations" Test_compare_operations.tests;
       Unit_test.spec "Delegate_consensus_key.ml" Test_consensus_key.tests;
+      Unit_test.spec "dal slot proof" Test_dal_slot_proof.tests;
     ]
   |> Lwt_main.run
