@@ -547,16 +547,24 @@ struct
   type tree = P.tree
 
   module Level_messages_inbox : sig
-    val hash : tree -> Hash.t
+    type t
 
-    val empty : inbox_context -> tree
+    val hash : t -> Hash.t
+
+    val empty : inbox_context -> t
 
     val add_message :
-      tree -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> tree Lwt.t
+      t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t Lwt.t
 
     val get_message_payload :
-      tree -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
+      t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
+
+    val to_tree : t -> tree
+
+    val of_tree : tree -> t
   end = struct
+    type t = tree
+
     let hash level_tree = Tree.hash level_tree |> Hash.of_context_hash
 
     let key_of_message ix =
@@ -580,6 +588,10 @@ struct
            (fun bs ->
              Sc_rollup_inbox_message_repr.unsafe_of_string (Bytes.to_string bs))
            bytes
+
+    let to_tree t = t
+
+    let of_tree t = t
   end
 
   let hash_level_tree level_tree = Hash.of_context_hash (Tree.hash level_tree)
@@ -610,7 +622,8 @@ struct
     let open Lwt_syntax in
     let tree = Tree.empty ctxt in
     let level_inbox = Level_messages_inbox.empty ctxt in
-    let* tree = Tree.add_tree tree messages_key level_inbox in
+    let level_inbox_tree = Level_messages_inbox.to_tree level_inbox in
+    let* tree = Tree.add_tree tree messages_key level_inbox_tree in
     let* tree = set_number_of_messages tree Z.zero in
     set_level tree level
 
@@ -640,10 +653,12 @@ struct
 
   let get_message_payload level_tree message_counter =
     let open Lwt_syntax in
-    let* level_messages = Tree.find_tree level_tree messages_key in
-    match level_messages with
-    | None -> return_none
-    | Some level_messages ->
+    let* level_messages_tree = Tree.find_tree level_tree messages_key in
+    match level_messages_tree with
+    | None ->
+        return_none (* this case can't happens and will be removed later *)
+    | Some level_messages_tree ->
+        let level_messages = Level_messages_inbox.of_tree level_messages_tree in
         Level_messages_inbox.get_message_payload level_messages message_counter
 
   (** [no_history] creates an empty history with [capacity] set to
@@ -754,7 +769,8 @@ struct
     let*! level_messages = Tree.find_tree level_tree messages_key in
     let*! level_messages =
       match level_messages with
-      | Some level_messages -> Lwt.return level_messages
+      | Some level_messages ->
+          Lwt.return @@ Level_messages_inbox.of_tree level_messages
       | None ->
           assert false (* this assert false is removed in a following commit *)
     in
@@ -765,7 +781,12 @@ struct
         (level_messages, inbox)
         payloads
     in
-    let*! level_tree = Tree.add_tree level_tree messages_key level_messages in
+    let*! level_tree =
+      Tree.add_tree
+        level_tree
+        messages_key
+        (Level_messages_inbox.to_tree level_messages)
+    in
     let*! level_tree =
       set_number_of_messages level_tree inbox.message_counter
     in
