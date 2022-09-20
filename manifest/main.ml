@@ -1320,6 +1320,7 @@ let octez_shell_services =
         octez_p2p_services |> open_;
         octez_version |> open_;
         octez_context_sigs;
+        octez_merkle_proof_encoding;
       ]
     ~linkall:true
     ~js_compatible:true
@@ -1354,37 +1355,6 @@ let _octez_shell_services_tests =
       ]
     ~modes:[Native; JS]
     ~js_compatible:true
-
-let octez_shell_services_test_helpers =
-  public_lib
-    "tezos-shell-services-test-helpers"
-    ~path:"src/lib_shell_services/test_helpers"
-    ~synopsis:"Tezos: Tezos shell_services test helpers"
-    ~deps:
-      [
-        octez_base |> open_ ~m:"TzPervasives";
-        octez_shell_services;
-        octez_test_helpers;
-        qcheck_core;
-      ]
-    ~bisect_ppx:false
-    ~linkall:true
-
-let _octez_shell_service_test_helpers_tests =
-  test
-    "test_block_services"
-    ~path:"src/lib_shell_services/test_helpers/test"
-    ~opam:"tezos-shell-services-test-helpers"
-    ~deps:
-      [
-        octez_base |> open_ ~m:"TzPervasives";
-        octez_base_unix;
-        octez_test_helpers;
-        octez_shell_services;
-        octez_shell_services_test_helpers;
-        qcheck_alcotest;
-        alcotest_lwt;
-      ]
 
 let _octez_tooling =
   public_lib
@@ -2749,6 +2719,39 @@ let octez_proxy_rpc =
         octez_rpc;
         octez_proxy;
         uri;
+      ]
+
+let octez_shell_services_test_helpers =
+  public_lib
+    "tezos-shell-services-test-helpers"
+    ~path:"src/lib_shell_services/test_helpers"
+    ~synopsis:"Tezos: Tezos shell_services test helpers"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_shell_services;
+        octez_test_helpers;
+        qcheck_core;
+        octez_context_memory;
+        alcotest_lwt;
+      ]
+    ~bisect_ppx:false
+    ~linkall:true
+
+let _octez_shell_service_test_helpers_tests =
+  test
+    "test_block_services"
+    ~path:"src/lib_shell_services/test_helpers/test"
+    ~opam:"tezos-shell-services-test-helpers"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_base_unix;
+        octez_test_helpers;
+        octez_shell_services;
+        octez_shell_services_test_helpers;
+        qcheck_alcotest;
+        alcotest_lwt;
       ]
 
 let _octez_proxy_tests =
