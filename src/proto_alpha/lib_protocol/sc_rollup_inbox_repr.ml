@@ -398,8 +398,6 @@ let of_versioned = function V1 inbox -> inbox [@@inline]
 
 let to_versioned inbox = V1 inbox [@@inline]
 
-let level_key = ["level"]
-
 let messages_key = ["messages"]
 
 let number_of_messages_key = ["number_of_messages"]
@@ -545,13 +543,15 @@ struct
   module Level_messages_inbox : sig
     type t
 
-    val empty : t
+    val empty : Raw_level_repr.t -> t
 
     val add_message :
       t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t Lwt.t
 
     val get_message_payload :
       t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
+
+    val get_level : t -> Raw_level_repr.t
 
     val to_bytes : t -> bytes
 
@@ -561,12 +561,17 @@ struct
 
     type ptr = Hash.t
 
-    type t = (value, ptr) Skip_list.cell
+    type t = {skip_list : (value, ptr) Skip_list.cell; level : Raw_level_repr.t}
 
     let encoding =
-      Skip_list.encoding
-        Hash.encoding
-        Sc_rollup_inbox_message_repr.serialized_encoding
+      Data_encoding.conv
+        (fun {skip_list; level} -> (skip_list, level))
+        (fun (skip_list, level) -> {skip_list; level})
+        (Data_encoding.tup2
+           (Skip_list.encoding
+              Hash.encoding
+              Sc_rollup_inbox_message_repr.serialized_encoding)
+           Raw_level_repr.encoding)
 
     let hash cell =
       let payload = Skip_list.content cell in
@@ -576,15 +581,19 @@ struct
       :: List.map Hash.to_bytes back_pointers_hashes
       |> Hash.hash_bytes
 
-    let empty =
+    let empty level =
       let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
-      Skip_list.genesis first_msg
+      {skip_list = Skip_list.genesis first_msg; level}
 
-    let add_message prev_cell _message_index payload =
+    let add_message l _message_index payload =
+      let prev_cell = l.skip_list in
       let prev_cell_ptr = hash prev_cell in
-      Lwt.return @@ Skip_list.next ~prev_cell ~prev_cell_ptr payload
+      Lwt.return
+      @@ {l with skip_list = Skip_list.next ~prev_cell ~prev_cell_ptr payload}
 
     let get_message_payload _skip_list _message_index = Lwt.return_none
+
+    let get_level {level; _} = level
 
     let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
 
@@ -593,18 +602,16 @@ struct
 
   let hash_level_tree level_tree = Hash.of_context_hash (Tree.hash level_tree)
 
-  let set_level tree level =
-    let level_bytes =
-      Data_encoding.Binary.to_bytes_exn Raw_level_repr.encoding level
-    in
-    Tree.add tree level_key level_bytes
-
   let find_level tree =
     let open Lwt_syntax in
-    let+ level_bytes = Tree.(find tree level_key) in
-    Option.bind
-      level_bytes
-      (Data_encoding.Binary.of_bytes_opt Raw_level_repr.encoding)
+    let* level_messages_opt = Tree.find tree messages_key in
+    match level_messages_opt with
+    | Some level_messages_bytes -> (
+        match Level_messages_inbox.of_bytes level_messages_bytes with
+        | Some level_messages ->
+            return @@ Level_messages_inbox.get_level level_messages
+        | None -> assert false)
+    | None -> assert false
 
   let set_number_of_messages tree number_of_messages =
     let number_of_messages_bytes =
@@ -618,11 +625,10 @@ struct
   let new_level_tree ctxt level =
     let open Lwt_syntax in
     let tree = Tree.empty ctxt in
-    let level_inbox = Level_messages_inbox.empty in
+    let level_inbox = Level_messages_inbox.empty level in
     let level_inbox = Level_messages_inbox.to_bytes level_inbox in
     let* tree = Tree.add tree messages_key level_inbox in
-    let* tree = set_number_of_messages tree Z.zero in
-    set_level tree level
+    set_number_of_messages tree Z.zero
 
   let add_message inbox payload level_messages =
     let open Lwt_syntax in
@@ -1069,10 +1075,7 @@ struct
     let*! result = P.verify_proof message_proof (payload_and_level n) in
     match result with
     | None -> proof_error (Format.sprintf "message_proof is invalid (%s)" label)
-    | Some (_, (_, None)) ->
-        proof_error
-          (Format.sprintf "badly encoded level in message_proof (%s)" label)
-    | Some (_, (payload_opt, Some proof_level)) ->
+    | Some (_, (payload_opt, proof_level)) ->
         let* () =
           check
             (Raw_level_repr.equal proof_level l)
@@ -1161,12 +1164,10 @@ struct
       let*! tree = P.lookup_tree ctxt hash in
       match tree with
       | None -> Lwt.return (-1)
-      | Some tree -> (
+      | Some tree ->
           let open Lwt_syntax in
           let+ level = find_level tree in
-          match level with
-          | None -> -1
-          | Some level -> Raw_level_repr.compare level l)
+          Raw_level_repr.compare level l
     in
     let*! result = Skip_list.search ~deref ~compare ~cell:inbox in
     let* inc, level =
@@ -1228,15 +1229,10 @@ struct
               "could not find upper_level_tree in the inbox_context"
               (P.lookup_tree ctxt (Skip_list.content upper))
           in
-          let* upper_message_proof, (payload_opt, upper_level_opt) =
+          let* upper_message_proof, (payload_opt, upper_level) =
             option_to_result
               "failed to produce message proof for upper_level_tree"
               (P.produce_proof ctxt upper_level_tree (payload_and_level Z.zero))
-          in
-          let* upper_level =
-            option_to_result
-              "upper_level_tree was misformed---could not find level"
-              (Lwt.return upper_level_opt)
           in
           match payload_opt with
           | None ->
