@@ -116,17 +116,15 @@ module Make_tree (Conf : Conf) (Store : DB) = struct
           t
           init
 
-  type raw = [`Value of bytes | `Tree of raw String.Map.t]
-
   type concrete = Store.Tree.concrete
 
-  let rec raw_of_concrete : type a. (raw -> a) -> concrete -> a =
+  let rec raw_of_concrete : type a. (Raw.raw -> a) -> concrete -> a =
    fun k -> function
     | `Tree l -> raw_of_node (fun l -> k (`Tree (String.Map.of_seq l))) l
     | `Contents (v, _) -> k (`Value v)
 
   and raw_of_node :
-      type a. ((string * raw) Seq.t -> a) -> (string * concrete) list -> a =
+      type a. ((string * Raw.raw) Seq.t -> a) -> (string * concrete) list -> a =
    fun k -> function
     | [] -> k Seq.empty
     | (n, v) :: t ->
@@ -139,13 +137,13 @@ module Make_tree (Conf : Conf) (Store : DB) = struct
     let+ c = Store.Tree.to_concrete t in
     raw_of_concrete (fun t -> t) c
 
-  let rec concrete_of_raw : type a. (concrete -> a) -> raw -> a =
+  let rec concrete_of_raw : type a. (concrete -> a) -> Raw.raw -> a =
    fun k -> function
     | `Tree l -> concrete_of_node (fun l -> k (`Tree l)) (String.Map.to_seq l)
     | `Value v -> k (`Contents (v, ()))
 
   and concrete_of_node :
-      type a. ((string * concrete) list -> a) -> (string * raw) Seq.t -> a =
+      type a. ((string * concrete) list -> a) -> (string * Raw.raw) Seq.t -> a =
    fun k seq ->
     match seq () with
     | Nil -> k []
@@ -156,30 +154,10 @@ module Make_tree (Conf : Conf) (Store : DB) = struct
 
   let of_raw = concrete_of_raw Store.Tree.of_concrete
 
-  let raw_encoding : raw Data_encoding.t =
-    let open Data_encoding in
-    mu "Tree.raw" (fun encoding ->
-        let map_encoding =
-          conv
-            String.Map.bindings
-            (fun bindings -> String.Map.of_seq (List.to_seq bindings))
-            (list (tup2 string encoding))
-        in
-        union
-          [
-            case
-              ~title:"tree"
-              (Tag 0)
-              map_encoding
-              (function `Tree t -> Some t | `Value _ -> None)
-              (fun t -> `Tree t);
-            case
-              ~title:"value"
-              (Tag 1)
-              bytes
-              (function `Value v -> Some v | `Tree _ -> None)
-              (fun v -> `Value v);
-          ])
+  let unshallow t =
+    let open Lwt_syntax in
+    let* r = to_raw t in
+    return @@ of_raw r
 
   type repo = Store.repo
 

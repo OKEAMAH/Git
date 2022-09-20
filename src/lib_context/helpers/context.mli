@@ -43,13 +43,11 @@ module Make_tree (Conf : Conf) (DB : DB) : sig
 
   val of_value : _ -> DB.contents -> DB.tree Lwt.t
 
-  type raw = [`Value of DB.contents | `Tree of raw String.Map.t]
+  val to_raw : DB.tree -> Raw.raw Lwt.t
 
-  val raw_encoding : raw Data_encoding.t
+  val of_raw : Raw.raw -> DB.tree
 
-  val to_raw : DB.tree -> raw Lwt.t
-
-  val of_raw : raw -> DB.tree
+  val unshallow : DB.tree -> DB.tree Lwt.t
 
   type kinded_key := [`Value of DB.contents_key | `Node of DB.node_key]
 

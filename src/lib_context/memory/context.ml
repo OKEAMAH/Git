@@ -76,6 +76,7 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
 
   module Tree = struct
     include Tezos_context_helpers.Context.Make_tree (Conf) (Store)
+    include Tezos_context_helpers.Raw
 
     let shallow repo key = Store.Tree.shallow repo (Kinded_key.to_irmin_key key)
 

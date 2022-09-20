@@ -541,6 +541,10 @@ module type TEZOS_CONTEXT = sig
     (** [of_raw t] is the tree equivalent to the raw tree [t]. *)
     val of_raw : raw -> tree
 
+    (** [unshallow t] is the tree equivalent to [t] but with all subtrees evaluated.
+        FIXME name? *)
+    val unshallow : tree -> tree Lwt.t
+
     type repo
 
     val make_repo : unit -> repo Lwt.t

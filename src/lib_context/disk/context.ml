@@ -418,7 +418,11 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
 
   type kinded_key = [`Node of node_key | `Value of value_key]
 
-  module Tree = Tezos_context_helpers.Context.Make_tree (Conf) (Store)
+  module Tree = struct
+    include Tezos_context_helpers.Context.Make_tree (Conf) (Store)
+    include Tezos_context_helpers.Raw
+  end
+
   include Tezos_context_helpers.Context.Make_config (Conf)
   include Tezos_context_helpers.Context.Make_proof (Store) (Conf)
 
