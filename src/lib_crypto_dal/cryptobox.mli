@@ -61,14 +61,20 @@ type t
 
 type commitment
 
+type segment_proof
+
 module Verifier :
-  VERIFIER with type parameters = parameters and type commitment = commitment
+  VERIFIER
+    with type parameters = parameters
+     and type commitment = commitment
+     and type segment_proof = segment_proof
 
 include
   VERIFIER
     with type t := t
      and type parameters := parameters
      and type commitment := commitment
+     and type segment_proof := segment_proof
 
 (** The primitives exposed in this modules require some
    preprocessing. This preprocessing generates data from an unknown
