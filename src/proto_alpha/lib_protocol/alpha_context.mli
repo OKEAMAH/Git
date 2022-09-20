@@ -2775,7 +2775,7 @@ module Dal : sig
   module Page : sig
     type content = string
 
-    type proof
+    type proof = Dal.segment_proof
 
     module Index : sig
       type t = int

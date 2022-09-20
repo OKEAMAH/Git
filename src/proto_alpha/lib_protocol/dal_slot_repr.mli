@@ -110,7 +110,7 @@ module Page : sig
 
   type content_opt = content option
 
-  type proof
+  type proof = Dal.segment_proof
 
   module Index : sig
     type t = int
