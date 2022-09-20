@@ -224,24 +224,7 @@ module Proof_types = struct
   (** The type of Merkle tree used by the light mode *)
   and merkle_tree = merkle_node String.Map.t
 
-  let rec pp_merkle_node ppf = function
-    | Hash (k, h) ->
-        let k_str = match k with Contents -> "Contents" | Node -> "Node" in
-        Format.fprintf ppf "Hash(%s, %s)" k_str h
-    | Data raw_context ->
-        Format.fprintf ppf "Data(%a)" pp_raw_context raw_context
-    | Continue tree -> Format.fprintf ppf "Continue(%a)" pp_merkle_tree tree
-
-  and pp_merkle_tree ppf mtree =
-    let pairs = String.Map.bindings mtree in
-    Format.fprintf
-      ppf
-      "{@[<v 1>@,%a@]@,}"
-      (Format.pp_print_list ~pp_sep:Format.pp_print_cut (fun ppf (s, t) ->
-           Format.fprintf ppf "\"%s\": %a" s pp_merkle_node t))
-      pairs
-
-  and pp_raw_context ppf = function
+  let rec pp_raw_context ppf = function
     | Cut -> Format.fprintf ppf "..."
     | Key v -> Hex.pp ppf (Hex.of_bytes v)
     | Dir l ->
@@ -251,29 +234,6 @@ module Proof_types = struct
           (Format.pp_print_list ~pp_sep:Format.pp_print_cut (fun ppf (s, t) ->
                Format.fprintf ppf "%s : %a" s pp_raw_context t))
           (String.Map.bindings l)
-
-  let rec merkle_node_eq n1 n2 =
-    match (n1, n2) with
-    | Hash (mhk1, s1), Hash (mhk2, s2) -> mhk1 = mhk2 && String.equal s1 s2
-    | Data rc1, Data rc2 -> raw_context_eq rc1 rc2
-    | Continue mtree1, Continue mtree2 -> merkle_tree_eq mtree1 mtree2
-    | _ -> false
-
-  (** [merkle_tree_eq mtree1 mtree2] tests whether [mtree1] and [mtree2] are equal,
-      that is, have the same constructors; and the constructor's content
-      are recursively equal *)
-  and merkle_tree_eq mtree1 mtree2 =
-    String.Map.equal merkle_node_eq mtree1 mtree2
-
-  (** [raw_context_eq rc1 rc2] tests whether [rc1] and [rc2] are equal,
-      that is, have the same constructors; and the constructor's content
-      are recursively equal *)
-  and raw_context_eq rc1 rc2 =
-    match (rc1, rc2) with
-    | Key bytes1, Key bytes2 -> Bytes.equal bytes1 bytes2
-    | Dir dir1, Dir dir2 -> String.Map.(equal raw_context_eq dir1 dir2)
-    | Cut, Cut -> true
-    | _ -> false
 
   (** Proofs are compact representations of trees which can be shared
       between peers.
