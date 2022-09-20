@@ -400,6 +400,8 @@ let to_versioned inbox = V1 inbox [@@inline]
 
 let level_key = ["level"]
 
+let messages_key = ["messages"]
+
 let number_of_messages_key = ["number_of_messages"]
 
 type serialized_proof = bytes
@@ -505,7 +507,11 @@ module type P = sig
 
     val add : tree -> key -> value -> tree Lwt.t
 
+    val add_tree : tree -> key -> tree -> tree Lwt.t
+
     val find : tree -> key -> value option Lwt.t
+
+    val find_tree : tree -> key -> tree option Lwt.t
 
     val empty : t -> tree
 
@@ -540,11 +546,41 @@ struct
 
   type tree = P.tree
 
-  module Level_messages_inbox = Sc_rollup_inbox_message_repr.Make (struct
-    include Tree
+  module Level_messages_inbox : sig
+    val hash : tree -> Hash.t
 
-    type nonrec inbox_context = inbox_context
-  end)
+    val empty : inbox_context -> tree
+
+    val add_message :
+      tree -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> tree Lwt.t
+
+    val get_message_payload :
+      tree -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
+  end = struct
+    let hash level_tree = Tree.hash level_tree |> Hash.of_context_hash
+
+    let key_of_message ix =
+      ["message"; Data_encoding.Binary.to_string_exn Data_encoding.n ix]
+
+    let empty = Tree.empty
+
+    let add_message level_tree message_index payload =
+      Tree.add
+        level_tree
+        (key_of_message message_index)
+        (Bytes.of_string
+           (payload : Sc_rollup_inbox_message_repr.serialized :> string))
+
+    let get_message_payload level_tree message_index =
+      let open Lwt_syntax in
+      let key = key_of_message message_index in
+      let* bytes = Tree.(find level_tree key) in
+      return
+      @@ Option.map
+           (fun bs ->
+             Sc_rollup_inbox_message_repr.unsafe_of_string (Bytes.to_string bs))
+           bytes
+  end
 
   let hash_level_tree level_tree = Hash.of_context_hash (Tree.hash level_tree)
 
@@ -572,7 +608,9 @@ struct
       forged by a malicious rollup node. *)
   let new_level_tree ctxt level =
     let open Lwt_syntax in
-    let tree = Level_messages_inbox.empty ctxt in
+    let tree = Tree.empty ctxt in
+    let level_inbox = Level_messages_inbox.empty ctxt in
+    let* tree = Tree.add_tree tree messages_key level_inbox in
     let* tree = set_number_of_messages tree Z.zero in
     set_level tree level
 
@@ -580,9 +618,17 @@ struct
     let open Lwt_tzresult_syntax in
     let message_index = inbox.message_counter in
     let message_counter = Z.succ message_index in
-    let*! level_tree =
-      Level_messages_inbox.add_message level_tree message_index payload
+    let*! level_messages = Tree.find_tree level_tree messages_key in
+    let*! level_messages =
+      match level_messages with
+      | Some level_messages -> Lwt.return level_messages
+      | None ->
+          assert false (* this assert false is removed in a following commit *)
     in
+    let*! level_messages =
+      Level_messages_inbox.add_message level_messages message_index payload
+    in
+    let*! level_tree = Tree.add_tree level_tree messages_key level_messages in
     let*! level_tree = set_number_of_messages level_tree message_counter in
     let nb_messages_in_commitment_period =
       Int64.succ inbox.nb_messages_in_commitment_period
@@ -601,7 +647,13 @@ struct
     in
     return (level_tree, inbox)
 
-  let get_message_payload = Level_messages_inbox.get_message_payload
+  let get_message_payload level_tree message_counter =
+    let open Lwt_syntax in
+    let* level_messages = Tree.find_tree level_tree messages_key in
+    match level_messages with
+    | None -> return_none
+    | Some level_messages ->
+        Level_messages_inbox.get_message_payload level_messages message_counter
 
   (** [no_history] creates an empty history with [capacity] set to
       zero---this makes the [remember] function a no-op. We want this
@@ -968,11 +1020,11 @@ struct
       is not in the correct format for an inbox level. This should not
       happen if the [tree] was correctly initialised with
       [new_level_tree]. *)
-  let payload_and_level n tree =
+  let payload_and_level n level_tree =
     let open Lwt_syntax in
-    let* payload = get_message_payload tree n in
-    let* level = find_level tree in
-    return (tree, (payload, level))
+    let* payload = get_message_payload level_tree n in
+    let* level = find_level level_tree in
+    return (level_tree, (payload, level))
 
   (** Utility function that handles all the verification needed for a
       particular message proof at a particular level. It calls
