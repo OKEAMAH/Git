@@ -291,24 +291,16 @@ let should_boot_tx_kernel kernel =
      message, parsing and init of the kernel), to switch it to
      “Input_requested” mode. *)
   let* tree = eval_until_input_requested tree in
-  (* Feeding it with one input *)
+  (* Feeding it with one deposit *)
   let msg = read_message "deposit" in
   let* tree = set_input_step msg 0 tree in
   let* input = Wasm.Internal_for_tests.get_input_buffer tree in
   assert (input.num_elements = Z.one) ;
-  (* running until waiting for input *)
-  let* tree = eval_until_input_requested tree in
-  let* state_after_first_message =
-    Wasm.Internal_for_tests.get_tick_state tree
-  in
-  (* The kernel is expected to fail, then ths PVM should be in stuck state. *)
-  assert (is_not_stuck state_after_first_message) ;
-  let* input = Wasm.Internal_for_tests.get_input_buffer tree in
-  assert (input.num_elements = Z.zero) ;
+  (* Feeding it with one withdrawal *)
   let msg = read_message "withdrawal" in
   let* tree = set_input_step msg 1 tree in
   let* input = Wasm.Internal_for_tests.get_input_buffer tree in
-  assert (input.num_elements = Z.one) ;
+  assert (input.num_elements = Z.succ Z.one) ;
   let* tree = eval_until_input_requested tree in
   let* state_after_second_message =
     Wasm.Internal_for_tests.get_tick_state tree
