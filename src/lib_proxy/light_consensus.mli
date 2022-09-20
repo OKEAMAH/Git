@@ -23,6 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Proof = Tezos_context_sigs.Context.Proof_types
+
 (** A container of input data needed to process a consensus. *)
 type input = {
   printer : Tezos_client_base.Client_context.printer;
@@ -33,7 +35,7 @@ type input = {
       (** The block considered *)
   key : string list;
       (** The key of the context for which data is being requested *)
-  mtree : Tezos_context_sigs.Context.Proof_types.merkle_tree;
+  mproof : Proof.tree Proof.t;
       (** The tree received from the endpoint providing data.
           It is much smaller than [tree]. *)
   tree : Local_context.tree;
