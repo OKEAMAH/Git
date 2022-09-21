@@ -409,8 +409,6 @@ module type Merkelized_operations = sig
 
   type tree
 
-  val hash_level_tree : tree -> Hash.t
-
   val new_level_tree : inbox_context -> Raw_level_repr.t -> tree Lwt.t
 
   val add_messages :
@@ -541,6 +539,8 @@ struct
   module Level_messages_inbox : sig
     type t
 
+    val hash : t -> Hash.t
+
     val empty : Raw_level_repr.t -> t
 
     val add_message : t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t
@@ -570,9 +570,9 @@ struct
               Sc_rollup_inbox_message_repr.serialized_encoding)
            Raw_level_repr.encoding)
 
-    let hash cell =
-      let payload = Skip_list.content cell in
-      let back_pointers_hashes = Skip_list.back_pointers cell in
+    let hash {skip_list; _} =
+      let payload = Skip_list.content skip_list in
+      let back_pointers_hashes = Skip_list.back_pointers skip_list in
       Bytes.of_string
         (payload : Sc_rollup_inbox_message_repr.serialized :> string)
       :: List.map Hash.to_bytes back_pointers_hashes
@@ -582,10 +582,13 @@ struct
       let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
       {skip_list = Skip_list.genesis first_msg; level}
 
-    let add_message l _message_index payload =
-      let prev_cell = l.skip_list in
-      let prev_cell_ptr = hash prev_cell in
-      {l with skip_list = Skip_list.next ~prev_cell ~prev_cell_ptr payload}
+    let add_message messages _message_index payload =
+      let prev_cell = messages.skip_list in
+      let prev_cell_ptr = hash messages in
+      {
+        messages with
+        skip_list = Skip_list.next ~prev_cell ~prev_cell_ptr payload;
+      }
 
     let get_message_payload _skip_list _message_index = Lwt.return_none
 
@@ -595,8 +598,6 @@ struct
 
     let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
   end
-
-  let hash_level_tree level_tree = Hash.of_context_hash (Tree.hash level_tree)
 
   let get_messages level_tree =
     (* The following assert false are going to be remove in a following commit *)
@@ -767,7 +768,7 @@ struct
     let*! level_tree =
       Tree.add level_tree messages_key (Level_messages_inbox.to_bytes messages)
     in
-    let current_level_hash () = hash_level_tree level_tree in
+    let current_level_hash () = Level_messages_inbox.hash messages in
     return (level_tree, history, {inbox with current_level_hash})
 
   let add_messages_no_history ctxt inbox level payloads level_tree =
@@ -1232,7 +1233,8 @@ struct
     let pre_genesis_level = Raw_level_repr.root in
     let* initial_level = new_level_tree context pre_genesis_level in
     let* () = commit_tree context initial_level pre_genesis_level in
-    let initial_hash = hash_level_tree initial_level in
+    let* messages = get_messages initial_level in
+    let initial_hash = Level_messages_inbox.hash messages in
     return
       {
         rollup;

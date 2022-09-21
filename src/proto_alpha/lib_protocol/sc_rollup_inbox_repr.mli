@@ -237,9 +237,6 @@ module type Merkelized_operations = sig
   (** The context used by the trees. *)
   type inbox_context
 
-  (** Standard hashing function used for trees in this module. *)
-  val hash_level_tree : tree -> Hash.t
-
   (** Initialise a new level. [new_level_tree ctxt level] is a merkle
       tree with no messages yet, but has the [level] stored so we can
       check that in proofs. *)
