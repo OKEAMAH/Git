@@ -27,8 +27,8 @@ depends: [
   "tezos-client-base" {with-test}
   "tezos-protocol-environment" {with-test}
   "tezos-stdlib-unix" {with-test}
-  "tezos-stdlib" {with-test}
   "tezt" {with-test}
+  "tezos-stdlib" {with-test}
   "tezt-tezos" {with-test}
 ]
 build: [

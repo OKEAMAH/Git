@@ -14,7 +14,8 @@
   tezos-stdlib-unix
   tezos-protocol-012-Psithaca
   tezos-012-Psithaca-test-helpers
-  alcotest-lwt)
+  alcotest-lwt
+  tezt)
  (flags
   (:standard)
   -open Tezos_base.TzPervasives

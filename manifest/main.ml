@@ -3636,6 +3636,7 @@ end = struct
               main |> open_;
               test_helpers |> if_some |> open_;
               alcotest_lwt;
+              tezt_lib;
               octez_stdlib |> if_ N.(number >= 013) |> open_;
             ]
           ~dune:

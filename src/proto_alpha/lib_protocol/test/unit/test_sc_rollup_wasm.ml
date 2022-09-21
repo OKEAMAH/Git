@@ -35,6 +35,65 @@
 
 open Protocol
 open Alpha_context
+open Tezos_scoru_wasm
+module Context = Tezos_context_memory.Context_binary
+include Tree_encoding
+
+type Lazy_containers.Lazy_map.tree += Tree of Context.tree
+
+module Tree = struct
+  type t = Context.t
+
+  type tree = Context.tree
+
+  type key = Context.key
+
+  type value = Context.value
+
+  include Context.Tree
+
+  let select = function
+    | Tree t -> t
+    | _ -> raise Tree_encoding.Incorrect_tree_type
+
+  let wrap t = Tree t
+end
+
+module Wasm = Wasm_pvm.Make (Tree)
+
+let set_input_step message message_counter tree =
+  let input_info =
+    Wasm_pvm_sig.
+      {
+        inbox_level =
+          Option.value_f ~default:(fun () -> assert false)
+          @@ Tezos_base.Bounded.Non_negative_int32.of_value 0l;
+        message_counter = Z.of_int message_counter;
+      }
+  in
+  Wasm.set_input_step input_info message tree
+
+let rec eval_until_input_requested ?(max_steps = Int64.max_int) tree =
+  let open Lwt_syntax in
+  let* info = Wasm.get_info tree in
+  match info.input_request with
+  | No_input_required ->
+      let* tree = Wasm.Internal_for_tests.compute_step_many ~max_steps tree in
+      eval_until_input_requested ~max_steps tree
+  | Input_required -> return tree
+
+let read_binary name =
+  let open Tezt.Base in
+  let kernel_file =
+    project_root // "src/lib_scoru_wasm/test/wasm_kernels" // name
+  in
+  read_file kernel_file
+
+let test_write_debug_kernel = read_binary "tx_kernel_nocrypto.wasm"
+
+let deposit = read_binary "deposit.out"
+
+let withdrawal = read_binary "withdrawal.out"
 
 let test_initial_state_hash_wasm_pvm () =
   let open Lwt_result_syntax in
@@ -72,6 +131,40 @@ let test_incomplete_kernel_chunk_limit () =
   | None -> return_unit
   | Some _ -> failwith "encoding of a floppy with a chunk too large should fail"
 
+let test_output_decoding () =
+  let open Lwt_result_syntax in
+  let*! dummy = Context.init "/tmp" in
+  let dummy_context = Context.empty dummy in
+  let empty_tree : Wasm.tree = Tree.empty dummy_context in
+  let boot_sector =
+    Data_encoding.Binary.to_string_exn
+      Gather_floppies.origination_message_encoding
+      (Gather_floppies.Complete_kernel (String.to_bytes tx_no_crypto_kernel))
+  in
+  let*! tree =
+    Wasm.Internal_for_tests.initial_tree_from_boot_sector
+      ~empty_tree
+      boot_sector
+  in
+  let*! tree =
+    Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int64 50_000_000L) tree
+  in
+  let*! tree = eval_until_input_requested tree in
+  let*! tree = set_input_step deposit 0 tree in
+  let*! tree = set_input_step withdrawal 1 tree in
+  let*! tree = eval_until_input_requested tree in
+  let*! output = Wasm.Internal_for_tests.get_output_buffer tree in
+  let*! level, id = Tezos_webassembly_interpreter.Output_buffer.get_id output in
+  let*! bytes =
+    Tezos_webassembly_interpreter.Output_buffer.get output level id
+  in
+  let _output =
+    Data_encoding.Binary.of_bytes_exn
+      Sc_rollup_outbox_message_repr.encoding
+      bytes
+  in
+  return_unit
+
 let tests =
   [
     Tztest.tztest
@@ -82,4 +175,5 @@ let tests =
       "encoding of a floppy with a chunk too large should fail"
       `Quick
       test_incomplete_kernel_chunk_limit;
+    Tztest.tztest "can decode the output" `Quick test_output_decoding;
   ]

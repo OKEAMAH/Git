@@ -15,6 +15,7 @@
   tezos-protocol-alpha
   tezos-alpha-test-helpers
   alcotest-lwt
+  tezt
   tezos-stdlib)
  (flags
   (:standard)

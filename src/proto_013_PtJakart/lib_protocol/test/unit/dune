@@ -15,6 +15,7 @@
   tezos-protocol-013-PtJakart
   tezos-013-PtJakart-test-helpers
   alcotest-lwt
+  tezt
   tezos-stdlib)
  (flags
   (:standard)
