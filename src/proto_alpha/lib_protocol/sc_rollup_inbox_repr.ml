@@ -598,16 +598,21 @@ struct
 
   let hash_level_tree level_tree = Hash.of_context_hash (Tree.hash level_tree)
 
-  let find_level tree =
+  let get_messages level_tree =
+    (* The following assert false are going to be remove in a following commit *)
     let open Lwt_syntax in
-    let* level_messages_opt = Tree.find tree messages_key in
+    let* level_messages_opt = Tree.find level_tree messages_key in
     match level_messages_opt with
     | Some level_messages_bytes -> (
         match Level_messages_inbox.of_bytes level_messages_bytes with
-        | Some level_messages ->
-            return @@ Level_messages_inbox.get_level level_messages
+        | Some level_messages -> return level_messages
         | None -> assert false)
     | None -> assert false
+
+  let find_level level_tree =
+    let open Lwt_syntax in
+    let+ messages = get_messages level_tree in
+    Level_messages_inbox.get_level messages
 
   (** Initialise the merkle tree for a new level in the inbox. We have
       to include the [level] in this structure so that it cannot be
@@ -644,16 +649,8 @@ struct
 
   let get_message_payload level_tree message_counter =
     let open Lwt_syntax in
-    let* level_messages_opt = Tree.find level_tree messages_key in
-    match level_messages_opt with
-    | Some level_messages_bytes -> (
-        match Level_messages_inbox.of_bytes level_messages_bytes with
-        | Some level_messages ->
-            Level_messages_inbox.get_message_payload
-              level_messages
-              message_counter
-        | None -> assert false)
-    | None -> assert false
+    let* messages = get_messages level_tree in
+    Level_messages_inbox.get_message_payload messages message_counter
 
   (** [no_history] creates an empty history with [capacity] set to
       zero---this makes the [remember] function a no-op. We want this
@@ -759,31 +756,16 @@ struct
     let* history, inbox, level_tree =
       archive_if_needed ctxt history inbox level level_tree
     in
-
-    let*! level_messages = Tree.find level_tree messages_key in
-    let*! level_messages =
-      match level_messages with
-      | Some level_messages_bytes -> (
-          match Level_messages_inbox.of_bytes level_messages_bytes with
-          | Some level_messages -> Lwt.return @@ level_messages
-          | None ->
-              assert
-                false (* this assert false is removed in a following commit *))
-      | None ->
-          assert false (* this assert false is removed in a following commit *)
-    in
-    let*! level_messages, inbox =
+    let*! messages = get_messages level_tree in
+    let*! messages, inbox =
       List.fold_left_s
         (fun (level_messages, inbox) payload ->
           add_message inbox payload level_messages)
-        (level_messages, inbox)
+        (messages, inbox)
         payloads
     in
     let*! level_tree =
-      Tree.add
-        level_tree
-        messages_key
-        (Level_messages_inbox.to_bytes level_messages)
+      Tree.add level_tree messages_key (Level_messages_inbox.to_bytes messages)
     in
     let current_level_hash () = hash_level_tree level_tree in
     return (level_tree, history, {inbox with current_level_hash})
