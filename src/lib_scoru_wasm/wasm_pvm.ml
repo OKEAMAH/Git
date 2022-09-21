@@ -512,7 +512,7 @@ module Make (T : Tree_encoding.TREE) :
       let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
       let* tick_state =
         match pvm_state.tick_state with
-        | Snapshot ->
+        | Snapshot | Decode _ ->
             let+ () =
               Wasm.Input_buffer.(
                 enqueue
@@ -532,9 +532,9 @@ module Make (T : Tree_encoding.TREE) :
             Decode
               (Tezos_webassembly_interpreter.Decode.initial_decode_kont
                  ~name:wasm_main_module_name)
-        | Decode _ ->
+        (* | Decode _ ->
             Lwt.return
-              (Stuck (Invalid_state "No input required during decoding"))
+              (Stuck (Invalid_state "No input required during decoding")) *)
         | Link _ ->
             Lwt.return (Stuck (Invalid_state "No input required during link"))
         | Init _ ->

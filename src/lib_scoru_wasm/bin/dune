@@ -5,16 +5,25 @@
  (name csv)
  (public_name octez-scoru-wasm-csv)
  (package octez-scoru-wasm-csv)
- (instrumentation (backend bisect_ppx))
+ (instrumentation
+  (backend bisect_ppx))
  (libraries
   tezos-base
   tezos-webassembly-interpreter
   tezos-context.memory
+  tezos-base-test-helpers
+  tezos-test-helpers
   tezos-scoru-wasm
+  qcheck-alcotest
+  alcotest-lwt
+  tezt
   lwt.unix)
  (link_flags
   (:standard)
   (:include %{workspace_root}/static-link-flags.sexp))
  (flags
   (:standard)
-  -open Tezos_base.TzPervasives))
+  -open
+  Tezos_base.TzPervasives
+  -open
+  Tezos_base_test_helpers))

@@ -8,8 +8,8 @@
     -  src/lib_scoru_wasm/test/wasm_kernels/
     - src/proto_alpha/lib_protocol/test/integration/wasm_kernel/
 *)
-open Tezos_scoru_wasm
 
+open Tezos_scoru_wasm
 open Tezos_webassembly_interpreter
 module Context = Tezos_context_memory.Context_binary
 
@@ -30,6 +30,14 @@ end
 module Tree_encoding_runner = Tree_encoding.Runner.Make (Tree)
 module Wasm = Wasm_pvm.Make (Tree)
 
+let read_message name =
+  let open Tezt.Base in
+  let kernel_file =
+    project_root // Filename.dirname __FILE__ // "../test/wasm_kernels"
+    // (name ^ ".out")
+  in
+  read_file kernel_file
+
 let initial_boot_sector_from_kernel kernel =
   let open Lwt_syntax in
   let* index = Context.init "/tmp" in
@@ -40,10 +48,13 @@ let initial_boot_sector_from_kernel kernel =
       Gather_floppies.origination_message_encoding
     @@ Gather_floppies.Complete_kernel (String.to_bytes kernel)
   in
-  let+ tree =
+  let* tree =
     Wasm.Internal_for_tests.initial_tree_from_boot_sector
       ~empty_tree:tree
       origination_message
+  in
+  let+ tree =
+    Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int 100_000_000) tree
   in
   (context, tree)
 
@@ -82,7 +93,7 @@ let step_kont_label = function
   | SK_Trapped _ -> "sk_trapped"
 
 let init_kont_label = function
-  | Eval.IK_Start -> "ik_start"
+  | Eval.IK_Start _ -> "ik_start"
   | IK_Add_import _ -> "ik_add_import"
   | IK_Type (_, _) -> "ik_type"
   | IK_Aggregate (_, Func, _) -> "ik_aggregate_func"
@@ -99,7 +110,7 @@ let init_kont_label = function
   | IK_Es_elems (_, _) -> "ik_es_elems"
   | IK_Es_datas (_, _, _) -> "ik_es_datas"
   | IK_Join_admin (_, _) -> "ik_join_admin"
-  | IK_Eval (_, {step_kont; _}) -> "ik_eval:" ^ step_kont_label step_kont
+  | IK_Eval _ -> "ik_eval"
   | IK_Stop _ -> "ik_stop"
 
 let tick_label = function
@@ -107,6 +118,7 @@ let tick_label = function
   | Init {init_kont; _} -> "init:" ^ init_kont_label init_kont
   | Eval {step_kont; _} -> "eval:" ^ step_kont_label step_kont
   | Stuck _ -> "stuck"
+  | Link _ -> "link"
 
 let print_tick_info context tree =
   let open Lwt_syntax in
@@ -128,7 +140,7 @@ let print_info tree =
   let open Lwt_syntax in
   let* info = Wasm.get_info tree in
   let* tick = Wasm.Internal_for_tests.get_tick_state tree in
-  Format.printf "%s (%s)\n%!" (Z.to_string info.current_tick) (tick_label tick);
+  Format.printf "%s (%s)\n%!" (Z.to_string info.current_tick) (tick_label tick) ;
   return ()
 
 let rec eval_until_input_requested ?(tick_info = false) context tree =
@@ -137,7 +149,9 @@ let rec eval_until_input_requested ?(tick_info = false) context tree =
   match info.input_request with
   | No_input_required ->
       let _ = if tick_info then print_tick_info context tree else return () in
-      let* tree = Wasm.compute_step tree in
+      let* tree =
+        Wasm.Internal_for_tests.compute_step_many ~max_steps:Int64.max_int tree
+      in
       eval_until_input_requested ~tick_info context tree
   | Input_required -> return tree
 
@@ -150,12 +164,40 @@ let run kernel k =
   in
   return_unit
 
+let set_input_step message_counter message tree =
+  let input_info =
+    Wasm_pvm_sig.
+      {
+        inbox_level =
+          Option.value_f ~default:(fun () -> assert false)
+          @@ Tezos_base.Bounded.Non_negative_int32.of_value 0l;
+        message_counter = Z.of_int message_counter;
+      }
+  in
+  Wasm.set_input_step input_info message tree
+
 let () =
   let kernel = Sys.argv.(1) in
   Lwt_main.run
   @@ run kernel (fun kernel ->
          let open Lwt_syntax in
          let* context, tree = initial_boot_sector_from_kernel kernel in
-         let+ tree = eval_until_input_requested ~tick_info:false context tree in
+         let _ = Printf.printf "=========\nBoot on empty \n%!" in
+         let* tree = eval_until_input_requested ~tick_info:false context tree in
+         let _ = Printf.printf "=========\nIncorrect input \n%!" in
+         let message = "test" in
+         let* tree = set_input_step 1_000 message tree in
+         let* tree = eval_until_input_requested ~tick_info:false context tree in
+         let _ = Printf.printf "=========\nDeposit \n%!" in
+         let message = read_message "deposit" in
+         let* tree = set_input_step 1_001 message tree in
+         let* tree = eval_until_input_requested ~tick_info:false context tree in
+         let _ = Printf.printf "=========\nWithdrawal \n%!" in
+         let message = read_message "deposit" in
+         let* tree = set_input_step 1_002 message tree in
+         let message = read_message "withdrawal" in
+         let* tree = set_input_step 1_003 message tree in
+         let* tree = eval_until_input_requested ~tick_info:false context tree in
+
          let _ = print_info tree in
          ())
