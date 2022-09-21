@@ -580,15 +580,6 @@ let rec admin_instr'_gen ~module_reg =
     let+ case = bool in
     Table_copy_meta (idx, d, s, n, x, y, case)
   in
-  let memory_init_meta_gen =
-    let* idx = int32 in
-    let* d = int32 in
-    let* b = int32 in
-    let* n = int32 in
-    let* s = int32 in
-    let+ x = var_gen in
-    Memory_init_meta (idx, d, b, n, s, x)
-  in
   let memory_fill_meta_gen =
     let* idx = int32 in
     let* i = int32 in
@@ -616,7 +607,6 @@ let rec admin_instr'_gen ~module_reg =
       table_init_meta_gen;
       table_fill_meta_gen;
       table_copy_meta_gen;
-      memory_init_meta_gen;
       memory_fill_meta_gen;
       memory_copy_meta_instr;
     ]

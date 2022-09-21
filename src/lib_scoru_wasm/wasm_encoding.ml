@@ -826,20 +826,6 @@ let admin_instr'_encoding =
         (fun (idx, d, s, n, x, y, case) ->
           Table_copy_meta (idx, d, s, n, x, y, case));
       case
-        "Memory_init_meta"
-        (tup6
-           ~flatten:false
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Interpreter_encodings.Ast.var_encoding))
-        (function
-          | Memory_init_meta (idx, d, b, n, s, x) -> Some (idx, d, b, n, s, x)
-          | _ -> None)
-        (fun (idx, d, b, n, s, x) -> Memory_init_meta (idx, d, b, n, s, x));
-      case
         "Memory_fill_meta"
         (tup4
            ~flatten:false

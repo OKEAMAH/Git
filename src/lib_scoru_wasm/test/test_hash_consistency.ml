@@ -62,16 +62,12 @@ let tests =
       (* Parsing is way slower, so we limit ourselves to 1,000 ticks. *)
       (test_execution_correspondance 0L 1_000L);
     tztest
-      "Executions correspondence (ticks 10,000 to 11,000)"
+      "Executions correspondence (ticks 5,000 to 6,000)"
       `Quick
       (* Parsing is way slower, so we limit ourselves to 1,000 ticks. *)
-      (test_execution_correspondance 10_000L 1_000L);
+      (test_execution_correspondance 5_000L 1_000L);
     tztest
-      "Executions correspondence (ticks 20,000 to 25,000)"
+      "Executions correspondence (ticks 13,000 to 18,000)"
       `Quick
-      (test_execution_correspondance 20_000L 5_000L);
-    tztest
-      "Executions correspondence (ticks 30,000 to 35,000)"
-      `Quick
-      (test_execution_correspondance 30_000L 5_000L);
+      (test_execution_correspondance 13_000L 5_000L);
   ]

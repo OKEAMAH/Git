@@ -323,17 +323,6 @@ let rec pp_admin_instr' out instr =
         y
         Format.pp_print_bool
         case
-  | Memory_init_meta (idx, d, b, n, s, x) ->
-      Format.fprintf
-        out
-        "@[<v 2>Memory_init_meta (%ld, %ld, %ld, %ld, %ld, %a)@]"
-        idx
-        d
-        b
-        n
-        s
-        Ast.pp_var
-        x
   | Memory_fill_meta (idx, i, k, n) ->
       Format.fprintf
         out
