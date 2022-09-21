@@ -545,8 +545,7 @@ struct
 
     val empty : Raw_level_repr.t -> t
 
-    val add_message :
-      t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t Lwt.t
+    val add_message : t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t
 
     val get_message_payload :
       t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
@@ -588,8 +587,7 @@ struct
     let add_message l _message_index payload =
       let prev_cell = l.skip_list in
       let prev_cell_ptr = hash prev_cell in
-      Lwt.return
-      @@ {l with skip_list = Skip_list.next ~prev_cell ~prev_cell_ptr payload}
+      {l with skip_list = Skip_list.next ~prev_cell ~prev_cell_ptr payload}
 
     let get_message_payload _skip_list _message_index = Lwt.return_none
 
@@ -634,7 +632,7 @@ struct
     let open Lwt_syntax in
     let message_index = inbox.message_counter in
     let message_counter = Z.succ message_index in
-    let* level_messages =
+    let level_messages =
       Level_messages_inbox.add_message level_messages message_index payload
     in
     let nb_messages_in_commitment_period =
