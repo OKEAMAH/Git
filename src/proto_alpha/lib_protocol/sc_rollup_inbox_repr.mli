@@ -228,6 +228,25 @@ type serialized_proof
 
 val serialized_proof_encoding : serialized_proof Data_encoding.t
 
+module Level_messages_inbox : sig
+  type t
+
+  val hash : t -> Hash.t
+
+  val empty : Raw_level_repr.t -> t
+
+  val add_message : t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t
+
+  val get_message_payload :
+    t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
+
+  val get_level : t -> Raw_level_repr.t
+
+  val to_bytes : t -> bytes
+
+  val of_bytes : bytes -> t option
+end
+
 (** The following operations are subject to cross-validation between
     rollup nodes and the layer 1. *)
 module type Merkelized_operations = sig

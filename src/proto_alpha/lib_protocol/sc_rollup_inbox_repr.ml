@@ -527,6 +527,66 @@ module type P = sig
     t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
 end
 
+module Level_messages_inbox : sig
+  type t
+
+  val hash : t -> Hash.t
+
+  val empty : Raw_level_repr.t -> t
+
+  val add_message : t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t
+
+  val get_message_payload :
+    t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
+
+  val get_level : t -> Raw_level_repr.t
+
+  val to_bytes : t -> bytes
+
+  val of_bytes : bytes -> t option
+end = struct
+  type value = Sc_rollup_inbox_message_repr.serialized
+
+  type ptr = Hash.t
+
+  type t = {skip_list : (value, ptr) Skip_list.cell; level : Raw_level_repr.t}
+
+  let encoding =
+    Data_encoding.conv
+      (fun {skip_list; level} -> (skip_list, level))
+      (fun (skip_list, level) -> {skip_list; level})
+      (Data_encoding.tup2
+         (Skip_list.encoding
+            Hash.encoding
+            Sc_rollup_inbox_message_repr.serialized_encoding)
+         Raw_level_repr.encoding)
+
+  let hash {skip_list; _} =
+    let payload = Skip_list.content skip_list in
+    let back_pointers_hashes = Skip_list.back_pointers skip_list in
+    Bytes.of_string
+      (payload : Sc_rollup_inbox_message_repr.serialized :> string)
+    :: List.map Hash.to_bytes back_pointers_hashes
+    |> Hash.hash_bytes
+
+  let empty level =
+    let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
+    {skip_list = Skip_list.genesis first_msg; level}
+
+  let add_message messages _message_index payload =
+    let prev_cell = messages.skip_list in
+    let prev_cell_ptr = hash messages in
+    {messages with skip_list = Skip_list.next ~prev_cell ~prev_cell_ptr payload}
+
+  let get_message_payload _skip_list _message_index = Lwt.return_none
+
+  let get_level {level; _} = level
+
+  let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
+
+  let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
+end
+
 module Make_hashing_scheme (P : P) :
   Merkelized_operations with type tree = P.tree and type inbox_context = P.t =
 struct
@@ -535,69 +595,6 @@ struct
   type inbox_context = P.t
 
   type tree = P.tree
-
-  module Level_messages_inbox : sig
-    type t
-
-    val hash : t -> Hash.t
-
-    val empty : Raw_level_repr.t -> t
-
-    val add_message : t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t
-
-    val get_message_payload :
-      t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
-
-    val get_level : t -> Raw_level_repr.t
-
-    val to_bytes : t -> bytes
-
-    val of_bytes : bytes -> t option
-  end = struct
-    type value = Sc_rollup_inbox_message_repr.serialized
-
-    type ptr = Hash.t
-
-    type t = {skip_list : (value, ptr) Skip_list.cell; level : Raw_level_repr.t}
-
-    let encoding =
-      Data_encoding.conv
-        (fun {skip_list; level} -> (skip_list, level))
-        (fun (skip_list, level) -> {skip_list; level})
-        (Data_encoding.tup2
-           (Skip_list.encoding
-              Hash.encoding
-              Sc_rollup_inbox_message_repr.serialized_encoding)
-           Raw_level_repr.encoding)
-
-    let hash {skip_list; _} =
-      let payload = Skip_list.content skip_list in
-      let back_pointers_hashes = Skip_list.back_pointers skip_list in
-      Bytes.of_string
-        (payload : Sc_rollup_inbox_message_repr.serialized :> string)
-      :: List.map Hash.to_bytes back_pointers_hashes
-      |> Hash.hash_bytes
-
-    let empty level =
-      let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
-      {skip_list = Skip_list.genesis first_msg; level}
-
-    let add_message messages _message_index payload =
-      let prev_cell = messages.skip_list in
-      let prev_cell_ptr = hash messages in
-      {
-        messages with
-        skip_list = Skip_list.next ~prev_cell ~prev_cell_ptr payload;
-      }
-
-    let get_message_payload _skip_list _message_index = Lwt.return_none
-
-    let get_level {level; _} = level
-
-    let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
-
-    let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
-  end
 
   let get_messages level_tree =
     (* The following assert false are going to be remove in a following commit *)
