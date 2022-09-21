@@ -149,7 +149,6 @@ and admin_instr' =
   | Table_init_meta of int32 * ref_ * int32 * int32 * int32 * var * var
   | Table_fill_meta of int32 * int32 * int32 * ref_ * var
   | Table_copy_meta of int32 * int32 * int32 * int32 * var * var * bool
-  | Memory_init_meta of int32 * int32 * int32 * int32 * int32 * var
   | Memory_fill_meta of int32 * int32 * Values.num * int32
   | Memory_copy_meta of int32 * int32 * int32 * int32 * bool
 
@@ -224,25 +223,6 @@ let table_copy_meta_instr idx d s n x y case at =
         else Some (Table_copy_meta (Int32.succ idx, d, s, n, x, y, case) @@ at)
       )
   | None -> raise (Invalid_argument "table_copy_meta_instr")
-
-let memory_init_meta_instr idx d b n s x at =
-  let instrs =
-    [
-      Plain (Const (I32 d @@ at));
-      Plain (Const (I32 b @@ at));
-      Plain (Store {ty = I32Type; align = 0; offset = 0l; pack = Some Pack8});
-      Plain (Const (I32 (I32.add d 1l) @@ at));
-      Plain (Const (I32 (I32.add s 1l) @@ at));
-      Plain (Const (I32 (I32.sub n 1l) @@ at));
-      Plain (MemoryInit x);
-    ]
-  in
-  match List.nth_opt instrs (Int32.to_int idx) with
-  | Some instr ->
-      ( instr @@ at,
-        if List.length instrs <= Int32.to_int idx + 1 then None
-        else Some (Memory_init_meta (Int32.succ idx, d, b, n, s, x) @@ at) )
-  | None -> raise (Invalid_argument "memory_init_meta_instr")
 
 let memory_fill_meta_instr idx i k n at =
   let instrs =
@@ -1053,11 +1033,20 @@ let step_instr module_reg frame label vs at e' es_rst stack :
       else if n = 0l then return_label_kont_with_code vs' []
       else
         let* inst = resolve_module_ref module_reg frame.inst in
+        let* mem = memory inst (0l @@ at) in
         let* seg = data inst x in
         let* seg = Ast.get_data !seg inst.allocations.datas in
-        let+ b = Chunked_byte_vector.load_byte seg (Int64.of_int32 s) in
+        let* b = Chunked_byte_vector.load_byte seg (Int64.of_int32 s) in
         let b = Int32.of_int b in
-        label_kont_with_code vs' [Memory_init_meta (0l, d, b, n, s, x) @@ at]
+        let+ () = Memory.store_num_packed Pack8 mem d 0l (I32 b) in
+        let vs' =
+          Vector.cons
+            (Num (I32 (I32.sub n 1l)))
+            (Vector.cons
+               (Num (I32 (I32.add s 1l)))
+               (Vector.cons (Num (I32 (I32.add d 1l))) vs'))
+        in
+        label_kont_with_code vs' [Plain (MemoryInit x) @@ at]
   | DataDrop x ->
       let* inst = resolve_module_ref module_reg frame.inst in
       let+ seg = data inst x in
@@ -1371,9 +1360,6 @@ let label_step :
               Lwt.return (push_admin_instr label es vs instr next stack)
           | Table_copy_meta (idx, d, s, n, y, x, case) ->
               let instr, next = table_copy_meta_instr idx d s n y x case e.at in
-              Lwt.return (push_admin_instr label es vs instr next stack)
-          | Memory_init_meta (idx, d, b, n, s, x) ->
-              let instr, next = memory_init_meta_instr idx d b n s x e.at in
               Lwt.return (push_admin_instr label es vs instr next stack)
           | Memory_fill_meta (idx, i, k, n) ->
               let instr, next = memory_fill_meta_instr idx i k n e.at in
