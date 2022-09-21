@@ -459,8 +459,13 @@ struct
       let open Wasm_pvm_sig in
       let {outbox_level; message_index} = output_info in
       let outbox_level = Bounded.Non_negative_int32.to_value outbox_level in
-      let* {output; _} =
-        Tree_encoding_runner.decode durable_buffers_encoding tree
+      let* decoded =
+        Tree_encoding_runner.decode
+          (Tree_encoding.option durable_buffers_encoding)
+          tree
+      in
+      let Wasm.Eval.{output; _} =
+        match decoded with Some a -> a | None -> assert false
       in
       let+ payload = Wasm.Output_buffer.get output outbox_level message_index in
       Bytes.to_string payload

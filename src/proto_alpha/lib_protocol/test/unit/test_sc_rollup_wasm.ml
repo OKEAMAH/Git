@@ -34,10 +34,58 @@
 *)
 
 open Protocol
-open Alpha_context
+
+(* open Alpha_context *)
 open Tezos_scoru_wasm
 module Context = Tezos_context_memory.Context_binary
 include Tree_encoding
+
+module Proof_encoding =
+  Tezos_context_merkle_proof_encoding.Merkle_proof_encoding
+
+module Wasm_context = struct
+  module Tree = struct
+    include Context.Tree
+
+    type tree = Context.tree
+
+    type t = Context.t
+
+    type key = string list
+
+    type value = bytes
+  end
+
+  type tree = Context.tree
+
+  type proof = Context.Proof.tree Context.Proof.t
+
+  let verify_proof p f =
+    Lwt.map Result.to_option (Context.verify_tree_proof p f)
+
+  let produce_proof context tree step =
+    let open Lwt_syntax in
+    let* context = Context.add_tree context [] tree in
+    let* _hash = Context.commit ~time:Time.Protocol.epoch context in
+    let index = Context.index context in
+    match Context.Tree.kinded_key tree with
+    | Some k ->
+        let* p = Context.produce_tree_proof index k step in
+        return (Some p)
+    | None -> return None
+
+  let kinded_hash_to_state_hash = function
+    | `Value hash | `Node hash ->
+        Sc_rollup_repr.State_hash.context_hash_to_state_hash hash
+
+  let proof_before proof = kinded_hash_to_state_hash proof.Context.Proof.before
+
+  let proof_after proof = kinded_hash_to_state_hash proof.Context.Proof.after
+
+  let proof_encoding = Proof_encoding.V2.Tree32.tree_proof_encoding
+end
+
+module Full_Wasm = Sc_rollup_wasm.V2_0_0.Make (Wasm_context)
 
 type Lazy_containers.Lazy_map.tree += Tree of Context.tree
 
@@ -97,6 +145,7 @@ let withdrawal = read_binary "withdrawal.out"
 
 let test_initial_state_hash_wasm_pvm () =
   let open Lwt_result_syntax in
+  let open Alpha_context in
   let context = Tezos_context_memory.make_empty_context () in
   let*! state = Sc_rollup_helpers.Wasm_pvm.initial_state context in
   let*! hash = Sc_rollup_helpers.Wasm_pvm.state_hash state in
@@ -131,7 +180,7 @@ let test_incomplete_kernel_chunk_limit () =
   | None -> return_unit
   | Some _ -> failwith "encoding of a floppy with a chunk too large should fail"
 
-let test_output_decoding () =
+let test_output () =
   let open Lwt_result_syntax in
   let*! dummy = Context.init "/tmp" in
   let dummy_context = Context.empty dummy in
@@ -152,18 +201,31 @@ let test_output_decoding () =
   let*! tree = eval_until_input_requested tree in
   let*! tree = set_input_step deposit 0 tree in
   let*! tree = set_input_step withdrawal 1 tree in
-  let*! tree = eval_until_input_requested tree in
-  let*! output = Wasm.Internal_for_tests.get_output_buffer tree in
-  let*! level, id = Tezos_webassembly_interpreter.Output_buffer.get_id output in
-  let*! bytes =
-    Tezos_webassembly_interpreter.Output_buffer.get output level id
+  let*! final_tree = eval_until_input_requested tree in
+  let*! output = Wasm.Internal_for_tests.get_output_buffer final_tree in
+  let*! level, message_index =
+    Tezos_webassembly_interpreter.Output_buffer.get_id output
   in
-  let _output =
+  let*! bytes =
+    Tezos_webassembly_interpreter.Output_buffer.get output level message_index
+  in
+  let message =
     Data_encoding.Binary.of_bytes_exn
       Sc_rollup_outbox_message_repr.encoding
       bytes
   in
-  return_unit
+  let*? outbox_level =
+    Environment.wrap_tzresult @@ Raw_level_repr.of_int32 level
+  in
+  let output = Sc_rollup_PVM_sig.{outbox_level; message_index; message} in
+
+  let*! pf = Full_Wasm.produce_output_proof dummy_context final_tree output in
+
+  match pf with
+  | Ok proof ->
+      let*! valid = Full_Wasm.verify_output_proof proof in
+      fail_unless valid (Exn (Failure "An output proof is not valid."))
+  | Error _ -> failwith "Error during proof generation"
 
 let tests =
   [
@@ -175,5 +237,5 @@ let tests =
       "encoding of a floppy with a chunk too large should fail"
       `Quick
       test_incomplete_kernel_chunk_limit;
-    Tztest.tztest "can decode the output" `Quick test_output_decoding;
+    Tztest.tztest "test the output" `Quick test_output;
   ]
