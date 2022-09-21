@@ -189,7 +189,7 @@ let process_head node_ctxt Layer1.(Head {level; hash = head_hash} as head) =
           return (Context.empty node_ctxt.context)
         else Node_context.checkout_context node_ctxt predecessor
       in
-      let*! messages_tree = Context.MessageTrees.find ctxt in
+      let*! level_messages = Context.MessageTrees.find ctxt in
       let* history, inbox, ctxt =
         lift
         @@ let*? level = Raw_level.of_int32 level in
@@ -215,7 +215,7 @@ let process_head node_ctxt Layer1.(Head {level; hash = head_hash} as head) =
                  inbox
                  level
                  messages
-                 messages_tree
+                 level_messages
              in
 
              let*! ctxt = Context.MessageTrees.set ctxt messages_tree in

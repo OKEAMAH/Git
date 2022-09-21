@@ -1062,7 +1062,7 @@ type player_client = {
   final_tick : Tick.t;
   inbox :
     Store_inbox.inbox_context
-    * Store_inbox.tree option
+    * Sc_rollup.Inbox.Level_messages_inbox.t option
     * Inbox.History.t
     * Inbox.t;
   levels_and_inputs : (int * string list) list;

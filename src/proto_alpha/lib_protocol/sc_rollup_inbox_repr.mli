@@ -259,7 +259,8 @@ module type Merkelized_operations = sig
   (** Initialise a new level. [new_level_tree ctxt level] is a merkle
       tree with no messages yet, but has the [level] stored so we can
       check that in proofs. *)
-  val new_level_tree : inbox_context -> Raw_level_repr.t -> tree Lwt.t
+  val new_level_messages :
+    inbox_context -> Raw_level_repr.t -> Level_messages_inbox.t
 
   (** [add_messages ctxt history inbox level payloads level_tree] inserts
       a list of [payloads] as new messages in the [level_tree] of the
@@ -282,8 +283,8 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    tree option ->
-    (tree * History.t * t) tzresult Lwt.t
+    Level_messages_inbox.t option ->
+    (Level_messages_inbox.t * History.t * t) tzresult Lwt.t
 
   (** [add_messages_no_history ctxt inbox level payloads level_tree] behaves
       as {!add_external_messages} except that it does not remember the inbox
@@ -293,14 +294,16 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    tree option ->
-    (tree * t, error trace) result Lwt.t
+    Level_messages_inbox.t option ->
+    (Level_messages_inbox.t * t, error trace) result Lwt.t
 
   (** [get_message_payload level_tree idx] returns [Some payload] if the
       [level_tree] has more than [idx] messages, and [payload] is at
       position [idx]. Returns [None] otherwise. *)
   val get_message_payload :
-    tree -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
+    Level_messages_inbox.t ->
+    Z.t ->
+    Sc_rollup_inbox_message_repr.serialized option Lwt.t
 
   (** [form_history_proof ctxt history inbox level_tree] creates the
       skip list structure that includes the current inbox level, while
@@ -318,7 +321,7 @@ module type Merkelized_operations = sig
     inbox_context ->
     History.t ->
     t ->
-    tree option ->
+    Level_messages_inbox.t option ->
     (History.t * history_proof) tzresult Lwt.t
 
   (** This is similar to {!form_history_proof} except that it is just to

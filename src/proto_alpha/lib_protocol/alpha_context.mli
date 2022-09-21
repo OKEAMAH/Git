@@ -2903,7 +2903,7 @@ module Dal_errors : sig
 end
 
 (** This module re-exports definitions from {!Sc_rollup_storage} and
-    {!Sc_rollup_repr}. *)
+{!Sc_rollup_repr}. *)
 module Sc_rollup : sig
   (** See {!Sc_rollup_tick_repr}. *)
   module Tick : sig
@@ -3036,12 +3036,32 @@ module Sc_rollup : sig
 
     val serialized_proof_encoding : serialized_proof Data_encoding.t
 
+    module Level_messages_inbox : sig
+      type t
+
+      val hash : t -> Hash.t
+
+      val empty : Raw_level.t -> t
+
+      val add_message : t -> Z.t -> Inbox_message.serialized -> t
+
+      val get_message_payload :
+        t -> Z.t -> Inbox_message.serialized option Lwt.t
+
+      val get_level : t -> Raw_level.t
+
+      val to_bytes : t -> bytes
+
+      val of_bytes : bytes -> t option
+    end
+
     module type Merkelized_operations = sig
       type tree
 
       type inbox_context
 
-      val new_level_tree : inbox_context -> Raw_level.t -> tree Lwt.t
+      val new_level_messages :
+        inbox_context -> Raw_level.t -> Level_messages_inbox.t
 
       val add_messages :
         inbox_context ->
@@ -3049,25 +3069,25 @@ module Sc_rollup : sig
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        tree option ->
-        (tree * History.t * t) tzresult Lwt.t
+        Level_messages_inbox.t option ->
+        (Level_messages_inbox.t * History.t * t) tzresult Lwt.t
 
       val add_messages_no_history :
         inbox_context ->
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        tree option ->
-        (tree * t) tzresult Lwt.t
+        Level_messages_inbox.t option ->
+        (Level_messages_inbox.t * t, error trace) result Lwt.t
 
       val get_message_payload :
-        tree -> Z.t -> Inbox_message.serialized option Lwt.t
+        Level_messages_inbox.t -> Z.t -> Inbox_message.serialized option Lwt.t
 
       val form_history_proof :
         inbox_context ->
         History.t ->
         t ->
-        tree option ->
+        Level_messages_inbox.t option ->
         (History.t * history_proof) tzresult Lwt.t
 
       val take_snapshot : current_level:Raw_level.t -> t -> history_proof
