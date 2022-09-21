@@ -256,12 +256,6 @@ module type Merkelized_operations = sig
   (** The context used by the trees. *)
   type inbox_context
 
-  (** Initialise a new level. [new_level_tree ctxt level] is a merkle
-      tree with no messages yet, but has the [level] stored so we can
-      check that in proofs. *)
-  val new_level_messages :
-    inbox_context -> Raw_level_repr.t -> Level_messages_inbox.t
-
   (** [add_messages ctxt history inbox level payloads level_tree] inserts
       a list of [payloads] as new messages in the [level_tree] of the
       current [level] of the [inbox]. This function returns the new level

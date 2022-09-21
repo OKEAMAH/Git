@@ -469,9 +469,6 @@ module type Merkelized_operations = sig
 
   type tree
 
-  val new_level_messages :
-    inbox_context -> Raw_level_repr.t -> Level_messages_inbox.t
-
   val add_messages :
     inbox_context ->
     History.t ->
@@ -599,8 +596,6 @@ struct
 
   type tree = P.tree
 
-  let new_level_messages _ctxt level = Level_messages_inbox.empty level
-
   let add_message inbox payload level_messages =
     let open Lwt_syntax in
     let message_index = inbox.message_counter in
@@ -672,7 +667,7 @@ struct
       let messages =
         match messages with
         | Some messages -> messages
-        | None -> new_level_messages ctxt inbox.level
+        | None -> Level_messages_inbox.empty inbox.level
       in
       commit_messages ctxt messages inbox.level
     in
@@ -702,13 +697,13 @@ struct
       match messages with
       | Some messages -> return (history, inbox, messages)
       | None ->
-          let messages = new_level_messages ctxt new_level in
+          let messages = Level_messages_inbox.empty new_level in
           return (history, inbox, messages)
     else
       let* history, old_levels_messages =
         form_history_proof ctxt history inbox messages
       in
-      let messages = new_level_messages ctxt new_level in
+      let messages = Level_messages_inbox.empty new_level in
       let inbox =
         {
           starting_level_of_current_commitment_period =
@@ -1064,7 +1059,7 @@ struct
     let open Lwt_syntax in
     assert (Raw_level_repr.(level <> Raw_level_repr.root)) ;
     let pre_genesis_level = Raw_level_repr.root in
-    let initial_messages = new_level_messages context pre_genesis_level in
+    let initial_messages = Level_messages_inbox.empty pre_genesis_level in
     let* () = commit_messages context initial_messages pre_genesis_level in
     let initial_hash = Level_messages_inbox.hash initial_messages in
     return

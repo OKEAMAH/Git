@@ -3060,9 +3060,6 @@ module Sc_rollup : sig
 
       type inbox_context
 
-      val new_level_messages :
-        inbox_context -> Raw_level.t -> Level_messages_inbox.t
-
       val add_messages :
         inbox_context ->
         History.t ->
