@@ -400,8 +400,6 @@ let to_versioned inbox = V1 inbox [@@inline]
 
 let messages_key = ["messages"]
 
-let number_of_messages_key = ["number_of_messages"]
-
 type serialized_proof = bytes
 
 let serialized_proof_encoding = Data_encoding.bytes
@@ -611,22 +609,14 @@ struct
         | None -> assert false)
     | None -> assert false
 
-  let set_number_of_messages tree number_of_messages =
-    let number_of_messages_bytes =
-      Data_encoding.Binary.to_bytes_exn Data_encoding.n number_of_messages
-    in
-    Tree.add tree number_of_messages_key number_of_messages_bytes
-
   (** Initialise the merkle tree for a new level in the inbox. We have
       to include the [level] in this structure so that it cannot be
       forged by a malicious rollup node. *)
   let new_level_tree ctxt level =
-    let open Lwt_syntax in
     let tree = Tree.empty ctxt in
     let level_inbox = Level_messages_inbox.empty level in
     let level_inbox = Level_messages_inbox.to_bytes level_inbox in
-    let* tree = Tree.add tree messages_key level_inbox in
-    set_number_of_messages tree Z.zero
+    Tree.add tree messages_key level_inbox
 
   let add_message inbox payload level_messages =
     let open Lwt_syntax in
@@ -794,9 +784,6 @@ struct
         level_tree
         messages_key
         (Level_messages_inbox.to_bytes level_messages)
-    in
-    let*! level_tree =
-      set_number_of_messages level_tree inbox.message_counter
     in
     let current_level_hash () = hash_level_tree level_tree in
     return (level_tree, history, {inbox with current_level_hash})
