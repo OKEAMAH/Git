@@ -216,4 +216,31 @@ module Slots_history : sig
 
   (** [equal a b] returns true iff a is equal to b. *)
   val equal : t -> t -> bool
+
+  (** {1 Dal slots/pages proofs} *)
+
+  (** When a SCORU kernel's inputs come from the DAL, they are provided as
+      pages' content for confirmed slots, or None in case the slot doesn't
+      exist or is not confirmed.
+
+      In a refutation game involving an import tick of a Dal page input, a
+      honest user should be able to provide:
+
+      - When the PVM is requesting a page of a confirmed slot: a proof that the
+      slot is confirmed, in addition to needed information to check that the
+      page (whose id and content are given) is part of the slot;
+
+      - When the opponent pretends that the PVM is requesting a page of some
+      unconfirmed slot, but that slot is not published or not confirmed on L1:
+      a proof that the slot (whose id is given via the page's id) cannot be
+      confirmed on L1.
+
+      See the documentation in the ml file for more technical details. *)
+  type proof
+
+  (** Encoding for {!proof}. *)
+  val proof_encoding : proof Data_encoding.t
+
+  (** Pretty-printer for {!proof}. *)
+  val pp_proof : Format.formatter -> proof -> unit
 end
