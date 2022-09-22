@@ -344,7 +344,7 @@ let should_boot_tx_kernel kernel =
   let* state_after_second_message =
     Wasm.Internal_for_tests.get_tick_state tree
   in
-  (* The kernel is expected to fail, then ths PVM should be in stuck state. *)
+  (* The kernel isn't expected to fail, the PVM should not stuck. *)
   assert (is_not_stuck state_after_second_message) ;
   let* output = Wasm.Internal_for_tests.get_output_buffer tree in
   let* level, id = Tezos_webassembly_interpreter.Output_buffer.get_id output in
