@@ -158,9 +158,9 @@ let read_binary name =
 
 let tx_no_crypto_kernel = read_binary "tx_kernel_nocrypto.wasm"
 
-let deposit = read_binary "deposit.out"
+let deposit = read_binary "messages/deposit.out"
 
-let withdrawal = read_binary "withdrawal.out"
+let withdrawal = read_binary "messages/withdrawal.out"
 
 let test_initial_state_hash_wasm_pvm () =
   let open Lwt_result_syntax in

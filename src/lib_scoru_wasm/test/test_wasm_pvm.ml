@@ -39,7 +39,7 @@ open Wasm_utils
 let read_message name =
   let open Tezt.Base in
   let kernel_file =
-    project_root // Filename.dirname __FILE__ // "wasm_kernels"
+    project_root // Filename.dirname __FILE__ // "wasm_kernels/messages"
     // (name ^ ".out")
   in
   read_file kernel_file
