@@ -54,7 +54,7 @@ let initial_boot_sector_from_kernel kernel =
       origination_message
   in
   let+ tree =
-    Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int 100_000_000) tree
+    Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int 2_500_000_000) tree
   in
   (context, tree)
 
@@ -110,8 +110,8 @@ let init_kont_label = function
   | IK_Es_elems (_, _) -> "ik_es_elems"
   | IK_Es_datas (_, _, _) -> "ik_es_datas"
   | IK_Join_admin (_, _) -> "ik_join_admin"
-  | IK_Eval _ -> "ik_eval"
-  | IK_Stop _ -> "ik_stop"
+  | IK_Eval _ -> "ik_eval:"
+  | IK_Stop -> "ik_stop"
 
 let tick_label = function
   | Wasm_pvm.Decode _ -> "decode"
@@ -176,28 +176,52 @@ let set_input_step message_counter message tree =
   in
   Wasm.set_input_step input_info message tree
 
+let run_bench name tree bench =
+  let open Lwt_syntax in
+  let time = Unix.gettimeofday () in
+  let _ = Printf.printf "=========\n%s \nStart at %f\n%!" name time in
+  let* tree = bench tree in
+  let time = Unix.gettimeofday () -. time in
+  let _ = Printf.printf "took %f s\n%!" time in
+  let _ = print_info tree in
+  return tree
+
 let () =
   let kernel = Sys.argv.(1) in
   Lwt_main.run
   @@ run kernel (fun kernel ->
          let open Lwt_syntax in
          let* context, tree = initial_boot_sector_from_kernel kernel in
-         let _ = Printf.printf "=========\nBoot on empty \n%!" in
-         let* tree = eval_until_input_requested ~tick_info:false context tree in
-         let _ = Printf.printf "=========\nIncorrect input \n%!" in
-         let message = "test" in
-         let* tree = set_input_step 1_000 message tree in
-         let* tree = eval_until_input_requested ~tick_info:false context tree in
-         let _ = Printf.printf "=========\nDeposit \n%!" in
-         let message = read_message "deposit" in
-         let* tree = set_input_step 1_001 message tree in
-         let* tree = eval_until_input_requested ~tick_info:false context tree in
-         let _ = Printf.printf "=========\nWithdrawal \n%!" in
-         let message = read_message "deposit" in
-         let* tree = set_input_step 1_002 message tree in
-         let message = read_message "withdrawal" in
-         let* tree = set_input_step 1_003 message tree in
-         let* tree = eval_until_input_requested ~tick_info:false context tree in
+         let* tree =
+           run_bench "Boot on empty" tree (fun tree ->
+               eval_until_input_requested ~tick_info:false context tree)
+         in
+         let* tree =
+           run_bench "Incorrect input " tree (fun tree ->
+               let message = "test" in
+               let* tree = set_input_step 1_000 message tree in
+               eval_until_input_requested ~tick_info:false context tree)
+         in
+         let* tree =
+           run_bench "Deposit " tree (fun tree ->
+               let message = read_message "deposit" in
+               let* tree = set_input_step 1_001 message tree in
+               eval_until_input_requested ~tick_info:false context tree)
+         in
+         let* tree =
+           run_bench "Just Withdrawal " tree (fun tree ->
+               let message = read_message "withdrawal" in
+               let* tree = set_input_step 1_002 message tree in
+               eval_until_input_requested ~tick_info:false context tree)
+         in
+         let* tree =
+           run_bench "Deposit + Withdrawal " tree (fun tree ->
+               let message = read_message "deposit" in
+               let* tree = set_input_step 1_003 message tree in
+               let message = read_message "withdrawal" in
+               let* tree = set_input_step 1_004 message tree in
+               eval_until_input_requested ~tick_info:false context tree)
+         in
 
          let _ = print_info tree in
-         ())
+         return ())
