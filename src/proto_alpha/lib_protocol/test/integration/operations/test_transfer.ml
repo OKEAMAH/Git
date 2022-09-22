@@ -840,11 +840,105 @@ let is_delegate ctxt pkh =
   | None -> false
   | Some del_pkh -> Signature.Public_key_hash.(pkh = del_pkh)
 
-(** [test_allocation_status_when_empty b source dest] transfers the balance of
-    [source] into [dest], and checks that source is still allocated if [source]
-    is a delegate, otherwise, checks that then empty [source] is de-allocated. *)
-let test_allocation_status_when_empty b source dest =
+(** [bake ~operation b] bakes a blocks that contains the specified [operation],
+    and returns the resulting state. *)
+let bake ~operation b =
+  Incremental.begin_construction b >>=? fun b ->
+  Incremental.add_operation b operation >>=? fun b ->
+  Incremental.finalize_block b
+
+(** [originate_tx_rollup b contract] originates a tx-rollup for the specified
+    [contract], and returns the resulting state, and the originated rollup. *)
+let originate_tx_rollup b contract =
+  let module Tx_rollup = Test_tx_rollup.Single_message_inbox in
+  Op.tx_rollup_origination ~force_reveal:true (B b) contract
+  >>=? fun (operation, tx_rollup) ->
+  bake ~operation b >|=? fun b -> (b, tx_rollup)
+
+(** [make_tx_rollup_commitment b tx_rollup contract] makes a tx-rollup
+    commitment with specified [tx_rollup] and [contract]. *)
+let make_tx_rollup_commitment b tx_rollup contract =
+  let module Tx_rollup = Test_tx_rollup.Single_message_inbox in
+  Tx_rollup.submit b tx_rollup contract >>=? fun b ->
+  let wrong_commit = Tx_rollup.wrong_commit () in
+  Tx_rollup.commit b tx_rollup contract wrong_commit >|=? fun b ->
+  (b, wrong_commit)
+
+(** [reject_tx_rollup_commitment b contract tx_rollup commitment] makes a
+    tx-rollup rejection with specified [contract], [tx_rollup] and [commitment].
+*)
+let reject_tx_rollup_commitment b contract tx_rollup commitment =
+  let module Tx_rollup = Test_tx_rollup.Single_message_inbox in
+  Tx_rollup.reject b tx_rollup contract Tx_rollup_level.root commitment
+
+(** Asserts that [contract] is allocated with the [expected_balance] by fetching
+    the contract's balance and frozen bonds. If [contract is not allocated,
+    fetching its balance results into a storage error. *)
+let assert_allocated ~loc ctxt contract expected_balance =
+  Context.Contract.balance_and_frozen_bonds ctxt contract >>=? fun balance ->
+  Assert.equal_tez ~loc balance expected_balance
+
+(** Asserts that [contract] is not allocated by ensuring that a storage error
+    occurs when one attempts to read its balance and frozen bonds. *)
+let assert_not_allocated ~loc ctxt contract =
+  Context.Contract.balance_and_frozen_bonds ctxt contract >>= fun res ->
+  Assert.proto_error_with_info ~loc res "Storage error (fatal internal error)"
+
+(** [configure_new_account b contract ~delegate] allocates a new account funded
+    with part of [contract]'s balance. Makes the new account a delegate if the
+    parameter [delegate] is [true]. Return the resulting state and the new
+    account. *)
+let configure_new_account b contract ~delegate =
+  let new_account = Account.new_account () in
+  let new_contract_pkh = new_account.pkh in
+  let new_contract = Contract.Implicit new_contract_pkh in
+  (* Allocate [source] and make it a delegate if required. *)
+  Context.Contract.balance (B b) contract >>=? fun balance ->
+  let random_amount = balance /! 2L in
+  Op.transaction
+    ~force_reveal:true
+    (B b)
+    ~fee:Tez.zero
+    contract
+    new_contract
+    random_amount
+  >>=? fun operation ->
+  bake ~operation b >>=? fun b ->
+  (if delegate then
+   Op.delegation
+     ~force_reveal:true
+     ~fee:Tez.zero
+     (B b)
+     new_contract
+     (Some new_contract_pkh)
+   >>=? fun operation -> bake ~operation b
+  else return b)
+  >>=? fun b ->
+  (* Assert [source] is allocated. *)
+  assert_allocated ~loc:__LOC__ (B b) new_contract random_amount >|=? fun () ->
+  (b, new_contract)
+
+(** [test_allocation_status_when_empty b source ~with_frozen_bonds dest] transfers the
+    balance of [source] into [dest], and checks that source is still allocated if
+    [source] is a delegate, otherwise, checks that then empty [source] is
+    de-allocated. *)
+let test_allocation_status_when_empty b source ~with_frozen_bonds dest =
   let source_pkh = Context.Contract.pkh source in
+  Context.get_constants (B b) >>=? fun constants ->
+  let commitment_bond = constants.parametric.tx_rollup.commitment_bond in
+  let assert_frozen_bonds_is ~loc ctxt expected =
+    Context.Contract.frozen_bonds ctxt source >>=? fun frozen_bonds ->
+    Assert.equal_tez ~loc frozen_bonds expected
+  in
+  originate_tx_rollup b source >>=? fun (b, tx_rollup) ->
+  (if with_frozen_bonds then
+   make_tx_rollup_commitment b tx_rollup source >>=? fun (b, wrong_commit) ->
+   assert_frozen_bonds_is ~loc:__LOC__ (B b) commitment_bond >|=? fun () ->
+   (b, Some wrong_commit)
+  else
+    (* Check that [source] does not have frozen_bonds. *)
+    assert_frozen_bonds_is ~loc:__LOC__ (B b) Tez.zero >|=? fun () -> (b, None))
+  >>=? fun (b, wrong_commit_opt) ->
   Incremental.begin_construction b ~policy:(Block.Excluding [source_pkh])
   >>=? fun b ->
   (* get the balance of the source contract *)
@@ -852,53 +946,50 @@ let test_allocation_status_when_empty b source dest =
   (* transfer all the tez inside contract 1 *)
   transfer_and_check_balances ~loc:__LOC__ b source dest balance
   >>=? fun (b, _) ->
+  (* Check that source has a null balance (and is still allocated). *)
+  Assert.balance_is (I b) ~loc:__LOC__ source Tez.zero >>=? fun () ->
   Incremental.finalize_block b >>=? fun b ->
   is_delegate (B b) source_pkh >>=? fun source_is_delegate ->
-  if source_is_delegate then
-    (* Check that contract_1 is still allocated. *)
-    Context.Contract.balance_and_frozen_bonds (B b) source >>=? fun balance ->
-    Assert.equal_tez ~loc:__LOC__ balance Tez.zero
+  if source_is_delegate || with_frozen_bonds then
+    (* Check that contract_1 is still allocated after block finalization and
+       despite a null balance. *)
+    let expected_balance =
+      if with_frozen_bonds then commitment_bond else Tez.zero
+    in
+    assert_allocated ~loc:__LOC__ (B b) source expected_balance >>=? fun () ->
+    match wrong_commit_opt with
+    | None -> return_unit
+    | Some wrong_commit ->
+        reject_tx_rollup_commitment b dest tx_rollup wrong_commit >>=? fun b ->
+        if source_is_delegate then
+          assert_allocated ~loc:__LOC__ (B b) source Tez.zero
+        else assert_not_allocated ~loc:__LOC__ (B b) source
   else
     (* Check that source is no longer allocated. *)
-    Context.Contract.balance_and_frozen_bonds (B b) source >>= fun res ->
-    Assert.proto_error_with_info
-      ~loc:__LOC__
-      res
-      "Storage error (fatal internal error)"
+    assert_not_allocated ~loc:__LOC__ (B b) source
 
 (** Calls [test_allocation_status_when_empty] on a delegate. *)
 let test_allocation_status_when_empty_for_delegate () =
-  Context.init2 () >>=? fun (b, (contract_1, contract_2)) ->
-  (* Check allocation status for a delegate. *)
-  test_allocation_status_when_empty b contract_1 contract_2
+  Context.init1 ~consensus_threshold:0 () >>=? fun (b, contract) ->
+  (* Allocate a new contract and make it a delegate. *)
+  configure_new_account b contract ~delegate:true >>=? fun (b, source) ->
+  (* Check allocation status for a delegate w/o frozen bonds. *)
+  test_allocation_status_when_empty b source ~with_frozen_bonds:false contract
+  >>=? fun () ->
+  (* Check allocation status for a delegate with frozen bonds. *)
+  test_allocation_status_when_empty b source ~with_frozen_bonds:true contract
 
 (** Calls [test_allocation_status_when_empty] on a contract that is not
     delegated. *)
 let test_allocation_status_when_empty_for_not_delegated () =
-  Context.init2 ~consensus_threshold:0 ()
-  >>=? fun (b, (contract_1, contract_2)) ->
-  (* Check allocation status for an account that is not delegated. *)
-  let new_account = Account.new_account () in
-  let not_delegated = Contract.Implicit new_account.pkh in
-  (* Make sure [not_delegated] is allocated by transferring funds to it. *)
-  Incremental.begin_construction b >>=? fun b ->
-  let random_amount = Tez.of_mutez_exn 1000L in
-  Op.transaction
-    ~force_reveal:true
-    (I b)
-    ~fee:Tez.zero
-    contract_1
-    not_delegated
-    random_amount
-  >>=? fun op ->
-  Incremental.add_operation b op >>=? fun b ->
-  Incremental.finalize_block b >>=? fun b ->
-  (* Assert not_delegated is allocated by fetching its balance. *)
-  Context.Contract.balance_and_frozen_bonds (B b) not_delegated
-  >>=? fun balance ->
-  Assert.equal_tez ~loc:__LOC__ balance random_amount >>=? fun () ->
-  (* Test allocation status of the not delegated account. *)
-  test_allocation_status_when_empty b not_delegated contract_2
+  Context.init1 ~consensus_threshold:0 () >>=? fun (b, contract) ->
+  (* Allocate a new contract and do not make it a delegate. *)
+  configure_new_account b contract ~delegate:false >>=? fun (b, source) ->
+  (* Test allocation status of the not delegated account w/o frozen bonds. *)
+  test_allocation_status_when_empty b source ~with_frozen_bonds:false contract
+  >>=? fun () ->
+  (* Test allocation status of the not delegated account with frozen bonds. *)
+  test_allocation_status_when_empty b source ~with_frozen_bonds:true contract
 
 let tests =
   [
@@ -1008,11 +1099,11 @@ let tests =
       `Quick
       test_storage_fees_and_internal_operation;
     Tztest.tztest
-      "Test allocation status when empty for delegate"
+      "Test allocation status when empty delegates"
       `Quick
       test_allocation_status_when_empty_for_delegate;
     Tztest.tztest
-      "Test allocation status when empty for not delegated"
+      "Test allocation status when empty not delegated accounts"
       `Quick
       test_allocation_status_when_empty_for_not_delegated;
   ]

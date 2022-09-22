@@ -206,41 +206,6 @@ let test_freeze_deposit_then_delegate () =
   Assert.equal_tez ~loc:__LOC__ user_balance' user_balance
 
 (** Tested scenario:
-    1. freeze a deposit (with deposit amount = balance),
-    2. check that the user contract is still allocated,
-    3. punish the user contract,
-    4. check that the user contract is unallocated, except if it's a delegate. *)
-let test_allocated_when_frozen_deposits_exists ~user_is_delegate () =
-  init_test ~user_is_delegate
-  >>=? fun (ctxt, user_contract, user_account, _delegate) ->
-  (* Fetch user's initial balance before freeze. *)
-  Token.balance ctxt user_account >>>=? fun (ctxt, user_balance) ->
-  Assert.equal_bool ~loc:__LOC__ Tez.(user_balance > zero) true >>=? fun () ->
-  (* Freeze a tx-rollup deposit. *)
-  let tx_rollup, _ = mk_tx_rollup () in
-  let bond_id = Bond_id.Tx_rollup_bond_id tx_rollup in
-  let deposit_amount = user_balance in
-  let deposit_account = `Frozen_bonds (user_contract, bond_id) in
-  Token.transfer ctxt user_account deposit_account deposit_amount
-  >>>=? fun (ctxt, _) ->
-  (* Check that user contract is still allocated, despite a null balance. *)
-  Token.balance ctxt user_account >>>=? fun (ctxt, balance) ->
-  Assert.equal_tez ~loc:__LOC__ balance Tez.zero >>=? fun () ->
-  Token.allocated ctxt user_account >>>=? fun (ctxt, user_allocated) ->
-  Token.allocated ctxt deposit_account >>>=? fun (ctxt, dep_allocated) ->
-  Assert.equal_bool ~loc:__LOC__ (user_allocated && dep_allocated) true
-  >>=? fun () ->
-  (* Punish the user contract. *)
-  Token.transfer ctxt deposit_account `Burned deposit_amount
-  >>>=? fun (ctxt, _) ->
-  (* Check that user and deposit accounts have been unallocated. *)
-  Token.allocated ctxt user_account >>>=? fun (ctxt, user_allocated) ->
-  Token.allocated ctxt deposit_account >>>=? fun (_, dep_allocated) ->
-  if user_is_delegate then
-    Assert.equal_bool ~loc:__LOC__ (user_allocated && not dep_allocated) true
-  else Assert.equal_bool ~loc:__LOC__ (user_allocated || dep_allocated) false
-
-(** Tested scenario:
     1. freeze two deposits for the user contract,
     2. check that the stake of the user contract is balance + two deposits,
     3. punish for one of the deposits,
@@ -654,14 +619,6 @@ let tests =
         "frozen bonds - freeze then delegate"
         `Quick
         test_freeze_deposit_then_delegate;
-      tztest
-        "frozen bonds - contract remains allocated, user is not a delegate"
-        `Quick
-        (test_allocated_when_frozen_deposits_exists ~user_is_delegate:false);
-      tztest
-        "frozen bonds - contract remains allocated, user is a delegate"
-        `Quick
-        (test_allocated_when_frozen_deposits_exists ~user_is_delegate:true);
       tztest
         "frozen bonds - total stake, user is not a delegate"
         `Quick
