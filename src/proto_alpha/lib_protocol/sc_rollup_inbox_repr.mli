@@ -253,9 +253,6 @@ module type Merkelized_operations = sig
   (** The type for the Merkle trees used in this module. *)
   type tree
 
-  (** The context used by the trees. *)
-  type inbox_context
-
   (** [add_messages ctxt history inbox level payloads level_tree] inserts
       a list of [payloads] as new messages in the [level_tree] of the
       current [level] of the [inbox]. This function returns the new level
@@ -272,7 +269,6 @@ module type Merkelized_operations = sig
       This function fails if [level] is older than [inbox]'s [level].
   *)
   val add_messages :
-    inbox_context ->
     History.t ->
     t ->
     Raw_level_repr.t ->
@@ -284,7 +280,6 @@ module type Merkelized_operations = sig
       as {!add_external_messages} except that it does not remember the inbox
       history. *)
   val add_messages_no_history :
-    inbox_context ->
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
@@ -312,11 +307,7 @@ module type Merkelized_operations = sig
       (and that current level could be quite far back in terms of blocks
       if the inbox hasn't been added to for a while). *)
   val form_history_proof :
-    inbox_context ->
-    History.t ->
-    t ->
-    Level_messages_inbox.t option ->
-    (History.t * history_proof) tzresult Lwt.t
+    History.t -> t -> (History.t * history_proof) tzresult Lwt.t
 
   (** This is similar to {!form_history_proof} except that it is just to
       be used on the protocol side because it doesn't ensure the history
@@ -399,7 +390,6 @@ module type Merkelized_operations = sig
       sufficient data (it needs to be run on an [inbox_context] with the
       full history). *)
   val produce_proof :
-    inbox_context ->
     History.t ->
     history_proof ->
     Raw_level_repr.t * Z.t ->
@@ -407,7 +397,7 @@ module type Merkelized_operations = sig
 
   (** [empty ctxt level] is an inbox started at some given [level] with no
       message at all. *)
-  val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+  val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
 
   module Internal_for_tests : sig
     val eq_tree : tree -> tree -> bool
@@ -480,11 +470,8 @@ end
 
 *)
 module Make_hashing_scheme (P : P) :
-  Merkelized_operations with type tree = P.tree and type inbox_context = P.t
+  Merkelized_operations with type tree = P.tree
 
-include
-  Merkelized_operations
-    with type tree = Context.tree
-     and type inbox_context = Context.t
+include Merkelized_operations with type tree = Context.tree
 
 type inbox = t

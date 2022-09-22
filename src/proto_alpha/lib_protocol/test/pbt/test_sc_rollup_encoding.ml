@@ -87,9 +87,7 @@ let gen_inbox rollup level =
   let payloads = hd :: tail in
   let level_tree_and_inbox =
     let open Lwt_result_syntax in
-    let* ctxt = Context.default_raw_context () in
-    let inbox_ctxt = Raw_context.recover ctxt in
-    let*! empty_inbox = Sc_rollup_inbox_repr.empty inbox_ctxt rollup level in
+    let*! empty_inbox = Sc_rollup_inbox_repr.empty rollup level in
     lift
     @@ let*? input_messages =
          List.map_e
@@ -97,7 +95,6 @@ let gen_inbox rollup level =
            payloads
        in
        Sc_rollup_inbox_repr.add_messages_no_history
-         inbox_ctxt
          empty_inbox
          level
          input_messages

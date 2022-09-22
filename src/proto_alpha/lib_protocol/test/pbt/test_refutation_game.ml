@@ -1061,7 +1061,7 @@ type player_client = {
   states : (Tick.t * State_hash.t) list;
   final_tick : Tick.t;
   inbox :
-    Store_inbox.inbox_context
+    Tezos_context_memory.Context.t
     * Sc_rollup.Inbox.Level_messages_inbox.t option
     * Inbox.History.t
     * Inbox.t;
@@ -1133,7 +1133,7 @@ module Player_client = struct
   let construct_inbox ctxt levels_and_payloads ~rollup ~origination_level =
     let open Lwt_syntax in
     let open Store_inbox in
-    let* inbox = empty ctxt rollup origination_level in
+    let* inbox = empty rollup origination_level in
     let history = Inbox.History.empty ~capacity:10000L in
     let rec aux history inbox level_tree = function
       | [] -> return (ctxt, level_tree, history, inbox)
@@ -1141,7 +1141,7 @@ module Player_client = struct
           let level = Int32.of_int level |> Raw_level.of_int32_exn in
           let () = assert (Raw_level.(origination_level <= level)) in
           let* res =
-            lift @@ add_messages ctxt history inbox level payloads level_tree
+            lift @@ add_messages history inbox level payloads level_tree
           in
           let level_tree, history, inbox =
             WithExceptions.Result.get_ok ~loc:__LOC__ res
@@ -1289,11 +1289,11 @@ let operation_publish_commitment ctxt rollup predecessor inbox_level
     regarding the vision [player_client] has. The proof refutes the
     [start_tick]. *)
 let build_proof ~player_client start_tick (game : Game.t) =
+  let inbox_context, _messages_tree, history, inbox = player_client.inbox in
   let open Lwt_result_syntax in
-  let inbox_context, messages_tree, history, inbox = player_client.inbox in
   let* history, history_proof =
     Lwt.map Environment.wrap_tzresult
-    @@ Store_inbox.form_history_proof inbox_context history inbox messages_tree
+    @@ Store_inbox.form_history_proof history inbox
   in
   (* We start a game on a commitment that starts at [Tick.initial], the fuel
      is necessarily [start_tick]. *)

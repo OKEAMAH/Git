@@ -134,9 +134,7 @@ module type PVM_with_context_and_state = sig
   val reveal : Sc_rollup_PVM_sig.Input_hash.t -> string option
 
   module Inbox_with_history : sig
-    include
-      Sc_rollup_inbox_repr.Merkelized_operations
-        with type inbox_context = context
+    include Sc_rollup_inbox_repr.Merkelized_operations
 
     val inbox : Sc_rollup_inbox_repr.history_proof
 

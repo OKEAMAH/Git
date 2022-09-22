@@ -156,7 +156,7 @@ module Inbox : sig
 
   type history_proof = Sc_rollup.Inbox.history_proof
 
-  include Sc_rollup.Inbox.Merkelized_operations with type inbox_context = index
+  include Sc_rollup.Inbox.Merkelized_operations
 end
 
 (** State of the PVM that this rollup node deals with *)

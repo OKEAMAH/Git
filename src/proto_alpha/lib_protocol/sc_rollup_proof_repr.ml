@@ -209,9 +209,7 @@ module type PVM_with_context_and_state = sig
   val reveal : Sc_rollup_PVM_sig.Input_hash.t -> string option
 
   module Inbox_with_history : sig
-    include
-      Sc_rollup_inbox_repr.Merkelized_operations
-        with type inbox_context = context
+    include Sc_rollup_inbox_repr.Merkelized_operations
 
     val inbox : Sc_rollup_inbox_repr.history_proof
 
@@ -234,7 +232,7 @@ let produce pvm_and_state commit_level =
         let message_counter = Z.zero in
         let* inbox_proof, input =
           Inbox_with_history.(
-            produce_proof context history inbox (level, message_counter))
+            produce_proof history inbox (level, message_counter))
         in
         let input =
           Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) input
@@ -251,7 +249,7 @@ let produce pvm_and_state commit_level =
     | First_after (level, message_counter) ->
         let* inbox_proof, input =
           Inbox_with_history.(
-            produce_proof context history inbox (level, Z.succ message_counter))
+            produce_proof history inbox (level, Z.succ message_counter))
         in
         let input =
           Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) input

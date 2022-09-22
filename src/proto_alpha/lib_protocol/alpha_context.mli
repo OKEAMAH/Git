@@ -3058,10 +3058,7 @@ module Sc_rollup : sig
     module type Merkelized_operations = sig
       type tree
 
-      type inbox_context
-
       val add_messages :
-        inbox_context ->
         History.t ->
         t ->
         Raw_level.t ->
@@ -3070,7 +3067,6 @@ module Sc_rollup : sig
         (Level_messages_inbox.t * History.t * t) tzresult Lwt.t
 
       val add_messages_no_history :
-        inbox_context ->
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
@@ -3081,11 +3077,7 @@ module Sc_rollup : sig
         Level_messages_inbox.t -> Z.t -> Inbox_message.serialized option Lwt.t
 
       val form_history_proof :
-        inbox_context ->
-        History.t ->
-        t ->
-        Level_messages_inbox.t option ->
-        (History.t * history_proof) tzresult Lwt.t
+        History.t -> t -> (History.t * history_proof) tzresult Lwt.t
 
       val take_snapshot : current_level:Raw_level.t -> t -> history_proof
 
@@ -3115,13 +3107,12 @@ module Sc_rollup : sig
         inbox_message option tzresult Lwt.t
 
       val produce_proof :
-        inbox_context ->
         History.t ->
         history_proof ->
         Raw_level.t * Z.t ->
         (proof * inbox_message option) tzresult Lwt.t
 
-      val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level.t -> t Lwt.t
+      val empty : Sc_rollup_repr.t -> Raw_level.t -> t Lwt.t
 
       module Internal_for_tests : sig
         val eq_tree : tree -> tree -> bool
@@ -3136,10 +3127,7 @@ module Sc_rollup : sig
       end
     end
 
-    include
-      Merkelized_operations
-        with type tree = Context.tree
-         and type inbox_context = Context.t
+    include Merkelized_operations with type tree = Context.tree
 
     module type P = sig
       type t
@@ -3182,7 +3170,7 @@ module Sc_rollup : sig
     end
 
     module Make_hashing_scheme (P : P) :
-      Merkelized_operations with type tree = P.tree and type inbox_context = P.t
+      Merkelized_operations with type tree = P.tree
 
     val add_external_messages :
       context -> rollup -> string list -> (t * Z.t * context) tzresult Lwt.t
@@ -3535,7 +3523,7 @@ module Sc_rollup : sig
       val reveal : Input_hash.t -> string option
 
       module Inbox_with_history : sig
-        include Inbox.Merkelized_operations with type inbox_context = context
+        include Inbox.Merkelized_operations
 
         val inbox : Inbox.history_proof
 

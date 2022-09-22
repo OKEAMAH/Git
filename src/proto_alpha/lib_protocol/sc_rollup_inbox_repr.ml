@@ -398,8 +398,6 @@ let of_versioned = function V1 inbox -> inbox [@@inline]
 
 let to_versioned inbox = V1 inbox [@@inline]
 
-let messages_key = ["messages"]
-
 type serialized_proof = bytes
 
 let serialized_proof_encoding = Data_encoding.bytes
@@ -465,12 +463,9 @@ end = struct
 end
 
 module type Merkelized_operations = sig
-  type inbox_context
-
   type tree
 
   val add_messages :
-    inbox_context ->
     History.t ->
     t ->
     Raw_level_repr.t ->
@@ -479,7 +474,6 @@ module type Merkelized_operations = sig
     (Level_messages_inbox.t * History.t * t) tzresult Lwt.t
 
   val add_messages_no_history :
-    inbox_context ->
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
@@ -492,11 +486,7 @@ module type Merkelized_operations = sig
     Sc_rollup_inbox_message_repr.serialized option Lwt.t
 
   val form_history_proof :
-    inbox_context ->
-    History.t ->
-    t ->
-    Level_messages_inbox.t option ->
-    (History.t * history_proof) tzresult Lwt.t
+    History.t -> t -> (History.t * history_proof) tzresult Lwt.t
 
   val take_snapshot : current_level:Raw_level_repr.t -> t -> history_proof
 
@@ -526,13 +516,12 @@ module type Merkelized_operations = sig
     Sc_rollup_PVM_sig.inbox_message option tzresult Lwt.t
 
   val produce_proof :
-    inbox_context ->
     History.t ->
     history_proof ->
     Raw_level_repr.t * Z.t ->
     (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t
 
-  val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+  val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
 
   module Internal_for_tests : sig
     val eq_tree : tree -> tree -> bool
@@ -588,11 +577,8 @@ module type P = sig
 end
 
 module Make_hashing_scheme (P : P) :
-  Merkelized_operations with type tree = P.tree and type inbox_context = P.t =
-struct
+  Merkelized_operations with type tree = P.tree = struct
   module Tree = P.Tree
-
-  type inbox_context = P.t
 
   type tree = P.tree
 
@@ -644,33 +630,8 @@ struct
       *)
       prev_cell
 
-  let key_of_level level =
-    let level_bytes =
-      Data_encoding.Binary.to_bytes_exn Raw_level_repr.encoding level
-    in
-    Bytes.to_string level_bytes
-
-  let commit_tree ctxt tree inbox_level =
-    let key = [key_of_level inbox_level] in
-    P.commit_tree ctxt key tree
-
-  let commit_messages ctxt messages inbox_level =
-    let open Lwt_syntax in
-    let tree = Tree.empty ctxt in
-    let messages_bytes = Level_messages_inbox.to_bytes messages in
-    let* tree = Tree.add tree messages_key messages_bytes in
-    commit_tree ctxt tree inbox_level
-
-  let form_history_proof ctxt history inbox messages =
+  let form_history_proof history inbox =
     let open Lwt_tzresult_syntax in
-    let*! () =
-      let messages =
-        match messages with
-        | Some messages -> messages
-        | None -> Level_messages_inbox.empty inbox.level
-      in
-      commit_messages ctxt messages inbox.level
-    in
     let prev_cell = inbox.old_levels_messages in
     let prev_cell_ptr = hash_skip_list_cell prev_cell in
     let*? history = History.remember prev_cell_ptr prev_cell history in
@@ -691,7 +652,7 @@ struct
 
       This function and {!form_history_proof} are the only places we
       begin new level trees. *)
-  let archive_if_needed ctxt history inbox new_level messages =
+  let archive_if_needed history inbox new_level messages =
     let open Lwt_result_syntax in
     if Raw_level_repr.(inbox.level = new_level) then
       match messages with
@@ -700,9 +661,7 @@ struct
           let messages = Level_messages_inbox.empty new_level in
           return (history, inbox, messages)
     else
-      let* history, old_levels_messages =
-        form_history_proof ctxt history inbox messages
-      in
+      let* history, old_levels_messages = form_history_proof history inbox in
       let messages = Level_messages_inbox.empty new_level in
       let inbox =
         {
@@ -719,7 +678,7 @@ struct
       in
       return (history, inbox, messages)
 
-  let add_messages ctxt history inbox level payloads messages =
+  let add_messages history inbox level payloads messages =
     let open Lwt_tzresult_syntax in
     let* () =
       fail_when
@@ -732,7 +691,7 @@ struct
         (Invalid_level_add_messages level)
     in
     let* history, inbox, messages =
-      archive_if_needed ctxt history inbox level messages
+      archive_if_needed history inbox level messages
     in
     let*! messages, inbox =
       List.fold_left_s
@@ -744,10 +703,10 @@ struct
     let current_level_hash () = Level_messages_inbox.hash messages in
     return (messages, history, {inbox with current_level_hash})
 
-  let add_messages_no_history ctxt inbox level payloads messages =
+  let add_messages_no_history inbox level payloads messages =
     let open Lwt_tzresult_syntax in
     let+ messages, _, inbox =
-      add_messages ctxt no_history inbox level payloads messages
+      add_messages no_history inbox level payloads messages
     in
     (messages, inbox)
 
@@ -1052,15 +1011,14 @@ struct
                      payload;
                    })
 
-  let produce_proof _ctxt _history _inbox (_l, _n) =
+  let produce_proof _history _inbox (_l, _n) =
     proof_error "Can't produce proof yet"
 
-  let empty context rollup level =
+  let empty rollup level =
     let open Lwt_syntax in
     assert (Raw_level_repr.(level <> Raw_level_repr.root)) ;
     let pre_genesis_level = Raw_level_repr.root in
     let initial_messages = Level_messages_inbox.empty pre_genesis_level in
-    let* () = commit_messages context initial_messages pre_genesis_level in
     let initial_hash = Level_messages_inbox.hash initial_messages in
     return
       {
@@ -1129,8 +1087,6 @@ include (
       (* We cannot produce a proof without full inbox_context *)
       Lwt.return None
   end) :
-    Merkelized_operations
-      with type tree = Context.tree
-       and type inbox_context = Context.t)
+    Merkelized_operations with type tree = Context.tree)
 
 type inbox = t

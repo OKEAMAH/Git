@@ -313,11 +313,8 @@ module Arith_pvm = Sc_rollup_helpers.Arith_pvm
 let test_invalid_serialized_inbox_proof () =
   let open Lwt_result_syntax in
   let open Alpha_context in
-  let* ctxt =
-    Context.init1 () >>=? fun (block, _contract) -> return block.context
-  in
   let*! inbox =
-    Sc_rollup.Inbox.empty ctxt Sc_rollup.Address.zero Raw_level.(succ root)
+    Sc_rollup.Inbox.empty Sc_rollup.Address.zero Raw_level.(succ root)
   in
   let snapshot =
     Sc_rollup.Inbox.take_snapshot

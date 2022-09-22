@@ -66,7 +66,6 @@ module State = struct
         if Raw_level.(block_level <= node_ctxt.genesis_info.level) then
           let*! inbox =
             Context.Inbox.empty
-              node_ctxt.context
               node_ctxt.rollup_address
               node_ctxt.genesis_info.level
           in
@@ -210,7 +209,6 @@ let process_head node_ctxt Layer1.(Head {level; hash = head_hash} as head) =
              in
              let* messages_tree, history, inbox =
                Context.Inbox.add_messages
-                 node_ctxt.context
                  history
                  inbox
                  level

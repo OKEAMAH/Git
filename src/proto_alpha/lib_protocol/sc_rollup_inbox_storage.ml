@@ -115,7 +115,6 @@ let add_messages ctxt rollup messages =
   *)
   let* current_messages, inbox =
     Sc_rollup_inbox_repr.add_messages_no_history
-      (Raw_context.recover ctxt)
       inbox
       level
       messages

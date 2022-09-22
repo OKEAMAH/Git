@@ -265,20 +265,17 @@ module Sc_rollup_add_external_messages_benchmark = struct
       in
       let* rollup, ctxt = ctxt_with_rollup in
       let*! inbox =
-        Sc_rollup_inbox_repr.empty
-          (Raw_context.recover ctxt)
-          rollup
-          (Raw_context.current_level ctxt).level
+        Sc_rollup_inbox_repr.empty rollup (Raw_context.current_level ctxt).level
       in
       let* inbox, ctxt = add_messages_for_level ctxt inbox rollup in
       let+ messages, _ctxt =
         Lwt.return @@ Environment.wrap_tzresult
         @@ Raw_context.Sc_rollup_in_memory_inbox.current_messages ctxt rollup
       in
-      (inbox, ctxt, messages)
+      (inbox, messages)
     in
 
-    let inbox, ctxt, current_messages =
+    let inbox, current_messages =
       match Lwt_main.run @@ prepare_benchmark_scenario () with
       | Ok result -> result
       | Error _ -> assert false
@@ -288,7 +285,6 @@ module Sc_rollup_add_external_messages_benchmark = struct
     let closure () =
       ignore
         (Sc_rollup_inbox_repr.add_messages_no_history
-           (Raw_context.recover ctxt)
            inbox
            last_level
            [message]
