@@ -350,6 +350,12 @@ type invoke_step_kont =
       func : func;
       concat_kont : value concat_kont;
     }
+  | Inv_reveal_tick of {
+      args : value Vector.t;
+      code : code;
+      revealed_bytes : int32 option;
+      kind : Host_funcs.reveal_tick_kind;
+    }
   | Inv_stop of {code : code; fresh_frame : ongoing frame_stack option}
 
 type label_step_kont =
@@ -491,25 +497,30 @@ let invoke_step ~init ?(durable = Durable_storage.empty)
       | Func.HostFunc (_, global_name) ->
           Lwt.catch
             (fun () ->
-              let (Host_funcs.Host_func f) =
-                Host_funcs.lookup ~global_name c.host_funcs
-              in
-              let* inst = resolve_module_ref module_reg frame.inst in
-              let* args = Vector.to_list args in
-              let available_memories =
-                if not init then Host_funcs.Available_memories inst.memories
-                else Host_funcs.No_memories_during_init
-              in
-              let+ durable, res =
-                f
-                  buffers.input
-                  buffers.output
-                  durable
-                  available_memories
-                  (List.rev args)
-              in
-              let vs' = Vector.prepend_list res vs' in
-              (durable, Inv_stop {code = (vs', es); fresh_frame = None}))
+              let host_func = Host_funcs.lookup ~global_name c.host_funcs in
+              match host_func with
+              | Host_func f ->
+                  let* inst = resolve_module_ref module_reg frame.inst in
+                  let* args = Vector.to_list args in
+                  let available_memories =
+                    if not init then Host_funcs.Available_memories inst.memories
+                    else Host_funcs.No_memories_during_init
+                  in
+                  let+ durable, res =
+                    f
+                      buffers.input
+                      buffers.output
+                      durable
+                      available_memories
+                      (List.rev args)
+                  in
+                  let vs' = Vector.prepend_list res vs' in
+                  (durable, Inv_stop {code = (vs', es); fresh_frame = None})
+              | Reveal_tick kind ->
+                  Lwt.return
+                    ( durable,
+                      Inv_reveal_tick
+                        {args; kind; code = (vs', es); revealed_bytes = None} ))
             (function Crash (_, msg) -> Crash.error at msg | exn -> raise exn))
   | Inv_prepare_locals
       {
@@ -589,6 +600,14 @@ let invoke_step ~init ?(durable = Durable_storage.empty)
                         };
                   };
             } )
+  | Inv_reveal_tick {revealed_bytes = None; _} ->
+      (* This is a reveal tick, not an evaluation tick. The PVM should
+         prevent this execution path. *)
+      assert false
+  | Inv_reveal_tick {revealed_bytes = Some revealed_bytes; code; _} ->
+      let vs, es = code in
+      let vs = Vector.cons (Num (I32 revealed_bytes)) vs in
+      Lwt.return (durable, Inv_stop {code = (vs, es); fresh_frame = None})
   | Inv_concat tick ->
       let+ concat_kont = concat_step tick.concat_kont in
       (durable, Inv_concat {tick with concat_kont})
@@ -1505,6 +1524,82 @@ let rec eval durable module_reg (c : config) buffers :
   | _ ->
       let* durable, c = step ~init:false ~durable module_reg c buffers in
       eval durable module_reg c buffers
+
+let reveal_tick_payload module_reg args frame =
+  let open Lwt.Syntax in
+  function
+  | Host_funcs.Preimage ->
+      Lwt.catch
+        (fun () ->
+          let* offset, _args = vector_pop_map args num_i32 no_region in
+          let* inst = resolve_module_ref module_reg frame.inst in
+          let* mem = memory inst (0l @@ no_region) in
+          let+ hash = Memory.load_bytes mem offset 32 in
+          Reveal.(Reveal_raw_data (input_hash_from_string_exn hash)))
+        (* TODO: proper error *)
+          (fun _exn -> assert false)
+
+let is_reveal_tick module_reg =
+  let open Lwt.Syntax in
+  function
+  | {
+      step_kont =
+        SK_Next
+          ( frame,
+            _,
+            LS_Craft_frame
+              (_, Inv_reveal_tick {kind; revealed_bytes = None; args; _}) );
+      _;
+    } ->
+      let+ reveal =
+        reveal_tick_payload module_reg args frame.frame_specs kind
+      in
+      Some reveal
+  | _ -> Lwt.return None
+
+let reveal module_reg args frame payload =
+  let open Lwt.Syntax in
+  Lwt.catch
+    (fun () ->
+      let* inst = resolve_module_ref module_reg frame.inst in
+      let* mem = memory inst (0l @@ no_region) in
+      let* _offset, _args = vector_pop_map args num_i32 no_region in
+      let* dst, _args = vector_pop_map args num_i32 no_region in
+      let+ max_bytes, _args = vector_pop_map args num_i32 no_region in
+      let payload_size = Bytes.length payload in
+      let revealed_bytes = min payload_size (Int32.to_int max_bytes) in
+      let payload = Bytes.sub payload 0 revealed_bytes in
+      let _ = Memory.store_bytes mem dst (Bytes.to_string payload) in
+      Int32.of_int revealed_bytes)
+    (fun _exn ->
+      (* TODO: error handling *)
+      assert false)
+
+let reveal_step module_reg payload =
+  let open Lwt.Syntax in
+  function
+  | {
+      step_kont =
+        SK_Next
+          ( frame,
+            top,
+            LS_Craft_frame
+              (label, Inv_reveal_tick ({revealed_bytes = None; _} as inv)) );
+      _;
+    } as config ->
+      let+ bytes_count = reveal module_reg inv.args frame.frame_specs payload in
+      {
+        config with
+        step_kont =
+          SK_Next
+            ( frame,
+              top,
+              LS_Craft_frame
+                ( label,
+                  Inv_reveal_tick {inv with revealed_bytes = Some bytes_count}
+                ) );
+      }
+  | _ -> assert false (* TODO: error handling *)
 
 (* Functions & Constants *)
 

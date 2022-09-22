@@ -759,6 +759,13 @@ let inv_concat_gen ~module_reg =
   let+ concat_kont = concat_kont_gen value_gen in
   Eval.Inv_concat {arity; vs; instructions; inst; func; concat_kont}
 
+let inv_reveal_tick ~module_reg =
+  let* args = small_vector_gen value_gen in
+  let* vs = small_vector_gen value_gen in
+  let* es = small_vector_gen (admin_instr_gen ~module_reg) in
+  let+ revealed_bytes = option int32 in
+  Eval.Inv_reveal_tick {kind = Preimage; args; code = (vs, es); revealed_bytes}
+
 let inv_stop_gen ~module_reg =
   let* vs = small_vector_gen value_gen in
   let* es = small_vector_gen (admin_instr_gen ~module_reg) in
@@ -772,6 +779,7 @@ let invoke_step_gen ~module_reg =
       inv_prepare_locals_gen ~module_reg;
       inv_prepare_args_gen ~module_reg;
       inv_concat_gen ~module_reg;
+      inv_reveal_tick ~module_reg;
       inv_stop_gen ~module_reg;
     ]
 

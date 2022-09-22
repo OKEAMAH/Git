@@ -1044,9 +1044,18 @@ struct
       message_index : Z.t;
     }
 
+    type input_hash = Tezos_scoru_wasm.Wasm_pvm_sig.input_hash
+
+    let input_hash_to_string =
+      Tezos_scoru_wasm.Wasm_pvm_sig.input_hash_to_string
+
+    type reveal = Tezos_scoru_wasm.Wasm_pvm_sig.reveal =
+      | Reveal_raw_data of input_hash
+
     type input_request = Tezos_scoru_wasm.Wasm_pvm_sig.input_request =
       | No_input_required
       | Input_required
+      | Reveal_required of reveal
 
     type info = Tezos_scoru_wasm.Wasm_pvm_sig.info = {
       current_tick : Z.t;
@@ -1073,6 +1082,8 @@ struct
 
       let set_input_step input payload (tree : Tree.tree) =
         Wasm.set_input_step input payload tree
+
+      let reveal_step = Wasm.reveal_step
 
       let get_output output (tree : Tree.tree) = Wasm.get_output output tree
 

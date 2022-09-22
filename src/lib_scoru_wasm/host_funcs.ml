@@ -301,6 +301,17 @@ let store_list_size =
           (durable, [Values.(Num (I64 (I64.of_int_s num_subtrees)))])
       | _ -> raise Bad_input)
 
+let reveal_preimage_name = "reveal_preimage"
+
+let reveal_preimage_type =
+  let input_types =
+    Types.[NumType I32Type; NumType I32Type; NumType I32Type] |> Vector.of_list
+  in
+  let output_types = Types.[NumType I32Type] |> Vector.of_list in
+  Types.FuncType (input_types, output_types)
+
+let reveal_preimage = Host_funcs.Reveal_tick Preimage
+
 let lookup_opt name =
   match name with
   | "read_input" ->
@@ -314,6 +325,8 @@ let lookup_opt name =
       Some (ExternFunc (HostFunc (store_list_size_type, store_list_size_name)))
   | "store_delete" ->
       Some (ExternFunc (HostFunc (store_delete_type, store_delete_name)))
+  | "reveal_preimage" ->
+      Some (ExternFunc (HostFunc (reveal_preimage_type, reveal_preimage_name)))
   | _ -> None
 
 let lookup name =
@@ -331,6 +344,7 @@ let register_host_funcs registry =
       (store_has_name, store_has);
       (store_list_size_name, store_list_size);
       (store_delete_name, store_delete);
+      (reveal_preimage_name, reveal_preimage);
     ]
 
 module Internal_for_tests = struct
