@@ -833,36 +833,9 @@ module Tree_inbox = struct
   open Inbox
   module Store = Tezos_context_memory.Context
 
-  module Tree = struct
-    include Store.Tree
-
-    type tree = Store.tree
-
-    type key = string list
-
-    type value = bytes
-  end
-
   type t = Store.t
 
-  type tree = Tree.tree
-
-  let commit_tree store key tree =
-    let open Lwt_syntax in
-    let* store = Store.add_tree store key tree in
-    let* _ = Store.commit ~time:Time.Protocol.epoch store in
-    return ()
-
-  let lookup_tree store hash =
-    let open Lwt_syntax in
-    let index = Store.index store in
-    let* _, tree =
-      Store.produce_tree_proof
-        index
-        (`Node (Hash.to_context_hash hash))
-        (fun x -> Lwt.return (x, x))
-    in
-    return (Some tree)
+  type tree = Store.tree
 
   type proof = Store.Proof.tree Store.Proof.t
 
@@ -872,7 +845,9 @@ module Tree_inbox = struct
   let produce_proof store tree f =
     let open Lwt_syntax in
     let index = Store.index store in
-    let* proof = Store.produce_tree_proof index (`Node (Tree.hash tree)) f in
+    let* proof =
+      Store.produce_tree_proof index (`Node (Store.Tree.hash tree)) f
+    in
     return (Some proof)
 
   let kinded_hash_to_inbox_hash = function

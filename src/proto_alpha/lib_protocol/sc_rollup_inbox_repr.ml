@@ -524,8 +524,6 @@ module type Merkelized_operations = sig
   val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
 
   module Internal_for_tests : sig
-    val eq_tree : tree -> tree -> bool
-
     val produce_inclusion_proof :
       History.t ->
       history_proof ->
@@ -539,29 +537,7 @@ end
 module type P = sig
   type t
 
-  module Tree : sig
-    type tree
-
-    type key = string list
-
-    type value = bytes
-
-    val hash : tree -> Context_hash.t
-
-    val add : tree -> key -> value -> tree Lwt.t
-
-    val find : tree -> key -> value option Lwt.t
-
-    val empty : t -> tree
-
-    val equal : tree -> tree -> bool
-  end
-
-  type tree = Tree.tree
-
-  val commit_tree : t -> string list -> tree -> unit Lwt.t
-
-  val lookup_tree : t -> Hash.t -> tree option Lwt.t
+  type tree
 
   type proof
 
@@ -578,8 +554,6 @@ end
 
 module Make_hashing_scheme (P : P) :
   Merkelized_operations with type tree = P.tree = struct
-  module Tree = P.Tree
-
   type tree = P.tree
 
   let add_message inbox payload level_messages =
@@ -1032,8 +1006,6 @@ module Make_hashing_scheme (P : P) :
       }
 
   module Internal_for_tests = struct
-    let eq_tree = Tree.equal
-
     let produce_inclusion_proof history a b =
       let open Tzresult_syntax in
       let cell_ptr = hash_skip_list_cell b in
@@ -1050,27 +1022,9 @@ end
 
 include (
   Make_hashing_scheme (struct
-    module Tree = struct
-      include Context.Tree
-
-      type tree = Context.tree
-
-      type value = bytes
-
-      type key = string list
-    end
-
     type t = Context.t
 
-    type tree = Tree.tree
-
-    let commit_tree _ctxt _key _tree =
-      (* This is a no-op in the protocol inbox implementation *)
-      Lwt.return ()
-
-    let lookup_tree _ctxt _hash =
-      (* We cannot find the tree without a full inbox_context *)
-      Lwt.return None
+    type tree = Context.tree
 
     type proof = Context.Proof.tree Context.Proof.t
 

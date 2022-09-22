@@ -3115,8 +3115,6 @@ module Sc_rollup : sig
       val empty : Sc_rollup_repr.t -> Raw_level.t -> t Lwt.t
 
       module Internal_for_tests : sig
-        val eq_tree : tree -> tree -> bool
-
         val produce_inclusion_proof :
           History.t ->
           history_proof ->
@@ -3132,29 +3130,7 @@ module Sc_rollup : sig
     module type P = sig
       type t
 
-      module Tree : sig
-        type tree
-
-        type key = string list
-
-        type value = bytes
-
-        val hash : tree -> Context_hash.t
-
-        val add : tree -> key -> value -> tree Lwt.t
-
-        val find : tree -> key -> value option Lwt.t
-
-        val empty : t -> tree
-
-        val equal : tree -> tree -> bool
-      end
-
-      type tree = Tree.tree
-
-      val commit_tree : t -> string list -> tree -> unit Lwt.t
-
-      val lookup_tree : t -> Hash.t -> tree option Lwt.t
+      type tree
 
       type proof
 

@@ -201,24 +201,6 @@ module Inbox = struct
         end)
 
     type t = index
-
-    let commit_tree index _key tree =
-      let open Lwt_syntax in
-      let info () = IStore.Info.v ~author:"Tezos" 0L ~message:"" in
-      let* (_ : IStore.commit) =
-        IStore.Commit.v index.repo ~info:(info ()) ~parents:[] tree
-      in
-      return ()
-
-    let from_inbox_hash inbox_hash =
-      let ctxt_hash = Hash.to_context_hash inbox_hash in
-      let store_hash =
-        IStore.Hash.unsafe_of_raw_string (Context_hash.to_string ctxt_hash)
-      in
-      `Node store_hash
-
-    let lookup_tree index hash =
-      IStore.Tree.of_hash index.repo (from_inbox_hash hash)
   end)
 end
 

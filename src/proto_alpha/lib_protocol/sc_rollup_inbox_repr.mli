@@ -400,8 +400,6 @@ module type Merkelized_operations = sig
   val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
 
   module Internal_for_tests : sig
-    val eq_tree : tree -> tree -> bool
-
     (** [produce_inclusion_proof history a b] exploits [history] to produce
       a self-contained proof that [a] is an older version of [b]. *)
     val produce_inclusion_proof :
@@ -419,29 +417,7 @@ end
 module type P = sig
   type t
 
-  module Tree : sig
-    type tree
-
-    type key = string list
-
-    type value = bytes
-
-    val hash : tree -> Context_hash.t
-
-    val add : tree -> key -> value -> tree Lwt.t
-
-    val find : tree -> key -> value option Lwt.t
-
-    val empty : t -> tree
-
-    val equal : tree -> tree -> bool
-  end
-
-  type tree = Tree.tree
-
-  val commit_tree : t -> string list -> tree -> unit Lwt.t
-
-  val lookup_tree : t -> Hash.t -> tree option Lwt.t
+  type tree
 
   type proof
 
