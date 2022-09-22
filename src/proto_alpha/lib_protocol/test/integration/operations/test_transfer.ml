@@ -832,6 +832,74 @@ let test_storage_fees_and_internal_operation () =
   in
   ()
 
+(** [is_delegate ctxt pkh] returns [true] iff [pkh] refers to a delegate. *)
+let is_delegate ctxt pkh =
+  Context.Contract.delegate_opt ctxt (Contract.Implicit pkh)
+  >|=? fun delegate_opt ->
+  match delegate_opt with
+  | None -> false
+  | Some del_pkh -> Signature.Public_key_hash.(pkh = del_pkh)
+
+(** [test_allocation_status_when_empty b source dest] transfers the balance of
+    [source] into [dest], and checks that source is still allocated if [source]
+    is a delegate, otherwise, checks that then empty [source] is de-allocated. *)
+let test_allocation_status_when_empty b source dest =
+  let source_pkh = Context.Contract.pkh source in
+  Incremental.begin_construction b ~policy:(Block.Excluding [source_pkh])
+  >>=? fun b ->
+  (* get the balance of the source contract *)
+  Context.Contract.balance (I b) source >>=? fun balance ->
+  (* transfer all the tez inside contract 1 *)
+  transfer_and_check_balances ~loc:__LOC__ b source dest balance
+  >>=? fun (b, _) ->
+  Incremental.finalize_block b >>=? fun b ->
+  is_delegate (B b) source_pkh >>=? fun source_is_delegate ->
+  if source_is_delegate then
+    (* Check that contract_1 is still allocated. *)
+    Context.Contract.balance_and_frozen_bonds (B b) source >>=? fun balance ->
+    Assert.equal_tez ~loc:__LOC__ balance Tez.zero
+  else
+    (* Check that source is no longer allocated. *)
+    Context.Contract.balance_and_frozen_bonds (B b) source >>= fun res ->
+    Assert.proto_error_with_info
+      ~loc:__LOC__
+      res
+      "Storage error (fatal internal error)"
+
+(** Calls [test_allocation_status_when_empty] on a delegate. *)
+let test_allocation_status_when_empty_for_delegate () =
+  Context.init2 () >>=? fun (b, (contract_1, contract_2)) ->
+  (* Check allocation status for a delegate. *)
+  test_allocation_status_when_empty b contract_1 contract_2
+
+(** Calls [test_allocation_status_when_empty] on a contract that is not
+    delegated. *)
+let test_allocation_status_when_empty_for_not_delegated () =
+  Context.init2 ~consensus_threshold:0 ()
+  >>=? fun (b, (contract_1, contract_2)) ->
+  (* Check allocation status for an account that is not delegated. *)
+  let new_account = Account.new_account () in
+  let not_delegated = Contract.Implicit new_account.pkh in
+  (* Make sure [not_delegated] is allocated by transferring funds to it. *)
+  Incremental.begin_construction b >>=? fun b ->
+  let random_amount = Tez.of_mutez_exn 1000L in
+  Op.transaction
+    ~force_reveal:true
+    (I b)
+    ~fee:Tez.zero
+    contract_1
+    not_delegated
+    random_amount
+  >>=? fun op ->
+  Incremental.add_operation b op >>=? fun b ->
+  Incremental.finalize_block b >>=? fun b ->
+  (* Assert not_delegated is allocated by fetching its balance. *)
+  Context.Contract.balance_and_frozen_bonds (B b) not_delegated
+  >>=? fun balance ->
+  Assert.equal_tez ~loc:__LOC__ balance random_amount >>=? fun () ->
+  (* Test allocation status of the not delegated account. *)
+  test_allocation_status_when_empty b not_delegated contract_2
+
 let tests =
   [
     (* single transfer *)
@@ -939,4 +1007,12 @@ let tests =
       "storage fees after contract call and allocation"
       `Quick
       test_storage_fees_and_internal_operation;
+    Tztest.tztest
+      "Test allocation status when empty for delegate"
+      `Quick
+      test_allocation_status_when_empty_for_delegate;
+    Tztest.tztest
+      "Test allocation status when empty for not delegated"
+      `Quick
+      test_allocation_status_when_empty_for_not_delegated;
   ]
