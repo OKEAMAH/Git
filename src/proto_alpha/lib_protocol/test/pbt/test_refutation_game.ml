@@ -829,39 +829,8 @@ end
 
 module ArithPVM = Sc_rollup_helpers.Arith_pvm
 
-module Tree_inbox = struct
-  open Inbox
-  module Store = Tezos_context_memory.Context
-
-  type t = Store.t
-
-  type tree = Store.tree
-
-  type proof = Store.Proof.tree Store.Proof.t
-
-  let verify_proof proof f =
-    Lwt.map Result.to_option (Store.verify_tree_proof proof f)
-
-  let produce_proof store tree f =
-    let open Lwt_syntax in
-    let index = Store.index store in
-    let* proof =
-      Store.produce_tree_proof index (`Node (Store.Tree.hash tree)) f
-    in
-    return (Some proof)
-
-  let kinded_hash_to_inbox_hash = function
-    | `Value hash | `Node hash -> Hash.of_context_hash hash
-
-  let proof_before proof = kinded_hash_to_inbox_hash proof.Store.Proof.before
-
-  let proof_encoding =
-    Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V1.Tree32
-    .tree_proof_encoding
-end
-
 module Store_inbox = struct
-  include Inbox.Make_hashing_scheme (Tree_inbox)
+  include Inbox
 end
 
 module Arith_test_pvm = struct

@@ -3056,8 +3056,6 @@ module Sc_rollup : sig
     end
 
     module type Merkelized_operations = sig
-      type tree
-
       val add_messages :
         History.t ->
         t ->
@@ -3125,28 +3123,7 @@ module Sc_rollup : sig
       end
     end
 
-    include Merkelized_operations with type tree = Context.tree
-
-    module type P = sig
-      type t
-
-      type tree
-
-      type proof
-
-      val proof_encoding : proof Data_encoding.t
-
-      val proof_before : proof -> Hash.t
-
-      val verify_proof :
-        proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
-
-      val produce_proof :
-        t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
-    end
-
-    module Make_hashing_scheme (P : P) :
-      Merkelized_operations with type tree = P.tree
+    include Merkelized_operations
 
     val add_external_messages :
       context -> rollup -> string list -> (t * Z.t * context) tzresult Lwt.t

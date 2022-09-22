@@ -187,21 +187,8 @@ module MessageTrees = struct
 end
 
 module Inbox = struct
-  include Sc_rollup.Inbox
   module Message = Sc_rollup.Inbox_message
-
-  include Sc_rollup.Inbox.Make_hashing_scheme (struct
-    include
-      Proof
-        (Hash)
-        (struct
-          let proof_encoding =
-            Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V1.Tree32
-            .tree_proof_encoding
-        end)
-
-    type t = index
-  end)
+  include Sc_rollup.Inbox
 end
 
 (** State of the PVM that this rollup node deals with. *)
