@@ -76,7 +76,6 @@ let test_store_list_size_kernel = "test-store-list-size"
    - `/durable/one`
    - `/durable/three/four`
 *)
-
 let test_store_delete_kernel = "test-store-delete"
 
 (** [check_error kind reason error] checks a Wasm PVM error [error] is of a

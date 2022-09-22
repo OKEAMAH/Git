@@ -15,7 +15,6 @@
   tezos-protocol-014-PtKathma
   tezos-014-PtKathma-test-helpers
   alcotest-lwt
-  tezt
   tezos-stdlib)
  (flags
   (:standard)

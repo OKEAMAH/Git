@@ -40,6 +40,26 @@ open Tezos_scoru_wasm
 module Context = Tezos_context_memory.Context_binary
 include Tree_encoding
 
+(** copied from Tezt.Base*)
+let project_root =
+  match Sys.getenv_opt "DUNE_SOURCEROOT" with
+  | Some x -> x
+  | None -> (
+      match Sys.getenv_opt "PWD" with
+      | Some x -> x
+      | None ->
+          (* For some reason, under [dune runtest], [PWD] and
+             [getcwd] have different values. [getcwd] is in
+             [_build/default], and [PWD] is where [dune runtest] was
+             executed, which is closer to what we want. *)
+          Sys.getcwd ())
+
+let read_file filename =
+  let ch = open_in filename in
+  let s = really_input_string ch (in_channel_length ch) in
+  close_in ch ;
+  s
+
 module Proof_encoding =
   Tezos_context_merkle_proof_encoding.Merkle_proof_encoding
 
@@ -131,13 +151,12 @@ let rec eval_until_input_requested ?(max_steps = Int64.max_int) tree =
   | Input_required -> return tree
 
 let read_binary name =
-  let open Tezt.Base in
   let kernel_file =
-    project_root // "src/lib_scoru_wasm/test/wasm_kernels" // name
+    project_root ^ "/src/lib_scoru_wasm/test/wasm_kernels/" ^ name
   in
   read_file kernel_file
 
-let test_write_debug_kernel = read_binary "tx_kernel_nocrypto.wasm"
+let tx_no_crypto_kernel = read_binary "tx_kernel_nocrypto.wasm"
 
 let deposit = read_binary "deposit.out"
 
