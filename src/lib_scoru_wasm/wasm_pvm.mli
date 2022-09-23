@@ -42,7 +42,23 @@ type tick_state =
   | Stuck of Wasm_pvm_errors.t
   | Snapshot
 
-(** Builds a WASM VM given a concrete implementation of {!Tree.S}. *)
+type pvm_state = {
+  last_input_info : Wasm_pvm_sig.input_info option;
+      (** Info about last read input. *)
+  current_tick : Z.t;  (** Current tick of the PVM. *)
+  durable : Durable.t;  (** The durable storage of the PVM. *)
+  buffers : Tezos_webassembly_interpreter.Eval.buffers;
+      (** Input and outut buffers used by the PVM host functions. *)
+  tick_state : tick_state;  (** The current tick state. *)
+  input_request : Wasm_pvm_sig.input_request;
+      (** Signals whether or not the PVM needs input. *)
+  last_top_level_call : Z.t;
+      (** Last tick corresponding to a top-level call. *)
+  max_nb_ticks : Z.t;  (** Number of ticks between top level call. *)
+}
 
 module Make (T : Tree_encoding.TREE) :
-  Gather_floppies.S with type tree = T.tree and type tick_state = tick_state
+  Gather_floppies.S
+    with type tree = T.tree
+     and type tick_state = tick_state
+     and type pvm_state = pvm_state

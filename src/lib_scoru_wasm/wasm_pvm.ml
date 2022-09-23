@@ -74,12 +74,16 @@ type pvm_state = {
 }
 
 module Make (T : Tree_encoding.TREE) :
-  Gather_floppies.S with type tree = T.tree and type tick_state = tick_state =
-struct
+  Gather_floppies.S
+    with type tree = T.tree
+     and type tick_state = tick_state
+     and type pvm_state = pvm_state = struct
   module Raw = struct
     type tree = T.tree
 
     type nonrec tick_state = tick_state
+
+    type nonrec pvm_state = pvm_state
 
     module Tree_encoding_runner = Tree_encoding.Runner.Make (T)
     module Parsing = Binary_parser_encodings
@@ -416,17 +420,9 @@ struct
       in
       return pvm_state
 
-    let compute_step_many ~max_steps tree =
+    let compute_step_many_until ?(max_steps = 1L) should_continue tree =
       let open Lwt.Syntax in
       assert (max_steps > 0L) ;
-
-      let should_continue pvm_state =
-        match (pvm_state.input_request, pvm_state.tick_state) with
-        | Wasm_pvm_sig.Input_required, _ -> false
-        | _, Stuck _ -> false
-        | _ -> true
-      in
-
       let rec go steps_left pvm_state =
         if steps_left > 0L && should_continue pvm_state then
           let* pvm_state = compute_step_inner pvm_state in
@@ -458,6 +454,15 @@ struct
       let* tree = T.remove tree ["wasm"] in
 
       Tree_encoding_runner.encode pvm_state_encoding pvm_state tree
+
+    let compute_step_many ~max_steps tree =
+      let should_continue pvm_state =
+        match (pvm_state.input_request, pvm_state.tick_state) with
+        | Wasm_pvm_sig.Input_required, _ -> false
+        | _, Stuck _ -> false
+        | _ -> true
+      in
+      compute_step_many_until ~max_steps should_continue tree
 
     let compute_step tree = compute_step_many ~max_steps:1L tree
 
@@ -557,6 +562,8 @@ struct
         match pvm.tick_state with
         | Stuck error -> Lwt.return_some error
         | _ -> Lwt.return_none
+
+      let compute_step_many_until = compute_step_many_until
 
       let set_max_nb_ticks n tree =
         let open Lwt_syntax in
