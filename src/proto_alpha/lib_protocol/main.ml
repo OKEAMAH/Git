@@ -414,4 +414,4 @@ module Mempool = struct
          ~grandparent_round)
 end
 
-(* Vanity nonce: TBD *)
+(* Vanity nonce: 0496968569605953 *)
