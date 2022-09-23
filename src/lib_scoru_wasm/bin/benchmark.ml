@@ -187,7 +187,52 @@ let set_input_step message_counter message tree =
   in
   Wasm.set_input_step input_info message tree
 
-type action = Wasm.tree -> Wasm.tree Lwt.t
+type datum = {section : string; label : string; ticks : Z.t; time : float}
+
+let make_datum section label ticks time = {section; label; ticks; time}
+
+let pp_csv_line section label ticks time =
+  Printf.printf
+    "\"%s\" , \"%s\" ,  %s ,  %f \n%!"
+    section
+    label
+    (Z.to_string ticks)
+    time
+
+let pp_datum {section; label; ticks; time} =
+  if section != label then pp_csv_line section label ticks time
+  else pp_csv_line section "total" ticks time
+
+type benchmark = {
+  current_section : string;
+  data : datum list;
+  total_time : float;
+  total_tick : Z.t;
+}
+
+let empty_benchmark current_section =
+  {current_section; data = []; total_time = 0.; total_tick = Z.zero}
+
+let switch_section benchmark current_section = {benchmark with current_section}
+
+let add_datum benchmark name ticks time =
+  let datum = make_datum benchmark.current_section name ticks time in
+  {benchmark with data = datum :: benchmark.data}
+
+let add_final_info benchmark total_time total_tick =
+  {benchmark with total_time; total_tick}
+
+let pp_benchmark benchmark =
+  let rec go = function
+    | [] -> ()
+    | datum :: q ->
+        pp_datum datum ;
+        go q
+  in
+  go (List.rev benchmark.data) ;
+  pp_csv_line "total" "total" benchmark.total_tick benchmark.total_time
+
+type action = benchmark -> Wasm.tree -> (benchmark * Wasm.tree) Lwt.t
 
 type scenario_step = string * action
 
@@ -198,7 +243,8 @@ let make_scenario kernel actions = {kernel; actions}
 let make_action (label : string) (action : action) : scenario_step =
   (label, action)
 
-let run_action ?(inline = true) ?(last_tick = false) name tree action =
+let run_action ?(inline = true) ?(last_tick = false) benchmark name tree action
+    =
   let open Lwt_syntax in
   (* Before *)
   let before = Unix.gettimeofday () in
@@ -213,7 +259,7 @@ let run_action ?(inline = true) ?(last_tick = false) name tree action =
   in
 
   (* Act *)
-  let* tree = action tree in
+  let* benchmark, tree = action benchmark tree in
 
   (* Result *)
   let time = Unix.gettimeofday () -. before in
@@ -231,41 +277,71 @@ let run_action ?(inline = true) ?(last_tick = false) name tree action =
         (Z.to_string info.current_tick)
         (tick_label tick_state)
   in
-  return tree
+  return (add_datum benchmark name tick time, tree)
 
-let exec_loop tree =
+let raise action =
   let open Lwt_syntax in
-  let* tree = run_action "Decoding" tree Exec.decode in
-  let* tree = run_action "Linking" tree Exec.link in
-  let* tree = run_action "Initialisation" tree Exec.init in
-  let* tree = run_action "Evaluation" tree Exec.eval in
-  let* tree = run_action "Finish" tree Exec.finish_top_level_call in
-  return tree
+  fun benchmark tree ->
+    let* tree = action tree in
+    return (benchmark, tree)
 
-let action_from_message step message tree =
+let exec_loop benchmark tree =
+  let open Lwt_syntax in
+  let* benchmark, tree =
+    run_action benchmark "Decoding" tree (raise Exec.decode)
+  in
+  let* benchmark, tree =
+    run_action benchmark "Linking" tree (raise Exec.link)
+  in
+  let* benchmark, tree =
+    run_action benchmark "Initialisation" tree (raise Exec.init)
+  in
+  let* benchmark, tree =
+    run_action benchmark "Evaluation" tree (raise Exec.eval)
+  in
+  let* benchmark, tree =
+    run_action benchmark "Finish" tree (raise Exec.finish_top_level_call)
+  in
+  return (benchmark, tree)
+
+let action_from_message step message benchmark tree =
   let open Lwt_syntax in
   let message = read_message message in
   let* tree = set_input_step step message tree in
-  exec_loop tree
+  exec_loop benchmark tree
 
 let run_scenario scenario =
   let open Lwt_syntax in
   let kernel = scenario.kernel in
   let apply_scenario kernel =
-    let rec go tree = function
-      | [] -> return tree
+    let rec go benchmark tree = function
+      | [] -> return (benchmark, tree)
       | (label, action) :: q ->
-          let* tree =
-            run_action ~last_tick:true ~inline:false label tree action
+          let benchmark = switch_section benchmark label in
+          let* benchmark, tree =
+            run_action ~last_tick:true ~inline:false benchmark label tree action
           in
-          go tree q
+          go benchmark tree q
     in
-
+    let start = Unix.gettimeofday () in
     let* _, tree = initial_boot_sector_from_kernel kernel in
-    let* tree =
-      run_action ~last_tick:true ~inline:false "Booting" tree exec_loop
+    let benchmark = empty_benchmark "Booting" in
+    let* benchmark, tree =
+      run_action
+        ~last_tick:true
+        ~inline:false
+        benchmark
+        "Booting"
+        tree
+        exec_loop
     in
-    let* _ = go tree scenario.actions in
+    let* benchmark, tree = go benchmark tree scenario.actions in
+    let finish = Unix.gettimeofday () in
+    let* info = Wasm.get_info tree in
+    let benchmark =
+      add_final_info benchmark (finish -. start) info.current_tick
+    in
+    pp_benchmark benchmark ;
     return ()
   in
   run kernel apply_scenario
@@ -274,13 +350,13 @@ let scenario_tx_kernel =
   make_scenario
     "src/lib_scoru_wasm/test/wasm_kernels/tx_kernel.wasm"
     [
-      make_action "incorrect input" (fun tree ->
+      make_action "incorrect input" (fun benchmark tree ->
           let open Lwt_syntax in
           let message = "test" in
           let* tree = set_input_step 1_000 message tree in
-          exec_loop tree);
-      make_action "Deposit" (action_from_message 1_001 "deposit");
-      make_action "Withdraw" (action_from_message 1_002 "withdrawal");
+          exec_loop benchmark tree);
+      make_action "Deposit" (action_from_message 1_001 "deposit")
+      (* make_action "Withdraw" (action_from_message 1_002 "withdrawal"); *);
     ]
 
 let () = Lwt_main.run @@ run_scenario scenario_tx_kernel
