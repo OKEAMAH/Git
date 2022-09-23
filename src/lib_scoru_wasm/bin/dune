@@ -2,7 +2,7 @@
 ; Edit file manifest/main.ml instead.
 
 (executable
- (name csv)
+ (name benchmark)
  (public_name octez-scoru-wasm-csv)
  (package octez-scoru-wasm-csv)
  (instrumentation

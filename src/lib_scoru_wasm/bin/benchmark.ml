@@ -38,7 +38,7 @@ let read_message name =
   in
   read_file kernel_file
 
-let initial_boot_sector_from_kernel kernel =
+let initial_boot_sector_from_kernel ?(max_tick = 2_500_000_000) kernel =
   let open Lwt_syntax in
   let* index = Context.init "/tmp" in
   let context = Context.empty index in
@@ -54,28 +54,28 @@ let initial_boot_sector_from_kernel kernel =
       origination_message
   in
   let+ tree =
-    Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int 2_500_000_000) tree
+    Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int max_tick) tree
   in
   (context, tree)
+(*
+   let produce_proof context tree kont =
+     let open Lwt_syntax in
+     let* context = Context.add_tree context [] tree in
+     let _hash = Context.commit ~time:Time.Protocol.epoch context in
+     let index = Context.index context in
+     match Context.Tree.kinded_key tree with
+     | Some k -> Context.produce_tree_proof index k kont
+     | None ->
+         Stdlib.failwith
+           "produce_proof: internal error, [kinded_key] returned [None]"
 
-let produce_proof context tree kont =
-  let open Lwt_syntax in
-  let* context = Context.add_tree context [] tree in
-  let _hash = Context.commit ~time:Time.Protocol.epoch context in
-  let index = Context.index context in
-  match Context.Tree.kinded_key tree with
-  | Some k -> Context.produce_tree_proof index k kont
-  | None ->
-      Stdlib.failwith
-        "produce_proof: internal error, [kinded_key] returned [None]"
-
-let proof_size proof =
-  let encoding =
-    Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V2.Tree2
-    .tree_proof_encoding
-  in
-  let bytes = Data_encoding.Binary.to_bytes_exn encoding proof in
-  Bytes.length bytes
+   let proof_size proof =
+     let encoding =
+       Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V2.Tree2
+       .tree_proof_encoding
+     in
+     let bytes = Data_encoding.Binary.to_bytes_exn encoding proof in
+     Bytes.length bytes *)
 
 let label_step_kont = function
   | Eval.LS_Start _ -> "ls_start"
@@ -120,39 +120,15 @@ let tick_label = function
   | Stuck _ -> "stuck"
   | Link _ -> "link"
 
-let print_tick_info context tree =
-  let open Lwt_syntax in
-  let* proof, _ =
-    produce_proof context tree (fun tree ->
-        let* tree = Wasm.compute_step tree in
-        return (tree, ()))
-  in
-  let* tick = Wasm.Internal_for_tests.get_tick_state tree in
-  let* info = Wasm.get_info tree in
-  Format.printf
-    "%s: %s, %d\n"
-    (Z.to_string info.current_tick)
-    (tick_label tick)
-    (proof_size proof) ;
-  return ()
-
-let print_info tree =
-  let open Lwt_syntax in
-  let* info = Wasm.get_info tree in
-  let* tick = Wasm.Internal_for_tests.get_tick_state tree in
-  Format.printf "%s (%s)\n%!" (Z.to_string info.current_tick) (tick_label tick) ;
-  return ()
-
-let rec eval_until_input_requested ?(tick_info = false) context tree =
+let rec eval_until_input_requested tree =
   let open Lwt_syntax in
   let* info = Wasm.get_info tree in
   match info.input_request with
   | No_input_required ->
-      let _ = if tick_info then print_tick_info context tree else return () in
       let* tree =
         Wasm.Internal_for_tests.compute_step_many ~max_steps:Int64.max_int tree
       in
-      eval_until_input_requested ~tick_info context tree
+      eval_until_input_requested tree
   | Input_required -> return tree
 
 let run kernel k =
@@ -176,52 +152,79 @@ let set_input_step message_counter message tree =
   in
   Wasm.set_input_step input_info message tree
 
-let run_bench name tree bench =
+type action = Wasm.tree -> Wasm.tree Lwt.t
+
+let action_from_message step message tree =
   let open Lwt_syntax in
-  let time = Unix.gettimeofday () in
-  let _ = Printf.printf "=========\n%s \nStart at %f\n%!" name time in
-  let* tree = bench tree in
-  let time = Unix.gettimeofday () -. time in
-  let _ = Printf.printf "took %f s\n%!" time in
-  let _ = print_info tree in
+  let message = read_message message in
+  let* tree = set_input_step step message tree in
+  eval_until_input_requested tree
+
+type scenario_step = string * action
+
+type scenario = {kernel : string; actions : scenario_step list}
+
+let make_scenario kernel actions = {kernel; actions}
+
+let make_action (label : string) (action : action) : scenario_step =
+  (label, action)
+
+let run_action name tree action =
+  let open Lwt_syntax in
+  let before = Unix.gettimeofday () in
+  let* info = Wasm.get_info tree in
+  let before_tick = info.current_tick in
+  let _ =
+    Printf.printf
+      "=========\n%s \nStart at tick %s\n%!"
+      name
+      (Z.to_string info.current_tick)
+  in
+  let* tree = action tree in
+  let time = Unix.gettimeofday () -. before in
+  let* info = Wasm.get_info tree in
+  let tick = Z.(info.current_tick - before_tick) in
+  let* tick_state = Wasm.Internal_for_tests.get_tick_state tree in
+  let _ = Printf.printf "took %s ticks in %f s\n%!" (Z.to_string tick) time in
+  let _ =
+    Printf.printf
+      "last tick: %s %s\n%!"
+      (Z.to_string info.current_tick)
+      (tick_label tick_state)
+  in
   return tree
 
-let () =
-  let kernel = Sys.argv.(1) in
-  Lwt_main.run
-  @@ run kernel (fun kernel ->
-         let open Lwt_syntax in
-         let* context, tree = initial_boot_sector_from_kernel kernel in
-         let* tree =
-           run_bench "Boot on empty" tree (fun tree ->
-               eval_until_input_requested ~tick_info:false context tree)
-         in
-         let* tree =
-           run_bench "Incorrect input " tree (fun tree ->
-               let message = "test" in
-               let* tree = set_input_step 1_000 message tree in
-               eval_until_input_requested ~tick_info:false context tree)
-         in
-         let* tree =
-           run_bench "Deposit " tree (fun tree ->
-               let message = read_message "deposit" in
-               let* tree = set_input_step 1_001 message tree in
-               eval_until_input_requested ~tick_info:false context tree)
-         in
-         let* tree =
-           run_bench "Just Withdrawal " tree (fun tree ->
-               let message = read_message "withdrawal" in
-               let* tree = set_input_step 1_002 message tree in
-               eval_until_input_requested ~tick_info:false context tree)
-         in
-         let* tree =
-           run_bench "Deposit + Withdrawal " tree (fun tree ->
-               let message = read_message "deposit" in
-               let* tree = set_input_step 1_003 message tree in
-               let message = read_message "withdrawal" in
-               let* tree = set_input_step 1_004 message tree in
-               eval_until_input_requested ~tick_info:false context tree)
-         in
+let run_scenario scenario =
+  let open Lwt_syntax in
+  let kernel = scenario.kernel in
+  let aux kernel =
+    let rec go tree = function
+      | [] -> return tree
+      | (label, action) :: q ->
+          let* tree = run_action label tree action in
+          go tree q
+    in
+    let* _, tree = initial_boot_sector_from_kernel kernel in
+    let* tree =
+      run_action "Boot on empty" tree (fun tree ->
+          eval_until_input_requested tree)
+    in
+    let* _ = go tree scenario.actions in
+    return ()
+  in
+  run kernel aux
 
-         let _ = print_info tree in
-         return ())
+let scenario_tx_kernel =
+  make_scenario
+    "src/lib_scoru_wasm/test/wasm_kernels/tx_kernel.wasm"
+    [
+      make_action "incorrect input" (fun tree ->
+          let open Lwt_syntax in
+          let message = "test" in
+          let* tree = set_input_step 1_000 message tree in
+          eval_until_input_requested tree);
+      make_action "Deposit" (action_from_message 1_001 "deposit");
+      make_action "Withdraw" (action_from_message 1_002 "deposit");
+    ]
+
+let () = Lwt_main.run @@ run_scenario scenario_tx_kernel
