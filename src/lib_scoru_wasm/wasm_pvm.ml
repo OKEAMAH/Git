@@ -37,6 +37,8 @@ let wasm_entrypoint = "kernel_next"
    (so 100x 2 billion ticks) *)
 let wasm_max_tick = Z.of_int 200_000_000_000
 
+let no_max_tick = true
+
 module Wasm = Tezos_webassembly_interpreter
 
 type tick_state =
@@ -255,7 +257,7 @@ module Make (T : Tree_encoding.TREE) :
       | Stuck e -> return ~status:Failing (Stuck e)
       | Snapshot -> return ~status:Restarting tick_state
       | Eval {step_kont = Wasm.Eval.(SK_Result _); _}
-        when is_time_for_snapshot pvm_state ->
+        when is_time_for_snapshot pvm_state || no_max_tick ->
           (* We have an empty set of admin instructions *)
           return ~status:Running Snapshot
       | _ when is_time_for_snapshot pvm_state ->
