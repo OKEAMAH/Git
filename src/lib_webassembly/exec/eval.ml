@@ -607,6 +607,7 @@ let invoke_step ~init ?(durable = Durable_storage.empty)
   | Inv_reveal_tick {revealed_bytes = None; _} ->
       (* This is a reveal tick, not an evaluation tick. The PVM should
          prevent this execution path. *)
+      Format.printf "Inv_reveal_tick { revealed_bytes = None }\n%!" ;
       raise (Evaluation_step_error Invoke_step)
   | Inv_reveal_tick {revealed_bytes = Some revealed_bytes; code; _} ->
       let vs, es = code in
@@ -746,6 +747,7 @@ let step_instr module_reg frame label vs at e' es_rst stack :
         else [Plain (Br (Lib.List32.nth xs i)) @@ at])
   | Return -> return_label_kont_with_code (Vector.empty ()) [Returning vs @@ at]
   | Call x ->
+      Format.printf "\nCALLING:%ld\n%!" x.it ;
       let* inst = resolve_module_ref module_reg frame.inst in
       let+ func = func inst x in
       label_kont_with_code vs [Invoke func @@ at]

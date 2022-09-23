@@ -362,4 +362,7 @@ module Internal_for_tests = struct
 
   let store_list_size =
     Func.HostFunc (store_list_size_type, store_list_size_name)
+
+  let reveal_preimage =
+    Func.HostFunc (reveal_preimage_type, reveal_preimage_name)
 end

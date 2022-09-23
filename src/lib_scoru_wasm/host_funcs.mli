@@ -108,4 +108,6 @@ module Internal_for_tests : sig
   val store_delete : Tezos_webassembly_interpreter.Instance.func_inst
 
   val store_list_size : Tezos_webassembly_interpreter.Instance.func_inst
+
+  val reveal_preimage : Tezos_webassembly_interpreter.Instance.func_inst
 end

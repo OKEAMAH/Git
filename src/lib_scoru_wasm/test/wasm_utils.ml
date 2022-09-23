@@ -71,9 +71,23 @@ let eval_until_stuck ?(max_steps = 20000L) tree =
 let rec eval_until_input_requested ?(max_steps = Int64.max_int) tree =
   let open Lwt_syntax in
   let* info = Wasm.get_info tree in
+  let _ = max_steps in
   match info.input_request with
   | No_input_required ->
-      let* tree = Wasm.Internal_for_tests.compute_step_many ~max_steps tree in
+      let* tree = Wasm.compute_step tree in
+      let* tick_state = Wasm.Internal_for_tests.get_tick_state tree in
+      let () =
+        match tick_state with
+        | Decode _ -> Format.printf "Decode\n%!"
+        | Link _ -> Format.printf "Link\n%!"
+        | Init _ -> Format.printf "Init\n%!"
+        | Eval _ -> Format.printf "Eval\n%!"
+        | Stuck e ->
+            Format.printf
+              "Stuck: %a\n%!"
+              Test_wasm_pvm_encodings.pp_error_state
+              e
+      in
       eval_until_input_requested tree
   | Input_required -> return tree
   | Reveal_required _ -> return tree
@@ -88,3 +102,52 @@ let rec eval_until_init tree =
   | _ ->
       let* tree = Wasm.compute_step tree in
       eval_until_init tree
+
+let current_tick_encoding =
+  Tree_encoding.value ["wasm"; "current_tick"] Data_encoding.n
+
+(* Replicates the encoder in [Wasm_pvm]. Used here for artificially encode
+   input info in the tree. *)
+let input_requested_encoding =
+  Tree_encoding.value ~default:false ["input"; "consuming"] Data_encoding.bool
+
+(* Replicates the encoding of buffers from [Wasm_pvm] as part of the pvm_state. *)
+let buffers_encoding =
+  Tree_encoding.scope ["pvm"; "buffers"] Wasm_encoding.buffers_encoding
+
+let floppy_encoding =
+  Tree_encoding.value
+    ["gather-floppies"; "status"]
+    Gather_floppies.internal_status_encoding
+
+(** Artificial initialization. Under normal circumstances the changes in
+    [current_tick], [gather_floppies] and [status] will be done by the other
+    PVM operations. for example the [origination_kernel_loading_step] in
+    Gather_floppies will initialize both the [current_tick] and the
+    [gather_floppies] *)
+let initialise_tree () =
+  let open Lwt_syntax in
+  let* empty_tree = empty_tree () in
+  let boot_sector =
+    Data_encoding.Binary.to_string_exn
+      Gather_floppies.origination_message_encoding
+      (Complete_kernel (Bytes.of_string "some boot sector"))
+  in
+  let* tree =
+    Wasm.Internal_for_tests.initial_tree_from_boot_sector
+      ~empty_tree
+      boot_sector
+  in
+
+  let* tree = Tree_encoding_runner.encode current_tick_encoding Z.zero tree in
+  let* tree =
+    Tree_encoding_runner.encode
+      floppy_encoding
+      Gather_floppies.Not_gathering_floppies
+      tree
+  in
+  let* tree = Tree_encoding_runner.encode input_requested_encoding true tree in
+  Tree_encoding_runner.encode
+    buffers_encoding
+    (Tezos_webassembly_interpreter.Eval.buffers ())
+    tree

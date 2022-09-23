@@ -34,89 +34,19 @@
 open Tztest
 open Tezos_webassembly_interpreter
 open Tezos_scoru_wasm
+open Test_encodings_util
+open Wasm_utils
 
 (* Use context-binary for testing. *)
 module Context = Tezos_context_memory.Context_binary
 module Vector = Lazy_containers.Lazy_vector.Int32Vector
 
-let empty_tree () =
-  let open Lwt_syntax in
-  let* index = Context.init "/tmp" in
-  let empty_store = Context.empty index in
-  return @@ Context.Tree.empty empty_store
-
-type Lazy_containers.Lazy_map.tree += Tree of Context.tree
-
-module Tree : Tree_encoding.TREE with type tree = Context.tree = struct
-  type tree = Context.tree
-
-  include Context.Tree
-
-  let select = function
-    | Tree t -> t
-    | _ -> raise Tree_encoding.Incorrect_tree_type
-
-  let wrap t = Tree t
-end
-
-module Wasm = Wasm_pvm.Make (Tree)
-module Tree_encoding_runner = Tree_encoding.Runner.Make (Tree)
-
-let current_tick_encoding =
-  Tree_encoding.value ["wasm"; "current_tick"] Data_encoding.n
-
-(* Replicates the encoder in [Wasm_pvm]. Used here for artificially encode
-   input info in the tree. *)
-let input_requested_encoding =
-  Tree_encoding.value ~default:false ["input"; "consuming"] Data_encoding.bool
-
-let floppy_encoding =
-  Tree_encoding.value
-    ["gather-floppies"; "status"]
-    Gather_floppies.internal_status_encoding
-
 let inp_encoding = Tree_encoding.value ["input"; "0"; "1"] Data_encoding.string
-
-(* Replicates the encoding of buffers from [Wasm_pvm] as part of the pvm_state. *)
-let buffers_encoding =
-  Tree_encoding.scope ["pvm"; "buffers"] Wasm_encoding.buffers_encoding
 
 let zero =
   WithExceptions.Option.get
     ~loc:__LOC__
     (Bounded.Non_negative_int32.of_value 0l)
-
-(** Artificial initialization. Under normal circumstances the changes in
-    [current_tick], [gather_floppies] and [status] will be done by the other
-    PVM operations. for example the [origination_kernel_loading_step] in
-    Gather_floppies will initialize both the [current_tick] and the
-    [gather_floppies] *)
-let initialise_tree () =
-  let open Lwt_syntax in
-  let* empty_tree = empty_tree () in
-  let boot_sector =
-    Data_encoding.Binary.to_string_exn
-      Gather_floppies.origination_message_encoding
-      (Complete_kernel (Bytes.of_string "some boot sector"))
-  in
-  let* tree =
-    Wasm.Internal_for_tests.initial_tree_from_boot_sector
-      ~empty_tree
-      boot_sector
-  in
-
-  let* tree = Tree_encoding_runner.encode current_tick_encoding Z.zero tree in
-  let* tree =
-    Tree_encoding_runner.encode
-      floppy_encoding
-      Gather_floppies.Not_gathering_floppies
-      tree
-  in
-  let* tree = Tree_encoding_runner.encode input_requested_encoding true tree in
-  Tree_encoding_runner.encode
-    buffers_encoding
-    (Tezos_webassembly_interpreter.Eval.buffers ())
-    tree
 
 let make_inbox_info ~inbox_level ~message_counter =
   Wasm_pvm_sig.
