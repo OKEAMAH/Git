@@ -243,4 +243,32 @@ module Slots_history : sig
 
   (** Pretty-printer for {!proof}. *)
   val pp_proof : Format.formatter -> proof -> unit
+
+  (** To verify the proof of a page membership in its associated slot, the
+     Cryptobox module needs the following parameters. *)
+  type dal_parameters = Dal.parameters = {
+    redundancy_factor : int;
+    page_size : int;
+    slot_size : int;
+    number_of_shards : int;
+  }
+
+  (** [produce_proof dal_parameters page_id page_info slots_hist hist_cache]
+      produces a proof that either:
+      - there exists a confirmed slot in the skip list that contains
+        the page identified by [page_id] whose data and slot inclusion proof
+        are given by [page_info], or
+      - there cannot exist a confirmed slot in the skip list (whose head is
+        given by [slots_hist]) containing the page identified by [page_id].
+
+      [dal_parameters] is used when verifying that/if the page is part of
+      the candidate slot (if any).
+  *)
+  val produce_proof :
+    dal_parameters ->
+    Page.t ->
+    page_info:(Page.t -> (Page.content * Page.proof) option tzresult Lwt.t) ->
+    t ->
+    History_cache.t ->
+    (proof * Page.content option) tzresult Lwt.t
 end

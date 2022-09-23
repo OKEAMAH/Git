@@ -558,6 +558,139 @@ module Slots_history = struct
             (List.length next_inc_proof)
             pp_inclusion_proof
             next_inc_proof
+
+    type dal_parameters = Dal.parameters = {
+      redundancy_factor : int;
+      page_size : int;
+      slot_size : int;
+      number_of_shards : int;
+    }
+
+    type error += Dal_proof_error of string
+
+    let () =
+      let open Data_encoding in
+      register_error_kind
+        `Permanent
+        ~id:"dal_slot_repr.slots_history.dal_proof_error"
+        ~title:"Dal proof error"
+        ~description:"Error occurred during Dal proof production or validation"
+        ~pp:(fun ppf e -> Format.fprintf ppf "Dal proof error: %s" e)
+        (obj1 (req "error" string))
+        (function Dal_proof_error e -> Some e | _ -> None)
+        (fun e -> Dal_proof_error e)
+
+    let dal_proof_error reason = Dal_proof_error reason
+
+    let proof_error reason = fail @@ dal_proof_error reason
+
+    let check_page_proof dal_params proof data pid slot_header =
+      let open Lwt_tzresult_syntax in
+      let* dal =
+        match Dal.make dal_params with
+        | Ok dal -> return dal
+        | Error (`Fail s) -> proof_error s
+      in
+      let page = {Dal.content = data; index = pid.Page.page_index} in
+      let fail_with_error_msg what =
+        Format.kasprintf
+          proof_error
+          "%s (page data=%s, page id=%a, commitment=%a)."
+          what
+          (Bytes.to_string data)
+          Page.pp
+          pid
+          Header.pp
+          slot_header
+      in
+      match Dal.verify_page dal slot_header page proof with
+      | Ok true -> return ()
+      | Ok false ->
+          fail_with_error_msg
+            "Wrong page content for the given page index and slot commitment"
+      | Error `Segment_index_out_of_range ->
+          fail_with_error_msg "Segment_index_out_of_range"
+      | Error (`Degree_exceeds_srs_length s) ->
+          fail_with_error_msg
+          @@ Format.sprintf "Degree_exceeds_srs_length: %s" s
+
+    let produce_proof dal_params page_id ~page_info slots_hist hist_cache =
+      let open Lwt_tzresult_syntax in
+      let Page.{slot_id; page_index = _} = page_id in
+      let deref ptr = History_cache.find ptr hist_cache in
+      (* We search for a slot whose ID is equal to target_id. *)
+      let*! search_result =
+        Skip_list.search ~deref ~target_id:slot_id ~cell:slots_hist
+      in
+      match search_result.Skip_list.last_cell with
+      | Deref_returned_none ->
+          proof_error
+            "Skip_list.search returned 'Deref_returned_none': Slots history \
+             cache is ill-formed or has too few entries."
+      | No_exact_or_lower_ptr ->
+          proof_error
+            "Skip_list.search returned 'No_exact_or_lower_ptr', while it is \
+             initialized with a min elt (slot zero)."
+      | Found target_cell -> (
+          (* The slot to which the page is supposed to belong is found. *)
+          let {id; header} = Skip_list.content target_cell in
+          (* We check that the slot is not the dummy slot. *)
+          let* () =
+            fail_when
+              Compare.Int.(compare_slot_id id zero.id = 0)
+              (dal_proof_error
+                 "Skip_list.search returned 'Found <zero_slot>': No existence \
+                  proof should be constructed with the slot zero.")
+          in
+          let* info = page_info page_id in
+          match info with
+          | None ->
+              proof_error
+                "produce_proof needs page's info (data and proof) to construct \
+                 the proof, but no info are given."
+          | Some (page_data, page_proof) ->
+              (* We check that the page actually belongs to the slot we found
+                 at the given page index. *)
+              let* () =
+                check_page_proof dal_params page_proof page_data page_id header
+              in
+              let inc_proof = List.rev search_result.Skip_list.rev_path in
+              let* () =
+                fail_when
+                  (List.is_empty inc_proof)
+                  (dal_proof_error "The inclusion proof cannot be empty")
+              in
+              (* All checks succeeded. We return a `Page_confirmed` proof. *)
+              let status =
+                Page_confirmed {inc_proof; target_cell; page_data; page_proof}
+              in
+              return (status, Some page_data))
+      | Nearest {lower = prev_cell; upper = next_cell_opt} ->
+          (* There is no previously confirmed slot in the skip list whose ID
+             corresponds to the {published_level; slot_index} information
+             given in [page_id]. But, `search` returned a skip list [prev_cell]
+             (and possibly [next_cell_opt]) such that:
+             - the ID of [prev_cell]'s slot is the biggest immediately smaller than
+               the page's information {published_level; slot_index}
+             - if not equal to [None], the ID of [next_cell_opt]'s slot is the smallest
+               immediately bigger than the page's slot id `slot_id`.
+             - if [next_cell_opt] is [None] then, [prev_cell] should be equal to
+               the given history_proof cell. *)
+          let* next_inc_proof =
+            match search_result.Skip_list.rev_path with
+            | [] -> assert false (* Not reachable *)
+            | prev :: rev_next_inc_proof ->
+                let* () =
+                  fail_unless
+                    (equal_history prev prev_cell)
+                    (dal_proof_error
+                       "Internal error: search's Nearest result is \
+                        inconsistent.")
+                in
+                return @@ List.rev rev_next_inc_proof
+          in
+          return
+            (Page_unconfirmed {prev_cell; next_cell_opt; next_inc_proof}, None)
   end
 
   include V1
