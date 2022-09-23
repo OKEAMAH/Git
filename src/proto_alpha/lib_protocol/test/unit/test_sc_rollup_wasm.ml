@@ -34,6 +34,8 @@
 *)
 
 open Protocol
+open Tezos_micheline.Micheline
+open Michelson_v1_primitives
 
 (* open Alpha_context *)
 open Tezos_scoru_wasm
@@ -105,7 +107,8 @@ module Wasm_context = struct
   let proof_encoding = Proof_encoding.V2.Tree32.tree_proof_encoding
 end
 
-module Full_Wasm = Sc_rollup_wasm.V2_0_0.Make (Wasm_context)
+module Full_Wasm =
+  Sc_rollup_wasm.V2_0_0.Make (Environment.Wasm_2_0_0.Make) (Wasm_context)
 
 type Lazy_containers.Lazy_map.tree += Tree of Context.tree
 
@@ -146,7 +149,7 @@ let rec eval_until_input_requested ?(max_steps = Int64.max_int) tree =
   let* info = Wasm.get_info tree in
   match info.input_request with
   | No_input_required ->
-      let* tree = Wasm.Internal_for_tests.compute_step_many ~max_steps tree in
+      let* tree = Wasm.compute_step_many ~max_steps tree in
       eval_until_input_requested ~max_steps tree
   | Input_required -> return tree
 
@@ -156,11 +159,7 @@ let read_binary name =
   in
   read_file kernel_file
 
-let tx_no_crypto_kernel = read_binary "tx_kernel_nocrypto.wasm"
-
-let deposit = read_binary "messages/deposit.out"
-
-let withdrawal = read_binary "messages/withdrawal.out"
+let pipe_kernel = read_binary "pipe.wasm"
 
 let test_initial_state_hash_wasm_pvm () =
   let open Lwt_result_syntax in
@@ -199,6 +198,30 @@ let test_incomplete_kernel_chunk_limit () =
   | None -> return_unit
   | Some _ -> failwith "encoding of a floppy with a chunk too large should fail"
 
+let make_transaction value text contract =
+  let entrypoint = Entrypoint_repr.default in
+  let destination : Contract_hash.t =
+    Contract_hash.of_bytes_exn @@ Bytes.of_string contract
+  in
+  let unparsed_parameters =
+    strip_locations
+    @@ Prim
+         ( 0,
+           I_TICKET,
+           [Prim (0, I_PAIR, [Int (0, Z.of_int32 value); String (1, text)], [])],
+           [] )
+  in
+  Sc_rollup_outbox_message_repr.{unparsed_parameters; entrypoint; destination}
+
+let make_transactions () =
+  let l =
+    QCheck2.Gen.(
+      generate1
+      @@ small_list
+           (triple (string_size @@ return 20) int32 (small_string ~gen:char)))
+  in
+  List.map (fun (contract, i, s) -> make_transaction i s contract) l
+
 let test_output () =
   let open Lwt_result_syntax in
   let*! dummy = Context.init "/tmp" in
@@ -207,7 +230,7 @@ let test_output () =
   let boot_sector =
     Data_encoding.Binary.to_string_exn
       Gather_floppies.origination_message_encoding
-      (Gather_floppies.Complete_kernel (String.to_bytes tx_no_crypto_kernel))
+      (Gather_floppies.Complete_kernel (String.to_bytes pipe_kernel))
   in
   let*! tree =
     Wasm.Internal_for_tests.initial_tree_from_boot_sector
@@ -218,8 +241,16 @@ let test_output () =
     Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int64 50_000_000L) tree
   in
   let*! tree = eval_until_input_requested tree in
-  let*! tree = set_input_step deposit 0 tree in
-  let*! tree = set_input_step withdrawal 1 tree in
+  let transactions = make_transactions () in
+  let out =
+    Sc_rollup_outbox_message_repr.(Atomic_transaction_batch {transactions})
+  in
+  let withdrawal =
+    Data_encoding.Binary.to_string_exn
+      Sc_rollup_outbox_message_repr.encoding
+      out
+  in
+  let*! tree = set_input_step withdrawal 0 tree in
   let*! final_tree = eval_until_input_requested tree in
   let*! output = Wasm.Internal_for_tests.get_output_buffer final_tree in
   let*! level, message_index =
@@ -233,6 +264,7 @@ let test_output () =
       Sc_rollup_outbox_message_repr.encoding
       bytes
   in
+  assert (message = out) ;
   let*? outbox_level =
     Environment.wrap_tzresult @@ Raw_level_repr.of_int32 level
   in

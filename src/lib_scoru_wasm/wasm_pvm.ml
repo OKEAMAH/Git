@@ -489,7 +489,7 @@ struct
       let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
       let* tick_state =
         match pvm_state.tick_state with
-        | Decode _ | Eval _ ->
+        | Eval _ ->
             let+ () =
               Wasm.Input_buffer.(
                 enqueue
@@ -510,6 +510,9 @@ struct
             Decode
               (Tezos_webassembly_interpreter.Decode.initial_decode_kont
                  ~name:wasm_main_module_name)
+        | Decode _ ->
+            Lwt.return
+              (Stuck (Invalid_state "No input required during decoding"))
         | Link _ ->
             Lwt.return (Stuck (Invalid_state "No input required during link"))
         | Init _ ->
