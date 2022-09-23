@@ -556,15 +556,21 @@ struct
       let open Tezos_webassembly_interpreter in
       let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
       let* pvm_state =
+        let return tick_state = Lwt.return {pvm_state with tick_state} in
         match pvm_state.tick_state with
         | Eval config ->
-            let+ config =
+            let* config =
               Eval.reveal_step pvm_state.module_reg payload config
             in
-            {pvm_state with tick_state = Eval config}
-        | _ ->
-            (* TODO: Proper error handling *)
-            assert false
+            return (Eval config)
+        | Decode _ ->
+            return (Stuck (Invalid_state "No reveal expected during decoding"))
+        | Link _ ->
+            return (Stuck (Invalid_state "No reveal expected during link"))
+        | Init _ ->
+            return
+              (Stuck (Invalid_state "No reveal expected during initialization"))
+        | Stuck _ -> return pvm_state.tick_state
       in
       Tree_encoding_runner.encode pvm_state_encoding pvm_state tree
 

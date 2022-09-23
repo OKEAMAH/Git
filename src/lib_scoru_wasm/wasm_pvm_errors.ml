@@ -50,12 +50,21 @@ let decode_state_to_string = function
   | Data_step -> "Data_step"
   | Module_step -> "Module_step"
 
-let eval_state_to_string = function
+let init_state_to_string = function
   | Eval.Init_step -> "Init_step"
   | Map_step -> "Map_step"
   | Map_concat_step -> "Map_concat_step"
   | Join_step -> "Join_step"
   | Section_step -> "Section_step"
+
+let eval_state_to_string = function Eval.Invoke_step -> "Invoke_step"
+
+let reveal_error_to_string = function
+  | Eval.Reveal_step -> "Reveal_step"
+  | Reveal_hash_decoding msg ->
+      Format.sprintf "Unknown error during hash decoding: %s" msg
+  | Reveal_payload_decoding msg ->
+      Format.sprintf "Unknown error during payload decoding: %s" msg
 
 let extract_interpreter_error exn =
   let open Lazy_containers in
@@ -86,7 +95,13 @@ let extract_interpreter_error exn =
         {raw_exception; explanation = Some (decode_state_to_string state)}
   | Eval.Init_step_error state ->
       `Interpreter
+        {raw_exception; explanation = Some (init_state_to_string state)}
+  | Eval.Evaluation_step_error state ->
+      `Interpreter
         {raw_exception; explanation = Some (eval_state_to_string state)}
+  | Eval.Reveal_error state ->
+      `Interpreter
+        {raw_exception; explanation = Some (reveal_error_to_string state)}
   | Eval.Missing_memory_0_export ->
       `Interpreter
         {raw_exception; explanation = Some "Module must export memory 0"}

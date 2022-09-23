@@ -104,6 +104,10 @@ type init_state =
 
 exception Init_step_error of init_state
 
+type eval_state = Invoke_step
+
+exception Evaluation_step_error of eval_state
+
 let table_error at = function
   | Table.Bounds -> "out of bounds table access"
   | Table.SizeOverflow -> "table size overflow"
@@ -473,7 +477,7 @@ let vmtake n vs = match n with Some n -> Vector.split vs n |> fst | None -> vs
 
 let invoke_step ~init ?(durable = Durable_storage.empty)
     (module_reg : module_reg) c buffers frame at = function
-  | Inv_stop _ -> assert false
+  | Inv_stop _ -> raise (Evaluation_step_error Invoke_step)
   | Inv_start {func; code = vs, es} -> (
       let (FuncType (ins, out)) = func_type_of func in
       let n1, n2 =
@@ -603,7 +607,7 @@ let invoke_step ~init ?(durable = Durable_storage.empty)
   | Inv_reveal_tick {revealed_bytes = None; _} ->
       (* This is a reveal tick, not an evaluation tick. The PVM should
          prevent this execution path. *)
-      assert false
+      raise (Evaluation_step_error Invoke_step)
   | Inv_reveal_tick {revealed_bytes = Some revealed_bytes; code; _} ->
       let vs, es = code in
       let vs = Vector.cons (Num (I32 revealed_bytes)) vs in
@@ -1525,6 +1529,13 @@ let rec eval durable module_reg (c : config) buffers :
       let* durable, c = step ~init:false ~durable module_reg c buffers in
       eval durable module_reg c buffers
 
+type reveal_error =
+  | Reveal_step
+  | Reveal_hash_decoding of string
+  | Reveal_payload_decoding of string
+
+exception Reveal_error of reveal_error
+
 let reveal_tick_payload module_reg args frame =
   let open Lwt.Syntax in
   function
@@ -1537,7 +1548,16 @@ let reveal_tick_payload module_reg args frame =
           let+ hash = Memory.load_bytes mem offset 32 in
           Reveal.(Reveal_raw_data (input_hash_from_string_exn hash)))
         (* TODO: proper error *)
-          (fun _exn -> assert false)
+          (function
+          | ( Crash (_, _) (* vector_pop_map, memory *)
+            | Memory.Bounds (* Memory.load_bytes *)
+            | Lazy_map.UnexpectedAccess (* resolve_module_ref *)
+            | Reveal.Invalid_input_hash (* input_hash_from_string  *) ) as exn
+            ->
+              raise exn
+          | exn ->
+              let raw_exn = Printexc.to_string exn in
+              raise (Reveal_error (Reveal_hash_decoding raw_exn)))
 
 let is_reveal_tick module_reg =
   let open Lwt.Syntax in
@@ -1565,15 +1585,21 @@ let reveal module_reg args frame payload =
       let* mem = memory inst (0l @@ no_region) in
       let* _offset, _args = vector_pop_map args num_i32 no_region in
       let* dst, _args = vector_pop_map args num_i32 no_region in
-      let+ max_bytes, _args = vector_pop_map args num_i32 no_region in
+      let* max_bytes, _args = vector_pop_map args num_i32 no_region in
       let payload_size = Bytes.length payload in
       let revealed_bytes = min payload_size (Int32.to_int max_bytes) in
       let payload = Bytes.sub payload 0 revealed_bytes in
-      let _ = Memory.store_bytes mem dst (Bytes.to_string payload) in
+      let+ () = Memory.store_bytes mem dst (Bytes.to_string payload) in
       Int32.of_int revealed_bytes)
-    (fun _exn ->
-      (* TODO: error handling *)
-      assert false)
+    (function
+      | ( Crash (_, _) (* vector_pop_map, memory *)
+        | Memory.Bounds (* Memory.load_bytes, store_bytes *)
+        | Lazy_map.UnexpectedAccess (* resolve_module_ref *)
+        | Reveal.Invalid_input_hash (* input_hash_from_string  *) ) as exn ->
+          raise exn
+      | exn ->
+          let raw_exn = Printexc.to_string exn in
+          raise (Reveal_error (Reveal_payload_decoding raw_exn)))
 
 let reveal_step module_reg payload =
   let open Lwt.Syntax in
@@ -1599,7 +1625,7 @@ let reveal_step module_reg payload =
                   Inv_reveal_tick {inv with revealed_bytes = Some bytes_count}
                 ) );
       }
-  | _ -> assert false (* TODO: error handling *)
+  | _ -> raise (Reveal_error Reveal_step)
 
 (* Functions & Constants *)
 
