@@ -2180,12 +2180,7 @@ module Registration_section = struct
             let contract =
               Samplers.Random_value.value (contract unit) rng_state
             in
-            let amount =
-              match contract with
-              | Typed_implicit _ | Typed_originated _ ->
-                  Samplers.Random_value.value mutez rng_state
-              | Typed_sc_rollup _ -> Alpha_context.Tez.zero
-            in
+            let amount = Samplers.Random_value.value mutez rng_state in
             ((), (amount, (contract, eos))))
         ()
 
