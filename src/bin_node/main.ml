@@ -102,8 +102,8 @@ let info =
   Cmdliner.Cmd.info ~doc:"The Tezos node" ~man ~version "tezos-node"
 
 module Node_metrics_command = struct
-  let dump_metrics () =
-    let open Prometheus in
+  let dump_metrics () = ()
+    (* let open Prometheus in
     let metric_type_to_string = function
       | Counter -> "Counter"
       | Gauge -> "Gauge"
@@ -128,8 +128,8 @@ module Node_metrics_command = struct
           pp_label_names
           v.MetricInfo.label_names)
       (Prometheus.MetricFamilyMap.to_list
-         Prometheus.CollectorRegistry.(collect default)) ;
-    Format.printf "@]@."
+         Prometheus.CollectorRegistry.(collect default)) ; *)
+    (* Format.printf "@]@." *)
 
   module Term = struct
     let process _ = `Ok (dump_metrics ())
