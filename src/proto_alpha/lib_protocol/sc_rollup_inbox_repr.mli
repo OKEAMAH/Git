@@ -252,7 +252,7 @@ module type Merkelized_operations = sig
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
     Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.t option ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
     (Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t
     * Sc_rollup_inbox_message_repr.Level_messages_inbox.t
     * History.t
@@ -267,7 +267,7 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.t option ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
     (Sc_rollup_inbox_message_repr.Level_messages_inbox.t * t) tzresult Lwt.t
 
   (** [get_message_payload level_tree idx] returns [Some payload] if the

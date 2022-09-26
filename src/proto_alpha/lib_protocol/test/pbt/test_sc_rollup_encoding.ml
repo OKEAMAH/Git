@@ -88,6 +88,9 @@ let gen_inbox rollup level =
   let level_tree_and_inbox =
     let open Lwt_result_syntax in
     let*! empty_inbox = Sc_rollup_inbox_repr.empty rollup level in
+    let empty_level_inbox =
+      Sc_rollup_inbox_message_repr.Level_messages_inbox.empty level
+    in
     lift
     @@ let*? input_messages =
          List.map_e
@@ -98,7 +101,7 @@ let gen_inbox rollup level =
          empty_inbox
          level
          input_messages
-         None
+         empty_level_inbox
   in
   return
   @@ (Lwt_main.run level_tree_and_inbox |> function

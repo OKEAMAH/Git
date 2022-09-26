@@ -3065,7 +3065,7 @@ module Sc_rollup : sig
         Raw_level.t ->
         Inbox_message.serialized list ->
         Inbox_message.Level_messages_inbox.History.t ->
-        Inbox_message.Level_messages_inbox.t option ->
+        Inbox_message.Level_messages_inbox.t ->
         (Inbox_message.Level_messages_inbox.History.t
         * Inbox_message.Level_messages_inbox.t
         * History.t
@@ -3077,7 +3077,7 @@ module Sc_rollup : sig
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        Inbox_message.Level_messages_inbox.t option ->
+        Inbox_message.Level_messages_inbox.t ->
         (Inbox_message.Level_messages_inbox.t * t, error trace) result Lwt.t
 
       val get_message_payload :

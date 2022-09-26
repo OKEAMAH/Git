@@ -409,7 +409,7 @@ module type Merkelized_operations = sig
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
     Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.t option ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
     (Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t
     * Sc_rollup_inbox_message_repr.Level_messages_inbox.t
     * History.t
@@ -421,7 +421,7 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.t option ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
     (Sc_rollup_inbox_message_repr.Level_messages_inbox.t * t) tzresult Lwt.t
 
   val get_message_payload :
@@ -539,21 +539,11 @@ let form_history_proof history inbox =
 
     This function and {!form_history_proof} are the only places we
     begin new level trees. *)
-let archive_if_needed history inbox new_level level_messages =
+let archive_if_needed history inbox new_level =
   let open Lwt_result_syntax in
-  if Raw_level_repr.(inbox.level = new_level) then
-    match level_messages with
-    | Some level_messages -> return (history, inbox, level_messages)
-    | None ->
-        let messages =
-          Sc_rollup_inbox_message_repr.Level_messages_inbox.empty new_level
-        in
-        return (history, inbox, messages)
+  if Raw_level_repr.(inbox.level = new_level) then return (history, inbox)
   else
     let* history, old_levels_messages = form_history_proof history inbox in
-    let messages =
-      Sc_rollup_inbox_message_repr.Level_messages_inbox.empty new_level
-    in
     let inbox =
       {
         starting_level_of_current_commitment_period =
@@ -567,7 +557,7 @@ let archive_if_needed history inbox new_level level_messages =
         message_counter = Z.zero;
       }
     in
-    return (history, inbox, messages)
+    return (history, inbox)
 
 let add_messages history inbox level payloads level_history level_messages =
   let open Lwt_tzresult_syntax in
@@ -581,9 +571,7 @@ let add_messages history inbox level payloads level_history level_messages =
       Raw_level_repr.(level < inbox.level)
       (Invalid_level_add_messages level)
   in
-  let* history, inbox, level_messages =
-    archive_if_needed history inbox level level_messages
-  in
+  let* history, inbox = archive_if_needed history inbox level in
   let*? level_history, level_messages, inbox =
     List.fold_left_e
       (fun (level_history, level_messages, inbox) payload ->
