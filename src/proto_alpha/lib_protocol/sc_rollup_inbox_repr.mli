@@ -222,7 +222,7 @@ include module type of V1 with type t = V1.t
     current level hash is stored lazily as [fun () -> ...], and this
     function will call that function. So don't use this if you want to
     preserve the laziness. *)
-val current_level_hash : t -> Hash.t
+val current_level_hash : t -> Sc_rollup_inbox_message_repr.Hash.t
 
 type serialized_proof
 

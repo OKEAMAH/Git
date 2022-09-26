@@ -149,19 +149,21 @@ end
 module Skip_list = Skip_list_repr.Make (Skip_list_parameters)
 
 let hash_skip_list_cell cell =
-  let current_level_hash = Skip_list.content cell in
+  let current_level_messages_hash = Skip_list.content cell in
   let back_pointers_hashes = Skip_list.back_pointers cell in
-  Hash.to_bytes current_level_hash
+  Sc_rollup_inbox_message_repr.Hash.to_bytes current_level_messages_hash
   :: List.map Hash.to_bytes back_pointers_hashes
   |> Hash.hash_bytes
 
 module V1 = struct
-  type history_proof = (Hash.t, Hash.t) Skip_list.cell
+  type history_proof =
+    (Sc_rollup_inbox_message_repr.Hash.t, Hash.t) Skip_list.cell
 
-  let equal_history_proof = Skip_list.equal Hash.equal Hash.equal
+  let equal_history_proof =
+    Skip_list.equal Hash.equal Sc_rollup_inbox_message_repr.Hash.equal
 
   let history_proof_encoding : history_proof Data_encoding.t =
-    Skip_list.encoding Hash.encoding Hash.encoding
+    Skip_list.encoding Hash.encoding Sc_rollup_inbox_message_repr.Hash.encoding
 
   let pp_history_proof fmt history =
     let history_hash = hash_skip_list_cell history in
@@ -170,7 +172,9 @@ module V1 = struct
       "@[hash : %a@;%a@]"
       Hash.pp
       history_hash
-      (Skip_list.pp ~pp_content:Hash.pp ~pp_ptr:Hash.pp)
+      (Skip_list.pp
+         ~pp_content:Sc_rollup_inbox_message_repr.Hash.pp
+         ~pp_ptr:Hash.pp)
       history
 
   (** Construct an inbox [history] with a given [capacity]. If you
@@ -227,7 +231,7 @@ module V1 = struct
     starting_level_of_current_commitment_period : Raw_level_repr.t;
     message_counter : Z.t;
     (* Lazy to avoid hashing O(n^2) time in [add_messages] *)
-    current_level_hash : unit -> Hash.t;
+    current_level_hash : unit -> Sc_rollup_inbox_message_repr.Hash.t;
     old_levels_messages : history_proof;
   }
 
@@ -255,7 +259,9 @@ module V1 = struct
            starting_level_of_current_commitment_period
            inbox2.starting_level_of_current_commitment_period)
     && Z.equal message_counter inbox2.message_counter
-    && Hash.equal (current_level_hash ()) (inbox2.current_level_hash ())
+    && Sc_rollup_inbox_message_repr.Hash.equal
+         (current_level_hash ())
+         (inbox2.current_level_hash ())
     && equal_history_proof old_levels_messages inbox2.old_levels_messages
 
   let pp fmt
@@ -282,7 +288,7 @@ module V1 = struct
       rollup
       Raw_level_repr.pp
       level
-      Hash.pp
+      Sc_rollup_inbox_message_repr.Hash.pp
       (current_level_hash ())
       (Int64.to_string nb_messages_in_commitment_period)
       Raw_level_repr.pp
@@ -297,9 +303,6 @@ module V1 = struct
   let old_levels_messages inbox = inbox.old_levels_messages
 
   let current_level_hash inbox = inbox.current_level_hash ()
-
-  let old_levels_messages_encoding =
-    Skip_list.encoding Hash.encoding Hash.encoding
 
   let encoding =
     Data_encoding.(
@@ -344,8 +347,8 @@ module V1 = struct
               "starting_level_of_current_commitment_period"
               Raw_level_repr.encoding)
            (req "level" Raw_level_repr.encoding)
-           (req "current_level_hash" Hash.encoding)
-           (req "old_levels_messages" old_levels_messages_encoding)))
+           (req "current_level_hash" Sc_rollup_inbox_message_repr.Hash.encoding)
+           (req "old_levels_messages" history_proof_encoding)))
 
   let number_of_messages_during_commitment_period inbox =
     inbox.nb_messages_in_commitment_period
@@ -580,7 +583,6 @@ let add_messages history inbox level payloads level_history level_messages =
   in
   let current_level_hash () =
     Sc_rollup_inbox_message_repr.Level_messages_inbox.hash level_messages
-    |> Sc_rollup_inbox_message_repr.Hash.to_bytes |> Hash.of_bytes_exn
   in
   return
     (level_history, level_messages, history, {inbox with current_level_hash})
@@ -719,16 +721,20 @@ let pp_proof fmt proof =
   match proof with
   | Single_level {level; _} ->
       let hash = Skip_list.content level in
-      Format.fprintf fmt "Single_level inbox proof at %a" Hash.pp hash
+      Format.fprintf
+        fmt
+        "Single_level inbox proof at %a"
+        Sc_rollup_inbox_message_repr.Hash.pp
+        hash
   | Level_crossing {lower; upper; upper_level; _} ->
       let lower_hash = Skip_list.content lower in
       let upper_hash = Skip_list.content upper in
       Format.fprintf
         fmt
         "Level_crossing inbox proof between %a and %a (upper_level %a)"
-        Hash.pp
+        Sc_rollup_inbox_message_repr.Hash.pp
         lower_hash
-        Hash.pp
+        Sc_rollup_inbox_message_repr.Hash.pp
         upper_hash
         Raw_level_repr.pp
         upper_level
@@ -918,9 +924,7 @@ let empty rollup level =
   in
   let initial_hash =
     Sc_rollup_inbox_message_repr.Level_messages_inbox.hash initial_messages
-    |> Sc_rollup_inbox_message_repr.Hash.to_bytes |> Hash.of_bytes_exn
   in
-
   return
     {
       rollup;
