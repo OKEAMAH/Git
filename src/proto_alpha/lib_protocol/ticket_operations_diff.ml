@@ -166,6 +166,14 @@ let tickets_of_operation ctxt
     (Script_typed_ir.Internal_operation {source = _; operation; nonce = _}) =
   match operation with
   | Transaction_to_implicit _ -> return (None, ctxt)
+  | Transaction_to_implicit_with_ticket {destination; content_ty; ticket; _} ->
+      return
+        ( Some
+            {
+              destination = Destination.Contract (Contract.Implicit destination);
+              tickets = [Ticket_scanner.Ex_ticket (content_ty, ticket)];
+            },
+          ctxt )
   | Transaction_to_smart_contract
       {
         amount = _;

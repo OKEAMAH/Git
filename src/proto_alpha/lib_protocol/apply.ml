@@ -325,6 +325,27 @@ let apply_transaction_to_implicit ~ctxt ~source ~amount ~pkh ~before_operation =
   in
   return (ctxt, result, [])
 
+let apply_transaction_to_implicit_with_ticket ~ctxt ~pkh ~before_operation =
+  let contract = Contract.Implicit pkh in
+  (* If the implicit contract is not yet allocated at this point then
+     the next transfer of tokens will allocate it. *)
+  Contract.allocated ctxt contract >>= fun already_allocated ->
+  let result =
+    Transaction_to_contract_result
+      {
+        storage = None;
+        lazy_storage_diff = None;
+        balance_updates = [];
+        ticket_receipt = [];
+        originated_contracts = [];
+        consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+        storage_size = Z.zero;
+        paid_storage_size_diff = Z.zero;
+        allocated_destination_contract = not already_allocated;
+      }
+  in
+  return (ctxt, result)
+
 let apply_transaction_to_smart_contract ~ctxt ~source ~contract_hash ~amount
     ~entrypoint ~before_operation ~payer ~chain_id ~internal ~parameter =
   let contract = Contract.Originated contract_hash in
@@ -588,6 +609,12 @@ let apply_internal_operation_contents :
       ( ctxt,
         (ITransaction_result res : kind successful_internal_operation_result),
         ops )
+  | Transaction_to_implicit_with_ticket {destination; _} ->
+      apply_transaction_to_implicit_with_ticket
+        ~ctxt
+        ~before_operation:ctxt_before_op
+        ~pkh:destination
+      >>=? fun (ctxt, res) -> return (ctxt, ITransaction_result res, [])
   | Transaction_to_smart_contract
       {
         amount;
