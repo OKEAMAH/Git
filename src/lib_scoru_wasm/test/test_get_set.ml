@@ -235,8 +235,13 @@ let test_get_output () =
   let output = Output_buffer.alloc () in
   Output_buffer.set_level output 0l ;
   let* () = Output_buffer.set_value output @@ Bytes.of_string "hello" in
-  let buffers = Eval.{input = Input_buffer.alloc (); output} in
-  let* tree = Tree_encoding_runner.encode buffers_encoding buffers tree in
+  let buffers = Some Eval.{input = Input_buffer.alloc (); output} in
+  let* tree =
+    Tree_encoding_runner.encode
+      (Tree_encoding.option buffers_encoding)
+      buffers
+      tree
+  in
   let output_info = make_output_info ~outbox_level:0 ~message_index:0 in
   let* payload = Wasm.get_output output_info tree in
   assert (payload = "hello") ;

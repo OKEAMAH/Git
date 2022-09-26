@@ -465,8 +465,13 @@ struct
       let open Wasm_pvm_sig in
       let {outbox_level; message_index} = output_info in
       let outbox_level = Bounded.Non_negative_int32.to_value outbox_level in
-      let* {output; _} =
-        Tree_encoding_runner.decode durable_buffers_encoding tree
+      let* decoded =
+        Tree_encoding_runner.decode
+          (Tezos_tree_encoding.option durable_buffers_encoding)
+          tree
+      in
+      let Wasm.Eval.{output; _} =
+        match decoded with Some a -> a | None -> assert false
       in
       let+ payload = Wasm.Output_buffer.get output outbox_level message_index in
       Bytes.to_string payload
@@ -621,6 +626,16 @@ struct
         let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
         let pvm_state = {pvm_state with max_nb_ticks = n} in
         Tree_encoding_runner.encode pvm_state_encoding pvm_state tree
+
+      let get_output_buffer tree =
+        let open Lwt.Syntax in
+        let+ pvm = Tree_encoding_runner.decode pvm_state_encoding tree in
+        pvm.buffers.output
+
+      let get_input_buffer tree =
+        let open Lwt.Syntax in
+        let+ pvm = Tree_encoding_runner.decode pvm_state_encoding tree in
+        pvm.buffers.input
     end
   end
 

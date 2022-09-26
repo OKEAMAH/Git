@@ -1,30 +1,38 @@
 # About
+
 This folder contains example test kernels, used for running `SCORU WASM` integration tests.
 
 The test kernels have been built from [trili/kernel](https://gitlab.com/trili/kernel.git).
 
 # Available kernels
+
 It is possible to build the test kernels manually, and verify that they are bit-for-bit identical.
 
 ## Prerequisites
+
 You will need `docker`, `git` and `wasm-strip` installed, alongside either `bash` or `zsh`.
+
 - `wasm-strip` is part of the [WebAssembly Binary Toolkit](https://github.com/WebAssembly/wabt).
 
-Next, clone the *trili/kernel* repository:
-``` shell
+Next, clone the _trili/kernel_ repository:
+
+```shell
 git clone https://gitlab.com/trili/kernel.git wasm_kernel
 cd wasm_kernel
 ```
+
 and then follow the instructions below for the required kernel.
 
 ## [unreachable.wasm](./unreachable.wasm)
-The unreachable kernel performs a simple computation (addition) on each call to its `kernel_next` entrypoint but raises `Unreachable` before yielding. It makes no use of any *PVM host-capabilities*.
+
+The unreachable kernel performs a simple computation (addition) on each call to its `kernel_next` entrypoint but raises `Unreachable` before yielding. It makes no use of any _PVM host-capabilities_.
 
 It is designed to be small enough to be able to originate directly within a boot sector, but also large enough to be
-used with the *gather-floppies* mechanism, and aims to test the `Stuck` state of the PVM.
+used with the _gather-floppies_ mechanism, and aims to test the `Stuck` state of the PVM.
 
 To build the `unreachable.wasm` kernel, run the following from the checked-out `trili/kernel` repo:
-``` shell
+
+```shell
 git checkout 5440400a7340ff60af1166c875fce2f5ca0afda0
 
 # Load the required rust toolchain dockerfile
@@ -41,11 +49,13 @@ wasm-strip unreachable.wasm
 ```
 
 ## [test-write-debug.wasm](./test-write-debug.wasm)
+
 This kernel is designed to call the `write_debug` host function, which is a no-op in the PVM.
 
 It may be originated directly within a boot sector.
 
 To build the `test-write-debug.wasm` kernel, run the following from the checked-out `trili/kernel` repo:
+
 ```shell
 git checkout 0c98b17c4599d6f656312b16f17798406d491d77
 
@@ -53,11 +63,13 @@ git checkout 0c98b17c4599d6f656312b16f17798406d491d77
 ```
 
 ## [test-store-has.wasm](./test-store-has.wasm)
-This kernel is designed to test the `store_has` host function behaviour, on different keys in *durable storage*.
+
+This kernel is designed to test the `store_has` host function behaviour, on different keys in _durable storage_.
 
 It may be originated directly within a boot sector.
 
 To build the `test-store-has.wasm` kernel, run the following from the checked-out `trili/kernel` repo:
+
 ```shell
 git checkout 4788b8a882efbc9c19621ab43d617b2bdd5b1baf
 
@@ -65,11 +77,13 @@ git checkout 4788b8a882efbc9c19621ab43d617b2bdd5b1baf
 ```
 
 ## [test-store-list-size.wasm](./test-store-list-size.wasm)
-This kernel is designed to test the `store_list_size` host function behaviour, on different keys in *durable storage*.
+
+This kernel is designed to test the `store_list_size` host function behaviour, on different keys in _durable storage_.
 
 It may be originated directly within a boot sector.
 
 To build the `test-store-list-size.wasm` kernel, run the following from the checked-out `trili/kernel` repo:
+
 ```shell
 git checkout 0c98b17c4599d6f656312b16f17798406d491d77
 
@@ -77,13 +91,31 @@ git checkout 0c98b17c4599d6f656312b16f17798406d491d77
 ```
 
 ## [test-store-delete.wasm](./test-store-delete.wasm)
-This kernel is designed to test the `store_delete` host function behaviour, on different keys in *durable storage*.
+
+This kernel is designed to test the `store_delete` host function behaviour, on different keys in _durable storage_.
 
 It may be originated directly within a boot sector.
 
 To build the `test-store-delete.wasm` kernel, run the following from the checked-out `trili/kernel` repo:
+
 ```shell
 git checkout 0c98b17c4599d6f656312b16f17798406d491d77
 
 ./scripts/build-unit-kernel.sh "test-store-delete"
+```
+
+## [pipe.wasm](./pipe.wasm)
+
+This kernel is designed to test the `write_output` host function behaviour. It will produce a `echo` kernel that sends to the output whatever it receives in the input. See the `proto_alpha/lib_protocol/test/unit/test_rollup_wasm.ml` for an example of its use.
+
+It may be originated directly within a boot sector.
+
+To build the `pipe.wasm` kernel, run the following from the checked-out `trili/kernel` repo:
+
+```shell
+git checkout tx-kernel-vRAM
+
+./scripts/build-unit-kernel.sh "read-input,write-output,wee_alloc"
+
+mv "read-input,write-output,wee_alloc.wasm" pipe.wasm
 ```
