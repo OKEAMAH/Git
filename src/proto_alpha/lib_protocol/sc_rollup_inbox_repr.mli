@@ -228,25 +228,6 @@ type serialized_proof
 
 val serialized_proof_encoding : serialized_proof Data_encoding.t
 
-module Level_messages_inbox : sig
-  type t
-
-  val hash : t -> Hash.t
-
-  val empty : Raw_level_repr.t -> t
-
-  val add_message : t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t
-
-  val get_message_payload :
-    t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
-
-  val get_level : t -> Raw_level_repr.t
-
-  val to_bytes : t -> bytes
-
-  val of_bytes : bytes -> t option
-end
-
 (** The following operations are subject to cross-validation between
     rollup nodes and the layer 1. *)
 module type Merkelized_operations = sig
@@ -270,8 +251,14 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Level_messages_inbox.t option ->
-    (Level_messages_inbox.t * History.t * t) tzresult Lwt.t
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t option ->
+    (Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t
+    * Sc_rollup_inbox_message_repr.Level_messages_inbox.t
+    * History.t
+    * t)
+    tzresult
+    Lwt.t
 
   (** [add_messages_no_history ctxt inbox level payloads level_tree] behaves
       as {!add_external_messages} except that it does not remember the inbox
@@ -280,14 +267,14 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Level_messages_inbox.t option ->
-    (Level_messages_inbox.t * t, error trace) result Lwt.t
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t option ->
+    (Sc_rollup_inbox_message_repr.Level_messages_inbox.t * t) tzresult Lwt.t
 
   (** [get_message_payload level_tree idx] returns [Some payload] if the
       [level_tree] has more than [idx] messages, and [payload] is at
       position [idx]. Returns [None] otherwise. *)
   val get_message_payload :
-    Level_messages_inbox.t ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
     Z.t ->
     Sc_rollup_inbox_message_repr.serialized option Lwt.t
 

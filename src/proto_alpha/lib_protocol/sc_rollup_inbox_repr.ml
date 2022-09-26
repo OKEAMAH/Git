@@ -402,84 +402,30 @@ type serialized_proof = bytes
 
 let serialized_proof_encoding = Data_encoding.bytes
 
-module Level_messages_inbox : sig
-  type t
-
-  val hash : t -> Hash.t
-
-  val empty : Raw_level_repr.t -> t
-
-  val add_message : t -> Z.t -> Sc_rollup_inbox_message_repr.serialized -> t
-
-  val get_message_payload :
-    t -> Z.t -> Sc_rollup_inbox_message_repr.serialized option Lwt.t
-
-  val get_level : t -> Raw_level_repr.t
-
-  val to_bytes : t -> bytes
-
-  val of_bytes : bytes -> t option
-end = struct
-  type value = Sc_rollup_inbox_message_repr.serialized
-
-  type ptr = Hash.t
-
-  type t = {skip_list : (value, ptr) Skip_list.cell; level : Raw_level_repr.t}
-
-  let encoding =
-    Data_encoding.conv
-      (fun {skip_list; level} -> (skip_list, level))
-      (fun (skip_list, level) -> {skip_list; level})
-      (Data_encoding.tup2
-         (Skip_list.encoding
-            Hash.encoding
-            Sc_rollup_inbox_message_repr.serialized_encoding)
-         Raw_level_repr.encoding)
-
-  let hash {skip_list; _} =
-    let payload = Skip_list.content skip_list in
-    let back_pointers_hashes = Skip_list.back_pointers skip_list in
-    Bytes.of_string
-      (payload : Sc_rollup_inbox_message_repr.serialized :> string)
-    :: List.map Hash.to_bytes back_pointers_hashes
-    |> Hash.hash_bytes
-
-  let empty level =
-    let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
-    {skip_list = Skip_list.genesis first_msg; level}
-
-  let add_message messages _message_index payload =
-    let prev_cell = messages.skip_list in
-    let prev_cell_ptr = hash messages in
-    {messages with skip_list = Skip_list.next ~prev_cell ~prev_cell_ptr payload}
-
-  let get_message_payload _skip_list _message_index = Lwt.return_none
-
-  let get_level {level; _} = level
-
-  let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
-
-  let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
-end
-
 module type Merkelized_operations = sig
   val add_messages :
     History.t ->
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Level_messages_inbox.t option ->
-    (Level_messages_inbox.t * History.t * t) tzresult Lwt.t
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t option ->
+    (Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t
+    * Sc_rollup_inbox_message_repr.Level_messages_inbox.t
+    * History.t
+    * t)
+    tzresult
+    Lwt.t
 
   val add_messages_no_history :
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Level_messages_inbox.t option ->
-    (Level_messages_inbox.t * t) tzresult Lwt.t
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t option ->
+    (Sc_rollup_inbox_message_repr.Level_messages_inbox.t * t) tzresult Lwt.t
 
   val get_message_payload :
-    Level_messages_inbox.t ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
     Z.t ->
     Sc_rollup_inbox_message_repr.serialized option Lwt.t
 
@@ -532,12 +478,16 @@ module type Merkelized_operations = sig
   end
 end
 
-let add_message inbox payload level_messages =
-  let open Lwt_syntax in
+let add_message inbox payload level_history level_messages =
+  let open Tzresult_syntax in
   let message_index = inbox.message_counter in
   let message_counter = Z.succ message_index in
-  let level_messages =
-    Level_messages_inbox.add_message level_messages message_index payload
+  let* level_history, level_messages =
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.add_message
+      level_history
+      level_messages
+      message_index
+      payload
   in
   let nb_messages_in_commitment_period =
     Int64.succ inbox.nb_messages_in_commitment_period
@@ -554,10 +504,12 @@ let add_message inbox payload level_messages =
       nb_messages_in_commitment_period;
     }
   in
-  return (level_messages, inbox)
+  return (level_history, level_messages, inbox)
 
 let get_message_payload messages message_counter =
-  Level_messages_inbox.get_message_payload messages message_counter
+  Sc_rollup_inbox_message_repr.Level_messages_inbox.get_message_payload
+    messages
+    message_counter
 
 (** [no_history] creates an empty history with [capacity] set to
     zero---this makes the [remember] function a no-op. We want this
@@ -587,17 +539,21 @@ let form_history_proof history inbox =
 
     This function and {!form_history_proof} are the only places we
     begin new level trees. *)
-let archive_if_needed history inbox new_level messages =
+let archive_if_needed history inbox new_level level_messages =
   let open Lwt_result_syntax in
   if Raw_level_repr.(inbox.level = new_level) then
-    match messages with
-    | Some messages -> return (history, inbox, messages)
+    match level_messages with
+    | Some level_messages -> return (history, inbox, level_messages)
     | None ->
-        let messages = Level_messages_inbox.empty new_level in
+        let messages =
+          Sc_rollup_inbox_message_repr.Level_messages_inbox.empty new_level
+        in
         return (history, inbox, messages)
   else
     let* history, old_levels_messages = form_history_proof history inbox in
-    let messages = Level_messages_inbox.empty new_level in
+    let messages =
+      Sc_rollup_inbox_message_repr.Level_messages_inbox.empty new_level
+    in
     let inbox =
       {
         starting_level_of_current_commitment_period =
@@ -613,7 +569,7 @@ let archive_if_needed history inbox new_level messages =
     in
     return (history, inbox, messages)
 
-let add_messages history inbox level payloads messages =
+let add_messages history inbox level payloads level_history level_messages =
   let open Lwt_tzresult_syntax in
   let* () =
     fail_when
@@ -625,25 +581,35 @@ let add_messages history inbox level payloads messages =
       Raw_level_repr.(level < inbox.level)
       (Invalid_level_add_messages level)
   in
-  let* history, inbox, messages =
-    archive_if_needed history inbox level messages
+  let* history, inbox, level_messages =
+    archive_if_needed history inbox level level_messages
   in
-  let*! messages, inbox =
-    List.fold_left_s
-      (fun (level_messages, inbox) payload ->
-        add_message inbox payload level_messages)
-      (messages, inbox)
+  let*? level_history, level_messages, inbox =
+    List.fold_left_e
+      (fun (level_history, level_messages, inbox) payload ->
+        add_message inbox payload level_history level_messages)
+      (level_history, level_messages, inbox)
       payloads
   in
-  let current_level_hash () = Level_messages_inbox.hash messages in
-  return (messages, history, {inbox with current_level_hash})
-
-let add_messages_no_history inbox level payloads messages =
-  let open Lwt_tzresult_syntax in
-  let+ messages, _, inbox =
-    add_messages no_history inbox level payloads messages
+  let current_level_hash () =
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.hash level_messages
+    |> Sc_rollup_inbox_message_repr.Hash.to_bytes |> Hash.of_bytes_exn
   in
-  (messages, inbox)
+  return
+    (level_history, level_messages, history, {inbox with current_level_hash})
+
+let add_messages_no_history inbox level payloads level_messages =
+  let open Lwt_tzresult_syntax in
+  let+ _level_history, level_messages, _history, inbox =
+    add_messages
+      no_history
+      inbox
+      level
+      payloads
+      Sc_rollup_inbox_message_repr.Level_messages_inbox.History.no_history
+      level_messages
+  in
+  (level_messages, inbox)
 
 let take_snapshot ~current_level inbox =
   let prev_cell = inbox.old_levels_messages in
@@ -954,15 +920,20 @@ let verify_proof (l, n) snapshot proof =
                    payload;
                  })
 
-let produce_proof _history _inbox (_l, _n) =
-  proof_error "Can't produce proof yet"
+let produce_proof _history _inbox (_l, _n) = proof_error ""
 
 let empty rollup level =
   let open Lwt_syntax in
   assert (Raw_level_repr.(level <> Raw_level_repr.root)) ;
   let pre_genesis_level = Raw_level_repr.root in
-  let initial_messages = Level_messages_inbox.empty pre_genesis_level in
-  let initial_hash = Level_messages_inbox.hash initial_messages in
+  let initial_messages =
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.empty pre_genesis_level
+  in
+  let initial_hash =
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.hash initial_messages
+    |> Sc_rollup_inbox_message_repr.Hash.to_bytes |> Hash.of_bytes_exn
+  in
+
   return
     {
       rollup;

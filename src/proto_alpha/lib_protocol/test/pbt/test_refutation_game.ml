@@ -1006,7 +1006,7 @@ type player_client = {
   final_tick : Tick.t;
   inbox :
     Tezos_context_memory.Context.t
-    * Sc_rollup.Inbox.Level_messages_inbox.t option
+    * Sc_rollup.Inbox_message.Level_messages_inbox.t option
     * Inbox.History.t
     * Inbox.t;
   levels_and_inputs : (int * string list) list;
@@ -1084,10 +1084,21 @@ module Player_client = struct
       | (level, payloads) :: rst ->
           let level = Int32.of_int level |> Raw_level.of_int32_exn in
           let () = assert (Raw_level.(origination_level <= level)) in
-          let* res =
-            lift @@ add_messages history inbox level payloads level_tree
+          let level_history =
+            Sc_rollup.Inbox_message.Level_messages_inbox.History.empty
+              ~capacity:0L
           in
-          let level_tree, history, inbox =
+          let* res =
+            lift
+            @@ add_messages
+                 history
+                 inbox
+                 level
+                 payloads
+                 level_history
+                 level_tree
+          in
+          let _level_history, level_tree, history, inbox =
             WithExceptions.Result.get_ok ~loc:__LOC__ res
           in
           aux history inbox (Some level_tree) rst

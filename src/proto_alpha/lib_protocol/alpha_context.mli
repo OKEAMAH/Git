@@ -2973,6 +2973,34 @@ module Sc_rollup : sig
     val serialize : t -> serialized tzresult
 
     val deserialize : serialized -> t tzresult
+
+    module Hash : S.HASH
+
+    module Level_messages_inbox : sig
+      type t
+
+      type message_witness
+
+      module History :
+        Bounded_history_repr.S
+          with type key = Hash.t
+           and type value = message_witness
+
+      val hash : t -> Hash.t
+
+      val empty : Raw_level.t -> t
+
+      val add_message :
+        History.t -> t -> Z.t -> serialized -> (History.t * t) tzresult
+
+      val get_message_payload : t -> Z.t -> serialized option Lwt.t
+
+      val get_level : t -> Raw_level.t
+
+      val to_bytes : t -> bytes
+
+      val of_bytes : bytes -> t option
+    end
   end
 
   type inbox_message = {
@@ -3019,13 +3047,7 @@ module Sc_rollup : sig
 
     type history_proof
 
-    module Hash : sig
-      include S.HASH
-
-      val of_context_hash : Context_hash.t -> t
-
-      val to_context_hash : t -> Context_hash.t
-    end
+    module Hash : S.HASH
 
     module History :
       Bounded_history_repr.S
@@ -3036,43 +3058,32 @@ module Sc_rollup : sig
 
     val serialized_proof_encoding : serialized_proof Data_encoding.t
 
-    module Level_messages_inbox : sig
-      type t
-
-      val hash : t -> Hash.t
-
-      val empty : Raw_level.t -> t
-
-      val add_message : t -> Z.t -> Inbox_message.serialized -> t
-
-      val get_message_payload :
-        t -> Z.t -> Inbox_message.serialized option Lwt.t
-
-      val get_level : t -> Raw_level.t
-
-      val to_bytes : t -> bytes
-
-      val of_bytes : bytes -> t option
-    end
-
     module type Merkelized_operations = sig
       val add_messages :
         History.t ->
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        Level_messages_inbox.t option ->
-        (Level_messages_inbox.t * History.t * t) tzresult Lwt.t
+        Inbox_message.Level_messages_inbox.History.t ->
+        Inbox_message.Level_messages_inbox.t option ->
+        (Inbox_message.Level_messages_inbox.History.t
+        * Inbox_message.Level_messages_inbox.t
+        * History.t
+        * t)
+        tzresult
+        Lwt.t
 
       val add_messages_no_history :
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        Level_messages_inbox.t option ->
-        (Level_messages_inbox.t * t, error trace) result Lwt.t
+        Inbox_message.Level_messages_inbox.t option ->
+        (Inbox_message.Level_messages_inbox.t * t, error trace) result Lwt.t
 
       val get_message_payload :
-        Level_messages_inbox.t -> Z.t -> Inbox_message.serialized option Lwt.t
+        Inbox_message.Level_messages_inbox.t ->
+        Z.t ->
+        Inbox_message.serialized option Lwt.t
 
       val form_history_proof :
         History.t -> t -> (History.t * history_proof) tzresult Lwt.t

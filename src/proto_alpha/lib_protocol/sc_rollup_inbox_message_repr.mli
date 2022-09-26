@@ -77,3 +77,35 @@ val deserialize : serialized -> t tzresult
 val unsafe_of_string : string -> serialized
 
 val unsafe_to_string : serialized -> string
+
+module Hash : S.HASH
+
+module Level_messages_inbox : sig
+  type t
+
+  type message_witness
+
+  module History : sig
+    include
+      Bounded_history_repr.S
+        with type key = Hash.t
+         and type value = message_witness
+
+    val no_history : t
+  end
+
+  val hash : t -> Hash.t
+
+  val empty : Raw_level_repr.t -> t
+
+  val add_message :
+    History.t -> t -> Z.t -> serialized -> (History.t * t) tzresult
+
+  val get_message_payload : t -> Z.t -> serialized option Lwt.t
+
+  val get_level : t -> Raw_level_repr.t
+
+  val to_bytes : t -> bytes
+
+  val of_bytes : bytes -> t option
+end
