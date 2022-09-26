@@ -229,4 +229,44 @@ module Level_messages_inbox = struct
   let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
 
   let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
+
+  type proof = message_witness list
+
+  let produce_proof history ~message_index messages : proof option =
+    let open Option_syntax in
+    let deref ptr = History.find ptr history in
+    let current_ptr = hash messages in
+    let lift_ptr =
+      let rec aux acc = function
+        | [] -> Some (List.rev acc)
+        | x :: xs ->
+            let* cell = deref x in
+            aux (cell :: acc) xs
+      in
+      aux []
+    in
+    let* ptr_path =
+      Skip_list.back_path
+        ~deref
+        ~cell_ptr:current_ptr
+        ~target_index:message_index
+    in
+    lift_ptr ptr_path
+
+  let verify_proof proof ~message_witness messages =
+    let hash_map, ptr_list =
+      List.fold_left
+        (fun (hash_map, ptr_list) message_witness ->
+          let message_ptr = hash_message_witness message_witness in
+          ( Hash.Map.add message_ptr message_witness hash_map,
+            message_ptr :: ptr_list ))
+        (Hash.Map.empty, [])
+        proof
+    in
+    let ptr_list = List.rev ptr_list in
+    let equal_ptr = Hash.equal in
+    let deref ptr = Hash.Map.find ptr hash_map in
+    let cell_ptr = hash messages in
+    let target_ptr = hash_message_witness message_witness in
+    Skip_list.valid_back_path ~equal_ptr ~deref ~cell_ptr ~target_ptr ptr_list
 end

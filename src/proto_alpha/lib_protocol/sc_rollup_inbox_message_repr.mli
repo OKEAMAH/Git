@@ -107,4 +107,10 @@ module Level_messages_inbox : sig
   val to_bytes : t -> bytes
 
   val of_bytes : bytes -> t option
+
+  type proof
+
+  val produce_proof : History.t -> message_index:int -> t -> proof option
+
+  val verify_proof : proof -> message_witness:message_witness -> t -> bool
 end
