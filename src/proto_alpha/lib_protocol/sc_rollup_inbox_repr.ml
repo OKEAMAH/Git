@@ -486,7 +486,6 @@ let add_message inbox payload level_history level_messages =
     Sc_rollup_inbox_message_repr.Level_messages_inbox.add_message
       level_history
       level_messages
-      message_index
       payload
   in
   let nb_messages_in_commitment_period =

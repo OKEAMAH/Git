@@ -212,7 +212,7 @@ module Level_messages_inbox = struct
     let prev_cell_ptr = hash_message_witness witness in
     History.remember prev_cell_ptr witness history
 
-  let add_message history messages _message_index payload =
+  let add_message history messages payload =
     let open Tzresult_syntax in
     let prev_witness = messages.witness in
     let prev_ptr = hash messages in

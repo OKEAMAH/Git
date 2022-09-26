@@ -2990,8 +2990,7 @@ module Sc_rollup : sig
 
       val empty : Raw_level.t -> t
 
-      val add_message :
-        History.t -> t -> Z.t -> serialized -> (History.t * t) tzresult
+      val add_message : History.t -> t -> serialized -> (History.t * t) tzresult
 
       val get_message_payload : t -> Z.t -> serialized option Lwt.t
 
