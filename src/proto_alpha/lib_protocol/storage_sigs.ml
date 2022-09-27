@@ -325,6 +325,26 @@ module type Indexed_data_storage_with_local_context = sig
   end
 end
 
+module type Carbonated_data_storage_with_uncarbonated_accesses = sig
+  include Indexed_data_storage
+
+  module Carbonated :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key := key
+       and type value := value
+       and type t := t
+end
+
+module type Carbonated_data_storage_with_uncarbonated_accesses_and_local_context = sig
+  include Indexed_data_storage_with_local_context
+
+  module Carbonated :
+    Non_iterable_indexed_carbonated_data_storage
+      with type key := key
+       and type value := value
+       and type t := t
+end
+
 module type Indexed_data_snapshotable_storage = sig
   type snapshot
 
