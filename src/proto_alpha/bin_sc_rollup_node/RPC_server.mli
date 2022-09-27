@@ -36,4 +36,7 @@ module Make (PVM : Pvm.S) : sig
   (** Shutdown a running RPC server. When this function is called, the rollup
       node will stop listening to incoming requests. *)
   val shutdown : RPC_server.server -> unit Lwt.t
+
+  (** Promise containing the OpenAPI JSON specification for the RPC server. *)
+  val openapi : Ezjsonm.value Lwt.t
 end

@@ -308,10 +308,29 @@ let import_command =
       cctxt#message "%a" Protocol.Alpha_context.Sc_rollup.Input_hash.pp hash
       >>= return)
 
+let openapi_command =
+  let open Clic in
+  command
+    ~group
+    ~desc:"Generate OpenAPI specification."
+    (args1 pvm_name_arg)
+    (prefixes ["generate"; "openapi"] @@ stop)
+    (fun pvm_name cctxt ->
+      let open Lwt_result_syntax in
+      let*? pvm =
+        match Protocol.Alpha_context.Sc_rollup.Kind.of_name pvm_name with
+        | Some k -> Ok (Components.pvm_of_kind k)
+        | None -> error_with "Invalid pvm name: %S" pvm_name
+      in
+      let module RPC = RPC_server.Make ((val pvm)) in
+      let*! openapi_json = RPC.openapi in
+      let*! () = cctxt#message "%a" Data_encoding.Json.pp openapi_json in
+      return_unit)
+
 let sc_rollup_commands () =
   List.map
     (Clic.map_command (new Protocol_client_context.wrap_full))
-    [config_init_command; run_command; import_command]
+    [config_init_command; run_command; import_command; openapi_command]
 
 let select_commands _ _ =
   return (sc_rollup_commands () @ Client_helpers_commands.commands ())
