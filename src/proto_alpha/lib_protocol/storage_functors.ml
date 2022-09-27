@@ -1068,11 +1068,12 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       (N)
       (V)
 
-  module Make_carbonated_map (R : REGISTER) (N : NAME) (V : VALUE) :
-    Non_iterable_indexed_carbonated_data_storage
-      with type t = t
-       and type key = key
-       and type value = V.t = struct
+  module Make_carbonated_map_param
+      (D : DATA_NAME)
+      (R : REGISTER)
+      (N : NAME)
+      (V : VALUE) =
+  struct
     type t = C.t
 
     type context = t
@@ -1085,7 +1086,7 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     let len_name = len_name :: N.name
 
-    let data_name = data_name :: N.name
+    let data_name = D.data_name @ N.name
 
     let consume_mem_gas c =
       let path_length = List.length (Raw_context.absolute_key c N.name) + 1 in
@@ -1198,6 +1199,19 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
         (register_named_subcontext description N.name)
         V.encoding
   end
+
+  module Make_carbonated_map (R : REGISTER) (N : NAME) (V : VALUE) :
+    Non_iterable_indexed_carbonated_data_storage
+      with type t = t
+       and type key = key
+       and type value = V.t =
+    Make_carbonated_map_param
+      (struct
+        let data_name = [data_name]
+      end)
+      (R)
+      (N)
+      (V)
 end
 
 module type WRAPPER = sig
