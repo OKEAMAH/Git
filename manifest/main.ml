@@ -4664,6 +4664,7 @@ module Protocol = Protocol
             ringo_lwt;
             injector |> if_some |> open_;
             octez_scoru_wasm;
+            octez_openapi;
           ]
     in
     let tx_rollup =
