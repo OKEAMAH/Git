@@ -359,12 +359,12 @@ let convert_endpoint (endpoint : Api.service Api.endpoint) :
   let env = merge_env_list [env_1; env_2; env_3; env_4; env_5] in
   (env, endpoint)
 
-let convert_api version (endpoints : Api.service Api.endpoint list) : Openapi.t
-    =
+let convert_api ?(title = "Tezos RPC") ?(description = "Tezos client RPC API.")
+    version (endpoints : Api.service Api.endpoint list) : Openapi.t =
   let envs, endpoints = List.map convert_endpoint endpoints |> List.split in
   Openapi.make
-    ~title:"Tezos RPC"
-    ~description:"Tezos client RPC API."
+    ~title
+    ~description
     ~version
     ~definitions:(String_map.bindings (merge_env_list envs))
     endpoints
