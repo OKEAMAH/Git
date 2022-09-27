@@ -4193,6 +4193,7 @@ module Protocol = Protocol
             plugin |> if_some |> open_;
             octez_shell_services |> open_;
             plompiler |> if_ N.(number >= 015);
+            octez_crypto_dal |> if_ N.(number >= 016) |> open_;
           ]
     in
     let _plugin_tests =
