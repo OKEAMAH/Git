@@ -86,10 +86,7 @@ module Level_messages_inbox : sig
   type message_witness
 
   module History : sig
-    include
-      Bounded_history_repr.S
-        with type key = Hash.t
-         and type value = message_witness
+    include Bounded_history_repr.S with type key = Hash.t and type value = t
 
     val no_history : t
   end

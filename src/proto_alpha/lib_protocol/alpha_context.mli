@@ -2982,9 +2982,7 @@ module Sc_rollup : sig
       type message_witness
 
       module History :
-        Bounded_history_repr.S
-          with type key = Hash.t
-           and type value = message_witness
+        Bounded_history_repr.S with type key = Hash.t and type value = t
 
       val hash : t -> Hash.t
 

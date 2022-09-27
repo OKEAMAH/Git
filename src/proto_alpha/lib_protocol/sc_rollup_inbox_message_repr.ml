@@ -157,6 +157,10 @@ module Level_messages_inbox = struct
   let message_witness_encoding : message_witness Data_encoding.t =
     Skip_list.encoding Hash.encoding serialized_encoding
 
+  let equal messages1 messages2 =
+    Raw_level_repr.equal messages1.level messages2.level
+    && equal_message_witness messages1.witness messages2.witness
+
   let hash_message_witness skip_list =
     let payload = Skip_list.content skip_list in
     let back_pointers_hashes = Skip_list.back_pointers skip_list in
@@ -164,15 +168,23 @@ module Level_messages_inbox = struct
     :: List.map Hash.to_bytes back_pointers_hashes
     |> Hash.hash_bytes
 
-  let pp_message_witness fmt witness =
+  let pp fmt {witness; level} =
     let history_hash = hash_message_witness witness in
     Format.fprintf
       fmt
-      "@[hash : %a@;%a@]"
+      "@[hash : %a@;%a;%a@]"
       Hash.pp
       history_hash
       (Skip_list.pp ~pp_content:Format.pp_print_string ~pp_ptr:Hash.pp)
       witness
+      Raw_level_repr.pp
+      level
+
+  let encoding =
+    Data_encoding.conv
+      (fun {witness; level} -> (witness, level))
+      (fun (witness, level) -> {witness; level})
+      (Data_encoding.tup2 message_witness_encoding Raw_level_repr.encoding)
 
   module History = struct
     include
@@ -182,25 +194,17 @@ module Level_messages_inbox = struct
         end)
         (Hash)
         (struct
-          type t = message_witness
+          type nonrec t = t
 
-          let pp = pp_message_witness
+          let pp = pp
 
-          let equal = equal_message_witness
+          let equal = equal
 
-          let encoding = message_witness_encoding
+          let encoding = encoding
         end)
 
     let no_history = empty ~capacity:0L
   end
-
-  let encoding =
-    Data_encoding.conv
-      (fun {witness; level} -> (witness, level))
-      (fun (witness, level) -> {witness; level})
-      (Data_encoding.tup2
-         (Skip_list.encoding Hash.encoding serialized_encoding)
-         Raw_level_repr.encoding)
 
   let hash {witness; _} = hash_message_witness witness
 
@@ -208,9 +212,9 @@ module Level_messages_inbox = struct
     let first_msg = unsafe_of_string "" in
     {witness = Skip_list.genesis first_msg; level}
 
-  let add_to_history history witness =
+  let add_to_history history witness level =
     let prev_cell_ptr = hash_message_witness witness in
-    History.remember prev_cell_ptr witness history
+    History.remember prev_cell_ptr {witness; level} history
 
   let add_message history messages payload =
     let open Tzresult_syntax in
@@ -219,7 +223,7 @@ module Level_messages_inbox = struct
     let new_witness =
       Skip_list.next ~prev_cell:prev_witness ~prev_cell_ptr:prev_ptr payload
     in
-    let* history = add_to_history history new_witness in
+    let* history = add_to_history history new_witness messages.level in
     return (history, {messages with witness = new_witness})
 
   let get_message_payload _skip_list _message_index = Lwt.return_none
@@ -234,7 +238,10 @@ module Level_messages_inbox = struct
 
   let produce_proof history ~message_index messages : proof option =
     let open Option_syntax in
-    let deref ptr = History.find ptr history in
+    let deref ptr =
+      let+ {witness; level = _} = History.find ptr history in
+      witness
+    in
     let current_ptr = hash messages in
     let lift_ptr =
       let rec aux acc = function
