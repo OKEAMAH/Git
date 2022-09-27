@@ -333,14 +333,19 @@ module Make (PVM : Pvm.S) = struct
     @@ fun node_ctxt output () -> Outbox.proof_of_output node_ctxt output
 
   let register node_ctxt =
-    List.fold_left
-      (fun dir f -> RPC_directory.merge dir (f node_ctxt))
-      RPC_directory.empty
-      [
-        Global_directory.build_directory;
-        Local_directory.build_directory;
-        Block_directory.build_directory;
-      ]
+    let dir =
+      List.fold_left
+        (fun dir f -> RPC_directory.merge dir (f node_ctxt))
+        RPC_directory.empty
+        [
+          Global_directory.build_directory;
+          Local_directory.build_directory;
+          Block_directory.build_directory;
+        ]
+    in
+    RPC_directory.register_describe_directory_service
+      dir
+      RPC_service.description_service
 
   let start node_ctxt configuration =
     let open Lwt_result_syntax in
