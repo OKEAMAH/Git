@@ -383,3 +383,10 @@ module Local = struct
       ~output:(Data_encoding.option Encodings.commitment_with_hash_and_level)
       (path / "last_published_commitment")
 end
+
+let openapi =
+  RPC_service.get_service
+    ~description:"OpenAPI specification of RPCs for rollup node"
+    ~query:RPC_query.empty
+    ~output:Data_encoding.json
+    RPC_path.(root / "openapi")

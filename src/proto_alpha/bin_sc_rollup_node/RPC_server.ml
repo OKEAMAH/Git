@@ -139,6 +139,16 @@ module Make_directory (S : PARAM) = struct
     |> RPC_directory.prefix prefix
 end
 
+module Root_directory = Make_directory (struct
+  type prefix = unit
+
+  let prefix = RPC_path.root
+
+  type context = Node_context.t
+
+  let context_of_prefix node_ctxt () = return node_ctxt
+end)
+
 module Global_directory = Make_directory (struct
   include Sc_rollup_services.Global
 
@@ -338,6 +348,7 @@ module Make (PVM : Pvm.S) = struct
         (fun dir f -> RPC_directory.merge dir (f node_ctxt))
         RPC_directory.empty
         [
+          Root_directory.build_directory;
           Global_directory.build_directory;
           Local_directory.build_directory;
           Block_directory.build_directory;
@@ -346,6 +357,32 @@ module Make (PVM : Pvm.S) = struct
     RPC_directory.register_describe_directory_service
       dir
       RPC_service.description_service
+
+  let generate_openapi node_ctxt =
+    let open Lwt_syntax in
+    let dir = register node_ctxt in
+    let+ descr = RPC_directory.describe_directory ~recurse:true ~arg:() dir in
+    let json_api =
+      Data_encoding.Json.construct
+        RPC_encoding.description_answer_encoding
+        descr
+    in
+    let open Tezos_openapi in
+    json_api
+    |> Json.annotate ~origin:"description"
+    |> Api.parse_tree |> Api.parse_services |> Api.flatten
+    |> Convert.convert_api
+         ~title:"SC rollup node RPC"
+         ~description:"Smart contracts rollup node RPC API"
+         Tezos_version.Bin_version.version_string
+    |> Openapi.to_json
+
+  let () =
+    Root_directory.register0 Sc_rollup_services.openapi
+    @@ fun node_ctxt () () ->
+    let open Lwt_result_syntax in
+    let*! json_openapi = generate_openapi node_ctxt in
+    return json_openapi
 
   let start node_ctxt configuration =
     let open Lwt_result_syntax in
