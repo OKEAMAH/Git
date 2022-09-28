@@ -1184,34 +1184,31 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
     let keys_unaccounted s =
       fold_keys_unaccounted s ~order:`Sorted ~init:[] ~f:(fun p acc ->
           Lwt.return (p :: acc))
+  end
 
-    let () =
-      let open Storage_description in
-      let unpack = unpack I.args in
-      let description =
-        if R.ghost then Storage_description.create ()
-        else Raw_context.description
-      in
-      register_value
-        ~get:(fun c ->
-          let c, k = unpack c in
-          find c k >|=? fun (_, v) -> v)
-        (register_named_subcontext description N.name)
-        V.encoding
+  module Make_carbonated_map_with_uncarbonated_accesses_INTERNAL
+      (R : REGISTER)
+      (N : NAME)
+      (V : VALUE) =
+  struct
+    module D = struct
+      let data_name = [data_name]
+    end
+
+    include Make_map_param (D) (R) (N) (V)
+    module Carbonated = Make_carbonated_map_param (D) (R) (N) (V)
   end
 
   module Make_carbonated_map (R : REGISTER) (N : NAME) (V : VALUE) :
     Non_iterable_indexed_carbonated_data_storage
       with type t = t
        and type key = key
-       and type value = V.t =
-    Make_carbonated_map_param
-      (struct
-        let data_name = [data_name]
-      end)
-      (R)
-      (N)
-      (V)
+       and type value = V.t = struct
+    module M =
+      Make_carbonated_map_with_uncarbonated_accesses_INTERNAL (R) (N) (V)
+
+    include M.Carbonated
+  end
 end
 
 module type WRAPPER = sig
