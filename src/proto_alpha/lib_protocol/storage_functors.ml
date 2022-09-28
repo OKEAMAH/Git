@@ -1209,6 +1209,27 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     include M.Carbonated
   end
+
+  module Make_carbonated_map_with_uncarbonated_accesses
+      (R : REGISTER)
+      (N : NAME)
+      (V : VALUE) :
+    Carbonated_data_storage_with_uncarbonated_accesses
+      with type t = t
+       and type key = key
+       and type value = V.t =
+    Make_carbonated_map_with_uncarbonated_accesses_INTERNAL (R) (N) (V)
+
+  module Make_carbonated_map_with_uncarbonated_accesses_and_local_context
+      (R : REGISTER)
+      (N : NAME)
+      (V : VALUE) :
+    Carbonated_data_storage_with_uncarbonated_accesses_and_local_context
+      with type t = t
+       and type key = key
+       and type value = V.t
+       and type local_context = local_context =
+    Make_carbonated_map_with_uncarbonated_accesses_INTERNAL (R) (N) (V)
 end
 
 module type WRAPPER = sig

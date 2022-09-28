@@ -508,5 +508,24 @@ module type Indexed_raw_context = sig
        and type key = key
        and type value = V.t
 
+  module Make_carbonated_map_with_uncarbonated_accesses
+      (_ : REGISTER)
+      (_ : NAME)
+      (V : VALUE) :
+    Carbonated_data_storage_with_uncarbonated_accesses
+      with type t = t
+       and type key = key
+       and type value = V.t
+
+  module Make_carbonated_map_with_uncarbonated_accesses_and_local_context
+      (_ : REGISTER)
+      (_ : NAME)
+      (V : VALUE) :
+    Carbonated_data_storage_with_uncarbonated_accesses_and_local_context
+      with type t = t
+       and type key = key
+       and type value = V.t
+       and type local_context = local_context
+
   module Raw_context : Raw_context.T with type t = t ipath
 end
