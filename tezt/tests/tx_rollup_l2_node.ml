@@ -2942,6 +2942,94 @@ let test_origination_deposit_same_block =
         ~tz4_address:bls_key.aggregate_public_key_hash
         ~expected_balance:10)
 
+let test_migration =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"TX_rollup: protocol migration"
+    ~tags:["tx_rollup"; "migration"]
+  @@ fun next_protocol ->
+  match Protocol.previous_protocol next_protocol with
+  | None ->
+      Log.info "No previous protocol, skipping." ;
+      unit
+  | Some protocol ->
+      let migration_level = 5 in
+      let patch_node_config =
+        Node.Config_file.set_sandbox_network_with_user_activated_upgrades
+          [(migration_level, next_protocol)]
+      in
+      let* node, client =
+        Client.init_with_protocol `Client ~protocol ~patch_node_config ()
+      in
+      let operator = Constant.bootstrap1.public_key_hash in
+      let*! rollup = Client.Tx_rollup.originate ~src:operator client in
+      let* () = Client.bake_for_and_wait client in
+      let origination_level = Node.get_level node in
+      let tx_node =
+        Tx_rollup_node.create
+          ~protocol
+          Observer
+          ~rollup_id:rollup
+          ~origination_level
+          ~no_wait_proto:true
+          client
+          node
+      in
+      let tx_node_next =
+        Tx_rollup_node.create
+          ~data_dir:(Tx_rollup_node.data_dir tx_node)
+          ~protocol:next_protocol
+          Observer
+          ~rollup_id:rollup
+          ~origination_level
+          ~allow_deposit:true
+          client
+          node
+      in
+      let* _ = Tx_rollup_node.init_config tx_node in
+      let* () = Tx_rollup_node.run tx_node in
+      let* () = Tx_rollup_node.run tx_node_next in
+      let tx_client =
+        Tx_rollup_client.create
+          ~protocol
+          ~wallet_dir:(Client.base_dir client)
+          tx_node
+      in
+      let tx_client_next =
+        Tx_rollup_client.create
+          ~protocol:next_protocol
+          ~wallet_dir:(Client.base_dir client)
+          tx_node_next
+      in
+      (* Submit a batch *)
+      let (`Batch content) = Rollup.make_batch "tezos_l2_batch_1" in
+      let*! () =
+        Client.Tx_rollup.submit_batch
+          ~content
+          ~rollup
+          ~src:Constant.bootstrap2.public_key_hash
+          client
+      in
+      let* () = Client.bake_for_and_wait client in
+      let* _ = Tx_rollup_node.wait_for_tezos_level tx_node 3 in
+      let* _tx_node_inbox_1 =
+        tx_client_get_inbox ~tx_client ~tezos_client:client ~block:"0"
+      in
+      let* () =
+        repeat (migration_level - 2) @@ fun () ->
+        let* () = Client.bake_for_and_wait client in
+        let* _block = RPC.Client.call client @@ RPC.get_chain_block () in
+        unit
+      in
+      let* _ = Tx_rollup_node.wait_for_tezos_level tx_node_next 3 in
+      let* _tx_node_inbox_1 =
+        tx_client_get_inbox
+          ~tx_client:tx_client_next
+          ~tezos_client:client
+          ~block:"0"
+      in
+      unit
+
 let register ~protocols =
   test_node_configuration protocols ;
   test_not_allow_deposit protocols ;
@@ -2967,4 +3055,5 @@ let register ~protocols =
   test_transfer_command protocols ;
   test_withdraw_command protocols ;
   test_catch_up protocols ;
-  test_origination_deposit_same_block protocols
+  test_origination_deposit_same_block protocols ;
+  test_migration [Alpha]
