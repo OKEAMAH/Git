@@ -97,7 +97,7 @@ module type S = sig
 
   val search :
     deref:('ptr -> ('content, 'ptr) cell option) ->
-    compare:('content -> int Lwt.t) ->
+    compare:(('content, 'ptr) cell -> int Lwt.t) ->
     cell:('content, 'ptr) cell ->
     ('content, 'ptr) search_result Lwt.t
 end
@@ -425,7 +425,7 @@ end) : S = struct
                and returns the current path. *)
             return {rev_path; last_cell = Deref_returned_none}
         | Some next_cell -> (
-            let* comparison = compare next_cell.content in
+            let* comparison = compare next_cell in
             if comparison = 0 then
               (* We have found the target.*)
               let rev_path = next_cell :: rev_path in
@@ -463,7 +463,7 @@ end) : S = struct
                   let rev_path = good_next_cell :: rev_path in
                   aux rev_path good_next_cell 0)
     in
-    let* comparison = compare cell.content in
+    let* comparison = compare cell in
     if Compare.Int.(comparison = 0) then
       (* Particular case where the target is the start cell. *)
       return {rev_path = [cell]; last_cell = Found cell}

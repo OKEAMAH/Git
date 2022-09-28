@@ -2990,7 +2990,7 @@ module Sc_rollup : sig
 
       val add_message : History.t -> t -> serialized -> (History.t * t) tzresult
 
-      val get_message_payload : t -> Z.t -> serialized option Lwt.t
+      val get_message_payload : t -> serialized
 
       val get_level : t -> Raw_level.t
 
@@ -3046,10 +3046,12 @@ module Sc_rollup : sig
 
     module Hash : S.HASH
 
+    type level_history
+
     module History :
       Bounded_history_repr.S
         with type key = Hash.t
-         and type value = history_proof
+         and type value = level_history
 
     type serialized_proof
 
@@ -3078,12 +3080,16 @@ module Sc_rollup : sig
         (Inbox_message.Level_messages_inbox.t * t, error trace) result Lwt.t
 
       val get_message_payload :
-        Inbox_message.Level_messages_inbox.t ->
-        Z.t ->
-        Inbox_message.serialized option Lwt.t
+        Inbox_message.Level_messages_inbox.t -> Inbox_message.serialized
 
       val form_history_proof :
-        History.t -> t -> (History.t * history_proof) tzresult Lwt.t
+        History.t ->
+        Inbox_message.Level_messages_inbox.History.t ->
+        t ->
+        (History.t
+        * Inbox_message.Level_messages_inbox.History.t
+        * history_proof)
+        tzresult
 
       val take_snapshot : current_level:Raw_level.t -> t -> history_proof
 
@@ -3115,7 +3121,7 @@ module Sc_rollup : sig
       val produce_proof :
         History.t ->
         history_proof ->
-        Raw_level.t * Z.t ->
+        Raw_level.t * int ->
         (proof * inbox_message option) tzresult Lwt.t
 
       val empty : Sc_rollup_repr.t -> Raw_level.t -> t Lwt.t

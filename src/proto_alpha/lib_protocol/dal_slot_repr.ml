@@ -295,11 +295,12 @@ module Slots_history = struct
       return @@ next ~prev_cell ~prev_cell_ptr elt
 
     let search ~deref ~cell ~id_target =
-      search ~deref ~cell ~compare:(compare_lwt id_target)
+      search ~deref ~cell ~compare:(fun cell ->
+          compare_lwt id_target (content cell))
 
     (* FIXME/DAL: search will be used in refutation proof. But we need to
-       introduce it here to explain why we need an ordering on the skip list's
-       elements. *)
+                                       introduce it here to explain why we need an ordering on the skip list's
+                                       elements. *)
     let _ = ignore search
   end
 

@@ -26,6 +26,7 @@
 type error +=
   | (* `Permanent *) Error_encode_inbox_message
   | (* `Permanent *) Error_decode_inbox_message
+  | (* `Permanent *) Invalid_proof
 
 let () =
   let open Data_encoding in
@@ -161,24 +162,28 @@ module Level_messages_inbox = struct
     Raw_level_repr.equal messages1.level messages2.level
     && equal_message_witness messages1.witness messages2.witness
 
-  let hash_message_witness skip_list =
-    let payload = Skip_list.content skip_list in
-    let back_pointers_hashes = Skip_list.back_pointers skip_list in
+  let hash {witness; level} =
+    let level_bytes =
+      Raw_level_repr.to_int32 level |> Int32.to_string |> Bytes.of_string
+    in
+    let payload = Skip_list.content witness in
+    let back_pointers_hashes = Skip_list.back_pointers witness in
     Bytes.of_string (payload : serialized :> string)
+    :: level_bytes
     :: List.map Hash.to_bytes back_pointers_hashes
     |> Hash.hash_bytes
 
-  let pp fmt {witness; level} =
-    let history_hash = hash_message_witness witness in
+  let pp fmt message =
+    let history_hash = hash message in
     Format.fprintf
       fmt
       "@[hash : %a@;%a;%a@]"
       Hash.pp
       history_hash
       (Skip_list.pp ~pp_content:Format.pp_print_string ~pp_ptr:Hash.pp)
-      witness
+      message.witness
       Raw_level_repr.pp
-      level
+      message.level
 
   let encoding =
     Data_encoding.conv
@@ -206,14 +211,12 @@ module Level_messages_inbox = struct
     let no_history = empty ~capacity:0L
   end
 
-  let hash {witness; _} = hash_message_witness witness
-
   let empty level =
     let first_msg = unsafe_of_string "" in
     {witness = Skip_list.genesis first_msg; level}
 
   let add_to_history history witness level =
-    let prev_cell_ptr = hash_message_witness witness in
+    let prev_cell_ptr = hash {witness; level} in
     History.remember prev_cell_ptr {witness; level} history
 
   let add_message history messages payload =
@@ -226,6 +229,8 @@ module Level_messages_inbox = struct
     let* history = add_to_history history new_witness messages.level in
     return (history, {messages with witness = new_witness})
 
+  let get_number_of_messages {witness; _} = Skip_list.index witness
+
   let get_message_payload {witness; _} = Skip_list.content witness
 
   let get_level {level; _} = level
@@ -234,14 +239,21 @@ module Level_messages_inbox = struct
 
   let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
 
-  type proof = message_witness list
+  type proof = {
+    message : message_witness;
+    inclusion_proof : message_witness list;
+  }
 
-  let empty_proof = []
+  let proof_encoding =
+    let open Data_encoding in
+    conv
+      (fun {message; inclusion_proof} -> (message, inclusion_proof))
+      (fun (message, inclusion_proof) -> {message; inclusion_proof})
+      (obj2
+         (req "message" message_witness_encoding)
+         (req "inclusion_proof" (list message_witness_encoding)))
 
-  let proof_encoding = Data_encoding.list message_witness_encoding
-
-  let produce_proof history ~message_index messages :
-      (serialized * Raw_level_repr.t * message_witness list) option =
+  let produce_proof history ~message_index messages : proof option =
     let open Option_syntax in
     let deref ptr =
       let+ {witness; level = _} = History.find ptr history in
@@ -252,9 +264,11 @@ module Level_messages_inbox = struct
       let rec aux acc = function
         | [] -> None
         | [last_ptr] ->
-            let+ {witness; level} = History.find last_ptr history in
-            let message_payload = Skip_list.content witness in
-            (message_payload, level, List.rev (witness :: acc))
+            let+ message = History.find last_ptr history in
+            {
+              message = message.witness;
+              inclusion_proof = List.rev (message.witness :: acc);
+            }
         | x :: xs ->
             let* cell = deref x in
             aux (cell :: acc) xs
@@ -269,20 +283,32 @@ module Level_messages_inbox = struct
     in
     lift_ptr ptr_path
 
-  let verify_proof proof ~message_witness messages =
+  let verify_proof {message; inclusion_proof} messages =
+    let open Tzresult_syntax in
+    let level = messages.level in
     let hash_map, ptr_list =
       List.fold_left
         (fun (hash_map, ptr_list) message_witness ->
-          let message_ptr = hash_message_witness message_witness in
+          let message_ptr = hash {witness = message_witness; level} in
           ( Hash.Map.add message_ptr message_witness hash_map,
             message_ptr :: ptr_list ))
         (Hash.Map.empty, [])
-        proof
+        inclusion_proof
     in
     let ptr_list = List.rev ptr_list in
     let equal_ptr = Hash.equal in
     let deref ptr = Hash.Map.find ptr hash_map in
     let cell_ptr = hash messages in
-    let target_ptr = hash_message_witness message_witness in
-    Skip_list.valid_back_path ~equal_ptr ~deref ~cell_ptr ~target_ptr ptr_list
+    let target_ptr = hash {witness = message; level} in
+    let* () =
+      error_unless
+        (Skip_list.valid_back_path
+           ~equal_ptr
+           ~deref
+           ~cell_ptr
+           ~target_ptr
+           ptr_list)
+        Invalid_proof
+    in
+    return (Skip_list.content message, level, Skip_list.index message)
 end

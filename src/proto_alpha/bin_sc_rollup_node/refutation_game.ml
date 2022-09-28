@@ -24,22 +24,22 @@
 (*****************************************************************************)
 
 (** This module implements the refutation game logic of the rollup
-   node.
+node.
 
-   When a new L1 block arises, the rollup node asks the L1 node for
-   the current game it is part of, if any.
+When a new L1 block arises, the rollup node asks the L1 node for
+the current game it is part of, if any.
 
-   If a game is running and it is the rollup operator turn, the rollup
-   node injects the next move of the winning strategy.
+If a game is running and it is the rollup operator turn, the rollup
+node injects the next move of the winning strategy.
 
-   If a game is running and it is not the rollup operator turn, the
-   rollup node asks the L1 node whether the timeout is reached to play
-   the timeout argument if possible.
+If a game is running and it is not the rollup operator turn, the
+rollup node asks the L1 node whether the timeout is reached to play
+the timeout argument if possible.
 
-   Otherwise, if no game is running, the rollup node asks the L1 node
-   whether there is a conflict with one of its disputable commitments. If
-   there is such a conflict with a commitment C', then the rollup node
-   starts a game to refute C' by starting a game with one of its staker.
+Otherwise, if no game is running, the rollup node asks the L1 node
+whether there is a conflict with one of its disputable commitments. If
+there is such a conflict with a commitment C', then the rollup node
+starts a game to refute C' by starting a game with one of its staker.
 
 *)
 open Protocol
@@ -93,8 +93,8 @@ module Make (Interpreter : Interpreter.S) :
     in
     let* history = Inbox.history_of_hash node_ctxt hash in
     let* inbox = Inbox.inbox_of_hash node_ctxt hash in
-    let* history, history_proof =
-      Context.Inbox.form_history_proof history inbox
+    let* history, level_history, history_proof =
+      Context.Inbox.form_history_proof history level_history inbox
       >|= Environment.wrap_tzresult
     in
     let module P = struct
@@ -161,9 +161,9 @@ module Make (Interpreter : Interpreter.S) :
     let rec traverse ok = function
       | [] ->
           (* The game invariant states that the dissection from the
-             opponent must contain a tick we disagree with. If the
-             retrieved game does not respect this, we cannot trust the
-             Tezos node we are connected to and prefer to stop here. *)
+                   opponent must contain a tick we disagree with. If the
+                   retrieved game does not respect this, we cannot trust the
+                   Tezos node we are connected to and prefer to stop here. *)
           tzfail
             Sc_rollup_node_errors
             .Unreliable_tezos_node_returning_inconsistent_game
@@ -318,7 +318,7 @@ module Make (Interpreter : Interpreter.S) :
             Sc_rollup_errors.Sc_rollup_game_already_started;
         ] ->
         (* The game may already be starting in the meantime. So we
-           ignore this error. *)
+               ignore this error. *)
         return_unit
     | Error errs -> Lwt.return (Error errs)
 

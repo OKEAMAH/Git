@@ -180,7 +180,7 @@ module type S = sig
      to [lower]. *)
   val search :
     deref:('ptr -> ('content, 'ptr) cell option) ->
-    compare:('content -> int Lwt.t) ->
+    compare:(('content, 'ptr) cell -> int Lwt.t) ->
     cell:('content, 'ptr) cell ->
     ('content, 'ptr) search_result Lwt.t
 end

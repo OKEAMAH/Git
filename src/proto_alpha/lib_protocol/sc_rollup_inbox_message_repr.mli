@@ -44,21 +44,21 @@
 *)
 
 (** [internal_inbox_message] represent an internal message in a inbox (L1 ->
-L2). This is not inline so it can easily be used by
-{!Sc_rollup_costs.cost_serialize_internal_inbox_message}. *)
+    L2). This is not inline so it can easily be used by
+    {!Sc_rollup_costs.cost_serialize_internal_inbox_message}. *)
 type internal_inbox_message = {
   payload : Script_repr.expr;
       (** A Micheline value containing the parameters passed to the rollup. *)
   sender : Contract_hash.t;
       (** The contract hash of an Layer 1 originated contract sending a message
-          to the rollup. *)
+      to the rollup. *)
   source : Signature.public_key_hash;
       (** The implicit account that originated the transaction. *)
 }
 
 (** A type representing messages from Layer 1 to Layer 2. Internal ones are
-originated from Layer 1 smart-contracts and external ones are messages from
-an external manager operation. *)
+    originated from Layer 1 smart-contracts and external ones are messages from
+    an external manager operation. *)
 type t = Internal of internal_inbox_message | External of string
 
 type serialized = private string
@@ -81,9 +81,11 @@ val unsafe_to_string : serialized -> string
 module Hash : S.HASH
 
 module Level_messages_inbox : sig
-  type t
-
   type message_witness
+
+  type t = {witness : message_witness; level : Raw_level_repr.t}
+
+  val encoding : t Data_encoding.t
 
   module History : sig
     include Bounded_history_repr.S with type key = Hash.t and type value = t
@@ -99,25 +101,27 @@ module Level_messages_inbox : sig
 
   val equal : t -> t -> bool
 
+  val pp : Format.formatter -> t -> unit
+
   val get_message_payload : t -> serialized
 
   val get_level : t -> Raw_level_repr.t
+
+  val get_number_of_messages : t -> int
 
   val to_bytes : t -> bytes
 
   val of_bytes : bytes -> t option
 
-  type proof = private message_witness list
-
-  val empty_proof : proof
+  type proof = private {
+    message : message_witness;
+    inclusion_proof : message_witness list;
+  }
 
   val proof_encoding : proof Data_encoding.t
 
-  val produce_proof :
-    History.t ->
-    message_index:int ->
-    t ->
-    (serialized * Raw_level_repr.t * proof) option
+  val produce_proof : History.t -> message_index:int -> t -> proof option
 
-  val verify_proof : proof -> message_witness:message_witness -> t -> bool
+  val verify_proof :
+    proof -> t -> (serialized * Raw_level_repr.t * int) tzresult
 end

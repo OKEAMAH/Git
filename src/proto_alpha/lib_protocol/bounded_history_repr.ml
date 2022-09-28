@@ -71,6 +71,10 @@ module type S = sig
 
   val remember : key -> value -> t -> t tzresult
 
+  val equal : t -> t -> bool
+
+  val capacity : t -> int64
+
   module Internal_for_tests : sig
     val empty : capacity:int64 -> next_index:int64 -> t
 
@@ -253,6 +257,11 @@ module Make (Name : NAME) (Key : KEY) (Value : VALUE) :
                   })
 
   let find key t = Map.find_opt key t.events
+
+  let equal {events = events1; _} {events = events2; _} =
+    Map.equal Value.equal events1 events2
+
+  let capacity {capacity; _} = capacity
 
   module Internal_for_tests = struct
     let empty ~capacity ~next_index =

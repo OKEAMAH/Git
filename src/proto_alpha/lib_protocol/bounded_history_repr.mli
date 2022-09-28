@@ -104,6 +104,10 @@ module type S = sig
   *)
   val remember : key -> value -> t -> t tzresult
 
+  val equal : t -> t -> bool
+
+  val capacity : t -> int64
+
   module Internal_for_tests : sig
     (** A more flexible [empty] function for testing purpose. *)
     val empty : capacity:int64 -> next_index:int64 -> t

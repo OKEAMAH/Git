@@ -100,7 +100,8 @@ struct
     Lwt_main.run
       (search
          ~deref:(deref list)
-         ~compare:(fun x -> Lwt.return Compare.Int.(compare x target_content))
+         ~compare:(fun x ->
+           Lwt.return Compare.Int.(compare (content x) target_content))
          ~cell:start)
 
   let valid_back_path list start stop path =

@@ -170,6 +170,8 @@ module V1 : sig
   *)
   type history_proof
 
+  type level_history
+
   (** A [History.t] is basically a lookup table of {!history_proof}s. We
       need this if we want to produce inbox proofs because it allows us
       to dereference the 'pointer' hashes in any of the
@@ -186,7 +188,7 @@ module V1 : sig
       in all potential refutation games occurring during the challenge
       period. *)
   module History :
-    Bounded_history_repr.S with type key = Hash.t and type value = history_proof
+    Bounded_history_repr.S with type key = Hash.t and type value = level_history
 
   val pp_history_proof : Format.formatter -> history_proof -> unit
 
@@ -290,7 +292,13 @@ module type Merkelized_operations = sig
       (and that current level could be quite far back in terms of blocks
       if the inbox hasn't been added to for a while). *)
   val form_history_proof :
-    History.t -> t -> (History.t * history_proof) tzresult Lwt.t
+    History.t ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
+    t ->
+    (History.t
+    * Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t
+    * history_proof)
+    tzresult
 
   (** This is similar to {!form_history_proof} except that it is just to
       be used on the protocol side because it doesn't ensure the history
@@ -374,7 +382,6 @@ module type Merkelized_operations = sig
       full history). *)
   val produce_proof :
     History.t ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
     history_proof ->
     Raw_level_repr.t * int ->
     (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t
