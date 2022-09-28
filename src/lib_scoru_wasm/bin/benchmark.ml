@@ -123,6 +123,11 @@ module Benchmark = struct
 end
 
 module Exec = struct
+  let should_continue_until_input_requested (pvm_state : Wasm.pvm_state) =
+    match pvm_state.input_request with
+    | No_input_required -> true
+    | Input_required -> false
+
   let eval_until_input_requested tree =
     let should_continue (pvm_state : Wasm.pvm_state) =
       match pvm_state.input_request with
@@ -147,7 +152,29 @@ module Exec = struct
     | `Evaluating, Eval _ -> true
     | _, _ -> false
 
-  let finish_top_level_call tree = eval_until_input_requested tree
+  let finish_top_level_call tree =
+    Wasm.Internal_for_tests.compute_step_many_until
+      ~max_steps:Int64.max_int
+      should_continue_until_input_requested
+      tree
+
+  let finish_top_level_call_on_state pvm_state =
+    Wasm.Internal_for_tests.compute_step_many_until_pvm_state
+      ~max_steps:Int64.max_int
+      should_continue_until_input_requested
+      pvm_state
+
+  let execute_on_tree phase tree =
+    Wasm.Internal_for_tests.compute_step_many_until
+      ~max_steps:Int64.max_int
+      (should_continue phase)
+      tree
+
+  let execute_on_state phase state =
+    Wasm.Internal_for_tests.compute_step_many_until_pvm_state
+      ~max_steps:Int64.max_int
+      (should_continue phase)
+      state
 
   let decode tree =
     Wasm.Internal_for_tests.compute_step_many_until
@@ -287,46 +314,74 @@ module Scenario = struct
   let make_scenario_step (label : string) (action : action) : scenario_step =
     (label, action)
 
-  let run_action ?(inline = true) ?(last_tick = false) benchmark name tree
-      (action : action) =
+  let get_tick_from_tree tree =
+    let open Lwt_syntax in
+    let* info = Wasm.get_info tree in
+    return info.current_tick
+
+  let pp_header_section benchmark tree =
+    let open Lwt_syntax in
+    let* before_tick = get_tick_from_tree tree in
+    if benchmark.verbose then
+      Printf.printf
+        "=========\n%s \nStart at tick %s\n-----\n%!"
+        benchmark.current_section
+        (Z.to_string before_tick) ;
+    return (before_tick, Unix.gettimeofday ())
+
+  let pp_footer_section benchmark tree before_tick before_time =
+    let open Lwt_syntax in
+    let time = Unix.gettimeofday () -. before_time in
+    let* after_tick = get_tick_from_tree tree in
+    let tick = Z.(after_tick - before_tick) in
+    let* tick_state = Wasm.Internal_for_tests.get_tick_state tree in
+    let _ = if benchmark.verbose then Printf.printf "-----\n" in
+    let _ =
+      if benchmark.verbose then
+        Printf.printf
+          "%s took %s ticks in %f s\n%!"
+          benchmark.current_section
+          (Z.to_string tick)
+          time
+    in
+    let _ =
+      if benchmark.verbose then
+        Printf.printf
+          "last tick: %s %s\n%!"
+          (Z.to_string after_tick)
+          (tick_label tick_state)
+    in
+    return_unit
+
+  let run_action_ get_tick (benchmark : benchmark) name tree action =
     let open Lwt_syntax in
     (* Before *)
     let before = Unix.gettimeofday () in
-    let* info = Wasm.get_info tree in
-    let before_tick = info.current_tick in
-    let _ =
-      if (not inline) && benchmark.verbose then
-        Printf.printf
-          "=========\n%s \nStart at tick %s\n-----\n%!"
-          name
-          (Z.to_string info.current_tick)
-    in
+    let* before_tick = get_tick tree in
 
     (* Act *)
     let* benchmark, tree = action benchmark tree in
 
     (* Result *)
     let time = Unix.gettimeofday () -. before in
-    let* info = Wasm.get_info tree in
-    let tick = Z.(info.current_tick - before_tick) in
-    let* tick_state = Wasm.Internal_for_tests.get_tick_state tree in
-    let _ = if (not inline) && benchmark.verbose then Printf.printf "-----\n" in
-    let _ =
-      if benchmark.verbose then
-        Printf.printf
-          "%s took %s ticks in %f s\n%!"
-          name
-          (Z.to_string tick)
-          time
-    in
-    let _ =
-      if last_tick && benchmark.verbose then
-        Printf.printf
-          "last tick: %s %s\n%!"
-          (Z.to_string info.current_tick)
-          (tick_label tick_state)
-    in
+    let* after_tick = get_tick tree in
+    let tick = Z.(after_tick - before_tick) in
+
     return (add_datum benchmark name tick time, tree)
+
+  let run_action_on_tree = run_action_ get_tick_from_tree
+
+  let get_tick_from_pvm_state (pvm_state : Wasm.pvm_state) =
+    Lwt.return pvm_state.current_tick
+
+  let run_action_on_pvm_state = run_action_ get_tick_from_pvm_state
+
+  let run_action_with_headers benchmark name tree action =
+    let open Lwt_syntax in
+    let* before_tick, before_time = pp_header_section benchmark tree in
+    let* benchmark, tree = run_action_on_tree benchmark name tree action in
+    let* _ = pp_footer_section benchmark tree before_tick before_time in
+    return (benchmark, tree)
 
   let raise action =
     let open Lwt_syntax in
@@ -334,24 +389,62 @@ module Scenario = struct
       let* tree = action tree in
       return (benchmark, tree)
 
+  let decode benchmark tree =
+    let open Lwt_syntax in
+    let before = Unix.gettimeofday () in
+    let* pvm_state = Wasm.Internal_for_tests.decode tree in
+    let time = Unix.gettimeofday () -. before in
+    let tick = Z.zero in
+    return (add_datum benchmark "Decode tree" tick time, pvm_state)
+
+  let encode benchmark pvm_state tree =
+    let open Lwt_syntax in
+    let before = Unix.gettimeofday () in
+    let* tree = Wasm.Internal_for_tests.encode pvm_state tree in
+    let time = Unix.gettimeofday () -. before in
+    let tick = Z.zero in
+    return (add_datum benchmark "Encode tree" tick time, tree)
+
   let exec_loop : action =
    fun benchmark tree ->
     let open Lwt_syntax in
-    let* benchmark, tree =
-      run_action benchmark "Decoding" tree (raise Exec.decode)
+    let* benchmark, pvm_state = decode benchmark tree in
+    let* benchmark, pvm_state =
+      run_action_on_pvm_state
+        benchmark
+        "Decoding"
+        pvm_state
+        (raise @@ Exec.execute_on_state `Decoding)
     in
-    let* benchmark, tree =
-      run_action benchmark "Linking" tree (raise Exec.link)
+    let* benchmark, pvm_state =
+      run_action_on_pvm_state
+        benchmark
+        "Linking"
+        pvm_state
+        (raise @@ Exec.execute_on_state `Linking)
     in
-    let* benchmark, tree =
-      run_action benchmark "Initialisation" tree (raise Exec.init)
+    let* benchmark, pvm_state =
+      run_action_on_pvm_state
+        benchmark
+        "Initialisation"
+        pvm_state
+        (raise @@ Exec.execute_on_state `Initialising)
     in
-    let* benchmark, tree =
-      run_action benchmark "Evaluation" tree (raise Exec.eval)
+    let* benchmark, pvm_state =
+      run_action_on_pvm_state
+        benchmark
+        "Evaluation"
+        pvm_state
+        (raise @@ Exec.execute_on_state `Evaluating)
     in
-    let* benchmark, tree =
-      run_action benchmark "Finish" tree (raise Exec.finish_top_level_call)
+    let* benchmark, pvm_state =
+      run_action_on_pvm_state
+        benchmark
+        "Finish"
+        pvm_state
+        (raise Exec.finish_top_level_call_on_state)
     in
+    let* benchmark, tree = encode benchmark pvm_state tree in
     return (benchmark, tree)
 
   let action_from_message step message : action =
@@ -369,13 +462,7 @@ module Scenario = struct
         | (label, action) :: q ->
             let benchmark = switch_section benchmark label in
             let* benchmark, tree =
-              run_action
-                ~last_tick:true
-                ~inline:false
-                benchmark
-                label
-                tree
-                action
+              run_action_with_headers benchmark label tree action
             in
             go benchmark tree q
       in
@@ -386,9 +473,7 @@ module Scenario = struct
       in
       let benchmark = init_scenario old_benchmark verbose scenario.name in
       let* benchmark, tree =
-        run_action
-          ~last_tick:true
-          ~inline:false
+        run_action_with_headers
           benchmark
           benchmark.current_section
           tree
