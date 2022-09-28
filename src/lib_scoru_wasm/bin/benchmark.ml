@@ -276,6 +276,7 @@ let tick_label = function
   | Eval {step_kont; _} -> "eval:" ^ step_kont_label step_kont
   | Stuck _ -> "stuck"
   | Link _ -> "link"
+  | Snapshot -> "snapshot"
 
 module Scenario = struct
   open Benchmark
@@ -621,9 +622,9 @@ let () =
        ~totals:false
        ~irmin:false
        [
-         (* scenario_tx_kernel_deposit_then_withdraw_to_same_address;
-            scenario_tx_kernel_deposit_transfer_withdraw;
-            scenario_tx_kernel_deposit_transfer_withdraw_all_in_one; *)
-         scenario_tx_kernel_deposit_transfer_withdraw_many_transfers
-         (* scenario_computation_kernel; *);
+         scenario_tx_kernel_deposit_then_withdraw_to_same_address;
+         scenario_tx_kernel_deposit_transfer_withdraw;
+         scenario_tx_kernel_deposit_transfer_withdraw_all_in_one;
+         scenario_tx_kernel_deposit_transfer_withdraw_many_transfers;
+         scenario_computation_kernel;
        ]
