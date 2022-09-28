@@ -1172,18 +1172,6 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     let add_or_remove s i v =
       match v with None -> remove s i | Some v -> add s i v
-
-    let mem_unaccounted s i = Raw_context.mem (pack s i) data_name
-
-    let fold_keys_unaccounted s ~order ~init ~f =
-      fold_keys s ~order ~init ~f:(fun i acc ->
-          mem_unaccounted s i >>= function
-          | false -> Lwt.return acc
-          | true -> f i acc)
-
-    let keys_unaccounted s =
-      fold_keys_unaccounted s ~order:`Sorted ~init:[] ~f:(fun p acc ->
-          Lwt.return (p :: acc))
   end
 
   module Make_carbonated_map_with_uncarbonated_accesses_INTERNAL
@@ -1196,7 +1184,12 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
     end
 
     include Make_map_param (D) (R) (N) (V)
-    module Carbonated = Make_carbonated_map_param (D) (R) (N) (V)
+
+    module Carbonated = struct
+      include Make_carbonated_map_param (D) (R) (N) (V)
+
+      let keys_unaccounted = keys
+    end
   end
 
   module Make_carbonated_map (R : REGISTER) (N : NAME) (V : VALUE) :
