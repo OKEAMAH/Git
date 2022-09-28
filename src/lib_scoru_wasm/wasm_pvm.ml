@@ -420,22 +420,10 @@ module Make (T : Tree_encoding.TREE) :
       in
       return pvm_state
 
-    let compute_step_many_until ?(max_steps = 1L) should_continue tree =
+    let decode tree = Tree_encoding_runner.decode pvm_state_encoding tree
+
+    let encode pvm_state tree =
       let open Lwt.Syntax in
-      assert (max_steps > 0L) ;
-      let rec go steps_left pvm_state =
-        if steps_left > 0L && should_continue pvm_state then
-          let* pvm_state = compute_step_inner pvm_state in
-          go (Int64.pred steps_left) pvm_state
-        else Lwt.return pvm_state
-      in
-
-      let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
-      (* Make sure we perform at least 1 step. The assertion above ensures that
-         we were asked to perform at least 1. *)
-      let* pvm_state = compute_step_inner pvm_state in
-      let* pvm_state = go (Int64.pred max_steps) pvm_state in
-
       (* {{Note tick state clean-up}}
 
          The "wasm" directory in the Irmin tree of the PVM is used to
@@ -452,8 +440,36 @@ module Make (T : Tree_encoding.TREE) :
          With this, we gain an additional 5% of proof size in the
          worst tick of the computation.wasm kernel. *)
       let* tree = T.remove tree ["wasm"] in
-
       Tree_encoding_runner.encode pvm_state_encoding pvm_state tree
+
+    let compute_step_many_until_pvm_state ?(max_steps = 1L) should_continue
+        pvm_state =
+      let open Lwt.Syntax in
+      assert (max_steps > 0L) ;
+      let rec go steps_left pvm_state =
+        if steps_left > 0L && should_continue pvm_state then
+          let* pvm_state = compute_step_inner pvm_state in
+          go (Int64.pred steps_left) pvm_state
+        else Lwt.return pvm_state
+      in
+      (* Make sure we perform at least 1 step. The assertion above ensures that
+         we were asked to perform at least 1. *)
+      let* pvm_state = compute_step_inner pvm_state in
+      go (Int64.pred max_steps) pvm_state
+
+    let compute_step_many_until ?(max_steps = 1L) should_continue tree =
+      let open Lwt.Syntax in
+      assert (max_steps > 0L) ;
+
+      let* pvm_state = decode tree in
+
+      (* Make sure we perform at least 1 step. The assertion above ensures that
+         we were asked to perform at least 1. *)
+      let* pvm_state =
+        compute_step_many_until_pvm_state ~max_steps should_continue pvm_state
+      in
+
+      encode pvm_state tree
 
     let compute_step_many ~max_steps tree =
       let should_continue pvm_state =
@@ -562,6 +578,12 @@ module Make (T : Tree_encoding.TREE) :
         match pvm.tick_state with
         | Stuck error -> Lwt.return_some error
         | _ -> Lwt.return_none
+
+      let decode = decode
+
+      let encode = encode
+
+      let compute_step_many_until_pvm_state = compute_step_many_until_pvm_state
 
       let compute_step_many_until = compute_step_many_until
 

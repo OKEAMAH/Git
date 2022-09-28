@@ -63,6 +63,13 @@ module type Internal_for_tests = sig
 
   val is_stuck : tree -> Wasm_pvm_errors.t option Lwt.t
 
+  val decode : tree -> pvm_state Lwt.t
+
+  val encode : pvm_state -> tree -> tree Lwt.t
+
+  val compute_step_many_until_pvm_state :
+    ?max_steps:int64 -> (pvm_state -> bool) -> pvm_state -> pvm_state Lwt.t
+
   val compute_step_many_until :
     ?max_steps:int64 -> (pvm_state -> bool) -> tree -> tree Lwt.t
 
