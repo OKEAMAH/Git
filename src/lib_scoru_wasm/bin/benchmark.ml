@@ -59,6 +59,8 @@ module Benchmark = struct
 
   type benchmark = {
     verbose : bool;
+    totals : bool;
+    irmin : bool;
     current_scenario : string;
     current_section : string;
     data : datum list;
@@ -66,9 +68,11 @@ module Benchmark = struct
     total_tick : Z.t;
   }
 
-  let empty_benchmark =
+  let empty_benchmark ?(verbose = false) ?(totals = true) ?(irmin = true) () =
     {
-      verbose = false;
+      verbose;
+      totals;
+      irmin;
       current_scenario = "";
       current_section = "";
       data = [];
@@ -76,10 +80,9 @@ module Benchmark = struct
       total_tick = Z.zero;
     }
 
-  let init_scenario benchmark verbose scenario =
+  let init_scenario benchmark scenario =
     {
       benchmark with
-      verbose;
       current_scenario = scenario;
       current_section = "Booting " ^ scenario;
     }
@@ -91,26 +94,30 @@ module Benchmark = struct
     {benchmark with current_section}
 
   let add_datum benchmark name ticks time =
-    let datum =
-      make_datum
-        benchmark.current_scenario
-        benchmark.current_section
-        name
-        ticks
-        time
-    in
-    {benchmark with data = datum :: benchmark.data}
+    if (not benchmark.totals) && benchmark.current_section = name then benchmark
+    else
+      let datum =
+        make_datum
+          benchmark.current_scenario
+          benchmark.current_section
+          name
+          ticks
+          time
+      in
+      {benchmark with data = datum :: benchmark.data}
 
   let add_final_info benchmark total_time total_tick =
-    let datum =
-      make_datum
-        benchmark.current_scenario
-        "all steps"
-        "total"
-        total_tick
-        total_time
-    in
-    {benchmark with data = datum :: benchmark.data}
+    if benchmark.totals then
+      let datum =
+        make_datum
+          benchmark.current_scenario
+          "all steps"
+          "total"
+          total_tick
+          total_time
+      in
+      {benchmark with data = datum :: benchmark.data}
+    else benchmark
 
   let pp_benchmark benchmark =
     let rec go = function
@@ -152,12 +159,6 @@ module Exec = struct
     | `Evaluating, Eval _ -> true
     | _, _ -> false
 
-  let finish_top_level_call tree =
-    Wasm.Internal_for_tests.compute_step_many_until
-      ~max_steps:Int64.max_int
-      should_continue_until_input_requested
-      tree
-
   let finish_top_level_call_on_state pvm_state =
     Wasm.Internal_for_tests.compute_step_many_until_pvm_state
       ~max_steps:Int64.max_int
@@ -175,30 +176,6 @@ module Exec = struct
       ~max_steps:Int64.max_int
       (should_continue phase)
       state
-
-  let decode tree =
-    Wasm.Internal_for_tests.compute_step_many_until
-      ~max_steps:Int64.max_int
-      (should_continue `Decoding)
-      tree
-
-  let link tree =
-    Wasm.Internal_for_tests.compute_step_many_until
-      ~max_steps:Int64.max_int
-      (should_continue `Linking)
-      tree
-
-  let init tree =
-    Wasm.Internal_for_tests.compute_step_many_until
-      ~max_steps:Int64.max_int
-      (should_continue `Initialising)
-      tree
-
-  let eval tree =
-    Wasm.Internal_for_tests.compute_step_many_until
-      ~max_steps:Int64.max_int
-      (should_continue `Evaluating)
-      tree
 
   let run kernel k =
     let open Lwt_syntax in
@@ -361,11 +338,20 @@ module Scenario = struct
 
     (* Act *)
     let* benchmark, tree = action benchmark tree in
+    let _ = if benchmark.verbose then Printf.printf "" in
 
     (* Result *)
     let time = Unix.gettimeofday () -. before in
     let* after_tick = get_tick tree in
     let tick = Z.(after_tick - before_tick) in
+    let _ =
+      if benchmark.verbose && not (benchmark.current_section = name) then
+        Printf.printf
+          "%s finished in %s ticks %f s\n%!"
+          name
+          (Z.to_string tick)
+          time
+    in
 
     return (add_datum benchmark name tick time, tree)
 
@@ -395,7 +381,13 @@ module Scenario = struct
     let* pvm_state = Wasm.Internal_for_tests.decode tree in
     let time = Unix.gettimeofday () -. before in
     let tick = Z.zero in
-    return (add_datum benchmark "Decode tree" tick time, pvm_state)
+    let _ =
+      if benchmark.verbose then
+        Printf.printf "Decode tree finished in %f s\n%!" time
+    in
+    if benchmark.irmin then
+      return (add_datum benchmark "Decode tree" tick time, pvm_state)
+    else return (benchmark, pvm_state)
 
   let encode benchmark pvm_state tree =
     let open Lwt_syntax in
@@ -403,7 +395,13 @@ module Scenario = struct
     let* tree = Wasm.Internal_for_tests.encode pvm_state tree in
     let time = Unix.gettimeofday () -. before in
     let tick = Z.zero in
-    return (add_datum benchmark "Encode tree" tick time, tree)
+    let _ =
+      if benchmark.verbose then
+        Printf.printf "Encode tree finished in %f s\n%!" time
+    in
+    if benchmark.irmin then
+      return (add_datum benchmark "Decode tree" tick time, tree)
+    else return (benchmark, tree)
 
   let exec_loop : action =
    fun benchmark tree ->
@@ -447,14 +445,26 @@ module Scenario = struct
     let* benchmark, tree = encode benchmark pvm_state tree in
     return (benchmark, tree)
 
-  let action_from_message step message : action =
+  let exec_on_message step message : action =
    fun benchmark tree ->
     let open Lwt_syntax in
     let message = Exec.read_message message in
     let* tree = Exec.set_input_step step message tree in
     exec_loop benchmark tree
 
-  let run_scenario ?(verbose = true) ?(benchmark = None) scenario =
+  let exec_on_messages step messages : action =
+   fun benchmark tree ->
+    let open Lwt_syntax in
+    let rec go step benchmark tree = function
+      | [] -> exec_loop benchmark tree
+      | message :: q ->
+          let message = Exec.read_message message in
+          let* tree = Exec.set_input_step step message tree in
+          go (step + 1) benchmark tree q
+    in
+    go step benchmark tree messages
+
+  let run_scenario ~benchmark scenario =
     let open Lwt_syntax in
     let apply_scenario kernel =
       let rec go benchmark tree = function
@@ -468,10 +478,7 @@ module Scenario = struct
       in
       let start = Unix.gettimeofday () in
       let* _, tree = Exec.initial_boot_sector_from_kernel kernel in
-      let old_benchmark =
-        match benchmark with None -> empty_benchmark | Some b -> b
-      in
-      let benchmark = init_scenario old_benchmark verbose scenario.name in
+      let benchmark = init_scenario benchmark scenario.name in
       let* benchmark, tree =
         run_action_with_headers
           benchmark
@@ -489,17 +496,18 @@ module Scenario = struct
     in
     Exec.run scenario.kernel apply_scenario
 
-  let run_scenarios ?(verbose = true) scenarios =
+  let run_scenarios ?(verbose = true) ?(totals = true) ?(irmin = true) scenarios
+      =
     let open Lwt_syntax in
-    let rec go benchmark_opt = function
+    let rec go benchmark = function
       | [] ->
-          pp_benchmark (Option.value benchmark_opt ~default:empty_benchmark) ;
+          pp_benchmark benchmark ;
           return_unit
       | t :: q ->
-          let* benchmark = run_scenario ~verbose ~benchmark:benchmark_opt t in
-          go (Some benchmark) q
+          let* benchmark = run_scenario ~benchmark t in
+          go benchmark q
     in
-    go None scenarios
+    go (empty_benchmark ~verbose ~totals ~irmin ()) scenarios
 end
 
 let scenario_tx_kernel_deposit_then_withdraw_to_same_address =
@@ -514,27 +522,22 @@ let scenario_tx_kernel_deposit_then_withdraw_to_same_address =
           Scenario.exec_loop benchmark tree);
       Scenario.make_scenario_step
         "Deposit"
-        (Scenario.action_from_message
+        (Scenario.exec_on_message
            1_001
            "tx_kernel/deposit_then_withdraw_to_same_address/deposit.out");
       Scenario.make_scenario_step
         "Withdraw"
-        (Scenario.action_from_message
+        (Scenario.exec_on_message
            1_002
            "tx_kernel/deposit_then_withdraw_to_same_address/withdrawal.out");
-      Scenario.make_scenario_step "Deposit+Withdrawal" (fun benchmark tree ->
-          let open Lwt_syntax in
-          let message =
-            Exec.read_message
-              "tx_kernel/deposit_then_withdraw_to_same_address/deposit.out"
-          in
-          let* tree = Exec.set_input_step 1_003 message tree in
-          let message =
-            Exec.read_message
-              "tx_kernel/deposit_then_withdraw_to_same_address/withdrawal.out"
-          in
-          let* tree = Exec.set_input_step 1_004 message tree in
-          Scenario.exec_loop benchmark tree);
+      Scenario.make_scenario_step
+        "Deposit+Withdraw"
+        (Scenario.exec_on_messages
+           1_003
+           [
+             "tx_kernel/deposit_then_withdraw_to_same_address/deposit.out";
+             "tx_kernel/deposit_then_withdraw_to_same_address/withdrawal.out";
+           ]);
     ]
 
 let scenario_tx_kernel_deposit_transfer_withdraw =
@@ -544,24 +547,41 @@ let scenario_tx_kernel_deposit_transfer_withdraw =
     [
       Scenario.make_scenario_step
         "First Deposit"
-        (Scenario.action_from_message
+        (Scenario.exec_on_message
            2_001
            "tx_kernel/deposit_transfer_withdraw/fst_deposit_message.out");
       Scenario.make_scenario_step
         "Second Deposit"
-        (Scenario.action_from_message
+        (Scenario.exec_on_message
            2_002
            "tx_kernel/deposit_transfer_withdraw/snd_deposit_message.out");
       Scenario.make_scenario_step
         "Invalid Message"
-        (Scenario.action_from_message
+        (Scenario.exec_on_message
            2_003
            "tx_kernel/deposit_transfer_withdraw/invalid_external_message.out");
       Scenario.make_scenario_step
         "Valid Message"
-        (Scenario.action_from_message
+        (Scenario.exec_on_message
            2_004
            "tx_kernel/deposit_transfer_withdraw/valid_external_message.out");
+    ]
+
+let scenario_tx_kernel_deposit_transfer_withdraw_all_in_one =
+  Scenario.make_scenario
+    "tx_kernel - deposit_transfer_withdraw_all_in_one "
+    "src/lib_scoru_wasm/bin/kernels/tx_kernel/tx_kernal_deb95799cc.wasm"
+    [
+      Scenario.make_scenario_step
+        "all_in_one "
+        (Scenario.exec_on_messages
+           3_000
+           [
+             "tx_kernel/deposit_transfer_withdraw/fst_deposit_message.out";
+             "tx_kernel/deposit_transfer_withdraw/snd_deposit_message.out";
+             "tx_kernel/deposit_transfer_withdraw/invalid_external_message.out";
+             "tx_kernel/deposit_transfer_withdraw/valid_external_message.out";
+           ]);
     ]
 
 let scenario_computation_kernel =
@@ -573,9 +593,12 @@ let scenario_computation_kernel =
 let () =
   Lwt_main.run
   @@ Scenario.run_scenarios
-       ~verbose:false
+       ~verbose:true
+       ~totals:false
+       ~irmin:false
        [
          scenario_tx_kernel_deposit_then_withdraw_to_same_address;
          scenario_tx_kernel_deposit_transfer_withdraw;
+         scenario_tx_kernel_deposit_transfer_withdraw_all_in_one;
          scenario_computation_kernel;
        ]
