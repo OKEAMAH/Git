@@ -34,18 +34,18 @@
     There are two types of inbox messages: external and internal.
 
      Internal messages originate from Layer 1 smart-contract and consist of:
-     - [payload] the parameters passed to the smart-contract rollup.
-     - [sender] the Layer 1 contract caller.
-     - [source] the public key hash used for originating the transaction.
+    - [payload] the parameters passed to the smart-contract rollup.
+    - [sender] the Layer 1 contract caller.
+    - [source] the public key hash used for originating the transaction.
 
     External messages originate from the [Sc_rollup_add_messages]
     manager-operation and consists of strings. The Layer 2 node is responsible
     for decoding and interpreting these messages.
-  *)
+*)
 
 (** [internal_inbox_message] represent an internal message in a inbox (L1 ->
-    L2). This is not inline so it can easily be used by
-    {!Sc_rollup_costs.cost_serialize_internal_inbox_message}. *)
+L2). This is not inline so it can easily be used by
+{!Sc_rollup_costs.cost_serialize_internal_inbox_message}. *)
 type internal_inbox_message = {
   payload : Script_repr.expr;
       (** A Micheline value containing the parameters passed to the rollup. *)
@@ -57,8 +57,8 @@ type internal_inbox_message = {
 }
 
 (** A type representing messages from Layer 1 to Layer 2. Internal ones are
-    originated from Layer 1 smart-contracts and external ones are messages from
-    an external manager operation. *)
+originated from Layer 1 smart-contracts and external ones are messages from
+an external manager operation. *)
 type t = Internal of internal_inbox_message | External of string
 
 type serialized = private string
@@ -97,7 +97,9 @@ module Level_messages_inbox : sig
 
   val add_message : History.t -> t -> serialized -> (History.t * t) tzresult
 
-  val get_message_payload : t -> Z.t -> serialized option Lwt.t
+  val equal : t -> t -> bool
+
+  val get_message_payload : t -> serialized
 
   val get_level : t -> Raw_level_repr.t
 
@@ -105,9 +107,17 @@ module Level_messages_inbox : sig
 
   val of_bytes : bytes -> t option
 
-  type proof
+  type proof = private message_witness list
 
-  val produce_proof : History.t -> message_index:int -> t -> proof option
+  val empty_proof : proof
+
+  val proof_encoding : proof Data_encoding.t
+
+  val produce_proof :
+    History.t ->
+    message_index:int ->
+    t ->
+    (serialized * Raw_level_repr.t * proof) option
 
   val verify_proof : proof -> message_witness:message_witness -> t -> bool
 end

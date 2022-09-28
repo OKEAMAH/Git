@@ -219,9 +219,9 @@ include Sc_rollup_data_version_sig.S with type t = V1.t
 include module type of V1 with type t = V1.t
 
 (** This extracts the current level hash from the inbox. Note: the
-    current level hash is stored lazily as [fun () -> ...], and this
-    function will call that function. So don't use this if you want to
-    preserve the laziness. *)
+current level hash is stored lazily as [fun () -> ...], and this
+function will call that function. So don't use this if you want to
+preserve the laziness. *)
 val current_level_hash : t -> Sc_rollup_inbox_message_repr.Hash.t
 
 type serialized_proof
@@ -229,7 +229,7 @@ type serialized_proof
 val serialized_proof_encoding : serialized_proof Data_encoding.t
 
 (** The following operations are subject to cross-validation between
-    rollup nodes and the layer 1. *)
+rollup nodes and the layer 1. *)
 module type Merkelized_operations = sig
   (** [add_messages ctxt history inbox level payloads level_tree] inserts
       a list of [payloads] as new messages in the [level_tree] of the
@@ -275,8 +275,7 @@ module type Merkelized_operations = sig
       position [idx]. Returns [None] otherwise. *)
   val get_message_payload :
     Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
-    Z.t ->
-    Sc_rollup_inbox_message_repr.serialized option Lwt.t
+    Sc_rollup_inbox_message_repr.serialized
 
   (** [form_history_proof ctxt history inbox level_tree] creates the
       skip list structure that includes the current inbox level, while
@@ -375,8 +374,9 @@ module type Merkelized_operations = sig
       full history). *)
   val produce_proof :
     History.t ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
     history_proof ->
-    Raw_level_repr.t * Z.t ->
+    Raw_level_repr.t * int ->
     (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t
 
   (** [empty ctxt level] is an inbox started at some given [level] with no

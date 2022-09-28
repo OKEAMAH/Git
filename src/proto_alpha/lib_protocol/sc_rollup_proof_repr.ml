@@ -214,6 +214,9 @@ module type PVM_with_context_and_state = sig
     val inbox : Sc_rollup_inbox_repr.history_proof
 
     val history : Sc_rollup_inbox_repr.History.t
+
+    val level_history :
+      Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t
   end
 end
 
@@ -229,10 +232,10 @@ let produce pvm_and_state commit_level =
     | No_input_required -> return (None, None)
     | Initial ->
         let level = Raw_level_repr.root in
-        let message_counter = Z.zero in
+        let message_counter = 0 in
         let* inbox_proof, input =
           Inbox_with_history.(
-            produce_proof history inbox (level, message_counter))
+            produce_proof history level_history inbox (level, message_counter))
         in
         let input =
           Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) input
@@ -241,7 +244,7 @@ let produce pvm_and_state commit_level =
           Inbox_proof
             {
               level;
-              message_counter;
+              message_counter = Z.of_int message_counter;
               proof = Inbox_with_history.to_serialized_proof inbox_proof;
             }
         in
@@ -249,7 +252,11 @@ let produce pvm_and_state commit_level =
     | First_after (level, message_counter) ->
         let* inbox_proof, input =
           Inbox_with_history.(
-            produce_proof history inbox (level, Z.succ message_counter))
+            produce_proof
+              history
+              level_history
+              inbox
+              (level, Z.(to_int @@ succ message_counter)))
         in
         let input =
           Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) input

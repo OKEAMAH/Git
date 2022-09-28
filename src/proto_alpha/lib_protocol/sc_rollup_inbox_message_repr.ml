@@ -226,7 +226,7 @@ module Level_messages_inbox = struct
     let* history = add_to_history history new_witness messages.level in
     return (history, {messages with witness = new_witness})
 
-  let get_message_payload _skip_list _message_index = Lwt.return_none
+  let get_message_payload {witness; _} = Skip_list.content witness
 
   let get_level {level; _} = level
 
@@ -236,7 +236,12 @@ module Level_messages_inbox = struct
 
   type proof = message_witness list
 
-  let produce_proof history ~message_index messages : proof option =
+  let empty_proof = []
+
+  let proof_encoding = Data_encoding.list message_witness_encoding
+
+  let produce_proof history ~message_index messages :
+      (serialized * Raw_level_repr.t * message_witness list) option =
     let open Option_syntax in
     let deref ptr =
       let+ {witness; level = _} = History.find ptr history in
@@ -245,7 +250,11 @@ module Level_messages_inbox = struct
     let current_ptr = hash messages in
     let lift_ptr =
       let rec aux acc = function
-        | [] -> Some (List.rev acc)
+        | [] -> None
+        | [last_ptr] ->
+            let+ {witness; level} = History.find last_ptr history in
+            let message_payload = Skip_list.content witness in
+            (message_payload, level, List.rev (witness :: acc))
         | x :: xs ->
             let* cell = deref x in
             aux (cell :: acc) xs
