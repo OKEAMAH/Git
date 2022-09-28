@@ -584,6 +584,30 @@ let scenario_tx_kernel_deposit_transfer_withdraw_all_in_one =
            ]);
     ]
 
+let scenario_tx_kernel_deposit_transfer_withdraw_many_transfers =
+  Scenario.make_scenario
+    "tx_kernel - deposit_transfer_withdraw_all_in_one "
+    "src/lib_scoru_wasm/bin/kernels/tx_kernel/tx_kernal_deb95799cc.wasm"
+    [
+      Scenario.make_scenario_step
+        "just deposits"
+        (Scenario.exec_on_messages
+           3_000
+           [
+             "tx_kernel/deposit_transfer_withdraw/fst_deposit_message.out";
+             "tx_kernel/deposit_transfer_withdraw/snd_deposit_message.out";
+           ]);
+      Scenario.make_scenario_step
+        "many transfers"
+        (Scenario.exec_on_messages
+           3_000
+           [
+             "tx_kernel/deposit_transfer_withdraw/fst_deposit_message.out";
+             "tx_kernel/deposit_transfer_withdraw/snd_deposit_message.out";
+             "tx_kernel/deposit_transfer_withdraw/big_external_message.out";
+           ]);
+    ]
+
 let scenario_computation_kernel =
   Scenario.make_scenario
     "computation kernel"
@@ -597,8 +621,9 @@ let () =
        ~totals:false
        ~irmin:false
        [
-         scenario_tx_kernel_deposit_then_withdraw_to_same_address;
-         scenario_tx_kernel_deposit_transfer_withdraw;
-         scenario_tx_kernel_deposit_transfer_withdraw_all_in_one;
-         scenario_computation_kernel;
+         (* scenario_tx_kernel_deposit_then_withdraw_to_same_address;
+            scenario_tx_kernel_deposit_transfer_withdraw;
+            scenario_tx_kernel_deposit_transfer_withdraw_all_in_one; *)
+         scenario_tx_kernel_deposit_transfer_withdraw_many_transfers
+         (* scenario_computation_kernel; *);
        ]
