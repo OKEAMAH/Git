@@ -248,7 +248,8 @@ module Merkelized_messages = struct
   end
 
   let empty level =
-    (* FIX THAT *)
+    (* FIX: either replace current_message with an opt or create
+       `skip_list.empty`. I'm not sure the second one make sense *)
     let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
     {current_message = Skip_list.genesis first_msg; level}
 
@@ -762,7 +763,7 @@ let archive_if_needed history inbox new_level =
       {
         starting_level_of_current_commitment_period =
           inbox.starting_level_of_current_commitment_period;
-        current_level_hash = inbox.current_level_hash;
+        current_level_hash = (fun () -> Merkelized_messages.Hash.zero);
         rollup = inbox.rollup;
         nb_messages_in_commitment_period =
           inbox.nb_messages_in_commitment_period;
