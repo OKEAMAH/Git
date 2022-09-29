@@ -2424,8 +2424,8 @@ let test_carbonated_memory_inbox_set_messages () =
            Sc_rollup_inbox_message_repr.(serialize @@ External external_message))
          ["CAFEBABE"; "CAFEBABE"; "CAFEBABE"]
   in
-  let* current_messages, _ =
-    lift
+  let*? current_messages, _ =
+    Environment.wrap_tzresult
     @@ Sc_rollup_inbox_repr.(
          add_messages_no_history inbox level messages_to_add current_messages)
   in

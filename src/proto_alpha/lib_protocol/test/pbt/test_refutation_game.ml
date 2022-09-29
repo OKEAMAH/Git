@@ -50,9 +50,6 @@ let qcheck_make_lwt_res ?print ?count ~name ~gen f =
     ~gen
     (fun a -> Lwt_main.run (f a))
 
-(** Lift a computation using environment errors to use shell errors. *)
-let lift k = Lwt.map Environment.wrap_tzresult k
-
 let tick_to_int_exn ?(__LOC__ = __LOC__) t =
   WithExceptions.Option.get ~loc:__LOC__ (Tick.to_int t)
 
@@ -1102,8 +1099,8 @@ module Player_client = struct
           let level_history =
             Sc_rollup.Inbox.Merkelized_messages.History.empty ~capacity:10000L
           in
-          let* res =
-            lift
+          let res =
+            Environment.wrap_tzresult
             @@ add_messages
                  history
                  inbox

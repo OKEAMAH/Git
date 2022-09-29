@@ -323,7 +323,6 @@ module type Merkelized_operations = sig
     * History.t
     * t)
     tzresult
-    Lwt.t
 
   (** [add_messages_no_history ctxt inbox level payloads level_tree] behaves
       as {!add_external_messages} except that it does not remember the inbox
@@ -333,7 +332,7 @@ module type Merkelized_operations = sig
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
     Merkelized_messages.messages_proof ->
-    (Merkelized_messages.messages_proof * t) tzresult Lwt.t
+    (Merkelized_messages.messages_proof * t) tzresult
 
   (** [get_message_payload level_tree idx] returns [Some payload] if the
       [level_tree] has more than [idx] messages, and [payload] is at

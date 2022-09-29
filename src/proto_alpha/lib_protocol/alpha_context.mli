@@ -3107,14 +3107,13 @@ module Sc_rollup : sig
         * History.t
         * t)
         tzresult
-        Lwt.t
 
       val add_messages_no_history :
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
         Merkelized_messages.messages_proof ->
-        (Merkelized_messages.messages_proof * t, error trace) result Lwt.t
+        (Merkelized_messages.messages_proof * t, error trace) result
 
       val get_message_payload :
         Merkelized_messages.messages_proof -> Inbox_message.serialized

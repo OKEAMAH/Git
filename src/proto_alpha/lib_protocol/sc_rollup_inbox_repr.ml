@@ -625,14 +625,13 @@ module type Merkelized_operations = sig
     * History.t
     * t)
     tzresult
-    Lwt.t
 
   val add_messages_no_history :
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
     Merkelized_messages.messages_proof ->
-    (Merkelized_messages.messages_proof * t) tzresult Lwt.t
+    (Merkelized_messages.messages_proof * t) tzresult
 
   val get_message_payload :
     Merkelized_messages.messages_proof ->
@@ -744,10 +743,10 @@ let form_history_proof history inbox =
     This function and {!form_history_proof} are the only places we
     begin new level trees. *)
 let archive_if_needed history inbox new_level =
-  let open Lwt_result_syntax in
+  let open Tzresult_syntax in
   if Raw_level_repr.(inbox.level = new_level) then return (history, inbox)
   else
-    let*? history, old_levels_messages = form_history_proof history inbox in
+    let* history, old_levels_messages = form_history_proof history inbox in
     let inbox =
       {
         starting_level_of_current_commitment_period =
@@ -764,19 +763,19 @@ let archive_if_needed history inbox new_level =
     return (history, inbox)
 
 let add_messages history inbox level payloads level_history level_messages =
-  let open Lwt_tzresult_syntax in
+  let open Tzresult_syntax in
   let* () =
-    fail_when
+    error_when
       (match payloads with [] -> true | _ -> false)
       Tried_to_add_zero_messages
   in
   let* () =
-    fail_when
+    error_when
       Raw_level_repr.(level < inbox.level)
       (Invalid_level_add_messages level)
   in
   let* history, inbox = archive_if_needed history inbox level in
-  let*? level_history, level_messages, inbox =
+  let* level_history, level_messages, inbox =
     List.fold_left_e
       (fun (level_history, level_messages, inbox) payload ->
         add_message inbox payload level_history level_messages)
@@ -788,7 +787,7 @@ let add_messages history inbox level payloads level_history level_messages =
     (level_history, level_messages, history, {inbox with current_level_hash})
 
 let add_messages_no_history inbox level payloads level_messages =
-  let open Lwt_tzresult_syntax in
+  let open Tzresult_syntax in
   let+ _level_history, level_messages, _history, inbox =
     add_messages
       no_history

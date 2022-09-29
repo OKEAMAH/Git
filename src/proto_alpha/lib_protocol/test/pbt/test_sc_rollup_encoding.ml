@@ -35,8 +35,6 @@ open Protocol
 open QCheck2
 open Lib_test.Qcheck2_helpers
 
-let lift k = Lwt.map Environment.wrap_tzresult k
-
 (** {2 Generators} *)
 
 let gen_state_hash =
@@ -86,28 +84,30 @@ let gen_inbox rollup level =
   let* tail = small_list gen_msg in
   let payloads = hd :: tail in
   let level_tree_and_inbox =
-    let open Lwt_result_syntax in
+    let open Result_syntax in
     let empty_inbox = Sc_rollup_inbox_repr.empty rollup level in
     let empty_level_inbox =
       Sc_rollup_inbox_repr.Merkelized_messages.empty level
     in
-    lift
-    @@ let*? input_messages =
-         List.map_e
+    let* input_messages =
+      Environment.wrap_tzresult
+      @@ List.map_e
            (fun msg -> Sc_rollup_inbox_message_repr.(serialize (External msg)))
            payloads
-       in
-       Sc_rollup_inbox_repr.add_messages_no_history
+    in
+    Environment.wrap_tzresult
+    @@ Sc_rollup_inbox_repr.add_messages_no_history
          empty_inbox
          level
          input_messages
          empty_level_inbox
   in
   return
-  @@ (Lwt_main.run level_tree_and_inbox |> function
-      | Ok v -> snd v
-      | Error e ->
-          Stdlib.failwith (Format.asprintf "%a" Error_monad.pp_print_trace e))
+  @@
+  match level_tree_and_inbox with
+  | Ok v -> snd v
+  | Error e ->
+      Stdlib.failwith (Format.asprintf "%a" Error_monad.pp_print_trace e)
 
 let gen_inbox_history_proof rollup inbox_level =
   let open Gen in

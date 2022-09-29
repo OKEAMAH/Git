@@ -212,7 +212,7 @@ let process_head node_ctxt Layer1.(Head {level; hash = head_hash} as head) =
                  ~level
                  inbox
              in
-             let* _level_history, messages_tree, history, inbox =
+             let*? _level_history, messages_tree, history, inbox =
                Context.Inbox.add_messages
                  history
                  inbox
