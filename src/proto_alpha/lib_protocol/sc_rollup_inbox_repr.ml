@@ -177,34 +177,6 @@ module V1 = struct
          ~pp_ptr:Hash.pp)
       history_proof
 
-  type level_history = {
-    cell : history_proof;
-    history : Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t;
-  }
-
-  let equal_level_history level_history1 level_history2 =
-    equal_history_proof level_history1.cell level_history2.cell
-
-  let level_history_encoding =
-    let open Data_encoding in
-    conv
-      (fun {cell; history} -> (cell, history))
-      (fun (cell, history) -> {cell; history})
-      (obj2
-         (req "cell" history_proof_encoding)
-         (req
-            "history"
-            Sc_rollup_inbox_message_repr.Level_messages_inbox.History.encoding))
-
-  let pp_level_history fmt {cell; history} =
-    Format.fprintf
-      fmt
-      "@[cell: %a@,history: %a@]"
-      pp_history_proof
-      cell
-      Sc_rollup_inbox_message_repr.Level_messages_inbox.History.pp
-      history
-
   (** Construct an inbox [history] with a given [capacity]. If you
        are running a rollup node, [capacity] needs to be large enough to
        remember any levels for which you may need to produce proofs. *)
@@ -215,13 +187,13 @@ module V1 = struct
       end)
       (Hash)
       (struct
-        type t = level_history
+        type t = history_proof
 
-        let pp = pp_level_history
+        let pp = pp_history_proof
 
-        let equal = equal_level_history
+        let equal = equal_history_proof
 
-        let encoding = level_history_encoding
+        let encoding = history_proof_encoding
       end)
 
   (*
@@ -460,13 +432,7 @@ module type Merkelized_operations = sig
     Sc_rollup_inbox_message_repr.serialized
 
   val form_history_proof :
-    History.t ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
-    t ->
-    (History.t
-    * Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t
-    * history_proof)
-    tzresult
+    History.t -> t -> (History.t * history_proof) tzresult
 
   val take_snapshot : current_level:Raw_level_repr.t -> t -> history_proof
 
@@ -497,6 +463,8 @@ module type Merkelized_operations = sig
 
   val produce_proof :
     History.t ->
+    (Sc_rollup_inbox_message_repr.Hash.t ->
+    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t option Lwt.t) ->
     history_proof ->
     Raw_level_repr.t * int ->
     (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t
@@ -550,33 +518,15 @@ let get_message_payload messages =
     previous levels of the inbox. *)
 let no_history = History.empty ~capacity:0L
 
-let remember_cell history level_history cell_ptr cell =
-  let open Tzresult_syntax in
-  let* history =
-    History.remember cell_ptr {cell; history = level_history} history
-  in
-  let level_history_capacity =
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.capacity
-      level_history
-  in
-  let level_history =
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.empty
-      ~capacity:level_history_capacity
-  in
-  return (history, level_history)
-
-let form_history_proof history level_history inbox =
+let form_history_proof history inbox =
   let open Tzresult_syntax in
   let prev_cell = inbox.old_levels_messages in
   let prev_cell_ptr = hash_skip_list_cell prev_cell in
-  let* history, level_history =
-    remember_cell history level_history prev_cell_ptr prev_cell
-  in
+  let* history = History.remember prev_cell_ptr prev_cell history in
   let next_cell =
     Skip_list.next ~prev_cell ~prev_cell_ptr (current_level_hash inbox)
   in
-
-  return (history, level_history, next_cell)
+  return (history, next_cell)
 
 (** [archive_if_needed ctxt history inbox new_level level_tree]
     is responsible for ensuring that the {!add_messages} function
@@ -590,14 +540,11 @@ let form_history_proof history level_history inbox =
 
     This function and {!form_history_proof} are the only places we
     begin new level trees. *)
-let archive_if_needed history level_history inbox new_level =
+let archive_if_needed history inbox new_level =
   let open Lwt_result_syntax in
-  if Raw_level_repr.(inbox.level = new_level) then
-    return (history, level_history, inbox)
+  if Raw_level_repr.(inbox.level = new_level) then return (history, inbox)
   else
-    let*? history, level_history, old_levels_messages =
-      form_history_proof history level_history inbox
-    in
+    let*? history, old_levels_messages = form_history_proof history inbox in
     let inbox =
       {
         starting_level_of_current_commitment_period =
@@ -611,7 +558,7 @@ let archive_if_needed history level_history inbox new_level =
         message_counter = Z.zero;
       }
     in
-    return (history, level_history, inbox)
+    return (history, inbox)
 
 let add_messages history inbox level payloads level_history level_messages =
   let open Lwt_tzresult_syntax in
@@ -625,9 +572,7 @@ let add_messages history inbox level payloads level_history level_messages =
       Raw_level_repr.(level < inbox.level)
       (Invalid_level_add_messages level)
   in
-  let* history, level_history, inbox =
-    archive_if_needed history level_history inbox level
-  in
+  let* history, inbox = archive_if_needed history inbox level in
   let*? level_history, level_messages, inbox =
     List.fold_left_e
       (fun (level_history, level_messages, inbox) payload ->
@@ -1010,24 +955,27 @@ let option_to_result e lwt_opt =
   let* opt = lwt_opt in
   match opt with None -> proof_error e | Some x -> return (ok x)
 
-let produce_proof history inbox (l, n) =
+let produce_proof history f_level_history inbox (l, n) =
   let open Lwt_tzresult_syntax in
   let deref ptr =
     let open Option_syntax in
-    let+ {cell; _} = History.find ptr history in
+    let+ cell = History.find ptr history in
     cell
   in
   let compare level_to_find cell =
     let cell_ptr = hash_skip_list_cell cell in
-    let level_messages_level =
-      let open Option_syntax in
-      let* {cell; history} = History.find cell_ptr history in
-      let+ level_messages =
+    let*! level_messages_level =
+      let open Lwt_option_syntax in
+      let*? cell = History.find cell_ptr history in
+      let* level_history = f_level_history (Skip_list.content cell) in
+      let*? level_messages =
         Sc_rollup_inbox_message_repr.Level_messages_inbox.History.find
           (Skip_list.content cell)
-          history
+          level_history
       in
-      Sc_rollup_inbox_message_repr.Level_messages_inbox.get_level level_messages
+      return
+      @@ Sc_rollup_inbox_message_repr.Level_messages_inbox.get_level
+           level_messages
     in
     Lwt.return
     @@
@@ -1057,12 +1005,17 @@ let produce_proof history inbox (l, n) =
                 research_result))
   in
   let cell_hash = hash_skip_list_cell level_messages_cell in
-  let* {cell; history = level_history} =
+  let* cell =
     option_to_result
       "could not find level_tree in the inbox_context"
       (Lwt.return @@ History.find cell_hash history)
   in
   let level_messages_hash = Skip_list.content cell in
+  let* level_history =
+    option_to_result
+      "could not find level_history "
+      (f_level_history level_messages_hash)
+  in
   let* level_messages =
     option_to_result
       "could not find level_tree in the inbox_context"
@@ -1208,7 +1161,7 @@ module Internal_for_tests = struct
     let target_index = Skip_list.index a in
     let deref ptr =
       let open Option_syntax in
-      let+ {cell; _} = History.find ptr history in
+      let+ cell = History.find ptr history in
       cell
     in
     Skip_list.back_path ~deref ~cell_ptr ~target_index

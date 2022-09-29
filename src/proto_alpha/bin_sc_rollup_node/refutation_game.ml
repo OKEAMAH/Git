@@ -93,9 +93,9 @@ module Make (Interpreter : Interpreter.S) :
     in
     let* history = Inbox.history_of_hash node_ctxt hash in
     let* inbox = Inbox.inbox_of_hash node_ctxt hash in
-    let* history, level_history, history_proof =
-      Context.Inbox.form_history_proof history level_history inbox
-      >|= Environment.wrap_tzresult
+    let*? history, history_proof =
+      Context.Inbox.form_history_proof history inbox
+      |> Environment.wrap_tzresult
     in
     let module P = struct
       include PVM
@@ -112,6 +112,8 @@ module Make (Interpreter : Interpreter.S) :
 
       module Inbox_with_history = struct
         include Context.Inbox
+
+        let find_level_history _ = Lwt.return_none
 
         let history = history
 

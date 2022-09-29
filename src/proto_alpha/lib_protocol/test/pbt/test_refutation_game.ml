@@ -1000,16 +1000,29 @@ let pp_player ppf {pkh; contract = _; strategy; game_player} =
     strategy
     (if Game.player_equal game_player Alice then "Alice" else "Bob")
 
+module History_level_history =
+  Bounded_history_repr.Make
+    (struct
+      let name = "history_level_history"
+    end)
+    (Inbox_message.Hash)
+    (struct
+      type nonrec t = Inbox_message.Level_messages_inbox.History.t
+
+      let pp = Inbox_message.Level_messages_inbox.History.pp
+
+      let equal = Inbox_message.Level_messages_inbox.History.equal
+
+      let encoding = Inbox_message.Level_messages_inbox.History.encoding
+    end)
+
 type player_client = {
   player : player;
   states : (Tick.t * State_hash.t) list;
   final_tick : Tick.t;
-  inbox :
-    Tezos_context_memory.Context.t
-    * Sc_rollup.Inbox_message.Level_messages_inbox.t
-    * Inbox.History.t
-    * Inbox.t;
+  inbox : History_level_history.t * Inbox.History.t * Inbox.t;
   levels_and_inputs : (int * string list) list;
+  context : Tezos_context_memory.Context.t;
 }
 
 let pp_levels_and_inputs ppf levels_and_inputs =
@@ -1026,7 +1039,7 @@ let pp_levels_and_inputs ppf levels_and_inputs =
       levels_and_inputs)
 
 let pp_player_client ppf
-    {player; states; final_tick; inbox = _; levels_and_inputs} =
+    {player; states; final_tick; inbox = _; levels_and_inputs; context = _} =
   Format.fprintf
     ppf
     "@[<v 2>player:@,\
@@ -1074,19 +1087,21 @@ module Player_client = struct
      test/unit/test_sc_rollup_inbox. The main difference is: we use
      [Alpha_context.Sc_rollup.Inbox] instead of [Sc_rollup_repr_inbox] in the
      former. *)
-  let construct_inbox ctxt levels_and_payloads ~rollup ~origination_level =
+  let construct_inbox levels_and_payloads ~rollup ~origination_level =
     let open Lwt_syntax in
     let open Store_inbox in
     let* inbox = empty rollup origination_level in
     let history = Inbox.History.empty ~capacity:10000L in
-    let rec aux history inbox level_tree = function
-      | [] -> return (ctxt, level_tree, history, inbox)
+    let history_level_history = History_level_history.empty ~capacity:10000L in
+    let rec aux history history_level_history inbox = function
+      | [] -> return (history_level_history, history, inbox)
       | (level, payloads) :: rst ->
           let level = Int32.of_int level |> Raw_level.of_int32_exn in
           let () = assert (Raw_level.(origination_level <= level)) in
+          let level_messages = Inbox_message.Level_messages_inbox.empty level in
           let level_history =
             Sc_rollup.Inbox_message.Level_messages_inbox.History.empty
-              ~capacity:0L
+              ~capacity:10000L
           in
           let* res =
             lift
@@ -1096,25 +1111,28 @@ module Player_client = struct
                  level
                  payloads
                  level_history
-                 level_tree
+                 level_messages
           in
-          let _level_history, level_tree, history, inbox =
+          let level_history, level_messages, history, inbox =
             WithExceptions.Result.get_ok ~loc:__LOC__ res
           in
-          aux history inbox level_tree rst
+          let history_level_history =
+            WithExceptions.Result.get_ok ~loc:__LOC__
+            @@ History_level_history.remember
+                 (Inbox_message.Level_messages_inbox.hash level_messages)
+                 level_history
+                 history_level_history
+          in
+          aux history history_level_history inbox rst
     in
-    aux
-      history
-      inbox
-      (Inbox_message.Level_messages_inbox.empty Raw_level.root)
-      levels_and_payloads
+
+    aux history history_level_history inbox levels_and_payloads
 
   (** Construct an inbox based on [levels_and_inputs] in the player context. *)
-  let construct_inbox ~origination_level ctxt rollup levels_and_inputs =
+  let construct_inbox ~origination_level rollup levels_and_inputs =
     Lwt_main.run
     @@ construct_inbox
          ~origination_level
-         ctxt
          ~rollup
          (levels_and_payloads levels_and_inputs)
 
@@ -1196,20 +1214,25 @@ module Player_client = struct
   let gen ~rollup ~origination_level ~level_min ~level_max player
       levels_and_inputs =
     let open QCheck2.Gen in
-    let ctxt = empty_memory_ctxt "foo" in
+    let context = empty_memory_ctxt "foo" in
     let* tick, our_states, levels_and_inputs =
       gen_our_states
-        ctxt
+        context
         player.strategy
         ~level_min
         ~level_max
         levels_and_inputs
     in
-    let inbox =
-      construct_inbox ~origination_level ctxt rollup levels_and_inputs
-    in
+    let inbox = construct_inbox ~origination_level rollup levels_and_inputs in
     return
-      {player; final_tick = tick; states = our_states; inbox; levels_and_inputs}
+      {
+        player;
+        final_tick = tick;
+        states = our_states;
+        inbox;
+        levels_and_inputs;
+        context;
+      }
 end
 
 (** [create_commitment ~predecessor ~inbox_level ~our_states] creates
@@ -1235,7 +1258,7 @@ let create_commitment ~predecessor ~inbox_level ~our_states =
   Commitment.{compressed_state; inbox_level; predecessor; number_of_ticks}
 
 (** [operation_publish_commitment block rollup lcc inbox_level p1_client]
-    creates a commitment and stake on it. *)
+creates a commitment and stake on it. *)
 let operation_publish_commitment ctxt rollup predecessor inbox_level
     player_client =
   let open Lwt_result_syntax in
@@ -1248,11 +1271,14 @@ let operation_publish_commitment ctxt rollup predecessor inbox_level
     regarding the vision [player_client] has. The proof refutes the
     [start_tick]. *)
 let build_proof ~player_client start_tick (game : Game.t) =
-  let inbox_context, _messages_tree, history, inbox = player_client.inbox in
   let open Lwt_result_syntax in
-  let* history, history_proof =
-    Lwt.map Environment.wrap_tzresult
-    @@ Store_inbox.form_history_proof history inbox
+  let history_level_history, history, inbox = player_client.inbox in
+  let find_level_history level_messages_hash =
+    History_level_history.find level_messages_hash history_level_history
+    |> Lwt.return
+  in
+  let*? history, history_proof =
+    Environment.wrap_tzresult @@ Store_inbox.form_history_proof history inbox
   in
   (* We start a game on a commitment that starts at [Tick.initial], the fuel
      is necessarily [start_tick]. *)
@@ -1267,7 +1293,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
   let module P = struct
     include Arith_test_pvm
 
-    let context = inbox_context
+    let context = player_client.context
 
     let state = state
 
@@ -1275,6 +1301,8 @@ let build_proof ~player_client start_tick (game : Game.t) =
 
     module Inbox_with_history = struct
       include Store_inbox
+
+      let find_level_history = find_level_history
 
       let history = history
 

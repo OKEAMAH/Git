@@ -136,6 +136,10 @@ module type PVM_with_context_and_state = sig
   module Inbox_with_history : sig
     include Sc_rollup_inbox_repr.Merkelized_operations
 
+    val find_level_history :
+      Sc_rollup_inbox_message_repr.Hash.t ->
+      Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t option Lwt.t
+
     val inbox : Sc_rollup_inbox_repr.history_proof
 
     val history : Sc_rollup_inbox_repr.History.t

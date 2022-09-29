@@ -211,6 +211,10 @@ module type PVM_with_context_and_state = sig
   module Inbox_with_history : sig
     include Sc_rollup_inbox_repr.Merkelized_operations
 
+    val find_level_history :
+      Sc_rollup_inbox_message_repr.Hash.t ->
+      Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t option Lwt.t
+
     val inbox : Sc_rollup_inbox_repr.history_proof
 
     val history : Sc_rollup_inbox_repr.History.t
@@ -232,7 +236,11 @@ let produce pvm_and_state commit_level =
         let message_counter = 0 in
         let* inbox_proof, input =
           Inbox_with_history.(
-            produce_proof history inbox (level, message_counter))
+            produce_proof
+              history
+              find_level_history
+              inbox
+              (level, message_counter))
         in
         let input =
           Option.map (fun msg -> Sc_rollup_PVM_sig.Inbox_message msg) input
@@ -251,6 +259,7 @@ let produce pvm_and_state commit_level =
           Inbox_with_history.(
             produce_proof
               history
+              find_level_history
               inbox
               (level, Z.(to_int @@ succ message_counter)))
         in

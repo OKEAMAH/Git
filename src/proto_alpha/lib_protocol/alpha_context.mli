@@ -3046,12 +3046,10 @@ module Sc_rollup : sig
 
     module Hash : S.HASH
 
-    type level_history
-
     module History :
       Bounded_history_repr.S
         with type key = Hash.t
-         and type value = level_history
+         and type value = history_proof
 
     type serialized_proof
 
@@ -3083,13 +3081,7 @@ module Sc_rollup : sig
         Inbox_message.Level_messages_inbox.t -> Inbox_message.serialized
 
       val form_history_proof :
-        History.t ->
-        Inbox_message.Level_messages_inbox.History.t ->
-        t ->
-        (History.t
-        * Inbox_message.Level_messages_inbox.History.t
-        * history_proof)
-        tzresult
+        History.t -> t -> (History.t * history_proof) tzresult
 
       val take_snapshot : current_level:Raw_level.t -> t -> history_proof
 
@@ -3120,6 +3112,8 @@ module Sc_rollup : sig
 
       val produce_proof :
         History.t ->
+        (Inbox_message.Hash.t ->
+        Inbox_message.Level_messages_inbox.History.t option Lwt.t) ->
         history_proof ->
         Raw_level.t * int ->
         (proof * inbox_message option) tzresult Lwt.t
@@ -3491,6 +3485,10 @@ module Sc_rollup : sig
 
       module Inbox_with_history : sig
         include Inbox.Merkelized_operations
+
+        val find_level_history :
+          Inbox_message.Hash.t ->
+          Inbox_message.Level_messages_inbox.History.t option Lwt.t
 
         val inbox : Inbox.history_proof
 
