@@ -111,31 +111,44 @@ module Page = struct
     let equal = Compare.Int.equal
   end
 
-  type t = {slot_index : Slot_index.t; page_index : Index.t}
+  type t = {slot_id : id; page_index : Index.t}
+
+  type proof = Dal.page_proof
 
   let encoding =
     let open Data_encoding in
     conv
-      (fun {slot_index; page_index} -> (slot_index, page_index))
-      (fun (slot_index, page_index) -> {slot_index; page_index})
-      (obj2
+      (fun {slot_id = {published_level; index}; page_index} ->
+        (published_level, index, page_index))
+      (fun (published_level, index, page_index) ->
+        {slot_id = {published_level; index}; page_index})
+      (obj3
+         (req "published_level" Raw_level_repr.encoding)
          (req "slot_index" Slot_index.encoding)
          (req "page_index" Index.encoding))
 
-  let equal page page' =
-    Slot_index.equal page.slot_index page'.slot_index
-    && Index.equal page.page_index page'.page_index
+  let equal {slot_id; page_index} p =
+    slot_id_equal slot_id p.slot_id && Index.equal page_index p.page_index
+
+  let proof_encoding = Dal.page_proof_encoding
 
   let content_encoding = Data_encoding.bytes
 
-  let pp fmt {slot_index; page_index} =
+  let pp fmt {slot_id = {published_level; index}; page_index} =
     Format.fprintf
       fmt
-      "(slot_index: %a, page_index: %a)"
+      "(published_level: %a, slot_index: %a, page_index: %a)"
+      Raw_level_repr.pp
+      published_level
       Slot_index.pp
-      slot_index
+      index
       Index.pp
       page_index
+
+  let pp_proof fmt proof =
+    Data_encoding.Json.pp
+      fmt
+      (Data_encoding.Json.construct proof_encoding proof)
 end
 
 let slot_encoding =

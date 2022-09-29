@@ -123,13 +123,17 @@ module Page : sig
   (** Encoding for page contents. *)
   val content_encoding : content Data_encoding.t
 
-  (** A page is identified by its slots index and by its own index in the list
+  (** A page is identified by its slot id and by its own index in the list
      of pages of the slot. *)
-  type t = {slot_index : slot_index; page_index : Index.t}
+  type t = {slot_id : id; page_index : Index.t}
+
+  type proof = Dal.page_proof
 
   val equal : t -> t -> bool
 
   val encoding : t Data_encoding.t
+
+  val proof_encoding : proof Data_encoding.t
 
   val pp : Format.formatter -> t -> unit
 end
