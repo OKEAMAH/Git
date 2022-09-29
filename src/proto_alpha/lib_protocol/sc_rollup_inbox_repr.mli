@@ -259,6 +259,9 @@ module Merkelized_messages : sig
   val get_current_message_payload :
     messages_proof -> Sc_rollup_inbox_message_repr.serialized
 
+  val find_message :
+    History.t -> message_index:int -> messages_proof -> message_proof option
+
   val get_level : messages_proof -> Raw_level_repr.t
 
   val get_number_of_messages : messages_proof -> int
@@ -334,10 +337,18 @@ module type Merkelized_operations = sig
     Merkelized_messages.messages_proof ->
     (Merkelized_messages.messages_proof * t) tzresult
 
+  val find_level_messages :
+    History.t ->
+    (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
+    Raw_level_repr.t ->
+    history_proof ->
+    (Merkelized_messages.History.t * Merkelized_messages.messages_proof) option
+    Lwt.t
+
   (** [get_message_payload level_tree idx] returns [Some payload] if the
       [level_tree] has more than [idx] messages, and [payload] is at
       position [idx]. Returns [None] otherwise. *)
-  val find_message_payload :
+  val find_message :
     History.t ->
     (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
     Raw_level_repr.t * int ->
@@ -462,6 +473,8 @@ module type Merkelized_operations = sig
     (** Allows to create a dumb {!serialized_proof} from a string, instead
         of serializing a proof with {!to_serialized_proof}. *)
     val serialized_proof_of_string : string -> serialized_proof
+
+    val hash_of_history_proof : history_proof -> Hash.t
   end
 end
 

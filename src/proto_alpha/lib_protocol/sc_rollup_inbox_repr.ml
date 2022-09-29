@@ -283,7 +283,7 @@ module Merkelized_messages = struct
 
   let get_level {level; _} = level
 
-  let find_message_payload messages_history message_index messages =
+  let find_message messages_history ~message_index messages =
     let open Option_syntax in
     let deref ptr =
       let+ {current_message; _} = History.find ptr messages_history in
@@ -642,7 +642,15 @@ module type Merkelized_operations = sig
     Merkelized_messages.messages_proof ->
     (Merkelized_messages.messages_proof * t) tzresult
 
-  val find_message_payload :
+  val find_level_messages :
+    History.t ->
+    (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
+    Raw_level_repr.t ->
+    history_proof ->
+    (Merkelized_messages.History.t * Merkelized_messages.messages_proof) option
+    Lwt.t
+
+  val find_message :
     History.t ->
     (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
     Raw_level_repr.t * int ->
@@ -696,6 +704,8 @@ module type Merkelized_operations = sig
       inclusion_proof option tzresult
 
     val serialized_proof_of_string : string -> serialized_proof
+
+    val hash_of_history_proof : history_proof -> Hash.t
   end
 end
 
@@ -722,57 +732,6 @@ let add_message inbox payload level_history level_messages =
     }
   in
   return (level_history, level_messages, inbox)
-
-let find_message_payload history find_level_history (level, message_index)
-    history_proof =
-  let open Lwt_option_syntax in
-  let deref ptr =
-    let open Option_syntax in
-    let+ cell = History.find ptr history in
-    cell
-  in
-  let compare level_to_find cell =
-    let cell_ptr = hash_skip_list_cell cell in
-    let*! level_messages_level =
-      let open Lwt_option_syntax in
-      let*? cell = History.find cell_ptr history in
-      let* level_history = find_level_history (Skip_list.content cell) in
-      let*? level_messages =
-        Merkelized_messages.History.find (Skip_list.content cell) level_history
-      in
-      return @@ Merkelized_messages.get_level level_messages
-    in
-    Lwt.return
-    @@
-    match level_messages_level with
-    | None -> -1
-    | Some level_messages_level ->
-        Raw_level_repr.compare level_messages_level level_to_find
-  in
-  let*! research_result =
-    Skip_list.search ~deref ~compare:(compare level) ~cell:history_proof
-  in
-  let* level_messages_cell =
-    match research_result with
-    | Skip_list.{last_cell = Found level_messages_cell; _} ->
-        return level_messages_cell
-    | {last_cell = Nearest _; _}
-    | {last_cell = No_exact_or_lower_ptr; _}
-    | {last_cell = Deref_returned_none; _} ->
-        fail
-  in
-  let cell_hash = hash_skip_list_cell level_messages_cell in
-  let*? cell = History.find cell_hash history in
-  let level_messages_hash = Skip_list.content cell in
-  let* level_history = find_level_history level_messages_hash in
-  let*? level_messages =
-    Merkelized_messages.History.find level_messages_hash level_history
-  in
-  Lwt.return
-  @@ Merkelized_messages.find_message_payload
-       level_history
-       message_index
-       level_messages
 
 (** [no_history] creates an empty history with [capacity] set to
 zero---this makes the [remember] function a no-op. We want this
@@ -1188,14 +1147,73 @@ let verify_proof (l, n) snapshot proof =
            Sc_rollup_PVM_sig.
              {inbox_level = p.upper_level; message_counter = Z.zero; payload}
 
+let find_level_messages history find_level_history level current_cell =
+  let open Lwt_option_syntax in
+  let deref ptr =
+    let open Option_syntax in
+    let+ cell = History.find ptr history in
+    cell
+  in
+  let compare level_to_find cell =
+    let cell_ptr = hash_skip_list_cell cell in
+    let*! level_messages_level =
+      let open Lwt_option_syntax in
+      let*? cell = History.find cell_ptr history in
+      let* level_history = find_level_history (Skip_list.content cell) in
+      let*? level_messages =
+        Merkelized_messages.History.find (Skip_list.content cell) level_history
+      in
+      return @@ Merkelized_messages.get_level level_messages
+    in
+    Lwt.return
+    @@
+    match level_messages_level with
+    | None -> -1
+    | Some level_messages_level ->
+        Raw_level_repr.compare level_messages_level level_to_find
+  in
+  let*! research_result =
+    Skip_list.search ~deref ~compare:(compare level) ~cell:current_cell
+  in
+  (*   let () = assert false in *)
+  let* level_messages_cell =
+    match research_result with
+    | Skip_list.{last_cell = Found level_messages_cell; _} ->
+        return level_messages_cell
+    | {last_cell = Nearest _; _}
+    | {last_cell = No_exact_or_lower_ptr; _}
+    | {last_cell = Deref_returned_none; _} ->
+        fail
+  in
+  let cell_hash = hash_skip_list_cell level_messages_cell in
+  let*? cell = History.find cell_hash history in
+  let level_messages_hash = Skip_list.content cell in
+  let* level_history = find_level_history level_messages_hash in
+  let*? level_messages =
+    Merkelized_messages.History.find level_messages_hash level_history
+  in
+  return (level_history, level_messages)
+
+let find_message history find_level_history (level, message_index) history_proof
+    =
+  let open Lwt_option_syntax in
+  let* level_history, level_messages =
+    find_level_messages history find_level_history level history_proof
+  in
+  Lwt.return
+  @@ Merkelized_messages.find_message
+       level_history
+       ~message_index
+       level_messages
+
 (** Utility function; we convert all our calls to be consistent with
-    [Lwt_tzresult_syntax]. *)
+[Lwt_tzresult_syntax]. *)
 let option_to_result e lwt_opt =
   let open Lwt_syntax in
   let* opt = lwt_opt in
   match opt with None -> proof_error e | Some x -> return (ok x)
 
-let produce_proof history f_level_history inbox (l, n) =
+let produce_proof history find_level_history inbox (l, n) =
   let open Lwt_tzresult_syntax in
   let deref ptr =
     let open Option_syntax in
@@ -1389,6 +1407,8 @@ module Internal_for_tests = struct
     |> Option.join |> return
 
   let serialized_proof_of_string x = Bytes.of_string x
+
+  let hash_of_history_proof = hash_skip_list_cell
 end
 
 type inbox = t

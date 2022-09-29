@@ -3115,7 +3115,17 @@ module Sc_rollup : sig
         Merkelized_messages.messages_proof ->
         (Merkelized_messages.messages_proof * t, error trace) result
 
-      val find_message_payload :
+      val find_level_messages :
+        History.t ->
+        (Merkelized_messages.Hash.t ->
+        Merkelized_messages.History.t option Lwt.t) ->
+        Raw_level.t ->
+        history_proof ->
+        (Merkelized_messages.History.t * Merkelized_messages.messages_proof)
+        option
+        Lwt.t
+
+      val find_message :
         History.t ->
         (Merkelized_messages.Hash.t ->
         Merkelized_messages.History.t option Lwt.t) ->
@@ -3171,6 +3181,8 @@ module Sc_rollup : sig
           inclusion_proof option tzresult
 
         val serialized_proof_of_string : string -> serialized_proof
+
+        val hash_of_history_proof : history_proof -> Hash.t
       end
     end
 
