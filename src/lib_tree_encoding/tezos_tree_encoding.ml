@@ -293,6 +293,33 @@ let tagged_union ?default {encode; decode} cases =
   let decode = D.tagged_union ?default decode (List.map to_decode_case cases) in
   {encode; decode}
 
+type _ destruction =
+  | Destruction : {tag : 'a; res : 'b Lwt.t; delegate : 'b t} -> 'a destruction
+
+let destruction ~tag ~res ~delegate = Destruction {tag; res; delegate}
+
+type _ decoding_branch =
+  | DecodeBranch : {
+      extract : 'b -> 'a Lwt.t;
+      delegate : 'b t;
+    }
+      -> 'a decoding_branch
+
+let decoding_branch ~extract ~delegate = DecodeBranch {extract; delegate}
+
+let fast_tagged_union ?default {encode; decode} ~select_encode ~select_decode =
+  let select_encode v =
+    let (Destruction {tag; res; delegate}) = select_encode v in
+    E.destruction ~tag ~res ~encode:delegate.encode
+  in
+  let select_decode tag =
+    let (DecodeBranch {extract; delegate}) = select_decode tag in
+    D.decode_branch ~extract ~decode:delegate.decode
+  in
+  let encode = E.fast_tagged_union encode select_encode in
+  let decode = D.fast_tagged_union ?default decode select_decode in
+  {encode; decode}
+
 let value_option key encoding =
   let encode = E.value_option key encoding in
   let decode = D.value_option key encoding in

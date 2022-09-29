@@ -296,3 +296,19 @@ module Runner : sig
     val decode : 'a t -> T.tree -> 'a Lwt.t
   end
 end
+
+type _ destruction
+
+val destruction : tag:'a -> res:'b Lwt.t -> delegate:'b t -> 'a destruction
+
+type _ decoding_branch
+
+val decoding_branch :
+  extract:('a -> 'b Lwt.t) -> delegate:'a t -> 'b decoding_branch
+
+val fast_tagged_union :
+  ?default:(unit -> 'a) ->
+  'b t ->
+  select_encode:('a -> 'b destruction) ->
+  select_decode:('b -> 'a decoding_branch) ->
+  'a t

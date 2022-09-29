@@ -192,3 +192,26 @@ let wrapped_tree =
         let key = prefix [] in
         Tree.add_tree backend target_tree key subtree);
   }
+
+type 'tag destruction =
+  | Destruction : {
+      tag : 'tag;
+      res : 'b Lwt.t;
+      encode : 'b t;
+    }
+      -> 'tag destruction
+
+let destruction ~tag ~res ~encode = Destruction {tag; res; encode}
+
+let fast_tagged_union tag_encoding select =
+  let tag_encoding = scope ["tag"] tag_encoding in
+  {
+    encode =
+      (fun backend value prefix target_tree ->
+        let open Lwt_syntax in
+        let (Destruction {tag; res; encode}) = select value in
+        let encode = scope ["value"] encode in
+        let* target_tree = tag_encoding.encode backend tag prefix target_tree in
+        let* value = res in
+        encode.encode backend value prefix target_tree);
+  }
