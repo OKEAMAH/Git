@@ -61,6 +61,12 @@ module type S = sig
     'content ->
     ('content, 'ptr) cell
 
+  val find :
+    deref:('ptr -> ('content, 'ptr) cell option) ->
+    cell_ptr:'ptr ->
+    target_index:int ->
+    ('content, 'ptr) cell option
+
   val back_path :
     deref:('ptr -> ('content, 'ptr) cell option) ->
     cell_ptr:'ptr ->
@@ -284,6 +290,22 @@ end) : S = struct
           else binary_search (mid_idx + 1) end_idx
     in
     binary_search 0 (length cell.back_pointers - 1)
+
+  let find ~deref ~cell_ptr ~target_index =
+    let open Option_syntax in
+    let* cell = deref cell_ptr in
+    let powers = list_powers cell in
+    let rec aux ptr =
+      let* cell = deref ptr in
+      let index = cell.index in
+      if Compare.Int.(target_index = index) then Some cell
+      else if Compare.Int.(target_index > index) then None
+      else
+        let* best_idx = best_skip cell target_index powers in
+        let* ptr = back_pointer cell best_idx in
+        aux ptr
+    in
+    aux cell_ptr
 
   let back_path ~deref ~cell_ptr ~target_index =
     Option.bind (deref cell_ptr) @@ fun cell ->

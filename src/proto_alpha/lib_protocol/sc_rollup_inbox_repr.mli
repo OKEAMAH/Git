@@ -337,9 +337,12 @@ module type Merkelized_operations = sig
   (** [get_message_payload level_tree idx] returns [Some payload] if the
       [level_tree] has more than [idx] messages, and [payload] is at
       position [idx]. Returns [None] otherwise. *)
-  val get_message_payload :
-    Merkelized_messages.messages_proof ->
-    Sc_rollup_inbox_message_repr.serialized
+  val find_message_payload :
+    History.t ->
+    (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
+    Raw_level_repr.t * int ->
+    history_proof ->
+    Merkelized_messages.message_proof option Lwt.t
 
   (** [form_history_proof ctxt history inbox level_tree] creates the
       skip list structure that includes the current inbox level, while

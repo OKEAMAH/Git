@@ -96,6 +96,12 @@ module type S = sig
     'content ->
     ('content, 'ptr) cell
 
+  val find :
+    deref:('ptr -> ('content, 'ptr) cell option) ->
+    cell_ptr:'ptr ->
+    target_index:int ->
+    ('content, 'ptr) cell option
+
   (** [back_path ~deref ~cell_ptr ~target_index] returns [Some path]
       where [path] is a sequence of back pointers to traverse to go
       from [cell_ptr] to the cell at position [target_index] in the
