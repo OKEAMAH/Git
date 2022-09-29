@@ -218,7 +218,7 @@ let process_head node_ctxt Layer1.(Head {level; hash = head_hash} as head) =
                  inbox
                  level
                  messages
-                 (Sc_rollup.Inbox_message.Level_messages_inbox.History.empty
+                 (Sc_rollup.Inbox_message.Merkelized_messages.History.empty
                     ~capacity:0L)
                  level_messages
              in

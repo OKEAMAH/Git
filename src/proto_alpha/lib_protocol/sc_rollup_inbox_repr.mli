@@ -251,10 +251,10 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
-    (Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t
-    * Sc_rollup_inbox_message_repr.Level_messages_inbox.t
+    Sc_rollup_inbox_message_repr.Merkelized_messages.History.t ->
+    Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof ->
+    (Sc_rollup_inbox_message_repr.Merkelized_messages.History.t
+    * Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof
     * History.t
     * t)
     tzresult
@@ -267,14 +267,16 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
-    (Sc_rollup_inbox_message_repr.Level_messages_inbox.t * t) tzresult Lwt.t
+    Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof ->
+    (Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof * t)
+    tzresult
+    Lwt.t
 
   (** [get_message_payload level_tree idx] returns [Some payload] if the
       [level_tree] has more than [idx] messages, and [payload] is at
       position [idx]. Returns [None] otherwise. *)
   val get_message_payload :
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.t ->
+    Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof ->
     Sc_rollup_inbox_message_repr.serialized
 
   (** [form_history_proof ctxt history inbox level_tree] creates the
@@ -375,7 +377,7 @@ module type Merkelized_operations = sig
   val produce_proof :
     History.t ->
     (Sc_rollup_inbox_message_repr.Hash.t ->
-    Sc_rollup_inbox_message_repr.Level_messages_inbox.History.t option Lwt.t) ->
+    Sc_rollup_inbox_message_repr.Merkelized_messages.History.t option Lwt.t) ->
     history_proof ->
     Raw_level_repr.t * int ->
     (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t

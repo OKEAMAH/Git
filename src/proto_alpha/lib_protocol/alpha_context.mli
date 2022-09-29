@@ -2976,27 +2976,63 @@ module Sc_rollup : sig
 
     module Hash : S.HASH
 
-    module Level_messages_inbox : sig
-      type t
+    module Merkelized_messages : sig
+      type message_proof
 
-      type message_witness
+      type messages_proof = {
+        current_message : message_proof;
+        level : Raw_level_repr.t;
+      }
 
-      module History :
-        Bounded_history_repr.S with type key = Hash.t and type value = t
+      val encoding : messages_proof Data_encoding.t
 
-      val hash : t -> Hash.t
+      module History : sig
+        include
+          Bounded_history_repr.S
+            with type key = Hash.t
+             and type value = messages_proof
 
-      val empty : Raw_level.t -> t
+        val no_history : t
+      end
 
-      val add_message : History.t -> t -> serialized -> (History.t * t) tzresult
+      val hash : messages_proof -> Hash.t
 
-      val get_message_payload : t -> serialized
+      val empty : Raw_level.t -> messages_proof
 
-      val get_level : t -> Raw_level.t
+      val add_message :
+        History.t ->
+        messages_proof ->
+        serialized ->
+        (History.t * messages_proof) tzresult
 
-      val to_bytes : t -> bytes
+      val equal : messages_proof -> messages_proof -> bool
 
-      val of_bytes : bytes -> t option
+      val pp : Format.formatter -> messages_proof -> unit
+
+      val get_message_payload : message_proof -> serialized
+
+      val get_current_message_payload : messages_proof -> serialized
+
+      val get_level : messages_proof -> Raw_level.t
+
+      val get_number_of_messages : messages_proof -> int
+
+      val to_bytes : messages_proof -> bytes
+
+      val of_bytes : bytes -> messages_proof option
+
+      type proof = private {
+        message : message_proof;
+        inclusion_proof : message_proof list;
+      }
+
+      val proof_encoding : proof Data_encoding.t
+
+      val produce_proof :
+        History.t -> message_index:int -> messages_proof -> proof option
+
+      val verify_proof :
+        proof -> messages_proof -> (serialized * Raw_level.t * int) tzresult
     end
   end
 
@@ -3061,10 +3097,10 @@ module Sc_rollup : sig
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        Inbox_message.Level_messages_inbox.History.t ->
-        Inbox_message.Level_messages_inbox.t ->
-        (Inbox_message.Level_messages_inbox.History.t
-        * Inbox_message.Level_messages_inbox.t
+        Inbox_message.Merkelized_messages.History.t ->
+        Inbox_message.Merkelized_messages.messages_proof ->
+        (Inbox_message.Merkelized_messages.History.t
+        * Inbox_message.Merkelized_messages.messages_proof
         * History.t
         * t)
         tzresult
@@ -3074,11 +3110,15 @@ module Sc_rollup : sig
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        Inbox_message.Level_messages_inbox.t ->
-        (Inbox_message.Level_messages_inbox.t * t, error trace) result Lwt.t
+        Inbox_message.Merkelized_messages.messages_proof ->
+        ( Inbox_message.Merkelized_messages.messages_proof * t,
+          error trace )
+        result
+        Lwt.t
 
       val get_message_payload :
-        Inbox_message.Level_messages_inbox.t -> Inbox_message.serialized
+        Inbox_message.Merkelized_messages.messages_proof ->
+        Inbox_message.serialized
 
       val form_history_proof :
         History.t -> t -> (History.t * history_proof) tzresult
@@ -3113,7 +3153,7 @@ module Sc_rollup : sig
       val produce_proof :
         History.t ->
         (Inbox_message.Hash.t ->
-        Inbox_message.Level_messages_inbox.History.t option Lwt.t) ->
+        Inbox_message.Merkelized_messages.History.t option Lwt.t) ->
         history_proof ->
         Raw_level.t * int ->
         (proof * inbox_message option) tzresult Lwt.t
@@ -3488,7 +3528,7 @@ module Sc_rollup : sig
 
         val find_level_history :
           Inbox_message.Hash.t ->
-          Inbox_message.Level_messages_inbox.History.t option Lwt.t
+          Inbox_message.Merkelized_messages.History.t option Lwt.t
 
         val inbox : Inbox.history_proof
 

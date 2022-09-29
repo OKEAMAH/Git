@@ -144,52 +144,51 @@ end
 
 module Skip_list = Skip_list_repr.Make (Skip_list_parameters)
 
-module Level_messages_inbox = struct
-  type value = serialized
+module Merkelized_messages = struct
+  type message_proof = (serialized, Hash.t) Skip_list.cell
 
-  type ptr = Hash.t
+  type messages_proof = {
+    current_message : message_proof;
+    level : Raw_level_repr.t;
+  }
 
-  type message_witness = (value, ptr) Skip_list.cell
+  let equal_message_proof = Skip_list.equal Hash.equal String.equal
 
-  type t = {witness : message_witness; level : Raw_level_repr.t}
-
-  let equal_message_witness = Skip_list.equal Hash.equal String.equal
-
-  let message_witness_encoding : message_witness Data_encoding.t =
+  let message_proof_encoding : message_proof Data_encoding.t =
     Skip_list.encoding Hash.encoding serialized_encoding
 
   let equal messages1 messages2 =
     Raw_level_repr.equal messages1.level messages2.level
-    && equal_message_witness messages1.witness messages2.witness
+    && equal_message_proof messages1.current_message messages2.current_message
 
-  let hash {witness; level} =
+  let hash {current_message; level} =
     let level_bytes =
       Raw_level_repr.to_int32 level |> Int32.to_string |> Bytes.of_string
     in
-    let payload = Skip_list.content witness in
-    let back_pointers_hashes = Skip_list.back_pointers witness in
+    let payload = Skip_list.content current_message in
+    let back_pointers_hashes = Skip_list.back_pointers current_message in
     Bytes.of_string (payload : serialized :> string)
     :: level_bytes
     :: List.map Hash.to_bytes back_pointers_hashes
     |> Hash.hash_bytes
 
-  let pp fmt message =
-    let history_hash = hash message in
+  let pp fmt ({current_message; level} as messages) =
+    let messages_hash = hash messages in
     Format.fprintf
       fmt
-      "@[hash : %a@;%a;%a@]"
+      "@[hash : %a@;latest message: %a;level: %a@]"
       Hash.pp
-      history_hash
+      messages_hash
       (Skip_list.pp ~pp_content:Format.pp_print_string ~pp_ptr:Hash.pp)
-      message.witness
+      current_message
       Raw_level_repr.pp
-      message.level
+      level
 
   let encoding =
     Data_encoding.conv
-      (fun {witness; level} -> (witness, level))
-      (fun (witness, level) -> {witness; level})
-      (Data_encoding.tup2 message_witness_encoding Raw_level_repr.encoding)
+      (fun {current_message; level} -> (current_message, level))
+      (fun (current_message, level) -> {current_message; level})
+      (Data_encoding.tup2 message_proof_encoding Raw_level_repr.encoding)
 
   module History = struct
     include
@@ -199,7 +198,7 @@ module Level_messages_inbox = struct
         end)
         (Hash)
         (struct
-          type nonrec t = t
+          type nonrec t = messages_proof
 
           let pp = pp
 
@@ -213,25 +212,33 @@ module Level_messages_inbox = struct
 
   let empty level =
     let first_msg = unsafe_of_string "" in
-    {witness = Skip_list.genesis first_msg; level}
+    {current_message = Skip_list.genesis first_msg; level}
 
-  let add_to_history history witness level =
-    let prev_cell_ptr = hash {witness; level} in
-    History.remember prev_cell_ptr {witness; level} history
+  let add_to_history history messages_proof =
+    let prev_cell_ptr = hash messages_proof in
+    History.remember prev_cell_ptr messages_proof history
 
-  let add_message history messages payload =
+  let add_message history messages_proof payload =
     let open Tzresult_syntax in
-    let prev_witness = messages.witness in
-    let prev_ptr = hash messages in
-    let new_witness =
-      Skip_list.next ~prev_cell:prev_witness ~prev_cell_ptr:prev_ptr payload
+    let prev_message = messages_proof.current_message in
+    let prev_message_ptr = hash messages_proof in
+    let current_message =
+      Skip_list.next
+        ~prev_cell:prev_message
+        ~prev_cell_ptr:prev_message_ptr
+        payload
     in
-    let* history = add_to_history history new_witness messages.level in
-    return (history, {messages with witness = new_witness})
+    let new_messages_proof = {current_message; level = messages_proof.level} in
+    let* history = add_to_history history new_messages_proof in
+    return (history, new_messages_proof)
 
-  let get_number_of_messages {witness; _} = Skip_list.index witness
+  let get_number_of_messages {current_message; _} =
+    Skip_list.index current_message
 
-  let get_message_payload {witness; _} = Skip_list.content witness
+  let get_message_payload = Skip_list.content
+
+  let get_current_message_payload {current_message; _} =
+    get_message_payload current_message
 
   let get_level {level; _} = level
 
@@ -239,10 +246,7 @@ module Level_messages_inbox = struct
 
   let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
 
-  type proof = {
-    message : message_witness;
-    inclusion_proof : message_witness list;
-  }
+  type proof = {message : message_proof; inclusion_proof : message_proof list}
 
   let proof_encoding =
     let open Data_encoding in
@@ -250,14 +254,14 @@ module Level_messages_inbox = struct
       (fun {message; inclusion_proof} -> (message, inclusion_proof))
       (fun (message, inclusion_proof) -> {message; inclusion_proof})
       (obj2
-         (req "message" message_witness_encoding)
-         (req "inclusion_proof" (list message_witness_encoding)))
+         (req "message" message_proof_encoding)
+         (req "inclusion_proof" (list message_proof_encoding)))
 
   let produce_proof history ~message_index messages : proof option =
     let open Option_syntax in
     let deref ptr =
-      let+ {witness; level = _} = History.find ptr history in
-      witness
+      let+ {current_message; level = _} = History.find ptr history in
+      current_message
     in
     let current_ptr = hash messages in
     let lift_ptr =
@@ -266,8 +270,8 @@ module Level_messages_inbox = struct
         | [last_ptr] ->
             let+ message = History.find last_ptr history in
             {
-              message = message.witness;
-              inclusion_proof = List.rev (message.witness :: acc);
+              message = message.current_message;
+              inclusion_proof = List.rev (message.current_message :: acc);
             }
         | x :: xs ->
             let* cell = deref x in
@@ -288,9 +292,9 @@ module Level_messages_inbox = struct
     let level = messages.level in
     let hash_map, ptr_list =
       List.fold_left
-        (fun (hash_map, ptr_list) message_witness ->
-          let message_ptr = hash {witness = message_witness; level} in
-          ( Hash.Map.add message_ptr message_witness hash_map,
+        (fun (hash_map, ptr_list) message_proof ->
+          let message_ptr = hash {current_message = message_proof; level} in
+          ( Hash.Map.add message_ptr message_proof hash_map,
             message_ptr :: ptr_list ))
         (Hash.Map.empty, [])
         inclusion_proof
@@ -299,7 +303,7 @@ module Level_messages_inbox = struct
     let equal_ptr = Hash.equal in
     let deref ptr = Hash.Map.find ptr hash_map in
     let cell_ptr = hash messages in
-    let target_ptr = hash {witness = message; level} in
+    let target_ptr = hash {current_message = message; level} in
     let* () =
       error_unless
         (Skip_list.valid_back_path

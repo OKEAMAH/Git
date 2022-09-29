@@ -80,48 +80,61 @@ val unsafe_to_string : serialized -> string
 
 module Hash : S.HASH
 
-module Level_messages_inbox : sig
-  type message_witness
+module Merkelized_messages : sig
+  type message_proof
 
-  type t = {witness : message_witness; level : Raw_level_repr.t}
+  type messages_proof = {
+    current_message : message_proof;
+    level : Raw_level_repr.t;
+  }
 
-  val encoding : t Data_encoding.t
+  val encoding : messages_proof Data_encoding.t
 
   module History : sig
-    include Bounded_history_repr.S with type key = Hash.t and type value = t
+    include
+      Bounded_history_repr.S
+        with type key = Hash.t
+         and type value = messages_proof
 
     val no_history : t
   end
 
-  val hash : t -> Hash.t
+  val hash : messages_proof -> Hash.t
 
-  val empty : Raw_level_repr.t -> t
+  val empty : Raw_level_repr.t -> messages_proof
 
-  val add_message : History.t -> t -> serialized -> (History.t * t) tzresult
+  val add_message :
+    History.t ->
+    messages_proof ->
+    serialized ->
+    (History.t * messages_proof) tzresult
 
-  val equal : t -> t -> bool
+  val equal : messages_proof -> messages_proof -> bool
 
-  val pp : Format.formatter -> t -> unit
+  val pp : Format.formatter -> messages_proof -> unit
 
-  val get_message_payload : t -> serialized
+  val get_message_payload : message_proof -> serialized
 
-  val get_level : t -> Raw_level_repr.t
+  val get_current_message_payload : messages_proof -> serialized
 
-  val get_number_of_messages : t -> int
+  val get_level : messages_proof -> Raw_level_repr.t
 
-  val to_bytes : t -> bytes
+  val get_number_of_messages : messages_proof -> int
 
-  val of_bytes : bytes -> t option
+  val to_bytes : messages_proof -> bytes
+
+  val of_bytes : bytes -> messages_proof option
 
   type proof = private {
-    message : message_witness;
-    inclusion_proof : message_witness list;
+    message : message_proof;
+    inclusion_proof : message_proof list;
   }
 
   val proof_encoding : proof Data_encoding.t
 
-  val produce_proof : History.t -> message_index:int -> t -> proof option
+  val produce_proof :
+    History.t -> message_index:int -> messages_proof -> proof option
 
   val verify_proof :
-    proof -> t -> (serialized * Raw_level_repr.t * int) tzresult
+    proof -> messages_proof -> (serialized * Raw_level_repr.t * int) tzresult
 end

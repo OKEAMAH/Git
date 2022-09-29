@@ -129,7 +129,7 @@ end
 (** Aggregated collection of messages from the L1 inbox. *)
 module MessageTrees : sig
   (** The value of a messages tree  *)
-  type value = Sc_rollup.Inbox_message.Level_messages_inbox.t
+  type value = Sc_rollup.Inbox_message.Merkelized_messages.messages_proof
 
   (** [find context] returns the messages tree stored in the [context], if any. *)
   val find : t -> value option Lwt.t
