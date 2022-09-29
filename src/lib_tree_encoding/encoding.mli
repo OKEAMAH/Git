@@ -120,3 +120,9 @@ val tup3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 (** [wrapped_tree] adds the [Tree.wrapped_tree] to the tree under the prefix
     at which it is called. *)
 val wrapped_tree : Tree.wrapped_tree t
+
+type _ destruction
+
+val destruction : tag:'tag -> res:'b Lwt.t -> encode:'b t -> 'tag destruction
+
+val fast_tagged_union : 'tag t -> ('a -> 'tag destruction) -> 'a t

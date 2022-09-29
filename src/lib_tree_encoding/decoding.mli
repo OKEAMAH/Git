@@ -165,3 +165,11 @@ module Syntax : sig
   (** [and*] is a binding operator alias for {!both}. *)
   val ( and* ) : 'a t -> 'b t -> ('a * 'b) t
 end
+
+type _ decoding_branch
+
+val decode_branch :
+  extract:('a -> 'b Lwt.t) -> decode:'a t -> 'b decoding_branch
+
+val fast_tagged_union :
+  ?default:(unit -> 'a) -> 'tag t -> ('tag -> 'a decoding_branch) -> 'a t

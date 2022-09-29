@@ -203,6 +203,37 @@ let tagged_union ?default decode_tag cases =
             | exn -> raise exn));
   }
 
+type _ decoding_branch =
+  | DecodeBranch : {
+      extract : 'b -> 'a Lwt.t;
+      decode : 'b t;
+    }
+      -> 'a decoding_branch
+
+let decode_branch ~extract ~decode = DecodeBranch {extract; decode}
+
+let fast_tagged_union ?default decode_tag select =
+  {
+    decode =
+      (fun backend input_tree prefix ->
+        let open Lwt_syntax in
+        Lwt.try_bind
+          (fun () ->
+            (scope ["tag"] decode_tag).decode backend input_tree prefix)
+          (fun target_tag ->
+            let (DecodeBranch {decode; extract}) = select target_tag in
+            (map_lwt extract (scope ["value"] decode)).decode
+              backend
+              input_tree
+              prefix)
+          (function
+            | Key_not_found _ as exn -> (
+                match default with
+                | Some default -> return (default ())
+                | None -> raise exn)
+            | exn -> raise exn));
+  }
+
 let wrapped_tree =
   {
     decode =
