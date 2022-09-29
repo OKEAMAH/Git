@@ -3157,7 +3157,7 @@ module Sc_rollup : sig
         Raw_level.t * int ->
         (proof * inbox_message option) tzresult Lwt.t
 
-      val empty : Sc_rollup_repr.t -> Raw_level.t -> t Lwt.t
+      val empty : Sc_rollup_repr.t -> Raw_level.t -> t
 
       module Internal_for_tests : sig
         val produce_inclusion_proof :

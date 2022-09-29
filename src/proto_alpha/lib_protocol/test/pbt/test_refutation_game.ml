@@ -1090,7 +1090,7 @@ module Player_client = struct
   let construct_inbox levels_and_payloads ~rollup ~origination_level =
     let open Lwt_syntax in
     let open Store_inbox in
-    let* inbox = empty rollup origination_level in
+    let inbox = empty rollup origination_level in
     let history = Inbox.History.empty ~capacity:10000L in
     let history_level_history = History_level_history.empty ~capacity:10000L in
     let rec aux history history_level_history inbox = function

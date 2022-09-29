@@ -64,7 +64,7 @@ module State = struct
         let*! block_level = Layer1.level_of_hash node_ctxt.store block_hash in
         let block_level = Raw_level.of_int32_exn block_level in
         if Raw_level.(block_level <= node_ctxt.genesis_info.level) then
-          let*! inbox =
+          let inbox =
             Context.Inbox.empty
               node_ctxt.rollup_address
               node_ctxt.genesis_info.level

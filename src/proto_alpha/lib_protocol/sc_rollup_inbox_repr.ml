@@ -675,7 +675,7 @@ module type Merkelized_operations = sig
     Raw_level_repr.t * int ->
     (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t
 
-  val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+  val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t
 
   module Internal_for_tests : sig
     val produce_inclusion_proof :
@@ -1301,21 +1301,19 @@ let produce_proof history f_level_history inbox (l, n) =
             input_given )
 
 let empty rollup level =
-  let open Lwt_syntax in
   assert (Raw_level_repr.(level <> Raw_level_repr.root)) ;
   let pre_genesis_level = Raw_level_repr.root in
   let initial_messages = Merkelized_messages.empty pre_genesis_level in
   let initial_hash = Merkelized_messages.hash initial_messages in
-  return
-    {
-      rollup;
-      level;
-      message_counter = Z.zero;
-      nb_messages_in_commitment_period = 0L;
-      starting_level_of_current_commitment_period = level;
-      current_level_hash = (fun () -> initial_hash);
-      old_levels_messages = Skip_list.genesis initial_hash;
-    }
+  {
+    rollup;
+    level;
+    message_counter = Z.zero;
+    nb_messages_in_commitment_period = 0L;
+    starting_level_of_current_commitment_period = level;
+    current_level_hash = (fun () -> initial_hash);
+    old_levels_messages = Skip_list.genesis initial_hash;
+  }
 
 module Internal_for_tests = struct
   let produce_inclusion_proof history a b =

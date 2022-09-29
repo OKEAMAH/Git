@@ -264,7 +264,7 @@ module Sc_rollup_add_external_messages_benchmark = struct
           add_messages_for_level ctxt inbox rollup
       in
       let* rollup, ctxt = ctxt_with_rollup in
-      let*! inbox =
+      let inbox =
         Sc_rollup_inbox_repr.empty rollup (Raw_context.current_level ctxt).level
       in
       let* inbox, ctxt = add_messages_for_level ctxt inbox rollup in

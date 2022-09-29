@@ -446,7 +446,7 @@ module type Merkelized_operations = sig
 
   (** [empty ctxt level] is an inbox started at some given [level] with no
       message at all. *)
-  val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+  val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t
 
   module Internal_for_tests : sig
     (** [produce_inclusion_proof history a b] exploits [history] to produce
