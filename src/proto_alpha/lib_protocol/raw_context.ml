@@ -264,7 +264,7 @@ type back = {
   tx_rollup_current_messages :
     Tx_rollup_inbox_repr.Merkle.tree Tx_rollup_repr.Map.t;
   sc_rollup_current_messages :
-    Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof
+    Sc_rollup_inbox_repr.Merkelized_messages.messages_proof
     Sc_rollup_address_map_builder.t;
   dal_slot_fee_market : Dal_slot_repr.Slot_market.t;
   (* DAL/FIXME https://gitlab.com/tezos/tezos/-/issues/3105
@@ -1538,7 +1538,7 @@ module Sc_rollup_in_memory_inbox = struct
     let level_messages =
       Option.value
         ~default:
-          (Sc_rollup_inbox_message_repr.Merkelized_messages.empty
+          (Sc_rollup_inbox_repr.Merkelized_messages.empty
              (current_level ctxt).level)
         level_messages
     in

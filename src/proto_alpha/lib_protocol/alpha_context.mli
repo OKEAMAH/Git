@@ -2973,67 +2973,6 @@ module Sc_rollup : sig
     val serialize : t -> serialized tzresult
 
     val deserialize : serialized -> t tzresult
-
-    module Hash : S.HASH
-
-    module Merkelized_messages : sig
-      type message_proof
-
-      type messages_proof = {
-        current_message : message_proof;
-        level : Raw_level_repr.t;
-      }
-
-      val encoding : messages_proof Data_encoding.t
-
-      module History : sig
-        include
-          Bounded_history_repr.S
-            with type key = Hash.t
-             and type value = messages_proof
-
-        val no_history : t
-      end
-
-      val hash : messages_proof -> Hash.t
-
-      val empty : Raw_level.t -> messages_proof
-
-      val add_message :
-        History.t ->
-        messages_proof ->
-        serialized ->
-        (History.t * messages_proof) tzresult
-
-      val equal : messages_proof -> messages_proof -> bool
-
-      val pp : Format.formatter -> messages_proof -> unit
-
-      val get_message_payload : message_proof -> serialized
-
-      val get_current_message_payload : messages_proof -> serialized
-
-      val get_level : messages_proof -> Raw_level.t
-
-      val get_number_of_messages : messages_proof -> int
-
-      val to_bytes : messages_proof -> bytes
-
-      val of_bytes : bytes -> messages_proof option
-
-      type proof = private {
-        message : message_proof;
-        inclusion_proof : message_proof list;
-      }
-
-      val proof_encoding : proof Data_encoding.t
-
-      val produce_proof :
-        History.t -> message_index:int -> messages_proof -> proof option
-
-      val verify_proof :
-        proof -> messages_proof -> (serialized * Raw_level.t * int) tzresult
-    end
   end
 
   type inbox_message = {
@@ -3091,16 +3030,80 @@ module Sc_rollup : sig
 
     val serialized_proof_encoding : serialized_proof Data_encoding.t
 
+    module Merkelized_messages : sig
+      module Hash : S.HASH
+
+      type message_proof
+
+      type messages_proof = {
+        current_message : message_proof;
+        level : Raw_level_repr.t;
+      }
+
+      val encoding : messages_proof Data_encoding.t
+
+      module History : sig
+        include
+          Bounded_history_repr.S
+            with type key = Hash.t
+             and type value = messages_proof
+
+        val no_history : t
+      end
+
+      val hash : messages_proof -> Hash.t
+
+      val empty : Raw_level.t -> messages_proof
+
+      val add_message :
+        History.t ->
+        messages_proof ->
+        Inbox_message.serialized ->
+        (History.t * messages_proof) tzresult
+
+      val equal : messages_proof -> messages_proof -> bool
+
+      val pp : Format.formatter -> messages_proof -> unit
+
+      val get_message_payload : message_proof -> Inbox_message.serialized
+
+      val get_current_message_payload :
+        messages_proof -> Inbox_message.serialized
+
+      val get_level : messages_proof -> Raw_level.t
+
+      val get_number_of_messages : messages_proof -> int
+
+      val to_bytes : messages_proof -> bytes
+
+      val of_bytes : bytes -> messages_proof option
+
+      type proof = private {
+        message : message_proof;
+        inclusion_proof : message_proof list;
+      }
+
+      val proof_encoding : proof Data_encoding.t
+
+      val produce_proof :
+        History.t -> message_index:int -> messages_proof -> proof option
+
+      val verify_proof :
+        proof ->
+        messages_proof ->
+        (Inbox_message.serialized * Raw_level.t * int) tzresult
+    end
+
     module type Merkelized_operations = sig
       val add_messages :
         History.t ->
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        Inbox_message.Merkelized_messages.History.t ->
-        Inbox_message.Merkelized_messages.messages_proof ->
-        (Inbox_message.Merkelized_messages.History.t
-        * Inbox_message.Merkelized_messages.messages_proof
+        Merkelized_messages.History.t ->
+        Merkelized_messages.messages_proof ->
+        (Merkelized_messages.History.t
+        * Merkelized_messages.messages_proof
         * History.t
         * t)
         tzresult
@@ -3110,15 +3113,11 @@ module Sc_rollup : sig
         t ->
         Raw_level.t ->
         Inbox_message.serialized list ->
-        Inbox_message.Merkelized_messages.messages_proof ->
-        ( Inbox_message.Merkelized_messages.messages_proof * t,
-          error trace )
-        result
-        Lwt.t
+        Merkelized_messages.messages_proof ->
+        (Merkelized_messages.messages_proof * t, error trace) result Lwt.t
 
       val get_message_payload :
-        Inbox_message.Merkelized_messages.messages_proof ->
-        Inbox_message.serialized
+        Merkelized_messages.messages_proof -> Inbox_message.serialized
 
       val form_history_proof :
         History.t -> t -> (History.t * history_proof) tzresult
@@ -3152,8 +3151,8 @@ module Sc_rollup : sig
 
       val produce_proof :
         History.t ->
-        (Inbox_message.Hash.t ->
-        Inbox_message.Merkelized_messages.History.t option Lwt.t) ->
+        (Merkelized_messages.Hash.t ->
+        Merkelized_messages.History.t option Lwt.t) ->
         history_proof ->
         Raw_level.t * int ->
         (proof * inbox_message option) tzresult Lwt.t
@@ -3527,8 +3526,8 @@ module Sc_rollup : sig
         include Inbox.Merkelized_operations
 
         val find_level_history :
-          Inbox_message.Hash.t ->
-          Inbox_message.Merkelized_messages.History.t option Lwt.t
+          Inbox.Merkelized_messages.Hash.t ->
+          Inbox.Merkelized_messages.History.t option Lwt.t
 
         val inbox : Inbox.history_proof
 

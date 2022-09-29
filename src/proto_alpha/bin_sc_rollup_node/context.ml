@@ -160,7 +160,7 @@ end
 
 (** Aggregated collection of messages from the L1 inbox *)
 module MessageTrees = struct
-  type value = Sc_rollup.Inbox_message.Merkelized_messages.messages_proof
+  type value = Sc_rollup.Inbox.Merkelized_messages.messages_proof
 
   let key = ["message_tree"]
 
@@ -172,14 +172,12 @@ module MessageTrees = struct
       | Some tree -> IStore.Tree.find tree ["messages"]
       | None -> return_none
     in
-    Option.bind
-      messages_bytes
-      Sc_rollup.Inbox_message.Merkelized_messages.of_bytes
+    Option.bind messages_bytes Sc_rollup.Inbox.Merkelized_messages.of_bytes
 
   let set ctxt messages =
     let open Lwt_syntax in
     let messages_bytes =
-      Sc_rollup.Inbox_message.Merkelized_messages.to_bytes messages
+      Sc_rollup.Inbox.Merkelized_messages.to_bytes messages
     in
     let tree = IStore.Tree.empty () in
     let* tree = IStore.Tree.add tree ["messages"] messages_bytes in

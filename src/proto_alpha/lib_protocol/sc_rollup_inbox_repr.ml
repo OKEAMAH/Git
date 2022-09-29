@@ -148,22 +148,231 @@ end
 
 module Skip_list = Skip_list_repr.Make (Skip_list_parameters)
 
+module Merkelized_messages = struct
+  (* 32 *)
+  let hash_prefix = "\003\250\174\238\238" (* scib2(55) *)
+
+  module Hash = struct
+    let prefix = "scib2"
+
+    let encoded_size = 55
+
+    module H =
+      Blake2B.Make
+        (Base58)
+        (struct
+          let name = "inbox_hash"
+
+          let title = "The hash of an inbox of a smart contract rollup"
+
+          let b58check_prefix = hash_prefix
+
+          (* defaults to 32 *)
+          let size = None
+        end)
+
+    include H
+
+    let () = Base58.check_encoded_prefix b58check_encoding prefix encoded_size
+
+    include Path_encoding.Make_hex (H)
+  end
+
+  type message_proof =
+    (Sc_rollup_inbox_message_repr.serialized, Hash.t) Skip_list.cell
+
+  type messages_proof = {
+    current_message : message_proof;
+    level : Raw_level_repr.t;
+  }
+
+  let equal_message_proof =
+    Skip_list.equal Hash.equal Sc_rollup_inbox_message_repr.equal_serialize
+
+  let message_proof_encoding : message_proof Data_encoding.t =
+    Skip_list.encoding
+      Hash.encoding
+      Sc_rollup_inbox_message_repr.serialized_encoding
+
+  let equal messages1 messages2 =
+    Raw_level_repr.equal messages1.level messages2.level
+    && equal_message_proof messages1.current_message messages2.current_message
+
+  let hash {current_message; level} =
+    let level_bytes =
+      Raw_level_repr.to_int32 level |> Int32.to_string |> Bytes.of_string
+    in
+    let payload = Skip_list.content current_message in
+    let back_pointers_hashes = Skip_list.back_pointers current_message in
+    Bytes.of_string
+      (payload : Sc_rollup_inbox_message_repr.serialized :> string)
+    :: level_bytes
+    :: List.map Hash.to_bytes back_pointers_hashes
+    |> Hash.hash_bytes
+
+  let pp fmt ({current_message; level} as messages) =
+    let messages_hash = hash messages in
+    Format.fprintf
+      fmt
+      "@[hash : %a@;latest message: %a;level: %a@]"
+      Hash.pp
+      messages_hash
+      (Skip_list.pp
+         ~pp_content:Sc_rollup_inbox_message_repr.pp_serialize
+         ~pp_ptr:Hash.pp)
+      current_message
+      Raw_level_repr.pp
+      level
+
+  let encoding =
+    Data_encoding.conv
+      (fun {current_message; level} -> (current_message, level))
+      (fun (current_message, level) -> {current_message; level})
+      (Data_encoding.tup2 message_proof_encoding Raw_level_repr.encoding)
+
+  module History = struct
+    include
+      Bounded_history_repr.Make
+        (struct
+          let name = "level_inbox_history"
+        end)
+        (Hash)
+        (struct
+          type nonrec t = messages_proof
+
+          let pp = pp
+
+          let equal = equal
+
+          let encoding = encoding
+        end)
+
+    let no_history = empty ~capacity:0L
+  end
+
+  let empty level =
+    (* FIX THAT *)
+    let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
+    {current_message = Skip_list.genesis first_msg; level}
+
+  let add_to_history history messages_proof =
+    let prev_cell_ptr = hash messages_proof in
+    History.remember prev_cell_ptr messages_proof history
+
+  let add_message history messages_proof payload =
+    let open Tzresult_syntax in
+    let prev_message = messages_proof.current_message in
+    let prev_message_ptr = hash messages_proof in
+    let current_message =
+      Skip_list.next
+        ~prev_cell:prev_message
+        ~prev_cell_ptr:prev_message_ptr
+        payload
+    in
+    let new_messages_proof = {current_message; level = messages_proof.level} in
+    let* history = add_to_history history new_messages_proof in
+    return (history, new_messages_proof)
+
+  let get_number_of_messages {current_message; _} =
+    Skip_list.index current_message
+
+  let get_message_payload = Skip_list.content
+
+  let get_current_message_payload {current_message; _} =
+    get_message_payload current_message
+
+  let get_level {level; _} = level
+
+  let to_bytes = Data_encoding.Binary.to_bytes_exn encoding
+
+  let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
+
+  type proof = {message : message_proof; inclusion_proof : message_proof list}
+
+  let proof_encoding =
+    let open Data_encoding in
+    conv
+      (fun {message; inclusion_proof} -> (message, inclusion_proof))
+      (fun (message, inclusion_proof) -> {message; inclusion_proof})
+      (obj2
+         (req "message" message_proof_encoding)
+         (req "inclusion_proof" (list message_proof_encoding)))
+
+  let produce_proof history ~message_index messages : proof option =
+    let open Option_syntax in
+    let deref ptr =
+      let+ {current_message; level = _} = History.find ptr history in
+      current_message
+    in
+    let current_ptr = hash messages in
+    let lift_ptr =
+      let rec aux acc = function
+        | [] -> None
+        | [last_ptr] ->
+            let+ message = History.find last_ptr history in
+            {
+              message = message.current_message;
+              inclusion_proof = List.rev (message.current_message :: acc);
+            }
+        | x :: xs ->
+            let* cell = deref x in
+            aux (cell :: acc) xs
+      in
+      aux []
+    in
+    let* ptr_path =
+      Skip_list.back_path
+        ~deref
+        ~cell_ptr:current_ptr
+        ~target_index:message_index
+    in
+    lift_ptr ptr_path
+
+  let verify_proof {message; inclusion_proof} messages =
+    let open Tzresult_syntax in
+    let level = messages.level in
+    let hash_map, ptr_list =
+      List.fold_left
+        (fun (hash_map, ptr_list) message_proof ->
+          let message_ptr = hash {current_message = message_proof; level} in
+          ( Hash.Map.add message_ptr message_proof hash_map,
+            message_ptr :: ptr_list ))
+        (Hash.Map.empty, [])
+        inclusion_proof
+    in
+    let ptr_list = List.rev ptr_list in
+    let equal_ptr = Hash.equal in
+    let deref ptr = Hash.Map.find ptr hash_map in
+    let cell_ptr = hash messages in
+    let target_ptr = hash {current_message = message; level} in
+    let* () =
+      error_unless
+        (Skip_list.valid_back_path
+           ~equal_ptr
+           ~deref
+           ~cell_ptr
+           ~target_ptr
+           ptr_list)
+        (Inbox_proof_error "invalid back path")
+    in
+    return (Skip_list.content message, level, Skip_list.index message)
+end
+
 let hash_skip_list_cell cell =
   let current_level_messages_hash = Skip_list.content cell in
   let back_pointers_hashes = Skip_list.back_pointers cell in
-  Sc_rollup_inbox_message_repr.Hash.to_bytes current_level_messages_hash
+  Merkelized_messages.Hash.to_bytes current_level_messages_hash
   :: List.map Hash.to_bytes back_pointers_hashes
   |> Hash.hash_bytes
 
 module V1 = struct
-  type history_proof =
-    (Sc_rollup_inbox_message_repr.Hash.t, Hash.t) Skip_list.cell
+  type history_proof = (Merkelized_messages.Hash.t, Hash.t) Skip_list.cell
 
   let equal_history_proof =
-    Skip_list.equal Hash.equal Sc_rollup_inbox_message_repr.Hash.equal
+    Skip_list.equal Hash.equal Merkelized_messages.Hash.equal
 
   let history_proof_encoding : history_proof Data_encoding.t =
-    Skip_list.encoding Hash.encoding Sc_rollup_inbox_message_repr.Hash.encoding
+    Skip_list.encoding Hash.encoding Merkelized_messages.Hash.encoding
 
   let pp_history_proof fmt history_proof =
     let history_hash = hash_skip_list_cell history_proof in
@@ -172,9 +381,7 @@ module V1 = struct
       "@[hash : %a@,%a@]"
       Hash.pp
       history_hash
-      (Skip_list.pp
-         ~pp_content:Sc_rollup_inbox_message_repr.Hash.pp
-         ~pp_ptr:Hash.pp)
+      (Skip_list.pp ~pp_content:Merkelized_messages.Hash.pp ~pp_ptr:Hash.pp)
       history_proof
 
   (** Construct an inbox [history] with a given [capacity]. If you
@@ -231,7 +438,7 @@ module V1 = struct
     starting_level_of_current_commitment_period : Raw_level_repr.t;
     message_counter : Z.t;
     (* Lazy to avoid hashing O(n^2) time in [add_messages] *)
-    current_level_hash : unit -> Sc_rollup_inbox_message_repr.Hash.t;
+    current_level_hash : unit -> Merkelized_messages.Hash.t;
     old_levels_messages : history_proof;
   }
 
@@ -259,7 +466,7 @@ module V1 = struct
            starting_level_of_current_commitment_period
            inbox2.starting_level_of_current_commitment_period)
     && Z.equal message_counter inbox2.message_counter
-    && Sc_rollup_inbox_message_repr.Hash.equal
+    && Merkelized_messages.Hash.equal
          (current_level_hash ())
          (inbox2.current_level_hash ())
     && equal_history_proof old_levels_messages inbox2.old_levels_messages
@@ -288,7 +495,7 @@ module V1 = struct
       rollup
       Raw_level_repr.pp
       level
-      Sc_rollup_inbox_message_repr.Hash.pp
+      Merkelized_messages.Hash.pp
       (current_level_hash ())
       (Int64.to_string nb_messages_in_commitment_period)
       Raw_level_repr.pp
@@ -347,7 +554,7 @@ module V1 = struct
               "starting_level_of_current_commitment_period"
               Raw_level_repr.encoding)
            (req "level" Raw_level_repr.encoding)
-           (req "current_level_hash" Sc_rollup_inbox_message_repr.Hash.encoding)
+           (req "current_level_hash" Merkelized_messages.Hash.encoding)
            (req "old_levels_messages" history_proof_encoding)))
 
   let number_of_messages_during_commitment_period inbox =
@@ -411,10 +618,10 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Sc_rollup_inbox_message_repr.Merkelized_messages.History.t ->
-    Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof ->
-    (Sc_rollup_inbox_message_repr.Merkelized_messages.History.t
-    * Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof
+    Merkelized_messages.History.t ->
+    Merkelized_messages.messages_proof ->
+    (Merkelized_messages.History.t
+    * Merkelized_messages.messages_proof
     * History.t
     * t)
     tzresult
@@ -424,13 +631,11 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof ->
-    (Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof * t)
-    tzresult
-    Lwt.t
+    Merkelized_messages.messages_proof ->
+    (Merkelized_messages.messages_proof * t) tzresult Lwt.t
 
   val get_message_payload :
-    Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof ->
+    Merkelized_messages.messages_proof ->
     Sc_rollup_inbox_message_repr.serialized
 
   val form_history_proof :
@@ -465,8 +670,7 @@ module type Merkelized_operations = sig
 
   val produce_proof :
     History.t ->
-    (Sc_rollup_inbox_message_repr.Hash.t ->
-    Sc_rollup_inbox_message_repr.Merkelized_messages.History.t option Lwt.t) ->
+    (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
     history_proof ->
     Raw_level_repr.t * int ->
     (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t
@@ -489,10 +693,7 @@ let add_message inbox payload level_history level_messages =
   let message_index = inbox.message_counter in
   let message_counter = Z.succ message_index in
   let* level_history, level_messages =
-    Sc_rollup_inbox_message_repr.Merkelized_messages.add_message
-      level_history
-      level_messages
-      payload
+    Merkelized_messages.add_message level_history level_messages payload
   in
   let nb_messages_in_commitment_period =
     Int64.succ inbox.nb_messages_in_commitment_period
@@ -512,13 +713,12 @@ let add_message inbox payload level_history level_messages =
   return (level_history, level_messages, inbox)
 
 let get_message_payload messages =
-  Sc_rollup_inbox_message_repr.Merkelized_messages.get_current_message_payload
-    messages
+  Merkelized_messages.get_current_message_payload messages
 
 (** [no_history] creates an empty history with [capacity] set to
-    zero---this makes the [remember] function a no-op. We want this
-    behaviour in the protocol because we don't want to store
-    previous levels of the inbox. *)
+zero---this makes the [remember] function a no-op. We want this
+behaviour in the protocol because we don't want to store
+previous levels of the inbox. *)
 let no_history = History.empty ~capacity:0L
 
 let form_history_proof history inbox =
@@ -583,9 +783,7 @@ let add_messages history inbox level payloads level_history level_messages =
       (level_history, level_messages, inbox)
       payloads
   in
-  let current_level_hash () =
-    Sc_rollup_inbox_message_repr.Merkelized_messages.hash level_messages
-  in
+  let current_level_hash () = Merkelized_messages.hash level_messages in
   return
     (level_history, level_messages, history, {inbox with current_level_hash})
 
@@ -597,7 +795,7 @@ let add_messages_no_history inbox level payloads level_messages =
       inbox
       level
       payloads
-      Sc_rollup_inbox_message_repr.Merkelized_messages.History.no_history
+      Merkelized_messages.History.no_history
       level_messages
   in
   (level_messages, inbox)
@@ -652,7 +850,7 @@ let verify_inclusion_proof proof a b =
     ~target_ptr
     path
 
-type message_proof = Sc_rollup_inbox_message_repr.Merkelized_messages.proof
+type message_proof = Merkelized_messages.proof
 
 type proof =
   (* See the main docstring for this type (in the mli file) for
@@ -674,8 +872,7 @@ type proof =
      check that [level] equals [snapshot] (otherwise, we'd need a
      [Level_crossing] proof instead. *)
   | Single_level of {
-      level_messages :
-        Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof;
+      level_messages : Merkelized_messages.messages_proof;
       level : history_proof;
       inc : inclusion_proof;
       message_proof : message_proof option;
@@ -714,11 +911,9 @@ type proof =
                                                                                                                                                                                   message at index zero is [message]. *)
   | Level_crossing of {
       lower : history_proof;
-      lower_level_messages :
-        Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof;
+      lower_level_messages : Merkelized_messages.messages_proof;
       upper : history_proof;
-      upper_level_messages :
-        Sc_rollup_inbox_message_repr.Merkelized_messages.messages_proof;
+      upper_level_messages : Merkelized_messages.messages_proof;
       inc : inclusion_proof;
       upper_message_proof : message_proof;
       upper_level : Raw_level_repr.t;
@@ -727,13 +922,11 @@ type proof =
 let pp_proof fmt proof =
   match proof with
   | Single_level {level_messages; _} ->
-      let hash =
-        Sc_rollup_inbox_message_repr.Merkelized_messages.hash level_messages
-      in
+      let hash = Merkelized_messages.hash level_messages in
       Format.fprintf
         fmt
         "Single_level inbox proof at %a"
-        Sc_rollup_inbox_message_repr.Hash.pp
+        Merkelized_messages.Hash.pp
         hash
   | Level_crossing {lower; upper; upper_level; _} ->
       let lower_hash = Skip_list.content lower in
@@ -741,9 +934,9 @@ let pp_proof fmt proof =
       Format.fprintf
         fmt
         "Level_crossing inbox proof between %a and %a (upper_level %a)"
-        Sc_rollup_inbox_message_repr.Hash.pp
+        Merkelized_messages.Hash.pp
         lower_hash
-        Sc_rollup_inbox_message_repr.Hash.pp
+        Merkelized_messages.Hash.pp
         upper_hash
         Raw_level_repr.pp
         upper_level
@@ -758,13 +951,9 @@ let proof_encoding =
         (Tag 0)
         (obj4
            (req "level" history_proof_encoding)
-           (req
-              "level_messages"
-              Sc_rollup_inbox_message_repr.Merkelized_messages.encoding)
+           (req "level_messages" Merkelized_messages.encoding)
            (req "inclusion_proof" inclusion_proof_encoding)
-           (opt
-              "message_proof"
-              Sc_rollup_inbox_message_repr.Merkelized_messages.proof_encoding))
+           (opt "message_proof" Merkelized_messages.proof_encoding))
         (function
           | Single_level {level; level_messages; inc; message_proof} ->
               Some (level, level_messages, inc, message_proof)
@@ -776,17 +965,11 @@ let proof_encoding =
         (Tag 1)
         (obj7
            (req "lower" history_proof_encoding)
-           (req
-              "lower_level_messages"
-              Sc_rollup_inbox_message_repr.Merkelized_messages.encoding)
+           (req "lower_level_messages" Merkelized_messages.encoding)
            (req "upper" history_proof_encoding)
-           (req
-              "upper_level_messages"
-              Sc_rollup_inbox_message_repr.Merkelized_messages.encoding)
+           (req "upper_level_messages" Merkelized_messages.encoding)
            (req "inclusion_proof" inclusion_proof_encoding)
-           (req
-              "upper_message_proof"
-              Sc_rollup_inbox_message_repr.Merkelized_messages.proof_encoding)
+           (req "upper_message_proof" Merkelized_messages.proof_encoding)
            (req "upper_level" Raw_level_repr.encoding))
         (function
           | Level_crossing
@@ -838,27 +1021,26 @@ let proof_error reason =
 let check p reason = unless p (fun () -> proof_error reason)
 
 (** Utility function that checks the inclusion proof [inc] for any
-    inbox proof.
+inbox proof.
 
-    In the case of a [Single_level] proof this is just an inclusion
-    proof between [level] and the inbox snapshot targeted the proof.
+In the case of a [Single_level] proof this is just an inclusion
+proof between [level] and the inbox snapshot targeted the proof.
 
-    In the case of a [Level_crossing] proof [inc] must be an inclusion
-    proof between [upper] and the inbox snapshot. In this case we must
-    additionally check that [lower] is the immediate predecessor of
-    [upper] in the inbox skip list. NB: there may be many 'inbox
-    levels' apart, but if the intervening levels are empty they will
-    be immediate neighbours in the skip list because it misses empty
-    levels out. *)
+In the case of a [Level_crossing] proof [inc] must be an inclusion
+proof between [upper] and the inbox snapshot. In this case we must
+additionally check that [lower] is the immediate predecessor of
+[upper] in the inbox skip list. NB: there may be many 'inbox
+levels' apart, but if the intervening levels are empty they will
+be immediate neighbours in the skip list because it misses empty
+levels out. *)
 let check_inclusions proof snapshot =
   check
     (match proof with
     | Single_level {inc; level; level_messages; _} ->
         assert (
-          Sc_rollup_inbox_message_repr.Hash.equal
+          Merkelized_messages.Hash.equal
             (Skip_list.content level)
-            (Sc_rollup_inbox_message_repr.Merkelized_messages.hash
-               level_messages)) ;
+            (Merkelized_messages.hash level_messages)) ;
         verify_inclusion_proof inc level snapshot
     | Level_crossing {inc; lower; upper; _} -> (
         let prev_cell = Skip_list.back_pointer upper 0 in
@@ -877,9 +1059,7 @@ let check_inclusions proof snapshot =
 let check_message_proof message_proof level_messages_hash (l, n) label =
   let open Tzresult_syntax in
   let* payload, level, message_counter =
-    Sc_rollup_inbox_message_repr.Merkelized_messages.verify_proof
-      message_proof
-      level_messages_hash
+    Merkelized_messages.verify_proof message_proof level_messages_hash
   in
   let* () =
     error_unless
@@ -917,9 +1097,7 @@ let verify_proof (l, n) snapshot proof =
             Sc_rollup_PVM_sig.{inbox_level = l; message_counter = n; payload}
       | None ->
           let level_messages_number_of_messages =
-            Sc_rollup_inbox_message_repr.Merkelized_messages
-            .get_number_of_messages
-              level_messages
+            Merkelized_messages.get_number_of_messages level_messages
           in
           let* () =
             fail_unless
@@ -931,8 +1109,7 @@ let verify_proof (l, n) snapshot proof =
   | Level_crossing p ->
       let lower_level_messages = p.lower_level_messages in
       let level_messages_number_of_messages =
-        Sc_rollup_inbox_message_repr.Merkelized_messages.get_number_of_messages
-          lower_level_messages
+        Merkelized_messages.get_number_of_messages lower_level_messages
       in
       let* () =
         fail_unless
@@ -973,13 +1150,9 @@ let produce_proof history f_level_history inbox (l, n) =
       let*? cell = History.find cell_ptr history in
       let* level_history = f_level_history (Skip_list.content cell) in
       let*? level_messages =
-        Sc_rollup_inbox_message_repr.Merkelized_messages.History.find
-          (Skip_list.content cell)
-          level_history
+        Merkelized_messages.History.find (Skip_list.content cell) level_history
       in
-      return
-      @@ Sc_rollup_inbox_message_repr.Merkelized_messages.get_level
-           level_messages
+      return @@ Merkelized_messages.get_level level_messages
     in
     Lwt.return
     @@
@@ -1024,12 +1197,10 @@ let produce_proof history f_level_history inbox (l, n) =
     option_to_result
       "could not find level_tree in the inbox_context"
       (Lwt.return
-      @@ Sc_rollup_inbox_message_repr.Merkelized_messages.History.find
-           level_messages_hash
-           level_history)
+      @@ Merkelized_messages.History.find level_messages_hash level_history)
   in
   let message_proof =
-    Sc_rollup_inbox_message_repr.Merkelized_messages.produce_proof
+    Merkelized_messages.produce_proof
       level_history
       ~message_index:n
       level_messages
@@ -1050,14 +1221,12 @@ let produce_proof history f_level_history inbox (l, n) =
                 inbox_level = l;
                 message_counter = Z.of_int n;
                 payload =
-                  Sc_rollup_inbox_message_repr.Merkelized_messages
-                  .get_message_payload
-                    message_proof.message;
+                  Merkelized_messages.get_message_payload message_proof.message;
               } )
   | None ->
       let current_level_messages_hash = Skip_list.content inbox in
       if
-        Sc_rollup_inbox_message_repr.Hash.equal
+        Merkelized_messages.Hash.equal
           level_messages_hash
           current_level_messages_hash
       then
@@ -1090,7 +1259,7 @@ let produce_proof history f_level_history inbox (l, n) =
           option_to_result
             "could not find upper_level_tree in the inbox_context"
             (Lwt.return
-            @@ Sc_rollup_inbox_message_repr.Merkelized_messages.History.find
+            @@ Merkelized_messages.History.find
                  (Skip_list.content upper_level_messages_cell)
                  level_history)
         in
@@ -1098,18 +1267,16 @@ let produce_proof history f_level_history inbox (l, n) =
           option_to_result
             "failed to produce message proof for upper_level_tree"
             (Lwt.return
-            @@ Sc_rollup_inbox_message_repr.Merkelized_messages.produce_proof
+            @@ Merkelized_messages.produce_proof
                  level_history
                  upper_level_messages
                  ~message_index:0)
         in
         let upper_message_level =
-          Sc_rollup_inbox_message_repr.Merkelized_messages.get_level
-            upper_level_messages
+          Merkelized_messages.get_level upper_level_messages
         in
         let upper_message_payload =
-          Sc_rollup_inbox_message_repr.Merkelized_messages.get_message_payload
-            upper_message_proof.message
+          Merkelized_messages.get_message_payload upper_message_proof.message
         in
         let input_given =
           Some
@@ -1137,12 +1304,8 @@ let empty rollup level =
   let open Lwt_syntax in
   assert (Raw_level_repr.(level <> Raw_level_repr.root)) ;
   let pre_genesis_level = Raw_level_repr.root in
-  let initial_messages =
-    Sc_rollup_inbox_message_repr.Merkelized_messages.empty pre_genesis_level
-  in
-  let initial_hash =
-    Sc_rollup_inbox_message_repr.Merkelized_messages.hash initial_messages
-  in
+  let initial_messages = Merkelized_messages.empty pre_genesis_level in
+  let initial_hash = Merkelized_messages.hash initial_messages in
   return
     {
       rollup;

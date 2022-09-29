@@ -89,7 +89,7 @@ let gen_inbox rollup level =
     let open Lwt_result_syntax in
     let*! empty_inbox = Sc_rollup_inbox_repr.empty rollup level in
     let empty_level_inbox =
-      Sc_rollup_inbox_message_repr.Merkelized_messages.empty level
+      Sc_rollup_inbox_repr.Merkelized_messages.empty level
     in
     lift
     @@ let*? input_messages =

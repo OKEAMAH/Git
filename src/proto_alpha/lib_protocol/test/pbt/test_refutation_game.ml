@@ -1005,15 +1005,15 @@ module History_level_history =
     (struct
       let name = "history_level_history"
     end)
-    (Inbox_message.Hash)
+    (Inbox.Merkelized_messages.Hash)
     (struct
-      type nonrec t = Inbox_message.Merkelized_messages.History.t
+      type nonrec t = Inbox.Merkelized_messages.History.t
 
-      let pp = Inbox_message.Merkelized_messages.History.pp
+      let pp = Inbox.Merkelized_messages.History.pp
 
-      let equal = Inbox_message.Merkelized_messages.History.equal
+      let equal = Inbox.Merkelized_messages.History.equal
 
-      let encoding = Inbox_message.Merkelized_messages.History.encoding
+      let encoding = Inbox.Merkelized_messages.History.encoding
     end)
 
 type player_client = {
@@ -1098,10 +1098,9 @@ module Player_client = struct
       | (level, payloads) :: rst ->
           let level = Int32.of_int level |> Raw_level.of_int32_exn in
           let () = assert (Raw_level.(origination_level <= level)) in
-          let level_messages = Inbox_message.Merkelized_messages.empty level in
+          let level_messages = Inbox.Merkelized_messages.empty level in
           let level_history =
-            Sc_rollup.Inbox_message.Merkelized_messages.History.empty
-              ~capacity:10000L
+            Sc_rollup.Inbox.Merkelized_messages.History.empty ~capacity:10000L
           in
           let* res =
             lift
@@ -1119,7 +1118,7 @@ module Player_client = struct
           let history_level_history =
             WithExceptions.Result.get_ok ~loc:__LOC__
             @@ History_level_history.remember
-                 (Inbox_message.Merkelized_messages.hash level_messages)
+                 (Inbox.Merkelized_messages.hash level_messages)
                  level_history
                  history_level_history
           in
