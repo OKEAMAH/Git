@@ -210,19 +210,16 @@ module Merkelized_messages = struct
     :: List.map Hash.to_bytes back_pointers_hashes
     |> Hash.hash_bytes
 
-  let pp fmt ({current_message; level} as messages) =
-    let messages_hash = hash messages in
+  let pp fmt {current_message; level} =
     Format.fprintf
       fmt
-      "@[hash : %a@;latest message: %a;level: %a@]"
-      Hash.pp
-      messages_hash
+      "level: %a@,@[<v 2>current message:@,%a@]"
+      Raw_level_repr.pp
+      level
       (Skip_list.pp
          ~pp_content:Sc_rollup_inbox_message_repr.pp_serialize
          ~pp_ptr:Hash.pp)
       current_message
-      Raw_level_repr.pp
-      level
 
   let encoding =
     Data_encoding.conv
@@ -384,13 +381,8 @@ module V1 = struct
     Skip_list.encoding Hash.encoding Merkelized_messages.Hash.encoding
 
   let pp_history_proof fmt history_proof =
-    let history_hash = hash_skip_list_cell history_proof in
-    Format.fprintf
+    (Skip_list.pp ~pp_content:Merkelized_messages.Hash.pp ~pp_ptr:Hash.pp)
       fmt
-      "@[hash : %a@,%a@]"
-      Hash.pp
-      history_hash
-      (Skip_list.pp ~pp_content:Merkelized_messages.Hash.pp ~pp_ptr:Hash.pp)
       history_proof
 
   (** Construct an inbox [history] with a given [capacity]. If you
@@ -492,14 +484,14 @@ module V1 = struct
       } =
     Format.fprintf
       fmt
-      "@[<hov 2>{ rollup = %a@;\
-       level = %a@;\
-       current messages hash  = %a@;\
-       nb_messages_in_commitment_period = %s@;\
-       starting_level_of_current_commitment_period = %a@;\
-       message_counter = %a@;\
-       old_levels_messages = %a@;\
-       }@]"
+      "rollup: %a@,\
+       level: %a@,\
+       current messages hash: %a@,\
+       nb messages in commitment period: %s@,\
+       starting level of current commitment period: %a@,\
+       message counter: %a@,\
+       @[<v 2>old levels messages:@,\
+       %a@]"
       Sc_rollup_repr.Address.pp
       rollup
       Raw_level_repr.pp

@@ -142,20 +142,25 @@ module Make (Name : NAME) (Key : KEY) (Value : VALUE) :
     Map.bindings events |> fun bindings ->
     Int64_map.bindings sequence |> fun sequence_bindings ->
     let pp_binding fmt (hash, history_proof) =
-      Format.fprintf fmt "@[%a -> %a@;@]" Key.pp hash Value.pp history_proof
+      Format.fprintf
+        fmt
+        "@[<v 2>%a -> @,%a@]"
+        Key.pp
+        hash
+        Value.pp
+        history_proof
     in
     let pp_sequence_binding fmt (counter, hash) =
       Format.fprintf fmt "@[%s -> %a@;@]" (Int64.to_string counter) Key.pp hash
     in
     Format.fprintf
       fmt
-      "@[<hov 2>History:@;\
-      \ { capacity: %Ld;@;\
-      \ current size: %Ld;@;\
-      \ oldest index: %Ld;@;\
-      \ next_index : %Ld;@;\
-      \ bindings: %a;@;\
-      \ sequence: %a; }@]"
+      "capacity: %Ld@,\
+       current size: %Ld@,\
+       oldest index: %Ld@,\
+       next_index: %Ld@,\
+       @[<hv 2>bindings:@ %a@]@,\
+       @[<hv 2>sequence:@ %a@]"
       capacity
       size
       oldest_index
