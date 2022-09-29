@@ -271,4 +271,17 @@ module Slots_history : sig
     t ->
     History_cache.t ->
     (proof * Page.content option) tzresult Lwt.t
+
+  (** [verify_proof dal_params page_id snapshot proof] verifies that the given
+      [proof] is a valid proof to show that either:
+      - the page identified by [page_id] belongs to a confirmed slot stored in
+      the skip list whose head is [snapshot], or
+      - there is not confirmed slot in the skip list (whose head is) [snapshot]
+      that could contain the page identified by [page_id].
+
+      [dal_parameters] is used when verifying that/if the page is part of
+      the candidate slot (if any).
+  *)
+  val verify_proof :
+    dal_parameters -> Page.t -> t -> proof -> Page.content option tzresult Lwt.t
 end
