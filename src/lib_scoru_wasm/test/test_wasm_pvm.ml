@@ -91,7 +91,7 @@ let should_boot_unreachable_kernel ~max_steps kernel =
       ~step:`Eval
       ~reason:"unreachable executed"
       state_after_second_message) ;
-  return_unit
+  return_ok_unit
 
 let should_run_debug_kernel kernel =
   let open Lwt_syntax in
@@ -104,11 +104,12 @@ let should_run_debug_kernel kernel =
   let* tree = set_input_step "test" 0 tree in
   (* running until waiting for input *)
   let* tree = eval_until_input_requested tree in
-  let+ state_after_first_message =
+  let* state_after_first_message =
     Wasm.Internal_for_tests.get_tick_state tree
   in
   (* The kernel should not fail. *)
-  assert (not @@ is_stuck state_after_first_message)
+  assert (not @@ is_stuck state_after_first_message) ;
+  return_ok_unit
 
 let add_value tree key_steps =
   let open Lazy_containers in
@@ -143,11 +144,12 @@ let should_run_store_has_kernel kernel =
     Test_encodings_util.Tree.remove tree ["durable"; "hello"; "universe"; "_"]
   in
   let* tree = eval_until_input_requested tree in
-  let+ state_after_first_message =
+  let* state_after_first_message =
     Wasm.Internal_for_tests.get_tick_state tree
   in
   (* The kernel is now expected to fail, the PVM should be in stuck state. *)
-  assert (is_stuck state_after_first_message)
+  assert (is_stuck state_after_first_message) ;
+  return_ok_unit
 
 let should_run_store_list_size_kernel kernel =
   let open Lwt_syntax in
@@ -175,11 +177,12 @@ let should_run_store_list_size_kernel kernel =
   let* tree = set_input_step "test" 1 tree in
   let* tree = add_value tree ["one"; "five"] in
   let* tree = eval_until_input_requested tree in
-  let+ state_after_second_message =
+  let* state_after_second_message =
     Wasm.Internal_for_tests.get_tick_state tree
   in
   (* The kernel is now expected to fail, the PVM should be in stuck state. *)
-  assert (is_stuck state_after_second_message)
+  assert (is_stuck state_after_second_message) ;
+  return_ok_unit
 
 let should_run_store_delete_kernel kernel =
   let open Lwt_syntax in
@@ -209,8 +212,9 @@ let should_run_store_delete_kernel kernel =
   assert (Option.is_none result) ;
   let* result = Tree.find_tree tree ["durable"; "three"; "four"] in
   assert (Option.is_none result) ;
-  let+ result = Tree.find_tree tree ["durable"; "three"] in
-  assert (Option.is_some result)
+  let* result = Tree.find_tree tree ["durable"; "three"] in
+  assert (Option.is_some result) ;
+  return_ok_unit
 
 (* This function can build snapshotable state out of a tree. It currently
    assumes it follows a tree resulting from `set_input_step`.*)
@@ -378,46 +382,41 @@ let test_rebuild_snapshotable_state () =
 
 let tests =
   [
-    tztest
-      "Test unreachable kernel (tick per tick)"
+    test_with_kernel
+      "Test %s kernel (tick per tick)"
       `Quick
-      (test_with_kernel
-         Kernels.unreachable_kernel
-         (should_boot_unreachable_kernel ~max_steps:1L));
-    tztest
-      "Test unreachable kernel (10 ticks at a time)"
+      Kernels.unreachable_kernel
+      (should_boot_unreachable_kernel ~max_steps:1L);
+    test_with_kernel
+      "Test %s kernel (10 ticks at a time)"
       `Quick
-      (test_with_kernel
-         Kernels.unreachable_kernel
-         (should_boot_unreachable_kernel ~max_steps:10L));
-    tztest
-      "Test unreachable kernel (in one go)"
+      Kernels.unreachable_kernel
+      (should_boot_unreachable_kernel ~max_steps:10L);
+    test_with_kernel
+      "Test %s kernel (in one go)"
       `Quick
-      (test_with_kernel
-         Kernels.unreachable_kernel
-         (should_boot_unreachable_kernel ~max_steps:Int64.max_int));
-    tztest
-      "Test write_debug kernel"
+      Kernels.unreachable_kernel
+      (should_boot_unreachable_kernel ~max_steps:Int64.max_int);
+    test_with_kernel
+      "Test %s kernel"
       `Quick
-      (test_with_kernel Kernels.test_write_debug_kernel should_run_debug_kernel);
-    tztest
-      "Test store-has kernel"
+      Kernels.test_write_debug_kernel
+      should_run_debug_kernel;
+    test_with_kernel
+      "Test %s kernel"
       `Quick
-      (test_with_kernel
-         Kernels.test_store_has_kernel
-         should_run_store_has_kernel);
-    tztest
-      "Test store-list-size kernel"
+      Kernels.test_store_has_kernel
+      should_run_store_has_kernel;
+    test_with_kernel
+      "Test %s kernel"
       `Quick
-      (test_with_kernel
-         Kernels.test_store_list_size_kernel
-         should_run_store_list_size_kernel);
-    tztest
-      "Test store-delete kernel"
+      Kernels.test_store_list_size_kernel
+      should_run_store_list_size_kernel;
+    test_with_kernel
+      "Test %s kernel"
       `Quick
-      (test_with_kernel
-         Kernels.test_store_delete_kernel
-         should_run_store_delete_kernel);
+      Kernels.test_store_delete_kernel
+      should_run_store_delete_kernel;
     tztest "Test snapshotable state" `Quick test_snapshotable_state;
     tztest
       "Test rebuild snapshotable state"

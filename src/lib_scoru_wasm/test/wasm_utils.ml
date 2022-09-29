@@ -137,11 +137,40 @@ let is_stuck ?step ?reason = function
   | _ -> false
 
 module Kernels = struct
+  (* A kernel is read lazily, to prevent reading them all at once. *)
+  type t = Kernel of string * string Lwt.t Lazy.t
+
+  let read_kernel kernel =
+    let open Lwt_syntax in
+    let open Tezt.Base in
+    (* Reading files using `Tezt_lib` can be fragile and not future-proof, see
+       issue https://gitlab.com/tezos/tezos/-/issues/3746. *)
+    let kernel_file =
+      project_root // Filename.dirname __FILE__ // "wasm_kernels"
+      // (kernel ^ ".wasm")
+    in
+    let read () =
+      let* ic = Lwt_io.open_file ~mode:Lwt_io.Input kernel_file in
+      let buffer = Buffer.create 512 in
+      let bytes = Bytes.create 512 in
+      let rec loop () =
+        let* len = Lwt_io.read_into ic bytes 0 512 in
+        if len > 0 then (
+          Buffer.add_subbytes buffer bytes 0 len ;
+          loop ())
+        else Lwt.return_unit
+      in
+      let* () = loop () in
+      let+ () = Lwt_io.close ic in
+      Buffer.contents buffer
+    in
+    Kernel (kernel, lazy (read ()))
+
   (* Kernel failing at `kernel_next` invocation. *)
-  let unreachable_kernel = "unreachable"
+  let unreachable_kernel = read_kernel "unreachable"
 
   (* Kernel writing `"hello"` to debug output. *)
-  let test_write_debug_kernel = "test-write-debug"
+  let test_write_debug_kernel = read_kernel "test-write-debug"
 
   (* Kernel checking the return of the store_has host func.
 
@@ -151,7 +180,7 @@ module Kernels = struct
      - `/durable/hello/universe`
      and asserts that `store_has` returns the correct type for each.
   *)
-  let test_store_has_kernel = "test-store-has"
+  let test_store_has_kernel = read_kernel "test-store-has"
 
   (* Kernel checking the return value of store_list_size host func.
 
@@ -161,7 +190,7 @@ module Kernels = struct
      - `/durable/one/four`
      and asserts that `store_list_size(/one) = 3`.
   *)
-  let test_store_list_size_kernel = "test-store-list-size"
+  let test_store_list_size_kernel = read_kernel "test-store-list-size"
 
   (* Kernel checking the behaviour value of store_delete host func.
 
@@ -169,21 +198,15 @@ module Kernels = struct
      - `/durable/one`
      - `/durable/three/four`
   *)
-  let test_store_delete_kernel = "test-store-delete"
+  let test_store_delete_kernel = read_kernel "test-store-delete"
 end
 
-let test_with_kernel kernel test () =
-  let open Lwt_result_syntax in
-  let open Tezt.Base in
-  (* Reading files using `Tezt_lib` can be fragile and not future-proof, see
-     issue https://gitlab.com/tezos/tezos/-/issues/3746. *)
-  let kernel_file =
-    project_root // Filename.dirname __FILE__ // "wasm_kernels"
-    // (kernel ^ ".wasm")
+let test_with_kernel formatter speed (Kernels.Kernel (kernel_name, kernel))
+    (test : string -> (unit, _) result Lwt.t) =
+  let open Lwt_syntax in
+  let test () =
+    let (lazy forced_kernel) = kernel in
+    let* kernel = forced_kernel in
+    test kernel
   in
-  let*! () =
-    Lwt_io.with_file ~mode:Lwt_io.Input kernel_file (fun channel ->
-        let*! kernel = Lwt_io.read channel in
-        test kernel)
-  in
-  return_unit
+  Tztest.tztest (Format.sprintf formatter kernel_name) speed test
