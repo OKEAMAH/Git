@@ -326,17 +326,30 @@ let value_option key encoding =
   {encode; decode}
 
 let option enc =
-  tagged_union
+  let select_encode = function
+    | Some v -> destruction ~tag:"Some" ~res:(Lwt.return v) ~delegate:enc
+    | None ->
+        destruction
+          ~tag:"None"
+          ~res:Lwt.return_unit
+          ~delegate:(value [] Data_encoding.unit)
+  in
+
+  let select_decode = function
+    | "Some" ->
+        decoding_branch ~extract:(fun v -> Lwt.return_some v) ~delegate:enc
+    | "None" ->
+        decoding_branch
+          ~extract:(fun () -> Lwt.return_none)
+          ~delegate:(value [] Data_encoding.unit)
+    | _ -> (* FIXME *) assert false
+  in
+
+  fast_tagged_union
     ~default:(fun () -> None)
     (value [] Data_encoding.string)
-    [
-      case "Some" enc Fun.id Option.some;
-      case
-        "None"
-        (return ())
-        (function None -> Some () | _ -> None)
-        (fun () -> None);
-    ]
+    ~select_encode
+    ~select_decode
 
 let delayed f =
   let enc = lazy (f ()) in
@@ -353,20 +366,27 @@ let delayed f =
   {encode; decode}
 
 let either enc_a enc_b =
-  tagged_union
+  let select_encode = function
+    | Either.Left x ->
+        destruction ~tag:"Left" ~res:(Lwt.return x) ~delegate:enc_a
+    | Either.Right x ->
+        destruction ~tag:"Right" ~res:(Lwt.return x) ~delegate:enc_b
+  in
+  let select_decode = function
+    | "Left" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return @@ Either.Left x)
+          ~delegate:enc_a
+    | "Right" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return @@ Either.Right x)
+          ~delegate:enc_b
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union
     (value [] Data_encoding.string)
-    [
-      case
-        "Left"
-        enc_a
-        (function Either.Left x -> Some x | _ -> None)
-        (function x -> Left x);
-      case
-        "Right"
-        enc_b
-        (function Either.Right x -> Some x | _ -> None)
-        (function x -> Right x);
-    ]
+    ~select_encode
+    ~select_decode
 
 module type TREE = S
 

@@ -31,7 +31,7 @@ type key = string list
 exception No_tag_matched_on_encoding
 
 (** Tree encoder type. *)
-type -'a t
+type 'a t
 
 (** Represents a partial encoder for specific constructor of a sum-type. *)
 type ('tag, 'a) case

@@ -35,115 +35,128 @@ let append_key prefix key tail = prefix (List.append key tail)
 (** Given the tail key, construct a full key. *)
 type prefix_key = key -> key
 
-type -'a t = {
+type -'a custom = {
   encode : 'tree. 'tree Tree.backend -> 'a -> prefix_key -> 'tree -> 'tree Lwt.t;
 }
 [@@unboxed]
 
-let ignore = {encode = (fun _backend _val _key tree -> Lwt.return tree)}
+type 'tag destruction =
+  | Destruction : {
+      tag : 'tag;
+      res : 'b Lwt.t;
+      encode : 'b t;
+    }
+      -> 'tag destruction
 
-let run backend {encode} value tree = encode backend value Fun.id tree
+and 'a t =
+  | Custom : 'a custom -> 'a t
+  | Tup2 : 'a t * 'b t -> ('a * 'b) t
+  | Tup3 : 'a t * 'b t * 'c t -> ('a * 'b * 'c) t
+  | Scope : key * 'a t -> 'a t
+  | TaggedUnion : 'tag t * ('a -> 'tag destruction) -> 'a t
+  | Delayed : (unit -> 'a t) -> 'a t
+  | Contramap : ('b -> 'a) * 'a t -> 'b t
+  | Raw : key -> bytes t
+  | Value_option : key * 'a Data_encoding.t -> 'a option t
 
-let lwt {encode} =
-  {
-    encode =
-      (fun backend value prefix tree ->
-        let open Lwt_syntax in
-        let* v = value in
-        encode backend v prefix tree);
-  }
+let ignore = Custom {encode = (fun _backend _val _key tree -> Lwt.return tree)}
 
-let delayed f =
-  {encode = (fun backend x key tree -> (f ()).encode backend x key tree)}
+let rec eval :
+    type a tree.
+    a t -> tree Tree.backend -> a -> prefix_key -> tree -> tree Lwt.t =
+ fun encoder backend value prefix tree ->
+  let open Lwt.Syntax in
+  match encoder with
+  | Custom {encode} -> encode backend value prefix tree
+  | Tup2 (lhs, rhs) ->
+      let l, r = value in
+      let* tree = eval lhs backend l prefix tree in
+      eval rhs backend r prefix tree
+  | Tup3 (encode_a, encode_b, encode_c) ->
+      let a, b, c = value in
+      let* tree = eval encode_a backend a prefix tree in
+      let* tree = eval encode_b backend b prefix tree in
+      eval encode_c backend c prefix tree
+  | Scope (key, encoder) ->
+      eval encoder backend value (append_key prefix key) tree
+  | TaggedUnion (tag_encoding, select) ->
+      let (Destruction {tag; res; encode}) = select value in
+      let encode = Scope (["value"], encode) in
+      let* tree = eval tag_encoding backend tag prefix tree in
+      let* value = res in
+      eval encode backend value prefix tree
+  | Delayed f -> eval (f ()) backend value prefix tree
+  | Contramap (f, encoder) -> eval encoder backend (f value) prefix tree
+  | Raw suffix -> Tree.add backend tree (prefix suffix) value
+  | Value_option (key, enc) -> (
+      let venc = Contramap (Data_encoding.Binary.to_bytes_exn enc, Raw key) in
+      match value with
+      | Some v -> eval venc backend v prefix tree
+      | None -> Tree.remove backend tree (prefix key))
 
-let contramap f {encode} =
-  {encode = (fun backend value -> encode backend (f value))}
+let run backend encoder value tree = eval encoder backend value Fun.id tree
 
-let contramap_lwt f {encode} =
-  {
-    encode =
-      (fun backend value prefix tree ->
-        let open Lwt_syntax in
-        let* v = f value in
-        encode backend v prefix tree);
-  }
+let lwt encoder =
+  Custom
+    {
+      encode =
+        (fun backend value prefix tree ->
+          let open Lwt_syntax in
+          let* v = value in
+          eval encoder backend v prefix tree);
+    }
 
-let tup2 lhs rhs =
-  {
-    encode =
-      (fun backend (l, r) prefix tree ->
-        let open Lwt.Syntax in
-        let* tree = lhs.encode backend l prefix tree in
-        rhs.encode backend r prefix tree);
-  }
+let delayed f = Delayed f
 
-let tup3 encode_a encode_b encode_c =
-  {
-    encode =
-      (fun backend (a, b, c) prefix tree ->
-        let open Lwt.Syntax in
-        let* tree = encode_a.encode backend a prefix tree in
-        let* tree = encode_b.encode backend b prefix tree in
-        encode_c.encode backend c prefix tree);
-  }
+let contramap f encoder = Contramap (f, encoder)
 
-let raw suffix =
-  {
-    encode =
-      (fun backend bytes prefix tree ->
-        Tree.add backend tree (prefix suffix) bytes);
-  }
+let contramap_lwt f encoder =
+  Custom
+    {
+      encode =
+        (fun backend value prefix tree ->
+          let open Lwt_syntax in
+          let* v = f value in
+          eval encoder backend v prefix tree);
+    }
+
+let tup2 lhs rhs = Tup2 (lhs, rhs)
+
+let tup3 encode_a encode_b encode_c = Tup3 (encode_a, encode_b, encode_c)
+
+let raw suffix = Raw suffix
 
 let value suffix enc =
-  {
-    encode =
-      (fun backend v prefix tree ->
-        (contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix)).encode
-          backend
-          v
-          prefix
-          tree);
-  }
+  contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix)
 
-let value_option key encoding =
-  {
-    encode =
-      (fun backend v prefix tree ->
-        match v with
-        | Some v -> (value key encoding).encode backend v prefix tree
-        | None -> Tree.remove backend tree (prefix key));
-  }
+let value_option key enc = Value_option (key, enc)
 
-let scope key {encode} =
-  {
-    encode =
-      (fun backend value prefix tree ->
-        encode backend value (append_key prefix key) tree);
-  }
+let scope key encoder = Scope (key, encoder)
 
 let lazy_mapping to_key enc_value =
-  {
-    encode =
-      (fun backend (origin, bindings) prefix tree ->
-        let open Lwt_syntax in
-        let* tree =
-          match origin with
-          | Some origin ->
-              Tree.add_tree
-                backend
-                tree
-                (prefix [])
-                (Tree.select backend origin)
-          | None -> return tree
-        in
-        List.fold_left_s
-          (fun tree (k, v) ->
-            let key = append_key prefix (to_key k) in
-            let* tree = Tree.remove backend tree (key []) in
-            enc_value.encode backend v key tree)
-          tree
-          bindings);
-  }
+  Custom
+    {
+      encode =
+        (fun backend (origin, bindings) prefix tree ->
+          let open Lwt_syntax in
+          let* tree =
+            match origin with
+            | Some origin ->
+                Tree.add_tree
+                  backend
+                  tree
+                  (prefix [])
+                  (Tree.select backend origin)
+            | None -> return tree
+          in
+          List.fold_left_s
+            (fun tree (k, v) ->
+              let key = append_key prefix (to_key k) in
+              let* tree = Tree.remove backend tree (key []) in
+              eval enc_value backend v key tree)
+            tree
+            bindings);
+    }
 
 type ('tag, 'a) case =
   | Case : {
@@ -160,58 +173,43 @@ let case tag encode probe =
   case_lwt tag encode probe
 
 let tagged_union encode_tag cases =
-  {
-    encode =
-      (fun backend value prefix target_tree ->
-        let open Lwt_syntax in
-        let encode_tag = scope ["tag"] encode_tag in
-        let match_case (Case {probe; tag; encode}) =
-          match probe value with
-          | Some res ->
-              let* target_tree =
-                encode_tag.encode backend tag prefix target_tree
-              in
-              let* value = res in
-              let* x =
-                (scope ["value"] encode).encode backend value prefix target_tree
-              in
-              return (Some x)
-          | None -> return None
-        in
-        let* tree_opt = List.find_map_s match_case cases in
-        match tree_opt with
-        | None -> raise No_tag_matched_on_encoding
-        | Some tree -> return tree);
-  }
+  Custom
+    {
+      encode =
+        (fun backend value prefix target_tree ->
+          let open Lwt_syntax in
+          let encode_tag = scope ["tag"] encode_tag in
+          let match_case (Case {probe; tag; encode}) =
+            match probe value with
+            | Some res ->
+                let* target_tree =
+                  eval encode_tag backend tag prefix target_tree
+                in
+                let* value = res in
+                let* x =
+                  eval (scope ["value"] encode) backend value prefix target_tree
+                in
+                return (Some x)
+            | None -> return None
+          in
+          let* tree_opt = List.find_map_s match_case cases in
+          match tree_opt with
+          | None -> raise No_tag_matched_on_encoding
+          | Some tree -> return tree);
+    }
 
 let wrapped_tree =
-  {
-    encode =
-      (fun backend (Tree.Wrapped_tree (subtree, backend')) prefix target_tree ->
-        let subtree = Tree.select backend (Tree.wrap backend' subtree) in
-        let key = prefix [] in
-        Tree.add_tree backend target_tree key subtree);
-  }
-
-type 'tag destruction =
-  | Destruction : {
-      tag : 'tag;
-      res : 'b Lwt.t;
-      encode : 'b t;
+  Custom
+    {
+      encode =
+        (fun backend (Tree.Wrapped_tree (subtree, backend')) prefix target_tree ->
+          let subtree = Tree.select backend (Tree.wrap backend' subtree) in
+          let key = prefix [] in
+          Tree.add_tree backend target_tree key subtree);
     }
-      -> 'tag destruction
 
 let destruction ~tag ~res ~encode = Destruction {tag; res; encode}
 
 let fast_tagged_union tag_encoding select =
   let tag_encoding = scope ["tag"] tag_encoding in
-  {
-    encode =
-      (fun backend value prefix target_tree ->
-        let open Lwt_syntax in
-        let (Destruction {tag; res; encode}) = select value in
-        let encode = scope ["value"] encode in
-        let* target_tree = tag_encoding.encode backend tag prefix target_tree in
-        let* value = res in
-        encode.encode backend value prefix target_tree);
-  }
+  TaggedUnion (tag_encoding, select)
