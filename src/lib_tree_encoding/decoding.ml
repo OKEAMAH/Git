@@ -49,10 +49,58 @@ type 'a custom = {
 }
 [@@unboxed]
 
-type 'a t = Custom : 'a custom -> 'a t
+type 'a t =
+  | Custom : 'a custom -> 'a t
+  | Map : ('a -> 'b) * 'a t -> 'b t
+  | Delayed : (unit -> 'a t) -> 'a t
+  | Lwt : 'a Lwt.t -> 'a t
+  | Map_lwt : ('a -> 'b Lwt.t) * 'a t -> 'b t
+  | Return : 'a -> 'a t
+  | Bind : 'a t * ('a -> 'b t) -> 'b t
+  | Both : 'a t * 'b t -> ('a * 'b) t
+  | Raw : key -> bytes t
+  | Value_option : key * 'a Data_encoding.t -> 'a option t
+  | Value_default : 'a option * key * 'a Data_encoding.t -> 'a t
+  | Scope : key * 'a t -> 'a t
 
-let eval decoding backend tree prefix =
-  match decoding with Custom {decode} -> decode backend tree prefix
+let rec eval :
+    type a tree. a t -> tree Tree.backend -> tree -> prefix_key -> a Lwt.t =
+ fun decoding backend tree prefix ->
+  match decoding with
+  | Custom {decode} -> decode backend tree prefix
+  | Map (f, decoder) -> Lwt.map f (eval decoder backend tree prefix)
+  | Lwt promise -> promise
+  | Delayed f -> eval (f ()) backend tree prefix
+  | Map_lwt (f, decoder) -> Lwt.bind (eval decoder backend tree prefix) f
+  | Return a -> Lwt.return a
+  | Bind (decoder, f) ->
+      Lwt.bind (eval decoder backend tree prefix) (fun x ->
+          eval (f x) backend tree prefix)
+  | Both (lhs, rhs) ->
+      Lwt.both (eval lhs backend tree prefix) (eval rhs backend tree prefix)
+  | Raw key -> (
+      let open Lwt_syntax in
+      let key = prefix key in
+      let+ value = Tree.find backend tree key in
+      match value with Some value -> value | None -> raise (Key_not_found key))
+  | Value_option (key, decoder) -> (
+      let open Lwt_syntax in
+      let key = prefix key in
+      let* value = Tree.find backend tree key in
+      match value with
+      | Some value -> (
+          match Data_encoding.Binary.of_bytes decoder value with
+          | Ok value -> return_some value
+          | Error error -> raise (Decode_error {key; error}))
+      | None -> return_none)
+  | Value_default (default, key, decoder) -> (
+      let open Lwt_syntax in
+      let* value = eval (Value_option (key, decoder)) backend tree prefix in
+      match (value, default) with
+      | Some value, _ -> return value
+      | None, Some default -> return default
+      | None, None -> raise (Key_not_found (prefix key)))
+  | Scope (key, decoder) -> eval decoder backend tree (append_key prefix key)
 
 type ('tag, 'a) case =
   | Case : {
@@ -62,48 +110,20 @@ type ('tag, 'a) case =
     }
       -> ('tag, 'a) case
 
-let delayed f = Custom {decode = (fun backend -> (f ()).decode backend)}
+let delayed f = Delayed f
 
-let of_lwt lwt = Custom {decode = (fun _backend _tree _prefix -> lwt)}
+let of_lwt lwt = Lwt lwt
 
-let map f decoder =
-  Custom
-    {
-      decode =
-        (fun backend tree prefix ->
-          Lwt.map f (eval decoder backend tree prefix));
-    }
+let map f decoder = Map (f, decoder)
 
-let map_lwt f decoder =
-  Custom
-    {
-      decode =
-        (fun backend tree prefix ->
-          Lwt.bind (eval decoder backend tree prefix) f);
-    }
+let map_lwt f decoder = Map_lwt (f, decoder)
 
 module Syntax = struct
-  let return value =
-    Custom {decode = (fun _backend _tree _prefix -> Lwt.return value)}
+  let return value = Return value
 
-  let bind decoder f =
-    Custom
-      {
-        decode =
-          (fun backend tree prefix ->
-            Lwt.bind (eval decoder backend tree prefix) (fun x ->
-                (f x).decode backend tree prefix));
-      }
+  let bind decoder f = Bind (decoder, f)
 
-  let both lhs rhs =
-    Custom
-      {
-        decode =
-          (fun backend tree prefix ->
-            Lwt.both
-              (lhs.decode backend tree prefix)
-              (rhs.decode backend tree prefix));
-      }
+  let both lhs rhs = Both (lhs, rhs)
 
   let ( let+ ) m f = map f m
 
@@ -116,60 +136,18 @@ end
 
 let run backend decoder tree = eval decoder backend tree Fun.id
 
-let raw key =
-  Custom
-    {
-      decode =
-        (fun backend tree prefix ->
-          let open Lwt_syntax in
-          let key = prefix key in
-          let+ value = Tree.find backend tree key in
-          match value with
-          | Some value -> value
-          | None -> raise (Key_not_found key));
-    }
+let raw key = Raw key
 
-let value_option key decoder =
-  Custom
-    {
-      decode =
-        (fun backend tree prefix ->
-          let open Lwt_syntax in
-          let key = prefix key in
-          let* value = Tree.find backend tree key in
-          match value with
-          | Some value -> (
-              match Data_encoding.Binary.of_bytes decoder value with
-              | Ok value -> return_some value
-              | Error error -> raise (Decode_error {key; error}))
-          | None -> return_none);
-    }
+let value_option key decoder = Value_option (key, decoder)
 
-let value ?default key decoder =
-  Custom
-    {
-      decode =
-        (fun backend tree prefix ->
-          let open Lwt_syntax in
-          let* value = eval (value_option key decoder) backend tree prefix in
-          match (value, default) with
-          | Some value, _ -> return value
-          | None, Some default -> return default
-          | None, None -> raise (Key_not_found (prefix key)));
-    }
+let value ?default key decoder = Value_default (default, key, decoder)
 
 let subtree backend tree prefix =
   let open Lwt_syntax in
   let+ tree = Tree.find_tree backend tree (prefix []) in
   Option.map (Tree.wrap backend) tree
 
-let scope key decoder =
-  Custom
-    {
-      decode =
-        (fun backend tree prefix ->
-          eval decoder backend tree (append_key prefix key));
-    }
+let scope key decoder = Scope (key, decoder)
 
 let lazy_mapping to_key field_enc =
   Custom
@@ -194,37 +172,39 @@ let case tag decode extract =
   case_lwt tag decode (fun x -> Lwt.return @@ extract x)
 
 let tagged_union ?default decode_tag cases =
-  {
-    decode =
-      (fun backend input_tree prefix ->
-        let open Lwt_syntax in
-        Lwt.try_bind
-          (fun () -> eval (scope ["tag"] decode_tag) backend input_tree prefix)
-          (fun target_tag ->
-            (* Search through the cases to find a matching branch. *)
-            let candidate =
-              List.find_map
-                (fun (Case {tag; decode; extract}) ->
-                  if tag = target_tag then
-                    Some
-                      (eval
-                         (map_lwt extract (scope ["value"] decode))
-                         backend
-                         input_tree
-                         prefix)
-                  else None)
-                cases
-            in
-            match candidate with
-            | Some case -> case
-            | None -> raise No_tag_matched_on_decoding)
-          (function
-            | Key_not_found _ as exn -> (
-                match default with
-                | Some default -> return (default ())
-                | None -> raise exn)
-            | exn -> raise exn));
-  }
+  let tag_decoder = scope ["tag"] decode_tag in
+  Custom
+    {
+      decode =
+        (fun backend input_tree prefix ->
+          let open Lwt_syntax in
+          Lwt.try_bind
+            (fun () -> eval tag_decoder backend input_tree prefix)
+            (fun target_tag ->
+              (* Search through the cases to find a matching branch. *)
+              let candidate =
+                List.find_map
+                  (fun (Case {tag; decode; extract}) ->
+                    if tag = target_tag then
+                      Some
+                        (eval
+                           (map_lwt extract (scope ["value"] decode))
+                           backend
+                           input_tree
+                           prefix)
+                    else None)
+                  cases
+              in
+              match candidate with
+              | Some case -> case
+              | None -> raise No_tag_matched_on_decoding)
+            (function
+              | Key_not_found _ as exn -> (
+                  match default with
+                  | Some default -> return (default ())
+                  | None -> raise exn)
+              | exn -> raise exn));
+    }
 
 type _ decoding_branch =
   | DecodeBranch : {
@@ -236,35 +216,38 @@ type _ decoding_branch =
 let decode_branch ~extract ~decode = DecodeBranch {extract; decode}
 
 let fast_tagged_union ?default decode_tag select =
-  {
-    decode =
-      (fun backend input_tree prefix ->
-        let open Lwt_syntax in
-        Lwt.try_bind
-          (fun () -> eval (scope ["tag"] decode_tag) backend input_tree prefix)
-          (fun target_tag ->
-            let (DecodeBranch {decode; extract}) = select target_tag in
-            eval
-              (map_lwt extract (scope ["value"] decode))
-              backend
-              input_tree
-              prefix)
-          (function
-            | Key_not_found _ as exn -> (
-                match default with
-                | Some default -> return (default ())
-                | None -> raise exn)
-            | exn -> raise exn));
-  }
+  let tag_decoder = scope ["tag"] decode_tag in
+  Custom
+    {
+      decode =
+        (fun backend input_tree prefix ->
+          let open Lwt_syntax in
+          Lwt.try_bind
+            (fun () -> eval tag_decoder backend input_tree prefix)
+            (fun target_tag ->
+              let (DecodeBranch {decode; extract}) = select target_tag in
+              eval
+                (map_lwt extract (scope ["value"] decode))
+                backend
+                input_tree
+                prefix)
+            (function
+              | Key_not_found _ as exn -> (
+                  match default with
+                  | Some default -> return (default ())
+                  | None -> raise exn)
+              | exn -> raise exn));
+    }
 
 let wrapped_tree =
-  {
-    decode =
-      (fun backend tree prefix ->
-        let open Lwt.Syntax in
-        let+ tree = subtree backend tree prefix in
-        match tree with
-        | Some subtree ->
-            Tree.Wrapped_tree (Tree.select backend subtree, backend)
-        | _ -> raise Not_found);
-  }
+  Custom
+    {
+      decode =
+        (fun backend tree prefix ->
+          let open Lwt.Syntax in
+          let+ tree = subtree backend tree prefix in
+          match tree with
+          | Some subtree ->
+              Tree.Wrapped_tree (Tree.select backend subtree, backend)
+          | _ -> raise Not_found);
+    }
