@@ -1071,6 +1071,9 @@ struct
         let wrap t = PVM_tree t
       end)
 
+      let compute_step_many ~max_steps tree =
+        Wasm.compute_step_many ~max_steps tree
+
       let compute_step (tree : Tree.tree) = Wasm.compute_step tree
 
       let set_input_step input payload (tree : Tree.tree) =

@@ -408,18 +408,18 @@ struct
         | No_input_required -> true
       in
 
-      let rec go steps_left pvm_state =
-        if steps_left > 0L && should_continue pvm_state then
+      let rec go steps_executed pvm_state =
+        if steps_executed <= max_steps && should_continue pvm_state then
           let* pvm_state = compute_step_inner pvm_state in
-          go (Int64.pred steps_left) pvm_state
-        else Lwt.return pvm_state
+          go (Int64.succ steps_executed) pvm_state
+        else Lwt.return (pvm_state, steps_executed)
       in
 
       let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
       (* Make sure we perform at least 1 step. The assertion above ensures that
          we were asked to perform at least 1. *)
       let* pvm_state = compute_step_inner pvm_state in
-      let* pvm_state = go (Int64.pred max_steps) pvm_state in
+      let* pvm_state, steps_executed = go 1L pvm_state in
 
       (* {{Note tick state clean-up}}
 
@@ -438,9 +438,13 @@ struct
          worst tick of the computation.wasm kernel. *)
       let* tree = T.remove tree ["wasm"] in
 
-      Tree_encoding_runner.encode pvm_state_encoding pvm_state tree
+      let* final_tree =
+        Tree_encoding_runner.encode pvm_state_encoding pvm_state tree
+      in
 
-    let compute_step tree = compute_step_many ~max_steps:1L tree
+      Lwt.return (final_tree, steps_executed)
+
+    let compute_step tree = Lwt.map fst @@ compute_step_many ~max_steps:1L tree
 
     let get_output output_info tree =
       let open Lwt_syntax in

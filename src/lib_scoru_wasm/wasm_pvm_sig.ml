@@ -87,8 +87,9 @@ module type S = sig
       toplevel kernel call. If the VM is expecting input, it gets stuck. If the
       VM is already stuck, this function may raise an exception. It is more
       efficient than [compute_step] if it has to be called for more than one
-      tick, but its resulting tree will be stricly equivalent. *)
-  val compute_step_many : max_steps:int64 -> tree -> tree Lwt.t
+      tick, but its resulting tree will be stricly equivalent. 
+      Returns a tuple containing the number of executed ticks and the new tree*)
+  val compute_step_many : max_steps:int64 -> tree -> (tree * int64) Lwt.t
 
   (** [compute_step tree] forwards the VM by one compute tick. If the VM is expecting
       input, it gets stuck. If the VM is already stuck, this function may raise

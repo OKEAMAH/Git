@@ -308,13 +308,18 @@ module V2_0_0 = struct
 
     let set_input input = state_of @@ set_input_state input
 
-    let eval_step =
-      let open Monad.Syntax in
-      let* s = get in
-      let* s = lift (WASM_machine.compute_step s) in
-      set s
+    let eval_many ~max_steps state =
+      let eval_steps max_steps =
+        let open Monad.Syntax in
+        let* s = get in
+        let* s, count = lift (WASM_machine.compute_step_many ~max_steps s) in
+        let* () = set s in
+        Monad.return count
+      in
 
-    let eval state = state_of eval_step state
+      run (eval_steps max_steps) state
+
+    let eval state = Lwt.map fst @@ eval_many ~max_steps:1L state
 
     let step_transition input_given state =
       let open Lwt_syntax in

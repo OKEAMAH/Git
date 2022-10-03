@@ -50,12 +50,12 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
   module PVM = PVM
   module Interpreter_event = Interpreter_event.Make (PVM)
 
-  let consume_fuel = Option.map pred
+  let consume_fuel = Option.map Int64.pred
 
   let continue_with_fuel fuel state f =
     let open Lwt_result_syntax in
     match fuel with
-    | Some 0 -> return (state, fuel)
+    | Some 0L -> return (state, fuel)
     | _ -> f (consume_fuel fuel) state
 
   (** [eval_until_input level message_index ~fuel start_tick
@@ -69,37 +69,42 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
       failing_ticks state =
     let open Lwt_result_syntax in
     let eval_tick tick failing_ticks state =
+      let max_steps = match fuel with None -> Int64.max_int | Some v -> v in
       let normal_eval state =
-        let*! state = PVM.eval state in
-        return (state, failing_ticks)
+        let*! state, executed_ticks = PVM.eval_many ~max_steps state in
+        return (state, executed_ticks, failing_ticks)
       in
       let failure_insertion_eval state failing_ticks' =
         let*! () =
           Interpreter_event.intended_failure
             ~level
             ~message_index
-            ~message_tick:tick
+            ~message_tick:(Int64.to_int tick)
             ~internal:true
         in
         let*! state = PVM.Internal_for_tests.insert_failure state in
-        return (state, failing_ticks')
+        return (state, 0L, failing_ticks')
       in
       match failing_ticks with
       | xtick :: failing_ticks' when xtick = tick ->
           failure_insertion_eval state failing_ticks'
       | _ -> normal_eval state
     in
-    let rec go fuel tick failing_ticks state =
+    let rec go fuel (tick : int64) failing_ticks state =
       let*! input_request = PVM.is_input_state state in
       match fuel with
-      | Some 0 -> return (state, fuel, tick, failing_ticks)
+      | Some 0L -> return (state, fuel, tick, failing_ticks)
       | None | Some _ -> (
           match input_request with
           | No_input_required ->
-              let* next_state, failing_ticks =
+              let* next_state, executed_ticks, failing_ticks =
                 eval_tick tick failing_ticks state
               in
-              go (consume_fuel fuel) (tick + 1) failing_ticks next_state
+              go
+                (consume_fuel fuel)
+                (Int64.add tick executed_ticks)
+                failing_ticks
+                next_state
           | Needs_reveal (Reveal_raw_data hash) -> (
               match Reveals.get ~data_dir ~pvm_name:PVM.name ~hash with
               | None ->
@@ -108,7 +113,11 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
                   let*! next_state =
                     PVM.set_input (Reveal (Raw_data data)) state
                   in
-                  go (consume_fuel fuel) (tick + 1) failing_ticks next_state)
+                  go
+                    (consume_fuel fuel)
+                    (Int64.succ tick)
+                    failing_ticks
+                    next_state)
           | _ -> return (state, fuel, tick, failing_ticks))
     in
     go fuel start_tick failing_ticks state
@@ -127,7 +136,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
   let feed_input data_dir level message_index ~fuel ~failing_ticks state input =
     let open Lwt_result_syntax in
     let* state, fuel, tick, failing_ticks =
-      eval_until_input data_dir level message_index ~fuel 0 failing_ticks state
+      eval_until_input data_dir level message_index ~fuel 0L failing_ticks state
     in
     continue_with_fuel fuel state @@ fun fuel state ->
     let* input, failing_ticks =
@@ -138,7 +147,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
               Interpreter_event.intended_failure
                 ~level
                 ~message_index
-                ~message_tick:tick
+                ~message_tick:(Int64.to_int tick)
                 ~internal:false
             in
             return (mutate input, failing_ticks')
@@ -191,11 +200,13 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
                   }
               in
               let level = Raw_level.to_int32 inbox_level |> Int32.to_int in
+
               let failing_ticks =
-                Loser_mode.is_failure
-                  failures
-                  ~level
-                  ~message_index:message_counter
+                List.map Int64.of_int
+                @@ Loser_mode.is_failure
+                     failures
+                     ~level
+                     ~message_index:message_counter
               in
               let* state, fuel =
                 feed_input
@@ -347,7 +358,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
         if Raw_level.(event.level > level) then return None
         else
           let tick_distance =
-            Sc_rollup.Tick.distance tick event.tick |> Z.to_int
+            Sc_rollup.Tick.distance tick event.tick |> Z.to_int64
           in
           (* TODO: #3384
              We assume that [StateHistory] correctly stores enough

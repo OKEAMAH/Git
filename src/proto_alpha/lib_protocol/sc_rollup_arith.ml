@@ -948,11 +948,12 @@ module Make (Context : P) :
     let* () = start_parsing in
     return ()
 
-  let ticked m =
+  let ticked (m : 'a Monad.t) : ('a * int64) Monad.t =
     let open Monad.Syntax in
     let* tick = Current_tick.get in
     let* () = Current_tick.set (Sc_rollup_tick_repr.next tick) in
-    m
+    let* x = m in
+    Monad.return (x, 1L)
 
   let set_input_monadic input =
     match input with
@@ -1198,7 +1199,13 @@ module Make (Context : P) :
         | Parsing -> parse
         | Evaluating -> evaluate)
 
-  let eval state = state_of (ticked eval_step) state
+  let eval_many ~(max_steps : int64) state : (state * int64) Lwt.t =
+    let open Lwt_syntax in
+    ignore max_steps ;
+    let* final_state = state_of (ticked eval_step) state in
+    Lwt.return (final_state, 1L)
+
+  let eval state : state Lwt.t = Lwt.map fst @@ eval_many ~max_steps:1L state
 
   let step_transition input_given state =
     let open Lwt_syntax in

@@ -335,24 +335,37 @@ module Make
             [wasm_step] is called.}} *)
   let compute_step_gen wasm_step tree =
     let open Lwt_syntax in
+    let zero_ticks_transition (op : 'a Lwt.t) =
+      let+ r = op in
+      (r, 0L)
+    in
+
     let* state = read_state tree in
     match state with
     | Broken {current_tick} ->
-        Tree_encoding_runner.encode broken_merklizer (Z.succ current_tick) tree
+        zero_ticks_transition
+        @@ Tree_encoding_runner.encode
+             broken_merklizer
+             (Z.succ current_tick)
+             tree
     | Halted origination_message -> (
         match origination_kernel_loading_step origination_message with
-        | Some state -> Tree_encoding_runner.encode state_merklizer state tree
+        | Some state ->
+            zero_ticks_transition
+            @@ Tree_encoding_runner.encode state_merklizer state tree
         | None ->
             (* We could not interpret [origination_message],
                meaning the PVM is stuck. *)
-            Tree_encoding_runner.encode broken_merklizer Z.one tree)
+            zero_ticks_transition
+            @@ Tree_encoding_runner.encode broken_merklizer Z.one tree)
     | Running state -> (
         let state = increment_ticks state in
         match state.internal_status with
         | Gathering_floppies _ -> raise Compute_step_expected_input
         | Not_gathering_floppies -> wasm_step tree)
 
-  let compute_step tree = compute_step_gen Wasm.compute_step tree
+  let compute_step tree =
+    Lwt.map fst @@ compute_step_gen (Wasm.compute_step_many ~max_steps:1L) tree
 
   (** [set_input_step input message tree] instruments
       [Wasm.set_input_step] to interpret incoming input messages as

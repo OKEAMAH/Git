@@ -410,6 +410,11 @@ module type S = sig
       execution of an atomic step of the rollup at state [s0]. *)
   val eval : state -> state Lwt.t
 
+  (** [eval_many ~max_steps s0] returns a state [s1] resulting from the
+      execution of up to [~max_steps] steps of the rollup at state [s0]. *)
+
+  val eval_many : max_steps:int64 -> state -> (state * int64) Lwt.t
+
   (** [verify_proof input p] checks the proof [p] with input [input] and returns
       the [input_request] before the evaluation of the proof. See the doc-string
       for the [proof] type.

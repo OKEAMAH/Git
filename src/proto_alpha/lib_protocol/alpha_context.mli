@@ -3252,6 +3252,8 @@ module Sc_rollup : sig
 
       val eval : state -> state Lwt.t
 
+      val eval_many : max_steps:int64 -> state -> (state * int64) Lwt.t
+
       val verify_proof : input option -> proof -> input_request tzresult Lwt.t
 
       val produce_proof :

@@ -48,6 +48,9 @@ module Make
     (Tree : Context.TREE with type key = string list and type value = bytes) : sig
   val compute_step : Tree.tree -> Tree.tree Lwt.t
 
+  val compute_step_many :
+    max_steps:int64 -> Tree.tree -> (Tree.tree * int64) Lwt.t
+
   val set_input_step : input -> string -> Tree.tree -> Tree.tree Lwt.t
 
   val reveal_step : bytes -> Tree.tree -> Tree.tree Lwt.t
