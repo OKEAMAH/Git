@@ -413,7 +413,6 @@ module V1 = struct
    The metadata contains :
    - [rollup] : the address of the rollup ;
    - [level] : the inbox level ;
-   - [message_counter] : the number of messages in the [level]'s inbox ;
      the number of messages that have not been consumed by a commitment cementing ;
    - [nb_messages_in_commitment_period] :
      the number of messages during the commitment period ;
@@ -437,7 +436,6 @@ module V1 = struct
     level : Raw_level_repr.t;
     nb_messages_in_commitment_period : int64;
     starting_level_of_current_commitment_period : Raw_level_repr.t;
-    message_counter : Z.t;
     (* Lazy to avoid hashing O(n^2) time in [add_messages] *)
     current_level_hash : unit -> Merkelized_messages.Hash.t;
     old_levels_messages : history_proof;
@@ -450,7 +448,6 @@ module V1 = struct
       level;
       nb_messages_in_commitment_period;
       starting_level_of_current_commitment_period;
-      message_counter;
       current_level_hash;
       old_levels_messages;
     } =
@@ -466,7 +463,6 @@ module V1 = struct
          equal
            starting_level_of_current_commitment_period
            inbox2.starting_level_of_current_commitment_period)
-    && Z.equal message_counter inbox2.message_counter
     && Merkelized_messages.Hash.equal
          (current_level_hash ())
          (inbox2.current_level_hash ())
@@ -478,7 +474,6 @@ module V1 = struct
         level;
         nb_messages_in_commitment_period;
         starting_level_of_current_commitment_period;
-        message_counter;
         current_level_hash;
         old_levels_messages;
       } =
@@ -489,7 +484,6 @@ module V1 = struct
        current messages hash: %a@,\
        nb messages in commitment period: %s@,\
        starting level of current commitment period: %a@,\
-       message counter: %a@,\
        @[<v 2>old levels messages:@,\
        %a@]"
       Sc_rollup_repr.Address.pp
@@ -501,8 +495,6 @@ module V1 = struct
       (Int64.to_string nb_messages_in_commitment_period)
       Raw_level_repr.pp
       starting_level_of_current_commitment_period
-      Z.pp_print
-      message_counter
       pp_history_proof
       old_levels_messages
 
@@ -517,7 +509,6 @@ module V1 = struct
       conv
         (fun {
                rollup;
-               message_counter;
                nb_messages_in_commitment_period;
                starting_level_of_current_commitment_period;
                level;
@@ -525,14 +516,12 @@ module V1 = struct
                old_levels_messages;
              } ->
           ( rollup,
-            message_counter,
             nb_messages_in_commitment_period,
             starting_level_of_current_commitment_period,
             level,
             current_level_hash (),
             old_levels_messages ))
         (fun ( rollup,
-               message_counter,
                nb_messages_in_commitment_period,
                starting_level_of_current_commitment_period,
                level,
@@ -540,16 +529,14 @@ module V1 = struct
                old_levels_messages ) ->
           {
             rollup;
-            message_counter;
             nb_messages_in_commitment_period;
             starting_level_of_current_commitment_period;
             level;
             current_level_hash = (fun () -> current_level_hash);
             old_levels_messages;
           })
-        (obj7
+        (obj6
            (req "rollup" Sc_rollup_repr.encoding)
-           (req "message_counter" n)
            (req "nb_messages_in_commitment_period" int64)
            (req
               "starting_level_of_current_commitment_period"
@@ -699,26 +686,13 @@ end
 
 let add_message inbox level_history level_messages payload =
   let open Tzresult_syntax in
-  let message_index = inbox.message_counter in
-  let message_counter = Z.succ message_index in
   let+ level_history, level_messages =
     Merkelized_messages.add_message level_history level_messages payload
   in
   let nb_messages_in_commitment_period =
     Int64.succ inbox.nb_messages_in_commitment_period
   in
-  let inbox =
-    {
-      starting_level_of_current_commitment_period =
-        inbox.starting_level_of_current_commitment_period;
-      current_level_hash = inbox.current_level_hash;
-      rollup = inbox.rollup;
-      level = inbox.level;
-      old_levels_messages = inbox.old_levels_messages;
-      message_counter;
-      nb_messages_in_commitment_period;
-    }
-  in
+  let inbox = {inbox with nb_messages_in_commitment_period} in
   (level_history, level_messages, inbox)
 
 let is_level_messages_initialized inbox level_history level_messages level
@@ -740,18 +714,7 @@ let is_level_messages_initialized inbox level_history level_messages level
       let nb_messages_in_commitment_period =
         Int64.succ inbox.nb_messages_in_commitment_period
       in
-      let inbox =
-        {
-          starting_level_of_current_commitment_period =
-            inbox.starting_level_of_current_commitment_period;
-          current_level_hash = inbox.current_level_hash;
-          rollup = inbox.rollup;
-          level = inbox.level;
-          old_levels_messages = inbox.old_levels_messages;
-          message_counter = Z.one;
-          nb_messages_in_commitment_period;
-        }
-      in
+      let inbox = {inbox with nb_messages_in_commitment_period} in
       return (inbox, level_history, level_messages, payloads)
 
 (** [no_history] creates an empty history with [capacity] set to
@@ -797,7 +760,6 @@ let archive_if_needed history inbox new_level =
           inbox.nb_messages_in_commitment_period;
         old_levels_messages;
         level = new_level;
-        message_counter = Z.zero;
       }
     in
     return (history, inbox)
@@ -1412,7 +1374,6 @@ let empty rollup level =
   {
     rollup;
     level;
-    message_counter = Z.zero;
     nb_messages_in_commitment_period = 0L;
     starting_level_of_current_commitment_period = level;
     current_level_hash = (fun () -> initial_hash);
