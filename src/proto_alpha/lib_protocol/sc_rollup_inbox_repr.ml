@@ -181,6 +181,11 @@ module Merkelized_messages = struct
   type message_proof =
     (Sc_rollup_inbox_message_repr.serialized, Hash.t) Skip_list.cell
 
+  let pp_message_proof =
+    Skip_list.pp
+      ~pp_content:Sc_rollup_inbox_message_repr.pp_serialize
+      ~pp_ptr:Hash.pp
+
   type messages_proof = {
     current_message : message_proof;
     level : Raw_level_repr.t;
@@ -294,6 +299,15 @@ module Merkelized_messages = struct
   let of_bytes = Data_encoding.Binary.of_bytes_opt encoding
 
   type proof = {message : message_proof; inclusion_proof : message_proof list}
+
+  let pp_proof fmt {message; inclusion_proof} =
+    Format.fprintf
+      fmt
+      "message: %a; inclusion proof: %a"
+      pp_message_proof
+      message
+      (Format.pp_print_list pp_message_proof)
+      inclusion_proof
 
   let proof_encoding =
     let open Data_encoding in

@@ -3078,6 +3078,8 @@ module Sc_rollup : sig
         inclusion_proof : message_proof list;
       }
 
+      val pp_proof : Format.formatter -> proof -> unit
+
       val proof_encoding : proof Data_encoding.t
 
       val produce_proof : History.t -> message_index:int -> t -> proof option
