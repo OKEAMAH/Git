@@ -1095,19 +1095,12 @@ module Player_client = struct
       | (level, payloads) :: rst ->
           let level = Int32.of_int level |> Raw_level.of_int32_exn in
           let () = assert (Raw_level.(origination_level <= level)) in
-          let level_messages = Inbox.Merkelized_messages.empty level in
           let level_history =
             Sc_rollup.Inbox.Merkelized_messages.History.empty ~capacity:10000L
           in
           let res =
             Environment.wrap_tzresult
-            @@ add_messages
-                 history
-                 inbox
-                 level
-                 payloads
-                 level_history
-                 level_messages
+            @@ add_messages history inbox level payloads level_history None
           in
           let level_history, level_messages, history, inbox =
             WithExceptions.Result.get_ok ~loc:__LOC__ res

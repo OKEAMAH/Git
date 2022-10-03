@@ -160,7 +160,7 @@ end
 
 (** Aggregated collection of messages from the L1 inbox *)
 module MessageTrees = struct
-  type value = Sc_rollup.Inbox.Merkelized_messages.messages_proof
+  type value = Sc_rollup.Inbox.Merkelized_messages.t
 
   let key = ["message_tree"]
 

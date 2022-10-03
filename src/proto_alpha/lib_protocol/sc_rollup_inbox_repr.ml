@@ -186,6 +186,8 @@ module Merkelized_messages = struct
     level : Raw_level_repr.t;
   }
 
+  type t = messages_proof
+
   let equal_message_proof =
     Skip_list.equal Hash.equal Sc_rollup_inbox_message_repr.equal_serialize
 
@@ -247,11 +249,8 @@ module Merkelized_messages = struct
     let no_history = empty ~capacity:0L
   end
 
-  let empty level =
-    (* FIX: either replace current_message with an opt or create
-       `skip_list.empty`. I'm not sure the second one make sense *)
-    let first_msg = Sc_rollup_inbox_message_repr.unsafe_of_string "" in
-    {current_message = Skip_list.genesis first_msg; level}
+  let genesis payload level =
+    {current_message = Skip_list.genesis payload; level}
 
   let add_to_history history messages_proof =
     let prev_cell_ptr = hash messages_proof in
@@ -621,27 +620,23 @@ module type Merkelized_operations = sig
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
     Merkelized_messages.History.t ->
-    Merkelized_messages.messages_proof ->
-    (Merkelized_messages.History.t
-    * Merkelized_messages.messages_proof
-    * History.t
-    * t)
+    Merkelized_messages.t option ->
+    (Merkelized_messages.History.t * Merkelized_messages.t * History.t * t)
     tzresult
 
   val add_messages_no_history :
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Merkelized_messages.messages_proof ->
-    (Merkelized_messages.messages_proof * t) tzresult
+    Merkelized_messages.t option ->
+    (Merkelized_messages.t * t) tzresult
 
   val find_level_messages :
     History.t ->
     (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
     Raw_level_repr.t ->
     history_proof ->
-    (Merkelized_messages.History.t * Merkelized_messages.messages_proof) option
-    Lwt.t
+    (Merkelized_messages.History.t * Merkelized_messages.t) option Lwt.t
 
   val find_message :
     History.t ->
@@ -702,11 +697,11 @@ module type Merkelized_operations = sig
   end
 end
 
-let add_message inbox payload level_history level_messages =
+let add_message inbox level_history level_messages payload =
   let open Tzresult_syntax in
   let message_index = inbox.message_counter in
   let message_counter = Z.succ message_index in
-  let* level_history, level_messages =
+  let+ level_history, level_messages =
     Merkelized_messages.add_message level_history level_messages payload
   in
   let nb_messages_in_commitment_period =
@@ -724,7 +719,40 @@ let add_message inbox payload level_history level_messages =
       nb_messages_in_commitment_period;
     }
   in
-  return (level_history, level_messages, inbox)
+  (level_history, level_messages, inbox)
+
+let is_level_messages_initialized inbox level_history level_messages level
+    payloads =
+  let open Tzresult_syntax in
+  match level_messages with
+  | Some level_messages ->
+      return (inbox, level_history, level_messages, payloads)
+  | None ->
+      let* first_payload, payloads =
+        match payloads with
+        | hd :: tl -> ok (hd, tl)
+        | [] -> error Tried_to_add_zero_messages
+      in
+      let level_messages = Merkelized_messages.genesis first_payload level in
+      let* level_history =
+        Merkelized_messages.add_to_history level_history level_messages
+      in
+      let nb_messages_in_commitment_period =
+        Int64.succ inbox.nb_messages_in_commitment_period
+      in
+      let inbox =
+        {
+          starting_level_of_current_commitment_period =
+            inbox.starting_level_of_current_commitment_period;
+          current_level_hash = inbox.current_level_hash;
+          rollup = inbox.rollup;
+          level = inbox.level;
+          old_levels_messages = inbox.old_levels_messages;
+          message_counter = Z.one;
+          nb_messages_in_commitment_period;
+        }
+      in
+      return (inbox, level_history, level_messages, payloads)
 
 (** [no_history] creates an empty history with [capacity] set to
 zero---this makes the [remember] function a no-op. We want this
@@ -787,10 +815,18 @@ let add_messages history inbox level payloads level_history level_messages =
       (Invalid_level_add_messages level)
   in
   let* history, inbox = archive_if_needed history inbox level in
+  let* inbox, level_history, level_messages, payloads =
+    is_level_messages_initialized
+      inbox
+      level_history
+      level_messages
+      level
+      payloads
+  in
   let* level_history, level_messages, inbox =
     List.fold_left_e
       (fun (level_history, level_messages, inbox) payload ->
-        add_message inbox payload level_history level_messages)
+        add_message inbox level_history level_messages payload)
       (level_history, level_messages, inbox)
       payloads
   in
@@ -883,7 +919,7 @@ type proof =
      check that [level] equals [snapshot] (otherwise, we'd need a
      [Level_crossing] proof instead. *)
   | Single_level of {
-      level_messages : Merkelized_messages.messages_proof;
+      level_messages : Merkelized_messages.t;
       level : history_proof;
       inc : inclusion_proof;
       message_proof : message_proof option;
@@ -922,9 +958,9 @@ type proof =
                                                                                                                                                                                   message at index zero is [message]. *)
   | Level_crossing of {
       lower : history_proof;
-      lower_level_messages : Merkelized_messages.messages_proof;
+      lower_level_messages : Merkelized_messages.t;
       upper : history_proof;
-      upper_level_messages : Merkelized_messages.messages_proof;
+      upper_level_messages : Merkelized_messages.t;
       inc : inclusion_proof;
       upper_message_proof : message_proof;
       upper_level : Raw_level_repr.t;
@@ -1372,9 +1408,7 @@ let produce_proof history find_level_history inbox (l, n) =
 
 let empty rollup level =
   assert (Raw_level_repr.(level <> Raw_level_repr.root)) ;
-  let pre_genesis_level = Raw_level_repr.root in
-  let initial_messages = Merkelized_messages.empty pre_genesis_level in
-  let initial_hash = Merkelized_messages.hash initial_messages in
+  let initial_hash = Merkelized_messages.Hash.zero in
   {
     rollup;
     level;

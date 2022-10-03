@@ -100,7 +100,6 @@ module Node_inbox = struct
       | [] -> return node_inbox
       | payloads :: rst ->
           let* payloads = lift @@ List.map_e serialize_external_msg payloads in
-          let level_messages = Inbox_repr.Merkelized_messages.empty level in
           let level_history =
             Inbox_repr.Merkelized_messages.History.empty ~capacity:100L
           in
@@ -112,7 +111,7 @@ module Node_inbox = struct
                  level
                  payloads
                  level_history
-                 level_messages
+                 None
           in
           let level_history, level_messages, history, inbox =
             WithExceptions.Result.get_ok ~loc:__LOC__ res

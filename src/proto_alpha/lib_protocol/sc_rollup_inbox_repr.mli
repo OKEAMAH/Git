@@ -228,47 +228,44 @@ module Merkelized_messages : sig
     level : Raw_level_repr.t;
   }
 
-  val encoding : messages_proof Data_encoding.t
+  type t = messages_proof
+
+  val encoding : t Data_encoding.t
 
   module History : sig
-    include
-      Bounded_history_repr.S
-        with type key = Hash.t
-         and type value = messages_proof
+    include Bounded_history_repr.S with type key = Hash.t and type value = t
 
     val no_history : t
   end
 
-  val hash : messages_proof -> Hash.t
+  val hash : t -> Hash.t
 
-  val empty : Raw_level_repr.t -> messages_proof
+  val genesis : Sc_rollup_inbox_message_repr.serialized -> Raw_level_repr.t -> t
 
   val add_message :
     History.t ->
-    messages_proof ->
+    t ->
     Sc_rollup_inbox_message_repr.serialized ->
-    (History.t * messages_proof) tzresult
+    (History.t * t) tzresult
 
-  val equal : messages_proof -> messages_proof -> bool
+  val equal : t -> t -> bool
 
-  val pp : Format.formatter -> messages_proof -> unit
+  val pp : Format.formatter -> t -> unit
 
   val get_message_payload :
     message_proof -> Sc_rollup_inbox_message_repr.serialized
 
-  val get_current_message_payload :
-    messages_proof -> Sc_rollup_inbox_message_repr.serialized
+  val get_current_message_payload : t -> Sc_rollup_inbox_message_repr.serialized
 
-  val find_message :
-    History.t -> message_index:int -> messages_proof -> message_proof option
+  val find_message : History.t -> message_index:int -> t -> message_proof option
 
-  val get_level : messages_proof -> Raw_level_repr.t
+  val get_level : t -> Raw_level_repr.t
 
-  val get_number_of_messages : messages_proof -> int
+  val get_number_of_messages : t -> int
 
-  val to_bytes : messages_proof -> bytes
+  val to_bytes : t -> bytes
 
-  val of_bytes : bytes -> messages_proof option
+  val of_bytes : bytes -> t option
 
   type proof = private {
     message : message_proof;
@@ -320,11 +317,8 @@ module type Merkelized_operations = sig
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
     Merkelized_messages.History.t ->
-    Merkelized_messages.messages_proof ->
-    (Merkelized_messages.History.t
-    * Merkelized_messages.messages_proof
-    * History.t
-    * t)
+    Merkelized_messages.t option ->
+    (Merkelized_messages.History.t * Merkelized_messages.t * History.t * t)
     tzresult
 
   (** [add_messages_no_history ctxt inbox level payloads level_tree] behaves
@@ -334,16 +328,15 @@ module type Merkelized_operations = sig
     t ->
     Raw_level_repr.t ->
     Sc_rollup_inbox_message_repr.serialized list ->
-    Merkelized_messages.messages_proof ->
-    (Merkelized_messages.messages_proof * t) tzresult
+    Merkelized_messages.t option ->
+    (Merkelized_messages.t * t) tzresult
 
   val find_level_messages :
     History.t ->
     (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
     Raw_level_repr.t ->
     history_proof ->
-    (Merkelized_messages.History.t * Merkelized_messages.messages_proof) option
-    Lwt.t
+    (Merkelized_messages.History.t * Merkelized_messages.t) option Lwt.t
 
   (** [get_message_payload level_tree idx] returns [Some payload] if the
       [level_tree] has more than [idx] messages, and [payload] is at

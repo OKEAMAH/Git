@@ -1535,23 +1535,15 @@ module Sc_rollup_in_memory_inbox = struct
         rollup
         ctxt.back.sc_rollup_current_messages
     in
-    let level_messages =
-      Option.value
-        ~default:
-          (Sc_rollup_inbox_repr.Merkelized_messages.empty
-             (current_level ctxt).level)
-        level_messages
-    in
-
     (level_messages, ctxt)
 
-  let set_current_messages ctxt rollup tree =
+  let set_current_messages ctxt rollup messages =
     let open Tzresult_syntax in
     let+ sc_rollup_current_messages, ctxt =
       Sc_rollup_carbonated_map.update
         ctxt
         rollup
-        (fun ctxt _prev_tree -> return (Some tree, ctxt))
+        (fun ctxt _prev_messages -> return (Some messages, ctxt))
         ctxt.back.sc_rollup_current_messages
     in
     let back = {ctxt.back with sc_rollup_current_messages} in

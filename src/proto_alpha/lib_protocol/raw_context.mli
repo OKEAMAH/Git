@@ -390,12 +390,12 @@ module Sc_rollup_in_memory_inbox : sig
   val current_messages :
     t ->
     Sc_rollup_repr.t ->
-    (Sc_rollup_inbox_repr.Merkelized_messages.messages_proof * t) tzresult
+    (Sc_rollup_inbox_repr.Merkelized_messages.t option * t) tzresult
 
   val set_current_messages :
     t ->
     Sc_rollup_repr.t ->
-    Sc_rollup_inbox_repr.Merkelized_messages.messages_proof ->
+    Sc_rollup_inbox_repr.Merkelized_messages.t ->
     t tzresult
 end
 

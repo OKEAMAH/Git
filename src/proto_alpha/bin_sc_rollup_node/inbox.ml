@@ -188,11 +188,7 @@ let process_head node_ctxt Layer1.(Head {level; hash = head_hash} as head) =
           return (Context.empty node_ctxt.context)
         else Node_context.checkout_context node_ctxt predecessor
       in
-      let*! level_messages =
-        Lwt.map
-          (WithExceptions.Option.get ~loc:__LOC__)
-          (Context.MessageTrees.find ctxt)
-      in
+      let*! level_messages = Context.MessageTrees.find ctxt in
 
       let* history, inbox, ctxt =
         lift

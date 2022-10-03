@@ -86,9 +86,6 @@ let gen_inbox rollup level =
   let level_tree_and_inbox =
     let open Result_syntax in
     let empty_inbox = Sc_rollup_inbox_repr.empty rollup level in
-    let empty_level_inbox =
-      Sc_rollup_inbox_repr.Merkelized_messages.empty level
-    in
     let* input_messages =
       Environment.wrap_tzresult
       @@ List.map_e
@@ -100,7 +97,7 @@ let gen_inbox rollup level =
          empty_inbox
          level
          input_messages
-         empty_level_inbox
+         None
   in
   return
   @@
