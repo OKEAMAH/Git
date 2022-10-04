@@ -700,12 +700,6 @@ module type Merkelized_operations = sig
     (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t
 
   val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t
-
-  module Internal_for_tests : sig
-    val serialized_proof_of_string : string -> serialized_proof
-
-    val hash_of_history_proof : history_proof -> Hash.t
-  end
 end
 
 let add_message inbox level_history level_messages payload =
@@ -1429,6 +1423,10 @@ module Internal_for_tests = struct
   let serialized_proof_of_string x = Bytes.of_string x
 
   let hash_of_history_proof = hash_history_proof
+
+  let equal_inclusion_proof = List.equal equal_history_proof
+
+  let history_proof_index = Skip_list.index
 end
 
 type inbox = t

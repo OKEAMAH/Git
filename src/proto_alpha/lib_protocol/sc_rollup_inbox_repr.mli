@@ -474,16 +474,20 @@ module type Merkelized_operations = sig
   (** [empty ctxt level] is an inbox started at some given [level] with no
       message at all. *)
   val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t
-
-  module Internal_for_tests : sig
-    (** Allows to create a dumb {!serialized_proof} from a string, instead
-        of serializing a proof with {!to_serialized_proof}. *)
-    val serialized_proof_of_string : string -> serialized_proof
-
-    val hash_of_history_proof : history_proof -> Hash.t
-  end
 end
 
 include Merkelized_operations
+
+module Internal_for_tests : sig
+  (** Allows to create a dumb {!serialized_proof} from a string, instead
+      of serializing a proof with {!to_serialized_proof}. *)
+  val serialized_proof_of_string : string -> serialized_proof
+
+  val hash_of_history_proof : history_proof -> Hash.t
+
+  val equal_inclusion_proof : inclusion_proof -> inclusion_proof -> bool
+
+  val history_proof_index : history_proof -> int
+end
 
 type inbox = t

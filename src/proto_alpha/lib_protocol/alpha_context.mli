@@ -3178,15 +3178,17 @@ module Sc_rollup : sig
         (proof * inbox_message option) tzresult Lwt.t
 
       val empty : Sc_rollup_repr.t -> Raw_level.t -> t
-
-      module Internal_for_tests : sig
-        val serialized_proof_of_string : string -> serialized_proof
-
-        val hash_of_history_proof : history_proof -> Hash.t
-      end
     end
 
     include Merkelized_operations
+
+    module Internal_for_tests : sig
+      val serialized_proof_of_string : string -> serialized_proof
+
+      val hash_of_history_proof : history_proof -> Hash.t
+
+      val equal_inclusion_proof : inclusion_proof -> inclusion_proof -> bool
+    end
 
     val add_external_messages :
       context -> rollup -> string list -> (t * Z.t * context) tzresult Lwt.t
