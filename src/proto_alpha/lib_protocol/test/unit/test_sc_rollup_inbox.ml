@@ -208,12 +208,18 @@ let gen_message_index level_inputs =
   let* index = 0 -- max_message_index in
   return index
 
-let gen_level_and_index inputs =
+let gen_level inputs =
   let open QCheck2.Gen in
   let max_level = List.length inputs - 2 in
   let* level = 1 -- max_level in
+  return @@ Raw_level_repr.of_int32_exn (Int32.of_int level)
+
+let gen_level_and_index inputs =
+  let open QCheck2.Gen in
+  let* level = gen_level inputs in
+  let level_int = Raw_level_repr.to_int32 level |> Int32.to_int in
   let level_inputs =
-    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth inputs level
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth inputs level_int
   in
   let* index = gen_message_index level_inputs in
   return (level, index)
@@ -223,6 +229,12 @@ let gen_level_inputs_and_index =
   let* level_inputs = gen_input_messages in
   let* message_index = gen_message_index level_inputs in
   return (level_inputs, message_index)
+
+let gen_inputs_and_level ?max_level () =
+  let open QCheck2.Gen in
+  let* inputs = gen_input_messages_list ?max_level () in
+  let* level = gen_level inputs in
+  return (inputs, level)
 
 let test_add_messages payloads =
   let open Lwt_result_syntax in
@@ -283,7 +295,6 @@ let test_get_message_payload payloads =
 let test_message_inclusion_proof (level_inputs, message_index) =
   let open Lwt_result_syntax in
   let*? node_inbox = Node_inbox.construct_inbox [level_inputs] in
-  let () = Node_inbox.pp node_inbox in
   let*? current_history_proof = Node_inbox.current_history_proof node_inbox in
   let*! level_history, level_messages =
     Lwt.map (WithExceptions.Option.get ~loc:__LOC__)
@@ -292,14 +303,6 @@ let test_message_inclusion_proof (level_inputs, message_index) =
          (Node_inbox.get_level_messages node_inbox)
          first_level
          current_history_proof
-  in
-  let () =
-    Format.printf
-      "@[<v>@[<v 2>History: %a@]@,@[<v 2>current message: %a@]@]"
-      Inbox_repr.Merkelized_messages.History.pp
-      level_history
-      Inbox_repr.Merkelized_messages.pp
-      level_messages
   in
   let proof =
     WithExceptions.Option.get ~loc:__LOC__
@@ -325,6 +328,70 @@ let test_message_inclusion_proof (level_inputs, message_index) =
   in
   return_unit
 
+let test_history_inclusion_proof (inputs, level) =
+  let open Lwt_result_syntax in
+  let*? node_inbox = Node_inbox.construct_inbox inputs in
+  let*? current_history_proof = Node_inbox.current_history_proof node_inbox in
+  let* inclusion_proof_1, found_history_proof =
+    lift_lwt
+    @@ Inbox_repr.search_history_proof
+         node_inbox.history
+         (Node_inbox.get_level_messages node_inbox)
+         level
+         ~into_history_proof:current_history_proof
+  in
+  let*! found_level =
+    let level_messages_hash =
+      Inbox_repr.Internal_for_tests.history_proof_level_message_hash
+        found_history_proof
+    in
+    let*! level_history =
+      Node_inbox.get_level_messages node_inbox level_messages_hash
+    in
+    let level_history = WithExceptions.Option.get ~loc:__LOC__ level_history in
+    let level_messages =
+      WithExceptions.Option.get ~loc:__LOC__
+      @@ Inbox_repr.Merkelized_messages.History.find
+           level_messages_hash
+           level_history
+    in
+    Lwt.return @@ Inbox_repr.Merkelized_messages.get_level level_messages
+  in
+  let inclusion_proof_2 =
+    WithExceptions.Option.get ~loc:__LOC__
+    @@ Inbox_repr.produce_inclusion_proof
+         node_inbox.history
+         ~target_history_proof_index:
+           (Inbox_repr.Internal_for_tests.history_proof_index
+              found_history_proof)
+         ~into_history_proof:current_history_proof
+  in
+  let* () =
+    Assert.equal
+      ~loc:__LOC__
+      Raw_level_repr.equal
+      "level"
+      Raw_level_repr.pp
+      level
+      found_level
+  in
+  let* () =
+    Assert.equal
+      ~loc:__LOC__
+      Inbox_repr.Internal_for_tests.equal_inclusion_proof
+      "inclusion_proof"
+      Inbox_repr.pp_inclusion_proof
+      inclusion_proof_1
+      inclusion_proof_2
+  in
+  let is_proof_valid =
+    Inbox_repr.verify_inclusion_proof
+      inclusion_proof_1
+      ~target_history_proof:found_history_proof
+      ~into_history_proof:current_history_proof
+  in
+  if is_proof_valid then return_unit else failwith "proof is not valid."
+
 let unit_tests =
   [
     Tztest.tztest "test add payloads." `Quick (fun () ->
@@ -333,6 +400,8 @@ let unit_tests =
         test_get_message_payload [["\"11\""; "\"12\""]]);
     Tztest.tztest "Produce message proof." `Quick (fun () ->
         test_message_inclusion_proof (["\"11\""; "\"12\""], 0));
+    Tztest.tztest "Produce inclusion proof." `Quick (fun () ->
+        test_history_inclusion_proof ([["\"11\""; "\"12\""]], first_level));
   ]
 
 let pbt_tests =
@@ -353,9 +422,13 @@ let pbt_tests =
       (gen_input_messages_list ())
       test_get_message_payload;
     Tztest.tztest_qcheck2
-      ~name:"Produce message proof."
+      ~name:"Verify message proof."
       gen_level_inputs_and_index
       test_message_inclusion_proof;
+    Tztest.tztest_qcheck2
+      ~name:"Verify inclusion proof."
+      (gen_inputs_and_level ())
+      test_history_inclusion_proof;
   ]
 
-let tests = unit_tests @ pbt_tests
+let tests = unit_tests

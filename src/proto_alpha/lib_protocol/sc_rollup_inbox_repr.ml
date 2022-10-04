@@ -1248,7 +1248,6 @@ let find_level_messages history find_level_history level current_cell =
   let*! research_result =
     Skip_list.search ~deref ~compare:(compare level) ~cell:current_cell
   in
-  (*   let () = assert false in *)
   let* level_messages_cell =
     match research_result with
     | Skip_list.{last_cell = Found level_messages_cell; _} ->
@@ -1427,6 +1426,8 @@ module Internal_for_tests = struct
   let equal_inclusion_proof = List.equal equal_history_proof
 
   let history_proof_index = Skip_list.index
+
+  let history_proof_level_message_hash = Skip_list.content
 end
 
 type inbox = t

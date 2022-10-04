@@ -488,6 +488,9 @@ module Internal_for_tests : sig
   val equal_inclusion_proof : inclusion_proof -> inclusion_proof -> bool
 
   val history_proof_index : history_proof -> int
+
+  val history_proof_level_message_hash :
+    history_proof -> Merkelized_messages.Hash.t
 end
 
 type inbox = t

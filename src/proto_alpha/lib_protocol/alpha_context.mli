@@ -3188,6 +3188,9 @@ module Sc_rollup : sig
       val hash_of_history_proof : history_proof -> Hash.t
 
       val equal_inclusion_proof : inclusion_proof -> inclusion_proof -> bool
+
+      val history_proof_level_message_hash :
+        history_proof -> Merkelized_messages.Hash.t
     end
 
     val add_external_messages :
