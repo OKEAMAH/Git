@@ -398,10 +398,29 @@ module type Merkelized_operations = sig
   (** [number_of_proof_steps proof] returns the length of [proof]. *)
   val number_of_proof_steps : inclusion_proof -> int
 
-  (** [verify_inclusion_proof proof a b] returns [true] iff [proof] is a
-      minimal and valid proof that [a] is included in [b]. *)
+  val search_history_proof :
+    History.t ->
+    (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
+    Raw_level_repr.t ->
+    into_history_proof:history_proof ->
+    (inclusion_proof * history_proof) tzresult Lwt.t
+
+  (** [produce_inclusion_proof history a b] exploits [history] to produce
+      a self-contained proof that [a] is an older version of [b]. *)
+  val produce_inclusion_proof :
+    History.t ->
+    target_history_proof_index:int ->
+    into_history_proof:history_proof ->
+    inclusion_proof option
+
+  (** [verify_inclusion_proof proof target_history_proof into_history_proof]
+      returns [true] iff [proof] is a minimal and valid proof that
+      [target_history_proof] is included in [into_history_proof]. *)
   val verify_inclusion_proof :
-    inclusion_proof -> history_proof -> history_proof -> bool
+    inclusion_proof ->
+    target_history_proof:history_proof ->
+    into_history_proof:history_proof ->
+    bool
 
   (** An inbox proof has three parameters:
 
@@ -457,14 +476,6 @@ module type Merkelized_operations = sig
   val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t
 
   module Internal_for_tests : sig
-    (** [produce_inclusion_proof history a b] exploits [history] to produce
-        a self-contained proof that [a] is an older version of [b]. *)
-    val produce_inclusion_proof :
-      History.t ->
-      history_proof ->
-      history_proof ->
-      inclusion_proof option tzresult
-
     (** Allows to create a dumb {!serialized_proof} from a string, instead
         of serializing a proof with {!to_serialized_proof}. *)
     val serialized_proof_of_string : string -> serialized_proof

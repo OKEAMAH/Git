@@ -378,7 +378,7 @@ module Merkelized_messages = struct
     return (Skip_list.content message, level, Skip_list.index message)
 end
 
-let hash_skip_list_cell cell =
+let hash_history_proof cell =
   let current_level_messages_hash = Skip_list.content cell in
   let back_pointers_hashes = Skip_list.back_pointers cell in
   Merkelized_messages.Hash.to_bytes current_level_messages_hash
@@ -659,8 +659,24 @@ module type Merkelized_operations = sig
 
   val number_of_proof_steps : inclusion_proof -> int
 
+  val search_history_proof :
+    History.t ->
+    (Merkelized_messages.Hash.t -> Merkelized_messages.History.t option Lwt.t) ->
+    Raw_level_repr.t ->
+    into_history_proof:history_proof ->
+    (inclusion_proof * history_proof) tzresult Lwt.t
+
+  val produce_inclusion_proof :
+    History.t ->
+    target_history_proof_index:int ->
+    into_history_proof:history_proof ->
+    inclusion_proof option
+
   val verify_inclusion_proof :
-    inclusion_proof -> history_proof -> history_proof -> bool
+    inclusion_proof ->
+    target_history_proof:history_proof ->
+    into_history_proof:history_proof ->
+    bool
 
   type proof
 
@@ -686,12 +702,6 @@ module type Merkelized_operations = sig
   val empty : Sc_rollup_repr.t -> Raw_level_repr.t -> t
 
   module Internal_for_tests : sig
-    val produce_inclusion_proof :
-      History.t ->
-      history_proof ->
-      history_proof ->
-      inclusion_proof option tzresult
-
     val serialized_proof_of_string : string -> serialized_proof
 
     val hash_of_history_proof : history_proof -> Hash.t
@@ -740,7 +750,7 @@ let no_history = History.empty ~capacity:0L
 let form_history_proof history inbox =
   let open Tzresult_syntax in
   let prev_cell = inbox.old_levels_messages in
-  let prev_cell_ptr = hash_skip_list_cell prev_cell in
+  let prev_cell_ptr = hash_history_proof prev_cell in
   let* history = History.remember prev_cell_ptr prev_cell history in
   let next_cell =
     Skip_list.next ~prev_cell ~prev_cell_ptr (current_level_hash inbox)
@@ -829,7 +839,7 @@ let take_snapshot ~current_level inbox =
     (* If the level of the inbox is lower than the current level, there
        is no new messages in the inbox for the current level. It is then safe
        to take a snapshot of the actual inbox. *)
-    let prev_cell_ptr = hash_skip_list_cell prev_cell in
+    let prev_cell_ptr = hash_history_proof prev_cell in
     Skip_list.next ~prev_cell ~prev_cell_ptr (current_level_hash inbox)
   else
     (* If there is a level tree for the [current_level] in the inbox, we need
@@ -849,29 +859,87 @@ let pp_inclusion_proof fmt proof =
 
 let number_of_proof_steps proof = List.length proof
 
-let lift_ptr_path deref ptr_path =
+let map_concat_option f_bind_opt =
   let rec aux accu = function
     | [] -> Some (List.rev accu)
-    | x :: xs -> Option.bind (deref x) @@ fun c -> aux (c :: accu) xs
+    | x :: xs ->
+        let open Option_syntax in
+        let* x = f_bind_opt x in
+        aux (x :: accu) xs
   in
-  aux [] ptr_path
+  aux []
 
-let verify_inclusion_proof proof a b =
-  let assoc = List.map (fun c -> (hash_skip_list_cell c, c)) proof in
-  let path = List.split assoc |> fst in
-  let deref =
-    let open Hash.Map in
-    let map = of_seq (List.to_seq assoc) in
-    fun ptr -> find_opt ptr map
+let search_history_proof history find_level_history level_to_find
+    ~into_history_proof =
+  let open Lwt_tzresult_syntax in
+  let deref ptr = History.find ptr history in
+  let compare cell =
+    let cell_ptr = hash_history_proof cell in
+    let*! level_messages_level =
+      let open Lwt_option_syntax in
+      let*? cell = History.find cell_ptr history in
+      let* level_history = find_level_history (Skip_list.content cell) in
+      let*? level_messages =
+        Merkelized_messages.History.find (Skip_list.content cell) level_history
+      in
+      return (Merkelized_messages.get_level level_messages)
+    in
+    Lwt.return
+    @@
+    match level_messages_level with
+    | None -> -1
+    | Some level_messages_level ->
+        Raw_level_repr.compare level_messages_level level_to_find
   in
-  let cell_ptr = hash_skip_list_cell b in
-  let target_ptr = hash_skip_list_cell a in
-  Skip_list.valid_back_path
-    ~equal_ptr:Hash.equal
-    ~deref
-    ~cell_ptr
-    ~target_ptr
-    path
+  let*! research_result =
+    Skip_list.search ~deref ~compare ~cell:into_history_proof
+  in
+  match research_result with
+  | Skip_list.{rev_path; last_cell = Found level_messages_cell} ->
+      return (List.rev rev_path, level_messages_cell)
+  | {last_cell = Nearest _; _}
+  | {last_cell = No_exact_or_lower_ptr; _}
+  | {last_cell = Deref_returned_none; _} ->
+      (* We are only interested to the result where [search] than a
+         path to the cell we were looking for. All the other cases
+         should be considered as an error. *)
+      fail
+        (Inbox_proof_error
+           (Format.asprintf
+              "Skip_list.search failed to find a valid path: %a"
+              (Skip_list.pp_search_result ~pp_cell:pp_history_proof)
+              research_result))
+
+let produce_inclusion_proof history ~target_history_proof_index
+    ~into_history_proof =
+  let open Option_syntax in
+  let current_history_proof_hash = hash_history_proof into_history_proof in
+  let deref ptr = History.find ptr history in
+  let* ptr_path =
+    Skip_list.back_path
+      ~deref
+      ~target_index:target_history_proof_index
+      ~cell_ptr:current_history_proof_hash
+  in
+  map_concat_option deref ptr_path
+
+let verify_inclusion_proof inclusion_proof ~target_history_proof
+    ~into_history_proof =
+  let hash_map, ptr_list =
+    List.fold_left
+      (fun (hash_map, ptr_list) history_proof ->
+        let history_proof_ptr = hash_history_proof history_proof in
+        ( Hash.Map.add history_proof_ptr history_proof hash_map,
+          history_proof_ptr :: ptr_list ))
+      (Hash.Map.empty, [])
+      inclusion_proof
+  in
+  let ptr_list = List.rev ptr_list in
+  let equal_ptr = Hash.equal in
+  let deref ptr = Hash.Map.find ptr hash_map in
+  let cell_ptr = hash_history_proof target_history_proof in
+  let target_ptr = hash_history_proof into_history_proof in
+  Skip_list.valid_back_path ~equal_ptr ~deref ~cell_ptr ~target_ptr ptr_list
 
 type message_proof = Merkelized_messages.proof
 
@@ -1064,14 +1132,20 @@ let check_inclusions proof snapshot =
           Merkelized_messages.Hash.equal
             (Skip_list.content level)
             (Merkelized_messages.hash level_messages)) ;
-        verify_inclusion_proof inc level snapshot
+        verify_inclusion_proof
+          inc
+          ~target_history_proof:level
+          ~into_history_proof:snapshot
     | Level_crossing {inc; lower; upper; _} -> (
         let prev_cell = Skip_list.back_pointer upper 0 in
         match prev_cell with
         | None -> false
         | Some p ->
-            verify_inclusion_proof inc upper snapshot
-            && Hash.equal p (hash_skip_list_cell lower)))
+            verify_inclusion_proof
+              inc
+              ~target_history_proof:upper
+              ~into_history_proof:snapshot
+            && Hash.equal p (hash_history_proof lower)))
     "invalid inclusions"
 
 (** Utility function that handles all the verification needed for a
@@ -1160,7 +1234,7 @@ let find_level_messages history find_level_history level current_cell =
     cell
   in
   let compare level_to_find cell =
-    let cell_ptr = hash_skip_list_cell cell in
+    let cell_ptr = hash_history_proof cell in
     let*! level_messages_level =
       let open Lwt_option_syntax in
       let*? cell = History.find cell_ptr history in
@@ -1190,7 +1264,7 @@ let find_level_messages history find_level_history level current_cell =
     | {last_cell = Deref_returned_none; _} ->
         fail
   in
-  let cell_hash = hash_skip_list_cell level_messages_cell in
+  let cell_hash = hash_history_proof level_messages_cell in
   let*? cell = History.find cell_hash history in
   let level_messages_hash = Skip_list.content cell in
   let* level_history = find_level_history level_messages_hash in
@@ -1211,97 +1285,56 @@ let find_message history find_level_history (level, message_index) history_proof
        ~message_index
        level_messages
 
-(** Utility function; we convert all our calls to be consistent with
-[Lwt_tzresult_syntax]. *)
-let option_to_result e lwt_opt =
-  let open Lwt_syntax in
-  let* opt = lwt_opt in
-  match opt with None -> proof_error e | Some x -> return (ok x)
+let lift_opt reason opt =
+  match opt with None -> error (Inbox_proof_error reason) | Some x -> ok x
 
-let produce_proof history find_level_history inbox (l, n) =
+(** Utility function; we convert all our calls to be consistent with
+    [Lwt_tzresult_syntax]. *)
+let lift_lwt_opt e lwt_opt = Lwt.map (lift_opt e) lwt_opt
+
+let produce_proof history find_level_history inbox (level, message_index) =
   let open Lwt_tzresult_syntax in
-  let deref ptr =
-    let open Option_syntax in
-    let+ cell = History.find ptr history in
-    cell
+  let* inclusion_proof, level_history_proof =
+    search_history_proof
+      history
+      find_level_history
+      level
+      ~into_history_proof:inbox
   in
-  let compare level_to_find cell =
-    let cell_ptr = hash_skip_list_cell cell in
-    let*! level_messages_level =
-      let open Lwt_option_syntax in
-      let*? cell = History.find cell_ptr history in
-      let* level_history = find_level_history (Skip_list.content cell) in
-      let*? level_messages =
-        Merkelized_messages.History.find (Skip_list.content cell) level_history
-      in
-      return @@ Merkelized_messages.get_level level_messages
-    in
-    Lwt.return
-    @@
-    match level_messages_level with
-    | None -> -1
-    | Some level_messages_level ->
-        Raw_level_repr.compare level_messages_level level_to_find
-  in
-  let*! research_result =
-    Skip_list.search ~deref ~compare:(compare l) ~cell:inbox
-  in
-  let*? inclusion_proof, level_messages_cell =
-    match research_result with
-    | Skip_list.{rev_path; last_cell = Found level_messages_cell} ->
-        ok (List.rev rev_path, level_messages_cell)
-    | {last_cell = Nearest _; _}
-    | {last_cell = No_exact_or_lower_ptr; _}
-    | {last_cell = Deref_returned_none; _} ->
-        (* We are only interested to the result where [search] than a
-           path to the cell we were looking for. All the other cases
-           should be considered as an error. *)
-        error
-          (Inbox_proof_error
-             (Format.asprintf
-                "Skip_list.search failed to find a valid path: %a"
-                (Skip_list.pp_search_result ~pp_cell:pp_history_proof)
-                research_result))
-  in
-  let cell_hash = hash_skip_list_cell level_messages_cell in
-  let* cell =
-    option_to_result
-      "could not find level_tree in the inbox_context"
-      (Lwt.return @@ History.find cell_hash history)
-  in
-  let level_messages_hash = Skip_list.content cell in
-  let* level_history =
-    option_to_result
-      "could not find level_history "
+  let level_messages_hash = Skip_list.content level_history_proof in
+  let* level_messages_history =
+    lift_lwt_opt
+      "Could not find level history."
       (find_level_history level_messages_hash)
   in
-  let* level_messages =
-    option_to_result
+  let*? level_messages_proof =
+    lift_opt
       "could not find level_tree in the inbox_context"
-      (Lwt.return
-      @@ Merkelized_messages.History.find level_messages_hash level_history)
+      (Merkelized_messages.History.find
+         level_messages_hash
+         level_messages_history)
   in
   let message_proof =
     Merkelized_messages.produce_proof
-      level_history
-      ~message_index:n
-      level_messages
+      level_messages_history
+      ~message_index
+      level_messages_proof
   in
   match message_proof with
   | Some message_proof ->
       return
         ( Single_level
             {
-              level = level_messages_cell;
-              level_messages;
+              level = level_history_proof;
+              level_messages = level_messages_proof;
               inc = inclusion_proof;
               message_proof = Some message_proof;
             },
           Some
             Sc_rollup_PVM_sig.
               {
-                inbox_level = l;
-                message_counter = Z.of_int n;
+                inbox_level = level;
+                message_counter = Z.of_int message_index;
                 payload =
                   Merkelized_messages.get_message_payload message_proof.message;
               } )
@@ -1315,44 +1348,42 @@ let produce_proof history find_level_history inbox (l, n) =
         return
           ( Single_level
               {
-                level = level_messages_cell;
-                level_messages;
+                level = level_history_proof;
+                level_messages = level_messages_proof;
                 inc = inclusion_proof;
                 message_proof = None;
               },
             None )
       else
-        let target_index = Skip_list.index level_messages_cell + 1 in
-        let cell_ptr = hash_skip_list_cell inbox in
-        let* inc =
-          option_to_result
-            "failed to find path to upper level"
-            (Lwt.return
-               (Skip_list.back_path ~deref ~cell_ptr ~target_index
-               |> Option.map (lift_ptr_path deref)
-               |> Option.join))
+        let upper_index = Skip_list.index level_history_proof + 1 in
+        let inclusion_proof =
+          produce_inclusion_proof
+            history
+            ~target_history_proof_index:upper_index
+            ~into_history_proof:inbox
         in
-        let* upper_level_messages_cell =
-          option_to_result
+        let*? inclusion_proof =
+          lift_opt "failed to find path to upper level." inclusion_proof
+        in
+        let*? upper_level_messages_cell =
+          lift_opt
             "back_path returned empty list"
-            (Lwt.return (List.last_opt inc))
+            (List.last_opt inclusion_proof)
         in
-        let* upper_level_messages =
-          option_to_result
+        let*? upper_level_messages =
+          lift_opt
             "could not find upper_level_tree in the inbox_context"
-            (Lwt.return
-            @@ Merkelized_messages.History.find
-                 (Skip_list.content upper_level_messages_cell)
-                 level_history)
+            (Merkelized_messages.History.find
+               (Skip_list.content upper_level_messages_cell)
+               level_messages_history)
         in
-        let* upper_message_proof =
-          option_to_result
+        let*? upper_message_proof =
+          lift_opt
             "failed to produce message proof for upper_level_tree"
-            (Lwt.return
-            @@ Merkelized_messages.produce_proof
-                 level_history
-                 upper_level_messages
-                 ~message_index:0)
+            (Merkelized_messages.produce_proof
+               level_messages_history
+               upper_level_messages
+               ~message_index:0)
         in
         let upper_message_level =
           Merkelized_messages.get_level upper_level_messages
@@ -1372,11 +1403,11 @@ let produce_proof history find_level_history inbox (l, n) =
         return
           ( Level_crossing
               {
-                lower = level_messages_cell;
-                lower_level_messages = level_messages;
+                lower = level_history_proof;
+                lower_level_messages = level_messages_proof;
                 upper = upper_level_messages_cell;
                 upper_level_messages;
-                inc;
+                inc = inclusion_proof;
                 upper_message_proof;
                 upper_level = upper_message_level;
               },
@@ -1395,22 +1426,9 @@ let empty rollup level =
   }
 
 module Internal_for_tests = struct
-  let produce_inclusion_proof history a b =
-    let open Tzresult_syntax in
-    let cell_ptr = hash_skip_list_cell b in
-    let target_index = Skip_list.index a in
-    let deref ptr =
-      let open Option_syntax in
-      let+ cell = History.find ptr history in
-      cell
-    in
-    Skip_list.back_path ~deref ~cell_ptr ~target_index
-    |> Option.map (lift_ptr_path deref)
-    |> Option.join |> return
-
   let serialized_proof_of_string x = Bytes.of_string x
 
-  let hash_of_history_proof = hash_skip_list_cell
+  let hash_of_history_proof = hash_history_proof
 end
 
 type inbox = t

@@ -3135,8 +3135,25 @@ module Sc_rollup : sig
 
       val number_of_proof_steps : inclusion_proof -> int
 
+      val search_history_proof :
+        History.t ->
+        (Merkelized_messages.Hash.t ->
+        Merkelized_messages.History.t option Lwt.t) ->
+        Raw_level.t ->
+        into_history_proof:history_proof ->
+        (inclusion_proof * history_proof) tzresult Lwt.t
+
+      val produce_inclusion_proof :
+        History.t ->
+        target_history_proof_index:int ->
+        into_history_proof:history_proof ->
+        inclusion_proof option
+
       val verify_inclusion_proof :
-        inclusion_proof -> history_proof -> history_proof -> bool
+        inclusion_proof ->
+        target_history_proof:history_proof ->
+        into_history_proof:history_proof ->
+        bool
 
       type proof
 
@@ -3163,12 +3180,6 @@ module Sc_rollup : sig
       val empty : Sc_rollup_repr.t -> Raw_level.t -> t
 
       module Internal_for_tests : sig
-        val produce_inclusion_proof :
-          History.t ->
-          history_proof ->
-          history_proof ->
-          inclusion_proof option tzresult
-
         val serialized_proof_of_string : string -> serialized_proof
 
         val hash_of_history_proof : history_proof -> Hash.t
