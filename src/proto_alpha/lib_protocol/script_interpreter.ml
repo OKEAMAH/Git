@@ -1128,18 +1128,28 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
             else (* both entrypoints are non-default *) None
           in
           match entrypoint_opt with
-          | Some entrypoint ->
+          | Some entrypoint -> (
               let ctxt = update_context gas ctxt in
-              Script_ir_translator.parse_contract_for_script
-                ctxt
-                loc
-                t
-                addr.destination
-                ~entrypoint
-              >>=? fun (ctxt, maybe_contract) ->
-              let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
-              let accu = maybe_contract in
-              (step [@ocaml.tailcall]) (ctxt, sc) gas k ks accu stack
+              match (t, addr.destination) with
+              | Ticket_t _, Destination.Contract (Contract.Implicit destination)
+                ->
+                  let accu =
+                    Some
+                      (Typed_implicit_with_ticket {destination; ticket_ty = t})
+                  in
+                  let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
+                  (step [@ocaml.tailcall]) (ctxt, sc) gas k ks accu stack
+              | _ ->
+                  Script_ir_translator.parse_contract_for_script
+                    ctxt
+                    loc
+                    t
+                    addr.destination
+                    ~entrypoint
+                  >>=? fun (ctxt, maybe_contract) ->
+                  let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
+                  let accu = maybe_contract in
+                  (step [@ocaml.tailcall]) (ctxt, sc) gas k ks accu stack)
           | None -> (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack)
       | ITransfer_tokens (loc, k) ->
           let p = accu in

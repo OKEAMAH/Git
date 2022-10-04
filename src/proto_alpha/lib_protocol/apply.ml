@@ -589,6 +589,39 @@ let apply_internal_operation_contents :
       ( ctxt,
         (ITransaction_result res : kind successful_internal_operation_result),
         ops )
+  | Transaction_to_implicit_with_ticket {destination; ticket_ty; ticket; _} ->
+      Contract.allocated ctxt (Contract.Implicit destination)
+      >>= fun already_allocated ->
+      Ticket_scanner.type_has_tickets ctxt ticket_ty
+      >>?= fun (has_tickets, ctxt) ->
+      Ticket_scanner.type_has_tickets ctxt Script_typed_ir.unit_t
+      >>?= fun (unit_has_tickets, ctxt) ->
+      Ticket_accounting.ticket_diffs
+        ctxt
+        ~self_contract:source
+        ~arg_type_has_tickets:has_tickets
+        ~arg:ticket
+        ~storage_type_has_tickets:unit_has_tickets
+        ~old_storage:()
+        ~new_storage:()
+        ~lazy_storage_diff:[]
+      >>=? fun (_, ticket_receipt, ctxt) ->
+      return
+        ( ctxt,
+          ITransaction_result
+            (Transaction_to_contract_result
+               {
+                 storage = None;
+                 lazy_storage_diff = None;
+                 balance_updates = [];
+                 ticket_receipt;
+                 originated_contracts = [];
+                 consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt;
+                 storage_size = Z.zero;
+                 paid_storage_size_diff = Z.zero;
+                 allocated_destination_contract = not already_allocated;
+               }),
+          [] )
   | Transaction_to_smart_contract
       {
         amount;

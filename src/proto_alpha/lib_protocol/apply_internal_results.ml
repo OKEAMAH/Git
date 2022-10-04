@@ -78,6 +78,14 @@ let internal_operation (type kind)
             entrypoint = Entrypoint.default;
             parameters = Script.unit_parameter;
           }
+    | Transaction_to_implicit_with_ticket {destination; unparsed_ticket; _} ->
+        Transaction
+          {
+            destination = Contract (Implicit destination);
+            amount = Tez.zero;
+            entrypoint = Entrypoint.default;
+            parameters = unparsed_ticket;
+          }
     | Transaction_to_smart_contract
         {destination; amount; entrypoint; unparsed_parameters; _} ->
         Transaction
