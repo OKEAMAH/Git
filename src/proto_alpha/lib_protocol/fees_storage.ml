@@ -88,11 +88,6 @@ let record_paid_storage_space ctxt contract_hash =
     new_storage_size
   >>=? fun (to_be_paid, c) -> return (c, new_storage_size, to_be_paid)
 
-let source_must_exist c src =
-  match src with
-  | `Contract src -> Contract_storage.must_exist c src
-  | _ -> return_unit
-
 let burn_storage_fees ?(origin = Receipt_repr.Block_application) c
     ~storage_limit ~payer consumed =
   let remaining = Z.sub storage_limit consumed in
@@ -103,9 +98,8 @@ let burn_storage_fees ?(origin = Receipt_repr.Block_application) c
     (* Burning the fees... *)
     trace
       Cannot_pay_storage_fee
-      ( source_must_exist c payer >>=? fun () ->
-        Token.transfer ~origin c payer `Storage_fees to_burn
-        >>=? fun (ctxt, balance_updates) ->
+      ( Token.transfer ~origin c payer `Storage_fees to_burn
+      >>=? fun (ctxt, balance_updates) ->
         return (ctxt, remaining, balance_updates) )
 
 let burn_storage_increase_fees ?(origin = Receipt_repr.Block_application) c
@@ -117,8 +111,7 @@ let burn_storage_increase_fees ?(origin = Receipt_repr.Block_application) c
     (* Burning the fees... *)
     trace
       Cannot_pay_storage_fee
-      ( source_must_exist c payer >>=? fun () ->
-        Token.transfer ~origin c payer `Storage_fees to_burn )
+      (Token.transfer ~origin c payer `Storage_fees to_burn)
 
 let burn_origination_fees ?(origin = Receipt_repr.Block_application) c
     ~storage_limit ~payer =
