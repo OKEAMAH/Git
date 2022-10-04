@@ -2091,14 +2091,6 @@ module Manager = struct
     balance : Tez.t;
         (** Remaining balance in the contract, used to simulate the
             payment of fees by each operation in the batch. *)
-    is_allocated : bool;
-        (** Track whether the contract is still allocated. Indeed,
-            previous operations' fee payment may empty the contract and
-            this may deallocate the contract.
-
-            TODO: https://gitlab.com/tezos/tezos/-/issues/3209 Change
-            empty account cleanup mechanism to avoid the need for this
-            field. *)
     total_gas_used : Gas.Arith.fp;
   }
 
@@ -2205,16 +2197,7 @@ module Manager = struct
       | Some pk -> return pk
       | None -> Contract.get_manager_key vi.ctxt source
     in
-    let initial_batch_state =
-      {
-        balance;
-        (* Initial contract allocation is ensured by the success of
-           the call to {!Contract.check_allocated_and_get_balance}
-           above. *)
-        is_allocated = true;
-        total_gas_used = Gas.Arith.zero;
-      }
-    in
+    let initial_batch_state = {balance; total_gas_used = Gas.Arith.zero} in
     return (initial_batch_state, pk)
 
   let check_gas_limit info ~gas_limit =
@@ -2382,15 +2365,6 @@ module Manager = struct
     in
     let*? () = check_storage_limit vi storage_limit in
     let*? () =
-      (* {!Contract.must_be_allocated} has already been called while
-         initializing [batch_state]. This checks that the contract has
-         not been emptied by spending fees for previous operations in
-         the batch. *)
-      error_unless
-        batch_state.is_allocated
-        (Contract_storage.Empty_implicit_contract source)
-    in
-    let*? () =
       let open Result_syntax in
       match operation with
       | Reveal pk -> Contract.check_public_key pk source
@@ -2448,14 +2422,14 @@ module Manager = struct
        would not take into account any gas consumed during the pattern
        matching right above. If you really need to consume gas here, then you
        must make this pattern matching return the [remaining_gas].*)
-    let* balance, is_allocated =
+    let* balance =
       Contract.simulate_spending
         vi.ctxt
         ~balance:batch_state.balance
         ~amount:fee
         source
     in
-    return {total_gas_used; balance; is_allocated}
+    return {total_gas_used; balance}
 
   (** This would be [fold_left_es (check_contents vi) batch_state
       contents_list] if [contents_list] were an ordinary [list]. *)

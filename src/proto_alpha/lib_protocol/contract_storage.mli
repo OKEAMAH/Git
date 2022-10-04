@@ -309,14 +309,7 @@ val ensure_deallocated_if_empty :
 
 (** [simulate_spending ctxt ~balance ~amount source] removes [amount]
     from [balance] as if it were the balance of the implicit contract
-    associated with [source]. It returns the resulting [new_balance],
-    and a boolean [still_allocated] that indicates whether this
-    contract would still exist.
-
-    [still_allocated] is always [true] when [new_balance] is
-    positive. When [new_balance] is zero, it depends on the contract's
-    delegated status and frozen bonds (cf {!spend_only_call_from_token}
-    and {!ensure_deallocated_if_empty}).
+    associated with [source]. It returns the resulting [new_balance].
 
     Note that this function does not retrieve the actual balance of
     the contract, nor does it update or delete it. Indeed, its purpose
@@ -334,4 +327,4 @@ val simulate_spending :
   balance:Tez_repr.t ->
   amount:Tez_repr.t ->
   Signature.public_key_hash ->
-  (Tez_repr.t * bool) tzresult Lwt.t
+  Tez_repr.t tzresult Lwt.t

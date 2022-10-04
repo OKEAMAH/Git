@@ -360,10 +360,12 @@ let batch_emptying_balance_in_the_middle infos kind1 kind2 =
       [reveal; op_case1; op2_case1]
   in
   let* i = Incremental.begin_construction infos.ctxt.block in
-  let expect_failure errs =
+  let expect_apply_failure errs =
     match errs with
-    | [Environment.Ecoproto_error (Contract_storage.Empty_implicit_contract _)]
-      ->
+    | [
+     Environment.Ecoproto_error
+       (Contract_manager_storage.Previously_revealed_key _);
+    ] ->
         return_unit
     | err ->
         failwith
@@ -371,8 +373,13 @@ let batch_emptying_balance_in_the_middle infos kind1 kind2 =
           Error_monad.pp_print_trace
           err
   in
+  (* The batch is expected to be valid since empty accounts are only
+     de-allocated at block finalization. However the application of the
+     batch is expected to fail due to the initial [reveal] operation
+     starting the batch. Indeed, the accounts in [infos.accounts] are
+     initially revealed by default. *)
   let* (_ : Incremental.t) =
-    Incremental.add_operation i case1 ~expect_failure
+    Incremental.add_operation i case1 ~expect_apply_failure
   in
   return_unit
 

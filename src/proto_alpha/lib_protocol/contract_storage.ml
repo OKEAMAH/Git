@@ -815,10 +815,7 @@ let simulate_spending ctxt ~balance ~amount source =
   let open Lwt_tzresult_syntax in
   let contract = Contract_repr.Implicit source in
   let*? new_balance = spend_from_balance contract balance amount in
-  let* still_allocated =
-    if Tez_repr.(new_balance > zero) then return_true
-    else
-      let* () = check_emptiable ctxt contract in
-      should_keep_empty_implicit_contract ctxt contract
-  in
-  return (new_balance, still_allocated)
+  if Tez_repr.(new_balance > zero) then return new_balance
+  else
+    let+ () = check_emptiable ctxt contract in
+    new_balance

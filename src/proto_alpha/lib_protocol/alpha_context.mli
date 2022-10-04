@@ -1713,7 +1713,7 @@ module Contract : sig
     balance:Tez.t ->
     amount:Tez.t ->
     public_key_hash ->
-    (Tez.t * bool) tzresult Lwt.t
+    Tez.t tzresult Lwt.t
 
   (** Functions related to smart contracts. *)
 
