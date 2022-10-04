@@ -39,8 +39,12 @@ let wasm_max_tick = Z.of_int 200_000_000_000
 
 module Wasm = Tezos_webassembly_interpreter
 
+type decode_wrapper =
+  | Starting_decode
+  | Actual_decode of Tezos_webassembly_interpreter.Decode.decode_kont
+
 type tick_state =
-  | Decode of Tezos_webassembly_interpreter.Decode.decode_kont
+  | Decode of decode_wrapper
   | Link of {
       ast_module : Wasm.Ast.module_;
       externs : Wasm.Instance.extern Wasm.Instance.Vector.t;
@@ -87,6 +91,23 @@ struct
       Host_funcs.register_host_funcs registry ;
       registry
 
+    let decode_wrapper_encoding =
+      let open Tezos_tree_encoding in
+      tagged_union
+        (value [] Data_encoding.string)
+        [
+          case
+            "actual_decode"
+            Parsing.Decode.encoding
+            (function Actual_decode m -> Some m | _ -> None)
+            (fun m -> Actual_decode m);
+          case
+            "starting_decode"
+            (return ())
+            (function Starting_decode -> Some () | _ -> None)
+            (fun () -> Starting_decode);
+        ]
+
     let tick_state_encoding =
       let open Tezos_tree_encoding in
       tagged_union
@@ -95,7 +116,7 @@ struct
         [
           case
             "decode"
-            Parsing.Decode.encoding
+            decode_wrapper_encoding
             (function Decode m -> Some m | _ -> None)
             (fun m -> Decode m);
           case
@@ -246,7 +267,13 @@ struct
       | _ when is_time_for_snapshot pvm_state ->
           (* Execution took too many ticks *)
           return ~status:Failing (Stuck Too_many_ticks)
-      | Decode {module_kont = MKStop ast_module; _} ->
+      | Decode Starting_decode ->
+          let state =
+            Tezos_webassembly_interpreter.Decode.initial_decode_kont
+              ~name:wasm_main_module_name
+          in
+          return (Decode (Actual_decode state))
+      | Decode (Actual_decode {module_kont = MKStop ast_module; _}) ->
           return
             (Link
                {
@@ -254,10 +281,10 @@ struct
                  externs = Wasm.Instance.Vector.empty ();
                  imports_offset = 0l;
                })
-      | Decode m ->
+      | Decode (Actual_decode m) ->
           let* kernel = Durable.find_value_exn durable kernel_key in
           let* m = Tezos_webassembly_interpreter.Decode.module_step kernel m in
-          return (Decode m)
+          return (Decode (Actual_decode m))
       | Link {ast_module; externs; imports_offset}
         when link_finished ast_module imports_offset ->
           let self = Wasm.Instance.Module_key wasm_main_module_name in
@@ -407,6 +434,12 @@ struct
       eval_has_finished pvm_state.tick_state
       && not (is_time_for_snapshot pvm_state)
 
+    let lifetime_wasmer_store =
+      (* XXX: This might not be a great idea! *)
+      let open Tezos_wasmer in
+      let engine = Engine.create Config.default in
+      Store.create engine
+
     let compute_step_many ~max_steps tree =
       let open Lwt.Syntax in
       assert (max_steps > 0L) ;
@@ -434,10 +467,39 @@ struct
       in
 
       let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
-      (* Make sure we perform at least 1 step. The assertion above ensures that
-         we were asked to perform at least 1. *)
-      let* pvm_state = compute_step_inner pvm_state in
-      let* pvm_state = go (Int64.pred max_steps) pvm_state in
+
+      (* Advance the PVM state. *)
+      let* pvm_state =
+        match pvm_state.tick_state with
+        | Decode Starting_decode
+          when Z.Compare.(Z.of_int64 max_steps >= pvm_state.max_nb_ticks) ->
+            (* This is the very first step of a top-level cycle. We're also
+               asked to perform equal or more ticks than would be in a top-level
+               cycle. *)
+            let+ durable =
+              Fast_exec.compute
+                lifetime_wasmer_store
+                pvm_state.durable
+                pvm_state.buffers
+            in
+            let current_tick =
+              Z.add pvm_state.current_tick pvm_state.max_nb_ticks |> Z.pred
+            in
+            (* At the moment we just return this following state and
+               don't continue because the [Snapshot] state is an input state. *)
+            {
+              pvm_state with
+              durable;
+              current_tick;
+              tick_state = Snapshot;
+              last_top_level_call = current_tick;
+            }
+        | _ ->
+            (* Make sure we perform at least 1 step. The assertion above ensures that
+               we were asked to perform at least 1. *)
+            let* pvm_state = compute_step_inner pvm_state in
+            go (Int64.pred max_steps) pvm_state
+      in
 
       (* {{Note tick state clean-up}}
 
@@ -510,9 +572,7 @@ struct
             (* TODO: https://gitlab.com/tezos/tezos/-/issues/3157
                The goal is to read a complete inbox. *)
             (* Go back to decoding *)
-            Decode
-              (Tezos_webassembly_interpreter.Decode.initial_decode_kont
-                 ~name:wasm_main_module_name)
+            Decode Starting_decode
         | Decode _ ->
             Lwt.return
               (Stuck

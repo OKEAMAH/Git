@@ -96,6 +96,13 @@ module Internal_for_tests : sig
 
   val read_input : Tezos_webassembly_interpreter.Instance.func_inst
 
+  val aux_store_has :
+    durable:Durable.t ->
+    memory:Tezos_webassembly_interpreter.Instance.memory_inst ->
+    key_offset:int32 ->
+    key_length:int32 ->
+    int32 Lwt.t
+
   (** [store_has] returns whether a key corresponds to a value and/or subtrees.
       Namely, it returns the following enum:
       - [0]: There is no value at [key], nor subtrees under [key].
@@ -104,6 +111,13 @@ module Internal_for_tests : sig
       - [3]: There is a value at [key], and subtrees under [key].
   *)
   val store_has : Tezos_webassembly_interpreter.Instance.func_inst
+
+  val aux_store_delete :
+    durable:Durable.t ->
+    memory:Tezos_webassembly_interpreter.Instance.memory_inst ->
+    key_offset:int32 ->
+    key_length:int32 ->
+    Durable.t Lwt.t
 
   val store_delete : Tezos_webassembly_interpreter.Instance.func_inst
 
@@ -114,6 +128,13 @@ module Internal_for_tests : sig
   val store_read : Tezos_webassembly_interpreter.Instance.func_inst
 
   val store_write : Tezos_webassembly_interpreter.Instance.func_inst
+
+  val aux_store_list_size :
+    durable:Durable.t ->
+    memory:Tezos_webassembly_interpreter.Instance.memory_inst ->
+    key_offset:int32 ->
+    key_length:int32 ->
+    (Durable.t * int64) Lwt.t
 
   val store_list_size : Tezos_webassembly_interpreter.Instance.func_inst
 end

@@ -16,6 +16,8 @@ depends: [
   "tezos-context"
   "tezos-lwt-result-stdlib"
   "data-encoding" { >= "0.6" & < "0.7" }
+  "tezos-crypto"
+  "tezos-wasmer"
 ]
 build: [
   ["rm" "-r" "vendors"]

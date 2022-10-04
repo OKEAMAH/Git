@@ -1612,6 +1612,8 @@ let octez_scoru_wasm =
         octez_context_sigs;
         octez_lwt_result_stdlib;
         data_encoding;
+        octez_crypto;
+        octez_wasmer;
       ]
 
 let octez_context_encoding =
@@ -1661,6 +1663,21 @@ let octez_context_memory =
         octez_context_sigs;
         octez_context_encoding;
         octez_context_helpers;
+      ]
+
+let _octez_scoru_wasm_fast =
+  private_exe
+    "tezos_scoru_wasm_fast"
+    ~opam:""
+    ~path:"src/lib_scoru_wasm_fast"
+    ~synopsis:"TBD"
+    ~deps:
+      [
+        octez_wasmer;
+        octez_scoru_wasm;
+        octez_crypto;
+        lazy_containers;
+        octez_context_memory;
       ]
 
 let octez_context_disk =

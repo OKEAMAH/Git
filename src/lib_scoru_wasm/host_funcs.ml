@@ -216,13 +216,26 @@ let store_has_type =
   let output_types = Types.[NumType I32Type] |> Vector.of_list in
   Types.FuncType (input_types, output_types)
 
-let store_has_unknown_key = 0
+let store_has_unknown_key = 0l
 
-let store_has_value_only = 1
+let store_has_value_only = 1l
 
-let store_has_subtrees_only = 2
+let store_has_subtrees_only = 2l
 
-let store_has_value_and_subtrees = 3
+let store_has_value_and_subtrees = 3l
+
+let aux_store_has ~durable ~memory ~key_offset ~key_length =
+  let open Lwt.Syntax in
+  let key_length = Int32.to_int key_length in
+  let* key = Memory.load_bytes memory key_offset key_length in
+  let key = Durable.key_of_string_exn key in
+  let* value_opt = Durable.find_value durable key in
+  let+ num_subtrees = Durable.count_subtrees durable key in
+  match (value_opt, num_subtrees) with
+  | None, 0 -> store_has_unknown_key
+  | Some _, 1 -> store_has_value_only
+  | None, _ -> store_has_subtrees_only
+  | _ -> store_has_value_and_subtrees
 
 let store_has =
   Host_funcs.Host_func
@@ -230,23 +243,15 @@ let store_has =
       let open Lwt.Syntax in
       match inputs with
       | [Values.(Num (I32 key_offset)); Values.(Num (I32 key_length))] ->
-          let key_length = Int32.to_int key_length in
-          if key_length > Durable.max_key_length then
-            raise (Key_too_large key_length) ;
           let* memory = retrieve_memory memories in
-          let* key = Memory.load_bytes memory key_offset key_length in
-          let tree = Durable.of_storage_exn durable in
-          let key = Durable.key_of_string_exn key in
-          let* value_opt = Durable.find_value tree key in
-          let+ num_subtrees = Durable.count_subtrees tree key in
-          let r =
-            match (value_opt, num_subtrees) with
-            | None, 0 -> store_has_unknown_key
-            | Some _, 1 -> store_has_value_only
-            | None, _ -> store_has_subtrees_only
-            | _ -> store_has_value_and_subtrees
+          let+ r =
+            aux_store_has
+              ~durable:(Durable.of_storage_exn durable)
+              ~memory
+              ~key_offset
+              ~key_length
           in
-          (durable, [Values.(Num (I32 (I32.of_int_s r)))])
+          (durable, [Values.(Num (I32 r))])
       | _ -> raise Bad_input)
 
 let store_delete_name = "tezos_store_delete"
@@ -258,23 +263,29 @@ let store_delete_type =
   let output_types = Vector.of_list [] in
   Types.FuncType (input_types, output_types)
 
-let store_delete_aux durable memories key_offset key_length =
+let aux_store_delete ~durable ~memory ~key_offset ~key_length =
   let open Lwt.Syntax in
   let key_length = Int32.to_int key_length in
   if key_length > Durable.max_key_length then raise (Key_too_large key_length) ;
-  let* memory = retrieve_memory memories in
   let* key = Memory.load_bytes memory key_offset key_length in
-  let tree = Durable.of_storage_exn durable in
   let key = Durable.key_of_string_exn key in
-  let+ tree = Durable.delete tree key in
-  (Durable.to_storage tree, [])
+  Durable.delete durable key
 
 let store_delete =
   Host_funcs.Host_func
     (fun _input_buffer _output_buffer durable memories inputs ->
       match inputs with
       | [Values.(Num (I32 key_offset)); Values.(Num (I32 key_length))] ->
-          store_delete_aux durable memories key_offset key_length
+          let open Lwt.Syntax in
+          let* memory = retrieve_memory memories in
+          let+ durable =
+            aux_store_delete
+              ~durable:(Durable.of_storage_exn durable)
+              ~memory
+              ~key_offset
+              ~key_length
+          in
+          (Durable.to_storage durable, [])
       | _ -> raise Bad_input)
 
 let store_list_size_name = "tezos_store_list_size"
@@ -286,21 +297,30 @@ let store_list_size_type =
   let output_types = Types.[NumType I64Type] |> Vector.of_list in
   Types.FuncType (input_types, output_types)
 
+let aux_store_list_size ~durable ~memory ~key_offset ~key_length =
+  let open Lwt.Syntax in
+  let key_length = Int32.to_int key_length in
+  if key_length > Durable.max_key_length then raise (Key_too_large key_length) ;
+  let* key = Memory.load_bytes memory key_offset key_length in
+  let key = Durable.key_of_string_exn key in
+  let+ num_subtrees = Durable.count_subtrees durable key in
+  (durable, I64.of_int_s num_subtrees)
+
 let store_list_size =
   Host_funcs.Host_func
     (fun _input_buffer _output_buffer durable memories inputs ->
       let open Lwt.Syntax in
       match inputs with
       | [Values.(Num (I32 key_offset)); Values.(Num (I32 key_length))] ->
-          let key_length = Int32.to_int key_length in
-          if key_length > Durable.max_key_length then
-            raise (Key_too_large key_length) ;
           let* memory = retrieve_memory memories in
-          let* key = Memory.load_bytes memory key_offset key_length in
-          let tree = Durable.of_storage_exn durable in
-          let key = Durable.key_of_string_exn key in
-          let+ num_subtrees = Durable.count_subtrees tree key in
-          (durable, [Values.(Num (I64 (I64.of_int_s num_subtrees)))])
+          let+ durable, result =
+            aux_store_list_size
+              ~durable:(Durable.of_storage_exn durable)
+              ~memory
+              ~key_offset
+              ~key_length
+          in
+          (Durable.to_storage durable, [Values.(Num (I64 result))])
       | _ -> raise Bad_input)
 
 let store_copy_name = "tezos_store_copy"
@@ -585,7 +605,11 @@ module Internal_for_tests = struct
 
   let read_input = Func.HostFunc (read_input_type, read_input_name)
 
+  let aux_store_has = aux_store_has
+
   let store_has = Func.HostFunc (store_has_type, store_has_name)
+
+  let aux_store_delete = aux_store_delete
 
   let store_delete = Func.HostFunc (store_delete_type, store_delete_name)
 
@@ -596,6 +620,8 @@ module Internal_for_tests = struct
   let store_read = Func.HostFunc (store_read_type, store_read_name)
 
   let store_write = Func.HostFunc (store_write_type, store_write_name)
+
+  let aux_store_list_size = aux_store_list_size
 
   let store_list_size =
     Func.HostFunc (store_list_size_type, store_list_size_name)
