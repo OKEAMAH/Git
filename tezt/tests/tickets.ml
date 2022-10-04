@@ -127,8 +127,7 @@ let test_send_tickets_in_big_map =
       ~alias:"receive_tickets_in_big_map.tz"
       ~amount:(Tez.of_int 200)
       ~src:"bootstrap1"
-      ~prg:
-        "file:./tezt/tests/contracts/proto_alpha/receive_tickets_in_big_map.tz"
+      ~prg:(protocol_dependent_path protocol "receive_tickets_in_big_map.tz")
       ~init:"{}"
       ~burn_cap:Tez.one
       ~hooks
@@ -158,6 +157,43 @@ let test_send_tickets_in_big_map =
   in
   unit
 
+(* This test originates one contract which forge and send tickets to the address
+   passed in the parameter. In this test, the receiver of the ticket is an
+   implicit account *)
+let test_send_tickets_to_implicit_account =
+  Protocol.register_regression_test
+    ~__FILE__
+    ~title:"Send tickets from contracts to implicit accounts"
+    ~tags:["client"; "michelson"]
+  @@ fun protocol ->
+  match protocol with
+  | Protocol.Alpha ->
+      let* client = Client.init_mockup ~protocol () in
+      let* ticketer =
+        Client.originate_contract
+          ~alias:"ticketer"
+          ~amount:Tez.zero
+          ~src:Constant.bootstrap1.alias
+          ~prg:(protocol_dependent_path protocol "tickets_send.tz")
+          ~init:"Unit"
+          ~burn_cap:Tez.one
+          ~hooks
+          client
+      in
+      let* () =
+        Client.transfer
+          ~burn_cap:Tez.one
+          ~amount:Tez.zero
+          ~giver:Constant.bootstrap1.alias
+          ~receiver:ticketer
+          ~arg:(sf {|"%s"|} Constant.bootstrap1.public_key_hash)
+          ~hooks
+          client
+      in
+      unit
+  | _ -> unit
+
 let register ~protocols =
   test_create_and_remove_tickets protocols ;
-  test_send_tickets_in_big_map protocols
+  test_send_tickets_in_big_map protocols ;
+  test_send_tickets_to_implicit_account protocols

@@ -1,5 +1,5 @@
 
-./octez-client --mode mockup --wait none originate contract receive_tickets_in_big_map.tz transferring 200 from bootstrap1 running file:./tezt/tests/contracts/proto_alpha/receive_tickets_in_big_map.tz --init '{}' --burn-cap 1
+./octez-client --mode mockup --wait none originate contract receive_tickets_in_big_map.tz transferring 200 from bootstrap1 running file:./tezt/tests/contracts/proto_current_mainnet/receive_tickets_in_big_map.tz --init '{}' --burn-cap 1
 Node is bootstrapped.
 Estimated gas: 1411.468 units (will add 100 for safety)
 Estimated storage: 340 bytes added (will add 20 for safety)
