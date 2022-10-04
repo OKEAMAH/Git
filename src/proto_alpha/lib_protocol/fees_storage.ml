@@ -101,17 +101,12 @@ let burn_storage_fees ?(origin = Receipt_repr.Block_application) c
     let cost_per_byte = Constants_storage.cost_per_byte c in
     Tez_repr.(cost_per_byte *? Z.to_int64 consumed) >>?= fun to_burn ->
     (* Burning the fees... *)
-    if Tez_repr.(to_burn = Tez_repr.zero) then
-      (* If the payer was deleted by transferring all its balance, and no space
-         was used, burning zero would fail *)
-      return (c, remaining, [])
-    else
-      trace
-        Cannot_pay_storage_fee
-        ( source_must_exist c payer >>=? fun () ->
-          Token.transfer ~origin c payer `Storage_fees to_burn
-          >>=? fun (ctxt, balance_updates) ->
-          return (ctxt, remaining, balance_updates) )
+    trace
+      Cannot_pay_storage_fee
+      ( source_must_exist c payer >>=? fun () ->
+        Token.transfer ~origin c payer `Storage_fees to_burn
+        >>=? fun (ctxt, balance_updates) ->
+        return (ctxt, remaining, balance_updates) )
 
 let burn_storage_increase_fees ?(origin = Receipt_repr.Block_application) c
     ~payer amount_in_bytes =
