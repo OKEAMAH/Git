@@ -468,37 +468,47 @@ struct
 
       let* pvm_state = Tree_encoding_runner.decode pvm_state_encoding tree in
 
+      let continue () =
+        (* Make sure we perform at least 1 step. The assertion above ensures that
+               we were asked to perform at least 1. *)
+        let* pvm_state = compute_step_inner pvm_state in
+        go (Int64.pred max_steps) pvm_state
+      in
+
+      let continue_fast () =
+        (* This is the very first step of a top-level cycle. We're also
+               asked to perform equal or more ticks than would be in a top-level
+               cycle. *)
+        let+ durable =
+          Fast_exec.compute
+            lifetime_wasmer_store
+            pvm_state.durable
+            pvm_state.buffers
+        in
+        let current_tick =
+          Z.add pvm_state.current_tick pvm_state.max_nb_ticks |> Z.pred
+        in
+        (* At the moment we just return this following state and
+           don't continue because the [Snapshot] state is an input state. *)
+        {
+          pvm_state with
+          durable;
+          current_tick;
+          tick_state = Snapshot;
+          last_top_level_call = current_tick;
+        }
+      in
+
       (* Advance the PVM state. *)
       let* pvm_state =
         match pvm_state.tick_state with
         | Decode Starting_decode
           when Z.Compare.(Z.of_int64 max_steps >= pvm_state.max_nb_ticks) ->
-            (* This is the very first step of a top-level cycle. We're also
-               asked to perform equal or more ticks than would be in a top-level
-               cycle. *)
-            let+ durable =
-              Fast_exec.compute
-                lifetime_wasmer_store
-                pvm_state.durable
-                pvm_state.buffers
-            in
-            let current_tick =
-              Z.add pvm_state.current_tick pvm_state.max_nb_ticks |> Z.pred
-            in
-            (* At the moment we just return this following state and
-               don't continue because the [Snapshot] state is an input state. *)
-            {
-              pvm_state with
-              durable;
-              current_tick;
-              tick_state = Snapshot;
-              last_top_level_call = current_tick;
-            }
-        | _ ->
-            (* Make sure we perform at least 1 step. The assertion above ensures that
-               we were asked to perform at least 1. *)
-            let* pvm_state = compute_step_inner pvm_state in
-            go (Int64.pred max_steps) pvm_state
+            Lwt.catch
+              continue_fast
+              (* XXX: We need to handle traps (raised as exceptions)! *)
+              (fun _ -> continue ())
+        | _ -> continue ()
       in
 
       (* {{Note tick state clean-up}}
