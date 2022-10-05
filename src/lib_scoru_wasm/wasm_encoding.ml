@@ -87,365 +87,500 @@ let block_label_encoding =
 
 let data_label_encoding = value [] Interpreter_encodings.Ast.data_label_encoding
 
-let instruction_encoding =
-  let unit_encoding = value [] Data_encoding.unit in
+let raw_instruction_encoding =
   let open Ast in
+  let unit_encoding = value [] Data_encoding.unit in
+  let var_1_encoding = value ["$1"] Interpreter_encodings.Ast.var_encoding in
+  let var_2_encoding =
+    tup2
+      ~flatten:false
+      (value ["$1"] Interpreter_encodings.Ast.var_encoding)
+      (value ["$2"] Interpreter_encodings.Ast.var_encoding)
+  in
+  let select_encoding =
+    value
+      ["$1"]
+      (* `Select` actually accepts only one value, but is a list for some
+         reason. See [Valid.check_instr] for reference or the reference
+         documentation. *)
+      Data_encoding.(
+        option (list Interpreter_encodings.Types.value_type_encoding))
+  in
+  let block_encoding =
+    tup2
+      ~flatten:false
+      (value ["$1"] Interpreter_encodings.Ast.block_type_encoding)
+      (scope ["$2"] block_label_encoding)
+  in
+  let loop_encoding =
+    tup2
+      ~flatten:false
+      (value ["$1"] Interpreter_encodings.Ast.block_type_encoding)
+      (scope ["$2"] block_label_encoding)
+  in
+  let if_encoding =
+    tup3
+      ~flatten:false
+      (value ["$1"] Interpreter_encodings.Ast.block_type_encoding)
+      (scope ["$2"] block_label_encoding)
+      (scope ["$3"] block_label_encoding)
+  in
+  let br_table_encoding =
+    tup2
+      ~flatten:false
+      (scope ["$1"] var_list_encoding)
+      (value ["$2"] Interpreter_encodings.Ast.var_encoding)
+  in
+  let load_encoding = value ["$1"] Interpreter_encodings.Ast.loadop_encoding in
+  let store_encoding =
+    value ["$1"] Interpreter_encodings.Ast.storeop_encoding
+  in
+  let vec_store_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_storeop_encoding
+  in
+  let vec_load_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_loadop_encoding
+  in
+  let vec_load_lane_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_laneop_encoding
+  in
+  let vec_store_lane_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_laneop_encoding
+  in
+  let ref_null_encoding =
+    value ["$1"] Interpreter_encodings.Types.ref_type_encoding
+  in
+  let const_encoding = value ["$1"] Interpreter_encodings.Ast.num_encoding in
+  let test_encoding = value ["$1"] Interpreter_encodings.Ast.testop_encoding in
+  let compare_encoding =
+    value ["$1"] Interpreter_encodings.Ast.relop_encoding
+  in
+  let unary_encoding = value ["$1"] Interpreter_encodings.Ast.unop_encoding in
+  let binary_encoding = value ["$1"] Interpreter_encodings.Ast.binop_encoding in
+  let convert_encoding =
+    value ["$1"] Interpreter_encodings.Ast.cvtop_encoding
+  in
+  let vec_const_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_encoding
+  in
+  let vec_test_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_testop_encoding
+  in
+  let vec_compare_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_relop_encoding
+  in
+  let vec_unary_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_unop_encoding
+  in
+  let vec_binary_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_binop_encoding
+  in
+  let vec_convert_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_cvtop_encoding
+  in
+  let vec_shift_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_shiftop_encoding
+  in
+  let vec_bitmask_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_bitmaskop_encoding
+  in
+  let vec_test_bits_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_vtestop_encoding
+  in
+  let vec_unary_bits_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_vunop_encoding
+  in
+  let vec_binary_bits_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_vbinop_encoding
+  in
+  let vec_ternary_bits_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_vternop_encoding
+  in
+  let vec_splat_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_splatop_encoding
+  in
+  let vec_extract_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_extractop_encoding
+  in
+  let vec_replace_encoding =
+    value ["$1"] Interpreter_encodings.Ast.vec_replaceop_encoding
+  in
+  let select_encode =
+    let enum_case tag =
+      destruction ~tag ~res:Lwt.return_unit ~delegate:unit_encoding
+    in
+    let instr_1 tag var =
+      destruction ~tag ~res:(Lwt.return var) ~delegate:var_1_encoding
+    in
+    let instr_2 tag var1 var2 =
+      destruction ~tag ~res:(Lwt.return (var1, var2)) ~delegate:var_2_encoding
+    in
+    function
+    | Unreachable -> enum_case "Unreachable"
+    | Nop -> enum_case "Nop"
+    | Drop -> enum_case "Drop"
+    | Select p ->
+        destruction ~tag:"Select" ~res:(Lwt.return p) ~delegate:select_encoding
+    | Block (type_, instr) ->
+        destruction
+          ~tag:"Block"
+          ~res:(Lwt.return (type_, instr))
+          ~delegate:block_encoding
+    | Loop (type_, instr) ->
+        destruction
+          ~tag:"Loop"
+          ~res:(Lwt.return (type_, instr))
+          ~delegate:loop_encoding
+    | If (type_, instr_if, instrs_else) ->
+        destruction
+          ~tag:"If"
+          ~res:(Lwt.return (type_, instr_if, instrs_else))
+          ~delegate:if_encoding
+    | Br var -> instr_1 "Br" var
+    | BrIf var -> instr_1 "BrIf" var
+    | BrTable (table, target) ->
+        destruction
+          ~tag:"BrTable"
+          ~res:(Lwt.return (table, target))
+          ~delegate:br_table_encoding
+    | Return -> enum_case "Return"
+    | Call var -> instr_1 "Call" var
+    | CallIndirect (var1, var2) -> instr_2 "CallIndirect" var1 var2
+    | LocalGet var -> instr_1 "LocalGet" var
+    | LocalSet var -> instr_1 "LocalSet" var
+    | LocalTee var -> instr_1 "LocalTee" var
+    | GlobalGet var -> instr_1 "GlobalGet" var
+    | GlobalSet var -> instr_1 "GlobalSet" var
+    | TableGet var -> instr_1 "TableGet" var
+    | TableSet var -> instr_1 "TableSet" var
+    | TableSize var -> instr_1 "TableSize" var
+    | TableGrow var -> instr_1 "TableGrow" var
+    | TableFill var -> instr_1 "TableFill" var
+    | TableCopy (var1, var2) -> instr_2 "TableCopy" var1 var2
+    | TableInit (var1, var2) -> instr_2 "TableInit" var1 var2
+    | ElemDrop var -> instr_1 "ElemDrop" var
+    | Load loadop ->
+        destruction ~tag:"Load" ~res:(Lwt.return loadop) ~delegate:load_encoding
+    | Store storeop ->
+        destruction
+          ~tag:"Store"
+          ~res:(Lwt.return storeop)
+          ~delegate:store_encoding
+    | VecLoad vec_loadop ->
+        destruction
+          ~tag:"VecLoad"
+          ~res:(Lwt.return vec_loadop)
+          ~delegate:vec_load_encoding
+    | VecStore vec_storeop ->
+        destruction
+          ~tag:"VecStore"
+          ~res:(Lwt.return vec_storeop)
+          ~delegate:vec_store_encoding
+    | VecLoadLane vec_laneop ->
+        destruction
+          ~tag:"VecLoadLane"
+          ~res:(Lwt.return vec_laneop)
+          ~delegate:vec_load_lane_encoding
+    | VecStoreLane vec_laneop ->
+        destruction
+          ~tag:"VecStoreLane"
+          ~res:(Lwt.return vec_laneop)
+          ~delegate:vec_store_lane_encoding
+    | MemorySize -> enum_case "MemorySize"
+    | MemoryGrow -> enum_case "MemoryGrow"
+    | MemoryFill -> enum_case "MemoryFill"
+    | MemoryCopy -> enum_case "MemoryCopy"
+    | MemoryInit var -> instr_1 "MemoryInit" var
+    | DataDrop var -> instr_1 "DataDrop" var
+    | RefNull ref_type ->
+        destruction
+          ~tag:"RefNull"
+          ~res:(Lwt.return ref_type)
+          ~delegate:ref_null_encoding
+    | RefFunc var -> instr_1 "RefFunc" var
+    | RefIsNull -> enum_case "RefIsNull"
+    | Const num ->
+        destruction ~tag:"Const" ~res:(Lwt.return num) ~delegate:const_encoding
+    | Test testop ->
+        destruction ~tag:"Test" ~res:(Lwt.return testop) ~delegate:test_encoding
+    | Compare relop ->
+        destruction
+          ~tag:"Compare"
+          ~res:(Lwt.return relop)
+          ~delegate:compare_encoding
+    | Unary unop ->
+        destruction ~tag:"Unary" ~res:(Lwt.return unop) ~delegate:unary_encoding
+    | Binary binop ->
+        destruction
+          ~tag:"Binary"
+          ~res:(Lwt.return binop)
+          ~delegate:binary_encoding
+    | Convert cvtop ->
+        destruction
+          ~tag:"Convert"
+          ~res:(Lwt.return cvtop)
+          ~delegate:convert_encoding
+    | VecConst vec ->
+        destruction
+          ~tag:"VecConst"
+          ~res:(Lwt.return vec)
+          ~delegate:vec_const_encoding
+    | VecTest vec_testop ->
+        destruction
+          ~tag:"VecTest"
+          ~res:(Lwt.return vec_testop)
+          ~delegate:vec_test_encoding
+    | VecCompare relop ->
+        destruction
+          ~tag:"VecCompare"
+          ~res:(Lwt.return relop)
+          ~delegate:vec_compare_encoding
+    | VecUnary vec_unop ->
+        destruction
+          ~tag:"VecUnary"
+          ~res:(Lwt.return vec_unop)
+          ~delegate:vec_unary_encoding
+    | VecBinary vec_binop ->
+        destruction
+          ~tag:"VecBinary"
+          ~res:(Lwt.return vec_binop)
+          ~delegate:vec_binary_encoding
+    | VecConvert vec_cvtop ->
+        destruction
+          ~tag:"VecConvert"
+          ~res:(Lwt.return vec_cvtop)
+          ~delegate:vec_convert_encoding
+    | VecShift vec_shiftop ->
+        destruction
+          ~tag:"VecShift"
+          ~res:(Lwt.return vec_shiftop)
+          ~delegate:vec_shift_encoding
+    | VecBitmask vec_bitmaskop ->
+        destruction
+          ~tag:"VecBitmask"
+          ~res:(Lwt.return vec_bitmaskop)
+          ~delegate:vec_bitmask_encoding
+    | VecTestBits vtestop ->
+        destruction
+          ~tag:"VecTestBits"
+          ~res:(Lwt.return vtestop)
+          ~delegate:vec_test_bits_encoding
+    | VecUnaryBits vec_vunop ->
+        destruction
+          ~tag:"VecUnaryBits"
+          ~res:(Lwt.return vec_vunop)
+          ~delegate:vec_unary_bits_encoding
+    | VecBinaryBits vbinop ->
+        destruction
+          ~tag:"VecBinaryBits"
+          ~res:(Lwt.return vbinop)
+          ~delegate:vec_binary_bits_encoding
+    | VecTernaryBits vternop ->
+        destruction
+          ~tag:"VecTernaryBits"
+          ~res:(Lwt.return vternop)
+          ~delegate:vec_ternary_bits_encoding
+    | VecSplat splatop ->
+        destruction
+          ~tag:"VecSplat"
+          ~res:(Lwt.return splatop)
+          ~delegate:vec_splat_encoding
+    | VecExtract extractop ->
+        destruction
+          ~tag:"VecExtract"
+          ~res:(Lwt.return extractop)
+          ~delegate:vec_extract_encoding
+    | VecReplace vec_replaceop ->
+        destruction
+          ~tag:"VecReplace"
+          ~res:(Lwt.return vec_replaceop)
+          ~delegate:vec_replace_encoding
+  and select_decode =
+    let enum_case w =
+      decoding_branch ~extract:(fun () -> Lwt.return w) ~delegate:unit_encoding
+    in
+    let instr_1 mk =
+      decoding_branch
+        ~extract:(fun var -> Lwt.return @@ mk var)
+        ~delegate:var_1_encoding
+    in
+    let instr_2 mk =
+      decoding_branch
+        ~extract:(fun (var1, var2) -> Lwt.return @@ mk var1 var2)
+        ~delegate:var_2_encoding
+    in
+    function
+    | "Unreachable" -> enum_case Unreachable
+    | "Nop" -> enum_case Nop
+    | "Drop" -> enum_case Drop
+    | "Select" ->
+        decoding_branch
+          ~extract:(fun p -> Lwt.return (Select p))
+          ~delegate:select_encoding
+    | "Block" ->
+        decoding_branch
+          ~extract:(fun (type_, instr) -> Lwt.return (Block (type_, instr)))
+          ~delegate:block_encoding
+    | "Loop" ->
+        decoding_branch
+          ~extract:(fun (type_, instr) -> Lwt.return (Loop (type_, instr)))
+          ~delegate:loop_encoding
+    | "If" ->
+        decoding_branch
+          ~extract:(fun (type_, instr_if, instrs_else) ->
+            Lwt.return (If (type_, instr_if, instrs_else)))
+          ~delegate:if_encoding
+    | "Br" -> instr_1 (fun var -> Br var)
+    | "BrIf" -> instr_1 (fun var -> BrIf var)
+    | "BrTable" ->
+        decoding_branch
+          ~extract:(fun (table, target) -> Lwt.return (BrTable (table, target)))
+          ~delegate:br_table_encoding
+    | "Return" -> enum_case Return
+    | "Call" -> instr_1 (fun var -> Call var)
+    | "CallIndirect" -> instr_2 (fun var1 var2 -> CallIndirect (var1, var2))
+    | "LocalGet" -> instr_1 (fun var -> LocalGet var)
+    | "LocalSet" -> instr_1 (fun var -> LocalSet var)
+    | "LocalTee" -> instr_1 (fun var -> LocalTee var)
+    | "GlobalGet" -> instr_1 (fun var -> GlobalGet var)
+    | "GlobalSet" -> instr_1 (fun var -> GlobalSet var)
+    | "TableGet" -> instr_1 (fun var -> TableGet var)
+    | "TableSet" -> instr_1 (fun var -> TableSet var)
+    | "TableSize" -> instr_1 (fun var -> TableSize var)
+    | "TableGrow" -> instr_1 (fun var -> TableGrow var)
+    | "TableFill" -> instr_1 (fun var -> TableFill var)
+    | "TableCopy" -> instr_2 (fun var1 var2 -> TableCopy (var1, var2))
+    | "TableInit" -> instr_2 (fun var1 var2 -> TableInit (var1, var2))
+    | "ElemDrop" -> instr_1 (fun var -> ElemDrop var)
+    | "Load" ->
+        decoding_branch
+          ~extract:(fun loadop -> Lwt.return (Load loadop))
+          ~delegate:load_encoding
+    | "Store" ->
+        decoding_branch
+          ~extract:(fun storeop -> Lwt.return (Store storeop))
+          ~delegate:store_encoding
+    | "VecLoad" ->
+        decoding_branch
+          ~extract:(fun vec_loadop -> Lwt.return (VecLoad vec_loadop))
+          ~delegate:vec_load_encoding
+    | "VecStore" ->
+        decoding_branch
+          ~extract:(fun vec_storeop -> Lwt.return (VecStore vec_storeop))
+          ~delegate:vec_store_encoding
+    | "VecLoadLane" ->
+        decoding_branch
+          ~extract:(fun vec_laneop -> Lwt.return (VecLoadLane vec_laneop))
+          ~delegate:vec_load_lane_encoding
+    | "VecStoreLane" ->
+        decoding_branch
+          ~extract:(fun vec_laneop -> Lwt.return (VecStoreLane vec_laneop))
+          ~delegate:vec_store_lane_encoding
+    | "MemorySize" -> enum_case MemorySize
+    | "MemoryGrow" -> enum_case MemoryGrow
+    | "MemoryFill" -> enum_case MemoryFill
+    | "MemoryCopy" -> enum_case MemoryCopy
+    | "MemoryInit" -> instr_1 (fun var -> MemoryInit var)
+    | "DataDrop" -> instr_1 (fun var -> DataDrop var)
+    | "RefNull" ->
+        decoding_branch
+          ~extract:(fun ref_type -> Lwt.return (RefNull ref_type))
+          ~delegate:ref_null_encoding
+    | "RefFunc" -> instr_1 (fun var -> RefFunc var)
+    | "RefIsNull" -> enum_case RefIsNull
+    | "Const" ->
+        decoding_branch
+          ~extract:(fun num -> Lwt.return (Const num))
+          ~delegate:const_encoding
+    | "Test" ->
+        decoding_branch
+          ~extract:(fun testop -> Lwt.return (Test testop))
+          ~delegate:test_encoding
+    | "Compare" ->
+        decoding_branch
+          ~extract:(fun relop -> Lwt.return (Compare relop))
+          ~delegate:compare_encoding
+    | "Unary" ->
+        decoding_branch
+          ~extract:(fun unop -> Lwt.return (Unary unop))
+          ~delegate:unary_encoding
+    | "Binary" ->
+        decoding_branch
+          ~extract:(fun binop -> Lwt.return (Binary binop))
+          ~delegate:binary_encoding
+    | "Convert" ->
+        decoding_branch
+          ~extract:(fun cvtop -> Lwt.return (Convert cvtop))
+          ~delegate:convert_encoding
+    | "VecConst" ->
+        decoding_branch
+          ~extract:(fun vec -> Lwt.return (VecConst vec))
+          ~delegate:vec_const_encoding
+    | "VecTest" ->
+        decoding_branch
+          ~extract:(fun vec_testop -> Lwt.return (VecTest vec_testop))
+          ~delegate:vec_test_encoding
+    | "VecCompare" ->
+        decoding_branch
+          ~extract:(fun vec_relop -> Lwt.return (VecCompare vec_relop))
+          ~delegate:vec_compare_encoding
+    | "VecUnary" ->
+        decoding_branch
+          ~extract:(fun vec_unop -> Lwt.return (VecUnary vec_unop))
+          ~delegate:vec_unary_encoding
+    | "VecBinary" ->
+        decoding_branch
+          ~extract:(fun vec_binop -> Lwt.return (VecBinary vec_binop))
+          ~delegate:vec_binary_encoding
+    | "VecConvert" ->
+        decoding_branch
+          ~extract:(fun vec_cvtop -> Lwt.return (VecConvert vec_cvtop))
+          ~delegate:vec_convert_encoding
+    | "VecShift" ->
+        decoding_branch
+          ~extract:(fun vec_shiftop -> Lwt.return (VecShift vec_shiftop))
+          ~delegate:vec_shift_encoding
+    | "VecBitmask" ->
+        decoding_branch
+          ~extract:(fun vec_bitmaskop -> Lwt.return (VecBitmask vec_bitmaskop))
+          ~delegate:vec_bitmask_encoding
+    | "VecTestBits" ->
+        decoding_branch
+          ~extract:(fun vec_vtestop -> Lwt.return (VecTestBits vec_vtestop))
+          ~delegate:vec_test_bits_encoding
+    | "VecUnaryBits" ->
+        decoding_branch
+          ~extract:(fun vec_vunop -> Lwt.return (VecUnaryBits vec_vunop))
+          ~delegate:vec_unary_bits_encoding
+    | "VecBinaryBits" ->
+        decoding_branch
+          ~extract:(fun vec_vbinop -> Lwt.return (VecBinaryBits vec_vbinop))
+          ~delegate:vec_binary_bits_encoding
+    | "VecTernaryBits" ->
+        decoding_branch
+          ~extract:(fun vec_vternop -> Lwt.return (VecTernaryBits vec_vternop))
+          ~delegate:vec_ternary_bits_encoding
+    | "VecSplat" ->
+        decoding_branch
+          ~extract:(fun vec_splatop -> Lwt.return (VecSplat vec_splatop))
+          ~delegate:vec_splat_encoding
+    | "VecExtract" ->
+        decoding_branch
+          ~extract:(fun vec_extractop -> Lwt.return (VecExtract vec_extractop))
+          ~delegate:vec_extract_encoding
+    | "VecReplace" ->
+        decoding_branch
+          ~extract:(fun vec_replaceop -> Lwt.return (VecReplace vec_replaceop))
+          ~delegate:vec_replace_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
+
+let instruction_encoding =
   conv
     (fun instr -> Source.{at = no_region; it = instr})
     (fun Source.{at = _; it} -> it)
-    (tagged_union
-       string_tag
-       [
-         case
-           "Unreachable"
-           unit_encoding
-           (function Unreachable -> Some () | _ -> None)
-           (fun () -> Unreachable);
-         case
-           "Nop"
-           unit_encoding
-           (function Nop -> Some () | _ -> None)
-           (fun () -> Nop);
-         case
-           "Drop"
-           unit_encoding
-           (function Drop -> Some () | _ -> None)
-           (fun () -> Drop);
-         case
-           "Select"
-           (value
-              ["$1"]
-              (* `Select` actually accepts only one value, but is a list for some
-                 reason. See [Valid.check_instr] for reference or the reference
-                 documentation. *)
-              Data_encoding.(
-                option (list Interpreter_encodings.Types.value_type_encoding)))
-           (function Select p -> Some p | _ -> None)
-           (fun p -> Select p);
-         case
-           "Block"
-           (tup2
-              ~flatten:false
-              (value ["$1"] Interpreter_encodings.Ast.block_type_encoding)
-              (scope ["$2"] block_label_encoding))
-           (function Block (type_, instr) -> Some (type_, instr) | _ -> None)
-           (fun (type_, instr) -> Block (type_, instr));
-         case
-           "Loop"
-           (tup2
-              ~flatten:false
-              (value ["$1"] Interpreter_encodings.Ast.block_type_encoding)
-              (scope ["$2"] block_label_encoding))
-           (function Loop (type_, instr) -> Some (type_, instr) | _ -> None)
-           (fun (type_, instr) -> Loop (type_, instr));
-         case
-           "If"
-           (tup3
-              ~flatten:false
-              (value ["$1"] Interpreter_encodings.Ast.block_type_encoding)
-              (scope ["$2"] block_label_encoding)
-              (scope ["$3"] block_label_encoding))
-           (function
-             | If (type_, instr_if, instrs_else) ->
-                 Some (type_, instr_if, instrs_else)
-             | _ -> None)
-           (fun (type_, instrs_if, instrs_else) ->
-             If (type_, instrs_if, instrs_else));
-         case
-           "Br"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function Br var -> Some var | _ -> None)
-           (fun var -> Br var);
-         case
-           "BrIf"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function BrIf var -> Some var | _ -> None)
-           (fun var -> BrIf var);
-         case
-           "BrTable"
-           (tup2
-              ~flatten:false
-              (scope ["$1"] var_list_encoding)
-              (value ["$2"] Interpreter_encodings.Ast.var_encoding))
-           (function
-             | BrTable (table, target) -> Some (table, target) | _ -> None)
-           (fun (table, target) -> BrTable (table, target));
-         case
-           "Return"
-           unit_encoding
-           (function Return -> Some () | _ -> None)
-           (fun () -> Return);
-         case
-           "Call"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function Call var -> Some var | _ -> None)
-           (fun var -> Call var);
-         case
-           "CallIndirect"
-           (tup2
-              ~flatten:false
-              (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-              (value ["$2"] Interpreter_encodings.Ast.var_encoding))
-           (function
-             | CallIndirect (var1, var2) -> Some (var1, var2) | _ -> None)
-           (fun (var1, var2) -> CallIndirect (var1, var2));
-         case
-           "LocalGet"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function LocalGet var -> Some var | _ -> None)
-           (fun var -> LocalGet var);
-         case
-           "LocalSet"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function LocalSet var -> Some var | _ -> None)
-           (fun var -> LocalSet var);
-         case
-           "LocalTee"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function LocalTee var -> Some var | _ -> None)
-           (fun var -> LocalTee var);
-         case
-           "GlobalGet"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function GlobalGet var -> Some var | _ -> None)
-           (fun var -> GlobalGet var);
-         case
-           "GlobalSet"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function GlobalSet var -> Some var | _ -> None)
-           (fun var -> GlobalSet var);
-         case
-           "TableGet"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function TableGet var -> Some var | _ -> None)
-           (fun var -> TableGet var);
-         case
-           "TableSet"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function TableSet var -> Some var | _ -> None)
-           (fun var -> TableSet var);
-         case
-           "TableSize"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function TableSize var -> Some var | _ -> None)
-           (fun var -> TableSize var);
-         case
-           "TableGrow"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function TableGrow var -> Some var | _ -> None)
-           (fun var -> TableGrow var);
-         case
-           "TableFill"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function TableFill var -> Some var | _ -> None)
-           (fun var -> TableFill var);
-         case
-           "TableCopy"
-           (tup2
-              ~flatten:false
-              (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-              (value ["$2"] Interpreter_encodings.Ast.var_encoding))
-           (function TableCopy (var1, var2) -> Some (var1, var2) | _ -> None)
-           (fun (var1, var2) -> TableCopy (var1, var2));
-         case
-           "TableInit"
-           (tup2
-              ~flatten:false
-              (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-              (value ["$2"] Interpreter_encodings.Ast.var_encoding))
-           (function TableInit (var1, var2) -> Some (var1, var2) | _ -> None)
-           (fun (var1, var2) -> TableInit (var1, var2));
-         case
-           "ElemDrop"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function ElemDrop var -> Some var | _ -> None)
-           (fun var -> ElemDrop var);
-         case
-           "Load"
-           (value ["$1"] Interpreter_encodings.Ast.loadop_encoding)
-           (function Load loadop -> Some loadop | _ -> None)
-           (fun loadop -> Load loadop);
-         case
-           "Store"
-           (value ["$1"] Interpreter_encodings.Ast.storeop_encoding)
-           (function Store loadop -> Some loadop | _ -> None)
-           (fun loadop -> Store loadop);
-         case
-           "VecLoad"
-           (value ["$1"] Interpreter_encodings.Ast.vec_loadop_encoding)
-           (function VecLoad vec_loadop -> Some vec_loadop | _ -> None)
-           (fun vec_loadop -> VecLoad vec_loadop);
-         case
-           "VecStore"
-           (value ["$1"] Interpreter_encodings.Ast.vec_storeop_encoding)
-           (function VecStore vec_loadop -> Some vec_loadop | _ -> None)
-           (fun vec_storeop -> VecStore vec_storeop);
-         case
-           "VecLoadLane"
-           (value ["$1"] Interpreter_encodings.Ast.vec_laneop_encoding)
-           (function VecLoadLane vec_laneop -> Some vec_laneop | _ -> None)
-           (fun vec_laneop -> VecLoadLane vec_laneop);
-         case
-           "VecStoreLane"
-           (value ["$1"] Interpreter_encodings.Ast.vec_laneop_encoding)
-           (function VecStoreLane vec_laneop -> Some vec_laneop | _ -> None)
-           (fun vec_laneop -> VecStoreLane vec_laneop);
-         case
-           "MemorySize"
-           unit_encoding
-           (function MemorySize -> Some () | _ -> None)
-           (fun () -> MemorySize);
-         case
-           "MemoryGrow"
-           unit_encoding
-           (function MemoryGrow -> Some () | _ -> None)
-           (fun () -> MemoryGrow);
-         case
-           "MemoryFill"
-           unit_encoding
-           (function MemoryFill -> Some () | _ -> None)
-           (fun () -> MemoryFill);
-         case
-           "MemoryCopy"
-           unit_encoding
-           (function MemoryCopy -> Some () | _ -> None)
-           (fun () -> MemoryCopy);
-         case
-           "MemoryInit"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function MemoryInit var -> Some var | _ -> None)
-           (fun var -> MemoryInit var);
-         case
-           "DataDrop"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function DataDrop var -> Some var | _ -> None)
-           (fun var -> DataDrop var);
-         case
-           "RefNull"
-           (value ["$1"] Interpreter_encodings.Types.ref_type_encoding)
-           (function RefNull ref_type -> Some ref_type | _ -> None)
-           (fun ref_type -> RefNull ref_type);
-         case
-           "RefFunc"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function RefFunc var -> Some var | _ -> None)
-           (fun var -> RefFunc var);
-         case
-           "RefFunc"
-           (value ["$1"] Interpreter_encodings.Ast.var_encoding)
-           (function RefFunc var -> Some var | _ -> None)
-           (fun var -> RefFunc var);
-         case
-           "RefIsNull"
-           unit_encoding
-           (function RefIsNull -> Some () | _ -> None)
-           (fun () -> RefIsNull);
-         case
-           "Const"
-           (value ["$1"] Interpreter_encodings.Ast.num_encoding)
-           (function Const var -> Some var | _ -> None)
-           (fun var -> Const var);
-         case
-           "Test"
-           (value ["$1"] Interpreter_encodings.Ast.testop_encoding)
-           (function Test var -> Some var | _ -> None)
-           (fun var -> Test var);
-         case
-           "Compare"
-           (value ["$1"] Interpreter_encodings.Ast.relop_encoding)
-           (function Compare var -> Some var | _ -> None)
-           (fun var -> Compare var);
-         case
-           "Unary"
-           (value ["$1"] Interpreter_encodings.Ast.unop_encoding)
-           (function Unary var -> Some var | _ -> None)
-           (fun var -> Unary var);
-         case
-           "Binary"
-           (value ["$1"] Interpreter_encodings.Ast.binop_encoding)
-           (function Binary var -> Some var | _ -> None)
-           (fun var -> Binary var);
-         case
-           "Convert"
-           (value ["$1"] Interpreter_encodings.Ast.cvtop_encoding)
-           (function Convert var -> Some var | _ -> None)
-           (fun var -> Convert var);
-         case
-           "VecConst"
-           (value ["$1"] Interpreter_encodings.Ast.vec_encoding)
-           (function VecConst vec -> Some vec | _ -> None)
-           (fun vec -> VecConst vec);
-         case
-           "VecTest"
-           (value ["$1"] Interpreter_encodings.Ast.vec_testop_encoding)
-           (function VecTest op -> Some op | _ -> None)
-           (fun op -> VecTest op);
-         case
-           "VecCompare"
-           (value ["$1"] Interpreter_encodings.Ast.vec_relop_encoding)
-           (function VecCompare op -> Some op | _ -> None)
-           (fun op -> VecCompare op);
-         case
-           "VecUnary"
-           (value ["$1"] Interpreter_encodings.Ast.vec_unop_encoding)
-           (function VecUnary op -> Some op | _ -> None)
-           (fun op -> VecUnary op);
-         case
-           "VecBinary"
-           (value ["$1"] Interpreter_encodings.Ast.vec_binop_encoding)
-           (function VecBinary op -> Some op | _ -> None)
-           (fun op -> VecBinary op);
-         case
-           "VecConvert"
-           (value ["$1"] Interpreter_encodings.Ast.vec_cvtop_encoding)
-           (function VecConvert op -> Some op | _ -> None)
-           (fun op -> VecConvert op);
-         case
-           "VecShift"
-           (value ["$1"] Interpreter_encodings.Ast.vec_shiftop_encoding)
-           (function VecShift op -> Some op | _ -> None)
-           (fun op -> VecShift op);
-         case
-           "VecBitmask"
-           (value ["$1"] Interpreter_encodings.Ast.vec_bitmaskop_encoding)
-           (function VecBitmask op -> Some op | _ -> None)
-           (fun op -> VecBitmask op);
-         case
-           "VecTestBits"
-           (value ["$1"] Interpreter_encodings.Ast.vec_vtestop_encoding)
-           (function VecTestBits op -> Some op | _ -> None)
-           (fun op -> VecTestBits op);
-         case
-           "VecUnaryBits"
-           (value ["$1"] Interpreter_encodings.Ast.vec_vunop_encoding)
-           (function VecUnaryBits op -> Some op | _ -> None)
-           (fun op -> VecUnaryBits op);
-         case
-           "VecBinaryBits"
-           (value ["$1"] Interpreter_encodings.Ast.vec_vbinop_encoding)
-           (function VecBinaryBits op -> Some op | _ -> None)
-           (fun op -> VecBinaryBits op);
-         case
-           "VecTernaryBits"
-           (value ["$1"] Interpreter_encodings.Ast.vec_vternop_encoding)
-           (function VecTernaryBits op -> Some op | _ -> None)
-           (fun op -> VecTernaryBits op);
-         case
-           "VecSplat"
-           (value ["$1"] Interpreter_encodings.Ast.vec_splatop_encoding)
-           (function VecSplat op -> Some op | _ -> None)
-           (fun op -> VecSplat op);
-         case
-           "VecExtract"
-           (value ["$1"] Interpreter_encodings.Ast.vec_extractop_encoding)
-           (function VecExtract op -> Some op | _ -> None)
-           (fun op -> VecExtract op);
-         case
-           "VecReplace"
-           (value ["$1"] Interpreter_encodings.Ast.vec_replaceop_encoding)
-           (function VecReplace op -> Some op | _ -> None)
-           (fun op -> VecReplace op);
-       ])
+    raw_instruction_encoding
 
 let func_type_encoding =
   conv
@@ -469,84 +604,122 @@ let module_key_encoding =
     (value [] Data_encoding.string)
 
 let function_encoding =
-  tagged_union
-    string_tag
-    [
-      case
-        "Host"
-        (tup2
-           ~flatten:false
-           func_type_encoding
-           (value ["name"] Data_encoding.string))
-        (function
-          | Func.HostFunc (func_type, name) -> Some (func_type, name)
-          | _ -> None)
-        (fun (func_type, name) -> Func.HostFunc (func_type, name));
-      case
-        "Native"
-        (tup5
-           ~flatten:false
-           function_type_encoding
-           (scope ["module"] module_key_encoding)
-           (value ["ftype"] Interpreter_encodings.Ast.var_encoding)
-           (lazy_vector_encoding
-              "locals"
-              (value [] Interpreter_encodings.Types.value_type_encoding))
-           block_label_encoding)
-        (function
-          | Func.AstFunc (type_, module_, {at = _; it = {ftype; locals; body}})
-            ->
-              Some (type_, module_, ftype, locals, body)
-          | _ -> None)
-        (fun (type_, module_, ftype, locals, body) ->
-          let func = Source.{at = no_region; it = {Ast.ftype; locals; body}} in
-          Func.AstFunc (type_, module_, func));
-    ]
+  let host_func_encoding =
+    tup2 ~flatten:false func_type_encoding (value ["name"] Data_encoding.string)
+  in
+  let ast_func_encoding =
+    tup5
+      ~flatten:false
+      function_type_encoding
+      (scope ["module"] module_key_encoding)
+      (value ["ftype"] Interpreter_encodings.Ast.var_encoding)
+      (lazy_vector_encoding
+         "locals"
+         (value [] Interpreter_encodings.Types.value_type_encoding))
+      block_label_encoding
+  in
+  let select_encode = function
+    | Func.HostFunc (func_type, name) ->
+        destruction
+          ~tag:"Host"
+          ~res:(Lwt.return (func_type, name))
+          ~delegate:host_func_encoding
+    | Func.AstFunc (type_, module_, {at = _; it = {ftype; locals; body}}) ->
+        destruction
+          ~tag:"Native"
+          ~res:(Lwt.return (type_, module_, ftype, locals, body))
+          ~delegate:ast_func_encoding
+  in
+  let select_decode = function
+    | "Host" ->
+        decoding_branch
+          ~extract:(fun (func_type, name) ->
+            Lwt.return (Func.HostFunc (func_type, name)))
+          ~delegate:host_func_encoding
+    | "Native" ->
+        decoding_branch
+          ~extract:(fun (type_, module_, ftype, locals, body) ->
+            let func =
+              Source.{at = no_region; it = {Ast.ftype; locals; body}}
+            in
+            Lwt.return @@ Func.AstFunc (type_, module_, func))
+          ~delegate:ast_func_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 let value_ref_encoding =
-  tagged_union
-    string_tag
-    [
-      case
-        "FuncRef"
-        function_encoding
-        (fun val_ref ->
-          match val_ref with
-          | Instance.FuncRef func_inst -> Some func_inst
-          | _ -> None)
-        (fun func -> Instance.FuncRef func);
-      case
-        "ExternRef"
-        (value [] Data_encoding.int32)
-        (function Values.ExternRef v -> Some v | _ -> None)
-        (fun v -> Values.ExternRef v);
-      case
-        "NullRef"
-        (value [] Interpreter_encodings.Types.ref_type_encoding)
-        (function Values.NullRef v -> Some v | _ -> None)
-        (fun v -> Values.NullRef v);
-    ]
+  let extern_ref_encoding = value [] Data_encoding.int32 in
+  let null_ref_encoding =
+    value [] Interpreter_encodings.Types.ref_type_encoding
+  in
+  let select_encode = function
+    | Instance.FuncRef func_inst ->
+        destruction
+          ~tag:"FuncRef"
+          ~res:(Lwt.return func_inst)
+          ~delegate:function_encoding
+    | Values.ExternRef v ->
+        destruction
+          ~tag:"ExternRef"
+          ~res:(Lwt.return v)
+          ~delegate:extern_ref_encoding
+    | Values.NullRef v ->
+        destruction
+          ~tag:"NullRef"
+          ~res:(Lwt.return v)
+          ~delegate:null_ref_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  let select_decode = function
+    | "FuncRef" ->
+        decoding_branch
+          ~extract:(fun func_inst -> Lwt.return (Instance.FuncRef func_inst))
+          ~delegate:function_encoding
+    | "ExternRef" ->
+        decoding_branch
+          ~extract:(fun v -> Lwt.return (Values.ExternRef v))
+          ~delegate:extern_ref_encoding
+    | "NullRef" ->
+        decoding_branch
+          ~extract:(fun v -> Lwt.return (Values.NullRef v))
+          ~delegate:null_ref_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 let value_encoding =
-  tagged_union
-    string_tag
-    [
-      case
-        "NumType"
-        (value [] Interpreter_encodings.Values.num_encoding)
-        (function Values.Num n -> Some n | _ -> None)
-        (fun n -> Values.Num n);
-      case
-        "VecType V128Type"
-        (value [] Interpreter_encodings.Values.vec_encoding)
-        (function Values.Vec v -> Some v | _ -> None)
-        (fun v -> Values.Vec v);
-      case
-        "RefType"
-        value_ref_encoding
-        (function Values.Ref r -> Some r | _ -> None)
-        (fun r -> Values.Ref r);
-    ]
+  let num_encoding = value [] Interpreter_encodings.Values.num_encoding in
+  let vec_encoding = value [] Interpreter_encodings.Values.vec_encoding in
+  let select_encode = function
+    | Values.Num n ->
+        destruction ~tag:"NumType" ~res:(Lwt.return n) ~delegate:num_encoding
+    | Values.Vec v ->
+        destruction
+          ~tag:"VecType V128Type"
+          ~res:(Lwt.return v)
+          ~delegate:vec_encoding
+    | Values.Ref r ->
+        destruction
+          ~tag:"RefType"
+          ~res:(Lwt.return r)
+          ~delegate:value_ref_encoding
+  and select_decode = function
+    | "NumType" ->
+        decoding_branch
+          ~extract:(fun n -> Lwt.return (Values.Num n))
+          ~delegate:num_encoding
+    | "VecType V128Type" ->
+        decoding_branch
+          ~extract:(fun v -> Lwt.return (Values.Vec v))
+          ~delegate:vec_encoding
+    | "RefType" ->
+        decoding_branch
+          ~extract:(fun r -> Lwt.return (Values.Ref r))
+          ~delegate:value_ref_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 let values_encoding = lazy_vector_encoding' value_encoding
 
@@ -612,30 +785,47 @@ let function_type_vector_encoding =
 let value_ref_vector_encoding = lazy_vector_encoding "refs" value_ref_encoding
 
 let extern_encoding =
-  tagged_union
-    string_tag
-    [
-      case
-        "ExternFunc"
-        function_encoding
-        (function Instance.ExternFunc x -> Some x | _ -> None)
-        (fun x -> Instance.ExternFunc x);
-      case
-        "ExternTable"
-        table_encoding
-        (function Instance.ExternTable x -> Some x | _ -> None)
-        (fun x -> Instance.ExternTable x);
-      case
-        "ExternMemory"
-        memory_encoding
-        (function Instance.ExternMemory x -> Some x | _ -> None)
-        (fun x -> Instance.ExternMemory x);
-      case
-        "ExternGlobal"
-        global_encoding
-        (function Instance.ExternGlobal x -> Some x | _ -> None)
-        (fun x -> Instance.ExternGlobal x);
-    ]
+  let select_encode = function
+    | Instance.ExternFunc x ->
+        destruction
+          ~tag:"ExternFunc"
+          ~res:(Lwt.return x)
+          ~delegate:function_encoding
+    | Instance.ExternTable x ->
+        destruction
+          ~tag:"ExternTable"
+          ~res:(Lwt.return x)
+          ~delegate:table_encoding
+    | Instance.ExternMemory x ->
+        destruction
+          ~tag:"ExternMemory"
+          ~res:(Lwt.return x)
+          ~delegate:memory_encoding
+    | Instance.ExternGlobal x ->
+        destruction
+          ~tag:"ExternGlobal"
+          ~res:(Lwt.return x)
+          ~delegate:global_encoding
+  and select_decode = function
+    | "ExternFunc" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Instance.ExternFunc x))
+          ~delegate:function_encoding
+    | "ExternTable" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Instance.ExternTable x))
+          ~delegate:table_encoding
+    | "ExternMemory" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Instance.ExternMemory x))
+          ~delegate:memory_encoding
+    | "ExternGlobal" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Instance.ExternGlobal x))
+          ~delegate:global_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 let export_instance_encoding =
   tup2 ~flatten:false (name_encoding "name") (scope ["extern"] extern_encoding)
@@ -735,135 +925,201 @@ let frame_encoding =
 
 let admin_instr'_encoding =
   let open Eval in
-  tagged_union
-    string_tag
-    [
-      case
-        "From_block"
-        (tup2
-           ~flatten:false
-           block_label_encoding
-           (value [] Data_encoding.int32))
-        (function
-          | From_block (block, index) -> Some (block, index) | _ -> None)
-        (fun (block, index) -> From_block (block, index));
-      case
-        "Plain"
-        Source.(conv (fun i -> i.it) (at no_region) instruction_encoding)
-        (function Plain x -> Some x | _ -> None)
-        (fun x -> Plain x);
-      case
-        "Refer"
-        value_ref_encoding
-        (function Refer x -> Some x | _ -> None)
-        (fun x -> Refer x);
-      case
-        "Invoke"
-        function_encoding
-        (function Invoke x -> Some x | _ -> None)
-        (fun x -> Invoke x);
-      case
-        "Trapping"
-        (value [] Data_encoding.string)
-        (function Trapping x -> Some x | _ -> None)
-        (fun x -> Trapping x);
-      case
-        "Returning"
-        values_encoding
-        (function Returning x -> Some x | _ -> None)
-        (fun x -> Returning x);
-      case
-        "Breaking"
-        (tup2 ~flatten:false (value [] Data_encoding.int32) values_encoding)
-        (function
-          | Breaking (index, values) -> Some (index, values) | _ -> None)
-        (fun (index, values) -> Breaking (index, values));
-      case
-        "Table_init_meta"
-        (tup7
-           ~flatten:false
-           (value [] Data_encoding.int32)
-           value_ref_encoding
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Interpreter_encodings.Ast.var_encoding)
-           (value [] Interpreter_encodings.Ast.var_encoding))
-        (function
-          | Table_init_meta (idx, value, d, s, n, x, y) ->
-              Some (idx, value, d, s, n, x, y)
-          | _ -> None)
-        (fun (idx, value, d, s, n, x, y) ->
-          Table_init_meta (idx, value, d, s, n, x, y));
-      case
-        "Table_fill_meta"
-        (tup5
-           ~flatten:false
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           value_ref_encoding
-           (value [] Interpreter_encodings.Ast.var_encoding))
-        (function
-          | Table_fill_meta (idx, i, n, r, x) -> Some (idx, i, n, r, x)
-          | _ -> None)
-        (fun (idx, i, n, r, x) -> Table_fill_meta (idx, i, n, r, x));
-      case
-        "Table_copy_meta"
-        (tup7
-           ~flatten:false
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Interpreter_encodings.Ast.var_encoding)
-           (value [] Interpreter_encodings.Ast.var_encoding)
-           (value [] Data_encoding.bool))
-        (function
-          | Table_copy_meta (idx, d, s, n, x, y, case) ->
-              Some (idx, d, s, n, x, y, case)
-          | _ -> None)
-        (fun (idx, d, s, n, x, y, case) ->
-          Table_copy_meta (idx, d, s, n, x, y, case));
-      case
-        "Memory_init_meta"
-        (tup6
-           ~flatten:false
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Interpreter_encodings.Ast.var_encoding))
-        (function
-          | Memory_init_meta (idx, d, b, n, s, x) -> Some (idx, d, b, n, s, x)
-          | _ -> None)
-        (fun (idx, d, b, n, s, x) -> Memory_init_meta (idx, d, b, n, s, x));
-      case
-        "Memory_fill_meta"
-        (tup4
-           ~flatten:false
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Interpreter_encodings.Values.num_encoding)
-           (value [] Data_encoding.int32))
-        (function
-          | Memory_fill_meta (idx, i, k, n) -> Some (idx, i, k, n) | _ -> None)
-        (fun (idx, i, k, n) -> Memory_fill_meta (idx, i, k, n));
-      case
-        "Memory_copy_meta"
-        (tup5
-           ~flatten:false
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.int32)
-           (value [] Data_encoding.bool))
-        (function
-          | Memory_copy_meta (idx, d, s, n, case) -> Some (idx, d, s, n, case)
-          | _ -> None)
-        (fun (idx, d, s, n, case) -> Memory_copy_meta (idx, d, s, n, case));
-    ]
+  let from_block_encoding =
+    tup2 ~flatten:false block_label_encoding (value [] Data_encoding.int32)
+  in
+  let plain_encoding =
+    Source.(conv (fun i -> i.it) (at no_region) instruction_encoding)
+  in
+  let trapping_encoding = value [] Data_encoding.string in
+  let breaking_encoding =
+    tup2 ~flatten:false (value [] Data_encoding.int32) values_encoding
+  in
+  let table_init_meta_encoding =
+    tup7
+      ~flatten:false
+      (value [] Data_encoding.int32)
+      value_ref_encoding
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Interpreter_encodings.Ast.var_encoding)
+      (value [] Interpreter_encodings.Ast.var_encoding)
+  in
+  let table_fill_meta_encoding =
+    tup5
+      ~flatten:false
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      value_ref_encoding
+      (value [] Interpreter_encodings.Ast.var_encoding)
+  in
+  let table_copy_meta_encoding =
+    tup7
+      ~flatten:false
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Interpreter_encodings.Ast.var_encoding)
+      (value [] Interpreter_encodings.Ast.var_encoding)
+      (value [] Data_encoding.bool)
+  in
+  let memory_init_meta_encoding =
+    tup6
+      ~flatten:false
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Interpreter_encodings.Ast.var_encoding)
+  in
+  let memory_fill_meta_encoding =
+    tup4
+      ~flatten:false
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Interpreter_encodings.Values.num_encoding)
+      (value [] Data_encoding.int32)
+  in
+  let memory_copy_meta_encoding =
+    tup5
+      ~flatten:false
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.int32)
+      (value [] Data_encoding.bool)
+  in
+  let select_encode = function
+    | From_block (block, index) ->
+        destruction
+          ~tag:"From_block"
+          ~res:(Lwt.return (block, index))
+          ~delegate:from_block_encoding
+    | Plain x ->
+        destruction ~tag:"Plain" ~res:(Lwt.return x) ~delegate:plain_encoding
+    | Refer x ->
+        destruction
+          ~tag:"Refer"
+          ~res:(Lwt.return x)
+          ~delegate:value_ref_encoding
+    | Invoke x ->
+        destruction
+          ~tag:"Invoke"
+          ~res:(Lwt.return x)
+          ~delegate:function_encoding
+    | Trapping x ->
+        destruction
+          ~tag:"Trapping"
+          ~res:(Lwt.return x)
+          ~delegate:trapping_encoding
+    | Returning x ->
+        destruction
+          ~tag:"Returning"
+          ~res:(Lwt.return x)
+          ~delegate:values_encoding
+    | Breaking (index, values) ->
+        destruction
+          ~tag:"Breaking"
+          ~res:(Lwt.return (index, values))
+          ~delegate:breaking_encoding
+    | Table_init_meta (idx, v, d, s, n, x, y) ->
+        destruction
+          ~tag:"Table_init_meta"
+          ~res:(Lwt.return (idx, v, d, s, n, x, y))
+          ~delegate:table_init_meta_encoding
+    | Table_fill_meta (idx, i, n, r, x) ->
+        destruction
+          ~tag:"Table_fill_meta"
+          ~res:(Lwt.return (idx, i, n, r, x))
+          ~delegate:table_fill_meta_encoding
+    | Table_copy_meta (idx, d, s, n, x, y, case) ->
+        destruction
+          ~tag:"Table_copy_meta"
+          ~res:(Lwt.return (idx, d, s, n, x, y, case))
+          ~delegate:table_copy_meta_encoding
+    | Memory_init_meta (idx, d, b, n, s, x) ->
+        destruction
+          ~tag:"Memory_init_meta"
+          ~res:(Lwt.return (idx, d, b, n, s, x))
+          ~delegate:memory_init_meta_encoding
+    | Memory_fill_meta (idx, i, k, n) ->
+        destruction
+          ~tag:"Memory_fill_meta"
+          ~res:(Lwt.return (idx, i, k, n))
+          ~delegate:memory_fill_meta_encoding
+    | Memory_copy_meta (idx, d, s, n, case) ->
+        destruction
+          ~tag:"Memory_copy_meta"
+          ~res:(Lwt.return (idx, d, s, n, case))
+          ~delegate:memory_copy_meta_encoding
+  and select_decode = function
+    | "From_block" ->
+        decoding_branch
+          ~extract:(fun (block, index) ->
+            Lwt.return (From_block (block, index)))
+          ~delegate:from_block_encoding
+    | "Plain" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Plain x))
+          ~delegate:plain_encoding
+    | "Refer" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Refer x))
+          ~delegate:value_ref_encoding
+    | "Invoke" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Invoke x))
+          ~delegate:function_encoding
+    | "Trapping" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Trapping x))
+          ~delegate:trapping_encoding
+    | "Returning" ->
+        decoding_branch
+          ~extract:(fun x -> Lwt.return (Returning x))
+          ~delegate:values_encoding
+    | "Breaking" ->
+        decoding_branch
+          ~extract:(fun (index, values) ->
+            Lwt.return (Breaking (index, values)))
+          ~delegate:breaking_encoding
+    | "Table_init_meta" ->
+        decoding_branch
+          ~extract:(fun (idx, value, d, s, n, x, y) ->
+            Lwt.return @@ Table_init_meta (idx, value, d, s, n, x, y))
+          ~delegate:table_init_meta_encoding
+    | "Table_fill_meta" ->
+        decoding_branch
+          ~extract:(fun (idx, i, n, r, x) ->
+            Lwt.return @@ Table_fill_meta (idx, i, n, r, x))
+          ~delegate:table_fill_meta_encoding
+    | "Table_copy_meta" ->
+        decoding_branch
+          ~extract:(fun (idx, d, s, n, x, y, case) ->
+            Lwt.return @@ Table_copy_meta (idx, d, s, n, x, y, case))
+          ~delegate:table_copy_meta_encoding
+    | "Memory_init_meta" ->
+        decoding_branch
+          ~extract:(fun (idx, d, b, n, s, x) ->
+            Lwt.return @@ Memory_init_meta (idx, d, b, n, s, x))
+          ~delegate:memory_init_meta_encoding
+    | "Memory_fill_meta" ->
+        decoding_branch
+          ~extract:(fun (idx, i, k, n) ->
+            Lwt.return @@ Memory_fill_meta (idx, i, k, n))
+          ~delegate:memory_fill_meta_encoding
+    | "Memory_copy_meta" ->
+        decoding_branch
+          ~extract:(fun (idx, d, s, n, case) ->
+            Lwt.return @@ Memory_copy_meta (idx, d, s, n, case))
+          ~delegate:memory_copy_meta_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 let admin_instr_encoding =
   conv Source.(at no_region) Source.(fun x -> x.it) admin_instr'_encoding
@@ -934,30 +1190,47 @@ let ongoing_label_kont_encoding : Eval.ongoing Eval.label_kont t =
 type packed_label_kont = Packed : 'a Eval.label_kont -> packed_label_kont
 
 let packed_label_kont_encoding : packed_label_kont t =
-  tagged_union
-    string_tag
-    [
-      case
-        "Label_stack"
-        (tup2
-           ~flatten:true
-           (scope ["top"] label_encoding)
-           (lazy_vector_encoding "rst" label_encoding))
-        (function
-          | Packed (Label_stack (label, stack)) -> Some (label, stack)
-          | _ -> None)
-        (fun (label, stack) -> Packed (Label_stack (label, stack)));
-      case
-        "Label_result"
-        values_encoding
-        (function Packed (Label_result vs0) -> Some vs0 | _ -> None)
-        (fun vs0 -> Packed (Label_result vs0));
-      case
-        "Label_trapped"
-        (value [] Data_encoding.string)
-        (function Packed (Label_trapped msg) -> Some msg.it | _ -> None)
-        (fun msg -> Packed (Label_trapped Source.(msg @@ no_region)));
-    ]
+  let label_stack_encoding =
+    tup2
+      ~flatten:true
+      (scope ["top"] label_encoding)
+      (lazy_vector_encoding "rst" label_encoding)
+  in
+  let label_trapped_encoding = value [] Data_encoding.string in
+  let select_encode = function
+    | Packed (Label_stack (label, stack)) ->
+        destruction
+          ~tag:"Label_stack"
+          ~res:(Lwt.return (label, stack))
+          ~delegate:label_stack_encoding
+    | Packed (Label_result vs0) ->
+        destruction
+          ~tag:"Label_result"
+          ~res:(Lwt.return vs0)
+          ~delegate:values_encoding
+    | Packed (Label_trapped msg) ->
+        destruction
+          ~tag:"Label_trapped"
+          ~res:(Lwt.return msg.it)
+          ~delegate:label_trapped_encoding
+  and select_decode = function
+    | "Label_stack" ->
+        decoding_branch
+          ~extract:(fun (label, stack) ->
+            Lwt.return (Packed (Label_stack (label, stack))))
+          ~delegate:label_stack_encoding
+    | "Label_result" ->
+        decoding_branch
+          ~extract:(fun vs0 -> Lwt.return @@ Packed (Label_result vs0))
+          ~delegate:values_encoding
+    | "Label_trapped" ->
+        decoding_branch
+          ~extract:(fun msg ->
+            Lwt.return @@ Packed (Label_trapped Source.(msg @@ no_region)))
+          ~delegate:label_trapped_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_decode ~select_encode
 
 let ongoing_frame_stack_encoding =
   conv
@@ -988,200 +1261,292 @@ let packed_frame_stack_encoding =
        (scope ["label_kont"] packed_label_kont_encoding))
 
 let invoke_step_kont_encoding =
-  tagged_union
-    string_tag
-    [
-      case
-        "Inv_start"
-        (tup3
-           ~flatten:true
-           (scope ["func"] function_encoding)
-           (scope ["values"] values_encoding)
-           (lazy_vector_encoding "instructions" admin_instr_encoding))
-        (function
-          | Eval.Inv_start {func; code = vs, es} -> Some (func, vs, es)
-          | _ -> None)
-        (fun (func, vs, es) -> Inv_start {func; code = (vs, es)});
-      case
-        "Inv_prepare_locals"
-        (tup7
-           ~flatten:true
-           (value ["arity"] Data_encoding.int32)
-           (lazy_vector_encoding "args" value_encoding)
-           (lazy_vector_encoding "values" value_encoding)
-           (lazy_vector_encoding "instructions" admin_instr_encoding)
-           (scope ["inst"] module_key_encoding)
-           (scope ["func"] func_encoding)
-           (scope
-              ["kont"]
-              (map_kont_encoding
-                 (lazy_vector_encoding
-                    "x"
-                    (value [] Interpreter_encodings.Types.value_type_encoding))
-                 (lazy_vector_encoding "y" value_encoding))))
-        (function
-          | Eval.Inv_prepare_locals
-              {arity; args; vs; instructions; inst; func; locals_kont} ->
-              Some (arity, args, vs, instructions, inst, func, locals_kont)
-          | _ -> None)
-        (fun (arity, args, vs, instructions, inst, func, locals_kont) ->
-          Inv_prepare_locals
-            {arity; args; vs; instructions; inst; func; locals_kont});
-      case
-        "Inv_prepare_args"
-        (tup7
-           ~flatten:true
-           (value ["arity"] Data_encoding.int32)
-           (lazy_vector_encoding "values" value_encoding)
-           (lazy_vector_encoding "instructions" admin_instr_encoding)
-           (scope ["inst"] module_key_encoding)
-           (scope ["func"] func_encoding)
-           (lazy_vector_encoding "locals" value_encoding)
-           (scope
-              ["kont"]
-              (map_kont_encoding
-                 (lazy_vector_encoding "1" value_encoding)
-                 (lazy_vector_encoding "2" value_encoding))))
-        (function
-          | Eval.Inv_prepare_args
-              {arity; vs; instructions; inst; func; locals; args_kont} ->
-              Some (arity, vs, instructions, inst, func, locals, args_kont)
-          | _ -> None)
-        (fun (arity, vs, instructions, inst, func, locals, args_kont) ->
-          Inv_prepare_args
-            {arity; vs; instructions; inst; func; locals; args_kont});
-      case
-        "Inv_concat"
-        (tup6
-           ~flatten:true
-           (value ["arity"] Data_encoding.int32)
-           (lazy_vector_encoding "values" value_encoding)
-           (lazy_vector_encoding "instructions" admin_instr_encoding)
-           (scope ["inst"] module_key_encoding)
-           (scope ["func"] func_encoding)
-           (scope
-              ["kont"]
-              (concat_kont_encoding (lazy_vector_encoding "2" value_encoding))))
-        (function
-          | Eval.Inv_concat {arity; vs; instructions; inst; func; concat_kont}
-            ->
-              Some (arity, vs, instructions, inst, func, concat_kont)
-          | _ -> None)
-        (fun (arity, vs, instructions, inst, func, concat_kont) ->
-          Inv_concat {arity; vs; instructions; inst; func; concat_kont});
-      case
-        "Inv_stop"
-        (tup3
-           ~flatten:true
-           (scope ["values"] values_encoding)
-           (lazy_vector_encoding "instructions" admin_instr_encoding)
-           (scope ["fresh_frame"] (option ongoing_frame_stack_encoding)))
-        (function
-          | Eval.Inv_stop {code = vs, es; fresh_frame} ->
-              Some (vs, es, fresh_frame)
-          | _ -> None)
-        (fun (vs, es, fresh_frame) -> Inv_stop {code = (vs, es); fresh_frame});
-    ]
+  let inv_start_encoding =
+    tup3
+      ~flatten:true
+      (scope ["func"] function_encoding)
+      (scope ["values"] values_encoding)
+      (lazy_vector_encoding "instructions" admin_instr_encoding)
+  in
+  let inv_prepare_locals_encoding =
+    tup7
+      ~flatten:true
+      (value ["arity"] Data_encoding.int32)
+      (lazy_vector_encoding "args" value_encoding)
+      (lazy_vector_encoding "values" value_encoding)
+      (lazy_vector_encoding "instructions" admin_instr_encoding)
+      (scope ["inst"] module_key_encoding)
+      (scope ["func"] func_encoding)
+      (scope
+         ["kont"]
+         (map_kont_encoding
+            (lazy_vector_encoding
+               "x"
+               (value [] Interpreter_encodings.Types.value_type_encoding))
+            (lazy_vector_encoding "y" value_encoding)))
+  in
+  let inv_prepare_args_encoding =
+    tup7
+      ~flatten:true
+      (value ["arity"] Data_encoding.int32)
+      (lazy_vector_encoding "values" value_encoding)
+      (lazy_vector_encoding "instructions" admin_instr_encoding)
+      (scope ["inst"] module_key_encoding)
+      (scope ["func"] func_encoding)
+      (lazy_vector_encoding "locals" value_encoding)
+      (scope
+         ["kont"]
+         (map_kont_encoding
+            (lazy_vector_encoding "1" value_encoding)
+            (lazy_vector_encoding "2" value_encoding)))
+  in
+  let inv_concat_encoding =
+    tup6
+      ~flatten:true
+      (value ["arity"] Data_encoding.int32)
+      (lazy_vector_encoding "values" value_encoding)
+      (lazy_vector_encoding "instructions" admin_instr_encoding)
+      (scope ["inst"] module_key_encoding)
+      (scope ["func"] func_encoding)
+      (scope
+         ["kont"]
+         (concat_kont_encoding (lazy_vector_encoding "2" value_encoding)))
+  in
+  let inv_stop_encoding =
+    tup3
+      ~flatten:true
+      (scope ["values"] values_encoding)
+      (lazy_vector_encoding "instructions" admin_instr_encoding)
+      (scope ["fresh_frame"] (option ongoing_frame_stack_encoding))
+  in
+  let select_encode = function
+    | Eval.Inv_start {func; code = vs, es} ->
+        destruction
+          ~tag:"Inv_start"
+          ~res:(Lwt.return (func, vs, es))
+          ~delegate:inv_start_encoding
+    | Eval.Inv_prepare_locals
+        {arity; args; vs; instructions; inst; func; locals_kont} ->
+        destruction
+          ~tag:"Inv_prepare_locals"
+          ~res:
+            (Lwt.return
+               (arity, args, vs, instructions, inst, func, locals_kont))
+          ~delegate:inv_prepare_locals_encoding
+    | Eval.Inv_prepare_args
+        {arity; vs; instructions; inst; func; locals; args_kont} ->
+        destruction
+          ~tag:"Inv_prepare_args"
+          ~res:
+            (Lwt.return
+               (arity, vs, instructions, inst, func, locals, args_kont))
+          ~delegate:inv_prepare_args_encoding
+    | Eval.Inv_concat {arity; vs; instructions; inst; func; concat_kont} ->
+        destruction
+          ~tag:"Inv_concat"
+          ~res:(Lwt.return (arity, vs, instructions, inst, func, concat_kont))
+          ~delegate:inv_concat_encoding
+    | Eval.Inv_stop {code = vs, es; fresh_frame} ->
+        destruction
+          ~tag:"Inv_stop"
+          ~res:(Lwt.return (vs, es, fresh_frame))
+          ~delegate:inv_stop_encoding
+  and select_decode = function
+    | "Inv_start" ->
+        decoding_branch
+          ~extract:(fun (func, vs, es) ->
+            Lwt.return @@ Eval.Inv_start {func; code = (vs, es)})
+          ~delegate:inv_start_encoding
+    | "Inv_prepare_locals" ->
+        decoding_branch
+          ~extract:
+            (fun (arity, args, vs, instructions, inst, func, locals_kont) ->
+            Lwt.return
+            @@ Eval.Inv_prepare_locals
+                 {arity; args; vs; instructions; inst; func; locals_kont})
+          ~delegate:inv_prepare_locals_encoding
+    | "Inv_prepare_args" ->
+        decoding_branch
+          ~extract:
+            (fun (arity, vs, instructions, inst, func, locals, args_kont) ->
+            Lwt.return
+            @@ Eval.Inv_prepare_args
+                 {arity; vs; instructions; inst; func; locals; args_kont})
+          ~delegate:inv_prepare_args_encoding
+    | "Inv_concat" ->
+        decoding_branch
+          ~extract:(fun (arity, vs, instructions, inst, func, concat_kont) ->
+            Lwt.return
+            @@ Eval.Inv_concat
+                 {arity; vs; instructions; inst; func; concat_kont})
+          ~delegate:inv_concat_encoding
+    | "Inv_stop" ->
+        decoding_branch
+          ~extract:(fun (vs, es, fresh_frame) ->
+            Lwt.return @@ Eval.Inv_stop {code = (vs, es); fresh_frame})
+          ~delegate:inv_stop_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 let label_step_kont_encoding =
-  tagged_union
-    string_tag
-    [
-      case
-        "LS_Start"
-        ongoing_label_kont_encoding
-        (function Eval.LS_Start label -> Some label | _ -> None)
-        (fun label -> LS_Start label);
-      case
-        "LS_Craft_frame"
-        (tup2
-           ~flatten:true
-           (scope ["label_kont"] ongoing_label_kont_encoding)
-           (scope ["invoke_kont"] invoke_step_kont_encoding))
-        (function Eval.LS_Craft_frame (l, i) -> Some (l, i) | _ -> None)
-        (fun (l, i) -> LS_Craft_frame (l, i));
-      case
-        "LS_Push_frame"
-        (tup2
-           ~flatten:true
-           (scope ["label_kont"] ongoing_label_kont_encoding)
-           (scope ["fresh_frame"] ongoing_frame_stack_encoding))
-        (function Eval.LS_Push_frame (l, i) -> Some (l, i) | _ -> None)
-        (fun (l, i) -> LS_Push_frame (l, i));
-      case
-        "LS_Consolidate_top"
-        (tup4
-           ~flatten:true
-           (scope ["label"] label_encoding)
-           (scope
-              ["kont"]
-              (concat_kont_encoding (lazy_vector_encoding' value_encoding)))
-           (lazy_vector_encoding "instructions" admin_instr_encoding)
-           (lazy_vector_encoding "labels-stack" label_encoding))
-        (function
-          | Eval.LS_Consolidate_top (l, k, es, s) -> Some (l, k, es, s)
-          | _ -> None)
-        (fun (l, k, es, s) -> LS_Consolidate_top (l, k, es, s));
-      case
-        "LS_Modify_top"
-        packed_label_kont_encoding
-        (function Eval.LS_Modify_top l -> Some (Packed l) | _ -> None)
-        (fun (Packed l) -> LS_Modify_top l);
-    ]
+  let ls_craft_frame_encoding =
+    tup2
+      ~flatten:true
+      (scope ["label_kont"] ongoing_label_kont_encoding)
+      (scope ["invoke_kont"] invoke_step_kont_encoding)
+  in
+  let ls_push_frame_encoding =
+    tup2
+      ~flatten:true
+      (scope ["label_kont"] ongoing_label_kont_encoding)
+      (scope ["fresh_frame"] ongoing_frame_stack_encoding)
+  in
+  let ls_consolidate_top_encoding =
+    tup4
+      ~flatten:true
+      (scope ["label"] label_encoding)
+      (scope
+         ["kont"]
+         (concat_kont_encoding (lazy_vector_encoding' value_encoding)))
+      (lazy_vector_encoding "instructions" admin_instr_encoding)
+      (lazy_vector_encoding "labels-stack" label_encoding)
+  in
+  let select_encode = function
+    | Eval.LS_Start label ->
+        destruction
+          ~tag:"LS_Start"
+          ~res:(Lwt.return label)
+          ~delegate:ongoing_label_kont_encoding
+    | Eval.LS_Craft_frame (l, i) ->
+        destruction
+          ~tag:"LS_Craft_frame"
+          ~res:(Lwt.return (l, i))
+          ~delegate:ls_craft_frame_encoding
+    | Eval.LS_Push_frame (l, i) ->
+        destruction
+          ~tag:"LS_Push_frame"
+          ~res:(Lwt.return (l, i))
+          ~delegate:ls_push_frame_encoding
+    | Eval.LS_Consolidate_top (l, k, es, s) ->
+        destruction
+          ~tag:"LS_Consolidate_top"
+          ~res:(Lwt.return (l, k, es, s))
+          ~delegate:ls_consolidate_top_encoding
+    | Eval.LS_Modify_top l ->
+        destruction
+          ~tag:"LS_Modify_top"
+          ~res:(Lwt.return (Packed l))
+          ~delegate:packed_label_kont_encoding
+  and select_decode = function
+    | "LS_Start" ->
+        decoding_branch
+          ~extract:(fun label -> Lwt.return @@ Eval.LS_Start label)
+          ~delegate:ongoing_label_kont_encoding
+    | "LS_Craft_frame" ->
+        decoding_branch
+          ~extract:(fun (l, i) -> Lwt.return @@ Eval.LS_Craft_frame (l, i))
+          ~delegate:ls_craft_frame_encoding
+    | "LS_Push_frame" ->
+        decoding_branch
+          ~extract:(fun (l, i) -> Lwt.return @@ Eval.LS_Push_frame (l, i))
+          ~delegate:ls_push_frame_encoding
+    | "LS_Consolidate_top" ->
+        decoding_branch
+          ~extract:(fun (l, k, es, s) ->
+            Lwt.return @@ Eval.LS_Consolidate_top (l, k, es, s))
+          ~delegate:ls_consolidate_top_encoding
+    | "LS_Modify_top" ->
+        decoding_branch
+          ~extract:(fun (Packed l) -> Lwt.return @@ Eval.LS_Modify_top l)
+          ~delegate:packed_label_kont_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 let step_kont_encoding =
-  tagged_union
-    string_tag
-    [
-      case
-        "SK_Start"
-        (tup2
-           ~flatten:true
-           (scope ["top"] packed_frame_stack_encoding)
-           (lazy_vector_encoding "rst" ongoing_frame_stack_encoding))
-        (function
-          | Eval.SK_Start (f, rst) -> Some (Packed_fs f, rst) | _ -> None)
-        (fun (Packed_fs f, rst) -> SK_Start (f, rst));
-      case
-        "SK_Next"
-        (tup3
-           ~flatten:true
-           (scope ["top"] packed_frame_stack_encoding)
-           (lazy_vector_encoding "rst" ongoing_frame_stack_encoding)
-           (scope ["kont"] label_step_kont_encoding))
-        (function
-          | Eval.SK_Next (f, r, k) -> Some (Packed_fs f, r, k) | _ -> None)
-        (fun (Packed_fs f, r, k) -> SK_Next (f, r, k));
-      case
-        "SK_Consolidate_label_result"
-        (tup6
-           ~flatten:true
-           (scope ["top-frame"] ongoing_frame_stack_encoding)
-           (lazy_vector_encoding "frames-stack" ongoing_frame_stack_encoding)
-           (scope ["top-label"] label_encoding)
-           (scope
-              ["kont"]
-              (concat_kont_encoding (lazy_vector_encoding' value_encoding)))
-           (lazy_vector_encoding "instructions" admin_instr_encoding)
-           (lazy_vector_encoding "labels-stack" label_encoding))
-        (function
-          | Eval.SK_Consolidate_label_result
-              (frame', stack, label, vs, es, lstack) ->
-              Some (frame', stack, label, vs, es, lstack)
-          | _ -> None)
-        (fun (frame', stack, label, vs, es, lstack) ->
-          SK_Consolidate_label_result (frame', stack, label, vs, es, lstack));
-      case
-        "SK_Result"
-        values_encoding
-        (function Eval.SK_Result vs -> Some vs | _ -> None)
-        (fun vs -> SK_Result vs);
-      case
-        "SK_Trapped"
-        (value [] Data_encoding.string)
-        (function Eval.SK_Trapped msg -> Some msg.it | _ -> None)
-        (fun msg -> SK_Trapped Source.(msg @@ no_region));
-    ]
+  let sk_start_encoding =
+    tup2
+      ~flatten:true
+      (scope ["top"] packed_frame_stack_encoding)
+      (lazy_vector_encoding "rst" ongoing_frame_stack_encoding)
+  in
+  let sk_next_encoding =
+    tup3
+      ~flatten:true
+      (scope ["top"] packed_frame_stack_encoding)
+      (lazy_vector_encoding "rst" ongoing_frame_stack_encoding)
+      (scope ["kont"] label_step_kont_encoding)
+  in
+  let sk_consolidate_label_result_encoding =
+    tup6
+      ~flatten:true
+      (scope ["top-frame"] ongoing_frame_stack_encoding)
+      (lazy_vector_encoding "frames-stack" ongoing_frame_stack_encoding)
+      (scope ["top-label"] label_encoding)
+      (scope
+         ["kont"]
+         (concat_kont_encoding (lazy_vector_encoding' value_encoding)))
+      (lazy_vector_encoding "instructions" admin_instr_encoding)
+      (lazy_vector_encoding "labels-stack" label_encoding)
+  in
+  let sk_trapped_encoding = value [] Data_encoding.string in
+  let select_encode = function
+    | Eval.SK_Start (f, rst) ->
+        destruction
+          ~tag:"SK_Start"
+          ~res:(Lwt.return (Packed_fs f, rst))
+          ~delegate:sk_start_encoding
+    | Eval.SK_Next (f, r, k) ->
+        destruction
+          ~tag:"SK_Next"
+          ~res:(Lwt.return (Packed_fs f, r, k))
+          ~delegate:sk_next_encoding
+    | Eval.SK_Consolidate_label_result (frame', stack, label, vs, es, lstack) ->
+        destruction
+          ~tag:"SK_Consolidate_label_result"
+          ~res:(Lwt.return (frame', stack, label, vs, es, lstack))
+          ~delegate:sk_consolidate_label_result_encoding
+    | Eval.SK_Result vs ->
+        destruction
+          ~tag:"SK_Result"
+          ~res:(Lwt.return vs)
+          ~delegate:values_encoding
+    | Eval.SK_Trapped msg ->
+        destruction
+          ~tag:"SK_Trapped"
+          ~res:(Lwt.return msg.it)
+          ~delegate:sk_trapped_encoding
+  and select_decode = function
+    | "SK_Start" ->
+        decoding_branch
+          ~extract:(fun (Packed_fs f, rst) ->
+            Lwt.return @@ Eval.SK_Start (f, rst))
+          ~delegate:sk_start_encoding
+    | "SK_Next" ->
+        decoding_branch
+          ~extract:(fun (Packed_fs f, r, k) ->
+            Lwt.return @@ Eval.SK_Next (f, r, k))
+          ~delegate:sk_next_encoding
+    | "SK_Consolidate_label_result" ->
+        decoding_branch
+          ~extract:(fun (frame', stack, label, vs, es, lstack) ->
+            Lwt.return
+            @@ Eval.SK_Consolidate_label_result
+                 (frame', stack, label, vs, es, lstack))
+          ~delegate:sk_consolidate_label_result_encoding
+    | "SK_Result" ->
+        decoding_branch
+          ~extract:(fun vs -> Lwt.return @@ Eval.SK_Result vs)
+          ~delegate:values_encoding
+    | "SK_Trapped" ->
+        decoding_branch
+          ~extract:(fun msg ->
+            Lwt.return @@ Eval.SK_Trapped Source.(msg @@ no_region))
+          ~delegate:sk_trapped_encoding
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 let index_vector_encoding =
   conv

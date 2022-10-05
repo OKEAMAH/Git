@@ -91,69 +91,98 @@ struct
 
     let tick_state_encoding =
       let open Tree_encoding in
-      tagged_union
+      let link_encoding =
+        tup3
+          ~flatten:true
+          (scope ["ast_module"]
+          @@ Parsing.(no_region_encoding Module.module_encoding))
+          (scope
+             ["externs"]
+             (int32_lazy_vector
+                (value [] Data_encoding.int32)
+                Wasm_encoding.extern_encoding))
+          (value ["imports_offset"] Data_encoding.int32)
+      in
+      let init_encoding =
+        tup4
+          ~flatten:true
+          (scope ["self"] Wasm_encoding.module_key_encoding)
+          (scope ["ast_module"]
+          @@ Parsing.(no_region_encoding Module.module_encoding))
+          (scope ["init_kont"] (Init_encodings.init_kont_encoding ~host_funcs))
+          (scope ["modules"] Wasm_encoding.module_instances_encoding)
+      in
+      let eval_encoding = Wasm_encoding.config_encoding ~host_funcs in
+      let stuck_encoding = value [] Wasm_pvm_errors.encoding in
+      let snapshot_encoding = value [] Data_encoding.unit in
+      let select_encode = function
+        | Decode m ->
+            destruction
+              ~tag:"decode"
+              ~res:(Lwt.return m)
+              ~delegate:Parsing.Decode.encoding
+        | Link {ast_module; externs; imports_offset} ->
+            destruction
+              ~tag:"link"
+              ~res:(Lwt.return (ast_module, externs, imports_offset))
+              ~delegate:link_encoding
+        | Init {self; ast_module; init_kont; module_reg} ->
+            destruction
+              ~tag:"init"
+              ~res:(Lwt.return (self, ast_module, init_kont, module_reg))
+              ~delegate:init_encoding
+        | Eval eval_config ->
+            destruction
+              ~tag:"eval"
+              ~res:(Lwt.return eval_config)
+              ~delegate:eval_encoding
+        | Stuck err ->
+            destruction
+              ~tag:"stuck"
+              ~res:(Lwt.return err)
+              ~delegate:stuck_encoding
+        | Snapshot ->
+            destruction
+              ~tag:"snapshot"
+              ~res:(Lwt.return ())
+              ~delegate:snapshot_encoding
+      and select_decode = function
+        | "decode" ->
+            decoding_branch
+              ~extract:(fun m -> Lwt.return @@ Decode m)
+              ~delegate:Parsing.Decode.encoding
+        | "link" ->
+            decoding_branch
+              ~extract:(fun (ast_module, externs, imports_offset) ->
+                Lwt.return @@ Link {ast_module; externs; imports_offset})
+              ~delegate:link_encoding
+        | "init" ->
+            decoding_branch
+              ~extract:(fun (self, ast_module, init_kont, module_reg) ->
+                Lwt.return @@ Init {self; ast_module; init_kont; module_reg})
+              ~delegate:init_encoding
+        | "eval" ->
+            decoding_branch
+              ~extract:(fun eval_config -> Lwt.return (Eval eval_config))
+              ~delegate:eval_encoding
+        | "stuck" ->
+            decoding_branch
+              ~extract:(fun err -> Lwt.return (Stuck err))
+              ~delegate:stuck_encoding
+        | "snapshot" ->
+            decoding_branch
+              ~extract:(fun () -> Lwt.return Snapshot)
+              ~delegate:snapshot_encoding
+        | _ -> (* FIXME *) assert false
+      in
+      fast_tagged_union
         ~default:(fun () ->
           Decode
             (Tezos_webassembly_interpreter.Decode.initial_decode_kont
                ~name:wasm_main_module_name))
         (value [] Data_encoding.string)
-        [
-          case
-            "decode"
-            Parsing.Decode.encoding
-            (function Decode m -> Some m | _ -> None)
-            (fun m -> Decode m);
-          case
-            "link"
-            (tup3
-               ~flatten:true
-               (scope ["ast_module"]
-               @@ Parsing.(no_region_encoding Module.module_encoding))
-               (scope
-                  ["externs"]
-                  (int32_lazy_vector
-                     (value [] Data_encoding.int32)
-                     Wasm_encoding.extern_encoding))
-               (value ["imports_offset"] Data_encoding.int32))
-            (function
-              | Link {ast_module; externs; imports_offset} ->
-                  Some (ast_module, externs, imports_offset)
-              | _ -> None)
-            (fun (ast_module, externs, imports_offset) ->
-              Link {ast_module; externs; imports_offset});
-          case
-            "init"
-            (tup4
-               ~flatten:true
-               (scope ["self"] Wasm_encoding.module_key_encoding)
-               (scope ["ast_module"]
-               @@ Parsing.(no_region_encoding Module.module_encoding))
-               (scope
-                  ["init_kont"]
-                  (Init_encodings.init_kont_encoding ~host_funcs))
-               (scope ["modules"] Wasm_encoding.module_instances_encoding))
-            (function
-              | Init {self; ast_module; init_kont; module_reg} ->
-                  Some (self, ast_module, init_kont, module_reg)
-              | _ -> None)
-            (fun (self, ast_module, init_kont, module_reg) ->
-              Init {self; ast_module; init_kont; module_reg});
-          case
-            "eval"
-            (Wasm_encoding.config_encoding ~host_funcs)
-            (function Eval eval_config -> Some eval_config | _ -> None)
-            (fun eval_config -> Eval eval_config);
-          case
-            "stuck"
-            (value [] Wasm_pvm_errors.encoding)
-            (function Stuck err -> Some err | _ -> None)
-            (fun err -> Stuck err);
-          case
-            "snapshot"
-            (value [] Data_encoding.unit)
-            (function Snapshot -> Some () | _ -> None)
-            (fun () -> Snapshot);
-        ]
+        ~select_encode
+        ~select_decode
 
     let input_request_encoding =
       Tree_encoding.conv
