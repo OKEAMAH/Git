@@ -31,7 +31,7 @@
     Subject:      WASM PVM encoding tests for the tezos-scoru-wasm library
 *)
 
-open Tztest
+(* open Tztest *)
 open Tezos_scoru_wasm
 open Tezos_webassembly_interpreter
 module Contest = Tezos_context_memory.Context_binary
@@ -242,12 +242,10 @@ let error_state_check state state' =
 
 let tests =
   [
-    tztest
+    Test_encodings_util.make_test
       "Wasm_pvm_errors"
-      `Quick
-      (Test_encodings_util.make_test
-         ~print:print_error_state
-         (Tree_encoding.value [] Wasm_pvm_errors.encoding)
-         error_state_gen
-         error_state_check);
+      ~print:print_error_state
+      (Tree_encoding.value [] Wasm_pvm_errors.encoding)
+      error_state_gen
+      error_state_check;
   ]

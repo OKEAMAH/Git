@@ -64,18 +64,11 @@ let test_encode_decode enc value f =
 
 let encode_decode enc value = test_encode_decode enc value Lwt.return
 
-let qcheck ?count ?print gen f =
-  let open Lwt_result_syntax in
-  let test =
-    QCheck2.Test.make ?count ?print gen (fun x ->
-        Result.is_ok @@ Lwt_main.run (f x))
-  in
-  let res = QCheck_base_runner.run_tests ~verbose:true [test] in
-  if res = 0 then return_unit else failwith "QCheck tests failed"
+let qcheck ?count ?print:_ ~name gen f =
+  Tztest.tztest_qcheck2 ?count ~name gen (fun x -> f x)
 
-let make_test ?print encoding gen check () =
-  qcheck ?print gen (fun value ->
+let make_test ?print name encoding gen check =
+  qcheck ?print ~name gen (fun value ->
       let open Lwt_result_syntax in
       let*! value' = encode_decode encoding value in
-      let* res = check value value' in
-      if res then return_unit else fail ())
+      check value value')
