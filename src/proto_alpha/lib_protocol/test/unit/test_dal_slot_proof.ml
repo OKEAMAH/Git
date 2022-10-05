@@ -220,7 +220,8 @@ let confirmed_slot_on_genesis_confirmed_page_bad_page_proof dal () =
     ~check_produce:
       (failing_check_produce_result
          ~__LOC__
-         "Wrong page content for the given page index and slot commitment (page \
+         "Wrong page content for the given page index and slot commitment \
+          (page \
           data=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, \
           page id=(published_level: 11, slot_index: 0, page_index: 2), \
           commitment=sh1veuXUPvxu6SWCWtN5v2erwCQVc787gZbFT5LEbixWPLdzb8gemTzAoodnoxJ5HHU2rqu9Ph).")
@@ -242,46 +243,11 @@ let confirmed_slot_on_genesis_confirmed_page_bad_data_right_length dal () =
     ~check_produce:
       (failing_check_produce_result
          ~__LOC__
-         "Wrong page content for the given page index and slot commitment (page \
+         "Wrong page content for the given page index and slot commitment \
+          (page \
           data=yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, \
           page id=(published_level: 11, slot_index: 0, page_index: 0), \
           commitment=sh1veuXUPvxu6SWCWtN5v2erwCQVc787gZbFT5LEbixWPLdzb8gemTzAoodnoxJ5HHU2rqu9Ph).")
-
-(** Same as {!confirmed_slot_on_genesis_confirmed_page_bad_data_right_length}
-    but the data is too short. *)
-let confirmed_slot_on_genesis_confirmed_page_bad_data_short dal () =
-  let open Result_syntax in
-  helper_confirmed_slot_on_genesis
-    dal
-    ~level:(Raw_level_repr.succ level_ten)
-    ~mk_page_info:(fun dal slot poly ->
-      let custom_data =
-        Some
-          (fun ~default_char page_size ->
-            (* having less bytes than page size  *)
-            Some (Bytes.make (page_size - 1) default_char))
-      in
-      let* page_info, page_id = mk_page_info dal slot poly ~custom_data in
-      return (page_info, page_id))
-    ~check_produce:(failing_check_produce_result ~__LOC__ "TODO")
-
-(** Same as {!confirmed_slot_on_genesis_confirmed_page_bad_data_right_length}
-    but the data is too long. *)
-let confirmed_slot_on_genesis_confirmed_page_bad_data_long dal () =
-  let open Result_syntax in
-  helper_confirmed_slot_on_genesis
-    dal
-    ~level:(Raw_level_repr.succ level_ten)
-    ~mk_page_info:(fun dal slot polynomial ->
-      let custom_data =
-        Some
-          (fun ~default_char page_size ->
-            (* having more bytes than page size  *)
-            Some (Bytes.make (page_size + 1) default_char))
-      in
-      let* page_info, page_id = mk_page_info dal slot polynomial ~custom_data in
-      return (page_info, page_id))
-    ~check_produce:(failing_check_produce_result ~__LOC__ "TODO")
 
 (* Variants of the tests above: Construct/verify proofs that attempt to
    unconfirm pages on top of a (confirmed) slot added in genesis_history skip
@@ -409,18 +375,7 @@ let tests =
         confirmed_slot_on_genesis_confirmed_page_bad_page_proof;
       tztest
         "Confirmed slot on top of genesis: confirmed page with bad data "
-        confirmed_slot_on_genesis_confirmed_page_bad_data_right_length
-      (* (* TODO/DAL: https://gitlab.com/tezos/tezos/-/issues/3888
-         uncomment these tests once the checks suggested in the issue above are
-         done.
-         *)
-           tztest
-             "Confirmed slot on top of genesis: confirmed page with short data "
-             confirmed_slot_on_genesis_confirmed_page_bad_data_short;
-           tztest
-             "Confirmed slot on top of genesis: confirmed page with long data "
-             confirmed_slot_on_genesis_confirmed_page_bad_data_long;
-      *);
+        confirmed_slot_on_genesis_confirmed_page_bad_data_right_length;
     ]
   in
   let confirmed_slot_on_genesis_unconfirmed_page_tests =
