@@ -6,6 +6,8 @@ octez-baker-PtLimaPt
 octez-baker-alpha
 octez-client
 octez-codec
+octez-dac-client-alpha
+octez-dac-node-alpha
 octez-dal-node
 octez-node
 octez-protocol-compiler

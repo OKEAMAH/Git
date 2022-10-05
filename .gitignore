@@ -54,6 +54,7 @@ __pycache__
 /octez-sc-rollup-client-*
 /tezos-dal-node
 /octez-dal-node
+/octez-dac-node-*
 /octez-binaries
 
 /src/proto_*/parameters/*-parameters.json

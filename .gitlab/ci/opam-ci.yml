@@ -3,6 +3,10 @@
 
 # Ignoring package internal-devtools, it only contains tests or private targets
 
+# Ignoring package octez-dac-client-alpha, it only contains tests or private targets
+
+# Ignoring package octez-dac-node-alpha, it only contains tests or private targets
+
 # Ignoring package octez-dal-node, it only contains tests or private targets
 
 # Ignoring package octez-proxy-server, it only contains tests or private targets
@@ -769,6 +773,13 @@ opam:tezos-crypto-dal:
   variables:
     package: tezos-crypto-dal
 
+opam:tezos-dac-alpha:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_3
+  variables:
+    package: tezos-dac-alpha
+
 opam:tezos-dal-015-PtLimaPt:
   extends:
     - .opam_template
@@ -800,7 +811,7 @@ opam:tezos-embedded-protocol-001-PtCJ7pwo:
 opam:tezos-embedded-protocol-002-PsYLVpVv:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_3
+    - .rules_template__trigger_opam_batch_4
   variables:
     package: tezos-embedded-protocol-002-PsYLVpVv
 
@@ -1206,7 +1217,7 @@ opam:tezos-protocol-013-PtJakart:
 opam:tezos-protocol-014-PtKathma:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_5
+    - .rules_template__trigger_opam_batch_6
   variables:
     package: tezos-protocol-014-PtKathma
 
@@ -1297,7 +1308,7 @@ opam:tezos-protocol-plugin-009-PsFLoren-registerer:
 opam:tezos-protocol-plugin-010-PtGRANAD:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_4
+    - .rules_template__trigger_opam_batch_5
   variables:
     package: tezos-protocol-plugin-010-PtGRANAD
 
@@ -1668,6 +1679,6 @@ opam:tezt-performance-regression:
 opam:tezt-tezos:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_6
+    - .rules_template__trigger_opam_batch_7
   variables:
     package: tezt-tezos
