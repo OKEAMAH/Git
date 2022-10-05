@@ -38,7 +38,9 @@ open Script_typed_ir
 open Script_ir_translator
 open Local_gas_counter
 
-type error += Rollup_invalid_transaction_amount
+type error +=
+  | Rollup_invalid_transaction_amount
+  | Transfer_ticket_invalid_transaction_amount
 
 let () =
   register_error_kind
@@ -53,7 +55,20 @@ let () =
       Format.pp_print_string ppf "Transaction amount to a rollup must be zero.")
     Data_encoding.unit
     (function Rollup_invalid_transaction_amount -> Some () | _ -> None)
-    (fun () -> Rollup_invalid_transaction_amount)
+    (fun () -> Rollup_invalid_transaction_amount) ;
+  register_error_kind
+    `Permanent
+    ~id:"operation.transfer_ticket_invalid_transaction_amount"
+    ~title:"Transaction amount while sending tickets must be zero"
+    ~description:"Sending Tez along with tickets is not allowed at the moment."
+    ~pp:(fun ppf () ->
+      Format.pp_print_string
+        ppf
+        "Transaction amount while sending tickets must be zero.")
+    Data_encoding.unit
+    (function
+      | Transfer_ticket_invalid_transaction_amount -> Some () | _ -> None)
+    (fun () -> Transfer_ticket_invalid_transaction_amount)
 
 (*
 
@@ -603,6 +618,10 @@ let transfer (type t) (ctxt, sc) gas amount location
       let () = parameters in
       return (Transaction_to_implicit {destination; amount}, None, ctxt)
   | Typed_implicit_with_ticket {destination; ticket_ty} ->
+      error_unless
+        Tez.(amount = zero)
+        Transfer_ticket_invalid_transaction_amount
+      >>?= fun () ->
       unparse_data ctxt Optimized ticket_ty parameters
       >>=? fun (unparsed_ticket, ctxt) ->
       return

@@ -193,7 +193,47 @@ let test_send_tickets_to_implicit_account =
       unit
   | _ -> unit
 
+(* This test originates one contract which forge and send tickets to the address
+   passed in the parameter. In this test, the receiver of the ticket is an
+   implicit account *)
+let test_send_tickets_to_implicit_account_non_zero_amount =
+  Protocol.register_regression_test
+    ~__FILE__
+    ~title:
+      "Send tickets from contracts to implicit accounts with some Tez along \
+       must fail"
+    ~tags:["client"; "michelson"]
+  @@ fun protocol ->
+  match protocol with
+  | Protocol.Alpha ->
+      let* client = Client.init_mockup ~protocol () in
+      let* ticketer =
+        Client.originate_contract
+          ~alias:"ticketer"
+          ~amount:Tez.zero
+          ~src:Constant.bootstrap1.alias
+          ~prg:(protocol_dependent_path protocol "tickets_send_with_tez.tz")
+          ~init:"Unit"
+          ~burn_cap:Tez.one
+          ~hooks
+          client
+      in
+      let* () =
+        Client.transfer
+          ~burn_cap:Tez.one
+          ~amount:Tez.zero
+          ~giver:Constant.bootstrap1.alias
+          ~receiver:ticketer
+          ~arg:(sf {|"%s"|} Constant.bootstrap1.public_key_hash)
+          ~hooks
+          ~expect_failure:true
+          client
+      in
+      unit
+  | _ -> unit
+
 let register ~protocols =
   test_create_and_remove_tickets protocols ;
   test_send_tickets_in_big_map protocols ;
-  test_send_tickets_to_implicit_account protocols
+  test_send_tickets_to_implicit_account protocols ;
+  test_send_tickets_to_implicit_account_non_zero_amount protocols
