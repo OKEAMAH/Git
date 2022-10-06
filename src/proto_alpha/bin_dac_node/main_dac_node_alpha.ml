@@ -51,14 +51,67 @@ let data_dir_arg =
     ~default
     Client_proto_args.string_parameter
 
+(* DAC/TODO: <insert issue here>.
+   The service for handling storage and publishing of reveal messages
+   should be separate from the service that imports the reveal data
+   into a rollup node data directory.
+*)
+let sc_rollup_node_data_dir_arg =
+  let default = Configuration.default_sc_rollup_node_data_dir in
+  Clic.default_arg
+    ~long:"data-dir"
+    ~placeholder:"data-dir"
+    ~doc:
+      (Format.sprintf
+         "The directory where the Data Availability Committee saves reveal data.\n\
+         \          Must be the same directory where the rollup node uses for \
+          reading reveal data. Default value is %s"
+         default)
+    ~default
+    Client_proto_args.string_parameter
+
+let rpc_addr_arg =
+  let default = Configuration.default_rpc_addr in
+  Clic.default_arg
+    ~long:"rpc-addr"
+    ~placeholder:"rpc-address|ip"
+    ~doc:
+      (Format.sprintf
+         "The address the Data Availability Committee node listens to. Default \
+          value is %s"
+         default)
+    ~default
+    Client_proto_args.string_parameter
+
+let rpc_port_arg =
+  let default = Configuration.default_rpc_port |> string_of_int in
+  Clic.default_arg
+    ~long:"rpc-port"
+    ~placeholder:"rpc-port"
+    ~doc:
+      (Format.sprintf
+         "The port the Data Availability Committee node listens to. Default \
+          value is %s"
+         default)
+    ~default
+    Client_proto_args.int_parameter
+
 let config_init_command =
+  let open Lwt_result_syntax in
   let open Clic in
   command
     ~group
-    ~desc:"Run the DAC Node."
-    (args1 data_dir_arg)
-    (prefixes ["config; init"] @@ stop)
-    (fun _data_dir _cctxt -> return ())
+    ~desc:"Configure the smart-contract rollup node."
+    (args4 data_dir_arg rpc_addr_arg rpc_port_arg sc_rollup_node_data_dir_arg)
+    (prefixes ["init"; "config"; "saving"; "data"; "in"] @@ stop)
+    (fun (data_dir, rpc_addr, rpc_port, sc_rollup_node_data_dir) cctxt ->
+      let open Configuration in
+      let config = {data_dir; sc_rollup_node_data_dir; rpc_addr; rpc_port} in
+      save config >>=? fun () ->
+      cctxt#message
+        "Smart-contract rollup node configuration written in %s"
+        (filename config)
+      >>= fun _ -> return ())
 
 let run_command =
   let open Clic in
