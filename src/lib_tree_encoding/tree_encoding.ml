@@ -282,15 +282,17 @@ let case tag delegate probe extract =
     (fun x -> Option.map Lwt.return @@ probe x)
     (fun x -> Lwt.return @@ extract x)
 
-let tagged_union ?default {encode; decode} cases =
+let slow_tagged_union ?default {encode; decode} cases =
   let to_encode_case (Case {tag; delegate; probe; extract = _}) =
     E.case_lwt tag delegate.encode probe
   in
   let to_decode_case (Case {tag; delegate; extract; probe = _}) =
     D.case_lwt tag delegate.decode extract
   in
-  let encode = E.tagged_union encode (List.map to_encode_case cases) in
-  let decode = D.tagged_union ?default decode (List.map to_decode_case cases) in
+  let encode = E.slow_tagged_union encode (List.map to_encode_case cases) in
+  let decode =
+    D.slow_tagged_union ?default decode (List.map to_decode_case cases)
+  in
   {encode; decode}
 
 type _ destruction =

@@ -270,7 +270,7 @@ let build_snapshot_wasm_state_from_set_input
   (* Only serves to encode the `Snapshot` state. *)
   let state_encoding =
     Tree_encoding.(
-      tagged_union
+      slow_tagged_union
         (value [] Data_encoding.string)
         [
           case

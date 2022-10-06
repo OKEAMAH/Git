@@ -166,7 +166,7 @@ let case tag encode probe =
   let probe x = Option.map Lwt.return @@ probe x in
   case_lwt tag encode probe
 
-let tagged_union encode_tag cases =
+let slow_tagged_union encode_tag cases =
   Custom
     {
       encode =

@@ -222,7 +222,7 @@ val case : 'tag -> 'b t -> ('a -> 'b option) -> ('b -> 'a) -> ('tag, 'a) case
 val case_lwt :
   'tag -> 'b t -> ('a -> 'b Lwt.t option) -> ('b -> 'a Lwt.t) -> ('tag, 'a) case
 
-(** [tagged_union tag_enc cases] returns an encoder that use [tag_enc] for
+(** [slow_tagged_union tag_enc cases] returns an encoder that use [tag_enc] for
     encoding the value of a field [tag]. The encoder searches through the list
     of cases for a matching branch. When a matching branch is found, it uses
     its embedded encoder for the value. This function is used for constructing
@@ -230,7 +230,7 @@ val case_lwt :
 
     The [default] labeled argument can be provided to have a
     fallback in case the value is missing from the tree. *)
-val tagged_union :
+val slow_tagged_union :
   ?default:(unit -> 'a) -> 'tag t -> ('tag, 'a) case list -> 'a t
 
 (** [option enc] lifts the given encoding [enc] to one that can encode

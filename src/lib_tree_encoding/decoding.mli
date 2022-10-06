@@ -114,7 +114,7 @@ val case : 'tag -> 'b t -> ('b -> 'a) -> ('tag, 'a) case
     an [Lwt] value. *)
 val case_lwt : 'tag -> 'b t -> ('b -> 'a Lwt.t) -> ('tag, 'a) case
 
-(** [tagged_union ?default tag_dec cases] returns a decoder that use
+(** [slow_tagged_union ?default tag_dec cases] returns a decoder that use
     [tag_dec] for decoding the value of a field [tag]. The decoder
     searches through the list of cases for a matching branch. When a
     matching branch is found, it uses its embedded decoder for the
@@ -128,7 +128,7 @@ val case_lwt : 'tag -> 'b t -> ('b -> 'a Lwt.t) -> ('tag, 'a) case
 
     If an insufficient list of cases are provided, the resulting encoder may
     fail with a [No_tag_matched] error when [run].  *)
-val tagged_union :
+val slow_tagged_union :
   ?default:(unit -> 'a) -> 'tag t -> ('tag, 'a) case list -> 'a t
 
 (** [wrapped_tree] returns the [Tree.wrapped_tree] located at the prefix tree

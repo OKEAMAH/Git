@@ -150,7 +150,7 @@ type contact =
 
 let contact_enc ?default () =
   let open Tree_encoding in
-  tagged_union
+  slow_tagged_union
     ?default
     (value [] Data_encoding.string)
     [

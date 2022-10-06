@@ -95,7 +95,7 @@ val case : 'tag -> 'b t -> ('a -> 'b option) -> ('tag, 'a) case
     an [Lwt] on a successful match. *)
 val case_lwt : 'tag -> 'b t -> ('a -> 'b Lwt.t option) -> ('tag, 'a) case
 
-(** [tagged_union tag_enc cases] returns an encoder that uses [tag_enc] for
+(** [slow_tagged_union tag_enc cases] returns an encoder that uses [tag_enc] for
     encoding the value of a field [tag]. The encoder searches through the list
     of cases for a matching branch. When a matching branch is found, it
     applies its embedded encoder for the value. This function is used for
@@ -103,7 +103,7 @@ val case_lwt : 'tag -> 'b t -> ('a -> 'b Lwt.t option) -> ('tag, 'a) case
 
     If an insufficient list of cases are provided, the resulting encoder may
     fail with a [No_tag_matched] error when [run].  *)
-val tagged_union : 'tag t -> ('tag, 'a) case list -> 'a t
+val slow_tagged_union : 'tag t -> ('tag, 'a) case list -> 'a t
 
 (** [lwt enc] promotes the given encoder [enc] to one that can handle lwt
     values. *)

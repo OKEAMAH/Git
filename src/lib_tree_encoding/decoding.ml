@@ -190,7 +190,7 @@ let case_lwt tag decode extract = Case {tag; decode; extract}
 let case tag decode extract =
   case_lwt tag decode (fun x -> Lwt.return @@ extract x)
 
-let tagged_union ?default decode_tag cases =
+let slow_tagged_union ?default decode_tag cases =
   let tag_decoder = scope ["tag"] decode_tag in
   Custom
     {

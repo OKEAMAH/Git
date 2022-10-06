@@ -1062,18 +1062,23 @@ let label_encoding =
        (lazy_vector_encoding "instructions" admin_instr_encoding))
 
 let ongoing_label_kont_encoding : Eval.ongoing Eval.label_kont t =
-  tagged_union
-    string_tag
-    [
-      case
-        "Label_stack"
-        (tup2
-           ~flatten:true
-           (scope ["top"] label_encoding)
-           (lazy_vector_encoding "rst" label_encoding))
-        (function Eval.Label_stack (label, stack) -> Some (label, stack))
-        (fun (label, stack) -> Label_stack (label, stack));
-    ]
+  let delegate =
+    tup2
+      ~flatten:true
+      (scope ["top"] label_encoding)
+      (lazy_vector_encoding "rst" label_encoding)
+  in
+  let select_encode = function
+    | Eval.Label_stack (label, stack) ->
+        destruction ~tag:"Label_stack" ~res:(label, stack) ~delegate
+  and select_decode = function
+    | "Label_stack" ->
+        decoding_branch
+          ~extract:(fun (label, stack) -> Eval.Label_stack (label, stack))
+          ~delegate
+    | _ -> (* FIXME *) assert false
+  in
+  fast_tagged_union string_tag ~select_encode ~select_decode
 
 type packed_label_kont = Packed : 'a Eval.label_kont -> packed_label_kont
 
