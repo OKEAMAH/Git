@@ -22,3 +22,33 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+
+open Tezos_rpc
+open Tezos_rpc_http
+open Tezos_rpc_http_server
+
+let register () = RPC_directory.empty
+
+let launch configuration dir =
+  let open Lwt_syntax in
+  let Configuration.{rpc_addr; rpc_port; _} = configuration in
+  let rpc_addr = P2p_addr.of_string_exn rpc_addr in
+  let host = Ipaddr.V6.to_string rpc_addr in
+  let node = `TCP (`Port rpc_port) in
+  let acl = RPC_server.Acl.default rpc_addr in
+  Lwt.catch
+    (fun () ->
+      let* server =
+        RPC_server.launch
+          ~media_types:Media_type.all_media_types
+          ~host
+          ~acl
+          node
+          dir
+      in
+      return_ok server)
+    fail_with_exn
+
+let start configuration = launch configuration @@ register ()
+
+let shutdown = RPC_server.shutdown

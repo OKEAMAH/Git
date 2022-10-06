@@ -103,13 +103,13 @@ let config_init_command =
     ~group
     ~desc:"Configure the smart-contract rollup node."
     (args4 data_dir_arg rpc_addr_arg rpc_port_arg sc_rollup_node_data_dir_arg)
-    (prefixes ["init"; "config"; "saving"; "data"; "in"] @@ stop)
+    (prefixes ["init"; "config"] @@ stop)
     (fun (data_dir, rpc_addr, rpc_port, sc_rollup_node_data_dir) cctxt ->
       let open Configuration in
       let config = {data_dir; sc_rollup_node_data_dir; rpc_addr; rpc_port} in
       save config >>=? fun () ->
       cctxt#message
-        "Smart-contract rollup node configuration written in %s"
+        "Data Availability Committee node configuration written in %s"
         (filename config)
       >>= fun _ -> return ())
 
@@ -120,7 +120,7 @@ let run_command =
     ~desc:"Run the DAC Node."
     (args1 data_dir_arg)
     (prefixes ["run"] @@ stop)
-    (fun _data_dir _cctxt -> Daemon.run ())
+    (fun data_dir cctxt -> Daemon.run data_dir cctxt)
 
 let select_commands _ _ =
   Lwt_result.return
