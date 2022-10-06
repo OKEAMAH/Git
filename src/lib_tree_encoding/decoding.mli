@@ -168,8 +168,7 @@ end
 
 type _ decoding_branch
 
-val decode_branch :
-  extract:('a -> 'b Lwt.t) -> decode:'a t -> 'b decoding_branch
+val decode_branch : extract:('a -> 'b) -> decode:'a t -> 'b decoding_branch
 
 val fast_tagged_union :
   ?default:(unit -> 'a) -> 'tag t -> ('tag -> 'a decoding_branch) -> 'a t

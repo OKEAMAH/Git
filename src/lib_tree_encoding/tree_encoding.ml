@@ -299,11 +299,7 @@ type _ destruction =
 let destruction ~tag ~res ~delegate = Destruction {tag; res; delegate}
 
 type _ decoding_branch =
-  | DecodeBranch : {
-      extract : 'b -> 'a Lwt.t;
-      delegate : 'b t;
-    }
-      -> 'a decoding_branch
+  | DecodeBranch : {extract : 'b -> 'a; delegate : 'b t} -> 'a decoding_branch
 
 let decoding_branch ~extract ~delegate = DecodeBranch {extract; delegate}
 
@@ -333,11 +329,10 @@ let option enc =
   in
 
   let select_decode = function
-    | "Some" ->
-        decoding_branch ~extract:(fun v -> Lwt.return_some v) ~delegate:enc
+    | "Some" -> decoding_branch ~extract:(fun v -> Some v) ~delegate:enc
     | "None" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return_none)
+          ~extract:(fun () -> None)
           ~delegate:(value [] Data_encoding.unit)
     | _ -> (* FIXME *) assert false
   in
@@ -369,13 +364,9 @@ let either enc_a enc_b =
   in
   let select_decode = function
     | "Left" ->
-        decoding_branch
-          ~extract:(fun x -> Lwt.return @@ Either.Left x)
-          ~delegate:enc_a
+        decoding_branch ~extract:(fun x -> Either.Left x) ~delegate:enc_a
     | "Right" ->
-        decoding_branch
-          ~extract:(fun x -> Lwt.return @@ Either.Right x)
-          ~delegate:enc_b
+        decoding_branch ~extract:(fun x -> Either.Right x) ~delegate:enc_b
     | _ -> (* FIXME *) assert false
   in
   fast_tagged_union

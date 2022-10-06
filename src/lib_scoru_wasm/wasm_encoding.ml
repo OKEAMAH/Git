@@ -349,16 +349,14 @@ let raw_instruction_encoding =
           ~delegate:vec_replace_encoding
   and select_decode =
     let enum_case w =
-      decoding_branch ~extract:(fun () -> Lwt.return w) ~delegate:unit_encoding
+      decoding_branch ~extract:(fun () -> w) ~delegate:unit_encoding
     in
     let instr_1 mk =
-      decoding_branch
-        ~extract:(fun var -> Lwt.return @@ mk var)
-        ~delegate:var_1_encoding
+      decoding_branch ~extract:(fun var -> mk var) ~delegate:var_1_encoding
     in
     let instr_2 mk =
       decoding_branch
-        ~extract:(fun (var1, var2) -> Lwt.return @@ mk var1 var2)
+        ~extract:(fun (var1, var2) -> mk var1 var2)
         ~delegate:var_2_encoding
     in
     function
@@ -366,27 +364,25 @@ let raw_instruction_encoding =
     | "Nop" -> enum_case Nop
     | "Drop" -> enum_case Drop
     | "Select" ->
-        decoding_branch
-          ~extract:(fun p -> Lwt.return (Select p))
-          ~delegate:select_encoding
+        decoding_branch ~extract:(fun p -> Select p) ~delegate:select_encoding
     | "Block" ->
         decoding_branch
-          ~extract:(fun (type_, instr) -> Lwt.return (Block (type_, instr)))
+          ~extract:(fun (type_, instr) -> Block (type_, instr))
           ~delegate:block_encoding
     | "Loop" ->
         decoding_branch
-          ~extract:(fun (type_, instr) -> Lwt.return (Loop (type_, instr)))
+          ~extract:(fun (type_, instr) -> Loop (type_, instr))
           ~delegate:loop_encoding
     | "If" ->
         decoding_branch
           ~extract:(fun (type_, instr_if, instrs_else) ->
-            Lwt.return (If (type_, instr_if, instrs_else)))
+            If (type_, instr_if, instrs_else))
           ~delegate:if_encoding
     | "Br" -> instr_1 (fun var -> Br var)
     | "BrIf" -> instr_1 (fun var -> BrIf var)
     | "BrTable" ->
         decoding_branch
-          ~extract:(fun (table, target) -> Lwt.return (BrTable (table, target)))
+          ~extract:(fun (table, target) -> BrTable (table, target))
           ~delegate:br_table_encoding
     | "Return" -> enum_case Return
     | "Call" -> instr_1 (fun var -> Call var)
@@ -406,27 +402,27 @@ let raw_instruction_encoding =
     | "ElemDrop" -> instr_1 (fun var -> ElemDrop var)
     | "Load" ->
         decoding_branch
-          ~extract:(fun loadop -> Lwt.return (Load loadop))
+          ~extract:(fun loadop -> Load loadop)
           ~delegate:load_encoding
     | "Store" ->
         decoding_branch
-          ~extract:(fun storeop -> Lwt.return (Store storeop))
+          ~extract:(fun storeop -> Store storeop)
           ~delegate:store_encoding
     | "VecLoad" ->
         decoding_branch
-          ~extract:(fun vec_loadop -> Lwt.return (VecLoad vec_loadop))
+          ~extract:(fun vec_loadop -> VecLoad vec_loadop)
           ~delegate:vec_load_encoding
     | "VecStore" ->
         decoding_branch
-          ~extract:(fun vec_storeop -> Lwt.return (VecStore vec_storeop))
+          ~extract:(fun vec_storeop -> VecStore vec_storeop)
           ~delegate:vec_store_encoding
     | "VecLoadLane" ->
         decoding_branch
-          ~extract:(fun vec_laneop -> Lwt.return (VecLoadLane vec_laneop))
+          ~extract:(fun vec_laneop -> VecLoadLane vec_laneop)
           ~delegate:vec_load_lane_encoding
     | "VecStoreLane" ->
         decoding_branch
-          ~extract:(fun vec_laneop -> Lwt.return (VecStoreLane vec_laneop))
+          ~extract:(fun vec_laneop -> VecStoreLane vec_laneop)
           ~delegate:vec_store_lane_encoding
     | "MemorySize" -> enum_case MemorySize
     | "MemoryGrow" -> enum_case MemoryGrow
@@ -436,93 +432,91 @@ let raw_instruction_encoding =
     | "DataDrop" -> instr_1 (fun var -> DataDrop var)
     | "RefNull" ->
         decoding_branch
-          ~extract:(fun ref_type -> Lwt.return (RefNull ref_type))
+          ~extract:(fun ref_type -> RefNull ref_type)
           ~delegate:ref_null_encoding
     | "RefFunc" -> instr_1 (fun var -> RefFunc var)
     | "RefIsNull" -> enum_case RefIsNull
     | "Const" ->
-        decoding_branch
-          ~extract:(fun num -> Lwt.return (Const num))
-          ~delegate:const_encoding
+        decoding_branch ~extract:(fun num -> Const num) ~delegate:const_encoding
     | "Test" ->
         decoding_branch
-          ~extract:(fun testop -> Lwt.return (Test testop))
+          ~extract:(fun testop -> Test testop)
           ~delegate:test_encoding
     | "Compare" ->
         decoding_branch
-          ~extract:(fun relop -> Lwt.return (Compare relop))
+          ~extract:(fun relop -> Compare relop)
           ~delegate:compare_encoding
     | "Unary" ->
         decoding_branch
-          ~extract:(fun unop -> Lwt.return (Unary unop))
+          ~extract:(fun unop -> Unary unop)
           ~delegate:unary_encoding
     | "Binary" ->
         decoding_branch
-          ~extract:(fun binop -> Lwt.return (Binary binop))
+          ~extract:(fun binop -> Binary binop)
           ~delegate:binary_encoding
     | "Convert" ->
         decoding_branch
-          ~extract:(fun cvtop -> Lwt.return (Convert cvtop))
+          ~extract:(fun cvtop -> Convert cvtop)
           ~delegate:convert_encoding
     | "VecConst" ->
         decoding_branch
-          ~extract:(fun vec -> Lwt.return (VecConst vec))
+          ~extract:(fun vec -> VecConst vec)
           ~delegate:vec_const_encoding
     | "VecTest" ->
         decoding_branch
-          ~extract:(fun vec_testop -> Lwt.return (VecTest vec_testop))
+          ~extract:(fun vec_testop -> VecTest vec_testop)
           ~delegate:vec_test_encoding
     | "VecCompare" ->
         decoding_branch
-          ~extract:(fun vec_relop -> Lwt.return (VecCompare vec_relop))
+          ~extract:(fun vec_relop -> VecCompare vec_relop)
           ~delegate:vec_compare_encoding
     | "VecUnary" ->
         decoding_branch
-          ~extract:(fun vec_unop -> Lwt.return (VecUnary vec_unop))
+          ~extract:(fun vec_unop -> VecUnary vec_unop)
           ~delegate:vec_unary_encoding
     | "VecBinary" ->
         decoding_branch
-          ~extract:(fun vec_binop -> Lwt.return (VecBinary vec_binop))
+          ~extract:(fun vec_binop -> VecBinary vec_binop)
           ~delegate:vec_binary_encoding
     | "VecConvert" ->
         decoding_branch
-          ~extract:(fun vec_cvtop -> Lwt.return (VecConvert vec_cvtop))
+          ~extract:(fun vec_cvtop -> VecConvert vec_cvtop)
           ~delegate:vec_convert_encoding
     | "VecShift" ->
         decoding_branch
-          ~extract:(fun vec_shiftop -> Lwt.return (VecShift vec_shiftop))
+          ~extract:(fun vec_shiftop -> VecShift vec_shiftop)
           ~delegate:vec_shift_encoding
     | "VecBitmask" ->
         decoding_branch
-          ~extract:(fun vec_bitmaskop -> Lwt.return (VecBitmask vec_bitmaskop))
+          ~extract:(fun vec_bitmaskop -> VecBitmask vec_bitmaskop)
           ~delegate:vec_bitmask_encoding
     | "VecTestBits" ->
         decoding_branch
-          ~extract:(fun vec_vtestop -> Lwt.return (VecTestBits vec_vtestop))
+          ~extract:(fun vec_vtestop -> VecTestBits vec_vtestop)
           ~delegate:vec_test_bits_encoding
     | "VecUnaryBits" ->
         decoding_branch
-          ~extract:(fun vec_vunop -> Lwt.return (VecUnaryBits vec_vunop))
+          ~extract:(fun vec_vunop -> VecUnaryBits vec_vunop)
           ~delegate:vec_unary_bits_encoding
     | "VecBinaryBits" ->
         decoding_branch
-          ~extract:(fun vec_vbinop -> Lwt.return (VecBinaryBits vec_vbinop))
+          ~extract:(fun vec_vbinop -> VecBinaryBits vec_vbinop)
           ~delegate:vec_binary_bits_encoding
     | "VecTernaryBits" ->
         decoding_branch
-          ~extract:(fun vec_vternop -> Lwt.return (VecTernaryBits vec_vternop))
+          ~extract:(fun vec_vternop -> VecTernaryBits vec_vternop)
           ~delegate:vec_ternary_bits_encoding
     | "VecSplat" ->
         decoding_branch
-          ~extract:(fun vec_splatop -> Lwt.return (VecSplat vec_splatop))
+          ~extract:(fun vec_splatop -> VecSplat vec_splatop)
           ~delegate:vec_splat_encoding
     | "VecExtract" ->
         decoding_branch
-          ~extract:(fun vec_extractop -> Lwt.return (VecExtract vec_extractop))
+          ~extract:(fun vec_extractop -> VecExtract vec_extractop)
           ~delegate:vec_extract_encoding
     | "VecReplace" ->
         decoding_branch
-          ~extract:(fun vec_replaceop -> Lwt.return (VecReplace vec_replaceop))
+          ~extract:(fun vec_replaceop -> VecReplace vec_replaceop)
           ~delegate:vec_replace_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -585,8 +579,7 @@ let function_encoding =
   let select_decode = function
     | "Host" ->
         decoding_branch
-          ~extract:(fun (func_type, name) ->
-            Lwt.return (Func.HostFunc (func_type, name)))
+          ~extract:(fun (func_type, name) -> Func.HostFunc (func_type, name))
           ~delegate:host_func_encoding
     | "Native" ->
         decoding_branch
@@ -594,7 +587,7 @@ let function_encoding =
             let func =
               Source.{at = no_region; it = {Ast.ftype; locals; body}}
             in
-            Lwt.return @@ Func.AstFunc (type_, module_, func))
+            Func.AstFunc (type_, module_, func))
           ~delegate:ast_func_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -617,15 +610,15 @@ let value_ref_encoding =
   let select_decode = function
     | "FuncRef" ->
         decoding_branch
-          ~extract:(fun func_inst -> Lwt.return (Instance.FuncRef func_inst))
+          ~extract:(fun func_inst -> Instance.FuncRef func_inst)
           ~delegate:function_encoding
     | "ExternRef" ->
         decoding_branch
-          ~extract:(fun v -> Lwt.return (Values.ExternRef v))
+          ~extract:(fun v -> Values.ExternRef v)
           ~delegate:extern_ref_encoding
     | "NullRef" ->
         decoding_branch
-          ~extract:(fun v -> Lwt.return (Values.NullRef v))
+          ~extract:(fun v -> Values.NullRef v)
           ~delegate:null_ref_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -642,16 +635,12 @@ let value_encoding =
         destruction ~tag:"RefType" ~res:r ~delegate:value_ref_encoding
   and select_decode = function
     | "NumType" ->
-        decoding_branch
-          ~extract:(fun n -> Lwt.return (Values.Num n))
-          ~delegate:num_encoding
+        decoding_branch ~extract:(fun n -> Values.Num n) ~delegate:num_encoding
     | "VecType V128Type" ->
-        decoding_branch
-          ~extract:(fun v -> Lwt.return (Values.Vec v))
-          ~delegate:vec_encoding
+        decoding_branch ~extract:(fun v -> Values.Vec v) ~delegate:vec_encoding
     | "RefType" ->
         decoding_branch
-          ~extract:(fun r -> Lwt.return (Values.Ref r))
+          ~extract:(fun r -> Values.Ref r)
           ~delegate:value_ref_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -733,19 +722,19 @@ let extern_encoding =
   and select_decode = function
     | "ExternFunc" ->
         decoding_branch
-          ~extract:(fun x -> Lwt.return (Instance.ExternFunc x))
+          ~extract:(fun x -> Instance.ExternFunc x)
           ~delegate:function_encoding
     | "ExternTable" ->
         decoding_branch
-          ~extract:(fun x -> Lwt.return (Instance.ExternTable x))
+          ~extract:(fun x -> Instance.ExternTable x)
           ~delegate:table_encoding
     | "ExternMemory" ->
         decoding_branch
-          ~extract:(fun x -> Lwt.return (Instance.ExternMemory x))
+          ~extract:(fun x -> Instance.ExternMemory x)
           ~delegate:memory_encoding
     | "ExternGlobal" ->
         decoding_branch
-          ~extract:(fun x -> Lwt.return (Instance.ExternGlobal x))
+          ~extract:(fun x -> Instance.ExternGlobal x)
           ~delegate:global_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -968,63 +957,53 @@ let admin_instr'_encoding =
   and select_decode = function
     | "From_block" ->
         decoding_branch
-          ~extract:(fun (block, index) ->
-            Lwt.return (From_block (block, index)))
+          ~extract:(fun (block, index) -> From_block (block, index))
           ~delegate:from_block_encoding
     | "Plain" ->
-        decoding_branch
-          ~extract:(fun x -> Lwt.return (Plain x))
-          ~delegate:plain_encoding
+        decoding_branch ~extract:(fun x -> Plain x) ~delegate:plain_encoding
     | "Refer" ->
-        decoding_branch
-          ~extract:(fun x -> Lwt.return (Refer x))
-          ~delegate:value_ref_encoding
+        decoding_branch ~extract:(fun x -> Refer x) ~delegate:value_ref_encoding
     | "Invoke" ->
-        decoding_branch
-          ~extract:(fun x -> Lwt.return (Invoke x))
-          ~delegate:function_encoding
+        decoding_branch ~extract:(fun x -> Invoke x) ~delegate:function_encoding
     | "Trapping" ->
         decoding_branch
-          ~extract:(fun x -> Lwt.return (Trapping x))
+          ~extract:(fun x -> Trapping x)
           ~delegate:trapping_encoding
     | "Returning" ->
         decoding_branch
-          ~extract:(fun x -> Lwt.return (Returning x))
+          ~extract:(fun x -> Returning x)
           ~delegate:values_encoding
     | "Breaking" ->
         decoding_branch
-          ~extract:(fun (index, values) ->
-            Lwt.return (Breaking (index, values)))
+          ~extract:(fun (index, values) -> Breaking (index, values))
           ~delegate:breaking_encoding
     | "Table_init_meta" ->
         decoding_branch
           ~extract:(fun (idx, value, d, s, n, x, y) ->
-            Lwt.return @@ Table_init_meta (idx, value, d, s, n, x, y))
+            Table_init_meta (idx, value, d, s, n, x, y))
           ~delegate:table_init_meta_encoding
     | "Table_fill_meta" ->
         decoding_branch
-          ~extract:(fun (idx, i, n, r, x) ->
-            Lwt.return @@ Table_fill_meta (idx, i, n, r, x))
+          ~extract:(fun (idx, i, n, r, x) -> Table_fill_meta (idx, i, n, r, x))
           ~delegate:table_fill_meta_encoding
     | "Table_copy_meta" ->
         decoding_branch
           ~extract:(fun (idx, d, s, n, x, y, case) ->
-            Lwt.return @@ Table_copy_meta (idx, d, s, n, x, y, case))
+            Table_copy_meta (idx, d, s, n, x, y, case))
           ~delegate:table_copy_meta_encoding
     | "Memory_init_meta" ->
         decoding_branch
           ~extract:(fun (idx, d, b, n, s, x) ->
-            Lwt.return @@ Memory_init_meta (idx, d, b, n, s, x))
+            Memory_init_meta (idx, d, b, n, s, x))
           ~delegate:memory_init_meta_encoding
     | "Memory_fill_meta" ->
         decoding_branch
-          ~extract:(fun (idx, i, k, n) ->
-            Lwt.return @@ Memory_fill_meta (idx, i, k, n))
+          ~extract:(fun (idx, i, k, n) -> Memory_fill_meta (idx, i, k, n))
           ~delegate:memory_fill_meta_encoding
     | "Memory_copy_meta" ->
         decoding_branch
           ~extract:(fun (idx, d, s, n, case) ->
-            Lwt.return @@ Memory_copy_meta (idx, d, s, n, case))
+            Memory_copy_meta (idx, d, s, n, case))
           ~delegate:memory_copy_meta_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -1122,17 +1101,15 @@ let packed_label_kont_encoding : packed_label_kont t =
   and select_decode = function
     | "Label_stack" ->
         decoding_branch
-          ~extract:(fun (label, stack) ->
-            Lwt.return (Packed (Label_stack (label, stack))))
+          ~extract:(fun (label, stack) -> Packed (Label_stack (label, stack)))
           ~delegate:label_stack_encoding
     | "Label_result" ->
         decoding_branch
-          ~extract:(fun vs0 -> Lwt.return @@ Packed (Label_result vs0))
+          ~extract:(fun vs0 -> Packed (Label_result vs0))
           ~delegate:values_encoding
     | "Label_trapped" ->
         decoding_branch
-          ~extract:(fun msg ->
-            Lwt.return @@ Packed (Label_trapped Source.(msg @@ no_region)))
+          ~extract:(fun msg -> Packed (Label_trapped Source.(msg @@ no_region)))
           ~delegate:label_trapped_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -1257,35 +1234,31 @@ let invoke_step_kont_encoding =
     | "Inv_start" ->
         decoding_branch
           ~extract:(fun (func, vs, es) ->
-            Lwt.return @@ Eval.Inv_start {func; code = (vs, es)})
+            Eval.Inv_start {func; code = (vs, es)})
           ~delegate:inv_start_encoding
     | "Inv_prepare_locals" ->
         decoding_branch
           ~extract:
             (fun (arity, args, vs, instructions, inst, func, locals_kont) ->
-            Lwt.return
-            @@ Eval.Inv_prepare_locals
-                 {arity; args; vs; instructions; inst; func; locals_kont})
+            Eval.Inv_prepare_locals
+              {arity; args; vs; instructions; inst; func; locals_kont})
           ~delegate:inv_prepare_locals_encoding
     | "Inv_prepare_args" ->
         decoding_branch
           ~extract:
             (fun (arity, vs, instructions, inst, func, locals, args_kont) ->
-            Lwt.return
-            @@ Eval.Inv_prepare_args
-                 {arity; vs; instructions; inst; func; locals; args_kont})
+            Eval.Inv_prepare_args
+              {arity; vs; instructions; inst; func; locals; args_kont})
           ~delegate:inv_prepare_args_encoding
     | "Inv_concat" ->
         decoding_branch
           ~extract:(fun (arity, vs, instructions, inst, func, concat_kont) ->
-            Lwt.return
-            @@ Eval.Inv_concat
-                 {arity; vs; instructions; inst; func; concat_kont})
+            Eval.Inv_concat {arity; vs; instructions; inst; func; concat_kont})
           ~delegate:inv_concat_encoding
     | "Inv_stop" ->
         decoding_branch
           ~extract:(fun (vs, es, fresh_frame) ->
-            Lwt.return @@ Eval.Inv_stop {code = (vs, es); fresh_frame})
+            Eval.Inv_stop {code = (vs, es); fresh_frame})
           ~delegate:inv_stop_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -1343,24 +1316,23 @@ let label_step_kont_encoding =
   and select_decode = function
     | "LS_Start" ->
         decoding_branch
-          ~extract:(fun label -> Lwt.return @@ Eval.LS_Start label)
+          ~extract:(fun label -> Eval.LS_Start label)
           ~delegate:ongoing_label_kont_encoding
     | "LS_Craft_frame" ->
         decoding_branch
-          ~extract:(fun (l, i) -> Lwt.return @@ Eval.LS_Craft_frame (l, i))
+          ~extract:(fun (l, i) -> Eval.LS_Craft_frame (l, i))
           ~delegate:ls_craft_frame_encoding
     | "LS_Push_frame" ->
         decoding_branch
-          ~extract:(fun (l, i) -> Lwt.return @@ Eval.LS_Push_frame (l, i))
+          ~extract:(fun (l, i) -> Eval.LS_Push_frame (l, i))
           ~delegate:ls_push_frame_encoding
     | "LS_Consolidate_top" ->
         decoding_branch
-          ~extract:(fun (l, k, es, s) ->
-            Lwt.return @@ Eval.LS_Consolidate_top (l, k, es, s))
+          ~extract:(fun (l, k, es, s) -> Eval.LS_Consolidate_top (l, k, es, s))
           ~delegate:ls_consolidate_top_encoding
     | "LS_Modify_top" ->
         decoding_branch
-          ~extract:(fun (Packed l) -> Lwt.return @@ Eval.LS_Modify_top l)
+          ~extract:(fun (Packed l) -> Eval.LS_Modify_top l)
           ~delegate:packed_label_kont_encoding
     | _ -> (* FIXME *) assert false
   in
@@ -1416,29 +1388,25 @@ let step_kont_encoding =
   and select_decode = function
     | "SK_Start" ->
         decoding_branch
-          ~extract:(fun (Packed_fs f, rst) ->
-            Lwt.return @@ Eval.SK_Start (f, rst))
+          ~extract:(fun (Packed_fs f, rst) -> Eval.SK_Start (f, rst))
           ~delegate:sk_start_encoding
     | "SK_Next" ->
         decoding_branch
-          ~extract:(fun (Packed_fs f, r, k) ->
-            Lwt.return @@ Eval.SK_Next (f, r, k))
+          ~extract:(fun (Packed_fs f, r, k) -> Eval.SK_Next (f, r, k))
           ~delegate:sk_next_encoding
     | "SK_Consolidate_label_result" ->
         decoding_branch
           ~extract:(fun (frame', stack, label, vs, es, lstack) ->
-            Lwt.return
-            @@ Eval.SK_Consolidate_label_result
-                 (frame', stack, label, vs, es, lstack))
+            Eval.SK_Consolidate_label_result
+              (frame', stack, label, vs, es, lstack))
           ~delegate:sk_consolidate_label_result_encoding
     | "SK_Result" ->
         decoding_branch
-          ~extract:(fun vs -> Lwt.return @@ Eval.SK_Result vs)
+          ~extract:(fun vs -> Eval.SK_Result vs)
           ~delegate:values_encoding
     | "SK_Trapped" ->
         decoding_branch
-          ~extract:(fun msg ->
-            Lwt.return @@ Eval.SK_Trapped Source.(msg @@ no_region))
+          ~extract:(fun msg -> Eval.SK_Trapped Source.(msg @@ no_region))
           ~delegate:sk_trapped_encoding
     | _ -> (* FIXME *) assert false
   in

@@ -41,13 +41,9 @@ let eval_const_kont_encoding ~host_funcs =
   in
   let select_decode = function
     | "EC_Next" ->
-        decoding_branch
-          ~extract:(fun c -> Lwt.return @@ EC_Next c)
-          ~delegate:ec_next_enc
+        decoding_branch ~extract:(fun c -> EC_Next c) ~delegate:ec_next_enc
     | "EC_Stop" ->
-        decoding_branch
-          ~extract:(fun v -> Lwt.return @@ EC_Stop v)
-          ~delegate:ec_stop_enc
+        decoding_branch ~extract:(fun v -> EC_Stop v) ~delegate:ec_stop_enc
     | _ -> (* FIXME *) assert false
   in
   fast_tagged_union tag_encoding ~select_encode ~select_decode
@@ -81,17 +77,13 @@ let join_kont_encoding enc_b =
   in
   let select_decode = function
     | "J_Init" ->
-        decoding_branch
-          ~extract:(fun v -> Lwt.return @@ J_Init v)
-          ~delegate:j_init_enc
+        decoding_branch ~extract:(fun v -> J_Init v) ~delegate:j_init_enc
     | "J_Next" ->
         decoding_branch
-          ~extract:(fun (kont, acc) -> Lwt.return @@ J_Next (kont, acc))
+          ~extract:(fun (kont, acc) -> J_Next (kont, acc))
           ~delegate:j_next_enc
     | "J_Stop" ->
-        decoding_branch
-          ~extract:(fun res -> Lwt.return @@ J_Stop res)
-          ~delegate:j_stop_enc
+        decoding_branch ~extract:(fun res -> J_Stop res) ~delegate:j_stop_enc
     | _ -> (* FIXME *) assert false
   in
   fast_tagged_union tag_encoding ~select_encode ~select_decode
@@ -109,13 +101,9 @@ let map_concat_kont_encoding enc_a enc_b =
   in
   let select_decode = function
     | "MC_Map" ->
-        decoding_branch
-          ~extract:(fun m -> Lwt.return @@ MC_Map m)
-          ~delegate:mc_map_enc
+        decoding_branch ~extract:(fun m -> MC_Map m) ~delegate:mc_map_enc
     | "MC_Join" ->
-        decoding_branch
-          ~extract:(fun m -> Lwt.return @@ MC_Join m)
-          ~delegate:mc_join_enc
+        decoding_branch ~extract:(fun m -> MC_Join m) ~delegate:mc_join_enc
     | _ -> (* FIXME *) assert false
   in
   fast_tagged_union tag_encoding ~select_encode ~select_decode
@@ -339,90 +327,80 @@ let init_kont_encoding ~host_funcs =
   let select_decode = function
     | "IK_Start" ->
         decoding_branch
-          ~extract:(fun exts -> Lwt.return @@ IK_Start exts)
+          ~extract:(fun exts -> IK_Start exts)
           ~delegate:ik_start_enc
     | "IK_Add_import" ->
         decoding_branch
-          ~extract:(function m -> Lwt.return @@ IK_Add_import m)
+          ~extract:(function m -> IK_Add_import m)
           ~delegate:ik_add_import_enc
     | "IK_Types" ->
         decoding_branch
-          ~extract:(function m, t -> Lwt.return @@ IK_Type (m, t))
+          ~extract:(function m, t -> IK_Type (m, t))
           ~delegate:ik_type_enc
     | "IK_Aggregate_fun" ->
         decoding_branch
-          ~extract:(function m, t -> Lwt.return @@ IK_Aggregate (m, Func, t))
+          ~extract:(function m, t -> IK_Aggregate (m, Func, t))
           ~delegate:ik_aggregate_func_enc
     | "IK_Aggregate_concat_fun" ->
         decoding_branch
-          ~extract:(function
-            | m, t -> Lwt.return @@ IK_Aggregate_concat (m, Func, t))
+          ~extract:(function m, t -> IK_Aggregate_concat (m, Func, t))
           ~delegate:ik_aggregate_concat_func_enc
     | "IK_Aggregate_global" ->
         decoding_branch
-          ~extract:(function
-            | m, t -> Lwt.return @@ IK_Aggregate (m, Global, t))
+          ~extract:(function m, t -> IK_Aggregate (m, Global, t))
           ~delegate:ik_aggregate_global_enc
     | "IK_Aggregate_concat_global" ->
         decoding_branch
-          ~extract:(function
-            | m, t -> Lwt.return @@ IK_Aggregate_concat (m, Global, t))
+          ~extract:(function m, t -> IK_Aggregate_concat (m, Global, t))
           ~delegate:ik_aggregate_concat_global_enc
     | "IK_Aggregate_table" ->
         decoding_branch
-          ~extract:(function m, t -> Lwt.return @@ IK_Aggregate (m, Table, t))
+          ~extract:(function m, t -> IK_Aggregate (m, Table, t))
           ~delegate:ik_aggregate_table_enc
     | "IK_Aggregate_concat_table" ->
         decoding_branch
-          ~extract:(function
-            | m, t -> Lwt.return @@ IK_Aggregate_concat (m, Table, t))
+          ~extract:(function m, t -> IK_Aggregate_concat (m, Table, t))
           ~delegate:ik_aggregate_concat_table_enc
     | "IK_Aggregate_memory" ->
         decoding_branch
-          ~extract:(function
-            | m, t -> Lwt.return @@ IK_Aggregate (m, Memory, t))
+          ~extract:(function m, t -> IK_Aggregate (m, Memory, t))
           ~delegate:ik_aggregate_memory_enc
     | "IK_Aggregate_concat_memory" ->
         decoding_branch
-          ~extract:(function
-            | m, t -> Lwt.return @@ IK_Aggregate_concat (m, Memory, t))
+          ~extract:(function m, t -> IK_Aggregate_concat (m, Memory, t))
           ~delegate:ik_aggregate_concat_memory_enc
     | "IK_Exports" ->
         decoding_branch
-          ~extract:(function
-            | inst, fold -> Lwt.return @@ IK_Exports (inst, fold))
+          ~extract:(function inst, fold -> IK_Exports (inst, fold))
           ~delegate:ik_exports_enc
     | "IK_Elems" ->
         decoding_branch
-          ~extract:(function inst, map -> Lwt.return @@ IK_Elems (inst, map))
+          ~extract:(function inst, map -> IK_Elems (inst, map))
           ~delegate:ik_elems_enc
     | "IK_Datas" ->
         decoding_branch
-          ~extract:(function inst, map -> Lwt.return @@ IK_Datas (inst, map))
+          ~extract:(function inst, map -> IK_Datas (inst, map))
           ~delegate:ik_datas_enc
     | "IK_Es_elems" ->
         decoding_branch
-          ~extract:(function
-            | inst, map -> Lwt.return @@ IK_Es_elems (inst, map))
+          ~extract:(function inst, map -> IK_Es_elems (inst, map))
           ~delegate:ik_es_elems_enc
     | "IK_Es_datas" ->
         decoding_branch
           ~extract:(function
-            | inst, map, es_elem ->
-                Lwt.return @@ IK_Es_datas (inst, map, es_elem))
+            | inst, map, es_elem -> IK_Es_datas (inst, map, es_elem))
           ~delegate:ik_es_datas_enc
     | "IK_Join_admin" ->
         decoding_branch
-          ~extract:(function
-            | m, admin -> Lwt.return @@ IK_Join_admin (m, admin))
+          ~extract:(function m, admin -> IK_Join_admin (m, admin))
           ~delegate:ik_join_admin_enc
     | "IK_Eval" ->
         decoding_branch
-          ~extract:(function config -> Lwt.return @@ IK_Eval config)
+          ~extract:(function config -> IK_Eval config)
           ~delegate:ik_eval_enc
     | "IK_Stop" ->
         decoding_branch
-          ~extract:(function () -> Lwt.return @@ IK_Stop)
+          ~extract:(function () -> IK_Stop)
           ~delegate:ik_stop_enc
     | _ -> (* FIXME *) assert false
   in

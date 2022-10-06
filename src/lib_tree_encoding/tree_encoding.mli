@@ -299,8 +299,7 @@ val destruction : tag:'a -> res:'b -> delegate:'b t -> 'a destruction
 
 type _ decoding_branch
 
-val decoding_branch :
-  extract:('a -> 'b Lwt.t) -> delegate:'a t -> 'b decoding_branch
+val decoding_branch : extract:('a -> 'b) -> delegate:'a t -> 'b decoding_branch
 
 val fast_tagged_union :
   ?default:(unit -> 'a) ->

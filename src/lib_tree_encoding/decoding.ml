@@ -207,11 +207,7 @@ let tagged_union ?default decode_tag cases =
     }
 
 type _ decoding_branch =
-  | DecodeBranch : {
-      extract : 'b -> 'a Lwt.t;
-      decode : 'b t;
-    }
-      -> 'a decoding_branch
+  | DecodeBranch : {extract : 'b -> 'a; decode : 'b t} -> 'a decoding_branch
 
 let decode_branch ~extract ~decode = DecodeBranch {extract; decode}
 
@@ -227,7 +223,7 @@ let fast_tagged_union ?default decode_tag select =
             (fun target_tag ->
               let (DecodeBranch {decode; extract}) = select target_tag in
               eval
-                (map_lwt extract (scope ["value"] decode))
+                (map extract (scope ["value"] decode))
                 backend
                 input_tree
                 prefix)

@@ -93,16 +93,14 @@ module Byte_vector = struct
   let select_decode = function
     | "VKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return Decode.VKStart)
+          ~extract:(fun () -> Decode.VKStart)
           ~delegate:unit_encoding
     | "VKRead" ->
         decoding_branch
-          ~extract:(fun (b, p, l) -> Lwt.return @@ Decode.VKRead (b, p, l))
+          ~extract:(fun (b, p, l) -> Decode.VKRead (b, p, l))
           ~delegate:value_enc
     | "VKStop" ->
-        decoding_branch
-          ~extract:(fun b -> Lwt.return @@ Decode.VKStop b)
-          ~delegate:vkstop_enc
+        decoding_branch ~extract:(fun b -> Decode.VKStop b) ~delegate:vkstop_enc
     | _ -> (* FIXME *) assert false
 
   let encoding = fast_tagged_union tag_encoding ~select_encode ~select_decode
@@ -144,15 +142,15 @@ module Name = struct
   let select_decode = function
     | "NKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return @@ Decode.NKStart)
+          ~extract:(fun () -> Decode.NKStart)
           ~delegate:unit_encoding
     | "NKParse" ->
         decoding_branch
-          ~extract:(fun (p, v, l) -> Lwt.return @@ Decode.NKParse (p, v, l))
+          ~extract:(fun (p, v, l) -> Decode.NKParse (p, v, l))
           ~delegate:value_enc
     | "NKStop" ->
         decoding_branch
-          ~extract:(fun s -> Lwt.return @@ Decode.NKStop s)
+          ~extract:(fun s -> Decode.NKStop s)
           ~delegate:string_encoding
     | _ -> (* FIXME *) assert false
 
@@ -191,19 +189,19 @@ module Func_type = struct
   let select_decode = function
     | "FKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return Decode.FKStart)
+          ~extract:(fun () -> Decode.FKStart)
           ~delegate:unit_encoding
     | "FKIns" ->
         decoding_branch
-          ~extract:(fun vec -> Lwt.return @@ Decode.FKIns vec)
+          ~extract:(fun vec -> Decode.FKIns vec)
           ~delegate:fkins_enc
     | "FKOut" ->
         decoding_branch
-          ~extract:(fun (p, vec) -> Lwt.return @@ Decode.FKOut (p, vec))
+          ~extract:(fun (p, vec) -> Decode.FKOut (p, vec))
           ~delegate:fkout_enc
     | "FKStop" ->
         decoding_branch
-          ~extract:(fun ft -> Lwt.return @@ Decode.FKStop ft)
+          ~extract:(fun ft -> Decode.FKStop ft)
           ~delegate:fkstop_enc
     | _ -> (* FIXME *) assert false
 
@@ -251,19 +249,19 @@ module Import = struct
   let select_decode = function
     | "ImpKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return Decode.ImpKStart)
+          ~extract:(fun () -> Decode.ImpKStart)
           ~delegate:impkstart_enc
     | "ImpKModuleName" ->
         decoding_branch
-          ~extract:(fun n -> Lwt.return @@ Decode.ImpKModuleName n)
+          ~extract:(fun n -> Decode.ImpKModuleName n)
           ~delegate:impkmodulename_enc
     | "ImpKItemName" ->
         decoding_branch
-          ~extract:(fun (m, i) -> Lwt.return @@ Decode.ImpKItemName (m, i))
+          ~extract:(fun (m, i) -> Decode.ImpKItemName (m, i))
           ~delegate:impkitemname_enc
     | "ImpKStop" ->
         decoding_branch
-          ~extract:(fun i -> Lwt.return @@ Decode.ImpKStop i)
+          ~extract:(fun i -> Decode.ImpKStop i)
           ~delegate:impkstop_enc
     | _ -> (* FIXME *) assert false
 
@@ -299,15 +297,15 @@ module Export = struct
   let select_decode = function
     | "ExpKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return Decode.ExpKStart)
+          ~extract:(fun () -> Decode.ExpKStart)
           ~delegate:expkstart_enc
     | "ExpKName" ->
         decoding_branch
-          ~extract:(fun n -> Lwt.return @@ Decode.ExpKName n)
+          ~extract:(fun n -> Decode.ExpKName n)
           ~delegate:expkname_enc
     | "ExpKStop" ->
         decoding_branch
-          ~extract:(fun e -> Lwt.return @@ Decode.ExpKStop e)
+          ~extract:(fun e -> Decode.ExpKStop e)
           ~delegate:expkstop_enc
     | _ -> (* FIXME *) assert false
 
@@ -370,28 +368,27 @@ module Instr_block = struct
   let select_decode = function
     | "IKStop" ->
         decoding_branch
-          ~extract:(fun lbl -> Lwt.return @@ Decode.IKStop lbl)
+          ~extract:(fun lbl -> Decode.IKStop lbl)
           ~delegate:stop_enc
     | "IKNext" ->
         decoding_branch
-          ~extract:(fun lbl -> Lwt.return @@ Decode.IKNext lbl)
+          ~extract:(fun lbl -> Decode.IKNext lbl)
           ~delegate:next_enc
     | "IKBlock" ->
         decoding_branch
-          ~extract:(fun (ty, i) -> Lwt.return @@ Decode.IKBlock (ty, i))
+          ~extract:(fun (ty, i) -> Decode.IKBlock (ty, i))
           ~delegate:block_enc
     | "IKLoop" ->
         decoding_branch
-          ~extract:(fun (ty, i) -> Lwt.return @@ Decode.IKLoop (ty, i))
+          ~extract:(fun (ty, i) -> Decode.IKLoop (ty, i))
           ~delegate:loop_enc
     | "IKIf1" ->
         decoding_branch
-          ~extract:(fun (ty, i) -> Lwt.return @@ Decode.IKIf1 (ty, i))
+          ~extract:(fun (ty, i) -> Decode.IKIf1 (ty, i))
           ~delegate:if1_enc
     | "IKIf2" ->
         decoding_branch
-          ~extract:(fun (ty, i, else_lbl) ->
-            Lwt.return @@ Decode.IKIf2 (ty, i, else_lbl))
+          ~extract:(fun (ty, i, else_lbl) -> Decode.IKIf2 (ty, i, else_lbl))
           ~delegate:if2_enc
     | _ -> (* FIXME *) assert false
 
@@ -420,15 +417,15 @@ module Block = struct
   let select_decode = function
     | "BlockStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return Decode.BlockStart)
+          ~extract:(fun () -> Decode.BlockStart)
           ~delegate:block_start_enc
     | "BlockParse" ->
         decoding_branch
-          ~extract:(fun ik -> Lwt.return @@ Decode.BlockParse ik)
+          ~extract:(fun ik -> Decode.BlockParse ik)
           ~delegate:block_parse_enc
     | "BlockStop" ->
         decoding_branch
-          ~extract:(fun lbl -> Lwt.return @@ Decode.BlockStop lbl)
+          ~extract:(fun lbl -> Decode.BlockStop lbl)
           ~delegate:block_stop_enc
     | _ -> (* FIXME *) assert false
 
@@ -515,29 +512,27 @@ module Code = struct
   let select_decode = function
     | "CKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return Decode.CKStart)
+          ~extract:(fun () -> Decode.CKStart)
           ~delegate:ckstart_enc
     | "CKLocalsParse" ->
         decoding_branch
           ~extract:(fun (left, size, pos, vec_kont, locals_size) ->
-            Lwt.return
-            @@ Decode.CKLocalsParse {left; size; pos; vec_kont; locals_size})
+            Decode.CKLocalsParse {left; size; pos; vec_kont; locals_size})
           ~delegate:cklocalsparse_enc
     | "CKLocalsAccumulate" ->
         decoding_branch
           ~extract:(fun (left, size, pos, type_vec, curr_type, vec_kont) ->
-            Lwt.return
-            @@ Decode.CKLocalsAccumulate
-                 {left; size; pos; type_vec; curr_type; vec_kont})
+            Decode.CKLocalsAccumulate
+              {left; size; pos; type_vec; curr_type; vec_kont})
           ~delegate:cklocalsaccumulate_enc
     | "CKBody" ->
         decoding_branch
           ~extract:(fun (left, size, locals, const_kont) ->
-            Lwt.return @@ Decode.CKBody {left; size; locals; const_kont})
+            Decode.CKBody {left; size; locals; const_kont})
           ~delegate:ckbody_enc
     | "CKStop" ->
         decoding_branch
-          ~extract:(fun func -> Lwt.return @@ Decode.CKStop func)
+          ~extract:(fun func -> Decode.CKStop func)
           ~delegate:ckstop_enc
     | _ -> (* FIXME *) assert false
 
@@ -674,7 +669,7 @@ module Elem = struct
   let select_decode = function
     | "EKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return @@ Decode.EKStart)
+          ~extract:(fun () -> Decode.EKStart)
           ~delegate:ekstart_enc
     | "EKMode" ->
         decoding_branch
@@ -685,31 +680,29 @@ module Elem = struct
                    early_ref_type,
                    offset_kont,
                    offset_kont_code ) ->
-            Lwt.return
-            @@ Decode.EKMode
-                 {
-                   left;
-                   index;
-                   index_kind;
-                   early_ref_type;
-                   offset_kont = (offset_kont, offset_kont_code);
-                 })
+            Decode.EKMode
+              {
+                left;
+                index;
+                index_kind;
+                early_ref_type;
+                offset_kont = (offset_kont, offset_kont_code);
+              })
           ~delegate:ekmode_enc
     | "EKInitIndexed" ->
         decoding_branch
           ~extract:(fun (mode, ref_type, einit_vec) ->
-            Lwt.return @@ Decode.EKInitIndexed {mode; ref_type; einit_vec})
+            Decode.EKInitIndexed {mode; ref_type; einit_vec})
           ~delegate:ekinitindexed_enc
     | "EKInitConst" ->
         decoding_branch
           ~extract:(fun (mode, ref_type, einit_vec, pos, block) ->
-            Lwt.return
-            @@ Decode.EKInitConst
-                 {mode; ref_type; einit_vec; einit_kont = (pos, block)})
+            Decode.EKInitConst
+              {mode; ref_type; einit_vec; einit_kont = (pos, block)})
           ~delegate:ekinitconst_enc
     | "EKStop" ->
         decoding_branch
-          ~extract:(fun elem -> Lwt.return @@ Decode.EKStop elem)
+          ~extract:(fun elem -> Decode.EKStop elem)
           ~delegate:ekstop_enc
     | _ -> (* FIXME *) assert false
 
@@ -768,23 +761,20 @@ module Data = struct
   let select_decode = function
     | "DKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return Decode.DKStart)
+          ~extract:(fun () -> Decode.DKStart)
           ~delegate:dkstart_enc
     | "DKMode" ->
         decoding_branch
           ~extract:(fun (left, index, pos, block) ->
-            Lwt.return
-            @@ Decode.DKMode {left; index; offset_kont = (pos, block)})
+            Decode.DKMode {left; index; offset_kont = (pos, block)})
           ~delegate:dkmode_enc
     | "DKInit" ->
         decoding_branch
-          ~extract:(fun (dmode, init_kont) ->
-            Lwt.return @@ Decode.DKInit {dmode; init_kont})
+          ~extract:(fun (dmode, init_kont) -> Decode.DKInit {dmode; init_kont})
           ~delegate:dkinit_enc
     | "DKStop" ->
         decoding_branch
-          ~extract:(fun data_segment ->
-            Lwt.return @@ Decode.DKStop data_segment)
+          ~extract:(fun data_segment -> Decode.DKStop data_segment)
           ~delegate:dkstop_enc
     | _ -> (* FIXME *) assert false
 
@@ -964,7 +954,7 @@ module Field = struct
           enum_destruction "DataField" data_field_enc
     in
     let enum_decoding_branch k delegate =
-      decoding_branch ~extract:(fun () -> Lwt.return @@ FieldType k) ~delegate
+      decoding_branch ~extract:(fun () -> FieldType k) ~delegate
     in
     let select_decode = function
       | "TypeField" -> enum_decoding_branch Decode.TypeField type_field_enc
@@ -1033,53 +1023,43 @@ module Field = struct
     and select_decode = function
       | "TypeField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.TypeField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.TypeField, vec))
             ~delegate:type_field_enc
       | "ImportField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.ImportField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.ImportField, vec))
             ~delegate:import_field_enc
       | "FuncField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.FuncField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.FuncField, vec))
             ~delegate:func_field_enc
       | "TableField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.TableField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.TableField, vec))
             ~delegate:table_field_enc
       | "MemoryField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.MemoryField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.MemoryField, vec))
             ~delegate:memory_field_enc
       | "GlobalField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.GlobalField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.GlobalField, vec))
             ~delegate:global_field_enc
       | "ExportField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.ExportField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.ExportField, vec))
             ~delegate:export_field_enc
       | "ElemField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.ElemField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.ElemField, vec))
             ~delegate:elem_field_enc
       | "CodeField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.CodeField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.CodeField, vec))
             ~delegate:code_field_enc
       | "DataField" ->
           decoding_branch
-            ~extract:(fun vec ->
-              Lwt.return @@ TypedLazyVec (Decode.DataField, vec))
+            ~extract:(fun vec -> TypedLazyVec (Decode.DataField, vec))
             ~delegate:data_field_enc
       | _ -> (* FIXME *) assert false
     in
@@ -1322,24 +1302,22 @@ module Module = struct
   let select_decode = function
     | "MKStart" ->
         decoding_branch
-          ~extract:(fun () -> Lwt.return Decode.MKStart)
+          ~extract:(fun () -> Decode.MKStart)
           ~delegate:mkstart_enc
     | "MKSkipCustom" ->
         decoding_branch
           ~extract:(function
-            | None -> Lwt.return @@ Decode.MKSkipCustom None
-            | Some (Field.FieldType ft) ->
-                Lwt.return @@ Decode.MKSkipCustom (Some ft))
+            | None -> Decode.MKSkipCustom None
+            | Some (Field.FieldType ft) -> Decode.MKSkipCustom (Some ft))
           ~delegate:mkskipcustom_enc
     | "MKFieldStart" ->
         decoding_branch
-          ~extract:(fun (Field.FieldType ft) ->
-            Lwt.return @@ Decode.MKFieldStart ft)
+          ~extract:(fun (Field.FieldType ft) -> Decode.MKFieldStart ft)
           ~delegate:mkfieldstart_enc
     | "MKField" ->
         decoding_branch
           ~extract:(fun (Field.TypedLazyVec (ft, vec), size) ->
-            Lwt.return @@ Decode.MKField (ft, size, vec))
+            Decode.MKField (ft, size, vec))
           ~delegate:mkfield_enc
     | "MKElaborateFunc" ->
         decoding_branch
@@ -1349,59 +1327,51 @@ module Module = struct
                    func_kont,
                    instr_kont,
                    no_datas_in_func ) ->
-            Lwt.return
-            @@ Decode.MKElaborateFunc
-                 ( func_types,
-                   func_bodies,
-                   func_kont,
-                   instr_kont,
-                   no_datas_in_func ))
+            Decode.MKElaborateFunc
+              (func_types, func_bodies, func_kont, instr_kont, no_datas_in_func))
           ~delegate:mkelaboratefunc_enc
     | "MKBuild" ->
         decoding_branch
           ~extract:(fun (funcs, no_datas_in_func) ->
-            Lwt.return @@ Decode.MKBuild (funcs, no_datas_in_func))
+            Decode.MKBuild (funcs, no_datas_in_func))
           ~delegate:mkbuild_enc
     | "MKTypes" ->
         decoding_branch
           ~extract:(fun (func_type_kont, pos, size, types_acc) ->
-            Lwt.return @@ Decode.MKTypes (func_type_kont, pos, size, types_acc))
+            Decode.MKTypes (func_type_kont, pos, size, types_acc))
           ~delegate:mktypes_enc
     | "MKImport" ->
         decoding_branch
           ~extract:(fun (import_kont, pos, size, import_acc) ->
-            Lwt.return @@ Decode.MKImport (import_kont, pos, size, import_acc))
+            Decode.MKImport (import_kont, pos, size, import_acc))
           ~delegate:mkimport_enc
     | "MKExport" ->
         decoding_branch
           ~extract:(fun (export_kont, pos, size, export_acc) ->
-            Lwt.return @@ Decode.MKExport (export_kont, pos, size, export_acc))
+            Decode.MKExport (export_kont, pos, size, export_acc))
           ~delegate:mkexport_enc
     | "MKGlobal" ->
         decoding_branch
           ~extract:(fun (global_type, pos, block_kont, size, global_acc) ->
-            Lwt.return
-            @@ Decode.MKGlobal (global_type, pos, block_kont, size, global_acc))
+            Decode.MKGlobal (global_type, pos, block_kont, size, global_acc))
           ~delegate:mkglobal_enc
     | "MKData" ->
         decoding_branch
           ~extract:(fun (data_kont, pos, size, data_acc) ->
-            Lwt.return @@ Decode.MKData (data_kont, pos, size, data_acc))
+            Decode.MKData (data_kont, pos, size, data_acc))
           ~delegate:mkdata_enc
     | "MKElem" ->
         decoding_branch
           ~extract:(fun (elem_kont, pos, size, elem_acc) ->
-            Lwt.return @@ Decode.MKElem (elem_kont, pos, size, elem_acc))
+            Decode.MKElem (elem_kont, pos, size, elem_acc))
           ~delegate:mkelem_enc
     | "MKCode" ->
         decoding_branch
           ~extract:(fun (code_kont, pos, size, code_acc) ->
-            Lwt.return @@ Decode.MKCode (code_kont, pos, size, code_acc))
+            Decode.MKCode (code_kont, pos, size, code_acc))
           ~delegate:mkcode_enc
     | "MKStop" ->
-        decoding_branch
-          ~extract:(fun m -> Lwt.return @@ Decode.MKStop m)
-          ~delegate:mkstop_enc
+        decoding_branch ~extract:(fun m -> Decode.MKStop m) ~delegate:mkstop_enc
     | _ -> (* FIXME *) assert false
 
   let encoding =

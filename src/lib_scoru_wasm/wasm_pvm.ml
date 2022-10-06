@@ -137,29 +137,29 @@ struct
       and select_decode = function
         | "decode" ->
             decoding_branch
-              ~extract:(fun m -> Lwt.return @@ Decode m)
+              ~extract:(fun m -> Decode m)
               ~delegate:Parsing.Decode.encoding
         | "link" ->
             decoding_branch
               ~extract:(fun (ast_module, externs, imports_offset) ->
-                Lwt.return @@ Link {ast_module; externs; imports_offset})
+                Link {ast_module; externs; imports_offset})
               ~delegate:link_encoding
         | "init" ->
             decoding_branch
               ~extract:(fun (self, ast_module, init_kont, module_reg) ->
-                Lwt.return @@ Init {self; ast_module; init_kont; module_reg})
+                Init {self; ast_module; init_kont; module_reg})
               ~delegate:init_encoding
         | "eval" ->
             decoding_branch
-              ~extract:(fun eval_config -> Lwt.return (Eval eval_config))
+              ~extract:(fun eval_config -> Eval eval_config)
               ~delegate:eval_encoding
         | "stuck" ->
             decoding_branch
-              ~extract:(fun err -> Lwt.return (Stuck err))
+              ~extract:(fun err -> Stuck err)
               ~delegate:stuck_encoding
         | "snapshot" ->
             decoding_branch
-              ~extract:(fun () -> Lwt.return Snapshot)
+              ~extract:(fun () -> Snapshot)
               ~delegate:snapshot_encoding
         | _ -> (* FIXME *) assert false
       in
