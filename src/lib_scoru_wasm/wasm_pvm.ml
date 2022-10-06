@@ -117,35 +117,23 @@ struct
       let snapshot_encoding = value [] Data_encoding.unit in
       let select_encode = function
         | Decode m ->
-            destruction
-              ~tag:"decode"
-              ~res:(Lwt.return m)
-              ~delegate:Parsing.Decode.encoding
+            destruction ~tag:"decode" ~res:m ~delegate:Parsing.Decode.encoding
         | Link {ast_module; externs; imports_offset} ->
             destruction
               ~tag:"link"
-              ~res:(Lwt.return (ast_module, externs, imports_offset))
+              ~res:(ast_module, externs, imports_offset)
               ~delegate:link_encoding
         | Init {self; ast_module; init_kont; module_reg} ->
             destruction
               ~tag:"init"
-              ~res:(Lwt.return (self, ast_module, init_kont, module_reg))
+              ~res:(self, ast_module, init_kont, module_reg)
               ~delegate:init_encoding
         | Eval eval_config ->
-            destruction
-              ~tag:"eval"
-              ~res:(Lwt.return eval_config)
-              ~delegate:eval_encoding
+            destruction ~tag:"eval" ~res:eval_config ~delegate:eval_encoding
         | Stuck err ->
-            destruction
-              ~tag:"stuck"
-              ~res:(Lwt.return err)
-              ~delegate:stuck_encoding
+            destruction ~tag:"stuck" ~res:err ~delegate:stuck_encoding
         | Snapshot ->
-            destruction
-              ~tag:"snapshot"
-              ~res:(Lwt.return ())
-              ~delegate:snapshot_encoding
+            destruction ~tag:"snapshot" ~res:() ~delegate:snapshot_encoding
       and select_decode = function
         | "decode" ->
             decoding_branch

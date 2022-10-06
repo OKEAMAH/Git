@@ -41,12 +41,7 @@ type -'a custom = {
 [@@unboxed]
 
 type 'tag destruction =
-  | Destruction : {
-      tag : 'tag;
-      res : 'b Lwt.t;
-      encode : 'b t;
-    }
-      -> 'tag destruction
+  | Destruction : {tag : 'tag; res : 'b; encode : 'b t} -> 'tag destruction
 
 and 'a t =
   | Custom : 'a custom -> 'a t
@@ -83,8 +78,7 @@ let rec eval :
       let (Destruction {tag; res; encode}) = select value in
       let encode = Scope (["value"], encode) in
       let* tree = eval tag_encoding backend tag prefix tree in
-      let* value = res in
-      eval encode backend value prefix tree
+      eval encode backend res prefix tree
   | Delayed f -> eval (f ()) backend value prefix tree
   | Contramap (f, encoder) -> eval encoder backend (f value) prefix tree
   | Raw suffix -> Tree.add backend tree (prefix suffix) value

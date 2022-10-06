@@ -294,7 +294,7 @@ let tagged_union ?default {encode; decode} cases =
   {encode; decode}
 
 type _ destruction =
-  | Destruction : {tag : 'a; res : 'b Lwt.t; delegate : 'b t} -> 'a destruction
+  | Destruction : {tag : 'a; res : 'b; delegate : 'b t} -> 'a destruction
 
 let destruction ~tag ~res ~delegate = Destruction {tag; res; delegate}
 
@@ -327,12 +327,9 @@ let value_option key encoding =
 
 let option enc =
   let select_encode = function
-    | Some v -> destruction ~tag:"Some" ~res:(Lwt.return v) ~delegate:enc
+    | Some v -> destruction ~tag:"Some" ~res:v ~delegate:enc
     | None ->
-        destruction
-          ~tag:"None"
-          ~res:Lwt.return_unit
-          ~delegate:(value [] Data_encoding.unit)
+        destruction ~tag:"None" ~res:() ~delegate:(value [] Data_encoding.unit)
   in
 
   let select_decode = function
@@ -367,10 +364,8 @@ let delayed f =
 
 let either enc_a enc_b =
   let select_encode = function
-    | Either.Left x ->
-        destruction ~tag:"Left" ~res:(Lwt.return x) ~delegate:enc_a
-    | Either.Right x ->
-        destruction ~tag:"Right" ~res:(Lwt.return x) ~delegate:enc_b
+    | Either.Left x -> destruction ~tag:"Left" ~res:x ~delegate:enc_a
+    | Either.Right x -> destruction ~tag:"Right" ~res:x ~delegate:enc_b
   in
   let select_decode = function
     | "Left" ->

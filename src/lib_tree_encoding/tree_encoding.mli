@@ -295,7 +295,7 @@ end
 
 type _ destruction
 
-val destruction : tag:'a -> res:'b Lwt.t -> delegate:'b t -> 'a destruction
+val destruction : tag:'a -> res:'b -> delegate:'b t -> 'a destruction
 
 type _ decoding_branch
 

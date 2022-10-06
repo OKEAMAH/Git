@@ -123,6 +123,6 @@ val wrapped_tree : Tree.wrapped_tree t
 
 type _ destruction
 
-val destruction : tag:'tag -> res:'b Lwt.t -> encode:'b t -> 'tag destruction
+val destruction : tag:'tag -> res:'b -> encode:'b t -> 'tag destruction
 
 val fast_tagged_union : 'tag t -> ('a -> 'tag destruction) -> 'a t

@@ -206,42 +206,31 @@ let raw_instruction_encoding =
     value ["$1"] Interpreter_encodings.Ast.vec_replaceop_encoding
   in
   let select_encode =
-    let enum_case tag =
-      destruction ~tag ~res:Lwt.return_unit ~delegate:unit_encoding
-    in
-    let instr_1 tag var =
-      destruction ~tag ~res:(Lwt.return var) ~delegate:var_1_encoding
-    in
+    let enum_case tag = destruction ~tag ~res:() ~delegate:unit_encoding in
+    let instr_1 tag var = destruction ~tag ~res:var ~delegate:var_1_encoding in
     let instr_2 tag var1 var2 =
-      destruction ~tag ~res:(Lwt.return (var1, var2)) ~delegate:var_2_encoding
+      destruction ~tag ~res:(var1, var2) ~delegate:var_2_encoding
     in
     function
     | Unreachable -> enum_case "Unreachable"
     | Nop -> enum_case "Nop"
     | Drop -> enum_case "Drop"
-    | Select p ->
-        destruction ~tag:"Select" ~res:(Lwt.return p) ~delegate:select_encoding
+    | Select p -> destruction ~tag:"Select" ~res:p ~delegate:select_encoding
     | Block (type_, instr) ->
-        destruction
-          ~tag:"Block"
-          ~res:(Lwt.return (type_, instr))
-          ~delegate:block_encoding
+        destruction ~tag:"Block" ~res:(type_, instr) ~delegate:block_encoding
     | Loop (type_, instr) ->
-        destruction
-          ~tag:"Loop"
-          ~res:(Lwt.return (type_, instr))
-          ~delegate:loop_encoding
+        destruction ~tag:"Loop" ~res:(type_, instr) ~delegate:loop_encoding
     | If (type_, instr_if, instrs_else) ->
         destruction
           ~tag:"If"
-          ~res:(Lwt.return (type_, instr_if, instrs_else))
+          ~res:(type_, instr_if, instrs_else)
           ~delegate:if_encoding
     | Br var -> instr_1 "Br" var
     | BrIf var -> instr_1 "BrIf" var
     | BrTable (table, target) ->
         destruction
           ~tag:"BrTable"
-          ~res:(Lwt.return (table, target))
+          ~res:(table, target)
           ~delegate:br_table_encoding
     | Return -> enum_case "Return"
     | Call var -> instr_1 "Call" var
@@ -259,32 +248,25 @@ let raw_instruction_encoding =
     | TableCopy (var1, var2) -> instr_2 "TableCopy" var1 var2
     | TableInit (var1, var2) -> instr_2 "TableInit" var1 var2
     | ElemDrop var -> instr_1 "ElemDrop" var
-    | Load loadop ->
-        destruction ~tag:"Load" ~res:(Lwt.return loadop) ~delegate:load_encoding
+    | Load loadop -> destruction ~tag:"Load" ~res:loadop ~delegate:load_encoding
     | Store storeop ->
-        destruction
-          ~tag:"Store"
-          ~res:(Lwt.return storeop)
-          ~delegate:store_encoding
+        destruction ~tag:"Store" ~res:storeop ~delegate:store_encoding
     | VecLoad vec_loadop ->
-        destruction
-          ~tag:"VecLoad"
-          ~res:(Lwt.return vec_loadop)
-          ~delegate:vec_load_encoding
+        destruction ~tag:"VecLoad" ~res:vec_loadop ~delegate:vec_load_encoding
     | VecStore vec_storeop ->
         destruction
           ~tag:"VecStore"
-          ~res:(Lwt.return vec_storeop)
+          ~res:vec_storeop
           ~delegate:vec_store_encoding
     | VecLoadLane vec_laneop ->
         destruction
           ~tag:"VecLoadLane"
-          ~res:(Lwt.return vec_laneop)
+          ~res:vec_laneop
           ~delegate:vec_load_lane_encoding
     | VecStoreLane vec_laneop ->
         destruction
           ~tag:"VecStoreLane"
-          ~res:(Lwt.return vec_laneop)
+          ~res:vec_laneop
           ~delegate:vec_store_lane_encoding
     | MemorySize -> enum_case "MemorySize"
     | MemoryGrow -> enum_case "MemoryGrow"
@@ -293,107 +275,77 @@ let raw_instruction_encoding =
     | MemoryInit var -> instr_1 "MemoryInit" var
     | DataDrop var -> instr_1 "DataDrop" var
     | RefNull ref_type ->
-        destruction
-          ~tag:"RefNull"
-          ~res:(Lwt.return ref_type)
-          ~delegate:ref_null_encoding
+        destruction ~tag:"RefNull" ~res:ref_type ~delegate:ref_null_encoding
     | RefFunc var -> instr_1 "RefFunc" var
     | RefIsNull -> enum_case "RefIsNull"
-    | Const num ->
-        destruction ~tag:"Const" ~res:(Lwt.return num) ~delegate:const_encoding
-    | Test testop ->
-        destruction ~tag:"Test" ~res:(Lwt.return testop) ~delegate:test_encoding
+    | Const num -> destruction ~tag:"Const" ~res:num ~delegate:const_encoding
+    | Test testop -> destruction ~tag:"Test" ~res:testop ~delegate:test_encoding
     | Compare relop ->
-        destruction
-          ~tag:"Compare"
-          ~res:(Lwt.return relop)
-          ~delegate:compare_encoding
-    | Unary unop ->
-        destruction ~tag:"Unary" ~res:(Lwt.return unop) ~delegate:unary_encoding
+        destruction ~tag:"Compare" ~res:relop ~delegate:compare_encoding
+    | Unary unop -> destruction ~tag:"Unary" ~res:unop ~delegate:unary_encoding
     | Binary binop ->
-        destruction
-          ~tag:"Binary"
-          ~res:(Lwt.return binop)
-          ~delegate:binary_encoding
+        destruction ~tag:"Binary" ~res:binop ~delegate:binary_encoding
     | Convert cvtop ->
-        destruction
-          ~tag:"Convert"
-          ~res:(Lwt.return cvtop)
-          ~delegate:convert_encoding
+        destruction ~tag:"Convert" ~res:cvtop ~delegate:convert_encoding
     | VecConst vec ->
-        destruction
-          ~tag:"VecConst"
-          ~res:(Lwt.return vec)
-          ~delegate:vec_const_encoding
+        destruction ~tag:"VecConst" ~res:vec ~delegate:vec_const_encoding
     | VecTest vec_testop ->
-        destruction
-          ~tag:"VecTest"
-          ~res:(Lwt.return vec_testop)
-          ~delegate:vec_test_encoding
+        destruction ~tag:"VecTest" ~res:vec_testop ~delegate:vec_test_encoding
     | VecCompare relop ->
-        destruction
-          ~tag:"VecCompare"
-          ~res:(Lwt.return relop)
-          ~delegate:vec_compare_encoding
+        destruction ~tag:"VecCompare" ~res:relop ~delegate:vec_compare_encoding
     | VecUnary vec_unop ->
-        destruction
-          ~tag:"VecUnary"
-          ~res:(Lwt.return vec_unop)
-          ~delegate:vec_unary_encoding
+        destruction ~tag:"VecUnary" ~res:vec_unop ~delegate:vec_unary_encoding
     | VecBinary vec_binop ->
         destruction
           ~tag:"VecBinary"
-          ~res:(Lwt.return vec_binop)
+          ~res:vec_binop
           ~delegate:vec_binary_encoding
     | VecConvert vec_cvtop ->
         destruction
           ~tag:"VecConvert"
-          ~res:(Lwt.return vec_cvtop)
+          ~res:vec_cvtop
           ~delegate:vec_convert_encoding
     | VecShift vec_shiftop ->
         destruction
           ~tag:"VecShift"
-          ~res:(Lwt.return vec_shiftop)
+          ~res:vec_shiftop
           ~delegate:vec_shift_encoding
     | VecBitmask vec_bitmaskop ->
         destruction
           ~tag:"VecBitmask"
-          ~res:(Lwt.return vec_bitmaskop)
+          ~res:vec_bitmaskop
           ~delegate:vec_bitmask_encoding
     | VecTestBits vtestop ->
         destruction
           ~tag:"VecTestBits"
-          ~res:(Lwt.return vtestop)
+          ~res:vtestop
           ~delegate:vec_test_bits_encoding
     | VecUnaryBits vec_vunop ->
         destruction
           ~tag:"VecUnaryBits"
-          ~res:(Lwt.return vec_vunop)
+          ~res:vec_vunop
           ~delegate:vec_unary_bits_encoding
     | VecBinaryBits vbinop ->
         destruction
           ~tag:"VecBinaryBits"
-          ~res:(Lwt.return vbinop)
+          ~res:vbinop
           ~delegate:vec_binary_bits_encoding
     | VecTernaryBits vternop ->
         destruction
           ~tag:"VecTernaryBits"
-          ~res:(Lwt.return vternop)
+          ~res:vternop
           ~delegate:vec_ternary_bits_encoding
     | VecSplat splatop ->
-        destruction
-          ~tag:"VecSplat"
-          ~res:(Lwt.return splatop)
-          ~delegate:vec_splat_encoding
+        destruction ~tag:"VecSplat" ~res:splatop ~delegate:vec_splat_encoding
     | VecExtract extractop ->
         destruction
           ~tag:"VecExtract"
-          ~res:(Lwt.return extractop)
+          ~res:extractop
           ~delegate:vec_extract_encoding
     | VecReplace vec_replaceop ->
         destruction
           ~tag:"VecReplace"
-          ~res:(Lwt.return vec_replaceop)
+          ~res:vec_replaceop
           ~delegate:vec_replace_encoding
   and select_decode =
     let enum_case w =
@@ -622,12 +574,12 @@ let function_encoding =
     | Func.HostFunc (func_type, name) ->
         destruction
           ~tag:"Host"
-          ~res:(Lwt.return (func_type, name))
+          ~res:(func_type, name)
           ~delegate:host_func_encoding
     | Func.AstFunc (type_, module_, {at = _; it = {ftype; locals; body}}) ->
         destruction
           ~tag:"Native"
-          ~res:(Lwt.return (type_, module_, ftype, locals, body))
+          ~res:(type_, module_, ftype, locals, body)
           ~delegate:ast_func_encoding
   in
   let select_decode = function
@@ -655,20 +607,11 @@ let value_ref_encoding =
   in
   let select_encode = function
     | Instance.FuncRef func_inst ->
-        destruction
-          ~tag:"FuncRef"
-          ~res:(Lwt.return func_inst)
-          ~delegate:function_encoding
+        destruction ~tag:"FuncRef" ~res:func_inst ~delegate:function_encoding
     | Values.ExternRef v ->
-        destruction
-          ~tag:"ExternRef"
-          ~res:(Lwt.return v)
-          ~delegate:extern_ref_encoding
+        destruction ~tag:"ExternRef" ~res:v ~delegate:extern_ref_encoding
     | Values.NullRef v ->
-        destruction
-          ~tag:"NullRef"
-          ~res:(Lwt.return v)
-          ~delegate:null_ref_encoding
+        destruction ~tag:"NullRef" ~res:v ~delegate:null_ref_encoding
     | _ -> (* FIXME *) assert false
   in
   let select_decode = function
@@ -692,18 +635,11 @@ let value_encoding =
   let num_encoding = value [] Interpreter_encodings.Values.num_encoding in
   let vec_encoding = value [] Interpreter_encodings.Values.vec_encoding in
   let select_encode = function
-    | Values.Num n ->
-        destruction ~tag:"NumType" ~res:(Lwt.return n) ~delegate:num_encoding
+    | Values.Num n -> destruction ~tag:"NumType" ~res:n ~delegate:num_encoding
     | Values.Vec v ->
-        destruction
-          ~tag:"VecType V128Type"
-          ~res:(Lwt.return v)
-          ~delegate:vec_encoding
+        destruction ~tag:"VecType V128Type" ~res:v ~delegate:vec_encoding
     | Values.Ref r ->
-        destruction
-          ~tag:"RefType"
-          ~res:(Lwt.return r)
-          ~delegate:value_ref_encoding
+        destruction ~tag:"RefType" ~res:r ~delegate:value_ref_encoding
   and select_decode = function
     | "NumType" ->
         decoding_branch
@@ -787,25 +723,13 @@ let value_ref_vector_encoding = lazy_vector_encoding "refs" value_ref_encoding
 let extern_encoding =
   let select_encode = function
     | Instance.ExternFunc x ->
-        destruction
-          ~tag:"ExternFunc"
-          ~res:(Lwt.return x)
-          ~delegate:function_encoding
+        destruction ~tag:"ExternFunc" ~res:x ~delegate:function_encoding
     | Instance.ExternTable x ->
-        destruction
-          ~tag:"ExternTable"
-          ~res:(Lwt.return x)
-          ~delegate:table_encoding
+        destruction ~tag:"ExternTable" ~res:x ~delegate:table_encoding
     | Instance.ExternMemory x ->
-        destruction
-          ~tag:"ExternMemory"
-          ~res:(Lwt.return x)
-          ~delegate:memory_encoding
+        destruction ~tag:"ExternMemory" ~res:x ~delegate:memory_encoding
     | Instance.ExternGlobal x ->
-        destruction
-          ~tag:"ExternGlobal"
-          ~res:(Lwt.return x)
-          ~delegate:global_encoding
+        destruction ~tag:"ExternGlobal" ~res:x ~delegate:global_encoding
   and select_decode = function
     | "ExternFunc" ->
         decoding_branch
@@ -997,64 +921,49 @@ let admin_instr'_encoding =
     | From_block (block, index) ->
         destruction
           ~tag:"From_block"
-          ~res:(Lwt.return (block, index))
+          ~res:(block, index)
           ~delegate:from_block_encoding
-    | Plain x ->
-        destruction ~tag:"Plain" ~res:(Lwt.return x) ~delegate:plain_encoding
-    | Refer x ->
-        destruction
-          ~tag:"Refer"
-          ~res:(Lwt.return x)
-          ~delegate:value_ref_encoding
-    | Invoke x ->
-        destruction
-          ~tag:"Invoke"
-          ~res:(Lwt.return x)
-          ~delegate:function_encoding
+    | Plain x -> destruction ~tag:"Plain" ~res:x ~delegate:plain_encoding
+    | Refer x -> destruction ~tag:"Refer" ~res:x ~delegate:value_ref_encoding
+    | Invoke x -> destruction ~tag:"Invoke" ~res:x ~delegate:function_encoding
     | Trapping x ->
-        destruction
-          ~tag:"Trapping"
-          ~res:(Lwt.return x)
-          ~delegate:trapping_encoding
+        destruction ~tag:"Trapping" ~res:x ~delegate:trapping_encoding
     | Returning x ->
-        destruction
-          ~tag:"Returning"
-          ~res:(Lwt.return x)
-          ~delegate:values_encoding
+        destruction ~tag:"Returning" ~res:x ~delegate:values_encoding
     | Breaking (index, values) ->
         destruction
           ~tag:"Breaking"
-          ~res:(Lwt.return (index, values))
+          ~res:(index, values)
           ~delegate:breaking_encoding
     | Table_init_meta (idx, v, d, s, n, x, y) ->
         destruction
           ~tag:"Table_init_meta"
-          ~res:(Lwt.return (idx, v, d, s, n, x, y))
+          ~res:(idx, v, d, s, n, x, y)
           ~delegate:table_init_meta_encoding
     | Table_fill_meta (idx, i, n, r, x) ->
         destruction
           ~tag:"Table_fill_meta"
-          ~res:(Lwt.return (idx, i, n, r, x))
+          ~res:(idx, i, n, r, x)
           ~delegate:table_fill_meta_encoding
     | Table_copy_meta (idx, d, s, n, x, y, case) ->
         destruction
           ~tag:"Table_copy_meta"
-          ~res:(Lwt.return (idx, d, s, n, x, y, case))
+          ~res:(idx, d, s, n, x, y, case)
           ~delegate:table_copy_meta_encoding
     | Memory_init_meta (idx, d, b, n, s, x) ->
         destruction
           ~tag:"Memory_init_meta"
-          ~res:(Lwt.return (idx, d, b, n, s, x))
+          ~res:(idx, d, b, n, s, x)
           ~delegate:memory_init_meta_encoding
     | Memory_fill_meta (idx, i, k, n) ->
         destruction
           ~tag:"Memory_fill_meta"
-          ~res:(Lwt.return (idx, i, k, n))
+          ~res:(idx, i, k, n)
           ~delegate:memory_fill_meta_encoding
     | Memory_copy_meta (idx, d, s, n, case) ->
         destruction
           ~tag:"Memory_copy_meta"
-          ~res:(Lwt.return (idx, d, s, n, case))
+          ~res:(idx, d, s, n, case)
           ~delegate:memory_copy_meta_encoding
   and select_decode = function
     | "From_block" ->
@@ -1201,17 +1110,14 @@ let packed_label_kont_encoding : packed_label_kont t =
     | Packed (Label_stack (label, stack)) ->
         destruction
           ~tag:"Label_stack"
-          ~res:(Lwt.return (label, stack))
+          ~res:(label, stack)
           ~delegate:label_stack_encoding
     | Packed (Label_result vs0) ->
-        destruction
-          ~tag:"Label_result"
-          ~res:(Lwt.return vs0)
-          ~delegate:values_encoding
+        destruction ~tag:"Label_result" ~res:vs0 ~delegate:values_encoding
     | Packed (Label_trapped msg) ->
         destruction
           ~tag:"Label_trapped"
-          ~res:(Lwt.return msg.it)
+          ~res:msg.it
           ~delegate:label_trapped_encoding
   and select_decode = function
     | "Label_stack" ->
@@ -1323,33 +1229,29 @@ let invoke_step_kont_encoding =
     | Eval.Inv_start {func; code = vs, es} ->
         destruction
           ~tag:"Inv_start"
-          ~res:(Lwt.return (func, vs, es))
+          ~res:(func, vs, es)
           ~delegate:inv_start_encoding
     | Eval.Inv_prepare_locals
         {arity; args; vs; instructions; inst; func; locals_kont} ->
         destruction
           ~tag:"Inv_prepare_locals"
-          ~res:
-            (Lwt.return
-               (arity, args, vs, instructions, inst, func, locals_kont))
+          ~res:(arity, args, vs, instructions, inst, func, locals_kont)
           ~delegate:inv_prepare_locals_encoding
     | Eval.Inv_prepare_args
         {arity; vs; instructions; inst; func; locals; args_kont} ->
         destruction
           ~tag:"Inv_prepare_args"
-          ~res:
-            (Lwt.return
-               (arity, vs, instructions, inst, func, locals, args_kont))
+          ~res:(arity, vs, instructions, inst, func, locals, args_kont)
           ~delegate:inv_prepare_args_encoding
     | Eval.Inv_concat {arity; vs; instructions; inst; func; concat_kont} ->
         destruction
           ~tag:"Inv_concat"
-          ~res:(Lwt.return (arity, vs, instructions, inst, func, concat_kont))
+          ~res:(arity, vs, instructions, inst, func, concat_kont)
           ~delegate:inv_concat_encoding
     | Eval.Inv_stop {code = vs, es; fresh_frame} ->
         destruction
           ~tag:"Inv_stop"
-          ~res:(Lwt.return (vs, es, fresh_frame))
+          ~res:(vs, es, fresh_frame)
           ~delegate:inv_stop_encoding
   and select_decode = function
     | "Inv_start" ->
@@ -1416,27 +1318,27 @@ let label_step_kont_encoding =
     | Eval.LS_Start label ->
         destruction
           ~tag:"LS_Start"
-          ~res:(Lwt.return label)
+          ~res:label
           ~delegate:ongoing_label_kont_encoding
     | Eval.LS_Craft_frame (l, i) ->
         destruction
           ~tag:"LS_Craft_frame"
-          ~res:(Lwt.return (l, i))
+          ~res:(l, i)
           ~delegate:ls_craft_frame_encoding
     | Eval.LS_Push_frame (l, i) ->
         destruction
           ~tag:"LS_Push_frame"
-          ~res:(Lwt.return (l, i))
+          ~res:(l, i)
           ~delegate:ls_push_frame_encoding
     | Eval.LS_Consolidate_top (l, k, es, s) ->
         destruction
           ~tag:"LS_Consolidate_top"
-          ~res:(Lwt.return (l, k, es, s))
+          ~res:(l, k, es, s)
           ~delegate:ls_consolidate_top_encoding
     | Eval.LS_Modify_top l ->
         destruction
           ~tag:"LS_Modify_top"
-          ~res:(Lwt.return (Packed l))
+          ~res:(Packed l)
           ~delegate:packed_label_kont_encoding
   and select_decode = function
     | "LS_Start" ->
@@ -1495,28 +1397,22 @@ let step_kont_encoding =
     | Eval.SK_Start (f, rst) ->
         destruction
           ~tag:"SK_Start"
-          ~res:(Lwt.return (Packed_fs f, rst))
+          ~res:(Packed_fs f, rst)
           ~delegate:sk_start_encoding
     | Eval.SK_Next (f, r, k) ->
         destruction
           ~tag:"SK_Next"
-          ~res:(Lwt.return (Packed_fs f, r, k))
+          ~res:(Packed_fs f, r, k)
           ~delegate:sk_next_encoding
     | Eval.SK_Consolidate_label_result (frame', stack, label, vs, es, lstack) ->
         destruction
           ~tag:"SK_Consolidate_label_result"
-          ~res:(Lwt.return (frame', stack, label, vs, es, lstack))
+          ~res:(frame', stack, label, vs, es, lstack)
           ~delegate:sk_consolidate_label_result_encoding
     | Eval.SK_Result vs ->
-        destruction
-          ~tag:"SK_Result"
-          ~res:(Lwt.return vs)
-          ~delegate:values_encoding
+        destruction ~tag:"SK_Result" ~res:vs ~delegate:values_encoding
     | Eval.SK_Trapped msg ->
-        destruction
-          ~tag:"SK_Trapped"
-          ~res:(Lwt.return msg.it)
-          ~delegate:sk_trapped_encoding
+        destruction ~tag:"SK_Trapped" ~res:msg.it ~delegate:sk_trapped_encoding
   and select_decode = function
     | "SK_Start" ->
         decoding_branch

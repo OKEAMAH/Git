@@ -36,10 +36,8 @@ let eval_const_kont_encoding ~host_funcs =
   let ec_next_enc = Wasm_encoding.config_encoding ~host_funcs in
   let ec_stop_enc = Wasm_encoding.value_encoding in
   let select_encode = function
-    | EC_Next c ->
-        destruction ~tag:"EC_Next" ~res:(Lwt.return c) ~delegate:ec_next_enc
-    | EC_Stop v ->
-        destruction ~tag:"EC_Stop" ~res:(Lwt.return v) ~delegate:ec_stop_enc
+    | EC_Next c -> destruction ~tag:"EC_Next" ~res:c ~delegate:ec_next_enc
+    | EC_Stop v -> destruction ~tag:"EC_Stop" ~res:v ~delegate:ec_stop_enc
   in
   let select_decode = function
     | "EC_Next" ->
@@ -76,15 +74,10 @@ let join_kont_encoding enc_b =
   in
   let j_stop_enc = lazy_vec_encoding enc_b in
   let select_encode = function
-    | J_Init v ->
-        destruction ~tag:"J_Init" ~res:(Lwt.return v) ~delegate:j_init_enc
+    | J_Init v -> destruction ~tag:"J_Init" ~res:v ~delegate:j_init_enc
     | J_Next (kont, acc) ->
-        destruction
-          ~tag:"J_Next"
-          ~res:(Lwt.return (kont, acc))
-          ~delegate:j_next_enc
-    | J_Stop res ->
-        destruction ~tag:"J_Stop" ~res:(Lwt.return res) ~delegate:j_stop_enc
+        destruction ~tag:"J_Next" ~res:(kont, acc) ~delegate:j_next_enc
+    | J_Stop res -> destruction ~tag:"J_Stop" ~res ~delegate:j_stop_enc
   in
   let select_decode = function
     | "J_Init" ->
@@ -111,10 +104,8 @@ let map_concat_kont_encoding enc_a enc_b =
   in
   let mc_join_enc = join_kont_encoding enc_b in
   let select_encode = function
-    | MC_Map m ->
-        destruction ~tag:"MC_Map" ~res:(Lwt.return m) ~delegate:mc_map_enc
-    | MC_Join j ->
-        destruction ~tag:"MC_Join" ~res:(Lwt.return j) ~delegate:mc_join_enc
+    | MC_Map m -> destruction ~tag:"MC_Map" ~res:m ~delegate:mc_map_enc
+    | MC_Join j -> destruction ~tag:"MC_Join" ~res:j ~delegate:mc_join_enc
   in
   let select_decode = function
     | "MC_Map" ->
@@ -275,97 +266,75 @@ let init_kont_encoding ~host_funcs =
   let ik_stop_enc = value [] (Data_encoding.constant "ik_stop") in
   let select_encode = function
     | IK_Start exts ->
-        destruction
-          ~tag:"IK_Start"
-          ~res:(Lwt.return exts)
-          ~delegate:ik_start_enc
+        destruction ~tag:"IK_Start" ~res:exts ~delegate:ik_start_enc
     | IK_Add_import m ->
-        destruction
-          ~tag:"IK_Add_import"
-          ~res:(Lwt.return m)
-          ~delegate:ik_add_import_enc
+        destruction ~tag:"IK_Add_import" ~res:m ~delegate:ik_add_import_enc
     | IK_Type (m, t) ->
-        destruction
-          ~tag:"IK_Types"
-          ~res:(Lwt.return (m, t))
-          ~delegate:ik_type_enc
+        destruction ~tag:"IK_Types" ~res:(m, t) ~delegate:ik_type_enc
     | IK_Aggregate (m, Func, t) ->
         destruction
           ~tag:"IK_Aggregate_fun"
-          ~res:(Lwt.return (m, t))
+          ~res:(m, t)
           ~delegate:ik_aggregate_func_enc
     | IK_Aggregate_concat (m, Func, t) ->
         destruction
           ~tag:"IK_Aggregate_concat_fun"
-          ~res:(Lwt.return (m, t))
+          ~res:(m, t)
           ~delegate:ik_aggregate_concat_func_enc
     | IK_Aggregate (m, Global, t) ->
         destruction
           ~tag:"IK_Aggregate_global"
-          ~res:(Lwt.return (m, t))
+          ~res:(m, t)
           ~delegate:ik_aggregate_global_enc
     | IK_Aggregate_concat (m, Global, t) ->
         destruction
           ~tag:"IK_Aggregate_concat_global"
-          ~res:(Lwt.return (m, t))
+          ~res:(m, t)
           ~delegate:ik_aggregate_concat_global_enc
     | IK_Aggregate (m, Table, t) ->
         destruction
           ~tag:"IK_Aggregate_table"
-          ~res:(Lwt.return (m, t))
+          ~res:(m, t)
           ~delegate:ik_aggregate_table_enc
     | IK_Aggregate_concat (m, Table, t) ->
         destruction
           ~tag:"IK_Aggregate_concat_table"
-          ~res:(Lwt.return (m, t))
+          ~res:(m, t)
           ~delegate:ik_aggregate_concat_table_enc
     | IK_Aggregate (m, Memory, t) ->
         destruction
           ~tag:"IK_Aggregate_memory"
-          ~res:(Lwt.return (m, t))
+          ~res:(m, t)
           ~delegate:ik_aggregate_memory_enc
     | IK_Aggregate_concat (m, Memory, t) ->
         destruction
           ~tag:"IK_Aggregate_concat_memory"
-          ~res:(Lwt.return (m, t))
+          ~res:(m, t)
           ~delegate:ik_aggregate_concat_memory_enc
     | IK_Exports (inst, fold) ->
-        destruction
-          ~tag:"IK_Exports"
-          ~res:(Lwt.return (inst, fold))
-          ~delegate:ik_exports_enc
+        destruction ~tag:"IK_Exports" ~res:(inst, fold) ~delegate:ik_exports_enc
     | IK_Elems (inst, map) ->
-        destruction
-          ~tag:"IK_Elems"
-          ~res:(Lwt.return (inst, map))
-          ~delegate:ik_elems_enc
+        destruction ~tag:"IK_Elems" ~res:(inst, map) ~delegate:ik_elems_enc
     | IK_Datas (inst, map) ->
-        destruction
-          ~tag:"IK_Datas"
-          ~res:(Lwt.return (inst, map))
-          ~delegate:ik_datas_enc
+        destruction ~tag:"IK_Datas" ~res:(inst, map) ~delegate:ik_datas_enc
     | IK_Es_elems (inst, map) ->
         destruction
           ~tag:"IK_Es_elems"
-          ~res:(Lwt.return (inst, map))
+          ~res:(inst, map)
           ~delegate:ik_es_elems_enc
     | IK_Es_datas (inst, map, es_elem) ->
         destruction
           ~tag:"IK_Es_datas"
-          ~res:(Lwt.return (inst, map, es_elem))
+          ~res:(inst, map, es_elem)
           ~delegate:ik_es_datas_enc
     | IK_Join_admin (m, admin) ->
         destruction
           ~tag:"IK_Join_admin"
-          ~res:(Lwt.return (m, admin))
+          ~res:(m, admin)
           ~delegate:ik_join_admin_enc
     | IK_Eval config ->
-        destruction
-          ~tag:"IK_Eval"
-          ~res:(Lwt.return config)
-          ~delegate:ik_eval_enc
-    | IK_Stop ->
-        destruction ~tag:"IK_Stop" ~res:Lwt.return_unit ~delegate:ik_stop_enc
+        destruction ~tag:"IK_Eval" ~res:config ~delegate:ik_eval_enc
+    | IK_Stop -> destruction ~tag:"IK_Stop" ~res:() ~delegate:ik_stop_enc
   in
   let select_decode = function
     | "IK_Start" ->

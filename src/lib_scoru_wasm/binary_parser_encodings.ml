@@ -85,14 +85,10 @@ module Byte_vector = struct
 
   let select_encode = function
     | Decode.VKStart ->
-        destruction ~tag:"VKStart" ~res:Lwt.return_unit ~delegate:unit_encoding
+        destruction ~tag:"VKStart" ~res:() ~delegate:unit_encoding
     | Decode.VKRead (b, p, l) ->
-        destruction
-          ~tag:"VKRead"
-          ~res:(Lwt.return (b, p, l))
-          ~delegate:value_enc
-    | Decode.VKStop b ->
-        destruction ~tag:"VKStop" ~res:(Lwt.return b) ~delegate:vkstop_enc
+        destruction ~tag:"VKRead" ~res:(b, p, l) ~delegate:value_enc
+    | Decode.VKStop b -> destruction ~tag:"VKStop" ~res:b ~delegate:vkstop_enc
 
   let select_decode = function
     | "VKStart" ->
@@ -139,14 +135,11 @@ module Name = struct
 
   let select_encode = function
     | Decode.NKStart ->
-        destruction ~tag:"NKStart" ~res:Lwt.return_unit ~delegate:unit_encoding
+        destruction ~tag:"NKStart" ~res:() ~delegate:unit_encoding
     | Decode.NKParse (p, v, l) ->
-        destruction
-          ~tag:"NKParse"
-          ~res:(Lwt.return (p, v, l))
-          ~delegate:value_enc
+        destruction ~tag:"NKParse" ~res:(p, v, l) ~delegate:value_enc
     | Decode.NKStop v ->
-        destruction ~tag:"NKStop" ~res:(Lwt.return v) ~delegate:string_encoding
+        destruction ~tag:"NKStop" ~res:v ~delegate:string_encoding
 
   let select_decode = function
     | "NKStart" ->
@@ -189,13 +182,11 @@ module Func_type = struct
 
   let select_encode = function
     | Decode.FKStart ->
-        destruction ~tag:"FKStart" ~res:Lwt.return_unit ~delegate:unit_encoding
-    | Decode.FKIns vec ->
-        destruction ~tag:"FKIns" ~res:(Lwt.return vec) ~delegate:fkins_enc
+        destruction ~tag:"FKStart" ~res:() ~delegate:unit_encoding
+    | Decode.FKIns vec -> destruction ~tag:"FKIns" ~res:vec ~delegate:fkins_enc
     | Decode.FKOut (p, vec) ->
-        destruction ~tag:"FKOut" ~res:(Lwt.return (p, vec)) ~delegate:fkout_enc
-    | Decode.FKStop ft ->
-        destruction ~tag:"FKStop" ~res:(Lwt.return ft) ~delegate:fkstop_enc
+        destruction ~tag:"FKOut" ~res:(p, vec) ~delegate:fkout_enc
+    | Decode.FKStop ft -> destruction ~tag:"FKStop" ~res:ft ~delegate:fkstop_enc
 
   let select_decode = function
     | "FKStart" ->
@@ -249,22 +240,13 @@ module Import = struct
 
   let select_encode = function
     | Decode.ImpKStart ->
-        destruction
-          ~tag:"ImpKStart"
-          ~res:Lwt.return_unit
-          ~delegate:impkstart_enc
+        destruction ~tag:"ImpKStart" ~res:() ~delegate:impkstart_enc
     | Decode.ImpKModuleName n ->
-        destruction
-          ~tag:"ImpKModuleName"
-          ~res:(Lwt.return n)
-          ~delegate:impkmodulename_enc
+        destruction ~tag:"ImpKModuleName" ~res:n ~delegate:impkmodulename_enc
     | Decode.ImpKItemName (m, i) ->
-        destruction
-          ~tag:"ImpKItemName"
-          ~res:(Lwt.return (m, i))
-          ~delegate:impkitemname_enc
+        destruction ~tag:"ImpKItemName" ~res:(m, i) ~delegate:impkitemname_enc
     | Decode.ImpKStop i ->
-        destruction ~tag:"ImpKStop" ~res:(Lwt.return i) ~delegate:impkstop_enc
+        destruction ~tag:"ImpKStop" ~res:i ~delegate:impkstop_enc
 
   let select_decode = function
     | "ImpKStart" ->
@@ -308,14 +290,11 @@ module Export = struct
 
   let select_encode = function
     | Decode.ExpKStart ->
-        destruction
-          ~tag:"ExpKStart"
-          ~res:Lwt.return_unit
-          ~delegate:expkstart_enc
+        destruction ~tag:"ExpKStart" ~res:() ~delegate:expkstart_enc
     | Decode.ExpKName n ->
-        destruction ~tag:"ExpKName" ~res:(Lwt.return n) ~delegate:expkname_enc
+        destruction ~tag:"ExpKName" ~res:n ~delegate:expkname_enc
     | Decode.ExpKStop e ->
-        destruction ~tag:"ExpKStop" ~res:(Lwt.return e) ~delegate:expkstop_enc
+        destruction ~tag:"ExpKStop" ~res:e ~delegate:expkstop_enc
 
   let select_decode = function
     | "ExpKStart" ->
@@ -377,21 +356,16 @@ module Instr_block = struct
       (value ["else"] Interpreter_encodings.Ast.block_label_encoding)
 
   let select_encode = function
-    | Decode.IKStop lbl ->
-        destruction ~tag:"IKStop" ~res:(Lwt.return lbl) ~delegate:stop_enc
-    | Decode.IKNext lbl ->
-        destruction ~tag:"IKNext" ~res:(Lwt.return lbl) ~delegate:next_enc
+    | Decode.IKStop lbl -> destruction ~tag:"IKStop" ~res:lbl ~delegate:stop_enc
+    | Decode.IKNext lbl -> destruction ~tag:"IKNext" ~res:lbl ~delegate:next_enc
     | Decode.IKBlock (ty, i) ->
-        destruction ~tag:"IKBlock" ~res:(Lwt.return (ty, i)) ~delegate:block_enc
+        destruction ~tag:"IKBlock" ~res:(ty, i) ~delegate:block_enc
     | Decode.IKLoop (ty, i) ->
-        destruction ~tag:"IKLoop" ~res:(Lwt.return (ty, i)) ~delegate:loop_enc
+        destruction ~tag:"IKLoop" ~res:(ty, i) ~delegate:loop_enc
     | Decode.IKIf1 (ty, i) ->
-        destruction ~tag:"IKIf1" ~res:(Lwt.return (ty, i)) ~delegate:if1_enc
+        destruction ~tag:"IKIf1" ~res:(ty, i) ~delegate:if1_enc
     | Decode.IKIf2 (ty, i, else_lbl) ->
-        destruction
-          ~tag:"IKIf2"
-          ~res:(Lwt.return (ty, i, else_lbl))
-          ~delegate:if2_enc
+        destruction ~tag:"IKIf2" ~res:(ty, i, else_lbl) ~delegate:if2_enc
 
   let select_decode = function
     | "IKStop" ->
@@ -437,20 +411,11 @@ module Block = struct
 
   let select_encode = function
     | Decode.BlockStart ->
-        destruction
-          ~tag:"BlockStart"
-          ~res:(Lwt.return ())
-          ~delegate:block_start_enc
+        destruction ~tag:"BlockStart" ~res:() ~delegate:block_start_enc
     | Decode.BlockParse ik ->
-        destruction
-          ~tag:"BlockParse"
-          ~res:(Lwt.return ik)
-          ~delegate:block_parse_enc
+        destruction ~tag:"BlockParse" ~res:ik ~delegate:block_parse_enc
     | Decode.BlockStop lbl ->
-        destruction
-          ~tag:"BlockStop"
-          ~res:(Lwt.return lbl)
-          ~delegate:block_stop_enc
+        destruction ~tag:"BlockStop" ~res:lbl ~delegate:block_stop_enc
 
   let select_decode = function
     | "BlockStart" ->
@@ -527,26 +492,25 @@ module Code = struct
   let ckstop_enc = func_encoding
 
   let select_encode = function
-    | Decode.CKStart ->
-        destruction ~tag:"CKStart" ~res:Lwt.return_unit ~delegate:ckstart_enc
+    | Decode.CKStart -> destruction ~tag:"CKStart" ~res:() ~delegate:ckstart_enc
     | Decode.CKLocalsParse {left; size; pos; vec_kont; locals_size} ->
         destruction
           ~tag:"CKLocalsParse"
-          ~res:(Lwt.return (left, size, pos, vec_kont, locals_size))
+          ~res:(left, size, pos, vec_kont, locals_size)
           ~delegate:cklocalsparse_enc
     | Decode.CKLocalsAccumulate {left; size; pos; type_vec; curr_type; vec_kont}
       ->
         destruction
           ~tag:"CKLocalsAccumulate"
-          ~res:(Lwt.return (left, size, pos, type_vec, curr_type, vec_kont))
+          ~res:(left, size, pos, type_vec, curr_type, vec_kont)
           ~delegate:cklocalsaccumulate_enc
     | Decode.CKBody {left; size; locals; const_kont} ->
         destruction
           ~tag:"CKBody"
-          ~res:(Lwt.return (left, size, locals, const_kont))
+          ~res:(left, size, locals, const_kont)
           ~delegate:ckbody_enc
     | Decode.CKStop func ->
-        destruction ~tag:"CKStop" ~res:(Lwt.return func) ~delegate:ckstop_enc
+        destruction ~tag:"CKStop" ~res:func ~delegate:ckstop_enc
 
   let select_decode = function
     | "CKStart" ->
@@ -675,8 +639,7 @@ module Elem = struct
   let ekstop_enc = elem_encoding
 
   let select_encode = function
-    | Decode.EKStart ->
-        destruction ~tag:"EKStart" ~res:Lwt.return_unit ~delegate:ekstart_enc
+    | Decode.EKStart -> destruction ~tag:"EKStart" ~res:() ~delegate:ekstart_enc
     | Decode.EKMode
         {
           left;
@@ -688,26 +651,25 @@ module Elem = struct
         destruction
           ~tag:"EKMode"
           ~res:
-            (Lwt.return
-               ( left,
-                 index,
-                 index_kind,
-                 early_ref_type,
-                 offset_kont,
-                 offset_kont_code ))
+            ( left,
+              index,
+              index_kind,
+              early_ref_type,
+              offset_kont,
+              offset_kont_code )
           ~delegate:ekmode_enc
     | Decode.EKInitIndexed {mode; ref_type; einit_vec} ->
         destruction
           ~tag:"EKInitIndexed"
-          ~res:(Lwt.return (mode, ref_type, einit_vec))
+          ~res:(mode, ref_type, einit_vec)
           ~delegate:ekinitindexed_enc
     | Decode.EKInitConst {mode; ref_type; einit_vec; einit_kont = pos, block} ->
         destruction
           ~tag:"EKInitConst"
-          ~res:(Lwt.return (mode, ref_type, einit_vec, pos, block))
+          ~res:(mode, ref_type, einit_vec, pos, block)
           ~delegate:ekinitconst_enc
     | Decode.EKStop elem ->
-        destruction ~tag:"EKStop" ~res:(Lwt.return elem) ~delegate:ekstop_enc
+        destruction ~tag:"EKStop" ~res:elem ~delegate:ekstop_enc
 
   let select_decode = function
     | "EKStart" ->
@@ -792,23 +754,16 @@ module Data = struct
   let dkstop_enc = data_segment_encoding
 
   let select_encode = function
-    | Decode.DKStart ->
-        destruction ~tag:"DKStart" ~res:Lwt.return_unit ~delegate:dkstart_enc
+    | Decode.DKStart -> destruction ~tag:"DKStart" ~res:() ~delegate:dkstart_enc
     | Decode.DKMode {left; index; offset_kont = pos, block} ->
         destruction
           ~tag:"DKMode"
-          ~res:(Lwt.return (left, index, pos, block))
+          ~res:(left, index, pos, block)
           ~delegate:dkmode_enc
     | Decode.DKInit {dmode; init_kont} ->
-        destruction
-          ~tag:"DKInit"
-          ~res:(Lwt.return (dmode, init_kont))
-          ~delegate:dkinit_enc
+        destruction ~tag:"DKInit" ~res:(dmode, init_kont) ~delegate:dkinit_enc
     | Decode.DKStop data_segment ->
-        destruction
-          ~tag:"DKStop"
-          ~res:(Lwt.return data_segment)
-          ~delegate:dkstop_enc
+        destruction ~tag:"DKStop" ~res:data_segment ~delegate:dkstop_enc
 
   let select_decode = function
     | "DKStart" ->
@@ -981,9 +936,7 @@ module Field = struct
     in
     let code_field_enc = value [] (Data_encoding.constant "CodeField") in
     let data_field_enc = value [] (Data_encoding.constant "DataField") in
-    let enum_destruction tag delegate =
-      destruction ~tag ~res:Lwt.return_unit ~delegate
-    in
+    let enum_destruction tag delegate = destruction ~tag ~res:() ~delegate in
     let select_encode = function
       | FieldType Decode.TypeField ->
           enum_destruction "TypeField" type_field_enc
@@ -1058,55 +1011,25 @@ module Field = struct
     let data_field_enc = Lazy_vec.raw_encoding data_field_encoding in
     let select_encode = function
       | TypedLazyVec (Decode.TypeField, vec) ->
-          destruction
-            ~tag:"TypeField"
-            ~res:(Lwt.return vec)
-            ~delegate:type_field_enc
+          destruction ~tag:"TypeField" ~res:vec ~delegate:type_field_enc
       | TypedLazyVec (Decode.ImportField, vec) ->
-          destruction
-            ~tag:"ImportField"
-            ~res:(Lwt.return vec)
-            ~delegate:import_field_enc
+          destruction ~tag:"ImportField" ~res:vec ~delegate:import_field_enc
       | TypedLazyVec (Decode.FuncField, vec) ->
-          destruction
-            ~tag:"FuncField"
-            ~res:(Lwt.return vec)
-            ~delegate:func_field_enc
+          destruction ~tag:"FuncField" ~res:vec ~delegate:func_field_enc
       | TypedLazyVec (Decode.TableField, vec) ->
-          destruction
-            ~tag:"TableField"
-            ~res:(Lwt.return vec)
-            ~delegate:table_field_enc
+          destruction ~tag:"TableField" ~res:vec ~delegate:table_field_enc
       | TypedLazyVec (Decode.MemoryField, vec) ->
-          destruction
-            ~tag:"MemoryField"
-            ~res:(Lwt.return vec)
-            ~delegate:memory_field_enc
+          destruction ~tag:"MemoryField" ~res:vec ~delegate:memory_field_enc
       | TypedLazyVec (Decode.GlobalField, vec) ->
-          destruction
-            ~tag:"GlobalField"
-            ~res:(Lwt.return vec)
-            ~delegate:global_field_enc
+          destruction ~tag:"GlobalField" ~res:vec ~delegate:global_field_enc
       | TypedLazyVec (Decode.ExportField, vec) ->
-          destruction
-            ~tag:"ExportField"
-            ~res:(Lwt.return vec)
-            ~delegate:export_field_enc
+          destruction ~tag:"ExportField" ~res:vec ~delegate:export_field_enc
       | TypedLazyVec (Decode.ElemField, vec) ->
-          destruction
-            ~tag:"ElemField"
-            ~res:(Lwt.return vec)
-            ~delegate:elem_field_enc
+          destruction ~tag:"ElemField" ~res:vec ~delegate:elem_field_enc
       | TypedLazyVec (Decode.CodeField, vec) ->
-          destruction
-            ~tag:"CodeField"
-            ~res:(Lwt.return vec)
-            ~delegate:code_field_enc
+          destruction ~tag:"CodeField" ~res:vec ~delegate:code_field_enc
       | TypedLazyVec (Decode.DataField, vec) ->
-          destruction
-            ~tag:"DataField"
-            ~res:(Lwt.return vec)
-            ~delegate:data_field_enc
+          destruction ~tag:"DataField" ~res:vec ~delegate:data_field_enc
     and select_decode = function
       | "TypeField" ->
           decoding_branch
@@ -1330,78 +1253,71 @@ module Module = struct
   let mkstop_enc = no_region_encoding module_encoding
 
   let select_encode = function
-    | Decode.MKStart ->
-        destruction ~tag:"MKStart" ~res:Lwt.return_unit ~delegate:mkstart_enc
+    | Decode.MKStart -> destruction ~tag:"MKStart" ~res:() ~delegate:mkstart_enc
     | Decode.MKSkipCustom (Some field_type) ->
         destruction
           ~tag:"MKSkipCustom"
-          ~res:(Lwt.return (Some (Field.FieldType field_type)))
+          ~res:(Some (Field.FieldType field_type))
           ~delegate:mkskipcustom_enc
     | Decode.MKSkipCustom None ->
-        destruction
-          ~tag:"MKSkipCustom"
-          ~res:Lwt.return_none
-          ~delegate:mkskipcustom_enc
+        destruction ~tag:"MKSkipCustom" ~res:None ~delegate:mkskipcustom_enc
     | Decode.MKFieldStart field_type ->
         destruction
           ~tag:"MKFieldStart"
-          ~res:(Lwt.return (Field.FieldType field_type))
+          ~res:(Field.FieldType field_type)
           ~delegate:mkfieldstart_enc
     | Decode.MKField (field_type, size, vec) ->
         destruction
           ~tag:"MKField"
-          ~res:(Lwt.return (Field.TypedLazyVec (field_type, vec), size))
+          ~res:(Field.TypedLazyVec (field_type, vec), size)
           ~delegate:mkfield_enc
     | Decode.MKElaborateFunc
         (func_types, func_bodies, func_kont, instr_kont, no_datas_in_func) ->
         destruction
           ~tag:"MKElaborateFunc"
-          ~res:
-            (Lwt.return
-               (func_types, func_bodies, func_kont, instr_kont, no_datas_in_func))
+          ~res:(func_types, func_bodies, func_kont, instr_kont, no_datas_in_func)
           ~delegate:mkelaboratefunc_enc
     | Decode.MKBuild (funcs, no_datas_in_func) ->
         destruction
           ~tag:"MKBuild"
-          ~res:(Lwt.return (funcs, no_datas_in_func))
+          ~res:(funcs, no_datas_in_func)
           ~delegate:mkbuild_enc
     | Decode.MKTypes (func_type_kont, pos, size, types_acc) ->
         destruction
           ~tag:"MKTypes"
-          ~res:(Lwt.return (func_type_kont, pos, size, types_acc))
+          ~res:(func_type_kont, pos, size, types_acc)
           ~delegate:mktypes_enc
     | Decode.MKImport (import_kont, pos, size, import_acc) ->
         destruction
           ~tag:"MKImport"
-          ~res:(Lwt.return (import_kont, pos, size, import_acc))
+          ~res:(import_kont, pos, size, import_acc)
           ~delegate:mkimport_enc
     | Decode.MKExport (export_kont, pos, size, export_acc) ->
         destruction
           ~tag:"MKExport"
-          ~res:(Lwt.return (export_kont, pos, size, export_acc))
+          ~res:(export_kont, pos, size, export_acc)
           ~delegate:mkexport_enc
     | Decode.MKGlobal (global_type, pos, block_kont, size, global_acc) ->
         destruction
           ~tag:"MKGlobal"
-          ~res:(Lwt.return (global_type, pos, block_kont, size, global_acc))
+          ~res:(global_type, pos, block_kont, size, global_acc)
           ~delegate:mkglobal_enc
     | Decode.MKData (data_kont, pos, size, data_acc) ->
         destruction
           ~tag:"MKData"
-          ~res:(Lwt.return (data_kont, pos, size, data_acc))
+          ~res:(data_kont, pos, size, data_acc)
           ~delegate:mkdata_enc
     | Decode.MKElem (elem_kont, pos, size, elem_acc) ->
         destruction
           ~tag:"MKElem"
-          ~res:(Lwt.return (elem_kont, pos, size, elem_acc))
+          ~res:(elem_kont, pos, size, elem_acc)
           ~delegate:mkelem_enc
     | Decode.MKCode (code_kont, pos, size, code_acc) ->
         destruction
           ~tag:"MKCode"
-          ~res:(Lwt.return (code_kont, pos, size, code_acc))
+          ~res:(code_kont, pos, size, code_acc)
           ~delegate:mkcode_enc
-    | Decode.MKStop m ->
-        destruction ~tag:"MKStop" ~res:(Lwt.return m) ~delegate:mkstop_enc
+    | Decode.MKStop m -> destruction ~tag:"MKStop" ~res:m ~delegate:mkstop_enc
 
   let select_decode = function
     | "MKStart" ->
