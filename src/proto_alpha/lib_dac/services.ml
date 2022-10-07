@@ -22,42 +22,13 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-
-open Tezos_rpc
-open Tezos_rpc_http
-open Tezos_rpc_http_server
-
-let handle_store_and_hash () data =
-  let open Lwt_result_syntax in
-  let open Protocol in
-  let hash = Sc_rollup_PVM_sig.Input_hash.hash_string [data] in
-  return @@ Sc_rollup_PVM_sig.Input_hash.to_b58check hash
-
-let register_store_and_hash dir =
-  RPC_directory.register0 dir (Services.store_and_hash ()) handle_store_and_hash
-
-let register () = RPC_directory.empty |> register_store_and_hash
-
-let launch configuration dir =
-  let open Lwt_syntax in
-  let Configuration.{rpc_addr; rpc_port; _} = configuration in
-  let rpc_addr = P2p_addr.of_string_exn rpc_addr in
-  let host = Ipaddr.V6.to_string rpc_addr in
-  let node = `TCP (`Port rpc_port) in
-  let acl = RPC_server.Acl.default rpc_addr in
-  Lwt.catch
-    (fun () ->
-      let* server =
-        RPC_server.launch
-          ~media_types:Media_type.all_media_types
-          ~host
-          ~acl
-          node
-          dir
-      in
-      return_ok server)
-    fail_with_exn
-
-let start configuration = launch configuration @@ register ()
-
-let shutdown = RPC_server.shutdown
+let store_and_hash () =
+  RPC_service.post_service
+    ~description:
+      "Save the data into chained chunks, using their hash as a filename. \
+       Returns the hash of the first chunk"
+    ~query:RPC_query.empty
+    ~input:Data_encoding.string
+    ~output:Data_encoding.string
+      (* see [Slot_manager.Slot_header.to_b58check] *)
+    RPC_path.(open_root / "reveals" / "save")
