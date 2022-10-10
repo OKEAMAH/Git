@@ -251,12 +251,16 @@ let constants_mainnet =
       };
   }
 
-let default_cryptobox_parameters_sandbox =
+let derive_cryptobox_parameters network =
+  let redundancy, divider =
+    match network with `Sandbox -> (4, 64) | `Test -> (8, 32)
+  in
+  let m = default_cryptobox_parameters in
   {
-    Dal.Slots_history.page_size = 4096;
-    number_of_shards = 256;
-    slot_size = 1 lsl 16;
-    redundancy_factor = 4;
+    Dal.Slots_history.redundancy_factor = redundancy;
+    page_size = m.page_size / divider;
+    slot_size = m.slot_size / divider;
+    number_of_shards = m.number_of_shards / divider;
   }
 
 let default_dal_sandbox =
@@ -266,7 +270,7 @@ let default_dal_sandbox =
       number_of_slots = 16;
       endorsement_lag = 1;
       availability_threshold = 50;
-      cryptobox_parameters = default_cryptobox_parameters_sandbox;
+      cryptobox_parameters = derive_cryptobox_parameters `Sandbox;
     }
 
 let constants_sandbox =
@@ -323,6 +327,11 @@ let constants_test =
   in
   {
     constants_mainnet with
+    dal =
+      {
+        default_dal_sandbox with
+        cryptobox_parameters = derive_cryptobox_parameters `Test;
+      };
     Constants.Parametric.preserved_cycles = 3;
     blocks_per_cycle = 12l;
     blocks_per_commitment = 4l;
