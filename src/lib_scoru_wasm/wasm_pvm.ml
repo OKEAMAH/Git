@@ -374,6 +374,7 @@ struct
               | Stuck _ | Snapshot -> Unknown_error error.raw_exception)
           | `Unknown raw_exception -> Unknown_error raw_exception
         in
+        Format.printf "%s" (Wasm_pvm_errors.show wasm_error) ;
         Lwt.return (pvm_state.durable, Stuck wasm_error, Failing)
       in
       Lwt.catch (fun () -> unsafe_next_tick_state pvm_state) to_stuck

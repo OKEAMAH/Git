@@ -33,7 +33,8 @@ val messages_maximum_size : int
 
 (** Representation of truncated strings of maximum length
     [messages_maximum_size]. Can only be built through [truncate_message]. *)
-type truncated_string = private Truncated of string [@@ocaml.unboxed]
+type truncated_string = private Truncated of string
+[@@ocaml.unboxed] [@@deriving show]
 
 (**  [truncate_message m] builds a truncated message out of a given message
      [m]. *)
@@ -51,6 +52,7 @@ type interpreter_error = {
   raw_exception : raw_exception;
   explanation : explanation option;
 }
+[@@deriving show]
 
 type t =
   | Decode_error of interpreter_error
@@ -67,6 +69,7 @@ type t =
       (** Wraps unexpected exceptions raised by the interpreter. *)
   | Too_many_ticks
       (** The maximum number of ticks was reached before the end of current top level call *)
+[@@deriving show]
 
 (* [invalid_state msg] builds an `Invalid_state` error out of a message. *)
 val invalid_state : string -> t

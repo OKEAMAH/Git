@@ -142,7 +142,7 @@ let set_input_step message message_counter tree =
   in
   Wasm.set_input_step input_info message tree
 
-let rec eval_until_input_requested ?(max_steps = Int64.max_int) tree =
+let rec eval_until_input_requested ?(max_steps = 5000L) tree =
   let open Lwt_syntax in
   let* info = Wasm.get_info tree in
   match info.input_request with
@@ -214,10 +214,11 @@ let make_transaction value text contract =
 
 let make_transactions () =
   let l =
-    QCheck2.Gen.(
-      generate1
-      @@ small_list
-           (triple (string_size @@ return 20) int32 (small_string ~gen:char)))
+    [
+      QCheck2.Gen.(
+        generate1
+          (triple (string_size @@ return 20) int32 (small_string ~gen:char)));
+    ]
   in
   List.map (fun (contract, i, s) -> make_transaction i s contract) l
 
