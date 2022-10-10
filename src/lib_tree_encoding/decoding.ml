@@ -62,9 +62,7 @@ type 'a t =
   | Value_option : key * 'a Data_encoding.t -> 'a option t
   | Value_default : 'a option * key * 'a Data_encoding.t -> 'a t
   | Scope : key * 'a t -> 'a t
-  | FastTaggedUnion :
-      (unit -> 'b) option * 'a t * ('a -> 'b decoding_branch)
-      -> 'b t
+  | FastTaggedUnion : (unit -> 'b) option * (int -> 'b decoding_branch) -> 'b t
 
 and _ decoding_branch =
   | DecodeBranch : {extract : 'b -> 'a; decode : 'b t} -> 'a decoding_branch
@@ -114,6 +112,8 @@ let subtree backend tree prefix =
 
 let scope key decoder = Scope (key, decoder)
 
+let tag_decoder = scope ["tag"] (value [] Data_encoding.int31)
+
 let rec eval :
     type a tree. a t -> tree Tree.backend -> tree -> prefix_key -> a Lwt.t =
  fun decoding backend tree prefix ->
@@ -152,12 +152,12 @@ let rec eval :
       | None, Some default -> return default
       | None, None -> raise (Key_not_found (prefix key)))
   | Scope (key, decoder) -> eval decoder backend tree (append_key prefix key)
-  | FastTaggedUnion (None, tag_decoder, select) ->
+  | FastTaggedUnion (None, select) ->
       let open Lwt_syntax in
       let* target_tag = eval tag_decoder backend tree prefix in
       let (DecodeBranch {decode; extract}) = select target_tag in
       eval (map extract (scope ["value"] decode)) backend tree prefix
-  | FastTaggedUnion (Some default, tag_decoder, select) ->
+  | FastTaggedUnion (Some default, select) ->
       let open Lwt_syntax in
       Lwt.try_bind
         (fun () -> eval tag_decoder backend tree prefix)
@@ -227,9 +227,7 @@ let slow_tagged_union ?default decode_tag cases =
 
 let decode_branch ~extract ~decode = DecodeBranch {extract; decode}
 
-let fast_tagged_union ?default decode_tag select =
-  let tag_decoder = scope ["tag"] decode_tag in
-  FastTaggedUnion (default, tag_decoder, select)
+let fast_tagged_union ?default select = FastTaggedUnion (default, select)
 
 let wrapped_tree =
   Custom

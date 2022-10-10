@@ -293,9 +293,9 @@ module Runner : sig
   end
 end
 
-type _ destruction
+type destruction
 
-val destruction : tag:'a -> res:'b -> delegate:'b t -> 'a destruction
+val destruction : tag:int -> res:'b -> delegate:'b t -> destruction
 
 type _ decoding_branch
 
@@ -303,7 +303,7 @@ val decoding_branch : extract:('a -> 'b) -> delegate:'a t -> 'b decoding_branch
 
 val fast_tagged_union :
   ?default:(unit -> 'a) ->
-  'b t ->
-  select_encode:('a -> 'b destruction) ->
-  select_decode:('b -> 'a decoding_branch) ->
+  select_encode:('a -> destruction) ->
+  select_decode:(int -> 'a decoding_branch) ->
+  unit ->
   'a t

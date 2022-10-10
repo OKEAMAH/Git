@@ -295,8 +295,8 @@ let slow_tagged_union ?default {encode; decode} cases =
   in
   {encode; decode}
 
-type _ destruction =
-  | Destruction : {tag : 'a; res : 'b; delegate : 'b t} -> 'a destruction
+type destruction =
+  | Destruction : {tag : int; res : 'b; delegate : 'b t} -> destruction
 
 let destruction ~tag ~res ~delegate = Destruction {tag; res; delegate}
 
@@ -305,7 +305,7 @@ type _ decoding_branch =
 
 let decoding_branch ~extract ~delegate = DecodeBranch {extract; delegate}
 
-let fast_tagged_union ?default {encode; decode} ~select_encode ~select_decode =
+let fast_tagged_union ?default ~select_encode ~select_decode () =
   let select_encode v =
     let (Destruction {tag; res; delegate}) = select_encode v in
     E.destruction ~tag ~res ~encode:delegate.encode
@@ -314,8 +314,8 @@ let fast_tagged_union ?default {encode; decode} ~select_encode ~select_decode =
     let (DecodeBranch {extract; delegate}) = select_decode tag in
     D.decode_branch ~extract ~decode:delegate.decode
   in
-  let encode = E.fast_tagged_union encode select_encode in
-  let decode = D.fast_tagged_union ?default decode select_decode in
+  let encode = E.fast_tagged_union select_encode in
+  let decode = D.fast_tagged_union ?default select_decode in
   {encode; decode}
 
 let value_option key encoding =
@@ -324,26 +324,24 @@ let value_option key encoding =
   {encode; decode}
 
 let option enc =
+  let tag_Some = 0 and tag_None = 1 in
   let select_encode = function
-    | Some v -> destruction ~tag:"Some" ~res:v ~delegate:enc
+    | Some v -> destruction ~tag:tag_Some ~res:v ~delegate:enc
     | None ->
-        destruction ~tag:"None" ~res:() ~delegate:(value [] Data_encoding.unit)
+        destruction
+          ~tag:tag_None
+          ~res:()
+          ~delegate:(value [] Data_encoding.unit)
   in
-
   let select_decode = function
-    | "Some" -> decoding_branch ~extract:(fun v -> Some v) ~delegate:enc
-    | "None" ->
+    | 0 -> decoding_branch ~extract:(fun v -> Some v) ~delegate:enc
+    | 1 ->
         decoding_branch
           ~extract:(fun () -> None)
           ~delegate:(value [] Data_encoding.unit)
     | _ -> (* FIXME *) assert false
   in
-
-  fast_tagged_union
-    ~default:(fun () -> None)
-    (value [] Data_encoding.string)
-    ~select_encode
-    ~select_decode
+  fast_tagged_union ~default:(fun () -> None) ~select_encode ~select_decode ()
 
 let delayed f =
   let enc = lazy (f ()) in
@@ -360,21 +358,17 @@ let delayed f =
   {encode; decode}
 
 let either enc_a enc_b =
+  let tag_Left = 0 and tag_Right = 1 in
   let select_encode = function
-    | Either.Left x -> destruction ~tag:"Left" ~res:x ~delegate:enc_a
-    | Either.Right x -> destruction ~tag:"Right" ~res:x ~delegate:enc_b
+    | Either.Left x -> destruction ~tag:tag_Left ~res:x ~delegate:enc_a
+    | Either.Right x -> destruction ~tag:tag_Right ~res:x ~delegate:enc_b
   in
   let select_decode = function
-    | "Left" ->
-        decoding_branch ~extract:(fun x -> Either.Left x) ~delegate:enc_a
-    | "Right" ->
-        decoding_branch ~extract:(fun x -> Either.Right x) ~delegate:enc_b
+    | 0 -> decoding_branch ~extract:(fun x -> Either.Left x) ~delegate:enc_a
+    | 1 -> decoding_branch ~extract:(fun x -> Either.Right x) ~delegate:enc_b
     | _ -> (* FIXME *) assert false
   in
-  fast_tagged_union
-    (value [] Data_encoding.string)
-    ~select_encode
-    ~select_decode
+  fast_tagged_union ~select_encode ~select_decode ()
 
 module type TREE = S
 

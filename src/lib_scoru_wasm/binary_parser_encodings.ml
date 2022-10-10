@@ -83,27 +83,33 @@ module Byte_vector = struct
 
   let unit_encoding = value [] Data_encoding.unit
 
+  let tag_VKStart = 0
+
+  and tag_VKRead = 1
+
+  and tag_VKStop = 2
+
   let select_encode = function
     | Decode.VKStart ->
-        destruction ~tag:"VKStart" ~res:() ~delegate:unit_encoding
+        destruction ~tag:tag_VKStart ~res:() ~delegate:unit_encoding
     | Decode.VKRead (b, p, l) ->
-        destruction ~tag:"VKRead" ~res:(b, p, l) ~delegate:value_enc
-    | Decode.VKStop b -> destruction ~tag:"VKStop" ~res:b ~delegate:vkstop_enc
+        destruction ~tag:tag_VKRead ~res:(b, p, l) ~delegate:value_enc
+    | Decode.VKStop b -> destruction ~tag:tag_VKStop ~res:b ~delegate:vkstop_enc
 
   let select_decode = function
-    | "VKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.VKStart)
           ~delegate:unit_encoding
-    | "VKRead" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun (b, p, l) -> Decode.VKRead (b, p, l))
           ~delegate:value_enc
-    | "VKStop" ->
+    | 2 ->
         decoding_branch ~extract:(fun b -> Decode.VKStop b) ~delegate:vkstop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding = fast_tagged_union tag_encoding ~select_encode ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Name = struct
@@ -131,30 +137,36 @@ module Name = struct
 
   let tag_encoding = value [] Data_encoding.string
 
+  let tag_NKStart = 0
+
+  and tag_NKParse = 1
+
+  and tag_NKStop = 2
+
   let select_encode = function
     | Decode.NKStart ->
-        destruction ~tag:"NKStart" ~res:() ~delegate:unit_encoding
+        destruction ~tag:tag_NKStart ~res:() ~delegate:unit_encoding
     | Decode.NKParse (p, v, l) ->
-        destruction ~tag:"NKParse" ~res:(p, v, l) ~delegate:value_enc
+        destruction ~tag:tag_NKParse ~res:(p, v, l) ~delegate:value_enc
     | Decode.NKStop v ->
-        destruction ~tag:"NKStop" ~res:v ~delegate:string_encoding
+        destruction ~tag:tag_NKStop ~res:v ~delegate:string_encoding
 
   let select_decode = function
-    | "NKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.NKStart)
           ~delegate:unit_encoding
-    | "NKParse" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun (p, v, l) -> Decode.NKParse (p, v, l))
           ~delegate:value_enc
-    | "NKStop" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun s -> Decode.NKStop s)
           ~delegate:string_encoding
     | _ -> (* FIXME *) assert false
 
-  let encoding = fast_tagged_union tag_encoding ~select_encode ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Func_type = struct
@@ -178,34 +190,44 @@ module Func_type = struct
 
   let tag_encoding = Data_encoding.string |> value []
 
+  let tag_FKStart = 0
+
+  and tag_FKIns = 1
+
+  and tag_FKOut = 2
+
+  and tag_FKStop = 3
+
   let select_encode = function
     | Decode.FKStart ->
-        destruction ~tag:"FKStart" ~res:() ~delegate:unit_encoding
-    | Decode.FKIns vec -> destruction ~tag:"FKIns" ~res:vec ~delegate:fkins_enc
+        destruction ~tag:tag_FKStart ~res:() ~delegate:unit_encoding
+    | Decode.FKIns vec ->
+        destruction ~tag:tag_FKIns ~res:vec ~delegate:fkins_enc
     | Decode.FKOut (p, vec) ->
-        destruction ~tag:"FKOut" ~res:(p, vec) ~delegate:fkout_enc
-    | Decode.FKStop ft -> destruction ~tag:"FKStop" ~res:ft ~delegate:fkstop_enc
+        destruction ~tag:tag_FKOut ~res:(p, vec) ~delegate:fkout_enc
+    | Decode.FKStop ft ->
+        destruction ~tag:tag_FKStop ~res:ft ~delegate:fkstop_enc
 
   let select_decode = function
-    | "FKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.FKStart)
           ~delegate:unit_encoding
-    | "FKIns" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun vec -> Decode.FKIns vec)
           ~delegate:fkins_enc
-    | "FKOut" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun (p, vec) -> Decode.FKOut (p, vec))
           ~delegate:fkout_enc
-    | "FKStop" ->
+    | 3 ->
         decoding_branch
           ~extract:(fun ft -> Decode.FKStop ft)
           ~delegate:fkstop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding = fast_tagged_union tag_encoding ~select_encode ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 let name_encoding = value [] Data_encoding.string
@@ -236,36 +258,44 @@ module Import = struct
 
   let tag_encoding = value [] Data_encoding.string
 
+  let tag_ImpKStart = 0
+
+  and tag_ImpKModuleName = 1
+
+  and tag_ImpKItemName = 2
+
+  and tag_ImpKStop = 3
+
   let select_encode = function
     | Decode.ImpKStart ->
-        destruction ~tag:"ImpKStart" ~res:() ~delegate:impkstart_enc
+        destruction ~tag:tag_ImpKStart ~res:() ~delegate:impkstart_enc
     | Decode.ImpKModuleName n ->
-        destruction ~tag:"ImpKModuleName" ~res:n ~delegate:impkmodulename_enc
+        destruction ~tag:tag_ImpKModuleName ~res:n ~delegate:impkmodulename_enc
     | Decode.ImpKItemName (m, i) ->
-        destruction ~tag:"ImpKItemName" ~res:(m, i) ~delegate:impkitemname_enc
+        destruction ~tag:tag_ImpKItemName ~res:(m, i) ~delegate:impkitemname_enc
     | Decode.ImpKStop i ->
-        destruction ~tag:"ImpKStop" ~res:i ~delegate:impkstop_enc
+        destruction ~tag:tag_ImpKStop ~res:i ~delegate:impkstop_enc
 
   let select_decode = function
-    | "ImpKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.ImpKStart)
           ~delegate:impkstart_enc
-    | "ImpKModuleName" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun n -> Decode.ImpKModuleName n)
           ~delegate:impkmodulename_enc
-    | "ImpKItemName" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun (m, i) -> Decode.ImpKItemName (m, i))
           ~delegate:impkitemname_enc
-    | "ImpKStop" ->
+    | 3 ->
         decoding_branch
           ~extract:(fun i -> Decode.ImpKStop i)
           ~delegate:impkstop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding = fast_tagged_union tag_encoding ~select_encode ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Export = struct
@@ -286,30 +316,36 @@ module Export = struct
 
   let tags_encoding = value [] Data_encoding.string
 
+  let tag_ExpKStart = 0
+
+  and tag_ExpKName = 1
+
+  and tag_ExpKStop = 2
+
   let select_encode = function
     | Decode.ExpKStart ->
-        destruction ~tag:"ExpKStart" ~res:() ~delegate:expkstart_enc
+        destruction ~tag:tag_ExpKStart ~res:() ~delegate:expkstart_enc
     | Decode.ExpKName n ->
-        destruction ~tag:"ExpKName" ~res:n ~delegate:expkname_enc
+        destruction ~tag:tag_ExpKName ~res:n ~delegate:expkname_enc
     | Decode.ExpKStop e ->
-        destruction ~tag:"ExpKStop" ~res:e ~delegate:expkstop_enc
+        destruction ~tag:tag_ExpKStop ~res:e ~delegate:expkstop_enc
 
   let select_decode = function
-    | "ExpKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.ExpKStart)
           ~delegate:expkstart_enc
-    | "ExpKName" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun n -> Decode.ExpKName n)
           ~delegate:expkname_enc
-    | "ExpKStop" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun e -> Decode.ExpKStop e)
           ~delegate:expkstop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding = fast_tagged_union tags_encoding ~select_encode ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Size = struct
@@ -353,50 +389,60 @@ module Instr_block = struct
       (value ["pos"] Data_encoding.int31)
       (value ["else"] Interpreter_encodings.Ast.block_label_encoding)
 
+  let tag_IKStop = 0
+
+  and tag_IKNext = 1
+
+  and tag_IKBlock = 2
+
+  and tag_IKLoop = 3
+
+  and tag_IKIf1 = 4
+
+  and tag_IKIf2 = 5
+
   let select_encode = function
-    | Decode.IKStop lbl -> destruction ~tag:"IKStop" ~res:lbl ~delegate:stop_enc
-    | Decode.IKNext lbl -> destruction ~tag:"IKNext" ~res:lbl ~delegate:next_enc
+    | Decode.IKStop lbl ->
+        destruction ~tag:tag_IKStop ~res:lbl ~delegate:stop_enc
+    | Decode.IKNext lbl ->
+        destruction ~tag:tag_IKNext ~res:lbl ~delegate:next_enc
     | Decode.IKBlock (ty, i) ->
-        destruction ~tag:"IKBlock" ~res:(ty, i) ~delegate:block_enc
+        destruction ~tag:tag_IKBlock ~res:(ty, i) ~delegate:block_enc
     | Decode.IKLoop (ty, i) ->
-        destruction ~tag:"IKLoop" ~res:(ty, i) ~delegate:loop_enc
+        destruction ~tag:tag_IKLoop ~res:(ty, i) ~delegate:loop_enc
     | Decode.IKIf1 (ty, i) ->
-        destruction ~tag:"IKIf1" ~res:(ty, i) ~delegate:if1_enc
+        destruction ~tag:tag_IKIf1 ~res:(ty, i) ~delegate:if1_enc
     | Decode.IKIf2 (ty, i, else_lbl) ->
-        destruction ~tag:"IKIf2" ~res:(ty, i, else_lbl) ~delegate:if2_enc
+        destruction ~tag:tag_IKIf2 ~res:(ty, i, else_lbl) ~delegate:if2_enc
 
   let select_decode = function
-    | "IKStop" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun lbl -> Decode.IKStop lbl)
           ~delegate:stop_enc
-    | "IKNext" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun lbl -> Decode.IKNext lbl)
           ~delegate:next_enc
-    | "IKBlock" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun (ty, i) -> Decode.IKBlock (ty, i))
           ~delegate:block_enc
-    | "IKLoop" ->
+    | 3 ->
         decoding_branch
           ~extract:(fun (ty, i) -> Decode.IKLoop (ty, i))
           ~delegate:loop_enc
-    | "IKIf1" ->
+    | 4 ->
         decoding_branch
           ~extract:(fun (ty, i) -> Decode.IKIf1 (ty, i))
           ~delegate:if1_enc
-    | "IKIf2" ->
+    | 5 ->
         decoding_branch
           ~extract:(fun (ty, i, else_lbl) -> Decode.IKIf2 (ty, i, else_lbl))
           ~delegate:if2_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding =
-    fast_tagged_union
-      (value [] Data_encoding.string)
-      ~select_encode
-      ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Block = struct
@@ -406,34 +452,36 @@ module Block = struct
 
   let block_stop_enc = value [] Interpreter_encodings.Ast.block_label_encoding
 
+  let tag_BlockStart = 0
+
+  let tag_BlockParse = 1
+
+  let tag_BlockStop = 2
+
   let select_encode = function
     | Decode.BlockStart ->
-        destruction ~tag:"BlockStart" ~res:() ~delegate:block_start_enc
+        destruction ~tag:tag_BlockStart ~res:() ~delegate:block_start_enc
     | Decode.BlockParse ik ->
-        destruction ~tag:"BlockParse" ~res:ik ~delegate:block_parse_enc
+        destruction ~tag:tag_BlockParse ~res:ik ~delegate:block_parse_enc
     | Decode.BlockStop lbl ->
-        destruction ~tag:"BlockStop" ~res:lbl ~delegate:block_stop_enc
+        destruction ~tag:tag_BlockStop ~res:lbl ~delegate:block_stop_enc
 
   let select_decode = function
-    | "BlockStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.BlockStart)
           ~delegate:block_start_enc
-    | "BlockParse" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun ik -> Decode.BlockParse ik)
           ~delegate:block_parse_enc
-    | "BlockStop" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun lbl -> Decode.BlockStop lbl)
           ~delegate:block_stop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding =
-    fast_tagged_union
-      (value [] Data_encoding.string)
-      ~select_encode
-      ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Code = struct
@@ -488,59 +536,66 @@ module Code = struct
 
   let ckstop_enc = func_encoding
 
+  let tag_CKStart = 0
+
+  and tag_CKLocalsParse = 1
+
+  and tag_CKLocalsAccumulate = 2
+
+  and tag_CKBody = 3
+
+  and tag_CKStop = 4
+
   let select_encode = function
-    | Decode.CKStart -> destruction ~tag:"CKStart" ~res:() ~delegate:ckstart_enc
+    | Decode.CKStart ->
+        destruction ~tag:tag_CKStart ~res:() ~delegate:ckstart_enc
     | Decode.CKLocalsParse {left; size; pos; vec_kont; locals_size} ->
         destruction
-          ~tag:"CKLocalsParse"
+          ~tag:tag_CKLocalsParse
           ~res:(left, size, pos, vec_kont, locals_size)
           ~delegate:cklocalsparse_enc
     | Decode.CKLocalsAccumulate {left; size; pos; type_vec; curr_type; vec_kont}
       ->
         destruction
-          ~tag:"CKLocalsAccumulate"
+          ~tag:tag_CKLocalsAccumulate
           ~res:(left, size, pos, type_vec, curr_type, vec_kont)
           ~delegate:cklocalsaccumulate_enc
     | Decode.CKBody {left; size; locals; const_kont} ->
         destruction
-          ~tag:"CKBody"
+          ~tag:tag_CKBody
           ~res:(left, size, locals, const_kont)
           ~delegate:ckbody_enc
     | Decode.CKStop func ->
-        destruction ~tag:"CKStop" ~res:func ~delegate:ckstop_enc
+        destruction ~tag:tag_CKStop ~res:func ~delegate:ckstop_enc
 
   let select_decode = function
-    | "CKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.CKStart)
           ~delegate:ckstart_enc
-    | "CKLocalsParse" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun (left, size, pos, vec_kont, locals_size) ->
             Decode.CKLocalsParse {left; size; pos; vec_kont; locals_size})
           ~delegate:cklocalsparse_enc
-    | "CKLocalsAccumulate" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun (left, size, pos, type_vec, curr_type, vec_kont) ->
             Decode.CKLocalsAccumulate
               {left; size; pos; type_vec; curr_type; vec_kont})
           ~delegate:cklocalsaccumulate_enc
-    | "CKBody" ->
+    | 3 ->
         decoding_branch
           ~extract:(fun (left, size, locals, const_kont) ->
             Decode.CKBody {left; size; locals; const_kont})
           ~delegate:ckbody_enc
-    | "CKStop" ->
+    | 4 ->
         decoding_branch
           ~extract:(fun func -> Decode.CKStop func)
           ~delegate:ckstop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding =
-    fast_tagged_union
-      (value [] Data_encoding.string)
-      ~select_encode
-      ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Elem = struct
@@ -633,8 +688,19 @@ module Elem = struct
 
   let ekstop_enc = elem_encoding
 
+  let tag_EKStart = 0
+
+  and tag_EKMode = 1
+
+  and tag_EKInitIndexed = 2
+
+  and tag_EKInitConst = 3
+
+  and tag_EKStop = 4
+
   let select_encode = function
-    | Decode.EKStart -> destruction ~tag:"EKStart" ~res:() ~delegate:ekstart_enc
+    | Decode.EKStart ->
+        destruction ~tag:tag_EKStart ~res:() ~delegate:ekstart_enc
     | Decode.EKMode
         {
           left;
@@ -644,7 +710,7 @@ module Elem = struct
           offset_kont = offset_kont, offset_kont_code;
         } ->
         destruction
-          ~tag:"EKMode"
+          ~tag:tag_EKMode
           ~res:
             ( left,
               index,
@@ -655,23 +721,23 @@ module Elem = struct
           ~delegate:ekmode_enc
     | Decode.EKInitIndexed {mode; ref_type; einit_vec} ->
         destruction
-          ~tag:"EKInitIndexed"
+          ~tag:tag_EKInitIndexed
           ~res:(mode, ref_type, einit_vec)
           ~delegate:ekinitindexed_enc
     | Decode.EKInitConst {mode; ref_type; einit_vec; einit_kont = pos, block} ->
         destruction
-          ~tag:"EKInitConst"
+          ~tag:tag_EKInitConst
           ~res:(mode, ref_type, einit_vec, pos, block)
           ~delegate:ekinitconst_enc
     | Decode.EKStop elem ->
-        destruction ~tag:"EKStop" ~res:elem ~delegate:ekstop_enc
+        destruction ~tag:tag_EKStop ~res:elem ~delegate:ekstop_enc
 
   let select_decode = function
-    | "EKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.EKStart)
           ~delegate:ekstart_enc
-    | "EKMode" ->
+    | 1 ->
         decoding_branch
           ~extract:
             (fun ( left,
@@ -689,28 +755,24 @@ module Elem = struct
                 offset_kont = (offset_kont, offset_kont_code);
               })
           ~delegate:ekmode_enc
-    | "EKInitIndexed" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun (mode, ref_type, einit_vec) ->
             Decode.EKInitIndexed {mode; ref_type; einit_vec})
           ~delegate:ekinitindexed_enc
-    | "EKInitConst" ->
+    | 3 ->
         decoding_branch
           ~extract:(fun (mode, ref_type, einit_vec, pos, block) ->
             Decode.EKInitConst
               {mode; ref_type; einit_vec; einit_kont = (pos, block)})
           ~delegate:ekinitconst_enc
-    | "EKStop" ->
+    | 4 ->
         decoding_branch
           ~extract:(fun elem -> Decode.EKStop elem)
           ~delegate:ekstop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding =
-    fast_tagged_union
-      (value [] Data_encoding.string)
-      ~select_encode
-      ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Data = struct
@@ -746,43 +808,48 @@ module Data = struct
 
   let dkstop_enc = data_segment_encoding
 
+  let tag_DKStart = 0
+
+  and tag_DKMode = 1
+
+  and tag_DKInit = 2
+
+  and tag_DKStop = 3
+
   let select_encode = function
-    | Decode.DKStart -> destruction ~tag:"DKStart" ~res:() ~delegate:dkstart_enc
+    | Decode.DKStart ->
+        destruction ~tag:tag_DKStart ~res:() ~delegate:dkstart_enc
     | Decode.DKMode {left; index; offset_kont = pos, block} ->
         destruction
-          ~tag:"DKMode"
+          ~tag:tag_DKMode
           ~res:(left, index, pos, block)
           ~delegate:dkmode_enc
     | Decode.DKInit {dmode; init_kont} ->
-        destruction ~tag:"DKInit" ~res:(dmode, init_kont) ~delegate:dkinit_enc
+        destruction ~tag:tag_DKInit ~res:(dmode, init_kont) ~delegate:dkinit_enc
     | Decode.DKStop data_segment ->
-        destruction ~tag:"DKStop" ~res:data_segment ~delegate:dkstop_enc
+        destruction ~tag:tag_DKStop ~res:data_segment ~delegate:dkstop_enc
 
   let select_decode = function
-    | "DKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.DKStart)
           ~delegate:dkstart_enc
-    | "DKMode" ->
+    | 1 ->
         decoding_branch
           ~extract:(fun (left, index, pos, block) ->
             Decode.DKMode {left; index; offset_kont = (pos, block)})
           ~delegate:dkmode_enc
-    | "DKInit" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun (dmode, init_kont) -> Decode.DKInit {dmode; init_kont})
           ~delegate:dkinit_enc
-    | "DKStop" ->
+    | 3 ->
         decoding_branch
           ~extract:(fun data_segment -> Decode.DKStop data_segment)
           ~delegate:dkstop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding =
-    fast_tagged_union
-      (value [] Data_encoding.string)
-      ~select_encode
-      ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Field = struct
@@ -927,59 +994,63 @@ module Field = struct
     let code_field_enc = value [] (Data_encoding.constant "CodeField") in
     let data_field_enc = value [] (Data_encoding.constant "DataField") in
     let enum_destruction tag delegate = destruction ~tag ~res:() ~delegate in
+    let tag_TypeField = 0
+    and tag_ImportField = 1
+    and tag_FuncField = 2
+    and tag_TableField = 3
+    and tag_MemoryField = 4
+    and tag_GlobalField = 5
+    and tag_ExportField = 6
+    and tag_StartField = 7
+    and tag_ElemField = 8
+    and tag_DataCountField = 9
+    and tag_CodeField = 10
+    and tag_DataField = 11 in
     let select_encode = function
       | FieldType Decode.TypeField ->
-          enum_destruction "TypeField" type_field_enc
+          enum_destruction tag_TypeField type_field_enc
       | FieldType Decode.ImportField ->
-          enum_destruction "ImportField" import_field_enc
+          enum_destruction tag_ImportField import_field_enc
       | FieldType Decode.FuncField ->
-          enum_destruction "FuncField" func_field_enc
+          enum_destruction tag_FuncField func_field_enc
       | FieldType Decode.TableField ->
-          enum_destruction "TableField" table_field_enc
+          enum_destruction tag_TableField table_field_enc
       | FieldType Decode.MemoryField ->
-          enum_destruction "MemoryField" memory_field_enc
+          enum_destruction tag_MemoryField memory_field_enc
       | FieldType Decode.GlobalField ->
-          enum_destruction "GlobalField" global_field_enc
+          enum_destruction tag_GlobalField global_field_enc
       | FieldType Decode.ExportField ->
-          enum_destruction "ExportField" export_field_enc
+          enum_destruction tag_ExportField export_field_enc
       | FieldType Decode.StartField ->
-          enum_destruction "StartField" start_field_enc
+          enum_destruction tag_StartField start_field_enc
       | FieldType Decode.ElemField ->
-          enum_destruction "ElemField" elem_field_enc
+          enum_destruction tag_ElemField elem_field_enc
       | FieldType Decode.DataCountField ->
-          enum_destruction "DataCountField" data_count_field_enc
+          enum_destruction tag_DataCountField data_count_field_enc
       | FieldType Decode.CodeField ->
-          enum_destruction "CodeField" code_field_enc
+          enum_destruction tag_CodeField code_field_enc
       | FieldType Decode.DataField ->
-          enum_destruction "DataField" data_field_enc
+          enum_destruction tag_DataField data_field_enc
     in
     let enum_decoding_branch k delegate =
       decoding_branch ~extract:(fun () -> FieldType k) ~delegate
     in
     let select_decode = function
-      | "TypeField" -> enum_decoding_branch Decode.TypeField type_field_enc
-      | "ImportField" ->
-          enum_decoding_branch Decode.ImportField import_field_enc
-      | "FuncField" -> enum_decoding_branch Decode.FuncField func_field_enc
-      | "TableField" -> enum_decoding_branch Decode.TableField table_field_enc
-      | "MemoryField" ->
-          enum_decoding_branch Decode.MemoryField memory_field_enc
-      | "GlobalField" ->
-          enum_decoding_branch Decode.GlobalField global_field_enc
-      | "ExportField" ->
-          enum_decoding_branch Decode.ExportField export_field_enc
-      | "StartField" -> enum_decoding_branch Decode.StartField start_field_enc
-      | "ElemField" -> enum_decoding_branch Decode.ElemField elem_field_enc
-      | "DataCountField" ->
-          enum_decoding_branch Decode.DataCountField data_count_field_enc
-      | "CodeField" -> enum_decoding_branch Decode.CodeField code_field_enc
-      | "DataField" -> enum_decoding_branch Decode.DataField data_field_enc
+      | 0 -> enum_decoding_branch Decode.TypeField type_field_enc
+      | 1 -> enum_decoding_branch Decode.ImportField import_field_enc
+      | 2 -> enum_decoding_branch Decode.FuncField func_field_enc
+      | 3 -> enum_decoding_branch Decode.TableField table_field_enc
+      | 4 -> enum_decoding_branch Decode.MemoryField memory_field_enc
+      | 5 -> enum_decoding_branch Decode.GlobalField global_field_enc
+      | 6 -> enum_decoding_branch Decode.ExportField export_field_enc
+      | 7 -> enum_decoding_branch Decode.StartField start_field_enc
+      | 8 -> enum_decoding_branch Decode.ElemField elem_field_enc
+      | 9 -> enum_decoding_branch Decode.DataCountField data_count_field_enc
+      | 10 -> enum_decoding_branch Decode.CodeField code_field_enc
+      | 11 -> enum_decoding_branch Decode.DataField data_field_enc
       | _ -> (* FIXME *) assert false
     in
-    fast_tagged_union
-      (value [] Data_encoding.string)
-      ~select_encode
-      ~select_decode
+    fast_tagged_union ~select_encode ~select_decode ()
 
   (* Only used to encode lazy vector parameterized by the field type in the
      continuation. *)
@@ -987,6 +1058,26 @@ module Field = struct
     | TypedLazyVec :
         ('a, Decode.vec_repr) Decode.field_type * 'a Decode.lazy_vec_kont
         -> packed_typed_lazy_vec
+
+  let tag_TypeField = 0
+
+  and tag_ImportField = 1
+
+  and tag_FuncField = 2
+
+  and tag_TableField = 3
+
+  and tag_MemoryField = 4
+
+  and tag_GlobalField = 5
+
+  and tag_ExportField = 6
+
+  and tag_ElemField = 7
+
+  and tag_CodeField = 8
+
+  and tag_DataField = 9
 
   let packed_typed_lazy_vec_encoding =
     let type_field_enc = Lazy_vec.raw_encoding type_field_encoding in
@@ -1001,72 +1092,69 @@ module Field = struct
     let data_field_enc = Lazy_vec.raw_encoding data_field_encoding in
     let select_encode = function
       | TypedLazyVec (Decode.TypeField, vec) ->
-          destruction ~tag:"TypeField" ~res:vec ~delegate:type_field_enc
+          destruction ~tag:tag_TypeField ~res:vec ~delegate:type_field_enc
       | TypedLazyVec (Decode.ImportField, vec) ->
-          destruction ~tag:"ImportField" ~res:vec ~delegate:import_field_enc
+          destruction ~tag:tag_ImportField ~res:vec ~delegate:import_field_enc
       | TypedLazyVec (Decode.FuncField, vec) ->
-          destruction ~tag:"FuncField" ~res:vec ~delegate:func_field_enc
+          destruction ~tag:tag_FuncField ~res:vec ~delegate:func_field_enc
       | TypedLazyVec (Decode.TableField, vec) ->
-          destruction ~tag:"TableField" ~res:vec ~delegate:table_field_enc
+          destruction ~tag:tag_TableField ~res:vec ~delegate:table_field_enc
       | TypedLazyVec (Decode.MemoryField, vec) ->
-          destruction ~tag:"MemoryField" ~res:vec ~delegate:memory_field_enc
+          destruction ~tag:tag_MemoryField ~res:vec ~delegate:memory_field_enc
       | TypedLazyVec (Decode.GlobalField, vec) ->
-          destruction ~tag:"GlobalField" ~res:vec ~delegate:global_field_enc
+          destruction ~tag:tag_GlobalField ~res:vec ~delegate:global_field_enc
       | TypedLazyVec (Decode.ExportField, vec) ->
-          destruction ~tag:"ExportField" ~res:vec ~delegate:export_field_enc
+          destruction ~tag:tag_ExportField ~res:vec ~delegate:export_field_enc
       | TypedLazyVec (Decode.ElemField, vec) ->
-          destruction ~tag:"ElemField" ~res:vec ~delegate:elem_field_enc
+          destruction ~tag:tag_ElemField ~res:vec ~delegate:elem_field_enc
       | TypedLazyVec (Decode.CodeField, vec) ->
-          destruction ~tag:"CodeField" ~res:vec ~delegate:code_field_enc
+          destruction ~tag:tag_CodeField ~res:vec ~delegate:code_field_enc
       | TypedLazyVec (Decode.DataField, vec) ->
-          destruction ~tag:"DataField" ~res:vec ~delegate:data_field_enc
+          destruction ~tag:tag_DataField ~res:vec ~delegate:data_field_enc
     and select_decode = function
-      | "TypeField" ->
+      | 0 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.TypeField, vec))
             ~delegate:type_field_enc
-      | "ImportField" ->
+      | 1 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.ImportField, vec))
             ~delegate:import_field_enc
-      | "FuncField" ->
+      | 2 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.FuncField, vec))
             ~delegate:func_field_enc
-      | "TableField" ->
+      | 3 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.TableField, vec))
             ~delegate:table_field_enc
-      | "MemoryField" ->
+      | 4 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.MemoryField, vec))
             ~delegate:memory_field_enc
-      | "GlobalField" ->
+      | 5 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.GlobalField, vec))
             ~delegate:global_field_enc
-      | "ExportField" ->
+      | 6 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.ExportField, vec))
             ~delegate:export_field_enc
-      | "ElemField" ->
+      | 7 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.ElemField, vec))
             ~delegate:elem_field_enc
-      | "CodeField" ->
+      | 8 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.CodeField, vec))
             ~delegate:code_field_enc
-      | "DataField" ->
+      | 9 ->
           decoding_branch
             ~extract:(fun vec -> TypedLazyVec (Decode.DataField, vec))
             ~delegate:data_field_enc
       | _ -> (* FIXME *) assert false
     in
-    fast_tagged_union
-      (value [] Data_encoding.string)
-      ~select_encode
-      ~select_decode
+    fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Module = struct
@@ -1232,94 +1320,123 @@ module Module = struct
 
   let mkstop_enc = no_region_encoding module_encoding
 
+  let tag_MKStart = 0
+
+  and tag_MKSkipCustom = 1
+
+  and tag_MKFieldStart = 2
+
+  and tag_MKField = 3
+
+  and tag_MKElaborateFunc = 4
+
+  and tag_MKBuild = 5
+
+  and tag_MKTypes = 6
+
+  and tag_MKImport = 7
+
+  and tag_MKExport = 8
+
+  and tag_MKGlobal = 9
+
+  and tag_MKData = 10
+
+  and tag_MKElem = 11
+
+  and tag_MKCode = 12
+
+  and tag_MKStop = 13
+
   let select_encode = function
-    | Decode.MKStart -> destruction ~tag:"MKStart" ~res:() ~delegate:mkstart_enc
+    | Decode.MKStart ->
+        destruction ~tag:tag_MKStart ~res:() ~delegate:mkstart_enc
     | Decode.MKSkipCustom (Some field_type) ->
         destruction
-          ~tag:"MKSkipCustom"
+          ~tag:tag_MKSkipCustom
           ~res:(Some (Field.FieldType field_type))
           ~delegate:mkskipcustom_enc
     | Decode.MKSkipCustom None ->
-        destruction ~tag:"MKSkipCustom" ~res:None ~delegate:mkskipcustom_enc
+        destruction ~tag:tag_MKSkipCustom ~res:None ~delegate:mkskipcustom_enc
     | Decode.MKFieldStart field_type ->
         destruction
-          ~tag:"MKFieldStart"
+          ~tag:tag_MKFieldStart
           ~res:(Field.FieldType field_type)
           ~delegate:mkfieldstart_enc
     | Decode.MKField (field_type, size, vec) ->
         destruction
-          ~tag:"MKField"
+          ~tag:tag_MKField
           ~res:(Field.TypedLazyVec (field_type, vec), size)
           ~delegate:mkfield_enc
     | Decode.MKElaborateFunc
         (func_types, func_bodies, func_kont, instr_kont, no_datas_in_func) ->
         destruction
-          ~tag:"MKElaborateFunc"
+          ~tag:tag_MKElaborateFunc
           ~res:(func_types, func_bodies, func_kont, instr_kont, no_datas_in_func)
           ~delegate:mkelaboratefunc_enc
     | Decode.MKBuild (funcs, no_datas_in_func) ->
         destruction
-          ~tag:"MKBuild"
+          ~tag:tag_MKBuild
           ~res:(funcs, no_datas_in_func)
           ~delegate:mkbuild_enc
     | Decode.MKTypes (func_type_kont, pos, size, types_acc) ->
         destruction
-          ~tag:"MKTypes"
+          ~tag:tag_MKTypes
           ~res:(func_type_kont, pos, size, types_acc)
           ~delegate:mktypes_enc
     | Decode.MKImport (import_kont, pos, size, import_acc) ->
         destruction
-          ~tag:"MKImport"
+          ~tag:tag_MKImport
           ~res:(import_kont, pos, size, import_acc)
           ~delegate:mkimport_enc
     | Decode.MKExport (export_kont, pos, size, export_acc) ->
         destruction
-          ~tag:"MKExport"
+          ~tag:tag_MKExport
           ~res:(export_kont, pos, size, export_acc)
           ~delegate:mkexport_enc
     | Decode.MKGlobal (global_type, pos, block_kont, size, global_acc) ->
         destruction
-          ~tag:"MKGlobal"
+          ~tag:tag_MKGlobal
           ~res:(global_type, pos, block_kont, size, global_acc)
           ~delegate:mkglobal_enc
     | Decode.MKData (data_kont, pos, size, data_acc) ->
         destruction
-          ~tag:"MKData"
+          ~tag:tag_MKData
           ~res:(data_kont, pos, size, data_acc)
           ~delegate:mkdata_enc
     | Decode.MKElem (elem_kont, pos, size, elem_acc) ->
         destruction
-          ~tag:"MKElem"
+          ~tag:tag_MKElem
           ~res:(elem_kont, pos, size, elem_acc)
           ~delegate:mkelem_enc
     | Decode.MKCode (code_kont, pos, size, code_acc) ->
         destruction
-          ~tag:"MKCode"
+          ~tag:tag_MKCode
           ~res:(code_kont, pos, size, code_acc)
           ~delegate:mkcode_enc
-    | Decode.MKStop m -> destruction ~tag:"MKStop" ~res:m ~delegate:mkstop_enc
+    | Decode.MKStop m -> destruction ~tag:tag_MKStop ~res:m ~delegate:mkstop_enc
 
   let select_decode = function
-    | "MKStart" ->
+    | 0 ->
         decoding_branch
           ~extract:(fun () -> Decode.MKStart)
           ~delegate:mkstart_enc
-    | "MKSkipCustom" ->
+    | 1 ->
         decoding_branch
           ~extract:(function
             | None -> Decode.MKSkipCustom None
             | Some (Field.FieldType ft) -> Decode.MKSkipCustom (Some ft))
           ~delegate:mkskipcustom_enc
-    | "MKFieldStart" ->
+    | 2 ->
         decoding_branch
           ~extract:(fun (Field.FieldType ft) -> Decode.MKFieldStart ft)
           ~delegate:mkfieldstart_enc
-    | "MKField" ->
+    | 3 ->
         decoding_branch
           ~extract:(fun (Field.TypedLazyVec (ft, vec), size) ->
             Decode.MKField (ft, size, vec))
           ~delegate:mkfield_enc
-    | "MKElaborateFunc" ->
+    | 4 ->
         decoding_branch
           ~extract:
             (fun ( func_types,
@@ -1330,55 +1447,51 @@ module Module = struct
             Decode.MKElaborateFunc
               (func_types, func_bodies, func_kont, instr_kont, no_datas_in_func))
           ~delegate:mkelaboratefunc_enc
-    | "MKBuild" ->
+    | 5 ->
         decoding_branch
           ~extract:(fun (funcs, no_datas_in_func) ->
             Decode.MKBuild (funcs, no_datas_in_func))
           ~delegate:mkbuild_enc
-    | "MKTypes" ->
+    | 6 ->
         decoding_branch
           ~extract:(fun (func_type_kont, pos, size, types_acc) ->
             Decode.MKTypes (func_type_kont, pos, size, types_acc))
           ~delegate:mktypes_enc
-    | "MKImport" ->
+    | 7 ->
         decoding_branch
           ~extract:(fun (import_kont, pos, size, import_acc) ->
             Decode.MKImport (import_kont, pos, size, import_acc))
           ~delegate:mkimport_enc
-    | "MKExport" ->
+    | 8 ->
         decoding_branch
           ~extract:(fun (export_kont, pos, size, export_acc) ->
             Decode.MKExport (export_kont, pos, size, export_acc))
           ~delegate:mkexport_enc
-    | "MKGlobal" ->
+    | 9 ->
         decoding_branch
           ~extract:(fun (global_type, pos, block_kont, size, global_acc) ->
             Decode.MKGlobal (global_type, pos, block_kont, size, global_acc))
           ~delegate:mkglobal_enc
-    | "MKData" ->
+    | 10 ->
         decoding_branch
           ~extract:(fun (data_kont, pos, size, data_acc) ->
             Decode.MKData (data_kont, pos, size, data_acc))
           ~delegate:mkdata_enc
-    | "MKElem" ->
+    | 11 ->
         decoding_branch
           ~extract:(fun (elem_kont, pos, size, elem_acc) ->
             Decode.MKElem (elem_kont, pos, size, elem_acc))
           ~delegate:mkelem_enc
-    | "MKCode" ->
+    | 12 ->
         decoding_branch
           ~extract:(fun (code_kont, pos, size, code_acc) ->
             Decode.MKCode (code_kont, pos, size, code_acc))
           ~delegate:mkcode_enc
-    | "MKStop" ->
+    | 13 ->
         decoding_branch ~extract:(fun m -> Decode.MKStop m) ~delegate:mkstop_enc
     | _ -> (* FIXME *) assert false
 
-  let encoding =
-    fast_tagged_union
-      (value [] Data_encoding.string)
-      ~select_encode
-      ~select_decode
+  let encoding = fast_tagged_union ~select_encode ~select_decode ()
 end
 
 module Building_state = struct

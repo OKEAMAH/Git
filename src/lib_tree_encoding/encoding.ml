@@ -40,21 +40,40 @@ type -'a custom = {
 }
 [@@unboxed]
 
-type 'tag destruction =
-  | Destruction : {tag : 'tag; res : 'b; encode : 'b t} -> 'tag destruction
+type destruction =
+  | Destruction : {tag : int; res : 'b; encode : 'b t} -> destruction
 
 and 'a t =
   | Custom : 'a custom -> 'a t
   | Tup2 : 'a t * 'b t -> ('a * 'b) t
   | Tup3 : 'a t * 'b t * 'c t -> ('a * 'b * 'c) t
   | Scope : key * 'a t -> 'a t
-  | TaggedUnion : 'tag t * ('a -> 'tag destruction) -> 'a t
+  | FastTaggedUnion : ('a -> destruction) -> 'a t
   | Delayed : (unit -> 'a t) -> 'a t
   | Contramap : ('b -> 'a) * 'a t -> 'b t
   | Raw : key -> bytes t
   | Value_option : key * 'a Data_encoding.t -> 'a option t
 
+let tup2 lhs rhs = Tup2 (lhs, rhs)
+
+let tup3 encode_a encode_b encode_c = Tup3 (encode_a, encode_b, encode_c)
+
+let raw suffix = Raw suffix
+
+let delayed f = Delayed f
+
+let contramap f encoder = Contramap (f, encoder)
+
+let value suffix enc =
+  contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix)
+
+let value_option key enc = Value_option (key, enc)
+
+let scope key encoder = Scope (key, encoder)
+
 let ignore = Custom {encode = (fun _backend _val _key tree -> Lwt.return tree)}
+
+let tag_encoding = scope ["tag"] (value [] Data_encoding.int31)
 
 let rec eval :
     type a tree.
@@ -74,9 +93,8 @@ let rec eval :
       eval encode_c backend c prefix tree
   | Scope (key, encoder) ->
       eval encoder backend value (append_key prefix key) tree
-  | TaggedUnion (tag_encoding, select) ->
+  | FastTaggedUnion select ->
       let (Destruction {tag; res; encode}) = select value in
-      let encode = Scope (["value"], encode) in
       let* tree = eval tag_encoding backend tag prefix tree in
       eval encode backend res prefix tree
   | Delayed f -> eval (f ()) backend value prefix tree
@@ -100,10 +118,6 @@ let lwt encoder =
           eval encoder backend v prefix tree);
     }
 
-let delayed f = Delayed f
-
-let contramap f encoder = Contramap (f, encoder)
-
 let contramap_lwt f encoder =
   Custom
     {
@@ -113,19 +127,6 @@ let contramap_lwt f encoder =
           let* v = f value in
           eval encoder backend v prefix tree);
     }
-
-let tup2 lhs rhs = Tup2 (lhs, rhs)
-
-let tup3 encode_a encode_b encode_c = Tup3 (encode_a, encode_b, encode_c)
-
-let raw suffix = Raw suffix
-
-let value suffix enc =
-  contramap (Data_encoding.Binary.to_bytes_exn enc) (raw suffix)
-
-let value_option key enc = Value_option (key, enc)
-
-let scope key encoder = Scope (key, encoder)
 
 let lazy_mapping to_key enc_value =
   Custom
@@ -204,6 +205,4 @@ let wrapped_tree =
 
 let destruction ~tag ~res ~encode = Destruction {tag; res; encode}
 
-let fast_tagged_union tag_encoding select =
-  let tag_encoding = scope ["tag"] tag_encoding in
-  TaggedUnion (tag_encoding, select)
+let fast_tagged_union select = FastTaggedUnion select
