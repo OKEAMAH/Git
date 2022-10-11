@@ -2845,7 +2845,11 @@ module Dal : sig
     end
 
     module Header : sig
-      type id = {published_level : Raw_level.t; index : Slot_index.t}
+      type id = {
+        published_level : Raw_level.t;
+        confirmed_level : Raw_level.t;
+        index : Slot_index.t;
+      }
 
       type t = {id : id; commitment : Commitment.t}
 

@@ -64,49 +64,67 @@ module Index = struct
 end
 
 module Header = struct
-  type id = {published_level : Raw_level_repr.t; index : Index.t}
+  type id = {
+    published_level : Raw_level_repr.t;
+    confirmed_level : Raw_level_repr.t;
+    index : Index.t;
+  }
 
   type t = {id : id; commitment : Commitment.t}
 
-  let slot_id_equal ({published_level; index} : id) s2 =
+  let slot_id_equal ({published_level; confirmed_level; index} : id) s2 =
     Raw_level_repr.equal published_level s2.published_level
+    && Raw_level_repr.equal confirmed_level s2.confirmed_level
     && Index.equal index s2.index
 
   let equal {id; commitment} s2 =
     slot_id_equal id s2.id && Commitment.equal commitment s2.commitment
 
-  let compare_slot_id {published_level; index} s2 =
-    let c = Raw_level_repr.compare published_level s2.published_level in
-    if Compare.Int.(c <> 0) then c else Index.compare index s2.index
+  let compare_slot_id {published_level; confirmed_level; index} s2 =
+    let c = Raw_level_repr.compare confirmed_level s2.confirmed_level in
+    if Compare.Int.(c <> 0) then c
+    else
+      let c = Raw_level_repr.compare published_level s2.published_level in
+      if Compare.Int.(c <> 0) then c else Index.compare index s2.index
 
   let zero_id =
     {
       (* We don't expect to have any published slot at level
          Raw_level_repr.root. *)
       published_level = Raw_level_repr.root;
+      confirmed_level = Raw_level_repr.root;
       index = Index.zero;
     }
 
   let zero = {id = zero_id; commitment = Commitment.zero}
 
+  let id_encoding =
+    let open Data_encoding in
+    conv
+      (fun {published_level; confirmed_level; index} ->
+        (published_level, confirmed_level, index))
+      (fun (published_level, confirmed_level, index) ->
+        {published_level; confirmed_level; index})
+      (obj3
+         (req "published_level" Raw_level_repr.encoding)
+         (req "confirmed_level" Raw_level_repr.encoding)
+         (req "index" Data_encoding.uint8))
+
   let encoding =
     let open Data_encoding in
     conv
-      (fun {id = {published_level; index}; commitment} ->
-        (published_level, index, commitment))
-      (fun (published_level, index, commitment) ->
-        {id = {published_level; index}; commitment})
-      (obj3
-         (req "level" Raw_level_repr.encoding)
-         (req "index" Data_encoding.uint8)
-         (req "commitment" Commitment.encoding))
+      (fun {id; commitment} -> (id, commitment))
+      (fun (id, commitment) -> {id; commitment})
+      (merge_objs id_encoding (obj1 (req "commitment" Commitment.encoding)))
 
-  let pp fmt {id = {published_level; index}; commitment} =
+  let pp fmt {id = {published_level; confirmed_level; index}; commitment} =
     Format.fprintf
       fmt
-      "published_level: %a index: %a commitment: %a"
+      "published_level: %a, confirmed_level: %a, index: %a commitment: %a"
       Raw_level_repr.pp
       published_level
+      Raw_level_repr.pp
+      confirmed_level
       Format.pp_print_int
       index
       Commitment.pp
@@ -141,14 +159,9 @@ module Page = struct
   let encoding =
     let open Data_encoding in
     conv
-      (fun {slot_id = {published_level; index}; page_index} ->
-        (published_level, index, page_index))
-      (fun (published_level, index, page_index) ->
-        {slot_id = {published_level; index}; page_index})
-      (obj3
-         (req "published_level" Raw_level_repr.encoding)
-         (req "slot_index" Slot_index.encoding)
-         (req "page_index" Index.encoding))
+      (fun {slot_id; page_index} -> (slot_id, page_index))
+      (fun (slot_id, page_index) -> {slot_id; page_index})
+      (merge_objs Header.id_encoding (obj1 (req "page_index" Index.encoding)))
 
   let equal {slot_id; page_index} p =
     Header.slot_id_equal slot_id p.slot_id
@@ -158,12 +171,15 @@ module Page = struct
 
   let content_encoding = Data_encoding.bytes
 
-  let pp fmt {slot_id = {published_level; index}; page_index} =
+  let pp fmt {slot_id = {published_level; confirmed_level; index}; page_index} =
     Format.fprintf
       fmt
-      "(published_level: %a, slot_index: %a, page_index: %a)"
+      "(published_level: %a, confirmed_level: %a, slot_index: %a, page_index: \
+       %a)"
       Raw_level_repr.pp
       published_level
+      Raw_level_repr.pp
+      confirmed_level
       Slot_index.pp
       index
       Index.pp

@@ -58,12 +58,14 @@ struct
   (* Tests to check insertion of slots in a dal skip list. *)
 
   (** Check insertion of a new slot in the given skip list. *)
-  let skip_list_ordering skip_list ~mk_level ~mk_slot_index ~check_result =
+  let skip_list_ordering ?(mk_confirmed_level = fun _ -> None) skip_list
+      ~mk_level ~mk_slot_index ~check_result =
     let open Lwt_result_syntax in
     let {S.Header.id; _} = Hist.Internal_for_tests.content skip_list in
     let level = mk_level id in
+    let confirmed_level = mk_confirmed_level id in
     let index = mk_slot_index id in
-    let*? _data, _poly, slot = mk_slot ~level ~index () in
+    let*? _data, _poly, slot = mk_slot ?confirmed_level ~level ~index () in
     Hist.add_confirmed_slot_headers_no_cache skip_list [slot]
     |> Environment.wrap_tzresult |> check_result
 
@@ -77,6 +79,7 @@ struct
     skip_list_ordering
       genesis_history
       ~mk_level:(fun id -> id.H.published_level)
+      ~mk_confirmed_level:(fun id -> Some id.S.Header.confirmed_level)
       ~mk_slot_index:(fun id -> id.H.index)
       ~check_result:(fun res ->
         Assert.proto_error ~loc:__LOC__ res (function
@@ -132,10 +135,12 @@ struct
   (** This test attempts to construct a proof to confirm a slot page from the
     genesis skip list. Proof production is expected to fail. *)
   let confirmed_page_on_genesis () =
-    let {H.id = {published_level; index}; _} =
+    let {H.id = {published_level; confirmed_level; index}; _} =
       Hist.Internal_for_tests.content genesis_history
     in
-    let page_id = mk_page_id published_level index P.Index.zero in
+    let page_id =
+      mk_page_id ~confirmed_level published_level index P.Index.zero
+    in
     produce_and_verify_proof
       genesis_history
       genesis_history_cache
@@ -149,7 +154,7 @@ struct
   (** This test attempts to construct a proof to unconfirm a slot page from the
     genesis skip list. Proof production is expected to succeed. *)
   let unconfirmed_page_on_genesis incr_level =
-    let {H.id = {published_level; index}; _} =
+    let {H.id = {published_level; confirmed_level = _; index}; _} =
       Hist.Internal_for_tests.content genesis_history
     in
     let level, sindex =
@@ -224,7 +229,8 @@ struct
         (failing_check_produce_result
            ~__LOC__
            "Wrong page content for the given page index and slot commitment \
-            (page id=(published_level: 11, slot_index: 0, page_index: 2)).")
+            (page id=(published_level: 11, confirmed_level: 12, slot_index: 0, \
+            page_index: 2)).")
 
   (** Test where a slot is confirmed, requesting a proof for a confirmed page,
     where correct page proof is provided, but given page data is altered. *)
@@ -243,7 +249,8 @@ struct
         (failing_check_produce_result
            ~__LOC__
            "Wrong page content for the given page index and slot commitment \
-            (page id=(published_level: 11, slot_index: 0, page_index: 0)).")
+            (page id=(published_level: 11, confirmed_level: 12, slot_index: 0, \
+            page_index: 0)).")
 
   (* Variants of the tests above: Construct/verify proofs that attempt to
      unconfirm pages on top of a (confirmed) slot added in genesis_history skip

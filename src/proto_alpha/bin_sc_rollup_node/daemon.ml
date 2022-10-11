@@ -123,7 +123,13 @@ module Make (PVM : Pvm.S) = struct
            at this time. *)
         let slot_header =
           let open Dal.Slot.Header in
-          {id = {published_level; index}; commitment}
+          let confirmed_level =
+            Raw_level.add
+              published_level
+              node_ctxt.Node_context.protocol_constants.parametric.dal
+                .endorsement_lag
+          in
+          {id = {published_level; confirmed_level; index}; commitment}
         in
         let*! () =
           Store.Dal_slots_headers.add

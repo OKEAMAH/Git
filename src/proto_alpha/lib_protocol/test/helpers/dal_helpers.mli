@@ -61,6 +61,7 @@ end) : sig
    the slot's data, polynomial, and header (in the sense: ID + kate
    commitment). *)
   val mk_slot :
+    ?confirmed_level:Raw_level_repr.t ->
     ?level:Raw_level_repr.t ->
     ?index:Dal_slot_repr.Index.t ->
     ?fill_function:(int -> char) ->
@@ -69,7 +70,11 @@ end) : sig
 
   (** Constructs a record value of type Page.id. *)
   val mk_page_id :
-    Raw_level_repr.t -> Dal_slot_repr.Index.t -> int -> Dal_slot_repr.Page.t
+    ?confirmed_level:Raw_level_repr.t ->
+    Raw_level_repr.t ->
+    Dal_slot_repr.Index.t ->
+    int ->
+    Dal_slot_repr.Page.t
 
   val no_data : (default_char:char -> int -> bytes option) option
 
@@ -80,6 +85,7 @@ end) : sig
    and [proof] is computed, and the function returns [Some (data, proof),
    page_id]. *)
   val mk_page_info :
+    ?confirmed_level:Raw_level_repr.t ->
     ?default_char:char ->
     ?level:Raw_level_repr.t ->
     ?page_index:int ->

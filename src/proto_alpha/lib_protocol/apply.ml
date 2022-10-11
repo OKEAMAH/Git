@@ -1293,7 +1293,12 @@ let apply_manager_operation :
   | Dal_publish_slot_header {published_level; index; commitment} ->
       let slot_header =
         let open Dal.Slot.Header in
-        {id = {published_level; index}; commitment}
+        let confirmed_level =
+          Raw_level.add
+            published_level
+            Constants.((parametric ctxt).dal.Parametric.endorsement_lag)
+        in
+        {id = {published_level; confirmed_level; index}; commitment}
       in
       Dal_apply.apply_publish_slot_header ctxt slot_header >>?= fun ctxt ->
       let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in

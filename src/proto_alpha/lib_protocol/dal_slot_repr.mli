@@ -88,9 +88,13 @@ end
 
 module Header : sig
   (** For Layer-1, a slot is described by the level at which it is published,
-    the slot's index (in the list of slots), and the slot's header
-    (KATE commitment hash). *)
-  type id = {published_level : Raw_level_repr.t; index : Index.t}
+    the level at which it is/will/would be confirmed, the slot's index  (in the
+    list of slots), and the slot's header (KATE commitment hash). *)
+  type id = {
+    published_level : Raw_level_repr.t;
+    confirmed_level : Raw_level_repr.t;
+    index : Index.t;
+  }
 
   type t = {id : id; commitment : Commitment.t}
 

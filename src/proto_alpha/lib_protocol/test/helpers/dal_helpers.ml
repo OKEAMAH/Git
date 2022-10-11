@@ -68,6 +68,8 @@ struct
 
   let cryptobox = Parameters.cryptobox
 
+  let endorsement_lag = Parameters.parameters.dal.endorsement_lag
+
   let genesis_history = Hist.genesis
 
   let genesis_history_cache = Hist.History_cache.empty ~capacity:3000L
@@ -96,29 +98,42 @@ struct
     | Error `Segment_index_out_of_range ->
         fail [Test_failure "compute_proof_segment: Segment_index_out_of_range"]
 
-  let mk_slot ?(level = level_one) ?(index = S.Index.zero)
+  let mk_confirmed_level published_level = function
+    | Some l -> l
+    | None -> Raw_level_repr.add published_level endorsement_lag
+
+  let mk_slot ?confirmed_level ?(level = level_one) ?(index = S.Index.zero)
       ?(fill_function = fun _i -> 'x') () =
     let open Result_syntax in
     let slot_data = Bytes.init params.slot_size fill_function in
     let* polynomial = dal_mk_polynomial_from_slot slot_data in
     let commitment = Cryptobox.commit cryptobox polynomial in
+    let confirmed_level = mk_confirmed_level level confirmed_level in
     return
       ( slot_data,
         polynomial,
-        S.Header.{id = {published_level = level; index}; commitment} )
+        S.Header.
+          {id = {published_level = level; confirmed_level; index}; commitment}
+      )
 
-  let mk_page_id published_level slot_index page_index =
-    P.{slot_id = {published_level; index = slot_index}; page_index}
+  let mk_page_id ?confirmed_level published_level slot_index page_index =
+    let confirmed_level = mk_confirmed_level published_level confirmed_level in
+    P.
+      {
+        slot_id = {published_level; confirmed_level; index = slot_index};
+        page_index;
+      }
 
   let no_data = Some (fun ~default_char:_ _ -> None)
 
-  let mk_page_info ?(default_char = 'x') ?level ?(page_index = P.Index.zero)
-      ?(custom_data = None) (slot : S.Header.t) polynomial =
+  let mk_page_info ?confirmed_level ?(default_char = 'x') ?level
+      ?(page_index = P.Index.zero) ?(custom_data = None) (slot : S.Header.t)
+      polynomial =
     let open Result_syntax in
     let level =
       match level with None -> slot.id.published_level | Some level -> level
     in
-    let page_id = mk_page_id level slot.id.index page_index in
+    let page_id = mk_page_id ?confirmed_level level slot.id.index page_index in
     let* page_proof = dal_mk_prove_page polynomial page_id in
     match custom_data with
     | None ->
