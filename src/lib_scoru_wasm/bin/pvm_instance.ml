@@ -1,6 +1,4 @@
-
 open Tezos_scoru_wasm
-
 module Context = Tezos_context_memory.Context_binary
 
 type Tezos_lazy_containers.Lazy_map.tree += Tree of Context.tree
@@ -20,9 +18,19 @@ end
 module Tree_encoding_runner = Tezos_tree_encoding.Runner.Make (Tree)
 module Wasm = Wasm_pvm.Make (Tree)
 
+let get_tick_from_tree tree =
+  let open Lwt_syntax in
+  let* info = Wasm.get_info tree in
+  return info.current_tick
+
+let get_tick_from_pvm_state
+    (pvm_state : Wasm_pvm_state.Internal_state.pvm_state) =
+  Lwt.return pvm_state.current_tick
+
 module PP = struct
   open Tezos_webassembly_interpreter
   open Wasm_pvm_state.Internal_state
+
   let label_step_kont = function
     | Eval.LS_Start _ -> "ls_start"
     | LS_Craft_frame (_, _) -> "ls_craft_frame"
@@ -59,14 +67,17 @@ module PP = struct
     | IK_Eval _ -> "ik_eval"
     | IK_Stop -> "ik_stop"
 
-  let pp_error_state = function
-    | Wasm_pvm_errors.Too_many_ticks -> "Too_many_ticks"
-    | Init_error _ -> "Init_error"
+  let pp_error_state e =
+    let open Wasm_pvm_errors in
+    match e with
     | Decode_error _ -> "decode"
+    | Link_error _ -> "Link error"
+    | Init_error _ -> "Init_error"
+    | Eval_error _ -> "eval"
     | Invalid_state _ -> "invalid state"
     | Unknown_error _ -> "unknown"
-    | Eval_error _ -> "eval"
-    | _ -> "other"
+    | Too_many_ticks -> "Too_many_ticks"
+    | Too_many_reboots -> "Too_many_reboots"
 
   let tick_label = function
     | Decode _ -> "decode"

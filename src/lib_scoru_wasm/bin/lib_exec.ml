@@ -1,76 +1,68 @@
 open Tezos_scoru_wasm
-open Wasm_pvm_state
 open Wasm_pvm_state.Internal_state
 open Pvm_instance
 
 module Exec = struct
-  let input_request pvm_state =
-    match pvm_state.tick_state with
-    | Stuck _ | Snapshot -> Input_required
-    | Eval config -> (
-        match Tezos_webassembly_interpreter.Eval.is_reveal_tick config with
-        | Some reveal -> Reveal_required reveal
-        | None -> No_input_required)
-    | _ -> No_input_required
+  type phase = Decoding | Initialising | Linking | Evaluating | Padding
 
-  let eval_until_input_requested tree =
-    let should_continue (pvm_state : pvm_state) =
-      match input_request pvm_state with
-      | No_input_required -> true
-      | Reveal_required _ | Input_required -> false
-    in
-    Wasm.Internal_for_benchmark.compute_step_many_until
-      ~max_steps:Int64.max_int
-      should_continue
-      tree
+  let run_loop f a =
+    Lwt_list.fold_left_s
+      f
+      a
+      [Decoding; Linking; Initialising; Evaluating; Padding]
+
+  let should_continue_until_input_requested (pvm_state : pvm_state) =
+    match pvm_state.tick_state with
+    | Stuck _ | Snapshot -> Lwt.return false
+    | _ -> Lwt.return true
 
   (** FIXME: very fragile, when the PVM implementation changes, the predicates produced could be way off*)
   let should_continue phase (pvm_state : pvm_state) =
-    match (phase, pvm_state.tick_state) with
-    | `Initialising, Init _ -> true
-    | `Linking, Link _ -> true
-    | `Decoding, Decode _ -> true
-    | ( `Evaluating,
-        Eval {step_kont = Tezos_webassembly_interpreter.Eval.(SK_Result _); _} )
-      ->
-        false
-    | `Evaluating, Eval _ -> true
-    | _, _ -> false
-
-  let finish_top_level_call tree = eval_until_input_requested tree
-
-  let decode tree =
-    Wasm.Internal_for_benchmark.compute_step_many_until
-      ~max_steps:Int64.max_int
-      (should_continue `Decoding)
-      tree
-
-  let link tree =
-    Wasm.Internal_for_benchmark.compute_step_many_until
-      ~max_steps:Int64.max_int
-      (should_continue `Linking)
-      tree
-
-  let init tree =
-    Wasm.Internal_for_benchmark.compute_step_many_until
-      ~max_steps:Int64.max_int
-      (should_continue `Initialising)
-      tree
-
-  let eval tree =
-    Wasm.Internal_for_benchmark.compute_step_many_until
-      ~max_steps:Int64.max_int
-      (should_continue `Evaluating)
-      tree
-
-  let read_message name =
-    let open Tezt.Base in
-    let kernel_file =
-      project_root // Filename.dirname __FILE__ // "inputs" // (name ^ ".out")
+    let continue =
+      match (phase, pvm_state.tick_state) with
+      | Initialising, Init _ -> true
+      | Linking, Link _ -> true
+      | Decoding, Decode _ -> true
+      | ( Evaluating,
+          Eval {step_kont = Tezos_webassembly_interpreter.Eval.(SK_Result _); _}
+        ) ->
+          false
+      | Evaluating, Eval _ -> true
+      | Padding, Eval _ -> true
+      | _, _ -> false
     in
-    read_file kernel_file
+    Lwt.return continue
+
+  let pp_phase = function
+    | Initialising -> "Initializing"
+    | Linking -> "Linking"
+    | Decoding -> "Decoding"
+    | Evaluating -> "Evaluating"
+    | Padding -> "Padding"
+
+  let finish_top_level_call_on_state pvm_state =
+    Wasm.Internal_for_benchmark.compute_step_many_until_pvm_state
+      ~max_steps:Int64.max_int
+      should_continue_until_input_requested
+      pvm_state
+
+  let execute_on_state phase state =
+    Wasm.Internal_for_benchmark.compute_step_many_until_pvm_state
+      ~max_steps:Int64.max_int
+      (should_continue phase)
+      state
+
+  let run kernel k =
+    let open Lwt_syntax in
+    let* res =
+      Lwt_io.with_file ~mode:Lwt_io.Input kernel (fun channel ->
+          let* kernel = Lwt_io.read channel in
+          k kernel)
+    in
+    return res
 
   let set_input_step message_counter message tree =
+    let open Lwt_syntax in
     let input_info =
       Wasm_pvm_state.
         {
@@ -80,7 +72,23 @@ module Exec = struct
           message_counter = Z.of_int message_counter;
         }
     in
+
+    (* FIXME: hack to allow multiple set_input *)
+    let* pvm_state = Wasm.Internal_for_benchmark.decode tree in
+    let* tree =
+      Wasm.Internal_for_benchmark.encode
+        {pvm_state with tick_state = Snapshot}
+        tree
+    in
+
     Wasm.set_input_step input_info message tree
+
+  let read_message name =
+    let open Tezt.Base in
+    let kernel_file =
+      project_root // Filename.dirname __FILE__ // "messages" // name
+    in
+    read_file kernel_file
 
   let initial_boot_sector_from_kernel ?(max_tick = 2_500_000_000) kernel =
     let open Lwt_syntax in
@@ -100,15 +108,5 @@ module Exec = struct
     let+ tree =
       Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int max_tick) tree
     in
-    (context, tree)
-
-  let run kernel k =
-    let open Lwt_syntax in
-    let* () =
-      Lwt_io.with_file ~mode:Lwt_io.Input kernel (fun channel ->
-          let* kernel = Lwt_io.read channel in
-          k kernel)
-    in
-    return_unit
+    tree
 end
-
