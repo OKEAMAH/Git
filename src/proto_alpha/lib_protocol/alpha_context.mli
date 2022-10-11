@@ -225,6 +225,8 @@ module Raw_level : sig
 
   val diff : raw_level -> raw_level -> int32
 
+  val add : raw_level -> int -> raw_level
+
   val root : raw_level
 
   val succ : raw_level -> raw_level
