@@ -26,11 +26,26 @@
 (** Utilities used to run the PVM *)
 module Exec : sig
   open Pvm_instance
+  open Tezos_scoru_wasm.Wasm_pvm_state
 
-  val eval_until_input_requested : Wasm.tree -> Wasm.tree Lwt.t
+  (** the different phases in a top level call *)
+  type phase = Decoding | Initialising | Linking | Evaluating | Padding
+
+  (** [run_loop f a] folds [f] on all phases of an exection *)
+  val run_loop : ('a -> phase -> 'a Lwt.t) -> 'a -> 'a Lwt.t
+
+  val show_phase : phase -> string
+
+  (** execute the PVM until a the end of a top level call
+      e.g. until a snapshotable state is reached *)
+  val finish_top_level_call_on_state :
+    Internal_state.pvm_state -> Internal_state.pvm_state Lwt.t
+
+  val execute_on_state :
+    phase -> Internal_state.pvm_state -> Internal_state.pvm_state Lwt.t
 
   (** [run path k] execute [k] on the content of the file at [path] *)
-  val run : Lwt_io.file_name -> (string -> unit Lwt.t) -> unit Lwt.t
+  val run : Lwt_io.file_name -> (string -> 'a Lwt.t) -> 'a Lwt.t
 
   val set_input_step : int -> string -> Wasm.tree -> Wasm.tree Lwt.t
 
@@ -39,7 +54,7 @@ module Exec : sig
   val read_message : string -> string
 
   (** [initial_boot_sector_from_kernel "src/lib_scoru_wasm/bin/inputs/my_kernel.wasm"]
-       initialize a state from a kernel (byte format) *)
+      initialize a state from a kernel (byte format) *)
   val initial_boot_sector_from_kernel :
-    ?max_tick:int -> string -> (Context.t * Wasm.tree) Lwt.t
+    ?max_tick:int -> string -> Wasm.tree Lwt.t
 end

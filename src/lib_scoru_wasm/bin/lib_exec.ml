@@ -24,26 +24,55 @@
 (*****************************************************************************)
 
 open Tezos_scoru_wasm
+open Wasm_pvm_state.Internal_state
 open Pvm_instance
 
 module Exec = struct
-  let rec eval_until_input_requested tree =
-    let open Lwt_syntax in
-    let* info = Wasm.get_info tree in
-    match info.input_request with
-    | No_input_required ->
-        let* tree = Wasm.compute_step_many ~max_steps:Int64.max_int tree in
-        eval_until_input_requested tree
-    | Reveal_required _ | Input_required -> return tree
+  type phase = Decoding | Initialising | Linking | Evaluating | Padding
+  [@@deriving show {with_path = false}]
+
+  let run_loop f a =
+    Lwt_list.fold_left_s
+      f
+      a
+      [Decoding; Linking; Initialising; Evaluating; Padding]
+
+  (** Predicate defining the different phases of an execution *)
+  let should_continue phase (pvm_state : pvm_state) =
+    let continue =
+      match (phase, pvm_state.tick_state) with
+      | Initialising, Init _ -> true
+      | Linking, Link _ -> true
+      | Decoding, Decode _ -> true
+      | Evaluating, Eval _
+        when Wasm.Internal_for_benchmark.eval_has_finished pvm_state.tick_state
+        ->
+          false
+      | Evaluating, Eval _ -> true
+      | Padding, Eval _ -> true
+      | _, _ -> false
+    in
+    Lwt.return continue
+
+  let finish_top_level_call_on_state pvm_state =
+    Wasm.Internal_for_benchmark.compute_step_many_pvm_state
+      ~max_steps:Int64.max_int
+      pvm_state
+
+  let execute_on_state phase state =
+    Wasm.Internal_for_benchmark.compute_step_many_until_pvm_state
+      ~max_steps:Int64.max_int
+      (should_continue phase)
+      state
 
   let run kernel k =
     let open Lwt_syntax in
-    let* () =
+    let* res =
       Lwt_io.with_file ~mode:Lwt_io.Input kernel (fun channel ->
           let* kernel = Lwt_io.read channel in
           k kernel)
     in
-    return_unit
+    return res
 
   let set_input_step message_counter message tree =
     let input_info =
@@ -64,7 +93,7 @@ module Exec = struct
     in
     read_file kernel_file
 
-  let initial_boot_sector_from_kernel ?(max_tick = 2_500_000_000) kernel =
+  let initial_boot_sector_from_kernel ?(max_tick = 1_000_000_000_000) kernel =
     let open Lwt_syntax in
     let* index = Context.init "/tmp" in
     let context = Context.empty index in
@@ -82,5 +111,5 @@ module Exec = struct
     let+ tree =
       Wasm.Internal_for_tests.set_max_nb_ticks (Z.of_int max_tick) tree
     in
-    (context, tree)
+    tree
 end

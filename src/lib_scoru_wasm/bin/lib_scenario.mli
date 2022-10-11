@@ -37,10 +37,14 @@ module Scenario : sig
   (** all informations needed to run a benchmark scenario *)
   type scenario
 
-  (** [make_scenario_step step_name action] creates a scenario_step (one action) *)
+  (** [make_scenario_step step_name action] *)
   val make_scenario_step : string -> Wasm.tree action -> scenario_step
 
+  (** [make_scenario kernel_filename list_of_actions] *)
   val make_scenario : string -> scenario_step list -> scenario
+
+  (** action corresponding to one top level call of PVM *)
+  val exec_loop : Wasm.tree action
 
   (** [exec_on_message step message tree] returns the action corresponding to:
       - reading [message]

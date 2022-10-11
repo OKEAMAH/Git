@@ -13,6 +13,7 @@
   tezos-context.memory
   tezos-scoru-wasm
   lwt.unix)
+ (preprocess (pps ppx_deriving.show))
  (link_flags
   (:standard)
   (:include %{workspace_root}/static-link-flags.sexp))

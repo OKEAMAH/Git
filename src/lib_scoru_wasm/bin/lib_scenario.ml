@@ -48,17 +48,6 @@ module Scenario = struct
 
   type 'a action = 'a run_state -> 'a run_state Lwt.t
 
-  let exec_on_message ?(from_binary = true) message : tree action =
-   fun run_state ->
-    let open Lwt_syntax in
-    let message = if from_binary then Exec.read_message message else message in
-    let* run_state =
-      lift_action
-        (Exec.set_input_step run_state.message_counter message)
-        run_state
-    in
-    lift_action Exec.eval_until_input_requested run_state
-
   type scenario_step = string * tree action
 
   type scenario = {kernel : string; actions : scenario_step list}
@@ -69,18 +58,16 @@ module Scenario = struct
       =
     (label, action)
 
-  let run_action name run_state action =
+  let run_action ?(inline = true) ?(last_tick = false) name run_state action =
     let open Lwt_syntax in
-    let* before_tick = lift_lookup get_tick_from_tree run_state in
-    let* tick_state =
-      lift_lookup Wasm.Internal_for_tests.get_tick_state run_state
-    in
+    (* Before *)
+    let* info = lift_lookup Wasm.get_info run_state in
     let _ =
-      Printf.printf
-        "=========\n%s \nStart at tick %s %s\n%!"
-        name
-        (Z.to_string before_tick)
-        (PP.tick_label tick_state)
+      if not inline then
+        Printf.printf
+          "=========\n%s \nStart at tick %s\n-----\n%!"
+          name
+          (Z.to_string info.current_tick)
     in
     let* time, tick, run_state =
       Measure.time_and_tick (lift_lookup get_tick_from_tree) action run_state
@@ -89,14 +76,57 @@ module Scenario = struct
     let* tick_state =
       lift_lookup Wasm.Internal_for_tests.get_tick_state run_state
     in
-    let _ = Printf.printf "took %s ticks in %f s\n%!" (Z.to_string tick) time in
+    let _ = if not inline then Printf.printf "-----\n" in
     let _ =
-      Printf.printf
-        "last tick: %s %s\n%!"
-        (Z.to_string info.current_tick)
-        (PP.tick_label tick_state)
+      Printf.printf "%s took %s ticks in %f s\n%!" name (Z.to_string tick) time
+    in
+    let _ =
+      if last_tick then
+        Printf.printf
+          "last tick: %s %s\n%!"
+          (Z.to_string info.current_tick)
+          (PP.tick_label tick_state)
     in
     return run_state
+
+  let switch_state_type switch switch_label a_state =
+    let open Lwt_syntax in
+    let* time, b_state =
+      Measure.time (fun () -> (lift_action switch) a_state)
+    in
+    return b_state
+
+  let exec_phase state phase = lift_action (Exec.execute_on_state phase) state
+
+  let exec_loop tree_run_state =
+    let open Lwt_syntax in
+    let* pvm_run_state =
+      switch_state_type
+        Wasm.Internal_for_benchmark.decode
+        "Decode tree"
+        tree_run_state
+    in
+    let* pvm_run_state = Exec.run_loop exec_phase pvm_run_state in
+    let* tree_run_state =
+      switch_state_type
+        (fun state ->
+          (* the encode function takes the previous tree encoding as argument *)
+          Wasm.Internal_for_benchmark.encode state tree_run_state.state)
+        "Encode tree"
+        pvm_run_state
+    in
+    return tree_run_state
+
+  let exec_on_message ?(from_binary = true) message : tree action =
+   fun run_state ->
+    let open Lwt_syntax in
+    let message = if from_binary then Exec.read_message message else message in
+    let* run_state =
+      lift_action
+        (Exec.set_input_step run_state.message_counter message)
+        run_state
+    in
+    exec_loop {run_state with message_counter = run_state.message_counter + 1}
 
   let run_scenario scenario =
     let open Lwt_syntax in
@@ -105,10 +135,12 @@ module Scenario = struct
       let rec go run_state = function
         | [] -> return run_state
         | (label, action) :: q ->
-            let* tree = run_action label run_state action in
+            let* tree =
+              run_action ~last_tick:true ~inline:false label run_state action
+            in
             go tree q
       in
-      let* _, tree = Exec.initial_boot_sector_from_kernel kernel in
+      let* tree = Exec.initial_boot_sector_from_kernel kernel in
       let run_state = {state = tree; message_counter = 1} in
       let* _ = go run_state scenario.actions in
       return ()
