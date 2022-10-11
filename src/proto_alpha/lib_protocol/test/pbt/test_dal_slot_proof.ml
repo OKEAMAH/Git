@@ -41,19 +41,16 @@ module Make (Parameters : sig
   val parameters : Alpha_context.Constants.Parametric.t
 end) =
 struct
-  (* TODO: rename dal to cryptobox and drop it from functions arguments
-     when possible. *)
-  let dal =
-    Result.value_f
-      (Dal_helpers.mk_cryptobox Parameters.parameters.dal.cryptobox_parameters)
-      ~default:(fun () ->
-        Format.eprintf "failed to initialize Cryptobox.t" ;
-        assert false)
-
   open Dal_helpers.Make (struct
     include Parameters
 
-    let dal = dal
+    let cryptobox =
+      Result.value_f
+        (Dal_helpers.mk_cryptobox
+           Parameters.parameters.dal.cryptobox_parameters)
+        ~default:(fun () ->
+          Format.eprintf "failed to initialize Cryptobox.t" ;
+          assert false)
   end)
 
   (* Introduce some intermediate types *)
@@ -73,7 +70,7 @@ struct
     for test purpose).
   - every element in the list of levels represents the slots of a single level.
   - each slot of a given level is not confirmed iff the boolean is true. *)
-  let populate_slots_history dal (levels_data : levels) =
+  let populate_slots_history (levels_data : levels) =
     let open Result_syntax in
     (* Make and insert a slot. *)
     let add_slot level sindex (cell, cache, slots_info) skip_slot =
@@ -81,7 +78,7 @@ struct
         Option.value_f (Dal_slot_repr.Index.of_int sindex) ~default:(fun () ->
             assert false)
       in
-      let* _data, poly, slot = mk_slot ~level ~index dal in
+      let* _data, poly, slot = mk_slot ~level ~index () in
       let* cell, cache =
         if skip_slot then return (cell, cache)
         else
@@ -105,13 +102,13 @@ struct
 
   (** This function returns the (correct) information of a page to
     prove that it is confirmed, or None if the page's slot is skipped. *)
-  let request_confirmed_page dal (poly, slot, skip_slot) =
+  let request_confirmed_page (poly, slot, skip_slot) =
     let open Result_syntax in
     if skip_slot then
       (* We cannot check that a page of an unconfirmed slot is confirmed. *)
       return None
     else
-      let* page_info, page_id = mk_page_info dal slot poly in
+      let* page_info, page_id = mk_page_info slot poly in
       return @@ Some (page_info, page_id)
 
   (** This function returns information of a page to prove that it is unconfirmed,
@@ -119,7 +116,7 @@ if the page's slot is skipped, the information look correct (but the slot is not
 confirmed). Otherwise, we increment the publish_level field to simulate a non
 confirmed slot (as for even levels, no slot is confirmed. See
 {!populate_slots_history}). *)
-  let request_unconfirmed_page dal (poly, slot, skip_slot) =
+  let request_unconfirmed_page (poly, slot, skip_slot) =
     let open Result_syntax in
     (* If the slot is unconfirmed, we test that a page belonging to it is not
        confirmed.  If the slot is confirmed, we check that the page of the
@@ -130,24 +127,23 @@ confirmed slot (as for even levels, no slot is confirmed. See
       if skip_slot then slot.id.published_level
       else Raw_level_repr.succ slot.id.published_level
     in
-    let* _page_info, page_id = mk_page_info ~level dal slot poly in
+    let* _page_info, page_id = mk_page_info ~level slot poly in
     (* We should not provide the page's info if we want to build an
        unconfirmation proof. *)
     return @@ Some (None, page_id)
 
   (** This helper function allows to test DAL's {!produce_proof} and {!verify_proof}
     functions, using the data constructed from {!populate_slots_history} above. *)
-  let helper_check_pbt_pages dal last_cell last_cache slots_info
-      ~page_to_request ~check_produce ~check_verify =
+  let helper_check_pbt_pages last_cell last_cache slots_info ~page_to_request
+      ~check_produce ~check_verify =
     let open Lwt_result_syntax in
     List.iter_es
       (fun item ->
-        let*? mk_test = page_to_request dal item in
+        let*? mk_test = page_to_request item in
         match mk_test with
         | None -> return_unit
         | Some (page_info, page_id) ->
             produce_and_verify_proof
-              dal
               last_cell
               last_cache
               ~page_info
@@ -157,13 +153,12 @@ confirmed slot (as for even levels, no slot is confirmed. See
       slots_info
 
   (** Making some confirmation pages tests for slots that are confirmed. *)
-  let test_confirmed_pages dal (levels_data : levels) =
+  let test_confirmed_pages (levels_data : levels) =
     let open Lwt_result_syntax in
     let*? last_cell, last_cache, slots_info =
-      populate_slots_history dal levels_data
+      populate_slots_history levels_data
     in
     helper_check_pbt_pages
-      dal
       last_cell
       last_cache
       slots_info
@@ -172,13 +167,12 @@ confirmed slot (as for even levels, no slot is confirmed. See
       ~check_verify:(successful_check_verify_result ~__LOC__ `Confirmed)
 
   (** Making some unconfirmation pages tests for slots that are confirmed. *)
-  let test_unconfirmed_pages dal (levels_data : levels) =
+  let test_unconfirmed_pages (levels_data : levels) =
     let open Lwt_result_syntax in
     let*? last_cell, last_cache, slots_info =
-      populate_slots_history dal levels_data
+      populate_slots_history levels_data
     in
     helper_check_pbt_pages
-      dal
       last_cell
       last_cache
       slots_info
@@ -201,12 +195,12 @@ confirmed slot (as for even levels, no slot is confirmed. See
         ~name:"Pbt tests: confirmed pages"
         ~count:Parameters.count
         gen_dal_config
-        (test_confirmed_pages dal);
+        test_confirmed_pages;
       Tztest.tztest_qcheck2
         ~name:"Pbt tests: unconfirmed pages"
         ~count:Parameters.count
         gen_dal_config
-        (test_unconfirmed_pages dal);
+        test_unconfirmed_pages;
     ]
 
   let tests =
@@ -232,7 +226,8 @@ let () =
   let module Mainnet = Make (struct
     let name = "mainnet"
 
-    let count = 4
+    (* The tests with mainnet parameters are really really slow!! *)
+    let count = 2
 
     let parameters = constants_mainnet
   end) in

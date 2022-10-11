@@ -59,15 +59,14 @@ let mk_cryptobox dal_params =
 module Make (Parameters : sig
   val parameters : Alpha_context.Constants.Parametric.t
 
-  val dal : Cryptobox.t
+  val cryptobox : Cryptobox.t
 end) =
 struct
   (* Some global constants. *)
 
-  (* TODO: use parameters and dal below, and rename dal to crypbobox *)
-  let _ = Parameters.parameters
+  let params = Parameters.parameters.dal.cryptobox_parameters
 
-  let _ = Parameters.dal
+  let cryptobox = Parameters.cryptobox
 
   let genesis_history = Hist.genesis
 
@@ -79,9 +78,9 @@ struct
 
   (* Helper functions. *)
 
-  let dal_mk_polynomial_from_slot dal slot_data =
+  let dal_mk_polynomial_from_slot slot_data =
     let open Result_syntax in
-    match Cryptobox.polynomial_from_slot dal slot_data with
+    match Cryptobox.polynomial_from_slot cryptobox slot_data with
     | Ok p -> return p
     | Error (`Slot_wrong_size s) ->
         fail
@@ -90,20 +89,19 @@ struct
               (Format.sprintf "polynomial_from_slot: Slot_wrong_size (%s)" s);
           ]
 
-  let dal_mk_prove_page dal polynomial page_id =
+  let dal_mk_prove_page polynomial page_id =
     let open Result_syntax in
-    match Cryptobox.prove_page dal polynomial page_id.P.page_index with
+    match Cryptobox.prove_page cryptobox polynomial page_id.P.page_index with
     | Ok p -> return p
     | Error `Segment_index_out_of_range ->
         fail [Test_failure "compute_proof_segment: Segment_index_out_of_range"]
 
   let mk_slot ?(level = level_one) ?(index = S.Index.zero)
-      ?(fill_function = fun _i -> 'x') dal =
+      ?(fill_function = fun _i -> 'x') () =
     let open Result_syntax in
-    let params = Cryptobox.Internal_for_tests.parameters dal in
     let slot_data = Bytes.init params.slot_size fill_function in
-    let* polynomial = dal_mk_polynomial_from_slot dal slot_data in
-    let commitment = Cryptobox.commit dal polynomial in
+    let* polynomial = dal_mk_polynomial_from_slot slot_data in
+    let commitment = Cryptobox.commit cryptobox polynomial in
     return
       ( slot_data,
         polynomial,
@@ -115,14 +113,13 @@ struct
   let no_data = Some (fun ~default_char:_ _ -> None)
 
   let mk_page_info ?(default_char = 'x') ?level ?(page_index = P.Index.zero)
-      ?(custom_data = None) dal (slot : S.Header.t) polynomial =
+      ?(custom_data = None) (slot : S.Header.t) polynomial =
     let open Result_syntax in
     let level =
       match level with None -> slot.id.published_level | Some level -> level
     in
-    let params = Cryptobox.Internal_for_tests.parameters dal in
     let page_id = mk_page_id level slot.id.index page_index in
-    let* page_proof = dal_mk_prove_page dal polynomial page_id in
+    let* page_proof = dal_mk_prove_page polynomial page_id in
     match custom_data with
     | None ->
         let page_data = Bytes.make params.page_size default_char in
@@ -143,10 +140,9 @@ struct
    produces a proof from the given information and verifies the produced result,
    if any. The result of each step is checked with [check_produce_result] and
     [check_verify_result], respectively. *)
-  let produce_and_verify_proof ~check_produce ?check_verify dal skip_list cache
+  let produce_and_verify_proof ~check_produce ?check_verify skip_list cache
       ~page_info ~page_id =
     let open Lwt_result_syntax in
-    let params = Cryptobox.Internal_for_tests.parameters dal in
     let*! res =
       Hist.produce_proof params ~page_info page_id skip_list cache
       >|= Environment.wrap_tzresult

@@ -31,7 +31,7 @@ val mk_cryptobox : Cryptobox.parameters -> (Cryptobox.t, error trace) result
 module Make (P : sig
   val parameters : Alpha_context.Constants.Parametric.t
 
-  val dal : Cryptobox.t
+  val cryptobox : Cryptobox.t
 end) : sig
   (** Some global constants. *)
 
@@ -47,12 +47,11 @@ end) : sig
 
   (** Returns the slot's polynomial from the given slot's data. *)
   val dal_mk_polynomial_from_slot :
-    Cryptobox.t -> bytes -> (Cryptobox.polynomial, error trace) result
+    bytes -> (Cryptobox.polynomial, error trace) result
 
   (** Using the given slot's polynomial, this function computes the page proof of
    the page whose ID is provided.  *)
   val dal_mk_prove_page :
-    Cryptobox.t ->
     Cryptobox.polynomial ->
     Dal_slot_repr.Page.t ->
     (Cryptobox.page_proof, error trace) result
@@ -65,7 +64,7 @@ end) : sig
     ?level:Raw_level_repr.t ->
     ?index:Dal_slot_repr.Index.t ->
     ?fill_function:(int -> char) ->
-    Cryptobox.t ->
+    unit ->
     (bytes * Cryptobox.polynomial * Dal_slot_repr.Header.t, error trace) result
 
   (** Constructs a record value of type Page.id. *)
@@ -85,7 +84,6 @@ end) : sig
     ?level:Raw_level_repr.t ->
     ?page_index:int ->
     ?custom_data:(default_char:char -> int -> bytes option) option ->
-    Cryptobox.t ->
     Dal_slot_repr.Header.t ->
     Cryptobox.polynomial ->
     ( (bytes * Cryptobox.page_proof) option * Dal_slot_repr.Page.t,
@@ -112,7 +110,6 @@ end) : sig
       (bytes option tzresult ->
       (bytes * Cryptobox.page_proof) option ->
       (unit, tztrace) result Lwt.t) ->
-    Cryptobox.t ->
     Dal_slot_repr.History.t ->
     Dal_slot_repr.History.History_cache.t ->
     page_info:(bytes * Cryptobox.page_proof) option ->

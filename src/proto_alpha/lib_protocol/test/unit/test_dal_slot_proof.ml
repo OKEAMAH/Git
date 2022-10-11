@@ -43,30 +43,27 @@ module Make (Parameters : sig
   val parameters : Alpha_context.Constants.Parametric.t
 end) =
 struct
-  (* TODO: rename dal to cryptobox and drop it from functions arguments
-     when possible. *)
-  let dal =
-    Result.value_f
-      (Dal_helpers.mk_cryptobox Parameters.parameters.dal.cryptobox_parameters)
-      ~default:(fun () ->
-        Format.eprintf "failed to initialize Cryptobox.t" ;
-        assert false)
-
   open Dal_helpers.Make (struct
     include Parameters
 
-    let dal = dal
+    let cryptobox =
+      Result.value_f
+        (Dal_helpers.mk_cryptobox
+           Parameters.parameters.dal.cryptobox_parameters)
+        ~default:(fun () ->
+          Format.eprintf "failed to initialize Cryptobox.t" ;
+          assert false)
   end)
 
   (* Tests to check insertion of slots in a dal skip list. *)
 
   (** Check insertion of a new slot in the given skip list. *)
-  let skip_list_ordering dal skip_list ~mk_level ~mk_slot_index ~check_result =
+  let skip_list_ordering skip_list ~mk_level ~mk_slot_index ~check_result =
     let open Lwt_result_syntax in
     let {S.Header.id; _} = Hist.Internal_for_tests.content skip_list in
     let level = mk_level id in
     let index = mk_slot_index id in
-    let*? _data, _poly, slot = mk_slot ~level ~index dal in
+    let*? _data, _poly, slot = mk_slot ~level ~index () in
     Hist.add_confirmed_slot_headers_no_cache skip_list [slot]
     |> Environment.wrap_tzresult |> check_result
 
@@ -76,9 +73,8 @@ struct
    slots' index should increase. In the test below, we attempt to insert a slot
    where (published_level, slot_index) doesn't increase (is the same as the
    genesis cell).  *)
-  let insertion_breaks_skip_list_ordering dal () =
+  let insertion_breaks_skip_list_ordering () =
     skip_list_ordering
-      dal
       genesis_history
       ~mk_level:(fun id -> id.H.published_level)
       ~mk_slot_index:(fun id -> id.H.index)
@@ -89,10 +85,9 @@ struct
 
   (** This test attempts to add a slot on top of genesis cell zero which satisfies
     the ordering. *)
-  let correct_insertion_in_skip_list_ordering_1 dal () =
+  let correct_insertion_in_skip_list_ordering_1 () =
     let open Lwt_result_syntax in
     skip_list_ordering
-      dal
       genesis_history
       ~mk_level:(fun id -> Raw_level_repr.succ id.H.published_level)
       ~mk_slot_index:(fun id -> id.H.index)
@@ -102,10 +97,9 @@ struct
 
   (** This test attempts to add a slot on top of genesis cell zero which satisfies
     the ordering. *)
-  let correct_insertion_in_skip_list_ordering_2 dal () =
+  let correct_insertion_in_skip_list_ordering_2 () =
     let open Lwt_result_syntax in
     skip_list_ordering
-      dal
       genesis_history
       ~mk_level:(fun id -> id.H.published_level)
       ~mk_slot_index:(fun id -> succ_slot_index id.H.index)
@@ -115,17 +109,15 @@ struct
 
   (** This test attempts to add two slots on top of genesis cell zero which satisfies
     the ordering. *)
-  let correct_insertion_in_skip_list_ordering_3 dal () =
+  let correct_insertion_in_skip_list_ordering_3 () =
     let open Lwt_result_syntax in
     skip_list_ordering
-      dal
       genesis_history
       ~mk_level:(fun id -> id.H.published_level)
       ~mk_slot_index:(fun id -> succ_slot_index id.H.index)
       ~check_result:(fun res ->
         let* skip_list = Assert.get_ok ~__LOC__ res in
         skip_list_ordering
-          dal
           skip_list
           ~mk_level:(fun id ->
             Raw_level_repr.(succ (succ id.H.published_level)))
@@ -139,13 +131,12 @@ struct
 
   (** This test attempts to construct a proof to confirm a slot page from the
     genesis skip list. Proof production is expected to fail. *)
-  let confirmed_page_on_genesis dal () =
+  let confirmed_page_on_genesis () =
     let {H.id = {published_level; index}; _} =
       Hist.Internal_for_tests.content genesis_history
     in
     let page_id = mk_page_id published_level index P.Index.zero in
     produce_and_verify_proof
-      dal
       genesis_history
       genesis_history_cache
       (* values of level and slot index are equal to slot zero. We would get a
@@ -157,7 +148,7 @@ struct
 
   (** This test attempts to construct a proof to unconfirm a slot page from the
     genesis skip list. Proof production is expected to succeed. *)
-  let unconfirmed_page_on_genesis dal incr_level =
+  let unconfirmed_page_on_genesis incr_level =
     let {H.id = {published_level; index}; _} =
       Hist.Internal_for_tests.content genesis_history
     in
@@ -167,7 +158,6 @@ struct
     in
     let page_id = mk_page_id level sindex P.Index.zero in
     produce_and_verify_proof
-      dal
       genesis_history
       genesis_history_cache
       ~page_info:None
@@ -180,9 +170,9 @@ struct
 
   (** Helper function that adds a slot a top of the genesis skip list. *)
   let helper_confirmed_slot_on_genesis ~level ~mk_page_info ~check_produce
-      ?check_verify dal =
+      ?check_verify () =
     let open Lwt_result_syntax in
-    let*? _slot_data, polynomial, slot = mk_slot ~level dal in
+    let*? _slot_data, polynomial, slot = mk_slot ~level () in
     let*? skip_list, cache =
       Hist.add_confirmed_slot_headers
         genesis_history
@@ -190,9 +180,8 @@ struct
         [slot]
       |> Environment.wrap_tzresult
     in
-    let*? page_info, page_id = mk_page_info dal slot polynomial in
+    let*? page_info, page_id = mk_page_info slot polynomial in
     produce_and_verify_proof
-      dal
       skip_list
       cache
       ~page_info
@@ -202,9 +191,8 @@ struct
 
   (** Test where a slot is confirmed, requesting a proof for a confirmed page,
    where the correct data and page proof are provided. *)
-  let confirmed_slot_on_genesis_confirmed_page_good_data dal () =
+  let confirmed_slot_on_genesis_confirmed_page_good_data =
     helper_confirmed_slot_on_genesis
-      dal
       ~level:(Raw_level_repr.succ level_ten)
       ~mk_page_info
       ~check_produce:(successful_check_produce_result ~__LOC__ `Confirmed)
@@ -212,23 +200,21 @@ struct
 
   (** Test where a slot is confirmed, requesting a proof for a confirmed page,
     where the page data and proof are not given. *)
-  let confirmed_slot_on_genesis_confirmed_page_no_data dal () =
+  let confirmed_slot_on_genesis_confirmed_page_no_data =
     helper_confirmed_slot_on_genesis
-      dal
       ~level:(Raw_level_repr.succ level_ten)
       ~mk_page_info:(mk_page_info ~custom_data:no_data)
       ~check_produce:(slot_confirmed_but_page_data_not_provided ~__LOC__)
 
   (** Test where a slot is confirmed, requesting a proof for a confirmed page,
     where correct data are provided, but the given page proof is wrong. *)
-  let confirmed_slot_on_genesis_confirmed_page_bad_page_proof dal () =
+  let confirmed_slot_on_genesis_confirmed_page_bad_page_proof =
     let open Result_syntax in
     helper_confirmed_slot_on_genesis
-      dal
       ~level:(Raw_level_repr.succ level_ten)
-      ~mk_page_info:(fun dal slot poly ->
-        let* page_info1, _page_id1 = mk_page_info ~page_index:1 dal slot poly in
-        let* page_info2, page_id2 = mk_page_info ~page_index:2 dal slot poly in
+      ~mk_page_info:(fun slot poly ->
+        let* page_info1, _page_id1 = mk_page_info ~page_index:1 slot poly in
+        let* page_info2, page_id2 = mk_page_info ~page_index:2 slot poly in
         assert (
           match (page_info1, page_info2) with
           | Some (_d1, p1), Some (_d2, p2) -> not (eq_page_proof p1 p2)
@@ -242,9 +228,8 @@ struct
 
   (** Test where a slot is confirmed, requesting a proof for a confirmed page,
     where correct page proof is provided, but given page data is altered. *)
-  let confirmed_slot_on_genesis_confirmed_page_bad_data_right_length dal () =
+  let confirmed_slot_on_genesis_confirmed_page_bad_data_right_length =
     helper_confirmed_slot_on_genesis
-      dal
       ~level:(Raw_level_repr.succ level_ten)
       ~mk_page_info:
         (mk_page_info
@@ -271,43 +256,39 @@ struct
   (** Specialisation of helper {!helper_confirmed_slot_on_genesis}, where some
     parameters are fixed. *)
   let helper_confirmed_slot_on_genesis_unconfirmed_page ~check_produce
-      ?check_verify ~page_level ~mk_page_info dal =
+      ?check_verify ~page_level ~mk_page_info =
     helper_confirmed_slot_on_genesis
-      dal
       ~level:(Raw_level_repr.succ page_level)
       ~mk_page_info
       ~check_produce
       ?check_verify
 
   (** Unconfirmation proof for a page with good data. *)
-  let confirmed_slot_on_genesis_unconfirmed_page_good_data dal () =
+  let confirmed_slot_on_genesis_unconfirmed_page_good_data =
     helper_confirmed_slot_on_genesis_unconfirmed_page
-      dal
       ~page_level:level_ten
       ~mk_page_info:(mk_page_info ~level:level_ten)
       ~check_produce:(slot_not_confirmed_but_page_data_provided ~__LOC__)
 
   (** Unconfirmation proof for a page with no data. *)
-  let confirmed_slot_on_genesis_unconfirmed_page_no_data dal () =
+  let confirmed_slot_on_genesis_unconfirmed_page_no_data =
     helper_confirmed_slot_on_genesis_unconfirmed_page
-      dal
       ~page_level:level_ten
       ~mk_page_info:(mk_page_info ~custom_data:no_data ~level:level_ten)
       ~check_produce:(successful_check_produce_result ~__LOC__ `Unconfirmed)
 
   (** Unconfirmation proof for a page with bad page proof. *)
-  let confirmed_slot_on_genesis_unconfirmed_page_bad_proof dal () =
+  let confirmed_slot_on_genesis_unconfirmed_page_bad_proof =
     let open Result_syntax in
     let level = level_ten in
     helper_confirmed_slot_on_genesis_unconfirmed_page
-      dal
       ~page_level:level
-      ~mk_page_info:(fun dal slot poly ->
+      ~mk_page_info:(fun slot poly ->
         let* page_info1, _page_id1 =
-          mk_page_info ~level:level_ten ~page_index:1 dal slot poly
+          mk_page_info ~level:level_ten ~page_index:1 slot poly
         in
         let* _page_info2, page_id2 =
-          mk_page_info ~level:level_ten ~page_index:2 dal slot poly
+          mk_page_info ~level:level_ten ~page_index:2 slot poly
         in
         assert (
           match (page_info1, _page_info2) with
@@ -317,10 +298,9 @@ struct
       ~check_produce:(slot_not_confirmed_but_page_data_provided ~__LOC__)
 
   (** Unconfirmation proof for a page with bad data. *)
-  let confirmed_slot_on_genesis_unconfirmed_page_bad_data dal () =
+  let confirmed_slot_on_genesis_unconfirmed_page_bad_data =
     let level = level_ten in
     helper_confirmed_slot_on_genesis_unconfirmed_page
-      dal
       ~page_level:level
       ~mk_page_info:
         (mk_page_info
@@ -337,10 +317,10 @@ struct
   let tests =
     let mk_title = Format.sprintf "[%s] %s" Parameters.name in
     let tztest title test_function =
-      Tztest.tztest (mk_title title) `Quick (test_function dal)
+      Tztest.tztest (mk_title title) `Quick test_function
     in
     let qcheck2 title gen test =
-      Tztest.tztest_qcheck2 ~name:(mk_title title) ~count:1 gen (test dal)
+      Tztest.tztest_qcheck2 ~name:(mk_title title) ~count:1 gen test
     in
     let bool = QCheck2.Gen.bool in
     let ordering_tests =
