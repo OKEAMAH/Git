@@ -32,18 +32,40 @@
 *)
 
 open Protocol
-open Dal_helpers
 
-(* Introduce some intermediate types *)
+module Make (Parameters : sig
+  val name : string
 
-(** The slot is not confirmed (skipped) iff the boolean is [true]. *)
-type slot_skipped = bool
+  val count : int
 
-type slots = slot_skipped list
+  val parameters : Alpha_context.Constants.Parametric.t
+end) =
+struct
+  (* TODO: rename dal to cryptobox and drop it from functions arguments
+     when possible. *)
+  let dal =
+    Result.value_f
+      (Dal_helpers.mk_cryptobox Parameters.parameters.dal.cryptobox_parameters)
+      ~default:(fun () ->
+        Format.eprintf "failed to initialize Cryptobox.t" ;
+        assert false)
 
-type levels = slots list
+  open Dal_helpers.Make (struct
+    include Parameters
 
-(** Given a list of {!levels}, where each element is of type {!slots} = {!slot}
+    let dal = dal
+  end)
+
+  (* Introduce some intermediate types *)
+
+  (** The slot is not confirmed (skipped) iff the boolean is [true]. *)
+  type slot_skipped = bool
+
+  type slots = slot_skipped list
+
+  type levels = slots list
+
+  (** Given a list of {!levels}, where each element is of type {!slots} = {!slot}
    list, and where each slot is a boolean, this function populates an
    empty slots_history skip list and a corresponding history_cache as follows:
   - the function starts from a given [start_level] (default is 1)
@@ -51,154 +73,168 @@ type levels = slots list
     for test purpose).
   - every element in the list of levels represents the slots of a single level.
   - each slot of a given level is not confirmed iff the boolean is true. *)
-let populate_slots_history dal (levels_data : levels) =
-  let open Result_syntax in
-  (* Make and insert a slot. *)
-  let add_slot level sindex (cell, cache, slots_info) skip_slot =
-    let index =
-      Option.value_f (Dal_slot_repr.Index.of_int sindex) ~default:(fun () ->
-          assert false)
+  let populate_slots_history dal (levels_data : levels) =
+    let open Result_syntax in
+    (* Make and insert a slot. *)
+    let add_slot level sindex (cell, cache, slots_info) skip_slot =
+      let index =
+        Option.value_f (Dal_slot_repr.Index.of_int sindex) ~default:(fun () ->
+            assert false)
+      in
+      let* _data, poly, slot = mk_slot ~level ~index dal in
+      let* cell, cache =
+        if skip_slot then return (cell, cache)
+        else
+          Dal_slot_repr.History.add_confirmed_slot_headers cell cache [slot]
+          |> Environment.wrap_tzresult
+      in
+      return (cell, cache, (poly, slot, skip_slot) :: slots_info)
     in
-    let* _data, poly, slot = mk_slot ~level ~index dal in
-    let* cell, cache =
-      if skip_slot then return (cell, cache)
-      else
-        Dal_slot_repr.History.add_confirmed_slot_headers cell cache [slot]
-        |> Environment.wrap_tzresult
+    (* Insert the slots of a level. *)
+    let add_slots level accu slots_data =
+      (* We start at level one, and we skip even levels for test purpose (which
+         means that no DAL slot is confirmed for them). *)
+      let curr_level =
+        Int32.of_int (1 + (2 * level)) |> Raw_level_repr.of_int32_exn
+      in
+      List.fold_left_i_e (add_slot curr_level) accu slots_data
     in
-    return (cell, cache, (poly, slot, skip_slot) :: slots_info)
-  in
-  (* Insert the slots of a level. *)
-  let add_slots level accu slots_data =
-    (* We start at level one, and we skip even levels for test purpose (which
-       means that no DAL slot is confirmed for them). *)
-    let curr_level =
-      Int32.of_int (1 + (2 * level)) |> Raw_level_repr.of_int32_exn
-    in
-    List.fold_left_i_e (add_slot curr_level) accu slots_data
-  in
-  (* Insert the slots of all the levels. *)
-  let add_levels = List.fold_left_i_e add_slots in
-  add_levels (genesis_history, genesis_history_cache, []) levels_data
+    (* Insert the slots of all the levels. *)
+    let add_levels = List.fold_left_i_e add_slots in
+    add_levels (genesis_history, genesis_history_cache, []) levels_data
 
-(** This function returns the (correct) information of a page to
+  (** This function returns the (correct) information of a page to
     prove that it is confirmed, or None if the page's slot is skipped. *)
-let request_confirmed_page dal (poly, slot, skip_slot) =
-  let open Result_syntax in
-  if skip_slot then
-    (* We cannot check that a page of an unconfirmed slot is confirmed. *)
-    return None
-  else
-    let* page_info, page_id = mk_page_info dal slot poly in
-    return @@ Some (page_info, page_id)
+  let request_confirmed_page dal (poly, slot, skip_slot) =
+    let open Result_syntax in
+    if skip_slot then
+      (* We cannot check that a page of an unconfirmed slot is confirmed. *)
+      return None
+    else
+      let* page_info, page_id = mk_page_info dal slot poly in
+      return @@ Some (page_info, page_id)
 
-(** This function returns information of a page to prove that it is unconfirmed,
+  (** This function returns information of a page to prove that it is unconfirmed,
 if the page's slot is skipped, the information look correct (but the slot is not
 confirmed). Otherwise, we increment the publish_level field to simulate a non
 confirmed slot (as for even levels, no slot is confirmed. See
 {!populate_slots_history}). *)
-let request_unconfirmed_page dal (poly, slot, skip_slot) =
-  let open Result_syntax in
-  (* If the slot is unconfirmed, we test that a page belonging to it is not
-     confirmed.  If the slot is confirmed, we check that the page of the
-     slot at the next level is unconfirmed (since we insert levels without
-     any confirmed slot). *)
-  let level =
-    let open Dal_slot_repr.Header in
-    if skip_slot then slot.id.published_level
-    else Raw_level_repr.succ slot.id.published_level
-  in
-  let* _page_info, page_id = mk_page_info ~level dal slot poly in
-  (* We should not provide the page's info if we want to build an
-     unconfirmation proof. *)
-  return @@ Some (None, page_id)
+  let request_unconfirmed_page dal (poly, slot, skip_slot) =
+    let open Result_syntax in
+    (* If the slot is unconfirmed, we test that a page belonging to it is not
+       confirmed.  If the slot is confirmed, we check that the page of the
+       slot at the next level is unconfirmed (since we insert levels without
+       any confirmed slot). *)
+    let level =
+      let open Dal_slot_repr.Header in
+      if skip_slot then slot.id.published_level
+      else Raw_level_repr.succ slot.id.published_level
+    in
+    let* _page_info, page_id = mk_page_info ~level dal slot poly in
+    (* We should not provide the page's info if we want to build an
+       unconfirmation proof. *)
+    return @@ Some (None, page_id)
 
-(** This helper function allows to test DAL's {!produce_proof} and {!verify_proof}
+  (** This helper function allows to test DAL's {!produce_proof} and {!verify_proof}
     functions, using the data constructed from {!populate_slots_history} above. *)
-let helper_check_pbt_pages dal last_cell last_cache slots_info ~page_to_request
-    ~check_produce ~check_verify =
-  let open Lwt_result_syntax in
-  List.iter_es
-    (fun item ->
-      let*? mk_test = page_to_request dal item in
-      match mk_test with
-      | None -> return_unit
-      | Some (page_info, page_id) ->
-          produce_and_verify_proof
-            dal
-            last_cell
-            last_cache
-            ~page_info
-            ~page_id
-            ~check_produce
-            ~check_verify)
-    slots_info
+  let helper_check_pbt_pages dal last_cell last_cache slots_info
+      ~page_to_request ~check_produce ~check_verify =
+    let open Lwt_result_syntax in
+    List.iter_es
+      (fun item ->
+        let*? mk_test = page_to_request dal item in
+        match mk_test with
+        | None -> return_unit
+        | Some (page_info, page_id) ->
+            produce_and_verify_proof
+              dal
+              last_cell
+              last_cache
+              ~page_info
+              ~page_id
+              ~check_produce
+              ~check_verify)
+      slots_info
 
-(** Making some confirmation pages tests for slots that are confirmed. *)
-let test_confirmed_pages dal (levels_data : levels) =
-  let open Lwt_result_syntax in
-  let*? last_cell, last_cache, slots_info =
-    populate_slots_history dal levels_data
-  in
-  helper_check_pbt_pages
-    dal
-    last_cell
-    last_cache
-    slots_info
-    ~page_to_request:request_confirmed_page
-    ~check_produce:(successful_check_produce_result ~__LOC__ `Confirmed)
-    ~check_verify:(successful_check_verify_result ~__LOC__ `Confirmed)
+  (** Making some confirmation pages tests for slots that are confirmed. *)
+  let test_confirmed_pages dal (levels_data : levels) =
+    let open Lwt_result_syntax in
+    let*? last_cell, last_cache, slots_info =
+      populate_slots_history dal levels_data
+    in
+    helper_check_pbt_pages
+      dal
+      last_cell
+      last_cache
+      slots_info
+      ~page_to_request:request_confirmed_page
+      ~check_produce:(successful_check_produce_result ~__LOC__ `Confirmed)
+      ~check_verify:(successful_check_verify_result ~__LOC__ `Confirmed)
 
-(** Making some unconfirmation pages tests for slots that are confirmed. *)
-let test_unconfirmed_pages dal (levels_data : levels) =
-  let open Lwt_result_syntax in
-  let*? last_cell, last_cache, slots_info =
-    populate_slots_history dal levels_data
-  in
-  helper_check_pbt_pages
-    dal
-    last_cell
-    last_cache
-    slots_info
-    ~page_to_request:request_unconfirmed_page
-    ~check_produce:(successful_check_produce_result ~__LOC__ `Unconfirmed)
-    ~check_verify:(successful_check_verify_result ~__LOC__ `Unconfirmed)
+  (** Making some unconfirmation pages tests for slots that are confirmed. *)
+  let test_unconfirmed_pages dal (levels_data : levels) =
+    let open Lwt_result_syntax in
+    let*? last_cell, last_cache, slots_info =
+      populate_slots_history dal levels_data
+    in
+    helper_check_pbt_pages
+      dal
+      last_cell
+      last_cache
+      slots_info
+      ~page_to_request:request_unconfirmed_page
+      ~check_produce:(successful_check_produce_result ~__LOC__ `Unconfirmed)
+      ~check_verify:(successful_check_verify_result ~__LOC__ `Unconfirmed)
 
-let tests =
-  Result.value_f
-    (dal_mk_env
-       {
-         Dal_slot_repr.History.redundancy_factor = 16;
-         page_size = 4096 / 64;
-         slot_size = 1048576 / 64;
-         number_of_shards = 2048 / 64;
-       })
-    ~default:(fun () ->
-      Format.eprintf "failed to initialize Cryptobox.t" ;
-      assert false)
-  |> fun dal ->
-  let gen_dal_config : levels QCheck2.Gen.t =
-    QCheck2.Gen.(
-      let nb_slots = pure 20 in
-      let nb_levels = pure 5 in
-      (* The slot is confirmed iff the boolean is true *)
-      let slot = bool in
-      let slots = list_size nb_slots slot in
-      list_size nb_levels slots)
-  in
-  [
-    Tztest.tztest_qcheck2
-      ~name:"Pbt tests: confirmed pages"
-      ~count:10
-      gen_dal_config
-      (test_confirmed_pages dal);
-    Tztest.tztest_qcheck2
-      ~name:"Pbt tests: unconfirmed pages"
-      ~count:10
-      gen_dal_config
-      (test_unconfirmed_pages dal);
-  ]
+  let tests =
+    let gen_dal_config : levels QCheck2.Gen.t =
+      QCheck2.Gen.(
+        let nb_slots = pure 20 in
+        let nb_levels = pure 5 in
+        (* The slot is confirmed iff the boolean is true *)
+        let slot = bool in
+        let slots = list_size nb_slots slot in
+        list_size nb_levels slots)
+    in
+    [
+      Tztest.tztest_qcheck2
+        ~name:"Pbt tests: confirmed pages"
+        ~count:Parameters.count
+        gen_dal_config
+        (test_confirmed_pages dal);
+      Tztest.tztest_qcheck2
+        ~name:"Pbt tests: unconfirmed pages"
+        ~count:Parameters.count
+        gen_dal_config
+        (test_unconfirmed_pages dal);
+    ]
+
+  let tests =
+    [(Format.sprintf "[%s] Dal slots refutation" Parameters.name, tests)]
+end
 
 let () =
-  let tests = [("Dal slots refutation", tests)] in
+  let open Tezos_protocol_alpha_parameters.Default_parameters in
+  let module Sandbox = Make (struct
+    let name = "sandbox"
+
+    let count = 20
+
+    let parameters = constants_sandbox
+  end) in
+  let module Test = Make (struct
+    let name = "test"
+
+    let count = 10
+
+    let parameters = constants_test
+  end) in
+  let module Mainnet = Make (struct
+    let name = "mainnet"
+
+    let count = 4
+
+    let parameters = constants_mainnet
+  end) in
+  let tests = Sandbox.tests @ Test.tests @ Mainnet.tests in
   Alcotest_lwt.run "Refutation_game" tests |> Lwt_main.run
