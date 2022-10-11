@@ -935,7 +935,7 @@ opam:tezos-expect-helper:
 opam:tezos-hacl:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_6
+    - .rules_template__trigger_opam_batch_7
   variables:
     package: tezos-hacl
 
@@ -1435,6 +1435,13 @@ opam:tezos-scoru-wasm:
     - .rules_template__trigger_opam_batch_6
   variables:
     package: tezos-scoru-wasm
+
+opam:tezos-scoru-wasm-benchmark:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_6
+  variables:
+    package: tezos-scoru-wasm-benchmark
 
 opam:tezos-shell:
   extends:

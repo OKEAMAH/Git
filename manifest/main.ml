@@ -3164,6 +3164,23 @@ let octez_scoru_wasm_tests_helpers =
       ]
     ~preprocess:[staged_pps [ppx_import; ppx_deriving_show]]
 
+let _octez_scoru_wasm_benchmark =
+  public_exe
+    "tezos-scoru-wasm-benchmark"
+    ~path:"src/lib_scoru_wasm/bin"
+    ~internal_name:"benchmark"
+    ~synopsis:"Tezos: `tezos-scoru-wasm-benchmark` binary"
+    ~release:true
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        tezt_lib;
+        octez_webassembly_interpreter;
+        octez_context_memory;
+        octez_scoru_wasm;
+        lwt_unix;
+      ]
+
 let _octez_scoru_wasm_tests =
   test
     "test_scoru_wasm"
