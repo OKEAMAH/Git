@@ -11,6 +11,7 @@
 
 open Lib_scenario
 open Lib_exec
+open Exec
 
 let scenario_tx_kernel =
   let open Scenario in
@@ -20,8 +21,8 @@ let scenario_tx_kernel =
       make_action "incorrect input" (fun tree ->
           let open Lwt_syntax in
           let message = "test" in
-          let* tree = Exec.set_input_step 1_000 message tree in
-          Exec.eval_until_input_requested tree);
+          let* tree = set_input_step 1_000 message tree in
+          exec_loop tree);
       make_action "Deposit" (action_from_message 1_001 "deposit");
       make_action "Withdraw" (action_from_message 1_002 "withdrawal");
     ]

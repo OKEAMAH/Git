@@ -1,4 +1,6 @@
+
 open Tezos_scoru_wasm
+
 module Context = Tezos_context_memory.Context_binary
 
 type Tezos_lazy_containers.Lazy_map.tree += Tree of Context.tree
@@ -73,5 +75,4 @@ module PP = struct
     | Stuck e -> "stuck: " ^ pp_error_state e
     | Link _ -> "link"
     | Snapshot -> "snapshot"
-    
 end
