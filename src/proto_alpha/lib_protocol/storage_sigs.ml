@@ -332,6 +332,15 @@ module type Indexed_data_storage_with_local_context = sig
     Local with type value := value and type local_context := local_context
 end
 
+module type Non_iterable_indexed_carbonated_data_storage_with_local_context = sig
+  include Non_iterable_indexed_carbonated_data_storage
+
+  type local_context
+
+  module Local :
+    Local with type value := value and type local_context := local_context
+end
+
 module type Indexed_data_snapshotable_storage = sig
   type snapshot
 
