@@ -89,7 +89,7 @@ module Exec = struct
   let read_message name =
     let open Tezt.Base in
     let kernel_file =
-      project_root // Filename.dirname __FILE__ // "inputs" // name
+      project_root // Filename.dirname __FILE__ // "messages" // name
     in
     read_file kernel_file
 
