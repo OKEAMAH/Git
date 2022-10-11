@@ -927,7 +927,8 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     type nonrec local_context = local_context
 
-    include Make_encoder (V)
+    module E = Make_encoder (V)
+    include E
 
     let mem s i = Raw_context.mem (pack s i) N.name
 
