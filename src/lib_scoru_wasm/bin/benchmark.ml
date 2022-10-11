@@ -10,88 +10,113 @@
 
 
 *)
-
 open Lib_scenario
-open Lib_exec
 
-let scenario_tx_kernel_deposit_then_withdraw_to_same_address =
+open Inputs
+
+let scenario_tx_kernel_deposit_then_withdraw_to_same_address_ name kernel =
   Scenario.make_scenario
-    "tx_kernel - deposit_then_withdraw_to_same_address"
-    "src/lib_scoru_wasm/bin/kernels/tx_kernel/tx_kernal_deb95799cc.wasm"
+    name
+    kernel
     [
-      Scenario.make_scenario_step "incorrect input" (fun benchmark tree ->
-          let open Lwt_syntax in
-          let message = "test" in
-          let* tree = Exec.set_input_step 1_000 message tree in
-          Scenario.exec_loop benchmark tree);
+      Scenario.make_scenario_step
+        "incorrect input"
+        (Scenario.exec_on_message ~from_binary:false 1_000 "incorrect");
       Scenario.make_scenario_step
         "Deposit"
-        (Scenario.exec_on_message
-           1_001
-           "tx_kernel/deposit_then_withdraw_to_same_address/deposit.out");
+        (Scenario.exec_on_message 1_001 Messages.Old.deposit);
       Scenario.make_scenario_step
         "Withdraw"
-        (Scenario.exec_on_message
-           1_002
-           "tx_kernel/deposit_then_withdraw_to_same_address/withdrawal.out");
+        (Scenario.exec_on_message 1_002 Messages.Old.withdrawal);
       Scenario.make_scenario_step
         "Deposit+Withdraw"
         (Scenario.exec_on_messages
            1_003
-           [
-             "tx_kernel/deposit_then_withdraw_to_same_address/deposit.out";
-             "tx_kernel/deposit_then_withdraw_to_same_address/withdrawal.out";
-           ]);
+           [Messages.Old.deposit; Messages.Old.withdrawal]);
     ]
+
+let scenario_tx_kernel_deposit_then_withdraw_to_same_address_no_sig =
+  scenario_tx_kernel_deposit_then_withdraw_to_same_address_
+    "tx_kernel - deposit_then_withdraw_to_same_address NOSIG"
+    Kernels.tx_kernel_vRAM_nosig
+
+let scenario_tx_kernel_deposit_then_withdraw_to_same_address_sig =
+  scenario_tx_kernel_deposit_then_withdraw_to_same_address_
+    "tx_kernel - deposit_then_withdraw_to_same_address SIG"
+    Kernels.tx_kernal_vRam_latest
 
 let scenario_tx_kernel_deposit_transfer_withdraw =
   Scenario.make_scenario
     "tx_kernel - deposit_transfer_withdraw"
-    "src/lib_scoru_wasm/bin/kernels/tx_kernel/tx_kernal_deb95799cc.wasm"
+    Kernels.tx_kernel_vRAM_nosig
     [
       Scenario.make_scenario_step
         "First Deposit"
         (Scenario.exec_on_message
            2_001
-           "tx_kernel/deposit_transfer_withdraw/fst_deposit_message.out");
+           Messages.Deposit_transfer_withdraw.fst_deposit);
       Scenario.make_scenario_step
         "Second Deposit"
         (Scenario.exec_on_message
            2_002
-           "tx_kernel/deposit_transfer_withdraw/snd_deposit_message.out");
+           Messages.Deposit_transfer_withdraw.snd_deposit);
       Scenario.make_scenario_step
         "Invalid Message"
         (Scenario.exec_on_message
            2_003
-           "tx_kernel/deposit_transfer_withdraw/invalid_external_message.out");
+           Messages.Deposit_transfer_withdraw.invalid_message);
       Scenario.make_scenario_step
         "Valid Message"
         (Scenario.exec_on_message
            2_004
-           "tx_kernel/deposit_transfer_withdraw/valid_external_message.out");
+           Messages.Deposit_transfer_withdraw.valid_message);
     ]
 
 let scenario_tx_kernel_deposit_transfer_withdraw_all_in_one =
   Scenario.make_scenario
     "tx_kernel - deposit_transfer_withdraw_all_in_one "
-    "src/lib_scoru_wasm/bin/kernels/tx_kernel/tx_kernal_deb95799cc.wasm"
+    Kernels.tx_kernel_vRAM_nosig
     [
       Scenario.make_scenario_step
         "all_in_one "
         (Scenario.exec_on_messages
            3_000
            [
-             "tx_kernel/deposit_transfer_withdraw/fst_deposit_message.out";
-             "tx_kernel/deposit_transfer_withdraw/snd_deposit_message.out";
-             "tx_kernel/deposit_transfer_withdraw/invalid_external_message.out";
-             "tx_kernel/deposit_transfer_withdraw/valid_external_message.out";
+             Messages.Deposit_transfer_withdraw.fst_deposit;
+             Messages.Deposit_transfer_withdraw.snd_deposit;
+             Messages.Deposit_transfer_withdraw.invalid_message;
+             Messages.Deposit_transfer_withdraw.valid_message;
+           ]);
+    ]
+
+let scenario_tx_kernel_deposit_transfer_withdraw_many_transfers =
+  Scenario.make_scenario
+    "tx_kernel - deposit_transfer_withdraw_all_in_one_sig "
+    Kernels.tx_kernel_vRAM_nosig
+    [
+      Scenario.make_scenario_step
+        "just deposits"
+        (Scenario.exec_on_messages
+           3_000
+           [
+             Messages.Deposit_transfer_withdraw.fst_deposit;
+             Messages.Deposit_transfer_withdraw.snd_deposit;
+           ]);
+      Scenario.make_scenario_step
+        "many transfers"
+        (Scenario.exec_on_messages
+           3_000
+           [
+             Messages.Deposit_transfer_withdraw.fst_deposit;
+             Messages.Deposit_transfer_withdraw.snd_deposit;
+             Messages.Large.transfer_two_actors;
            ]);
     ]
 
 let scenario_computation_kernel =
   Scenario.make_scenario
     "computation kernel"
-    "src/lib_scoru_wasm/bin/kernels/computation.wasm"
+    Kernels.computation_kernel
     [
       Scenario.make_scenario_step
         "Dummy Message"
@@ -101,7 +126,7 @@ let scenario_computation_kernel =
 let scenario_unreachable_kernel =
   Scenario.make_scenario
     "unreachable kernel"
-    "src/lib_scoru_wasm/bin/kernels/unreachable.wasm"
+    Kernels.unreachable_kernel
     [
       Scenario.make_scenario_step
         "Dummy Message"
@@ -117,7 +142,9 @@ let () =
        [
          scenario_unreachable_kernel;
          scenario_computation_kernel;
-         scenario_tx_kernel_deposit_then_withdraw_to_same_address;
+         scenario_tx_kernel_deposit_then_withdraw_to_same_address_no_sig;
+         scenario_tx_kernel_deposit_then_withdraw_to_same_address_sig;
          scenario_tx_kernel_deposit_transfer_withdraw;
          scenario_tx_kernel_deposit_transfer_withdraw_all_in_one;
+         scenario_tx_kernel_deposit_transfer_withdraw_many_transfers;
        ]
