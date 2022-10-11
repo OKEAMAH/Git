@@ -499,10 +499,11 @@ module type Indexed_raw_context = sig
        and type local_context = local_context
 
   module Make_carbonated_map (_ : REGISTER) (_ : NAME) (V : VALUE) :
-    Non_iterable_indexed_carbonated_data_storage
+    Non_iterable_indexed_carbonated_data_storage_with_local_context
       with type t = t
        and type key = key
        and type value = V.t
+       and type local_context = local_context
 
   module Raw_context : Raw_context.T with type t = t ipath
 end

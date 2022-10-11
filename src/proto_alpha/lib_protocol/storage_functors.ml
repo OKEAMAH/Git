@@ -1061,10 +1061,11 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
   end
 
   module Make_carbonated_map (R : REGISTER) (N : NAME) (V : VALUE) :
-    Non_iterable_indexed_carbonated_data_storage
+    Non_iterable_indexed_carbonated_data_storage_with_local_context
       with type t = t
        and type key = key
-       and type value = V.t = struct
+       and type value = V.t
+       and type local_context = local_context = struct
     type t = C.t
 
     type context = t
@@ -1073,7 +1074,10 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
 
     type value = V.t
 
-    include Make_encoder (V)
+    type nonrec local_context = local_context
+
+    module E = Make_encoder (V)
+    include E
 
     let len_name = len_name :: N.name
 
@@ -1189,6 +1193,15 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
           find c k >|=? fun (_, v) -> v)
         (register_named_subcontext description N.name)
         V.encoding
+
+    module Local =
+      Make_local
+        (N)
+        (struct
+          include E
+
+          type t = V.t
+        end)
   end
 end
 
