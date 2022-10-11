@@ -2840,6 +2840,8 @@ module Dal : sig
       val encoding : t Data_encoding.t
 
       val zero : t
+
+      val pp : Format.formatter -> t -> unit
     end
 
     module Header : sig
@@ -2923,7 +2925,7 @@ module Dal_errors : sig
       }
     | Dal_publish_slot_header_candidate_with_low_fees of {proposed_fees : Tez.t}
     | Dal_endorsement_size_limit_exceeded of {maximum_size : int; got : int}
-    | Dal_publish_slot_header_duplicate of {slot_header : Dal.Slot.Header.t}
+    | Dal_publish_slot_header_duplicate of Dal.Slot.Header.t
 end
 
 (** This module re-exports definitions from {!Sc_rollup_storage} and
@@ -4368,7 +4370,9 @@ and _ manager_operation =
     }
       -> Kind.transfer_ticket manager_operation
   | Dal_publish_slot_header : {
-      slot_header : Dal.Slot.Header.t;
+      published_level : Raw_level.t;
+      index : Dal.Slot_index.t;
+      commitment : Dal.Slot.Commitment.t;
     }
       -> Kind.dal_publish_slot_header manager_operation
   | Sc_rollup_originate : {

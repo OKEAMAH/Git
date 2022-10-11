@@ -62,7 +62,9 @@ let apply_data_availability ctxt data_availability ~endorser =
   Dal.Endorsement.record_available_shards ctxt data_availability shards
   |> return
 
-let validate_publish_slot_header ctxt Dal.Slot.Header.{id = {index; _}; _} =
+(* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3973
+   Validate published_level and commitment as well. *)
+let validate_publish_slot_header ctxt _published_level index _commitment =
   assert_dal_feature_enabled ctxt >>? fun () ->
   let open Tzresult_syntax in
   let open Constants in
@@ -79,7 +81,7 @@ let apply_publish_slot_header ctxt slot_header =
   assert_dal_feature_enabled ctxt >>? fun () ->
   Dal.Slot.register_slot_header ctxt slot_header >>? fun (ctxt, updated) ->
   if updated then ok ctxt
-  else error (Dal_publish_slot_header_duplicate {slot_header})
+  else error (Dal_publish_slot_header_duplicate slot_header)
 
 let dal_finalisation ctxt =
   only_if_dal_feature_enabled

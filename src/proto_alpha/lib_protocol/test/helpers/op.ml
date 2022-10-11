@@ -971,7 +971,7 @@ let sc_rollup_timeout ?force_reveal ?counter ?fee ?gas_limit ?storage_limit ctxt
   sign account.sk ctxt to_sign_op
 
 let dal_publish_slot_header ?force_reveal ?counter ?fee ?gas_limit
-    ?storage_limit ctxt (src : Contract.t) slot_header =
+    ?storage_limit ctxt (src : Contract.t) published_level index commitment =
   manager_operation
     ?force_reveal
     ?counter
@@ -980,7 +980,7 @@ let dal_publish_slot_header ?force_reveal ?counter ?fee ?gas_limit
     ?storage_limit
     ~source:src
     ctxt
-    (Dal_publish_slot_header {slot_header})
+    (Dal_publish_slot_header {published_level; index; commitment})
   >>=? fun to_sign_op ->
   Context.Contract.manager ctxt src >|=? fun account ->
   sign account.sk ctxt to_sign_op

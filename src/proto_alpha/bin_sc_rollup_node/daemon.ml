@@ -113,14 +113,18 @@ module Make (PVM : Pvm.S) = struct
             balance_updates
         in
         tzfail (Sc_rollup_node_errors.Lost_game (loser, reason, slashed_amount))
-    | Dal_publish_slot_header {slot_header}, Dal_publish_slot_header_result _ ->
-        let {Dal.Slot.Header.id = {index; _}; _} = slot_header in
+    | ( Dal_publish_slot_header {published_level; index; commitment},
+        Dal_publish_slot_header_result _ ) ->
         (* DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/3510
            We store slot headers for all slots. In practice,
            it would be convenient to store only information about
            headers of slots to which the rollup node is subscribed to.
            We do not have the information about DAL slots subscribed to
            at this time. *)
+        let slot_header =
+          let open Dal.Slot.Header in
+          {id = {published_level; index}; commitment}
+        in
         let*! () =
           Store.Dal_slots_headers.add
             node_ctxt.store

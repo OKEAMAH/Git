@@ -495,7 +495,9 @@ and _ manager_operation =
     }
       -> Kind.transfer_ticket manager_operation
   | Dal_publish_slot_header : {
-      slot_header : Dal_slot_repr.Header.t;
+      published_level : Raw_level_repr.t;
+      index : Dal_slot_repr.Index.t;
+      commitment : Dal_slot_repr.Commitment.t;
     }
       -> Kind.dal_publish_slot_header manager_operation
       (** [Sc_rollup_originate] allows an implicit account to originate a new

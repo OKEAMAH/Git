@@ -43,11 +43,13 @@ val apply_data_availability :
   endorser:Signature.Public_key_hash.t ->
   t tzresult Lwt.t
 
-(** [validate_publish_slot_header ctxt slot] ensures that [slot_header] is
-   valid and cannot prevent an operation containing [slot_header] to be
-   refused on top of [ctxt]. If an [Error _] is returned, the [slot_header]
+(** [validate_publish_slot_header ctxt published_level slot_index commitment]
+   ensures that the slot header whose information are given is valid and cannot
+   prevent an operation containing a slot header with these information to be
+   refused on top of [ctxt]. If an [Error _] is returned, the slot header
    is not valid. *)
-val validate_publish_slot_header : t -> Dal.Slot.Header.t -> unit tzresult
+val validate_publish_slot_header :
+  t -> Raw_level.t -> Dal.Slot_index.t -> Dal.Slot.Commitment.t -> unit tzresult
 
 (** [apply_publish_slot_header ctxt slot_header] applies the publication of
    slot header [slot_header] on top of [ctxt]. Fails if the slot contains

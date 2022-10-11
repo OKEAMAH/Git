@@ -1052,9 +1052,6 @@ let mk_dal_publish_slot_header (oinfos : operation_req) (infos : infos) =
   let published_level = Alpha_context.Raw_level.of_int32_exn Int32.zero in
   let index = Alpha_context.Dal.Slot_index.zero in
   let commitment = Alpha_context.Dal.Slot.Commitment.zero in
-  let slot =
-    Alpha_context.Dal.Slot.Header.{id = {published_level; index}; commitment}
-  in
   Op.dal_publish_slot_header
     ?fee:oinfos.fee
     ?gas_limit:oinfos.gas_limit
@@ -1063,7 +1060,9 @@ let mk_dal_publish_slot_header (oinfos : operation_req) (infos : infos) =
     ?force_reveal:oinfos.force_reveal
     (B infos.ctxt.block)
     (contract_of infos.accounts.source)
-    slot
+    published_level
+    index
+    commitment
 
 let mk_zk_rollup_origination (oinfos : operation_req) (infos : infos) =
   let open Lwt_result_syntax in

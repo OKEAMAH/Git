@@ -402,17 +402,11 @@ module Manager = struct
         ]
         @ parameters
     | Dal_publish_slot_header {level; index; commitment} ->
-        let slot_header =
-          `O
-            [
-              ("index", json_of_int index);
-              ("level", json_of_int level);
-              ("commitment", json_of_commitment commitment);
-            ]
-        in
         [
           ("kind", `String "dal_publish_slot_header");
-          ("slot_header", slot_header);
+          ("index", json_of_int index);
+          ("published_level", json_of_int level);
+          ("commitment", json_of_commitment commitment);
         ]
     | Sc_rollup_dal_slot_subscribe {rollup; slot_index} ->
         [

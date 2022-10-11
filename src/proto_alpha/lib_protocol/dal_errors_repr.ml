@@ -39,7 +39,7 @@ type error +=
       proposed_fees : Tez_repr.t;
     }
   | Dal_endorsement_size_limit_exceeded of {maximum_size : int; got : int}
-  | Dal_publish_slot_header_duplicate of {slot_header : Dal_slot_repr.Header.t}
+  | Dal_publish_slot_header_duplicate of Dal_slot_repr.Header.t
   | Dal_rollup_already_registered_to_slot_index of
       (Sc_rollup_repr.t * Dal_slot_repr.Index.t)
   | Dal_requested_subscriptions_at_future_level of
@@ -192,9 +192,9 @@ let () =
     ~pp:(fun ppf _proposed -> Format.fprintf ppf "%s" description)
     (obj1 (req "proposed" Dal_slot_repr.Header.encoding))
     (function
-      | Dal_publish_slot_header_duplicate {slot_header} -> Some slot_header
+      | Dal_publish_slot_header_duplicate slot_header -> Some slot_header
       | _ -> None)
-    (fun slot_header -> Dal_publish_slot_header_duplicate {slot_header}) ;
+    (fun slot_header -> Dal_publish_slot_header_duplicate slot_header) ;
   register_error_kind
     `Permanent
     ~id:"Dal_rollup_already_subscribed_to_slot"

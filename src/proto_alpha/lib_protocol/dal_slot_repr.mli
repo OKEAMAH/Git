@@ -52,6 +52,8 @@ module Commitment : sig
 
   val encoding : t Data_encoding.t
 
+  val pp : Format.formatter -> t -> unit
+
   (** A dummy value for a commitment. This commitment does not
      correspond to any valid pre-image. *)
   val zero : t

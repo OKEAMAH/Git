@@ -227,7 +227,7 @@ let dal_slot_headers ?hooks sc_client =
     as_list json
     |> List.map (fun obj ->
            {
-             level = obj |> get "level" |> as_int;
+             level = obj |> get "published_level" |> as_int;
              commitment = obj |> get "commitment" |> as_string;
              index = obj |> get "index" |> as_int;
            }))

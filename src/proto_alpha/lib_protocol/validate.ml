@@ -2439,8 +2439,12 @@ module Manager = struct
       | Sc_rollup_dal_slot_subscribe _ ->
           let* () = assert_sc_rollup_feature_enabled vi in
           assert_dal_feature_enabled vi
-      | Dal_publish_slot_header {slot_header} ->
-          Dal_apply.validate_publish_slot_header vi.ctxt slot_header
+      | Dal_publish_slot_header {published_level; index; commitment} ->
+          Dal_apply.validate_publish_slot_header
+            vi.ctxt
+            published_level
+            index
+            commitment
       | Zk_rollup_origination _ | Zk_rollup_publish _ ->
           assert_zk_rollup_feature_enabled vi
     in
