@@ -506,29 +506,28 @@ module Make (T : Tezos_tree_encoding.TREE) :
       let* pvm_state = compute_step_inner pvm_state in
       go (Int64.pred max_steps) pvm_state
 
-    let compute_step_many_until ?(max_steps = 1L) should_continue tree =
-      let open Lwt.Syntax in
+    let compute_step_many_pvm_state ~max_steps tree =
+      let open Lwt_syntax in
       assert (max_steps > 0L) ;
 
-      let* pvm_state = decode tree in
-
-      (* Make sure we perform at least 1 step. The assertion above ensures that
-         we were asked to perform at least 1. *)
-      let* pvm_state =
-        compute_step_many_until_pvm_state ~max_steps should_continue pvm_state
-      in
-
-      encode pvm_state tree
-
-    let compute_step_many ~max_steps tree =
-      let open Lwt_syntax in
       let should_continue pvm_state =
         let* input_request_val = input_request pvm_state in
         match input_request_val with
         | Reveal_required _ | Input_required -> return false
         | No_input_required -> return true
       in
-      compute_step_many_until ~max_steps should_continue tree
+
+      (* Make sure we perform at least 1 step. The assertion above ensures that
+         we were asked to perform at least 1. *)
+      compute_step_many_until_pvm_state ~max_steps should_continue tree
+
+    let compute_step_many ~max_steps tree =
+      let open Lwt.Syntax in
+      let* pvm_state = decode tree in
+
+      let* pvm_state = compute_step_many_pvm_state ~max_steps pvm_state in
+
+      encode pvm_state tree
 
     let compute_step tree = compute_step_many ~max_steps:1L tree
 
@@ -676,9 +675,9 @@ module Make (T : Tezos_tree_encoding.TREE) :
 
       let encode = encode
 
-      let compute_step_many_until = compute_step_many_until
-
       let compute_step_many_until_pvm_state = compute_step_many_until_pvm_state
+
+      let compute_step_many_pvm_state = compute_step_many_pvm_state
 
       let eval_has_finished = eval_has_finished
     end
