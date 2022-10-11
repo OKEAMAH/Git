@@ -98,6 +98,8 @@ module Header : sig
   val pp : Format.formatter -> t -> unit
 
   val equal : t -> t -> bool
+
+  val zero : t
 end
 
 (** A DAL slot is decomposed to a successive list of pages with fixed content
