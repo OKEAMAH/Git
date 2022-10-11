@@ -1434,6 +1434,13 @@ opam:tezos-scoru-wasm:
   variables:
     package: tezos-scoru-wasm
 
+opam:tezos-scoru-wasm-benchmark:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_6
+  variables:
+    package: tezos-scoru-wasm-benchmark
+
 opam:tezos-shell:
   extends:
     - .opam_template
@@ -1605,6 +1612,6 @@ opam:tezt-performance-regression:
 opam:tezt-tezos:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_6
+    - .rules_template__trigger_opam_batch_7
   variables:
     package: tezt-tezos
