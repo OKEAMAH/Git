@@ -309,3 +309,18 @@ let get_tezos_reorg_for_new_head l1_state old_head new_head =
         in
         return {old_chain = []; new_chain}
   | `Head old_head -> get_tezos_reorg_for_new_head l1_state old_head new_head
+
+(* This dummy value is only needed to generate the Open API specification
+   without starting the node. *)
+let dummy (cctxt : Protocol_client_context.full) =
+  let heads, _ = Lwt_stream.create () in
+  let genesis_info =
+    Sc_rollup.Commitment.{level = Raw_level.root; commitment_hash = Hash.zero}
+  in
+  {
+    blocks_cache = Blocks_cache.create 1;
+    heads;
+    cctxt;
+    stopper = (fun () -> ());
+    genesis_info;
+  }

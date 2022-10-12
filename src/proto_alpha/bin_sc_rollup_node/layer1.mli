@@ -94,3 +94,7 @@ val get_tezos_reorg_for_new_head :
   [`Head of head | `Level of int32] ->
   head ->
   head Injector_common.reorg tzresult Lwt.t
+
+(**/*)
+
+val dummy : Protocol_client_context.full -> t
