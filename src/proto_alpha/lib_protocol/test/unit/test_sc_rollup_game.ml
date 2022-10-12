@@ -278,7 +278,8 @@ let test_invalid_serialized_inbox_proof () =
       ~current_level:(Raw_level.of_int32_exn 42l)
       inbox
   in
-
+  let dal_snapshot = Dal.Slots_history.genesis in
+  let dal_parameters = Default_parameters.constants_mainnet.dal in
   let ctxt = Tezos_context_memory.make_empty_context () in
   let*! state = Arith_pvm.initial_state ctxt in
   (* We evaluate the boot sector, so the [input_requested] is a
@@ -317,6 +318,9 @@ let test_invalid_serialized_inbox_proof () =
          ~metadata
          snapshot
          Raw_level.root
+         dal_snapshot
+         dal_parameters.cryptobox_parameters
+         ~dal_endorsement_lag:dal_parameters.endorsement_lag
          ~pvm_name:"arith"
          proof
   in

@@ -3580,6 +3580,18 @@ module Sc_rollup : sig
 
         val history : Inbox.History.t
       end
+
+      module Dal_with_history : sig
+        val confirmed_slots_history : Dal.Slots_history.t
+
+        val history_cache : Dal.Slots_history.History_cache.t
+
+        val page_info : (Dal.Page.content * Dal.Page.proof) option
+
+        val dal_parameters : Dal.Slots_history.dal_parameters
+
+        val dal_endorsement_lag : int
+      end
     end
 
     type error += Sc_rollup_proof_check of string
@@ -3588,6 +3600,9 @@ module Sc_rollup : sig
       metadata:Metadata.t ->
       Inbox.history_proof ->
       Raw_level.t ->
+      Dal.Slots_history.t ->
+      Dal.Slots_history.dal_parameters ->
+      dal_endorsement_lag:int ->
       pvm_name:string ->
       t ->
       (input option * input_request) tzresult Lwt.t
@@ -3693,6 +3708,8 @@ module Sc_rollup : sig
       t
 
     val play :
+      Dal.Slots_history.dal_parameters ->
+      dal_endorsement_lag:int ->
       stakers:Index.t ->
       Metadata.t ->
       t ->
