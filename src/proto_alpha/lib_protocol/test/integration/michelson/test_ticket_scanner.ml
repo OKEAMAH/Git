@@ -71,7 +71,7 @@ let assert_equal_string_list ~loc msg =
 
 let string_list_of_ex_tickets ctxt tickets =
   let accum (xs, ctxt)
-      (Ticket_scanner.Ex_ticket
+      (Script_typed_ir.Ex_ticket
         (cty, {Script_typed_ir.ticketer; contents; amount})) =
     let* x, ctxt =
       wrap
@@ -114,7 +114,7 @@ let make_ex_ticket ctxt ~ticketer ~type_exp ~content_exp ~amount =
     WithExceptions.Option.get ~loc:__LOC__ @@ Ticket_amount.of_n amount
   in
   let ticket = Script_typed_ir.{ticketer; contents; amount} in
-  return (Ticket_scanner.Ex_ticket (cty, ticket), ctxt)
+  return (Script_typed_ir.Ex_ticket (cty, ticket), ctxt)
 
 let assert_equals_ex_tickets ctxt ~loc ex_tickets expected =
   let* str_tickets, ctxt = string_list_of_ex_tickets ctxt ex_tickets in
