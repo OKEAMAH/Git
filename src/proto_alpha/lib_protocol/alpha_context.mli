@@ -3629,6 +3629,7 @@ module Sc_rollup : sig
     type t = {
       turn : player;
       inbox_snapshot : Inbox.history_proof;
+      dal_snapshot : Dal.Slots_history.t;
       start_level : Raw_level.t;
       inbox_level : Raw_level.t;
       pvm_name : string;
@@ -3681,6 +3682,7 @@ module Sc_rollup : sig
 
     val initial :
       Inbox.history_proof ->
+      Dal.Slots_history.t ->
       start_level:Raw_level.t ->
       pvm_name:string ->
       parent:Commitment.t ->
