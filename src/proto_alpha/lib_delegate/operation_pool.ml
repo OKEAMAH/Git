@@ -332,8 +332,31 @@ let extract_operations_of_list_list = function
       let preendorsements =
         if preendorsements = [] then None else Some preendorsements
       in
+      let extract_published_slot_headers (type a) (contents : a contents_list) =
+        Operation.to_list (Contents_list contents)
+        |> List.fold_left
+             (fun acc -> function
+               | Contents
+                   (Manager_operation
+                     {operation = Dal_publish_slot_header {slot_header}; _}) ->
+                   slot_header :: acc
+               | _ -> acc)
+             []
+      in
+      let published_slot_headers =
+        List.fold_left
+          (fun published_slot_headers packed_op ->
+            let {shell = _; protocol_data = Operation_data data} = packed_op in
+            match data with
+            | {contents; _} ->
+                extract_published_slot_headers contents
+                :: published_slot_headers)
+          []
+          managers_payload
+        |> List.flatten
+      in
       let payload = {votes_payload; anonymous_payload; managers_payload} in
-      Some (preendorsements, endorsements, payload)
+      Some (preendorsements, endorsements, published_slot_headers, payload)
   | _ -> None
 
 let filter_pool p {consensus; votes; anonymous; managers} =

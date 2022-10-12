@@ -68,6 +68,8 @@ type block_info = {
   live_blocks : Block_hash.Set.t;
       (** Set of live blocks for this block that is used to filter
           old or too recent operations. *)
+  published_slot_headers : Dal.Slot.Header.t list;
+      (** List of slot headers published in this proposition. *)
 }
 
 type cache = {

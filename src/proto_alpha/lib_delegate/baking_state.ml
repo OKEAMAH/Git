@@ -112,6 +112,7 @@ type block_info = {
   quorum : Kind.endorsement operation list;
   payload : Operation_pool.payload;
   live_blocks : Block_hash.Set.t;
+  published_slot_headers : Dal.Slot.Header.t list;
 }
 
 type cache = {
@@ -175,6 +176,7 @@ let block_info_encoding =
            quorum;
            payload;
            live_blocks;
+           published_slot_headers;
          } ->
       ( ( hash,
           shell,
@@ -186,7 +188,7 @@ let block_info_encoding =
           prequorum,
           List.map Operation.pack quorum,
           payload ),
-        live_blocks ))
+        (live_blocks, published_slot_headers) ))
     (fun ( ( hash,
              shell,
              payload_hash,
@@ -197,7 +199,7 @@ let block_info_encoding =
              prequorum,
              quorum,
              payload ),
-           live_blocks ) ->
+           (live_blocks, published_slot_headers) ) ->
       {
         hash;
         shell;
@@ -210,6 +212,7 @@ let block_info_encoding =
         quorum = List.filter_map Operation_pool.unpack_endorsement quorum;
         payload;
         live_blocks;
+        published_slot_headers;
       })
     (merge_objs
        (obj10
@@ -223,7 +226,9 @@ let block_info_encoding =
           (req "prequorum" (option prequorum_encoding))
           (req "quorum" (list (dynamic_size Operation.encoding)))
           (req "payload" Operation_pool.payload_encoding))
-       (obj1 (req "live_blocks" Block_hash.Set.encoding)))
+       (obj2
+          (req "live_blocks" Block_hash.Set.encoding)
+          (req "published_slot_headers" (list Dal.Slot.Header.encoding))))
 
 let round_of_shell_header shell_header =
   Environment.wrap_tzresult

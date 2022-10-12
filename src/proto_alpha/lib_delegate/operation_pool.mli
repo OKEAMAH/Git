@@ -112,6 +112,7 @@ val extract_operations_of_list_list :
   packed_operation list list ->
   (Kind.preendorsement operation list option
   * Kind.endorsement operation list
+  * Dal.Slot.Header.t list
   * payload)
   option
 

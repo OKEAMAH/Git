@@ -88,8 +88,8 @@ let raw_info cctxt ~chain ~block_hash shell payload_hash payload_round
    | Some operations -> return operations
   else
     (* If we are not in the current protocol, do no consider operations *)
-    return (None, [], Operation_pool.empty_payload))
-  >>=? fun (preendorsements, quorum, payload) ->
+    return (None, [], [], Operation_pool.empty_payload))
+  >>=? fun (preendorsements, quorum, published_slot_headers, payload) ->
   (match Baking_state.round_of_shell_header shell with
   | Ok round -> ok round
   | _ ->
@@ -112,6 +112,7 @@ let raw_info cctxt ~chain ~block_hash shell payload_hash payload_round
       quorum;
       payload;
       live_blocks;
+      published_slot_headers;
     }
 
 let dummy_payload_hash = Block_payload_hash.zero
