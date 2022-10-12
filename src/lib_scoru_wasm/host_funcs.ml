@@ -169,9 +169,13 @@ let write_debug_type =
    point of view, [write_debug] is a no-op. *)
 let write_debug =
   Host_funcs.Host_func
-    (fun _input_buffer _output_buffer durable _memories inputs ->
+    (fun _input_buffer _output_buffer durable memories inputs ->
       match inputs with
-      | [Values.(Num (I32 _src)); Values.(Num (I32 _num_bytes))] ->
+      | [Values.(Num (I32 src)); Values.(Num (I32 num_bytes))] ->
+          let open Lwt.Syntax in
+          let* memory = retrieve_memory memories in
+          let* message = Partial_memory.load_bytes memory src (Int32.to_int num_bytes) in
+          Printf.printf "Debug: %s \n" message;
           Lwt.return (durable, [])
       | _ -> raise Bad_input)
 

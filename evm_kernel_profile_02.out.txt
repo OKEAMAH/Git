@@ -1,0 +1,418 @@
+=========
+Booting evm_kernel 
+Start at tick 1
+-----
+Decode tree finished in 0.000020 s
+Decoding finished in 387567 ticks 0.649788 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.190788 s
+Evaluation finished in 8320 ticks 0.001715 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000029 s
+-----
+Booting evm_kernel took 1591757 ticks in 0.842601 s
+last tick: 1591758 snapshot
+=========
+Run a contract 0 
+Start at tick 1591758
+-----
+Decode tree finished in 0.000029 s
+Decoding finished in 387567 ticks 0.659903 s
+Linking finished in 4 ticks 0.000004 s
+Initialisation finished in 1195864 ticks 0.169070 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 66 
+Evaluation finished in 503140 ticks 0.076123 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000058 s
+-----
+Run a contract 0 took 2086578 ticks in 0.905493 s
+last tick: 3678336 snapshot
+=========
+Run a contract 1 
+Start at tick 3678336
+-----
+Decode tree finished in 0.000027 s
+Decoding finished in 387567 ticks 0.673004 s
+Linking finished in 4 ticks 0.000002 s
+Initialisation finished in 1195864 ticks 0.174228 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 5766 
+Evaluation finished in 8068608 ticks 1.294538 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000048 s
+-----
+Run a contract 1 took 9652046 ticks in 2.142096 s
+last tick: 13330382 snapshot
+=========
+Run a contract 2 
+Start at tick 13330382
+-----
+Decode tree finished in 0.000028 s
+Decoding finished in 387567 ticks 0.653332 s
+Linking finished in 4 ticks 0.000002 s
+Initialisation finished in 1195864 ticks 0.173492 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 11466 
+Evaluation finished in 15633979 ticks 2.524118 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000074 s
+-----
+Run a contract 2 took 17217417 ticks in 3.351297 s
+last tick: 30547799 snapshot
+=========
+Run a contract 3 
+Start at tick 30547799
+-----
+Decode tree finished in 0.000047 s
+Decoding finished in 387567 ticks 0.673591 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.174967 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 17166 
+Evaluation finished in 23192554 ticks 4.149277 s
+Finish finished in 2 ticks 0.000002 s
+Encode tree finished in 0.000076 s
+-----
+Run a contract 3 took 24775992 ticks in 4.998218 s
+last tick: 55323791 snapshot
+=========
+Run a contract 4 
+Start at tick 55323791
+-----
+Decode tree finished in 0.000026 s
+Decoding finished in 387567 ticks 0.749017 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.168743 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 22866 
+Evaluation finished in 30743154 ticks 5.230297 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000056 s
+-----
+Run a contract 4 took 32326592 ticks in 6.148453 s
+last tick: 87650383 snapshot
+=========
+Run a contract 5 
+Start at tick 87650383
+-----
+Decode tree finished in 0.000030 s
+Decoding finished in 387567 ticks 0.686432 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.170501 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 28566 
+Evaluation finished in 38293754 ticks 7.196768 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000064 s
+-----
+Run a contract 5 took 39877192 ticks in 8.054105 s
+last tick: 127527575 snapshot
+=========
+Run a contract 6 
+Start at tick 127527575
+-----
+Decode tree finished in 0.000030 s
+Decoding finished in 387567 ticks 0.818095 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.214143 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 34266 
+Evaluation finished in 45844354 ticks 8.971295 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000061 s
+-----
+Run a contract 6 took 47427792 ticks in 10.004009 s
+last tick: 174955367 snapshot
+=========
+Run a contract 7 
+Start at tick 174955367
+-----
+Decode tree finished in 0.000028 s
+Decoding finished in 387567 ticks 0.780134 s
+Linking finished in 4 ticks 0.000002 s
+Initialisation finished in 1195864 ticks 0.203946 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 39966 
+Evaluation finished in 53394954 ticks 10.253055 s
+Finish finished in 2 ticks 0.000005 s
+Encode tree finished in 0.000066 s
+-----
+Run a contract 7 took 54978392 ticks in 11.237543 s
+last tick: 229933759 snapshot
+=========
+Run a contract 8 
+Start at tick 229933759
+-----
+Decode tree finished in 0.000026 s
+Decoding finished in 387567 ticks 0.802438 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.210329 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 45666 
+Evaluation finished in 60945554 ticks 11.683462 s
+Finish finished in 2 ticks 0.000002 s
+Encode tree finished in 0.000057 s
+-----
+Run a contract 8 took 62528992 ticks in 12.696590 s
+last tick: 292462751 snapshot
+=========
+Run a contract 9 
+Start at tick 292462751
+-----
+Decode tree finished in 0.000047 s
+Decoding finished in 387567 ticks 0.784403 s
+Linking finished in 4 ticks 0.000002 s
+Initialisation finished in 1195864 ticks 0.198778 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 51366 
+Evaluation finished in 68496154 ticks 13.175271 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000055 s
+-----
+Run a contract 9 took 70079592 ticks in 14.158818 s
+last tick: 362542343 snapshot
+=========
+Run a contract 10 
+Start at tick 362542343
+-----
+Decode tree finished in 0.000073 s
+Decoding finished in 387567 ticks 0.810102 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.207121 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 57066 
+Evaluation finished in 76046754 ticks 14.438060 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000063 s
+-----
+Run a contract 10 took 77630192 ticks in 15.455702 s
+last tick: 440172535 snapshot
+=========
+Run a contract 11 
+Start at tick 440172535
+-----
+Decode tree finished in 0.000029 s
+Decoding finished in 387567 ticks 0.803523 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.200312 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 62766 
+Evaluation finished in 83597354 ticks 15.839742 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000078 s
+-----
+Run a contract 11 took 85180792 ticks in 16.844010 s
+last tick: 525353327 snapshot
+=========
+Run a contract 12 
+Start at tick 525353327
+-----
+Decode tree finished in 0.000028 s
+Decoding finished in 387567 ticks 0.884148 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.209715 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 68466 
+Evaluation finished in 91147954 ticks 17.448255 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000063 s
+-----
+Run a contract 12 took 92731392 ticks in 18.542532 s
+last tick: 618084719 snapshot
+=========
+Run a contract 13 
+Start at tick 618084719
+-----
+Decode tree finished in 0.000053 s
+Decoding finished in 387567 ticks 0.803879 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.208052 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 74166 
+Evaluation finished in 98698554 ticks 18.711473 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000059 s
+-----
+Run a contract 13 took 100281992 ticks in 19.723776 s
+last tick: 718366711 snapshot
+=========
+Run a contract 14 
+Start at tick 718366711
+-----
+Decode tree finished in 0.000048 s
+Decoding finished in 387567 ticks 0.770217 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.201120 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 79866 
+Evaluation finished in 106249154 ticks 20.408327 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000055 s
+-----
+Run a contract 14 took 107832592 ticks in 21.380051 s
+last tick: 826199303 snapshot
+=========
+Run a contract 15 
+Start at tick 826199303
+-----
+Decode tree finished in 0.000028 s
+Decoding finished in 387567 ticks 0.775882 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.212694 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 85566 
+Evaluation finished in 113799754 ticks 21.891986 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000055 s
+-----
+Run a contract 15 took 115383192 ticks in 22.881013 s
+last tick: 941582495 snapshot
+=========
+Run a contract 16 
+Start at tick 941582495
+-----
+Decode tree finished in 0.000049 s
+Decoding finished in 387567 ticks 0.812521 s
+Linking finished in 4 ticks 0.000003 s
+Initialisation finished in 1195864 ticks 0.206091 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 91266 
+Evaluation finished in 121350354 ticks 23.170460 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000057 s
+-----
+Run a contract 16 took 122933792 ticks in 24.189449 s
+last tick: 1064516287 snapshot
+=========
+Run a contract 17 
+Start at tick 1064516287
+-----
+Decode tree finished in 0.000031 s
+Decoding finished in 387567 ticks 0.805092 s
+Linking finished in 4 ticks 0.000004 s
+Initialisation finished in 1195864 ticks 0.210290 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 96966 
+Evaluation finished in 128900954 ticks 24.560605 s
+Finish finished in 2 ticks 0.000002 s
+Encode tree finished in 0.000056 s
+-----
+Run a contract 17 took 130484392 ticks in 25.576357 s
+last tick: 1195000679 snapshot
+=========
+Run a contract 18 
+Start at tick 1195000679
+-----
+Decode tree finished in 0.000168 s
+Decoding finished in 387567 ticks 0.783066 s
+Linking finished in 4 ticks 0.000002 s
+Initialisation finished in 1195864 ticks 0.205922 s
+Debug: Processing MessageData 1001 at level 0 
+Debug: Contract run success. Gas use = 102666 
+Evaluation finished in 136451671 ticks 26.112088 s
+Finish finished in 2 ticks 0.000001 s
+Encode tree finished in 0.000074 s
+-----
+Run a contract 18 took 138035109 ticks in 27.101578 s
+last tick: 1333035788 snapshot
+"evm_kernel" , "Booting evm_kernel" , "Decoding" ,  387567 ,  0.649788 
+"evm_kernel" , "Booting evm_kernel" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Booting evm_kernel" , "Initialisation" ,  1195864 ,  0.190788 
+"evm_kernel" , "Booting evm_kernel" , "Evaluation" ,  8320 ,  0.001715 
+"evm_kernel" , "Booting evm_kernel" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 0" , "Decoding" ,  387567 ,  0.659903 
+"evm_kernel" , "Run a contract 0" , "Linking" ,  4 ,  0.000004 
+"evm_kernel" , "Run a contract 0" , "Initialisation" ,  1195864 ,  0.169070 
+"evm_kernel" , "Run a contract 0" , "Evaluation" ,  503140 ,  0.076123 
+"evm_kernel" , "Run a contract 0" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 1" , "Decoding" ,  387567 ,  0.673004 
+"evm_kernel" , "Run a contract 1" , "Linking" ,  4 ,  0.000002 
+"evm_kernel" , "Run a contract 1" , "Initialisation" ,  1195864 ,  0.174228 
+"evm_kernel" , "Run a contract 1" , "Evaluation" ,  8068608 ,  1.294538 
+"evm_kernel" , "Run a contract 1" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 2" , "Decoding" ,  387567 ,  0.653332 
+"evm_kernel" , "Run a contract 2" , "Linking" ,  4 ,  0.000002 
+"evm_kernel" , "Run a contract 2" , "Initialisation" ,  1195864 ,  0.173492 
+"evm_kernel" , "Run a contract 2" , "Evaluation" ,  15633979 ,  2.524118 
+"evm_kernel" , "Run a contract 2" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 3" , "Decoding" ,  387567 ,  0.673591 
+"evm_kernel" , "Run a contract 3" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 3" , "Initialisation" ,  1195864 ,  0.174967 
+"evm_kernel" , "Run a contract 3" , "Evaluation" ,  23192554 ,  4.149277 
+"evm_kernel" , "Run a contract 3" , "Finish" ,  2 ,  0.000002 
+"evm_kernel" , "Run a contract 4" , "Decoding" ,  387567 ,  0.749017 
+"evm_kernel" , "Run a contract 4" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 4" , "Initialisation" ,  1195864 ,  0.168743 
+"evm_kernel" , "Run a contract 4" , "Evaluation" ,  30743154 ,  5.230297 
+"evm_kernel" , "Run a contract 4" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 5" , "Decoding" ,  387567 ,  0.686432 
+"evm_kernel" , "Run a contract 5" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 5" , "Initialisation" ,  1195864 ,  0.170501 
+"evm_kernel" , "Run a contract 5" , "Evaluation" ,  38293754 ,  7.196768 
+"evm_kernel" , "Run a contract 5" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 6" , "Decoding" ,  387567 ,  0.818095 
+"evm_kernel" , "Run a contract 6" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 6" , "Initialisation" ,  1195864 ,  0.214143 
+"evm_kernel" , "Run a contract 6" , "Evaluation" ,  45844354 ,  8.971295 
+"evm_kernel" , "Run a contract 6" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 7" , "Decoding" ,  387567 ,  0.780134 
+"evm_kernel" , "Run a contract 7" , "Linking" ,  4 ,  0.000002 
+"evm_kernel" , "Run a contract 7" , "Initialisation" ,  1195864 ,  0.203946 
+"evm_kernel" , "Run a contract 7" , "Evaluation" ,  53394954 ,  10.253055 
+"evm_kernel" , "Run a contract 7" , "Finish" ,  2 ,  0.000005 
+"evm_kernel" , "Run a contract 8" , "Decoding" ,  387567 ,  0.802438 
+"evm_kernel" , "Run a contract 8" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 8" , "Initialisation" ,  1195864 ,  0.210329 
+"evm_kernel" , "Run a contract 8" , "Evaluation" ,  60945554 ,  11.683462 
+"evm_kernel" , "Run a contract 8" , "Finish" ,  2 ,  0.000002 
+"evm_kernel" , "Run a contract 9" , "Decoding" ,  387567 ,  0.784403 
+"evm_kernel" , "Run a contract 9" , "Linking" ,  4 ,  0.000002 
+"evm_kernel" , "Run a contract 9" , "Initialisation" ,  1195864 ,  0.198778 
+"evm_kernel" , "Run a contract 9" , "Evaluation" ,  68496154 ,  13.175271 
+"evm_kernel" , "Run a contract 9" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 10" , "Decoding" ,  387567 ,  0.810102 
+"evm_kernel" , "Run a contract 10" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 10" , "Initialisation" ,  1195864 ,  0.207121 
+"evm_kernel" , "Run a contract 10" , "Evaluation" ,  76046754 ,  14.438060 
+"evm_kernel" , "Run a contract 10" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 11" , "Decoding" ,  387567 ,  0.803523 
+"evm_kernel" , "Run a contract 11" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 11" , "Initialisation" ,  1195864 ,  0.200312 
+"evm_kernel" , "Run a contract 11" , "Evaluation" ,  83597354 ,  15.839742 
+"evm_kernel" , "Run a contract 11" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 12" , "Decoding" ,  387567 ,  0.884148 
+"evm_kernel" , "Run a contract 12" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 12" , "Initialisation" ,  1195864 ,  0.209715 
+"evm_kernel" , "Run a contract 12" , "Evaluation" ,  91147954 ,  17.448255 
+"evm_kernel" , "Run a contract 12" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 13" , "Decoding" ,  387567 ,  0.803879 
+"evm_kernel" , "Run a contract 13" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 13" , "Initialisation" ,  1195864 ,  0.208052 
+"evm_kernel" , "Run a contract 13" , "Evaluation" ,  98698554 ,  18.711473 
+"evm_kernel" , "Run a contract 13" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 14" , "Decoding" ,  387567 ,  0.770217 
+"evm_kernel" , "Run a contract 14" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 14" , "Initialisation" ,  1195864 ,  0.201120 
+"evm_kernel" , "Run a contract 14" , "Evaluation" ,  106249154 ,  20.408327 
+"evm_kernel" , "Run a contract 14" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 15" , "Decoding" ,  387567 ,  0.775882 
+"evm_kernel" , "Run a contract 15" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 15" , "Initialisation" ,  1195864 ,  0.212694 
+"evm_kernel" , "Run a contract 15" , "Evaluation" ,  113799754 ,  21.891986 
+"evm_kernel" , "Run a contract 15" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 16" , "Decoding" ,  387567 ,  0.812521 
+"evm_kernel" , "Run a contract 16" , "Linking" ,  4 ,  0.000003 
+"evm_kernel" , "Run a contract 16" , "Initialisation" ,  1195864 ,  0.206091 
+"evm_kernel" , "Run a contract 16" , "Evaluation" ,  121350354 ,  23.170460 
+"evm_kernel" , "Run a contract 16" , "Finish" ,  2 ,  0.000001 
+"evm_kernel" , "Run a contract 17" , "Decoding" ,  387567 ,  0.805092 
+"evm_kernel" , "Run a contract 17" , "Linking" ,  4 ,  0.000004 
+"evm_kernel" , "Run a contract 17" , "Initialisation" ,  1195864 ,  0.210290 
+"evm_kernel" , "Run a contract 17" , "Evaluation" ,  128900954 ,  24.560605 
+"evm_kernel" , "Run a contract 17" , "Finish" ,  2 ,  0.000002 
+"evm_kernel" , "Run a contract 18" , "Decoding" ,  387567 ,  0.783066 
+"evm_kernel" , "Run a contract 18" , "Linking" ,  4 ,  0.000002 
+"evm_kernel" , "Run a contract 18" , "Initialisation" ,  1195864 ,  0.205922 
+"evm_kernel" , "Run a contract 18" , "Evaluation" ,  136451671 ,  26.112088 
+"evm_kernel" , "Run a contract 18" , "Finish" ,  2 ,  0.000001 

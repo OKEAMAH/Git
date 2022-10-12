@@ -26,6 +26,7 @@
 open Tezos_webassembly_interpreter
 
 type interpreter_error = {raw_exception : string; explanation : string option}
+[@@deriving show]
 
 type t =
   | Decode_error of interpreter_error
@@ -35,6 +36,7 @@ type t =
   | Invalid_state of string
   | Unknown_error of string
   | Too_many_ticks
+[@@deriving show]
 
 let decode_state_to_string = function
   | Decode.Byte_vector_step -> "Byte_vector_step"

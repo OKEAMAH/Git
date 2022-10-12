@@ -1611,6 +1611,7 @@ let octez_scoru_wasm =
         octez_lwt_result_stdlib;
         data_encoding;
       ]
+    ~preprocess:[pps ppx_deriving_show]
 
 let octez_context_encoding =
   public_lib

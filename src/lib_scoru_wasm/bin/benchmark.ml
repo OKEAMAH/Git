@@ -274,7 +274,7 @@ let tick_label = function
   | Wasm_pvm.Decode _ -> "decode"
   | Init {init_kont; _} -> "init:" ^ init_kont_label init_kont
   | Eval {step_kont; _} -> "eval:" ^ step_kont_label step_kont
-  | Stuck _ -> "stuck"
+  | Stuck x -> "stuck->" ^ (Wasm_pvm_errors.show x)
   | Link _ -> "link"
   | Snapshot -> "snapshot"
 
@@ -511,6 +511,115 @@ module Scenario = struct
     go (empty_benchmark ~verbose ~totals ~irmin ()) scenarios
 end
 
+let scenario_evm_kernel_basic_run =
+  Scenario.make_scenario
+    "evm_kernel"
+    "src/lib_scoru_wasm/test/wasm_kernels/evm_kernel.wasm"
+    [
+      (*
+      Scenario.make_scenario_step
+        "Run a contract"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/run_contract.out");
+         *)
+      Scenario.make_scenario_step
+        "Run a contract 0"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-0.out");
+      Scenario.make_scenario_step
+        "Run a contract 1"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-1.out");
+      Scenario.make_scenario_step
+        "Run a contract 2"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-2.out");
+      Scenario.make_scenario_step
+        "Run a contract 3"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-3.out");
+      Scenario.make_scenario_step
+        "Run a contract 4"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-4.out");
+      Scenario.make_scenario_step
+        "Run a contract 5"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-5.out");
+      Scenario.make_scenario_step
+        "Run a contract 6"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-6.out");
+      Scenario.make_scenario_step
+        "Run a contract 7"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-7.out");
+      Scenario.make_scenario_step
+        "Run a contract 8"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-8.out");
+      Scenario.make_scenario_step
+        "Run a contract 9"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-9.out");
+      Scenario.make_scenario_step
+        "Run a contract 10"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-10.out");
+      Scenario.make_scenario_step
+        "Run a contract 11"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-11.out");
+      Scenario.make_scenario_step
+        "Run a contract 12"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-12.out");
+      Scenario.make_scenario_step
+        "Run a contract 13"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-13.out");
+      Scenario.make_scenario_step
+        "Run a contract 14"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-14.out");
+      Scenario.make_scenario_step
+        "Run a contract 15"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-15.out");
+      Scenario.make_scenario_step
+        "Run a contract 16"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-16.out");
+      Scenario.make_scenario_step
+        "Run a contract 17"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-17.out");
+      Scenario.make_scenario_step
+        "Run a contract 18"
+        (Scenario.exec_on_message
+           1_001
+           "evm_kernel/call-contract-message-18.out");
+    ]
+
 let scenario_tx_kernel_deposit_then_withdraw_to_same_address =
   Scenario.make_scenario
     "tx_kernel - deposit_then_withdraw_to_same_address"
@@ -622,9 +731,10 @@ let () =
        ~totals:false
        ~irmin:false
        [
-         scenario_tx_kernel_deposit_then_withdraw_to_same_address;
-         scenario_tx_kernel_deposit_transfer_withdraw;
-         scenario_tx_kernel_deposit_transfer_withdraw_all_in_one;
-         scenario_tx_kernel_deposit_transfer_withdraw_many_transfers;
-         scenario_computation_kernel;
+         (* scenario_tx_kernel_deposit_then_withdraw_to_same_address; *)
+         (* scenario_tx_kernel_deposit_transfer_withdraw; *)
+         (* scenario_tx_kernel_deposit_transfer_withdraw_all_in_one; *)
+         (* scenario_tx_kernel_deposit_transfer_withdraw_many_transfers; *)
+         (* scenario_computation_kernel; *)
+         scenario_evm_kernel_basic_run;
        ]

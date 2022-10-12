@@ -36,6 +36,7 @@ type interpreter_error = {
   raw_exception : raw_exception;
   explanation : string option;
 }
+[@@deriving show]
 
 type t =
   | Decode_error of interpreter_error
@@ -52,6 +53,7 @@ type t =
       (** Wraps unexpected exceptions raised by the interpreter. *)
   | Too_many_ticks
       (** The maximum number of ticks was reached before the end of current top level call *)
+[@@deriving show]
 
 (* [link_error kind ~module_name ~item_name] returns the link error for a given
    [module_name] and [item_name], and the kind of error (whether an unkown

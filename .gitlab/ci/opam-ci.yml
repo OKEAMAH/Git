@@ -1021,7 +1021,7 @@ opam:tezos-expect-helper:
 opam:tezos-hacl:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_7
+    - .rules_template__trigger_opam_batch_8
   variables:
     package: tezos-hacl
 
@@ -1301,7 +1301,7 @@ opam:tezos-protocol-demo-noops:
 opam:tezos-protocol-environment:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_6
+    - .rules_template__trigger_opam_batch_7
   variables:
     package: tezos-protocol-environment
 
