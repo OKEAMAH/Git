@@ -77,7 +77,9 @@ module Request (Data : Injector_sigs.DATA) = struct
     | Add_pending data ->
         Format.fprintf
           ppf
-          "request add %a to pending queue"
+          "add %a (%a) to pending queue"
+          Data.pp
+          data
           Data.Hash.pp
           (Data.hash data)
     | New_tezos_head (b, r) ->

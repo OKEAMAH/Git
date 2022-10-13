@@ -50,3 +50,6 @@ val packed_manager_encoding : packed_manager_operation Data_encoding.t
 (** Pretty printer for L1 operations. Only the relevant part for the rollup node
     is printed. *)
 val pp : Format.formatter -> t -> unit
+
+(** Pretty printer for L1 operations in a shorter format. *)
+val pp_short : Format.formatter -> t -> unit

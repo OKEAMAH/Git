@@ -81,10 +81,9 @@ module Make (Rollup : Injector_sigs.PARAMETERS) = struct
   let request_failed =
     declare_3
       ~name:"request_failed"
-      ~msg:"request {view} failed ({worker_status}): {errors}"
+      ~msg:"request '{view}' failed ({worker_status}): {errors}"
       ~level:Warning
-      ("view", Request.encoding)
-      ~pp1:Request.pp
+      ("request", Data_encoding.string)
       ("worker_status", Worker_types.request_status_encoding)
       ~pp2:Worker_types.pp_status
       ("errors", Error_monad.trace_encoding)
@@ -93,21 +92,19 @@ module Make (Rollup : Injector_sigs.PARAMETERS) = struct
   let request_completed_notice =
     declare_2
       ~name:"request_completed_notice"
-      ~msg:"{view} {worker_status}"
+      ~msg:"{request} {worker_status}"
       ~level:Notice
-      ("view", Request.encoding)
+      ("request", Data_encoding.string)
       ("worker_status", Worker_types.request_status_encoding)
-      ~pp1:Request.pp
       ~pp2:Worker_types.pp_status
 
   let request_completed_debug =
     declare_2
       ~name:"request_completed_debug"
-      ~msg:"{view} {worker_status}"
+      ~msg:"{request} {worker_status}"
       ~level:Debug
-      ("view", Request.encoding)
+      ("request", Data_encoding.string)
       ("worker_status", Worker_types.request_status_encoding)
-      ~pp1:Request.pp
       ~pp2:Worker_types.pp_status
 
   let new_tezos_head =
@@ -130,48 +127,49 @@ module Make (Rollup : Injector_sigs.PARAMETERS) = struct
   let pp_data_hash_list ppf operations =
     Format.fprintf ppf "@[%a@]" (Format.pp_print_list Data.Hash.pp) operations
 
-  let injecting_operations =
-    declare_1
-      ~name:"injecting_operations"
-      ~msg:"Injecting operations: {operations}"
-      ~level:Notice
-      ("operations", Data_encoding.list Data.encoding)
-      ~pp1:pp_data_list
+  let pp_string_list ppf operations =
+    Format.fprintf
+      ppf
+      "@[%a@]"
+      (Format.pp_print_list Format.pp_print_string)
+      operations
 
   let simulating_operations =
     declare_2
       ~name:"simulating_operations"
       ~msg:"Simulating operations (force = {force}): {operations}"
       ~level:Debug
-      ("operations", Data_encoding.list Data.encoding)
+      ("operations", Data_encoding.(list string))
       ("force", Data_encoding.bool)
-      ~pp1:pp_data_list
+      ~pp1:pp_string_list
 
   let dropping_operation =
     declare_2
       ~name:"dropping_operation"
       ~msg:"Dropping operation {operation} failing with {error}"
       ~level:Notice
-      ("operation", Data.encoding)
-      ~pp1:Data.pp
+      ("operation", Data_encoding.string)
       ("error", Environment.Error_monad.trace_encoding)
       ~pp2:Environment.Error_monad.pp_trace
 
   let injected =
-    declare_2
+    declare_3
       ~name:"injected"
-      ~msg:"Injected {nb} operations in {oph}"
+      ~msg:"Injected {nb} operations in {oph}: {operations}"
       ~level:Notice
       ("nb", Data_encoding.int31)
       ("oph", Operation_hash.encoding)
+      ("operations", Data_encoding.(list string))
+      ~pp3:pp_string_list
 
   let add_pending =
-    declare_1
+    declare_2
       ~name:"add_pending"
-      ~msg:"Add {operation} to pending"
+      ~msg:"Add {operation} (hash) to pending"
       ~level:Notice
-      ("operation", Data.encoding)
-      ~pp1:Data.pp
+      ("hash", Data.Hash.encoding)
+      ("operation", Data_encoding.string)
+      ~pp1:Data.Hash.pp
 
   let included =
     declare_3

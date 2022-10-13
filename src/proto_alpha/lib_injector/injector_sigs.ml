@@ -65,6 +65,8 @@ module type DATA = sig
 
   val pp : Format.formatter -> t -> unit
 
+  val pp_short : Format.formatter -> t -> unit
+
   val to_manager_operation : t -> packed_manager_operation
 end
 

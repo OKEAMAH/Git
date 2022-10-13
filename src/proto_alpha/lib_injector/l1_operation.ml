@@ -236,3 +236,6 @@ let pp ppf {hash; manager_operation} =
     manager_operation
     Hash.pp
     hash
+
+let pp_short ppf {manager_operation; _} =
+  Manager_operation.pp ppf manager_operation

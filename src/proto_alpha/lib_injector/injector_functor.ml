@@ -320,7 +320,12 @@ module Make (Rollup : PARAMETERS) = struct
     operation.  *)
   let add_pending_operation state data =
     let open Lwt_result_syntax in
-    let*! () = Event.(emit1 add_pending) state data in
+    let*! () =
+      Event.(emit2 add_pending)
+        state
+        (Data.hash data)
+        (Format.asprintf "%a" Data.pp_short data)
+    in
     Op_queue.replace state.queue (Data.hash data) data
 
   (** Mark operations as injected (in [oph]). *)
@@ -482,7 +487,12 @@ module Make (Rollup : PARAMETERS) = struct
           match must_succeed with `All -> false | `At_least_one -> true)
     in
     let*! () =
-      Event.(emit2 simulating_operations) state (List.map fst data_ops) force
+      Event.(emit2 simulating_operations)
+        state
+        (List.map
+           (fun (data, _) -> Format.asprintf "%a" Data.pp_short data)
+           data_ops)
+        force
     in
     let fee_parameter =
       fee_parameter_of_data_ops state.rollup_node_state data_ops
@@ -544,7 +554,7 @@ module Make (Rollup : PARAMETERS) = struct
     | Ok (_, op, _, result) ->
         return (op, data_ops, Apply_results.Contents_result_list result)
 
-  let inject_on_node state ~nb
+  let inject_on_node state data_ops
       {shell; protocol_data = Operation_data {contents; _}} =
     let open Lwt_result_syntax in
     let unsigned_op = (shell, Contents_list contents) in
@@ -569,7 +579,15 @@ module Make (Rollup : PARAMETERS) = struct
       ~chain:state.cctxt#chain
       op_bytes
     >>=? fun oph ->
-    let*! () = Event.(emit2 injected) state nb oph in
+    let*! () =
+      Event.(emit3 injected)
+        state
+        (List.length data_ops)
+        oph
+        (List.map
+           (fun (data, _) -> Format.asprintf "%a" Data.pp_short data)
+           data_ops)
+    in
     return oph
 
   (** Inject the given [operations] in an L1 batch. If [must_succeed] is [`All]
@@ -606,7 +624,10 @@ module Make (Rollup : PARAMETERS) = struct
                 _;
               } ->
               let*! () =
-                Event.(emit2 dropping_operation) state (fst data_op) error
+                Event.(emit2 dropping_operation)
+                  state
+                  (Format.asprintf "%a" Data.pp_short (fst data_op))
+                  error
               in
               failure := true ;
               Lwt.return acc
@@ -633,7 +654,7 @@ module Make (Rollup : PARAMETERS) = struct
       (* Inject on node for real *)
       let+ oph =
         trace (Step_failed "injection")
-        @@ inject_on_node ~nb:(List.length data_ops) state packed_op
+        @@ inject_on_node state data_ops packed_op
       in
       (oph, data_ops)
 
@@ -933,7 +954,7 @@ module Make (Rollup : PARAMETERS) = struct
         unit tzresult Lwt.t =
       let open Lwt_result_syntax in
       let state = Worker.state w in
-      let request_view = Request.view r in
+      let request_view = Format.asprintf "%a" Request.pp (Request.view r) in
       let emit_and_return_errors errs =
         (* Errors do not stop the worker but emit an entry in the log. *)
         let*! () = Event.(emit3 request_failed) state request_view st errs in
@@ -946,11 +967,13 @@ module Make (Rollup : PARAMETERS) = struct
 
     let on_completion w r _ st =
       let state = Worker.state w in
-      match Request.view r with
+      let view = Request.view r in
+      let request_view = Format.asprintf "%a" Request.pp view in
+      match view with
       | Request.View (Add_pending _ | New_tezos_head _) ->
-          Event.(emit2 request_completed_debug) state (Request.view r) st
+          Event.(emit2 request_completed_debug) state request_view st
       | View Inject ->
-          Event.(emit2 request_completed_notice) state (Request.view r) st
+          Event.(emit2 request_completed_notice) state request_view st
 
     let on_no_request _ = Lwt.return_unit
 
