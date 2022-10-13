@@ -53,6 +53,21 @@ module type TAG = sig
   val encoding : t Data_encoding.t
 end
 
+(** Signature for data to inject through the injector *)
+module type DATA = sig
+  type t
+
+  module Hash : S.HASH
+
+  val hash : t -> Hash.t
+
+  val encoding : t Data_encoding.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val to_manager_operation : t -> packed_manager_operation
+end
+
 (** Module type for parameter of functor {!Injector_functor.Make}. *)
 module type PARAMETERS = sig
   (** The type of the state for the rollup node that the injector can access *)
@@ -60,6 +75,9 @@ module type PARAMETERS = sig
 
   (** A module which contains the different tags for the injector *)
   module Tag : TAG
+
+  (** The data to inject *)
+  module Data : DATA
 
   (** Where to put the events for this injector  *)
   val events_section : string list
@@ -71,8 +89,7 @@ module type PARAMETERS = sig
   (** [requeue_reverted_operation state op] should return [true] if an included
       operation should be re-queued for injection when the block in which it is
       included is reverted (due to a reorganization). *)
-  val requeue_reverted_operation :
-    rollup_node_state -> 'a manager_operation -> bool Lwt.t
+  val requeue_reverted_operation : rollup_node_state -> Data.t -> bool Lwt.t
 
   (** [ignore_failing_operation op] specifies if the injector should
       ignore this operation when its simulation fails when trying to inject.
@@ -84,13 +101,12 @@ module type PARAMETERS = sig
       - [`Don't_ignore] if the failing operation should not be ignored and the
         failure reported.
   *)
-  val ignore_failing_operation :
-    'a manager_operation -> [`Ignore_keep | `Ignore_drop | `Don't_ignore]
+  val ignore_failing : Data.t -> [`Ignore_keep | `Ignore_drop | `Don't_ignore]
 
   (** The tag of a manager operation. This is used to send operations to the
       correct queue automatically (when signer is not provided) and to recover
       persistent information. *)
-  val operation_tag : 'a manager_operation -> Tag.t option
+  val data_tag : Data.t -> Tag.t
 
   (** Returns the {e appoximate upper-bounds} for the fee and limits of an
       operation, used to compute an upper bound on the size (in bytes) for this
@@ -100,8 +116,7 @@ module type PARAMETERS = sig
 
   (** Returns the fee_parameter (to compute fee w.r.t. gas, size, etc.) and the
       caps of fee and burn for each operation. *)
-  val fee_parameter :
-    rollup_node_state -> 'a manager_operation -> Injection.fee_parameter
+  val fee_parameter : rollup_node_state -> Data.t -> Injection.fee_parameter
 
   (** When injecting the given [operations] in an L1 batch, if
      [batch_must_succeed operations] returns [`All] then all the operations must
@@ -111,8 +126,7 @@ module type PARAMETERS = sig
      be included in the injected L1 batch. {b Note}: Returning [`At_least_one]
      allows to incrementally build "or-batches" by iteratively removing
      operations that fail from the desired batch. *)
-  val batch_must_succeed :
-    packed_manager_operation list -> [`All | `At_least_one]
+  val batch_must_succeed : Data.t list -> [`All | `At_least_one]
 end
 
 (** Output signature for functor {!Injector_functor.Make}. *)
@@ -120,6 +134,8 @@ module type S = sig
   type rollup_node_state
 
   type tag
+
+  type data
 
   (** Initializes the injector with the rollup node state, for a list of
       signers, and start the workers. Each signer has its own worker with a
@@ -135,7 +151,7 @@ module type S = sig
       not provided, the operation is queued to the worker which handles the
       corresponding tag. *)
   val add_pending_operation :
-    ?source:public_key_hash -> 'a manager_operation -> unit tzresult Lwt.t
+    ?source:public_key_hash -> data -> unit tzresult Lwt.t
 
   (** Notify the injector of a new Tezos head. The injector marks the operations
       appropriately (for instance reverted operations that are part of a

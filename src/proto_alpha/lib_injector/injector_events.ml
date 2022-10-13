@@ -27,6 +27,8 @@ open Injector_worker_types
 
 module Make (Rollup : Injector_sigs.PARAMETERS) = struct
   module Tags = Injector_tags.Make (Rollup.Tag)
+  module Data = Rollup.Data
+  module Request = Request (Rollup.Data)
   include Internal_event.Simple
 
   let section = Rollup.events_section
@@ -122,44 +124,36 @@ module Make (Rollup : Injector_sigs.PARAMETERS) = struct
       ~level:Notice
       ("count", Data_encoding.int31)
 
-  let pp_operations_list ppf operations =
-    Format.fprintf
-      ppf
-      "@[%a@]"
-      (Format.pp_print_list L1_operation.pp)
-      operations
+  let pp_data_list ppf operations =
+    Format.fprintf ppf "@[%a@]" (Format.pp_print_list Data.pp) operations
 
-  let pp_operations_hash_list ppf operations =
-    Format.fprintf
-      ppf
-      "@[%a@]"
-      (Format.pp_print_list L1_operation.Hash.pp)
-      operations
+  let pp_data_hash_list ppf operations =
+    Format.fprintf ppf "@[%a@]" (Format.pp_print_list Data.Hash.pp) operations
 
   let injecting_operations =
     declare_1
       ~name:"injecting_operations"
       ~msg:"Injecting operations: {operations}"
       ~level:Notice
-      ("operations", Data_encoding.list L1_operation.encoding)
-      ~pp1:pp_operations_list
+      ("operations", Data_encoding.list Data.encoding)
+      ~pp1:pp_data_list
 
   let simulating_operations =
     declare_2
       ~name:"simulating_operations"
       ~msg:"Simulating operations (force = {force}): {operations}"
       ~level:Debug
-      ("operations", Data_encoding.list L1_operation.encoding)
+      ("operations", Data_encoding.list Data.encoding)
       ("force", Data_encoding.bool)
-      ~pp1:pp_operations_list
+      ~pp1:pp_data_list
 
   let dropping_operation =
     declare_2
       ~name:"dropping_operation"
       ~msg:"Dropping operation {operation} failing with {error}"
       ~level:Notice
-      ("operation", L1_operation.encoding)
-      ~pp1:L1_operation.pp
+      ("operation", Data.encoding)
+      ~pp1:Data.pp
       ("error", Environment.Error_monad.trace_encoding)
       ~pp2:Environment.Error_monad.pp_trace
 
@@ -176,8 +170,8 @@ module Make (Rollup : Injector_sigs.PARAMETERS) = struct
       ~name:"add_pending"
       ~msg:"Add {operation} to pending"
       ~level:Notice
-      ("operation", L1_operation.encoding)
-      ~pp1:L1_operation.pp
+      ("operation", Data.encoding)
+      ~pp1:Data.pp
 
   let included =
     declare_3
@@ -186,16 +180,16 @@ module Make (Rollup : Injector_sigs.PARAMETERS) = struct
       ~level:Notice
       ("block", Block_hash.encoding)
       ("level", Data_encoding.int32)
-      ("operations", Data_encoding.list L1_operation.Hash.encoding)
-      ~pp3:pp_operations_hash_list
+      ("operations", Data_encoding.list Data.Hash.encoding)
+      ~pp3:pp_data_hash_list
 
   let revert_operations =
     declare_1
       ~name:"revert_operations"
       ~msg:"Reverting operations: {operations}"
       ~level:Notice
-      ("operations", Data_encoding.list L1_operation.Hash.encoding)
-      ~pp1:pp_operations_hash_list
+      ("operations", Data_encoding.list Data.Hash.encoding)
+      ~pp1:pp_data_hash_list
 
   let confirmed_level =
     declare_1
@@ -210,8 +204,8 @@ module Make (Rollup : Injector_sigs.PARAMETERS) = struct
       ~msg:"Confirmed operations of level {level}: {operations}"
       ~level:Notice
       ("level", Data_encoding.int32)
-      ("operations", Data_encoding.list L1_operation.Hash.encoding)
-      ~pp2:pp_operations_hash_list
+      ("operations", Data_encoding.list Data.Hash.encoding)
+      ~pp2:pp_data_hash_list
 
   let loaded_from_disk =
     declare_2

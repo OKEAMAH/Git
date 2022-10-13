@@ -215,6 +215,10 @@ let make manager_operation =
   let hash = hash_manager_operation manager_operation in
   {hash; manager_operation}
 
+let packed_manager_encoding = Manager_operation.encoding
+
+let hash {hash; _} = hash
+
 let encoding =
   let open Data_encoding in
   conv

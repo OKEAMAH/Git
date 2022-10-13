@@ -26,4 +26,7 @@
 open Injector_sigs
 
 module Make (P : PARAMETERS) :
-  S with type rollup_node_state := P.rollup_node_state and type tag := P.Tag.t
+  S
+    with type rollup_node_state := P.rollup_node_state
+     and type tag := P.Tag.t
+     and type data := P.Data.t

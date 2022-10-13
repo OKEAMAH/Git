@@ -40,8 +40,12 @@ type t = private {
 (** [make op] returns an L1 operation with the corresponding hash. *)
 val make : 'a manager_operation -> t
 
+val hash : t -> hash
+
 (** Encoding for L1 operations *)
 val encoding : t Data_encoding.t
+
+val packed_manager_encoding : packed_manager_operation Data_encoding.t
 
 (** Pretty printer for L1 operations. Only the relevant part for the rollup node
     is printed. *)

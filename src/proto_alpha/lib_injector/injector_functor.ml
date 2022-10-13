@@ -58,49 +58,56 @@ let injector_context (cctxt : #Protocol_client_context.full) =
   end
 
 module Make (Rollup : PARAMETERS) = struct
-  module Tags = Injector_tags.Make (Rollup.Tag)
+  module Injector_events = Injector_events.Make (Rollup)
+  module Tags = Injector_events.Tags
   module Tags_table = Hashtbl.Make (Rollup.Tag)
+  module Request = Injector_events.Request
+  module Data = Rollup.Data
 
   module Op_queue =
     Disk_persistence.Make_queue
       (struct
         let name = "operations_queue"
       end)
-      (L1_operation.Hash)
-      (L1_operation)
+      (Data.Hash)
+      (Data)
 
   (** Information stored about an L1 operation that was injected on a Tezos
       node. *)
   type injected_info = {
-    op : L1_operation.t;  (** The L1 manager operation. *)
+    data : Data.t;
+    op : packed_manager_operation;  (** The L1 manager operation. *)
     oph : Operation_hash.t;
         (** The hash of the operation which contains [op] (this can be an L1 batch of
           several manager operations). *)
   }
 
   module Injected_operations = Disk_persistence.Make_table (struct
-    include L1_operation.Hash.Table
+    include Data.Hash.Table
 
     type value = injected_info
 
     let name = "injected_operations"
 
-    let string_of_key = L1_operation.Hash.to_b58check
+    let string_of_key = Data.Hash.to_b58check
 
-    let key_of_string = L1_operation.Hash.of_b58check_opt
+    let key_of_string = Data.Hash.of_b58check_opt
 
     let value_encoding =
       let open Data_encoding in
-      conv (fun {op; oph} -> (oph, op)) (fun (oph, op) -> {op; oph})
-      @@ merge_objs
-           (obj1 (req "oph" Operation_hash.encoding))
-           L1_operation.encoding
+      conv
+        (fun {data; op; oph} -> (data, op, oph))
+        (fun (data, op, oph) -> {data; op; oph})
+      @@ obj3
+           (req "data" Data.encoding)
+           (req "op" L1_operation.packed_manager_encoding)
+           (req "oph" Operation_hash.encoding)
   end)
 
   module Injected_ophs = Disk_persistence.Make_table (struct
     include Operation_hash.Table
 
-    type value = L1_operation.Hash.t list
+    type value = Data.Hash.t list
 
     let name = "injected_ophs"
 
@@ -108,7 +115,7 @@ module Make (Rollup : PARAMETERS) = struct
 
     let key_of_string = Operation_hash.of_b58check_opt
 
-    let value_encoding = Data_encoding.list L1_operation.Hash.encoding
+    let value_encoding = Data_encoding.list Data.Hash.encoding
   end)
 
   (** The part of the state which gathers information about injected
@@ -125,7 +132,8 @@ module Make (Rollup : PARAMETERS) = struct
   (** Information stored about an L1 operation that was included in a Tezos
     block. *)
   type included_info = {
-    op : L1_operation.t;  (** The L1 manager operation. *)
+    data : Data.t;
+    op : packed_manager_operation;  (** The L1 manager operation. *)
     oph : Operation_hash.t;
         (** The hash of the operation which contains [op] (this can be an L1 batch of
           several manager operations). *)
@@ -135,33 +143,35 @@ module Make (Rollup : PARAMETERS) = struct
   }
 
   module Included_operations = Disk_persistence.Make_table (struct
-    include L1_operation.Hash.Table
+    include Data.Hash.Table
 
     type value = included_info
 
     let name = "included_operations"
 
-    let string_of_key = L1_operation.Hash.to_b58check
+    let string_of_key = Data.Hash.to_b58check
 
-    let key_of_string = L1_operation.Hash.of_b58check_opt
+    let key_of_string = Data.Hash.of_b58check_opt
 
     let value_encoding =
       let open Data_encoding in
       conv
-        (fun {op; oph; l1_block; l1_level} -> (op, (oph, l1_block, l1_level)))
-        (fun (op, (oph, l1_block, l1_level)) -> {op; oph; l1_block; l1_level})
-      @@ merge_objs
-           L1_operation.encoding
-           (obj3
-              (req "oph" Operation_hash.encoding)
-              (req "l1_block" Block_hash.encoding)
-              (req "l1_level" int32))
+        (fun {data; op; oph; l1_block; l1_level} ->
+          (data, op, oph, l1_block, l1_level))
+        (fun (data, op, oph, l1_block, l1_level) ->
+          {data; op; oph; l1_block; l1_level})
+      @@ obj5
+           (req "data" Data.encoding)
+           (req "op" L1_operation.packed_manager_encoding)
+           (req "oph" Operation_hash.encoding)
+           (req "l1_block" Block_hash.encoding)
+           (req "l1_level" int32)
   end)
 
   module Included_in_blocks = Disk_persistence.Make_table (struct
     include Block_hash.Table
 
-    type value = int32 * L1_operation.Hash.t list
+    type value = int32 * Data.Hash.t list
 
     let name = "included_in_blocks"
 
@@ -171,7 +181,7 @@ module Make (Rollup : PARAMETERS) = struct
 
     let value_encoding =
       let open Data_encoding in
-      obj2 (req "level" int32) (req "l1_ops" (list L1_operation.Hash.encoding))
+      obj2 (req "level" int32) (req "data" (list Data.Hash.encoding))
   end)
 
   (** The part of the state which gathers information about
@@ -205,7 +215,7 @@ module Make (Rollup : PARAMETERS) = struct
   }
 
   module Event = struct
-    include Injector_events.Make (Rollup)
+    include Injector_events
 
     let emit1 e state x = emit e (state.signer.pkh, state.tags, x)
 
@@ -219,11 +229,10 @@ module Make (Rollup : PARAMETERS) = struct
     let* signer = get_signer cctxt signer in
     let data_dir = Filename.concat data_dir "injector" in
     let*! () = Lwt_utils_unix.create_dir data_dir in
-    let filter op_proj op =
-      let {L1_operation.manager_operation = Manager op; _} = op_proj op in
-      match Rollup.operation_tag op with
-      | None -> false
-      | Some t -> Tags.mem t tags
+    let filter data_proj op =
+      (* let {L1_operation.manager_operation = Manager op; _} = op_proj op in *)
+      let t = Rollup.data_tag (data_proj op) in
+      Tags.mem t tags
     in
     let warn_unreadable =
       (* Warn of corrupted files but don't fail *)
@@ -240,7 +249,7 @@ module Make (Rollup : PARAMETERS) = struct
         ~warn_unreadable
         ~capacity:50_000
         ~data_dir
-        ~filter:(filter (fun op -> op))
+        ~filter:(filter (fun d -> d))
     in
     let*! () = emit_event_loaded "operations_queue" @@ Op_queue.length queue in
     (* Very coarse approximation for the number of operation we expect for each
@@ -253,7 +262,7 @@ module Make (Rollup : PARAMETERS) = struct
         ~warn_unreadable
         ~initial_size:n
         ~data_dir
-        ~filter:(filter (fun (i : injected_info) -> i.op))
+        ~filter:(filter (fun (i : injected_info) -> i.data))
     in
     let*! () =
       emit_event_loaded "injected_operations"
@@ -265,7 +274,7 @@ module Make (Rollup : PARAMETERS) = struct
         ~warn_unreadable
         ~initial_size:(confirmations * n)
         ~data_dir
-        ~filter:(filter (fun (i : included_info) -> i.op))
+        ~filter:(filter (fun (i : included_info) -> i.data))
     in
     let*! () =
       emit_event_loaded "included_operations"
@@ -309,16 +318,16 @@ module Make (Rollup : PARAMETERS) = struct
 
   (** Add an operation to the pending queue corresponding to the signer for this
     operation.  *)
-  let add_pending_operation state op =
+  let add_pending_operation state data =
     let open Lwt_result_syntax in
-    let*! () = Event.(emit1 add_pending) state op in
-    Op_queue.replace state.queue op.L1_operation.hash op
+    let*! () = Event.(emit1 add_pending) state data in
+    Op_queue.replace state.queue (Data.hash data) data
 
   (** Mark operations as injected (in [oph]). *)
-  let add_injected_operations state oph operations =
+  let add_injected_operations state oph data_ops =
     let open Lwt_result_syntax in
     let infos =
-      List.map (fun op -> (op.L1_operation.hash, {op; oph})) operations
+      List.map (fun (data, op) -> (Data.hash data, {data; op; oph})) data_ops
     in
     let* () =
       Injected_operations.replace_seq
@@ -330,19 +339,20 @@ module Make (Rollup : PARAMETERS) = struct
   (** [add_included_operations state oph l1_block l1_level operations] marks the
     [operations] as included (in the L1 batch [oph]) in the Tezos block
     [l1_block] of level [l1_level]. *)
-  let add_included_operations state oph l1_block l1_level operations =
+  let add_included_operations state oph l1_block l1_level data_ops =
     let open Lwt_result_syntax in
     let*! () =
       Event.(emit3 included)
         state
         l1_block
         l1_level
-        (List.map (fun o -> o.L1_operation.hash) operations)
+        (List.map (fun (data, _) -> Data.hash data) data_ops)
     in
     let infos =
       List.map
-        (fun op -> (op.L1_operation.hash, {op; oph; l1_block; l1_level}))
-        operations
+        (fun (data, op) ->
+          (Data.hash data, {data; op; oph; l1_block; l1_level}))
+        data_ops
     in
     let* () =
       Included_operations.replace_seq
@@ -410,10 +420,10 @@ module Make (Rollup : PARAMETERS) = struct
           []
           mophs
 
-  let fee_parameter_of_operations state ops =
+  let fee_parameter_of_data_ops state data_ops =
     List.fold_left
-      (fun acc {L1_operation.manager_operation = Manager op; _} ->
-        let param = Rollup.fee_parameter state op in
+      (fun acc ((data : Data.t), _operation) ->
+        let param = Rollup.fee_parameter state data in
         Injection.
           {
             minimal_fees = Tez.max acc.minimal_fees param.minimal_fees;
@@ -442,7 +452,7 @@ module Make (Rollup : PARAMETERS) = struct
           fee_cap = Tez.zero;
           burn_cap = Tez.zero;
         }
-      ops
+      data_ops
 
   (** Returns the first half of the list [ops] if there is more than two
       elements, or [None] otherwise.  *)
@@ -457,11 +467,11 @@ module Make (Rollup : PARAMETERS) = struct
       quotas) and [results] are the results of the simulation. See
       {!inject_operations} for the specification of [must_succeed]. *)
   let rec simulate_operations ~must_succeed state
-      (operations : L1_operation.t list) =
+      (data_ops : (Data.t * packed_manager_operation) list) =
     let open Lwt_result_syntax in
     let open Annotated_manager_operation in
     let force =
-      match operations with
+      match data_ops with
       | [] -> assert false
       | [_] ->
           (* If there is only one operation, fail when simulation fails *)
@@ -471,20 +481,22 @@ module Make (Rollup : PARAMETERS) = struct
              succeed *)
           match must_succeed with `All -> false | `At_least_one -> true)
     in
-    let*! () = Event.(emit2 simulating_operations) state operations force in
+    let*! () =
+      Event.(emit2 simulating_operations) state (List.map fst data_ops) force
+    in
     let fee_parameter =
-      fee_parameter_of_operations state.rollup_node_state operations
+      fee_parameter_of_data_ops state.rollup_node_state data_ops
     in
     let annotated_operations =
       List.map
-        (fun {L1_operation.manager_operation = Manager operation; _} ->
+        (fun (_data, Manager operation) ->
           Annotated_manager_operation
             (Injection.prepare_manager_operation
                ~fee:Limit.unknown
                ~gas_limit:Limit.unknown
                ~storage_limit:Limit.unknown
                operation))
-        operations
+        data_ops
     in
     let (Manager_list annot_op) =
       Annotated_manager_operation.manager_of_list annotated_operations
@@ -525,13 +537,12 @@ module Make (Rollup : PARAMETERS) = struct
              injected because of the cost of simulation). Only the operations
              which are actually injected will be removed from the queue so the
              other half will be reconsidered later. *)
-          match keep_half operations with
+          match keep_half data_ops with
           | None -> fail trace
-          | Some operations ->
-              simulate_operations ~must_succeed state operations
+          | Some data_ops -> simulate_operations ~must_succeed state data_ops
         else fail trace
     | Ok (_, op, _, result) ->
-        return (op, operations, Apply_results.Contents_result_list result)
+        return (op, data_ops, Apply_results.Contents_result_list result)
 
   let inject_on_node state ~nb
       {shell; protocol_data = Operation_data {contents; _}} =
@@ -569,12 +580,11 @@ module Make (Rollup : PARAMETERS) = struct
     batch. {b Note}: [must_succeed = `At_least_one] allows to incrementally build
     "or-batches" by iteratively removing operations that fail from the desired
     batch. *)
-  let rec inject_operations ~must_succeed state
-      (operations : L1_operation.t list) =
+  let rec inject_operations ~must_succeed state data_ops =
     let open Lwt_result_syntax in
-    let* packed_op, operations, result =
+    let* packed_op, data_ops, result =
       trace (Step_failed "simulation")
-      @@ simulate_operations ~must_succeed state operations
+      @@ simulate_operations ~must_succeed state data_ops
     in
     let results = Apply_results.to_list result in
     let failure = ref false in
@@ -587,7 +597,7 @@ module Make (Rollup : PARAMETERS) = struct
                  "Unexpected error: length of operations and result differ in \
                   simulation");
           ]
-        (fun acc op (Apply_results.Contents_result result) ->
+        (fun acc data_op (Apply_results.Contents_result result) ->
           match result with
           | Apply_results.Manager_operation_result
               {
@@ -595,7 +605,9 @@ module Make (Rollup : PARAMETERS) = struct
                   Failed (_, error) | Backtracked (_, Some error);
                 _;
               } ->
-              let*! () = Event.(emit2 dropping_operation) state op error in
+              let*! () =
+                Event.(emit2 dropping_operation) state (fst data_op) error
+              in
               failure := true ;
               Lwt.return acc
           | Apply_results.Manager_operation_result
@@ -604,12 +616,12 @@ module Make (Rollup : PARAMETERS) = struct
                 _;
               } ->
               (* Not known to be failing *)
-              Lwt.return (op :: acc)
+              Lwt.return (data_op :: acc)
           | _ ->
               (* Only manager operations *)
               assert false)
         []
-        operations
+        data_ops
         results
     in
     if !failure then
@@ -621,17 +633,17 @@ module Make (Rollup : PARAMETERS) = struct
       (* Inject on node for real *)
       let+ oph =
         trace (Step_failed "injection")
-        @@ inject_on_node ~nb:(List.length operations) state packed_op
+        @@ inject_on_node ~nb:(List.length data_ops) state packed_op
       in
-      (oph, operations)
+      (oph, data_ops)
 
   (** Returns the (upper bound on) the size of an L1 batch of operations composed
-    of the manager operations [rev_ops]. *)
+    of the datas [rev_ops]. *)
   let size_l1_batch state rev_ops =
     let contents_list =
       List.map
-        (fun (op : L1_operation.t) ->
-          let (Manager operation) = op.manager_operation in
+        (fun ((_ : Data.t), Manager operation) ->
+          (* let operation = Data.to_manager_operation d in *)
           let {fee; counter; gas_limit; storage_limit} =
             Rollup.approximate_fee_bound state.rollup_node_state operation
           in
@@ -673,14 +685,15 @@ module Make (Rollup : PARAMETERS) = struct
     Data_encoding.Binary.length Operation.encoding operation
 
   (** Retrieve as many operations from the queue while remaining below the size
-    limit. *)
+      limit. *)
   let get_operations_from_queue ~size_limit state =
-    let exception Reached_limit of L1_operation.t list in
+    let exception Reached_limit of (Data.t * packed_manager_operation) list in
     let rev_ops =
       try
         Op_queue.fold
-          (fun _oph op ops ->
-            let new_ops = op :: ops in
+          (fun _oph data ops ->
+            let operation = Data.to_manager_operation data in
+            let new_ops = (data, operation) :: ops in
             let new_size = size_l1_batch state new_ops in
             if new_size > size_limit then raise (Reached_limit ops) ;
             new_ops)
@@ -693,22 +706,21 @@ module Make (Rollup : PARAMETERS) = struct
   (* Ignore the failures of finalize and remove commitment operations. These
      operations fail when there are either no commitment to finalize or to remove
      (which can happen when there are no inbox for instance). *)
-  let ignore_ignorable_failing_operations operations = function
+  let ignore_ignorable_failing data_ops = function
     | Ok res -> Ok (`Injected res)
     | Error _ as res ->
         let open Result_syntax in
-        let+ operations_to_drop =
+        let+ data_to_drop =
           List.fold_left_e
-            (fun to_drop op ->
-              let (Manager operation) = op.L1_operation.manager_operation in
-              match Rollup.ignore_failing_operation operation with
+            (fun to_drop (data, op) ->
+              match Rollup.ignore_failing data with
               | `Don't_ignore -> res
               | `Ignore_keep -> Ok to_drop
-              | `Ignore_drop -> Ok (op :: to_drop))
+              | `Ignore_drop -> Ok ((data, op) :: to_drop))
             []
-            operations
+            data_ops
         in
-        `Ignored operations_to_drop
+        `Ignored data_to_drop
 
   (** [inject_pending_operations_for ~size_limit state pending] injects
     operations from the pending queue [pending], whose total size does
@@ -728,23 +740,19 @@ module Make (Rollup : PARAMETERS) = struct
             (List.length operations_to_inject)
         in
         let must_succeed =
-          Rollup.batch_must_succeed
-          @@ List.map
-               (fun op -> op.L1_operation.manager_operation)
-               operations_to_inject
+          Rollup.batch_must_succeed @@ List.map fst operations_to_inject
         in
         let*! res =
           inject_operations ~must_succeed state operations_to_inject
         in
-        let*? res =
-          ignore_ignorable_failing_operations operations_to_inject res
-        in
+        let*? res = ignore_ignorable_failing operations_to_inject res in
         match res with
         | `Injected (oph, injected_operations) ->
             (* Injection succeeded, remove from pending and add to injected *)
             let* () =
               List.iter_es
-                (fun op -> Op_queue.remove state.queue op.L1_operation.hash)
+                (fun (data, _op) ->
+                  Op_queue.remove state.queue (Data.hash data))
                 injected_operations
             in
             add_injected_operations state oph injected_operations
@@ -752,7 +760,8 @@ module Make (Rollup : PARAMETERS) = struct
             (* Injection failed but we ignore the failure. *)
             let* () =
               List.iter_es
-                (fun op -> Op_queue.remove state.queue op.L1_operation.hash)
+                (fun (data, _op) ->
+                  Op_queue.remove state.queue (Data.hash data))
                 operations_to_drop
             in
             return_unit)
@@ -767,10 +776,12 @@ module Make (Rollup : PARAMETERS) = struct
     match rmed with
     | [] -> return_unit
     | injected_infos ->
-        let included_mops =
-          List.map (fun (i : injected_info) -> i.op) injected_infos
+        let included_data_ops =
+          List.map
+            (fun ({data; op; _} : injected_info) -> (data, op))
+            injected_infos
         in
-        add_included_operations state oph block level included_mops
+        add_included_operations state oph block level included_data_ops
 
   (** [register_included_operations state block level oph] marks the known (by
     this injector) manager operations contained in [block] as being included. *)
@@ -797,17 +808,16 @@ module Make (Rollup : PARAMETERS) = struct
     let*! () =
       Event.(emit1 revert_operations)
         state
-        (List.map (fun o -> o.op.hash) included_infos)
+        (List.map (fun o -> Data.hash o.data) included_infos)
     in
     (* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/2814
        maybe put at the front of the queue for re-injection. *)
     List.iter_es
-      (fun {op; _} ->
-        let {L1_operation.manager_operation = Manager mop; _} = op in
+      (fun {data; _} ->
         let*! requeue =
-          Rollup.requeue_reverted_operation state.rollup_node_state mop
+          Rollup.requeue_reverted_operation state.rollup_node_state data
         in
-        if requeue then add_pending_operation state op else return_unit)
+        if requeue then add_pending_operation state data else return_unit)
       included_infos
 
   (** [register_confirmed_level state confirmed_level] is called when the level
@@ -829,7 +839,7 @@ module Make (Rollup : PARAMETERS) = struct
             Event.(emit2 confirmed_operations)
               state
               level
-              (List.map (fun o -> o.op.hash) confirmed_ops)
+              (List.map (fun o -> Data.hash o.data) confirmed_ops)
           in
           return_unit
         else return_unit)
@@ -1014,19 +1024,17 @@ module Make (Rollup : PARAMETERS) = struct
           tag
     | Some worker -> ok worker
 
-  let add_pending_operation ?source op =
+  let add_pending_operation ?source data =
     let open Lwt_result_syntax in
-    let l1_operation = L1_operation.make op in
     let*? w =
       match source with
       | Some source -> worker_of_signer source
-      | None -> (
-          match Rollup.operation_tag op with
-          | None -> error (No_worker_for_operation l1_operation)
-          | Some tag -> worker_of_tag tag)
+      | None ->
+          let tag = Rollup.data_tag data in
+          worker_of_tag tag
     in
     let*! (_pushed : bool) =
-      Worker.Queue.push_request w (Request.Add_pending l1_operation)
+      Worker.Queue.push_request w (Request.Add_pending data)
     in
     return_unit
 

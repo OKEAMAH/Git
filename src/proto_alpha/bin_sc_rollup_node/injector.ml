@@ -29,7 +29,8 @@ open Injector_sigs
 module Parameters :
   PARAMETERS
     with type rollup_node_state = Node_context.t
-     and type Tag.t = Configuration.purpose = struct
+     and type Tag.t = Configuration.purpose
+     and type Data.t = L1_operation.t = struct
   type rollup_node_state = Node_context.t
 
   let events_section = ["sc_rollup.injector"]
@@ -53,6 +54,13 @@ module Parameters :
         (List.map (fun t -> (string_of_tag t, t)) Configuration.purposes)
   end
 
+  module Data = struct
+    include L1_operation
+
+    let to_manager_operation {L1_operation.manager_operation; _} =
+      manager_operation
+  end
+
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/3459
      Very coarse approximation for the number of operation we
      expect for each block *)
@@ -63,20 +71,18 @@ module Parameters :
     | Timeout -> 1
     | Refute -> 1
 
-  let operation_tag (type kind) (operation : kind manager_operation) :
-      Tag.t option =
-    match operation with
-    | Sc_rollup_add_messages _ -> Some Add_messages
-    | Sc_rollup_cement _ -> Some Cement
-    | Sc_rollup_publish _ -> Some Publish
-    | Sc_rollup_timeout _ -> Some Timeout
-    | Sc_rollup_refute _ -> Some Refute
-    | _ -> None
+  let data_tag {L1_operation.manager_operation = Manager op; _} : Tag.t =
+    match op with
+    | Sc_rollup_add_messages _ -> Add_messages
+    | Sc_rollup_cement _ -> Cement
+    | Sc_rollup_publish _ -> Publish
+    | Sc_rollup_timeout _ -> Timeout
+    | Sc_rollup_refute _ -> Refute
+    | _ -> Stdlib.failwith "invalid SCORU operation"
 
   let fee_parameter node_ctxt operation =
-    match operation_tag operation with
-    | None -> Configuration.default_fee_parameter ()
-    | Some tag -> Node_context.get_fee_parameter node_ctxt tag
+    let tag = data_tag operation in
+    Node_context.get_fee_parameter node_ctxt tag
 
   (* Below are dummy values that are only used to approximate the
      size. It is thus important that they remain above the real
@@ -100,10 +106,8 @@ module Parameters :
      {!Injector_sigs.Parameter.batch_must_succeed}. *)
   let batch_must_succeed _ = `At_least_one
 
-  let ignore_failing_operation :
-      type kind.
-      kind manager_operation -> [`Ignore_keep | `Ignore_drop | `Don't_ignore] =
-    function
+  let ignore_failing {L1_operation.manager_operation = Manager op; _} =
+    match op with
     | Sc_rollup_timeout _ | Sc_rollup_refute _ ->
         (* Failing timeout and refutation operations can be ignored. *)
         `Ignore_drop
@@ -112,10 +116,10 @@ module Parameters :
   (** Returns [true] if an included operation should be re-queued for injection
     when the block in which it is included is reverted (due to a
     reorganization). *)
-  let requeue_reverted_operation (type kind) _node_ctxt
-      (operation : kind manager_operation) =
+  let requeue_reverted_operation _node_ctxt
+      {L1_operation.manager_operation = Manager op; _} =
     let open Lwt_syntax in
-    match operation with
+    match op with
     | Sc_rollup_publish _ ->
         (* Commitments are always produced on finalized blocks. They don't need
            to be recomputed, and as such are valid in another branch. *)
@@ -154,16 +158,9 @@ module Parameters :
     | Zk_rollup_publish _ ->
         (* These operations should never be handled by this injector *)
         assert false
-
-  let operation_tag (type kind) (operation : kind manager_operation) :
-      Tag.t option =
-    match operation with
-    | Sc_rollup_add_messages _ -> Some Add_messages
-    | Sc_rollup_cement _ -> Some Cement
-    | Sc_rollup_publish _ -> Some Publish
-    | Sc_rollup_timeout _ -> Some Timeout
-    | Sc_rollup_refute _ -> Some Refute
-    | _ -> None
 end
 
 include Injector_functor.Make (Parameters)
+
+let add_pending_operation ?source op =
+  add_pending_operation ?source (L1_operation.make op)

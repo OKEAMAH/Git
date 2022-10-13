@@ -73,6 +73,13 @@ module Parameters = struct
            ])
   end
 
+  module Data = struct
+    include L1_operation
+
+    let to_manager_operation {L1_operation.manager_operation; _} =
+      manager_operation
+  end
+
   (* Very coarse approximation for the number of operation we expect for each
      block *)
   let table_estimated_size = function
@@ -83,28 +90,25 @@ module Parameters = struct
     | Rejection -> 3
     | Dispatch_withdrawals -> 89
 
-  let tag_operation (type kind) (op : kind manager_operation) =
+  let data_tag {L1_operation.manager_operation = Manager op; _} =
     match op with
-    | Tx_rollup_submit_batch _ -> Some Submit_batch
-    | Tx_rollup_commit _ -> Some Commitment
-    | Tx_rollup_finalize_commitment _ -> Some Finalize_commitment
-    | Tx_rollup_remove_commitment _ -> Some Remove_commitment
-    | Tx_rollup_rejection _ -> Some Rejection
-    | Tx_rollup_dispatch_tickets _ -> Some Dispatch_withdrawals
-    | _ -> None
+    | Tx_rollup_submit_batch _ -> Submit_batch
+    | Tx_rollup_commit _ -> Commitment
+    | Tx_rollup_finalize_commitment _ -> Finalize_commitment
+    | Tx_rollup_remove_commitment _ -> Remove_commitment
+    | Tx_rollup_rejection _ -> Rejection
+    | Tx_rollup_dispatch_tickets _ -> Dispatch_withdrawals
+    | _ -> Stdlib.failwith "invalid TORU operation "
 
   let fee_parameter (rollup_node_state : State.t) op =
     let Node_config.{fee_cap; burn_cap} =
-      Option.fold
-        (tag_operation op)
-        ~none:Node_config.default_cost_caps
-        ~some:(function
-          | Commitment -> rollup_node_state.caps.operator
-          | Submit_batch -> rollup_node_state.caps.submit_batch
-          | Finalize_commitment -> rollup_node_state.caps.finalize_commitment
-          | Remove_commitment -> rollup_node_state.caps.remove_commitment
-          | Rejection -> rollup_node_state.caps.rejection
-          | Dispatch_withdrawals -> rollup_node_state.caps.dispatch_withdrawals)
+      match data_tag op with
+      | Commitment -> rollup_node_state.caps.operator
+      | Submit_batch -> rollup_node_state.caps.submit_batch
+      | Finalize_commitment -> rollup_node_state.caps.finalize_commitment
+      | Remove_commitment -> rollup_node_state.caps.remove_commitment
+      | Rejection -> rollup_node_state.caps.rejection
+      | Dispatch_withdrawals -> rollup_node_state.caps.dispatch_withdrawals
     in
     Injection.
       {
@@ -134,8 +138,8 @@ module Parameters = struct
      Decide if some operations must all succeed *)
   let batch_must_succeed _ = `At_least_one
 
-  let ignore_failing_operation : type kind. kind manager_operation -> _ =
-    function
+  let ignore_failing {L1_operation.manager_operation = Manager op; _} =
+    match op with
     | Tx_rollup_remove_commitment _ | Tx_rollup_finalize_commitment _ ->
         (* We can keep these operations as there will be at most one of them in
            the queue at any given time. *)
@@ -145,10 +149,10 @@ module Parameters = struct
   (** Returns [true] if an included operation should be re-queued for injection
     when the block in which it is included is reverted (due to a
     reorganization). *)
-  let requeue_reverted_operation (type kind) state
-      (operation : kind manager_operation) =
+  let requeue_reverted_operation state
+      {L1_operation.manager_operation = Manager op; _} =
     let open Lwt_syntax in
-    match operation with
+    match op with
     | Tx_rollup_rejection _ ->
         (* TODO: check if rejected commitment in still in main chain *)
         return_true
@@ -169,16 +173,9 @@ module Parameters = struct
               Tx_rollup_commitment_hash.(
                 l2_block.L2block.header.commitment = commit_hash))
     | _ -> return_true
-
-  let operation_tag (type kind) (operation : kind manager_operation) =
-    match operation with
-    | Tx_rollup_rejection _ -> Some Rejection
-    | Tx_rollup_commit _ -> Some Commitment
-    | Tx_rollup_submit_batch _ -> Some Submit_batch
-    | Tx_rollup_finalize_commitment _ -> Some Finalize_commitment
-    | Tx_rollup_remove_commitment _ -> Some Remove_commitment
-    | Tx_rollup_dispatch_tickets _ -> Some Dispatch_withdrawals
-    | _ -> None
 end
 
 include Injector_functor.Make (Parameters)
+
+let add_pending_operation ?source op =
+  add_pending_operation ?source (L1_operation.make op)

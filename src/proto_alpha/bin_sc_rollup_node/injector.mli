@@ -27,3 +27,9 @@ include
   Injector_sigs.S
     with type rollup_node_state := Node_context.t
      and type tag := Configuration.purpose
+     and type data := L1_operation.t
+
+val add_pending_operation :
+  ?source:Signature.Public_key_hash.t ->
+  'a Protocol.Alpha_context.manager_operation ->
+  unit tzresult Lwt.t

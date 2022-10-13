@@ -28,9 +28,9 @@ open Protocol
 open Alpha_context
 open Injector_common
 
-module Request = struct
+module Request (Data : Injector_sigs.DATA) = struct
   type ('a, 'b) t =
-    | Add_pending : L1_operation.t -> (unit, error trace) t
+    | Add_pending : Data.t -> (unit, error trace) t
     | New_tezos_head :
         Alpha_block_services.block_info * Alpha_block_services.block_info reorg
         -> (unit, error trace) t
@@ -49,9 +49,9 @@ module Request = struct
           ~title:"Add_pending"
           (merge_objs
              (obj1 (req "request" (constant "add_pending")))
-             L1_operation.encoding)
-          (function View (Add_pending op) -> Some ((), op) | _ -> None)
-          (fun ((), op) -> View (Add_pending op));
+             Data.encoding)
+          (function View (Add_pending data) -> Some ((), data) | _ -> None)
+          (fun ((), data) -> View (Add_pending data));
         case
           (Tag 1)
           ~title:"New_tezos_head"
@@ -74,12 +74,12 @@ module Request = struct
 
   let pp ppf (View r) =
     match r with
-    | Add_pending op ->
+    | Add_pending data ->
         Format.fprintf
           ppf
           "request add %a to pending queue"
-          L1_operation.Hash.pp
-          op.hash
+          Data.Hash.pp
+          (Data.hash data)
     | New_tezos_head (b, r) ->
         Format.fprintf
           ppf
