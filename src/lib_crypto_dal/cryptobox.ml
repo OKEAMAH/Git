@@ -401,38 +401,49 @@ module Inner = struct
     let evaluations = List.map (evaluation_fft d) ps in
     interpolation_fft d (mul_c ~evaluations ())
 
+  type error += Slot_wrong_size of {expected_size : int; given_size : int}
+
+  (*
+TODO: register this error
+      Error
+        (`Slot_wrong_size
+          (Printf.sprintf "message must be %d bytes long" t.slot_size))
+*)
+
   (* We encode by pages of [page_size] bytes each.  The pages
      are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_from_bytes' (t : t) slot =
-    if Bytes.length slot <> t.slot_size then
-      Error
-        (`Slot_wrong_size
-          (Printf.sprintf "message must be %d bytes long" t.slot_size))
-    else
-      let offset = ref 0 in
-      let res = Array.init t.k (fun _ -> Scalar.(copy zero)) in
-      for page = 0 to t.nb_pages - 1 do
-        for elt = 0 to t.page_length - 1 do
-          if !offset > t.slot_size then ()
-          else if elt = t.page_length - 1 then (
-            let dst = Bytes.create t.remaining_bytes in
-            Bytes.blit slot !offset dst 0 t.remaining_bytes ;
-            offset := !offset + t.remaining_bytes ;
-            res.((elt * t.nb_pages) + page) <- Scalar.of_bytes_exn dst)
-          else
-            let dst = Bytes.create scalar_bytes_amount in
-            Bytes.blit slot !offset dst 0 scalar_bytes_amount ;
-            offset := !offset + scalar_bytes_amount ;
-            res.((elt * t.nb_pages) + page) <- Scalar.of_bytes_exn dst
-        done
-      done ;
-      Ok res
+    let open Result_syntax in
+    let* () =
+      let given_size = Bytes.length slot in
+      error_unless
+        (given_size = t.slot_size)
+        (Slot_wrong_size {expected_size = t.slot_size; given_size})
+    in
+    let offset = ref 0 in
+    let res = Array.init t.k (fun _ -> Scalar.(copy zero)) in
+    for page = 0 to t.nb_pages - 1 do
+      for elt = 0 to t.page_length - 1 do
+        if !offset > t.slot_size then ()
+        else if elt = t.page_length - 1 then (
+          let dst = Bytes.create t.remaining_bytes in
+          Bytes.blit slot !offset dst 0 t.remaining_bytes ;
+          offset := !offset + t.remaining_bytes ;
+          res.((elt * t.nb_pages) + page) <- Scalar.of_bytes_exn dst)
+        else
+          let dst = Bytes.create scalar_bytes_amount in
+          Bytes.blit slot !offset dst 0 scalar_bytes_amount ;
+          offset := !offset + scalar_bytes_amount ;
+          res.((elt * t.nb_pages) + page) <- Scalar.of_bytes_exn dst
+      done
+    done ;
+    return res
 
   let polynomial_from_slot t slot =
     let open Result_syntax in
     let* data = polynomial_from_bytes' t slot in
-    Ok (Evaluations.interpolation_fft2 t.domain_k data)
+    return (Evaluations.interpolation_fft2 t.domain_k data)
 
   let eval_coset t eval slot offset page =
     for elt = 0 to t.page_length - 1 do
@@ -508,83 +519,101 @@ module Inner = struct
     in
     Ok n_poly
 
-  let polynomial_from_shards t shards =
-    let open Result_syntax in
-    if t.k > IntMap.cardinal shards * t.shard_size then
+  type error +=
+    | Not_enough_shards of {
+        threshold_size : int;
+        shard_size : int;
+        num_shards : int;
+      }
+
+  (*
+TODO: register the error
+    if  then
       Error
         (`Not_enough_shards
           (Printf.sprintf
              "there must be at least %d shards to decode"
              (t.k / t.shard_size)))
     else
-      (* 1. Computing A(x) = prod_{i=0}^{k-1} (x - w^{z_i}).
-         Let w be a primitive nth root of unity and
-         Ω_0 = {w^{number_of_shards j}}_{j=0 to (n/number_of_shards)-1}
-         be the (n/number_of_shards)-th roots of unity and Ω_i = w^i Ω_0.
 
-         Together, the Ω_i's form a partition of the subgroup of the n-th roots
-         of unity: 𝕌_n = disjoint union_{i ∈ {0, ..., number_of_shards-1}} Ω_i.
+*)
+  let polynomial_from_shards t shards =
+    let open Result_syntax in
+    let shard_size = t.shard_size in
+    let* () =
+      let num_shards = IntMap.cardinal shards in
+      error_when
+        (t.k > num_shards * shard_size)
+        (Not_enough_shards {threshold_size = t.k; num_shards; shard_size})
+    in
+    (* 1. Computing A(x) = prod_{i=0}^{k-1} (x - w^{z_i}).
+       Let w be a primitive nth root of unity and
+       Ω_0 = {w^{number_of_shards j}}_{j=0 to (n/number_of_shards)-1}
+       be the (n/number_of_shards)-th roots of unity and Ω_i = w^i Ω_0.
 
-         Let Z_j := Prod_{w ∈ Ω_j} (x − w). For a random set of shards
-         S⊆{0, ..., number_of_shards-1} of length k/shard_size, we reorganize the
-         product A(x) = Prod_{i=0}^{k-1} (x − w^{z_i}) into
-         A(x) = Prod_{j ∈ S} Z_j.
+       Together, the Ω_i's form a partition of the subgroup of the n-th roots
+       of unity: 𝕌_n = disjoint union_{i ∈ {0, ..., number_of_shards-1}} Ω_i.
 
-         Moreover, Z_0 = x^|Ω_0| - 1 since x^|Ω_0| - 1 contains all roots of Z_0
-         and conversely. Multiplying each term of the polynomial by the root w^j
-         entails Z_j = x^|Ω_0| − w^{j*|Ω_0|}.
+       Let Z_j := Prod_{w ∈ Ω_j} (x − w). For a random set of shards
+       S⊆{0, ..., number_of_shards-1} of length k/shard_size, we reorganize the
+       product A(x) = Prod_{i=0}^{k-1} (x − w^{z_i}) into
+       A(x) = Prod_{j ∈ S} Z_j.
 
-         The intermediate products Z_j have a lower Hamming weight (=2) than
-         when using other ways of grouping the z_i's into shards.
+       Moreover, Z_0 = x^|Ω_0| - 1 since x^|Ω_0| - 1 contains all roots of Z_0
+       and conversely. Multiplying each term of the polynomial by the root w^j
+       entails Z_j = x^|Ω_0| − w^{j*|Ω_0|}.
 
-         This also reduces the depth of the recursion tree of the poly_mul
-         function from log(k) to log(number_of_shards), so that the decoding time
-         reduces from O(k*log^2(k) + n*log(n)) to O(n*log(n)). *)
-      let split = List.fold_left (fun (l, r) x -> (x :: r, l)) ([], []) in
-      let f1, f2 =
-        IntMap.bindings shards
-        (* We always consider the first k codeword vector components. *)
-        |> Tezos_stdlib.TzList.take_n (t.k / t.shard_size)
-        |> split
-      in
-      let f11, f12 = split f1 in
-      let f21, f22 = split f2 in
+       The intermediate products Z_j have a lower Hamming weight (=2) than
+       when using other ways of grouping the z_i's into shards.
 
-      let prod =
-        List.fold_left
-          (fun acc (i, _) ->
-            Polynomials.mul_xn
-              acc
-              t.shard_size
-              (Scalar.negate (Domains.get t.domain_n (i * t.shard_size))))
-          Polynomials.one
-      in
-      let p11 = prod f11 in
-      let p12 = prod f12 in
-      let p21 = prod f21 in
-      let p22 = prod f22 in
+       This also reduces the depth of the recursion tree of the poly_mul
+       function from log(k) to log(number_of_shards), so that the decoding time
+       reduces from O(k*log^2(k) + n*log(n)) to O(n*log(n)). *)
+    let split = List.fold_left (fun (l, r) x -> (x :: r, l)) ([], []) in
+    let f1, f2 =
+      IntMap.bindings shards
+      (* We always consider the first k codeword vector components. *)
+      |> Tezos_stdlib.TzList.take_n (t.k / shard_size)
+      |> split
+    in
+    let f11, f12 = split f1 in
+    let f21, f22 = split f2 in
 
-      let a_poly = fft_mul t.domain_2k [p11; p12; p21; p22] in
+    let prod =
+      List.fold_left
+        (fun acc (i, _) ->
+          Polynomials.mul_xn
+            acc
+            shard_size
+            (Scalar.negate (Domains.get t.domain_n (i * shard_size))))
+        Polynomials.one
+    in
+    let p11 = prod f11 in
+    let p12 = prod f12 in
+    let p21 = prod f21 in
+    let p22 = prod f22 in
 
-      (* 2. Computing formal derivative of A(x). *)
-      let a' = Polynomials.derivative a_poly in
+    let a_poly = fft_mul t.domain_2k [p11; p12; p21; p22] in
 
-      (* 3. Computing A'(w^i) = A_i(w^i). *)
-      let eval_a' = Evaluations.evaluation_fft t.domain_n a' in
+    (* 2. Computing formal derivative of A(x). *)
+    let a' = Polynomials.derivative a_poly in
 
-      (* 4. Computing N(x). *)
-      let* n_poly = compute_n t eval_a' shards in
+    (* 3. Computing A'(w^i) = A_i(w^i). *)
+    let eval_a' = Evaluations.evaluation_fft t.domain_n a' in
 
-      (* 5. Computing B(x). *)
-      let b = Evaluations.interpolation_fft2 t.domain_n n_poly in
-      let b = Polynomials.copy ~len:t.k b in
-      Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
+    (* 4. Computing N(x). *)
+    let* n_poly = compute_n t eval_a' shards in
 
-      (* 6. Computing Lagrange interpolation polynomial P(x). *)
-      let p = fft_mul t.domain_2k [a_poly; b] in
-      let p = Polynomials.copy ~len:t.k p in
-      Polynomials.opposite_inplace p ;
-      Ok p
+    (* 5. Computing B(x). *)
+    let b = Evaluations.interpolation_fft2 t.domain_n n_poly in
+    let b = Polynomials.copy ~len:t.k b in
+    Polynomials.mul_by_scalar_inplace b (Scalar.of_int t.n) b ;
+
+    (* 6. Computing Lagrange interpolation polynomial P(x). *)
+    let p = fft_mul t.domain_2k [a_poly; b] in
+    let p = Polynomials.copy ~len:t.k p in
+    Polynomials.opposite_inplace p ;
+    return p
 
   let commit t p = Srs_g1.pippenger t.srs.raw.srs_g1 p
 

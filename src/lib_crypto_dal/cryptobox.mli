@@ -132,8 +132,10 @@ val polynomial_evaluate : polynomial -> scalar -> scalar
 
       Fails with [`Slot_wrong_size] when the slot size is different from
       [CONFIGURATION.slot_size]. *)
-val polynomial_from_slot :
-  t -> bytes -> (polynomial, [> `Slot_wrong_size of string]) Result.t
+val polynomial_from_slot : t -> bytes -> polynomial Error_monad.tzresult
+(*, [> `Slot_wrong_size of string]) Result.t*)
+
+(*TODO: update docstring if needed*)
 
 (** [polynomial_to_slot t polynomial] returns a slot from a [polynomial]. *)
 val polynomial_to_bytes : t -> polynomial -> bytes
@@ -168,9 +170,8 @@ val shards_encoding : share IntMap.t Data_encoding.t
      more than the number of required shards, then the original data
      can be recomputed. *)
 val polynomial_from_shards :
-  t ->
-  share IntMap.t ->
-  (polynomial, [> `Invert_zero of string | `Not_enough_shards of string]) result
+  t -> share IntMap.t -> polynomial Error_monad.tzresult
+(*, [> `Invert_zero of string | `Not_enough_shards of string]) result*)
 
 (** [shards_from_polynomial t polynomial] computes all the shards
      encoding the original [polynomial]. *)
@@ -194,8 +195,8 @@ val prove_commitment : t -> polynomial -> commitment_proof
 (** [prove_page] produces a proof that the [n]th page computed
      is part of a commitment. This page corresponds to the original
      data and are split into [C.page_size]. *)
-val prove_page :
-  t -> polynomial -> int -> (page_proof, [> `Segment_index_out_of_range]) result
+val prove_page : t -> polynomial -> int -> page_proof Error_monad.tzresult
+(*    , [> `Segment_index_out_of_range]) result*)
 
 (** [prove_shards] computes the proofs for all the [shards] that
      each [shard] is a valid piece of data associated to a polynomial
