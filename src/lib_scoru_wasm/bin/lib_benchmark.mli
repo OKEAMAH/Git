@@ -23,42 +23,43 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Defines a type [scenario] and its constructors, how to run it on the PVM *)
-module Scenario : sig
-  open Pvm_instance
+(** How to collect and store data *)
+module Data : sig
+  type time = float
 
-  type 'a run_state
+  (** container of the informations on a data point *)
+  type datum
 
-  type 'a action = 'a run_state -> 'a run_state Lwt.t
+  (** [make_datum scenario section label ticks time] *)
+  val make_datum : string -> string -> string -> Z.t -> time -> datum
 
-  (** step in a scenario, associates an action to a label *)
-  type scenario_step
+  (** container of all data point informations collected during benchmark *)
+  type benchmark
 
-  (** container for informations needed to run a benchmark scenario *)
-  type scenario
+  (** initialize en empty benchmark with options
+      - verbose: ouput info during execution (besides csv data in the end)
+      - totals: add to csv data the total time / tick number for each steps *)
+  val empty_benchmark :
+    ?verbose:bool -> ?totals:bool -> ?irmin:bool -> unit -> benchmark
 
-  (** [make_scenario_step step_name action] creates a scenario_step (one action) *)
-  val make_scenario_step : string -> Wasm.tree action -> scenario_step
+  (** [init_scenario benchmark scenario_name] inits an empty benchmark
+      for a given scenario *)
+  val init_scenario : string -> benchmark -> benchmark
 
-  (** [make_scenario scenario_name kernel_path actions] creates a scenario with
-      - a [scenario_name]
-      - the kernel stored at [kernel_path]
-      - a list of [actions] *)
-  val make_scenario : string -> string -> scenario_step list -> scenario
+  (** [switch_section benchmark section_name] open a new section*)
+  val switch_section : string -> benchmark -> benchmark
 
-  (** action corresponding to one top level call of PVM *)
-  val exec_loop : Wasm.tree action
+  (** [add_datum benchmark name ticks time] *)
+  val add_datum : string -> Z.t -> time -> benchmark -> benchmark
 
-  (** [exec_on_message message tree] returns the action corresponding to:
-      - reading [message] (from binary or filename)
-      - adding the message in the inbox
-      - reading the input using state [tree] *)
-  val exec_on_message : ?from_binary:bool -> string -> Wasm.tree action
+  (** [add_tickless_datum label time] adds a point of data for an action consuming no tick *)
+  val add_tickless_datum : string -> time -> benchmark -> benchmark
 
-  (** Execute a list of scenario with options:
-      - verbose: print info during execution
-      - totals: adds summary data point for each step
-      - irmin: adds data point for decoding / encoding the state from / to a tree *)
-  val run_scenarios :
-    ?verbose:bool -> ?totals:bool -> ?irmin:bool -> scenario list -> unit Lwt.t
+  (** adds final info as a data point in the benchmark *)
+  val add_final_info : time -> Z.t -> benchmark -> benchmark
+
+  module Csv : sig
+    (** Output benchmark data in CSV format *)
+    val print_benchmark : benchmark -> unit
+  end
 end

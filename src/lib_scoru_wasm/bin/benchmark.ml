@@ -40,6 +40,7 @@ open Lib_scenario
 let scenario_tx_kernel =
   let open Scenario in
   make_scenario
+    "tx kernel"
     "src/lib_scoru_wasm/bin/inputs/tx_kernel.wasm"
     [
       make_scenario_step
@@ -49,4 +50,10 @@ let scenario_tx_kernel =
       make_scenario_step "Withdraw" (exec_on_message "withdrawal.out");
     ]
 
-let () = Lwt_main.run @@ Scenario.run_scenario scenario_tx_kernel
+let () =
+  Lwt_main.run
+  @@ Scenario.run_scenarios
+       ~verbose:true
+       ~totals:false
+       ~irmin:false
+       [scenario_tx_kernel]
