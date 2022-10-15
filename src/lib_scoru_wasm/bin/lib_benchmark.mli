@@ -59,7 +59,7 @@ module Data : sig
   val add_final_info : time -> Z.t -> benchmark -> benchmark
 
   module Csv : sig
-    (** Output benchmark data in CSV format *)
-    val print_benchmark : benchmark -> unit
+    (** [print_benchmark filename benchmark] Output benchmark data in CSV format to a file *)
+    val print_benchmark : string -> benchmark -> unit
   end
 end

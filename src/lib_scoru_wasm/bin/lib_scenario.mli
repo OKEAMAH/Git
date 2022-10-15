@@ -64,6 +64,7 @@ module Scenario : sig
     ?totals:bool ->
     ?irmin:bool ->
     ?nb_of_run:int ->
+    string ->
     scenario list ->
     unit Lwt.t
 end

@@ -127,6 +127,16 @@ let scenario_unreachable_kernel =
         (Scenario.exec_on_message ~from_binary:false "dummy");
     ]
 
+let filename () =
+  let t = Unix.localtime (Unix.time ()) in
+  Printf.sprintf
+    "benchmark_%04d-%02d-%02d_%02dh%02d.csv"
+    (1900 + t.tm_year)
+    (t.tm_mon + 1)
+    t.tm_mday
+    t.tm_hour
+    t.tm_min
+
 let () =
   Lwt_main.run
   @@ Scenario.run_scenarios
@@ -134,6 +144,7 @@ let () =
        ~totals:false
        ~irmin:false
        ~nb_of_run:10
+       (filename ())
        [
          scenario_unreachable_kernel;
          scenario_computation_kernel;

@@ -184,7 +184,7 @@ module Scenario = struct
     Exec.run scenario.kernel apply_scenario
 
   let run_scenarios ?(verbose = true) ?(totals = true) ?(irmin = true)
-      ?(nb_of_run = 1) scenarios =
+      ?(nb_of_run = 1) filename scenarios =
     let open Lwt_syntax in
     let run_once scenario_run benchmark =
       Lwt_list.fold_left_s
@@ -199,6 +199,6 @@ module Scenario = struct
       else return benchmark
     in
     let* benchmark = run 1 (empty_benchmark ~verbose ~totals ~irmin ()) in
-    Data.Csv.print_benchmark benchmark ;
+    Data.Csv.print_benchmark filename benchmark ;
     return_unit
 end

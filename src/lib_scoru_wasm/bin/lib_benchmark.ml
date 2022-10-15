@@ -115,8 +115,9 @@ module Data = struct
     add_datum label Z.zero time benchmark
 
   module Csv = struct
-    let print_line scenario_run scenario section label ticks time =
-      Printf.printf
+    let print_line oc scenario_run scenario section label ticks time =
+      Printf.fprintf
+        oc
         "%d , \"%s\" , \"%s\" , \"%s\" ,  %s ,  %f \n%!"
         scenario_run
         scenario
@@ -125,12 +126,14 @@ module Data = struct
         (Z.to_string ticks)
         time
 
-    let print_datum {scenario_run; scenario; section; label; ticks; time} =
+    let print_datum oc {scenario_run; scenario; section; label; ticks; time} =
       if section != label then
-        print_line scenario_run scenario section label ticks time
-      else print_line scenario_run scenario section "all phases" ticks time
+        print_line oc scenario_run scenario section label ticks time
+      else print_line oc scenario_run scenario section "all phases" ticks time
 
-    let print_benchmark benchmark =
-      List.iter print_datum (List.rev benchmark.data)
+    let print_benchmark filename benchmark =
+      let oc = open_out filename in
+      List.iter (print_datum oc) (List.rev benchmark.data) ;
+      close_out oc
   end
 end
