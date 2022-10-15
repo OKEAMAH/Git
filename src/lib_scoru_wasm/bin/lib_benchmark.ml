@@ -27,6 +27,7 @@ module Data = struct
   type time = float
 
   type datum = {
+    scenario_run : int;
     scenario : string;
     section : string;
     label : string;
@@ -34,13 +35,14 @@ module Data = struct
     time : time;
   }
 
-  let make_datum scenario section label ticks time =
-    {scenario; section; label; ticks; time}
+  let make_datum scenario_run scenario section label ticks time =
+    {scenario_run; scenario; section; label; ticks; time}
 
   type benchmark = {
     verbose : bool;
     totals : bool;
     irmin : bool;
+    scenario_run : int;
     current_scenario : string;
     current_section : string;
     data : datum list;
@@ -50,6 +52,7 @@ module Data = struct
 
   let empty_benchmark ?(verbose = false) ?(totals = true) ?(irmin = true) () =
     {
+      scenario_run = 0;
       verbose;
       totals;
       irmin;
@@ -60,9 +63,10 @@ module Data = struct
       total_tick = Z.zero;
     }
 
-  let init_scenario scenario benchmark =
+  let init_scenario scenario_run scenario benchmark =
     {
       benchmark with
+      scenario_run;
       current_scenario = scenario;
       current_section = "Booting " ^ scenario;
     }
@@ -84,6 +88,7 @@ module Data = struct
     else
       let datum =
         make_datum
+          benchmark.scenario_run
           benchmark.current_scenario
           benchmark.current_section
           name
@@ -96,6 +101,7 @@ module Data = struct
     if benchmark.totals then
       let datum =
         make_datum
+          benchmark.scenario_run
           benchmark.current_scenario
           "all steps"
           "total"
@@ -109,18 +115,20 @@ module Data = struct
     add_datum label Z.zero time benchmark
 
   module Csv = struct
-    let print_line scenario section label ticks time =
+    let print_line scenario_run scenario section label ticks time =
       Printf.printf
-        "\"%s\" , \"%s\" , \"%s\" ,  %s ,  %f \n%!"
+        "%d , \"%s\" , \"%s\" , \"%s\" ,  %s ,  %f \n%!"
+        scenario_run
         scenario
         section
         label
         (Z.to_string ticks)
         time
 
-    let print_datum {scenario; section; label; ticks; time} =
-      if section != label then print_line scenario section label ticks time
-      else print_line scenario section "all phases" ticks time
+    let print_datum {scenario_run; scenario; section; label; ticks; time} =
+      if section != label then
+        print_line scenario_run scenario section label ticks time
+      else print_line scenario_run scenario section "all phases" ticks time
 
     let print_benchmark benchmark =
       List.iter print_datum (List.rev benchmark.data)

@@ -60,5 +60,10 @@ module Scenario : sig
       - totals: adds summary data point for each step
       - irmin: adds data point for decoding / encoding the state from / to a tree *)
   val run_scenarios :
-    ?verbose:bool -> ?totals:bool -> ?irmin:bool -> scenario list -> unit Lwt.t
+    ?verbose:bool ->
+    ?totals:bool ->
+    ?irmin:bool ->
+    ?nb_of_run:int ->
+    scenario list ->
+    unit Lwt.t
 end

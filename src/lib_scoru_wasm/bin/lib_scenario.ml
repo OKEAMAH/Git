@@ -49,10 +49,11 @@ module Verbose = struct
     in
     return_unit
 
-  let pp_scenario_header name =
+  let pp_scenario_header scenario_run name =
     Printf.printf
-      "****************************************\n Scenario %s\n%!"
+      "****************************************\n Scenario %s (run %d)\n%!"
       name
+      scenario_run
 end
 
 module Scenario = struct
@@ -163,13 +164,13 @@ module Scenario = struct
     in
     exec_loop {run_state with message_counter = run_state.message_counter + 1}
 
-  let run_scenario ?(verbose = false) ~benchmark scenario =
+  let run_scenario ?(scenario_run = 1) ~verbose benchmark scenario =
     let open Lwt_syntax in
     let apply_scenario kernel_bytes =
       (* init scenario run*)
-      if verbose then Verbose.pp_scenario_header scenario.name ;
+      if verbose then Verbose.pp_scenario_header scenario_run scenario.name ;
       let* state = Exec.initial_boot_sector_from_kernel kernel_bytes in
-      let benchmark = init_scenario scenario.name benchmark in
+      let benchmark = init_scenario scenario_run scenario.name benchmark in
       let run_state = init_run_state benchmark state in
       (* act*)
       let* time, run_state =
@@ -182,16 +183,22 @@ module Scenario = struct
     in
     Exec.run scenario.kernel apply_scenario
 
-  let run_scenarios ?(verbose = true) ?(totals = true) ?(irmin = true) scenarios
-      =
+  let run_scenarios ?(verbose = true) ?(totals = true) ?(irmin = true)
+      ?(nb_of_run = 1) scenarios =
     let open Lwt_syntax in
-    let rec go benchmark = function
-      | [] ->
-          Data.Csv.print_benchmark benchmark ;
-          return_unit
-      | t :: q ->
-          let* benchmark = run_scenario ~verbose ~benchmark t in
-          go benchmark q
+    let run_once scenario_run benchmark =
+      Lwt_list.fold_left_s
+        (run_scenario ~scenario_run ~verbose)
+        benchmark
+        scenarios
     in
-    go (empty_benchmark ~verbose ~totals ~irmin ()) scenarios
+    let rec run scenario_run benchmark =
+      if scenario_run <= nb_of_run then
+        let* benchmark = run_once scenario_run benchmark in
+        run (scenario_run + 1) benchmark
+      else return benchmark
+    in
+    let* benchmark = run 1 (empty_benchmark ~verbose ~totals ~irmin ()) in
+    Data.Csv.print_benchmark benchmark ;
+    return_unit
 end

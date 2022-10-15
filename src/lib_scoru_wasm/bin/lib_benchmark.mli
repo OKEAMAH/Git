@@ -30,8 +30,8 @@ module Data : sig
   (** container of the informations on a data point *)
   type datum
 
-  (** [make_datum scenario section label ticks time] *)
-  val make_datum : string -> string -> string -> Z.t -> time -> datum
+  (** [make_datum scenario_run scenario section label ticks time] *)
+  val make_datum : int -> string -> string -> string -> Z.t -> time -> datum
 
   (** container of all data point informations collected during benchmark *)
   type benchmark
@@ -42,9 +42,9 @@ module Data : sig
   val empty_benchmark :
     ?verbose:bool -> ?totals:bool -> ?irmin:bool -> unit -> benchmark
 
-  (** [init_scenario benchmark scenario_name] inits an empty benchmark
-      for a given scenario *)
-  val init_scenario : string -> benchmark -> benchmark
+  (** [init_scenario scenario_run scenario_name benchmark] inits an empty benchmark
+      for a given run of a scenario *)
+  val init_scenario : int -> string -> benchmark -> benchmark
 
   (** [switch_section benchmark section_name] open a new section*)
   val switch_section : string -> benchmark -> benchmark

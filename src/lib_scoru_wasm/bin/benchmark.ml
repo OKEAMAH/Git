@@ -133,6 +133,7 @@ let () =
        ~verbose:true
        ~totals:false
        ~irmin:false
+       ~nb_of_run:10
        [
          scenario_unreachable_kernel;
          scenario_computation_kernel;
