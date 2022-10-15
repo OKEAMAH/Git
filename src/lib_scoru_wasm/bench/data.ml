@@ -106,8 +106,9 @@ let add_tickless_datum label time benchmark =
   add_datum label Z.zero time benchmark
 
 module Csv = struct
-  let print_line scenario section label ticks time =
-    Printf.printf
+  let print_line oc scenario section label ticks time =
+    Printf.fprintf
+      oc
       "\"%s\" , \"%s\" , \"%s\" ,  %s ,  %f \n%!"
       scenario
       section
@@ -115,10 +116,12 @@ module Csv = struct
       (Z.to_string ticks)
       (Measure.to_seconds time)
 
-  let print_datum {scenario; section; label; ticks; time} =
-    if section != label then print_line scenario section label ticks time
-    else print_line scenario section "all phases" ticks time
+  let print_datum oc {scenario; section; label; ticks; time} =
+    if section != label then print_line oc scenario section label ticks time
+    else print_line oc scenario section "all phases" ticks time
 
-  let print_benchmark benchmark =
-    List.iter print_datum (List.rev benchmark.data)
+  let print_benchmark filename benchmark =
+    let oc = open_out filename in
+    List.iter (print_datum oc) (List.rev benchmark.data) ;
+    close_out oc
 end

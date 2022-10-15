@@ -181,11 +181,14 @@ let run_scenario ?(verbose = false) ~benchmark scenario =
   in
   Exec.run scenario.kernel apply_scenario
 
-let run_scenarios ?(verbose = true) ?(totals = true) ?(irmin = true) scenarios =
+let run_scenarios ?(verbose = true) ?(totals = true) ?(irmin = true) filename
+    scenarios =
   let open Lwt_syntax in
   let rec go benchmark = function
     | [] ->
-        Data.Csv.print_benchmark benchmark ;
+        Data.Csv.print_benchmark filename benchmark ;
+        if verbose then
+          Printf.printf "========= END =========\nresults in %s\n%!" filename ;
         return_unit
     | t :: q ->
         let* benchmark = run_scenario ~verbose ~benchmark t in

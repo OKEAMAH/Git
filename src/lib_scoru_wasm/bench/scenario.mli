@@ -64,4 +64,9 @@ val exec_on_message_from_file : string -> Wasm.tree action
       - totals: adds summary data point for each step
       - irmin: adds data point for decoding / encoding the state *)
 val run_scenarios :
-  ?verbose:bool -> ?totals:bool -> ?irmin:bool -> scenario list -> unit Lwt.t
+  ?verbose:bool ->
+  ?totals:bool ->
+  ?irmin:bool ->
+  string ->
+  scenario list ->
+  unit Lwt.t

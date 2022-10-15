@@ -26,7 +26,7 @@
 (** Benchmarking
     -------
     Component:    Wasm PVM
-    Invocation:   dune exec src/lib_scoru_wasm/bench/benchmark_scoru_wasm.exe
+    Invocation:   dune exec src/lib_scoru_wasm/bench/benchmark_scoru_wasm.exe --profile=release
     Subject:      Measure nb of ticks
 
     Kernels:
@@ -130,12 +130,23 @@ let scenario_unreachable_kernel =
         (Scenario.exec_on_message "dummy");
     ]
 
+let filename () =
+  let t = Unix.localtime (Unix.time ()) in
+  Printf.sprintf
+    "benchmark_WASM_%04d-%02d-%02d_%02dh%02d.csv"
+    (1900 + t.tm_year)
+    (t.tm_mon + 1)
+    t.tm_mday
+    t.tm_hour
+    t.tm_min
+
 let () =
   Lwt_main.run
   @@ Scenario.run_scenarios
        ~verbose:true
        ~totals:false
        ~irmin:false
+       (filename ())
        [
          scenario_unreachable_kernel;
          scenario_computation_kernel;
