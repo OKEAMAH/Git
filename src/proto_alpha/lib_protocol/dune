@@ -239,7 +239,7 @@
   Ticket_token_map
   Ticket_operations_diff
   Ticket_accounting
-  Tx_rollup_ticket
+  Ticket_transfer
   Script_interpreter_defs
   Script_interpreter_logging
   Script_interpreter
@@ -508,7 +508,7 @@
   ticket_token_map.ml ticket_token_map.mli
   ticket_operations_diff.ml ticket_operations_diff.mli
   ticket_accounting.ml ticket_accounting.mli
-  tx_rollup_ticket.ml tx_rollup_ticket.mli
+  ticket_transfer.ml ticket_transfer.mli
   script_interpreter_defs.ml
   script_interpreter_logging.ml script_interpreter_logging.mli
   script_interpreter.ml script_interpreter.mli
@@ -757,7 +757,7 @@
   ticket_token_map.ml ticket_token_map.mli
   ticket_operations_diff.ml ticket_operations_diff.mli
   ticket_accounting.ml ticket_accounting.mli
-  tx_rollup_ticket.ml tx_rollup_ticket.mli
+  ticket_transfer.ml ticket_transfer.mli
   script_interpreter_defs.ml
   script_interpreter_logging.ml script_interpreter_logging.mli
   script_interpreter.ml script_interpreter.mli
@@ -1011,7 +1011,7 @@
   ticket_token_map.ml ticket_token_map.mli
   ticket_operations_diff.ml ticket_operations_diff.mli
   ticket_accounting.ml ticket_accounting.mli
-  tx_rollup_ticket.ml tx_rollup_ticket.mli
+  ticket_transfer.ml ticket_transfer.mli
   script_interpreter_defs.ml
   script_interpreter_logging.ml script_interpreter_logging.mli
   script_interpreter.ml script_interpreter.mli

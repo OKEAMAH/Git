@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Margiold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -37,24 +38,14 @@ let parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt =
     contents_type
     (Micheline.root contents)
   >>=? fun (contents, ctxt) ->
-  return @@ (ctxt, Ticket_token.Ex_token {ticketer; contents_type; contents})
+  return (ctxt, Ticket_token.Ex_token {ticketer; contents_type; contents})
 
 let parse_ticket_and_operation ~consume_deserialization_gas ~ticketer ~contents
     ~ty ~source ~destination ~entrypoint ~amount ctxt =
-  Script.force_decode_in_context ~consume_deserialization_gas ctxt ty
-  >>?= fun (ty, ctxt) ->
-  Script.force_decode_in_context ~consume_deserialization_gas ctxt contents
-  >>?= fun (contents, ctxt) ->
-  Script_ir_translator.parse_comparable_ty ctxt (Micheline.root ty)
-  >>?= fun (Ex_comparable_ty contents_type, ctxt) ->
-  Script_ir_translator.parse_comparable_data
-    ctxt
-    contents_type
-    (Micheline.root contents)
-  >>=? fun (contents, ctxt) ->
-  let ticket_token =
-    Ticket_token.Ex_token {ticketer; contents_type; contents}
-  in
+  parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt
+  >>=? fun ( ctxt,
+             (Ticket_token.Ex_token {contents_type; contents; _} as
+             ticket_token) ) ->
   Script_typed_ir.ticket_t Micheline.dummy_location contents_type
   >>?= fun ticket_ty ->
   let ticket = Script_typed_ir.{ticketer; contents; amount} in
@@ -89,8 +80,8 @@ let make_withdraw_order ctxt tx_rollup ex_ticket claimer amount =
   in
   return (ctxt, withdrawal)
 
-let transfer_ticket_with_hashes ctxt ~src_hash ~dst_hash
-    (qty : Script_typed_ir.ticket_amount) =
+let transfer_ticket_with_hashes ctxt ~src_hash ~dst_hash (qty : Ticket_amount.t)
+    =
   let qty = Script_int.(to_zint (qty :> n num)) in
   Ticket_balance.adjust_balance ctxt src_hash ~delta:(Z.neg qty)
   >>=? fun (src_storage_diff, ctxt) ->

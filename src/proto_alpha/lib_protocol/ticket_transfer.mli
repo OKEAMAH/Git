@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Margiold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -26,7 +27,7 @@
 open Alpha_context
 
 (** This module provides various helpers to manipulate tickets, that
-    are used by the Transaction Rollups. *)
+    are used by, for example, the Transaction Rollups and ticket transfers. *)
 
 (** [parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty
     ctxt] reconstructs a ticket from individual parts submitted as
@@ -85,7 +86,7 @@ val transfer_ticket_with_hashes :
   context ->
   src_hash:Ticket_hash.t ->
   dst_hash:Ticket_hash.t ->
-  Script_typed_ir.ticket_amount ->
+  Ticket_amount.t ->
   (context * Z.t) tzresult Lwt.t
 
 (** [transfer_ticket ctxt ~src ~dst ex_token qty] updates the table of
@@ -100,5 +101,5 @@ val transfer_ticket :
   src:Destination.t ->
   dst:Destination.t ->
   Ticket_token.ex_token ->
-  Script_typed_ir.ticket_amount ->
+  Ticket_amount.t ->
   (context * Z.t, error trace) result Lwt.t
