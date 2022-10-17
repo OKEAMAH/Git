@@ -88,3 +88,5 @@ Internal
   (MRs :gl:`!6647`, :gl:`!6648`)
 
 - Move interpreter logging to the plugin. (MR :gl:`!5778`)
+
+- If they are not delegates, implicit accounts with zero balance and no frozen bonds are now deleted just after block application. Previously that could happen while an operation was in the process of being applied, and the consequences were less predictable. (MR :gl:`!6529`)
