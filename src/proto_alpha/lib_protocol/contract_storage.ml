@@ -790,26 +790,18 @@ let should_keep_empty_implicit_contract ctxt contract =
         (* Delete empty implicit contract. *)
         return_false
 
+(* PRE : [pkh] must refer to an implicit allocated contract, with zero balance
+   and no frozen bonds. *)
 let ensure_deallocated_if_empty ctxt pkh =
   let open Lwt_tzresult_syntax in
   let contract = Contract_repr.Implicit pkh in
-  let* balance_opt = Storage.Contract.Spendable_balance.find ctxt contract in
-  match balance_opt with
-  | None ->
-      (* Nothing to do, contract is not allocated. *)
-      return ctxt
-  | Some balance ->
-      if Tez_repr.(balance <> zero) then return ctxt
-      else
-        let* keep_contract =
-          should_keep_empty_implicit_contract ctxt contract
-        in
-        if keep_contract then return ctxt
-        else
-          (* In case the contract has been delegated, delegation is removed
-             before the contract is deleted. *)
-          let* ctxt = Contract_delegate_storage.delete ctxt contract in
-          delete ctxt contract
+  let* keep_contract = should_keep_empty_implicit_contract ctxt contract in
+  if keep_contract then return ctxt
+  else
+    (* In case the contract has been delegated, delegation is removed
+       before the contract is deleted. *)
+    let* ctxt = Contract_delegate_storage.delete ctxt contract in
+    delete ctxt contract
 
 let simulate_spending ctxt ~balance ~amount source =
   let open Lwt_tzresult_syntax in
