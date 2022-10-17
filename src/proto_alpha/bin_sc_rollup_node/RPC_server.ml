@@ -119,16 +119,30 @@ module type PARAM = sig
   val context_of_prefix : Node_context.t -> prefix -> context tzresult Lwt.t
 end
 
+module type DIRECTORY = sig
+  val build_directory : Node_context.t -> unit RPC_directory.t
+
+  val build_dummy_directory : unit -> unit RPC_directory.t
+end
+
 module Make_directory (S : PARAM) = struct
   open S
 
   let directory : context tzresult RPC_directory.t ref = ref RPC_directory.empty
 
+  (** This directory is used to generate the API description without handlers. *)
+  let dummy_directory : prefix RPC_directory.t ref = ref RPC_directory.empty
+
   let register service f =
     directory := RPC_directory.register !directory service f
 
+  let register_dummy service =
+    dummy_directory :=
+      RPC_directory.register !dummy_directory service (fun _ -> assert false)
+
   let register0 service f =
     let open Lwt_result_syntax in
+    register_dummy (RPC_service.subst0 service) ;
     register (RPC_service.subst0 service) @@ fun ctxt query input ->
     let*? ctxt = ctxt in
     f ctxt query input
@@ -137,6 +151,8 @@ module Make_directory (S : PARAM) = struct
     !directory
     |> RPC_directory.map (fun prefix -> context_of_prefix node_ctxt prefix)
     |> RPC_directory.prefix prefix
+
+  let build_dummy_directory () = !dummy_directory |> RPC_directory.prefix prefix
 end
 
 module Root_directory = Make_directory (struct
@@ -182,6 +198,14 @@ module Block_directory = Make_directory (struct
     in
     (node_ctxt, block)
 end)
+
+let directory_modules =
+  [
+    (module Root_directory : DIRECTORY);
+    (module Global_directory : DIRECTORY);
+    (module Local_directory : DIRECTORY);
+    (module Block_directory : DIRECTORY);
+  ]
 
 module Common = struct
   let () =
@@ -345,22 +369,30 @@ module Make (PVM : Pvm.S) = struct
   let register node_ctxt =
     let dir =
       List.fold_left
-        (fun dir f -> RPC_directory.merge dir (f node_ctxt))
+        (fun dir (module D : DIRECTORY) ->
+          RPC_directory.merge dir (D.build_directory node_ctxt))
         RPC_directory.empty
-        [
-          Root_directory.build_directory;
-          Global_directory.build_directory;
-          Local_directory.build_directory;
-          Block_directory.build_directory;
-        ]
+        directory_modules
     in
     RPC_directory.register_describe_directory_service
       dir
       RPC_service.description_service
 
-  let generate_openapi node_ctxt =
+  let description_directory () =
+    let dir =
+      List.fold_left
+        (fun dir (module D : DIRECTORY) ->
+          RPC_directory.merge dir (D.build_dummy_directory ()))
+        RPC_directory.empty
+        directory_modules
+    in
+    RPC_directory.register_describe_directory_service
+      dir
+      RPC_service.description_service
+
+  let generate_openapi () =
     let open Lwt_syntax in
-    let dir = register node_ctxt in
+    let dir = description_directory () in
     let+ descr = RPC_directory.describe_directory ~recurse:true ~arg:() dir in
     let json_api =
       Data_encoding.Json.construct
@@ -377,21 +409,12 @@ module Make (PVM : Pvm.S) = struct
          Tezos_version.Bin_version.version_string
     |> Openapi.to_json
 
-  let openapi, openapi_wakeup = Lwt.task ()
-
   let () =
     Root_directory.register0 Sc_rollup_services.openapi
     @@ fun _node_ctxt () () ->
     let open Lwt_result_syntax in
-    let*! json_openapi = openapi in
+    let*! json_openapi = generate_openapi () in
     return json_openapi
-
-  let (_ : unit Lwt.t) =
-    let open Lwt_syntax in
-    (* WARNING: node_ctxt is unused during the registration process so we can
-       replace it by a dummy value. *)
-    let+ open_api = generate_openapi (Obj.magic () : Node_context.t) in
-    Lwt.wakeup openapi_wakeup open_api
 
   let start node_ctxt configuration =
     let open Lwt_result_syntax in
