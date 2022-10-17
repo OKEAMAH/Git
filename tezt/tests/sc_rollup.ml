@@ -958,6 +958,8 @@ let test_rollup_node_advances_pvm_state protocols ~test_name ~boot_sector
                 Add an appropriate check for various test kernels
 
                 computation.wasm               - Gets into eval state
+                input_output_echo.wasm         - Reads inputs
+                input_output_echo.wasm         - Reads inputs and generates identical outputs
                 no_parse_random.wasm           - Stuck state due to parse error
                 no_parse_bad_fingerprint.wasm  - Stuck state due to parse error
             *)
@@ -3314,6 +3316,16 @@ let register ~protocols =
     protocols
     ~kind:"wasm_2_0_0"
     ~kernel_name:"no_parse_bad_fingerprint"
+    ~internal:false ;
+  test_rollup_node_run_with_kernel
+    protocols
+    ~kind:"wasm_2_0_0"
+    ~kernel_name:"computation"
+    ~internal:false ;
+  test_rollup_node_run_with_kernel
+    protocols
+    ~kind:"wasm_2_0_0"
+    ~kernel_name:"input_output_echo"
     ~internal:false ;
   (* DAC tests, not supported yet by the Wasm PVM *)
   test_rollup_arith_uses_reveals protocols ~kind:"arith" ;
