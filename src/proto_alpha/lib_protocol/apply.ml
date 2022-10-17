@@ -750,27 +750,26 @@ let apply_manager_operation :
              {consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt}
             : kind successful_manager_operation_result),
           [] )
-  | Transaction {amount; parameters; destination = Implicit pkh; entrypoint} ->
+  | Transaction {amount; parameters; destination = Implicit pkh; entrypoint}
+    -> (
       Script.force_decode_in_context
         ~consume_deserialization_gas
         ctxt
         parameters
       >>?= fun (parameters, ctxt) ->
       (* Only allow [Unit] parameter to implicit accounts. *)
-      (match Micheline.root parameters with
-      | Prim (_, Michelson_v1_primitives.D_Unit, [], _) -> Result.return_unit
-      | _ -> error (Script_interpreter.Bad_contract_parameter source_contract))
-      >>?= fun () ->
-      (if Entrypoint.is_default entrypoint then Result.return_unit
-      else error (Script_tc_errors.No_such_entrypoint entrypoint))
-      >>?= fun () ->
-      apply_transaction_to_implicit
-        ~ctxt
-        ~source:source_contract
-        ~amount
-        ~pkh
-        ~before_operation:ctxt_before_op
-      >|=? fun (ctxt, res, ops) -> (ctxt, Transaction_result res, ops)
+      match Micheline.root parameters with
+      | Prim (_, Michelson_v1_primitives.D_Unit, [], _) ->
+          if Entrypoint.is_default entrypoint then
+            apply_transaction_to_implicit
+              ~ctxt
+              ~source:source_contract
+              ~amount
+              ~pkh
+              ~before_operation:ctxt_before_op
+            >|=? fun (ctxt, res, ops) -> (ctxt, Transaction_result res, ops)
+          else fail (Script_tc_errors.No_such_entrypoint entrypoint)
+      | _ -> fail (Script_interpreter.Bad_contract_parameter source_contract))
   | Transaction
       {amount; parameters; destination = Originated contract_hash; entrypoint}
     ->
