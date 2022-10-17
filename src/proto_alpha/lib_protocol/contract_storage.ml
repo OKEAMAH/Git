@@ -772,23 +772,21 @@ let fold_on_bond_ids ctxt contract =
   Storage.Contract.fold_bond_ids (ctxt, contract)
 
 (** Indicate whether the given implicit contract should avoid deletion
-    when it is emptied. *)
+    when it is emptied. [contract] is assumed to have zero balance and
+    no frozen bonds. *)
 let should_keep_empty_implicit_contract ctxt contract =
   let open Lwt_tzresult_syntax in
-  let* has_frozen_bonds = has_frozen_bonds ctxt contract in
-  if has_frozen_bonds then return_true
-  else
-    (* full balance of contract is zero. *)
-    Contract_delegate_storage.find ctxt contract >>=? function
-    | Some _ -> (
-        (* keep iff the contract delegates to itself *)
-        let* delegate = Contract_delegate_storage.find ctxt contract in
-        match delegate with
-        | Some pkh' -> return Contract_repr.(contract = Implicit pkh')
-        | None -> return_false)
-    | None ->
-        (* Delete empty implicit contract. *)
-        return_false
+  (* full balance of contract is zero. *)
+  Contract_delegate_storage.find ctxt contract >>=? function
+  | Some _ -> (
+      (* keep iff the contract delegates to itself *)
+      let* delegate = Contract_delegate_storage.find ctxt contract in
+      match delegate with
+      | Some pkh' -> return Contract_repr.(contract = Implicit pkh')
+      | None -> return_false)
+  | None ->
+      (* Delete empty implicit contract. *)
+      return_false
 
 (* PRE : [pkh] must refer to an implicit allocated contract, with zero balance
    and no frozen bonds. *)
