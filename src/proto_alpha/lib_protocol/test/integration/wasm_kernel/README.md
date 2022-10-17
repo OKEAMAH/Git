@@ -41,6 +41,7 @@ cp target/wasm32-unknown-unknown/release/test_kernel.wasm computation_kernel.was
 wasm-strip computation_kernel.wasm
 ```
 
+<<<<<<< HEAD
 # echo.wasm
 
 `echo.wasm` is the result of `wat2wasm echo.wast`.
@@ -49,3 +50,11 @@ This simple kernel writes the external messages it receives in its outbox.
 
 To achieve that, it needs to take the encoding of the inputs into
 account to extract the payload to push into the outbox.
+=======
+## [input_output_echo.wasm](./input_output_echo.wasm)
+
+This kernel echoes all inputs as outputs. It is not compatible with the
+rollup management protocol, but useful for testing input/output
+scenarios.
+
+>>>>>>> b47c109bb1 (Scoru: Wasm PVM: Add input_output kernel to test/integration/wasm_kernel)
