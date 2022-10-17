@@ -377,12 +377,21 @@ module Make (PVM : Pvm.S) = struct
          Tezos_version.Bin_version.version_string
     |> Openapi.to_json
 
+  let openapi, openapi_wakeup = Lwt.task ()
+
   let () =
     Root_directory.register0 Sc_rollup_services.openapi
-    @@ fun node_ctxt () () ->
+    @@ fun _node_ctxt () () ->
     let open Lwt_result_syntax in
-    let*! json_openapi = generate_openapi node_ctxt in
+    let*! json_openapi = openapi in
     return json_openapi
+
+  let (_ : unit Lwt.t) =
+    let open Lwt_syntax in
+    (* WARNING: node_ctxt is unused during the registration process so we can
+       replace it by a dummy value. *)
+    let+ open_api = generate_openapi (Obj.magic () : Node_context.t) in
+    Lwt.wakeup openapi_wakeup open_api
 
   let start node_ctxt configuration =
     let open Lwt_result_syntax in

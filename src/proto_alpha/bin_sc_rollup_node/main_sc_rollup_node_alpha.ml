@@ -323,8 +323,7 @@ let openapi_command =
         | None -> error_with "Invalid pvm name: %S" pvm_name
       in
       let module RPC = RPC_server.Make ((val pvm)) in
-      let*! node_ctxt = Node_context.dummy cctxt in
-      let*! openapi_json = RPC.generate_openapi node_ctxt in
+      let*! openapi_json = RPC.openapi in
       let*! () = cctxt#message "%a" Data_encoding.Json.pp openapi_json in
       return_unit)
 

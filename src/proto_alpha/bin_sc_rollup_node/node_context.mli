@@ -95,7 +95,3 @@ val init :
 (** [checkout_context node_ctxt block_hash] returns the context at block
     [block_hash]. *)
 val checkout_context : t -> Block_hash.t -> Context.t tzresult Lwt.t
-
-(**/**)
-
-val dummy : Protocol_client_context.full -> t Lwt.t
