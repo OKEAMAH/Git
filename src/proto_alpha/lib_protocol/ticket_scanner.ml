@@ -52,11 +52,6 @@ let () =
     (function Unsupported_type_operation -> Some () | _ -> None)
     (fun () -> Unsupported_type_operation)
 
-type ex_ticket =
-  | Ex_ticket :
-      'a Script_typed_ir.comparable_ty * 'a Script_typed_ir.ticket
-      -> ex_ticket
-
 module Ticket_inspection = struct
   (* TODO: 1951
      Replace with use of meta-data for ['a ty] type.
@@ -255,10 +250,9 @@ module Ticket_collection = struct
     Ticket_costs.consume_gas_steps
       ~step_cost:Ticket_costs.Constants.cost_collect_tickets_step
 
-  type accumulator = ex_ticket list
+  type accumulator = Script_typed_ir.ex_ticket list
 
-  type 'a continuation =
-    Alpha_context.context -> accumulator -> 'a tzresult Lwt.t
+  type 'a continuation = context -> accumulator -> 'a tzresult Lwt.t
 
   (* Currently this always returns the original list.
 
@@ -297,7 +291,7 @@ module Ticket_collection = struct
 
   let tickets_of_set :
       type a ret.
-      Alpha_context.context ->
+      context ->
       a Script_typed_ir.comparable_ty ->
       a Script_typed_ir.set ->
       accumulator ->
@@ -405,7 +399,9 @@ module Ticket_collection = struct
           (tickets_of_big_map [@ocaml.tailcall]) ctxt val_hty key_ty x acc k
         else (k [@ocaml.tailcall]) ctxt acc
     | True_ht, Ticket_t (comp_ty, _) ->
-        (k [@ocaml.tailcall]) ctxt (Ex_ticket (comp_ty, x) :: acc)
+        (k [@ocaml.tailcall])
+          ctxt
+          (Script_typed_ir.Ex_ticket (comp_ty, x) :: acc)
 
   and tickets_of_list :
       type a ac ret.
@@ -544,7 +540,7 @@ let tickets_of_node ctxt ~include_lazy has_tickets expr =
       >>=? fun (value, ctxt) ->
       tickets_of_value ctxt ~include_lazy has_tickets value
 
-let ex_ticket_size ctxt (Ex_ticket (ty, ticket)) =
+let ex_ticket_size ctxt (Script_typed_ir.Ex_ticket (ty, ticket)) =
   (* type *)
   Script_typed_ir.ticket_t Micheline.dummy_location ty >>?= fun ty ->
   Script_ir_unparser.unparse_ty ~loc:() ctxt ty >>?= fun (ty', ctxt) ->
@@ -559,5 +555,6 @@ let ex_ticket_size ctxt (Ex_ticket (ty, ticket)) =
   return (Saturation_repr.add ty_size val_size, ctxt)
 
 let ex_token_and_amount_of_ex_ticket
-    (Ex_ticket (contents_type, {Script_typed_ir.ticketer; contents; amount})) =
+    (Script_typed_ir.Ex_ticket
+      (contents_type, {Script_typed_ir.ticketer; contents; amount})) =
   (Ticket_token.Ex_token {ticketer; contents_type; contents}, amount)

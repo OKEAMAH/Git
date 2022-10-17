@@ -30,7 +30,7 @@
     parameters consist of a ticket of arbitrary content along with a
     layer-2 ZKRU operation byte representation. *)
 type deposit_parameters = {
-  ex_ticket : Ticket_scanner.ex_ticket;
+  ex_ticket : Script_typed_ir.ex_ticket;
   zkru_operation : Alpha_context.Zk_rollup.Operation.t;
 }
 

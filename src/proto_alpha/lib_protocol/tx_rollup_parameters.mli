@@ -34,7 +34,7 @@ open Script_typed_ir
     parameters consist of a ticket of arbitrary content along with a
     layer-2 destination address. *)
 type deposit_parameters = {
-  ex_ticket : Ticket_scanner.ex_ticket;
+  ex_ticket : Script_typed_ir.ex_ticket;
   l2_destination : tx_rollup_l2_address;
 }
 

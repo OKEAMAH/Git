@@ -26,15 +26,7 @@
 (** This module provides an API for extracting tickets of arbitrary types
     from an OCaml values, given a type-witness. *)
 
-(** A type for representing existentially quantified tickets (tickets with
-    different types of payloads). An [ex_ticket] value consists of:
-     - A type-witness representing the type of the content of the ticket.
-     - A ticket value of the particular content type.
- *)
-type ex_ticket =
-  | Ex_ticket :
-      'a Script_typed_ir.comparable_ty * 'a Script_typed_ir.ticket
-      -> ex_ticket
+open Alpha_context
 
 (** A type-witness that contains information about which branches of a type ['a]
     include tickets. This value is used for traversing only the relevant
@@ -45,9 +37,7 @@ type 'a has_tickets
     shape [ty].
  *)
 val type_has_tickets :
-  Alpha_context.context ->
-  ('a, _) Script_typed_ir.ty ->
-  ('a has_tickets * Alpha_context.context) tzresult
+  context -> ('a, _) Script_typed_ir.ty -> ('a has_tickets * context) tzresult
 
 (** [tickets_of_value ctxt ~include_lazy ht value] extracts all tickets from
     the given [value], using the type-witness [ht]. The [include_lazy] flag
@@ -65,7 +55,7 @@ val tickets_of_value :
   include_lazy:bool ->
   'a has_tickets ->
   'a ->
-  (ex_ticket list * Alpha_context.context) tzresult Lwt.t
+  (Script_typed_ir.ex_ticket list * context) tzresult Lwt.t
 
 (** [tickets_of_node ctxt ~include_lazy ht node] extracts all tickets from
     the given [node], using the type-witness [ht].If [ht] indicates that
@@ -81,11 +71,11 @@ val tickets_of_value :
     the overlay.
    *)
 val tickets_of_node :
-  Alpha_context.context ->
+  context ->
   include_lazy:bool ->
   'a has_tickets ->
-  Alpha_context.Script.node ->
-  (ex_ticket list * Alpha_context.context) tzresult Lwt.t
+  Script.node ->
+  (Script_typed_ir.ex_ticket list * context) tzresult Lwt.t
 
 (** [has_tickets ht] returns whether or not the type of the given [has_tickets]
     witness [ht] has tickets. *)
@@ -94,13 +84,12 @@ val has_tickets : 'a has_tickets -> bool
 (** [ex_ticket_size ctxt ex_ticket] returns the size of the in-memory representation of
     [ex_ticket] in bytes. *)
 val ex_ticket_size :
-  Alpha_context.context ->
-  ex_ticket ->
-  (Saturation_repr.may_saturate Saturation_repr.t * Alpha_context.context)
-  tzresult
-  Lwt.t
+  context ->
+  Script_typed_ir.ex_ticket ->
+  (Saturation_repr.may_saturate Saturation_repr.t * context) tzresult Lwt.t
 
 (** [ex_token_and_amount_of_ex_ticket ex_ticket] returns the token and amount of
     the given ticket [ex_ticket]. *)
 val ex_token_and_amount_of_ex_ticket :
-  ex_ticket -> Ticket_token.ex_token * Script_typed_ir.ticket_amount
+  Script_typed_ir.ex_ticket ->
+  Ticket_token.ex_token * Script_typed_ir.ticket_amount

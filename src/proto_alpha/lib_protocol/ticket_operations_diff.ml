@@ -27,7 +27,7 @@ open Alpha_context
 
 type ticket_transfer = {
   destination : Destination.t;
-  tickets : Ticket_scanner.ex_ticket list;
+  tickets : Script_typed_ir.ex_ticket list;
 }
 
 type ticket_token_diff = {
@@ -214,7 +214,7 @@ let tickets_of_operation ctxt
         parameters_ty = Pair_t (Ticket_t (ty, _), Bytes_t, _, _);
         parameters = ticket, _op;
       } ->
-      let ex_ticket = Ticket_scanner.Ex_ticket (ty, ticket) in
+      let ex_ticket = Script_typed_ir.Ex_ticket (ty, ticket) in
       return
         ( Some
             {

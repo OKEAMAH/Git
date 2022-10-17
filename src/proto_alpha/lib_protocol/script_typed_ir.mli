@@ -1613,6 +1613,13 @@ type ('arg, 'storage) script =
 
 type ex_ty = Ex_ty : ('a, _) ty -> ex_ty
 
+(** A type for representing existentially quantified tickets (tickets with
+    different types of payloads). An [ex_ticket] value consists of:
+     - A type-witness representing the type of the content of the ticket.
+     - A ticket value of the particular content type.
+ *)
+type ex_ticket = Ex_ticket : 'a comparable_ty * 'a ticket -> ex_ticket
+
 val manager_kind : 'kind internal_operation_contents -> 'kind Kind.manager
 
 val kinstr_location : (_, _, _, _) kinstr -> Script.location

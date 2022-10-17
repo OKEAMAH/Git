@@ -1445,6 +1445,8 @@ and operation = {
 
 type ex_ty = Ex_ty : ('a, _) ty -> ex_ty
 
+type ex_ticket = Ex_ticket : 'a comparable_ty * 'a ticket -> ex_ticket
+
 type ('arg, 'storage) script =
   | Script : {
       code :

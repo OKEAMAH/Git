@@ -24,10 +24,11 @@
 (*****************************************************************************)
 
 open Alpha_context
+open Script_typed_ir
 
 type 'a parsed_token = {
   ticketer : Contract.t;
-  contents_type : 'a Script_typed_ir.comparable_ty;
+  contents_type : 'a comparable_ty;
   contents : 'a;
 }
 
