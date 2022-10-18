@@ -74,11 +74,18 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
       specified). The evaluation is running under the processing of
       some [message_index] at a given [level] and this is the
       [start_tick] of this message processing. If some [failing_ticks]
-      are planned by the loser mode, they will be made. *)
+      are planned by the loser mode, they will be made. 
+      
+      NOTE: If there are any [failing_ticks] provided, the evaluation will happen
+     in three steps:
+     1. evaluate up to the first failing tick by calling PVM.eval_many
+     2. do the failing tick with a single step eval
+     3. continue the evaluation with the remaining fuel
+      *)
   let eval_until_input ~metadata data_dir level message_index ~fuel start_tick
       failing_ticks state =
     let open Lwt_result_syntax in
-    let eval_tick fuel_left tick failing_ticks state =
+    let eval_tick_impl fuel_left tick failing_ticks state =
       let max_steps =
         match fuel_left with None -> Int64.max_int | Some v -> Int64.max 0L v
       in
@@ -102,6 +109,24 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
           failure_insertion_eval state failing_ticks'
       | _ -> normal_eval state
     in
+
+    (* Makes sure the execution doesn't pass the first failing tick.
+       Even if the fuel is None we use the fuel parameter to make the execution
+       stop just before the failing tick and then execute just a single step for it
+    *)
+    let eval_tick (fuel_left : int64 option) (current_tick : int64)
+        failing_ticks state =
+      match List.hd failing_ticks with
+      | None -> eval_tick_impl fuel_left current_tick failing_ticks state
+      | Some first_failing_tick ->
+          if Int64.equal current_tick first_failing_tick then
+            eval_tick_impl (Some 1L) current_tick failing_ticks state
+          else
+            let ticks_to_execute = Int64.sub first_failing_tick current_tick in
+            let fuel = Some ticks_to_execute in
+            eval_tick_impl fuel current_tick failing_ticks state
+    in
+
     let rec go fuel_left current_tick failing_ticks state =
       let*! input_request = PVM.is_input_state state in
       match fuel_left with
