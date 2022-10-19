@@ -107,6 +107,8 @@ module Header : sig
 
   (** equal function for values of type {!t}. *)
   val equal : t -> t -> bool
+
+  val compare_slot_id : id -> id -> int
 end
 
 (** A DAL slot is decomposed to a successive list of pages with fixed content

@@ -2877,6 +2877,8 @@ module Dal : sig
       val pp : Format.formatter -> t -> unit
 
       val equal : t -> t -> bool
+
+      val compare_slot_id : id -> id -> int
     end
 
     val register_slot_header : context -> Header.t -> (context * bool) tzresult
