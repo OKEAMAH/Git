@@ -1837,17 +1837,11 @@ module Tx_rollup = struct
     let min_deserialization_gas =
       (* contents *) deserialization_gas ~size_kB + (* ty *) 1
     in
-    let expected_errors =
-      match protocol with
-      | Protocol.Alpha -> [["gas_exhausted.operation"]]
-      | _ -> [["cannot_transfer_ticket_to_implicit"]]
-    in
     let* _oph =
       Memchecks.with_applied_checks
         ~__LOC__
         nodes
         ~expected_statuses:["failed"]
-        ~expected_errors
       (* Does not fail in precheck, so is applied (as failed) *)
       @@ fun () ->
       Operation.inject_transfer_ticket
