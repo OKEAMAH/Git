@@ -567,7 +567,7 @@ let prepare ctxt ~level ~predecessor_timestamp ~timestamp =
   return (ctxt, balance_updates, origination_results)
 
 let finalize ?commit_message:message c fitness =
-  let c = Raw_context.clear_empty_implicit_accounts c in
+  let c = Raw_context.clear_maybe_empty_implicit_accounts c in
   let context = Raw_context.recover c in
   {
     Updater.context;
@@ -578,9 +578,11 @@ let finalize ?commit_message:message c fitness =
       Raw_level.to_int32 @@ Level.last_allowed_fork_level c;
   }
 
-let get_empty_implicit_accounts = Raw_context.get_empty_implicit_accounts
+let get_maybe_empty_implicit_accounts =
+  Raw_context.get_maybe_empty_implicit_accounts
 
-let clear_empty_implicit_accounts = Raw_context.clear_empty_implicit_accounts
+let clear_maybe_empty_implicit_accounts =
+  Raw_context.clear_maybe_empty_implicit_accounts
 
 let current_context c = Raw_context.recover c
 

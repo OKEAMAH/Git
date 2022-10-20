@@ -473,20 +473,21 @@ module Dal : sig
   val init_committee : t -> committee -> t
 end
 
-(** [get_empty_implicit_accounts ctxt] returns the set of implicit accounts that
-    have zero balance or no frozen bonds. These accounts will be deleted at
-    [Apply.finalize_block] if at that point they are not delegates, and have
-    neither balance nor frozen bonds. *)
-val get_empty_implicit_accounts : t -> Signature.Public_key_hash.Set.t
+(** [get_maybe_empty_implicit_accounts ctxt] returns the set of implicit
+    accounts that have zero balance or no frozen bonds. These accounts will be
+    deleted at [Apply.finalize_block] if at that point they are not delegates,
+    and have neither balance nor frozen bonds. *)
+val get_maybe_empty_implicit_accounts : t -> Signature.Public_key_hash.Set.t
 
-(** [add_to_empty_implicit_accounts ctxt pkh] adds [pkh] to the set of empty
+(** [add_to_maybe_empty_implicit_accounts ctxt pkh] adds [pkh] to the set of
+    maybe empty implicit accounts. *)
+val add_to_maybe_empty_implicit_accounts : t -> Signature.Public_key_hash.t -> t
+
+(** [remove_from_maybe_empty_implicit_accounts ctxt pkh] removes [pkh] from the
+    set of maybe empty implicit accounts. *)
+val remove_from_maybe_empty_implicit_accounts :
+  t -> Signature.Public_key_hash.t -> t
+
+(** [clear_maybe_empty_implicit_accounts ctxt] clears the set of maybe empty
     implicit accounts. *)
-val add_to_empty_implicit_accounts : t -> Signature.Public_key_hash.t -> t
-
-(** [remove_from_empty_implicit_accounts ctxt pkh] removes [pkh] from the set of
-    empty implicit accounts. *)
-val remove_from_empty_implicit_accounts : t -> Signature.Public_key_hash.t -> t
-
-(** [clear_empty_implicit_accounts ctxt] clears the set of empty implicit
-    accounts. *)
-val clear_empty_implicit_accounts : t -> t
+val clear_maybe_empty_implicit_accounts : t -> t

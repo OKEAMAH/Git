@@ -4926,9 +4926,10 @@ val dictator_proposal_seen : t -> bool
 val finalize :
   ?commit_message:string -> context -> Fitness.raw -> Updater.validation_result
 
-val get_empty_implicit_accounts : context -> Signature.Public_key_hash.Set.t
+val get_maybe_empty_implicit_accounts :
+  context -> Signature.Public_key_hash.Set.t
 
-val clear_empty_implicit_accounts : context -> context
+val clear_maybe_empty_implicit_accounts : context -> context
 
 (** Should only be used by [Main.current_context] to return a context usable for RPCs *)
 val current_context : context -> Context.t

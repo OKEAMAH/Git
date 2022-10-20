@@ -627,7 +627,7 @@ let spend_only_call_from_token c contract amount =
       if Tez_repr.(new_balance <= Tez_repr.zero) then
         let* () = check_emptiable c contract in
         (* Schedule the implicit account for potential de-allocation. *)
-        return @@ Raw_context.add_to_empty_implicit_accounts c pkh
+        return @@ Raw_context.add_to_maybe_empty_implicit_accounts c pkh
       else return c
   | Originated _ -> (* Never delete originated contracts *) return c
 
@@ -645,7 +645,8 @@ let credit_only_call_from_token c contract amount =
       Storage.Contract.Spendable_balance.update c contract balance >>=? fun c ->
       Stake_storage.add_contract_stake c contract amount >|=? fun c ->
       match contract with
-      | Implicit pkh -> Raw_context.remove_from_empty_implicit_accounts c pkh
+      | Implicit pkh ->
+          Raw_context.remove_from_maybe_empty_implicit_accounts c pkh
       | Originated _ -> c)
 
 let init c =
@@ -682,7 +683,7 @@ let update_balance ctxt contract f amount =
   Storage.Contract.Spendable_balance.update ctxt contract new_balance
 
 (* Note that at the difference of [spend_only_call_from_token] this function
-   does not update the list of empty implicit accounts to be deleted at
+   does not update the list of maybe empty implicit accounts to be deleted at
    [Apply.finalize_block]. There are two reasons for this. First, this function
    is only invoked on delegates, and delegate accounts must not be deleted. The
    second reason is that once an account is a delegate, it remains a delegate
@@ -690,8 +691,8 @@ let update_balance ctxt contract f amount =
 let increase_balance_only_call_from_token ctxt contract amount =
   update_balance ctxt contract Tez_repr.( +? ) amount
 
-(* This function does not update the list of empty implicit accounts to be
-   deleted at [Apply.finalize_block]. The reasons are the same as for the
+(* This function does not update the list of maybe empty implicit accounts to
+   be deleted at [Apply.finalize_block]. The reasons are the same as for the
    function [increase_balance_only_call_from_token]. *)
 let decrease_balance_only_call_from_token ctxt contract amount =
   update_balance ctxt contract Tez_repr.( -? ) amount
@@ -728,7 +729,7 @@ let spend_bond_only_call_from_token ctxt contract bond_id amount =
     match contract with
     | Implicit pkh ->
         (* Schedule the implicit account for potential de-allocation. *)
-        return @@ Raw_context.add_to_empty_implicit_accounts ctxt pkh
+        return @@ Raw_context.add_to_maybe_empty_implicit_accounts ctxt pkh
     | Originated _ -> return ctxt
   else Storage.Contract.Total_frozen_bonds.update ctxt contract new_total
 
@@ -744,7 +745,7 @@ let credit_bond_only_call_from_token ctxt contract bond_id amount =
         let ctxt =
           match contract with
           | Implicit pkh ->
-              Raw_context.remove_from_empty_implicit_accounts ctxt pkh
+              Raw_context.remove_from_maybe_empty_implicit_accounts ctxt pkh
           | Originated _ -> ctxt
         in
         Storage.Contract.Frozen_bonds.init (ctxt, contract) bond_id amount
