@@ -688,13 +688,13 @@ let update_balance ctxt contract f amount =
    is only invoked on delegates, and delegate accounts must not be deleted. The
    second reason is that once an account is a delegate, it remains a delegate
    forever. *)
-let increase_balance_only_call_from_token ctxt contract amount =
+let increase_delegate_balance_only_call_from_token ctxt contract amount =
   update_balance ctxt contract Tez_repr.( +? ) amount
 
 (* This function does not update the list of maybe empty implicit accounts to
    be deleted at [Apply.finalize_block]. The reasons are the same as for the
-   function [increase_balance_only_call_from_token]. *)
-let decrease_balance_only_call_from_token ctxt contract amount =
+   function [increase_delegate_balance_only_call_from_token]. *)
+let decrease_delegate_balance_only_call_from_token ctxt contract amount =
   update_balance ctxt contract Tez_repr.( -? ) amount
 
 let get_balance_and_frozen_bonds ctxt contract =

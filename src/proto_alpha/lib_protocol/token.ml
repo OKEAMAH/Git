@@ -131,7 +131,7 @@ let credit ctxt dest amount origin =
           >|=? fun ctxt -> (ctxt, Commitments bpkh)
       | `Delegate_balance delegate ->
           let contract = Contract_repr.Implicit delegate in
-          Contract_storage.increase_balance_only_call_from_token
+          Contract_storage.increase_delegate_balance_only_call_from_token
             ctxt
             contract
             amount
@@ -191,7 +191,7 @@ let spend ctxt src amount origin =
           >|=? fun ctxt -> (ctxt, Commitments bpkh)
       | `Delegate_balance delegate ->
           let contract = Contract_repr.Implicit delegate in
-          Contract_storage.decrease_balance_only_call_from_token
+          Contract_storage.decrease_delegate_balance_only_call_from_token
             ctxt
             contract
             amount

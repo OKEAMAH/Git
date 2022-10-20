@@ -209,14 +209,14 @@ val increase_paid_storage :
   amount_in_bytes:Z.t ->
   Raw_context.t tzresult Lwt.t
 
-(** Increases the balance of a contract. Calling this function directly may
+(** Increases the balance of a delegate. Calling this function directly may
     break important invariants. Consider calling [credit] instead. *)
-val increase_balance_only_call_from_token :
+val increase_delegate_balance_only_call_from_token :
   Raw_context.t -> Contract_repr.t -> Tez_repr.t -> Raw_context.t tzresult Lwt.t
 
-(** Decreases the balance of a contract. Calling this function directly may
+(** Decreases the balance of a delegate. Calling this function directly may
     break important invariants. Consider calling [spend] instead. *)
-val decrease_balance_only_call_from_token :
+val decrease_delegate_balance_only_call_from_token :
   Raw_context.t -> Contract_repr.t -> Tez_repr.t -> Raw_context.t tzresult Lwt.t
 
 (** [get_balance_and_frozen_bonds ctxt contract] returns the sum of the
