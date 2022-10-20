@@ -276,9 +276,10 @@ type back = {
   dal_endorsement_slot_accountability : Dal_endorsement_repr.Accountability.t;
   dal_committee : dal_committee;
   (* Set of empty implicit accounts. An account is in this set iff it is
-     allocated, has an empty balance, and has no frozen bonds. This set is
+     allocated, and has an empty balance or no frozen bonds. This set is
      cleared at [Apply.finalize_block], and all the accounts it contains are
-     deleted at that point if they are not delegates. *)
+     deleted at that point if they are not delegates, have zero balance, and
+     have no frozen bonds. *)
   empty_implicit_accounts : Signature.Public_key_hash.Set.t;
 }
 

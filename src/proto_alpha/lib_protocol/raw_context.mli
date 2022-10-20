@@ -474,8 +474,9 @@ module Dal : sig
 end
 
 (** [get_empty_implicit_accounts ctxt] returns the set of implicit accounts that
-    have zero balance and no frozen bonds. These accounts will be deleted at
-    [Apply.finalize_block] if they are not delegates. *)
+    have zero balance or no frozen bonds. These accounts will be deleted at
+    [Apply.finalize_block] if at that point they are not delegates, and have
+    neither balance nor frozen bonds. *)
 val get_empty_implicit_accounts : t -> Signature.Public_key_hash.Set.t
 
 (** [add_to_empty_implicit_accounts ctxt pkh] adds [pkh] to the set of empty

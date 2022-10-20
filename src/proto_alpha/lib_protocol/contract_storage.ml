@@ -626,11 +626,8 @@ let spend_only_call_from_token c contract amount =
   | Implicit pkh ->
       if Tez_repr.(new_balance <= Tez_repr.zero) then
         let* () = check_emptiable c contract in
-        (* Schedule the empty implicit account for potential de-allocation. *)
-        get_frozen_bonds c contract >>=? fun frozen_bonds ->
-        if Tez_repr.(frozen_bonds <= zero) then
-          return @@ Raw_context.add_to_empty_implicit_accounts c pkh
-        else return c
+        (* Schedule the implicit account for potential de-allocation. *)
+        return @@ Raw_context.add_to_empty_implicit_accounts c pkh
       else return c
   | Originated _ -> (* Never delete originated contracts *) return c
 
@@ -648,9 +645,8 @@ let credit_only_call_from_token c contract amount =
       Storage.Contract.Spendable_balance.update c contract balance >>=? fun c ->
       Stake_storage.add_contract_stake c contract amount >|=? fun c ->
       match contract with
-      | Implicit pkh when Tez_repr.(old_balance <= zero) ->
-          Raw_context.remove_from_empty_implicit_accounts c pkh
-      | Implicit _ | Originated _ -> c)
+      | Implicit pkh -> Raw_context.remove_from_empty_implicit_accounts c pkh
+      | Originated _ -> c)
 
 let init c =
   Storage.Contract.Global_counter.init c Manager_counter_repr.init >>=? fun c ->
@@ -731,10 +727,8 @@ let spend_bond_only_call_from_token ctxt contract bond_id amount =
     >>=? fun ctxt ->
     match contract with
     | Implicit pkh ->
-        get_balance ctxt contract >>=? fun balance ->
-        if Tez_repr.(balance <= zero) then
-          return @@ Raw_context.add_to_empty_implicit_accounts ctxt pkh
-        else return ctxt
+        (* Schedule the implicit account for potential de-allocation. *)
+        return @@ Raw_context.add_to_empty_implicit_accounts ctxt pkh
     | Originated _ -> return ctxt
   else Storage.Contract.Total_frozen_bonds.update ctxt contract new_total
 
@@ -772,24 +766,25 @@ let fold_on_bond_ids ctxt contract =
   Storage.Contract.fold_bond_ids (ctxt, contract)
 
 (** Indicate whether the given implicit contract should avoid deletion
-    when it is emptied. [contract] is assumed to have zero balance and
-    no frozen bonds. *)
+    when it is emptied. *)
 let should_keep_empty_implicit_contract ctxt contract =
   let open Lwt_tzresult_syntax in
-  (* full balance of contract is zero. *)
-  Contract_delegate_storage.find ctxt contract >>=? function
-  | Some _ -> (
-      (* keep iff the contract delegates to itself *)
-      let* delegate = Contract_delegate_storage.find ctxt contract in
-      match delegate with
-      | Some pkh' -> return Contract_repr.(contract = Implicit pkh')
-      | None -> return_false)
-  | None ->
-      (* Delete empty implicit contract. *)
-      return_false
+  let* balance_and_frozen_bonds = get_balance_and_frozen_bonds ctxt contract in
+  if Tez_repr.(balance_and_frozen_bonds <= zero) then
+    (* full balance of contract is zero. *)
+    Contract_delegate_storage.find ctxt contract >>=? function
+    | Some _ -> (
+        (* keep iff the contract delegates to itself *)
+        let* delegate = Contract_delegate_storage.find ctxt contract in
+        match delegate with
+        | Some pkh' -> return Contract_repr.(contract = Implicit pkh')
+        | None -> return_false)
+    | None ->
+        (* Delete empty implicit contract. *)
+        return_false
+  else return_true
 
-(* PRE : [pkh] must refer to an implicit allocated contract, with zero balance
-   and no frozen bonds. *)
+(* PRE : [pkh] must refer to an implicit allocated contract. *)
 let ensure_deallocated_if_empty ctxt pkh =
   let open Lwt_tzresult_syntax in
   let contract = Contract_repr.Implicit pkh in
