@@ -26,25 +26,30 @@
 
 open Alpha_context
 
+type token_from_nodes = {
+  token : Ticket_token.ex_token;
+  ty_node : Script.node;
+  contents_node : Script.node;
+}
+
 let parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt =
   Script.force_decode_in_context ~consume_deserialization_gas ctxt ty
   >>?= fun (ty, ctxt) ->
   Script.force_decode_in_context ~consume_deserialization_gas ctxt contents
   >>?= fun (contents, ctxt) ->
-  Script_ir_translator.parse_comparable_ty ctxt (Micheline.root ty)
+  let ty_node = Micheline.root ty and contents_node = Micheline.root contents in
+  Script_ir_translator.parse_comparable_ty ctxt ty_node
   >>?= fun (Ex_comparable_ty contents_type, ctxt) ->
-  Script_ir_translator.parse_comparable_data
-    ctxt
-    contents_type
-    (Micheline.root contents)
+  Script_ir_translator.parse_comparable_data ctxt contents_type contents_node
   >>=? fun (contents, ctxt) ->
-  return (ctxt, Ticket_token.Ex_token {ticketer; contents_type; contents})
+  let token = Ticket_token.Ex_token {ticketer; contents_type; contents} in
+  return (ctxt, {token; ty_node; contents_node})
 
 let parse_ticket_and_operation ~consume_deserialization_gas ~ticketer ~contents
     ~ty ~source ~destination ~entrypoint ~amount ctxt =
   parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt
   >>=? fun ( ctxt,
-             (Ticket_token.Ex_token {contents_type; contents; _} as
+             ({token = Ticket_token.Ex_token {contents_type; contents; _}; _} as
              ticket_token) ) ->
   Script_typed_ir.ticket_t Micheline.dummy_location contents_type
   >>?= fun ticket_ty ->
@@ -72,14 +77,6 @@ let parse_ticket_and_operation ~consume_deserialization_gas ~ticketer ~contents
   in
   return (ctxt, ticket_token, op)
 
-let make_withdraw_order ctxt tx_rollup ex_ticket claimer amount =
-  Ticket_balance_key.of_ex_token ctxt ~owner:(Tx_rollup tx_rollup) ex_ticket
-  >>=? fun (tx_rollup_ticket_hash, ctxt) ->
-  let withdrawal =
-    Tx_rollup_withdraw.{claimer; ticket_hash = tx_rollup_ticket_hash; amount}
-  in
-  return (ctxt, withdrawal)
-
 let transfer_ticket_with_hashes ctxt ~src_hash ~dst_hash (qty : Ticket_amount.t)
     =
   let qty = Script_int.(to_zint (qty :> n num)) in
@@ -92,9 +89,20 @@ let transfer_ticket_with_hashes ctxt ~src_hash ~dst_hash (qty : Ticket_amount.t)
     ~storage_diff:(Z.add src_storage_diff dst_storage_diff)
   >>=? fun (diff, ctxt) -> return (ctxt, diff)
 
-let transfer_ticket ctxt ~src ~dst ex_token qty =
-  Ticket_balance_key.of_ex_token ctxt ~owner:src ex_token
+let transfer_ticket ctxt ~src ~dst
+    {token = Ticket_token.Ex_token {ticketer; _}; ty_node; contents_node} qty =
+  Ticket_balance_key.make
+    ctxt
+    ~owner:src
+    ~ticketer
+    ~contents_type:ty_node
+    ~contents:contents_node
   >>=? fun (src_hash, ctxt) ->
-  Ticket_balance_key.of_ex_token ctxt ~owner:dst ex_token
+  Ticket_balance_key.make
+    ctxt
+    ~owner:dst
+    ~ticketer
+    ~contents_type:ty_node
+    ~contents:contents_node
   >>=? fun (dst_hash, ctxt) ->
   transfer_ticket_with_hashes ctxt ~src_hash ~dst_hash qty

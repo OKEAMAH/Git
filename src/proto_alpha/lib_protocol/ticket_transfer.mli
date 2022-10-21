@@ -29,6 +29,12 @@ open Alpha_context
 (** This module provides various helpers to manipulate tickets, that
     are used by, for example, the Transaction Rollups and ticket transfers. *)
 
+type token_from_nodes = private {
+  token : Ticket_token.ex_token;
+  ty_node : Script.node;
+  contents_node : Script.node;
+}
+
 (** [parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty
     ctxt] reconstructs a ticket from individual parts submitted as
     part of a layer-1 operation. *)
@@ -38,7 +44,7 @@ val parse_ticket :
   contents:Script.lazy_expr ->
   ty:Script.lazy_expr ->
   context ->
-  (context * Ticket_token.ex_token, error trace) result Lwt.t
+  (context * token_from_nodes, error trace) result Lwt.t
 
 (** Same as [parse_ticket], but in addition, build a transaction to
      let [source] transfers [amount] units of said ticket to
@@ -53,21 +59,9 @@ val parse_ticket_and_operation :
   entrypoint:Entrypoint.t ->
   amount:Script_typed_ir.ticket_amount ->
   context ->
-  (context * Ticket_token.ex_token * Script_typed_ir.packed_internal_operation)
+  (context * token_from_nodes * Script_typed_ir.packed_internal_operation)
   tzresult
   Lwt.t
-
-(** [make_withdraw_order ctxt tx_rollup ex_token claimer amount]
-    computes a withdraw order that specify that [claimer] is entitled
-    to get the ownership of [amount] units of [ex_token] which were
-    deposited to [tx_rollup]. *)
-val make_withdraw_order :
-  context ->
-  Tx_rollup.t ->
-  Ticket_token.ex_token ->
-  public_key_hash ->
-  Tx_rollup_l2_qty.t ->
-  (context * Tx_rollup_withdraw.order) tzresult Lwt.t
 
 (** [transfer_ticket_with_hashes ctxt ~src_hash ~dst_hash qty] updates
     the table of tickets moves [qty] units of a given ticket from a
@@ -100,6 +94,6 @@ val transfer_ticket :
   context ->
   src:Destination.t ->
   dst:Destination.t ->
-  Ticket_token.ex_token ->
+  token_from_nodes ->
   Ticket_amount.t ->
   (context * Z.t, error trace) result Lwt.t

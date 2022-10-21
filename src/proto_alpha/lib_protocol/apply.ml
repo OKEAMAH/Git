@@ -813,14 +813,20 @@ let apply_manager_operation :
             ~contents
             ~ty
             ctxt
-          >>=? fun (ctxt, ticket_token) ->
-          Ticket_transfer.make_withdraw_order
+          >>=? fun ( ctxt,
+                     Ticket_transfer.
+                       {ty_node; contents_node; token = ticket_token} ) ->
+          Ticket_balance_key.make
             ctxt
-            tx_rollup
-            ticket_token
-            claimer
-            amount
-          >>=? fun (ctxt, withdrawal) ->
+            ~owner:(Tx_rollup tx_rollup)
+            ~ticketer
+            ~contents_type:ty_node
+            ~contents:contents_node
+          >>=? fun (tx_rollup_ticket_hash, ctxt) ->
+          let withdrawal =
+            Tx_rollup_withdraw.
+              {claimer; ticket_hash = tx_rollup_ticket_hash; amount}
+          in
           return
             (withdrawal :: acc_withdraw, (withdrawal, ticket_token) :: acc, ctxt))
         ([], [], ctxt)
