@@ -5569,9 +5569,9 @@ module Withdraw = struct
         balance
   end
 
-  (** [test_forge_deposit_withdraw_deposit ()] check the following scenario :
+  (** [test_forge_deposit_withdraw_deposit ()] checks the following scenario:
       1. forges new tickets and stores it in contract's storage.
-      2. deposits theses tickets into a tx_rollup
+      2. deposits these tickets into a tx_rollup
       3. dispatches them to an account
       4. forges new tickets
       3. transfers the tickets from the account to the contract
@@ -5622,9 +5622,9 @@ module Withdraw = struct
     let* () = assert_tx_rollup_ticket_balance ~__LOC__ block (Some 10) in
     assert_account_ticket_balance ~__LOC__ block None
 
-  (** [test_forge_deposit_withdraw_implicit_transfer ()] check the following scenario :
-      1. forges new tickets and stores it in contract's storage.
-      2. deposits theses tickets into a tx_rollup
+  (** [test_forge_deposit_withdraw_implicit_transfer ()] checks the following scenario:
+      1. forges new tickets and stores them in contract's storage
+      2. deposits these tickets into a tx_rollup
       3. dispatches them to an account
       4. transfer the dispatched tickets to another implicit account *)
   let test_forge_deposit_withdraw_implicit_transfer () =
@@ -5733,7 +5733,7 @@ module Withdraw = struct
         `Quick
         test_forge_deposit_withdraw_deposit;
       Tztest.tztest
-        "Test deposit, followed by withdrawal, followed by transfer to one \
+        "Test deposit, followed by withdrawal, followed by transfer to an \
          implicit account"
         `Quick
         test_forge_deposit_withdraw_implicit_transfer;
