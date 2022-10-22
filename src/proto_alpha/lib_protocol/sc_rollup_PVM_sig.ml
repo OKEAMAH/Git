@@ -142,6 +142,35 @@ let input_encoding =
   in
   union [case_inbox_message; case_reveal_revelation]
 
+let pp_input fmt = function
+  | Inbox_message {inbox_level; message_counter; payload} ->
+      Format.fprintf
+        fmt
+        "inbox_message(level:%a, message_counter: %a, payload: %s)"
+        Raw_level_repr.pp
+        inbox_level
+        Z.pp_print
+        message_counter
+        (payload :> string)
+  | Reveal (Raw_data data) ->
+      Format.fprintf fmt "Reveal_raw_data(data: %s)" data
+  | Reveal (Metadata {address; origination_level}) ->
+      Format.fprintf
+        fmt
+        "Reveal_metadata(address: %a, level:%a)"
+        Sc_rollup_repr.pp
+        address
+        Raw_level_repr.pp
+        origination_level
+  | Reveal (Dal_page content_opt) ->
+      Format.fprintf
+        fmt
+        "Reveal_dal_page(content: %a)"
+        (Format.pp_print_option
+           ~none:(fun fmt () -> Format.fprintf fmt "<None>")
+           (fun fmt b -> Format.fprintf fmt "Some:<%s>" (Bytes.to_string b)))
+        content_opt
+
 (** [input_equal i1 i2] return whether [i1] and [i2] are equal. *)
 let inbox_message_equal a b =
   let {inbox_level; message_counter; payload} = a in

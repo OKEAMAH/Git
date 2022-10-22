@@ -3071,6 +3071,8 @@ module Sc_rollup : sig
 
   val input_request_equal : input_request -> input_request -> bool
 
+  val pp_input : Format.formatter -> input -> unit
+
   val pp_input_request : Format.formatter -> input_request -> unit
 
   module Inbox : sig
