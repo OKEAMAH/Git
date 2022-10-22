@@ -173,6 +173,146 @@ let activate state chain_id chain_db =
 
 let my_peer_id state = P2p.peer_id state.p2p
 
+module Hash = Operation_hash
+
+  module M = Stdlib.Hashtbl.Make (struct
+    type t = Hash.t
+
+    let equal = ( = )
+
+    let hash = Stdlib.Hashtbl.hash
+  end)
+
+
+  let table = M.create 1001
+
+module SS = Operation_hash.Set
+
+let already_seen = ref SS.empty
+
+let already_block_seen = ref SS.empty
+
+let total = ref SS.empty
+
+let block_total = ref SS.empty
+
+let gcb = ref 0
+
+let scb = ref 0
+
+let cb = ref 0
+
+let gch = ref 0
+
+let sch = ref 0
+
+let ch = ref 0
+
+let go = ref 0
+
+let so = ref 0
+
+let o = ref 0
+
+let gob = ref 0
+
+let sob = ref 0
+
+let ob = ref 0
+
+let gp = ref 0
+
+let sp = ref 0
+
+let p = ref 0
+
+let gbh = ref 0
+
+let sbh = ref 0
+
+let bh = ref 0
+
+let d = ref 0 
+
+let() =  on_reset (fun () ->
+    Format.eprintf "Ratio of operations seen in the mempool vs operations in the last block: %d/%d@." (SS.cardinal !already_block_seen) (SS.cardinal !block_total);
+    Format.eprintf "Ratio of operations requested several times vs operations seen in the mempool for the last block: %d/%d@." (SS.cardinal !already_seen) (SS.cardinal !total);
+    Format.eprintf "Readers: (R) deactivate: %d@." !d;
+    d := 0;            
+    Format.eprintf "Readers: (R) get current branch: %d@." !gcb;
+    gcb := 0;
+    Format.eprintf "Readers: (S) current branch: %d@." !scb;
+    scb := 0;    
+    Format.eprintf "Readers: (R) current branch: %d@." !cb;
+    cb := 0;
+    Format.eprintf "Readers: (R) get current head: %d@." !gch;
+    gch := 0;
+    Format.eprintf "Readers: (S) Current head: %d@." !sch;
+    sch := 0;        
+    Format.eprintf "Readers: (R) current head: %d@." !ch;
+    ch := 0;
+    Format.eprintf "Readers: (R) get operations: %d@." !go;
+    go := 0;
+    Format.eprintf "Readers: (S) operations: %d@." !so;
+    so := 0;    
+    Format.eprintf "Readers: (R) operation: %d@." !o;
+    o := 0;
+    Format.eprintf "Readers: (R) get operation for block: %d@." !gob;
+    gob := 0;
+    Format.eprintf "Readers: (S) operation for block: %d@." !sob;
+    sob := 0;    
+    Format.eprintf "Readers: (R) operation for block: %d@." !ob;
+    ob := 0;
+    Format.eprintf "Readers: (R) get protocol: %d@." !gp;
+    gp := 0;
+    Format.eprintf "Readers: (S) protocol: %d@." !sp;
+    sp := 0;    
+    Format.eprintf "Readers: (R) protocol: %d@." !p;
+    p := 0;
+    Format.eprintf "Readers: (R) get block headers: %d@." !gbh;
+    gbh := 0;
+    Format.eprintf "Readers: (S) block header: %d@." !sbh;
+    sbh := 0;    
+    Format.eprintf "Readers: (R) block header: %d@." !bh;
+    bh := 0;                                
+    already_seen := SS.empty;
+    already_block_seen := SS.empty;        
+    block_total := SS.empty;             
+    total := SS.empty)
+
+  let pp ~double _requested_peer key =
+    let _now = Ptime_clock.now () in
+    total := (Operation_hash.Set.add key !total);
+    if double then
+      block_total := (Operation_hash.Set.add key !block_total);
+    match M.find_opt table key with
+    | None ->
+        M.replace table key 1 
+        (* Format.eprintf
+         *   "%a RECV %a(%a): %d@."
+         *   (Ptime.pp_human ~frac_s:10 ())
+         *   now
+         *   Hash.pp
+         *   key
+         *   P2p_peer.Id.pp requested_peer
+         *   1 *)
+    | Some x ->
+      if x = 1 then (
+already_seen := (Operation_hash.Set.add key !already_seen);
+      );
+      if double then
+        already_block_seen := (Operation_hash.Set.add key !already_block_seen);        
+      M.replace table key (x + 1) 
+      (* if double then 
+       *   Format.eprintf
+       *     "%a RECV %a(%a): %d@."
+       *     (Ptime.pp_human ~frac_s:10 ())
+       *     now
+       *     Hash.pp
+       *     key
+       *     P2p_peer.Id.pp requested_peer          
+       *     (x + 1) *)
+
 let handle_msg state msg =
   let open Lwt_syntax in
   let open Message in
@@ -182,6 +322,7 @@ let handle_msg state msg =
   in
   match msg with
   | Get_current_branch chain_id ->
+    incr gcb;
       Peer_metadata.incr meta @@ Received_request Branch ;
       may_handle_global state chain_id @@ fun chain_db ->
       activate state chain_id chain_db ;
@@ -192,11 +333,13 @@ let handle_msg state msg =
       let* locator =
         Store.Chain.compute_locator chain_db.chain_store current_head seed
       in
+      incr scb;
       Peer_metadata.update_responses meta Branch
       @@ P2p.try_send state.p2p state.conn
       @@ Current_branch (chain_id, locator) ;
       Lwt.return_unit
   | Current_branch (chain_id, locator) ->
+    incr cb;
       may_handle state chain_id @@ fun chain_db ->
       let {Block_locator.head_hash; head_header; history} = locator in
       let* known_invalid =
@@ -221,11 +364,13 @@ let handle_msg state msg =
         Peer_metadata.incr meta @@ Received_advertisement Branch ;
         Lwt.return_unit)
   | Deactivate chain_id ->
+    incr d;
       may_handle state chain_id @@ fun chain_db ->
       deactivate state.gid chain_db ;
       Chain_id.Table.remove state.peer_active_chains chain_id ;
       Lwt.return_unit
   | Get_current_head chain_id ->
+    incr gch;
       may_handle state chain_id @@ fun chain_db ->
       Peer_metadata.incr meta @@ Received_request Head ;
       let {Connection_metadata.disable_mempool; _} =
@@ -237,12 +382,14 @@ let handle_msg state msg =
         if disable_mempool then Lwt.return Mempool.empty
         else Store.Chain.mempool chain_db.chain_store
       in
+      incr sch;
       (* TODO bound the sent mempool size *)
       Peer_metadata.update_responses meta Head
       @@ P2p.try_send state.p2p state.conn
       @@ Current_head (chain_id, head, mempool) ;
       Lwt.return_unit
   | Current_head (chain_id, header, mempool) ->
+    incr ch;
       may_handle state chain_id @@ fun chain_db ->
       let header_hash = Block_header.hash header in
       let* known_invalid =
@@ -273,6 +420,7 @@ let handle_msg state msg =
         Peer_metadata.incr meta @@ Received_advertisement Head ;
         Lwt.return_unit)
   | Get_block_headers hashes ->
+    incr gbh;    
       Peer_metadata.incr meta @@ Received_request Block_header ;
       List.iter_p
         (fun hash ->
@@ -282,12 +430,14 @@ let handle_msg state msg =
               Peer_metadata.incr meta @@ Unadvertised Block ;
               Lwt.return_unit
           | Some (_chain_id, header) ->
+            incr sbh;
               Peer_metadata.update_responses meta Block_header
               @@ P2p.try_send state.p2p state.conn
               @@ Block_header header ;
               Lwt.return_unit)
         hashes
   | Block_header block -> (
+      incr bh;
       let hash = Block_header.hash block in
       match find_pending_block_header state hash with
       | None ->
@@ -304,6 +454,7 @@ let handle_msg state msg =
           Peer_metadata.incr meta @@ Received_response Block_header ;
           Lwt.return_unit)
   | Get_operations hashes ->
+    incr go;               
       Peer_metadata.incr meta @@ Received_request Operations ;
       List.iter_p
         (fun hash ->
@@ -313,13 +464,16 @@ let handle_msg state msg =
               Peer_metadata.incr meta @@ Unadvertised Operations ;
               Lwt.return_unit
           | Some (_chain_id, op) ->
+            incr so;
               Peer_metadata.update_responses meta Operations
               @@ P2p.try_send state.p2p state.conn
               @@ Operation op ;
               Lwt.return_unit)
         hashes
   | Operation operation -> (
+      incr o;
       let hash = Operation.hash operation in
+      pp ~double:false state.gid hash;      
       match find_pending_operation state hash with
       | None ->
           Peer_metadata.incr meta Unexpected_response ;
@@ -335,6 +489,7 @@ let handle_msg state msg =
           Peer_metadata.incr meta @@ Received_response Operations ;
           Lwt.return_unit)
   | Get_protocols hashes ->
+    incr gp;
       Peer_metadata.incr meta @@ Received_request Protocols ;
       List.iter_p
         (fun hash ->
@@ -344,12 +499,14 @@ let handle_msg state msg =
               Peer_metadata.incr meta @@ Unadvertised Protocol ;
               Lwt.return_unit
           | Some p ->
+            incr sp;
               Peer_metadata.update_responses meta Protocols
               @@ P2p.try_send state.p2p state.conn
               @@ Protocol p ;
               Lwt.return_unit)
         hashes
   | Protocol protocol ->
+    incr p;
       let hash = Protocol.hash protocol in
       let* () =
         Distributed_db_requester.Raw_protocol.notify
@@ -361,20 +518,25 @@ let handle_msg state msg =
       Peer_metadata.incr meta @@ Received_response Protocols ;
       Lwt.return_unit
   | Get_operations_for_blocks blocks ->
+        incr gob;            
+    List.iter_p (fun (hash, ofs) ->
       Peer_metadata.incr meta @@ Received_request Operations_for_block ;
-      List.iter_p
-        (fun (hash, ofs) ->
           let* o = read_block state hash in
           match o with
           | None -> Lwt.return_unit
           | Some (_, block) ->
-              let ops, path = Store.Block.operations_path block ofs in
+            let ops, path = Store.Block.operations_path block ofs in
+            incr sob;            
               Peer_metadata.update_responses meta Operations_for_block
               @@ P2p.try_send state.p2p state.conn
               @@ Operations_for_block (hash, ofs, ops, path) ;
               Lwt.return_unit)
         blocks
   | Operations_for_block (block, ofs, ops, path) -> (
+          incr ob;                
+      List.iter (fun op ->
+          let hash = Operation.hash op in
+          pp ~double:true state.gid hash) ops;     
       match find_pending_operations state block ofs with
       | None ->
           Peer_metadata.incr meta Unexpected_response ;
@@ -470,6 +632,12 @@ let rec worker_loop state =
       state.unregister () ;
       Lwt.return_unit
 
+let igb = ref 0
+
+let _ = on_reset @@ fun () ->
+  Format.eprintf "Readers: (S) get current branch (init): %d@." !igb;
+  igb := 0
+
 let run ~register ~unregister p2p disk protocol_db active_chains gid conn =
   let canceler = Lwt_canceler.create () in
   let state =
@@ -492,6 +660,7 @@ let run ~register ~unregister p2p disk protocol_db active_chains gid conn =
         (fun () ->
           let meta = P2p.get_peer_metadata p2p gid in
           Peer_metadata.incr meta (Sent_request Branch) ;
+          incr igb;
           P2p.send p2p conn (Get_current_branch chain_id))
         (fun trace ->
           Format.eprintf

@@ -142,7 +142,7 @@ module type SCHEDULER = sig
 
   val pending_requests : t -> int
 
-  val create : param -> t
+  val create : (key -> bool) -> param -> t
 
   val shutdown : t -> unit Lwt.t
 end
@@ -197,6 +197,7 @@ end = struct
 
   type t = {
     param : Request.param;
+    memory_check : Hash.t -> bool;
     pending : status Table.t;
     queue : event Lwt_pipe.Unbounded.t;
     mutable events : event list Lwt.t;
@@ -218,7 +219,9 @@ end = struct
     | Notify_duplicate of P2p_peer.Id.t * key
     | Notify_unrequested of P2p_peer.Id.t * key
 
-  let request t p k = Lwt_pipe.Unbounded.push t.queue (Request (p, k))
+  let request t p k =
+    (* Format.eprintf "PUSH REQUEST: %a@." Hash.pp k;                               *)
+    Lwt_pipe.Unbounded.push t.queue (Request (p, k))
 
   let notify t p k =
     let open Lwt_syntax in
@@ -253,6 +256,7 @@ end = struct
     Lwt.return ()
 
   let compute_timeout state =
+    let open Lwt_syntax in    
     let next =
       Table.fold
         (fun _ {next_request; _} acc ->
@@ -263,29 +267,55 @@ end = struct
         None
     in
     match next with
-    | None -> fst @@ Lwt.task ()
+    | None ->
+      let (t,_) = Lwt.task () in
+      let* () = t in
+      Lwt.return (-2.)
     | Some next ->
-        let now = Time.System.now () in
-        let delay = Ptime.diff next now in
-        if Ptime.Span.compare delay Ptime.Span.zero <= 0 then Lwt.return_unit
-        else Systime_os.sleep delay
+      let now = Time.System.now () in
+      (* let shift = match Ptime.Span.of_float_s 0.001 with
+       *   | None -> assert false
+       *   | Some shift -> shift
+       * in
+       * let next = match Ptime.add_span next shift with
+       *   | None ->
+       *     assert false
+       *   | Some shift -> shift
+       * in *)
+       let delay = Ptime.(diff next now) in
+      (* Format.eprintf "TIMEOUT DELAY: %a@." Ptime.Span.pp delay;                         *)
+      if Ptime.Span.compare delay Ptime.Span.zero <= 0 then (
+        Lwt.return (-1.))
+      else (
+        (* Format.eprintf "TIMEOUT DELAY: %a@." Ptime.Span.pp delay; *)
+        let* () = Systime_os.sleep delay in
+        let delay = Ptime.Span.to_float_s delay in
+        Lwt.return (delay))
 
   let process_event state now =
     let open Lwt_syntax in
     function
     | Request (peer, key) -> (
+        (* Format.eprintf "REQUEST@."; *)
         let* () = Events.(emit registering_request) (key, peer) in
         match Table.find state.pending key with
         | Some data ->
-            let peers =
+            let data =
               match peer with
-              | None -> data.peers
-              | Some peer -> P2p_peer.Set.add peer data.peers
+              | None -> {peers = data.peers; next_request =  now ; delay = Request.initial_delay}
+              | Some peer ->
+                if P2p_peer.Set.mem peer data.peers then
+                  data
+                else
+                  let peers = P2p_peer.Set.add peer data.peers in
+                  (* This behavior may be too optimistic but the old
+                     one was too pessimistic. *)
+                  {data with peers}
             in
             Table.replace
               state.pending
               key
-              {peers; next_request = now; delay = Request.initial_delay} ;
+            data ;
             Events.(emit registering_request_replaced) (key, peer)
         | None ->
             let peers =
@@ -299,20 +329,61 @@ end = struct
               {peers; next_request = now; delay = Request.initial_delay} ;
             Events.(emit registering_request_added) (key, peer))
     | Notify (peer, key) ->
+      (* Format.eprintf "NOTIFY@.";       *)
         Table.remove state.pending key ;
         Events.(emit notify_received) (key, peer)
     | Notify_cancellation key ->
+      (* Format.eprintf "NOTIFY CANCELLATION@.";             *)
         Table.remove state.pending key ;
         Events.(emit notify_cancelled) key
     | Notify_invalid (peer, key) ->
+      (* Format.eprintf "NOTIFY INVALID@.";                   *)
         (* TODO: Punish peer *)
         Events.(emit notify_invalid) (key, peer)
     | Notify_unrequested (peer, key) ->
+      (* Format.eprintf "NOTIFY UNREQUESTED@.";                           *)
         (* TODO: Punish peer *)
         Events.(emit notify_unrequested) (key, peer)
     | Notify_duplicate (peer, key) ->
+      (* Format.eprintf "NOTIFY DUPLICATE@.";                                 *)
         (* TODO: Punish peer *)
         Events.(emit notify_duplicate) (key, peer)
+
+  module M = Stdlib.Hashtbl.Make (struct
+    type t = Hash.t
+
+    let equal = ( = )
+
+    let hash = Stdlib.Hashtbl.hash
+  end)
+
+  let table = M.create 1001
+
+  let _pp requested_peer pendings key =
+    let now = Ptime_clock.now () in
+    match M.find_opt table key with
+    | None ->
+        M.replace table key 1 ;
+        Format.eprintf
+          "%a %a(%a): %d (%d)@."
+          (Ptime.pp_human ~frac_s:10 ())
+          now
+          Hash.pp
+          key
+          P2p_peer.Id.pp requested_peer
+          1
+          (Table.length pendings)
+    | Some x ->
+        M.replace table key (x + 1) ;
+        Format.eprintf
+          "%a %a(%a): %d (%d)@."
+          (Ptime.pp_human ~frac_s:10 ())
+          now
+          Hash.pp
+          key
+          P2p_peer.Id.pp requested_peer          
+          (x + 1)
+          (Table.length pendings)
 
   let worker_loop state =
     let open Lwt_syntax in
@@ -324,10 +395,16 @@ end = struct
           [
             (let* _ = state.events in
              Lwt.return_unit);
-            timeout;
+            (let* _ = timeout in Lwt.return_unit);
             shutdown;
           ]
       in
+      (* Format.eprintf "%s E:%b T:%s S:%b@." Hash.name            (Lwt.state (let* _ = state.events in
+       *                                                                       Lwt.return_unit) <> Lwt.Sleep) (
+       *   match Lwt.state timeout with
+       *   | Sleep -> "sleep"
+       *   | Fail _ -> "fail"
+       *   | Return d -> string_of_float d) (Lwt.state shutdown <> Lwt.Sleep) ; *)
       if Lwt.state shutdown <> Lwt.Sleep then Events.(emit terminated) ()
       else if Lwt.state state.events <> Lwt.Sleep then (
         let now = Time.System.now () in
@@ -342,8 +419,13 @@ end = struct
         let requests =
           Table.fold
             (fun key {peers; next_request; delay} acc ->
+               (* Format.eprintf "SUPPOSED: %a@." (Ptime.pp_human ~frac_s:100 ()) next_request; *)
+               if state.memory_check key then (
+                 Table.remove state.pending key; acc
+               )
+               else               
               if Ptime.is_later next_request ~than:now then acc
-              else
+              else                   
                 let remaining_peers = P2p_peer.Set.inter peers active_peers in
                 if
                   P2p_peer.Set.is_empty remaining_peers
@@ -361,6 +443,7 @@ end = struct
                   let next_request =
                     Option.value ~default:Ptime.max (Ptime.add_span now delay)
                   in
+                  (* Format.eprintf "NEXT: %a@." (Ptime.pp_human ~frac_s:100 ()) next_request; *)
                   let next =
                     {
                       peers = remaining_peers;
@@ -368,6 +451,7 @@ end = struct
                       delay = Time.System.Span.multiply_exn 1.5 delay;
                     }
                   in
+                  (* pp requested_peer state.pending key ; *)
                   Table.replace state.pending key next ;
                   let requests =
                     key
@@ -379,7 +463,12 @@ end = struct
             state.pending
             P2p_peer.Map.empty
         in
-        P2p_peer.Map.iter (Request.send state.param) requests ;
+        P2p_peer.Map.iter (fun id keys ->
+            let keys =            List.filter (fun key ->
+                let b = state.memory_check key in
+                if b then Format.eprintf "HIT2@.";                  
+                b= false) keys  in
+          Request.send state.param id keys ) requests ;
         let* () =
           P2p_peer.Map.iter_s
             (fun peer request ->
@@ -392,10 +481,11 @@ end = struct
     in
     loop state
 
-  let create param =
+  let create memory_check param =
     let state =
       {
         param;
+        memory_check;
         queue = Lwt_pipe.Unbounded.create ();
         pending = Table.create ~entry_type:"pending_requests" ~random:true 17;
         events = Lwt.return_nil;
@@ -578,9 +668,11 @@ module Make
     match Probe.probe k param v with
     | None -> Scheduler.notify_invalid s.scheduler p k
     | Some v ->
-        let* () = Scheduler.notify s.scheduler p k in
-        Memory_table.replace s.memory k (Found v) ;
-        Lwt.wakeup_later w (Ok v) ;
+        Memory_table.replace s.memory k (Found v) ;      
+      let* () = Scheduler.notify s.scheduler p k in
+      (* Format.eprintf "FOUND@."; *)
+      Lwt.wakeup_later w (Ok v) ;
+      (* Format.eprintf "AFTER LATER@.";       *)
         Option.iter
           (fun input -> Lwt_watcher.notify input (k, v))
           s.global_input ;
@@ -639,8 +731,13 @@ module Make
   let watch s = Lwt_watcher.create_stream s.input
 
   let create ?random_table:random ?global_input request_param disk =
-    let scheduler = Scheduler.create request_param in
     let memory = Memory_table.create ~entry_type:"entries" ?random 17 in
+    let memory_check key =
+      match Memory_table.find memory key with
+      | Some (Found _)  -> true
+      | None | Some (Pending _) -> false
+    in
+    let scheduler = Scheduler.create memory_check request_param in
     let input = Lwt_watcher.create_input () in
     {scheduler; disk; memory; input; global_input}
 

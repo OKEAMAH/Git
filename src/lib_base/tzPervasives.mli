@@ -169,3 +169,7 @@ module Empty : sig
       ]} *)
   val absurd : t -> 'a
 end
+
+val on_reset : (unit -> unit) -> unit
+
+val reset : unit -> unit

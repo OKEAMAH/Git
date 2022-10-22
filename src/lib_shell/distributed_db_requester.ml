@@ -80,19 +80,44 @@ module Make_raw
 
     let initial_delay = Request_message.initial_delay
 
+
+    let gcb = ref 0
+    let gch = ref 0
+    let gbh = ref 0
+    let go = ref 0
+    let gp = ref 0
+    let gob = ref 0
+
+    let fincr x = x := !x + 1
+
+    let _ =
+      on_reset @@ fun () ->
+      Format.eprintf "Requester: (S) get current branch: %d@." !gcb;
+      gcb := 0;
+      Format.eprintf "Requester: (S) get current head: %d@." !gch;
+      gch := 0;
+      Format.eprintf "Requester: (S) get bloc headers: %d@." !gbh;
+      gbh := 0;
+      Format.eprintf "Requester: (S) get operations: %d@." !go;
+      go := 0;
+      Format.eprintf "Requester: (S) get protocols: %d@." !gp;
+      gp := 0;
+      Format.eprintf "Requester: (S) get operations for blocks: %d@." !gob;
+      gob := 0
+    
     let rec send state gid keys =
       let first_keys, keys = List.split_n Request_message.max_length keys in
       let msg = Request_message.forge state.data first_keys in
       state.send gid msg ;
       let open Peer_metadata in
-      let (req : requests_kind) =
+      let (req : requests_kind) =        
         match msg with
-        | Get_current_branch _ -> Branch
-        | Get_current_head _ -> Head
-        | Get_block_headers _ -> Block_header
-        | Get_operations _ -> Operations
-        | Get_protocols _ -> Protocols
-        | Get_operations_for_blocks _ -> Operations_for_block
+        | Get_current_branch _ -> fincr gcb; Branch
+        | Get_current_head _ -> fincr gch; Head
+        | Get_block_headers _ -> fincr gbh; Block_header
+        | Get_operations _ -> fincr go; Operations
+        | Get_protocols _ -> fincr gp; Protocols
+        | Get_operations_for_blocks _ -> fincr gob; Operations_for_block
         | _ -> Other
       in
       let meta = P2p.get_peer_metadata state.p2p gid in
@@ -185,7 +210,7 @@ module Raw_operation =
 
       let max_length = 10
 
-      let initial_delay = Time.System.Span.of_seconds_exn 0.5
+      let initial_delay = Time.System.Span.of_seconds_exn 1.
 
       let forge () keys = Message.Get_operations keys
     end)

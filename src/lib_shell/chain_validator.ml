@@ -641,6 +641,7 @@ let on_completion (type a b) w (req : (a, b) Request.t) (update : a)
     nv.parameters.metrics.worker_counters.worker_completion_count ;
   match req with
   | Request.Validated {block; _} -> (
+      reset ();
       let level = Store.Block.level block in
       let () =
         Shell_metrics.Worker.update_timestamps

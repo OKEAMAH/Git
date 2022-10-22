@@ -38,7 +38,7 @@ let default_limits =
   {
     operation_timeout = Time.System.Span.of_seconds_exn 10.;
     max_refused_operations = 1000;
-    operations_batch_size = 50;
+    operations_batch_size = 200;
     disable_precheck = false;
   }
 

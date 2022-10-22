@@ -97,3 +97,13 @@ module Empty = struct
 
   let absurd : t -> 'a = function _ -> .
 end
+
+let cc = ref []
+
+let on_reset f =
+ cc := f :: !cc
+
+let reset () =  
+  List.iter (fun f ->
+      f ()) !cc
+  

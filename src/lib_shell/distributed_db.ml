@@ -101,12 +101,29 @@ let active_peer_ids p2p () =
     P2p_peer.Set.empty
     (P2p.connections p2p)
 
+
+let gr = ref 0
+
+let oops = ref 0 
+
+let active_peers = ref 0
+
+let () =
+  on_reset @@ fun () ->
+  Format.eprintf "Active connections: %d@." !active_peers;
+  Format.eprintf "Number of send messages by the requester for this block period: %d@." !gr;
+  gr := 0;
+  Format.eprintf "Number of send messages failed (peer is disconnected): %d@." !oops
+
+
 let raw_try_send p2p peer_id msg =
   match P2p.find_connection_by_peer_id p2p peer_id with
-  | None -> ()
-  | Some conn -> ignore (P2p.try_send p2p conn msg : bool)
+  | None -> incr oops; ()
+  | Some conn ->
+    incr gr;
+    ignore (P2p.try_send p2p conn msg : bool)
 
-let create disk p2p =
+let create disk p2p =  
   let global_request =
     Distributed_db_requester.
       {p2p; data = (); active = active_peer_ids p2p; send = raw_try_send p2p}
@@ -123,6 +140,7 @@ let activate
     ({p2p; active_chains; protocol_db; disk; p2p_readers; _} as global_db)
     chain_store callback =
   let run_p2p_reader gid =
+    active_peers := P2p_peer.Table.length p2p_readers;
     let register p2p_reader = P2p_peer.Table.add p2p_readers gid p2p_reader in
     let unregister () = P2p_peer.Table.remove p2p_readers gid in
     P2p_reader.run ~register ~unregister p2p disk protocol_db active_chains gid
@@ -402,6 +420,14 @@ module Protocol = struct
            and type param := unit)
 end
 
+
+type counter =
+  {
+    mutable single : int;
+    mutable broadcast :int;
+  }
+
+
 let broadcast chain_db msg =
   P2p_peer.Table.iter
     (fun _peer_id conn -> ignore (P2p.try_send chain_db.global_db.p2p conn msg))
@@ -414,12 +440,33 @@ let try_send chain_db peer_id msg =
   | None -> ()
   | Some conn -> ignore (P2p.try_send chain_db.global_db.p2p conn msg : bool)
 
-let send chain_db ?peer msg =
+let send cpt chain_db ?peer msg =
   match peer with
-  | Some peer -> try_send chain_db peer msg
-  | None -> broadcast chain_db msg
+  | Some peer ->
+    cpt.single <- cpt.single + 1;
+    try_send chain_db peer msg
+  | None ->
+    cpt.broadcast <- cpt.broadcast + 1;    
+    broadcast chain_db msg
+
+
 
 module Request = struct
+  let current_head = {single = 0; broadcast = 0}
+
+  let current_branch = {single = 0; broadcast = 0}  
+
+  let () =
+    on_reset @@ fun () ->
+    Format.eprintf "DDB Request: (S) Get current head (single): %d@." current_head.single;    
+    Format.eprintf "DDB Request: (S) Get current head (broadcast): %d@." current_head.broadcast;
+    Format.eprintf "DDB Request: (S) Get current branch (single): %d@." current_branch.single;    
+    Format.eprintf "DDB Request: (S) Get current branch (broadcast): %d@." current_branch.broadcast;    
+    current_head.single <- 0;
+    current_head.broadcast <- 0;
+    current_branch.single <- 0;
+    current_branch.broadcast <- 0      
+  
   let current_head chain_db ?peer () =
     let chain_id = Store.Chain.chain_id chain_db.reader_chain_db.chain_store in
     (match peer with
@@ -427,7 +474,7 @@ module Request = struct
         let meta = P2p.get_peer_metadata chain_db.global_db.p2p peer in
         Peer_metadata.incr meta (Sent_request Head)
     | None -> ()) ;
-    send chain_db ?peer @@ Get_current_head chain_id
+    send current_head chain_db ?peer @@ Get_current_head chain_id
 
   let current_branch chain_db ?peer () =
     let chain_id = Store.Chain.chain_id chain_db.reader_chain_db.chain_store in
@@ -436,16 +483,32 @@ module Request = struct
         let meta = P2p.get_peer_metadata chain_db.global_db.p2p peer in
         Peer_metadata.incr meta (Sent_request Head)
     | None -> ()) ;
-    send chain_db ?peer @@ Get_current_branch chain_id
+    send current_branch chain_db ?peer @@ Get_current_branch chain_id
 end
 
 module Advertise = struct
+  let current_head = {single = 0; broadcast = 0}
+  let current_head_prechecked = {single = 0; broadcast = 0}                     
+  let current_branch = {single = 0; broadcast = 0}
+
+  let () =
+    on_reset @@ fun () ->
+    Format.eprintf "DDB Advertiser: (S) current head (single): %d@." current_head.single;    
+    Format.eprintf "DDB Advertiser: (S) current head (broadcast): %d@." current_head.broadcast;
+    Format.eprintf "DDB Advertiser: (S) current head prechecked (broadcast): %d@." current_head_prechecked.broadcast;    
+    Format.eprintf "DDB Advertiser: (S) current branch (broadcast): %d@." current_branch.broadcast;    
+    current_head.single <- 0;
+    current_head.broadcast <- 0;
+    current_head_prechecked.broadcast <- 0;    
+    current_branch.broadcast <- 0
+
+  
   let current_head chain_db ?(mempool = Mempool.empty) head =
     let chain_id = Store.Chain.chain_id chain_db.reader_chain_db.chain_store in
     let msg_mempool =
       Message.Current_head (chain_id, Store.Block.header head, mempool)
     in
-    if mempool = Mempool.empty then send chain_db msg_mempool
+    if mempool = Mempool.empty then send current_head chain_db msg_mempool
     else
       let msg_disable_mempool =
         Message.Current_head (chain_id, Store.Block.header head, Mempool.empty)
@@ -459,6 +522,7 @@ module Advertise = struct
         in
         ignore @@ P2p.try_send chain_db.global_db.p2p conn msg
       in
+      current_head.broadcast <- current_head.broadcast + 1;                    
       P2p_peer.Table.iter
         (fun _receiver_id conn -> send_mempool conn)
         chain_db.reader_chain_db.active_connections
@@ -476,6 +540,7 @@ module Advertise = struct
     in
     let chain_id = Store.Chain.chain_id chain_db.reader_chain_db.chain_store in
     let msg = Message.Current_head (chain_id, header, mempool) in
+    current_head_prechecked.broadcast <- current_head_prechecked.broadcast + 1;
     P2p_peer.Table.iter
       (fun _ conn ->
         if acceptable_version conn then ignore (P2p.try_send p2p conn msg)
@@ -488,6 +553,7 @@ module Advertise = struct
     let chain_store = chain_store chain_db in
     let sender_id = my_peer_id chain_db in
     let* current_head = Store.Chain.current_head chain_store in
+    current_branch.broadcast <- 1;    
     P2p_peer.Table.iter_p
       (fun receiver_id conn ->
         let seed = {Block_locator.receiver_id; sender_id} in
