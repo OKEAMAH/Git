@@ -1005,24 +1005,6 @@ module Arith_test_pvm = struct
     return (state, tick, our_states)
 end
 
-(** Construct the inbox for the protocol side. *)
-let construct_inbox_proto block rollup levels_and_inputs contract =
-  let open Lwt_result_syntax in
-  List.fold_left_es
-    (fun block (level, payloads) ->
-      let*? current_level = Context.get_level (B block) in
-      let diff_with_level =
-        Raw_level.(diff (of_int32_exn (Int32.of_int level)) current_level)
-        |> Int32.to_int
-      in
-      let* block = Block.bake_n (diff_with_level - 1) block in
-      let* operation_add_message =
-        Op.sc_rollup_add_messages (B block) contract rollup payloads
-      in
-      Block.bake ~operation:operation_add_message block)
-    block
-    levels_and_inputs
-
 (** Kind of strategy a player can play
 
     The cheaters will have their own version of inputs. This way, they
@@ -1044,6 +1026,24 @@ let pp_strategy fmt = function
   | Lazy -> Format.pp_print_string fmt "Lazy"
   | Eager -> Format.pp_print_string fmt "Eager"
   | Keen -> Format.pp_print_string fmt "Keen"
+
+(** Construct the inbox for the protocol side. *)
+let construct_inbox_proto block rollup levels_and_inputs contract =
+  let open Lwt_result_syntax in
+  List.fold_left_es
+    (fun block (level, payloads) ->
+      let*? current_level = Context.get_level (B block) in
+      let diff_with_level =
+        Raw_level.(diff (of_int32_exn (Int32.of_int level)) current_level)
+        |> Int32.to_int
+      in
+      let* block = Block.bake_n (diff_with_level - 1) block in
+      let* operation_add_message =
+        Op.sc_rollup_add_messages (B block) contract rollup payloads
+      in
+      Block.bake ~operation:operation_add_message block)
+    block
+    levels_and_inputs
 
 type player = {
   pkh : Signature.Public_key_hash.t;
