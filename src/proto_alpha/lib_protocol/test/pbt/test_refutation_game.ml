@@ -1027,23 +1027,30 @@ let pp_strategy fmt = function
   | Eager -> Format.pp_print_string fmt "Eager"
   | Keen -> Format.pp_print_string fmt "Keen"
 
+(** The main data source can be custumised during tests *)
+type data_source = Inbox  (** Rollup data are passed through the inbox. *)
+
+let data_source_to_string = function Inbox -> "Inbox"
+
 (** Construct the inbox for the protocol side. *)
-let construct_inbox_proto block rollup levels_and_inputs contract =
+let construct_inbox_proto ~data_source block rollup levels_and_inputs contract =
   let open Lwt_result_syntax in
-  List.fold_left_es
-    (fun block (level, payloads) ->
-      let*? current_level = Context.get_level (B block) in
-      let diff_with_level =
-        Raw_level.(diff (of_int32_exn (Int32.of_int level)) current_level)
-        |> Int32.to_int
-      in
-      let* block = Block.bake_n (diff_with_level - 1) block in
-      let* operation_add_message =
-        Op.sc_rollup_add_messages (B block) contract rollup payloads
-      in
-      Block.bake ~operation:operation_add_message block)
-    block
-    levels_and_inputs
+  match data_source with
+  | Inbox ->
+      List.fold_left_es
+        (fun block (level, payloads) ->
+          let*? current_level = Context.get_level (B block) in
+          let diff_with_level =
+            Raw_level.(diff (of_int32_exn (Int32.of_int level)) current_level)
+            |> Int32.to_int
+          in
+          let* block = Block.bake_n (diff_with_level - 1) block in
+          let* operation_add_message =
+            Op.sc_rollup_add_messages (B block) contract rollup payloads
+          in
+          Block.bake ~operation:operation_add_message block)
+        block
+        levels_and_inputs
 
 type player = {
   pkh : Signature.Public_key_hash.t;
@@ -1119,6 +1126,61 @@ let pp_player_client ppf
     Sc_rollup.Metadata.pp
     metadata
 
+(** This function alters inbox message depending on the chosen [strategy] and
+    on wheter [data_source]'s value is [Inbox]. *)
+let alter_inbox_messages ~data_source strategy ?level_min ?level_max
+    levels_and_inputs =
+  let open QCheck2.Gen in
+  match data_source with
+  | Inbox -> (
+      match strategy with
+      | Perfect ->
+          (* The perfect player does not lie, evaluates correctly the inputs. *)
+          return levels_and_inputs
+      | Random ->
+          (* Random player generates its own list of inputs. *)
+          gen_arith_pvm_inputs_for_levels ?level_min ?level_max ()
+      | Lazy ->
+          (* Lazy player removes inputs from [levels_and_inputs]. *)
+          let n = List.length levels_and_inputs in
+          let* remove_k = 1 -- n in
+          List.take_n (n - remove_k) levels_and_inputs |> return
+      | Eager ->
+          (* Eager player executes correctly the inbox until a certain point. *)
+          let nb_of_input =
+            List.fold_left
+              (fun acc (_level, inputs) -> acc + List.length inputs)
+              0
+              levels_and_inputs
+          in
+          let* corrupt_at_k = 0 -- (nb_of_input - 1) in
+          let new_input = "42 7 +" in
+          (* Once an input is corrupted, everything after will be corrupted
+             as well. *)
+          let idx = ref (-1) in
+          List.map
+            (fun (level, inputs) ->
+              ( level,
+                List.map
+                  (fun input ->
+                    incr idx ;
+                    if !idx = corrupt_at_k then new_input else input)
+                  inputs ))
+            levels_and_inputs
+          |> return
+      | Keen ->
+          (* Keen player will add more messages. *)
+          let* new_levels_and_inputs =
+            gen_arith_pvm_inputs_for_levels ?level_min ?level_max ()
+          in
+          let new_levels_and_inputs =
+            new_levels_and_inputs @ levels_and_inputs
+          in
+          List.sort_uniq
+            (fun (l, _) (l', _) -> Compare.Int.compare l l')
+            new_levels_and_inputs
+          |> return)
+
 module Player_client = struct
   (** Transform inputs to payloads. *)
   let levels_and_payloads levels_and_inputs =
@@ -1172,7 +1234,7 @@ module Player_client = struct
   (** Generate [our_states] for [levels_and_inputs] based on the strategy.
       It needs [level_min] and [level_max] in case it will need to generate
       new inputs. *)
-  let gen_our_states ~metadata ctxt strategy ?level_min ?level_max
+  let gen_our_states ~data_source ~metadata ctxt strategy ?level_min ?level_max
       levels_and_inputs =
     let open QCheck2.Gen in
     let eval_inputs levels_and_inputs =
@@ -1184,76 +1246,27 @@ module Player_client = struct
       in
       Lwt.return @@ WithExceptions.Result.get_ok ~loc:__LOC__ r
     in
-    match strategy with
-    | Perfect ->
-        (* The perfect player does not lie, evaluates correctly the inputs. *)
-        let _state, tick, our_states = eval_inputs levels_and_inputs in
-        return (tick, our_states, levels_and_inputs)
-    | Random ->
-        (* Random player generates its own list of inputs. *)
-        let* new_levels_and_inputs =
-          gen_arith_pvm_inputs_for_levels ?level_min ?level_max ()
-        in
-        let _state, tick, our_states = eval_inputs new_levels_and_inputs in
-        return (tick, our_states, new_levels_and_inputs)
-    | Lazy ->
-        (* Lazy player removes inputs from [levels_and_inputs]. *)
-        let n = List.length levels_and_inputs in
-        let* remove_k = 1 -- n in
-        let new_levels_and_inputs =
-          List.take_n (n - remove_k) levels_and_inputs
-        in
-        let _state, tick, our_states = eval_inputs new_levels_and_inputs in
-        return (tick, our_states, new_levels_and_inputs)
-    | Eager ->
-        (* Eager player executes correctly the inbox until a certain point. *)
-        let nb_of_input =
-          List.fold_left
-            (fun acc (_level, inputs) -> acc + List.length inputs)
-            0
-            levels_and_inputs
-        in
-        let* corrupt_at_k = 0 -- (nb_of_input - 1) in
-        let new_input = "42 7 +" in
-        (* Once an input is corrupted, everything after will be corrupted
-           as well. *)
-        let new_levels_and_inputs =
-          let idx = ref (-1) in
-          List.map
-            (fun (level, inputs) ->
-              ( level,
-                List.map
-                  (fun input ->
-                    incr idx ;
-                    if !idx = corrupt_at_k then new_input else input)
-                  inputs ))
-            levels_and_inputs
-        in
-        let _state, tick, our_states = eval_inputs new_levels_and_inputs in
-        return (tick, our_states, new_levels_and_inputs)
-    | Keen ->
-        (* Keen player will add more messages. *)
-        let* new_levels_and_inputs =
-          gen_arith_pvm_inputs_for_levels ?level_min ?level_max ()
-        in
-        let new_levels_and_inputs = new_levels_and_inputs @ levels_and_inputs in
-        let new_levels_and_inputs =
-          List.sort_uniq
-            (fun (l, _) (l', _) -> Compare.Int.compare l l')
-            new_levels_and_inputs
-        in
-        let _state, tick, our_states = eval_inputs new_levels_and_inputs in
-        return (tick, our_states, new_levels_and_inputs)
+    let* levels_and_inputs =
+      alter_inbox_messages
+        ~data_source
+        strategy
+        ?level_min
+        ?level_max
+        levels_and_inputs
+    in
+    let _state, tick, our_states = eval_inputs levels_and_inputs in
+    return (tick, our_states, levels_and_inputs)
 
   (** [gen ~rollup ~level_min ~level_max player levels_and_inputs] generates
       a {!player_client} based on {!player.strategy}. *)
-  let gen ~rollup ~origination_level ~level_min ~level_max player
+  let gen ~data_source ~rollup ~origination_level ~level_min ~level_max player
       levels_and_inputs =
     let open QCheck2.Gen in
     let ctxt = empty_memory_ctxt "foo" in
     let metadata = Sc_rollup.Metadata.{address = rollup; origination_level} in
     let* tick, our_states, levels_and_inputs =
       gen_our_states
+        ~data_source
         ~metadata
         ctxt
         player.strategy
@@ -1330,8 +1343,9 @@ let build_proof ~player_client start_tick (game : Game.t) =
       ~fuel
       (Arith_test_pvm.init_context ())
       player_client.levels_and_inputs
+    |> lift
   in
-  let state, _, _ = WithExceptions.Result.get_ok ~loc:__LOC__ r in
+  let* state, _, _ = Assert.get_ok ~__LOC__ r in
   let module P = struct
     include Arith_test_pvm
 
@@ -1365,8 +1379,10 @@ let build_proof ~player_client start_tick (game : Game.t) =
         Default_parameters.constants_test.dal.endorsement_lag
     end
   end in
-  let*! proof = Sc_rollup.Proof.produce ~metadata (module P) game.inbox_level in
-  return (WithExceptions.Result.get_ok ~loc:__LOC__ proof)
+  let*! proof =
+    Sc_rollup.Proof.produce ~metadata (module P) game.inbox_level |> lift
+  in
+  Assert.get_ok ~__LOC__ proof
 
 (** [next_move ~number_of_sections ~player_client game] produces
     the next move in the refutation game.
@@ -1480,7 +1496,7 @@ let make_players ~p1_strategy ~contract1 ~p2_strategy ~contract2 =
     It generates inputs for the rollup, and creates the players' interpretation
     of these inputs in a {!player_client} for [p1_strategy] and [p2_strategy].
 *)
-let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
+let gen_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
   let open QCheck2.Gen in
   (* If there is no good player, we do not care about the result. *)
   assert (p1_strategy = Perfect || p2_strategy = Perfect) ;
@@ -1510,6 +1526,7 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
   in
   let* p1_client =
     Player_client.gen
+      ~data_source
       ~origination_level:genesis_info.level
       ~level_min
       ~level_max
@@ -1519,6 +1536,7 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
   in
   let* p2_client =
     Player_client.gen
+      ~data_source
       ~origination_level:genesis_info.level
       ~level_min
       ~level_max
@@ -1545,10 +1563,12 @@ let gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
     inputs_and_levels] prepares a context where [p1_client] and [p2_client]
     are in conflict for one commitment.
     It creates the protocol inbox using [inputs_and_levels]. *)
-let prepare_game block rollup lcc commitment_level p1_client p2_client contract
-    levels_and_inputs =
+let prepare_game ~data_source block rollup lcc commitment_level p1_client
+    p2_client contract levels_and_inputs =
   let open Lwt_result_syntax in
-  let* block = construct_inbox_proto block rollup levels_and_inputs contract in
+  let* block =
+    construct_inbox_proto ~data_source block rollup levels_and_inputs contract
+  in
   let* operation_publish_commitment_p1 =
     operation_publish_commitment (B block) rollup lcc commitment_level p1_client
   in
@@ -1563,7 +1583,7 @@ let prepare_game block rollup lcc commitment_level p1_client p2_client contract
 (** Create a test of [p1_strategy] against [p2_strategy]. One of them
     must be a {!Perfect} player, otherwise, we do not care about which
     cheater wins. *)
-let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
+let test_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
   let name =
     Format.asprintf
       "%a against %a"
@@ -1617,7 +1637,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
         levels_and_inputs)
     ~count:200
     ~name
-    ~gen:(gen_game ?nonempty_inputs ~p1_strategy ~p2_strategy ())
+    ~gen:(gen_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy ())
     (fun ( block,
            rollup,
            commitment_level,
@@ -1641,6 +1661,7 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
               p2_head)) ;
       let* block =
         prepare_game
+          ~data_source
           block
           rollup
           lcc
@@ -1698,8 +1719,8 @@ let test_game ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       | Defender_wins -> return (defender.player.strategy = Perfect)
       | Refuter_wins -> return (refuter.player.strategy = Perfect))
 
-let test_perfect_against_random =
-  test_game ~p1_strategy:Perfect ~p2_strategy:Random ()
+let test_perfect_against_random ~data_source =
+  test_game ~p1_strategy:Perfect ~p2_strategy:Random ~data_source ()
 
 let test_random_against_perfect =
   test_game ~p1_strategy:Random ~p2_strategy:Perfect ()
@@ -1722,22 +1743,23 @@ let test_perfect_against_keen =
 let test_keen_against_perfect =
   test_game ~p1_strategy:Keen ~p2_strategy:Perfect ()
 
-let tests =
-  ( "Refutation",
+let mk_tests data_source =
+  let title = "Refutation - " ^ data_source_to_string data_source in
+  ( title,
     qcheck_wrap
       [
-        test_perfect_against_random;
-        test_random_against_perfect;
-        test_perfect_against_lazy;
-        test_lazy_against_perfect;
-        test_perfect_against_eager;
-        test_eager_against_perfect;
-        test_perfect_against_keen;
-        test_keen_against_perfect;
+        test_perfect_against_random ~data_source;
+        test_random_against_perfect ~data_source;
+        test_perfect_against_lazy ~data_source;
+        test_lazy_against_perfect ~data_source;
+        test_perfect_against_eager ~data_source;
+        test_eager_against_perfect ~data_source;
+        test_perfect_against_keen ~data_source;
+        test_keen_against_perfect ~data_source;
       ] )
 
 (** {2 Entry point} *)
 
-let tests = [tests; Dissection.tests]
+let tests = [Dissection.tests; mk_tests Inbox]
 
 let () = Alcotest.run "Refutation_game" tests
