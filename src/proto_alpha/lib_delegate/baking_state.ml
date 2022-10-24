@@ -312,6 +312,8 @@ type level_state = {
   delegate_slots : delegate_slots;
   next_level_delegate_slots : delegate_slots;
   next_level_proposed_round : Round.t option;
+  dal_shards : ShardSet.t;
+  next_level_dal_shards : ShardSet.t;
 }
 
 type phase = Idle | Awaiting_preendorsements | Awaiting_endorsements
@@ -799,6 +801,14 @@ let pp_endorsing_slot fmt (consensus_key_and_delegate, {slots; endorsing_power})
     consensus_key_and_delegate
     endorsing_power
 
+let pp_shards fmt shards =
+  let shards = shards |> ShardSet.to_seq |> List.of_seq in
+  Format.fprintf
+    fmt
+    "shards: @[<h>[%a]@]"
+    Format.(pp_print_list ~pp_sep:pp_print_space Format.pp_print_int)
+    shards
+
 let pp_delegate_slots fmt {own_delegate_slots; _} =
   Format.fprintf
     fmt
@@ -824,13 +834,16 @@ let pp_level_state fmt
       delegate_slots;
       next_level_delegate_slots;
       next_level_proposed_round;
+      dal_shards;
+      next_level_dal_shards;
     } =
   Format.fprintf
     fmt
     "@[<v 2>Level state:@ current level: %ld@ @[<v 2>proposal:@ %a@]@ locked \
      round: %a@ endorsable payload: %a@ elected block: %a@ @[<v 2>own delegate \
      slots:@ %a@]@ @[<v 2>next level own delegate slots:@ %a@]@ next level \
-     proposed round: %a@]"
+     proposed round: %a@[<v 2>dal shards:@ %a@] @[<v 2>next level dal shards:@ \
+     %a@]@]"
     current_level
     pp_proposal
     latest_proposal
@@ -846,6 +859,10 @@ let pp_level_state fmt
     next_level_delegate_slots
     (pp_option Round.pp)
     next_level_proposed_round
+    pp_shards
+    dal_shards
+    pp_shards
+    next_level_dal_shards
 
 let pp_phase fmt = function
   | Idle -> Format.fprintf fmt "idle"

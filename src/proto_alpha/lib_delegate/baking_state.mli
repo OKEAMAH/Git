@@ -133,6 +133,8 @@ type level_state = {
   delegate_slots : delegate_slots;
   next_level_delegate_slots : delegate_slots;
   next_level_proposed_round : Round.t option;
+  dal_shards : ShardSet.t;
+  next_level_dal_shards : ShardSet.t;
 }
 
 type phase = Idle | Awaiting_preendorsements | Awaiting_endorsements

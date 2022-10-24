@@ -628,6 +628,14 @@ let create_initial_state cctxt ?(synchronize = true) ~chain config
     ~level:(Int32.succ current_level)
     ~chain
   >>=? fun next_level_delegate_slots ->
+  Baking_state.compute_dal_shards cctxt delegates ~level:current_level ~chain
+  >>=? fun dal_shards ->
+  Baking_state.compute_dal_shards
+    cctxt
+    delegates
+    ~level:(Int32.succ current_level)
+    ~chain
+  >>=? fun next_level_dal_shards ->
   let elected_block =
     if
       Protocol_hash.(
@@ -649,6 +657,8 @@ let create_initial_state cctxt ?(synchronize = true) ~chain config
       delegate_slots;
       next_level_delegate_slots;
       next_level_proposed_round = None;
+      dal_shards;
+      next_level_dal_shards;
     }
   in
   (if synchronize then

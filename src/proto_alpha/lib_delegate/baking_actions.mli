@@ -63,6 +63,8 @@ and level_update = {
     current_round:Round.t ->
     delegate_slots:delegate_slots ->
     next_level_delegate_slots:delegate_slots ->
+    dal_shards:ShardSet.t ->
+    next_level_dal_shards:ShardSet.t ->
     (state * action) Lwt.t;
 }
 

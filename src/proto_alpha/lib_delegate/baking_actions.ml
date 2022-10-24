@@ -141,6 +141,8 @@ and level_update = {
     current_round:Round.t ->
     delegate_slots:delegate_slots ->
     next_level_delegate_slots:delegate_slots ->
+    dal_shards:ShardSet.t ->
+    next_level_dal_shards:ShardSet.t ->
     (state * action) Lwt.t;
 }
 
@@ -582,9 +584,22 @@ let update_to_level state level_update =
     ~level:(Int32.succ new_level)
     ~chain
   >>=? fun next_level_delegate_slots ->
+  Baking_state.compute_dal_shards cctxt delegates ~level:new_level ~chain
+  >>=? fun dal_shards ->
+  Baking_state.compute_dal_shards
+    cctxt
+    delegates
+    ~level:(Int32.succ new_level)
+    ~chain
+  >>=? fun next_level_dal_shards ->
   let round_durations = state.global_state.round_durations in
   compute_round new_level_proposal round_durations >>?= fun current_round ->
-  compute_new_state ~current_round ~delegate_slots ~next_level_delegate_slots
+  compute_new_state
+    ~current_round
+    ~delegate_slots
+    ~next_level_delegate_slots
+    ~dal_shards
+    ~next_level_dal_shards
   >>= return
 
 let synchronize_round state {new_round_proposal; handle_proposal} =

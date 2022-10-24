@@ -261,7 +261,7 @@ let rec handle_new_proposal state (new_proposal : proposal) =
     Events.(emit new_head_with_increasing_level ()) >>= fun () ->
     let new_level = new_proposal.block.shell.level in
     let compute_new_state ~current_round ~delegate_slots
-        ~next_level_delegate_slots =
+        ~next_level_delegate_slots ~dal_shards ~next_level_dal_shards =
       let round_state = {current_round; current_phase = Idle} in
       let level_state =
         {
@@ -274,6 +274,8 @@ let rec handle_new_proposal state (new_proposal : proposal) =
           delegate_slots;
           next_level_delegate_slots;
           next_level_proposed_round = None;
+          dal_shards;
+          next_level_dal_shards;
         }
       in
       (* recursive call with the up-to-date state to handle the new
