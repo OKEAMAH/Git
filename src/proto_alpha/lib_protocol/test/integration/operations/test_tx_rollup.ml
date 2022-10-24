@@ -5630,7 +5630,7 @@ module Withdraw = struct
       1. forges new tickets and stores them in contract's storage
       2. deposits these tickets into a tx_rollup
       3. dispatches them to an account
-      4. transfer the dispatched tickets to another implicit account *)
+      4. transfers the dispatched tickets to another implicit account *)
   let test_forge_deposit_withdraw_implicit_transfer () =
     let open Lwt_result_syntax in
     let* block, (account, another_account) = context_init2 () in
