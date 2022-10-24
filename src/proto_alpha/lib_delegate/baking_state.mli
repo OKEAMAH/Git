@@ -54,6 +54,8 @@ type prequorum = {
   preendorsements : Kind.preendorsement operation list;
 }
 
+module ShardSet : Set.S
+
 type block_info = {
   hash : Block_hash.t;
   shell : Block_header.shell_header;
@@ -188,6 +190,14 @@ val load_endorsable_data :
   state_data option tzresult Lwt.t
 
 val may_load_endorsable_data : t -> t tzresult Lwt.t
+
+val compute_dal_shards :
+  Protocol_client_context.full ->
+  ?block:Block_services.block ->
+  level:int32 ->
+  chain:Chain_services.chain ->
+  consensus_key list ->
+  ShardSet.t tzresult Lwt.t
 
 (** @param block default to [`Head 0]*)
 val compute_delegate_slots :

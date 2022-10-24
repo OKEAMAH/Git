@@ -100,6 +100,8 @@ type prequorum = {
   preendorsements : Kind.preendorsement operation list;
 }
 
+module ShardSet = Set.Make (Compare.Int)
+
 type block_info = {
   hash : Block_hash.t;
   shell : Block_header.shell_header;
@@ -617,6 +619,30 @@ module DelegateSet = struct
 end
 
 let cache_size_limit = 100
+
+let compute_dal_shards (cctxt : Protocol_client_context.full) ?(block = `Head 0)
+    ~level ~chain delegates =
+  Environment.wrap_tzresult (Raw_level.of_int32 level) >>?= fun target_level ->
+  Plugin.RPC.Dal.shards cctxt (chain, block) ~level:target_level
+  >>=? fun dal_rights ->
+  let slots = ShardSet.empty in
+  List.fold_left
+    (fun slots delegate ->
+      match
+        List.assoc
+          ~equal:Signature.Public_key_hash.equal
+          delegate.public_key_hash
+          dal_rights
+      with
+      | None -> slots
+      | Some (start, n) ->
+          List.fold_left
+            (fun slots i -> ShardSet.add i slots)
+            slots
+            (start -- (start + n)))
+    slots
+    delegates
+  |> return
 
 let compute_delegate_slots (cctxt : Protocol_client_context.full)
     ?(block = `Head 0) ~level ~chain delegates =

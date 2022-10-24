@@ -2340,6 +2340,9 @@ module Dal = struct
     let level = Option.value level ~default:(Raw_level.of_int32_exn 0l) in
     Dal_services.shards ctxt ~level
 
+  let shards ?level ctxt block =
+    RPC_context.make_call0 S.shards ctxt block level ()
+
   let register () =
     register_dal_confirmed_slot_headers_history () ;
     register_shards ()
