@@ -64,21 +64,42 @@ let cryptobox =
   WithExceptions.Result.get_ok ~loc:__LOC__
   @@ Cryptobox.make cryptobox_parameters
 
-(* Dal_store *)
-module Dal_store = struct
-  type value = bytes * Dal.Slot.Header.t
+(* Dal_pages *)
+module M = Map.Make (struct
+  type t = Dal.slot_id
 
-  module M = Map.Make (struct
-    include Dal.Page
+  let compare = Dal.Slot.Header.compare_slot_id
+end)
 
-    let compare {slot_id; page_index} p2 =
-      let c = Dal.Slot.Header.compare_slot_id slot_id p2.slot_id in
-      if c <> 0 then c else Index.compare page_index p2.page_index
-  end)
+module P = Map.Make (Compare.Int)
 
-  type t = value M.t
+module Dal_pages = struct
+  type t = Bytes.t array M.t
 
-  let find k m = M.find_opt k m
+  let find_slot = M.find_opt
+
+  let find_page Dal.Page.{slot_id; page_index} m =
+    match find_slot slot_id m with
+    | None -> None
+    | Some arr -> (
+        try Array.get arr page_index with Invalid_argument _ -> None)
+
+  let add = M.add
+
+  let empty = M.empty
+
+  let bindings = M.bindings
+
+  let cardinal = M.cardinal
+end
+
+module Dal_headers = struct
+  open Dal
+  open Page
+
+  type t = Dal.Slot.Header.t M.t
+
+  let find = M.find_opt
 
   let add = M.add
 
@@ -962,7 +983,7 @@ module Arith_test_pvm = struct
 
      the following is almost the same code as in the rollup node, expect that it
      creates the association list (tick, state_hash). *)
-  let eval_until_input ~fuel ~our_states start_tick state dal_store =
+  let eval_until_input ~fuel ~our_states start_tick state dal_pages =
     let open Lwt_syntax in
     let rec go ~our_states fuel (tick : int) state =
       let* input_request = is_input_state state in
@@ -976,11 +997,7 @@ module Arith_test_pvm = struct
               let our_states = (tick, state_hash) :: our_states in
               go ~our_states (consume_fuel fuel) (tick + 1) state
           | Needs_reveal (Request_dal_page pid) ->
-              let content_opt =
-                Option.map
-                  (fun (bytes, _header) -> bytes)
-                  (Dal_store.find pid dal_store)
-              in
+              let content_opt = Dal_pages.find_page pid dal_pages in
               let input = Sc_rollup.(Reveal (Dal_page content_opt)) in
               let* state = set_input input state in
               let* state_hash = state_hash state in
@@ -1002,10 +1019,10 @@ module Arith_test_pvm = struct
     let tick = succ tick in
     return (state, fuel, tick, our_states)
 
-  let feed_input ~fuel ~our_states ~tick state input dal_store =
+  let feed_input ~fuel ~our_states ~tick state input dal_pages =
     let open Lwt_syntax in
     let* state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state dal_store
+      eval_until_input ~fuel ~our_states tick state dal_pages
     in
     continue_with_fuel ~our_states ~tick fuel state
     @@ fun tick our_states fuel state ->
@@ -1014,23 +1031,23 @@ module Arith_test_pvm = struct
     let our_states = (tick, state_hash) :: our_states in
     let tick = tick + 1 in
     let* state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state dal_store
+      eval_until_input ~fuel ~our_states tick state dal_pages
     in
     return (state, fuel, tick, our_states)
 
-  let eval_inbox ?fuel ~level ~inputs ~tick state dal_store =
+  let eval_inbox ?fuel ~level ~inputs ~tick state dal_pages =
     let open Lwt_result_syntax in
     List.fold_left_i_es
       (fun message_counter (state, fuel, tick, our_states) input ->
         let input = mk_input level (Z.of_int message_counter) input in
         let*! state, fuel, tick, our_states =
-          feed_input ~fuel ~our_states ~tick state input dal_store
+          feed_input ~fuel ~our_states ~tick state input dal_pages
         in
         return (state, fuel, tick, our_states))
       (state, fuel, tick, [])
       inputs
 
-  let eval_levels_and_inputs ~metadata ?fuel ctxt levels_and_inputs dal_store =
+  let eval_levels_and_inputs ~metadata ?fuel ctxt levels_and_inputs dal_pages =
     let open Lwt_result_syntax in
     let*! state = initial_state ctxt in
     let*! state_hash = state_hash state in
@@ -1039,7 +1056,7 @@ module Arith_test_pvm = struct
     let tick = succ tick in
     (* 1. We evaluate the boot sector. *)
     let*! state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state dal_store
+      eval_until_input ~fuel ~our_states tick state dal_pages
     in
     (* 2. We evaluate the metadata. *)
     let*! state, fuel, tick, our_states =
@@ -1050,7 +1067,7 @@ module Arith_test_pvm = struct
       List.fold_left_es
         (fun (state, fuel, tick, our_states) (level, inputs) ->
           let* state, fuel, tick, our_states' =
-            eval_inbox ?fuel ~level ~inputs ~tick state dal_store
+            eval_inbox ?fuel ~level ~inputs ~tick state dal_pages
           in
           return (state, fuel, tick, our_states @ our_states'))
         (state, fuel, tick, our_states)
@@ -1098,7 +1115,7 @@ type data_source =
 let data_source_to_string = function Inbox -> "Inbox" | Dal -> "Dal"
 
 (** Construct the inbox for the protocol side. *)
-let construct_inbox_proto ~data_source block rollup levels_and_inputs dal_store
+let construct_inbox_proto ~data_source block rollup levels_and_inputs dal_pages
     contract =
   let open Lwt_result_syntax in
   match data_source with
@@ -1119,10 +1136,9 @@ let construct_inbox_proto ~data_source block rollup levels_and_inputs dal_store
         levels_and_inputs
   | Dal ->
       List.fold_left_es
-        (fun block (pid, (_page_content, slot_header)) ->
+        (fun block (slot_id, (_pages_content, slot_header)) ->
           let*? current_level = Context.get_level (B block) in
-          let slot_id = pid.Dal.Page.slot_id in
-          let level = slot_id.published_level in
+          let level = slot_id.Dal.published_level in
           let diff_with_level =
             Raw_level.(diff level current_level) |> Int32.to_int
           in
@@ -1155,15 +1171,18 @@ let construct_inbox_proto ~data_source block rollup levels_and_inputs dal_store
           in
           Block.bake ~operation block)
         block
-        (Dal_store.bindings dal_store)
+        (Dal_pages.bindings dal_pages)
 
 module DAL = struct
+  (* TMP *)
+  let number_of_slots = 8
+
+  let number_of_pages = 8
+
   (* This function will become useless with EOL. *)
   let mk_dal_directives ~level_min ~level_max =
     (* Using lower values for the number of pages and slots. These directives
        will be removed once EOL is used to request pages. *)
-    let number_of_slots = 8 in
-    let number_of_pages = 8 in
     let gacc = ref [] in
     let acc = ref [] in
     for lvl = level_max downto level_min do
@@ -1184,14 +1203,26 @@ module DAL = struct
       Bytes.concat (Bytes.of_string "") [content; padding]
     else Bytes.sub content 0 size
 
-  let mk_page lvl =
+  let _mk_page_id ~slot_index ~page_index lvl =
     let published_level =
       try Raw_level.of_int32_exn (Int32.of_int lvl) with _ -> assert false
     in
-    let slot_id =
-      Dal.Slot.Header.{published_level; index = Dal.Slot_index.zero}
+    let slot_index =
+      Dal.Slot_index.of_int slot_index
+      |> Option.value_f ~default:(fun () -> assert false)
     in
-    (slot_id, Dal.Page.{slot_id; page_index = 0})
+    let slot_id = Dal.Slot.Header.{published_level; index = slot_index} in
+    Dal.Page.{slot_id; page_index}
+
+  let mk_slot_id ~slot_index lvl =
+    let published_level =
+      try Raw_level.of_int32_exn (Int32.of_int lvl) with _ -> assert false
+    in
+    let slot_index =
+      Dal.Slot_index.of_int slot_index
+      |> Option.value_f ~default:(fun () -> assert false)
+    in
+    Dal.Slot.Header.{published_level; index = slot_index}
 
   let mk_slot_header slot_id page_data =
     let slot_data = add_padding cryptobox_parameters.slot_size page_data in
@@ -1202,36 +1233,86 @@ module DAL = struct
     let commitment = Cryptobox.commit cryptobox polynomial in
     Dal.Slot.(Header.{id = slot_id; commitment})
 
-  let mk_fresh_data pid =
+  let mk_fresh_data slot_id =
     let open QCheck2.Gen in
     let* j = small_int in
     let page_data = Bytes.of_string @@ string_of_int j in
     let page_data = add_padding cryptobox_parameters.page_size page_data in
-    let slot_header = mk_slot_header pid.Dal.Page.slot_id page_data in
+    let slot_header = mk_slot_header slot_id page_data in
     return (page_data, slot_header)
 
-  let gen_dal_inputs_for_levels ?level_min ?level_max dal_store =
+  let accumulate_slot_page slot_id page_index page_content acc =
+    let old_pages = M.find slot_id acc |> Option.value ~default:P.empty in
+    let page_content =
+      add_padding cryptobox_parameters.page_size (Bytes.of_string page_content)
+    in
+    M.add slot_id (P.add page_index page_content old_pages) acc
+
+  let white_page =
+    add_padding cryptobox_parameters.page_size (Bytes.of_string " ")
+
+  (*
+  let number_of_pages =
+    cryptobox_parameters.slot_size / cryptobox_parameters.page_size
+*)
+  let gen_dal_inputs_for_levels ?level_min ?level_max dal_pages dal_headers =
     let open QCheck2.Gen in
     let* levels_and_inputs =
       gen_arith_pvm_inputs_for_levels ?level_min ?level_max ()
     in
-    return
-    @@ List.fold_left
-         (fun dal_store (lvl, inputs) ->
-           let slot_id, pid = mk_page lvl in
-           let page_data = Bytes.of_string @@ String.concat " " inputs in
-           let page_data =
-             add_padding cryptobox_parameters.page_size page_data
-           in
-           let slot_header = mk_slot_header slot_id page_data in
-           if Dal_store.M.mem pid dal_store then
-             (* Do not rewrite existing pages *)
-             dal_store
-           else Dal_store.add pid (page_data, slot_header) dal_store)
-         dal_store
-         levels_and_inputs
+    let rec add_input lvl accu inputs =
+      match inputs with
+      | [] -> return accu
+      | input :: inputs ->
+          let* slot_index = 0 -- (number_of_slots - 1) in
+          let* page_index = 0 -- (number_of_pages - 1) in
+          let slot_id = mk_slot_id ~slot_index lvl in
+          let slots_of_level =
+            accumulate_slot_page slot_id page_index input accu
+          in
+          add_input lvl slots_of_level inputs
+    in
+    let rec add_inputs dal_pages dal_headers levels_and_inputs =
+      match levels_and_inputs with
+      | [] -> return dal_pages
+      | (lvl, inputs) :: levels_and_inputs ->
+          let* slots_of_level = add_input lvl M.empty inputs in
+          let dal_pages, dal_headers =
+            M.fold
+              (fun slot_id pages (dal_pages, dal_headers) ->
+                let arr = Array.make number_of_pages white_page in
+                P.iter (fun i content -> Array.set arr i content) pages ;
+                let pages_list = Array.to_list arr in
+                let slot_data = Bytes.concat (Bytes.of_string "") pages_list in
+                let slot_header = mk_slot_header slot_id slot_data in
+                ( M.add slot_id arr dal_pages,
+                  M.add slot_id (slot_header, slot_data) dal_headers ))
+              slots_of_level
+              (dal_pages, dal_headers)
+          in
+          add_inputs dal_pages dal_headers levels_and_inputs
+    in
+    add_inputs dal_pages dal_headers levels_and_inputs
 
-  let alter_dal_store ~strategy ?level_min ?level_max dal_store =
+  (*
+
+            let pid =
+            let slot_id = pid.Dal.Page.slot_id in
+            let page_data = Bytes.of_string input in
+            let page_data =
+              add_padding cryptobox_parameters.page_size page_data
+            in
+            (* XXX: TODO *)
+            let _slot_header = mk_slot_header slot_id page_data in
+            if M.mem slot_id dal_pages then
+              (* Do not rewrite existing pages *)
+              return dal_pages
+            else
+              Dal_pages.add slot_id (Array.of_list [page_data]) dal_pages
+              |> return
+
+*)
+  let alter_dal_pages ~strategy ?level_min ?level_max dal_pages =
     let open QCheck2.Gen in
     let rec fold l acc alter_elt =
       match l with
@@ -1240,34 +1321,38 @@ module DAL = struct
           let* acc = alter_elt k v acc in
           fold l acc alter_elt
     in
-    let aux dal_store alter_elt =
-      fold (Dal_store.bindings dal_store) Dal_store.empty alter_elt
+    let aux dal_pages alter_elt =
+      fold (Dal_pages.bindings dal_pages) Dal_pages.empty alter_elt
     in
     match strategy with
     | Perfect ->
         (* The perfect player does not lie, evaluates correctly the inputs. *)
-        return dal_store
+        return dal_pages
     | Random ->
         (* Random player generates its own list of inputs. *)
-        gen_dal_inputs_for_levels ?level_min ?level_max Dal_store.empty
+        gen_dal_inputs_for_levels ?level_min ?level_max Dal_pages.empty
     | Lazy ->
         (* Lazy player removes inputs from [levels_and_inputs]. *)
-        aux dal_store (fun pid data acc ->
+        aux dal_pages (fun sid data acc ->
             let* i = 0 -- 4 in
-            return @@ if i = 0 then acc else Dal_store.add pid data acc)
+            return @@ if i = 0 then acc else Dal_pages.add sid data acc)
     | Eager ->
         (* Eager player executes correctly the inbox until a certain point. *)
-        let* eager_counter = 0 -- Dal_store.cardinal dal_store in
+        let* eager_counter = 0 -- Dal_pages.cardinal dal_pages in
         let eager_counter = ref eager_counter in
-        aux dal_store (fun pid data acc ->
-            let* data =
-              if !eager_counter = 0 then mk_fresh_data pid else return data
-            in
+        aux dal_pages (fun _sid _data _acc ->
+            (*
+               let* _data =
+                 if !eager_counter = 0 then mk_fresh_data sid else return data
+               in
+            *)
             decr eager_counter ;
-            return (Dal_store.add pid data acc))
+            assert false
+            (*
+                 return (Dal_pages.add sid data acc)*))
     | Keen ->
         (* Keen player will add more messages. *)
-        gen_dal_inputs_for_levels ?level_min ?level_max dal_store
+        gen_dal_inputs_for_levels ?level_min ?level_max dal_pages
 
   let page_membership_proof page_index slot_data =
     let open Lwt_result_syntax in
@@ -1286,11 +1371,11 @@ module DAL = struct
           | `Segment_index_out_of_range -> "Segment_index_out_of_range"
           | `Slot_wrong_size s -> "Slot_wrong_size: " ^ s)
 
-  let mk_skip_list dal_store =
+  let mk_skip_list dal_pages =
     let open Dal.Slots_history in
     List.map
       (fun (_pid, (_page_content, slot_header)) -> slot_header)
-      (Dal_store.bindings dal_store)
+      (Dal_pages.bindings dal_pages)
     |> add_confirmed_slot_headers
          genesis
          (History_cache.empty ~capacity:10_000L)
@@ -1324,7 +1409,7 @@ type player_client = {
     * Inbox.History.t
     * Inbox.t;
   levels_and_inputs : (int * string list) list;
-  dal_store : Dal_store.t;
+  dal_pages : Dal_pages.t;
   metadata : Metadata.t;
 }
 
@@ -1349,7 +1434,7 @@ let pp_player_client ppf
       inbox = _;
       levels_and_inputs;
       metadata;
-      dal_store = _;
+      dal_pages = _;
     } =
   Format.fprintf
     ppf
@@ -1483,9 +1568,9 @@ module Player_client = struct
       It needs [level_min] and [level_max] in case it will need to generate
       new inputs. *)
   let gen_our_states ~data_source ~metadata ctxt strategy ~level_min ~level_max
-      levels_and_inputs dal_store =
+      levels_and_inputs dal_pages =
     let open QCheck2.Gen in
-    let eval_inputs levels_and_inputs dal_store =
+    let eval_inputs levels_and_inputs dal_pages =
       Lwt_main.run
       @@
       let open Lwt_result_syntax in
@@ -1494,11 +1579,11 @@ module Player_client = struct
           ~metadata
           ctxt
           levels_and_inputs
-          dal_store
+          dal_pages
       in
       Lwt.return @@ WithExceptions.Result.get_ok ~loc:__LOC__ r
     in
-    let* levels_and_inputs, dal_store =
+    let* levels_and_inputs, dal_pages =
       match data_source with
       | Inbox ->
           let* levels_and_inputs =
@@ -1508,24 +1593,24 @@ module Player_client = struct
               ~level_max
               levels_and_inputs
           in
-          return (levels_and_inputs, dal_store)
+          return (levels_and_inputs, dal_pages)
       | Dal ->
-          let* dal_store =
-            DAL.alter_dal_store ~strategy ~level_min ~level_max dal_store
+          let* dal_pages =
+            DAL.alter_dal_pages ~strategy ~level_min ~level_max dal_pages
           in
-          return (levels_and_inputs, dal_store)
+          return (levels_and_inputs, dal_pages)
     in
-    let _state, tick, our_states = eval_inputs levels_and_inputs dal_store in
-    return (tick, our_states, levels_and_inputs, dal_store)
+    let _state, tick, our_states = eval_inputs levels_and_inputs dal_pages in
+    return (tick, our_states, levels_and_inputs, dal_pages)
 
   (** [gen ~rollup ~level_min ~level_max player levels_and_inputs] generates
       a {!player_client} based on {!player.strategy}. *)
   let gen ~data_source ~rollup ~origination_level ~level_min ~level_max
-      levels_and_inputs dal_store player =
+      levels_and_inputs dal_pages player =
     let open QCheck2.Gen in
     let ctxt = empty_memory_ctxt "foo" in
     let metadata = Sc_rollup.Metadata.{address = rollup; origination_level} in
-    let* tick, our_states, levels_and_inputs, dal_store =
+    let* tick, our_states, levels_and_inputs, dal_pages =
       gen_our_states
         ~data_source
         ~metadata
@@ -1534,7 +1619,7 @@ module Player_client = struct
         ~level_min
         ~level_max
         levels_and_inputs
-        dal_store
+        dal_pages
     in
     let inbox =
       construct_inbox ~origination_level ctxt rollup levels_and_inputs
@@ -1547,7 +1632,7 @@ module Player_client = struct
         inbox;
         levels_and_inputs;
         metadata;
-        dal_store;
+        dal_pages;
       }
 end
 
@@ -1606,7 +1691,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
       ~fuel
       (Arith_test_pvm.init_context ())
       player_client.levels_and_inputs
-      player_client.dal_store
+      player_client.dal_pages
     |> lift
   in
   let* state, _, _ = Assert.get_ok ~__LOC__ r in
@@ -1615,7 +1700,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
     (* We should cut at some level ?? *)
     match input_request with
     | Sc_rollup.(Needs_reveal (Request_dal_page page_id)) -> (
-        match Dal_store.find page_id player_client.dal_store with
+        match Dal_pages.find page_id player_client.dal_pages with
         | Some (content, _headers) ->
             let page_index = 0 in
             let* page_proof =
@@ -1629,7 +1714,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
   let* page_info = page_info_from_pvm_state () in
 
   let*? confirmed_slots_history, history_cache =
-    DAL.mk_skip_list player_client.dal_store
+    DAL.mk_skip_list player_client.dal_pages
   in
 
   let module P = struct
@@ -1801,7 +1886,7 @@ let gen_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
   in
   let level_min = origination_level + 1 in
   let level_max = origination_level + commitment_period - 1 in
-  let* levels_and_inputs, dal_store =
+  let* levels_and_inputs, dal_pages =
     match data_source with
     | Inbox ->
         let* levels_and_inputs =
@@ -1811,14 +1896,14 @@ let gen_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
             ~level_max
             ()
         in
-        return (levels_and_inputs, Dal_store.empty)
+        return (levels_and_inputs, Dal_pages.empty)
     | Dal ->
-        let* dal_store =
-          DAL.gen_dal_inputs_for_levels ~level_min ~level_max Dal_store.empty
+        let* dal_pages =
+          DAL.gen_dal_inputs_for_levels ~level_min ~level_max Dal_pages.empty
         in
         (* Will be removed with EOL. *)
         let levels_and_inputs = DAL.mk_dal_directives ~level_min ~level_max in
-        return (levels_and_inputs, dal_store)
+        return (levels_and_inputs, dal_pages)
   in
 
   let player_gen =
@@ -1829,7 +1914,7 @@ let gen_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       ~level_max
       ~rollup
       ((origination_level, first_inputs) :: levels_and_inputs)
-      dal_store
+      dal_pages
   in
   let* p1_client = player_gen p1 in
   let* p2_client = player_gen p2 in
@@ -1846,7 +1931,7 @@ let gen_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
       contract3,
       p1_start,
       levels_and_inputs,
-      dal_store,
+      dal_pages,
       additional_payloads )
 
 (** [prepare_game block lcc originated_level p1_client p2_client
@@ -1854,7 +1939,7 @@ let gen_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
     are in conflict for one commitment.
     It creates the protocol inbox using [inputs_and_levels]. *)
 let prepare_game ~data_source block rollup lcc commitment_level p1_client
-    p2_client contract levels_and_inputs dal_store =
+    p2_client contract levels_and_inputs dal_pages =
   let open Lwt_result_syntax in
   let* block =
     construct_inbox_proto
@@ -1862,7 +1947,7 @@ let prepare_game ~data_source block rollup lcc commitment_level p1_client
       block
       rollup
       levels_and_inputs
-      dal_store
+      dal_pages
       contract
   in
   let* operation_publish_commitment_p1 =
@@ -1899,7 +1984,7 @@ let test_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
              _contract3,
              p1_start,
              levels_and_inputs,
-             _dal_store,
+             _dal_pages,
              _additional_payloads ) ->
       let level =
         WithExceptions.Result.get_ok ~loc:__LOC__ @@ Context.get_level (B block)
@@ -1944,7 +2029,7 @@ let test_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
            contract3,
            p1_start,
            levels_and_inputs,
-           dal_store,
+           dal_pages,
            additional_payloads ) ->
       let open Lwt_result_syntax in
       (* Otherwise, there is no conflict. *)
@@ -1968,7 +2053,7 @@ let test_game ~data_source ?nonempty_inputs ~p1_strategy ~p2_strategy () =
           p2_client
           contract3
           levels_and_inputs
-          dal_store
+          dal_pages
       in
       let refuter, defender =
         if p1_start then (p1_client, p2_client) else (p2_client, p1_client)
