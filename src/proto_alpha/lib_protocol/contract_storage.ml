@@ -804,7 +804,12 @@ let ensure_deallocated_if_empty ctxt pkh =
         let* keep_contract =
           should_keep_empty_implicit_contract ctxt contract
         in
-        if keep_contract then return ctxt else delete ctxt contract
+        if keep_contract then return ctxt
+        else
+          (* In case the contract has been delegated, delegation is removed
+             before the contract is deleted. *)
+          let* ctxt = Contract_delegate_storage.delete ctxt contract in
+          delete ctxt contract
 
 let simulate_spending ctxt ~balance ~amount source =
   let open Lwt_tzresult_syntax in

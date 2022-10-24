@@ -1365,6 +1365,66 @@ let test_registered_self_delegate_key_init_delegation () =
   Context.Contract.delegate (B b) contract >>=? fun delegate ->
   Assert.equal_pkh ~loc:__LOC__ delegate delegate_pkh >>=? fun () -> return_unit
 
+(** Test that empty delegated contracts are removed at block finalization. *)
+let test_empty_delegated_contract_removed () =
+  Context.init1 ~consensus_threshold:0 () >>=? fun (b, bootstrap) ->
+  let {Account.pkh; _} = Account.new_account () in
+  let contract = Alpha_context.Contract.Implicit pkh in
+  Op.transaction ~force_reveal:true (B b) bootstrap contract (of_int 10)
+  >>=? fun operation ->
+  Block.bake ~operation b >>=? fun b ->
+  let bootstrap_pkh = Context.Contract.pkh bootstrap in
+  Op.delegation
+    (B b)
+    ~force_reveal:true
+    ~fee:(of_int 10)
+    contract
+    (Some bootstrap_pkh)
+  >>=? fun operation ->
+  Block.bake ~operation b >>=? fun b ->
+  Context.Contract.delegate_opt (B b) contract >>=? fun contract_delegate_opt ->
+  match contract_delegate_opt with
+  | Some _ -> failwith "Contract should not longer have a delegate"
+  | None -> return_unit
+
+(** Test that empty delegated contracts are removed at block finalization. *)
+let test_empty_delegated_contract_in_batch_removed () =
+  Context.init1 ~consensus_threshold:0 () >>=? fun (b, bootstrap) ->
+  let {Account.pkh; _} = Account.new_account () in
+  let contract = Alpha_context.Contract.Implicit pkh in
+  Op.transaction ~force_reveal:true (B b) bootstrap contract (of_int 10)
+  >>=? fun operation ->
+  Block.bake ~operation b >>=? fun b ->
+  let bootstrap_pkh = Context.Contract.pkh bootstrap in
+  Op.transaction
+    (B b)
+    ~force_reveal:true
+    ~fee:Tez.zero
+    contract
+    bootstrap
+    (of_int 10)
+  >>=? fun transaction ->
+  Op.delegation (B b) ~fee:Tez.zero contract (Some bootstrap_pkh)
+  >>=? fun delegation ->
+  Op.batch_operations
+    ~recompute_counters:true
+    (B b)
+    ~source:contract
+    [transaction; delegation]
+  >>=? fun operation ->
+  Block.bake ~operation b >>=? fun b ->
+  Context.Contract.delegate_opt (B b) contract >>=? fun contract_delegate_opt ->
+  match contract_delegate_opt with
+  | Some _ -> failwith "Contract should not longer have a delegate"
+  | None -> return_unit
+
+(* >>=? fun b ->
+   Op.delegation ~force_reveal:true (B b) contract (Some delegate_pkh)
+   >>=? fun operation ->
+   Block.bake ~operation b >>=? fun b ->
+   Context.Contract.delegate (B b) contract >>=? fun delegate ->
+   Assert.equal_pkh ~loc:__LOC__ delegate delegate_pkh >>=? fun () -> return_unit
+*)
 let tests_delegate_registration =
   [
     (*** unregistered delegate key: no self-delegation ***)
@@ -1566,6 +1626,15 @@ let tests_delegate_registration =
       "double registration when delegate account is emptied and then recredited"
       `Quick
       test_double_registration_when_recredited;
+    Tztest.tztest
+      "test that empty delegated (and not self-delegated) contracts are removed"
+      `Quick
+      test_empty_delegated_contract_removed;
+    Tztest.tztest
+      "test that empty delegated (and not self-delegated) contracts are \
+       removed (using a batch)"
+      `Quick
+      test_empty_delegated_contract_in_batch_removed;
   ]
 
 (******************************************************************************)
