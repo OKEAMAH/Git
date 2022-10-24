@@ -5569,6 +5569,10 @@ module Withdraw = struct
         balance
   end
 
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4083
+     Remove and replace the following test with transfers between
+     originated and implicit accounts directly. *)
+
   (** [test_forge_deposit_withdraw_deposit ()] checks the following scenario:
       1. forges new tickets and stores it in contract's storage.
       2. deposits these tickets into a tx_rollup
