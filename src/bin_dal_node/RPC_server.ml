@@ -124,12 +124,33 @@ let register_monitor_slot_headers ctxt dir =
 let monitor_slot_headers_rpc ctxt =
   RPC_context.make_streamed_call monitor_slot_headers_service ctxt () () ()
 
+(* DAC RPC *)
+let handle_dac_reveal_data ctxt raw_data =
+  let open Lwt_result_syntax in
+  let*? _ = Node_context.get_ready ctxt in
+  (* DAC/FIXME: https://gitlab.com/tezos/tezos/-/issues/4110
+     The maximum size of pages that can be imported into the PVM is limited by the protocol constant sc_rollup_max_message_size.
+     Since the dal node is connected to a L1 node already, we should fetch the protocol constants via an RPC*)
+  let max_page_size = 4096 in
+  let+ reveal_hash =
+    Tezos_dal_alpha.Dac_pages_encoding.Merkle_tree.V0.serialize_payload
+      ~max_page_size
+      raw_data
+      ~for_each_page:(fun _ -> Lwt_result_syntax.return_unit)
+  in
+  Tezos_dal_alpha.Dac_pages_encoding.Merkle_tree.V0.to_b58check reveal_hash
+
+let register_dac_reveal_data ctxt dir =
+  RPC_directory.register0 dir (Services.dac_reveal_data ()) (fun () ->
+      handle_dac_reveal_data ctxt)
+
 let register ctxt =
   RPC_directory.empty
   |> register_stored_slot_headers ctxt
   |> register_split_slot ctxt |> register_show_slot ctxt |> register_shard ctxt
   |> register_show_slot_pages ctxt
   |> register_monitor_slot_headers ctxt
+  |> register_dac_reveal_data ctxt
 
 let start configuration dir =
   let open Lwt_syntax in
