@@ -897,7 +897,7 @@ let apply_manager_operation :
           error_unless
             Entrypoint.(entrypoint = default)
             (Script_tc_errors.No_such_entrypoint entrypoint)
-          >>?= fun () -> return (ctxt, token, None)
+          >>?= fun () -> return (ctxt, token, [])
       | Originated destination_hash ->
           Ticket_transfer.parse_ticket_and_operation
             ~consume_deserialization_gas
@@ -909,7 +909,7 @@ let apply_manager_operation :
             ~entrypoint
             ~amount
             ctxt
-          >|=? fun (ctxt, token, op) -> (ctxt, token, Some op))
+          >|=? fun (ctxt, token, op) -> (ctxt, token, [op]))
       >>=? fun (ctxt, ticket_token, op) ->
       Ticket_transfer.transfer_ticket
         ctxt
@@ -926,7 +926,7 @@ let apply_manager_operation :
             paid_storage_size_diff;
           }
       in
-      return (ctxt, result, Option.to_list op)
+      return (ctxt, result, op)
   | Origination {delegate; script; credit} ->
       (* Internal originations have their address generated in the interpreter
          so that the script can use it immediately.
