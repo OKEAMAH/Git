@@ -79,6 +79,8 @@ type cache = {
   round_timestamps :
     (Timestamp.time * Round.t * consensus_key_and_delegate)
     Baking_cache.Round_timestamp_interval_cache.t;
+  attested_slot_headers :
+    Dal.Slot.Header.t Baking_cache.Attested_slot_header_cache.t;
 }
 
 type global_state = {

@@ -122,6 +122,8 @@ type cache = {
   round_timestamps :
     (Timestamp.time * Round.t * consensus_key_and_delegate)
     Baking_cache.Round_timestamp_interval_cache.t;
+  attested_slot_headers :
+    Dal.Slot.Header.t Baking_cache.Attested_slot_header_cache.t;
 }
 
 type global_state = {
@@ -622,6 +624,14 @@ end
 
 let cache_size_limit = 100
 
+(* FIXME: Those parameters should be configurable.
+
+   - 256 slots is the maximum number on mainnet for the moment.
+
+   - 10 because we only need to memorize two levels but let's take 10
+     because a slot header is cheap in memory. *)
+let attested_slot_headers_limit = 256 * 10
+
 let compute_dal_shards (cctxt : Protocol_client_context.full) ?(block = `Head 0)
     ~level ~chain delegates =
   Environment.wrap_tzresult (Raw_level.of_int32 level) >>?= fun target_level ->
@@ -690,6 +700,8 @@ let create_cache () =
   {
     known_timestamps = Timestamp_of_round_cache.create cache_size_limit;
     round_timestamps = Round_timestamp_interval_cache.create cache_size_limit;
+    attested_slot_headers =
+      Attested_slot_header_cache.create attested_slot_headers_limit;
   }
 
 (* Pretty-printers *)

@@ -83,3 +83,7 @@ end
 module Round_timestamp_interval_cache =
   (val Ringo.(map_maker ~replacement:LRU ~overflow:Strong ~accounting:Precise))
     (Round_cache_key)
+
+module Attested_slot_header_cache =
+  (val Ringo.(map_maker ~replacement:LRU ~overflow:Strong ~accounting:Precise))
+    (Round_cache_key)
