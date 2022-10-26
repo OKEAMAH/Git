@@ -150,7 +150,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
                 PVM.set_input (Reveal (Dal_page content_opt)) state
               in
               go
-                (consume_fuel 1L fuel)
+                (consume_fuel 1L fuel_left)
                 (Int64.succ current_tick)
                 failing_ticks
                 next_state
