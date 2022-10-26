@@ -586,6 +586,15 @@ module Dal = struct
     let shard ~slot_header ~shard_id =
       make GET ["shard"; slot_header; string_of_int shard_id] @@ fun json ->
       json |> JSON.encode
+
+    let dac_reveal_data reveal_data =
+      let reveal_data =
+        JSON.parse
+          ~origin:"dal_node_dac_reveal_data_rpc"
+          (encode_bytes_to_hex_string reveal_data)
+      in
+      let data = JSON.unannotate reveal_data in
+      make ~data POST ["dac"; "reveal_data"] JSON.as_string
   end
 
   module Cryptobox = Tezos_crypto_dal.Cryptobox

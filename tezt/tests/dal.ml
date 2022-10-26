@@ -951,6 +951,8 @@ let rollup_node_interprets_dal_pages client sc_rollup sc_rollup_node =
           ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
       return ()
 
+(* DAC tests *)
+
 let test_dal_node_imports_dac_member =
   Protocol.register_test
     ~__FILE__
@@ -973,6 +975,23 @@ let test_dal_node_imports_dac_member =
   let* () = Dal_node.terminate dal_node in
   unit
 
+let test_dal_node_handles_dac_reveal_data =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"dal node handles dac reveal data"
+    ~tags:["dac"; "dal_node"]
+    ~supports:Protocol.(From_protocol (Protocol.number Alpha))
+  @@ fun protocol ->
+  let* _node, _client, dal_node = init_dal_node protocol in
+  let reveal_data = "test" in
+  let* actual_rh =
+    RPC.call dal_node (Rollup.Dal.RPC.dac_reveal_data reveal_data)
+  in
+  (* Expected reveal hash equals to the result of [Tezos_dal_alpha.Dac_pages_encoding.Merkle_tree.V0.serialize_payload "test"]*)
+  let expected_rh = "scrh13sady5QwBDubjBzNCY9f5xQbeKhDfso9iKULmzAwDhzVGwixg5" in
+  assert (expected_rh = actual_rh) ;
+  return ()
+
 let register ~protocols =
   test_dal_scenario "feature_flag_is_disabled" test_feature_flag protocols ;
   test_slot_management_logic protocols ;
@@ -991,4 +1010,5 @@ let register ~protocols =
     "rollup_node_applies_dal_pages"
     (rollup_node_stores_dal_slots ~expand_test:rollup_node_interprets_dal_pages)
     protocols ;
-  test_dal_node_imports_dac_member protocols
+  test_dal_node_imports_dac_member protocols ;
+  test_dal_node_handles_dac_reveal_data protocols

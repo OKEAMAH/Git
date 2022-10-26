@@ -86,6 +86,7 @@ let monitor_slot_headers () =
     ~output:
       Data_encoding.(obj1 (req "slot_header" Cryptobox.Commitment.encoding))
     RPC_path.(open_root / "monitor_slot_headers")
+
 (* DAC services *)
 let dac_reveal_data () =
   RPC_service.post_service
