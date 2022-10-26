@@ -155,7 +155,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
                 failing_ticks
                 next_state
           | Initial | First_after _ ->
-              return (state, fuel, current_tick, failing_ticks))
+              return (state, fuel_left, current_tick, failing_ticks))
     in
     go fuel start_tick failing_ticks state
 
