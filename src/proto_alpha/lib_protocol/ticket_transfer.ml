@@ -29,7 +29,7 @@ open Alpha_context
 type token_from_nodes = {
   token : Ticket_token.ex_token;
   ty_node : Script.node;
-  contents_node : Script.node;
+  contents_node : Script.expr;
 }
 
 let parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt =
@@ -42,6 +42,8 @@ let parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt =
   >>?= fun (Ex_comparable_ty contents_type, ctxt) ->
   Script_ir_translator.parse_comparable_data ctxt contents_type contents_node
   >>=? fun (contents, ctxt) ->
+  Script_ir_translator.unparse_data ctxt Optimized contents_type contents
+  >>=? fun (contents_node, ctxt) ->
   let token = Ticket_token.Ex_token {ticketer; contents_type; contents} in
   return (ctxt, {token; ty_node; contents_node})
 
@@ -49,13 +51,20 @@ let parse_ticket_and_operation ~consume_deserialization_gas ~ticketer ~contents
     ~ty ~source ~destination ~entrypoint ~amount ctxt =
   parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt
   >>=? fun ( ctxt,
-             ({token = Ticket_token.Ex_token {contents_type; contents; _}; _} as
-             ticket_token) ) ->
+             ({
+                token = Ticket_token.Ex_token {contents_type; contents; _};
+                contents_node;
+                ty_node = _;
+              } as ticket_token) ) ->
   Script_typed_ir.ticket_t Micheline.dummy_location contents_type
   >>?= fun ticket_ty ->
   let ticket = Script_typed_ir.{ticketer; contents; amount} in
-  Script_ir_translator.unparse_data ctxt Optimized ticket_ty ticket
-  >>=? fun (unparsed_parameters, ctxt) ->
+  Gas.consume ctxt @@ Script.strip_locations_cost
+  @@ Micheline.root contents_node
+  >>?= fun ctxt ->
+  let unparsed_parameters =
+    Micheline.strip_locations @@ Micheline.root contents_node
+  in
   fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
   let op =
     Script_typed_ir.Internal_operation
@@ -91,18 +100,19 @@ let transfer_ticket_with_hashes ctxt ~src_hash ~dst_hash (qty : Ticket_amount.t)
 
 let transfer_ticket ctxt ~src ~dst
     {token = Ticket_token.Ex_token {ticketer; _}; ty_node; contents_node} qty =
+  let contents = Micheline.root contents_node in
   Ticket_balance_key.make
     ctxt
     ~owner:src
     ~ticketer
     ~contents_type:ty_node
-    ~contents:contents_node
+    ~contents
   >>=? fun (src_hash, ctxt) ->
   Ticket_balance_key.make
     ctxt
     ~owner:dst
     ~ticketer
     ~contents_type:ty_node
-    ~contents:contents_node
+    ~contents
   >>=? fun (dst_hash, ctxt) ->
   transfer_ticket_with_hashes ctxt ~src_hash ~dst_hash qty

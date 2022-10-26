@@ -32,7 +32,7 @@ open Alpha_context
 type token_from_nodes = private {
   token : Ticket_token.ex_token;
   ty_node : Script.node;
-  contents_node : Script.node;
+  contents_node : Script.expr;
 }
 
 (** [parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty

@@ -821,7 +821,7 @@ let apply_manager_operation :
             ~owner:(Tx_rollup tx_rollup)
             ~ticketer
             ~contents_type:ty_node
-            ~contents:contents_node
+            ~contents:(Micheline.root contents_node)
           >>=? fun (tx_rollup_ticket_hash, ctxt) ->
           let withdrawal =
             Tx_rollup_withdraw.
