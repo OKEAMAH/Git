@@ -74,6 +74,27 @@ let unsafe_next_tick_state ({buffers; durable; tick_state; _} as pvm_state) =
     Lwt.return (durable, state, status)
   in
   match tick_state with
+  | Stuck (Decode_error _ | Init_error _ | Link_error _) ->
+      let* kernel = Durable.find_value durable Constants.kernel_key in
+      let* has_fallback =
+        match kernel with
+        | None -> Lwt.return true
+        | Some _ ->
+            let* fallback_hash =
+              Durable.hash_exn durable Constants.kernel_fallback_key
+            in
+            let+ hash = Durable.hash_exn durable Constants.kernel_key in
+            hash <> fallback_hash
+      in
+      if has_fallback then
+        let* durable =
+          Durable.copy_tree_exn
+            durable
+            Constants.kernel_fallback_key
+            Constants.kernel_key
+        in
+        return ~durable Padding
+      else return ~status:Failing (Stuck No_fallback_kernel)
   | Stuck e -> return ~status:Failing (Stuck e)
   | Snapshot ->
       let* has_reboot_flag = has_reboot_flag durable in
@@ -157,7 +178,13 @@ let unsafe_next_tick_state ({buffers; durable; tick_state; _} as pvm_state) =
               (Tezos_lazy_containers.Lazy_vector.Int32Vector.singleton
                  admin_instr)
           in
-          return ~status:Starting (Eval {config; module_reg})
+          let* durable' =
+            Durable.copy_tree_exn
+              durable
+              Constants.kernel_key
+              Constants.kernel_fallback_key
+          in
+          return ~durable:durable' ~status:Starting (Eval {config; module_reg})
       | _ ->
           (* We require a function with the name [main] to be exported
              rather than any other structure. *)

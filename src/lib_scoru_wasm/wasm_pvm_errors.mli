@@ -69,6 +69,8 @@ type t =
       (** The maximum number of ticks was reached before the end of current top level call *)
   | Too_many_reboots
       (** The maximum number of reboots was reached before the next inputs *)
+  | No_fallback_kernel
+      (** No fallback kernel was available - recovering from invalid kernel module not possible. *)
 
 (* [invalid_state msg] builds an `Invalid_state` error out of a message. *)
 val invalid_state : string -> t

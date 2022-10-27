@@ -48,6 +48,7 @@ type t =
   | Unknown_error of truncated_string
   | Too_many_ticks
   | Too_many_reboots
+  | No_fallback_kernel
 
 let decode_state_to_string_raw = function
   | Decode.Byte_vector_step -> "Byte_vector_step"
