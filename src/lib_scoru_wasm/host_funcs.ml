@@ -400,7 +400,7 @@ let write_debug_type =
 
    The PVM, however, does not check that these are valid: from its
    point of view, [write_debug] is a no-op. *)
-let write_debug =
+let _write_debug =
   Host_funcs.Host_func
     (fun _input_buffer _output_buffer durable _memories inputs ->
       match inputs with
@@ -415,7 +415,7 @@ let write_debug =
    NB this does slightly change the semantics of 'write_debug', as it may
    load the memory pointed to by [src] & [num_bytes].
 *)
-let _alternate_write_debug =
+let write_debug =
   Host_funcs.Host_func
     (fun _input_buffer _output_buffer durable memories inputs ->
       match inputs with

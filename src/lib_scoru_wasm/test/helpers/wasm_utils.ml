@@ -218,6 +218,8 @@ let retrieve_memory module_reg =
 module Kernels = struct
   (* Kernel failing at `kernel_next` invocation. *)
   let unreachable_kernel = "unreachable"
+  (* tx kernel no sig *)
+  let tx_no_sig_kernel = "tx-kernel-no-verif"
 end
 
 let test_with_kernel kernel (test : string -> (unit, _) result Lwt.t) () =
@@ -235,3 +237,8 @@ let test_with_kernel kernel (test : string -> (unit, _) result Lwt.t) () =
         test kernel)
   in
   return_unit
+
+let load_message message =
+  let open Tezt.Base in
+  let message_file = project_root // Filename.dirname __FILE__ // "../wasm_kernels/messages" // (message ^ ".out") in
+  Lwt_io.with_file ~mode:Lwt_io.Input message_file (fun channel -> Lwt_io.read channel)

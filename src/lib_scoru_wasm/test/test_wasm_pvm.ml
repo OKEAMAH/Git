@@ -257,6 +257,33 @@ let should_run_store_list_size_kernel () =
   assert stuck_flag ;
   return_ok_unit
 
+let should_run_tx_kernel kernel =
+  let open Lwt_syntax in
+  let* tree = initial_tree ~max_tick:Int64.max_int ~from_binary:true kernel in
+  (* Eval until input requested: the initial step will be "Snapshot", which is
+     an input step. It needs an input to be forced to initialize. *)
+  let* tree = eval_until_input_requested tree in
+  let* state = Wasm.Internal_for_tests.get_tick_state tree in
+  assert (not @@  is_stuck state) ;
+
+  let* deposit = Wasm_utils.load_message "deposit" in
+  let* tree = set_input_step deposit 0 tree in
+  let* tree = eval_until_input_requested ~max_steps:Int64.max_int tree in
+  let* state = Wasm.Internal_for_tests.get_tick_state tree in
+  assert (not @@ is_stuck state) ;
+  (* The kernel is not expected to fail, the PVM should not have stuck flag. *)
+
+  (* withdrawal! *)
+  let* withdrawal = Wasm_utils.load_message "withdrawal" in
+  let* tree = set_input_step withdrawal 1 tree in
+  let* tree = eval_until_input_requested ~max_steps:Int64.max_int tree in
+  (* The kernel is not expected to fail, the PVM should not have stuck flag. *)
+  let* state = Wasm.Internal_for_tests.get_tick_state tree in
+  assert (not @@ is_stuck state) ;
+
+  (* The paths /one & /three/four will have been deleted. *)
+  return_ok_unit
+
 let should_run_store_delete_kernel () =
   let module_ =
     {|
@@ -1261,6 +1288,7 @@ let tests =
       "Test store-list-size kernel"
       `Quick
       should_run_store_list_size_kernel;
+    tztest "Test tx-kernel" `Quick (test_with_kernel Kernels.tx_no_sig_kernel should_run_tx_kernel);
     tztest "Test store-delete kernel" `Quick should_run_store_delete_kernel;
     tztest "Test store-move kernel" `Quick should_run_store_move_kernel;
     tztest "Test store-copy kernel" `Quick should_run_store_copy_kernel;
