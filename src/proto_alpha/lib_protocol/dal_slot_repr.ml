@@ -561,11 +561,68 @@ module History = struct
         when a proof appears in a tezos operation or in an rpc, a user can not
         reasonably understand the proof, thus it eases the work of people decoding
         the proof by only supporting bytes and not the whole structured proof. *)
-
     type proof = bytes
 
-    (** DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/4084
-        DAL proof's encoding should be bounded *)
+    (** Clarification for DAL's proof encoding bounding:
+
+       If we assume the skip list forwarding is flawless (i.e without any
+       "jump backs"):
+
+       For `Page_unconfirmed`:
+        - It will be encoded in
+          [history_encoding] + [history_option_encoding] + [inclusion_proof_encoding
+          := history_list_encoding]
+        - A list is encoded in 4 bytes, plus the content of the list itself.
+        - An option is encoded in 1 byte, plus the content of the element in the option.
+        - A [published_level] is a [Raw_repr_level.t] encoded in 4 bytes.
+        - A [slot_index] is a [Slot_index.t] encoded in 1 byte.
+        - A [dal_commitment] is a [Commitment.t] encoded in 48 bytes.
+        - A [history] is a [(content,ptr) Skip_list.cell], it's composed of an [index],
+          a [content] and [backpointers].
+             * [backpointers] are ['a option Array.t] but are encoded as a [list].
+             * [index] is encoded in 4 bytes.
+             * [content] is a [Header.t] encoded in 4 + 1 + 48 = 53 bytes
+             * [ptr] is a [Pointer_hash.t] encoded in 32 bytes.
+             * [backpointers] are encoded as 32 x sup(log_2(n+1)) with n being the
+               index of the backpointer.
+             * For a [history] with 0 backpointer, it will be encoded in:
+               53 + 4 + 4 + 32*(log_2(1)) = 61 bytes
+             * For a [history] where we maximize backpointers' index (2^32 - 1),
+               it will be encoded in 53 + 4 + 4 + 32*(sup(log_2(2^32 - 1 + 1))) = 1085 bytes
+          At max a history is encoded in 1085 bytes.
+       - A [history option] is encoded in maximum 1086 bytes.
+       - A [inclusion_proof := history list]:
+            * for [n] the size of the skiplist, the encoding size becomes:
+              ∑(n=0 -> log_2(n-1)) 61 + 32x(log_2(2^n))
+              The sum is there because an inclusion proof / path in the skip log has size
+              ~log(|source index - target index|).
+              Note that there may be a hidden x2 in some degenerate situations, where the
+              path is not exactly in log.
+            * with k = sup[log_2(n)] if n > 0, k = 0 otherwise,
+              it will be encoded in : 61 * k + 32 * ((k * (k+1))/2) + 4,
+              when maximizing [n] (i.e n = 2^32), we have a maximum encoding size of 18852
+              bytes.
+              Note that:
+                > 61 comes from:
+                (53 := content_encoding_size) + (4 := index_encoding_size) +
+                (4 := backpointers_list_encoding_size)
+                > This comes from a very pessimistic overapproximation where the inclusion
+                proof is from a source cell whose index is 2^(32)-1 to a target cell whose
+                index is 0, which is likely to happen in practice.
+       In the end, for `Page_unconfirmed` it will requires a maximum of 18852 + 1085 +
+       1086 = 21023 bytes.
+
+       For `Page_confirmed`:
+         - It will be encoded in:
+           [history_encoding] + [inclusion_proof_encoding := history_list_encoding] +
+           [page_content_encoding] + [page_proof_encoding]
+         - [page_content_encoding] is a protocol constant equal to 4096 bytes.
+         - [page_proof_encoding] is a [Bls12_381.G1.t] which is encoded in 48 bytes.
+       In the end, for `Page_confirmed` it will requires a maximum of 18852 + 1085 +
+       4096 + 48 = 24081 bytes.
+
+       Note that `Page_confirmed` case up-bounds `Page_unconfirmed`'s one in terms of
+       dal proof's encoding size. *)
     let proof_encoding = Data_encoding.(bytes Hex)
 
     type error += Dal_invalid_proof_serialization
