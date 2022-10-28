@@ -353,11 +353,139 @@ struct
                          if i = 0 then next_char default_char else default_char)))))
       ~check_produce:(slot_not_confirmed_but_page_data_provided ~__LOC__)
 
+  (** [fold_delimited ~start ~stop f] applies promise [f] with an integer that goes
+      from [~start] to [~stop].
+      Note that [~stop] is excluded. *)
+  let fold_delimited ~start ~stop ~acc f =
+    let open Result_syntax in
+    let rec aux acc i =
+      if i < stop then
+        let* x = f acc i in
+        aux x (i + 1)
+      else return acc
+    in
+    aux acc start
+
+  (** [produce_dumpy_dummy_proof ~threshold_level] produces a thick dummy inclusion
+      proof that goes from [succ root] to [threshold_level] while filling each cell
+      with the maximum number of dal slots (i.e : Parameters.dal_parameters.number_of_slots)
+      per level. *)
+  let produce_dumpy_dummy_proof ~threshold_level ~history_cache_capacity =
+    let open Result_syntax in
+    let genesis_history, genesis_history_cache =
+      ( genesis_history,
+        Hist.History_cache.empty ~capacity:history_cache_capacity )
+    in
+    let first_slot_level = 1 in
+    let first_slot_index = 0 in
+    let* _slot_data, polynomial, first_slot =
+      mk_slot
+        ~level:(make_raw_level ~level:first_slot_level)
+        ~index:(make_dal_slot_index ~index:first_slot_index)
+        ()
+    in
+    let* history =
+      Hist.add_confirmed_slot_headers
+        genesis_history
+        genesis_history_cache
+        [first_slot]
+      |> Environment.wrap_tzresult
+    in
+    let fill_one_slot level (slots_hist, hist_cache) index =
+      let slot_header =
+        let published_level = make_raw_level ~level in
+        let index = make_dal_slot_index ~index in
+        let commitment = Cryptobox.Commitment.zero in
+        S.Header.{id = {published_level; index}; commitment}
+      in
+      Hist.add_confirmed_slot_headers slots_hist hist_cache [slot_header]
+      |> Environment.wrap_tzresult
+    in
+    let* history =
+      fold_delimited
+        ~start:(first_slot_index + 1)
+        ~stop:(Parameters.dal_parameters.number_of_slots - 1)
+        ~acc:history
+        (fill_one_slot first_slot_level)
+    in
+    (* number of slots = [(Parameters.dal_parameters.number_of_slots) * threshold_level] slots *)
+    let* slots_hist, hist_cache =
+      fold_delimited
+        ~start:(first_slot_level + 1)
+        ~stop:threshold_level
+        ~acc:history
+        (fun history level ->
+          fold_delimited
+            ~start:0
+            ~stop:Parameters.dal_parameters.number_of_slots
+            ~acc:history
+            (fill_one_slot level))
+    in
+    let* page_info, page_id = mk_page_info first_slot polynomial in
+    let dal_params = Parameters.dal_parameters.cryptobox_parameters in
+    let* serialized_proof, _page_data =
+      Hist.produce_proof dal_params page_id ~page_info slots_hist hist_cache
+      |> Environment.wrap_tzresult
+    in
+    return serialized_proof
+
+  let dal_proof_encoding_size ~threshold_level ~max_proof_length
+      ~history_cache_capacity =
+    let open Result_syntax in
+    let* serialized_proof =
+      produce_dumpy_dummy_proof ~threshold_level ~history_cache_capacity
+    in
+    error_when
+      (Hist.Internal_for_tests.proof_length serialized_proof > max_proof_length)
+      (Environment.wrap_tzerror
+         Hist.Internal_for_tests.Dal_invalid_proof_serialized_size)
+
+  (** Normally the following test should be done by maximizing the number of cells of
+      the inclusion proof, but since it would make the test too long to finish, we are
+      going to suppose that the maximum number of cells in the skiplist is 2^16 instead
+      of 2^32.
+      By relying on what's written about dal proof's encoding boundaries in dal_slot_repr.ml,
+      let's suppose:
+          * 2^x the number of cells in the skiplist
+          * k = sup[log_2(2^x)] if x > 0, k = 0 otherwise
+          * the encoding should fit in
+                    --> [ 61 * k + x * (k*(k+1)/2) + 4 ] bytes
+          * by maximizing x to 16 (instead of 32) we obtain:
+                    --> [ 61 * 16 + 16 * (16*17/2) + 4 ] = 3156 bytes
+
+      The test will verify if a dal proof's encoding is below a reasonnable estimated
+      number of bytes, especially by testing if the proof inclusion is scaled by a big
+      amount of fetched blocks it still fits in a tezos operation. *)
+  let dal_proof_encoding_long_size () =
+    let threshold_level =
+      (* 2^16 slots / dal_parameters.number_of_slots per level = *)
+      65536 / Parameters.dal_parameters.number_of_slots
+    in
+    (* it's safe to use [Int64.max_int] for the history cache because it needs
+       to be strictly superior to the number of slots (in our case > 2^16) *)
+    let history_cache_capacity = Int64.max_int in
+    (* with maximum number of cells in the skiplist being 2^16 we obtain:
+
+       [max_history_encoding] + [max_inclusion_proof_encoding_size] +
+       [max_page_content_encoding] + [max_page_proof_encoding]
+
+        with:
+            * [max_history_encoding] = 125
+            * [max_inclusion_proof_encoding_size] = 3156
+            * [max_page_content_encoding] = 4096
+            * [max_page_proof_encoding] = 48 *)
+    let max_proof_length = 7425 in
+    Lwt.return
+    @@ dal_proof_encoding_size
+         ~threshold_level
+         ~max_proof_length
+         ~history_cache_capacity
+
   (* The list of tests. *)
   let tests =
     let mk_title = Format.sprintf "[%s] %s" Parameters.name in
-    let tztest title test_function =
-      Tztest.tztest (mk_title title) `Quick test_function
+    let tztest ?(swiftness = `Quick) title test_function =
+      Tztest.tztest (mk_title title) swiftness test_function
     in
     let qcheck2 title gen test =
       Tztest.tztest_qcheck2 ~name:(mk_title title) ~count:2 gen test
@@ -425,9 +553,18 @@ struct
           confirmed_slot_on_genesis_unconfirmed_page_bad_data;
       ]
     in
+    let dal_proofs_encoding_size_tests =
+      [
+        tztest
+          ~swiftness:`Slow
+          "Long proof's encoding size fits in a tezos operation."
+          dal_proof_encoding_long_size;
+      ]
+    in
     ordering_tests @ proofs_tests_on_genesis
     @ confirmed_slot_on_genesis_confirmed_page_tests
     @ confirmed_slot_on_genesis_unconfirmed_page_tests
+    @ dal_proofs_encoding_size_tests
 end
 
 let tests =
