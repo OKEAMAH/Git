@@ -318,6 +318,8 @@ module History : sig
     | Unexpected_page_size of {expected_size : int; page_size : int}
 
   module Internal_for_tests : sig
+    val proof_length : proof -> int
+
     val content : t -> Header.t
 
     (** [proof_statement_is serialized_proof expected] will return [true] if

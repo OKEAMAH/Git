@@ -969,6 +969,8 @@ module History = struct
       verify_proof_repr dal_params page_id snapshot proof_repr
 
     module Internal_for_tests = struct
+      let proof_length = Bytes.length
+
       let content = Skip_list.content
 
       let proof_statement_is serialized_proof expected =
