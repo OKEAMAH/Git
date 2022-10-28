@@ -32,24 +32,33 @@ type token_from_nodes = {
   contents_node : Script.expr;
 }
 
-let parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt =
+let parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty
+    ~use_original_expr ctxt =
   Script.force_decode_in_context ~consume_deserialization_gas ctxt ty
   >>?= fun (ty, ctxt) ->
   Script.force_decode_in_context ~consume_deserialization_gas ctxt contents
-  >>?= fun (contents, ctxt) ->
-  let ty_node = Micheline.root ty and contents_node = Micheline.root contents in
+  >>?= fun (contents_expr, ctxt) ->
+  let ty_node = Micheline.root ty
+  and contents_node = Micheline.root contents_expr in
   Script_ir_translator.parse_comparable_ty ctxt ty_node
   >>?= fun (Ex_comparable_ty contents_type, ctxt) ->
   Script_ir_translator.parse_comparable_data ctxt contents_type contents_node
   >>=? fun (contents, ctxt) ->
-  Script_ir_translator.unparse_data ctxt Optimized contents_type contents
+  (if use_original_expr then return (contents_expr, ctxt)
+  else Script_ir_translator.unparse_data ctxt Optimized contents_type contents)
   >>=? fun (contents_node, ctxt) ->
   let token = Ticket_token.Ex_token {ticketer; contents_type; contents} in
   return (ctxt, {token; ty_node; contents_node})
 
 let parse_ticket_and_operation ~consume_deserialization_gas ~ticketer ~contents
     ~ty ~source ~destination ~entrypoint ~amount ctxt =
-  parse_ticket ~consume_deserialization_gas ~ticketer ~contents ~ty ctxt
+  parse_ticket
+    ~consume_deserialization_gas
+    ~ticketer
+    ~contents
+    ~ty
+    ~use_original_expr:false
+    ctxt
   >>=? fun ( ctxt,
              ({
                 token = Ticket_token.Ex_token {contents_type; contents; _};

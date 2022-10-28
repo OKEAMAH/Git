@@ -812,6 +812,7 @@ let apply_manager_operation :
             ~ticketer
             ~contents
             ~ty
+            ~use_original_expr:true
             ctxt
           >>=? fun ( ctxt,
                      Ticket_transfer.
@@ -892,6 +893,7 @@ let apply_manager_operation :
             ~ty
             ~contents
             ~consume_deserialization_gas
+            ~use_original_expr:true
             ctxt
           >>=? fun (ctxt, token) ->
           error_unless

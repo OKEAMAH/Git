@@ -43,6 +43,7 @@ val parse_ticket :
   ticketer:Contract.t ->
   contents:Script.lazy_expr ->
   ty:Script.lazy_expr ->
+  use_original_expr:bool ->
   context ->
   (context * token_from_nodes, error trace) result Lwt.t
 
