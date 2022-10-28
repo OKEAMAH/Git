@@ -109,7 +109,7 @@ module Make (PVM : Pvm.S) = struct
       (result : kind Apply_results.manager_operation_result) =
     let open Lwt_result_syntax in
     let is_for_my_rollup : type kind. kind manager_operation -> bool = function
-      | Sc_rollup_add_messages {rollup; _}
+      | Sc_rollup_add_messages _ -> true
       | Sc_rollup_cement {rollup; _}
       | Sc_rollup_publish {rollup; _}
       | Sc_rollup_refute {rollup; _}
@@ -329,7 +329,7 @@ module Make (PVM : Pvm.S) = struct
     let* () = message "Shutting down RPC server@." in
     let* () = Components.RPC_server.shutdown rpc_server in
     let* () = message "Closing store@." in
-    let* () = Store_utils.close store in
+    let* () = Store.close store in
     let* () = Event.shutdown_node exit_status in
     Tezos_base_unix.Internal_event_unix.close ()
 
@@ -416,7 +416,7 @@ let run ~data_dir (cctxt : Protocol_client_context.full) =
       configuration.sc_rollup_node_operators
   in
   let*! store =
-    Store_utils.load Configuration.(default_storage_dir configuration.data_dir)
+    Store.load Configuration.(default_storage_dir configuration.data_dir)
   in
   let*! context = Context.load configuration in
   let* l1_ctxt, kind = Layer1.start configuration cctxt store in

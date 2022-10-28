@@ -23,6 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* FIXME: https://gitlab.com/tezos/tezos/-/issues/4025
+   Remove backwards compatible Tezos symlinks. *)
 let () =
   (* warn_if_argv0_name_not_octez *)
   let executable_name = Filename.basename Sys.argv.(0) in
@@ -38,7 +40,8 @@ let () =
     in
     Format.eprintf
       "@[<v 2>@{<warning>@{<title>Warning@}@}@,\
-       The executable with name %s has been renamed to %s. The name %s is now@,\
+       The executable with name @{<kwd>%s@} has been renamed to @{<kwd>%s@}. \
+       The name @{<kwd>%s@} is now@,\
        deprecated, and it will be removed in a future release. Please update@,\
        your scripts to use the new name.@]@\n\
        @."
@@ -372,8 +375,9 @@ let codegen_cmd solution model_name codegen_options =
             let module Transform = Fixed_point_transform.Apply (P) in
             ((module Transform) : Costlang.transform)
       in
+      let name = Printf.sprintf "model_%s" model_name in
       let code =
-        match Codegen.codegen model sol transform with
+        match Codegen.codegen model sol transform name with
         | exception e ->
             Format.eprintf
               "Error in code generation for model %s, exiting@."
@@ -385,7 +389,7 @@ let codegen_cmd solution model_name codegen_options =
             exit 1
         | Some s -> s
       in
-      Format.printf "let model_%s = %a@." model_name Codegen.pp_expr code
+      Format.printf "%a@." Codegen.pp_model code
 
 let codegen_all_cmd solution regexp codegen_options =
   let () = Format.eprintf "regexp: %s@." regexp in
@@ -404,7 +408,7 @@ let codegen_all_cmd solution regexp codegen_options =
         ((module Transform) : Costlang.transform)
   in
   let result = Codegen.codegen_module models sol transform in
-  Codegen.pp_structure_item Format.std_formatter result
+  Codegen.pp_module Format.std_formatter result
 
 (* -------------------------------------------------------------------------- *)
 (* Entrypoint *)

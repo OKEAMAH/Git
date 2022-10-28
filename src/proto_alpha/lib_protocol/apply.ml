@@ -39,7 +39,6 @@ type error +=
   | Empty_transaction of Contract.t
   | Tx_rollup_feature_disabled
   | Tx_rollup_invalid_transaction_ticket_amount
-  | Cannot_transfer_ticket_to_implicit
   | Sc_rollup_feature_disabled
   | Internal_operation_replay of
       Apply_internal_results.packed_internal_operation
@@ -188,15 +187,6 @@ let () =
     (function
       | Tx_rollup_invalid_transaction_ticket_amount -> Some () | _ -> None)
     (fun () -> Tx_rollup_invalid_transaction_ticket_amount) ;
-
-  register_error_kind
-    `Permanent
-    ~id:"operation.cannot_transfer_ticket_to_implicit"
-    ~title:"Cannot transfer ticket to implicit account"
-    ~description:"Cannot transfer ticket to implicit account"
-    Data_encoding.unit
-    (function Cannot_transfer_ticket_to_implicit -> Some () | _ -> None)
-    (fun () -> Cannot_transfer_ticket_to_implicit) ;
 
   let description =
     "Smart contract rollups will be enabled in a future proposal."
@@ -452,7 +442,7 @@ let apply_transaction_to_tx_rollup ~ctxt ~parameters_ty ~parameters ~payer
        {payload_size = ticket_size; limit})
   >>=? fun () ->
   let ex_token, ticket_amount =
-    Ticket_token.token_and_amount_of_ex_ticket ex_ticket
+    Ticket_scanner.ex_token_and_amount_of_ex_ticket ex_ticket
   in
   Ticket_balance_key.of_ex_token ctxt ~owner:(Tx_rollup dst_rollup) ex_token
   >>=? fun (ticket_hash, ctxt) ->
@@ -675,9 +665,9 @@ let apply_internal_operation_contents :
       (* Adding the message to the inbox. Note that it is safe to ignore the
          size diff since only its hash and meta data are stored in the context.
          See #3232. *)
-      Sc_rollup.Inbox.add_internal_message
+      Sc_rollup.Inbox.add_deposit
         ctxt
-        destination
+        ~destination
         ~payload
         ~sender
         ~source:payer
@@ -783,27 +773,26 @@ let apply_manager_operation :
              {consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt}
             : kind successful_manager_operation_result),
           [] )
-  | Transaction {amount; parameters; destination = Implicit pkh; entrypoint} ->
+  | Transaction {amount; parameters; destination = Implicit pkh; entrypoint}
+    -> (
       Script.force_decode_in_context
         ~consume_deserialization_gas
         ctxt
         parameters
       >>?= fun (parameters, ctxt) ->
       (* Only allow [Unit] parameter to implicit accounts. *)
-      (match Micheline.root parameters with
-      | Prim (_, Michelson_v1_primitives.D_Unit, [], _) -> Result.return_unit
-      | _ -> error (Script_interpreter.Bad_contract_parameter source_contract))
-      >>?= fun () ->
-      (if Entrypoint.is_default entrypoint then Result.return_unit
-      else error (Script_tc_errors.No_such_entrypoint entrypoint))
-      >>?= fun () ->
-      apply_transaction_to_implicit
-        ~ctxt
-        ~source:source_contract
-        ~amount
-        ~pkh
-        ~before_operation:ctxt_before_op
-      >|=? fun (ctxt, res, ops) -> (ctxt, Transaction_result res, ops)
+      match Micheline.root parameters with
+      | Prim (_, Michelson_v1_primitives.D_Unit, [], _) ->
+          if Entrypoint.is_default entrypoint then
+            apply_transaction_to_implicit
+              ~ctxt
+              ~source:source_contract
+              ~amount
+              ~pkh
+              ~before_operation:ctxt_before_op
+            >|=? fun (ctxt, res, ops) -> (ctxt, Transaction_result res, ops)
+          else fail (Script_tc_errors.No_such_entrypoint entrypoint)
+      | _ -> fail (Script_interpreter.Bad_contract_parameter source_contract))
   | Transaction
       {amount; parameters; destination = Originated contract_hash; entrypoint}
     ->
@@ -851,20 +840,27 @@ let apply_manager_operation :
             Tx_rollup_l2_qty.(amount <= zero)
             Script_tc_errors.Forbidden_zero_ticket_quantity
           >>?= fun () ->
-          Tx_rollup_ticket.parse_ticket
+          Ticket_transfer.parse_ticket
             ~consume_deserialization_gas
             ~ticketer
             ~contents
             ~ty
+            ~use_original_expr:true
             ctxt
-          >>=? fun (ctxt, ticket_token) ->
-          Tx_rollup_ticket.make_withdraw_order
+          >>=? fun ( ctxt,
+                     Ticket_transfer.
+                       {ty_node; contents_node; token = ticket_token} ) ->
+          Ticket_balance_key.make
             ctxt
-            tx_rollup
-            ticket_token
-            claimer
-            amount
-          >>=? fun (ctxt, withdrawal) ->
+            ~owner:(Tx_rollup tx_rollup)
+            ~ticketer
+            ~contents_type:ty_node
+            ~contents:(Micheline.root contents_node)
+          >>=? fun (tx_rollup_ticket_hash, ctxt) ->
+          let withdrawal =
+            Tx_rollup_withdraw.
+              {claimer; ticket_hash = tx_rollup_ticket_hash; amount}
+          in
           return
             (withdrawal :: acc_withdraw, (withdrawal, ticket_token) :: acc, ctxt))
         ([], [], ctxt)
@@ -901,7 +897,7 @@ let apply_manager_operation :
           ~owner:(Contract (Contract.Implicit claimer))
           ticket_token
         >>=? fun (claimer_ticket_hash, ctxt) ->
-        Tx_rollup_ticket.transfer_ticket_with_hashes
+        Ticket_transfer.transfer_ticket_with_hashes
           ctxt
           ~src_hash:tx_rollup_ticket_hash
           ~dst_hash:claimer_ticket_hash
@@ -922,12 +918,23 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
-  | Transfer_ticket {contents; ty; ticketer; amount; destination; entrypoint}
-    -> (
-      match destination with
-      | Implicit _ -> fail Cannot_transfer_ticket_to_implicit
+  | Transfer_ticket {contents; ty; ticketer; amount; destination; entrypoint} ->
+      (match destination with
+      | Implicit _ ->
+          Ticket_transfer.parse_ticket
+            ~ticketer
+            ~ty
+            ~contents
+            ~consume_deserialization_gas
+            ~use_original_expr:true
+            ctxt
+          >>=? fun (ctxt, token) ->
+          error_unless
+            Entrypoint.(entrypoint = default)
+            (Script_tc_errors.No_such_entrypoint entrypoint)
+          >>?= fun () -> return (ctxt, token, [])
       | Originated destination_hash ->
-          Tx_rollup_ticket.parse_ticket_and_operation
+          Ticket_transfer.parse_ticket_and_operation
             ~consume_deserialization_gas
             ~ticketer
             ~contents
@@ -937,23 +944,24 @@ let apply_manager_operation :
             ~entrypoint
             ~amount
             ctxt
-          >>=? fun (ctxt, ticket_token, op) ->
-          Tx_rollup_ticket.transfer_ticket
-            ctxt
-            ~src:(Contract source_contract)
-            ~dst:(Contract destination)
-            ticket_token
-            amount
-          >>=? fun (ctxt, paid_storage_size_diff) ->
-          let result =
-            Transfer_ticket_result
-              {
-                balance_updates = [];
-                consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt;
-                paid_storage_size_diff;
-              }
-          in
-          return (ctxt, result, [op]))
+          >|=? fun (ctxt, token, op) -> (ctxt, token, [op]))
+      >>=? fun (ctxt, ticket_token, op) ->
+      Ticket_transfer.transfer_ticket
+        ctxt
+        ~src:(Contract source_contract)
+        ~dst:(Contract destination)
+        ticket_token
+        amount
+      >>=? fun (ctxt, paid_storage_size_diff) ->
+      let result =
+        Transfer_ticket_result
+          {
+            balance_updates = [];
+            consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt;
+            paid_storage_size_diff;
+          }
+      in
+      return (ctxt, result, op)
   | Origination {delegate; script; credit} ->
       (* Internal originations have their address generated in the interpreter
          so that the script can use it immediately.
@@ -1347,8 +1355,8 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
-  | Sc_rollup_add_messages {rollup; messages} ->
-      Sc_rollup.Inbox.add_external_messages ctxt rollup messages
+  | Sc_rollup_add_messages {messages} ->
+      Sc_rollup.Inbox.add_external_messages ctxt messages
       >>=? fun (inbox_after, _size, ctxt) ->
       let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
       let result = Sc_rollup_add_messages_result {consumed_gas; inbox_after} in
@@ -2548,6 +2556,7 @@ let begin_application ctxt chain_id ~migration_balance_updates
   let* ctxt, liquidity_baking_operations_results, liquidity_baking_toggle_ema =
     apply_liquidity_baking_subsidy ctxt ~toggle_vote
   in
+  let* _inbox, _diff, ctxt = Sc_rollup.Inbox.add_start_of_level ctxt in
   let mode =
     Application
       {
@@ -2602,6 +2611,7 @@ let begin_full_construction ctxt chain_id ~migration_balance_updates
   let* ctxt, liquidity_baking_operations_results, liquidity_baking_toggle_ema =
     apply_liquidity_baking_subsidy ctxt ~toggle_vote
   in
+  let* _inbox, _diff, ctxt = Sc_rollup.Inbox.add_start_of_level ctxt in
   let mode =
     Full_construction
       {
@@ -2636,6 +2646,7 @@ let begin_partial_construction ctxt chain_id ~migration_balance_updates
   let* ctxt, liquidity_baking_operations_results, liquidity_baking_toggle_ema =
     apply_liquidity_baking_subsidy ctxt ~toggle_vote
   in
+  let* _inbox, _diff, ctxt = Sc_rollup.Inbox.add_start_of_level ctxt in
   let mode = Partial_construction {predecessor_level; predecessor_fitness} in
   return
     {
@@ -2724,6 +2735,7 @@ let finalize_application ctxt block_data_contents ~round ~predecessor_hash
   in
   let* ctxt = Amendment.may_start_new_voting_period ctxt in
   let* ctxt, dal_slot_availability = Dal_apply.dal_finalisation ctxt in
+  let* _inbox, _diff, ctxt = Sc_rollup.Inbox.add_end_of_level ctxt in
   let balance_updates =
     migration_balance_updates @ baking_receipts @ cycle_end_balance_updates
   in

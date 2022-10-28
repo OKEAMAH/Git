@@ -1363,7 +1363,7 @@ let octez_test_helpers_extra =
 
 let _octez_shell_services_tests =
   test
-    "test"
+    "test_block_services"
     ~path:"src/lib_shell_services/test"
     ~opam:"tezos-shell-services"
     ~deps:
@@ -1931,7 +1931,12 @@ let octez_shell_context =
 
 let _octez_protocol_environment_tests =
   tests
-    ["test"; "test_mem_context_array_theory"]
+    [
+      "test_mem_context";
+      "test_mem_context_array_theory";
+      "test_cache";
+      "test_data_encoding";
+    ]
     ~path:"src/lib_protocol_environment/test"
     ~opam:"tezos-protocol-environment"
     ~deps:
@@ -2604,7 +2609,7 @@ let octez_client_commands =
       [
         octez_base |> open_ ~m:"TzPervasives";
         octez_rpc |> open_;
-        octez_clic |> open_;
+        octez_clic;
         octez_clic_unix |> open_;
         octez_client_base |> open_;
         octez_shell_services |> open_;
@@ -2892,6 +2897,7 @@ let octez_benchmark =
         ocaml_migrate_parsetree;
         opam_only "hashcons" V.True;
       ]
+    ~inline_tests:ppx_expect
 
 let octez_benchmark_examples =
   public_lib
@@ -2907,8 +2913,14 @@ let octez_benchmark_examples =
       ]
 
 let _octez_benchmark_tests =
-  test
-    "main_ci"
+  tests
+    [
+      "test_sparse_vec";
+      "test_costlang";
+      "test_probe";
+      "test_measure";
+      "test_benchmark_helpers";
+    ]
     ~path:"src/lib_benchmark/test"
     ~opam:"tezos-benchmark-tests"
     ~synopsis:"Tezos: tests for lib-benchmarks"
@@ -3163,6 +3175,24 @@ let octez_scoru_wasm_tests_helpers =
         octez_webassembly_interpreter_extra |> open_;
       ]
     ~preprocess:[staged_pps [ppx_import; ppx_deriving_show]]
+
+let _octez_scoru_wasm_benchmark =
+  private_exe
+    "benchmark_scoru_wasm"
+    ~path:"src/lib_scoru_wasm/bench"
+    ~synopsis:"SCORU WASM benchmark executable"
+    ~opam:"tezos-scoru-wasm-benchmark"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        tezt_lib;
+        octez_webassembly_interpreter;
+        octez_context_memory;
+        octez_scoru_wasm;
+        octez_scoru_wasm_tests_helpers;
+        lwt_unix;
+      ]
+    ~preprocess:[pps ppx_deriving_show]
 
 let _octez_scoru_wasm_tests =
   test
@@ -3559,8 +3589,8 @@ end = struct
       in
       let _integration_validate =
         only_if N.(number >= 014) @@ fun () ->
-        tests
-          ["main"; "test_1m_restriction"]
+        test
+          "main"
           ~path:(path // "lib_protocol/test/integration/validate")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~deps:
@@ -3573,6 +3603,7 @@ end = struct
               client |> if_some |> open_;
               test_helpers |> if_some |> open_;
               octez_base_test_helpers |> open_;
+              plugin |> if_some |> open_;
             ]
       in
       let _integration =
@@ -3618,6 +3649,7 @@ end = struct
             (3, "test_carbonated_map", N.(number >= 013));
             (3, "test_zk_rollup_encoding", N.(number >= 015));
             (3, "test_dal_slot_proof", N.(number >= 016));
+            (3, "test_compare_operations", N.(number >= 015));
           ]
           |> List.filter_map (fun (i, n, b) -> if b then Some (i, n) else None)
         in
@@ -3660,6 +3692,7 @@ end = struct
               sc_rollup |> if_some |> if_ N.(number >= 016) |> open_;
               octez_crypto_dal |> if_ N.(number >= 016) |> open_;
               octez_base_test_helpers |> if_ N.(number >= 016) |> open_;
+              parameters |> if_some |> if_ N.(number >= 016) |> open_;
             ]
           ~dune
       in
@@ -3677,7 +3710,7 @@ end = struct
               octez_micheline |> open_;
               client |> if_some |> open_;
               octez_client_base;
-              parameters |> if_some;
+              parameters |> if_some |> open_if N.(number >= 016);
               octez_protocol_environment;
               octez_stdlib_unix;
               main |> open_;
@@ -4178,7 +4211,7 @@ module Protocol = Protocol
           [
             octez_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_clic |> open_;
+            octez_clic;
             octez_shell_services |> open_;
             octez_client_base |> open_;
             main |> open_;
@@ -4289,7 +4322,7 @@ module Protocol = Protocol
             |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_base |> if_ N.(number >= 15) |> open_ ~m:"TzPervasives";
-            octez_clic |> open_;
+            octez_clic;
             main |> open_;
             parameters |> if_some |> if_ N.(number >= 013) |> open_;
             octez_stdlib_unix |> open_;
@@ -4321,7 +4354,7 @@ module Protocol = Protocol
           [
             octez_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_clic |> open_;
+            octez_clic;
             octez_crypto;
             octez_stdlib_unix |> open_;
             octez_client_base |> open_;
@@ -4346,7 +4379,7 @@ module Protocol = Protocol
             |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_base |> if_ N.(number >= 15) |> open_ ~m:"TzPervasives";
-            octez_clic |> open_;
+            octez_clic;
             main |> open_;
             parameters |> if_some |> if_ N.(number >= 013) |> open_;
             octez_protocol_environment;
@@ -4376,7 +4409,7 @@ module Protocol = Protocol
           [
             octez_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_clic |> open_;
+            octez_clic;
             octez_version;
             main |> open_;
             plugin |> if_some |> open_;
@@ -4558,7 +4591,7 @@ module Protocol = Protocol
           [
             octez_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_clic |> open_;
+            octez_clic;
             main |> open_;
             client |> if_some |> open_;
             octez_client_commands |> open_;
@@ -4640,7 +4673,7 @@ module Protocol = Protocol
           [
             octez_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_clic |> open_;
+            octez_clic;
             octez_client_base;
             client |> if_some |> open_;
             octez_client_commands |> open_;
@@ -4665,7 +4698,7 @@ module Protocol = Protocol
           [
             octez_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_clic |> open_;
+            octez_clic;
             octez_client_commands |> open_;
             octez_stdlib_unix |> open_;
             octez_client_base |> open_;
@@ -4692,6 +4725,7 @@ module Protocol = Protocol
             ringo_lwt;
             injector |> if_some |> open_;
             octez_scoru_wasm;
+            octez_crypto_dal |> if_ N.(number >= 016) |> open_;
           ]
     in
     let tx_rollup =
@@ -4742,7 +4776,7 @@ module Protocol = Protocol
           [
             octez_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_clic |> open_;
+            octez_clic;
             main |> open_ |> open_ ~m:"Protocol";
             client |> if_some |> open_;
             client_commands |> if_some |> open_;
@@ -4765,7 +4799,7 @@ module Protocol = Protocol
             octez_base |> open_ ~m:"TzPervasives"
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
             |> open_;
-            octez_clic |> open_;
+            octez_clic;
             main |> open_;
             client |> if_some |> open_;
             octez_client_base |> open_;
@@ -5054,7 +5088,16 @@ let _octez_micheline_rewriting_tests =
 
 let _octez_store_tests =
   tests
-    ["test"; "test_locator"]
+    [
+      "test";
+      "test_consistency";
+      "test_locator";
+      "test_cemented_store";
+      "test_block_store";
+      "test_protocol_store";
+      "test_store";
+      "test_testchain";
+    ]
     ~path:"src/lib_store/unix/test"
     ~opam:"tezos-store"
     ~deps:
@@ -5087,6 +5130,26 @@ let _octez_store_tests =
          run these tests in the CI. *)
       Dune.
         [
+          alias_rule
+            "runtest"
+            ~package:"tezos-store"
+            ~action:(run_exe "test_cemented_store" []);
+          alias_rule
+            "runtest"
+            ~package:"tezos-store"
+            ~action:(run_exe "test_block_store" []);
+          alias_rule
+            "runtest"
+            ~package:"tezos-store"
+            ~action:(run_exe "test_protocol_store" []);
+          alias_rule
+            "runtest"
+            ~package:"tezos-store"
+            ~action:(run_exe "test_store" []);
+          alias_rule
+            "runtest"
+            ~package:"tezos-store"
+            ~action:(run_exe "test_testchain" []);
           alias_rule
             "runtest"
             ~package:"tezos-store"
@@ -5443,7 +5506,7 @@ let _octez_client =
       ([
          octez_base |> open_ ~m:"TzPervasives";
          octez_base_unix;
-         octez_clic |> open_;
+         octez_clic;
          octez_rpc_http_client |> open_;
          octez_stdlib_unix |> open_;
          octez_shell_services |> open_;
@@ -5495,7 +5558,7 @@ let _octez_codec =
          octez_base_unix;
          octez_client_base_unix |> open_;
          octez_client_base |> open_;
-         octez_clic |> open_;
+         octez_clic;
          octez_stdlib_unix |> open_;
          octez_event_logging |> open_;
          octez_signer_services;
@@ -5550,7 +5613,7 @@ let _octez_snoop =
         octez_base |> open_ ~m:"TzPervasives";
         octez_base_unix;
         octez_stdlib_unix |> open_;
-        octez_clic |> open_;
+        octez_clic;
         octez_benchmark |> open_;
         octez_benchmark_examples;
         octez_shell_benchmarks;
@@ -5703,7 +5766,7 @@ let _octez_dal_node =
       ([
          octez_base |> open_ ~m:"TzPervasives";
          octez_base_unix;
-         octez_clic |> open_;
+         octez_clic;
          octez_client_base |> open_;
          octez_client_base_unix |> open_;
          octez_client_commands |> open_;

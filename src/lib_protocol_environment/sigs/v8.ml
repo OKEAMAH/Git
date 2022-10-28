@@ -11765,11 +11765,11 @@ type input = {inbox_level : Bounded.Non_negative_int32.t; message_counter : Z.t}
 
 type output = {outbox_level : Bounded.Non_negative_int32.t; message_index : Z.t}
 
-type input_hash
+type reveal_hash
 
-val input_hash_to_string : input_hash -> string
+val reveal_hash_to_string : reveal_hash -> string
 
-type reveal = Reveal_raw_data of input_hash | Reveal_metadata
+type reveal = Reveal_raw_data of reveal_hash | Reveal_metadata
 
 type input_request =
   | No_input_required
@@ -11784,6 +11784,8 @@ type info = {
 
 module Make
     (Tree : Context.TREE with type key = string list and type value = bytes) : sig
+  val install_boot_sector : string -> Tree.tree -> Tree.tree Lwt.t
+
   val compute_step : Tree.tree -> Tree.tree Lwt.t
 
   val set_input_step : input -> string -> Tree.tree -> Tree.tree Lwt.t
@@ -11911,6 +11913,10 @@ val parameters_encoding : parameters Data_encoding.t
   defined in this module and store them in a value of type [t] *)
 val make : parameters -> (t, [> `Fail of string]) result
 
+(** [parameters t] returns the parameters given when [t] was
+     initialised with the function {!val:make} *)
+val parameters : t -> parameters
+
 (** Commitment to a polynomial. *)
 type commitment
 
@@ -11959,20 +11965,23 @@ type page_proof
 (** An encoding for the proof of a page. *)
 val page_proof_encoding : page_proof Data_encoding.t
 
-(** [verify_page t commitment page page_proof] returns [Ok
-     true] if the [proof] certifies that the [slot_page] is indeed
-     included in the slot committed with commitment
-     [commitment]. Returns [Ok false] otherwise.
+(** [pages_per_slot t] returns the number of expected pages per slot. *)
+val pages_per_slot : parameters -> int
 
-      Fails if the index of the page is out of range. *)
+(** [verify_page t srs commitment page page_proof] returns [Ok true]
+     if the [proof] certifies that the [slot_page] is indeed included
+     in the slot committed with commitment [commitment]. Returns [Ok
+     false] otherwise.
+
+      Fails if the index of the page is out of range or if the page is
+     not of the expected length [page_size] given for the
+     initialisation of [t]. *)
 val verify_page :
   t ->
   commitment ->
   page ->
   page_proof ->
-  ( bool,
-    [> `Degree_exceeds_srs_length of string | `Segment_index_out_of_range] )
-  Result.t
+  (bool, [> `Segment_index_out_of_range | `Page_length_mismatch]) Result.t
 end
 # 136 "v8.in.ml"
 

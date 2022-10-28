@@ -60,7 +60,7 @@ let sc_rollup_timeout_period_in_blocks = 20_160
    Think harder about those values. *)
 let default_cryptobox_parameters =
   {
-    Dal.Slots_history.page_size = 4096;
+    Dal.page_size = 4096;
     slot_size = 1 lsl 20;
     redundancy_factor = 16;
     number_of_shards = 2048;
@@ -237,8 +237,26 @@ let constants_mainnet =
          max_lookahead_in_blocks = 30_000l;
          max_active_outbox_levels = sc_rollup_max_active_outbox_levels;
          max_outbox_messages_per_level = sc_rollup_max_outbox_messages_per_level;
+         (* The default number of required sections in a dissection *)
          number_of_sections_in_dissection = 32;
          timeout_period_in_blocks = sc_rollup_timeout_period_in_blocks;
+         (* We store multiple cemented commitments because we want to
+             allow the execution of outbox messages against cemented
+             commitments that are older than the last cemented commitment.
+             The execution of an outbox message is a manager operation,
+             and manager operations are kept in the mempool for one
+             hour. Hence we only need to ensure that an outbox message
+             can be validated against a cemented commitment produced in the
+             last hour. If we assume that the rollup is operating without
+             issues, that is no commitments are being refuted and commitments
+             are published and cemented regularly by one rollup node, we can
+             expect commitments to be cemented approximately every 15
+             minutes, or equivalently we can expect 5 commitments to be
+             published in one hour (at minutes 0, 15, 30, 45 and 60).
+             Therefore, we need to keep 5 cemented commitments to guarantee
+             that the execution of an outbox operation can always be
+             validated against a cemented commitment while it is in the
+             mempool. *)
          max_number_of_stored_cemented_commitments = 5;
        });
     zk_rollup =
@@ -251,23 +269,18 @@ let constants_mainnet =
       };
   }
 
-let default_cryptobox_parameters_sandbox =
+(* Sandbox and test networks's Dal cryptobox are computed by this function:
+   - Redundancy_factor is provided as a parameter;
+   - The other fields are derived from mainnet's values, as divisions by the
+     provided factor. *)
+let derive_cryptobox_parameters ~redundancy_factor ~mainnet_constants_divider =
+  let m = default_cryptobox_parameters in
   {
-    Dal.Slots_history.page_size = 4096;
-    number_of_shards = 256;
-    slot_size = 1 lsl 16;
-    redundancy_factor = 4;
+    Dal.redundancy_factor;
+    page_size = m.page_size / mainnet_constants_divider;
+    slot_size = m.slot_size / mainnet_constants_divider;
+    number_of_shards = m.number_of_shards / mainnet_constants_divider;
   }
-
-let default_dal_sandbox =
-  Constants.Parametric.
-    {
-      feature_enable = false;
-      number_of_slots = 16;
-      endorsement_lag = 1;
-      availability_threshold = 50;
-      cryptobox_parameters = default_cryptobox_parameters_sandbox;
-    }
 
 let constants_sandbox =
   let consensus_committee_size = 256 in
@@ -286,7 +299,16 @@ let constants_sandbox =
   in
   {
     constants_mainnet with
-    dal = default_dal_sandbox;
+    dal =
+      Constants.Parametric.
+        {
+          constants_mainnet.dal with
+          number_of_slots = 16;
+          cryptobox_parameters =
+            derive_cryptobox_parameters
+              ~redundancy_factor:8
+              ~mainnet_constants_divider:32;
+        };
     Constants.Parametric.preserved_cycles = 2;
     blocks_per_cycle = 8l;
     blocks_per_commitment = 4l;
@@ -323,6 +345,16 @@ let constants_test =
   in
   {
     constants_mainnet with
+    dal =
+      Constants.Parametric.
+        {
+          constants_mainnet.dal with
+          number_of_slots = 8;
+          cryptobox_parameters =
+            derive_cryptobox_parameters
+              ~redundancy_factor:4
+              ~mainnet_constants_divider:64;
+        };
     Constants.Parametric.preserved_cycles = 3;
     blocks_per_cycle = 12l;
     blocks_per_commitment = 4l;

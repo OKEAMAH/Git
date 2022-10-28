@@ -49,8 +49,14 @@ open Sc_rollup_repr
 type reveal_proof =
   | Raw_data_proof of string
       (** The existence of reveal for a given hash when the
-          [input_requested] is the [Needs_for_reveal]. *)
+          [input_requested] is the [Needs_reveal Reveal_raw_data]. *)
   | Metadata_proof
+  | Dal_page_proof of {
+      page_id : Dal_slot_repr.Page.t;
+      proof : Dal_slot_repr.History.proof;
+    }
+      (** The existence or not of a confirmed slot for a given page ID when the
+          [input_requested] is the [Needs_reveal Request_dal_page]. *)
 
 (** A PVM proof [pvm_step] is combined with an [input_proof] to provide
     the proof necessary to validate a single step in the refutation
@@ -68,6 +74,11 @@ type reveal_proof =
       to give a valid refutation proof ; or
 
     - a proof of a reveal satisfiability.
+
+    - a claim that the input involved is the first input of the inbox, which
+      does not need to be proved as we know by construction what is
+      the input (i.e. the [Start_of_level] of the level after the rollup's
+      origination level).
 *)
 
 type input_proof =
@@ -77,6 +88,7 @@ type input_proof =
       proof : Sc_rollup_inbox_repr.serialized_proof;
     }
   | Reveal_proof of reveal_proof
+  | First_inbox_message
 
 type t = {pvm_step : Sc_rollups.wrapped_proof; input_proof : input_proof option}
 
@@ -103,11 +115,18 @@ val stop : t -> State_hash.t
     This function requires a few bits of data (available from the
     refutation game record in the storage):
 
-      - a snapshot of the inbox, that may be used by the [input] proof ;
+      - a snapshot of the inbox, that may be used by the [input] proof in case
+        it's an inbox message ;
+
+      - a snapshot of the DAL confirmed slots structure, that may be used by
+        the [input] proof in case the input is a DAL page ;
 
       - the inbox level of the commitment, used to determine if an
         output from the [input] proof is too recent to be allowed into
         the PVM proof ;
+
+      - DAL parameters and [dal_endorsement_lag], to be able to check the page
+        content membership to a slot if needed ;
 
       - the [pvm_name], used to check that the proof given has the right
         PVM kind.
@@ -119,6 +138,9 @@ val valid :
   metadata:Sc_rollup_metadata_repr.t ->
   Sc_rollup_inbox_repr.history_proof ->
   Raw_level_repr.t ->
+  Dal_slot_repr.History.t ->
+  Dal_slot_repr.parameters ->
+  dal_endorsement_lag:int ->
   pvm_name:string ->
   t ->
   (Sc_rollup_PVM_sig.input option * Sc_rollup_PVM_sig.input_request) tzresult
@@ -133,7 +155,7 @@ module type PVM_with_context_and_state = sig
 
   val proof_encoding : proof Data_encoding.t
 
-  val reveal : Sc_rollup_PVM_sig.Input_hash.t -> string option
+  val reveal : Sc_rollup_PVM_sig.Reveal_hash.t -> string option
 
   module Inbox_with_history : sig
     include
@@ -143,6 +165,40 @@ module type PVM_with_context_and_state = sig
     val inbox : Sc_rollup_inbox_repr.history_proof
 
     val history : Sc_rollup_inbox_repr.History.t
+  end
+
+  (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3997
+     This interface might not be resilient to dal parameters changes
+     (cryptobox parameters or dal_endorsement_lag for instance). *)
+  module Dal_with_history : sig
+    (** The reference/snapshot cell of the DAL skip list that stores
+        confirmed slots. *)
+    val confirmed_slots_history : Dal_slot_repr.History.t
+
+    (** A bounded cache of Dal confirmed slots skip list's cells. Used to
+        to build inclusion proofs. *)
+    val history_cache : Dal_slot_repr.History.History_cache.t
+
+    (** In case we expect to generate an input proof that is a DAL page
+        confirmation, we should provide via [page_info] the information of the
+        page. That is: its content and the proof that the page is part of a
+        confirmed slot whose ID is part of the page's ID.
+
+        In case we expect to generate an input proof to justify that a DAL page
+        is not confirmed, the value of [page_info] should be [None].
+
+        In case the proof doesn't involve DAL inputs, the value of [page_info]
+        is [None]. *)
+    val page_info :
+      (Dal_slot_repr.Page.content * Dal_slot_repr.Page.proof) option
+
+    (** Some parameters of the DAL. Needed when checking a page's proof against
+        a slot's {!val: Dal_slot_repr.commitment}. *)
+    val dal_parameters : Dal_slot_repr.parameters
+
+    (** The lag between the time an endorsement is published on L1
+        (its published_level) and the level it should be confirmed. *)
+    val dal_endorsement_lag : int
   end
 end
 
@@ -154,9 +210,9 @@ end
     the input requested is a reveal the proof production will also
     fail.
 
-    This will fail if any of the [context], [inbox_context] or
-    [inbox_history] given don't have enough data to make the proof. For
-    example, the 'protocol implementation' version of each PVM won't be
+    This will fail if any of the [context], [inbox_context], [inbox_history] or
+    [dal_slots_history_cache] given doesn't have enough data to make the proof.
+    For example, the 'protocol implementation' version of each PVM won't be
     able to run this function. Similarly, the version of the inbox
     stored in the L1 won't be enough because it forgets old levels.
 

@@ -230,7 +230,7 @@ let download_and_save_slots
     @@ Bitset.inter subscribed_slots_indexes confirmed_slots_indexes
   in
   let params = protocol_constants.parametric.dal.cryptobox_parameters in
-  let number_of_pages = params.slot_size / params.page_size in
+  let number_of_pages = Dal.Page.pages_per_slot params in
   (* DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/2766.
      As part of the clean rollup storage workflow, we should make sure that
      pages for old slots are removed from the storage when not needed anymore.
@@ -444,3 +444,8 @@ let process_head node_ctxt (Layer1.{hash = head_hash; _} as head) =
           confirmation_info
       in
       Confirmed_slots_history.update node_ctxt head confirmation_info
+
+let slots_history_of_hash = Confirmed_slots_history.slots_history_of_hash
+
+let slots_history_cache_of_hash =
+  Confirmed_slots_history.slots_history_cache_of_hash

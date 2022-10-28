@@ -141,8 +141,12 @@ module V1 : sig
   val encoding : t Data_encoding.t
 
   (** [inbox_level inbox] returns the maximum level of message insertion in
-    [inbox] or its initial level. *)
+      [inbox] or its initial level. *)
   val inbox_level : t -> Raw_level_repr.t
+
+  (** A [level_proof] contains the root hash of the level tree and its
+      corresponding level. *)
+  type level_proof
 
   (** A [history_proof] is a [Skip_list.cell] that stores multiple
     hashes. [Skip_list.content history_proof] gives the hash of the
@@ -204,13 +208,6 @@ module V1 : sig
     number of messages added in the inbox since the beginning of
     the current commitment period. *)
   val number_of_messages_during_commitment_period : t -> int64
-
-  (** [refresh_commitment_period ~commitment_period ~level inbox] updates
-      [inbox] to take into account the commitment_period: this resets a
-      counter for the number of messages in a given commitment period
-      (which is limited). *)
-  val refresh_commitment_period :
-    commitment_period:int32 -> level:Raw_level_repr.t -> t -> t
 end
 
 (** Versioning, see {!Sc_rollup_data_version_sig.S} for more information. *)
@@ -218,11 +215,11 @@ include Sc_rollup_data_version_sig.S with type t = V1.t
 
 include module type of V1 with type t = V1.t
 
-(** This extracts the current level hash from the inbox. Note: the
+(** This extracts the current {!level_proof} from the inbox. Note: the
     current level hash is stored lazily as [fun () -> ...], and this
     function will call that function. So don't use this if you want to
     preserve the laziness. *)
-val current_level_hash : t -> Hash.t
+val current_level_proof : t -> level_proof
 
 type serialized_proof
 
@@ -243,7 +240,7 @@ module type Merkelized_operations = sig
   (** Initialise a new level. [new_level_tree ctxt level] is a merkle
       tree with no messages yet, but has the [level] stored so we can
       check that in proofs. *)
-  val new_level_tree : inbox_context -> Raw_level_repr.t -> tree Lwt.t
+  val new_level_tree : inbox_context -> tree Lwt.t
 
   (** [add_messages ctxt history inbox level payloads level_tree] inserts
       a list of [payloads] as new messages in the [level_tree] of the
@@ -312,12 +309,12 @@ module type Merkelized_operations = sig
       which proofs in that game must be valid.
 
       One important note:
-      It takes the snapshot of the inbox for the [current_level]. The snapshot
+      It takes the snapshot of the inbox for the current level. The snapshot
       points to the inbox at the *beginning* of the current block level.
       This prevents to create a mid-level snapshot for a refutation game
       if new messages are added before and/or after in the same block.
   *)
-  val take_snapshot : current_level:Raw_level_repr.t -> t -> history_proof
+  val take_snapshot : t -> history_proof
 
   (** Given a inbox [A] at some level [L] and another inbox [B] at
       some level [L' >= L], an [inclusion_proof] guarantees that [A] is
@@ -394,7 +391,7 @@ module type Merkelized_operations = sig
 
   (** [empty ctxt level] is an inbox started at some given [level] with no
       message at all. *)
-  val empty : inbox_context -> Sc_rollup_repr.t -> Raw_level_repr.t -> t Lwt.t
+  val empty : inbox_context -> Raw_level_repr.t -> t Lwt.t
 
   module Internal_for_tests : sig
     val eq_tree : tree -> tree -> bool
@@ -410,6 +407,9 @@ module type Merkelized_operations = sig
     (** Allows to create a dumb {!serialized_proof} from a string, instead
         of serializing a proof with {!to_serialized_proof}. *)
     val serialized_proof_of_string : string -> serialized_proof
+
+    (** [inbox_message_counter inbox] returns the [inbox]'s message counter. *)
+    val inbox_message_counter : t -> Z.t
   end
 end
 

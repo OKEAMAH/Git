@@ -97,6 +97,8 @@ module Sc_rollup = struct
 end
 
 module Dal = struct
+  include Dal_slot_repr
+
   module Slot_index = struct
     include Dal_slot_repr.Index
   end
@@ -105,6 +107,11 @@ module Dal = struct
     include Dal_endorsement_repr
     include Raw_context.Dal
   end
+
+  type slot_id = Dal_slot_repr.Header.id = {
+    published_level : Raw_level_repr.t;
+    index : Dal_slot_repr.Index.t;
+  }
 
   module Page = struct
     include Dal_slot_repr.Page
@@ -607,10 +614,6 @@ end
 
 module Ticket_balance = struct
   include Ticket_storage
-end
-
-module Ticket_receipt = struct
-  include Ticket_receipt_repr
 end
 
 module Token = Token

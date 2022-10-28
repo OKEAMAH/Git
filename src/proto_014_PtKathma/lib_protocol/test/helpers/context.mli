@@ -57,7 +57,7 @@ val get_bakers :
   t ->
   public_key_hash list tzresult Lwt.t
 
-val get_baker : t -> round:int -> public_key_hash tzresult Lwt.t
+val get_baker : t -> round:Round.t -> public_key_hash tzresult Lwt.t
 
 val get_first_different_baker :
   public_key_hash -> public_key_hash trace -> public_key_hash
@@ -284,6 +284,37 @@ val init_with_constants1 :
 
 val init_with_constants2 :
   Constants.Parametric.t ->
+  (Block.t * (Alpha_context.Contract.t * Alpha_context.Contract.t)) tzresult
+  Lwt.t
+
+(** [init_with_parameters_gen tup params] returns an initial block parametrised
+    with [params] and the implicit contracts corresponding to its bootstrap
+    accounts. The number of bootstrap accounts, and the structure of the
+    returned contracts, are specified by the [tup] argument. *)
+val init_with_parameters_gen :
+  (Alpha_context.Contract.t, 'contracts) tup ->
+  Parameters.t ->
+  (Block.t * 'contracts) tzresult Lwt.t
+
+(** [init_with_parameters_n params n] returns an initial block parametrized
+    with [params] with [n] initialized accounts and the associated implicit
+    contracts *)
+val init_with_parameters_n :
+  Parameters.t ->
+  int ->
+  (Block.t * Alpha_context.Contract.t list) tzresult Lwt.t
+
+(** [init_with_parameters1 params] returns an initial block parametrized with
+    [params] with 1 initialized accounts and the associated implicit
+    contracts *)
+val init_with_parameters1 :
+  Parameters.t -> (Block.t * Alpha_context.Contract.t) tzresult Lwt.t
+
+(** [init_with_parameters2 params] returns an initial block parametrized with
+    [params] with two initialized accounts and the associated implicit
+    contracts *)
+val init_with_parameters2 :
+  Parameters.t ->
   (Block.t * (Alpha_context.Contract.t * Alpha_context.Contract.t)) tzresult
   Lwt.t
 

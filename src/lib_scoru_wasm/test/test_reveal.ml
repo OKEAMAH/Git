@@ -77,8 +77,12 @@ let reveal_returned_size tree =
   | Eval
       Tezos_webassembly_interpreter.Eval.
         {
-          step_kont =
-            SK_Next (_, _, LS_Craft_frame (_, Inv_stop {code = vs, _; _}));
+          config =
+            {
+              step_kont =
+                SK_Next (_, _, LS_Craft_frame (_, Inv_stop {code = vs, _; _}));
+              _;
+            };
           _;
         } -> (
       let* hd = Tezos_lazy_containers.Lazy_vector.Int32Vector.get 0l vs in
@@ -108,7 +112,7 @@ let test_reveal_preimage_gen preimage max_bytes =
            preimage. Since the memory is left blank, we are looking
            for the zero hash *)
         let zero_hash =
-          Reveal.input_hash_from_string_exn (String.make 32 '\000')
+          Reveal.reveal_hash_from_string_exn (String.make 32 '\000')
         in
         assert (hash = zero_hash) ;
         return_unit

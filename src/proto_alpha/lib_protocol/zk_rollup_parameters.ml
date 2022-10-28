@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 type deposit_parameters = {
-  ex_ticket : Ticket_scanner.ex_ticket;
+  ex_ticket : Script_typed_ir.ex_ticket;
   zkru_operation : Alpha_context.Zk_rollup.Operation.t;
 }
 
@@ -46,5 +46,6 @@ let get_deposit_parameters :
       with
       | None -> error Alpha_context.Zk_rollup.Errors.Wrong_deposit_parameters
       | Some zkru_operation ->
-          ok {ex_ticket = Ticket_scanner.Ex_ticket (ty, ticket); zkru_operation}
+          ok
+            {ex_ticket = Script_typed_ir.Ex_ticket (ty, ticket); zkru_operation}
       )

@@ -2841,21 +2841,21 @@ module Registration_section = struct
     let stack_type = ticket unit @$ cpair nat nat @$ bot
 
     let () =
-      let zero = Script_int.zero_n in
+      let one = Script_int.one_n in
       let ticket =
         {
           ticketer =
             Alpha_context.Contract.Implicit
               Environment.Signature.Public_key_hash.zero;
           contents = ();
-          amount = Ticket_amount.one;
+          amount = Ticket_amount.(add one one);
         }
       in
       benchmark_with_fixed_stack
         ~intercept:true
         ~name:Interpreter_workload.N_ISplit_ticket
         ~stack_type
-        ~stack:(ticket, ((zero, zero), eos))
+        ~stack:(ticket, ((one, one), eos))
         ~kinstr:split_ticket_instr
         ()
 
@@ -2867,11 +2867,15 @@ module Registration_section = struct
             make_default_samplers config.Default_config.sampler
           in
           fun () ->
-            let half_amount = Samplers.Random_value.value nat rng_state in
-            let half_amount = Script_int.add_n half_amount Script_int.one_n in
-            let amount = Script_int.add_n half_amount half_amount in
+            let x_amount =
+              Script_int.succ_n @@ Samplers.Random_value.value nat rng_state
+            in
+            let y_amount =
+              Script_int.succ_n @@ Samplers.Random_value.value nat rng_state
+            in
+            let amount = Script_int.add_n x_amount y_amount in
             let amount =
-              (* this is safe because half_amount > 0 *)
+              (* this is safe because x_amount > 0 and y_amount > 0 *)
               WithExceptions.Option.get ~loc:__LOC__
               @@ Ticket_amount.of_n amount
             in
@@ -2879,7 +2883,7 @@ module Registration_section = struct
             let ticket = {ticket with amount} in
             Ex_stack_and_kinstr
               {
-                stack = (ticket, ((half_amount, half_amount), eos));
+                stack = (ticket, ((x_amount, y_amount), eos));
                 stack_type;
                 kinstr = split_ticket_instr;
               })
@@ -3177,7 +3181,8 @@ module Registration_section = struct
           let kbody = halt in
           fun () ->
             let cont =
-              KList_enter_body (kbody, [()], [], Some (list unit), 1, KNil)
+              KList_enter_body
+                (kbody, [()], Script_list.empty, Some (list unit), 1, KNil)
             in
             Ex_stack_and_cont
               {stack = ((), eos); stack_type = unit @$ bot; cont})
@@ -3199,8 +3204,7 @@ module Registration_section = struct
           fun () ->
             let ys = Samplers.Random_value.value (list unit) rng_state in
             let cont =
-              KList_enter_body
-                (kbody, [], ys.elements, Some (list unit), ys.length, KNil)
+              KList_enter_body (kbody, [], ys, Some (list unit), ys.length, KNil)
             in
             Ex_stack_and_cont
               {stack = ((), eos); stack_type = unit @$ bot; cont})
@@ -3221,7 +3225,8 @@ module Registration_section = struct
           let kbody = halt in
           fun () ->
             let cont =
-              KList_enter_body (kbody, [], [], Some (list unit), 1, KNil)
+              KList_enter_body
+                (kbody, [], Script_list.empty, Some (list unit), 1, KNil)
             in
             Ex_stack_and_cont
               {stack = ((), eos); stack_type = unit @$ bot; cont})
@@ -3242,7 +3247,8 @@ module Registration_section = struct
         ~cont_and_stack_sampler:(fun _cfg _rng_state ->
           let kbody = halt in
           let cont =
-            KList_exit_body (kbody, [], [], Some (list unit), 1, KNil)
+            KList_exit_body
+              (kbody, [], Script_list.empty, Some (list unit), 1, KNil)
           in
           fun () ->
             Ex_stack_and_cont

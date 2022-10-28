@@ -28,7 +28,7 @@
 open Script_typed_ir
 
 type deposit_parameters = {
-  ex_ticket : Ticket_scanner.ex_ticket;
+  ex_ticket : ex_ticket;
   l2_destination : tx_rollup_l2_address;
 }
 
@@ -39,4 +39,4 @@ let get_deposit_parameters :
     deposit_parameters =
  fun (Pair_t (Ticket_t (ty, _), Tx_rollup_l2_address_t, _, _))
      (ticket, l2_destination) ->
-  {ex_ticket = Ticket_scanner.Ex_ticket (ty, ticket); l2_destination}
+  {ex_ticket = Ex_ticket (ty, ticket); l2_destination}

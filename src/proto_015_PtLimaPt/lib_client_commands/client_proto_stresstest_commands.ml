@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -52,10 +52,6 @@ type parameters = {
       (** upper bound on bytes consumed when creating a tz1 account *)
   total_transfers : int option;
       (** total number of transfers to perform; unbounded if None *)
-  single_op_per_pkh_per_block : bool;
-      (** if true, a single operation will be injected by pkh by block to
-          improve the chance for the injected operations to be included in the
-          next block *)
   level_limit : limit option;
       (** total number of levels during which the stresstest is run; unbounded if None *)
   smart_contracts : Smart_contracts.t;
@@ -69,6 +65,14 @@ type source = {
   pkh : public_key_hash;
   pk : public_key;
   sk : Signature.secret_key;
+}
+
+type source_with_uri = {
+  pkh : public_key_hash;
+  pk : public_key;
+  pk_uri : Client_keys.pk_uri;
+  sk : Signature.secret_key;
+  sk_uri : Client_keys.sk_uri;
 }
 
 type input_source =
@@ -97,11 +101,9 @@ type transfer = {
 type state = {
   rng_state : Random.State.t;
   current_head_on_start : Block_hash.t;
-  counters : (Block_hash.t * Z.t) Signature.Public_key_hash.Table.t;
   mutable pool : source_origin list;
   mutable pool_size : int;
-      (** [Some l] if [single_op_per_pkh_per_block] is true *)
-  mutable shuffled_pool : source list option;
+  mutable shuffled_pool : source list;
   mutable revealed : Signature.Public_key_hash.Set.t;
   mutable last_block : Block_hash.t;
   mutable last_level : int;
@@ -147,7 +149,6 @@ let default_parameters =
        of the storage consumed when allocating a new implicit account.
        It was obtained by simulating the operation using the client. *)
     total_transfers = None;
-    single_op_per_pkh_per_block = false;
     level_limit = None;
     smart_contracts = Smart_contracts.no_contracts;
   }
@@ -322,23 +323,21 @@ let unnormalize_source src_org =
   | Wallet_alias alias -> Wallet_alias alias
 
 (** Samples from [state.pool]. Used to generate the destination of a
-    transfer, and its source only when [state.shuffled_pool] is [None]
-    meaning that [--single-op-per-pkh-per-block] is not set. *)
+    transfer. *)
 let sample_any_source_from_pool state =
   let idx = Random.State.int state.rng_state state.pool_size in
   match List.nth state.pool idx with
   | None -> assert false
   | Some src_org -> Lwt.return src_org.source
 
-(** Generates the source of a transfer. If [state.shuffled_pool] has a
-    value (meaning that [--single-op-per-pkh-per-block] is active) then
-    it is sampled from there, otherwise from [state.pool]. *)
-let rec sample_source_from_pool state (cctxt : Protocol_client_context.full) =
+(** Takes and returns a source from [state.shuffled_pool]. Waits for a
+   new block if no source is available. *)
+let rec get_source_from_shuffled_pool state
+    (cctxt : Protocol_client_context.full) =
   let open Lwt_syntax in
   match state.shuffled_pool with
-  | None -> sample_any_source_from_pool state
-  | Some (source :: l) ->
-      state.shuffled_pool <- Some l ;
+  | source :: l ->
+      state.shuffled_pool <- l ;
       let* () =
         log Debug (fun () ->
             cctxt#message
@@ -348,7 +347,7 @@ let rec sample_source_from_pool state (cctxt : Protocol_client_context.full) =
               state.last_block)
       in
       Lwt.return source
-  | Some [] ->
+  | [] ->
       let* () =
         cctxt#message
           "all available sources have been used for block next to %a"
@@ -356,7 +355,7 @@ let rec sample_source_from_pool state (cctxt : Protocol_client_context.full) =
           state.last_block
       in
       let* () = Lwt_condition.wait state.new_block_condition in
-      sample_source_from_pool state cctxt
+      get_source_from_shuffled_pool state cctxt
 
 let random_seed rng =
   Bytes.init 32 (fun _ -> Char.chr (Random.State.int rng 256))
@@ -442,7 +441,7 @@ let sample_smart_contracts smart_contracts rng_state =
 let rec sample_transfer (cctxt : Protocol_client_context.full) chain block
     (parameters : parameters) (state : state) =
   let open Lwt_result_syntax in
-  let*! src = sample_source_from_pool state cctxt in
+  let*! src = get_source_from_shuffled_pool state cctxt in
   let* tez =
     Alpha_services.Contract.balance
       cctxt
@@ -549,27 +548,8 @@ let inject_transfer (cctxt : Protocol_client_context.full) parameters state
     transfer =
   let open Lwt_result_syntax in
   let* branch = Shell_services.Blocks.hash cctxt () in
-  let* pcounter =
+  let* current_counter =
     Alpha_services.Contract.counter cctxt (`Main, `Head 0) transfer.src.pkh
-  in
-  let freshest_counter =
-    match
-      Signature.Public_key_hash.Table.find state.counters transfer.src.pkh
-    with
-    | None ->
-        (* This is the first operation we inject for this pkh: the counter given
-           by the RPC _must_ be the freshest one. *)
-        pcounter
-    | Some (previous_branch, previous_counter) ->
-        if Block_hash.equal branch previous_branch then
-          (* We already injected an operation on top of this block: the one stored
-             locally is the freshest one. *)
-          previous_counter
-        else
-          (* It seems the block changed since we last injected an operation:
-             this invalidates the previously stored counter. We return the counter
-             given by the RPC. *)
-          pcounter
   in
   let* already_revealed =
     if Signature.Public_key_hash.Set.mem transfer.src.pkh state.revealed then
@@ -589,8 +569,8 @@ let inject_transfer (cctxt : Protocol_client_context.full) parameters state
       return (Option.is_some pk_opt))
   in
   let*! r =
-    if not already_revealed then (
-      let reveal_counter = Z.succ freshest_counter in
+    if not already_revealed then
+      let reveal_counter = Z.succ current_counter in
       let transf_counter = Z.succ reveal_counter in
       let reveal =
         Manager_operation
@@ -609,11 +589,6 @@ let inject_transfer (cctxt : Protocol_client_context.full) parameters state
           {transfer with counter = Some transf_counter}
       in
       let list = Cons (reveal, Single manager_op) in
-      Signature.Public_key_hash.Table.remove state.counters transfer.src.pkh ;
-      Signature.Public_key_hash.Table.add
-        state.counters
-        transfer.src.pkh
-        (branch, transf_counter) ;
       let*! () =
         log Info (fun () ->
             cctxt#message
@@ -631,20 +606,15 @@ let inject_transfer (cctxt : Protocol_client_context.full) parameters state
          "counter in the future" if a block switch happens in between the moment we
          get the branch and the moment we inject, and the new block does not include
          all the operations we injected. *)
-      inject_contents cctxt state.target_block transfer.src.sk list)
+      inject_contents cctxt state.target_block transfer.src.sk list
     else
-      let transf_counter = Z.succ freshest_counter in
+      let transf_counter = Z.succ current_counter in
       let manager_op =
         manager_op_of_transfer
           parameters
           {transfer with counter = Some transf_counter}
       in
       let list = Single manager_op in
-      Signature.Public_key_hash.Table.remove state.counters transfer.src.pkh ;
-      Signature.Public_key_hash.Table.add
-        state.counters
-        transfer.src.pkh
-        (branch, transf_counter) ;
       let*! () =
         log Info (fun () ->
             cctxt#message
@@ -870,24 +840,17 @@ let launch (cctxt : Protocol_client_context.full) (parameters : parameters)
       state.target_block <- target_block ;
       return_unit
     in
-    match state.shuffled_pool with
-    (* Some _ if and only if [single_op_per_pkh_per_block] is true. *)
-    | Some _ ->
-        fun (new_block_hash, new_block_header) ->
-          let* () = update_target_block () in
-          if not (Block_hash.equal new_block_hash state.last_block) then (
-            state.last_block <- new_block_hash ;
-            state.last_level <- Int32.to_int new_block_header.shell.level ;
-            state.shuffled_pool <-
-              Some
-                (List.shuffle
-                   ~rng:state.rng_state
-                   (List.map (fun src_org -> src_org.source) state.pool))) ;
-          Lwt_condition.broadcast state.new_block_condition () ;
-          return_unit
-    | None ->
-        (* only wait for the end of the head stream; don't act on heads *)
-        fun _ -> update_target_block ()
+    fun (new_block_hash, new_block_header) ->
+      let* () = update_target_block () in
+      if not (Block_hash.equal new_block_hash state.last_block) then (
+        state.last_block <- new_block_hash ;
+        state.last_level <- Int32.to_int new_block_header.shell.level ;
+        state.shuffled_pool <-
+          List.shuffle
+            ~rng:state.rng_state
+            (List.map (fun src_org -> src_org.source) state.pool)) ;
+      Lwt_condition.broadcast state.new_block_condition () ;
+      return_unit
   in
   let open Lwt_result_syntax in
   let* heads_iteration, stopper = heads_iter cctxt on_new_head in
@@ -897,7 +860,8 @@ let launch (cctxt : Protocol_client_context.full) (parameters : parameters)
   return_unit
 
 let group =
-  Clic.{name = "stresstest"; title = "Commands for stress-testing the network"}
+  Tezos_clic.
+    {name = "stresstest"; title = "Commands for stress-testing the network"}
 
 type pool_source =
   | From_string of {json : Ezjsonm.value}
@@ -907,7 +871,7 @@ let json_of_pool_source = function
   | From_string {json} | From_file {json; _} -> json
 
 let json_file_or_text_parameter =
-  Clic.parameter (fun _ p ->
+  Tezos_clic.parameter (fun _ p ->
       let open Lwt_result_syntax in
       match String.split ~limit:1 ':' p with
       | ["text"; text] -> return (From_string {json = Ezjsonm.from_string text})
@@ -924,7 +888,7 @@ let json_file_or_text_parameter =
               failwith "Neither an existing file nor valid JSON: '%s'" p))
 
 let seed_arg =
-  let open Clic in
+  let open Tezos_clic in
   arg
     ~long:"seed"
     ~placeholder:"int"
@@ -937,7 +901,7 @@ let seed_arg =
          | i -> Lwt_result_syntax.return i))
 
 let tps_arg =
-  let open Clic in
+  let open Tezos_clic in
   arg
     ~long:"tps"
     ~placeholder:"float"
@@ -952,7 +916,7 @@ let tps_arg =
          | f -> Lwt_result_syntax.return f))
 
 let fresh_probability_arg =
-  let open Clic in
+  let open Tezos_clic in
   arg
     ~long:"fresh-probability"
     ~placeholder:"float in [0;1]"
@@ -976,7 +940,7 @@ let fresh_probability_arg =
          | f -> Lwt_result_syntax.return f))
 
 let smart_contract_parameters_arg =
-  let open Clic in
+  let open Tezos_clic in
   arg
     ~long:"smart-contract-parameters"
     ~placeholder:"JSON file with smart contract parameters"
@@ -998,7 +962,7 @@ let smart_contract_parameters_arg =
                s))
 
 let strategy_arg =
-  let open Clic in
+  let open Tezos_clic in
   arg
     ~long:"strategy"
     ~placeholder:"fixed:mutez | evaporation:[0;1]"
@@ -1009,7 +973,7 @@ let strategy_arg =
          | Ok strategy -> Lwt_result_syntax.return strategy))
 
 let gas_limit_arg =
-  let open Clic in
+  let open Tezos_clic in
   let gas_limit_kind =
     parameter (fun _ s ->
         try
@@ -1030,7 +994,7 @@ let gas_limit_arg =
     gas_limit_kind
 
 let storage_limit_arg =
-  let open Clic in
+  let open Tezos_clic in
   let storage_limit_kind =
     parameter (fun _ s ->
         try
@@ -1053,7 +1017,7 @@ let storage_limit_arg =
     storage_limit_kind
 
 let transfers_arg =
-  let open Clic in
+  let open Tezos_clic in
   arg
     ~long:"transfers"
     ~placeholder:"integer"
@@ -1066,16 +1030,8 @@ let transfers_arg =
              cctxt#error "While parsing --transfers: negative integer"
          | i -> Lwt_result_syntax.return i))
 
-let single_op_per_pkh_per_block_arg =
-  Clic.switch
-    ~long:"single-op-per-pkh-per-block"
-    ~doc:
-      "ensure that the operations are not rejected by limiting the injection \
-       to 1 operation per public_key_hash per block."
-    ()
-
 let level_limit_arg =
-  let open Clic in
+  let open Tezos_clic in
   arg
     ~long:"level-limit"
     ~placeholder:"integer | +integer"
@@ -1092,14 +1048,14 @@ let level_limit_arg =
          | i -> if String.get s 0 = '+' then return (Rel i) else return (Abs i)))
 
 let verbose_arg =
-  Clic.switch
+  Tezos_clic.switch
     ~long:"verbose"
     ~short:'v'
     ~doc:"Display detailed logs of the injected operations"
     ()
 
 let debug_arg =
-  Clic.switch ~long:"debug" ~short:'V' ~doc:"Display debug logs" ()
+  Tezos_clic.switch ~long:"debug" ~short:'V' ~doc:"Display debug logs" ()
 
 let set_option opt f x = Option.fold ~none:x ~some:(f x) opt
 
@@ -1135,11 +1091,11 @@ let save_pool_callback (cctxt : Protocol_client_context.full) pool_source state
       catch_write_error r
 
 let generate_random_transactions =
-  let open Clic in
+  let open Tezos_clic in
   command
     ~group
     ~desc:"Generate random transactions"
-    (args13
+    (args12
        seed_arg
        tps_arg
        fresh_probability_arg
@@ -1149,7 +1105,6 @@ let generate_random_transactions =
        gas_limit_arg
        storage_limit_arg
        transfers_arg
-       single_op_per_pkh_per_block_arg
        level_limit_arg
        verbose_arg
        debug_arg)
@@ -1169,7 +1124,6 @@ let generate_random_transactions =
            gas_limit,
            storage_limit,
            transfers,
-           single_op_per_pkh_per_block,
            level_limit,
            verbose_flag,
            debug_flag )
@@ -1202,8 +1156,6 @@ let generate_random_transactions =
                {parameter with storage_limit})
         |> set_option transfers (fun parameter transfers ->
                {parameter with total_transfers = Some transfers})
-        |> fun parameter ->
-        {parameter with single_op_per_pkh_per_block}
         |> set_option level_limit (fun parameter level_limit ->
                {parameter with level_limit = Some level_limit})
       in
@@ -1229,7 +1181,6 @@ let generate_random_transactions =
                 Signature.Secret_key.compare src1.source.sk src2.source.sk)
               sources
           in
-          let counters = Signature.Public_key_hash.Table.create 1023 in
           let rng_state = Random.State.make [|parameters.seed|] in
           let* current_head_on_start = Shell_services.Blocks.hash cctxt () in
           let* header_on_start =
@@ -1252,16 +1203,12 @@ let generate_random_transactions =
             {
               rng_state;
               current_head_on_start;
-              counters;
               pool = sources;
               pool_size = List.length sources;
               shuffled_pool =
-                (if parameters.single_op_per_pkh_per_block then
-                 Some
-                   (List.shuffle
-                      ~rng:rng_state
-                      (List.map (fun src_org -> src_org.source) sources))
-                else None);
+                List.shuffle
+                  ~rng:rng_state
+                  (List.map (fun src_org -> src_org.source) sources);
               revealed = Signature.Public_key_hash.Set.empty;
               last_block = current_head_on_start;
               last_level = Int32.to_int header_on_start.level;
@@ -1370,8 +1317,9 @@ let estimate_transaction_cost ?smart_contracts
             Operation_result.pp_operation_result
             (op.protocol_data.contents, result.contents))
 
-let estimate_transaction_costs : Protocol_client_context.full Clic.command =
-  let open Clic in
+let estimate_transaction_costs : Protocol_client_context.full Tezos_clic.command
+    =
+  let open Tezos_clic in
   command
     ~group
     ~desc:"Output gas estimations for transactions that stresstest uses"
@@ -1395,6 +1343,611 @@ let estimate_transaction_costs : Protocol_client_context.full Clic.command =
       Format.printf "%a" Data_encoding.Json.pp json ;
       return_unit)
 
+(* Returns a list of transfers from each element of [sources]. *)
+let generate_transfers ~sources ~amount ~parameters ~entrypoint ~fee ~gas_limit
+    ~storage_limit =
+  List.map
+    (fun dst ->
+      let destination = Contract.Implicit dst.pkh in
+      let transfer =
+        Client_proto_context.build_transaction_operation
+          ~amount
+          ~parameters
+          ~entrypoint
+          ~fee
+          ~gas_limit
+          ~storage_limit
+          destination
+      in
+      Annotated_manager_operation.Annotated_manager_operation transfer)
+    sources
+
+(* Returns a list of reveals from each element of [sources]. *)
+let generate_reveals ~sources ~fee ~gas_limit ~storage_limit =
+  List.map
+    (fun dst ->
+      let reveal =
+        Client_proto_context.build_reveal_operation
+          ~fee
+          ~gas_limit
+          ~storage_limit
+          dst.pk
+      in
+      (dst, Annotated_manager_operation.Annotated_manager_operation reveal))
+    sources
+
+(* Given a list of [sources], it returns
+   - a list of batches of transfers where each batch has a maximum of
+     [batch_size] operation, for each element of [sources],
+   - a list of reveals, for each element of [sources].
+
+    [sources] is the list of "starter" accounts, used to fund all
+    accounts in a exponential way.
+*)
+let generate_starter_ops ~sources ~amount ~batch_size =
+  let fee = Tez.of_mutez_exn 1_000L in
+  let gas_limit = Gas.Arith.integral_of_int_exn 1_040 in
+  let storage_limit = Z.of_int 257 in
+  let parameters =
+    let open Tezos_micheline in
+    Script.lazy_expr
+      (Micheline.strip_locations
+         (Prim (0, Michelson_v1_primitives.D_Unit, [], [])))
+  in
+  let entrypoint = Entrypoint.default in
+  let txs_ops =
+    generate_transfers
+      ~sources
+      ~amount
+      ~parameters
+      ~entrypoint
+      ~fee
+      ~gas_limit
+      ~storage_limit
+  in
+  let reveal_ops = generate_reveals ~sources ~fee ~gas_limit ~storage_limit in
+  let rec split n acc = function
+    | [] -> acc
+    | l ->
+        let current, next = List.rev_split_n n l in
+        let batch = Annotated_manager_operation.manager_of_list current in
+        split n (batch :: acc) next
+  in
+  (* Split the list of transfers into N batches containing a maximum
+     of [batch_size] operations. *)
+  let txs_batch_l = split batch_size [] txs_ops in
+  (txs_batch_l, reveal_ops)
+
+(* Returns a list of list of batch. A list of batch consists of N
+   batches, depending on the number of [starter_sources]. The top
+   level list can be seen a block partition, so that the 1M
+   restriction is ensured. *)
+let generate_account_funding_batches (starter_sources : source_with_uri list)
+    (empty_accounts : source_with_uri list) ~batch_size ~amount =
+  let open Lwt_result_syntax in
+  let nb_sources = List.length starter_sources in
+  let fee = Tez.of_mutez_exn 1_000L in
+  let gas_limit = Gas.Arith.integral_of_int_exn 1_040 in
+  let storage_limit = Z.of_int 257 in
+  let parameters =
+    let open Tezos_micheline in
+    Script.lazy_expr
+      (Micheline.strip_locations
+         (Prim (0, Michelson_v1_primitives.D_Unit, [], [])))
+  in
+  let entrypoint = Entrypoint.default in
+  let to_batch candidates emiters =
+    (* For each [emiters], it generates [batch_size] transactions from
+       it, and to [batch_size] candidates.*)
+    let rec aux acc (candidates : source_with_uri list)
+        (emiters : source_with_uri list) =
+      match emiters with
+      | [] -> return acc
+      | source :: next_sources ->
+          let current, next_candidates =
+            List.rev_split_n batch_size candidates
+          in
+          let txs =
+            generate_transfers
+              ~sources:current
+              ~amount
+              ~parameters
+              ~entrypoint
+              ~fee
+              ~gas_limit
+              ~storage_limit
+          in
+          let batch = Annotated_manager_operation.manager_of_list txs in
+          (*Avoid the generation of empty batches*)
+          if next_candidates = [] then return ((source, batch) :: acc)
+          else aux ((source, batch) :: acc) next_candidates next_sources
+    in
+    aux [] candidates emiters
+  in
+  let rec aux acc = function
+    | [] -> return acc
+    | empty_accounts ->
+        let candidates, rest =
+          List.rev_split_n (batch_size * nb_sources) empty_accounts
+        in
+        let* batch = to_batch candidates starter_sources in
+        aux (batch :: acc) rest
+  in
+  let* res = aux [] empty_accounts in
+  return res
+
+(* Loads a wallet by reading directly the files to speed up things. *)
+let load_wallet cctxt ~source_pkh =
+  let open Lwt_result_syntax in
+  let* keys = Client_keys.get_keys cctxt in
+  (* Convert loaded and filter identities. We want to ban activator
+     and bootstrap<1-5> in sandbox, as well as the "faucet source" on
+     test networks. *)
+  let to_ban =
+    ["activator"; "bootstrap"]
+    @ WithExceptions.Result.get_ok
+        ~loc:__LOC__
+        (List.init ~when_negative_length:"error" 5 (fun i ->
+             Format.sprintf "bootstrap%d" (i + 1)))
+  in
+  let rec aux acc = function
+    | [] -> return acc
+    | (alias, pkh, _, _) :: tl
+      when List.exists (String.equal alias) to_ban
+           || Signature.Public_key_hash.equal pkh source_pkh ->
+        aux acc tl
+    | (_, pkh, pk, sk_uri) :: tl ->
+        let* pk_uri = Client_keys.neuterize sk_uri in
+        let payload =
+          Uri.path (sk_uri : Tezos_signer_backends.Unencrypted.sk_uri :> Uri.t)
+        in
+        let sk = Signature.Secret_key.of_b58check_exn payload in
+        aux ({pkh; pk; pk_uri; sk; sk_uri} :: acc) tl
+  in
+  aux [] keys
+
+let source_key_arg =
+  let open Tezos_clic in
+  param
+    ~name:"source_key_arg"
+    ~desc:
+      "Source key public key hash from which the tokens will be transferred to \
+       start the funding."
+    (parameter (fun _ s ->
+         let r = Signature.Public_key_hash.of_b58check s in
+         match r with
+         | Ok pkh -> Lwt_result_syntax.return pkh
+         | Error e ->
+             failwith
+               "Cannot read public key hash: %a"
+               Error_monad.pp_print_trace
+               e))
+
+let batch_size_arg =
+  let open Tezos_clic in
+  default_arg
+    ~long:"batch-size"
+    ~placeholder:"integer"
+    ~doc:
+      "Maximum number of operations that can be put into a single batch (250 \
+       by default)"
+    ~default:"250"
+    (parameter (fun _ s ->
+         match int_of_string_opt s with
+         | Some i when i > 0 -> Lwt_result_syntax.return i
+         | Some _ -> failwith "Integer must be positive."
+         | None -> failwith "Cannot read integer"))
+
+let batches_per_block_arg =
+  let open Tezos_clic in
+  default_arg
+    ~long:"batches-per-block"
+    ~placeholder:"integer"
+    ~doc:
+      "Maximum number of batches that can be put into a single block (100 by \
+       default)"
+    ~default:"100"
+    (parameter (fun _ s ->
+         match int_of_string_opt s with
+         | Some i when i > 0 -> Lwt_result_syntax.return i
+         | Some _ -> failwith "Integer must be positive."
+         | None -> failwith "Cannot read integer"))
+
+let initial_amount_arg =
+  let open Tezos_clic in
+  default_arg
+    ~long:"initial-amount"
+    ~placeholder:"integer"
+    ~doc:
+      "Number of token, in μtz, that will be funded on each of the accounts to \
+       fund (1 by default)"
+    ~default:"1_000_000"
+    (parameter (fun _ s ->
+         match Int64.of_string_opt s with
+         | Some i when i > 0L -> (
+             try Lwt_result_syntax.return (Tez.of_mutez_exn i)
+             with e ->
+               failwith "Cannot convert to Tez.t:%s" (Printexc.to_string e))
+         | Some _ -> failwith "Integer must be positive."
+         | None -> failwith "Cannot read integer"))
+
+(* Monitors the node's head to inject transaction batches. *)
+let inject_batched_txs cctxt (source_pkh, source_pk, source_sk)
+    ~(starter_batch : Annotated_manager_operation.packed_annotated_list list)
+    ~fee ~gas_limit ~storage_limit ~fee_parameter batches_per_block =
+  let open Lwt_result_syntax in
+  let chain = cctxt#chain in
+  let* heads_stream, stop = Shell_services.Monitor.heads cctxt chain in
+  let rec aux stream
+      (sources_ops : Annotated_manager_operation.packed_annotated_list list) =
+    let*! v = Lwt_stream.get stream in
+    match v with
+    | Some (_block_hash, _) -> (
+        match sources_ops with
+        | [] ->
+            stop () ;
+            return []
+        | sources_ops ->
+            let now, next = List.rev_split_n batches_per_block sources_ops in
+            let* () =
+              List.iter_ep
+                (fun batch ->
+                  let (Annotated_manager_operation.Manager_list contents) =
+                    batch
+                  in
+                  let* _results =
+                    Injection.inject_manager_operation
+                      cctxt
+                      ~chain:cctxt#chain
+                      ~block:cctxt#block
+                      ?confirmations:cctxt#confirmations
+                      ~dry_run:false
+                      ~verbose_signing:false
+                      ~simulation:false
+                      ~force:false
+                      ~source:source_pkh
+                      ~fee:(Limit.of_option fee)
+                      ~gas_limit:(Limit.of_option gas_limit)
+                      ~storage_limit:(Limit.of_option storage_limit)
+                      ~src_pk:source_pk
+                      ~src_sk:source_sk
+                      ~replace_by_fees:false
+                      ~fee_parameter
+                      contents
+                  in
+                  return_unit)
+                now
+            in
+            aux stream next)
+    | None ->
+        let*! () = Lwt_unix.sleep 0.5 in
+        aux stream sources_ops
+  in
+  let* _ = aux heads_stream starter_batch in
+  return_unit
+
+(* Monitors the node's head to inject reveal batches. *)
+let inject_batched_reveals cctxt
+    ~(starter_reveals :
+       (source_with_uri * Annotated_manager_operation.packed) list) ~fee
+    ~gas_limit ~storage_limit ~fee_parameter batches_per_block =
+  let open Lwt_result_syntax in
+  let chain = cctxt#chain in
+  let* heads_stream, stop = Shell_services.Monitor.heads cctxt chain in
+  let rec aux stream
+      (sources_ops :
+        (source_with_uri * Annotated_manager_operation.packed) list) =
+    let*! v = Lwt_stream.get stream in
+    match v with
+    | Some (_block_hash, _) -> (
+        match sources_ops with
+        | [] ->
+            stop () ;
+            return []
+        | sources_ops ->
+            let now, next = List.rev_split_n batches_per_block sources_ops in
+            let* () =
+              List.iter_ep
+                (fun (source, op) ->
+                  let (Annotated_manager_operation.Manager_list contents) =
+                    Annotated_manager_operation.manager_of_list [op]
+                  in
+                  let* _ =
+                    Injection.inject_manager_operation
+                      cctxt
+                      ~chain:cctxt#chain
+                      ~block:cctxt#block
+                      ?confirmations:cctxt#confirmations
+                      ~dry_run:false
+                      ~verbose_signing:false
+                      ~simulation:false
+                      ~force:false
+                      ~source:source.pkh
+                      ~fee:(Limit.of_option fee)
+                      ~gas_limit:(Limit.of_option gas_limit)
+                      ~storage_limit:(Limit.of_option storage_limit)
+                      ~src_pk:source.pk
+                      ~src_sk:source.sk_uri
+                      ~replace_by_fees:false
+                      ~fee_parameter
+                      contents
+                  in
+                  return_unit)
+                now
+            in
+            aux stream next)
+    | None ->
+        let*! () = Lwt_unix.sleep 0.5 in
+        aux stream sources_ops
+  in
+  let* _ = aux heads_stream starter_reveals in
+  return_unit
+
+(* Monitors the node's head to inject transaction batches. *)
+let inject_funding_batches cctxt
+    ~(funding_batches :
+       (source_with_uri * Annotated_manager_operation.packed_annotated_list)
+       list
+       list) ~fee ~gas_limit ~storage_limit ~fee_parameter batches_per_block =
+  let open Lwt_result_syntax in
+  let chain = cctxt#chain in
+  let* heads_stream, stop = Shell_services.Monitor.heads cctxt chain in
+  let rec aux stream
+      (sources_ops :
+        (source_with_uri * Annotated_manager_operation.packed_annotated_list)
+        list
+        list) =
+    let*! v = Lwt_stream.get stream in
+    match v with
+    | Some (_block_hash, _) -> (
+        match sources_ops with
+        | [] ->
+            stop () ;
+            return []
+        | block_ops :: tl ->
+            let now, next = List.rev_split_n batches_per_block block_ops in
+            let* () =
+              List.iter_ep
+                (fun (source, batch) ->
+                  let (Annotated_manager_operation.Manager_list contents) =
+                    batch
+                  in
+                  let* _results =
+                    Injection.inject_manager_operation
+                      cctxt
+                      ~chain:cctxt#chain
+                      ~block:cctxt#block
+                      ?confirmations:cctxt#confirmations
+                      ~dry_run:false
+                      ~verbose_signing:false
+                      ~simulation:false
+                      ~force:false
+                      ~source:source.pkh
+                      ~fee:(Limit.of_option fee)
+                      ~gas_limit:(Limit.of_option gas_limit)
+                      ~storage_limit:(Limit.of_option storage_limit)
+                      ~src_pk:source.pk
+                      ~src_sk:source.sk_uri
+                      ~replace_by_fees:false
+                      ~fee_parameter
+                      contents
+                  in
+                  return_unit)
+                now
+            in
+            if next = [] then aux stream tl else aux stream (next :: tl))
+    | None ->
+        let*! () = Lwt_unix.sleep 0.5 in
+        aux stream sources_ops
+  in
+  let* _ = aux heads_stream funding_batches in
+  return_unit
+
+(* This command aims to fund accounts to be used in pair with the
+   stresstest transfer command. To do so, it will proceed in the
+   following steps:
+   - takes all the identities found in a given wallet,
+   - chooses [batch_size] identities as starters ,
+   - funds the starters with some funds (using source account),
+   - reveal the starters (using source account),
+   - makes and injects batches so that the starters uses their funds to
+     fund the [nb_identities - nb_starters] remaining accounts.
+
+   These steps allows to minimize the number of
+   transfers/operations/blocks to fund many accounts.
+
+   As parameters, it is possible to chose:
+   - batch_size: number of operations into a single batch,
+   - batches_per_block: number of batches/operations per block,
+   - initial_amount: number of token distributed to each accounts.
+   It also allows to define additional parameters, such as fee, gas
+   and storage limit.
+*)
+let fund_accounts_from_source : Protocol_client_context.full Tezos_clic.command
+    =
+  let open Tezos_clic in
+  command
+    ~group
+    ~desc:"Funds all the given accounts"
+    (args7
+       batch_size_arg
+       batches_per_block_arg
+       initial_amount_arg
+       Client_proto_args.default_fee_arg
+       Client_proto_args.default_gas_limit_arg
+       Client_proto_args.default_storage_limit_arg
+       Client_proto_args.fee_parameter_args)
+    (prefixes ["stresstest"; "fund"; "accounts"; "from"]
+    @@ source_key_arg @@ stop)
+    (fun ( batch_size,
+           batches_per_block,
+           initial_amount,
+           fee,
+           gas_limit,
+           storage_limit,
+           fee_parameter )
+         source_pkh
+         (cctxt : Protocol_client_context.full) ->
+      let open Lwt_result_syntax in
+      let* source_pk, source_sk =
+        let* _, src_pk, src_sk = Client_keys.get_key cctxt source_pkh in
+        return (src_pk, src_sk)
+      in
+      let*! () = log Notice (fun () -> cctxt#message "@.") in
+      let*! () =
+        log Notice (fun () ->
+            cctxt#message
+              "Starting funding from %a with parameters:@.- batch_size %d@.- \
+               batches_per_block %d@.- initial_amount %a@."
+              Signature.Public_key_hash.pp
+              source_pkh
+              batch_size
+              batches_per_block
+              Tez.pp
+              initial_amount)
+      in
+      (* All generated sources *)
+      let* new_sources = load_wallet cctxt ~source_pkh in
+      (* Starter sources used to initiate the "exponential"
+         funding. *)
+      let nb_starters =
+        let l = List.length new_sources in
+        (l / batch_size) + if l mod batch_size = 0 then 0 else 1
+      in
+      let starter_sources, empty_accounts =
+        List.rev_split_n nb_starters new_sources
+      in
+      let*! () =
+        log Notice (fun () ->
+            cctxt#message
+              "Funding %d accounts using %d starters@."
+              (List.length new_sources)
+              nb_starters)
+      in
+      (* Initial amount that is sent to starters to allow them to fund
+         other accounts. This is an over approximation. *)
+      let starter_initial_amount =
+        (* over approximation of the max number of operation that a
+           starter may inject. We add one to leave the starter account
+           with it's own initial amount. *)
+        let max_nb_transfers = batch_size + 1 in
+        (* Fees are: reveal + max_nb_transfers * manager_fees
+                   = reveal + max_nb_transfers * (storage_fees + tx fees)
+                   = 0.001tz + max_nb_transfers * (0.06425tz + 0.001tz)
+                   =~ max_nb_transfers * 0.1 tz *)
+        let fees_approx = Tez.of_mutez_exn 100_000L in
+        let amount =
+          WithExceptions.Result.get_ok
+            ~loc:__LOC__
+            Tez.(initial_amount +? fees_approx)
+        in
+        Tez.mul_exn amount max_nb_transfers
+      in
+      let*! () =
+        log Notice (fun () ->
+            cctxt#message
+              "Sending %a tz to starter accounts@."
+              Tez.pp
+              starter_initial_amount)
+      in
+      let* source_balance =
+        Alpha_services.Contract.balance
+          cctxt
+          (cctxt#chain, cctxt#block)
+          (Contract.Implicit source_pkh)
+      in
+      let* () =
+        let req_balance = Tez.mul_exn starter_initial_amount nb_starters in
+        if Tez.(source_balance < req_balance) then
+          failwith
+            "Not enough funds to init starter accounts: %a are needed, only %a \
+             is available on %a@."
+            Tez.pp
+            source_balance
+            Tez.pp
+            req_balance
+            Signature.Public_key_hash.pp
+            source_pkh
+        else
+          let*! () =
+            log Notice (fun () ->
+                cctxt#message
+                  "Transfering %a tz from %a (out of %a)@."
+                  Tez.pp
+                  req_balance
+                  Signature.Public_key_hash.pp
+                  source_pkh
+                  Tez.pp
+                  source_balance)
+          in
+          return_unit
+      in
+      let*! () =
+        log Notice (fun () ->
+            cctxt#message "Generating starter transactions and reveals@.")
+      in
+      let starter_batch, starter_reveals =
+        generate_starter_ops
+          ~sources:starter_sources
+          ~amount:starter_initial_amount
+          ~batch_size
+      in
+      (* Inject generated batches and reveals for the starters. *)
+      let*! () =
+        log Notice (fun () ->
+            cctxt#message "Injecting starter transfer batches@.")
+      in
+      let* () =
+        inject_batched_txs
+          cctxt
+          (source_pkh, source_pk, source_sk)
+          ~starter_batch
+          ~fee
+          ~gas_limit
+          ~storage_limit
+          ~fee_parameter
+          batches_per_block
+      in
+      let*! () =
+        log Notice (fun () ->
+            cctxt#message "Injecting starter reveal batches@.")
+      in
+      let* () =
+        inject_batched_reveals
+          cctxt
+          ~starter_reveals
+          ~fee
+          ~gas_limit
+          ~storage_limit
+          ~fee_parameter
+          batches_per_block
+      in
+      let*! () =
+        log Notice (fun () -> cctxt#message "Generating funding batches@.")
+      in
+      let* funding_batches =
+        generate_account_funding_batches
+          starter_sources
+          empty_accounts
+          ~batch_size
+          ~amount:initial_amount
+      in
+      let*! () =
+        log Notice (fun () -> cctxt#message "Injecting funding batches@.")
+      in
+      let* () =
+        inject_funding_batches
+          cctxt
+          ~funding_batches
+          ~fee
+          ~gas_limit
+          ~storage_limit
+          ~fee_parameter
+          batches_per_block
+      in
+      let*! () = log Notice (fun () -> cctxt#message "Done.@.") in
+      return_unit)
+
 let commands network () =
   match network with
   | Some `Mainnet -> []
@@ -1403,4 +1956,5 @@ let commands network () =
         generate_random_transactions;
         estimate_transaction_costs;
         Smart_contracts.originate_command;
+        fund_accounts_from_source;
       ]

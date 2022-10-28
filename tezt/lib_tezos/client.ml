@@ -308,6 +308,40 @@ let spawn_rpc_list ?endpoint client =
 let rpc_list ?endpoint client =
   spawn_rpc_list ?endpoint client |> Process.check_and_read_stdout
 
+let spawn_rpc_schema ?log_command ?log_status_on_exit ?log_output
+    ?(better_errors = false) ?endpoint ?hooks ?env ?protocol_hash meth path
+    client =
+  spawn_command
+    ?log_command
+    ?log_status_on_exit
+    ?log_output
+    ?endpoint
+    ?hooks
+    ?env
+    ?protocol_hash
+    client
+    (optional_switch "better-errors" better_errors
+    @ ["rpc"; "schema"; string_of_meth meth; string_of_path path])
+
+let rpc_schema ?log_command ?log_status_on_exit ?log_output ?better_errors
+    ?endpoint ?hooks ?env ?protocol_hash meth path client =
+  let* json_schema =
+    spawn_rpc_schema
+      ?log_command
+      ?log_status_on_exit
+      ?log_output
+      ?better_errors
+      ?endpoint
+      ?hooks
+      ?env
+      ?protocol_hash
+      meth
+      path
+      client
+    |> Process.check_and_read_stdout
+  in
+  return (JSON.parse ~origin:"rpc_schema" json_schema)
+
 let spawn_shell_header ?endpoint ?(chain = "main") ?(block = "head") client =
   let path = ["chains"; chain; "blocks"; block; "header"; "shell"] in
   spawn_rpc ?endpoint GET path client
@@ -939,6 +973,32 @@ let get_balance_for ?endpoint ~account client =
   in
   return @@ Tez.parse_floating output
 
+let spawn_ticket_balance ?hooks ~contract ~ticketer ~content_type ~content
+    client =
+  spawn_command
+    ?hooks
+    client
+    [
+      "get";
+      "ticket";
+      "balance";
+      "for";
+      contract;
+      "with";
+      "ticketer";
+      ticketer;
+      "and";
+      "type";
+      content_type;
+      "and";
+      "content";
+      content;
+    ]
+
+let ticket_balance ?hooks ~contract ~ticketer ~content_type ~content client =
+  spawn_ticket_balance ?hooks ~contract ~ticketer ~content_type ~content client
+  |> Process.check_and_read_stdout
+
 let spawn_create_mockup ?(sync_mode = Synchronous) ?parameter_file
     ?bootstrap_accounts_file ~protocol client =
   let cmd =
@@ -1144,8 +1204,7 @@ let originate_contract ?hooks ?log_output ?endpoint ?wait ?init ?burn_cap
 
 let spawn_stresstest ?endpoint ?(source_aliases = []) ?(source_pkhs = [])
     ?(source_accounts = []) ?seed ?fee ?gas_limit ?transfers ?tps
-    ?(single_op_per_pkh_per_block = false) ?fresh_probability
-    ?smart_contract_parameters client =
+    ?fresh_probability ?smart_contract_parameters client =
   let sources =
     (* [sources] is a string containing all the [source_aliases],
        [source_pkhs], and [source_accounts] in JSON format, as
@@ -1251,12 +1310,10 @@ let spawn_stresstest ?endpoint ?(source_aliases = []) ?(source_pkhs = [])
   @ make_int_opt_arg "--tps" tps
   @ make_float_opt_arg "--fresh-probability" fresh_probability
   @ smart_contract_parameters_arg
-  @
-  if single_op_per_pkh_per_block then ["--single-op-per-pkh-per-block"] else []
 
 let stresstest ?endpoint ?source_aliases ?source_pkhs ?source_accounts ?seed
-    ?fee ?gas_limit ?transfers ?tps ?single_op_per_pkh_per_block
-    ?fresh_probability ?smart_contract_parameters client =
+    ?fee ?gas_limit ?transfers ?tps ?fresh_probability
+    ?smart_contract_parameters client =
   spawn_stresstest
     ?endpoint
     ?source_aliases
@@ -1267,7 +1324,6 @@ let stresstest ?endpoint ?source_aliases ?source_pkhs ?source_accounts ?seed
     ?gas_limit
     ?transfers
     ?tps
-    ?single_op_per_pkh_per_block
     ?fresh_probability
     ?smart_contract_parameters
     client
@@ -1838,19 +1894,16 @@ module Sc_rollup = struct
     let* output = Process.check_and_read_stdout process in
     parse_rollup_address_in_receipt output
 
-  let spawn_send_message ?hooks ?(wait = "none") ?burn_cap ~msg ~src ~dst client
-      =
+  let spawn_send_message ?hooks ?(wait = "none") ?burn_cap ~msg ~src client =
     spawn_command
       ?hooks
       client
       (["--wait"; wait]
-      @ ["send"; "sc"; "rollup"; "message"; msg; "from"; src; "to"; dst]
+      @ ["send"; "sc"; "rollup"; "message"; msg; "from"; src]
       @ optional_arg "burn-cap" Tez.to_string burn_cap)
 
-  let send_message ?hooks ?wait ?burn_cap ~msg ~src ~dst client =
-    let process =
-      spawn_send_message ?hooks ?wait ?burn_cap ~msg ~src ~dst client
-    in
+  let send_message ?hooks ?wait ?burn_cap ~msg ~src client =
+    let process = spawn_send_message ?hooks ?wait ?burn_cap ~msg ~src client in
     Process.check process
 
   let publish_commitment ?hooks ?(wait = "none") ?burn_cap ~src ~sc_rollup
@@ -2246,7 +2299,7 @@ let spawn_config_show ?protocol client =
   @ ["config"; "show"]
 
 let config_show ?protocol client =
-  spawn_config_show ?protocol client |> Process.check
+  spawn_config_show ?protocol client |> Process.check_and_read_stdout
 
 let spawn_config_init ?protocol ?bootstrap_accounts ?protocol_constants client =
   spawn_command client

@@ -237,6 +237,36 @@ val rpc_list : ?endpoint:endpoint -> t -> string Lwt.t
 (** Same as [rpc_list], but do not wait for the process to exit. *)
 val spawn_rpc_list : ?endpoint:endpoint -> t -> Process.t
 
+(** Run [octez-client rpc schema]. *)
+val rpc_schema :
+  ?log_command:bool ->
+  ?log_status_on_exit:bool ->
+  ?log_output:bool ->
+  ?better_errors:bool ->
+  ?endpoint:endpoint ->
+  ?hooks:Process.hooks ->
+  ?env:string String_map.t ->
+  ?protocol_hash:string ->
+  meth ->
+  path ->
+  t ->
+  JSON.t Lwt.t
+
+(** Same as [rpc_schema], but do not wait for the process to exit. *)
+val spawn_rpc_schema :
+  ?log_command:bool ->
+  ?log_status_on_exit:bool ->
+  ?log_output:bool ->
+  ?better_errors:bool ->
+  ?endpoint:endpoint ->
+  ?hooks:Process.hooks ->
+  ?env:string String_map.t ->
+  ?protocol_hash:string ->
+  meth ->
+  path ->
+  t ->
+  Process.t
+
 (** Run [octez-client rpc /chains/<chain>/blocks/<block>/header/shell]. *)
 val shell_header :
   ?endpoint:endpoint -> ?chain:string -> ?block:string -> t -> string Lwt.t
@@ -727,6 +757,26 @@ val get_balance_for : ?endpoint:endpoint -> account:string -> t -> Tez.t Lwt.t
 val spawn_get_balance_for :
   ?endpoint:endpoint -> account:string -> t -> Process.t
 
+(** Run [octez-client get ticket balance for contract with ticketer and type and content ]. *)
+val ticket_balance :
+  ?hooks:Process.hooks ->
+  contract:string ->
+  ticketer:string ->
+  content_type:string ->
+  content:string ->
+  t ->
+  string Lwt.t
+
+(** Same as [ticket_balance], but do not wait for the process to exit. *)
+val spawn_ticket_balance :
+  ?hooks:Process.hooks ->
+  contract:string ->
+  ticketer:string ->
+  content_type:string ->
+  content:string ->
+  t ->
+  Process.t
+
 (** Run [octez-client create mockup]. *)
 val create_mockup :
   ?sync_mode:mockup_sync_mode ->
@@ -934,8 +984,6 @@ type stresstest_contract_parameters = {
     - [gas_limit] is the custom gas limit
     - [--transfers <transfers>]
     - [--tps <tps>]
-    - [--single-op-per-pkh-per-block] (if the argument
-      [single_op_per_pkh_per_block] is [true])
     - [--fresh_probabilty <probability>], probability from 0.0 to 1.0 that
       new bootstrap accounts will be created during the stress test
     - [--smart-contract-parameters] is the map of parameters for
@@ -952,7 +1000,6 @@ val stresstest :
   ?gas_limit:int ->
   ?transfers:int ->
   ?tps:int ->
-  ?single_op_per_pkh_per_block:bool ->
   ?fresh_probability:float ->
   ?smart_contract_parameters:(string * stresstest_contract_parameters) list ->
   t ->
@@ -969,7 +1016,6 @@ val spawn_stresstest :
   ?gas_limit:int ->
   ?transfers:int ->
   ?tps:int ->
-  ?single_op_per_pkh_per_block:bool ->
   ?fresh_probability:float ->
   ?smart_contract_parameters:(string * stresstest_contract_parameters) list ->
   t ->
@@ -1181,8 +1227,8 @@ val spawn_run_tzip4_view :
   t ->
   Process.t
 
-(** Run [tezos-client run tzip4 view .. on contract .. with input .. ] 
-    
+(** Run [tezos-client run tzip4 view .. on contract .. with input .. ]
+
     Returns the value returned by a view as a string.
 
     Fails if the view or the contract does not exist. If [input] is [None],
@@ -1415,14 +1461,13 @@ module Sc_rollup : sig
     t ->
     Process.t
 
-  (** Run [octez-client send rollup message <msg> from <src> to <dst>]. *)
+  (** Run [octez-client send rollup message <msg> from <src>]. *)
   val send_message :
     ?hooks:Process.hooks ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
     msg:string ->
     src:string ->
-    dst:string ->
     t ->
     unit Lwt.t
 
@@ -1433,7 +1478,6 @@ module Sc_rollup : sig
     ?burn_cap:Tez.t ->
     msg:string ->
     src:string ->
-    dst:string ->
     t ->
     Process.t
 
@@ -1670,7 +1714,7 @@ val convert_script :
 val bootstrapped : t -> unit Lwt.t
 
 (** Run [tezos-client config show]. *)
-val config_show : ?protocol:Protocol.t -> t -> unit Lwt.t
+val config_show : ?protocol:Protocol.t -> t -> string Lwt.t
 
 (** Same as [config_show], but do not wait for the process to exit. *)
 val spawn_config_show : ?protocol:Protocol.t -> t -> Process.t

@@ -1838,11 +1838,7 @@ module Tx_rollup = struct
       (* contents *) deserialization_gas ~size_kB + (* ty *) 1
     in
     let* _oph =
-      Memchecks.with_applied_checks
-        ~__LOC__
-        nodes
-        ~expected_statuses:["failed"]
-        ~expected_errors:[["cannot_transfer_ticket_to_implicit"]]
+      Memchecks.with_applied_checks ~__LOC__ nodes ~expected_statuses:["failed"]
       (* Does not fail in precheck, so is applied (as failed) *)
       @@ fun () ->
       Operation.inject_transfer_ticket

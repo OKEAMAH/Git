@@ -23,6 +23,19 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** To verify the proof of a page membership in its associated slot, the
+     Cryptobox module needs the following Dal parameters. These are part of the
+     protocol's parameters. See {!Default_parameters.default_dal}. *)
+type parameters = Dal.parameters = {
+  redundancy_factor : int;
+  page_size : int;
+  slot_size : int;
+  number_of_shards : int;
+}
+
+(** An encoding for values of type {!parameters}. *)
+val parameters_encoding : parameters Data_encoding.t
+
 (** Slot header representation for the data-availability layer.
 
     {1 Overview}
@@ -85,18 +98,27 @@ module Index : sig
 end
 
 module Header : sig
-  (** For Layer-1, a slot is described by the level at which it is published,
-    the slot's index (in the list of slots), and the slot's header
-    (KATE commitment hash). *)
+  (** For Layer-1, a slot is identified by the level at which it is published
+      and the slot's index. *)
   type id = {published_level : Raw_level_repr.t; index : Index.t}
 
+  (** For Layer-1, a slot is described by its slot {!id} and the slot's KATE
+      commitment hash. *)
   type t = {id : id; commitment : Commitment.t}
 
-  (** The encoding ensures the slot is always a non-negative number. *)
+  (** encoding for values of type {!id}. *)
+  val id_encoding : id Data_encoding.t
+
+  (** encoding for values of type {!t}. *)
   val encoding : t Data_encoding.t
 
+  (** pretty-printer for values of type {!id}. *)
+  val pp_id : Format.formatter -> id -> unit
+
+  (** pretty-printer for values of type {!t}. *)
   val pp : Format.formatter -> t -> unit
 
+  (** equal function for values of type {!t}. *)
   val equal : t -> t -> bool
 end
 
@@ -108,6 +130,8 @@ module Page : sig
   type content = Bytes.t
 
   type slot_index = Index.t
+
+  val pages_per_slot : Dal.parameters -> int
 
   module Index : sig
     type t = int
@@ -126,18 +150,22 @@ module Page : sig
   (** Encoding for page contents. *)
   val content_encoding : content Data_encoding.t
 
-  (** A page is identified by its slot id and by its own index in the list
+  (** A page is identified by its slot ID and by its own index in the list
      of pages of the slot. *)
   type t = {slot_id : Header.id; page_index : Index.t}
 
   type proof = Dal.page_proof
 
+  (** equal function for values of type {!t}. *)
   val equal : t -> t -> bool
 
+  (** encoding for values of type {!t}. *)
   val encoding : t Data_encoding.t
 
+  (** encoding for values of type {!proof}. *)
   val proof_encoding : proof Data_encoding.t
 
+  (** pretty-printer for values of type {!t}. *)
   val pp : Format.formatter -> t -> unit
 end
 
@@ -239,21 +267,10 @@ module History : sig
   (** Encoding for {!proof}. *)
   val proof_encoding : proof Data_encoding.t
 
-  (** Pretty-printer for {!proof}. *)
-  val pp_proof : Format.formatter -> proof -> unit
-
-  (** To verify the proof of a page membership in its associated slot, the
-     Cryptobox module needs the following Dal parameters. These are part of the
-     protocol's parameters. See {!Default_parameters.default_dal}. *)
-  type dal_parameters = Dal.parameters = {
-    redundancy_factor : int;
-    page_size : int;
-    slot_size : int;
-    number_of_shards : int;
-  }
-
-  (** An encoding for values of type {!dal_parameters}. *)
-  val dal_parameters_encoding : dal_parameters Data_encoding.t
+  (** Pretty-printer for {!proof}. If [serialized] is [false] it will print 
+      the abstracted proof representation, otherwise if it's [true] it will
+      print the serialized version of the proof (i.e. a sequence of bytes). *)
+  val pp_proof : serialized:bool -> Format.formatter -> proof -> unit
 
   (** [produce_proof dal_parameters page_id page_info slots_hist hist_cache]
       produces a proof that either:
@@ -273,12 +290,12 @@ module History : sig
       the candidate slot (if any).
   *)
   val produce_proof :
-    dal_parameters ->
+    parameters ->
     Page.t ->
     page_info:(Page.content * Page.proof) option ->
     t ->
     History_cache.t ->
-    (proof * Page.content option) tzresult Lwt.t
+    (proof * Page.content option) tzresult
 
   (** [verify_proof dal_params page_id snapshot proof] verifies that the given
       [proof] is a valid proof to show that either:
@@ -291,7 +308,7 @@ module History : sig
       the candidate slot (if any).
   *)
   val verify_proof :
-    dal_parameters -> Page.t -> t -> proof -> Page.content option tzresult Lwt.t
+    parameters -> Page.t -> t -> proof -> Page.content option tzresult
 
   type error += Add_element_in_slots_skip_list_violates_ordering
 
@@ -300,6 +317,10 @@ module History : sig
   module Internal_for_tests : sig
     val content : t -> Header.t
 
+    (** [proof_statement_is serialized_proof expected] will return [true] if
+        the deserialized proof and the [expected] proof shape match and [false]
+        otherwise.
+        Note that it will also return [false] if deserialization fails.  *)
     val proof_statement_is : proof -> [`Confirmed | `Unconfirmed] -> bool
   end
 end

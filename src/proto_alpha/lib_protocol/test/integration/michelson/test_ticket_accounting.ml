@@ -121,7 +121,7 @@ let assert_equal_ticket_receipt ~loc given expected =
     @@ let*? ticketer = Contract.of_b58check ticketer in
        let contents = Expr.from_string (Printf.sprintf "%S" content) in
        let contents_type = Expr.from_string "string" in
-       let ticket_token = Ticket_receipt.{ticketer; contents_type; contents} in
+       let ticket_token = Ticket_token.{ticketer; contents_type; contents} in
        let updates =
          List.map
            (fun (account, amount) ->
@@ -431,8 +431,7 @@ let ticket_string_list_type =
   Result.value_f ~default:(fun _ -> assert false)
   @@ Script_typed_ir.list_t (-1) ticket_string_type
 
-let boxed_list elements =
-  {Script_typed_ir.elements; length = List.length elements}
+let boxed_list = Script_list.of_list
 
 let big_map_type ~key_type ~value_type =
   Environment.wrap_tzresult

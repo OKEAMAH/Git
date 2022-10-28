@@ -629,11 +629,10 @@ and admin_instr_gen ~module_reg =
 
 let input_buffer_gen =
   let gen_message =
-    let* rtype = int32 in
     let* raw_level = int32 in
     let* message_counter = map Z.of_int small_nat in
     let+ payload = map Bytes.of_string (small_string ~gen:char) in
-    Input_buffer.{rtype; raw_level; message_counter; payload}
+    Input_buffer.{raw_level; message_counter; payload}
   in
   let* messages = vector_z_gen gen_message in
   let+ num_elements = small_nat in
@@ -763,7 +762,7 @@ let inv_concat_gen ~module_reg =
   Eval.Inv_concat {arity; vs; instructions; inst; func; concat_kont}
 
 let inv_reveal_tick ~module_reg =
-  let* hash = Reveal.input_hash_from_string_exn <$> string_size (pure 32) in
+  let* hash = Reveal.reveal_hash_from_string_exn <$> string_size (pure 32) in
   let* base_destination = Int32.of_int <$> small_nat in
   let* max_bytes = Int32.of_int <$> small_nat in
   let* vs = small_vector_gen value_gen in
@@ -877,4 +876,4 @@ let buffers_gen =
 let config_gen ~host_funcs ~module_reg =
   let* stack_size_limit = small_int in
   let+ step_kont = step_kont_gen ~module_reg in
-  Eval.{step_kont; host_funcs; stack_size_limit; module_reg}
+  Eval.{step_kont; host_funcs; stack_size_limit}

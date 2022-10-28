@@ -126,6 +126,15 @@ val get_balance :
   Contract.t ->
   Tez.t tzresult Lwt.t
 
+(** Calls {!Tezos_protocol_alpha.Protocol.Ticket_services.ticket_balance}. *)
+val get_contract_ticket_balance :
+  #Protocol_client_context.rpc_context ->
+  chain:Shell_services.chain ->
+  block:Shell_services.block ->
+  Contract.t ->
+  Ticket_token.unparsed_token ->
+  Z.t tzresult Lwt.t
+
 (** Calls {!Tezos_protocol_alpha.Protocol.Delegate_services.frozen_deposits_limit}. *)
 val get_frozen_deposits_limit :
   #Protocol_client_context.rpc_context ->
@@ -812,7 +821,7 @@ val sc_rollup_originate :
   ?simulation:bool ->
   ?fee:Tez.t ->
   ?gas_limit:Gas.Arith.integral ->
-  ?storage_limit:counter ->
+  ?storage_limit:Z.t ->
   ?counter:counter ->
   source:public_key_hash ->
   kind:Sc_rollup.Kind.t ->
@@ -839,10 +848,9 @@ val sc_rollup_add_messages :
   ?simulation:bool ->
   ?fee:Tez.t ->
   ?gas_limit:Gas.Arith.integral ->
-  ?storage_limit:counter ->
+  ?storage_limit:Z.t ->
   ?counter:counter ->
   source:public_key_hash ->
-  rollup:Alpha_context.Sc_rollup.t ->
   messages:string list ->
   src_pk:public_key ->
   src_sk:Client_keys.sk_uri ->
@@ -864,7 +872,7 @@ val sc_rollup_cement :
   ?simulation:bool ->
   ?fee:Tez.t ->
   ?gas_limit:Gas.Arith.integral ->
-  ?storage_limit:counter ->
+  ?storage_limit:Z.t ->
   ?counter:counter ->
   source:public_key_hash ->
   rollup:Alpha_context.Sc_rollup.t ->
@@ -889,7 +897,7 @@ val sc_rollup_publish :
   ?simulation:bool ->
   ?fee:Tez.t ->
   ?gas_limit:Gas.Arith.integral ->
-  ?storage_limit:counter ->
+  ?storage_limit:Z.t ->
   ?counter:counter ->
   source:public_key_hash ->
   rollup:Alpha_context.Sc_rollup.t ->
@@ -914,7 +922,7 @@ val sc_rollup_execute_outbox_message :
   ?simulation:bool ->
   ?fee:Tez.t ->
   ?gas_limit:Gas.Arith.integral ->
-  ?storage_limit:counter ->
+  ?storage_limit:Z.t ->
   ?counter:counter ->
   source:public_key_hash ->
   rollup:Sc_rollup.t ->
@@ -966,7 +974,7 @@ val sc_rollup_refute :
   ?simulation:bool ->
   ?fee:Tez.t ->
   ?gas_limit:Gas.Arith.integral ->
-  ?storage_limit:counter ->
+  ?storage_limit:Z.t ->
   ?counter:counter ->
   source:public_key_hash ->
   rollup:Alpha_context.Sc_rollup.t ->
@@ -992,7 +1000,7 @@ val sc_rollup_timeout :
   ?simulation:bool ->
   ?fee:Tez.t ->
   ?gas_limit:Gas.Arith.integral ->
-  ?storage_limit:counter ->
+  ?storage_limit:Z.t ->
   ?counter:counter ->
   source:public_key_hash ->
   rollup:Alpha_context.Sc_rollup.t ->
@@ -1018,7 +1026,7 @@ val sc_rollup_dal_slot_subscribe :
   ?simulation:bool ->
   ?fee:Tez.t ->
   ?gas_limit:Gas.Arith.integral ->
-  ?storage_limit:counter ->
+  ?storage_limit:Z.t ->
   ?counter:counter ->
   source:public_key_hash ->
   rollup:Alpha_context.Sc_rollup.t ->

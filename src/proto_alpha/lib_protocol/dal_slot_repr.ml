@@ -23,6 +23,15 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type parameters = Dal.parameters = {
+  redundancy_factor : int;
+  page_size : int;
+  slot_size : int;
+  number_of_shards : int;
+}
+
+let parameters_encoding = Dal.parameters_encoding
+
 module Commitment = struct
   (* DAL/FIXME https://gitlab.com/tezos/tezos/-/issues/3389
 
@@ -89,28 +98,33 @@ module Header = struct
 
   let zero = {id = zero_id; commitment = Commitment.zero}
 
+  let id_encoding =
+    let open Data_encoding in
+    conv
+      (fun {published_level; index} -> (published_level, index))
+      (fun (published_level, index) -> {published_level; index})
+      (obj2
+         (req "level" Raw_level_repr.encoding)
+         (req "index" Data_encoding.uint8))
+
   let encoding =
     let open Data_encoding in
     conv
-      (fun {id = {published_level; index}; commitment} ->
-        (published_level, index, commitment))
-      (fun (published_level, index, commitment) ->
-        {id = {published_level; index}; commitment})
-      (obj3
-         (req "level" Raw_level_repr.encoding)
-         (req "index" Data_encoding.uint8)
-         (req "commitment" Commitment.encoding))
+      (fun {id; commitment} -> (id, commitment))
+      (fun (id, commitment) -> {id; commitment})
+      (merge_objs id_encoding (obj1 (req "commitment" Commitment.encoding)))
 
-  let pp fmt {id = {published_level; index}; commitment} =
+  let pp_id fmt {published_level; index} =
     Format.fprintf
       fmt
-      "published_level: %a index: %a commitment: %a"
+      "published_level: %a, index: %a"
       Raw_level_repr.pp
       published_level
       Format.pp_print_int
       index
-      Commitment.pp
-      commitment
+
+  let pp fmt {id; commitment = c} =
+    Format.fprintf fmt "id:(%a), commitment: %a" pp_id id Commitment.pp c
 end
 
 module Slot_index = Index
@@ -119,6 +133,8 @@ module Page = struct
   type content = Bytes.t
 
   type slot_index = Index.t
+
+  let pages_per_slot = Dal.pages_per_slot
 
   module Index = struct
     type t = int
@@ -230,7 +246,7 @@ module History = struct
   end
 
   module Content_prefix = struct
-    let _prefix = "dash1"
+    let (_prefix : string) = "dash1"
 
     (* 32 *)
     let b58check_prefix = "\002\224\072\094\219" (* dash1(55) *)
@@ -248,7 +264,7 @@ module History = struct
   (* Pointers of the skip lists are used to encode the content and the
      backpointers. *)
   module Pointer_prefix = struct
-    let _prefix = "dask1"
+    let (_prefix : string) = "dask1"
 
     (* 32 *)
     let b58check_prefix = "\002\224\072\115\035" (* dask1(55) *)
@@ -303,16 +319,14 @@ module History = struct
         guarantee that it can only be called with the adequate compare function.
     *)
 
-    let compare = Header.compare_slot_id
-
-    let compare_lwt a b = Lwt.return @@ compare a b
-
     let next ~prev_cell ~prev_cell_ptr elt =
       let open Tzresult_syntax in
       let* () =
         error_when
           (Compare.Int.( <= )
-             (compare elt.Header.id (content prev_cell).Header.id)
+             (Header.compare_slot_id
+                elt.Header.id
+                (content prev_cell).Header.id)
              0)
           Add_element_in_slots_skip_list_violates_ordering
       in
@@ -320,7 +334,7 @@ module History = struct
 
     let search ~deref ~cell ~target_id =
       search ~deref ~cell ~compare:(fun slot ->
-          compare_lwt slot.Header.id target_id)
+          Header.compare_slot_id slot.Header.id target_id)
   end
 
   module V1 = struct
@@ -424,8 +438,8 @@ module History = struct
         case where the slot's header is published, but the endorsers didn't
         confirm the availability of its data.
 
-        To produce a proof for a page (see function {!produce_proof} below), we
-        assume given:
+        To produce a proof representation for a page (see function {!produce_proof_repr}
+        below), we assume given:
 
         - [page_id], identifies the page;
 
@@ -455,7 +469,7 @@ module History = struct
 
 
 *)
-    type proof =
+    type proof_repr =
       | Page_confirmed of {
           target_cell : history;
               (** [target_cell] is a cell whose content contains the slot to
@@ -517,11 +531,11 @@ module History = struct
           (** The case where the slot's page doesn't exist or is not
               confirmed on L1. *)
 
-    let proof_encoding =
+    let proof_repr_encoding =
       let open Data_encoding in
       let case_page_confirmed =
         case
-          ~title:"confirmed dal page proof"
+          ~title:"confirmed dal page proof representation"
           (Tag 0)
           (obj5
              (req "kind" (constant "confirmed"))
@@ -537,7 +551,7 @@ module History = struct
             Page_confirmed {target_cell; inc_proof; page_data; page_proof})
       and case_page_unconfirmed =
         case
-          ~title:"unconfirmed dal page proof"
+          ~title:"unconfirmed dal page proof representation"
           (Tag 1)
           (obj4
              (req "kind" (constant "unconfirmed"))
@@ -554,46 +568,87 @@ module History = struct
 
       union [case_page_confirmed; case_page_unconfirmed]
 
+    (** Proof's type is set to bytes and not a structural datatype because
+        when a proof appears in a tezos operation or in an rpc, a user can not
+        reasonably understand the proof, thus it eases the work of people decoding
+        the proof by only supporting bytes and not the whole structured proof. *)
+
+    type proof = bytes
+
+    (** DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/4084
+        DAL proof's encoding should be bounded *)
+    let proof_encoding = Data_encoding.bytes
+
+    type error += Dal_invalid_proof_serialization
+
+    let () =
+      register_error_kind
+        `Permanent
+        ~id:"Dal_slot_repr.invalid_proof_serialization"
+        ~title:"Dal invalid proof serialization"
+        ~description:"Error occured during dal proof serialization"
+        Data_encoding.unit
+        (function Dal_invalid_proof_serialization -> Some () | _ -> None)
+        (fun () -> Dal_invalid_proof_serialization)
+
+    let serialize_proof proof =
+      match Data_encoding.Binary.to_bytes_opt proof_repr_encoding proof with
+      | None -> error Dal_invalid_proof_serialization
+      | Some serialized_proof -> ok serialized_proof
+
+    type error += Dal_invalid_proof_deserialization
+
+    let () =
+      register_error_kind
+        `Permanent
+        ~id:"Dal_slot_repr.invalid_proof_deserialization"
+        ~title:"Dal invalid proof deserialization"
+        ~description:"Error occured during dal proof deserialization"
+        Data_encoding.unit
+        (function Dal_invalid_proof_deserialization -> Some () | _ -> None)
+        (fun () -> Dal_invalid_proof_deserialization)
+
+    let deserialize_proof proof =
+      match Data_encoding.Binary.of_bytes_opt proof_repr_encoding proof with
+      | None -> error Dal_invalid_proof_deserialization
+      | Some deserialized_proof -> ok deserialized_proof
+
     let pp_inclusion_proof = Format.pp_print_list pp_history
 
     let pp_history_opt = Format.pp_print_option pp_history
 
-    let pp_proof fmt p =
-      match p with
-      | Page_confirmed {target_cell; inc_proof; page_data; page_proof} ->
-          Format.fprintf
-            fmt
-            "Page_confirmed (target_cell=%a, data=%s,@ inc_proof:[size=%d |@ \
-             path=%a]@ page_proof:%a)"
-            pp_history
-            target_cell
-            (Bytes.to_string page_data)
-            (List.length inc_proof)
-            pp_inclusion_proof
-            inc_proof
-            Page.pp_proof
-            page_proof
-      | Page_unconfirmed {prev_cell; next_cell_opt; next_inc_proof} ->
-          Format.fprintf
-            fmt
-            "Page_unconfirmed (prev_cell = %a | next_cell = %a | \
-             prev_inc_proof:[size=%d@ | path=%a])"
-            pp_history
-            prev_cell
-            pp_history_opt
-            next_cell_opt
-            (List.length next_inc_proof)
-            pp_inclusion_proof
-            next_inc_proof
-
-    type dal_parameters = Dal.parameters = {
-      redundancy_factor : int;
-      page_size : int;
-      slot_size : int;
-      number_of_shards : int;
-    }
-
-    let dal_parameters_encoding = Dal.parameters_encoding
+    let pp_proof ~serialized fmt p =
+      if serialized then Format.pp_print_string fmt (Bytes.to_string p)
+      else
+        match deserialize_proof p with
+        | Error msg -> Error_monad.pp_trace fmt msg
+        | Ok proof -> (
+            match proof with
+            | Page_confirmed {target_cell; inc_proof; page_data; page_proof} ->
+                Format.fprintf
+                  fmt
+                  "Page_confirmed (target_cell=%a, data=%s,@ \
+                   inc_proof:[size=%d |@ path=%a]@ page_proof:%a)"
+                  pp_history
+                  target_cell
+                  (Bytes.to_string page_data)
+                  (List.length inc_proof)
+                  pp_inclusion_proof
+                  inc_proof
+                  Page.pp_proof
+                  page_proof
+            | Page_unconfirmed {prev_cell; next_cell_opt; next_inc_proof} ->
+                Format.fprintf
+                  fmt
+                  "Page_unconfirmed (prev_cell = %a | next_cell = %a | \
+                   prev_inc_proof:[size=%d@ | path=%a])"
+                  pp_history
+                  prev_cell
+                  pp_history_opt
+                  next_cell_opt
+                  (List.length next_inc_proof)
+                  pp_inclusion_proof
+                  next_inc_proof)
 
     type error += Dal_proof_error of string
 
@@ -611,10 +666,10 @@ module History = struct
 
     let dal_proof_error reason = Dal_proof_error reason
 
-    let proof_error reason = fail @@ dal_proof_error reason
+    let proof_error reason = error @@ dal_proof_error reason
 
     let check_page_proof dal_params proof data pid commitment =
-      let open Lwt_tzresult_syntax in
+      let open Tzresult_syntax in
       let* dal =
         match Dal.make dal_params with
         | Ok dal -> return dal
@@ -622,15 +677,7 @@ module History = struct
       in
       let page = {Dal.content = data; index = pid.Page.page_index} in
       let fail_with_error_msg what =
-        Format.kasprintf
-          proof_error
-          "%s (page data=%s, page id=%a, commitment=%a)."
-          what
-          (Bytes.to_string data)
-          Page.pp
-          pid
-          Commitment.pp
-          commitment
+        Format.kasprintf proof_error "%s (page id=%a)." what Page.pp pid
       in
       match Dal.verify_page dal commitment page proof with
       | Ok true -> return ()
@@ -639,16 +686,19 @@ module History = struct
             "Wrong page content for the given page index and slot commitment"
       | Error `Segment_index_out_of_range ->
           fail_with_error_msg "Segment_index_out_of_range"
-      | Error (`Degree_exceeds_srs_length s) ->
+      | Error `Page_length_mismatch ->
           fail_with_error_msg
-          @@ Format.sprintf "Degree_exceeds_srs_length: %s" s
+          @@ Format.sprintf
+               "Page_length_mismatch: Expected:%d. Got: %d"
+               dal_params.page_size
+               (Bytes.length page.content)
 
-    let produce_proof dal_params page_id ~page_info slots_hist hist_cache =
-      let open Lwt_tzresult_syntax in
+    let produce_proof_repr dal_params page_id ~page_info slots_hist hist_cache =
+      let open Tzresult_syntax in
       let Page.{slot_id; page_index = _} = page_id in
       let deref ptr = History_cache.find ptr hist_cache in
       (* We search for a slot whose ID is equal to target_id. *)
-      let*! search_result =
+      let search_result =
         Skip_list.search ~deref ~target_id:slot_id ~cell:slots_hist
       in
       match (page_info, search_result.Skip_list.last_cell) with
@@ -665,7 +715,7 @@ module History = struct
           let Header.{id; commitment} = Skip_list.content target_cell in
           (* We check that the slot is not the dummy slot. *)
           let* () =
-            fail_when
+            error_when
               Compare.Int.(Header.compare_slot_id id Header.zero.id = 0)
               (dal_proof_error
                  "Skip_list.search returned 'Found <zero_slot>': No existence \
@@ -676,15 +726,14 @@ module History = struct
           in
           let inc_proof = List.rev search_result.Skip_list.rev_path in
           let* () =
-            fail_when
+            error_when
               (List.is_empty inc_proof)
               (dal_proof_error "The inclusion proof cannot be empty")
           in
           (* All checks succeeded. We return a `Page_confirmed` proof. *)
-          let status =
-            Page_confirmed {inc_proof; target_cell; page_data; page_proof}
-          in
-          return (status, Some page_data)
+          return
+            ( Page_confirmed {inc_proof; target_cell; page_data; page_proof},
+              Some page_data )
       | None, Nearest {lower = prev_cell; upper = next_cell_opt} ->
           (* There is no previously confirmed slot in the skip list whose ID
              corresponds to the {published_level; slot_index} information
@@ -701,7 +750,7 @@ module History = struct
             | [] -> assert false (* Not reachable *)
             | prev :: rev_next_inc_proof ->
                 let* () =
-                  fail_unless
+                  error_unless
                     (equal_history prev prev_cell)
                     (dal_proof_error
                        "Internal error: search's Nearest result is \
@@ -720,6 +769,14 @@ module History = struct
             "The page ID's slot is not confirmed, but page content and proof \
              are provided."
 
+    let produce_proof dal_params page_id ~page_info slots_hist hist_cache =
+      let open Tzresult_syntax in
+      let* proof_repr, page_data =
+        produce_proof_repr dal_params page_id ~page_info slots_hist hist_cache
+      in
+      let* serialized_proof = serialize_proof proof_repr in
+      return (serialized_proof, page_data)
+
     (* Given a starting cell [snapshot] and a (final) [target], this function
        checks that the provided [inc_proof] encodes a minimal path from
        [snapshot] to [target]. *)
@@ -733,17 +790,17 @@ module History = struct
       in
       let snapshot_ptr = hash_skip_list_cell snapshot in
       let target_ptr = hash_skip_list_cell target in
-      fail_unless
+      error_unless
         (Skip_list.valid_back_path
            ~equal_ptr:Pointer_hash.equal
            ~deref
            ~cell_ptr:snapshot_ptr
            ~target_ptr
            path)
-        (dal_proof_error "verify_proof: invalid inclusion Dal proof.")
+        (dal_proof_error "verify_proof_repr: invalid inclusion Dal proof.")
 
-    let verify_proof dal_params page_id snapshot proof =
-      let open Lwt_tzresult_syntax in
+    let verify_proof_repr dal_params page_id snapshot proof =
+      let open Tzresult_syntax in
       let Page.{slot_id; page_index = _} = page_id in
       match proof with
       | Page_confirmed {target_cell; page_data; page_proof; inc_proof} ->
@@ -751,11 +808,11 @@ module History = struct
              [inc_proof] should store the slot of the page. *)
           let Header.{id; commitment} = Skip_list.content target_cell in
           let* () =
-            fail_when
+            error_when
               Compare.Int.(Header.compare_slot_id id Header.zero.id = 0)
               (dal_proof_error
-                 "verify_proof: cannot construct a confirmation page proof \
-                  with 'zero' as target slot.")
+                 "verify_proof_repr: cannot construct a confirmation page \
+                  proof with 'zero' as target slot.")
           in
           let* () =
             verify_inclusion_proof inc_proof ~src:snapshot ~dest:target_cell
@@ -778,9 +835,10 @@ module History = struct
             match next_cell_opt with
             | None ->
                 let* () =
-                  fail_unless
+                  error_unless
                     (List.is_empty next_inc_proof)
-                    (dal_proof_error "verify_proof: invalid next_inc_proof")
+                    (dal_proof_error
+                       "verify_proof_repr: invalid next_inc_proof")
                 in
                 (* In case the inclusion proof has no elements, we check that:
                    - the prev_cell slot's id is smaller than the unconfirmed slot's ID
@@ -790,10 +848,10 @@ module History = struct
                    {!compare_slot_id}, we are sure that the skip list whose head
                    is [snapshot] = [prev_cell] cannot contain a slot whose ID is
                    [slot_id]. *)
-                fail_unless
+                error_unless
                   ((Skip_list.content prev_cell).id < slot_id
                   && equal_history snapshot prev_cell)
-                  (dal_proof_error "verify_proof: invalid next_inc_proof")
+                  (dal_proof_error "verify_proof_repr: invalid next_inc_proof")
             | Some next_cell ->
                 (* In case the inclusion proof has at least one element,
                    we check that:
@@ -808,7 +866,7 @@ module History = struct
                    sure that the skip list whose head is [snapshot] cannot
                    contain a slot whose ID is [slot_id]. *)
                 let* () =
-                  fail_unless
+                  error_unless
                     ((Skip_list.content prev_cell).id < slot_id
                     && slot_id < (Skip_list.content next_cell).id
                     &&
@@ -821,7 +879,8 @@ module History = struct
                         Pointer_hash.equal
                           prev_ptr
                           (hash_skip_list_cell prev_cell))
-                    (dal_proof_error "verify_proof: invalid next_inc_proof")
+                    (dal_proof_error
+                       "verify_proof_repr: invalid next_inc_proof")
                 in
                 verify_inclusion_proof
                   next_inc_proof
@@ -830,14 +889,22 @@ module History = struct
           in
           return_none
 
+    let verify_proof dal_params page_id snapshot serialized_proof =
+      let open Tzresult_syntax in
+      let* proof_repr = deserialize_proof serialized_proof in
+      verify_proof_repr dal_params page_id snapshot proof_repr
+
     module Internal_for_tests = struct
       let content = Skip_list.content
 
-      let proof_statement_is proof expected =
-        match (expected, proof) with
-        | `Confirmed, Page_confirmed _ | `Unconfirmed, Page_unconfirmed _ ->
-            true
-        | _ -> false
+      let proof_statement_is serialized_proof expected =
+        match deserialize_proof serialized_proof with
+        | Error _ -> false
+        | Ok proof -> (
+            match (expected, proof) with
+            | `Confirmed, Page_confirmed _ | `Unconfirmed, Page_unconfirmed _ ->
+                true
+            | _ -> false)
     end
   end
 

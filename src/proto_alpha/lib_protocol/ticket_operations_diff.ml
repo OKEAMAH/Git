@@ -27,7 +27,7 @@ open Alpha_context
 
 type ticket_transfer = {
   destination : Destination.t;
-  tickets : Ticket_scanner.ex_ticket list;
+  tickets : Script_typed_ir.ex_ticket list;
 }
 
 type ticket_token_diff = {
@@ -228,7 +228,7 @@ let tickets_of_operation ctxt
         parameters_ty = Pair_t (Ticket_t (ty, _), Bytes_t, _, _);
         parameters = ticket, _op;
       } ->
-      let ex_ticket = Ticket_scanner.Ex_ticket (ty, ticket) in
+      let ex_ticket = Script_typed_ir.Ex_ticket (ty, ticket) in
       return
         ( Some
             {
@@ -253,7 +253,7 @@ let add_transfer_to_token_map ctxt token_map {destination; tickets} =
   List.fold_left_es
     (fun (token_map, ctxt) ticket ->
       let ticket_token, amount =
-        Ticket_token.token_and_amount_of_ex_ticket ticket
+        Ticket_scanner.ex_token_and_amount_of_ex_ticket ticket
       in
       Ticket_token_map.add ctxt ~ticket_token ~destination ~amount token_map)
     (token_map, ctxt)
