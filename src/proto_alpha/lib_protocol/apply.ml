@@ -749,7 +749,15 @@ let apply_manager_operation :
           (Reveal_result
              {consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt}
             : kind successful_manager_operation_result),
-          [] )
+          [])
+  | Increment_global_counter -> 
+      let open Lwt_tzresult_syntax in
+      let+ ctxt = Shared_global_counter.increment_shared_global_counter ctxt in
+      (ctxt, 
+        Increment_global_counter_result {consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt}, 
+        []
+      )
+
   | Transaction {amount; parameters; destination = Implicit pkh; entrypoint} ->
       Script.force_decode_in_context
         ~consume_deserialization_gas
@@ -1575,7 +1583,7 @@ let burn_manager_storage_fees :
         ~payer
       >>=? fun (ctxt, storage_limit, origination_result) ->
       return (ctxt, storage_limit, Origination_result origination_result)
-  | Reveal_result _ | Delegation_result _ -> return (ctxt, storage_limit, smopr)
+  | Reveal_result _ | Delegation_result _ | Increment_global_counter_result _ -> return (ctxt, storage_limit, smopr)
   | Register_global_constant_result payload ->
       let consumed = payload.size_of_constant in
       Fees.burn_storage_fees ctxt ~storage_limit ~payer consumed

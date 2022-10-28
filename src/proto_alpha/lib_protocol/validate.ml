@@ -2443,6 +2443,7 @@ module Manager = struct
           Dal_apply.validate_publish_slot_header vi.ctxt slot_header
       | Zk_rollup_origination _ | Zk_rollup_publish _ ->
           assert_zk_rollup_feature_enabled vi
+      | Increment_global_counter -> return_unit
     in
     (* Gas should no longer be consumed below this point, because it
        would not take into account any gas consumed during the pattern

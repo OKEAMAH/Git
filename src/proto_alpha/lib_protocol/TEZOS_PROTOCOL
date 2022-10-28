@@ -132,6 +132,8 @@
         "Cache_repr",
 
         "Zk_rollup_storage",
+        
+        "Shared_global_counter_storage",
 
         "Contract_delegate_storage",
         "Stake_storage",

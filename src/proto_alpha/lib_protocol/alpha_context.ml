@@ -612,6 +612,8 @@ end
 module Token = Token
 module Cache = Cache_repr
 
+module Shared_global_counter = Shared_global_counter_storage
+
 module Internal_for_tests = struct
   let to_raw x = x
 end

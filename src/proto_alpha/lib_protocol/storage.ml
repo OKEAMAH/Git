@@ -176,6 +176,13 @@ module Contract = struct
       end)
       (Encoding.Z)
 
+  module Shared_global_counter : Simple_single_data_storage with type value = Z.t =
+    Make_single_data_storage (Registered) (Raw_context)
+      (struct
+        let name = ["shared_global_counter"]
+      end)
+      (Encoding.Z)
+
   module Indexed_context =
     Make_indexed_subcontext
       (Make_subcontext (Registered) (Raw_context)

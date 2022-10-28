@@ -59,6 +59,8 @@ module Contract : sig
 
   module Global_counter : Simple_single_data_storage with type value = Z.t
 
+  module Shared_global_counter : Simple_single_data_storage with type value = Z.t
+
   (** The domain of alive contracts *)
   val fold :
     Raw_context.t ->

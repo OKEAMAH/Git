@@ -134,6 +134,7 @@
   Carbonated_map
   Raw_context_intf
   Raw_context
+  Shared_global_counter_storage
   Storage_costs
   Storage_sigs
   Storage_functors

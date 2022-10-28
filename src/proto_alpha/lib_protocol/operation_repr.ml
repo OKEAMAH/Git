@@ -127,6 +127,8 @@ module Kind = struct
 
   type zk_rollup_publish = Zk_rollup_publish_kind
 
+  type increment_global_counter = Increment_global_counter_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -163,6 +165,7 @@ module Kind = struct
         : sc_rollup_dal_slot_subscribe manager
     | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
     | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
+    | Increment_global_counter_manager_kind : increment_global_counter manager
 end
 
 type 'a consensus_operation_type =
@@ -489,6 +492,7 @@ and _ manager_operation =
       ops : (Zk_rollup_operation_repr.t * Zk_rollup_ticket_repr.t option) list;
     }
       -> Kind.zk_rollup_publish manager_operation
+  | Increment_global_counter : Kind.increment_global_counter manager_operation
 
 and counter = Z.t
 
@@ -527,6 +531,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
       Kind.Sc_rollup_dal_slot_subscribe_manager_kind
   | Zk_rollup_origination _ -> Kind.Zk_rollup_origination_manager_kind
   | Zk_rollup_publish _ -> Kind.Zk_rollup_publish_manager_kind
+  | Increment_global_counter -> Kind.Increment_global_counter_manager_kind
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -2093,6 +2098,8 @@ let equal_manager_operation_kind :
   | Zk_rollup_origination _, _ -> None
   | Zk_rollup_publish _, Zk_rollup_publish _ -> Some Eq
   | Zk_rollup_publish _, _ -> None
+  | Increment_global_counter, Increment_global_counter -> Some Eq
+  | Increment_global_counter, _ -> None
 
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =

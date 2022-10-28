@@ -4156,6 +4156,8 @@ module Kind : sig
 
   type zk_rollup_publish = Zk_rollup_publish_kind
 
+  type increment_global_counter = Increment_global_counter_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -4192,6 +4194,7 @@ module Kind : sig
         : sc_rollup_dal_slot_subscribe manager
     | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
     | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
+    | Increment_global_counter_manager_kind : increment_global_counter manager
 end
 
 (** All the definitions below are re-exported from {!Operation_repr}. *)
@@ -4448,6 +4451,7 @@ and _ manager_operation =
       ops : (Zk_rollup.Operation.t * Zk_rollup.Ticket.t option) list;
     }
       -> Kind.zk_rollup_publish manager_operation
+    | Increment_global_counter : Kind.increment_global_counter manager_operation
 
 and counter = Z.t
 
@@ -5059,4 +5063,8 @@ module Fees : sig
   type error += Storage_limit_too_high (* `Permanent *)
 
   val check_storage_limit : context -> storage_limit:Z.t -> unit tzresult
+end
+
+module Shared_global_counter : sig
+  val increment_shared_global_counter : context -> context tzresult Lwt.t
 end

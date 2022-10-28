@@ -193,6 +193,9 @@ type _ successful_manager_operation_result =
       paid_storage_size_diff : Z.t;
     }
       -> Kind.zk_rollup_publish successful_manager_operation_result
+  | Increment_global_counter_result : {
+    consumed_gas: Gas.Arith.fp;
+  } -> Kind.increment_global_counter successful_manager_operation_result
 
 let migration_origination_result_to_successful_manager_operation_result
     ({
@@ -1232,6 +1235,9 @@ let equal_manager_kind :
   | Kind.Zk_rollup_publish_manager_kind, Kind.Zk_rollup_publish_manager_kind ->
       Some Eq
   | Kind.Zk_rollup_publish_manager_kind, _ -> None
+  | Kind.Increment_global_counter_manager_kind, Increment_global_counter_manager_kind -> 
+    Some Eq
+  | Kind.Increment_global_counter_manager_kind, _ -> None
 
 module Encoding = struct
   type 'kind case =
@@ -2923,6 +2929,7 @@ let kind_equal :
         } ) ->
       Some Eq
   | Manager_operation {operation = Zk_rollup_origination _; _}, _ -> None
+
   | ( Manager_operation {operation = Zk_rollup_publish _; _},
       Manager_operation_result
         {operation_result = Applied (Zk_rollup_publish_result _); _} ) ->
@@ -2948,6 +2955,32 @@ let kind_equal :
         } ) ->
       Some Eq
   | Manager_operation {operation = Zk_rollup_publish _; _}, _ -> None
+
+  | ( Manager_operation {operation = Increment_global_counter; _},
+      Manager_operation_result
+        {operation_result = Applied (Increment_global_counter_result _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Increment_global_counter; _},
+      Manager_operation_result
+        {operation_result = Backtracked (Increment_global_counter_result _, _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Increment_global_counter; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Failed (Alpha_context.Kind.Increment_global_counter_manager_kind, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Increment_global_counter; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Skipped Alpha_context.Kind.Increment_global_counter_manager_kind;
+          _;
+        } ) ->
+      Some Eq
+  | Manager_operation {operation = Increment_global_counter; _}, _ -> None
 
 let rec kind_equal_list :
     type kind kind2.

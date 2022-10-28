@@ -158,6 +158,8 @@ module Kind : sig
 
   type zk_rollup_publish = Zk_rollup_publish_kind
 
+  type increment_global_counter = Increment_global_counter_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -194,6 +196,7 @@ module Kind : sig
         : sc_rollup_dal_slot_subscribe manager
     | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
     | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
+    | Increment_global_counter_manager_kind : increment_global_counter manager
 end
 
 type 'a consensus_operation_type =
@@ -582,6 +585,8 @@ and _ manager_operation =
           (* See {!Zk_rollup_apply} *)
     }
       -> Kind.zk_rollup_publish manager_operation
+  | Increment_global_counter : Kind.increment_global_counter manager_operation
+  (* TODO Why do we need the same declaratioin both ml and mli? *)
 
 (** Counters are used as anti-replay protection mechanism in
     manager operations: each manager account stores a counter and
