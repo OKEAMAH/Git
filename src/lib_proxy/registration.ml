@@ -65,9 +65,10 @@ module type Proxy_sig = sig
     Block_hash.t tzresult Lwt.t
 
   (** How to build the context to execute RPCs on *)
-  val init_env_rpc_context :
+  val initial_context :
     Proxy_getter.rpc_context_args ->
-    Tezos_protocol_environment.rpc_context tzresult Lwt.t
+    Context_hash.t ->
+    Tezos_protocol_environment.Context.t tzresult Lwt.t
 
   val time_between_blocks :
     RPC_context.generic ->
