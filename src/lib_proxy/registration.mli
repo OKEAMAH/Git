@@ -82,8 +82,5 @@ val get_all_registered : unit -> proxy_environment list
     if the [Protocol_hash.t] is [None], see the [Registration] module). *)
 val get_registered_proxy :
   Tezos_client_base.Client_context.printer ->
-  #RPC_context.simple ->
-  ?chain:Block_services.chain ->
-  ?block:Block_services.block ->
-  Protocol_hash.t option ->
+  Protocol_hash.t ->
   proxy_environment tzresult Lwt.t
