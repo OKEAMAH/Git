@@ -844,6 +844,8 @@ module Encoding : sig
 
   val zk_rollup_publish_case : Kind.zk_rollup_publish Kind.manager case
 
+  val increment_global_counter_case : Kind.increment_global_counter Kind.manager case
+
   module Manager_operations : sig
     type 'b case =
       | MCase : {
@@ -918,5 +920,7 @@ module Encoding : sig
     val zk_rollup_origination_case : Kind.zk_rollup_origination case
 
     val zk_rollup_publish_case : Kind.zk_rollup_publish case
+
+    val increment_global_counter_case : Kind.increment_global_counter case
   end
 end

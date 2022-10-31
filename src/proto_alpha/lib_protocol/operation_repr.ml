@@ -636,6 +636,8 @@ let zk_rollup_operation_create_tag = zk_rollup_operation_tag_offset + 0
 
 let zk_rollup_operation_publish_tag = zk_rollup_operation_tag_offset + 1
 
+let increment_global_counter_tag = 254
+
 module Encoding = struct
   open Data_encoding
 
@@ -1319,6 +1321,19 @@ module Encoding = struct
             (fun (rollup, slot_index) ->
               Sc_rollup_dal_slot_subscribe {rollup; slot_index});
         }
+
+    let increment_global_counter_case =
+      MCase
+        {
+          tag = increment_global_counter_tag;
+          name = "increment_global_counter";
+          encoding = obj1 (req "increment_global_counter" Data_encoding.unit);
+          select =
+            (function
+            | Manager (Increment_global_counter as op) -> Some op | _ -> None);
+          proj = (function Increment_global_counter -> ());
+          inj = (fun () -> Increment_global_counter);
+        }
   end
 
   type 'b case =
@@ -1780,6 +1795,11 @@ module Encoding = struct
     make_manager_case
       zk_rollup_operation_publish_tag
       Manager_operations.zk_rollup_publish_case
+  
+  let increment_global_counter_case = 
+    make_manager_case
+  increment_global_counter_tag
+  Manager_operations.increment_global_counter_case
 
   let contents_encoding =
     let make (Case {tag; name; encoding; select; proj; inj}) =
@@ -1835,6 +1855,7 @@ module Encoding = struct
            make sc_rollup_dal_slot_subscribe_case;
            make zk_rollup_origination_case;
            make zk_rollup_publish_case;
+           make increment_global_counter_case;
          ]
 
   let contents_list_encoding =

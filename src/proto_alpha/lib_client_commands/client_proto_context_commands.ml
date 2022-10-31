@@ -999,6 +999,42 @@ let commands_rw () =
   let open Tezos_micheline in
   let open Clic in
   [
+    command 
+      ~group
+      ~desc:"Increment global counter"
+      (args5
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         simulate_switch
+         fee_parameter_args)
+      (prefixes ["increment"; "global"; "counter"] 
+        @@ ContractAlias.destination_param ~name:"src" ~desc:"source contract" 
+        @@ stop)
+      (fun (fee, dry_run, verbose_signing, simulation, fee_parameter) contract (cctxt : Protocol_client_context.full) -> 
+        let open Lwt_result_syntax in
+        let* source = 
+          match contract with 
+            | Originated contract -> Managed_contract.get_contract_manager cctxt contract
+            | Implicit mgr -> return mgr 
+        in
+        let* _, src_pk, src_sk = Client_keys.get_key cctxt source in
+        let* (_ : _ Injection.result) = 
+          increment_global_counter 
+            cctxt
+            ~chain:cctxt#chain
+            ~block:cctxt#block
+            ?confirmations:cctxt#confirmations
+            ~dry_run
+            ~verbose_signing
+            ~simulation
+            ~fee_parameter
+            ?fee
+            source
+            ~src_pk
+            ~src_sk
+        in return_unit
+      );
     command
       ~group
       ~desc:"Set the delegate of a contract."

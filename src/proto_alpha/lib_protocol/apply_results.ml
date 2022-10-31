@@ -1035,6 +1035,26 @@ module Manager_result = struct
       ~kind:Kind.Sc_rollup_dal_slot_subscribe_manager_kind
       ~inj:(fun (consumed_gas, slot_index, level) ->
         Sc_rollup_dal_slot_subscribe_result {consumed_gas; slot_index; level})
+
+  let increment_global_counter_case =
+    make
+      ~op_case:
+        Operation.Encoding.Manager_operations.increment_global_counter_case
+      ~encoding:
+        (obj1
+           (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero))
+      ~select:(function
+        | Successful_manager_result
+            (Increment_global_counter_result _ as op) ->
+            Some op
+        | _ -> None)
+      ~proj:(function
+        | Increment_global_counter_result {consumed_gas}
+          ->
+            consumed_gas)
+      ~kind:Kind.Increment_global_counter_manager_kind
+      ~inj:(fun consumed_gas ->
+        Increment_global_counter_result {consumed_gas})
 end
 
 let successful_manager_operation_result_encoding :
@@ -1919,6 +1939,17 @@ module Encoding = struct
           ->
             Some (op, res)
         | _ -> None)
+  
+  let increment_global_counter_case =
+    make_manager_case
+      Operation.Encoding.increment_global_counter_case
+      Manager_result.increment_global_counter_case
+      (function
+        | Contents_and_result
+            ((Manager_operation {operation = Increment_global_counter; _} as op), res)
+          ->
+            Some (op, res)
+        | _ -> None)
 end
 
 let contents_result_encoding =
@@ -1981,6 +2012,7 @@ let contents_result_encoding =
          make sc_rollup_dal_slot_subscribe_case;
          make zk_rollup_origination_case;
          make zk_rollup_publish_case;
+         make increment_global_counter_case;
        ]
 
 let contents_and_result_encoding =
@@ -2048,6 +2080,7 @@ let contents_and_result_encoding =
          make sc_rollup_dal_slot_subscribe_case;
          make zk_rollup_origination_case;
          make zk_rollup_publish_case;
+         make increment_global_counter_case;
        ]
 
 type 'kind contents_result_list =

@@ -151,7 +151,7 @@ module Parameters :
     | Dal_publish_slot_header _ | Sc_rollup_originate _
     | Sc_rollup_execute_outbox_message _ | Sc_rollup_recover_bond _
     | Sc_rollup_dal_slot_subscribe _ | Zk_rollup_origination _
-    | Zk_rollup_publish _ ->
+    | Zk_rollup_publish _ | Increment_global_counter ->
         (* These operations should never be handled by this injector *)
         assert false
 
