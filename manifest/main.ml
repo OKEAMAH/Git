@@ -5299,7 +5299,7 @@ let _formatter =
     ~synopsis:"Internal dev tools"
     ~internal_name:"main"
     ~opam:"internal-devtools"
-    ~deps:[]
+    ~deps:[re]
     ~static:false
     ~bisect_ppx:false
 

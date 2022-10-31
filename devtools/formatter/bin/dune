@@ -4,4 +4,6 @@
 (executable
  (name main)
  (public_name formatter)
- (package internal-devtools))
+ (package internal-devtools)
+ (libraries
+  re))
