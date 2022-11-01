@@ -103,7 +103,72 @@ let run_command =
     (prefixes ["run"] @@ stop)
     (fun data_dir cctxt -> Daemon.run ~data_dir cctxt)
 
-let commands () = [run_command; config_init_command]
+(* DAC/FIXME: https://gitlab.com/tezos/tezos/-/issues/4125
+   Move the following commands to a dal/dac client once we have one. *)
+
+(** Commands for handling BLS keys. These commands should be used with the
+    --base-dir [dir] global option, where dir is the dal node data-dir. *)
+module Keys = struct
+  open Tezos_client_base.Client_keys
+
+  (** Generates a tz4 keypair in the dal node wallet, and links it to the alias
+      specified in the command. *)
+  let generate_keys =
+    Tezos_clic.command
+      ~desc:"Generate a pair of keys."
+      (Tezos_clic.args1 (Secret_key.force_switch ()))
+      (Tezos_clic.prefixes ["gen"; "unencrypted"; "keys"]
+      @@ Aggregate_alias.Secret_key.fresh_alias_param @@ Tezos_clic.stop)
+      (fun force name cctxt ->
+        Client_keys_commands.Bls_commands.generate_keys
+          ~force
+          ~encrypted:false
+          name
+          cctxt)
+
+  (** Lists the keys stored in the in the wallet of the dal node. *)
+  let list_keys =
+    Tezos_clic.command
+      ~desc:"List keys."
+      Tezos_clic.no_options
+      (Tezos_clic.prefixes ["list"; "keys"] @@ Tezos_clic.stop)
+      (fun () cctxt -> Client_keys_commands.Bls_commands.list_keys cctxt)
+
+  (** Shows the keys associated with an alias in the dal node wallet. *)
+  let show_address =
+    Tezos_clic.command
+      ~desc:"Show the keys associated with an account."
+      Tezos_clic.no_options
+      (Tezos_clic.prefixes ["show"; "address"]
+      @@ Aggregate_alias.Public_key_hash.alias_param @@ Tezos_clic.stop)
+      (fun () (name, _pkh) cctxt ->
+        Client_keys_commands.Bls_commands.show_address
+          ~show_private:true
+          name
+          cctxt)
+
+  (* Imports the secret, public and public key hash into dal the node wallet,
+     and binds it to the alias specified in the command.
+     The secret key is provided in the command input, while the public key
+     and public key hash are recovered from the secret key. *)
+  let import_secret_key =
+    Tezos_clic.command
+      ~desc:"Add a secret key to the wallet."
+      (Tezos_clic.args1 (Aggregate_alias.Secret_key.force_switch ()))
+      (Tezos_clic.prefixes ["import"; "secret"; "key"]
+      @@ Aggregate_alias.Secret_key.fresh_alias_param @@ aggregate_sk_uri_param
+      @@ Tezos_clic.stop)
+      (fun force name sk_uri cctxt ->
+        Client_keys_commands.Bls_commands.import_secret_key
+          ~force
+          name
+          sk_uri
+          cctxt)
+
+  let commands = [generate_keys; list_keys; show_address; import_secret_key]
+end
+
+let commands () = [run_command; config_init_command] @ Keys.commands
 
 let select_commands _ _ =
   let open Lwt_result_syntax in
