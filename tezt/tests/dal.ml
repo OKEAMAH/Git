@@ -925,6 +925,60 @@ let rollup_node_interprets_dal_pages client sc_rollup sc_rollup_node =
           ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
       return ()
 
+let test_dal_node_bls_key_management =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"dal node bls key management"
+    ~tags:["dal"; "dal_node"]
+    ~supports:Protocol.(From_protocol (Protocol.number Alpha))
+  @@ fun protocol ->
+  let* node, _client = Client.init_with_protocol `Client ~protocol () in
+  let dal_node = Dal_node.create ~node () in
+  let* _dir = Dal_node.init_config dal_node in
+  let tz4_account = Constant.tz4_account in
+  let* () = Dal_node.import_secret_key tz4_account dal_node in
+  let* shown_account =
+    Dal_node.show_address ~alias:tz4_account.Account.aggregate_alias dal_node
+  in
+  if
+    tz4_account.aggregate_public_key_hash
+    <> shown_account.aggregate_public_key_hash
+  then
+    failwith
+      (Printf.sprintf
+         "Expecting %s, got %s as public key hash from the client."
+         tz4_account.aggregate_public_key_hash
+         shown_account.aggregate_public_key_hash)
+  else if tz4_account.aggregate_public_key <> shown_account.aggregate_public_key
+  then
+    failwith
+      (Printf.sprintf
+         "Expecting %s, got %s as public key from the client."
+         tz4_account.aggregate_public_key
+         shown_account.aggregate_public_key)
+  else if tz4_account.aggregate_secret_key <> shown_account.aggregate_secret_key
+  then
+    let (Unencrypted sk) = shown_account.aggregate_secret_key in
+    let (Unencrypted expected_sk) = shown_account.aggregate_secret_key in
+    failwith
+      (Printf.sprintf
+         "Expecting %s, got %s as secret key from the client."
+         expected_sk
+         sk)
+  else
+    let* () = Dal_node.generate_keys ~alias:"new_account" dal_node in
+    let* new_account = Dal_node.show_address ~alias:"new_account" dal_node in
+    let () =
+      Check.(
+        (new_account.aggregate_alias = "new_account")
+          string
+          ~error_msg:"Could not retrieve aggregate account")
+    in
+    let* accounts = Dal_node.list_keys dal_node in
+    Check.(
+      (List.length accounts = 2) int ~error_msg:"Invalid number of keys saved") ;
+    return ()
+
 let register ~protocols =
   test_dal_scenario "feature_flag_is_disabled" test_feature_flag protocols ;
   test_slot_management_logic protocols ;
@@ -942,4 +996,5 @@ let register ~protocols =
     ~dal_enable:true
     "rollup_node_applies_dal_pages"
     (rollup_node_stores_dal_slots ~expand_test:rollup_node_interprets_dal_pages)
-    protocols
+    protocols ;
+  test_dal_node_bls_key_management protocols

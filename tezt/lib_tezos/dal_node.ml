@@ -166,11 +166,16 @@ let create ?(path = Constant.dal_node) ?name ?color ?data_dir ?event_pipe
   on_event dal_node (handle_event dal_node) ;
   dal_node
 
-let make_arguments node =
-  [
-    "--endpoint";
-    Printf.sprintf "http://%s:%d" (layer1_addr node) (layer1_port node);
-  ]
+let make_arguments ?(include_base_dir = false) node =
+  let base_dir_args =
+    if include_base_dir then ["--base-dir"; node.persistent_state.data_dir]
+    else []
+  in
+  base_dir_args
+  @ [
+      "--endpoint";
+      Printf.sprintf "http://%s:%d" (layer1_addr node) (layer1_port node);
+    ]
 
 let do_runlike_command ?env node arguments =
   if node.status <> Not_running then
@@ -187,6 +192,70 @@ let run ?env node =
     ?env
     node
     ["run"; "--data-dir"; node.persistent_state.data_dir]
+
+let spawn_command ?hooks node command =
+  Process.spawn
+    ~name:node.name
+    ~color:node.color
+    ?hooks
+    node.path
+    (make_arguments ~include_base_dir:true node @ command)
+
+let spawn_generate_keys ?hooks ?(force = false) ~alias node =
+  spawn_command
+    ?hooks
+    node
+    (["gen"; "unencrypted"; "keys"; alias] @ if force then ["--force"] else [])
+
+let generate_keys ?hooks ?force ~alias node =
+  spawn_generate_keys ?hooks ?force ~alias node |> Process.check
+
+let spawn_list_keys ?hooks node = spawn_command ?hooks node ["list"; "keys"]
+
+let parse_list_keys output =
+  output |> String.trim |> String.split_on_char '\n'
+  |> List.fold_left (fun acc s -> (s =~** rex "^(\\w+): (\\w{36})") :: acc) []
+  |> List.fold_left
+       (fun acc k ->
+         match (k, acc) with
+         | None, _ | _, None -> None
+         | Some k, Some acc -> Some (k :: acc))
+       (Some [])
+  |> function
+  | None ->
+      Test.fail
+        ~__LOC__
+        "Cannot extract `list keys` format from client_output: %s"
+        output
+  | Some l -> l
+
+let list_keys ?hooks node =
+  let* out = spawn_list_keys ?hooks node |> Process.check_and_read_stdout in
+  return (parse_list_keys out)
+
+let spawn_show_address ?hooks ~alias node =
+  spawn_command ?hooks node ["show"; "address"; alias]
+
+let show_address ?hooks ~alias node =
+  let* out =
+    spawn_show_address ?hooks ~alias node |> Process.check_and_read_stdout
+  in
+  return (Account.parse_client_output_aggregate ~alias ~client_output:out)
+
+let spawn_import_secret_key ?hooks ?(force = false)
+    (key : Account.aggregate_key) node =
+  let sk_uri =
+    let (Unencrypted sk) = key.aggregate_secret_key in
+    "aggregate_unencrypted:" ^ sk
+  in
+  spawn_command
+    ?hooks
+    node
+    (["import"; "secret"; "key"; key.aggregate_alias; sk_uri]
+    @ if force then ["--force"] else [])
+
+let import_secret_key ?hooks ?force key node =
+  spawn_import_secret_key ?hooks ?force key node |> Process.check
 
 let run ?(wait_ready = true) ?env node =
   let* () = run ?env node in

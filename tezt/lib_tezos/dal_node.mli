@@ -93,8 +93,39 @@ val wait : t -> Unix.process_status Lwt.t
     allowing tests to run faster, without the need of large file. Default is
     [true] in tezt.
 *)
-
 val init_config : ?use_unsafe_srs:bool -> t -> string Lwt.t
+
+(** [generate_keys ~force ~alias dal_node] runs
+    [octez-dal-node --base-dir data-dir gen unencrypted keys alias], where
+    [data-dir] is [dal_node.persistent_state.data_dir]. If [force=true],
+    then the command is run with the option [--force]. *)
+val generate_keys :
+  ?hooks:Process_hooks.t -> ?force:bool -> alias:string -> t -> unit Lwt.t
+
+(** [list_keys ~force dal_node] runs
+    [octez-dal-node --base-dir list keys], where [data-dir] is
+    [dal_node.persistent_state.data_dir]. If [force=true],  then the command is
+    run with the option [--force]. *)
+val list_keys : ?hooks:Process_hooks.t -> t -> (string * string) list Lwt.t
+
+(** [show_address ~force ~alias dal_node] runs
+    [octez-dal-node --base-dir data-dir show address alias], where [data-dir]
+    is [dal_node.persistent_state.data_dir]. If [force=true], then the command
+    is run with the option [--force]. *)
+val show_address :
+  ?hooks:Process_hooks.t -> alias:string -> t -> Account.aggregate_key Lwt.t
+
+(** [import_secret_key ~force ~alias aggregate_account dal_node] runs
+    [octez-dal-node --base-dir data-dir import secret key alias aggregate_unencrypted:sk],
+    where [data-dir = dal_node.persistent_state.data_dir] and
+    [sk = aggregate_account.secret_key]. If [force=true], then the command
+    is run with the option [--force]. *)
+val import_secret_key :
+  ?hooks:Process_hooks.t ->
+  ?force:bool ->
+  Account.aggregate_key ->
+  t ->
+  unit Lwt.t
 
 module Config_file : sig
   (** DAL node configuration files. *)
