@@ -951,6 +951,32 @@ let rollup_node_interprets_dal_pages client sc_rollup sc_rollup_node =
           ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
       return ()
 
+let test_dal_node_imports_dac_member =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"dal node imports dac members sk_uris"
+    ~tags:["dal"; "dal_node"]
+    ~supports:Protocol.(From_protocol (Protocol.number Alpha))
+  @@ fun protocol ->
+  let* node, client = Client.init_with_protocol `Client ~protocol () in
+  let run_dal = Dal_node.run ~wait_ready:false ~include_base_dir_from:client in
+  let* dac_member = Client.bls_gen_keys ~alias:"dac_member" client in
+  let* dac_member_info = Client.bls_show_address ~alias:dac_member client in
+  let dac_member_address = dac_member_info.aggregate_public_key_hash in
+  let dal_node = Dal_node.create ~node () in
+  let* _dir = Dal_node.init_config dal_node in
+  let* () = Dal_node.set_dac_parameters ~threshold:1 dal_node in
+  let* () =
+    Dal_node.add_dac_member
+      ~include_base_dir_from:client
+      ~address:dac_member_address
+      dal_node
+  in
+  let* () = run_dal dal_node in
+  let* () = Dal_node.wait_for dal_node "dac_is_ready.v0" (fun _ -> Some ()) in
+  let* () = Dal_node.terminate dal_node in
+  return ()
+
 let register ~protocols =
   test_dal_scenario "feature_flag_is_disabled" test_feature_flag protocols ;
   test_slot_management_logic protocols ;
@@ -968,4 +994,5 @@ let register ~protocols =
     ~dal_enable:true
     "rollup_node_applies_dal_pages"
     (rollup_node_stores_dal_slots ~expand_test:rollup_node_interprets_dal_pages)
-    protocols
+    protocols ;
+  test_dal_node_imports_dac_member protocols
