@@ -27,7 +27,7 @@ exception Rpc_dir_creation_failure of tztrace
 
 module Directory = Resto_directory.Make (RPC_encoding)
 
-let hash_of_block ?cache (rpc_context : #RPC_context.simple)
+let hash_of_block ?cache (rpc_context : #RPC_context.simple) store_opt
     (chain : Tezos_shell_services.Shell_services.chain)
     (block : Tezos_shell_services.Block_services.block) =
   let open Lwt_result_syntax in
@@ -35,22 +35,42 @@ let hash_of_block ?cache (rpc_context : #RPC_context.simple)
     Option.bind cache (fun table ->
         Stdlib.Hashtbl.find_opt table (chain, block))
   with
-  | Some hash ->
-      (* Result is in cache *)
-      return hash
+  | Some out -> return out (* Result is in cache *)
   | None ->
-      let* hash =
-        Tezos_shell_services.Block_services.Empty.hash
-          rpc_context
-          ~chain
-          ~block
-          ()
+      let* out =
+        match store_opt with
+        | None ->
+            let* hash =
+              Tezos_shell_services.Block_services.Empty.hash
+                rpc_context
+                ~chain
+                ~block
+                ()
+            in
+            return (hash, None)
+        | Some store ->
+            let open Tezos_store_unix.Store in
+            let* chain_store =
+              let chain_store = main_chain_store store in
+              match chain with
+              | `Main -> return chain_store
+              | `Hash chain_id -> get_chain_store store chain_id
+              | `Test ->
+                  Lwt.bind (Chain.testchain chain_store) (function
+                      | Some test_chain ->
+                          return (Chain.testchain_store test_chain)
+                      | None ->
+                          tzfail
+                            (error_of_fmt "test chain is missing from store"))
+            in
+            let* block = Chain.block_of_identifier chain_store block in
+            return (Block.hash block, Some block)
       in
       (* Fill cache with result *)
       Option.iter
-        (fun table -> Stdlib.Hashtbl.add table (chain, block) hash)
+        (fun table -> Stdlib.Hashtbl.add table (chain, block) out)
         cache ;
-      return hash
+      return out
 
 type mode =
   | Light_client of Light.sources
@@ -116,6 +136,7 @@ module Env_cache =
 module Env_cache_lwt = Ringo_lwt.Functors.Make_result (Env_cache)
 
 let build_directory (printer : Tezos_client_base.Client_context.printer)
+    (store_opt : Tezos_store_unix.Store.t option)
     (rpc_context : RPC_context.generic) (mode : mode) expected_protocol :
     unit RPC_directory.t =
   let block_hash_cache =
@@ -166,18 +187,21 @@ let build_directory (printer : Tezos_client_base.Client_context.printer)
   in
   let get_env_rpc_context chain block =
     let open Lwt_result_syntax in
-    let* block_hash =
-      hash_of_block ?cache:block_hash_cache rpc_context chain block
+    let* block_hash, block_opt =
+      hash_of_block ?cache:block_hash_cache rpc_context store_opt chain block
     in
     let key = (chain, block_hash) in
     let compute_value (chain, block_hash) =
       let block_key = `Hash (block_hash, 0) in
       let* block_header =
-        Tezos_shell_services.Block_services.Empty.Header.shell_header
-          rpc_context
-          ~chain
-          ~block:block_key
-          ()
+        match block_opt with
+        | None ->
+            Tezos_shell_services.Block_services.Empty.Header.shell_header
+              rpc_context
+              ~chain
+              ~block:block_key
+              ()
+        | Some block -> return (Tezos_store_unix.Store.Block.shell_header block)
       in
       let* protocols =
         get_protocols ?expected_protocol rpc_context chain block_key

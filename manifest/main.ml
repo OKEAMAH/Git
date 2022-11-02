@@ -2757,6 +2757,7 @@ let octez_proxy =
         octez_client_base;
         octez_protocol_environment;
         octez_rpc;
+        octez_store_unix;
         octez_shell_services;
         octez_context_memory;
         uri;
@@ -5644,6 +5645,7 @@ let _octez_proxy_server =
          cmdliner;
          lwt_exit;
          lwt_unix;
+         octez_node_config;
          octez_proxy;
          octez_proxy_server_config;
          octez_rpc_http_client_unix;

@@ -13,6 +13,7 @@
   cmdliner
   lwt-exit
   lwt.unix
+  octez-node-config
   tezos-proxy
   tezos-proxy-server-config
   tezos-rpc-http-client-unix

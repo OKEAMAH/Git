@@ -14,6 +14,7 @@ depends: [
   "cmdliner" { >= "1.1.0" }
   "lwt-exit"
   "lwt" { >= "5.6.0" }
+  "octez-node-config"
   "tezos-proxy"
   "tezos-proxy-server-config"
   "tezos-rpc-http-client-unix"

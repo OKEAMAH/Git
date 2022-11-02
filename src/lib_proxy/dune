@@ -12,6 +12,7 @@
   tezos-client-base
   tezos-protocol-environment
   tezos-rpc
+  tezos-store.unix
   tezos-shell-services
   tezos-context.memory
   uri)

@@ -15,6 +15,7 @@ depends: [
   "tezos-client-base"
   "tezos-protocol-environment"
   "tezos-rpc"
+  "tezos-store"
   "tezos-shell-services"
   "tezos-context"
   "uri" { >= "2.2.0" }
