@@ -241,6 +241,25 @@ module Liquidity_baking = struct
     RPC_context.make_call0 S.get_cpmm_address ctxt block () ()
 end
 
+module Shared_global_counter = struct
+  module S = struct
+    let get_shared_global_counter =
+      RPC_service.get_service
+        ~description:"Get shared global counter"
+        ~query:RPC_query.empty
+        ~output:Data_encoding.z
+        RPC_path.(custom_root / "context" / "shared_global_counter")
+  end
+
+  let register () =
+    let open Services_registration in
+    register0 ~chunked:false S.get_shared_global_counter (fun ctxt () () ->
+        Alpha_context.Shared_global_counter.get_shared_global_counter ctxt)
+
+  let get_shared_global_counter ctxt block =
+    RPC_context.make_call0 S.get_shared_global_counter ctxt block () ()
+end
+
 module Cache = struct
   module S = struct
     let cached_contracts =
@@ -309,5 +328,6 @@ let register () =
   Voting.register () ;
   Sapling.register () ;
   Liquidity_baking.register () ;
+  Shared_global_counter.register () ;
   Cache.register () ;
   Tx_rollup.register ()

@@ -5071,4 +5071,5 @@ end
 
 module Shared_global_counter : sig
   val increment_shared_global_counter : context -> context tzresult Lwt.t
+  val get_shared_global_counter : context -> Z.t tzresult Lwt.t
 end

@@ -73,6 +73,11 @@ module Liquidity_baking : sig
     'a #RPC_context.simple -> 'a -> Contract_hash.t shell_tzresult Lwt.t
 end
 
+module Shared_global_counter: sig
+  val get_shared_global_counter :
+    'a #RPC_context.simple -> 'a -> Z.t shell_tzresult Lwt.t
+end
+
 module Cache : sig
   val cached_contracts :
     'a #RPC_context.simple ->
