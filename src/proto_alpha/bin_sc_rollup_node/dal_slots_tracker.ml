@@ -45,13 +45,10 @@ let () =
     (function Cannot_read_block_metadata hash -> Some hash | _ -> None)
     (fun hash -> Cannot_read_block_metadata hash)
 
-let ancestor_hash ~number_of_levels {Node_context.genesis_info; l1_ctxt; _} head
-    =
-  let genesis_level = genesis_info.level in
-  let rec go number_of_levels (Layer1.{hash; level} as head) =
+let ancestor_hash ~number_of_levels {Node_context.l1_ctxt; _} head =
+  let rec go number_of_levels (Layer1.{hash; _} as head) =
     let open Lwt_result_syntax in
-    if level < Raw_level.to_int32 genesis_level then return_none
-    else if number_of_levels = 0 then return_some hash
+    if number_of_levels = 0 then return_some hash
     else
       let* pred_head = Layer1.get_predecessor_opt l1_ctxt head in
       match pred_head with
