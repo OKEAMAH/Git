@@ -23,6 +23,37 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module L = (val Tezos_proxy.Logger.logger ~protocol_name:Protocol.name
+              : Tezos_proxy.Logger.S)
+
+let proxy_block_header (rpc_context : RPC_context.generic)
+    (store_primitives : Tezos_proxy.Proxy_getter.rpc_store_primitives)
+    (chain : Tezos_shell_services.Block_services.chain)
+    (block : Tezos_shell_services.Block_services.block) =
+  L.emit
+    L.proxy_block_header
+    ( Tezos_shell_services.Block_services.chain_to_string chain,
+      Tezos_shell_services.Block_services.to_string block )
+  >>= fun () ->
+  match store_primitives.block_of_identifier with
+  | Some f -> f chain block
+  | None ->
+      (* Access to the store is impossible, either because the store path argument
+         was not provided, or because the store could not be loaded: default to the
+         RPC call *)
+      let open Lwt_result_syntax in
+      let rpc_context =
+        new Protocol_client_context.wrap_rpc_context rpc_context
+      in
+      let* header =
+        Protocol_client_context.Alpha_block_services.header
+          rpc_context
+          ~chain
+          ~block
+          ()
+      in
+      return (header.shell, header.hash)
+
 module ProtoRpc : Tezos_proxy.Proxy_proto.PROTO_RPC = struct
   (** Split done only when the mode is [Tezos_proxy.Proxy.server]. Getting
       an entire big map at once is useful for dapp developers that
@@ -129,6 +160,24 @@ let time_between_blocks (rpc_context : RPC_context.generic)
   Constants_services.all rpc_context (chain, block) >>=? fun constants ->
   let times = constants.parametric.time_between_blocks in
   return @@ Option.map Alpha_context.Period.to_seconds (List.hd times)
+
+let init_env_rpc_context (ctxt : Tezos_proxy.Proxy_getter.rpc_context_args) :
+    Tezos_protocol_environment.rpc_context tzresult Lwt.t =
+  let open Lwt_result_syntax in
+  let* shell_header, block_hash =
+    proxy_block_header
+      ctxt.rpc_context
+      ctxt.store_primitives
+      ctxt.chain
+      ctxt.block
+  in
+  let* context = initial_context ctxt shell_header.context in
+  return
+    {
+      Tezos_protocol_environment.block_hash;
+      block_header = shell_header;
+      context;
+    }
 
 let () =
   let open Tezos_proxy.Registration in

@@ -678,7 +678,7 @@ opam:tezos-client-base:
 opam:tezos-client-base-unix:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_3
+    - .rules_template__trigger_opam_batch_2
   variables:
     package: tezos-client-base-unix
 
@@ -699,7 +699,7 @@ opam:tezos-client-demo-counter:
 opam:tezos-client-genesis:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_3
+    - .rules_template__trigger_opam_batch_2
   variables:
     package: tezos-client-genesis
 
@@ -1238,7 +1238,7 @@ opam:tezos-protocol-plugin-009-PsFLoren:
 opam:tezos-protocol-plugin-009-PsFLoren-registerer:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_3
+    - .rules_template__trigger_opam_batch_2
   variables:
     package: tezos-protocol-plugin-009-PsFLoren-registerer
 
@@ -1252,7 +1252,7 @@ opam:tezos-protocol-plugin-010-PtGRANAD:
 opam:tezos-protocol-plugin-010-PtGRANAD-registerer:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_2
+    - .rules_template__trigger_opam_batch_3
   variables:
     package: tezos-protocol-plugin-010-PtGRANAD-registerer
 
@@ -1350,7 +1350,7 @@ opam:tezos-protocol-updater:
 opam:tezos-proxy:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_4
+    - .rules_template__trigger_opam_batch_3
   variables:
     package: tezos-proxy
 

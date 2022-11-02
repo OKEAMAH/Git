@@ -60,12 +60,14 @@ type mode =
     by the proxy server. Parameters are:
 
     - [printer] is used for logging.
+    - [store] is used to retrieve information that is available locally.
     - [rpc_context] is used to perform RPCs to distant endpoints.
     - [mode] specifies whether [octez-client] (light or proxy mode)
       or [tezos-proxy-server] is running.
     - [env] is a protocol-specific module used to create the context passed when executing a RPC. *)
 val build_directory :
   Tezos_client_base.Client_context.printer ->
+  Tezos_store_unix.Store.t option ->
   RPC_context.generic ->
   mode ->
   Protocol_hash.t option ->

@@ -188,8 +188,11 @@ let schedule_clearing (printer : Tezos_client_base.Client_context.printer)
       Lwt.return_unit
 
 let build_directory (printer : Tezos_client_base.Client_context.printer)
-    (rpc_context : RPC_context.generic) (mode : mode) expected_protocol :
-    unit RPC_directory.t =
+    (store_opt : Tezos_store_unix.Store.t option)
+    (rpc_context : RPC_context.generic) (mode : mode)
+    (proxy_env : Registration.proxy_environment) 
+    : unit RPC_directory.t =
+  let (module Proxy_environment) = proxy_env in
   let table =
     match mode with
     | Proxy_server _ -> None
@@ -234,24 +237,37 @@ let build_directory (printer : Tezos_client_base.Client_context.printer)
   in
   let get_env_rpc_context chain block =
     let open Lwt_result_syntax in
-    let* block_hash = hash_of_block ?table rpc_context chain block in
-    let key = (chain, block_hash) in
-    let compute_value (chain, block_hash) =
-      let block_key = `Hash (block_hash, 0) in
-      let* block_header =
-        Tezos_shell_services.Block_services.Empty.Header.shell_header
-          rpc_context
-          ~chain
-          ~block:block_key
-          ()
+    let* block_hash_opt = B2H.hash_of_block rpc_context chain block in
+    let block_key, (fill_b2h : Block_hash.t -> unit) =
+      match block_hash_opt with
+      | None -> (block, fun block_hash -> B2H.add chain block block_hash)
+      | Some block_hash -> (`Hash (block_hash, 0), ignore)
+    in
+    let key = (chain, block_key) in
+    let compute_value (chain, block_key) =
+      let block_of_identifier =
+        Option.map
+          (fun store chain block ->
+            let open Tezos_store_unix.Store in
+            let* chain_store =
+              let chain_store = main_chain_store store in
+              match chain with
+              | `Main -> return chain_store
+              | `Hash chain_id -> get_chain_store store chain_id
+              | `Test ->
+                  Lwt.bind (Chain.testchain chain_store) (function
+                      | Some test_chain ->
+                          return (Chain.testchain_store test_chain)
+                      | None ->
+                          tzfail
+                            (error_of_fmt "test chain is missing from store"))
+            in
+            let* block = Chain.block_of_identifier chain_store block in
+            let shell_header = Block.shell_header block
+            and hash = Block.hash block in
+            return (shell_header, hash))
+          store_opt
       in
-      let* protocols =
-        get_protocols ?expected_protocol rpc_context chain block_key
-      in
-      let* proxy_env =
-        Registration.get_registered_proxy printer protocols.next_protocol
-      in
-      let (module Proxy_environment) = proxy_env in
       let ctx : Proxy_getter.rpc_context_args =
         {
           printer = Some printer;
@@ -259,7 +275,8 @@ let build_directory (printer : Tezos_client_base.Client_context.printer)
           rpc_context;
           mode = to_client_server_mode mode;
           chain;
-          block = block_key;
+          block;
+          store_primitives = {block_of_identifier};
         }
       in
       let* initial_context =

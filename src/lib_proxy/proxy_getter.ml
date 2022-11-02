@@ -128,6 +128,14 @@ type proxy_builder =
       (Context_hash.t ->
       Tezos_protocol_environment.Proxy_delegate.t tzresult Lwt.t)
 
+type rpc_store_primitives = {
+  block_of_identifier :
+    (Tezos_shell_services.Block_services.chain ->
+    Tezos_shell_services.Block_services.block ->
+    (Block_header.shell_header * Block_hash.t) tzresult Lwt.t)
+    option;
+}
+
 type rpc_context_args = {
   printer : Tezos_client_base.Client_context.printer option;
   proxy_builder : proxy_builder;
@@ -135,6 +143,7 @@ type rpc_context_args = {
   mode : Proxy.mode;
   chain : Tezos_shell_services.Block_services.chain;
   block : Tezos_shell_services.Block_services.block;
+  store_primitives : rpc_store_primitives;
 }
 
 module StringMap = String.Map

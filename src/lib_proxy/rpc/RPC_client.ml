@@ -56,7 +56,7 @@ class http_local_ctxt (printer : Tezos_client_base.Client_context.printer)
   RPC_context.generic =
   let local_ctxt =
     Tezos_mockup_proxy.RPC_client.local_ctxt
-      (Proxy_services.build_directory printer http_ctxt mode protocol)
+      (Proxy_services.build_directory printer None http_ctxt mode protocol)
   in
   let dispatch_local_or_distant ~debug_name ~local ~distant meth path =
     let open Lwt_syntax in

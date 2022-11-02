@@ -101,6 +101,15 @@ type proxy_builder =
       Tezos_protocol_environment.Proxy_delegate.t tzresult Lwt.t)
       (** Build a proxy that looks up data in a running node's data dir. *)
 
+(** Store primitives required by the rpc context *)
+type rpc_store_primitives = {
+  block_of_identifier :
+    (Tezos_shell_services.Block_services.chain ->
+    Tezos_shell_services.Block_services.block ->
+    (Block_header.shell_header * Block_hash.t) tzresult Lwt.t)
+    option;
+}
+
 (** Input data required by the proxy mode to build a
     {!Tezos_protocol_environment.rpc_context}. *)
 type rpc_context_args = {
@@ -119,6 +128,8 @@ type rpc_context_args = {
       (** The chain to provide RPC calls for. *)
   block : Tezos_shell_services.Block_services.block;
       (** The block to provide RPC calls for. *)
+  store_primitives : rpc_store_primitives;
+      (** Store primitives required by the rpc context *)
 }
 
 (** Builds a proxy delegate in the way specified by the proxy_builder field of
