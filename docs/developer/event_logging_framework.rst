@@ -28,7 +28,7 @@ fields of the events are still evaluated every time, which is usually not an
 issue since they are evaluated anyway by the application code itself).
 
 See for instance
-:src:`src/bin_node/node_config_file.ml` (search for the string `declare_`):
+:src:`src/lib_node_config/node_config_file.ml` (search for the string `declare_`):
 
 -  one declares typed-record events with
    ``Internal_event.Simple.declare_<number-of-fields>``,

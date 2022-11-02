@@ -304,6 +304,13 @@ opam:octez-node:
   variables:
     package: octez-node
 
+opam:octez-node-config:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_3
+  variables:
+    package: octez-node-config
+
 opam:octez-protocol-compiler:
   extends:
     - .opam_template
@@ -783,14 +790,14 @@ opam:tezos-embedded-protocol-005-PsBabyM1:
 opam:tezos-embedded-protocol-006-PsCARTHA:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_3
+    - .rules_template__trigger_opam_batch_4
   variables:
     package: tezos-embedded-protocol-006-PsCARTHA
 
 opam:tezos-embedded-protocol-007-PsDELPH1:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_3
+    - .rules_template__trigger_opam_batch_4
   variables:
     package: tezos-embedded-protocol-007-PsDELPH1
 
@@ -916,7 +923,7 @@ opam:tezos-expect-helper:
 opam:tezos-hacl:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_6
+    - .rules_template__trigger_opam_batch_7
   variables:
     package: tezos-hacl
 
@@ -1182,7 +1189,7 @@ opam:tezos-protocol-demo-noops:
 opam:tezos-protocol-environment:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_5
+    - .rules_template__trigger_opam_batch_6
   variables:
     package: tezos-protocol-environment
 
@@ -1231,7 +1238,7 @@ opam:tezos-protocol-plugin-009-PsFLoren:
 opam:tezos-protocol-plugin-009-PsFLoren-registerer:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_2
+    - .rules_template__trigger_opam_batch_3
   variables:
     package: tezos-protocol-plugin-009-PsFLoren-registerer
 
@@ -1259,7 +1266,7 @@ opam:tezos-protocol-plugin-011-PtHangz2:
 opam:tezos-protocol-plugin-011-PtHangz2-registerer:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_2
+    - .rules_template__trigger_opam_batch_3
   variables:
     package: tezos-protocol-plugin-011-PtHangz2-registerer
 
@@ -1427,7 +1434,7 @@ opam:tezos-shell:
 opam:tezos-shell-benchmarks:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_4
+    - .rules_template__trigger_opam_batch_5
   variables:
     package: tezos-shell-benchmarks
 
