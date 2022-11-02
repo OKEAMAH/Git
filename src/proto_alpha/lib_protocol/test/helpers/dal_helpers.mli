@@ -132,6 +132,13 @@ end) : sig
     page_id:Dal_slot_repr.Page.t ->
     (unit, tztrace) result Lwt.t
 
+  (** Return a raw level. This function can not fail. *)
+  val make_raw_level : level:int -> Raw_level_repr.t
+
+  (** Return a DAL slot index. This function can fail if the given index is
+      negative or if it's greater than [Dal_slot_repr.Index.max_value]. *)
+  val make_dal_slot_index : index:int -> Dal_slot_repr.Index.t
+
   (** Check if two page proofs are equal. *)
   val eq_page_proof : Cryptobox.page_proof -> Cryptobox.page_proof -> bool
 

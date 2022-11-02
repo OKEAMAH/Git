@@ -170,6 +170,11 @@ struct
         in
         check_verify res page_info
 
+  let make_raw_level ~level = Raw_level_repr.(of_int32_exn (Int32.of_int level))
+
+  let make_dal_slot_index ~index =
+    Option.value_f ~default:(fun () -> assert false) @@ S.Index.of_int index
+
   (* Some check functions. *)
 
   (** Check that/if the returned content is the expected one. *)
