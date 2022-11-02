@@ -95,6 +95,36 @@ let init_config ?use_unsafe_srs dal_node =
   | None -> failwith "DAL node configuration initialization failed"
   | Some filename -> return filename
 
+let spawn_set_dac_parameters ?threshold dal_node =
+  let threshold_arg =
+    match threshold with
+    | None -> []
+    | Some threshold -> ["--threshold"; Int.to_string threshold]
+  in
+  let data_dir_arg = ["--data-dir"; data_dir dal_node] in
+  spawn_command dal_node
+  @@ ["set"; "dac"; "parameters"]
+  @ threshold_arg @ data_dir_arg
+
+let set_dac_parameters ?threshold dal_node =
+  spawn_set_dac_parameters ?threshold dal_node |> Process.check
+
+let spawn_add_dac_member ?include_base_dir_from ~address dal_node =
+  let base_dir_argument =
+    match include_base_dir_from with
+    | None -> []
+    | Some client -> ["--base-dir"; Client.base_dir client]
+  in
+  spawn_command
+    dal_node
+    (base_dir_argument
+    @ ["add"; "data"; "availability"; "committee"; "member"]
+    @ [address]
+    @ ["--data-dir"; dal_node.persistent_state.data_dir])
+
+let add_dac_member ?include_base_dir_from ~address dal_node =
+  spawn_add_dac_member ?include_base_dir_from ~address dal_node |> Process.check
+
 module Config_file = struct
   let filename dal_node = sf "%s/config.json" @@ data_dir dal_node
 
@@ -166,29 +196,36 @@ let create ?(path = Constant.dal_node) ?name ?color ?data_dir ?event_pipe
   on_event dal_node (handle_event dal_node) ;
   dal_node
 
-let make_arguments node =
-  [
-    "--endpoint";
-    Printf.sprintf "http://%s:%d" (layer1_addr node) (layer1_port node);
-  ]
+let make_arguments ?include_base_dir_from node =
+  let base_dir_args =
+    match include_base_dir_from with
+    | None -> []
+    | Some client -> ["--base-dir"; Client.base_dir client]
+  in
+  base_dir_args
+  @ [
+      "--endpoint";
+      Printf.sprintf "http://%s:%d" (layer1_addr node) (layer1_port node);
+    ]
 
-let do_runlike_command ?env node arguments =
+let do_runlike_command ?env ?include_base_dir_from node arguments =
   if node.status <> Not_running then
     Test.fail "DAL node %s is already running" node.name ;
   let on_terminate _status =
     trigger_ready node None ;
     unit
   in
-  let arguments = make_arguments node @ arguments in
+  let arguments = make_arguments ?include_base_dir_from node @ arguments in
   run ?env node {ready = false} arguments ~on_terminate
 
-let run ?env node =
+let run ?env ?include_base_dir_from node =
   do_runlike_command
     ?env
+    ?include_base_dir_from
     node
     ["run"; "--data-dir"; node.persistent_state.data_dir]
 
-let run ?(wait_ready = true) ?env node =
-  let* () = run ?env node in
+let run ?(wait_ready = true) ?include_base_dir_from ?env node =
+  let* () = run ?include_base_dir_from ?env node in
   let* () = if wait_ready then wait_for_ready node else Lwt.return_unit in
   return ()

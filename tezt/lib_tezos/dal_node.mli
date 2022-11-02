@@ -57,12 +57,20 @@ val endpoint : t -> string
 (** Get the data-dir of an dal node. *)
 val data_dir : t -> string
 
-(** [run ?wait_ready ?env node] launches the given dal node where env is a map
-    of environment variable.
+(** [run ?wait_ready ?include_base_dir_from ?env node] launches the given dal
+    node where env is a map of environment variable.
 
     If [wait_ready] is [true], the promise waits for the dal node to be ready.
-    [true] by default *)
-val run : ?wait_ready:bool -> ?env:string String_map.t -> t -> unit Lwt.t
+    [true] by default. If the optional parameter
+    [?include_base_dir_from:Client.t] is passed with value [client], then the
+    global option [--base-dir Client.base_dir client] is passed to the command.
+*)
+val run :
+  ?wait_ready:bool ->
+  ?include_base_dir_from:Client.t ->
+  ?env:string String_map.t ->
+  t ->
+  unit Lwt.t
 
 (** Send SIGTERM and wait for the process to terminate.
 
@@ -93,8 +101,22 @@ val wait : t -> Unix.process_status Lwt.t
     allowing tests to run faster, without the need of large file. Default is
     [true] in tezt.
 *)
-
 val init_config : ?use_unsafe_srs:bool -> t -> string Lwt.t
+
+(** [set_dac_parameters ~data_dir] Runs
+    [octez-dal-node set dac parameters --data-dir data_dir]. If the optional
+    argument [?threhsold] is passed, then the option [--threshold threshold]
+    is passed to the command.
+*)
+val set_dac_parameters : ?threshold:int -> t -> unit Lwt.t
+
+(** [add_dac_member ?include_base_dir_from ~alias dal_node] runs
+    octez-dal-node add data availability committee member alias --data-dir data-dir],
+    where [data-dir = dal_node.persistent_state.data_dir]. If the optional parameter
+    [?include_base_dir_from:Client.t] is passed with value [client], then the
+    global option [--base-dir Client.base_dir client] is passed to the command. *)
+val add_dac_member :
+  ?include_base_dir_from:Client.t -> address:string -> t -> unit Lwt.t
 
 module Config_file : sig
   (** DAL node configuration files. *)
