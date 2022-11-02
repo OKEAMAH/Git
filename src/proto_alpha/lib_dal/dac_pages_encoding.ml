@@ -162,6 +162,8 @@ module Merkle_tree = struct
 
     val encoding : t Data_encoding.t
 
+    val to_b58check : t -> string
+
     val hash_bytes : ?key:bytes -> bytes list -> t
 
     val size : int
@@ -173,6 +175,8 @@ module Merkle_tree = struct
     let hash_encoding = Hashing_scheme.encoding
 
     let hashes_encoding = Data_encoding.list hash_encoding
+
+    let to_b58check = Hashing_scheme.to_b58check
 
     (* The preamble of a serialized page contains 1 byte denoting the version,
        and 4 bytes encoding the size of the rest of the page. In total, 5
