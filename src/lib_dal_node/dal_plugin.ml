@@ -36,6 +36,12 @@ module type T = sig
     Tezos_shell_services.Block_services.block ->
     Client_context.full ->
     (int * Tezos_crypto_dal.Cryptobox.Verifier.commitment) list tzresult Lwt.t
+
+  val serialize_dac_reveal_data :
+    max_page_size:int ->
+    bytes ->
+    for_each_page:(string * bytes -> (unit, error trace) result Lwt.t) ->
+    string tzresult Lwt.t
 end
 
 let table : (module T) Protocol_hash.Table.t = Protocol_hash.Table.create 5

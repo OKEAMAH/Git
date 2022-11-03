@@ -293,16 +293,25 @@ module Merkle_tree = struct
            a sequence of serialized hashes for hashes pages. The preamble
            bytes is part of the sequence of bytes which is hashed. *)
         let hashes_with_serialized_pages =
-          List.map
-            (fun serialized_page -> (hash serialized_page, serialized_page))
-            serialized_pages
+          serialized_pages
+          |> List.map (fun serialized_page ->
+                 (hash serialized_page, serialized_page))
+          |> List.map (fun (h, sp) -> (to_b58check h, h, sp))
         in
 
-        let* () = List.iter_es for_each_page hashes_with_serialized_pages in
+        let* () =
+          hashes_with_serialized_pages
+          |> List.map (fun (b58_hash, _hash, page) -> (b58_hash, page))
+          |> List.iter_es for_each_page
+        in
         match hashes_with_serialized_pages with
-        | [(hash, _page)] -> return hash
+        | [(_b58_hash, hash, _page)] -> return hash
         | hashes_with_raw_pages ->
-            let hashes = List.map fst hashes_with_raw_pages in
+            let hashes =
+              List.map
+                (fun (_b58_hash, hash, _page) -> hash)
+                hashes_with_raw_pages
+            in
             (go [@tailcall]) (Hashes hashes)
       in
       go (Contents payload)

@@ -55,6 +55,11 @@ module Plugin = struct
            return
              ( Dal.Slot_index.to_int slot.Dal.Slot.Header.id.index,
                slot.Dal.Slot.Header.commitment ))
+
+  let serialize_dac_reveal_data ~max_page_size data ~for_each_page =
+    let open Lwt_result_syntax in
+    let+ rh = (Dac_pages_encoding.Merkle_tree.V0.serialize_payload ~max_page_size data ~for_each_page) in
+    Dac_pages_encoding.Merkle_tree.V0.to_b58check rh
 end
 
 let () = Dal_plugin.register (module Plugin)
