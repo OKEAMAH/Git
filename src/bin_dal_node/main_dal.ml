@@ -132,6 +132,13 @@ module Dac = struct
     let desc = String.concat "\n" [desc; "A tz4 address"] in
     Tezos_clic.param ~name ~desc (tz4_address_parameter ())
 
+  let reveal_data_dir_arg =
+    Tezos_clic.arg
+      ~long:"data-dir"
+      ~placeholder:"data-dir"
+      ~doc:(Format.sprintf "The path where DAC reveal data will be saved.")
+      (Client_config.string_parameter ())
+
   (** Add an account alias as a member of the Data availability Committee in the
     configuration of the Dal node. *)
   let add_dac_alias_command =
@@ -178,13 +185,16 @@ module Dac = struct
     command
       ~group
       ~desc:"Configure DAC parameters."
-      (args2 data_dir_arg threshold_arg)
+      (args3 data_dir_arg threshold_arg reveal_data_dir_arg)
       (prefixes ["set"; "dac"; "parameters"] stop)
-      (fun (data_dir, threshold) cctxt ->
+      (fun (data_dir, threshold, reveal_data_dir) cctxt ->
         let open Configuration in
         let* config = load ~data_dir in
         let threshold = Option.value threshold ~default:config.dac.threshold in
-        let dac = {config.dac with threshold} in
+        let reveal_data_dir =
+          Option.value reveal_data_dir ~default:config.dac.reveal_data_dir
+        in
+        let dac = {config.dac with threshold; reveal_data_dir} in
         let config = {config with dac} in
         let* () = save config in
         let*! _ =
