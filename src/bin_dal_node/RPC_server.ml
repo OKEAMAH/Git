@@ -139,6 +139,20 @@ let register_dac_reveal_data ctxt configuration dir =
   RPC_directory.register0 dir (Services.dac_reveal_data ()) (fun () ->
       handle_dac_reveal_data ctxt configuration)
 
+let handle_dac_recover_data ctxt {Configuration.dac = {reveal_data_dir; _}; _}
+    (_, root_hash) () () =
+  let open Lwt_result_syntax in
+  let*? {plugin = (module Plugin); _} = Node_context.get_ready ctxt in
+  Plugin.recover_dac_reveal_data
+    root_hash
+    ~retrieve_page_from_hash:(Reveal_data_manager.load_file reveal_data_dir)
+
+let register_dac_recover_data ctxt configuration dir =
+  RPC_directory.register
+    dir
+    (Services.dac_recover_data ())
+    (handle_dac_recover_data ctxt configuration)
+
 let register ctxt configuration =
   RPC_directory.empty
   |> register_stored_slot_headers ctxt
@@ -146,6 +160,7 @@ let register ctxt configuration =
   |> register_show_slot_pages ctxt
   |> register_monitor_slot_headers ctxt
   |> register_dac_reveal_data ctxt configuration
+  |> register_dac_recover_data ctxt configuration
 
 let start configuration dir =
   let open Lwt_syntax in

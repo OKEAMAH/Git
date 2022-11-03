@@ -95,3 +95,10 @@ let dac_reveal_data () =
     ~input:Data_encoding.bytes
     ~output:Data_encoding.string
     RPC_path.(open_root / "dac" / "reveal_data")
+
+let dac_recover_data () =
+  RPC_service.get_service
+    ~description:"Show DAC reveal data"
+    ~query:RPC_query.empty
+    ~output:Data_encoding.bytes
+    RPC_path.(open_root / "dac" / "recover_data" /: RPC_arg.string)
