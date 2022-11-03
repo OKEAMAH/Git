@@ -54,11 +54,15 @@ let regression_test ~__FILE__ ?(tags = []) title f =
 let dal_enable_param dal_enable =
   make_bool_parameter ["dal_parametric"; "feature_enable"] dal_enable
 
-let setup ?commitment_period ?challenge_window ?dal_enable f ~protocol =
+let setup ~endorsement_lag ?commitment_period ?challenge_window ?dal_enable f
+    ~protocol =
   let parameters =
     make_int_parameter
-      ["sc_rollup_commitment_period_in_blocks"]
-      commitment_period
+      ["dal_parametric"; "endorsement_lag"]
+      (Some endorsement_lag)
+    @ make_int_parameter
+        ["sc_rollup_commitment_period_in_blocks"]
+        commitment_period
     @ make_int_parameter
         ["sc_rollup_challenge_window_in_blocks"]
         challenge_window
@@ -133,15 +137,20 @@ let with_dal_node tezos_node f key =
   let* _dir = Dal_node.init_config dal_node in
   f key dal_node
 
-let test_scenario_rollup_dal_node ?commitment_period ?challenge_window
-    ?dal_enable {variant; tags; description} scenario =
+let test_scenario_rollup_dal_node ~endorsement_lag ?commitment_period
+    ?challenge_window ?dal_enable {variant; tags; description} scenario =
   let tags = tags @ [variant] in
   regression_test
     ~__FILE__
     ~tags
     (Printf.sprintf "%s (%s)" description variant)
     (fun protocol ->
-      setup ?commitment_period ?challenge_window ~protocol ?dal_enable
+      setup
+        ~endorsement_lag
+        ?commitment_period
+        ?challenge_window
+        ~protocol
+        ?dal_enable
       @@ fun _parameters _cryptobox node client ->
       with_dal_node node @@ fun key dal_node ->
       ( with_fresh_rollup ~dal_node
@@ -152,15 +161,20 @@ let test_scenario_rollup_dal_node ?commitment_period ?challenge_window
         client
         key)
 
-let test_scenario ?commitment_period ?challenge_window ?dal_enable
-    {variant; tags; description} scenario =
+let test_scenario ~endorsement_lag ?commitment_period ?challenge_window
+    ?dal_enable {variant; tags; description} scenario =
   let tags = tags @ [variant] in
   regression_test
     ~__FILE__
     ~tags
     (Printf.sprintf "%s (%s)" description variant)
     (fun protocol ->
-      setup ?commitment_period ?challenge_window ~protocol ?dal_enable
+      setup
+        ~endorsement_lag
+        ?commitment_period
+        ?challenge_window
+        ~protocol
+        ?dal_enable
       @@ fun _parameters _cryptobox node client ->
       ( with_fresh_rollup @@ fun sc_rollup_address sc_rollup_node _filename ->
         scenario protocol sc_rollup_node sc_rollup_address node client )
@@ -377,14 +391,14 @@ let check_dal_raw_context node =
       Test.fail "Confirmed slots history mismatch." ;
     unit
 
-let test_slot_management_logic =
+let test_slot_management_logic ~endorsement_lag =
   Protocol.register_test
     ~__FILE__
     ~title:"dal basic logic"
     ~tags:["dal"]
     ~supports:Protocol.(From_protocol (Protocol.number Alpha))
   @@ fun protocol ->
-  setup ~dal_enable:true ~protocol
+  setup ~endorsement_lag ~dal_enable:true ~protocol
   @@ fun parameters cryptobox node client _bootstrap ->
   let* (`OpHash oph1) =
     publish_dummy_slot
@@ -951,21 +965,30 @@ let rollup_node_interprets_dal_pages client sc_rollup sc_rollup_node =
           ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
       return ()
 
-let register ~protocols =
-  test_dal_scenario "feature_flag_is_disabled" test_feature_flag protocols ;
-  test_slot_management_logic protocols ;
-  test_dal_node_slot_management protocols ;
-  test_dal_node_slots_headers_tracking protocols ;
-  test_dal_node_rebuild_from_shards protocols ;
-  test_dal_node_startup protocols ;
-  test_dal_node_test_slots_propagation protocols ;
+let register_with_endorsement_lag ~protocols ~endorsement_lag =
+  test_dal_scenario
+    "feature_flag_is_disabled"
+    test_feature_flag
+    protocols
+    ~endorsement_lag ;
+  test_slot_management_logic protocols ~endorsement_lag ;
   test_dal_rollup_scenario
     ~dal_enable:true
     "rollup_node_downloads_slots"
     rollup_node_stores_dal_slots
-    protocols ;
+    protocols
+    ~endorsement_lag ;
   test_dal_rollup_scenario
     ~dal_enable:true
     "rollup_node_applies_dal_pages"
     (rollup_node_stores_dal_slots ~expand_test:rollup_node_interprets_dal_pages)
     protocols
+    ~endorsement_lag
+
+let register ~protocols =
+  test_dal_node_slot_management protocols ;
+  test_dal_node_slots_headers_tracking protocols ;
+  test_dal_node_rebuild_from_shards protocols ;
+  test_dal_node_startup protocols ;
+  test_dal_node_test_slots_propagation protocols ;
+  register_with_endorsement_lag ~protocols ~endorsement_lag:1
