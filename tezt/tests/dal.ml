@@ -143,7 +143,7 @@ let test_scenario_rollup_dal_node ~endorsement_lag ?commitment_period
   regression_test
     ~__FILE__
     ~tags
-    (Printf.sprintf "%s (%s)" description variant)
+    (sf "%s (%s)(%d)" description variant endorsement_lag)
     (fun protocol ->
       setup
         ~endorsement_lag
@@ -167,7 +167,7 @@ let test_scenario ~endorsement_lag ?commitment_period ?challenge_window
   regression_test
     ~__FILE__
     ~tags
-    (Printf.sprintf "%s (%s)" description variant)
+    (sf "%s (%s)(%d)" description variant endorsement_lag)
     (fun protocol ->
       setup
         ~endorsement_lag
@@ -193,7 +193,7 @@ let test_dal_rollup_scenario ?dal_enable variant =
 let test_dal_scenario ?dal_enable variant =
   test_scenario
     ?dal_enable
-    {tags = ["dal"]; variant; description = "Testing DAL functionality "}
+    {tags = ["dal"]; variant; description = "Testing DAL functionality"}
 
 let update_neighbors dal_node neighbors =
   let neighbors =
@@ -390,7 +390,7 @@ let check_dal_raw_context node =
 let test_slot_management_logic ~endorsement_lag =
   Protocol.register_test
     ~__FILE__
-    ~title:"dal basic logic"
+    ~title:(sf "dal basic logic (%d)" endorsement_lag)
     ~tags:["dal"]
     ~supports:Protocol.(From_protocol (Protocol.number Alpha))
   @@ fun protocol ->
