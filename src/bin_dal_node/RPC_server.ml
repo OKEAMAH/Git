@@ -136,7 +136,7 @@ let handle_dac_reveal_data ctxt raw_data =
     Tezos_dal_alpha.Dac_pages_encoding.Merkle_tree.V0.serialize_payload
       ~max_page_size
       raw_data
-      ~for_each_page:(fun _ -> Lwt_result_syntax.return_unit)
+      ~for_each_page:(fun _ _ -> Lwt_result_syntax.return_unit)
   in
   Tezos_dal_alpha.Dac_pages_encoding.Merkle_tree.V0.to_b58check reveal_hash
 

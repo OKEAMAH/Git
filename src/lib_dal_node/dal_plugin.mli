@@ -37,10 +37,10 @@ module type T = sig
     Client_context.full ->
     (int * Tezos_crypto_dal.Cryptobox.Verifier.commitment) list tzresult Lwt.t
 
-    val serialize_dac_reveal_data :
+  val serialize_dac_reveal_data :
     max_page_size:int ->
     bytes ->
-    for_each_page:(string * bytes -> (unit, error trace) result Lwt.t) ->
+    for_each_page:(string -> bytes -> (unit, error trace) result Lwt.t) ->
     string tzresult Lwt.t
 end
 

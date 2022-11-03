@@ -278,6 +278,9 @@ module Merkle_tree = struct
         The function [serialize_payload] returns the root hash of the Merkle
         tree constructed. *)
     let serialize_payload ~max_page_size payload ~for_each_page =
+      let uncurried_for_each_page (b58_hash, page_contents) =
+        for_each_page b58_hash page_contents
+      in
       let open Lwt_result_syntax in
       let* () =
         fail_unless (Bytes.length payload > 0) Payload_cannot_be_empty
@@ -302,7 +305,7 @@ module Merkle_tree = struct
         let* () =
           hashes_with_serialized_pages
           |> List.map (fun (b58_hash, _hash, page) -> (b58_hash, page))
-          |> List.iter_es for_each_page
+          |> List.iter_es uncurried_for_each_page
         in
         match hashes_with_serialized_pages with
         | [(_b58_hash, hash, _page)] -> return hash
