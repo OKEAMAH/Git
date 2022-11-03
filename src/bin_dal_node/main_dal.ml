@@ -134,8 +134,8 @@ module Dac = struct
 
   let reveal_data_dir_arg =
     Tezos_clic.arg
-      ~long:"data-dir"
-      ~placeholder:"data-dir"
+      ~long:"reveal-data-dir"
+      ~placeholder:"reveal-data-dir"
       ~doc:(Format.sprintf "The path where DAC reveal data will be saved.")
       (Client_config.string_parameter ())
 

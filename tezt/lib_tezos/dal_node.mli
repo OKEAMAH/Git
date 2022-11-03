@@ -97,12 +97,14 @@ val wait : t -> Unix.process_status Lwt.t
 *)
 val init_config : ?use_unsafe_srs:bool -> t -> string Lwt.t
 
-(** [set_dac_parameters ~data_dir] Runs
+(** [set_dac_parameters ?threshold ?reveal_data_dir ~data_dir] Runs
     [octez-dal-node set dac parameters --data-dir data_dir]. If the optional
     argument [?threhsold] is passed, then the option [--threshold threshold]
-    is passed to the command.
+    is passed to the command. If [?reveal_data_dir] is passed, then the
+    option [--reveal-data-dir reveal_data_dir] is passed to the command.
 *)
-val set_dac_parameters : ?threshold:int -> t -> unit Lwt.t
+val set_dac_parameters :
+  ?threshold:int -> ?reveal_data_dir:string -> t -> unit Lwt.t
 
 (** [add_dac_member dal_node] runs
     [octez-dal-node add data availability committee member alias --data-dir data-dir],
