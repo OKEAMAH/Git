@@ -28,6 +28,7 @@ type neighbor = {addr : string; port : int}
 type dac = {
   addresses : Aggregate_signature.public_key_hash list;
   threshold : int;
+  reveal_data_dir : string;
 }
 
 type t = {
