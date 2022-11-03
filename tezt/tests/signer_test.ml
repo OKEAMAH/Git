@@ -34,7 +34,10 @@
 let signer_simple_test ~title ~tags ~keys =
   Protocol.register_test ~__FILE__ ~title ~tags @@ fun protocol ->
   (* init the signer and import all the bootstrap_keys *)
-  let* signer = Signer.init ~keys () in
+  let uri =
+    Uri.make ~scheme:"http" ~host:"localhost" ~port:(Port.fresh ()) ()
+  in
+  let* signer = Signer.init ~uri ~keys () in
   let* node, client =
     Client.init_with_protocol
       ~keys:[Constant.activator]

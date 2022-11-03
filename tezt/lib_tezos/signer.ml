@@ -61,8 +61,8 @@ let set_ready signer =
   | Running status -> status.session_state.ready <- true) ;
   trigger_ready signer (Some ())
 
-let handle_raw_stdout signer line =
-  if line =~ rex "^.*accepting HTTP requests on port$" then set_ready signer
+let handle_readyness signer (event : event) =
+  if event.name = "signer_listening.v0" then set_ready signer
 
 let base_dir_arg client = ["--base-dir"; client.base_dir]
 
@@ -104,7 +104,7 @@ let create ?name ?color ?event_pipe ?base_dir ?(uri = Parameters.default_uri)
       ?runner
       {runner; base_dir; uri; keys; pending_ready = []}
   in
-  on_stdout signer (handle_raw_stdout signer) ;
+  on_event signer (handle_readyness signer) ;
   let* () = Lwt_list.iter_s (import_secret_key signer) keys in
   return signer
 
@@ -165,6 +165,7 @@ let init ?name ?color ?event_pipe ?base_dir ?uri ?runner ?keys () =
     create ?name ?color ?event_pipe ?base_dir ?uri ?runner ?keys ()
   in
   let* () = run signer in
+  let* () = wait_for_ready signer in
   return signer
 
 let restart signer =
