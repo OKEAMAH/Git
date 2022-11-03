@@ -23,12 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let save_string filename s =
-  let cout = open_out filename in
-  output_string cout s ;
-  close_out cout
-
 let path data_dir b58_hash = Filename.(concat data_dir b58_hash)
+
+let save_string data_dir b58_hash page_contents =
+  let path = path data_dir b58_hash in
+  let cout = open_out path in
+  output_bytes cout page_contents ;
+  close_out cout
 
 let ensure_dir_exists data_dir =
   if Sys.(file_exists data_dir) then (

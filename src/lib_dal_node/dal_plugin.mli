@@ -42,6 +42,8 @@ module type T = sig
     bytes ->
     for_each_page:(string -> bytes -> (unit, error trace) result Lwt.t) ->
     string tzresult Lwt.t
+
+  val sc_rollup_message_size_limit : int
 end
 
 val register : (module T) -> unit
