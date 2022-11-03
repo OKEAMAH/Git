@@ -236,6 +236,7 @@ let run ~data_dir cctxt =
   let*! () = Event.(emit starting_node) () in
   let* config = Configuration.load ~data_dir in
   let config = {config with data_dir} in
+  let () = Reveal_data_manager.ensure_dir_exists config.dac.reveal_data_dir in
   let* _dac_list = get_dac_keys cctxt config in
   let*! store = Store.init config in
   let ctxt = Node_context.init config store in
