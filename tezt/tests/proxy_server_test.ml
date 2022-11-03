@@ -255,6 +255,43 @@ let test_proxy_server_redirect_unsupported =
       re_str
   else Lwt.return_unit
 
+let test_multi_protocols =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"proxy_server multi protocols"
+    ~tags:["multi_protocols"]
+  @@ fun to_protocol ->
+  match Protocol.previous_protocol to_protocol with
+  | None -> Lwt.return_unit
+  | Some from_protocol ->
+      (* Create a context with 3 blocks in [from_protocol] and 2 blocks in [to_protocol] *)
+      let patch_config =
+        Node.Config_file.set_sandbox_network_with_user_activated_upgrades
+          [(4, to_protocol)]
+      in
+      let* node = Node.init ~patch_config [Synchronisation_threshold 0] in
+      let* client = Client.init ~endpoint:(Node node) () in
+      let* () = Client.activate_protocol ~protocol:from_protocol client in
+      let* () = repeat 6 (fun () -> Client.bake_for_and_wait client) in
+      (* Launch the proxy server and plug the client to it *)
+      let* proxy_server = Proxy_server.init node in
+      Client.set_mode (Client (Some (Proxy_server proxy_server), None)) client ;
+      (* Ensure the proxy serves a query to a block in [to_protocol] *)
+      let _ =
+        Client.rpc
+          Client.GET
+          ["chains"; "main"; "blocks"; "head~1"; "helpers"; "endorsing_rights"]
+          client
+      in
+      (* Ensure the proxy serves a query to a block in [from_protocol] *)
+      let _ =
+        Client.rpc
+          Client.GET
+          ["chains"; "main"; "blocks"; "3"; "helpers"; "endorsing_rights"]
+          client
+      in
+      Lwt.return_unit
+
 let register ~protocols =
   let register mode =
     let mode_tag =
@@ -275,4 +312,5 @@ let register ~protocols =
   register `Proxy_server_rpc ;
   test_proxy_server_redirect_unsupported protocols ;
   test_equivalence protocols ;
-  test_wrong_data_dir protocols
+  test_wrong_data_dir protocols ;
+  test_multi_protocols protocols
