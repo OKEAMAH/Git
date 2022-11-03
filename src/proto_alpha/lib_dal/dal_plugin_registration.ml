@@ -66,6 +66,22 @@ module Plugin = struct
     in
     Dac_pages_encoding.Merkle_tree.V0.to_b58check rh
 
+  let recover_dac_reveal_data b58_root_hash ~retrieve_page_from_hash =
+    let open Lwt_result_syntax in
+    let open Protocol in
+    let root_hash =
+      Sc_rollup_PVM_sig.Reveal_hash.of_b58check_opt b58_root_hash
+    in
+    match root_hash with
+    | None -> return None
+    | Some root_hash ->
+        let+ payload =
+          Dac_pages_encoding.Merkle_tree.V0.deserialize_payload
+            root_hash
+            ~retrieve_page_from_hash
+        in
+        Some payload
+
   let sc_rollup_message_size_limit =
     Protocol.Alpha_context.Constants.sc_rollup_message_size_limit
 end

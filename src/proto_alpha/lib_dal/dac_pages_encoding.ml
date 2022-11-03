@@ -164,12 +164,16 @@ module Merkle_tree = struct
 
     val to_b58check : t -> string
 
+    val of_b58check_opt : string -> t option
+
     val hash_bytes : ?key:bytes -> bytes list -> t
 
     val size : int
   end
 
   module Make (Hashing_scheme : HASH) (V : VERSION) = struct
+    type t = Hashing_scheme.t
+
     let hash bytes = Hashing_scheme.hash_bytes [bytes]
 
     let hash_encoding = Hashing_scheme.encoding
@@ -347,7 +351,9 @@ module Merkle_tree = struct
         match retrieved_hashes with
         | [] -> return @@ Bytes.concat Bytes.empty retrieved_contents
         | hash :: hashes -> (
-            let* serialized_page = retrieve_page_from_hash hash in
+            let* serialized_page =
+              retrieve_page_from_hash (Hashing_scheme.to_b58check hash)
+            in
             let*? page = deserialize_page serialized_page in
             match page with
             | Hashes page_hashes ->

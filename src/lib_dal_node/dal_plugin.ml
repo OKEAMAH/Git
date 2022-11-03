@@ -43,6 +43,11 @@ module type T = sig
     for_each_page:(string -> bytes -> (unit, error trace) result Lwt.t) ->
     string tzresult Lwt.t
 
+  val recover_dac_reveal_data :
+    string ->
+    retrieve_page_from_hash:(string -> (bytes, error trace) result Lwt.t) ->
+    (bytes option, error trace) result Lwt.t
+
   val sc_rollup_message_size_limit : int
 end
 
