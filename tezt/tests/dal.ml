@@ -187,17 +187,13 @@ let test_dal_rollup_scenario ?dal_enable variant =
     {
       tags = ["dal"; "dal_node"];
       variant;
-      description = "Testing rollup and Data availability layer node";
+      description = "Testing rollup and DAL node";
     }
 
 let test_dal_scenario ?dal_enable variant =
   test_scenario
     ?dal_enable
-    {
-      tags = ["dal"];
-      variant;
-      description = "Testing data availability layer functionality ";
-    }
+    {tags = ["dal"]; variant; description = "Testing DAL functionality "}
 
 let update_neighbors dal_node neighbors =
   let neighbors =
