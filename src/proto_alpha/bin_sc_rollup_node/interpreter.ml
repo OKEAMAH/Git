@@ -101,14 +101,14 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let dal_endorsement_lag =
       node_ctxt.protocol_constants.parametric.dal.endorsement_lag
     in
-    let* state, num_messages, inbox_level, _fuel =
+    let* (state, num_messages, inbox_level), _fuel =
       Free_pvm.eval_block_inbox
         ~metadata
         ~dal_endorsement_lag
-        ~fuel:(Fuel.Free.of_ticks 0L)
         node_ctxt
         hash
         predecessor_state
+        (Fuel.Free.of_ticks 0L)
     in
 
     (* Write final state to store. *)
@@ -201,14 +201,14 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let dal_endorsement_lag =
       node_ctxt.protocol_constants.parametric.dal.endorsement_lag
     in
-    let* state, _counter, _level, _fuel =
+    let* (state, _counter, _level), _fuel =
       Accounted_pvm.eval_block_inbox
         ~metadata
         ~dal_endorsement_lag
-        ~fuel:(Fuel.Accounted.of_ticks tick_distance)
         node_ctxt
         hash
         state
+        (Fuel.Accounted.of_ticks tick_distance)
     in
     return state
 

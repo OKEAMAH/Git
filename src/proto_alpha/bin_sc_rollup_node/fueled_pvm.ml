@@ -37,11 +37,11 @@ module type S = sig
   val eval_block_inbox :
     metadata:Sc_rollup.Metadata.t ->
     dal_endorsement_lag:int ->
-    fuel:fuel ->
     Node_context.t ->
     Block_hash.t ->
     state ->
-    (state * Z.t * Raw_level.t * fuel, tztrace) result Lwt.t
+    fuel ->
+    ((state * Z.t * Raw_level.t) * fuel, tztrace) result Lwt.t
 end
 
 module Make
@@ -66,9 +66,9 @@ module Make
   [start_tick] of this message processing. If some [failing_ticks]
   are planned by the loser mode, they will be made. *)
   let eval_until_input ~metadata ~dal_endorsement_lag data_dir store level
-      message_index ~fuel start_tick failing_ticks state =
+      message_index start_tick failing_ticks state =
     let open Lwt_result_syntax in
-    let eval_tick fuel tick failing_ticks state =
+    let eval_tick tick failing_ticks state fuel =
       let max_steps = F.max_ticks fuel in
       let normal_eval state =
         let*! state, executed_ticks = PVM.eval_many ~max_steps state in
@@ -90,21 +90,21 @@ module Make
           failure_insertion_eval state failing_ticks'
       | _ -> normal_eval state
     in
-    let rec go (fuel : fuel) current_tick failing_ticks state =
+    let rec go current_tick failing_ticks state (fuel : fuel) =
       let*! input_request = PVM.is_input_state state in
-      if F.is_empty fuel then return (state, fuel, current_tick, failing_ticks)
+      if F.is_empty fuel then return ((state, current_tick, failing_ticks), fuel)
       else
         match input_request with
         | No_input_required ->
             let* next_state, executed_ticks, failing_ticks =
-              eval_tick fuel current_tick failing_ticks state
+              eval_tick current_tick failing_ticks state fuel
             in
 
             go
-              fuel
               (Int64.add current_tick executed_ticks)
               failing_ticks
               next_state
+              fuel
         | Needs_reveal (Reveal_raw_data hash) -> (
             match Reveals.get ~data_dir ~pvm_name:PVM.name ~hash with
             | None -> tzfail (Sc_rollup_node_errors.Cannot_retrieve_reveal hash)
@@ -113,17 +113,17 @@ module Make
                   PVM.set_input (Reveal (Raw_data data)) state
                 in
                 match F.consume F.one_tick_consumption fuel with
-                | None -> return (state, fuel, current_tick, failing_ticks)
+                | None -> return ((state, current_tick, failing_ticks), fuel)
                 | Some fuel ->
-                    go fuel (Int64.succ current_tick) failing_ticks next_state))
+                    go (Int64.succ current_tick) failing_ticks next_state fuel))
         | Needs_reveal Reveal_metadata -> (
             let*! next_state =
               PVM.set_input (Reveal (Metadata metadata)) state
             in
             match F.consume F.one_tick_consumption fuel with
-            | None -> return (state, fuel, current_tick, failing_ticks)
+            | None -> return ((state, current_tick, failing_ticks), fuel)
             | Some fuel ->
-                go fuel (Int64.succ current_tick) failing_ticks next_state)
+                go (Int64.succ current_tick) failing_ticks next_state fuel)
         | Needs_reveal (Request_dal_page page_id) -> (
             let* content_opt =
               Dal_pages_request.page_content ~dal_endorsement_lag store page_id
@@ -132,13 +132,13 @@ module Make
               PVM.set_input (Reveal (Dal_page content_opt)) state
             in
             match F.consume F.one_tick_consumption fuel with
-            | None -> return (state, fuel, current_tick, failing_ticks)
+            | None -> return ((state, current_tick, failing_ticks), fuel)
             | Some fuel ->
-                go fuel (Int64.succ current_tick) failing_ticks next_state)
+                go (Int64.succ current_tick) failing_ticks next_state fuel)
         | Initial | First_after _ ->
-            return (state, fuel, current_tick, failing_ticks)
+            return ((state, current_tick, failing_ticks), fuel)
     in
-    go fuel start_tick failing_ticks state
+    go start_tick failing_ticks state
 
   (** [mutate input] corrupts the payload of [input] for testing purposes. *)
   let mutate input =
@@ -152,9 +152,9 @@ module Make
   some [fuel] and may introduce intended failures at some given
   [failing_ticks]. *)
   let feed_input ~metadata ~dal_endorsement_lag data_dir store level
-      message_index ~fuel ~failing_ticks state input =
+      message_index ~failing_ticks state input fuel =
     let open Lwt_result_syntax in
-    let* state, fuel, tick, failing_ticks =
+    let* (state, tick, failing_ticks), fuel =
       eval_until_input
         ~metadata
         ~dal_endorsement_lag
@@ -162,10 +162,10 @@ module Make
         store
         level
         message_index
-        ~fuel
         0L
         failing_ticks
         state
+        fuel
     in
     let consumption = F.of_ticks tick in
     continue_with_fuel consumption fuel state @@ fun fuel state ->
@@ -185,7 +185,7 @@ module Make
       | _ -> return (input, failing_ticks)
     in
     let*! state = PVM.set_input (Inbox_message input) state in
-    let* state, _fuel, tick, _failing_ticks =
+    let* (state, tick, _failing_ticks), _fuel =
       eval_until_input
         ~metadata
         ~dal_endorsement_lag
@@ -193,16 +193,16 @@ module Make
         store
         level
         message_index
-        ~fuel
         tick
         failing_ticks
         state
+        fuel
     in
     return (state, tick)
 
-  let eval_block_inbox ~metadata ~dal_endorsement_lag ~fuel
-      Node_context.{data_dir; store; loser_mode; _} hash (state : state) :
-      (state * Z.t * Raw_level.t * fuel, tztrace) result Lwt.t =
+  let eval_block_inbox ~metadata ~dal_endorsement_lag
+      Node_context.{data_dir; store; loser_mode; _} hash (state : state) fuel :
+      ((state * Z.t * Raw_level.t) * fuel, tztrace) result Lwt.t =
     let open Lwt_result_syntax in
     (* Obtain inbox and its messages for this block. *)
     let*! inbox = Store.Inboxes.find store hash in
@@ -210,7 +210,7 @@ module Make
     | None ->
         (* A level with no messages for use. Skip it. *)
         let* level = State.level_of_hash store hash in
-        return (state, Z.zero, Raw_level.of_int32_exn level, fuel)
+        return ((state, Z.zero, Raw_level.of_int32_exn level), fuel)
     | Some inbox ->
         let inbox_level = Inbox.inbox_level inbox in
         let*! messages = Store.Messages.get store hash in
@@ -245,10 +245,10 @@ module Make
               store
               level
               message_counter
-              ~fuel
               ~failing_ticks
               state
               input
+              fuel
           in
           return (state, F.of_ticks executed_ticks)
         in
@@ -256,5 +256,5 @@ module Make
         let* state, fuel =
           List.fold_left_i_es feed_message (state, fuel) messages
         in
-        return (state, num_messages, inbox_level, fuel)
+        return ((state, num_messages, inbox_level), fuel)
 end
