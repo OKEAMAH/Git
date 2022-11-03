@@ -25,7 +25,9 @@
 
 let path data_dir b58_hash = Filename.(concat data_dir b58_hash)
 
-let save_string data_dir b58_hash page_contents =
+let save_bytes data_dir b58_hash page_contents =
+  let open Lwt_result_syntax in
+  let+ page_contents = return page_contents in
   let path = path data_dir b58_hash in
   let cout = open_out path in
   output_bytes cout page_contents ;

@@ -240,7 +240,7 @@ let run ~data_dir cctxt =
   let* _dac_list = get_dac_keys cctxt config in
   let*! store = Store.init config in
   let ctxt = Node_context.init config store in
-  let* rpc_server = RPC_server.(start config (register ctxt)) in
+  let* rpc_server = RPC_server.(start config (register ctxt config)) in
   let _ = RPC_server.install_finalizer rpc_server in
   let*! () =
     Event.(emit rpc_server_is_ready (config.rpc_addr, config.rpc_port))

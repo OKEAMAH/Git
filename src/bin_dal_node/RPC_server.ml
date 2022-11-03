@@ -125,26 +125,27 @@ let monitor_slot_headers_rpc ctxt =
   RPC_context.make_streamed_call monitor_slot_headers_service ctxt () () ()
 
 (* DAC RPC *)
-let handle_dac_reveal_data ctxt raw_data =
+let handle_dac_reveal_data ctxt {Configuration.dac = {reveal_data_dir; _}; _}
+    raw_data =
   let open Lwt_result_syntax in
   let*? {plugin = (module Plugin); _} = Node_context.get_ready ctxt in
   let max_page_size = Plugin.sc_rollup_message_size_limit in
   Plugin.serialize_dac_reveal_data
     ~max_page_size
     raw_data
-    ~for_each_page:(fun _ _ -> Lwt_result_syntax.return_unit)
+    ~for_each_page:(Reveal_data_manager.save_bytes reveal_data_dir)
 
-let register_dac_reveal_data ctxt dir =
+let register_dac_reveal_data ctxt configuration dir =
   RPC_directory.register0 dir (Services.dac_reveal_data ()) (fun () ->
-      handle_dac_reveal_data ctxt)
+      handle_dac_reveal_data ctxt configuration)
 
-let register ctxt =
+let register ctxt configuration =
   RPC_directory.empty
   |> register_stored_slot_headers ctxt
   |> register_split_slot ctxt |> register_show_slot ctxt |> register_shard ctxt
   |> register_show_slot_pages ctxt
   |> register_monitor_slot_headers ctxt
-  |> register_dac_reveal_data ctxt
+  |> register_dac_reveal_data ctxt configuration
 
 let start configuration dir =
   let open Lwt_syntax in
