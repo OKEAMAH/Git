@@ -976,19 +976,7 @@ let register_with_endorsement_lag ~protocols ~endorsement_lag =
     test_feature_flag
     protocols
     ~endorsement_lag ;
-  test_slot_management_logic protocols ~endorsement_lag ;
-  test_dal_rollup_scenario
-    ~dal_enable:true
-    "rollup_node_downloads_slots"
-    rollup_node_stores_dal_slots
-    protocols
-    ~endorsement_lag ;
-  test_dal_rollup_scenario
-    ~dal_enable:true
-    "rollup_node_applies_dal_pages"
-    (rollup_node_stores_dal_slots ~expand_test:rollup_node_interprets_dal_pages)
-    protocols
-    ~endorsement_lag
+  test_slot_management_logic protocols ~endorsement_lag
 
 let register ~protocols =
   test_dal_node_slot_management protocols ;
@@ -996,4 +984,20 @@ let register ~protocols =
   test_dal_node_rebuild_from_shards protocols ;
   test_dal_node_startup protocols ;
   test_dal_node_test_slots_propagation protocols ;
-  register_with_endorsement_lag ~protocols ~endorsement_lag:1
+  (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/4149
+     Make this test work with endorsement_lag = 5.
+     This needs the MR about providing DAL parameters to PVM. *)
+  test_dal_rollup_scenario
+    ~dal_enable:true
+    "rollup_node_downloads_slots"
+    rollup_node_stores_dal_slots
+    protocols
+    ~endorsement_lag:1 ;
+  test_dal_rollup_scenario
+    ~dal_enable:true
+    "rollup_node_applies_dal_pages"
+    (rollup_node_stores_dal_slots ~expand_test:rollup_node_interprets_dal_pages)
+    protocols
+    ~endorsement_lag:1 ;
+  register_with_endorsement_lag ~protocols ~endorsement_lag:1 ;
+  register_with_endorsement_lag ~protocols ~endorsement_lag:5
