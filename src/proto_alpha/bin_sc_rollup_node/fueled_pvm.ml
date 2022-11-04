@@ -41,13 +41,15 @@ module type S = sig
     Block_hash.t ->
     state ->
     fuel ->
-    ((state * Z.t * Raw_level.t) * fuel, tztrace) result Lwt.t
+    ((state * Z.t * Raw_level.t) * fuel) tzresult Lwt.t
 end
 
 module Make
     (PVM : Pvm.S)
     (Interpreter_event : Interpreter_event.S with type state := PVM.state)
     (F : Fuel.S) : S with type state = PVM.state and type fuel = F.t = struct
+  module Fueled = Fueled.Make (F)
+
   type state = PVM.state
 
   type fuel = F.t
@@ -68,11 +70,13 @@ module Make
   let eval_until_input ~metadata ~dal_endorsement_lag data_dir store level
       message_index start_tick failing_ticks state =
     let open Lwt_result_syntax in
-    let eval_tick tick failing_ticks state fuel =
+    let eval_tick tick failing_ticks state fuel :
+        ((state * int64 * int64 trace) * fuel) tzresult Lwt.t =
       let max_steps = F.max_ticks fuel in
       let normal_eval state =
         let*! state, executed_ticks = PVM.eval_many ~max_steps state in
-        return (state, executed_ticks, failing_ticks)
+        return
+          ((state, executed_ticks, failing_ticks), F.of_ticks executed_ticks)
       in
       let failure_insertion_eval state failing_ticks' =
         let*! () =
@@ -83,8 +87,9 @@ module Make
             ~internal:true
         in
         let*! state = PVM.Internal_for_tests.insert_failure state in
-        return (state, 1L, failing_ticks')
+        return ((state, 1L, failing_ticks'), F.one_tick_consumption)
       in
+
       match failing_ticks with
       | xtick :: failing_ticks' when xtick = tick ->
           failure_insertion_eval state failing_ticks'
@@ -96,7 +101,7 @@ module Make
       else
         match input_request with
         | No_input_required ->
-            let* next_state, executed_ticks, failing_ticks =
+            let* (next_state, executed_ticks, failing_ticks), fuel =
               eval_tick current_tick failing_ticks state fuel
             in
 
