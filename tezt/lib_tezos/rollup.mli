@@ -251,7 +251,9 @@ module Dal : sig
       slot_header:string -> shard_id:int -> (Dal_node.t, string) RPC_core.t
 
     (** [dac_reveal_data data] posts [data] on dac/reveal_data *)
-    val dac_reveal_data : string -> (Dal_node.t, string) RPC_core.t  
+    val dac_reveal_data : string -> (Dal_node.t, string) RPC_core.t
+
+    val dac_recover_data : string -> (Dal_node.t, string) RPC_core.t
   end
 
   module Cryptobox = Tezos_crypto_dal.Cryptobox

@@ -595,6 +595,10 @@ module Dal = struct
       in
       let data = JSON.unannotate reveal_data in
       make ~data POST ["dac"; "reveal_data"] JSON.as_string
+
+    let dac_recover_data root_hash =
+      make GET ["dac"; "recover_data"; root_hash]
+      @@ get_bytes_from_json_string_node
   end
 
   module Cryptobox = Tezos_crypto_dal.Cryptobox

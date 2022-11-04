@@ -983,13 +983,19 @@ let test_dal_node_handles_dac_reveal_data =
     ~supports:Protocol.(From_protocol (Protocol.number Alpha))
   @@ fun protocol ->
   let* _node, _client, dal_node = init_dal_node protocol in
-  let reveal_data = "test" in
-  let* actual_rh =
+  let reveal_data = Dal_artifacts.dac_reveal_data in
+  let* root_hash =
     RPC.call dal_node (Rollup.Dal.RPC.dac_reveal_data reveal_data)
   in
-  (* Expected reveal hash equals to the result of [Tezos_dal_alpha.Dac_pages_encoding.Merkle_tree.V0.serialize_payload "test"]*)
-  let expected_rh = "scrh13sady5QwBDubjBzNCY9f5xQbeKhDfso9iKULmzAwDhzVGwixg5" in
-  assert (expected_rh = actual_rh) ;
+  let* recovered_data =
+    RPC.call dal_node (Rollup.Dal.RPC.dac_recover_data root_hash)
+  in
+  let () =
+    Check.(
+      (recovered_data = reveal_data)
+        string
+        ~error_msg:"Dac reveal data roundtrip failed: %L <> %R")
+  in
   return ()
 
 let register ~protocols =
