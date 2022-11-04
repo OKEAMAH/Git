@@ -19,7 +19,7 @@ module type S = sig
 end
 
 module Make (F : Fuel.S) : S = struct
-  type 'a r = ('a, tztrace) result Lwt.t
+  type 'a r = 'a tzresult Lwt.t
 
   type ticks = int64
 
