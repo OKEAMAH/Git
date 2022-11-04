@@ -469,6 +469,9 @@ let test_slot_management_logic ~endorsement_lag =
   check_manager_operation_status operations_result Applied oph3 ;
   check_manager_operation_status operations_result Applied oph2 ;
   let nb_slots = parameters.number_of_slots in
+  let* () =
+    repeat (endorsement_lag - 1) (fun () -> Client.bake_for_and_wait client)
+  in
   let* _ =
     slot_availability ~nb_slots ~signer:Constant.bootstrap1 [1; 0] client
   in
@@ -796,6 +799,8 @@ let rollup_node_stores_dal_slots ?expand_test _protocol dal_node sc_rollup_node
   (* 6. endorse only slots 1 and 2. *)
   let* parameters = Rollup.Dal.Parameters.from_client client in
   let nb_slots = parameters.number_of_slots in
+  let dal_lag = parameters.endorsement_lag in
+  let* () = repeat (dal_lag - 1) (fun () -> Client.bake_for_and_wait client) in
   let* _op_hash =
     slot_availability ~nb_slots ~signer:Constant.bootstrap1 [2; 1] client
   in
@@ -813,9 +818,11 @@ let rollup_node_stores_dal_slots ?expand_test _protocol dal_node sc_rollup_node
   in
   let* () = Client.bake_for_and_wait client in
   let* slot_confirmed_level =
-    Sc_rollup_node.wait_for_level sc_rollup_node (slots_published_level + 1)
+    Sc_rollup_node.wait_for_level
+      sc_rollup_node
+      (slots_published_level + dal_lag)
   in
-  Check.(slot_confirmed_level = slots_published_level + 1)
+  Check.(slot_confirmed_level = slots_published_level + dal_lag)
     Check.int
     ~error_msg:"Current level has moved past slot endorsement level (%L = %R)" ;
   (* 7. Check that no slots have been downloaded *)
@@ -895,42 +902,41 @@ let rollup_node_interprets_dal_pages client sc_rollup sc_rollup_node =
   in
   let init_level = JSON.(genesis_info |-> "level" |> as_int) in
   let sc_rollup_client = Sc_rollup_client.create sc_rollup_node in
-  let* level =
-    Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node init_level
-  in
-
   (* The Dal content is as follows:
       - the page 0 of slot 0 contains 10,
       - the page 0 of slot 1 contains 200,
       - the page 0 of slot 2 contains 400.
      Only slot 1 is confirmed. Below, we expect to have value = 302. *)
   let expected_value = 302 in
-  (* The code should be adapted if the current level changes. *)
-  assert (level = 5) ;
+  let* current_level =
+    Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node init_level
+  in
+  let* parameters = Rollup.Dal.Parameters.from_client client in
+  let correct_level = current_level - parameters.endorsement_lag in
   let* () =
     send_messages
       client
       [
         " 99 3 ";
         (* Total sum is now 99 + 3 = 102 *)
-        " dal:3:1:0 ";
+        sf " dal:%d:1:0 " correct_level;
         (* Page 0 of Slot 1 contains 200, total sum is 302. *)
-        " dal:3:1:1 ";
-        " dal:3:0:0 ";
+        sf " dal:%d:1:1 " correct_level;
+        sf " dal:%d:0:0 " correct_level;
         (* Slot 0 is not confirmed, total sum doesn't change. *)
-        " dal:3:0:2 ";
+        sf " dal:%d:0:2 " correct_level;
         (* Page 2 of Slot 0 empty, total sum unchanged. *)
         (* Page 1 of Slot 1 is empty, total sum unchanged. *)
-        " dal:2:1:0 ";
+        sf " dal:%d:1:0 " (correct_level - 1);
         (* It's too late to import a page published at level 5. *)
-        " dal:5:1:0 ";
+        sf " dal:%d:1:0 " (correct_level + 2);
         (* It's too early to import a page published at level 7. *)
-        " dal:3:10000:0 ";
-        " dal:3:0:100000 ";
-        " dal:3:-10000:0 ";
-        " dal:3:0:-100000 ";
-        " dal:3:expecting_integer:0 ";
-        " dal:3:0:expecting_integer ";
+        sf " dal:%d:10000:0 " correct_level;
+        sf " dal:%d:0:100000 " correct_level;
+        sf " dal:%d:-10000:0 " correct_level;
+        sf " dal:%d:0:-100000 " correct_level;
+        sf " dal:%d:expecting_integer:0 " correct_level;
+        sf " dal:%d:0:expecting_integer " correct_level;
         (* The 6 pages requests above are ignored by the PVM because
            slot/page ID is out of bounds or illformed. *)
         " dal:1002147483647:1:1 "
@@ -940,9 +946,12 @@ let rollup_node_interprets_dal_pages client sc_rollup sc_rollup_node =
   in
 
   (* Slot 1 is not confirmed, hence the total sum doesn't change. *)
-  let* () = repeat 2 (fun () -> Client.bake_for_and_wait client) in
+  let* () = Client.bake_for_and_wait client in
   let* _lvl =
-    Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node (level + 1)
+    Sc_rollup_node.wait_for_level
+      ~timeout:120.
+      sc_rollup_node
+      (current_level + 1)
   in
   let* encoded_value =
     Sc_rollup_client.state_value ~hooks sc_rollup_client ~key:"vars/value"
