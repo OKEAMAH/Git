@@ -49,6 +49,8 @@ module type T = sig
     (bytes, error trace) result Lwt.t
 
   val sc_rollup_message_size_limit : int
+
+  val b58_rollup_address_to_bytes : string -> bytes option
 end
 
 let table : (module T) Protocol_hash.Table.t = Protocol_hash.Table.create 5

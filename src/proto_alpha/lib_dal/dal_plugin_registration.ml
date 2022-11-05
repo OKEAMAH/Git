@@ -81,6 +81,10 @@ module Plugin = struct
 
   let sc_rollup_message_size_limit =
     Protocol.Alpha_context.Constants.sc_rollup_message_size_limit
+
+  let b58_rollup_address_to_bytes b58_sc_rollup_address =
+    let open Protocol.Alpha_context.Sc_rollup.Address in
+    b58_sc_rollup_address |> of_b58check_opt |> Option.map to_bytes
 end
 
 let () = Dal_plugin.register (module Plugin)
