@@ -86,4 +86,6 @@ let get_store ctxt = ctxt.store
 
 let get_cctxt ctxt = ctxt.cctxt
 
+let get_dac_accounts ctxt = ctxt.dac_accounts
+
 let get_neighbors_cctxts ctxt = ctxt.neighbors_cctxts
