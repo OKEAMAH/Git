@@ -41,7 +41,11 @@ type t
 
 (** [init config] creates a [t] with a status set to [Starting] with a given dal
     node configuration.*)
-val init : Configuration.t -> Store.node_store -> t
+val init :
+  Configuration.t ->
+  Signature_manager.wallet_entry option list ->
+  Store.node_store ->
+  t
 
 (** Raised by [set_ready] when the status is already [Ready _] *)
 exception Status_already_ready

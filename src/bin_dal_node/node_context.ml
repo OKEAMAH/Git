@@ -38,16 +38,17 @@ type t = {
   config : Configuration.t;
   store : Store.node_store;
   neighbors_cctxts : Dal_node_client.cctxt list;
+  dac_accounts : Signature_manager.wallet_entry option list;
 }
 
-let init config store =
+let init config dac_accounts store =
   let neighbors_cctxts =
     List.map
       (fun Configuration.{addr; port} ->
         Dal_node_client.make_unix_cctxt ~addr ~port)
       config.Configuration.neighbors
   in
-  {status = Starting; config; store; neighbors_cctxts}
+  {status = Starting; config; store; neighbors_cctxts; dac_accounts}
 
 let set_ready ctxt plugin dal_constants dal_parameters =
   match ctxt.status with
