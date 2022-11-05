@@ -967,10 +967,11 @@ let test_dal_node_imports_dac_member =
   let* _dir = Dal_node.init_config dal_node in
   let* () = Dal_node.set_dac_parameters ~threshold:1 dal_node in
   let* () = Dal_node.add_dac_member ~address:dac_member_address dal_node in
+  let ready_promise = Dal_node.wait_for dal_node "dac_is_ready.v0" (fun _ -> Some ()) in
   let* () = run_dal dal_node in
-  let* () = Dal_node.wait_for dal_node "dac_is_ready.v0" (fun _ -> Some ()) in
+  let* () = ready_promise in
   let* () = Dal_node.terminate dal_node in
-  return ()
+  unit
 
 let register ~protocols =
   test_dal_scenario "feature_flag_is_disabled" test_feature_flag protocols ;
