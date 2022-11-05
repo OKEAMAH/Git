@@ -198,24 +198,9 @@ let daemonize handlers =
      return_unit)
   |> lwt_map_error (List.fold_left (fun acc errs -> errs @ acc) [])
 
-let get_dac_address_keys cctxt address =
-  let open Lwt_result_syntax in
-  let open Tezos_client_base.Client_keys in
-  let* alias = Aggregate_alias.Public_key_hash.rev_find cctxt address in
-  match alias with
-  | None -> return_none
-  | Some alias -> (
-      let* keys_opt = alias_aggregate_keys cctxt alias in
-      match keys_opt with
-      | None -> return_none
-      | Some (pkh, pk, sk_uri_opt) -> (
-          match sk_uri_opt with
-          | None -> return_none
-          | Some sk_uri -> return_some (pkh, pk, sk_uri)))
-
 let get_dac_keys cctxt {Configuration.dac = {addresses; threshold; _}; _} =
   let open Lwt_result_syntax in
-  let* keys = List.map_es (get_dac_address_keys cctxt) addresses in
+  let* keys = List.map_es (Signature_manager.get_keys cctxt) addresses in
   let recovered_keys = List.length @@ List.filter Option.is_some keys in
   if recovered_keys < threshold then
     failwith
