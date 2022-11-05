@@ -126,17 +126,14 @@ let monitor_slot_headers_rpc ctxt =
 
 (* DAC RPC *)
 let handle_dac_reveal_data ctxt {Configuration.dac = {reveal_data_dir; _}; _}
-    raw_data =
+    (_sc_rollup_address, raw_data) =
   let open Lwt_result_syntax in
   let*? {plugin = (module Plugin); _} = Node_context.get_ready ctxt in
   let max_page_size = Plugin.sc_rollup_message_size_limit in
-  let+ b58hash, _ =
-    Plugin.serialize_dac_reveal_data
-      ~max_page_size
-      raw_data
-      ~for_each_page:(Reveal_data_manager.save_bytes reveal_data_dir)
-  in
-  b58hash
+  Plugin.serialize_dac_reveal_data
+    ~max_page_size
+    raw_data
+    ~for_each_page:(Reveal_data_manager.save_bytes reveal_data_dir)
 
 let register_dac_reveal_data ctxt configuration dir =
   RPC_directory.register0 dir (Services.dac_reveal_data ()) (fun () ->

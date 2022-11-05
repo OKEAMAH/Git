@@ -92,8 +92,10 @@ let dac_reveal_data () =
   RPC_service.post_service
     ~description:"Split DAC reveal data"
     ~query:RPC_query.empty
-    ~input:Data_encoding.bytes
-    ~output:Data_encoding.string
+    ~input:
+      Data_encoding.(
+        obj2 (req "rollup_address" string) (req "payload" Data_encoding.bytes))
+    ~output:Data_encoding.(obj2 (req "b58_hash" string) (req "bytes" bytes))
     RPC_path.(open_root / "dac" / "reveal_data")
 
 let dac_recover_data () =
