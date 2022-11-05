@@ -42,6 +42,7 @@ type t
 (** [init config] creates a [t] with a status set to [Starting] with a given dal
     node configuration.*)
 val init :
+  Client_context.full ->
   Configuration.t ->
   Signature_manager.wallet_entry option list ->
   Store.node_store ->
@@ -77,6 +78,8 @@ val get_status : t -> status
 
 (** [get_store ctxt] returns the dal node store. *)
 val get_store : t -> Store.node_store
+
+val get_cctxt : t -> Client_context.full
 
 (** [get_neighbors_cctxts ctxt] returns the dal node neighbors client contexts *)
 val get_neighbors_cctxts : t -> Dal_node_client.cctxt list
