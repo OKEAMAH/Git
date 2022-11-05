@@ -48,3 +48,36 @@ let get_keys cctxt address =
               return_some
                 {alias; address = pkh; public_key = pk; secret_key_uri = sk_uri}
           ))
+
+let sign_message cctxt ~message wallet_entry =
+  Client_keys.aggregate_sign cctxt wallet_entry.secret_key_uri message
+
+let aggregate_signatures signatures =
+  let bitmap, rev_valid_signatures, _ =
+    List.fold_left
+      (fun (bitmap, rev_valid_signatures, current_power) signature ->
+        let next_power = Z.mul (Z.of_int 2) current_power in
+        match signature with
+        | None -> (bitmap, rev_valid_signatures, next_power)
+        | Some signature ->
+            ( Z.add bitmap current_power,
+              signature :: rev_valid_signatures,
+              next_power ))
+      (Z.zero, [], Z.one)
+      signatures
+  in
+  rev_valid_signatures |> List.rev
+  |> Aggregate_signature.aggregate_signature_opt
+  |> Option.map (fun signature -> (signature, bitmap))
+
+let aggregate_signature_of_message cctxt ~message ~dac_addresses =
+  let open Lwt_result_syntax in
+  let sign_opt wallet_entry_opt =
+    match wallet_entry_opt with
+    | None -> return None
+    | Some wallet_entry ->
+        let+ signature = sign_message cctxt ~message wallet_entry in
+        Some signature
+  in
+  let+ signatures = List.map_es sign_opt dac_addresses in
+  aggregate_signatures signatures
