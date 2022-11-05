@@ -39,6 +39,7 @@ val create :
   ?rpc_host:string ->
   ?rpc_port:int ->
   node:Node.t ->
+  client:Client.t ->
   unit ->
   t
 
@@ -57,20 +58,13 @@ val endpoint : t -> string
 (** Get the data-dir of an dal node. *)
 val data_dir : t -> string
 
-(** [run ?wait_ready ?include_base_dir_from ?env node] launches the given dal
+(** [run ?wait_ready ?env node] launches the given dal
     node where env is a map of environment variable.
 
     If [wait_ready] is [true], the promise waits for the dal node to be ready.
-    [true] by default. If the optional parameter
-    [?include_base_dir_from:Client.t] is passed with value [client], then the
-    global option [--base-dir Client.base_dir client] is passed to the command.
+    [true] by default.
 *)
-val run :
-  ?wait_ready:bool ->
-  ?include_base_dir_from:Client.t ->
-  ?env:string String_map.t ->
-  t ->
-  unit Lwt.t
+val run : ?wait_ready:bool -> ?env:string String_map.t -> t -> unit Lwt.t
 
 (** Send SIGTERM and wait for the process to terminate.
 
@@ -110,13 +104,10 @@ val init_config : ?use_unsafe_srs:bool -> t -> string Lwt.t
 *)
 val set_dac_parameters : ?threshold:int -> t -> unit Lwt.t
 
-(** [add_dac_member ?include_base_dir_from ~alias dal_node] runs
-    octez-dal-node add data availability committee member alias --data-dir data-dir],
-    where [data-dir = dal_node.persistent_state.data_dir]. If the optional parameter
-    [?include_base_dir_from:Client.t] is passed with value [client], then the
-    global option [--base-dir Client.base_dir client] is passed to the command. *)
-val add_dac_member :
-  ?include_base_dir_from:Client.t -> address:string -> t -> unit Lwt.t
+(** [add_dac_member dal_node] runs
+    [octez-dal-node add data availability committee member alias --data-dir data-dir],
+    where [data-dir = dal_node.persistent_state.data_dir]. *)
+val add_dac_member : address:string -> t -> unit Lwt.t
 
 module Config_file : sig
   (** DAL node configuration files. *)

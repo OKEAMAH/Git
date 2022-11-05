@@ -29,6 +29,7 @@ module Parameters = struct
     rpc_host : string;
     rpc_port : int;
     node : Node.t;
+    client : Client.t;
     mutable pending_ready : unit option Lwt.u list;
   }
 
@@ -109,11 +110,9 @@ let spawn_set_dac_parameters ?threshold dal_node =
 let set_dac_parameters ?threshold dal_node =
   spawn_set_dac_parameters ?threshold dal_node |> Process.check
 
-let spawn_add_dac_member ?include_base_dir_from ~address dal_node =
+let spawn_add_dac_member ~address dal_node =
   let base_dir_argument =
-    match include_base_dir_from with
-    | None -> []
-    | Some client -> ["--base-dir"; Client.base_dir client]
+    ["--base-dir"; Client.base_dir dal_node.persistent_state.client]
   in
   spawn_command
     dal_node
@@ -122,8 +121,8 @@ let spawn_add_dac_member ?include_base_dir_from ~address dal_node =
     @ [address]
     @ ["--data-dir"; dal_node.persistent_state.data_dir])
 
-let add_dac_member ?include_base_dir_from ~address dal_node =
-  spawn_add_dac_member ?include_base_dir_from ~address dal_node |> Process.check
+let add_dac_member ~address dal_node =
+  spawn_add_dac_member ~address dal_node |> Process.check
 
 module Config_file = struct
   let filename dal_node = sf "%s/config.json" @@ data_dir dal_node
@@ -177,7 +176,7 @@ let handle_event dal_node {name; value = _} =
   match name with "dal_node_is_ready.v0" -> set_ready dal_node | _ -> ()
 
 let create ?(path = Constant.dal_node) ?name ?color ?data_dir ?event_pipe
-    ?(rpc_host = "127.0.0.1") ?rpc_port ~node () =
+    ?(rpc_host = "127.0.0.1") ?rpc_port ~node ~client () =
   let name = match name with None -> fresh_name () | Some name -> name in
   let data_dir =
     match data_dir with None -> Temp.dir name | Some dir -> dir
@@ -191,41 +190,40 @@ let create ?(path = Constant.dal_node) ?name ?color ?data_dir ?event_pipe
       ~name
       ?color
       ?event_pipe
-      {data_dir; rpc_host; rpc_port; pending_ready = []; node}
+      {data_dir; rpc_host; rpc_port; pending_ready = []; node; client}
   in
   on_event dal_node (handle_event dal_node) ;
   dal_node
 
-let make_arguments ?include_base_dir_from node =
+let make_arguments node =
   let base_dir_args =
-    match include_base_dir_from with
-    | None -> []
-    | Some client -> ["--base-dir"; Client.base_dir client]
+    ["--base-dir"; Client.base_dir node.persistent_state.client]
   in
-  base_dir_args
-  @ [
+  let endpoint_args =
+    [
       "--endpoint";
       Printf.sprintf "http://%s:%d" (layer1_addr node) (layer1_port node);
     ]
+  in
+  base_dir_args @ endpoint_args
 
-let do_runlike_command ?env ?include_base_dir_from node arguments =
+let do_runlike_command ?env node arguments =
   if node.status <> Not_running then
     Test.fail "DAL node %s is already running" node.name ;
   let on_terminate _status =
     trigger_ready node None ;
     unit
   in
-  let arguments = make_arguments ?include_base_dir_from node @ arguments in
+  let arguments = make_arguments node @ arguments in
   run ?env node {ready = false} arguments ~on_terminate
 
-let run ?env ?include_base_dir_from node =
+let run ?env node =
   do_runlike_command
     ?env
-    ?include_base_dir_from
     node
     ["run"; "--data-dir"; node.persistent_state.data_dir]
 
-let run ?(wait_ready = true) ?include_base_dir_from ?env node =
-  let* () = run ?include_base_dir_from ?env node in
+let run ?(wait_ready = true) ?env node =
+  let* () = run ?env node in
   let* () = if wait_ready then wait_for_ready node else Lwt.return_unit in
   return ()
