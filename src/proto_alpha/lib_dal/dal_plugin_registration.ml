@@ -64,7 +64,7 @@ module Plugin = struct
         data
         ~for_each_page
     in
-    Dac_pages_encoding.Merkle_tree.V0.to_b58check rh
+    Protocol.Sc_rollup_PVM_sig.Reveal_hash.(to_b58check rh, to_bytes rh)
 
   let recover_dac_reveal_data b58_root_hash ~retrieve_page_from_hash =
     let open Lwt_result_syntax in

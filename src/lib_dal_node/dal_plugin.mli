@@ -41,7 +41,7 @@ module type T = sig
     max_page_size:int ->
     bytes ->
     for_each_page:(string -> bytes -> (unit, error trace) result Lwt.t) ->
-    string tzresult Lwt.t
+    (string * bytes) tzresult Lwt.t
 
   val recover_dac_reveal_data :
     string ->
