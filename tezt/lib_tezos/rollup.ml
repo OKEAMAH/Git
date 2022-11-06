@@ -587,14 +587,19 @@ module Dal = struct
       make GET ["shard"; slot_header; string_of_int shard_id] @@ fun json ->
       json |> JSON.encode
 
-    let dac_reveal_data reveal_data =
+    let dac_reveal_data rollup_address reveal_data =
       let reveal_data =
         JSON.parse
           ~origin:"dal_node_dac_reveal_data_rpc"
           (encode_bytes_to_hex_string reveal_data)
       in
       let data = JSON.unannotate reveal_data in
-      make ~data POST ["dac"; "reveal_data"] JSON.as_string
+      let request =
+        `O [("rollup_address", `String rollup_address); ("payload", data)]
+      in
+      make ~data:request POST ["dac"; "reveal_data"] @@ fun json ->
+      let open JSON in
+      (json |-> "b58_hash" |> as_string, json |-> "l1_operation" |> as_string)
 
     let dac_recover_data root_hash =
       make GET ["dac"; "recover_data"; root_hash]
