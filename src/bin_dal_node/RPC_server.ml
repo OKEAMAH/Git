@@ -126,14 +126,42 @@ let monitor_slot_headers_rpc ctxt =
 
 (* DAC RPC *)
 let handle_dac_reveal_data ctxt {Configuration.dac = {reveal_data_dir; _}; _}
-    (_sc_rollup_address, raw_data) =
+    (sc_rollup_address, raw_data) =
   let open Lwt_result_syntax in
   let*? {plugin = (module Plugin); _} = Node_context.get_ready ctxt in
-  let max_page_size = Plugin.sc_rollup_message_size_limit in
-  Plugin.serialize_dac_reveal_data
-    ~max_page_size
-    raw_data
-    ~for_each_page:(Reveal_data_manager.save_bytes reveal_data_dir)
+  let dac_addresses = Node_context.get_dac_accounts ctxt in
+  let cctxt = Node_context.get_cctxt ctxt in
+  let rollup_bytes = Plugin.b58_rollup_address_to_bytes sc_rollup_address in
+  match rollup_bytes with
+  | None -> failwith "Invalid rollup address"
+  | Some rollup_bytes -> (
+      let max_page_size = Plugin.sc_rollup_message_size_limit in
+      let* b58_root_hash, root_hash_bytes =
+        Plugin.serialize_dac_reveal_data
+          ~max_page_size
+          raw_data
+          ~for_each_page:(Reveal_data_manager.save_bytes reveal_data_dir)
+      in
+      let message = Bytes.concat Bytes.empty [rollup_bytes; root_hash_bytes] in
+      let* signature =
+        Signature_manager.aggregate_signature_of_message
+          cctxt
+          ~message
+          ~dac_addresses
+      in
+      match signature with
+      | None -> failwith "Could not sign message"
+      | Some (signature, bitmap) ->
+          let final_message =
+            Format.asprintf
+              "\000%s%s%s%a"
+              (String.of_bytes rollup_bytes)
+              (String.of_bytes root_hash_bytes)
+              (Aggregate_signature.to_string signature)
+              Z.pp_print
+              bitmap
+          in
+          return (b58_root_hash, Bytes.of_string final_message))
 
 let register_dac_reveal_data ctxt configuration dir =
   RPC_directory.register0 dir (Services.dac_reveal_data ()) (fun () ->
