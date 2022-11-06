@@ -152,16 +152,14 @@ let handle_dac_reveal_data ctxt {Configuration.dac = {reveal_data_dir; _}; _}
       match signature with
       | None -> failwith "Could not sign message"
       | Some (signature, bitmap) ->
-          let final_message =
-            Format.asprintf
-              "\000%s%s%s%a"
-              (String.of_bytes rollup_bytes)
-              (String.of_bytes root_hash_bytes)
-              (Aggregate_signature.to_string signature)
-              Z.pp_print
-              bitmap
+          let* final_message =
+            Plugin.compute_operation_to_inject
+              ~rollup_address:sc_rollup_address
+              ~root_page_hash:root_hash_bytes
+              ~signature
+              ~bitmap
           in
-          return (b58_root_hash, Bytes.of_string final_message))
+          return (b58_root_hash, final_message))
 
 let register_dac_reveal_data ctxt configuration dir =
   RPC_directory.register0 dir (Services.dac_reveal_data ()) (fun () ->
