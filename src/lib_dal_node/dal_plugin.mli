@@ -51,6 +51,13 @@ module type T = sig
   val sc_rollup_message_size_limit : int
 
   val b58_rollup_address_to_bytes : string -> bytes option
+
+  val compute_operation_to_inject :
+    rollup_address:string ->
+    root_page_hash:bytes ->
+    signature:Aggregate_signature.t ->
+    bitmap:Z.t ->
+    bytes tzresult Lwt.t
 end
 
 val register : (module T) -> unit

@@ -85,6 +85,42 @@ module Plugin = struct
   let b58_rollup_address_to_bytes b58_sc_rollup_address =
     let open Protocol.Alpha_context.Sc_rollup.Address in
     b58_sc_rollup_address |> of_b58check_opt |> Option.map to_bytes
+
+  let l1_message_encoding =
+    let open Data_encoding in
+    let open Protocol in
+    let open Alpha_context in
+    union
+      ~tag_size:`Uint8
+      [
+        case
+          ~title:"Dac reveal hash message"
+          (Tag 0)
+          (obj4
+             (req "rollup_address" Sc_rollup.Address.encoding)
+             (req "root_page_hash" Sc_rollup_PVM_sig.Reveal_hash.encoding)
+             (req "signature" Aggregate_signature.encoding)
+             (req "bitmap" z))
+          (fun x -> Some x)
+          (fun x -> x);
+      ]
+
+  let compute_operation_to_inject ~rollup_address ~root_page_hash ~signature
+      ~bitmap =
+    let open Lwt_result_syntax in
+    let open Protocol in
+    let open Alpha_context in
+    let rollup = Sc_rollup.Address.of_b58check_exn rollup_address in
+    let root_page_hash =
+      Sc_rollup_PVM_sig.Reveal_hash.of_bytes_exn root_page_hash
+    in
+    match
+      Data_encoding.Binary.to_bytes
+        l1_message_encoding
+        (rollup, root_page_hash, signature, bitmap)
+    with
+    | Ok bytes -> return bytes
+    | Error _ -> failwith "Could not compute l1 message"
 end
 
 let () = Dal_plugin.register (module Plugin)
