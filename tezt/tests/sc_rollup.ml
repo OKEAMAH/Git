@@ -212,9 +212,15 @@ let originate_sc_rollup ?(hooks = hooks) ?(burn_cap = Tez.(of_int 9999999))
 
    A rollup node has a configuration file that must be initialized.
 *)
-let with_fresh_rollup ?kind ?boot_sector f tezos_node tezos_client operator =
+let with_fresh_rollup ?parameters_ty ?kind ?boot_sector f tezos_node
+    tezos_client operator =
   let* sc_rollup =
-    originate_sc_rollup ?kind ?boot_sector ~src:operator tezos_client
+    originate_sc_rollup
+      ?parameters_ty
+      ?kind
+      ?boot_sector
+      ~src:operator
+      tezos_client
   in
   let sc_rollup_node =
     Sc_rollup_node.create
@@ -3291,13 +3297,38 @@ let register_ ~kind ~protocols =
     protocols
     ~kind
 
-let test_rollup_node_advances_pvm_state protocols ~test_name ~internal =
+let mint_and_deposit_ticket_to_rollup =
+  {|
+    { parameter (pair (pair (contract (pair string (ticket string))) nat) string) ;
+      storage unit ;
+      code { CAR ;
+             UNPAIR ;
+             UNPAIR ;
+             PUSH mutez 0 ;
+             DIG 2 ;
+             PUSH string "TXA" ;
+             TICKET ;
+             ASSERT_SOME ;
+             DIG 3 ;
+             PAIR ;
+             TRANSFER_TOKENS ;
+             PUSH unit Unit ;
+             NIL operation ;
+             DIG 2 ;
+             CONS ;
+             PAIR } }
+   |}
+
+let test_tx_kernel protocols ~test_name =
   let kind = "wasm_2_0_0" in
-  let boot_sector = read_kernel "tx_kernel" in
-  let go ~internal client sc_rollup sc_rollup_node =
+  (* TODO: Change to tx-kernel. *)
+  let boot_sector = read_kernel "computation" in
+  let run_test client sc_rollup sc_rollup_node _filename =
     let* genesis_info =
-      RPC.Client.call ~hooks client
-      @@ RPC.get_chain_block_context_sc_rollup_genesis_info sc_rollup
+      RPC.Client.call
+        ~hooks
+        client
+        (RPC.get_chain_block_context_sc_rollup_genesis_info sc_rollup)
     in
     let init_level = JSON.(genesis_info |-> "level" |> as_int) in
     let* () = Sc_rollup_node.run sc_rollup_node in
@@ -3308,25 +3339,23 @@ let test_rollup_node_advances_pvm_state protocols ~test_name ~internal =
     Check.(level = init_level)
       Check.int
       ~error_msg:"Current level has moved past origination level (%L = %R)" ;
-    let* level, forwarder =
-      if not internal then return (level, None)
-      else
-        (* Originate forwarder contract to send internal messages to rollup *)
-        let* contract_id =
-          Client.originate_contract
-            ~alias:"rollup_deposit"
-            ~amount:Tez.zero
-            ~src:Constant.bootstrap1.alias
-            ~prg:"file:./tezt/tests/contracts/proto_alpha/sc_rollup_forward.tz"
-            ~init:"Unit"
-            ~burn_cap:Tez.(of_int 1)
-            client
-        in
-        let* () = Client.bake_for_and_wait client in
-        Log.info
-          "The forwarder %s contract was successfully originated"
-          contract_id ;
-        return (level + 1, Some contract_id)
+    let* level, mint_and_deposit_contract =
+      (* Originate forwarder contract to send internal messages to rollup *)
+      let* mint_and_deposit_contract =
+        Client.originate_contract
+          ~alias:"rollup_deposit"
+          ~amount:Tez.zero
+          ~src:Constant.bootstrap1.alias
+          ~prg:mint_and_deposit_ticket_to_rollup
+          ~init:"Unit"
+          ~burn_cap:Tez.(of_int 1)
+          client
+      in
+      let* () = Client.bake_for_and_wait client in
+      Log.info
+        "The mint and deposit contract %s was successfully originated"
+        mint_and_deposit_contract ;
+      return (level + 1, Some mint_and_deposit_contract)
     in
     (* Called with monotonically increasing [i] *)
     let test_message i =
@@ -3334,23 +3363,20 @@ let test_rollup_node_advances_pvm_state protocols ~test_name ~internal =
         Sc_rollup_client.state_hash ~hooks sc_rollup_client
       in
       let* prev_ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
-      let message = sf "%d %d + value" i ((i + 2) * 2) in
       let* () =
-        match forwarder with
-        | None ->
-            (* External message *)
-            send_message client (sf "[%S]" message)
-        | Some forwarder ->
-            (* Internal message through forwarder *)
-            let* () =
-              Client.transfer
-                client
-                ~amount:Tez.zero
-                ~giver:Constant.bootstrap1.alias
-                ~receiver:forwarder
-                ~arg:(sf "Pair %S %S" sc_rollup message)
-            in
-            Client.bake_for_and_wait client
+        (* Internal message through forwarder *)
+        let receiver = Option.get mint_and_deposit_contract in
+        let arg = sf {|Pair (Pair %S 1) "Hello"|} sc_rollup in
+        let* () =
+          Client.transfer
+            client
+            ~amount:Tez.zero
+            ~giver:Constant.bootstrap1.alias
+            ~receiver
+            ~arg
+            ~burn_cap:(Tez.of_int 1000)
+        in
+        Client.bake_for_and_wait client
       in
       let* _ =
         Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
@@ -3405,36 +3431,20 @@ let test_rollup_node_advances_pvm_state protocols ~test_name ~internal =
     let* () = Lwt_list.iter_s test_message (range 1 10) in
     Lwt.return_unit
   in
-  if not internal then
-    regression_test
-      ~__FILE__
-      ~tags:["sc_rollup"; "run"; "node"; kind]
-      test_name
-      (fun protocol ->
-        setup ~protocol @@ fun node client ->
-        with_fresh_rollup
-          ~kind
-          ~boot_sector
-          (fun sc_rollup_address sc_rollup_node _filename ->
-            go ~internal:false client sc_rollup_address sc_rollup_node)
-          node
-          client)
-      protocols
-  else
-    regression_test
-      ~__FILE__
-      ~tags:["sc_rollup"; "run"; "node"; "internal"; kind]
-      test_name
-      (fun protocol ->
-        setup ~protocol @@ fun node client ->
-        with_fresh_rollup
-          ~kind
-          ~boot_sector
-          (fun sc_rollup_address sc_rollup_node _filename ->
-            go ~internal:true client sc_rollup_address sc_rollup_node)
-          node
-          client)
-      protocols
+  regression_test
+    ~__FILE__
+    ~tags:["sc_rollup"; "run"; "node"; "internal"; kind]
+    test_name
+    (fun protocol ->
+      setup ~protocol @@ fun node client ->
+      with_fresh_rollup
+        ~parameters_ty:"pair string (ticket string)"
+        ~kind
+        ~boot_sector
+        (run_test client)
+        node
+        client)
+    protocols
 
 let register ~protocols =
   (* PVM-independent tests. We still need to specify a PVM kind
@@ -3469,8 +3479,4 @@ let register ~protocols =
      test_valid_dispute_dissection protocols ;
      test_timeout protocols ;
      test_refutation_reward_and_punishment protocols; *)
-  test_rollup_node_run_with_kernel
-    protocols
-    ~kind:"wasm_2_0_0"
-    ~kernel_name:"no_parse_bad_fingerprint"
-    ~internal:false
+  test_tx_kernel ~test_name:"test tx kernel" protocols
