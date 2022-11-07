@@ -5292,6 +5292,17 @@ let _gas_parameter_diff =
     ~static:false
     ~bisect_ppx:false
 
+let _formatter =
+  public_exe
+    "formatter"
+    ~path:"devtools/formatter/bin"
+    ~synopsis:"Internal dev tools"
+    ~internal_name:"main"
+    ~opam:"internal-devtools"
+    ~deps:[]
+    ~static:false
+    ~bisect_ppx:false
+
 let remove_if_exists fname = if Sys.file_exists fname then Sys.remove fname
 
 let get_contracts_lib =
