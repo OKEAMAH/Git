@@ -3364,17 +3364,15 @@ let test_tx_kernel protocols ~test_name =
         (* Internal message through forwarder *)
         let receiver = Option.get mint_and_deposit_contract in
         let arg = sf {|Pair (Pair %S 1) "Hello"|} sc_rollup in
-        let* () =
-          Client.transfer
-            client
-            ~amount:Tez.zero
-            ~giver:Constant.bootstrap1.alias
-            ~receiver
-            ~arg
-            ~burn_cap:(Tez.of_int 1000)
-        in
-        Client.bake_for_and_wait client
+        Client.transfer
+          client
+          ~amount:Tez.zero
+          ~giver:Constant.bootstrap1.alias
+          ~receiver
+          ~arg
+          ~burn_cap:(Tez.of_int 1000)
       in
+      let* () = Client.bake_for_and_wait client in
       let* _ =
         Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
       in
@@ -3387,7 +3385,6 @@ let test_tx_kernel protocols ~test_name =
       Check.(ticks >= prev_ticks)
         Check.int
         ~error_msg:"Tick counter did not advance (%L >= %R)" ;
-
       Lwt.return_unit
     in
     let* () = test_deposit 1 in
