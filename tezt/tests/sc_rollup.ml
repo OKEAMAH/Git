@@ -3320,9 +3320,6 @@ let mint_and_deposit_ticket_to_rollup =
    |}
 
 let test_tx_kernel protocols ~test_name =
-  let kind = "wasm_2_0_0" in
-  (* TODO: Change to tx-kernel. *)
-  let boot_sector = read_kernel "computation" in
   let run_test client sc_rollup sc_rollup_node _filename =
     let* genesis_info =
       RPC.Client.call
@@ -3358,7 +3355,7 @@ let test_tx_kernel protocols ~test_name =
       return (level + 1, Some mint_and_deposit_contract)
     in
     (* Called with monotonically increasing [i] *)
-    let test_message i =
+    let test_deposit i =
       let* prev_state_hash =
         Sc_rollup_client.state_hash ~hooks sc_rollup_client
       in
@@ -3381,41 +3378,6 @@ let test_tx_kernel protocols ~test_name =
       let* _ =
         Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
       in
-      (* Specific per kind PVM checks *)
-      let* () =
-        match kind with
-        | "arith" ->
-            let* encoded_value =
-              Sc_rollup_client.state_value
-                ~hooks
-                sc_rollup_client
-                ~key:"vars/value"
-            in
-            let value =
-              match Data_encoding.(Binary.of_bytes int31) @@ encoded_value with
-              | Error error ->
-                  failwith
-                    (Format.asprintf
-                       "The arithmetic PVM has an unexpected state: %a"
-                       Data_encoding.Binary.pp_read_error
-                       error)
-              | Ok x -> x
-            in
-            Check.(
-              (value = i + ((i + 2) * 2))
-                int
-                ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
-            return ()
-        | "wasm_2_0_0" ->
-            (* TODO: https://gitlab.com/tezos/tezos/-/issues/3729
-                Add an appropriate check for various test kernels
-                computation.wasm               - Gets into eval state
-                no_parse_random.wasm           - Stuck state due to parse error
-                no_parse_bad_fingerprint.wasm  - Stuck state due to parse error
-            *)
-            return ()
-        | _otherwise -> raise (Invalid_argument kind)
-      in
       let* state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
       Check.(state_hash <> prev_state_hash)
         Check.string
@@ -3428,9 +3390,12 @@ let test_tx_kernel protocols ~test_name =
 
       Lwt.return_unit
     in
-    let* () = Lwt_list.iter_s test_message (range 1 10) in
+    let* () = test_deposit 1 in
     Lwt.return_unit
   in
+  let kind = "wasm_2_0_0" in
+  (* TODO: Change to tx-kernel. *)
+  let boot_sector = read_kernel "computation" in
   regression_test
     ~__FILE__
     ~tags:["sc_rollup"; "run"; "node"; "internal"; kind]
