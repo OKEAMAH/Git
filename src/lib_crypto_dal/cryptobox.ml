@@ -599,19 +599,19 @@ module Inner = struct
             let rec loop j =
               match j with
               | j when j = Array.length arr -> Ok ()
-              | _ -> (
+              | _ ->
                   let c_i = arr.(j) in
                   let z_i = (t.number_of_shards * j) + z_i in
                   let x_i = Domains.get t.domain_n z_i in
                   let tmp = Evaluations.get eval_a' z_i in
                   Scalar.mul_inplace tmp tmp x_i ;
-                  match Scalar.inverse_exn_inplace tmp tmp with
-                  | exception _ -> Error (`Invert_zero "can't inverse element")
-                  | () ->
-                      Scalar.mul_inplace tmp tmp c_i ;
-                      n_poly.(z_i) <- tmp ;
-                      c := !c + 1 ;
-                      loop (j + 1))
+                  (* The call below never fails by construction, so we don't
+                     catch exceptions *)
+                  Scalar.inverse_exn_inplace tmp tmp ;
+                  Scalar.mul_inplace tmp tmp c_i ;
+                  n_poly.(z_i) <- tmp ;
+                  c := !c + 1 ;
+                  loop (j + 1)
             in
             loop 0)
         shards
