@@ -3156,7 +3156,7 @@ let test_rpcs ~kind =
   in
   unit
 
-let register ~kind ~protocols =
+let register_ ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
   test_rollup_get_genesis_info ~kind protocols ;
@@ -3291,36 +3291,186 @@ let register ~kind ~protocols =
     protocols
     ~kind
 
+let test_rollup_node_advances_pvm_state protocols ~test_name ~internal =
+  let kind = "wasm_2_0_0" in
+  let boot_sector = read_kernel "tx_kernel" in
+  let go ~internal client sc_rollup sc_rollup_node =
+    let* genesis_info =
+      RPC.Client.call ~hooks client
+      @@ RPC.get_chain_block_context_sc_rollup_genesis_info sc_rollup
+    in
+    let init_level = JSON.(genesis_info |-> "level" |> as_int) in
+    let* () = Sc_rollup_node.run sc_rollup_node in
+    let sc_rollup_client = Sc_rollup_client.create sc_rollup_node in
+    let* level =
+      Sc_rollup_node.wait_for_level ~timeout:3. sc_rollup_node init_level
+    in
+    Check.(level = init_level)
+      Check.int
+      ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+    let* level, forwarder =
+      if not internal then return (level, None)
+      else
+        (* Originate forwarder contract to send internal messages to rollup *)
+        let* contract_id =
+          Client.originate_contract
+            ~alias:"rollup_deposit"
+            ~amount:Tez.zero
+            ~src:Constant.bootstrap1.alias
+            ~prg:"file:./tezt/tests/contracts/proto_alpha/sc_rollup_forward.tz"
+            ~init:"Unit"
+            ~burn_cap:Tez.(of_int 1)
+            client
+        in
+        let* () = Client.bake_for_and_wait client in
+        Log.info
+          "The forwarder %s contract was successfully originated"
+          contract_id ;
+        return (level + 1, Some contract_id)
+    in
+    (* Called with monotonically increasing [i] *)
+    let test_message i =
+      let* prev_state_hash =
+        Sc_rollup_client.state_hash ~hooks sc_rollup_client
+      in
+      let* prev_ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
+      let message = sf "%d %d + value" i ((i + 2) * 2) in
+      let* () =
+        match forwarder with
+        | None ->
+            (* External message *)
+            send_message client (sf "[%S]" message)
+        | Some forwarder ->
+            (* Internal message through forwarder *)
+            let* () =
+              Client.transfer
+                client
+                ~amount:Tez.zero
+                ~giver:Constant.bootstrap1.alias
+                ~receiver:forwarder
+                ~arg:(sf "Pair %S %S" sc_rollup message)
+            in
+            Client.bake_for_and_wait client
+      in
+      let* _ =
+        Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
+      in
+      (* Specific per kind PVM checks *)
+      let* () =
+        match kind with
+        | "arith" ->
+            let* encoded_value =
+              Sc_rollup_client.state_value
+                ~hooks
+                sc_rollup_client
+                ~key:"vars/value"
+            in
+            let value =
+              match Data_encoding.(Binary.of_bytes int31) @@ encoded_value with
+              | Error error ->
+                  failwith
+                    (Format.asprintf
+                       "The arithmetic PVM has an unexpected state: %a"
+                       Data_encoding.Binary.pp_read_error
+                       error)
+              | Ok x -> x
+            in
+            Check.(
+              (value = i + ((i + 2) * 2))
+                int
+                ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
+            return ()
+        | "wasm_2_0_0" ->
+            (* TODO: https://gitlab.com/tezos/tezos/-/issues/3729
+                Add an appropriate check for various test kernels
+                computation.wasm               - Gets into eval state
+                no_parse_random.wasm           - Stuck state due to parse error
+                no_parse_bad_fingerprint.wasm  - Stuck state due to parse error
+            *)
+            return ()
+        | _otherwise -> raise (Invalid_argument kind)
+      in
+      let* state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+      Check.(state_hash <> prev_state_hash)
+        Check.string
+        ~error_msg:"State hash has not changed (%L <> %R)" ;
+
+      let* ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
+      Check.(ticks >= prev_ticks)
+        Check.int
+        ~error_msg:"Tick counter did not advance (%L >= %R)" ;
+
+      Lwt.return_unit
+    in
+    let* () = Lwt_list.iter_s test_message (range 1 10) in
+    Lwt.return_unit
+  in
+  if not internal then
+    regression_test
+      ~__FILE__
+      ~tags:["sc_rollup"; "run"; "node"; kind]
+      test_name
+      (fun protocol ->
+        setup ~protocol @@ fun node client ->
+        with_fresh_rollup
+          ~kind
+          ~boot_sector
+          (fun sc_rollup_address sc_rollup_node _filename ->
+            go ~internal:false client sc_rollup_address sc_rollup_node)
+          node
+          client)
+      protocols
+  else
+    regression_test
+      ~__FILE__
+      ~tags:["sc_rollup"; "run"; "node"; "internal"; kind]
+      test_name
+      (fun protocol ->
+        setup ~protocol @@ fun node client ->
+        with_fresh_rollup
+          ~kind
+          ~boot_sector
+          (fun sc_rollup_address sc_rollup_node _filename ->
+            go ~internal:true client sc_rollup_address sc_rollup_node)
+          node
+          client)
+      protocols
+
 let register ~protocols =
   (* PVM-independent tests. We still need to specify a PVM kind
      because the tezt will need to originate a rollup. However,
      the tezt will not test for PVM kind specific featued. *)
-  test_rollup_client_gets_address protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_node_configuration protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_list protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_show_address protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_generate_keys protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_list_keys protocols ~kind:"wasm_2_0_0" ;
-  (* Specific Arith PVM tezts *)
-  test_rollup_arith_origination_boot_sector protocols ;
-  test_rollup_node_uses_arith_boot_sector protocols ;
-  (* Specific Wasm PVM tezts *)
-  test_rollup_node_run_with_kernel
-    protocols
-    ~kind:"wasm_2_0_0"
-    ~kernel_name:"no_parse_random"
-    ~internal:false ;
+  (* test_rollup_client_gets_address protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_node_configuration protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_list protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_client_show_address protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_client_generate_keys protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_client_list_keys protocols ~kind:"wasm_2_0_0" ;
+     (* Specific Arith PVM tezts *)
+     test_rollup_arith_origination_boot_sector protocols ;
+     test_rollup_node_uses_arith_boot_sector protocols ;
+     (* Specific Wasm PVM tezts *)
+     test_rollup_node_run_with_kernel
+       protocols
+       ~kind:"wasm_2_0_0"
+       ~kernel_name:"no_parse_random"
+       ~internal:false ;
+     test_rollup_node_run_with_kernel
+       protocols
+       ~kind:"wasm_2_0_0"
+       ~kernel_name:"no_parse_bad_fingerprint"
+       ~internal:false ;
+     (* DAC tests, not supported yet by the Wasm PVM *)
+     test_rollup_arith_uses_reveals protocols ~kind:"arith" ;
+     (* Shared tezts - will be executed for both PVMs. *)
+     register ~kind:"wasm_2_0_0" ~protocols ;
+     register ~kind:"arith" ~protocols ;
+     test_no_cementation_if_parent_not_lcc_or_if_disputed_commit protocols ;
+     test_valid_dispute_dissection protocols ;
+     test_timeout protocols ;
+     test_refutation_reward_and_punishment protocols; *)
   test_rollup_node_run_with_kernel
     protocols
     ~kind:"wasm_2_0_0"
     ~kernel_name:"no_parse_bad_fingerprint"
-    ~internal:false ;
-  (* DAC tests, not supported yet by the Wasm PVM *)
-  test_rollup_arith_uses_reveals protocols ~kind:"arith" ;
-  (* Shared tezts - will be executed for both PVMs. *)
-  register ~kind:"wasm_2_0_0" ~protocols ;
-  register ~kind:"arith" ~protocols ;
-  test_no_cementation_if_parent_not_lcc_or_if_disputed_commit protocols ;
-  test_valid_dispute_dissection protocols ;
-  test_timeout protocols ;
-  test_refutation_reward_and_punishment protocols
+    ~internal:false
