@@ -48,7 +48,8 @@ let hash_of_block ?cache (rpc_context : #RPC_context.simple) store_opt
                 ()
             in
             return (hash, None)
-        | Some store ->
+        | Some get_store ->
+            let* store = get_store () in
             let open Tezos_store_unix.Store in
             let* chain_store =
               let chain_store = main_chain_store store in
@@ -136,7 +137,7 @@ module Env_cache =
 module Env_cache_lwt = Ringo_lwt.Functors.Make_result (Env_cache)
 
 let build_directory (printer : Tezos_client_base.Client_context.printer)
-    (store_opt : Tezos_store_unix.Store.t option)
+    (store_opt : (unit -> Tezos_store_unix.Store.t tzresult Lwt.t) option)
     (rpc_context : RPC_context.generic) (mode : mode) expected_protocol :
     unit RPC_directory.t =
   let block_hash_cache =

@@ -67,7 +67,7 @@ type mode =
     - [env] is a protocol-specific module used to create the context passed when executing a RPC. *)
 val build_directory :
   Tezos_client_base.Client_context.printer ->
-  Tezos_store_unix.Store.t option ->
+  (unit -> Tezos_store_unix.Store.t tzresult Lwt.t) option ->
   RPC_context.generic ->
   mode ->
   Protocol_hash.t option ->

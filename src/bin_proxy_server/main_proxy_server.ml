@@ -232,9 +232,16 @@ let main_promise (config_file : string option)
                   context_path))
       data_dir_opt
   in
-  let* (store : Tezos_store_unix.Store.t option) =
-    Option.map_es
-      (fun (data_dir, genesis) ->
+  let store_params =
+    Stdlib.Option.(
+      let ( let* ) = bind in
+      let* data_dir = data_dir_opt in
+      let* genesis = genesis_opt in
+      some (data_dir, genesis))
+  in
+  let (get_store : (unit -> Tezos_store_unix.Store.t tzresult Lwt.t) option) =
+    Option.map
+      (fun (data_dir, genesis) () ->
         let context_dir = Node_data_version.context_dir data_dir
         and store_dir = Node_data_version.store_dir data_dir in
         Tezos_store_unix.Store.init
@@ -243,12 +250,9 @@ let main_promise (config_file : string option)
           ~context_dir
           ~allow_testchains:true
           genesis)
-      Stdlib.Option.(
-        let ( let* ) = bind in
-        let* data_dir = data_dir_opt in
-        let* genesis = genesis_opt in
-        some (data_dir, genesis))
+      store_params
   in
+
   (* Now we build the function that the proxy server can use to build a proxy
      delegate later, using [Tezos_shell_context.Proxy_delegate_maker.*] functions.
      This lets it not depend directly on [Tezos_shell_context]: if it did, it
@@ -265,7 +269,7 @@ let main_promise (config_file : string option)
     let sleep = Lwt_unix.sleep in
     Tezos_proxy.Proxy_services.build_directory
       printer
-      store
+      get_store
       http_ctxt
       (Tezos_proxy.Proxy_services.Proxy_server
          {sleep; sym_block_caching_time; on_disk_proxy_builder})
