@@ -997,8 +997,23 @@ WASM memory.
 Testing your Kernel
 """""""""""""""""""
 
+.. warning::
+
+   The ``octez-wasm-repl`` tool that is described in this section is
+   still under active development. A preliminary version can be found
+   in `the Octez repository <https://gitlab.com/tezos/tezos>`_.
+
+   To get ``octez-wasm-repl``, the easiest way is to build Octez from
+   source. In addition to the :ref:`usual instructions
+   <building_from_source>`, the command ``make build-unreleased`` has
+   to be used.
+
+   For now, ``octez-wasm-repl`` is **not** part of Octez, and is only
+   provided for developers interested in testing Tezos smart rollup
+   infrastructure before its release on mainnet.
+
 Testing kernels can be useful during its development, without relying on
-starting a rollup on a test network. Octez provides a *read-eval-print-loop* as
+starting a rollup on a test network. We provide a *read-eval-print-loop* as
 a mean to evaluate the WASM PVM without relying on any node and network:
 ``octez-wasm-repl``.
 
