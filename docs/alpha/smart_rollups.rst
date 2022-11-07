@@ -645,21 +645,35 @@ purpose from the one it does not need to process.
 Once the inbox has been populated with the inputs of the Tezos block,
 the ``kernel_next`` function is called, from a clean “transient”
 state. More precisely, the WASM kernel is parsed, linked, initialized,
-then ``kernel_next`` is called. By default, ``kernel_next`` is called
-only once, then the smart rollup waits for a new Tezos block to
-populate the inbox and restart the cycle.
+then ``kernel_next`` is called.
 
-However, a call to ``kernel_next`` cannot take an arbitrary amount of
-time to complete, because diverging computations do not mix well with
-the optimistic rollup infrastructure of Tezos. To dodge the halting
-problem, a call to ``kernel_next`` is therefore bounded in the number
-of ticks necessary for the reference interpreter of WASM used during
-the rejection to execute it.
+By default, ``kernel_next`` is called only once, then the smart rollup
+waits for a new Tezos block to populate the inbox and restart the
+cycle. However, the kernel can request a so-called reboot by writing
+arbitrary data under the path ``/kernel/env/reboot`` in its durable
+storage. In such a case, ``kernel_next`` is called again, without the
+inbox to be populated with the contents of the inbox of the next Tezos
+level. This file is removed between each call of ``kernel_next``, and
+the ``kernel_next`` function can require at most ``P`` reboots for
+each Tezos level.
+
+A call to ``kernel_next`` cannot take an arbitrary amount of time to
+complete, because diverging computations are not compatible with the
+optimistic rollup infrastructure of Tezos. To dodge the halting
+problem, the reference interpreter of WASM used during the rejection
+enforces a bound on the number of ticks used in a call to
+``kernel_next``. One the maximum number of ticks is reached, the
+execution of ``kernel_next`` is trapped (*i.e.*, interrupted with an
+error).
 
 The direct consequence of this setup is that it might be necessary for
 a WASM kernel to span long computation across several call to
 ``kernel_next``, and therefore to serialize any data they need in the
 durable storage to avoid loosing them.
+
+Finally, the kernel can verify if the previous ``kernel_next``
+invocation was trapped by verifying if some data are stored under the
+path ``/kernel/env/stuck``.
 
 Host Functions
 ^^^^^^^^^^^^^^
