@@ -546,7 +546,7 @@ module Inner = struct
     done ;
     slot
 
-  let encode t p = evaluation_fft_n t p
+  let encode = evaluation_fft_n
 
   (* The shards are arranged in cosets to evaluate in batch with Kate
      amortized. *)
