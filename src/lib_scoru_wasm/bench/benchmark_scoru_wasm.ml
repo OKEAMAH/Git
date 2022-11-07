@@ -38,6 +38,10 @@
 
 open Inputs
 
+let tx_kernel = Kernels.tx_kernal_vRam_09_2022
+
+let tx_kernel_nosig = Kernels.tx_kernel_vRAM_09_2022_nosig
+
 (** a simple scenario using a version of the tx_kernel from integration tests*)
 let scenario_tx_kernel_deposit_then_withdraw_to_same_address_ name kernel =
   Scenario.make_scenario
@@ -58,17 +62,17 @@ let scenario_tx_kernel_deposit_then_withdraw_to_same_address_ name kernel =
 let scenario_tx_kernel_deposit_then_withdraw_to_same_address_no_sig =
   scenario_tx_kernel_deposit_then_withdraw_to_same_address_
     "tx_kernel - deposit_then_withdraw_to_same_address NOSIG"
-    Kernels.tx_kernel_vRAM_nosig
+    tx_kernel_nosig
 
 let scenario_tx_kernel_deposit_then_withdraw_to_same_address_sig =
   scenario_tx_kernel_deposit_then_withdraw_to_same_address_
     "tx_kernel - deposit_then_withdraw_to_same_address SIG"
-    Kernels.tx_kernal_vRam_latest
+    tx_kernel
 
 let scenario_tx_kernel_deposit_transfer_withdraw =
   Scenario.make_scenario
     "tx_kernel - deposit_transfer_withdraw"
-    Kernels.tx_kernal_vRam_latest
+    tx_kernel
     [
       Scenario.make_scenario_step
         "First Deposit"
@@ -91,7 +95,7 @@ let scenario_tx_kernel_deposit_transfer_withdraw =
 let scenario_tx_kernel_deposit_transfer_withdraw_many_transfers =
   Scenario.make_scenario
     "tx_kernel - deposit_transfer_withdraw_many_transfers"
-    Kernels.tx_kernal_vRam_latest
+    tx_kernel
     [
       Scenario.make_scenario_step
         "First Deposit"

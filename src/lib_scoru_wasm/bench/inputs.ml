@@ -44,8 +44,17 @@ module Kernels = struct
 
   (** Taken directly from pipeline in kernel repo.
       https://gitlab.com/trili/kernel/-/commit/e759f43ec27ef5fa2cebb567780a61702e851c33/pipelines?ref=main *)
-  let tx_kernal_vRam_latest =
+  let tx_kernal_vRam_09_2022_ =
     "src/lib_scoru_wasm/bench/kernels/tx_kernel/tx_kernel_e759f43e.wasm"
+
+  let tx_kernel_vRAM_09_2022_nosig =
+    "src/lib_scoru_wasm/bench/kernels/tx_kernel/tx-kernel-no-verif.wasm"
+
+  let tx_kernal_vRam_09_2022 =
+    "src/lib_scoru_wasm/bench/kernels/tx_kernel/tx-kernel.wasm"
+
+  let tx_kernal_vRam_latest =
+    "src/lib_scoru_wasm/bench/kernels/tx_kernel/tx_kernel_3498cdbd.wasm"
 
   (** taken from unit test,
       reads input, execute without taking them into account *)
