@@ -92,6 +92,10 @@ module Index : sig
 
   val to_int : t -> int
 
+  (** [succ i] returns the successor of [i] unless [i >= max_value], in which
+      case [None] is returned. *)
+  val succ : t -> t option
+
   val compare : t -> t -> int
 
   val equal : t -> t -> bool
@@ -267,7 +271,7 @@ module History : sig
   (** Encoding for {!proof}. *)
   val proof_encoding : proof Data_encoding.t
 
-  (** Pretty-printer for {!proof}. If [serialized] is [false] it will print 
+  (** Pretty-printer for {!proof}. If [serialized] is [false] it will print
       the abstracted proof representation, otherwise if it's [true] it will
       print the serialized version of the proof (i.e. a sequence of bytes). *)
   val pp_proof : serialized:bool -> Format.formatter -> proof -> unit

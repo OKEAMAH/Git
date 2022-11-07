@@ -2827,6 +2827,8 @@ module Dal : sig
 
     val to_int : t -> int
 
+    val succ : t -> t option
+
     val compare : t -> t -> int
 
     val equal : t -> t -> bool

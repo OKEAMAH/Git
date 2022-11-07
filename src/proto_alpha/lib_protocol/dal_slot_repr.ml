@@ -67,6 +67,8 @@ module Index = struct
 
   let to_int slot_index = slot_index [@@ocaml.inline always]
 
+  let succ i = if Compare.Int.(i >= max_value) then None else Some (i + 1)
+
   let compare = Compare.Int.compare
 
   let equal = Compare.Int.equal
