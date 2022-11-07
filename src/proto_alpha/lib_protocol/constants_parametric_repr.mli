@@ -121,6 +121,8 @@ type sc_rollup = {
   timeout_period_in_blocks : int;
   (* The maximum number of cemented commitments stored for a sc rollup. *)
   max_number_of_stored_cemented_commitments : int;
+  (* the maximum size of a proof *)
+  max_proof_size : int;
 }
 
 type zk_rollup = {

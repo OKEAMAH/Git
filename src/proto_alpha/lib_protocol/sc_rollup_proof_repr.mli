@@ -24,7 +24,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** A refutation game proof is required as part of the final move in a
+type error +=
+  | Sc_rollup_proof_too_long
+        (** A refutation game proof is required as part of the final move in a
     game.
 
     This proof is basically a combination of a PVM proof (provided by
@@ -106,6 +108,8 @@ val unserialize_pvm_step :
   pvm:('state, 'proof, 'output) Sc_rollups.PVM.implementation ->
   serialized ->
   'proof tzresult
+
+val check_proof_size : int -> serialized t -> (unit, error trace) result Lwt.t
 
 type error += Sc_rollup_proof_check of string
 
@@ -251,3 +255,9 @@ val produce :
   (module PVM_with_context_and_state) ->
   Raw_level_repr.t ->
   serialized t tzresult Lwt.t
+
+module Internal_for_tests : sig
+  val serialized_to_string : serialized -> string
+
+  val serialized_of_string : string -> serialized
+end

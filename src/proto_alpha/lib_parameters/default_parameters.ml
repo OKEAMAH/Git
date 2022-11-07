@@ -258,6 +258,8 @@ let constants_mainnet =
              validated against a cemented commitment while it is in the
              mempool. *)
          max_number_of_stored_cemented_commitments = 5;
+         (* This is ~ 1/2 of manager operation size *)
+         max_proof_size = 1_024 * 16;
        });
     zk_rollup =
       {

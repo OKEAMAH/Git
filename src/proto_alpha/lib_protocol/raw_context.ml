@@ -965,6 +965,7 @@ let prepare_first_block ~level ~timestamp ctxt =
             timeout_period_in_blocks = c.sc_rollup.timeout_period_in_blocks;
             max_number_of_stored_cemented_commitments =
               c.sc_rollup.max_number_of_stored_cemented_commitments;
+            max_proof_size = 1_024 * 16;
           }
       in
       let zk_rollup =

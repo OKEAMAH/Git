@@ -187,6 +187,126 @@ let test_single_valid_game_move () =
   in
   Assert.is_none ~loc:__LOC__ ~pp:Sc_rollup_game_repr.pp_game_result game_result
 
+module Arith_pvm = Sc_rollup_helpers.Arith_pvm
+
+let test_inbox_proof_too_long () =
+  let open Alpha_context in
+  let pvm_step =
+    Sc_rollup.Proof.Internal_for_tests.serialized_of_string "hello"
+  in
+  let rollup = Sc_rollup.Address.zero in
+  let* b, (a, x) = Context.init2 () in
+  let player = Account.pkh_of_contract_exn a in
+  let opponent = Account.pkh_of_contract_exn x in
+  let* ctxt = Block.to_alpha_ctxt b in
+  let constants = Constants.sc_rollup ctxt in
+  let max_size = constants.max_proof_size in
+  let string_proof = String.make (max_size + 1) 'a' in
+  (* First we try a standard input proof *)
+  let inbox_proof =
+    Sc_rollup.Inbox.Internal_for_tests.serialized_proof_of_string string_proof
+  in
+  let inbox_proof =
+    Sc_rollup.Proof.Inbox_proof
+      {level = Raw_level.root; message_counter = Z.zero; proof = inbox_proof}
+  in
+  let proof = Sc_rollup.Proof.{pvm_step; input_proof = Some inbox_proof} in
+  let move =
+    Sc_rollup.Game.{choice = Sc_rollup.Tick.initial; step = Proof proof}
+  in
+  let*! res =
+    T.lift
+    @@ Sc_rollup.Refutation_storage.game_move ctxt rollup ~player ~opponent move
+  in
+  let* () =
+    Assert.proto_error
+      ~loc:__LOC__
+      res
+      (( = ) Sc_rollup_proof_repr.Sc_rollup_proof_too_long)
+  in
+  (* here we try a raw data dal proof that is long *)
+  let raw_data_proof =
+    Sc_rollup.Proof.Reveal_proof (Raw_data_proof string_proof)
+  in
+  let proof = Sc_rollup.Proof.{pvm_step; input_proof = Some raw_data_proof} in
+  let move =
+    Sc_rollup.Game.{choice = Sc_rollup.Tick.initial; step = Proof proof}
+  in
+  let*! res =
+    T.lift
+    @@ Sc_rollup.Refutation_storage.game_move ctxt rollup ~player ~opponent move
+  in
+  let* () =
+    Assert.proto_error
+      ~loc:__LOC__
+      res
+      (( = ) Sc_rollup_proof_repr.Sc_rollup_proof_too_long)
+  in
+  (* finally we try witha a long [Dal_page_proof].*)
+  let published_level = Raw_level.root in
+  let slot_id =
+    Dal.Slot.(Header.{index = Dal.Slot_index.zero; published_level})
+  in
+  let page_id = Dal.Page.{page_index = 0; slot_id} in
+  let bytes_proof =
+    Data_encoding.Binary.to_bytes_exn
+      Data_encoding.bytes
+      (Bytes.of_string string_proof)
+  in
+  let proof =
+    Data_encoding.Binary.of_bytes_exn
+      Dal.Slots_history.proof_encoding
+      bytes_proof
+  in
+  let dal_page_proof =
+    Sc_rollup.Proof.Reveal_proof (Dal_page_proof {page_id; proof})
+  in
+  let proof = Sc_rollup.Proof.{pvm_step; input_proof = Some dal_page_proof} in
+  let move =
+    Sc_rollup.Game.{choice = Sc_rollup.Tick.initial; step = Proof proof}
+  in
+  let*! res =
+    T.lift
+    @@ Sc_rollup.Refutation_storage.game_move ctxt rollup ~player ~opponent move
+  in
+  Assert.proto_error
+    ~loc:__LOC__
+    res
+    (( = ) Sc_rollup_proof_repr.Sc_rollup_proof_too_long)
+
+let test_pvm_step_proof_too_long () =
+  let open Alpha_context in
+  let* b, (a, x) = Context.init2 () in
+  let a = Account.pkh_of_contract_exn a in
+  let x = Account.pkh_of_contract_exn x in
+  let* ctxt = Block.to_alpha_ctxt b in
+  let constants = Constants.sc_rollup ctxt in
+  let max_size = constants.max_proof_size in
+  let pvm_step =
+    Sc_rollup.Proof.Internal_for_tests.serialized_of_string
+    @@ String.init (max_size + 1) 'a'
+  in
+  let rollup = Sc_rollup.Address.zero in
+  let proof = Sc_rollup.Proof.{pvm_step; input_proof = None} in
+
+  let move =
+    Sc_rollup.Game.{choice = Sc_rollup.Tick.initial; step = Proof proof}
+  in
+
+  let*! res =
+    T.lift
+    @@ Sc_rollup.Refutation_storage.game_move
+         ctxt
+         rollup
+         ~player:a
+         ~opponent:x
+         move
+  in
+  Assert.proto_error
+    ~loc:__LOC__
+    res
+    (( = ) Sc_rollup_proof_repr.Sc_rollup_proof_too_long)
+
 (** Test that a staker can be part of at most one refutation game. *)
 let test_staker_injectivity () =
   let open Lwt_result_syntax in
@@ -261,8 +381,6 @@ let test_staker_injectivity () =
     res
     (( = ) (Sc_rollup_errors.Sc_rollup_staker_in_game (`Refuter operator)))
 
-module Arith_pvm = Sc_rollup_helpers.Arith_pvm
-
 (** Test that sending a invalid serialized inbox proof to
     {Sc_rollup_proof_repr.valid} is rejected. *)
 let test_invalid_serialized_inbox_proof () =
@@ -324,6 +442,14 @@ let tests =
       "A single game move with a valid dissection"
       `Quick
       test_single_valid_game_move;
+    Tztest.tztest
+      "A refutation with a long inbox proof fails."
+      `Quick
+      test_inbox_proof_too_long;
+    Tztest.tztest
+      "A refutation with a long pvm_step proof fails."
+      `Quick
+      test_pvm_step_proof_too_long;
     Tztest.tztest
       "Staker can be in at most one game (injectivity)."
       `Quick

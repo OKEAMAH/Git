@@ -921,6 +921,28 @@ let test_originating_with_random_proof () =
       return_unit
   | _ -> failwith "It should have failed with [Sc_rollup_proof_check]"
 
+let test_originating_with_long_proof () =
+  let* b, _address = Context.init1 () in
+  let* ctxt = Block.to_alpha_ctxt b in
+  let max_proof_size =
+    Constants_storage.sc_rollup_max_proof_size
+      (Alpha_context.Internal_for_tests.to_raw ctxt)
+  in
+  let origination_proof =
+    Sc_rollup.Proof.Internal_for_tests.serialized_of_string
+    @@ String.make (max_proof_size + 1) 'a'
+  in
+  let expected_err = Sc_rollup_proof_repr.Sc_rollup_proof_too_long in
+  let*! res =
+    init_and_originate
+      ~boot_sector:"some boot sector"
+      ~origination_proof
+      Context.T1
+      "unit"
+  in
+
+  Assert.proto_error ~loc:__LOC__ res (( = ) expected_err)
+
 let assert_equal_expr ~loc e1 e2 =
   let s1 = Format.asprintf "%a" Michelson_v1_printer.print_expr e1 in
   let s2 = Format.asprintf "%a" Michelson_v1_printer.print_expr e2 in
@@ -1493,6 +1515,31 @@ let test_invalid_output_proof () =
        rollup
        ~originator
        ~output_proof:"No good"
+       ~commitment_hash:cemented_commitment)
+
+let test_output_proof_too_long () =
+  let* block, (baker, originator) = context_init Context.T2 in
+  let baker = Context.Contract.pkh baker in
+  (* Originate a rollup that accepts a list of string tickets as input. *)
+  let* block, rollup = sc_originate block originator "list (ticket string)" in
+  let* incr = Incremental.begin_construction block in
+  (* Publish and cement a commitment. *)
+  let* cemented_commitment, incr =
+    publish_and_cement_dummy_commitment incr ~baker ~originator rollup
+  in
+  let max_proof_size =
+    Constants_storage.sc_rollup_max_proof_size
+      (Alpha_context.Internal_for_tests.to_raw @@ Incremental.alpha_ctxt incr)
+  in
+  let output_proof = String.make (max_proof_size + 1) 'a' in
+  assert_fails
+    ~loc:__LOC__
+    ~error:Sc_rollup_proof_repr.Sc_rollup_proof_too_long
+    (execute_outbox_message
+       incr
+       rollup
+       ~originator
+       ~output_proof
        ~commitment_hash:cemented_commitment)
 
 let test_execute_message_override_applied_messages_slot () =
@@ -2620,6 +2667,10 @@ let tests =
       `Quick
       test_originating_with_random_proof;
     Tztest.tztest
+      "originating with long proof"
+      `Quick
+      test_originating_with_long_proof;
+    Tztest.tztest
       "originating with valid type"
       `Quick
       test_originating_with_valid_type;
@@ -2649,6 +2700,7 @@ let tests =
       `Quick
       test_zero_amount_ticket;
     Tztest.tztest "invalid output proof" `Quick test_invalid_output_proof;
+    Tztest.tztest "output proof too long" `Quick test_output_proof_too_long;
     Tztest.tztest
       "outbox message that overrides an old slot"
       `Quick

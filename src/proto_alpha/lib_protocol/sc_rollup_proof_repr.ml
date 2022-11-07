@@ -28,6 +28,8 @@ type error += Sc_rollup_proof_check of string
 
 type error += Sc_rollup_invalid_serialized_inbox_proof
 
+type error += Sc_rollup_proof_too_long
+
 let () =
   register_error_kind
     `Permanent
@@ -47,7 +49,16 @@ let () =
     ~pp:(fun fmt () -> Format.fprintf fmt "Invalid serialized inbox proof")
     Data_encoding.unit
     (function Sc_rollup_invalid_serialized_inbox_proof -> Some () | _ -> None)
-    (fun () -> Sc_rollup_invalid_serialized_inbox_proof)
+    (fun () -> Sc_rollup_invalid_serialized_inbox_proof) ;
+  register_error_kind
+    `Permanent
+    ~id:"Sc_rollup_proof_too_long"
+    ~title:"Sc_rollup_proof_too_long"
+    ~description:"Sc_rollup_proof_too_long"
+    ~pp:(fun fmt () -> Format.fprintf fmt "Sc_rollup_proof_too_long")
+    Data_encoding.unit
+    (function Sc_rollup_proof_too_long -> Some () | _ -> None)
+    (fun () -> Sc_rollup_proof_too_long)
 
 type reveal_proof =
   | Raw_data_proof of string
@@ -166,6 +177,45 @@ let unserialize_pvm_step (type state proof output)
   | None -> error (Sc_rollup_proof_check "Cannot unserialize proof")
 
 let serialized_encoding = Data_encoding.string Hex
+
+let check_proof_size max_size proof =
+  let open Lwt_result_syntax in
+  let {pvm_step; input_proof} = proof in
+  let* input_proof_length =
+    match input_proof with
+    | Some (Inbox_proof {proof; _}) ->
+        let length =
+          Option.map Bytes.length
+          @@ Data_encoding.Binary.to_bytes_opt
+               Sc_rollup_inbox_repr.serialized_proof_encoding
+               proof
+        in
+
+        Lwt.return
+        @@ Option.to_result
+             ~none:(trace_of_error Sc_rollup_invalid_serialized_inbox_proof)
+             length
+    | Some (Reveal_proof rev_proof) -> (
+        match rev_proof with
+        | Raw_data_proof s -> return @@ String.length s
+        | Dal_page_proof {proof; _} ->
+            let length =
+              Option.map Bytes.length
+              @@ Data_encoding.Binary.to_bytes_opt
+                   Dal_slot_repr.History.proof_encoding
+                   proof
+            in
+            Lwt.return
+            @@ Option.to_result
+                 ~none:(trace_of_error Sc_rollup_invalid_serialized_inbox_proof)
+                 length
+        | _ -> return 0)
+    | _ -> return 0
+  in
+  let pvm_step_length = String.length pvm_step in
+  fail_when
+    Compare.Int.(pvm_step_length + input_proof_length > max_size)
+    Sc_rollup_proof_too_long
 
 let encoding =
   let open Data_encoding in
@@ -489,3 +539,9 @@ let produce ~metadata pvm_and_state commit_level =
   let* pvm_step_proof = P.produce_proof P.context input_given P.state in
   let*? pvm_step = serialize_pvm_step ~pvm:(module P) pvm_step_proof in
   return {pvm_step; input_proof}
+
+module Internal_for_tests = struct
+  let serialized_of_string x = x
+
+  let serialized_to_string x = x
+end

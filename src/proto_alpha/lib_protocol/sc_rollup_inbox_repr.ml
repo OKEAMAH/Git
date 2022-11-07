@@ -857,6 +857,8 @@ module Internal_for_tests = struct
   let get_level_of_history_proof (history_proof : history_proof) =
     let ({level; _} : level_proof) = Skip_list.content history_proof in
     level
+
+  let serialized_proof_to_string x = x
 end
 
 type inbox = t

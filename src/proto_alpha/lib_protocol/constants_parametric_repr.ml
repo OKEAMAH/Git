@@ -108,6 +108,7 @@ type sc_rollup = {
   number_of_sections_in_dissection : int;
   timeout_period_in_blocks : int;
   max_number_of_stored_cemented_commitments : int;
+  max_proof_size : int;
 }
 
 type zk_rollup = {
@@ -247,8 +248,9 @@ let sc_rollup_encoding =
           c.max_active_outbox_levels,
           c.max_outbox_messages_per_level,
           c.number_of_sections_in_dissection ),
-        (c.timeout_period_in_blocks, c.max_number_of_stored_cemented_commitments)
-      ))
+        ( c.timeout_period_in_blocks,
+          c.max_number_of_stored_cemented_commitments,
+          c.max_proof_size ) ))
     (fun ( ( sc_rollup_enable,
              sc_rollup_origination_size,
              sc_rollup_challenge_window_in_blocks,
@@ -260,7 +262,8 @@ let sc_rollup_encoding =
              sc_rollup_max_outbox_messages_per_level,
              sc_rollup_number_of_sections_in_dissection ),
            ( sc_rollup_timeout_period_in_blocks,
-             sc_rollup_max_number_of_cemented_commitments ) ) ->
+             sc_rollup_max_number_of_cemented_commitments,
+             sc_rollup_max_proof_size ) ) ->
       {
         enable = sc_rollup_enable;
         origination_size = sc_rollup_origination_size;
@@ -277,6 +280,7 @@ let sc_rollup_encoding =
         timeout_period_in_blocks = sc_rollup_timeout_period_in_blocks;
         max_number_of_stored_cemented_commitments =
           sc_rollup_max_number_of_cemented_commitments;
+        max_proof_size = sc_rollup_max_proof_size;
       })
     (merge_objs
        (obj10
@@ -290,9 +294,10 @@ let sc_rollup_encoding =
           (req "sc_rollup_max_active_outbox_levels" int32)
           (req "sc_rollup_max_outbox_messages_per_level" int31)
           (req "sc_rollup_number_of_sections_in_dissection" uint8))
-       (obj2
+       (obj3
           (req "sc_rollup_timeout_period_in_blocks" int31)
-          (req "sc_rollup_max_number_of_cemented_commitments" int31)))
+          (req "sc_rollup_max_number_of_cemented_commitments" int31)
+          (req "sc_rollup_max_proof_size" int31)))
 
 let zk_rollup_encoding =
   let open Data_encoding in

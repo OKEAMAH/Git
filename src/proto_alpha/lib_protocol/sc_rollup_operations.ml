@@ -189,6 +189,17 @@ let check_origination_proof (type state proof output)
 let originate ctxt ~kind ~boot_sector ~origination_proof ~parameters_ty =
   let open Lwt_result_syntax in
   let (Packed ((module PVM) as pvm)) = Sc_rollup.Kind.pvm_of kind in
+  let* () =
+    let constants = Constants.sc_rollup ctxt in
+    let string_proof =
+      Data_encoding.Binary.to_string_exn
+        Sc_rollup.Proof.serialized_encoding
+        origination_proof
+    in
+    fail_when
+      Compare.Int.(String.length string_proof > constants.max_proof_size)
+      Sc_rollup_proof_repr.Sc_rollup_proof_too_long
+  in
   let*? ctxt =
     let open Result_syntax in
     let* parameters_ty, ctxt =
@@ -359,6 +370,16 @@ let execute_outbox_message ctxt ~validate_and_decode_output_proof rollup
   (* Get inbox level of last cemented commitment, needed to validate that the
      outbox message is active. This call also implicitly checks that the rollup
      exists. *)
+  let* () =
+    let constants = Constants.sc_rollup ctxt in
+    fail_when
+      Compare.Int.(String.length output_proof > constants.max_proof_size)
+      Sc_rollup_proof_repr.Sc_rollup_proof_too_long
+  in
+  (* TODO: #3211
+     Allow older cemented commits as well.
+     This has the benefits of eliminating any race condition where new commits
+     are cemented and makes inclusion proofs obsolete. *)
   let* lcc_hash, lcc_level, ctxt =
     Sc_rollup.Commitment.last_cemented_commitment_hash_with_level ctxt rollup
   in

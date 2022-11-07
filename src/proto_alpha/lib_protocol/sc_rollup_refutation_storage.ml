@@ -282,6 +282,13 @@ let start_game ctxt rollup ~player:refuter ~opponent:defender =
 
 let game_move ctxt rollup ~player ~opponent refutation =
   let open Lwt_result_syntax in
+  let constants = Constants_storage.sc_rollup ctxt in
+  let max_size = constants.max_proof_size in
+  let* () =
+    match Sc_rollup_game_repr.(refutation.step) with
+    | Proof proof -> Sc_rollup_proof_repr.check_proof_size max_size proof
+    | _ -> return_unit
+  in
   let stakers = Sc_rollup_game_repr.Index.make player opponent in
   let* game, ctxt = get_game ctxt rollup stakers in
   let* ctxt, kind = Store.PVM_kind.get ctxt rollup in

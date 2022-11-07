@@ -458,7 +458,7 @@
   liquidity_baking_cpmm.ml
   liquidity_baking_lqt.ml
   liquidity_baking_migration.ml liquidity_baking_migration.mli
-  sc_rollup_errors.ml
+  sc_rollup_errors.ml sc_rollup_errors.mli
   sc_rollup_inbox_storage.ml sc_rollup_inbox_storage.mli
   legacy_script_patches.ml
   init_storage.ml init_storage.mli
@@ -717,7 +717,7 @@
   liquidity_baking_cpmm.ml
   liquidity_baking_lqt.ml
   liquidity_baking_migration.ml liquidity_baking_migration.mli
-  sc_rollup_errors.ml
+  sc_rollup_errors.ml sc_rollup_errors.mli
   sc_rollup_inbox_storage.ml sc_rollup_inbox_storage.mli
   legacy_script_patches.ml
   init_storage.ml init_storage.mli
@@ -981,7 +981,7 @@
   liquidity_baking_cpmm.ml
   liquidity_baking_lqt.ml
   liquidity_baking_migration.ml liquidity_baking_migration.mli
-  sc_rollup_errors.ml
+  sc_rollup_errors.ml sc_rollup_errors.mli
   sc_rollup_inbox_storage.ml sc_rollup_inbox_storage.mli
   legacy_script_patches.ml
   init_storage.ml init_storage.mli

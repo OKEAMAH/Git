@@ -158,6 +158,8 @@ val max_number_of_stored_cemented_commitments : Raw_context.t -> int
 
 val sc_rollup_timeout_period_in_blocks : Raw_context.t -> int
 
+val sc_rollup_max_proof_size : Raw_context.t -> int
+
 val dal_number_of_slots : Raw_context.t -> int
 
 val dal_enable : Raw_context.t -> bool

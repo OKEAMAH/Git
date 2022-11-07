@@ -825,6 +825,7 @@ module Constants : sig
       number_of_sections_in_dissection : int;
       timeout_period_in_blocks : int;
       max_number_of_stored_cemented_commitments : int;
+      max_proof_size : int;
     }
 
     type zk_rollup = {
@@ -3074,6 +3075,8 @@ module Dal : sig
       (t * History_cache.t) tzresult
 
     type proof
+
+    val proof_encoding : proof Data_encoding.t
   end
 
   module Slots_storage : sig
@@ -3434,6 +3437,8 @@ module Sc_rollup : sig
 
       val add_info_per_level :
         context -> Time.t -> Block_hash.t -> context tzresult Lwt.t
+
+      val serialized_proof_to_string : serialized_proof -> string
     end
 
     val add_external_messages : context -> string list -> context tzresult Lwt.t
@@ -3893,6 +3898,12 @@ module Sc_rollup : sig
       (module PVM_with_context_and_state) ->
       Raw_level.t ->
       serialized t tzresult Lwt.t
+
+    module Internal_for_tests : sig
+      val serialized_to_string : serialized -> string
+
+      val serialized_of_string : string -> serialized
+    end
   end
 
   module Game : sig

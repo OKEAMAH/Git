@@ -371,6 +371,8 @@ module Internal_for_tests : sig
       serializing a proof with {!to_serialized_proof}. *)
   val serialized_proof_of_string : string -> serialized_proof
 
+  val serialized_proof_to_string : serialized_proof -> string
+
   val get_level_of_history_proof : history_proof -> Raw_level_repr.t
 end
 
