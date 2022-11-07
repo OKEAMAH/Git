@@ -29,12 +29,12 @@ set -x
 dnf install -y dnf-plugins-core
 # [install tezos]
 dnf copr enable -y $REPO && dnf update -y
-dnf install -y tezos-client
+dnf install -y octez-client
 dnf install -y tezos-node
 dnf install -y tezos-baker-014-PtKathma
 dnf install -y tezos-accuser-014-PtKathma
 # [test executables]
-tezos-client --version
+octez-client --version
 tezos-node --version
 tezos-baker-014-PtKathma --version
 tezos-accuser-014-PtKathma --version

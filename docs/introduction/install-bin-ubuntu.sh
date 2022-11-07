@@ -31,12 +31,12 @@ apt-get install sudo
 apt-get install -y software-properties-common </dev/null
 # [install tezos]
 sudo add-apt-repository -y $REPO && sudo apt-get update
-sudo apt-get install -y tezos-client
+sudo apt-get install -y octez-client
 sudo apt-get install -y tezos-node
 sudo apt-get install -y tezos-baker-014-ptkathma
 sudo apt-get install -y tezos-accuser-014-ptkathma
 # [test executables]
-tezos-client --version
+octez-client --version
 tezos-node --version
 tezos-baker-014-PtKathma --version
 tezos-accuser-014-PtKathma --version

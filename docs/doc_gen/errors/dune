@@ -2,7 +2,7 @@
  (name error_doc)
  (libraries data-encoding
             tezos-shell
-            tezos-client-alpha)
+            octez-client-alpha)
  (flags (:standard -open Tezos_base
                    -open Tezos_error_monad
                    -open Data_encoding

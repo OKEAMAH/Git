@@ -648,7 +648,7 @@ These operations notably includes:
   - Posting rejections (``--rejection-signer``)
 
 These various command-line arguments accept the Tezos implicit account
-aliases registered in the ``~/.tezos-client`` directory.
+aliases registered in the ``~/.octez-client`` directory.
 
 Note that the same keys can be used to sign several kind of layer-1
 operations.

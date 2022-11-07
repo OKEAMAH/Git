@@ -355,7 +355,7 @@ hierarchical deterministic wallets. As usual, in this case it is
 important to note the derivation path of the key to be able to recover
 it in case of loss.
 At the moment there is no hardware wallet support, keys are stored in
-`~/.tezos-client/sapling_keys` by default encrypted with a password.
+`~/.octez-client/sapling_keys` by default encrypted with a password.
 **Users should take care to backup this file.**
 
 The client can also derive addresses from viewing keys.
@@ -455,7 +455,7 @@ The update is done using the RPCs to recover the new updates since the
 last known position.
 
 The state of all sapling contracts is stored in
-`~/.tezos-client/sapling_states`. This file can be regenerated from
+`~/.octez-client/sapling_states`. This file can be regenerated from
 the chain in case of loss. However disclosure of this file will reveal
 the balance and the unspent outputs of all viewing keys.
 
@@ -485,7 +485,7 @@ unshielding.
    # set up the sandbox
    ./src/bin_node/octez-sandboxed-node.sh 1 --connections 0 &
    eval `./src/bin_client/octez-init-sandboxed-client.sh 1`
-   tezos-activate-alpha
+   octez-activate-alpha
 
    # originate the contract with its initial empty sapling storage,
    # bake a block to include it.

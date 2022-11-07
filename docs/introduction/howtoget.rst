@@ -169,11 +169,11 @@ You can open a new shell session and run ``docker ps`` in it, to display all the
     3ee7fcbc2158  docker.io/tezos/tezos:latest  tezos-accuser         3 minutes ago  Up 35 seconds ago                                                  accuser-alpha
 
 
-The node's RPC interface will be available on localhost and can be queried with ``tezos-client``.
+The node's RPC interface will be available on localhost and can be queried with ``octez-client``.
 
 ::
 
-    docker exec node-alpha tezos-client rpc list
+    docker exec node-alpha octez-client rpc list
 
 Building Docker Images Locally
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

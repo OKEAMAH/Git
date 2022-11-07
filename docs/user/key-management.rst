@@ -213,7 +213,7 @@ signer and it is not used as a Tezos account.
 ::
 
    vps~$ octez-client gen keys vps
-   vps~$ cat ~/.tezos-client/public_keys
+   vps~$ cat ~/.octez-client/public_keys
    [ { "name": "vps",
        "value":
           "unencrypted:edpk123456789" } ]
@@ -266,7 +266,7 @@ foundation.
 
    octez-client activate fundraiser account alice with <code>
 
-Like explained above, your keys are stored under ``~/.tezos-client``.
+Like explained above, your keys are stored under ``~/.octez-client``.
 We strongly advice you to first **make a backup** and then
 transfer your tokens to a new pair of keys imported from a ledger (see
 :ref:`ledger`).

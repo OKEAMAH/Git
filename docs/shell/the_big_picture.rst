@@ -250,7 +250,7 @@ The client is split into many packages, to enforce three separation
 lines: shell vs economic protocol, Unix dependent vs JavaScript
 compatible, and library vs command-line interface.
 
-  - :package:`tezos-client-base` defines the client context, which is
+  - :package:`octez-client-base` defines the client context, which is
     an object whose methods allow for: accessing a wallet of keys,
     interacting via the user, making RPC calls, and signing data using
     signer plug-ins. Most of them, including RPC calling functions from
@@ -258,12 +258,12 @@ compatible, and library vs command-line interface.
     :package:`tezos-protocol-alpha`, are abstracted over this object
     type. That way, it is possible to use the same code for different
     platforms or toolkits.
-  - :package:`tezos-client-alpha` provides some functions to perform
+  - :package:`octez-client-alpha` provides some functions to perform
     the operations of protocol Alpha using the wallet and signers from
     the client context.
-  - :package:`tezos-client-genesis` contains the basic activator
+  - :package:`octez-client-genesis` contains the basic activator
     commands available on the genesis protocol.
-  - :package:`tezos-client-base-unix` implements configuration file
+  - :package:`octez-client-base-unix` implements configuration file
     and wallet storage in Unix files, user interaction via the Unix
     console, and terminal based signer plug-ins.
 

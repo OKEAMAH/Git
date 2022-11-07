@@ -155,7 +155,7 @@ Let us originate this contract.
 
 ::
 
-   tezos-client -l originate contract mini transferring 0 from bootstrap1 running minimal.tz --burn-cap 0.07375 --init 'Unit'
+   octez-client -l originate contract mini transferring 0 from bootstrap1 running minimal.tz --burn-cap 0.07375 --init 'Unit'
 
 During simulation, the ``preapply`` RPC is given the following
 operation:
@@ -199,7 +199,7 @@ corresponding to the **exact** amount of gas consumed, labelled in
 **milligas**; - the field ``consumed_gas``, obtained by ceiling the
 milligas value as described above, labelled in **gas**.
 
-Note that the ``tezos-client`` binary prints gas, not milligas. However
+Note that the ``octez-client`` binary prints gas, not milligas. However
 it displays three decimals:
 
 ::

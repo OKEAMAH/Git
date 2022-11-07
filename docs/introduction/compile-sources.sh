@@ -64,7 +64,7 @@ make
 # removes Mainnet/testnet disclaimers:
 # export TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER=Y
 # [test executables]
-./tezos-client --version
+./octez-client --version
 ./tezos-node --version
 ./tezos-baker-alpha --version
 ./tezos-accuser-alpha --version

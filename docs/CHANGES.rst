@@ -143,7 +143,7 @@ Node
 Client
 ------
 
-- The light client (`tezos-client --mode light`) now uses the
+- The light client (`octez-client --mode light`) now uses the
   `../block/<block_id>/merkle_tree_v2` RPC introduced in this version, removing
   a lot of delicate verification code and relying on Irmin instead. The client
   for this version will thus not work with older node versions that do not have
@@ -157,8 +157,8 @@ Client
   source.
 
 - Added commands to get the used and paid storage spaces of contracts:
-  ``tezos-client get used storage space for <contract>`` and
-  ``tezos-client get paid storage space for <contract>``.
+  ``octez-client get used storage space for <contract>`` and
+  ``octez-client get paid storage space for <contract>``.
 
 - Added RPCs to get the used and paid storage spaces of contracts:
   ``GET /chains/<chain_id>/blocks/<block_id>/context/contracts/<contract_id>/storage/used_space``
@@ -169,13 +169,13 @@ Client
 	Update the consensus key of a baker:
 
 ```shell
-tezos-client set consensus key for <mgr> to <key>
+octez-client set consensus key for <mgr> to <key>
 ```
 
   It is also possible to register as a delegate and immediately set the consensus key:
 
 ```shell
-tezos-client register key <mgr> as delegate with consensus key <key>
+octez-client register key <mgr> as delegate with consensus key <key>
 ```
 
   (The current registration command still works.)
@@ -184,13 +184,13 @@ tezos-client register key <mgr> as delegate with consensus key <key>
   Drain a baker's account:
 
 ```shell
-tezos-client drain delegate <mgr> to <key>
+octez-client drain delegate <mgr> to <key>
 ```
 
   or, if the destination account is different from the consensus key
 
 ```shell
-tezos-client drain delegate <mgr> to <dest_key> with <consensus_key>
+octez-client drain delegate <mgr> to <dest_key> with <consensus_key>
 ```
 
 

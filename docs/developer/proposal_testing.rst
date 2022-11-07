@@ -43,7 +43,7 @@ By default, the sandbox starts from the `genesis` block at level 0, and the
 sandbox's active protocol is the `Genesis protocol`. Once the sandbox is
 started, the Alpha protocol can be activated by invoking the command::
 
-  $ tezos-activate-alpha
+  $ octez-activate-alpha
 
 This command inserts a new block after which the active protocol is the Alpha
 protocol. From this point on, making the chain progress is straightforward
@@ -495,7 +495,7 @@ We can also start the client::
 
   $ eval `./src/bin_client/octez-init-sandboxed-client.sh 1`
 
-Instead of command ``tezos-activate-alpha``, the sandboxed client script
+Instead of command ``octez-activate-alpha``, the sandboxed client script
 ``src/bin_client/octez-init-sandboxed-client.sh`` now accepts a command
 ``tezos-activate-XXX-<short_hash>`` that activates the predecessor protocol with
 version number ``XXX`` and short hash ``<short_hash>``. In our example, the

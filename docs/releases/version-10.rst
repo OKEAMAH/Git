@@ -138,7 +138,7 @@ Some of the previous instructions require you to export a snapshot.
 Here is how to do so. You may also just download a recent snapshot
 instead.
 
-- Get the hash of the current block using: ``./tezos-client rpc get
+- Get the hash of the current block using: ``./octez-client rpc get
   /chains/main/blocks/head | grep 'hash\": \"BL'`` (or simply find the
   hash in the logs of your running node).
 

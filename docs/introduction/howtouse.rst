@@ -275,7 +275,7 @@ To check the account (also called a contract) for Alice has been created::
 
       $ octez-client list known contracts
 
-You will notice that the client data directory (by default, ``~/.tezos-client``) has been populated with
+You will notice that the client data directory (by default, ``~/.octez-client``) has been populated with
 3 files ``public_key_hashs``, ``public_keys`` and ``secret_keys``.
 The content of each file is in JSON and keeps the mapping between
 aliases (e.g., ``alice``) and the kind of keys indicated by the name
@@ -619,7 +619,7 @@ Environment variables for the client
 The behavior of the client can be configured using the following environment variables:
 
 - `TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER`: Setting this variable to "YES" (or: "yes", "Y", "y") disables the warning displayed by the client at startup when it is not launched on Mainnet.
-- `TEZOS_CLIENT_DIR`: This variable may be used to supply the client data directory (by default, ``~/.tezos-client``).
+- `TEZOS_CLIENT_DIR`: This variable may be used to supply the client data directory (by default, ``~/.octez-client``).
   Its value is overridden by option ``-d``.
 - `TEZOS_SIGNER_*`: These variables are used for connecting the client to a remote :ref:`signer <signer>` (see there for details).
 - `TEZOS_CLIENT_RPC_TIMEOUT_SECONDS`: This variable controls how long (in seconds, as an integer)
