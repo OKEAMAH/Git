@@ -32,6 +32,8 @@
 # then moves the log files to the result directory returned by the latter
 # (through the last_run_dir file).
 
+set -e # Stop on first error.
+
 cd /data/tezos-benchmarks
 bash run_all_benchmarks_on_latest_master.sh > cron_res 2> cron_res_errors
 SNOOP_RESULT_DIR="$(cat last_run_dir)"

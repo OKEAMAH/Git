@@ -40,6 +40,12 @@ dated_log() {
 
 dated_log "Starting benchmarks processes"
 
+# Check that the previous process is over.
+if [ -f "current_run_dir" ]; then
+    dated_log "Can't start the benchmarks process for $TODAY: the previous process isn't over or has failed. cron_res, cron_res_errors and current_run_dir should contain clues to investigate the issue" >> anomalies
+    exit 1
+fi
+
 # Clean _opam to have a fresh dependencies environment and fetch the latest
 # commit.
 cd /data/tezos-benchmarks/tezos
