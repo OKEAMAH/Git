@@ -3299,17 +3299,31 @@ let register_ ~kind ~protocols =
 
 let mint_and_deposit_ticket_to_rollup =
   {|
-    { parameter (pair (pair (contract (pair string (ticket string))) nat) string) ;
+    { parameter
+        (pair
+            (pair
+              (contract %rollup (pair string (ticket string)))
+              (string %rollup_account))
+            (pair
+              (nat %ticket_amount)
+              (string %ticket_content))) ;
       storage unit ;
       code { CAR ;
-             UNPAIR ;
-             UNPAIR ;
+             DUP ;
+             CAR ;
+             CAR ;
              PUSH mutez 0 ;
-             DIG 2 ;
-             PUSH string "TXA" ;
+             DUP 3 ;
+             CDR ;
+             CAR ;
+             DUP 4 ;
+             CAR ;
+             CDR ;
              TICKET ;
              ASSERT_SOME ;
              DIG 3 ;
+             CAR ;
+             CDR ;
              PAIR ;
              TRANSFER_TOKENS ;
              PUSH unit Unit ;
@@ -3363,7 +3377,7 @@ let test_tx_kernel protocols ~test_name =
       let* () =
         (* Internal message through forwarder *)
         let receiver = Option.get mint_and_deposit_contract in
-        let arg = sf {|Pair (Pair %S 1) "Hello"|} sc_rollup in
+        let arg = sf {|Pair (Pair %S "tz4") (Pair 1 "XYZ")|} sc_rollup in
         Client.transfer
           client
           ~amount:Tez.zero
