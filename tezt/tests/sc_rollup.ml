@@ -830,12 +830,14 @@ let test_rollup_node_boots_into_initial_state ~kind =
     in
     Check.(level = init_level)
       Check.int
-      ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+      ~error_msg:
+        "Current level has moved past origination level (current = %L, \
+         expected = %R)" ;
 
     let* ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
     Check.(ticks = 0)
       Check.int
-      ~error_msg:"Unexpected initial tick count (%L = %R)" ;
+      ~error_msg:"Unexpected initial tick count (current = %L, expected = %R)" ;
 
     let* status = Sc_rollup_client.status ~hooks sc_rollup_client in
     let expected_status =
@@ -846,7 +848,7 @@ let test_rollup_node_boots_into_initial_state ~kind =
     in
     Check.(status = expected_status)
       Check.string
-      ~error_msg:"Unexpected PVM status (%L = %R)" ;
+      ~error_msg:"Unexpected PVM status (current = %L, expected = %R)" ;
 
     Lwt.return_unit
   in
@@ -880,7 +882,9 @@ let test_rollup_node_advances_pvm_state protocols ~test_name ~boot_sector
     in
     Check.(level = init_level)
       Check.int
-      ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+      ~error_msg:
+        "Current level has moved past origination level (current = %L, \
+         expected = %R)" ;
     let* level, forwarder =
       if not internal then return (level, None)
       else
@@ -1174,7 +1178,9 @@ let commitment_stored _protocol sc_rollup_node sc_rollup _node client =
   in
   Check.(level = init_level)
     Check.int
-    ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+    ~error_msg:
+      "Current level has moved past origination level (current = %L, expected \
+       = %R)" ;
   let* () =
     (* at init_level + i we publish i messages, therefore at level
        init_level + i a total of 1+..+i = (i*(i+1))/2 messages will have been
@@ -1205,7 +1211,8 @@ let commitment_stored _protocol sc_rollup_node sc_rollup _node client =
   Check.(stored_inbox_level = Some (levels_to_commitment + init_level))
     (Check.option Check.int)
     ~error_msg:
-      "Commitment has been stored at a level different than expected (%L = %R)" ;
+      "Commitment has been stored at a level different than expected (current \
+       = %L, expected = %R)" ;
   (* Bake one level for commitment to be included *)
   let* () = Client.bake_for_and_wait client in
   let* published_commitment =
@@ -1312,7 +1319,9 @@ let commitment_not_stored_if_non_final _protocol sc_rollup_node sc_rollup _node
   in
   Check.(level = init_level)
     Check.int
-    ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+    ~error_msg:
+      "Current level has moved past origination level (current = %L, expected \
+       = %R)" ;
   let* () = send_messages levels_to_commitment client in
   let* _ =
     Sc_rollup_node.wait_for_level
@@ -1334,7 +1343,8 @@ let commitment_not_stored_if_non_final _protocol sc_rollup_node sc_rollup _node
   Check.(stored_inbox_level = None)
     (Check.option Check.int)
     ~error_msg:
-      "Commitment has been stored at a level different than expected (%L = %R)" ;
+      "Commitment has been stored at a level different than expected (current \
+       = %L, expected = %R)" ;
   let* commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
   in
@@ -1342,11 +1352,12 @@ let commitment_not_stored_if_non_final _protocol sc_rollup_node sc_rollup _node
   Check.(published_inbox_level = None)
     (Check.option Check.int)
     ~error_msg:
-      "Commitment has been published at a level different than expected (%L = \
-       %R)" ;
+      "Commitment has been published at a level different than expected \
+       (current = %L, expected = %R)" ;
   Lwt.return_unit
 
-let commitments_messages_reset _protocol sc_rollup_node sc_rollup _node client =
+let commitments_messages_reset ~kind _protocol sc_rollup_node sc_rollup _node
+    client =
   (* For `sc_rollup_commitment_period_in_blocks` levels after the sc rollup
      origination, i messages are sent to the rollup, for a total of
      `sc_rollup_commitment_period_in_blocks *
@@ -1374,7 +1385,9 @@ let commitments_messages_reset _protocol sc_rollup_node sc_rollup _node client =
   in
   Check.(level = init_level)
     Check.int
-    ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+    ~error_msg:
+      "Current level has moved past origination level (current = %L, expected \
+       = %R)" ;
   let* () =
     (* At init_level + i we publish i messages, therefore at level
        init_level + 20 a total of 1+..+20 = (20*21)/2 = 210 messages
@@ -1403,13 +1416,14 @@ let commitments_messages_reset _protocol sc_rollup_node sc_rollup _node client =
   Check.(stored_inbox_level = Some (init_level + (2 * levels_to_commitment)))
     (Check.option Check.int)
     ~error_msg:
-      "Commitment has been stored at a level different than expected (%L = %R)" ;
+      "Commitment has been stored at a level different than expected (current \
+       = %L, expected = %R)" ;
   (let stored_number_of_ticks = Option.map number_of_ticks stored_commitment in
    Check.(stored_number_of_ticks = Some (2 * levels_to_commitment))
      (Check.option Check.int)
      ~error_msg:
        "Number of messages processed by commitment is different from the \
-        number of messages expected (%L = %R)") ;
+        number of messages expected (current = %L, expected = %R)") ;
   let* published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
   in
@@ -1452,7 +1466,9 @@ let commitment_stored_robust_to_failures _protocol sc_rollup_node sc_rollup node
   in
   Check.(level = init_level)
     Check.int
-    ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+    ~error_msg:
+      "Current level has moved past origination level (current = %L, expected \
+       = %R)" ;
   let* () =
     (* at init_level + i we publish i messages, therefore at level
        init_level + i a total of 1+..+i = (i*(i+1))/2 messages will have been
@@ -1608,7 +1624,8 @@ let commitments_reorgs ~kind protocol sc_rollup_node sc_rollup node client =
   Check.(stored_inbox_level = Some (init_level + levels_to_commitment))
     (Check.option Check.int)
     ~error_msg:
-      "Commitment has been stored at a level different than expected (%L = %R)" ;
+      "Commitment has been stored at a level different than expected (current \
+       = %L, expected = %R)" ;
   let () = Log.info "init_level: %d" init_level in
   (let stored_number_of_ticks = Option.map number_of_ticks stored_commitment in
    let additional_ticks =
@@ -1713,7 +1730,9 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
   in
   Check.(level = init_level)
     Check.int
-    ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+    ~error_msg:
+      "Current level has moved past origination level (current = %L, expected \
+       = %R)" ;
   let* () = bake_levels commitment_period client in
   let* commitment_inbox_level =
     Sc_rollup_node.wait_for_level
@@ -1809,7 +1828,9 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
   in
   Check.(rollup_node2_catchup_level = level_after_cementation)
     Check.int
-    ~error_msg:"Current level has moved past cementation inbox level (%L = %R)" ;
+    ~error_msg:
+      "Current level has moved past cementation inbox level (current = %L, \
+       expected = %R)" ;
   (* Check that no commitment was published. *)
   let* rollup_node2_last_published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client'
@@ -1835,7 +1856,8 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
       = Option.map hash rollup_node2_stored_commitment)
       (Check.option Check.string)
       ~error_msg:
-        "Commitment stored by first and second rollup nodes differ (%L = %R)"
+        "Commitment stored by first and second rollup nodes differ (current = \
+         %L, expected = %R)"
   in
 
   (* Bake other commitment_period levels and check that rollup_node2 is
@@ -1870,7 +1892,7 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node sc_rollup node
       (Check.option Check.string)
       ~error_msg:
         "Predecessor fo commitment published by rollup_node2 should be the \
-         cemented commitment (%L = %R)"
+         cemented commitment (current = %L, expected = %R)"
   in
   return ()
 
@@ -1892,7 +1914,9 @@ let first_published_level_is_global _protocol sc_rollup_node sc_rollup node
   in
   Check.(level = init_level)
     Check.int
-    ~error_msg:"Current level has moved past origination level (%L = %R)" ;
+    ~error_msg:
+      "Current level has moved past origination level (current = %L, expected \
+       = %R)" ;
   let* () = bake_levels commitment_period client in
   let* commitment_inbox_level =
     Sc_rollup_node.wait_for_level
@@ -1956,7 +1980,9 @@ let first_published_level_is_global _protocol sc_rollup_node sc_rollup node
   in
   Check.(rollup_node2_catchup_level = commitment_finalized_level)
     Check.int
-    ~error_msg:"Current level has moved past cementation inbox level (%L = %R)" ;
+    ~error_msg:
+      "Current level has moved past cementation inbox level (current = %L, \
+       expected = %R)" ;
   (* Check that no commitment was published. *)
   let* rollup_node2_published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client'
@@ -1973,7 +1999,7 @@ let first_published_level_is_global _protocol sc_rollup_node sc_rollup node
       (Check.option Check.int)
       ~error_msg:
         "Rollup nodes do not agree on level when commitment was first \
-         published (%L = %R)"
+         published (current = %L, expected = %R)"
   in
   return ()
 
