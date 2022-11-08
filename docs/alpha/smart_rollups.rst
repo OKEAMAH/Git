@@ -595,7 +595,7 @@ The rest of the section proceeds as follows.
 #. First, we explain the execution environment of a WASM kernel: when
    it is parsed, executed, etc.
 #. Then, we explain in more details the API at the disposal of WASM
-   kernel developers
+   kernel developers.
 #. Finally, we demonstrate how Rust in particular can used to
    implement WASM kernel.
 
@@ -662,7 +662,7 @@ complete, because diverging computations are not compatible with the
 optimistic rollup infrastructure of Tezos. To dodge the halting
 problem, the reference interpreter of WASM used during the rejection
 enforces a bound on the number of ticks used in a call to
-``kernel_next``. One the maximum number of ticks is reached, the
+``kernel_next``. Once the maximum number of ticks is reached, the
 execution of ``kernel_next`` is trapped (*i.e.*, interrupted with an
 error).
 
@@ -679,15 +679,16 @@ Host Functions
 ^^^^^^^^^^^^^^
 
 At its core, the WASM machine defined in the WASM standard is a very
-evolved arithmetic machine. Only when it is enriched with so-called
-host functions can it be used for greater purposes. The host functions
-provides a API to the WASM program to interact with an “outer world.”
-In a browser, this API typically allows the WASM program to interact
-with the `DOM <https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model>`_
+evolved arithmetic machine. It needs to be enriched with so-called
+host functions in order to be used for greater purposes. The host
+functions provides an API to the WASM program to interact with an
+“outer world.”  In a browser, this API typically allows the WASM
+program to interact with the `DOM
+<https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model>`_
 of the webpage.
 
 As for smart rollups, the host functions exposed to a WASM kernel
-allows it to interact with the various components of persistent state.
+allows it to interact with the components of persistent state.
 
 ``read_input``
   Loads the oldest input still present in the inbox of the smart
@@ -779,10 +780,10 @@ Fortunately, it was designed to be a compilation target, not a
 language whose program would be written directly by developers.
 
 Rust has several advantages that makes it a good candidate to write
-the kernel of a smart rollup. Not only does it treats WASM as a first
-class citizen when it comes to compilation targets, but it’s approach
-to memory safety eliminates large classes of bugs and vulnerabilities
-that WASM arbitrary programs may suffer from.
+the kernel of a smart rollup. Not only does the Rust compiler treat
+WASM as a first class citizen when it comes to compilation targets,
+but its approach to memory safety eliminates large classes of bugs and
+vulnerabilities that WASM arbitrary programs may suffer from.
 
 Setting-up Rust
 """""""""""""""
@@ -1012,10 +1013,10 @@ Testing your Kernel
    provided for developers interested in testing Tezos smart rollup
    infrastructure before its release on mainnet.
 
-Testing kernels can be useful during its development, without relying on
-starting a rollup on a test network. We provide a *read-eval-print-loop* as
-a mean to evaluate the WASM PVM without relying on any node and network:
-``octez-wasm-repl``.
+Testing kernels can be useful during its development, without relying
+on starting a rollup on a test network. We provide a
+*read-eval-print-loop* (REPL) as a mean to evaluate the WASM PVM
+without relying on any node and network: ``octez-wasm-repl``.
 
 .. code:: sh
 
@@ -1023,9 +1024,10 @@ a mean to evaluate the WASM PVM without relying on any node and network:
 
 ``octez-wasm-repl`` can take either a `.wasm` file (the binary representation of
 WebAssembly modules) or a `.wast` file (its the textual representation), and
-actually parses and typechecks the kernel before giving it the PVM. It can take
-a file containing inputs and a rollup address. The format of the input file is
-the following:
+actually parses and typechecks the kernel before giving it to the
+PVM. It can take a file containing inputs and a rollup address. The
+expected contents of the input file is a JSON value, with the
+following schema:
 
 .. code:: javascript
 
@@ -1085,7 +1087,7 @@ At this point, the internal input buffer can be inspected with the commands
 The first input of an inbox at the beginning of a level is `Start_of_level`, and
 is represented by the message ``\000\001`` on the kernel side. The kernel is in
 `Decode` internal state, meaning its next step will be the parsing of the kernel
-itself, but as a kernel developper this is not useful. We can now start
+itself, but as a kernel developer this is not useful. We can now start
 a `kernel_next` evaluation:
 
 .. code::
