@@ -91,6 +91,13 @@ chmod +rx "$SNOOP_RESULT_DIR"/*_results
 # Change the file containing the name of the result directory.
 # This allows to use current_run_dir and last_run_dir as markers of the
 # benchmarks being run (current_run_dir) or finished (last_run_dir).
+PREVIOUS_SNOOP_RESULT_DIR="$(cat last_run_dir)"
 mv current_run_dir last_run_dir
+
+# Make the diff between the current run and the previous one.
+paste -d "," "$PREVIOUS_SNOOP_RESULT_DIR"/inference_results/*.csv > "$CURRENT_SNOOP_RESULT_DIR"/previous_inference_results.csv
+paste -d "," "$CURRENT_SNOOP_RESULT_DIR"/inference_results/*.csv > "$CURRENT_SNOOP_RESULT_DIR"/current_inference_results.csv
+cd tezos/devtools/gas_parameter_diff
+dune exec gas_parameter_diff -- "$CURRENT_SNOOP_RESULT_DIR"/previous_inference_results.csv "$CURRENT_SNOOP_RESULT_DIR"/current_inference_results.csv > "$CURRENT_SNOOP_RESULT_DIR"/inference_results_diff.csv
 
 dated_log "End of benchmarks processes"
