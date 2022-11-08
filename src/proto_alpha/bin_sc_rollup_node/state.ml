@@ -83,7 +83,7 @@ module Store = struct
       end)
 
   (** Table from L1 levels to blocks hashes. *)
-  module Levels =
+  module Levels_to_hashes =
     Store.Make_updatable_map
       (struct
         let path = ["tezos"; "levels"]
@@ -104,7 +104,7 @@ module Store = struct
       end)
 
   (** Table from L1 blocks hashes to levels. *)
-  module Hashes =
+  module Hashes_to_levels =
     Store.Make_append_only_map
       (struct
         let path = ["tezos"; "blocks_hashes"]
@@ -125,11 +125,11 @@ module Store = struct
       end)
 end
 
-let hash_of_level store level = Store.Levels.get store level
+let hash_of_level store level = Store.Levels_to_hashes.get store level
 
 let level_of_hash store hash =
   let open Lwt_result_syntax in
-  let*! level = Store.Hashes.find store hash in
+  let*! level = Store.Hashes_to_levels.find store hash in
   match level with
   | None -> failwith "No level known for block %a" Block_hash.pp hash
   | Some l -> return l
@@ -137,7 +137,7 @@ let level_of_hash store hash =
 let mark_processed_head store Layer1.({hash; level} as head) =
   let open Lwt_syntax in
   let* () = Store.ProcessedHashes.add store hash () in
-  let* () = Store.Levels.add store level hash in
+  let* () = Store.Levels_to_hashes.add store level hash in
   Store.LastProcessedHead.set store head
 
 let is_processed store head = Store.ProcessedHashes.mem store head
@@ -150,5 +150,5 @@ let get_finalized_head_opt store = Store.LastFinalizedHead.find store
 
 let set_block_level_and_hash store Layer1.{hash; level} =
   let open Lwt_syntax in
-  let* () = Store.Hashes.add store hash level in
-  Store.Levels.add store level hash
+  let* () = Store.Hashes_to_levels.add store hash level in
+  Store.Levels_to_hashes.add store level hash
