@@ -494,6 +494,8 @@ let default_delay = Time.Span.of_seconds_exn (3600. *. 24. *. 365.)
 
 type timestamp = Now | Ago of Time.Span.t | At of Time.t
 
+let default_timestamp = Ago default_delay
+
 let time_of_timestamp timestamp =
   match timestamp with
   | Now -> Time.now ()

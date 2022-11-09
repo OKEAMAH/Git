@@ -39,6 +39,9 @@ type media_type = Json | Binary | Any
 (** Values that can be passed to the client's [--timestamp] argument *)
 type timestamp = Now | Ago of Time.Span.t | At of Time.t
 
+(** [default_delay] is roughly a year ago. *)
+val default_timestamp : timestamp
+
 (** Convert [timestamp] into a concrete [Time.t], relative to
     [Time.now ()]. *)
 val time_of_timestamp : timestamp -> Time.t
