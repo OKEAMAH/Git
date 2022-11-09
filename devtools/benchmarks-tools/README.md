@@ -27,6 +27,9 @@ On the reference machine, the benchmarks directory should look like this:
           - inference_results/
           - cron_res
           - cron_res_errors
+          - previous_inference_results.csv
+          - current_inference_results.csv
+          - inference_results_diff.csv
   - tezos/
       - _snoop/
           - michelson_data/
@@ -45,6 +48,8 @@ On the reference machine, the benchmarks directory should look like this:
 - `run_all_benchmarks_on_latest_master.sh` is the script actually launching the benchmarks and called by `cronjob.sh`. Its sources are in this repository and needs to be copied to the reference machine whenever it is updated.
 - `rustup-init.sh` and `zcash_params` handle some external dependencies. How to maintain these files is under discussion.
 - `snoop_results` contains the result of the benchmarks, with one sub-directory per benchmarks run.
+  - `previous_inference_results.csv` and `current_inference_results.csv` are the concatenated inference results of respectively the previous run (fetched through the `last_run_dir` file) and the current one.
+  - `inference_results_diff.csv` is the comparison between to two files above for each gas parameter, line by line.
 - `tezos` is a clone of https://gitlab.com/tezos/tezos. It is updated automatically in `run_all_benchmarks_on_latest_master.sh`, but it needs to be created prior to the very first Cron job.
   - `michelson_data` and `sapling_data` contain data that are very long to generate but rarely change between two benchmarks runs. For now, we decided not to regenerate them, and keep the same data from one run to the other. When to update them is under discussion.
   - Also note that in this directory, `benchmark_results` and `inference_results` only exist during a run of the benchmarks. They are moved to `snoop_results` at the end.
