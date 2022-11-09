@@ -35,9 +35,9 @@
     This test is a copy of the [tests/double_baking.ml] test but on
     a remote machine. *)
 
-let runner = Runner_config.runner
+let runner () = Runner_config.runner ()
 
-let path = Runner_config.node_path
+let path () = Runner_config.node_path ()
 
 let is_operation_in_operations ops oph =
   let open JSON in
@@ -72,6 +72,8 @@ let double_bake =
     ~title:"double baking with accuser"
     ~tags:["remote"; "runner"; "bake"; "accuser"]
   @@ fun protocol ->
+  let runner = runner () in
+  let path = path () in
   let* node_1 =
     Node.init ~runner ~path [Synchronisation_threshold 0; Private_mode]
   and* node_2 =

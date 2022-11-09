@@ -30,7 +30,7 @@
    environment variable. If the variable doesn't exist, the default
    value is [./runner_config.json]. If the file is not at the
    specified  location, it raised a [Sys_error]. *)
-let runner_json =
+let runner_json () =
   let path =
     match Sys.getenv_opt "TEZT_RUNNER_CONFIG" with
     | None -> "runner_config.json"
@@ -40,8 +40,9 @@ let runner_json =
 
 (* Build a runner from the [runner_json] config file. If the address
    is not specified it raises a [Test.fail]. *)
-let runner =
+let runner () =
   let open JSON in
+  let runner_json = runner_json () in
   let ssh_alias = runner_json |-> "ssh_alias" |> as_string_opt in
   let ssh_user = runner_json |-> "ssh_user" |> as_string_opt in
   let ssh_port = runner_json |-> "ssh_port" |> as_int_opt in
@@ -51,6 +52,6 @@ let runner =
 
 (* Get the node executable path from the [runner_json] config file. If no path
    is specified in the configuration it raises [Test.fail]. *)
-let node_path =
+let node_path () =
   let open JSON in
-  runner_json |-> "node_path" |> as_string
+  runner_json () |-> "node_path" |> as_string

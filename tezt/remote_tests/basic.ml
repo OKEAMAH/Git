@@ -35,9 +35,9 @@
 (* This module provides an example of a common test you can do using the remote
    runner interface. *)
 
-let runner = Runner_config.runner
+let runner () = Runner_config.runner ()
 
-let path = Runner_config.node_path
+let path () = Runner_config.node_path ()
 
 (* Wait for the remote node to accept a peer. *)
 let wait_for_accepted_peer_ids node =
@@ -54,6 +54,8 @@ let run_node =
     ~tags:["runner"; "remote"; "connection"]
   @@ fun protocol ->
   Log.debug "Init node config" ;
+  let runner = runner () in
+  let path = path () in
   let* node_1 = Node.init ~runner ~path [Synchronisation_threshold 0] in
   let endpoint_1 = Client.(Node node_1) in
   let* client = Client.init ~endpoint:endpoint_1 () in
