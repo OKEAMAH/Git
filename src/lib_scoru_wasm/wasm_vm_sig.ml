@@ -66,6 +66,10 @@ end
 module type S = sig
   include Generic with type state := pvm_state
 
+  (** [get_outbox_size level state] returns the number of message in the outbox
+      of the VM for the given [level]. *)
+  val get_outbox_size : int32 -> pvm_state -> Z.t Lwt.t
+
   (** [get_output output buffer] returns the payload associated with the given
       output. The result is meant to be deserialized using
       [Sc_rollup_PVM_sem.output_encoding]. Raises an exception if the output is

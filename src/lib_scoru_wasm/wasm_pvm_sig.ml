@@ -56,6 +56,10 @@ module type S = sig
 
   include Wasm_vm_sig.Generic with type state := tree
 
+  (** [get_outbox_size level state] returns the number of message in the outbox
+      of the VM for the given [level]. *)
+  val get_outbox_size : int32 -> tree -> Z.t Lwt.t
+
   (** [install_boot_sector payload tree] installs the [payload] passed
       as an argument in [tree] so that it is interpreted as the kernel
       to be used by the PVM. *)

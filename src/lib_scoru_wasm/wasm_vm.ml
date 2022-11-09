@@ -442,6 +442,18 @@ let reveal_step payload pvm_state =
               "No reveal expected during snapshotting"))
   | Stuck _ | Padding -> return pvm_state.tick_state
 
+let get_outbox_size level pvm_state =
+  let open Lwt_syntax in
+  Lwt.catch
+    (fun () ->
+      let+ level_outbox =
+        Tezos_webassembly_interpreter.(
+          Output_buffer.Level_Vector.get level pvm_state.buffers.output)
+      in
+      Tezos_webassembly_interpreter.Output_buffer.Index_Vector.num_elements
+        level_outbox)
+    (fun _ -> return Z.zero)
+
 let get_output output_info output =
   let open Lwt_syntax in
   let open Wasm_pvm_state in

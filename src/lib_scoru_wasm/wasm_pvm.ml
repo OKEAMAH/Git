@@ -227,6 +227,11 @@ module Make_pvm (Wasm_vm : Wasm_vm_sig.S) (T : Tezos_tree_encoding.TREE) :
     let* final_state = Wasm_vm.compute_step initial_state in
     encode final_state tree
 
+  let get_outbox_size level tree =
+    let open Lwt.Syntax in
+    let* pvm_state = decode tree in
+    Wasm_vm.get_outbox_size level pvm_state
+
   let get_output output_info tree =
     let open Lwt_syntax in
     let* candidate =
