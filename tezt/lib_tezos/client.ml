@@ -759,6 +759,13 @@ let show_address ~alias client =
   in
   return @@ Account.parse_client_output ~alias ~client_output
 
+let spawn_forget_address ?(force = false) ~alias client =
+  let force = if force then ["--force"] else [] in
+  spawn_command client @@ ("forget" :: "address" :: alias :: force)
+
+let forget_address ?force ~alias client =
+  spawn_forget_address ?force ~alias client |> Process.check
+
 let spawn_list_known_addresses client =
   spawn_command client ["list"; "known"; "addresses"]
 

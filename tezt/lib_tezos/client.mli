@@ -592,6 +592,8 @@ val spawn_show_address : alias:string -> t -> Process.t
     a association list from aliases to public key hashes. *)
 val list_known_addresses : t -> (string * string) list Lwt.t
 
+val forget_address : ?force:bool -> alias:string -> t -> unit Lwt.t
+
 (** Same as [list_known_addresses] but do not wait for the process to
     exit. *)
 val spawn_list_known_addresses : t -> Process.t
