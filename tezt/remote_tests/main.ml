@@ -43,4 +43,5 @@
 let () =
   Basic.register ~protocols:[Alpha] ;
   Double_bake.register ~protocols:[Alpha] ;
+  Bootstrap.register ~protocols:[Alpha] ;
   Test.run ()
