@@ -68,6 +68,17 @@ let read_kernel name : string =
    block finality time is 2. *)
 let block_finality_time = 2
 
+(* This computation should be changed when/if the DAL parameters in the
+   PVM is changed. *)
+let dal_ticks_of_arith_pvm_per_level () =
+  (* These two constants are encoded in the PVM. They should be read from
+     L1 parameters in the future *)
+  let number_of_slots = 4 in
+  let number_of_pages_per_slot = 256 in
+  let max_ticks_per_level = number_of_slots * number_of_pages_per_slot in
+  (* We divide by 2 because PVM Arith only requests even slots. *)
+  max_ticks_per_level / 2
+
 type sc_rollup_constants = {
   origination_size : int;
   challenge_window_in_blocks : int;
@@ -1413,13 +1424,23 @@ let commitments_messages_reset ~kind _protocol sc_rollup_node sc_rollup _node
     Sc_rollup_client.last_stored_commitment ~hooks sc_rollup_client
   in
   let stored_inbox_level = Option.map inbox_level stored_commitment in
+  let dal_input_messages =
+    if kind = "arith" then
+      (* We don't need to subtract [endorsement_lag] from [levels_to_commitment]
+         here because it's not the first commitment period after the origination
+         of the rollup. So, DAL slots of all levels are available. *)
+      levels_to_commitment * dal_ticks_of_arith_pvm_per_level ()
+    else 0
+  in
   Check.(stored_inbox_level = Some (init_level + (2 * levels_to_commitment)))
     (Check.option Check.int)
     ~error_msg:
       "Commitment has been stored at a level different than expected (current \
        = %L, expected = %R)" ;
   (let stored_number_of_ticks = Option.map number_of_ticks stored_commitment in
-   Check.(stored_number_of_ticks = Some (2 * levels_to_commitment))
+   Check.(
+     stored_number_of_ticks
+     = Some ((2 * levels_to_commitment) + dal_input_messages))
      (Check.option Check.int)
      ~error_msg:
        "Number of messages processed by commitment is different from the \
@@ -1627,20 +1648,29 @@ let commitments_reorgs ~kind protocol sc_rollup_node sc_rollup node client =
       "Commitment has been stored at a level different than expected (current \
        = %L, expected = %R)" ;
   let () = Log.info "init_level: %d" init_level in
-  (let stored_number_of_ticks = Option.map number_of_ticks stored_commitment in
-   let additional_ticks =
-     match kind with
-     | "arith" -> 1 (* boot sector *) + 1 (* metadata *)
-     | "wasm_2_0_0" -> 1 (* boot_sector *) + 1 (* moving through start state *)
-     | _ -> assert false
-   in
-   Check.(
-     stored_number_of_ticks
-     = Some ((2 * levels_to_commitment) + additional_ticks))
-     (Check.option Check.int)
-     ~error_msg:
-       "Number of ticks processed by commitment is different from the number \
-        of ticks expected (%L = %R)") ;
+  let stored_number_of_ticks = Option.map number_of_ticks stored_commitment in
+  let* additional_ticks =
+    match kind with
+    | "arith" ->
+        let* dal_parameters = Rollup.Dal.Parameters.from_client client in
+        let dal_ticks =
+          (* We subtract [endorsement_lag], because we ara counting DAL PVM
+             ticks just after origination (earlier confirmed slots
+             that are interpreted should be published after rollup origination *)
+          (levels_to_commitment - dal_parameters.endorsement_lag)
+          * dal_ticks_of_arith_pvm_per_level ()
+        in
+        return @@ (1 (* boot sector *) + 1 (* metadata *) + dal_ticks)
+    | "wasm_2_0_0" ->
+        return @@ (1 (* boot_sector *) + 1 (* moving through start state *))
+    | _ -> assert false
+  in
+  Check.(
+    stored_number_of_ticks = Some ((2 * levels_to_commitment) + additional_ticks))
+    (Check.option Check.int)
+    ~error_msg:
+      "Number of ticks processed by commitment is different from the number of \
+       ticks expected (current = %L, expected = %R)" ;
   let* published_commitment =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
   in
@@ -3274,7 +3304,7 @@ let register ~kind ~protocols =
     ~kind ;
   test_commitment_scenario
     "messages_reset"
-    commitments_messages_reset
+    (commitments_messages_reset ~kind)
     protocols
     ~kind ;
   test_commitment_scenario

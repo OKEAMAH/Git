@@ -53,10 +53,6 @@
    - an input [hash:<HASH>] is interpreted as a directive to request the DAC
      data whose hash is <HASH> ;
 
-   - an input [dal:<LVL>:<SID>:<PID>] is interpreted as a directive to request
-     the DAL page whose index is <PID> belonging to slot index <SID> confirmed
-     at level <LVL> (i.e published at level LVL - endorsement_lag) ;
-
    If a message is not syntactically correct or does not evaluate
    correctly, the machine stops its evaluation and waits for the next
    message.
@@ -69,6 +65,13 @@
 
    The machine exposes extra operations to be used in the rollup node.
 
+   Note that PVM Arith also requests DAL slots' pages as soon as they are
+   confirmed. More importantly:
+   - PVM Arith only requests slots with even index (e.g., 0, 2, 4, etc) ;
+   - Slots and pages are requested increasing order ;
+   - Dal pages are requested when reading Start_of_level inbox message ;
+   - If a Dal page contains a DAC reveal request, the Dal workflow will be
+     skipped after interpreting the DAC input.
 *)
 module type S = sig
   include Sc_rollup_PVM_sig.S

@@ -856,14 +856,9 @@ let rollup_node_stores_dal_slots ?expand_test _protocol dal_node sc_rollup_node
      4. Publish the three slot headers for slots 0, 1, 2
      5. Check that the rollup node fetched the slot headers from L1
      6. After lag levels, endorse only slots 1 and 2
-     7. Check that no slots are downloaded by the rollup node if
-        the PVM does not request them
-     8. Send external messages to trigger the request of dal pages for
-        slots 0 and 1
-     9. Wait for the rollup node PVM to process the input and request
-        the slots
-     10. Check that requested confirmed slots (slot 1) is downloaded from
-        dal node, while unconfirmed slot (slot 0) is not downloaded
+     7. Only slots 1 and 2 are endorsed. Since PVM Arith only requests even
+        DAL slots, only one slot (whose index is 2) is downloaded by rollup node
+        upon PVM request
   *)
 
   (* 0. run dl node. *)
@@ -963,49 +958,16 @@ let rollup_node_stores_dal_slots ?expand_test _protocol dal_node sc_rollup_node
     ~error_msg:
       "Current level has moved past slot endorsement level (current = %L, \
        expected = %R)" ;
-  (* 7. Check that no slots have been downloaded *)
+  (* 7. Only slots 1 and 2 are endorsed. Since PVM Arith only requests even
+     DAL slots, only one slot (whose index is 2) is downloaded by rollup node
+     upon PVM request. *)
   let* downloaded_confirmed_slots =
     Sc_rollup_client.dal_downloaded_confirmed_slot_pages ~hooks sc_rollup_client
   in
-  let expected_number_of_downloaded_or_unconfirmed_slots = 0 in
+  let expected_number_of_downloaded_confirmed_slots = 1 in
   Check.(
     List.length downloaded_confirmed_slots
-    = expected_number_of_downloaded_or_unconfirmed_slots)
-    Check.int
-    ~error_msg:
-      "Unexpected number of slots that have been either downloaded or \
-       unconfirmed (current = %L, expected = %R)" ;
-  (* 8 Sends message to import dal pages from slots 0 and 1 of published_level
-     to the PVM. *)
-  let published_level_as_string = Int.to_string slots_published_level in
-  let messages =
-    [
-      "dal:" ^ published_level_as_string ^ ":0:0";
-      "dal:" ^ published_level_as_string ^ ":1:0";
-    ]
-  in
-  let* () = send_messages client messages in
-  let* level =
-    Sc_rollup_node.wait_for_level sc_rollup_node (slot_confirmed_level + 1)
-  in
-  Check.(level = slot_confirmed_level + 1)
-    Check.int
-    ~error_msg:
-      "Current level has moved past slot endorsement level (current = %L, \
-       expected = %R)" ;
-  (* 9. Wait for the rollup node to download the endorsed slots. *)
-  let confirmed_level_as_string = Int.to_string slot_confirmed_level in
-  let* downloaded_confirmed_slots =
-    Sc_rollup_client.dal_downloaded_confirmed_slot_pages
-      ~block:confirmed_level_as_string
-      sc_rollup_client
-  in
-  (* 10. Verify that rollup node has downloaded slot 1, slot 0 is
-        unconfirmed, and slot 2 has not been downloaded *)
-  let expected_number_of_downloaded_or_unconfirmed_slots = 1 in
-  Check.(
-    List.length downloaded_confirmed_slots
-    = expected_number_of_downloaded_or_unconfirmed_slots)
+    = expected_number_of_downloaded_confirmed_slots)
     Check.int
     ~error_msg:
       "Unexpected number of slots that have been either downloaded or \
@@ -1015,7 +977,7 @@ let rollup_node_stores_dal_slots ?expand_test _protocol dal_node sc_rollup_node
   in
   List.iter
     (fun i ->
-      let index = i + 1 in
+      let index = i + 2 in
       let confirmed_slot_index, confirmed_slot_contents =
         List.nth downloaded_confirmed_slots i
       in
@@ -1052,43 +1014,13 @@ let rollup_node_interprets_dal_pages client sc_rollup sc_rollup_node =
       - the page 0 of slot 0 contains 10,
       - the page 0 of slot 1 contains 200,
       - the page 0 of slot 2 contains 400.
-     Only slot 1 is confirmed. Below, we expect to have value = 302. *)
-  let expected_value = 302 in
+     Only slot 1 abd 2 are confirmed. But PVM Arith only interprets even
+     slots, we expect to have value = 502
+     (including the values 99 and 3 send via Inbox).
+  *)
+  let expected_value = 502 in
   (* The code should be adapted if the current level changes. *)
-  assert (level = 5) ;
-  let* () =
-    send_messages
-      client
-      [
-        " 99 3 ";
-        (* Total sum is now 99 + 3 = 102 *)
-        " dal:3:1:0 ";
-        (* Page 0 of Slot 1 contains 200, total sum is 302. *)
-        " dal:3:1:1 ";
-        " dal:3:0:0 ";
-        (* Slot 0 is not confirmed, total sum doesn't change. *)
-        " dal:3:0:2 ";
-        (* Page 2 of Slot 0 empty, total sum unchanged. *)
-        (* Page 1 of Slot 1 is empty, total sum unchanged. *)
-        " dal:2:1:0 ";
-        (* It's too late to import a page published at level 5. *)
-        " dal:5:1:0 ";
-        (* It's too early to import a page published at level 7. *)
-        " dal:3:10000:0 ";
-        " dal:3:0:100000 ";
-        " dal:3:-10000:0 ";
-        " dal:3:0:-100000 ";
-        " dal:3:expecting_integer:0 ";
-        " dal:3:0:expecting_integer ";
-        (* The 6 pages requests above are ignored by the PVM because
-           slot/page ID is out of bounds or illformed. *)
-        " dal:1002147483647:1:1 "
-        (* Level is about Int32.max_int, directive should be ignored. *);
-        "   + + value";
-      ]
-  in
-
-  (* Slot 1 is not confirmed, hence the total sum doesn't change. *)
+  let* () = send_messages client [" 99 3 "; " + + value"] in
   let* () = repeat 2 (fun () -> Client.bake_for_and_wait client) in
   let* _lvl =
     Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node (level + 1)
