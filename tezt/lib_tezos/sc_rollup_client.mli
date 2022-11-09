@@ -54,6 +54,15 @@ val sc_rollup_address : t -> string Lwt.t
 (** [rpc_get client path] issues a GET request for [path]. *)
 val rpc_get : ?hooks:Process.hooks -> t -> Client.path -> JSON.t Lwt.t
 
+(** [rpc_get_rich client path parameters] issues a GET request for [path]
+    passing [parameters]. *)
+val rpc_get_rich :
+  ?hooks:Process.hooks ->
+  t ->
+  Client.path ->
+  (string * string) list ->
+  JSON.t Lwt.t
+
 (** [total_ticks ?block client] gets the total number of ticks for the PVM. *)
 val total_ticks : ?hooks:Process.hooks -> ?block:string -> t -> int Lwt.t
 
@@ -74,10 +83,11 @@ val state_value :
     (default ["head"]). *)
 val status : ?hooks:Process.hooks -> ?block:string -> t -> string Lwt.t
 
-(** [outbox ?block client] gets the rollup outbox for the [block] (default
-    ["cemented"] which is the block corresponding to the last cemented
-    level). *)
-val outbox : ?hooks:Process.hooks -> ?block:string -> t -> string Lwt.t
+(** [outbox ?block outbox_level client] gets the rollup outbox of
+   [outbox_level] as known to the [block] (default ["cemented"] which
+   is the block corresponding to the last cemented level). *)
+val outbox :
+  ?hooks:Process.hooks -> ?block:string -> outbox_level:int -> t -> string Lwt.t
 
 type outbox_proof = {commitment_hash : string; proof : string}
 

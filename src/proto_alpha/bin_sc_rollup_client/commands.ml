@@ -178,10 +178,15 @@ let get_output_proof () =
       >>= fun () -> return_unit)
 
 (** [call_get cctxt raw_url] executes a GET RPC call against the [raw_url]. *)
-let call_get (cctxt : #Configuration.sc_client_context) raw_url =
+let call_get (cctxt : #Configuration.sc_client_context) ?query raw_url =
   let open Lwt_result_syntax in
   let meth = `GET in
   let uri = Uri.of_string raw_url in
+  let uri =
+    match query with
+    | None -> uri
+    | Some query -> List.fold_left Uri.add_query_param' uri query
+  in
   let* answer = cctxt#generic_media_type_call meth uri in
   let*! () = display_answer cctxt answer in
   return_unit
@@ -194,6 +199,30 @@ let rpc_get_command =
     @@ Tezos_clic.string ~name:"url" ~desc:"the RPC URL"
     @@ Tezos_clic.stop)
     (fun () url cctxt -> call_get cctxt url)
+
+let rpc_rich_get_command =
+  Tezos_clic.command
+    ~desc:"Call an RPC with the GET method passing some parameters."
+    Tezos_clic.no_options
+    (Tezos_clic.prefixes ["rpc"; "get"]
+    @@ Tezos_clic.string ~name:"url" ~desc:"the RPC URL"
+    @@ Tezos_clic.prefixes ["with"]
+    @@ Tezos_clic.string
+         ~name:"parameters"
+         ~desc:"the RPC parameters as a comma separated list of assignments X=Y"
+    @@ Tezos_clic.stop)
+    (fun () url parameters cctxt ->
+      let open Lwt_result_syntax in
+      let query = String.split_on_char ',' parameters in
+      let* query =
+        List.map_es
+          (fun s ->
+            match String.split_on_char '=' s with
+            | [key; value] -> return (key, value)
+            | _ -> failwith "Invalid parameter syntax.")
+          query
+      in
+      call_get ~query cctxt url)
 
 module Keys = struct
   open Tezos_client_base.Client_keys
@@ -252,6 +281,7 @@ let all () =
     get_state_value_command ();
     get_output_proof ();
     rpc_get_command;
+    rpc_rich_get_command;
     Keys.generate_keys ();
     Keys.list_keys ();
     Keys.show_address ();

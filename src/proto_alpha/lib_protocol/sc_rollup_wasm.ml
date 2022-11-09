@@ -101,7 +101,8 @@ module V2_0_0 = struct
     (** [get_status state] gives you the current execution status for the PVM. *)
     val get_status : state -> status Lwt.t
 
-    val get_outbox : state -> Sc_rollup_PVM_sig.output list Lwt.t
+    val get_outbox :
+      Raw_level_repr.t -> state -> Sc_rollup_PVM_sig.output list Lwt.t
   end
 
   (* [Make (Make_backend) (Context)] creates a PVM.
@@ -276,10 +277,26 @@ module V2_0_0 = struct
 
     let get_status : state -> status Lwt.t = result_of get_status
 
-    let get_outbox _state =
-      (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3790 *)
+    let get_outbox outbox_level state =
+      let outbox_level = Raw_level_repr.to_int32_non_negative outbox_level in
       let open Lwt_syntax in
-      return []
+      let rec aux outbox message_index =
+        let output = Wasm_2_0_0.{outbox_level; message_index} in
+        let* res = WASM_machine.get_output output state in
+        match res with
+        | None -> return (List.rev outbox)
+        | Some msg -> (
+            match Data_encoding.Binary.of_string_opt PS.output_encoding msg with
+            | None ->
+                (* The [write_output] host function does not guarantee that the contents
+                   of the returned output is a valid encoding of an outbox message.
+                   We choose to ignore such messages. An alternative choice would be to
+                   craft an output with a payload witnessing the illformedness of the
+                   output produced by the kernel. *)
+                aux outbox (Z.succ message_index)
+            | Some msg -> aux (msg :: outbox) (Z.succ message_index))
+      in
+      aux [] Z.zero
 
     let set_input_state input =
       let open Monad.Syntax in

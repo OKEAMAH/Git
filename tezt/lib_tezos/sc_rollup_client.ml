@@ -181,6 +181,20 @@ let rpc_get ?hooks sc_client path =
   let* output = Process.check_and_read_stdout process in
   return (JSON.parse ~origin:(Client.string_of_path path ^ " response") output)
 
+let rpc_get_rich ?hooks sc_client path parameters =
+  let parameters =
+    String.concat ","
+    @@ List.map (fun (k, v) -> Format.asprintf "%s=%s" k v) parameters
+  in
+  let process =
+    spawn_command
+      ?hooks
+      sc_client
+      ["rpc"; "get"; Client.string_of_path path; "with"; parameters]
+  in
+  let* output = Process.check_and_read_stdout process in
+  return (JSON.parse ~origin:(Client.string_of_path path ^ " response") output)
+
 let ticks ?hooks ?(block = "head") sc_client =
   let open Lwt.Syntax in
   let+ res = rpc_get ?hooks sc_client ["global"; "block"; block; "ticks"] in
@@ -205,9 +219,15 @@ let status ?hooks ?(block = "head") sc_client =
   let+ res = rpc_get ?hooks sc_client ["global"; "block"; block; "status"] in
   JSON.as_string res
 
-let outbox ?hooks ?(block = "cemented") sc_client =
+let outbox ?hooks ?(block = "cemented") ~outbox_level sc_client =
   let open Lwt.Syntax in
-  let+ res = rpc_get ?hooks sc_client ["global"; "block"; block; "outbox"] in
+  let+ res =
+    rpc_get_rich
+      ?hooks
+      sc_client
+      ["global"; "block"; block; "outbox"]
+      [("outbox_level", string_of_int outbox_level)]
+  in
   JSON.encode res
 
 let last_stored_commitment ?hooks sc_client =

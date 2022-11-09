@@ -321,10 +321,10 @@ module Make (PVM : Pvm.S) = struct
 
   let () =
     Block_directory.register0 Sc_rollup_services.Global.Block.outbox
-    @@ fun (node_ctxt, block) () () ->
+    @@ fun (node_ctxt, block) outbox_level () ->
     let open Lwt_result_syntax in
     let* state = get_state node_ctxt block in
-    let*! outbox = PVM.get_outbox state in
+    let*! outbox = PVM.get_outbox outbox_level state in
     return outbox
 
   let () =

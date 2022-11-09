@@ -2994,7 +2994,7 @@ let test_outbox_message_generic ?regression ?expected_error skip earliness
     repeat blocks_to_wait @@ fun () -> Client.bake_for client
   in
   let trigger_outbox_message_execution address =
-    let* outbox = Sc_rollup_client.outbox sc_client in
+    let* outbox = Sc_rollup_client.outbox ~outbox_level:4 sc_client in
     Log.info "Outbox is %s" outbox ;
     let* answer =
       let message_index = 0 in
@@ -3148,10 +3148,10 @@ let test_rpcs ~kind =
       ["global"; "block"; "head"; "state_hash"]
   in
   let* _outbox =
-    Sc_rollup_client.rpc_get
-      ~hooks
+    Sc_rollup_client.outbox
+      ~block:"head"
+      ~outbox_level:l2_finalied_block_level
       sc_client
-      ["global"; "block"; "head"; "outbox"]
   in
   let* _head =
     Sc_rollup_client.rpc_get ~hooks sc_client ["global"; "tezos_head"]
