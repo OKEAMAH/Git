@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,29 +23,38 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Testing
-    -------
-    Component:    Protocol
-    Invocation:   dune runtest src/proto_alpha/lib_protocol/test/integration/operations
-    Subject:      Entrypoint
+(* Testing
+   -------
+   Component: Shared global counter test
+   Invocation:
+     dune exec tezt/tests/main.exe -- --file increment_global_counter.ml
+   Subject: Tests for testing global counter operations.
 *)
 
-let () =
-  Alcotest_lwt.run
-    "protocol > integration > operations"
-    [
-      ("voting", Test_voting.tests);
-      ("origination", Test_origination.tests);
-      ("revelation", Test_reveal.tests);
-      ("transfer", Test_transfer.tests);
-      ("activation", Test_activation.tests);
-      ("paid storage increase", Test_paid_storage_increase.tests);
-      ("combined", Test_combined_operations.tests);
-      ("failing_noop operation", Test_failing_noop.tests);
-      ("tx rollup", Test_tx_rollup.tests);
-      ("sc rollup", Test_sc_rollup.tests);
-      ("sc rollup transfer", Test_sc_rollup_transfer.tests);
-      ("zk rollup", Test_zk_rollup.tests);
-      ("global shared counter", Test_increment_global_counter.tests);
-    ]
-  |> Lwt_main.run
+let test_increment_global_counter_twice =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"Increase global counter twice"
+    ~tags:["global_counter"; "shared_global_counter"]
+    ~supports:(Protocol.From_protocol 016)
+  @@ fun protocol ->
+  let* _, client = Client.init_with_protocol ~protocol `Client () in
+  let to_int x =
+    let x1 = String.trim x in
+    int_of_string @@ String.sub x1 1 (String.length x1 - 2)
+  in
+  let inc_by_one ~src expected_val_after =
+    let* () = Client.increment_global_counter ~src client in
+    let* () = Client.bake_for_and_wait client in
+    let* val1 = Client.get_global_counter client in
+    Check.(to_int val1 = expected_val_after)
+      Check.int
+      ~error_msg:
+        ("Unexpected shared global counter value. Expected %R. Got %L");
+    unit
+  in
+  let* () = inc_by_one ~src:"bootstrap1" 1 in
+  let* () = inc_by_one ~src:"bootstrap2" 2 in
+  unit
+
+let register ~protocols = test_increment_global_counter_twice protocols

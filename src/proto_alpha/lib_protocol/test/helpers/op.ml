@@ -1044,3 +1044,19 @@ let zk_rollup_publish ?force_reveal ?counter ?fee ?gas_limit ?storage_limit ctxt
   >>=? fun to_sign_op ->
   Context.Contract.manager ctxt src >|=? fun account ->
   sign account.sk ctxt to_sign_op
+
+
+let increment_global_counter ?force_reveal ?fee ?gas_limit ?counter ?storage_limit ctxt source =
+  let iop = Increment_global_counter in
+  manager_operation
+    ?force_reveal
+    ?fee
+    ?counter
+    ?gas_limit
+    ?storage_limit
+    ~source
+    ctxt
+    iop
+  >>=? fun sop ->
+  Context.Contract.manager ctxt source >|=? fun account ->
+  sign account.sk ctxt sop

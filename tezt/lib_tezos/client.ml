@@ -2254,3 +2254,15 @@ let spawn_config_init ?protocol ?bootstrap_accounts ?protocol_constants client =
 let config_init ?protocol ?bootstrap_accounts ?protocol_constants client =
   spawn_config_init ?protocol ?bootstrap_accounts ?protocol_constants client
   |> Process.check
+
+let increment_global_counter ~src client =
+  spawn_command
+    client
+    ["--wait"; "none"; "increment"; "global"; "counter"; src]
+  |> Process.check
+
+
+let get_global_counter ?endpoint ?(chain = "main") ?(block = "head") client =
+  let path = ["chains"; chain; "blocks"; block; "context"; "shared_global_counter"] in
+  spawn_rpc ?endpoint GET path client |>
+  Process.check_and_read_stdout

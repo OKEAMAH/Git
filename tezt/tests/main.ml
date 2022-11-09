@@ -152,7 +152,8 @@ let register_protocol_tests_that_use_supports_correctly () =
   Tx_rollup_l2_node.register ~protocols ;
   Tzip4_view.register ~protocols ;
   Used_paid_storage_spaces.register ~protocols ;
-  Vdf_test.register ~protocols
+  Vdf_test.register ~protocols ;
+  Increment_global_counter.register ~protocols
 
 (* Regression tests are not easy to maintain for multiple protocols because one needs
    to update and maintain all the expected output files. Some of them, such as

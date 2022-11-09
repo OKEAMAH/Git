@@ -780,3 +780,13 @@ val zk_rollup_publish :
   zk_rollup:Zk_rollup.t ->
   ops:(Zk_rollup.Operation.t * Zk_rollup.Ticket.t option) list ->
   Operation.packed tzresult Lwt.t
+
+  val increment_global_counter :
+    ?force_reveal:bool ->
+    ?fee:Tez.tez ->
+    ?gas_limit:gas_limit ->
+    ?counter:Z.t ->
+    ?storage_limit:Z.t ->
+    Context.t ->
+    Contract.t ->
+    Operation.packed tzresult Lwt.t

@@ -1177,8 +1177,8 @@ val spawn_run_tzip4_view :
   t ->
   Process.t
 
-(** Run [tezos-client run tzip4 view .. on contract .. with input .. ] 
-    
+(** Run [tezos-client run tzip4 view .. on contract .. with input .. ]
+
     Returns the value returned by a view as a string.
 
     Fails if the view or the contract does not exist. If [input] is [None],
@@ -1686,3 +1686,15 @@ val spawn_config_init :
   ?protocol_constants:string ->
   t ->
   Process.t
+
+val increment_global_counter :
+  src:string ->
+  t ->
+  unit Lwt.t
+
+val get_global_counter :
+  ?endpoint:endpoint ->
+  ?chain:string ->
+  ?block:string ->
+  t ->
+  string Lwt.t

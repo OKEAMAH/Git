@@ -232,6 +232,8 @@ let get_liquidity_baking_subsidy ctxt =
 let get_liquidity_baking_cpmm_address ctxt =
   Alpha_services.Liquidity_baking.get_cpmm_address rpc_ctxt ctxt
 
+let get_shared_global_counter = Alpha_services.Shared_global_counter.get_shared_global_counter rpc_ctxt
+
 (* Voting *)
 
 module Vote = struct

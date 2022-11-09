@@ -69,6 +69,9 @@ val get_voting_power :
 val get_total_voting_power :
   t -> int64 Environment.Error_monad.shell_tzresult Lwt.t
 
+val get_shared_global_counter :
+  t -> Z.t Environment.Error_monad.shell_tzresult Lwt.t
+
 val get_bakers :
   ?filter:(Plugin.RPC.Baking_rights.t -> bool) ->
   ?cycle:Cycle.t ->
