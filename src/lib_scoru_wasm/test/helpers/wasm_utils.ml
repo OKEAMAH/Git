@@ -106,7 +106,7 @@ let pp_state fmt state =
   | Stuck e ->
       Format.fprintf fmt "Stuck (%a)" Test_wasm_pvm_encodings.pp_error_state e
   | Init _ -> pp_s "Init"
-  | Snapshot -> pp_s "Snapshot"
+  | Collect -> pp_s "Collect"
   | Link _ -> pp_s "Link"
   | Padding -> pp_s "Padding"
 

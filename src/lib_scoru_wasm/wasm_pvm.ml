@@ -31,7 +31,7 @@ module Parsing = Binary_parser_encodings
 let tick_state_encoding =
   let open Tezos_tree_encoding in
   tagged_union
-    ~default:(fun () -> Snapshot)
+    ~default:(fun () -> Start)
     (value [] Data_encoding.string)
     [
       case
@@ -95,10 +95,10 @@ let tick_state_encoding =
         (function Stuck err -> Some err | _ -> None)
         (fun err -> Stuck err);
       case
-        "snapshot"
+        "collect"
         (value [] Data_encoding.unit)
-        (function Snapshot -> Some () | _ -> None)
-        (fun () -> Snapshot);
+        (function Collect -> Some () | _ -> None)
+        (fun () -> Collect);
       case
         "padding"
         (value [] Data_encoding.unit)

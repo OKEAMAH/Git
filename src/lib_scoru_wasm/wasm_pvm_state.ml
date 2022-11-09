@@ -103,9 +103,9 @@ module Internal_state = struct
         config : Tezos_webassembly_interpreter.Eval.config;
         module_reg : Tezos_webassembly_interpreter.Instance.module_reg;
       }
+    | Collect
     | Stuck of Wasm_pvm_errors.t
     | Padding
-    | Snapshot
 
   type pvm_state = {
     last_input_info : input_info option;  (** Info about last read input. *)
