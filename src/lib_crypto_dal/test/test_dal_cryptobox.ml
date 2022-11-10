@@ -29,7 +29,7 @@ module Test = struct
     let number_of_shards = 2048 / 16 in
     let slot_size = 1048576 / 16 in
     let page_size = 4096 / 16 in
-    let msg_size = slot_size in
+    let msg_size = slot_size / 16 in
     let msg = Bytes.create msg_size in
     for i = 0 to (msg_size / 8) - 1 do
       Bytes.set_int64_le msg (i * 8) (Random.int64 Int64.max_int)
@@ -86,8 +86,10 @@ module Test = struct
                 shard_proofs.(0)
             in
             assert check ;
-            let* pi = Cryptobox.prove_commitment t p ~slot_size in
-            let* check = Cryptobox.verify_commitment t comm pi ~slot_size in
+            let* pi = Cryptobox.prove_commitment t p ~slot_size:msg_size in
+            let* check =
+              Cryptobox.verify_commitment t comm pi ~slot_size:msg_size
+            in
             assert check ;
             Ok ()
         (* let point = Scalar.random () in *)
@@ -101,7 +103,17 @@ module Test = struct
          *     ~evaluation:(Cryptobox.polynomial_evaluate p point)
          *     pi_slot) *))
       [2]
-    |> fun x -> match x with Ok () -> () | Error _ -> assert false
+    |> fun x ->
+    match x with
+    | Ok () -> ()
+    | Error (`Fail s)
+    | Error (`Invert_zero s)
+    | Error (`Slot_wrong_size s)
+    | Error (`Not_enough_shards s) ->
+        Printf.eprintf "\n %s \n" s ;
+        assert false
+    | Error `Segment_index_out_of_range -> assert false
+    | Error `Page_length_mismatch -> assert false
 end
 
 let test =

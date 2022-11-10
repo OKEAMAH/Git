@@ -413,10 +413,14 @@ module Inner = struct
      are arranged in cosets to evaluate in batch with Kate
      amortized. *)
   let polynomial_from_bytes' (t : t) slot =
-    if Bytes.length slot <> t.slot_size then
+    let slot_size = Bytes.length slot in
+    if slot_size > t.slot_size then
       Error
         (`Slot_wrong_size
-          (Printf.sprintf "message must be %d bytes long" t.slot_size))
+          (Printf.sprintf
+             "input slot size %d exceeds maximum allowed slot size %d"
+             slot_size
+             t.slot_size))
     else
       let offset = ref 0 in
       let res = Array.init t.k (fun _ -> Scalar.(copy zero)) in
