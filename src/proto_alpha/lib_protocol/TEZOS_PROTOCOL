@@ -181,6 +181,7 @@
         "Dal_slot_storage",
         "Sc_rollup_refutation_storage",
         "Zk_rollup_errors",
+        "Num",
 
 
         "Alpha_context",

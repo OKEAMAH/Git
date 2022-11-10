@@ -195,6 +195,7 @@
   Dal_slot_storage
   Sc_rollup_refutation_storage
   Zk_rollup_errors
+  Num
   Alpha_context
   Script_string
   Script_timestamp
@@ -469,6 +470,7 @@
   dal_slot_storage.ml dal_slot_storage.mli
   sc_rollup_refutation_storage.ml sc_rollup_refutation_storage.mli
   zk_rollup_errors.ml
+  num.ml num.mli
   alpha_context.ml alpha_context.mli
   script_string.ml script_string.mli
   script_timestamp.ml script_timestamp.mli
@@ -723,6 +725,7 @@
   dal_slot_storage.ml dal_slot_storage.mli
   sc_rollup_refutation_storage.ml sc_rollup_refutation_storage.mli
   zk_rollup_errors.ml
+  num.ml num.mli
   alpha_context.ml alpha_context.mli
   script_string.ml script_string.mli
   script_timestamp.ml script_timestamp.mli
@@ -982,6 +985,7 @@
   dal_slot_storage.ml dal_slot_storage.mli
   sc_rollup_refutation_storage.ml sc_rollup_refutation_storage.mli
   zk_rollup_errors.ml
+  num.ml num.mli
   alpha_context.ml alpha_context.mli
   script_string.ml script_string.mli
   script_timestamp.ml script_timestamp.mli

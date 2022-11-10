@@ -44,6 +44,8 @@
     - Finalization, using [finalize]
  *)
 
+module Num : module type of Num
+
 module type BASIC_DATA = sig
   type t
 

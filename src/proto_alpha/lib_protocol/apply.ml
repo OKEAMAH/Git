@@ -27,6 +27,13 @@
 
 (** Tezos Protocol Implementation - Main Entry Points *)
 
+let n1 = Num.one
+
+let n2 = Alpha_context.Num.one
+
+(* Why does this work?? *)
+let _ = Alpha_context.Num.add n1 n2
+
 open Alpha_context
 
 type error +=
