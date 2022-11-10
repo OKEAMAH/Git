@@ -75,11 +75,19 @@ type commitment_proof
 (** An encoding for the proof of a commitment. *)
 val commitment_proof_encoding : commitment_proof Data_encoding.t
 
-(** [verify_commitment srs commitment proof] checks whether
-     [commitment] is a valid [commitment]. In particular, it check
-     that the size of the data committed via [commitment] do not
-     exceed [C.slot_size]. The verification time is constant. *)
-val verify_commitment : t -> commitment -> commitment_proof -> bool
+(** [verify_commitment t commitment proof slot_size] checks whether
+     [commitment] is valid. In particular, it checks
+     that the size of the data committed via [commitment] does not
+     exceed [slot_size]. The verification time is constant.
+
+      Fails with `Slot_wrong_size if [slot_size] exceeds [C.slot_size]. *)
+
+val verify_commitment :
+  t ->
+  commitment ->
+  commitment_proof ->
+  slot_size:int ->
+  (bool, [> `Slot_wrong_size of string]) result
 
 (** The original slot can be split into a list of pages of size
      [page_size]. A page is consequently encoded as a pair of an
