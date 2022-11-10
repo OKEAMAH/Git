@@ -448,10 +448,10 @@ let encoding =
           (req "cycles_per_voting_period" int32)
           (req
              "hard_gas_limit_per_operation"
-             Gas_limit_repr.Arith.z_integral_encoding)
+             (check_size 10 Gas_limit_repr.Arith.z_integral_encoding))
           (req
              "hard_gas_limit_per_block"
-             Gas_limit_repr.Arith.z_integral_encoding)
+             (check_size 10 Gas_limit_repr.Arith.z_integral_encoding))
           (req "proof_of_work_threshold" int64)
           (req "minimal_stake" Tez_repr.encoding))
        (merge_objs
@@ -463,7 +463,7 @@ let encoding =
              (req "baking_reward_bonus_per_slot" Tez_repr.encoding)
              (req "endorsing_reward_per_slot" Tez_repr.encoding)
              (req "cost_per_byte" Tez_repr.encoding)
-             (req "hard_storage_limit_per_operation" z)
+             (req "hard_storage_limit_per_operation" (check_size 10 z))
              (req "quorum_min" int32))
           (merge_objs
              (obj9
