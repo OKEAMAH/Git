@@ -51,6 +51,7 @@ val prepare :
   timestamp:Time.t ->
   (Raw_context.t
   * Receipt_repr.balance_updates
-  * Migration_repr.origination_result list)
+  * Migration_repr.origination_result list
+  * bool (* true <-> protocol upgraded *))
   Error_monad.tzresult
   Lwt.t

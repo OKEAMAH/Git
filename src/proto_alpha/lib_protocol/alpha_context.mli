@@ -4889,7 +4889,10 @@ val prepare :
   level:Int32.t ->
   predecessor_timestamp:Time.t ->
   timestamp:Time.t ->
-  (context * Receipt.balance_updates * Migration.origination_result list)
+  (context
+  * Receipt.balance_updates
+  * Migration.origination_result list
+  * bool (* true <-> protocol upgraded *))
   tzresult
   Lwt.t
 

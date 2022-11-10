@@ -58,7 +58,8 @@ let to_alpha_ctxt b =
     ~predecessor_timestamp:b.header.shell.timestamp
     ~timestamp:b.header.shell.timestamp
   >|= Environment.wrap_tzresult
-  >>=? fun (ctxt, _balance_updates, _migration_results) -> return ctxt
+  >>=? fun (ctxt, _balance_updates, _migration_results, _protocol_updated) ->
+  return ctxt
 
 (******** Policies ***********)
 

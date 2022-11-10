@@ -584,7 +584,8 @@ module Pending_migration : sig
     Raw_context.t ->
     (Raw_context.t
     * Receipt_repr.balance_updates
-    * Migration_repr.origination_result list)
+    * Migration_repr.origination_result list
+    * bool (* true <-> protocol upgraded *))
     tzresult
     Lwt.t
 end
@@ -904,6 +905,20 @@ module Dal : sig
         with type t := Raw_context.t
          and type value = Dal_slot_repr.History.t
   end
+end
+
+module Parametric_constants : sig
+  (** . *)
+  module History :
+    Single_data_storage
+      with type t := Raw_context.t
+       and type value = Constants_parametric_repr.History.t
+
+  (* TODO/DAL: remove this cache from L1 (?) *)
+  module Cache :
+    Single_data_storage
+      with type t := Raw_context.t
+       and type value = Constants_parametric_repr.History.Cache.t
 end
 
 module Zk_rollup : sig

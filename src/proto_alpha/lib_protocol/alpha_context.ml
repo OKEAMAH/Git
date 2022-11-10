@@ -561,10 +561,10 @@ let prepare_first_block = Init_storage.prepare_first_block
 
 let prepare ctxt ~level ~predecessor_timestamp ~timestamp =
   Init_storage.prepare ctxt ~level ~predecessor_timestamp ~timestamp
-  >>=? fun (ctxt, balance_updates, origination_results) ->
+  >>=? fun (ctxt, balance_updates, origination_results, protocol_upgraded) ->
   Consensus.load_endorsement_branch ctxt >>=? fun ctxt ->
   Consensus.load_grand_parent_branch ctxt >>=? fun ctxt ->
-  return (ctxt, balance_updates, origination_results)
+  return (ctxt, balance_updates, origination_results, protocol_upgraded)
 
 let finalize ?commit_message:message c fitness =
   let context = Raw_context.recover c in

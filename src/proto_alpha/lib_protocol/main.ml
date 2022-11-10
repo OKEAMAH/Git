@@ -148,7 +148,10 @@ let prepare_ctxt ctxt mode ~(predecessor : Block_header.shell_header) =
     | Construction {timestamp; _} | Partial_construction {timestamp; _} ->
         (Int32.succ predecessor.level, timestamp)
   in
-  let* ctxt, migration_balance_updates, migration_operation_results =
+  let* ( ctxt,
+         migration_balance_updates,
+         migration_operation_results,
+         protocol_upgraded ) =
     prepare ctxt ~level ~predecessor_timestamp:predecessor.timestamp ~timestamp
   in
   let*? predecessor_raw_level = Raw_level.of_int32 predecessor.level in
@@ -176,6 +179,7 @@ let prepare_ctxt ctxt mode ~(predecessor : Block_header.shell_header) =
     ( ctxt,
       migration_balance_updates,
       migration_operation_results,
+      protocol_upgraded,
       predecessor_level,
       predecessor_raw_level )
 
@@ -185,6 +189,7 @@ let begin_validation ctxt chain_id mode ~predecessor =
   let* ( ctxt,
          _migration_balance_updates,
          _migration_operation_results,
+         _protocol_upgraded,
          predecessor_level,
          _predecessor_raw_level ) =
     prepare_ctxt ctxt ~predecessor mode
@@ -270,6 +275,7 @@ let begin_application ctxt chain_id mode ~predecessor =
   let* ( ctxt,
          migration_balance_updates,
          migration_operation_results,
+         protocol_upgraded,
          predecessor_level,
          predecessor_raw_level ) =
     prepare_ctxt ctxt ~predecessor mode
@@ -283,6 +289,7 @@ let begin_application ctxt chain_id mode ~predecessor =
         chain_id
         ~migration_balance_updates
         ~migration_operation_results
+        ~protocol_upgraded
         ~predecessor_fitness
         block_header
   | Partial_validation _ -> fail Cannot_apply_in_partial_validation
@@ -293,6 +300,7 @@ let begin_application ctxt chain_id mode ~predecessor =
         chain_id
         ~migration_balance_updates
         ~migration_operation_results
+        ~protocol_upgraded
         ~predecessor_timestamp
         ~predecessor_level
         ~predecessor_round
@@ -305,6 +313,7 @@ let begin_application ctxt chain_id mode ~predecessor =
         chain_id
         ~migration_balance_updates
         ~migration_operation_results
+        ~protocol_upgraded
         ~predecessor_level:predecessor_raw_level
         ~predecessor_fitness
 
@@ -382,7 +391,7 @@ let value_of_key ~chain_id:_ ~predecessor_context:ctxt ~predecessor_timestamp
     ~timestamp =
   let level = Int32.succ pred_level in
   Alpha_context.prepare ctxt ~level ~predecessor_timestamp ~timestamp
-  >>=? fun (ctxt, _, _) -> return (Apply.value_of_key ctxt)
+  >>=? fun (ctxt, _, _, _) -> return (Apply.value_of_key ctxt)
 
 module Mempool = struct
   include Mempool_validation
@@ -393,6 +402,7 @@ module Mempool = struct
     let* ( ctxt,
            _migration_balance_updates,
            _migration_operation_results,
+           _protocol_upgraded,
            head_level,
            _head_raw_level ) =
       (* We use Partial_construction to factorize the [prepare_ctxt]. *)

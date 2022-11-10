@@ -43,7 +43,7 @@ let rpc_init ({block_hash; block_header; context} : Updater.rpc_context) mode =
     ~predecessor_timestamp:timestamp
     ~timestamp
     context
-  >|=? fun (context, _, _) -> {block_hash; block_header; context}
+  >|=? fun (context, _, _, _) -> {block_hash; block_header; context}
 
 let rpc_services =
   ref (RPC_directory.empty : Updater.rpc_context RPC_directory.t)

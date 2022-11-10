@@ -497,3 +497,184 @@ let encoding =
                       (merge_objs
                          (obj1 (req "dal_parametric" dal_encoding))
                          (merge_objs sc_rollup_encoding zk_rollup_encoding))))))))
+
+module History = struct
+  type parametric = t
+
+  type content = {parametric : parametric; activation_level : Raw_level_repr.t}
+
+  let content_encoding =
+    let open Data_encoding in
+    conv
+      (fun {parametric; activation_level} -> (parametric, activation_level))
+      (fun (parametric, activation_level) -> {parametric; activation_level})
+      (obj2
+         (req "parametric" encoding)
+         (req "activation_level" Raw_level_repr.encoding))
+
+  module Leaf = struct
+    type t = content
+
+    let to_bytes = Data_encoding.Binary.to_bytes_exn content_encoding
+  end
+
+  module Content_prefix = struct
+    let (_prefix : string) = "dash1"
+
+    (* 32 *)
+    let b58check_prefix = "\002\224\072\094\219" (* dash1(55) *)
+
+    let size = Some 32
+
+    let name = "dal_skip_list_content"
+
+    let title = "A hash to represent the content of a cell in the skip list"
+  end
+
+  module Content_hash = Blake2B.Make (Base58) (Content_prefix)
+  module Merkle_list = Merkle_list.Make (Leaf) (Content_hash)
+
+  (* Pointers of the skip lists are used to encode the content and the
+     backpointers. *)
+  module Pointer_prefix = struct
+    let (_prefix : string) = "dask1"
+
+    (* 32 *)
+    let b58check_prefix = "\002\224\072\115\035" (* dask1(55) *)
+
+    let size = Some 32
+
+    let name = "dal_skip_list_pointer"
+
+    let title = "A hash that represents the skip list pointers"
+  end
+
+  module Pointer_hash = Blake2B.Make (Base58) (Pointer_prefix)
+
+  module Skip_list_parameters = struct
+    let basis = 2
+  end
+
+  type error += Add_element_in_slots_skip_list_violates_ordering
+
+  let () =
+    register_error_kind
+      `Temporary
+      ~id:
+        "Constants_parametric_repr.add_element_in_slots_skip_list_violates_ordering"
+      ~title:"Add an element in slots skip list that violates ordering"
+      ~description:
+        "Attempting to add an element on top of the  skip list that violates \
+         the ordering."
+      Data_encoding.unit
+      (function
+        | Add_element_in_slots_skip_list_violates_ordering -> Some ()
+        | _ -> None)
+      (fun () -> Add_element_in_slots_skip_list_violates_ordering)
+
+  module Skip_list = struct
+    include Skip_list_repr.Make (Skip_list_parameters)
+
+    (** All confirmed DAL slots will be stored in a skip list, where only the
+        last cell is remembered in the L1 context. The skip list is used in
+        the proof phase of a refutation game to verify whether a given slot
+        exists (i.e., confirmed) or not in the skip list. The skip list is
+        supposed to be sorted, as its 'search' function explicitly uses a given
+        `compare` function during the list traversal to quickly (in log(size))
+        reach the target if any.
+
+        In our case, we will store one slot per cell in the skip list and
+        maintain that the list is well sorted (and without redundancy) w.r.t.
+        the [compare_slot_id] function.
+
+        Below, we redefine the [next] function (that allows adding elements
+        on top of the list) to enforce that the constructed skip list is
+        well-sorted. We also define a wrapper around the search function to
+        guarantee that it can only be called with the adequate compare function.
+    *)
+
+    let next ~prev_cell ~prev_cell_ptr elt =
+      let open Tzresult_syntax in
+      let* () =
+        error_when
+          (Compare.Int.( <= )
+             (Raw_level_repr.compare
+                elt.activation_level
+                (content prev_cell).activation_level)
+             0)
+          Add_element_in_slots_skip_list_violates_ordering
+      in
+      return @@ next ~prev_cell ~prev_cell_ptr elt
+
+    let _search ~deref ~cell ~target_id =
+      search ~deref ~cell ~compare:(fun elt ->
+          Raw_level_repr.compare elt.activation_level target_id)
+  end
+
+  module V1 = struct
+    (* A pointer to a cell is the hash of its content and all the back
+       pointers. *)
+    type ptr = Pointer_hash.t
+
+    type history = (content, ptr) Skip_list.cell
+
+    type t = history
+
+    let encoding = Skip_list.encoding Pointer_hash.encoding content_encoding
+
+    let hash_skip_list_cell cell =
+      let content = Skip_list.content cell in
+      let back_pointers_hashes = Skip_list.back_pointers cell in
+      Data_encoding.Binary.to_bytes_exn content_encoding content
+      :: List.map Pointer_hash.to_bytes back_pointers_hashes
+      |> Pointer_hash.hash_bytes
+
+    let equal : history -> history -> bool =
+      Skip_list.equal Pointer_hash.equal (fun a b ->
+          Raw_level_repr.equal a.activation_level b.activation_level)
+
+    let pp fmt (history : history) =
+      let history_hash = hash_skip_list_cell history in
+      Format.fprintf
+        fmt
+        "@[hash : %a@;%a@]"
+        Pointer_hash.pp
+        history_hash
+        (Skip_list.pp
+           ~pp_content:(fun fmt c ->
+             Format.fprintf
+               fmt
+               "%a -> <parametric>"
+               Raw_level_repr.pp
+               c.activation_level)
+           ~pp_ptr:Pointer_hash.pp)
+        history
+
+    let genesis = Skip_list.genesis
+
+    module Cache =
+      Bounded_history_repr.Make
+        (struct
+          let name = "constants_parametric_repr_history_cache"
+        end)
+        (Pointer_hash)
+        (struct
+          type t = history
+
+          let encoding = encoding
+
+          let pp = pp
+
+          let equal = equal
+        end)
+
+    let add t cache content =
+      let open Tzresult_syntax in
+      let prev_cell_ptr = hash_skip_list_cell t in
+      let* cache = Cache.remember prev_cell_ptr t cache in
+      let* new_cell = Skip_list.next ~prev_cell:t ~prev_cell_ptr content in
+      return (new_cell, cache)
+  end
+
+  include V1
+end

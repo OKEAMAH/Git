@@ -84,6 +84,7 @@ val begin_application :
   Chain_id.t ->
   migration_balance_updates:Receipt.balance_updates ->
   migration_operation_results:Migration.origination_result list ->
+  protocol_upgraded:bool ->
   predecessor_fitness:Fitness.raw ->
   Block_header.t ->
   application_state tzresult Lwt.t
@@ -95,6 +96,7 @@ val begin_full_construction :
   Chain_id.t ->
   migration_balance_updates:Receipt.balance_updates ->
   migration_operation_results:Migration.origination_result list ->
+  protocol_upgraded:bool ->
   predecessor_timestamp:Time.t ->
   predecessor_level:Level.t ->
   predecessor_round:Round.t ->
@@ -111,6 +113,7 @@ val begin_partial_construction :
   Chain_id.t ->
   migration_balance_updates:Receipt.balance_updates ->
   migration_operation_results:Migration.origination_result list ->
+  protocol_upgraded:bool ->
   predecessor_level:Raw_level.t ->
   predecessor_fitness:Fitness.raw ->
   application_state tzresult Lwt.t

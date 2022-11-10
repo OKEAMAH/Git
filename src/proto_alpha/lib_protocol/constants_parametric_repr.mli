@@ -189,3 +189,23 @@ type t = {
 }
 
 val encoding : t Data_encoding.encoding
+
+module History : sig
+  type parametric = t
+
+  type content = {parametric : parametric; activation_level : Raw_level_repr.t}
+
+  type t
+
+  val encoding : t Data_encoding.t
+
+  module Cache : sig
+    type t
+
+    val encoding : t Data_encoding.t
+  end
+
+  val genesis : content -> t
+
+  val add : t -> Cache.t -> content -> (t * Cache.t) tzresult
+end

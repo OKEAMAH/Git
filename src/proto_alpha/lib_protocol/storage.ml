@@ -1436,8 +1436,11 @@ module Pending_migration = struct
           (* When applying balance updates in a migration, we must attach receipts.
              The balance updates returned from here will be applied in the first
              block of the new protocol. *)
-          return (ctxt, balance_updates)
-      | None -> return (ctxt, [])
+          let protocol_upgraded = true in
+          return (ctxt, balance_updates, protocol_upgraded)
+      | None ->
+          let protocol_upgraded = false in
+          return (ctxt, [], protocol_upgraded)
     in
     let operation_results ctxt =
       Operation_results.find ctxt >>=? function
@@ -1446,9 +1449,9 @@ module Pending_migration = struct
           return (ctxt, operation_results)
       | None -> return (ctxt, [])
     in
-    balance_updates ctxt >>=? fun (ctxt, balance_updates) ->
+    balance_updates ctxt >>=? fun (ctxt, balance_updates, protocol_upgraded) ->
     operation_results ctxt >>=? fun (ctxt, operation_results) ->
-    return (ctxt, balance_updates, operation_results)
+    return (ctxt, balance_updates, operation_results, protocol_upgraded)
 end
 
 module Liquidity_baking = struct
@@ -1979,6 +1982,30 @@ module Dal = struct
           let encoding = Dal_slot_repr.History.encoding
         end)
   end
+end
+
+module Parametric_constants = struct
+  module History =
+    Make_single_data_storage (Registered) (Raw_context)
+      (struct
+        let name = ["parametric_constants_history"]
+      end)
+      (struct
+        type t = Constants_parametric_repr.History.t
+
+        let encoding = Constants_parametric_repr.History.encoding
+      end)
+
+  module Cache =
+    Make_single_data_storage (Registered) (Raw_context)
+      (struct
+        let name = ["parametric_constants_history_cache"]
+      end)
+      (struct
+        type t = Constants_parametric_repr.History.Cache.t
+
+        let encoding = Constants_parametric_repr.History.Cache.encoding
+      end)
 end
 
 module Zk_rollup = struct

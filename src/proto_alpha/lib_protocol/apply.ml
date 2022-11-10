@@ -2477,10 +2477,17 @@ let record_endorsing_participation ctxt =
     validators
     ctxt
 
-let begin_application ctxt chain_id ~migration_balance_updates
-    ~migration_operation_results ~(predecessor_fitness : Fitness.raw)
-    (block_header : Block_header.t) : application_state tzresult Lwt.t =
+let record_new_protocol_constants ctxt ~protocol_upgraded =
   let open Lwt_tzresult_syntax in
+  if not protocol_upgraded then return ctxt else (* TODO *)
+                                              return ctxt
+
+let begin_application ctxt chain_id ~migration_balance_updates
+    ~migration_operation_results ~protocol_upgraded
+    ~(predecessor_fitness : Fitness.raw) (block_header : Block_header.t) :
+    application_state tzresult Lwt.t =
+  let open Lwt_tzresult_syntax in
+  let* ctxt = record_new_protocol_constants ctxt ~protocol_upgraded in
   let*? fitness = Fitness.from_raw block_header.shell.fitness in
   let level = block_header.shell.level in
   let*? predecessor_round = Fitness.round_from_raw predecessor_fitness in
@@ -2531,10 +2538,11 @@ let begin_application ctxt chain_id ~migration_balance_updates
     }
 
 let begin_full_construction ctxt chain_id ~migration_balance_updates
-    ~migration_operation_results ~predecessor_timestamp ~predecessor_level
-    ~predecessor_round ~predecessor_hash ~timestamp
+    ~migration_operation_results ~protocol_upgraded ~predecessor_timestamp
+    ~predecessor_level ~predecessor_round ~predecessor_hash ~timestamp
     (block_data_contents : Block_header.contents) =
   let open Lwt_tzresult_syntax in
+  let* ctxt = record_new_protocol_constants ctxt ~protocol_upgraded in
   let round_durations = Constants.round_durations ctxt in
   let*? round =
     Round.round_of_timestamp
@@ -2587,9 +2595,10 @@ let begin_full_construction ctxt chain_id ~migration_balance_updates
     }
 
 let begin_partial_construction ctxt chain_id ~migration_balance_updates
-    ~migration_operation_results ~predecessor_level
+    ~migration_operation_results ~protocol_upgraded ~predecessor_level
     ~(predecessor_fitness : Fitness.raw) : application_state tzresult Lwt.t =
   let open Lwt_tzresult_syntax in
+  let* ctxt = record_new_protocol_constants ctxt ~protocol_upgraded in
   let toggle_vote = Liquidity_baking.LB_pass in
   let* ctxt, liquidity_baking_operations_results, liquidity_baking_toggle_ema =
     apply_liquidity_baking_subsidy ctxt ~toggle_vote
