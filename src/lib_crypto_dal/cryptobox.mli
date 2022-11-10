@@ -186,10 +186,13 @@ type shard_proof
      the commitment. *)
 val verify_shard : t -> commitment -> shard -> shard_proof -> bool
 
-(** [prove_commitment t polynomial] produces a proof that the
-     slot represented by [polynomial] has its size bounded by the
-     maximum slot size. *)
-val prove_commitment : t -> polynomial -> commitment_proof
+(** [prove_commitment t polynomial slot_size] produces a proof that the
+     slot represented by [polynomial] has its size bounded by [slot size]. *)
+val prove_commitment :
+  t ->
+  polynomial ->
+  slot_size:int ->
+  (commitment_proof, [> `Slot_wrong_size of string]) result
 
 (** [prove_page] produces a proof that the [n]th page computed
      is part of a commitment. This page corresponds to the original

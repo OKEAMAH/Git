@@ -607,25 +607,40 @@ module Inner = struct
      using the commitments for p and p X^{d-n}, and computing the commitment for
      X^{d-n} on G_2.*)
 
-  let prove_commitment (t : t) p =
-    let n = slot_as_polynomial_length ~slot_size:t.slot_size in
-    let d = Srs_g1.size t.srs.raw.srs_g1 - 1 in
-    commit
-      t
-      Polynomials.(mul (of_coefficients [(Scalar.(copy one), Int.sub d n)]) p)
+  let prove_commitment (t : t) p ~slot_size =
+    if slot_size > t.slot_size then
+      Error
+        (`Slot_wrong_size
+          (Printf.sprintf
+             "input slot size %d exceeds maximum allowed slot size %d"
+             slot_size
+             t.slot_size))
+    else
+      let n = slot_as_polynomial_length ~slot_size in
+      let d = Srs_g1.size t.srs.raw.srs_g1 - 1 in
+      let open Polynomials in
+      Ok (commit t (mul (of_coefficients [(Scalar.(copy one), Int.sub d n)]) p))
 
-  let verify_commitment (t : t) cm proof =
-    let open Bls12_381 in
-    let n = slot_as_polynomial_length ~slot_size:t.slot_size in
-    let d = Srs_g1.size t.srs.raw.srs_g1 - 1 in
-    let check =
-      match Srs_g2.get t.srs.raw.srs_g2 (d - n) with
-      | exception Invalid_argument _ -> false
-      | commit_xk ->
-          Pairing.pairing_check
-            [(cm, commit_xk); (proof, G2.(negate (copy one)))]
-    in
-    check
+  let verify_commitment (t : t) cm proof ~slot_size =
+    if slot_size > t.slot_size then
+      Error
+        (`Slot_wrong_size
+          (Printf.sprintf
+             "input slot size %d exceeds maximum allowed slot size %d"
+             slot_size
+             t.slot_size))
+    else
+      let n = slot_as_polynomial_length ~slot_size in
+      let d = Srs_g1.size t.srs.raw.srs_g1 - 1 in
+      let open Bls12_381 in
+      let check =
+        match Srs_g2.get t.srs.raw.srs_g2 (d - n) with
+        | exception Invalid_argument _ -> false
+        | commit_xk ->
+            Pairing.pairing_check
+              [(cm, commit_xk); (proof, G2.(negate (copy one)))]
+      in
+      Ok check
 
   let inverse domain =
     let n = Array.length domain in

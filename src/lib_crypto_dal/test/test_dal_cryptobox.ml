@@ -86,8 +86,8 @@ module Test = struct
                 shard_proofs.(0)
             in
             assert check ;
-            let pi = Cryptobox.prove_commitment t p in
-            let check = Cryptobox.verify_commitment t comm pi in
+            let* pi = Cryptobox.prove_commitment t p ~slot_size in
+            let* check = Cryptobox.verify_commitment t comm pi ~slot_size in
             assert check ;
             Ok ()
         (* let point = Scalar.random () in *)
