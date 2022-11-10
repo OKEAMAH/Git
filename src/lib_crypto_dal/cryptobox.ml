@@ -314,7 +314,7 @@ module Inner = struct
       (* n must be at most 2^32, the biggest subgroup of 2^i roots of unity in the
          multiplicative group of Fr, because the FFTs operate on such groups. *)
       fail (`Fail "Wrong computed size for n")
-    else if t.k > srs_size then
+    else if t.k + 1 > srs_size then
       fail
         (`Fail
           (Format.asprintf
@@ -607,16 +607,19 @@ module Inner = struct
      using the commitments for p and p X^{d-n}, and computing the commitment for
      X^{d-n} on G_2.*)
 
-  let prove_commitment t p =
-    commit t Polynomials.(mul (of_coefficients [(Scalar.(copy one), 0)]) p)
+  let prove_commitment (t : t) p =
+    let n = slot_as_polynomial_length ~slot_size:t.slot_size in
+    let d = Srs_g1.size t.srs.raw.srs_g1 - 1 in
+    commit
+      t
+      Polynomials.(mul (of_coefficients [(Scalar.(copy one), Int.sub d n)]) p)
 
-  (* FIXME https://gitlab.com/tezos/tezos/-/issues/3389
-
-     Generalize this function to pass the degree in parameter. *)
-  let verify_commitment t cm proof =
+  let verify_commitment (t : t) cm proof =
     let open Bls12_381 in
+    let n = slot_as_polynomial_length ~slot_size:t.slot_size in
+    let d = Srs_g1.size t.srs.raw.srs_g1 - 1 in
     let check =
-      match Srs_g2.get t.srs.raw.srs_g2 0 with
+      match Srs_g2.get t.srs.raw.srs_g2 (d - n) with
       | exception Invalid_argument _ -> false
       | commit_xk ->
           Pairing.pairing_check
@@ -877,8 +880,8 @@ module Internal_for_tests = struct
       Bls12_381.Fr.of_string
         "20812168509434597367146703229805575690060615791308155437936410982393987532344"
     in
-    let srs_g1 = Srs_g1.generate_insecure size secret in
-    let srs_g2 = Srs_g2.generate_insecure size secret in
+    let srs_g1 = Srs_g1.generate_insecure (size + 1) secret in
+    let srs_g2 = Srs_g2.generate_insecure (size + 1) secret in
     {srs_g1; srs_g2}
 
   let load_parameters parameters = initialisation_parameters := Some parameters
