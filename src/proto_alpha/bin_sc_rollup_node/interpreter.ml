@@ -29,7 +29,7 @@ open Alpha_context
 module type S = sig
   module PVM : Pvm.S
 
-  val metadata : Node_context.t -> Sc_rollup.Metadata.t
+  val metadata : Node_context.t -> Sc_rollup.Metadata.t tzresult Lwt.t
 
   (** [process_head node_ctxt head] interprets the messages associated
       with a [head] from a chain [event]. This requires the inbox to be updated
@@ -60,9 +60,10 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
   (** [metadata node_ctxt] creates a {Sc_rollup.Metadata.t} using the information
       stored in [node_ctxt]. *)
   let metadata (node_ctxt : Node_context.t) =
+    let open Lwt_result_syntax in
     let address = node_ctxt.rollup_address in
     let origination_level = node_ctxt.genesis_info.Sc_rollup.Commitment.level in
-    Sc_rollup.Metadata.{address; origination_level}
+    return Sc_rollup.Metadata.{address; origination_level}
 
   let genesis_state block_hash node_ctxt ctxt =
     let open Node_context in
@@ -97,7 +98,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let open Lwt_result_syntax in
     (* Retrieve the previous PVM state from store. *)
     let* ctxt, predecessor_state = state_of_head node_ctxt ctxt predecessor in
-    let metadata = metadata node_ctxt in
+    let* metadata = metadata node_ctxt in
     let dal_endorsement_lag =
       node_ctxt.protocol_constants.parametric.dal.endorsement_lag
     in
@@ -197,7 +198,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
         ctxt
         Layer1.{hash = predecessor_hash; level = pred_level}
     in
-    let metadata = metadata node_ctxt in
+    let* metadata = metadata node_ctxt in
     let dal_endorsement_lag =
       node_ctxt.protocol_constants.parametric.dal.endorsement_lag
     in
