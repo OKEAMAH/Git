@@ -51,7 +51,6 @@ module Timestamp = struct
 end
 
 module Slot = Slot_repr
-module Sc_rollup_repr = Sc_rollup_repr
 
 module Sc_rollup = struct
   module Tick = Sc_rollup_tick_repr
@@ -469,6 +468,7 @@ module Sapling = struct
 end
 
 module Bond_id = struct
+  module Sc_rollup_repr = Sc_rollup_repr
   include Bond_id_repr
   module Internal_for_tests = Contract_storage
 end

@@ -2329,18 +2329,18 @@ module Tx_rollup_errors : sig
     [`Inbox | `Commitment] -> int -> count_limit:int -> unit tzresult
 end
 
-(** This is a forward declaration to avoid circular dependencies.
+(** This module re-exports definitions from {!Bond_id_repr}. *)
+module Bond_id : sig
+  (** This is a forward declaration to avoid circular dependencies.
     Use module [Sc_rollup] instead whenever possible.
     TODO : find a better way to resolve the circular dependency
            https://gitlab.com/tezos/tezos/-/issues/3147 *)
-module Sc_rollup_repr : sig
-  module Address : S.HASH
+  module Sc_rollup_repr : sig
+    module Address : S.HASH
 
-  type t = Address.t
-end
+    type t = Address.t
+  end
 
-(** This module re-exports definitions from {!Bond_id_repr}. *)
-module Bond_id : sig
   type t =
     | Tx_rollup_bond_id of Tx_rollup.t
     | Sc_rollup_bond_id of Sc_rollup_repr.t
@@ -3044,9 +3044,9 @@ module Sc_rollup : sig
     module Map : Map.S with type key = t
   end
 
-  module Address = Sc_rollup_repr.Address
+  module Address = Bond_id.Sc_rollup_repr.Address
 
-  type t = Sc_rollup_repr.t
+  type t = Bond_id.Sc_rollup_repr.t
 
   type rollup := t
 
