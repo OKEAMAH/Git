@@ -186,7 +186,7 @@ let test_reveal_metadata () =
      metadata definition in this compilation unit. *)
   let metadata =
     Bytes.init
-      Tezos_scoru_wasm.Host_funcs.Internal_for_tests.metadata_size
+      Tezos_scoru_wasm.Host_funcs.Internal_for_tests.max_metadata_size
       (fun i -> Char.chr (i mod 256))
   in
   let*! state = Wasm.reveal_step metadata state in
@@ -208,7 +208,7 @@ let test_reveal_metadata () =
   let*! memory = Instance.Vector.get 0l module_instance.memories in
   assert (
     Int32.to_int returned_size
-    = Tezos_scoru_wasm.Host_funcs.Internal_for_tests.metadata_size) ;
+    <= Tezos_scoru_wasm.Host_funcs.Internal_for_tests.max_metadata_size) ;
   let*! preimage_in_memory =
     Memory.load_bytes memory metadata_addr (Int32.to_int returned_size)
   in

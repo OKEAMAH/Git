@@ -735,13 +735,14 @@ let reveal_metadata_type =
 
 (* The rollup address is a 20-byte hash. The origination level is
    a 4-byte (32bit) integer. *)
-let metadata_size = Int32.add 20l 4l
+let max_metadata_size = Int32.add 20l 4l
 
 let reveal_metadata_parse_args _memories args =
   match args with
   | Values.[Num (I32 base)] ->
       Lwt.return
-        (Reveal.Reveal_metadata, Host_funcs.{base; max_bytes = metadata_size})
+        ( Reveal.Reveal_metadata,
+          Host_funcs.{base; max_bytes = max_metadata_size} )
   | _ -> raise Bad_input
 
 let reveal_metadata = Host_funcs.Reveal_func reveal_metadata_parse_args
@@ -854,7 +855,7 @@ let all =
   registry
 
 module Internal_for_tests = struct
-  let metadata_size = Int32.to_int metadata_size
+  let max_metadata_size = Int32.to_int max_metadata_size
 
   let write_output = Func.HostFunc (write_output_type, write_output_name)
 

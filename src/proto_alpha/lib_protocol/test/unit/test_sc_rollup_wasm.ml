@@ -116,7 +116,7 @@ let test_metadata_size () =
   in
   assert (
     Bytes.length bytes
-    = Tezos_scoru_wasm.Host_funcs.Internal_for_tests.metadata_size) ;
+    <= Tezos_scoru_wasm.Host_funcs.Internal_for_tests.max_metadata_size) ;
   Lwt_result_syntax.return_unit
 
 let make_transaction value text contract =
