@@ -503,3 +503,39 @@ let maximum_binary_length =
   match Data_encoding.Binary.maximum_length encoding with
   | None -> assert false
   | Some len -> len
+
+type serialized = bytes
+
+type error += Serialization_error | Deserialization_error
+
+let () =
+  (* Serialization_error *)
+  register_error_kind
+    `Permanent
+    ~id:"Constants_parametric_repr.Serialization_error"
+    ~title:"Parametric constants serialization error"
+    ~description:"Error occured during parametric constants serialization"
+    Data_encoding.unit
+    (function Serialization_error -> Some () | _ -> None)
+    (fun () -> Serialization_error) ;
+  (* Deserialization_error *)
+  register_error_kind
+    `Permanent
+    ~id:"Constants_parametric_repr.Deserialization_error"
+    ~title:"Parametric constants deserialization error"
+    ~description:"Error occured during parametric constants deserialization"
+    Data_encoding.unit
+    (function Deserialization_error -> Some () | _ -> None)
+    (fun () -> Deserialization_error)
+
+let serialize t =
+  let open Tzresult_syntax in
+  match Data_encoding.Binary.to_bytes_opt encoding t with
+  | Some b -> return b
+  | None -> fail Serialization_error
+
+let deserialize b =
+  let open Tzresult_syntax in
+  match Data_encoding.Binary.of_bytes_opt encoding b with
+  | Some t -> return t
+  | None -> fail Deserialization_error

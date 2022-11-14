@@ -197,3 +197,17 @@ val encoding : t Data_encoding.encoding
     at compilation time otherwise.
 *)
 val maximum_binary_length : int
+
+type serialized = bytes
+
+type error += Serialization_error | Deserialization_error
+
+(** {serialize c} encodes [c] into bytes using {!encoding}. The function
+    returns {!Serialization_error} in case of failure.
+*)
+val serialize : t -> serialized tzresult
+
+(** {deserialize b} decodes [b] from bytes using {!encoding}. The function
+    returns {!Serialization_error} in case of failure.
+*)
+val deserialize : serialized -> t tzresult
