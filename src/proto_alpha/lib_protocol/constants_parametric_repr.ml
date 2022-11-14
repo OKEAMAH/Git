@@ -497,3 +497,9 @@ let encoding =
                       (merge_objs
                          (obj1 (req "dal_parametric" dal_encoding))
                          (merge_objs sc_rollup_encoding zk_rollup_encoding))))))))
+
+(* Ensures statically that the encoding is bounded *)
+let maximum_binary_length =
+  match Data_encoding.Binary.maximum_length encoding with
+  | None -> assert false
+  | Some len -> len

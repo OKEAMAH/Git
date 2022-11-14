@@ -189,3 +189,11 @@ type t = {
 }
 
 val encoding : t Data_encoding.encoding
+
+(** The maximum size that would require a value of type {!t} in order to encode
+    it in binary with {!encoding}.
+
+    The {!encoding} is expected to be bounded. An failure is statically raised
+    at compilation time otherwise.
+*)
+val maximum_binary_length : int
