@@ -29,26 +29,34 @@
 type t = {
   address : Sc_rollup_repr.Address.t;
   origination_level : Raw_level_repr.t;
+  parametric_constants : Constants_parametric_repr.serialized;
 }
 
-let pp ppf {address; origination_level} =
+let pp ppf {address; origination_level; parametric_constants} =
   Format.fprintf
     ppf
-    "address: %a ; origination_level: %a"
+    "address: %a ; origination_level: %a ; parametric_constants: %s"
     Sc_rollup_repr.Address.pp
     address
     Raw_level_repr.pp
     origination_level
+    (Bytes.to_string parametric_constants)
 
-let equal {address; origination_level} metadata2 =
+let equal {address; origination_level; parametric_constants} metadata2 =
   Sc_rollup_repr.Address.equal address metadata2.address
   && Raw_level_repr.equal origination_level metadata2.origination_level
+  && Bytes.equal parametric_constants metadata2.parametric_constants
 
 let encoding =
   let open Data_encoding in
   conv
-    (fun {address; origination_level} -> (address, origination_level))
-    (fun (address, origination_level) -> {address; origination_level})
-    (obj2
+    (fun {address; origination_level; parametric_constants} ->
+      (address, origination_level, parametric_constants))
+    (fun (address, origination_level, parametric_constants) ->
+      {address; origination_level; parametric_constants})
+    (obj3
        (req "address" Sc_rollup_repr.Address.encoding)
-       (req "origination_level" Raw_level_repr.encoding))
+       (req "origination_level" Raw_level_repr.encoding)
+       (req
+          "parametric_constants"
+          (check_size Constants_parametric_repr.maximum_binary_length bytes)))

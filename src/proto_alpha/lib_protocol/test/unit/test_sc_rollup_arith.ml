@@ -140,11 +140,15 @@ let test_metadata () =
   let open Sc_rollup_PVM_sig in
   let open Lwt_result_syntax in
   boot "" @@ fun _ctxt state ->
+  let*? parametric_constants =
+    Sc_rollup_helpers.mk_parametric_constants `Mainnet
+  in
   let metadata =
     Sc_rollup_metadata_repr.
       {
         address = Sc_rollup_repr.Address.zero;
         origination_level = Raw_level_repr.root;
+        parametric_constants;
       }
   in
   let input = Reveal (Metadata metadata) in
@@ -477,8 +481,12 @@ let test_filter_internal_message () =
   let open Lwt_result_syntax in
   boot "" @@ fun _ctxt state ->
   let address = Sc_rollup_repr.Address.zero in
+  let*? parametric_constants =
+    Sc_rollup_helpers.mk_parametric_constants `Mainnet
+  in
   let metadata =
-    Sc_rollup_metadata_repr.{address; origination_level = Raw_level_repr.root}
+    Sc_rollup_metadata_repr.
+      {address; origination_level = Raw_level_repr.root; parametric_constants}
   in
   let input = Reveal (Metadata metadata) in
   let*! state = set_input input state in

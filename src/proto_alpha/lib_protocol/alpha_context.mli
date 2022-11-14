@@ -3074,7 +3074,11 @@ module Sc_rollup : sig
 
   (** See {!Sc_rollup_metadata_repr}. *)
   module Metadata : sig
-    type t = {address : rollup; origination_level : Raw_level.t}
+    type t = {
+      address : rollup;
+      origination_level : Raw_level.t;
+      parametric_constants : Constants.Parametric.serialized;
+    }
 
     val pp : Format.formatter -> t -> unit
 

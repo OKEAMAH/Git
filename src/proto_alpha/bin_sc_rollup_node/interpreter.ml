@@ -63,7 +63,22 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let open Lwt_result_syntax in
     let address = node_ctxt.rollup_address in
     let origination_level = node_ctxt.genesis_info.Sc_rollup.Commitment.level in
-    return Sc_rollup.Metadata.{address; origination_level}
+    let cb =
+      (node_ctxt.cctxt#chain, `Level (Raw_level.to_int32 origination_level))
+    in
+    let* parametric_constants =
+      Alpha_services.Constants.parametric
+        node_ctxt.Node_context.l1_ctxt.Layer1.cctxt
+        cb
+    in
+    (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3997
+       When parameters vary, we should make sure that if we read old parameters,
+       we have necessary code to serialize them with current version. *)
+    let*? parametric_constants =
+      Alpha_context.Constants.Parametric.serialize parametric_constants
+      |> Environment.wrap_tzresult
+    in
+    return Sc_rollup.Metadata.{address; origination_level; parametric_constants}
 
   let genesis_state block_hash node_ctxt ctxt =
     let open Node_context in

@@ -304,9 +304,14 @@ let test_invalid_serialized_inbox_proof () =
   let proof =
     Sc_rollup.Proof.{pvm_step = wrapped_proof; input_proof = Some inbox_proof}
   in
-
+  let* block, _accounts = Context.init1 () in
+  let* alpha_ctxt = Context.to_alpha_ctxt (Context.B block) in
+  let*? parametric_constants =
+    Sc_rollup_helpers.mk_parametric_constants (`Context alpha_ctxt)
+  in
   let metadata =
-    Sc_rollup.Metadata.{address = rollup; origination_level = level}
+    Sc_rollup.Metadata.
+      {address = rollup; origination_level = level; parametric_constants}
   in
   let*! res =
     T.lift

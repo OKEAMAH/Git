@@ -121,8 +121,12 @@ let test_metadata_size () =
           maximum length")
   in
   let address = Sc_rollup_repr.Address.of_bytes_exn (Bytes.make 20 '\000') in
+  let*? parametric_constants =
+    Sc_rollup_helpers.mk_parametric_constants `Mainnet
+  in
   let metadata =
-    Sc_rollup_metadata_repr.{address; origination_level = Raw_level_repr.root}
+    Sc_rollup_metadata_repr.
+      {address; origination_level = Raw_level_repr.root; parametric_constants}
   in
   let bytes =
     Data_encoding.Binary.to_bytes_exn Sc_rollup_metadata_repr.encoding metadata

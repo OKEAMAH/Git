@@ -239,6 +239,10 @@ let create_ctxt () =
   in
   return (block, sc_rollup, inbox, genesis_info, (account1, account2, account3))
 
+let mk_alpha_context ctxt =
+  WithExceptions.Result.get_ok ~loc:__LOC__
+  @@ Lwt_main.run @@ Context.to_alpha_ctxt ctxt
+
 (** {2 Context free generators} *)
 
 (** Generate a {!State_hash.t}.
@@ -1253,11 +1257,18 @@ module Player_client = struct
   (** [gen ~inbox ~rollup ~origination_level ~start_level ~max_level player
       levels_and_messages] generates a {!player_client} based on
       its {!player.strategy}. *)
-  let gen ~inbox ~rollup ~origination_level ~start_level ~max_level player
-      levels_and_messages =
+  let gen ~alpha_ctxt ~inbox ~rollup ~origination_level ~start_level ~max_level
+      player levels_and_messages =
     let open QCheck2.Gen in
+    let parametric_constants =
+      Sc_rollup_helpers.mk_parametric_constants (`Context alpha_ctxt)
+      |> WithExceptions.Result.get_ok ~loc:__LOC__
+    in
+    let metadata =
+      Sc_rollup.Metadata.
+        {address = rollup; origination_level; parametric_constants}
+    in
     let ctxt = empty_memory_ctxt "foo" in
-    let metadata = Sc_rollup.Metadata.{address = rollup; origination_level} in
     let* tick, our_states, levels_and_messages =
       gen_our_states
         ~metadata
@@ -1491,6 +1502,8 @@ let gen_game ~p1_strategy ~p2_strategy =
     create_ctxt ()
   in
   let p1, p2 = make_players ~p1_strategy ~contract1 ~p2_strategy ~contract2 in
+  (* We need an alpha context to construct rollup metadata. *)
+  let alpha_ctxt = mk_alpha_context (Context.B block) in
 
   (* Create a context with a rollup originated. *)
   let commitment_period =
@@ -1508,6 +1521,7 @@ let gen_game ~p1_strategy ~p2_strategy =
   in
   let* p1_client =
     Player_client.gen
+      ~alpha_ctxt
       ~inbox
       ~origination_level:genesis_info.level
       ~start_level
@@ -1518,6 +1532,7 @@ let gen_game ~p1_strategy ~p2_strategy =
   in
   let* p2_client =
     Player_client.gen
+      ~alpha_ctxt
       ~inbox
       ~origination_level:genesis_info.level
       ~start_level

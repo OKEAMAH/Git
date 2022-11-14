@@ -631,6 +631,26 @@ module Make (Context : P) :
         | Some v -> Sc_rollup_metadata_repr.pp fmt v
     end)
 
+    module Parametric_constants = Make_var (struct
+      type t = Constants_parametric_repr.t option
+
+      let initial = None
+
+      let encoding = Data_encoding.option Constants_parametric_repr.encoding
+
+      let name = "parametric_constants"
+
+      let pp fmt v =
+        match v with
+        | None -> Format.fprintf fmt "<none>"
+        | Some v ->
+            Data_encoding.Json.pp
+              fmt
+              (Data_encoding.Json.construct
+                 Constants_parametric_repr.encoding
+                 v)
+    end)
+
     module Current_level = Make_var (struct
       type t = Raw_level_repr.t
 
@@ -975,6 +995,18 @@ module Make (Context : P) :
         let* () = start_parsing in
         return ()
     | PS.Metadata metadata ->
+        (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3997
+           When parameters vary, we should make sure that if we read old parameters,
+           we have necessary code to deserialize them with current version. *)
+        let* () =
+          match
+            Constants_parametric_repr.deserialize metadata.parametric_constants
+          with
+          | Ok v -> Parametric_constants.set (Some v)
+          | Error _ ->
+              (* What to do here *)
+              assert false
+        in
         let* () = Metadata.set (Some metadata) in
         let* () = Status.set Waiting_for_input_message in
         return ()

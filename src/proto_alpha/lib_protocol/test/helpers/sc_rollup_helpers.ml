@@ -423,3 +423,22 @@ let gen_message_reprs_for_levels_repr ~start_level ~max_level gen_message_repr =
         assert false
   in
   aux [] (max_level - start_level)
+
+(* Returns a 'bytes' representation of 'mainnet', 'sandbox' or 'test' parametric
+   constants based on the value of the given polymoric variant. If the variant's
+   value is [`Dummy], dummy bytes are returned. The user can also provide the L1
+   parameters to serialize directly, or an alpha context from which the
+   parameters will be retrieved. *)
+let mk_parametric_constants kind =
+  let open Result_syntax in
+  let open Tezos_protocol_alpha_parameters.Default_parameters in
+  let serialize p =
+    Alpha_context.Constants.Parametric.serialize p |> Environment.wrap_tzresult
+  in
+  match kind with
+  | `Mainnet -> serialize constants_mainnet
+  | `Sandbox -> serialize constants_sandbox
+  | `Test -> serialize constants_test
+  | `Dummy size -> return @@ Bytes.make size 'd'
+  | `Custom p -> serialize p
+  | `Context alpha_ctxt -> serialize @@ Constants.parametric alpha_ctxt

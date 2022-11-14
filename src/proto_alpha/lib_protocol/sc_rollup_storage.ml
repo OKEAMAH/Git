@@ -136,8 +136,23 @@ let genesis_info ctxt rollup =
 let get_metadata ctxt rollup =
   let open Lwt_tzresult_syntax in
   let* ctxt, genesis_info = genesis_info ctxt rollup in
+
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/3997
+     - We should search for the parameters at level [genesis_info.level] in the
+       parameters skip list (see task 2 of issue above);
+     - The current implementation becomes incorrect (we cannot refute metadata) as
+     soon as L1 paramteters change.
+        - Should we temporarily save the L1 parameters in genesis_info at each
+          Scoru origination?, or
+        - Do not merge this MR in master, until the MR about task 2 is merged? *)
+  let parametric = Constants_storage.parametric ctxt in
+  let*? parametric_constants = Constants_parametric_repr.serialize parametric in
   let metadata : Sc_rollup_metadata_repr.t =
-    {address = rollup; origination_level = genesis_info.level}
+    {
+      address = rollup;
+      origination_level = genesis_info.level;
+      parametric_constants;
+    }
   in
   return (ctxt, metadata)
 

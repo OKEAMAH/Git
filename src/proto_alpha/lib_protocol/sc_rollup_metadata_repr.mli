@@ -30,6 +30,9 @@ type t = {
   address : Sc_rollup_repr.Address.t;  (** The rollup address. *)
   origination_level : Raw_level_repr.t;
       (** The origination level of the rollup. *)
+  parametric_constants : Constants_parametric_repr.serialized;
+      (** The L1 parametric constants at level [origination_level], encoded in
+          binary. *)
 }
 
 (** Pretty-printer for metadatas *)

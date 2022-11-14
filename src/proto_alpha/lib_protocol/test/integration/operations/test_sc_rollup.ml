@@ -1952,9 +1952,18 @@ let test_refute_invalid_metadata () =
 
   (* [account1] will play a valid commitment with the correct evaluation of
      the [metadata]. *)
+  let* alpha_ctxt = Context.to_alpha_ctxt (Context.B block) in
+  let constants = Constants.parametric alpha_ctxt in
+  let*? parametric_constants =
+    Sc_rollup_helpers.mk_parametric_constants (`Custom constants)
+  in
   let valid_metadata =
     Sc_rollup.Metadata.
-      {address = rollup; origination_level = Raw_level.(succ root)}
+      {
+        address = rollup;
+        origination_level = Raw_level.(succ root);
+        parametric_constants;
+      }
   in
   let* block, state1, state2, state3 =
     post_commitment_from_metadata block account1 valid_metadata

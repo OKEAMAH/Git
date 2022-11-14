@@ -330,6 +330,8 @@ let valid ~metadata snapshot commit_level dal_snapshot dal_parameters
           (Sc_rollup_PVM_sig.Reveal_hash.equal data_hash expected_hash)
           "Invalid reveal"
     | Some (Reveal_proof Metadata_proof), Needs_reveal Reveal_metadata ->
+        (* There is nothing to check for metadata proofs, as [metadata] data come
+           from L1. *)
         return_unit
     | ( Some (Reveal_proof (Dal_page_proof {page_id; proof = _})),
         Needs_reveal (Request_dal_page pid) ) ->

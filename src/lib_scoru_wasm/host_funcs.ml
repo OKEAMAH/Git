@@ -733,9 +733,20 @@ let reveal_metadata_type =
   let output_types = Types.[NumType I32Type] |> Vector.of_list in
   Types.FuncType (input_types, output_types)
 
-(* The rollup address is a 20-byte hash. The origination level is
-   a 4-byte (32bit) integer. *)
-let max_metadata_size = Int32.add 20l 4l
+let max_metadata_size =
+  List.fold_left
+    Int32.add
+    0l
+    [
+      (* The rollup address is a 20-byte hash. *)
+      20l;
+      (* The origination level is a 4-byte (32bit) integer.*)
+      4l;
+      (* The current maximum size of a value of type
+         {!Constants_parametric_repr.t} is
+         [Constants_parametric_repr.maximum_binary_length = 406l] *)
+      406l;
+    ]
 
 let reveal_metadata_parse_args _memories args =
   match args with
