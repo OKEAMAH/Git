@@ -106,7 +106,20 @@ let test_initial_state_hash_wasm_pvm () =
       Sc_rollup.State_hash.pp
       hash
 
+let error_from_string a = Exn (Failure a)
+
 let test_metadata_size () =
+  let open Lwt_result_syntax in
+  let* () =
+    fail_unless
+      (Option.equal
+         Compare.Int.equal
+         (Data_encoding.Binary.maximum_length Sc_rollup_metadata_repr.encoding)
+         (Some Tezos_scoru_wasm.Host_funcs.Internal_for_tests.max_metadata_size))
+      (error_from_string
+         "Expected maximum metadata size doesn't correspond to the encoding's \
+          maximum length")
+  in
   let address = Sc_rollup_repr.Address.of_bytes_exn (Bytes.make 20 '\000') in
   let metadata =
     Sc_rollup_metadata_repr.{address; origination_level = Raw_level_repr.root}
@@ -114,10 +127,11 @@ let test_metadata_size () =
   let bytes =
     Data_encoding.Binary.to_bytes_exn Sc_rollup_metadata_repr.encoding metadata
   in
-  assert (
-    Bytes.length bytes
-    <= Tezos_scoru_wasm.Host_funcs.Internal_for_tests.max_metadata_size) ;
-  Lwt_result_syntax.return_unit
+  fail_unless
+    (Bytes.length bytes
+   <= Tezos_scoru_wasm.Host_funcs.Internal_for_tests.max_metadata_size)
+    (error_from_string
+       "Metadata bytes encoding exceeds expected maximum metadata size")
 
 let make_transaction value text contract =
   let entrypoint = Entrypoint_repr.default in
