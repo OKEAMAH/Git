@@ -873,6 +873,12 @@ module Constants : sig
     }
 
     val encoding : t Data_encoding.t
+
+    type serialized = bytes
+
+    val serialize : t -> serialized tzresult
+
+    val deserialize : serialized -> t tzresult
   end
 
   module Generated : sig
