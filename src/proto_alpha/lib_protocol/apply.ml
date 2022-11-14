@@ -27,12 +27,17 @@
 
 (** Tezos Protocol Implementation - Main Entry Points *)
 
+(* [n1] has type [Num.t] which is abstract. *)
 let n1 = Num.one
 
+(* [n2] has type [Alpha_context.Num.t] which is abstract. *)
 let n2 = Alpha_context.Num.one
 
-(* Why does this work?? *)
+(* Compiles fine - how come it's possible to mix the two types. *)
 let _ = Alpha_context.Num.add n1 n2
+
+(* Same here. *)
+let _ = Num.add n1 n2
 
 open Alpha_context
 
