@@ -187,7 +187,7 @@ let test_reveal_metadata () =
   let metadata =
     Bytes.init
       Tezos_scoru_wasm.Host_funcs.Internal_for_tests.metadata_size
-      Char.chr
+      (fun i -> Char.chr (i mod 256))
   in
   let*! state = Wasm.reveal_step metadata state in
   let*! info = Wasm.get_info state in
