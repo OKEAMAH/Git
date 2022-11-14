@@ -1927,7 +1927,7 @@ let make_refutation_metadata ?(boot_sector = "") metadata =
 
 (** Test that during a refutation game when one malicious player lied on the
     metadata, he can not win the game. *)
-let test_refute_invalid_metadata () =
+let test_refute_invalid_metadata ~alter () =
   let open Lwt_result_syntax in
   let* block, (account1, account2) = context_init Context.T2 in
   let pkh1 = Account.pkh_of_contract_exn account1 in
@@ -1970,8 +1970,19 @@ let test_refute_invalid_metadata () =
   in
 
   (* [account2] will play an invalid commitment with an invalid metadata. *)
-  let invalid_metadata =
-    {valid_metadata with origination_level = Raw_level.of_int32_exn 42l}
+  let* invalid_metadata =
+    match alter with
+    | `Level ->
+        return
+          {valid_metadata with origination_level = Raw_level.of_int32_exn 42l}
+    | `Parameters_values ->
+        let constants =
+          {constants with preserved_cycles = constants.preserved_cycles + 1}
+        in
+        let*? parametric_constants =
+          Sc_rollup_helpers.mk_parametric_constants (`Custom constants)
+        in
+        return {valid_metadata with parametric_constants}
   in
   let* block, _, _, _ =
     post_commitment_from_metadata block account2 invalid_metadata
@@ -2162,9 +2173,14 @@ let tests =
       `Quick
       test_dissection_during_final_move;
     Tztest.tztest
-      "Invalid metadata initialization can be refuted"
+      "Invalid metadata initialization can be refuted (bad level)"
       `Quick
-      test_refute_invalid_metadata;
+      (test_refute_invalid_metadata ~alter:`Level);
+    Tztest.tztest
+      "Invalid metadata initialization can be refuted (bad parametric \
+       constants)"
+      `Quick
+      (test_refute_invalid_metadata ~alter:`Parameters_values);
     Tztest.tztest
       "Test that SOL/EOL are added in the inbox"
       `Quick
