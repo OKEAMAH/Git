@@ -113,8 +113,8 @@ let test_add_messages messages =
 (* An external message is prefixed with a tag whose length is one byte, and
    whose value is 1. *)
 let encode_external_message message =
-  let prefix = "\001" in
-  Bytes.of_string (prefix ^ message)
+  let prefix = Bytes.of_string "\001" in
+  Bytes.cat prefix message
 
 let check_payload messages external_message =
   Environment.Context.Tree.find messages ["payload"] >>= function
@@ -126,8 +126,8 @@ let check_payload messages external_message =
         (err
            (Printf.sprintf
               "Expected payload %s, got %s"
-              (Bytes.to_string expected_payload)
-              (Bytes.to_string payload)))
+              Hex.(show @@ of_bytes expected_payload)
+              Hex.(show @@ of_bytes payload)))
 
 let test_get_message_payload messages =
   let payloads = List.map make_payload messages in
@@ -138,10 +138,14 @@ let test_get_message_payload messages =
       let expected_payload = encode_external_message message in
       get_message_payload level_tree (Z.of_int i) >>= function
       | Some payload ->
-          let payload = Sc_rollup_inbox_message_repr.unsafe_to_string payload in
+          let payload = Sc_rollup_inbox_message_repr.unsafe_to_bytes payload in
           fail_unless
-            (String.equal payload (Bytes.to_string expected_payload))
-            (err (Printf.sprintf "Expected %s, got %s" message payload))
+            (Bytes.equal payload expected_payload)
+            (err
+               (Printf.sprintf
+                  "Expected %s, got %s"
+                  Hex.(show @@ of_bytes message)
+                  Hex.(show @@ of_bytes payload)))
       | None ->
           fail
             (err (Printf.sprintf "No message payload number %d in messages" i)))
@@ -336,9 +340,8 @@ let level_of_int n = Raw_level_repr.of_int32_exn (Int32.of_int n)
 
 let level_to_int l = Int32.to_int (Raw_level_repr.to_int32 l)
 
-let payload_string msg =
-  Sc_rollup_inbox_message_repr.unsafe_of_string
-    (Bytes.to_string (encode_external_message msg))
+let payload_bytes msg =
+  Sc_rollup_inbox_message_repr.unsafe_of_bytes (encode_external_message msg)
 
 let inbox_message_of_input input =
   match input with Sc_rollup_PVM_sig.Inbox_message x -> Some x | _ -> None
@@ -384,7 +387,8 @@ let test_inbox_proof_production (levels_and_messages, l, n) =
          for verification. *)
       (* The snapshot takes the snapshot at the end of the last level,
          we need to set the level ahead to match the inbox. *)
-      setup_inbox_with_messages (list_of_payloads @ [[make_payload "foo"]])
+      setup_inbox_with_messages
+        (list_of_payloads @ [[make_payload (Bytes.of_string "foo")]])
       @@ fun _ctxt _ _history inbox _inboxes ->
       let snapshot = take_snapshot inbox in
       let proof = node_proof_to_protocol_proof proof in
@@ -422,7 +426,8 @@ let test_inbox_proof_verification (levels_and_messages, l, n) =
   | Ok (proof, _input) -> (
       (* We now switch to a protocol inbox built from the same messages
          for verification. *)
-      setup_inbox_with_messages (list_of_payloads @ [[make_payload "foo"]])
+      setup_inbox_with_messages
+        (list_of_payloads @ [[make_payload (Bytes.of_string "foo")]])
       @@ fun _ctxt _ _history _inbox inboxes ->
       (* Use the incorrect inbox *)
       match List.hd inboxes with
@@ -462,7 +467,8 @@ let init_inboxes_histories_with_different_capacities
             default_capacity))
   in
   let*? payloads =
-    List.init ~when_negative_length:[] nb_levels (fun i -> [string_of_int i])
+    List.init ~when_negative_length:[] nb_levels (fun i ->
+        [Bytes.of_string @@ string_of_int i])
   in
   let mk_history ?(next_index = 0L) ~capacity () =
     let open Lwt_syntax in
@@ -684,25 +690,27 @@ let test_for_successive_add_messages_with_different_histories_capacities
 
 let tests =
   let msg_size = QCheck2.Gen.(0 -- 100) in
-  let bounded_string = QCheck2.Gen.string_size msg_size in
+  let bounded_bytes =
+    QCheck2.Gen.(string_size msg_size >|= Bytes.unsafe_of_string)
+  in
   [
     Tztest.tztest "Empty inbox" `Quick test_empty;
     Tztest.tztest_qcheck2
       ~name:"Added messages are available."
-      QCheck2.Gen.(list_size (1 -- 50) bounded_string)
+      QCheck2.Gen.(list_size (1 -- 50) bounded_bytes)
       test_add_messages;
     Tztest.tztest_qcheck2
       ~name:"Get message payload."
-      QCheck2.Gen.(list_size (1 -- 50) bounded_string)
+      QCheck2.Gen.(list_size (1 -- 50) bounded_bytes)
       test_get_message_payload;
   ]
   @
   let gen_inclusion_proof_inputs =
     QCheck2.Gen.(
       let small = 2 -- 10 in
-      let* a = list_size small bounded_string in
-      let* b = list_size small bounded_string in
-      let* l = list_size small (list_size small bounded_string) in
+      let* a = list_size small bounded_bytes in
+      let* b = list_size small bounded_bytes in
+      let* l = list_size small (list_size small bounded_bytes) in
       let l = a :: b :: l in
       let* n = 0 -- (List.length l - 2) in
       return (l, n))
@@ -714,7 +722,7 @@ let tests =
         Sc_rollup_helpers.gen_message_reprs_for_levels_repr
           ~start_level:1
           ~max_level:levels
-          bounded_string
+          bounded_bytes
       in
       let* l = 1 -- (levels - 1) in
       let l = level_of_int l in
@@ -788,7 +796,7 @@ let tests =
         "Take snapshot is not impacted by messages added during the current \
          level"
       (let open QCheck2.Gen in
-      let* payloads = list_size (1 -- 10) bounded_string in
+      let* payloads = list_size (1 -- 10) bounded_bytes in
       return payloads)
       test_inbox_snapshot_taking;
   ]

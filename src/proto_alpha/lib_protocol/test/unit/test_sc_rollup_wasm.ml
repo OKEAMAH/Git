@@ -125,7 +125,7 @@ let test_l1_input_kind () =
   let open Tezos_scoru_wasm in
   let check_msg msg expected =
     let*? msg = Environment.wrap_tzresult @@ serialize msg in
-    let msg = unsafe_to_string msg |> Pvm_input_kind.from_raw_input in
+    let msg = unsafe_to_bytes msg |> Pvm_input_kind.from_raw_input in
     assert (msg = expected) ;
     return_unit
   in
@@ -241,13 +241,11 @@ let test_output () =
   let out =
     Sc_rollup_outbox_message_repr.(Atomic_transaction_batch {transactions})
   in
-  let string_input_message =
-    Data_encoding.Binary.to_string_exn
-      Sc_rollup_outbox_message_repr.encoding
-      out
+  let bytes_input_message =
+    Data_encoding.Binary.to_bytes_exn Sc_rollup_outbox_message_repr.encoding out
   in
   let*! tree = eval_until_input_requested tree in
-  let*! tree = set_full_input_step [string_input_message] 0l tree in
+  let*! tree = set_full_input_step [bytes_input_message] 0l tree in
   let*! final_tree = eval_until_input_requested tree in
   let*! output = Wasm.Internal_for_tests.get_output_buffer final_tree in
   let*! level, end_of_level_message_index =
@@ -260,7 +258,7 @@ let test_output () =
   let*! bytes_output_message =
     Tezos_webassembly_interpreter.Output_buffer.get output level message_index
   in
-  assert (string_input_message = Bytes.to_string bytes_output_message) ;
+  assert (bytes_input_message = bytes_output_message) ;
   let message =
     Data_encoding.Binary.of_bytes_exn
       Sc_rollup_outbox_message_repr.encoding

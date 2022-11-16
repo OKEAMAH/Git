@@ -41,10 +41,10 @@ module Merkelized_payload_hashes =
 module Message = Alpha_context.Sc_rollup.Inbox_message
 
 let assert_equal_payload ~__LOC__ found (expected : Message.serialized) =
-  Assert.equal_string
+  Assert.equal_bytes
     ~loc:__LOC__
-    (Message.unsafe_to_string expected)
-    (Message.unsafe_to_string found)
+    (Message.unsafe_to_bytes expected)
+    (Message.unsafe_to_bytes found)
 
 let assert_equal_payload_hash ~__LOC__ found expected =
   Assert.equal
@@ -74,7 +74,7 @@ let gen_payload_size = QCheck2.Gen.(1 -- 10)
 let gen_payload =
   let open QCheck2.Gen in
   let+ payload = string_size gen_payload_size in
-  Message.unsafe_of_string payload
+  Message.unsafe_of_bytes (Bytes.unsafe_of_string payload)
 
 let gen_payloads =
   let open QCheck2.Gen in

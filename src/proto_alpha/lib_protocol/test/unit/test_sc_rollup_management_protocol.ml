@@ -49,10 +49,10 @@ let check_encode_decode_inbox_message message =
   let*? bytes' =
     Environment.wrap_tzresult @@ Sc_rollup.Inbox_message.serialize message'
   in
-  Assert.equal_string
+  Assert.equal_bytes
     ~loc:__LOC__
-    (Sc_rollup.Inbox_message.unsafe_to_string bytes)
-    (Sc_rollup.Inbox_message.unsafe_to_string bytes')
+    (Sc_rollup.Inbox_message.unsafe_to_bytes bytes)
+    (Sc_rollup.Inbox_message.unsafe_to_bytes bytes')
 
 let check_encode_decode_outbox_message ctxt message =
   let open Lwt_result_syntax in
@@ -169,9 +169,7 @@ let test_encode_decode_external_inbox_message () =
       Environment.wrap_tzresult
       @@ Sc_rollup.Inbox_message.serialize inbox_message
     in
-    let real_encoding =
-      Sc_rollup.Inbox_message.unsafe_to_string real_encoding |> Bytes.of_string
-    in
+    let real_encoding = Sc_rollup.Inbox_message.unsafe_to_bytes real_encoding in
     (* The prefix consists of a tag (0 for internal, 1 for external). *)
     let real_prefix = Bytes.get real_encoding 0 in
     let expected_prefix = '\001' in
