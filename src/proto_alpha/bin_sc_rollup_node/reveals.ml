@@ -70,7 +70,7 @@ let file_contents filename =
   Lwt.catch
     (fun () ->
       let*! contents = Lwt_utils_unix.read_file filename in
-      return contents)
+      return (Bytes.unsafe_of_string contents))
     (fun _ -> tzfail @@ Could_not_open_preimage_file filename)
 
 let save_string filename s =
@@ -94,7 +94,7 @@ let get ~data_dir ~pvm_name ~hash =
   let filename = path data_dir pvm_name hash in
   let* contents = file_contents filename in
   let*? () =
-    let contents_hash = Reveal_hash.hash_string [contents] in
+    let contents_hash = Reveal_hash.hash_bytes [contents] in
     error_unless
       (Reveal_hash.equal contents_hash hash)
       (Wrong_hash {found = contents_hash; expected = hash})

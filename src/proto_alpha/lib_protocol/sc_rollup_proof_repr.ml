@@ -50,7 +50,7 @@ let () =
     (fun () -> Sc_rollup_invalid_serialized_inbox_proof)
 
 type reveal_proof =
-  | Raw_data_proof of string
+  | Raw_data_proof of bytes
   | Metadata_proof
   | Dal_page_proof of {
       page_id : Dal_slot_repr.Page.t;
@@ -68,8 +68,8 @@ let reveal_proof_encoding =
          (req
             "raw_data"
             (check_size Constants_repr.sc_rollup_message_size_limit bytes)))
-      (function Raw_data_proof s -> Some ((), Bytes.of_string s) | _ -> None)
-      (fun ((), s) -> Raw_data_proof (Bytes.to_string s))
+      (function Raw_data_proof s -> Some ((), s) | _ -> None)
+      (fun ((), s) -> Raw_data_proof s)
   and case_metadata_proof =
     case
       ~title:"metadata proof"
@@ -325,7 +325,7 @@ let valid ~metadata snapshot commit_level dal_snapshot dal_parameters
            input request."
     | ( Some (Reveal_proof (Raw_data_proof data)),
         Needs_reveal (Reveal_raw_data expected_hash) ) ->
-        let data_hash = Sc_rollup_PVM_sig.Reveal_hash.hash_string [data] in
+        let data_hash = Sc_rollup_PVM_sig.Reveal_hash.hash_bytes [data] in
         check
           (Sc_rollup_PVM_sig.Reveal_hash.equal data_hash expected_hash)
           "Invalid reveal"
@@ -353,7 +353,7 @@ module type PVM_with_context_and_state = sig
 
   val proof_encoding : proof Data_encoding.t
 
-  val reveal : Sc_rollup_PVM_sig.Reveal_hash.t -> string option Lwt.t
+  val reveal : Sc_rollup_PVM_sig.Reveal_hash.t -> bytes option Lwt.t
 
   module Inbox_with_history : sig
     include

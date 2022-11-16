@@ -47,7 +47,7 @@ open Sc_rollup_repr
 
 (** The proof that a reveal is valid. *)
 type reveal_proof =
-  | Raw_data_proof of string
+  | Raw_data_proof of bytes
       (** The existence of reveal for a given hash when the
           [input_requested] is the [Needs_reveal Reveal_raw_data]. *)
   | Metadata_proof
@@ -155,7 +155,7 @@ module type PVM_with_context_and_state = sig
 
   val proof_encoding : proof Data_encoding.t
 
-  val reveal : Sc_rollup_PVM_sig.Reveal_hash.t -> string option Lwt.t
+  val reveal : Sc_rollup_PVM_sig.Reveal_hash.t -> bytes option Lwt.t
 
   module Inbox_with_history : sig
     include
