@@ -30,8 +30,8 @@ module Store = Storage.Sc_rollup
 let update_num_and_size_of_messages ~num_messages ~total_messages_size message =
   ( num_messages + 1,
     total_messages_size
-    + String.length
-        (message : Sc_rollup_inbox_message_repr.serialized :> string) )
+    + Bytes.length (message : Sc_rollup_inbox_message_repr.serialized :> bytes)
+  )
 
 let get_inbox ctxt =
   let open Lwt_result_syntax in

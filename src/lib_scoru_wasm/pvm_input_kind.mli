@@ -38,7 +38,7 @@ type t = Internal of internal_message_kind | External | Other
 
 (** [from_raw_input input] takes a message produced by the L1 protocol and
     returns its kind. *)
-val from_raw_input : string -> t
+val from_raw_input : bytes -> t
 
 module Internal_for_tests : sig
   (** [to_binary_input kind input] returns the serialized representation of an
@@ -51,5 +51,5 @@ module Internal_for_tests : sig
       @raise Failure on `Other` messages, and mismatches between kind and
         presence or absence of the input.
 *)
-  val to_binary_input : t -> string option -> string
+  val to_binary_input : t -> bytes option -> bytes
 end

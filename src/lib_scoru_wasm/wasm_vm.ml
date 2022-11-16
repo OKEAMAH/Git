@@ -421,7 +421,7 @@ let set_input_step input_info message pvm_state =
           Wasm.Input_buffer.(
             enqueue
               pvm_state.buffers.input
-              {raw_level; message_counter; payload = String.to_bytes message})
+              {raw_level; message_counter; payload = message})
         in
         match Pvm_input_kind.from_raw_input message with
         | Internal End_of_level -> Padding

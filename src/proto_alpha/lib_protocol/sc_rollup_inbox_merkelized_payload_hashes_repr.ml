@@ -96,7 +96,7 @@ type merkelized_and_payload = {
 
 let equal_merkelized_and_payload {merkelized; payload} mp2 =
   equal merkelized mp2.merkelized
-  && String.equal (payload :> string) (mp2.payload :> string)
+  && Bytes.equal (payload :> bytes) (mp2.payload :> bytes)
 
 let pp_merkelized_and_payload fmt {merkelized; payload} =
   Format.fprintf
@@ -104,19 +104,19 @@ let pp_merkelized_and_payload fmt {merkelized; payload} =
     "@[<hv 2>merkelized:@,%a@,payload: %a@]"
     pp
     merkelized
-    Format.pp_print_string
-    (payload :> string)
+    Hex.pp
+    (Hex.of_bytes (payload :> bytes))
 
 let merkelized_and_payload_encoding =
   let open Data_encoding in
   conv
-    (fun {merkelized; payload} -> (merkelized, (payload :> string)))
+    (fun {merkelized; payload} -> (merkelized, (payload :> bytes)))
     (fun (merkelized, payload) ->
       {
         merkelized;
-        payload = Sc_rollup_inbox_message_repr.unsafe_of_string payload;
+        payload = Sc_rollup_inbox_message_repr.unsafe_of_bytes payload;
       })
-    (merge_objs encoding (obj1 (req "payload" string)))
+    (merge_objs encoding (obj1 (req "payload" bytes)))
 
 module History = struct
   include

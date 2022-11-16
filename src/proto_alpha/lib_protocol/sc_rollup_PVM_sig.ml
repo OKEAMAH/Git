@@ -95,14 +95,14 @@ let inbox_message_encoding =
   let open Data_encoding in
   conv
     (fun {inbox_level; message_counter; payload} ->
-      (inbox_level, message_counter, (payload :> string)))
+      (inbox_level, message_counter, (payload :> bytes)))
     (fun (inbox_level, message_counter, payload) ->
-      let payload = Sc_rollup_inbox_message_repr.unsafe_of_string payload in
+      let payload = Sc_rollup_inbox_message_repr.unsafe_of_bytes payload in
       {inbox_level; message_counter; payload})
     (obj3
        (req "inbox_level" Raw_level_repr.encoding)
        (req "message_counter" n)
-       (req "payload" string))
+       (req "payload" bytes))
 
 let reveal_data_encoding =
   let open Data_encoding in
@@ -168,7 +168,7 @@ let inbox_message_equal a b =
   (* To be robust to the addition of fields in [input] *)
   Raw_level_repr.equal inbox_level b.inbox_level
   && Z.equal message_counter b.message_counter
-  && String.equal (payload :> string) (b.payload :> string)
+  && Bytes.equal (payload :> bytes) (b.payload :> bytes)
 
 let reveal_data_equal a b =
   match (a, b) with

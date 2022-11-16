@@ -3173,9 +3173,9 @@ module Sc_rollup : sig
 
     val encoding : t Data_encoding.t
 
-    val unsafe_of_string : string -> serialized
+    val unsafe_of_bytes : bytes -> serialized
 
-    val unsafe_to_string : serialized -> string
+    val unsafe_to_bytes : serialized -> bytes
 
     val serialize : t -> serialized tzresult
 

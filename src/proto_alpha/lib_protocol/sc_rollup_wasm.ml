@@ -296,7 +296,7 @@ module V2_0_0 = struct
                    inbox_level = Raw_level_repr.to_int32_non_negative inbox_level;
                    message_counter;
                  }
-                 (payload :> string)
+                 (payload :> bytes)
                  s)
           in
           set s

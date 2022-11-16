@@ -42,18 +42,18 @@ type internal_message_kind = Deposit | Start_of_level | End_of_level
 type t = Internal of internal_message_kind | External | Other
 
 let internal_from_raw payload =
-  if String.length payload < 2 then None
+  if Bytes.length payload < 2 then None
   else
-    match String.get payload 1 with
+    match Bytes.get payload 1 with
     | '\000' -> Some Deposit
-    | '\001' when String.length payload = 2 -> Some Start_of_level
-    | '\002' when String.length payload = 2 -> Some End_of_level
+    | '\001' when Bytes.length payload = 2 -> Some Start_of_level
+    | '\002' when Bytes.length payload = 2 -> Some End_of_level
     | _ -> None
 
 let from_raw_input payload =
-  if String.length payload < 1 then Other
+  if Bytes.length payload < 1 then Other
   else
-    match String.get payload 0 with
+    match Bytes.get payload 0 with
     | '\000' ->
         Option.fold
           ~none:Other
@@ -63,12 +63,18 @@ let from_raw_input payload =
     | _ -> Other
 
 module Internal_for_tests = struct
+  let prefix_message prefix message =
+    let len_prefix = String.length prefix in
+    Bytes.init (Bytes.length message + len_prefix) @@ fun index ->
+    if index < len_prefix then String.get prefix index
+    else Bytes.get message (index - len_prefix)
+
   let to_binary_input input message =
     match (input, message) with
-    | Internal Deposit, Some message -> "\000\000" ^ message
-    | External, Some message -> "\001" ^ message
-    | Internal Start_of_level, None -> "\000\001"
-    | Internal End_of_level, None -> "\000\002"
+    | Internal Deposit, Some message -> prefix_message "\000\000" message
+    | External, Some message -> prefix_message "\001" message
+    | Internal Start_of_level, None -> Bytes.of_string "\000\001"
+    | Internal End_of_level, None -> Bytes.of_string "\000\002"
     | Other, _ ->
         Stdlib.failwith
           "`Other` messages are impossible cases from the PVM perspective."

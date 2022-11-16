@@ -1085,7 +1085,10 @@ struct
           .non_negative_of_legacy_non_negative
             inbox_level
         in
-        Wasm.set_input_step {inbox_level; message_counter} payload tree
+        Wasm.set_input_step
+          {inbox_level; message_counter}
+          (Bytes.of_string payload)
+          tree
 
       let get_output {outbox_level; message_index} (tree : Tree.tree) =
         let open Lwt_syntax in

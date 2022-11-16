@@ -61,7 +61,7 @@ module type Generic = sig
       tick. If the VM is not expecting input, it gets stuck. If the VM is
       already stuck, this function may raise an exception. Note at this point
       the function raises an exception if the VM is not expecting input. *)
-  val set_input_step : input_info -> string -> state -> state Lwt.t
+  val set_input_step : input_info -> bytes -> state -> state Lwt.t
 
   (** [reveal_step reveal_data pvm_state] loads the [reveal_data] in the
       memory of module of the currently executed function.

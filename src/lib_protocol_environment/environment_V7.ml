@@ -1079,7 +1079,7 @@ struct
       let compute_step (tree : Tree.tree) = Wasm.compute_step tree
 
       let set_input_step input payload (tree : Tree.tree) =
-        Wasm.set_input_step input payload tree
+        Wasm.set_input_step input (Bytes.of_string payload) tree
 
       let get_output output (tree : Tree.tree) =
         let open Lwt_syntax in

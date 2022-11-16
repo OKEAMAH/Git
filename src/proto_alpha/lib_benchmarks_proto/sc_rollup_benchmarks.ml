@@ -203,7 +203,7 @@ module Sc_rollup_add_external_messages_benchmark = struct
     let last_level =
       Raw_level_repr.of_int32_exn (Int32.of_int last_level_int)
     in
-    let message_length = String.length (message :> string) in
+    let message_length = Bytes.length (message :> bytes) in
 
     let new_ctxt =
       let open Lwt_result_syntax in

@@ -497,8 +497,7 @@ struct
       Tree.add
         level_tree
         (key_of_message message_index)
-        (Bytes.of_string
-           (payload : Sc_rollup_inbox_message_repr.serialized :> string))
+        (payload : Sc_rollup_inbox_message_repr.serialized :> bytes)
     in
     let*! level_tree = set_number_of_messages level_tree message_counter in
     let nb_messages_in_commitment_period =
@@ -519,11 +518,7 @@ struct
     let open Lwt_syntax in
     let key = key_of_message message_index in
     let* bytes = Tree.(find level_tree key) in
-    return
-    @@ Option.map
-         (fun bs ->
-           Sc_rollup_inbox_message_repr.unsafe_of_string (Bytes.to_string bs))
-         bytes
+    return @@ Option.map Sc_rollup_inbox_message_repr.unsafe_of_bytes bytes
 
   (** [no_history] creates an empty history with [capacity] set to
       zero---this makes the [remember] function a no-op. We want this

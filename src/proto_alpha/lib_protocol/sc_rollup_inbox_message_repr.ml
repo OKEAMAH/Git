@@ -122,23 +122,23 @@ let encoding =
            (fun msg -> External msg);
        ])
 
-type serialized = string
+type serialized = bytes
 
 let serialize msg =
   let open Result_syntax in
-  match Data_encoding.Binary.to_string_opt encoding msg with
+  match Data_encoding.Binary.to_bytes_opt encoding msg with
   | None -> tzfail Error_encode_inbox_message
   | Some str -> return str
 
 let deserialize s =
   let open Result_syntax in
-  match Data_encoding.Binary.of_string_opt encoding s with
+  match Data_encoding.Binary.of_bytes_opt encoding s with
   | None -> tzfail Error_decode_inbox_message
   | Some msg -> return msg
 
-let unsafe_of_string s = s
+let unsafe_of_bytes s = s
 
-let unsafe_to_string s = s
+let unsafe_to_bytes s = s
 
 (* 32 *)
 let hash_prefix = "\003\250\174\239\012" (* scib3(55) *)
@@ -168,5 +168,4 @@ module Hash = struct
   let () = Base58.check_encoded_prefix b58check_encoding prefix encoded_size
 end
 
-let hash_serialized_message (payload : serialized) =
-  Hash.hash_string [(payload :> string)]
+let hash_serialized_message (payload : serialized) = Hash.hash_bytes [payload]

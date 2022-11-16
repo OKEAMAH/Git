@@ -138,7 +138,9 @@ module Make
 
   (** [mutate input] corrupts the payload of [input] for testing purposes. *)
   let mutate input =
-    let payload = Sc_rollup.Inbox_message.unsafe_of_string "0xC4C4" in
+    let payload =
+      Sc_rollup.Inbox_message.unsafe_of_bytes (Hex.to_bytes_exn (`Hex "C4C4"))
+    in
     {input with Sc_rollup.payload}
 
   (** [feed_input ~metadata level message_index ~fuel ~failing_ticks state

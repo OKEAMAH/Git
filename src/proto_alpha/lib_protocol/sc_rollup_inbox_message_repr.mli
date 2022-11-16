@@ -67,7 +67,7 @@ type internal_inbox_message =
     an external manager operation. *)
 type t = Internal of internal_inbox_message | External of bytes
 
-type serialized = private string
+type serialized = private bytes
 
 (** Encoding for messages from Layer 1 to Layer 2 *)
 val encoding : t Data_encoding.t
@@ -78,12 +78,14 @@ val serialize : t -> serialized tzresult
 (** [deserialize bs] decodes [bs] as an inbox_message [t]. *)
 val deserialize : serialized -> t tzresult
 
-val unsafe_of_string : string -> serialized
-
-val unsafe_to_string : serialized -> string
-
 module Hash : S.HASH
 
 (** [hash_serialized_message payload] is the hash of [payload]. It is used by
     {!Sc_rollup_inbox_merkelized_payload_hashes_repr.t}. *)
 val hash_serialized_message : serialized -> Hash.t
+
+(**/**)
+
+val unsafe_of_bytes : bytes -> serialized
+
+val unsafe_to_bytes : serialized -> bytes
