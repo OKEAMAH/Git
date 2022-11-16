@@ -571,7 +571,7 @@ let send_messages ?src ?batch_size n client =
   Lwt_list.iter_s (fun msg -> send_message ?src client msg) messages
 
 let to_text_messages_arg msgs =
-  let json = Ezjsonm.list Ezjsonm.string msgs in
+  let json = Ezjsonm.list Ezjsonm.string (List.map hex_encode msgs) in
   "text:" ^ Ezjsonm.to_string ~minify:true json
 
 let send_text_messages ?src client msgs =
@@ -922,7 +922,7 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
       match forwarder with
       | None ->
           (* External message *)
-          send_message client (sf "[%S]" message)
+          send_text_messages client [message]
       | Some forwarder ->
           (* Internal message through forwarder *)
           let* () =
