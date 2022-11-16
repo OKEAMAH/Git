@@ -940,7 +940,8 @@ module Sc_rollup_params = struct
         failwith "Given text is not valid JSON: '%s'" text
     in
     let from_bin_file (cctxt : #Client_context.full) path =
-      let* bin = cctxt#read_file path in
+      let* str = cctxt#read_file path in
+      let bin = Bytes.of_string str in
       return (`Bin bin)
     in
     let from_json_file (cctxt : #Client_context.full) path =

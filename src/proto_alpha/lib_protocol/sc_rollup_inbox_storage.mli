@@ -42,7 +42,7 @@ val get_inbox :
 *)
 val add_external_messages :
   Raw_context.t ->
-  string list ->
+  bytes list ->
   (Sc_rollup_inbox_repr.t * Z.t * Raw_context.t) tzresult Lwt.t
 
 (** [add_deposit ~payload ~sender ~source ~destination ctxt] adds the

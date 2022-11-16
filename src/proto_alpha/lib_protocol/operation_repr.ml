@@ -436,7 +436,7 @@ and _ manager_operation =
     }
       -> Kind.sc_rollup_originate manager_operation
   | Sc_rollup_add_messages : {
-      messages : string list;
+      messages : bytes list;
     }
       -> Kind.sc_rollup_add_messages manager_operation
   | Sc_rollup_cement : {
@@ -1173,7 +1173,7 @@ module Encoding = struct
         {
           tag = sc_rollup_operation_add_message_tag;
           name = "sc_rollup_add_messages";
-          encoding = obj1 (req "message" (list string));
+          encoding = obj1 (req "message" (list bytes));
           select =
             (function
             | Manager (Sc_rollup_add_messages _ as op) -> Some op | _ -> None);

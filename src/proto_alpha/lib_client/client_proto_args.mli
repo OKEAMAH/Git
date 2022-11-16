@@ -258,7 +258,7 @@ module Sc_rollup_params : sig
     Tezos_clic.parameter
 
   val messages_parameter :
-    ([`Bin of string | `Json of Data_encoding.json], full) Tezos_clic.parameter
+    ([`Bin of bytes | `Json of Data_encoding.json], full) Tezos_clic.parameter
 
   val commitment_hash_parameter :
     (Sc_rollup.Commitment.Hash.t, full) Tezos_clic.parameter

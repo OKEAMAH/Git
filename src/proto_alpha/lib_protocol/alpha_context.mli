@@ -3167,7 +3167,7 @@ module Sc_rollup : sig
       | Start_of_level
       | End_of_level
 
-    type t = Internal of internal_inbox_message | External of string
+    type t = Internal of internal_inbox_message | External of bytes
 
     type serialized
 
@@ -3437,7 +3437,7 @@ module Sc_rollup : sig
       Merkelized_operations with type tree = P.tree and type inbox_context = P.t
 
     val add_external_messages :
-      context -> string list -> (t * Z.t * context) tzresult Lwt.t
+      context -> bytes list -> (t * Z.t * context) tzresult Lwt.t
 
     val add_deposit :
       context ->
@@ -4639,7 +4639,7 @@ and _ manager_operation =
     }
       -> Kind.sc_rollup_originate manager_operation
   | Sc_rollup_add_messages : {
-      messages : string list;
+      messages : bytes list;
     }
       -> Kind.sc_rollup_add_messages manager_operation
   | Sc_rollup_cement : {

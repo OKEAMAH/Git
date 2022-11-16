@@ -926,7 +926,7 @@ module Make (Context : P) :
     let* payload =
       match Sc_rollup_inbox_message_repr.deserialize payload with
       | Error _ -> return None
-      | Ok (External payload) -> return (Some payload)
+      | Ok (External payload) -> return (Some (Bytes.to_string payload))
       | Ok (Internal (Transfer {payload; destination; _})) -> (
           let* (metadata : Sc_rollup_metadata_repr.t option) = Metadata.get in
           match metadata with

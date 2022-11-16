@@ -3092,7 +3092,7 @@ let commands_rw () =
            ~name:"messages"
            ~desc:
              "The message(s) to be sent to the rollup (syntax: \
-              bin:<path_to_binary_file>|text:<json list of string \
+              bin:<path_to_binary_file>|text:<json list of hex encoded \
               messages>|file:<json_file>)."
            Sc_rollup_params.messages_parameter
       @@ prefixes ["from"]
@@ -3115,7 +3115,7 @@ let commands_rw () =
           match messages with
           | `Bin message -> return [message]
           | `Json messages -> (
-              match Data_encoding.(Json.destruct (list string) messages) with
+              match Data_encoding.(Json.destruct (list bytes) messages) with
               | exception _ ->
                   failwith
                     "Could not read list of messages (expected list of bytes)"
