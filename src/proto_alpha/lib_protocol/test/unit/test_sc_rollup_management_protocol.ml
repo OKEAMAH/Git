@@ -170,33 +170,34 @@ let test_encode_decode_external_inbox_message () =
       @@ Sc_rollup.Inbox_message.serialize inbox_message
     in
     let real_encoding =
-      Sc_rollup.Inbox_message.unsafe_to_string real_encoding
+      Sc_rollup.Inbox_message.unsafe_to_string real_encoding |> Bytes.of_string
     in
     (* The prefix consists of a tag (0 for internal, 1 for external). *)
-    let real_prefix = String.get real_encoding 0 in
+    let real_prefix = Bytes.get real_encoding 0 in
     let expected_prefix = '\001' in
-    let expected_encoding = Printf.sprintf "%c%s" expected_prefix message in
+    let expected_prefix_bytes = Bytes.init 1 (fun _ -> expected_prefix) in
+    let expected_encoding = Bytes.cat expected_prefix_bytes message in
     (* Check that the encode/decode matches. *)
     let* () = check_encode_decode_inbox_message inbox_message in
     (* Check that the prefix match. *)
     let* () = Assert.equal_char ~loc:__LOC__ real_prefix expected_prefix in
     (* Check that the encoded string consists of the prefix followed by the
        original message. *)
-    Assert.equal_string ~loc:__LOC__ real_encoding expected_encoding
+    Assert.equal_bytes ~loc:__LOC__ real_encoding expected_encoding
   in
-  let* () = assert_prefix "" in
-  let* () = assert_prefix "A" in
-  let* () = assert_prefix "0123456789" in
-  let* () = assert_prefix (String.init 256 (Fun.const 'A')) in
+  let* () = assert_prefix Bytes.empty in
+  let* () = assert_prefix @@ Bytes.of_string "A" in
+  let* () = assert_prefix @@ Bytes.of_string "0123456789" in
+  let* () = assert_prefix (Bytes.init 256 (Fun.const 'A')) in
   let assert_encoding_failure message =
     let inbox_message = Sc_rollup.Inbox_message.External message in
     let*! res = check_encode_decode_inbox_message inbox_message in
     assert_encoding_failure ~loc:__LOC__ res
   in
   let max_msg_size = Constants_repr.sc_rollup_message_size_limit in
-  let message = String.init max_msg_size (Fun.const 'A') in
+  let message = Bytes.init max_msg_size (Fun.const 'A') in
   let* () = assert_encoding_failure message in
-  let message = String.init max_msg_size (Fun.const 'b') in
+  let message = Bytes.init max_msg_size (Fun.const 'b') in
   let* () = assert_encoding_failure message in
   assert_encoding_failure message
 

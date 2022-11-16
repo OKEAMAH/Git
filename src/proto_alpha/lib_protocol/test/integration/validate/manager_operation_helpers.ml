@@ -1073,7 +1073,7 @@ let mk_sc_rollup_add_messages (oinfos : operation_req) (infos : infos) =
     ?force_reveal:oinfos.force_reveal
     (B infos.ctxt.block)
     (contract_of (get_source infos))
-    [""]
+    [Bytes.empty]
 
 let mk_sc_rollup_timeout (oinfos : operation_req) (infos : infos) =
   let open Lwt_result_syntax in

@@ -317,7 +317,7 @@ let gen_arith_pvm_messages ~gen_size =
           ]
   in
   let+ inputs = sized_size gen_size @@ fix produce_inputs in
-  snd inputs |> List.rev |> String.concat " "
+  snd inputs |> List.rev |> String.concat " " |> Bytes.of_string
 
 (** Generate a list of level and associated arith pvm messages. *)
 let gen_arith_pvm_messages_for_levels ~start_level ~max_level =
@@ -1096,7 +1096,7 @@ module Player_client = struct
             levels_and_messages
         in
         let* corrupt_at_k = 0 -- (nb_of_input - 1) in
-        let message = "42 7 +" in
+        let message = "42 7 +" |> Bytes.of_string in
         (* Once an input is corrupted, everything after will be corrupted
            as well. *)
         let new_levels_and_messages =

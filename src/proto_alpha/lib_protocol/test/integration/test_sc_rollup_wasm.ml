@@ -214,7 +214,11 @@ let should_boot_computation_kernel () =
   let*! s = Prover.install_boot_sector s boot_sector in
   (* Feeding it with one input *)
   let* s =
-    checked_set_input ~loc:__LOC__ context (arbitrary_input 0 "test") s
+    checked_set_input
+      ~loc:__LOC__
+      context
+      (arbitrary_input 0 (Bytes.of_string "test"))
+      s
   in
   (* running until waiting for input *)
   let* (_s : Prover.state) = eval_until_set_input context s in

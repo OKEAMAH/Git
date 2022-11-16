@@ -2328,7 +2328,7 @@ let test_limit_on_number_of_messages_during_commitment_period with_gap () =
     List.init
       ~when_negative_length:[]
       (1 + (max_number / (commitment_period - 1)))
-    @@ fun _ -> "a"
+    @@ fun _ -> Bytes.of_string "a"
   in
   let*! add_too_many_messages =
     List.fold_left_es

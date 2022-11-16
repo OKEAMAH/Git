@@ -103,7 +103,7 @@ module Sc_rollup_update_num_and_size_of_messages_benchmark = struct
         rng_state
     in
     let new_external_message =
-      Base_samplers.uniform_string ~nbytes:new_message_size rng_state
+      Base_samplers.uniform_bytes ~nbytes:new_message_size rng_state
     in
     let new_message =
       WithExceptions.Result.get_ok ~loc:__LOC__
@@ -189,7 +189,7 @@ module Sc_rollup_add_external_messages_benchmark = struct
 
   let benchmark rng_state conf () =
     let external_message =
-      Base_samplers.string rng_state ~size:{min = 1; max = conf.max_length}
+      Base_samplers.bytes rng_state ~size:{min = 1; max = conf.max_length}
     in
     let message =
       WithExceptions.Result.get_ok ~loc:__LOC__
@@ -249,7 +249,9 @@ module Sc_rollup_add_external_messages_benchmark = struct
       let open Lwt_result_syntax in
       let+ inbox, _, ctxt =
         Lwt.map Environment.wrap_tzresult
-        @@ Sc_rollup_inbox_storage.add_external_messages ctxt ["CAFEBABE"]
+        @@ Sc_rollup_inbox_storage.add_external_messages
+             ctxt
+             [Hex.to_bytes_exn (`Hex "CAFEBABE")]
       in
       let ctxt = Raw_context.Internal_for_tests.add_level ctxt 1 in
       (inbox, ctxt)

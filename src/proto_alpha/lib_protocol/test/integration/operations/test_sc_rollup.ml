@@ -1523,13 +1523,12 @@ let test_inbox_max_number_of_messages_per_commitment_period () =
   in
   let* incr = Incremental.begin_construction block in
   (* This just one message below the limit *)
-  let messages =
-    List.repeat max_number_of_messages_per_commitment_period "foo"
-  in
+  let foo = Bytes.of_string "foo" in
+  let messages = List.repeat max_number_of_messages_per_commitment_period foo in
   let* op = Op.sc_rollup_add_messages (I incr) account1 messages in
   let* incr = Incremental.add_operation ~check_size:false incr op in
   (* This break the limit *)
-  let* op = Op.sc_rollup_add_messages (I incr) account2 ["foo"] in
+  let* op = Op.sc_rollup_add_messages (I incr) account2 [foo] in
   let expect_apply_failure = function
     | Environment.Ecoproto_error
         (Sc_rollup_errors
@@ -1712,7 +1711,9 @@ let dumb_proof ~choice =
   let context_arith_pvm = Tezos_context_memory.make_empty_context () in
   let*! arith_state = Arith_pvm.initial_state context_arith_pvm in
   let*! arith_state = Arith_pvm.install_boot_sector arith_state "" in
-  let input = Sc_rollup_helpers.make_external_input "c4c4" in
+  let input =
+    Sc_rollup_helpers.make_external_input (Hex.to_bytes_exn (`Hex "c4c4"))
+  in
   let* proof =
     Arith_pvm.produce_proof context_arith_pvm (Some input) arith_state
     >|= Environment.wrap_tzresult
@@ -2087,7 +2088,8 @@ let test_sol_and_eol () =
   let* block = Block.bake block in
 
   (* Bake a third block where a message is added. *)
-  let* operation = Op.sc_rollup_add_messages (B block) account ["foo"] in
+  let foo = Bytes.of_string "foo" in
+  let* operation = Op.sc_rollup_add_messages (B block) account [foo] in
   let* block = Block.bake ~operation block in
 
   (* Bake an extra block to archive all inbox messages for the snapshot. *)
@@ -2099,7 +2101,7 @@ let test_sol_and_eol () =
   let level_one = Raw_level.of_int32_exn 1l in
   let level_two = Raw_level.of_int32_exn 2l in
   let*! ((ctxt, level_tree, history, inbox) as full_history_inbox) =
-    full_history_inbox [(level_zero, []); (level_one, []); (level_two, ["foo"])]
+    full_history_inbox [(level_zero, []); (level_one, []); (level_two, [foo])]
   in
 
   (* Assert SOL is at position 0. *)

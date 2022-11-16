@@ -150,6 +150,13 @@ let equal_string ~loc (a : string) (b : string) =
 let not_equal_string ~loc (a : string) (b : string) =
   not_equal ~loc String.equal "Strings are equal" Format.pp_print_string a b
 
+(* bytes *)
+let equal_bytes ~loc (a : bytes) (b : bytes) =
+  equal ~loc Bytes.equal "Bytes aren't equal" Format.pp_print_bytes a b
+
+let not_equal_bytes ~loc (a : bytes) (b : bytes) =
+  not_equal ~loc Bytes.equal "Bytes are equal" Format.pp_print_bytes a b
+
 (* tez *)
 let equal_tez ~loc (a : Alpha_context.Tez.t) (b : Alpha_context.Tez.t) =
   let open Alpha_context in

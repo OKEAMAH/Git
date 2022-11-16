@@ -219,7 +219,7 @@ let make_eol ~inbox_level ~message_counter =
 *)
 type message = {
   input : Sc_rollup.input;
-  message : [`SOL | `Message of string | `EOL];
+  message : [`SOL | `Message of bytes | `EOL];
 }
 
 let pp_input fmt (input : Sc_rollup.input) =
@@ -236,10 +236,13 @@ let pp_input fmt (input : Sc_rollup.input) =
 let pp_message fmt {input; message} =
   Format.fprintf
     fmt
-    "{ input = %a; message = %S }"
+    "{ input = %a; message = %s }"
     pp_input
     input
-    (match message with `SOL -> "SOL" | `Message msg -> msg | `EOL -> "EOL")
+    (match message with
+    | `SOL -> "SOL"
+    | `Message msg -> Hex.(show @@ of_bytes msg)
+    | `EOL -> "EOL")
 
 (** An empty inbox level is a SOL and EOL. *)
 let make_empty_level inbox_level =
@@ -333,7 +336,7 @@ let make_eol_repr ~inbox_level ~message_counter =
 *)
 type message_repr = {
   input_repr : Sc_rollup_PVM_sig.input;
-  message_repr : [`SOL | `Message of string | `EOL];
+  message_repr : [`SOL | `Message of bytes | `EOL];
 }
 
 let pp_input_repr fmt (input_repr : Sc_rollup_PVM_sig.input) =
@@ -350,12 +353,12 @@ let pp_input_repr fmt (input_repr : Sc_rollup_PVM_sig.input) =
 let pp_message_repr fmt {input_repr; message_repr} =
   Format.fprintf
     fmt
-    "{ input_repr = %a; message_repr = %S }"
+    "{ input_repr = %a; message_repr = %s }"
     pp_input_repr
     input_repr
     (match message_repr with
     | `SOL -> "SOL"
-    | `Message msg -> msg
+    | `Message msg -> Hex.(show @@ of_bytes msg)
     | `EOL -> "EOL")
 
 (** An empty inbox level is a SOL and EOL. *)
