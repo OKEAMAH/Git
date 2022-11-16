@@ -24,4 +24,12 @@
 (*****************************************************************************)
 
 include Tezos_crypto.Signature.V0
+
+type signature = t
+
+type t = public_key_hash =
+  | Ed25519 of Tezos_crypto.Ed25519.Public_key_hash.t
+  | Secp256k1 of Tezos_crypto.Secp256k1.Public_key_hash.t
+  | P256 of Tezos_crypto.P256.Public_key_hash.t
+
 module To_signature = Tezos_crypto.Signature.Of_V0

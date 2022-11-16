@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type public_key_hash =
+type t =
   | Ed25519 of Ed25519.Public_key_hash.t
   | Secp256k1 of Secp256k1.Public_key_hash.t
   | P256 of P256.Public_key_hash.t
@@ -39,16 +39,19 @@ type watermark = Signature.watermark =
   | Generic_operation
   | Custom of bytes
 
+type signature
+
 include
   S.SIGNATURE
-    with type Public_key_hash.t = public_key_hash
+    with type Public_key_hash.t = t
      and type Public_key.t = public_key
      and type watermark := watermark
+     and type t := signature
 
 module To_signature : sig
-  val public_key_hash : public_key_hash -> Signature.public_key_hash
+  val public_key_hash : t -> Signature.public_key_hash
 
   val public_key : public_key -> Signature.public_key
 
-  val signature : t -> Signature.t
+  val signature : signature -> Signature.t
 end
