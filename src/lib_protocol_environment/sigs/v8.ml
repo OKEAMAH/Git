@@ -9591,6 +9591,73 @@ end
 # 96 "v8.in.ml"
 
 
+  module Delegate : sig
+# 1 "v8/delegate.mli"
+(*****************************************************************************)
+(*                                                                           *)
+(* Open Source License                                                       *)
+(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(*                                                                           *)
+(* Permission is hereby granted, free of charge, to any person obtaining a   *)
+(* copy of this software and associated documentation files (the "Software"),*)
+(* to deal in the Software without restriction, including without limitation *)
+(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
+(* and/or sell copies of the Software, and to permit persons to whom the     *)
+(* Software is furnished to do so, subject to the following conditions:      *)
+(*                                                                           *)
+(* The above copyright notice and this permission notice shall be included   *)
+(* in all copies or substantial portions of the Software.                    *)
+(*                                                                           *)
+(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
+(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
+(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
+(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
+(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
+(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
+(* DEALINGS IN THE SOFTWARE.                                                 *)
+(*                                                                           *)
+(*****************************************************************************)
+
+type public_key_hash =
+  | Ed25519 of Ed25519.Public_key_hash.t
+  | Secp256k1 of Secp256k1.Public_key_hash.t
+  | P256 of P256.Public_key_hash.t
+
+type public_key =
+  | Ed25519 of Ed25519.Public_key.t
+  | Secp256k1 of Secp256k1.Public_key.t
+  | P256 of P256.Public_key.t
+
+type watermark = Signature.watermark =
+  | Block_header of Chain_id.t
+  | Endorsement of Chain_id.t
+  | Generic_operation
+  | Custom of bytes
+
+(* type signature = *)
+(*   | Ed25519 of Ed25519.t *)
+(*   | Secp256k1 of Secp256k1.t *)
+(*   | P256 of P256.t *)
+(*   | Unknown of Bytes.t *)
+
+include
+  S.SIGNATURE
+    with type Public_key_hash.t = public_key_hash
+     and type Public_key.t = public_key
+     and type watermark := watermark
+(* and type t = signature *)
+
+module To_signature : sig
+  val public_key_hash : public_key_hash -> Signature.public_key_hash
+
+  val public_key : public_key -> Signature.public_key
+
+  val signature : t -> Signature.t
+end
+end
+# 98 "v8.in.ml"
+
+
   module Block_hash : sig
 # 1 "v8/block_hash.mli"
 (*****************************************************************************)
@@ -9621,7 +9688,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.HASH
 end
-# 98 "v8.in.ml"
+# 100 "v8.in.ml"
 
 
   module Operation_hash : sig
@@ -9654,7 +9721,7 @@ end
 (** Operations hashes / IDs. *)
 include S.HASH
 end
-# 100 "v8.in.ml"
+# 102 "v8.in.ml"
 
 
   module Operation_list_hash : sig
@@ -9687,7 +9754,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.MERKLE_TREE with type elt = Operation_hash.t
 end
-# 102 "v8.in.ml"
+# 104 "v8.in.ml"
 
 
   module Operation_list_list_hash : sig
@@ -9720,7 +9787,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.MERKLE_TREE with type elt = Operation_list_hash.t
 end
-# 104 "v8.in.ml"
+# 106 "v8.in.ml"
 
 
   module Protocol_hash : sig
@@ -9753,7 +9820,7 @@ end
 (** Protocol hashes / IDs. *)
 include S.HASH
 end
-# 106 "v8.in.ml"
+# 108 "v8.in.ml"
 
 
   module Context_hash : sig
@@ -9806,7 +9873,7 @@ end
 
 type version = Version.t
 end
-# 108 "v8.in.ml"
+# 110 "v8.in.ml"
 
 
   module Sapling : sig
@@ -9954,7 +10021,7 @@ module Verification : sig
   val final_check : t -> UTXO.transaction -> string -> bool
 end
 end
-# 110 "v8.in.ml"
+# 112 "v8.in.ml"
 
 
   module Timelock : sig
@@ -10013,7 +10080,7 @@ val open_chest : chest -> chest_key -> time:int -> opening_result
     Used for gas accounting*)
 val get_plaintext_size : chest -> int
 end
-# 112 "v8.in.ml"
+# 114 "v8.in.ml"
 
 
   module Vdf : sig
@@ -10101,7 +10168,7 @@ val prove : discriminant -> challenge -> difficulty -> result * proof
     @raise Invalid_argument when inputs are invalid *)
 val verify : discriminant -> challenge -> difficulty -> result -> proof -> bool
 end
-# 114 "v8.in.ml"
+# 116 "v8.in.ml"
 
 
   module Micheline : sig
@@ -10161,7 +10228,7 @@ val annotations : ('l, 'p) node -> string list
 
 val strip_locations : (_, 'p) node -> 'p canonical
 end
-# 116 "v8.in.ml"
+# 118 "v8.in.ml"
 
 
   module Block_header : sig
@@ -10218,7 +10285,7 @@ type t = {shell : shell_header; protocol_data : bytes}
 
 include S.HASHABLE with type t := t and type hash := Block_hash.t
 end
-# 118 "v8.in.ml"
+# 120 "v8.in.ml"
 
 
   module Bounded : sig
@@ -10367,7 +10434,7 @@ module Int8 (B : BOUNDS with type ocaml_type := int) :
 module Uint8 (B : BOUNDS with type ocaml_type := int) :
   S with type ocaml_type := int
 end
-# 120 "v8.in.ml"
+# 122 "v8.in.ml"
 
 
   module Fitness : sig
@@ -10401,7 +10468,7 @@ end
     compared in a lexicographical order (longer list are greater). *)
 include S.T with type t = bytes list
 end
-# 122 "v8.in.ml"
+# 124 "v8.in.ml"
 
 
   module Operation : sig
@@ -10445,7 +10512,7 @@ type t = {shell : shell_header; proto : bytes}
 
 include S.HASHABLE with type t := t and type hash := Operation_hash.t
 end
-# 124 "v8.in.ml"
+# 126 "v8.in.ml"
 
 
   module Context : sig
@@ -11082,7 +11149,7 @@ module Cache :
      and type key = cache_key
      and type value = cache_value
 end
-# 126 "v8.in.ml"
+# 128 "v8.in.ml"
 
 
   module Updater : sig
@@ -11607,7 +11674,7 @@ end
     not complete until [init] in invoked. *)
 val activate : Context.t -> Protocol_hash.t -> Context.t Lwt.t
 end
-# 128 "v8.in.ml"
+# 130 "v8.in.ml"
 
 
   module RPC_context : sig
@@ -11762,7 +11829,7 @@ val make_opt_call3 :
   'i ->
   'o option shell_tzresult Lwt.t
 end
-# 130 "v8.in.ml"
+# 132 "v8.in.ml"
 
 
   module Wasm_2_0_0 : sig
@@ -11828,7 +11895,7 @@ module Make
   val get_info : Tree.tree -> info Lwt.t
 end
 end
-# 132 "v8.in.ml"
+# 134 "v8.in.ml"
 
 
   module Plonk : sig
@@ -11896,7 +11963,7 @@ val verify_multi_circuits :
   proof ->
   bool
 end
-# 134 "v8.in.ml"
+# 136 "v8.in.ml"
 
 
   module Dal : sig
@@ -12014,6 +12081,6 @@ val verify_page :
   page_proof ->
   (bool, [> `Segment_index_out_of_range | `Page_length_mismatch]) Result.t
 end
-# 136 "v8.in.ml"
+# 138 "v8.in.ml"
 
 end

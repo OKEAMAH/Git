@@ -2643,6 +2643,8 @@ module Delegate : sig
 
   (** See {!Stake_storage.prepare_stake_distribution}. *)
   val prepare_stake_distribution : context -> context tzresult Lwt.t
+
+  include module type of Delegate
 end
 
 (** This module re-exports definitions from {!Voting_period_repr} and

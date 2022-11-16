@@ -477,6 +477,7 @@ module Receipt = Receipt_repr
 module Consensus_key = Delegate_consensus_key
 
 module Delegate = struct
+  include Delegate
   include Delegate_storage
   include Delegate_missed_endorsements_storage
   include Delegate_slashed_deposits_storage

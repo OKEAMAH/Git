@@ -95,6 +95,8 @@ module type T = sig
 
   module Signature : [%sig "v8/signature.mli"]
 
+  module Delegate : [%sig "v8/delegate.mli"]
+
   module Block_hash : [%sig "v8/block_hash.mli"]
 
   module Operation_hash : [%sig "v8/operation_hash.mli"]
