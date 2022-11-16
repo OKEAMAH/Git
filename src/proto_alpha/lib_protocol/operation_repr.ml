@@ -1827,6 +1827,25 @@ module Encoding = struct
           encoding of operations. *)
        :: List.map make_contents contents_cases
 
+  let rec of_contents_and_signature_prefix = function
+    | [Actual_contents (Contents o)] -> Ok (Contents_list (Single o), None)
+    | [Actual_contents (Contents o); Signature_prefix prefix] ->
+        Ok (Contents_list (Single o), Some prefix)
+    | [] | [Signature_prefix _] -> Error "Operation lists should not be empty."
+    | Signature_prefix _ :: _ -> Error "Signature prefix must appear last"
+    | Actual_contents (Contents o) :: os -> (
+        of_contents_and_signature_prefix os
+        >>? fun (Contents_list os, prefix) ->
+        match (o, os) with
+        | Manager_operation _, Single (Manager_operation _) ->
+            Ok (Contents_list (Cons (o, os)), prefix)
+        | Manager_operation _, Cons _ ->
+            Ok (Contents_list (Cons (o, os)), prefix)
+        | _ ->
+            Error
+              "Operation list of length > 1 should only contains manager \
+               operations.")
+
   let protocol_data_binary_encoding =
     conv_with_guard
       (fun (Operation_data {contents; signature}) ->
@@ -1849,25 +1868,18 @@ module Encoding = struct
         (contents_and_signature_prefix, sig_suffix))
       (fun (contents_and_signature_prefix, suffix) ->
         let open Result_syntax in
-        let prefix, rev_contents =
-          match List.rev contents_and_signature_prefix with
-          | Signature_prefix p :: rest -> (Some p, rest)
-          | contents -> (None, contents)
+        let* Contents_list contents, prefix =
+          of_contents_and_signature_prefix contents_and_signature_prefix
         in
-        let* contents =
-          List.rev_map_e
-            (function
-              | Actual_contents c -> Ok c
-              | Signature_prefix _ -> Error "Signature prefix must appear last")
-            rev_contents
-        in
-        let* (Contents_list contents) = of_list_internal contents in
         let+ signature =
           Result.of_option ~error:"Invalid signature"
           @@ Signature.of_splitted {Signature.prefix; suffix}
         in
         let signature =
-          if Signature.(signature = zero) then None else Some signature
+          match prefix with
+          | None ->
+              if Signature.(signature = zero) then None else Some signature
+          | Some _ -> Some signature
         in
         Operation_data {contents; signature})
       (obj2
