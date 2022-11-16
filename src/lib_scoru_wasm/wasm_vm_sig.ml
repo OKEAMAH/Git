@@ -30,6 +30,7 @@ module type Internal_for_tests = sig
   type state
 
   val compute_step_many_with_hooks :
+    ?builtins:Builtins.t ->
     ?after_fast_exec:(unit -> unit) ->
     max_steps:int64 ->
     state ->
@@ -47,7 +48,8 @@ module type Generic = sig
       than one tick, but its resulting pvm_state will be stricly equivalent.
       Returns a tuple containing the number of executed ticks and the new
       pvm_state. *)
-  val compute_step_many : max_steps:int64 -> state -> (state * int64) Lwt.t
+  val compute_step_many :
+    ?builtins:Builtins.t -> max_steps:int64 -> state -> (state * int64) Lwt.t
 
   (** [compute_step pvm_state] forwards the VM by one compute tick. If the VM is
       expecting input, it gets stuck. If the VM is already stuck, this function

@@ -68,10 +68,29 @@ module Make
   let eval_until_input ~metadata ~dal_endorsement_lag data_dir store level
       message_index ~fuel start_tick failing_ticks state =
     let open Lwt_result_syntax in
+    let module Builtins = struct
+      let reveal_preimage hash =
+        let hash = Sc_rollup.Reveal_hash.of_bytes_exn hash in
+        match Reveals.get ~data_dir ~pvm_name:PVM.name ~hash with
+        | None ->
+            (* TODO: Raise error properly. *)
+            ignore (Sc_rollup_node_errors.Cannot_retrieve_reveal hash) ;
+            assert false
+        | Some data -> Lwt.return data
+
+      let reveal_metadata () =
+        Lwt.return
+          (Data_encoding.Binary.to_string_exn
+             Sc_rollup.Metadata.encoding
+             metadata)
+    end in
+    let builtins = (module Builtins : Tezos_scoru_wasm.Builtins.S) in
     let eval_tick fuel tick failing_ticks state =
       let max_steps = F.max_ticks fuel in
       let normal_eval state =
-        let*! state, executed_ticks = PVM.eval_many ~max_steps state in
+        let*! state, executed_ticks =
+          PVM.eval_many ~builtins ~max_steps state
+        in
         return (state, executed_ticks, failing_ticks)
       in
       let failure_insertion_eval state failing_ticks' =
@@ -99,7 +118,6 @@ module Make
             let* next_state, executed_ticks, failing_ticks =
               eval_tick fuel current_tick failing_ticks state
             in
-
             go
               fuel
               (Int64.add current_tick executed_ticks)

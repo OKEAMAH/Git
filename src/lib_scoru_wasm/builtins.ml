@@ -23,56 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
+module type S = sig
+  val reveal_preimage : bytes -> string Lwt.t
 
-(** This module manifests the proof format used by the Arith PVM as defined by
-    the Layer 1 implementation for it.
-
-    It is imperative that this is aligned with the protocol's implementation.
-*)
-module Arith_proof_format =
-  Context.Proof
-    (struct
-      include Sc_rollup.State_hash
-
-      let of_context_hash = Sc_rollup.State_hash.context_hash_to_state_hash
-    end)
-    (struct
-      let proof_encoding =
-        Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V2.Tree32
-        .tree_proof_encoding
-    end)
-
-module Impl : Pvm.S = struct
-  include Sc_rollup.ArithPVM.Make (Arith_proof_format)
-  module State = Context.PVMState
-
-  let string_of_status status =
-    match status with
-    | Halted -> "Halted"
-    | Waiting_for_input_message -> "Waiting for input message"
-    | Waiting_for_reveal -> "Waiting for reveal"
-    | Waiting_for_metadata -> "Waiting for metadata"
-    | Parsing -> "Parsing"
-    | Evaluating -> "Evaluating"
-
-  let eval_many ?builtins:_ ~max_steps initial_state =
-    let rec go state step =
-      let open Lwt.Syntax in
-      let* is_input_required = is_input_state state in
-
-      if is_input_required = No_input_required && step <= max_steps then
-        let open Lwt.Syntax in
-        (* Note: This is not an efficient implementation because the state is
-           decoded/encoded to/from the tree at each step but for Arith PVM
-           it doesn't matter
-        *)
-        let* next_state = eval state in
-        go next_state (Int64.succ step)
-      else Lwt.return (state, step)
-    in
-    go initial_state 0L
+  val reveal_metadata : unit -> string Lwt.t
 end
 
-include Impl
+type t = (module S)
