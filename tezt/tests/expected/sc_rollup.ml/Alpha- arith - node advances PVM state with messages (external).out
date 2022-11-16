@@ -43,7 +43,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "0"
 
-./octez-client --wait none send sc rollup message '["1 6 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["312036202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.647 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -95,7 +95,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "22"
 
-./octez-client --wait none send sc rollup message '["2 8 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["322038202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.647 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -147,7 +147,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "42"
 
-./octez-client --wait none send sc rollup message '["3 10 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["33203130202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.664 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -200,7 +200,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "63"
 
-./octez-client --wait none send sc rollup message '["4 12 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["34203132202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.664 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -253,7 +253,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "84"
 
-./octez-client --wait none send sc rollup message '["5 14 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["35203134202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.664 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -306,7 +306,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "105"
 
-./octez-client --wait none send sc rollup message '["6 16 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["36203136202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.664 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -359,7 +359,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "126"
 
-./octez-client --wait none send sc rollup message '["7 18 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["37203138202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.664 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -413,7 +413,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "147"
 
-./octez-client --wait none send sc rollup message '["8 20 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["38203230202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.664 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -468,7 +468,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "168"
 
-./octez-client --wait none send sc rollup message '["9 22 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["39203232202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.664 units (will add 100 for safety)
 Estimated storage: no bytes added
@@ -523,7 +523,7 @@ This sequence of operations was run:
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/total_ticks
 "189"
 
-./octez-client --wait none send sc rollup message '["10 24 + value"]' from bootstrap2
+./octez-client --wait none send sc rollup message 'text:["3130203234202b2076616c7565"]' from bootstrap2
 Node is bootstrapped.
 Estimated gas: 1000.681 units (will add 100 for safety)
 Estimated storage: no bytes added
