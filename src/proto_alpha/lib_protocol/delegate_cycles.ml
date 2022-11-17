@@ -57,16 +57,16 @@ let max_frozen_deposits_and_delegates_to_remove ctxt ~from_cycle ~to_cycle =
   in
   let cycles = Cycle_repr.(from_cycle ---> to_cycle) in
   (match Cycle_repr.pred from_cycle with
-  | None -> return Signature.Public_key_hash.Set.empty
+  | None -> return Delegate.Public_key_hash.Set.empty
   | Some cleared_cycle -> (
       Stake_storage.find_selected_distribution ctxt cleared_cycle
       >|=? fun cleared_cycle_delegates ->
       match cleared_cycle_delegates with
-      | None -> Signature.Public_key_hash.Set.empty
+      | None -> Delegate.Public_key_hash.Set.empty
       | Some delegates ->
           List.fold_left
-            (fun set (d, _) -> Signature.Public_key_hash.Set.add d set)
-            Signature.Public_key_hash.Set.empty
+            (fun set (d, _) -> Delegate.Public_key_hash.Set.add d set)
+            Delegate.Public_key_hash.Set.empty
             delegates))
   >>=? fun cleared_cycle_delegates ->
   List.fold_left_es
@@ -79,7 +79,7 @@ let max_frozen_deposits_and_delegates_to_remove ctxt ~from_cycle ~to_cycle =
             Tez_repr.(div_exn (mul_exn stake frozen_deposits_percentage) 100)
           in
           let maxima =
-            Signature.Public_key_hash.Map.update
+            Delegate.Public_key_hash.Map.update
               delegate
               (function
                 | None -> Some stake_to_be_deposited
@@ -88,12 +88,12 @@ let max_frozen_deposits_and_delegates_to_remove ctxt ~from_cycle ~to_cycle =
               maxima
           in
           let delegates_to_remove =
-            Signature.Public_key_hash.Set.remove delegate delegates_to_remove
+            Delegate.Public_key_hash.Set.remove delegate delegates_to_remove
           in
           (maxima, delegates_to_remove))
         (maxima, delegates_to_remove)
         active_stakes)
-    (Signature.Public_key_hash.Map.empty, cleared_cycle_delegates)
+    (Delegate.Public_key_hash.Map.empty, cleared_cycle_delegates)
     cycles
 
 let freeze_deposits ?(origin = Receipt_repr.Block_application) ctxt ~new_cycle
@@ -115,12 +115,12 @@ let freeze_deposits ?(origin = Receipt_repr.Block_application) ctxt ~new_cycle
   let to_cycle = Cycle_repr.(add new_cycle preserved_cycles) in
   max_frozen_deposits_and_delegates_to_remove ctxt ~from_cycle ~to_cycle
   >>=? fun (maxima, delegates_to_remove) ->
-  Signature.Public_key_hash.Map.fold_es
+  Delegate.Public_key_hash.Map.fold_es
     (fun delegate maximum_stake_to_be_deposited (ctxt, balance_updates) ->
       (* Here we make sure to preserve the following invariant :
          maximum_stake_to_be_deposited <= frozen_deposits + balance
          See select_distribution_for_cycle *)
-      let delegate_contract = Contract_repr.Implicit delegate in
+      let delegate_contract = Contract_repr.implicit_delegate delegate in
       Frozen_deposits_storage.update_initial_amount
         ctxt
         delegate_contract
@@ -167,9 +167,9 @@ let freeze_deposits ?(origin = Receipt_repr.Block_application) ctxt ~new_cycle
      frozen deposits) but are not in the new window; because that means
      that such a delegate had no active stake in the relevant cycles,
      and therefore it should have no frozen deposits. *)
-  Signature.Public_key_hash.Set.fold_es
+  Delegate.Public_key_hash.Set.fold_es
     (fun delegate (ctxt, balance_updates) ->
-      let delegate_contract = Contract_repr.Implicit delegate in
+      let delegate_contract = Contract_repr.implicit_delegate delegate in
       Frozen_deposits_storage.update_initial_amount
         ctxt
         delegate_contract
@@ -190,7 +190,7 @@ let freeze_deposits ?(origin = Receipt_repr.Block_application) ctxt ~new_cycle
     (ctxt, balance_updates)
 
 let delegate_has_revealed_nonces delegate unrevelead_nonces_set =
-  not (Signature.Public_key_hash.Set.mem delegate unrevelead_nonces_set)
+  not (Delegate.Public_key_hash.Set.mem delegate unrevelead_nonces_set)
 
 let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
   let endorsing_reward_per_slot =
@@ -199,8 +199,8 @@ let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
   let unrevealed_nonces_set =
     List.fold_left
       (fun set {Storage.Seed.nonce_hash = _; delegate} ->
-        Signature.Public_key_hash.Set.add delegate set)
-      Signature.Public_key_hash.Set.empty
+        Delegate.Public_key_hash.Set.add delegate set)
+      Delegate.Public_key_hash.Set.empty
       unrevealed_nonces
   in
   Stake_storage.get_total_active_stake ctxt last_cycle
@@ -208,7 +208,7 @@ let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
   Stake_storage.get_selected_distribution ctxt last_cycle >>=? fun delegates ->
   List.fold_left_es
     (fun (ctxt, balance_updates) (delegate, active_stake) ->
-      let delegate_contract = Contract_repr.Implicit delegate in
+      let delegate_contract = Contract_repr.implicit_delegate delegate in
       Delegate_missed_endorsements_storage
       .check_and_reset_delegate_participation
         ctxt

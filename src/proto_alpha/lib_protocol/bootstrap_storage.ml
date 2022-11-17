@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type error += Unrevealed_public_key of Signature.Public_key_hash.t
+type error += Unrevealed_public_key of Delegate.t
 
 let () =
   register_error_kind
@@ -35,16 +35,16 @@ let () =
       Format.fprintf
         ppf
         "Delegation from an unrevealed public key (for %a) is forbidden."
-        Signature.Public_key_hash.pp
+        Delegate.Public_key_hash.pp
         delegate)
-    Data_encoding.(obj1 (req "delegator" Signature.Public_key_hash.encoding))
+    Data_encoding.(obj1 (req "delegator" Delegate.Public_key_hash.encoding))
     (function Unrevealed_public_key pkh -> Some pkh | _ -> None)
     (fun pkh -> Unrevealed_public_key pkh)
 
 let init_account (ctxt, balance_updates)
     ({public_key_hash; public_key; amount; delegate_to; consensus_key} :
       Parameters_repr.bootstrap_account) =
-  let contract = Contract_repr.Implicit public_key_hash in
+  let contract = Contract_repr.implicit_delegate public_key_hash in
   Token.transfer
     ~origin:Protocol_migration
     ctxt
@@ -56,8 +56,8 @@ let init_account (ctxt, balance_updates)
   | Some public_key -> (
       Contract_manager_storage.reveal_manager_key
         ctxt
-        public_key_hash
-        public_key
+        (Delegate.To_signature.public_key_hash public_key_hash)
+        (Delegate.To_signature.public_key public_key)
       >>=? fun ctxt ->
       Delegate_storage.Contract.set
         ctxt

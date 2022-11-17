@@ -44,7 +44,12 @@ type t =
 
 include Compare.S with type t := t
 
+(** {2 Helpers} *)
+
 val in_memory_size : t -> Cache_memory_helpers.sint
+
+(** Implicit contract of a delegate. *)
+val implicit_delegate : Delegate.t -> t
 
 (** {2 Originated contracts} *)
 

@@ -315,6 +315,6 @@ let cache_nonce_from_block_header (shell : Block_header.shell_header) contents :
         Bytes.make Constants_repr.proof_of_work_nonce_size '0';
     }
   in
-  let protocol_data = {signature = Signature.zero; contents} in
+  let protocol_data = {signature = Delegate.zero; contents} in
   let x = {shell; protocol_data} in
   Block_hash.to_bytes (hash x)

@@ -69,8 +69,8 @@ let bonus_baking_reward ctxt ~endorsing_power =
   Tez.(baking_reward_bonus_per_slot *? Int64.of_int extra_endorsing_power)
 
 type ordered_slots = {
-  delegate : Signature.public_key_hash;
-  consensus_key : Signature.public_key_hash;
+  delegate : Delegate.t;
+  consensus_key : Delegate.Public_key_hash.t;
   slots : Slot.t list;
 }
 
@@ -84,7 +84,7 @@ let endorsing_rights (ctxt : t) level =
       Stake_distribution.slot_owner ctxt level slot
       >>=? fun (ctxt, consensus_pk) ->
       let map =
-        Signature.Public_key_hash.Map.update
+        Delegate.Public_key_hash.Map.update
           consensus_pk.delegate
           (function
             | None ->
@@ -98,7 +98,7 @@ let endorsing_rights (ctxt : t) level =
           map
       in
       return (ctxt, map))
-    (ctxt, Signature.Public_key_hash.Map.empty)
+    (ctxt, Delegate.Public_key_hash.Map.empty)
     slots
 
 let endorsing_rights_by_first_slot ctxt level =
@@ -110,11 +110,11 @@ let endorsing_rights_by_first_slot ctxt level =
       >|=? fun (ctxt, consensus_pk) ->
       let initial_slot, delegates_map =
         match
-          Signature.Public_key_hash.Map.find consensus_pk.delegate delegates_map
+          Delegate.Public_key_hash.Map.find consensus_pk.delegate delegates_map
         with
         | None ->
             ( slot,
-              Signature.Public_key_hash.Map.add
+              Delegate.Public_key_hash.Map.add
                 consensus_pk.delegate
                 slot
                 delegates_map )
@@ -131,6 +131,6 @@ let endorsing_rights_by_first_slot ctxt level =
           slots_map
       in
       (ctxt, (delegates_map, slots_map)))
-    (ctxt, (Signature.Public_key_hash.Map.empty, Slot.Map.empty))
+    (ctxt, (Delegate.Public_key_hash.Map.empty, Slot.Map.empty))
     slots
   >>=? fun (ctxt, (_, slots_map)) -> return (ctxt, slots_map)

@@ -42,7 +42,7 @@ module Consensus : sig
 
   (** Errors for preendorsements and endorsements. *)
   type error +=
-    | Zero_frozen_deposits of Signature.Public_key_hash.t
+    | Zero_frozen_deposits of Delegate.t
     | Consensus_operation_not_allowed
     | Consensus_operation_for_old_level of {
         kind : consensus_operation_kind;
@@ -109,14 +109,14 @@ module Voting : sig
     | Too_many_proposals of {previous_count : int; operation_count : int}
     | Conflicting_proposals of operation_conflict
     | Testnet_dictator_multiple_proposals
-    | Proposals_from_unregistered_delegate of Signature.Public_key_hash.t
+    | Proposals_from_unregistered_delegate of Delegate.t
     | (* Ballot errors *)
         Ballot_for_wrong_proposal of {
         current : Protocol_hash.t;
         submitted : Protocol_hash.t;
       }
     | Already_submitted_a_ballot
-    | Ballot_from_unregistered_delegate of Signature.Public_key_hash.t
+    | Ballot_from_unregistered_delegate of Delegate.t
     | Conflicting_ballot of operation_conflict
 end
 
@@ -141,12 +141,12 @@ module Anonymous : sig
       }
     | Inconsistent_denunciation of {
         kind : denunciation_kind;
-        delegate1 : Signature.Public_key_hash.t;
-        delegate2 : Signature.Public_key_hash.t;
+        delegate1 : Delegate.t;
+        delegate2 : Delegate.t;
       }
     | Already_denounced of {
         kind : denunciation_kind;
-        delegate : Signature.Public_key_hash.t;
+        delegate : Delegate.t;
         level : Level.t;
       }
     | Conflicting_denunciation of {
@@ -165,21 +165,21 @@ module Anonymous : sig
       }
     | Conflicting_nonce_revelation of operation_conflict
     | Conflicting_vdf_revelation of operation_conflict
-    | Drain_delegate_on_unregistered_delegate of Signature.Public_key_hash.t
+    | Drain_delegate_on_unregistered_delegate of Delegate.t
     | Invalid_drain_delegate_inactive_key of {
-        delegate : Signature.Public_key_hash.t;
-        consensus_key : Signature.Public_key_hash.t;
-        active_consensus_key : Signature.Public_key_hash.t;
+        delegate : Delegate.t;
+        consensus_key : Delegate.t;
+        active_consensus_key : Delegate.t;
       }
-    | Invalid_drain_delegate_no_consensus_key of Signature.Public_key_hash.t
-    | Invalid_drain_delegate_noop of Signature.Public_key_hash.t
+    | Invalid_drain_delegate_no_consensus_key of Delegate.t
+    | Invalid_drain_delegate_noop of Delegate.t
     | Invalid_drain_delegate_insufficient_funds_for_burn_or_fees of {
-        delegate : Signature.Public_key_hash.t;
+        delegate : Delegate.t;
         destination : Signature.Public_key_hash.t;
         min_amount : Tez.t;
       }
     | Conflicting_drain_delegate of {
-        delegate : Signature.Public_key_hash.t;
+        delegate : Delegate.t;
         conflict : operation_conflict;
       }
 end

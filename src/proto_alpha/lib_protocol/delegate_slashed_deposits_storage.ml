@@ -49,7 +49,7 @@ let punish_double_endorsing ctxt delegate (level : Level_repr.t) =
         assert (Compare.Bool.(slashed.for_double_endorsing = false)) ;
         {slashed with for_double_endorsing = true}
   in
-  let delegate_contract = Contract_repr.Implicit delegate in
+  let delegate_contract = Contract_repr.implicit_delegate delegate in
   let* frozen_deposits = Frozen_deposits_storage.get ctxt delegate_contract in
   let slashing_ratio : Ratio_repr.t =
     Constants_storage.ratio_of_frozen_deposits_slashed_per_double_endorsement
@@ -92,7 +92,7 @@ let punish_double_baking ctxt delegate (level : Level_repr.t) =
         assert (Compare.Bool.(slashed.for_double_baking = false)) ;
         {slashed with for_double_baking = true}
   in
-  let delegate_contract = Contract_repr.Implicit delegate in
+  let delegate_contract = Contract_repr.implicit_delegate delegate in
   let* frozen_deposits = Frozen_deposits_storage.get ctxt delegate_contract in
   let slashing_for_one_block =
     Constants_storage.double_baking_punishment ctxt

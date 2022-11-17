@@ -1229,7 +1229,7 @@ module Nonce : sig
 
   val encoding : nonce Data_encoding.t
 
-  type unrevealed = {nonce_hash : Nonce_hash.t; delegate : public_key_hash}
+  type unrevealed = {nonce_hash : Nonce_hash.t; delegate : Delegate.t}
 
   val record_hash : context -> unrevealed -> context tzresult Lwt.t
 
@@ -1771,13 +1771,13 @@ module Contract : sig
   (** Functions for handling the delegate of a contract.*)
   module Delegate : sig
     (** See {!Contract_delegate_storage.find}. *)
-    val find : context -> t -> public_key_hash option tzresult Lwt.t
+    val find : context -> t -> Delegate.t option tzresult Lwt.t
 
     (** See {!Delegate_storage.Contract.init}. *)
-    val init : context -> t -> public_key_hash -> context tzresult Lwt.t
+    val init : context -> t -> Delegate.t -> context tzresult Lwt.t
 
     (** See {!Delegate_storage.Contract.set}. *)
-    val set : context -> t -> public_key_hash option -> context tzresult Lwt.t
+    val set : context -> t -> Delegate.t option -> context tzresult Lwt.t
   end
 
   (** This module discloses definitions that are only useful for tests and must
@@ -2469,7 +2469,7 @@ module Receipt : sig
   type balance =
     | Contract of Contract.t
     | Block_fees
-    | Deposits of public_key_hash
+    | Deposits of Delegate.t
     | Nonce_revelation_rewards
     | Double_signing_evidence_rewards
     | Endorsing_rewards
@@ -2477,7 +2477,7 @@ module Receipt : sig
     | Baking_bonuses
     | Storage_fees
     | Double_signing_punishments
-    | Lost_endorsing_rewards of public_key_hash * bool * bool
+    | Lost_endorsing_rewards of Delegate.t * bool * bool
     | Liquidity_baking_subsidies
     | Burned
     | Commitments of Blinded_public_key_hash.t
@@ -2513,15 +2513,12 @@ end
 (** This module re-exports definitions from {!Delegate_consensus_key}. *)
 module Consensus_key : sig
   type pk = {
-    delegate : Signature.Public_key_hash.t;
-    consensus_pk : Signature.Public_key.t;
-    consensus_pkh : Signature.Public_key_hash.t;
+    delegate : Delegate.t;
+    consensus_pk : Delegate.Public_key.t;
+    consensus_pkh : Delegate.Public_key_hash.t;
   }
 
-  type t = {
-    delegate : Signature.Public_key_hash.t;
-    consensus_pkh : Signature.Public_key_hash.t;
-  }
+  type t = {delegate : Delegate.t; consensus_pkh : Delegate.Public_key_hash.t}
 
   val zero : t
 
@@ -2534,24 +2531,26 @@ end
    {!Delegate_consensus_key}, {!Delegate_missed_endorsements_storage},
    {!Delegate_slashed_deposits_storage}, {!Delegate_cycles}. *)
 module Delegate : sig
+  include module type of Delegate
+
   val frozen_deposits_limit :
-    context -> public_key_hash -> Tez.t option tzresult Lwt.t
+    context -> Delegate.t -> Tez.t option tzresult Lwt.t
 
   val set_frozen_deposits_limit :
-    context -> public_key_hash -> Tez.t option -> context Lwt.t
+    context -> Delegate.t -> Tez.t option -> context Lwt.t
 
   val fold :
     context ->
     order:[`Sorted | `Undefined] ->
     init:'a ->
-    f:(public_key_hash -> 'a -> 'a Lwt.t) ->
+    f:(Delegate.t -> 'a -> 'a Lwt.t) ->
     'a Lwt.t
 
-  val list : context -> public_key_hash list Lwt.t
+  val list : context -> Delegate.t list Lwt.t
 
   val drain :
     context ->
-    delegate:public_key_hash ->
+    delegate:Delegate.t ->
     destination:public_key_hash ->
     (context * bool * Tez.t * Receipt.balance_updates) tzresult Lwt.t
 
@@ -2565,86 +2564,81 @@ module Delegate : sig
   }
 
   val participation_info :
-    context -> public_key_hash -> participation_info tzresult Lwt.t
+    context -> Delegate.t -> participation_info tzresult Lwt.t
 
   val cycle_end :
     context ->
     Cycle.t ->
-    (context * Receipt.balance_updates * public_key_hash list) tzresult Lwt.t
+    (context * Receipt.balance_updates * Delegate.t list) tzresult Lwt.t
 
   val already_slashed_for_double_endorsing :
-    context -> public_key_hash -> Level.t -> bool tzresult Lwt.t
+    context -> Delegate.t -> Level.t -> bool tzresult Lwt.t
 
   val already_slashed_for_double_baking :
-    context -> public_key_hash -> Level.t -> bool tzresult Lwt.t
+    context -> Delegate.t -> Level.t -> bool tzresult Lwt.t
 
   val punish_double_endorsing :
     context ->
-    public_key_hash ->
+    Delegate.t ->
     Level.t ->
     (context * Tez.t * Receipt.balance_updates) tzresult Lwt.t
 
   val punish_double_baking :
     context ->
-    public_key_hash ->
+    Delegate.t ->
     Level.t ->
     (context * Tez.t * Receipt.balance_updates) tzresult Lwt.t
 
-  val full_balance : context -> public_key_hash -> Tez.t tzresult Lwt.t
+  val full_balance : context -> Delegate.t -> Tez.t tzresult Lwt.t
 
   type level_participation = Participated | Didn't_participate
 
   val record_baking_activity_and_pay_rewards_and_fees :
     context ->
-    payload_producer:public_key_hash ->
-    block_producer:public_key_hash ->
+    payload_producer:Delegate.t ->
+    block_producer:Delegate.t ->
     baking_reward:Tez.t ->
     reward_bonus:Tez.t option ->
     (context * Receipt.balance_updates) tzresult Lwt.t
 
   val record_endorsing_participation :
     context ->
-    delegate:public_key_hash ->
+    delegate:Delegate.t ->
     participation:level_participation ->
     endorsing_power:int ->
     context tzresult Lwt.t
 
   type deposits = {initial_amount : Tez.t; current_amount : Tez.t}
 
-  val frozen_deposits : context -> public_key_hash -> deposits tzresult Lwt.t
+  val frozen_deposits : context -> Delegate.t -> deposits tzresult Lwt.t
 
-  val staking_balance : context -> public_key_hash -> Tez.t tzresult Lwt.t
+  val staking_balance : context -> Delegate.t -> Tez.t tzresult Lwt.t
 
   (** See {!Contract_delegate_storage.delegated_contracts}. *)
-  val delegated_contracts : context -> public_key_hash -> Contract.t list Lwt.t
+  val delegated_contracts : context -> Delegate.t -> Contract.t list Lwt.t
 
-  val delegated_balance : context -> public_key_hash -> Tez.t tzresult Lwt.t
+  val delegated_balance : context -> Delegate.t -> Tez.t tzresult Lwt.t
 
-  val registered : context -> public_key_hash -> bool Lwt.t
+  val registered : context -> Delegate.t -> bool Lwt.t
 
-  val deactivated : context -> public_key_hash -> bool tzresult Lwt.t
+  val deactivated : context -> Delegate.t -> bool tzresult Lwt.t
 
   (** See {!Delegate_activation_storage.last_cycle_before_deactivation}. *)
   val last_cycle_before_deactivation :
-    context -> public_key_hash -> Cycle.t tzresult Lwt.t
+    context -> Delegate.t -> Cycle.t tzresult Lwt.t
 
   module Consensus_key : sig
-    val active_pubkey :
-      context -> public_key_hash -> Consensus_key.pk tzresult Lwt.t
+    val active_pubkey : context -> Delegate.t -> Consensus_key.pk tzresult Lwt.t
 
     val pending_updates :
-      context ->
-      public_key_hash ->
-      (Cycle.t * public_key_hash) list tzresult Lwt.t
+      context -> Delegate.t -> (Cycle.t * Delegate.t) list tzresult Lwt.t
 
     val register_update :
-      context -> public_key_hash -> public_key -> context tzresult Lwt.t
+      context -> Delegate.t -> public_key -> context tzresult Lwt.t
   end
 
   (** See {!Stake_storage.prepare_stake_distribution}. *)
   val prepare_stake_distribution : context -> context tzresult Lwt.t
-
-  include module type of Delegate
 end
 
 (** This module re-exports definitions from {!Voting_period_repr} and
@@ -2703,30 +2697,29 @@ module Vote : sig
   type proposal = Protocol_hash.t
 
   (** See {!Vote_storage.get_delegate_proposal_count}. *)
-  val get_delegate_proposal_count :
-    context -> public_key_hash -> int tzresult Lwt.t
+  val get_delegate_proposal_count : context -> Delegate.t -> int tzresult Lwt.t
 
   (** See {!Vote_storage.set_delegate_proposal_count}. *)
   val set_delegate_proposal_count :
-    context -> public_key_hash -> int -> context Lwt.t
+    context -> Delegate.t -> int -> context Lwt.t
 
   (** See {!Vote_storage.has_proposed}. *)
-  val has_proposed : context -> public_key_hash -> proposal -> bool Lwt.t
+  val has_proposed : context -> Delegate.t -> proposal -> bool Lwt.t
 
   (** See {!Vote_storage.add_proposal}. *)
-  val add_proposal : context -> public_key_hash -> proposal -> context Lwt.t
+  val add_proposal : context -> Delegate.t -> proposal -> context Lwt.t
 
   val get_proposals : context -> int64 Protocol_hash.Map.t tzresult Lwt.t
 
   val clear_proposals : context -> context Lwt.t
 
-  val listings_encoding : (public_key_hash * int64) list Data_encoding.t
+  val listings_encoding : (Delegate.t * int64) list Data_encoding.t
 
   val update_listings : context -> context tzresult Lwt.t
 
-  val in_listings : context -> public_key_hash -> bool Lwt.t
+  val in_listings : context -> Delegate.t -> bool Lwt.t
 
-  val get_listings : context -> (public_key_hash * int64) list Lwt.t
+  val get_listings : context -> (Delegate.t * int64) list Lwt.t
 
   type ballot = Yay | Nay | Pass
 
@@ -2745,13 +2738,12 @@ module Vote : sig
 
   val delegate_info_encoding : delegate_info Data_encoding.t
 
-  val get_delegate_info :
-    context -> public_key_hash -> delegate_info tzresult Lwt.t
+  val get_delegate_info : context -> Delegate.t -> delegate_info tzresult Lwt.t
 
-  val get_voting_power_free : context -> public_key_hash -> int64 tzresult Lwt.t
+  val get_voting_power_free : context -> Delegate.t -> int64 tzresult Lwt.t
 
   val get_voting_power :
-    context -> public_key_hash -> (context * int64) tzresult Lwt.t
+    context -> Delegate.t -> (context * int64) tzresult Lwt.t
 
   val get_total_voting_power_free : context -> int64 tzresult Lwt.t
 
@@ -2773,14 +2765,13 @@ module Vote : sig
   (** See {!Vote_storage.pp_ballots}. *)
   val pp_ballots : Format.formatter -> ballots -> unit
 
-  val has_recorded_ballot : context -> public_key_hash -> bool Lwt.t
+  val has_recorded_ballot : context -> Delegate.t -> bool Lwt.t
 
-  val record_ballot :
-    context -> public_key_hash -> ballot -> context tzresult Lwt.t
+  val record_ballot : context -> Delegate.t -> ballot -> context tzresult Lwt.t
 
   val get_ballots : context -> ballots tzresult Lwt.t
 
-  val get_ballot_list : context -> (public_key_hash * ballot) list Lwt.t
+  val get_ballot_list : context -> (Delegate.t * ballot) list Lwt.t
 
   val clear_ballots : context -> context Lwt.t
 
@@ -3977,7 +3968,7 @@ module Block_header : sig
       Liquidity_baking_repr.liquidity_baking_toggle_vote;
   }
 
-  type protocol_data = {contents : contents; signature : signature}
+  type protocol_data = {contents : contents; signature : Delegate.signature}
 
   type t = {shell : Block_header.shell_header; protocol_data : protocol_data}
 
@@ -4034,7 +4025,7 @@ module Block_header : sig
     predecessor_round:Round.t ->
     unit tzresult
 
-  val check_signature : t -> Chain_id.t -> public_key -> unit tzresult
+  val check_signature : t -> Chain_id.t -> Delegate.public_key -> unit tzresult
 
   val begin_validate_block_header :
     block_header:t ->
@@ -4043,7 +4034,7 @@ module Block_header : sig
     predecessor_round:Round.t ->
     fitness:Fitness.t ->
     timestamp:Time.t ->
-    delegate_pk:public_key ->
+    delegate_pk:Delegate.public_key ->
     round_durations:Round.round_durations ->
     proof_of_work_threshold:int64 ->
     expected_commitment:bool ->
@@ -4062,7 +4053,7 @@ module Block_header : sig
     block_header_contents:contents ->
     round:Round.t ->
     fitness:Fitness.t ->
-    checkable_payload_hash:checkable_payload_hash ->
+    checakble_payload_hash:checkable_payload_hash ->
     locked_round_evidence:locked_round_evidence option ->
     consensus_threshold:int ->
     unit tzresult
@@ -4352,21 +4343,21 @@ and _ contents =
     }
       -> Kind.activate_account contents
   | Proposals : {
-      source : public_key_hash;
+      source : Delegate.t;
       period : int32;
       proposals : Protocol_hash.t list;
     }
       -> Kind.proposals contents
   | Ballot : {
-      source : public_key_hash;
+      source : Delegate.t;
       period : int32;
       proposal : Protocol_hash.t;
       ballot : Vote.ballot;
     }
       -> Kind.ballot contents
   | Drain_delegate : {
-      consensus_key : Signature.Public_key_hash.t;
-      delegate : Signature.Public_key_hash.t;
+      consensus_key : Delegate.Public_key_hash.t;
+      delegate : Delegate.t;
       destination : Signature.Public_key_hash.t;
     }
       -> Kind.drain_delegate contents
@@ -4391,12 +4382,12 @@ and _ manager_operation =
     }
       -> Kind.transaction manager_operation
   | Origination : {
-      delegate : public_key_hash option;
+      delegate : Delegate.t option;
       script : Script.t;
       credit : Tez.tez;
     }
       -> Kind.origination manager_operation
-  | Delegation : public_key_hash option -> Kind.delegation manager_operation
+  | Delegation : Delegate.t option -> Kind.delegation manager_operation
   | Register_global_constant : {
       value : Script.lazy_expr;
     }

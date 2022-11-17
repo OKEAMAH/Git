@@ -39,7 +39,8 @@ let shards ctxt ~level =
   let level = Level.from_raw ctxt level in
   let pkh_from_tenderbake_slot slot =
     Stake_distribution.slot_owner ctxt level slot
-    >|=? fun (ctxt, consensus_key) -> (ctxt, consensus_key.delegate)
+    >|=? fun (ctxt, consensus_key) ->
+    (ctxt, Delegate.To_signature.public_key_hash consensus_key.delegate)
   in
   (* We do not cache this committee. This function being used by RPCs
      to know the DAL committee at some particular level. *)

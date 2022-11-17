@@ -2831,8 +2831,8 @@ let requested_levels ~default_level ctxt cycles levels =
 module Baking_rights = struct
   type t = {
     level : Raw_level.t;
-    delegate : public_key_hash;
-    consensus_key : public_key_hash;
+    delegate : Delegate.t;
+    consensus_key : Delegate.t;
     round : Round.t;
     timestamp : Timestamp.t option;
   }
@@ -2846,10 +2846,10 @@ module Baking_rights = struct
         {level; delegate; consensus_key; round; timestamp})
       (obj5
          (req "level" Raw_level.encoding)
-         (req "delegate" Signature.Public_key_hash.encoding)
+         (req "delegate" Delegate.Public_key_hash.encoding)
          (req "round" Round.encoding)
          (opt "estimated_time" Timestamp.encoding)
-         (req "consensus_key" Signature.Public_key_hash.encoding))
+         (req "consensus_key" Delegate.Public_key_hash.encoding))
 
   let default_max_round = 64
 
@@ -2861,8 +2861,8 @@ module Baking_rights = struct
     type baking_rights_query = {
       levels : Raw_level.t list;
       cycle : Cycle.t option;
-      delegates : Signature.Public_key_hash.t list;
-      consensus_keys : Signature.Public_key_hash.t list;
+      delegates : Delegate.t list;
+      consensus_keys : Delegate.t list;
       max_round : int option;
       all : bool;
     }
@@ -2873,9 +2873,9 @@ module Baking_rights = struct
           {levels; cycle; delegates; consensus_keys; max_round; all})
       |+ multi_field "level" Raw_level.rpc_arg (fun t -> t.levels)
       |+ opt_field "cycle" Cycle.rpc_arg (fun t -> t.cycle)
-      |+ multi_field "delegate" Signature.Public_key_hash.rpc_arg (fun t ->
+      |+ multi_field "delegate" Delegate.Public_key_hash.rpc_arg (fun t ->
              t.delegates)
-      |+ multi_field "consensus_key" Signature.Public_key_hash.rpc_arg (fun t ->
+      |+ multi_field "consensus_key" Delegate.Public_key_hash.rpc_arg (fun t ->
              t.consensus_keys)
       |+ opt_field "max_round" RPC_arg.uint (fun t -> t.max_round)
       |+ flag "all" (fun t -> t.all)
@@ -2952,12 +2952,12 @@ module Baking_rights = struct
     @@ List.fold_left
          (fun (acc, previous) r ->
            if
-             Signature.Public_key_hash.Set.exists
-               (Signature.Public_key_hash.equal r.delegate)
+             Delegate.Public_key_hash.Set.exists
+               (Delegate.Public_key_hash.equal r.delegate)
                previous
            then (acc, previous)
-           else (r :: acc, Signature.Public_key_hash.Set.add r.delegate previous))
-         ([], Signature.Public_key_hash.Set.empty)
+           else (r :: acc, Delegate.Public_key_hash.Set.add r.delegate previous))
+         ([], Delegate.Public_key_hash.Set.empty)
          rights
 
   let register () =
@@ -2993,7 +2993,7 @@ module Baking_rights = struct
           | _ :: _ as delegates ->
               let is_requested p =
                 List.exists
-                  (Signature.Public_key_hash.equal p.delegate)
+                  (Delegate.Public_key_hash.equal p.delegate)
                   delegates
               in
               List.filter is_requested rights
@@ -3004,7 +3004,7 @@ module Baking_rights = struct
           | _ :: _ as delegates ->
               let is_requested p =
                 List.exists
-                  (Signature.Public_key_hash.equal p.consensus_key)
+                  (Delegate.Public_key_hash.equal p.consensus_key)
                   delegates
               in
               List.filter is_requested rights
@@ -3023,8 +3023,8 @@ end
 
 module Endorsing_rights = struct
   type delegate_rights = {
-    delegate : Signature.Public_key_hash.t;
-    consensus_key : Signature.Public_key_hash.t;
+    delegate : Delegate.t;
+    consensus_key : Delegate.Public_key_hash.t;
     first_slot : Slot.t;
     endorsing_power : int;
   }
@@ -3043,10 +3043,10 @@ module Endorsing_rights = struct
       (fun (delegate, first_slot, endorsing_power, consensus_key) ->
         {delegate; first_slot; endorsing_power; consensus_key})
       (obj4
-         (req "delegate" Signature.Public_key_hash.encoding)
+         (req "delegate" Delegate.Public_key_hash.encoding)
          (req "first_slot" Slot.encoding)
          (req "endorsing_power" uint16)
-         (req "consensus_key" Signature.Public_key_hash.encoding))
+         (req "consensus_key" Delegate.Public_key_hash.encoding))
 
   let encoding =
     let open Data_encoding in
@@ -3068,8 +3068,8 @@ module Endorsing_rights = struct
     type endorsing_rights_query = {
       levels : Raw_level.t list;
       cycle : Cycle.t option;
-      delegates : Signature.Public_key_hash.t list;
-      consensus_keys : Signature.Public_key_hash.t list;
+      delegates : Delegate.t list;
+      consensus_keys : Delegate.t list;
     }
 
     let endorsing_rights_query =
@@ -3078,9 +3078,9 @@ module Endorsing_rights = struct
           {levels; cycle; delegates; consensus_keys})
       |+ multi_field "level" Raw_level.rpc_arg (fun t -> t.levels)
       |+ opt_field "cycle" Cycle.rpc_arg (fun t -> t.cycle)
-      |+ multi_field "delegate" Signature.Public_key_hash.rpc_arg (fun t ->
+      |+ multi_field "delegate" Delegate.Public_key_hash.rpc_arg (fun t ->
              t.delegates)
-      |+ multi_field "consensus_key" Signature.Public_key_hash.rpc_arg (fun t ->
+      |+ multi_field "consensus_key" Delegate.Public_key_hash.rpc_arg (fun t ->
              t.consensus_keys)
       |> seal
 
@@ -3159,7 +3159,7 @@ module Endorsing_rights = struct
                 (fun rights_at_level ->
                   let is_requested p =
                     List.exists
-                      (Signature.Public_key_hash.equal p.consensus_key)
+                      (Delegate.Public_key_hash.equal p.consensus_key)
                       consensus_keys
                   in
                   match
@@ -3185,8 +3185,8 @@ end
 module Validators = struct
   type t = {
     level : Raw_level.t;
-    delegate : Signature.Public_key_hash.t;
-    consensus_key : Signature.public_key_hash;
+    delegate : Delegate.t;
+    consensus_key : Delegate.Public_key_hash.t;
     slots : Slot.t list;
   }
 
@@ -3199,9 +3199,9 @@ module Validators = struct
         {level; delegate; consensus_key; slots})
       (obj4
          (req "level" Raw_level.encoding)
-         (req "delegate" Signature.Public_key_hash.encoding)
+         (req "delegate" Delegate.Public_key_hash.encoding)
          (req "slots" (list Slot.encoding))
-         (req "consensus_key" Signature.Public_key_hash.encoding))
+         (req "consensus_key" Delegate.Public_key_hash.encoding))
 
   module S = struct
     open Data_encoding
@@ -3210,8 +3210,8 @@ module Validators = struct
 
     type validators_query = {
       levels : Raw_level.t list;
-      delegates : Signature.Public_key_hash.t list;
-      consensus_keys : Signature.Public_key_hash.t list;
+      delegates : Delegate.Public_key_hash.t list;
+      consensus_keys : Delegate.Public_key_hash.t list;
     }
 
     let validators_query =
@@ -3219,9 +3219,9 @@ module Validators = struct
       query (fun levels delegates consensus_keys ->
           {levels; delegates; consensus_keys})
       |+ multi_field "level" Raw_level.rpc_arg (fun t -> t.levels)
-      |+ multi_field "delegate" Signature.Public_key_hash.rpc_arg (fun t ->
+      |+ multi_field "delegate" Delegate.Public_key_hash.rpc_arg (fun t ->
              t.delegates)
-      |+ multi_field "consensus_key" Signature.Public_key_hash.rpc_arg (fun t ->
+      |+ multi_field "consensus_key" Delegate.Public_key_hash.rpc_arg (fun t ->
              t.consensus_keys)
       |> seal
 
@@ -3244,7 +3244,7 @@ module Validators = struct
   let add_endorsing_slots_at_level (ctxt, acc) level =
     Baking.endorsing_rights ctxt level >|=? fun (ctxt, rights) ->
     ( ctxt,
-      Signature.Public_key_hash.Map.fold
+      Delegate.Public_key_hash.Map.fold
         (fun _pkh {Baking.delegate; consensus_key; slots} acc ->
           {level = level.level; delegate; consensus_key; slots} :: acc)
         rights
@@ -3266,7 +3266,7 @@ module Validators = struct
           | _ :: _ as delegates ->
               let is_requested p =
                 List.exists
-                  (Signature.Public_key_hash.equal p.delegate)
+                  (Delegate.Public_key_hash.equal p.delegate)
                   delegates
               in
               List.filter is_requested rights
@@ -3277,7 +3277,7 @@ module Validators = struct
           | _ :: _ as delegates ->
               let is_requested p =
                 List.exists
-                  (Signature.Public_key_hash.equal p.consensus_key)
+                  (Delegate.Public_key_hash.equal p.consensus_key)
                   delegates
               in
               List.filter is_requested rights

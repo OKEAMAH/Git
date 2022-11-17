@@ -25,7 +25,7 @@
 
 module Selected_distribution_for_cycle = struct
   module Cache_client = struct
-    type cached_value = (Signature.Public_key_hash.t * Tez_repr.t) list
+    type cached_value = (Delegate.t * Tez_repr.t) list
 
     let namespace = Cache_repr.create_namespace "stake_distribution"
 
@@ -189,8 +189,8 @@ let prepare_stake_distribution ctxt =
   Selected_distribution_for_cycle.get ctxt level.cycle >>=? fun stakes ->
   let stake_distribution =
     List.fold_left
-      (fun map (pkh, stake) -> Signature.Public_key_hash.Map.add pkh stake map)
-      Signature.Public_key_hash.Map.empty
+      (fun map (pkh, stake) -> Delegate.Public_key_hash.Map.add pkh stake map)
+      Delegate.Public_key_hash.Map.empty
       stakes
   in
   return

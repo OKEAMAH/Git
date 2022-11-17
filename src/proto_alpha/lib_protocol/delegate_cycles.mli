@@ -34,10 +34,7 @@
 val cycle_end :
   Raw_context.t ->
   Cycle_repr.t ->
-  (Raw_context.t
-  * Receipt_repr.balance_updates
-  * Signature.Public_key_hash.t list)
-  tzresult
+  (Raw_context.t * Receipt_repr.balance_updates * Delegate.t list) tzresult
   Lwt.t
 
 (** [init_first_cycles ctxt ~origin] computes and records the distribution of

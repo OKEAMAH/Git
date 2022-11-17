@@ -34,8 +34,8 @@ type error +=
     }
 
 type ordered_slots = private {
-  delegate : Signature.public_key_hash;
-  consensus_key : Signature.public_key_hash;
+  delegate : Delegate.t;
+  consensus_key : Delegate.Public_key_hash.t;
   slots : Slot.t list;
 }
 
@@ -49,7 +49,7 @@ type ordered_slots = private {
 val endorsing_rights :
   context ->
   Level.t ->
-  (context * ordered_slots Signature.Public_key_hash.Map.t) tzresult Lwt.t
+  (context * ordered_slots Delegate.Public_key_hash.Map.t) tzresult Lwt.t
 
 (** Computes endorsing rights for a given level.
 

@@ -317,14 +317,14 @@ and _ contents =
       -> Kind.activate_account contents
   (* Proposals: A candidate protocol can be proposed for voting. *)
   | Proposals : {
-      source : Signature.Public_key_hash.t;
+      source : Delegate.t;
       period : int32;
       proposals : Protocol_hash.t list;
     }
       -> Kind.proposals contents
   (* Ballot: The validators of the chain will then vote on proposals. *)
   | Ballot : {
-      source : Signature.Public_key_hash.t;
+      source : Delegate.t;
       period : int32;
       proposal : Protocol_hash.t;
       ballot : Vote_repr.ballot;
@@ -334,8 +334,8 @@ and _ contents =
      transfers the spendable balance of the [delegate] to [destination]
      when [consensus_key] is the active consensus key of [delegate].. *)
   | Drain_delegate : {
-      consensus_key : Signature.Public_key_hash.t;
-      delegate : Signature.Public_key_hash.t;
+      consensus_key : Delegate.Public_key_hash.t;
+      delegate : Delegate.t;
       destination : Signature.Public_key_hash.t;
     }
       -> Kind.drain_delegate contents
@@ -376,7 +376,7 @@ and _ manager_operation =
   (* [Origination] of a contract using a smart-contract [script] and
      initially credited with the amount [credit]. *)
   | Origination : {
-      delegate : Signature.Public_key_hash.t option;
+      delegate : Delegate.t option;
       script : Script_repr.t;
       credit : Tez_repr.tez;
     }
@@ -384,9 +384,7 @@ and _ manager_operation =
   (* [Delegation] to some staking contract (designated by its public
      key hash). When this value is None, delegation is reverted as it
      is set to nobody. *)
-  | Delegation :
-      Signature.Public_key_hash.t option
-      -> Kind.delegation manager_operation
+  | Delegation : Delegate.t option -> Kind.delegation manager_operation
   (* [Register_global_constant] allows registration and substitution
      of a global constant available from any contract and registered in
      the context. *)

@@ -25,8 +25,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type error +=
-  | (* `Permanent *) Unregistered_delegate of Signature.Public_key_hash.t
+type error += (* `Permanent *) Unregistered_delegate of Delegate.t
 
 let () =
   (* Unregistered delegate *)
@@ -40,9 +39,9 @@ let () =
         ppf
         "The provided public key (with hash %a) is not registered as valid \
          delegate key."
-        Signature.Public_key_hash.pp
+        Delegate.Public_key_hash.pp
         k)
-    Data_encoding.(obj1 (req "hash" Signature.Public_key_hash.encoding))
+    Data_encoding.(obj1 (req "hash" Delegate.Public_key_hash.encoding))
     (function Unregistered_delegate k -> Some k | _ -> None)
     (fun k -> Unregistered_delegate k)
 
@@ -50,7 +49,9 @@ let registered = Storage.Delegates.mem
 
 module Contract = struct
   let init ctxt contract delegate =
-    Contract_manager_storage.is_manager_key_revealed ctxt delegate
+    Contract_manager_storage.is_manager_key_revealed
+      ctxt
+      (Delegate.To_signature.public_key_hash delegate)
     >>=? fun known_delegate ->
     error_unless known_delegate (Unregistered_delegate delegate) >>?= fun () ->
     registered ctxt delegate >>= fun is_registered ->
@@ -62,7 +63,7 @@ module Contract = struct
 
   type error +=
     | (* `Temporary *) Active_delegate
-    | (* `Permanent *) Empty_delegate_account of Signature.Public_key_hash.t
+    | (* `Permanent *) Empty_delegate_account of Delegate.t
 
   let () =
     register_error_kind
@@ -86,9 +87,9 @@ module Contract = struct
           ppf
           "Delegate registration is forbidden when the delegate\n\
           \           implicit account is empty (%a)"
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate)
-      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      Data_encoding.(obj1 (req "delegate" Delegate.Public_key_hash.encoding))
       (function Empty_delegate_account c -> Some c | _ -> None)
       (fun c -> Empty_delegate_account c)
 
@@ -102,12 +103,20 @@ module Contract = struct
       in
       Stake_storage.set_active c delegate
     else
-      let contract = Contract_repr.Implicit delegate in
+      let contract = Contract_repr.implicit_delegate delegate in
       let* pk =
         Contract_manager_storage.get_manager_key
           c
           ~error:(Unregistered_delegate delegate)
-          delegate
+          (Delegate.To_signature.public_key_hash delegate)
+      in
+      let pk =
+        (* TODO: Use function instead *)
+        match pk with
+        | Signature.Ed25519 pk -> Delegate.Ed25519 pk
+        | Signature.Secp256k1 pk -> Delegate.Secp256k1 pk
+        | Signature.P256 pk -> Delegate.P256 pk
+        | Signature.Bls _ -> assert false
       in
       let* () =
         let*! is_allocated = Contract_storage.allocated c contract in
@@ -127,7 +136,7 @@ module Contract = struct
       return c
 
   type error +=
-    | (* `Permanent *) No_deletion of Signature.Public_key_hash.t
+    | (* `Permanent *) No_deletion of Delegate.t
     | (* `Temporary *) Current_delegate
 
   let () =
@@ -140,9 +149,9 @@ module Contract = struct
         Format.fprintf
           ppf
           "Delegate deletion is forbidden (%a)"
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate)
-      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      Data_encoding.(obj1 (req "delegate" Delegate.Public_key_hash.encoding))
       (function No_deletion c -> Some c | _ -> None)
       (fun c -> No_deletion c) ;
     register_error_kind
@@ -163,7 +172,15 @@ module Contract = struct
     let* () =
       match contract with
       | Contract_repr.Originated _ -> return_unit
+      | Implicit (Bls _) -> return_unit
       | Implicit pkh ->
+          let pkh =
+            match pkh with
+            | Signature.Ed25519 pkh -> (Delegate.Ed25519 pkh : Delegate.t)
+            | Secp256k1 pkh -> Secp256k1 pkh
+            | P256 pkh -> P256 pkh
+            | Bls _ -> assert false
+          in
           let*! is_registered = registered c pkh in
           fail_when is_registered (No_deletion pkh)
     in
@@ -175,7 +192,7 @@ module Contract = struct
              existing smart contracts. *)
           return_unit
       | Some delegate, Some current_delegate
-        when Signature.Public_key_hash.equal delegate current_delegate ->
+        when Delegate.Public_key_hash.equal delegate current_delegate ->
           fail Current_delegate
       | _ -> return_unit
     in
@@ -203,7 +220,9 @@ module Contract = struct
   let set c contract delegate =
     match (delegate, contract) with
     | Some delegate, Contract_repr.Implicit source
-      when Signature.Public_key_hash.equal source delegate ->
+      when Signature.Public_key_hash.equal
+             source
+             (Delegate.To_signature.public_key_hash delegate) ->
         set_self_delegate c delegate
     | _ -> set_delegate c contract delegate
 end
@@ -215,19 +234,19 @@ let list = Storage.Delegates.elements
 let frozen_deposits_limit ctxt delegate =
   Storage.Contract.Frozen_deposits_limit.find
     ctxt
-    (Contract_repr.Implicit delegate)
+    (Contract_repr.implicit_delegate delegate)
 
 let set_frozen_deposits_limit ctxt delegate limit =
   Storage.Contract.Frozen_deposits_limit.add_or_remove
     ctxt
-    (Contract_repr.Implicit delegate)
+    (Contract_repr.implicit_delegate delegate)
     limit
 
 let frozen_deposits ctxt delegate =
-  Frozen_deposits_storage.get ctxt (Contract_repr.Implicit delegate)
+  Frozen_deposits_storage.get ctxt (Contract_repr.implicit_delegate delegate)
 
 let spendable_balance ctxt delegate =
-  let contract = Contract_repr.Implicit delegate in
+  let contract = Contract_repr.implicit_delegate delegate in
   Storage.Contract.Spendable_balance.get ctxt contract
 
 let staking_balance ctxt delegate =
@@ -237,7 +256,7 @@ let staking_balance ctxt delegate =
 
 let full_balance ctxt delegate =
   frozen_deposits ctxt delegate >>=? fun frozen_deposits ->
-  let delegate_contract = Contract_repr.Implicit delegate in
+  let delegate_contract = Contract_repr.implicit_delegate delegate in
   Contract_storage.get_balance_and_frozen_bonds ctxt delegate_contract
   >>=? fun balance_and_frozen_bonds ->
   Lwt.return
@@ -254,7 +273,7 @@ let drain ctxt ~delegate ~destination =
   let*! is_destination_allocated =
     Contract_storage.allocated ctxt destination_contract
   in
-  let delegate_contract = Contract_repr.Implicit delegate in
+  let delegate_contract = Contract_repr.implicit_delegate delegate in
   let* ctxt, _, balance_updates1 =
     if not is_destination_allocated then
       Fees_storage.burn_origination_fees

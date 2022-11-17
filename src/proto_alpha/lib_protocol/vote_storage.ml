@@ -101,7 +101,7 @@ let listings_encoding =
   Data_encoding.(
     list
       (obj2
-         (req "pkh" Signature.Public_key_hash.encoding)
+         (req "pkh" Delegate.Public_key_hash.encoding)
          (req "voting_power" int64)))
 
 let update_listings ctxt =
@@ -198,7 +198,7 @@ let get_delegate_info ctxt delegate =
             ~order:`Undefined
             ~init:[]
             ~f:(fun (h, d) acc ->
-              if Signature.Public_key_hash.equal d delegate then
+              if Delegate.Public_key_hash.equal d delegate then
                 Lwt.return (h :: acc)
               else Lwt.return acc))
       >>= fun current_proposals ->

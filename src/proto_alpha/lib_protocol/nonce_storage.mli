@@ -44,7 +44,7 @@ val encoding : nonce Data_encoding.t
 
 type unrevealed = Storage.Seed.unrevealed_nonce = {
   nonce_hash : Nonce_hash.t;
-  delegate : Signature.Public_key_hash.t;
+  delegate : Delegate.t;
 }
 
 type status = Unrevealed of unrevealed | Revealed of Seed_repr.nonce

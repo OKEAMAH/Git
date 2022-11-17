@@ -31,7 +31,7 @@
 
 open Alpha_context
 
-type error += (* `Temporary *) Not_registered of Signature.Public_key_hash.t
+type error += (* `Temporary *) Not_registered of Delegate.t
 
 val list :
   'a #RPC_context.simple ->
@@ -41,7 +41,7 @@ val list :
   ?with_minimal_stake:bool ->
   ?without_minimal_stake:bool ->
   unit ->
-  Signature.Public_key_hash.t list shell_tzresult Lwt.t
+  Delegate.t list shell_tzresult Lwt.t
 
 type info = {
   full_balance : Tez.t;  (** Balance + Frozen balance *)
@@ -54,8 +54,8 @@ type info = {
   deactivated : bool;
   grace_period : Cycle.t;
   voting_info : Vote.delegate_info;
-  active_consensus_key : Signature.Public_key_hash.t;
-  pending_consensus_keys : (Cycle.t * Signature.Public_key_hash.t) list;
+  active_consensus_key : Delegate.t;
+  pending_consensus_keys : (Cycle.t * Delegate.t) list;
 }
 
 val info_encoding : info Data_encoding.t

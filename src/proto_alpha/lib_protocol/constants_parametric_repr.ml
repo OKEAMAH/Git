@@ -150,7 +150,7 @@ type t = {
   frozen_deposits_percentage : int;
   double_baking_punishment : Tez_repr.t;
   ratio_of_frozen_deposits_slashed_per_double_endorsement : Ratio_repr.t;
-  testnet_dictator : Signature.Public_key_hash.t option;
+  testnet_dictator : Delegate.t option;
   initial_seed : State_hash.t option;
   (* If a new cache is added, please also modify the
      [cache_layout_size] value. *)
@@ -485,7 +485,7 @@ let encoding =
                    (req
                       "ratio_of_frozen_deposits_slashed_per_double_endorsement"
                       Ratio_repr.encoding)
-                   (opt "testnet_dictator" Signature.Public_key_hash.encoding)
+                   (opt "testnet_dictator" Delegate.Public_key_hash.encoding)
                    (opt "initial_seed" State_hash.encoding))
                 (merge_objs
                    (obj3

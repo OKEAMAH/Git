@@ -149,7 +149,7 @@ let get_stakes_for_selected_index ctxt index =
     ctxt
     ~index
     ~f:(fun (delegate, staking_balance) (acc, total_stake) ->
-      let delegate_contract = Contract_repr.Implicit delegate in
+      let delegate_contract = Contract_repr.implicit_delegate delegate in
       let open Tez_repr in
       let open Lwt_result_syntax in
       let* frozen_deposits_limit =

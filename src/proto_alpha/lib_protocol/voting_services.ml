@@ -43,7 +43,7 @@ module S = struct
         Data_encoding.(
           list
             (obj2
-               (req "pkh" Signature.Public_key_hash.encoding)
+               (req "pkh" Delegate.Public_key_hash.encoding)
                (req "ballot" Vote.ballot_encoding)))
       RPC_path.(path / "ballot_list")
 

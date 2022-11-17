@@ -36,7 +36,7 @@
     @return [Error Storage_error] if the deserialization of [count]
     fails. *)
 val get_delegate_proposal_count :
-  Raw_context.t -> Signature.public_key_hash -> int tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> int tzresult Lwt.t
 
 (** [set_delegate_proposal_count ctxt proposer count] sets
     [proposer]'s number of submitted proposals to [count].
@@ -45,20 +45,16 @@ val get_delegate_proposal_count :
     initialized to [count] if it didn't exist; otherwise it is simply
     updated. *)
 val set_delegate_proposal_count :
-  Raw_context.t -> Signature.public_key_hash -> int -> Raw_context.t Lwt.t
+  Raw_context.t -> Delegate.t -> int -> Raw_context.t Lwt.t
 
 (** [has_proposed ctxt proposer proposal] indicates whether the
     [proposer] has already proposed the [proposal]. *)
-val has_proposed :
-  Raw_context.t -> Signature.public_key_hash -> Protocol_hash.t -> bool Lwt.t
+val has_proposed : Raw_context.t -> Delegate.t -> Protocol_hash.t -> bool Lwt.t
 
 (** [add_proposal ctxt proposer proposal] records the submission of
     [proposal] by [proposer]. *)
 val add_proposal :
-  Raw_context.t ->
-  Signature.public_key_hash ->
-  Protocol_hash.t ->
-  Raw_context.t Lwt.t
+  Raw_context.t -> Delegate.t -> Protocol_hash.t -> Raw_context.t Lwt.t
 
 (** Computes for each proposal how many delegates proposed it. *)
 val get_proposals : Raw_context.t -> int64 Protocol_hash.Map.t tzresult Lwt.t
@@ -80,14 +76,13 @@ val equal_ballots : ballots -> ballots -> bool
 (** Pretty printer for {!ballots}. *)
 val pp_ballots : Format.formatter -> ballots -> unit
 
-val has_recorded_ballot :
-  Raw_context.t -> Signature.Public_key_hash.t -> bool Lwt.t
+val has_recorded_ballot : Raw_context.t -> Delegate.t -> bool Lwt.t
 
 (** Records a vote for a delegate, returns a {!Storage_error Existing_key} if
     the vote was already registered *)
 val record_ballot :
   Raw_context.t ->
-  Signature.Public_key_hash.t ->
+  Delegate.t ->
   Vote_repr.ballot ->
   Raw_context.t tzresult Lwt.t
 
@@ -95,12 +90,11 @@ val record_ballot :
 val get_ballots : Raw_context.t -> ballots tzresult Lwt.t
 
 val get_ballot_list :
-  Raw_context.t -> (Signature.Public_key_hash.t * Vote_repr.ballot) list Lwt.t
+  Raw_context.t -> (Delegate.t * Vote_repr.ballot) list Lwt.t
 
 val clear_ballots : Raw_context.t -> Raw_context.t Lwt.t
 
-val listings_encoding :
-  (Signature.Public_key_hash.t * int64) list Data_encoding.t
+val listings_encoding : (Delegate.t * int64) list Data_encoding.t
 
 (** Populates [!Storage.Vote.Listings] using the currently existing
    staking power and sets `Voting_power_in_listings`. Inactive
@@ -109,10 +103,9 @@ val listings_encoding :
 val update_listings : Raw_context.t -> Raw_context.t tzresult Lwt.t
 
 (** Verifies the presence of a delegate in the listing. *)
-val in_listings : Raw_context.t -> Signature.Public_key_hash.t -> bool Lwt.t
+val in_listings : Raw_context.t -> Delegate.t -> bool Lwt.t
 
-val get_listings :
-  Raw_context.t -> (Signature.Public_key_hash.t * int64) list Lwt.t
+val get_listings : Raw_context.t -> (Delegate.t * int64) list Lwt.t
 
 type delegate_info = {
   voting_power : Int64.t option;
@@ -126,15 +119,12 @@ val pp_delegate_info : Format.formatter -> delegate_info -> unit
 val delegate_info_encoding : delegate_info Data_encoding.t
 
 val get_delegate_info :
-  Raw_context.t -> Signature.public_key_hash -> delegate_info tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> delegate_info tzresult Lwt.t
 
-val get_voting_power_free :
-  Raw_context.t -> Signature.public_key_hash -> int64 tzresult Lwt.t
+val get_voting_power_free : Raw_context.t -> Delegate.t -> int64 tzresult Lwt.t
 
 val get_voting_power :
-  Raw_context.t ->
-  Signature.public_key_hash ->
-  (Raw_context.t * int64) tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> (Raw_context.t * int64) tzresult Lwt.t
 
 (** Returns the sum of all voting power in the listings,
     without accounting for gas cost. *)

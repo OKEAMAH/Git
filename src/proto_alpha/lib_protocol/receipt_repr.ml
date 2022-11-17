@@ -27,7 +27,7 @@
 type balance =
   | Contract of Contract_repr.t
   | Block_fees
-  | Deposits of Signature.Public_key_hash.t
+  | Deposits of Delegate.t
   | Nonce_revelation_rewards
   | Double_signing_evidence_rewards
   | Endorsing_rewards
@@ -35,7 +35,7 @@ type balance =
   | Baking_bonuses
   | Storage_fees
   | Double_signing_punishments
-  | Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
+  | Lost_endorsing_rewards of Delegate.t * bool * bool
   | Liquidity_baking_subsidies
   | Burned
   | Commitments of Blinded_public_key_hash.t
@@ -76,7 +76,7 @@ let balance_encoding =
            (obj3
               (req "kind" (constant "freezer"))
               (req "category" (constant "deposits"))
-              (req "delegate" Signature.Public_key_hash.encoding))
+              (req "delegate" Delegate.Public_key_hash.encoding))
            (function Deposits d -> Some ((), (), d) | _ -> None)
            (fun ((), (), d) -> Deposits d);
          case
@@ -142,7 +142,7 @@ let balance_encoding =
            (obj5
               (req "kind" (constant "burned"))
               (req "category" (constant "lost endorsing rewards"))
-              (req "delegate" Signature.Public_key_hash.encoding)
+              (req "delegate" Delegate.Public_key_hash.encoding)
               (req "participation" Data_encoding.bool)
               (req "revelation" Data_encoding.bool))
            (function
@@ -258,10 +258,10 @@ let is_not_zero c = not (Compare.Int.equal c 0)
 let compare_balance ba bb =
   match (ba, bb) with
   | Contract ca, Contract cb -> Contract_repr.compare ca cb
-  | Deposits pkha, Deposits pkhb -> Signature.Public_key_hash.compare pkha pkhb
+  | Deposits pkha, Deposits pkhb -> Delegate.Public_key_hash.compare pkha pkhb
   | Lost_endorsing_rewards (pkha, pa, ra), Lost_endorsing_rewards (pkhb, pb, rb)
     ->
-      let c = Signature.Public_key_hash.compare pkha pkhb in
+      let c = Delegate.Public_key_hash.compare pkha pkhb in
       if is_not_zero c then c
       else
         let c = Compare.Bool.compare pa pb in

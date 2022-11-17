@@ -48,7 +48,7 @@ let operation_conflict_encoding =
           (req "new_operation" Operation_hash.encoding))
 
 module Consensus = struct
-  type error += Zero_frozen_deposits of Signature.Public_key_hash.t
+  type error += Zero_frozen_deposits of Delegate.t
 
   let () =
     register_error_kind
@@ -61,9 +61,9 @@ module Consensus = struct
           ppf
           "Delegate %a has zero frozen deposits; it is not allowed to \
            bake/preendorse/endorse."
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate)
-      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      Data_encoding.(obj1 (req "delegate" Delegate.Public_key_hash.encoding))
       (function Zero_frozen_deposits delegate -> Some delegate | _ -> None)
       (fun delegate -> Zero_frozen_deposits delegate)
 
@@ -412,14 +412,14 @@ module Voting = struct
     | Too_many_proposals of {previous_count : int; operation_count : int}
     | Conflicting_proposals of operation_conflict
     | Testnet_dictator_multiple_proposals
-    | Proposals_from_unregistered_delegate of Signature.Public_key_hash.t
+    | Proposals_from_unregistered_delegate of Delegate.t
     | (* Ballot errors *)
         Ballot_for_wrong_proposal of {
         current : Protocol_hash.t;
         submitted : Protocol_hash.t;
       }
     | Already_submitted_a_ballot
-    | Ballot_from_unregistered_delegate of Signature.Public_key_hash.t
+    | Ballot_from_unregistered_delegate of Delegate.t
     | Conflicting_ballot of operation_conflict
 
   let () =
@@ -587,9 +587,9 @@ module Voting = struct
           ppf
           "Cannot submit proposals with public key hash %a (unregistered \
            delegate)."
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           c)
-      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      Data_encoding.(obj1 (req "delegate" Delegate.Public_key_hash.encoding))
       (function Proposals_from_unregistered_delegate c -> Some c | _ -> None)
       (fun c -> Proposals_from_unregistered_delegate c) ;
 
@@ -639,9 +639,9 @@ module Voting = struct
         Format.fprintf
           ppf
           "Cannot cast a ballot for public key hash %a (unregistered delegate)."
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           c)
-      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      Data_encoding.(obj1 (req "delegate" Delegate.Public_key_hash.encoding))
       (function Ballot_from_unregistered_delegate c -> Some c | _ -> None)
       (fun c -> Ballot_from_unregistered_delegate c) ;
     register_error_kind
@@ -742,12 +742,12 @@ module Anonymous = struct
     | Invalid_denunciation of denunciation_kind
     | Inconsistent_denunciation of {
         kind : denunciation_kind;
-        delegate1 : Signature.Public_key_hash.t;
-        delegate2 : Signature.Public_key_hash.t;
+        delegate1 : Delegate.t;
+        delegate2 : Delegate.t;
       }
     | Already_denounced of {
         kind : denunciation_kind;
-        delegate : Signature.Public_key_hash.t;
+        delegate : Delegate.t;
         level : Level.t;
       }
     | Conflicting_denunciation of {
@@ -827,15 +827,15 @@ module Anonymous = struct
           "Inconsistent double-%a evidence (distinct delegate: %a and %a)"
           pp_denunciation_kind
           kind
-          Signature.Public_key_hash.pp_short
+          Delegate.Public_key_hash.pp_short
           delegate1
-          Signature.Public_key_hash.pp_short
+          Delegate.Public_key_hash.pp_short
           delegate2)
       Data_encoding.(
         obj3
           (req "kind" denunciation_kind_encoding)
-          (req "delegate1" Signature.Public_key_hash.encoding)
-          (req "delegate2" Signature.Public_key_hash.encoding))
+          (req "delegate1" Delegate.Public_key_hash.encoding)
+          (req "delegate2" Delegate.Public_key_hash.encoding))
       (function
         | Inconsistent_denunciation {kind; delegate1; delegate2} ->
             Some (kind, delegate1, delegate2)
@@ -853,14 +853,14 @@ module Anonymous = struct
           "Delegate %a at level %a has already been denounced for a double %a."
           pp_denunciation_kind
           kind
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate
           Level.pp
           level)
       Data_encoding.(
         obj3
           (req "denunciation_kind" denunciation_kind_encoding)
-          (req "delegate" Signature.Public_key_hash.encoding)
+          (req "delegate" Delegate.Public_key_hash.encoding)
           (req "level" Level.encoding))
       (function
         | Already_denounced {kind; delegate; level} ->
@@ -989,21 +989,21 @@ module Anonymous = struct
       (fun conflict -> Conflicting_vdf_revelation conflict)
 
   type error +=
-    | Drain_delegate_on_unregistered_delegate of Signature.Public_key_hash.t
+    | Drain_delegate_on_unregistered_delegate of Delegate.t
     | Invalid_drain_delegate_inactive_key of {
-        delegate : Signature.Public_key_hash.t;
-        consensus_key : Signature.Public_key_hash.t;
-        active_consensus_key : Signature.Public_key_hash.t;
+        delegate : Delegate.t;
+        consensus_key : Delegate.t;
+        active_consensus_key : Delegate.t;
       }
-    | Invalid_drain_delegate_no_consensus_key of Signature.Public_key_hash.t
-    | Invalid_drain_delegate_noop of Signature.Public_key_hash.t
+    | Invalid_drain_delegate_no_consensus_key of Delegate.t
+    | Invalid_drain_delegate_noop of Delegate.t
     | Invalid_drain_delegate_insufficient_funds_for_burn_or_fees of {
-        delegate : Signature.Public_key_hash.t;
+        delegate : Delegate.t;
         destination : Signature.Public_key_hash.t;
         min_amount : Tez.t;
       }
     | Conflicting_drain_delegate of {
-        delegate : Signature.Public_key_hash.t;
+        delegate : Delegate.t;
         conflict : operation_conflict;
       }
 
@@ -1017,9 +1017,9 @@ module Anonymous = struct
         Format.fprintf
           ppf
           "Cannot drain an unregistered delegate %a."
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           c)
-      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      Data_encoding.(obj1 (req "delegate" Delegate.Public_key_hash.encoding))
       (function
         | Drain_delegate_on_unregistered_delegate c -> Some c | _ -> None)
       (fun c -> Drain_delegate_on_unregistered_delegate c) ;
@@ -1033,17 +1033,17 @@ module Anonymous = struct
           ppf
           "Consensus key %a is not the active consensus key for delegate %a. \
            The active consensus key is %a."
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           consensus_key
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           active_consensus_key)
       Data_encoding.(
         obj3
-          (req "delegate" Signature.Public_key_hash.encoding)
-          (req "consensus_key" Signature.Public_key_hash.encoding)
-          (req "active_consensus_key" Signature.Public_key_hash.encoding))
+          (req "delegate" Delegate.Public_key_hash.encoding)
+          (req "consensus_key" Delegate.Public_key_hash.encoding)
+          (req "active_consensus_key" Delegate.Public_key_hash.encoding))
       (function
         | Invalid_drain_delegate_inactive_key
             {delegate; consensus_key; active_consensus_key} ->
@@ -1061,9 +1061,9 @@ module Anonymous = struct
         Format.fprintf
           ppf
           "There is no active consensus key for delegate %a."
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate)
-      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      Data_encoding.(obj1 (req "delegate" Delegate.Public_key_hash.encoding))
       (function
         | Invalid_drain_delegate_no_consensus_key c -> Some c | _ -> None)
       (fun c -> Invalid_drain_delegate_no_consensus_key c) ;
@@ -1077,9 +1077,9 @@ module Anonymous = struct
           ppf
           "The destination of a drain operation cannot be the delegate itself \
            (%a)."
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate)
-      Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+      Data_encoding.(obj1 (req "delegate" Delegate.Public_key_hash.encoding))
       (function Invalid_drain_delegate_noop c -> Some c | _ -> None)
       (fun c -> Invalid_drain_delegate_noop c) ;
     register_error_kind
@@ -1094,7 +1094,7 @@ module Anonymous = struct
           ppf
           "Cannot drain delegate from %a to %a: not enough funds for the drain \
            fees in the delegate account (minimum balance required: %a)."
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate
           Signature.Public_key_hash.pp
           destination
@@ -1102,7 +1102,7 @@ module Anonymous = struct
           min_amount)
       Data_encoding.(
         obj3
-          (req "delegate" Signature.Public_key_hash.encoding)
+          (req "delegate" Delegate.Public_key_hash.encoding)
           (req "destination" Signature.Public_key_hash.encoding)
           (req "min_amount" Tez.encoding))
       (function
@@ -1125,11 +1125,11 @@ module Anonymous = struct
           "This drain operation conflicts with operation %a for the delegate %a"
           Operation_hash.pp
           existing
-          Signature.Public_key_hash.pp
+          Delegate.Public_key_hash.pp
           delegate)
       Data_encoding.(
         obj2
-          (req "delegate" Signature.Public_key_hash.encoding)
+          (req "delegate" Delegate.Public_key_hash.encoding)
           (req "conflict" operation_conflict_encoding))
       (function
         | Conflicting_drain_delegate {delegate; conflict} ->

@@ -237,9 +237,9 @@ val record_non_consensus_operation_hash : t -> Operation_hash.t -> t
 val non_consensus_operations : t -> Operation_hash.t list
 
 type consensus_pk = {
-  delegate : Signature.Public_key_hash.t;
-  consensus_pk : Signature.Public_key.t;
-  consensus_pkh : Signature.Public_key_hash.t;
+  delegate : Delegate.t;
+  consensus_pk : Delegate.Public_key.t;
+  consensus_pkh : Delegate.Public_key_hash.t;
 }
 
 val consensus_pk_encoding : consensus_pk Data_encoding.t
@@ -270,10 +270,10 @@ val sampler_for_cycle :
 (* The stake distribution is stored both in [t] and in the cache. It
    may be sufficient to only store it in the cache. *)
 val stake_distribution_for_current_cycle :
-  t -> Tez_repr.t Signature.Public_key_hash.Map.t tzresult
+  t -> Tez_repr.t Delegate.Public_key_hash.Map.t tzresult
 
 val init_stake_distribution_for_current_cycle :
-  t -> Tez_repr.t Signature.Public_key_hash.Map.t -> t
+  t -> Tez_repr.t Delegate.Public_key_hash.Map.t -> t
 
 module Internal_for_tests : sig
   val add_level : t -> int -> t

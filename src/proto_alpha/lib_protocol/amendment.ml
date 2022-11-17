@@ -159,7 +159,7 @@ let get_testnet_dictator ctxt chain_id =
 let is_testnet_dictator ctxt chain_id delegate =
   (* This function should always, ALWAYS, return false on mainnet!!!! *)
   match get_testnet_dictator ctxt chain_id with
-  | Some pkh -> Signature.Public_key_hash.equal pkh delegate
+  | Some pkh -> Delegate.Public_key_hash.equal pkh delegate
   | _ -> false
 
 (** Apply a [Proposals] operation from a registered dictator of a test

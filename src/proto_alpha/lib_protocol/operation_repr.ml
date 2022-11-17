@@ -304,21 +304,21 @@ and _ contents =
     }
       -> Kind.activate_account contents
   | Proposals : {
-      source : Signature.Public_key_hash.t;
+      source : Delegate.t;
       period : int32;
       proposals : Protocol_hash.t list;
     }
       -> Kind.proposals contents
   | Ballot : {
-      source : Signature.Public_key_hash.t;
+      source : Delegate.t;
       period : int32;
       proposal : Protocol_hash.t;
       ballot : Vote_repr.ballot;
     }
       -> Kind.ballot contents
   | Drain_delegate : {
-      consensus_key : Signature.Public_key_hash.t;
-      delegate : Signature.Public_key_hash.t;
+      consensus_key : Delegate.Public_key_hash.t;
+      delegate : Delegate.t;
       destination : Signature.Public_key_hash.t;
     }
       -> Kind.drain_delegate contents
@@ -343,14 +343,12 @@ and _ manager_operation =
     }
       -> Kind.transaction manager_operation
   | Origination : {
-      delegate : Signature.Public_key_hash.t option;
+      delegate : Delegate.t option;
       script : Script_repr.t;
       credit : Tez_repr.tez;
     }
       -> Kind.origination manager_operation
-  | Delegation :
-      Signature.Public_key_hash.t option
-      -> Kind.delegation manager_operation
+  | Delegation : Delegate.t option -> Kind.delegation manager_operation
   | Register_global_constant : {
       value : Script_repr.lazy_expr;
     }
@@ -693,7 +691,7 @@ module Encoding = struct
           encoding =
             obj3
               (req "balance" Tez_repr.encoding)
-              (opt "delegate" Signature.Public_key_hash.encoding)
+              (opt "delegate" Delegate.Public_key_hash.encoding)
               (req "script" Script_repr.encoding);
           select =
             (function Manager (Origination _ as op) -> Some op | _ -> None);
@@ -711,7 +709,7 @@ module Encoding = struct
         {
           tag = 3;
           name = "delegation";
-          encoding = obj1 (opt "delegate" Signature.Public_key_hash.encoding);
+          encoding = obj1 (opt "delegate" Delegate.Public_key_hash.encoding);
           select =
             (function Manager (Delegation _ as op) -> Some op | _ -> None);
           proj = (function Delegation key -> key);
@@ -1494,7 +1492,7 @@ module Encoding = struct
         name = "proposals";
         encoding =
           obj3
-            (req "source" Signature.Public_key_hash.encoding)
+            (req "source" Delegate.Public_key_hash.encoding)
             (req "period" int32)
             (req
                "proposals"
@@ -1518,7 +1516,7 @@ module Encoding = struct
         name = "ballot";
         encoding =
           obj4
-            (req "source" Signature.Public_key_hash.encoding)
+            (req "source" Delegate.Public_key_hash.encoding)
             (req "period" int32)
             (req "proposal" Protocol_hash.encoding)
             (req "ballot" Vote_repr.ballot_encoding);
@@ -1539,8 +1537,8 @@ module Encoding = struct
         name = "drain_delegate";
         encoding =
           obj3
-            (req "consensus_key" Signature.Public_key_hash.encoding)
-            (req "delegate" Signature.Public_key_hash.encoding)
+            (req "consensus_key" Delegate.Public_key_hash.encoding)
+            (req "delegate" Delegate.Public_key_hash.encoding)
             (req "destination" Signature.Public_key_hash.encoding);
         select =
           (function Contents (Drain_delegate _ as op) -> Some op | _ -> None);
@@ -2386,12 +2384,8 @@ type _ weight =
   | Weight_dal_slot_availability :
       int * Signature.Public_key_hash.t
       -> consensus_pass_type weight
-  | Weight_proposals :
-      int32 * Signature.Public_key_hash.t
-      -> voting_pass_type weight
-  | Weight_ballot :
-      int32 * Signature.Public_key_hash.t
-      -> voting_pass_type weight
+  | Weight_proposals : int32 * Delegate.t -> voting_pass_type weight
+  | Weight_ballot : int32 * Delegate.t -> voting_pass_type weight
   | Weight_seed_nonce_revelation : int32 -> anonymous_pass_type weight
   | Weight_vdf_revelation : Seed_repr.vdf_solution -> anonymous_pass_type weight
   | Weight_double_preendorsement : round_infos -> anonymous_pass_type weight
@@ -2401,7 +2395,7 @@ type _ weight =
       Ed25519.Public_key_hash.t
       -> anonymous_pass_type weight
   | Weight_drain_delegate :
-      Signature.Public_key_hash.t
+      Delegate.Public_key_hash.t
       -> anonymous_pass_type weight
   | Weight_manager : Q.t * Signature.public_key_hash -> manager_pass_type weight
   | Weight_noop : noop_pass_type weight
@@ -2669,7 +2663,7 @@ let compare_vote_weight w1 w2 =
       (i1, source1)
       (i2, source2)
       ~cmp_fst:Compare.Int32.compare
-      ~cmp_snd:Signature.Public_key_hash.compare
+      ~cmp_snd:Delegate.Public_key_hash.compare
   in
   match (w1, w2) with
   | Weight_proposals (i1, source1), Weight_proposals (i2, source2) ->
@@ -2760,7 +2754,7 @@ let compare_anonymous_weight w1 w2 =
   | Weight_drain_delegate _, Weight_activate_account _ -> -1
   | Weight_activate_account _, Weight_drain_delegate _ -> 1
   | Weight_drain_delegate pkh1, Weight_drain_delegate pkh2 ->
-      Signature.Public_key_hash.compare pkh1 pkh2
+      Delegate.Public_key_hash.compare pkh1 pkh2
 
 (** {5 Comparison of valid {!Manager_operation}} *)
 

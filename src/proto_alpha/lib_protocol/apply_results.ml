@@ -2981,7 +2981,7 @@ type block_metadata = {
   voting_period_info : Voting_period.info;
   nonce_hash : Nonce_hash.t option;
   consumed_gas : Gas.Arith.fp;
-  deactivated : Signature.Public_key_hash.t list;
+  deactivated : Delegate.t list;
   balance_updates : Receipt.balance_updates;
   liquidity_baking_toggle_ema : Liquidity_baking.Toggle_EMA.t;
   implicit_operations_results : packed_successful_manager_operation_result list;
@@ -3047,12 +3047,12 @@ let block_metadata_encoding =
          })
        (merge_objs
           (obj9
-             (req "proposer" Signature.Public_key_hash.encoding)
-             (req "baker" Signature.Public_key_hash.encoding)
+             (req "proposer" Delegate.Public_key_hash.encoding)
+             (req "baker" Delegate.Public_key_hash.encoding)
              (req "level_info" Level.encoding)
              (req "voting_period_info" Voting_period.info_encoding)
              (req "nonce_hash" (option Nonce_hash.encoding))
-             (req "deactivated" (list Signature.Public_key_hash.encoding))
+             (req "deactivated" (list Delegate.Public_key_hash.encoding))
              (dft "balance_updates" Receipt.balance_updates_encoding [])
              (req
                 "liquidity_baking_toggle_ema"
@@ -3061,8 +3061,8 @@ let block_metadata_encoding =
                 "implicit_operations_results"
                 (list successful_manager_operation_result_encoding)))
           (obj4
-             (req "proposer_consensus_key" Signature.Public_key_hash.encoding)
-             (req "baker_consensus_key" Signature.Public_key_hash.encoding)
+             (req "proposer_consensus_key" Delegate.Public_key_hash.encoding)
+             (req "baker_consensus_key" Delegate.Public_key_hash.encoding)
              (req "consumed_milligas" Gas.Arith.n_fp_encoding)
              (* DAL/FIXME https://gitlab.com/tezos/tezos/-/issues/3119
                 This varopt is here while the DAL is behind a feature

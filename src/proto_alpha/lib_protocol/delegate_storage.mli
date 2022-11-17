@@ -35,8 +35,7 @@
     - {!Storage.Delegates}
 *)
 
-type error +=
-  | (* `Permanent *) Unregistered_delegate of Signature.Public_key_hash.t
+type error += (* `Permanent *) Unregistered_delegate of Delegate.t
 
 (** This module ensures the following invariants:
     - registered delegates (i.e. those that appear in {!Storage.Delegates}) are
@@ -49,8 +48,8 @@ type error +=
 module Contract : sig
   type error +=
     | (* `Temporary *) Active_delegate
-    | (* `Permanent *) Empty_delegate_account of Signature.Public_key_hash.t
-    | (* `Permanent *) No_deletion of Signature.Public_key_hash.t
+    | (* `Permanent *) Empty_delegate_account of Delegate.t
+    | (* `Permanent *) No_deletion of Delegate.t
     | (* `Temporary *) Current_delegate
 
   (** [init ctxt contract delegate] registers a delegate when
@@ -64,7 +63,7 @@ module Contract : sig
   val init :
     Raw_context.t ->
     Contract_repr.t ->
-    Signature.Public_key_hash.t ->
+    Delegate.t ->
     Raw_context.t tzresult Lwt.t
 
   (** [set ctxt contract delegate_opt] allows to set the
@@ -83,34 +82,29 @@ module Contract : sig
   val set :
     Raw_context.t ->
     Contract_repr.t ->
-    Signature.Public_key_hash.t option ->
+    Delegate.t option ->
     Raw_context.t tzresult Lwt.t
 end
 
 (** Has a delegate been registered in the delegate table? *)
-val registered : Raw_context.t -> Signature.Public_key_hash.t -> bool Lwt.t
+val registered : Raw_context.t -> Delegate.t -> bool Lwt.t
 
 (** Iterate on all registered delegates. *)
 val fold :
   Raw_context.t ->
   order:[`Sorted | `Undefined] ->
   init:'a ->
-  f:(Signature.Public_key_hash.t -> 'a -> 'a Lwt.t) ->
+  f:(Delegate.t -> 'a -> 'a Lwt.t) ->
   'a Lwt.t
 
 (** List all registered delegates. *)
-val list : Raw_context.t -> Signature.Public_key_hash.t list Lwt.t
+val list : Raw_context.t -> Delegate.t list Lwt.t
 
 val frozen_deposits_limit :
-  Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Tez_repr.t option tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> Tez_repr.t option tzresult Lwt.t
 
 val set_frozen_deposits_limit :
-  Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Tez_repr.t option ->
-  Raw_context.t Lwt.t
+  Raw_context.t -> Delegate.t -> Tez_repr.t option -> Raw_context.t Lwt.t
 
 (** Returns a delegate's frozen deposits, both the current amount and
    the initial freezed amount.
@@ -119,15 +113,12 @@ val set_frozen_deposits_limit :
     rewards and fees are not frozen, but simply credited at the right
     moment.  *)
 val frozen_deposits :
-  Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Storage.deposits tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> Storage.deposits tzresult Lwt.t
 
 val spendable_balance :
-  Raw_context.t -> Signature.public_key_hash -> Tez_repr.tez tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> Tez_repr.tez tzresult Lwt.t
 
-val staking_balance :
-  Raw_context.t -> Signature.Public_key_hash.t -> Tez_repr.t tzresult Lwt.t
+val staking_balance : Raw_context.t -> Delegate.t -> Tez_repr.t tzresult Lwt.t
 
 (** Returns the full 'balance' of the implicit contract associated to
     a given key, i.e. the sum of the spendable balance (given by [balance] or
@@ -137,16 +128,14 @@ val staking_balance :
     [frozen_deposits]).
 
     Only use this function for RPCs: this is expensive. *)
-val full_balance :
-  Raw_context.t -> Signature.Public_key_hash.t -> Tez_repr.t tzresult Lwt.t
+val full_balance : Raw_context.t -> Delegate.t -> Tez_repr.t tzresult Lwt.t
 
 (** Only use this function for RPCs: this is expensive. *)
-val delegated_balance :
-  Raw_context.t -> Signature.Public_key_hash.t -> Tez_repr.t tzresult Lwt.t
+val delegated_balance : Raw_context.t -> Delegate.t -> Tez_repr.t tzresult Lwt.t
 
 val drain :
   Raw_context.t ->
-  delegate:Signature.Public_key_hash.t ->
+  delegate:Delegate.t ->
   destination:Signature.Public_key_hash.t ->
   (Raw_context.t * bool * Tez_repr.t * Receipt_repr.balance_updates) tzresult
   Lwt.t

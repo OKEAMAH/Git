@@ -28,7 +28,7 @@
 type balance =
   | Contract of Contract_repr.t
   | Block_fees
-  | Deposits of Signature.Public_key_hash.t
+  | Deposits of Delegate.t
   | Nonce_revelation_rewards
   | Double_signing_evidence_rewards
   | Endorsing_rewards
@@ -36,7 +36,7 @@ type balance =
   | Baking_bonuses
   | Storage_fees
   | Double_signing_punishments
-  | Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
+  | Lost_endorsing_rewards of Delegate.t * bool * bool
   | Liquidity_baking_subsidies
   | Burned
   | Commitments of Blinded_public_key_hash.t

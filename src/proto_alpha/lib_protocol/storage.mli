@@ -121,21 +121,21 @@ module Contract : sig
   module Consensus_key :
     Indexed_data_storage
       with type key = Contract_repr.t
-       and type value = Signature.Public_key.t
+       and type value = Delegate.Public_key.t
        and type t := Raw_context.t
 
   (** The pending consensus key of a delegate *)
   module Pending_consensus_keys :
     Indexed_data_storage
       with type key = Cycle_repr.t
-       and type value = Signature.Public_key.t
+       and type value = Delegate.Public_key.t
        and type t := Raw_context.t * Contract_repr.t
 
   (** The delegate of a contract, if any. *)
   module Delegate :
     Indexed_data_storage
       with type key = Contract_repr.t
-       and type value = Signature.Public_key_hash.t
+       and type value = Delegate.Public_key_hash.t
        and type t := Raw_context.t
 
   (** All contracts (implicit and originated) that are delegated, if any  *)
@@ -369,15 +369,11 @@ end
 
 (** Set of all registered delegates. *)
 module Delegates :
-  Data_set_storage
-    with type t := Raw_context.t
-     and type elt = Signature.Public_key_hash.t
+  Data_set_storage with type t := Raw_context.t and type elt = Delegate.t
 
 (** Set of all active consensus keys in cycle `current + preserved_cycles + 1` *)
 module Consensus_keys :
-  Data_set_storage
-    with type t := Raw_context.t
-     and type elt = Signature.Public_key_hash.t
+  Data_set_storage with type t := Raw_context.t and type elt = Delegate.t
 
 type slashed_level = {for_double_endorsing : bool; for_double_baking : bool}
 
@@ -385,7 +381,7 @@ type slashed_level = {for_double_endorsing : bool; for_double_baking : bool}
 module Slashed_deposits :
   Indexed_data_storage
     with type t := Raw_context.t * Cycle_repr.t
-     and type key = Raw_level_repr.t * Signature.Public_key_hash.t
+     and type key = Raw_level_repr.t * Delegate.t
      and type value = slashed_level
 
 module Stake : sig
@@ -394,7 +390,7 @@ module Stake : sig
      {!Constants_parametric_repr.minimal_stake}. It might be large *)
   module Staking_balance :
     Indexed_data_snapshotable_storage
-      with type key = Signature.Public_key_hash.t
+      with type key = Delegate.t
        and type value = Tez_repr.t
        and type snapshot = int
        and type t := Raw_context.t
@@ -403,7 +399,7 @@ module Stake : sig
      fairly small compared to staking balance *)
   module Active_delegates_with_minimal_stake :
     Indexed_data_snapshotable_storage
-      with type key = Signature.Public_key_hash.t
+      with type key = Delegate.t
        and type value = unit
        and type snapshot = int
        and type t := Raw_context.t
@@ -416,11 +412,11 @@ module Stake : sig
   module Selected_distribution_for_cycle :
     Indexed_data_storage
       with type key = Cycle_repr.t
-       and type value = (Signature.Public_key_hash.t * Tez_repr.t) list
+       and type value = (Delegate.t * Tez_repr.t) list
        and type t := Raw_context.t
 
   (** Sum of the active stakes of all the delegates with
-      {!Constants_parametric_repr.minimal_stake} *)
+      {!Constants_parametric_Srepr.minimal_stake} *)
   module Total_active_stake :
     Indexed_data_storage
       with type key = Cycle_repr.t
@@ -465,27 +461,27 @@ module Vote : sig
   (** Contains all delegates with their assigned voting weight. *)
   module Listings :
     Indexed_data_storage
-      with type key = Signature.Public_key_hash.t
+      with type key = Delegate.t
        and type value = int64
        and type t := Raw_context.t
 
   (** Set of protocol proposal with corresponding proposer delegate *)
   module Proposals :
     Data_set_storage
-      with type elt = Protocol_hash.t * Signature.Public_key_hash.t
+      with type elt = Protocol_hash.t * Delegate.t
        and type t := Raw_context.t
 
   (** Keeps for each delegate the number of proposed protocols *)
   module Proposals_count :
     Indexed_data_storage
-      with type key = Signature.Public_key_hash.t
+      with type key = Delegate.t
        and type value = int
        and type t := Raw_context.t
 
   (** Contains for each delegate its ballot *)
   module Ballots :
     Indexed_data_storage
-      with type key = Signature.Public_key_hash.t
+      with type key = Delegate.t
        and type value = Vote_repr.ballot
        and type t := Raw_context.t
 end
@@ -521,10 +517,7 @@ module Seed : sig
   (** Storage from this submodule must only be accessed through the
       module `Seed`. *)
 
-  type unrevealed_nonce = {
-    nonce_hash : Nonce_hash.t;
-    delegate : Signature.Public_key_hash.t;
-  }
+  type unrevealed_nonce = {nonce_hash : Nonce_hash.t; delegate : Delegate.t}
 
   type nonce_status =
     | Unrevealed of unrevealed_nonce

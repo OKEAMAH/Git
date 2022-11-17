@@ -27,9 +27,9 @@
 
 open Alpha_context
 
-type error += Balance_rpc_non_delegate of public_key_hash
+type error += Balance_rpc_non_delegate of Delegate.t
 
-type error += (* `Temporary *) Not_registered of Signature.Public_key_hash.t
+type error += (* `Temporary *) Not_registered of Delegate.t
 
 let () =
   register_error_kind
@@ -46,9 +46,9 @@ let () =
          delegate. If you own this account and want to register it as a \
          delegate, use a delegation operation to delegate the account to \
          itself."
-        Signature.Public_key_hash.pp
+        Delegate.Public_key_hash.pp
         pkh)
-    Data_encoding.(obj1 (req "pkh" Signature.Public_key_hash.encoding))
+    Data_encoding.(obj1 (req "pkh" Delegate.Public_key_hash.encoding))
     (function Not_registered pkh -> Some pkh | _ -> None)
     (fun pkh -> Not_registered pkh)
 
@@ -64,11 +64,11 @@ let () =
         "The implicit account (%a) whose balance was requested is not a \
          registered delegate. To get the balance of this account you can use \
          the ../context/contracts/%a/balance RPC."
-        Signature.Public_key_hash.pp
+        Delegate.Public_key_hash.pp
         pkh
-        Signature.Public_key_hash.pp
+        Delegate.Public_key_hash.pp
         pkh)
-    Data_encoding.(obj1 (req "pkh" Signature.Public_key_hash.encoding))
+    Data_encoding.(obj1 (req "pkh" Delegate.Public_key_hash.encoding))
     (function Balance_rpc_non_delegate pkh -> Some pkh | _ -> None)
     (fun pkh -> Balance_rpc_non_delegate pkh)
 
@@ -83,8 +83,8 @@ type info = {
   deactivated : bool;
   grace_period : Cycle.t;
   voting_info : Vote.delegate_info;
-  active_consensus_key : Signature.Public_key_hash.t;
-  pending_consensus_keys : (Cycle.t * Signature.Public_key_hash.t) list;
+  active_consensus_key : Delegate.t;
+  pending_consensus_keys : (Cycle.t * Delegate.t) list;
 }
 
 let info_encoding =
@@ -152,13 +152,13 @@ let info_encoding =
        (merge_objs
           Vote.delegate_info_encoding
           (obj2
-             (req "active_consensus_key" Signature.Public_key_hash.encoding)
+             (req "active_consensus_key" Delegate.Public_key_hash.encoding)
              (dft
                 "pending_consensus_keys"
                 (list
                    (obj2
                       (req "cycle" Cycle.encoding)
-                      (req "pkh" Signature.Public_key_hash.encoding)))
+                      (req "pkh" Delegate.Public_key_hash.encoding)))
                 []))))
 
 let participation_info_encoding =
@@ -232,10 +232,10 @@ module S = struct
          or do not have such a minimal stake, respectively. Note, setting \
          these arguments to false has no effect."
       ~query:list_query
-      ~output:(list Signature.Public_key_hash.encoding)
+      ~output:(list Delegate.Public_key_hash.encoding)
       raw_path
 
-  let path = RPC_path.(raw_path /: Signature.Public_key_hash.rpc_arg)
+  let path = RPC_path.(raw_path /: Delegate.Public_key_hash.rpc_arg)
 
   let info =
     RPC_service.get_service
@@ -356,13 +356,13 @@ module S = struct
       ~output:
         Data_encoding.(
           obj2
-            (req "active" Signature.Public_key_hash.encoding)
+            (req "active" Delegate.Public_key_hash.encoding)
             (dft
                "pendings"
                (list
                   (obj2
                      (req "cycle" Cycle.encoding)
-                     (req "pkh" Signature.Public_key_hash.encoding)))
+                     (req "pkh" Delegate.Public_key_hash.encoding)))
                []))
       RPC_path.(path / "consensus_key")
 

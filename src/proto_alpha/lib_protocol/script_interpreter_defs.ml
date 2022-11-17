@@ -669,6 +669,13 @@ let transfer (type t) (ctxt, sc) gas amount location
     initial [credit] (withdrawn from the contract being executed), and an
     initial storage [init] of type [storage_ty]. *)
 let create_contract (ctxt, sc) gas storage_type code delegate credit init =
+  (match (delegate : Signature.public_key_hash option) with
+  | None -> Ok None
+  | Some (Ed25519 p) -> Ok (Some (Ed25519 p : Delegate.t))
+  | Some (Secp256k1 p) -> Ok (Some (Secp256k1 p))
+  | Some (P256 p) -> Ok (Some (P256 p))
+  | Some (Bls _) -> failwith "tz4 cannot be delegate" (* TODO *))
+  >>?= fun delegate ->
   let ctxt = update_context gas ctxt in
   collect_lazy_storage ctxt storage_type init >>?= fun (to_duplicate, ctxt) ->
   let to_update = no_lazy_storage_id in

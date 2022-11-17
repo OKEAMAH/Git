@@ -36,7 +36,7 @@ let big_map_root =
 
 type info = {
   balance : Tez.t;
-  delegate : public_key_hash option;
+  delegate : Delegate.t option;
   counter : Manager_counter.t option;
   script : Script.t option;
 }
@@ -50,7 +50,7 @@ let info_encoding =
       {balance; delegate; script; counter})
   @@ obj4
        (req "balance" Tez.encoding)
-       (opt "delegate" Signature.Public_key_hash.encoding)
+       (opt "delegate" Delegate.Public_key_hash.encoding)
        (opt "script" Script.encoding)
        (opt "counter" Manager_counter.encoding_for_RPCs)
 
@@ -95,7 +95,7 @@ module S = struct
     RPC_service.get_service
       ~description:"Access the delegate of a contract, if any."
       ~query:RPC_query.empty
-      ~output:Signature.Public_key_hash.encoding
+      ~output:Delegate.Public_key_hash.encoding
       RPC_path.(custom_root /: Contract.rpc_arg / "delegate")
 
   let counter =

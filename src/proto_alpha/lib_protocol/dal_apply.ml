@@ -116,7 +116,8 @@ let initialisation ctxt ~level =
     (fun ctxt ->
       let pkh_from_tenderbake_slot slot =
         Stake_distribution.slot_owner ctxt level slot
-        >|=? fun (ctxt, consensus_pk1) -> (ctxt, consensus_pk1.delegate)
+        >|=? fun (ctxt, consensus_pk1) ->
+        (ctxt, Delegate.To_signature.public_key_hash consensus_pk1.delegate)
       in
       (* This committee is cached because it is the one we will use
          for the validation of the DAL endorsements. *)

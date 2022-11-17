@@ -116,7 +116,7 @@ let reveal ctxt level nonce =
 
 type unrevealed = Storage.Seed.unrevealed_nonce = {
   nonce_hash : Nonce_hash.t;
-  delegate : Signature.Public_key_hash.t;
+  delegate : Delegate.t;
 }
 
 type status = Storage.Seed.nonce_status =

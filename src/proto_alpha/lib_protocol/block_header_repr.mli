@@ -34,7 +34,7 @@ type contents = {
     Liquidity_baking_repr.liquidity_baking_toggle_vote;
 }
 
-type protocol_data = {contents : contents; signature : Signature.t}
+type protocol_data = {contents : contents; signature : Delegate.signature}
 
 type t = {shell : Block_header.shell_header; protocol_data : protocol_data}
 
@@ -100,7 +100,7 @@ val check_timestamp :
   predecessor_round:Round_repr.t ->
   unit tzresult
 
-val check_signature : t -> Chain_id.t -> Signature.Public_key.t -> unit tzresult
+val check_signature : t -> Chain_id.t -> Delegate.Public_key.t -> unit tzresult
 
 val begin_validate_block_header :
   block_header:t ->
@@ -109,7 +109,7 @@ val begin_validate_block_header :
   predecessor_round:Round_repr.t ->
   fitness:Fitness_repr.t ->
   timestamp:Time.t ->
-  delegate_pk:Signature.public_key ->
+  delegate_pk:Delegate.public_key ->
   round_durations:Round_repr.Durations.t ->
   proof_of_work_threshold:int64 ->
   expected_commitment:bool ->

@@ -35,16 +35,13 @@ type error +=
 
 (** The public key of a consensus key and the associated delegate. *)
 type pk = Raw_context.consensus_pk = {
-  delegate : Signature.Public_key_hash.t;
-  consensus_pk : Signature.Public_key.t;
-  consensus_pkh : Signature.Public_key_hash.t;
+  delegate : Delegate.t;
+  consensus_pk : Delegate.Public_key.t;
+  consensus_pkh : Delegate.Public_key_hash.t;
 }
 
 (** The public key hash of a consensus key and the associated delegate. *)
-type t = {
-  delegate : Signature.Public_key_hash.t;
-  consensus_pkh : Signature.Public_key_hash.t;
-}
+type t = {delegate : Delegate.t; consensus_pkh : Delegate.Public_key_hash.t}
 
 val zero : t
 
@@ -55,36 +52,31 @@ val pkh : pk -> t
 (** Initialize the consensus key when registering a delegate. *)
 val init :
   Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Signature.Public_key.t ->
+  Delegate.t ->
+  Delegate.Public_key.t ->
   Raw_context.t tzresult Lwt.t
 
 (** Returns the active consensus key for the current cycle. *)
-val active_pubkey :
-  Raw_context.t -> Signature.Public_key_hash.t -> pk tzresult Lwt.t
+val active_pubkey : Raw_context.t -> Delegate.t -> pk tzresult Lwt.t
 
 (** Returns the active consensus key for the current cycle. *)
-val active_key :
-  Raw_context.t -> Signature.Public_key_hash.t -> t tzresult Lwt.t
+val active_key : Raw_context.t -> Delegate.t -> t tzresult Lwt.t
 
 (** Returns the active consensus key for the given cycle. *)
 val active_pubkey_for_cycle :
-  Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Cycle_repr.t ->
-  pk tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> Cycle_repr.t -> pk tzresult Lwt.t
 
 (** Returns the list of pending consensus-key updates in upcoming cycles. *)
 val pending_updates :
   Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  (Cycle_repr.t * Signature.Public_key_hash.t) list tzresult Lwt.t
+  Delegate.t ->
+  (Cycle_repr.t * Delegate.Public_key_hash.t) list tzresult Lwt.t
 
 (** Register a consensus-key update. *)
 val register_update :
   Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Signature.Public_key.t ->
+  Delegate.t ->
+  Delegate.Public_key.t ->
   Raw_context.t tzresult Lwt.t
 
 (** Activate consensus keys at the beginning of cycle [new_cycle].

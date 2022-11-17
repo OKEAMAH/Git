@@ -1415,7 +1415,7 @@ and 'kind internal_operation_contents =
     }
       -> Kind.transaction internal_operation_contents
   | Origination : {
-      delegate : Signature.Public_key_hash.t option;
+      delegate : Delegate.t option;
       code : Script.expr;
       unparsed_storage : Script.expr;
       credit : Tez.tez;
@@ -1425,7 +1425,7 @@ and 'kind internal_operation_contents =
     }
       -> Kind.origination internal_operation_contents
   | Delegation :
-      Signature.Public_key_hash.t option
+      Delegate.t option
       -> Kind.delegation internal_operation_contents
 
 and 'kind internal_operation = {

@@ -229,7 +229,7 @@ module Contract = struct
       (struct
         let name = ["consensus_key"; "active"]
       end)
-      (Signature.Public_key)
+      (Delegate.Public_key)
 
   module Pending_consensus_keys =
     Make_indexed_data_storage
@@ -238,7 +238,7 @@ module Contract = struct
            let name = ["consensus_key"; "pendings"]
          end))
          (Make_index (Cycle_repr.Index))
-      (Signature.Public_key)
+      (Delegate.Public_key)
 
   module Delegate =
     Indexed_context.Make_map
@@ -246,7 +246,7 @@ module Contract = struct
       (struct
         let name = ["delegate"]
       end)
-      (Signature.Public_key_hash)
+      (Delegate.Public_key_hash)
 
   module Inactive_delegate =
     Indexed_context.Make_set
@@ -940,7 +940,44 @@ module Public_key_hash = struct
     l1 + 1
 end
 
+module Delegate_public_key_hash = struct
+  open Delegate
+  include Delegate.Public_key_hash
+  module Path_Ed25519 = Path_encoding.Make_hex (Ed25519.Public_key_hash)
+  module Path_Secp256k1 = Path_encoding.Make_hex (Secp256k1.Public_key_hash)
+  module Path_P256 = Path_encoding.Make_hex (P256.Public_key_hash)
+
+  let to_path (key : t) l =
+    match key with
+    | Ed25519 h -> "ed25519" :: Path_Ed25519.to_path h l
+    | Secp256k1 h -> "secp256k1" :: Path_Secp256k1.to_path h l
+    | P256 h -> "p256" :: Path_P256.to_path h l
+
+  let of_path : _ -> t option = function
+    | "ed25519" :: rest -> (
+        match Path_Ed25519.of_path rest with
+        | Some pkh -> Some (Ed25519 pkh)
+        | None -> None)
+    | "secp256k1" :: rest -> (
+        match Path_Secp256k1.of_path rest with
+        | Some pkh -> Some (Secp256k1 pkh)
+        | None -> None)
+    | "p256" :: rest -> (
+        match Path_P256.of_path rest with
+        | Some pkh -> Some (P256 pkh)
+        | None -> None)
+    | _ -> None
+
+  let path_length =
+    let l1 = Path_Ed25519.path_length
+    and l2 = Path_Secp256k1.path_length
+    and l3 = Path_P256.path_length in
+    assert (Compare.Int.(l1 = l2 && l2 = l3)) ;
+    l1 + 1
+end
+
 module Public_key_hash_index = Make_index (Public_key_hash)
+module Delegate_public_key_hash_index = Make_index (Delegate_public_key_hash)
 
 module Protocol_hash_with_path_encoding = struct
   include Protocol_hash
@@ -953,7 +990,7 @@ module Delegates =
        (struct
          let name = ["delegates"]
        end))
-       (Public_key_hash_index)
+       (Delegate_public_key_hash_index)
 
 module Consensus_keys =
   Make_data_set_storage
@@ -961,7 +998,7 @@ module Consensus_keys =
        (struct
          let name = ["consensus_keys"]
        end))
-       (Public_key_hash_index)
+       (Delegate_public_key_hash_index)
 
 (** Per cycle storage *)
 
@@ -995,7 +1032,8 @@ module Cycle = struct
          (struct
            let name = ["slashed_deposits"]
          end))
-         (Pair (Make_index (Raw_level_repr.Index)) (Public_key_hash_index))
+         (Pair
+            (Make_index (Raw_level_repr.Index)) (Delegate_public_key_hash_index))
       (Slashed_level)
 
   module Selected_stake_distribution =
@@ -1005,13 +1043,13 @@ module Cycle = struct
         let name = ["selected_stake_distribution"]
       end)
       (struct
-        type t = (Signature.Public_key_hash.t * Tez_repr.t) list
+        type t = (Delegate.t * Tez_repr.t) list
 
         let encoding =
           Data_encoding.(
             Variable.list
               (obj2
-                 (req "baker" Signature.Public_key_hash.encoding)
+                 (req "baker" Delegate.Public_key_hash.encoding)
                  (req "active_stake" Tez_repr.encoding)))
       end)
 
@@ -1035,10 +1073,7 @@ module Cycle = struct
         let encoding = Sampler.encoding Raw_context.consensus_pk_encoding
       end)
 
-  type unrevealed_nonce = {
-    nonce_hash : Nonce_hash.t;
-    delegate : Signature.Public_key_hash.t;
-  }
+  type unrevealed_nonce = {nonce_hash : Nonce_hash.t; delegate : Delegate.t}
 
   type nonce_status =
     | Unrevealed of unrevealed_nonce
@@ -1051,7 +1086,7 @@ module Cycle = struct
         case
           (Tag 0)
           ~title:"Unrevealed"
-          (tup2 Nonce_hash.encoding Signature.Public_key_hash.encoding)
+          (tup2 Nonce_hash.encoding Delegate.Public_key_hash.encoding)
           (function
             | Unrevealed {nonce_hash; delegate} -> Some (nonce_hash, delegate)
             | _ -> None)
@@ -1100,7 +1135,7 @@ module Stake = struct
            let name = ["staking_balance"]
          end))
          (Int31_index)
-      (Public_key_hash_index)
+      (Delegate_public_key_hash_index)
       (Tez_repr)
 
   module Active_delegates_with_minimal_stake =
@@ -1112,7 +1147,7 @@ module Stake = struct
            let name = ["active_delegate_with_one_roll"]
          end))
          (Int31_index)
-      (Public_key_hash_index)
+      (Delegate_public_key_hash_index)
       (struct
         type t = unit
 
@@ -1208,7 +1243,7 @@ module Vote = struct
          (struct
            let name = ["listings"]
          end))
-         (Public_key_hash_index)
+         (Delegate_public_key_hash_index)
       (Encoding.Int64)
 
   module Proposals =
@@ -1220,7 +1255,7 @@ module Vote = struct
          (Pair
             (Make_index
                (Protocol_hash_with_path_encoding))
-               (Public_key_hash_index))
+               (Delegate_public_key_hash_index))
 
   module Proposals_count =
     Make_indexed_data_storage
@@ -1228,7 +1263,7 @@ module Vote = struct
          (struct
            let name = ["proposals_count"]
          end))
-         (Public_key_hash_index)
+         (Delegate_public_key_hash_index)
       (Encoding.UInt16)
 
   module Ballots =
@@ -1237,7 +1272,7 @@ module Vote = struct
          (struct
            let name = ["ballots"]
          end))
-         (Public_key_hash_index)
+         (Delegate_public_key_hash_index)
       (struct
         type t = Vote_repr.ballot
 
@@ -1283,7 +1318,7 @@ module Seed_status =
 module Seed = struct
   type unrevealed_nonce = Cycle.unrevealed_nonce = {
     nonce_hash : Nonce_hash.t;
-    delegate : Signature.Public_key_hash.t;
+    delegate : Delegate.t;
   }
 
   type nonce_status = Cycle.nonce_status =

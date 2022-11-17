@@ -57,31 +57,28 @@ let () =
     (fun () -> Invalid_consensus_key_update_active)
 
 type pk = Raw_context.consensus_pk = {
-  delegate : Signature.Public_key_hash.t;
-  consensus_pk : Signature.Public_key.t;
-  consensus_pkh : Signature.Public_key_hash.t;
+  delegate : Delegate.t;
+  consensus_pk : Delegate.Public_key.t;
+  consensus_pkh : Delegate.Public_key_hash.t;
 }
 
-type t = {
-  delegate : Signature.Public_key_hash.t;
-  consensus_pkh : Signature.Public_key_hash.t;
-}
+type t = {delegate : Delegate.t; consensus_pkh : Delegate.Public_key_hash.t}
 
 let pkh {delegate; consensus_pkh; consensus_pk = _} = {delegate; consensus_pkh}
 
 let zero =
   {
-    consensus_pkh = Signature.Public_key_hash.zero;
-    delegate = Signature.Public_key_hash.zero;
+    consensus_pkh = Delegate.Public_key_hash.zero;
+    delegate = Delegate.Public_key_hash.zero;
   }
 
 let pp ppf {delegate; consensus_pkh} =
-  Format.fprintf ppf "@[<v 2>%a" Signature.Public_key_hash.pp delegate ;
-  if not (Signature.Public_key_hash.equal delegate consensus_pkh) then
+  Format.fprintf ppf "@[<v 2>%a" Delegate.Public_key_hash.pp delegate ;
+  if not (Delegate.Public_key_hash.equal delegate consensus_pkh) then
     Format.fprintf
       ppf
       "@,Active key: %a"
-      Signature.Public_key_hash.pp
+      Delegate.Public_key_hash.pp
       consensus_pkh ;
   Format.fprintf ppf "@]"
 
@@ -103,17 +100,22 @@ let set_used = Storage.Consensus_keys.add
 
 let init ctxt delegate pk =
   let open Lwt_tzresult_syntax in
-  let pkh = Signature.Public_key.hash pk in
+  let pkh = Delegate.Public_key.hash pk in
   let* () = check_unused ctxt pkh in
   let*! ctxt = set_used ctxt pkh in
-  Storage.Contract.Consensus_key.init ctxt (Contract_repr.Implicit delegate) pk
+  Storage.Contract.Consensus_key.init
+    ctxt
+    (Contract_repr.Implicit (Delegate.To_signature.public_key_hash delegate))
+    pk
 
 let active_pubkey ctxt delegate =
   let open Lwt_tzresult_syntax in
   let* pk =
-    Storage.Contract.Consensus_key.get ctxt (Contract_repr.Implicit delegate)
+    Storage.Contract.Consensus_key.get
+      ctxt
+      (Contract_repr.Implicit (Delegate.To_signature.public_key_hash delegate))
   in
-  let pkh = Signature.Public_key.hash pk in
+  let pkh = Delegate.Public_key.hash pk in
   return {consensus_pk = pk; consensus_pkh = pkh; delegate}
 
 let active_key ctxt delegate =
@@ -125,7 +127,9 @@ let raw_pending_updates ctxt delegate =
   let open Lwt_tzresult_syntax in
   let*! pendings =
     Storage.Contract.Pending_consensus_keys.bindings
-      (ctxt, Contract_repr.Implicit delegate)
+      ( ctxt,
+        Contract_repr.Implicit (Delegate.To_signature.public_key_hash delegate)
+      )
   in
   return pendings
 
@@ -135,7 +139,7 @@ let pending_updates ctxt delegate =
   let updates =
     List.sort (fun (c1, _) (c2, _) -> Cycle_repr.compare c1 c2) updates
   in
-  return (List.map (fun (c, pk) -> (c, Signature.Public_key.hash pk)) updates)
+  return (List.map (fun (c, pk) -> (c, Delegate.Public_key.hash pk)) updates)
 
 let raw_active_pubkey_for_cycle ctxt delegate cycle =
   let open Lwt_tzresult_syntax in
@@ -157,7 +161,7 @@ let active_pubkey_for_cycle ctxt delegate cycle =
   return
     {
       consensus_pk;
-      consensus_pkh = Signature.Public_key.hash consensus_pk;
+      consensus_pkh = Delegate.Public_key.hash consensus_pk;
       delegate;
     }
 
@@ -173,10 +177,10 @@ let register_update ctxt delegate pk =
       raw_active_pubkey_for_cycle ctxt delegate update_cycle
     in
     fail_when
-      Signature.Public_key.(pk = active_pubkey)
+      Delegate.Public_key.(pk = active_pubkey)
       (Invalid_consensus_key_update_noop first_active_cycle)
   in
-  let pkh = Signature.Public_key.hash pk in
+  let pkh = Delegate.Public_key.hash pk in
   let* () = check_unused ctxt pkh in
   let*! ctxt = set_used ctxt pkh in
   let* {consensus_pkh = old_pkh; _} =
@@ -185,7 +189,9 @@ let register_update ctxt delegate pk =
   let*! ctxt = set_unused ctxt old_pkh in
   let*! ctxt =
     Storage.Contract.Pending_consensus_keys.add
-      (ctxt, Contract_repr.Implicit delegate)
+      ( ctxt,
+        Contract_repr.Implicit (Delegate.To_signature.public_key_hash delegate)
+      )
       update_cycle
       pk
   in
@@ -199,7 +205,7 @@ let activate ctxt ~new_cycle =
     ~init:(ok ctxt)
     ~f:(fun delegate ctxt ->
       let*? ctxt = ctxt in
-      let delegate = Contract_repr.Implicit delegate in
+      let delegate = Contract_repr.implicit_delegate delegate in
       let* update =
         Storage.Contract.Pending_consensus_keys.find (ctxt, delegate) new_cycle
       in

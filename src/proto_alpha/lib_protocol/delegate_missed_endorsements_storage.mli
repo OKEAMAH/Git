@@ -41,7 +41,7 @@ type level_participation = Participated | Didn't_participate
 (** Record the participation of a delegate as a validator. *)
 val record_endorsing_participation :
   Raw_context.t ->
-  delegate:Signature.Public_key_hash.t ->
+  delegate:Delegate.t ->
   participation:level_participation ->
   endorsing_power:int ->
   Raw_context.t tzresult Lwt.t
@@ -51,8 +51,8 @@ val record_endorsing_participation :
    the payload producer (if the reward_bonus is not None).*)
 val record_baking_activity_and_pay_rewards_and_fees :
   Raw_context.t ->
-  payload_producer:Signature.Public_key_hash.t ->
-  block_producer:Signature.Public_key_hash.t ->
+  payload_producer:Delegate.t ->
+  block_producer:Delegate.t ->
   baking_reward:Tez_repr.t ->
   reward_bonus:Tez_repr.t option ->
   (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t
@@ -61,9 +61,7 @@ val record_baking_activity_and_pay_rewards_and_fees :
    (returns [true] if it did), and then reset the participation for
    preparing the next cycle. *)
 val check_and_reset_delegate_participation :
-  Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  (Raw_context.t * bool) tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> (Raw_context.t * bool) tzresult Lwt.t
 
 (** Participation information. We denote by:
     - "static" information that does not change during the cycle
@@ -94,6 +92,4 @@ type participation_info = {
    implementation of RPC call "/context/delegates/<pkh>/participation".
  *)
 val participation_info :
-  Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  participation_info tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> participation_info tzresult Lwt.t

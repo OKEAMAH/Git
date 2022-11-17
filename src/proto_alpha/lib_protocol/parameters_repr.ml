@@ -25,15 +25,15 @@
 (*****************************************************************************)
 
 type bootstrap_account = {
-  public_key_hash : Signature.Public_key_hash.t;
-  public_key : Signature.Public_key.t option;
+  public_key_hash : Delegate.Public_key_hash.t;
+  public_key : Delegate.Public_key.t option;
   amount : Tez_repr.t;
-  delegate_to : Signature.Public_key_hash.t option;
-  consensus_key : Signature.Public_key.t option;
+  delegate_to : Delegate.t option;
+  consensus_key : Delegate.Public_key.t option;
 }
 
 type bootstrap_contract = {
-  delegate : Signature.Public_key_hash.t option;
+  delegate : Delegate.t option;
   amount : Tez_repr.t;
   script : Script_repr.t;
 }
@@ -54,7 +54,7 @@ let bootstrap_account_encoding =
       case
         (Tag 0)
         ~title:"Public_key_known"
-        (tup2 Signature.Public_key.encoding Tez_repr.encoding)
+        (tup2 Delegate.Public_key.encoding Tez_repr.encoding)
         (function
           | {
               public_key_hash;
@@ -64,8 +64,8 @@ let bootstrap_account_encoding =
               consensus_key = None;
             } ->
               assert (
-                Signature.Public_key_hash.equal
-                  (Signature.Public_key.hash public_key)
+                Delegate.Public_key_hash.equal
+                  (Delegate.Public_key.hash public_key)
                   public_key_hash) ;
               Some (public_key, amount)
           | {public_key = None; _}
@@ -75,7 +75,7 @@ let bootstrap_account_encoding =
         (fun (public_key, amount) ->
           {
             public_key = Some public_key;
-            public_key_hash = Signature.Public_key.hash public_key;
+            public_key_hash = Delegate.Public_key.hash public_key;
             amount;
             delegate_to = None;
             consensus_key = None;
@@ -83,7 +83,7 @@ let bootstrap_account_encoding =
       case
         (Tag 1)
         ~title:"Public_key_unknown"
-        (tup2 Signature.Public_key_hash.encoding Tez_repr.encoding)
+        (tup2 Delegate.Public_key_hash.encoding Tez_repr.encoding)
         (function
           | {
               public_key_hash;
@@ -109,9 +109,9 @@ let bootstrap_account_encoding =
         (Tag 2)
         ~title:"Public_key_known_with_delegate"
         (tup3
-           Signature.Public_key.encoding
+           Delegate.Public_key.encoding
            Tez_repr.encoding
-           Signature.Public_key_hash.encoding)
+           Delegate.Public_key_hash.encoding)
         (function
           | {
               public_key_hash;
@@ -121,8 +121,8 @@ let bootstrap_account_encoding =
               consensus_key = None;
             } ->
               assert (
-                Signature.Public_key_hash.equal
-                  (Signature.Public_key.hash public_key)
+                Delegate.Public_key_hash.equal
+                  (Delegate.Public_key.hash public_key)
                   public_key_hash) ;
               Some (public_key, amount, delegate)
           | {public_key = None; _}
@@ -132,7 +132,7 @@ let bootstrap_account_encoding =
         (fun (public_key, amount, delegate) ->
           {
             public_key = Some public_key;
-            public_key_hash = Signature.Public_key.hash public_key;
+            public_key_hash = Delegate.Public_key.hash public_key;
             amount;
             delegate_to = Some delegate;
             consensus_key = None;
@@ -141,9 +141,9 @@ let bootstrap_account_encoding =
         (Tag 3)
         ~title:"Public_key_unknown_with_delegate"
         (tup3
-           Signature.Public_key_hash.encoding
+           Delegate.Public_key_hash.encoding
            Tez_repr.encoding
-           Signature.Public_key_hash.encoding)
+           Delegate.Public_key_hash.encoding)
         (function
           | {
               public_key_hash;
@@ -169,9 +169,9 @@ let bootstrap_account_encoding =
         (Tag 4)
         ~title:"Public_key_known_with_consensus_key"
         (tup3
-           Signature.Public_key.encoding
+           Delegate.Public_key.encoding
            Tez_repr.encoding
-           Signature.Public_key.encoding)
+           Delegate.Public_key.encoding)
         (function
           | {
               public_key_hash;
@@ -181,8 +181,8 @@ let bootstrap_account_encoding =
               consensus_key = Some consensus_key;
             } ->
               assert (
-                Signature.Public_key_hash.equal
-                  (Signature.Public_key.hash public_key)
+                Delegate.Public_key_hash.equal
+                  (Delegate.Public_key.hash public_key)
                   public_key_hash) ;
               Some (public_key, amount, consensus_key)
           | {public_key = None; _}
@@ -192,7 +192,7 @@ let bootstrap_account_encoding =
         (fun (public_key, amount, consensus_key) ->
           {
             public_key = Some public_key;
-            public_key_hash = Signature.Public_key.hash public_key;
+            public_key_hash = Delegate.Public_key.hash public_key;
             amount;
             delegate_to = None;
             consensus_key = Some consensus_key;
@@ -205,7 +205,7 @@ let bootstrap_contract_encoding =
     (fun {delegate; amount; script} -> (delegate, amount, script))
     (fun (delegate, amount, script) -> {delegate; amount; script})
     (obj3
-       (opt "delegate" Signature.Public_key_hash.encoding)
+       (opt "delegate" Delegate.Public_key_hash.encoding)
        (req "amount" Tez_repr.encoding)
        (req "script" Script_repr.encoding))
 

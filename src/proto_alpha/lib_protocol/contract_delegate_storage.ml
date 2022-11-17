@@ -25,16 +25,19 @@
 
 let find = Storage.Contract.Delegate.find
 
+let implicit_delegate_contract delegate =
+  Contract_repr.Implicit (Delegate.To_signature.public_key_hash delegate)
+
 let init ctxt contract delegate =
   Storage.Contract.Delegate.init ctxt contract delegate >>=? fun ctxt ->
-  let delegate_contract = Contract_repr.Implicit delegate in
+  let delegate_contract = implicit_delegate_contract delegate in
   Storage.Contract.Delegated.add (ctxt, delegate_contract) contract >|= ok
 
 let unlink ctxt contract =
   Storage.Contract.Delegate.find ctxt contract >>=? function
   | None -> return ctxt
   | Some delegate ->
-      let delegate_contract = Contract_repr.Implicit delegate in
+      let delegate_contract = implicit_delegate_contract delegate in
       Storage.Contract.Delegated.remove (ctxt, delegate_contract) contract
       >|= ok
 
@@ -45,9 +48,9 @@ let delete ctxt contract =
 let set ctxt contract delegate =
   unlink ctxt contract >>=? fun ctxt ->
   Storage.Contract.Delegate.add ctxt contract delegate >>= fun ctxt ->
-  let delegate_contract = Contract_repr.Implicit delegate in
+  let delegate_contract = implicit_delegate_contract delegate in
   Storage.Contract.Delegated.add (ctxt, delegate_contract) contract >|= ok
 
 let delegated_contracts ctxt delegate =
-  let contract = Contract_repr.Implicit delegate in
+  let contract = implicit_delegate_contract delegate in
   Storage.Contract.Delegated.elements (ctxt, contract)

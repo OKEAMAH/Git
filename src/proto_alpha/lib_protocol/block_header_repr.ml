@@ -34,7 +34,7 @@ type contents = {
     Liquidity_baking_repr.liquidity_baking_toggle_vote;
 }
 
-type protocol_data = {contents : contents; signature : Signature.t}
+type protocol_data = {contents : contents; signature : Delegate.signature}
 
 type t = {shell : Block_header.shell_header; protocol_data : protocol_data}
 
@@ -113,9 +113,7 @@ let protocol_data_encoding =
   @@ conv
        (fun {contents; signature} -> (contents, signature))
        (fun (contents, signature) -> {contents; signature})
-       (merge_objs
-          contents_encoding
-          (obj1 (req "signature" Signature.encoding)))
+       (merge_objs contents_encoding (obj1 (req "signature" Delegate.encoding)))
 
 let raw {shell; protocol_data} =
   let protocol_data =
@@ -171,7 +169,7 @@ let max_header_length =
     encoding
     {
       shell = fake_shell;
-      protocol_data = {contents = fake_contents; signature = Signature.zero};
+      protocol_data = {contents = fake_contents; signature = Delegate.zero};
     }
 
 (** Header parsing entry point  *)
@@ -194,7 +192,7 @@ type locked_round_evidence = {
 type error +=
   | (* Permanent *)
       Invalid_block_signature of
-      Block_hash.t * Signature.Public_key_hash.t
+      Block_hash.t * Delegate.Public_key_hash.t
   | (* Permanent *) Invalid_stamp
   | (* Permanent *)
       Invalid_payload_hash of {
@@ -231,12 +229,12 @@ let () =
         "Invalid signature for block %a. Expected: %a."
         Block_hash.pp_short
         block
-        Signature.Public_key_hash.pp_short
+        Delegate.Public_key_hash.pp_short
         pkh)
     Data_encoding.(
       obj2
         (req "block" Block_hash.encoding)
-        (req "expected" Signature.Public_key_hash.encoding))
+        (req "expected" Delegate.Public_key_hash.encoding))
     (function
       | Invalid_block_signature (block, pkh) -> Some (block, pkh) | _ -> None)
     (fun (block, pkh) -> Invalid_block_signature (block, pkh)) ;
@@ -372,12 +370,12 @@ let () =
     (fun (t1, t2) -> Wrong_timestamp (t1, t2))
 
 let check_signature (block : t) (chain_id : Chain_id.t)
-    (key : Signature.Public_key.t) =
+    (key : Delegate.Public_key.t) =
   let check_signature key ({shell; protocol_data = {contents; signature}} : t) =
     let unsigned_header =
       Data_encoding.Binary.to_bytes_exn unsigned_encoding (shell, contents)
     in
-    Signature.check
+    Delegate.check
       ~watermark:(to_watermark (Block_header chain_id))
       key
       signature
@@ -385,7 +383,7 @@ let check_signature (block : t) (chain_id : Chain_id.t)
   in
   if check_signature key block then ok ()
   else
-    error (Invalid_block_signature (hash block, Signature.Public_key.hash key))
+    error (Invalid_block_signature (hash block, Delegate.Public_key.hash key))
 
 let check_payload_round ~round ~payload_round =
   error_when
@@ -411,7 +409,7 @@ module Proof_of_work = struct
 
   let check_header_proof_of_work_stamp shell contents stamp_threshold =
     let hash =
-      hash {shell; protocol_data = {contents; signature = Signature.zero}}
+      hash {shell; protocol_data = {contents; signature = Delegate.zero}}
     in
     check_hash hash stamp_threshold
 
@@ -428,7 +426,7 @@ end
 let begin_validate_block_header ~(block_header : t) ~(chain_id : Chain_id.t)
     ~(predecessor_timestamp : Time.t) ~(predecessor_round : Round_repr.t)
     ~(fitness : Fitness_repr.t) ~(timestamp : Time.t)
-    ~(delegate_pk : Signature.Public_key.t)
+    ~(delegate_pk : Delegate.Public_key.t)
     ~(round_durations : Round_repr.Durations.t)
     ~(proof_of_work_threshold : int64) ~(expected_commitment : bool) =
   (* Level relationship between current node and the predecessor is

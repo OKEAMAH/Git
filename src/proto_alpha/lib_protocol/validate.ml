@@ -748,7 +748,7 @@ module Consensus = struct
     let*? () =
       if check_signature then
         Operation.check_signature
-          consensus_key.consensus_pk
+          (Delegate.To_signature.public_key consensus_key.consensus_pk)
           vi.chain_id
           operation
       else ok_unit
@@ -836,7 +836,7 @@ module Consensus = struct
     let*? () =
       if check_signature then
         Operation.check_signature
-          consensus_key.consensus_pk
+          (Delegate.To_signature.public_key consensus_key.consensus_pk)
           vi.chain_id
           operation
       else ok_unit
@@ -932,7 +932,7 @@ module Consensus = struct
     let*? () =
       if check_signature then
         Operation.check_signature
-          consensus_key.consensus_pk
+          (Delegate.To_signature.public_key consensus_key.consensus_pk)
           vi.chain_id
           operation
       else ok_unit

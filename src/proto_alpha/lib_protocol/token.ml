@@ -26,8 +26,8 @@
 type container =
   [ `Contract of Contract_repr.t
   | `Collected_commitments of Blinded_public_key_hash.t
-  | `Delegate_balance of Signature.Public_key_hash.t
-  | `Frozen_deposits of Signature.Public_key_hash.t
+  | `Delegate_balance of Delegate.t
+  | `Frozen_deposits of Delegate.t
   | `Block_fees
   | `Frozen_bonds of Contract_repr.t * Bond_id_repr.t ]
 
@@ -50,7 +50,7 @@ type source = [infinite_source | container]
 type infinite_sink =
   [ `Storage_fees
   | `Double_signing_punishments
-  | `Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
+  | `Lost_endorsing_rewards of Delegate.t * bool * bool
   | `Tx_rollup_rejection_punishments
   | `Sc_rollup_refutation_punishments
   | `Burned ]
@@ -66,11 +66,11 @@ let allocated ctxt stored =
       Commitment_storage.exists ctxt bpkh >|= fun allocated ->
       ok (ctxt, allocated)
   | `Delegate_balance delegate ->
-      let contract = Contract_repr.Implicit delegate in
+      let contract = Contract_repr.implicit_delegate delegate in
       Contract_storage.allocated ctxt contract >|= fun allocated ->
       ok (ctxt, allocated)
   | `Frozen_deposits delegate ->
-      let contract = Contract_repr.Implicit delegate in
+      let contract = Contract_repr.implicit_delegate delegate in
       Frozen_deposits_storage.allocated ctxt contract >|= fun allocated ->
       ok (ctxt, allocated)
   | `Block_fees -> return (ctxt, true)
@@ -86,11 +86,11 @@ let balance ctxt stored =
       Commitment_storage.committed_amount ctxt bpkh >|=? fun balance ->
       (ctxt, balance)
   | `Delegate_balance delegate ->
-      let contract = Contract_repr.Implicit delegate in
+      let contract = Contract_repr.implicit_delegate delegate in
       Storage.Contract.Spendable_balance.get ctxt contract >|=? fun balance ->
       (ctxt, balance)
   | `Frozen_deposits delegate ->
-      let contract = Contract_repr.Implicit delegate in
+      let contract = Contract_repr.implicit_delegate delegate in
       Frozen_deposits_storage.find ctxt contract >|=? fun frozen_deposits ->
       let balance =
         match frozen_deposits with
@@ -130,7 +130,7 @@ let credit ctxt dest amount origin =
             amount
           >|=? fun ctxt -> (ctxt, Commitments bpkh)
       | `Delegate_balance delegate ->
-          let contract = Contract_repr.Implicit delegate in
+          let contract = Contract_repr.implicit_delegate delegate in
           Contract_storage.increase_balance_only_call_from_token
             ctxt
             contract
@@ -190,7 +190,7 @@ let spend ctxt src amount origin =
             amount
           >|=? fun ctxt -> (ctxt, Commitments bpkh)
       | `Delegate_balance delegate ->
-          let contract = Contract_repr.Implicit delegate in
+          let contract = Contract_repr.implicit_delegate delegate in
           Contract_storage.decrease_balance_only_call_from_token
             ctxt
             contract

@@ -605,7 +605,11 @@ let check_emptiable c contract =
       let* delegate = Contract_delegate_storage.find c contract in
       match delegate with
       | Some pkh' ->
-          if Signature.Public_key_hash.equal pkh pkh' then return_unit
+          if
+            Signature.Public_key_hash.equal
+              pkh
+              (Delegate.To_signature.public_key_hash pkh')
+          then return_unit
           else
             (* Delegated implicit accounts cannot be emptied *)
             Lwt.return (error (Empty_implicit_delegated_contract pkh))

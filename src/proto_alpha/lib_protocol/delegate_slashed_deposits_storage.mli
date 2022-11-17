@@ -32,18 +32,12 @@
 (** Returns true if the given delegate has already been slashed
     for double baking for the given level. *)
 val already_slashed_for_double_baking :
-  Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Level_repr.t ->
-  bool tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> Level_repr.t -> bool tzresult Lwt.t
 
 (** Returns true if the given delegate has already been slashed
     for double preendorsing or double endorsing for the given level. *)
 val already_slashed_for_double_endorsing :
-  Raw_context.t ->
-  Signature.Public_key_hash.t ->
-  Level_repr.t ->
-  bool tzresult Lwt.t
+  Raw_context.t -> Delegate.t -> Level_repr.t -> bool tzresult Lwt.t
 
 (** Burn some frozen deposit for a delegate at a given level and
     record in the context that the given delegate has now been slashed
@@ -55,7 +49,7 @@ val already_slashed_for_double_endorsing :
     already been slashed for double endorsing for the given level.  *)
 val punish_double_endorsing :
   Raw_context.t ->
-  Signature.Public_key_hash.t ->
+  Delegate.t ->
   Level_repr.t ->
   (Raw_context.t * Tez_repr.t * Receipt_repr.balance_updates) tzresult Lwt.t
 
@@ -69,7 +63,7 @@ val punish_double_endorsing :
     already been slashed for double baking for the given level.  *)
 val punish_double_baking :
   Raw_context.t ->
-  Signature.Public_key_hash.t ->
+  Delegate.t ->
   Level_repr.t ->
   (Raw_context.t * Tez_repr.t * Receipt_repr.balance_updates) tzresult Lwt.t
 

@@ -45,6 +45,9 @@ let in_memory_size =
   | Implicit _ -> h1w +! public_key_hash_in_memory_size
   | Originated _ -> h1w +! blake2b_hash_size
 
+let implicit_delegate delegate =
+  Implicit (Delegate.To_signature.public_key_hash delegate)
+
 type error += Invalid_contract_notation of string (* `Permanent *)
 
 let to_b58check = function

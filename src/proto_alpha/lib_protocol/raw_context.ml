@@ -57,27 +57,27 @@ module Int_set = Set.Make (Compare.Int)
  *)
 
 type consensus_pk = {
-  delegate : Signature.Public_key_hash.t;
-  consensus_pk : Signature.Public_key.t;
-  consensus_pkh : Signature.Public_key_hash.t;
+  delegate : Delegate.t;
+  consensus_pk : Delegate.Public_key.t;
+  consensus_pkh : Delegate.Public_key_hash.t;
 }
 
 let consensus_pk_encoding =
   let open Data_encoding in
   conv
     (fun {delegate; consensus_pk; consensus_pkh} ->
-      if Signature.Public_key_hash.equal consensus_pkh delegate then
+      if Delegate.Public_key_hash.equal consensus_pkh delegate then
         (consensus_pk, None)
       else (consensus_pk, Some delegate))
     (fun (consensus_pk, delegate) ->
-      let consensus_pkh = Signature.Public_key.hash consensus_pk in
+      let consensus_pkh = Delegate.Public_key.hash consensus_pk in
       let delegate =
         match delegate with None -> consensus_pkh | Some del -> del
       in
       {delegate; consensus_pk; consensus_pkh})
     (obj2
-       (req "consensus_pk" Signature.Public_key.encoding)
-       (opt "delegate" Signature.Public_key_hash.encoding))
+       (req "consensus_pk" Delegate.Public_key.encoding)
+       (opt "delegate" Delegate.Public_key_hash.encoding))
 
 module Raw_consensus = struct
   (** Consensus operations are indexed by their [initial slots]. Given
@@ -255,7 +255,7 @@ type back = {
   dictator_proposal_seen : bool;
   sampler_state : (Seed_repr.seed * consensus_pk Sampler.t) Cycle_repr.Map.t;
   stake_distribution_for_current_cycle :
-    Tez_repr.t Signature.Public_key_hash.Map.t option;
+    Tez_repr.t Delegate.Public_key_hash.Map.t option;
   tx_rollup_current_messages :
     Tx_rollup_inbox_repr.Merkle.tree Tx_rollup_repr.Map.t;
   sc_rollup_current_messages : Context.tree option;

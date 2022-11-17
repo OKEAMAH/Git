@@ -52,7 +52,7 @@ let record_endorsing_participation ctxt ~delegate ~participation
   match participation with
   | Participated -> Stake_storage.set_active ctxt delegate
   | Didn't_participate -> (
-      let contract = Contract_repr.Implicit delegate in
+      let contract = Contract_repr.implicit_delegate delegate in
       Storage.Contract.Missed_endorsements.find ctxt contract >>=? function
       | Some {remaining_slots; missed_levels} ->
           let remaining_slots = remaining_slots - endorsing_power in
@@ -65,7 +65,7 @@ let record_endorsing_participation ctxt ~delegate ~participation
           Raw_context.stake_distribution_for_current_cycle ctxt
           >>?= fun stake_distribution ->
           match
-            Signature.Public_key_hash.Map.find delegate stake_distribution
+            Delegate.Public_key_hash.Map.find delegate stake_distribution
           with
           | None ->
               (* This happens when the block is the first one in a
@@ -98,12 +98,12 @@ let record_endorsing_participation ctxt ~delegate ~participation
 let record_baking_activity_and_pay_rewards_and_fees ctxt ~payload_producer
     ~block_producer ~baking_reward ~reward_bonus =
   Stake_storage.set_active ctxt payload_producer >>=? fun ctxt ->
-  (if not (Signature.Public_key_hash.equal payload_producer block_producer) then
+  (if not (Delegate.Public_key_hash.equal payload_producer block_producer) then
    Stake_storage.set_active ctxt block_producer
   else return ctxt)
   >>=? fun ctxt ->
   let pay_payload_producer ctxt delegate =
-    let contract = Contract_repr.Implicit delegate in
+    let contract = Contract_repr.implicit_delegate delegate in
     Token.balance ctxt `Block_fees >>=? fun (ctxt, block_fees) ->
     Token.transfer_n
       ctxt
@@ -111,7 +111,7 @@ let record_baking_activity_and_pay_rewards_and_fees ctxt ~payload_producer
       (`Contract contract)
   in
   let pay_block_producer ctxt delegate bonus =
-    let contract = Contract_repr.Implicit delegate in
+    let contract = Contract_repr.implicit_delegate delegate in
     Token.transfer ctxt `Baking_bonuses (`Contract contract) bonus
   in
   pay_payload_producer ctxt payload_producer
@@ -124,7 +124,7 @@ let record_baking_activity_and_pay_rewards_and_fees ctxt ~payload_producer
     (ctxt, balance_updates_payload_producer @ balance_updates_block_producer)
 
 let check_and_reset_delegate_participation ctxt delegate =
-  let contract = Contract_repr.Implicit delegate in
+  let contract = Contract_repr.implicit_delegate delegate in
   Storage.Contract.Missed_endorsements.find ctxt contract >>=? fun missed ->
   match missed with
   | None -> return (ctxt, true)
@@ -148,7 +148,7 @@ let participation_info ctxt delegate =
   >>=? fun stake_distribution ->
   match
     List.assoc_opt
-      ~equal:Signature.Public_key_hash.equal
+      ~equal:Delegate.Public_key_hash.equal
       delegate
       stake_distribution
   with
@@ -187,7 +187,7 @@ let participation_info ctxt delegate =
       let expected_endorsing_rewards =
         Tez_repr.mul_exn endorsing_reward_per_slot expected_cycle_activity
       in
-      let contract = Contract_repr.Implicit delegate in
+      let contract = Contract_repr.implicit_delegate delegate in
       Storage.Contract.Missed_endorsements.find ctxt contract
       >>=? fun missed_endorsements ->
       let missed_slots, missed_levels, remaining_allowed_missed_slots =

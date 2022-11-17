@@ -45,8 +45,8 @@
 type container =
   [ `Contract of Contract_repr.t
   | `Collected_commitments of Blinded_public_key_hash.t
-  | `Delegate_balance of Signature.Public_key_hash.t
-  | `Frozen_deposits of Signature.Public_key_hash.t
+  | `Delegate_balance of Delegate.t
+  | `Frozen_deposits of Delegate.t
   | `Block_fees
   | `Frozen_bonds of Contract_repr.t * Bond_id_repr.t ]
 
@@ -73,7 +73,7 @@ type source = [infinite_source | container]
 type infinite_sink =
   [ `Storage_fees
   | `Double_signing_punishments
-  | `Lost_endorsing_rewards of Signature.Public_key_hash.t * bool * bool
+  | `Lost_endorsing_rewards of Delegate.t * bool * bool
   | `Tx_rollup_rejection_punishments
   | `Sc_rollup_refutation_punishments
   | `Burned ]

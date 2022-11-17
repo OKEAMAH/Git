@@ -29,19 +29,13 @@
 
 (** [find ctxt contract] returns the delegate associated to [contract], or [None]
     if [contract] has no delegate. *)
-val find :
-  Raw_context.t ->
-  Contract_repr.t ->
-  Signature.Public_key_hash.t option tzresult Lwt.t
+val find : Raw_context.t -> Contract_repr.t -> Delegate.t option tzresult Lwt.t
 
 (** [init ctxt contract delegate] sets the [delegate] associated to [contract].
 
     This function assumes that [contract] does not have a delegate already. *)
 val init :
-  Raw_context.t ->
-  Contract_repr.t ->
-  Signature.Public_key_hash.t ->
-  Raw_context.t tzresult Lwt.t
+  Raw_context.t -> Contract_repr.t -> Delegate.t -> Raw_context.t tzresult Lwt.t
 
 (** [unlink ctxt contract] removes [contract] from the list of contracts that
     delegated to [find ctxt contract], i.e. the output of [delegated_contracts].
@@ -62,12 +56,9 @@ val delete : Raw_context.t -> Contract_repr.t -> Raw_context.t tzresult Lwt.t
 
     This function assumes that [contract] is allocated and has a delegate. *)
 val set :
-  Raw_context.t ->
-  Contract_repr.t ->
-  Signature.Public_key_hash.t ->
-  Raw_context.t tzresult Lwt.t
+  Raw_context.t -> Contract_repr.t -> Delegate.t -> Raw_context.t tzresult Lwt.t
 
 (** [delegated_contracts ctxt delegate] returns the list of contracts (implicit
     or originated) that delegated to [delegate]. *)
 val delegated_contracts :
-  Raw_context.t -> Signature.Public_key_hash.t -> Contract_repr.t list Lwt.t
+  Raw_context.t -> Delegate.t -> Contract_repr.t list Lwt.t
