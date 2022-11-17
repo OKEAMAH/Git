@@ -23,49 +23,56 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* FIXME: https://gitlab.com/tezos/tezos/-/issues/3207
-   use another storage solution that irmin as we don't need backtracking *)
+module Shards = struct
+  module Key : Index.Key.S = struct
+    type t = Cryptobox.Commitment.t * int [@@deriving repr]
 
-(* FIXME: https://gitlab.com/tezos/tezos/-/issues/4097
-   Add an interface to this module *)
+    let equal = ( = )
 
-(* Relative path to store directory from base-dir *)
-let path = "store"
+    let hash = Hashtbl.hash
 
-let index_path = "index"
+    let hash_size = 30
 
-let slot_header_store = "slot_header_store"
+    let encode = assert false
 
-module StoreMaker = Irmin_pack_unix.KV (Tezos_context_encoding.Context.Conf)
-include StoreMaker.Make (Irmin.Contents.String)
+    let encoded_size = assert false
 
-let info message =
-  let date = Unix.gettimeofday () |> int_of_float |> Int64.of_int in
-  Irmin.Info.Default.v ~author:"DAL Node" ~message date
+    let decode = assert false
+  end
 
-let set ~msg store path v = set_exn store path v ~info:(fun () -> info msg)
+  module Value = struct
+    type t = Cryptobox.share [@@deriving repr]
 
-(** Store context *)
-type node_store = {
-  shard_index : Index_store.Shards.t;
-  slots_store : t;
-  slot_headers_store : Slot_headers_store.t;
-  slots_watcher : Cryptobox.Commitment.t Lwt_watcher.input;
-}
+    let encode = assert false
 
-(** [open_slots_watcher node_store] opens a stream that should be notified when
-    the storage is updated with a new slot. *)
-let open_slots_stream {slots_watcher; _} =
-  Lwt_watcher.create_stream slots_watcher
+    let encoded_size = assert false
 
-(** [init config] inits the store on the filesystem using the given [config]. *)
-let init config =
-  let open Lwt_syntax in
-  let dir = Configuration.data_dir_path config path in
-  let* slot_headers_store = Slot_headers_store.load dir in
-  let slots_watcher = Lwt_watcher.create_input () in
-  let shard_index = Index_store.Shards.init dir in
-  let* repo = Repo.v (Irmin_pack.config dir) in
-  let* slots_store = main repo in
-  let* () = Event.(emit store_is_ready ()) in
-  Lwt.return {shard_index; slots_store; slots_watcher; slot_headers_store}
+    let decode _s _off = assert false
+  end
+
+  include Index_unix.Make (Key) (Value) (Index.Cache.Unbounded)
+
+  let init path =
+    let cache = empty_cache () in
+    v ~log_size:4 ~cache ~fresh:true path
+end
+
+module Slot_shards = struct
+  module Key = struct
+    include Index.Key.String_fixed (struct
+      let length = 50
+    end)
+  end
+
+  module Value = struct
+    include Index.Value.String_fixed (struct
+      let length = 100
+    end)
+  end
+
+  include Index_unix.Make (Key) (Value) (Index.Cache.Unbounded)
+
+  let init path =
+    let cache = empty_cache () in
+    v ~log_size:4 ~cache ~fresh:true path
+end

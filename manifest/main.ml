@@ -173,6 +173,9 @@ let hex = external_lib ~js_compatible:true "hex" V.(at_least "1.3.0")
 
 let index = external_lib "index" V.(at_least "1.6.0" && less_than "1.7.0")
 
+let index_unix =
+  external_lib "index.unix" V.(at_least "1.6.0" && less_than "1.7.0")
+
 let integers = external_lib ~js_compatible:true "integers" V.True
 
 let integers_stubs_js =
@@ -3188,6 +3191,9 @@ let octez_dal_node_lib =
         octez_client_base |> open_;
         octez_protocol_updater |> open_;
         octez_client_base_unix |> open_;
+        index;
+        index_unix;
+        octez_crypto_dal |> open_;
       ]
 
 let octez_scoru_wasm_tests_helpers =
