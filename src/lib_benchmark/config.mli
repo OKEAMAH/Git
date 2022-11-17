@@ -80,3 +80,15 @@ val edit_config :
   string ->
   string ->
   unit
+
+module Internal_for_tests : sig
+  val merge_on :
+    'a Data_encoding.t ->
+    Data_encoding.json ->
+    Data_encoding.json ->
+    Data_encoding.json
+
+  val merge_config_trees : t -> t -> t
+
+  val get_config_strict : Namespace.t -> t -> Data_encoding.json
+end

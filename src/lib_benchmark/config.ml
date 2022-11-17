@@ -60,32 +60,57 @@ let encoding : t Data_encoding.t =
      - if v exists in B, then P(B,v) is included in C.
      - else, P(A,v) is included in C
 *)
-let rec merge_on ja jb =
-  match (ja, jb) with
-  | `String _, `String sb -> `String sb
-  | `Float _, `Float f2 -> `Float f2
-  | `Bool _, `Bool b2 -> `Bool b2
-  | `A l1, `A l2 -> (
-      match
-        List.map2 ~when_different_lengths:() (fun x y -> merge_on x y) l1 l2
-      with
-      | Ok l -> `A l
-      | Error () -> `A l1)
-  | `O l1, `O l2 ->
-      let tl =
-        List.fold_left
-          (fun acc (n, f) ->
-            match List.find (fun (x, _) -> String.equal x n) l2 with
-            | None -> (n, f) :: acc
-            | Some (_, o) -> (n, merge_on f o) :: acc)
-          []
-          l1
+let merge_on e ja jb =
+  let rec merge_aux ja jb =
+    match (ja, jb) with
+    | `String _, `String sb -> `String sb
+    | `Float _, `Float f2 -> `Float f2
+    | `Bool _, `Bool b2 -> `Bool b2
+    | `A l1, `A l2 ->
+        let l, leftovers = List.combine_with_leftovers l1 l2 in
+        let l = List.map (fun (x, y) -> merge_aux x y) l in
+        let lo =
+          match leftovers with
+          | Some (Either.Left x) | Some (Either.Right x) -> x
+          | None -> []
+        in
+        `A (l @ lo)
+    | `O l1, `O l2 ->
+        let tl =
+          List.fold_left
+            (fun acc (n, f) ->
+              match List.find (fun (x, _) -> String.equal x n) l2 with
+              | None -> (n, f) :: acc
+              | Some (_, o) -> (n, merge_aux f o) :: acc)
+            []
+            l1
+        in
+        let lo =
+          List.filter
+            (fun (x, _) ->
+              not (List.mem ~equal:String.equal x (List.map fst l1)))
+            l2
+        in
+        (* List.rev is just aesthetic, it maintains the order of the object fields.
+           Convenient for fields like [min] and [max] *)
+        (* Note that all optional fields will be at the end of an object *)
+        `O (List.rev tl @ lo)
+    | `Null, _ -> jb
+    | _ -> ja
+  in
+  let rec trim e j =
+    let open Data_encoding.Json in
+    try
+      ignore (destruct e j) ;
+      j
+    with Cannot_destruct (p, _) ->
+      let j =
+        try Json_query.(replace p (query p ja) j)
+        with Not_found -> Json_query.(replace p `Null j)
       in
-      (* List.rev is just aesthetic, it maintains the order of the object fields.
-         Convenient for fields like [min] and [max] *)
-      `O (List.rev tl)
-  | `Null, _ -> jb
-  | _ -> ja
+      trim e j
+  in
+  trim e (merge_aux ja jb)
 
 let get_config ((module Bench) : Benchmark.t) (config : t) : Data_encoding.json
     =
@@ -96,7 +121,7 @@ let get_config ((module Bench) : Benchmark.t) (config : t) : Data_encoding.json
       Bench.default_config
   in
   let rec traversal config_acc name config =
-    let config_acc = merge_on config_acc config.config in
+    let config_acc = merge_on Bench.config_encoding config_acc config.config in
     match name with
     | h :: t -> (
         match
@@ -345,3 +370,11 @@ let edit_config ?(input = `Stdin) config_path namespace =
         Lwt_main.run @@ Lwt_utils_unix.create_file config_path new_conf_str
       in
       match input with `Edit _ -> Stdlib.Sys.remove tmpfile | _ -> ())
+
+module Internal_for_tests = struct
+  let merge_on = merge_on
+
+  let merge_config_trees = merge_config_trees
+
+  let get_config_strict = get_config_strict
+end

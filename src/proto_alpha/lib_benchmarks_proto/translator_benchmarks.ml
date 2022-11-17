@@ -51,7 +51,7 @@ module Config = struct
         {generator_config; michelson_terms_file})
       (obj2
          (req "generator_config" Michelson_generation.generator_config_encoding)
-         (req "michelson_terms_file" (option string)))
+         (opt "michelson_terms_file" string))
 end
 
 module Default_boilerplate = struct

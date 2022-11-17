@@ -66,6 +66,11 @@ val make : cons -> string -> cons
     [basename (cons s)] is [s] for any constructor [cons]. *)
 val basename : t -> string
 
+(** Returns the full path of a namespace constructor as a namespace
+    [path root] is ["."].
+    [path (make cons s)] is [cons s] for any [cons] and [s]. *)
+val path : cons -> t
+
 (** Returns the path of [n] as a list. The head of the list is the start of the path,
    which is always ["."]. If [n] is empty, only returns [["."]].
    Never returns the empty list. *)

@@ -94,3 +94,8 @@ end)
 let root = cons []
 
 let make ns str = cons (ns str)
+
+let path cs =
+  cs "" |> List.rev |> List.tl
+  |> Option.value ~default:(assert false)
+  |> List.rev
