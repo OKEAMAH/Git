@@ -90,49 +90,48 @@ module Make
           failure_insertion_eval state failing_ticks'
       | _ -> normal_eval state
     in
-    let rec go (fuel : fuel) current_tick failing_ticks state =
+    let rec consume_fuel_and_retry (fuel : fuel) current_tick executed_ticks
+        failing_ticks next_state =
+      match F.consume (F.of_ticks executed_ticks) fuel with
+      | None -> return (state, fuel, current_tick, failing_ticks)
+      | Some fuel ->
+          go
+            fuel
+            (Int64.add current_tick executed_ticks)
+            failing_ticks
+            next_state
+    and go (fuel : fuel) current_tick failing_ticks state =
       let*! input_request = PVM.is_input_state state in
       if F.is_empty fuel then return (state, fuel, current_tick, failing_ticks)
       else
         match input_request with
-        | No_input_required -> (
+        | No_input_required ->
             let* next_state, executed_ticks, failing_ticks =
               eval_tick fuel current_tick failing_ticks state
             in
-            match F.consume (F.of_ticks executed_ticks) fuel with
-            | None -> return (state, fuel, current_tick, failing_ticks)
-            | Some fuel ->
-                go
-                  fuel
-                  (Int64.add current_tick executed_ticks)
-                  failing_ticks
-                  next_state)
-        | Needs_reveal (Reveal_raw_data hash) -> (
+            consume_fuel_and_retry
+              fuel
+              current_tick
+              executed_ticks
+              failing_ticks
+              next_state
+        | Needs_reveal (Reveal_raw_data hash) ->
             let* data = Reveals.get ~data_dir ~pvm_name:PVM.name ~hash in
             let*! next_state = PVM.set_input (Reveal (Raw_data data)) state in
-            match F.consume F.one_tick_consumption fuel with
-            | None -> return (state, fuel, current_tick, failing_ticks)
-            | Some fuel ->
-                go fuel (Int64.succ current_tick) failing_ticks next_state)
-        | Needs_reveal Reveal_metadata -> (
+            consume_fuel_and_retry fuel current_tick 1L failing_ticks next_state
+        | Needs_reveal Reveal_metadata ->
             let*! next_state =
               PVM.set_input (Reveal (Metadata metadata)) state
             in
-            match F.consume F.one_tick_consumption fuel with
-            | None -> return (state, fuel, current_tick, failing_ticks)
-            | Some fuel ->
-                go fuel (Int64.succ current_tick) failing_ticks next_state)
-        | Needs_reveal (Request_dal_page page_id) -> (
+            consume_fuel_and_retry fuel current_tick 1L failing_ticks next_state
+        | Needs_reveal (Request_dal_page page_id) ->
             let* content_opt =
               Dal_pages_request.page_content ~dal_attestation_lag store page_id
             in
             let*! next_state =
               PVM.set_input (Reveal (Dal_page content_opt)) state
             in
-            match F.consume F.one_tick_consumption fuel with
-            | None -> return (state, fuel, current_tick, failing_ticks)
-            | Some fuel ->
-                go fuel (Int64.succ current_tick) failing_ticks next_state)
+            consume_fuel_and_retry fuel current_tick 1L failing_ticks next_state
         | Initial | First_after _ ->
             return (state, fuel, current_tick, failing_ticks)
     in
