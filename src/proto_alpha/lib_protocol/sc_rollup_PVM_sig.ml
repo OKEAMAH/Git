@@ -59,7 +59,7 @@ type inbox_message = {
 }
 
 type reveal_data =
-  | Raw_data of string
+  | Raw_data of Bytestring.t
   | Metadata of Sc_rollup_metadata_repr.t
   | Dal_page of Dal_slot_repr.Page.content option
 
@@ -114,9 +114,9 @@ let reveal_data_encoding =
          (req "reveal_data_kind" (constant "raw_data"))
          (req
             "raw_data"
-            (check_size Constants_repr.sc_rollup_message_size_limit bytes)))
-      (function Raw_data m -> Some ((), Bytes.of_string m) | _ -> None)
-      (fun ((), m) -> Raw_data (Bytes.to_string m))
+            (check_size Constants_repr.sc_rollup_message_size_limit bytestring)))
+      (function Raw_data m -> Some ((), m) | _ -> None)
+      (fun ((), m) -> Raw_data m)
   and case_metadata =
     case
       ~title:"metadata"
@@ -172,7 +172,7 @@ let inbox_message_equal a b =
 
 let reveal_data_equal a b =
   match (a, b) with
-  | Raw_data a, Raw_data b -> String.equal a b
+  | Raw_data a, Raw_data b -> Bytestring.equal a b
   | Raw_data _, _ -> false
   | Metadata a, Metadata b -> Sc_rollup_metadata_repr.equal a b
   | Metadata _, _ -> false

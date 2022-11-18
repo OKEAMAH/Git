@@ -64,7 +64,7 @@ val get :
   data_dir:string ->
   pvm_name:string ->
   hash:Sc_rollup.Reveal_hash.t ->
-  string tzresult Lwt.t
+  Bytestring.t tzresult Lwt.t
 
 (** [import ~data_dir ~pvm_name ~filename] turns the content of ~filename
     into a chunk of pages of (at most) 4KB, returning the hash of the first

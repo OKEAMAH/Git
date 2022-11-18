@@ -972,7 +972,7 @@ module Make (Context : P) :
     | PS.Raw_data data ->
         (* Notice that a multi-page transmission is possible by embedding
            a continuation encoded as an optional hash in [data]. *)
-        let* () = Next_message.set (Some data) in
+        let* () = Next_message.set (Some (data :> string)) in
         let* () = start_parsing in
         return ()
     | PS.Metadata metadata ->

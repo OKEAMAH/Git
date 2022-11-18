@@ -3242,7 +3242,7 @@ module Sc_rollup : sig
   }
 
   type reveal_data =
-    | Raw_data of string
+    | Raw_data of Bytestring.t
     | Metadata of Metadata.t
     | Dal_page of Dal.Page.content option
 
@@ -3776,7 +3776,7 @@ module Sc_rollup : sig
 
   module Proof : sig
     type reveal_proof =
-      | Raw_data_proof of string
+      | Raw_data_proof of Bytestring.t
       | Metadata_proof
       | Dal_page_proof of {
           page_id : Dal.Page.t;
@@ -3803,7 +3803,7 @@ module Sc_rollup : sig
 
       val proof_encoding : proof Data_encoding.t
 
-      val reveal : Reveal_hash.t -> string option Lwt.t
+      val reveal : Reveal_hash.t -> Bytestring.t option Lwt.t
 
       module Inbox_with_history : sig
         include Inbox.Merkelized_operations with type inbox_context = context
