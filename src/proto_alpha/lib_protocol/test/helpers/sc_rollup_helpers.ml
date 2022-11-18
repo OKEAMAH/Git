@@ -219,7 +219,7 @@ let make_eol ~inbox_level ~message_counter =
 *)
 type message = {
   input : Sc_rollup.input;
-  message : [`SOL | `Message of string | `EOL];
+  message : [`SOL | `Message of Bytestring.t | `EOL];
 }
 
 let pp_input fmt (input : Sc_rollup.input) =
@@ -239,7 +239,10 @@ let pp_message fmt {input; message} =
     "{ input = %a; message = %S }"
     pp_input
     input
-    (match message with `SOL -> "SOL" | `Message msg -> msg | `EOL -> "EOL")
+    (match message with
+    | `SOL -> "SOL"
+    | `Message msg -> (msg :> string)
+    | `EOL -> "EOL")
 
 (** An empty inbox level is a SOL and EOL. *)
 let make_empty_level inbox_level =
@@ -333,7 +336,7 @@ let make_eol_repr ~inbox_level ~message_counter =
 *)
 type message_repr = {
   input_repr : Sc_rollup_PVM_sig.input;
-  message_repr : [`SOL | `Message of string | `EOL];
+  message_repr : [`SOL | `Message of Bytestring.t | `EOL];
 }
 
 let pp_input_repr fmt (input_repr : Sc_rollup_PVM_sig.input) =
@@ -355,7 +358,7 @@ let pp_message_repr fmt {input_repr; message_repr} =
     input_repr
     (match message_repr with
     | `SOL -> "SOL"
-    | `Message msg -> msg
+    | `Message msg -> (msg :> string)
     | `EOL -> "EOL")
 
 (** An empty inbox level is a SOL and EOL. *)

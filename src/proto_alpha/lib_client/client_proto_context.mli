@@ -862,7 +862,7 @@ val sc_rollup_add_messages :
   ?storage_limit:Z.t ->
   ?counter:Manager_counter.t ->
   source:public_key_hash ->
-  messages:string list ->
+  messages:Bytestring.t list ->
   src_pk:public_key ->
   src_sk:Client_keys.sk_uri ->
   fee_parameter:Injection.fee_parameter ->

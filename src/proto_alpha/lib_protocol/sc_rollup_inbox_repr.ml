@@ -352,9 +352,9 @@ let key_of_message ix =
 
 let number_of_messages_key = ["number_of_messages"]
 
-type serialized_proof = bytes
+type serialized_proof = Bytestring.t
 
-let serialized_proof_encoding = Data_encoding.bytes
+let serialized_proof_encoding = Data_encoding.bytestring
 
 module type Merkelized_operations = sig
   type inbox_context
@@ -497,8 +497,8 @@ struct
       Tree.add
         level_tree
         (key_of_message message_index)
-        (Bytes.of_string
-           (payload : Sc_rollup_inbox_message_repr.serialized :> string))
+        (Bytestring.to_bytes
+           (payload : Sc_rollup_inbox_message_repr.serialized :> Bytestring.t))
     in
     let*! level_tree = set_number_of_messages level_tree message_counter in
     let nb_messages_in_commitment_period =
@@ -522,7 +522,8 @@ struct
     return
     @@ Option.map
          (fun bs ->
-           Sc_rollup_inbox_message_repr.unsafe_of_string (Bytes.to_string bs))
+           Sc_rollup_inbox_message_repr.unsafe_of_string
+             (Bytestring.of_bytes bs))
          bytes
 
   (** [no_history] creates an empty history with [capacity] set to
@@ -758,9 +759,11 @@ struct
             Next_level {lower_message_proof; inc});
       ]
 
-  let of_serialized_proof = Data_encoding.Binary.of_bytes_opt proof_encoding
+  let of_serialized_proof (p : Bytestring.t) =
+    Data_encoding.Binary.of_string_opt proof_encoding (p :> string)
 
-  let to_serialized_proof = Data_encoding.Binary.to_bytes_exn proof_encoding
+  let to_serialized_proof p =
+    Data_encoding.Binary.to_string_exn proof_encoding p |> Bytestring.of_string
 
   let proof_error reason =
     let open Lwt_result_syntax in
@@ -935,7 +938,7 @@ struct
       |> Option.map (lift_ptr_path deref)
       |> Option.join |> return
 
-    let serialized_proof_of_string x = Bytes.of_string x
+    let serialized_proof_of_string x = Bytestring.of_string x
 
     let inbox_message_counter = inbox_message_counter
   end

@@ -3115,11 +3115,11 @@ let commands_rw () =
           match messages with
           | `Bin message -> return [message]
           | `Json messages -> (
-              match Data_encoding.(Json.destruct (list string) messages) with
+              match Data_encoding.(Json.destruct (list bytes) messages) with
               | exception _ ->
                   failwith
                     "Could not read list of messages (expected list of bytes)"
-              | messages -> return messages)
+              | messages -> return (List.map Bytestring.of_bytes messages))
         in
         let* _, src_pk, src_sk = Client_keys.get_key cctxt source in
         let* _res =

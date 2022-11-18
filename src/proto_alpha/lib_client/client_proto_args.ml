@@ -941,7 +941,7 @@ module Sc_rollup_params = struct
     in
     let from_bin_file (cctxt : #Client_context.full) path =
       let* bin = cctxt#read_file path in
-      return (`Bin bin)
+      return (`Bin (Bytestring.of_string bin))
     in
     let from_json_file (cctxt : #Client_context.full) path =
       let* json_string = cctxt#read_file path in

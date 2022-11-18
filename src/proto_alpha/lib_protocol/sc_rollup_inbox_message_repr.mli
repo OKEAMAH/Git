@@ -65,9 +65,9 @@ type internal_inbox_message =
 (** A type representing messages from Layer 1 to Layer 2. Internal ones are
     originated from Layer 1 smart-contracts and external ones are messages from
     an external manager operation. *)
-type t = Internal of internal_inbox_message | External of string
+type t = Internal of internal_inbox_message | External of Bytestring.t
 
-type serialized = private string
+type serialized = private Bytestring.t
 
 (** Encoding for messages from Layer 1 to Layer 2 *)
 val encoding : t Data_encoding.t
@@ -78,9 +78,9 @@ val serialize : t -> serialized tzresult
 (** [deserialize bs] decodes [bs] as an inbox_message [t]. *)
 val deserialize : serialized -> t tzresult
 
-val unsafe_of_string : string -> serialized
+val unsafe_of_string : Bytestring.t -> serialized
 
-val unsafe_to_string : serialized -> string
+val unsafe_to_string : serialized -> Bytestring.t
 
 module Hash : S.HASH
 

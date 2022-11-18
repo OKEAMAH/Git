@@ -124,7 +124,7 @@ let serialize_external_messages ctxt external_messages =
       let open Result_syntax in
       (* Pay gas for serializing an external message. *)
       let* ctxt =
-        let bytes_len = String.length message in
+        let bytes_len = Bytestring.length message in
         Raw_context.consume_gas
           ctxt
           (Sc_rollup_costs.cost_serialize_external_inbox_message ~bytes_len)

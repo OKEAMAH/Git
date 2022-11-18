@@ -104,19 +104,19 @@ let pp_merkelized_and_payload fmt {merkelized; payload} =
     "@[<hv 2>merkelized:@,%a@,payload: %a@]"
     pp
     merkelized
-    Format.pp_print_string
-    (payload :> string)
+    Bytestring.pp_hex
+    (payload :> Bytestring.t)
 
 let merkelized_and_payload_encoding =
   let open Data_encoding in
   conv
-    (fun {merkelized; payload} -> (merkelized, (payload :> string)))
+    (fun {merkelized; payload} -> (merkelized, (payload :> Bytestring.t)))
     (fun (merkelized, payload) ->
       {
         merkelized;
         payload = Sc_rollup_inbox_message_repr.unsafe_of_string payload;
       })
-    (merge_objs encoding (obj1 (req "payload" string)))
+    (merge_objs encoding (obj1 (req "payload" bytestring)))
 
 module History = struct
   include

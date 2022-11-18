@@ -101,7 +101,7 @@ let internal_inbox_message_encoding =
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4027
    We should change the payload of [External] from [bytes] to [string]. *)
 
-type t = Internal of internal_inbox_message | External of string
+type t = Internal of internal_inbox_message | External of Bytestring.t
 
 let encoding =
   let open Data_encoding in
@@ -120,22 +120,22 @@ let encoding =
          case
            (Tag 1)
            ~title:"External"
-           Variable.string
+           Variable.bytestring
            (function External msg -> Some msg | Internal _ -> None)
            (fun msg -> External msg);
        ])
 
-type serialized = string
+type serialized = Bytestring.t
 
 let serialize msg =
   let open Result_syntax in
   match Data_encoding.Binary.to_string_opt encoding msg with
   | None -> tzfail Error_encode_inbox_message
-  | Some str -> return str
+  | Some str -> return (Bytestring.of_string str)
 
-let deserialize s =
+let deserialize (s : serialized) =
   let open Result_syntax in
-  match Data_encoding.Binary.of_string_opt encoding s with
+  match Data_encoding.Binary.of_string_opt encoding (s :> string) with
   | None -> tzfail Error_decode_inbox_message
   | Some msg -> return msg
 

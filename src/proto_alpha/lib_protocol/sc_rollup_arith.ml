@@ -932,7 +932,8 @@ module Make (Context : P) :
           match metadata with
           | Some {address; _} when Address.(destination = address) -> (
               match Micheline.root payload with
-              | String (_, payload) -> return (Some payload)
+              | String (_, payload) ->
+                  return (Some (Bytestring.of_string payload))
               | _ -> return None)
           | _ -> return None)
       | Ok (Internal Start_of_level) -> return None
@@ -941,7 +942,7 @@ module Make (Context : P) :
     match payload with
     | Some payload ->
         let* boot_sector = Boot_sector.get in
-        let msg = boot_sector ^ payload in
+        let msg = boot_sector ^ (payload :> string) in
         let* () = Current_level.set inbox_level in
         let* () = Message_counter.set (Some message_counter) in
         let* () = Next_message.set (Some msg) in
