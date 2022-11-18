@@ -16,6 +16,7 @@
 
 module Bits = Bits
 module Bloomer = Bloomer
+module Bytestring = Bytestring
 module Bounded_heap = Bounded_heap
 module Circular_buffer = Circular_buffer
 module Compare = Compare

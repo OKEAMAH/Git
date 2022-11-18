@@ -435,7 +435,7 @@ let octez_stdlib =
     "tezos-stdlib"
     ~path:"src/lib_stdlib"
     ~synopsis:"Tezos: yet-another local-extension of the OCaml standard library"
-    ~deps:[hex; zarith; zarith_stubs_js; lwt; ringo]
+    ~deps:[hex; zarith; zarith_stubs_js; lwt; ringo; data_encoding]
     ~ocaml:V.(at_least "4.14")
     ~js_compatible:true
     ~inline_tests:ppx_expect
