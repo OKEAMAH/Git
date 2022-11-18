@@ -657,7 +657,7 @@ let generate_dal_publish_slot_header =
 
 let generate_sc_rollup_originate =
   let kind = Sc_rollup.Kind.Example_arith in
-  let boot_sector = "" in
+  let boot_sector = Bytestring.empty in
   let parameters_ty = Script.lazy_expr (Expr.from_string "1") in
   let origination_proof =
     Lwt_main.run (Sc_rollup_helpers.origination_proof ~boot_sector kind)
@@ -665,6 +665,7 @@ let generate_sc_rollup_originate =
   let (module PVM) = Sc_rollup.wrapped_proof_module origination_proof in
   let origination_proof =
     Data_encoding.Binary.to_string_exn PVM.proof_encoding PVM.proof
+    |> Bytestring.of_string
   in
   QCheck2.Gen.pure
     (Sc_rollup_originate {kind; boot_sector; origination_proof; parameters_ty})

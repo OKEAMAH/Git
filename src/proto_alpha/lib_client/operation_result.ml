@@ -327,7 +327,7 @@ let pp_manager_operation_content (type kind) source ppf
         pp_micheline_from_lazy_expr
         parameters_ty
         Tezos_crypto.Blake2B.pp
-        (Tezos_crypto.Blake2B.hash_string [boot_sector])
+        (Tezos_crypto.Blake2B.hash_string [(boot_sector :> string)])
   | Sc_rollup_add_messages {messages = _} ->
       Format.pp_print_string ppf "Smart contract rollup messages submission"
   | Sc_rollup_cement {rollup; commitment} ->

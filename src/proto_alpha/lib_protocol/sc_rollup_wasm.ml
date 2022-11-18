@@ -85,9 +85,9 @@ module V2_0_0 = struct
 
     val name : string
 
-    val parse_boot_sector : string -> string option
+    val parse_boot_sector : Bytestring.t -> Bytestring.t option
 
-    val pp_boot_sector : Format.formatter -> string -> unit
+    val pp_boot_sector : Format.formatter -> Bytestring.t -> unit
 
     (** [get_tick state] gets the total tick counter for the given PVM state. *)
     val get_tick : state -> Sc_rollup_tick_repr.t Lwt.t
@@ -130,9 +130,9 @@ module V2_0_0 = struct
 
     let name = "wasm_2_0_0"
 
-    let parse_boot_sector s = Hex.to_string @@ `Hex s
+    let parse_boot_sector s = Some s
 
-    let pp_boot_sector fmt s = Format.fprintf fmt "%s" s
+    let pp_boot_sector fmt s = Bytestring.pp_hex fmt s
 
     type tree = Tree.tree
 
@@ -200,8 +200,8 @@ module V2_0_0 = struct
       let* state = Tree.add state ["wasm-version"] (Bytes.of_string "2.0.0") in
       Lwt.return state
 
-    let install_boot_sector state boot_sector =
-      WASM_machine.install_boot_sector boot_sector state
+    let install_boot_sector state (boot_sector : Bytestring.t) =
+      WASM_machine.install_boot_sector (boot_sector :> string) state
 
     let state_hash state =
       let context_hash = Tree.hash state in

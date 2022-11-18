@@ -3493,12 +3493,12 @@ module Sc_rollup : sig
   val output_encoding : output Data_encoding.t
 
   module PVM : sig
-    type boot_sector = string
+    type boot_sector = Bytestring.t
 
     module type S = sig
       val name : string
 
-      val parse_boot_sector : string -> boot_sector option
+      val parse_boot_sector : Bytestring.t -> boot_sector option
 
       val pp_boot_sector : Format.formatter -> boot_sector -> unit
 
@@ -3522,7 +3522,7 @@ module Sc_rollup : sig
 
       val initial_state : context -> state Lwt.t
 
-      val install_boot_sector : state -> string -> state Lwt.t
+      val install_boot_sector : state -> Bytestring.t -> state Lwt.t
 
       val is_input_state : state -> input_request Lwt.t
 
@@ -3535,9 +3535,10 @@ module Sc_rollup : sig
       val produce_proof :
         context -> input option -> state -> proof tzresult Lwt.t
 
-      val verify_origination_proof : proof -> string -> bool Lwt.t
+      val verify_origination_proof : proof -> Bytestring.t -> bool Lwt.t
 
-      val produce_origination_proof : context -> string -> proof tzresult Lwt.t
+      val produce_origination_proof :
+        context -> Bytestring.t -> proof tzresult Lwt.t
 
       type output_proof
 
@@ -4633,8 +4634,8 @@ and _ manager_operation =
       -> Kind.dal_publish_slot_header manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollup.Kind.t;
-      boot_sector : string;
-      origination_proof : string;
+      boot_sector : Bytestring.t;
+      origination_proof : Bytestring.t;
       parameters_ty : Script.lazy_expr;
     }
       -> Kind.sc_rollup_originate manager_operation

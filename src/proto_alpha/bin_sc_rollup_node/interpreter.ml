@@ -71,7 +71,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
   *)
   let get_boot_sector block_hash (node_ctxt : Node_context.t) =
     let open Lwt_result_syntax in
-    let exception Found_boot_sector of string in
+    let exception Found_boot_sector of Bytestring.t in
     let* block = Layer1.fetch_tezos_block node_ctxt.l1_ctxt block_hash in
     let missing_boot_sector () =
       failwith

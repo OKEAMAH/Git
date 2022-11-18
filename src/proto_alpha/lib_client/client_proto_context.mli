@@ -836,7 +836,7 @@ val sc_rollup_originate :
   ?counter:Manager_counter.t ->
   source:public_key_hash ->
   kind:Sc_rollup.Kind.t ->
-  boot_sector:string ->
+  boot_sector:Bytestring.t ->
   parameters_ty:Script.lazy_expr ->
   src_pk:public_key ->
   src_sk:Client_keys.sk_uri ->

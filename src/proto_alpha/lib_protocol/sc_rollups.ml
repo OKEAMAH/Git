@@ -25,12 +25,12 @@
 (*****************************************************************************)
 
 module PVM = struct
-  type boot_sector = string
+  type boot_sector = Bytestring.t
 
   module type S = sig
     val name : string
 
-    val parse_boot_sector : string -> boot_sector option
+    val parse_boot_sector : Bytestring.t -> boot_sector option
 
     val pp_boot_sector : Format.formatter -> boot_sector -> unit
 

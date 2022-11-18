@@ -86,7 +86,7 @@ type origination_result = {
   genesis_commitment_hash : Sc_rollup.Commitment.Hash.t;
 }
 
-let origination_proof_of_string origination_proof kind =
+let origination_proof_of_string (origination_proof : Bytestring.t) kind =
   let open Lwt_result_syntax in
   match kind with
   | Sc_rollup.Kind.Example_arith ->
@@ -94,7 +94,7 @@ let origination_proof_of_string origination_proof kind =
         match
           Data_encoding.Binary.of_string_opt
             Sc_rollup.ArithPVM.Protocol_implementation.proof_encoding
-            origination_proof
+            (origination_proof :> string)
         with
         | Some x -> return x
         | None ->
@@ -118,7 +118,7 @@ let origination_proof_of_string origination_proof kind =
         match
           Data_encoding.Binary.of_string_opt
             Sc_rollup.Wasm_2_0_0PVM.Protocol_implementation.proof_encoding
-            origination_proof
+            (origination_proof :> string)
         with
         | Some x -> return x
         | None ->

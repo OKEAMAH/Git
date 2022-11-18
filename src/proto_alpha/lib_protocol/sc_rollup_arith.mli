@@ -78,11 +78,11 @@ module type S = sig
 
   (** [parse_boot_sector s] builds a boot sector from its human
       writable description. *)
-  val parse_boot_sector : string -> string option
+  val parse_boot_sector : Bytestring.t -> Bytestring.t option
 
   (** [pp_boot_sector fmt s] prints a human readable representation of
      a boot sector. *)
-  val pp_boot_sector : Format.formatter -> string -> unit
+  val pp_boot_sector : Format.formatter -> Bytestring.t -> unit
 
   (** [pp state] returns a pretty-printer valid for [state]. *)
   val pp : state -> (Format.formatter -> unit -> unit) Lwt.t

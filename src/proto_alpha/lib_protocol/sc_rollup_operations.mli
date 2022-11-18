@@ -66,8 +66,8 @@ type origination_result = {
 val originate :
   context ->
   kind:Sc_rollup.Kind.t ->
-  boot_sector:string ->
-  origination_proof:string ->
+  boot_sector:Bytestring.t ->
+  origination_proof:Bytestring.t ->
   parameters_ty:Script_repr.lazy_expr ->
   (origination_result * context) tzresult Lwt.t
 
@@ -101,5 +101,5 @@ module Internal_for_tests : sig
     (execute_outbox_message_result * context) tzresult Lwt.t
 
   val origination_proof_of_string :
-    string -> Sc_rollup.Kind.t -> Sc_rollup.wrapped_proof tzresult Lwt.t
+    Bytestring.t -> Sc_rollup.Kind.t -> Sc_rollup.wrapped_proof tzresult Lwt.t
 end

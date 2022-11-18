@@ -96,7 +96,7 @@ let new_sc_rollup ctxt =
       Michelson_v1_parser.parse_expression "unit"
     in
     let parameters_ty = Alpha_context.Script.lazy_expr expanded in
-    let boot_sector = "" in
+    let boot_sector = Bytestring.empty in
     let kind = Sc_rollups.Kind.Example_arith in
     let*! genesis_commitment =
       Sc_rollup_helpers.genesis_commitment_raw

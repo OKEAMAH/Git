@@ -30,6 +30,8 @@ val of_string : string -> t
 
 val to_hex : t -> Hex.t
 
+val of_hex : Hex.t -> t
+
 val pp_hex : Format.formatter -> t -> unit
 
 (** {2 Copy of {!String}} *)

@@ -27,6 +27,8 @@ let[@inline] of_string s = s
 
 let to_hex x = Hex.of_string x
 
+let of_hex x = Hex.to_string x
+
 let pp_hex fmt s = Format.pp_print_string fmt (Hex.show @@ to_hex s)
 
 include String

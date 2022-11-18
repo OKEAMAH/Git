@@ -41,11 +41,11 @@ module V2_0_0 : sig
 
     (** [parse_boot_sector s] builds a boot sector from its human
       writable description. *)
-    val parse_boot_sector : string -> string option
+    val parse_boot_sector : Bytestring.t -> Bytestring.t option
 
     (** [pp_boot_sector fmt s] prints a human readable representation of
      a boot sector. *)
-    val pp_boot_sector : Format.formatter -> string -> unit
+    val pp_boot_sector : Format.formatter -> Bytestring.t -> unit
 
     (* Required by L2 node: *)
 

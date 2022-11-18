@@ -1315,6 +1315,7 @@ let sc_rollup_originate (cctxt : #full) ~chain ~block ?confirmations ?dry_run
   let (module PVM) = Sc_rollup.wrapped_proof_module origination_proof in
   let origination_proof =
     Data_encoding.Binary.to_string_exn PVM.proof_encoding PVM.proof
+    |> Bytestring.of_string
   in
   let op =
     Annotated_manager_operation.Single_manager

@@ -118,9 +118,9 @@ module type S = sig
 
   val name : string
 
-  val parse_boot_sector : string -> string option
+  val parse_boot_sector : Bytestring.t -> Bytestring.t option
 
-  val pp_boot_sector : Format.formatter -> string -> unit
+  val pp_boot_sector : Format.formatter -> Bytestring.t -> unit
 
   val pp : state -> (Format.formatter -> unit -> unit) Lwt.t
 
@@ -183,7 +183,8 @@ module Make (Context : P) :
 
   let parse_boot_sector s = Some s
 
-  let pp_boot_sector fmt s = Format.fprintf fmt "%s" s
+  let pp_boot_sector fmt (s : Bytestring.t) =
+    Format.pp_print_string fmt (s :> string)
 
   type tree = Tree.tree
 
@@ -829,10 +830,10 @@ module Make (Context : P) :
     let* state, _ = run m state in
     return state
 
-  let install_boot_sector state boot_sector =
+  let install_boot_sector state (boot_sector : Bytestring.t) =
     let m =
       let open Monad.Syntax in
-      let* () = Boot_sector.set boot_sector in
+      let* () = Boot_sector.set (boot_sector :> string) in
       return ()
     in
     let open Lwt_syntax in

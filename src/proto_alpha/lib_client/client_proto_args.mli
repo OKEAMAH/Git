@@ -253,7 +253,7 @@ module Sc_rollup_params : sig
   val rollup_kind_parameter : (Sc_rollup.PVM.t, full) Tezos_clic.parameter
 
   val boot_sector_parameter :
-    ( (module Sc_rollup.PVM.S) -> string tzresult Lwt.t,
+    ( (module Sc_rollup.PVM.S) -> Bytestring.t tzresult Lwt.t,
       full )
     Tezos_clic.parameter
 

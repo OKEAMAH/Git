@@ -609,11 +609,11 @@ val sc_rollup_origination :
   ?fee:Tez.t ->
   ?gas_limit:gas_limit ->
   ?storage_limit:Z.t ->
-  ?origination_proof:string ->
+  ?origination_proof:Bytestring.t ->
   Context.t ->
   Contract.t ->
   Sc_rollup.Kind.t ->
-  boot_sector:string ->
+  boot_sector:Bytestring.t ->
   parameters_ty:Script.lazy_expr ->
   (packed_operation * Sc_rollup.t) tzresult Lwt.t
 

@@ -430,8 +430,8 @@ and _ manager_operation =
       -> Kind.dal_publish_slot_header manager_operation
   | Sc_rollup_originate : {
       kind : Sc_rollups.Kind.t;
-      boot_sector : string;
-      origination_proof : string;
+      boot_sector : Bytestring.t;
+      origination_proof : Bytestring.t;
       parameters_ty : Script_repr.lazy_expr;
     }
       -> Kind.sc_rollup_originate manager_operation
@@ -1126,9 +1126,6 @@ module Encoding = struct
             (fun (zk_rollup, update) -> Zk_rollup_update {zk_rollup; update});
         }
 
-    let string_to_bytes_encoding =
-      Data_encoding.conv Bytes.of_string Bytes.to_string Data_encoding.bytes
-
     let sc_rollup_originate_case =
       MCase
         {
@@ -1137,8 +1134,8 @@ module Encoding = struct
           encoding =
             obj4
               (req "pvm_kind" Sc_rollups.Kind.encoding)
-              (req "boot_sector" string_to_bytes_encoding)
-              (req "origination_proof" string_to_bytes_encoding)
+              (req "boot_sector" bytestring)
+              (req "origination_proof" bytestring)
               (req "parameters_ty" Script_repr.lazy_expr_encoding);
           select =
             (function

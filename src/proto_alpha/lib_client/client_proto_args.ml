@@ -172,6 +172,20 @@ let file_or_text_parameter ~from_text () =
   Tezos_clic.parameter (fun (cctxt : #Client_context.full) ->
       file_or_text ~from_text ~read_file:cctxt#read_file)
 
+let file_or_hex ~from_binary ~read_file =
+  Client_aliases.parse_alternatives
+    [
+      ( "file",
+        fun path ->
+          let from_text s = from_binary (Bytestring.of_string s) in
+          parse_file ~from_text ~read_file ~path );
+      ("text", fun s -> from_binary (Bytestring.of_hex (`Hex s)));
+    ]
+
+let binary_file_or_hex_parameter ~from_binary () =
+  Tezos_clic.parameter (fun (cctxt : #Client_context.full) ->
+      file_or_hex ~from_binary ~read_file:cctxt#read_file)
+
 let json_parameter =
   let from_text s =
     match Data_encoding.Json.from_string s with
@@ -924,13 +938,13 @@ module Sc_rollup_params = struct
         | Some k -> return k)
 
   let boot_sector_parameter =
-    let from_text s =
+    let from_binary s =
       return (fun (module R : Sc_rollup.PVM.S) ->
           R.parse_boot_sector s |> function
           | None -> failwith "Invalid boot sector"
           | Some boot_sector -> return boot_sector)
     in
-    file_or_text_parameter ~from_text ()
+    binary_file_or_hex_parameter ~from_binary ()
 
   let messages_parameter =
     let open Lwt_result_syntax in
