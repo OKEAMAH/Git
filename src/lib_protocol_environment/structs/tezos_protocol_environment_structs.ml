@@ -112,4 +112,7 @@ module V7 = struct
   module Plonk = V7_plonk
 end
 
-module V8 = V7
+module V8 = struct
+  include V7
+  module Data_encoding = V8_data_encoding
+end

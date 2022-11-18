@@ -2360,6 +2360,103 @@ end
 # 26 "v8.in.ml"
 
 
+  module Bytestring : sig
+# 1 "v8/bytestring.mli"
+(*****************************************************************************)
+(*                                                                           *)
+(* Open Source License                                                       *)
+(* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(*                                                                           *)
+(* Permission is hereby granted, free of charge, to any person obtaining a   *)
+(* copy of this software and associated documentation files (the "Software"),*)
+(* to deal in the Software without restriction, including without limitation *)
+(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
+(* and/or sell copies of the Software, and to permit persons to whom the     *)
+(* Software is furnished to do so, subject to the following conditions:      *)
+(*                                                                           *)
+(* The above copyright notice and this permission notice shall be included   *)
+(* in all copies or substantial portions of the Software.                    *)
+(*                                                                           *)
+(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
+(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
+(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
+(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
+(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
+(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
+(* DEALINGS IN THE SOFTWARE.                                                 *)
+(*                                                                           *)
+(*****************************************************************************)
+
+(** Bytestring is an alias for {!string} *)
+type t = private string
+
+val of_string : string -> t
+
+val to_hex : t -> Hex.t
+
+val pp_hex : Format.formatter -> t -> unit
+
+(** {2 Copy of {!String}} *)
+
+val length : t -> int
+
+val get : t -> int -> char
+
+val init : int -> (int -> char) -> t
+
+val sub : t -> int -> int -> t
+
+val blit : t -> int -> bytes -> int -> int -> unit
+
+val concat : t -> t list -> t
+
+val iter : (char -> unit) -> t -> unit
+
+val iteri : (int -> char -> unit) -> t -> unit
+
+val map : (char -> char) -> t -> t
+
+val mapi : (int -> char -> char) -> t -> t
+
+val trim : t -> t
+
+val escaped : t -> t
+
+val index_opt : t -> char -> int option
+
+val rindex_opt : t -> char -> int option
+
+val index_from_opt : t -> int -> char -> int option
+
+val rindex_from_opt : t -> int -> char -> int option
+
+val contains : t -> char -> bool
+
+val contains_from : t -> int -> char -> bool
+
+val rcontains_from : t -> int -> char -> bool
+
+val uppercase_ascii : t -> t
+
+val lowercase_ascii : t -> t
+
+val capitalize_ascii : t -> t
+
+val uncapitalize_ascii : t -> t
+
+val compare : t -> t -> int
+
+val equal : t -> t -> bool
+
+val split_on_char : char -> t -> t list
+
+val of_bytes : bytes -> t
+
+val to_bytes : t -> bytes
+end
+# 28 "v8.in.ml"
+
+
   module Z : sig
 # 1 "v8/z.mli"
 (**
@@ -2831,7 +2928,7 @@ external of_bits: string -> t = "ml_z_of_bits"
     trailing zeros in s.
  *)
 end
-# 28 "v8.in.ml"
+# 30 "v8.in.ml"
 
 
   module Q : sig
@@ -3103,7 +3200,7 @@ val (>=): t -> t -> bool
 val (<>): t -> t -> bool
 (** [a <> b] is equivalent to [not (equal a b)]. *)
 end
-# 30 "v8.in.ml"
+# 32 "v8.in.ml"
 
 
   module Lwt : sig
@@ -3415,7 +3512,7 @@ val return_error : 'e -> ((_, 'e) result) t
 
     @since Lwt 2.6.0 *)
 end
-# 32 "v8.in.ml"
+# 34 "v8.in.ml"
 
 
   module Data_encoding : sig
@@ -3566,6 +3663,10 @@ val string : string encoding
 (** Encoding of arbitrary bytes
     (encoded via hex in JSON and directly as a sequence byte in binary). *)
 val bytes : Bytes.t encoding
+
+(** Encoding of arbitrary immutable bytes
+    (encoded via hex in JSON and directly as a sequence byte in binary). *)
+val bytestring : Bytestring.t encoding
 
 (** {3 Descriptor combinators} *)
 
@@ -4028,6 +4129,9 @@ module Fixed : sig
   (** @raise Invalid_argument if the argument is less or equal to zero. *)
   val bytes : int -> bytes encoding
 
+  (** @raise Invalid_argument if the argument is less or equal to zero. *)
+  val bytestring : int -> Bytestring.t encoding
+
   (** [add_padding e n] is a padded version of the encoding [e]. In Binary,
       there are [n] null bytes ([\000]) added after the value encoded by [e].
       In JSON, padding is ignored.
@@ -4109,6 +4213,8 @@ module Variable : sig
   val string : string encoding
 
   val bytes : bytes encoding
+
+  val bytestring : Bytestring.t encoding
 
   (** @raise Invalid_argument if the encoding argument is variable length
         or may lead to zero-width representation in binary. *)
@@ -4892,7 +4998,7 @@ module Binary : sig
   val to_string_exn : ?buffer_size:int -> 'a encoding -> 'a -> string
 end
 end
-# 34 "v8.in.ml"
+# 36 "v8.in.ml"
 
 
   module Raw_hashes : sig
@@ -4934,7 +5040,7 @@ val sha3_256 : bytes -> bytes
 
 val sha3_512 : bytes -> bytes
 end
-# 36 "v8.in.ml"
+# 38 "v8.in.ml"
 
 
   module Compare : sig
@@ -5215,7 +5321,7 @@ let compare (foo_a, bar_a) (foo_b, bar_b) =
 *)
 val or_else : int -> (unit -> int) -> int
 end
-# 38 "v8.in.ml"
+# 40 "v8.in.ml"
 
 
   module Time : sig
@@ -5269,7 +5375,7 @@ val rfc_encoding : t Data_encoding.t
 
 val pp_hum : Format.formatter -> t -> unit
 end
-# 40 "v8.in.ml"
+# 42 "v8.in.ml"
 
 
   module TzEndian : sig
@@ -5335,7 +5441,7 @@ val get_uint16_string : string -> int -> int
 
 val set_uint16 : bytes -> int -> int -> unit
 end
-# 42 "v8.in.ml"
+# 44 "v8.in.ml"
 
 
   module Bits : sig
@@ -5372,7 +5478,7 @@ end
     The behaviour is unspecified if [x < 0].*)
 val numbits : int -> int
 end
-# 44 "v8.in.ml"
+# 46 "v8.in.ml"
 
 
   module Equality_witness : sig
@@ -5440,7 +5546,7 @@ val eq : 'a t -> 'b t -> ('a, 'b) eq option
 (** [hash id] returns a hash for [id]. *)
 val hash : 'a t -> int
 end
-# 46 "v8.in.ml"
+# 48 "v8.in.ml"
 
 
   module FallbackArray : sig
@@ -5530,7 +5636,7 @@ val fold : ('b -> 'a -> 'b) -> 'a t -> 'b -> 'b
    filled. *)
 val fold_map : ('b -> 'a -> 'b * 'c) -> 'a t -> 'b -> 'c -> 'b * 'c t
 end
-# 48 "v8.in.ml"
+# 50 "v8.in.ml"
 
 
   module Error_monad : sig
@@ -5964,7 +6070,7 @@ module Lwt_option_syntax : sig
   val both : 'a option Lwt.t -> 'b option Lwt.t -> ('a * 'b) option Lwt.t
 end
 end
-# 50 "v8.in.ml"
+# 52 "v8.in.ml"
 
 
   open Error_monad
@@ -6091,7 +6197,7 @@ val iter_ep :
     them is. *)
 val iter_p : ('a -> unit Lwt.t) -> 'a t -> unit Lwt.t
 end
-# 54 "v8.in.ml"
+# 56 "v8.in.ml"
 
 
   module List : sig
@@ -7437,7 +7543,7 @@ val exists_ep :
   'a list ->
   (bool, 'error Error_monad.trace) result Lwt.t
 end
-# 56 "v8.in.ml"
+# 58 "v8.in.ml"
 
 
   module Array : sig
@@ -7547,7 +7653,7 @@ val fast_sort : [`You_cannot_sort_arrays_in_the_protocol]
 
 module Floatarray : sig end
 end
-# 58 "v8.in.ml"
+# 60 "v8.in.ml"
 
 
   module Set : sig
@@ -7696,7 +7802,7 @@ end
 
 module Make (Ord : Compare.COMPARABLE) : S with type elt = Ord.t
 end
-# 60 "v8.in.ml"
+# 62 "v8.in.ml"
 
 
   module Map : sig
@@ -7865,7 +7971,7 @@ end
 
 module Make (Ord : Compare.COMPARABLE) : S with type key = Ord.t
 end
-# 62 "v8.in.ml"
+# 64 "v8.in.ml"
 
 
   module Option : sig
@@ -8013,7 +8119,7 @@ val catch : ?catch_only:(exn -> bool) -> (unit -> 'a) -> 'a option
 val catch_s :
   ?catch_only:(exn -> bool) -> (unit -> 'a Lwt.t) -> 'a option Lwt.t
 end
-# 64 "v8.in.ml"
+# 66 "v8.in.ml"
 
 
   module Result : sig
@@ -8179,7 +8285,7 @@ val catch_f :
 val catch_s :
   ?catch_only:(exn -> bool) -> (unit -> 'a Lwt.t) -> ('a, exn) result Lwt.t
 end
-# 66 "v8.in.ml"
+# 68 "v8.in.ml"
 
 
   module RPC_arg : sig
@@ -8249,7 +8355,7 @@ type ('a, 'b) eq = Eq : ('a, 'a) eq
 
 val eq : 'a arg -> 'b arg -> ('a, 'b) eq option
 end
-# 68 "v8.in.ml"
+# 70 "v8.in.ml"
 
 
   module RPC_path : sig
@@ -8305,7 +8411,7 @@ val add_final_args :
 val ( /:* ) :
   ('prefix, 'params) path -> 'a RPC_arg.t -> ('prefix, 'params * 'a list) path
 end
-# 70 "v8.in.ml"
+# 72 "v8.in.ml"
 
 
   module RPC_query : sig
@@ -8377,7 +8483,7 @@ exception Invalid of string
 
 val parse : 'a query -> untyped -> 'a
 end
-# 72 "v8.in.ml"
+# 74 "v8.in.ml"
 
 
   module RPC_service : sig
@@ -8454,7 +8560,7 @@ val put_service :
   ('prefix, 'params) RPC_path.t ->
   ([`PUT], 'prefix, 'params, 'query, 'input, 'output) service
 end
-# 74 "v8.in.ml"
+# 76 "v8.in.ml"
 
 
   module RPC_answer : sig
@@ -8515,7 +8621,7 @@ val not_found : 'o t Lwt.t
 
 val fail : error list -> 'a t Lwt.t
 end
-# 76 "v8.in.ml"
+# 78 "v8.in.ml"
 
 
   module RPC_directory : sig
@@ -8785,7 +8891,7 @@ val register_dynamic_directory :
   ('a -> 'a directory Lwt.t) ->
   'prefix directory
 end
-# 78 "v8.in.ml"
+# 80 "v8.in.ml"
 
 
   module Base58 : sig
@@ -8850,7 +8956,7 @@ val check_encoded_prefix : 'a encoding -> string -> int -> unit
     not start with a registered prefix. *)
 val decode : string -> data option
 end
-# 80 "v8.in.ml"
+# 82 "v8.in.ml"
 
 
   module S : sig
@@ -9212,7 +9318,7 @@ module type CURVE = sig
   val mul : t -> Scalar.t -> t
 end
 end
-# 82 "v8.in.ml"
+# 84 "v8.in.ml"
 
 
   module Blake2B : sig
@@ -9277,7 +9383,7 @@ end
 
 module Make (Register : Register) (Name : PrefixedName) : S.HASH
 end
-# 84 "v8.in.ml"
+# 86 "v8.in.ml"
 
 
   module Bls : sig
@@ -9323,7 +9429,7 @@ module Primitive : sig
   val pairing_check : (G1.t * G2.t) list -> bool
 end
 end
-# 86 "v8.in.ml"
+# 88 "v8.in.ml"
 
 
   module Ed25519 : sig
@@ -9357,7 +9463,7 @@ end
 
 include S.SIGNATURE with type watermark := bytes
 end
-# 88 "v8.in.ml"
+# 90 "v8.in.ml"
 
 
   module Secp256k1 : sig
@@ -9391,7 +9497,7 @@ end
 
 include S.SIGNATURE with type watermark := bytes
 end
-# 90 "v8.in.ml"
+# 92 "v8.in.ml"
 
 
   module P256 : sig
@@ -9425,7 +9531,7 @@ end
 
 include S.SIGNATURE with type watermark := bytes
 end
-# 92 "v8.in.ml"
+# 94 "v8.in.ml"
 
 
   module Chain_id : sig
@@ -9457,7 +9563,7 @@ end
 
 include S.HASH
 end
-# 94 "v8.in.ml"
+# 96 "v8.in.ml"
 
 
   module Signature : sig
@@ -9509,7 +9615,7 @@ include
      and type Public_key.t = public_key
      and type watermark := watermark
 end
-# 96 "v8.in.ml"
+# 98 "v8.in.ml"
 
 
   module Block_hash : sig
@@ -9542,7 +9648,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.HASH
 end
-# 98 "v8.in.ml"
+# 100 "v8.in.ml"
 
 
   module Operation_hash : sig
@@ -9575,7 +9681,7 @@ end
 (** Operations hashes / IDs. *)
 include S.HASH
 end
-# 100 "v8.in.ml"
+# 102 "v8.in.ml"
 
 
   module Operation_list_hash : sig
@@ -9608,7 +9714,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.MERKLE_TREE with type elt = Operation_hash.t
 end
-# 102 "v8.in.ml"
+# 104 "v8.in.ml"
 
 
   module Operation_list_list_hash : sig
@@ -9641,7 +9747,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.MERKLE_TREE with type elt = Operation_list_hash.t
 end
-# 104 "v8.in.ml"
+# 106 "v8.in.ml"
 
 
   module Protocol_hash : sig
@@ -9674,7 +9780,7 @@ end
 (** Protocol hashes / IDs. *)
 include S.HASH
 end
-# 106 "v8.in.ml"
+# 108 "v8.in.ml"
 
 
   module Context_hash : sig
@@ -9727,7 +9833,7 @@ end
 
 type version = Version.t
 end
-# 108 "v8.in.ml"
+# 110 "v8.in.ml"
 
 
   module Sapling : sig
@@ -9875,7 +9981,7 @@ module Verification : sig
   val final_check : t -> UTXO.transaction -> string -> bool
 end
 end
-# 110 "v8.in.ml"
+# 112 "v8.in.ml"
 
 
   module Timelock : sig
@@ -9934,7 +10040,7 @@ val open_chest : chest -> chest_key -> time:int -> opening_result
     Used for gas accounting*)
 val get_plaintext_size : chest -> int
 end
-# 112 "v8.in.ml"
+# 114 "v8.in.ml"
 
 
   module Vdf : sig
@@ -10022,7 +10128,7 @@ val prove : discriminant -> challenge -> difficulty -> result * proof
     @raise Invalid_argument when inputs are invalid *)
 val verify : discriminant -> challenge -> difficulty -> result -> proof -> bool
 end
-# 114 "v8.in.ml"
+# 116 "v8.in.ml"
 
 
   module Micheline : sig
@@ -10082,7 +10188,7 @@ val annotations : ('l, 'p) node -> string list
 
 val strip_locations : (_, 'p) node -> 'p canonical
 end
-# 116 "v8.in.ml"
+# 118 "v8.in.ml"
 
 
   module Block_header : sig
@@ -10139,7 +10245,7 @@ type t = {shell : shell_header; protocol_data : bytes}
 
 include S.HASHABLE with type t := t and type hash := Block_hash.t
 end
-# 118 "v8.in.ml"
+# 120 "v8.in.ml"
 
 
   module Bounded : sig
@@ -10288,7 +10394,7 @@ module Int8 (B : BOUNDS with type ocaml_type := int) :
 module Uint8 (B : BOUNDS with type ocaml_type := int) :
   S with type ocaml_type := int
 end
-# 120 "v8.in.ml"
+# 122 "v8.in.ml"
 
 
   module Fitness : sig
@@ -10322,7 +10428,7 @@ end
     compared in a lexicographical order (longer list are greater). *)
 include S.T with type t = bytes list
 end
-# 122 "v8.in.ml"
+# 124 "v8.in.ml"
 
 
   module Operation : sig
@@ -10366,7 +10472,7 @@ type t = {shell : shell_header; proto : bytes}
 
 include S.HASHABLE with type t := t and type hash := Operation_hash.t
 end
-# 124 "v8.in.ml"
+# 126 "v8.in.ml"
 
 
   module Context : sig
@@ -11003,7 +11109,7 @@ module Cache :
      and type key = cache_key
      and type value = cache_value
 end
-# 126 "v8.in.ml"
+# 128 "v8.in.ml"
 
 
   module Updater : sig
@@ -11528,7 +11634,7 @@ end
     not complete until [init] in invoked. *)
 val activate : Context.t -> Protocol_hash.t -> Context.t Lwt.t
 end
-# 128 "v8.in.ml"
+# 130 "v8.in.ml"
 
 
   module RPC_context : sig
@@ -11683,7 +11789,7 @@ val make_opt_call3 :
   'i ->
   'o option shell_tzresult Lwt.t
 end
-# 130 "v8.in.ml"
+# 132 "v8.in.ml"
 
 
   module Wasm_2_0_0 : sig
@@ -11749,7 +11855,7 @@ module Make
   val get_info : Tree.tree -> info Lwt.t
 end
 end
-# 132 "v8.in.ml"
+# 134 "v8.in.ml"
 
 
   module Plonk : sig
@@ -11817,7 +11923,7 @@ val verify_multi_circuits :
   proof ->
   bool
 end
-# 134 "v8.in.ml"
+# 136 "v8.in.ml"
 
 
   module Dal : sig
@@ -11936,6 +12042,6 @@ val verify_page :
   page_proof ->
   (bool, [> `Segment_index_out_of_range | `Page_length_mismatch]) Result.t
 end
-# 136 "v8.in.ml"
+# 138 "v8.in.ml"
 
 end

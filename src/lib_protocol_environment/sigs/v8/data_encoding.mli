@@ -145,6 +145,10 @@ val string : string encoding
     (encoded via hex in JSON and directly as a sequence byte in binary). *)
 val bytes : Bytes.t encoding
 
+(** Encoding of arbitrary immutable bytes
+    (encoded via hex in JSON and directly as a sequence byte in binary). *)
+val bytestring : Bytestring.t encoding
+
 (** {3 Descriptor combinators} *)
 
 (** Combinator to make an optional value
@@ -606,6 +610,9 @@ module Fixed : sig
   (** @raise Invalid_argument if the argument is less or equal to zero. *)
   val bytes : int -> bytes encoding
 
+  (** @raise Invalid_argument if the argument is less or equal to zero. *)
+  val bytestring : int -> Bytestring.t encoding
+
   (** [add_padding e n] is a padded version of the encoding [e]. In Binary,
       there are [n] null bytes ([\000]) added after the value encoded by [e].
       In JSON, padding is ignored.
@@ -687,6 +694,8 @@ module Variable : sig
   val string : string encoding
 
   val bytes : bytes encoding
+
+  val bytestring : Bytestring.t encoding
 
   (** @raise Invalid_argument if the encoding argument is variable length
         or may lead to zero-width representation in binary. *)

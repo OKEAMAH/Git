@@ -25,6 +25,8 @@ module type T = sig
 
   module Hex : [%sig "v8/hex.mli"]
 
+  module Bytestring : [%sig "v8/bytestring.mli"]
+
   module Z : [%sig "v8/z.mli"]
 
   module Q : [%sig "v8/q.mli"]

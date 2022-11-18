@@ -43,6 +43,7 @@ module type T = sig
        and type 'a Data_encoding.lazy_t = 'a Data_encoding.lazy_t
        and type 'a Lwt.t = 'a Lwt.t
        and type ('a, 'b) Pervasives.result = ('a, 'b) result
+       and type Bytestring.t = Bytestring.t
        and type Chain_id.t = Tezos_crypto.Chain_id.t
        and type Block_hash.t = Tezos_crypto.Block_hash.t
        and type Operation_hash.t = Tezos_crypto.Operation_hash.t
@@ -207,6 +208,7 @@ struct
   module Bytes = Bytes
   module Hex = Tezos_stdlib.Hex
   module String = String
+  module Bytestring = Tezos_stdlib.Bytestring
   module Bits = Bits
   module TzEndian = TzEndian
   module Set = Tezos_error_monad.TzLwtreslib.Set
