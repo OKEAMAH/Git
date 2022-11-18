@@ -220,6 +220,14 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
   | [] ->
       (* Avoid accessing context data when there is nothing to transfer. *)
       return (ctxt, [])
+  | [(source, amount)] ->
+      spend ctxt source amount origin >>=? fun (ctxt, debit_log) ->
+      credit ctxt dest amount origin >>=? fun (ctxt, credit_log) ->
+      (match source with
+      | `Contract contract | `Frozen_bonds (contract, _) ->
+          Contract_storage.ensure_deallocated_if_empty ctxt contract
+      | #source -> return ctxt)
+      >>=? fun ctxt -> return (ctxt, [credit_log; debit_log])
   | _ :: _ ->
       (* Withdraw from sources. *)
       List.fold_left_es
@@ -250,4 +258,5 @@ let transfer_n ?(origin = Receipt_repr.Block_application) ctxt src dest =
       (ctxt, balance_updates)
 
 let transfer ?(origin = Receipt_repr.Block_application) ctxt src dest amount =
-  transfer_n ~origin ctxt [(src, amount)] dest
+  if Tez_repr.(amount = zero) then return (ctxt, [])
+  else transfer_n ~origin ctxt [(src, amount)] dest
