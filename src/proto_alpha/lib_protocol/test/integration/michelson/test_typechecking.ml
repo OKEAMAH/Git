@@ -56,7 +56,7 @@ let sc_originate block contract parameters_ty =
       (B block)
       contract
       kind
-      ~boot_sector:""
+      ~boot_sector:Bytestring.empty
       ~parameters_ty:(Script.lazy_expr @@ Expr.from_string parameters_ty)
   in
   let* incr = Incremental.begin_construction block in

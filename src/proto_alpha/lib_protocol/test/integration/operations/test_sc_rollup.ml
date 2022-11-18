@@ -161,7 +161,12 @@ let test_disable_feature_flag () =
   let kind = Sc_rollup.Kind.Example_arith in
   let* op, _ =
     let parameters_ty = Script.lazy_expr @@ Expr.from_string "unit" in
-    Op.sc_rollup_origination (I i) contract kind ~boot_sector:"" ~parameters_ty
+    Op.sc_rollup_origination
+      (I i)
+      contract
+      kind
+      ~boot_sector:Bytestring.empty
+      ~parameters_ty
   in
   let expect_failure = function
     | Environment.Ecoproto_error
@@ -189,8 +194,8 @@ let test_sc_rollups_all_well_defined () =
   all_names_are_valid ()
 
 (** Initializes the context and originates a SCORU. *)
-let sc_originate ?(boot_sector = "") ?origination_proof block contract
-    parameters_ty =
+let sc_originate ?(boot_sector = Bytestring.empty) ?origination_proof block
+    contract parameters_ty =
   let kind = Sc_rollup.Kind.Example_arith in
   let* operation, rollup =
     Op.sc_rollup_origination
@@ -818,16 +823,17 @@ let test_originating_with_invalid_types () =
 let test_originating_with_invalid_boot_sector_proof () =
   let*! origination_proof =
     Sc_rollup_helpers.origination_proof
-      ~boot_sector:"a boot sector"
+      ~boot_sector:(Bytestring.of_string "a boot sector")
       Sc_rollup.Kind.Example_arith
   in
   let (module PVM) = Sc_rollup.wrapped_proof_module origination_proof in
   let origination_proof =
     Data_encoding.Binary.to_string_exn PVM.proof_encoding PVM.proof
+    |> Bytestring.of_string
   in
   let*! res =
     init_and_originate
-      ~boot_sector:"another boot sector"
+      ~boot_sector:(Bytestring.of_string "another boot sector")
       ~origination_proof
       Context.T1
       "unit"
@@ -843,16 +849,17 @@ let test_originating_with_invalid_boot_sector_proof () =
 let test_originating_with_invalid_kind_proof () =
   let*! origination_proof =
     Sc_rollup_helpers.origination_proof
-      ~boot_sector:"a boot sector"
+      ~boot_sector:(Bytestring.of_string "a boot sector")
       Sc_rollup.Kind.Wasm_2_0_0
   in
   let (module PVM) = Sc_rollup.wrapped_proof_module origination_proof in
   let origination_proof =
     Data_encoding.Binary.to_string_exn PVM.proof_encoding PVM.proof
+    |> Bytestring.of_string
   in
   let*! res =
     init_and_originate
-      ~boot_sector:"a boot sector"
+      ~boot_sector:(Bytestring.of_string "a boot sector")
       ~origination_proof
       Context.T1
       "unit"
@@ -866,10 +873,10 @@ let test_originating_with_invalid_kind_proof () =
   | _ -> failwith "It should have failed with [Sc_rollup_proof_check]"
 
 let test_originating_with_random_proof () =
-  let origination_proof = "bad proof" in
+  let origination_proof = Bytestring.of_string "bad proof" in
   let*! res =
     init_and_originate
-      ~boot_sector:"some boot sector"
+      ~boot_sector:(Bytestring.of_string "some boot sector")
       ~origination_proof
       Context.T1
       "unit"
@@ -1523,13 +1530,12 @@ let test_inbox_max_number_of_messages_per_commitment_period () =
   in
   let* incr = Incremental.begin_construction block in
   (* This just one message below the limit *)
-  let messages =
-    List.repeat max_number_of_messages_per_commitment_period "foo"
-  in
+  let foo = Bytestring.of_string "foo" in
+  let messages = List.repeat max_number_of_messages_per_commitment_period foo in
   let* op = Op.sc_rollup_add_messages (I incr) account1 messages in
   let* incr = Incremental.add_operation ~check_size:false incr op in
   (* This break the limit *)
-  let* op = Op.sc_rollup_add_messages (I incr) account2 ["foo"] in
+  let* op = Op.sc_rollup_add_messages (I incr) account2 [foo] in
   let expect_apply_failure = function
     | Environment.Ecoproto_error
         (Sc_rollup_errors
@@ -1711,8 +1717,12 @@ let dumb_proof ~choice =
   let open Lwt_result_syntax in
   let context_arith_pvm = Tezos_context_memory.make_empty_context () in
   let*! arith_state = Arith_pvm.initial_state context_arith_pvm in
-  let*! arith_state = Arith_pvm.install_boot_sector arith_state "" in
-  let input = Sc_rollup_helpers.make_external_input "c4c4" in
+  let*! arith_state =
+    Arith_pvm.install_boot_sector arith_state Bytestring.empty
+  in
+  let input =
+    Sc_rollup_helpers.make_external_input (Bytestring.of_string "c4c4")
+  in
   let* proof =
     Arith_pvm.produce_proof context_arith_pvm (Some input) arith_state
     >|= Environment.wrap_tzresult
@@ -1879,7 +1889,7 @@ let init_arith_state ~boot_sector =
   let* state = Arith_pvm.install_boot_sector state boot_sector in
   return (context, state)
 
-let make_arith_state ?(boot_sector = "") metadata =
+let make_arith_state ?(boot_sector = Bytestring.empty) metadata =
   let open Lwt_syntax in
   let* _context, state = init_arith_state ~boot_sector in
   let* state_hash1 = Arith_pvm.state_hash state in
@@ -1901,7 +1911,7 @@ let make_arith_state ?(boot_sector = "") metadata =
 
   return (state_hash1, state_hash2, state_hash3)
 
-let make_refutation_metadata ?(boot_sector = "") metadata =
+let make_refutation_metadata ?(boot_sector = Bytestring.empty) metadata =
   let open Lwt_syntax in
   let* context, state = init_arith_state ~boot_sector in
   (* We will prove the tick after the evaluation of the boot sector. *)
@@ -2087,7 +2097,8 @@ let test_sol_and_eol () =
   let* block = Block.bake block in
 
   (* Bake a third block where a message is added. *)
-  let* operation = Op.sc_rollup_add_messages (B block) account ["foo"] in
+  let foo = Bytestring.of_string "foo" in
+  let* operation = Op.sc_rollup_add_messages (B block) account [foo] in
   let* block = Block.bake ~operation block in
 
   (* Bake an extra block to archive all inbox messages for the snapshot. *)
@@ -2099,7 +2110,7 @@ let test_sol_and_eol () =
   let level_one = Raw_level.of_int32_exn 1l in
   let level_two = Raw_level.of_int32_exn 2l in
   let*! ((ctxt, level_tree, history, inbox) as full_history_inbox) =
-    full_history_inbox [(level_zero, []); (level_one, []); (level_two, ["foo"])]
+    full_history_inbox [(level_zero, []); (level_one, []); (level_two, [foo])]
   in
 
   (* Assert SOL is at position 0. *)

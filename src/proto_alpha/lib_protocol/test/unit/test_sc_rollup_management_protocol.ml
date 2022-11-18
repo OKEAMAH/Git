@@ -51,8 +51,8 @@ let check_encode_decode_inbox_message message =
   in
   Assert.equal_string
     ~loc:__LOC__
-    (Sc_rollup.Inbox_message.unsafe_to_string bytes)
-    (Sc_rollup.Inbox_message.unsafe_to_string bytes')
+    (Sc_rollup.Inbox_message.unsafe_to_string bytes :> string)
+    (Sc_rollup.Inbox_message.unsafe_to_string bytes' :> string)
 
 let check_encode_decode_outbox_message ctxt message =
   let open Lwt_result_syntax in
@@ -164,6 +164,7 @@ let test_encode_decode_internal_inbox_message_eol () =
 let test_encode_decode_external_inbox_message () =
   let open Lwt_result_syntax in
   let assert_prefix message =
+    let message = Bytestring.of_string message in
     let inbox_message = Sc_rollup.Inbox_message.External message in
     let*? real_encoding =
       Environment.wrap_tzresult
@@ -173,16 +174,20 @@ let test_encode_decode_external_inbox_message () =
       Sc_rollup.Inbox_message.unsafe_to_string real_encoding
     in
     (* The prefix consists of a tag (0 for internal, 1 for external). *)
-    let real_prefix = String.get real_encoding 0 in
+    let real_prefix = Bytestring.get real_encoding 0 in
     let expected_prefix = '\001' in
-    let expected_encoding = Printf.sprintf "%c%s" expected_prefix message in
+    let expected_prefix_str = Bytestring.make 1 expected_prefix in
+    let expected_encoding = Bytestring.cat expected_prefix_str message in
     (* Check that the encode/decode matches. *)
     let* () = check_encode_decode_inbox_message inbox_message in
     (* Check that the prefix match. *)
     let* () = Assert.equal_char ~loc:__LOC__ real_prefix expected_prefix in
     (* Check that the encoded string consists of the prefix followed by the
        original message. *)
-    Assert.equal_string ~loc:__LOC__ real_encoding expected_encoding
+    Assert.equal_string
+      ~loc:__LOC__
+      (real_encoding :> string)
+      (expected_encoding :> string)
   in
   let* () = assert_prefix "" in
   let* () = assert_prefix "A" in
@@ -194,9 +199,9 @@ let test_encode_decode_external_inbox_message () =
     assert_encoding_failure ~loc:__LOC__ res
   in
   let max_msg_size = Constants_repr.sc_rollup_message_size_limit in
-  let message = String.init max_msg_size (Fun.const 'A') in
+  let message = Bytestring.init max_msg_size (Fun.const 'A') in
   let* () = assert_encoding_failure message in
-  let message = String.init max_msg_size (Fun.const 'b') in
+  let message = Bytestring.init max_msg_size (Fun.const 'b') in
   let* () = assert_encoding_failure message in
   assert_encoding_failure message
 

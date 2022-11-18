@@ -369,7 +369,7 @@ let originate_sc_rollup block rollup_account =
       (B block)
       rollup_contract
       Sc_rollup.Kind.Example_arith
-      ~boot_sector:""
+      ~boot_sector:Bytestring.empty
       ~parameters_ty:(Script.lazy_expr (Expr.from_string "1"))
   in
   let+ block =
@@ -997,7 +997,7 @@ let mk_sc_rollup_origination (oinfos : operation_req) (infos : infos) =
       (B infos.ctxt.block)
       (contract_of (get_source infos))
       Sc_rollup.Kind.Example_arith
-      ~boot_sector:""
+      ~boot_sector:Bytestring.empty
       ~parameters_ty:(Script.lazy_expr (Expr.from_string "1"))
   in
   op
@@ -1073,7 +1073,7 @@ let mk_sc_rollup_add_messages (oinfos : operation_req) (infos : infos) =
     ?force_reveal:oinfos.force_reveal
     (B infos.ctxt.block)
     (contract_of (get_source infos))
-    [""]
+    [Bytestring.empty]
 
 let mk_sc_rollup_timeout (oinfos : operation_req) (infos : infos) =
   let open Lwt_result_syntax in

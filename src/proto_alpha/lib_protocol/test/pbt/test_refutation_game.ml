@@ -208,7 +208,7 @@ let originate_rollup originator block =
       (B block)
       originator
       Kind.Example_arith
-      ~boot_sector:""
+      ~boot_sector:Bytestring.empty
       ~parameters_ty:(Script.lazy_expr @@ Expr.from_string "unit")
   in
   let* block = Block.bake ~operations:[origination_operation] block in
@@ -317,7 +317,7 @@ let gen_arith_pvm_messages ~gen_size =
           ]
   in
   let+ inputs = sized_size gen_size @@ fix produce_inputs in
-  snd inputs |> List.rev |> String.concat " "
+  snd inputs |> List.rev |> String.concat " " |> Bytestring.of_string
 
 (** Generate a list of level and associated arith pvm messages. *)
 let gen_arith_pvm_messages_for_levels ~start_level ~max_level =
@@ -794,7 +794,7 @@ module Arith_test_pvm = struct
   let initial_state ctxt =
     let open Lwt_syntax in
     let* state = initial_state ctxt in
-    let* state = install_boot_sector state "" in
+    let* state = install_boot_sector state Bytestring.empty in
     return state
 
   let initial_hash =
@@ -1096,7 +1096,7 @@ module Player_client = struct
             levels_and_messages
         in
         let* corrupt_at_k = 0 -- (nb_of_input - 1) in
-        let message = "42 7 +" in
+        let message = Bytestring.of_string "42 7 +" in
         (* Once an input is corrupted, everything after will be corrupted
            as well. *)
         let new_levels_and_messages =

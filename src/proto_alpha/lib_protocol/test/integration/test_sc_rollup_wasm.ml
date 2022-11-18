@@ -183,7 +183,7 @@ let read_kernel name =
     project_root // Filename.dirname __FILE__ // "wasm_kernel"
     // (name ^ ".wasm")
   in
-  read_file kernel_file
+  read_file kernel_file |> Bytestring.of_string
 
 (* Kernel with allocation & simple computation only.
    9863 bytes long - will be split into 3 chunks. *)
@@ -214,7 +214,11 @@ let should_boot_computation_kernel () =
   let*! s = Prover.install_boot_sector s boot_sector in
   (* Feeding it with one input *)
   let* s =
-    checked_set_input ~loc:__LOC__ context (arbitrary_input 0 "test") s
+    checked_set_input
+      ~loc:__LOC__
+      context
+      (arbitrary_input 0 (Bytestring.of_string "test"))
+      s
   in
   (* running until waiting for input *)
   let* (_s : Prover.state) = eval_until_set_input context s in

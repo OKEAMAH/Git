@@ -121,14 +121,15 @@ let pre_boot boot_sector f =
 let test_preboot () =
   [""; "1"; "1 2 +"]
   |> List.iter_es (fun boot_sector ->
-         pre_boot boot_sector @@ fun _ctxt _state -> return ())
+         pre_boot (Bytestring.of_string boot_sector) @@ fun _ctxt _state ->
+         return ())
 
 let boot boot_sector f =
   pre_boot boot_sector @@ fun ctxt state -> eval state >>= f ctxt
 
 let test_boot () =
   let open Sc_rollup_PVM_sig in
-  boot "" @@ fun _ctxt state ->
+  boot Bytestring.empty @@ fun _ctxt state ->
   is_input_state state >>= function
   | Needs_reveal Reveal_metadata -> return ()
   | Initial | Needs_reveal _ | First_after _ ->
@@ -139,7 +140,7 @@ let test_boot () =
 let test_metadata () =
   let open Sc_rollup_PVM_sig in
   let open Lwt_result_syntax in
-  boot "" @@ fun _ctxt state ->
+  boot Bytestring.empty @@ fun _ctxt state ->
   let metadata =
     Sc_rollup_metadata_repr.
       {
@@ -159,8 +160,10 @@ let test_metadata () =
 
 let test_input_message () =
   let open Sc_rollup_PVM_sig in
-  boot "" @@ fun _ctxt state ->
-  let input = Sc_rollup_helpers.make_external_input_repr "MESSAGE" in
+  boot Bytestring.empty @@ fun _ctxt state ->
+  let input =
+    Sc_rollup_helpers.make_external_input_repr @@ Bytestring.of_string "MESSAGE"
+  in
   set_input input state >>= fun state ->
   eval state >>= fun state ->
   is_input_state state >>= function
@@ -183,8 +186,10 @@ let go ~max_steps target_status state =
   aux 0 state
 
 let test_parsing_message ~valid (source, expected_code) =
-  boot "" @@ fun _ctxt state ->
-  let input = Sc_rollup_helpers.make_external_input_repr source in
+  boot Bytestring.empty @@ fun _ctxt state ->
+  let input =
+    Sc_rollup_helpers.make_external_input_repr (Bytestring.of_string source)
+  in
   set_input input state >>= fun state ->
   eval state >>= fun state ->
   go ~max_steps:10000 Evaluating state >>=? fun state ->
@@ -244,8 +249,10 @@ let test_parsing_messages () =
 
 let test_evaluation_message ~valid
     (boot_sector, source, expected_stack, expected_vars) =
-  boot boot_sector @@ fun _ctxt state ->
-  let input = Sc_rollup_helpers.make_external_input_repr source in
+  boot (Bytestring.of_string boot_sector) @@ fun _ctxt state ->
+  let input =
+    Sc_rollup_helpers.make_external_input_repr (Bytestring.of_string source)
+  in
   set_input input state >>= fun state ->
   eval state >>= fun state ->
   go ~max_steps:10000 Waiting_for_input_message state >>=? fun state ->
@@ -312,11 +319,11 @@ let test_evaluation_messages () =
 
 let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
   let open Lwt_result_syntax in
-  boot "" @@ fun ctxt state ->
+  boot Bytestring.empty @@ fun ctxt state ->
   let input =
     Sc_rollup_helpers.make_external_input_repr
       ~inbox_level:(Raw_level_repr.of_int32_exn (Int32.of_int inbox_level))
-      source
+      (Bytestring.of_string source)
   in
   let*! state = set_input input state in
   let*! state = eval state in
@@ -339,7 +346,7 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
                (Failure
                   (Format.asprintf
                      "A wrong output proof is valid: %s -> %a"
-                     source
+                     (source :> string)
                      Sc_rollup_PVM_sig.pp_output
                      output)))
       | Error _ -> return ()
@@ -475,7 +482,7 @@ let dummy_internal_transfer address =
 let test_filter_internal_message () =
   let open Sc_rollup_PVM_sig in
   let open Lwt_result_syntax in
-  boot "" @@ fun _ctxt state ->
+  boot Bytestring.empty @@ fun _ctxt state ->
   let address = Sc_rollup_repr.Address.zero in
   let metadata =
     Sc_rollup_metadata_repr.{address; origination_level = Raw_level_repr.root}

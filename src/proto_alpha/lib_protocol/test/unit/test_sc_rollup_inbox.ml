@@ -43,8 +43,8 @@ module Message = Alpha_context.Sc_rollup.Inbox_message
 let assert_equal_payload ~__LOC__ found (expected : Message.serialized) =
   Assert.equal_string
     ~loc:__LOC__
-    (Message.unsafe_to_string expected)
-    (Message.unsafe_to_string found)
+    (Message.unsafe_to_string expected :> string)
+    (Message.unsafe_to_string found :> string)
 
 let assert_equal_payload_hash ~__LOC__ found expected =
   Assert.equal
@@ -73,7 +73,7 @@ let gen_payload_size = QCheck2.Gen.(1 -- 10)
 
 let gen_payload =
   let open QCheck2.Gen in
-  let+ payload = string_size gen_payload_size in
+  let+ payload = string_size gen_payload_size >|= Bytestring.of_string in
   Message.unsafe_of_string payload
 
 let gen_payloads =

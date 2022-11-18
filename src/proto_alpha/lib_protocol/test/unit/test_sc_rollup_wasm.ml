@@ -125,13 +125,15 @@ let test_l1_input_kind () =
   let open Tezos_scoru_wasm in
   let check_msg msg expected =
     let*? msg = Environment.wrap_tzresult @@ serialize msg in
-    let msg = unsafe_to_string msg |> Pvm_input_kind.from_raw_input in
+    let msg =
+      (unsafe_to_string msg :> string) |> Pvm_input_kind.from_raw_input
+    in
     assert (msg = expected) ;
     return_unit
   in
   let* () = check_msg (Internal Start_of_level) (Internal Start_of_level) in
   let* () = check_msg (Internal End_of_level) (Internal End_of_level) in
-  let* () = check_msg (External "payload") External in
+  let* () = check_msg (External (Bytestring.of_string "payload")) External in
 
   return_unit
 

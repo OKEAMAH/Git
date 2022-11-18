@@ -87,7 +87,7 @@ let gen_player = Gen.oneofl Sc_rollup_game_repr.[Alice; Bob]
 
 let gen_inbox level =
   let open Gen in
-  let gen_msg = small_string ~gen:printable in
+  let gen_msg = small_string ~gen:printable >|= Bytestring.of_string in
   let* hd = gen_msg in
   let* tail = small_list gen_msg in
   let payloads = hd :: tail in
@@ -229,7 +229,7 @@ let gen_inbox_message =
   let open Sc_rollup_inbox_message_repr in
   let gen_external =
     let+ s = small_string ~gen:printable in
-    External s
+    External (Bytestring.of_string s)
   in
   let gen_sol = return (Internal Start_of_level) in
   let gen_eol = return (Internal End_of_level) in

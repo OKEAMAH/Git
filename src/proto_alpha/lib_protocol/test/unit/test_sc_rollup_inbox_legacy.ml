@@ -113,21 +113,24 @@ let test_add_messages messages =
 (* An external message is prefixed with a tag whose length is one byte, and
    whose value is 1. *)
 let encode_external_message message =
-  let prefix = "\001" in
-  Bytes.of_string (prefix ^ message)
+  let prefix = Bytestring.of_string "\001" in
+  Bytestring.cat prefix message
 
 let check_payload messages external_message =
   Environment.Context.Tree.find messages ["payload"] >>= function
   | None -> fail (err "No payload in messages")
   | Some payload ->
       let expected_payload = encode_external_message external_message in
+      let payload = Bytestring.of_bytes payload in
       fail_unless
         (expected_payload = payload)
         (err
-           (Printf.sprintf
-              "Expected payload %s, got %s"
-              (Bytes.to_string expected_payload)
-              (Bytes.to_string payload)))
+           (Format.asprintf
+              "Expected payload %a, got %a"
+              Bytestring.pp_hex
+              expected_payload
+              Bytestring.pp_hex
+              payload))
 
 let test_get_message_payload messages =
   let payloads = List.map make_payload messages in
@@ -140,8 +143,14 @@ let test_get_message_payload messages =
       | Some payload ->
           let payload = Sc_rollup_inbox_message_repr.unsafe_to_string payload in
           fail_unless
-            (String.equal payload (Bytes.to_string expected_payload))
-            (err (Printf.sprintf "Expected %s, got %s" message payload))
+            (Bytestring.equal payload expected_payload)
+            (err
+               (Format.asprintf
+                  "Expected %a, got %a"
+                  Bytestring.pp_hex
+                  expected_payload
+                  Bytestring.pp_hex
+                  payload))
       | None ->
           fail
             (err (Printf.sprintf "No message payload number %d in messages" i)))
@@ -337,8 +346,7 @@ let level_of_int n = Raw_level_repr.of_int32_exn (Int32.of_int n)
 let level_to_int l = Int32.to_int (Raw_level_repr.to_int32 l)
 
 let payload_string msg =
-  Sc_rollup_inbox_message_repr.unsafe_of_string
-    (Bytes.to_string (encode_external_message msg))
+  Sc_rollup_inbox_message_repr.unsafe_of_string (encode_external_message msg)
 
 let inbox_message_of_input input =
   match input with Sc_rollup_PVM_sig.Inbox_message x -> Some x | _ -> None
@@ -384,7 +392,8 @@ let test_inbox_proof_production (levels_and_messages, l, n) =
          for verification. *)
       (* The snapshot takes the snapshot at the end of the last level,
          we need to set the level ahead to match the inbox. *)
-      setup_inbox_with_messages (list_of_payloads @ [[make_payload "foo"]])
+      setup_inbox_with_messages
+        (list_of_payloads @ [[make_payload (Bytestring.of_string "foo")]])
       @@ fun _ctxt _ _history inbox _inboxes ->
       let snapshot = take_snapshot inbox in
       let proof = node_proof_to_protocol_proof proof in
@@ -422,7 +431,8 @@ let test_inbox_proof_verification (levels_and_messages, l, n) =
   | Ok (proof, _input) -> (
       (* We now switch to a protocol inbox built from the same messages
          for verification. *)
-      setup_inbox_with_messages (list_of_payloads @ [[make_payload "foo"]])
+      setup_inbox_with_messages
+        (list_of_payloads @ [[make_payload (Bytestring.of_string "foo")]])
       @@ fun _ctxt _ _history _inbox inboxes ->
       (* Use the incorrect inbox *)
       match List.hd inboxes with
@@ -462,7 +472,8 @@ let init_inboxes_histories_with_different_capacities
             default_capacity))
   in
   let*? payloads =
-    List.init ~when_negative_length:[] nb_levels (fun i -> [string_of_int i])
+    List.init ~when_negative_length:[] nb_levels (fun i ->
+        [string_of_int i |> Bytestring.of_string])
   in
   let mk_history ?(next_index = 0L) ~capacity () =
     let open Lwt_syntax in
@@ -684,7 +695,9 @@ let test_for_successive_add_messages_with_different_histories_capacities
 
 let tests =
   let msg_size = QCheck2.Gen.(0 -- 100) in
-  let bounded_string = QCheck2.Gen.string_size msg_size in
+  let bounded_string =
+    QCheck2.Gen.(string_size msg_size >|= Bytestring.of_string)
+  in
   [
     Tztest.tztest "Empty inbox" `Quick test_empty;
     Tztest.tztest_qcheck2
