@@ -41,7 +41,7 @@ let compute builtins durable buffers =
   let open Lwt.Syntax in
   let* module_ = load_kernel durable in
 
-  let main_mem = ref None in
+  let main_mem : (unit -> Wasmer.Memory.t) option ref = ref None in
   let retrieve_mem () =
     match !main_mem with Some x -> x () | None -> assert false
   in

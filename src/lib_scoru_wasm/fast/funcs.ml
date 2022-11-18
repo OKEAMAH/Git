@@ -27,50 +27,68 @@ open Tezos_scoru_wasm
 module Wasmer = Tezos_wasmer
 module Lazy_containers = Tezos_lazy_containers
 
-let to_ref_memory mem =
-  let open Wasmer.Memory in
-  let get_chunk page_id =
-    let start_address =
-      Int64.mul page_id Lazy_containers.Chunked_byte_vector.Chunk.size
-    in
-    let body =
-      Bytes.init
-        (Int64.to_int Lazy_containers.Chunked_byte_vector.Chunk.size)
-        (fun i ->
-          Wasmer.Memory.get mem Int64.(add start_address (of_int i) |> to_int)
-          |> Unsigned.UInt8.to_int |> Char.chr)
-    in
-    Lwt.return (Lazy_containers.Chunked_byte_vector.Chunk.of_bytes body)
-  in
-  let length = Wasmer.Memory.length mem |> Int64.of_int in
-  let chunked = Lazy_containers.Chunked_byte_vector.create ~get_chunk length in
-  let min = Unsigned.UInt32.to_int32 mem.min in
-  let max = Option.map Unsigned.UInt32.to_int32 mem.max in
-  Tezos_webassembly_interpreter.(
-    Partial_memory.of_chunks (MemoryType {min; max}) chunked)
+module Memory_access_wasmer :
+  Host_funcs.Memory_access with type t = Wasmer.Memory.t = struct
+  type t = Wasmer.Memory.t
 
-let commit_memory mem partial_memory =
-  let chunks =
-    Lazy_containers.Chunked_byte_vector.loaded_chunks
-      (Tezos_webassembly_interpreter.Partial_memory.content partial_memory)
-  in
-  List.iter
-    (function
-      | chunk_id, Some chunk ->
-          let start =
-            Int64.mul chunk_id Lazy_containers.Chunked_byte_vector.Chunk.size
-          in
-          let body = Lazy_containers.Chunked_byte_vector.Chunk.to_bytes chunk in
-          Bytes.iteri
-            (fun i char ->
-              let addr = Int64.(add start (of_int i) |> to_int) in
-              Wasmer.Memory.set
-                mem
-                addr
-                (Char.code char |> Unsigned.UInt8.of_int))
-            body
-      | _ -> ())
-    chunks
+  let load_bytes memory addr size =
+    let addr = Int32.to_int addr in
+    let char_at (ptr : int) =
+      Wasmer.Memory.get memory ptr |> Unsigned.UInt8.to_int |> Char.chr
+    in
+
+    Lwt.return @@ String.init size (fun idx -> char_at @@ (addr + idx))
+
+  let store_bytes memory addr data =
+    let char_to_uint8 char = Char.code char |> Unsigned.UInt8.of_int in
+    let addr = Int32.to_int addr in
+    let set_char idx chr =
+      Wasmer.Memory.set memory (addr + idx) @@ char_to_uint8 chr
+    in
+    String.iteri set_char data ;
+    Lwt.return ()
+
+  let to_bits (num : Tezos_webassembly_interpreter.Values.num) : int * int64 =
+    let open Tezos_webassembly_interpreter in
+    let size = Types.num_size @@ Values.type_of_num num in
+    let bits =
+      match num with
+      | Values.I32 x -> Int64.of_int32 x
+      | Values.I64 x -> x
+      | Values.F32 x -> Int64.of_int32 @@ F32.to_bits x
+      | Values.F64 x -> F64.to_bits x
+    in
+    (size, bits)
+
+  let store_num memory addr offset num =
+    let abs_addr = Int32.to_int @@ Int32.add addr offset in
+    let num_bytes, bits = to_bits num in
+
+    let rec loop steps addr bits =
+      if steps > 0 then (
+        let lsb = Unsigned.UInt8.of_int @@ (Int64.to_int bits land 0xff) in
+        let bits = Int64.shift_left bits 8 in
+
+        Wasmer.Memory.set memory addr lsb ;
+        loop (steps - 1) (addr + 1) bits)
+    in
+
+    loop num_bytes abs_addr bits ;
+    Lwt.return ()
+
+  let bound (memory : Wasmer.Memory.t) =
+    Int64.of_int (Wasmer.Memory.length memory)
+
+  let exn_to_error ~default = function
+    | Invalid_argument msg when msg = "index out of bounds" ->
+        Host_funcs.Error.Memory_out_of_bounds
+    | _ -> default
+end
+
+module Host_funcs = struct
+  module Aux : Host_funcs.Aux.S with type memory = Wasmer.Memory.t =
+    Host_funcs.Aux.Make (Memory_access_wasmer)
+end
 
 type host_state = {
   retrieve_mem : unit -> Wasmer.Memory.t;
@@ -83,9 +101,7 @@ let make (module Builtins : Builtins.S) state =
   let open Lwt.Syntax in
   let with_mem f =
     let mem = state.retrieve_mem () in
-    let ref_mem = to_ref_memory mem in
-    let+ value = f ref_mem in
-    commit_memory mem ref_mem ;
+    let+ value = f mem in
     value
   in
 
