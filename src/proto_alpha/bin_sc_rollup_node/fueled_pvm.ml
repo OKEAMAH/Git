@@ -95,16 +95,18 @@ module Make
       if F.is_empty fuel then return (state, fuel, current_tick, failing_ticks)
       else
         match input_request with
-        | No_input_required ->
+        | No_input_required -> (
             let* next_state, executed_ticks, failing_ticks =
               eval_tick fuel current_tick failing_ticks state
             in
-
-            go
-              fuel
-              (Int64.add current_tick executed_ticks)
-              failing_ticks
-              next_state
+            match F.consume (F.of_ticks executed_ticks) fuel with
+            | None -> return (state, fuel, current_tick, failing_ticks)
+            | Some fuel ->
+                go
+                  fuel
+                  (Int64.add current_tick executed_ticks)
+                  failing_ticks
+                  next_state)
         | Needs_reveal (Reveal_raw_data hash) -> (
             let* data = Reveals.get ~data_dir ~pvm_name:PVM.name ~hash in
             let*! next_state = PVM.set_input (Reveal (Raw_data data)) state in
