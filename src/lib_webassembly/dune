@@ -7,11 +7,13 @@
  (instrumentation (backend bisect_ppx))
  (libraries
   tezos-lwt-result-stdlib
+  tezos-stdlib
   zarith
   tezos-lazy-containers)
  (preprocess (pps ppx_deriving.show))
  (flags
   (:standard)
+  -open Tezos_stdlib
   -open Tezos_lazy_containers))
 
 (include_subdirs unqualified)

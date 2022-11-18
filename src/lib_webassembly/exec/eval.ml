@@ -1560,12 +1560,10 @@ let reveal module_reg base_destination max_bytes frame payload =
     (fun () ->
       let* inst = resolve_module_ref module_reg frame.inst in
       let* mem = memory inst (0l @@ no_region) in
-      let payload_size = Bytes.length payload in
+      let payload_size = Bytestring.length payload in
       let revealed_bytes = min payload_size (Int32.to_int max_bytes) in
-      let payload = Bytes.sub payload 0 revealed_bytes in
-      let+ () =
-        Memory.store_bytes mem base_destination (Bytes.to_string payload)
-      in
+      let payload = Bytestring.sub payload 0 revealed_bytes in
+      let+ () = Memory.store_bytes mem base_destination (payload :> string) in
       Int32.of_int revealed_bytes)
     (function
       | ( Memory.Bounds (* Memory.store_bytes *)

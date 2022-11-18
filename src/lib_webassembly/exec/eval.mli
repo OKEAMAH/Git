@@ -295,7 +295,7 @@ val is_reveal_tick : config -> Reveal.reveal option
 
     @raise Reveal_error
 *)
-val reveal_step : module_reg -> bytes -> config -> config Lwt.t
+val reveal_step : module_reg -> Bytestring.t -> config -> config Lwt.t
 
 val config :
   Host_funcs.registry ->

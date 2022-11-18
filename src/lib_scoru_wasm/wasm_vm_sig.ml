@@ -68,7 +68,7 @@ module type Generic = sig
 
       If the VM does not expect any reveal data, this function raises
       an exception. *)
-  val reveal_step : bytes -> state -> state Lwt.t
+  val reveal_step : Bytestring.t -> state -> state Lwt.t
 
   (** [get_info pvm_state] provides a typed view of the current machine state.
       Should not raise. *)

@@ -181,7 +181,7 @@ let test_reveal_metadata () =
   (* These are dummy metadata since we do not have access to the
      metadata definition in this compilation unit. *)
   let metadata =
-    Bytes.init
+    Bytestring.init
       Tezos_scoru_wasm.Host_funcs.Internal_for_tests.metadata_size
       Char.chr
   in

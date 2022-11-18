@@ -11848,7 +11848,7 @@ module Make
 
   val set_input_step : input -> string -> Tree.tree -> Tree.tree Lwt.t
 
-  val reveal_step : bytes -> Tree.tree -> Tree.tree Lwt.t
+  val reveal_step : Bytestring.t -> Tree.tree -> Tree.tree Lwt.t
 
   val get_output : output -> Tree.tree -> string option Lwt.t
 

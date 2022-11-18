@@ -302,15 +302,14 @@ module V2_0_0 = struct
           set s
       | PS.Reveal (PS.Raw_data data) ->
           let* s = get in
-          let* s =
-            lift (WASM_machine.reveal_step (Bytestring.to_bytes data) s)
-          in
+          let* s = lift (WASM_machine.reveal_step data s) in
           set s
       | PS.Reveal (PS.Metadata metadata) ->
           let metadata_bytes =
-            Data_encoding.Binary.to_bytes_exn
+            Data_encoding.Binary.to_string_exn
               Sc_rollup_metadata_repr.encoding
               metadata
+            |> Bytestring.of_string
           in
           let* s = get in
           let* s = lift (WASM_machine.reveal_step metadata_bytes s) in

@@ -1001,7 +1001,7 @@ let test_reveal_upgrade_kernel_ok () =
 |}
   in
   let*! preimage = wat2wasm new_kernel in
-  let*! tree = Wasm.reveal_step (Bytes.of_string preimage) tree in
+  let*! tree = Wasm.reveal_step (Bytestring.of_string preimage) tree in
   let*! tree = eval_until_input_requested tree in
   let*! state_after_reveal = Wasm.Internal_for_tests.get_tick_state tree in
   assert (not @@ is_stuck state_after_reveal) ;
@@ -1071,7 +1071,7 @@ let test_reveal_upgrade_kernel_fallsback_on_error ~binary ~error invalid_kernel
   let*! preimage =
     if binary then Lwt.return invalid_kernel else wat2wasm invalid_kernel
   in
-  let*! tree = Wasm.reveal_step (Bytes.of_string preimage) tree in
+  let*! tree = Wasm.reveal_step (Bytestring.of_string preimage) tree in
   let*! tree = eval_until_input_requested tree in
   let*! state_after_reveal = Wasm.Internal_for_tests.get_tick_state tree in
   assert (not @@ is_stuck state_after_reveal) ;
