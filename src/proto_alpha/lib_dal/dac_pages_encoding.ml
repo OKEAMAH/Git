@@ -39,6 +39,8 @@ type error +=
   | Cannot_deserialize_page
   | Non_positive_size_of_payload
   | Merkle_tree_branching_factor_not_high_enough
+  | Hashes_page_repr_already_full
+  | Hashes_page_repr_expected_single_element of string
 
 let () =
   register_error_kind
@@ -94,7 +96,36 @@ let () =
     Data_encoding.(unit)
     (function
       | Merkle_tree_branching_factor_not_high_enough -> Some () | _ -> None)
-    (fun () -> Merkle_tree_branching_factor_not_high_enough)
+    (fun () -> Merkle_tree_branching_factor_not_high_enough) ;
+  register_error_kind
+    `Permanent
+    ~id:"hashes_page_builder_page_repr_already_full"
+    ~title:"Hashes page builder page already full"
+    ~description:
+      "Cannot add another hash to hashes page_repr due to being full already"
+    ~pp:(fun ppf () ->
+      Format.fprintf
+        ppf
+        "Hashes page builder cannot add another hash to hashes page_repr since \
+         it is already full")
+    Data_encoding.(unit)
+    (function Hashes_page_repr_already_full -> Some () | _ -> None)
+    (fun () -> Hashes_page_repr_already_full) ;
+  register_error_kind
+    `Permanent
+    ~id:"hashes_page_repr_expected_single_element"
+    ~title:"Hashes page representation expected a single element"
+    ~description:"Hashes page representation expected a single element"
+    ~pp:(fun ppf ls ->
+      Format.fprintf
+        ppf
+        "Hashes page representation expected a single element, instead the \
+         following internal representation received: [%s]"
+        ls)
+    Data_encoding.(obj1 (req "ls" string))
+    (function
+      | Hashes_page_repr_expected_single_element ls -> Some ls | _ -> None)
+    (fun ls -> Hashes_page_repr_expected_single_element ls)
 
 (** Encoding of DAC payload as a Merkle tree with an arbitrary branching
     factor greater or equal to 2. The serialization process works as follows:
@@ -132,7 +163,9 @@ module Merkle_tree = struct
 
   (** A page is either a `Contents page`, containing a chunk of the payload
       that needs to be serialized, or a `Hashes page`, containing a list
-      of hashes. The size of contents and hashes pages is not fixed.
+      of hashes. The maximum size of bytes inside [Contents] page, or number
+      of hashes inside [Hashes] page is such, that when serializing a page
+      using [page_encoding], it does not exceed [max_page_size] bytes.
     *)
   type 'a page = Contents of bytes | Hashes of 'a list
 
@@ -164,7 +197,8 @@ module Merkle_tree = struct
   end)
   (V : VERSION) =
   struct
-    let hash bytes = Hashing_scheme.hash_bytes [bytes]
+    let hash bytes =
+      Hashing_scheme.hash_bytes [bytes] ~scheme:Hashing_scheme.scheme
 
     let hash_encoding = Hashing_scheme.encoding
 
@@ -216,52 +250,296 @@ module Merkle_tree = struct
       | Ok raw_page -> Ok raw_page
       | Error _ -> error Cannot_serialize_page_payload
 
-    let split_hashes ~max_page_size hashes =
-      (* 1 byte for the version size, 4 bytes for the length of the list. *)
-      let number_of_hashes =
-        (max_page_size - page_preamble_size) / hash_bytes_size
-      in
-      (* Requiring a branching factor of at least 2 is necessary to ensure that
-         the serialization process terminates. If only one hash were stored per page, then
-         the number of pages at height `n-1` could be potentially equal to the number of
-         pages at height `n`. *)
-      if number_of_hashes < 2 then
-        error Merkle_tree_branching_factor_not_high_enough
-      else
-        let rec go aux list =
-          match list with
-          | [] -> List.rev aux
-          | list ->
-              let chunk, rest = List.split_n number_of_hashes list in
-              (go [@tailcall]) (chunk :: aux) rest
-        in
-        Ok (go [] hashes)
-
-    let split_contents ~max_page_size page =
+    (* Splits payload into bytes chunks whose size does not exceed [page_size] bytes. *)
+    let split_payload ~max_page_size payload =
       let open Result_syntax in
       (* 1 byte for the version size, 4 bytes for the size of the payload. *)
       let actual_page_size = max_page_size - page_preamble_size in
       if actual_page_size <= 0 then error Non_positive_size_of_payload
       else
-        let+ pages = String.chunk_bytes actual_page_size page in
-        List.map String.to_bytes pages
+        let+ splitted_payload = String.chunk_bytes actual_page_size payload in
+        List.map String.to_bytes splitted_payload
 
-    (* Splits a page into smaller pages whose serialization does
-        not exceed [page_size] bytes. *)
-    let split_page ~max_page_size page =
-      let open Result_syntax in
-      match page with
-      | Contents contents ->
-          let+ pages = split_contents ~max_page_size contents in
-          List.map (fun page_contents -> Contents page_contents) pages
-      | Hashes hashes ->
-          let+ pages = split_hashes ~max_page_size hashes in
-          List.map (fun page_hashes -> Hashes page_hashes) pages
+    let store_page ~max_page_size ~for_each_page page =
+      let open Lwt_result_syntax in
+      let*? serialized_page = serialize_page ~max_page_size page in
+      (* Hashes are computed from raw pages, each of which consists of a
+         preamble of 5 bytes followed by a page payload - a raw sequence
+         of bytes from the original payload for Contents pages, and a
+         a sequence of serialized hashes for hashes pages. The preamble
+         bytes is part of the sequence of bytes which is hashed.
+      *)
+      let hash = hash serialized_page in
+      let* () = for_each_page (hash, serialized_page) in
+      return hash
 
-    (* DAC/FIXME: https://gitlab.com/tezos/tezos/-/issues/4014
-       Improve performance of the functions below. Currently we load in memory
-       the whole payload to be split in pages. This is not ideal if the size
-       of the payload is large. *)
+    type for_each_page =
+      Hashing_scheme.t * bytes ->
+      (unit, Environment.Error_monad.error Environment.Error_monad.trace) result
+      Lwt.t
+
+    type max_page_size = int
+
+    (** [Payload_handler] is in-memory data structure that allows for serialization
+        of DAC payload, by receiving the payload in multiple parts, allowing for
+        partial serialization of data. The serializer holds only the minimum of 
+        necessarily data required for partial serialization of payload data.
+        Additionaly, the serializer respects the following invariant:
+        
+        Starting with an [empty] serializer, splitting arbitrary [payload] into
+        chunks of arbitrary size, and adding them to the serializer from left to
+        right, should result in same root hash as adding all the payload data in
+        one chunk provided it could fit into the memory. 
+        
+        Motivation for this data structure was to facilitate serialization of DAC 
+        payload that would be to big to fit into memory. Additionaly this could 
+        also be used in a batcher like scenario, e.g. for agreggating asynchronous
+        payload messages. *)
+    module Payload_handler : sig
+      type t
+
+      (** Instantiates a serializer parameterized by [max_page_size] 
+          and [for_each_page] function *)
+      val empty :
+        max_page_size:max_page_size -> for_each_page:for_each_page -> t
+
+      (** [add serializer payload] returns a new state of the serializer [t]
+           after serializing [payload] and thus modifying the current state. 
+           Note that for every call to [add], as much data as possible is persisted
+           to the disk via [~for_each_page] function.
+           
+           There is no guarantee however, that all the [payload] data has been
+           actually processed until the serializer current state is
+           finalized via the call to [finalize serializer]. *)
+      val add :
+        t ->
+        bytes ->
+        (t, Environment.Error_monad.error Environment.Error_monad.trace) result
+        Lwt.t
+
+      (** [finalize handler] returns the [Hashing_scheme.t] representing a root
+          hash of serialized data. It also guarantees, that all the payload data
+          received via previous calls to [add], have been serialized to the disk.
+      *)
+      val finalize :
+        t ->
+        ( Hashing_scheme.t,
+          Environment.Error_monad.error Environment.Error_monad.trace )
+        result
+        Lwt.t
+    end = struct
+      (** [Hashes_handler] module defines an in-memory data structure dedicated
+          to storing, the minimum amount of hashes in memory, requiered for partial
+          serialization of dac payload. *)
+      module Hashes_handler = struct
+        (** [Hashes_page_repr] is a builder for a [Hashes] page. It ensures that
+            number of hashes in the given page would never produce a serialized
+            page, which size would be bigger than [~max_page_size] bytes *)
+        module Hashes_page_repr = struct
+          type t = {
+            size : int;
+            hashes : Hashing_scheme.t list;
+            max_page_size : max_page_size;
+          }
+
+          (** [empty ~max_page_size] throws [Merkle_tree_branching_factor_not_high_enough],
+              in case of branching factor smaller then 2. *)
+          let empty ~max_page_size =
+            let open Lwt_result_syntax in
+            let hashes_per_page =
+              (max_page_size - page_preamble_size) / hash_bytes_size
+            in
+            (* Requiring a branching factor of at least 2 is necessary to ensure
+               that the serialization process terminates. If only one hash was
+               stored per page, then the number of pages at height `n-1` could be
+               potentially equal to the number of pages at height `n`. *)
+            let* () =
+              fail_unless
+                (hashes_per_page >= 2)
+                Merkle_tree_branching_factor_not_high_enough
+            in
+            return {size = 0; hashes = []; max_page_size}
+
+          let is_full page_repr =
+            let hashes_per_page =
+              (page_repr.max_page_size - page_preamble_size) / hash_bytes_size
+            in
+            page_repr.size = hashes_per_page
+
+          (** [add page_repr hash] adds a [hash] to a given [page_repr]
+              For performance reason hashes are added in reverse order.
+              In case of [page_repr] that is already full
+              [Hashes_page_repr_already_full] error is thrown  *)
+          let add page_repr hash =
+            let open Lwt_result_syntax in
+            if is_full page_repr then tzfail Hashes_page_repr_already_full
+            else
+              return
+                {
+                  page_repr with
+                  size = page_repr.size + 1;
+                  hashes = hash :: page_repr.hashes;
+                }
+
+          (** [rev_combine page_repr] creates a valid [Hashes] page, by
+              combining hashes inside [page_repr] in the reverse order. This
+              is due to [add] function adding them in the reverse order *)
+          let rev_combine page_repr = Hashes (List.rev page_repr.hashes)
+
+          let is_empty page_repr = page_repr.size = 0
+
+          let has_one_hash page_repr = page_repr.size = 1
+
+          let get_hash page_repr =
+            let open Lwt_result_syntax in
+            match page_repr.hashes with
+            | [x] -> return x
+            | _ ->
+                tzfail
+                @@ Hashes_page_repr_expected_single_element
+                     (page_repr.hashes
+                     |> List.map Hashing_scheme.to_b58check
+                     |> String.concat "; ")
+        end
+
+        (** At any given level, we can have at max 'number_of_hashes_per_page'.
+            Whenever a given level is filled we simply serialize it as [Hashes] page
+            and add the parent hash to the next level of the merkle tree.
+            This invariant is ensured by representing a level with a [Hashes_page_repr.t],
+            which does not allow to exceed [~max_page_size] constant. Observe that
+            [t] (in-memory) together with already serialized [Hashes] pages (disk)
+            represent a k-ary merkle tree for of the given DAC payload. *)
+        type t = {
+          stack : Hashes_page_repr.t Stack.t;
+          max_page_size : max_page_size;
+          for_each_page : for_each_page;
+        }
+
+        let empty ~max_page_size ~for_each_page =
+          {
+            stack = (Stack.create () : Hashes_page_repr.t Stack.t);
+            max_page_size;
+            for_each_page;
+          }
+
+        (** [add_hash handler hash] adds a hash into in-memory data structure.
+            If number of hashes at any given level is sufficient for the full
+            [Hashes] page, the page is serialized and stored to disk,
+            freeing the memory. The parent hash is added to next level. The
+            procedure repeats recursively if needed. *)
+        let rec add_hash ({stack; max_page_size; for_each_page} as handler) hash
+            =
+          let open Lwt_result_syntax in
+          let open Hashes_page_repr in
+          let* empty = empty ~max_page_size in
+          let () = if Stack.is_empty stack then Stack.push empty stack in
+          let popped = Stack.pop stack in
+          (* Add element to the bottom level *)
+          let* popped_with_add = add popped hash in
+          if is_full popped_with_add then
+            let hashes_page = rev_combine popped_with_add in
+            let* hash = store_page ~max_page_size ~for_each_page hashes_page in
+            (* Hash of serialized page is recursively added to the next level *)
+            let* () = add_hash handler hash in
+            (* Since one level was popped we need to push it back *)
+            return @@ Stack.push empty stack
+          else return @@ Stack.push popped_with_add stack
+        (* Else simply push back the modified level *)
+
+        let rec finalize_hashes
+            ({stack = s; max_page_size; for_each_page} as handler) =
+          let open Lwt_result_syntax in
+          let* () =
+            (* Empty stack means no payload added in the first place *)
+            fail_unless (not @@ Stack.is_empty s) Payload_cannot_be_empty
+          in
+          let popped = Stack.pop s in
+          let open Hashes_page_repr in
+          if is_empty popped then
+            (* If [page_repr] is empty, there is nothing to hash *)
+            finalize_hashes handler
+          else if Stack.is_empty s && has_one_hash popped then
+            (* If top level of the tree and only one hash, then this is a root hash *)
+            get_hash popped
+          else
+            (* Else we serialize and store partially filled [Hashes] page,
+               recursively, add the parent [hash] to next level, finally
+               proceeding with [finalize_hashes] of a new stack *)
+            let hashes_page = rev_combine popped in
+            let* hash = store_page ~max_page_size ~for_each_page hashes_page in
+            let* () = add_hash handler hash in
+            finalize_hashes handler
+      end
+
+      (**  Whenever a payload is not evenly splitted, i.e. the last [Contents] 
+           page would not be full, instead of serializing it directly, we buffer it
+           instead and prepend it to the next chunk of payload data, if received,
+           else serialize it upon call to [finalize].
+           
+           Invariant: [leftover] is never [Bytes.empty] or exceeds max 'page_size' *)
+      type t = {
+        hashes_handler : Hashes_handler.t;
+        leftover : bytes;
+        max_page_size : max_page_size;
+        for_each_page : for_each_page;
+      }
+
+      let empty ~max_page_size ~for_each_page =
+        {
+          hashes_handler = Hashes_handler.empty ~max_page_size ~for_each_page;
+          leftover = Bytes.empty;
+          max_page_size;
+          for_each_page;
+        }
+
+      let add handler payload =
+        let open Lwt_result_syntax in
+        (* [concat_leftover_and_split] ensures that returned [leftover] never
+           exceeds max [Contents] 'page_size' or is empty*)
+        let concat_leftover_and_split ~leftover ~payload =
+          let payload = Bytes.concat Bytes.empty [leftover; payload] in
+          let*? splitted_payload =
+            split_payload ~max_page_size:handler.max_page_size payload
+          in
+          match List.rev splitted_payload with
+          | [] -> return (Bytes.empty, [])
+          | h :: xs -> return (h, List.rev xs)
+        in
+        let* () =
+          fail_unless (Bytes.length payload > 0) Payload_cannot_be_empty
+        in
+        (* Prepend old [leftover] to new [payload] and split again accordingly *)
+        let* leftover, splitted_payload =
+          concat_leftover_and_split ~leftover:handler.leftover ~payload
+        in
+        (* For evey [splitted_payload] chunk (i.e. only full [Contetnts] pages)
+            serialize it, store it and add a hash to the [Hashes_handler.t] *)
+        let* () =
+          List.iter_es
+            (fun content ->
+              let* cont_page =
+                store_page
+                  ~max_page_size:handler.max_page_size
+                  ~for_each_page:handler.for_each_page
+                  (Contents content)
+              in
+              Hashes_handler.add_hash handler.hashes_handler cont_page)
+            splitted_payload
+        in
+        return {handler with leftover}
+
+      let finalize handler =
+        let open Lwt_result_syntax in
+        (* Store [leftover] as partially filled [Contents] page *)
+        let* hash =
+          store_page
+            ~max_page_size:handler.max_page_size
+            ~for_each_page:handler.for_each_page
+            (Contents handler.leftover)
+        in
+        let* () = Hashes_handler.add_hash handler.hashes_handler hash in
+        Hashes_handler.finalize_hashes handler.hashes_handler
+    end
 
     (** Main function for computing the pages of a Merkle tree from a sequence
         of bytes. Each page is processed using the function [for_each_page]
@@ -273,47 +551,9 @@ module Merkle_tree = struct
         tree constructed. *)
     let serialize_payload ~max_page_size payload ~for_each_page =
       let open Lwt_result_syntax in
-      let* () =
-        fail_unless (Bytes.length payload > 0) Payload_cannot_be_empty
-      in
-      let rec go payload =
-        let*? pages = split_page ~max_page_size payload in
-        let*? serialized_pages =
-          List.map_e (serialize_page ~max_page_size) pages
-        in
-        (* Hashes are computed from raw pages, each of which consists of a
-           preamble of 5 bytes followed by a page payload - a raw sequence
-           of bytes from the original payload for Contents pages, and a
-           a sequence of serialized hashes for hashes pages. The preamble
-           bytes is part of the sequence of bytes which is hashed.
-
-           Hashes are stored in reverse order in memory for performance
-           reasons. They are reversed again before the recursive tailcall
-           is performed.*)
-        let hashes_with_serialized_pages =
-          List.rev_map
-            (fun page -> (hash ~scheme:Hashing_scheme.scheme page, page))
-            serialized_pages
-        in
-
-        let* () =
-          List.iter_es
-            (fun (hash, page) -> for_each_page (hash, page))
-            hashes_with_serialized_pages
-        in
-
-        match hashes_with_serialized_pages with
-        | [(hash, _page)] -> return hash
-        | hashes_with_raw_pages ->
-            let hashes =
-              (* Hashes_with_raw_pages stores the hash of pages in reverse
-                 order. We use `List.rev_map` to recover the original order
-                 of hashes. *)
-              List.rev_map (fun (hash, _page) -> hash) hashes_with_raw_pages
-            in
-            (go [@tailcall]) (Hashes hashes)
-      in
-      go (Contents payload)
+      let open Payload_handler in
+      let* s = add (empty ~max_page_size ~for_each_page) payload in
+      finalize s
 
     (** Deserialization function for a single page. A sequence of bytes is
         converted to a page using [page_encoding]. *)
