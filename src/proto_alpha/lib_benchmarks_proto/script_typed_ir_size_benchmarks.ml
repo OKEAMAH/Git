@@ -121,6 +121,7 @@ end = struct
                 Some (fun () -> value_size_benchmark rng_state term typ)
             | _ -> None)
           terms
+        |> List.take_n bench_num
     | None ->
         Format.eprintf "No michelson_terms_file given, generating on-the-fly@." ;
         List.repeat bench_num (make_bench rng_state config)
@@ -248,6 +249,7 @@ end = struct
                 Some (fun () -> kinstr_size_benchmark rng_state term bef)
             | _ -> None)
           terms
+        |> List.take_n bench_num
     | None ->
         Format.eprintf "No michelson_terms_file given, generating on-the-fly@." ;
         List.repeat bench_num (make_bench rng_state config)

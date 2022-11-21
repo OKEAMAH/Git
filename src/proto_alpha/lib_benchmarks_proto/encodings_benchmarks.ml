@@ -177,6 +177,7 @@ module Encoding_micheline : Benchmark.S = struct
             | Michelson_mcmc_samplers.Code {term; bef = _; aft = _} ->
                 fun () -> encoding_micheline_benchmark term)
           terms
+        |> List.take_n bench_num
     | None -> List.repeat bench_num (make_bench rng_state config)
 
   let models = models (Namespace.basename name)
@@ -247,6 +248,7 @@ module Decoding_micheline : Benchmark.S = struct
             | Michelson_mcmc_samplers.Code {term; bef = _; aft = _} ->
                 fun () -> decoding_micheline_benchmark term)
           terms
+        |> List.take_n bench_num
     | None -> List.repeat bench_num (make_bench rng_state config)
 
   let models = models (Namespace.basename name)

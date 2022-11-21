@@ -249,6 +249,7 @@ module Typechecking_data : Benchmark.S = struct
                 Some (fun () -> typechecking_data_benchmark rng_state term typ)
             | _ -> None)
           terms
+        |> List.take_n bench_num
     | None ->
         Format.eprintf "No michelson_terms_file given, generating on-the-fly@." ;
         List.repeat bench_num (make_bench rng_state config)
@@ -329,6 +330,7 @@ module Unparsing_data : Benchmark.S = struct
                 Some (fun () -> unparsing_data_benchmark rng_state term typ)
             | _ -> None)
           terms
+        |> List.take_n bench_num
     | None ->
         Format.eprintf "No michelson_terms_file given, generating on-the-fly@." ;
         List.repeat bench_num (make_bench rng_state config)
@@ -404,6 +406,7 @@ module Typechecking_code : Benchmark.S = struct
                 Some (fun () -> typechecking_code_benchmark rng_state term bef)
             | _ -> None)
           terms
+        |> List.take_n bench_num
     | None ->
         Format.eprintf "No michelson_terms_file given, generating on-the-fly@." ;
         List.repeat bench_num (make_bench rng_state config)
@@ -488,6 +491,7 @@ module Unparsing_code : Benchmark.S = struct
                 Some (fun () -> unparsing_code_benchmark rng_state term bef)
             | _ -> None)
           terms
+        |> List.take_n bench_num
     | None -> List.repeat bench_num (make_bench rng_state config)
 end
 
