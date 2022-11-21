@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2020 Nomadic Labs. <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,46 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let ns = Namespace.make Shell_namespace.ns "misc"
+val ns : Namespace.cons
 
-let fv s = Free_variable.of_namespace (ns s)
+val fv : string -> Free_variable.t
 
-let lwt_variable = fv "lwt_main_run"
-
-let lwt_model =
-  Model.make
-    ~conv:(fun () -> ())
-    ~model:(Model.unknown_const1 ~name:(ns "lwt_model") ~const:lwt_variable)
-
-module Lwt_main_run_bench : Benchmark.S = struct
-  type config = unit
-
-  let default_config = ()
-
-  let config_encoding = Data_encoding.unit
-
-  let name = ns "LWT_MAIN.RUN"
-
-  let info = "Benchmark of Lwt_main.run"
-
-  let tags = ["misc"]
-
-  let models = [("*", lwt_model)]
-
-  let workload_to_vector () = Sparse_vec.String.of_list [("lwt_main", 1.)]
-
-  type workload = unit
-
-  let workload_encoding = Data_encoding.unit
-
-  let bench () =
-    let closure () = Lwt_main.run Lwt.return_unit in
-    let workload = () in
-    Generator.Plain {workload; closure}
-
-  let create_benchmarks ~rng_state ~bench_num () =
-    ignore rng_state ;
-    List.repeat bench_num bench
-end
-
-let () = Registration.register (module Lwt_main_run_bench)
+val timer_model : unit Model.t
