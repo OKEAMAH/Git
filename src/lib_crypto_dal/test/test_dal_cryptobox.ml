@@ -41,6 +41,7 @@ module Test = struct
     let parameters =
       Cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
         ~slot_size
+        ~page_size
     in
     let () = Cryptobox.Internal_for_tests.load_parameters parameters in
     Tezos_lwt_result_stdlib.Lwtreslib.Bare.List.iter_e
