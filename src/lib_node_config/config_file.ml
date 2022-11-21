@@ -380,14 +380,25 @@ let sugared_blockchain_network_encoding : blockchain_network Data_encoding.t =
           (fun x -> x);
       ])
 
-type dal = {activated : bool; srs_size : int option}
+type dal = {
+  activated : bool;
+  srs_size : int option;
+  slot_size : int option;
+  page_size : int option;
+}
 
 let dal_encoding : dal Data_encoding.t =
   let open Data_encoding in
   conv
-    (fun {activated; srs_size} -> (activated, srs_size))
-    (fun (activated, srs_size) -> {activated; srs_size})
-    (obj2 (req "activated" bool) (req "srs_size" (option int31)))
+    (fun {activated; srs_size; slot_size; page_size} ->
+      (activated, srs_size, slot_size, page_size))
+    (fun (activated, srs_size, slot_size, page_size) ->
+      {activated; srs_size; slot_size; page_size})
+    (obj4
+       (req "activated" bool)
+       (req "srs_size" (option int31))
+       (req "slot_size" (option int31))
+       (req "slot_page" (option int31)))
 
 type t = {
   data_dir : string;
@@ -452,7 +463,8 @@ let default_rpc =
 
 let default_disable_config_validation = false
 
-let default_dal : dal = {activated = false; srs_size = None}
+let default_dal : dal =
+  {activated = false; srs_size = None; slot_size = None; page_size = None}
 
 let default_config =
   {
@@ -1129,16 +1141,17 @@ let init_dal dal_config =
   if dal_config.activated then
     let open Tezos_crypto_dal.Cryptobox in
     let* initialisation_parameters =
-      match dal_config.srs_size with
-      | None ->
+      match (dal_config.slot_size, dal_config.page_size) with
+      | Some slot_size, Some page_size ->
+          return
+            (Internal_for_tests.initialisation_parameters_from_slot_size
+               ~slot_size
+               ~page_size)
+      | _, _ ->
           let*? g1_path, g2_path =
             Tezos_base.Dal_srs.find_trusted_setup_files ()
           in
           initialisation_parameters_from_files ~g1_path ~g2_path
-      | Some slot_size ->
-          return
-            (Internal_for_tests.initialisation_parameters_from_slot_size
-               ~slot_size)
     in
     Lwt.return (load_parameters initialisation_parameters)
   else return_unit

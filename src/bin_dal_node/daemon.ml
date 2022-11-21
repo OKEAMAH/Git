@@ -62,6 +62,7 @@ let init_cryptobox unsafe_srs cctxt (module Plugin : Dal_plugin.T) =
       return
       @@ Cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
            ~slot_size:parameters.slot_size
+           ~page_size:parameters.page_size
     else
       let*? g1_path, g2_path = Tezos_base.Dal_srs.find_trusted_setup_files () in
       Cryptobox.initialisation_parameters_from_files ~g1_path ~g2_path

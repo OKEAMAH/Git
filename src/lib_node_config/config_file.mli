@@ -36,6 +36,8 @@ type dal = {
    is the value expected for production. For testing purposes, we may
    want to compute the srs instead but this is unsafe. In that case, a
    size must be specified. *)
+  slot_size : int option;
+  page_size : int option;
 }
 
 type blockchain_network = {
