@@ -809,6 +809,7 @@ module Inner = struct
     assert (chunk_len < n) ;
     assert (chunk_len < degree) ;
     assert (is_pow_of_two (Array.length domain2m)) ;
+    let coefs_length = Polynomials.degree coefs + 1 in
     (* We don’t need the first coefficient f₀. *)
     let compute_h_j j =
       let rest = (degree - j) mod chunk_len in
@@ -821,14 +822,14 @@ module Inner = struct
         Array.init
           ((2 * quotient) + padding)
           (fun i ->
-            if i <= quotient + (padding / 2) then Scalar.(copy zero)
+            if i = 0 && j <> 0 && degree - j < coefs_length then
+              Scalar.copy (Polynomials.get coefs (degree - j))
+            else if i <= quotient + (padding / 2) then Scalar.(copy zero)
             else
               let j = rest + ((i - (quotient + padding)) * chunk_len) in
-              if j < Array.length coefs then Scalar.copy coefs.(j)
+              if j < coefs_length then Scalar.copy (Polynomials.get coefs j)
               else Scalar.(copy zero))
       in
-      if j <> 0 && degree - j < Array.length coefs then
-        points.(0) <- Scalar.copy coefs.(degree - j) ;
       Scalar.fft_inplace ~domain:domain2m ~points ;
       Array.map2 G1.mul precomputed_srs_part.(j) points
     in
@@ -914,7 +915,7 @@ module Inner = struct
       ~chunk_count:Z.(log2 (of_int t.number_of_shards))
       ~degree:t.k
       ~preprocess
-      (Polynomials.to_dense_coefficients p)
+      p
 
   let verify_shard t cm {index = shard_index; share = shard_evaluations} proof =
     let generator_domain_n = Domains.get t.domain_n 1 in
