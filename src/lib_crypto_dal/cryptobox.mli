@@ -212,7 +212,7 @@ module Internal_for_tests : sig
      respect to the size given. Order of magnitude can be around 1
      minute for a size of 1MiB. *)
   val initialisation_parameters_from_slot_size :
-    slot_size:int -> initialisation_parameters
+    slot_size:int -> page_size:int -> initialisation_parameters
 
   (** Same as {!val:load_parameters} except it erase parameters if
      they were already loaded. This is used to circumvent limitation
