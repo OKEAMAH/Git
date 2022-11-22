@@ -53,7 +53,8 @@ val remove_staker :
     {ul
       {li [Sc_rollup_does_not_exist] if [rollup] does not exist}
       {li [Sc_rollup_too_far_ahead] if [staker] would be more than
-        [sc_rollup_max_future_commitments] ahead of the Last Cemented Commitment}
+        [Constants_storage.sc_rollup_max_lookahead_in_blocks] ahead of the
+        Last Cemented Commitment}
       {li [Sc_rollup_bad_inbox_level] if [commitment]'s predecessor is
         less than [sc_rollup_commitment_period] blocks ahead}
       {li [Sc_rollup_staker_backtracked] if [staker] is not staked on an ancestor
