@@ -34,6 +34,56 @@ let path = "store"
 
 let slot_header_store = "slot_header_store"
 
+module Foo = struct
+  module Key : Index.Key.S with type t = int32 * int = struct
+    type t = int32 * int
+
+    let t =
+      let open Repr in
+      pair int32 int
+
+    let equal = ( = )
+
+    let hash = Hashtbl.hash
+
+    let hash_size = 31
+
+    let encoding =
+      let open Data_encoding in
+      tup2 int32 int31
+
+    let encode v = Data_encoding.Binary.to_string_exn encoding v
+
+    let encoded_size =
+      match Data_encoding.Binary.fixed_length encoding with
+      | None -> assert false
+      | Some size -> size
+
+    let decode v _i = Data_encoding.Binary.of_string_exn encoding v
+  end
+
+  module Value : Index.Value.S with type t = Cryptobox.commitment = struct
+    type t = Cryptobox.commitment
+
+    let encoding = Cryptobox.Commitment.encoding
+
+    let encode v = Data_encoding.Binary.to_string_exn encoding v
+
+    let encoded_size =
+      match Data_encoding.Binary.fixed_length encoding with
+      | None -> assert false
+      | Some size -> size
+
+    let decode v _i = Data_encoding.Binary.of_string_exn encoding v
+
+    let t =
+      let open Repr in
+      map string (fun str -> decode str 0) (fun commitment -> encode commitment)
+  end
+
+  include Index_unix.Make (Key) (Value) (Index.Cache.Unbounded)
+end
+
 module StoreMaker = Irmin_pack_unix.KV (Tezos_context_encoding.Context.Conf)
 include StoreMaker.Make (Irmin.Contents.String)
 
@@ -46,6 +96,7 @@ let set ~msg store path v = set_exn store path v ~info:(fun () -> info msg)
 (** Store context *)
 type node_store = {
   slots_store : t;
+  commitment_index : Foo.t;
   slot_headers_store : Slot_headers_store.t;
   slots_watcher : Cryptobox.Commitment.t Lwt_watcher.input;
 }
@@ -64,4 +115,5 @@ let init config =
   let* repo = Repo.v (Irmin_pack.config dir) in
   let* slots_store = main repo in
   let* () = Event.(emit store_is_ready ()) in
-  Lwt.return {slots_store; slots_watcher; slot_headers_store}
+  let commitment_index = Foo.v ~log_size:10_000 "coucou" in
+  Lwt.return {slots_store; slots_watcher; slot_headers_store; commitment_index}
