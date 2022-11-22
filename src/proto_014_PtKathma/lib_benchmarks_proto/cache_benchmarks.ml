@@ -25,6 +25,8 @@
 
 open Protocol
 
+let ns = Namespace.of_string
+
 (** {2 [Alpha_context.Cache]-related benchmarks} *)
 
 let assert_ok_lwt x =
@@ -153,6 +155,8 @@ module Cache_update_benchmark : Benchmark.S = struct
             lam ~name:"size" @@ fun size ->
             free ~name:intercept + (free ~name:coeff * log2 (int 1 + size))
         end
+
+        let name = ns name
       end in
       (module M : Model_impl with type arg_type = int * unit)
     in
