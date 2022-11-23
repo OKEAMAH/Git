@@ -383,7 +383,7 @@ let cement_commitment ctxt rollup new_lcc =
   let* old_lcc, ctxt =
     Commitment_storage.last_cemented_commitment ctxt rollup
   in
-  (* Get is safe, as [Stakers_size] is initialized on origination. *)
+  (* [get] is safe, as [Stakers_size] is initialized on origination. *)
   let* ctxt, total_staker_count = Store.Staker_count.get ctxt rollup in
   let* () =
     fail_when Compare.Int32.(total_staker_count <= 0l) Sc_rollup_no_stakers
