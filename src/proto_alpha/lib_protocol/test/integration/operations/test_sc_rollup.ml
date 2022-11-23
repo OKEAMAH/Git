@@ -687,6 +687,121 @@ let test_publish_cement_and_recover_bond () =
   let* () = recover_bond_not_staked i contract rollup in
   return_unit
 
+let test_cement_with__unrecovered_bond () =
+  let* block, contracts, rollup = init_and_originate Context.T3 "unit" in
+  let contract1, contract2, contract3 = contracts in
+  let* constants = Context.get_constants (B block) in
+  let pkh =
+    (* We forbid the stake owner from baker to correctly check the unfrozen
+       amount below. *)
+    match contract3 with Implicit pkh -> pkh | Originated _ -> assert false
+  in
+  let bake_block b apply_ops =
+    let* i = Incremental.begin_construction ~policy:(By_account pkh) b in
+    let* i = apply_ops i in
+    Incremental.finalize_block i
+  in
+  let b = block in
+
+  (* # first round *)
+  (* ================*)
+
+  (* Create a dummy commitment *)
+  let* c = dummy_commitment (B b) rollup in
+
+  (* Bake a block where two stakers stake on the commitment *)
+  let* b =
+    bake_block b (fun i ->
+        let* operation1 = Op.sc_rollup_publish (I i) contract1 rollup c in
+        let* operation2 = Op.sc_rollup_publish (I i) contract2 rollup c in
+        let* i = Incremental.add_operation i operation1 in
+        Incremental.add_operation i operation2)
+  in
+  (* Stakers cannot recover bonds *)
+  let* i = Incremental.begin_construction ~policy:(By_account pkh) b in
+  let* () = recover_bond_not_lcc i contract1 rollup in
+  let* () = recover_bond_not_lcc i contract2 rollup in
+
+  (* Bake to be able to cement *)
+  let* b =
+    Block.bake_n constants.parametric.sc_rollup.challenge_window_in_blocks b
+  in
+
+  (* Stakers cannot recover bonds *)
+  let* i = Incremental.begin_construction ~policy:(By_account pkh) b in
+  let* () = recover_bond_not_lcc i contract1 rollup in
+  let* () = recover_bond_not_lcc i contract2 rollup in
+
+  (* Cement the first commitment *)
+  let* b =
+    bake_block b (fun i ->
+        let* i, hash = hash_commitment i c in
+        let* cement_op = Op.sc_rollup_cement (I i) contract1 rollup hash in
+        Incremental.add_operation i cement_op)
+  in
+
+  (* Stakers could recover bonds now (but recovering ignored / not done. *)
+  let* i = Incremental.begin_construction ~policy:(By_account pkh) b in
+  let* _b = recover_bond_with_success i contract1 rollup in
+  let* _b = recover_bond_with_success i contract2 rollup in
+
+  (* # second round *)
+  (* ================*)
+
+  (* Create a dummy commitment *)
+  let* c = dummy_commitment (B b) rollup ~predecessor:c in
+
+  (* Bake a block where only staker 1 stakes on the next commitment  *)
+  let* b =
+    bake_block b (fun i ->
+        let* operation1 = Op.sc_rollup_publish (I i) contract1 rollup c in
+        (*let* operation2 = Op.sc_rollup_publish (I i) contract2 rollup c in*)
+        Incremental.add_operation i operation1)
+  in
+  (* Staker 1 cannot recover bonds, but staker 2 could *)
+  let* i = Incremental.begin_construction ~policy:(By_account pkh) b in
+  let* () = recover_bond_not_lcc i contract1 rollup in
+  let* _b = recover_bond_with_success i contract2 rollup in
+
+  (* Bake to be able to cement *)
+  let* b =
+    Block.bake_n constants.parametric.sc_rollup.challenge_window_in_blocks b
+  in
+
+  (* Staker 1 cannot recover bonds, but staker 2 could *)
+  let* i = Incremental.begin_construction ~policy:(By_account pkh) b in
+  let* () = recover_bond_not_lcc i contract1 rollup in
+  let* _b = recover_bond_with_success i contract2 rollup in
+
+  (* Cement the second commitment. Should fail because contract2 is still staked *)
+  let*! b =
+    bake_block b (fun i ->
+        let* i, hash = hash_commitment i c in
+        let* cement_op = Op.sc_rollup_cement (I i) contract1 rollup hash in
+        Incremental.add_operation i cement_op)
+  in
+  let* () =
+    match b with Ok _ -> failwith "Expected to fail" | Error _ -> return_unit
+  in
+
+  (* contract 2 recovers its bonds.
+     TODO: add a variant where contract1 withdraw bonds for contract2. *)
+  let* b = recover_bond_with_success i contract2 rollup in
+
+  (* Cement the second commitment should now work *)
+  let* b =
+    bake_block b (fun i ->
+        let* i, hash = hash_commitment i c in
+        let* cement_op = Op.sc_rollup_cement (I i) contract1 rollup hash in
+        Incremental.add_operation i cement_op)
+  in
+
+  (* Staker 1 should now be able to recover its bonds  *)
+  let* i = Incremental.begin_construction ~policy:(By_account pkh) b in
+  let* _b = recover_bond_with_success i contract1 rollup in
+
+  return_unit
+
 (** [test_publish_fails_on_backtrack] creates a rollup and then
     publishes two different commitments with the same staker. We check
     that the second publish fails. *)
@@ -2364,7 +2479,7 @@ let test_curfew_is_clean () =
   | None -> return_unit
 
 (** [test_curfew_period_is_started_only_after_first_publication checks that
-    publishing the first commitment of a given [inbox_level] after 
+    publishing the first commitment of a given [inbox_level] after
     [inbox_level + challenge_window] is still possible. *)
 let test_curfew_period_is_started_only_after_first_publication () =
   let open Lwt_result_syntax in
@@ -2397,6 +2512,10 @@ let tests =
       "can publish a commit, cement it and withdraw stake"
       `Quick
       test_publish_cement_and_recover_bond;
+    Tztest.tztest
+      "can cement if some stakers still on LCC"
+      `Quick
+      test_cement_with__unrecovered_bond;
     Tztest.tztest
       "publish will fail if staker is backtracking"
       `Quick
