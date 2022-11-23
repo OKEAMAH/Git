@@ -29,10 +29,10 @@ open Protocol.Alpha_context
 
 let tx_rollup_finality_period = 40_000
 
-(** The challenge window is about a week with 30s block-time (604800s / 30s).
+(** The challenge window is about two weeks with 30s block-time.
     WARNING: changing this value also impacts
     [sc_rollup_max_active_outbox_levels]. See below. *)
-let sc_rollup_challenge_window_in_blocks = 20_160
+let sc_rollup_challenge_window_in_blocks = 40_320
 
 (** Number of active levels kept for executing outbox messages.
 
@@ -53,7 +53,8 @@ let sc_rollup_max_outbox_messages_per_level = 100
     It suffers from the same risk of censorship as
     {!sc_rollup_challenge_windows_in_blocks} so we use the same value.
 *)
-let sc_rollup_timeout_period_in_blocks = 20_160
+let sc_rollup_timeout_period_in_blocks =
+  sc_rollup_challenge_window_in_blocks / 2
 
 (* DAL/FIXME https://gitlab.com/tezos/tezos/-/issues/3177
 
@@ -234,7 +235,7 @@ let constants_mainnet =
          (* TODO: https://gitlab.com/tezos/tezos/-/issues/2756
             The following constants need to be refined. *)
          stake_amount = Tez.of_mutez_exn 10_000_000_000L;
-         max_lookahead_in_blocks = 30_000l;
+         max_lookahead_in_blocks = 100_000l;
          max_active_outbox_levels = sc_rollup_max_active_outbox_levels;
          max_outbox_messages_per_level = sc_rollup_max_outbox_messages_per_level;
          (* The default number of required sections in a dissection *)
