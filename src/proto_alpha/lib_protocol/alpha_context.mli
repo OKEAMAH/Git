@@ -3587,6 +3587,8 @@ module Sc_rollup : sig
       val produce_output_proof :
         context -> state -> output -> (output_proof, error) result Lwt.t
 
+      val cost_verify_proof : proof -> Gas.cost
+
       module Internal_for_tests : sig
         val insert_failure : state -> state Lwt.t
       end

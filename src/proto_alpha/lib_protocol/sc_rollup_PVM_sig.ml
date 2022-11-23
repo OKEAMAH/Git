@@ -571,6 +571,10 @@ module type S = sig
   val produce_output_proof :
     context -> state -> output -> (output_proof, error) result Lwt.t
 
+  (** [cost_verify_proof proof] returns the cost of verifying the proof using
+      the [verify_proof] function applied with the given [proof]. *)
+  val cost_verify_proof : proof -> Gas_limit_repr.cost
+
   module Internal_for_tests : sig
     (** [insert_failure state] corrupts the PVM state. This is used in
         the loser mode of the rollup node. *)

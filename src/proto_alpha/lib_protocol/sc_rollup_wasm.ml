@@ -456,6 +456,8 @@ module V2_0_0 = struct
       | Some (_, false) -> fail Wasm_invalid_claim_about_outbox
       | None -> fail Wasm_output_proof_production_failed
 
+    let cost_verify_proof _ = Gas_limit_repr.free
+
     module Internal_for_tests = struct
       let insert_failure state =
         let add n = Tree.add state ["failures"; string_of_int n] Bytes.empty in

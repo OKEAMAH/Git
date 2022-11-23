@@ -96,3 +96,8 @@ val cost_check_dissection :
     given [number_of_sections]. *)
 val cost_find_choice :
   number_of_sections:int -> tick_size:int -> Gas_limit_repr.cost
+
+(** [cost_compare a_size_in_bytes b_size_in_bytes] returns the gas
+    cost of comparing two values given their respective sizes [a_size_in_bytes]
+    and [b_size_in_bytes]. *)
+val cost_compare : int -> int -> Gas_limit_repr.cost

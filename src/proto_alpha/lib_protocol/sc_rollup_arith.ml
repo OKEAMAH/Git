@@ -1478,6 +1478,12 @@ module Make (Context : P) :
     | Some (_, false) -> fail Arith_invalid_claim_about_outbox
     | None -> fail Arith_output_proof_production_failed
 
+  (* FIXME: https://gitlab.com/tezos/tezos/-/issues/2926
+     Need to implement the cost function. *)
+  let cost_verify_proof _proof =
+    let open Gas_limit_repr in
+    free
+
   module Internal_for_tests = struct
     let insert_failure state =
       let add n = Tree.add state ["failures"; string_of_int n] Bytes.empty in
