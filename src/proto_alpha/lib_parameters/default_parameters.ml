@@ -235,6 +235,13 @@ let constants_mainnet =
          (* TODO: https://gitlab.com/tezos/tezos/-/issues/2756
             The following constants need to be refined. *)
          stake_amount = Tez.of_mutez_exn 10_000_000_000L;
+         (*
+
+            A commitment consumes less than 100 bytes of
+            storage. With 250 mutez per byte, the cost of storing
+            commitments is less than 2,500 tez, that is less than [stake_amount].
+
+         *)
          max_lookahead_in_blocks = 100_000l;
          max_active_outbox_levels = sc_rollup_max_active_outbox_levels;
          max_outbox_messages_per_level = sc_rollup_max_outbox_messages_per_level;
