@@ -93,6 +93,7 @@
   Sc_rollup_inbox_repr
   Sc_rollup_commitment_repr
   Sc_rollup_proof_repr
+  Sc_rollup_costs
   Sc_rollup_game_repr
   Tx_rollup_level_repr
   Tx_rollup_l2_proof
@@ -177,7 +178,6 @@
   Liquidity_baking_cpmm
   Liquidity_baking_lqt
   Liquidity_baking_migration
-  Sc_rollup_costs
   Sc_rollup_errors
   Sc_rollup_inbox_storage
   Legacy_script_patches
@@ -368,6 +368,7 @@
   sc_rollup_inbox_repr.ml sc_rollup_inbox_repr.mli
   sc_rollup_commitment_repr.ml sc_rollup_commitment_repr.mli
   sc_rollup_proof_repr.ml sc_rollup_proof_repr.mli
+  sc_rollup_costs.ml sc_rollup_costs.mli
   sc_rollup_game_repr.ml sc_rollup_game_repr.mli
   tx_rollup_level_repr.ml tx_rollup_level_repr.mli
   tx_rollup_l2_proof.ml tx_rollup_l2_proof.mli
@@ -455,7 +456,6 @@
   liquidity_baking_cpmm.ml
   liquidity_baking_lqt.ml
   liquidity_baking_migration.ml liquidity_baking_migration.mli
-  sc_rollup_costs.ml sc_rollup_costs.mli
   sc_rollup_errors.ml
   sc_rollup_inbox_storage.ml sc_rollup_inbox_storage.mli
   legacy_script_patches.ml
@@ -626,6 +626,7 @@
   sc_rollup_inbox_repr.ml sc_rollup_inbox_repr.mli
   sc_rollup_commitment_repr.ml sc_rollup_commitment_repr.mli
   sc_rollup_proof_repr.ml sc_rollup_proof_repr.mli
+  sc_rollup_costs.ml sc_rollup_costs.mli
   sc_rollup_game_repr.ml sc_rollup_game_repr.mli
   tx_rollup_level_repr.ml tx_rollup_level_repr.mli
   tx_rollup_l2_proof.ml tx_rollup_l2_proof.mli
@@ -713,7 +714,6 @@
   liquidity_baking_cpmm.ml
   liquidity_baking_lqt.ml
   liquidity_baking_migration.ml liquidity_baking_migration.mli
-  sc_rollup_costs.ml sc_rollup_costs.mli
   sc_rollup_errors.ml
   sc_rollup_inbox_storage.ml sc_rollup_inbox_storage.mli
   legacy_script_patches.ml
@@ -889,6 +889,7 @@
   sc_rollup_inbox_repr.ml sc_rollup_inbox_repr.mli
   sc_rollup_commitment_repr.ml sc_rollup_commitment_repr.mli
   sc_rollup_proof_repr.ml sc_rollup_proof_repr.mli
+  sc_rollup_costs.ml sc_rollup_costs.mli
   sc_rollup_game_repr.ml sc_rollup_game_repr.mli
   tx_rollup_level_repr.ml tx_rollup_level_repr.mli
   tx_rollup_l2_proof.ml tx_rollup_l2_proof.mli
@@ -976,7 +977,6 @@
   liquidity_baking_cpmm.ml
   liquidity_baking_lqt.ml
   liquidity_baking_migration.ml liquidity_baking_migration.mli
-  sc_rollup_costs.ml sc_rollup_costs.mli
   sc_rollup_errors.ml
   sc_rollup_inbox_storage.ml sc_rollup_inbox_storage.mli
   legacy_script_patches.ml
