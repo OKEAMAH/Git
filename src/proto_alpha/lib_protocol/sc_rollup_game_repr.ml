@@ -819,17 +819,23 @@ let loser_of_results ~alice_result ~bob_result =
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/2926
    This function is incomplete and needs to account for additional gas. *)
-let cost_play _game refutation =
-  match refutation.step with
-  | Dissection states ->
-      let number_of_states = List.length states in
-      let hash_size = State_hash.size in
-      let tick_size = Sc_rollup_tick_repr.size_in_bytes refutation.choice in
-      Sc_rollup_costs.cost_check_dissection
-        ~number_of_states
-        ~tick_size
-        ~hash_size
-  | Proof _proof -> Gas_limit_repr.free
+let cost_play ~number_of_sections _game refutation =
+  let tick_size = Sc_rollup_tick_repr.size_in_bytes refutation.choice in
+  let cost_find_tick =
+    Sc_rollup_costs.cost_find_tick ~number_of_sections ~tick_size
+  in
+  let cost_refutation =
+    match refutation.step with
+    | Dissection states ->
+        let number_of_states = List.length states in
+        let hash_size = State_hash.size in
+        Sc_rollup_costs.cost_check_dissection
+          ~number_of_states
+          ~tick_size
+          ~hash_size
+    | Proof _proof -> Gas_limit_repr.free
+  in
+  Gas_limit_repr.(cost_find_tick +@ cost_refutation)
 
 let play dal_parameters ~dal_attestation_lag ~stakers metadata game refutation =
   let open Lwt_result_syntax in

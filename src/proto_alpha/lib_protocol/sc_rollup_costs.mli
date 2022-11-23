@@ -88,3 +88,8 @@ val cost_hash_bytes : bytes_len:int -> Gas_limit_repr.cost
     [hash_size]. *)
 val cost_check_dissection :
   number_of_states:int -> tick_size:int -> hash_size:int -> Gas_limit_repr.cost
+
+(** [cost_find_tick ~number_of_sections ~tick_size] is the cost of searching
+    for a tick of a give [tick_size] within a given [number_of_sections]. *)
+val cost_find_tick :
+  number_of_sections:int -> tick_size:int -> Gas_limit_repr.cost

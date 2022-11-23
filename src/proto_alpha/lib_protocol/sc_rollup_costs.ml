@@ -155,3 +155,6 @@ let cost_check_dissection ~number_of_states ~tick_size ~hash_size =
   let open S_syntax in
   cost_search_in_tick_list number_of_states tick_size
   + (S.safe_int 2 * cost_compare hash_size hash_size)
+
+let cost_find_tick ~number_of_sections ~tick_size =
+  cost_search_in_tick_list number_of_sections tick_size

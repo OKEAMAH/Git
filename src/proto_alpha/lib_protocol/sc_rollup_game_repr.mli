@@ -410,9 +410,9 @@ type timeout = {
 
 val timeout_encoding : timeout Data_encoding.t
 
-(** [cost_play game refutation] returns the gas cost of [play] applied with [game]
-    and [refutation]. *)
-val cost_play : t -> refutation -> Gas_limit_repr.cost
+(** [cost_play ~number_of_sections game refutation] returns the gas cost of
+    [play] applied with [game] and [refutation]. *)
+val cost_play : number_of_sections:int -> t -> refutation -> Gas_limit_repr.cost
 
 module Internal_for_tests : sig
   (** Checks that the tick count chosen by the current move is one of
