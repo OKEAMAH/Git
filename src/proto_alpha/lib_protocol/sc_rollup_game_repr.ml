@@ -824,23 +824,27 @@ let cost_check_proof_start_stop =
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/2926
    This function is incomplete and needs to account for additional gas. *)
-let cost_play ~number_of_sections _game refutation =
+let cost_play ~number_of_sections game refutation =
   let tick_size = Sc_rollup_tick_repr.size_in_bytes refutation.choice in
   let cost_find_tick =
     Sc_rollup_costs.cost_find_tick ~number_of_sections ~tick_size
   in
   let cost_refutation =
-    match refutation.step with
-    | Dissection states ->
+    match (refutation.step, game.game_state) with
+    | Dissection states, Dissecting _ ->
         let number_of_states = List.length states in
         let hash_size = State_hash.size in
         Sc_rollup_costs.cost_check_dissection
           ~number_of_states
           ~tick_size
           ~hash_size
-    | Proof _proof -> cost_check_proof_start_stop
+    | Proof proof, Dissecting _ ->
+        let cost_valid =
+          Sc_rollup_proof_repr.cost_valid proof proof.input_proof
+        in
+        Gas_limit_repr.(cost_valid +@ cost_check_proof_start_stop)
+    | _ -> Gas_limit_repr.free
   in
-
   Gas_limit_repr.(cost_find_tick +@ cost_refutation)
 
 let play dal_parameters ~dal_attestation_lag ~stakers metadata game refutation =

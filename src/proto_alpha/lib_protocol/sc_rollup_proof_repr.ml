@@ -347,6 +347,43 @@ let valid ~metadata snapshot commit_level dal_snapshot dal_parameters
   in
   return (input, input_requested)
 
+(* FIXME: https://gitlab.com/tezos/tezos/-/issues/3290
+   This needs to implemented. *)
+let cost_check_inbox_proof _inbox_proof = Gas_limit_repr.free
+
+(* FIXME: https://gitlab.com/tezos/tezos/-/issues/3290
+   This needs to implemented. *)
+let cost_verify_dal_proof _proof = Gas_limit_repr.free
+
+(* FIXME: https://gitlab.com/tezos/tezos/-/issues/3290
+   This needs to implemented. *)
+let cost_verify_proof _proof = Gas_limit_repr.free
+
+let cost_valid_input_proof input_proof_opt =
+  match input_proof_opt with
+  | Some (Inbox_proof {level = _; message_counter = _; proof}) ->
+      cost_check_inbox_proof proof
+  | Some First_inbox_message -> Gas_limit_repr.free
+  | Some (Reveal_proof (Raw_data_proof _)) -> Gas_limit_repr.free
+  | Some (Reveal_proof Metadata_proof) -> Gas_limit_repr.free
+  | Some (Reveal_proof (Dal_page_proof {proof; page_id = _})) ->
+      cost_verify_dal_proof proof
+  | None -> Gas_limit_repr.free
+
+(* The cost is calculated by mirroring the structure of [valid]. *)
+let cost_valid proof input_proof_opt =
+  let (module P) = Sc_rollups.wrapped_proof_module proof.pvm_step in
+  let cost_valid_input_proof = cost_valid_input_proof input_proof_opt in
+  let cost_verify_proof = cost_verify_proof P.proof in
+  (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3290
+     Here we also need to account for work involved in validating input proof
+     and input request. In particular hashing reveal hash data. However we
+     need to know the input proof here which we do not have access to.
+     Possible solution: split [valid] in two parts. *)
+  let cost_valid_input = Gas_limit_repr.free in
+  Gas_limit_repr.(
+    cost_valid_input_proof +@ cost_valid_input +@ cost_verify_proof)
+
 module type PVM_with_context_and_state = sig
   include Sc_rollups.PVM.S
 
