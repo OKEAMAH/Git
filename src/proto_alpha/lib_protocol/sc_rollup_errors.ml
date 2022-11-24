@@ -30,7 +30,7 @@ type error +=
   | (* `Temporary *) Sc_rollup_no_conflict
   | (* `Temporary *) Sc_rollup_no_stakers
   | (* `Temporary *) Sc_rollup_not_staked
-  | (* `Temporary *) Sc_rollup_not_staked_on_lcc
+  | (* `Temporary *) Sc_rollup_not_staked_on_lcc_or_ancestor
   | (* `Temporary *) Sc_rollup_parent_not_lcc
   | (* `Temporary *) Sc_rollup_remove_lcc
   | (* `Temporary *) Sc_rollup_staker_backtracked
@@ -276,17 +276,18 @@ let () =
     (function Sc_rollup_not_staked -> Some () | _ -> None)
     (fun () -> Sc_rollup_not_staked) ;
   let description =
-    "Attempted to withdraw while not staked on the last cemented commitment."
+    "Attempted to withdraw while not staked on the last cemented commitment or \
+     its ancestor."
   in
   register_error_kind
     `Temporary
-    ~id:"Sc_rollup_not_staked_on_lcc"
-    ~title:"Rollup not staked on LCC"
+    ~id:"Sc_rollup_not_staked_on_lcc_or_ancestor"
+    ~title:"Rollup not staked on LCC or its ancestor"
     ~description
     ~pp:(fun ppf () -> Format.fprintf ppf "%s" description)
     Data_encoding.empty
-    (function Sc_rollup_not_staked_on_lcc -> Some () | _ -> None)
-    (fun () -> Sc_rollup_not_staked_on_lcc) ;
+    (function Sc_rollup_not_staked_on_lcc_or_ancestor -> Some () | _ -> None)
+    (fun () -> Sc_rollup_not_staked_on_lcc_or_ancestor) ;
   let description = "Parent is not the last cemented commitment." in
   register_error_kind
     `Temporary

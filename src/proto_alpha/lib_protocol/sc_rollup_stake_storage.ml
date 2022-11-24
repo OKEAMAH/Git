@@ -68,6 +68,28 @@ let get_contract_and_stake ctxt staker =
   let stake = Constants_storage.sc_rollup_stake_amount ctxt in
   (staker_contract, stake)
 
+let assert_staked_on_lcc_or_ancestor ctxt rollup staker =
+  let open Lwt_result_syntax in
+  let* staked_on, ctxt = find_staker ctxt rollup staker in
+  let* ctxt, commitment_opt = Store.Commitments.find (ctxt, rollup) staked_on in
+  (* If commitment of staked_on is still stored, it means that we can obtain inbox_level for it and
+     compare explicitly with LCC inbox level.
+     Otherwise, it means that staked_on **existed** in the store and it has to be a cemented predecessor of LCC:
+     if it wasn't a case then staker would be refuted and removed by now.
+  *)
+  match commitment_opt with
+  | None -> return ctxt
+  | Some {inbox_level; _} ->
+      let* _lcc, lcc_inbox_level, ctxt =
+        Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
+      in
+      let+ () =
+        fail_unless
+          Raw_level_repr.(inbox_level <= lcc_inbox_level)
+          Sc_rollup_not_staked_on_lcc_or_ancestor
+      in
+      ctxt
+
 (** Warning: must be called only if [rollup] exists and [staker] is not to be
     found in {!Store.Stakers.} *)
 let deposit_stake ctxt rollup staker =
@@ -102,30 +124,21 @@ let deposit_stake ctxt rollup staker =
 
 let withdraw_stake ctxt rollup staker =
   let open Lwt_result_syntax in
-  let* lcc, ctxt = Commitment_storage.last_cemented_commitment ctxt rollup in
-  let* ctxt, res = Store.Stakers.find (ctxt, rollup) staker in
-  match res with
-  | None -> tzfail Sc_rollup_not_staked
-  | Some staked_on_commitment ->
-      let* () =
-        fail_unless
-          Commitment_hash.(staked_on_commitment = lcc)
-          Sc_rollup_not_staked_on_lcc
-      in
-      let staker_contract, stake = get_contract_and_stake ctxt staker in
-      let bond_id = Bond_id_repr.Sc_rollup_bond_id rollup in
-      let* ctxt, balance_updates =
-        Token.transfer
-          ctxt
-          (`Frozen_bonds (staker_contract, bond_id))
-          (`Contract staker_contract)
-          stake
-      in
-      let* ctxt, _size_freed =
-        Store.Stakers.remove_existing (ctxt, rollup) staker
-      in
-      let+ ctxt = modify_staker_count ctxt rollup Int32.pred in
-      (ctxt, balance_updates)
+  let* ctxt = assert_staked_on_lcc_or_ancestor ctxt rollup staker in
+  let staker_contract, stake = get_contract_and_stake ctxt staker in
+  let bond_id = Bond_id_repr.Sc_rollup_bond_id rollup in
+  let* ctxt, balance_updates =
+    Token.transfer
+      ctxt
+      (`Frozen_bonds (staker_contract, bond_id))
+      (`Contract staker_contract)
+      stake
+  in
+  let* ctxt, _size_freed =
+    Store.Stakers.remove_existing (ctxt, rollup) staker
+  in
+  let+ ctxt = modify_staker_count ctxt rollup Int32.pred in
+  (ctxt, balance_updates)
 
 let assert_commitment_not_too_far_ahead ctxt rollup lcc commitment =
   let open Lwt_result_syntax in
