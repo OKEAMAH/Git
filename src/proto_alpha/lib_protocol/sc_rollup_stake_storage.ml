@@ -68,7 +68,7 @@ let get_contract_and_stake ctxt staker =
   let stake = Constants_storage.sc_rollup_stake_amount ctxt in
   (staker_contract, stake)
 
-let assert_staked_on_lcc_or_ancestor ctxt rollup staker =
+let if_staked_on_lcc_or_ancestor ctxt rollup staker =
   let open Lwt_result_syntax in
   let* staked_on, ctxt = find_staker ctxt rollup staker in
   let* ctxt, commitment_opt = Store.Commitments.find (ctxt, rollup) staked_on in
@@ -78,17 +78,12 @@ let assert_staked_on_lcc_or_ancestor ctxt rollup staker =
      if it wasn't a case then staker would be refuted and removed by now.
   *)
   match commitment_opt with
-  | None -> return ctxt
+  | None -> return (true, ctxt)
   | Some {inbox_level; _} ->
-      let* _lcc, lcc_inbox_level, ctxt =
+      let+ _lcc, lcc_inbox_level, ctxt =
         Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
       in
-      let+ () =
-        fail_unless
-          Raw_level_repr.(inbox_level <= lcc_inbox_level)
-          Sc_rollup_not_staked_on_lcc_or_ancestor
-      in
-      ctxt
+      (Raw_level_repr.(inbox_level <= lcc_inbox_level), ctxt)
 
 (** Warning: must be called only if [rollup] exists and [staker] is not to be
     found in {!Store.Stakers.} *)
@@ -124,7 +119,12 @@ let deposit_stake ctxt rollup staker =
 
 let withdraw_stake ctxt rollup staker =
   let open Lwt_result_syntax in
-  let* ctxt = assert_staked_on_lcc_or_ancestor ctxt rollup staker in
+  let* lcc_or_ancestor, ctxt =
+    if_staked_on_lcc_or_ancestor ctxt rollup staker
+  in
+  let* () =
+    fail_unless lcc_or_ancestor Sc_rollup_not_staked_on_lcc_or_ancestor
+  in
   let staker_contract, stake = get_contract_and_stake ctxt staker in
   let bond_id = Bond_id_repr.Sc_rollup_bond_id rollup in
   let* ctxt, balance_updates =
@@ -554,52 +554,47 @@ let cement_commitment ctxt rollup new_lcc =
 
 let remove_staker ctxt rollup staker =
   let open Lwt_result_syntax in
+  let* lcc_or_ancestor, ctxt =
+    if_staked_on_lcc_or_ancestor ctxt rollup staker
+  in
+  let* () = fail_when lcc_or_ancestor Sc_rollup_remove_lcc_or_ancestor in
+
   let* lcc, ctxt = Commitment_storage.last_cemented_commitment ctxt rollup in
-  let* ctxt, res = Store.Stakers.find (ctxt, rollup) staker in
-  match res with
-  | None -> tzfail Sc_rollup_not_staked
-  | Some staked_on ->
-      let* () =
-        fail_when Commitment_hash.(staked_on = lcc) Sc_rollup_remove_lcc
-      in
-      let staker_contract, stake = get_contract_and_stake ctxt staker in
-      let bond_id = Bond_id_repr.Sc_rollup_bond_id rollup in
-      let* ctxt, balance_updates =
-        Token.transfer
-          ctxt
-          (`Frozen_bonds (staker_contract, bond_id))
-          `Sc_rollup_refutation_punishments
-          stake
-      in
-      let* ctxt, _size_diff =
-        Store.Stakers.remove_existing (ctxt, rollup) staker
-      in
-      let* ctxt = modify_staker_count ctxt rollup Int32.pred in
+  let* staked_on, ctxt = find_staker_unsafe ctxt rollup staker in
+  let staker_contract, stake = get_contract_and_stake ctxt staker in
+  let bond_id = Bond_id_repr.Sc_rollup_bond_id rollup in
+  let* ctxt, balance_updates =
+    Token.transfer
+      ctxt
+      (`Frozen_bonds (staker_contract, bond_id))
+      `Sc_rollup_refutation_punishments
+      stake
+  in
+  let* ctxt, _size_diff = Store.Stakers.remove_existing (ctxt, rollup) staker in
+  let* ctxt = modify_staker_count ctxt rollup Int32.pred in
 
-      (* TODO: https://gitlab.com/tezos/tezos/-/issues/4307
-         Check value of [max_lookahead_in_blocks] against gas exhaustion
-         during this function execution. *)
-      let rec go node ctxt =
-        (*
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4307
+     Check value of [max_lookahead_in_blocks] against gas exhaustion
+     during this function execution. *)
+  let rec go node ctxt =
+    (*
+        The recursive calls of this function are protected from
+        infinite recursion because [Commitment_storage] and
+        [Commitment_stake_count] are using carbonated storage.
 
-           The recursive calls of this function are protected from
-           infinite recursion because [Commitment_storage] and
-           [Commitment_stake_count] are using carbonated storage.
-
-           Hence, at each step of the traversal, the gas strictly
-           decreases.
-
-        *)
-        if Commitment_hash.(node = lcc) then return ctxt
-        else
-          let* pred, ctxt =
-            Commitment_storage.get_predecessor_unsafe ctxt rollup node
-          in
-          let* ctxt = decrease_commitment_stake_count ctxt rollup node in
-          (go [@ocaml.tailcall]) pred ctxt
+        Hence, at each step of the traversal, the gas strictly
+        decreases.
+    *)
+    if Commitment_hash.(node = lcc) then return ctxt
+    else
+      let* pred, ctxt =
+        Commitment_storage.get_predecessor_unsafe ctxt rollup node
       in
-      let+ ctxt = go staked_on ctxt in
-      (ctxt, balance_updates)
+      let* ctxt = decrease_commitment_stake_count ctxt rollup node in
+      (go [@ocaml.tailcall]) pred ctxt
+  in
+  let+ ctxt = go staked_on ctxt in
+  (ctxt, balance_updates)
 
 module Internal_for_tests = struct
   let deposit_stake = deposit_stake

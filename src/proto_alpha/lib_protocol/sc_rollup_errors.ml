@@ -32,7 +32,7 @@ type error +=
   | (* `Temporary *) Sc_rollup_not_staked
   | (* `Temporary *) Sc_rollup_not_staked_on_lcc_or_ancestor
   | (* `Temporary *) Sc_rollup_parent_not_lcc
-  | (* `Temporary *) Sc_rollup_remove_lcc
+  | (* `Temporary *) Sc_rollup_remove_lcc_or_ancestor
   | (* `Temporary *) Sc_rollup_staker_backtracked
   | (* `Temporary *) Sc_rollup_too_far_ahead
   | (* `Temporary *)
@@ -298,16 +298,16 @@ let () =
     Data_encoding.empty
     (function Sc_rollup_parent_not_lcc -> Some () | _ -> None)
     (fun () -> Sc_rollup_parent_not_lcc) ;
-  let description = "Can not remove a cemented commitment." in
+  let description = "Can not remove a staker committed on cemented." in
   register_error_kind
     `Temporary
-    ~id:"Sc_rollup_remove_lcc"
-    ~title:"Can not remove cemented"
+    ~id:"Sc_rollup_remove_lcc_or_ancestor"
+    ~title:"Can not remove a staker"
     ~description
     ~pp:(fun ppf () -> Format.fprintf ppf "%s" description)
     Data_encoding.empty
-    (function Sc_rollup_remove_lcc -> Some () | _ -> None)
-    (fun () -> Sc_rollup_remove_lcc) ;
+    (function Sc_rollup_remove_lcc_or_ancestor -> Some () | _ -> None)
+    (fun () -> Sc_rollup_remove_lcc_or_ancestor) ;
   let description = "Staker backtracked." in
   register_error_kind
     `Temporary

@@ -420,7 +420,7 @@ let test_removing_staker_from_lcc_fails () =
   assert_fails_with
     ~loc:__LOC__
     (Sc_rollup_stake_storage.remove_staker ctxt rollup staker)
-    Sc_rollup_errors.Sc_rollup_remove_lcc
+    Sc_rollup_errors.Sc_rollup_remove_lcc_or_ancestor
 
 let withdraw_stake_and_check_balances ctxt rollup staker =
   perform_staking_action_and_check
@@ -588,6 +588,29 @@ let test_deposit_then_refine_bad_inbox () =
        staker
        commitment)
     Sc_rollup_errors.Sc_rollup_bad_inbox_level
+
+let test_removing_staker_from_lcc_predecessor_fails () =
+  let* ctxt, rollup, genesis_hash, staker1, staker2 =
+    originate_rollup_and_deposit_with_two_stakers ()
+  in
+  let challenge_window =
+    Constants_storage.sc_rollup_challenge_window_in_blocks ctxt
+  in
+  let* commitments, ctxt =
+    lift
+    @@ produce_and_refine
+         ~number_of_commitments:2
+         ~predecessor:genesis_hash
+         ctxt
+         staker2
+         rollup
+  in
+  let ctxt = Raw_context.Internal_for_tests.add_level ctxt challenge_window in
+  let* ctxt = lift @@ cement_commitments ctxt commitments rollup in
+  assert_fails_with
+    ~loc:__LOC__
+    (Sc_rollup_stake_storage.remove_staker ctxt rollup staker1)
+    Sc_rollup_errors.Sc_rollup_remove_lcc_or_ancestor
 
 let test_publish () =
   let* ctxt = new_context () in
@@ -1027,7 +1050,7 @@ let test_cement_then_remove () =
   assert_fails_with
     ~loc:__LOC__
     (Sc_rollup_stake_storage.remove_staker ctxt rollup staker)
-    Sc_rollup_errors.Sc_rollup_remove_lcc
+    Sc_rollup_errors.Sc_rollup_remove_lcc_or_ancestor
 
 let test_cement_unknown_commitment_fails () =
   let* ctxt = new_context () in
@@ -2790,6 +2813,10 @@ let tests =
       "removing staker from the LCC fails"
       `Quick
       test_removing_staker_from_lcc_fails;
+    Tztest.tztest
+      "removing staker from the LCC predecessor fails"
+      `Quick
+      test_removing_staker_from_lcc_predecessor_fails;
     Tztest.tztest
       "kind of missing rollup is None"
       `Quick
