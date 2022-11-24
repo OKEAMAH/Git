@@ -23,6 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* Private module for internal benchmarks *)
+
 (* A "benchmark" for the timer itself. *)
 
 let ns = Builtin_models.ns

@@ -2962,6 +2962,7 @@ let octez_benchmark =
        inference"
     ~foreign_stubs:
       {language = C; flags = [":standard"]; names = ["snoop_stubs"]}
+    ~private_modules:["builtin_models"; "builtin_benchmarks"]
     ~deps:
       [
         octez_base |> open_ ~m:"TzPervasives";

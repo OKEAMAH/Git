@@ -23,6 +23,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* Private module for internal models, should only be used by the tool,
+   and never be called outside of it *)
+
 (* The model for the timer *)
 
 let ns = Namespace.make Namespace.root "builtin"
