@@ -817,6 +817,11 @@ let loser_of_results ~alice_result ~bob_result =
   | false, true -> Some Alice
   | true, false -> Some Bob
 
+(* Cost of checking the start and stop hashes of a proof. *)
+let cost_check_proof_start_stop =
+  let size = State_hash.size in
+  Saturation_repr.(mul (safe_int 2) (Sc_rollup_costs.cost_compare size size))
+
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/2926
    This function is incomplete and needs to account for additional gas. *)
 let cost_play ~number_of_sections _game refutation =
@@ -833,8 +838,9 @@ let cost_play ~number_of_sections _game refutation =
           ~number_of_states
           ~tick_size
           ~hash_size
-    | Proof _proof -> Gas_limit_repr.free
+    | Proof _proof -> cost_check_proof_start_stop
   in
+
   Gas_limit_repr.(cost_find_tick +@ cost_refutation)
 
 let play dal_parameters ~dal_attestation_lag ~stakers metadata game refutation =
