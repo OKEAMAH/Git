@@ -186,7 +186,7 @@ let assert_commitment_is_not_past_curfew ctxt rollup inbox_level staker =
     Store.Commitment_first_publication_level.find (ctxt, rollup) inbox_level
   in
   match oldest_commit with
-  | Some (oldest_commit, _stalker) ->
+  | Some (oldest_commit, _staker) ->
       if
         Compare.Int32.(
           Raw_level_repr.diff current_level oldest_commit
@@ -530,6 +530,47 @@ let cement_commitment ctxt rollup new_lcc =
       let+ ctxt = deallocate_commitment ctxt rollup old_lcc in
       (ctxt, new_lcc_commitment)
 
+(* [find_earliest_commitment ctxt rollup commitment_hash level] starts
+   from [commitment_hash] and looks for its ancestor that has inbox_level=level
+   if such an ancestor is found, the level it was added is returned. *)
+let rec find_earliest_commitment ctxt rollup commitment_hash level =
+  let open Lwt_result_syntax in
+  let* ctxt, commitment =
+    Store.Commitments.find (ctxt, rollup) commitment_hash
+  in
+  match commitment with
+  | Some {inbox_level; _} when Raw_level_repr.(inbox_level < level) ->
+      return (ctxt, None)
+  | Some {inbox_level; _} when Raw_level_repr.(inbox_level = level) ->
+      let* ctxt, level_added =
+        Store.Commitment_added.find (ctxt, rollup) commitment_hash
+      in
+      return (ctxt, level_added)
+  | Some commitment ->
+      let prev = commitment.predecessor in
+      find_earliest_commitment ctxt rollup prev level
+  | None -> failwith "commitment should exist"
+
+let find_earliest_staker ctxt rollup level =
+  let open Lwt_result_syntax in
+  let* ctxt, stakers = Store.stakers ctxt rollup in
+  let* ctxt, value, staker =
+    List.fold_left
+      (fun acc (staker, hash) ->
+        let* ctxt, old_value, old_staker = acc in
+        let* ctxt, value = find_earliest_commitment ctxt rollup hash level in
+        match (old_staker, value) with
+        | Some _, Some value when Raw_level_repr.(old_value > value) ->
+            return (ctxt, value, Some staker)
+        | None, Some value -> return (ctxt, value, Some staker)
+        | _ -> acc)
+      (return (ctxt, Raw_level_repr.root, None))
+      stakers
+  in
+  match staker with
+  | Some staker -> return (ctxt, Some (value, staker))
+  | _ -> return (ctxt, None)
+
 let remove_staker ctxt rollup staker =
   let open Lwt_result_syntax in
   let* lcc, ctxt = Commitment_storage.last_cemented_commitment ctxt rollup in
@@ -578,14 +619,30 @@ let remove_staker ctxt rollup staker =
               (ctxt, rollup)
               inbox_level
           in
-          let* ctxt, _ =
+          let* ctxt =
             match first_commit with
             | Some (_level, committing_staker)
               when Signature.Public_key_hash.(staker = committing_staker) ->
-                Store.Commitment_first_publication_level.remove_existing
-                  (ctxt, rollup)
-                  inbox_level
-            | _ -> return (ctxt, 0)
+                let* ctxt, _ =
+                  Store.Commitment_first_publication_level.remove_existing
+                    (ctxt, rollup)
+                    inbox_level
+                in
+                let* ctxt, res = find_earliest_staker ctxt rollup inbox_level in
+                let* ctxt =
+                  match res with
+                  | Some (value, staker) ->
+                      let* ctxt, _diff, _changed =
+                        Store.Commitment_first_publication_level.add
+                          (ctxt, rollup)
+                          inbox_level
+                          (value, staker)
+                      in
+                      return ctxt
+                  | _ -> return ctxt
+                in
+                return ctxt
+            | _ -> return ctxt
           in
           let* pred, ctxt =
             Commitment_storage.get_predecessor_unsafe ctxt rollup node

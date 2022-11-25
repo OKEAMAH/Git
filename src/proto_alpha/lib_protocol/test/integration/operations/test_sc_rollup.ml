@@ -114,6 +114,27 @@ let assert_equal_game_status ?game_status actual_game_status =
         in
         Stdlib.failwith msg
 
+let find_first_publication_level block rollup inbox_level =
+  let* alpha_ctxt = Block.to_alpha_ctxt block in
+  let raw_ctxt = Alpha_context.Internal_for_tests.to_raw alpha_ctxt in
+  let rollup =
+    Data_encoding.Binary.(
+      to_bytes_exn Alpha_context.Sc_rollup.Address.encoding rollup
+      |> of_bytes_exn Protocol.Sc_rollup_repr.Address.encoding)
+  in
+  let inbox_level =
+    Data_encoding.Binary.(
+      to_bytes_exn Raw_level.encoding inbox_level
+      |> of_bytes_exn Raw_level_repr.encoding)
+  in
+  let* _raw_ctxt, first_publication_level =
+    Storage.Sc_rollup.Commitment_first_publication_level.find
+      (raw_ctxt, rollup)
+      inbox_level
+    >|= Environment.wrap_tzresult
+  in
+  return first_publication_level
+
 let assert_refute_result ?game_status incr =
   let actual_game_status, op_type = get_game_status_result incr in
   assert (op_type = `Refute) ;
@@ -2504,32 +2525,94 @@ let test_curfew () =
   let* _incr = Incremental.add_operation ~expect_apply_failure incr publish4 in
   return_unit
 
-(** [test_curfew_is_clean] makes sure that the curfew-related storage is cleaned
-    when a commitment is cemented. *)
-let test_curfew_is_clean () =
+(** [test_curfew_is_cleaned_by_slash] makes sure that the curfew-related storage
+    is cleaned when a staker is removed. *)
+let test_curfew_is_cleaned_by_slash () =
+  let open Lwt_result_syntax in
+  let* block, (account1, account2, account3), rollup =
+    init_and_originate Context.T3 "unit"
+  in
+  let* operation, commitment1 =
+    publish_op_and_dummy_commitment ~src:account1 rollup block
+  in
+  let* block = Block.bake ~operation block in
+  let* operation, commitment2 =
+    publish_op_and_dummy_commitment
+      ~compressed_state:"second"
+      ~predecessor:commitment1
+      ~src:account2
+      rollup
+      block
+  in
+  let* block = Block.bake ~operation block in
+  let level2 = block.header.shell.level in
+  let* operation, commitment3 =
+    publish_op_and_dummy_commitment
+      ~compressed_state:"third"
+      ~predecessor:commitment1
+      ~src:account3
+      rollup
+      block
+  in
+  let* block = Block.bake ~operation block in
+  let level3 = block.header.shell.level in
+  (* commitment3 will be at the same inbox level with commitment2 but published later *)
+  assert (commitment2.inbox_level = commitment3.inbox_level && level3 > level2) ;
+  let* first_publication_level =
+    find_first_publication_level block rollup commitment3.inbox_level
+  in
+  (* At this point the  first_publication_level is (level2, account2)*)
+  let* () =
+    match first_publication_level with
+    | Some (x, staker) ->
+        assert (
+          (Int32.equal level2 @@ Raw_level_repr.to_int32 x)
+          && Contract.(Implicit staker = account2)) ;
+        return_unit
+    | None -> failwith "The level of publication is expected to exist"
+  in
+
+  (* now remove account2 *)
+  let* alpha_ctxt = Block.to_alpha_ctxt block in
+  let raw_ctxt = Alpha_context.Internal_for_tests.to_raw alpha_ctxt in
+  let sc_rollup =
+    Data_encoding.Binary.(
+      to_bytes_exn Alpha_context.Sc_rollup.Address.encoding rollup
+      |> of_bytes_exn Protocol.Sc_rollup_repr.Address.encoding)
+  in
+  let* staker =
+    match account2 with
+    | Implicit x -> return x
+    | _ -> failwith "The account should be implicit"
+  in
+  let* raw_ctxt, _ =
+    Lwt.map Environment.wrap_tzresult
+    @@ Sc_rollup_stake_storage.remove_staker raw_ctxt sc_rollup staker
+  in
+  let inbox_level =
+    Data_encoding.Binary.(
+      to_bytes_exn Raw_level.encoding commitment3.inbox_level
+      |> of_bytes_exn Raw_level_repr.encoding)
+  in
+  let* _raw_ctxt, first_publication_level =
+    Storage.Sc_rollup.Commitment_first_publication_level.find
+      (raw_ctxt, sc_rollup)
+      inbox_level
+    >|= Environment.wrap_tzresult
+  in
+  match first_publication_level with
+  | Some (x, staker) ->
+      assert (
+        (Int32.equal level3 @@ Raw_level_repr.to_int32 x)
+        && Contract.(Implicit staker = account3)) ;
+      return_unit
+  | None -> failwith "The level of publication is expected to exist"
+
+(** [test_curfew_is_cleaned_by_cement] makes sure that the curfew-related storage
+ is cleaned when a commitment is cemented. *)
+let test_curfew_is_cleaned_by_cement () =
   let open Lwt_result_syntax in
   let* block, account1, rollup = init_and_originate Context.T1 "unit" in
-  let find_first_publication_level block inbox_level =
-    let* alpha_ctxt = Block.to_alpha_ctxt block in
-    let raw_ctxt = Alpha_context.Internal_for_tests.to_raw alpha_ctxt in
-    let rollup =
-      Data_encoding.Binary.(
-        to_bytes_exn Alpha_context.Sc_rollup.Address.encoding rollup
-        |> of_bytes_exn Protocol.Sc_rollup_repr.Address.encoding)
-    in
-    let inbox_level =
-      Data_encoding.Binary.(
-        to_bytes_exn Raw_level.encoding inbox_level
-        |> of_bytes_exn Raw_level_repr.encoding)
-    in
-    let* _raw_ctxt, first_publication_level =
-      Storage.Sc_rollup.Commitment_first_publication_level.find
-        (raw_ctxt, rollup)
-        inbox_level
-      >|= Environment.wrap_tzresult
-    in
-    return first_publication_level
-  in
   let* constants = Context.get_constants (B block) in
   let challenge_window =
     constants.parametric.sc_rollup.challenge_window_in_blocks
@@ -2541,7 +2624,7 @@ let test_curfew_is_clean () =
   let* commitment = dummy_commitment (B block) rollup in
   let* operation = Op.sc_rollup_publish (B block) account1 rollup commitment in
   let* first_publication_level =
-    find_first_publication_level block commitment.inbox_level
+    find_first_publication_level block rollup commitment.inbox_level
   in
   let* () =
     match first_publication_level with
@@ -2552,7 +2635,7 @@ let test_curfew_is_clean () =
   let* block = Block.bake ~operation block in
   let* () =
     let* first_publication_level =
-      find_first_publication_level block commitment.inbox_level
+      find_first_publication_level block rollup commitment.inbox_level
     in
     match first_publication_level with
     | Some (x, _staker) ->
@@ -2568,7 +2651,7 @@ let test_curfew_is_clean () =
   in
   let* block = Block.bake block ~operation:cement_op in
   let* first_publication_level =
-    find_first_publication_level block commitment.inbox_level
+    find_first_publication_level block rollup commitment.inbox_level
   in
   match first_publication_level with
   | Some _x ->
@@ -2758,6 +2841,14 @@ let tests =
       `Quick
       test_zero_tick_commitment_fails;
     Tztest.tztest "check the curfew functionality" `Quick test_curfew;
+    Tztest.tztest
+      "check the curfew storage is cleaned after slash"
+      `Quick
+      test_curfew_is_cleaned_by_slash;
+    Tztest.tztest
+      "check the curfew storage is cleaned after cement"
+      `Quick
+      test_curfew_is_cleaned_by_cement;
     Tztest.tztest
       "check that a commitment can be published after the inbox_level + \
        challenge window is passed."
