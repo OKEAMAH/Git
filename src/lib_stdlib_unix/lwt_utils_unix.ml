@@ -374,3 +374,53 @@ let with_atomic_open_out ?(overwrite = true) filename
       | Unix.Unix_error (unix_code, caller, arg) ->
           Lwt.return (Error {action = `Rename; unix_code; caller; arg})
       | exn -> raise exn)
+
+let wrap_unix_call ~action f =
+  let open Lwt_syntax in
+  Lwt.catch
+    (fun () ->
+      let+ result = f () in
+      Ok result)
+    (function
+      | Unix.Unix_error (unix_code, caller, arg) ->
+          Lwt.return (Error {action; unix_code; caller; arg})
+      | exn -> raise exn)
+
+let fold_dir ?(include_hidden_files = false) dirname folder default =
+  let open Lwt_result_syntax in
+  let* handle =
+    wrap_unix_call ~action:`Opendir @@ fun () -> Lwt_unix.opendir dirname
+  in
+  let rec loop acc =
+    let readdir handle =
+      try
+        let*! file = Lwt_unix.readdir handle in
+        Lwt.return_some file
+      with End_of_file -> Lwt.return_none
+    in
+    let* file = wrap_unix_call ~action:`Readdir @@ fun () -> readdir handle in
+    match file with
+    | None -> return acc
+    | Some file ->
+        let* acc =
+          if String.get file 0 = '.' && not include_hidden_files then return acc
+          else
+            let*! result = folder acc file in
+            Result.ok_s result
+        in
+        (loop [@tailcall]) acc
+  in
+  let finalize handle =
+    wrap_unix_call ~action:`Closedir @@ fun () -> Lwt_unix.closedir handle
+  in
+  let* result =
+    Lwt.catch
+      (fun () ->
+        let* result = loop default in
+        let* () = finalize handle in
+        return result)
+      (fun exn ->
+        let* () = finalize handle in
+        raise exn)
+  in
+  return result

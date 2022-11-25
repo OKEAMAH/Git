@@ -198,3 +198,18 @@ val with_open_in :
   string ->
   (Lwt_unix.file_descr -> 'a Lwt.t) ->
   ('a, [`Open | `Close] io_error) result Lwt.t
+
+(** [fold_dir ?include_hidden_files dirname folder default] folds over the
+   files of the given directory [dirname] using the [folder] function
+   and [default] value.
+
+    May fail if is the call to [readdir] fails.
+
+    If [include_hidden_files] is [true] which is the default case, files
+   starting with ['.'] are ignored. *)
+val fold_dir :
+  ?include_hidden_files:bool ->
+  string ->
+  ('b -> string -> 'b Lwt.t) ->
+  'b ->
+  ('b, [`Opendir | `Readdir | `Closedir] io_error) result Lwt.t
