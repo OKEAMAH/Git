@@ -176,7 +176,7 @@ let assert_commitment_period ctxt rollup commitment =
     [inbox_level] and if it is more than [sc_rollup_challenge_window_in_blocks]
     ago it fails with [Sc_rollup_commitment_past_curfew]. Otherwise it adds the
     respective storage (if it is not set) and returns the context. *)
-let assert_commitment_is_not_past_curfew ctxt rollup inbox_level =
+let assert_commitment_is_not_past_curfew ctxt rollup inbox_level staker =
   let open Lwt_result_syntax in
   let refutation_deadline_blocks =
     Int32.of_int @@ Constants_storage.sc_rollup_challenge_window_in_blocks ctxt
@@ -186,7 +186,7 @@ let assert_commitment_is_not_past_curfew ctxt rollup inbox_level =
     Store.Commitment_first_publication_level.find (ctxt, rollup) inbox_level
   in
   match oldest_commit with
-  | Some oldest_commit ->
+  | Some (oldest_commit, _stalker) ->
       if
         Compare.Int32.(
           Raw_level_repr.diff current_level oldest_commit
@@ -199,7 +199,7 @@ let assert_commitment_is_not_past_curfew ctxt rollup inbox_level =
         Store.Commitment_first_publication_level.add
           (ctxt, rollup)
           inbox_level
-          current_level
+          (current_level, staker)
       in
       return ctxt
 
@@ -210,7 +210,7 @@ let assert_commitment_is_not_past_curfew ctxt rollup inbox_level =
     that the maximum cost of storage allocated by each staker is at most the size
     of their deposit.
  *)
-let assert_refine_conditions_met ctxt rollup lcc commitment =
+let assert_refine_conditions_met ctxt rollup lcc commitment staker =
   let open Lwt_result_syntax in
   let* ctxt = assert_commitment_not_too_far_ahead ctxt rollup lcc commitment in
   let* ctxt = assert_commitment_period ctxt rollup commitment in
@@ -219,6 +219,7 @@ let assert_refine_conditions_met ctxt rollup lcc commitment =
       ctxt
       rollup
       Commitment.(commitment.inbox_level)
+      staker
   in
   let current_level = (Raw_context.current_level ctxt).level in
   let* () =
@@ -339,7 +340,7 @@ let commitment_storage_size_in_bytes = 89
 let refine_stake ctxt rollup staker staked_on commitment =
   let open Lwt_result_syntax in
   let* lcc, ctxt = Commitment_storage.last_cemented_commitment ctxt rollup in
-  let* ctxt = assert_refine_conditions_met ctxt rollup lcc commitment in
+  let* ctxt = assert_refine_conditions_met ctxt rollup lcc commitment staker in
   let*? ctxt, new_hash = Sc_rollup_commitment_storage.hash ctxt commitment in
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2559
@@ -569,6 +570,23 @@ let remove_staker ctxt rollup staker =
         *)
         if Commitment_hash.(node = lcc) then return ctxt
         else
+          let* {inbox_level; _}, ctxt =
+            Commitment_storage.get_commitment ctxt rollup node
+          in
+          let* ctxt, first_commit =
+            Store.Commitment_first_publication_level.find
+              (ctxt, rollup)
+              inbox_level
+          in
+          let* ctxt, _ =
+            match first_commit with
+            | Some (_level, committing_staker)
+              when Signature.Public_key_hash.(staker = committing_staker) ->
+                Store.Commitment_first_publication_level.remove_existing
+                  (ctxt, rollup)
+                  inbox_level
+            | _ -> return (ctxt, 0)
+          in
           let* pred, ctxt =
             Commitment_storage.get_predecessor_unsafe ctxt rollup node
           in

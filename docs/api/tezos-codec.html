@@ -1,0 +1,147 @@
+<style>.cmdline { font-family: monospace }.cmddoc { white-space: pre-wrap ; font-family: monospace; line-height: 170%; margin: 0 0 20px 0 }.cmdline { background: #343131; padding: 2px 8px; border-radius:10px; color: white; margin: 5px; }.cmdline+.cmddoc { margin: -5px 5px 0 20px; padding: 5px }.opt,.arg { background: #343131; font-weight: bold;  padding: 2px 4px; border-radius:5px; }.kwd { font-weight: bold; } .opt { color:#CF0; background: #460; } .arg { color: #CEF; background: #369; }</style>
+<h3>Usage</h3>
+
+<ul>
+<li>
+<div class='cmdline'>tezos-codec [<span class='opt'>global options</span>] <span class='kwd'>command</span> [<span class='opt'>command options</span>]</div>
+</li>
+
+<li>
+<div class='cmdline'>tezos-codec <span class='opt'>--help</span> (for global options)</div>
+</li>
+
+<li>
+<div class='cmdline'>tezos-codec [<span class='opt'>global options</span>] <span class='kwd'>command</span> <span class='opt'>--help</span> (for command options)</div>
+</li>
+
+<li>
+<div class='cmdline'>tezos-codec <span class='opt'>--version</span> (for version information)</div>
+</li>
+</ul>
+
+
+<h3>To browse the documentation</h3>
+
+<ul>
+<li>
+<div class='cmdline'>tezos-codec [<span class='opt'>global options</span>] <span class='kwd'>man</span> (for a list of commands)</div>
+</li>
+
+<li>
+<div class='cmdline'>tezos-codec [<span class='opt'>global options</span>] <span class='kwd'>man</span> <span class='opt'>-v 3</span> (for the full manual)</div>
+</li>
+</ul>
+
+
+<h3>Global options (must come before the command)</h3>
+
+<div class='cmddoc'><span class='opt'>-d --base-dir &lt;path&gt;</span>: data directory
+  The directory where the Tezos codec will output logs.
+  By default: '$HOME/.tezos-client'.</div>
+
+
+<h3>Access the documentation</h3>
+
+<ul>
+<li>
+<div class='cmdline'><span class='kwd'>man</span> [<span class='arg'>keyword</span>...] [<span class='opt'>-v --verbosity &lt;0|1|2|3&gt;</span>] [<span class='opt'>--format &lt;plain|colors|html&gt;</span>]</div>
+
+<div class='cmddoc'>Print documentation of commands.
+  Add search keywords to narrow list.
+  Will display only the commands by default, unless [-verbosity &lt;2|3&gt;] is
+  passed or the list of matching commands if less than 3.
+<span class='arg'>keyword</span>: keyword to search for
+  If several are given they must all appear in the command.
+<span class='opt'>-v --verbosity &lt;0|1|2|3&gt;</span>: level of details
+  0. Only shows command mnemonics, without documentation.
+  1. Shows command mnemonics with short descriptions.
+  2. Show commands and arguments with short descriptions
+  3. Show everything
+<span class='opt'>--format &lt;plain|colors|html&gt;</span>: the manual's output format
+  Defaults to `plain`.</div>
+</li>
+</ul>
+
+
+<h3>Commands to handle encodings</h3>
+
+<ul>
+<li>
+<div class='cmdline'><span class='kwd'>list</span> <span class='kwd'>encodings</span></div>
+
+<div class='cmddoc'>List the registered encoding in Tezos.</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>dump</span> <span class='kwd'>encodings</span> [<span class='opt'>--compact</span>]</div>
+
+<div class='cmddoc'>Dump a json description of all registered encodings.
+<span class='opt'>--compact</span>: Output json descriptions without extraneous whitespace characters</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>encode</span> <span class='arg'>id</span> <span class='kwd'>from</span> <span class='arg'>json</span></div>
+
+<div class='cmddoc'>Encode the given JSON data into binary using the provided encoding identifier.
+<span class='arg'>id</span>: Encoding identifier
+<span class='arg'>json</span>: JSON file or data</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>decode</span> <span class='arg'>id</span> <span class='kwd'>from</span> <span class='arg'>hex</span></div>
+
+<div class='cmddoc'>Decode the binary encoded data into JSON using the provided encoding identifier.
+<span class='arg'>id</span>: Encoding identifier
+<span class='arg'>hex</span>: Binary encoded data</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>display</span> <span class='arg'>id</span> <span class='kwd'>from</span> <span class='kwd'>binary</span> <span class='arg'>hex</span></div>
+
+<div class='cmddoc'>Display the binary encoded data using the provided encoding identifier.
+<span class='arg'>id</span>: Encoding identifier
+<span class='arg'>hex</span>: Binary encoded data</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>display</span> <span class='arg'>id</span> <span class='kwd'>from</span> <span class='kwd'>json</span> <span class='arg'>json</span></div>
+
+<div class='cmddoc'>Display the JSON encoded data using the provided encoding identifier.
+<span class='arg'>id</span>: Encoding identifier
+<span class='arg'>json</span>: JSON file or data</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>describe</span> <span class='arg'>id</span> <span class='kwd'>binary</span> <span class='kwd'>schema</span></div>
+
+<div class='cmddoc'>Describe the binary schema associated to the provided encoding identifier.
+<span class='arg'>id</span>: Encoding identifier
+</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>describe</span> <span class='arg'>id</span> <span class='kwd'>json</span> <span class='kwd'>schema</span></div>
+
+<div class='cmddoc'>Describe the JSON schema associated to the provided encoding identifier.
+<span class='arg'>id</span>: Encoding identifier
+</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>slice</span> <span class='arg'>hex</span></div>
+
+<div class='cmddoc'>Attempts to slice an hex-encoded binary value with all known encodings.
+<span class='arg'>hex</span>: Binary encoded data</div>
+</li>
+
+<li>
+<div class='cmdline'><span class='kwd'>slice</span> <span class='arg'>hex</span> <span class='kwd'>with</span> <span class='kwd'>encoding</span> <span class='arg'>id</span> [<span class='opt'>--format &lt;FORMAT&gt;</span>]</div>
+
+<div class='cmddoc'>Slice an hex-encoded binary value with the specified encoding.
+<span class='arg'>hex</span>: Binary encoded data
+<span class='arg'>id</span>: Encoding identifier
+<span class='opt'>--format &lt;FORMAT&gt;</span>: The format to print the output in: json, pretty, or waterfall.
+  Defaults to `pretty`.</div>
+</li>
+</ul>
+

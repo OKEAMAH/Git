@@ -1815,6 +1815,16 @@ module Sc_rollup = struct
         let encoding = Data_encoding.int32
       end)
 
+  module Level_stalker = struct
+    type t = Raw_level_repr.t * Signature.Public_key_hash.t
+
+    let encoding =
+      Data_encoding.(
+        obj2
+          (req "raw_level" Raw_level_repr.encoding)
+          (req "staker" Signature.Public_key_hash.encoding))
+  end
+
   module Commitment_first_publication_level =
     Make_indexed_carbonated_data_storage
       (Make_subcontext (Registered) (Indexed_context.Raw_context)
@@ -1822,7 +1832,7 @@ module Sc_rollup = struct
            let name = ["commitment_first_publication_level"]
          end))
          (Make_index (Raw_level_repr.Index))
-      (Raw_level_repr)
+      (Level_stalker)
 
   module Commitment_added =
     Make_indexed_carbonated_data_storage

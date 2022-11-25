@@ -838,7 +838,7 @@ module Sc_rollup : sig
   module Commitment_first_publication_level :
     Non_iterable_indexed_carbonated_data_storage
       with type key = Raw_level_repr.t
-       and type value = Raw_level_repr.t
+       and type value = Raw_level_repr.t * Signature.Public_key_hash.t
        and type t = Raw_context.t * Sc_rollup_repr.t
 
   (** This storage contains number of commitments with a particular inbox level *)
