@@ -32,7 +32,7 @@ include (Wasm_vm : Wasm_vm_sig.S)
 
 let store =
   Lazy.from_fun @@ fun () ->
-  let engine = Wasmer.Engine.create Wasmer.Config.{compiler = SINGLEPASS} in
+  let engine = Wasmer.Engine.create Wasmer.Config.{compiler = CRANELIFT} in
   Wasmer.Store.create engine
 
 let load_kernel durable =

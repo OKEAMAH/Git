@@ -80,6 +80,7 @@ type t =
       (** The maximum number of reboots was reached before the next inputs *)
   | No_fallback_kernel of fallback_cause
       (** No fallback kernel was available - recovering from invalid kernel module not possible. *)
+[@@deriving show]
 
 (* [invalid_state msg] builds an `Invalid_state` error out of a message. *)
 val invalid_state : string -> t

@@ -1722,6 +1722,26 @@ let octez_context_memory =
         octez_context_helpers;
       ]
 
+let _ole =
+  private_exe
+    "ole"
+    ~path:"src/lib_scoru_wasm/ole"
+    ~synopsis:"Ole"
+    ~opam:""
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        tree_encoding;
+        lazy_containers;
+        octez_webassembly_interpreter;
+        octez_context_sigs;
+        octez_context_memory;
+        octez_lwt_result_stdlib;
+        data_encoding;
+        octez_scoru_wasm;
+        octez_scoru_wasm_fast;
+      ]
+
 let octez_context_disk =
   public_lib
     "tezos-context.disk"

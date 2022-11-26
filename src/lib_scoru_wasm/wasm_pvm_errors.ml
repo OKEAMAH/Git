@@ -26,7 +26,8 @@
 
 open Tezos_webassembly_interpreter
 
-type truncated_string = Truncated of string [@@ocaml.unboxed]
+type truncated_string = Truncated of string
+[@@ocaml.unboxed] [@@deriving show {with_path = false}]
 
 let messages_maximum_size = 128
 
@@ -39,11 +40,13 @@ type interpreter_error = {
   raw_exception : truncated_string;
   explanation : truncated_string option;
 }
+[@@deriving show {with_path = false}]
 
 type fallback_cause =
   | Decode_cause of interpreter_error
   | Link_cause of truncated_string
   | Init_cause of interpreter_error
+[@@deriving show {with_path = false}]
 
 type t =
   | Decode_error of interpreter_error
@@ -55,6 +58,7 @@ type t =
   | Too_many_ticks
   | Too_many_reboots
   | No_fallback_kernel of fallback_cause
+[@@deriving show {with_path = false}]
 
 let decode_state_to_string_raw = function
   | Decode.Byte_vector_step -> "Byte_vector_step"
