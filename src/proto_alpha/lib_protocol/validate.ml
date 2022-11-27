@@ -828,7 +828,10 @@ module Consensus = struct
     let kind = Grandparent_endorsement in
     let level = Level.from_raw vi.ctxt consensus_content.level in
     let* (_ctxt : t), consensus_key =
-      Stake_distribution.slot_owner vi.ctxt level consensus_content.slot
+      Stake_distribution.endorsement_slot_owner
+        vi.ctxt
+        level
+        consensus_content.slot
     in
     let*? () =
       check_consensus_features kind expected consensus_content operation
@@ -1610,10 +1613,10 @@ module Anonymous = struct
         let level = Level.from_raw vi.ctxt e1.level in
         let*? () = check_denunciation_age vi denunciation_kind level.level in
         let* ctxt, consensus_key1 =
-          Stake_distribution.slot_owner vi.ctxt level e1.slot
+          Stake_distribution.endorsement_slot_owner vi.ctxt level e1.slot
         in
         let* ctxt, consensus_key2 =
-          Stake_distribution.slot_owner ctxt level e2.slot
+          Stake_distribution.endorsement_slot_owner ctxt level e2.slot
         in
         let delegate1, delegate2 =
           (consensus_key1.delegate, consensus_key2.delegate)
@@ -1773,11 +1776,11 @@ module Anonymous = struct
     let committee_size = Constants.consensus_committee_size vi.ctxt in
     let*? slot1 = Round.to_slot round1 ~committee_size in
     let* ctxt, consensus_key1 =
-      Stake_distribution.slot_owner vi.ctxt level slot1
+      Stake_distribution.baking_slot_owner vi.ctxt level slot1
     in
     let*? slot2 = Round.to_slot round2 ~committee_size in
     let* ctxt, consensus_key2 =
-      Stake_distribution.slot_owner ctxt level slot2
+      Stake_distribution.baking_slot_owner ctxt level slot2
     in
     let delegate1, delegate2 =
       (consensus_key1.delegate, consensus_key2.delegate)

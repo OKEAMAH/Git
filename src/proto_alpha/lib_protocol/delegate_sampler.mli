@@ -41,7 +41,13 @@
    freeze or initialize the protocol while stitching. RPCs can use this
    function to predict an approximation of long term future slot
    allocations. It shouldn't be used in the baker. *)
-val slot_owner :
+val baking_slot_owner :
+  Raw_context.t ->
+  Level_repr.t ->
+  Slot_repr.t ->
+  (Raw_context.t * Delegate_consensus_key.pk) tzresult Lwt.t
+
+val endorsement_slot_owner :
   Raw_context.t ->
   Level_repr.t ->
   Slot_repr.t ->

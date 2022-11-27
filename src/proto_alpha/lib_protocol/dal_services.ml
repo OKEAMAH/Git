@@ -38,7 +38,7 @@ let shards ctxt ~level =
   assert_dal_feature_enabled ctxt >>?= fun () ->
   let level = Level.from_raw ctxt level in
   let pkh_from_tenderbake_slot slot =
-    Stake_distribution.slot_owner ctxt level slot
+    Stake_distribution.endorsement_slot_owner ctxt level slot
     >|=? fun (ctxt, consensus_key) -> (ctxt, consensus_key.delegate)
   in
   (* We do not cache this committee. This function being used by RPCs

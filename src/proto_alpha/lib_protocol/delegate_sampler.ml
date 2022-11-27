@@ -73,11 +73,11 @@ module Random = struct
      the state until exhaustion (256 bits), at which point the state
      is rehashed and the offset reset to 0. *)
 
-  let init_random_state seed level index =
+  let init_random_state seed offset =
     ( Raw_hashes.blake2b
         (Data_encoding.Binary.to_bytes_exn
            Data_encoding.(tup3 Seed_repr.seed_encoding int32 int32)
-           (seed, level.Level_repr.cycle_position, Int32.of_int index)),
+           (seed, 0l, Int32.of_int offset)),
       0 )
 
   let take_int64 bound state =
@@ -123,26 +123,58 @@ module Random = struct
     in
     Raw_context.sampler_for_cycle ~read ctxt cycle
 
-  let owner c (level : Level_repr.t) offset =
-    let cycle = level.Level_repr.cycle in
-    sampler_for_cycle c cycle >>=? fun (c, seed, state) ->
+  let owner c (cycle : Cycle_repr.t) offset =
+    sampler_for_cycle c cycle >>=? fun (c, seed, sampler_state) ->
     let sample ~int_bound ~mass_bound =
-      let state = init_random_state seed level offset in
+      let state = init_random_state seed offset in
       let i, state = take_int64 (Int64.of_int int_bound) state in
       let elt, _ = take_int64 mass_bound state in
       (Int64.to_int i, elt)
     in
-    let pk = Sampler.sample state sample in
+    let pk = Sampler.sample sampler_state sample in
+    (*
+    level.Level_repr.cycle_position    *)
     return (c, pk)
 end
 
-let slot_owner c level slot = Random.owner c level (Slot_repr.to_int slot)
+let endorsement_slot_owner c level slot =
+  (*
+  Logging.log Logging.Notice "###== %a@." Level_repr.pp_full level ;
+*)
+  Random.owner c level.Level_repr.cycle (Slot_repr.to_int slot)
+
+let baking_slot_owner c cycle slot =
+  Random.owner c cycle (Slot_repr.to_int slot)
+
+let debug ~kind level round pk =
+  Logging.log
+    Logging.Notice
+    "## %s of level %a at round %d is %a@."
+    kind
+    Raw_level_repr.pp
+    level.Level_repr.level
+    round
+    Signature.Public_key_hash.pp_short
+    pk.Raw_context.consensus_pkh
 
 let baking_rights_owner c (level : Level_repr.t) ~round =
-  Round_repr.to_int round >>?= fun round ->
   let consensus_committee_size = Constants_storage.consensus_committee_size c in
+  Round_repr.to_int round >>?= fun round0 ->
+  let round = round0 + Int32.to_int level.Level_repr.cycle_position in
   Slot_repr.of_int (round mod consensus_committee_size) >>?= fun slot ->
-  slot_owner c level slot >>=? fun (ctxt, pk) -> return (ctxt, slot, pk)
+  let cycle = level.Level_repr.cycle in
+  baking_slot_owner c cycle slot >>=? fun (ctxt, pk) ->
+  debug ~kind:"baker" level round0 pk ;
+  ( (* For debug only, to compare with new baker strategy *)
+    Slot_repr.of_int (round0 mod consensus_committee_size)
+  >>?= fun slot0 ->
+    baking_slot_owner c cycle slot0 >>=? fun (_ctxt, pk0) ->
+    debug ~kind:"endorser" level round0 pk0 ;
+    return_unit )
+  >>=? fun () -> return (ctxt, slot, pk)
+
+let baking_slot_owner c level slot =
+  baking_slot_owner c level.Level_repr.cycle slot
 
 let get_stakes_for_selected_index ctxt index =
   Stake_storage.fold_snapshot

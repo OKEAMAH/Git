@@ -145,7 +145,7 @@ let initialisation ctxt ~level =
     ~default:(fun ctxt -> return ctxt)
     (fun ctxt ->
       let pkh_from_tenderbake_slot slot =
-        Stake_distribution.slot_owner ctxt level slot
+        Stake_distribution.endorsement_slot_owner ctxt level slot
         >|=? fun (ctxt, consensus_pk1) -> (ctxt, consensus_pk1.delegate)
       in
       (* This committee is cached because it is the one we will use

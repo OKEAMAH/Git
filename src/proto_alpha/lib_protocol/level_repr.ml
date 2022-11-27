@@ -44,7 +44,7 @@ let pp ppf {level; _} = Raw_level_repr.pp ppf level
 let pp_full ppf l =
   Format.fprintf
     ppf
-    "%a.%ld (cycle %a.%ld)"
+    "level:%a, level_position:%ld (cycle:%a, cycle_position:%ld)"
     Raw_level_repr.pp
     l.level
     l.level_position

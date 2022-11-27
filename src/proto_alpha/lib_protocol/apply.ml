@@ -2067,7 +2067,7 @@ let record_endorsement ctxt (mode : mode) (content : consensus_content) :
   if is_grandparent_endorsement mode content then
     let level = Level.from_raw ctxt content.level in
     let* ctxt, ({delegate; _} as consensus_key) =
-      Stake_distribution.slot_owner ctxt level content.slot
+      Stake_distribution.endorsement_slot_owner ctxt level content.slot
     in
     let*? ctxt = Consensus.record_grand_parent_endorsement ctxt delegate in
     return (ctxt, mk_endorsement_result (Consensus_key.pkh consensus_key) 0)
@@ -2146,7 +2146,7 @@ let punish_double_endorsement_or_preendorsement (type kind) ctxt
   match op1.protocol_data.contents with
   | Single (Preendorsement e1) | Single (Endorsement e1) ->
       let level = Level.from_raw ctxt e1.level in
-      Stake_distribution.slot_owner ctxt level e1.slot
+      Stake_distribution.endorsement_slot_owner ctxt level e1.slot
       >>=? fun (ctxt, consensus_pk1) ->
       punish_delegate
         ctxt
@@ -2163,7 +2163,7 @@ let punish_double_baking ctxt (bh1 : Block_header.t) ~payload_producer =
   let level = Level.from_raw ctxt raw_level in
   let committee_size = Constants.consensus_committee_size ctxt in
   Round.to_slot round1 ~committee_size >>?= fun slot1 ->
-  Stake_distribution.slot_owner ctxt level slot1
+  Stake_distribution.baking_slot_owner ctxt level slot1
   >>=? fun (ctxt, consensus_pk1) ->
   punish_delegate
     ctxt

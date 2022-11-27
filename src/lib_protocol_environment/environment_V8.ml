@@ -181,7 +181,7 @@ struct
       | Error
       | Fatal
 
-    let logging_function = ref None
+    let logging_function = ref (Some (fun _ s -> Format.eprintf "%s" s))
 
     let name_colon_space = Param.name ^ ": "
 

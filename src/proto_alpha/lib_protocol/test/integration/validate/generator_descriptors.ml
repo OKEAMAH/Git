@@ -632,7 +632,7 @@ let dal_slot_availibility ctxt delegate =
   let open Lwt_result_syntax in
   let level = Alpha_context.Level.current ctxt in
   let pkh_from_tenderbake_slot slot =
-    Alpha_context.Stake_distribution.slot_owner ctxt level slot
+    Alpha_context.Stake_distribution.endorsement_slot_owner ctxt level slot
     >|=? fun (ctxt, consensus_pk1) -> (ctxt, consensus_pk1.delegate)
   in
   let* committee =
