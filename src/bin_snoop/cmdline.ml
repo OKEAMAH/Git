@@ -96,6 +96,7 @@ type command =
       matching : string;
       codegen_options : codegen_options;
     }
+  | Dump of {workload_data : string; output_path : string}
   | No_command
 
 (* -------------------------------------------------------------------------- *)

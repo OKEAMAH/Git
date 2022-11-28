@@ -1133,6 +1133,35 @@ module Generate_config_cmd = struct
       show_config_handler
 end
 
+module Dump_cmd = struct
+  (* -------------------------------------------------------------------------- *)
+  (* Handling options for the "dump" command *)
+  let options = Tezos_clic.no_options
+
+  let dump_handler () workload_data output_path () =
+    commandline_outcome_ref := Some (Dump {workload_data; output_path}) ;
+    Lwt.return_ok ()
+
+  let params =
+    Tezos_clic.(
+      prefixes ["dump"; "workload"]
+      @@ string ~name:"WORKLOAD-DATA" ~desc:"File of workload data"
+      @@ prefix "to"
+      @@ string ~name:"OUTPUT-PATH" ~desc:"Path to dump data"
+      @@ stop)
+
+  let group =
+    {Tezos_clic.name = "dump"; title = "Command for dump workload file"}
+
+  let command =
+    Tezos_clic.command
+      ~desc:"Dump the content of workload file"
+      ~group
+      options
+      params
+      dump_handler
+end
+
 let all_commands =
   [
     Benchmark_cmd.command;
@@ -1140,6 +1169,7 @@ let all_commands =
     Codegen_cmd.command;
     Codegen_all_cmd.command;
     Generate_config_cmd.command;
+    Dump_cmd.command;
   ]
   @ List_cmd.commands @ Config_cmd.commands
   @ Registration.all_custom_commands ()
