@@ -72,12 +72,12 @@ let list_benchmarks formatter list =
     list
 
 let list_all_benchmarks formatter =
-  list_benchmarks formatter (Registration.all_benchmarks ())
+  list_benchmarks formatter (Registration.all_benchmarks () |> List.map snd)
 
 (* -------------------------------------------------------------------------- *)
 (* Built-in commands implementations *)
 
-let benchmark_cmd (bench_pattern : string)
+let benchmark_cmd (bench_pattern : Namespace.t)
     (bench_opts : Cmdline.benchmark_options) =
   let bench =
     try Registration.find_benchmark_exn bench_pattern
@@ -372,7 +372,7 @@ let codegen_cmd solution model_name codegen_options =
   | None ->
       Format.eprintf "Model %a not found, exiting@." Namespace.pp model_name ;
       exit 1
-  | Some (model, _) ->
+  | Some {Registration.model; _} ->
       let transform =
         match codegen_options with
         | Cmdline.No_transform ->
@@ -405,7 +405,7 @@ let codegen_all_cmd solution regexp codegen_options =
   let () = Format.eprintf "regexp: %s@." regexp in
   let ok (name, _) = Namespace.name_match (Namespace.of_string regexp) name in
   let sol = Codegen.load_solution solution in
-  let models = List.filter ok (Registration.all_registered_models ()) in
+  let models = List.filter ok (Registration.all_models ()) in
   let transform =
     match codegen_options with
     | Cmdline.No_transform -> ((module Costlang.Identity) : Costlang.transform)
