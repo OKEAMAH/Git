@@ -327,5 +327,7 @@ module History : sig
         otherwise.
         Note that it will also return [false] if deserialization fails.  *)
     val proof_statement_is : proof -> [`Confirmed | `Unconfirmed] -> bool
+
+    type error += Dal_invalid_proof_serialized_size
   end
 end

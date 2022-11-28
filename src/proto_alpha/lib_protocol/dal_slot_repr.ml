@@ -981,6 +981,18 @@ module History = struct
             | `Confirmed, Page_confirmed _ | `Unconfirmed, Page_unconfirmed _ ->
                 true
             | _ -> false)
+
+      type error += Dal_invalid_proof_serialized_size
+
+      let () =
+        register_error_kind
+          `Permanent
+          ~id:"Dal_slot_repr.invalid_proof_serialized_size"
+          ~title:"Dal invalid proof serialized size"
+          ~description:"Error dal serialized proof is too big"
+          Data_encoding.unit
+          (function Dal_invalid_proof_serialized_size -> Some () | _ -> None)
+          (fun () -> Dal_invalid_proof_serialized_size)
     end
   end
 
