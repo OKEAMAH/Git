@@ -127,6 +127,11 @@ module Kind = struct
 
   type zk_rollup_update = Zk_rollup_update_kind
 
+  type _ zk_rollup =
+    | Zk_rollup_origination_zk_kind : zk_rollup_origination zk_rollup
+    | Zk_rollup_publish_manager_zk_kind : zk_rollup_publish zk_rollup
+    | Zk_rollup_update_manager_zk_kind : zk_rollup_update zk_rollup
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -159,9 +164,10 @@ module Kind = struct
     | Sc_rollup_execute_outbox_message_manager_kind
         : sc_rollup_execute_outbox_message manager
     | Sc_rollup_recover_bond_manager_kind : sc_rollup_recover_bond manager
-    | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
-    | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
-    | Zk_rollup_update_manager_kind : zk_rollup_update manager
+    | Zk_rollup_origination_manager_kind
+        : zk_rollup_origination zk_rollup manager
+    | Zk_rollup_publish_manager_kind : zk_rollup_publish zk_rollup manager
+    | Zk_rollup_update_manager_kind : zk_rollup_update zk_rollup manager
 end
 
 type 'a consensus_operation_type =
@@ -476,17 +482,17 @@ and _ manager_operation =
       init_state : Zk_rollup_state_repr.t;
       nb_ops : int;
     }
-      -> Kind.zk_rollup_origination manager_operation
+      -> Kind.zk_rollup_origination Kind.zk_rollup manager_operation
   | Zk_rollup_publish : {
       zk_rollup : Zk_rollup_repr.t;
       ops : (Zk_rollup_operation_repr.t * Zk_rollup_ticket_repr.t option) list;
     }
-      -> Kind.zk_rollup_publish manager_operation
+      -> Kind.zk_rollup_publish Kind.zk_rollup manager_operation
   | Zk_rollup_update : {
       zk_rollup : Zk_rollup_repr.t;
       update : Zk_rollup_update_repr.t;
     }
-      -> Kind.zk_rollup_update manager_operation
+      -> Kind.zk_rollup_update Kind.zk_rollup manager_operation
 
 let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   function
@@ -525,6 +531,11 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
+
+type packed_zk_rollup_operation =
+  | Zk_rollup :
+      'kind Kind.zk_rollup manager_operation
+      -> packed_zk_rollup_operation
 
 type packed_contents = Contents : 'kind contents -> packed_contents
 
@@ -600,6 +611,14 @@ let tx_rollup_operation_dispatch_tickets_tag =
 
 let transfer_ticket_tag = tx_rollup_operation_tag_offset + 8
 
+let groups_offset = 200
+
+let sc_rollup_tag = groups_offset + 0
+
+let dal_tag = groups_offset + 1
+
+let zk_rollup_tag = groups_offset + 2
+
 let sc_rollup_operation_tag_offset = 200
 
 let sc_rollup_operation_origination_tag = sc_rollup_operation_tag_offset + 0
@@ -649,16 +668,30 @@ module Encoding = struct
       (fun ((), x) -> inj x)
 
   module Manager_operations = struct
+    type ('packed, 'kind) sub_case =
+      | MSubCase : {
+          tag : int;
+          name : string;
+          encoding : 'a Data_encoding.t;
+          select : 'packed -> 'kind manager_operation option;
+          proj : 'kind manager_operation -> 'a;
+          inj : 'a -> 'packed;
+        }
+          -> ('packed, 'kind) sub_case
+
     type 'kind case =
       | MCase : {
           tag : int;
           name : string;
           encoding : 'a Data_encoding.t;
-          select : packed_manager_operation -> 'kind manager_operation option;
-          proj : 'kind manager_operation -> 'a;
-          inj : 'a -> 'kind manager_operation;
+          select : packed_manager_operation -> 'kind option;
+          proj : 'kind -> 'a;
+          inj : 'a -> 'kind;
         }
           -> 'kind case
+
+    let make_sub_case (MSubCase {tag; name; encoding; select; proj; inj}) =
+      case (Tag tag) name encoding (fun o -> select o |> Option.map proj) inj
 
     let reveal_case =
       MCase
@@ -1064,9 +1097,9 @@ module Encoding = struct
         }
 
     let zk_rollup_origination_case =
-      MCase
+      MSubCase
         {
-          tag = zk_rollup_operation_create_tag;
+          tag = 0;
           name = "zk_rollup_origination";
           encoding =
             obj4
@@ -1080,7 +1113,7 @@ module Encoding = struct
               (req "nb_ops" int31);
           select =
             (function
-            | Manager (Zk_rollup_origination _ as op) -> Some op | _ -> None);
+            | Zk_rollup (Zk_rollup_origination _ as op) -> Some op | _ -> None);
           proj =
             (function
             | Zk_rollup_origination
@@ -1088,14 +1121,15 @@ module Encoding = struct
                 (public_parameters, circuits_info, init_state, nb_ops));
           inj =
             (fun (public_parameters, circuits_info, init_state, nb_ops) ->
-              Zk_rollup_origination
-                {public_parameters; circuits_info; init_state; nb_ops});
+              Zk_rollup
+                (Zk_rollup_origination
+                   {public_parameters; circuits_info; init_state; nb_ops}));
         }
 
     let zk_rollup_publish_case =
-      MCase
+      MSubCase
         {
-          tag = zk_rollup_operation_publish_tag;
+          tag = 1;
           name = "zk_rollup_publish";
           encoding =
             obj2
@@ -1107,16 +1141,18 @@ module Encoding = struct
                       (option Zk_rollup_ticket_repr.encoding)));
           select =
             (function
-            | Manager (Zk_rollup_publish _ as op) -> Some op | _ -> None);
+            | Zk_rollup (Zk_rollup_publish _ as op) -> Some op | _ -> None);
           proj =
             (function Zk_rollup_publish {zk_rollup; ops} -> (zk_rollup, ops));
-          inj = (fun (zk_rollup, ops) -> Zk_rollup_publish {zk_rollup; ops});
+          inj =
+            (fun (zk_rollup, ops) ->
+              Zk_rollup (Zk_rollup_publish {zk_rollup; ops}));
         }
 
     let zk_rollup_update_case =
-      MCase
+      MSubCase
         {
-          tag = zk_rollup_operation_update_tag;
+          tag = 2;
           name = "zk_rollup_update";
           encoding =
             obj2
@@ -1124,12 +1160,37 @@ module Encoding = struct
               (req "update" Zk_rollup_update_repr.encoding);
           select =
             (function
-            | Manager (Zk_rollup_update _ as op) -> Some op | _ -> None);
+            | Zk_rollup (Zk_rollup_update _ as op) -> Some op | _ -> None);
           proj =
             (function
             | Zk_rollup_update {zk_rollup; update} -> (zk_rollup, update));
           inj =
-            (fun (zk_rollup, update) -> Zk_rollup_update {zk_rollup; update});
+            (fun (zk_rollup, update) ->
+              Zk_rollup (Zk_rollup_update {zk_rollup; update}));
+        }
+
+    let zk_rollup_case =
+      let encoding =
+        union
+          [
+            make_sub_case zk_rollup_origination_case;
+            make_sub_case zk_rollup_publish_case;
+            make_sub_case zk_rollup_update_case;
+          ]
+      in
+      MCase
+        {
+          tag = zk_rollup_tag;
+          name = "zk_rollup";
+          encoding;
+          select =
+            (function
+            | Manager (Zk_rollup_origination _ as o) -> Some (Zk_rollup o)
+            | Manager (Zk_rollup_publish _ as o) -> Some (Zk_rollup o)
+            | Manager (Zk_rollup_update _ as o) -> Some (Zk_rollup o)
+            | _ -> None);
+          proj = (fun o -> o);
+          inj = (fun o -> o);
         }
 
     let sc_rollup_originate_case =
@@ -1616,155 +1677,15 @@ module Encoding = struct
     Manager_operation
       {source; fee; counter; gas_limit; storage_limit; operation}
 
-  let make_manager_case tag (type kind)
-      (Manager_operations.MCase mcase : kind Manager_operations.case) =
-    Case
-      {
-        tag;
-        name = mcase.name;
-        encoding = merge_objs manager_encoding mcase.encoding;
-        select =
-          (function
-          | Contents (Manager_operation ({operation; _} as op)) -> (
-              match mcase.select (Manager operation) with
-              | None -> None
-              | Some operation -> Some (Manager_operation {op with operation}))
-          | _ -> None);
-        proj =
-          (function
-          | Manager_operation {operation; _} as op ->
-              (extract op, mcase.proj operation));
-        inj = (fun (op, contents) -> rebuild op (mcase.inj contents));
-      }
-
-  let reveal_case = make_manager_case 107 Manager_operations.reveal_case
-
-  let transaction_case =
-    make_manager_case 108 Manager_operations.transaction_case
-
-  let origination_case =
-    make_manager_case 109 Manager_operations.origination_case
-
-  let delegation_case = make_manager_case 110 Manager_operations.delegation_case
-
-  let register_global_constant_case =
-    make_manager_case 111 Manager_operations.register_global_constant_case
-
-  let set_deposits_limit_case =
-    make_manager_case 112 Manager_operations.set_deposits_limit_case
-
-  let increase_paid_storage_case =
-    make_manager_case 113 Manager_operations.increase_paid_storage_case
-
-  let update_consensus_key_case =
-    make_manager_case 114 Manager_operations.update_consensus_key_case
-
-  let tx_rollup_origination_case =
-    make_manager_case
-      tx_rollup_operation_tag_offset
-      Manager_operations.tx_rollup_origination_case
-
-  let tx_rollup_submit_batch_case =
-    make_manager_case
-      tx_rollup_operation_submit_batch_tag
-      Manager_operations.tx_rollup_submit_batch_case
-
-  let tx_rollup_commit_case =
-    make_manager_case
-      tx_rollup_operation_commit_tag
-      Manager_operations.tx_rollup_commit_case
-
-  let tx_rollup_return_bond_case =
-    make_manager_case
-      tx_rollup_operation_return_bond_tag
-      Manager_operations.tx_rollup_return_bond_case
-
-  let tx_rollup_finalize_commitment_case =
-    make_manager_case
-      tx_rollup_operation_finalize_commitment_tag
-      Manager_operations.tx_rollup_finalize_commitment_case
-
-  let tx_rollup_remove_commitment_case =
-    make_manager_case
-      tx_rollup_operation_remove_commitment_tag
-      Manager_operations.tx_rollup_remove_commitment_case
-
-  let tx_rollup_rejection_case =
-    make_manager_case
-      tx_rollup_operation_rejection_tag
-      Manager_operations.tx_rollup_rejection_case
-
-  let tx_rollup_dispatch_tickets_case =
-    make_manager_case
-      tx_rollup_operation_dispatch_tickets_tag
-      Manager_operations.tx_rollup_dispatch_tickets_case
-
-  let transfer_ticket_case =
-    make_manager_case
-      transfer_ticket_tag
-      Manager_operations.transfer_ticket_case
-
-  let dal_publish_slot_header_case =
-    make_manager_case
-      dal_publish_slot_header_tag
-      Manager_operations.dal_publish_slot_header_case
-
-  let sc_rollup_originate_case =
-    make_manager_case
-      sc_rollup_operation_origination_tag
-      Manager_operations.sc_rollup_originate_case
-
-  let sc_rollup_add_messages_case =
-    make_manager_case
-      sc_rollup_operation_add_message_tag
-      Manager_operations.sc_rollup_add_messages_case
-
-  let sc_rollup_cement_case =
-    make_manager_case
-      sc_rollup_operation_cement_tag
-      Manager_operations.sc_rollup_cement_case
-
-  let sc_rollup_publish_case =
-    make_manager_case
-      sc_rollup_operation_publish_tag
-      Manager_operations.sc_rollup_publish_case
-
-  let sc_rollup_refute_case =
-    make_manager_case
-      sc_rollup_operation_refute_tag
-      Manager_operations.sc_rollup_refute_case
-
-  let sc_rollup_timeout_case =
-    make_manager_case
-      sc_rollup_operation_timeout_tag
-      Manager_operations.sc_rollup_timeout_case
-
-  let sc_rollup_execute_outbox_message_case =
-    make_manager_case
-      sc_rollup_execute_outbox_message_tag
-      Manager_operations.sc_rollup_execute_outbox_message_case
-
-  let sc_rollup_recover_bond_case =
-    make_manager_case
-      sc_rollup_operation_recover_bond_tag
-      Manager_operations.sc_rollup_recover_bond_case
-
-  let zk_rollup_origination_case =
-    make_manager_case
-      zk_rollup_operation_create_tag
-      Manager_operations.zk_rollup_origination_case
-
-  let zk_rollup_publish_case =
-    make_manager_case
-      zk_rollup_operation_publish_tag
-      Manager_operations.zk_rollup_publish_case
-
-  let zk_rollup_update_case =
-    make_manager_case
-      zk_rollup_operation_update_tag
-      Manager_operations.zk_rollup_update_case
-
-  type packed_case = PCase : 'b case -> packed_case
+  type packed_case =
+    | PCase : 'b case -> packed_case
+    | PMCase : 'b manager_operation Manager_operations.case -> packed_case
+    | PMTagCase :
+        int * 'b manager_operation Manager_operations.case
+        -> packed_case
+    | PZkCase :
+        packed_zk_rollup_operation Manager_operations.case
+        -> packed_case
 
   let contents_cases =
     [
@@ -1779,48 +1700,95 @@ module Encoding = struct
       PCase activate_account_case;
       PCase proposals_case;
       PCase ballot_case;
-      PCase reveal_case;
-      PCase transaction_case;
-      PCase origination_case;
-      PCase delegation_case;
-      PCase set_deposits_limit_case;
-      PCase increase_paid_storage_case;
-      PCase update_consensus_key_case;
+      PMTagCase (107, Manager_operations.reveal_case);
+      PMTagCase (108, Manager_operations.transaction_case);
+      PMTagCase (109, Manager_operations.origination_case);
+      PMTagCase (110, Manager_operations.delegation_case);
+      PMTagCase (111, Manager_operations.register_global_constant_case);
+      PMTagCase (112, Manager_operations.set_deposits_limit_case);
+      PMTagCase (113, Manager_operations.increase_paid_storage_case);
+      PMCase Manager_operations.update_consensus_key_case;
       PCase drain_delegate_case;
       PCase failing_noop_case;
-      PCase register_global_constant_case;
-      PCase tx_rollup_origination_case;
-      PCase tx_rollup_submit_batch_case;
-      PCase tx_rollup_commit_case;
-      PCase tx_rollup_return_bond_case;
-      PCase tx_rollup_finalize_commitment_case;
-      PCase tx_rollup_remove_commitment_case;
-      PCase tx_rollup_rejection_case;
-      PCase tx_rollup_dispatch_tickets_case;
-      PCase transfer_ticket_case;
-      PCase dal_publish_slot_header_case;
-      PCase sc_rollup_originate_case;
-      PCase sc_rollup_add_messages_case;
-      PCase sc_rollup_cement_case;
-      PCase sc_rollup_publish_case;
-      PCase sc_rollup_refute_case;
-      PCase sc_rollup_timeout_case;
-      PCase sc_rollup_execute_outbox_message_case;
-      PCase sc_rollup_recover_bond_case;
-      PCase zk_rollup_origination_case;
-      PCase zk_rollup_publish_case;
-      PCase zk_rollup_update_case;
+      PMCase Manager_operations.tx_rollup_origination_case;
+      PMCase Manager_operations.tx_rollup_submit_batch_case;
+      PMCase Manager_operations.tx_rollup_commit_case;
+      PMCase Manager_operations.tx_rollup_return_bond_case;
+      PMCase Manager_operations.tx_rollup_finalize_commitment_case;
+      PMCase Manager_operations.tx_rollup_remove_commitment_case;
+      PMCase Manager_operations.tx_rollup_rejection_case;
+      PMCase Manager_operations.tx_rollup_dispatch_tickets_case;
+      PMCase Manager_operations.transfer_ticket_case;
+      PMCase Manager_operations.dal_publish_slot_header_case;
+      PMCase Manager_operations.sc_rollup_originate_case;
+      PMCase Manager_operations.sc_rollup_add_messages_case;
+      PMCase Manager_operations.sc_rollup_cement_case;
+      PMCase Manager_operations.sc_rollup_publish_case;
+      PMCase Manager_operations.sc_rollup_refute_case;
+      PMCase Manager_operations.sc_rollup_timeout_case;
+      PMCase Manager_operations.sc_rollup_execute_outbox_message_case;
+      PMCase Manager_operations.sc_rollup_recover_bond_case;
+      PZkCase Manager_operations.zk_rollup_case;
     ]
 
   let contents_encoding =
-    let make (PCase (Case {tag; name; encoding; select; proj; inj})) =
-      assert (not @@ reserved_tag tag) ;
-      case
-        (Tag tag)
-        name
-        encoding
-        (fun o -> match select o with None -> None | Some o -> Some (proj o))
-        (fun x -> Contents (inj x))
+    let make = function
+      | PCase (Case {tag; name; encoding; select; proj; inj}) ->
+          assert (not @@ reserved_tag tag) ;
+          case
+            (Tag tag)
+            name
+            encoding
+            (fun o ->
+              match select o with None -> None | Some o -> Some (proj o))
+            (fun x -> Contents (inj x))
+      | PMCase
+          (Manager_operations.MCase {tag; name; encoding; select; proj; inj}) ->
+          assert (not @@ reserved_tag tag) ;
+          case
+            (Tag tag)
+            name
+            (merge_objs manager_encoding encoding)
+            (function
+              | Contents (Manager_operation {operation; _} as op) ->
+                  select (Manager operation)
+                  |> Option.map (fun o -> (extract op, proj o))
+              | _ -> None)
+            (fun (op, o) ->
+              let mop = inj o in
+              Contents (rebuild op mop))
+      | PMTagCase
+          ( tag,
+            Manager_operations.MCase
+              {tag = _; name; encoding; select; proj; inj} ) ->
+          assert (not @@ reserved_tag tag) ;
+          case
+            (Tag tag)
+            name
+            (merge_objs manager_encoding encoding)
+            (function
+              | Contents (Manager_operation {operation; _} as op) ->
+                  select (Manager operation)
+                  |> Option.map (fun o -> (extract op, proj o))
+              | _ -> None)
+            (fun (op, o) ->
+              let mop = inj o in
+              Contents (rebuild op mop))
+      | PZkCase
+          (Manager_operations.MCase {tag; name; encoding; select; proj; inj}) ->
+          assert (not @@ reserved_tag tag) ;
+          case
+            (Tag tag)
+            name
+            (merge_objs manager_encoding encoding)
+            (function
+              | Contents (Manager_operation {operation; _} as op) ->
+                  select (Manager operation)
+                  |> Option.map (fun o -> (extract op, proj o))
+              | _ -> None)
+            (fun (op, o) ->
+              let (Zk_rollup mop) = inj o in
+              Contents (rebuild op mop))
     in
     def "operation.alpha.contents" @@ union (List.map make contents_cases)
 
