@@ -679,16 +679,17 @@ module Encoding = struct
         }
           -> ('packed, 'kind) sub_case
 
-    type 'kind case =
+    (* 'kind  *)
+    type case =
       | MCase : {
           tag : int;
           name : string;
           encoding : 'a Data_encoding.t;
           select : packed_manager_operation -> 'kind option;
           proj : 'kind -> 'a;
-          inj : 'a -> 'kind;
+          inj : 'a -> packed_manager_operation;
         }
-          -> 'kind case
+          -> (* 'kind *) case
 
     let make_sub_case (MSubCase {tag; name; encoding; select; proj; inj}) =
       case (Tag tag) name encoding (fun o -> select o |> Option.map proj) inj
@@ -701,7 +702,7 @@ module Encoding = struct
           encoding = obj1 (req "public_key" Signature.Public_key.encoding);
           select = (function Manager (Reveal _ as op) -> Some op | _ -> None);
           proj = (function Reveal pkh -> pkh);
-          inj = (fun pkh -> Reveal pkh);
+          inj = (fun pkh -> Manager (Reveal pkh));
         }
 
     let transaction_case =
@@ -738,7 +739,8 @@ module Encoding = struct
                 | None -> (Entrypoint_repr.default, Script_repr.unit_parameter)
                 | Some (entrypoint, value) -> (entrypoint, value)
               in
-              Transaction {amount; destination; parameters; entrypoint});
+              Manager
+                (Transaction {amount; destination; parameters; entrypoint}));
         }
 
     let origination_case =
@@ -759,7 +761,7 @@ module Encoding = struct
                 (credit, delegate, script));
           inj =
             (fun (credit, delegate, script) ->
-              Origination {credit; delegate; script});
+              Manager (Origination {credit; delegate; script}));
         }
 
     let delegation_case =
@@ -771,7 +773,7 @@ module Encoding = struct
           select =
             (function Manager (Delegation _ as op) -> Some op | _ -> None);
           proj = (function Delegation key -> key);
-          inj = (fun key -> Delegation key);
+          inj = (fun key -> Manager (Delegation key));
         }
 
     let register_global_constant_case =
@@ -784,7 +786,7 @@ module Encoding = struct
             (function
             | Manager (Register_global_constant _ as op) -> Some op | _ -> None);
           proj = (function Register_global_constant {value} -> value);
-          inj = (fun value -> Register_global_constant {value});
+          inj = (fun value -> Manager (Register_global_constant {value}));
         }
 
     let set_deposits_limit_case =
@@ -797,7 +799,7 @@ module Encoding = struct
             (function
             | Manager (Set_deposits_limit _ as op) -> Some op | _ -> None);
           proj = (function Set_deposits_limit key -> key);
-          inj = (fun key -> Set_deposits_limit key);
+          inj = (fun key -> Manager (Set_deposits_limit key));
         }
 
     let increase_paid_storage_case =
@@ -818,7 +820,7 @@ module Encoding = struct
                 (amount_in_bytes, destination));
           inj =
             (fun (amount_in_bytes, destination) ->
-              Increase_paid_storage {amount_in_bytes; destination});
+              Manager (Increase_paid_storage {amount_in_bytes; destination}));
         }
 
     let update_consensus_key_tag = 6
@@ -833,7 +835,8 @@ module Encoding = struct
             (function
             | Manager (Update_consensus_key _ as op) -> Some op | _ -> None);
           proj = (function Update_consensus_key consensus_pk -> consensus_pk);
-          inj = (fun consensus_pk -> Update_consensus_key consensus_pk);
+          inj =
+            (fun consensus_pk -> Manager (Update_consensus_key consensus_pk));
         }
 
     let tx_rollup_origination_case =
@@ -846,7 +849,7 @@ module Encoding = struct
             (function
             | Manager (Tx_rollup_origination as op) -> Some op | _ -> None);
           proj = (function Tx_rollup_origination -> ());
-          inj = (fun () -> Tx_rollup_origination);
+          inj = (fun () -> Manager Tx_rollup_origination);
         }
 
     let tx_rollup_submit_batch_case =
@@ -868,7 +871,7 @@ module Encoding = struct
                 (tx_rollup, content, burn_limit));
           inj =
             (fun (tx_rollup, content, burn_limit) ->
-              Tx_rollup_submit_batch {tx_rollup; content; burn_limit});
+              Manager (Tx_rollup_submit_batch {tx_rollup; content; burn_limit}));
         }
 
     let tx_rollup_commit_case =
@@ -888,7 +891,7 @@ module Encoding = struct
             | Tx_rollup_commit {tx_rollup; commitment} -> (tx_rollup, commitment));
           inj =
             (fun (tx_rollup, commitment) ->
-              Tx_rollup_commit {tx_rollup; commitment});
+              Manager (Tx_rollup_commit {tx_rollup; commitment}));
         }
 
     let tx_rollup_return_bond_case =
@@ -901,7 +904,7 @@ module Encoding = struct
             (function
             | Manager (Tx_rollup_return_bond _ as op) -> Some op | _ -> None);
           proj = (function Tx_rollup_return_bond {tx_rollup} -> tx_rollup);
-          inj = (fun tx_rollup -> Tx_rollup_return_bond {tx_rollup});
+          inj = (fun tx_rollup -> Manager (Tx_rollup_return_bond {tx_rollup}));
         }
 
     let tx_rollup_finalize_commitment_case =
@@ -916,7 +919,9 @@ module Encoding = struct
             | _ -> None);
           proj =
             (function Tx_rollup_finalize_commitment {tx_rollup} -> tx_rollup);
-          inj = (fun tx_rollup -> Tx_rollup_finalize_commitment {tx_rollup});
+          inj =
+            (fun tx_rollup ->
+              Manager (Tx_rollup_finalize_commitment {tx_rollup}));
         }
 
     let tx_rollup_remove_commitment_case =
@@ -931,7 +936,8 @@ module Encoding = struct
             | _ -> None);
           proj =
             (function Tx_rollup_remove_commitment {tx_rollup} -> tx_rollup);
-          inj = (fun tx_rollup -> Tx_rollup_remove_commitment {tx_rollup});
+          inj =
+            (fun tx_rollup -> Manager (Tx_rollup_remove_commitment {tx_rollup}));
         }
 
     let tx_rollup_rejection_case =
@@ -998,19 +1004,20 @@ module Encoding = struct
                    previous_message_result,
                    previous_message_result_path,
                    proof ) ->
-              Tx_rollup_rejection
-                {
-                  tx_rollup;
-                  level;
-                  message;
-                  message_position = Z.to_int message_position;
-                  message_path;
-                  message_result_hash;
-                  message_result_path;
-                  previous_message_result;
-                  previous_message_result_path;
-                  proof;
-                });
+              Manager
+                (Tx_rollup_rejection
+                   {
+                     tx_rollup;
+                     level;
+                     message;
+                     message_position = Z.to_int message_position;
+                     message_path;
+                     message_result_hash;
+                     message_result_path;
+                     previous_message_result;
+                     previous_message_result_path;
+                     proof;
+                   }));
         }
 
     let tx_rollup_dispatch_tickets_case =
@@ -1058,15 +1065,16 @@ module Encoding = struct
                    message_index,
                    message_result_path,
                    tickets_info ) ->
-              Tx_rollup_dispatch_tickets
-                {
-                  tx_rollup;
-                  level;
-                  context_hash;
-                  message_index;
-                  message_result_path;
-                  tickets_info;
-                });
+              Manager
+                (Tx_rollup_dispatch_tickets
+                   {
+                     tx_rollup;
+                     level;
+                     context_hash;
+                     message_index;
+                     message_result_path;
+                     tickets_info;
+                   }));
         }
 
     let transfer_ticket_case =
@@ -1092,8 +1100,9 @@ module Encoding = struct
                 (contents, ty, ticketer, amount, destination, entrypoint));
           inj =
             (fun (contents, ty, ticketer, amount, destination, entrypoint) ->
-              Transfer_ticket
-                {contents; ty; ticketer; amount; destination; entrypoint});
+              Manager
+                (Transfer_ticket
+                   {contents; ty; ticketer; amount; destination; entrypoint}));
         }
 
     let zk_rollup_origination_case =
@@ -1190,7 +1199,7 @@ module Encoding = struct
             | Manager (Zk_rollup_update _ as o) -> Some (Zk_rollup o)
             | _ -> None);
           proj = (fun o -> o);
-          inj = (fun o -> o);
+          inj = (fun (Zk_rollup o) -> Manager o);
         }
 
     let sc_rollup_originate_case =
@@ -1214,8 +1223,9 @@ module Encoding = struct
                 (kind, boot_sector, origination_proof, parameters_ty));
           inj =
             (fun (kind, boot_sector, origination_proof, parameters_ty) ->
-              Sc_rollup_originate
-                {kind; boot_sector; origination_proof; parameters_ty});
+              Manager
+                (Sc_rollup_originate
+                   {kind; boot_sector; origination_proof; parameters_ty}));
         }
 
     let dal_publish_slot_header_case =
@@ -1229,7 +1239,8 @@ module Encoding = struct
             | Manager (Dal_publish_slot_header _ as op) -> Some op | _ -> None);
           proj =
             (function Dal_publish_slot_header {slot_header} -> slot_header);
-          inj = (fun slot_header -> Dal_publish_slot_header {slot_header});
+          inj =
+            (fun slot_header -> Manager (Dal_publish_slot_header {slot_header}));
         }
 
     let sc_rollup_add_messages_case =
@@ -1242,7 +1253,7 @@ module Encoding = struct
             (function
             | Manager (Sc_rollup_add_messages _ as op) -> Some op | _ -> None);
           proj = (function Sc_rollup_add_messages {messages} -> messages);
-          inj = (fun messages -> Sc_rollup_add_messages {messages});
+          inj = (fun messages -> Manager (Sc_rollup_add_messages {messages}));
         }
 
     let sc_rollup_cement_case =
@@ -1261,7 +1272,8 @@ module Encoding = struct
             (function
             | Sc_rollup_cement {rollup; commitment} -> (rollup, commitment));
           inj =
-            (fun (rollup, commitment) -> Sc_rollup_cement {rollup; commitment});
+            (fun (rollup, commitment) ->
+              Manager (Sc_rollup_cement {rollup; commitment}));
         }
 
     let sc_rollup_publish_case =
@@ -1280,7 +1292,8 @@ module Encoding = struct
             (function
             | Sc_rollup_publish {rollup; commitment} -> (rollup, commitment));
           inj =
-            (fun (rollup, commitment) -> Sc_rollup_publish {rollup; commitment});
+            (fun (rollup, commitment) ->
+              Manager (Sc_rollup_publish {rollup; commitment}));
         }
 
     let sc_rollup_refute_case =
@@ -1302,7 +1315,7 @@ module Encoding = struct
                 (rollup, opponent, refutation));
           inj =
             (fun (rollup, opponent, refutation) ->
-              Sc_rollup_refute {rollup; opponent; refutation});
+              Manager (Sc_rollup_refute {rollup; opponent; refutation}));
         }
 
     let sc_rollup_timeout_case =
@@ -1320,7 +1333,9 @@ module Encoding = struct
           proj =
             (function
             | Sc_rollup_timeout {rollup; stakers} -> (rollup, stakers));
-          inj = (fun (rollup, stakers) -> Sc_rollup_timeout {rollup; stakers});
+          inj =
+            (fun (rollup, stakers) ->
+              Manager (Sc_rollup_timeout {rollup; stakers}));
         }
 
     let sc_rollup_execute_outbox_message_case =
@@ -1346,8 +1361,9 @@ module Encoding = struct
                 (rollup, cemented_commitment, output_proof));
           inj =
             (fun (rollup, cemented_commitment, output_proof) ->
-              Sc_rollup_execute_outbox_message
-                {rollup; cemented_commitment; output_proof});
+              Manager
+                (Sc_rollup_execute_outbox_message
+                   {rollup; cemented_commitment; output_proof}));
         }
 
     let sc_rollup_recover_bond_case =
@@ -1360,7 +1376,7 @@ module Encoding = struct
             (function
             | Manager (Sc_rollup_recover_bond _ as op) -> Some op | _ -> None);
           proj = (function Sc_rollup_recover_bond {sc_rollup} -> sc_rollup);
-          inj = (fun sc_rollup -> Sc_rollup_recover_bond {sc_rollup});
+          inj = (fun sc_rollup -> Manager (Sc_rollup_recover_bond {sc_rollup}));
         }
   end
 
@@ -1677,15 +1693,106 @@ module Encoding = struct
     Manager_operation
       {source; fee; counter; gas_limit; storage_limit; operation}
 
+  let make_manager_case (type kind) ?tag
+      (Manager_operations.MCase
+        {tag = orig_tag; name; encoding; select; proj; inj}) =
+    let tag = Option.value tag ~default:orig_tag in
+    assert (not @@ reserved_tag tag) ;
+    case
+      (Tag tag)
+      name
+      (merge_objs manager_encoding encoding)
+      (function
+        | Contents (Manager_operation {operation; _} as op) ->
+            select (Manager operation)
+            |> Option.map (fun o -> (extract op, proj o))
+        | _ -> None)
+      (fun (op, o) ->
+        let (Manager mop) = inj o in
+        Contents (rebuild op mop))
+
+  let reveal_case = make_manager_case ~tag:107 Manager_operations.reveal_case
+
+  let transaction_case =
+    make_manager_case ~tag:108 Manager_operations.transaction_case
+
+  let origination_case =
+    make_manager_case ~tag:109 Manager_operations.origination_case
+
+  let delegation_case =
+    make_manager_case ~tag:110 Manager_operations.delegation_case
+
+  let register_global_constant_case =
+    make_manager_case ~tag:111 Manager_operations.register_global_constant_case
+
+  let set_deposits_limit_case =
+    make_manager_case ~tag:112 Manager_operations.set_deposits_limit_case
+
+  let increase_paid_storage_case =
+    make_manager_case ~tag:113 Manager_operations.increase_paid_storage_case
+
+  let update_consensus_key_case =
+    make_manager_case ~tag:114 Manager_operations.update_consensus_key_case
+
+  let tx_rollup_origination_case =
+    make_manager_case Manager_operations.tx_rollup_origination_case
+
+  let tx_rollup_submit_batch_case =
+    make_manager_case Manager_operations.tx_rollup_submit_batch_case
+
+  let tx_rollup_commit_case =
+    make_manager_case Manager_operations.tx_rollup_commit_case
+
+  let tx_rollup_return_bond_case =
+    make_manager_case Manager_operations.tx_rollup_return_bond_case
+
+  let tx_rollup_finalize_commitment_case =
+    make_manager_case Manager_operations.tx_rollup_finalize_commitment_case
+
+  let tx_rollup_remove_commitment_case =
+    make_manager_case Manager_operations.tx_rollup_remove_commitment_case
+
+  let tx_rollup_rejection_case =
+    make_manager_case Manager_operations.tx_rollup_rejection_case
+
+  let tx_rollup_dispatch_tickets_case =
+    make_manager_case Manager_operations.tx_rollup_dispatch_tickets_case
+
+  let transfer_ticket_case =
+    make_manager_case Manager_operations.transfer_ticket_case
+
+  let dal_publish_slot_header_case =
+    make_manager_case Manager_operations.dal_publish_slot_header_case
+
+  let sc_rollup_originate_case =
+    make_manager_case Manager_operations.sc_rollup_originate_case
+
+  let sc_rollup_add_messages_case =
+    make_manager_case Manager_operations.sc_rollup_add_messages_case
+
+  let sc_rollup_cement_case =
+    make_manager_case Manager_operations.sc_rollup_cement_case
+
+  let sc_rollup_publish_case =
+    make_manager_case Manager_operations.sc_rollup_publish_case
+
+  let sc_rollup_refute_case =
+    make_manager_case Manager_operations.sc_rollup_refute_case
+
+  let sc_rollup_timeout_case =
+    make_manager_case Manager_operations.sc_rollup_timeout_case
+
+  let sc_rollup_execute_outbox_message_case =
+    make_manager_case Manager_operations.sc_rollup_execute_outbox_message_case
+
+  let sc_rollup_recover_bond_case =
+    make_manager_case Manager_operations.sc_rollup_recover_bond_case
+
+  let zk_rollup_case = make_manager_case Manager_operations.zk_rollup_case
+
   type packed_case =
     | PCase : 'b case -> packed_case
-    | PMCase : 'b manager_operation Manager_operations.case -> packed_case
-    | PMTagCase :
-        int * 'b manager_operation Manager_operations.case
-        -> packed_case
-    | PZkCase :
-        packed_zk_rollup_operation Manager_operations.case
-        -> packed_case
+    | PMCase : packed_contents Data_encoding.case -> packed_case
 
   let contents_cases =
     [
@@ -1700,35 +1807,35 @@ module Encoding = struct
       PCase activate_account_case;
       PCase proposals_case;
       PCase ballot_case;
-      PMTagCase (107, Manager_operations.reveal_case);
-      PMTagCase (108, Manager_operations.transaction_case);
-      PMTagCase (109, Manager_operations.origination_case);
-      PMTagCase (110, Manager_operations.delegation_case);
-      PMTagCase (111, Manager_operations.register_global_constant_case);
-      PMTagCase (112, Manager_operations.set_deposits_limit_case);
-      PMTagCase (113, Manager_operations.increase_paid_storage_case);
-      PMCase Manager_operations.update_consensus_key_case;
+      PMCase reveal_case;
+      PMCase transaction_case;
+      PMCase origination_case;
+      PMCase delegation_case;
+      PMCase register_global_constant_case;
+      PMCase set_deposits_limit_case;
+      PMCase increase_paid_storage_case;
+      PMCase update_consensus_key_case;
       PCase drain_delegate_case;
       PCase failing_noop_case;
-      PMCase Manager_operations.tx_rollup_origination_case;
-      PMCase Manager_operations.tx_rollup_submit_batch_case;
-      PMCase Manager_operations.tx_rollup_commit_case;
-      PMCase Manager_operations.tx_rollup_return_bond_case;
-      PMCase Manager_operations.tx_rollup_finalize_commitment_case;
-      PMCase Manager_operations.tx_rollup_remove_commitment_case;
-      PMCase Manager_operations.tx_rollup_rejection_case;
-      PMCase Manager_operations.tx_rollup_dispatch_tickets_case;
-      PMCase Manager_operations.transfer_ticket_case;
-      PMCase Manager_operations.dal_publish_slot_header_case;
-      PMCase Manager_operations.sc_rollup_originate_case;
-      PMCase Manager_operations.sc_rollup_add_messages_case;
-      PMCase Manager_operations.sc_rollup_cement_case;
-      PMCase Manager_operations.sc_rollup_publish_case;
-      PMCase Manager_operations.sc_rollup_refute_case;
-      PMCase Manager_operations.sc_rollup_timeout_case;
-      PMCase Manager_operations.sc_rollup_execute_outbox_message_case;
-      PMCase Manager_operations.sc_rollup_recover_bond_case;
-      PZkCase Manager_operations.zk_rollup_case;
+      PMCase tx_rollup_origination_case;
+      PMCase tx_rollup_submit_batch_case;
+      PMCase tx_rollup_commit_case;
+      PMCase tx_rollup_return_bond_case;
+      PMCase tx_rollup_finalize_commitment_case;
+      PMCase tx_rollup_remove_commitment_case;
+      PMCase tx_rollup_rejection_case;
+      PMCase tx_rollup_dispatch_tickets_case;
+      PMCase transfer_ticket_case;
+      PMCase dal_publish_slot_header_case;
+      PMCase sc_rollup_originate_case;
+      PMCase sc_rollup_add_messages_case;
+      PMCase sc_rollup_cement_case;
+      PMCase sc_rollup_publish_case;
+      PMCase sc_rollup_refute_case;
+      PMCase sc_rollup_timeout_case;
+      PMCase sc_rollup_execute_outbox_message_case;
+      PMCase sc_rollup_recover_bond_case;
+      PMCase zk_rollup_case;
     ]
 
   let contents_encoding =
@@ -1742,53 +1849,7 @@ module Encoding = struct
             (fun o ->
               match select o with None -> None | Some o -> Some (proj o))
             (fun x -> Contents (inj x))
-      | PMCase
-          (Manager_operations.MCase {tag; name; encoding; select; proj; inj}) ->
-          assert (not @@ reserved_tag tag) ;
-          case
-            (Tag tag)
-            name
-            (merge_objs manager_encoding encoding)
-            (function
-              | Contents (Manager_operation {operation; _} as op) ->
-                  select (Manager operation)
-                  |> Option.map (fun o -> (extract op, proj o))
-              | _ -> None)
-            (fun (op, o) ->
-              let mop = inj o in
-              Contents (rebuild op mop))
-      | PMTagCase
-          ( tag,
-            Manager_operations.MCase
-              {tag = _; name; encoding; select; proj; inj} ) ->
-          assert (not @@ reserved_tag tag) ;
-          case
-            (Tag tag)
-            name
-            (merge_objs manager_encoding encoding)
-            (function
-              | Contents (Manager_operation {operation; _} as op) ->
-                  select (Manager operation)
-                  |> Option.map (fun o -> (extract op, proj o))
-              | _ -> None)
-            (fun (op, o) ->
-              let mop = inj o in
-              Contents (rebuild op mop))
-      | PZkCase
-          (Manager_operations.MCase {tag; name; encoding; select; proj; inj}) ->
-          assert (not @@ reserved_tag tag) ;
-          case
-            (Tag tag)
-            name
-            (merge_objs manager_encoding encoding)
-            (function
-              | Contents (Manager_operation {operation; _} as op) ->
-                  select (Manager operation)
-                  |> Option.map (fun o -> (extract op, proj o))
-              | _ -> None)
-            (fun (op, o) ->
-              let (Zk_rollup mop) = inj o in
-              Contents (rebuild op mop))
+      | PMCase case -> case
     in
     def "operation.alpha.contents" @@ union (List.map make contents_cases)
 
