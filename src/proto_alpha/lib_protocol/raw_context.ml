@@ -946,7 +946,7 @@ let prepare_first_block ~level ~timestamp ctxt =
           {
             enable = c.sc_rollup.enable;
             origination_size = c.sc_rollup.origination_size;
-            challenge_window_in_blocks = c.sc_rollup.challenge_window_in_blocks;
+            challenge_window_in_blocks = 40_320;
             max_number_of_messages_per_commitment_period =
               c.sc_rollup.max_number_of_messages_per_commitment_period;
             (* TODO: https://gitlab.com/tezos/tezos/-/issues/2756
@@ -954,8 +954,8 @@ let prepare_first_block ~level ~timestamp ctxt =
             stake_amount = c.sc_rollup.stake_amount;
             commitment_period_in_blocks =
               c.sc_rollup.commitment_period_in_blocks;
-            max_lookahead_in_blocks = c.sc_rollup.max_lookahead_in_blocks;
-            max_active_outbox_levels = c.sc_rollup.max_active_outbox_levels;
+            max_lookahead_in_blocks = 100_000l;
+            max_active_outbox_levels = 40_320l;
             max_outbox_messages_per_level =
               c.sc_rollup.max_outbox_messages_per_level;
             number_of_sections_in_dissection =
