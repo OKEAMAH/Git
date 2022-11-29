@@ -102,30 +102,11 @@ module Kind = struct
 
   type transfer_ticket = Transfer_ticket_kind
 
-  type dal_publish_slot_header = Dal_publish_slot_header_kind
+  type dal = Dal_kind
 
-  type sc_rollup_originate = Sc_rollup_originate_kind
+  type sc_rollup = Sc_rollup_kind
 
-  type sc_rollup_add_messages = Sc_rollup_add_messages_kind
-
-  type sc_rollup_cement = Sc_rollup_cement_kind
-
-  type sc_rollup_publish = Sc_rollup_publish_kind
-
-  type sc_rollup_refute = Sc_rollup_refute_kind
-
-  type sc_rollup_timeout = Sc_rollup_timeout_kind
-
-  type sc_rollup_execute_outbox_message =
-    | Sc_rollup_execute_outbox_message_kind
-
-  type sc_rollup_recover_bond = Sc_rollup_recover_bond_kind
-
-  type zk_rollup_origination = Zk_rollup_origination_kind
-
-  type zk_rollup_publish = Zk_rollup_publish_kind
-
-  type zk_rollup_update = Zk_rollup_update_kind
+  type zk_rollup = Zk_rollup_kind
 
   type 'a manager =
     | Reveal_manager_kind : reveal manager
@@ -149,19 +130,9 @@ module Kind = struct
     | Tx_rollup_dispatch_tickets_manager_kind
         : tx_rollup_dispatch_tickets manager
     | Transfer_ticket_manager_kind : transfer_ticket manager
-    | Dal_publish_slot_header_manager_kind : dal_publish_slot_header manager
-    | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
-    | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
-    | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
-    | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
-    | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
-    | Sc_rollup_timeout_manager_kind : sc_rollup_timeout manager
-    | Sc_rollup_execute_outbox_message_manager_kind
-        : sc_rollup_execute_outbox_message manager
-    | Sc_rollup_recover_bond_manager_kind : sc_rollup_recover_bond manager
-    | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
-    | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
-    | Zk_rollup_update_manager_kind : zk_rollup_update manager
+    | Dal_manager_kind : dal manager
+    | Sc_rollup_manager_kind : sc_rollup manager
+    | Zk_rollup_manager_kind : zk_rollup manager
 end
 
 type 'a consensus_operation_type =
@@ -424,69 +395,60 @@ and _ manager_operation =
       entrypoint : Entrypoint_repr.t;
     }
       -> Kind.transfer_ticket manager_operation
-  | Dal_publish_slot_header : {
-      slot_header : Dal_slot_repr.Header.t;
-    }
-      -> Kind.dal_publish_slot_header manager_operation
-  | Sc_rollup_originate : {
+  | Dal : dal_manager_operation -> Kind.dal manager_operation
+  | Sc_rollup : sc_rollup_manager_operation -> Kind.sc_rollup manager_operation
+  | Zk_rollup : zk_rollup_manager_operation -> Kind.zk_rollup manager_operation
+
+and dal_manager_operation =
+  | Dal_publish_slot_header of {slot_header : Dal_slot_repr.Header.t}
+
+and sc_rollup_manager_operation =
+  | Sc_rollup_originate of {
       kind : Sc_rollups.Kind.t;
       boot_sector : string;
       origination_proof : string;
       parameters_ty : Script_repr.lazy_expr;
     }
-      -> Kind.sc_rollup_originate manager_operation
-  | Sc_rollup_add_messages : {
-      messages : string list;
-    }
-      -> Kind.sc_rollup_add_messages manager_operation
-  | Sc_rollup_cement : {
+  | Sc_rollup_add_messages of {messages : string list}
+  | Sc_rollup_cement of {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup_commitment_repr.Hash.t;
     }
-      -> Kind.sc_rollup_cement manager_operation
-  | Sc_rollup_publish : {
+  | Sc_rollup_publish of {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup_commitment_repr.t;
     }
-      -> Kind.sc_rollup_publish manager_operation
-  | Sc_rollup_refute : {
+  | Sc_rollup_refute of {
       rollup : Sc_rollup_repr.t;
       opponent : Sc_rollup_repr.Staker.t;
       refutation : Sc_rollup_game_repr.refutation option;
     }
-      -> Kind.sc_rollup_refute manager_operation
-  | Sc_rollup_timeout : {
+  | Sc_rollup_timeout of {
       rollup : Sc_rollup_repr.t;
       stakers : Sc_rollup_game_repr.Index.t;
     }
-      -> Kind.sc_rollup_timeout manager_operation
-  | Sc_rollup_execute_outbox_message : {
+  | Sc_rollup_execute_outbox_message of {
       rollup : Sc_rollup_repr.t;
       cemented_commitment : Sc_rollup_commitment_repr.Hash.t;
       output_proof : string;
     }
-      -> Kind.sc_rollup_execute_outbox_message manager_operation
-  | Sc_rollup_recover_bond : {
-      sc_rollup : Sc_rollup_repr.t;
-    }
-      -> Kind.sc_rollup_recover_bond manager_operation
-  | Zk_rollup_origination : {
+  | Sc_rollup_recover_bond of {sc_rollup : Sc_rollup_repr.t}
+
+and zk_rollup_manager_operation =
+  | Zk_rollup_origination of {
       public_parameters : Plonk.public_parameters;
       circuits_info : [`Public | `Private | `Fee] Zk_rollup_account_repr.SMap.t;
       init_state : Zk_rollup_state_repr.t;
       nb_ops : int;
     }
-      -> Kind.zk_rollup_origination manager_operation
-  | Zk_rollup_publish : {
+  | Zk_rollup_publish of {
       zk_rollup : Zk_rollup_repr.t;
       ops : (Zk_rollup_operation_repr.t * Zk_rollup_ticket_repr.t option) list;
     }
-      -> Kind.zk_rollup_publish manager_operation
-  | Zk_rollup_update : {
+  | Zk_rollup_update of {
       zk_rollup : Zk_rollup_repr.t;
       update : Zk_rollup_update_repr.t;
     }
-      -> Kind.zk_rollup_update manager_operation
 
 let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   function
@@ -509,19 +471,9 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Tx_rollup_rejection _ -> Kind.Tx_rollup_rejection_manager_kind
   | Tx_rollup_dispatch_tickets _ -> Kind.Tx_rollup_dispatch_tickets_manager_kind
   | Transfer_ticket _ -> Kind.Transfer_ticket_manager_kind
-  | Dal_publish_slot_header _ -> Kind.Dal_publish_slot_header_manager_kind
-  | Sc_rollup_originate _ -> Kind.Sc_rollup_originate_manager_kind
-  | Sc_rollup_add_messages _ -> Kind.Sc_rollup_add_messages_manager_kind
-  | Sc_rollup_cement _ -> Kind.Sc_rollup_cement_manager_kind
-  | Sc_rollup_publish _ -> Kind.Sc_rollup_publish_manager_kind
-  | Sc_rollup_refute _ -> Kind.Sc_rollup_refute_manager_kind
-  | Sc_rollup_timeout _ -> Kind.Sc_rollup_timeout_manager_kind
-  | Sc_rollup_execute_outbox_message _ ->
-      Kind.Sc_rollup_execute_outbox_message_manager_kind
-  | Sc_rollup_recover_bond _ -> Kind.Sc_rollup_recover_bond_manager_kind
-  | Zk_rollup_origination _ -> Kind.Zk_rollup_origination_manager_kind
-  | Zk_rollup_publish _ -> Kind.Zk_rollup_publish_manager_kind
-  | Zk_rollup_update _ -> Kind.Zk_rollup_update_manager_kind
+  | Dal _ -> Kind.Dal_manager_kind
+  | Sc_rollup _ -> Kind.Sc_rollup_manager_kind
+  | Zk_rollup _ -> Kind.Zk_rollup_manager_kind
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -600,35 +552,13 @@ let tx_rollup_operation_dispatch_tickets_tag =
 
 let transfer_ticket_tag = tx_rollup_operation_tag_offset + 8
 
-let sc_rollup_operation_tag_offset = 200
+let groups_offset = 200
 
-let sc_rollup_operation_origination_tag = sc_rollup_operation_tag_offset + 0
+let dal_tag = groups_offset + 0
 
-let sc_rollup_operation_add_message_tag = sc_rollup_operation_tag_offset + 1
+let sc_rollup_tag = groups_offset + 1
 
-let sc_rollup_operation_cement_tag = sc_rollup_operation_tag_offset + 2
-
-let sc_rollup_operation_publish_tag = sc_rollup_operation_tag_offset + 3
-
-let sc_rollup_operation_refute_tag = sc_rollup_operation_tag_offset + 4
-
-let sc_rollup_operation_timeout_tag = sc_rollup_operation_tag_offset + 5
-
-let sc_rollup_execute_outbox_message_tag = sc_rollup_operation_tag_offset + 6
-
-let sc_rollup_operation_recover_bond_tag = sc_rollup_operation_tag_offset + 7
-
-let dal_offset = 230
-
-let dal_publish_slot_header_tag = dal_offset + 0
-
-let zk_rollup_operation_tag_offset = 250
-
-let zk_rollup_operation_create_tag = zk_rollup_operation_tag_offset + 0
-
-let zk_rollup_operation_publish_tag = zk_rollup_operation_tag_offset + 1
-
-let zk_rollup_operation_update_tag = zk_rollup_operation_tag_offset + 2
+let zk_rollup_tag = groups_offset + 2
 
 module Encoding = struct
   open Data_encoding
@@ -651,6 +581,7 @@ module Encoding = struct
   module Manager_operations = struct
     type 'kind case =
       | MCase : {
+          (* kind : 'kind; *)
           tag : int;
           name : string;
           encoding : 'a Data_encoding.t;
@@ -1063,244 +994,258 @@ module Encoding = struct
                 {contents; ty; ticketer; amount; destination; entrypoint});
         }
 
-    let zk_rollup_origination_case =
-      MCase
-        {
-          tag = zk_rollup_operation_create_tag;
-          name = "zk_rollup_origination";
-          encoding =
-            obj4
-              (req "public_parameters" Plonk.public_parameters_encoding)
-              (req
-                 "circuits_info"
-                 Zk_rollup_account_repr.circuits_info_encoding)
-              (req "init_state" Zk_rollup_state_repr.encoding)
-              (* TODO https://gitlab.com/tezos/tezos/-/issues/3655
-                 Encoding of non-negative [nb_ops] for origination *)
-              (req "nb_ops" int31);
-          select =
-            (function
-            | Manager (Zk_rollup_origination _ as op) -> Some op | _ -> None);
-          proj =
-            (function
+    module Zk_rollup = struct
+      let zk_rollup_operation_create_tag = 0
+
+      let zk_rollup_operation_publish_tag = 1
+
+      let zk_rollup_operation_update_tag = 2
+
+      let zk_rollup_origination_case =
+        case
+          (Tag zk_rollup_operation_create_tag)
+          "zk_rollup_origination"
+          (obj4
+             (req "public_parameters" Plonk.public_parameters_encoding)
+             (req "circuits_info" Zk_rollup_account_repr.circuits_info_encoding)
+             (req "init_state" Zk_rollup_state_repr.encoding)
+             (* TODO https://gitlab.com/tezos/tezos/-/issues/3655
+                Encoding of non-negative [nb_ops] for origination *)
+             (req "nb_ops" int31))
+          (function
             | Zk_rollup_origination
                 {public_parameters; circuits_info; init_state; nb_ops} ->
-                (public_parameters, circuits_info, init_state, nb_ops));
-          inj =
-            (fun (public_parameters, circuits_info, init_state, nb_ops) ->
-              Zk_rollup_origination
-                {public_parameters; circuits_info; init_state; nb_ops});
-        }
+                Some (public_parameters, circuits_info, init_state, nb_ops)
+            | _ -> None)
+          (fun (public_parameters, circuits_info, init_state, nb_ops) ->
+            Zk_rollup_origination
+              {public_parameters; circuits_info; init_state; nb_ops})
 
-    let zk_rollup_publish_case =
-      MCase
-        {
-          tag = zk_rollup_operation_publish_tag;
-          name = "zk_rollup_publish";
-          encoding =
-            obj2
-              (req "zk_rollup" Zk_rollup_repr.Address.encoding)
-              (req "op"
-              @@ Data_encoding.list
-                   (tup2
-                      Zk_rollup_operation_repr.encoding
-                      (option Zk_rollup_ticket_repr.encoding)));
-          select =
-            (function
-            | Manager (Zk_rollup_publish _ as op) -> Some op | _ -> None);
-          proj =
-            (function Zk_rollup_publish {zk_rollup; ops} -> (zk_rollup, ops));
-          inj = (fun (zk_rollup, ops) -> Zk_rollup_publish {zk_rollup; ops});
-        }
+      let zk_rollup_publish_case =
+        case
+          (Tag zk_rollup_operation_publish_tag)
+          "zk_rollup_publish"
+          (obj2
+             (req "zk_rollup" Zk_rollup_repr.Address.encoding)
+             (req "op"
+             @@ Data_encoding.list
+                  (tup2
+                     Zk_rollup_operation_repr.encoding
+                     (option Zk_rollup_ticket_repr.encoding))))
+          (function
+            | Zk_rollup_publish {zk_rollup; ops} -> Some (zk_rollup, ops)
+            | _ -> None)
+          (fun (zk_rollup, ops) -> Zk_rollup_publish {zk_rollup; ops})
 
-    let zk_rollup_update_case =
-      MCase
-        {
-          tag = zk_rollup_operation_update_tag;
-          name = "zk_rollup_update";
-          encoding =
-            obj2
-              (req "zk_rollup" Zk_rollup_repr.Address.encoding)
-              (req "update" Zk_rollup_update_repr.encoding);
-          select =
-            (function
-            | Manager (Zk_rollup_update _ as op) -> Some op | _ -> None);
-          proj =
-            (function
-            | Zk_rollup_update {zk_rollup; update} -> (zk_rollup, update));
-          inj =
-            (fun (zk_rollup, update) -> Zk_rollup_update {zk_rollup; update});
-        }
+      let zk_rollup_update_case =
+        case
+          (Tag zk_rollup_operation_update_tag)
+          "zk_rollup_update"
+          (obj2
+             (req "zk_rollup" Zk_rollup_repr.Address.encoding)
+             (req "update" Zk_rollup_update_repr.encoding))
+          (function
+            | Zk_rollup_update {zk_rollup; update} -> Some (zk_rollup, update)
+            | _ -> None)
+          (fun (zk_rollup, update) -> Zk_rollup_update {zk_rollup; update})
 
-    let sc_rollup_originate_case =
-      MCase
-        {
-          tag = sc_rollup_operation_origination_tag;
-          name = "sc_rollup_originate";
-          encoding =
-            obj4
-              (req "pvm_kind" Sc_rollups.Kind.encoding)
-              (req "boot_sector" (string Hex))
-              (req "origination_proof" (string Hex))
-              (req "parameters_ty" Script_repr.lazy_expr_encoding);
-          select =
-            (function
-            | Manager (Sc_rollup_originate _ as op) -> Some op | _ -> None);
-          proj =
-            (function
+      let manager_case =
+        let encoding =
+          union
+            [
+              zk_rollup_origination_case;
+              zk_rollup_publish_case;
+              zk_rollup_update_case;
+            ]
+        in
+        MCase
+          {
+            tag = zk_rollup_tag;
+            name = "zk_rollup";
+            encoding;
+            select =
+              (function Manager (Zk_rollup _ as op) -> Some op | _ -> None);
+            proj = (function Zk_rollup op -> op);
+            inj = (fun op -> Zk_rollup op);
+          }
+    end
+
+    let zk_rollup_case = Zk_rollup.manager_case
+
+    module Dal = struct
+      let dal_publish_slot_header_tag = 0
+
+      let dal_publish_slot_header_case =
+        case
+          (Tag dal_publish_slot_header_tag)
+          "dal_publish_slot_header"
+          (obj1 (req "slot_header" Dal_slot_repr.Header.encoding))
+          (function Dal_publish_slot_header {slot_header} -> Some slot_header)
+          (fun slot_header -> Dal_publish_slot_header {slot_header})
+
+      let manager_case =
+        let encoding = union [dal_publish_slot_header_case] in
+        MCase
+          {
+            tag = dal_tag;
+            name = "dal";
+            encoding;
+            select = (function Manager (Dal _ as op) -> Some op | _ -> None);
+            proj = (function Dal op -> op);
+            inj = (fun op -> Dal op);
+          }
+    end
+
+    let dal_case = Dal.manager_case
+
+    module Sc_rollup = struct
+      let sc_rollup_operation_origination_tag = 0
+
+      let sc_rollup_operation_add_message_tag = 1
+
+      let sc_rollup_operation_cement_tag = 2
+
+      let sc_rollup_operation_publish_tag = 3
+
+      let sc_rollup_operation_refute_tag = 4
+
+      let sc_rollup_operation_timeout_tag = 5
+
+      let sc_rollup_execute_outbox_message_tag = 6
+
+      let sc_rollup_operation_recover_bond_tag = 7
+
+      let sc_rollup_originate_case =
+        case
+          (Tag sc_rollup_operation_origination_tag)
+          "sc_rollup_originate"
+          (obj4
+             (req "pvm_kind" Sc_rollups.Kind.encoding)
+             (req "boot_sector" (string Hex))
+             (req "origination_proof" (string Hex))
+             (req "parameters_ty" Script_repr.lazy_expr_encoding))
+          (function
             | Sc_rollup_originate
                 {kind; boot_sector; origination_proof; parameters_ty} ->
-                (kind, boot_sector, origination_proof, parameters_ty));
-          inj =
-            (fun (kind, boot_sector, origination_proof, parameters_ty) ->
-              Sc_rollup_originate
-                {kind; boot_sector; origination_proof; parameters_ty});
-        }
+                Some (kind, boot_sector, origination_proof, parameters_ty)
+            | _ -> None)
+          (fun (kind, boot_sector, origination_proof, parameters_ty) ->
+            Sc_rollup_originate
+              {kind; boot_sector; origination_proof; parameters_ty})
 
-    let dal_publish_slot_header_case =
-      MCase
-        {
-          tag = dal_publish_slot_header_tag;
-          name = "dal_publish_slot_header";
-          encoding = obj1 (req "slot_header" Dal_slot_repr.Header.encoding);
-          select =
-            (function
-            | Manager (Dal_publish_slot_header _ as op) -> Some op | _ -> None);
-          proj =
-            (function Dal_publish_slot_header {slot_header} -> slot_header);
-          inj = (fun slot_header -> Dal_publish_slot_header {slot_header});
-        }
+      let sc_rollup_add_messages_case =
+        case
+          (Tag sc_rollup_operation_add_message_tag)
+          "sc_rollup_add_messages"
+          (obj1 (req "message" (list (string Hex))))
+          (function
+            | Sc_rollup_add_messages {messages} -> Some messages | _ -> None)
+          (fun messages -> Sc_rollup_add_messages {messages})
 
-    let sc_rollup_add_messages_case =
-      MCase
-        {
-          tag = sc_rollup_operation_add_message_tag;
-          name = "sc_rollup_add_messages";
-          encoding = obj1 (req "message" (list (string Hex)));
-          select =
-            (function
-            | Manager (Sc_rollup_add_messages _ as op) -> Some op | _ -> None);
-          proj = (function Sc_rollup_add_messages {messages} -> messages);
-          inj = (fun messages -> Sc_rollup_add_messages {messages});
-        }
+      let sc_rollup_cement_case =
+        case
+          (Tag sc_rollup_operation_cement_tag)
+          "sc_rollup_cement"
+          (obj2
+             (req "rollup" Sc_rollup_repr.encoding)
+             (req "commitment" Sc_rollup_commitment_repr.Hash.encoding))
+          (function
+            | Sc_rollup_cement {rollup; commitment} -> Some (rollup, commitment)
+            | _ -> None)
+          (fun (rollup, commitment) -> Sc_rollup_cement {rollup; commitment})
 
-    let sc_rollup_cement_case =
-      MCase
-        {
-          tag = sc_rollup_operation_cement_tag;
-          name = "sc_rollup_cement";
-          encoding =
-            obj2
-              (req "rollup" Sc_rollup_repr.encoding)
-              (req "commitment" Sc_rollup_commitment_repr.Hash.encoding);
-          select =
-            (function
-            | Manager (Sc_rollup_cement _ as op) -> Some op | _ -> None);
-          proj =
-            (function
-            | Sc_rollup_cement {rollup; commitment} -> (rollup, commitment));
-          inj =
-            (fun (rollup, commitment) -> Sc_rollup_cement {rollup; commitment});
-        }
+      let sc_rollup_publish_case =
+        case
+          (Tag sc_rollup_operation_publish_tag)
+          "sc_rollup_publish"
+          (obj2
+             (req "rollup" Sc_rollup_repr.encoding)
+             (req "commitment" Sc_rollup_commitment_repr.encoding))
+          (function
+            | Sc_rollup_publish {rollup; commitment} -> Some (rollup, commitment)
+            | _ -> None)
+          (fun (rollup, commitment) -> Sc_rollup_publish {rollup; commitment})
 
-    let sc_rollup_publish_case =
-      MCase
-        {
-          tag = sc_rollup_operation_publish_tag;
-          name = "sc_rollup_publish";
-          encoding =
-            obj2
-              (req "rollup" Sc_rollup_repr.encoding)
-              (req "commitment" Sc_rollup_commitment_repr.encoding);
-          select =
-            (function
-            | Manager (Sc_rollup_publish _ as op) -> Some op | _ -> None);
-          proj =
-            (function
-            | Sc_rollup_publish {rollup; commitment} -> (rollup, commitment));
-          inj =
-            (fun (rollup, commitment) -> Sc_rollup_publish {rollup; commitment});
-        }
-
-    let sc_rollup_refute_case =
-      MCase
-        {
-          tag = sc_rollup_operation_refute_tag;
-          name = "sc_rollup_refute";
-          encoding =
-            obj3
-              (req "rollup" Sc_rollup_repr.encoding)
-              (req "opponent" Sc_rollup_repr.Staker.encoding)
-              (opt "refutation" Sc_rollup_game_repr.refutation_encoding);
-          select =
-            (function
-            | Manager (Sc_rollup_refute _ as op) -> Some op | _ -> None);
-          proj =
-            (function
+      let sc_rollup_refute_case =
+        case
+          (Tag sc_rollup_operation_refute_tag)
+          "sc_rollup_refute"
+          (obj3
+             (req "rollup" Sc_rollup_repr.encoding)
+             (req "opponent" Sc_rollup_repr.Staker.encoding)
+             (opt "refutation" Sc_rollup_game_repr.refutation_encoding))
+          (function
             | Sc_rollup_refute {rollup; opponent; refutation} ->
-                (rollup, opponent, refutation));
-          inj =
-            (fun (rollup, opponent, refutation) ->
-              Sc_rollup_refute {rollup; opponent; refutation});
-        }
+                Some (rollup, opponent, refutation)
+            | _ -> None)
+          (fun (rollup, opponent, refutation) ->
+            Sc_rollup_refute {rollup; opponent; refutation})
 
-    let sc_rollup_timeout_case =
-      MCase
-        {
-          tag = sc_rollup_operation_timeout_tag;
-          name = "sc_rollup_timeout";
-          encoding =
-            obj2
-              (req "rollup" Sc_rollup_repr.encoding)
-              (req "stakers" Sc_rollup_game_repr.Index.encoding);
-          select =
-            (function
-            | Manager (Sc_rollup_timeout _ as op) -> Some op | _ -> None);
-          proj =
-            (function
-            | Sc_rollup_timeout {rollup; stakers} -> (rollup, stakers));
-          inj = (fun (rollup, stakers) -> Sc_rollup_timeout {rollup; stakers});
-        }
+      let sc_rollup_timeout_case =
+        case
+          (Tag sc_rollup_operation_timeout_tag)
+          "sc_rollup_timeout"
+          (obj2
+             (req "rollup" Sc_rollup_repr.encoding)
+             (req "stakers" Sc_rollup_game_repr.Index.encoding))
+          (function
+            | Sc_rollup_timeout {rollup; stakers} -> Some (rollup, stakers)
+            | _ -> None)
+          (fun (rollup, stakers) -> Sc_rollup_timeout {rollup; stakers})
 
-    let sc_rollup_execute_outbox_message_case =
-      MCase
-        {
-          tag = sc_rollup_execute_outbox_message_tag;
-          name = "sc_rollup_execute_outbox_message";
-          encoding =
-            obj3
-              (req "rollup" Sc_rollup_repr.encoding)
-              (req
-                 "cemented_commitment"
-                 Sc_rollup_commitment_repr.Hash.encoding)
-              (req "output_proof" (string Hex));
-          select =
-            (function
-            | Manager (Sc_rollup_execute_outbox_message _ as op) -> Some op
-            | _ -> None);
-          proj =
-            (function
+      let sc_rollup_execute_outbox_message_case =
+        case
+          (Tag sc_rollup_execute_outbox_message_tag)
+          "sc_rollup_execute_outbox_message"
+          (obj3
+             (req "rollup" Sc_rollup_repr.encoding)
+             (req "cemented_commitment" Sc_rollup_commitment_repr.Hash.encoding)
+             (req "output_proof" (string Hex)))
+          (function
             | Sc_rollup_execute_outbox_message
                 {rollup; cemented_commitment; output_proof} ->
-                (rollup, cemented_commitment, output_proof));
-          inj =
-            (fun (rollup, cemented_commitment, output_proof) ->
-              Sc_rollup_execute_outbox_message
-                {rollup; cemented_commitment; output_proof});
-        }
+                Some (rollup, cemented_commitment, output_proof)
+            | _ -> None)
+          (fun (rollup, cemented_commitment, output_proof) ->
+            Sc_rollup_execute_outbox_message
+              {rollup; cemented_commitment; output_proof})
 
-    let sc_rollup_recover_bond_case =
-      MCase
-        {
-          tag = sc_rollup_operation_recover_bond_tag;
-          name = "sc_rollup_recover_bond";
-          encoding = obj1 (req "rollup" Sc_rollup_repr.Address.encoding);
-          select =
-            (function
-            | Manager (Sc_rollup_recover_bond _ as op) -> Some op | _ -> None);
-          proj = (function Sc_rollup_recover_bond {sc_rollup} -> sc_rollup);
-          inj = (fun sc_rollup -> Sc_rollup_recover_bond {sc_rollup});
-        }
+      let sc_rollup_recover_bond_case =
+        case
+          (Tag sc_rollup_operation_recover_bond_tag)
+          "sc_rollup_recover_bond"
+          (obj1 (req "rollup" Sc_rollup_repr.Address.encoding))
+          (function
+            | Sc_rollup_recover_bond {sc_rollup} -> Some sc_rollup | _ -> None)
+          (fun sc_rollup -> Sc_rollup_recover_bond {sc_rollup})
+
+      let manager_case =
+        let encoding =
+          union
+            [
+              sc_rollup_originate_case;
+              sc_rollup_add_messages_case;
+              sc_rollup_cement_case;
+              sc_rollup_publish_case;
+              sc_rollup_refute_case;
+              sc_rollup_timeout_case;
+              sc_rollup_execute_outbox_message_case;
+              sc_rollup_recover_bond_case;
+            ]
+        in
+        MCase
+          {
+            tag = sc_rollup_tag;
+            name = "sc_rollup";
+            encoding;
+            select =
+              (function Manager (Sc_rollup _ as op) -> Some op | _ -> None);
+            proj = (function Sc_rollup op -> op);
+            inj = (fun op -> Sc_rollup op);
+          }
+    end
+
+    let sc_rollup_case = Sc_rollup.manager_case
   end
 
   type 'b case =
@@ -1704,65 +1649,13 @@ module Encoding = struct
       transfer_ticket_tag
       Manager_operations.transfer_ticket_case
 
-  let dal_publish_slot_header_case =
-    make_manager_case
-      dal_publish_slot_header_tag
-      Manager_operations.dal_publish_slot_header_case
+  let sc_rollup_case =
+    make_manager_case sc_rollup_tag Manager_operations.sc_rollup_case
 
-  let sc_rollup_originate_case =
-    make_manager_case
-      sc_rollup_operation_origination_tag
-      Manager_operations.sc_rollup_originate_case
+  let dal_case = make_manager_case dal_tag Manager_operations.dal_case
 
-  let sc_rollup_add_messages_case =
-    make_manager_case
-      sc_rollup_operation_add_message_tag
-      Manager_operations.sc_rollup_add_messages_case
-
-  let sc_rollup_cement_case =
-    make_manager_case
-      sc_rollup_operation_cement_tag
-      Manager_operations.sc_rollup_cement_case
-
-  let sc_rollup_publish_case =
-    make_manager_case
-      sc_rollup_operation_publish_tag
-      Manager_operations.sc_rollup_publish_case
-
-  let sc_rollup_refute_case =
-    make_manager_case
-      sc_rollup_operation_refute_tag
-      Manager_operations.sc_rollup_refute_case
-
-  let sc_rollup_timeout_case =
-    make_manager_case
-      sc_rollup_operation_timeout_tag
-      Manager_operations.sc_rollup_timeout_case
-
-  let sc_rollup_execute_outbox_message_case =
-    make_manager_case
-      sc_rollup_execute_outbox_message_tag
-      Manager_operations.sc_rollup_execute_outbox_message_case
-
-  let sc_rollup_recover_bond_case =
-    make_manager_case
-      sc_rollup_operation_recover_bond_tag
-      Manager_operations.sc_rollup_recover_bond_case
-
-  let zk_rollup_origination_case =
-    make_manager_case
-      zk_rollup_operation_create_tag
-      Manager_operations.zk_rollup_origination_case
-
-  let zk_rollup_publish_case =
-    make_manager_case
-      zk_rollup_operation_publish_tag
-      Manager_operations.zk_rollup_publish_case
-
-  let zk_rollup_update_case =
-    make_manager_case
-      zk_rollup_operation_update_tag
-      Manager_operations.zk_rollup_update_case
+  let zk_rollup_case =
+    make_manager_case zk_rollup_tag Manager_operations.zk_rollup_case
 
   type packed_case = PCase : 'b case -> packed_case
 
@@ -1798,18 +1691,9 @@ module Encoding = struct
       PCase tx_rollup_rejection_case;
       PCase tx_rollup_dispatch_tickets_case;
       PCase transfer_ticket_case;
-      PCase dal_publish_slot_header_case;
-      PCase sc_rollup_originate_case;
-      PCase sc_rollup_add_messages_case;
-      PCase sc_rollup_cement_case;
-      PCase sc_rollup_publish_case;
-      PCase sc_rollup_refute_case;
-      PCase sc_rollup_timeout_case;
-      PCase sc_rollup_execute_outbox_message_case;
-      PCase sc_rollup_recover_bond_case;
-      PCase zk_rollup_origination_case;
-      PCase zk_rollup_publish_case;
-      PCase zk_rollup_update_case;
+      PCase sc_rollup_case;
+      PCase dal_case;
+      PCase zk_rollup_case;
     ]
 
   let contents_encoding =
@@ -2200,31 +2084,12 @@ let equal_manager_operation_kind :
   | Tx_rollup_dispatch_tickets _, _ -> None
   | Transfer_ticket _, Transfer_ticket _ -> Some Eq
   | Transfer_ticket _, _ -> None
-  | Dal_publish_slot_header _, Dal_publish_slot_header _ -> Some Eq
-  | Dal_publish_slot_header _, _ -> None
-  | Sc_rollup_originate _, Sc_rollup_originate _ -> Some Eq
-  | Sc_rollup_originate _, _ -> None
-  | Sc_rollup_add_messages _, Sc_rollup_add_messages _ -> Some Eq
-  | Sc_rollup_add_messages _, _ -> None
-  | Sc_rollup_cement _, Sc_rollup_cement _ -> Some Eq
-  | Sc_rollup_cement _, _ -> None
-  | Sc_rollup_publish _, Sc_rollup_publish _ -> Some Eq
-  | Sc_rollup_publish _, _ -> None
-  | Sc_rollup_refute _, Sc_rollup_refute _ -> Some Eq
-  | Sc_rollup_refute _, _ -> None
-  | Sc_rollup_timeout _, Sc_rollup_timeout _ -> Some Eq
-  | Sc_rollup_timeout _, _ -> None
-  | Sc_rollup_execute_outbox_message _, Sc_rollup_execute_outbox_message _ ->
-      Some Eq
-  | Sc_rollup_execute_outbox_message _, _ -> None
-  | Sc_rollup_recover_bond _, Sc_rollup_recover_bond _ -> Some Eq
-  | Sc_rollup_recover_bond _, _ -> None
-  | Zk_rollup_origination _, Zk_rollup_origination _ -> Some Eq
-  | Zk_rollup_origination _, _ -> None
-  | Zk_rollup_publish _, Zk_rollup_publish _ -> Some Eq
-  | Zk_rollup_publish _, _ -> None
-  | Zk_rollup_update _, Zk_rollup_update _ -> Some Eq
-  | Zk_rollup_update _, _ -> None
+  | Dal _, Dal _ -> Some Eq
+  | Dal _, _ -> None
+  | Sc_rollup _, Sc_rollup _ -> Some Eq
+  | Sc_rollup _, _ -> None
+  | Zk_rollup _, Zk_rollup _ -> Some Eq
+  | Zk_rollup _, _ -> None
 
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =

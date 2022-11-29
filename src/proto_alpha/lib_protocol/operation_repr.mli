@@ -48,10 +48,9 @@
       - tx rollup commit
       - tx rollup withdraw
       - tx rollup reveal withdrawals
-      - smart contract rollup origination
-      - zk rollup origination
-      - zk rollup publish
-      - zk rollup update
+      - smart contract rollup operations
+      - data availability layer operations
+      - zk rollup operations
 
     Each of them can be encoded as raw bytes. Operations are distinguished at
     type level using phantom type parameters. [packed_operation] type allows
@@ -134,30 +133,11 @@ module Kind : sig
 
   type transfer_ticket = Transfer_ticket_kind
 
-  type dal_publish_slot_header = Dal_publish_slot_header_kind
+  type dal = Dal_kind
 
-  type sc_rollup_originate = Sc_rollup_originate_kind
+  type sc_rollup = Sc_rollup_kind
 
-  type sc_rollup_add_messages = Sc_rollup_add_messages_kind
-
-  type sc_rollup_cement = Sc_rollup_cement_kind
-
-  type sc_rollup_publish = Sc_rollup_publish_kind
-
-  type sc_rollup_refute = Sc_rollup_refute_kind
-
-  type sc_rollup_timeout = Sc_rollup_timeout_kind
-
-  type sc_rollup_execute_outbox_message =
-    | Sc_rollup_execute_outbox_message_kind
-
-  type sc_rollup_recover_bond = Sc_rollup_recover_bond_kind
-
-  type zk_rollup_origination = Zk_rollup_origination_kind
-
-  type zk_rollup_publish = Zk_rollup_publish_kind
-
-  type zk_rollup_update = Zk_rollup_update_kind
+  type zk_rollup = Zk_rollup_kind
 
   type 'a manager =
     | Reveal_manager_kind : reveal manager
@@ -181,19 +161,9 @@ module Kind : sig
     | Tx_rollup_dispatch_tickets_manager_kind
         : tx_rollup_dispatch_tickets manager
     | Transfer_ticket_manager_kind : transfer_ticket manager
-    | Dal_publish_slot_header_manager_kind : dal_publish_slot_header manager
-    | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
-    | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
-    | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
-    | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
-    | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
-    | Sc_rollup_timeout_manager_kind : sc_rollup_timeout manager
-    | Sc_rollup_execute_outbox_message_manager_kind
-        : sc_rollup_execute_outbox_message manager
-    | Sc_rollup_recover_bond_manager_kind : sc_rollup_recover_bond manager
-    | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
-    | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
-    | Zk_rollup_update_manager_kind : zk_rollup_update manager
+    | Dal_manager_kind : dal manager
+    | Sc_rollup_manager_kind : sc_rollup manager
+    | Zk_rollup_manager_kind : zk_rollup manager
 end
 
 type 'a consensus_operation_type =
@@ -494,44 +464,46 @@ and _ manager_operation =
           (** The entrypoint of the smart contract address that should receive the tickets. *)
     }
       -> Kind.transfer_ticket manager_operation
-  | Dal_publish_slot_header : {
-      slot_header : Dal_slot_repr.Header.t;
-    }
-      -> Kind.dal_publish_slot_header manager_operation
+  | Dal : dal_manager_operation -> Kind.dal manager_operation
+      (** This constructor groups all DAL operations. *)
+  | Sc_rollup : sc_rollup_manager_operation -> Kind.sc_rollup manager_operation
+      (** This constructor groups all smart rollup operations. *)
+  | Zk_rollup : zk_rollup_manager_operation -> Kind.zk_rollup manager_operation
+      (** This constructor groups all ZK rollup operations. *)
+
+(** An operation for the data availability layer. *)
+and dal_manager_operation =
+  | Dal_publish_slot_header of {slot_header : Dal_slot_repr.Header.t}
       (** [Sc_rollup_originate] allows an implicit account to originate a new
           smart contract rollup (initialized with a given boot sector).
           The [parameters_ty] field allows to provide the expected interface
           of the rollup being originated (i.e. its entrypoints with their
           associated signatures) as a Michelson type.
       *)
-  | Sc_rollup_originate : {
+
+(** An operation for smart contract rollups. *)
+and sc_rollup_manager_operation =
+  | Sc_rollup_originate of {
       kind : Sc_rollups.Kind.t;
       boot_sector : string;
       origination_proof : string;
       parameters_ty : Script_repr.lazy_expr;
     }
-      -> Kind.sc_rollup_originate manager_operation
-  (* [Sc_rollup_add_messages] adds messages to the smart rollups' inbox. *)
-  | Sc_rollup_add_messages : {
-      messages : string list;
-    }
-      -> Kind.sc_rollup_add_messages manager_operation
-  | Sc_rollup_cement : {
+  | Sc_rollup_add_messages of {messages : string list}
+      (** [Sc_rollup_add_messages] adds messages to the smart rollups' inbox. *)
+  | Sc_rollup_cement of {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup_commitment_repr.Hash.t;
     }
-      -> Kind.sc_rollup_cement manager_operation
-  | Sc_rollup_publish : {
+  | Sc_rollup_publish of {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup_commitment_repr.t;
     }
-      -> Kind.sc_rollup_publish manager_operation
-  | Sc_rollup_refute : {
+  | Sc_rollup_refute of {
       rollup : Sc_rollup_repr.t;
       opponent : Sc_rollup_repr.Staker.t;
       refutation : Sc_rollup_game_repr.refutation option;
     }
-      -> Kind.sc_rollup_refute manager_operation
       (** [Sc_rollup_refute { rollup; opponent; refutation }] makes a move
           in a refutation game between the source of the operation and the
           [opponent] under the given [rollup]. Both players must be stakers
@@ -539,15 +511,11 @@ and _ manager_operation =
           initialized. Next, when [refutation = Some move], [move] is the
           next play for the current player. See {!Sc_rollup_game_repr} for
           details. **)
-  | Sc_rollup_timeout : {
+  | Sc_rollup_timeout of {
       rollup : Sc_rollup_repr.t;
       stakers : Sc_rollup_game_repr.Index.t;
     }
-      -> Kind.sc_rollup_timeout manager_operation
-  (* [Sc_rollup_execute_outbox_message] executes a message from the rollup's
-      outbox. Messages may involve transactions to smart contract accounts on
-      Layer 1. *)
-  | Sc_rollup_execute_outbox_message : {
+  | Sc_rollup_execute_outbox_message of {
       rollup : Sc_rollup_repr.t;  (** The smart-contract rollup. *)
       cemented_commitment : Sc_rollup_commitment_repr.Hash.t;
           (** The hash of the last cemented commitment that the proof refers to. *)
@@ -555,30 +523,29 @@ and _ manager_operation =
           (** A message along with a proof that it is included in the outbox
               at a given outbox level and message index.*)
     }
-      -> Kind.sc_rollup_execute_outbox_message manager_operation
-  | Sc_rollup_recover_bond : {
-      sc_rollup : Sc_rollup_repr.t;
-    }
-      -> Kind.sc_rollup_recover_bond manager_operation
-  | Zk_rollup_origination : {
+      (** [Sc_rollup_execute_outbox_message] executes a message from the
+          rollup's outbox. Messages may involve transactions to smart contract
+          accounts on Layer 1. *)
+  | Sc_rollup_recover_bond of {sc_rollup : Sc_rollup_repr.t}
+
+(** An operation for ZK rollups. *)
+and zk_rollup_manager_operation =
+  | Zk_rollup_origination of {
       public_parameters : Plonk.public_parameters;
       circuits_info : [`Public | `Private | `Fee] Zk_rollup_account_repr.SMap.t;
           (** Circuit names, alongside a tag indicating its kind. *)
       init_state : Zk_rollup_state_repr.t;
       nb_ops : int;
     }
-      -> Kind.zk_rollup_origination manager_operation
-  | Zk_rollup_publish : {
+  | Zk_rollup_publish of {
       zk_rollup : Zk_rollup_repr.t;
       ops : (Zk_rollup_operation_repr.t * Zk_rollup_ticket_repr.t option) list;
           (* See {!Zk_rollup_apply} *)
     }
-      -> Kind.zk_rollup_publish manager_operation
-  | Zk_rollup_update : {
+  | Zk_rollup_update of {
       zk_rollup : Zk_rollup_repr.t;
       update : Zk_rollup_update_repr.t;
     }
-      -> Kind.zk_rollup_update manager_operation
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -800,33 +767,11 @@ module Encoding : sig
 
   val transfer_ticket_case : Kind.transfer_ticket Kind.manager case
 
-  val dal_publish_slot_header_case :
-    Kind.dal_publish_slot_header Kind.manager case
+  val dal_case : Kind.dal Kind.manager case
 
-  val sc_rollup_originate_case : Kind.sc_rollup_originate Kind.manager case
+  val sc_rollup_case : Kind.sc_rollup Kind.manager case
 
-  val sc_rollup_add_messages_case :
-    Kind.sc_rollup_add_messages Kind.manager case
-
-  val sc_rollup_cement_case : Kind.sc_rollup_cement Kind.manager case
-
-  val sc_rollup_publish_case : Kind.sc_rollup_publish Kind.manager case
-
-  val sc_rollup_refute_case : Kind.sc_rollup_refute Kind.manager case
-
-  val sc_rollup_timeout_case : Kind.sc_rollup_timeout Kind.manager case
-
-  val sc_rollup_execute_outbox_message_case :
-    Kind.sc_rollup_execute_outbox_message Kind.manager case
-
-  val sc_rollup_recover_bond_case :
-    Kind.sc_rollup_recover_bond Kind.manager case
-
-  val zk_rollup_origination_case : Kind.zk_rollup_origination Kind.manager case
-
-  val zk_rollup_publish_case : Kind.zk_rollup_publish Kind.manager case
-
-  val zk_rollup_update_case : Kind.zk_rollup_update Kind.manager case
+  val zk_rollup_case : Kind.zk_rollup Kind.manager case
 
   module Manager_operations : sig
     type 'b case =
@@ -877,29 +822,10 @@ module Encoding : sig
 
     val transfer_ticket_case : Kind.transfer_ticket case
 
-    val dal_publish_slot_header_case : Kind.dal_publish_slot_header case
+    val dal_case : Kind.dal case
 
-    val sc_rollup_originate_case : Kind.sc_rollup_originate case
+    val sc_rollup_case : Kind.sc_rollup case
 
-    val sc_rollup_add_messages_case : Kind.sc_rollup_add_messages case
-
-    val sc_rollup_cement_case : Kind.sc_rollup_cement case
-
-    val sc_rollup_publish_case : Kind.sc_rollup_publish case
-
-    val sc_rollup_refute_case : Kind.sc_rollup_refute case
-
-    val sc_rollup_timeout_case : Kind.sc_rollup_timeout case
-
-    val sc_rollup_execute_outbox_message_case :
-      Kind.sc_rollup_execute_outbox_message case
-
-    val sc_rollup_recover_bond_case : Kind.sc_rollup_recover_bond case
-
-    val zk_rollup_origination_case : Kind.zk_rollup_origination case
-
-    val zk_rollup_publish_case : Kind.zk_rollup_publish case
-
-    val zk_rollup_update_case : Kind.zk_rollup_update case
+    val zk_rollup_case : Kind.zk_rollup case
   end
 end

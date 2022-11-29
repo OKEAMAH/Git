@@ -4360,30 +4360,11 @@ module Kind : sig
 
   type transfer_ticket = Transfer_ticket_kind
 
-  type dal_publish_slot_header = Dal_publish_slot_header_kind
+  type dal = Dal_kind
 
-  type sc_rollup_originate = Sc_rollup_originate_kind
+  type sc_rollup = Sc_rollup_kind
 
-  type sc_rollup_add_messages = Sc_rollup_add_messages_kind
-
-  type sc_rollup_cement = Sc_rollup_cement_kind
-
-  type sc_rollup_publish = Sc_rollup_publish_kind
-
-  type sc_rollup_refute = Sc_rollup_refute_kind
-
-  type sc_rollup_timeout = Sc_rollup_timeout_kind
-
-  type sc_rollup_execute_outbox_message =
-    | Sc_rollup_execute_outbox_message_kind
-
-  type sc_rollup_recover_bond = Sc_rollup_recover_bond_kind
-
-  type zk_rollup_origination = Zk_rollup_origination_kind
-
-  type zk_rollup_publish = Zk_rollup_publish_kind
-
-  type zk_rollup_update = Zk_rollup_update_kind
+  type zk_rollup = Zk_rollup_kind
 
   type 'a manager =
     | Reveal_manager_kind : reveal manager
@@ -4407,19 +4388,9 @@ module Kind : sig
     | Tx_rollup_dispatch_tickets_manager_kind
         : tx_rollup_dispatch_tickets manager
     | Transfer_ticket_manager_kind : transfer_ticket manager
-    | Dal_publish_slot_header_manager_kind : dal_publish_slot_header manager
-    | Sc_rollup_originate_manager_kind : sc_rollup_originate manager
-    | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
-    | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
-    | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
-    | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
-    | Sc_rollup_timeout_manager_kind : sc_rollup_timeout manager
-    | Sc_rollup_execute_outbox_message_manager_kind
-        : sc_rollup_execute_outbox_message manager
-    | Sc_rollup_recover_bond_manager_kind : sc_rollup_recover_bond manager
-    | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
-    | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
-    | Zk_rollup_update_manager_kind : zk_rollup_update manager
+    | Dal_manager_kind : dal manager
+    | Sc_rollup_manager_kind : sc_rollup manager
+    | Zk_rollup_manager_kind : zk_rollup manager
 end
 
 (** All the definitions below are re-exported from {!Operation_repr}. *)
@@ -4610,69 +4581,57 @@ and _ manager_operation =
       entrypoint : Entrypoint.t;
     }
       -> Kind.transfer_ticket manager_operation
-  | Dal_publish_slot_header : {
-      slot_header : Dal.Slot.Header.t;
-    }
-      -> Kind.dal_publish_slot_header manager_operation
-  | Sc_rollup_originate : {
-      kind : Sc_rollup.Kind.t;
+  | Dal : dal_manager_operation -> Kind.dal manager_operation
+  | Sc_rollup : sc_rollup_manager_operation -> Kind.sc_rollup manager_operation
+  | Zk_rollup : zk_rollup_manager_operation -> Kind.zk_rollup manager_operation
+
+and dal_manager_operation =
+  | Dal_publish_slot_header of {slot_header : Dal.Slot.Header.t}
+
+and sc_rollup_manager_operation =
+  | Sc_rollup_originate of {
+      kind : Sc_rollups.Kind.t;
       boot_sector : string;
       origination_proof : string;
       parameters_ty : Script.lazy_expr;
     }
-      -> Kind.sc_rollup_originate manager_operation
-  | Sc_rollup_add_messages : {
-      messages : string list;
-    }
-      -> Kind.sc_rollup_add_messages manager_operation
-  | Sc_rollup_cement : {
+  | Sc_rollup_add_messages of {messages : string list}
+  | Sc_rollup_cement of {
       rollup : Sc_rollup.t;
       commitment : Sc_rollup.Commitment.Hash.t;
     }
-      -> Kind.sc_rollup_cement manager_operation
-  | Sc_rollup_publish : {
+  | Sc_rollup_publish of {
       rollup : Sc_rollup.t;
       commitment : Sc_rollup.Commitment.t;
     }
-      -> Kind.sc_rollup_publish manager_operation
-  | Sc_rollup_refute : {
+  | Sc_rollup_refute of {
       rollup : Sc_rollup.t;
       opponent : Sc_rollup.Staker.t;
       refutation : Sc_rollup.Game.refutation option;
     }
-      -> Kind.sc_rollup_refute manager_operation
-  | Sc_rollup_timeout : {
+  | Sc_rollup_timeout of {
       rollup : Sc_rollup.t;
       stakers : Sc_rollup.Game.Index.t;
     }
-      -> Kind.sc_rollup_timeout manager_operation
-  | Sc_rollup_execute_outbox_message : {
+  | Sc_rollup_execute_outbox_message of {
       rollup : Sc_rollup.t;
       cemented_commitment : Sc_rollup.Commitment.Hash.t;
       output_proof : string;
     }
-      -> Kind.sc_rollup_execute_outbox_message manager_operation
-  | Sc_rollup_recover_bond : {
-      sc_rollup : Sc_rollup.t;
-    }
-      -> Kind.sc_rollup_recover_bond manager_operation
-  | Zk_rollup_origination : {
+  | Sc_rollup_recover_bond of {sc_rollup : Sc_rollup.t}
+
+and zk_rollup_manager_operation =
+  | Zk_rollup_origination of {
       public_parameters : Plonk.public_parameters;
       circuits_info : [`Public | `Private | `Fee] Zk_rollup.Account.SMap.t;
       init_state : Zk_rollup.State.t;
       nb_ops : int;
     }
-      -> Kind.zk_rollup_origination manager_operation
-  | Zk_rollup_publish : {
+  | Zk_rollup_publish of {
       zk_rollup : Zk_rollup.t;
       ops : (Zk_rollup.Operation.t * Zk_rollup.Ticket.t option) list;
     }
-      -> Kind.zk_rollup_publish manager_operation
-  | Zk_rollup_update : {
-      zk_rollup : Zk_rollup.t;
-      update : Zk_rollup.Update.t;
-    }
-      -> Kind.zk_rollup_update manager_operation
+  | Zk_rollup_update of {zk_rollup : Zk_rollup.t; update : Zk_rollup.Update.t}
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -4835,8 +4794,7 @@ module Operation : sig
 
     val transfer_ticket_case : Kind.transfer_ticket Kind.manager case
 
-    val dal_publish_slot_header_case :
-      Kind.dal_publish_slot_header Kind.manager case
+    val dal_case : Kind.dal Kind.manager case
 
     val register_global_constant_case :
       Kind.register_global_constant Kind.manager case
@@ -4846,31 +4804,9 @@ module Operation : sig
     val increase_paid_storage_case :
       Kind.increase_paid_storage Kind.manager case
 
-    val sc_rollup_originate_case : Kind.sc_rollup_originate Kind.manager case
+    val sc_rollup_case : Kind.sc_rollup Kind.manager case
 
-    val sc_rollup_add_messages_case :
-      Kind.sc_rollup_add_messages Kind.manager case
-
-    val sc_rollup_cement_case : Kind.sc_rollup_cement Kind.manager case
-
-    val sc_rollup_publish_case : Kind.sc_rollup_publish Kind.manager case
-
-    val sc_rollup_refute_case : Kind.sc_rollup_refute Kind.manager case
-
-    val sc_rollup_timeout_case : Kind.sc_rollup_timeout Kind.manager case
-
-    val sc_rollup_execute_outbox_message_case :
-      Kind.sc_rollup_execute_outbox_message Kind.manager case
-
-    val sc_rollup_recover_bond_case :
-      Kind.sc_rollup_recover_bond Kind.manager case
-
-    val zk_rollup_origination_case :
-      Kind.zk_rollup_origination Kind.manager case
-
-    val zk_rollup_publish_case : Kind.zk_rollup_publish Kind.manager case
-
-    val zk_rollup_update_case : Kind.zk_rollup_update Kind.manager case
+    val zk_rollup_case : Kind.zk_rollup Kind.manager case
 
     module Manager_operations : sig
       type 'b case =
@@ -4922,30 +4858,11 @@ module Operation : sig
 
       val transfer_ticket_case : Kind.transfer_ticket case
 
-      val dal_publish_slot_header_case : Kind.dal_publish_slot_header case
+      val dal_case : Kind.dal case
 
-      val sc_rollup_originate_case : Kind.sc_rollup_originate case
+      val sc_rollup_case : Kind.sc_rollup case
 
-      val sc_rollup_add_messages_case : Kind.sc_rollup_add_messages case
-
-      val sc_rollup_cement_case : Kind.sc_rollup_cement case
-
-      val sc_rollup_publish_case : Kind.sc_rollup_publish case
-
-      val sc_rollup_refute_case : Kind.sc_rollup_refute case
-
-      val sc_rollup_timeout_case : Kind.sc_rollup_timeout case
-
-      val sc_rollup_execute_outbox_message_case :
-        Kind.sc_rollup_execute_outbox_message case
-
-      val sc_rollup_recover_bond_case : Kind.sc_rollup_recover_bond case
-
-      val zk_rollup_origination_case : Kind.zk_rollup_origination case
-
-      val zk_rollup_publish_case : Kind.zk_rollup_publish case
-
-      val zk_rollup_update_case : Kind.zk_rollup_update case
+      val zk_rollup_case : Kind.zk_rollup case
     end
   end
 
