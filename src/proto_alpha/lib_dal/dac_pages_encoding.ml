@@ -295,39 +295,7 @@ module Merkle_tree = struct
         payload that would be to big to fit into memory. Additionaly this could 
         also be used in a batcher like scenario, e.g. for agreggating asynchronous
         payload messages. *)
-    module Payload_handler : sig
-      type t
-
-      (** Instantiates a serializer parameterized by [max_page_size] 
-          and [for_each_page] function *)
-      val empty :
-        max_page_size:max_page_size -> for_each_page:for_each_page -> t
-
-      (** [add serializer payload] returns a new state of the serializer [t]
-           after serializing [payload] and thus modifying the current state. 
-           Note that for every call to [add], as much data as possible is persisted
-           to the disk via [~for_each_page] function.
-           
-           There is no guarantee however, that all the [payload] data has been
-           actually processed until the serializer current state is
-           finalized via the call to [finalize serializer]. *)
-      val add :
-        t ->
-        bytes ->
-        (t, Environment.Error_monad.error Environment.Error_monad.trace) result
-        Lwt.t
-
-      (** [finalize handler] returns the [Hashing_scheme.t] representing a root
-          hash of serialized data. It also guarantees, that all the payload data
-          received via previous calls to [add], have been serialized to the disk.
-      *)
-      val finalize :
-        t ->
-        ( Hashing_scheme.t,
-          Environment.Error_monad.error Environment.Error_monad.trace )
-        result
-        Lwt.t
-    end = struct
+    module Payload_handler = struct
       (** [Hashes_handler] module defines an in-memory data structure dedicated
           to storing, the minimum amount of hashes in memory, requiered for partial
           serialization of dac payload. *)
@@ -492,6 +460,14 @@ module Merkle_tree = struct
           for_each_page;
         }
 
+      (** [add serializer payload] returns a new state of the serializer [t]
+           after serializing [payload] and thus modifying the current state. 
+           Note that for every call to [add], as much data as possible is persisted
+           to the disk via [~for_each_page] function.
+           
+           There is no guarantee however, that all the [payload] data has been
+           actually processed until the serializer current state is
+           finalized via the call to [finalize serializer]. *)
       let add handler payload =
         let open Lwt_result_syntax in
         (* [concat_leftover_and_split] ensures that returned [leftover] never
@@ -528,6 +504,10 @@ module Merkle_tree = struct
         in
         return {handler with leftover}
 
+      (** [finalize handler] returns the [Hashing_scheme.t] representing a root
+          hash of serialized data. It also guarantees, that all the payload data
+          received via previous calls to [add], have been serialized to the disk.
+      *)
       let finalize handler =
         let open Lwt_result_syntax in
         (* Store [leftover] as partially filled [Contents] page *)
