@@ -684,8 +684,16 @@ module V2_0_0 = struct
 
         type proof = Context.Proof.tree Context.Proof.t
 
+        let to_opt x =
+          let open Lwt_syntax in
+          let+ x = x in
+          Result.to_option x
+
         let verify_proof p f =
-          Lwt.map Result.to_option (Context.verify_tree_proof p f)
+          let open Lwt_option_syntax in
+          let*? () = Result.to_option (Context_binary_proof.is_binary p) in
+          let+ res = to_opt (Context.verify_tree_proof p f) in
+          res
 
         let produce_proof _context _state _f =
           (* Can't produce proof without full context*)
@@ -701,7 +709,6 @@ module V2_0_0 = struct
         let proof_after proof =
           kinded_hash_to_state_hash proof.Context.Proof.after
 
-        let proof_encoding =
-          Context.Proof_encoding.V2.Tree32.tree_proof_encoding
+        let proof_encoding = Context.Proof_encoding.V2.Tree2.tree_proof_encoding
       end)
 end
