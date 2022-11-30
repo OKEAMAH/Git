@@ -238,6 +238,110 @@ let test_store_read_write =
   in
   test_against_both ~from_binary:false ~kernel ~messages:(List.repeat 100 "")
 
+  let test_storenum_write =
+    let kernel =
+      {|
+  (module
+    (import
+      "rollup_safe_core"
+      "write_debug"
+      (func $write_debug (param i32 i32))
+    )
+  
+    (import
+      "rollup_safe_core"
+      "store_write"
+      (func $store_write (param i32 i32 i32 i32 i32) (result i32))
+    )
+  
+    (import
+      "rollup_safe_core"
+      "store_read"
+      (func $store_read (param i32 i32 i32 i32 i32) (result i32))
+    )
+  
+    (memory 1)
+    (export "memory" (memory 0))
+  
+    (data (i32.const 0) "Hello World")
+    (data (i32.const 100) "/foo")
+  
+    (func (export "kernel_next") (local $n i64)
+      (call $write_debug
+        ;; Memory address and length of the string to log
+        ;; Should be "Hello" as defined above
+        (i32.const 0) (i32.const 5)
+      )
+  
+      (call $write_debug
+        ;; Memory address and length of the string to log
+        ;; Should be "World" as defined above
+        (i32.const 6) (i32.const 5)
+      )
+  
+      (call $write_debug
+        ;; Memory address and length of the string to log
+        ;; Should be "Hello World" as defined above
+        (i32.const 0) (i32.const 11)
+      )
+  
+      ;; Write the initial value to the durable store
+      (call $store_write
+        ;; Memory address and length of the store path
+        (i32.const 100) (i32.const 4)
+        ;; Offset into the store value
+        (i32.const 0)
+        ;; Memory address and length of the payload to write
+        (i32.const 1000) (i32.const 4)
+      )
+      (drop)
+  
+      ;; Set the loop counter
+      (local.set $n (i64.const 100))
+  
+      (loop
+        ;; Read from store to memory
+        (call $store_read
+          ;; Memory address and length of the store path
+          (i32.const 100) (i32.const 4)
+          ;; Offset into the store value
+          (i32.const 0)
+          ;; Memory address and length of the read buffer
+          (i32.const 1000) (i32.const 4) ;; Bytes to write
+        )
+        (drop)
+  
+        ;; Increment the value in memory
+        (i32.store
+          (i32.const 1000)
+          (i32.add
+            (i32.load (i32.const 1000))
+            (i32.const 1)))
+  
+        ;; Write value from memory to durable store
+        (call $store_write
+          ;; Memory address and length of the store path
+          (i32.const 100) (i32.const 4)
+          ;; Offset into the store value
+          (i32.const 0)
+          ;; Memory address and length of the payload to write
+          (i32.const 1000) (i32.const 4)
+        )
+        (drop)
+  
+        ;; Decrement loop counter
+        (local.set $n (i64.sub (local.get $n) (i64.const 1)))
+  
+        ;; Check if we ought to loop again
+        (i32.eq (i32.const 0) (i64.eq (local.get $n) (i64.const 0)))
+        (br_if 0)
+      )
+    )
+  )
+    |}
+    in
+    test_against_both ~from_binary:false ~kernel ~messages:(List.repeat 100 "")
+  
 let test_reveal_preimage =
   let example_hash = "this represents the 32-byte hash" in
   let example_preimage = "This is the expected preimage" in

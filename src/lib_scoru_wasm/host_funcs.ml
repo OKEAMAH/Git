@@ -37,6 +37,7 @@ module Error = struct
     | Generic_invalid_access
     | Store_readonly_value
     | Memory_out_of_bounds
+  [@@deriving eq]
 
   (** [code error] returns the error code associated to the error. *)
   let code = function

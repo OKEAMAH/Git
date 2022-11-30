@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
+(* Copyright (c) 2022 Trili Tech  <contact@trili.tech>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,25 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Array = Ctypes.CArray
+(** Testing
+    -------
+    Component:    Lib_scoru_wasm_fast
+    Invocation:   dune runtest src/lib_scoru_wasm/fast
+    Subject:      Tests for the tezos-scoru-wasm library
+*)
 
-type t = {
-  raw : Unsigned.uint8 Array.t;
-  min : Unsigned.uint32;
-  max : Unsigned.uint32 option;
-}
-
-let get mem = Array.get mem.raw
-
-let set mem = Array.set mem.raw
-
-let length mem = Array.length mem.raw
-
-let of_list (content : Unsigned.uint8 list) =
-  {
-    raw = Array.of_list Ctypes.uint8_t content;
-    min = Unsigned.UInt32.of_int 0;
-    max = Some (Unsigned.UInt32.of_int @@ List.length content);
-  }
-
-let to_list (mem : t) = Array.to_list mem.raw
+let () =
+  Alcotest.run
+    "test lib scoru-wasm-fast"
+    [("Memory access", Test_memory_access.tests)]

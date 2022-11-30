@@ -155,6 +155,12 @@ module Memory : sig
 
   (** [length mem] gives you the memory size in bytes. *)
   val length : t -> int
+
+  (** [of_list content] creates a memory instance with the items in [content] *)
+  val of_list : Unsigned.uint8 list -> t
+
+  (** [to_list mem] returns a list containing that iterates the [mem] content *)
+  val to_list : t -> Unsigned.uint8 list
 end
 
 module Instance : sig

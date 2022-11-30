@@ -73,6 +73,7 @@ module Error : sig
         (** A value cannot be modified if it is readonly. Has code `-9`. *)
     | Memory_out_of_bounds
         (** Attempted access to an address outside the bounds of memory if it is readonly. Has code `-10`. *)
+  [@@deriving eq]
 
   (** [code error] returns the error code associated to the error. *)
   val code : t -> int32
