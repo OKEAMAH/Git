@@ -70,7 +70,11 @@ module Impl : Pvm.S = struct
 
   let kind = Sc_rollup.Kind.Wasm_2_0_0
 
-  let new_dissection = Game_helpers.Wasm.new_dissection
+  let new_dissection ~default_number_of_sections ~start_chunk ~our_stop_chunk =
+    Game_helpers.Wasm.new_dissection
+      ~default_number_of_sections
+      start_chunk
+      our_stop_chunk
 
   module State = Context.PVMState
 

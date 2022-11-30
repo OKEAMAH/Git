@@ -29,7 +29,17 @@ open Protocol.Alpha_context.Sc_rollup
     ~our_stop_chunk] computes a list of intermediary ticks that can
     later be turned into new dissection from between [start_chunk] and
     [our_stop_chunk] with [make_dissection]. The algorithm satisfies
-    the default predicate on dissection exported by the protocol. *)
+    the default predicate on dissection exported by the protocol. 
+    It also satisfies the following regularity invariants:
+    
+  
+   1. the size difference between two pieces is either 0 or 1.
+   
+   2. if not all pieces are equal and the smallest piece has size 
+    [min_piece_size] then 
+    a. the first few pieces have size [(min_piece_size + 1)]
+    b. the last pieces have size [min_piece_size] *)
+
 val default_new_dissection :
   default_number_of_sections:int ->
   start_chunk:Game.dissection_chunk ->
@@ -57,14 +67,17 @@ module Wasm : sig
       dissection predicate of the WASM PVM, that is all the ticks in
       the dissection are aligned with the size of a snapshot.
 
-      If [start_chunk] is not a multiple of the size of a snapshot or
-      if the distance between [start_chunk] and [stop_chunk] is not
+      If [start_chunk] is not a multiple of the size of a snapshot 
+      the above predicate is still valid.
+
+      If the distance between [start_chunk] and [stop_chunk] is not
       greater than the size of a snapshot, then
       {!default_new_dissection} is called, because it means the WASM
       PVM is stuck.  *)
   val new_dissection :
+    ?ticks_per_snapshot:Z.t ->
     default_number_of_sections:int ->
-    start_chunk:Game.dissection_chunk ->
-    our_stop_chunk:Game.dissection_chunk ->
+    Game.dissection_chunk ->
+    Game.dissection_chunk ->
     Tick.t list
 end

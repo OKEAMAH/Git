@@ -25,33 +25,42 @@
 
 open Protocol.Alpha_context.Sc_rollup
 
+(* Auxiliary function
+   [exact_dissection ~rem ~dilate t1 number_of_pieces min_piece_size]
+   creates a roughly equidistant dissection starting at [t1] with
+   [number_of_pieces]  each of size at least [min_piece_size].
+   It satisfies the following invariants:
+   1. each piece has size a multiple of dilate
+   2. the size difference between two pieces is either 0 or dilate
+   3. the first rem pieces have size [(min_piece_size + 1) * dilate]
+   4. the last pieces have size [min_piece_size * dilate]
+*)
+let exact_dissection ?rem ?(dilate = Z.one) t1 number_of_pieces min_piece_size =
+  let f i =
+    let j = Z.of_int @@ succ i in
+    match rem with
+    | Some r when j < r ->
+        Tick.jump t1 @@ Z.((Z.one + min_piece_size) * j * dilate)
+    | Some r -> Tick.jump t1 @@ Z.(((min_piece_size * j) + r) * dilate)
+    | None -> Tick.jump t1 @@ Z.(min_piece_size * j * dilate)
+  in
+  Stdlib.List.init (number_of_pieces - 1) f
+
+(* This version of default new section eliminates the large section at the
+   end, the difference in size between two sections is at most 1. *)
 let default_new_dissection ~default_number_of_sections
     ~(start_chunk : Game.dissection_chunk)
     ~(our_stop_chunk : Game.dissection_chunk) =
   let max_number_of_sections = Z.of_int default_number_of_sections in
   let trace_length = Tick.distance our_stop_chunk.tick start_chunk.tick in
-  let number_of_sections = Z.min max_number_of_sections trace_length in
-  let rem = Z.(rem trace_length number_of_sections) in
-  let first_section_length, section_length =
-    if Compare.Z.(trace_length <= max_number_of_sections) then
-      (* In this case, every section is of length one. *)
-      Z.(one, one)
-    else
-      let section_length = Z.(max one (div trace_length number_of_sections)) in
-      if Compare.Z.(section_length = Z.one) && not Compare.Z.(rem = Z.zero) then
-        (* If we put [section_length] in this situation, we will most likely
-           have a very long last section. *)
-        (rem, section_length)
-      else (section_length, section_length)
-  in
-  (* [k] is the number of sections in [rev_dissection]. *)
-  let rec make rev_dissection k tick =
-    if Z.(equal k number_of_sections) then List.rev rev_dissection
-    else
-      let next_tick = Tick.jump tick section_length in
-      make (tick :: rev_dissection) (Z.succ k) next_tick
-  in
-  make [] Z.one (Tick.jump start_chunk.tick first_section_length)
+  if trace_length <= max_number_of_sections then
+    (* In this case, every section is of length one. *)
+    exact_dissection start_chunk.tick (Z.to_int trace_length) Z.one
+  else
+    let div, rem = Z.(div_rem trace_length max_number_of_sections) in
+    if rem = Z.zero then
+      exact_dissection start_chunk.tick default_number_of_sections div
+    else exact_dissection ~rem start_chunk.tick default_number_of_sections div
 
 let make_dissection ~state_hash_from_tick ~start_chunk ~our_stop_chunk ticks =
   let rec make_dissection_aux ticks acc =
@@ -66,111 +75,58 @@ let make_dissection ~state_hash_from_tick ~start_chunk ~our_stop_chunk ticks =
   make_dissection_aux ticks [start_chunk]
 
 module Wasm = struct
-  let new_dissection ~default_number_of_sections ~start_chunk ~our_stop_chunk =
+  let new_dissection ?(ticks_per_snapshot = Wasm_2_0_0PVM.ticks_per_snapshot)
+      ~default_number_of_sections start_chunk our_stop_chunk =
     let open Dissection_chunk in
     let dist = Tick.distance start_chunk.tick our_stop_chunk.tick in
-    let ticks_per_snapshot = Wasm_2_0_0PVM.ticks_per_snapshot in
-    if Compare.Z.(dist <= ticks_per_snapshot) then
-      (*
-         There are two cases that require us to fall back to the
-         default behavior.  Either [start_chunk] is not aligned on the
-         size of a snapshot (meaning the PVM is stuck) or the distance
-         between the start and stop chunk is lesser than a snapshot,
-         meaning we have already found the kernel_run invocation we
-         were looking for.
+    (*
+         If the distance between the start and stop chunk is lesser than a 
+         snapshot, we have already found the kernel_run invocation we
+         were looking for and so we use the default.
       *)
+    if Compare.Z.(dist <= ticks_per_snapshot) then
       default_new_dissection
         ~default_number_of_sections
         ~start_chunk
         ~our_stop_chunk
     else
-      let is_stop_chunk_aligned =
-        Compare.Z.(
-          Z.rem (Tick.to_z our_stop_chunk.tick) ticks_per_snapshot = Z.zero)
+      let tick_as_z = Tick.to_z start_chunk.tick in
+      let reminder = Z.rem tick_as_z ticks_per_snapshot in
+      (* we first find the first snapshot following [start_chunk.tick] *)
+      let is_stop_chunk_aligned = Compare.Z.(reminder = Z.zero) in
+      let initial_tick =
+        if is_stop_chunk_aligned then start_chunk.tick
+        else Tick.of_z Z.(tick_as_z + ticks_per_snapshot - reminder)
       in
-      let final_tick =
-        Tick.of_z
-          Z.(
-            div (Tick.to_z our_stop_chunk.tick) ticks_per_snapshot
-            * ticks_per_snapshot)
+      let dist = Tick.distance initial_tick our_stop_chunk.tick in
+      let max_number_of_sections, reminder =
+        Z.(div_rem dist ticks_per_snapshot)
       in
-      let dist = Tick.distance start_chunk.tick final_tick in
-      let max_number_of_sections = Z.(div dist ticks_per_snapshot) in
       let number_of_sections =
         Z.min
           (Z.of_int
-             (* If [is_stop_chunk_aligned] is false, we allocate one
-                sections for the surplus. *)
-             (if is_stop_chunk_aligned then default_number_of_sections
-             else default_number_of_sections - 1))
-          max_number_of_sections
+             (default_number_of_sections
+             - if is_stop_chunk_aligned then 0 else 1))
+          Z.(
+            max_number_of_sections + if reminder = Z.zero then Z.zero else Z.one)
       in
-
-      (* [go remaining_sections last_tick dist] tries to compute
-         [remaining_sections] sections as evenly as possible, starting
-         from [last_tick] and covering [dist] ticks. *)
-      let rec go remaining_sections last_tick dist rev_acc =
-        (* The last section is created by [make_dissection] when it
-           adds the [stop_chunk]. *)
-        if Z.(remaining_sections <= one) then
-          let rev_acc =
-            (* If [is_stop_chunk_aligned] is false, we insert the
-               last snapshot point. *)
-            if is_stop_chunk_aligned then rev_acc else final_tick :: rev_acc
-          in
-          List.rev rev_acc
-        else
-          (*
-             We compute the length of the next section of the
-             dissection as the maximum size such that if we would give
-             this number to all remaining sections, we would not
-             consume more than [dist] ticks. This is ensured by
-             [Z.div], which computes a lower rounding.
-          *)
-          let section_len =
-            Z.(
-              dist
-              / (ticks_per_snapshot * remaining_sections)
-              * ticks_per_snapshot)
-          in
-          let next_tick = Tick.jump last_tick section_len in
-          let next_dist = Z.(dist - section_len) in
-          (*
-             There are two cases to consider here.
-
-               1. Either [dist] was a multiple of
-                  [ticks_per_snapshot]. In that case, the same
-                  [section_len] will be computed in all subsequent
-                  calls of [go].
-               2. Or [dist] was not a multiple of
-                  [ticks_per_snapshot]. In that case, the next
-                  [section_len] in float will be slightly higher than
-                  the previous one, because it will benefit from the
-                  unconsumed reminder of the previous computation,
-                  until enough is left that [dist] becomes a
-                  multiplier of [ticks_per_snapshot]. In that case, we
-                  will fall back to case 1.
-
-             Take case of dividing 60 into 32 chunks.
-
-               - [remaining_sections = 60], [remaining_sections = 32], and
-                 [section_len = 1] (60 / 32 ~= 1.87)
-               - [remaining_sections = 59], [remaining_sections = 31], and
-                 [section_len = 1] (59 / 31 ~= 1.90)
-               - [remaining_sections = 58], [remaining_sections = 30], and
-                 [section_len = 1] (58 / 30 ~= 1.93)
-               - [remaining_sections = 57], [remaining_sections = 29], and
-                 [section_len = 1] (57 / 29 ~= 1.97)
-               - [remaining_sections = 56], [remaining_sections = 28], and
-                 [section_len = 2] (56 / 28 = 2)
-
-               All remaining sections will be of length 2.
-          *)
-          go
-            Z.(pred remaining_sections)
-            next_tick
-            next_dist
-            (next_tick :: rev_acc)
+      (* We now create a dissection with number_of_sections each
+         (aside from possibly first and last) of size
+         [min_piece_size * ticks_per_snapshot] or
+          [(min_piece_size + 1) * ticks_per_snapshot]
+          The section ticks will all be aligned.
+          Note that if  default_number_of_sections >default_number_of_sections
+            then min_piece_size = 1*)
+      let min_piece_size, rem =
+        Z.div_rem max_number_of_sections number_of_sections
       in
-      go number_of_sections start_chunk.tick dist []
+      let l =
+        exact_dissection
+          ~rem
+          ~dilate:ticks_per_snapshot
+          initial_tick
+          (Z.to_int number_of_sections)
+          min_piece_size
+      in
+      if is_stop_chunk_aligned then l else initial_tick :: l
 end
