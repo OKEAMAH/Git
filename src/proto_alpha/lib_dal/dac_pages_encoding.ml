@@ -40,7 +40,7 @@ type error +=
   | Non_positive_size_of_payload
   | Merkle_tree_branching_factor_not_high_enough
   | Hashes_page_repr_already_full
-  | Hashes_page_repr_expected_single_element of string
+  | Hashes_page_repr_expected_single_element
 
 let () =
   register_error_kind
@@ -116,16 +116,11 @@ let () =
     ~id:"hashes_page_repr_expected_single_element"
     ~title:"Hashes page representation expected a single element"
     ~description:"Hashes page representation expected a single element"
-    ~pp:(fun ppf ls ->
-      Format.fprintf
-        ppf
-        "Hashes page representation expected a single element, instead the \
-         following internal representation received: [%s]"
-        ls)
-    Data_encoding.(obj1 (req "ls" string))
-    (function
-      | Hashes_page_repr_expected_single_element ls -> Some ls | _ -> None)
-    (fun ls -> Hashes_page_repr_expected_single_element ls)
+    ~pp:(fun ppf () ->
+      Format.fprintf ppf "Hashes page representation expected a single element")
+    Data_encoding.unit
+    (function Hashes_page_repr_expected_single_element -> Some () | _ -> None)
+    (fun () -> Hashes_page_repr_expected_single_element)
 
 (** Encoding of DAC payload as a Merkle tree with an arbitrary branching
     factor greater or equal to 2. The serialization process works as follows:
@@ -362,12 +357,7 @@ module Merkle_tree = struct
             let open Lwt_result_syntax in
             match page_repr.hashes with
             | [x] -> return x
-            | _ ->
-                tzfail
-                @@ Hashes_page_repr_expected_single_element
-                     (page_repr.hashes
-                     |> List.map Hashing_scheme.to_b58check
-                     |> String.concat "; ")
+            | _ -> tzfail Hashes_page_repr_expected_single_element
         end
 
         (** At any given level, we can have at max 'number_of_hashes_per_page'.
