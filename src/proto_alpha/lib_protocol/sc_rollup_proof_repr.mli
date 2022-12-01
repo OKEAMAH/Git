@@ -24,9 +24,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type error +=
-  | Sc_rollup_proof_too_long
-        (** A refutation game proof is required as part of the final move in a
+type error += Sc_rollup_proof_too_long
+
+(** A refutation game proof is required as part of the final move in a
     game.
 
     This proof is basically a combination of a PVM proof (provided by

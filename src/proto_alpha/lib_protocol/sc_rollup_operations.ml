@@ -186,18 +186,15 @@ let check_origination_proof (type state proof output)
   in
   return PVM.(proof_stop_state origination_proof)
 
-let originate ctxt ~kind ~boot_sector ~origination_proof ~parameters_ty =
+let originate ctxt ~kind ~boot_sector
+    ~(origination_proof : Sc_rollup.Proof.serialized) ~parameters_ty =
   let open Lwt_result_syntax in
   let (Packed ((module PVM) as pvm)) = Sc_rollup.Kind.pvm_of kind in
   let* () =
     let constants = Constants.sc_rollup ctxt in
-    let string_proof =
-      Data_encoding.Binary.to_string_exn
-        Sc_rollup.Proof.serialized_encoding
-        origination_proof
-    in
     fail_when
-      Compare.Int.(String.length string_proof > constants.max_proof_size)
+      Compare.Int.(
+        String.length (origination_proof :> string) > constants.max_proof_size)
       Sc_rollup_proof_repr.Sc_rollup_proof_too_long
   in
   let*? ctxt =

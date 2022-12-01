@@ -201,7 +201,9 @@ let test_inbox_proof_too_long () =
   let* ctxt = Block.to_alpha_ctxt b in
   let constants = Constants.sc_rollup ctxt in
   let max_size = constants.max_proof_size in
-  let string_proof = String.make (max_size + 1) 'a' in
+  let string_proof =
+    String.make (max_size + 1 - String.length (pvm_step :> string)) 'a'
+  in
   (* First we try a standard input proof *)
   let inbox_proof =
     Sc_rollup.Inbox.Internal_for_tests.serialized_proof_of_string string_proof
@@ -284,7 +286,7 @@ let test_pvm_step_proof_too_long () =
   let max_size = constants.max_proof_size in
   let pvm_step =
     Sc_rollup.Proof.Internal_for_tests.serialized_of_string
-    @@ String.init (max_size + 1) 'a'
+    @@ String.make (max_size + 1) 'a'
   in
   let rollup = Sc_rollup.Address.zero in
   let proof = Sc_rollup.Proof.{pvm_step; input_proof = None} in

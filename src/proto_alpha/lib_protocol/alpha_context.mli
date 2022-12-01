@@ -1023,6 +1023,8 @@ module Constants : sig
 
   val zk_rollup_min_pending_to_process : context -> int
 
+  val sc_rollup_max_proof_size : context -> int
+
   (** All constants: fixed and parametric *)
   type t = private {fixed : fixed; parametric : Parametric.t}
 
@@ -3205,7 +3207,7 @@ module Sc_rollup : sig
 
     type t = Internal of internal_inbox_message | External of string
 
-    type serialized
+    type serialized = private string
 
     val encoding : t Data_encoding.t
 
@@ -3437,8 +3439,6 @@ module Sc_rollup : sig
 
       val add_info_per_level :
         context -> Time.t -> Block_hash.t -> context tzresult Lwt.t
-
-      val serialized_proof_to_string : serialized_proof -> string
     end
 
     val add_external_messages : context -> string list -> context tzresult Lwt.t
@@ -3473,7 +3473,7 @@ module Sc_rollup : sig
 
       type t = Atomic_transaction_batch of {transactions : transaction list}
 
-      type serialized
+      type serialized = private string
 
       val unsafe_of_string : string -> serialized
 

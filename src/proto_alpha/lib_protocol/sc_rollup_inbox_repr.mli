@@ -215,7 +215,7 @@ include module type of V1 with type t = V1.t
     preserve the laziness. *)
 val current_level_proof : t -> level_proof
 
-type serialized_proof
+type serialized_proof = private string
 
 val serialized_proof_encoding : serialized_proof Data_encoding.t
 
@@ -370,8 +370,6 @@ module Internal_for_tests : sig
   (** Allows to create a dumb {!serialized_proof} from a string, instead of
       serializing a proof with {!to_serialized_proof}. *)
   val serialized_proof_of_string : string -> serialized_proof
-
-  val serialized_proof_to_string : serialized_proof -> string
 
   val get_level_of_history_proof : history_proof -> Raw_level_repr.t
 end

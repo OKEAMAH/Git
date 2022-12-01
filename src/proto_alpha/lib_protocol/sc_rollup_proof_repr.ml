@@ -53,9 +53,10 @@ let () =
   register_error_kind
     `Permanent
     ~id:"Sc_rollup_proof_too_long"
-    ~title:"Sc_rollup_proof_too_long"
-    ~description:"Sc_rollup_proof_too_long"
-    ~pp:(fun fmt () -> Format.fprintf fmt "Sc_rollup_proof_too_long")
+    ~title:"Long serialized proof"
+    ~description:"The serialized rollup proof is too long"
+    ~pp:(fun fmt () ->
+      Format.fprintf fmt "The serialized rollup proof is too long")
     Data_encoding.unit
     (function Sc_rollup_proof_too_long -> Some () | _ -> None)
     (fun () -> Sc_rollup_proof_too_long)
@@ -169,10 +170,12 @@ let serialize_pvm_step (type state proof output)
 
 let unserialize_pvm_step (type state proof output)
     ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation)
-    (proof : string) : proof tzresult =
+    (proof : serialized) : proof tzresult =
   let open Result_syntax in
   let (module PVM) = pvm in
-  match Data_encoding.Binary.of_string_opt PVM.proof_encoding proof with
+  match
+    Data_encoding.Binary.of_string_opt PVM.proof_encoding (proof :> string)
+  with
   | Some p -> return p
   | None -> error (Sc_rollup_proof_check "Cannot unserialize proof")
 
@@ -183,32 +186,11 @@ let check_proof_size max_size proof =
   let {pvm_step; input_proof} = proof in
   let* input_proof_length =
     match input_proof with
-    | Some (Inbox_proof {proof; _}) ->
-        let length =
-          Option.map Bytes.length
-          @@ Data_encoding.Binary.to_bytes_opt
-               Sc_rollup_inbox_repr.serialized_proof_encoding
-               proof
-        in
-
-        Lwt.return
-        @@ Option.to_result
-             ~none:(trace_of_error Sc_rollup_invalid_serialized_inbox_proof)
-             length
+    | Some (Inbox_proof {proof; _}) -> return @@ String.length (proof :> string)
     | Some (Reveal_proof rev_proof) -> (
         match rev_proof with
         | Raw_data_proof s -> return @@ String.length s
-        | Dal_page_proof {proof; _} ->
-            let length =
-              Option.map Bytes.length
-              @@ Data_encoding.Binary.to_bytes_opt
-                   Dal_slot_repr.History.proof_encoding
-                   proof
-            in
-            Lwt.return
-            @@ Option.to_result
-                 ~none:(trace_of_error Sc_rollup_invalid_serialized_inbox_proof)
-                 length
+        | Dal_page_proof {proof; _} -> return @@ Bytes.length (proof :> bytes)
         | _ -> return 0)
     | _ -> return 0
   in

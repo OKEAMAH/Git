@@ -627,9 +627,6 @@ val tx_rollup_reject :
 
     Optional arguments allow to override defaults:
 
-    {ul {li [?encoded_proof:bool]: if true assumes the proof is already encoded 
-    so it does wrap/encode. Disabled (set to [false]) by default.}}
-
     {ul {li [?force_reveal:bool]: prepend the operation to reveal
     [source]'s public key if the latter has not been revealed
     yet. Disabled (set to [false]) by default.}} *)

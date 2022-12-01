@@ -924,10 +924,8 @@ let test_originating_with_random_proof () =
 let test_originating_with_long_proof () =
   let* b, _address = Context.init1 () in
   let* ctxt = Block.to_alpha_ctxt b in
-  let max_proof_size =
-    Constants_storage.sc_rollup_max_proof_size
-      (Alpha_context.Internal_for_tests.to_raw ctxt)
-  in
+  let max_proof_size = Alpha_context.Constants.sc_rollup_max_proof_size ctxt in
+
   let origination_proof =
     Sc_rollup.Proof.Internal_for_tests.serialized_of_string
     @@ String.make (max_proof_size + 1) 'a'

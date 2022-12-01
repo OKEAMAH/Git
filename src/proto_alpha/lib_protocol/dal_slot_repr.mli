@@ -284,7 +284,7 @@ module History : sig
       confirmed on L1.
 
       See the documentation in the ml file for more technical details. *)
-  type proof
+  type proof = private bytes
 
   (** Encoding for {!proof}. *)
   val proof_encoding : proof Data_encoding.t
