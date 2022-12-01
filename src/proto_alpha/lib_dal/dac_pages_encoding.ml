@@ -245,6 +245,9 @@ module Merkle_tree = struct
       | Ok raw_page -> Ok raw_page
       | Error _ -> error Cannot_serialize_page_payload
 
+    let max_hashes_per_page ~max_page_size =
+      (max_page_size - page_preamble_size) / hash_bytes_size
+
     (* Splits payload into bytes chunks whose size does not exceed [page_size] bytes. *)
     let split_payload ~max_page_size payload =
       let open Result_syntax in
@@ -324,10 +327,8 @@ module Merkle_tree = struct
             return {size = 0; hashes = []; max_page_size}
 
           let is_full page_repr =
-            let hashes_per_page =
-              (page_repr.max_page_size - page_preamble_size) / hash_bytes_size
-            in
-            page_repr.size = hashes_per_page
+            page_repr.size
+            = max_hashes_per_page ~max_page_size:page_repr.max_page_size
 
           (** [add page_repr hash] adds a [hash] to a given [page_repr]
               For performance reason hashes are added in reverse order.
