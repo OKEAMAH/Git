@@ -147,6 +147,17 @@ module Handler = struct
               slot_headers
               (Node_context.get_store ctxt)
           in
+          let*! () =
+            Lwt_list.iter_s
+              (fun (slot_header, status) ->
+                match status with
+                | Dal_plugin.Succeeded ->
+                    Store.Legacy.add_accepted_commitment
+                      (Node_context.get_store ctxt)
+                      slot_header
+                | Failed -> Lwt.return_unit)
+              slot_headers
+          in
           return_unit
     in
     let*! () = Event.(emit layer1_node_tracking_started ()) in

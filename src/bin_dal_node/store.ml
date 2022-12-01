@@ -335,4 +335,24 @@ module Legacy = struct
           Cryptobox.Commitment.encoding
           raw_commitment)
     |> return
+
+  let add_accepted_commitment node_store slot_header =
+    let open Lwt_syntax in
+    let slot_id =
+      Tezos_dal_node_services.Services.Types.
+        {
+          slot_level = slot_header.Dal_plugin.published_level;
+          slot_index = slot_header.Dal_plugin.slot_index;
+        }
+    in
+    let path = Legacy_paths.commitment_by_id slot_id in
+    let encoded_commitment =
+      Data_encoding.Binary.to_string_exn
+        Cryptobox.Commitment.encoding
+        slot_header.commitment
+    in
+    let* () =
+      set ~msg:"by id stored" node_store.slots_store path encoded_commitment
+    in
+    return_unit
 end
