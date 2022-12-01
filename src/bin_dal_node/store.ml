@@ -91,6 +91,9 @@ module Legacy_paths : sig
     slot_index:Services.Types.slot_index ->
     commitment:string ->
     path
+
+  val commitment_by_id : Services.Types.slot_id -> path
+
 end = struct
   module Path_internals = struct
     type internal = [`Internal]
@@ -156,6 +159,21 @@ end = struct
            "others")
         [commitment]
 
+    let by_level level =
+      mk_internal (mk_internal root "levels") (Int32.to_string level)
+
+    let by_index internal slot_index =
+      mk_internal (mk_internal internal "slot_index") (Int.to_string slot_index)
+
+    let by_id id =
+      let {Services.Types.slot_level; slot_index} = id in
+      let path = by_level slot_level in
+      by_index path slot_index
+
+    let commitment_by_id id =
+      mk_leaf ~is_collection:false (by_id id) ["accepted"; "commitment"]
+
+
     let data_path (type a) (p : a path) =
       let rec path (p : internal path) acc =
         match p with
@@ -200,6 +218,8 @@ end = struct
   let other_slot_header_in_l1 ~published_level ~slot_index ~commitment =
     Path_internals.(
       data_path @@ other_slot_header_in_l1 published_level slot_index commitment)
+
+  let commitment_by_id id = Path_internals.(data_path @@ commitment_by_id id)
 end
 
 module Legacy = struct
@@ -305,4 +325,14 @@ module Legacy = struct
               path
               (Services.Types.header_status_to_string `Not_selected))
       slot_headers
+
+  let find_commitment_by_id node_store slot_id =
+    let open Lwt_syntax in
+    let path = Legacy_paths.commitment_by_id slot_id in
+    let* raw_commitment_opt = find node_store.slots_store path in
+    Option.bind raw_commitment_opt (fun raw_commitment ->
+        Data_encoding.Binary.of_string_opt
+          Cryptobox.Commitment.encoding
+          raw_commitment)
+    |> return
 end

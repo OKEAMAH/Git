@@ -92,3 +92,10 @@ let find_slot node_store commitment =
 
 let store_slot_headers ~block_level ~block_hash slot_headers node_store =
   Store.Legacy.add_slot_headers ~block_level ~block_hash slot_headers node_store
+
+let find_slot_level_index_commitment node_store id =
+  let open Lwt_result_syntax in
+  let*! commitment_opt = Store.Legacy.find_commitment_by_id node_store id in
+  match commitment_opt with
+  | None -> fail `Not_found
+  | Some commitment -> return commitment

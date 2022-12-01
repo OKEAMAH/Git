@@ -74,3 +74,8 @@ val store_slot_headers :
   (Dal_plugin.slot_header * Dal_plugin.operation_application_result) list ->
   Store.node_store ->
   unit Lwt.t
+
+val find_slot_level_index_commitment :
+  Store.node_store ->
+  Services.Types.slot_id ->
+  (Cryptobox.commitment, [> `Not_found]) result Lwt.t

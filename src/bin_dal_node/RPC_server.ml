@@ -71,6 +71,17 @@ module Slots_handlers = struct
             | Ok polynomial ->
                 return_some (Cryptobox.prove_commitment cryptobox polynomial)))
       ctxt
+
+  let get_slot_level_index_commitment ctxt slot_level slot_index () () =
+    call_handler
+      (fun store _cryptobox ->
+        let open Lwt_result_syntax in
+        let slot_id =
+          Tezos_dal_node_services.Services.Types.{slot_level; slot_index}
+        in
+        let*! r = Slot_manager.find_slot_level_index_commitment store slot_id in
+        match r with Ok s -> return_some s | Error `Not_found -> return_none)
+      ctxt
 end
 
 let add_service registerer service handler directory =
@@ -98,6 +109,10 @@ let register_new :
        Tezos_rpc.Directory.opt_register1
        Services.get_slot_commitment_proof
        (Slots_handlers.get_slot_commitment_proof ctxt)
+  |> add_service
+       Tezos_rpc.Directory.opt_register2
+       Services.get_slot_level_index_commitment
+       (Slots_handlers.get_slot_level_index_commitment ctxt)
 
 let register_legacy ctxt =
   let open RPC_server_legacy in

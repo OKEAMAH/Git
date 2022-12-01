@@ -42,7 +42,7 @@ module Types = struct
 
   type slot_index = int
 
-  (* Declaration of types used as inputs and/or outputs. *)
+  (* Declaration of types used as inputs and/or outputs *)
   type slot_id = {slot_level : level; slot_index : slot_index}
 
   type header_attestation_status =
@@ -133,3 +133,20 @@ let get_slot_commitment_proof :
     ~output:Cryptobox.Commitment_proof.encoding
     Tezos_rpc.Path.(
       open_root / "slots" /: Cryptobox.Commitment.rpc_arg / "proof")
+
+let get_slot_level_index_commitment :
+    < meth : [`GET]
+    ; input : unit
+    ; output : Cryptobox.commitment
+    ; prefix : unit
+    ; params : (unit * Types.level) * Types.slot_index
+    ; query : unit >
+    service =
+  Tezos_rpc.Service.get_service
+    ~description:
+      "Retrieve the content of the slot associated with the given commitment."
+    ~query:Tezos_rpc.Query.empty
+    ~output:Cryptobox.Commitment.encoding
+    Tezos_rpc.Path.(
+      open_root / "slots" / "level" /: Tezos_rpc.Arg.int32 / "slot_index"
+      /: Tezos_rpc.Arg.int)
