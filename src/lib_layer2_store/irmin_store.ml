@@ -64,4 +64,48 @@ struct
     set_exn ~info store path bytes
 
   let readonly = Fun.id
+
+  let export ?path store =
+    let open Lwt_syntax in
+    let* root_key =
+      let open Lwt_option_syntax in
+      let*! t = tree store in
+      let*! t =
+        match path with
+        | None -> Lwt.return t
+        | Some path -> (
+            let open Lwt_syntax in
+            let+ t = Tree.find_tree t path in
+            match t with
+            | None -> Stdlib.failwith ("No such tree /" ^ String.concat "/" path)
+            | Some t -> t)
+      in
+      let*? key = Tree.key t in
+      return key
+    in
+    let total_size = ref 0 in
+    let root_key = WithExceptions.Option.get ~loc:__LOC__ root_key in
+    let+ r =
+      Snapshot.export (repo store) ~root_key @@ function
+      | Blob contents ->
+          let s = Bytes.length contents in
+          total_size := !total_size + s ;
+          (* Format.eprintf "Blob : %d B@." s ; *)
+          return_unit
+      | Inode _ -> return_unit
+      (* {v; root = _} -> ( *)
+      (* match v with *)
+      (* | Inode_tree {depth; length; pointers = _} -> *)
+      (*     Format.eprintf "Inode: depth %d Len %d@." depth length ; *)
+      (*     return_unit *)
+      (* | Inode_value entries -> *)
+      (*     List.iter *)
+      (*       (fun {Snapshot.step; hash = _} -> *)
+      (*         Format.eprintf "Step : %S@." step) *)
+      (*       entries ; *)
+      (*     return_unit) *)
+    in
+    let p = match path with None -> "" | Some p -> String.concat "/" p in
+    Format.eprintf "/%s: Total size: %d@." p !total_size ;
+    r
 end

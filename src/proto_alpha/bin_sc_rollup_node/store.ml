@@ -56,6 +56,7 @@ type state_info = {
   initial_tick : Sc_rollup.Tick.t;
 }
 
+let export = IStore.export
 (** Extraneous state information for the PVM *)
 module StateInfo =
   Make_append_only_map
@@ -492,3 +493,75 @@ module Dal_confirmed_slots_histories =
 
       let encoding = Dal.Slots_history.History_cache.encoding
     end)
+
+let sizes store =
+  let open Lwt_syntax in
+  let* _ =
+    let path = ["state_info"] in
+    export ~path store
+  in
+
+  (* let* _ = *)
+  (*   let path = ["state_history"] in *)
+  (*   export ~path store *)
+  (* in *)
+  let* _ =
+    let path = ["messages"] in
+    export ~path store
+  in
+
+  let* _ =
+    let path = ["inboxes"] in
+    export ~path store
+  in
+
+  let* _ =
+    let path = ["histories"] in
+    export ~path store
+  in
+
+  let* _ =
+    let path = ["payloads_histories"] in
+    export ~path store
+  in
+
+  let* _ =
+    let path = ["commitments"] in
+    export ~path store
+  in
+
+  let* _ =
+    let path = ["commitments"; "computed"] in
+    export ~path store
+  in
+
+  let* _ =
+    let path = ["contexts"] in
+    export ~path store
+  in
+
+  let* _ =
+    let path = ["dal"] in
+    export ~path store
+  in
+
+  (* let* _ = *)
+  (*   let path = ["dal"; "slot_pages"] in *)
+  (*   export ~path store *)
+  (* in *)
+
+  (* let* _ = *)
+  (*   let path = ["dal"; "processed_slots"] in *)
+  (*   export ~path store *)
+  (* in *)
+
+  (* let* _ = *)
+  (*   let path = ["dal"; "slot_headers"] in *)
+  (*   export ~path store *)
+  (* in *)
+
+  (* let* _ = *)
+  (*   let path = ["dal"; "confirmed_slots_history"] in *)
+  (*   export ~path store *)
+  (* in *)
+  return_unit

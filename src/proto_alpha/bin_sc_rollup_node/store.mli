@@ -53,6 +53,10 @@ type state_info = {
   initial_tick : Sc_rollup.Tick.t;
 }
 
+val export : ?path:string list -> _ t -> int Lwt.t
+
+val sizes : _ t -> unit Lwt.t
+
 (** [close store] closes the store. *)
 val close : _ t -> unit Lwt.t
 

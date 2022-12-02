@@ -25,4 +25,8 @@
 (*****************************************************************************)
 module Make (N : sig
   val name : string
-end) : Store_sigs.BACKEND
+end) : sig
+  include Store_sigs.BACKEND
+
+  val export : ?path:string list -> _ t -> int Lwt.t
+end
