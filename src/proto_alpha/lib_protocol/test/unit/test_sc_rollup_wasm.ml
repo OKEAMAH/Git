@@ -95,6 +95,7 @@ let test_initial_state_hash_wasm_pvm () =
   let open Lwt_result_syntax in
   let empty = Tezos_context_memory.make_empty_tree () in
   let*! state = Sc_rollup_helpers.Wasm_pvm.initial_state ~empty in
+  let*? state = Environment.wrap_tzresult state in
   let*! hash = Sc_rollup_helpers.Wasm_pvm.state_hash state in
   let expected = Sc_rollup.Wasm_2_0_0PVM.reference_initial_state_hash in
   if Sc_rollup.State_hash.(hash = expected) then return_unit

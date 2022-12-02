@@ -205,6 +205,7 @@ let should_boot_computation_kernel () =
   let context = Context_binary.empty index in
   let empty = Context_binary.Tree.empty context in
   let*! s = Prover.initial_state ~empty in
+  let*? s = Environment.wrap_tzresult s in
   (* sets a reasonable nb-of-tick limit to limit test running time *)
   let*! s =
     Tree.add

@@ -1896,6 +1896,7 @@ let dumb_proof ~choice =
     Sc_rollup_helpers.In_memory_context.Tree.empty context_arith_pvm
   in
   let*! arith_state = Arith_pvm.initial_state ~empty in
+  let*? arith_state = Environment.wrap_tzresult arith_state in
   let*! arith_state = Arith_pvm.install_boot_sector arith_state "" in
   let input = Sc_rollup_helpers.make_external_input "c4c4" in
   let* pvm_step =
@@ -2055,42 +2056,43 @@ let test_dissection_during_final_move () =
   return_unit
 
 let init_arith_state ~boot_sector =
-  let open Lwt_syntax in
+  let open Lwt_result_syntax in
   let context = Tezos_context_memory.make_empty_context () in
   let empty = Sc_rollup_helpers.In_memory_context.Tree.empty context in
-  let* state = Arith_pvm.initial_state ~empty in
-  let* state = Arith_pvm.install_boot_sector state boot_sector in
+  let*! state = Arith_pvm.initial_state ~empty in
+  let*? state = Environment.wrap_tzresult state in
+  let*! state = Arith_pvm.install_boot_sector state boot_sector in
   return (context, state)
 
 let make_arith_state ?(boot_sector = "") metadata =
-  let open Lwt_syntax in
+  let open Lwt_result_syntax in
   let* _context, state = init_arith_state ~boot_sector in
-  let* state_hash1 = Arith_pvm.state_hash state in
+  let*! state_hash1 = Arith_pvm.state_hash state in
 
   (* 1. We evaluate the boot sector. *)
-  let* input_required = Arith_pvm.is_input_state state in
+  let*! input_required = Arith_pvm.is_input_state state in
   assert (input_required = Sc_rollup.No_input_required) ;
-  let* state = Arith_pvm.eval state in
-  let* state_hash2 = Arith_pvm.state_hash state in
+  let*! state = Arith_pvm.eval state in
+  let*! state_hash2 = Arith_pvm.state_hash state in
   (* 2. The state now needs the metadata. *)
-  let* input_required = Arith_pvm.is_input_state state in
+  let*! input_required = Arith_pvm.is_input_state state in
   assert (input_required = Sc_rollup.Needs_reveal Reveal_metadata) ;
   (* 3. We feed the state with the metadata. *)
   let input = Sc_rollup.(Reveal (Metadata metadata)) in
-  let* state = Arith_pvm.set_input input state in
-  let* state_hash3 = Arith_pvm.state_hash state in
-  let* input_required = Arith_pvm.is_input_state state in
+  let*! state = Arith_pvm.set_input input state in
+  let*! state_hash3 = Arith_pvm.state_hash state in
+  let*! input_required = Arith_pvm.is_input_state state in
   assert (input_required = Sc_rollup.Initial) ;
 
   return (state_hash1, state_hash2, state_hash3)
 
 let make_refutation_metadata ?(boot_sector = "") metadata =
-  let open Lwt_syntax in
+  let open Lwt_result_syntax in
   let* context, state = init_arith_state ~boot_sector in
   (* We will prove the tick after the evaluation of the boot sector. *)
-  let* state = Arith_pvm.eval state in
+  let*! state = Arith_pvm.eval state in
   let input = Sc_rollup.(Reveal (Metadata metadata)) in
-  let* proof = Arith_pvm.produce_proof context (Some input) state in
+  let*! proof = Arith_pvm.produce_proof context (Some input) state in
   let pvm_step = WithExceptions.Result.get_ok ~loc:__LOC__ proof in
   let pvm_step =
     WithExceptions.Result.get_ok ~loc:__LOC__
@@ -2115,7 +2117,7 @@ let test_refute_invalid_metadata () =
   let predecessor = genesis_info.commitment_hash in
 
   let post_commitment_from_metadata block account metadata =
-    let*! state1, state2, state3 = make_arith_state metadata in
+    let* state1, state2, state3 = make_arith_state metadata in
     let commitment : Sc_rollup.Commitment.t =
       {
         predecessor;
@@ -2175,7 +2177,7 @@ let test_refute_invalid_metadata () =
   let* block = add_op block dissection_op in
 
   (* [account2] will play an invalid proof about the invalid metadata. *)
-  let*! proof = make_refutation_metadata invalid_metadata in
+  let* proof = make_refutation_metadata invalid_metadata in
   let* proof1_op =
     Op.sc_rollup_refute (B block) account2 rollup pkh1 (Some proof)
   in
@@ -2183,7 +2185,7 @@ let test_refute_invalid_metadata () =
 
   (* We can implicitely check that [proof1_op] was invalid if
      [account1] wins the game. *)
-  let*! proof = make_refutation_metadata valid_metadata in
+  let* proof = make_refutation_metadata valid_metadata in
   let* incr = Incremental.begin_construction block in
   let* proof2_op =
     Op.sc_rollup_refute (I incr) account1 rollup pkh2 (Some proof)

@@ -837,17 +837,19 @@ module ArithPVM = Arith_pvm
 module Arith_test_pvm = struct
   include ArithPVM
 
-  let initial_state () =
-    let open Lwt_syntax in
+  let make_initial_state () =
+    let open Lwt_result_syntax in
     let empty = Tezos_context_memory.make_empty_tree () in
-    let* state = initial_state ~empty in
-    let* state = install_boot_sector state "" in
+    let*! state = initial_state ~empty in
+    let*? state = Environment.wrap_tzresult state in
+    let*! state = install_boot_sector state "" in
     return state
 
   let initial_hash =
-    let open Lwt_syntax in
-    let* state = initial_state () in
-    state_hash state
+    let open Lwt_result_syntax in
+    let* state = make_initial_state () in
+    let*! hash = state_hash state in
+    return hash
 
   let consume_fuel = Option.map pred
 
@@ -918,7 +920,7 @@ module Arith_test_pvm = struct
 
   let eval_inputs ~metadata ?fuel inputs_per_levels =
     let open Lwt_result_syntax in
-    let*! state = initial_state () in
+    let* state = make_initial_state () in
     let*! state_hash = state_hash state in
     let tick = 0 in
     let our_states = [(tick, state_hash)] in
@@ -1240,7 +1242,7 @@ end
 (** [create_commitment ~predecessor ~inbox_level ~our_states] creates
     a commitment using [our_states] as the vision of ticks. *)
 let create_commitment ~predecessor ~inbox_level ~our_states =
-  let open Lwt_syntax in
+  let open Lwt_result_syntax in
   let inbox_level = Int32.of_int inbox_level |> Raw_level.of_int32_exn in
   let+ compressed_state =
     match List.last_opt our_states with
@@ -1264,7 +1266,7 @@ let create_commitment ~predecessor ~inbox_level ~our_states =
 let operation_publish_commitment ctxt rollup predecessor inbox_level
     player_client =
   let open Lwt_result_syntax in
-  let*! commitment =
+  let* commitment =
     create_commitment ~predecessor ~inbox_level ~our_states:player_client.states
   in
   Op.sc_rollup_publish ctxt player_client.player.contract rollup commitment
@@ -1295,8 +1297,6 @@ let build_proof ~player_client start_tick (game : Game.t) =
   let state, _, _ = WithExceptions.Result.get_ok ~loc:__LOC__ r in
   let module P = struct
     include Arith_test_pvm
-
-    let initial_state ~empty:_ = initial_state ()
 
     let context = player_client.context
 
