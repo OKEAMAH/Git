@@ -12,6 +12,7 @@ depends: [
   "ocaml" { >= "4.14" }
   "tezos-lwt-result-stdlib"
   "zarith" { >= "1.12" & < "1.13" }
+  "tezos-stdlib"
 ]
 build: [
   ["rm" "-r" "vendors"]

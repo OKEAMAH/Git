@@ -1160,7 +1160,7 @@ let lazy_containers =
       "A collection of lazy containers whose contents is fetched from \
        arbitrary backend on-demand"
     ~ocaml:V.(at_least "4.14")
-    ~deps:[octez_lwt_result_stdlib; zarith]
+    ~deps:[octez_lwt_result_stdlib; zarith; octez_stdlib]
 
 let _lazy_containers_tests =
   test

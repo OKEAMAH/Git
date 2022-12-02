@@ -121,6 +121,12 @@ module ZZ : KeyS with type t = Z.t = struct
 end
 
 module Make (Key : KeyS) : S with type key = Key.t = struct
+  module Compare = Tezos_stdlib.Compare.Make (struct
+    include Key
+
+    let compare = unsigned_compare
+  end)
+
   module Map = Lazy_map.Make (Key)
 
   type key = Key.t
@@ -162,7 +168,7 @@ module Make (Key : KeyS) : S with type key = Key.t = struct
     in
     create ~values num_elements
 
-  let invalid_key key map = Key.unsigned_compare key map.num_elements >= 0
+  let invalid_key key map = Compare.(key >= map.num_elements)
 
   let get key map =
     if invalid_key key map then raise Bounds ;
@@ -176,7 +182,7 @@ module Make (Key : KeyS) : S with type key = Key.t = struct
 
   let singleton value = create Key.(succ zero) |> set Key.zero value
 
-  let overflow k1 k2 = Key.unsigned_compare k1 (Key.add k1 k2) > 0
+  let overflow k1 k2 = Compare.(k1 > Key.add k1 k2)
 
   let cons value map =
     if overflow map.num_elements (Key.succ Key.zero) then raise SizeOverflow
@@ -187,11 +193,7 @@ module Make (Key : KeyS) : S with type key = Key.t = struct
       {first; values; num_elements}
 
   let split vec at =
-    if
-      Key.(
-        unsigned_compare at zero < 0
-        || unsigned_compare (num_elements vec) at < 0)
-    then raise Bounds
+    if Compare.(at < Key.zero || num_elements vec < at) then raise Bounds
     else
       ( {first = vec.first; num_elements = at; values = Map.dup vec.values},
         {
@@ -226,7 +228,7 @@ module Make (Key : KeyS) : S with type key = Key.t = struct
 
   let pop map =
     let open Lwt.Syntax in
-    if Key.(unsigned_compare zero map.num_elements < 0) then
+    if Compare.(Key.zero < map.num_elements) then
       let+ x = get Key.zero map in
       (x, unsafe_drop map)
     else raise Bounds
@@ -240,7 +242,7 @@ module Make (Key : KeyS) : S with type key = Key.t = struct
 
   let rec grow ?default delta map =
     if overflow map.num_elements delta then raise SizeOverflow
-    else if Key.(delta <= zero) then map
+    else if Compare.(delta <= Key.zero) then map
     else
       let map, _ = append_opt (Option.map (fun f -> f ()) default) map in
       grow ?default Key.(pred delta) map
@@ -248,7 +250,7 @@ module Make (Key : KeyS) : S with type key = Key.t = struct
   let to_list map =
     let open Lwt.Syntax in
     let rec unroll acc index =
-      if Key.unsigned_compare index Key.zero > 0 then
+      if Compare.(index > Key.zero) then
         let* prefix = get index map in
         (unroll [@ocaml.tailcall]) (prefix :: acc) (Key.pred index)
       else

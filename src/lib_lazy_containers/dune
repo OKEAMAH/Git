@@ -7,4 +7,5 @@
  (instrumentation (backend bisect_ppx))
  (libraries
   tezos-lwt-result-stdlib
-  zarith))
+  zarith
+  tezos-stdlib))
