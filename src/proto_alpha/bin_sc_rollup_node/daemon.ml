@@ -357,6 +357,7 @@ module Make (PVM : Pvm.S) = struct
         rollup_address
     in
     let*! s = PVM.initial_state ~empty:(PVM.State.empty ()) in
+    let*? s = Environment.wrap_tzresult s in
     let*! l2_initial_state_hash = PVM.state_hash s in
     if
       not

@@ -107,6 +107,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let open Lwt_result_syntax in
     let* boot_sector = get_boot_sector block_hash node_ctxt in
     let*! initial_state = PVM.initial_state ~empty:(PVM.State.empty ()) in
+    let*? initial_state = Environment.wrap_tzresult initial_state in
     let*! genesis_state = PVM.install_boot_sector initial_state boot_sector in
     let*! ctxt = PVM.State.set ctxt genesis_state in
     return (ctxt, genesis_state)

@@ -77,6 +77,7 @@ type error +=
   | (* `Permanent *) Sc_rollup_address_generation
   | (* `Permanent *) Sc_rollup_zero_tick_commitment
   | (* `Permanent *) Sc_rollup_commitment_past_curfew
+  | (* `Permanent *) Sc_rollup_pvm_initial_state_tree_not_empty
 
 let () =
   register_error_kind
@@ -510,4 +511,15 @@ let () =
     ~description
     Data_encoding.empty
     (function Sc_rollup_zero_tick_commitment -> Some () | _ -> None)
-    (fun () -> Sc_rollup_zero_tick_commitment)
+    (fun () -> Sc_rollup_zero_tick_commitment) ;
+  let description = "PVM initialized on a non empty tree" in
+  register_error_kind
+    `Permanent
+    ~id:"Sc_rollup_pvm_initial_state_tree_not_empty"
+    ~title:description
+    ~pp:(fun ppf () -> Format.fprintf ppf "%s" description)
+    ~description
+    Data_encoding.empty
+    (function
+      | Sc_rollup_pvm_initial_state_tree_not_empty -> Some () | _ -> None)
+    (fun () -> Sc_rollup_pvm_initial_state_tree_not_empty)

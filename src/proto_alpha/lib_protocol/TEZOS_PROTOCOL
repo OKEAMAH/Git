@@ -53,7 +53,10 @@
         "Dal_slot_repr",
         "Dal_attestation_repr",
 
+        "Sc_rollup_data_version_sig",
         "Sc_rollup_repr",
+        "Sc_rollup_commitment_repr",
+        "Sc_rollup_errors",
         "Sc_rollup_metadata_repr",
         "Sc_rollup_tick_repr",
         "Sc_rollup_inbox_message_repr",
@@ -64,9 +67,7 @@
         "Sc_rollup_arith",
         "Sc_rollup_wasm",
         "Sc_rollups",
-        "Sc_rollup_data_version_sig",
         "Sc_rollup_inbox_repr",
-        "Sc_rollup_commitment_repr",
         "Sc_rollup_proof_repr",
         "Skip_list_costs",
         "Sc_rollup_costs",
@@ -164,7 +165,6 @@
         "Liquidity_baking_lqt",
         "Liquidity_baking_migration",
 
-        "Sc_rollup_errors",
         "Sc_rollup_inbox_storage",
 
         "Legacy_script_patches",

@@ -256,7 +256,15 @@ module V2_0_0 = struct
 
     open Monad
 
-    let initial_state ~empty = WASM_machine.initial_state empty
+    let initial_state ~empty =
+      let open Lwt_result_syntax in
+      let* () =
+        fail_unless
+          (Tree.is_empty empty)
+          Sc_rollup_errors.Sc_rollup_pvm_initial_state_tree_not_empty
+      in
+      let*! state = WASM_machine.initial_state empty in
+      return state
 
     let install_boot_sector state boot_sector =
       WASM_machine.install_boot_sector ~ticks_per_snapshot boot_sector state
@@ -456,7 +464,7 @@ module V2_0_0 = struct
 
     let produce_origination_proof context boot_sector =
       let open Lwt_result_syntax in
-      let*! state = initial_state ~empty:(Tree.empty context) in
+      let* state = initial_state ~empty:(Tree.empty context) in
       let*! result =
         Context.produce_proof context state (fun state ->
             let open Lwt_syntax in

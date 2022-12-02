@@ -463,7 +463,7 @@ module type S = sig
   (** [initial_state ~empty] is the initial state of the PVM, before its
       specialization with a given [boot_sector]. The initial state is built on
       the [empty] state which must be provided. *)
-  val initial_state : empty:state -> state Lwt.t
+  val initial_state : empty:state -> state tzresult Lwt.t
 
   (** [install_boot_sector state boot_sector] specializes the initial
       [state] of a PVM using a dedicated [boot_sector], submitted at

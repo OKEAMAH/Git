@@ -853,8 +853,13 @@ module Make (Context : P) :
       let* () = Status.set Halted in
       return ()
     in
-    let open Lwt_syntax in
-    let* state, _ = run m empty in
+    let open Lwt_result_syntax in
+    let* () =
+      fail_unless
+        (Tree.is_empty empty)
+        Sc_rollup_errors.Sc_rollup_pvm_initial_state_tree_not_empty
+    in
+    let*! state, _ = run m empty in
     return state
 
   let install_boot_sector state boot_sector =
@@ -1436,7 +1441,7 @@ module Make (Context : P) :
 
   let produce_origination_proof context boot_sector =
     let open Lwt_result_syntax in
-    let*! state = initial_state ~empty:(Tree.empty context) in
+    let* state = initial_state ~empty:(Tree.empty context) in
     let*! result =
       Context.produce_proof context state (fun state ->
           let open Lwt_syntax in
