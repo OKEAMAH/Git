@@ -424,6 +424,28 @@ let test_invalid_outbox_level () =
   ]
   |> List.iter_es (test_output_messages_proofs ~valid:false ~inbox_level)
 
+let test_initial_empty_state_arith_pvm () =
+  let open Lwt_result_syntax in
+  let empty = Tezos_context_memory.make_empty_tree () in
+  let*! not_empty =
+    Tezos_context_memory.Context.Tree.add empty ["garbage"] Bytes.empty
+  in
+  let*! state = Sc_rollup_helpers.Arith_pvm.initial_state ~empty:not_empty in
+  let state = Environment.wrap_tzresult state in
+  match state with
+  | Ok _ ->
+      failwith "Should not be able to initialize state with non empty tree"
+  | Error
+      (Environment.Ecoproto_error
+         Sc_rollup_errors.Sc_rollup_pvm_initial_state_tree_not_empty
+      :: _) ->
+      return_unit
+  | Error e ->
+      failwith
+        "Wrong error for initialization with non empty tree: %a"
+        pp_print_trace
+        e
+
 let test_initial_state_hash_arith_pvm () =
   let open Alpha_context in
   let open Lwt_result_syntax in
@@ -542,6 +564,10 @@ let tests =
     Tztest.tztest "Valid output messages" `Quick test_valid_output_messages;
     Tztest.tztest "Invalid output messages" `Quick test_invalid_output_messages;
     Tztest.tztest "Invalid outbox level" `Quick test_invalid_outbox_level;
+    Tztest.tztest
+      "Initial state empty tree"
+      `Quick
+      test_initial_empty_state_arith_pvm;
     Tztest.tztest
       "Initial state hash for Arith"
       `Quick

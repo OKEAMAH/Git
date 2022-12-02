@@ -90,6 +90,28 @@ end
 module Full_Wasm =
   Sc_rollup_wasm.V2_0_0.Make (Environment.Wasm_2_0_0.Make) (Wasm_context)
 
+let test_initial_empty_state_wasm_pvm () =
+  let open Lwt_result_syntax in
+  let empty = Tezos_context_memory.make_empty_tree () in
+  let*! not_empty =
+    Tezos_context_memory.Context.Tree.add empty ["garbage"] Bytes.empty
+  in
+  let*! state = Sc_rollup_helpers.Wasm_pvm.initial_state ~empty:not_empty in
+  let state = Environment.wrap_tzresult state in
+  match state with
+  | Ok _ ->
+      failwith "Should not be able to initialize state with non empty tree"
+  | Error
+      (Environment.Ecoproto_error
+         Sc_rollup_errors.Sc_rollup_pvm_initial_state_tree_not_empty
+      :: _) ->
+      return_unit
+  | Error e ->
+      failwith
+        "Wrong error for initialization with non empty tree: %a"
+        pp_print_trace
+        e
+
 let test_initial_state_hash_wasm_pvm () =
   let open Alpha_context in
   let open Lwt_result_syntax in
@@ -302,6 +324,10 @@ let test_output () =
 
 let tests =
   [
+    Tztest.tztest
+      "initial state empty tree"
+      `Quick
+      test_initial_empty_state_wasm_pvm;
     Tztest.tztest
       "initial state hash for Wasm"
       `Quick
