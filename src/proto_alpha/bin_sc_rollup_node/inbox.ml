@@ -36,7 +36,7 @@ module State = struct
 
   let add_inbox = Store.Inboxes.add
 
-  let save_history = Store.Inbox_history.set
+  let _save_history = Store.Inbox_history.set
 
   let level_of_hash = State.level_of_hash
 
@@ -206,8 +206,8 @@ let process_head (node_ctxt : _ Node_context.t)
         (List.length collected_messages)
     in
     let* ( _messages_history,
-           messages_hash,
-           history,
+           _messages_hash,
+           _history,
            inbox,
            messages_with_protocol_internal_messages ) =
       add_messages
@@ -225,13 +225,13 @@ let process_head (node_ctxt : _ Node_context.t)
     in
     let* () = same_inbox_as_layer_1 node_ctxt head_hash inbox in
     let*! () = State.add_inbox node_ctxt.store head_hash inbox in
-    let*! () = State.save_history node_ctxt.store history in
-    let*! () =
-      Store.Payloads_witness.add
-        node_ctxt.store
-        messages_hash
-        (head_hash, Raw_level.to_int32 level, predecessor_hash, timestamp)
-    in
+    (* let*! () = State.save_history node_ctxt.store history in *)
+    (* let*! () = *)
+    (*   Store.Payloads_witness.add *)
+    (*     node_ctxt.store *)
+    (*     messages_hash *)
+    (*     (head_hash, Raw_level.to_int32 level, predecessor_hash, timestamp) *)
+    (* in *)
     return ctxt
   else return (Context.empty node_ctxt.context)
 
