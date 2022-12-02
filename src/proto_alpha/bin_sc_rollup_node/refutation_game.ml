@@ -172,7 +172,7 @@ module Make (Interpreter : Interpreter.S) :
       Layer1.{hash = snapshot_hash; level = snapshot_level_int32}
     in
     let* snapshot_inbox = Inbox.inbox_of_hash node_ctxt snapshot_hash in
-    let* snapshot_history = Inbox.history_of_hash node_ctxt snapshot_hash in
+    let* snapshot_history = Inbox.history node_ctxt in
     let* snapshot_ctxt =
       Node_context.checkout_context node_ctxt snapshot_hash
     in
@@ -222,8 +222,46 @@ module Make (Interpreter : Interpreter.S) :
 
         let inbox = snapshot
 
-        let get_payloads_history =
-          Store.Payloads_histories.get node_ctxt.Node_context.store
+        let get_payloads_history witness =
+          (* TODO: too convoluted *)
+          let open Lwt_syntax in
+          let* block, level, _predecessor, _timestamp =
+            Store.Payloads_witness.get node_ctxt.Node_context.store witness
+          in
+          let* messages =
+            Store.Messages.get node_ctxt.Node_context.store block
+          in
+          let messages, timestamp, predecessor =
+            match messages with
+            | Internal Start_of_level
+              :: Internal (Info_per_level {timestamp; predecessor})
+              :: rest -> (
+                match List.rev rest with
+                | Internal End_of_level :: rmsgs ->
+                    (List.rev rmsgs, timestamp, predecessor)
+                | _ -> assert false)
+            | _ -> assert false
+          in
+          let* inbox =
+            Inbox.inbox_of_head node_ctxt {Layer1.hash = block; level}
+          in
+          let inbox = WithExceptions.Result.get_ok ~loc:__LOC__ inbox in
+          let res =
+            Sc_rollup.Inbox.add_all_messages
+              ~timestamp
+              ~predecessor
+              (Sc_rollup.Inbox.History.empty ~capacity:0L)
+              inbox
+              messages
+          in
+          let ( payloads_history,
+                _history,
+                _inbox,
+                _witness,
+                _messages_with_protocol_internal_messages ) =
+            WithExceptions.Result.get_ok ~loc:__LOC__ res
+          in
+          return payloads_history
       end
 
       module Dal_with_history = struct

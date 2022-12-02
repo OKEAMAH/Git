@@ -120,21 +120,22 @@ module Inboxes :
      and type value = Sc_rollup.Inbox.t
      and type 'a store = 'a store
 
-(** Histories from the rollup node. **)
-module Histories :
-  Store_sigs.Append_only_map
-    with type key = Tezos_crypto.Block_hash.t
-     and type value = Sc_rollup.Inbox.History.t
+(** Inbox history from the rollup node. **)
+module Inbox_history :
+  Store_sigs.Mutable_value
+    with type value = Sc_rollup.Inbox.History.t
      and type 'a store = 'a store
 
-(** messages histories from the rollup node. Each history contains the messages
-    of one level. The store is indexed by a level in order to maintain a small
-    structure in memory. Only the message history of one level is fetched when
-    computing the proof. *)
-module Payloads_histories :
+(** Payload witnesses from the rollup node.
+    TODO: indirection other way around. *)
+module Payloads_witness :
   Store_sigs.Append_only_map
     with type key = Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t
-     and type value = Sc_rollup.Inbox_merkelized_payload_hashes.History.t
+     and type value =
+      Tezos_crypto.Block_hash.t
+      * int32
+      * Tezos_crypto.Block_hash.t
+      * Time.Protocol.t
      and type 'a store = 'a store
 
 (** Storage containing commitments and corresponding commitment hashes that the

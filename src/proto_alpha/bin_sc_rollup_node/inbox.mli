@@ -46,21 +46,13 @@ val process_head : Node_context.rw -> Layer1.head -> Context.rw tzresult Lwt.t
 val inbox_of_hash :
   _ Node_context.t -> Tezos_crypto.Block_hash.t -> Inbox.t tzresult Lwt.t
 
-(** [history_of_hash node_ctxt block_hash] returns the rollup inbox history at
-    the end of the given validation of [block_hash]. *)
-val history_of_hash :
-  _ Node_context.t ->
-  Tezos_crypto.Block_hash.t ->
-  Inbox.History.t tzresult Lwt.t
-
 (** [inbox_of_head node_ctxt block_head] returns the rollup inbox at the end of
     the given validation of [block_head]. *)
 val inbox_of_head : _ Node_context.t -> Layer1.head -> Inbox.t tzresult Lwt.t
 
 (** [history_of_head node_ctxt block_head] returns the rollup inbox history at
     the end of the given validation of [block_head]. *)
-val history_of_head :
-  _ Node_context.t -> Layer1.head -> Inbox.History.t tzresult Lwt.t
+val history : _ Node_context.t -> Inbox.History.t tzresult Lwt.t
 
 (** [start ()] initializes the inbox to track the messages being published. *)
 val start : unit -> unit Lwt.t

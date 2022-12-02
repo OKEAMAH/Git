@@ -57,6 +57,7 @@ type state_info = {
 }
 
 let export = IStore.export
+
 (** Extraneous state information for the PVM *)
 module StateInfo =
   Make_append_only_map
@@ -193,16 +194,11 @@ module Inboxes =
       let encoding = Sc_rollup.Inbox.encoding
     end)
 
-(** Message history for the inbox at a given block *)
-module Histories =
-  Make_append_only_map
+(** Message history for the inbox *)
+module Inbox_history =
+  Make_mutable_value
     (struct
-      let path = ["histories"]
-    end)
-    (struct
-      type key = Tezos_crypto.Block_hash.t
-
-      let to_path_representation = Tezos_crypto.Block_hash.to_b58check
+      let path = ["histories"; "inbox_history"]
     end)
     (struct
       type value = Sc_rollup.Inbox.History.t
@@ -212,11 +208,11 @@ module Histories =
       let encoding = Sc_rollup.Inbox.History.encoding
     end)
 
-(** payloads history for the inbox at a given block *)
-module Payloads_histories =
+(** Payloads witness for the inbox *)
+module Payloads_witness =
   Make_append_only_map
     (struct
-      let path = ["payloads_histories"]
+      let path = ["payloads_witness"]
     end)
     (struct
       type key = Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t
@@ -225,11 +221,21 @@ module Payloads_histories =
         Sc_rollup.Inbox_merkelized_payload_hashes.Hash.to_b58check
     end)
     (struct
-      let name = "payloads_history"
+      let name = "block_info"
 
-      type value = Sc_rollup.Inbox_merkelized_payload_hashes.History.t
+      type value =
+        Tezos_crypto.Block_hash.t
+        * int32
+        * Tezos_crypto.Block_hash.t
+        * Time.Protocol.t
 
-      let encoding = Sc_rollup.Inbox_merkelized_payload_hashes.History.encoding
+      let encoding =
+        let open Data_encoding in
+        obj4
+          (req "block" Tezos_crypto.Block_hash.encoding)
+          (req "level" int32)
+          (req "predecessor" Tezos_crypto.Block_hash.encoding)
+          (req "timestamp" Time.Protocol.encoding)
     end)
 
 module Commitments =

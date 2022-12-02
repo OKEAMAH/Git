@@ -36,9 +36,7 @@ module State = struct
 
   let add_inbox = Store.Inboxes.add
 
-  let add_history = Store.Histories.add
-
-  let add_messages_history = Store.Payloads_histories.add
+  let save_history = Store.Inbox_history.set
 
   let level_of_hash = State.level_of_hash
 
@@ -76,26 +74,13 @@ module State = struct
             block_level
     | Some inbox -> return inbox
 
-  let history_of_head node_ctxt Layer1.{hash = block_hash; level = block_level}
-      =
+  let history node_ctxt =
     let open Lwt_result_syntax in
     let open Node_context in
-    let*! res = Store.Histories.find node_ctxt.store block_hash in
+    let*! res = Store.Inbox_history.find node_ctxt.store in
     match res with
     | Some history -> return history
-    | None ->
-        (* We won't find inboxes for blocks before the rollup origination level.
-           Fortunately this case will only ever be called once when dealing with
-           the rollup origination block. After that we would always find an
-           inbox. *)
-        let genesis_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
-        if block_level <= genesis_level then
-          return @@ Sc_rollup.Inbox.History.empty ~capacity:60000L
-        else
-          failwith
-            "The inbox history for hash %a is missing."
-            Tezos_crypto.Block_hash.pp
-            block_hash
+    | None -> return @@ Sc_rollup.Inbox.History.empty ~capacity:60000L
 end
 
 let get_messages Node_context.{l1_ctxt; _} head =
@@ -202,7 +187,7 @@ let process_head (node_ctxt : _ Node_context.t)
     *)
     let* predecessor = Layer1.get_predecessor node_ctxt.l1_ctxt head in
     let* inbox = State.inbox_of_head node_ctxt predecessor in
-    let* history = State.history_of_head node_ctxt predecessor in
+    let* history = State.history node_ctxt in
     let*? level = Environment.wrap_tzresult @@ Raw_level.of_int32 level in
     let* ctxt =
       if Raw_level.(level <= node_ctxt.Node_context.genesis_info.level) then
@@ -220,7 +205,7 @@ let process_head (node_ctxt : _ Node_context.t)
         (Raw_level.to_int32 level)
         (List.length collected_messages)
     in
-    let* ( messages_history,
+    let* ( _messages_history,
            messages_hash,
            history,
            inbox,
@@ -239,11 +224,14 @@ let process_head (node_ctxt : _ Node_context.t)
         messages_with_protocol_internal_messages
     in
     let* () = same_inbox_as_layer_1 node_ctxt head_hash inbox in
-    let*! () =
-      State.add_messages_history node_ctxt.store messages_hash messages_history
-    in
     let*! () = State.add_inbox node_ctxt.store head_hash inbox in
-    let*! () = State.add_history node_ctxt.store head_hash history in
+    let*! () = State.save_history node_ctxt.store history in
+    let*! () =
+      Store.Payloads_witness.add
+        node_ctxt.store
+        messages_hash
+        (head_hash, Raw_level.to_int32 level, predecessor_hash, timestamp)
+    in
     return ctxt
   else return (Context.empty node_ctxt.context)
 
@@ -252,13 +240,8 @@ let inbox_of_hash node_ctxt hash =
   let* level = State.level_of_hash node_ctxt.Node_context.store hash in
   State.inbox_of_head node_ctxt {hash; level}
 
-let history_of_hash node_ctxt hash =
-  let open Lwt_result_syntax in
-  let* level = State.level_of_hash node_ctxt.Node_context.store hash in
-  State.history_of_head node_ctxt {hash; level}
-
 let inbox_of_head = State.inbox_of_head
 
-let history_of_head = State.history_of_head
+let history = State.history
 
 let start () = Inbox_event.starting ()
