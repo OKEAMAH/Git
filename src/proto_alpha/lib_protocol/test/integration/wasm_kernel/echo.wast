@@ -1,6 +1,6 @@
 (module
 
- (type $read_t (func (param i32 i32 i32 i32) (result i32)))
+ (type $read_t (func (param i32 i32 i32) (result i32)))
  (type $write_t (func (param i32 i32) (result i32)))
  (type $store_w_t (func (param i32 i32 i32 i32 i32) (result i32)))
 
@@ -92,8 +92,7 @@
  (func (export "kernel_run")
        (local $size i32)
        (local.set $size (call $read_input
-                              (i32.const 220) ;; level_offset
-                              (i32.const 240) ;; id_offset
+                              (i32.const 220) ;; info_addr
                               (i32.const 260) ;; dst
                               (i32.const 3600))) ;; max_bytes
 
