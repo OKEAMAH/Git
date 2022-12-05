@@ -581,7 +581,10 @@ module Inner = struct
       else
         let shard = Array.init t.shard_size (fun _ -> Scalar.(copy zero)) in
         for j = 0 to t.shard_size - 1 do
-          shard.(j) <- Evaluations.get codeword ((t.number_of_shards * j) + i)
+          Evaluations.get_inplace
+            codeword
+            ((t.number_of_shards * j) + i)
+            shard.(j)
         done ;
         loop (i + 1) (IntMap.add i shard map)
     in
