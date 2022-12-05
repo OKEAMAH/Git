@@ -115,6 +115,7 @@ module Inner = struct
 
   (* Operations on vector of scalars *)
   module Evaluations = Bls12_381_polynomial.Evaluations
+  module G1_array = Bls12_381_polynomial.G1_carray
 
   (* Domains for the Fast Fourier Transform (FTT). *)
   module Domains = Bls12_381_polynomial.Domain
@@ -757,11 +758,6 @@ module Inner = struct
     Pairing.pairing_check
       [(cm, committed_offset_monomial); (proof, G2.(negate (copy one)))]
 
-  let inverse domain =
-    let n = Array.length domain in
-    Array.init n (fun i ->
-        if i = 0 then Bls12_381.Fr.(copy one) else Array.get domain (n - i))
-
   let diff_next_power_of_two x =
     let logx = Z.log2 (Z.of_int x) in
     if 1 lsl logx = x then 0 else (1 lsl (logx + 1)) - x
@@ -778,19 +774,18 @@ module Inner = struct
       let log_inf = Z.log2 (Z.of_int ratio) in
       if 1 lsl log_inf < ratio then log_inf else log_inf + 1
     in
-    let domain = Domains.build_power_of_two k |> Domains.inverse |> inverse in
+    let domain = Domains.build_power_of_two k in
     let precompute_srsj j =
       let quotient = (degree - j) / shard_size in
       let padding = diff_next_power_of_two (2 * quotient) in
+      let len = (2 * quotient) + padding in
       let points =
-        Array.init
-          ((2 * quotient) + padding)
-          (fun i ->
+        G1_array.init len (fun i ->
             if i < quotient then
               Srs_g1.get srs (degree - j - ((i + 1) * shard_size))
             else G1.(copy zero))
       in
-      G1.fft_inplace ~domain ~points ;
+      G1_array.evaluation_ecfft_inplace ~domain ~points ;
       points
     in
     (domain, Array.init shard_size precompute_srsj)
@@ -803,12 +798,11 @@ module Inner = struct
    *)
   let multiple_multi_reveals ~chunk_len ~chunk_count ~degree
       ~preprocess:(domain2m, precomputed_srs_part) coefs =
-    let open Bls12_381 in
     let n = chunk_len + chunk_count in
     assert (2 <= chunk_len) ;
     assert (chunk_len < n) ;
     assert (chunk_len < degree) ;
-    assert (is_pow_of_two (Array.length domain2m)) ;
+    assert (is_pow_of_two (Domains.length domain2m)) ;
     let coefs_length = Polynomials.degree coefs + 1 in
     (* We don’t need the first coefficient f₀. *)
     let compute_h_j j =
@@ -819,39 +813,39 @@ module Inner = struct
       let padding = diff_next_power_of_two (2 * quotient) in
       (* fm, 0, …, 0, f₁, f₂, …, fm-1 *)
       let points =
-        Array.init
+        Polynomials.init
           ((2 * quotient) + padding)
           (fun i ->
             if i = 0 && j <> 0 && degree - j < coefs_length then
-              Scalar.copy (Polynomials.get coefs (degree - j))
+              Polynomials.get coefs (degree - j)
             else if i <= quotient + (padding / 2) then Scalar.(copy zero)
             else
               let j = rest + ((i - (quotient + padding)) * chunk_len) in
-              if j < coefs_length then Scalar.copy (Polynomials.get coefs j)
+              if j < coefs_length then Polynomials.get coefs j
               else Scalar.(copy zero))
       in
-      Scalar.fft_inplace ~domain:domain2m ~points ;
-      Array.map2 G1.mul precomputed_srs_part.(j) points
+      Evaluations.evaluation_fft domain2m points
     in
-    let sum = compute_h_j 0 in
-    let rec sum_hj j =
-      if j = chunk_len then ()
-      else
-        let hj = compute_h_j j in
-        (* sum.(i) <- sum.(i) + hj.(i) *)
-        Array.iteri (fun i hij -> sum.(i) <- G1.add sum.(i) hij) hj ;
-        sum_hj (j + 1)
-    in
-    sum_hj 1 ;
+
+    let evaluations = Array.init chunk_len compute_h_j in
+    let h_j = G1_array.mul_arrays ~evaluations ~arrays:precomputed_srs_part in
+
+    let sum = h_j.(0) in
+    for i = 1 to chunk_len - 1 do
+      G1_array.add_arrays_inplace sum h_j.(i)
+    done ;
 
     (* Toeplitz matrix-vector multiplication *)
-    G1.ifft_inplace ~domain:(inverse domain2m) ~points:sum ;
-    let hl = Array.sub sum 0 (Array.length domain2m / 2) in
-
+    G1_array.interpolation_ecfft_inplace ~domain:domain2m ~points:sum ;
+    let h = G1_array.sub sum ~off:0 ~len:(Domains.length domain2m / 2) in
     let phidomain = Domains.build_power_of_two chunk_count in
-    let phidomain = inverse (Domains.inverse phidomain) in
     (* Kate amortized FFT *)
-    G1.fft ~domain:phidomain ~points:hl
+    let hh =
+      G1_array.init (1 lsl chunk_count) (fun _ -> Bls12_381.G1.(copy zero))
+    in
+    G1_array.blit h ~src_off:0 hh ~dst_off:0 ~len:(Domains.length domain2m / 2) ;
+    G1_array.evaluation_ecfft_inplace ~domain:phidomain ~points:hh ;
+    G1_array.to_array hh
 
   (* h = polynomial such that h(y×domain[i]) = zi. *)
   let interpolation_h_poly t y size coefficients =
