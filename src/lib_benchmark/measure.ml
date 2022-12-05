@@ -240,7 +240,7 @@ let save :
     options:options ->
     bench:(c, t) Benchmark.poly ->
     workload_data:t workload_data ->
-    unit =
+    packed_measurement =
  fun ~filename ~options ~bench ~workload_data ->
   let (module Bench) = bench in
   let date = Unix.gmtime (Unix.time ()) in
@@ -277,7 +277,7 @@ let save :
   let _nwritten =
     Lwt_main.run @@ Tezos_stdlib_unix.Lwt_utils_unix.create_file filename str
   in
-  ()
+  Measurement (bench, measurement)
 
 let load : filename:string -> packed_measurement =
  fun ~filename ->
@@ -519,6 +519,14 @@ let perform_benchmark (type c t) (options : options)
     pp_stats
     (collect_stats workload_data) ;
   workload_data
+
+let benchmark_and_save (options : options) (csv_filename : string option)
+    (workload_filename : string) (bench : _ Benchmark.poly) =
+  let workload_data = perform_benchmark options bench in
+  Option.iter
+    (fun filename -> to_csv ~filename ~bench ~workload_data)
+    csv_filename ;
+  save ~filename:workload_filename ~options ~bench ~workload_data
 
 (* ------------------------------------------------------------------------- *)
 (* Helpers for creating basic probes *)

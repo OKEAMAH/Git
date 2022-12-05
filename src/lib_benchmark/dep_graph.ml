@@ -219,6 +219,29 @@ module Solver = struct
             "Dep_graph.Solver.solve: state is not completely solved, \
              aborting.@."
 
+  let unsolve {solved; unsolved} =
+    {
+      solved = [];
+      unsolved =
+        List.map
+          (fun {dependencies; provides; meta} ->
+            {
+              dependencies = Fv_set.empty;
+              undecided_variables = Fv_set.union dependencies provides;
+              meta;
+            })
+          solved
+        @ List.map
+            (fun {dependencies; undecided_variables; meta} ->
+              {
+                dependencies = Fv_set.empty;
+                undecided_variables =
+                  Fv_set.union dependencies undecided_variables;
+                meta;
+              })
+            unsolved;
+    }
+
   let unsolved_of_fvs =
     let c = ref 0 in
     fun fvs data ->
@@ -354,43 +377,42 @@ let find_model_or_generic model_name model_list =
   | None -> List.assoc_opt ~equal:String.equal "*" model_list
   | res -> res
 
+let prune filename =
+  (* We assume filenames are of the form <dir>/<name>.workload, where <dir>
+     is common amongst all files. This function extracts only the <name> component,
+     and raises an exception if the suffix does not match.
+  *)
+  Filename.basename filename
+  |> Filename.chop_suffix_opt ~suffix:".workload"
+  |> WithExceptions.Option.get ~loc:__LOC__
+
+let add_file (model_name : string) (solver_state, table) (filename : string) =
+  let filename_short = prune filename in
+  let measurement = Measure.load ~filename in
+  match measurement with
+  | Measure.Measurement ((module Bench), m) -> (
+      match find_model_or_generic model_name Bench.models with
+      | None -> (solver_state, table)
+      | Some model ->
+          let () = Format.eprintf "Loading %s in dependency graph@." filename in
+          Hashtbl.add table filename_short measurement ;
+          let names =
+            List.fold_left
+              (fun acc {Measure.workload; _} ->
+                let names = get_free_variables model workload in
+                Free_variable.Set.union names acc)
+              Free_variable.Set.empty
+              m.Measure.workload_data
+          in
+          (add_names solver_state filename_short names, table))
+
 let load_files (model_name : string) (files : string list) =
   (* Use a table to store loaded measurements *)
   let table = Hashtbl.create 51 in
-  let prune filename =
-    (* We assume filenames are of the form <dir>/<name>.workload, where <dir>
-       is common amongst all files. This function extracts only the <name> component,
-       and raises an exception if the suffix does not match.
-    *)
-    Filename.basename filename
-    |> Filename.chop_suffix_opt ~suffix:".workload"
-    |> WithExceptions.Option.get ~loc:__LOC__
-  in
-  let state =
-    List.fold_left
-      (fun graph filename ->
-        let filename_short = prune filename in
-        let measurement = Measure.load ~filename in
-        match measurement with
-        | Measure.Measurement ((module Bench), m) -> (
-            match find_model_or_generic model_name Bench.models with
-            | None -> graph
-            | Some model ->
-                let () =
-                  Format.eprintf "Loading %s in dependency graph@." filename
-                in
-                Hashtbl.add table filename_short measurement ;
-                let names =
-                  List.fold_left
-                    (fun acc {Measure.workload; _} ->
-                      let names = get_free_variables model workload in
-                      Free_variable.Set.union names acc)
-                    Free_variable.Set.empty
-                    m.Measure.workload_data
-                in
-                add_names graph filename_short names))
-      Solver.empty_state
-      files
+  let state, table =
+    List.fold_left (add_file model_name) (Solver.empty_state, table) files
   in
   let state = Solver.solve ~force:true state in
   (to_graph state.solved, table)
+
+let () = ignore Solver.unsolve

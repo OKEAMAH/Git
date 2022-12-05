@@ -92,15 +92,12 @@ let benchmark_cmd (bench_pattern : Namespace.t)
   let bench = Benchmark.ex_unpack bench in
   match bench with
   | Tezos_benchmark.Benchmark.Ex bench ->
-      let workload_data = Measure.perform_benchmark bench_opts.options bench in
-      Option.iter
-        (fun filename -> Measure.to_csv ~filename ~bench ~workload_data)
-        bench_opts.csv_export ;
-      Measure.save
-        ~filename:bench_opts.save_file
-        ~options:bench_opts.options
-        ~bench
-        ~workload_data
+      ignore
+        (Measure.benchmark_and_save
+           bench_opts.options
+           bench_opts.csv_export
+           bench_opts.save_file
+           bench)
 
 let rec infer_cmd model_name workload_data solver infer_opts =
   Pyinit.pyinit () ;
