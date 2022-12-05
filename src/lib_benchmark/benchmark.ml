@@ -55,8 +55,11 @@ module type S = sig
   (** Optional conversion to vector, for report generation purposes *)
   val workload_to_vector : workload -> Sparse_vec.String.t
 
-  (** Cost models, with a given local name (string) for reference *)
-  val models : (string * workload Model.t) list
+  (** Cost models, with a given local name (string) for reference, and an
+      optional parameter. If given , the inference will try to use this benchmark
+      to infer the given parameter. We ensure at compilation that for every registered
+      free variable, at most one benchmark is forced to solve it. *)
+  val models : (string * workload Model.t * Free_variable.t option) list
 
   (** Benchmark generator *)
   include Generator.S with type config := config and type workload := workload
