@@ -865,6 +865,47 @@ let test_deposit_then_publish () =
   in
   assert_true ctxt
 
+(* Two stakers deposit, one of them publishes and cements its comitment.
+   The other one refine on a follow-up commitment of the previously created LCC.
+*)
+let test_refine_from_behind_lcc () =
+  let* ctxt, rollup, genesis_hash, staker1, staker2 =
+    originate_rollup_and_deposit_with_two_stakers ()
+  in
+  let challenge_window =
+    Constants_storage.sc_rollup_challenge_window_in_blocks ctxt
+  in
+  let level l = valid_inbox_level ctxt l in
+  let commitment1 =
+    Commitment_repr.
+      {
+        predecessor = genesis_hash;
+        inbox_level = level 1l;
+        number_of_ticks = number_of_ticks_exn 1232909L;
+        compressed_state = Sc_rollup_repr.State_hash.zero;
+      }
+  in
+  let* c1, _level, ctxt =
+    lift @@ advance_level_n_refine_stake ctxt rollup staker1 commitment1
+  in
+  let ctxt = Raw_context.Internal_for_tests.add_level ctxt challenge_window in
+  let* ctxt, _ =
+    lift @@ Sc_rollup_stake_storage.cement_commitment ctxt rollup c1
+  in
+  let commitment2 =
+    Commitment_repr.
+      {
+        predecessor = c1;
+        inbox_level = level 2l;
+        number_of_ticks = number_of_ticks_exn 1232909L;
+        compressed_state = Sc_rollup_repr.State_hash.zero;
+      }
+  in
+  let* _c2, _level, ctxt =
+    lift @@ advance_level_n_refine_stake ctxt rollup staker2 commitment2
+  in
+  assert_true ctxt
+
 let test_publish_missing_rollup () =
   let staker =
     Sc_rollup_repr.Staker.of_b58check_exn "tz1SdKt9kjPp1HRQFkBmXtBhgMfvdgFhSjmG"
@@ -2715,6 +2756,11 @@ let tests =
        is allowed"
       `Quick
       test_refine_commitment_with_inbox_greater_than_current;
+    Tztest.tztest
+      "Previously staked commitment is behind LCC, but still possible to stake \
+       on next commitment"
+      `Quick
+      test_refine_from_behind_lcc;
     Tztest.tztest "stake then publish" `Quick test_deposit_then_publish;
     Tztest.tztest "publish with no rollup" `Quick test_publish_missing_rollup;
     Tztest.tztest

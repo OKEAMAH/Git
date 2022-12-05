@@ -364,6 +364,9 @@ let refine_stake ctxt rollup staker staked_on commitment =
   let* lcc, ctxt = Commitment_storage.last_cemented_commitment ctxt rollup in
   let* ctxt = assert_refine_conditions_met ctxt rollup lcc commitment in
   let*? ctxt, new_hash = Sc_rollup_commitment_storage.hash ctxt commitment in
+  let* is_staked_on_lcc_or_ancestor, ctxt =
+    if_staked_on_lcc_or_ancestor ctxt rollup staker
+  in
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2559
      Add a test checking that L2 nodes can catch up after going offline. *)
@@ -386,9 +389,16 @@ let refine_stake ctxt rollup staker staked_on commitment =
          another commit is a valid operation.
 
     *)
-    if Commitment_hash.(node = staked_on) then (
-      (* Previously staked commit found:
-         Insert new commitment if not existing *)
+    if
+      Commitment_hash.(
+        node = staked_on || (is_staked_on_lcc_or_ancestor && node = lcc))
+    then (
+      (* Insert new commitment if not existing.
+         Two reasons when we fall into this branch are possible:
+          1. Previously staked commit found
+          2. Traversing ended up in LCC and previous staked_on is LLC or behind it,
+             hence, the commitment is a follow up of the previous staked_on
+      *)
       let* ctxt, commitment_size_diff, commit_existed =
         Store.Commitments.add (ctxt, rollup) new_hash commitment
       in
