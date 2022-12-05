@@ -66,11 +66,14 @@ let with_store f =
 let test_read_fail () =
   with_store @@ fun dal parameters store ->
   let open Lwt_result_syntax in
-  let share_size = Cryptobox.encoded_share_size dal in
+  let value_size = Cryptobox.encoded_share_size dal in
   let commitment, _ =
     shards_from_bytes dal (Bytes.make parameters.slot_size 'a')
   in
-  let*! failed_shards = Shard_store.read_shards ~share_size store commitment in
+  let commitment_b58 = Cryptobox.Commitment.to_b58check commitment in
+  let*! failed_shards =
+    Shard_store.read_values ~value_size store commitment_b58
+  in
   let () =
     match failed_shards with
     | Error [Shard_store.Resource_not_found s]
@@ -78,7 +81,9 @@ let test_read_fail () =
         ()
     | _ -> assert false
   in
-  let*! failed_shard = Shard_store.read_shard ~share_size store commitment 0 in
+  let*! failed_shard =
+    Shard_store.read_values ~value_size store commitment_b58
+  in
   let () =
     match failed_shard with
     | Error [Shard_store.Resource_not_found s]
@@ -89,15 +94,24 @@ let test_read_fail () =
   in
   return_unit
 
+let shards_to_seq shards =
+  Cryptobox.IntMap.to_seq shards |> Seq.map (fun (k, v) -> (k, v))
+
 let test_wrong_shard_size () =
   with_store @@ fun dal parameters store ->
   let open Lwt_result_syntax in
   let commitment, shards =
     shards_from_bytes dal (Bytes.make parameters.slot_size 'a')
   in
-  let* () = Shard_store.write_shards store commitment shards in
+  let commitment_b58 = Cryptobox.Commitment.to_b58check commitment in
+  let* () =
+    Shard_store.write_values
+      store
+      ~subpath:commitment_b58
+      (shards_to_seq shards)
+  in
   let*! failed_shards =
-    Shard_store.read_shards ~share_size:22 store commitment
+    Shard_store.read_values ~value_size:22 store commitment_b58
   in
   let () =
     match failed_shards with
@@ -113,18 +127,29 @@ let test_rw () =
   let commitment, shards =
     shards_from_bytes dal (Bytes.make parameters.slot_size 'a')
   in
-  let* () = Shard_store.write_shards store commitment shards in
+  let commitment_b58 = Cryptobox.Commitment.to_b58check commitment in
+  let* () =
+    Shard_store.write_values
+      store
+      ~subpath:commitment_b58
+      (Cryptobox.IntMap.to_seq shards |> Seq.map (fun (k, v) -> (k, v)))
+  in
   let* shards_extracted =
-    Shard_store.read_shards ~share_size store commitment
+    Shard_store.read_values ~value_size:share_size store commitment_b58
   in
   print_endline
   @@ Format.sprintf
        "%d %d"
        (Cryptobox.IntMap.cardinal shards)
-       (Cryptobox.IntMap.cardinal shards_extracted) ;
+       (List.length shards_extracted) ;
   assert (
-    Cryptobox.IntMap.bindings shards_extracted
-    = Cryptobox.IntMap.bindings shards) ;
+    Seq.equal
+      (fun x1 x2 -> (x1.Shard_store.key, x1.value) = x2)
+      (List.to_seq
+      @@ List.sort
+           (fun x1 x2 -> compare x1.Shard_store.key x2.key)
+           shards_extracted)
+      (Cryptobox.IntMap.to_seq shards)) ;
   return_unit
 
 let tests_store =
