@@ -24,12 +24,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** [remove_staker context rollup staker] forcibly removes the given [staker]
-    and confiscates their frozen deposits.
-
-    Any commitments no longer staked on are removed and storage reclaimed by
-    [remove_staker]. Because of this there is no need to explicitly reject
-    commitments.
+(** [remove_staker context rollup staker] forcibly removes
+    the given [staker] and confiscates their frozen deposits.
 
     May fail with:
     {ul

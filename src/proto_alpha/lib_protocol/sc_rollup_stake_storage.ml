@@ -289,7 +289,7 @@ let find_commitment_to_deallocate ctxt rollup commitment_hash
   in
   aux ctxt commitment_hash num_commitments_to_keep
 
-let decrease_commitment_stake_count ctxt rollup node =
+let _decrease_commitment_stake_count ctxt rollup node =
   let open Lwt_result_syntax in
   let* new_count, _size_diff, ctxt =
     modify_commitment_stake_count ctxt rollup node Int32.pred
@@ -504,31 +504,7 @@ let remove_staker ctxt rollup staker =
         Store.Stakers.remove_existing (ctxt, rollup) staker
       in
       let* ctxt = modify_staker_count ctxt rollup Int32.pred in
-
-      (* TODO: https://gitlab.com/tezos/tezos/-/issues/4307
-         Check value of [max_lookahead_in_blocks] against gas exhaustion
-         during this function execution. *)
-      let rec go node ctxt =
-        (*
-
-           The recursive calls of this function are protected from
-           infinite recursion because [Commitment_storage] and
-           [Commitment_stake_count] are using carbonated storage.
-
-           Hence, at each step of the traversal, the gas strictly
-           decreases.
-
-        *)
-        if Commitment_hash.(node = lcc) then return ctxt
-        else
-          let* pred, ctxt =
-            Commitment_storage.get_predecessor_unsafe ctxt rollup node
-          in
-          let* ctxt = decrease_commitment_stake_count ctxt rollup node in
-          (go [@ocaml.tailcall]) pred ctxt
-      in
-      let+ ctxt = go staked_on ctxt in
-      (ctxt, balance_updates)
+      return (ctxt, balance_updates)
 
 module Internal_for_tests = struct
   let deposit_stake = deposit_stake
