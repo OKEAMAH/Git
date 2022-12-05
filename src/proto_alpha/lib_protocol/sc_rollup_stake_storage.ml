@@ -504,6 +504,13 @@ let remove_staker ctxt rollup staker =
         Store.Stakers.remove_existing (ctxt, rollup) staker
       in
       let* ctxt = modify_staker_count ctxt rollup Int32.pred in
+      (*
+
+         FIXME: https://gitlab.com/tezos/tezos/-/issues/4394
+         We need to (lazily) clean up the commitments staked by
+         this staker if they reach 0 stakes.
+
+      *)
       return (ctxt, balance_updates)
 
 module Internal_for_tests = struct
