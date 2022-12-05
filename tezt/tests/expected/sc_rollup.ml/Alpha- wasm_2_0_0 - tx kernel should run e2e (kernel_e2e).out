@@ -42,7 +42,7 @@ This sequence of operations was run:
 
 ./octez-client --wait none transfer 0 from bootstrap1 to '[CONTRACT_HASH]' --burn-cap 1000 --arg 'Pair (Pair "[SC_ROLLUP_HASH]" "[TX_ROLLUP_PUBLIC_KEY_HASH]") (Pair 450 "Hello, Ticket!")'
 Node is bootstrapped.
-Estimated gas: 4055.206 units (will add 100 for safety)
+Estimated gas: 4056.588 units (will add 100 for safety)
 Estimated storage: 67 bytes added (will add 20 for safety)
 Operation successfully injected in the node.
 Operation hash is '[OPERATION_HASH]'
@@ -55,7 +55,7 @@ This sequence of operations was run:
     From: [PUBLIC_KEY_HASH]
     Fee to the baker: ꜩ0.00078
     Expected counter: 3
-    Gas limit: 4156
+    Gas limit: 4157
     Storage limit: 87 bytes
     Balance updates:
       [PUBLIC_KEY_HASH] ... -ꜩ0.00078
@@ -82,7 +82,7 @@ This sequence of operations was run:
           Parameter: (Pair "[TX_ROLLUP_PUBLIC_KEY_HASH]"
                            (Pair [MICHELINE_KT1_BYTES] (Pair "Hello, Ticket!" 450)))
           This transaction was successfully applied
-          Consumed gas: 1004.676
+          Consumed gas: 1006.092
           Ticket updates:
             Ticketer: [CONTRACT_HASH]
             Content type: string
@@ -102,7 +102,7 @@ This sequence of operations was run:
 
 ./octez-client --wait none send sc rollup message '[SC_ROLLUP_EXTERNAL_MESSAGES]' from bootstrap2
 Node is bootstrapped.
-Estimated gas: 1000.518 units (will add 100 for safety)
+Estimated gas: 1002.014 units (will add 100 for safety)
 Estimated storage: no bytes added
 Operation successfully injected in the node.
 Operation hash is '[OPERATION_HASH]'
@@ -115,14 +115,14 @@ This sequence of operations was run:
     From: [PUBLIC_KEY_HASH]
     Fee to the baker: ꜩ0.000602
     Expected counter: 1
-    Gas limit: 1101
+    Gas limit: 1103
     Storage limit: 0 bytes
     Balance updates:
       [PUBLIC_KEY_HASH] ... -ꜩ0.000602
       payload fees(the block proposer) ....... +ꜩ0.000602
     Smart contract rollup messages submission
       This smart contract rollup messages submission was successfully applied
-      Consumed gas: 1000.518
+      Consumed gas: 1002.048
 
 
 ./octez-sc-rollup-client-alpha rpc get /global/block/head/state_hash

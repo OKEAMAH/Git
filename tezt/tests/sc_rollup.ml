@@ -3456,47 +3456,6 @@ let tx_kernel_withdrawal_repr ~counter account_pk dest ticket entrypoint =
   in
   signer_bytes ^ counter ^ contents
 
-(* Helper contracts for depositing/withdrawing tickets *)
-let mint_and_deposit_ticket_to_rollup =
-  {|
-{ parameter
-    (pair (pair (contract %rollup (pair string (ticket string))) (string %rollup_account))
-          (pair (nat %ticket_amount) (string %ticket_content))) ;
-  storage unit ;
-  code { CAR ;
-         DUP ;
-         CAR ;
-         CAR ;
-         PUSH mutez 0 ;
-         DUP 3 ;
-         CDR ;
-         CAR ;
-         DUP 4 ;
-         CDR ;
-         CDR ;
-         TICKET ;
-         ASSERT_SOME ;
-         DIG 3 ;
-         CAR ;
-         CDR ;
-         PAIR ;
-         TRANSFER_TOKENS ;
-         PUSH unit Unit ;
-         NIL operation ;
-         DIG 2 ;
-         CONS ;
-         PAIR } }   |}
-
-let recieve_tickets_contract =
-  {|
-     { parameter (or (unit %burn_all_tickets) (ticket %receive_tickets string)) ;
-       storage (list (ticket string)) ;
-       code { UNPAIR ;
-              IF_LEFT
-                { DROP 2 ; NIL (ticket string) ; NIL operation ; PAIR }
-                { CONS ; NIL operation ; PAIR } } }
-                                       |}
-
 let test_tx_kernel_e2e protocol =
   let commitment_period = 2 and challenge_window = 5 in
   Dal.with_layer1 ~protocol ~commitment_period ~challenge_window
@@ -3563,15 +3522,15 @@ let test_tx_kernel_e2e protocol =
   (* Originate a contract that will mint and transfer tickets to the tx kernel. *)
   let* level, mint_and_deposit_contract =
     (* Originate forwarder contract to send internal messages to rollup *)
-    let* mint_and_deposit_contract =
-      Client.originate_contract
-        ~alias:"rollup_deposit"
+    let* _, mint_and_deposit_contract =
+      Client.originate_contract_at (* ~alias:"rollup_deposit" *)
         ~amount:Tez.zero
         ~src:Constant.bootstrap1.alias
-        ~prg:mint_and_deposit_ticket_to_rollup
         ~init:"Unit"
         ~burn_cap:Tez.(of_int 1)
         client
+        ["mini_scenarios"; "sc_rollup_mint_and_deposit_ticket"]
+        protocol
     in
     let* () = Client.bake_for_and_wait client in
     Log.info
@@ -3619,16 +3578,16 @@ let test_tx_kernel_e2e protocol =
   let* level =
     test_deposit level @@ Tezos_crypto.Bls.Public_key_hash.to_b58check pkh
   in
-  (* Originate forwarder contract to send internal messages to rollup *)
-  let* receive_tickets_contract =
-    Client.originate_contract
-      ~alias:"rollup_withdraw"
+  (* originate ticket receiver contract *)
+  let* _, receive_tickets_contract =
+    Client.originate_contract_at
       ~amount:Tez.zero
       ~src:Constant.bootstrap1.alias
-      ~prg:recieve_tickets_contract
       ~init:"{}"
       ~burn_cap:Tez.(of_int 1)
       client
+      ["mini_scenarios"; "sc_rollup_receive_tickets"]
+      protocol
   in
   let* () = Client.bake_for_and_wait client in
   Log.info
