@@ -110,31 +110,30 @@ end = struct
         }
           -> any path
 
-    let root = Root "slots"
-
     let mk_internal prefix ext = Internal {prefix; ext}
+
+    let ( / ) a b = mk_internal a b
 
     let mk_leaf ?(is_collection = true) prefix ext =
       Leaf {prefix; ext; is_collection}
 
-    let slot_by_commitment commitment = mk_internal root commitment
+    module Commitment = struct
+      let root = Root "commitments"
 
-    let slot_ids_by_commitment commitment =
-      mk_internal (slot_by_commitment commitment) "slot_ids"
+      let with_commitment commitment = root / commitment
 
-    let slot_id_by_commitment commitment slot_id =
-      let {Services.Types.slot_level; slot_index} = slot_id in
-      mk_leaf
-        ~is_collection:false
-        (slot_ids_by_commitment commitment)
-        [Int32.to_string slot_level; Int.to_string slot_index]
+      let headers commitment = with_commitment commitment / "slot_ids"
 
-    let slot_shards_by_commitment commitment =
-      mk_internal (slot_by_commitment commitment) "shards"
+      let header commitment slot_id =
+        let {Services.Types.slot_level; slot_index} = slot_id in
+        mk_leaf
+          ~is_collection:false
+          (headers commitment)
+          [Int32.to_string slot_level; Int.to_string slot_index]
 
-    let slot_shard_by_commitment commitment index =
-      mk_leaf (slot_shards_by_commitment commitment) [string_of_int index]
+      let shards commitment = with_commitment commitment / "shards"
 
+    
     let included_slot_header_in_l1 level slot_index =
       let mk a b = mk_internal b a in
       mk "levels" root
@@ -159,19 +158,26 @@ end = struct
            "others")
         [commitment]
 
-    let by_level level =
-      mk_internal (mk_internal root "levels") (Int32.to_string level)
+    let shard commitment index =
+      mk_leaf (shards commitment) [string_of_int index]
 
-    let by_index internal slot_index =
-      mk_internal (mk_internal internal "slot_index") (Int.to_string slot_index)
+  end
+  
+    module Levels = struct
+      let root = Root "levels"
 
-    let by_id id =
-      let {Services.Types.slot_level; slot_index} = id in
-      let path = by_level slot_level in
-      by_index path slot_index
+      let with_level level = root / Int32.to_string level
 
-    let commitment_by_id id =
-      mk_leaf ~is_collection:false (by_id id) ["accepted"; "commitment"]
+      let with_index index =
+        let {Services.Types.slot_level; slot_index} = index in
+        with_level slot_level / Int.to_string slot_index
+
+      let commitment index =
+        mk_leaf
+          ~is_collection:false
+          (with_index index)
+          ["accepted"; "commitment"]
+    end
 
 
     let data_path (type a) (p : a path) =
@@ -196,20 +202,21 @@ end = struct
 
   type path = string list
 
-  let slot_by_commitment c = Path_internals.(data_path @@ slot_by_commitment c)
+  let slot_by_commitment c =
+    Path_internals.(data_path @@ Commitment.with_commitment c)
 
   let slot_id_by_commitment c slot_id =
-    Path_internals.(data_path @@ slot_id_by_commitment c slot_id)
+    Path_internals.(data_path @@ Commitment.header c slot_id)
 
   let slot_shard_by_commitment c index =
-    Path_internals.(data_path @@ slot_shard_by_commitment c index)
+    Path_internals.(data_path @@ Commitment.shard c index)
 
   let slot_shards_by_commitment c =
-    Path_internals.(data_path @@ slot_shards_by_commitment c)
+    Path_internals.(data_path @@ Commitment.shards c)
 
   let successfully_included_slot_header_in_l1 ~published_level ~slot_index =
     let commitment, status =
-      Path_internals.successfully_included_slot_header_in_l1
+      Path_internals.Commitment.successfully_included_slot_header_in_l1
         published_level
         slot_index
     in
@@ -217,9 +224,9 @@ end = struct
 
   let other_slot_header_in_l1 ~published_level ~slot_index ~commitment =
     Path_internals.(
-      data_path @@ other_slot_header_in_l1 published_level slot_index commitment)
+      data_path @@ Commitment.other_slot_header_in_l1 published_level slot_index commitment)
 
-  let commitment_by_id id = Path_internals.(data_path @@ commitment_by_id id)
+  let commitment_by_id id = Path_internals.(data_path @@ Levels.commitment id)
 end
 
 module Legacy = struct
