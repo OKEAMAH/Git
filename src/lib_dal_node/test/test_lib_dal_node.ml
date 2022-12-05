@@ -55,6 +55,16 @@ let shards_from_bytes dal b =
   let shards = Cryptobox.shards_from_polynomial dal polynomial in
   (commitment, shards)
 
+module Shard_store = Storage.Make (struct
+  type value = Cryptobox.share
+
+  type key = int
+
+  let value_encoding = Cryptobox.share_encoding
+
+  let key_encoding = Data_encoding.int31
+end)
+
 let with_store f =
   let open Lwt_result_syntax in
   Lwt_utils_unix.with_tempdir "dal_shard_store_dir" @@ fun base_dir ->
@@ -132,7 +142,7 @@ let test_rw () =
     Shard_store.write_values
       store
       ~subpath:commitment_b58
-      (Cryptobox.IntMap.to_seq shards |> Seq.map (fun (k, v) -> (k, v)))
+      (Cryptobox.IntMap.to_seq shards)
   in
   let* shards_extracted =
     Shard_store.read_values ~value_size:share_size store commitment_b58

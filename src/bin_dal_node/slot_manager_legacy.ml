@@ -125,7 +125,7 @@ let save store watcher slot_header shards =
   let open Lwt_result_syntax in
   let slot_header_b58 = Cryptobox.Commitment.to_b58check slot_header in
   let* () =
-    Shard_store.write_values
+    Store.Shards.write_values
       store
       ~subpath:slot_header_b58
       (Cryptobox.IntMap.to_seq shards)
@@ -169,14 +169,15 @@ let save_shards store watcher cryptobox slot_header shards =
   in
   save store watcher slot_header shards
 
-let shard_of_kv kv = Cryptobox.{index = kv.Shard_store.key; share = kv.value}
+let shard_of_kv kv =
+  Cryptobox.{index = kv.Store.Shards.key; share = kv.Store.Shards.value}
 
 let get_shard dal_constants store slot_header shard_id =
   let open Lwt_result_syntax in
   let slot_header_b58 = Cryptobox.Commitment.to_b58check slot_header in
   let share_size = Cryptobox.encoded_share_size dal_constants in
   let* r =
-    Shard_store.read_value
+    Store.Shards.read_value
       ~value_size:share_size
       store
       ~subpath:slot_header_b58
@@ -189,7 +190,7 @@ let get_shards dal_constants store slot_header shard_ids =
   let slot_header_b58 = Cryptobox.Commitment.to_b58check slot_header in
   let share_size = Cryptobox.encoded_share_size dal_constants in
   let* r =
-    Shard_store.read_values_subset
+    Store.Shards.read_values_subset
       ~value_size:share_size
       store
       ~subpath:slot_header_b58
@@ -202,11 +203,11 @@ let get_slot cryptobox store slot_header =
   let slot_header_b58 = Cryptobox.Commitment.to_b58check slot_header in
   let share_size = Cryptobox.encoded_share_size cryptobox in
   let* shards =
-    Shard_store.read_values ~value_size:share_size store slot_header_b58
+    Store.Shards.read_values ~value_size:share_size store slot_header_b58
   in
   let shards =
     shards |> List.to_seq
-    |> Seq.map (fun x -> (x.Shard_store.key, x.value))
+    |> Seq.map (fun x -> (x.Store.Shards.key, x.Store.Shards.value))
     |> Cryptobox.IntMap.of_seq
   in
   let*? polynomial = polynomial_from_shards cryptobox shards in

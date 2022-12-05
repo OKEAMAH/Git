@@ -23,12 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** A binary content storage on disk.
-
-    To each stored slot is associated a directory named
-    after the b58 encoding of the slot commitment. The shards are files in this
-    directory, named after the shard index and whose content is a byte
-    representation of the content. *)
+(** A binary content storage on disk. *)
 
 type error += Resource_not_found of string
 
@@ -36,6 +31,3 @@ module Make (Stored_data : Storage_intf.STORED_DATA) :
   Storage_intf.STORAGE
     with type value = Stored_data.value
      and type key = Stored_data.key
-
-include
-  Storage_intf.STORAGE with type value = Cryptobox.share and type key = int

@@ -220,13 +220,3 @@ module Make (Stored_data : Storage_intf.STORED_DATA) = struct
     in
     return {key; value}
 end
-
-include Make (struct
-  type value = Cryptobox.share
-
-  type key = int
-
-  let value_encoding = Cryptobox.share_encoding
-
-  let key_encoding = Data_encoding.int31
-end)
