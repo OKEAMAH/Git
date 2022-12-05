@@ -118,7 +118,10 @@ module Micheline_common = struct
            ~coeff:(fv (Format.asprintf "%s_micheline_bytes" name)))
 
   let models name =
-    [("micheline", model_size name); ("micheline_bytes", model_bytes name)]
+    [
+      ("micheline", model_size name, None);
+      ("micheline_bytes", model_bytes name, None);
+    ]
 end
 
 module Encoding_micheline : Benchmark.S = struct

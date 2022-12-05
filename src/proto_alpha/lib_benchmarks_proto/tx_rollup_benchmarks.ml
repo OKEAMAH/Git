@@ -78,12 +78,14 @@ module Inbox_add_message : Benchmark.S = struct
     Sparse_vec.String.of_list
       [("n_messages", float_of_int @@ List.length messages)]
 
+  let coeff = fv "n_message_coeff"
+
   let models =
     let conv (messages, _) = (List.length messages, ()) in
     [
       ( "tx_rollup",
-        Model.make ~conv ~model:(Model.logn ~name ~coeff:(fv "n_message_coeff"))
-      );
+        Model.make ~conv ~model:(Model.logn ~name ~coeff),
+        Some coeff );
     ]
 
   let create_benchmarks ~rng_state ~bench_num ({max_messages} : config) =
@@ -147,7 +149,8 @@ module Commitment_full_compact_bench : Benchmark.S = struct
             (Model.affine
                ~name
                ~intercept:(fv "full_compact_bench_intercept")
-               ~coeff:(fv "n_messages_coeff")) );
+               ~coeff:(fv "n_messages_coeff")),
+        None );
     ]
 
   let create_benchmarks ~rng_state ~bench_num ({max_messages} : config) =
@@ -584,7 +587,8 @@ module Verify_proof_compute_bench : Benchmark.S = struct
             (Model.bilinear
                ~name
                ~coeff1:(fv "proof_size_coeff")
-               ~coeff2:(fv "message_size_coeff")) );
+               ~coeff2:(fv "message_size_coeff")),
+        None );
     ]
 
   let proof_size proof =

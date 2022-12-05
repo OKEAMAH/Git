@@ -94,7 +94,7 @@ module Micheline_nodes_benchmark : Benchmark.S = struct
                    "%s_ns_per_node_coeff"
                    (Namespace.basename name))))
 
-  let models = [("size_translator_model", size_based_model)]
+  let models = [("size_translator_model", size_based_model, None)]
 
   let micheline_nodes_benchmark node =
     let nodes = Script_repr.micheline_nodes node in
@@ -119,13 +119,16 @@ module Script_repr_strip_annotations : Benchmark.S = struct
 
   let info = "Benchmarking Script_repr.strip_annotations"
 
+  let coeff = fv "nodes"
+
   let strip_annotations_model =
     Model.(
       make
         ~conv:(fun {micheline_nodes} -> (micheline_nodes, ()))
-        ~model:(linear ~name ~coeff:(fv "nodes")))
+        ~model:(linear ~name ~coeff))
 
-  let models = [("strip_annotations_model", strip_annotations_model)]
+  let models =
+    [("strip_annotations_model", strip_annotations_model, Some coeff)]
 
   let create_benchmark rng_state () =
     let node = Sampler.sample rng_state in

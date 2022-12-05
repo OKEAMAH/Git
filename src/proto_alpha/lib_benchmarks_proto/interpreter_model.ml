@@ -537,6 +537,12 @@ let interpreter_model ?amplification sub_model =
       ((module Def) : Model.applied))
     ~sub_models:[sub_model]
 
-let make_model ?amplification instr_name =
+let make_model ?amplification ~intercept instr_name =
+  (* note: doesn't fail if the variable is not registered. *)
+  let solve =
+    if intercept then
+      Some (fv (sf "%s_const" (name_of_instr_or_cont instr_name)))
+    else None
+  in
   let ir_model = ir_model instr_name in
-  [("interpreter", interpreter_model ?amplification ir_model)]
+  [("interpreter", interpreter_model ?amplification ir_model, solve)]

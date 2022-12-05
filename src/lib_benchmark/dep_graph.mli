@@ -61,7 +61,8 @@ module T : module type of Graph.Topological.Make (G)
 (** [find_model_or_generic model_name model_list] returns the model matching
     the local name [model_name] from a [model_list] of a benchmark. If none
     match, then searches for models named ["*"]. *)
-val find_model_or_generic : string -> (string * 'a) list -> 'a option
+val find_model_or_generic :
+  string -> (string * 'a * 'b) list -> ('a * 'b) option
 
 (** [load_files model_name files] loads [.workload] files given in [files],
     looks for the model [model_name], and if found, adds it to a dependency

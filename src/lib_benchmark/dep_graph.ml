@@ -373,6 +373,7 @@ let to_graph (solved : string Solver.solved list) =
 (* Generic models, named "*", are models used to infer generic parameters used in
    many other benchmarks, namely the timer overhead, and the Lwt_main.run call *)
 let find_model_or_generic model_name model_list =
+  let model_list = List.map (fun (a, b, c) -> (a, (b, c))) model_list in
   match List.assoc_opt ~equal:String.equal model_name model_list with
   | None -> List.assoc_opt ~equal:String.equal "*" model_list
   | res -> res
@@ -393,7 +394,7 @@ let add_file (model_name : string) (solver_state, table) (filename : string) =
   | Measure.Measurement ((module Bench), m) -> (
       match find_model_or_generic model_name Bench.models with
       | None -> (solver_state, table)
-      | Some model ->
+      | Some (model, _) ->
           let () = Format.eprintf "Loading %s in dependency graph@." filename in
           Hashtbl.add table filename_short measurement ;
           let names =

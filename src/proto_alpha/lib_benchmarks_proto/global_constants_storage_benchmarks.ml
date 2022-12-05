@@ -311,14 +311,14 @@ module Set_add : Benchmark.S = struct
   let workload_to_vector : workload -> Sparse_vec.String.t =
    fun size -> Sparse_vec.String.of_list [("size", float_of_int size)]
 
+  let coeff = fv "set_add_coeff"
+
   (*  As an OCaml set is a balanced binary tree, complexity is O(log n). *)
   let models =
     [
       ( "Set_add",
-        Model.(
-          make
-            ~conv:(fun size -> (size, ()))
-            ~model:(logn ~name ~coeff:(fv "set_add_coeff"))) );
+        Model.(make ~conv:(fun size -> (size, ())) ~model:(logn ~name ~coeff)),
+        Some coeff );
     ]
 
   module Int_set = Set.Make (Int)
@@ -362,15 +362,15 @@ module Set_elements : Benchmark.S = struct
   let workload_to_vector : workload -> Sparse_vec.String.t =
    fun size -> Sparse_vec.String.of_list [("size", float_of_int size)]
 
+  let coeff = fv "set_elements_coeff"
+
   (* Cost of retrieving all elements from the set is linear with the size
       of the set.*)
   let models =
     [
       ( "Set_elements",
-        Model.(
-          make
-            ~conv:(fun size -> (size, ()))
-            ~model:(linear ~name ~coeff:(fv "set_elements_coeff"))) );
+        Model.(make ~conv:(fun size -> (size, ())) ~model:(linear ~name ~coeff)),
+        Some coeff );
     ]
 
   module Int_set = Set.Make (Int)
@@ -434,7 +434,8 @@ module Script_expr_hash_of_b58check_opt : Benchmark.S = struct
               (Model.affine
                  ~name
                  ~intercept:(fv "b58_check_intercept")
-                 ~coeff:(fv "b58_check_coeff"))) );
+                 ~coeff:(fv "b58_check_coeff"))),
+        None );
     ]
 
   (* To create realistic benchmarks, we generate a random Micheline expression,
@@ -483,14 +484,14 @@ struct
   let workload_to_vector : workload -> Sparse_vec.String.t =
    fun size -> Sparse_vec.String.of_list [("size", float_of_int size)]
 
+  let coeff = fv "blake2b_hash_coeff"
+
   (** The cost of a Blake2b hashing function is linear with the size of the input *)
   let models =
     [
       ( "Global_constants_storage_expr_to_address_in_context",
-        Model.(
-          make
-            ~conv:(fun size -> (size, ()))
-            ~model:(linear ~name ~coeff:(fv "blake2b_hash_coeff"))) );
+        Model.(make ~conv:(fun size -> (size, ())) ~model:(linear ~name ~coeff)),
+        Some coeff );
     ]
 
   let create_benchmark rng_state _config () =
@@ -565,6 +566,8 @@ module Global_constants_storage_expand_models = struct
       Sparse_vec.String.of_list
         [("number_of_constants", float_of_int constants)]
 
+    let coeff = fv "storage_exp_cst_coeff"
+
     (** The cost of Branch 2 is linear to the number of constants in the expression. As
         discussed above, the constant time operation [Script_expr_hash.of_b58check_opt]
         dominates the cost of each iteration. *)
@@ -572,9 +575,8 @@ module Global_constants_storage_expand_models = struct
       [
         ( "Global_constants_storage_expand_constant_branch",
           Model.(
-            make
-              ~conv:(fun size -> (size, ()))
-              ~model:(linear ~name ~coeff:(fv "storage_exp_cst_coeff"))) );
+            make ~conv:(fun size -> (size, ())) ~model:(linear ~name ~coeff)),
+          Some coeff );
       ]
 
     (* To test Branch 2 as nearly as possible, we generate a Micheline Seq
@@ -657,7 +659,8 @@ module Global_constants_storage_expand_models = struct
                 (nlogn
                    ~name
                    ~intercept:(fv "storage_exp_no_cst_intercept")
-                   ~coeff:(fv "storage_exp_no_cst_coeff"))) );
+                   ~coeff:(fv "storage_exp_no_cst_coeff"))),
+          None );
       ]
 
     (** We benchmark this by generating a random Micheline expression without constants

@@ -47,7 +47,7 @@ module Lwt_main_run_bench : Benchmark.S = struct
 
   let tags = ["misc"]
 
-  let models = [("*", lwt_model)]
+  let models = [("*", lwt_model, Some lwt_variable)]
 
   let workload_to_vector () = Sparse_vec.String.of_list [("lwt_main", 1.)]
 

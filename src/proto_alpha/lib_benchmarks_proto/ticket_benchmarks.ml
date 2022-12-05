@@ -83,12 +83,12 @@ module Compare_ticket_hash_benchmark : Benchmark.S = struct
 
   let info = "Compare cost for Ticket_hash"
 
-  let compare_model =
-    Model.make
-      ~conv:(fun () -> ())
-      ~model:(Model.unknown_const1 ~name ~const:(fv "compare_ticket_hash"))
+  let const = fv "compare_ticket_hash"
 
-  let models = [("compare_tickets", compare_model)]
+  let compare_model =
+    Model.make ~conv:(fun () -> ()) ~model:(Model.unknown_const1 ~name ~const)
+
+  let models = [("compare_tickets", compare_model, Some const)]
 
   let benchmark rng_state _conf () =
     let bytes = Base_samplers.bytes rng_state ~size:{min = 1; max = 64} in
@@ -134,12 +134,12 @@ module Compare_key_contract_benchmark : Benchmark.S = struct
 
   let info = "Compare cost for Contracts"
 
-  let compare_model =
-    Model.make
-      ~conv:(fun () -> ())
-      ~model:(Model.unknown_const1 ~name ~const:(fv "compare_contract"))
+  let const = fv "compare_contract"
 
-  let models = [("compare_tickets", compare_model)]
+  let compare_model =
+    Model.make ~conv:(fun () -> ()) ~model:(Model.unknown_const1 ~name ~const)
+
+  let models = [("compare_tickets", compare_model, Some const)]
 
   let benchmark rng_state _conf () =
     let bytes = Base_samplers.bytes rng_state ~size:{min = 32; max = 64} in
@@ -222,7 +222,7 @@ module Has_tickets_type_benchmark : Benchmark.S = struct
              (fv (Format.asprintf "%s_const" (Namespace.basename name)))
            ~coeff:(fv (Format.asprintf "%s_coeff" (Namespace.basename name))))
 
-  let models = [("size_has_tickets_model", size_model)]
+  let models = [("size_has_tickets_model", size_model, None)]
 
   let create_benchmarks ~rng_state ~bench_num config =
     List.repeat bench_num (make_bench rng_state config)
@@ -295,7 +295,7 @@ module Collect_tickets_benchmark : Benchmark.S = struct
              (fv (Format.asprintf "%s_const" (Namespace.basename name)))
            ~coeff:(fv (Format.asprintf "%s_coeff" (Namespace.basename name))))
 
-  let models = [("size_collect_tickets_step_model", size_model)]
+  let models = [("size_collect_tickets_step_model", size_model, None)]
 
   let create_benchmarks ~rng_state ~bench_num config =
     List.repeat bench_num (make_bench rng_state config)

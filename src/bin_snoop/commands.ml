@@ -819,7 +819,7 @@ module List_cmd = struct
   let handler_all_param () () =
     Format.printf
       "%a@."
-      (Format.pp_print_list (fun fmt (param, models) ->
+      (Format.pp_print_list (fun fmt (param, {Registration.in_models; _}) ->
            Format.fprintf
              fmt
              "%a@.\tModels: %a"
@@ -828,7 +828,7 @@ module List_cmd = struct
              (Format.pp_print_list
                 ~pp_sep:(fun formatter () -> Format.fprintf formatter "; ")
                 Namespace.pp)
-             models))
+             in_models))
       (Registration.all_parameters ()) ;
     Lwt_result_syntax.return_unit
 
@@ -1183,7 +1183,8 @@ module Display_info_cmd = struct
     let module M = (val m) in
     Format.fprintf fmt "%a" Namespace.pp M.name
 
-  let pp_model fmt = function
+  let pp_model_solve fmt (model, solve_for) =
+    (match model with
     | Model.Aggregate {sub_models; _} ->
         normal_block
           fmt
@@ -1195,10 +1196,14 @@ module Display_info_cmd = struct
           fmt
           "Abstract model. Name"
           pp_abstract_model
-          (Model.Model model)
+          (Model.Model model)) ;
+    Option.iter
+      (fun x ->
+        Format.fprintf fmt "    Solves variable %a@." Free_variable.pp x)
+      solve_for
 
-  let pp_model_bench fmt (local_name, model) =
-    normal_block fmt local_name pp_model model
+  let pp_model_bench fmt (local_name, model, solve_for) =
+    normal_block fmt local_name pp_model_solve (model, solve_for)
 
   let pp_models () = Format.pp_print_list pp_model_bench
 
@@ -1208,16 +1213,16 @@ module Display_info_cmd = struct
     bold_block fmt "Tags" pp_tags B.tags ;
     bold_block fmt "Models" (pp_models ()) B.models
 
+  let pp_local fmt {Registration.bench_name; local_model_name} =
+    Format.fprintf
+      fmt
+      "\027[0;33;40m(%s)\027[m %a"
+      local_model_name
+      Namespace.pp
+      bench_name
+
   let pp_fancy_model (type a) fmt
       ((module M : Model.Model_impl with type arg_type = a), l) =
-    let pp_local fmt {Registration.bench_name; local_model_name} =
-      Format.fprintf
-        fmt
-        "\027[0;33;40m(%s)\027[m %a"
-        local_model_name
-        Namespace.pp
-        bench_name
-    in
     bold_block fmt "Name" Namespace.pp M.name ;
     bold_block fmt "Expression" Format.pp_print_string (print_model (module M)) ;
     let fv_seq =
@@ -1234,9 +1239,10 @@ module Display_info_cmd = struct
       (Format.pp_print_list pp_local)
       l
 
-  let pp_fancy_parameter fmt (s, l) =
+  let pp_fancy_parameter fmt (s, {Registration.in_models; solved_by}) =
     bold_block fmt "Name" Free_variable.pp s ;
-    bold_block fmt "In models" (Format.pp_print_list Namespace.pp) l
+    bold_block fmt "In models" (Format.pp_print_list Namespace.pp) in_models ;
+    Option.iter (fun x -> bold_block fmt "Solved by" pp_local x) solved_by
 
   let display_benchmark_handler () s () =
     let s = Namespace.of_string s in
@@ -1254,8 +1260,8 @@ module Display_info_cmd = struct
 
   let display_parameter_handler () s () =
     let s = Free_variable.of_string s in
-    let l = Registration.find_parameter_exn s in
-    Format.printf "@.%a@." pp_fancy_parameter (s, l) ;
+    let info = Registration.find_parameter_exn s in
+    Format.printf "@.%a@." pp_fancy_parameter (s, info) ;
     Lwt.return_ok ()
 
   let display_benchmark_params =

@@ -264,7 +264,7 @@ let make_benchmark :
     let models =
       (* [intercept = true] implies there's a benchmark with [intercept = false].
          No need to register the model twice. *)
-      Interpreter_model.make_model ?amplification (Instr_name name)
+      Interpreter_model.make_model ?amplification ~intercept (Instr_name name)
 
     let info, name =
       info_and_name
@@ -544,7 +544,8 @@ let make_continuation_benchmark :
 
     let tags = tags @ more_tags
 
-    let models = Interpreter_model.make_model ?amplification (Cont_name name)
+    let models =
+      Interpreter_model.make_model ?amplification ~intercept (Cont_name name)
 
     let info, name =
       info_and_name
@@ -667,7 +668,12 @@ module Registration_section = struct
       let workload_to_vector n =
         Sparse_vec.String.of_list [("iterations", float_of_int n)]
 
-      let models = [("interpreter", Interpreter_model.amplification_loop_model)]
+      let models =
+        [
+          ( "interpreter",
+            Interpreter_model.amplification_loop_model,
+            Some Interpreter_model.amplification_loop_iteration );
+        ]
 
       let benchmark rng_state config () =
         let workload = Random.State.int rng_state config.max_iterations in
@@ -2701,6 +2707,7 @@ module Registration_section = struct
 
         let models =
           Interpreter_model.make_model
+            ~intercept:false
             (Instr_name Interpreter_workload.N_ISapling_verify_update)
 
         let stack_type =

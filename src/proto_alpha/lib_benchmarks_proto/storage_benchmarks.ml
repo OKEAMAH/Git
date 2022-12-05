@@ -165,21 +165,23 @@ module List_key_values_benchmark_boilerplate = struct
   let workload_to_vector {size} =
     Sparse_vec.String.of_list [("size", float_of_int size)]
 
+  let intercept = fv "list_key_values_intercept"
+
+  let coeff = fv "list_key_values_step"
+
   let models =
     [
       ( "list_key_values",
         Model.make
           ~conv:(fun {size} -> (size, ()))
-          ~model:
-            (Model.affine
-               ~name
-               ~intercept:(fv "list_key_values_intercept")
-               ~coeff:(fv "list_key_values_step")) );
+          ~model:(Model.affine ~name ~intercept ~coeff) );
     ]
 end
 
 module List_key_values_benchmark = struct
   include List_key_values_benchmark_boilerplate
+
+  let models = List.map (fun (a, b) -> (a, b, Some coeff)) models
 
   let benchmark rng_state {max_size} () =
     let wrap m = m >|= Environment.wrap_tzresult in
@@ -216,6 +218,8 @@ end
 
 module List_key_values_benchmark_intercept = struct
   include List_key_values_benchmark_boilerplate
+
+  let models = List.map (fun (a, b) -> (a, b, Some intercept)) models
 
   let name = Namespace.make ns (Namespace.basename name) "intercept"
 

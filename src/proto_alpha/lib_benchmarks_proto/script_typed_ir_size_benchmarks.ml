@@ -73,7 +73,7 @@ end = struct
 
   let name = ns "VALUE_SIZE"
 
-  let models = [(model_name, size_based_model (Namespace.basename name))]
+  let models = [(model_name, size_based_model (Namespace.basename name), None)]
 
   let info = "Benchmarking Script_typed_ir_size.value_size"
 
@@ -148,7 +148,7 @@ module Type_size_benchmark : Tezos_benchmark.Benchmark.S = struct
   let info =
     "Benchmarking the time it takes to compute Script_typed_ir_size.ty_size"
 
-  let models = [(model_name, size_based_model (Namespace.basename name))]
+  let models = [(model_name, size_based_model (Namespace.basename name), None)]
 
   let type_size_benchmark (Script_typed_ir.Ex_ty ty) =
     let open Script_typed_ir_size.Internal_for_tests in
@@ -186,7 +186,7 @@ end = struct
 
   let name = ns "KINSTR_SIZE"
 
-  let models = [(model_name, size_based_model (Namespace.basename name))]
+  let models = [(model_name, size_based_model (Namespace.basename name), None)]
 
   let info = "Benchmarking Script_typed_ir_size.kinstr_size"
 
@@ -281,7 +281,7 @@ module Node_size_benchmark : Benchmark.S = struct
                    "%s_ns_per_node_coeff"
                    (Namespace.basename name))))
 
-  let models = [(model_name, size_based_model)]
+  let models = [(model_name, size_based_model, None)]
 
   let micheline_nodes_benchmark node =
     let open Cache_memory_helpers in

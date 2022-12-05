@@ -27,4 +27,6 @@ val ns : Namespace.cons
 
 val fv : string -> Free_variable.t
 
+val timer_variable : Free_variable.t
+
 val timer_model : unit Model.t

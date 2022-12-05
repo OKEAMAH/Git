@@ -248,7 +248,7 @@ module Context_size_dependent_shared = struct
             (depth, (storage_bytes, ())))
       ~model:read_model
 
-  let models = [("io_read", read_access)]
+  let models = [("io_read", read_access, None)]
 end
 
 module Context_size_dependent_read_bench : Benchmark.S = struct
@@ -597,7 +597,7 @@ module Irmin_pack_read_bench : Benchmark.S = struct
             (depth, (storage_bytes, ())))
       ~model:read_model
 
-  let models = [("io_read", read_access)]
+  let models = [("io_read", read_access, None)]
 
   let workload_encoding =
     let open Data_encoding in
@@ -774,7 +774,7 @@ module Irmin_pack_write_bench : Benchmark.S = struct
             (keys_written, (storage_bytes, ())))
       ~model:write_model
 
-  let models = [("io_write", write_access)]
+  let models = [("io_write", write_access, None)]
 
   let write_storage context key bytes =
     Lwt_main.run (Context.add context key bytes)
@@ -923,7 +923,7 @@ module Read_random_key_bench : Benchmark.S = struct
         | Read_random_key {depth; storage_bytes} -> (depth, (storage_bytes, ())))
       ~model:read_model
 
-  let models = [("io_read", read_access)]
+  let models = [("io_read", read_access, None)]
 
   let make_bench rng_state config keys () =
     let card = Array.length keys in
@@ -1072,7 +1072,7 @@ module Write_random_keys_bench : Benchmark.S = struct
             (keys_written, (storage_bytes, ())))
       ~model:write_model
 
-  let models = [("io_write", write_access)]
+  let models = [("io_write", write_access, None)]
 
   let write_storage context key bytes =
     Lwt_main.run (Context.add context key bytes)

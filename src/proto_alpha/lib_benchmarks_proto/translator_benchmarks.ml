@@ -68,9 +68,11 @@ module Default_boilerplate = struct
   let make_models t_kind code_or_data =
     [
       ( "gas_translator_model",
-        Translator_model.gas_based_model t_kind code_or_data );
+        Translator_model.gas_based_model t_kind code_or_data,
+        None );
       ( "size_translator_model",
-        Translator_model.size_based_model t_kind code_or_data );
+        Translator_model.size_based_model t_kind code_or_data,
+        None );
     ]
 end
 
@@ -561,7 +563,7 @@ module Ty_eq : Benchmark.S = struct
       ~conv:(function Ty_eq_workload {nodes; _} -> (nodes, ()))
       ~model:(Model.affine ~name ~intercept:intercept_var ~coeff:coeff_var)
 
-  let models = [("size_translator_model", size_model)]
+  let models = [("size_translator_model", size_model, None)]
 
   let ty_eq_benchmark rng_state nodes (ty : Script_typed_ir.ex_ty) =
     Lwt_main.run
@@ -732,7 +734,7 @@ module Parse_type_benchmark : Benchmark.S = struct
              (fv (Format.asprintf "%s_const" (Namespace.basename name)))
            ~coeff:(fv (Format.asprintf "%s_coeff" (Namespace.basename name))))
 
-  let models = [("size_translator_model", size_model)]
+  let models = [("size_translator_model", size_model, None)]
 
   let create_benchmarks ~rng_state ~bench_num config =
     List.repeat bench_num (make_bench rng_state config)
@@ -781,7 +783,7 @@ module Unparse_type_benchmark : Benchmark.S = struct
              (fv (Format.asprintf "%s_const" (Namespace.basename name)))
            ~coeff:(fv (Format.asprintf "%s_coeff" (Namespace.basename name))))
 
-  let models = [("size_translator_model", size_model)]
+  let models = [("size_translator_model", size_model, None)]
 
   let create_benchmarks ~rng_state ~bench_num config =
     List.repeat bench_num (make_bench rng_state config)

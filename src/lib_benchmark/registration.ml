@@ -40,7 +40,13 @@ type model_info = {model : Model.packed_model; from : local_model_info list}
 
 and local_model_info = {bench_name : Namespace.t; local_model_name : string}
 
-type parameter_info = Namespace.t list
+type parameter_info = {
+  in_models : Namespace.t list;
+  solved_by : local_model_info option;
+}
+
+let pp_local_model_info fmt {bench_name; local_model_name} =
+  Format.fprintf fmt "(%a; %s)" Namespace.pp bench_name local_model_name
 
 (*---------------------------------------------------------------------------*)
 (* Table initialization *)
@@ -59,21 +65,55 @@ let clic_table : unit Tezos_clic.command list ref = ref []
 (*---------------------------------------------------------------------------*)
 (* Registration functions *)
 
-let register_parameter model_name (param : Free_variable.t) =
+exception Parameter_solved_twice of local_model_info * local_model_info
+
+let register_parameter model_name bench_name local_model_name solve
+    (param : Free_variable.t) =
+  let solved_by =
+    match solve with
+    | Some s ->
+        if Free_variable.equal s param then Some {bench_name; local_model_name}
+        else None
+    | None -> None
+  in
   let ns = Free_variable.to_namespace param in
   match Name_table.find_opt parameter_table ns with
-  | None -> Name_table.add parameter_table ns [model_name]
-  | Some l -> Name_table.replace parameter_table ns (model_name :: l)
+  | None ->
+      Name_table.add parameter_table ns {in_models = [model_name]; solved_by}
+  | Some {in_models; solved_by = s} ->
+      let solved_by =
+        match (solved_by, s) with
+        | None, None -> None
+        | Some s, None | None, Some s -> Some s
+        | Some a, Some b ->
+            Format.eprintf
+              "Parameter %a registered with two distinct \
+               solutions:@.%a@.%a@.Aborting.@."
+              Free_variable.pp
+              param
+              pp_local_model_info
+              a
+              pp_local_model_info
+              b ;
+            raise (Parameter_solved_twice (a, b))
+      in
+      Name_table.replace
+        parameter_table
+        ns
+        {in_models = model_name :: in_models; solved_by}
 
-let register_param_from_model (model : Model.packed_model) =
+let register_param_from_model bench_name local_model_name solve
+    (model : Model.packed_model) =
   match model with
   | Model model ->
       let module M = (val model) in
       let fv_set = Model.get_free_variable_set model in
-      Free_variable.Set.iter (register_parameter M.name) fv_set
+      Free_variable.Set.iter
+        (register_parameter M.name bench_name local_model_name solve)
+        fv_set
 
-let register_model (type a) bench_name local_model_name (model : a Model.t) :
-    unit =
+let register_model (type a) bench_name local_model_name (model : a Model.t)
+    solve : unit =
   (* We assume that models with the same name are the same model *)
   let register_packed_model = function
     | Model.Model m as model -> (
@@ -81,7 +121,7 @@ let register_model (type a) bench_name local_model_name (model : a Model.t) :
         let name = M.name in
         match Name_table.find_opt model_table name with
         | None ->
-            register_param_from_model model ;
+            register_param_from_model bench_name local_model_name solve model ;
             Name_table.add
               model_table
               name
@@ -112,15 +152,17 @@ let register ((module Bench) : Benchmark.t) =
 
     let models =
       List.map
-        (fun (s, m) ->
+        (fun (s, m, solve) ->
           ( s,
             Model.(
               add_model m Builtin_models.timer_model
-              |> precompose (fun w -> (w, ()))) ))
+              |> precompose (fun w -> (w, ()))),
+            solve ))
         models
   end in
   List.iter
-    (fun (model_local_name, m) -> register_model Bench.name model_local_name m)
+    (fun (model_local_name, m, solve) ->
+      register_model Bench.name model_local_name m solve)
     Bench.models ;
   Name_table.add bench_table Bench.name (module Bench)
 
@@ -156,7 +198,8 @@ let all_parameters () =
 
 let all_local_model_names () =
   all_benchmarks ()
-  |> List.map (fun (_, (module B : Benchmark.S)) -> List.map fst B.models)
+  |> List.map (fun (_, (module B : Benchmark.S)) ->
+         List.map (fun (a, _, _) -> a) B.models)
   |> List.flatten
   |> List.filter (fun s -> not (String.equal s "*"))
 

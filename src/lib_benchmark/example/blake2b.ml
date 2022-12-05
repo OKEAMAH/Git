@@ -86,7 +86,8 @@ module Blake2b_bench : Benchmark.S = struct
   let models =
     [
       ( "blake2b",
-        Model.make ~conv:(fun {nbytes} -> (nbytes, ())) ~model:model_blake2b );
+        Model.make ~conv:(fun {nbytes} -> (nbytes, ())) ~model:model_blake2b,
+        None );
     ]
 
   let blake2b_benchmark rng_state config () =

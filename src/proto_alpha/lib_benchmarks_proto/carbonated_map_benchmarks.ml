@@ -86,7 +86,7 @@ module Fold_benchmark : Benchmark.S = struct
            ~intercept:(fv "fold_const")
            ~coeff:(fv "fold_cost_per_item"))
 
-  let models = [("carbonated_map", fold_model)]
+  let models = [("carbonated_map", fold_model, None)]
 
   let benchmark rng_state config () =
     let module M = Carbonated_map.Make (Alpha_context_gas) (Int) in
@@ -139,7 +139,11 @@ end
   key-type for [Carbonated_map] instances.
 *)
 module Make (CS : COMPARABLE_SAMPLER) = struct
-  let compare_var type_name = fv (Printf.sprintf "compare_%s" type_name)
+  let compare_var = fv (Printf.sprintf "compare_%s" CS.type_name)
+
+  let intercept = fv "intercept"
+
+  let traverse_overhead = fv "traversal_overhead"
 
   module Compare = struct
     type config = unit
@@ -166,8 +170,8 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
         ( "carbonated_map",
           Model.make
             ~conv:(fun () -> ())
-            ~model:
-              (Model.unknown_const1 ~name ~const:(compare_var CS.type_name)) );
+            ~model:(Model.unknown_const1 ~name ~const:compare_var),
+          Some compare_var );
       ]
 
     let benchmark rng_state _conf () =
@@ -203,7 +207,7 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
 
        [intercept + (log2 size * compare_cost) + (log2 size * traversal_overhead)]
      *)
-    let find_model ~name ~intercept ~traverse_overhead =
+    let find_model ~name =
       let module M = struct
         type arg_type = int * unit
 
@@ -217,9 +221,7 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
           let model =
             let open L in
             lam ~name:"size" @@ fun size ->
-            let compare_cost =
-              log2 size * free ~name:(compare_var CS.type_name)
-            in
+            let compare_cost = log2 size * free ~name:compare_var in
             let traversal_overhead = log2 size * free ~name:traverse_overhead in
             free ~name:intercept + compare_cost + traversal_overhead
         end
@@ -229,13 +231,8 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
     let models =
       [
         ( "carbonated_map",
-          Model.make
-            ~conv:(fun {size} -> (size, ()))
-            ~model:
-              (find_model
-                 ~name
-                 ~intercept:(fv "intercept")
-                 ~traverse_overhead:(fv "traversal_overhead")) );
+          Model.make ~conv:(fun {size} -> (size, ())) ~model:(find_model ~name),
+          Some traverse_overhead );
       ]
 
     let benchmark rng_state (config : config) () =
@@ -303,7 +300,8 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
         ( "carbonated_map",
           Model.make
             ~conv:(fun () -> ())
-            ~model:(Model.unknown_const1 ~name ~const:(fv "intercept")) );
+            ~model:(Model.unknown_const1 ~name ~const:intercept),
+          Some intercept );
       ]
 
     let benchmark rng_state (_config : config) () =

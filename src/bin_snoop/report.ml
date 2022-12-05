@@ -305,7 +305,7 @@ let model_table (type c t) ((module Bench) : (c, t) Benchmark.poly) =
   let open Latex_syntax in
   let rows =
     List.filter_map
-      (fun (model_name, model) ->
+      (fun (model_name, model, _) ->
         match model with
         | Tezos_benchmark.Model.Aggregate _ -> None
         | Tezos_benchmark.Model.Abstract {model; _} ->

@@ -60,11 +60,13 @@ module Next : Benchmark.S = struct
   let workload_to_vector len =
     Sparse_vec.String.of_list [("len", float_of_int @@ len)]
 
+  let coeff = fv "len_coeff"
+
   let next_model =
     let conv x = (x, ()) in
-    Model.make ~conv ~model:(Model.logn ~name ~coeff:(fv "len_coeff"))
+    Model.make ~conv ~model:(Model.logn ~name ~coeff)
 
-  let models = [("skip_list_next", next_model)]
+  let models = [("skip_list_next", next_model, Some coeff)]
 
   let create_skip_list_of_len len =
     let rec go n cell =
@@ -142,7 +144,7 @@ module Hash_cell = struct
            ~intercept:(Free_variable.of_string "cost_hash_skip_list_cell")
            ~coeff:(Free_variable.of_string "cost_hash_skip_list_cell_coef"))
 
-  let models = [("skip_list_hash", hash_skip_list_cell_model)]
+  let models = [("skip_list_hash", hash_skip_list_cell_model, None)]
 
   let benchmark rng_state conf () =
     let skip_list_len =

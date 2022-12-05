@@ -121,8 +121,9 @@ and infer_cmd_one_shot model_name workload_data solver
   match measure with
   | Measure.Measurement
       ((module Bench), {bench_opts = _; workload_data; date = _}) ->
+      let bench_models = List.map (fun (a, b, _) -> (a, b)) Bench.models in
       let model =
-        match List.assoc_opt ~equal:String.equal model_name Bench.models with
+        match List.assoc_opt ~equal:String.equal model_name bench_models with
         | Some m -> m
         | None ->
             Format.eprintf "Requested model: \"%s\" not found@." model_name ;
@@ -131,7 +132,7 @@ and infer_cmd_one_shot model_name workload_data solver
               (Format.pp_print_list
                  ~pp_sep:(fun fmtr () -> Format.fprintf fmtr ", ")
                  Format.pp_print_string)
-              (List.map fst Bench.models) ;
+              (List.map fst bench_models) ;
             exit 1
       in
       let overrides_map =
@@ -235,7 +236,7 @@ and infer_cmd_full_auto model_name workload_data solver
                 workload_file ;
               list_all_models Format.err_formatter ;
               exit 1
-          | Some model -> model
+          | Some (model, _) -> model
         in
         let problem =
           Inference.make_problem ~data:m.Measure.workload_data ~model ~overrides

@@ -174,7 +174,7 @@ module Cache_update_benchmark : Benchmark.S = struct
       ~conv:(function {cache_cardinal} -> (cache_cardinal, ()))
       ~model:(affine_logn ~intercept:intercept_variable ~coeff:coeff_variable)
 
-  let models = [("cache_model", model)]
+  let models = [("cache_model", model, None)]
 
   let cache_update_benchmark ctxt some_key_in_domain cache_cardinal =
     let workload = {cache_cardinal} in

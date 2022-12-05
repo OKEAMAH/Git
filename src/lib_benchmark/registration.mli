@@ -48,11 +48,16 @@ type model_info = {model : Model.packed_model; from : local_model_info list}
 and local_model_info = {bench_name : Namespace.t; local_model_name : string}
 
 (** For each parameter, we register the list of models (by name) in which
-    they occur *)
-type parameter_info = Namespace.t list
+    they occur, and the benchmark that will infer its value (if defined) *)
+type parameter_info = {
+  in_models : Namespace.t list;
+  solved_by : local_model_info option;
+}
 
 (* -------------------------------------------------------------------------- *)
 (* Registration functions *)
+
+exception Parameter_solved_twice of local_model_info * local_model_info
 
 (** Register a benchmark. Recursively registers any relevant model and parameter
     included in it. *)

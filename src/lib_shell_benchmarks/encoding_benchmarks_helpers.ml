@@ -89,7 +89,7 @@ let fixed_size_shared :
       let generator () = generator rng_state in
       List.repeat bench_num (make_bench generator)
 
-    let models = [("encoding", model)]
+    let models = [("encoding", model, Some free_variable)]
   end in
   ((module Bench) : Benchmark.t)
 
@@ -116,7 +116,7 @@ let linear_shared ?(check = fun () -> ()) ~name ~generator ~make_bench () =
       let generator () = generator rng_state in
       List.repeat bench_num (make_bench generator)
 
-    let models = [("encoding", model)]
+    let models = [("encoding", model, None)]
   end in
   ((module Bench) : Benchmark.t)
 
@@ -143,7 +143,7 @@ let nsqrtn_shared_with_intercept ~name ~generator ~make_bench
       let generator () = generator rng_state in
       List.repeat bench_num (make_bench generator)
 
-    let models = [("encoding", model)]
+    let models = [("encoding", model, Some coeff)]
   end in
   let module Bench_intercept : Benchmark.S = struct
     let name = (Namespace.make ns name) "intercept"
@@ -159,7 +159,7 @@ let nsqrtn_shared_with_intercept ~name ~generator ~make_bench
       let generator () = generator_intercept rng_state in
       List.repeat bench_num (make_bench_intercept generator)
 
-    let models = [("encoding", model)]
+    let models = [("encoding", model, Some const)]
   end in
   (((module Bench) : Benchmark.t), ((module Bench_intercept) : Benchmark.t))
 
