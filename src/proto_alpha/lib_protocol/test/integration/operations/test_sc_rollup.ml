@@ -128,9 +128,7 @@ let find_first_publication_level block rollup inbox_level =
       |> of_bytes_exn Raw_level_repr.encoding)
   in
   let* _raw_ctxt, first_publication_level =
-    Storage.Sc_rollup.Commitment_first_publication_level.find
-      (raw_ctxt, rollup)
-      inbox_level
+    Storage.Sc_rollup.Commitments_at_level.find (raw_ctxt, rollup) inbox_level
     >|= Environment.wrap_tzresult
   in
   return first_publication_level
@@ -1996,7 +1994,6 @@ let test_draw_with_two_invalid_moves () =
     in
     add_op block p1_final_move_op
   in
-
   (* Get the frozen bonds for the two players before the draw. *)
   let* frozen_bonds_p1 = Context.Contract.frozen_bonds (B block) p1 in
   let* frozen_bonds_p2 = Context.Contract.frozen_bonds (B block) p2 in
@@ -2013,7 +2010,6 @@ let test_draw_with_two_invalid_moves () =
     let* incr = Incremental.begin_construction block in
     Incremental.add_operation incr p2_final_move_op
   in
-
   (* As both players played invalid moves, the game ends in a draw. *)
   let expected_game_status : Sc_rollup.Game.status = Ended Draw in
   let* () = assert_refute_result ~game_status:expected_game_status incr in
@@ -2532,10 +2528,12 @@ let test_curfew_is_cleaned_by_slash () =
   let* block, (account1, account2, account3), rollup =
     init_and_originate Context.T3 "unit"
   in
+  let* block = Block.bake_n 32 block in
   let* operation, commitment1 =
     publish_op_and_dummy_commitment ~src:account1 rollup block
   in
   let* block = Block.bake ~operation block in
+  let* block = Block.bake_n 32 block in
   let* operation, commitment2 =
     publish_op_and_dummy_commitment
       ~compressed_state:"second"
@@ -2564,14 +2562,13 @@ let test_curfew_is_cleaned_by_slash () =
   (* At this point the  first_publication_level is (level2, account2)*)
   let* () =
     match first_publication_level with
-    | Some (x, staker) ->
+    | Some (x, commits) ->
         assert (
           (Int32.equal level2 @@ Raw_level_repr.to_int32 x)
-          && Contract.(Implicit staker = account2)) ;
+          && List.length commits = 2) ;
         return_unit
     | None -> failwith "The level of publication is expected to exist"
   in
-
   (* now remove account2 *)
   let* alpha_ctxt = Block.to_alpha_ctxt block in
   let raw_ctxt = Alpha_context.Internal_for_tests.to_raw alpha_ctxt in
@@ -2595,16 +2592,16 @@ let test_curfew_is_cleaned_by_slash () =
       |> of_bytes_exn Raw_level_repr.encoding)
   in
   let* _raw_ctxt, first_publication_level =
-    Storage.Sc_rollup.Commitment_first_publication_level.find
+    Storage.Sc_rollup.Commitments_at_level.find
       (raw_ctxt, sc_rollup)
       inbox_level
     >|= Environment.wrap_tzresult
   in
   match first_publication_level with
-  | Some (x, staker) ->
+  | Some (x, commits) ->
       assert (
         (Int32.equal level3 @@ Raw_level_repr.to_int32 x)
-        && Contract.(Implicit staker = account3)) ;
+        && List.length commits = 1) ;
       return_unit
   | None -> failwith "The level of publication is expected to exist"
 

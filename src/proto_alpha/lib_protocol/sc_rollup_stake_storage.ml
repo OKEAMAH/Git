@@ -171,35 +171,103 @@ let assert_commitment_period ctxt rollup commitment =
   in
   return ctxt
 
+let add_commitment_first_publication_level ctxt rollup inbox_level level commit
+    =
+  let open Lwt_result_syntax in
+  let* ctxt, maybe_result =
+    Store.Commitments_at_level.find (ctxt, rollup) inbox_level
+  in
+  match maybe_result with
+  | Some (level, commits_list) ->
+      if List.exists (Sc_rollup_commitment_repr.Hash.equal commit) commits_list
+      then return (ctxt, 0, false)
+      else
+        Store.Commitments_at_level.add
+          (ctxt, rollup)
+          inbox_level
+          (level, commit :: commits_list)
+  | None ->
+      Store.Commitments_at_level.add (ctxt, rollup) inbox_level (level, [commit])
+
+let remove_commitment_first_publication_level ctxt rollup inbox_level commit =
+  let open Lwt_result_syntax in
+  let* ctxt, maybe_result =
+    Store.Commitments_at_level.find (ctxt, rollup) inbox_level
+  in
+  let* ctxt, commitment_level =
+    Store.Commitment_added.find (ctxt, rollup) commit
+  in
+  match (maybe_result, commitment_level) with
+  | Some (level, commits_list), Some commitment_level
+    when Raw_level_repr.(commitment_level = level)
+         && List.exists
+              (Sc_rollup_commitment_repr.Hash.equal commit)
+              commits_list -> (
+      let cleaned_list =
+        List.filter
+          (fun x -> not (Sc_rollup_commitment_repr.Hash.equal commit x))
+          commits_list
+      in
+      match cleaned_list with
+      | hd :: tl -> (
+          let acc = Store.Commitment_added.find (ctxt, rollup) hd in
+          let* ctxt, earliest_commit_level =
+            List.fold_left
+              (fun acc c ->
+                let* ctxt, l = acc in
+                let* ctxt, l1 = Store.Commitment_added.get (ctxt, rollup) c in
+                match l with
+                | Some l when Raw_level_repr.(l1 < l) -> return (ctxt, Some l1)
+                | _ -> acc)
+              acc
+              tl
+          in
+          match earliest_commit_level with
+          | Some commit_level ->
+              let* ctxt, diff, _ =
+                Store.Commitments_at_level.add
+                  (ctxt, rollup)
+                  inbox_level
+                  (commit_level, cleaned_list)
+              in
+              return (ctxt, diff)
+          | None -> return (ctxt, 0))
+      | [] ->
+          let* ctxt, diff, _ =
+            Store.Commitments_at_level.remove (ctxt, rollup) inbox_level
+          in
+          return (ctxt, diff))
+  | _ -> return (ctxt, 0)
+
 (** [assert_commitment_is_not_past_curfew ctxt rollup inbox_level] will look in the
-    storage [Commitment_first_publication_level] for the level of the oldest commit for
+    storage [Commitments_at_level] for the level of the oldest commit for
     [inbox_level] and if it is more than [sc_rollup_challenge_window_in_blocks]
     ago it fails with [Sc_rollup_commitment_past_curfew]. Otherwise it adds the
     respective storage (if it is not set) and returns the context. *)
-let assert_commitment_is_not_past_curfew ctxt rollup inbox_level staker =
+let assert_commitment_is_not_past_curfew ctxt rollup inbox_level commit =
   let open Lwt_result_syntax in
   let refutation_deadline_blocks =
     Int32.of_int @@ Constants_storage.sc_rollup_challenge_window_in_blocks ctxt
   in
   let current_level = (Raw_context.current_level ctxt).level in
   let* ctxt, oldest_commit =
-    Store.Commitment_first_publication_level.find (ctxt, rollup) inbox_level
+    Store.Commitments_at_level.find (ctxt, rollup) inbox_level
   in
   match oldest_commit with
-  | Some (oldest_commit, _staker) ->
-      if
-        Compare.Int32.(
-          Raw_level_repr.diff current_level oldest_commit
-          > refutation_deadline_blocks)
-      then tzfail Sc_rollup_commitment_past_curfew
-      else return ctxt
-  | None ->
+  | Some (oldest_commit, _commits)
+    when Compare.Int32.(
+           Raw_level_repr.diff current_level oldest_commit
+           > refutation_deadline_blocks) ->
+      tzfail Sc_rollup_commitment_past_curfew
+  | _ ->
       (* The storage cost is covered by the stake. *)
-      let* ctxt, _diff, _existed =
-        Store.Commitment_first_publication_level.add
-          (ctxt, rollup)
+      let* ctxt, _diff, _ =
+        add_commitment_first_publication_level
+          ctxt
+          rollup
           inbox_level
-          (current_level, staker)
+          current_level
+          commit
       in
       return ctxt
 
@@ -210,16 +278,19 @@ let assert_commitment_is_not_past_curfew ctxt rollup inbox_level staker =
     that the maximum cost of storage allocated by each staker is at most the size
     of their deposit.
  *)
-let assert_refine_conditions_met ctxt rollup lcc commitment staker =
+let assert_refine_conditions_met ctxt rollup lcc commitment =
   let open Lwt_result_syntax in
   let* ctxt = assert_commitment_not_too_far_ahead ctxt rollup lcc commitment in
   let* ctxt = assert_commitment_period ctxt rollup commitment in
+  let*? ctxt, commitment_hash =
+    Sc_rollup_commitment_storage.hash ctxt commitment
+  in
   let* ctxt =
     assert_commitment_is_not_past_curfew
       ctxt
       rollup
       Commitment.(commitment.inbox_level)
-      staker
+      commitment_hash
   in
   let current_level = (Raw_context.current_level ctxt).level in
   let* () =
@@ -255,11 +326,14 @@ let deallocate_commitment ctxt rollup node =
     in
     return ctxt
 
-let deallocate_commitment_metadata ctxt rollup node =
+let deallocate_commitment_metadata ctxt rollup node inbox_level =
   let open Lwt_result_syntax in
   if Commitment_hash.(node = zero) then return ctxt
   else
     let* ctxt, commitment = Store.Commitments.get (ctxt, rollup) node in
+    let* ctxt, _size_freed =
+      remove_commitment_first_publication_level ctxt rollup inbox_level node
+    in
     let* ctxt, _size_freed =
       Store.Commitment_added.remove_existing (ctxt, rollup) node
     in
@@ -278,9 +352,11 @@ let deallocate_commitment_metadata ctxt rollup node =
           commitment.inbox_level
       in
       let+ ctxt, _size_freed =
-        Store.Commitment_first_publication_level.remove_existing
-          (ctxt, rollup)
+        remove_commitment_first_publication_level
+          ctxt
+          rollup
           commitment.inbox_level
+          node
       in
       ctxt
     else
@@ -292,9 +368,9 @@ let deallocate_commitment_metadata ctxt rollup node =
       in
       ctxt
 
-let deallocate ctxt rollup node =
+let deallocate ctxt rollup node inbox_level =
   let open Lwt_result_syntax in
-  let* ctxt = deallocate_commitment_metadata ctxt rollup node in
+  let* ctxt = deallocate_commitment_metadata ctxt rollup node inbox_level in
   deallocate_commitment ctxt rollup node
 
 let find_commitment_to_deallocate ctxt rollup commitment_hash
@@ -315,12 +391,13 @@ let find_commitment_to_deallocate ctxt rollup commitment_hash
   in
   aux ctxt commitment_hash num_commitments_to_keep
 
-let decrease_commitment_stake_count ctxt rollup node =
+let decrease_commitment_stake_count ctxt rollup node inbox_level =
   let open Lwt_result_syntax in
   let* new_count, _size_diff, ctxt =
     modify_commitment_stake_count ctxt rollup node Int32.pred
   in
-  if Compare.Int32.(new_count <= 0l) then deallocate ctxt rollup node
+  if Compare.Int32.(new_count <= 0l) then
+    deallocate ctxt rollup node inbox_level
   else return ctxt
 
 let increase_commitment_stake_count ctxt rollup node =
@@ -340,7 +417,7 @@ let commitment_storage_size_in_bytes = 89
 let refine_stake ctxt rollup staker staked_on commitment =
   let open Lwt_result_syntax in
   let* lcc, ctxt = Commitment_storage.last_cemented_commitment ctxt rollup in
-  let* ctxt = assert_refine_conditions_met ctxt rollup lcc commitment staker in
+  let* ctxt = assert_refine_conditions_met ctxt rollup lcc commitment in
   let*? ctxt, new_hash = Sc_rollup_commitment_storage.hash ctxt commitment in
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2559
@@ -514,7 +591,20 @@ let cement_commitment ctxt rollup new_lcc =
      Instead, we remove the oldest cemented commitment that would exceed
      [max_number_of_cemented_commitments], if such exist.
   *)
-  let* ctxt = deallocate_commitment_metadata ctxt rollup old_lcc in
+  let* ctxt =
+    deallocate_commitment_metadata
+      ctxt
+      rollup
+      old_lcc
+      new_lcc_commitment.inbox_level
+  in
+  let* ctxt, _diff =
+    remove_commitment_first_publication_level
+      ctxt
+      rollup
+      new_lcc_commitment.inbox_level
+      new_lcc
+  in
   (* Decrease max_number_of_stored_cemented_commitments by one because
      we start counting commitments from old_lcc, rather than from new_lcc. *)
   let num_commitments_to_keep =
@@ -529,47 +619,6 @@ let cement_commitment ctxt rollup new_lcc =
   | Some old_lcc ->
       let+ ctxt = deallocate_commitment ctxt rollup old_lcc in
       (ctxt, new_lcc_commitment)
-
-(* [find_earliest_commitment ctxt rollup commitment_hash level] starts
-   from [commitment_hash] and looks for its ancestor that has inbox_level=level
-   if such an ancestor is found, the level it was added is returned. *)
-let rec find_earliest_commitment ctxt rollup commitment_hash level =
-  let open Lwt_result_syntax in
-  let* ctxt, commitment =
-    Store.Commitments.find (ctxt, rollup) commitment_hash
-  in
-  match commitment with
-  | Some {inbox_level; _} when Raw_level_repr.(inbox_level < level) ->
-      return (ctxt, None)
-  | Some {inbox_level; _} when Raw_level_repr.(inbox_level = level) ->
-      let* ctxt, level_added =
-        Store.Commitment_added.find (ctxt, rollup) commitment_hash
-      in
-      return (ctxt, level_added)
-  | Some commitment ->
-      let prev = commitment.predecessor in
-      find_earliest_commitment ctxt rollup prev level
-  | None -> failwith "commitment should exist"
-
-let find_earliest_staker ctxt rollup level =
-  let open Lwt_result_syntax in
-  let* ctxt, stakers = Store.stakers ctxt rollup in
-  let* ctxt, value, staker =
-    List.fold_left
-      (fun acc (staker, hash) ->
-        let* ctxt, old_value, old_staker = acc in
-        let* ctxt, value = find_earliest_commitment ctxt rollup hash level in
-        match (old_staker, value) with
-        | Some _, Some value when Raw_level_repr.(old_value > value) ->
-            return (ctxt, value, Some staker)
-        | None, Some value -> return (ctxt, value, Some staker)
-        | _ -> acc)
-      (return (ctxt, Raw_level_repr.root, None))
-      stakers
-  in
-  match staker with
-  | Some staker -> return (ctxt, Some (value, staker))
-  | _ -> return (ctxt, None)
 
 let remove_staker ctxt rollup staker =
   let open Lwt_result_syntax in
@@ -614,40 +663,12 @@ let remove_staker ctxt rollup staker =
           let* {inbox_level; _}, ctxt =
             Commitment_storage.get_commitment ctxt rollup node
           in
-          let* ctxt, first_commit =
-            Store.Commitment_first_publication_level.find
-              (ctxt, rollup)
-              inbox_level
-          in
-          let* ctxt =
-            match first_commit with
-            | Some (_level, committing_staker)
-              when Signature.Public_key_hash.(staker = committing_staker) ->
-                let* ctxt, _ =
-                  Store.Commitment_first_publication_level.remove_existing
-                    (ctxt, rollup)
-                    inbox_level
-                in
-                let* ctxt, res = find_earliest_staker ctxt rollup inbox_level in
-                let* ctxt =
-                  match res with
-                  | Some (value, staker) ->
-                      let* ctxt, _diff, _changed =
-                        Store.Commitment_first_publication_level.add
-                          (ctxt, rollup)
-                          inbox_level
-                          (value, staker)
-                      in
-                      return ctxt
-                  | _ -> return ctxt
-                in
-                return ctxt
-            | _ -> return ctxt
-          in
           let* pred, ctxt =
             Commitment_storage.get_predecessor_unsafe ctxt rollup node
           in
-          let* ctxt = decrease_commitment_stake_count ctxt rollup node in
+          let* ctxt =
+            decrease_commitment_stake_count ctxt rollup node inbox_level
+          in
           (go [@ocaml.tailcall]) pred ctxt
       in
       let+ ctxt = go staked_on ctxt in

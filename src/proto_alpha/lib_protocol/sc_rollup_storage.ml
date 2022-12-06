@@ -96,17 +96,12 @@ let originate ctxt ~kind ~parameters_ty ~genesis_commitment =
       Int32.zero
   in
 
-  (* Those stores [Store.Commitment_first_publication_level] and
-     [Store.Commitment_count_per_inbox_level] are populated with dummy values,
-     in order the [sc_rollup_state_storage.deallocate_commitment_metadata]
+  (* The store [Store.Commitment_count_per_inbox_level] is populated with dummy
+     values, in order the [sc_rollup_state_storage.deallocate_commitment_metadata]
      function does not have to handle an edge case of genesis commitment hash.
+     Note that [Store.Commitments_at_level] is unaffected because the dealloc in
+     that case is not done directly.
   *)
-  let* ctxt, commitment_first_publication_level_diff, _existed =
-    Store.Commitment_first_publication_level.add
-      (ctxt, address)
-      origination_level
-      origination_level
-  in
   let* ctxt, commitment_count_per_inbox_level_diff, _existed =
     Store.Commitment_count_per_inbox_level.add
       (ctxt, address)
@@ -121,11 +116,9 @@ let originate ctxt ~kind ~parameters_ty ~genesis_commitment =
     Z.of_int
       (origination_size + stored_kind_size + addresses_size + lcc_size_diff
      + commitment_size_diff + commitment_added_size_diff
-     + commitment_staker_count_size_diff
-     + commitment_first_publication_level_diff
-     + commitment_first_publication_level_diff
-     + commitment_count_per_inbox_level_diff + stakers_size_diff
-     + param_ty_size_diff + pvm_kind_size + genesis_info_size)
+     + commitment_staker_count_size_diff + commitment_count_per_inbox_level_diff
+     + stakers_size_diff + param_ty_size_diff + pvm_kind_size
+     + genesis_info_size)
   in
   return (address, size, genesis_commitment_hash, ctxt)
 

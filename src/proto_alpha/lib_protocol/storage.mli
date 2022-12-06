@@ -825,8 +825,9 @@ module Sc_rollup : sig
        and type t = Raw_context.t * Sc_rollup_repr.t
 
   (** This storage contains for each rollup and inbox level not yet cemented the
-      level of publication of the first commitment. This is used to compute the
-      curfew for a given rollup and inbox level.
+      level of publication of the first commitment and the hashes of the commits
+      at that inbox_level. This is used to compute the curfew for a given rollup
+      and inbox level.
 
       The storage size is bounded for each rollup by
 
@@ -835,10 +836,10 @@ module Sc_rollup : sig
       Since the storage is cleaned when commitments are cemented, this storage
       space is only temporarily bought by stakers with their deposits.
   *)
-  module Commitment_first_publication_level :
+  module Commitments_at_level :
     Non_iterable_indexed_carbonated_data_storage
       with type key = Raw_level_repr.t
-       and type value = Raw_level_repr.t * Signature.Public_key_hash.t
+       and type value = Raw_level_repr.t * Sc_rollup_commitment_repr.Hash.t list
        and type t = Raw_context.t * Sc_rollup_repr.t
 
   (** This storage contains number of commitments with a particular inbox level *)

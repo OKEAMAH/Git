@@ -910,10 +910,11 @@ let test_cement () =
     @@ lift
     @@ Storage.Sc_rollup.Commitment_stake_count.find (ctxt, rollup) old_lcc_hash
   in
+  let pp fmt (level, _commits) = Raw_level_repr.pp fmt level in
   let* () =
-    assert_not_exist ~loc:__LOC__ ~pp:Raw_level_repr.pp
+    assert_not_exist ~loc:__LOC__ ~pp
     @@ lift
-    @@ Storage.Sc_rollup.Commitment_first_publication_level.find
+    @@ Storage.Sc_rollup.Commitments_at_level.find
          (ctxt, rollup)
          old_lcc.inbox_level
   in
