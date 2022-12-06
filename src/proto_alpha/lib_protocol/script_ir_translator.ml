@@ -605,13 +605,9 @@ let rec parse_ty :
     | Prim (loc, T_key_hash, [], annot) ->
         check_type_annot loc annot >|? fun () -> return ctxt key_hash_t
     | Prim (loc, T_chest_key, [], annot) ->
-        if legacy then
-          check_type_annot loc annot >|? fun () -> return ctxt chest_key_t
-        else error (Deprecated_instruction T_chest_key)
+        check_type_annot loc annot >|? fun () -> return ctxt chest_key_t
     | Prim (loc, T_chest, [], annot) ->
-        if legacy then
-          check_type_annot loc annot >|? fun () -> return ctxt chest_t
-        else error (Deprecated_instruction T_chest)
+        check_type_annot loc annot >|? fun () -> return ctxt chest_t
     | Prim (loc, T_timestamp, [], annot) ->
         check_type_annot loc annot >|? fun () -> return ctxt timestamp_t
     | Prim (loc, T_address, [], annot) ->
