@@ -45,7 +45,10 @@ struct
     let open Lwt_syntax in
     let run =
       PVM.Internal_for_tests.compute_step_many_with_hooks
-        ~write_debug:Tezos_scoru_wasm.Builtins.Noop
+        ~write_debug:
+          Tezos_scoru_wasm.Builtins.(
+            Printer (fun s -> Lwt_io.printf "DEBUG: %s\n%!" s))
+      (* Printer (fun s -> Lwt.return @@ Printf.printf "DEBUG: %s\n" s)) *)
     in
     let* info = PVM.get_info tree in
     match info.input_request with
@@ -142,8 +145,8 @@ struct
       let* tree = eval_until_input_requested tree in
       let+ stuck = PVM.Internal_for_tests.is_stuck tree in
       (match stuck with
-      | Some error ->
-          Stdlib.failwith (Tezos_scoru_wasm.Wasm_pvm_errors.show error)
+      | Some _error -> Stdlib.failwith "oops"
+      (* (Tezos_scoru_wasm.Wasm_pvm_errors.show error) *)
       | None -> ()) ;
       let t1 = Sys.time () in
       (tree, timings @ [t1 -. t0])
@@ -171,7 +174,7 @@ module type Bench = sig
   val run :
     kernel:string ->
     messages:string list ->
-    (Tezos_crypto.Context_hash.t * float list) Lwt.t
+    (Tezos_crypto.Hashed.Context_hash.t * float list) Lwt.t
 end
 
 let bench ~title ?(samples = 1) (module B : Bench) =
@@ -207,7 +210,7 @@ let bench ~title ?(samples = 1) (module B : Bench) =
     "> %s: %fms to %a\n%!"
     title
     (time_spent /. Float.of_int samples *. 1000.0)
-    Tezos_crypto.Context_hash.pp
+    Tezos_crypto.Hashed.Context_hash.pp
     hash ;
   let timings =
     match List.map (fun (_, t) -> t) hashes with

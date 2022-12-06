@@ -56,6 +56,11 @@ module Make (Hash : REVEAL_HASH) = struct
       concat data_dir @@ hex_encode
       @@ Data_encoding.Binary.to_string_exn Hash.encoding hash)
 
+  let path2 data_dir hash =
+    Filename.(
+      concat data_dir @@ hex_encode
+      @@ Data_encoding.Binary.to_string_exn Hash.encoding hash)
+
   let save_bytes data_dir hash page_contents =
     let open Lwt_result_syntax in
     let path = path data_dir hash in

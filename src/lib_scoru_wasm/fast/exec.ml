@@ -29,28 +29,26 @@ module Wasmer = Tezos_wasmer
 
 include (Wasm_vm : Wasm_vm_sig.S)
 
-let compiler_env_variable = "OCTEZ_WASMER_COMPILER"
+let _compiler_env_variable = "OCTEZ_WASMER_COMPILER"
 
-let get_compiler () =
-  let compiler_choice =
-    Option.map String.lowercase_ascii (Sys.getenv_opt compiler_env_variable)
-  in
-  match compiler_choice with
-  | Some "singlepass" -> Wasmer.Config.SINGLEPASS
-  | Some "cranelift" -> Wasmer.Config.CRANELIFT
-  | Some compiler ->
-      Format.sprintf
-        "Unknown Wasmer compiler %S (selected via %s environment variable)"
-        compiler
-        compiler_env_variable
-      |> Stdlib.failwith
-  | None -> Wasmer.Config.CRANELIFT
+(* let get_compiler () = *)
+(*   let compiler_choice = *)
+(*     Option.map String.lowercase_ascii (Sys.getenv_opt compiler_env_variable) *)
+(*   in *)
+(*   match compiler_choice with *)
+(*   | Some "singlepass" -> Wasmer.Config.SINGLEPASS *)
+(*   | Some "cranelift" -> Wasmer.Config.CRANELIFT *)
+(*   | Some compiler -> *)
+(*       Format.sprintf *)
+(*         "Unknown Wasmer compiler %S (selected via %s environment variable)" *)
+(*         compiler *)
+(*         compiler_env_variable *)
+(*       |> Stdlib.failwith *)
+(*   | None -> Wasmer.Config.CRANELIFT *)
 
 let store =
   Lazy.from_fun @@ fun () ->
-  let engine =
-    Wasmer.Engine.create Wasmer.Config.{compiler = get_compiler ()}
-  in
+  let engine = Wasmer.Engine.create Wasmer.Config.{compiler = CRANELIFT} in
   Wasmer.Store.create engine
 
 let load_kernel durable =

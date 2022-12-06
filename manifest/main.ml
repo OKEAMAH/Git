@@ -1637,7 +1637,7 @@ let octez_wasmer =
           c_library_flags =
             (* Use [llvm-config --link-static --system-libs] to get an idea of
                which libraries are needed for LLVM. *)
-            ["-lc++"; "-lm"; "-lz"; "-ltinfo"];
+            ["-lstdc++"; "-lm"; "-lz"; "-ltinfo"];
         }
 
 let octez_scoru_wasm =

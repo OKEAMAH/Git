@@ -17,4 +17,4 @@
   tezos-scoru-wasm-fast)
  (flags
   (:standard)
-  -open Tezos_base.TzPervasives -cclib -lstdc++))
+  -open Tezos_base.TzPervasives))
