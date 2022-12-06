@@ -2375,10 +2375,10 @@ let test_boot_sector_is_evaluated ~boot_sector1 ~boot_sector2 ~kind =
       ~error_msg:"State hashes should be different! (%L, %R)") ;
   unit
 
-let test_reveals_fails_on_wrong_hash ~kind =
+let test_reveals_fails_on_wrong_hash =
   test_full_scenario
     ~timeout:120
-    ~kind
+    ~kind:"arith"
     {
       tags = ["reveals"];
       variant = None;
@@ -3833,6 +3833,7 @@ let register ~protocols =
     ~boot_sector2:"31"
     ~kind:"arith"
     protocols ;
+  test_reveals_fails_on_wrong_hash protocols ;
   (* Specific Wasm PVM tezts *)
   test_rollup_node_run_with_kernel
     protocols
