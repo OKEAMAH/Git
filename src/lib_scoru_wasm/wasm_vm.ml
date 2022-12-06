@@ -296,6 +296,7 @@ let unsafe_next_tick_state ~debug_flag
 
 let next_tick_state ~debug_flag pvm_state =
   let to_stuck exn =
+    Printf.printf "PVMDEBUG: %s\n" @@ Printexc.to_string exn ;
     let error = Wasm_pvm_errors.extract_interpreter_error exn in
     let wasm_error =
       match error with
