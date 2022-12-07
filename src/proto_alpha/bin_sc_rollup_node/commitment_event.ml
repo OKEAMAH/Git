@@ -113,6 +113,18 @@ module Simple = struct
       ("inbox_level", Raw_level.encoding)
       ("compressed_state", Sc_rollup.State_hash.encoding)
       ("number_of_ticks", Sc_rollup.Number_of_ticks.encoding)
+
+  let commitment_below_staked =
+    declare_3
+      ~section
+      ~name:"sc_rollup_node_commitment_below_staked"
+      ~msg:
+        "Not publishing commitment {commitment_hash} for level \
+         {commitment_level} below staked on commitment at level {staked_level}"
+      ~level:Warning
+      ("commitment_hash", Sc_rollup.Commitment.Hash.encoding)
+      ("commitment_level", Raw_level.encoding)
+      ("staked_level", Raw_level.encoding)
 end
 
 let starting = Simple.(emit starting)
@@ -149,3 +161,6 @@ let compute_commitment head level =
 
 let commitment_parent_is_not_lcc level predecessor_hash lcc_hash =
   Simple.(emit commitment_parent_is_not_lcc (level, predecessor_hash, lcc_hash))
+
+let commitment_below_staked commitment level staked_level =
+  Simple.(emit commitment_below_staked (commitment, level, staked_level))
