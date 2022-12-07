@@ -68,21 +68,17 @@ let get_contract_and_stake ctxt staker =
   let stake = Constants_storage.sc_rollup_stake_amount ctxt in
   (staker_contract, stake)
 
-let if_staked_on_lcc_or_ancestor ctxt rollup staker =
+let is_staked_on_lcc_or_ancestor ctxt rollup ~staked_on ~lcc_inbox_level =
   let open Lwt_result_syntax in
-  let* staked_on, ctxt = find_staker ctxt rollup staker in
-  let* ctxt, commitment_opt = Store.Commitments.find (ctxt, rollup) staked_on in
+  let+ ctxt, commitment_opt = Store.Commitments.find (ctxt, rollup) staked_on in
   (* If commitment of staked_on is still stored, it means that we can obtain inbox_level for it and
      compare explicitly with LCC inbox level.
      Otherwise, it means that staked_on **existed** in the store and it has to be a cemented predecessor of LCC:
      if it wasn't a case then staker would be refuted and removed by now.
   *)
   match commitment_opt with
-  | None -> return (true, ctxt)
+  | None -> (true, ctxt)
   | Some {inbox_level; _} ->
-      let+ _lcc, lcc_inbox_level, ctxt =
-        Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
-      in
       (Raw_level_repr.(inbox_level <= lcc_inbox_level), ctxt)
 
 (** Warning: must be called only if [rollup] exists and [staker] is not to be
@@ -119,11 +115,15 @@ let deposit_stake ctxt rollup staker =
 
 let withdraw_stake ctxt rollup staker =
   let open Lwt_result_syntax in
-  let* lcc_or_ancestor, ctxt =
-    if_staked_on_lcc_or_ancestor ctxt rollup staker
+  let* staked_on, ctxt = find_staker ctxt rollup staker in
+  let* _lcc, lcc_inbox_level, ctxt =
+    Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
+  in
+  let* is_staked_on_cemented, ctxt =
+    is_staked_on_lcc_or_ancestor ctxt rollup ~staked_on ~lcc_inbox_level
   in
   let* () =
-    fail_unless lcc_or_ancestor Sc_rollup_not_staked_on_lcc_or_ancestor
+    fail_unless is_staked_on_cemented Sc_rollup_not_staked_on_lcc_or_ancestor
   in
   let staker_contract, stake = get_contract_and_stake ctxt staker in
   let bond_id = Bond_id_repr.Sc_rollup_bond_id rollup in
@@ -361,11 +361,13 @@ let commitment_storage_size_in_bytes = 89
 
 let refine_stake ctxt rollup staker staked_on commitment =
   let open Lwt_result_syntax in
-  let* lcc, ctxt = Commitment_storage.last_cemented_commitment ctxt rollup in
+  let* lcc, lcc_inbox_level, ctxt =
+    Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
+  in
   let* ctxt = assert_refine_conditions_met ctxt rollup lcc commitment in
   let*? ctxt, new_hash = Sc_rollup_commitment_storage.hash ctxt commitment in
-  let* is_staked_on_lcc_or_ancestor, ctxt =
-    if_staked_on_lcc_or_ancestor ctxt rollup staker
+  let* is_staked_on_cemented, ctxt =
+    is_staked_on_lcc_or_ancestor ctxt rollup ~staked_on ~lcc_inbox_level
   in
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2559
@@ -391,7 +393,7 @@ let refine_stake ctxt rollup staker staked_on commitment =
     *)
     if
       Commitment_hash.(
-        node = staked_on || (is_staked_on_lcc_or_ancestor && node = lcc))
+        node = staked_on || (is_staked_on_cemented && node = lcc))
     then (
       (* Insert new commitment if not existing.
          Two reasons when we fall into this branch are possible:
@@ -564,13 +566,14 @@ let cement_commitment ctxt rollup new_lcc =
 
 let remove_staker ctxt rollup staker =
   let open Lwt_result_syntax in
-  let* lcc_or_ancestor, ctxt =
-    if_staked_on_lcc_or_ancestor ctxt rollup staker
+  let* staked_on, ctxt = find_staker ctxt rollup staker in
+  let* lcc, lcc_inbox_level, ctxt =
+    Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
-  let* () = fail_when lcc_or_ancestor Sc_rollup_remove_lcc_or_ancestor in
-
-  let* lcc, ctxt = Commitment_storage.last_cemented_commitment ctxt rollup in
-  let* staked_on, ctxt = find_staker_unsafe ctxt rollup staker in
+  let* is_staked_on_cemented, ctxt =
+    is_staked_on_lcc_or_ancestor ctxt rollup ~staked_on ~lcc_inbox_level
+  in
+  let* () = fail_when is_staked_on_cemented Sc_rollup_remove_lcc_or_ancestor in
   let staker_contract, stake = get_contract_and_stake ctxt staker in
   let bond_id = Bond_id_repr.Sc_rollup_bond_id rollup in
   let* ctxt, balance_updates =
