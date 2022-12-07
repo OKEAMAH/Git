@@ -65,3 +65,6 @@ val commitment_parent_is_not_lcc :
     being computed and stored for the block of the given [hash] and at the given
     [level]. *)
 val compute_commitment : Tezos_crypto.Block_hash.t -> Raw_level.t -> unit Lwt.t
+
+val commitment_below_staked :
+  Sc_rollup.Commitment.Hash.t -> Raw_level.t -> Raw_level.t -> unit Lwt.t
