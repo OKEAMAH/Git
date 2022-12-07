@@ -54,6 +54,8 @@ module Make (PVM : Pvm.S) = struct
     | Sc_rollup_cement {commitment; _}, Sc_rollup_cement_result {inbox_level; _}
       ->
         (* Cemented commitment ---------------------------------------------- *)
+        if Raw_level.(inbox_level > node_ctxt.lcc.level) then
+          node_ctxt.lcc <- {commitment; level = inbox_level} ;
         let*! () =
           Store.Last_cemented_commitment_level.set node_ctxt.store inbox_level
         in
