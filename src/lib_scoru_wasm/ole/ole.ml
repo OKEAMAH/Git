@@ -161,20 +161,17 @@ end
 let bench ~title ?(samples = 1) (module B : Bench) =
   let open Lwt.Syntax in
   let* kernel =
-    Lwt_io.with_file ~mode:Lwt_io.Input "tx-kernel.wasm" Lwt_io.read
+    Lwt_io.with_file
+      ~mode:Lwt_io.Input
+      "/home/emma/sources/wasm-kernel/tx-kernel.wasm"
+      Lwt_io.read
   in
   let* messages =
     List.map_s
       (fun path -> Lwt_io.with_file ~mode:Lwt_io.Input path Lwt_io.read)
-      [
-        "1-fst_deposit_message.out";
-        (* "2-invalid_external_message.out"; *)
-        "3-snd_deposit_message.out";
-        (* "4-valid_external_message.out"; *)
-        (* "4-transfer.out" *)
-        "4-transfer-1.out";
-        "4-transfer-2.out";
-      ]
+      (List.map (fun f -> "/home/emma/sources/wasm-kernel/gen_messages/" ^ f)
+      @@ Array.to_list
+      @@ Sys.readdir "/home/emma/sources/wasm-kernel/gen_messages/")
   in
   let trigger = Stdlib.List.init samples (fun _ -> ()) in
   let+ hashes = List.map_s (fun () -> B.run ~kernel ~messages) trigger in
