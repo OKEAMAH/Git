@@ -474,6 +474,26 @@ module Dal_confirmed_slots_histories =
       include Add_empty_header
     end)
 
+module Processed_blocks =
+  Indexed_store.Make_indexable_removable
+    (struct
+      let name = "processed_blocks"
+    end)
+    (Tezos_store_shared.Block_key)
+    (Indexed_store.Make_index_value (Empty_header))
+
+module Head = Indexed_store.Make_singleton (struct
+  type t = Tezos_crypto.Block_hash.t * Int32.t
+
+  let name = "head"
+
+  let encoding =
+    let open Data_encoding in
+    obj2
+      (req "hash" Tezos_crypto.Block_hash.encoding)
+      (req "level" Data_encoding.int32)
+end)
+
 type 'a store = {
   stateinfo : 'a StateInfo.t;
   statehistory : 'a StateHistory.t;
@@ -491,6 +511,9 @@ type 'a store = {
   dal_processed_slots : 'a Dal_processed_slots.t;
   dal_confirmed_slots_history : 'a Dal_confirmed_slots_history.t;
   dal_confirmed_slots_histories : 'a Dal_confirmed_slots_histories.t;
+  processed_blocks : 'a Processed_blocks.t;
+  last_processed_head : 'a Head.t;
+  last_finalized_head : 'a Head.t;
 }
 
 type 'a t = ([< `Read | `Write > `Read] as 'a) store
@@ -517,6 +540,9 @@ let readonly
        dal_processed_slots;
        dal_confirmed_slots_history;
        dal_confirmed_slots_histories;
+       processed_blocks;
+       last_processed_head;
+       last_finalized_head;
      } :
       _ t) : ro =
   {
@@ -540,6 +566,9 @@ let readonly
       Dal_confirmed_slots_history.readonly dal_confirmed_slots_history;
     dal_confirmed_slots_histories =
       Dal_confirmed_slots_histories.readonly dal_confirmed_slots_histories;
+    processed_blocks = Processed_blocks.readonly processed_blocks;
+    last_processed_head = Head.readonly last_processed_head;
+    last_finalized_head = Head.readonly last_finalized_head;
   }
 
 let close
@@ -560,6 +589,9 @@ let close
        dal_processed_slots;
        dal_confirmed_slots_history;
        dal_confirmed_slots_histories;
+       processed_blocks;
+       last_processed_head = _;
+       last_finalized_head = _;
      } :
       _ t) =
   let open Lwt_result_syntax in
@@ -576,7 +608,8 @@ let close
   and+ () = Dal_slot_pages.close dal_slot_pages
   and+ () = Dal_processed_slots.close dal_processed_slots
   and+ () = Dal_confirmed_slots_history.close dal_confirmed_slots_history
-  and+ () = Dal_confirmed_slots_histories.close dal_confirmed_slots_histories in
+  and+ () = Dal_confirmed_slots_histories.close dal_confirmed_slots_histories
+  and+ () = Processed_blocks.close processed_blocks in
   ()
 
 let load (type a) (mode : a mode) data_dir : a store tzresult Lwt.t =
@@ -617,6 +650,11 @@ let load (type a) (mode : a mode) data_dir : a store tzresult Lwt.t =
       mode
       ~path:(path "dal_confirmed_slots_history")
       ~cache_size
+  and+ processed_blocks =
+    Processed_blocks.load mode ~path:(path "processed_blocks")
+  and+ last_processed_head = Head.load mode ~path:(path "last_processed_head")
+  and+ last_finalized_head =
+    Head.load mode ~path:(path "last_finalized_head")
   in
   {
     stateinfo;
@@ -635,4 +673,7 @@ let load (type a) (mode : a mode) data_dir : a store tzresult Lwt.t =
     dal_processed_slots;
     dal_confirmed_slots_history;
     dal_confirmed_slots_histories;
+    processed_blocks;
+    last_processed_head;
+    last_finalized_head;
   }

@@ -23,116 +23,56 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Store = struct
-  (** Table from blocks hashes to unit. The entry is present iff the block
-      identified by that hash is fully processed by the rollup node. *)
-  module Processed_hashes =
-    Store.Make_append_only_map
-      (struct
-        let path = ["tezos"; "processed_blocks"]
-      end)
-      (struct
-        type key = Tezos_crypto.Block_hash.t
+let hash_of_level =
+  let max_cached = 1023 in
+  let module Cache =
+    Aches_lwt.Lache.Make_option
+      (Aches.Rache.Transfer
+         (Aches.Rache.LRU)
+         (struct
+           include Int32
 
-        let to_path_representation = Tezos_crypto.Block_hash.to_b58check
-      end)
-      (struct
-        type value = unit
+           let hash = to_int
+         end)) in
+  let cache = Cache.create max_cached in
+  fun (cctxt : Protocol_client_context.full) level ->
+    let open Lwt_syntax in
+    let get_level_hash level =
+      let+ hash =
+        Tezos_shell_services.Shell_services.Blocks.hash
+          cctxt
+          ~chain:cctxt#chain
+          ~block:(`Level level)
+          ()
+      in
+      Result.to_option hash
+    in
+    Cache.bind_or_put cache level get_level_hash @@ function
+    | None -> failwith "Cannot retrieve hash of level %ld" level
+    | Some h -> Lwt_result.return h
 
-        let name = "processed"
-
-        let encoding = Data_encoding.unit
-      end)
-
-  module Last_processed_head =
-    Store.Make_mutable_value
-      (struct
-        let path = ["tezos"; "processed_head"]
-      end)
-      (struct
-        type value = Layer1.head
-
-        let name = "head"
-
-        let encoding = Layer1.head_encoding
-      end)
-
-  module Last_finalized_head =
-    Store.Make_mutable_value
-      (struct
-        let path = ["tezos"; "finalized_head"]
-      end)
-      (struct
-        type value = Layer1.head
-
-        let name = "head"
-
-        let encoding = Layer1.head_encoding
-      end)
-
-  (** Table from L1 levels to blocks hashes. *)
-  module Levels_to_hashes =
-    Store.Make_updatable_map
-      (struct
-        let path = ["tezos"; "levels"]
-      end)
-      (struct
-        type key = int32
-
-        let to_path_representation = Int32.to_string
-      end)
-      (struct
-        type value = Tezos_crypto.Block_hash.t
-
-        let name = "block_hash"
-
-        let encoding = Tezos_crypto.Block_hash.encoding
-      end)
-
-  (** Table from L1 blocks hashes to levels. *)
-  module Hashes_to_levels =
-    Store.Make_append_only_map
-      (struct
-        let path = ["tezos"; "blocks_hashes"]
-      end)
-      (struct
-        type key = Tezos_crypto.Block_hash.t
-
-        let to_path_representation = Tezos_crypto.Block_hash.to_b58check
-      end)
-      (struct
-        type value = int32
-
-        let name = "level"
-
-        let encoding = Data_encoding.int32
-      end)
-end
-
-let hash_of_level store level = Store.Levels_to_hashes.get store level
-
-let level_of_hash store hash =
+let level_of_hash l1_ctxt hash =
   let open Lwt_result_syntax in
-  let*! level = Store.Hashes_to_levels.find store hash in
-  match level with
-  | None ->
-      failwith "No level known for block %a" Tezos_crypto.Block_hash.pp hash
-  | Some l -> return l
+  let+ {level; _} = Layer1.fetch_tezos_shell_header l1_ctxt hash in
+  level
 
-let mark_processed_head store Layer1.({hash; level = _} as head) =
-  let open Lwt_syntax in
-  let* () = Store.Processed_hashes.add store hash () in
-  Store.Last_processed_head.set store head
+let mark_processed_head store Layer1.{hash; level} =
+  let open Lwt_result_syntax in
+  let* () = Store.Processed_blocks.add store.Store.processed_blocks hash () in
+  Store.Head.write store.last_processed_head (hash, level)
 
-let is_processed store head = Store.Processed_hashes.mem store head
+let is_processed store head =
+  Store.Processed_blocks.mem store.Store.processed_blocks head
 
-let last_processed_head_opt store = Store.Last_processed_head.find store
+let last_processed_head_opt store =
+  let open Lwt_result_syntax in
+  let+ res = Store.Head.read store.Store.last_processed_head in
+  Option.map (fun (hash, level) -> Layer1.{hash; level}) res
 
-let mark_finalized_head store head = Store.Last_finalized_head.set store head
+let mark_finalized_head store Layer1.{hash; level} =
+  Store.Head.write store.Store.last_finalized_head (hash, level)
 
-let get_finalized_head_opt store = Store.Last_finalized_head.find store
-
-let set_block_level_and_hash store Layer1.{hash; level} =
-  let open Lwt_syntax in
-  let* () = Store.Hashes_to_levels.add store hash level in
-  Store.Levels_to_hashes.add store level hash
+let get_finalized_head_opt store =
+  let open Lwt_result_syntax in
+  let+ res = Store.Head.read store.Store.last_finalized_head in
+  Option.map (fun (hash, level) -> Layer1.{hash; level}) res

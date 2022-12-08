@@ -184,6 +184,14 @@ module Dal_processed_slots :
     with type key := Tezos_crypto.Block_hash.t * Dal.Slot_index.t
      and type value := [`Confirmed | `Unconfirmed]
 
+module Processed_blocks :
+  INDEXABLE_REMOVABLE_STORE
+    with type key := Tezos_crypto.Block_hash.t
+     and type value := unit
+
+module Head :
+  SINGLETON_STORE with type value := Tezos_crypto.Block_hash.t * Int32.t
+
 type +'a store = {
   stateinfo : 'a StateInfo.t;
   statehistory : 'a StateHistory.t;
@@ -201,6 +209,9 @@ type +'a store = {
   dal_processed_slots : 'a Dal_processed_slots.t;
   dal_confirmed_slots_history : 'a Dal_confirmed_slots_history.t;
   dal_confirmed_slots_histories : 'a Dal_confirmed_slots_histories.t;
+  processed_blocks : 'a Processed_blocks.t;
+  last_processed_head : 'a Head.t;
+  last_finalized_head : 'a Head.t;
 }
 
 (** Type of store. The parameter indicates if the store can be written or only
