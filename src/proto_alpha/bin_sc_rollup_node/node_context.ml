@@ -143,7 +143,7 @@ let init (cctxt : Protocol_client_context.full) dal_cctxt ~data_dir l1_ctxt
 
 let checkout_context node_ctxt block_hash =
   let open Lwt_result_syntax in
-  let*! context_hash = Store.Contexts.find node_ctxt.store block_hash in
+  let* context_hash = Store.Contexts.find node_ctxt.store.contexts block_hash in
   let*? context_hash =
     match context_hash with
     | None ->
