@@ -113,7 +113,7 @@ module type SINGLETON_STORE = sig
 
   type value
 
-  val init : path:string -> 'a mode -> 'a t tzresult Lwt.t
+  val load : path:string -> 'a mode -> 'a t tzresult Lwt.t
 
   val read : [> `Read] t -> value option tzresult Lwt.t
 
@@ -129,7 +129,7 @@ module type INDEXABLE_STORE = sig
 
   type value
 
-  val init : path:string -> 'a mode -> 'a t tzresult Lwt.t
+  val load : path:string -> 'a mode -> 'a t tzresult Lwt.t
 
   val mem : [> `Read] t -> key -> bool tzresult Lwt.t
 
@@ -164,7 +164,7 @@ module type INDEXED_FILE = sig
   val append :
     ?flush:bool -> [> `Write] t -> key:key -> value:value -> unit tzresult Lwt.t
 
-  val init : data_dir:string -> cache_size:int -> 'a mode -> 'a t tzresult Lwt.t
+  val load : path:string -> cache_size:int -> 'a mode -> 'a t tzresult Lwt.t
 
   val close : _ t -> unit tzresult Lwt.t
 end
@@ -269,7 +269,7 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     if flush then I.flush store.index ;
     return_unit
 
-  let init (type a) ~path (mode : a mode) : a t tzresult Lwt.t =
+  let load (type a) ~path (mode : a mode) : a t tzresult Lwt.t =
     let open Lwt_result_syntax in
     protect @@ fun () ->
     let readonly = match mode with Read_only -> true | Read_write -> false in
@@ -414,7 +414,7 @@ end) : SINGLETON_STORE with type value := S.t = struct
     let+ () = delete_disk store in
     store.cache <- Some None
 
-  let init ~path _mode = Lwt_result.return {file = path; cache = None}
+  let load ~path _mode = Lwt_result.return {file = path; cache = None}
 end
 
 module Make_indexed_file
@@ -560,7 +560,7 @@ struct
     if flush then Header_index.flush store.index ;
     return_unit
 
-  let init (type a) ~data_dir ~cache_size (mode : a mode) : a t tzresult Lwt.t =
+  let load (type a) ~path ~cache_size (mode : a mode) : a t tzresult Lwt.t =
     let open Lwt_result_syntax in
     protect @@ fun () ->
     let readonly = match mode with Read_only -> true | Read_write -> false in
@@ -569,7 +569,7 @@ struct
     in
     let*! fd =
       Lwt_unix.openfile
-        (Filename.concat data_dir "data")
+        (Filename.concat path "data")
         [Unix.O_CREAT; O_CLOEXEC; flag]
         perms
     in
@@ -577,7 +577,7 @@ struct
       Header_index.v
         ~log_size:blocks_log_size
         ~readonly
-        (Filename.concat data_dir "index")
+        (Filename.concat path "index")
     in
     let scheduler = Lwt_idle_waiter.create () in
     let cache = Cache.create cache_size in
