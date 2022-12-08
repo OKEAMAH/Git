@@ -304,6 +304,58 @@ module Block_slot_key = Make_fixed_index_key (struct
   let equal (b1, s1) (b2, s2) = s1 = s2 && Tezos_crypto.Block_hash.(b1 = b2)
 end)
 
+module Dal_slots = struct
+  let max_slots = 256
+
+  include
+    Indexed_store.Make_indexable
+      (struct
+        let name = "dal_slots"
+      end)
+      (Tezos_store_shared.Block_key)
+      (Indexed_store.Make_index_value (struct
+        type t = Dal.Slot_index.t list
+
+        let name = "slots_bitset"
+
+        let encoding =
+          let open Data_encoding in
+          conv
+            (fun l ->
+              let buffer = Bytes.make max_slots '\000' in
+              match Bitset.from_list (List.map Dal.Slot_index.to_int l) with
+              | Error _ -> assert false
+              | Ok b ->
+                  let bits = Z.to_bits (Bitset.Internal_for_tests.to_z b) in
+                  let len = Bitset.occupied_size_in_bits b in
+                  assert (len <= max_slots) ;
+                  Bytes.blit_string bits 0 buffer 0 len ;
+                  buffer)
+            (fun b ->
+              let bitset =
+                (Obj.magic (Z.of_bits (Bytes.unsafe_to_string b)) : Bitset.t)
+              in
+              let max = Bitset.occupied_size_in_bits bitset in
+              List.fold_left
+                (fun acc i ->
+                  if
+                    WithExceptions.Result.get_ok
+                      ~loc:__LOC__
+                      (Bitset.mem bitset i)
+                  then
+                    WithExceptions.Option.get
+                      ~loc:__LOC__
+                      (Dal.Slot_index.of_int i)
+                    :: acc
+                  else acc)
+                []
+                (0 -- max))
+            Fixed.(bytes max_slots)
+
+        let fixed_size = max_slots
+      end))
+end
+
 (* Published slot headers per block hash,
    stored as a list of bindings from `Dal_slot_index.t`
    to `Dal.Slot.t`. The encoding function converts this
@@ -433,6 +485,7 @@ type 'a store = {
   last_stored_commitment_level : 'a Last_stored_commitment_level.t;
   commitments_published_at_level : 'a Commitments_published_at_level.t;
   contexts : 'a Contexts.t;
+  dal_slots : 'a Dal_slots.t;
   dal_slot_headers : 'a Dal_slot_headers.t;
   dal_slot_pages : 'a Dal_slot_pages.t;
   dal_processed_slots : 'a Dal_processed_slots.t;
@@ -458,6 +511,7 @@ let readonly
        last_stored_commitment_level;
        commitments_published_at_level;
        contexts;
+       dal_slots;
        dal_slot_headers;
        dal_slot_pages;
        dal_processed_slots;
@@ -478,6 +532,7 @@ let readonly
     commitments_published_at_level =
       Commitments_published_at_level.readonly commitments_published_at_level;
     contexts = Contexts.readonly contexts;
+    dal_slots = Dal_slots.readonly dal_slots;
     dal_slot_headers = Dal_slot_headers.readonly dal_slot_headers;
     dal_slot_pages = Dal_slot_pages.readonly dal_slot_pages;
     dal_processed_slots = Dal_processed_slots.readonly dal_processed_slots;
@@ -499,6 +554,7 @@ let close
        last_stored_commitment_level = _;
        commitments_published_at_level;
        contexts;
+       dal_slots;
        dal_slot_headers;
        dal_slot_pages;
        dal_processed_slots;
@@ -515,6 +571,7 @@ let close
   and+ () = Commitments.close commitments
   and+ () = Commitments_published_at_level.close commitments_published_at_level
   and+ () = Contexts.close contexts
+  and+ () = Dal_slots.close dal_slots
   and+ () = Dal_slot_headers.close dal_slot_headers
   and+ () = Dal_slot_pages.close dal_slot_pages
   and+ () = Dal_processed_slots.close dal_processed_slots
@@ -543,6 +600,7 @@ let load (type a) (mode : a mode) data_dir : a store tzresult Lwt.t =
       mode
       ~path:(path "commitments_published_at_level")
   and+ contexts = Contexts.load mode ~path:(path "contexts")
+  and+ dal_slots = Dal_slots.load mode ~path:(path "dal_slots")
   and+ dal_slot_headers =
     Dal_slot_headers.load mode ~path:(path "dal_slot_headers")
   and+ dal_slot_pages =
@@ -571,6 +629,7 @@ let load (type a) (mode : a mode) data_dir : a store tzresult Lwt.t =
     last_stored_commitment_level;
     commitments_published_at_level;
     contexts;
+    dal_slots;
     dal_slot_headers;
     dal_slot_pages;
     dal_processed_slots;

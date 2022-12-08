@@ -128,6 +128,15 @@ module Contexts :
     with type key := Tezos_crypto.Block_hash.t
      and type value := Context.hash
 
+module Dal_slots : sig
+  val max_slots : int
+
+  include
+    INDEXABLE_STORE
+      with type key := Tezos_crypto.Block_hash.t
+       and type value := Dal.Slot_index.t list
+end
+
 (** Published slot headers per block hash,
     stored as a list of bindings from [Dal_slot_index.t]
     to [Dal.Slot.t]. The encoding function converts this
@@ -186,6 +195,7 @@ type +'a store = {
   last_stored_commitment_level : 'a Last_stored_commitment_level.t;
   commitments_published_at_level : 'a Commitments_published_at_level.t;
   contexts : 'a Contexts.t;
+  dal_slots : 'a Dal_slots.t;
   dal_slot_headers : 'a Dal_slot_headers.t;
   dal_slot_pages : 'a Dal_slot_pages.t;
   dal_processed_slots : 'a Dal_processed_slots.t;
