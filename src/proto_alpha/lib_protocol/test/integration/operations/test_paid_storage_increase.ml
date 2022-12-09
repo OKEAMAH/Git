@@ -63,7 +63,7 @@ let contract_originate block ?(script = dummy_script)
     source contract balance is correct and that the storage of the
     destination contract has been increased by the right amount. *)
 let test_balances ~amount =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* b, source = Context.init1 () in
   let* b, destination = contract_originate b source in
   let* inc = Incremental.begin_construction b in
@@ -74,9 +74,7 @@ let test_balances ~amount =
       (Incremental.alpha_ctxt inc)
       contract_dst
   in
-  let* storage_before_op =
-    Lwt.return (Environment.wrap_tzresult storage_before_op)
-  in
+  let*?@ storage_before_op = storage_before_op in
   let* op =
     Op.increase_paid_storage ~fee:Tez.zero (I inc) ~source ~destination amount
   in
@@ -99,7 +97,7 @@ let test_balances ~amount =
       (Incremental.alpha_ctxt inc)
       contract_dst
   in
-  let* storage = Lwt.return (Environment.wrap_tzresult storage) in
+  let*?@ storage = storage in
   let storage_minus_amount = Z.sub storage amount in
   Assert.equal_int
     ~loc:__LOC__

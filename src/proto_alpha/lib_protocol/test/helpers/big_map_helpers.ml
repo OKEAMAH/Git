@@ -26,10 +26,8 @@
 open Protocol
 open Alpha_context
 
-let wrap m = m >|= Environment.wrap_tzresult
-
 let make_big_map block ~source ~key_type ~value_type key_values =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let key_type = Expr.from_string key_type in
   let value_type = Expr.from_string value_type in
   let* operation, originated =
@@ -38,7 +36,7 @@ let make_big_map block ~source ~key_type ~value_type key_values =
   let* block = Block.bake ~operation block in
   let* incr = Incremental.begin_construction block in
   let ctxt = Incremental.alpha_ctxt incr in
-  let* ctxt, big_map_id = wrap @@ Big_map.fresh ~temporary:false ctxt in
+  let*@ ctxt, big_map_id = Big_map.fresh ~temporary:false ctxt in
   let* updates, ctxt =
     List.fold_left_es
       (fun (kvs, ctxt) (key, value) ->
@@ -53,22 +51,21 @@ let make_big_map block ~source ~key_type ~value_type key_values =
       ([], ctxt)
       key_values
   in
-  let* ctxt =
-    wrap
-      (Contract.update_script_storage
-         ctxt
-         originated
-         key_type
-         (Some
-            [
-              Lazy_storage.make
-                Lazy_storage.Kind.Big_map
-                big_map_id
-                (Update
-                   {
-                     init = Lazy_storage.Alloc Big_map.{key_type; value_type};
-                     updates;
-                   });
-            ]))
+  let*@ ctxt =
+    Contract.update_script_storage
+      ctxt
+      originated
+      key_type
+      (Some
+         [
+           Lazy_storage.make
+             Lazy_storage.Kind.Big_map
+             big_map_id
+             (Update
+                {
+                  init = Lazy_storage.Alloc Big_map.{key_type; value_type};
+                  updates;
+                });
+         ])
   in
   return (big_map_id, ctxt)

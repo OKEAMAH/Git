@@ -33,7 +33,7 @@
 *)
 
 open Protocol
-open Lwt_result_syntax
+open Lwt_result_wrap_syntax
 module Commitment_repr = Sc_rollup_commitment_repr
 module T = Test_sc_rollup_storage
 module R = Sc_rollup_refutation_storage
@@ -103,8 +103,8 @@ let two_stakers_in_conflict () =
       }
   in
   let level l = T.valid_inbox_level ctxt l in
-  let* parent, _, ctxt =
-    T.lift @@ T.advance_level_n_refine_stake ctxt rollup defender parent_commit
+  let*@ parent, _, ctxt =
+    T.advance_level_n_refine_stake ctxt rollup defender parent_commit
   in
   let child1 =
     Commitment_repr.
@@ -125,13 +125,11 @@ let two_stakers_in_conflict () =
       }
   in
   let ctxt = T.advance_level_for_commitment ctxt child1 in
-  let* _, _, ctxt, _ =
-    T.lift
-    @@ Sc_rollup_stake_storage.publish_commitment ctxt rollup defender child1
+  let*@ _, _, ctxt, _ =
+    Sc_rollup_stake_storage.publish_commitment ctxt rollup defender child1
   in
-  let* _, _, ctxt, _ =
-    T.lift
-    @@ Sc_rollup_stake_storage.publish_commitment ctxt rollup refuter child2
+  let*@ _, _, ctxt, _ =
+    Sc_rollup_stake_storage.publish_commitment ctxt rollup refuter child2
   in
   return (ctxt, rollup, refuter, defender)
 
@@ -148,16 +146,15 @@ let test_poorly_distributed_dissection () =
     if i = size then (None, tick_of_int_exn 10000)
     else (Some (if i = 0 then start_hash else hash_int i), tick_of_int_exn i)
   in
-  let* ctxt =
-    T.lift @@ R.start_game ctxt rollup ~player:refuter ~opponent:defender
-  in
+  let*@ ctxt = R.start_game ctxt rollup ~player:refuter ~opponent:defender in
   let size =
     Constants_storage.sc_rollup_number_of_sections_in_dissection ctxt
   in
   let move = init_refutation ~size ~init_tick start_hash in
   assert_fails_with_f
     ~__LOC__
-    (T.lift @@ R.game_move ctxt rollup ~player:refuter ~opponent:defender move)
+    (wrap_tzresult
+    @@ R.game_move ctxt rollup ~player:refuter ~opponent:defender move)
     (function D.Dissection_invalid_distribution _ -> true | _ -> false)
 
 let test_single_valid_game_move () =
@@ -175,15 +172,13 @@ let test_single_valid_game_move () =
         else if i = size then (None, tick_of_int_exn 10000)
         else (Some (hash_int i), tick_of_int_exn (i * tick_per_state)))
   in
-  let* ctxt =
-    T.lift @@ R.start_game ctxt rollup ~player:refuter ~opponent:defender
-  in
+  let*@ ctxt = R.start_game ctxt rollup ~player:refuter ~opponent:defender in
   let move =
     Sc_rollup_game_repr.
       {choice = Sc_rollup_tick_repr.initial; step = Dissection dissection}
   in
-  let* game_result, _ctxt =
-    T.lift @@ R.game_move ctxt rollup ~player:refuter ~opponent:defender move
+  let*@ game_result, _ctxt =
+    R.game_move ctxt rollup ~player:refuter ~opponent:defender move
   in
   Assert.is_none ~loc:__LOC__ ~pp:Sc_rollup_game_repr.pp_game_result game_result
 
@@ -192,7 +187,7 @@ module Arith_pvm = Sc_rollup_helpers.Arith_pvm
 (** Test that sending a invalid serialized inbox proof to
     {Sc_rollup_proof_repr.valid} is rejected. *)
 let test_invalid_serialized_inbox_proof () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let open Alpha_context in
   let rollup = Sc_rollup.Address.zero in
   let level = Raw_level.(succ root) in
@@ -224,7 +219,7 @@ let test_invalid_serialized_inbox_proof () =
     Sc_rollup.Metadata.{address = rollup; origination_level = level}
   in
   let*! res =
-    T.lift
+    wrap_tzresult
     @@ Sc_rollup.Proof.valid
          ~pvm:(module Arith_pvm)
          ~metadata

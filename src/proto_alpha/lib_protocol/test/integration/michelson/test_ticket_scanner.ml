@@ -37,7 +37,7 @@ open Protocol
 open Alpha_context
 
 let assert_fails ~loc ?error m =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let*! res = m in
   let rec aux err_res =
     match (err_res, error) with
@@ -57,11 +57,8 @@ let assert_fails ~loc ?error m =
   | Ok _ -> Stdlib.failwith "Expected failure"
   | Error err_res -> aux err_res
 
-let ( let* ) m f = m >>=? f
-
-let wrap m = m >|= Environment.wrap_tzresult
-
 let new_ctxt () =
+  let open Lwt_result_wrap_syntax in
   let* block, _contract = Context.init1 () in
   let* incr = Incremental.begin_construction block in
   return @@ Incremental.alpha_ctxt incr
@@ -70,16 +67,16 @@ let assert_equal_string_list ~loc msg =
   Assert.assert_equal_list ~loc String.equal msg Format.pp_print_string
 
 let string_list_of_ex_tickets ctxt tickets =
+  let open Lwt_result_wrap_syntax in
   let accum (xs, ctxt)
       (Ticket_scanner.Ex_ticket
         (cty, {Script_typed_ir.ticketer; contents; amount})) =
-    let* x, ctxt =
-      wrap
-      @@ Script_ir_translator.unparse_data
-           ctxt
-           Script_ir_unparser.Readable
-           cty
-           contents
+    let*@ x, ctxt =
+      Script_ir_translator.unparse_data
+        ctxt
+        Script_ir_unparser.Readable
+        cty
+        contents
     in
     let content =
       Format.kasprintf Fun.id "%a" Michelson_v1_printer.print_expr x
@@ -100,14 +97,15 @@ let string_list_of_ex_tickets ctxt tickets =
   return (List.rev xs, ctxt)
 
 let make_ex_ticket ctxt ~ticketer ~type_exp ~content_exp ~amount =
-  let* Script_ir_translator.Ex_comparable_ty cty, ctxt =
+  let open Lwt_result_wrap_syntax in
+  let*@ Script_ir_translator.Ex_comparable_ty cty, ctxt =
     let node = Micheline.root @@ Expr.from_string type_exp in
-    wrap @@ Lwt.return @@ Script_ir_translator.parse_comparable_ty ctxt node
+    Lwt.return @@ Script_ir_translator.parse_comparable_ty ctxt node
   in
-  let* ticketer = wrap @@ Lwt.return @@ Contract.of_b58check ticketer in
-  let* contents, ctxt =
+  let*@ ticketer = Lwt.return @@ Contract.of_b58check ticketer in
+  let*@ contents, ctxt =
     let node = Micheline.root @@ Expr.from_string content_exp in
-    wrap @@ Script_ir_translator.parse_comparable_data ctxt cty node
+    Script_ir_translator.parse_comparable_data ctxt cty node
   in
   let amount = Script_int.(abs @@ of_int amount) in
   let amount =
@@ -117,6 +115,7 @@ let make_ex_ticket ctxt ~ticketer ~type_exp ~content_exp ~amount =
   return (Ticket_scanner.Ex_ticket (cty, ticket), ctxt)
 
 let assert_equals_ex_tickets ctxt ~loc ex_tickets expected =
+  let open Lwt_result_wrap_syntax in
   let* str_tickets, ctxt = string_list_of_ex_tickets ctxt ex_tickets in
   let* str_tickets_expected, _ctxt = string_list_of_ex_tickets ctxt expected in
   assert_equal_string_list
@@ -126,6 +125,7 @@ let assert_equals_ex_tickets ctxt ~loc ex_tickets expected =
     (List.sort String.compare str_tickets_expected)
 
 let tickets_of_value ctxt ~include_lazy ~type_exp ~value_exp =
+  let open Lwt_result_wrap_syntax in
   let Script_typed_ir.Ex_ty ty, ctxt =
     let node = Micheline.root @@ Expr.from_string type_exp in
     Result.value_f
@@ -133,22 +133,23 @@ let tickets_of_value ctxt ~include_lazy ~type_exp ~value_exp =
       (Script_ir_translator.parse_any_ty ctxt ~legacy:false node)
   in
   let node = Micheline.root @@ Expr.from_string value_exp in
-  let* value, ctxt =
-    wrap
-    @@ Script_ir_translator.parse_data
-         ctxt
-         ~elab_conf:(Script_ir_translator_config.make ~legacy:false ())
-         ~allow_forged:true
-         ty
-         node
+  let*@ value, ctxt =
+    Script_ir_translator.parse_data
+      ctxt
+      ~elab_conf:(Script_ir_translator_config.make ~legacy:false ())
+      ~allow_forged:true
+      ty
+      node
   in
-  let* ht, ctxt =
-    wrap @@ Lwt.return @@ Ticket_scanner.type_has_tickets ctxt ty
+  let*@ ht, ctxt = Lwt.return @@ Ticket_scanner.type_has_tickets ctxt ty in
+  let+@ tickets, ctxt =
+    Ticket_scanner.tickets_of_value ctxt ~include_lazy ht value
   in
-  wrap @@ Ticket_scanner.tickets_of_value ctxt ~include_lazy ht value
+  (tickets, ctxt)
 
 let assert_contains_tickets ctxt ~loc ~include_lazy ~type_exp ~value_exp
     expected =
+  let open Lwt_result_wrap_syntax in
   let* ex_tickets, _ =
     tickets_of_value ctxt ~include_lazy ~type_exp ~value_exp
   in
@@ -169,6 +170,7 @@ let assert_fail_non_empty_overlay ctxt ~loc ~include_lazy ~type_exp ~value_exp =
   | _ -> failwith "Expected an error at %s" loc
 
 let make_string_tickets ctxt ticketer_amounts =
+  let open Lwt_result_wrap_syntax in
   List.fold_right_es
     (fun (ticketer, content, amount) (tickets, ctxt) ->
       let* ticket, ctxt =
@@ -184,6 +186,7 @@ let make_string_tickets ctxt ticketer_amounts =
     ([], ctxt)
 
 let tickets_from_big_map_ref ~pre_populated value_exp =
+  let open Lwt_result_wrap_syntax in
   let* block, source = Context.init1 () in
   let* operation, originated =
     Op.contract_origination_hash (B block) source ~script:Op.dummy_script
@@ -191,18 +194,17 @@ let tickets_from_big_map_ref ~pre_populated value_exp =
   let* block = Block.bake ~operation block in
   let* inc = Incremental.begin_construction block in
   let ctxt = Incremental.alpha_ctxt inc in
-  let* ctxt, big_map_id = wrap @@ Big_map.fresh ~temporary:false ctxt in
+  let*@ ctxt, big_map_id = Big_map.fresh ~temporary:false ctxt in
   let int_ty_expr = Expr.from_string "int" in
   let* diffs, ctxt =
     let* updates, ctxt =
       List.fold_left_es
         (fun (kvs, ctxt) (key, value) ->
-          let* key_hash, ctxt =
-            wrap
-            @@ Script_ir_translator.hash_comparable_data
-                 ctxt
-                 Script_typed_ir.int_t
-                 (Script_int.of_int key)
+          let*@ key_hash, ctxt =
+            Script_ir_translator.hash_comparable_data
+              ctxt
+              Script_typed_ir.int_t
+              (Script_int.of_int key)
           in
           return
             ( {
@@ -228,9 +230,8 @@ let tickets_from_big_map_ref ~pre_populated value_exp =
         ],
         ctxt )
   in
-  let* ctxt =
-    wrap
-    @@ Contract.update_script_storage ctxt originated int_ty_expr (Some diffs)
+  let*@ ctxt =
+    Contract.update_script_storage ctxt originated int_ty_expr (Some diffs)
   in
   let value_exp =
     value_exp @@ Z.to_string (Big_map.Id.unparse_to_z big_map_id)
@@ -239,6 +240,7 @@ let tickets_from_big_map_ref ~pre_populated value_exp =
 
 let assert_big_map_int_ticket_string_ref ~loc ~pre_populated ~big_map_exp
     ex_tickets =
+  let open Lwt_result_wrap_syntax in
   let* value_exp, ctxt = tickets_from_big_map_ref ~pre_populated big_map_exp in
   let* ex_tickets, ctxt = make_string_tickets ctxt ex_tickets in
   assert_contains_tickets
@@ -251,6 +253,7 @@ let assert_big_map_int_ticket_string_ref ~loc ~pre_populated ~big_map_exp
 
 let assert_fail_non_empty_overlay_with_big_map_ref ~loc ~pre_populated
     ~big_map_exp =
+  let open Lwt_result_wrap_syntax in
   let* value_exp, ctxt = tickets_from_big_map_ref ~pre_populated big_map_exp in
   assert_fail_non_empty_overlay
     ctxt
@@ -260,6 +263,7 @@ let assert_fail_non_empty_overlay_with_big_map_ref ~loc ~pre_populated
     ~value_exp
 
 let assert_string_tickets ~loc ~include_lazy ~type_exp ~value_exp ~expected =
+  let open Lwt_result_wrap_syntax in
   let* ctxt = new_ctxt () in
   let* ex_tickets, ctxt = make_string_tickets ctxt expected in
   let* () =
@@ -281,6 +285,7 @@ let assert_string_tickets ~loc ~include_lazy ~type_exp ~value_exp ~expected =
 
 (** Test that the ticket can be extracted from a a single unit ticket *)
 let test_tickets_in_unit_ticket () =
+  let open Lwt_result_wrap_syntax in
   let* ctxt = new_ctxt () in
   let type_exp = "ticket(unit)" in
   let value_exp = {|Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" Unit 10|} in
@@ -302,6 +307,7 @@ let test_tickets_in_unit_ticket () =
 
 let assert_string_tickets_fail_on_zero_amount ~loc ~include_lazy ~type_exp
     ~value_exp =
+  let open Lwt_result_wrap_syntax in
   let* ctxt = new_ctxt () in
   assert_fails ~loc ~error:Script_tc_errors.Forbidden_zero_ticket_quantity
   @@ tickets_of_value ctxt ~include_lazy ~type_exp ~value_exp
@@ -411,6 +417,7 @@ let test_tickets_in_map () =
     this test needs to be adapted.
   *)
 let test_tickets_in_big_map () =
+  let open Lwt_result_wrap_syntax in
   let* ctxt = new_ctxt () in
   assert_fail_non_empty_overlay
     ctxt
@@ -447,6 +454,7 @@ let test_tickets_in_big_map_strict_only () =
     function to support non-empty overlays this test needs to be adapted.
 *)
 let test_tickets_in_list_in_big_map () =
+  let open Lwt_result_wrap_syntax in
   let* ctxt = new_ctxt () in
   assert_fail_non_empty_overlay
     ctxt

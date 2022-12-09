@@ -34,43 +34,26 @@
 open Protocol
 open Alpha_context
 
-let wrap m = m >|= Environment.wrap_tzresult
-
 let check_encode_decode_inbox_message message =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let open Sc_rollup_management_protocol in
-  let*? bytes =
-    Environment.wrap_tzresult @@ Sc_rollup.Inbox_message.serialize message
-  in
-  let*? message' =
-    Environment.wrap_tzresult
-    @@ Internal_for_tests.deserialize_inbox_message bytes
-  in
-  let*? bytes' =
-    Environment.wrap_tzresult @@ Sc_rollup.Inbox_message.serialize message'
-  in
+  let*?@ bytes = Sc_rollup.Inbox_message.serialize message in
+  let*?@ message' = Internal_for_tests.deserialize_inbox_message bytes in
+  let*?@ bytes' = Sc_rollup.Inbox_message.serialize message' in
   Assert.equal_string
     ~loc:__LOC__
     (Sc_rollup.Inbox_message.unsafe_to_string bytes)
     (Sc_rollup.Inbox_message.unsafe_to_string bytes')
 
 let check_encode_decode_outbox_message ctxt message =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let open Sc_rollup_management_protocol in
-  let*? bytes =
-    Environment.wrap_tzresult
-    @@ Internal_for_tests.serialize_outbox_message message
+  let*?@ bytes = Internal_for_tests.serialize_outbox_message message in
+  let*@ message', _ctxt =
+    let*? message_repr = Sc_rollup.Outbox.Message.deserialize bytes in
+    outbox_message_of_outbox_message_repr ctxt message_repr
   in
-  let* message', _ctxt =
-    let*? message_repr =
-      Environment.wrap_tzresult @@ Sc_rollup.Outbox.Message.deserialize bytes
-    in
-    wrap @@ outbox_message_of_outbox_message_repr ctxt message_repr
-  in
-  let*? bytes' =
-    Environment.wrap_tzresult
-    @@ Internal_for_tests.serialize_outbox_message message'
-  in
+  let*?@ bytes' = Internal_for_tests.serialize_outbox_message message' in
   Assert.equal_string
     ~loc:__LOC__
     (Sc_rollup.Outbox.Message.unsafe_to_string bytes)
@@ -89,7 +72,7 @@ let string_ticket ticketer contents amount =
   Script_typed_ir.{ticketer; contents; amount}
 
 let init_ctxt () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* block, _baker, _contract, _src2 = Contract_helpers.init () in
   let+ incr = Incremental.begin_construction block in
   Incremental.alpha_ctxt incr
@@ -102,7 +85,7 @@ let assert_encoding_failure ~loc res =
 
 let test_encode_decode_internal_inbox_message_transfer () =
   let open WithExceptions in
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* ctxt = init_ctxt () in
   let destination = Sc_rollup.Address.zero in
   let sender =
@@ -114,41 +97,38 @@ let test_encode_decode_internal_inbox_message_transfer () =
       (Tezos_crypto.Signature.Public_key_hash.of_b58check
          "tz1RjtZUVeLhADFHDL8UwDZA6vjWWhojpu5w")
   in
-  let*? (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
-    Environment.wrap_tzresult
-      (let open Result_syntax in
-      let open Script_typed_ir in
-      let* ticket_t = ticket_t (-1) string_t in
-      pair_t (-1) nat_t ticket_t)
+  let*?@ (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
+    let open Result_syntax in
+    let open Script_typed_ir in
+    let* ticket_t = ticket_t (-1) string_t in
+    pair_t (-1) nat_t ticket_t
   in
   let payload =
     ( Script_int.(abs @@ of_int 42),
       string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1 )
   in
-  let* transfer, ctxt =
-    wrap
-    @@ Sc_rollup_management_protocol.make_internal_transfer
-         ctxt
-         pair_nat_ticket_string_ty
-         ~payload
-         ~sender
-         ~source
-         ~destination
+  let*@ transfer, ctxt =
+    Sc_rollup_management_protocol.make_internal_transfer
+      ctxt
+      pair_nat_ticket_string_ty
+      ~payload
+      ~sender
+      ~source
+      ~destination
   in
   let* () = check_encode_decode_inbox_message transfer in
   (* Check that the size of messages that can be encoded is bounded. *)
   let msg = String.make 4050 'c' in
-  let*? payload = Environment.wrap_tzresult (Script_string.of_string msg) in
-  let* transfer, _ctxt =
+  let*?@ payload = Script_string.of_string msg in
+  let*@ transfer, _ctxt =
     let open Script_typed_ir in
-    wrap
-    @@ Sc_rollup_management_protocol.make_internal_transfer
-         ctxt
-         String_t
-         ~payload
-         ~sender
-         ~source
-         ~destination
+    Sc_rollup_management_protocol.make_internal_transfer
+      ctxt
+      String_t
+      ~payload
+      ~sender
+      ~source
+      ~destination
   in
   let*! res = check_encode_decode_inbox_message transfer in
   assert_encoding_failure ~loc:__LOC__ res
@@ -162,13 +142,10 @@ let test_encode_decode_internal_inbox_message_eol () =
   check_encode_decode_inbox_message eol
 
 let test_encode_decode_external_inbox_message () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let assert_prefix message =
     let inbox_message = Sc_rollup.Inbox_message.External message in
-    let*? real_encoding =
-      Environment.wrap_tzresult
-      @@ Sc_rollup.Inbox_message.serialize inbox_message
-    in
+    let*?@ real_encoding = Sc_rollup.Inbox_message.serialize inbox_message in
     let real_encoding =
       Sc_rollup.Inbox_message.unsafe_to_string real_encoding
     in
@@ -207,7 +184,7 @@ let test_encode_decode_external_inbox_message () =
   assert_encoding_failure message
 
 let init_env () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* block, baker, contract, _src2 = Contract_helpers.init () in
   return (block, baker, contract)
 
@@ -235,7 +212,7 @@ let add_or_clear =
   |}
 
 let test_encode_decode_outbox_message () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* block, baker, source_contract = init_env () in
   let* ticket_receiver, _, block =
     Contract_helpers.originate_contract_from_string
@@ -266,52 +243,46 @@ let test_encode_decode_outbox_message () =
     | Implicit _ -> assert false
   in
   (* Transaction to ticket receiver. *)
-  let* transaction1, ctxt =
+  let*@ transaction1, ctxt =
     let*? (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
-      Environment.wrap_tzresult
-        (let open Result_syntax in
-        let open Script_typed_ir in
-        let* ticket_t = ticket_t (-1) string_t in
-        pair_t (-1) nat_t ticket_t)
+      let open Result_syntax in
+      let open Script_typed_ir in
+      let* ticket_t = ticket_t (-1) string_t in
+      pair_t (-1) nat_t ticket_t
     in
     let parameters =
       ( Script_int.(abs @@ of_int 42),
         string_ticket "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1 )
     in
-    wrap
-    @@ Sc_rollup_management_protocol.Internal_for_tests.make_transaction
-         ctxt
-         pair_nat_ticket_string_ty
-         ~parameters
-         ~destination:ticket_receiver_destination
-         ~entrypoint:Entrypoint.default
+    Sc_rollup_management_protocol.Internal_for_tests.make_transaction
+      ctxt
+      pair_nat_ticket_string_ty
+      ~parameters
+      ~destination:ticket_receiver_destination
+      ~entrypoint:Entrypoint.default
   in
   (* Transaction to the `add` endpoint of add-or-clear contract. *)
-  let* transaction2, ctxt =
+  let*@ transaction2, ctxt =
     let*? (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
-      Environment.wrap_tzresult Script_typed_ir.(pair_t (-1) nat_t string_t)
+      Script_typed_ir.(pair_t (-1) nat_t string_t)
     in
-    let*? content =
-      Environment.wrap_tzresult @@ Script_string.of_string "Hello"
-    in
+    let*? content = Script_string.of_string "Hello" in
     let parameters = (Script_int.(abs @@ of_int 11), content) in
-    wrap
-    @@ Sc_rollup_management_protocol.Internal_for_tests.make_transaction
-         ctxt
-         pair_nat_ticket_string_ty
-         ~parameters
-         ~destination:add_or_clear_destination
-         ~entrypoint:(Entrypoint.of_string_strict_exn "add")
+    Sc_rollup_management_protocol.Internal_for_tests.make_transaction
+      ctxt
+      pair_nat_ticket_string_ty
+      ~parameters
+      ~destination:add_or_clear_destination
+      ~entrypoint:(Entrypoint.of_string_strict_exn "add")
   in
   (* Transaction to the `clear` endpoint of add-or-clear contract. *)
-  let* transaction3, ctxt =
-    wrap
-    @@ Sc_rollup_management_protocol.Internal_for_tests.make_transaction
-         ctxt
-         Script_typed_ir.unit_t
-         ~parameters:()
-         ~destination:add_or_clear_destination
-         ~entrypoint:(Entrypoint.of_string_strict_exn "clear")
+  let*@ transaction3, ctxt =
+    Sc_rollup_management_protocol.Internal_for_tests.make_transaction
+      ctxt
+      Script_typed_ir.unit_t
+      ~parameters:()
+      ~destination:add_or_clear_destination
+      ~entrypoint:(Entrypoint.of_string_strict_exn "clear")
   in
   let outbox_message =
     Sc_rollup_management_protocol.Internal_for_tests.make_atomic_batch

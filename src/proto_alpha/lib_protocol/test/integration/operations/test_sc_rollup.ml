@@ -35,16 +35,14 @@
 
 open Protocol
 open Alpha_context
-open Lwt_result_syntax
+open Lwt_result_wrap_syntax
 
 exception Sc_rollup_test_error of string
 
 let err x = Exn (Sc_rollup_test_error x)
 
-let wrap k = Lwt.map Environment.wrap_tzresult k
-
 let assert_fails ~loc ?error m =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let*! res = m in
   match res with
   | Ok _ -> Stdlib.failwith "Expected failure"
@@ -277,30 +275,28 @@ let publish_op_and_dummy_commitment ~src ?compressed_state ?predecessor rollup
 let verify_params ctxt ~parameters_ty ~parameters ~unparsed_parameters =
   let show exp = Expr.to_string @@ exp in
   let unparse ctxt parameters =
-    wrap
-      (Script_ir_translator.unparse_data
-         ctxt
-         Script_ir_unparser.Optimized
-         parameters_ty
-         parameters)
+    Script_ir_translator.unparse_data
+      ctxt
+      Script_ir_unparser.Optimized
+      parameters_ty
+      parameters
   in
-  let* unparsed_parameters, ctxt =
+  let*@ unparsed_parameters, ctxt =
     (* Make sure we can parse the unparsed-parameters with the given parameters
        type. *)
     let* parsed_unparsed_parameters, ctxt =
-      wrap
-        (Script_ir_translator.parse_data
-           ctxt
-           ~elab_conf:Script_ir_translator_config.(make ~legacy:true ())
-           ~allow_forged:true
-           parameters_ty
-           (Environment.Micheline.root unparsed_parameters))
+      Script_ir_translator.parse_data
+        ctxt
+        ~elab_conf:Script_ir_translator_config.(make ~legacy:true ())
+        ~allow_forged:true
+        parameters_ty
+        (Environment.Micheline.root unparsed_parameters)
     in
     (* Un-parse again to get back to Micheline. *)
     unparse ctxt parsed_unparsed_parameters
   in
   (* Un-parse the parsed parameters. *)
-  let* expected_unparsed_parameters, _ctxt = unparse ctxt parameters in
+  let*@ expected_unparsed_parameters, _ctxt = unparse ctxt parameters in
   (* Verify that both version match. *)
   Assert.equal_string
     ~loc:__LOC__
@@ -346,42 +342,36 @@ let verify_execute_outbox_message_operations incr ~loc ~source ~operations
         (* Load the arg-type and entrypoints of the destination script. *)
         let* ( Script_ir_translator.Ex_script (Script {arg_type; entrypoints; _}),
                ctxt ) =
-          let* ctxt, _cache_key, cached =
-            wrap @@ Script_cache.find ctxt destination
-          in
+          let*@ ctxt, _cache_key, cached = Script_cache.find ctxt destination in
           match cached with
           | Some (_script, ex_script) -> return (ex_script, ctxt)
           | None -> failwith "Could not load script at %s" loc
         in
         (* Find the script parameters ty of the script. *)
-        let*? entrypoint_res, ctxt =
-          Environment.wrap_tzresult
-            (Gas_monad.run
-               ctxt
-               (Script_ir_translator.find_entrypoint
-                  ~error_details:(Informative ())
-                  arg_type
-                  entrypoints
-                  entrypoint))
+        let*?@ entrypoint_res, ctxt =
+          Gas_monad.run
+            ctxt
+            (Script_ir_translator.find_entrypoint
+               ~error_details:(Informative ())
+               arg_type
+               entrypoints
+               entrypoint)
         in
-        let*? (Ex_ty_cstr {ty = script_parameters_ty; _}) =
-          Environment.wrap_tzresult entrypoint_res
-        in
+        let*?@ (Ex_ty_cstr {ty = script_parameters_ty; _}) = entrypoint_res in
         (* Check that the script parameters type matches the one from the
            transaction. *)
-        let*? ctxt =
-          Environment.wrap_tzresult
-            (let open Result_syntax in
-            let* eq, ctxt =
-              Gas_monad.run
-                ctxt
-                (Script_ir_translator.ty_eq
-                   ~error_details:(Informative (-1))
-                   script_parameters_ty
-                   parameters_ty)
-            in
-            let+ Eq = eq in
-            ctxt)
+        let*?@ ctxt =
+          let open Result_syntax in
+          let* eq, ctxt =
+            Gas_monad.run
+              ctxt
+              (Script_ir_translator.ty_eq
+                 ~error_details:(Informative (-1))
+                 script_parameters_ty
+                 parameters_ty)
+          in
+          let+ Eq = eq in
+          ctxt
         in
         return (ctxt, (destination, entrypoint, unparsed_parameters))
     | _ ->
@@ -440,12 +430,12 @@ let make_output ~outbox_level ~message_index transactions =
   Sc_rollup.{outbox_level; message_index; message}
 
 let string_ticket_token ticketer content =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let contents =
     Result.value_f ~default:(fun _ -> assert false)
     @@ Script_string.of_string content
   in
-  let*? ticketer = Environment.wrap_tzresult @@ Contract.of_b58check ticketer in
+  let*?@ ticketer = Contract.of_b58check ticketer in
   return
     (Ticket_token.Ex_token
        {ticketer; contents_type = Script_typed_ir.string_t; contents})
@@ -465,9 +455,7 @@ let originate_contract incr ~script ~baker ~storage ~source_contract =
 
 let hash_commitment incr commitment =
   let ctxt = Incremental.alpha_ctxt incr in
-  let+ ctxt, hash =
-    wrap @@ Lwt.return (Sc_rollup.Commitment.hash ctxt commitment)
-  in
+  let+@ ctxt, hash = Lwt.return (Sc_rollup.Commitment.hash ctxt commitment) in
   (Incremental.set_alpha_ctxt incr ctxt, hash)
 
 let publish_and_cement_commitment incr ~baker ~originator rollup commitment =
@@ -544,17 +532,16 @@ let adjust_ticket_token_balance_of_rollup ctxt rollup ticket_token ~delta =
 (** A version of execute outbox message that output ignores proof validation. *)
 let execute_outbox_message_without_proof_validation incr rollup
     ~cemented_commitment ~source outbox_message =
-  let* res, ctxt =
-    wrap
-      (Sc_rollup_operations.Internal_for_tests.execute_outbox_message
-         (Incremental.alpha_ctxt incr)
-         ~validate_and_decode_output_proof:
-           (fun ctxt ~cemented_commitment:_ _rollup ~output_proof:_ ->
-           return (outbox_message, ctxt))
-         rollup
-         ~cemented_commitment
-         ~source
-         ~output_proof:"Not used")
+  let*@ res, ctxt =
+    Sc_rollup_operations.Internal_for_tests.execute_outbox_message
+      (Incremental.alpha_ctxt incr)
+      ~validate_and_decode_output_proof:
+        (fun ctxt ~cemented_commitment:_ _rollup ~output_proof:_ ->
+        return (outbox_message, ctxt))
+      rollup
+      ~cemented_commitment
+      ~source
+      ~output_proof:"Not used"
   in
   return (res, Incremental.set_alpha_ctxt incr ctxt)
 
@@ -574,11 +561,9 @@ let execute_outbox_message incr ~originator rollup ~output_proof
 
 let assert_ticket_token_balance ~loc incr token owner expected =
   let ctxt = Incremental.alpha_ctxt incr in
-  let* balance, _ =
-    let* key_hash, ctxt =
-      wrap @@ Ticket_balance_key.of_ex_token ctxt ~owner token
-    in
-    wrap (Ticket_balance.get_balance ctxt key_hash)
+  let*@ balance, _ =
+    let* key_hash, ctxt = Ticket_balance_key.of_ex_token ctxt ~owner token in
+    Ticket_balance.get_balance ctxt key_hash
   in
   match (balance, expected) with
   | Some b, Some e -> Assert.equal_int ~loc (Z.to_int b) e
@@ -600,17 +585,16 @@ let balances ctxt contract =
   return {liquid; frozen}
 
 let check_balances_evolution bal_before {liquid; frozen} ~action =
-  let open Lwt_result_syntax in
-  let wret x = wrap @@ Lwt.return x in
+  let open Lwt_result_wrap_syntax in
   let* {liquid = expected_liquid; frozen = expected_frozen} =
     match action with
     | `Freeze amount ->
-        let* liquid = wret @@ Tez.( -? ) bal_before.liquid amount in
-        let* frozen = wret @@ Tez.( +? ) bal_before.frozen amount in
+        let*?@ liquid = Tez.( -? ) bal_before.liquid amount in
+        let*?@ frozen = Tez.( +? ) bal_before.frozen amount in
         return {liquid; frozen}
     | `Unfreeze amount ->
-        let* liquid = wret @@ Tez.( +? ) bal_before.liquid amount in
-        let* frozen = wret @@ Tez.( -? ) bal_before.frozen amount in
+        let*?@ liquid = Tez.( +? ) bal_before.liquid amount in
+        let*?@ frozen = Tez.( -? ) bal_before.frozen amount in
         return {liquid; frozen}
   in
   let* () = Assert.equal_tez ~loc:__LOC__ expected_liquid liquid in
@@ -966,14 +950,13 @@ let test_originating_with_valid_type () =
     let* block, rollup = sc_originate block contract parameters_ty in
     let* incr = Incremental.begin_construction block in
     let ctxt = Incremental.alpha_ctxt incr in
-    let* expr, _ctxt = wrap @@ Sc_rollup.parameters_type ctxt rollup in
+    let*@ expr, _ctxt = Sc_rollup.parameters_type ctxt rollup in
     let expr = WithExceptions.Option.get ~loc:__LOC__ expr in
-    let*? expr, _ctxt =
-      Environment.wrap_tzresult
-      @@ Script.force_decode_in_context
-           ~consume_deserialization_gas:When_needed
-           ctxt
-           expr
+    let*?@ expr, _ctxt =
+      Script.force_decode_in_context
+        ~consume_deserialization_gas:When_needed
+        ctxt
+        expr
     in
     assert_equal_expr ~loc:__LOC__ (Expr.from_string parameters_ty) expr
   in
@@ -1980,7 +1963,7 @@ let test_timeout () =
   assert_timeout_result ~game_status:expected_game_status incr
 
 let init_with_conflict () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* block, (account1, account2) = context_init Context.T2 in
   let pkh1 = Account.pkh_of_contract_exn account1 in
   let pkh2 = Account.pkh_of_contract_exn account2 in
@@ -2020,7 +2003,6 @@ let dumb_proof ~choice =
   let input = Sc_rollup_helpers.make_external_input "c4c4" in
   let* pvm_step =
     Arith_pvm.produce_proof context_arith_pvm (Some input) arith_state
-    >|= Environment.wrap_tzresult
   in
   let pvm_step =
     WithExceptions.Result.get_ok ~loc:__LOC__
@@ -2046,7 +2028,7 @@ let test_draw_with_two_invalid_moves () =
 
   (* Player1 will play an invalid final move. *)
   let* block =
-    let* p1_refutation =
+    let*@ p1_refutation =
       let choice = Sc_rollup.Tick.initial in
       dumb_proof ~choice
     in
@@ -2062,7 +2044,7 @@ let test_draw_with_two_invalid_moves () =
 
   (* Player2 will also send an invalid final move. *)
   let* incr =
-    let* p2_refutation =
+    let*@ p2_refutation =
       let choice = Sc_rollup.Tick.initial in
       dumb_proof ~choice
     in
@@ -2105,7 +2087,7 @@ let test_timeout_during_final_move () =
 
   (* Player1 will play an invalid final move. *)
   let* block =
-    let* p1_refutation =
+    let*@ p1_refutation =
       let choice = Sc_rollup.Tick.initial in
       dumb_proof ~choice
     in
@@ -2140,7 +2122,7 @@ let test_dissection_during_final_move () =
 
   (* Player1 will play an invalid final move. *)
   let* block =
-    let* p1_refutation =
+    let*@ p1_refutation =
       let choice = Sc_rollup.Tick.initial in
       dumb_proof ~choice
     in
@@ -2226,7 +2208,7 @@ let make_refutation_metadata ?(boot_sector = "") metadata =
 (** Test that during a refutation game when one malicious player lied on the
     metadata, he can not win the game. *)
 let test_refute_invalid_metadata () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* block, (account1, account2) = context_init Context.T2 in
   let pkh1 = Account.pkh_of_contract_exn account1 in
   let pkh2 = Account.pkh_of_contract_exn account2 in
