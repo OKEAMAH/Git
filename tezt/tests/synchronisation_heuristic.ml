@@ -355,7 +355,7 @@ let test_threshold_stuck =
     ~title:"bootstrap: test threshold stuck"
     ~tags:["bootstrap"; "threshold"]
   @@ fun protocol ->
-  let sync_latency = 3 in
+  let sync_latency = 1 in
 
   Log.info "Add a first peer with threshold zero" ;
   let* node, client =
