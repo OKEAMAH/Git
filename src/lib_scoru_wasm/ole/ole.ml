@@ -210,7 +210,7 @@ let bench ~title ?(samples = 1) (module B : Bench) =
 
 let main () =
   let open Lwt.Syntax in
-  let* () = bench ~title:"fast" ~samples:25 (module Bench_fast) in
+  let* () = bench ~title:"fast" ~samples:10 (module Bench_fast) in
   let* () = bench ~title:"slow" (module Bench_slow) in
   Lwt.return_unit
 

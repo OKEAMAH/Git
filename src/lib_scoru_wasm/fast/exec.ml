@@ -77,7 +77,7 @@ let compute ~enable_debugging builtins durable buffers =
 
   Wasmer.Instance.delete instance ;
   let* durable = Wasm_vm.patch_flags_on_eval_successful host_state.durable in
-  funcs := host_funcs :: !funcs ;
+  funcs := [host_funcs] (* :: !funcs *) ;
 
   (* TODO: #4283
      The module is cached, but the cash is never cleaned.
