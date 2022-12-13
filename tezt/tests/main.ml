@@ -215,6 +215,7 @@ let register_protocol_specific_because_regression_tests () =
   Snoop_codegen.register ~protocols:[Alpha] ;
   Test_contract_bls12_381.register ~protocols:[Mumbai; Alpha] ;
   Ticket_receipt_and_rpc.register ~protocols:[Mumbai; Alpha] ;
+  Timelock.register ~protocols:[Alpha] ;
   Timelock_disabled.register ~protocols:[Lima; Mumbai] ;
   Tx_rollup.register ~protocols:[Lima] ;
   Tx_rollup_l2_node.register ~protocols:[Lima] ;
