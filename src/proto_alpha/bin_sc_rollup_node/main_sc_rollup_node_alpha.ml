@@ -174,7 +174,7 @@ let loser_mode =
     ~default:""
     ~doc:"Set the rollup node failure points (for test only!)."
     (Tezos_clic.parameter (fun _ s ->
-         match Loser_mode.make s with
+         match Loser_mode.make_t2 s with
          | Some t -> return t
          | None -> failwith "Invalid syntax for failure points"))
 

@@ -314,9 +314,8 @@ module Make (PVM : Pvm.S) = struct
           let message_counter = Z.of_int message_index in
           let input = Sc_rollup.{inbox_level; message_counter; payload} in
           let failing_ticks =
-            Loser_mode.is_failure
+            Loser_mode.is_failure_t2
               node_ctxt.Node_context.loser_mode
-              ~level
               ~message_index
           in
           let>* state, fuel, _executed_ticks =

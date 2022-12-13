@@ -25,6 +25,8 @@
 
 type failure = {level : int; message_index : int; message_tick : int64}
 
+type message_info = {message_index : int; message_tick : int64}
+
 let failure_encoding =
   let open Data_encoding in
   conv
@@ -37,6 +39,13 @@ let failure_encoding =
        (req "message_index" int31)
        (req "message_tick" int64))
 
+let message_info_encoding =
+  let open Data_encoding in
+  conv
+    (fun {message_index; message_tick} -> (message_index, message_tick))
+    (fun (message_index, message_tick) -> {message_index; message_tick})
+    (obj2 (req "message_index" int31) (req "message_tick" int64))
+
 let compare_failure {level; message_index; message_tick} f2 =
   let open Compare.Int in
   match compare level f2.level with
@@ -46,11 +55,22 @@ let compare_failure {level; message_index; message_tick} f2 =
       | n -> n)
   | n -> n
 
+let compare_message_info {message_index; message_tick} f2 =
+  match compare message_index f2.message_index with
+  | 0 -> Int64.compare message_tick f2.message_tick
+  | n -> n
+
 type t = failure list
+
+type t2 = message_info list
 
 let encoding = Data_encoding.list failure_encoding
 
+let t2_encoding = Data_encoding.list message_info_encoding
+
 let no_failures = []
+
+let no_failures_t2 = []
 
 let make s =
   let tokens = String.split_on_char ' ' s in
@@ -67,6 +87,20 @@ let make s =
   in
   try Some (chop tokens |> List.sort compare_failure) with _ -> None
 
+let make_t2 s =
+  let tokens = String.split_on_char ' ' s in
+  let rec chop = function
+    | [] | [""] -> []
+    | message_index :: message_tick :: rest ->
+        {
+          message_index = int_of_string message_index;
+          message_tick = Int64.of_string message_tick;
+        }
+        :: chop rest
+    | _ -> raise Not_found
+  in
+  try Some (chop tokens |> List.sort compare_message_info) with _ -> None
+
 let is_failure failures ~level ~message_index =
   List.filter_map
     (fun f ->
@@ -74,3 +108,10 @@ let is_failure failures ~level ~message_index =
         Some f.message_tick
       else None)
     failures
+
+let is_failure_t2 message_infos ~message_index =
+  List.filter_map
+    (fun f ->
+      if Compare.Int.(f.message_index = message_index) then Some f.message_tick
+      else None)
+    message_infos

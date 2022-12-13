@@ -41,7 +41,7 @@ type 'a t = {
   kind : Sc_rollup.Kind.t;
   fee_parameters : Configuration.fee_parameters;
   protocol_constants : Constants.t;
-  loser_mode : Loser_mode.t;
+  loser_mode : Loser_mode.t2;
   store : 'a Store.t;
   context : 'a Context.index;
   mutable lcc : lcc;

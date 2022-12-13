@@ -73,7 +73,7 @@ type t = {
   reconnection_delay : float;
   fee_parameters : fee_parameters;
   mode : mode;
-  loser_mode : Loser_mode.t;
+  loser_mode : Loser_mode.t2;
   (*DAL/FIXME: https://gitlab.com/tezos/tezos/-/issues/3718
     Decide whether we want to handle connections to multiple
     Dal nodes for different slot indexes.

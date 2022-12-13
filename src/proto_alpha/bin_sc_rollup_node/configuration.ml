@@ -59,7 +59,7 @@ type t = {
   reconnection_delay : float;
   fee_parameters : fee_parameters;
   mode : mode;
-  loser_mode : Loser_mode.t;
+  loser_mode : Loser_mode.t2;
   dal_node_addr : string;
   dal_node_port : int;
   batcher : batcher;
@@ -569,8 +569,8 @@ let encoding : t Data_encoding.t =
              ~description:
                "If enabled, the rollup node will issue wrong commitments (for \
                 test only!)"
-             Loser_mode.encoding
-             Loser_mode.no_failures))
+             Loser_mode.t2_encoding
+             Loser_mode.no_failures_t2))
        (obj4
           (dft "DAL node address" string default_dal_node_addr)
           (dft "DAL node port" int16 default_dal_node_port)
@@ -613,7 +613,7 @@ let check_mode config =
   | Custom -> return config
 
 let loser_warning_message config =
-  if config.loser_mode <> Loser_mode.no_failures then
+  if config.loser_mode <> Loser_mode.no_failures_t2 then
     Format.printf
       {|
 ************ WARNING *************

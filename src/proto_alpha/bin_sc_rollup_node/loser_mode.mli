@@ -26,10 +26,16 @@
 (** A list of failures. *)
 type t
 
+type t2
+
 val encoding : t Data_encoding.t
+
+val t2_encoding : t2 Data_encoding.t
 
 (** [no_failures] are planned. *)
 val no_failures : t
+
+val no_failures_t2 : t2
 
 (** [make s] parses a list of integers separated by spaces that is a
    periodic sequence of triple [level message_index message_tick]
@@ -38,9 +44,13 @@ val no_failures : t
    correct. *)
 val make : string -> t option
 
+val make_t2 : string -> t2 option
+
 (** [is_failure failures ~level ~message_index] returns [message_ticks]
    where a failure is supposed to happen at the point
    of the rollup node processing of a given inbox [level], a given
    [message_index] and for all [message_ticks]. Ticks are sorted by
    increasing order. *)
 val is_failure : t -> level:int -> message_index:int -> int64 list
+
+val is_failure_t2 : t2 -> message_index:int -> int64 list

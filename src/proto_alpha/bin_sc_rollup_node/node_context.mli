@@ -54,8 +54,8 @@ type 'a t = {
       (** Fee parameters to use when injecting operations in layer 1. *)
   protocol_constants : Constants.t;
       (** Protocol constants retrieved from the Tezos node. *)
-  loser_mode : Loser_mode.t;
-      (** If different from [Loser_mode.no_failures], the rollup node
+  loser_mode : Loser_mode.t2;
+      (** If different from [Loser_mode.no_failures_t2], the rollup node
           issues wrong commitments (for tests). *)
   store : 'a Store.t;  (** The store for the persistent storage. *)
   context : 'a Context.index;
@@ -105,7 +105,7 @@ val init :
   Protocol.Alpha_context.Sc_rollup.Kind.t ->
   Configuration.operators ->
   Configuration.fee_parameters ->
-  loser_mode:Loser_mode.t ->
+  loser_mode:Loser_mode.t2 ->
   'a Store.t ->
   'a Context.index ->
   'a t tzresult Lwt.t
