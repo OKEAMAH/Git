@@ -860,10 +860,7 @@ module Inner = struct
   (* h = polynomial such that h(y×domain[i]) = zi. *)
   let interpolation_h_poly t y size coefficients =
     let h =
-      ifft
-        (Evaluations.of_array (size - 1, coefficients))
-        size
-        (Scalar.pow t.root_k (Z.of_int (t.k / size)))
+      ifft coefficients size (Scalar.pow t.root_k (Z.of_int (t.k / size)))
     in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
@@ -928,7 +925,7 @@ module Inner = struct
       t
       cm
       t.srs.kate_amortized_srs_g2_shards
-      (power_coset, shard_evaluations)
+      (power_coset, Evaluations.of_array (t.shard_size - 1, shard_evaluations))
       t.shard_size
       proof
 
@@ -973,7 +970,10 @@ module Inner = struct
       else
         let power = Scalar.pow t.root_k (Z.of_int page_index) in
         let slot_segment_evaluations =
-          Array.init t.page_length_domain (function
+          Evaluations.init
+            ~degree:(t.page_length_domain - 1)
+            t.page_length_domain
+            (function
               | i when i < t.page_length - 1 ->
                   let dst = Bytes.create scalar_bytes_amount in
                   Bytes.blit
