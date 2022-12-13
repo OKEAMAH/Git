@@ -783,11 +783,18 @@ module Inner = struct
       let padding = diff_next_power_of_two (2 * quotient) in
       let len = (2 * quotient) + padding in
       let points =
-        G1_array.init len (fun i ->
-            if i < quotient then
-              Srs_g1.get srs (degree - j - ((i + 1) * shard_size))
-            else G1.(copy zero))
+        G1_array.init_from_existing_array
+          ~len
+          ~array:srs
+          ~offset:(degree - j - shard_size)
+          ~step:(-shard_size)
+          ~padding_threshold:quotient
+        (*G1_array.init len (fun i ->
+          if i < quotient then
+            Srs_g1.get srs (degree - j - ((i + 1) * shard_size))
+          else G1.(copy zero))*)
       in
+
       G1_array.evaluation_ecfft_inplace ~domain ~points ;
       points
     in
