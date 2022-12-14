@@ -20,9 +20,22 @@ module Tree = struct
   let wrap t = Tree t
 end
 
+let hex_encode (input : string) : string =
+  match Hex.of_string input with `Hex s -> s
+
 module Builtins = struct
-  let reveal_preimage _hash =
-    Stdlib.failwith "reveal_preimage is not available out of the box in tests"
+  let reveal_preimage hash =
+    let hash =
+      (* (\* The payload represents the encoded [Sc_rollup_reveal_hash.t]. We must *)
+      (*    decode it properly, instead of converting it byte-for-byte. *\) *)
+      (* Data_encoding.Binary.of_string_exn Sc_rollup_reveal_hash.encoding hash *)
+      hex_encode hash
+    in
+    (* let*! data = get_reveal ~data_dir:node_ctxt.data_dir reveal_map hash in *)
+    Lwt_io.with_file
+      ~mode:Lwt_io.Input
+      ("/home/emma/sources/reveal_temp/wasm_2_0_0/" ^ hash)
+      Lwt_io.read
 
   let reveal_metadata () =
     Stdlib.failwith "reveal_metadata is not available out of the box in tests"
@@ -34,7 +47,9 @@ module Make (PVM : Tezos_scoru_wasm.Wasm_pvm_sig.S with type tree = Tree.tree) =
 struct
   let rec eval_until_input_requested ?(max_steps = Int64.max_int) tree =
     let open Lwt_syntax in
-    let run = PVM.Internal_for_tests.compute_step_many_with_hooks in
+    let run =
+      PVM.Internal_for_tests.compute_step_many_with_hooks ~debug_flag:true
+    in
     let* info = PVM.get_info tree in
     match info.input_request with
     | No_input_required ->
@@ -164,6 +179,7 @@ let bench ~title ?(samples = 1) (module B : Bench) =
     Lwt_io.with_file
       ~mode:Lwt_io.Input
       "/home/emma/sources/wasm-kernel/tx-kernel.wasm"
+      (* "/home/emma/sources/wasm-kernel/installer.wasm" *)
       Lwt_io.read
   in
   let* messages =
@@ -210,8 +226,8 @@ let bench ~title ?(samples = 1) (module B : Bench) =
 
 let main () =
   let open Lwt.Syntax in
-  let* () = bench ~title:"fast" ~samples:10 (module Bench_fast) in
-  let* () = bench ~title:"slow" (module Bench_slow) in
+  let* () = bench ~title:"fast" ~samples:1 (module Bench_fast) in
+  (* let* () = bench ~title:"slow" (module Bench_slow) in *)
   Lwt.return_unit
 
 let () = Lwt_main.run (main ())
