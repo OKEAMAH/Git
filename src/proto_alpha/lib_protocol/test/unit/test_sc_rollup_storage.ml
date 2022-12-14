@@ -311,9 +311,11 @@ let advance_level_for_commitment ctxt (commitment : Commitment_repr.t) =
     in
     Raw_context.Internal_for_tests.add_level ctxt (Int32.to_int offset)
 
-let advance_level_n_refine_stake ctxt rollup staker ?staked_on commitment =
+let advance_level_n_refine_stake ?(skip_curfew = false) ctxt rollup staker
+    ?staked_on commitment =
   let ctxt = advance_level_for_commitment ctxt commitment in
   Sc_rollup_stake_storage.Internal_for_tests.refine_stake
+    ~skip_curfew
     ctxt
     rollup
     ?staked_on
@@ -905,6 +907,134 @@ let test_refine_from_behind_lcc () =
     lift @@ advance_level_n_refine_stake ctxt rollup staker2 commitment2
   in
   assert_true ctxt
+
+(* The goal of this test is to ensure that refine_stake spots backtrace
+   for node which was offline and now tries to commit a descendant
+   of its staked_on but not descendant of the current LCC.
+
+   It's difficult to test this behaviour because curfew prevents this,
+   but refine_stake has to be correct regardless of curfew protection,
+   as it's primarly source of truth in case of any exploits and bugs.
+*)
+let test_refine_detects_backtrack_for_stakers_committed_to_lcc_predecessors () =
+  let open Lwt_result_syntax in
+  (* staker1 is honest one, staker2 is dishonest *)
+  let* ctxt, rollup, genesis_hash, staker1, staker2 =
+    originate_rollup_and_deposit_with_two_stakers ()
+  in
+  let challenge_window =
+    Constants_storage.sc_rollup_challenge_window_in_blocks ctxt
+  in
+  let commit_freq =
+    Constants_storage.sc_rollup_commitment_period_in_blocks ctxt
+  in
+
+  let inbox_level l = proper_valid_inbox_level (ctxt, rollup) l in
+  let* level1 = lift @@ inbox_level 1 in
+  let commitment1 =
+    Commitment_repr.
+      {
+        predecessor = genesis_hash;
+        inbox_level = level1;
+        number_of_ticks = number_of_ticks_exn 11111L;
+        compressed_state = Sc_rollup_repr.State_hash.zero;
+      }
+  in
+
+  let* _c1, _level, ctxt =
+    lift @@ advance_level_n_refine_stake ctxt rollup staker1 commitment1
+  in
+
+  (* Refine on the same commitment by staker2,
+     needed to make a trick possible *)
+  let* c1, _level, ctxt =
+    lift @@ advance_level_n_refine_stake ctxt rollup staker2 commitment1
+  in
+
+  let* level2 = lift @@ inbox_level 2 in
+  let commitment2 =
+    Commitment_repr.
+      {
+        predecessor = c1;
+        inbox_level = level2;
+        number_of_ticks = number_of_ticks_exn 22222L;
+        compressed_state = Sc_rollup_repr.State_hash.zero;
+      }
+  in
+
+  let* c2, _level, ctxt =
+    lift @@ advance_level_n_refine_stake ctxt rollup staker1 commitment2
+  in
+
+  (* Advance level at the first possible to cement *)
+  let ctxt =
+    Raw_context.Internal_for_tests.add_level
+      ctxt
+      (challenge_window - commit_freq)
+  in
+  let* ctxt, _commitment =
+    lift @@ Sc_rollup_stake_storage.cement_commitment ctxt rollup c1
+  in
+
+  (* Current level now is: 2 + commitment_freq + challenge_window *)
+  assert (
+    Raw_level_repr.to_int32 (Raw_context.current_level ctxt).level
+    = Int32.of_int (2 + commit_freq + challenge_window)) ;
+
+  let ctxt = Raw_context.Internal_for_tests.add_level ctxt commit_freq in
+  let commitment2_dishonest =
+    Commitment_repr.
+      {
+        predecessor = c1;
+        inbox_level = level2;
+        number_of_ticks = number_of_ticks_exn 33333L;
+        compressed_state = Sc_rollup_repr.State_hash.zero;
+      }
+  in
+  let* ctxt, _commitment =
+    lift @@ Sc_rollup_stake_storage.cement_commitment ctxt rollup c2
+  in
+  (* Try to refine exactly at the same level,
+     predecessor is commitment1, same as for the LCC just cemented. *)
+  let* () =
+    assert_fails_with
+      ~loc:__LOC__
+      (Sc_rollup_stake_storage.Internal_for_tests.refine_stake
+         ~skip_curfew:true
+         ctxt
+         rollup
+         staker2
+         commitment2_dishonest)
+      Sc_rollup_errors.Sc_rollup_staker_backtracked
+  in
+  let* level3 = lift @@ inbox_level 3 in
+  let commitment3 =
+    Commitment_repr.
+      {
+        predecessor = c2;
+        inbox_level = level3;
+        number_of_ticks = number_of_ticks_exn 77777L;
+        compressed_state = Sc_rollup_repr.State_hash.zero;
+      }
+  in
+  let* c3, _level, ctxt =
+    lift @@ advance_level_n_refine_stake ctxt rollup staker1 commitment3
+  in
+  let ctxt = Raw_context.Internal_for_tests.add_level ctxt challenge_window in
+  let* ctxt, _ =
+    lift @@ Sc_rollup_stake_storage.cement_commitment ctxt rollup c3
+  in
+  let ctxt = Raw_context.Internal_for_tests.add_level ctxt 1 in
+  (* Try to refine previous inbox level *)
+  assert_fails_with
+    ~loc:__LOC__
+    (Sc_rollup_stake_storage.Internal_for_tests.refine_stake
+       ~skip_curfew:true
+       ctxt
+       rollup
+       staker2
+       commitment2_dishonest)
+    Sc_rollup_errors.Sc_rollup_staker_backtracked
 
 let test_publish_missing_rollup () =
   let staker =
@@ -2761,6 +2891,10 @@ let tests =
        on next commitment"
       `Quick
       test_refine_from_behind_lcc;
+    Tztest.tztest
+      "Detect backtracks of stakers staked on LCC predecessor"
+      `Quick
+      test_refine_detects_backtrack_for_stakers_committed_to_lcc_predecessors;
     Tztest.tztest "stake then publish" `Quick test_deposit_then_publish;
     Tztest.tztest "publish with no rollup" `Quick test_publish_missing_rollup;
     Tztest.tztest

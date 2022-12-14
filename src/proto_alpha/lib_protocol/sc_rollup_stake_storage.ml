@@ -68,19 +68,31 @@ let get_contract_and_stake ctxt staker =
   let stake = Constants_storage.sc_rollup_stake_amount ctxt in
   (staker_contract, stake)
 
-let is_staked_on_lcc_or_ancestor ctxt rollup ~staked_on ~lcc_inbox_level =
+(* Returns level of staked_on in case if it's descendant of LCC.
+   Otherwise, if it's predecessor, return None. *)
+let compare_staked_on_and_lcc_levels ctxt rollup ~staked_on ~lcc_inbox_level =
   let open Lwt_result_syntax in
   let+ ctxt, commitment_opt = Store.Commitments.find (ctxt, rollup) staked_on in
   (* If commitment of staked_on is still stored, it means that we can
      obtain inbox_level for it and compare explicitly with LCC inbox
-     level.  Otherwise, it means that staked_on **existed** in the
+     level.
+     Otherwise, it means that staked_on **existed** in the
      store and it has to be a cemented predecessor of LCC: if it
      wasn't a case then staker would be refuted and removed by
      now. *)
   match commitment_opt with
-  | None -> (true, ctxt)
+  | None -> (None, ctxt)
   | Some {inbox_level; _} ->
-      (Raw_level_repr.(inbox_level <= lcc_inbox_level), ctxt)
+      if Raw_level_repr.(inbox_level <= lcc_inbox_level) then (None, ctxt)
+      else (Some inbox_level, ctxt)
+
+(* Returns true if staked_on is LCC or it's predecessor*)
+let is_staked_on_lcc_or_ancestor ctxt rollup ~staked_on ~lcc_inbox_level =
+  let open Lwt_result_syntax in
+  let+ res, ctxt =
+    compare_staked_on_and_lcc_levels ctxt rollup ~staked_on ~lcc_inbox_level
+  in
+  (Option.is_none res, ctxt)
 
 (** Warning: must be called only if [rollup] exists and [staker] is not to be
     found in {!Store.Stakers.} *)
@@ -233,16 +245,21 @@ let assert_commitment_is_not_past_curfew ctxt rollup inbox_level =
     The constants used by [assert_refine_conditions_met] must be chosen such
     that the maximum cost of storage allocated by each staker is at most the size
     of their deposit.
+
+    skip_curfew flag is solely for tests.
  *)
-let assert_refine_conditions_met ctxt rollup lcc commitment =
+let assert_refine_conditions_met ?(skip_curfew = false) ctxt rollup lcc
+    commitment =
   let open Lwt_result_syntax in
   let* ctxt = assert_commitment_not_too_far_ahead ctxt rollup lcc commitment in
   let* ctxt = assert_commitment_period ctxt rollup commitment in
   let* ctxt =
-    assert_commitment_is_not_past_curfew
-      ctxt
-      rollup
-      Commitment.(commitment.inbox_level)
+    if skip_curfew then return ctxt
+    else
+      assert_commitment_is_not_past_curfew
+        ctxt
+        rollup
+        Commitment.(commitment.inbox_level)
   in
   let current_level = (Raw_context.current_level ctxt).level in
   let* () =
@@ -360,15 +377,31 @@ let increase_commitment_stake_count ctxt rollup node =
    + 0 for Staker_count_update entry *)
 let commitment_storage_size_in_bytes = 89
 
-let refine_stake ctxt rollup staker staked_on commitment =
+(* skip_curfew flag is solely for tests. *)
+let refine_stake ?(skip_curfew = false) ctxt rollup staker staked_on commitment
+    =
   let open Lwt_result_syntax in
   let* lcc, lcc_inbox_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
-  let* ctxt = assert_refine_conditions_met ctxt rollup lcc commitment in
+  let* ctxt =
+    assert_refine_conditions_met ~skip_curfew ctxt rollup lcc commitment
+  in
   let*? ctxt, new_hash = Sc_rollup_commitment_storage.hash ctxt commitment in
-  let* is_staked_on_cemented, ctxt =
-    is_staked_on_lcc_or_ancestor ctxt rollup ~staked_on ~lcc_inbox_level
+  let* staked_on_level_opt, ctxt =
+    compare_staked_on_and_lcc_levels ctxt rollup ~staked_on ~lcc_inbox_level
+  in
+  (* Basically staked_on_level_opt defines order on staked_on and LCC,
+     if staked_on_level_opt:
+     - None, then staked_on is a predecessor of LCC or LCC itself
+       (meaning, staker was offline for long time) and
+       traversal has to end up in the LCC.
+     - Some _, LCC is a predecessor of staked_on and traversal has to end up in staked_on
+  *)
+  let latest_ancestor, last_ancestor_level =
+    match staked_on_level_opt with
+    | None -> (lcc, lcc_inbox_level)
+    | Some staked_on_level -> (staked_on, staked_on_level)
   in
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2559
@@ -379,29 +412,29 @@ let refine_stake ctxt rollup staker staked_on commitment =
      during this function execution. *)
   let rec go node ctxt =
     (*
+      The recursive calls of this function are protected from
+      infinite recursion because [Commitment_storage] and
+      [Commitment_stake_count] are using carbonated storage.
 
-         The recursive calls of this function are protected from
-         infinite recursion because [Commitment_storage] and
-         [Commitment_stake_count] are using carbonated storage.
+      Hence, at each step of the traversal, the gas strictly
+      decreases.
 
-         Hence, at each step of the traversal, the gas strictly
-         decreases.
-
-         WARNING: Do NOT reorder this sequence of ifs. We must check
-         for [staked_on] before LCC, since refining from the LCC to
-         another commit is a valid operation.
-
+      WARNING: Do NOT reorder this sequence of ifs. We must check
+      for [staked_on] before LCC, since refining from the LCC to
+      another commit is a valid operation.
     *)
-    if
-      Commitment_hash.(
-        node = staked_on || (is_staked_on_cemented && node = lcc))
-    then (
+    if Commitment_hash.(node = latest_ancestor) then (
       (* Insert new commitment if not existing.
-         Two reasons when we fall into this branch are possible:
-          1. Previously staked commit found
-          2. Traversing ended up in LCC and previous staked_on is LLC or behind it,
-             hence, the commitment is a follow up of the previous staked_on
-      *)
+         Preserve invariant that a commitment is a descendant of the LCC.
+         Two cases when we fall into this branch:
+          1. Traversal ended up in a previously staked commitment,
+             which is a descendant of current LCC,
+             hence, the commitment is a descendant of the LCC inductively.
+             Invariant holds.
+          2. Traversing ended up in the LCC as staked_on is the LLC or
+             its predecessor, hence,
+             the commitment is a descendant of the LCC as well.
+             Invariant holds. *)
       let* ctxt, commitment_size_diff, commit_existed =
         Store.Commitments.add (ctxt, rollup) new_hash commitment
       in
@@ -455,17 +488,24 @@ let refine_stake ctxt rollup staker staked_on commitment =
       return (new_hash, commitment_added_level, ctxt)
       (* See WARNING above. *))
     else
-      let* () =
-        (* We reached the LCC, but [staker] is not staked directly on it.
-           Thus, we backtracked. Note that everyone is staked indirectly on
-           the LCC. *)
-        fail_when Commitment_hash.(node = lcc) Sc_rollup_staker_backtracked
+      let* node_commit, ctxt =
+        Commitment_storage.get_commitment_unsafe ctxt rollup node
       in
-      let* pred, ctxt =
-        Commitment_storage.get_predecessor_unsafe ctxt rollup node
+      let* () =
+        (* We reached a node which has the same or lower inbox level
+           as latest_ancestor_level.
+           It leads us to the fact we are not going to met latest_ancestor,
+           as inbox level of commitments only decreases.
+           Hence, it means that [staker] committed to another branch
+           which is not descendant of latest_ancestor.
+           Thus, we backtracked.
+        *)
+        fail_when
+          Raw_level_repr.(node_commit.inbox_level <= last_ancestor_level)
+          Sc_rollup_staker_backtracked
       in
       let* _size, ctxt = increase_commitment_stake_count ctxt rollup node in
-      (go [@ocaml.tailcall]) pred ctxt
+      (go [@ocaml.tailcall]) node_commit.predecessor ctxt
   in
   go Commitment.(commitment.predecessor) ctxt
 
@@ -613,14 +653,16 @@ let remove_staker ctxt rollup staker =
 module Internal_for_tests = struct
   let deposit_stake = deposit_stake
 
-  let refine_stake ctxt rollup staker ?staked_on commitment =
+  let refine_stake ?(skip_curfew = false) ctxt rollup staker ?staked_on
+      commitment =
     let open Lwt_result_syntax in
     match staked_on with
-    | Some staked_on -> refine_stake ctxt rollup staker staked_on commitment
+    | Some staked_on ->
+        refine_stake ~skip_curfew ctxt rollup staker staked_on commitment
     | None ->
         (* This allows to call {!refine_stake} without explicitely passing the
            staked_on parameter, it's more convenient for tests. However,
            it still enforce that {!deposit_stake} was called before. *)
         let* _ctxt, staked_on = Store.Stakers.get (ctxt, rollup) staker in
-        refine_stake ctxt rollup staker staked_on commitment
+        refine_stake ~skip_curfew ctxt rollup staker staked_on commitment
 end

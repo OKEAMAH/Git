@@ -249,6 +249,7 @@ module Internal_for_tests : sig
 
       This function does not authenticate the staker. *)
   val refine_stake :
+    ?skip_curfew:bool ->
     Raw_context.t ->
     Sc_rollup_repr.t ->
     Sc_rollup_repr.Staker.t ->
