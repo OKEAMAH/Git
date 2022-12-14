@@ -1334,7 +1334,9 @@ let test_cement_deadline_uses_oldest_add_time () =
   let challenge_window =
     Constants_storage.sc_rollup_challenge_window_in_blocks ctxt
   in
-  let ctxt = Raw_context.Internal_for_tests.add_level ctxt challenge_window in
+  let ctxt =
+    Raw_context.Internal_for_tests.add_level ctxt (challenge_window - 1)
+  in
 
   let* c2, _level, ctxt =
     lift
@@ -1344,6 +1346,7 @@ let test_cement_deadline_uses_oldest_add_time () =
          staker2
          commitment
   in
+  let ctxt = Raw_context.Internal_for_tests.add_level ctxt 1 in
   let* ctxt =
     lift @@ Sc_rollup_stake_storage.cement_commitment ctxt rollup c1
   in

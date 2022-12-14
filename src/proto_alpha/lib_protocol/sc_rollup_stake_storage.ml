@@ -226,7 +226,7 @@ let assert_commitment_is_not_past_curfew ctxt rollup inbox_level =
       if
         Compare.Int32.(
           Raw_level_repr.diff current_level oldest_commit
-          > refutation_deadline_blocks)
+          >= refutation_deadline_blocks)
       then tzfail Sc_rollup_commitment_past_curfew
       else return ctxt
   | None ->
