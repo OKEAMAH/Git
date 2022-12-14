@@ -34,7 +34,7 @@ module Builtins = struct
     (* let*! data = get_reveal ~data_dir:node_ctxt.data_dir reveal_map hash in *)
     Lwt_io.with_file
       ~mode:Lwt_io.Input
-      ("/home/emma/sources/reveal_temp/wasm_2_0_0/" ^ hash)
+      ("/home/emma/reveal_temp/wasm_2_0_0/" ^ hash)
       Lwt_io.read
 
   let reveal_metadata () =
@@ -178,6 +178,7 @@ let bench ~title ?(samples = 1) (module B : Bench) =
   let* kernel =
     Lwt_io.with_file
       ~mode:Lwt_io.Input
+      (* "./tezos/installer-computed.wasm" *)
       "/home/emma/sources/wasm-kernel/tx-kernel.wasm"
       (* "/home/emma/sources/wasm-kernel/installer.wasm" *)
       Lwt_io.read
@@ -185,9 +186,11 @@ let bench ~title ?(samples = 1) (module B : Bench) =
   let* messages =
     List.map_s
       (fun path -> Lwt_io.with_file ~mode:Lwt_io.Input path Lwt_io.read)
-      (List.map (fun f -> "/home/emma/sources/wasm-kernel/gen_messages/" ^ f)
+      (List.map (fun f ->
+           Printf.printf "Reading message: %s\n" f ;
+           "/home/emma/sources/wasm-kernel/actual_messages/" ^ f)
       @@ Array.to_list
-      @@ Sys.readdir "/home/emma/sources/wasm-kernel/gen_messages/")
+      @@ Sys.readdir "/home/emma/sources/wasm-kernel/actual_messages/")
   in
   let trigger = Stdlib.List.init samples (fun _ -> ()) in
   let+ hashes = List.map_s (fun () -> B.run ~kernel ~messages) trigger in
