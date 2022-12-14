@@ -309,7 +309,7 @@ let verify_params ctxt ~parameters_ty ~parameters ~unparsed_parameters =
 
 (* Verify that the given list of transactions and transaction operations match.
    Also checks each transaction operation for type mismatches etc. *)
-let verify_execute_outbox_message_operations incr ~loc ~source ~operations
+let verify_execute_outbox_message_operations incr rollup ~loc ~operations
     ~expected_transactions =
   let ctxt = Incremental.alpha_ctxt incr in
   let validate_and_extract_operation_params ctxt op =
@@ -338,8 +338,8 @@ let verify_execute_outbox_message_operations incr ~loc ~source ~operations
           (* Check that the sources match. *)
           Assert.equal_string
             ~loc
-            (Contract.to_b58check (Contract.Implicit source))
-            (Contract.to_b58check op_source)
+            (Destination.to_b58check (Sc_rollup rollup))
+            (Destination.to_b58check op_source)
         in
         (* Assert that the amount is 0. *)
         let* () = Assert.equal_tez ~loc amount Tez.zero in
@@ -543,7 +543,7 @@ let adjust_ticket_token_balance_of_rollup ctxt rollup ticket_token ~delta =
 
 (** A version of execute outbox message that output ignores proof validation. *)
 let execute_outbox_message_without_proof_validation incr rollup
-    ~cemented_commitment ~source outbox_message =
+    ~cemented_commitment outbox_message =
   let* res, ctxt =
     wrap
       (Sc_rollup_operations.Internal_for_tests.execute_outbox_message
@@ -553,7 +553,6 @@ let execute_outbox_message_without_proof_validation incr rollup
            return (outbox_message, ctxt))
          rollup
          ~cemented_commitment
-         ~source
          ~output_proof:"Not used")
   in
   return (res, Incremental.set_alpha_ctxt incr ctxt)
@@ -1039,7 +1038,6 @@ let mutez_receiver =
 
 let test_single_transaction_batch () =
   let* block, (baker, originator) = context_init Context.T2 in
-  let source = Context.Contract.pkh originator in
   let baker = Context.Contract.pkh baker in
   (* Originate a rollup that accepts a list of string tickets as input. *)
   let* block, rollup = sc_originate block originator "list (ticket string)" in
@@ -1079,7 +1077,6 @@ let test_single_transaction_batch () =
       incr
       rollup
       ~cemented_commitment
-      ~source
       output
   in
   (* Confirm that each transaction maps to one operation. *)
@@ -1087,7 +1084,7 @@ let test_single_transaction_batch () =
     verify_execute_outbox_message_operations
       ~loc:__LOC__
       incr
-      ~source
+      rollup
       ~operations
       ~expected_transactions:transactions
   in
@@ -1111,7 +1108,6 @@ let test_single_transaction_batch () =
     cemented commitments but not against an outdated one. *)
 let test_older_cemented_commitment () =
   let* block, (baker, originator) = context_init Context.T2 in
-  let source = Context.Contract.pkh originator in
   let baker = Context.Contract.pkh baker in
   (* Originate a rollup that accepts a list of string tickets as input. *)
   let* block, rollup = sc_originate block originator "list (ticket string)" in
@@ -1152,7 +1148,6 @@ let test_older_cemented_commitment () =
         incr
         rollup
         ~cemented_commitment
-        ~source
         output
     in
     (* Confirm that each transaction maps to one operation. *)
@@ -1160,7 +1155,7 @@ let test_older_cemented_commitment () =
       verify_execute_outbox_message_operations
         ~loc:__LOC__
         incr
-        ~source
+        rollup
         ~operations
         ~expected_transactions:transactions
     in
@@ -1218,7 +1213,6 @@ let test_older_cemented_commitment () =
 let test_multi_transaction_batch () =
   let* block, (baker, originator) = context_init Context.T2 in
   let baker = Context.Contract.pkh baker in
-  let source = Context.Contract.pkh originator in
   (* Originate a rollup that accepts a list of string tickets as input. *)
   let* block, rollup = sc_originate block originator "list (ticket string)" in
   let* incr = Incremental.begin_construction block in
@@ -1279,7 +1273,6 @@ let test_multi_transaction_batch () =
       incr
       rollup
       ~cemented_commitment
-      ~source
       output
   in
   (* Confirm that each transaction maps to one operation. *)
@@ -1287,7 +1280,7 @@ let test_multi_transaction_batch () =
     verify_execute_outbox_message_operations
       ~loc:__LOC__
       incr
-      ~source
+      rollup
       ~operations
       ~expected_transactions:transactions
   in
@@ -1312,7 +1305,6 @@ let test_multi_transaction_batch () =
 let test_transaction_with_invalid_type () =
   let* block, (baker, originator) = context_init Context.T2 in
   let baker = Context.Contract.pkh baker in
-  let source = Context.Contract.pkh originator in
   let* block, rollup = sc_originate block originator "list (ticket string)" in
   let* incr = Incremental.begin_construction block in
   let* mutez_receiver, incr =
@@ -1337,14 +1329,12 @@ let test_transaction_with_invalid_type () =
        incr
        rollup
        ~cemented_commitment
-       ~source
        output)
 
 (** Test that executing the same outbox message for the same twice fails. *)
 let test_execute_message_twice () =
   let* block, (baker, originator) = context_init Context.T2 in
   let baker = Context.Contract.pkh baker in
-  let source = Context.Contract.pkh originator in
   (* Originate a rollup that accepts a list of string tickets as input. *)
   let* block, rollup = sc_originate block originator "list (ticket string)" in
   let* incr = Incremental.begin_construction block in
@@ -1370,7 +1360,6 @@ let test_execute_message_twice () =
       incr
       rollup
       ~cemented_commitment
-      ~source
       output
   in
   (* Confirm that each transaction maps to one operation. *)
@@ -1378,7 +1367,7 @@ let test_execute_message_twice () =
     verify_execute_outbox_message_operations
       ~loc:__LOC__
       incr
-      ~source
+      rollup
       ~operations
       ~expected_transactions:transactions
   in
@@ -1390,7 +1379,6 @@ let test_execute_message_twice () =
        incr
        rollup
        ~cemented_commitment
-       ~source
        output)
 
 (** Verifies that it is not possible to execute the same message twice from
@@ -1398,7 +1386,6 @@ let test_execute_message_twice () =
 let test_execute_message_twice_different_cemented_commitments () =
   let* block, (baker, originator) = context_init Context.T2 in
   let baker = Context.Contract.pkh baker in
-  let source = Context.Contract.pkh originator in
   (* Originate a rollup that accepts a list of string tickets as input. *)
   let* block, rollup = sc_originate block originator "list (ticket string)" in
   let* incr = Incremental.begin_construction block in
@@ -1431,7 +1418,6 @@ let test_execute_message_twice_different_cemented_commitments () =
       incr
       rollup
       ~cemented_commitment:first_cemented_commitment
-      ~source
       output
   in
   (* Confirm that each transaction maps to one operation. *)
@@ -1439,7 +1425,7 @@ let test_execute_message_twice_different_cemented_commitments () =
     verify_execute_outbox_message_operations
       ~loc:__LOC__
       incr
-      ~source
+      rollup
       ~operations
       ~expected_transactions:transactions
   in
@@ -1451,13 +1437,11 @@ let test_execute_message_twice_different_cemented_commitments () =
        incr
        rollup
        ~cemented_commitment:second_cemented_commitment
-       ~source
        output)
 
 let test_zero_amount_ticket () =
   let* block, (baker, originator) = context_init Context.T2 in
   let baker = Context.Contract.pkh baker in
-  let source = Context.Contract.pkh originator in
   (* Originate a rollup that accepts a list of string tickets as input. *)
   let* block, rollup = sc_originate block originator "list (ticket string)" in
   let* incr = Incremental.begin_construction block in
@@ -1488,7 +1472,6 @@ let test_zero_amount_ticket () =
       incr
       rollup
       ~cemented_commitment
-      ~source
       output
   in
   match result with
@@ -1531,7 +1514,6 @@ let test_invalid_output_proof () =
 let test_execute_message_override_applied_messages_slot () =
   let* block, (baker, originator) = context_init Context.T2 in
   let baker = Context.Contract.pkh baker in
-  let source = Context.Contract.pkh originator in
   (* Originate a rollup that accepts a list of string tickets as input. *)
   let* block, rollup = sc_originate block originator "list (ticket string)" in
   let* incr = Incremental.begin_construction block in
@@ -1560,7 +1542,6 @@ let test_execute_message_override_applied_messages_slot () =
         incr
         rollup
         ~cemented_commitment:cemented_commitment_hash
-        ~source
         output
     in
     return (paid_storage_size_diff, incr)
@@ -1667,7 +1648,6 @@ let test_execute_message_override_applied_messages_slot () =
 let test_insufficient_ticket_balances () =
   let* block, (baker, originator) = context_init Context.T2 in
   let baker = Context.Contract.pkh baker in
-  let source = Context.Contract.pkh originator in
   (* Originate a rollup that accepts a list of string tickets as input. *)
   let* block, rollup = sc_originate block originator "list (ticket string)" in
   let* incr = Incremental.begin_construction block in
@@ -1736,7 +1716,6 @@ let test_insufficient_ticket_balances () =
        incr
        rollup
        ~cemented_commitment
-       ~source
        output)
 
 let test_inbox_max_number_of_messages_per_level () =
