@@ -3406,6 +3406,56 @@ let prepare_installer_kernel ~dal_node ?(kernel_id = "0000")
   in
   return installer_wasm
 
+let prepare_external_messages_demo ~dal_node ?(_kernel_id = "0000")
+    ~dac_committee_member_pk () =
+  let message =
+    read_file
+      "/home/emma/sources/wasm-demo/account_diff_to_tx/gen_out/01-transfers.out"
+  in
+  let* root_hash, _ =
+    RPC.call
+      dal_node
+      (Rollup.Dal.RPC.dac_store_preimage
+         ~payload:message
+         ~pagination_scheme:"Merkle_tree_V0")
+  in
+  let root_hash =
+    Tezos_protocol_alpha.Protocol.Sc_rollup_reveal_hash.(
+      root_hash |> of_b58check_opt |> Option.get
+      |> Data_encoding.Binary.to_string_exn encoding)
+  in
+  let root_hash_hex = hex_encode root_hash in
+  let dac_pk =
+    Data_encoding.(
+      Binary.to_string_exn
+        Tezos_crypto.Bls.Public_key.encoding
+        Tezos_crypto.Bls.Public_key.(of_b58check_exn dac_committee_member_pk))
+  in
+  let _dac_pk = hex_encode dac_pk in
+  Printf.printf "INBOX %s\n" root_hash_hex ;
+  (* Ensure reveal hash is correct length when hex encoded. *)
+  assert (String.length root_hash_hex = 66) ;
+
+  let* root_hash, top_level_message =
+    RPC.call
+      dal_node
+      (Rollup.Dal.RPC.dac_store_preimage
+         ~payload:root_hash_hex
+         ~pagination_scheme:"Merkle_tree_V0")
+  in
+  let root_hash_hex = hex_encode root_hash in
+  Printf.printf "INBOX2 %s %s\n" root_hash_hex @@ hex_encode top_level_message ;
+
+  (* let installer_wasm = *)
+  (*   installer_prefix *)
+  (*   ^ (root_hash ^ kernel_id *)
+  (*    ^ dac_pk *)
+  (*      (\* ^ "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555" *\) *)
+  (*     ) *)
+  (*   ^ installer_suffix *)
+  (* in *)
+  return ()
+
 (*
   TX Kernel external message encodings
   ====================================
@@ -3480,6 +3530,7 @@ let test_tx_kernel_e2e protocol =
   let sc_rollup_node =
     Sc_rollup_node.create
       ~dal_node
+      ~data_dir:"/home/emma/reveal_temp"
       Operator
       node
       client
@@ -3506,6 +3557,9 @@ let test_tx_kernel_e2e protocol =
       ~dal_node
       ~dac_committee_member_pk:dac_pk
       "tx-kernel"
+  in
+  let* () =
+    prepare_external_messages_demo ~dal_node ~dac_committee_member_pk:dac_pk ()
   in
   let boot_sector = hex_encode installer_kernel in
   (* Initialise the sc rollup *)
