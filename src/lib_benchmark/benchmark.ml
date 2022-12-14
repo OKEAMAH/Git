@@ -78,4 +78,5 @@ let info ((module B) : t) = B.info
 (** Get the tags of a benchmark *)
 let tags ((module B) : t) = B.tags
 
+
 let ex_unpack : t -> packed = fun (module Bench) -> Ex ((module Bench) : _ poly)

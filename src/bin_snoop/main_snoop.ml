@@ -420,22 +420,8 @@ let codegen_all_cmd solution regexp codegen_options =
   Codegen.pp_module Format.std_formatter result
 
 let dump_cmd workload_data output_path =
-  let workload_data = Measure.load ~filename:workload_data in
-  let (Measurement (bench, {workload_data; _})) = workload_data in
-  let module Bench = (val bench) in
-  let encoding = Measure.workload_data_encoding Bench.workload_encoding in
-  let encoding =
-    Data_encoding.(
-      obj2 (req "bench_name" string) (req "workload_data" encoding))
-  in
-  let data =
-    Data_encoding.Json.construct
-      encoding
-      (Namespace.to_string Bench.name, workload_data)
-  in
-  let json = Data_encoding.Json.to_string data in
-  Out_channel.with_open_text output_path @@ fun oc ->
-  Printf.fprintf oc "%s\n" json
+  let packed_measurement = Measure.load ~filename:workload_data in
+  Measure.packed_measurement_save_json packed_measurement output_path
 
 (* -------------------------------------------------------------------------- *)
 (* Entrypoint *)
