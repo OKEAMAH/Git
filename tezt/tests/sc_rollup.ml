@@ -3404,6 +3404,12 @@ let prepare_installer_kernel ~dal_node ?(kernel_id = "0000")
       )
     ^ installer_suffix
   in
+  let () =
+    write_file
+      "/home/emma/sources/tezos/installer-computed.wasm"
+      ~contents:installer_wasm
+  in
+  let () = write_file "/home/emma/sources/tezos/dac_pk" ~contents:dac_pk in
   return installer_wasm
 
 let prepare_external_messages_demo ~dal_node ?(_kernel_id = "0000")
@@ -3445,6 +3451,12 @@ let prepare_external_messages_demo ~dal_node ?(_kernel_id = "0000")
   in
   let root_hash_hex = hex_encode root_hash in
   Printf.printf "INBOX2 %s %s\n" root_hash_hex @@ hex_encode top_level_message ;
+
+  let () =
+    write_file
+      "/home/emma/sources/wasm-kernel/actual_messages/01-transfer.out"
+      ~contents:top_level_message
+  in
 
   (* let installer_wasm = *)
   (*   installer_prefix *)
