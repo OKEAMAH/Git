@@ -3369,7 +3369,8 @@ let test_refutation_reward_and_punishment ~kind =
    We then deposit a ticket into the tx kernel, and verify that we are
    able to withdraw.
 *)
-let prepare_installer_kernel ~dal_node installee =
+let prepare_installer_kernel ~dal_node ?(kernel_id = "0000")
+    ~dac_committee_member_pk installee =
   let installer_prefix = load_kernel_file "reveal_installer.wasm.p1" in
   let installer_suffix = load_kernel_file "reveal_installer.wasm.p2" in
   let installee = load_kernel_file (installee ^ ".wasm") in
@@ -3386,12 +3387,20 @@ let prepare_installer_kernel ~dal_node installee =
       |> Data_encoding.Binary.to_string_exn encoding)
   in
   let root_hash = hex_encode root_hash in
+  let dac_pk =
+    Data_encoding.(
+      Binary.to_string_exn
+        Tezos_crypto.Bls.Public_key.encoding
+        Tezos_crypto.Bls.Public_key.(of_b58check_exn dac_committee_member_pk))
+  in
+  let dac_pk = hex_encode dac_pk in
   (* Ensure reveal hash is correct length when hex encoded. *)
   assert (String.length root_hash = 66) ;
   let installer_wasm =
     installer_prefix
-    ^ (root_hash
-     ^ "0000555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+    ^ (root_hash ^ kernel_id
+     ^ dac_pk
+       (* ^ "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555" *)
       )
     ^ installer_suffix
   in
@@ -3486,12 +3495,18 @@ let test_tx_kernel_e2e protocol =
   let* dac_member = Client.bls_gen_keys ~alias:"dac_member" client in
   let* dac_member_info = Client.bls_show_address ~alias:dac_member client in
   let dac_member_address = dac_member_info.aggregate_public_key_hash in
+  let dac_pk = dac_member_info.aggregate_public_key in
   let* _dir = Dal_node.init_config dal_node in
   let* () =
     Dal_node.Dac.add_committee_member ~address:dac_member_address dal_node
   in
   (* We can now produce our installer *)
-  let* installer_kernel = prepare_installer_kernel ~dal_node "tx-kernel" in
+  let* installer_kernel =
+    prepare_installer_kernel
+      ~dal_node
+      ~dac_committee_member_pk:dac_pk
+      "tx-kernel"
+  in
   let boot_sector = hex_encode installer_kernel in
   (* Initialise the sc rollup *)
   let* sc_rollup_address =
