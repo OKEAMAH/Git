@@ -3388,7 +3388,13 @@ let prepare_installer_kernel ~dal_node installee =
   let root_hash = hex_encode root_hash in
   (* Ensure reveal hash is correct length when hex encoded. *)
   assert (String.length root_hash = 66) ;
-  let installer_wasm = installer_prefix ^ root_hash ^ installer_suffix in
+  let installer_wasm =
+    installer_prefix
+    ^ (root_hash
+     ^ "0000555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+      )
+    ^ installer_suffix
+  in
   return installer_wasm
 
 (*
@@ -3665,6 +3671,7 @@ let test_tx_kernel_e2e protocol =
     match answer with
     | None -> failwith "Unexpected error during proof generation"
     | Some {commitment_hash; proof} ->
+        let* () = Client.bake_for_and_wait client in
         let*! () =
           Client.Sc_rollup.execute_outbox_message
             ~hooks
