@@ -861,20 +861,16 @@ module Inner = struct
     let h =
       ifft coefficients size (Scalar.pow t.root_k (Z.of_int (t.k / size)))
     in
-    let inv_y = Scalar.inverse_exn y in
-
-    (*Polynomials.scale_evaluation_points ~scaling_factor:inv_y ~h *)
-    Array.fold_left_map
-      (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
-      Scalar.(copy one)
-      (Polynomials.to_dense_coefficients h)
-    |> snd
+    Polynomials.scale_evaluation_points_inplace
+      ~scaling_factor:(Scalar.inverse_exn y)
+      h ;
+    h
 
   (* Part 3.2 verifier : verifies that f(w×domain.(i)) = evaluations.(i). *)
   let verify t cm_f srs_point (w, evaluations) l proof =
     let open Bls12_381 in
     let h = interpolation_h_poly t w l evaluations in
-    let cm_h = commit t (Polynomials.of_dense h) in
+    let cm_h = commit t h in
     let sl_min_yl =
       G2.(add srs_point (negate (mul (copy one) (Scalar.pow w (Z.of_int l)))))
     in
