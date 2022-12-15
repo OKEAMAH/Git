@@ -33,7 +33,7 @@ module type Internal_for_tests = sig
     ?builtins:Builtins.t ->
     ?after_fast_exec:(unit -> unit) ->
     ?stop_at_snapshot:bool ->
-    ?debug_flag:bool ->
+    ?debug:bool ->
     max_steps:int64 ->
     state ->
     (state * int64) Lwt.t
@@ -53,7 +53,7 @@ module type Generic = sig
   val compute_step_many :
     ?builtins:Builtins.t ->
     ?stop_at_snapshot:bool ->
-    ?debug_flag:bool ->
+    ?debug:bool ->
     max_steps:int64 ->
     state ->
     (state * int64) Lwt.t
@@ -64,9 +64,9 @@ module type Generic = sig
       [compute_step_many ~max_step=1 pvm_state]. *)
   val compute_step : state -> state Lwt.t
 
-  (** [compute_step_with_debug ~debug_flag pvm_state] is exactly [compute_step]
+  (** [compute_step_with_debug ~debug pvm_state] is exactly [compute_step]
       but it has the ability to enable the debugging host functions. *)
-  val compute_step_with_debug : debug_flag:bool -> state -> state Lwt.t
+  val compute_step_with_debug : debug:bool -> state -> state Lwt.t
 
   (** [set_input_step input_info message pvm_state] forwards the VM by one input
       tick. If the VM is not expecting input, it gets stuck. If the VM is

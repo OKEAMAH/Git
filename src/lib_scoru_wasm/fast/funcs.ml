@@ -76,11 +76,11 @@ type host_state = {
   retrieve_mem : unit -> Wasmer.Memory.t;
   buffers : Tezos_webassembly_interpreter.Eval.buffers;
   mutable durable : Durable.t;
-  enable_debugging : bool;
+  debug : bool;
 }
 
 let write_debug_impl state =
-  if state.enable_debugging then (fun key_offset key_length ->
+  if state.debug then (fun key_offset key_length ->
     let mem = state.retrieve_mem () in
     let len = Wasmer.Memory.length mem |> Int32.of_int in
     let key_offset, key_length =

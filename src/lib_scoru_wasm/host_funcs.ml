@@ -1067,7 +1067,7 @@ let lookup_opt name =
 let lookup name =
   match lookup_opt name with Some f -> f | None -> raise Not_found
 
-let register_host_funcs ~enable_debugging registry =
+let register_host_funcs ~debug registry =
   List.fold_left
     (fun _acc (global_name, host_function) ->
       Host_funcs.register ~global_name host_function registry)
@@ -1075,7 +1075,7 @@ let register_host_funcs ~enable_debugging registry =
     [
       (read_input_name, read_input);
       (write_output_name, write_output);
-      (write_debug_name, write_debug enable_debugging);
+      (write_debug_name, write_debug debug);
       (store_has_name, store_has);
       (store_list_size_name, store_list_size);
       (store_get_nth_key_name, store_get_nth_key);
@@ -1091,14 +1091,14 @@ let register_host_funcs ~enable_debugging registry =
 
 let all =
   let registry = Host_funcs.empty () in
-  register_host_funcs ~enable_debugging:false registry ;
+  register_host_funcs ~debug:false registry ;
   registry
 
 (* We build the registry at toplevel of the module to prevent recomputing it at
    each initialization tick. *)
 let all_debug =
   let registry = Host_funcs.empty () in
-  register_host_funcs ~enable_debugging:true registry ;
+  register_host_funcs ~debug:true registry ;
   registry
 
 module Internal_for_tests = struct
