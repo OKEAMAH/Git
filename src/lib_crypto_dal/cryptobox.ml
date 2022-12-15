@@ -657,14 +657,15 @@ module Inner = struct
         (* We always consider the first k codeword vector components. *)
         |> Tezos_stdlib.TzList.take_n (t.k / t.shard_size)
       in
-      let f1, f2 = split shards in
+      let shard_indices = List.map fst shards in
+      let f1, f2 = split shard_indices in
 
       let f11, f12 = split f1 in
       let f21, f22 = split f2 in
 
       let prod =
         List.fold_left
-          (fun acc (i, _) ->
+          (fun acc i ->
             Polynomials.mul_xn
               acc
               t.shard_size
