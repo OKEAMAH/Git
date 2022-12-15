@@ -184,7 +184,7 @@ let download_and_save_slots
     Bitset.fill ~length:protocol_constants.parametric.dal.number_of_slots
     |> Environment.wrap_tzresult
   in
-  let*? not_confirmed =
+  let*? _not_confirmed =
     Environment.wrap_tzresult
     @@ to_slot_index_list protocol_constants.parametric
     @@ Bitset.diff all_slots confirmed_slots_indexes
@@ -201,10 +201,9 @@ let download_and_save_slots
      disk, therefore calls to store contents for different slot indexes can
      be parallelized. *)
   let*! () =
-    List.iter_p
-      (fun s_slot ->
-        save_unconfirmed_slot node_context current_block_hash s_slot)
-      not_confirmed
+    [] (* Preparing for the pre-fetching logic. *)
+    |> List.iter_p (fun s_slot ->
+           save_unconfirmed_slot node_context current_block_hash s_slot)
   in
   let* () =
     [] (* Preparing for the pre-fetching logic. *)
