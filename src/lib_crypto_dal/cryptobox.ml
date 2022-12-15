@@ -590,35 +590,23 @@ module Inner = struct
     loop 0 IntMap.empty
 
   (* Computes the polynomial N(X) := \sum_{i=0}^{k-1} n_i x_i^{-1} X^{z_i}. *)
-  let compute_n t eval_a' shards =
+  let compute_n t eval_a' (shards : (int * 'a) list) =
     let n_poly = Array.make t.n Scalar.(copy zero) in
-    let open Result_syntax in
-    let c = ref 0 in
-    let* () =
-      IntMap.iter_e
-        (fun z_i arr ->
-          if !c >= t.k then Ok ()
-          else
-            let rec loop j =
-              match j with
-              | j when j = Array.length arr -> Ok ()
-              | _ ->
-                  let c_i = arr.(j) in
-                  let z_i = (t.number_of_shards * j) + z_i in
-                  let x_i = Domains.get t.domain_n z_i in
-                  let tmp = Evaluations.get eval_a' z_i in
-                  Scalar.mul_inplace tmp tmp x_i ;
-                  (* The call below never fails by construction, so we don't
-                     catch exceptions *)
-                  Scalar.inverse_exn_inplace tmp tmp ;
-                  Scalar.mul_inplace tmp tmp c_i ;
-                  n_poly.(z_i) <- tmp ;
-                  c := !c + 1 ;
-                  loop (j + 1)
-            in
-            loop 0)
-        shards
-    in
+    List.iter
+      (fun (z_i, arr) ->
+        for j = 0 to Array.length arr - 1 do
+          let c_i = arr.(j) in
+          let z_i = (t.number_of_shards * j) + z_i in
+          let x_i = Domains.get t.domain_n z_i in
+          let tmp = Evaluations.get eval_a' z_i in
+          Scalar.mul_inplace tmp tmp x_i ;
+          (* The call below never fails by construction, so we don't
+             catch exceptions *)
+          Scalar.inverse_exn_inplace tmp tmp ;
+          Scalar.mul_inplace tmp tmp c_i ;
+          n_poly.(z_i) <- tmp
+        done)
+      shards ;
     Ok (Evaluations.of_array (t.n - 1, n_poly))
 
   let fft_mul2k t polys =
@@ -664,12 +652,12 @@ module Inner = struct
          function from log(k) to log(number_of_shards), so that the decoding time
          reduces from O(k*log^2(k) + n*log(n)) to O(n*log(n)). *)
       let split = List.fold_left (fun (l, r) x -> (x :: r, l)) ([], []) in
-      let f1, f2 =
+      let shards =
         IntMap.bindings shards
         (* We always consider the first k codeword vector components. *)
         |> Tezos_stdlib.TzList.take_n (t.k / t.shard_size)
-        |> split
       in
+      let f1, f2 = split shards in
 
       let f11, f12 = split f1 in
       let f21, f22 = split f2 in
