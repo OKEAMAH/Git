@@ -579,13 +579,12 @@ module Inner = struct
     let rec loop i map =
       if i = t.number_of_shards then map
       else
-        let shard = Array.init t.shard_size (fun _ -> Scalar.(copy zero)) in
-        for j = 0 to t.shard_size - 1 do
-          Evaluations.get_inplace
+        let shard =
+          Evaluations.evaluations_at_coset
             codeword
-            ((t.number_of_shards * j) + i)
-            shard.(j)
-        done ;
+            ~coset_idx:i
+            ~coset_len:t.shard_size
+        in
         loop (i + 1) (IntMap.add i shard map)
     in
     loop 0 IntMap.empty
@@ -783,16 +782,16 @@ module Inner = struct
       let padding = diff_next_power_of_two (2 * quotient) in
       let len = (2 * quotient) + padding in
       let points =
-        G1_array.init_from_existing_array
+        (*G1_array.init_from_existing_array
           ~len
           ~array:srs
           ~offset:(degree - j - shard_size)
           ~step:(-shard_size)
-          ~padding_threshold:quotient
-        (*G1_array.init len (fun i ->
-          if i < quotient then
-            Srs_g1.get srs (degree - j - ((i + 1) * shard_size))
-          else G1.(copy zero))*)
+          ~padding_threshold:quotient*)
+        G1_array.init len (fun i ->
+            if i < quotient then
+              Srs_g1.get srs (degree - j - ((i + 1) * shard_size))
+            else G1.(copy zero))
       in
 
       G1_array.evaluation_ecfft_inplace ~domain ~points ;
@@ -857,12 +856,14 @@ module Inner = struct
     G1_array.evaluation_ecfft_inplace ~domain:phidomain ~points:hh ;
     G1_array.to_array hh
 
-  (* h = polynomial such that h(y×domain[i]) = zi. *)
+  (* h = polynomial such that h(y×domain[i]) = coefficients[i]. *)
   let interpolation_h_poly t y size coefficients =
     let h =
       ifft coefficients size (Scalar.pow t.root_k (Z.of_int (t.k / size)))
     in
     let inv_y = Scalar.inverse_exn y in
+
+    (*Polynomials.scale_evaluation_points ~scaling_factor:inv_y ~h *)
     Array.fold_left_map
       (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
       Scalar.(copy one)
