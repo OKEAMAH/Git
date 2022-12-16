@@ -72,22 +72,22 @@ module Test = struct
           Bytes.sub (Cryptobox.polynomial_to_bytes t decoded_slot) 0 msg_size
         in
         assert (Bytes.equal msg decoded_msg) ;
-        let comm = Cryptobox.commit t p in
         let shard_proofs = Cryptobox.prove_shards t p in
         let shard_index = Random.int number_of_shards in
         match Cryptobox.IntMap.find shard_index enc_shards with
-        | None -> Ok ()
+        | None -> assert false
         | Some eval ->
             let check =
               Cryptobox.verify_shard
                 t
-                comm
+                cm
                 {index = shard_index; share = eval}
                 shard_proofs.(shard_index)
             in
             assert check ;
+
             let pi = Cryptobox.prove_commitment t p in
-            let check = Cryptobox.verify_commitment t comm pi in
+            let check = Cryptobox.verify_commitment t cm pi in
             assert check ;
             Ok ()
         (* let point = Scalar.random () in *)
@@ -100,8 +100,18 @@ module Test = struct
          *     ~point
          *     ~evaluation:(Cryptobox.polynomial_evaluate p point)
          *     pi_slot) *))
-      [2]
-    |> fun x -> match x with Ok () -> () | Error _ -> assert false
+      [16]
+    |> fun x ->
+    match x with
+    | Ok () -> ()
+    | Error (`Fail s)
+    | Error (`Invert_zero s)
+    | Error (`Slot_wrong_size s)
+    | Error (`Not_enough_shards s) ->
+        Printf.eprintf "\nError: %s\n" s ;
+        assert false
+    | Error `Page_length_mismatch | Error `Segment_index_out_of_range ->
+        assert false
 end
 
 let test =
