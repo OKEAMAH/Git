@@ -1017,30 +1017,53 @@ module Internal_for_tests = struct
 end
 
 module Config = struct
-  type t = {activated : bool; srs_size : int option}
+  type sizes = {slot_size : int; page_size : int}
+
+  and t = {
+    activated : bool;
+    use_mock_srs_only_use_for_testing_purpose : sizes option;
+  }
+
+  let sizes_encoding : sizes Data_encoding.t =
+    let open Data_encoding in
+    conv
+      (fun {slot_size; page_size} -> (slot_size, page_size))
+      (fun (slot_size, page_size) -> {slot_size; page_size})
+      (obj2 (req "slot_size" int31) (req "page_size" int31))
 
   let encoding : t Data_encoding.t =
     let open Data_encoding in
     conv
-      (fun {activated; srs_size} -> (activated, srs_size))
-      (fun (activated, srs_size) -> {activated; srs_size})
-      (obj2 (req "activated" bool) (req "srs_size" (option int31)))
+      (fun {activated; use_mock_srs_only_use_for_testing_purpose} ->
+        (activated, use_mock_srs_only_use_for_testing_purpose))
+      (fun (activated, use_mock_srs_only_use_for_testing_purpose) ->
+        {activated; use_mock_srs_only_use_for_testing_purpose})
+      (obj2
+         (req "activated" bool)
+         (req
+            "mock_srsuse_mock_srs_only_use_for_testing_purpose"
+            (option sizes_encoding)))
 
-  let default = {activated = false; srs_size = None}
+  let default =
+    {activated = false; use_mock_srs_only_use_for_testing_purpose = None}
 
   let init_dal ~find_srs_files dal_config =
     let open Lwt_result_syntax in
-    if dal_config.activated then
-      let* initialisation_parameters =
-        match dal_config.srs_size with
-        | None ->
-            let*? g1_path, g2_path = find_srs_files () in
-            initialisation_parameters_from_files ~g1_path ~g2_path
-        | Some slot_size ->
-            return
-              (Internal_for_tests.initialisation_parameters_from_slot_size
-                 ~slot_size)
-      in
-      Lwt.return (load_parameters initialisation_parameters)
-    else return_unit
+    match dal_config with
+    | {
+     activated = true;
+     use_mock_srs_only_use_for_testing_purpose = Some {slot_size; page_size};
+    } ->
+        Lwt.return
+          (load_parameters
+             (Internal_for_tests.initialisation_parameters_from_slot_size
+                ~slot_size
+                ~page_size))
+    | {activated = true; use_mock_srs_only_use_for_testing_purpose = None} ->
+        let*? g1_path, g2_path = find_srs_files () in
+        let* initialisation_parameters =
+          initialisation_parameters_from_files ~g1_path ~g2_path
+        in
+        Lwt.return (load_parameters initialisation_parameters)
+    | {activated = false; _} -> return_unit
 end

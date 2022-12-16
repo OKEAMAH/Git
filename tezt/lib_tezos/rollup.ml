@@ -746,6 +746,7 @@ module Dal = struct
     let initialisation_parameters =
       Cryptobox.Internal_for_tests.initialisation_parameters_from_slot_size
         ~slot_size:parameters.Cryptobox.slot_size
+        ~page_size:parameters.Cryptobox.page_size
     in
     Cryptobox.Internal_for_tests.load_parameters initialisation_parameters ;
     match Cryptobox.make parameters with

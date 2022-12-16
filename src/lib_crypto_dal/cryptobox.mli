@@ -223,26 +223,33 @@ end
 
 (** node parameters for the DAL. *)
 module Config : sig
-  type t = {
+  type sizes = {
+    slot_size : int;  (** The size of a slot in bytes *)
+    page_size : int;  (** The size of a page in bytes *)
+  }
+
+  and t = {
     activated : bool;
         (** [true] if the DAL is activated ([false] by default). This may have
         an impact on the loading time of the node. *)
-    srs_size : int option;
+    use_mock_srs_only_use_for_testing_purpose : sizes option;
         (** If [None] (the default), the srs is read from the srs
         files. This is the value expected for production. For testing
         purposes, we may want to compute the srs instead but this is
-        unsafe. In that case, a size must be specified. *)
+        not secure. In this case, the size of a slot and page must be
+        specified. *)
   }
 
   val encoding : t Data_encoding.t
 
-  (** The default configuration is [{activated = false; srs_size = None}]. *)
+  (** The default configuration is [{activated = false;
+      use_mock_srs_only_use_for_testing_purpose = None}]. *)
   val default : t
 
   (** [init_dal find_trusted_setup_files config] initializes the DAL
      according to the dal configuration [config].
 
-      When [config.srs_size = None], [init_dal] loads
+      When [config.mock_srs = false], [init_dal] loads
      [initialisation_parameters] from the files at the paths provided
      by [find_trusted_setup_files ()]. It is important that every time
      the primitives above are used, they are used with the very same
