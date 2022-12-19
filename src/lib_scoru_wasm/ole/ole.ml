@@ -32,10 +32,7 @@ module Builtins = struct
       hex_encode hash
     in
     (* let*! data = get_reveal ~data_dir:node_ctxt.data_dir reveal_map hash in *)
-    Lwt_io.with_file
-      ~mode:Lwt_io.Input
-      ("/home/emma/reveal_temp/wasm_2_0_0/" ^ hash)
-      Lwt_io.read
+    Lwt_io.with_file ~mode:Lwt_io.Input ("./reveals/" ^ hash) Lwt_io.read
 
   let reveal_metadata () =
     Stdlib.failwith "reveal_metadata is not available out of the box in tests"
@@ -179,7 +176,7 @@ let bench ~title ?(samples = 1) (module B : Bench) =
     Lwt_io.with_file
       ~mode:Lwt_io.Input
       (* "./tezos/installer-computed.wasm" *)
-      "/home/emma/sources/wasm-kernel/tx-kernel.wasm"
+      "./tx-kernel.wasm"
       (* "/home/emma/sources/wasm-kernel/installer.wasm" *)
       Lwt_io.read
   in
@@ -188,9 +185,9 @@ let bench ~title ?(samples = 1) (module B : Bench) =
       (fun path -> Lwt_io.with_file ~mode:Lwt_io.Input path Lwt_io.read)
       (List.map (fun f ->
            Printf.printf "Reading message: %s\n" f ;
-           "/home/emma/sources/wasm-kernel/actual_messages/" ^ f)
+           "./actual_messages/" ^ f)
       @@ Array.to_list
-      @@ Sys.readdir "/home/emma/sources/wasm-kernel/actual_messages/")
+      @@ Sys.readdir "./actual_messages/")
   in
   let trigger = Stdlib.List.init samples (fun _ -> ()) in
   let+ hashes = List.map_s (fun () -> B.run ~kernel ~messages) trigger in

@@ -59,6 +59,8 @@ let hooks = Tezos_regression.hooks_custom ~replace_variables ()
 let hex_encode (input : string) : string =
   match Hex.of_string input with `Hex s -> s
 
+let hex_decode (input : string) : string = Hex.to_string @@ `Hex input
+
 let load_kernel_file name : string =
   let open Tezt.Base in
   let kernel_file =
@@ -3406,17 +3408,19 @@ let prepare_installer_kernel ~dal_node ?(kernel_id = "0000")
   in
   let () =
     write_file
-      "/home/emma/sources/tezos/installer-computed.wasm"
+      "/home/emma/sources/tezos/demo-installer-computed.wasm"
       ~contents:installer_wasm
   in
-  let () = write_file "/home/emma/sources/tezos/dac_pk" ~contents:dac_pk in
+  let () = write_file "/home/emma/sources/tezos/demo-dac_pk" ~contents:dac_pk in
   return installer_wasm
 
 let prepare_external_messages_demo ~dal_node ?(_kernel_id = "0000")
-    ~dac_committee_member_pk () =
+    ~dac_committee_member_pk ~level () =
   let message =
     read_file
-      "/home/emma/sources/wasm-demo/account_diff_to_tx/gen_out/01-transfers.out"
+      (Printf.sprintf
+         "/home/emma/sources/wasm-demo/account_diff_to_tx/gen_out/0%s-transfers.out"
+         (Int.to_string level))
   in
   let* root_hash, _ =
     RPC.call
@@ -3446,15 +3450,28 @@ let prepare_external_messages_demo ~dal_node ?(_kernel_id = "0000")
     RPC.call
       dal_node
       (Rollup.Dal.RPC.dac_store_preimage
-         ~payload:root_hash_hex
+         ~payload:root_hash
          ~pagination_scheme:"Merkle_tree_V0")
   in
+  let root_hash =
+    Tezos_protocol_alpha.Protocol.Sc_rollup_reveal_hash.(
+      root_hash |> of_b58check_opt |> Option.get
+      |> Data_encoding.Binary.to_string_exn encoding)
+  in
   let root_hash_hex = hex_encode root_hash in
-  Printf.printf "INBOX2 %s %s\n" root_hash_hex @@ hex_encode top_level_message ;
+  assert (String.length root_hash_hex = 66) ;
+  (* Required to say it's an external message when feeding direct to benching *)
+  let top_level_message = "\001" ^ top_level_message in
+  Printf.printf
+    "INBOX2 %s %s\n"
+    root_hash_hex
+    (String.escaped top_level_message) ;
 
   let () =
     write_file
-      "/home/emma/sources/wasm-kernel/actual_messages/01-transfer.out"
+      (Printf.sprintf
+         "/home/emma/sources/wasm-kernel/actual_messages/0%s-transfer.out"
+      @@ Int.to_string level)
       ~contents:top_level_message
   in
 
@@ -3553,8 +3570,6 @@ let test_tx_kernel_e2e protocol =
   let reveal_data_dir =
     Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) "wasm_2_0_0"
   in
-  let* () = Dal_node.Dac.set_parameters ~reveal_data_dir dal_node in
-  let* () = Dal_node.run dal_node ~wait_ready:true in
   let* dac_member = Client.bls_gen_keys ~alias:"dac_member" client in
   let* dac_member_info = Client.bls_show_address ~alias:dac_member client in
   let dac_member_address = dac_member_info.aggregate_public_key_hash in
@@ -3563,6 +3578,8 @@ let test_tx_kernel_e2e protocol =
   let* () =
     Dal_node.Dac.add_committee_member ~address:dac_member_address dal_node
   in
+  let* () = Dal_node.Dac.set_parameters ~reveal_data_dir dal_node in
+  let* () = Dal_node.run dal_node ~wait_ready:true in
   (* We can now produce our installer *)
   let* installer_kernel =
     prepare_installer_kernel
@@ -3570,9 +3587,19 @@ let test_tx_kernel_e2e protocol =
       ~dac_committee_member_pk:dac_pk
       "tx-kernel"
   in
-  let* () =
-    prepare_external_messages_demo ~dal_node ~dac_committee_member_pk:dac_pk ()
+  let rec prepare_messages_demo i =
+    if i > 8 then return ()
+    else
+      let* () =
+        prepare_external_messages_demo
+          ~dal_node
+          ~dac_committee_member_pk:dac_pk
+          ~level:i
+          ()
+      in
+      prepare_messages_demo (i + 1)
   in
+  let* () = prepare_messages_demo 1 in
   let boot_sector = hex_encode installer_kernel in
   (* Initialise the sc rollup *)
   let* sc_rollup_address =

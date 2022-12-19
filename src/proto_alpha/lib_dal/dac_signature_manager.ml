@@ -130,6 +130,9 @@ module Make (Hashing_scheme : REVEAL_HASH) = struct
     match bytes_to_sign with
     | None -> tzfail @@ Cannot_convert_root_page_hash_to_bytes b58_root_hash
     | Some bytes_to_sign -> (
+        Printf.printf
+          "DAC: Bytes to sign: %s\n"
+          (String.escaped @@ Bytes.to_string bytes_to_sign) ;
         let* rev_indexed_signatures =
           rev_collect_indexed_signatures cctxt dac_sk_uris bytes_to_sign
         in
