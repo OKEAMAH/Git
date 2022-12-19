@@ -3470,7 +3470,7 @@ let prepare_external_messages_demo ~dal_node ?(_kernel_id = "0000")
   let () =
     write_file
       (Printf.sprintf
-         "/home/emma/sources/wasm-kernel/actual_messages/0%s-transfer.out"
+         "/home/emma/sources/tezos/actual_messages/0%s-transfer.out"
       @@ Int.to_string level)
       ~contents:top_level_message
   in
@@ -3581,12 +3581,24 @@ let test_tx_kernel_e2e protocol =
   let* () = Dal_node.Dac.set_parameters ~reveal_data_dir dal_node in
   let* () = Dal_node.run dal_node ~wait_ready:true in
   (* We can now produce our installer *)
-  let* installer_kernel =
-    prepare_installer_kernel
-      ~dal_node
-      ~dac_committee_member_pk:dac_pk
-      "tx-kernel"
+  (* let* installer_kernel = *)
+  (*   prepare_installer_kernel *)
+  (*     ~dal_node *)
+  (*     ~dac_committee_member_pk:dac_pk *)
+  (*     "tx-kernel" *)
+  (* in *)
+  let dac_pk_bytes =
+    Data_encoding.(
+      Binary.to_string_exn
+        Tezos_crypto.Bls.Public_key.encoding
+        Tezos_crypto.Bls.Public_key.(of_b58check_exn dac_pk))
   in
+  let dac_pk_hex = hex_encode dac_pk_bytes in
+  (* Ensure reveal hash is correct length when hex encoded. *)
+  let () =
+    write_file "/home/emma/sources/tezos/demo-dac_pk" ~contents:dac_pk_hex
+  in
+  let installer_kernel = "" in
   let rec prepare_messages_demo i =
     if i > 8 then return ()
     else
