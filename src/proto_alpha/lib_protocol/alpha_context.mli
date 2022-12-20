@@ -3801,6 +3801,10 @@ module Sc_rollup : sig
       descendant:Hash.t ->
       ancestor:Hash.t ->
       (bool * context) tzresult Lwt.t
+
+    module Internal_for_tests : sig
+      val hash : t -> Hash.t
+    end
   end
 
   module Storage : sig

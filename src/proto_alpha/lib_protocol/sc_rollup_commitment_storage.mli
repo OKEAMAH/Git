@@ -249,4 +249,6 @@ module Internal_for_tests : sig
     Raw_context.t ->
     Sc_rollup_repr.t ->
     ((Commitment_hash.t * Raw_level_repr.t) list * Raw_context.t) tzresult Lwt.t
+
+  val hash : Commitment.t -> Commitment_hash.t
 end

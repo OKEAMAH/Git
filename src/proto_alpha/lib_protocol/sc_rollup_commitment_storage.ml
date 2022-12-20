@@ -141,4 +141,12 @@ module Internal_for_tests = struct
     let* lcc_hash, ctxt = last_cemented_commitment ctxt rollup in
     let+ commitments_with_levels, ctxt = aux ctxt [] lcc_hash in
     (commitments_with_levels, ctxt)
+
+  let hash commitment =
+    let commitment_bytes =
+      Data_encoding.Binary.to_bytes_exn
+        Sc_rollup_commitment_repr.encoding
+        commitment
+    in
+    Sc_rollup_commitment_repr.Hash.hash_bytes [commitment_bytes]
 end
