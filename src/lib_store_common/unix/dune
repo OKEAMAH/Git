@@ -8,10 +8,11 @@
  (libraries
   tezos-base
   tezos-store-common.shared
+  aches-lwt
   tezos-stdlib-unix)
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
   -open Tezos_store_common_shared
   -open Tezos_stdlib_unix)
- (modules store))
+ (modules store key_value_store))

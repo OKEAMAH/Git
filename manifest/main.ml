@@ -2243,15 +2243,14 @@ let octez_store_common_unix =
   public_lib
     "tezos-store-common.unix"
     ~path:"src/lib_store_common/unix"
-    ~synopsis:
-      "Common module to implement persistent storage with Unix dependencies"
     ~deps:
       [
         octez_base |> open_ ~m:"TzPervasives";
         octez_store_common_shared |> open_;
+        aches_lwt;
         octez_stdlib_unix |> open_;
       ]
-    ~modules:["store"]
+    ~modules:["store"; "key_value_store"]
 
 let octez_store_shared =
   public_lib
