@@ -470,7 +470,7 @@ let hash_commitment incr commitment =
   in
   (Incremental.set_alpha_ctxt incr ctxt, hash)
 
-let publish_and_cement_commitment incr ~baker ~originator rollup commitment =
+let publish_commitment incr ~baker ~originator rollup commitment =
   let* incr =
     if
       (Incremental.header incr).Block_header.shell.level
@@ -484,14 +484,24 @@ let publish_and_cement_commitment incr ~baker ~originator rollup commitment =
   let* operation = Op.sc_rollup_publish (I incr) originator rollup commitment in
   let* incr = Incremental.add_operation incr operation in
   let* block = Incremental.finalize_block incr in
-  let* constants = Context.get_constants (B block) in
+  let* incr =
+    Incremental.begin_construction ~policy:Block.(By_account baker) block
+  in
+  hash_commitment incr commitment
+
+let publish_and_cement_commitment incr ~baker ~originator rollup commitment =
+  let* incr, hash =
+    publish_commitment incr ~baker ~originator rollup commitment
+  in
+  let* constants = Context.get_constants (I incr) in
   let* block =
-    Block.bake_n constants.parametric.sc_rollup.challenge_window_in_blocks block
+    Block.bake_n
+      constants.parametric.sc_rollup.challenge_window_in_blocks
+      (Incremental.predecessor incr)
   in
   let* incr =
     Incremental.begin_construction ~policy:Block.(By_account baker) block
   in
-  let* incr, hash = hash_commitment incr commitment in
   let* cement_op = Op.sc_rollup_cement (I incr) originator rollup hash in
   let* incr = Incremental.add_operation incr cement_op in
   let* block = Incremental.finalize_block incr in
