@@ -44,7 +44,7 @@ val make_encoded_file :
   'kind directory ->
   filename:string ->
   'a Data_encoding.t ->
-  ('kkind, 'a) encoded_file
+  ('kind, 'a) encoded_file
 
 val encoded_file_path : ('kind, 'data) encoded_file -> string
 
