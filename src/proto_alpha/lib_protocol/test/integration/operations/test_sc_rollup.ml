@@ -2682,6 +2682,149 @@ let test_offline_staker_does_not_prevent_cementation () =
   let* _b = Block.bake ~operation:cement_op b in
   return_unit
 
+let apply_publish_commitment block ~baker ~originator rollup commitment =
+  let* operation =
+    Op.sc_rollup_publish (B block) originator rollup commitment
+  in
+  let* block = Block.bake ~policy:Block.(By_account baker) ~operation block in
+  let commitment_hash =
+    Sc_rollup.Commitment.Internal_for_tests.hash commitment
+  in
+  return (block, commitment_hash)
+
+let check_balance_changed ~loc ~block_before ~block_after ~contract ~balance
+    ~amount ~change =
+  let open Lwt_result_syntax in
+  let ( $ ) = change in
+  let* balance_before = balance (Context.B block_before) contract in
+  let* balance_after = balance (Context.B block_after) contract in
+  let* () = Assert.equal_tez ~loc (balance_before $ amount) balance_after in
+  return ()
+
+let check_balance_increased ~block_before ~block_after ~contract ~amount =
+  check_balance_changed
+    ~block_before
+    ~block_after
+    ~contract
+    ~balance:Context.Contract.balance
+    ~amount
+    ~change:Test_tez.( +! )
+
+let check_balance_decreased ~block_before ~block_after ~contract ~amount =
+  check_balance_changed
+    ~block_before
+    ~block_after
+    ~contract
+    ~balance:Context.Contract.balance
+    ~amount
+    ~change:Test_tez.( -! )
+
+let check_bonds_increased ~block_before ~block_after ~contract ~amount =
+  check_balance_changed
+    ~block_before
+    ~block_after
+    ~contract
+    ~balance:Context.Contract.frozen_bonds
+    ~amount
+    ~change:Test_tez.( +! )
+
+let check_bonds_decreased ~block_before ~block_after ~contract ~amount =
+  check_balance_changed
+    ~block_before
+    ~block_after
+    ~contract
+    ~balance:Context.Contract.frozen_bonds
+    ~amount
+    ~change:Test_tez.( -! )
+
+let check_publish_commitment ~block_before ~block_after ~originator =
+  let* constants = Context.get_constants (B block_before) in
+  let stake_amount = constants.parametric.sc_rollup.stake_amount in
+  let* () =
+    check_balance_decreased
+      ~loc:__LOC__
+      ~block_before
+      ~block_after
+      ~contract:originator
+      ~amount:stake_amount
+  in
+  let* () =
+    check_bonds_increased
+      ~loc:__LOC__
+      ~block_before
+      ~block_after
+      ~contract:originator
+      ~amount:stake_amount
+  in
+  return_unit
+
+let publish_commitment block ~baker ~originator rollup commitment =
+  let* block =
+    if
+      block.Block.header.shell.level
+      < Raw_level.to_int32 commitment.Sc_rollup.Commitment.inbox_level
+    then bake_blocks_until_inbox_level block commitment
+    else return block
+  in
+  let block_before = block in
+  let* block_after, _hash =
+    apply_publish_commitment block ~baker ~originator rollup commitment
+  in
+  let* () = check_publish_commitment ~block_before ~block_after ~originator in
+  return block_after
+
+let test_publish_commitment_ok () =
+  let open Lwt_result_syntax in
+  let* block, (baker, originator) = context_init Context.T2 in
+  let baker = Context.Contract.pkh baker in
+  let* block, rollup = sc_originate block originator "list (ticket string)" in
+  let* commitment = dummy_commitment (B block) rollup in
+  let* _block_after =
+    publish_commitment block ~baker ~originator rollup commitment
+  in
+  return_unit
+
+(** Runs a transaction from a [source] to a [destination]. *)
+let transfer ?force_reveal ?parameters ~baker ~block ~source ~destination amount
+    =
+  let open Lwt_result_syntax in
+  let* operation =
+    Op.transaction
+      ?force_reveal
+      ?parameters
+      ~fee:Tez.zero
+      (B block)
+      source
+      destination
+      amount
+  in
+  Block.bake ~policy:Block.(By_account baker) ~operations:[operation] block
+
+let test_publish_commitment_ko () =
+  let open Lwt_result_syntax in
+  let* block, (baker, originator) = context_init Context.T2 in
+  let baker_pkh = Context.Contract.pkh baker in
+  let* block, rollup = sc_originate block originator "list (ticket string)" in
+  let* originator_balance = Context.Contract.balance (B block) originator in
+  let amount = Test_tez.(originator_balance -! Tez.one) in
+  let* block =
+    transfer
+      ~baker:baker_pkh
+      ~block
+      ~source:originator
+      ~destination:baker
+      amount
+  in
+  let* commitment = dummy_commitment (B block) rollup in
+  let*! res =
+    publish_commitment block ~baker:baker_pkh ~originator rollup commitment
+  in
+  Assert.proto_error_with_info
+    ~loc:__LOC__
+    ~error_info_field:`Title
+    res
+    "Staker does not have enough funds to make a deposit"
+
 let tests =
   [
     Tztest.tztest
@@ -2815,4 +2958,12 @@ let tests =
       "An offline staker should not prevent cementation"
       `Quick
       test_offline_staker_does_not_prevent_cementation;
+    Tztest.tztest
+      "Publish a commitment and check balances (sufficient balance)"
+      `Quick
+      test_publish_commitment_ok;
+    Tztest.tztest
+      "Publish a commitment and check balances (insufficient balance)"
+      `Quick
+      test_publish_commitment_ko;
   ]
