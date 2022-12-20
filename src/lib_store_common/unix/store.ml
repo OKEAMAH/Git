@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2020-2021 Nomadic Labs, <contact@nomadic-labs.com>          *)
+(* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,53 +23,64 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Store_errors
-open Naming
+type error += Missing_stored_data of string
+
+let () =
+  Error_monad.register_error_kind
+    `Permanent
+    ~id:"store-common-unix.missing_stored_data"
+    ~title:"Missing stored data"
+    ~description:"Failed to load stored data"
+    ~pp:(fun ppf path ->
+      Format.fprintf
+        ppf
+        "Failed to load on-disk data: no corresponding data found in file %s."
+        path)
+    Data_encoding.(obj1 (req "path" string))
+    (function Missing_stored_data path -> Some path | _ -> None)
+    (fun path -> Missing_stored_data path)
 
 type _ t =
   | Stored_data : {
       mutable cache : 'a;
-      file : (_, 'a) encoded_file;
+      file : (_, 'a) File.t;
       scheduler : Lwt_idle_waiter.t;
     }
       -> 'a t
 
 let read_json_file file =
   let open Lwt_syntax in
+  let open File in
   Option.catch_os (fun () ->
-      let* r = Lwt_utils_unix.Json.read_file (Naming.encoded_file_path file) in
+      let* r = Lwt_utils_unix.Json.read_file file.path in
       match r with
       | Ok json ->
-          let encoding = Naming.file_encoding file in
-          Lwt.return_some (Data_encoding.Json.destruct encoding json)
+          Lwt.return_some (Data_encoding.Json.destruct file.encoding json)
       | _ -> Lwt.return_none)
 
 let read_file file =
+  let open File in
   Lwt.try_bind
-    (fun () ->
-      let path = Naming.encoded_file_path file in
-      Lwt_utils_unix.read_file path)
+    (fun () -> Lwt_utils_unix.read_file file.path)
     (fun str ->
-      let encoding = Naming.file_encoding file in
-      Lwt.return (Data_encoding.Binary.of_string_opt encoding str))
+      Lwt.return (Data_encoding.Binary.of_string_opt file.encoding str))
     (fun _ -> Lwt.return_none)
 
 let get (Stored_data v) =
   Lwt_idle_waiter.task v.scheduler (fun () -> Lwt.return v.cache)
 
-let write_file encoded_file data =
+let write_file file data =
   let open Lwt_syntax in
+  let open File in
   protect (fun () ->
-      let encoding = Naming.file_encoding encoded_file in
-      let path = Naming.encoded_file_path encoded_file in
       let encoder data =
-        if Naming.is_json_file encoded_file then
-          Data_encoding.Json.construct encoding data
+        if file.json then
+          Data_encoding.Json.construct file.encoding data
           |> Data_encoding.Json.to_string
-        else Data_encoding.Binary.to_string_exn encoding data
+        else Data_encoding.Binary.to_string_exn file.encoding data
       in
       let str = encoder data in
-      let tmp_filename = path ^ "_tmp" in
+      let tmp_filename = file.path ^ "_tmp" in
       (* Write in a new temporary file then swap the files to avoid
          partial writes. *)
       let* fd =
@@ -82,7 +93,7 @@ let write_file encoded_file data =
         (fun () ->
           let* () = Lwt_utils_unix.write_string fd str in
           let* () = Lwt_unix.close fd in
-          let* () = Lwt_unix.rename tmp_filename path in
+          let* () = Lwt_unix.rename tmp_filename file.path in
           return_ok_unit)
         (fun exn ->
           let* _ = Lwt_utils_unix.safe_close fd in
@@ -113,17 +124,16 @@ let update_with (Stored_data v) f =
 
 let load file =
   let open Lwt_result_syntax in
-  let*! o =
-    if Naming.is_json_file file then read_json_file file else read_file file
-  in
+  let open File in
+  let*! o = if file.json then read_json_file file else read_file file in
   match o with
   | Some cache ->
       let scheduler = Lwt_idle_waiter.create () in
       return (Stored_data {cache; file; scheduler})
-  | None -> tzfail (Missing_stored_data (Naming.encoded_file_path file))
+  | None -> tzfail (Missing_stored_data file.path)
 
 let init file ~initial_data =
   let open Lwt_syntax in
-  let path = Naming.encoded_file_path file in
-  let* b = Lwt_unix.file_exists path in
+  let open File in
+  let* b = Lwt_unix.file_exists file.path in
   match b with true -> load file | false -> create file initial_data

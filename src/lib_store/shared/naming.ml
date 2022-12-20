@@ -25,29 +25,25 @@
 
 open Filename.Infix
 open Store_types
+module File = Tezos_store_common_shared.File
 
-type 'kind directory = {dir_path : string}
+type 'kind directory = 'kind File.directory = {dir_path : string}
 
 type 'kind file = {file_path : string}
 
-type ('kind, 'data) encoded_file = {
-  encoding : 'data Data_encoding.t;
-  encoded_file_path : string;
-  json : bool;
-}
+type ('kind, 'data) encoded_file = ('kind, 'data) File.t
 
 let dir_path {dir_path} = dir_path
 
 let file_path {file_path} = file_path
 
-let is_json_file file = file.json
+let is_json_file file = file.File.json
 
-let make_encoded_file ?(json = false) dir ~filename encoding =
-  {encoding; encoded_file_path = dir.dir_path // filename; json}
+let make_encoded_file = File.make
 
-let encoded_file_path {encoded_file_path; _} = encoded_file_path
+let encoded_file_path File.{path; _} = path
 
-let file_encoding {encoding; _} = encoding
+let file_encoding File.{encoding; _} = encoding
 
 (* Utility functions *)
 

@@ -26,6 +26,7 @@
 open Store_types
 open Block_repr
 open Store_errors
+module Stored_data = Tezos_store_common_unix.Store
 
 let default_block_cache_limit = 100
 

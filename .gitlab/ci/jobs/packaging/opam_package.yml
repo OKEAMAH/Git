@@ -1475,6 +1475,13 @@ opam:tezos-store:
   variables:
     package: tezos-store
 
+opam:tezos-store-common:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_7
+  variables:
+    package: tezos-store-common
+
 opam:tezos-test-helpers:
   extends:
     - .opam_template

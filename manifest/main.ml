@@ -2231,6 +2231,28 @@ let octez_validation =
         octez_stdlib_unix |> open_;
       ]
 
+let octez_store_common_shared =
+  public_lib
+    "tezos-store-common.shared"
+    ~path:"src/lib_store_common/shared"
+    ~synopsis:"Common module to implement persistent storage"
+    ~deps:[octez_base |> open_ ~m:"TzPervasives"]
+    ~modules:["file"]
+
+let octez_store_common_unix =
+  public_lib
+    "tezos-store-common.unix"
+    ~path:"src/lib_store_common/unix"
+    ~synopsis:
+      "Common module to implement persistent storage with Unix dependencies"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_store_common_shared |> open_;
+        octez_stdlib_unix |> open_;
+      ]
+    ~modules:["store"]
+
 let octez_store_shared =
   public_lib
     "tezos-store.shared"
@@ -2240,6 +2262,7 @@ let octez_store_shared =
         octez_base |> open_ |> open_ ~m:"TzPervasives";
         octez_crypto |> open_;
         octez_shell_services |> open_;
+        octez_store_common_shared;
         aches;
         aches_lwt;
         octez_validation |> open_;
@@ -2275,6 +2298,8 @@ let octez_store_unix =
         octez_stdlib_unix |> open_;
         octez_stdlib |> open_;
         octez_crypto |> open_;
+        octez_store_common_shared;
+        octez_store_common_unix;
         lwt_watcher;
         aches;
         aches_lwt;
@@ -2292,7 +2317,6 @@ let octez_store_unix =
         "floating_block_index";
         "floating_block_store";
         "protocol_store";
-        "stored_data";
         "store_metrics";
         "store";
       ]

@@ -27,11 +27,13 @@ open Store_types
 
 (** {1 File convention} *)
 
-type 'kind directory
+module File := Tezos_store_common_shared.File
+
+type 'kind directory = 'kind File.directory
 
 type 'kind file
 
-type ('kind, 'data) encoded_file
+type ('kind, 'data) encoded_file = ('kind, 'data) File.t
 
 val dir_path : 'kind directory -> string
 

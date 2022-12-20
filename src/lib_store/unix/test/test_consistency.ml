@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open Test_utils
+module Stored_data = Tezos_store_common_unix.Store
 
 let nb_protocols = 5
 

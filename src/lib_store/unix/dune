@@ -21,6 +21,8 @@
   tezos-stdlib-unix
   tezos-stdlib
   tezos-crypto
+  tezos-store-common.shared
+  tezos-store-common.unix
   lwt-watcher
   aches
   aches-lwt
@@ -50,7 +52,6 @@
   floating_block_index
   floating_block_store
   protocol_store
-  stored_data
   store_metrics
   store))
 

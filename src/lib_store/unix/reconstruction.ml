@@ -96,6 +96,7 @@ let () =
     (fun hm -> Cannot_reconstruct hm)
 
 open Reconstruction_events
+module Stored_data = Tezos_store_common_unix.Store
 
 (* The status of a metadata. It is:
    - Complete: all the metadata of the corresponding cycle are stored

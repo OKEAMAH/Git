@@ -25,6 +25,7 @@
 
 open Store_types
 open Store_errors
+module Stored_data = Tezos_store_common_unix.Store
 
 (* A non-empty store is considered consistent if the following
    invariants hold:

@@ -1,0 +1,17 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_store_common_unix)
+ (public_name tezos-store-common.unix)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-base
+  tezos-store-common.shared
+  tezos-stdlib-unix)
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives
+  -open Tezos_store_common_shared
+  -open Tezos_stdlib_unix)
+ (modules store))

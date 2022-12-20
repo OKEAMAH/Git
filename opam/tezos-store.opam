@@ -12,6 +12,7 @@ depends: [
   "tezos-base"
   "tezos-crypto"
   "tezos-shell-services"
+  "tezos-store-common"
   "aches" { >= "1.0.0" }
   "aches-lwt" { >= "1.0.0" }
   "tezos-validation"

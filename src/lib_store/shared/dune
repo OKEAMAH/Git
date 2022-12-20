@@ -9,6 +9,7 @@
   tezos-base
   tezos-crypto
   tezos-shell-services
+  tezos-store-common.shared
   aches
   aches-lwt
   tezos-validation)

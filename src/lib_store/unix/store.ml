@@ -25,6 +25,7 @@
 
 open Store_types
 open Store_errors
+module Stored_data = Tezos_store_common_unix.Store
 
 module Shared = struct
   type 'a t = {mutable data : 'a; lock : Lwt_idle_waiter.t}
