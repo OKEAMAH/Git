@@ -2076,21 +2076,15 @@ module Sc_rollup = struct
         RPC_path.(path_sc_rollup / "stakers_commitments")
 
     let conflicts =
-      let query =
-        let open RPC_query in
-        query Sc_rollup.Staker.of_b58check_exn
-        |+ field "staker" RPC_arg.string "" (fun x ->
-               Format.asprintf "%a" Sc_rollup.Staker.pp x)
-        |> seal
-      in
       let output =
         Sc_rollup.(Data_encoding.list Refutation_storage.conflict_encoding)
       in
       RPC_service.get_service
         ~description:"List of stakers in conflict with the given staker"
-        ~query
+        ~query:RPC_query.empty
         ~output
-        RPC_path.(path_sc_rollup / "conflicts")
+        RPC_path.(
+          path_sc_rollup / "staker" /: Sc_rollup.Staker.rpc_arg / "conflicts")
 
     let timeout =
       let query =
@@ -2253,10 +2247,10 @@ module Sc_rollup = struct
         Sc_rollup.Storage.stakers_commitments_uncarbonated context rollup)
 
   let register_conflicts () =
-    Registration.register1
+    Registration.register2
       ~chunked:false
       S.conflicts
-      (fun context rollup staker () ->
+      (fun context rollup staker () () ->
         Sc_rollup.Refutation_storage.conflicting_stakers_uncarbonated
           context
           rollup
@@ -2358,7 +2352,7 @@ module Sc_rollup = struct
     RPC_context.make_call1 S.stakers_commitments ctxt rollup
 
   let conflicts ctxt block sc_rollup_address staker =
-    RPC_context.make_call1 S.conflicts ctxt block sc_rollup_address staker
+    RPC_context.make_call2 S.conflicts ctxt block sc_rollup_address staker () ()
 
   let timeout_reached ctxt block sc_rollup_address staker1 staker2 =
     RPC_context.make_call1
