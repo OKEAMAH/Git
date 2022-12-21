@@ -322,7 +322,7 @@ type 'action io_error = {
   arg : string;
 }
 
-type error += Io_error of [`Close | `Open | `Rename] io_error
+type error += Io_error of [`Close | `Open | `Rename | `Mkdir] io_error
 
 let tzfail_of_io_error e = Error [Io_error e]
 
@@ -344,7 +344,12 @@ let () =
         (req
            "action"
            (string_enum
-              [("close", `Close); ("open", `Open); ("Rename", `Rename)]))
+              [
+                ("close", `Close);
+                ("open", `Open);
+                ("Rename", `Rename);
+                ("Mkdir", `Mkdir);
+              ]))
         (req "unix_code" Unix_error.encoding)
         (req "caller" string)
         (req "arg" string))
@@ -407,3 +412,21 @@ let with_atomic_open_out ?(overwrite = true) filename
       | Unix.Unix_error (unix_code, caller, arg) ->
           Lwt.return (Error {action = `Rename; unix_code; caller; arg})
       | exn -> raise exn)
+
+let rec create_parent ?(perms = 0o755) filename =
+  let open Lwt_result_syntax in
+  let parent = Filename.dirname filename in
+  if String.length parent < String.length filename then
+    let* () = create_parent ~perms parent in
+    let*! parent_exists = Lwt_unix.file_exists parent in
+    if parent_exists then return_unit
+    else
+      Lwt.catch
+        (fun () ->
+          let*! () = Lwt_unix.mkdir parent perms in
+          return_unit)
+        (function
+          | Unix.Unix_error (unix_code, caller, arg) ->
+              Lwt.return (Error {action = `Mkdir; unix_code; caller; arg})
+          | exn -> raise exn)
+  else return_unit
