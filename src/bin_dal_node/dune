@@ -23,6 +23,8 @@
   tezos_dal_node_services
   tezos_layer2_store
   tezos-crypto-dal
+  tezos-store-common.unix
+  tezos-store-common.shared
   irmin-pack
   irmin-pack.unix
   irmin
@@ -45,6 +47,8 @@
   -open Tezos_dal_node_lib
   -open Tezos_dal_node_services
   -open Tezos_layer2_store
-  -open Tezos_crypto_dal))
+  -open Tezos_crypto_dal
+  -open Tezos_store_common_unix
+  -open Tezos_store_common_shared))
 
 (rule (action (progn (write-file void_for_linking-tezos-dal-alpha.empty ""))))

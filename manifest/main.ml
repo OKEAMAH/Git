@@ -6050,6 +6050,8 @@ let _octez_dal_node =
          octez_dal_node_services |> open_;
          octez_layer2_store |> open_;
          octez_crypto_dal |> open_;
+         octez_store_common_unix |> open_;
+         octez_store_common_shared |> open_;
          irmin_pack;
          irmin_pack_unix;
          irmin;

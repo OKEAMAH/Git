@@ -264,8 +264,7 @@ let update_neighbors dal_node neighbors =
 
 let wait_for_stored_slot dal_node slot_header =
   Dal_node.wait_for dal_node "stored_slot_shards.v0" (fun e ->
-      if JSON.(e |-> "commitment" |> as_string) = slot_header then Some ()
-      else None)
+      if JSON.(e |> as_string) = slot_header then Some () else None)
 
 let test_feature_flag _protocol _parameters _cryptobox node client
     _bootstrap_key =

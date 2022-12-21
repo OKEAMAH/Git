@@ -47,10 +47,12 @@ let set ~msg store path v = set_exn store path v ~info:(fun () -> info msg)
 
 let remove ~msg store path = remove_exn store path ~info:(fun () -> info msg)
 
+module Shard_store = Key_value_store
+
 (** Store context *)
 type node_store = {
   store : t;
-  shard_store : Shard_store.t;
+  shard_store : (Cryptobox.Commitment.t * int, Cryptobox.share) Shard_store.t;
   slot_headers_store : Slot_headers_store.t;
   slots_watcher : Cryptobox.Commitment.t Lwt_watcher.input;
 }
@@ -68,10 +70,16 @@ let init config =
   let slots_watcher = Lwt_watcher.create_input () in
   let*! repo = Repo.v (Irmin_pack.config dir) in
   let*! store = main repo in
-  let* shard_store =
+  let shard_store =
     Shard_store.init
-      ~max_mutexes:Constants.shards_max_mutexes
-      (Filename.concat dir shard_store_path)
+      ~lru_size:Constants.shards_max_mutexes
+      (fun (commitment, index) ->
+        let commitment_string = Cryptobox.Commitment.to_b58check commitment in
+        let filename = string_of_int index in
+        File.make
+          {dir_path = Filename.concat shard_store_path commitment_string}
+          ~filename
+          Cryptobox.share_encoding)
   in
   let*! () = Event.(emit store_is_ready ()) in
   return {shard_store; store; slots_watcher; slot_headers_store}
