@@ -26,13 +26,12 @@
 
 open Tezos_scoru_wasm
 module Wasmer = Tezos_wasmer
-module Lazy_containers = Tezos_lazy_containers
 
 include (Wasm_vm : Wasm_vm_sig.S)
 
 let store =
   Lazy.from_fun @@ fun () ->
-  let engine = Wasmer.Engine.create Wasmer.Config.{compiler = SINGLEPASS} in
+  let engine = Wasmer.Engine.create Wasmer.Config.{compiler = CRANELIFT} in
   Wasmer.Store.create engine
 
 let load_kernel durable =
