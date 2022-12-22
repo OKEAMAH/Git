@@ -105,7 +105,10 @@ let with_layer1 ?(attestation_lag = 1) ?commitment_period ?challenge_window
     (* this will produce the empty list if dal_enable is not passed to the function invocation,
        hence the value from the protocol constants will be used. *)
     @ dal_enable_param dal_enable
-    @ [(["sc_rollup_enable"], `Bool true)]
+    @ [
+        (["sc_rollup_enable"], `Bool true);
+        (["sc_rollup_arith_pvm_enable"], `Bool true);
+      ]
   in
   let base = Either.right (protocol, None) in
   let* parameter_file = Protocol.write_parameter_file ~base parameters in
