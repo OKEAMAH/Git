@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Trili Tech  <contact@trili.tech>                       *)
+(* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -25,30 +25,56 @@
 
 (** Testing
     -------
-    Component:    Lib_scoru_wasm
-    Invocation:   dune runtest src/lib_scoru_wasm/
-    Subject:      Tests for the tezos-scoru-wasm library
+    Component:    Lib_scoru_wasm protocol input kind
+    Invocation:   dune exec  src/lib_scoru_wasm/test/test_scoru_wasm.exe \
+                    -- test "Input kind"
+    Subject:      Protocol input kind tests for the tezos-scoru-wasm library
 *)
 
-let () =
-  Alcotest_lwt.run
-    "test lib scoru wasm"
+open Tztest
+open Tezos_scoru_wasm.Pvm_input_kind
+
+let internal_message_kind_gen =
+  let open QCheck2.Gen in
+  oneofl [Transfer; Start_of_level; End_of_level; Info_per_level]
+
+let input_kind_gen =
+  let open QCheck2.Gen in
+  oneof
     [
-      ("Input", Test_input.tests);
-      ("Output", Test_output.tests);
-      ("Set/get", Test_get_set.tests);
-      ("Durable storage", Test_durable_storage.tests);
-      ("AST Generators", Test_ast_generators.tests);
-      ("WASM Encodings", Test_wasm_encoding.tests);
-      ("WASM PVM Encodings", Test_wasm_pvm_encodings.tests);
-      ("Parser Encodings", Test_parser_encoding.tests);
-      ("WASM PVM", Test_wasm_pvm.tests);
-      ("WASM VM", Test_wasm_vm.tests);
-      ("Module Initialisation", Test_init.tests);
-      ("Max nb of ticks", Test_fixed_nb_ticks.tests);
-      ("Hash correspondence", Test_hash_consistency.tests);
-      ("Reveal", Test_reveal.tests);
-      ("Debug", Test_debug.tests);
-      ("Input kind", Test_input_kind.tests);
+      map (fun kind -> Internal kind) internal_message_kind_gen;
+      return External;
+      return Other;
     ]
-  |> Lwt_main.run
+
+let raw_input_gen =
+  let open QCheck2.Gen in
+  let has_payload = function
+    | Internal (Start_of_level | End_of_level) -> false
+    | _ -> true
+  in
+  let* kind = input_kind_gen in
+  let+ input =
+    match kind with
+    | Other -> string_small
+    | _ ->
+        let+ payload =
+          if has_payload kind then map Option.some string_small else return None
+        in
+        Internal_for_tests.to_binary_input kind payload
+  in
+  (kind, input)
+
+let test_decode_raw_messages () =
+  let test =
+    QCheck2.Test.make raw_input_gen (fun (expected_kind, payload) ->
+        try
+          let kind = from_raw_input payload in
+          kind = expected_kind
+        with _ -> expected_kind = Other)
+  in
+  let res = QCheck_base_runner.run_tests ~verbose:true [test] in
+  if res = 0 then Lwt_result_syntax.return_unit
+  else failwith "QCheck tests failed"
+
+let tests = [tztest "Input kind decoding" `Quick test_decode_raw_messages]
