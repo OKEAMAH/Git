@@ -3355,6 +3355,8 @@ module Sc_rollup : sig
 
     val hash : t -> Hash.t
 
+    val current_witness : t -> Inbox_merkelized_payload_hashes.Hash.t
+
     module History :
       Bounded_history_repr.S
         with type key = Hash.t
