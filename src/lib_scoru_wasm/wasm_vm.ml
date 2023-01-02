@@ -457,7 +457,45 @@ let measure_executed_ticks (transition : pvm_state -> pvm_state Lwt.t)
   let ticks_executed = final_state.current_tick - initial_state.current_tick in
   (final_state, to_int64 ticks_executed)
 
-let compute_step_many_until ?(max_steps = 1L) ?reveal_step:_
+let reveal_step payload pvm_state =
+  let open Lwt_syntax in
+  let return tick_state =
+    Lwt.return
+      {pvm_state with current_tick = Z.succ pvm_state.current_tick; tick_state}
+  in
+  match pvm_state.tick_state with
+  | Eval {config; module_reg} ->
+      let* config =
+        Tezos_webassembly_interpreter.Eval.reveal_step
+          Host_funcs.Aux.reveal
+          module_reg
+          payload
+          config
+      in
+      return (Eval {config; module_reg})
+  | Snapshot ->
+      return
+        (Stuck (Wasm_pvm_errors.invalid_state "No reveal expected during start"))
+  | Decode _ ->
+      return
+        (Stuck
+           (Wasm_pvm_errors.invalid_state "No reveal expected during decoding"))
+  | Link _ ->
+      return
+        (Stuck (Wasm_pvm_errors.invalid_state "No reveal expected during link"))
+  | Init _ ->
+      return
+        (Stuck
+           (Wasm_pvm_errors.invalid_state
+              "No reveal expected during initialization"))
+  | Collect ->
+      return
+        (Stuck
+           (Wasm_pvm_errors.invalid_state
+              "No reveal expected during collecting"))
+  | Stuck _ | Padding -> return pvm_state.tick_state
+
+let compute_step_many_until ?(max_steps = 1L) ?reveal_step:step
     ?(write_debug = Builtins.Noop) should_continue =
   let open Lwt.Syntax in
   assert (max_steps > 0L) ;
@@ -485,8 +523,17 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_step:_
         in
         go (Int64.sub steps_left (Z.to_int64 bulk_ticks)) pvm_state
       else
+        let info = input_request pvm_state in
         let* pvm_state =
-          compute_step_with_host_functions host_function_registry pvm_state
+          match (info, step) with
+          | Reveal_required (Reveal_raw_data req), Some step ->
+              let* res = step.Builtins.reveal_preimage req in
+              reveal_step (Bytes.of_string res) pvm_state
+          | Reveal_required Reveal_metadata, Some step ->
+              let* res = step.reveal_metadata () in
+              reveal_step (Bytes.of_string res) pvm_state
+          | _ ->
+              compute_step_with_host_functions host_function_registry pvm_state
         in
         go (Int64.pred steps_left) pvm_state
     else Lwt.return pvm_state
@@ -501,11 +548,12 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_step:_
   in
   measure_executed_ticks one_or_more_steps
 
-let should_compute pvm_state =
+let should_compute ?reveal_step pvm_state =
   let input_request_val = input_request pvm_state in
   match input_request_val with
-  | Reveal_required _ | Input_required -> false
+  | Input_required -> false
   | No_input_required -> true
+  | Reveal_required _ -> Option.is_some reveal_step
 
 let compute_step_many ?reveal_step ?write_debug ?(stop_at_snapshot = false)
     ~max_steps pvm_state =
@@ -516,7 +564,7 @@ let compute_step_many ?reveal_step ?write_debug ?(stop_at_snapshot = false)
     (fun pvm_state ->
       Lwt.return
         (* should_compute && (stop_at_snapshot -> tick_state <> snapshot) *)
-        (should_compute pvm_state
+        (should_compute ?reveal_step pvm_state
         && ((not stop_at_snapshot) || pvm_state.tick_state <> Snapshot)))
     pvm_state
 
@@ -568,44 +616,6 @@ let set_input_step input_info message pvm_state =
     current_tick = Z.succ pvm_state.current_tick;
     last_input_info = Some input_info;
   }
-
-let reveal_step payload pvm_state =
-  let open Lwt_syntax in
-  let return tick_state =
-    Lwt.return
-      {pvm_state with current_tick = Z.succ pvm_state.current_tick; tick_state}
-  in
-  match pvm_state.tick_state with
-  | Eval {config; module_reg} ->
-      let* config =
-        Tezos_webassembly_interpreter.Eval.reveal_step
-          Host_funcs.Aux.reveal
-          module_reg
-          payload
-          config
-      in
-      return (Eval {config; module_reg})
-  | Snapshot ->
-      return
-        (Stuck (Wasm_pvm_errors.invalid_state "No reveal expected during start"))
-  | Decode _ ->
-      return
-        (Stuck
-           (Wasm_pvm_errors.invalid_state "No reveal expected during decoding"))
-  | Link _ ->
-      return
-        (Stuck (Wasm_pvm_errors.invalid_state "No reveal expected during link"))
-  | Init _ ->
-      return
-        (Stuck
-           (Wasm_pvm_errors.invalid_state
-              "No reveal expected during initialization"))
-  | Collect ->
-      return
-        (Stuck
-           (Wasm_pvm_errors.invalid_state
-              "No reveal expected during collecting"))
-  | Stuck _ | Padding -> return pvm_state.tick_state
 
 let get_output output_info output =
   let open Lwt_syntax in

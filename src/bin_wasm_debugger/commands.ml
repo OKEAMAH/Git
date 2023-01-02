@@ -81,6 +81,20 @@ let parse_commands s =
   in
   go command
 
+let reveal_step =
+  Tezos_scoru_wasm.Builtins.
+    {
+      reveal_preimage =
+        (fun hash ->
+          let (`Hex hex) = Hex.of_string hash in
+          let path = "preimages/" ^ hex in
+          let ch = open_in path in
+          let s = really_input_string ch (in_channel_length ch) in
+          close_in ch ;
+          Lwt.return s);
+      reveal_metadata = (fun () -> Lwt.return "not implemented yet");
+    }
+
 let write_debug =
   Tezos_scoru_wasm.Builtins.Printer (fun msg -> Lwt_io.printf "%s%!" msg)
 
@@ -101,7 +115,7 @@ let eval_to_result tree =
   let should_compute pvm_state =
     let+ input_request_val = Wasm_vm.get_info pvm_state in
     match (input_request_val.input_request, pvm_state.tick_state) with
-    | Reveal_required _, _ | Input_required, _ -> false
+    | Input_required, _ -> false
     | ( No_input_required,
         Eval
           {
@@ -115,7 +129,7 @@ let eval_to_result tree =
             _;
           } ) ->
         false
-    | No_input_required, _ -> true
+    | Reveal_required _, _ | No_input_required, _ -> true
   in
   (* Since `compute_step_many_until` is not exported by the PVM but only the VM,
      we decode and re-encode by hand. *)
@@ -127,6 +141,7 @@ let eval_to_result tree =
       in
       let* pvm_state, ticks =
         Tezos_scoru_wasm.Wasm_vm.compute_step_many_until
+          ~reveal_step
           ~write_debug
           ~max_steps:Int64.max_int
           should_compute
@@ -166,6 +181,7 @@ let eval_until_input_requested tree =
       let* tree =
         eval_until_input_requested
           ~fast_exec:true
+          ~reveal_step
           ~write_debug
           ~max_steps:Int64.max_int
           tree
