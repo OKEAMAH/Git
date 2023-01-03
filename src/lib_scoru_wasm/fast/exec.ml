@@ -33,9 +33,15 @@ let compiler_env_variable = "OCTEZ_WASMER_COMPILER"
 
 let get_compiler () =
   match Sys.getenv_opt compiler_env_variable with
-  | Some "singlepass" -> Wasmer.Config.SINGLEPASS
-  | Some "cranelift" -> Wasmer.Config.CRANELIFT
-  | _ -> Wasmer.Config.CRANELIFT
+  | Some "singlepass" ->
+      Format.printf "Use Singlepass\n%!" ;
+      Wasmer.Config.SINGLEPASS
+  | Some "cranelift" ->
+      Format.printf "Use Cranelift\n%!" ;
+      Wasmer.Config.CRANELIFT
+  | _ ->
+      Format.printf "Use default compiler: Cranelift\n%!" ;
+      Wasmer.Config.CRANELIFT
 
 let store =
   Lazy.from_fun @@ fun () ->
