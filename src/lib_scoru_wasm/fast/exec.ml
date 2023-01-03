@@ -29,9 +29,19 @@ module Wasmer = Tezos_wasmer
 
 include (Wasm_vm : Wasm_vm_sig.S)
 
+let compiler_env_variable = "OCTEZ_WASMER_COMPILER"
+
+let get_compiler () =
+  match Sys.getenv_opt compiler_env_variable with
+  | Some "singlepass" -> Wasmer.Config.SINGLEPASS
+  | Some "cranelift" -> Wasmer.Config.CRANELIFT
+  | _ -> Wasmer.Config.CRANELIFT
+
 let store =
   Lazy.from_fun @@ fun () ->
-  let engine = Wasmer.Engine.create Wasmer.Config.{compiler = CRANELIFT} in
+  let engine =
+    Wasmer.Engine.create Wasmer.Config.{compiler = get_compiler ()}
+  in
   Wasmer.Store.create engine
 
 let load_kernel durable =
