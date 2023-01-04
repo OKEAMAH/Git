@@ -13,6 +13,8 @@ Tezos
 Protocol
 --------
 
+.. index:: accuser
+
 _`Accuser`
     When a delegate_ attempts to inject several incompatible blocks (or when it tries
     to abuse the network in another similar way), another delegate_ can make an
@@ -24,12 +26,16 @@ _`Accuser`
     When using :ref:`Octez <octez>`, accusations are handled by the
     accuser binary.
 
+.. index:: account
+
 _`Account`
     An account is a unique identifier within the protocol. There are different
     kinds of accounts (see `originated account`_ and `implicit account`_).
 
     In the context_, each account is associated with a balance (an amount of
     tez available).
+
+.. index:: baker
 
 _`Baker`
     When a delegate_ creates a new block_, it is the baker of this block_.
@@ -40,6 +46,10 @@ _`Baker`
 
     When using :ref:`Octez <octez>`, baking_ and other consensus actions are handled by the baker
     binary.
+
+.. index:: baking rights
+
+.. index:: endorsing rights
 
 _`Baking`/_`endorsing rights`
     A delegate_ is allowed to bake/endorse a block_ if it holds the
@@ -54,6 +64,8 @@ _`Baking`/_`endorsing rights`
     operation_.
     Endorsement operations_ are included in the next block_.
 
+.. index:: burn
+
 _`Burn`
     To ensure responsible use of the storage space on the public blockchain,
     there are some costs charged to users for consuming storage. These
@@ -64,11 +76,18 @@ _`Burn`
 
     See also `fee`_.
 
+.. index:: protocol constants
+
 _`Constants`
     Protocols are parameterized by several parameters called protocol constants, which may vary from one protocol to another or from one network to another.
 
+.. index::
+   see: contract; account
+
 _`Contract`
     See account_.
+
+.. index:: cycle
 
 _`Cycle`
     A cycle is a set of consecutive blocks. E.g., cycle 12 started at block_
@@ -82,6 +101,8 @@ _`Cycle`
     :ref:`constant<Constants>`, and thus might change across different
     Tezos protocols.
 
+.. index:: delegate
+
 _`Delegate`
     An `implicit account`_ to which an account_ has delegated their
     rights to participate in consensus (aka baking_ rights) and in
@@ -89,11 +110,15 @@ _`Delegate`
     The delegate's rights are calculated based on its own tokens plus the sum of tokens
     delegated to it. Note that since ``tz4`` accounts cannot be delegates.
 
+.. index:: delegation
+
 _`Delegation`
     An operation_ in which an account_ balance is lent to a
     delegate_. This increases the delegate_'s stake and consequently
     its baking_ rights. The delegate_ does not control the funds from
     the account_.
+
+.. index:: double signing
 
 _`Double signing`
     The action of a baker_ signing two different blocks at the same
@@ -107,6 +132,8 @@ _`Double signing`
     double signing to be awarded part of the double signer's deposit
     -- see :ref:`Slashing<slashing_mumbai>`.
 
+.. index:: failing noop
+
 _`Failing Noop`
    The ``Failing_noop`` operation implements a *No-op*, which always
    fails at :ref:`application time<operation_validity_mumbai>`, and
@@ -114,6 +141,8 @@ _`Failing Noop`
    blocks<full_application_mumbai>`. This operation allows end-users to
    :ref:`sign arbitrary messages<failing_noop>` which have no
    computational semantics.
+
+.. index:: fee
 
 _`Fee`
    To ensure responsible use of computation resources of other
@@ -127,10 +156,14 @@ _`Fee`
 
    See also `burn`_.
 
+.. index:: gas
+
 _`Gas`
     A measure of the number of elementary operations_ performed during
     the execution of a `smart contract`_. Gas is used to measure how
     much computing power is used to execute a `smart contract`_.
+
+.. index:: implicit account
 
 _`Implicit account`
     An account_ that is linked to a public key. Contrary to a `smart
@@ -143,12 +176,16 @@ _`Implicit account`
     letters `tz` followed by `1`, `2`, `3` or `4` (depending on the
     signature scheme) and finally the hash of the public key.
 
+.. index:: layer 1
+
 _`Layer 1`
     The primary blockchain i.e. the Tezos chain. Within any blockchain ecosystem, Layer 1 (L1) refers to the main chain to
     which side chains, rollups, or other protocols connect and settle to. The Layer 1 chain is deemed to be most
     secure, since it has the most value (or stake) tied to it, and be most decentralized and censorship resistant.
     However, transaction space is limited leading to low throughput and possibly high transaction costs.
     See `Layer 2`_.
+
+.. index:: layer 2
 
 _`Layer 2`
     Layer 2 (L2) includes sidechains, rollups, payment channels, etc. that batch their transactions and
@@ -161,27 +198,39 @@ _`Layer 2`
     validity or ZK-Rollups `Epoxy <https://research-development.nomadic-labs.com/files/cryptography.html>`_ ,
     zkChannels, and sidechains such as `Deku <https://deku.marigold.dev/>`_.
 
+.. index:: Michelson
+
 _`Michelson`
     The built-in language used by a `smart contract`_.
 
 .. _glossary_minimal_stake:
 .. _glossary_minimal_stake_mumbai:
+.. index:: minimal stake
 
 _`Minimal stake`
     An amount of tez (e.g., 6000ꜩ) serving as a minimal amount for a
     delegate to have baking_ and voting rights in a cycle_.
+
+.. index:: operation kinds
 
 _`Operation kinds`
     The main kinds of operations in the protocol are transactions (to transfer funds
     or to execute smart contracts), accusations, activations, delegations,
     endorsements and originations.
 
+.. index::
+   see: originated account; smart contract
+
 _`Originated account`
     See `smart contract`_.
+
+.. index:: origination
 
 _`Origination`
     A manager operation_ whose purpose is to create -- that
     is, to deploy -- a `smart contract`_ on the Tezos blockchain.
+
+.. index:: round
 
 _`Round`
     An attempt to reach consensus on a block at a given level.
@@ -191,8 +240,13 @@ _`Round`
     the round's corresponding time span. Baking_ outside of one's designated
     round results in an invalid block_.
 
+.. index::
+   see: roll; minimal stake
+
 _`Roll`
     deprecated; see `Minimal stake`_.
+
+.. index:: smart contract
 
 _`Smart contract`
     Account_ which is associated to a Michelson_ script. They are
@@ -200,14 +254,20 @@ _`Smart contract`
     sometimes called originated accounts. The address of a smart
     contract always starts with the letters ``KT1``.
 
+.. index:: smart optimistic rollups
+
 _`Smart Optimistic Rollups`
     Smart optimistic rollups constitute a `layer 2`_ solution that can be used to deploy either a general-purpose polyvalent layer 2 blockchain
     (e.g., an EVM-compatible one), or an application-specific DApp.
     See :doc:`smart_rollups`.
 
+.. index:: transaction
+
 _`Transaction`
     An operation_ to transfer tez between two accounts, or to run the code of a
     `smart contract`_.
+
+.. index:: validation pass
 
 _`Validation pass`
     An index (a natural number) associated with a particular kind of
@@ -215,15 +275,20 @@ _`Validation pass`
     enable prioritizing the :ref:`validation and
     application<operation_validity_mumbai>` of certain classes of
     operations.
+    See :ref:`validation_passes_mumbai` for more details.
+
+.. index:: voting period
 
 _`Voting period`
     Any of the ``proposal``, ``exploration``, ``cooldown``,
     ``promotion`` or ``adoption`` stages in the voting procedure when
     amending the `economic protocol`_.
 
+.. index:: voting listings
+
 _`Voting listings`
     The list calculated at the beginning of each `voting period`_ that contains
     the staking balance (in number of mutez) of each delegate_ that owns more
     than one roll_ at that moment. For each delegate_, the voting listings
     reflect the weight of the vote emitted by the delegate_ when amending the
-    `economic protocol`_.
+    `economic protocol`_ (also called voting power).

@@ -13,6 +13,8 @@ Tezos
 Protocol
 --------
 
+.. index:: accuser
+
 _`Accuser`
     When a delegate_ attempts `double signing`_ (or when it tries
     to abuse the network in another similar way), another delegate_ can make an
@@ -23,6 +25,8 @@ _`Accuser`
     When using :ref:`Octez <octez>`, accusation operations are emitted by the
     accuser daemon. Note that this daemon is not associated to a delegate: accusation operations are anonymous, and any delegate can include them in a block.
 
+.. index:: account
+
 _`Account`
     An account is an address managed by the protocol.
     In the context_, each account is associated with a balance (an amount of
@@ -31,6 +35,7 @@ _`Account`
     An account can be either an `originated account`_ or an `implicit account`_.
 
 .. _bakers:
+.. index:: baker
 
 _`Baker`
     When a delegate_ creates a new block_, it is called the baker of this block.
@@ -44,9 +49,12 @@ _`Baker`
     By extension, a baker designates the owner of such a delegate account, typically running the baker daemon on its behalf.
 
 .. _bake:
+.. index:: baking
 
 _`Baking`
     The act of creating a new block_ by a baker_.
+
+.. index:: baking rights
 
 _`Baking rights`
     A delegate_ is allowed to bake_/endorse_ a block_ if it holds the
@@ -55,6 +63,8 @@ _`Baking rights`
     cycle_, based on the proportion of the stake_ of each delegate_.
 
     For each block_ level and round_, there is exactly one account that is allowed to bake, but several accounts are allowed to endorse_.
+
+.. index:: burn
 
 _`Burn`
     To ensure responsible use of the storage space on the public blockchain,
@@ -66,11 +76,18 @@ _`Burn`
 
     See also `fee`_.
 
+.. index:: protocol constants
+
 _`Constant`
     Protocols are parameterized by several parameters called protocol constants, which may vary from one protocol to another or from one network to another.
 
+.. index::
+   see: contract; account
+
 _`Contract`
     See account_.
+
+.. index:: cycle
 
 _`Cycle`
     A cycle is a sequence of consecutive blocks_ of fixed length (given by a protocol constant_). E.g., cycle 12 started at block
@@ -84,6 +101,8 @@ _`Cycle`
     :ref:`constant<Constants>`, and thus might change across different
     Tezos protocols.
 
+.. index:: delegate
+
 _`Delegate`
     An `implicit account`_ that can participate in consensus and in governance.
     Actual participation is under further provisions, like having a `minimal stake`_.
@@ -92,11 +111,15 @@ _`Delegate`
     The delegate's rights are calculated based on its stake_.
     Note that ``tz4`` accounts cannot be delegates.
 
+.. index:: delegation
+
 _`Delegation`
     An operation_ in which an account_ designates a
     delegate_. The delegating account's balance increases the delegate_'s stake_ and consequently
     its `baking rights`_ and `endorsing rights`_. However, the delegate_ does not control the funds of
     the delegating account_, e.g., it can not spend them.
+
+.. index:: double signing
 
 _`Double signing`
     The situation when a baker_ signs two different blocks_ at the same level and same round,
@@ -107,6 +130,8 @@ _`Double signing`
     network: an accuser_ can provide proof of the double signing to be awarded
     part of the double signer's deposit -- see :ref:`Slashing<slashing_alpha>`.
 
+.. index:: failing noop
+
 _`Failing Noop`
     The ``Failing_noop`` operation implements a *No-op*, which always
     fails at :ref:`application time<operation_validity_alpha>`, and
@@ -116,14 +141,20 @@ _`Failing Noop`
     computational semantics.
 
 .. _endorse:
+.. index:: endorsing
 
 _`Endorsing`
     When a block_ is created and propagated on the network, delegates that have
     `endorsing rights`_ for the matching block level_ and round_ can emit an endorsement operation_.
     Endorsement operations are included in the next block_.
 
+.. index::
+   see: endorsing rights; baking rights
+
 _`Endorsing rights`
     See `baking rights`_.
+
+.. index:: fee
 
 _`Fee`
     To ensure responsible use of computation resources of other nodes, and also to encourage active participation in the consensus protocol,
@@ -132,10 +163,14 @@ _`Fee`
 
    See also `burn`_.
 
+.. index:: gas
+
 _`Gas`
     A measure of the number of elementary steps performed during
     the execution of a `smart contract`_. Gas is used to measure how
     much computing power is used to execute a `smart contract`_.
+
+.. index:: implicit account
 
 _`Implicit account`
     An account_ that is linked to a public key. Contrary to a `smart
@@ -148,12 +183,16 @@ _`Implicit account`
     letters `tz` followed by `1`, `2`, `3`, or `4` (depending on the
     signature scheme) and finally the hash of the public key.
 
+.. index:: layer 1
+
 _`Layer 1`
     The primary blockchain i.e. the Tezos chain. Within any blockchain ecosystem, Layer 1 (L1) refers to the main chain to
     which side chains, rollups, or other protocols connect and settle to. The Layer 1 chain is deemed to be most
     secure, since it has the most value (or stake) tied to it, and be most decentralized and censorship resistant.
     However, transaction space is limited leading to low throughput and possibly high transaction costs.
     See `Layer 2`_.
+
+.. index:: layer 2
 
 _`Layer 2`
     Layer 2 (L2) includes sidechains, rollups, payment channels, etc. that batch their transactions and
@@ -165,14 +204,19 @@ _`Layer 2`
     validity or ZK-Rollups `Epoxy <https://research-development.nomadic-labs.com/files/cryptography.html>`_ ,
     zkChannels, and sidechains such as `Deku <https://deku.marigold.dev/>`_.
 
+.. index:: Michelson
+
 _`Michelson`
     The built-in language used by a `smart contract`_.
 
 .. _glossary_minimal_stake_alpha:
+.. index:: minimal stake
 
 _`Minimal stake`
     An amount of tez (e.g., 6000ꜩ) serving as a minimal amount for a
     delegate to have `baking rights`_ and voting rights in a cycle_.
+
+.. index:: operation kinds
 
 _`Operation kinds`
     The main kinds of operations in the protocol are transactions (to transfer funds
@@ -180,12 +224,19 @@ _`Operation kinds`
     endorsements, and originations.
     For the full list of operations, see :doc:`./blocks_ops`.
 
+.. index::
+   see: originated account; smart contract
+
 _`Originated account`
     See `smart contract`_.
+
+.. index:: origination
 
 _`Origination`
     A manager operation_ whose purpose is to create -- that
     is, to deploy -- a `smart contract`_ on the Tezos blockchain.
+
+.. index:: round
 
 _`Round`
     An attempt to reach consensus on a block at a given level.
@@ -195,8 +246,13 @@ _`Round`
     the round's corresponding time span. Baking_ outside of one's designated
     round results in an invalid block_.
 
+.. index::
+   see: roll; minimal stake
+
 _`Roll`
     deprecated; see `minimal stake`_.
+
+.. index:: smart contract
 
 _`Smart contract`
     Account_ which is associated to a Michelson_ script.
@@ -205,10 +261,14 @@ _`Smart contract`
     originated accounts. The address of a smart contract always starts
     with the letters ``KT1``.
 
+.. index:: smart optimistic rollups
+
 _`Smart Optimistic Rollups`
     Smart optimistic rollups constitute a `layer 2`_ solution that can be used to deploy either a general-purpose polyvalent layer 2 blockchain
     (e.g., an EVM-compatible one), or an application-specific DApp.
     See :doc:`smart_rollups`.
+
+.. index:: stake
 
 _`Stake`
     The amount of tokens that determines a delegate_'s weight in the
@@ -218,9 +278,13 @@ _`Stake`
     it. However, there are cases when this is not the case, see
     :ref:`here<active_stake_alpha>` for details.
 
+.. index:: transaction
+
 _`Transaction`
     An operation_ to transfer tez between two accounts, or to run the code of a
     `smart contract`_.
+
+.. index:: validation pass
 
 _`Validation pass`
     An index (a natural number) associated with a particular kind of
@@ -228,15 +292,20 @@ _`Validation pass`
     enable prioritizing the :ref:`validation and
     application<operation_validity_alpha>` of certain classes of
     operations.
+    See :ref:`validation_passes_alpha` for more details.
+
+.. index:: voting period
 
 _`Voting period`
     Any of the ``proposal``, ``exploration``, ``cooldown``,
     ``promotion`` or ``adoption`` stages in the voting procedure when
     amending the `economic protocol`_.
 
+.. index:: voting listings
+
 _`Voting listings`
     The list calculated at the beginning of each `voting period`_ that contains
     the staking balance (in number of mutez) of each delegate_ that owns more
     than the `minimal stake`_ at that moment. For each delegate_, the voting listings
     reflect the weight of the vote emitted by the delegate_ when amending the
-    `economic protocol`_.
+    `economic protocol`_ (also called voting power).
