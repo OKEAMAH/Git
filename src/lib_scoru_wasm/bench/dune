@@ -15,4 +15,24 @@
  (preprocess (pps ppx_deriving.show))
  (flags
   (:standard)
-  -open Tezos_base.TzPervasives))
+  -open Tezos_base.TzPervasives)
+ (modules (:standard \ Host_functions_benchmark_scoru_wasm)))
+
+(executable
+ (name host_functions_benchmark_scoru_wasm)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-base
+  tezt
+  tezos-webassembly-interpreter
+  tezos-context.memory
+  tezos-scoru-wasm
+  test_scoru_wasm_test_helpers
+  lwt.unix)
+ (preprocess (pps ppx_deriving.show))
+ (flags
+  (:standard)
+  -w -37
+  -open Tezos_base.TzPervasives
+  -open Test_scoru_wasm_test_helpers)
+ (modules Host_functions_benchmark_scoru_wasm))

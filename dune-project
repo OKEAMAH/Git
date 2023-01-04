@@ -208,6 +208,7 @@
 (package (name tezos-scoru-wasm-benchmark)(allow_empty))
 (package (name tezos-scoru-wasm-fast))
 (package (name tezos-scoru-wasm-fast-test)(allow_empty))
+(package (name tezos-scoru-wasm-host-functions-benchmark)(allow_empty))
 (package (name tezos-scoru-wasm-test)(allow_empty))
 (package (name tezos-scoru-wasm-test-helpers)(allow_empty))
 (package (name tezos-shell))

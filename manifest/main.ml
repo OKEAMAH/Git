@@ -3319,6 +3319,27 @@ let _octez_scoru_wasm_benchmark =
         octez_scoru_wasm_tests_helpers;
         lwt_unix;
       ]
+    ~all_modules_except:["Host_functions_benchmark_scoru_wasm"]
+    ~preprocess:[pps ppx_deriving_show]
+
+let _octez_scoru_wasm_host_functions_benchmark =
+  private_exe
+    "host_functions_benchmark_scoru_wasm"
+    ~path:"src/lib_scoru_wasm/bench"
+    ~synopsis:"SCORU WASM Host Functions benchmark executable"
+    ~opam:"tezos-scoru-wasm-host-functions-benchmark"
+    ~flags:(Flags.standard ~disable_warnings:[37] ())
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        tezt_lib;
+        octez_webassembly_interpreter;
+        octez_context_memory;
+        octez_scoru_wasm;
+        octez_scoru_wasm_tests_helpers |> open_;
+        lwt_unix;
+      ]
+    ~modules:["Host_functions_benchmark_scoru_wasm"]
     ~preprocess:[pps ppx_deriving_show]
 
 let _octez_scoru_wasm_tests =
