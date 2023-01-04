@@ -50,6 +50,7 @@ the different kinds of operations belonging to each class.
 
 .. _consensus_operations:
 .. _consensus_operations_mumbai:
+.. index:: operation; consensus operation
 
 Consensus Operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -71,6 +72,7 @@ phases required to agree on the next block.
 
 .. _voting_operations:
 .. _voting_operations_mumbai:
+.. index:: operation; voting operation
 
 Voting Operations
 ~~~~~~~~~~~~~~~~~
@@ -94,6 +96,7 @@ governance<voting_operations_mumbai>`.
 
 .. _anonymous_operations:
 .. _anonymous_operations_mumbai:
+.. index:: operation; anonymous operation
 
 Anonymous Operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -158,6 +161,7 @@ key.
 
 .. _manager_operations:
 .. _manager_operations_mumbai:
+.. index:: operation; manager operation
 
 Manager Operations
 ~~~~~~~~~~~~~~~~~~
@@ -249,6 +253,7 @@ handled with dedicated manager operations.
 
 .. _manager_operations_batches:
 .. _manager_operations_batches_mumbai:
+.. index:: operation; batch
 
 Manager Operation Batches
 """""""""""""""""""""""""

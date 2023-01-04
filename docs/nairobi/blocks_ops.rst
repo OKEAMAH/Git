@@ -47,7 +47,9 @@ The current protocol implementation enforces the following invariant:
 In the sequel, we describe the different classes of operations, and
 the different kinds of operations belonging to each class.
 
+.. _consensus_operations:
 .. _consensus_operations_nairobi:
+.. index:: operation; consensus operation
 
 Consensus Operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -67,7 +69,9 @@ phases required to agree on the next block.
   for which a preendorsement quorum certificate (PQC) has been
   observed.
 
+.. _voting_operations:
 .. _voting_operations_nairobi:
+.. index:: operation; voting operation
 
 Voting Operations
 ~~~~~~~~~~~~~~~~~
@@ -89,7 +93,9 @@ Further details on each operation's implementation and semantics are
 provided in the dedicated entry for :ref:`on-chain
 governance<voting_operations_nairobi>`.
 
+.. _anonymous_operations:
 .. _anonymous_operations_nairobi:
+.. index:: operation; anonymous operation
 
 Anonymous Operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -152,7 +158,9 @@ account. This operation is used as a deterrent to ensure that a
 delegate secures its consensus key as much as its manager (or main)
 key.
 
+.. _manager_operations:
 .. _manager_operations_nairobi:
+.. index:: operation; manager operation
 
 Manager Operations
 ~~~~~~~~~~~~~~~~~~
@@ -242,7 +250,9 @@ handled with dedicated manager operations.
   determine if it is called by a smart rollup using the ``SENDER``
   Michelson instruction.
 
+.. _manager_operations_batches:
 .. _manager_operations_batches_nairobi:
+.. index:: operation; batch
 
 Manager Operation Batches
 """""""""""""""""""""""""

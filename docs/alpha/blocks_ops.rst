@@ -48,6 +48,7 @@ In the sequel, we describe the different classes of operations, and
 the different kinds of operations belonging to each class.
 
 .. _consensus_operations_alpha:
+.. index:: operation; consensus operation
 
 Consensus Operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -68,6 +69,7 @@ phases required to agree on the next block.
   observed.
 
 .. _voting_operations_alpha:
+.. index:: operation; voting operation
 
 Voting Operations
 ~~~~~~~~~~~~~~~~~
@@ -90,6 +92,7 @@ provided in the dedicated entry for :ref:`on-chain
 governance<voting_operations_alpha>`.
 
 .. _anonymous_operations_alpha:
+.. index:: operation; anonymous operation
 
 Anonymous Operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -153,6 +156,7 @@ delegate secures its consensus key as much as its manager (or main)
 key.
 
 .. _manager_operations_alpha:
+.. index:: operation; manager operation
 
 Manager Operations
 ~~~~~~~~~~~~~~~~~~
@@ -243,6 +247,7 @@ handled with dedicated manager operations.
   Michelson instruction.
 
 .. _manager_operations_batches_alpha:
+.. index:: operation; batch
 
 Manager Operation Batches
 """""""""""""""""""""""""
