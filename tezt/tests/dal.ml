@@ -1315,13 +1315,8 @@ let test_dal_node_startup =
   let* () = Dal_node.terminate dal_node in
   return ()
 
-let send_messages ?(src = Constant.bootstrap2.alias) ?(alter_final_msg = Fun.id)
-    client msgs =
-  let msg =
-    alter_final_msg
-    @@ Ezjsonm.(to_string ~minify:true @@ list Ezjsonm.string msgs)
-  in
-  let* () = Client.Sc_rollup.send_message ~hooks ~src ~msg client in
+let send_messages ?(src = Constant.bootstrap2.alias) client messages =
+  let*! () = Client.Sc_rollup.send_messages ~hooks ~src ~messages client in
   Client.bake_for_and_wait client
 
 let bake_levels n client = repeat n (fun () -> Client.bake_for_and_wait client)
@@ -1744,12 +1739,7 @@ let test_rollup_arith_uses_reveals _protocol dal_node sc_rollup_node
     "0027782d2a7020be332cc42c4e66592ec50305f559a4011981f1d5af81428e7aa3"
   in
   check_valid_root_hash expected_rh actual_rh ;
-  let* () =
-    send_messages
-      client
-      ["hash:" ^ actual_rh]
-      ~alter_final_msg:(fun s -> "text:" ^ s)
-  in
+  let* () = send_messages client ["hash:" ^ actual_rh] in
   let* () = bake_levels 2 client in
   let* _ =
     Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node (level + 2)
@@ -1806,12 +1796,7 @@ let test_reveals_fails_on_wrong_hash _protocol dal_node sc_rollup_node
   let* _level =
     Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node init_level
   in
-  let* () =
-    send_messages
-      client
-      ["hash:" ^ errorneous_hash]
-      ~alter_final_msg:(fun s -> "text:" ^ s)
-  in
+  let* () = send_messages client ["hash:" ^ errorneous_hash] in
   expect_failure
 
 let test_dal_node_imports_dac_member =

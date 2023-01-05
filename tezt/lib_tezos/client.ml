@@ -2155,17 +2155,31 @@ module Sc_rollup = struct
     let* output = Process.check_and_read_stdout process in
     parse_rollup_address_in_receipt output
 
-  let spawn_send_message ?hooks ?(wait = "none") ?burn_cap ~msg ~src client =
-    spawn_command
-      ?hooks
-      client
-      (["--wait"; wait]
-      @ ["send"; "smart"; "rollup"; "message"; msg; "from"; src]
-      @ optional_arg "burn-cap" Tez.to_string burn_cap)
-
-  let send_message ?hooks ?wait ?burn_cap ~msg ~src client =
-    let process = spawn_send_message ?hooks ?wait ?burn_cap ~msg ~src client in
-    Process.check process
+  let send_messages ?hooks ?(wait = "none") ?burn_cap ?fee ?storage_limit
+      ?gas_limit ~messages ~src client =
+    let process =
+      spawn_command
+        ?hooks
+        client
+        (["--wait"; wait]
+        @ [
+            "send";
+            "smart";
+            "rollup";
+            "message";
+            Ezjsonm.value_to_string
+              ~minify:true
+              (`A (List.map (fun s -> `String s) messages));
+            "from";
+            src;
+          ]
+        @ optional_arg "burn-cap" Tez.to_string burn_cap
+        @ optional_arg "fee" Tez.to_string fee
+        @ optional_arg "gas-limit" string_of_int gas_limit
+        @ optional_arg "storage-limit" string_of_int storage_limit)
+    in
+    let parse process = Process.check process in
+    {value = process; run = parse}
 
   let publish_commitment ?hooks ?(wait = "none") ?burn_cap ~src ~sc_rollup
       ~compressed_state ~inbox_level ~predecessor ~number_of_ticks client =

@@ -104,11 +104,11 @@ let setup ?commitment_period ?challenge_window ?timeout f ~protocol =
   f node client operator
 
 let send_message client msg =
-  let* () =
-    Client.Sc_rollup.send_message
+  let*! _ =
+    Client.Sc_rollup.send_messages
       ~hooks
       ~src:Constant.bootstrap2.alias
-      ~msg
+      ~messages:[msg]
       client
   in
   Client.bake_for_and_wait client

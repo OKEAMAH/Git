@@ -1681,25 +1681,18 @@ module Sc_rollup : sig
     t ->
     Process.t
 
-  (** Run [octez-client send rollup message <msg> from <src>]. *)
-  val send_message :
+  (** Run [octez-client send rollup message <msg list> from <src>]. *)
+  val send_messages :
     ?hooks:Process.hooks ->
     ?wait:string ->
     ?burn_cap:Tez.t ->
-    msg:string ->
+    ?fee:Tez.t ->
+    ?storage_limit:int ->
+    ?gas_limit:int ->
+    messages:string list ->
     src:string ->
     t ->
-    unit Lwt.t
-
-  (** Same as [send_message], but do not wait for the process to exit. *)
-  val spawn_send_message :
-    ?hooks:Process.hooks ->
-    ?wait:string ->
-    ?burn_cap:Tez.t ->
-    msg:string ->
-    src:string ->
-    t ->
-    Process.t
+    unit Runnable.process
 
   (** Run [octez-client publish commitment from <src> for sc rollup <sc_rollup>
       with compressed state <compressed_state> at inbox level <inbox_level>

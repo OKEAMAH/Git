@@ -627,22 +627,23 @@ let test_stakers_commitments ~kind =
    the Tezos node. Then we can observe that the messages are included in the
    inbox.
 *)
-let send_message_client ?(src = Constant.bootstrap2.alias) client msg =
-  let* () = Client.Sc_rollup.send_message ~hooks ~src ~msg client in
+
+let send_messages_client ?(src = Constant.bootstrap2.alias) client ~messages =
+  let*! () = Client.Sc_rollup.send_messages ~hooks ~src ~messages client in
   Client.bake_for_and_wait client
+
+let send_message_client ?src client msg =
+  send_messages_client ?src client ~messages:[msg]
 
 let send_messages_client ?src ?batch_size n client =
   let messages =
-    List.map
-      (fun i ->
+    List.init n (fun i ->
         let batch_size = match batch_size with None -> i | Some v -> v in
-        let json =
-          `A (List.map (fun _ -> `String "CAFEBABE") (range 1 batch_size))
-        in
-        "text:" ^ Ezjsonm.to_string json)
-      (range 1 n)
+        List.init batch_size (fun _ -> "CAFEBABE"))
   in
-  Lwt_list.iter_s (fun msg -> send_message_client ?src client msg) messages
+  Lwt_list.iter_s
+    (fun messages -> send_messages_client ?src client ~messages)
+    messages
 
 let send_message_batcher_aux ?hooks client sc_node sc_client msgs =
   let batched =
