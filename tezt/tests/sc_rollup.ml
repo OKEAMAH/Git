@@ -3913,6 +3913,48 @@ let test_recover_bond_of_stakers =
   in
   unit
 
+let test_add_messages_cost ~kind =
+  test_l1_scenario
+    ~regression:true
+    ~boot_sector:""
+    ~kind
+    ~challenge_window:10
+    ~commitment_period:10
+    {
+      variant = None;
+      tags = ["inbox"; "cost"];
+      description = "cost of adding messages in the inbox";
+    }
+  @@ fun _sc_rollup _tezos_node tezos_client ->
+  let msg = "a" in
+  let messages = List.init 500 (fun _ -> msg) in
+  let send_messages src =
+    let*? process =
+      Client.Sc_rollup.send_messages (* ~gas_limit:2_000 *)
+        ~hooks
+        ~src
+        ~messages
+        tezos_client
+    in
+    let* output = Process.check_and_read_stdout process in
+    match output =~* rex "Operation hash is '?(o\\w{50})'" with
+    | None ->
+        Test.fail "Cannot extract operation hash from client_output: %s" output
+    | Some hash -> return hash
+  in
+  let* oph1 = send_messages Constant.bootstrap1.alias in
+  let* oph2 = send_messages Constant.bootstrap2.alias in
+  let* oph3 = send_messages Constant.bootstrap3.alias in
+  let* oph4 = send_messages Constant.bootstrap4.alias in
+  let* oph5 = send_messages Constant.bootstrap5.alias in
+  let* () = Client.bake_for_and_wait tezos_client in
+  let* () = check_op_included ~oph:oph1 tezos_client in
+  let* () = check_op_included ~oph:oph2 tezos_client in
+  let* () = check_op_included ~oph:oph3 tezos_client in
+  let* () = check_op_included ~oph:oph4 tezos_client in
+  let* () = check_op_included ~oph:oph5 tezos_client in
+  unit
+
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -4098,6 +4140,7 @@ let register ~protocols =
   test_valid_dispute_dissection ~kind:"arith" protocols ;
   test_refutation_reward_and_punishment protocols ~kind:"arith" ;
   test_timeout ~kind:"arith" protocols ;
+  test_add_messages_cost ~kind:"arith" protocols ;
   test_no_cementation_if_parent_not_lcc_or_if_disputed_commit
     ~kind:"arith"
     protocols ;
