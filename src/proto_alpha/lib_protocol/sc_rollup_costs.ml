@@ -137,12 +137,7 @@ let cost_add_message ~current_index ~msg_len =
   in
   let hash_content_cost = cost_hash_bytes ~bytes_len:msg_len in
   let next_cell_cost =
-    (* as a safe, constant, over-approximation, suppose the inbox is the maximum
-       size allowed *)
-    let max_messages_per_inbox =
-      Constants_repr.sc_rollup_max_number_of_messages_per_level
-    in
-    Skip_list_costs.model_next ~length:max_messages_per_inbox
+    Skip_list_costs.model_next ~length:(Z.succ current_index)
   in
   hash_cell_cost + hash_content_cost + next_cell_cost
 

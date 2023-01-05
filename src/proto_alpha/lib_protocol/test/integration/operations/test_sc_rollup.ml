@@ -1855,6 +1855,95 @@ let test_inbox_max_number_of_messages_per_level () =
   in
   return_unit
 
+let head_add_message_gas_cost_result i op_metadata =
+  let pp_cost_add_messages_gas :
+      type kind.
+      int -> kind Apply_results.successful_manager_operation_result -> unit =
+   fun i -> function
+    | Apply_results.Sc_rollup_add_messages_result {consumed_gas} ->
+        Format.printf "%d;%a;\n" i Gas.Arith.pp consumed_gas
+    | _ ->
+        Stdlib.failwith
+          "The operation applied is neither a [Sc_rollup_refute_result] or a \
+           [Sc_rollup_timeout_result]"
+  in
+  let rec get_add_messages_gas_rec :
+      type kind.
+      int -> kind Kind.manager Apply_results.contents_result_list -> unit =
+   fun i -> function
+    | Single_result
+        (Manager_operation_result {operation_result = Applied op; _}) ->
+        pp_cost_add_messages_gas i op
+    | Cons_result
+        (Manager_operation_result {operation_result = Applied op; _}, tail) ->
+        pp_cost_add_messages_gas i op ;
+        (get_add_messages_gas_rec [@tailcall]) (i + 1) tail
+    | _ ->
+        Stdlib.failwith
+          "Failed to found an applied operation result in the metadata"
+  in
+  match op_metadata with
+  | Apply_results.Operation_metadata
+      {contents = Single_result (Manager_operation_result _) as contents} ->
+      get_add_messages_gas_rec i contents
+  | Apply_results.Operation_metadata
+      {contents = Cons_result (Manager_operation_result _, _tail) as contents}
+    ->
+      get_add_messages_gas_rec i contents
+  | _ ->
+      Stdlib.failwith
+        "Failed to found an applied operation result in the metadata"
+
+let test_inbox_cost_add_messages () =
+  let* block, accounts =
+    (* set sort of unlimited gas or we are going to hit gas exhaustion. *)
+    context_init
+      ~hard_gas_limit_per_operation:(Gas.Arith.integral_of_int_exn 100_000_000)
+      ~hard_gas_limit_per_block:
+        (Gas.Arith.integral_of_int_exn Int.(max_int / 1000))
+      (Context.TList 5)
+  in
+  let account1, account2, account3, account4, account5 =
+    match accounts with
+    | [account1; account2; account3; account4; account5] ->
+        (account1, account2, account3, account4, account5)
+    | _ -> Stdlib.failwith "impossible"
+  in
+  let* block, _rollup = sc_originate block account1 "unit" in
+
+  let* incr = Incremental.begin_construction block in
+  (* let max_number_of_messages_per_level = *)
+  (*   Z.to_int Constants.sc_rollup_max_number_of_messages_per_level *)
+  (* in *)
+  let max_number_of_messages_per_level = 5_000 in
+  let add_messages_op_list src =
+    List.init_es
+      ~when_negative_length:[]
+      max_number_of_messages_per_level
+      (fun _ -> Op.sc_rollup_add_messages ~gas_limit:Max (I incr) src ["foo"])
+  in
+  let batched_ops source =
+    let* op_account1 = add_messages_op_list source in
+    Op.batch_operations ~recompute_counters:true ~source (I incr) op_account1
+  in
+  let add_op incr src =
+    let* operation = batched_ops src in
+    Incremental.add_operation ~check_size:false incr operation
+  in
+  let* incr = add_op incr account1 in
+  let* incr = add_op incr account2 in
+  let* incr = add_op incr account3 in
+  let* incr = add_op incr account4 in
+  let* incr = add_op incr account5 in
+  let op_result = Incremental.rev_tickets incr in
+  let () =
+    List.iteri
+      (fun i ->
+        head_add_message_gas_cost_result (max_number_of_messages_per_level * i))
+      op_result
+  in
+  assert false
+
 let add_op block op =
   let* incr = Incremental.begin_construction block in
   let* incr = Incremental.add_operation incr op in
@@ -3148,6 +3237,10 @@ let test_start_game_on_cemented_commitment () =
 
 let tests =
   [
+    Tztest.tztest
+      "inbox cost of adding a message in a block"
+      `Quick
+      test_inbox_cost_add_messages;
     Tztest.tztest
       "check effect of disabled feature flag"
       `Quick
