@@ -83,13 +83,11 @@ let cost_serialize_internal_inbox_message
   | End_of_level -> Saturation_repr.zero
   | Info_per_level _ -> Saturation_repr.zero
 
-(** TODO: #3212
-    Confirm gas cost model.
-    We here assume that the cost of deserializing an expression of [bytes_len]
-    is proportional to deserializing a script expression of size [bytes_len].
-    This may not be the case and in particular, the cost depends on the specific
-    structure used for the PVM. We may thus need to split the cost function.
-  *)
+(* Derived from benchmark in
+   [Sc_rollup_benchmarks.Sc_rollup_deserialize_output_proof_benchmark] and model
+   [model_Sc_rollup_deserialize_output_proof_benchmark]. *)
+(* TODO: https://gitlab.com/tezos/tezos/-/issues/4533
+   use the reference machine to infer the parameters of this model *)
 let cost_deserialize_output_proof ~bytes_len =
   Script_repr.deserialization_cost_estimated_from_bytes bytes_len
 
