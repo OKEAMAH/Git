@@ -2747,6 +2747,110 @@ let test_curfew_period_is_disjoint_with_cementation_period () =
     (Block.bake ~operations:[cement_op2; publish2_dishonest] block)
     Sc_rollup_errors.Sc_rollup_commitment_past_curfew
 
+(* The idea of this test is to try to create a fork.
+   First commitment tree like this is generated:
+
+    genesis <- C1 <- C2
+               ^
+              LCC, staker1 staked on it, staker2 (dishonest) staked on it
+
+   Then challenge_window blocks after C2 is being published,
+   at exact block with level C2.published_first + challenge_window
+   two operations injected:
+   1. C2 commitment cementation
+   2. C2_dishonest commitment publication (which has the same inbox level as C2)
+      that refers to C1 as a predecessor
+   This has to be prevented by:
+   - (primarily) Sc_rollup_stake_storage.refine_stake function
+   - (secondary) Curfew check: so curfew period and cementation period
+     have to be disjoint, and it mustn't be possible to cement and publish
+     new commitments for the same inbox level at the same block.
+   At the moment of writing the test neither of them prevented doing so.
+
+   This test checks that it NOT possible to publish new commitment
+   in the same block level,
+   when a cementation period has already begun
+   for a commitment with the same inbox level.
+*)
+let test_curfew_period_is_disjoint_with_cementation_period () =
+  let open Lwt_result_syntax in
+  let* block, (account1, account2), rollup =
+    init_and_originate
+      ~sc_rollup_challenge_window_in_blocks:120
+      Context.T2
+      "unit"
+  in
+  let* constants = Context.get_constants (B block) in
+  let challenge_window =
+    constants.parametric.sc_rollup.challenge_window_in_blocks
+  in
+  let commit_freq =
+    constants.parametric.sc_rollup.commitment_period_in_blocks
+  in
+  let* publish1, commitment1 =
+    publish_op_and_dummy_commitment
+      ~src:account1
+      ~compressed_state:"first"
+      rollup
+      block
+  in
+  let hash1 = Sc_rollup.Commitment.hash_uncarbonated commitment1 in
+
+  (* Publish this one in order move staked_on of dishonest staker to commitment1,
+     necessary to do the trick *)
+  let* publish2, _commitment1 =
+    publish_op_and_dummy_commitment
+      ~src:account2
+      ~compressed_state:"first"
+      rollup
+      block
+  in
+  let* block = bake_blocks_until_inbox_level block commitment1 in
+  let* block = Block.bake ~operations:[publish1; publish2] block in
+
+  let* publish2, commitment2 =
+    publish_op_and_dummy_commitment
+      ~src:account1
+      ~predecessor:commitment1
+      ~compressed_state:"second"
+      rollup
+      block
+  in
+  let hash2 = Sc_rollup.Commitment.hash_uncarbonated commitment2 in
+
+  let* block = bake_blocks_until_inbox_level block commitment2 in
+  let* block = Block.bake ~operations:[publish2] block in
+
+  (* Bake challenge_window - commit_freq - 1 blocks as
+     we already have commit_freq blocks over the commitment1,
+     which is caused by commitment2 publishing. *)
+  let* block = Block.bake_n (challenge_window - commit_freq - 1) block in
+  let* cement_op1 = Op.sc_rollup_cement (B block) account1 rollup hash1 in
+  let* block = Block.bake ~operations:[cement_op1] block in
+
+  (* Current level now is 2 + commitment_freq + challenge_window *)
+  let* block = Block.bake_n (commit_freq - 1) block in
+  let* cement_op2 = Op.sc_rollup_cement (B block) account1 rollup hash2 in
+  let* publish2_dishonest, _commitment2_dishonest =
+    publish_op_and_dummy_commitment
+      ~src:account2
+      ~predecessor:commitment1
+      ~compressed_state:"dishonest state"
+      rollup
+      block
+  in
+  let expected_level =
+    Raw_level_repr.of_int32_exn (Int32.of_int (challenge_window + 1))
+  in
+  assert_fails_with
+    ~__LOC__
+    (Block.bake ~operations:[cement_op2; publish2_dishonest] block)
+    (Sc_rollup_errors.Sc_rollup_commitment_too_old
+       {
+         last_cemented_inbox_level = expected_level;
+         commitment_inbox_level = expected_level;
+       })
+
 let tests =
   [
     Tztest.tztest
@@ -2884,5 +2988,25 @@ let tests =
       "Dishonest staker fails to publish concurrent dishonest commitment at \
        the same level as honest commitment cementation"
       `Quick
+<<<<<<< Updated upstream
+=======
+      test_winner_by_forfeit_with_draw;
+    Tztest.tztest
+      "cannot start a game with agreeing stakers"
+      `Quick
+      test_agreeing_stakers_cannot_play;
+    Tztest.tztest
+      "find conflict point with incomplete branch"
+      `Quick
+      test_conflict_point_on_a_branch;
+    Tztest.tztest
+      "cannot start a game on a cemented commitment"
+      `Quick
+      test_start_game_on_cemented_commitment;
+    Tztest.tztest
+      "Dishonest staker fails to publish concurrent dishonest commitment at \
+       the same level as honest commitment cementation"
+      `Quick
+>>>>>>> Stashed changes
       test_curfew_period_is_disjoint_with_cementation_period;
   ]
