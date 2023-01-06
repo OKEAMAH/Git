@@ -92,31 +92,31 @@ let get_sc_rollup_constants client =
     RPC.Client.call client @@ RPC.get_chain_block_context_constants ()
   in
   let open JSON in
-  let origination_size = json |-> "sc_rollup_origination_size" |> as_int in
+  let origination_size = json |-> "smart_rollup_origination_size" |> as_int in
   let challenge_window_in_blocks =
-    json |-> "sc_rollup_challenge_window_in_blocks" |> as_int
+    json |-> "smart_rollup_challenge_window_in_blocks" |> as_int
   in
   let stake_amount =
-    json |-> "sc_rollup_stake_amount" |> as_string |> Int64.of_string
+    json |-> "smart_rollup_stake_amount" |> as_string |> Int64.of_string
     |> Tez.of_mutez_int64
   in
   let commitment_period_in_blocks =
-    json |-> "sc_rollup_commitment_period_in_blocks" |> as_int
+    json |-> "smart_rollup_commitment_period_in_blocks" |> as_int
   in
   let max_lookahead_in_blocks =
-    json |-> "sc_rollup_max_lookahead_in_blocks" |> as_int32
+    json |-> "smart_rollup_max_lookahead_in_blocks" |> as_int32
   in
   let max_active_outbox_levels =
-    json |-> "sc_rollup_max_active_outbox_levels" |> as_int32
+    json |-> "smart_rollup_max_active_outbox_levels" |> as_int32
   in
   let max_outbox_messages_per_level =
-    json |-> "sc_rollup_max_outbox_messages_per_level" |> as_int
+    json |-> "smart_rollup_max_outbox_messages_per_level" |> as_int
   in
   let number_of_sections_in_dissection =
-    json |-> "sc_rollup_number_of_sections_in_dissection" |> as_int
+    json |-> "smart_rollup_number_of_sections_in_dissection" |> as_int
   in
   let timeout_period_in_blocks =
-    json |-> "sc_rollup_timeout_period_in_blocks" |> as_int
+    json |-> "smart_rollup_timeout_period_in_blocks" |> as_int
   in
   return
     {
@@ -140,7 +140,7 @@ let parent_not_lcc = "Parent is not the last cemented commitment"
 
 let disputed_commit = "Attempted to cement a disputed commitment"
 
-let commit_doesnt_exit = "Commitment scc\\w+\\sdoes not exist"
+let commit_doesnt_exit = "Commitment src\\w+\\sdoes not exist"
 
 let make_parameter name = function
   | None -> []
@@ -153,10 +153,10 @@ let register_test ?(regression = false) ~__FILE__ ~tags ~title f =
 
 let setup_l1 ?commitment_period ?challenge_window ?timeout protocol =
   let parameters =
-    make_parameter "sc_rollup_commitment_period_in_blocks" commitment_period
-    @ make_parameter "sc_rollup_challenge_window_in_blocks" challenge_window
-    @ make_parameter "sc_rollup_timeout_period_in_blocks" timeout
-    @ [(["sc_rollup_arith_pvm_enable"], `Bool true)]
+    make_parameter "smart_rollup_commitment_period_in_blocks" commitment_period
+    @ make_parameter "smart_rollup_challenge_window_in_blocks" challenge_window
+    @ make_parameter "smart_rollup_timeout_period_in_blocks" timeout
+    @ [(["smart_rollup_arith_pvm_enable"], `Bool true)]
   in
   let base = Either.right (protocol, None) in
   let* parameter_file = Protocol.write_parameter_file ~base parameters in
@@ -727,8 +727,8 @@ let fetch_messages_from_block client =
     |> List.concat_map JSON.as_list
     |> List.concat_map (fun op -> JSON.(op |-> "contents" |> as_list))
     |> List.filter_map (fun op ->
-           if JSON.(op |-> "kind" |> as_string) = "sc_rollup_add_messages" then
-             Some JSON.(op |-> "message" |> as_list)
+           if JSON.(op |-> "kind" |> as_string) = "smart_rollup_add_messages"
+           then Some JSON.(op |-> "message" |> as_list)
            else None)
     |> List.hd
     |> List.map (fun message -> JSON.(message |> as_string))
@@ -965,7 +965,7 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup_client sc_rollup node client
   let* block = RPC.Client.call client @@ RPC.get_chain_block () in
   let contents1 =
     check_l1_block_contains
-      ~kind:"sc_rollup_add_messages"
+      ~kind:"smart_rollup_add_messages"
       ~what:"add messages operations"
       block
   in
@@ -981,7 +981,7 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup_client sc_rollup node client
   let* block = RPC.Client.call client @@ RPC.get_chain_block () in
   let contents2 =
     check_l1_block_contains
-      ~kind:"sc_rollup_add_messages"
+      ~kind:"smart_rollup_add_messages"
       ~what:"add messages operations"
       block
   in
@@ -1963,7 +1963,7 @@ let commitment_before_lcc_not_published _protocol sc_rollup_node
   let cemented_commitment_hash =
     Option.map hash rollup_node1_published_commitment
     |> Option.value
-         ~default:"scc12XhSULdV8bAav21e99VYLTpqAjTd7NU8Mn4zFdKPSA8auMbggG"
+         ~default:"src142qqoZP1iPSALZPSy7ip4StkiF5neWNWviQ8V6uRADsnvuegVH"
   in
   let* () = bake_levels levels_to_cementation client in
   let* cemented_commitment_level =
@@ -2594,7 +2594,11 @@ let test_consecutive_commitments _protocol _rollup_node _rollup_client sc_rollup
          ~sc_rollup
          operator
   in
-  let* () = Process.check_error ~msg:(rex "Unknown staker") process in
+  let* () =
+    Process.check_error
+      ~msg:(rex "This implicit account is not a staker of this smart rollup")
+      process
+  in
   let* predecessor, _ =
     last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
   in
@@ -3109,7 +3113,7 @@ let test_valid_dispute_dissection =
      didn't add any message in inboxes). If this hash needs to be recomputed,
      run this test with --verbose and grep for 'compressed_state' in the
      produced logs. *)
-  let state_hash = "scs11VNjWyZw4Tgbvsom8epQbox86S2CKkE1UAZkXMM7Pj8MQMLzMf" in
+  let state_hash = "srs11Z9V76SGd97kGmDQXV8tEF67C48GMy77RuaHdF1kWLk6UTmMfj" in
 
   let rec aux i acc =
     if i = number_of_sections_in_dissection - 1 then

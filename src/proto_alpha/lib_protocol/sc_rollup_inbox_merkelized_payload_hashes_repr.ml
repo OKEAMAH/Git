@@ -28,7 +28,7 @@ let () =
   let open Data_encoding in
   register_error_kind
     `Permanent
-    ~id:"sc_rollup_inbox_message_repr.merkelized_payload_hashes_proof_error"
+    ~id:"internal.smart_rollup_merklized_payload_hashes_proof"
     ~title:
       "Internal error: error occurred during proof production or validation"
     ~description:"A merkelized payload hashes proof error."
@@ -44,10 +44,10 @@ end
 module Skip_list = Skip_list_repr.Make (Skip_list_parameters)
 
 (* 32 *)
-let hash_prefix = "\003\250\174\238\238" (* scib2(55) *)
+let hash_prefix = "\003\255\138\145\140" (* srib2(55) *)
 
 module Hash = struct
-  let prefix = "scib2"
+  let prefix = "srib2"
 
   let encoded_size = 55
 
@@ -55,11 +55,10 @@ module Hash = struct
     Blake2B.Make
       (Base58)
       (struct
-        let name = "merkelized_payload_hashes_hash"
+        let name = "Smart_rollup_merkelized_payload_hashes_hash"
 
         let title =
-          "The merkelized payload hashes' hash of the smart contract rollup \
-           inbox"
+          "The merkelized payload hashes' hash of the smart rollup inbox"
 
         let b58check_prefix = hash_prefix
 
@@ -122,7 +121,7 @@ module History = struct
   include
     Bounded_history_repr.Make
       (struct
-        let name = "level_inbox_history"
+        let name = "Smart_rollup_level_inbox_history"
       end)
       (Hash)
       (struct

@@ -61,7 +61,7 @@ let () =
   let open Data_encoding in
   register_error_kind
     `Permanent
-    ~id:"sc_rollup_inbox.inbox_proof_error"
+    ~id:"internal.smart_rollup_inbox_proof_error"
     ~title:
       "Internal error: error occurred during proof production or validation"
     ~description:"An inbox proof error."
@@ -72,7 +72,7 @@ let () =
 
   register_error_kind
     `Permanent
-    ~id:"sc_rollup_inbox.add_zero_messages"
+    ~id:"internal.smart_rollup_add_zero_messages"
     ~title:"Internal error: trying to add zero messages"
     ~description:
       "Message adding functions must be called with a positive number of \
@@ -90,7 +90,7 @@ let () =
   in
   register_error_kind
     `Permanent
-    ~id:"sc_rollup_inbox.inbox_level_reached_message_limit"
+    ~id:"smart_rollup_inbox_level_reached_message_limit"
     ~title:"Inbox level reached messages limit"
     ~description
     ~pp:(fun ppf _ -> Format.pp_print_string ppf description)
@@ -101,10 +101,10 @@ let () =
 module Int64_map = Map.Make (Int64)
 
 (* 32 *)
-let hash_prefix = "\003\250\174\238\208" (* scib1(55) *)
+let hash_prefix = "\003\255\138\145\110" (* srib1(55) *)
 
 module Hash = struct
-  let prefix = "scib1"
+  let prefix = "srib1"
 
   let encoded_size = 55
 
@@ -112,9 +112,9 @@ module Hash = struct
     Blake2B.Make
       (Base58)
       (struct
-        let name = "inbox_hash"
+        let name = "Smart_rollup_inbox_hash"
 
-        let title = "The hash of an inbox of a smart contract rollup"
+        let title = "The hash of an inbox of a smart rollup"
 
         let b58check_prefix = hash_prefix
 
@@ -191,7 +191,7 @@ module V1 = struct
   module History =
     Bounded_history_repr.Make
       (struct
-        let name = "inbox_history"
+        let name = "Smart_rollup_inbox_history"
       end)
       (Hash)
       (struct
