@@ -81,7 +81,7 @@ let parse_commands s =
   in
   go command
 
-let reveal_step =
+let reveal_builtins =
   Tezos_scoru_wasm.Builtins.
     {
       reveal_preimage =
@@ -141,7 +141,7 @@ let eval_to_result tree =
       in
       let* pvm_state, ticks =
         Tezos_scoru_wasm.Wasm_vm.compute_step_many_until
-          ~reveal_step
+          ~reveal_builtins
           ~write_debug
           ~max_steps:Int64.max_int
           should_compute
@@ -163,7 +163,7 @@ let eval_kernel_run tree =
       let* info_before = Wasm.get_info tree in
       let* tree, _ =
         Wasm_fast.compute_step_many
-          ~reveal_step
+          ~reveal_builtins
           ~write_debug
           ~stop_at_snapshot:true
           ~max_steps:Int64.max_int
@@ -181,7 +181,7 @@ let eval_until_input_requested tree =
       let* tree =
         eval_until_input_requested
           ~fast_exec:true
-          ~reveal_step
+          ~reveal_builtins
           ~write_debug
           ~max_steps:Int64.max_int
           tree

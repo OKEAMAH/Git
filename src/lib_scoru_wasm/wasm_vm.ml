@@ -495,7 +495,7 @@ let reveal_step payload pvm_state =
               "No reveal expected during collecting"))
   | Stuck _ | Padding -> return pvm_state.tick_state
 
-let compute_step_many_until ?(max_steps = 1L) ?reveal_step:step
+let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
     ?(write_debug = Builtins.Noop) should_continue =
   let open Lwt.Syntax in
   assert (max_steps > 0L) ;
@@ -503,6 +503,17 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_step:step
     match write_debug with
     | Builtins.Printer _ -> Host_funcs.all_debug ~write_debug
     | Noop -> Host_funcs.all
+  in
+  let compute_step_with_reveal reveal_builtins pvm_state =
+    let info = input_request pvm_state in
+    match info with
+    | Reveal_required (Reveal_raw_data req) ->
+        let* res = reveal_builtins.Builtins.reveal_preimage req in
+        reveal_step (Bytes.of_string res) pvm_state
+    | Reveal_required Reveal_metadata ->
+        let* res = reveal_builtins.reveal_metadata () in
+        reveal_step (Bytes.of_string res) pvm_state
+    | _ -> compute_step_with_host_functions host_function_registry pvm_state
   in
   let rec go steps_left pvm_state =
     let* continue = should_continue pvm_state in
@@ -523,17 +534,11 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_step:step
         in
         go (Int64.sub steps_left (Z.to_int64 bulk_ticks)) pvm_state
       else
-        let info = input_request pvm_state in
         let* pvm_state =
-          match (info, step) with
-          | Reveal_required (Reveal_raw_data req), Some step ->
-              let* res = step.Builtins.reveal_preimage req in
-              reveal_step (Bytes.of_string res) pvm_state
-          | Reveal_required Reveal_metadata, Some step ->
-              let* res = step.reveal_metadata () in
-              reveal_step (Bytes.of_string res) pvm_state
-          | _ ->
+          match reveal_builtins with
+          | None ->
               compute_step_with_host_functions host_function_registry pvm_state
+          | Some step -> compute_step_with_reveal step pvm_state
         in
         go (Int64.pred steps_left) pvm_state
     else Lwt.return pvm_state
@@ -548,23 +553,23 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_step:step
   in
   measure_executed_ticks one_or_more_steps
 
-let should_compute ?reveal_step pvm_state =
+let should_compute ?reveal_builtins pvm_state =
   let input_request_val = input_request pvm_state in
   match input_request_val with
   | Input_required -> false
   | No_input_required -> true
-  | Reveal_required _ -> Option.is_some reveal_step
+  | Reveal_required _ -> Option.is_some reveal_builtins
 
-let compute_step_many ?reveal_step ?write_debug ?(stop_at_snapshot = false)
+let compute_step_many ?reveal_builtins ?write_debug ?(stop_at_snapshot = false)
     ~max_steps pvm_state =
   compute_step_many_until
     ~max_steps
-    ?reveal_step
+    ?reveal_builtins
     ?write_debug
     (fun pvm_state ->
       Lwt.return
         (* should_compute && (stop_at_snapshot -> tick_state <> snapshot) *)
-        (should_compute ?reveal_step pvm_state
+        (should_compute ?reveal_builtins pvm_state
         && ((not stop_at_snapshot) || pvm_state.tick_state <> Snapshot)))
     pvm_state
 
@@ -637,7 +642,7 @@ let get_info ({current_tick; last_input_info; _} as pvm_state) =
        {current_tick; last_input_read = last_input_info; input_request}
 
 module Internal_for_tests = struct
-  let compute_step_many_with_hooks ?reveal_step ?write_debug ?after_fast_exec:_
-      =
-    compute_step_many ?reveal_step ?write_debug
+  let compute_step_many_with_hooks ?reveal_builtins ?write_debug
+      ?after_fast_exec:_ =
+    compute_step_many ?reveal_builtins ?write_debug
 end

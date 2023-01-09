@@ -91,7 +91,7 @@ let reveal_returned_size tree =
       match hd with
       | Num (I32 size) -> return size
       | _ -> Stdlib.failwith "Incorrect stack")
-  | _ -> Stdlib.failwith "The tick after reveal_step is not consistent"
+  | _ -> Stdlib.failwith "The tick after reveal_builtins is not consistent"
 
 let test_reveal_preimage_gen preimage max_bytes =
   let open Lwt_result_syntax in
@@ -219,7 +219,7 @@ module Preimage_map = Map.Make (String)
 let apply_fast ?(images = Preimage_map.empty) tree =
   let open Lwt.Syntax in
   let run_counter = ref 0l in
-  let reveal_step =
+  let reveal_builtins =
     Tezos_scoru_wasm.Builtins.
       {
         reveal_preimage =
@@ -233,7 +233,7 @@ let apply_fast ?(images = Preimage_map.empty) tree =
   in
   let+ tree =
     Wasm_utils.eval_until_input_requested
-      ~reveal_step
+      ~reveal_builtins
         (* We override the builtins to provide our own [reveal_preimage]
            implementation. This allows us to rune Fast Exec with
            kernels that want to reveal stuff. *)
