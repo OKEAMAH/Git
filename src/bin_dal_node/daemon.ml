@@ -23,11 +23,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let resolve_plugin cctxt =
+let resolve_dal_plugin
+    (protocols : Tezos_shell_services.Chain_services.Blocks.protocols) =
   let open Lwt_result_syntax in
-  let* protocols =
-    Tezos_shell_services.Chain_services.Blocks.protocols cctxt ()
-  in
   return
   @@ Option.either
        (Dal_plugin.get protocols.current_protocol)
@@ -97,7 +95,7 @@ module Handler = struct
     in
     return (go (), stopper)
 
-  let resolve_plugin_and_set_ready config ctxt cctxt =
+  let resolve_plugins_and_set_ready config ctxt cctxt =
     (* Monitor heads and try resolve the DAL protocol plugin corresponding to
        the protocol of the targeted node. *)
     (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3605
@@ -105,22 +103,33 @@ module Handler = struct
     let open Lwt_result_syntax in
     let handler stopper
         (_block_hash, (_block_header : Tezos_base.Block_header.t)) =
-      let* plugin = resolve_plugin cctxt in
-      match plugin with
-      | Some plugin ->
-          let (module Plugin : Dal_plugin.T) = plugin in
-          let*! () = Event.emit_protocol_plugin_resolved Plugin.Proto.hash in
+      let* protocols =
+        Tezos_shell_services.Chain_services.Blocks.protocols cctxt ()
+      in
+      let* dal_plugin = resolve_dal_plugin protocols in
+      let* dac_plugin = Dac_manager.resolve_plugin protocols in
+      match (dal_plugin, dac_plugin) with
+      | Some dal_plugin, Some dac_plugin ->
+          let (module Dal_plugin : Dal_plugin.T) = dal_plugin in
+          let*! () =
+            Event.emit_protocol_plugin_resolved Dal_plugin.Proto.hash
+          in
           let* proto_parameters =
-            Plugin.get_constants cctxt#chain cctxt#block cctxt
+            Dal_plugin.get_constants cctxt#chain cctxt#block cctxt
           in
           let* cryptobox =
             init_cryptobox config.Configuration.use_unsafe_srs proto_parameters
           in
-          Node_context.set_ready ctxt (module Plugin) cryptobox proto_parameters ;
+          Node_context.set_ready
+            ctxt
+            ~dal_plugin:(module Dal_plugin)
+            ~dac_plugin
+            cryptobox
+            proto_parameters ;
           let*! () = Event.(emit node_is_ready ()) in
           stopper () ;
           return_unit
-      | None -> return_unit
+      | _, _ -> return_unit
     in
     let handler stopper el =
       match Node_context.get_status ctxt with
@@ -138,7 +147,7 @@ module Handler = struct
     let handler _stopper (block_hash, (header : Tezos_base.Block_header.t)) =
       match Node_context.get_status ctxt with
       | Starting -> return_unit
-      | Ready {plugin = (module Plugin); proto_parameters; _} ->
+      | Ready {dal_plugin = (module Plugin); proto_parameters; _} ->
           let* block_info =
             Plugin.block_info
               cctxt
@@ -260,7 +269,7 @@ let run ~data_dir cctxt =
   in
   (* Start daemon to resolve current protocol plugin *)
   let* () =
-    daemonize [Handler.resolve_plugin_and_set_ready config ctxt cctxt]
+    daemonize [Handler.resolve_plugins_and_set_ready config ctxt cctxt]
   in
   (* Start never-ending monitoring daemons *)
   daemonize (Handler.new_head ctxt cctxt :: Handler.new_slot_header ctxt)
