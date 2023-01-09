@@ -44,4 +44,8 @@ end = struct
   let _skip unit_name test_cases = ("[SKIPPED] " ^ unit_name, test_cases)
 end
 
-let () = Alcotest_lwt.run "protocol > unit" [] |> Lwt_main.run
+let () =
+  Alcotest_lwt.run
+    "protocol > unit"
+    [Unit_test.spec "Dac_pages_encoding.ml" Test_dac_pages_encoding.tests]
+  |> Lwt_main.run
