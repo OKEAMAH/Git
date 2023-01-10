@@ -25,6 +25,10 @@
      -Wno-incompatible-pointer-types)
     (c_library_flags
      :standard
+     -lc++
+     -lm
+     -lz
+   ;   -ltinfo
      -lwasmer
      -L%{env:OPAM_SWITCH_PREFIX=}/lib/tezos-rust-libs)))
   (headers (include wasmer.h))

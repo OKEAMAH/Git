@@ -43,14 +43,27 @@ let () =
 
 module type REVEAL_HASH = module type of Sc_rollup_reveal_hash
 
+let hex_encode (input : string) : string =
+  match Hex.of_string input with `Hex s -> s
+
 module Make (Hash : REVEAL_HASH) = struct
   let path data_dir hash =
     let hash = Hash.to_hex hash in
     Filename.(concat data_dir hash)
 
+  let path2 data_dir hash =
+    Filename.(
+      concat data_dir @@ hex_encode
+      @@ Data_encoding.Binary.to_string_exn Hash.encoding hash)
+
   let save_bytes data_dir hash page_contents =
     let open Lwt_result_syntax in
     let path = path data_dir hash in
+    let path2 = path2 data_dir hash in
+    let*! _result =
+      Lwt_utils_unix.with_atomic_open_out path2 @@ fun chan ->
+      Lwt_utils_unix.write_bytes chan page_contents
+    in
     let*! result =
       Lwt_utils_unix.with_atomic_open_out path @@ fun chan ->
       Lwt_utils_unix.write_bytes chan page_contents

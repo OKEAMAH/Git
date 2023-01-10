@@ -98,6 +98,7 @@ let compute ~reveal_builtins ~write_debug durable buffers =
   in
 
   let* durable = Wasm_vm.patch_flags_on_eval_successful host_state.durable in
+
   (* TODO: #4283
      The module is cached, but the cash is never cleaned.
      This is the point where it was scrubed before.*)

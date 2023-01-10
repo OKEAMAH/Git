@@ -1634,7 +1634,10 @@ let octez_wasmer =
           generated_types = "Api_types";
           generated_entry_point = "Api";
           c_flags = ["-Wno-incompatible-pointer-types"];
-          c_library_flags = [];
+          c_library_flags =
+            (* Use [llvm-config --link-static --system-libs] to get an idea of
+               which libraries are needed for LLVM. *)
+            ["-lc++"; "-lm"; "-lz"; "-ltinfo"];
         }
 
 let octez_scoru_wasm =
@@ -1716,6 +1719,26 @@ let octez_context_memory =
         octez_context_sigs;
         octez_context_encoding;
         octez_context_helpers;
+      ]
+
+let _ole =
+  private_exe
+    "ole"
+    ~path:"src/lib_scoru_wasm/ole"
+    ~synopsis:"Ole"
+    ~opam:""
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        tree_encoding;
+        lazy_containers;
+        octez_webassembly_interpreter;
+        octez_context_sigs;
+        octez_context_memory;
+        octez_lwt_result_stdlib;
+        data_encoding;
+        octez_scoru_wasm;
+        octez_scoru_wasm_fast;
       ]
 
 let octez_context_disk =

@@ -77,6 +77,20 @@ let
       };
     };
 
+    tezos-rust-libs = prev.tezos-rust-libs.overrideAttrs (old: {
+      buildInputs =
+        (old.buildInputs or [ ])
+        ++
+        (with pkgs; [
+          llvm_12
+          libffi
+          libxml2
+        ]);
+
+      LLVM_SYS_120_PREFIX = "${pkgs.llvm_12.dev}";
+    });
+  };
+
   darwin-overlay = final: prev: {
     hacl-star-raw = prev.hacl-star-raw.overrideAttrs (old: {
       # Uses unsupported command-line flags
@@ -231,6 +245,8 @@ pkgs.mkShell {
       devPackageSet.ocp-indent
       devPackageSet.merlin
       devPackageSet.utop
+      libxml2
+      llvm_12
     ]
     ++
     (
