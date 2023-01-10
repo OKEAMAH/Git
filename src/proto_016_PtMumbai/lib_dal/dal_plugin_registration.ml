@@ -117,8 +117,6 @@ module Plugin = struct
     let open Result_syntax in
     (* DAL Will not be activated in Mumbai. *)
     return []
-
-  module RPC = RPC
 end
 
 let () = Dal_plugin.register (module Plugin)

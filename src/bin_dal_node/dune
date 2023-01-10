@@ -27,6 +27,7 @@
   irmin-pack.unix
   irmin
   tezos-dal-016-PtMumbai
+  tezos-dac-016-PtMumbai
   (select void_for_linking-tezos-dal-alpha from
    (tezos-dal-alpha -> void_for_linking-tezos-dal-alpha.empty)
    (-> void_for_linking-tezos-dal-alpha.empty))

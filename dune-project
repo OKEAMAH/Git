@@ -86,6 +86,7 @@
 (package (name tezos-context-ops))
 (package (name tezos-crypto))
 (package (name tezos-crypto-dal))
+(package (name tezos-dac-016-PtMumbai))
 (package (name tezos-dac-alpha))
 (package (name tezos-dal-016-PtMumbai))
 (package (name tezos-dal-alpha))

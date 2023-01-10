@@ -5051,7 +5051,7 @@ module Protocol = Protocol
           ]
     in
     let dac =
-      only_if (active && N.(number >= 017)) @@ fun () ->
+      only_if (active && N.(number >= 016)) @@ fun () ->
       public_lib
         (sf "tezos-dac-%s" name_dash)
         ~path:(path // "lib_dac")
@@ -5074,7 +5074,7 @@ module Protocol = Protocol
         ~linkall:true
     in
     let _dac_tests =
-      only_if (active && N.(number >= 017)) @@ fun () ->
+      only_if (active && N.(number >= 016)) @@ fun () ->
       test
         "main"
         ~path:(path // "lib_dac/test")
