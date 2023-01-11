@@ -179,12 +179,12 @@ let start configuration cctxt ctxt dac_pks_opt dac_sk_uris =
     configuration
   in
   let dir = register ctxt in
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4558
-     Rename "plugin" prefix to "dac".
-  *)
-  let plugin_prefix = Tezos_rpc.Path.(open_root / "plugin") in
+  let dac_plugin_prefix = Tezos_rpc.Path.(open_root / "dac") in
   let dir =
-    Tezos_rpc.Directory.register_dynamic_directory dir plugin_prefix (fun () ->
+    Tezos_rpc.Directory.register_dynamic_directory
+      dir
+      dac_plugin_prefix
+      (fun () ->
         match Node_context.get_status ctxt with
         | Ready {dac_plugin = (module Dac_plugin); _} ->
             Lwt.return
