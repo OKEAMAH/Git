@@ -65,4 +65,4 @@ end
 
 val resolve_plugin :
   Tezos_shell_services.Chain_services.Blocks.protocols ->
-  ((module Dac_plugin.T) option, tztrace) result Lwt.t
+  (module Dac_plugin.T) option Lwt.t

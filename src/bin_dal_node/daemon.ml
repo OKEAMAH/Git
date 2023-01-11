@@ -25,11 +25,22 @@
 
 let resolve_dal_plugin
     (protocols : Tezos_shell_services.Chain_services.Blocks.protocols) =
-  let open Lwt_result_syntax in
-  return
-  @@ Option.either
-       (Dal_plugin.get protocols.current_protocol)
-       (Dal_plugin.get protocols.next_protocol)
+  let open Lwt_syntax in
+  let plugin_opt =
+    Option.either
+      (Dal_plugin.get protocols.current_protocol)
+      (Dal_plugin.get protocols.next_protocol)
+  in
+  Option.map_s
+    (fun dal_plugin ->
+      let (module Dal_plugin : Dal_plugin.T) = dal_plugin in
+      let* () =
+        Event.emit_protocol_plugin_resolved
+          ~plugin_name:"dal"
+          Dal_plugin.Proto.hash
+      in
+      return dal_plugin)
+    plugin_opt
 
 type error +=
   | Cryptobox_initialisation_failed of string
@@ -106,14 +117,11 @@ module Handler = struct
       let* protocols =
         Tezos_shell_services.Chain_services.Blocks.protocols cctxt ()
       in
-      let* dal_plugin = resolve_dal_plugin protocols in
-      let* dac_plugin = Dac_manager.resolve_plugin protocols in
+      let*! dal_plugin = resolve_dal_plugin protocols in
+      let*! dac_plugin = Dac_manager.resolve_plugin protocols in
       match (dal_plugin, dac_plugin) with
       | Some dal_plugin, Some dac_plugin ->
           let (module Dal_plugin : Dal_plugin.T) = dal_plugin in
-          let*! () =
-            Event.emit_protocol_plugin_resolved Dal_plugin.Proto.hash
-          in
           let* proto_parameters =
             Dal_plugin.get_constants cctxt#chain cctxt#block cctxt
           in
@@ -122,7 +130,7 @@ module Handler = struct
           in
           Node_context.set_ready
             ctxt
-            ~dal_plugin:(module Dal_plugin)
+            ~dal_plugin
             ~dac_plugin
             cryptobox
             proto_parameters ;
