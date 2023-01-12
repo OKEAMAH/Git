@@ -117,11 +117,8 @@ module DAC = struct
       (data, pagination_scheme) =
     let open Lwt_result_syntax in
     let open Dac_pages_encoding in
-    let for_each_page (hash, page_contents) =
-      Dac_manager.Reveal_hash.Storage.save_bytes
-        reveal_data_dir
-        hash
-        page_contents
+    let for_each_page page_contents =
+      Dac_manager.Reveal_hash.Storage.save_bytes reveal_data_dir page_contents
     in
     let* root_hash =
       match pagination_scheme with

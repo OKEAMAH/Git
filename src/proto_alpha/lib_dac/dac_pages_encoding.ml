@@ -193,16 +193,10 @@ module Merkle_tree = struct
     let hashes_version_tag = (2 * V.hashes_version) + 1
   end
 
-  module Make (Hashing_scheme : sig
-    include Dac_preimage_data_manager.REVEAL_HASH
-
-    val scheme : supported_hashes
-  end)
-  (V : VERSION) =
+  module Make
+      (Hashing_scheme : Dac_preimage_data_manager.REVEAL_HASH_WITH_SCHEME)
+      (V : VERSION) =
   struct
-    let hash bytes =
-      Hashing_scheme.hash_bytes [bytes] ~scheme:Hashing_scheme.scheme
-
     let hash_encoding = Hashing_scheme.encoding
 
     let hashes_encoding = Data_encoding.list hash_encoding
@@ -291,9 +285,7 @@ module Merkle_tree = struct
          a sequence of serialized hashes for hashes pages. The preamble
          bytes is part of the sequence of bytes which is hashed.
       *)
-      let hash = hash serialized_page in
-      let* () = for_each_page (hash, serialized_page) in
-      return hash
+      for_each_page serialized_page
 
     (** [Payload_handler] is in-memory data structure that enables aggregating
         DAC messages/payload. It serializes the data by respecting [page_encoding],
@@ -306,7 +298,7 @@ module Merkle_tree = struct
         Starting with an [empty] serializer, splitting arbitrary [payload] into
         chunks of arbitrary size, and adding them to the serializer from left to
         right, should result in same root hash as adding all the payload data in
-        one chunk, provided it could fit into the memory.         
+        one chunk, provided it could fit into the memory.
      *)
     module Payload_handler = struct
       (** A [page_data] is either [Cont_data] or [Hash_data] where each represents
@@ -319,7 +311,7 @@ module Merkle_tree = struct
 
       (** [Payload_handler] serializes DAC data in the shape of k-ary Merkle tree
           onto the disk. For every existing level written onto to the disk, handler
-          holds a corresponding [Merkle_level.t] in-memory representation. This 
+          holds a corresponding [Merkle_level.t] in-memory representation. This
           representation holds the data yet to be persisted to the disk - effectively
           acting as buffer, making sure that all [pages] of the given level that
           are written to the disk are full (with the exception of last one upon
@@ -386,10 +378,10 @@ module Merkle_tree = struct
 
       (** Adds a [page_data] to the bottom level of the in-memory merkle tree repr.
           If [page_data] inside level exceeds its [max_page_size], then we split it
-          into valid full [page]/s and a leftover that is smaller or equal to 
+          into valid full [page]/s and a leftover that is smaller or equal to
           [max_page_size].
-          
-          Full pages are eagerly stored to disk and parent hashes are added 
+
+          Full pages are eagerly stored to disk and parent hashes are added
           in batch to next level. The leftover represents the content
           of current level. Procedure repeats recursively if necessarily.
 
@@ -416,7 +408,7 @@ module Merkle_tree = struct
           to disk. The data is fully serialized after the call to [finalize].
           This guarantees that only the last [page] in the given level could be
           partially filled.
-          
+
           Throws [Payload_cannot_be_empty] in case of empty payload *)
       let add ~max_page_size ~for_each_page stack payload =
         let open Lwt_result_syntax in
@@ -559,22 +551,15 @@ module Hash_chain = struct
     val serialize_page : page -> string
   end
 
-  module Make (Hashing_scheme : sig
-    include Dac_preimage_data_manager.REVEAL_HASH
-
-    val scheme : supported_hashes
-  end)
-  (P : PAGE_FMT with type h = Hashing_scheme.t) =
+  module Make
+      (Hashing_scheme : Dac_preimage_data_manager.REVEAL_HASH_WITH_SCHEME)
+      (P : PAGE_FMT with type h = Hashing_scheme.t) =
   struct
-    let hash bytes =
-      Hashing_scheme.hash_bytes ~scheme:Hashing_scheme.scheme [bytes]
-
-    let to_hex = Hashing_scheme.to_hex
-
-    let link_chunks chunks : (Hashing_scheme.t * bytes) list =
+    let link_and_save_chunks ~for_each_page chunks =
       let rec link_chunks_rev linked_pages rev_pages =
+        let open Lwt_result_syntax in
         match rev_pages with
-        | [] -> linked_pages
+        | [] -> return linked_pages
         | chunk :: rev_chunks ->
             let page =
               match linked_pages with
@@ -583,18 +568,16 @@ module Hash_chain = struct
                   P.serialize_page {succ_hash; content = chunk}
             in
             let page = Bytes.of_string page in
-            let hash = hash page in
-            (link_chunks_rev [@tailcall])
-              ((hash, page) :: linked_pages)
-              rev_chunks
+            let* hash = for_each_page page in
+            link_chunks_rev ((hash, page) :: linked_pages) rev_chunks
       in
       let rev_chunks = List.rev chunks in
       link_chunks_rev [] rev_chunks
 
-    let make_hash_chain data =
-      let open Result_syntax in
-      let+ chunks = String.chunk_bytes P.content_limit data in
-      link_chunks chunks
+    let make_hash_chain ~for_each_page data =
+      let open Lwt_result_syntax in
+      let*? chunks = String.chunk_bytes P.content_limit data in
+      link_and_save_chunks ~for_each_page chunks
 
     (** Main function for computing a hash chain from a byte sequence. Returns the
         chain head hash.[for_each_page] may be supplied to run post processing
@@ -605,9 +588,8 @@ module Hash_chain = struct
       let* () =
         fail_unless (Bytes.length payload > 0) Payload_cannot_be_empty
       in
-      let*? hash_chain = make_hash_chain payload in
-      let+ () = List.iter_es for_each_page hash_chain in
-      Stdlib.List.hd hash_chain |> fst
+      let* hash_chain = make_hash_chain ~for_each_page payload in
+      return (Stdlib.List.hd hash_chain |> fst)
   end
 
   module V0 =

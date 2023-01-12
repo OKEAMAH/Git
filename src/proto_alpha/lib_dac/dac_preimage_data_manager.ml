@@ -41,23 +41,32 @@ let () =
       | Cannot_write_dac_page_to_disk b58_hash -> Some b58_hash | _ -> None)
     (fun b58_hash -> Cannot_write_dac_page_to_disk b58_hash)
 
-module type REVEAL_HASH = module type of Sc_rollup_reveal_hash
+module type REVEAL_HASH_WITH_SCHEME = sig
+  include module type of Sc_rollup_reveal_hash
 
-module Make (Hash : REVEAL_HASH) = struct
+  val scheme : Sc_rollup_reveal_hash.supported_hashes
+end
+
+module Make (Hash : REVEAL_HASH_WITH_SCHEME) = struct
   let path data_dir hash =
     let hash = Hash.to_hex hash in
     Filename.(concat data_dir hash)
 
-  let save_bytes data_dir hash page_contents =
+  let save_bytes data_dir page_contents =
     let open Lwt_result_syntax in
+    let hash = Hash.hash_bytes ~scheme:Hash.scheme [page_contents] in
     let path = path data_dir hash in
     let*! result =
       Lwt_utils_unix.with_atomic_open_out path @@ fun chan ->
       Lwt_utils_unix.write_bytes chan page_contents
     in
     match result with
-    | Ok () -> return ()
+    | Ok () -> return hash
     | Error _ -> tzfail @@ Cannot_write_dac_page_to_disk (Hash.to_hex hash)
 end
 
-module Reveal_hash = Make (Sc_rollup_reveal_hash)
+module Reveal_hash = Make (struct
+  include Sc_rollup_reveal_hash
+
+  let scheme = Sc_rollup_reveal_hash.Blake2B
+end)

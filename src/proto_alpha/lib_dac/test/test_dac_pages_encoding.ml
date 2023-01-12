@@ -187,7 +187,7 @@ Allor si mosse, e io li tenni dietro.|}
 module type BACKEND = sig
   type h
 
-  val save_page : h * bytes -> (unit, error trace) result Lwt.t
+  val save_page : bytes -> (h, error trace) result Lwt.t
 
   val load_page : h -> (bytes, error trace) result Lwt.t
 
@@ -206,14 +206,15 @@ module Hashes_Map_backend () = struct
 
   let backend = ref Hashes_map.empty
 
-  let save_page (hash, bytes) =
+  let save_page bytes =
     let open Lwt_result_syntax in
+    let hash = Sc_rollup_reveal_hash.(hash_bytes ~scheme:Blake2B) [bytes] in
     match Hashes_map.find hash !backend with
     | None ->
         let () = backend := Hashes_map.add hash bytes !backend in
-        return_unit
+        return hash
     | Some old_bytes ->
-        if Bytes.equal old_bytes bytes then return_unit
+        if Bytes.equal old_bytes bytes then return hash
         else tzfail @@ Page_already_saved hash
 
   let load_page hash =
@@ -475,6 +476,10 @@ module Hash_chain = struct
   module V0 = struct
     module Pagination_scheme = Dac_pages_encoding.Hash_chain.V0
 
+    let hash bytes = Sc_rollup_reveal_hash.(hash_bytes ~scheme:Blake2B) [bytes]
+
+    let to_hex hash = Sc_rollup_reveal_hash.to_hex hash
+
     let deserialize_page page :
         [`Node of Sc_rollup_reveal_hash.t * string | `Leaf of string] =
       if String.length page > 3996 then
@@ -501,41 +506,43 @@ module Hash_chain = struct
 
     let test_make_chain_hash_one_page () =
       let open Lwt_result_syntax in
+      let module Backend = Hashes_Map_backend () in
       let payload = Bytes.of_string "simple payload" in
-      let*? pages = Pagination_scheme.make_hash_chain payload in
+      let* pages =
+        Lwt.map Environment.wrap_tzresult
+        @@ Pagination_scheme.make_hash_chain
+             ~for_each_page:Backend.save_page
+             payload
+      in
       let* () = Assert.equal_int ~loc:__LOC__ 1 (List.length pages) in
       let actual_hash, content = Stdlib.List.hd pages in
       let* () =
         assert_equal_bytes ~loc:__LOC__ "Contents not equal" payload content
       in
-      let expected_hash =
-        Pagination_scheme.to_hex @@ Pagination_scheme.hash content
-      in
-      Assert.equal_string
-        ~loc:__LOC__
-        expected_hash
-        (Pagination_scheme.to_hex actual_hash)
+      let expected_hash = to_hex @@ hash content in
+      Assert.equal_string ~loc:__LOC__ expected_hash (to_hex actual_hash)
 
     let test_make_chain_hash_long () =
       let open Lwt_result_syntax in
+      let module Backend = Hashes_Map_backend () in
       let payload = Bytes.of_string long_payload in
-      let*? pages = Pagination_scheme.make_hash_chain payload in
+      let* pages =
+        Lwt.map Environment.wrap_tzresult
+        @@ Pagination_scheme.make_hash_chain
+             ~for_each_page:Backend.save_page
+             payload
+      in
       let* () = Assert.equal_int ~loc:__LOC__ 2 (List.length pages) in
       let head_succ =
         Stdlib.List.hd pages |> snd |> fun byt ->
         take_after (String.of_bytes byt) (3996 + String.length " hash:")
       in
       let next_hash, content = Stdlib.List.nth pages 1 in
-      let* () =
-        Assert.equal_string
-          ~loc:__LOC__
-          (Pagination_scheme.to_hex next_hash)
-          head_succ
-      in
+      let* () = Assert.equal_string ~loc:__LOC__ (to_hex next_hash) head_succ in
       Assert.equal_string
         ~loc:__LOC__
-        (Pagination_scheme.to_hex next_hash)
-        (Pagination_scheme.to_hex @@ Pagination_scheme.hash content)
+        (to_hex next_hash)
+        (to_hex @@ hash content)
 
     let test_serialize () =
       let module Backend = Hashes_Map_backend () in
