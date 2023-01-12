@@ -792,23 +792,6 @@ let get_chain_block_context_sc_rollups_sc_rollup_genesis_info ?(chain = "main")
     ]
     Fun.id
 
-let get_chain_block_context_sc_rollups_sc_rollup_stakers_commitments
-    ?(chain = "main") ?(block = "head") sc_rollup =
-  make
-    GET
-    [
-      "chains";
-      chain;
-      "blocks";
-      block;
-      "context";
-      "sc_rollups";
-      "sc_rollup";
-      sc_rollup;
-      "stakers_commitments";
-    ]
-    Fun.id
-
 let get_chain_block_context_sc_rollups_sc_rollup_last_cemented_commitment_hash_with_level
     ?(chain = "main") ?(block = "head") sc_rollup =
   make
