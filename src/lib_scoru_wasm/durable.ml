@@ -62,7 +62,7 @@ type key = Writeable of string list | Readonly of string list
 
 (* A key is bounded to 250 bytes, including the implicit '/durable' prefix.
    Additionally, values are implicitly appended with '_'. **)
-let max_key_length = 250 - String.length "/durable" - String.length "/@"
+let max_key_length = 250 - String.length "/durable" - String.length "/_"
 
 let key_of_string_exn s =
   if String.length s > max_key_length then raise (Invalid_key s) ;
@@ -112,8 +112,8 @@ let key_contents = function Readonly k | Writeable k -> k
 
 let find_value tree key =
   let open Lwt.Syntax in
-  let key = key_contents key in
-  let* opt = T.find_tree tree @@ to_value_key key in
+  let key = to_value_key (key_contents key) in
+  let* opt = T.find_tree tree key in
   match opt with
   | None -> Lwt.return_none
   | Some subtree ->
