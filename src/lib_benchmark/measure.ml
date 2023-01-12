@@ -107,6 +107,28 @@ let options_encoding =
           (req "minor_heap_size" heap_size_encoding)
           (req "config_file" (option string)))
 
+
+let rfc3339_encoding =
+  let of_tm tm =
+    let (time_s,_) = Unix.mktime tm in
+    let ptime = WithExceptions.Option.get ~loc:__LOC__  @@ Ptime.of_float_s @@ time_s in
+    Ptime.to_rfc3339 ~tz_offset_s:0 ptime
+  in
+  let to_tm rfc3339_string =
+    Ptime.of_rfc3339 ~strict:true rfc3339_string
+    |> Ptime.rfc3339_error_to_msg
+    |> Result.map_error (function `Msg e -> e)
+    |> Result.map (fun (utc,_,_) ->
+      let seconds = Ptime.to_float_s utc in
+      Unix.gmtime seconds
+      )
+  in
+(* let strip_msg =  Result.map_error (fun `Msg s -> s) in *)
+  Data_encoding.conv_with_guard (fun tm -> of_tm tm ) (fun str -> to_tm str) Data_encoding.string
+
+
+
+(* Encoding for workload data files for compatabilty *)
 let unix_tm_encoding : Unix.tm Data_encoding.encoding =
   let to_tuple tm =
     let open Unix in
@@ -183,7 +205,8 @@ let measurement_encoding workload_encoding =
        (obj3
           (req "benchmark_options" options_encoding)
           (req "workload_data" (workload_data_encoding workload_encoding))
-          (req "date" unix_tm_encoding))
+          (req "date" rfc3339_encoding))
+
 
 let serialized_workload_encoding =
   let open Data_encoding in

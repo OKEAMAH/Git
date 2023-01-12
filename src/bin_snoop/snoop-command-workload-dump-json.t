@@ -1,5 +1,5 @@
-Missing config file prints
-  $ ./main_snoop.exe benchmark proto/alpha/interpreter/N_IBlake2b and save to data.workload --bench-num 2 --nsamples 3 2>&1 | sed s'/stats over all benchmarks:.*/stats <hidden>/'
+Run benchmark to dump json data later
+  $ ./main_snoop.exe benchmark proto/alpha/interpreter/N_IBlake2b and save to data.workload --bench-num 2 --nsamples 3  2>&1 | grep -v benchmarking|sed s'/stats over all benchmarks:.*/stats <hidden>/'
   Model N_IOpt_map__alpha already registered for code generation! (overloaded instruction?) Ignoring.
   Model N_ILambda__alpha already registered for code generation! (overloaded instruction?) Ignoring.
   Model N_ISapling_verify_update__alpha already registered for code generation! (overloaded instruction?) Ignoring.
@@ -27,26 +27,15 @@ Missing config file prints
     "sapling": { "sapling_txs_file": "/no/such/file", "seed": null },
     "comb": { "max_depth": 1000 },
     "compare": { "type_size": { "min": 1, "max": 15 } } }
-  benchmarking 1/2benchmarking 2/2
   stats <hidden>
 
-benchmarking 1/2
-benchmarking 2/2
-
-benchmarking 1/1
-
-Dump workload json.
-  $ ./main_snoop.exe workload dump data.workload to data.json | grep -v "already registered" ; jq '(.measurement_data.date |= "DATE") | (.measurement_data.workload_data |= map((.measures |= map("TIME")) | (.workload[0][1][0][1] |= "SIZE")))'  < data.json
-  Model N_IOpt_map__alpha already registered for code generation! (overloaded instruction?) Ignoring.
-  Model N_ILambda__alpha already registered for code generation! (overloaded instruction?) Ignoring.
-  Model N_ISapling_verify_update__alpha already registered for code generation! (overloaded instruction?) Ignoring.
-  Model N_ISapling_verify_update__alpha already registered for code generation! (overloaded instruction?) Ignoring.
-  Model N_ISapling_verify_update__alpha already registered for code generation! (overloaded instruction?) Ignoring.
-  Model N_KIter__alpha already registered for code generation! (overloaded instruction?) Ignoring.
-  Model N_KList_enter_body__alpha already registered for code generation! (overloaded instruction?) Ignoring.
-  Model N_KMap_enter_body__alpha already registered for code generation! (overloaded instruction?) Ignoring.
+Dump workload json to file
+  $ ./main_snoop.exe workload dump data.workload to data.json 2>&1 |grep -v "already registered for code"
   Measure.load: loaded data.workload
   Measure.packed_measurement_save_json: saved to data.json
+
+Echo data.json file.
+  $ cat data.json | jq  '(.measurement_data.date |= "DATE") | (.measurement_data.workload_data |= map((.measures |= map("TIME")) | (.workload[0][1][0][1] |= "SIZE")))'
   {
     "benchmark_namespace": [
       "proto",
