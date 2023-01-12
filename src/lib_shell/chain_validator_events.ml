@@ -184,6 +184,9 @@ let branch_switch =
     ("timestamp", Time.Protocol.encoding)
     ("fitness", Fitness.encoding)
 
+let error_for_test =
+  declare_0 ~section ~name:"error_for_test" ~msg:"It's an error" ~level:Error ()
+
 let head_increment =
   declare_4
     ~section

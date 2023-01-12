@@ -1337,6 +1337,16 @@ module Lwt_worker_logger = struct
           errs
 end
 
+module Color = struct
+  let reset = "\027[0m"
+
+  module FG = struct
+    let red = "\027[31m"
+
+    let yellow = "\027[33m"
+  end
+end
+
 module Lwt_log_sink = struct
   (* let default_template = "$(date) - $(section): $(message)" *)
 
@@ -1360,6 +1370,12 @@ module Lwt_log_sink = struct
     let handle (type a) () m ?section (ev : a) =
       let open Lwt_syntax in
       let module M = (val m : EVENT_DEFINITION with type t = a) in
+      let color, reset_color =
+        let open Color in
+        if M.level = Warning then (FG.yellow, reset)
+        else if M.level = Error then (FG.red, reset)
+        else ("", "")
+      in
       protect (fun () ->
           let section =
             Option.fold ~some:Section.to_lwt_log section ~none:default_section
@@ -1367,9 +1383,11 @@ module Lwt_log_sink = struct
           let* () =
             Format.kasprintf
               (Lwt_log_core.log ~section ~level:M.level)
-              "%a"
+              "%s%a%s"
+              color
               (M.pp ~short:false)
               ev
+              reset_color
           in
           return_ok_unit)
 
