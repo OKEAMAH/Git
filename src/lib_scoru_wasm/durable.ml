@@ -28,7 +28,7 @@ module Runner = Tezos_tree_encoding.Runner.Make (Tezos_tree_encoding.Wrapped)
 module E = Tezos_tree_encoding
 module Storage = Tezos_webassembly_interpreter.Durable_storage
 
-type t = T.tree
+type t = Tezos_webassembly_interpreter.Durable_storage.t
 
 (* The maximum size of bytes allowed to be read/written at once. *)
 let max_store_io_size = 2048L
@@ -49,14 +49,13 @@ exception IO_too_large
 
 exception Readonly_value
 
-let encoding = E.wrapped_tree
+let encoding = E.(lazy_fs chunked_byte_vector)
 
-let of_storage ~default s =
-  match Storage.to_tree s with Some t -> T.select t | None -> default
+let of_storage ~default:_ s = s
 
-let of_storage_exn s = T.select @@ Storage.to_tree_exn s
+let of_storage_exn s = s
 
-let to_storage d = Storage.of_tree @@ T.wrap d
+let to_storage d = d
 
 type key = Writeable of string list | Readonly of string list
 
@@ -89,18 +88,6 @@ let key_of_string_exn s =
 let key_of_string_opt s =
   try Some (key_of_string_exn s) with Invalid_key _ -> None
 
-(** We append all values with '@', which is an invalid key-character w.r.t.
-    external use.
-
-    This ensures that an external user is prevented from accidentally writing a
-    value to a place which is part of another value (e.g. writing a
-    chunked_byte_vector to "/a/length", where "/a/length" previously existed as
-    part of another chunked_byte_vector encoding.)
-*)
-let value_marker = "@"
-
-let to_value_key k = List.append k [value_marker]
-
 let assert_key_writeable = function
   | Readonly _ -> raise Readonly_value
   | Writeable _ -> ()
@@ -110,15 +97,9 @@ let assert_max_bytes max_bytes =
 
 let key_contents = function Readonly k | Writeable k -> k
 
-let find_value tree key =
-  let open Lwt.Syntax in
-  let key = to_value_key (key_contents key) in
-  let* opt = T.find_tree tree key in
-  match opt with
-  | None -> Lwt.return_none
-  | Some subtree ->
-      let+ value = Runner.decode E.chunked_byte_vector subtree in
-      Some value
+let find_value (tree : t) key =
+  let key = key_contents key in
+  Tezos_lazy_containers.Lazy_fs.find tree key
 
 let find_value_exn tree key =
   let open Lwt.Syntax in
@@ -126,34 +107,37 @@ let find_value_exn tree key =
   match opt with None -> raise Value_not_found | Some value -> value
 
 (** helper function used in the copy/move *)
-let find_tree_exn tree key =
+let find_tree_exn (tree : t) key =
   let open Lwt.Syntax in
   let key = key_contents key in
-  let+ opt = T.find_tree tree key in
+  let+ opt = Tezos_lazy_containers.Lazy_fs.find_tree tree key in
   match opt with None -> raise Tree_not_found | Some subtree -> subtree
 
-let copy_tree_exn tree ?(edit_readonly = false) from_key to_key =
+let copy_tree_exn (tree : t) ?(edit_readonly = false) from_key to_key =
   let open Lwt.Syntax in
   if not edit_readonly then assert_key_writeable to_key ;
   let* move_tree = find_tree_exn tree from_key in
   let to_key = key_contents to_key in
-  T.add_tree tree to_key move_tree
+  Tezos_lazy_containers.Lazy_fs.add_tree tree to_key move_tree
 
-let count_subtrees tree key = T.length tree @@ key_contents key
-
-let delete ?(edit_readonly = false) tree key =
-  if not edit_readonly then assert_key_writeable key ;
-  T.remove tree @@ key_contents key
-
-let subtree_name_at tree key index =
+let count_subtrees (tree : t) key =
   let open Lwt.Syntax in
-  let* subtree = find_tree_exn tree key in
-  let* list = T.list ~offset:index ~length:1 subtree [] in
-  let nth = List.nth list 0 in
-  match nth with
-  | Some (step, _) when Compare.String.(step = value_marker) -> Lwt.return ""
-  | Some (step, _) -> Lwt.return step
-  | None -> raise (Index_too_large index)
+  let key = key_contents key in
+  let+ tree = Tezos_lazy_containers.Lazy_fs.find_tree tree key in
+  match tree with
+  | Some tree ->
+      Tezos_lazy_containers.Lazy_dirs.length tree.dirs
+      + Option.fold ~none:0 ~some:(fun _ -> 1) tree.content
+  | None -> 0
+
+let delete ?(edit_readonly = false) (tree : t) key : t Lwt.t =
+  if not edit_readonly then assert_key_writeable key ;
+  Tezos_lazy_containers.Lazy_fs.remove tree (key_contents key)
+
+let subtree_name_at tree key (index : int) : string Lwt.t =
+  let open Lwt.Syntax in
+  let+ tree = find_tree_exn tree key in
+  Tezos_lazy_containers.Lazy_fs.nth_name tree index
 
 let move_tree_exn tree from_key to_key =
   let open Lwt.Syntax in
@@ -161,28 +145,34 @@ let move_tree_exn tree from_key to_key =
   assert_key_writeable to_key ;
   let* move_tree = find_tree_exn tree from_key in
   let* tree = delete tree from_key in
-  T.add_tree tree (key_contents to_key) move_tree
+  Tezos_lazy_containers.Lazy_fs.add_tree tree (key_contents to_key) move_tree
 
-let hash tree key =
+let hash (tree : t) key : Context_hash.t option Lwt.t =
   let open Lwt.Syntax in
-  let+ opt = T.find_tree tree @@ to_value_key @@ key_contents key in
-  Option.map (fun subtree -> T.hash subtree) opt
+  let key = key_contents key in
+  let* content = Tezos_lazy_containers.Lazy_fs.find tree key in
+  match content with
+  | Some content ->
+      let+ content =
+        Tezos_lazy_containers.Chunked_byte_vector.to_string content
+      in
+      Some (Context_hash.hash_string [content])
+  | None -> Lwt.return_none
 
 let hash_exn tree key =
   let open Lwt.Syntax in
   let+ opt = hash tree key in
   match opt with None -> raise Value_not_found | Some hash -> hash
 
-let set_value_exn tree ?(edit_readonly = false) key str =
+let set_value_exn (tree : t) ?(edit_readonly = false) key str =
   if not edit_readonly then assert_key_writeable key ;
-  let key = to_value_key @@ key_contents key in
-  let encoding = E.scope key E.chunked_byte_vector in
-  Runner.encode
-    encoding
-    (Tezos_lazy_containers.Chunked_byte_vector.of_string str)
+  let key = key_contents key in
+  Tezos_lazy_containers.Lazy_fs.add
     tree
+    key
+    (Tezos_lazy_containers.Chunked_byte_vector.of_string str)
 
-let write_value_exn tree ?(edit_readonly = false) key offset bytes =
+let write_value_exn (tree : t) ?(edit_readonly = false) key offset bytes =
   if not edit_readonly then assert_key_writeable key ;
 
   let open Lwt.Syntax in
@@ -190,13 +180,10 @@ let write_value_exn tree ?(edit_readonly = false) key offset bytes =
   let num_bytes = Int64.of_int @@ String.length bytes in
   assert_max_bytes num_bytes ;
 
-  let key = to_value_key @@ key_contents key in
-  let* opt = T.find_tree tree key in
-  let encoding = E.scope key E.chunked_byte_vector in
-  let* value =
-    match opt with
-    | None -> Lwt.return @@ Chunked_byte_vector.allocate 0L
-    | Some _subtree -> Runner.decode encoding tree
+  let key = key_contents key in
+  let* opt = Tezos_lazy_containers.Lazy_fs.find tree key in
+  let value =
+    match opt with None -> Chunked_byte_vector.allocate 0L | Some cbv -> cbv
   in
   let vec_len = Chunked_byte_vector.length value in
   if offset > vec_len then raise (Out_of_bounds (offset, vec_len)) ;
@@ -205,7 +192,7 @@ let write_value_exn tree ?(edit_readonly = false) key offset bytes =
   let* () =
     Chunked_byte_vector.store_bytes value offset @@ Bytes.of_string bytes
   in
-  Runner.encode encoding value tree
+  Tezos_lazy_containers.Lazy_fs.add tree key value
 
 let read_value_exn tree key offset num_bytes =
   let open Lwt.Syntax in

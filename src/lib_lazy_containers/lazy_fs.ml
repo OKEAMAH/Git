@@ -25,6 +25,8 @@
 
 type 'a t = {content : 'a option; dirs : 'a t Lazy_dirs.t}
 
+let empty () = {content = None; dirs = Lazy_dirs.create ()}
+
 let rec find_tree tree key =
   let open Lwt.Syntax in
   match key with

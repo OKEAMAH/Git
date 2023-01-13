@@ -25,7 +25,7 @@
 
 (** [t] allows a [wrapped_tree] to be manipulated as a tree of
     [chunked_byte_vector] *)
-type t
+type t = Tezos_webassembly_interpreter.Durable_storage.t
 
 (** [key] was too long, or contained invalid steps. *)
 exception Invalid_key of string
