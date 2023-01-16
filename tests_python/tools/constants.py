@@ -96,7 +96,7 @@ LIMA_FOLDER = "proto_015_PtLimaPt"
 LIMA_PARAMETERS = get_parameters(LIMA_FOLDER)
 LIMA_NUMBER = 15
 
-MUMBAI = "PtMumbaiiFFEGbew1rRjzSPyzRbA51Tm3RVZL5suHPxSZYDhCEc"
+MUMBAI = "PtMumbaiveNjgvoAng9E3AtNqtBtCQWqpXJdPEdAanAYCZbCgey"
 MUMBAI_DAEMON = "PtMumbai"
 MUMBAI_FOLDER = "proto_016_PtMumbai"
 MUMBAI_PARAMETERS = get_parameters(MUMBAI_FOLDER)
