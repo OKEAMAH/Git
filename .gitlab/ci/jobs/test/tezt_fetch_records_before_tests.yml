@@ -1,0 +1,15 @@
+# Fetch records for Tezt autobalancing stored in last succesful
+# pipeline on the default branch.
+tezt:fetch-records:
+  extends:
+    - .build_template
+  stage: build
+  script:
+    - make -C ${CI_PROJECT_DIR}/.gitlab/ci test-tezt-fetch-records-before-tests
+  allow_failure: true
+  artifacts:
+    paths:
+      - tezt-fetch-records.log
+      - tezt/records/*.json
+    # Always store artifacts to have the logs for debugging
+    when: always

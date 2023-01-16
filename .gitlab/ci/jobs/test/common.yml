@@ -36,10 +36,10 @@
   extends:
     - .test_template
     - .template__coverage_files
-  dependencies: ["build_x86_64"]
+  dependencies: ["build_x86_64", "tezt:fetch-records"]
   # Start immediately after 'build_x86_64' and don't wait for
   # intermediate stages to succeed
-  needs: ["build_x86_64"]
+  needs: ["build_x86_64", "tezt:fetch-records"]
 
 # definition for the environment to run all integration tests
 # integration tests are run only on x86_64 architectures (for now)
