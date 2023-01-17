@@ -60,7 +60,9 @@ module Types = struct
      Add missing DAL profiles. *)
   type dal_profile = Attestor of Tezos_crypto.Signature.public_key_hash
 
-  type profile = DAL of dal_profile
+  type dac_profile = Coordinator | Member | Observer
+
+  type profile = DAL of dal_profile | DAC of dac_profile
 
   (* Auxiliary functions.  *)
 
@@ -124,13 +126,24 @@ module Types = struct
             (obj1 (req "commitment" Cryptobox.Commitment.encoding))
             header_status_encoding))
 
-  let equal_profile (DAL (Attestor p1)) (DAL (Attestor p2)) =
-    Tezos_crypto.Signature.Public_key_hash.( = ) p1 p2
+  let equal_dal_profile (Attestor dal1) (Attestor dal2) =
+    Tezos_crypto.Signature.Public_key_hash.( = ) dal1 dal2
+
+  let equal_dac_profile = function
+    | Coordinator, Coordinator | Member, Member | Observer, Observer -> true
+    | _ -> false
+
+  let equal_profile p1 p2 =
+    match (p1, p2) with
+    | DAL dal1, DAL dal2 -> equal_dal_profile dal1 dal2
+    | DAC dac1, DAC dac2 -> equal_dac_profile (dac1, dac2)
+    | _ -> false
 
   let profile_encoding =
     let open Data_encoding in
     union
       [
+        (* DAL profiles *)
         case
           ~title:"Attestor with pkh"
           (Tag 0)
@@ -140,8 +153,34 @@ module Types = struct
              (req
                 "public_key_hash"
                 Tezos_crypto.Signature.Public_key_hash.encoding))
-          (function DAL (Attestor attest) -> Some ((), (), attest))
+          (function
+            | DAL (Attestor attest) -> Some ((), (), attest) | _ -> None)
           (function (), (), attest -> DAL (Attestor attest));
+        (* DAC profiles *)
+        case
+          ~title:"DAC Coordinator"
+          (Tag 1)
+          (obj2
+             (req "kind" (constant "DAC"))
+             (req "profile" (constant "coordinator")))
+          (function DAC Coordinator -> Some ((), ()) | _ -> None)
+          (function (), () -> DAC Coordinator);
+        case
+          ~title:"DAC Member"
+          (Tag 2)
+          (obj2
+             (req "kind" (constant "DAC"))
+             (req "profile" (constant "member")))
+          (function DAC Member -> Some ((), ()) | _ -> None)
+          (function (), () -> DAC Member);
+        case
+          ~title:"DAC Observer"
+          (Tag 3)
+          (obj2
+             (req "kind" (constant "DAC"))
+             (req "profile" (constant "observer")))
+          (function DAC Observer -> Some ((), ()) | _ -> None)
+          (function (), () -> DAC Observer);
       ]
 
   (* String parameters queries. *)
