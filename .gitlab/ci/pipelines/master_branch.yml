@@ -11,6 +11,7 @@ include:
 
   # Stage: test_reports
   - .gitlab/ci/jobs/test_reports/coverage_default.yml
+  - .gitlab/ci/jobs/test_reports/tezt_fetch_records_from_merged.yml
 
   # Stage: doc
   - .gitlab/ci/jobs/doc/publish.yml

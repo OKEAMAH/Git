@@ -69,6 +69,11 @@ test-tezt-fetch-records-before-tests:
 	cd ${CI_PROJECT_DIR} && \
 		dune exec tezt/records/update.exe -- --log-file tezt-fetch-records.log --test-arg from=last-default-branch-push --info
 
+.PHONY: test-tezt-fetch-records-from-merged
+test-tezt-fetch-records-from-merged:
+	cd ${CI_PROJECT_DIR} && \
+		dune exec tezt/records/update.exe -- --log-file tezt-fetch-records.log --test-arg from=last-merged-pipeline --info
+
 .PHONY: test-pytest-example
 test-pytest-example:
 	cd ${CI_PROJECT_DIR}/tests_python && \
