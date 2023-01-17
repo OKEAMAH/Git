@@ -292,7 +292,9 @@ module Dal : sig
 
     type dal_profile = Attestor of string
 
-    type profile = DAL of dal_profile
+    type dac_profile = Coordinator | Member | Observer
+
+    type profile = DAL of dal_profile | DAC of dac_profile
 
     (** Information contained in a slot header fetched from the DAL node. *)
     type slot_header = {

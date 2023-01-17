@@ -675,7 +675,9 @@ module Dal = struct
 
     type dal_profile = Attestor of string
 
-    type profile = DAL of dal_profile
+    type dac_profile = Coordinator | Member | Observer
+
+    type profile = DAL of dal_profile | DAC of dac_profile
 
     type slot_header = {
       slot_level : int;
@@ -683,6 +685,19 @@ module Dal = struct
       commitment : string;
       status : string;
     }
+
+    let equal_dal_profile (Attestor dal1) (Attestor dal2) =
+      String.equal dal1 dal2
+
+    let equal_dac_profile = function
+      | Coordinator, Coordinator | Member, Member | Observer, Observer -> true
+      | _ -> false
+
+    let equal_profile p1 p2 =
+      match (p1, p2) with
+      | DAL dal1, DAL dal2 -> equal_dal_profile dal1 dal2
+      | DAC dac1, DAC dac2 -> equal_dac_profile (dac1, dac2)
+      | _ -> false
 
     let slot_header_of_json json =
       let open JSON in
@@ -752,6 +767,12 @@ module Dal = struct
               ("profile", `String "attestor");
               ("public_key_hash", `String pkh);
             ]
+      | DAC Coordinator ->
+          `O [("kind", `String "DAC"); ("profile", `String "coordinator")]
+      | DAC Member ->
+          `O [("kind", `String "DAC"); ("profile", `String "member")]
+      | DAC Observer ->
+          `O [("kind", `String "DAC"); ("profile", `String "observer")]
 
     let profiles_of_json json =
       let json_field_value json ~field = JSON.(get field json |> as_string) in
@@ -764,6 +785,12 @@ module Dal = struct
                      DAL
                        (Attestor (json_field_value ~field:"public_key_hash" obj))
                  | _ -> failwith "Invalid DAL profile")
+             | "DAC" -> (
+                 match json_field_value ~field:"profile" obj with
+                 | "coordinator" -> DAC Coordinator
+                 | "member" -> DAC Member
+                 | "observer" -> DAC Observer
+                 | _ -> failwith "Invalid DAC profile")
              | _ -> failwith "Invalid profile kind")
 
     let patch_profile profile =
@@ -840,12 +867,15 @@ module Dal = struct
 
     type profiles = RPC.profile list
 
+    let pp_profile ppf profile =
+      match profile with
+      | DAL (Attestor pkh) -> Format.fprintf ppf "DAL (Attestor %s) " pkh
+      | DAC Coordinator -> Format.print_string "DAC Coordinator"
+      | DAC Member -> Format.print_string "DAC Member"
+      | DAC Observer -> Format.print_string "DAC Observer"
+
     let profile_typ : profile Check.typ =
-      Check.equalable
-        (fun ppf (DAL (Attestor pkh)) ->
-          Format.fprintf ppf "(Attestor %s) " pkh)
-        (fun (DAL (Attestor att1)) (DAL (Attestor att2)) ->
-          String.equal att1 att2)
+      Check.equalable pp_profile equal_profile
 
     let profiles_typ : profiles Check.typ =
       let open Check in
