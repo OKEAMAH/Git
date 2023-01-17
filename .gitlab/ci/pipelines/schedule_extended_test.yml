@@ -8,8 +8,8 @@ include:
   - .gitlab/ci/jobs/test/integration_pytest_old_protocols.yml
   - .gitlab/ci/jobs/test/ometrics_code_quality_default.yml
 
-  # Stage: test_coverage
-  - .gitlab/ci/jobs/coverage/coverage_default.yml
+  # Stage: test_reports
+  - .gitlab/ci/jobs/test_reports/coverage_default.yml
 
   # Stage: packaging
   - .gitlab/ci/jobs/packaging/opam_prepare.yml

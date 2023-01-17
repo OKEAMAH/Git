@@ -34,9 +34,9 @@ include:
   - .gitlab/ci/jobs/test/tezt_build_long.yml
   - .gitlab/ci/jobs/test/tezt_self_tests.yml
 
-  # Stage: test_coverage
+  # Stage: test_reports
   # Only run on merge requests that do not have the label `ci--no-coverage`
-  - local: .gitlab/ci/jobs/coverage/coverage.yml
+  - local: .gitlab/ci/jobs/test_reports/coverage.yml
     rules:
       - if: '$CI_MERGE_REQUEST_LABELS !~ /(?:^|[,])ci--no-coverage(?:$|[,])/'
 

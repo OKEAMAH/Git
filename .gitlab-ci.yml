@@ -78,7 +78,7 @@ stages:
   - sanity
   - build
   - test
-  - test_coverage
+  - test_reports
   - packaging
   - doc
   - prepare_release

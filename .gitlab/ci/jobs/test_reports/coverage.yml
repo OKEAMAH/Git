@@ -2,7 +2,7 @@
 # This job fetches coverage files by precedent test stage. It creates the html,
 # summary and cobertura reports. It also provide a coverage % for the merge request.
 
-include: .gitlab/ci/jobs/coverage/common.yml
+include: .gitlab/ci/jobs/test_reports/common.yml
 
 unified_coverage:
   extends:

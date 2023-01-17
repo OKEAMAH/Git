@@ -1,6 +1,6 @@
 .template__coverage_report:
   extends: .template__coverage
-  stage: test_coverage
+  stage: test_reports
   before_script:
     # Load the environment poetry previously created in the docker image
     # Give access to the Python dependencies/executables
