@@ -21,7 +21,10 @@ include: .gitlab/ci/jobs/test/common.yml
     # certain tests can be blacklisted by adding it to this variable
     when: always
   script:
+    # DEBUG!
+    - sha1sum tezt/records/*.json
     - make -C ${CI_PROJECT_DIR}/.gitlab/ci test-tezt
+    - sha1sum tezt-results-*.json
 
 tezt:
   extends:

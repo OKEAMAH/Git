@@ -5,7 +5,11 @@ tezt:fetch-records:
     - .build_template
   stage: build
   script:
+    # DEBUG!
+    - sha1sum tezt/records/*.json
     - make -C ${CI_PROJECT_DIR}/.gitlab/ci test-tezt-fetch-records-before-tests
+    # DEBUG!
+    - sha1sum tezt/records/*.json
   allow_failure: true
   artifacts:
     paths:
