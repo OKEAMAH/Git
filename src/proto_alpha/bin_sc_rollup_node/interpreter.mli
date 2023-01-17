@@ -42,6 +42,7 @@ module type S = sig
       ticks taken by the PVM for the evaluation and [tick] is the tick reached
       by the PVM after the evaluation. *)
   val process_head :
+    ?write_debug:Tezos_scoru_wasm.Builtins.write_debug ->
     Node_context.rw ->
     'a Context.t ->
     Layer1.head ->

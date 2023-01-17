@@ -36,6 +36,7 @@ module type S = sig
     Fueled_pvm.S with module PVM = PVM and type fuel = Fuel.Free.t
 
   val process_head :
+    ?write_debug:Tezos_scoru_wasm.Builtins.write_debug ->
     Node_context.rw ->
     'a Context.t ->
     Layer1.head ->
@@ -130,13 +131,14 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
   (** [transition_pvm node_ctxt predecessor head] runs a PVM at the
       previous state from block [predecessor] by consuming as many messages
       as possible from block [head]. *)
-  let transition_pvm node_ctxt ctxt predecessor Layer1.{hash = _; _}
-      inbox_messages =
+  let transition_pvm ?write_debug node_ctxt ctxt predecessor
+      Layer1.{hash = _; _} inbox_messages =
     let open Lwt_result_syntax in
     (* Retrieve the previous PVM state from store. *)
     let* ctxt, predecessor_state = state_of_head node_ctxt ctxt predecessor in
     let* eval_result =
       Free_pvm.eval_block_inbox
+        ?write_debug
         ~fuel:(Fuel.Free.of_ticks 0L)
         node_ctxt
         inbox_messages
@@ -163,7 +165,8 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     return (ctxt, num_messages, num_ticks, initial_tick)
 
   (** [process_head node_ctxt head] runs the PVM for the given head. *)
-  let process_head (node_ctxt : _ Node_context.t) ctxt head inbox_messages =
+  let process_head ?write_debug (node_ctxt : _ Node_context.t) ctxt head
+      inbox_messages =
     let open Lwt_result_syntax in
     let first_inbox_level =
       Raw_level.to_int32 node_ctxt.genesis_info.level |> Int32.succ
@@ -172,7 +175,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
       let* predecessor =
         Layer1.get_predecessor node_ctxt.Node_context.l1_ctxt head
       in
-      transition_pvm node_ctxt ctxt predecessor head inbox_messages
+      transition_pvm ?write_debug node_ctxt ctxt predecessor head inbox_messages
     else if head.Layer1.level = Raw_level.to_int32 node_ctxt.genesis_info.level
     then
       let* ctxt, state = genesis_state head.hash node_ctxt ctxt in

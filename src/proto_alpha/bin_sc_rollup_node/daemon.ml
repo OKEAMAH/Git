@@ -245,8 +245,8 @@ module Make (PVM : Pvm.S) = struct
     let*! () = Node_context.mark_finalized_head node_ctxt hash in
     return_unit
 
-  let process_head (node_ctxt : _ Node_context.t) Layer1.({hash; level} as head)
-      =
+  let process_head ?write_debug (node_ctxt : _ Node_context.t)
+      Layer1.({hash; level} as head) =
     let open Lwt_result_syntax in
     let*! () = Daemon_event.head_processing hash level ~finalized:false in
     let*! () = Node_context.save_level node_ctxt head in
@@ -262,7 +262,12 @@ module Make (PVM : Pvm.S) = struct
     (* Avoid triggering the pvm execution if this has been done before for
        this head. *)
     let* ctxt, _num_messages, num_ticks, initial_tick =
-      Components.Interpreter.process_head node_ctxt ctxt head (inbox, messages)
+      Components.Interpreter.process_head
+        ?write_debug
+        node_ctxt
+        ctxt
+        head
+        (inbox, messages)
     in
     let*! context_hash = Context.commit ctxt in
     let* {Layer1.hash = predecessor; _} =
@@ -329,7 +334,7 @@ module Make (PVM : Pvm.S) = struct
      also processes any missing blocks that were not processed. Every time a
      head is processed we also process head~2 as finalized (which may recursively
      imply the processing of head~3, etc). *)
-  let on_layer_1_head node_ctxt head =
+  let on_layer_1_head ?write_debug node_ctxt head =
     let open Lwt_result_syntax in
     let*! old_head = Node_context.last_processed_head_opt node_ctxt in
     let old_head =
@@ -367,7 +372,9 @@ module Make (PVM : Pvm.S) = struct
           })
     in
     let*! () = Daemon_event.processing_heads_iteration reorg.new_chain in
-    let* () = List.iter_es (process_head node_ctxt) reorg.new_chain in
+    let* () =
+      List.iter_es (process_head ?write_debug node_ctxt) reorg.new_chain
+    in
     let* () = Components.Commitment.publish_commitments node_ctxt in
     let* () = Components.Commitment.cement_commitments node_ctxt in
     let* () = notify_injector node_ctxt new_head reorg in
@@ -394,33 +401,40 @@ module Make (PVM : Pvm.S) = struct
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2895
      Use Lwt_stream.fold_es once it is exposed. *)
   let daemonize configuration (node_ctxt : _ Node_context.t) =
-    let open Lwt_result_syntax in
-    let rec loop (l1_ctxt : Layer1.t) =
-      let*! () =
-        Lwt_stream.iter_s
-          (fun head ->
-            let open Lwt_syntax in
-            let* res = on_layer_1_head node_ctxt head in
-            match res with
-            | Ok () -> return_unit
-            | Error trace when is_connection_error trace ->
-                Format.eprintf
-                  "@[<v 2>Connection error:@ %a@]@."
-                  pp_print_trace
-                  trace ;
-                l1_ctxt.stopper () ;
-                return_unit
-            | Error e ->
-                Format.eprintf "%a@.Exiting.@." pp_print_trace e ;
-                let* _ = Lwt_exit.exit_and_wait 1 in
-                return_unit)
-          l1_ctxt.heads
-      in
-      let*! () = Event.connection_lost () in
-      let* l1_ctxt = Layer1.reconnect configuration node_ctxt.l1_ctxt in
-      loop l1_ctxt
-    in
-    protect @@ fun () -> Lwt.no_cancel @@ loop node_ctxt.l1_ctxt
+    Lwt_io.with_file
+      ~mode:Output
+      "/home/emma/sources/mondaynet/kernel.debug"
+      (fun log ->
+        let open Lwt_result_syntax in
+        let write_debug =
+          Tezos_scoru_wasm.Builtins.Printer (fun s -> Lwt_io.fprint log s)
+        in
+        let rec loop (l1_ctxt : Layer1.t) =
+          let*! () =
+            Lwt_stream.iter_s
+              (fun head ->
+                let open Lwt_syntax in
+                let* res = on_layer_1_head ~write_debug node_ctxt head in
+                match res with
+                | Ok () -> return_unit
+                | Error trace when is_connection_error trace ->
+                    Format.eprintf
+                      "@[<v 2>Connection error:@ %a@]@."
+                      pp_print_trace
+                      trace ;
+                    l1_ctxt.stopper () ;
+                    return_unit
+                | Error e ->
+                    Format.eprintf "%a@.Exiting.@." pp_print_trace e ;
+                    let* _ = Lwt_exit.exit_and_wait 1 in
+                    return_unit)
+              l1_ctxt.heads
+          in
+          let*! () = Event.connection_lost () in
+          let* l1_ctxt = Layer1.reconnect configuration node_ctxt.l1_ctxt in
+          loop l1_ctxt
+        in
+        protect @@ fun () -> Lwt.no_cancel @@ loop node_ctxt.l1_ctxt)
 
   let install_finalizer node_ctxt rpc_server =
     let open Lwt_syntax in

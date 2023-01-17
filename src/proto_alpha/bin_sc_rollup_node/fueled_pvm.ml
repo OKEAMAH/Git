@@ -41,6 +41,7 @@ module type S = sig
       evaluation results containing the new state, the number of messages, the
       inbox level and the remaining fuel. *)
   val eval_block_inbox :
+    ?write_debug:Tezos_scoru_wasm.Builtins.write_debug ->
     fuel:fuel ->
     _ Node_context.t ->
     Sc_rollup.Inbox.t * Sc_rollup.Inbox_message.t list ->
@@ -57,6 +58,7 @@ module type S = sig
       [reveal_map] is provided, it is used as an additional source of data for
       revelation ticks. *)
   val eval_messages :
+    ?write_debug:Tezos_scoru_wasm.Builtins.write_debug ->
     ?reveal_map:string Sc_rollup_reveal_hash.Map.t ->
     fuel:fuel ->
     _ Node_context.t ->
@@ -105,8 +107,8 @@ module Make (PVM : Pvm.S) = struct
         [message_index] at a given [level] and this is the [start_tick] of this
         message processing. If some [failing_ticks] are planned by the loser
         mode, they will be made. *)
-    let eval_until_input node_ctxt reveal_map level message_index ~fuel
-        start_tick failing_ticks state =
+    let eval_until_input ?write_debug node_ctxt reveal_map level message_index
+        ~fuel start_tick failing_ticks state =
       let open Lwt_result_syntax in
       let open Delayed_write_monad.Lwt_result_syntax in
       let metadata = Node_context.metadata node_ctxt in
@@ -142,17 +144,15 @@ module Make (PVM : Pvm.S) = struct
                      metadata));
           }
       in
-      let eval_tick fuel failing_ticks state =
+      let eval_tick
+          ?(write_debug = Tezos_scoru_wasm.Builtins.Printer Event.kernel_debug)
+          fuel failing_ticks state =
         let max_steps = F.max_ticks fuel in
         let normal_eval ?(max_steps = max_steps) state =
           Lwt.catch
             (fun () ->
               let*! state, executed_ticks =
-                PVM.eval_many
-                  ~reveal_builtins
-                  ~write_debug:(Printer Event.kernel_debug)
-                  ~max_steps
-                  state
+                PVM.eval_many ~reveal_builtins ~write_debug ~max_steps state
               in
               return (state, executed_ticks, failing_ticks))
             (function
@@ -192,20 +192,21 @@ module Make (PVM : Pvm.S) = struct
               return (state, executed_ticks, failing_ticks')
         | _ -> normal_eval state
       in
-      let rec go (fuel : fuel) current_tick failing_ticks state =
+      let rec go (fuel : fuel) ?write_debug current_tick failing_ticks state =
         let*! input_request = PVM.is_input_state state in
         if F.is_empty fuel then return (state, fuel, current_tick, failing_ticks)
         else
           match input_request with
           | No_input_required -> (
               let>* next_state, executed_ticks, failing_ticks =
-                eval_tick fuel failing_ticks state
+                eval_tick ?write_debug fuel failing_ticks state
               in
               let fuel_executed = F.of_ticks executed_ticks in
               match F.consume fuel_executed fuel with
               | None -> return (state, fuel, current_tick, failing_ticks)
               | Some fuel ->
                   go
+                    ?write_debug
                     fuel
                     (Int64.add current_tick executed_ticks)
                     failing_ticks
@@ -218,7 +219,12 @@ module Make (PVM : Pvm.S) = struct
               match F.consume F.one_tick_consumption fuel with
               | None -> return (state, fuel, current_tick, failing_ticks)
               | Some fuel ->
-                  go fuel (Int64.succ current_tick) failing_ticks next_state)
+                  go
+                    ?write_debug
+                    fuel
+                    (Int64.succ current_tick)
+                    failing_ticks
+                    next_state)
           | Needs_reveal Reveal_metadata -> (
               let*! next_state =
                 PVM.set_input (Reveal (Metadata metadata)) state
@@ -226,7 +232,12 @@ module Make (PVM : Pvm.S) = struct
               match F.consume F.one_tick_consumption fuel with
               | None -> return (state, fuel, current_tick, failing_ticks)
               | Some fuel ->
-                  go fuel (Int64.succ current_tick) failing_ticks next_state)
+                  go
+                    ?write_debug
+                    fuel
+                    (Int64.succ current_tick)
+                    failing_ticks
+                    next_state)
           | Needs_reveal (Request_dal_page page_id) -> (
               let>* content_opt =
                 Dal_pages_request.page_content
@@ -240,11 +251,16 @@ module Make (PVM : Pvm.S) = struct
               match F.consume F.one_tick_consumption fuel with
               | None -> return (state, fuel, current_tick, failing_ticks)
               | Some fuel ->
-                  go fuel (Int64.succ current_tick) failing_ticks next_state)
+                  go
+                    ?write_debug
+                    fuel
+                    (Int64.succ current_tick)
+                    failing_ticks
+                    next_state)
           | Initial | First_after _ ->
               return (state, fuel, current_tick, failing_ticks)
       in
-      go fuel start_tick failing_ticks state
+      go ?write_debug fuel start_tick failing_ticks state
 
     (** [mutate input] corrupts the payload of [input] for testing purposes. *)
     let mutate input =
@@ -260,12 +276,13 @@ module Make (PVM : Pvm.S) = struct
         [state] to the next step that requires an input. This function is
         controlled by some [fuel] and may introduce intended failures at some
         given [failing_ticks]. *)
-    let feed_input node_ctxt reveal_map level message_index ~fuel ~failing_ticks
-        state input =
+    let feed_input ?write_debug node_ctxt reveal_map level message_index ~fuel
+        ~failing_ticks state input =
       let open Lwt_result_syntax in
       let open Delayed_write_monad.Lwt_result_syntax in
       let>* state, fuel, tick, failing_ticks =
         eval_until_input
+          ?write_debug
           node_ctxt
           reveal_map
           level
@@ -294,6 +311,7 @@ module Make (PVM : Pvm.S) = struct
       let*! state = PVM.set_input (Inbox_message input) state in
       let>* state, fuel, tick, _failing_ticks =
         eval_until_input
+          ?write_debug
           node_ctxt
           reveal_map
           level
@@ -305,8 +323,8 @@ module Make (PVM : Pvm.S) = struct
       in
       return (state, fuel, tick)
 
-    let eval_messages ~reveal_map ~fuel node_ctxt ~message_counter_offset state
-        inbox_level messages =
+    let eval_messages ?write_debug ~reveal_map ~fuel node_ctxt
+        ~message_counter_offset state inbox_level messages =
       let open Lwt_result_syntax in
       let open Delayed_write_monad.Lwt_result_syntax in
       let level = Raw_level.to_int32 inbox_level |> Int32.to_int in
@@ -328,6 +346,7 @@ module Make (PVM : Pvm.S) = struct
           in
           let>* state, fuel, _executed_ticks =
             feed_input
+              ?write_debug
               node_ctxt
               reveal_map
               level
@@ -341,7 +360,8 @@ module Make (PVM : Pvm.S) = struct
         (state, fuel)
         messages
 
-    let eval_block_inbox ~fuel node_ctxt (inbox, messages) (state : PVM.state) :
+    let eval_block_inbox ?write_debug ~fuel node_ctxt (inbox, messages)
+        (state : PVM.state) :
         (PVM.state * int * Raw_level.t * fuel) Node_context.delayed_write
         tzresult
         Lwt.t =
@@ -352,6 +372,7 @@ module Make (PVM : Pvm.S) = struct
       (* Evaluate all the messages for this level. *)
       let>* state, fuel =
         eval_messages
+          ?write_debug
           ~reveal_map:None
           ~fuel
           node_ctxt
@@ -362,13 +383,14 @@ module Make (PVM : Pvm.S) = struct
       in
       return (state, num_messages, inbox_level, fuel)
 
-    let eval_messages ?reveal_map ~fuel node_ctxt ~message_counter_offset state
-        inbox_level messages =
+    let eval_messages ?write_debug ?reveal_map ~fuel node_ctxt
+        ~message_counter_offset state inbox_level messages =
       let open Lwt_result_syntax in
       let open Delayed_write_monad.Lwt_result_syntax in
       let*! initial_tick = PVM.get_tick state in
       let>* state, remaining_fuel =
         eval_messages
+          ?write_debug
           ~reveal_map
           ~fuel
           node_ctxt
