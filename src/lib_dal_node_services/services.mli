@@ -74,9 +74,13 @@ module Types : sig
       the publish operation was not sent (yet) to L1, or sent but not included
       (yet) in a block). *)
 
+  (** Profiles specific to DAL  *)
+  type dal_profile = Attestor of Tezos_crypto.Signature.public_key_hash
+
   (** DAL node can track one or many profiles that correspond to various modes
-      that the DAL node would operate in *)
-  type profile = Attestor of Tezos_crypto.Signature.public_key_hash
+     that the DAL node would operate in. DAL node profile is either [DAL]
+     or [DAC] profile *)
+  type profile = DAL of dal_profile
 
   (** Information associated to a slot header in the RPC services of the DAL
       node. *)

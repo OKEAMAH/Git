@@ -290,7 +290,9 @@ module Dal : sig
 
     type commitment = string
 
-    type profile = Attestor of string
+    type dal_profile = Attestor of string
+
+    type profile = DAL of dal_profile
 
     (** Information contained in a slot header fetched from the DAL node. *)
     type slot_header = {

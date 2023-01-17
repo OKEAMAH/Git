@@ -673,7 +673,9 @@ module Dal = struct
 
     type commitment = string
 
-    type profile = Attestor of string
+    type dal_profile = Attestor of string
+
+    type profile = DAL of dal_profile
 
     type slot_header = {
       slot_level : int;
@@ -743,17 +745,26 @@ module Dal = struct
         JSON.as_string
 
     let json_of_profile = function
-      | Attestor pkh ->
-          `O [("kind", `String "attestor"); ("public_key_hash", `String pkh)]
+      | DAL (Attestor pkh) ->
+          `O
+            [
+              ("kind", `String "DAL");
+              ("profile", `String "attestor");
+              ("public_key_hash", `String pkh);
+            ]
 
     let profiles_of_json json =
       let json_field_value json ~field = JSON.(get field json |> as_string) in
       JSON.as_list json
       |> List.map (fun obj ->
              match json_field_value ~field:"kind" obj with
-             | "attestor" ->
-                 Attestor (json_field_value ~field:"public_key_hash" obj)
-             | _ -> failwith "invalid case")
+             | "DAL" -> (
+                 match json_field_value ~field:"profile" obj with
+                 | "attestor" ->
+                     DAL
+                       (Attestor (json_field_value ~field:"public_key_hash" obj))
+                 | _ -> failwith "Invalid DAL profile")
+             | _ -> failwith "Invalid profile kind")
 
     let patch_profile profile =
       let data = Client.Data (json_of_profile profile) in
@@ -831,8 +842,10 @@ module Dal = struct
 
     let profile_typ : profile Check.typ =
       Check.equalable
-        (fun ppf (Attestor pkh) -> Format.fprintf ppf "(Attestor %s) " pkh)
-        (fun (RPC.Attestor att1) (RPC.Attestor att2) -> String.equal att1 att2)
+        (fun ppf (DAL (Attestor pkh)) ->
+          Format.fprintf ppf "(Attestor %s) " pkh)
+        (fun (DAL (Attestor att1)) (DAL (Attestor att2)) ->
+          String.equal att1 att2)
 
     let profiles_typ : profiles Check.typ =
       let open Check in

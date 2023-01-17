@@ -57,8 +57,10 @@ module Types = struct
   }
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4442
-     Add missing profiles. *)
-  type profile = Attestor of Tezos_crypto.Signature.public_key_hash
+     Add missing DAL profiles. *)
+  type dal_profile = Attestor of Tezos_crypto.Signature.public_key_hash
+
+  type profile = DAL of dal_profile
 
   (* Auxiliary functions.  *)
 
@@ -122,7 +124,7 @@ module Types = struct
             (obj1 (req "commitment" Cryptobox.Commitment.encoding))
             header_status_encoding))
 
-  let equal_profile (Attestor p1) (Attestor p2) =
+  let equal_profile (DAL (Attestor p1)) (DAL (Attestor p2)) =
     Tezos_crypto.Signature.Public_key_hash.( = ) p1 p2
 
   let profile_encoding =
@@ -132,13 +134,14 @@ module Types = struct
         case
           ~title:"Attestor with pkh"
           (Tag 0)
-          (obj2
-             (req "kind" (constant "attestor"))
+          (obj3
+             (req "kind" (constant "DAL"))
+             (req "profile" (constant "attestor"))
              (req
                 "public_key_hash"
                 Tezos_crypto.Signature.Public_key_hash.encoding))
-          (function Attestor attest -> Some ((), attest))
-          (function (), attest -> Attestor attest);
+          (function DAL (Attestor attest) -> Some ((), (), attest))
+          (function (), (), attest -> DAL (Attestor attest));
       ]
 
   (* String parameters queries. *)

@@ -1707,13 +1707,15 @@ let test_dal_node_test_patch_profile _protocol _parameters _cryptobox _node
     return @@ RPC.check_string_response ~code:400 response
   in
   let patch_profile_rpc profile = RPC.call dal_node (patch_profile profile) in
-  let profile1 = Attestor Constant.bootstrap1.public_key_hash in
-  let profile2 = Attestor Constant.bootstrap2.public_key_hash in
+  let profile1 = DAL (Attestor Constant.bootstrap1.public_key_hash) in
+  let profile2 = DAL (Attestor Constant.bootstrap2.public_key_hash) in
   (* We start with empty profile list *)
   let* () = check_profiles ~__LOC__ ~expected:[] in
   (* Adding [Attestor] profile with pkh that is not encoded as
      [Tezos_crypto.Signature.Public_key_hash.encoding] should fail. *)
-  let* () = check_bad_attestor_pkh_encoding (Attestor "This is invalid PKH") in
+  let* () =
+    check_bad_attestor_pkh_encoding (DAL (Attestor "This is invalid PKH"))
+  in
   (* Test adding duplicate profiles stores profile only once *)
   let* () = patch_profile_rpc profile1 in
   let* () = patch_profile_rpc profile1 in
