@@ -9,7 +9,7 @@ cd "$src_dir"
 . "$script_dir"/version.sh
 
 image_name="${1:-tezos-}"
-image_version="${2:-latest}"
+image_version="${2:-demo}"
 build_deps_image_name=${3:-registry.gitlab.com/tezos/opam-repository}
 build_deps_image_version=${4:-$opam_repository_tag}
 executables=${5:-$(cat script-inputs/released-executables)}
