@@ -23,27 +23,21 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** A [ready_ctx] value contains globally needed informations for a running dal
-    node. It is available when both cryptobox is initialized and the plugins
-    for dal and dac have been loaded. *)
-type ready_ctxt = {
-  cryptobox : Cryptobox.t;
-  proto_parameters : Dal_plugin.proto_parameters;
-  dal_plugin : (module Dal_plugin.T);
-  dac_plugin : (module Dac_plugin.T);
-}
+(** A [ready_ctx] value contains globally needed informations for a running dac
+    node. It is available when the DAC plugin has been loaded. *)
+type ready_ctxt = {dac_plugin : (module Dac_plugin.T)}
 
-(** The status of the dal node *)
+(** The status of the dac node. *)
 type status = Ready of ready_ctxt | Starting
 
-(** A [t] value contains both the status and the dal node configuration. It's
-    field are available through accessors *)
+(** A [t] value contains both the status and the dac node configuration. Its
+    fields are available through accessors. *)
 type t
 
-(** [init config store cctx] creates a [t] with a status set to [Starting]
-    using the given dal node configuration [config], node store [store],
+(** [init config cctx] creates a [t] with a status set to [Starting]
+    using the given dal node configuration [config],
     and tezos node client context [cctx]. *)
-val init : Configuration.t -> Store.node_store -> Client_context.full -> t
+val init : Configuration.t -> Client_context.full -> t
 
 (** Raised by [set_ready] when the status is already [Ready _] *)
 exception Status_already_ready
@@ -53,40 +47,20 @@ exception Status_already_ready
     [ready_ctxt] value with the given parameters.
 
     @raise Status_already_ready when the status is already [Ready _] *)
-val set_ready :
-  t ->
-  dal_plugin:(module Tezos_dac_node_lib.Dal_plugin.T) ->
-  dac_plugin:(module Tezos_dac_node_lib.Dac_plugin.T) ->
-  Cryptobox.t ->
-  Dal_plugin.proto_parameters ->
-  unit
+val set_ready : t -> dac_plugin:(module Tezos_dac_node_lib.Dac_plugin.T) -> unit
 
 type error += Node_not_ready
 
 (** [get_ready ctxt] extracts the [ready_ctxt] value from a context [t]. It
     propagates [Node_not_ready] if status is not ready yet. If called multiple
-    times, it replaces current values for [ready_ctxt] with new ones *)
+    times, it replaces current values for [ready_ctxt] with new one. *)
 val get_ready : t -> ready_ctxt tzresult
 
-(** [get_config ctxt] returns the dal node configuration *)
+(** [get_config ctxt] returns the dal node configuration. *)
 val get_config : t -> Configuration.t
 
-(** [get_status ctxt] returns the dal node status *)
+(** [get_status ctxt] returns the dal node status. *)
 val get_status : t -> status
 
-(** [get_store ctxt] returns the dal node store. *)
-val get_store : t -> Store.node_store
-
-(** [get_tezos_node_cctxt ctxt] returns the Tezos node's client context *)
+(** [get_tezos_node_cctxt ctxt] returns the Tezos node's client context. *)
 val get_tezos_node_cctxt : t -> Client_context.full
-
-(** [get_neighbors_cctxts ctxt] returns the dal node neighbors client contexts *)
-val get_neighbors_cctxts : t -> Dal_node_client.cctxt list
-
-(** [fetch_assigned_shard_indicies ctxt ~level ~pkh] fetches from L1 the shard indices assigned to [pkh] at [level].
-    It internally caches the DAL committee with [level] as the key with FIFO strategy. *)
-val fetch_assigned_shard_indicies :
-  t ->
-  level:int32 ->
-  pkh:Tezos_crypto.Signature.Public_key_hash.t ->
-  int list tzresult Lwt.t

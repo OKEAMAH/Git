@@ -20,7 +20,6 @@
   tezos-stdlib-unix
   tezos-stdlib
   tezos_dac_node_lib
-  tezos_dac_node_services
   tezos_layer2_store
   tezos-crypto-dal
   irmin-pack
@@ -42,7 +41,6 @@
   -open Tezos_stdlib_unix
   -open Tezos_stdlib
   -open Tezos_dac_node_lib
-  -open Tezos_dac_node_services
   -open Tezos_layer2_store
   -open Tezos_crypto_dal))
 

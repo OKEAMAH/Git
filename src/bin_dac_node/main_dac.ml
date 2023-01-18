@@ -72,34 +72,17 @@ let rpc_port_arg =
     ~default
     int_parameter
 
-let use_unsafe_srs_for_tests_arg =
-  Tezos_clic.switch
-    ~long:"use-unsafe-srs-for-tests"
-    ~doc:
-      (Format.sprintf
-         "Run dac-node in test mode with an unsafe SRS (Trusted setup)")
-    ()
-
 let config_init_command =
   let open Lwt_result_syntax in
   let open Tezos_clic in
   command
     ~group
     ~desc:"Configure DAC node."
-    (args4 data_dir_arg rpc_addr_arg rpc_port_arg use_unsafe_srs_for_tests_arg)
+    (args3 data_dir_arg rpc_addr_arg rpc_port_arg)
     (prefixes ["init-config"] stop)
-    (fun (data_dir, rpc_addr, rpc_port, use_unsafe_srs) cctxt ->
+    (fun (data_dir, rpc_addr, rpc_port) cctxt ->
       let open Configuration in
-      let config =
-        {
-          data_dir;
-          rpc_addr;
-          rpc_port;
-          use_unsafe_srs;
-          neighbors = [];
-          dac = default_dac;
-        }
-      in
+      let config = {data_dir; rpc_addr; rpc_port; dac = default_dac} in
       let* () = save config in
       let*! _ =
         cctxt#message "DAC node configuration written in %s" (filename config)

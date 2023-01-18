@@ -119,13 +119,11 @@ let resolve_plugin
       (Dac_plugin.get protocols.current_protocol)
       (Dac_plugin.get protocols.next_protocol)
   in
-  Option.map_s
-    (fun dac_plugin ->
+  match plugin_opt with
+  | None ->
+      let* () = Event.emit_protocol_plugin_not_resolved () in
+      return None
+  | Some dac_plugin ->
       let (module Dac_plugin : Dac_plugin.T) = dac_plugin in
-      let* () =
-        Event.emit_protocol_plugin_resolved
-          ~plugin_name:"dac"
-          Dac_plugin.Proto.hash
-      in
-      return dac_plugin)
-    plugin_opt
+      let* () = Event.emit_protocol_plugin_resolved Dac_plugin.Proto.hash in
+      return @@ Some dac_plugin

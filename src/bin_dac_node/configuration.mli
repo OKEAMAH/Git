@@ -23,8 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type neighbor = {addr : string; port : int}
-
 type dac = {
   addresses : Tezos_crypto.Aggregate_signature.public_key_hash list;
   threshold : int;
@@ -38,12 +36,9 @@ type dac = {
 }
 
 type t = {
-  use_unsafe_srs : bool;
-      (** Run dal-node in test mode with an unsafe SRS (Trusted setup) *)
   data_dir : string;  (** The path to the DAL node data directory *)
   rpc_addr : string;  (** The address the DAL node listens to *)
   rpc_port : int;  (** The port the DAL node listens to *)
-  neighbors : neighbor list;  (** List of neighbors to reach withing the DAL *)
   dac : dac;
       (** The aggregate account aliases that constitute the Data availability
           Committee. *)
