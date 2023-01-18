@@ -401,10 +401,8 @@ module Make (PVM : Pvm.S) = struct
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2895
      Use Lwt_stream.fold_es once it is exposed. *)
   let daemonize configuration (node_ctxt : _ Node_context.t) =
-    Lwt_io.with_file
-      ~mode:Output
-      "/home/emma/sources/mondaynet/kernel.debug"
-      (fun log ->
+    let debug_log = Sys.getenv "KERNEL_LOG_FILE" in
+    Lwt_io.with_file ~mode:Output debug_log (fun log ->
         let open Lwt_result_syntax in
         let write_debug =
           Tezos_scoru_wasm.Builtins.Printer (fun s -> Lwt_io.fprint log s)
