@@ -90,17 +90,8 @@ let file_contents filename =
       return contents)
     (fun _ -> tzfail @@ Could_not_open_preimage_file filename)
 
-let hash_to_hex hash =
-  let (`Hex hash) =
-    Hex.of_string
-    @@ Data_encoding.Binary.to_string_exn
-         Protocol.Sc_rollup_reveal_hash.encoding
-         hash
-  in
-  hash
-
 let path data_dir pvm_name hash =
-  let hash = hash_to_hex hash in
+  let hash = Reveal_hash.to_b58check hash in
   Filename.(concat (concat data_dir pvm_name) hash)
 
 let get ~data_dir ~pvm_kind ~hash =
