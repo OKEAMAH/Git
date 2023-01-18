@@ -57,6 +57,16 @@ let load_kernel durable =
   let store = Lazy.force store in
   Module_cache.load_kernel store durable
 
+module Runtime_store = struct
+  let instance : Funcs.runtime option ref = ref None
+
+  let host_funcs =
+    let get () = Option.value_f !instance ~default:(fun () -> assert false) in
+    Funcs.make get
+
+  let update rt = instance := Some rt
+end
+
 let compute ~reveal_builtins ~write_debug durable buffers =
   let open Lwt.Syntax in
   let* module_ = load_kernel durable in
@@ -67,14 +77,17 @@ let compute ~reveal_builtins ~write_debug durable buffers =
   in
 
   let host_state = Funcs.{retrieve_mem; buffers; durable} in
-  let host_funcs = Funcs.make ~reveal_builtins ~write_debug host_state in
+
+  Runtime_store.update {host_state; reveal_builtins; write_debug} ;
 
   let with_durable f =
     let+ durable = f host_state.durable in
     host_state.durable <- durable
   in
   let store = Lazy.force store in
-  let* instance = Wasmer.Instance.create store module_ host_funcs in
+  let* instance =
+    Wasmer.Instance.create store module_ Runtime_store.host_funcs
+  in
 
   let* () =
     (* At this point we know that the kernel is valid because we parsed and

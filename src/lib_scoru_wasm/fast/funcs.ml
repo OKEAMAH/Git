@@ -38,21 +38,32 @@ type host_state = {
   mutable durable : Durable.t;
 }
 
-let make ~reveal_builtins ~write_debug state =
+type runtime = {
+  host_state : host_state;
+  reveal_builtins : Builtins.reveals;
+  write_debug : Builtins.write_debug;
+}
+
+let make get_runtime =
   let open Wasmer in
   let open Lwt.Syntax in
   let with_mem f =
-    let mem = state.retrieve_mem () in
+    let rt = get_runtime () in
+    let mem = rt.host_state.retrieve_mem () in
     f mem
   in
-
+  let with_runtime f =
+    let rt = get_runtime () in
+    f rt
+  in
   let read_input =
     fn
       (i32 @-> i32 @-> i32 @-> returning1 i32)
       (fun info_addr dst max_bytes ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         Host_funcs.Aux.read_input
-          ~input_buffer:state.buffers.input
+          ~input_buffer:rt.host_state.buffers.input
           ~memory
           ~info_addr
           ~dst
@@ -63,8 +74,9 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> returning1 i32)
       (fun src num_bytes ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         Host_funcs.Aux.write_output
-          ~output_buffer:state.buffers.output
+          ~output_buffer:rt.host_state.buffers.output
           ~memory
           ~src
           ~num_bytes)
@@ -74,8 +86,9 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> returning1 i32)
       (fun key_offset key_length ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         Host_funcs.Aux.store_has
-          ~durable:state.durable
+          ~durable:rt.host_state.durable
           ~memory
           ~key_offset
           ~key_length)
@@ -85,14 +98,15 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> returning1 i64)
       (fun key_offset key_length ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         let+ durable, result =
           Host_funcs.Aux.store_list_size
-            ~durable:state.durable
+            ~durable:rt.host_state.durable
             ~memory
             ~key_offset
             ~key_length
         in
-        state.durable <- durable ;
+        rt.host_state.durable <- durable ;
         result)
   in
   let store_delete =
@@ -100,14 +114,15 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> returning1 i32)
       (fun key_offset key_length ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         let+ durable, result =
           Host_funcs.Aux.store_delete
-            ~durable:state.durable
+            ~durable:rt.host_state.durable
             ~memory
             ~key_offset
             ~key_length
         in
-        state.durable <- durable ;
+        rt.host_state.durable <- durable ;
         result)
   in
   let write_debug =
@@ -115,23 +130,29 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> returning nothing)
       (fun src num_bytes ->
         with_mem @@ fun memory ->
-        Host_funcs.Aux.write_debug ~implem:write_debug ~memory ~src ~num_bytes)
+        with_runtime @@ fun rt ->
+        Host_funcs.Aux.write_debug
+          ~implem:rt.write_debug
+          ~memory
+          ~src
+          ~num_bytes)
   in
   let store_copy =
     fn
       (i32 @-> i32 @-> i32 @-> i32 @-> returning1 i32)
       (fun from_key_offset from_key_length to_key_offset to_key_length ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         let+ durable, result =
           Host_funcs.Aux.store_copy
-            ~durable:state.durable
+            ~durable:rt.host_state.durable
             ~memory
             ~from_key_offset
             ~from_key_length
             ~to_key_offset
             ~to_key_length
         in
-        state.durable <- durable ;
+        rt.host_state.durable <- durable ;
         result)
   in
   let store_move =
@@ -139,16 +160,17 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> i32 @-> i32 @-> returning1 i32)
       (fun from_key_offset from_key_length to_key_offset to_key_length ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         let+ durable, result =
           Host_funcs.Aux.store_move
-            ~durable:state.durable
+            ~durable:rt.host_state.durable
             ~memory
             ~from_key_offset
             ~from_key_length
             ~to_key_offset
             ~to_key_length
         in
-        state.durable <- durable ;
+        rt.host_state.durable <- durable ;
         result)
   in
   let store_read =
@@ -156,8 +178,9 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> i32 @-> i32 @-> i32 @-> returning1 i32)
       (fun key_offset key_length value_offset dest max_bytes ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         Host_funcs.Aux.store_read
-          ~durable:state.durable
+          ~durable:rt.host_state.durable
           ~memory
           ~key_offset
           ~key_length
@@ -170,9 +193,10 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> i32 @-> i32 @-> i32 @-> returning1 i32)
       (fun key_offset key_length value_offset src num_bytes ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         let+ durable, ret =
           Host_funcs.Aux.store_write
-            ~durable:state.durable
+            ~durable:rt.host_state.durable
             ~memory
             ~key_offset
             ~key_length
@@ -180,7 +204,7 @@ let make ~reveal_builtins ~write_debug state =
             ~src
             ~num_bytes
         in
-        state.durable <- durable ;
+        rt.host_state.durable <- durable ;
         ret)
   in
   let store_get_nth_key =
@@ -188,8 +212,9 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> i64 @-> i32 @-> i32 @-> returning1 i32)
       (fun key_offset key_length index dst max_size ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         Host_funcs.Aux.store_get_nth_key
-          ~durable:state.durable
+          ~durable:rt.host_state.durable
           ~memory
           ~key_offset
           ~key_length
@@ -202,8 +227,9 @@ let make ~reveal_builtins ~write_debug state =
       (i32 @-> i32 @-> returning1 i32)
       (fun key_offset key_length ->
         with_mem @@ fun memory ->
+        with_runtime @@ fun rt ->
         Host_funcs.Aux.store_value_size
-          ~durable:state.durable
+          ~durable:rt.host_state.durable
           ~memory
           ~key_offset
           ~key_length)
@@ -217,11 +243,12 @@ let make ~reveal_builtins ~write_debug state =
         Lwt.map (Result.fold ~ok:Fun.id ~error:Fun.id)
         @@ with_mem
         @@ fun memory ->
+        with_runtime @@ fun rt ->
         let open Lwt_result_syntax in
         let* hash =
           Host_funcs.Aux.load_bytes ~memory ~addr:hash_addr ~size:hash_size
         in
-        let*! payload = reveal_builtins.Builtins.reveal_preimage hash in
+        let*! payload = rt.reveal_builtins.Builtins.reveal_preimage hash in
         let*! result =
           Host_funcs.Aux.reveal
             ~memory
@@ -235,8 +262,9 @@ let make ~reveal_builtins ~write_debug state =
     fn
       (i32 @-> i32 @-> returning1 i32)
       (fun dst max_bytes ->
-        let mem = state.retrieve_mem () in
-        let* payload = reveal_builtins.reveal_metadata () in
+        with_runtime @@ fun rt ->
+        let mem = rt.host_state.retrieve_mem () in
+        let* payload = rt.reveal_builtins.reveal_metadata () in
         Host_funcs.Aux.reveal
           ~memory:mem
           ~dst
