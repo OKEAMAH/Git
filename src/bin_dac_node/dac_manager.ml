@@ -30,7 +30,7 @@ type error +=
 let () =
   register_error_kind
     `Permanent
-    ~id:"dal.node.dac.reveal_data_path_not_a_dir"
+    ~id:"dac.node.dac.reveal_data_path_not_a_dir"
     ~title:"Reveal data path is not a directory"
     ~description:"Reveal data path is not a directory"
     ~pp:(fun ppf reveal_data_path ->
@@ -43,7 +43,7 @@ let () =
     (fun path -> Reveal_data_path_not_a_directory path) ;
   register_error_kind
     `Permanent
-    ~id:"dal.node.dac.cannot_create_directory"
+    ~id:"dac.node.dac.cannot_create_directory"
     ~title:"Cannot create directory to store reveal data"
     ~description:"Cannot create directory to store reveal data"
     ~pp:(fun ppf reveal_data_path ->
@@ -68,7 +68,7 @@ module Keys = struct
         | None ->
             (* DAC/TODO: https://gitlab.com/tezos/tezos/-/issues/4193
                Revisit this once the Dac committee will be spread across
-               multiple dal nodes.*)
+               multiple dac nodes.*)
             let*! () = Event.(emit dac_account_not_available address) in
             return_none
         | Some (pkh, pk, sk_uri_opt) -> (
@@ -86,8 +86,7 @@ module Keys = struct
       (* We emit a warning if the threshold of dac accounts needed to sign a
          root page hash is not reached. We also emit a warning for each DAC
          account whose secret key URI was not recovered.
-         We do not stop the dal node at this stage, as it can still serve
-         any request that is related to DAL.
+         We do not stop the dac node at this stage.
       *)
       if recovered_keys < threshold then
         Event.(emit dac_threshold_not_reached (recovered_keys, threshold))

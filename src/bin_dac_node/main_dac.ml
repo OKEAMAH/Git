@@ -123,7 +123,7 @@ module Dac_client = struct
     Tezos_clic.param ~name ~desc (tz4_address_parameter ())
 
   (** Add an account alias as a member of the Data availability Committee in the
-    configuration of the Dal node. *)
+    configuration of the Dac node. *)
   let add_dac_alias_command =
     let open Lwt_result_syntax in
     let open Tezos_clic in

@@ -35,14 +35,14 @@ type status = Ready of ready_ctxt | Starting
 type t
 
 (** [init config cctx] creates a [t] with a status set to [Starting]
-    using the given dal node configuration [config],
+    using the given dac node configuration [config],
     and tezos node client context [cctx]. *)
 val init : Configuration.t -> Client_context.full -> t
 
 (** Raised by [set_ready] when the status is already [Ready _] *)
 exception Status_already_ready
 
-(** [set_ready ctxt ~dal_plugin ~dac_plugin cryptobox proto_parameters] updates
+(** [set_ready ctxt ~dac_plugin] updates
     in place the status value to [Ready], and initializes the inner
     [ready_ctxt] value with the given parameters.
 
@@ -56,10 +56,10 @@ type error += Node_not_ready
     times, it replaces current values for [ready_ctxt] with new one. *)
 val get_ready : t -> ready_ctxt tzresult
 
-(** [get_config ctxt] returns the dal node configuration. *)
+(** [get_config ctxt] returns the dac node configuration. *)
 val get_config : t -> Configuration.t
 
-(** [get_status ctxt] returns the dal node status. *)
+(** [get_status ctxt] returns the dac node status. *)
 val get_status : t -> status
 
 (** [get_tezos_node_cctxt ctxt] returns the Tezos node's client context. *)
