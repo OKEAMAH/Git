@@ -30,4 +30,4 @@ end
 
 let () = Dac_plugin.register (module Plugin)
 
-let () = Tezos_dal_node_lib.Dac_plugin.register (module Plugin)
+let () = Dac_plugin_legacy.register (module Plugin)

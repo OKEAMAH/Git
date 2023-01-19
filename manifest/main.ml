@@ -5097,7 +5097,7 @@ module Protocol = Protocol
             (* TODO: https://gitlab.com/tezos/tezos/-/issues/4635.
                Remove this import once DAC functionalities have been
                removed from dal node. *)
-            octez_dal_node_lib;
+            octez_dal_node_lib |> open_;
             client |> if_some |> open_;
             embedded |> open_;
             layer2_utils |> if_some |> open_;
