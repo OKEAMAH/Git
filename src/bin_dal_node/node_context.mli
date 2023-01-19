@@ -30,7 +30,7 @@ type ready_ctxt = {
   cryptobox : Cryptobox.t;
   proto_parameters : Dal_plugin.proto_parameters;
   dal_plugin : (module Dal_plugin.T);
-  dac_plugin : (module Dac_plugin.T);
+  dac_plugin : (module Dac_plugin_legacy.T);
 }
 
 (** The status of the dal node *)
@@ -56,7 +56,7 @@ exception Status_already_ready
 val set_ready :
   t ->
   dal_plugin:(module Tezos_dal_node_lib.Dal_plugin.T) ->
-  dac_plugin:(module Tezos_dal_node_lib.Dac_plugin.T) ->
+  dac_plugin:(module Tezos_dal_node_lib.Dac_plugin_legacy.T) ->
   Cryptobox.t ->
   Dal_plugin.proto_parameters ->
   unit

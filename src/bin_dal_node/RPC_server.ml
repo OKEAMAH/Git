@@ -218,9 +218,9 @@ let start configuration cctxt ctxt dac_pks_opt dac_sk_uris =
   let dir =
     Tezos_rpc.Directory.register_dynamic_directory dir plugin_prefix (fun () ->
         match Node_context.get_status ctxt with
-        | Ready {dac_plugin = (module Dac_plugin); _} ->
+        | Ready {dac_plugin = (module Dac_plugin_legacy); _} ->
             Lwt.return
-              (Dac_plugin.RPC.rpc_services
+              (Dac_plugin_legacy.RPC.rpc_services
                  ~reveal_data_dir
                  cctxt
                  dac_pks_opt

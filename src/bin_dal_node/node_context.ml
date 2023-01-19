@@ -29,7 +29,7 @@ type ready_ctxt = {
   cryptobox : Cryptobox.t;
   proto_parameters : Dal_plugin.proto_parameters;
   dal_plugin : (module Dal_plugin.T);
-  dac_plugin : (module Dac_plugin.T);
+  dac_plugin : (module Dac_plugin_legacy.T);
 }
 
 type status = Ready of ready_ctxt | Starting

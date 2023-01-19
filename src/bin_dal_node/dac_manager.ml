@@ -116,16 +116,16 @@ let resolve_plugin
   let open Lwt_syntax in
   let plugin_opt =
     Option.either
-      (Dac_plugin.get protocols.current_protocol)
-      (Dac_plugin.get protocols.next_protocol)
+      (Dac_plugin_legacy.get protocols.current_protocol)
+      (Dac_plugin_legacy.get protocols.next_protocol)
   in
   Option.map_s
     (fun dac_plugin ->
-      let (module Dac_plugin : Dac_plugin.T) = dac_plugin in
+      let (module Dac_plugin_legacy : Dac_plugin_legacy.T) = dac_plugin in
       let* () =
         Event.emit_protocol_plugin_resolved
           ~plugin_name:"dac"
-          Dac_plugin.Proto.hash
+          Dac_plugin_legacy.Proto.hash
       in
       return dac_plugin)
     plugin_opt
