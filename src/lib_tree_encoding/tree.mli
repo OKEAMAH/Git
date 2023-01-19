@@ -41,6 +41,8 @@ module type S = sig
 
   val wrap : tree -> Tezos_lazy_containers.Lazy_map.tree
 
+  val kind : tree -> [`Value | `Tree]
+
   val remove : tree -> key -> tree Lwt.t
 
   val add : tree -> key -> value -> tree Lwt.t
@@ -64,6 +66,8 @@ type 'tree backend = (module S with type tree = 'tree)
 val select : 'tree backend -> Tezos_lazy_containers.Lazy_map.tree -> 'tree
 
 val wrap : 'tree backend -> 'tree -> Tezos_lazy_containers.Lazy_map.tree
+
+val kind : 'tree backend -> 'tree -> [`Value | `Tree]
 
 val remove : 'tree backend -> 'tree -> key -> 'tree Lwt.t
 

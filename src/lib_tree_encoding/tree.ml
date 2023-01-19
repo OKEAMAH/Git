@@ -37,6 +37,8 @@ module type S = sig
 
   val wrap : tree -> Tezos_lazy_containers.Lazy_map.tree
 
+  val kind : tree -> [`Value | `Tree]
+
   val remove : tree -> key -> tree Lwt.t
 
   val add : tree -> key -> value -> tree Lwt.t
@@ -64,6 +66,9 @@ let select :
 let wrap :
     type tree. tree backend -> tree -> Tezos_lazy_containers.Lazy_map.tree =
  fun (module T) tree -> T.wrap tree
+
+let kind : type tree. tree backend -> tree -> [`Value | `Tree] =
+ fun (module T) tree -> T.kind tree
 
 let remove : type tree. tree backend -> tree -> key -> tree Lwt.t =
  fun (module T) tree key -> T.remove tree key
@@ -102,6 +107,8 @@ type Tezos_lazy_containers.Lazy_map.tree += Wrapped of wrapped_tree
 
 module Wrapped : S with type tree = wrapped_tree = struct
   type tree = wrapped_tree
+
+  let kind (Wrapped_tree (t, b)) = kind b t
 
   let remove (Wrapped_tree (t, b)) key =
     let open Lwt.Syntax in

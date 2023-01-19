@@ -275,6 +275,8 @@ module type TREE = sig
 
   val wrap : tree -> Tezos_lazy_containers.Lazy_map.tree
 
+  val kind : tree -> [`Value | `Tree]
+
   val remove : tree -> key -> tree Lwt.t
 
   val add : tree -> key -> value -> tree Lwt.t
