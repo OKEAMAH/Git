@@ -5093,8 +5093,11 @@ module Protocol = Protocol
             |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
             octez_protocol_compiler_registerer |> open_;
             octez_stdlib_unix |> open_;
-            octez_dal_node_lib |> open_;
             octez_dac_node_lib |> open_;
+            (* TODO: https://gitlab.com/tezos/tezos/-/issues/4635.
+               Remove this import once DAC functionalities have been
+               removed from dal node. *)
+            octez_dal_node_lib;
             client |> if_some |> open_;
             embedded |> open_;
             layer2_utils |> if_some |> open_;
