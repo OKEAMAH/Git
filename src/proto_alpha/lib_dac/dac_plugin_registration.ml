@@ -29,3 +29,5 @@ module Plugin = struct
 end
 
 let () = Dac_plugin.register (module Plugin)
+
+let () = Tezos_dal_node_lib.Dac_plugin.register (module Plugin)
