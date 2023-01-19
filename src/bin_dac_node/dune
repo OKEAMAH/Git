@@ -21,7 +21,6 @@
   tezos-stdlib
   tezos_dac_node_lib
   tezos_layer2_store
-  tezos-crypto-dal
   irmin-pack
   irmin-pack.unix
   irmin
@@ -41,7 +40,6 @@
   -open Tezos_stdlib_unix
   -open Tezos_stdlib
   -open Tezos_dac_node_lib
-  -open Tezos_layer2_store
-  -open Tezos_crypto_dal))
+  -open Tezos_layer2_store))
 
 (rule (action (progn (write-file void_for_linking-tezos-dac-alpha.empty ""))))

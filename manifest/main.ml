@@ -6118,7 +6118,6 @@ let _octez_dac_node =
          octez_stdlib |> open_;
          octez_dac_node_lib |> open_;
          octez_layer2_store |> open_;
-         octez_crypto_dal |> open_;
          irmin_pack;
          irmin_pack_unix;
          irmin;
