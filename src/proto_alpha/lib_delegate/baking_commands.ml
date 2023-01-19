@@ -314,6 +314,13 @@ let per_block_vote_file_arg =
     ~placeholder:"filename"
     (Tezos_clic.parameter (fun _ s -> return s))
 
+let endpoint_arg =
+  Tezos_clic.arg
+    ~long:"dal_node"
+    ~placeholder:"uri"
+    ~doc:"endpoint of the DAL node, e.g. 'http://localhost:8933'"
+    (Tezos_clic.parameter (fun _ s -> return @@ Uri.of_string s))
+
 let baker_commands () : Protocol_client_context.full Tezos_clic.command list =
   let open Tezos_clic in
   let group =
@@ -326,7 +333,7 @@ let baker_commands () : Protocol_client_context.full Tezos_clic.command list =
     command
       ~group
       ~desc:"Launch the baker daemon."
-      (args8
+      (args9
          pidfile_arg
          minimal_fees_arg
          minimal_nanotez_per_gas_unit_arg
@@ -334,7 +341,8 @@ let baker_commands () : Protocol_client_context.full Tezos_clic.command list =
          keep_alive_arg
          liquidity_baking_toggle_vote_arg
          per_block_vote_file_arg
-         operations_arg)
+         operations_arg
+         endpoint_arg)
       (prefixes ["run"; "with"; "local"; "node"]
       @@ param
            ~name:"node_data_path"
@@ -348,7 +356,8 @@ let baker_commands () : Protocol_client_context.full Tezos_clic.command list =
              keep_alive,
              liquidity_baking_toggle_vote,
              per_block_vote_file,
-             extra_operations )
+             extra_operations,
+             dal_node_endpoint )
            node_data_path
            sources
            cctxt ->
@@ -378,6 +387,7 @@ let baker_commands () : Protocol_client_context.full Tezos_clic.command list =
           ~liquidity_baking_toggle_vote
           ?per_block_vote_file
           ?extra_operations
+          ?dal_node_endpoint
           ~chain:cctxt#chain
           ~context_path
           ~keep_alive
