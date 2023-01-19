@@ -70,9 +70,7 @@ let originate = Contract_helpers.originate_contract_from_string
 
 let get_balance ctxt ~token ~owner =
   let open Lwt_result_wrap_syntax in
-  let* key_hash, ctxt =
-    wrap @@ Ticket_balance_key.of_ex_token ctxt ~owner token
-  in
+  let*@ key_hash, ctxt = Ticket_balance_key.of_ex_token ctxt ~owner token in
   wrap (Ticket_balance.get_balance ctxt key_hash)
 
 let get_used_ticket_storage block =
