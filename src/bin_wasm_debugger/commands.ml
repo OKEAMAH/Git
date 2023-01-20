@@ -45,6 +45,7 @@ type commands =
   | Show_memory of int32 * int
   | Step of eval_step
   | Load_inputs
+  | Load_empty_inbox
   | Reveal_preimage of string option
   | Reveal_metadata
   | Unknown of string
@@ -78,6 +79,7 @@ let parse_commands s =
     | ["step"; step] -> (
         match parse_eval_step step with Some s -> Step s | None -> Unknown s)
     | ["load"; "inputs"] -> Load_inputs
+    | ["load"; "empty"; "inbox"] -> Load_empty_inbox
     | ["reveal"; "preimage"] -> Reveal_preimage None
     | ["reveal"; "preimage"; hex_encoded_preimage] ->
         Reveal_preimage (Some hex_encoded_preimage)
@@ -220,6 +222,17 @@ let check_input_request tree =
       return_error
         "The PVM is expecting a reveal. This command is not implemented yet."
 
+let load_new_inbox inputs level tree =
+  let open Lwt_result_syntax in
+  let* tree =
+    trap_exn (fun () ->
+        set_full_input_step_gen set_raw_message_input_step inputs level tree)
+  in
+  let*! () =
+    Lwt_io.printf "Loaded %d inputs at level %ld\n%!" (List.length inputs) level
+  in
+  return (tree, Int32.succ level)
+
 (* [load_inputs_gen inboxes level tree] reads the next inbox from [inboxes], set the
    messages at [level] in the [tree], and returns the remaining inbox, the next
    level and the tree. *)
@@ -227,17 +240,8 @@ let load_inputs_gen inboxes level tree =
   let open Lwt_result_syntax in
   match Seq.uncons inboxes with
   | Some (inputs, inboxes) ->
-      let* tree =
-        trap_exn (fun () ->
-            set_full_input_step_gen set_raw_message_input_step inputs level tree)
-      in
-      let*! () =
-        Lwt_io.printf
-          "Loaded %d inputs at level %ld\n%!"
-          (List.length inputs)
-          level
-      in
-      return (tree, inboxes, Int32.succ level)
+      let* tree, level = load_new_inbox inputs level tree in
+      return (tree, inboxes, level)
   | None ->
       let*! () = Lwt_io.printf "No more inputs at level %ld\n%!" level in
       return (tree, inboxes, level)
@@ -250,6 +254,15 @@ let load_inputs inboxes level tree =
   | Error msg ->
       Format.printf "%s\n%!" msg ;
       return (tree, inboxes, level)
+
+let load_empty_inbox level tree =
+  let open Lwt_result_syntax in
+  let*! status = check_input_request tree in
+  match status with
+  | Ok () -> load_new_inbox [] level tree
+  | Error msg ->
+      Format.printf "%s\n%!" msg ;
+      return (tree, level)
 
 let pp_input_request ppf = function
   | Wasm_pvm_state.No_input_required -> Format.fprintf ppf "Evaluating"
@@ -465,7 +478,9 @@ let reveal_metadata config tree =
 let handle_command c config tree inboxes level =
   let open Lwt_result_syntax in
   let command = parse_commands c in
-  let return ?(tree = tree) () = return (tree, inboxes, level) in
+  let return ?(tree = tree) ?(level = level) () =
+    return (tree, inboxes, level)
+  in
   let rec go = function
     | Time cmd ->
         let t = Time.System.now () in
@@ -478,6 +493,9 @@ let handle_command c config tree inboxes level =
         in
         Lwt_result_syntax.return res
     | Load_inputs -> load_inputs inboxes level tree
+    | Load_empty_inbox ->
+        let* tree, level = load_empty_inbox level tree in
+        return ~tree ~level ()
     | Show_status ->
         let*! () = show_status tree in
         return ()
