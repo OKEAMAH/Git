@@ -133,7 +133,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
         Sc_rollup_block.most_recent_commitment pred.header
       in
       let* last_commitment =
-        Node_context.get_commitment node_ctxt last_commitment_hash
+        Node_context.Commitment.get node_ctxt last_commitment_hash
       in
       let next_commitment_level =
         next_commitment_level node_ctxt last_commitment.inbox_level
@@ -162,7 +162,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     | None -> return_none
     | Some commitment ->
         let*! commitment_hash =
-          Node_context.save_commitment node_ctxt commitment
+          Node_context.Commitment.save node_ctxt commitment
         in
         return_some commitment_hash
 
@@ -184,7 +184,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     in
     let rec gather acc (commitment_hash : Sc_rollup.Commitment.Hash.t) =
       let* commitment =
-        Node_context.find_commitment node_ctxt commitment_hash
+        Node_context.Commitment.find node_ctxt commitment_hash
       in
       match commitment with
       | None -> return acc
@@ -199,7 +199,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
           return acc
       | Some commitment ->
           let* published_info =
-            Node_context.commitment_published_at_level node_ctxt commitment_hash
+            Node_context.Commitment.published_at_level node_ctxt commitment_hash
           in
           let past_curfew =
             match (published_info, next_head_level) with
@@ -258,7 +258,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
         return_unit
     | Some source ->
         let* commitment =
-          Node_context.get_commitment node_ctxt commitment_hash
+          Node_context.Commitment.get node_ctxt commitment_hash
         in
         when_ (commitment.inbox_level > node_ctxt.lcc.level) @@ fun () ->
         publish_commitment node_ctxt ~source commitment
@@ -268,7 +268,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
   let earliest_cementing_level node_ctxt commitment_hash =
     let open Lwt_option_syntax in
     let+ {first_published_at_level; _} =
-      Node_context.commitment_published_at_level node_ctxt commitment_hash
+      Node_context.Commitment.published_at_level node_ctxt commitment_hash
     in
     add_level first_published_at_level (sc_rollup_challenge_window node_ctxt)
 
@@ -284,7 +284,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
       (head : Sc_rollup_block.t) =
     let open Lwt_option_syntax in
     let commitment_hash = Sc_rollup_block.most_recent_commitment head.header in
-    let* commitment = Node_context.find_commitment node_ctxt commitment_hash in
+    let* commitment = Node_context.Commitment.find node_ctxt commitment_hash in
     let*? cementable_level_bound =
       sub_level commitment.inbox_level (sc_rollup_challenge_window node_ctxt)
     in
@@ -313,7 +313,7 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     let rec gather acc (commitment_hash : Sc_rollup.Commitment.Hash.t) =
       let open Lwt_syntax in
       let* commitment =
-        Node_context.find_commitment node_ctxt commitment_hash
+        Node_context.Commitment.find node_ctxt commitment_hash
       in
       match commitment with
       | None -> return acc

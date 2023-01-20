@@ -52,7 +52,7 @@ module Make (PVM : Pvm.S) = struct
           Sc_rollup.Commitment.hash_uncarbonated commitment
         in
         let*! () =
-          Node_context.set_commitment_published_at_level
+          Node_context.Commitment.set_published_at_level
             node_ctxt
             commitment_hash
             {
@@ -68,13 +68,13 @@ module Make (PVM : Pvm.S) = struct
         (* Commitment published by someone else *)
         (* We first register the publication information *)
         let*! known_commitment =
-          Node_context.commitment_exists node_ctxt their_commitment_hash
+          Node_context.Commitment.exists node_ctxt their_commitment_hash
         in
         let* () =
           if not known_commitment then return_unit
           else
             let*! republication =
-              Node_context.commitment_was_published
+              Node_context.Commitment.was_published
                 node_ctxt
                 ~source:Anyone
                 their_commitment_hash
@@ -82,7 +82,7 @@ module Make (PVM : Pvm.S) = struct
             if republication then return_unit
             else
               let*! () =
-                Node_context.set_commitment_published_at_level
+                Node_context.Commitment.set_published_at_level
                   node_ctxt
                   their_commitment_hash
                   {

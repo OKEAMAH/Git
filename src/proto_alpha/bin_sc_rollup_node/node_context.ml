@@ -217,43 +217,6 @@ let trace_lwt_result_with x =
     (fun s p -> trace (Exn (Failure s)) @@ protect @@ fun () -> p)
     x
 
-let get_commitment {store; _} commitment_hash =
-  trace_lwt_with
-    "Could not retrieve commitment %a"
-    Sc_rollup.Commitment.Hash.pp
-    commitment_hash
-  @@ Store.Commitments.get store commitment_hash
-
-let find_commitment {store; _} hash = Store.Commitments.find store hash
-
-let commitment_exists {store; _} hash = Store.Commitments.mem store hash
-
-let save_commitment {store; _} commitment =
-  let open Lwt_syntax in
-  let hash = Sc_rollup.Commitment.hash_uncarbonated commitment in
-  let+ () = Store.Commitments.add store hash commitment in
-  hash
-
-let commitment_published_at_level {store; _} commitment =
-  Store.Commitments_published_at_level.find store commitment
-
-let set_commitment_published_at_level {store; _} =
-  Store.Commitments_published_at_level.add store
-
-type commitment_source = Anyone | Us
-
-let commitment_was_published {store; _} ~source commitment_hash =
-  let open Lwt_syntax in
-  match source with
-  | Anyone -> Store.Commitments_published_at_level.mem store commitment_hash
-  | Us -> (
-      let+ info =
-        Store.Commitments_published_at_level.find store commitment_hash
-      in
-      match info with
-      | Some {published_at_level = Some _; _} -> true
-      | _ -> false)
-
 module L2_block = struct
   let hash_of_level_opt {store; cctxt; _} level =
     let open Lwt_syntax in
@@ -354,6 +317,45 @@ module L2_block = struct
     | Some block -> Store.Last_finalized_head.set store block
 
   let get_finalized_head_opt {store; _} = Store.Last_finalized_head.find store
+end
+
+module Commitment = struct
+  let get {store; _} commitment_hash =
+    trace_lwt_with
+      "Could not retrieve commitment %a"
+      Sc_rollup.Commitment.Hash.pp
+      commitment_hash
+    @@ Store.Commitments.get store commitment_hash
+
+  let find {store; _} hash = Store.Commitments.find store hash
+
+  let exists {store; _} hash = Store.Commitments.mem store hash
+
+  let save {store; _} commitment =
+    let open Lwt_syntax in
+    let hash = Sc_rollup.Commitment.hash_uncarbonated commitment in
+    let+ () = Store.Commitments.add store hash commitment in
+    hash
+
+  let published_at_level {store; _} commitment =
+    Store.Commitments_published_at_level.find store commitment
+
+  let set_published_at_level {store; _} =
+    Store.Commitments_published_at_level.add store
+
+  type commitment_source = Anyone | Us
+
+  let was_published {store; _} ~source commitment_hash =
+    let open Lwt_syntax in
+    match source with
+    | Anyone -> Store.Commitments_published_at_level.mem store commitment_hash
+    | Us -> (
+        let+ info =
+          Store.Commitments_published_at_level.find store commitment_hash
+        in
+        match info with
+        | Some {published_at_level = Some _; _} -> true
+        | _ -> false)
 end
 
 let get_inbox {store; _} inbox_hash =

@@ -196,53 +196,53 @@ module L2_block : sig
     _ t -> Sc_rollup.Tick.t -> Sc_rollup_block.t option tzresult Lwt.t
 end
 
-(** {3 Commitments} *)
+(** Commitment helpers. *)
+module Commitment : sig
+  (** [get t hash] returns the commitment with [hash] stored by the
+      rollup node. *)
+  val get :
+    _ t -> Sc_rollup.Commitment.Hash.t -> Sc_rollup.Commitment.t tzresult Lwt.t
 
-(** [get_commitment t hash] returns the commitment with [hash] stored by the
-    rollup node. *)
-val get_commitment :
-  _ t -> Sc_rollup.Commitment.Hash.t -> Sc_rollup.Commitment.t tzresult Lwt.t
+  (** Same as {!get} but returns [None] if this commitment hash is not
+      known by the rollup node. *)
+  val find :
+    _ t -> Sc_rollup.Commitment.Hash.t -> Sc_rollup.Commitment.t option Lwt.t
 
-(** Same as {!get_commitment} but returns [None] if this commitment hash is not
-    known by the rollup node. *)
-val find_commitment :
-  _ t -> Sc_rollup.Commitment.Hash.t -> Sc_rollup.Commitment.t option Lwt.t
+  (** [exists t hash] returns [true] if the commitment with [hash] is
+      known (i.e. stored) by the rollup node. *)
+  val exists : _ t -> Sc_rollup.Commitment.Hash.t -> bool Lwt.t
 
-(** [commitment_exists t hash] returns [true] if the commitment with [hash] is
-    known (i.e. stored) by the rollup node. *)
-val commitment_exists : _ t -> Sc_rollup.Commitment.Hash.t -> bool Lwt.t
+  (** [save t commitment] saves a commitment in the store an returns is
+      hash. *)
+  val save : rw -> Sc_rollup.Commitment.t -> Sc_rollup.Commitment.Hash.t Lwt.t
 
-(** [save_commitment t commitment] saves a commitment in the store an returns is
-    hash. *)
-val save_commitment :
-  rw -> Sc_rollup.Commitment.t -> Sc_rollup.Commitment.Hash.t Lwt.t
+  (** [published_at_level t hash] returns the levels at which the
+      commitment was first published and the one at which it was included by in a
+      Layer 1 block. It returns [None] if the commitment is not known by the
+      rollup node or if it was never published by the rollup node (and included on
+      L1). *)
+  val published_at_level :
+    _ t ->
+    Sc_rollup.Commitment.Hash.t ->
+    Store.Commitments_published_at_level.element option Lwt.t
 
-(** [commitment_published_at_level t hash] returns the levels at which the
-    commitment was first published and the one at which it was included by in a
-    Layer 1 block. It returns [None] if the commitment is not known by the
-    rollup node or if it was never published by the rollup node (and included on
-    L1). *)
-val commitment_published_at_level :
-  _ t ->
-  Sc_rollup.Commitment.Hash.t ->
-  Store.Commitments_published_at_level.element option Lwt.t
+  (** [set_published_at_level t hash levels] saves the
+      publication/inclusion information for a commitment with [hash]. *)
+  val set_published_at_level :
+    rw ->
+    Sc_rollup.Commitment.Hash.t ->
+    Store.Commitments_published_at_level.element ->
+    unit Lwt.t
 
-(** [save_commitment_published_at_level t hash levels] saves the
-    publication/inclusion information for a commitment with [hash]. *)
-val set_commitment_published_at_level :
-  rw ->
-  Sc_rollup.Commitment.Hash.t ->
-  Store.Commitments_published_at_level.element ->
-  unit Lwt.t
+  type commitment_source = Anyone | Us
 
-type commitment_source = Anyone | Us
-
-(** [commitment_was_published t hash] returns [true] if the commitment is known
-    as being already published on L1. The [source] indicates if we want to know
-    the publication status for commitments we published ourselves [`Us] or that
-    [`Anyone] published. *)
-val commitment_was_published :
-  _ t -> source:commitment_source -> Sc_rollup.Commitment.Hash.t -> bool Lwt.t
+  (** [was_published t hash] returns [true] if the commitment is known
+      as being already published on L1. The [source] indicates if we want to know
+      the publication status for commitments we published ourselves [`Us] or that
+      [`Anyone] published. *)
+  val was_published :
+    _ t -> source:commitment_source -> Sc_rollup.Commitment.Hash.t -> bool Lwt.t
+end
 
 (** {3 Inboxes} *)
 

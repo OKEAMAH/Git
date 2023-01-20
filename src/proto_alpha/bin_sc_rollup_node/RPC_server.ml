@@ -377,7 +377,7 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
         Sc_rollup_block.most_recent_commitment head.header
       in
       let* commitment =
-        Node_context.find_commitment node_ctxt commitment_hash
+        Node_context.Commitment.find node_ctxt commitment_hash
       in
       return (commitment, commitment_hash)
     in
@@ -397,7 +397,7 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
          available only when the commitment has been published and included
          in a block. *)
       let*! published_at_level_info =
-        Node_context.commitment_published_at_level node_ctxt hash
+        Node_context.Commitment.published_at_level node_ctxt hash
       in
       let first_published, published =
         match published_at_level_info with
@@ -560,7 +560,7 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
                           in
                           (* Commitment computed *)
                           let*! published_at =
-                            Node_context.commitment_published_at_level
+                            Node_context.Commitment.published_at_level
                               node_ctxt
                               commitment_hash
                           in
@@ -576,7 +576,7 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
                               } ->
                               (* Commitment published *)
                               let* commitment =
-                                Node_context.get_commitment
+                                Node_context.Commitment.get
                                   node_ctxt
                                   commitment_hash
                               in
