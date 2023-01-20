@@ -244,54 +244,54 @@ module Commitment : sig
     _ t -> source:commitment_source -> Sc_rollup.Commitment.Hash.t -> bool Lwt.t
 end
 
-(** {3 Inboxes} *)
+(** Inbox helpers. *)
+module Inbox : sig
+  (** [get t inbox_hash] retrieves the inbox whose hash is [inbox_hash] from
+      the rollup node's storage. *)
+  val get : _ t -> Sc_rollup.Inbox.Hash.t -> Sc_rollup.Inbox.t tzresult Lwt.t
 
-(** [get_inbox t inbox_hash] retrieves the inbox whose hash is [inbox_hash] from
-    the rollup node's storage. *)
-val get_inbox :
-  _ t -> Sc_rollup.Inbox.Hash.t -> Sc_rollup.Inbox.t tzresult Lwt.t
+  (** Same as {!get} but returns [None] if this inbox is not known. *)
+  val find : _ t -> Sc_rollup.Inbox.Hash.t -> Sc_rollup.Inbox.t option Lwt.t
 
-(** Same as {!get_inbox} but returns [None] if this inbox is not known. *)
-val find_inbox : _ t -> Sc_rollup.Inbox.Hash.t -> Sc_rollup.Inbox.t option Lwt.t
+  (** [save t inbox] remembers the [inbox] in the storage. It is associated
+      to its hash which is returned. *)
+  val save : rw -> Sc_rollup.Inbox.t -> Sc_rollup.Inbox.Hash.t Lwt.t
 
-(** [save_inbox t inbox] remembers the [inbox] in the storage. It is associated
-    to its hash which is returned. *)
-val save_inbox : rw -> Sc_rollup.Inbox.t -> Sc_rollup.Inbox.Hash.t Lwt.t
+  (** [of_head node_ctxt block] returns the latest inbox at the given
+      [block]. This function always returns [inbox] for all levels at and
+      after the rollup genesis. NOTE: It requires the L2 block for [block.hash] to
+      have been saved. *)
+  val of_head : _ t -> Layer1.head -> Sc_rollup.Inbox.t tzresult Lwt.t
 
-(** [inbox_of_head node_ctxt block] returns the latest inbox at the given
-    [block]. This function always returns [inbox] for all levels at and
-    after the rollup genesis. NOTE: It requires the L2 block for [block.hash] to
-    have been saved. *)
-val inbox_of_head : _ t -> Layer1.head -> Sc_rollup.Inbox.t tzresult Lwt.t
+  (** Same as {!get} but uses the Layer 1 block hash for this inbox instead. *)
+  val get_by_block_hash :
+    _ t -> Block_hash.t -> Sc_rollup.Inbox.t tzresult Lwt.t
 
-(** Same as {!get_inbox} but uses the Layer 1 block hash for this inbox instead. *)
-val get_inbox_by_block_hash :
-  _ t -> Block_hash.t -> Sc_rollup.Inbox.t tzresult Lwt.t
+  (** [genesis t] is the genesis inbox for the rollup [t.sc_rollup_address]. *)
+  val genesis : _ t -> Sc_rollup.Inbox.t tzresult Lwt.t
 
-(** [genesis_inbox t] is the genesis inbox for the rollup [t.sc_rollup_address]. *)
-val genesis_inbox : _ t -> Sc_rollup.Inbox.t tzresult Lwt.t
+  (** [get_messages t witness_hash] retrieves the messages for the merkelized
+      payloads hash [witness_hash] stored by the rollup node. *)
+  val get_messages :
+    _ t ->
+    Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t ->
+    Store.Messages.info tzresult Lwt.t
 
-(** [get_messages t witness_hash] retrieves the messages for the merkelized
-    payloads hash [witness_hash] stored by the rollup node. *)
-val get_messages :
-  _ t ->
-  Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t ->
-  Store.Messages.info tzresult Lwt.t
+  (** Same as {!get_messages} but returns [None] if the payloads hash is not known. *)
+  val find_messages :
+    _ t ->
+    Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t ->
+    Store.Messages.info option Lwt.t
 
-(** Same as {!get_messages} but returns [None] if the payloads hash is not known. *)
-val find_messages :
-  _ t ->
-  Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t ->
-  Store.Messages.info option Lwt.t
-
-(** [save_messages t payloads_hash messages] associates the list of [messages]
-    to the [payloads_hash]. The payload hash must be computed by calling,
-    e.g. {!Sc_rollup.Inbox.add_all_messages}. *)
-val save_messages :
-  rw ->
-  Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t ->
-  Store.Messages.info ->
-  unit Lwt.t
+  (** [save_messages t payloads_hash messages] associates the list of [messages]
+      to the [payloads_hash]. The payload hash must be computed by calling,
+      e.g. {!Sc_rollup.Inbox.add_all_messages}. *)
+  val save_messages :
+    rw ->
+    Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t ->
+    Store.Messages.info ->
+    unit Lwt.t
+end
 
 (** {3 DAL} *)
 

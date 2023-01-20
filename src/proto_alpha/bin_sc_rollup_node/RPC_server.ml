@@ -229,7 +229,7 @@ module Common = struct
     let open Lwt_result_syntax in
     let* l2_block = Node_context.L2_block.get node_ctxt block in
     let* {messages; _} =
-      Node_context.get_messages node_ctxt l2_block.header.inbox_witness
+      Node_context.Inbox.get_messages node_ctxt l2_block.header.inbox_witness
     in
     return @@ Z.of_int (List.length messages)
 
@@ -257,7 +257,7 @@ module Common = struct
   let () =
     Block_directory.register0 Sc_rollup_services.Global.Block.inbox
     @@ fun (node_ctxt, block) () () ->
-    Node_context.get_inbox_by_block_hash node_ctxt block
+    Node_context.Inbox.get_by_block_hash node_ctxt block
 
   let () =
     Block_directory.register0 Sc_rollup_services.Global.Block.ticks

@@ -135,7 +135,7 @@ let process_head (node_ctxt : _ Node_context.t)
 
     *)
     let* predecessor = Layer1.get_predecessor node_ctxt.l1_ctxt head in
-    let* inbox = Node_context.inbox_of_head node_ctxt predecessor in
+    let* inbox = Node_context.Inbox.of_head node_ctxt predecessor in
     let inbox_metrics = Metrics.Inbox.metrics in
     Prometheus.Gauge.set inbox_metrics.head_inbox_level @@ Int32.to_float level ;
     let*? level = Environment.wrap_tzresult @@ Raw_level.of_int32 level in
@@ -168,7 +168,7 @@ let process_head (node_ctxt : _ Node_context.t)
     Metrics.Inbox.Stats.head_messages_list :=
       messages_with_protocol_internal_messages ;
     let*! () =
-      Node_context.save_messages
+      Node_context.Inbox.save_messages
         node_ctxt
         witness_hash
         {
@@ -178,7 +178,7 @@ let process_head (node_ctxt : _ Node_context.t)
         }
     in
     let* () = same_inbox_as_layer_1 node_ctxt head_hash inbox in
-    let*! inbox_hash = Node_context.save_inbox node_ctxt inbox in
+    let*! inbox_hash = Node_context.Inbox.save node_ctxt inbox in
     return
       ( inbox_hash,
         inbox,
@@ -186,7 +186,7 @@ let process_head (node_ctxt : _ Node_context.t)
         messages_with_protocol_internal_messages,
         ctxt ))
   else
-    let* inbox = Node_context.genesis_inbox node_ctxt in
+    let* inbox = Node_context.Inbox.genesis node_ctxt in
     return
       ( Sc_rollup.Inbox.hash inbox,
         inbox,

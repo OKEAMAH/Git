@@ -358,75 +358,77 @@ module Commitment = struct
         | _ -> false)
 end
 
-let get_inbox {store; _} inbox_hash =
-  trace_lwt_with
-    "Could not retrieve inbox %a"
-    Sc_rollup.Inbox.Hash.pp
-    inbox_hash
-  @@ Store.Inboxes.get store inbox_hash
+module Inbox = struct
+  let get {store; _} inbox_hash =
+    trace_lwt_with
+      "Could not retrieve inbox %a"
+      Sc_rollup.Inbox.Hash.pp
+      inbox_hash
+    @@ Store.Inboxes.get store inbox_hash
 
-let find_inbox {store; _} hash = Store.Inboxes.find store hash
+  let find {store; _} hash = Store.Inboxes.find store hash
 
-let save_inbox {store; _} inbox =
-  let open Lwt_syntax in
-  let hash = Sc_rollup.Inbox.hash inbox in
-  let+ () = Store.Inboxes.add store hash inbox in
-  hash
+  let save {store; _} inbox =
+    let open Lwt_syntax in
+    let hash = Sc_rollup.Inbox.hash inbox in
+    let+ () = Store.Inboxes.add store hash inbox in
+    hash
 
-let find_inbox_by_block_hash {store; _} block_hash =
-  let open Lwt_option_syntax in
-  let* l2_block = Store.L2_blocks.find store block_hash in
-  Store.Inboxes.find store l2_block.header.inbox_hash
+  let find_by_block_hash {store; _} block_hash =
+    let open Lwt_option_syntax in
+    let* l2_block = Store.L2_blocks.find store block_hash in
+    Store.Inboxes.find store l2_block.header.inbox_hash
 
-let genesis_inbox node_ctxt =
-  let genesis_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
-  Plugin.RPC.Sc_rollup.inbox
-    node_ctxt.cctxt
-    (node_ctxt.cctxt#chain, `Level genesis_level)
+  let genesis node_ctxt =
+    let genesis_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
+    Plugin.RPC.Sc_rollup.inbox
+      node_ctxt.cctxt
+      (node_ctxt.cctxt#chain, `Level genesis_level)
 
-let inbox_of_head node_ctxt Layer1.{hash = block_hash; level = block_level} =
-  let open Lwt_result_syntax in
-  let*! possible_inbox = find_inbox_by_block_hash node_ctxt block_hash in
-  (* Pre-condition: forall l. (l > genesis_level) => inbox[l] <> None. *)
-  match possible_inbox with
-  | None ->
-      (* The inbox exists for each tezos block the rollup should care about.
-         That is, every block after the origination level. We then join
-         the bandwagon and build the inbox on top of the protocol's inbox
-         at the end of the origination level. *)
-      let genesis_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
-      if block_level = genesis_level then genesis_inbox node_ctxt
-      else if block_level > genesis_level then
-        (* Invariant broken, the inbox for this level should exist. *)
-        failwith
-          "The inbox for block hash %a (level = %ld) is missing."
-          Block_hash.pp
-          block_hash
-          block_level
-      else
-        (* The rollup node should not care about levels before the genesis
-           level. *)
-        failwith
-          "Asking for the inbox before the genesis level (i.e. %ld), out of \
-           the scope of the rollup's node"
-          block_level
-  | Some inbox -> return inbox
+  let of_head node_ctxt Layer1.{hash = block_hash; level = block_level} =
+    let open Lwt_result_syntax in
+    let*! possible_inbox = find_by_block_hash node_ctxt block_hash in
+    (* Pre-condition: forall l. (l > genesis_level) => inbox[l] <> None. *)
+    match possible_inbox with
+    | None ->
+        (* The inbox exists for each tezos block the rollup should care about.
+           That is, every block after the origination level. We then join
+           the bandwagon and build the inbox on top of the protocol's inbox
+           at the end of the origination level. *)
+        let genesis_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
+        if block_level = genesis_level then genesis node_ctxt
+        else if block_level > genesis_level then
+          (* Invariant broken, the inbox for this level should exist. *)
+          failwith
+            "The inbox for block hash %a (level = %ld) is missing."
+            Block_hash.pp
+            block_hash
+            block_level
+        else
+          (* The rollup node should not care about levels before the genesis
+             level. *)
+          failwith
+            "Asking for the inbox before the genesis level (i.e. %ld), out of \
+             the scope of the rollup's node"
+            block_level
+    | Some inbox -> return inbox
 
-let get_inbox_by_block_hash node_ctxt hash =
-  let open Lwt_result_syntax in
-  let* level = L2_block.level_of_hash node_ctxt hash in
-  inbox_of_head node_ctxt {hash; level}
+  let get_by_block_hash node_ctxt hash =
+    let open Lwt_result_syntax in
+    let* level = L2_block.level_of_hash node_ctxt hash in
+    of_head node_ctxt {hash; level}
 
-let get_messages {store; _} messages_hash =
-  trace_lwt_with
-    "Could not retrieve messages with payloads merkelized hash %a"
-    Sc_rollup.Inbox_merkelized_payload_hashes.Hash.pp
-    messages_hash
-  @@ Store.Messages.get store messages_hash
+  let get_messages {store; _} messages_hash =
+    trace_lwt_with
+      "Could not retrieve messages with payloads merkelized hash %a"
+      Sc_rollup.Inbox_merkelized_payload_hashes.Hash.pp
+      messages_hash
+    @@ Store.Messages.get store messages_hash
 
-let find_messages {store; _} hash = Store.Messages.find store hash
+  let find_messages {store; _} hash = Store.Messages.find store hash
 
-let save_messages {store; _} = Store.Messages.add store
+  let save_messages {store; _} = Store.Messages.add store
+end
 
 let get_slot_header {store; _} ~published_in_block_hash slot_index =
   trace_lwt_with
