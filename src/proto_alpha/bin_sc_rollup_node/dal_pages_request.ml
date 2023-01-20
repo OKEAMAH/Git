@@ -104,11 +104,11 @@ let check_confirmation_status_and_download
   in
   if is_confirmed then
     let* {commitment; _} =
-      Node_context.get_slot_header node_ctxt ~published_in_block_hash index
+      Node_context.Dal.get_slot_header node_ctxt ~published_in_block_hash index
     in
     let* pages = get_slot_pages dal_cctxt commitment in
     let save_pages node_ctxt =
-      Node_context.save_confirmed_slot
+      Node_context.Dal.save_confirmed_slot
         node_ctxt
         confirmed_in_block_hash
         index
@@ -117,7 +117,10 @@ let check_confirmation_status_and_download
     return (Delayed_write_monad.delay_write (Some pages) save_pages)
   else
     let save_slot node_ctxt =
-      Node_context.save_unconfirmed_slot node_ctxt confirmed_in_block_hash index
+      Node_context.Dal.save_unconfirmed_slot
+        node_ctxt
+        confirmed_in_block_hash
+        index
     in
     return (Delayed_write_monad.delay_write None save_slot)
 
@@ -131,7 +134,7 @@ let slot_pages ~dal_attestation_lag node_ctxt
       node_ctxt
   in
   let*! processed =
-    Node_context.processed_slot node_ctxt ~confirmed_in_block_hash index
+    Node_context.Dal.processed_slot node_ctxt ~confirmed_in_block_hash index
   in
   match processed with
   | None ->
@@ -148,7 +151,7 @@ let slot_pages ~dal_attestation_lag node_ctxt
   | Some `Unconfirmed -> return (Delayed_write_monad.no_write None)
   | Some `Confirmed ->
       let*! pages =
-        Node_context.list_slot_pages node_ctxt ~confirmed_in_block_hash
+        Node_context.Dal.list_slot_pages node_ctxt ~confirmed_in_block_hash
       in
       let pages =
         List.filter_map
@@ -170,7 +173,7 @@ let page_content ~dal_attestation_lag node_ctxt page_id =
       node_ctxt
   in
   let*! processed =
-    Node_context.processed_slot node_ctxt ~confirmed_in_block_hash index
+    Node_context.Dal.processed_slot node_ctxt ~confirmed_in_block_hash index
   in
   match processed with
   | None -> (
@@ -203,7 +206,7 @@ let page_content ~dal_attestation_lag node_ctxt page_id =
   | Some `Unconfirmed -> return None
   | Some `Confirmed -> (
       let*! page_opt =
-        Node_context.find_slot_page
+        Node_context.Dal.find_slot_page
           node_ctxt
           ~confirmed_in_block_hash
           ~slot_index:index
@@ -213,7 +216,7 @@ let page_content ~dal_attestation_lag node_ctxt page_id =
       | Some v -> return @@ Some v
       | None ->
           let*! pages =
-            Node_context.list_slot_pages node_ctxt ~confirmed_in_block_hash
+            Node_context.Dal.list_slot_pages node_ctxt ~confirmed_in_block_hash
           in
           if page_index < 0 || List.compare_length_with pages page_index <= 0
           then tzfail @@ Dal_invalid_page_for_slot page_id

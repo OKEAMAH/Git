@@ -173,7 +173,7 @@ module Make (PVM : Pvm.S) = struct
       ->
         assert (Node_context.dal_enabled node_ctxt) ;
         let*! () =
-          Node_context.save_slot_header
+          Node_context.Dal.save_slot_header
             node_ctxt
             ~published_in_block_hash:head.Layer1.hash
             slot_header

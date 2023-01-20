@@ -74,7 +74,7 @@ end
 let get_dal_confirmed_slot_pages node_ctxt block =
   let open Lwt_result_syntax in
   let*! slot_pages =
-    Node_context.list_slot_pages node_ctxt ~confirmed_in_block_hash:block
+    Node_context.Dal.list_slot_pages node_ctxt ~confirmed_in_block_hash:block
   in
   (* Slot pages are sorted in lexicographic order of slot index and page
      number.*)
@@ -96,7 +96,7 @@ let get_dal_confirmed_slot_pages node_ctxt block =
 let get_dal_slot_page node_ctxt block slot_index slot_page =
   let open Lwt_result_syntax in
   let*! processed =
-    Node_context.processed_slot
+    Node_context.Dal.processed_slot
       node_ctxt
       ~confirmed_in_block_hash:block
       slot_index
@@ -106,7 +106,7 @@ let get_dal_slot_page node_ctxt block slot_index slot_page =
   | Some `Unconfirmed -> return ("Slot was not confirmed", None)
   | Some `Confirmed -> (
       let*! contents_opt =
-        Node_context.find_slot_page
+        Node_context.Dal.find_slot_page
           node_ctxt
           ~confirmed_in_block_hash:block
           ~slot_index
@@ -422,7 +422,9 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
     @@ fun (node_ctxt, block) () () ->
     let open Lwt_result_syntax in
     let*! slots =
-      Node_context.get_all_slot_headers node_ctxt ~published_in_block_hash:block
+      Node_context.Dal.get_all_slot_headers
+        node_ctxt
+        ~published_in_block_hash:block
     in
     return slots
 

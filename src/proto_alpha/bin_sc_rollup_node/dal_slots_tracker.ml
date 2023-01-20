@@ -100,7 +100,7 @@ let slots_info node_ctxt (Layer1.{hash; _} as head) =
           metadata.protocol_data.dal_attestation
       in
       let*! published_slots_indexes =
-        Node_context.get_slot_indexes
+        Node_context.Dal.get_slot_indexes
           node_ctxt
           ~published_in_block_hash:published_block_hash
       in
@@ -173,7 +173,7 @@ let download_and_save_slots
   let*! () =
     List.iter_p
       (fun s_slot ->
-        Node_context.save_unconfirmed_slot
+        Node_context.Dal.save_unconfirmed_slot
           node_context
           current_block_hash
           s_slot)
@@ -185,7 +185,7 @@ let download_and_save_slots
            (* fails if slot_header is missing but the slot with index s_slot has been
                 confirmed. This scenario should not be possible. *)
            let* {commitment; _} =
-             Node_context.get_slot_header
+             Node_context.Dal.get_slot_header
                node_context
                ~published_in_block_hash:published_block_hash
                s_slot
@@ -195,7 +195,7 @@ let download_and_save_slots
               in the store. *)
            let* pages = Dal_node_client.get_slot_pages dal_cctxt commitment in
            let*! () =
-             Node_context.save_confirmed_slot
+             Node_context.Dal.save_confirmed_slot
                node_context
                current_block_hash
                s_slot
@@ -226,7 +226,7 @@ module Confirmed_slots_history = struct
     in
     List.map_ep
       (fun slot_index ->
-        Node_context.get_slot_header
+        Node_context.Dal.get_slot_header
           node_ctxt
           ~published_in_block_hash:published_block_hash
           slot_index)
@@ -291,7 +291,7 @@ module Confirmed_slots_history = struct
       node_ctxt
       block
       ~entry_kind:"slots history"
-      ~find:Node_context.find_confirmed_slots_history
+      ~find:Node_context.Dal.find_confirmed_slots_history
       ~default:read_slots_history_from_l1
 
   let slots_history_cache_of_hash node_ctxt block =
@@ -299,7 +299,7 @@ module Confirmed_slots_history = struct
       node_ctxt
       block
       ~entry_kind:"slots history cache"
-      ~find:Node_context.find_confirmed_slots_histories
+      ~find:Node_context.Dal.find_confirmed_slots_histories
       ~default:(fun node_ctxt _block ->
         let num_slots =
           node_ctxt.Node_context.protocol_constants.parametric.dal
@@ -348,13 +348,13 @@ module Confirmed_slots_history = struct
     (* TODO/DAL: https://gitlab.com/tezos/tezos/-/issues/3856
        Attempt to improve this process. *)
     let*! () =
-      Node_context.save_confirmed_slots_history
+      Node_context.Dal.save_confirmed_slots_history
         node_ctxt
         head_hash
         slots_history
     in
     let*! () =
-      Node_context.save_confirmed_slots_histories
+      Node_context.Dal.save_confirmed_slots_histories
         node_ctxt
         head_hash
         slots_cache

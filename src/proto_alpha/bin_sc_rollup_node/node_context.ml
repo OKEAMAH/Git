@@ -430,87 +430,92 @@ module Inbox = struct
   let save_messages {store; _} = Store.Messages.add store
 end
 
-let get_slot_header {store; _} ~published_in_block_hash slot_index =
-  trace_lwt_with
-    "Could not retrieve slot header for slot index %a published in block %a"
-    Dal.Slot_index.pp
-    slot_index
-    Block_hash.pp
-    published_in_block_hash
-  @@ Store.Dal_slots_headers.get
-       store
-       ~primary_key:published_in_block_hash
-       ~secondary_key:slot_index
+module Dal = struct
+  let get_slot_header {store; _} ~published_in_block_hash slot_index =
+    trace_lwt_with
+      "Could not retrieve slot header for slot index %a published in block %a"
+      Dal.Slot_index.pp
+      slot_index
+      Block_hash.pp
+      published_in_block_hash
+    @@ Store.Dal_slots_headers.get
+         store
+         ~primary_key:published_in_block_hash
+         ~secondary_key:slot_index
 
-let get_all_slot_headers {store; _} ~published_in_block_hash =
-  Store.Dal_slots_headers.list_values store ~primary_key:published_in_block_hash
+  let get_all_slot_headers {store; _} ~published_in_block_hash =
+    Store.Dal_slots_headers.list_values
+      store
+      ~primary_key:published_in_block_hash
 
-let get_slot_indexes {store; _} ~published_in_block_hash =
-  Store.Dal_slots_headers.list_secondary_keys
-    store
-    ~primary_key:published_in_block_hash
+  let get_slot_indexes {store; _} ~published_in_block_hash =
+    Store.Dal_slots_headers.list_secondary_keys
+      store
+      ~primary_key:published_in_block_hash
 
-let save_slot_header {store; _} ~published_in_block_hash
-    (slot_header : Dal.Slot.Header.t) =
-  Store.Dal_slots_headers.add
-    store
-    ~primary_key:published_in_block_hash
-    ~secondary_key:slot_header.id.index
-    slot_header
+  let save_slot_header {store; _} ~published_in_block_hash
+      (slot_header : Dal.Slot.Header.t) =
+    Store.Dal_slots_headers.add
+      store
+      ~primary_key:published_in_block_hash
+      ~secondary_key:slot_header.id.index
+      slot_header
 
-let processed_slot {store; _} ~confirmed_in_block_hash slot_index =
-  Store.Dal_processed_slots.find
-    store
-    ~primary_key:confirmed_in_block_hash
-    ~secondary_key:slot_index
+  let processed_slot {store; _} ~confirmed_in_block_hash slot_index =
+    Store.Dal_processed_slots.find
+      store
+      ~primary_key:confirmed_in_block_hash
+      ~secondary_key:slot_index
 
-let list_slot_pages {store; _} ~confirmed_in_block_hash =
-  Store.Dal_slot_pages.list_secondary_keys_with_values
-    store
-    ~primary_key:confirmed_in_block_hash
+  let list_slot_pages {store; _} ~confirmed_in_block_hash =
+    Store.Dal_slot_pages.list_secondary_keys_with_values
+      store
+      ~primary_key:confirmed_in_block_hash
 
-let find_slot_page {store; _} ~confirmed_in_block_hash ~slot_index ~page_index =
-  Store.Dal_slot_pages.find
-    store
-    ~primary_key:confirmed_in_block_hash
-    ~secondary_key:(slot_index, page_index)
+  let find_slot_page {store; _} ~confirmed_in_block_hash ~slot_index ~page_index
+      =
+    Store.Dal_slot_pages.find
+      store
+      ~primary_key:confirmed_in_block_hash
+      ~secondary_key:(slot_index, page_index)
 
-let save_unconfirmed_slot {store; _} current_block_hash slot_index =
-  (* No page is actually saved *)
-  Store.Dal_processed_slots.add
-    store
-    ~primary_key:current_block_hash
-    ~secondary_key:slot_index
-    `Unconfirmed
+  let save_unconfirmed_slot {store; _} current_block_hash slot_index =
+    (* No page is actually saved *)
+    Store.Dal_processed_slots.add
+      store
+      ~primary_key:current_block_hash
+      ~secondary_key:slot_index
+      `Unconfirmed
 
-let save_confirmed_slot {store; _} current_block_hash slot_index pages =
-  (* Adding multiple entries with the same primary key amounts to updating the
-     contents of an in-memory map, hence pages must be added sequentially. *)
-  let open Lwt_syntax in
-  let* () =
-    List.iteri_s
-      (fun page_number page ->
-        Store.Dal_slot_pages.add
-          store
-          ~primary_key:current_block_hash
-          ~secondary_key:(slot_index, page_number)
-          page)
-      pages
-  in
-  Store.Dal_processed_slots.add
-    store
-    ~primary_key:current_block_hash
-    ~secondary_key:slot_index
-    `Confirmed
+  let save_confirmed_slot {store; _} current_block_hash slot_index pages =
+    (* Adding multiple entries with the same primary key amounts to updating the
+       contents of an in-memory map, hence pages must be added sequentially. *)
+    let open Lwt_syntax in
+    let* () =
+      List.iteri_s
+        (fun page_number page ->
+          Store.Dal_slot_pages.add
+            store
+            ~primary_key:current_block_hash
+            ~secondary_key:(slot_index, page_number)
+            page)
+        pages
+    in
+    Store.Dal_processed_slots.add
+      store
+      ~primary_key:current_block_hash
+      ~secondary_key:slot_index
+      `Confirmed
 
-let find_confirmed_slots_history {store; _} =
-  Store.Dal_confirmed_slots_history.find store
+  let find_confirmed_slots_history {store; _} =
+    Store.Dal_confirmed_slots_history.find store
 
-let save_confirmed_slots_history {store; _} =
-  Store.Dal_confirmed_slots_history.add store
+  let save_confirmed_slots_history {store; _} =
+    Store.Dal_confirmed_slots_history.add store
 
-let find_confirmed_slots_histories {store; _} =
-  Store.Dal_confirmed_slots_histories.find store
+  let find_confirmed_slots_histories {store; _} =
+    Store.Dal_confirmed_slots_histories.find store
 
-let save_confirmed_slots_histories {store; _} =
-  Store.Dal_confirmed_slots_histories.add store
+  let save_confirmed_slots_histories {store; _} =
+    Store.Dal_confirmed_slots_histories.add store
+end
