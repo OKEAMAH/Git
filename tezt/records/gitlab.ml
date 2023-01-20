@@ -33,9 +33,35 @@ let project_job_artifact ~project ~job_id ~artifact_path =
 let project_job_artifacts ~project ~job_id =
   make (sf "projects/%s/jobs/%d/artifacts" (Uri.pct_encode project) job_id)
 
+let project_merge_requests ~project =
+  make (sf "projects/%s/merge_requests" (Uri.pct_encode project))
+
 let get ?(curl_args = []) uri =
   let url = Uri.to_string uri in
   let* raw_json = Process.run_and_read_stdout "curl" (curl_args @ [url]) in
+  return (JSON.parse ~origin:url raw_json)
+
+let post ?log_call ?(curl_args = []) uri data =
+  let url = Uri.to_string uri in
+  let* raw_json =
+    let process =
+      Process.spawn
+        ?log_command:log_call
+        "curl"
+        (curl_args
+        @ [
+            "-X";
+            "POST";
+            "-H";
+            "Content-Type: application/json";
+            "-s";
+            url;
+            "-d";
+            JSON.encode data;
+          ])
+    in
+    Process.check_and_read_stdout process
+  in
   return (JSON.parse ~origin:url raw_json)
 
 let get_output ~output_path uri =
