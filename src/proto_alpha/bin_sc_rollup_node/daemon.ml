@@ -97,7 +97,7 @@ module Make (PVM : Pvm.S) = struct
              with it, otherwise the accuser publishes our commitment in order to
              play the refutation game. *)
           let* l2_block =
-            Node_context.get_l2_block_by_level
+            Node_context.L2_block.get_by_level
               node_ctxt
               (Raw_level.to_int32 commitment.inbox_level)
           in
@@ -126,7 +126,7 @@ module Make (PVM : Pvm.S) = struct
       ->
         (* Cemented commitment ---------------------------------------------- *)
         let* inbox_block =
-          Node_context.get_l2_block_by_level
+          Node_context.L2_block.get_by_level
             node_ctxt
             (Raw_level.to_int32 inbox_level)
         in
@@ -259,7 +259,9 @@ module Make (PVM : Pvm.S) = struct
   let rec processed_finalized_block (node_ctxt : _ Node_context.t)
       Layer1.({hash; level} as block) =
     let open Lwt_result_syntax in
-    let*! last_finalized = Node_context.get_finalized_head_opt node_ctxt in
+    let*! last_finalized =
+      Node_context.L2_block.get_finalized_head_opt node_ctxt
+    in
     let already_finalized =
       match last_finalized with
       | Some finalized -> level <= Raw_level.to_int32 finalized.header.level
@@ -273,14 +275,14 @@ module Make (PVM : Pvm.S) = struct
     in
     let*! () = Daemon_event.head_processing hash level ~finalized:true in
     let* () = process_l1_block_operations ~finalized:true node_ctxt block in
-    let*! () = Node_context.mark_finalized_head node_ctxt hash in
+    let*! () = Node_context.L2_block.mark_finalized_head node_ctxt hash in
     return_unit
 
   let process_head (node_ctxt : _ Node_context.t) Layer1.({hash; level} as head)
       =
     let open Lwt_result_syntax in
     let*! () = Daemon_event.head_processing hash level ~finalized:false in
-    let*! () = Node_context.save_level node_ctxt head in
+    let*! () = Node_context.L2_block.save_level node_ctxt head in
     let* inbox_hash, inbox, inbox_witness, messages, ctxt =
       Inbox.process_head node_ctxt head
     in
@@ -308,7 +310,7 @@ module Make (PVM : Pvm.S) = struct
         (* Previous commitment for rollup genesis is itself. *)
         return node_ctxt.genesis_info.Sc_rollup.Commitment.commitment_hash
       else
-        let+ pred = Node_context.get_l2_block node_ctxt predecessor in
+        let+ pred = Node_context.L2_block.get node_ctxt predecessor in
         Sc_rollup_block.most_recent_commitment pred.header
     in
     let header =
@@ -334,7 +336,7 @@ module Make (PVM : Pvm.S) = struct
         head
     in
     let* () = processed_finalized_block node_ctxt finalized_block in
-    let*! () = Node_context.save_l2_head node_ctxt l2_block in
+    let*! () = Node_context.L2_block.save node_ctxt l2_block in
     let*! () =
       Daemon_event.new_head_processed hash (Raw_level.to_int32 level)
     in
@@ -362,7 +364,7 @@ module Make (PVM : Pvm.S) = struct
      imply the processing of head~3, etc). *)
   let on_layer_1_head node_ctxt head =
     let open Lwt_result_syntax in
-    let*! old_head = Node_context.last_processed_head_opt node_ctxt in
+    let*! old_head = Node_context.L2_block.last_processed_head_opt node_ctxt in
     let old_head =
       match old_head with
       | Some h ->

@@ -217,106 +217,6 @@ let trace_lwt_result_with x =
     (fun s p -> trace (Exn (Failure s)) @@ protect @@ fun () -> p)
     x
 
-let hash_of_level_opt {store; cctxt; _} level =
-  let open Lwt_syntax in
-  let* hash = Store.Levels_to_hashes.find store level in
-  match hash with
-  | Some hash -> return_some hash
-  | None ->
-      let+ hash =
-        Tezos_shell_services.Shell_services.Blocks.hash
-          cctxt
-          ~chain:cctxt#chain
-          ~block:(`Level level)
-          ()
-      in
-      Result.to_option hash
-
-let hash_of_level node_ctxt level =
-  let open Lwt_result_syntax in
-  let*! hash = hash_of_level_opt node_ctxt level in
-  match hash with
-  | Some h -> return h
-  | None -> failwith "Cannot retrieve hash of level %ld" level
-
-let level_of_hash {l1_ctxt; store; _} hash =
-  let open Lwt_result_syntax in
-  let*! block = Store.L2_blocks.find store hash in
-  match block with
-  | Some {header = {level; _}; _} -> return (Raw_level.to_int32 level)
-  | None ->
-      let+ {level; _} = Layer1.fetch_tezos_shell_header l1_ctxt hash in
-      level
-
-let save_level {store; _} Layer1.{hash; level} =
-  Store.Levels_to_hashes.add store level hash
-
-let save_l2_head {store; _} (head : Sc_rollup_block.t) =
-  let open Lwt_syntax in
-  let* () = Store.L2_blocks.add store head.header.block_hash head in
-  Store.L2_head.set store head
-
-let is_processed {store; _} head = Store.L2_blocks.mem store head
-
-let last_processed_head_opt {store; _} = Store.L2_head.find store
-
-let mark_finalized_head {store; _} head_hash =
-  let open Lwt_syntax in
-  let* block = Store.L2_blocks.find store head_hash in
-  match block with
-  | None -> return_unit
-  | Some block -> Store.Last_finalized_head.set store block
-
-let get_finalized_head_opt {store; _} = Store.Last_finalized_head.find store
-
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/4532
-   Make this logarithmic, by storing pointers to muliple predecessor and
-   by dichotomy. *)
-let block_before {store; _} tick =
-  let open Lwt_result_syntax in
-  let*! head = Store.L2_head.find store in
-  match head with
-  | None -> return_none
-  | Some head ->
-      let rec search block_hash =
-        let*! block = Store.L2_blocks.find store block_hash in
-        match block with
-        | None -> failwith "Missing block %a" Block_hash.pp block_hash
-        | Some block ->
-            if Sc_rollup.Tick.(block.initial_tick <= tick) then
-              return_some block
-            else search block.header.predecessor
-      in
-      search head.header.block_hash
-
-let get_l2_block {store; _} block_hash =
-  trace_lwt_with "Could not retrieve L2 block for %a" Block_hash.pp block_hash
-  @@ Store.L2_blocks.get store block_hash
-
-let find_l2_block {store; _} block_hash = Store.L2_blocks.find store block_hash
-
-let get_l2_block_by_level node_ctxt level =
-  let open Lwt_result_syntax in
-  trace_lwt_result_with "Could not retrieve L2 block at level %ld" level
-  @@ let* block_hash = hash_of_level node_ctxt level in
-     let*! block = Store.L2_blocks.get node_ctxt.store block_hash in
-     return block
-
-let find_l2_block_by_level node_ctxt level =
-  let open Lwt_option_syntax in
-  let* block_hash = hash_of_level_opt node_ctxt level in
-  Store.L2_blocks.find node_ctxt.store block_hash
-
-let get_full_l2_block {store; _} block_hash =
-  let open Lwt_syntax in
-  let* block = Store.L2_blocks.get store block_hash in
-  let* inbox = Store.Inboxes.get store block.header.inbox_hash
-  and* {messages; _} = Store.Messages.get store block.header.inbox_witness
-  and* commitment =
-    Option.map_s (Store.Commitments.get store) block.header.commitment_hash
-  in
-  return {block with content = {Sc_rollup_block.inbox; messages; commitment}}
-
 let get_commitment {store; _} commitment_hash =
   trace_lwt_with
     "Could not retrieve commitment %a"
@@ -353,6 +253,108 @@ let commitment_was_published {store; _} ~source commitment_hash =
       match info with
       | Some {published_at_level = Some _; _} -> true
       | _ -> false)
+
+module L2_block = struct
+  let hash_of_level_opt {store; cctxt; _} level =
+    let open Lwt_syntax in
+    let* hash = Store.Levels_to_hashes.find store level in
+    match hash with
+    | Some hash -> return_some hash
+    | None ->
+        let+ hash =
+          Tezos_shell_services.Shell_services.Blocks.hash
+            cctxt
+            ~chain:cctxt#chain
+            ~block:(`Level level)
+            ()
+        in
+        Result.to_option hash
+
+  let hash_of_level node_ctxt level =
+    let open Lwt_result_syntax in
+    let*! hash = hash_of_level_opt node_ctxt level in
+    match hash with
+    | Some h -> return h
+    | None -> failwith "Cannot retrieve hash of level %ld" level
+
+  let level_of_hash {l1_ctxt; store; _} hash =
+    let open Lwt_result_syntax in
+    let*! block = Store.L2_blocks.find store hash in
+    match block with
+    | Some {header = {level; _}; _} -> return (Raw_level.to_int32 level)
+    | None ->
+        let+ {level; _} = Layer1.fetch_tezos_shell_header l1_ctxt hash in
+        level
+
+  let is_processed {store; _} head = Store.L2_blocks.mem store head
+
+  let get {store; _} block_hash =
+    trace_lwt_with "Could not retrieve L2 block for %a" Block_hash.pp block_hash
+    @@ Store.L2_blocks.get store block_hash
+
+  let find {store; _} block_hash = Store.L2_blocks.find store block_hash
+
+  let get_by_level node_ctxt level =
+    let open Lwt_result_syntax in
+    trace_lwt_result_with "Could not retrieve L2 block at level %ld" level
+    @@ let* block_hash = hash_of_level node_ctxt level in
+       let*! block = Store.L2_blocks.get node_ctxt.store block_hash in
+       return block
+
+  let find_by_level node_ctxt level =
+    let open Lwt_option_syntax in
+    let* block_hash = hash_of_level_opt node_ctxt level in
+    Store.L2_blocks.find node_ctxt.store block_hash
+
+  let get_full {store; _} block_hash =
+    let open Lwt_syntax in
+    let* block = Store.L2_blocks.get store block_hash in
+    let* inbox = Store.Inboxes.get store block.header.inbox_hash
+    and* {messages; _} = Store.Messages.get store block.header.inbox_witness
+    and* commitment =
+      Option.map_s (Store.Commitments.get store) block.header.commitment_hash
+    in
+    return {block with content = {Sc_rollup_block.inbox; messages; commitment}}
+
+  let save_level {store; _} Layer1.{hash; level} =
+    Store.Levels_to_hashes.add store level hash
+
+  let save {store; _} (head : Sc_rollup_block.t) =
+    let open Lwt_syntax in
+    let* () = Store.L2_blocks.add store head.header.block_hash head in
+    Store.L2_head.set store head
+
+  let last_processed_head_opt {store; _} = Store.L2_head.find store
+
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4532
+     Make this logarithmic, by storing pointers to muliple predecessor and
+     by dichotomy. *)
+  let block_before {store; _} tick =
+    let open Lwt_result_syntax in
+    let*! head = Store.L2_head.find store in
+    match head with
+    | None -> return_none
+    | Some head ->
+        let rec search block_hash =
+          let*! block = Store.L2_blocks.find store block_hash in
+          match block with
+          | None -> failwith "Missing block %a" Block_hash.pp block_hash
+          | Some block ->
+              if Sc_rollup.Tick.(block.initial_tick <= tick) then
+                return_some block
+              else search block.header.predecessor
+        in
+        search head.header.block_hash
+
+  let mark_finalized_head {store; _} head_hash =
+    let open Lwt_syntax in
+    let* block = Store.L2_blocks.find store head_hash in
+    match block with
+    | None -> return_unit
+    | Some block -> Store.Last_finalized_head.set store block
+
+  let get_finalized_head_opt {store; _} = Store.Last_finalized_head.find store
+end
 
 let get_inbox {store; _} inbox_hash =
   trace_lwt_with
@@ -410,7 +412,7 @@ let inbox_of_head node_ctxt Layer1.{hash = block_hash; level = block_level} =
 
 let get_inbox_by_block_hash node_ctxt hash =
   let open Lwt_result_syntax in
-  let* level = level_of_hash node_ctxt hash in
+  let* level = L2_block.level_of_hash node_ctxt hash in
   inbox_of_head node_ctxt {hash; level}
 
 let get_messages {store; _} messages_hash =

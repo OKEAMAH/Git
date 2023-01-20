@@ -29,14 +29,14 @@ open Protocol
 
 let get_head store =
   let open Lwt_result_syntax in
-  let*! head = Node_context.last_processed_head_opt store in
+  let*! head = Node_context.L2_block.last_processed_head_opt store in
   match head with
   | None -> failwith "No head"
   | Some {header = {block_hash; _}; _} -> return block_hash
 
 let get_finalized node_ctxt =
   let open Lwt_result_syntax in
-  let*! head = Node_context.get_finalized_head_opt node_ctxt in
+  let*! head = Node_context.L2_block.get_finalized_head_opt node_ctxt in
   match head with
   | None -> failwith "No finalized head"
   | Some {header = {block_hash; _}; _} -> return block_hash
@@ -45,7 +45,7 @@ let get_last_cemented (node_ctxt : _ Node_context.t) =
   let open Lwt_result_syntax in
   protect @@ fun () ->
   let* lcc_hash =
-    Node_context.hash_of_level
+    Node_context.L2_block.hash_of_level
       node_ctxt
       (Alpha_context.Raw_level.to_int32 node_ctxt.lcc.level)
   in
@@ -54,14 +54,14 @@ let get_last_cemented (node_ctxt : _ Node_context.t) =
 let get_head_hash_opt node_ctxt =
   let open Lwt_option_syntax in
   let+ {header = {block_hash; _}; _} =
-    Node_context.last_processed_head_opt node_ctxt
+    Node_context.L2_block.last_processed_head_opt node_ctxt
   in
   block_hash
 
 let get_head_level_opt node_ctxt =
   let open Lwt_option_syntax in
   let+ {header = {level; _}; _} =
-    Node_context.last_processed_head_opt node_ctxt
+    Node_context.L2_block.last_processed_head_opt node_ctxt
   in
   Alpha_context.Raw_level.to_int32 level
 
@@ -190,7 +190,7 @@ module Block_directory = Make_directory (struct
       match block with
       | `Head -> get_head node_ctxt
       | `Hash b -> return b
-      | `Level l -> Node_context.hash_of_level node_ctxt l
+      | `Level l -> Node_context.L2_block.hash_of_level node_ctxt l
       | `Finalized -> get_finalized node_ctxt
       | `Cemented -> get_last_cemented node_ctxt
     in
@@ -208,7 +208,7 @@ module Outbox_directory = Make_directory (struct
       match block with
       | `Head -> get_head node_ctxt
       | `Hash b -> return b
-      | `Level l -> Node_context.hash_of_level node_ctxt l
+      | `Level l -> Node_context.L2_block.hash_of_level node_ctxt l
       | `Finalized -> get_finalized node_ctxt
       | `Cemented -> get_last_cemented node_ctxt
     in
@@ -220,14 +220,14 @@ module Common = struct
     Block_directory.register0 Sc_rollup_services.Global.Block.block
     @@ fun (node_ctxt, block) () () ->
     let open Lwt_result_syntax in
-    let*! b = Node_context.get_full_l2_block node_ctxt block in
+    let*! b = Node_context.L2_block.get_full node_ctxt block in
     return b
 
   let () =
     Block_directory.register0 Sc_rollup_services.Global.Block.num_messages
     @@ fun (node_ctxt, block) () () ->
     let open Lwt_result_syntax in
-    let* l2_block = Node_context.get_l2_block node_ctxt block in
+    let* l2_block = Node_context.L2_block.get node_ctxt block in
     let* {messages; _} =
       Node_context.get_messages node_ctxt l2_block.header.inbox_witness
     in
@@ -252,7 +252,7 @@ module Common = struct
   let () =
     Block_directory.register0 Sc_rollup_services.Global.Block.level
     @@ fun (node_ctxt, block) () () ->
-    Node_context.level_of_hash node_ctxt block
+    Node_context.L2_block.level_of_hash node_ctxt block
 
   let () =
     Block_directory.register0 Sc_rollup_services.Global.Block.inbox
@@ -263,7 +263,7 @@ module Common = struct
     Block_directory.register0 Sc_rollup_services.Global.Block.ticks
     @@ fun (node_ctxt, block) () () ->
     let open Lwt_result_syntax in
-    let+ l2_block = Node_context.get_l2_block node_ctxt block in
+    let+ l2_block = Node_context.L2_block.get node_ctxt block in
     Z.of_int64 l2_block.num_ticks
 end
 
@@ -299,7 +299,7 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
           Some map
       | None -> None
     in
-    let* level = Node_context.level_of_hash node_ctxt block in
+    let* level = Node_context.L2_block.level_of_hash node_ctxt block in
     let* sim =
       Simulation.start_simulation
         node_ctxt
@@ -372,7 +372,7 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
     let open Lwt_result_syntax in
     let*! res =
       let open Lwt_option_syntax in
-      let* head = Node_context.last_processed_head_opt node_ctxt in
+      let* head = Node_context.L2_block.last_processed_head_opt node_ctxt in
       let commitment_hash =
         Sc_rollup_block.most_recent_commitment head.header
       in
@@ -498,7 +498,9 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
   let inbox_info_of_level (node_ctxt : _ Node_context.t) inbox_level =
     let open Alpha_context in
     let open Lwt_syntax in
-    let+ finalized_head = Node_context.get_finalized_head_opt node_ctxt in
+    let+ finalized_head =
+      Node_context.L2_block.get_finalized_head_opt node_ctxt
+    in
     let finalized =
       match finalized_head with
       | None -> false
@@ -541,7 +543,7 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
                       return (Sc_rollup_services.Included (info, inbox_info))
                   | Some commitment_level -> (
                       let*! block =
-                        Node_context.find_l2_block_by_level
+                        Node_context.L2_block.find_by_level
                           node_ctxt
                           (Alpha_context.Raw_level.to_int32 commitment_level)
                       in

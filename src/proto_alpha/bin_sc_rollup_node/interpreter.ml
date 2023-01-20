@@ -223,7 +223,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
       [None].*)
   let state_of_tick node_ctxt tick level =
     let open Lwt_result_syntax in
-    let* closest_block = Node_context.block_before node_ctxt tick in
+    let* closest_block = Node_context.L2_block.block_before node_ctxt tick in
     match closest_block with
     | None -> return None
     | Some event ->

@@ -61,7 +61,7 @@ let () =
 
 let store_entry_from_published_level ~dal_attestation_lag ~published_level
     node_ctxt =
-  Node_context.hash_of_level node_ctxt
+  Node_context.L2_block.hash_of_level node_ctxt
   @@ Int32.(
        add (of_int dal_attestation_lag) (Raw_level.to_int32 published_level))
 
@@ -94,7 +94,7 @@ let check_confirmation_status_and_download
     ~published_in_block_hash index =
   let open Lwt_result_syntax in
   let* confirmed_in_block_level =
-    Node_context.level_of_hash node_ctxt confirmed_in_block_hash
+    Node_context.L2_block.level_of_hash node_ctxt confirmed_in_block_hash
   in
   let confirmed_in_head =
     Layer1.{hash = confirmed_in_block_hash; level = confirmed_in_block_level}
@@ -136,7 +136,7 @@ let slot_pages ~dal_attestation_lag node_ctxt
   match processed with
   | None ->
       let* published_in_block_hash =
-        Node_context.hash_of_level
+        Node_context.L2_block.hash_of_level
           node_ctxt
           (Raw_level.to_int32 published_level)
       in
@@ -183,7 +183,7 @@ let page_content ~dal_attestation_lag node_ctxt page_id =
          the logic of that function when determining the confirmation status of
          a slot. *)
       let* published_in_block_hash =
-        Node_context.hash_of_level
+        Node_context.L2_block.hash_of_level
           node_ctxt
           (Raw_level.to_int32 published_level)
       in

@@ -132,68 +132,69 @@ type 'a delayed_write = ('a, rw) Delayed_write_monad.t
 
 (** {2 Abstraction over store} *)
 
-(** {3 Layer 2 blocks} *)
+(** Layer 2 block helpers. *)
+module L2_block : sig
+  (** [is_processed store hash] returns [true] if the block with [hash] has
+      already been processed by the daemon. *)
+  val is_processed : _ t -> Block_hash.t -> bool Lwt.t
 
-(** [is_processed store hash] returns [true] if the block with [hash] has
-    already been processed by the daemon. *)
-val is_processed : _ t -> Block_hash.t -> bool Lwt.t
+  (** [get t hash] returns the Layer 2 block known by the rollup node for
+      Layer 1 block [hash]. *)
+  val get : _ t -> Block_hash.t -> Sc_rollup_block.t tzresult Lwt.t
 
-(** [get_l2_block t hash] returns the Layer 2 block known by the rollup node for
-    Layer 1 block [hash]. *)
-val get_l2_block : _ t -> Block_hash.t -> Sc_rollup_block.t tzresult Lwt.t
+  (** Same as {!get} but returns [None] when the Layer 2 block is not
+      available. *)
+  val find : _ t -> Block_hash.t -> Sc_rollup_block.t option Lwt.t
 
-(** Same as {!get_l2_block} but returns [None] when the Layer 2 block is not
-    available. *)
-val find_l2_block : _ t -> Block_hash.t -> Sc_rollup_block.t option Lwt.t
+  (** Same as {!get} but retrieves the Layer 2 block by its level. *)
+  val get_by_level : _ t -> int32 -> Sc_rollup_block.t tzresult Lwt.t
 
-(** Same as {!get_l2_block} but retrieves the Layer 2 block by its level. *)
-val get_l2_block_by_level : _ t -> int32 -> Sc_rollup_block.t tzresult Lwt.t
+  (** Same as {!get_by_level} but returns [None] when the Layer 2 block
+      is not available. *)
+  val find_by_level : _ t -> int32 -> Sc_rollup_block.t option Lwt.t
 
-(** Same as {!get_l2_block_by_level} but returns [None] when the Layer 2 block
-    is not available. *)
-val find_l2_block_by_level : _ t -> int32 -> Sc_rollup_block.t option Lwt.t
+  (** [get_full node_ctxt hash] returns the full L2 block for L1 block
+      hash [hash]. The result contains the L2 block and its content (inbox,
+      messages, commitment). *)
+  val get_full : _ t -> Block_hash.t -> Sc_rollup_block.full Lwt.t
 
-(** [get_full_l2_block node_ctxt hash] returns the full L2 block for L1 block
-    hash [hash]. The result contains the L2 block and its content (inbox,
-    messages, commitment). *)
-val get_full_l2_block : _ t -> Block_hash.t -> Sc_rollup_block.full Lwt.t
+  (** [save_level t head] registers the correspondences [head.level |->
+      head.hash] in the store. *)
+  val save_level : rw -> Layer1.head -> unit Lwt.t
 
-(** [save_level t head] registers the correspondences [head.level |->
-    head.hash] in the store. *)
-val save_level : rw -> Layer1.head -> unit Lwt.t
+  (** [save t l2_block] remembers that the [l2_block.head] is 
+      processed. The system should not have to come back to it. *)
+  val save : rw -> Sc_rollup_block.t -> unit Lwt.t
 
-(** [save_l2_head t l2_block] remembers that the [l2_block.head] is 
-    processed. The system should not have to come back to it. *)
-val save_l2_head : rw -> Sc_rollup_block.t -> unit Lwt.t
+  (** [last_processed_head_opt store] returns the last processed head if it
+      exists. *)
+  val last_processed_head_opt : _ t -> Sc_rollup_block.t option Lwt.t
 
-(** [last_processed_head_opt store] returns the last processed head if it
-    exists. *)
-val last_processed_head_opt : _ t -> Sc_rollup_block.t option Lwt.t
+  (** [mark_finalized_head store head] remembers that the [head] is finalized. By
+      construction, every block whose level is smaller than [head]'s is also
+      finalized. *)
+  val mark_finalized_head : rw -> Block_hash.t -> unit Lwt.t
 
-(** [mark_finalized_head store head] remembers that the [head] is finalized. By
-    construction, every block whose level is smaller than [head]'s is also
-    finalized. *)
-val mark_finalized_head : rw -> Block_hash.t -> unit Lwt.t
+  (** [last_finalized_head_opt store] returns the last finalized head if it exists. *)
+  val get_finalized_head_opt : _ t -> Sc_rollup_block.t option Lwt.t
 
-(** [last_finalized_head_opt store] returns the last finalized head if it exists. *)
-val get_finalized_head_opt : _ t -> Sc_rollup_block.t option Lwt.t
+  (** [hash_of_level node_ctxt level] returns the current block hash for a given
+      [level]. *)
+  val hash_of_level : _ t -> int32 -> Block_hash.t tzresult Lwt.t
 
-(** [hash_of_level node_ctxt level] returns the current block hash for a given
-    [level]. *)
-val hash_of_level : _ t -> int32 -> Block_hash.t tzresult Lwt.t
+  (** [hash_of_level_opt] is like {!hash_of_level} but returns [None] if the
+      [level] is not known. *)
+  val hash_of_level_opt : _ t -> int32 -> Block_hash.t option Lwt.t
 
-(** [hash_of_level_opt] is like {!hash_of_level} but returns [None] if the
-    [level] is not known. *)
-val hash_of_level_opt : _ t -> int32 -> Block_hash.t option Lwt.t
+  (** [level_of_hash node_ctxt hash] returns the level for Tezos block hash [hash]
+      if it is known by the Tezos Layer 1 node. *)
+  val level_of_hash : _ t -> Block_hash.t -> int32 tzresult Lwt.t
 
-(** [level_of_hash node_ctxt hash] returns the level for Tezos block hash [hash]
-    if it is known by the Tezos Layer 1 node. *)
-val level_of_hash : _ t -> Block_hash.t -> int32 tzresult Lwt.t
-
-(** [block_before store tick] returns the last layer 2 block whose initial tick
-    is before [tick]. *)
-val block_before :
-  _ t -> Sc_rollup.Tick.t -> Sc_rollup_block.t option tzresult Lwt.t
+  (** [block_before store tick] returns the last layer 2 block whose initial tick
+      is before [tick]. *)
+  val block_before :
+    _ t -> Sc_rollup.Tick.t -> Sc_rollup_block.t option tzresult Lwt.t
+end
 
 (** {3 Commitments} *)
 
