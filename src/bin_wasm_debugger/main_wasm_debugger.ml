@@ -190,7 +190,8 @@ let main_command =
       let* inboxes =
         match inputs with
         | Some inputs -> Messages.parse_inboxes inputs config
-        | None -> return []
+        | None -> return [[]]
+        (* Starts with a single empty inbox, otherwise the kernel is not even usable. *)
       in
       let+ _tree = repl tree inboxes 0l config in
       ())
