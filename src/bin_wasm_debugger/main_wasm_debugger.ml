@@ -103,7 +103,11 @@ let repl tree inboxes level config =
         loop tree inboxes level
     | None -> return tree
   in
-  loop tree (List.to_seq inboxes) level
+  let inboxes =
+    if config.Config.fixed_inputs then List.to_seq inboxes
+    else Seq.cycle (List.to_seq inboxes)
+  in
+  loop tree inboxes level
 
 let file_parameter =
   Tezos_clic.parameter (fun _ filename ->
@@ -170,16 +174,29 @@ let preimage_directory_arg =
     ~placeholder:"preimage-dir"
     dir_parameter
 
+let cycle_inputs_arg =
+  let open Tezos_clic in
+  switch
+    ~doc:
+      "Once the debugger has read a full input file, make it cycle back to the \
+       first one and continue."
+    ~long:"cycle-inputs"
+    ()
+
 let main_command =
   let open Tezos_clic in
   let open Lwt_result_syntax in
   command
     ~desc:"Start the eval loop"
-    (args3 input_arg rollup_arg preimage_directory_arg)
+    (args4 input_arg rollup_arg preimage_directory_arg cycle_inputs_arg)
     (wasm_param @@ stop)
-    (fun (inputs, rollup_arg, preimage_directory) wasm_file () ->
+    (fun (inputs, rollup_arg, preimage_directory, cycle_inputs) wasm_file () ->
       let config =
-        Config.config ?destination:rollup_arg ?preimage_directory ()
+        Config.config
+          ?destination:rollup_arg
+          ?preimage_directory
+          ~fixed_inputs:(not cycle_inputs)
+          ()
       in
       let*? binary =
         if Filename.check_suffix wasm_file ".wasm" then Ok true
