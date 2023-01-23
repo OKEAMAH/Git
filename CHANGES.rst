@@ -131,6 +131,9 @@ Node
 - **Breaking Changes:** Removed ``kathmandunet`` from the list of
   known networks (for ``--network`` command-line argument).
 
+- Added an option ``rotate-days`` to file-descriptor sinks, enabling
+  log rotation based on a daily frequency.
+
 Client
 ------
 

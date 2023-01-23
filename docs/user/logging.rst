@@ -106,6 +106,10 @@ Options available only for the ``file-descriptor-path://`` case:
 -  ``chmod=<int>`` sets the access-rights of the file at creation time
    (default is ``0o600``, provided
    `Umask <https://en.wikipedia.org/wiki/Umask>`__ allows it).
+- ``rotate-days=<int>`` sets up a rotation for log files, creating a file for
+  each day. The parameter is the number of days these logs should be kept, and
+  hence the number of files. The day of the year with format ["yyyymmdd"] is
+  added to the path provided.
 
 Examples:
 
@@ -122,6 +126,10 @@ Examples:
 -  ``file-descriptor-path:///the/path/to/write.log?section-prefix=rpc:debug&section-prefix=validator:debug&section-prefix=:none"``
    → Write only sections validator and rpc at debug level but exclude all
    other sections from the stream.
+- ``"file-descriptor-path:///tmp/node.log?rotate-days=5&section-prefix=:info"``
+   sets up log files with a rotation of 5 days and verbosity level ``info`` for
+   all logs. Files will be named ``node-19700101.log`` in an example of a file
+   produced in 1970, January, the 1st.
 
 The format of the events is (usually minified):
 
