@@ -25,7 +25,7 @@
 
 open Error_monad
 
-type current = {day : int * int * int; fd : Lwt_unix.file_descr}
+type current = {day : int * int * int * int * int; fd : Lwt_unix.file_descr}
 
 type rotating = {
   rights : int;
@@ -94,17 +94,18 @@ end) : Internal_event.SINK with type t = t = struct
     let today =
       match Ptime.of_float_s ts with Some s -> s | None -> Ptime.min
     in
-    let (y, m, d), _ = Ptime.to_date_time today in
-    (y, m, d)
+    let (y, m, d), ((h, mn, _), _) = Ptime.to_date_time today in
+    (y, m, d, h, mn)
 
-  let string_of_day_of_the_year (d, m, y) = Format.sprintf "%d%02d%02d" y m d
+  let string_of_day_of_the_year (d, m, y, h, mn) =
+    Format.sprintf "%d%02d%02d%02d%02d" y m d h mn
 
   let check_file_format_with_date base_filename s =
     let name_no_ext = Filename.remove_extension base_filename in
     let ext = Filename.extension base_filename in
     let open Re.Perl in
     let re_ext = "(." ^ ext ^ ")?" in
-    let re_date = "-\\d{4}\\d{2}\\d{2}" in
+    let re_date = "-\\d{4}\\d{2}\\d{2}\\d{2}" in
     let re = compile @@ re (name_no_ext ^ re_date ^ re_ext) in
     Re.execp re s
 
