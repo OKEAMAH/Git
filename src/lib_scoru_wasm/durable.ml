@@ -27,6 +27,7 @@ module T = Tezos_tree_encoding.Wrapped
 module Runner = Tezos_tree_encoding.Runner.Make (Tezos_tree_encoding.Wrapped)
 module E = Tezos_tree_encoding
 module Storage = Tezos_webassembly_interpreter.Durable_storage
+module CBV = Tezos_lazy_containers.Immutable_chunked_byte_vector
 
 type t = Tezos_webassembly_interpreter.Durable_storage.t
 
@@ -49,7 +50,7 @@ exception IO_too_large
 
 exception Readonly_value
 
-let encoding = E.(lazy_fs chunked_byte_vector)
+let encoding = E.(lazy_fs immutable_chunked_byte_vector)
 
 let of_storage ~default:_ s = s
 
@@ -167,9 +168,7 @@ let hash (tree : t) key : Context_hash.t option Lwt.t =
   let* content = Tezos_lazy_containers.Lazy_fs.find tree key in
   match content with
   | Some content ->
-      let+ content =
-        Tezos_lazy_containers.Chunked_byte_vector.to_string content
-      in
+      let+ content = CBV.to_string content in
       Some (Context_hash.hash_string [content])
   | None -> Lwt.return_none
 
@@ -181,40 +180,36 @@ let hash_exn tree key =
 let set_value_exn (tree : t) ?(edit_readonly = false) key str =
   if not edit_readonly then assert_key_writeable key ;
   let key = key_contents key in
-  Tezos_lazy_containers.Lazy_fs.add
-    tree
-    key
-    (Tezos_lazy_containers.Chunked_byte_vector.of_string str)
+  Tezos_lazy_containers.Lazy_fs.add tree key (CBV.of_string str)
 
 let write_value_exn (tree : t) ?(edit_readonly = false) key offset bytes =
   if not edit_readonly then assert_key_writeable key ;
 
   let open Lwt.Syntax in
-  let open Tezos_lazy_containers in
   let num_bytes = Int64.of_int @@ String.length bytes in
   assert_max_bytes num_bytes ;
 
   let key = key_contents key in
-  let* opt = Tezos_lazy_containers.Lazy_fs.find tree key in
+  let* opt_value = Tezos_lazy_containers.Lazy_fs.find tree key in
   let value =
-    match opt with None -> Chunked_byte_vector.allocate 0L | Some cbv -> cbv
+    match opt_value with None -> CBV.allocate 0L | Some cbv -> cbv
   in
-  let vec_len = Chunked_byte_vector.length value in
+  let vec_len = CBV.length value in
   if offset > vec_len then raise (Out_of_bounds (offset, vec_len)) ;
+
   let grow_by = Int64.(num_bytes |> add offset |> Fun.flip sub vec_len) in
-  if Int64.compare grow_by 0L > 0 then Chunked_byte_vector.grow value grow_by ;
-  let* () =
-    Chunked_byte_vector.store_bytes value offset @@ Bytes.of_string bytes
+  let value =
+    if Int64.compare grow_by 0L > 0 then CBV.grow value grow_by else value
   in
+  let* value = CBV.store_bytes value offset @@ Bytes.of_string bytes in
   Tezos_lazy_containers.Lazy_fs.add tree key value
 
 let read_value_exn tree key offset num_bytes =
   let open Lwt.Syntax in
-  let open Tezos_lazy_containers in
   assert_max_bytes num_bytes ;
 
   let* value = find_value_exn tree key in
-  let vec_len = Chunked_byte_vector.length value in
+  let vec_len = CBV.length value in
 
   if offset < 0L || offset >= vec_len then
     raise (Out_of_bounds (offset, vec_len)) ;
@@ -222,7 +217,7 @@ let read_value_exn tree key offset num_bytes =
   let num_bytes =
     Int64.(num_bytes |> add offset |> min vec_len |> Fun.flip sub offset)
   in
-  let+ bytes = Chunked_byte_vector.load_bytes value offset num_bytes in
+  let+ bytes = CBV.load_bytes value offset num_bytes in
   Bytes.to_string bytes
 
 module Internal_for_tests = struct

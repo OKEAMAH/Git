@@ -101,6 +101,9 @@ val lazy_fs : 'a t -> 'a Tezos_lazy_containers.Lazy_fs.t t
 
 val chunked_byte_vector : Tezos_lazy_containers.Chunked_byte_vector.t t
 
+val immutable_chunked_byte_vector :
+  Tezos_lazy_containers.Immutable_chunked_byte_vector.t t
+
 (** [delayed f] produces a tree decoder that delays evaluation of [f ()] until
     the decoder is actually needed. This is required to allow for directly
     recursive decoders. *)

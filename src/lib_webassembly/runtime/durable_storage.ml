@@ -1,5 +1,6 @@
 type t =
-  Tezos_lazy_containers.Chunked_byte_vector.t Tezos_lazy_containers.Lazy_fs.t
+  Tezos_lazy_containers.Immutable_chunked_byte_vector.t
+  Tezos_lazy_containers.Lazy_fs.t
 
 exception Durable_empty
 

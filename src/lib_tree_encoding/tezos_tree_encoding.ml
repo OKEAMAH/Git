@@ -268,6 +268,11 @@ let chunked_byte_vector =
   let decode = D.chunked_byte_vector in
   {encode; decode}
 
+let immutable_chunked_byte_vector =
+  let encode = E.immutable_chunked_byte_vector in
+  let decode = D.immutable_chunked_byte_vector in
+  {encode; decode}
+
 let lazy_dirs contents_encoding =
   let encode = E.lazy_dirs contents_encoding.encode in
   let decode = D.lazy_dirs contents_encoding.decode in

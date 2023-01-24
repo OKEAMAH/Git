@@ -261,7 +261,11 @@ type module_kont =
       the section. *)
 
 (** Parsed bytes with the current reading position. *)
-type stream = {name : string; bytes : Chunked_byte_vector.t; mutable pos : int}
+type stream = {
+  name : string;
+  bytes : Immutable_chunked_byte_vector.t;
+  mutable pos : int;
+}
 
 (** Accumulator of parsed fields *)
 type building_state = {
@@ -290,7 +294,7 @@ type decode_kont = {
 }
 
 (** [make_stream filename bytes] returns a new stream to decode. *)
-val make_stream : name:string -> bytes:Chunked_byte_vector.t -> stream
+val make_stream : name:string -> bytes:Immutable_chunked_byte_vector.t -> stream
 
 (** [initial_decode_kont ~name] returns the initial tick state to be
     fed to [module_step], such that [name] is the name of the input
@@ -305,7 +309,10 @@ val initial_decode_kont : name:string -> decode_kont
       [allow_floats] is false.
 *)
 val module_step :
-  allow_floats:bool -> Chunked_byte_vector.t -> decode_kont -> decode_kont Lwt.t
+  allow_floats:bool ->
+  Immutable_chunked_byte_vector.t ->
+  decode_kont ->
+  decode_kont Lwt.t
 
 (** [decode ~name ~bytes] decodes a module [name] from its [bytes] encoding.
 
@@ -315,7 +322,7 @@ val module_step :
 val decode :
   allow_floats:bool ->
   name:string ->
-  bytes:Chunked_byte_vector.t ->
+  bytes:Immutable_chunked_byte_vector.t ->
   Ast.module_ Lwt.t
 
 (** [decode ~name ~bytes] decodes a custom section of name [name] from its
@@ -323,4 +330,7 @@ val decode :
 
     @raise Code on parsing errors. *)
 val decode_custom :
-  Ast.name -> name:string -> bytes:Chunked_byte_vector.t -> string list Lwt.t
+  Ast.name ->
+  name:string ->
+  bytes:Immutable_chunked_byte_vector.t ->
+  string list Lwt.t

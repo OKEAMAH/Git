@@ -39,7 +39,9 @@ let kernel_cache = Kernel_cache.create 2
 let load_parse_module store key durable =
   let open Lwt.Syntax in
   let* kernel = Durable.find_value_exn durable key in
-  let+ kernel = Lazy_containers.Chunked_byte_vector.to_string kernel in
+  let+ kernel =
+    Lazy_containers.Immutable_chunked_byte_vector.to_string kernel
+  in
   Wasmer.Module.(create store Binary kernel)
 
 let load_module store key durable =

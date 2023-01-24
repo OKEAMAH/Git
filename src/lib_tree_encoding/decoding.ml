@@ -220,6 +220,10 @@ let chunk =
   let open Tezos_lazy_containers.Chunked_byte_vector.Chunk in
   map of_bytes (raw [])
 
+let immutable_chunk =
+  let open Tezos_lazy_containers.Immutable_chunked_byte_vector.Chunk in
+  map of_bytes (raw [])
+
 let chunked_byte_vector =
   let open Tezos_lazy_containers.Chunked_byte_vector in
   let to_key k = [Int64.to_string k] in
@@ -227,6 +231,16 @@ let chunked_byte_vector =
     (fun ((origin, get_chunk), len) -> create ?origin ~get_chunk len)
     (let open Syntax in
     let+ x = scope ["contents"] @@ lazy_mapping to_key chunk
+    and+ y = value ["length"] Data_encoding.int64 in
+    (x, y))
+
+let immutable_chunked_byte_vector =
+  let open Tezos_lazy_containers.Immutable_chunked_byte_vector in
+  let to_key k = [Int64.to_string k] in
+  map
+    (fun ((origin, get_chunk), len) -> create ?origin ~get_chunk len)
+    (let open Syntax in
+    let+ x = scope ["contents"] @@ lazy_mapping to_key immutable_chunk
     and+ y = value ["length"] Data_encoding.int64 in
     (x, y))
 

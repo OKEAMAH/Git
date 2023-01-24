@@ -176,6 +176,10 @@ let chunk =
   let open Tezos_lazy_containers.Chunked_byte_vector.Chunk in
   contramap to_bytes (raw [])
 
+let immutable_chunk =
+  let open Tezos_lazy_containers.Immutable_chunked_byte_vector.Chunk in
+  contramap to_bytes (raw [])
+
 let chunked_byte_vector =
   let open Tezos_lazy_containers.Chunked_byte_vector in
   let to_key k = [Int64.to_string k] in
@@ -183,6 +187,15 @@ let chunked_byte_vector =
     (fun vector -> ((origin vector, loaded_chunks vector), length vector))
     (tup2
        (scope ["contents"] @@ lazy_mapping to_key chunk)
+       (value ["length"] Data_encoding.int64))
+
+let immutable_chunked_byte_vector =
+  let open Tezos_lazy_containers.Immutable_chunked_byte_vector in
+  let to_key k = [Int64.to_string k] in
+  contramap
+    (fun vector -> ((origin vector, loaded_chunks vector), length vector))
+    (tup2
+       (scope ["contents"] @@ lazy_mapping to_key immutable_chunk)
        (value ["length"] Data_encoding.int64))
 
 type ('tag, 'a) case =
