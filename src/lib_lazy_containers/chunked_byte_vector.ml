@@ -23,8 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Bigarray
-
 exception Bounds
 
 exception SizeOverflow
@@ -34,22 +32,8 @@ let reraise = function
   | Lazy_vector.SizeOverflow -> raise SizeOverflow
   | exn -> raise exn
 
-module Array1_64 = struct
-  let create kind layout n =
-    if n < 0L || n > Int64.of_int max_int then
-      raise (Invalid_argument "Bigarray.Array1_64.create") ;
-    Array1.create kind layout (Int64.to_int n)
-
-  let index_of_int64 i =
-    if i < 0L || i > Int64.of_int max_int then -1 else Int64.to_int i
-
-  let get a i = Array1.get a (index_of_int64 i)
-
-  let set a i x = Array1.set a (index_of_int64 i) x
-end
-
 module Chunk = struct
-  type t = (int, int8_unsigned_elt, c_layout) Array1.t
+  type t = bytes
 
   (** Number of bits in an address for the chunk offset *)
   let offset_bits = 9
@@ -57,6 +41,9 @@ module Chunk = struct
   (** Size of a chunk in bytes - with 9 bits of address space the
       chunk is 512 bytes *)
   let size = Int64.shift_left 1L offset_bits
+
+  (** The same size but of it, for internal usage. *)
+  let size_int : int = Int.shift_left 1 offset_bits
 
   (** Get the chunk index for an address. *)
   let index address = Int64.shift_right address offset_bits
@@ -67,21 +54,14 @@ module Chunk = struct
   (** Get the address from a page index and an offset. *)
   let address ~index ~offset = Int64.(add (shift_left index offset_bits) offset)
 
-  let alloc () =
-    let chunk = Array1_64.create Int8_unsigned C_layout size in
-    Array1.fill chunk 0 ;
-    chunk
+  let alloc () = Bytes.make size_int (Char.chr 0)
 
   let of_bytes bytes =
-    let chunk = alloc () in
-    for i = 0 to Int.max (Int64.to_int size) (Bytes.length bytes) - 1 do
-      Array1.set chunk i (Char.code (Bytes.get bytes i))
-    done ;
-    chunk
+    let fresh_chunk = alloc () in
+    Bytes.blit bytes 0 fresh_chunk 0 (Int.min size_int (Bytes.length bytes)) ;
+    fresh_chunk
 
-  let to_bytes chunk =
-    let len = Array1.size_in_bytes chunk in
-    Bytes.init len (fun i -> Char.chr @@ Array1.get chunk i)
+  let to_bytes = Bytes.copy
 
   let num_needed length =
     if Int64.compare length 0L > 0 then
@@ -91,6 +71,11 @@ module Chunk = struct
           argument. *)
       Int64.(div (pred length) size |> succ)
     else 0L
+
+  (* Return left and right addresses of a chunk *)
+  let inclusive_boundaries chunk_id =
+    ( address ~index:chunk_id ~offset:0L,
+      address ~index:chunk_id ~offset:(Int64.sub size 1L) )
 end
 
 module Vector = Lazy_vector.Mutable.Int64Vector
@@ -142,72 +127,118 @@ let load_byte vector address =
   let open Lwt.Syntax in
   if Int64.compare address vector.length >= 0 then raise Bounds ;
   let+ chunk = get_chunk (Chunk.index address) vector in
-  Array1_64.get chunk (Chunk.offset address)
+  Bytes.get chunk (Int64.to_int @@ Chunk.offset address) |> Char.code
 
-let load_bytes vector start length =
+let load_bytes vector offset length =
   let open Lwt.Syntax in
-  let end_offset = Int64.pred @@ Int64.add start length in
+  let end_offset = Int64.pred @@ Int64.add offset length in
   (* Ensure [offset] and [end_offset] are valid indeces in the vector.
 
      Once we ensure the vector can be contained in a string, we can safely
      convert everything to int, since the size of the vector is contained in
      a `nativeint`. See {!of_string} comment. *)
   if
-    start < 0L || length < 0L || end_offset > vector.length
+    offset < 0L || length < 0L
+    || end_offset >= vector.length
     || vector.length > Int64.of_int Sys.max_string_length
   then raise Bounds ;
 
-  if length = 0L then Lwt.return Bytes.empty
-  else
-    let buffer = Bytes.create @@ Int64.to_int length in
-
-    let rec copy chunk offset length dest_offset =
-      if length > 0L then (
-        Array1.get chunk offset |> Char.chr |> Bytes.set buffer dest_offset ;
-        (copy [@tailcall])
-          chunk
-          (Int.succ offset)
-          (Int64.pred length)
-          (Int.succ dest_offset))
-      else ()
-    in
-
-    let rec go offset length =
-      if length > 0L then (
-        let chunk_index = Chunk.index offset in
-        let chunk_offset = Chunk.offset offset in
-        let chunk_length = Int64.(min (sub Chunk.size chunk_offset) length) in
-        let* chunk = get_chunk chunk_index vector in
-
-        copy
-          chunk
-          (Int64.to_int chunk_offset)
-          chunk_length
-          Int64.(sub offset start |> to_int) ;
-
-        (go [@tailcall])
-          (Int64.add offset chunk_length)
-          (Int64.sub length chunk_length))
-      else Lwt.return_unit
-    in
-
-    let+ () = go start length in
-    buffer
+  let rec list_chunks (pos : int64) (acc : bytes list) =
+    if pos > end_offset then Lwt.return (List.rev acc)
+    else
+      let chunk_id = Chunk.index pos in
+      let left, right = Chunk.inclusive_boundaries chunk_id in
+      let* chunk = get_chunk chunk_id vector in
+      let sub_chunk =
+        (* Chunk fully lies in the requested boundaries, hence we don't need to copy it*)
+        if left == pos && right <= end_offset then chunk
+        else
+          let l_offset_chunk = Chunk.offset @@ Int64.max left pos in
+          let r_offset_chunk = Chunk.offset @@ Int64.min right end_offset in
+          Bytes.sub
+            chunk
+            (Int64.to_int l_offset_chunk)
+            (Int64.to_int
+            @@ Int64.add (Int64.sub r_offset_chunk l_offset_chunk) 1L)
+      in
+      (list_chunks [@tailcall])
+        (Int64.add pos @@ Int64.of_int @@ Bytes.length sub_chunk)
+        (sub_chunk :: acc)
+  in
+  let+ chunks = list_chunks offset [] in
+  Bytes.concat Bytes.empty chunks
 
 let store_byte vector address byte =
   let open Lwt.Syntax in
   if Int64.compare address vector.length >= 0 then raise Bounds ;
   let+ chunk = get_chunk (Chunk.index address) vector in
-  Array1_64.set chunk (Chunk.offset address) byte ;
+  Bytes.set chunk (Int64.to_int @@ Chunk.offset address) (Char.chr byte) ;
   (* This is necessary because [get_chunk] might provide a default
      value without loading any data. *)
   Vector.set (Chunk.index address) chunk vector.chunks
 
-let store_bytes vector address bytes =
-  List.init (Bytes.length bytes) (fun i ->
-      let c = Bytes.get bytes i in
-      store_byte vector Int64.(of_int i |> add address) (Char.code c))
-  |> Lwt.join
+let store_bytes vector offset bytes =
+  let open Lwt.Syntax in
+  let length = Int64.of_int @@ Bytes.length bytes in
+  let end_offset = Int64.pred @@ Int64.add offset length in
+  if
+    offset < 0L
+    || end_offset >= vector.length
+    || vector.length > Int64.of_int Sys.max_string_length
+  then raise Bounds ;
+
+  let rec set_chunks (pos : int64) =
+    if pos >= length then Lwt.return_unit
+    else
+      let offseted_pos = Int64.add offset pos in
+      let chunk_id = Chunk.index offseted_pos in
+      let _, chunk_right = Chunk.inclusive_boundaries chunk_id in
+      let* chunk = get_chunk chunk_id vector in
+      (* [l_range; r_range] in the chunk which has to be rewritten *)
+      let l_range = Chunk.offset offseted_pos in
+      let r_range =
+        if end_offset >= chunk_right then Int64.sub Chunk.size 1L
+        else Chunk.offset end_offset
+      in
+      let len_range = Int64.add (Int64.sub r_range l_range) 1L in
+      Bytes.blit
+        bytes
+        (Int64.to_int pos)
+        chunk
+        (Int64.to_int l_range)
+        (Int64.to_int len_range) ;
+      set_chunk chunk_id chunk vector ;
+      (set_chunks [@tailcall]) (Int64.add pos len_range)
+  in
+  set_chunks 0L
+
+let of_bytes bytes =
+  let length = Int64.of_int (Bytes.length bytes) in
+  let vector = allocate length in
+  let rec set_chunks (chunk_id : int64) =
+    let chunk_left, chunk_right = Chunk.inclusive_boundaries chunk_id in
+    if chunk_left >= length then ()
+    else
+      let chunk =
+        if chunk_right < length then
+          (* Full chunk *)
+          Bytes.sub bytes (Int64.to_int chunk_left) (Int64.to_int Chunk.size)
+        else
+          (* Chunk consisted of bytes suffix + padding of zeros *)
+          let fresh_chunk = Chunk.alloc () in
+          Bytes.blit
+            bytes
+            (Int64.to_int chunk_left)
+            fresh_chunk
+            0
+            (Int64.to_int @@ Int64.sub length chunk_left) ;
+          fresh_chunk
+      in
+      set_chunk chunk_id chunk vector ;
+      (set_chunks [@tailcall]) (Int64.add chunk_id 1L)
+  in
+  set_chunks 0L ;
+  vector
 
 let of_string str =
   (* Strings are limited in size and contained in `nativeint` (either int31 or
@@ -220,47 +251,7 @@ let of_string str =
        Moreover, WASM strings are limited to max_uint32 in size for data
        segments, which is the primary usage of this function in the text
        parser. *)
-  let len = String.length str in
-  let vector = create (Int64.of_int len) in
-  let _ =
-    List.init
-      (Vector.num_elements vector.chunks |> Int64.to_int)
-      (fun index ->
-        let index = Int64.of_int index in
-        let chunk = Chunk.alloc () in
-        let _ =
-          List.init (Chunk.size |> Int64.to_int) (fun offset ->
-              let offset = Int64.of_int offset in
-              let address = Chunk.address ~index ~offset |> Int64.to_int in
-              if address < len then
-                let c = String.get str address in
-                Array1_64.set chunk offset (Char.code c))
-        in
-        set_chunk index chunk vector)
-  in
-  vector
-
-let of_bytes bytes =
-  (* See [of_string] heading comment *)
-  let len = Bytes.length bytes in
-  let vector = create (Int64.of_int len) in
-  let _ =
-    List.init
-      (Vector.num_elements vector.chunks |> Int64.to_int)
-      (fun index ->
-        let index = Int64.of_int index in
-        let chunk = Chunk.alloc () in
-        let _ =
-          List.init (Chunk.size |> Int64.to_int) (fun offset ->
-              let offset = Int64.of_int offset in
-              let address = Chunk.address ~index ~offset |> Int64.to_int in
-              if address < len then
-                let c = Bytes.get bytes address in
-                Array1_64.set chunk offset (Char.code c))
-        in
-        set_chunk index chunk vector)
-  in
-  vector
+  of_bytes @@ Bytes.of_string str
 
 let to_bytes vector = load_bytes vector 0L vector.length
 
