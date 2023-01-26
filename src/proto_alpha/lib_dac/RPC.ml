@@ -111,6 +111,13 @@ module DAC = struct
         ~query:external_message_query
         ~output:Data_encoding.bool
         RPC_path.(open_root / "dac" / "verify_signature")
+
+    let root_hashes =
+      RPC_service.get_service
+        ~description:"Stream root hashes"
+        ~query:RPC_query.empty
+        ~output:root_hash_encoding
+        RPC_path.(open_root / "dac" / "root_hashes")
   end
 
   let handle_serialize_dac_store_preimage cctxt dac_sk_uris reveal_data_dir
@@ -168,6 +175,18 @@ module DAC = struct
     | Some (External_message.Dac_message {root_hash; signature; witnesses}) ->
         Signatures.verify ~public_keys_opt root_hash signature witnesses
 
+  let handle_stream_root_hashes =
+    (* TODO this should be replaced via streamed context ?*)
+    let input :
+        Tezos_protocol_alpha.Protocol.Sc_rollup_reveal_hash.t Lwt_watcher.input
+        =
+      Lwt_watcher.create_input ()
+    in
+    let stream, stopper = Lwt_watcher.create_stream input in
+    let shutdown () = Lwt_watcher.shutdown stopper in
+    let next () = Lwt_stream.get stream in
+    Tezos_rpc.Answer.return_stream {next; shutdown}
+
   let register_serialize_dac_store_preimage cctxt dac_sk_uris reveal_data_dir =
     Registration.register0_noctxt
       ~chunked:false
@@ -188,10 +207,15 @@ module DAC = struct
           public_keys_opt
           external_message)
 
+  let register_stream_root_hashes dir =
+    Tezos_rpc.Directory.gen_register dir S.root_hashes (fun () () () ->
+        handle_stream_root_hashes)
+
   let register reveal_data_dir cctxt dac_public_keys_opt dac_sk_uris =
     (RPC_directory.empty : unit RPC_directory.t)
     |> register_serialize_dac_store_preimage cctxt dac_sk_uris reveal_data_dir
     |> register_verify_external_message_signature dac_public_keys_opt
+    |> register_stream_root_hashes
 end
 
 let rpc_services ~reveal_data_dir cctxt dac_public_keys_opt dac_sk_uris
