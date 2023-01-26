@@ -626,9 +626,10 @@ let end_of_round state current_round =
           no_proposal_slot
           (current_round, state.level_state.current_level, new_round))
       >>= fun () ->
-      (* We don't have any delegate that may propose a new block for
-         this round -- We will wait for preendorsements when the next
-         level block arrive. Meanwhile, we are idle *)
+      (* We don't have any delegate that may propose a new block for this round.
+         We continue waiting for preendorsements or endorsements for the
+         last round with a proposal (if we were already doing so).
+         We nevertheless update the phase to Idle. *)
       let new_state = update_current_phase new_state Idle in
       do_nothing new_state
   | Some (delegate, _) ->
@@ -858,12 +859,10 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
   match (phase, event) with
   (* Handle timeouts *)
   | _, Timeout (End_of_round {ending_round}) ->
-      (* If the round is ending, stop everything currently going on and
-         increment the round. *)
+      (* If the round is ending, just increment the round. *)
       end_of_round state ending_round
   | _, Timeout (Time_to_bake_next_level {at_round}) ->
-      (* If it is time to bake the next level, stop everything currently
-         going on and propose the next level block *)
+      (* If it is time to bake the next level, then do it! *)
       time_to_bake_at_next_level state at_round
   | Idle, New_head_proposal proposal ->
       Events.(
@@ -929,10 +928,9 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
       quorum_reached_when_waiting_endorsements state candidate endorsement_qc
   | Idle, Prequorum_reached (candidate, preendorsements) ->
       handle_unexpected_pqc state candidate preendorsements
-  (* Unreachable cases *)
+  (* The following cases can be safely ignored. *)
   | Idle, Quorum_reached _
   | Awaiting_preendorsements, Quorum_reached _
   | Awaiting_endorsements, Prequorum_reached _
   | Awaiting_application, Quorum_reached _ ->
-      (* This cannot/should not happen *)
       do_nothing state
