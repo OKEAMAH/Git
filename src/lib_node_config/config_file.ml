@@ -160,11 +160,8 @@ let blockchain_network_ghostnet =
     ~default_bootstrap_peers:
       [
         "ghostnet.teztnets.xyz";
-        "ghostnet.smartpy.io";
         "ghostnet.boot.ecadinfra.com";
-        "ghostnet.kaml.fr";
         "ghostnet.stakenow.de:9733";
-        "ghostnet.visualtez.com";
       ]
 
 let blockchain_network_limanet =
