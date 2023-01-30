@@ -29,19 +29,26 @@ module type S = sig
   (* Protocol hash type used for reveal_preimage. *)
   type hash
 
-  (* [publish hash] publishes a root page [hash] to all attached subscribers. *)
-  val publish : hash -> unit tzresult Lwt.t
+  (** [t] is instance of the root hashes streamer component. *)
+  type t
 
+  (** Creates a new streamer *)
+  val empty : t
+
+  (* [publish hash t] publishes a root page [hash] to all attached subscribers
+     of a given streamer [t]. *)
+  val publish : hash -> t -> unit
   (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4680
      Access Dac coordinator details via some [Dac_client.cctx].
   *)
 
-  (* [subscribe coordinator_host coordinator_port] returns an Lwt_stream of hashes and
-     a function to close the stream.
+  (* [subscribe coordinator_host coordinator_port streamer] returns an
+     Lwt_stream of hashes and a function to close the stream.
   *)
   val subscribe :
     coordinator_host:string ->
     coordinator_port:int ->
+    t ->
     hash Lwt_stream.t * Lwt_watcher.stopper
 end
 
