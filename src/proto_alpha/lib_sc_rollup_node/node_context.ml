@@ -527,15 +527,15 @@ type messages_info = {
   messages : Sc_rollup.Inbox_message.t list;
 }
 
-let get_messages {store; _} messages_hash =
+let get_messages {store; _} inbox_block_hash =
   let open Lwt_result_syntax in
-  let* msg = Store.Messages.read store.messages messages_hash in
+  let* msg = Store.Messages.read store.messages inbox_block_hash in
   match msg with
   | None ->
       failwith
         "Could not retrieve messages with payloads merkelized hash %a"
-        Sc_rollup.Inbox_merkelized_payload_hashes.Hash.pp
-        messages_hash
+        Block_hash.pp
+        inbox_block_hash
   | Some (messages, (predecessor, predecessor_timestamp, _num_messages)) ->
       return {predecessor; predecessor_timestamp; messages}
 
@@ -554,7 +554,7 @@ let get_num_messages {store; _} hash =
   | None ->
       failwith
         "Could not retrieve number of messages for inbox witness %a"
-        Sc_rollup.Inbox_merkelized_payload_hashes.Hash.pp
+        Block_hash.pp
         hash
   | Some (_predecessor, _predecessor_timestamp, num_messages) ->
       return num_messages
@@ -571,7 +571,7 @@ let get_full_l2_block node_ctxt block_hash =
   let open Lwt_result_syntax in
   let* block = get_l2_block node_ctxt block_hash in
   let* inbox = get_inbox node_ctxt block.header.inbox_hash
-  and* {messages; _} = get_messages node_ctxt block.header.inbox_witness
+  and* {messages; _} = get_messages node_ctxt block.header.block_hash
   and* commitment =
     Option.map_es (get_commitment node_ctxt) block.header.commitment_hash
   in

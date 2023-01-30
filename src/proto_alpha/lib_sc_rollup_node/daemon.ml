@@ -280,7 +280,7 @@ module Make (PVM : Pvm.S) = struct
     let open Lwt_result_syntax in
     let*! () = Daemon_event.head_processing hash level ~finalized:false in
     let* () = Node_context.save_level node_ctxt head in
-    let* inbox_hash, inbox, inbox_witness, messages, ctxt =
+    let* inbox_hash, inbox, messages, ctxt =
       Inbox.process_head node_ctxt head
     in
     let* () =
@@ -319,7 +319,6 @@ module Make (PVM : Pvm.S) = struct
           commitment_hash;
           previous_commitment_hash;
           context = context_hash;
-          inbox_witness;
           inbox_hash;
         }
     in

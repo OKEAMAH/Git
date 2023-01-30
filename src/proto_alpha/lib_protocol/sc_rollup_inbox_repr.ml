@@ -534,9 +534,9 @@ let verify_payloads_proof {proof; payload} head_cell_hash n =
          "Provided message counter is out of the valid range [0 -- (max_index \
           + 1)]")
 
-(** [produce_payloads_proof get_payloads_history head_cell_hash ~index]
+(** [produce_payloads_proof find_payload head_cell_hash ~index]
 
-    [get_payloads_history cell_hash] is a function that returns an
+    [find_payload cell_hash] is a function that returns an
     {!Sc_rollup_inbox_merkelized_payload_hashes_repr.History.t}. The returned
     history must contains the cell with hash [cell_hash], all its ancestor cell
     and their associated payload.
@@ -554,18 +554,17 @@ let verify_payloads_proof {proof; payload} head_cell_hash n =
    - else a proof that [index] is out of bound for [head_cell]. It returns the
    proof and no payload.
 *)
-let produce_payloads_proof get_payloads_history head_cell_hash ~index =
+let produce_payloads_proof find_payload head_cell_hash ~index =
   let open Lwt_result_syntax in
   (* We first retrieve the history of cells for this level. *)
-  let*! payloads_history = get_payloads_history head_cell_hash in
   (* We then fetch the actual head cell in the history. *)
+  let*! head_cell_opt = find_payload head_cell_hash in
   let*? head_cell =
-    match
-      Sc_rollup_inbox_merkelized_payload_hashes_repr.History.find
-        head_cell_hash
-        payloads_history
-    with
-    | Some {merkelized = head_cell; payload = _} -> ok head_cell
+    match head_cell_opt with
+    | Some
+        Sc_rollup_inbox_merkelized_payload_hashes_repr.
+          {merkelized = head_cell; payload = _} ->
+        ok head_cell
     | None ->
         error
           (Inbox_proof_error "could not find head_cell in the payloads_history")
@@ -580,9 +579,9 @@ let produce_payloads_proof get_payloads_history head_cell_hash ~index =
   (* We look for the cell at `target_index` starting from `head_cell`. If it
      exists, we return the payload held in this cell. Otherwise, we prove that
      [index] does not exist in this level. *)
-  let proof =
+  let*! proof =
     Sc_rollup_inbox_merkelized_payload_hashes_repr.produce_proof
-      payloads_history
+      find_payload
       head_cell
       ~index:target_index
   in
@@ -663,14 +662,14 @@ let verify_proof (l, n) inbox_snapshot {inclusion_proof; message_proof} =
         let message_counter = Z.zero in
         return_some Sc_rollup_PVM_sig.{inbox_level; message_counter; payload}
 
-let produce_proof ~get_payloads_history ~get_history inbox_snapshot (l, n) =
+let produce_proof ~find_payload ~get_history inbox_snapshot (l, n) =
   let open Lwt_result_syntax in
   let* inclusion_proof, history_proof =
     produce_inclusion_proof get_history inbox_snapshot l
   in
   let level_proof = Skip_list.content history_proof in
   let* ({payload; proof = _} as message_proof) =
-    produce_payloads_proof get_payloads_history level_proof.hash ~index:n
+    produce_payloads_proof (find_payload l) level_proof.hash ~index:n
   in
   let proof = {inclusion_proof; message_proof} in
   let*? input =

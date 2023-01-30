@@ -538,15 +538,16 @@ let gen_message_reprs_for_levels_repr ~start_level ~max_level gen_message_repr =
   in
   aux [] (max_level - start_level)
 
-module Payloads_histories =
-  Map.Make (Sc_rollup.Inbox_merkelized_payload_hashes.Hash)
+module Payloads_histories = Sc_rollup.Inbox_merkelized_payload_hashes.Hash.Map
 
 type payloads_histories =
-  Sc_rollup.Inbox_merkelized_payload_hashes.History.t Payloads_histories.t
+  Sc_rollup.Inbox_merkelized_payload_hashes.merkelized_and_payload
+  Payloads_histories.t
 
-let get_payloads_history payloads_histories witness =
-  Payloads_histories.find witness payloads_histories
-  |> WithExceptions.Option.get ~loc:__LOC__
+let find_payload payloads_histories _inbox_level witness =
+  Sc_rollup.Inbox_merkelized_payload_hashes.Hash.Map.find
+    witness
+    payloads_histories
   |> Lwt.return
 
 let get_history history i = Sc_rollup.Inbox.History.find i history |> Lwt.return
@@ -665,7 +666,7 @@ module Node_inbox = struct
               (fun message -> Sc_rollup.Inbox_message.External message)
               messages
           in
-          let* payloads_history, history, inbox, witness, _messages =
+          let* payloads_history, history, inbox, _witness, _messages =
             Environment.wrap_tzresult
             @@ Sc_rollup.Inbox.add_all_messages
                  ~predecessor_timestamp
@@ -675,14 +676,27 @@ module Node_inbox = struct
                  messages
           in
           (* Store in the history this archived level. *)
-          let witness_hash =
-            Sc_rollup.Inbox_merkelized_payload_hashes.hash witness
-          in
           let payloads_histories =
-            Payloads_histories.add
-              witness_hash
-              payloads_history
+            let merkelized_payload_hashes =
+              Sc_rollup.Inbox_merkelized_payload_hashes.History
+              .Internal_for_tests
+              .keys
+                payloads_history
+            in
+            List.fold_left
+              (fun payloads_histories hash ->
+                let merkelized_and_payload =
+                  Sc_rollup.Inbox_merkelized_payload_hashes.History.find
+                    hash
+                    payloads_history
+                  |> WithExceptions.Option.get ~loc:__LOC__
+                in
+                Payloads_histories.add
+                  hash
+                  merkelized_and_payload
+                  payloads_histories)
               payloads_histories
+              merkelized_payload_hashes
           in
           aux {inbox; history; payloads_histories} rst
     in
@@ -707,7 +721,7 @@ module Node_inbox = struct
       (level, message_counter) =
     Lwt.map Environment.wrap_tzresult
     @@ Sc_rollup.Inbox.produce_proof
-         ~get_payloads_history:(get_payloads_history payloads_histories)
+         ~find_payload:(find_payload payloads_histories)
          ~get_history:(get_history history)
          inbox_snapshot
          (level, message_counter)

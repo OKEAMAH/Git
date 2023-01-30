@@ -395,9 +395,12 @@ module type PVM_with_context_and_state = sig
       Sc_rollup_inbox_repr.Hash.t ->
       Sc_rollup_inbox_repr.history_proof option Lwt.t
 
-    val get_payloads_history :
+    val find_payload :
+      Raw_level_repr.t ->
       Sc_rollup_inbox_merkelized_payload_hashes_repr.Hash.t ->
-      Sc_rollup_inbox_merkelized_payload_hashes_repr.History.t Lwt.t
+      Sc_rollup_inbox_merkelized_payload_hashes_repr.merkelized_and_payload
+      option
+      Lwt.t
   end
 
   module Dal_with_history : sig
@@ -445,7 +448,7 @@ let produce ~metadata pvm_and_state commit_inbox_level =
         let* inbox_proof, input =
           Inbox_with_history.(
             Sc_rollup_inbox_repr.produce_proof
-              ~get_payloads_history
+              ~find_payload
               ~get_history
               inbox
               (level, Z.succ message_counter))

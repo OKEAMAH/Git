@@ -180,19 +180,19 @@ let pp_proof = Format.pp_print_list pp
 
 let proof_encoding = Data_encoding.list encoding
 
-let produce_proof history ~index merkelized =
-  let open Option_syntax in
+let produce_proof find_payload ~index merkelized =
+  let open Lwt_option_syntax in
   let deref ptr =
-    let* {merkelized; payload = _} = History.find ptr history in
+    let* {merkelized; payload = _} = find_payload ptr in
     return merkelized
   in
   let current_ptr = hash merkelized in
   let lift_ptr =
     let rec aux acc = function
-      | [] -> None
+      | [] -> fail
       | [last_ptr] ->
           let+ ({merkelized; _} as merkelized_and_payload) =
-            History.find last_ptr history
+            find_payload last_ptr
           in
           (merkelized_and_payload, List.rev (merkelized :: acc))
       | ptr :: rest ->
@@ -202,7 +202,7 @@ let produce_proof history ~index merkelized =
     aux []
   in
   let* ptr_path =
-    Skip_list.back_path ~deref ~cell_ptr:current_ptr ~target_index:index
+    Skip_list.Lwt.back_path ~deref ~cell_ptr:current_ptr ~target_index:index
   in
   lift_ptr ptr_path
 

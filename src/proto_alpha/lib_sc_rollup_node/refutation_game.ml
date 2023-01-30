@@ -206,7 +206,8 @@ module Make (Interpreter : Interpreter.S) :
         dal_parameters
         start_state
     in
-    let module P = struct
+
+    let module P : Sc_rollup.Proof.PVM_with_context_and_state = struct
       include PVM
 
       let context = snapshot_ctxt_index
@@ -237,22 +238,29 @@ module Make (Interpreter : Interpreter.S) :
                 err
           | Ok inbox -> Option.map Sc_rollup.Inbox.take_snapshot inbox
 
-        let get_payloads_history witness =
+        let find_payload inbox_level witness =
           Lwt.map
             (WithExceptions.Result.to_exn_f
                ~error:(Format.kasprintf Stdlib.failwith "%a" pp_print_trace))
           @@
           let open Lwt_result_syntax in
-          let* {predecessor; predecessor_timestamp; messages} =
-            Node_context.get_messages node_ctxt witness
+          let inbox_level_int32 = Raw_level.(to_int32 inbox_level) in
+          let* inbox_block_hash =
+            Node_context.hash_of_level node_ctxt inbox_level_int32
           in
-          let*? hist =
+          let* {predecessor; predecessor_timestamp; messages} =
+            Node_context.get_messages node_ctxt inbox_block_hash
+          in
+          let*? payloads_history =
             Inbox.payloads_history_of_messages
               ~predecessor
               ~predecessor_timestamp
               messages
           in
-          return hist
+          return
+          @@ Sc_rollup.Inbox_merkelized_payload_hashes.History.find
+               witness
+               payloads_history
       end
 
       module Dal_with_history = struct

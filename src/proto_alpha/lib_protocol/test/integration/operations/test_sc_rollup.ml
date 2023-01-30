@@ -2622,7 +2622,7 @@ let input_included ~snapshot ~full_history_inbox (l, n) =
   (* Create an inclusion proof of the inbox message at [(l, n)]. *)
   let* proof, _ =
     Sc_rollup.Inbox.produce_proof
-      ~get_payloads_history:(get_payloads_history payloads_histories)
+      ~find_payload:(find_payload payloads_histories)
       ~get_history:(get_history history)
       history_proof
       (l, n)

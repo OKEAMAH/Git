@@ -44,7 +44,6 @@ val process_head :
   Layer1.head ->
   (Sc_rollup.Inbox.Hash.t
   * Sc_rollup.Inbox.t
-  * Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t
   * Sc_rollup.Inbox_message.t list
   * Context.rw)
   tzresult
@@ -60,10 +59,7 @@ val add_messages :
   predecessor:Block_hash.t ->
   Inbox.t ->
   Inbox_message.t list ->
-  (Inbox_merkelized_payload_hashes.History.t
-  * Inbox_merkelized_payload_hashes.Hash.t
-  * Inbox.t
-  * Inbox_message.t list)
+  (Inbox_merkelized_payload_hashes.History.t * Inbox.t * Inbox_message.t list)
   tzresult
   Lwt.t
 

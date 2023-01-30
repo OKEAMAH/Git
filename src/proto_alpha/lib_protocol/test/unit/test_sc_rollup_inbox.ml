@@ -277,11 +277,16 @@ let test_merkelized_payload_hashes_proof (payloads, index) =
   let* history, merkelized_payload =
     construct_merkelized_payload_hashes payloads
   in
-  let ( Merkelized_payload_hashes.
-          {merkelized = target_merkelized_payload; payload = proof_payload},
-        proof ) =
-    opt_get ~__LOC__
-    @@ Merkelized_payload_hashes.produce_proof history ~index merkelized_payload
+  let*! ( Merkelized_payload_hashes.
+            {merkelized = target_merkelized_payload; payload = proof_payload},
+          proof ) =
+    Lwt.map (opt_get ~__LOC__)
+    @@ Merkelized_payload_hashes.produce_proof
+         (fun hash ->
+           Sc_rollup.Inbox_merkelized_payload_hashes.History.find hash history
+           |> Lwt.return)
+         ~index
+         merkelized_payload
   in
   let payload : Message.serialized =
     opt_get ~__LOC__ @@ List.nth payloads (Z.to_int index)
@@ -324,10 +329,12 @@ let test_invalid_merkelized_payload_hashes_proof_fails (payloads, index) =
   let* history, merkelized_payload_hash =
     construct_merkelized_payload_hashes payloads
   in
-  let Merkelized_payload_hashes.{merkelized = _target; _}, proof =
-    opt_get ~__LOC__
+  let*! Merkelized_payload_hashes.{merkelized = _target; _}, proof =
+    Lwt.map (opt_get ~__LOC__)
     @@ Merkelized_payload_hashes.produce_proof
-         history
+         (fun hash ->
+           Sc_rollup.Inbox_merkelized_payload_hashes.History.find hash history
+           |> Lwt.return)
          ~index
          merkelized_payload_hash
   in
@@ -341,10 +348,12 @@ let test_invalid_merkelized_payload_hashes_proof_fails (payloads, index) =
   let* history', merkelized_payload' =
     construct_merkelized_payload_hashes payloads'
   in
-  let Merkelized_payload_hashes.{merkelized = target'; payload = _}, proof' =
-    opt_get ~__LOC__
+  let*! Merkelized_payload_hashes.{merkelized = target'; payload = _}, proof' =
+    Lwt.map (opt_get ~__LOC__)
     @@ Merkelized_payload_hashes.produce_proof
-         history'
+         (fun hash ->
+           Sc_rollup.Inbox_merkelized_payload_hashes.History.find hash history'
+           |> Lwt.return)
          ~index
          merkelized_payload'
   in

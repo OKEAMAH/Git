@@ -94,7 +94,7 @@ module Messages =
     (struct
       let name = "messages"
     end)
-    (Make_hash_index_key (Sc_rollup.Inbox_merkelized_payload_hashes.Hash))
+    (Tezos_store_shared.Block_key)
     (struct
       type t = Sc_rollup.Inbox_message.t list
 

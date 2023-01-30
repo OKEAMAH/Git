@@ -102,7 +102,7 @@ let add_messages ~predecessor_timestamp ~predecessor inbox messages =
   @@ let*? ( messages_history,
              _no_history,
              inbox,
-             witness,
+             _witness,
              messages_with_protocol_internal_messages ) =
        Sc_rollup.Inbox.add_all_messages
          ~predecessor_timestamp
@@ -111,14 +111,7 @@ let add_messages ~predecessor_timestamp ~predecessor inbox messages =
          inbox
          messages
      in
-     let witness_hash =
-       Sc_rollup.Inbox_merkelized_payload_hashes.hash witness
-     in
-     return
-       ( messages_history,
-         witness_hash,
-         inbox,
-         messages_with_protocol_internal_messages )
+     return (messages_history, inbox, messages_with_protocol_internal_messages)
 
 let process_head (node_ctxt : _ Node_context.t)
     Layer1.({level; hash = head_hash} as head) =
@@ -155,10 +148,7 @@ let process_head (node_ctxt : _ Node_context.t)
         (Raw_level.to_int32 level)
         (List.length collected_messages)
     in
-    let* ( _messages_history,
-           witness_hash,
-           inbox,
-           messages_with_protocol_internal_messages ) =
+    let* _messages_history, inbox, messages_with_protocol_internal_messages =
       add_messages
         ~predecessor_timestamp
         ~predecessor:predecessor_hash
@@ -170,7 +160,7 @@ let process_head (node_ctxt : _ Node_context.t)
     let* () =
       Node_context.save_messages
         node_ctxt
-        witness_hash
+        head_hash
         {
           predecessor = predecessor_hash;
           predecessor_timestamp;
@@ -179,20 +169,11 @@ let process_head (node_ctxt : _ Node_context.t)
     in
     let* () = same_inbox_as_layer_1 node_ctxt head_hash inbox in
     let* inbox_hash = Node_context.save_inbox node_ctxt inbox in
-    return
-      ( inbox_hash,
-        inbox,
-        witness_hash,
-        messages_with_protocol_internal_messages,
-        ctxt ))
+    return (inbox_hash, inbox, messages_with_protocol_internal_messages, ctxt))
   else
     let* inbox = Node_context.genesis_inbox node_ctxt in
     return
-      ( Sc_rollup.Inbox.hash inbox,
-        inbox,
-        Sc_rollup.Inbox.current_witness inbox,
-        [],
-        Context.empty node_ctxt.context )
+      (Sc_rollup.Inbox.hash inbox, inbox, [], Context.empty node_ctxt.context)
 
 let start () = Inbox_event.starting ()
 

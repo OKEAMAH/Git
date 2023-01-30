@@ -3324,7 +3324,10 @@ module Sc_rollup : sig
     val proof_encoding : proof Data_encoding.t
 
     val produce_proof :
-      History.t -> index:Z.t -> t -> (merkelized_and_payload * proof) option
+      (Hash.t -> merkelized_and_payload option Lwt.t) ->
+      index:Z.t ->
+      t ->
+      (merkelized_and_payload * proof) option Lwt.t
 
     val verify_proof : proof -> (t * t) tzresult
 
@@ -3455,9 +3458,10 @@ module Sc_rollup : sig
       inbox_message option tzresult
 
     val produce_proof :
-      get_payloads_history:
-        (Inbox_merkelized_payload_hashes.Hash.t ->
-        Inbox_merkelized_payload_hashes.History.t Lwt.t) ->
+      find_payload:
+        (Raw_level.t ->
+        Inbox_merkelized_payload_hashes.Hash.t ->
+        Inbox_merkelized_payload_hashes.merkelized_and_payload option Lwt.t) ->
       get_history:(Hash.t -> history_proof option Lwt.t) ->
       history_proof ->
       Raw_level.t * Z.t ->
@@ -3503,7 +3507,7 @@ module Sc_rollup : sig
 
       val produce_payloads_proof :
         (Inbox_merkelized_payload_hashes.Hash.t ->
-        Inbox_merkelized_payload_hashes.History.t Lwt.t) ->
+        Inbox_merkelized_payload_hashes.merkelized_and_payload option Lwt.t) ->
         Inbox_merkelized_payload_hashes.Hash.t ->
         index:Z.t ->
         payloads_proof tzresult Lwt.t
@@ -3945,9 +3949,10 @@ module Sc_rollup : sig
 
         val get_history : Inbox.Hash.t -> Inbox.history_proof option Lwt.t
 
-        val get_payloads_history :
+        val find_payload :
+          Raw_level.t ->
           Inbox_merkelized_payload_hashes.Hash.t ->
-          Inbox_merkelized_payload_hashes.History.t Lwt.t
+          Inbox_merkelized_payload_hashes.merkelized_and_payload option Lwt.t
       end
 
       module Dal_with_history : sig

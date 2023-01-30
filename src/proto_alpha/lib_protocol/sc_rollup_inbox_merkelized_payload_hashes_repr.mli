@@ -112,7 +112,10 @@ val proof_encoding : proof Data_encoding.t
     [None] if no merkelized payload with [index] is found (either in the
     [history] or [index] is not inferior to [get_index into_]). *)
 val produce_proof :
-  History.t -> index:Z.t -> t -> (merkelized_and_payload * proof) option
+  (Hash.t -> merkelized_and_payload option Lwt.t) ->
+  index:Z.t ->
+  t ->
+  (merkelized_and_payload * proof) option Lwt.t
 
 (** [verify_proof proof] returns [(a, b)] where [proof] validates that [a] is an
     ancestor of [b]. Fails when [proof] is not a valid inclusion proof. *)

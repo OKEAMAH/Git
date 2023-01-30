@@ -1266,11 +1266,6 @@ let build_proof ~player_client start_tick (game : Game.t) =
   let Sc_rollup_helpers.Node_inbox.{payloads_histories; history; inbox} =
     player_client.inbox
   in
-  let get_payloads_history witness_hash =
-    Payloads_histories.find witness_hash payloads_histories
-    |> WithExceptions.Option.get ~loc:__LOC__
-    |> Lwt.return
-  in
   let history_proof = Inbox.old_levels_messages inbox in
   (* We start a game on a commitment that starts at [Tick.initial], the fuel
      is necessarily [start_tick]. *)
@@ -1297,7 +1292,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
 
       let get_history inbox = Inbox.History.find inbox history |> Lwt.return
 
-      let get_payloads_history = get_payloads_history
+      let find_payload = find_payload payloads_histories
     end
 
     (* FIXME/DAL-REFUTATION: https://gitlab.com/tezos/tezos/-/issues/3992

@@ -38,7 +38,7 @@ module L2_blocks :
 (** Storage for persisting messages downloaded from the L1 node. *)
 module Messages :
   INDEXED_FILE
-    with type key := Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t
+    with type key := Block_hash.t
      and type value := Sc_rollup.Inbox_message.t list
      and type header := Block_hash.t * Timestamp.t * int
 

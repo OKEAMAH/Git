@@ -201,7 +201,7 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     in
     let* inbox = Node_context.get_inbox node_ctxt block.header.inbox_hash in
     let* {predecessor; predecessor_timestamp; messages} =
-      Node_context.get_messages node_ctxt block.header.inbox_witness
+      Node_context.get_messages node_ctxt block.header.block_hash
     in
     let messages =
       Sc_rollup.Inbox_message.Internal Start_of_level

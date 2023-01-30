@@ -187,9 +187,12 @@ module type PVM_with_context_and_state = sig
       Sc_rollup_inbox_repr.Hash.t ->
       Sc_rollup_inbox_repr.history_proof option Lwt.t
 
-    val get_payloads_history :
+    val find_payload :
+      Raw_level_repr.t ->
       Sc_rollup_inbox_merkelized_payload_hashes_repr.Hash.t ->
-      Sc_rollup_inbox_merkelized_payload_hashes_repr.History.t Lwt.t
+      Sc_rollup_inbox_merkelized_payload_hashes_repr.merkelized_and_payload
+      option
+      Lwt.t
   end
 
   (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3997

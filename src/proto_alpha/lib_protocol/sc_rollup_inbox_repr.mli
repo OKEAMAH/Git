@@ -308,9 +308,11 @@ val verify_proof :
     doesn't have sufficient data (it needs to be run on an with a full
     history). *)
 val produce_proof :
-  get_payloads_history:
-    (Sc_rollup_inbox_merkelized_payload_hashes_repr.Hash.t ->
-    Sc_rollup_inbox_merkelized_payload_hashes_repr.History.t Lwt.t) ->
+  find_payload:
+    (Raw_level_repr.t ->
+    Sc_rollup_inbox_merkelized_payload_hashes_repr.Hash.t ->
+    Sc_rollup_inbox_merkelized_payload_hashes_repr.merkelized_and_payload option
+    Lwt.t) ->
   get_history:(Hash.t -> history_proof option Lwt.t) ->
   history_proof ->
   Raw_level_repr.t * Z.t ->
@@ -379,7 +381,8 @@ module Internal_for_tests : sig
 
   val produce_payloads_proof :
     (Sc_rollup_inbox_merkelized_payload_hashes_repr.Hash.t ->
-    Sc_rollup_inbox_merkelized_payload_hashes_repr.History.t Lwt.t) ->
+    Sc_rollup_inbox_merkelized_payload_hashes_repr.merkelized_and_payload option
+    Lwt.t) ->
     Sc_rollup_inbox_merkelized_payload_hashes_repr.Hash.t ->
     index:Z.t ->
     payloads_proof tzresult Lwt.t

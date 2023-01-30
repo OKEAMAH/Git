@@ -33,7 +33,6 @@ type header = {
   commitment_hash : Sc_rollup.Commitment.Hash.t option;
   previous_commitment_hash : Sc_rollup.Commitment.Hash.t;
   context : Sc_rollup_context_hash.t;
-  inbox_witness : Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t;
   inbox_hash : Sc_rollup.Inbox.Hash.t;
 }
 
@@ -75,7 +74,6 @@ let header_encoding =
            commitment_hash;
            previous_commitment_hash;
            context;
-           inbox_witness;
            inbox_hash;
          } ->
       ( block_hash,
@@ -84,7 +82,6 @@ let header_encoding =
         commitment_hash,
         previous_commitment_hash,
         context,
-        inbox_witness,
         inbox_hash ))
     (fun ( block_hash,
            level,
@@ -92,7 +89,6 @@ let header_encoding =
            commitment_hash,
            previous_commitment_hash,
            context,
-           inbox_witness,
            inbox_hash ) ->
       {
         block_hash;
@@ -101,10 +97,9 @@ let header_encoding =
         commitment_hash;
         previous_commitment_hash;
         context;
-        inbox_witness;
         inbox_hash;
       })
-  @@ obj8
+  @@ obj7
        (req "block_hash" Block_hash.encoding ~description:"Tezos block hash.")
        (req
           "level"
@@ -131,12 +126,6 @@ let header_encoding =
           "context"
           Sc_rollup_context_hash.encoding
           ~description:"Hash of the layer 2 context for this block.")
-       (req
-          "inbox_witness"
-          Sc_rollup.Inbox_merkelized_payload_hashes.Hash.encoding
-          ~description:
-            "Witness for the inbox for this block, i.e. the Merkle hash of \
-             payloads of messages.")
        (req
           "inbox_hash"
           Sc_rollup.Inbox.Hash.encoding

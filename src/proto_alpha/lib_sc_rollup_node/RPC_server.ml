@@ -155,7 +155,7 @@ module Common = struct
     let open Lwt_result_syntax in
     let* l2_block = Node_context.get_l2_block node_ctxt block in
     let+ num_messages =
-      Node_context.get_num_messages node_ctxt l2_block.header.inbox_witness
+      Node_context.get_num_messages node_ctxt l2_block.header.block_hash
     in
     Z.of_int num_messages
 
