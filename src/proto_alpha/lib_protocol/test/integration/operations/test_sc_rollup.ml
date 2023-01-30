@@ -675,9 +675,9 @@ let execute_outbox_message incr ~originator rollup ~output_proof
 let assert_ticket_token_balance ~loc incr token owner expected =
   let open Lwt_result_wrap_syntax in
   let ctxt = Incremental.alpha_ctxt incr in
-  let* balance, _ =
-    let*@ key_hash, ctxt = Ticket_balance_key.of_ex_token ctxt ~owner token in
-    wrap (Ticket_balance.get_balance ctxt key_hash)
+  let*@ balance, _ =
+    let* key_hash, ctxt = Ticket_balance_key.of_ex_token ctxt ~owner token in
+    Ticket_balance.get_balance ctxt key_hash
   in
   match (balance, expected) with
   | Some b, Some e -> Assert.equal_int ~loc (Z.to_int b) e
