@@ -282,19 +282,18 @@ let test_encode_decode_outbox_message () =
          ~entrypoint:Entrypoint.default
   in
   (* Transaction to the `add` endpoint of add-or-clear contract. *)
-  let* transaction2, ctxt =
-    let*?@ (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
+  let*@ transaction2, ctxt =
+    let*? (Script_typed_ir.Ty_ex_c pair_nat_ticket_string_ty) =
       Script_typed_ir.(pair_t (-1) nat_t string_t)
     in
-    let*?@ content = Script_string.of_string "Hello" in
+    let*? content = Script_string.of_string "Hello" in
     let parameters = (Script_int.(abs @@ of_int 11), content) in
-    wrap
-    @@ Sc_rollup_management_protocol.Internal_for_tests.make_transaction
-         ctxt
-         pair_nat_ticket_string_ty
-         ~parameters
-         ~destination:add_or_clear_destination
-         ~entrypoint:(Entrypoint.of_string_strict_exn "add")
+    Sc_rollup_management_protocol.Internal_for_tests.make_transaction
+      ctxt
+      pair_nat_ticket_string_ty
+      ~parameters
+      ~destination:add_or_clear_destination
+      ~entrypoint:(Entrypoint.of_string_strict_exn "add")
   in
   (* Transaction to the `clear` endpoint of add-or-clear contract. *)
   let*@ transaction3, ctxt =
