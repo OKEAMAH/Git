@@ -31,10 +31,14 @@ type t = {
   sk_uri_opt : Tezos_client_base.Client_keys.aggregate_sk_uri option;
 }
 
-(** [get_keys ~addresses ~threshold cctxt config] returns the aliases and keys associated with the
-     aggregate signature addresses in [config] pkh in the tezos wallet of [cctxt]. *)
+(** [get_keys ~addresses ~threshold cctxt config] returns the aliases
+     and keys associated with the aggregate signature addresses in [config]
+     pkh in the tezos wallet of [cctxt]. *)
 val get_keys :
   addresses:Tezos_crypto.Aggregate_signature.public_key_hash trace ->
-  threshold:int ->
   #Client_context.wallet ->
-  t option list tzresult Lwt.t
+  t list tzresult Lwt.t
+
+(** [can_sign dac_member] returns true if the secret key uri of [dac_member]
+    is defined. *)
+val can_sign : t -> bool

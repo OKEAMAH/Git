@@ -34,36 +34,17 @@ let get_address_keys cctxt address =
   let open Tezos_client_base.Client_keys in
   let* alias = Aggregate_alias.Public_key_hash.rev_find cctxt address in
   match alias with
-  | None -> return_none
+  | None ->
+      (* TODO: <insert issue here>
+         Fetch public key from protocol if alias cannot be found *)
+      return {address; pk_opt = None; sk_uri_opt = None}
   | Some alias -> (
       let* keys_opt = alias_aggregate_keys cctxt alias in
       match keys_opt with
-      | None ->
-          (* DAC/TODO: https://gitlab.com/tezos/tezos/-/issues/4193
-             Revisit this once the Dac committee will be spread across
-             multiple dac nodes.*)
-          let*! () = Event.(emit dac_account_not_available address) in
-          return_none
-      | Some (address, pk_opt, sk_opt) -> (
-          match sk_opt with
-          | None ->
-              let*! () = Event.(emit dac_account_cannot_sign address) in
-              return_none
-          | Some sk_uri ->
-              return_some {address; pk_opt; sk_uri_opt = Some sk_uri}))
+      | None -> return {address; pk_opt = None; sk_uri_opt = None}
+      | Some (address, pk_opt, sk_uri_opt) ->
+          return {address; pk_opt; sk_uri_opt})
 
-let get_keys ~addresses ~threshold cctxt =
-  let open Lwt_result_syntax in
-  let* keys = List.map_es (get_address_keys cctxt) addresses in
-  let recovered_keys = List.length @@ List.filter Option.is_some keys in
-  let*! () =
-    (* We emit a warning if the threshold of dac accounts needed to sign a
-       root page hash is not reached. We also emit a warning for each DAC
-       account whose secret key URI was not recovered.
-       We do not stop the dac node at this stage.
-    *)
-    if recovered_keys < threshold then
-      Event.(emit dac_threshold_not_reached (recovered_keys, threshold))
-    else Event.(emit dac_is_ready) ()
-  in
-  return keys
+let get_keys ~addresses cctxt = List.map_es (get_address_keys cctxt) addresses
+
+let can_sign {sk_uri_opt; _} = Option.is_some sk_uri_opt

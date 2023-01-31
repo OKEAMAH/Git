@@ -215,13 +215,29 @@ let run ~data_dir cctxt =
   in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4725
      Stop DAC node when in Legacy mode, if threshold is not reached. *)
-  let* dac_accounts = Dac_member.get_keys ~addresses ~threshold cctxt in
+  let* dac_accounts = Dac_member.get_keys ~addresses cctxt in
+  let*! recovered_keys =
+    List.fold_left_s
+      (fun i (Dac_member.{address; _} as dac_member) ->
+        let open Lwt_syntax in
+        if Dac_member.can_sign dac_member then return @@ (i + 1)
+        else
+          let* () = Event.(emit dac_account_cannot_sign address) in
+          return i)
+      0
+      dac_accounts
+  in
+  let*! () =
+    if recovered_keys < threshold then
+      Event.(emit dac_threshold_not_reached (recovered_keys, threshold))
+    else Event.(emit dac_is_ready) ()
+  in
   let dac_pks_opt, dac_sk_uris =
     dac_accounts
-    |> List.map (fun account_opt ->
-           match account_opt with
+    |> List.map (fun Dac_member.{pk_opt; sk_uri_opt; _} ->
+           match sk_uri_opt with
            | None -> (None, None)
-           | Some Dac_member.{pk_opt; sk_uri_opt; _} -> (pk_opt, sk_uri_opt))
+           | Some _ -> (pk_opt, sk_uri_opt))
     |> List.split
   in
   let coordinator_cctxt_opt =
