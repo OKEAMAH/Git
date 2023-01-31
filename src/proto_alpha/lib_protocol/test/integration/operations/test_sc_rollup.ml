@@ -338,10 +338,10 @@ let verify_params ctxt ~parameters_ty ~parameters ~unparsed_parameters =
       parameters_ty
       parameters
   in
-  let* unparsed_parameters, ctxt =
+  let*@ unparsed_parameters, ctxt =
     (* Make sure we can parse the unparsed-parameters with the given parameters
        type. *)
-    let*@ parsed_unparsed_parameters, ctxt =
+    let* parsed_unparsed_parameters, ctxt =
       Script_ir_translator.parse_data
         ctxt
         ~elab_conf:Script_ir_translator_config.(make ~legacy:true ())
@@ -350,7 +350,7 @@ let verify_params ctxt ~parameters_ty ~parameters ~unparsed_parameters =
         (Environment.Micheline.root unparsed_parameters)
     in
     (* Un-parse again to get back to Micheline. *)
-    wrap @@ unparse ctxt parsed_unparsed_parameters
+    unparse ctxt parsed_unparsed_parameters
   in
   (* Un-parse the parsed parameters. *)
   let*@ expected_unparsed_parameters, _ctxt = unparse ctxt parameters in
