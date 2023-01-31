@@ -98,6 +98,8 @@ type tx_rollup_l2_address = Tx_rollup_l2_address.Indexable.value
 
 type ('a, 'b) pair = 'a * 'b
 
+(* We cannot call this type "or" as in Michelson because "or" is an
+   OCaml keyword. *)
 type ('a, 'b) union = L of 'a | R of 'b
 
 module Script_chain_id = struct
@@ -435,7 +437,7 @@ type 'arg entrypoints_node = {
 }
 
 and 'arg nested_entrypoints =
-  | Entrypoints_Union : {
+  | Entrypoints_Or : {
       left : 'l entrypoints_node;
       right : 'r entrypoints_node;
     }
@@ -509,7 +511,7 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
     }
       -> ('a option, 's, 'c, 't) kinstr
   (*
-     Unions
+     Ors
      ------
    *)
   | ICons_left :
@@ -1328,7 +1330,7 @@ and ('ty, 'comparable) ty =
       * ('a, 'b) pair ty_metadata
       * ('ac, 'bc, 'rc) dand
       -> (('a, 'b) pair, 'rc) ty
-  | Union_t :
+  | Or_t :
       ('a, 'ac) ty
       * ('b, 'bc) ty
       * ('a, 'b) union ty_metadata
@@ -1741,7 +1743,7 @@ let ty_metadata : type a ac. (a, ac) ty -> a ty_metadata = function
   | Tx_rollup_l2_address_t ->
       meta_basic
   | Pair_t (_, _, meta, _) -> meta
-  | Union_t (_, _, meta, _) -> meta
+  | Or_t (_, _, meta, _) -> meta
   | Option_t (_, meta, _) -> meta
   | Lambda_t (_, _, meta) -> meta
   | List_t (_, meta) -> meta
@@ -1774,7 +1776,7 @@ let is_comparable : type v c. (v, c) ty -> c dbool = function
   | Address_t -> Yes
   | Tx_rollup_l2_address_t -> Yes
   | Pair_t (_, _, _, dand) -> dbool_of_dand dand
-  | Union_t (_, _, _, dand) -> dbool_of_dand dand
+  | Or_t (_, _, _, dand) -> dbool_of_dand dand
   | Option_t (_, _, cmp) -> cmp
   | Lambda_t _ -> No
   | List_t _ -> No
@@ -1839,21 +1841,20 @@ let comparable_pair_t loc l r =
 let comparable_pair_3_t loc l m r =
   comparable_pair_t loc m r >>? fun r -> comparable_pair_t loc l r
 
-let union_t :
+let or_t :
     type a ac b bc.
     Script.location -> (a, ac) ty -> (b, bc) ty -> (a, b) union ty_ex_c tzresult
     =
  fun loc l r ->
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
   let (Ex_dand cmp) = dand (is_comparable l) (is_comparable r) in
-  Ty_ex_c (Union_t (l, r, {size}, cmp))
+  Ty_ex_c (Or_t (l, r, {size}, cmp))
 
-let union_bytes_bool_t =
-  Union_t (bytes_t, bool_t, {size = Type_size.three}, YesYes)
+let or_bytes_bool_t = Or_t (bytes_t, bool_t, {size = Type_size.three}, YesYes)
 
-let comparable_union_t loc l r =
+let comparable_or_t loc l r =
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
-  Union_t (l, r, {size}, YesYes)
+  Or_t (l, r, {size}, YesYes)
 
 let lambda_t loc l r =
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
@@ -2163,8 +2164,7 @@ let ty_traverse =
     | Chest_key_t | Chest_t -> (continue [@ocaml.tailcall]) accu
     | Pair_t (ty1, ty2, _, _) ->
         (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
-    | Union_t (ty1, ty2, _, _) ->
-        (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
+    | Or_t (ty1, ty2, _, _) -> (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
     | Lambda_t (ty1, ty2, _) ->
         (next2 [@ocaml.tailcall]) f accu ty1 ty2 continue
     | Option_t (ty1, _, _) -> (next [@ocaml.tailcall]) f accu ty1 continue
@@ -2244,7 +2244,7 @@ let value_traverse (type t tc) (ty : (t, tc) ty) (x : t) init f =
         (return [@ocaml.tailcall]) ()
     | Pair_t (ty1, ty2, _, _) ->
         (next2 [@ocaml.tailcall]) ty1 ty2 (fst x) (snd x)
-    | Union_t (ty1, ty2, _, _) -> (
+    | Or_t (ty1, ty2, _, _) -> (
         match x with
         | L l -> (next [@ocaml.tailcall]) ty1 l
         | R r -> (next [@ocaml.tailcall]) ty2 r)

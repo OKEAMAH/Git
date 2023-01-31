@@ -1053,7 +1053,7 @@ module Registration_section = struct
         ()
   end
 
-  module Unions = struct
+  module Ors = struct
     let () =
       simple_benchmark
         ~name:Interpreter_workload.N_ILeft
@@ -1071,7 +1071,7 @@ module Registration_section = struct
     let () =
       simple_benchmark
         ~name:Interpreter_workload.N_IIf_left
-        ~stack_type:(cunion unit unit @$ bot)
+        ~stack_type:(cor unit unit @$ bot)
         ~kinstr:
           (IIf_left
              {
@@ -2187,7 +2187,7 @@ module Registration_section = struct
       let cons_r = ICons_right (dummy_loc, unit, halt) in
       simple_benchmark
         ~name:Interpreter_workload.N_ILoop_left
-        ~stack_type:(cunion unit unit @$ bot)
+        ~stack_type:(cor unit unit @$ bot)
         ~kinstr:(ILoop_left (dummy_loc, cons_r, halt))
         ()
 
@@ -3302,7 +3302,7 @@ module Registration_section = struct
             KLoop_in_left (ICons_right (dummy_loc, unit, halt), KNil)
           in
           let stack = (R (), eos) in
-          let stack_type = cunion unit unit @$ bot in
+          let stack_type = cor unit unit @$ bot in
           fun () -> Ex_stack_and_cont {stack; cont; stack_type})
         ()
 

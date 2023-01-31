@@ -304,8 +304,8 @@ type entrypoint_info = {name : Entrypoint.t; original_type_expr : Script.node}
     ['arg].
     [at_node] are entrypoint details at that node if it is not [None].
     [nested] are the entrypoints below the node in the tree.
-      It is always [Entrypoints_None] for non-union nodes.
-      But it is also ok to have [Entrypoints_None] for a union node, it just
+      It is always [Entrypoints_None] for non-or nodes.
+      But it is also ok to have [Entrypoints_None] for an or node, it just
       means that there are no entrypoints below that node in the tree.
 *)
 type 'arg entrypoints_node = {
@@ -314,7 +314,7 @@ type 'arg entrypoints_node = {
 }
 
 and 'arg nested_entrypoints =
-  | Entrypoints_Union : {
+  | Entrypoints_Or : {
       left : 'l entrypoints_node;
       right : 'r entrypoints_node;
     }
@@ -488,7 +488,7 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
     }
       -> ('a option, 's, 'c, 't) kinstr
   (*
-     Unions
+     Ors
      ------
    *)
   | ICons_left :
@@ -1442,7 +1442,7 @@ and ('ty, 'comparable) ty =
       * ('a, 'b) pair ty_metadata
       * ('ac, 'bc, 'rc) dand
       -> (('a, 'b) pair, 'rc) ty
-  | Union_t :
+  | Or_t :
       ('a, 'ac) ty
       * ('b, 'bc) ty
       * ('a, 'b) union ty_metadata
@@ -1756,16 +1756,16 @@ val comparable_pair_3_t :
   'c comparable_ty ->
   ('a, ('b, 'c) pair) pair comparable_ty tzresult
 
-val union_t :
+val or_t :
   Script.location -> ('a, _) ty -> ('b, _) ty -> ('a, 'b) union ty_ex_c tzresult
 
-val comparable_union_t :
+val comparable_or_t :
   Script.location ->
   'a comparable_ty ->
   'b comparable_ty ->
   ('a, 'b) union comparable_ty tzresult
 
-val union_bytes_bool_t : (Bytes.t, bool) union comparable_ty
+val or_bytes_bool_t : (Bytes.t, bool) union comparable_ty
 
 val lambda_t :
   Script.location ->
