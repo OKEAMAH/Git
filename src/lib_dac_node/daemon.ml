@@ -202,7 +202,7 @@ let run ~data_dir cctxt =
   let* ({rpc_address; rpc_port; reveal_data_dir; mode; _} as config) =
     Configuration.load ~data_dir
   in
-  let* () = Manager.Storage.ensure_reveal_data_dir_exists reveal_data_dir in
+  let* () = Store_manager.ensure_reveal_data_dir_exists reveal_data_dir in
   let* addresses, threshold, coordinator_cctxt_opt =
     match mode with
     | Operating_modes.Legacy
