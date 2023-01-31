@@ -55,46 +55,6 @@ let () =
     (function Cannot_create_reveal_data_dir path -> Some path | _ -> None)
     (fun path -> Cannot_create_reveal_data_dir path)
 
-module Keys = struct
-  let get_address_keys cctxt address =
-    let open Lwt_result_syntax in
-    let open Tezos_client_base.Client_keys in
-    let* alias = Aggregate_alias.Public_key_hash.rev_find cctxt address in
-    match alias with
-    | None -> return_none
-    | Some alias -> (
-        let* keys_opt = alias_aggregate_keys cctxt alias in
-        match keys_opt with
-        | None ->
-            (* DAC/TODO: https://gitlab.com/tezos/tezos/-/issues/4193
-               Revisit this once the Dac committee will be spread across
-               multiple dac nodes.*)
-            let*! () = Event.(emit dac_account_not_available address) in
-            return_none
-        | Some (pkh, pk, sk_uri_opt) -> (
-            match sk_uri_opt with
-            | None ->
-                let*! () = Event.(emit dac_account_cannot_sign address) in
-                return_none
-            | Some sk_uri -> return_some (pkh, pk, sk_uri)))
-
-  let get_keys ~addresses ~threshold cctxt =
-    let open Lwt_result_syntax in
-    let* keys = List.map_es (get_address_keys cctxt) addresses in
-    let recovered_keys = List.length @@ List.filter Option.is_some keys in
-    let*! () =
-      (* We emit a warning if the threshold of dac accounts needed to sign a
-         root page hash is not reached. We also emit a warning for each DAC
-         account whose secret key URI was not recovered.
-         We do not stop the dac node at this stage.
-      *)
-      if recovered_keys < threshold then
-        Event.(emit dac_threshold_not_reached (recovered_keys, threshold))
-      else Event.(emit dac_is_ready) ()
-    in
-    return keys
-end
-
 module Storage = struct
   let ensure_reveal_data_dir_exists reveal_data_dir =
     let open Lwt_result_syntax in

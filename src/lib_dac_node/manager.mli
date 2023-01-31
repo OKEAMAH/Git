@@ -29,22 +29,6 @@ type error +=
   | Reveal_data_path_not_a_directory of string
   | Cannot_create_reveal_data_dir of string
 
-module Keys : sig
-  (** [get_keys ~addresses ~threshold cctxt config] returns the aliases and keys associated with the
-     aggregate signature addresses in [config] pkh in the tezos wallet of [cctxt]. *)
-  val get_keys :
-    addresses:Tezos_crypto.Aggregate_signature.public_key_hash trace ->
-    threshold:int ->
-    #Client_context.wallet ->
-    (Tezos_crypto.Aggregate_signature.public_key_hash
-    * Tezos_crypto.Aggregate_signature.public_key option
-    * Client_keys.aggregate_sk_uri)
-    option
-    list
-    tzresult
-    Lwt.t
-end
-
 module Storage : sig
   (** [ensure_reveal_data_dir_exists reveal_data_dir] checks that the
       path at [reveal_data_dir] exists and is a directory. If

@@ -75,7 +75,7 @@ module Handler = struct
       let* protocols =
         Tezos_shell_services.Chain_services.Blocks.protocols cctxt ()
       in
-      let*! dac_plugin = Dac_manager.resolve_plugin protocols in
+      let*! dac_plugin = Manager.resolve_plugin protocols in
       match dac_plugin with
       | Some dac_plugin ->
           Node_context.set_ready ctxt dac_plugin ;
@@ -181,7 +181,7 @@ let run ~data_dir cctxt =
   let* ({rpc_address; rpc_port; reveal_data_dir; mode; _} as config) =
     Configuration.load ~data_dir
   in
-  let* () = Dac_manager.Storage.ensure_reveal_data_dir_exists reveal_data_dir in
+  let* () = Manager.Storage.ensure_reveal_data_dir_exists reveal_data_dir in
   let* addresses, threshold, coordinator_cctxt_opt =
     match mode with
     | Operating_modes.Legacy
@@ -194,13 +194,13 @@ let run ~data_dir cctxt =
   in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4725
      Stop DAC node when in Legacy mode, if threshold is not reached. *)
-  let* dac_accounts = Dac_manager.Keys.get_keys ~addresses ~threshold cctxt in
+  let* dac_accounts = Dac_member.get_keys ~addresses ~threshold cctxt in
   let dac_pks_opt, dac_sk_uris =
     dac_accounts
     |> List.map (fun account_opt ->
            match account_opt with
            | None -> (None, None)
-           | Some (_pkh, pk_opt, sk_uri) -> (pk_opt, Some sk_uri))
+           | Some Dac_member.{pk_opt; sk_uri_opt; _} -> (pk_opt, sk_uri_opt))
     |> List.split
   in
   let coordinator_cctxt_opt =
