@@ -47,7 +47,3 @@ module Storage : sig
   *)
   val ensure_reveal_data_dir_exists : string -> unit tzresult Lwt.t
 end
-
-val resolve_plugin :
-  Tezos_shell_services.Chain_services.Blocks.protocols ->
-  (module Dac_plugin.T) option Lwt.t
