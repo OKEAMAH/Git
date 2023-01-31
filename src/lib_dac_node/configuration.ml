@@ -45,11 +45,7 @@ type legacy = {
   dac_cctxt_config : host_and_port option;
 }
 
-type mode =
-  | Coordinator of coordinator
-  | Dac_member of dac_member
-  | Observer of observer
-  | Legacy of legacy
+type mode = (coordinator, dac_member, observer, legacy) Operating_modes.t
 
 type t = {
   data_dir : string;
@@ -145,34 +141,11 @@ let legacy_encoding =
          (req "legacy" bool)))
 
 let mode_config_encoding =
-  Data_encoding.(
-    union
-      [
-        case
-          ~title:"coordinator"
-          (Tag 0)
-          coordinator_encoding
-          (function Coordinator config -> Some config | _ -> None)
-          (function config -> Coordinator config);
-        case
-          ~title:"dac_member"
-          (Tag 1)
-          dac_member_encoding
-          (function Dac_member config -> Some config | _ -> None)
-          (function config -> Dac_member config);
-        case
-          ~title:"observer"
-          (Tag 2)
-          observer_encoding
-          (function Observer config -> Some config | _ -> None)
-          (function config -> Observer config);
-        case
-          ~title:"legacy"
-          (Tag 3)
-          legacy_encoding
-          (function Legacy config -> Some config | _ -> None)
-          (function config -> Legacy config);
-      ])
+  Operating_modes.make_encoding
+    ~coordinator_encoding
+    ~dac_member_encoding
+    ~observer_encoding
+    ~legacy_encoding
 
 let encoding : t Data_encoding.t =
   let open Data_encoding in

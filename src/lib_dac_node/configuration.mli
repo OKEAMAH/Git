@@ -66,11 +66,7 @@ type legacy = {
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4707.
    Remove legacy mode once other DAC operating modes are fully functional. *)
-type mode =
-  | Coordinator of coordinator
-  | Dac_member of dac_member
-  | Observer of observer
-  | Legacy of legacy
+type mode = (coordinator, dac_member, observer, legacy) Operating_modes.t
 
 type t = {
   data_dir : string;  (** The path to the DAC node data directory. *)

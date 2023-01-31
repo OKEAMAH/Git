@@ -163,7 +163,7 @@ module Config_init = struct
           ~reveal_data_dir
           ~rpc_address
           ~rpc_port
-          (Configuration.Legacy
+          (Operating_modes.Legacy
              {threshold; dac_members_addresses; dac_cctxt_config = None})
           cctxt)
 
