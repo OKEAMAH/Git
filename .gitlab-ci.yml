@@ -95,8 +95,6 @@ stages:
 # §2: Gitlab CI needs at least one job definition, otherwise we're stuck with
 # this error: 'Jobs config should contain at least one visible job'
 trigger:
-  extends:
-    - .image_template__runtime_build_test_dependencies_template
   stage: trigger
   rules:
     - if: '($CI_PIPELINE_SOURCE == "merge_request_event") && ($CI_PROJECT_NAMESPACE == "tezos") && ($CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/)'
