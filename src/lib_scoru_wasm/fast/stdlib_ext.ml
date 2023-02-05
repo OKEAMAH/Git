@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2021 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,19 +23,37 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open QCheck2.Gen
+(* TODO move this module to some common lib *)
 
-let uint8 = map Unsigned.UInt8.of_int int
+module Seq = struct
+  include Seq
 
-let mem_content =
-  list_size
-    (map (fun pages ->
-         pages * Int64.to_int Tezos_webassembly_interpreter.Memory.page_size)
-    @@ int_range 1 5)
-    uint8
+  (** [min_by lt seq] is the minimum element in [seq] based on the partial order [lt]
+      "lt a b" means "a is less than b"
+    *)
+  let min_by (lt : 'a -> 'a -> bool) (seq : 'a Seq.t) : 'a option =
+    Seq.fold_left
+      (fun acc x ->
+        match acc with
+        | None -> Some x
+        | Some min -> if lt x min then Some x else acc)
+      None
+      seq
+end
 
-let num : Tezos_webassembly_interpreter.Values.num t =
-  let open Tezos_scoru_wasm_test_helpers.Ast_generators in
-  value_op_gen int32 int64
+module Lwt_mvar = struct
+  include Lwt_mvar
 
-let seq_size g_size g_item = map List.to_seq @@ list_size g_size g_item
+  let use (mvar : 'a t) (f : 'a -> ('a * 'r) Lwt.t) : 'r Lwt.t =
+    let open Lwt.Syntax in
+    let* content = Lwt_mvar.take mvar in
+    let* content, result = f content in
+    let* () = Lwt_mvar.put mvar content in
+    Lwt.return result
+end
+
+module Option = struct
+  include Option
+
+  let or_else opt2 opt1 = match opt1 with None -> opt2 | _ -> opt1
+end

@@ -34,14 +34,12 @@ type host_state = {
   mutable durable : Durable.t;
 }
 
-type runtime = {
-  host_state : host_state;
-  reveal_builtins : Builtins.reveals;
-  write_debug : Builtins.write_debug;
-}
-
 (** [make ~debug builtins host_state] generates a list of host functions that
     can be imported by WebAssembly modules. If [debug] is true, an
     implementation for [write_debug] will be picked that prints to the standard
     output. *)
-val make : (unit -> runtime) -> (string * string * extern) list
+val make :
+  Builtins.write_debug ->
+  Builtins.reveals ->
+  host_state ->
+  (string * string * extern) list

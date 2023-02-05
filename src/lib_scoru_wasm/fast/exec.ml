@@ -57,19 +57,28 @@ let load_kernel durable =
   let store = Lazy.force store in
   Module_cache.load_kernel store durable
 
-module Runtime_store = struct
-  let instance : Funcs.runtime option ref = ref None
+module Pool = Pool.Make (Pool.LeastRecentlyUsed)
 
-  let host_funcs =
-    let get () = Option.value_f !instance ~default:(fun () -> assert false) in
-    Funcs.make get
+module Externs = struct
+  let pool_size = 10
 
-  let update rt = instance := Some rt
+  type externs = (string * string * Wasmer.extern) list
+
+  let pool : externs Pool.t =
+    let pool = Pool.init pool_size in
+    pool
+
+  let use execution_id ~ctor f = Pool.use execution_id ctor f pool
 end
 
 let compute ~reveal_builtins ~write_debug durable buffers =
   let open Lwt.Syntax in
   let* module_ = load_kernel durable in
+
+  (* TODO: For now we can use a static execution_id but once we need concurrency
+     we should derive execution_id from pvm_state (?) and propagate it to this point
+  *)
+  let execution_id = "const_execution_id" in
 
   let main_mem : (unit -> Wasmer.Memory.t) option ref = ref None in
   let retrieve_mem () =
@@ -78,36 +87,38 @@ let compute ~reveal_builtins ~write_debug durable buffers =
 
   let host_state = Funcs.{retrieve_mem; buffers; durable} in
 
-  Runtime_store.update {host_state; reveal_builtins; write_debug} ;
+  let run_wasmer externs =
+    let store = Lazy.force store in
 
-  let with_durable f =
-    let+ durable = f host_state.durable in
-    host_state.durable <- durable
-  in
-  let store = Lazy.force store in
-  let* instance =
-    Wasmer.Instance.create store module_ Runtime_store.host_funcs
-  in
+    let* instance = Wasmer.Instance.create store module_ externs in
 
-  let* () =
-    (* At this point we know that the kernel is valid because we parsed and
-       instantiated it. It is now safe to set it as the fallback kernel. *)
-    with_durable Wasm_vm.save_fallback_kernel
-  in
+    let* durable =
+      (* At this point we know that the kernel is valid because we parsed and
+         instantiated it. It is now safe to set it as the fallback kernel. *)
+      Wasm_vm.save_fallback_kernel host_state.durable
+    in
 
-  let exports = Wasmer.Exports.from_instance instance in
-  let kernel_run =
-    Wasmer.(Exports.fn exports "kernel_run" (producer nothing))
-  in
+    let* () = Lwt.return (host_state.durable <- durable) in
 
-  main_mem := Some (fun () -> Wasmer.Exports.mem0 exports) ;
+    let exports = Wasmer.Exports.from_instance instance in
+    let kernel_run =
+      Wasmer.(Exports.fn exports "kernel_run" (producer nothing))
+    in
 
-  let* () =
+    main_mem := Some (fun () -> Wasmer.Exports.mem0 exports) ;
+
     Lwt.finalize kernel_run (fun () ->
         (* Make sure that the instance is deleted regardless of whether
            [kernel_run] succeeds or not. *)
         Wasmer.Instance.delete instance ;
         Lwt.return_unit)
+  in
+
+  let* () =
+    Externs.use
+      execution_id
+      ~ctor:(fun () -> Funcs.make write_debug reveal_builtins host_state)
+      run_wasmer
   in
 
   let* durable = Wasm_vm.patch_flags_on_eval_successful host_state.durable in
