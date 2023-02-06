@@ -25,7 +25,11 @@
 
 exception Status_already_ready
 
-type ready_ctxt = {dac_plugin : (module Dac_plugin.T)}
+type dac_plugin = (module Dac_plugin.T)
+
+type node_plugin = (module Node_plugin.S)
+
+type ready_ctxt = {node_plugin : node_plugin}
 
 type status = Ready of ready_ctxt | Starting
 
@@ -37,16 +41,24 @@ type t = {
 
 let init config cctxt = {status = Starting; config; tezos_node_cctxt = cctxt}
 
-let set_ready ctxt ~dac_plugin =
+let set_ready ctxt ~(dac_plugin : dac_plugin) =
   match ctxt.status with
   | Starting ->
-      let (module Dac_plugin : Dac_plugin.T) = dac_plugin in
+      let module Dac_plugin = (val dac_plugin) in
+      let module Reveal_hash_mapper =
+        Dac_hash.Make (Dac_plugin.Protocol_reveal_hash) in
+      let module Node_plugin = struct
+        type reveal_hash = Dac_plugin.Protocol_reveal_hash.t
 
+        include Dac_plugin
+        module Reveal_hash_mapper = Reveal_hash_mapper
+      end in
+      let (node_plugin : node_plugin) = (module Node_plugin) in
       (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4681
          Currently, Dac only supports coordinator functionalities but we might
          want to filter this capability out depending on the profile.
       *)
-      ctxt.status <- Ready {dac_plugin}
+      ctxt.status <- Ready {node_plugin}
   | Ready _ -> raise Status_already_ready
 
 type error += Node_not_ready
@@ -76,3 +88,10 @@ let get_config ctxt = ctxt.config
 let get_status ctxt = ctxt.status
 
 let get_tezos_node_cctxt ctxt = ctxt.tezos_node_cctxt
+
+let get_dac_hash_encoding ctxt =
+  let open Result_syntax in
+  match ctxt.status with
+  | Ready {node_plugin = (module Node_plugin); _} ->
+      Ok Node_plugin.Reveal_hash_mapper.encoding
+  | _ -> fail [Node_not_ready]

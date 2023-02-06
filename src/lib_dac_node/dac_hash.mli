@@ -45,4 +45,4 @@ module type Reveal_hash_mapper = sig
 end
 
 module Make (P : Dac_plugin.Protocol_reveal_hash) :
-  Reveal_hash_mapper with type reveal_hash := P.t
+  Reveal_hash_mapper with type reveal_hash = P.t

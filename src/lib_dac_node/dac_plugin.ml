@@ -23,7 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* Protocol's reveal_hash type. Usually [Protocol.Sc_rollup_reveal_hash.t]. *)
 module type Protocol_reveal_hash = sig
   type t
 

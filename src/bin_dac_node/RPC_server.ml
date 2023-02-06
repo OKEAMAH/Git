@@ -38,9 +38,9 @@ let start_legacy ~rpc_address ~rpc_port ~reveal_data_dir ~threshold cctxt ctxt
       Tezos_rpc.Path.open_root
       (fun () ->
         match Node_context.get_status ctxt with
-        | Ready {dac_plugin = (module Dac_plugin); _} ->
+        | Ready {node_plugin = (module Node_plugin); _} ->
             Lwt.return
-              (Dac_plugin.RPC.rpc_services
+              (Node_plugin.RPC.rpc_services
                  ~reveal_data_dir
                  cctxt
                  dac_pks_opt

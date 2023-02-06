@@ -35,6 +35,8 @@ module type Reveal_hash_mapper = sig
 end
 
 module Make (H : Dac_plugin.Protocol_reveal_hash) = struct
+  type reveal_hash = H.t
+
   (* NB: Safe since failure case only occurs if [buffer_size] is given. *)
   let of_reveal_hash proto_reveal_hash =
     Data_encoding.Binary.to_bytes_exn H.encoding proto_reveal_hash
