@@ -401,7 +401,7 @@ let make_ticket (ticketer, contents, amount) =
     ~error:
       (Environment.Error_monad.trace_of_error
          Script_tc_errors.Forbidden_zero_ticket_quantity)
-  @@ Ticket_amount.of_n amount
+  @@ Ticket_amount.of_n ~legacy:false amount
   >>?= fun amount -> return {ticketer; contents; amount}
 
 let make_tickets ts =

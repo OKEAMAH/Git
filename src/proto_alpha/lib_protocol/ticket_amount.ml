@@ -27,16 +27,17 @@ open Script_int
 
 type t = n num
 
-let of_n n =
-  if Compare.Int.(Script_int.(compare n zero_n) > 0) then Some (n : t) else None
+let of_n ~legacy n =
+  if Compare.Int.(Script_int.(compare n zero_n) > 0) || legacy then Some (n : t)
+  else None
 
-let of_z z = Option.bind (is_nat z) of_n
+let of_z ~legacy z = Option.bind (is_nat z) (of_n ~legacy)
 
-let of_zint z = of_z @@ of_zint z
+let of_zint ~legacy z = of_z ~legacy @@ of_zint z
 
 let add = add_n
 
-let sub a b = of_z @@ sub a b
+let sub ~legacy a b = of_z ~legacy @@ sub a b
 
 let one = one_n
 
@@ -44,5 +45,7 @@ let encoding =
   let open Data_encoding in
   conv_with_guard
     to_zint
-    (fun n -> Option.value_e ~error:"expecting positive number" @@ of_zint n)
+    (fun n ->
+      Option.value_e ~error:"expecting positive number"
+      @@ of_zint ~legacy:false n)
     n

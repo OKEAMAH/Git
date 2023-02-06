@@ -408,7 +408,7 @@ let perform_exits ctxt exits =
                 ~error:
                   (Error_monad.trace_of_error
                      Zk_rollup.Errors.Invalid_deposit_amount)
-                (Ticket_amount.of_zint (Z.abs @@ op.price.amount))
+                (Ticket_amount.of_zint ~legacy:false (Z.abs @@ op.price.amount))
             in
             let* ctxt, diff =
               Ticket_transfer.transfer_ticket_with_hashes

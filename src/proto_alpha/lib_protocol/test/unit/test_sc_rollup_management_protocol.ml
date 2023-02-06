@@ -77,8 +77,9 @@ let check_encode_decode_outbox_message ctxt message =
 let string_ticket ticketer contents amount =
   let open WithExceptions in
   let amount =
-    Option.get ~loc:__LOC__ @@ Ticket_amount.of_n @@ Script_int.abs
-    @@ Script_int.of_int amount
+    Option.get ~loc:__LOC__
+    @@ Ticket_amount.of_n ~legacy:false
+    @@ Script_int.abs @@ Script_int.of_int amount
   in
   let ticketer = Result.get_ok ~loc:__LOC__ (Contract.of_b58check ticketer) in
   let contents =

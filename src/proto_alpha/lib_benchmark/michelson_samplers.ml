@@ -774,7 +774,7 @@ end)
       in
       let amount =
         let open Ticket_amount in
-        match of_n (Michelson_base.nat rng_state) with
+        match of_n ~legacy:false (Michelson_base.nat rng_state) with
         | Some amount -> add amount one
         | None -> one
       in

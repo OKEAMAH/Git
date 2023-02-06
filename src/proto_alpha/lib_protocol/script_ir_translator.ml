@@ -2115,7 +2115,7 @@ let rec parse_data :
         opened_ticket_type (location expr) t >>?= fun ty ->
         non_terminal_recursion ctxt ty expr
         >>=? fun (({destination; entrypoint = _}, (contents, amount)), ctxt) ->
-        match Ticket_amount.of_n amount with
+        match Ticket_amount.of_n ~legacy amount with
         | Some amount -> (
             match destination with
             | Contract ticketer -> return ({ticketer; contents; amount}, ctxt)

@@ -109,7 +109,8 @@ let make_ex_ticket ctxt ~ticketer ~type_exp ~content_exp ~amount =
   in
   let amount = Script_int.(abs @@ of_int amount) in
   let amount =
-    WithExceptions.Option.get ~loc:__LOC__ @@ Ticket_amount.of_n amount
+    WithExceptions.Option.get ~loc:__LOC__
+    @@ Ticket_amount.of_n ~legacy:false amount
   in
   let ticket = Script_typed_ir.{ticketer; contents; amount} in
   return (Ticket_scanner.Ex_ticket (cty, ticket), ctxt)

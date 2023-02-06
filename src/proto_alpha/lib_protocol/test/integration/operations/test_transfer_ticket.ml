@@ -102,9 +102,7 @@ let test_mint_deposit_withdraw_implicit_transfer () =
       ~source:account
       ~ty:(Script.lazy_expr ty)
       ~contents:(Script.lazy_expr @@ Expr.from_string @@ string_of_int contents)
-      ~amount:
-        (WithExceptions.Option.get ~loc:__LOC__
-        @@ Ticket_amount.of_zint @@ Z.of_int 1)
+      ~amount:Ticket_amount.one
       ~destination:another_account
       ~ticketer
     >>=? fun operation -> Block.bake ~operation block
@@ -238,9 +236,7 @@ let test_contract_as_ticket_transfer_destination () =
       ~source:account
       ~ty:(Script.lazy_expr ty)
       ~contents:(Script.lazy_expr @@ Expr.from_string @@ string_of_int contents)
-      ~amount:
-        (WithExceptions.Option.get ~loc:__LOC__
-        @@ Ticket_amount.of_zint @@ Z.of_int 1)
+      ~amount:Ticket_amount.one
       ~destination:another_account
       ~ticketer
     >>=? fun operation -> Block.bake ~operation block

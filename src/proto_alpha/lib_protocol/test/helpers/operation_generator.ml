@@ -320,7 +320,9 @@ let gen_counters =
 let gen_ticket_amounts =
   let open QCheck2.Gen in
   let+ i = nat in
-  Option.value (Ticket_amount.of_zint (Z.of_int i)) ~default:Ticket_amount.one
+  Option.value
+    (Ticket_amount.of_zint ~legacy:false (Z.of_int i))
+    ~default:Ticket_amount.one
 
 let gen_gas_limit =
   let open QCheck2.Gen in

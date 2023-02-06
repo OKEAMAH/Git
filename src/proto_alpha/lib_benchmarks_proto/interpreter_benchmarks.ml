@@ -3069,7 +3069,7 @@ module Registration_section = struct
             let amount =
               (* this is safe because x_amount > 0 and y_amount > 0 *)
               WithExceptions.Option.get ~loc:__LOC__
-              @@ Ticket_amount.of_n amount
+              @@ Ticket_amount.of_n ~legacy:false amount
             in
             let ticket = Samplers.Random_value.value (ticket unit) rng_state in
             let ticket = {ticket with amount} in
@@ -3130,7 +3130,7 @@ module Registration_section = struct
             let alt_amount =
               let amount = Samplers.Random_value.value nat rng_state in
               let open Ticket_amount in
-              match of_n amount with
+              match of_n ~legacy:false amount with
               | Some amount -> add amount one
               | None -> one
             in

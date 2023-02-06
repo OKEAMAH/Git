@@ -1565,7 +1565,7 @@ module Raw = struct
         (* Tickets *)
         | ITicket_deprecated (_, _, k) -> (
             let contents = accu and amount, stack = stack in
-            match Ticket_amount.of_n amount with
+            match Ticket_amount.of_n ~legacy:false amount with
             | Some amount ->
                 let ticketer = Contract.Originated sc.self in
                 let accu = {ticketer; contents; amount} in
@@ -1573,7 +1573,7 @@ module Raw = struct
             | None -> tzfail Script_tc_errors.Forbidden_zero_ticket_quantity)
         | ITicket (_, _, k) -> (
             let contents = accu and amount, stack = stack in
-            match Ticket_amount.of_n amount with
+            match Ticket_amount.of_n ~legacy:false amount with
             | Some amount ->
                 let ticketer = Contract.Originated sc.self in
                 let accu = Some {ticketer; contents; amount} in
@@ -1591,8 +1591,10 @@ module Raw = struct
         | ISplit_ticket (_, k) ->
             let ticket = accu and (amount_a, amount_b), stack = stack in
             let result =
-              Option.bind (Ticket_amount.of_n amount_a) @@ fun amount_a ->
-              Option.bind (Ticket_amount.of_n amount_b) @@ fun amount_b ->
+              Option.bind (Ticket_amount.of_n ~legacy:false amount_a)
+              @@ fun amount_a ->
+              Option.bind (Ticket_amount.of_n ~legacy:false amount_b)
+              @@ fun amount_b ->
               let amount = Ticket_amount.add amount_a amount_b in
               if
                 Compare.Int.(

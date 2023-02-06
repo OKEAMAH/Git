@@ -471,7 +471,8 @@ let assert_balance = Ticket_helpers.assert_balance
 let string_ticket ticketer contents amount =
   let amount =
     WithExceptions.Option.get ~loc:__LOC__
-    @@ Ticket_amount.of_n @@ Script_int.abs @@ Script_int.of_int amount
+    @@ Ticket_amount.of_n ~legacy:false
+    @@ Script_int.abs @@ Script_int.of_int amount
   in
   let ticketer =
     Result.value_f ~default:(fun _ -> assert false)

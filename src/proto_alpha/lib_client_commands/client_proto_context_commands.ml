@@ -2602,7 +2602,7 @@ let commands_rw () =
            cctxt ->
         let open Lwt_result_syntax in
         let* _, src_pk, src_sk = Client_keys.get_key cctxt source in
-        match Ticket_amount.of_zint amount with
+        match Ticket_amount.of_zint ~legacy:false amount with
         | Some amount ->
             let* _res =
               transfer_ticket

@@ -973,7 +973,7 @@ let apply_manager_operation :
               {claimer; amount; ticket_hash = tx_rollup_ticket_hash},
             ticket_token ) =
         Tx_rollup_l2_qty.to_z amount
-        |> Ticket_amount.of_zint
+        |> Ticket_amount.of_zint ~legacy:false
         |> Option.value_e
              ~error:
                (Error_monad.trace_of_error
