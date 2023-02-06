@@ -4501,6 +4501,65 @@ module Protocol = Protocol
         ?inline_tests:(if N.(number >= 009) then Some ppx_expect else None)
         ~linkall:true
     in
+    let layer2_utils =
+      only_if N.(number >= 016) @@ fun () ->
+      public_lib
+        (sf "tezos-layer2-utils-%s" name_dash)
+        ~path:(path // "lib_layer2_utils")
+        ~synopsis:"Tezos/Protocol: protocol specific library for Layer 2 utils"
+        ~deps:
+          [
+            octez_base |> open_ ~m:"TzPervasives";
+            main |> open_;
+            client |> if_some |> open_;
+          ]
+        ~inline_tests:ppx_expect
+        ~linkall:true
+    in
+    let injector =
+      only_if N.(number >= 013) @@ fun () ->
+      public_lib
+        (sf "tezos-injector-%s" name_dash)
+        ~path:(path // "lib_injector")
+        ~synopsis:"Tezos/Protocol: protocol specific library building injectors"
+        ~deps:
+          [
+            octez_base |> open_ ~m:"TzPervasives"
+            |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
+            |> open_;
+            octez_base_unix;
+            octez_stdlib_unix |> open_;
+            octez_crypto;
+            main |> open_;
+            octez_micheline |> open_;
+            client |> if_some |> open_;
+            octez_client_base |> open_;
+            octez_workers |> open_;
+            octez_shell;
+            layer2_utils |> if_some |> open_;
+          ]
+        ~inline_tests:ppx_expect
+        ~linkall:true
+    in
+    let octez_sc_rollup =
+      only_if N.(number >= 016) @@ fun () ->
+      public_lib
+        (sf "tezos-smart-rollup-%s" name_dash)
+        ~path:(path // "lib_sc_rollup")
+        ~synopsis:
+          "Tezos/Protocol: protocol specific library for `tezos-smart-rollup`"
+        ~deps:
+          [
+            octez_base |> open_ ~m:"TzPervasives";
+            main |> open_;
+            plugin |> if_some |> open_;
+            parameters |> if_some |> open_;
+            octez_rpc;
+            injector |> if_some |> open_;
+          ]
+        ~inline_tests:ppx_expect
+        ~linkall:true
+    in
     let test_helpers =
       only_if active @@ fun () ->
       public_lib
@@ -4531,6 +4590,7 @@ module Protocol = Protocol
             octez_shell_services |> open_;
             plompiler |> if_ N.(number >= 015);
             octez_crypto_dal |> if_ N.(number >= 016) |> open_;
+            octez_sc_rollup |> if_some |> if_ N.(number >= 017) |> open_;
           ]
     in
     let _plugin_tests =
@@ -4881,65 +4941,6 @@ module Protocol = Protocol
     let _baker = daemon "baker" in
     let _accuser = daemon "accuser" in
     let _endorser = only_if N.(number <= 011) @@ fun () -> daemon "endorser" in
-    let layer2_utils =
-      only_if N.(number >= 016) @@ fun () ->
-      public_lib
-        (sf "tezos-layer2-utils-%s" name_dash)
-        ~path:(path // "lib_layer2_utils")
-        ~synopsis:"Tezos/Protocol: protocol specific library for Layer 2 utils"
-        ~deps:
-          [
-            octez_base |> open_ ~m:"TzPervasives";
-            main |> open_;
-            client |> if_some |> open_;
-          ]
-        ~inline_tests:ppx_expect
-        ~linkall:true
-    in
-    let injector =
-      only_if N.(number >= 013) @@ fun () ->
-      public_lib
-        (sf "tezos-injector-%s" name_dash)
-        ~path:(path // "lib_injector")
-        ~synopsis:"Tezos/Protocol: protocol specific library building injectors"
-        ~deps:
-          [
-            octez_base |> open_ ~m:"TzPervasives"
-            |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals"
-            |> open_;
-            octez_base_unix;
-            octez_stdlib_unix |> open_;
-            octez_crypto;
-            main |> open_;
-            octez_micheline |> open_;
-            client |> if_some |> open_;
-            octez_client_base |> open_;
-            octez_workers |> open_;
-            octez_shell;
-            layer2_utils |> if_some |> open_;
-          ]
-        ~inline_tests:ppx_expect
-        ~linkall:true
-    in
-    let octez_sc_rollup =
-      only_if N.(number >= 016) @@ fun () ->
-      public_lib
-        (sf "tezos-smart-rollup-%s" name_dash)
-        ~path:(path // "lib_sc_rollup")
-        ~synopsis:
-          "Tezos/Protocol: protocol specific library for `tezos-smart-rollup`"
-        ~deps:
-          [
-            octez_base |> open_ ~m:"TzPervasives";
-            main |> open_;
-            plugin |> if_some |> open_;
-            parameters |> if_some |> open_;
-            octez_rpc;
-            injector |> if_some |> open_;
-          ]
-        ~inline_tests:ppx_expect
-        ~linkall:true
-    in
     let octez_sc_rollup_node =
       only_if (active && N.(number >= 016)) @@ fun () ->
       private_lib

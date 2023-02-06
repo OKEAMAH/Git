@@ -23,6 +23,7 @@ depends: [
   "tezos-shell-services"
   "tezos-plompiler" { >= "1.0.1" & < "2.0.0" }
   "tezos-crypto-dal"
+  "tezos-smart-rollup-alpha"
 ]
 build: [
   ["rm" "-r" "vendors"]

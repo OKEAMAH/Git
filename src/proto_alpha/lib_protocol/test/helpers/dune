@@ -19,7 +19,8 @@
   tezos-protocol-plugin-alpha
   tezos-shell-services
   tezos-plompiler
-  tezos-crypto-dal)
+  tezos-crypto-dal
+  tezos-smart-rollup-alpha)
  (flags
   (:standard)
   -open Tezos_test_helpers
@@ -31,4 +32,5 @@
   -open Tezos_client_alpha
   -open Tezos_protocol_plugin_alpha
   -open Tezos_shell_services
-  -open Tezos_crypto_dal))
+  -open Tezos_crypto_dal
+  -open Tezos_smart_rollup_alpha))
