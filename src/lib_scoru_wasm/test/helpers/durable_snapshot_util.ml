@@ -120,13 +120,15 @@ module Make_encodable_equality (X : Encodable) (Y : Encodable) :
     let+ tree = Tree_encoding_runner.encode encoding t tree in
     Context_binary_tree.hash tree
 
-  let pp_a fmt t =
-    let hash = Lwt_main.run @@ hash t X.encoding in
-    Format.fprintf fmt "%a" Context_hash.pp hash
+  let to_string_a t =
+    let open Lwt_syntax in
+    let+ hash = hash t X.encoding in
+    Format.asprintf "%a" Context_hash.pp hash
 
-  let pp_b fmt t =
-    let hash = Lwt_main.run @@ hash t Y.encoding in
-    Format.fprintf fmt "%a" Context_hash.pp hash
+  let to_string_b t =
+    let open Lwt_syntax in
+    let+ hash = hash t Y.encoding in
+    Format.asprintf "%a" Context_hash.pp hash
 
   let eq tree_s tree_c =
     let open Lwt_syntax in
@@ -148,9 +150,9 @@ end) : Hetero_equality.S with type a = X.t and type b = Y.t = struct
 
   type b = Y.t
 
-  let pp_a fmt _ = Format.fprintf fmt ""
+  let to_string_a _ = Lwt.return "<Current durable>"
 
-  let pp_b fmt _ = Format.fprintf fmt ""
+  let to_string_b _ = Lwt.return "<Snapshot durable>"
 
   let eq _ _ = Lwt.return_true
 end
@@ -163,13 +165,14 @@ struct
 
   type b = CBV.t
 
-  let pp_cbv fmt cbv =
-    let cbv_to_bytes x = Lwt_main.run @@ CBV.to_bytes x in
-    Format.fprintf fmt "%a" Hex.pp (Hex.of_bytes @@ cbv_to_bytes cbv)
+  let to_string_cbv cbv =
+    let open Lwt_syntax in
+    let+ cbv_bytes = CBV.to_bytes cbv in
+    Format.asprintf "%a" Hex.pp (Hex.of_bytes cbv_bytes)
 
-  let pp_a = pp_cbv
+  let to_string_a = to_string_cbv
 
-  let pp_b = pp_cbv
+  let to_string_b = to_string_cbv
 
   let eq cbv1 cbv2 =
     let open Lwt_syntax in
@@ -228,16 +231,16 @@ module Make_paired_durable
 
   let assert_trees_equality (t_s, t_c) =
     let open Lwt_syntax in
-    let+ eq = Eq_durable.eq t_s t_c in
+    let* eq = Eq_durable.eq t_s t_c in
     (* Avoid calling trees' pp unless trees are different *)
-    if eq then ()
+    if eq then Lwt.return_unit
     else
+      let* snapshot_str = Eq_durable.to_string_a t_s in
+      let+ current_str = Eq_durable.to_string_b t_c in
       Assert.fail_msg
-        "Tree states diverged: snapshot = %a vs current = %a"
-        Eq_durable.pp_a
-        t_s
-        Eq_durable.pp_b
-        t_c
+        "Tree states diverged: snapshot = %s vs current = %s"
+        snapshot_str
+        current_str
 
   (* Motivation behind this function that
      we would like to be able to test exceptions
@@ -266,47 +269,47 @@ module Make_paired_durable
       (f_c : unit -> (b * Current.t) Lwt.t) :
       (b * (Snapshot.t * Current.t)) Lwt.t =
     let open Lwt_syntax in
-    let* res1 = guard f_s in
-    let* res2 = guard f_c in
-    let assert_values_equality v_s v_c =
-      let+ eq = Eq.eq v_s v_c in
-      if eq then ()
+    let* outcome_snapshot = guard f_s in
+    let* outcome_current = guard f_c in
+    let assert_values_equality val_snapshot val_current =
+      let* eq = Eq.eq val_snapshot val_current in
+      if eq then Lwt.return_unit
       else
+        let* val_snapshot_str = Eq.to_string_a val_snapshot in
+        let* val_current_str = Eq.to_string_b val_current in
         Assert.fail_msg
-          "Expected returned value %a but got %a"
-          Eq.pp_a
-          v_s
-          Eq.pp_b
-          v_c
+          "Expected returned value %s but got %s"
+          val_snapshot_str
+          val_current_str
     in
-    match (res1, res2) with
-    | Error e1, Error e2 ->
+    match (outcome_snapshot, outcome_current) with
+    | Error error_snapshot, Error error_current ->
         Assert.equal
           ~loc:__LOC__
           ~msg:
             (Format.asprintf
                "Tree methods failed with different exceptions: %s vs %s"
-               (Printexc.to_string e1)
-               (Printexc.to_string e2))
-          (convert_durable_exception e1)
-          e2 ;
-        raise e2
-    | Ok (r1, t_s), Ok (r2, t_c) ->
-        let* () = assert_values_equality r1 r2 in
-        let+ () = assert_trees_equality (t_s, t_c) in
-        (r2, (t_s, t_c))
-    | Ok (r1, _), Error e2 ->
+               (Printexc.to_string error_snapshot)
+               (Printexc.to_string error_current))
+          (convert_durable_exception error_snapshot)
+          error_current ;
+        raise error_current
+    | Ok (val_snapshot, tree_snapshot), Ok (val_current, tree_current) ->
+        let* () = assert_values_equality val_snapshot val_current in
+        let+ () = assert_trees_equality (tree_snapshot, tree_current) in
+        (val_current, (tree_snapshot, tree_current))
+    | Ok (val_snapshot, _), Error error_current ->
+        let+ val_str = Eq.to_string_a val_snapshot in
         Assert.fail_msg
-          "Expected returned value %a but failed with error %s"
-          Eq.pp_a
-          r1
-          (Printexc.to_string e2)
-    | Error e1, Ok (r2, _) ->
+          "Expected returned value %s but failed with error %s"
+          val_str
+          (Printexc.to_string error_current)
+    | Error error_snapshot, Ok (val_current, _) ->
+        let+ val_str = Eq.to_string_b val_current in
         Assert.fail_msg
-          "Expected to fail with error %s but value returned %a"
-          (Printexc.to_string e1)
-          Eq.pp_b
-          r2
+          "Expected to fail with error %s but value returned %s"
+          (Printexc.to_string error_snapshot)
+          val_str
 
   let same_trees (f_s : unit -> Snapshot.t Lwt.t)
       (f_c : unit -> Current.t Lwt.t) : (Snapshot.t * Current.t) Lwt.t =

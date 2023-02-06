@@ -37,9 +37,9 @@ module type S = sig
 
   type b
 
-  val pp_a : Format.formatter -> a -> unit
+  val to_string_a : a -> string Lwt.t
 
-  val pp_b : Format.formatter -> b -> unit
+  val to_string_b : b -> string Lwt.t
 
   (* This one might be improved to return `(bool, string) result`
      to return where exactly values diverged.
@@ -56,9 +56,9 @@ let make (type x) ~pp ~(eq : x -> x -> bool) : (x, x) t =
 
     type b = x
 
-    let pp_a = pp
+    let to_string_a a = Lwt.return @@ Format.asprintf "%a" pp a
 
-    let pp_b = pp
+    let to_string_b = to_string_a
 
     let eq a b = Lwt.return @@ eq a b
   end)
@@ -71,9 +71,18 @@ let make_option (type x y) ((module Eq) : (x, y) t) : (x Option.t, y Option.t) t
 
     type b = y Option.t
 
-    let pp_a fmt a = Format.fprintf fmt "%a" (Fmt.option Eq.pp_a) a
+    let to_string_option ~to_string x =
+      let open Lwt_syntax in
+      let opt_formatter = Fmt.option Fmt.string in
+      match x with
+      | None -> Lwt.return @@ Format.asprintf "%a" opt_formatter None
+      | Some x ->
+          let+ s = to_string x in
+          Format.asprintf "%a" opt_formatter (Some s)
 
-    let pp_b fmt b = Format.fprintf fmt "%a" (Fmt.option Eq.pp_b) b
+    let to_string_a = to_string_option ~to_string:Eq.to_string_a
+
+    let to_string_b = to_string_option ~to_string:Eq.to_string_b
 
     let eq x_opt y_opt =
       match (x_opt, y_opt) with
