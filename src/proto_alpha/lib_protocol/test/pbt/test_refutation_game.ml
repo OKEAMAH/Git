@@ -1048,10 +1048,10 @@ module Player_client = struct
   (** Construct an inbox based on [list_of_messages] in the player context. *)
   let construct_inbox ~inbox list_of_messages =
     let history = Sc_rollup.Inbox.History.empty ~capacity:10000L in
-    let payloads_histories = Payloads_histories.empty in
+    let payloads_history = Payloads_history.empty in
     WithExceptions.Result.get_ok ~loc:__LOC__
     @@ Sc_rollup_helpers.Node_inbox.fill_inbox
-         {inbox; history; payloads_histories}
+         {inbox; history; payloads_history}
          list_of_messages
 
   (** Generate [our_states] for [payloads_per_levels] based on the strategy.
@@ -1263,7 +1263,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
   (* No messages are added between [game.start_level] and the current level
      so we can take the existing inbox of players. Otherwise, we should find the
      inbox of [start_level]. *)
-  let Sc_rollup_helpers.Node_inbox.{payloads_histories; history; inbox} =
+  let Sc_rollup_helpers.Node_inbox.{payloads_history; history; inbox} =
     player_client.inbox
   in
   let history_proof = Inbox.old_levels_messages inbox in
@@ -1292,7 +1292,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
 
       let get_history inbox = Inbox.History.find inbox history |> Lwt.return
 
-      let find_payload = find_payload payloads_histories
+      let find_payload = find_payload payloads_history
     end
 
     (* FIXME/DAL-REFUTATION: https://gitlab.com/tezos/tezos/-/issues/3992

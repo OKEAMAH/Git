@@ -538,17 +538,14 @@ let gen_message_reprs_for_levels_repr ~start_level ~max_level gen_message_repr =
   in
   aux [] (max_level - start_level)
 
-module Payloads_histories = Sc_rollup.Inbox_merkelized_payload_hashes.Hash.Map
+module Payloads_history = Sc_rollup.Inbox_merkelized_payload_hashes.Hash.Map
 
-type payloads_histories =
+type payloads_history =
   Sc_rollup.Inbox_merkelized_payload_hashes.merkelized_and_payload
-  Payloads_histories.t
+  Payloads_history.t
 
-let find_payload payloads_histories _inbox_level witness =
-  Sc_rollup.Inbox_merkelized_payload_hashes.Hash.Map.find
-    witness
-    payloads_histories
-  |> Lwt.return
+let find_payload payloads_history _inbox_level witness =
+  Payloads_history.find witness payloads_history |> Lwt.return
 
 let get_history history i = Sc_rollup.Inbox.History.find i history |> Lwt.return
 
@@ -629,7 +626,7 @@ module Node_inbox = struct
   type t = {
     inbox : Sc_rollup.Inbox.t;
     history : Sc_rollup.Inbox.History.t;
-    payloads_histories : payloads_histories;
+    payloads_history : payloads_history;
   }
 
   let new_inbox ?(genesis_predecessor_timestamp = Time.Protocol.epoch)
@@ -644,13 +641,13 @@ module Node_inbox = struct
            inbox_creation_level
     in
     let history = Sc_rollup.Inbox.History.empty ~capacity:10000L in
-    let payloads_histories = Payloads_histories.empty in
-    return {inbox; history; payloads_histories}
+    let payloads_history = Payloads_history.empty in
+    return {inbox; history; payloads_history}
 
   let fill_inbox node_inbox payloads_per_levels =
     let open Result_syntax in
-    let rec aux {inbox; history; payloads_histories} = function
-      | [] -> return {inbox; history; payloads_histories}
+    let rec aux {inbox; history; payloads_history} = function
+      | [] -> return {inbox; history; payloads_history}
       | ({
            payloads = _;
            predecessor_timestamp;
@@ -666,7 +663,7 @@ module Node_inbox = struct
               (fun message -> Sc_rollup.Inbox_message.External message)
               messages
           in
-          let* payloads_history, history, inbox, _witness, _messages =
+          let* new_payloads_history, history, inbox, _witness, _messages =
             Environment.wrap_tzresult
             @@ Sc_rollup.Inbox.add_all_messages
                  ~predecessor_timestamp
@@ -676,29 +673,29 @@ module Node_inbox = struct
                  messages
           in
           (* Store in the history this archived level. *)
-          let payloads_histories =
+          let payloads_history =
             let merkelized_payload_hashes =
               Sc_rollup.Inbox_merkelized_payload_hashes.History
               .Internal_for_tests
               .keys
-                payloads_history
+                new_payloads_history
             in
             List.fold_left
-              (fun payloads_histories hash ->
+              (fun payloads_history hash ->
                 let merkelized_and_payload =
                   Sc_rollup.Inbox_merkelized_payload_hashes.History.find
                     hash
-                    payloads_history
+                    new_payloads_history
                   |> WithExceptions.Option.get ~loc:__LOC__
                 in
-                Payloads_histories.add
+                Payloads_history.add
                   hash
                   merkelized_and_payload
-                  payloads_histories)
-              payloads_histories
+                  payloads_history)
+              payloads_history
               merkelized_payload_hashes
           in
-          aux {inbox; history; payloads_histories} rst
+          aux {inbox; history; payloads_history} rst
     in
     aux node_inbox payloads_per_levels
 
@@ -717,11 +714,11 @@ module Node_inbox = struct
   let get_history history hash =
     Lwt.return @@ Sc_rollup.Inbox.History.find hash history
 
-  let produce_proof {payloads_histories; history; _} inbox_snapshot
+  let produce_proof {payloads_history; history; _} inbox_snapshot
       (level, message_counter) =
     Lwt.map Environment.wrap_tzresult
     @@ Sc_rollup.Inbox.produce_proof
-         ~find_payload:(find_payload payloads_histories)
+         ~find_payload:(find_payload payloads_history)
          ~get_history:(get_history history)
          inbox_snapshot
          (level, message_counter)

@@ -2615,14 +2615,14 @@ let full_history_inbox (genesis_predecessor_timestamp, genesis_predecessor)
 let input_included ~snapshot ~full_history_inbox (l, n) =
   let open Lwt_result_syntax in
   let open Sc_rollup_helpers in
-  let Sc_rollup_helpers.Node_inbox.{payloads_histories; history; inbox} =
+  let Sc_rollup_helpers.Node_inbox.{payloads_history; history; inbox} =
     full_history_inbox
   in
   let history_proof = Sc_rollup.Inbox.old_levels_messages inbox in
   (* Create an inclusion proof of the inbox message at [(l, n)]. *)
   let* proof, _ =
     Sc_rollup.Inbox.produce_proof
-      ~find_payload:(find_payload payloads_histories)
+      ~find_payload:(find_payload payloads_history)
       ~get_history:(get_history history)
       history_proof
       (l, n)
