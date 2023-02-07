@@ -34,3 +34,8 @@ module type S = sig
   module Reveal_hash_mapper :
     Dac_hash.Reveal_hash_mapper with type reveal_hash = reveal_hash
 end
+
+module Make
+    (D : Dac_plugin.T)
+    (R : Dac_hash.Reveal_hash_mapper
+           with type reveal_hash = D.Protocol_reveal_hash.t) : S

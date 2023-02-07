@@ -47,12 +47,9 @@ let set_ready ctxt ~(dac_plugin : dac_plugin) =
       let module Dac_plugin = (val dac_plugin) in
       let module Reveal_hash_mapper =
         Dac_hash.Make (Dac_plugin.Protocol_reveal_hash) in
-      let module Node_plugin = struct
-        type reveal_hash = Dac_plugin.Protocol_reveal_hash.t
-
-        include Dac_plugin
-        module Reveal_hash_mapper = Reveal_hash_mapper
-      end in
+      let module Node_plugin =
+        Node_plugin.Make (Dac_plugin) (Reveal_hash_mapper)
+      in
       let (node_plugin : node_plugin) = (module Node_plugin) in
       (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4681
          Currently, Dac only supports coordinator functionalities but we might
