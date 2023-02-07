@@ -83,7 +83,7 @@ module Ticket_inspection = struct
         -> ('a, 'b) Script_typed_ir.pair has_tickets
     | Or_ht :
         'a has_tickets * 'b has_tickets
-        -> ('a, 'b) Script_typed_ir.union has_tickets
+        -> ('a, 'b) Script_typed_ir.or_ has_tickets
     | Option_ht : 'a has_tickets -> 'a option has_tickets
     | List_ht : 'a has_tickets -> 'a Script_list.t has_tickets
     | Set_ht : 'k has_tickets -> 'k Script_typed_ir.set has_tickets

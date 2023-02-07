@@ -348,7 +348,7 @@ let check_value_size () =
         =======
     *)
     @ (let module P = struct
-         type ('a, 'b) f = {apply : 'c. (('a, 'b) union, 'c) ty -> ex}
+         type ('a, 'b) f = {apply : 'c. (('a, 'b) or_, 'c) ty -> ex}
        end in
       let on_or : type a b. (a, _) ty -> (b, _) ty -> (a, b) P.f -> ex =
        fun ty1 ty2 f ->

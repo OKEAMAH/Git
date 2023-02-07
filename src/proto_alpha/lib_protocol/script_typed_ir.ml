@@ -100,7 +100,7 @@ type ('a, 'b) pair = 'a * 'b
 
 (* We cannot call this type "or" as in Michelson because "or" is an
    OCaml keyword. *)
-type ('a, 'b) union = L of 'a | R of 'b
+type ('a, 'b) or_ = L of 'a | R of 'b
 
 module Script_chain_id = struct
   type t = Chain_id_tag of Chain_id.t [@@ocaml.unboxed]
@@ -441,7 +441,7 @@ and 'arg nested_entrypoints =
       left : 'l entrypoints_node;
       right : 'r entrypoints_node;
     }
-      -> ('l, 'r) union nested_entrypoints
+      -> ('l, 'r) or_ nested_entrypoints
   | Entrypoints_None : _ nested_entrypoints
 
 let no_entrypoints = {at_node = None; nested = Entrypoints_None}
@@ -515,10 +515,10 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
      ------
    *)
   | ICons_left :
-      Script.location * ('b, _) ty * (('a, 'b) union, 'c * 's, 'r, 'f) kinstr
+      Script.location * ('b, _) ty * (('a, 'b) or_, 'c * 's, 'r, 'f) kinstr
       -> ('a, 'c * 's, 'r, 'f) kinstr
   | ICons_right :
-      Script.location * ('a, _) ty * (('a, 'b) union, 'c * 's, 'r, 'f) kinstr
+      Script.location * ('a, _) ty * (('a, 'b) or_, 'c * 's, 'r, 'f) kinstr
       -> ('b, 'c * 's, 'r, 'f) kinstr
   | IIf_left : {
       loc : Script.location;
@@ -526,7 +526,7 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       branch_if_right : ('b, 's, 'c, 't) kinstr;
       k : ('c, 't, 'r, 'f) kinstr;
     }
-      -> (('a, 'b) union, 's, 'r, 'f) kinstr
+      -> (('a, 'b) or_, 's, 'r, 'f) kinstr
   (*
      Lists
      -----
@@ -837,9 +837,9 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       -> (bool, 'a * 's, 'r, 'f) kinstr
   | ILoop_left :
       Script.location
-      * ('a, 's, ('a, 'b) union, 's) kinstr
+      * ('a, 's, ('a, 'b) or_, 's) kinstr
       * ('b, 's, 'r, 'f) kinstr
-      -> (('a, 'b) union, 's, 'r, 'f) kinstr
+      -> (('a, 'b) or_, 's, 'r, 'f) kinstr
   | IDip :
       Script.location
       * ('b, 's, 'c, 't) kinstr
@@ -1119,7 +1119,7 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       Script.location * 'a comparable_ty * ('a ticket option, 's, 'r, 'f) kinstr
       -> ('a ticket * 'a ticket, 's, 'r, 'f) kinstr
   | IOpen_chest :
-      Script.location * ((bytes, bool) union, 's, 'r, 'f) kinstr
+      Script.location * ((bytes, bool) or_, 's, 'r, 'f) kinstr
       -> ( Script_timelock.chest_key,
            Script_timelock.chest * (n num * 's),
            'r,
@@ -1203,8 +1203,8 @@ and (_, _, _, _) continuation =
       ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
       -> (bool, 'a * 's, 'r, 'f) continuation
   | KLoop_in_left :
-      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) continuation
-      -> (('a, 'b) union, 's, 'r, 'f) continuation
+      ('a, 's, ('a, 'b) or_, 's) kinstr * ('b, 's, 'r, 'f) continuation
+      -> (('a, 'b) or_, 's, 'r, 'f) continuation
   | KIter :
       ('a, 'b * 's, 'b, 's) kinstr
       * ('a, _) ty option
@@ -1333,9 +1333,9 @@ and ('ty, 'comparable) ty =
   | Or_t :
       ('a, 'ac) ty
       * ('b, 'bc) ty
-      * ('a, 'b) union ty_metadata
+      * ('a, 'b) or_ ty_metadata
       * ('ac, 'bc, 'rc) dand
-      -> (('a, 'b) union, 'rc) ty
+      -> (('a, 'b) or_, 'rc) ty
   | Lambda_t :
       ('arg, _) ty * ('ret, _) ty * ('arg, 'ret) lambda ty_metadata
       -> (('arg, 'ret) lambda, no) ty
@@ -1843,8 +1843,7 @@ let comparable_pair_3_t loc l m r =
 
 let or_t :
     type a ac b bc.
-    Script.location -> (a, ac) ty -> (b, bc) ty -> (a, b) union ty_ex_c tzresult
-    =
+    Script.location -> (a, ac) ty -> (b, bc) ty -> (a, b) or_ ty_ex_c tzresult =
  fun loc l r ->
   Type_size.compound2 loc (ty_size l) (ty_size r) >|? fun size ->
   let (Ex_dand cmp) = dand (is_comparable l) (is_comparable r) in

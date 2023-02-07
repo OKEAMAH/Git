@@ -5143,7 +5143,7 @@ type 'ty has_lazy_storage =
       -> ('a, 'b) pair has_lazy_storage
   | Or_f :
       'a has_lazy_storage * 'b has_lazy_storage
-      -> ('a, 'b) union has_lazy_storage
+      -> ('a, 'b) or_ has_lazy_storage
   | Option_f : 'a has_lazy_storage -> 'a option has_lazy_storage
   | List_f : 'a has_lazy_storage -> 'a Script_list.t has_lazy_storage
   | Map_f : 'v has_lazy_storage -> (_, 'v) map has_lazy_storage
