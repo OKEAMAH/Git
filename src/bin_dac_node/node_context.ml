@@ -25,11 +25,11 @@
 
 exception Status_already_ready
 
-type dac_plugin = (module Dac_plugin.T)
+type dac_plugin_module = (module Dac_plugin.T)
 
-type node_plugin = (module Node_plugin.S)
+type node_plugin_module = (module Node_plugin.S)
 
-type ready_ctxt = {node_plugin : node_plugin}
+type ready_ctxt = {node_plugin : node_plugin_module}
 
 type status = Ready of ready_ctxt | Starting
 
@@ -41,7 +41,7 @@ type t = {
 
 let init config cctxt = {status = Starting; config; tezos_node_cctxt = cctxt}
 
-let set_ready ctxt ~(dac_plugin : dac_plugin) =
+let set_ready ctxt ~(dac_plugin : dac_plugin_module) =
   match ctxt.status with
   | Starting ->
       let module Dac_plugin = (val dac_plugin) in
@@ -50,7 +50,7 @@ let set_ready ctxt ~(dac_plugin : dac_plugin) =
       let module Node_plugin =
         Node_plugin.Make (Dac_plugin) (Reveal_hash_mapper)
       in
-      let (node_plugin : node_plugin) = (module Node_plugin) in
+      let (node_plugin : node_plugin_module) = (module Node_plugin) in
       (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4681
          Currently, Dac only supports coordinator functionalities but we might
          want to filter this capability out depending on the profile.

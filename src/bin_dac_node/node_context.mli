@@ -22,13 +22,13 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-type dac_plugin = (module Dac_plugin.T)
+type dac_plugin_module = (module Dac_plugin.T)
 
-type node_plugin = (module Node_plugin.S)
+type node_plugin_module = (module Node_plugin.S)
 
 (** A [ready_ctx] value contains globally needed informations for a running dac
     node. It is available when the DAC plugin has been loaded. *)
-type ready_ctxt = {node_plugin : node_plugin}
+type ready_ctxt = {node_plugin : node_plugin_module}
 
 (** The status of the dac node. *)
 type status = Ready of ready_ctxt | Starting
@@ -50,7 +50,7 @@ exception Status_already_ready
     [ready_ctxt] value with the given parameters.
 
     @raise Status_already_ready when the status is already [Ready _] *)
-val set_ready : t -> dac_plugin:dac_plugin -> unit
+val set_ready : t -> dac_plugin:dac_plugin_module -> unit
 
 type error += Node_not_ready
 
