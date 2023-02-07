@@ -134,7 +134,7 @@ let rec map_var f (x : Type.Base.t) =
       let lty = map_var f lty in
       let rty = map_var f rty in
       prim T_pair [lty; rty] []
-  | Union_t (lty, rty) ->
+  | Or_t (lty, rty) ->
       let lty = map_var f lty in
       let rty = map_var f rty in
       prim T_or [lty; rty] []
@@ -279,7 +279,7 @@ module Instructions = struct
 
   let pair = prim I_PAIR [] []
 
-  (* unions *)
+  (* ors *)
 
   let left = prim I_LEFT [] []
 

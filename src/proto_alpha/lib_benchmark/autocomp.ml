@@ -111,7 +111,7 @@ and replace_vars (ty : Type.Base.t) =
   | Type.Base.Pair_t (lt, rt) ->
       replace_vars lt >>= fun lt ->
       replace_vars rt >>= fun rt -> return (Type.pair lt rt)
-  | Type.Base.Union_t (lt, rt) ->
+  | Type.Base.Or_t (lt, rt) ->
       replace_vars lt >>= fun lt ->
       replace_vars rt >>= fun rt -> return (Type.union lt rt)
   | Type.Base.List_t ty -> replace_vars ty >>= fun ty -> return (Type.list ty)
@@ -207,7 +207,7 @@ struct
     | Pair_t (lty, rty) ->
         generate_data lty >>= fun lv ->
         generate_data rty >>= fun rv -> return (Mikhailsky.Data.pair lv rv)
-    | Union_t (lty, rty) ->
+    | Or_t (lty, rty) ->
         sample Base_samplers.uniform_bool >>= fun b ->
         if b then generate_data lty >>= fun v -> return (Mikhailsky.Data.left v)
         else generate_data rty >>= fun v -> return (Mikhailsky.Data.right v)
