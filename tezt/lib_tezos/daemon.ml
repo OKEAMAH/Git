@@ -191,25 +191,77 @@ module Make (X : PARAMETERS) = struct
     | None | Some ([] | _ :: _ :: _) -> None
     | Some [(name, value)] -> Some {name; value; timestamp}
 
+  let parse__fd_sink_item__events ~origin buff =
+    let content = Buffer.contents buff in
+    let buffer_chunks = Str.split (Str.regexp "fd-sink-item.v0") content in
+    let old_buffer_size = Buffer.length buff in
+    let consumed_size = ref 0 in
+    Buffer.clear buff ;
+    let rec aux ~trailing_char l events =
+      match l with
+      | [] ->
+          Buffer.add_string buff trailing_char ;
+          List.rev events
+      | elt :: rest ->
+          let elt = Format.sprintf "%sfd-sink-item.v0%s" trailing_char elt in
+          let len = String.length elt in
+          let next_trailing_chars = String.sub elt (len - 2) 2 in
+          if not (String.equal next_trailing_chars "{\"") then (
+            Buffer.add_string buff elt ;
+            aux ~trailing_char:"" rest events)
+          else
+            let potential_ev_elt = String.sub elt 0 (len - 2) in
+            let acc =
+              match JSON.parse_opt ~origin potential_ev_elt with
+              | None ->
+                  Buffer.add_string buff potential_ev_elt ;
+                  events
+              | Some event ->
+                  consumed_size :=
+                    !consumed_size + String.length potential_ev_elt ;
+                  event :: events
+            in
+            aux ~trailing_char:next_trailing_chars rest acc
+    in
+    let events =
+      match buffer_chunks with
+      | [] -> []
+      | trailing_char :: buffer_chunks -> aux ~trailing_char buffer_chunks []
+    in
+    let new_buffer_size = Buffer.length buff in
+    if !consumed_size + new_buffer_size <> old_buffer_size then (
+      Format.eprintf
+        "Parsed %d events. The old buffer size is %d. The new buffer size is \
+         %d. The amount of data consumed in parsed events is %d. Diff (new - \
+         old) is %d but should be 0@."
+        (List.length events)
+        old_buffer_size
+        new_buffer_size
+        !consumed_size
+        (!consumed_size + new_buffer_size - old_buffer_size) ;
+      assert false) ;
+    events
+
   let read_json_event daemon even_input =
-    let max_event_size = 1024 * 1024 (* 1MB *) in
+    let max_event_size = 1024 * 1024 (* 32 * 1MB *) in
     let origin = "event from " ^ daemon.name in
     let buff = Buffer.create 256 in
     let rec loop () =
       let* line = Lwt_io.read_line_opt even_input in
       match line with
-      | None -> return None
+      | None -> return []
       | Some line -> (
           Buffer.add_string buff line ;
-          match JSON.parse_opt ~origin (Buffer.contents buff) with
-          | None when Buffer.length buff >= max_event_size ->
+          let events = parse__fd_sink_item__events ~origin buff in
+          match events with
+          | [] when Buffer.length buff >= max_event_size ->
               Format.ksprintf
                 failwith
                 "Could not parse daemon %s event after %d bytes."
                 daemon.name
                 max_event_size
-          | None -> loop ()
-          | Some json -> return (Some json))
+          | [] -> loop ()
+          | _ :: _ -> return events)
     in
     loop ()
 
@@ -316,12 +368,12 @@ module Make (X : PARAMETERS) = struct
     daemon.status <- Running running_status ;
     let event_loop_promise =
       let rec event_loop () =
-        let* json = read_json_event daemon event_input in
-        match json with
-        | Some json ->
-            handle_raw_event daemon json ;
+        let* json_list = read_json_event daemon event_input in
+        match json_list with
+        | _ :: _ ->
+            List.iter (handle_raw_event daemon) json_list ;
             event_loop ()
-        | None -> (
+        | [] -> (
             match daemon.status with
             | Not_running -> (
                 match event_process with
