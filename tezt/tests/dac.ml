@@ -536,6 +536,44 @@ let test_dac_node_dac_threshold_not_reached =
   let* () = error_promise in
   Dac_node.terminate dac_node
 
+(** This modules encapsulates tests where we have two dac nodes running in
+    the legacy mode interacting with each other. As such one node normally tries
+    to mimic the coordinator and the other tries to mimic signer or observer.
+    Note that both nodes still run in the [legacy] mode, where as such there is
+    no notion of profiles. Once we have a fully working profiles, tests from this
+    module should be refactored. *)
+module Legacy = struct
+  let set_coordinator dac_node coordinator =
+    let coordinator =
+      `O
+        [
+          ("rpc-host", `String (Dac_node.rpc_host coordinator));
+          ("rpc-port", `Float (float_of_int (Dac_node.rpc_port coordinator)));
+        ]
+    in
+    let mode_updated =
+      Dac_node.Config_file.read dac_node
+      |> JSON.get "mode"
+      |> JSON.put
+           ( "coordinator_config_opt",
+             JSON.annotate ~origin:"dac_node_config" coordinator )
+    in
+    Dac_node.Config_file.update dac_node (JSON.put ("mode", mode_updated))
+
+  let test_two_node_setup_in_legacy _protocol node client coordinator =
+    (* Here we only test that we are able to succesfully update
+       [coordinator_config_opt] of the dac node running in the legacy mode
+       [dac_node] with server configuration of another dac node running in
+       the legacy mode [coordinator], that mimics coordinator. This test relies
+       on the fact that this update should not produce an error. This integration
+       setup will be tested further with the subsequent tests in this module,
+       that will actually execute some logic. *)
+    let dac_node = Dac_node.create ~node ~client () in
+    let* _ = Dac_node.init_config dac_node in
+    let () = set_coordinator dac_node coordinator in
+    Dac_node.run dac_node
+end
+
 let register ~protocols =
   (* Tests with layer1 and dac nodes *)
   test_dac_node_startup protocols ;
@@ -559,4 +597,9 @@ let register ~protocols =
     ~tags:["dac"; "dac_node"]
     "dac_rollup_arith_wrong_hash"
     test_reveals_fails_on_wrong_hash
+    protocols ;
+  scenario_with_layer1_and_dac_nodes
+    ~tags:["dac"; "dac_node"]
+    "dac_two_node_setup_in_legacy"
+    Legacy.test_two_node_setup_in_legacy
     protocols
