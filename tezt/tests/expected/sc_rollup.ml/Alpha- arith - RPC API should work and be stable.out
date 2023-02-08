@@ -241,7 +241,7 @@ This sequence of operations was run:
 16
 
 ./octez-smart-rollup-client-alpha rpc get /global/block/head/num_messages
-"5"
+"8"
 
 ./octez-smart-rollup-client-alpha rpc get '/global/block/head/durable/wasm_2_0_0/value?key=/readonly/wasm_version'
 Error
@@ -292,5 +292,11 @@ Error
             [ "[SC_ROLLUP_INBOX_HASH]",
               "[SC_ROLLUP_INBOX_HASH]",
               "[SC_ROLLUP_INBOX_HASH]" ] } },
-  "messages": [ "31352d31", "31352d32", "31352d33", "31352d34", "31352d35" ],
+  "messages":
+    [ { "internal_inbox_message_kind": "start_of_level" },
+      { "internal_inbox_message_kind": "info_per_level",
+        "predecessor_timestamp": "[TIMESTAMP]",
+        "predecessor": "[BLOCK_HASH]" },
+      "31352d31", "31352d32", "31352d33", "31352d34", "31352d35",
+      { "internal_inbox_message_kind": "end_of_level" } ],
   "initial_tick": "352", "num_ticks": "28" }

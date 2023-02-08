@@ -1047,7 +1047,7 @@ module Player_client = struct
 
   (** Construct an inbox based on [list_of_messages] in the player context. *)
   let construct_inbox ~inbox list_of_messages =
-    let history = Sc_rollup.Inbox.History.empty ~capacity:10000L in
+    let history = Inbox_history.empty in
     let payloads_history = Payloads_history.empty in
     WithExceptions.Result.get_ok ~loc:__LOC__
     @@ Sc_rollup_helpers.Node_inbox.fill_inbox
@@ -1290,7 +1290,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
     module Inbox_with_history = struct
       let inbox = history_proof
 
-      let get_history inbox = Inbox.History.find inbox history |> Lwt.return
+      let get_history inbox = Inbox.Hash.Map.find inbox history |> Lwt.return
 
       let find_payload = find_payload payloads_history
     end

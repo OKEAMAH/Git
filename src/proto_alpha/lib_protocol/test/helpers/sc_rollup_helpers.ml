@@ -538,6 +538,10 @@ let gen_message_reprs_for_levels_repr ~start_level ~max_level gen_message_repr =
   in
   aux [] (max_level - start_level)
 
+module Inbox_history = Sc_rollup.Inbox.Hash.Map
+
+type inbox_history = Sc_rollup.Inbox.history_proof Inbox_history.t
+
 module Payloads_history = Sc_rollup.Inbox_merkelized_payload_hashes.Hash.Map
 
 type payloads_history =
@@ -545,9 +549,12 @@ type payloads_history =
   Payloads_history.t
 
 let find_payload payloads_history _inbox_level witness =
-  Payloads_history.find witness payloads_history |> Lwt.return
+  Sc_rollup.Inbox_merkelized_payload_hashes.Hash.Map.find
+    witness
+    payloads_history
+  |> Lwt.return
 
-let get_history history i = Sc_rollup.Inbox.History.find i history |> Lwt.return
+let get_history history i = Inbox_history.find i history |> Lwt.return
 
 let inbox_message_of_input input =
   match input with Sc_rollup.Inbox_message x -> Some x | _ -> None
@@ -625,7 +632,7 @@ let origination_op ?force_reveal ?counter ?fee ?gas_limit ?storage_limit
 module Node_inbox = struct
   type t = {
     inbox : Sc_rollup.Inbox.t;
-    history : Sc_rollup.Inbox.History.t;
+    history : inbox_history;
     payloads_history : payloads_history;
   }
 
@@ -640,7 +647,7 @@ module Node_inbox = struct
            ~predecessor:genesis_predecessor
            inbox_creation_level
     in
-    let history = Sc_rollup.Inbox.History.empty ~capacity:10000L in
+    let history = Inbox_history.empty in
     let payloads_history = Payloads_history.empty in
     return {inbox; history; payloads_history}
 
@@ -658,42 +665,30 @@ module Node_inbox = struct
          } :
           payloads_per_level)
         :: rst ->
-          let messages =
-            List.map
-              (fun message -> Sc_rollup.Inbox_message.External message)
-              messages
-          in
-          let* new_payloads_history, history, inbox, _witness, _messages =
-            Environment.wrap_tzresult
-            @@ Sc_rollup.Inbox.add_all_messages
-                 ~predecessor_timestamp
-                 ~predecessor
-                 history
-                 inbox
-                 messages
+          let inbox = {inbox with level = Raw_level.succ inbox.level} in
+          let* ( inbox,
+                 _witness,
+                 _messages_with_protocol_internal,
+                 new_payloads_history ) =
+            Inbox_helpers.wrap_and_add_messages_to_inbox_with_history
+              ~predecessor_timestamp
+              ~predecessor
+              inbox
+              (List.map
+                 (fun str -> Sc_rollup.Inbox_message.External str)
+                 messages)
           in
           (* Store in the history this archived level. *)
           let payloads_history =
-            let merkelized_payload_hashes =
-              Sc_rollup.Inbox_merkelized_payload_hashes.History
-              .Internal_for_tests
-              .keys
-                new_payloads_history
-            in
-            List.fold_left
-              (fun payloads_history hash ->
-                let merkelized_and_payload =
-                  Sc_rollup.Inbox_merkelized_payload_hashes.History.find
-                    hash
-                    new_payloads_history
-                  |> WithExceptions.Option.get ~loc:__LOC__
-                in
-                Payloads_history.add
-                  hash
-                  merkelized_and_payload
-                  payloads_history)
+            Payloads_history.union
+              (fun _hash payload _payload' -> Some payload)
+              (* we assume the payloads are equal *)
               payloads_history
-              merkelized_payload_hashes
+              new_payloads_history
+          in
+          let history =
+            let hash = Sc_rollup.Inbox.hash inbox in
+            Inbox_history.add hash (Sc_rollup.Inbox.take_snapshot inbox) history
           in
           aux {inbox; history; payloads_history} rst
     in
@@ -711,8 +706,7 @@ module Node_inbox = struct
     in
     fill_inbox node_inbox payloads_per_levels
 
-  let get_history history hash =
-    Lwt.return @@ Sc_rollup.Inbox.History.find hash history
+  let get_history history hash = Lwt.return @@ Inbox_history.find hash history
 
   let produce_proof {payloads_history; history; _} inbox_snapshot
       (level, message_counter) =
@@ -759,30 +753,17 @@ module Protocol_inbox = struct
          } :
           payloads_per_level)
         :: rst ->
-          let* payloads =
-            Environment.wrap_tzresult
-            @@ List.map_e
-                 (fun message ->
-                   Sc_rollup.Inbox_message.(serialize @@ External message))
-                 messages
+          let messages =
+            List.map
+              (fun message -> Sc_rollup.Inbox_message.(External message))
+              messages
           in
-          let witness = Sc_rollup.Inbox.init_witness_no_history in
-          let* witness =
-            Environment.wrap_tzresult
-            @@ Sc_rollup.Inbox.add_info_per_level_no_history
-                 ~predecessor_timestamp
-                 ~predecessor
-                 witness
-          in
-          let* witness =
-            if List.is_empty payloads then ok witness
-            else
-              Environment.wrap_tzresult
-              @@ Sc_rollup.Inbox.add_messages_no_history payloads witness
-          in
-          let* inbox =
-            Environment.wrap_tzresult
-            @@ Sc_rollup.Inbox.finalize_inbox_level_no_history inbox witness
+          let* inbox, _witness, _with_protocol_messages =
+            Inbox_helpers.wrap_and_add_messages_to_inbox
+              ~predecessor
+              ~predecessor_timestamp
+              inbox
+              messages
           in
           aux inbox rst
     in

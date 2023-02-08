@@ -176,24 +176,6 @@ module V1 : sig
       [inbox] or its initial level. *)
   val inbox_level : t -> Raw_level_repr.t
 
-  (** A [History.t] is basically a lookup table of {!history_proof}s. We
-      need this if we want to produce inbox proofs because it allows us
-      to dereference the 'pointer' hashes in any of the
-      [history_proof]s. This [deref] function is passed to
-      [Skip_list.back_path] or [Skip_list.search] to allow these
-      functions to construct valid paths back through the skip list.
-
-      A subtlety of this [history] type is that it is customizable
-      depending on how much of the inbox history you actually want to
-      remember, using the [capacity] parameter. In the L1 we use this with
-      [capacity] set to zero, which makes it immediately forget an old
-      level as soon as we move to the next. By contrast, the rollup node
-      uses a history that is sufficiently large to be able to take part
-      in all potential refutation games occurring during the challenge
-      period. *)
-  module History :
-    Bounded_history_repr.S with type key = Hash.t and type value = history_proof
-
   val pp_history_proof : Format.formatter -> history_proof -> unit
 
   val history_proof_encoding : history_proof Data_encoding.t
@@ -223,34 +205,9 @@ type serialized_proof
 
 val serialized_proof_encoding : serialized_proof Data_encoding.t
 
-(** [add_all_messages history inbox messages] starts a new inbox level,
-    adds all the [messages], then ends the inbox level. It can
-    be called even if [payloads] is empty.
-
-    Remembers everything needed in a created [payloads_history] and [history].
-    It is meant to be used by the rollup-node to reduce the risk of
-    de-synchronisation between the protocol and the node.
-
-    Adds the messages pushed by the protocol and returns a list of messages
-    including them. The caller will need to execute this list of messages,
-    otherwise, it might miss some internal inputs.
- *)
-val add_all_messages :
-  predecessor_timestamp:Time.t ->
-  predecessor:Block_hash.t ->
-  History.t ->
-  t ->
-  Sc_rollup_inbox_message_repr.t list ->
-  (Sc_rollup_inbox_merkelized_payload_hashes_repr.History.t
-  * History.t
-  * t
-  * Sc_rollup_inbox_merkelized_payload_hashes_repr.t
-  * Sc_rollup_inbox_message_repr.t list)
-  tzresult
-
-(** [add_messages_no_history payloads witness] updates the [witness] by
+(** [add_messages payloads witness] updates the [witness] by
     inserting the [payloads]. *)
-val add_messages_no_history :
+val add_messages :
   Sc_rollup_inbox_message_repr.serialized list ->
   Sc_rollup_inbox_merkelized_payload_hashes_repr.t ->
   Sc_rollup_inbox_merkelized_payload_hashes_repr.t tzresult
@@ -318,22 +275,25 @@ val produce_proof :
   Raw_level_repr.t * Z.t ->
   (proof * Sc_rollup_PVM_sig.inbox_message option) tzresult Lwt.t
 
-(** [init_witness_no_history] initializes the witness for a new inbox level
-    by adding the first input, i.e. [Start_of_level]. *)
-val init_witness_no_history : Sc_rollup_inbox_merkelized_payload_hashes_repr.t
-
-(** [add_info_per_level_no_history] adds the input [Info_per_level]. *)
-val add_info_per_level_no_history :
+(** [add_info_per_level] adds the internal input [Info_per_level
+    {predecessor_timestamp; predecessor}]. *)
+val add_info_per_level :
   predecessor_timestamp:Time.t ->
   predecessor:Block_hash.t ->
   Sc_rollup_inbox_merkelized_payload_hashes_repr.t ->
   Sc_rollup_inbox_merkelized_payload_hashes_repr.t tzresult
 
-(** [finalize_inbox_level payloads_history history inbox level_witness] updates
-    the current inbox's level witness by adding [EOL], and archives the current
-    level. *)
-val finalize_inbox_level_no_history :
-  t -> Sc_rollup_inbox_merkelized_payload_hashes_repr.t -> t tzresult
+(** [init_witness] initializes the witness for a new inbox level by
+    adding the first input, i.e. [Start_of_level]. *)
+val init_witness : Sc_rollup_inbox_merkelized_payload_hashes_repr.t
+
+(** [finalize_inbox_level history inbox level_witness] updates the
+    current inbox's level witness by adding [EOL], and archives the
+    current level. *)
+val finalize_inbox_level :
+  t ->
+  Sc_rollup_inbox_merkelized_payload_hashes_repr.t ->
+  Sc_rollup_inbox_merkelized_payload_hashes_repr.t * t
 
 (** [genesis ~timestamp ~predecessor level] initializes the inbox at some
     given [level] with: [SOL], [Info_per_level {timestamp; predecessor}] and
@@ -343,6 +303,16 @@ val genesis :
   predecessor:Block_hash.t ->
   Raw_level_repr.t ->
   t tzresult
+
+(** [finalize_witness witness] finalize the witness for a inbox
+    level by adding the last input, i.e. [End_of_level]. *)
+val finalize_witness :
+  Sc_rollup_inbox_merkelized_payload_hashes_repr.t ->
+  Sc_rollup_inbox_merkelized_payload_hashes_repr.t
+
+(** [archive inbox witness] updates [inbox.old_levels_messages] with
+    the new witness. *)
+val archive : t -> Sc_rollup_inbox_merkelized_payload_hashes_repr.t -> t
 
 module Internal_for_tests : sig
   (** Given a inbox [A] at some level [L] and another inbox [B] at some level

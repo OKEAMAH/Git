@@ -94,9 +94,9 @@ let gen_inbox level =
     let inbox = Sc_rollup_helpers.dumb_init_repr level in
     Environment.wrap_tzresult
     @@
-    let witness = Sc_rollup_inbox_repr.init_witness_no_history in
+    let witness = Sc_rollup_inbox_repr.init_witness in
     let* witness =
-      Sc_rollup_inbox_repr.add_info_per_level_no_history
+      Sc_rollup_inbox_repr.add_info_per_level
         ~predecessor_timestamp:Time.Protocol.epoch
         ~predecessor:Block_hash.zero
         witness
@@ -106,10 +106,8 @@ let gen_inbox level =
         (fun msg -> Sc_rollup_inbox_message_repr.(serialize (External msg)))
         payloads
     in
-    let* witness =
-      Sc_rollup_inbox_repr.add_messages_no_history input_messages witness
-    in
-    Sc_rollup_inbox_repr.finalize_inbox_level_no_history inbox witness
+    let* witness = Sc_rollup_inbox_repr.add_messages input_messages witness in
+    return @@ snd @@ Sc_rollup_inbox_repr.finalize_inbox_level inbox witness
   in
   return
   @@ (witness_and_inbox |> function

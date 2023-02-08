@@ -38,53 +38,26 @@ type merkelized_and_payload = {
   payload : Sc_rollup_inbox_message_repr.serialized;
 }
 
-(** A [History.t] is a lookup table of {!merkelized_and_payload}s. Payloads are
-    indexed by their hash {!Hash.t}. This history is needed in order to produce
-    {!proof}.
+val merkelized_and_payload_encoding : merkelized_and_payload Data_encoding.t
 
-    A subtlety of this [history] type is that it is customizable depending on
-    how much of the inbox history you actually want to remember, using the
-    [capacity] parameter. In the L1 we use this with [capacity] set to zero,
-    which makes it immediately forget an old level as soon as we move to the
-    next. By contrast, the rollup node uses a history that is sufficiently large
-    to be able to take part in all potential refutation games occurring during
-    the challenge period. *)
-module History : sig
-  include
-    Bounded_history_repr.S
-      with type key = Hash.t
-       and type value = merkelized_and_payload
+val pp_merkelized_and_payload :
+  Format.formatter -> merkelized_and_payload -> unit
 
-  val no_history : t
-end
+val equal_merkelized_and_payload :
+  merkelized_and_payload -> merkelized_and_payload -> bool
 
 (** [hash merkelized] is the hash of [merkelized]. It is used as key to remember
     a merkelized payload hash in an {!History.t}. *)
 val hash : t -> Hash.t
 
-(** [remember history merkelized payload] remembers the [{merkelized; payload}]
-    in [history] with key [hash merkelized]. *)
-val remember :
-  History.t ->
-  t ->
-  Sc_rollup_inbox_message_repr.serialized ->
-  History.t tzresult
+(** [genesis payload] is the initial merkelized payload hashes with
+    index 0. *)
+val genesis : Sc_rollup_inbox_message_repr.serialized -> t
 
-(** [genesis history payload] is the initial merkelized payload hashes with
-    index 0. It is remembered in [history] using [remember]. *)
-val genesis :
-  History.t ->
-  Sc_rollup_inbox_message_repr.serialized ->
-  (History.t * t) tzresult
-
-(** [add_payload history merkelized payload] creates a new {!t} with [payload]
+(** [add_payload merkelized payload] creates a new {!t} with [payload]
     and [merkelized] as ancestor (i.e. [index = succ (get_index
-    merkelized)]). [merkelized] is remembered in [history] with [remember]. *)
-val add_payload :
-  History.t ->
-  t ->
-  Sc_rollup_inbox_message_repr.serialized ->
-  (History.t * t) tzresult
+    merkelized)]) *)
+val add_payload : t -> Sc_rollup_inbox_message_repr.serialized -> t
 
 val equal : t -> t -> bool
 
@@ -122,9 +95,5 @@ val produce_proof :
 val verify_proof : proof -> (t * t) tzresult
 
 module Internal_for_tests : sig
-  (** [find_predecessor_payload history ~index latest_merkelized] looks for the
-      {!t} with [index] that is an ancestor of [latest_merkelized]. *)
-  val find_predecessor_payload : History.t -> index:Z.t -> t -> t option
-
   val make_proof : t list -> proof
 end

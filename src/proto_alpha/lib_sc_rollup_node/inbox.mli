@@ -59,16 +59,4 @@ val add_messages :
   predecessor:Block_hash.t ->
   Inbox.t ->
   Inbox_message.t list ->
-  (Inbox_merkelized_payload_hashes.History.t * Inbox.t * Inbox_message.t list)
-  tzresult
-  Lwt.t
-
-(** [payloads_history_of_messages ~predecessor ~predecessor_timestamp messages]
-    builds the payloads history for the list of [messages]. This allows to not
-    store payloads histories (which contain merkelized skip lists) but simply
-    messages. *)
-val payloads_history_of_messages :
-  predecessor:Block_hash.t ->
-  predecessor_timestamp:Timestamp.time ->
-  Sc_rollup.Inbox_message.t list ->
-  Sc_rollup.Inbox_merkelized_payload_hashes.History.t tzresult
+  (Inbox.t * Inbox_message.t list) tzresult

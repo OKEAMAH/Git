@@ -4114,7 +4114,7 @@ let test_rpcs ~kind =
       variant = None;
       description = "RPC API should work and be stable";
     }
-  @@ fun _protocol sc_rollup_node sc_client sc_rollup node client ->
+  @@ fun protocol sc_rollup_node sc_client sc_rollup node client ->
   let* () = Sc_rollup_node.run sc_rollup_node [] in
   (* Smart rollup address endpoint test *)
   let*! sc_rollup_address =
@@ -4168,7 +4168,12 @@ let test_rpcs ~kind =
       ["global"; "block"; "head"; "num_messages"]
   in
   let l2_num_messages = JSON.as_int l2_num_messages in
-  Check.((l2_num_messages = batch_size) int)
+  let expected_number_of_msg =
+    match protocol with
+    | Alpha -> batch_size + 3 (* sol/ipl/eol *)
+    | _ -> batch_size
+  in
+  Check.((l2_num_messages = expected_number_of_msg) int)
     ~error_msg:"Number of messages of head is %L but should be %R" ;
 
   (* Durable value storage RPC tests *)

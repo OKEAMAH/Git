@@ -29,8 +29,6 @@
 open Protocol
 open Alpha_context
 
-let lift promise = Lwt.map Environment.wrap_tzresult promise
-
 let get_messages Node_context.{l1_ctxt; _} head =
   let open Lwt_result_syntax in
   let* block = Layer1.fetch_tezos_block l1_ctxt head in
@@ -96,22 +94,15 @@ let same_inbox_as_layer_1 node_ctxt head_hash inbox =
     (Sc_rollup_node_errors.Inconsistent_inbox {layer1_inbox; inbox})
 
 let add_messages ~predecessor_timestamp ~predecessor inbox messages =
-  let open Lwt_result_syntax in
-  let no_history = Sc_rollup.Inbox.History.empty ~capacity:0L in
-  lift
-  @@ let*? ( messages_history,
-             _no_history,
-             inbox,
-             _witness,
-             messages_with_protocol_internal_messages ) =
-       Sc_rollup.Inbox.add_all_messages
-         ~predecessor_timestamp
-         ~predecessor
-         no_history
-         inbox
-         messages
-     in
-     return (messages_history, inbox, messages_with_protocol_internal_messages)
+  let open Result_syntax in
+  let* inbox, _witness, messages_with_protocol_internal_messages =
+    Inbox_helpers.wrap_and_add_messages_to_inbox
+      ~predecessor_timestamp
+      ~predecessor
+      inbox
+      messages
+  in
+  return (inbox, messages_with_protocol_internal_messages)
 
 let process_head (node_ctxt : _ Node_context.t)
     Layer1.({level; hash = head_hash} as head) =
@@ -148,7 +139,7 @@ let process_head (node_ctxt : _ Node_context.t)
         (Raw_level.to_int32 level)
         (List.length collected_messages)
     in
-    let* _messages_history, inbox, messages_with_protocol_internal_messages =
+    let*? inbox, messages_with_protocol_internal_messages =
       add_messages
         ~predecessor_timestamp
         ~predecessor:predecessor_hash
@@ -176,27 +167,3 @@ let process_head (node_ctxt : _ Node_context.t)
       (Sc_rollup.Inbox.hash inbox, inbox, [], Context.empty node_ctxt.context)
 
 let start () = Inbox_event.starting ()
-
-let payloads_history_of_messages ~predecessor ~predecessor_timestamp messages =
-  let open Result_syntax in
-  Environment.wrap_tzresult
-  @@ let* dummy_inbox =
-       (* The inbox is not necessary to compute the payloads *)
-       Sc_rollup.Inbox.genesis
-         ~predecessor_timestamp
-         ~predecessor
-         Raw_level.root
-     in
-     let+ ( payloads_history,
-            _history,
-            _inbox,
-            _witness,
-            _messages_with_protocol_internal_messages ) =
-       Sc_rollup.Inbox.add_all_messages
-         ~predecessor_timestamp
-         ~predecessor
-         (Sc_rollup.Inbox.History.empty ~capacity:0L)
-         dummy_inbox
-         messages
-     in
-     payloads_history

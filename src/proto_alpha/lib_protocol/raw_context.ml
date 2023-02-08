@@ -799,9 +799,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ctxt =
   get_cycle_eras ctxt >|=? fun cycle_eras ->
   check_cycle_eras cycle_eras constants ;
   let level = Level_repr.level_from_raw ~cycle_eras level in
-  let sc_rollup_current_messages =
-    Sc_rollup_inbox_repr.init_witness_no_history
-  in
+  let sc_rollup_current_messages = Sc_rollup_inbox_repr.init_witness in
   {
     remaining_operation_gas = Gas_limit_repr.Arith.zero;
     back =

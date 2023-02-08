@@ -3304,20 +3304,9 @@ module Sc_rollup : sig
       payload : Inbox_message.serialized;
     }
 
-    module History : sig
-      include
-        Bounded_history_repr.S
-          with type key = Hash.t
-           and type value = merkelized_and_payload
+    val genesis : Inbox_message.serialized -> t
 
-      val no_history : t
-    end
-
-    val genesis :
-      History.t -> Inbox_message.serialized -> (History.t * t) tzresult
-
-    val add_payload :
-      History.t -> t -> Inbox_message.serialized -> (History.t * t) tzresult
+    val add_payload : t -> Inbox_message.serialized -> t
 
     type proof = private t list
 
@@ -3332,8 +3321,6 @@ module Sc_rollup : sig
     val verify_proof : proof -> (t * t) tzresult
 
     module Internal_for_tests : sig
-      val find_predecessor_payload : History.t -> index:Z.t -> t -> t option
-
       val make_proof : t list -> proof
     end
   end
@@ -3414,29 +3401,11 @@ module Sc_rollup : sig
 
     val current_witness : t -> Inbox_merkelized_payload_hashes.Hash.t
 
-    module History :
-      Bounded_history_repr.S
-        with type key = Hash.t
-         and type value = history_proof
-
     type serialized_proof
 
     val serialized_proof_encoding : serialized_proof Data_encoding.t
 
-    val add_all_messages :
-      predecessor_timestamp:Time.t ->
-      predecessor:Block_hash.t ->
-      History.t ->
-      t ->
-      Inbox_message.t list ->
-      (Inbox_merkelized_payload_hashes.History.t
-      * History.t
-      * t
-      * Inbox_merkelized_payload_hashes.t
-      * Inbox_message.t list)
-      tzresult
-
-    val add_messages_no_history :
+    val add_messages :
       Inbox_message.serialized list ->
       Inbox_merkelized_payload_hashes.t ->
       Inbox_merkelized_payload_hashes.t tzresult
@@ -3467,22 +3436,31 @@ module Sc_rollup : sig
       Raw_level.t * Z.t ->
       (proof * inbox_message option) tzresult Lwt.t
 
-    val finalize_inbox_level_no_history :
-      t -> Inbox_merkelized_payload_hashes.t -> t tzresult
-
-    val init_witness_no_history : Inbox_merkelized_payload_hashes.t
-
-    val add_info_per_level_no_history :
-      predecessor_timestamp:Time.t ->
-      predecessor:Block_hash.t ->
-      Inbox_merkelized_payload_hashes.t ->
-      Inbox_merkelized_payload_hashes.t tzresult
-
     val genesis :
       predecessor_timestamp:Time.t ->
       predecessor:Block_hash.t ->
       Raw_level.t ->
       t tzresult
+
+    module Node_helpers : sig
+      val init_witness : Inbox_merkelized_payload_hashes.t
+
+      val add_info_per_level :
+        predecessor_timestamp:Time.t ->
+        predecessor:Block_hash.t ->
+        Inbox_merkelized_payload_hashes.t ->
+        Inbox_merkelized_payload_hashes.t tzresult
+
+      val finalize_witness :
+        Inbox_merkelized_payload_hashes.t -> Inbox_merkelized_payload_hashes.t
+
+      val finalize_inbox_level :
+        t ->
+        Inbox_merkelized_payload_hashes.t ->
+        Inbox_merkelized_payload_hashes.t * t
+
+      val archive : t -> Inbox_merkelized_payload_hashes.t -> t
+    end
 
     module Internal_for_tests : sig
       type inclusion_proof = history_proof list

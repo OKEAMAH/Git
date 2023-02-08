@@ -73,10 +73,7 @@ module Sc_rollup = struct
   module Inbox = struct
     include Sc_rollup_inbox_repr
     include Sc_rollup_inbox_storage
-
-    module Internal_for_tests = struct
-      include Sc_rollup_inbox_repr.Internal_for_tests
-    end
+    module Node_helpers = Sc_rollup_inbox_repr
   end
 
   module Proof = Sc_rollup_proof_repr

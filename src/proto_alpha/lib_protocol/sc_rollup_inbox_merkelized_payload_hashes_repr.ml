@@ -125,50 +125,18 @@ let merkelized_and_payload_encoding =
       })
     (merge_objs encoding (obj1 (req "payload" (string Hex))))
 
-module History = struct
-  include
-    Bounded_history_repr.Make
-      (struct
-        let name = "Smart_rollup_level_inbox_history"
-      end)
-      (Hash)
-      (struct
-        type nonrec t = merkelized_and_payload
-
-        let pp = pp_merkelized_and_payload
-
-        let equal = equal_merkelized_and_payload
-
-        let encoding = merkelized_and_payload_encoding
-      end)
-
-  let no_history = empty ~capacity:0L
-end
-
-let remember history merkelized payload =
-  let prev_cell_ptr = hash merkelized in
-  History.remember prev_cell_ptr {merkelized; payload} history
-
-let genesis history payload =
-  let open Result_syntax in
+let genesis payload =
   let payload_hash =
     Sc_rollup_inbox_message_repr.hash_serialized_message payload
   in
-  let merkelized = Skip_list.genesis payload_hash in
-  let+ history = remember history merkelized payload in
-  (history, merkelized)
+  Skip_list.genesis payload_hash
 
-let add_payload history prev_merkelized payload =
-  let open Result_syntax in
+let add_payload prev_merkelized payload =
   let prev_merkelized_ptr = hash prev_merkelized in
-  let merkelized =
-    Skip_list.next
-      ~prev_cell:prev_merkelized
-      ~prev_cell_ptr:prev_merkelized_ptr
-      (Sc_rollup_inbox_message_repr.hash_serialized_message payload)
-  in
-  let* history = remember history merkelized payload in
-  return (history, merkelized)
+  Skip_list.next
+    ~prev_cell:prev_merkelized
+    ~prev_cell_ptr:prev_merkelized_ptr
+    (Sc_rollup_inbox_message_repr.hash_serialized_message payload)
 
 let get_payload_hash = Skip_list.content
 
@@ -242,14 +210,5 @@ let verify_proof inclusion_proof =
   return (target, cell)
 
 module Internal_for_tests = struct
-  let find_predecessor_payload payloads_history ~index payloads =
-    let open Option_syntax in
-    let deref ptr =
-      let* {merkelized; _} = History.find ptr payloads_history in
-      return merkelized
-    in
-    let cell_ptr = hash payloads in
-    Skip_list.find ~deref ~cell_ptr ~target_index:index
-
   let make_proof proof = proof
 end

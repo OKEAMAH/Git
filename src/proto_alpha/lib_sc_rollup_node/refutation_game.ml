@@ -251,14 +251,14 @@ module Make (Interpreter : Interpreter.S) :
           let* {predecessor; predecessor_timestamp; messages} =
             Node_context.get_messages node_ctxt inbox_block_hash
           in
-          let*? payloads_history =
-            Inbox.payloads_history_of_messages
-              ~predecessor
+          let*? _witness, _messages_with_internal_protocol, payloads_history =
+            Inbox_helpers.wrap_and_add_messages_with_history
               ~predecessor_timestamp
+              ~predecessor
               messages
           in
           return
-          @@ Sc_rollup.Inbox_merkelized_payload_hashes.History.find
+          @@ Sc_rollup.Inbox_merkelized_payload_hashes.Hash.Map.find
                witness
                payloads_history
       end

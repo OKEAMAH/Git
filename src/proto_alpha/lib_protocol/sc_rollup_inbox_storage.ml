@@ -60,7 +60,7 @@ let add_messages ctxt messages =
       node to produce inclusion proofs when needed.
   *)
   let*? current_messages =
-    Sc_rollup_inbox_repr.add_messages_no_history messages current_messages
+    Sc_rollup_inbox_repr.add_messages messages current_messages
   in
   let ctxt =
     Sc_rollup_in_memory_inbox.set_current_messages ctxt current_messages
@@ -119,8 +119,8 @@ let finalize_inbox_level ctxt =
     let open Lwt_result_syntax in
     let* inbox, ctxt = get_inbox ctxt in
     let witness = Raw_context.Sc_rollup_in_memory_inbox.current_messages ctxt in
-    let*? inbox =
-      Sc_rollup_inbox_repr.finalize_inbox_level_no_history inbox witness
+    let _witness, inbox =
+      Sc_rollup_inbox_repr.finalize_inbox_level inbox witness
     in
     let* ctxt = Store.Inbox.update ctxt inbox in
     return ctxt
@@ -147,7 +147,7 @@ let add_info_per_level ~predecessor ctxt =
     let predecessor_timestamp = Raw_context.predecessor_timestamp ctxt in
     let witness = Raw_context.Sc_rollup_in_memory_inbox.current_messages ctxt in
     let*? witness =
-      Sc_rollup_inbox_repr.add_info_per_level_no_history
+      Sc_rollup_inbox_repr.add_info_per_level
         ~predecessor_timestamp
         ~predecessor
         witness
