@@ -242,14 +242,13 @@ module Make (X : PARAMETERS) = struct
       assert false) ;
     events
 
-  let read_json_event daemon even_input =
+  let read_json_event daemon even_input buff =
     let max_event_size = 1024 * 1024 (* 32 * 1MB *) in
     let origin = "event from " ^ daemon.name in
-    let buff = Buffer.create 256 in
     let rec loop () =
       let* line = Lwt_io.read_line_opt even_input in
       match line with
-      | None -> return []
+      | None -> return ([], buff)
       | Some line -> (
           Buffer.add_string buff line ;
           let events = parse__fd_sink_item__events ~origin buff in
@@ -261,7 +260,7 @@ module Make (X : PARAMETERS) = struct
                 daemon.name
                 max_event_size
           | [] -> loop ()
-          | _ :: _ -> return events)
+          | _ :: _ -> return (events, buff))
     in
     loop ()
 
@@ -367,12 +366,12 @@ module Make (X : PARAMETERS) = struct
     let running_status = {process; session_state; event_loop_promise = None} in
     daemon.status <- Running running_status ;
     let event_loop_promise =
-      let rec event_loop () =
-        let* json_list = read_json_event daemon event_input in
+      let rec event_loop buffer =
+        let* json_list, buffer = read_json_event daemon event_input buffer in
         match json_list with
         | _ :: _ ->
             List.iter (handle_raw_event daemon) json_list ;
-            event_loop ()
+            event_loop buffer
         | [] -> (
             match daemon.status with
             | Not_running -> (
@@ -383,7 +382,7 @@ module Make (X : PARAMETERS) = struct
                 (* It can take a little while before the pipe is opened by the daemon,
                    and before that, reading from it yields end of file for some reason. *)
                 let* () = Lwt_unix.sleep 0.01 in
-                event_loop ())
+                event_loop buffer)
       in
       let rec stdout_loop () =
         let* stdout_line = Lwt_io.read_line_opt (Process.stdout process) in
@@ -400,7 +399,8 @@ module Make (X : PARAMETERS) = struct
                 stdout_loop ())
       in
       let ( and*!! ) = lwt_both_fail_early in
-      let* () = event_loop ()
+      let buffer = Buffer.create 256 in
+      let* () = event_loop buffer
       and*!! () = stdout_loop ()
       and*!! () =
         let* process_status = Process.wait process in
