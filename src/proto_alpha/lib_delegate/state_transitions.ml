@@ -698,56 +698,99 @@ let make_endorse_action state proposal =
   in
   Inject_endorsements {endorsements}
 
+let update_endorsable_payload state proposal preendorsements =
+  let prequorum =
+    {
+      level = proposal.block.shell.level;
+      round = proposal.block.round;
+      block_payload_hash = proposal.block.payload_hash;
+      preendorsements
+      (* preendorsements may be nil when [consensus_threshold] is 0 *);
+    }
+  in
+  let new_endorsable_payload = {proposal; prequorum} in
+  let new_level_state =
+    let level_state_with_new_payload =
+      {state.level_state with endorsable_payload = Some new_endorsable_payload}
+    in
+    match state.level_state.endorsable_payload with
+    | None -> level_state_with_new_payload
+    | Some endorsable_payload ->
+        if
+          Round.(
+            endorsable_payload.prequorum.round
+            < new_endorsable_payload.prequorum.round)
+        then level_state_with_new_payload
+        else state.level_state
+  in
+  {state with level_state = new_level_state}
+
+let prequorum_reached_for_current_proposal state preendorsements =
+  let proposal = state.level_state.latest_proposal in
+  (* NOTE: in this case the latest proposal is a proposal for the current
+     round; see [End_of_round] case *)
+  assert (proposal.block.round = state.round_state.current_round) ;
+  let state = update_endorsable_payload state proposal preendorsements in
+  let state =
+    update_locked_round state proposal.block.round proposal.block.payload_hash
+  in
+  let state = update_current_phase state Awaiting_endorsements in
+  (state, make_endorse_action state proposal)
+
+let handle_unexpected_pqc state (candidate : Operation_worker.candidate)
+    preendorsements =
+  let latest_proposal = state.level_state.latest_proposal in
+  let previous_proposal_opt = state.level_state.previous_proposal in
+  match previous_proposal_opt with
+  | Some previous_proposal
+    when Block_hash.(candidate.hash = previous_proposal.block.hash) ->
+      (* If the PQC matches the previous proposal, we update our
+         endorsable payload to be able to repropose with the late
+         PQC. *)
+      let previous_proposal_with_pqc =
+        let previous_prequorum =
+          {
+            level = previous_proposal.block.shell.level;
+            round = previous_proposal.block.round;
+            block_payload_hash = previous_proposal.block.payload_hash;
+            preendorsements;
+          }
+        in
+        {
+          previous_proposal with
+          block =
+            {previous_proposal.block with prequorum = Some previous_prequorum};
+        }
+      in
+      let new_state =
+        may_update_endorsable_payload_with_internal_pqc
+          state
+          previous_proposal_with_pqc
+      in
+      do_nothing new_state
+  | None | Some _ ->
+      Events.(
+        emit
+          unexpected_prequorum_received
+          ( candidate.hash,
+            latest_proposal.block.hash,
+            Option.map
+              (fun p -> p.block.hash)
+              state.level_state.previous_proposal ))
+      >>= fun () -> do_nothing state
+
 let prequorum_reached_when_awaiting_preendorsements state candidate
     preendorsements =
   let latest_proposal = state.level_state.latest_proposal in
-  if Block_hash.(candidate.Operation_worker.hash <> latest_proposal.block.hash)
+  if Block_hash.(candidate.Operation_worker.hash = latest_proposal.block.hash)
   then
-    Events.(
-      emit
-        unexpected_prequorum_received
-        (candidate.hash, latest_proposal.block.hash))
-    >>= fun () -> do_nothing state
-  else if not state.level_state.is_latest_proposal_applied then
-    Events.(emit handling_prequorum_on_non_applied_proposal ()) >>= fun () ->
-    do_nothing state
-  else
-    let prequorum =
-      {
-        level = latest_proposal.block.shell.level;
-        round = latest_proposal.block.round;
-        block_payload_hash = latest_proposal.block.payload_hash;
-        preendorsements
-        (* preendorsements may be nil when [consensus_threshold] is 0 *);
-      }
-    in
-    let new_endorsable_payload = {proposal = latest_proposal; prequorum} in
-    let new_level_state =
-      let level_state_with_new_payload =
-        {
-          state.level_state with
-          endorsable_payload = Some new_endorsable_payload;
-        }
-      in
-      match state.level_state.endorsable_payload with
-      | None -> level_state_with_new_payload
-      | Some endorsable_payload ->
-          if
-            Round.(
-              endorsable_payload.prequorum.round
-              < new_endorsable_payload.prequorum.round)
-          then level_state_with_new_payload
-          else state.level_state
-    in
-    let new_state = {state with level_state = new_level_state} in
-    let new_state =
-      update_locked_round
-        new_state
-        latest_proposal.block.round
-        latest_proposal.block.payload_hash
-    in
-    let new_state = update_current_phase new_state Awaiting_endorsements in
-    Lwt.return (new_state, make_endorse_action new_state latest_proposal)
+    (* PQC received for the latest proposal *)
+    if not state.level_state.is_latest_proposal_applied then
+      Events.(emit handling_prequorum_on_non_applied_proposal ()) >>= fun () ->
+      do_nothing state
+    else
+      Lwt.return (prequorum_reached_for_current_proposal state preendorsements)
+  else handle_unexpected_pqc state candidate preendorsements
 
 let quorum_reached_when_waiting_endorsements state candidate endorsement_qc =
   let latest_proposal = state.level_state.latest_proposal in
@@ -884,8 +927,10 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
         preendorsement_qc
   | Awaiting_endorsements, Quorum_reached (candidate, endorsement_qc) ->
       quorum_reached_when_waiting_endorsements state candidate endorsement_qc
+  | Idle, Prequorum_reached (candidate, preendorsements) ->
+      handle_unexpected_pqc state candidate preendorsements
   (* Unreachable cases *)
-  | Idle, (Prequorum_reached _ | Quorum_reached _)
+  | Idle, Quorum_reached _
   | Awaiting_preendorsements, Quorum_reached _
   | Awaiting_endorsements, Prequorum_reached _
   | Awaiting_application, Quorum_reached _ ->

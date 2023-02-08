@@ -334,17 +334,23 @@ module State_transitions = struct
       ("payload", Block_payload_hash.encoding)
 
   let unexpected_prequorum_received =
-    declare_2
+    let pp_option_previous_proposal pp fmt = function
+      | None -> ()
+      | Some v -> Format.fprintf fmt " or %a (previous proposal)" pp v
+    in
+    declare_3
       ~section
       ~name:"unexpected_prequorum_received"
       ~level:Info
       ~msg:
         "unexpected prequorum received for {received_hash} instead of \
-         {expected_hash}"
+         {latest_proposal_hash} (latest proposal){previous_proposal_msg}"
       ~pp1:Block_hash.pp
       ("received_hash", Block_hash.encoding)
       ~pp2:Block_hash.pp
-      ("expected_hash", Block_hash.encoding)
+      ("latest_proposal_hash", Block_hash.encoding)
+      ~pp3:(pp_option_previous_proposal Block_hash.pp)
+      ("previous_proposal_msg", Data_encoding.option Block_hash.encoding)
 
   let unexpected_quorum_received =
     declare_2
