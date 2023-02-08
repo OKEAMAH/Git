@@ -3130,6 +3130,17 @@ let _tezt_self_tests =
           ];
         ]
 
+let _tezt_testnet_scenarios =
+  public_exe
+    "octez-testnet-scenarios"
+    ~internal_name:"main"
+    ~path:"src/bin_testnet_scenarios"
+    ~synopsis:"Run a bunch of scenarios on testnets"
+    ~bisect_ppx:false
+    ~static:false
+    ~deps:[tezt_lib; tezt_tezos]
+    ~cram:true
+
 let _tezt_self_tests_catch_sigterm =
   private_exe
     "main"
