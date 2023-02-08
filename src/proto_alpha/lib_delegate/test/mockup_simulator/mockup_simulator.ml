@@ -1427,16 +1427,22 @@ let save_proposal_payload
 
 let verify_payload_hash
     ~(protocol_data : Alpha_context.Block_header.protocol_data)
-    ~original_proposal ~message =
+    ~original_proposal ?(fresh_payload = false) ~message () =
   match !original_proposal with
   | None ->
       failwith
         "verify_payload_hash: expected to have observed a proposal by now"
   | Some (original_hash, original_round) ->
-      if
+      let equal_payload =
         Protocol.Block_payload_hash.equal
           original_hash
           protocol_data.contents.payload_hash
+      in
+      if fresh_payload then
+        if equal_payload then failwith "verify_payload_hash: %s" message
+        else return_unit
+      else if
+        equal_payload
         && Protocol.Alpha_context.Round.equal
              original_round
              protocol_data.contents.payload_round

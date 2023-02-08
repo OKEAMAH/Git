@@ -172,6 +172,7 @@ let test_scenario_t1 () =
             ~protocol_data
             ~original_proposal
             ~message:"a new block proposed instead of reproposal"
+            ()
           >>=? fun () ->
           b_reproposed := true ;
           return_unit
@@ -314,6 +315,7 @@ let test_scenario_t3 () =
             ~protocol_data
             ~original_proposal
             ~message:"a new block proposed instead of reproposal"
+            ()
           >>=? fun () ->
           return (block_hash, block_header, operations, [Pass; Pass; Pass; Pass])
       | _ ->
@@ -431,6 +433,135 @@ let test_scenario_t3 () =
       (1, (module Node_c_hooks));
       (1, (module Node_d_hooks));
     ]
+
+(*
+
+A similar scenario as described in
+https://gitlab.com/tezos/tezos/-/issues/4675.
+
+Scenario for the variant with [propose_at_round_one = true]:
+
+1. There are two nodes: A and B
+2. A is the proposer at the round 0. It sends the proposal, which is
+   received by all bakers.
+3. B sees the 2 preendorsements in round 0 but delays sending its
+   preendorsement to A so that A is not aware of the PQC until
+   the round ends. Therefore B is locked but not A.
+4. A proposes a fresh payload and preendorses at round 1.
+   B does not preendorse because it is locked.
+5. No decision is taken at the round 1.
+6. A receives the late missing round 0 preendorsement from B and is
+   notified of a late PQC.
+7. A reproposes round 0's block at round 2 using the late PQC notice.
+   Both A and B preendorse and endorse: a decision is reached and the
+   next level block at round 0 arrives.
+
+When [propose_at_round_one] is false, A's proposal at round 1 is blocked. Node A
+should still be able to repropose at round 2.
+
+*)
+let test_repropose_after_late_pqc ~proposal_at_round_one () =
+  let test_ended = ref false in
+  let original_proposal = ref None in
+
+  let check_invalid_block_round ~name round =
+    if Compare.Int32.(round > 2l) then
+      failwith "%s: did not reach a consensus in time" name
+    else (* We were able to progress as expected *)
+      return_unit
+  in
+
+  let module Node_a_hooks : Hooks = struct
+    include Default_hooks
+
+    let on_inject_block ~level ~round ~block_hash ~block_header ~operations
+        ~(protocol_data : Protocol.Alpha_context.Block_header.protocol_data) =
+      let broadcast_block =
+        (block_hash, block_header, operations, [Pass; Pass])
+      in
+      match (level, round) with
+      | 2l, 0l ->
+          test_ended := true ;
+          return broadcast_block
+      | 1l, 0l ->
+          save_proposal_payload ~protocol_data ~var:original_proposal
+          >>=? fun () -> return broadcast_block
+      | 1l, 1l ->
+          if proposal_at_round_one then
+            verify_payload_hash
+              ~protocol_data
+              ~original_proposal
+              ~fresh_payload:true
+              ~message:"a new block proposed instead of reproposal"
+              ()
+            >>=? fun () -> return broadcast_block
+          else return (block_hash, block_header, operations, [Block; Block])
+      | 1l, 2l ->
+          verify_payload_hash
+            ~protocol_data
+            ~original_proposal
+            ~message:"a new block proposed instead of reproposal"
+            ()
+          >>=? fun () -> return broadcast_block
+      | _ ->
+          check_invalid_block_round ~name:"Node A" round >>=? fun () ->
+          return broadcast_block
+
+    let on_inject_operation ~op_hash ~op = return (op_hash, op, [Pass; Pass])
+
+    let stop_on_event _ = !test_ended
+  end in
+  let module Node_b_hooks : Hooks = struct
+    include Default_hooks
+
+    let on_inject_block ~level:_ ~round ~block_hash ~block_header ~operations
+        ~protocol_data:_ =
+      check_invalid_block_round ~name:"Node B" round >>=? fun () ->
+      return (block_hash, block_header, operations, [Pass; Pass])
+
+    (* - Delay round 0 preendorsement;
+       - Fail if preendorsement is injected on round 1, it should be
+         locked on another payload. *)
+    let on_inject_operation ~op_hash ~op =
+      op_is_preendorsement ~level:1l ~round:0l op_hash op
+      >>=? fun is_preendorsement_round0 ->
+      op_is_preendorsement ~level:1l ~round:1l op_hash op
+      >>=? fun is_preendorsement_round1 ->
+      if is_preendorsement_round0 then
+        let delay =
+          let r0_dur = Int64.to_float default_config.round0 in
+          Delay (r0_dur +. 0.3)
+        in
+        return (op_hash, op, [delay; Pass])
+      else if is_preendorsement_round1 then
+        failwith "Node B: unexpected preendorsement emitted for round 1"
+      else return (op_hash, op, [Pass; Pass])
+
+    let stop_on_event _ = !test_ended
+  end in
+  let config =
+    {
+      default_config with
+      debug = true;
+      initial_seed =
+        some_seed "rngGmZbSJpqpqKrQ4xK51MTAPqruL3JqGFPPp1TaTLw8o2HMg1Vec";
+      delegate_selection =
+        [
+          ( 1l,
+            [
+              (0l, bootstrap1);
+              (1l, bootstrap1);
+              (2l, bootstrap1);
+              (3l, bootstrap1);
+            ] );
+          (2l, [(0l, bootstrap1)]);
+        ];
+      consensus_committee_size = 5000;
+      consensus_threshold = 5000;
+    }
+  in
+  (* Node A = bootstrap1, Node B = bootstrap2 *)
+  run ~config [(1, (module Node_a_hooks)); (1, (module Node_b_hooks))]
 
 (*
 
@@ -1098,6 +1229,7 @@ let test_scenario_m6 () =
             ~protocol_data:block.protocol_data
             ~original_proposal:b_proposal_2_1
             ~message:"A did not switch to B's proposal (level 2, round 1)"
+            ()
   end in
   let module Node_b_hooks : Hooks = struct
     include Default_hooks
@@ -1208,6 +1340,7 @@ let test_scenario_m7 () =
             (Format.sprintf
                "%s did not switch to A's proposal (level 2, round 1)"
                node_label)
+          ()
   in
   let module Node_a_hooks : Hooks = struct
     include Default_hooks
@@ -1427,6 +1560,7 @@ let test_scenario_m8 () =
             (Format.sprintf
                "%s did not switch to B's proposal (level 2, round 0)"
                node_label)
+          ()
   in
   let module Node_a_hooks : Hooks = struct
     include Default_hooks
@@ -1544,6 +1678,14 @@ let tests =
     tztest "scenario m6" `Quick test_scenario_m6;
     tztest "scenario m7" `Quick test_scenario_m7;
     tztest "scenario m8" `Quick test_scenario_m8;
+    tztest
+      "repropose on late pqc"
+      `Quick
+      (test_repropose_after_late_pqc ~proposal_at_round_one:true);
+    tztest
+      "repropose on late pqc, variant"
+      `Quick
+      (test_repropose_after_late_pqc ~proposal_at_round_one:false);
   ]
 
 let () =

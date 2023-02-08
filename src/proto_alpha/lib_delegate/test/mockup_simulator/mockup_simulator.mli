@@ -241,11 +241,16 @@ val save_proposal_payload :
   var:(Block_payload_hash.t * Alpha_context.Round.t) option ref ->
   unit tzresult Lwt.t
 
-(** Check that payload hashes match, fail if it is not the case. *)
+(** When [fresh_payload = false] (the default), check that the payload hashes
+    and rounds of the two proposals match, fail if it is not the case.  When
+    [fresh_payload = true], check that the payload hashes are different, fail
+    otherwise. *)
 val verify_payload_hash :
   protocol_data:Alpha_context.Block_header.protocol_data ->
   original_proposal:(Block_payload_hash.t * Alpha_context.Round.t) option ref ->
+  ?fresh_payload:bool ->
   message:string ->
+  unit ->
   unit tzresult Lwt.t
 
 (** Parse protocol data. *)
