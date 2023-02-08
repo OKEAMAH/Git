@@ -201,6 +201,7 @@ type t = {
   mutable operation_pool : Operation_pool.pool;
   mutable canceler : Lwt_canceler.t;
   mutable proposal_watched : watch_kind option;
+  mutable previous_proposal_prequorum_watched : pqc_watched option;
   qc_event_stream : quorum_event_stream;
   lock : Lwt_mutex.t;
   monitor_node_operations : bool; (* Keep on monitoring node operations *)
@@ -246,6 +247,7 @@ let make_initial_state ?(monitor_node_operations = true) () =
     operation_pool;
     canceler;
     proposal_watched = None;
+    previous_proposal_prequorum_watched = None;
     qc_event_stream;
     lock;
     monitor_node_operations;
@@ -258,22 +260,32 @@ let is_valid_consensus_content (candidate : candidate) consensus_content =
        consensus_content.block_payload_hash
        payload_hash_watched
 
-let cancel_monitoring state = state.proposal_watched <- None
+let cancel_monitoring state =
+  state.proposal_watched <- None ;
+  state.previous_proposal_prequorum_watched <- None
 
+let cancel_previous_monitoring state =
+  state.previous_proposal_prequorum_watched <- None
+
+let reset_prequorum_watcher (pqc : pqc_watched) =
+  pqc.current_voting_power <- 0 ;
+  pqc.preendorsements_received <- Preendorsement_set.empty ;
+  pqc.preendorsements_count <- 0
+
+(* We keep watching for the same proposal(s), but we re-initialize the
+   operation counts, in order to not count the same operation
+   twice. Normally, relevant operations will be received again. *)
 let reset_monitoring state =
   Lwt_mutex.with_lock state.lock @@ fun () ->
-  match state.proposal_watched with
-  | None -> Lwt.return_unit
-  | Some (Pqc_watch pqc_watched) ->
-      pqc_watched.current_voting_power <- 0 ;
-      pqc_watched.preendorsements_count <- 0 ;
-      pqc_watched.preendorsements_received <- Preendorsement_set.empty ;
-      Lwt.return_unit
+  (match state.proposal_watched with
+  | None -> ()
+  | Some (Pqc_watch pqc_watched) -> reset_prequorum_watcher pqc_watched
   | Some (Qc_watch qc_watched) ->
       qc_watched.current_voting_power <- 0 ;
       qc_watched.endorsements_count <- 0 ;
-      qc_watched.endorsements_received <- Endorsement_set.empty ;
-      Lwt.return_unit
+      qc_watched.endorsements_received <- Endorsement_set.empty) ;
+  Option.iter reset_prequorum_watcher state.previous_proposal_prequorum_watched ;
+  Lwt.return_unit
 
 let update_pqc_monitoring (pqc_watched : pqc_watched) preendorsements =
   let preendorsements =
@@ -344,7 +356,7 @@ let update_monitoring ?(should_lock = true) state ops =
         canceler () ;
         Lwt.return_unit
   in
-  match state.proposal_watched with
+  (match state.proposal_watched with
   | None ->
       (* If no block is watched, don't do anything *)
       Lwt.return_unit
@@ -416,12 +428,13 @@ let update_monitoring ?(should_lock = true) state ops =
             ( endorsements_count,
               voting_power,
               proposal_watched.current_voting_power,
-              proposal_watched.endorsements_count ))
+              proposal_watched.endorsements_count )))
+  >>= fun () ->
+  Option.iter_s
+    (handle_pqc_watch ~canceler:(fun () -> cancel_previous_monitoring state))
+    state.previous_proposal_prequorum_watched
 
 let monitor_quorum state new_proposal_watched =
-  Lwt_mutex.with_lock state.lock @@ fun () ->
-  (* if a previous monitoring was registered, we cancel it *)
-  if state.proposal_watched <> None then cancel_monitoring state ;
   state.proposal_watched <- new_proposal_watched ;
   let current_consensus_operations =
     Operation_pool.Operation_set.elements state.operation_pool.consensus
@@ -431,6 +444,7 @@ let monitor_quorum state new_proposal_watched =
 
 let monitor_preendorsement_quorum state ~consensus_threshold
     ~get_preendorsement_voting_power candidate_watched =
+  Lwt_mutex.with_lock state.lock @@ fun () ->
   let new_proposal =
     Some
       (Pqc_watch
@@ -443,10 +457,18 @@ let monitor_preendorsement_quorum state ~consensus_threshold
            preendorsements_count = 0;
          })
   in
+  (match state.proposal_watched with
+  | Some (Pqc_watch pqc_watched) ->
+      (* Update the previous PQC watcher with the existing incomplete
+         PQC watcher that we reset. *)
+      reset_prequorum_watcher pqc_watched ;
+      state.previous_proposal_prequorum_watched <- Some pqc_watched
+  | _ -> ()) ;
   monitor_quorum state new_proposal
 
 let monitor_endorsement_quorum state ~consensus_threshold
     ~get_endorsement_voting_power candidate_watched =
+  Lwt_mutex.with_lock state.lock @@ fun () ->
   let new_proposal =
     Some
       (Qc_watch
