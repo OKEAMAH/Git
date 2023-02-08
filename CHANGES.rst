@@ -60,6 +60,11 @@ Baker
 - Fixed a bug where the baker could count an (pre)endorsement twice
   while waiting for a (pre)quorum.
 
+- Added the ability in the baker to watch for late Tenderbake
+  pre-quorums to help resolve situations where part of the network is
+  locked on a specific value and the other part keeps on reproposing
+  fresh blocks hence slowing down the chain.
+
 Accuser
 -------
 
