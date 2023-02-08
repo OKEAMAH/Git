@@ -1,0 +1,25 @@
+(copy_files stubs/*.c)
+
+(copy_files stubs/*.h)
+
+(library
+ (public_name tezos-bls12-381-polynomial)
+ (name bls12_381_polynomial)
+ (libraries bls12-381 bigstringaf repr)
+ (preprocess
+  (pps ppx_repr))
+ (instrumentation
+  (backend bisect_ppx))
+ ;; For C stubs
+ (library_flags :standard -ccopt -lpthread)
+ (foreign_stubs
+  (language c)
+  (flags
+   (-Wall -Wextra :standard))
+  (names
+   caml_polynomial_stubs
+   caml_srs_stubs
+   caml_fft_stubs
+   caml_ec_array_stubs
+   fft
+   polynomial)))

@@ -1,0 +1,17 @@
+(executable
+ (name main)
+ (libraries qcheck-alcotest tezos-bls12-381-polynomial polynomial))
+
+(rule
+ (alias runtest)
+ (package tezos-bls12-381-polynomial)
+ (deps
+  srs_zcash_g1_5
+  test_vectors/fft_test_vector_g1_2
+  test_vectors/fft_test_vector_g2_2
+  test_vectors/ifft_test_vector_g1_2
+  test_vectors/ifft_test_vector_g2_2
+  test_vectors/test_vector_g1_2
+  test_vectors/test_vector_g2_2)
+ (action
+  (run %{exe:main.exe})))
