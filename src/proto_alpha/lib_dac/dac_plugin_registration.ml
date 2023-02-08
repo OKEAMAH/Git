@@ -25,9 +25,65 @@
 (*****************************************************************************)
 
 module Plugin = struct
+  type error += Cannot_construct_external_message
+
+  let () =
+    register_error_kind
+      `Permanent
+      ~id:"dac_cannot_construct_external_message"
+      ~title:"External rollup message could not be constructed"
+      ~description:"External rollup message could not be constructed"
+      ~pp:(fun ppf () ->
+        Format.fprintf ppf "External rollup message could not be constructed")
+      Data_encoding.unit
+      (function Cannot_construct_external_message -> Some () | _ -> None)
+      (fun () -> Cannot_construct_external_message)
+
   module Protocol_reveal_hash = Protocol.Sc_rollup_reveal_hash
   module Proto = Registerer.Registered
   module RPC = RPC
+
+  let serialize_payload cctxt dac_sk_uris reveal_data_dir
+      (data, pagination_scheme) =
+    let open Lwt_result_syntax in
+    let open Dac_pages_encoding in
+    let page_store = reveal_data_dir in
+    let pagination_scheme =
+      if String.equal pagination_scheme "Merkle_tree_V0" then Merkle_tree_V0
+      else Hash_chain_V0
+    in
+    let* root_hash =
+      Lwt.map Environment.wrap_tzresult
+      @@
+      match pagination_scheme with
+      | Merkle_tree_V0 -> Merkle_tree.V0.serialize_payload ~page_store data
+      | Hash_chain_V0 ->
+          Hash_chain.V0.serialize_payload
+            ~for_each_page:(fun (hash, content) ->
+              Dac_preimage_data_manager.Reveal_hash.save_bytes
+                page_store
+                hash
+                content)
+            data
+    in
+    let* signature, witnesses =
+      Lwt.map Environment.wrap_tzresult
+      @@ Dac_manager.Reveal_hash.Signatures.sign_root_hash
+           cctxt
+           dac_sk_uris
+           root_hash
+    in
+    let*? external_message =
+      match
+        Dac_manager.Reveal_hash.External_message.make
+          root_hash
+          signature
+          witnesses
+      with
+      | Ok external_message -> Ok external_message
+      | Error _ -> error Cannot_construct_external_message
+    in
+    return (root_hash, external_message)
 end
 
 let () = Dac_plugin.register (module Plugin)

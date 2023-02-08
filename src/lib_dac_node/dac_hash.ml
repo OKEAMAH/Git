@@ -31,6 +31,10 @@ module type Reveal_hash_mapper = sig
 
   val to_reveal_hash : t -> reveal_hash
 
+  val to_hex : t -> string
+
+  val of_hex : string -> t option
+
   val encoding : t Data_encoding.t
 end
 
@@ -47,4 +51,18 @@ module Make (H : Dac_plugin.Protocol_reveal_hash) = struct
     Data_encoding.Binary.of_bytes_exn H.encoding dac_hash
 
   let encoding = Data_encoding.conv to_reveal_hash of_reveal_hash H.encoding
+
+  let to_hex hash =
+    let (`Hex hash) =
+      (* The [encoding] of a hash here never, so [to_string_exn] is safe. *)
+      Hex.of_string @@ Data_encoding.Binary.to_string_exn encoding hash
+    in
+    hash
+
+  let of_hex hex =
+    let open Option_syntax in
+    let* hash = Hex.to_bytes (`Hex hex) in
+    Data_encoding.Binary.of_bytes_opt encoding hash
 end
+
+(** Sc_rollup_reveal_hash.encoding *)

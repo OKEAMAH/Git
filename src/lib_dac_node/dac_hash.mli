@@ -30,7 +30,7 @@ type t
 
 (** Operations of [Dac_hash.t] that relate to [Protocol.Sc_rollup_reveal_hash.t]. *)
 module type Reveal_hash_mapper = sig
-  (** Protocol reveal hash type typically coming from 
+  (** Protocol reveal hash type typically coming from
       [Protocol.Sc_rollup_reveal_hash.t].
   *)
   type reveal_hash
@@ -40,6 +40,10 @@ module type Reveal_hash_mapper = sig
 
   (** Derives a [reveal_hash] from [Dac_hash.t]. *)
   val to_reveal_hash : t -> reveal_hash
+
+  val to_hex : t -> string
+
+  val of_hex : string -> t option
 
   val encoding : t Data_encoding.t
 end

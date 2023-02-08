@@ -34,6 +34,13 @@ module type T = sig
 
   module Proto : Registered_protocol.T
 
+  val serialize_payload :
+    #Tezos_client_base.Client_context.wallet ->
+    Tezos_client_base.Client_keys.aggregate_sk_uri option trace ->
+    string ->
+    bytes * string ->
+    (Protocol_reveal_hash.t * bytes) tzresult Lwt.t
+
   module RPC : sig
     val rpc_services :
       reveal_data_dir:string ->
