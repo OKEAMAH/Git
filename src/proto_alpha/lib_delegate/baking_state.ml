@@ -287,16 +287,22 @@ type elected_block = {
 type level_state = {
   current_level : int32;
   latest_proposal : proposal;
+      (** Last received valid proposal, that is, with a higher round
+          than that of the previous proposal, if any. *)
   is_latest_proposal_applied : bool;
   delayed_prequorum :
     (Operation_worker.candidate * Kind.preendorsement operation list) option;
   (* Last proposal received where we injected an endorsement (thus we
      have seen 2f+1 preendorsements) *)
+  previous_proposal : proposal option;
+      (** Previous proposal received for the current level, if any. *)
   locked_round : locked_round option;
-  (* Latest payload where we've seen a proposal reach 2f+1 preendorsements *)
+      (** Last "proposal" received for which we injected an endorsement. *)
   endorsable_payload : endorsable_payload option;
-  (* Block for which we've seen 2f+1 endorsements and that we may bake onto *)
+      (** Last "proposal" received for which we have seen 2f+1 preendorsements.
+          (The endorsable round is thus always bigger or equal to the locked round.)  *)
   elected_block : elected_block option;
+      (** Block for which we've seen 2f+1 endorsements and that we may bake onto. *)
   delegate_slots : delegate_slots;
   next_level_delegate_slots : delegate_slots;
   next_level_proposed_round : Round.t option;
@@ -822,6 +828,7 @@ let pp_level_state fmt
       latest_proposal;
       is_latest_proposal_applied;
       delayed_prequorum;
+      previous_proposal;
       locked_round;
       endorsable_payload;
       elected_block;
@@ -832,14 +839,17 @@ let pp_level_state fmt
   Format.fprintf
     fmt
     "@[<v 2>Level state:@ current level: %ld@ @[<v 2>proposal (applied:%b, \
-     delayed prequorum:%b):@ %a@]@ locked round: %a@ endorsable payload: %a@ \
-     elected block: %a@ @[<v 2>own delegate slots:@ %a@]@ @[<v 2>next level \
-     own delegate slots:@ %a@]@ next level proposed round: %a@]"
+     delayed prequorum:%b):@ %a@]@ @[<v 2>previous proposal:@ %a@]@ locked \
+     round: %a@ endorsable payload: %a@ elected block: %a@ @[<v 2>own delegate \
+     slots:@ %a@]@ @[<v 2>next level own delegate slots:@ %a@]@ next level \
+     proposed round: %a@]"
     current_level
     is_latest_proposal_applied
     (Option.is_some delayed_prequorum)
     pp_proposal
     latest_proposal
+    (pp_option pp_proposal)
+    previous_proposal
     (pp_option pp_locked_round)
     locked_round
     (pp_option pp_endorsable_payload)

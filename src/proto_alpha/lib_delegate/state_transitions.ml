@@ -110,6 +110,7 @@ let update_proposal ~is_proposal_applied state proposal =
       state.level_state with
       is_latest_proposal_applied;
       latest_proposal = proposal;
+      previous_proposal = None;
     }
   in
   Lwt.return {state with level_state = new_level_state}
@@ -271,6 +272,14 @@ let rec handle_proposal ~is_proposal_applied state (new_proposal : proposal) =
           in
           may_update_proposal ~is_proposal_applied new_state new_proposal
           >>= fun new_state ->
+          (* We necessarily have a previous latest proposal that is on
+             the same level and on an inferior round, we can update
+             the previous proposal. *)
+          let previous_proposal = Some state.level_state.latest_proposal in
+          let new_level_state =
+            {new_state.level_state with previous_proposal}
+          in
+          let new_state = {new_state with level_state = new_level_state} in
           (* The proposal is valid but maybe we already locked on a payload *)
           match new_state.level_state.locked_round with
           | Some locked_round -> (
@@ -319,6 +328,7 @@ let rec handle_proposal ~is_proposal_applied state (new_proposal : proposal) =
           latest_proposal = new_proposal;
           is_latest_proposal_applied = is_proposal_applied;
           delayed_prequorum = None;
+          previous_proposal = None;
           (* Unlock values *)
           locked_round = None;
           endorsable_payload = None;

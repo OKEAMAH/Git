@@ -132,6 +132,7 @@ type level_state = {
   is_latest_proposal_applied : bool;
   delayed_prequorum :
     (Operation_worker.candidate * Kind.preendorsement operation list) option;
+  previous_proposal : proposal option;
   locked_round : locked_round option;
   endorsable_payload : endorsable_payload option;
   elected_block : elected_block option;

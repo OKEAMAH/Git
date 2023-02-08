@@ -693,6 +693,7 @@ let create_initial_state cctxt ?(synchronize = true) ~chain config
       is_latest_proposal_applied =
         true (* this proposal is expected to be the current head *);
       delayed_prequorum = None;
+      previous_proposal = None;
       locked_round = None;
       endorsable_payload = None;
       elected_block;
