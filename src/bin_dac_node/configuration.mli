@@ -54,7 +54,13 @@ type legacy = {
       message valid. *)
   dac_members_addresses : Tezos_crypto.Aggregate_signature.public_key_hash list;
       (** The list of tz4 addresses denoting the dac members. *)
+  coordinator_config_opt : dac_cctxt_config option;
+      (**  When running integration tests with multiple dac nodes in the
+           [legacy] mode [coordinator_config_opt] is used to  create
+           [Dac_node_client.cctxt] for the node that mimics coordinator. *)
 }
+
+and dac_cctxt_config = {host : string; port : int}
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4707.
    Remove legacy mode once other DAC operating modes are fully functional. *)
