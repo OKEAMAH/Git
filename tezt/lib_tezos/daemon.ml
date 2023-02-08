@@ -243,7 +243,7 @@ module Make (X : PARAMETERS) = struct
     events
 
   let read_json_event daemon even_input buff =
-    let max_event_size = 1024 * 1024 (* 32 * 1MB *) in
+    let max_event_size = 1024 * 1024 (* 1MB *) in
     let origin = "event from " ^ daemon.name in
     let rec loop () =
       let* line = Lwt_io.read_line_opt even_input in
