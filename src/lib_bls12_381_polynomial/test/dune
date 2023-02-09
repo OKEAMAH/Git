@@ -1,10 +1,18 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
 (executable
  (name main)
- (libraries qcheck-alcotest tezos-bls12-381-polynomial polynomial))
+ (libraries
+  alcotest
+  qcheck-alcotest
+  polynomial
+  bls12-381
+  tezos-bls12-381-polynomial-internal))
 
 (rule
  (alias runtest)
- (package tezos-bls12-381-polynomial)
+ (package tezos-bls12-381-polynomial-internal)
  (deps
   srs_zcash_g1_5
   test_vectors/fft_test_vector_g1_2
@@ -13,5 +21,4 @@
   test_vectors/ifft_test_vector_g2_2
   test_vectors/test_vector_g1_2
   test_vectors/test_vector_g2_2)
- (action
-  (run %{exe:main.exe})))
+ (action (run %{dep:./main.exe})))

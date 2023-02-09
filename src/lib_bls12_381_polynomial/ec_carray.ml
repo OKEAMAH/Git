@@ -25,10 +25,9 @@
 
 module type Stubs_sig = sig
   type fr_array
+
   type ec_array
 
-  val evaluation_ecfft_inplace :
-    ec_array -> domain:fr_array -> log:int -> log_degree:int -> unit
   (** [evaluation_ecfft_inplace points domain log log_degree] performs the ECFTT.
 
   requires:
@@ -36,9 +35,9 @@ module type Stubs_sig = sig
   - [size domain = 2^log]
   - [domain = [one; g; ..; g^{n-1}]] where [g] is a primitive
   [n]-th root of unity and [n = 2^log] (as done by {!Domain.Stubs.compute_domain}) *)
+  val evaluation_ecfft_inplace :
+    ec_array -> domain:fr_array -> log:int -> log_degree:int -> unit
 
-  val interpolation_ecfft_inplace :
-    ec_array -> domain:fr_array -> log:int -> unit
   (** [interpolation_ecfft_inplace p domain log] performs the inverse ECFFT.
 
   requires:
@@ -46,22 +45,24 @@ module type Stubs_sig = sig
   - [size domain = 2^log]
   - [domain = [one; g; ..; g^{n-1}]] where [g] is a primitive
   [n]-th root of unity and [n = 2^log] (as done by {!Domain.Stubs.compute_domain}) *)
+  val interpolation_ecfft_inplace :
+    ec_array -> domain:fr_array -> log:int -> unit
 
-  val add_arrays_inplace : ec_array -> ec_array -> int -> unit
   (** [add_arrays_inplace a b size] writes the element-wise sum of the input
       vectors [a] and [b] into [a].
 
    requires:
    - [size a = size b = size] *)
+  val add_arrays_inplace : ec_array -> ec_array -> int -> unit
 
-  val mul_arrays :
-    ec_array array -> fr_array array -> ec_array array -> int * int -> unit
   (** [mul_arrays evaluations arrays (dim1, dim2)] computes the EC point multiplication 
    given the scalar multipliers [evaluations] and the points [arrays].
 
    requires:
    - [size evaluations = size arrays = dim1]
    - [size evaluations.(i) = size arrays.(i) = dim2] for i=0, ..., dim1-1 *)
+  val mul_arrays :
+    ec_array array -> fr_array array -> ec_array array -> int * int -> unit
 end
 
 module type EC_carray_sig = sig
@@ -69,7 +70,6 @@ module type EC_carray_sig = sig
 
   type domain
 
-  val evaluation_ecfft_inplace : domain:domain -> points:t -> unit
   (** [evaluation_ecfft_inplace domain points] computes the ECFFT.
   [domain] can be obtained using {!Domain.build}.
 
@@ -82,8 +82,8 @@ module type EC_carray_sig = sig
   Note:
   - size of domain must be a power of two
   - degree of polynomial must be strictly less than the size of domain *)
+  val evaluation_ecfft_inplace : domain:domain -> points:t -> unit
 
-  val interpolation_ecfft_inplace : domain:domain -> points:t -> unit
   (** [interpolation_ecfft_inplace domain points] computes the inverse ECFFT.
   [domain] can be obtained using {!Domain.build}.
 
@@ -92,16 +92,17 @@ module type EC_carray_sig = sig
   Note:
   - size of domain must be a power of two
   - size of a polynomial must be equal to size of domain *)
+  val interpolation_ecfft_inplace : domain:domain -> points:t -> unit
 
-  val add_arrays_inplace : t -> t -> unit
   (** [add_arrays_inplace a b] writes the element-wise sum of the input
       vectors [a] and [b] into [a] *)
+  val add_arrays_inplace : t -> t -> unit
 
   type evaluations
 
-  val mul_arrays : evaluations:evaluations array -> arrays:t array -> t array
   (** [mul_arrays evaluations arrays] computes the EC point multiplication 
    given the scalar multipliers [evaluations] and the points [arrays] *)
+  val mul_arrays : evaluations:evaluations array -> arrays:t array -> t array
 end
 
 module Make
@@ -127,14 +128,17 @@ module Make
       let log = Z.log2 (Z.of_int (length points)) in
       let n_domain = Domain.length domain in
       if not (Helpers.is_power_of_two n_domain) then
-        raise @@ Invalid_argument "Size of domain should be a power of 2.";
+        raise @@ Invalid_argument "Size of domain should be a power of 2." ;
       if not (degree < n_domain) then
         raise
         @@ Invalid_argument
-             "Degree of poly should be strictly less than domain size.";
+             "Degree of poly should be strictly less than domain size." ;
       let log_degree = Z.log2up (Z.of_int (degree + 1)) in
-      Stubs.evaluation_ecfft_inplace points ~domain:(Domain.to_carray domain)
-        ~log ~log_degree
+      Stubs.evaluation_ecfft_inplace
+        points
+        ~domain:(Domain.to_carray domain)
+        ~log
+        ~log_degree
 
   let interpolation_ecfft_inplace ~domain ~points =
     if EC_point_array.degree points = -1 then ()
@@ -143,12 +147,14 @@ module Make
       let log = Z.log2 (Z.of_int n) in
       let n_domain = Domain.length domain in
       if not (Helpers.is_power_of_two n_domain) then
-        raise @@ Invalid_argument "Size of domain should be a power of 2.";
+        raise @@ Invalid_argument "Size of domain should be a power of 2." ;
       let n_points = length points in
       if not (n_points = n_domain) then
         raise
-        @@ Invalid_argument "Size of coefficients should be same as domain.";
-      Stubs.interpolation_ecfft_inplace points ~domain:(Domain.to_carray domain)
+        @@ Invalid_argument "Size of coefficients should be same as domain." ;
+      Stubs.interpolation_ecfft_inplace
+        points
+        ~domain:(Domain.to_carray domain)
         ~log
 
   let add_arrays_inplace a b =
@@ -157,7 +163,7 @@ module Make
     if a_len <> b_len then
       raise
         (Invalid_argument
-           "add_arrays_inplace: input arrays must have same length");
+           "add_arrays_inplace: input arrays must have same length") ;
     Stubs.add_arrays_inplace a b a_len
 
   type evaluations = Evaluations.t
@@ -168,13 +174,14 @@ module Make
     let arrays_number = Array.length arrays in
     if arrays_number <> Array.length evaluations then
       raise
-        (Invalid_argument "mul_arrays_inplace: arrays must have same length");
+        (Invalid_argument "mul_arrays_inplace: arrays must have same length") ;
     let array_size = length arrays.(0) in
     let res = Array.init arrays_number (fun _ -> allocate array_size) in
-    Stubs.mul_arrays res
+    Stubs.mul_arrays
+      res
       (Array.map Evaluations_unsafe.to_carray evaluations)
       arrays
-      (arrays_number, array_size);
+      (arrays_number, array_size) ;
     res
 end
 
@@ -188,7 +195,9 @@ module G1_Elt = struct
   let size = G1.size_in_bytes / 2 * 3
 
   let zero = G1.zero
+
   let allocate () = G1.(copy zero)
+
   let eq = G1.eq
 end
 
@@ -199,7 +208,9 @@ module G2_Elt = struct
   let size = G2.size_in_bytes / 2 * 3
 
   let zero = G2.zero
+
   let allocate () = G2.(copy zero)
+
   let eq = G2.eq
 end
 
@@ -208,6 +219,7 @@ module G2_array_internal = Carray.Make (G2_Elt)
 
 module Stubs_g1 = struct
   type fr_array = Fr_carray.t
+
   type ec_array = G1_array_internal.t
 
   external evaluation_ecfft_inplace :
@@ -228,6 +240,7 @@ end
 
 module Stubs_g2 = struct
   type fr_array = Fr_carray.t
+
   type ec_array = G2_array_internal.t
 
   external evaluation_ecfft_inplace :

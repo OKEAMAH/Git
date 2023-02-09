@@ -93,10 +93,6 @@ let bls12_381_signature =
   let version = V.exactly "1.0.0" in
   external_lib ~js_compatible:true "bls12-381-signature" version
 
-let bls12_381_polynomial =
-  let version = V.(at_least "1.0.1" && less_than "2.0.0") in
-  external_lib ~js_compatible:false "tezos-bls12-381-polynomial" version
-
 let camlzip = external_lib "camlzip" V.(at_least "1.11" && less_than "1.12")
 
 let caqti = external_lib "caqti" V.True
@@ -250,6 +246,9 @@ let plompiler =
 
 let plonk = external_lib "tezos-plonk" V.(at_least "1.0.1" && less_than "2.0.0")
 
+let polynomial =
+  external_lib "polynomial" V.(at_least "0.4.0" && less_than "0.5.0")
+
 let ptime = external_lib ~js_compatible:true "ptime" V.(at_least "1.0.0")
 
 let ppx_import = external_lib "ppx_import" V.True
@@ -257,6 +256,8 @@ let ppx_import = external_lib "ppx_import" V.True
 let ppx_deriving = external_lib "ppx_deriving" V.True
 
 let ppx_deriving_show = external_sublib ppx_deriving "ppx_deriving.show"
+
+let ppx_repr = external_lib "ppx_repr" V.(at_least "0.6.0")
 
 let ptime_clock_os = external_sublib ~js_compatible:true ptime "ptime.clock.os"
 
@@ -442,31 +443,6 @@ let octez_stdlib =
       [[S "javascript_files"; G (Dune.of_atom_list ["tzBytes_js.js"])]]
     ~inline_tests:ppx_expect
     ~foreign_stubs:{language = C; flags = []; names = ["tzBytes_c"]}
-
-let _octez_stdlib_tests =
-  tests
-    [
-      "test_bits";
-      "test_tzList";
-      "test_bounded_heap";
-      "test_tzString";
-      "test_fallbackArray";
-      "test_functionalArray";
-      "test_hash_queue";
-      "test_tzBytes";
-    ]
-    ~path:"src/lib_stdlib/test"
-    ~opam:"tezos-stdlib"
-    ~modes:[Native; JS]
-    ~deps:
-      [
-        octez_stdlib |> open_;
-        alcotest;
-        bigstring;
-        octez_test_helpers |> open_;
-        qcheck_alcotest;
-      ]
-    ~js_compatible:true
 
 let _octez_stdlib_test_unix =
   tests
@@ -860,6 +836,54 @@ let _octez_crypto_tests_unix =
         octez_test_helpers |> open_;
       ]
 
+let octez_bls12_381_polynomial_internal =
+  public_lib
+    "tezos-bls12-381-polynomial-internal"
+    ~path:"src/lib_bls12_381_polynomial"
+    ~synopsis:
+      "Polynomials over BLS12-381 finite field - Temporary vendored version of \
+       Octez"
+    ~c_library_flags:["-Wall"; "-Wextra"; ":standard"]
+    ~preprocess:[pps ppx_repr]
+    ~deps:[bls12_381; ppx_repr; bigstringaf]
+    ~js_compatible:false
+    ~foreign_stubs:
+      {
+        language = C;
+        flags = [];
+        names =
+          [
+            "caml_bls12_381_polynomial_internal_polynomial_stubs";
+            "caml_bls12_381_polynomial_internal_srs_stubs";
+            "bls12_381_polynomial_internal";
+          ];
+      }
+
+let _octez_bls12_381_polynomial_tests =
+  tests
+    ["main"]
+    ~path:"src/lib_bls12_381_polynomial/test"
+    ~opam:"tezos-bls12-381-polynomial-internal"
+    ~deps:
+      [
+        alcotest;
+        qcheck_alcotest;
+        polynomial;
+        bisect_ppx;
+        bls12_381;
+        octez_bls12_381_polynomial_internal;
+      ]
+    ~dep_files:
+      [
+        "srs_zcash_g1_5";
+        "test_vectors/fft_test_vector_g1_2";
+        "test_vectors/fft_test_vector_g2_2";
+        "test_vectors/ifft_test_vector_g1_2";
+        "test_vectors/ifft_test_vector_g2_2";
+        "test_vectors/test_vector_g1_2";
+        "test_vectors/test_vector_g2_2";
+      ]
+
 let octez_crypto_dal =
   public_lib
     "tezos-crypto-dal"
@@ -872,7 +896,7 @@ let octez_crypto_dal =
         octez_error_monad |> open_;
         data_encoding |> open_;
         octez_crypto;
-        bls12_381_polynomial;
+        octez_bls12_381_polynomial_internal;
         lwt_unix;
       ]
 
@@ -890,7 +914,7 @@ let _octez_crypto_dal_tests =
         data_encoding |> open_;
         alcotest;
         qcheck_alcotest;
-        bls12_381_polynomial;
+        octez_bls12_381_polynomial_internal;
         octez_test_helpers;
       ]
 
@@ -3436,6 +3460,31 @@ let _octez_scoru_wasm_fast_tests =
         alcotest_lwt;
       ]
     ~preprocess:[staged_pps [ppx_import; ppx_deriving_show]]
+
+let _octez_stdlib_tests =
+  tests
+    [
+      "test_bits";
+      "test_tzList";
+      "test_bounded_heap";
+      "test_tzString";
+      "test_fallbackArray";
+      "test_functionalArray";
+      "test_hash_queue";
+      "test_tzBytes";
+    ]
+    ~path:"src/lib_stdlib/test"
+    ~opam:"tezos-stdlib"
+    ~modes:[Native; JS]
+    ~deps:
+      [
+        octez_stdlib |> open_;
+        alcotest;
+        bigstring;
+        octez_test_helpers |> open_;
+        qcheck_alcotest;
+      ]
+    ~js_compatible:true
 
 (* PROTOCOL PACKAGES *)
 
