@@ -260,7 +260,7 @@ module Make (X : PARAMETERS) = struct
 
   (* Turn `Info to `Debug to make the bug more frequent*)
   let run ?(env = String_map.empty) ?runner ?(on_terminate = fun _ -> unit)
-      ?(event_level = `Info) ?(event_sections_levels = []) daemon session_state
+      ?(event_level = `Debug) ?(event_sections_levels = []) daemon session_state
       arguments =
     ignore (event_level : Level.default_level) ;
     (match daemon.status with
