@@ -3110,6 +3110,17 @@ let tezt_tezos =
       ]
     ~cram:true
 
+let _tezt_1mtps_orchestrator =
+  public_exe
+    "octez-1mtps-orchestrator"
+    ~internal_name:"main"
+    ~path:"src/bin_1mtps_demo_orchestrator"
+    ~synopsis:"Run a bunch of nodes locally"
+    ~bisect_ppx:false
+    ~static:false
+    ~deps:[tezt_lib; tezt_tezos]
+    ~cram:true
+
 let _tezt_self_tests =
   public_exe
     "tezt-self-tests"
