@@ -201,7 +201,14 @@ module Make (X : PARAMETERS) = struct
       | None -> return None
       | Some line -> (
           Buffer.add_string buff line ;
-          match JSON.parse_opt ~origin (Buffer.contents buff) with
+          let content = Buffer.contents buff in
+          let num_events =
+            List.length (Str.split (Str.regexp "fd-sink-item.v0") content) - 1
+          in
+          if num_events > 1 then (
+            Format.eprintf "# %s@." content ;
+            assert false) ;
+          match JSON.parse_opt ~origin content with
           | None when Buffer.length buff >= max_event_size ->
               Format.ksprintf
                 failwith
@@ -251,6 +258,7 @@ module Make (X : PARAMETERS) = struct
             in
             loop [] events)
 
+  (* Turn `Info to `Debug to make the bug more frequent*)
   let run ?(env = String_map.empty) ?runner ?(on_terminate = fun _ -> unit)
       ?(event_level = `Info) ?(event_sections_levels = []) daemon session_state
       arguments =

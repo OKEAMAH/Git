@@ -3096,6 +3096,7 @@ let tezt_tezos =
         tezt_performance_regression |> open_;
         uri;
         hex;
+        str;
         octez_crypto_dal;
         octez_base;
         octez_base_unix;
