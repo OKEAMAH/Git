@@ -22,21 +22,46 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+open Tezos_scoru_wasm_fast
+module P = Pool.Make (Pool.LeastRecentlyUsed)
 
-(** Testing
-    -------
-    Component:    Lib_scoru_wasm_fast
-    Invocation:   dune runtest src/lib_scoru_wasm/fast
-    Subject:      Tests for the tezos-scoru-wasm library
-*)
+let int_range a b = Stdlib.List.init (b - a) (fun x -> a + x)
 
-let () =
-  Alcotest_lwt.run
-    "test lib scoru-wasm-fast"
-    [
-      ("Memory access", Test_memory_access.tests);
-      ("Fast Execution", Test_fast.tests);
-      ("Fast Execution cache", Test_fast_cache.tests);
-      ("Pool", Test_pool.tests);
-    ]
-  |> Lwt_main.run
+let ints_to_str lst =
+  let s = String.concat "," @@ List.map Int.to_string lst in
+  "[" ^ s ^ "]"
+
+let ints_sort = List.sort Int.compare
+
+let test_concurrent_access _switch () =
+  let collisions = 100 in
+  let slots = 3 in
+  let pool = P.init slots in
+  let computation n =
+    let k = n mod slots in
+    let key = "key_" ^ Int.to_string k in
+    Printf.printf "key=%s, n=%d\n" key n ;
+    let ctor () = n in
+    pool |> P.use key ctor @@ fun v -> Lwt.return v
+  in
+  let open Lwt.Syntax in
+  let* results =
+    int_range 0 (slots * collisions) |> List.map computation |> Lwt.all
+  in
+
+  Printf.printf "lst=%s\n\n" @@ ints_to_str results ;
+  let sorted_results = ints_sort results in
+  let expected_results =
+    ints_sort @@ List.concat_map (List.repeat collisions) @@ int_range 0 slots
+  in
+  Printf.printf "expected=%s\n\n" @@ ints_to_str results ;
+  assert (sorted_results = expected_results) ;
+  Lwt.return ()
+
+let tests : unit Alcotest_lwt.test_case list =
+  [
+    Alcotest_lwt.test_case
+      "test concurrent access to the same element"
+      `Quick
+      test_concurrent_access;
+  ]
