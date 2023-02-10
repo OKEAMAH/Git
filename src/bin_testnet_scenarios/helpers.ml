@@ -63,3 +63,39 @@ let setup_octez_node ?runner snapshot =
   let* () = Client.bootstrapped client in
   Log.info "Node bootstrapped" ;
   return (client, node)
+
+let deploy_runnable ~(runner : Runner.t) ?(r = false) local_file dst =
+  let identity =
+    Option.fold ~none:[] ~some:(fun i -> ["-i"; i]) runner.ssh_id
+  in
+  let recursive = if r then ["-r"] else [] in
+  let port =
+    Option.fold
+      ~none:[]
+      ~some:(fun p -> ["-P"; Format.sprintf "%d" p])
+      runner.ssh_port
+  in
+  let dst =
+    Format.(
+      sprintf
+        "%s%s:%s"
+        (Option.fold ~none:"" ~some:(fun u -> sprintf "%s@" u) runner.ssh_user)
+        runner.address
+        dst)
+  in
+  let process =
+    Process.spawn "scp" (identity @ recursive @ [local_file] @ port @ [dst])
+  in
+  Runnable.
+    {
+      value = process;
+      run =
+        (fun process ->
+          let _ = Process.check process in
+          Lwt.return ());
+    }
+
+let deploy ~runner ?r local_file dst =
+  let open Runnable.Syntax in
+  let*! () = deploy_runnable ~runner ?r local_file dst in
+  Lwt.return ()

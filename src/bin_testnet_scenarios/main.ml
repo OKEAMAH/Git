@@ -27,5 +27,6 @@ open Tezt
 
 let () =
   Sc_rollup.register () ;
+  Demo_1mtps.register () ;
 
   Test.run ()

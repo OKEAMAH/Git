@@ -40,3 +40,5 @@ val wait_for_funded_key :
     from the snapshot stored at [snapshot_path], and waits for it to be
     bootstrapped. *)
 val setup_octez_node : ?runner:Runner.t -> string -> (Client.t * Node.t) Lwt.t
+
+val deploy : runner:Runner.t -> ?r:bool -> string -> string -> unit Lwt.t
