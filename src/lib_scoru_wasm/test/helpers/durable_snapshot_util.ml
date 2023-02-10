@@ -72,6 +72,10 @@ module type Testable_durable_sig = sig
     t -> ?edit_readonly:bool -> key -> int64 -> string -> t Lwt.t
 
   val read_value_exn : t -> key -> int64 -> int64 -> string Lwt.t
+
+  module Internal_for_tests : sig
+    val key_to_string : key -> string
+  end
 end
 
 module type Encodable = sig
@@ -458,6 +462,373 @@ module Make_paired_durable
         add_tree tree_s @@ Snapshot.read_value_exn tree_s key_s offset len)
       (fun () ->
         add_tree tree_c @@ Current.read_value_exn tree_c key_c offset len)
+
+  module Internal_for_tests = struct
+    let key_to_string (_k, k) = Current.Internal_for_tests.key_to_string k
+  end
+end
+
+(* Convenient list of all testable operations *)
+module Durable_operation = struct
+  (* GADT type, each constructor's type represents a type parameters
+     which are taken as input of corresponding operation *)
+  type _ t =
+    (* key *)
+    | Find_value : string t
+    (* edit_readonly, key, value *)
+    | Find_value_exn : string t
+    (* edit_readonly, key, value *)
+    | Set_value_exn : (bool * string * string) t
+    (* edit_readonly, key_from, key_to *)
+    | Copy_tree_exn : (bool * string * string) t
+    (* key_from, key_to *)
+    | Move_tree_exn : (string * string) t
+    (* edit_readonly, key *)
+    | Delete : (bool * string) t
+    (* key *)
+    | List : string t
+    (* key *)
+    | Count_subtrees : string t
+    (* key, idx*)
+    | Substree_name_at : (string * int) t
+    (* key *)
+    | Hash : string t
+    (* key *)
+    | Hash_exn : string t
+    (* edit_readonly, key, offset, value *)
+    | Write_value_exn : (bool * string * int64 * string) t
+    (* key, offset, len *)
+    | Read_value_exn : (string * int64 * int64) t
+
+  let pp (type a) fmt (x : a t) =
+    match x with
+    | Find_value -> Format.fprintf fmt "find_value"
+    | Find_value_exn -> Format.fprintf fmt "find_value_exn"
+    | Set_value_exn -> Format.fprintf fmt "set_value_exn"
+    | Copy_tree_exn -> Format.fprintf fmt "copy_tree_exn"
+    | Move_tree_exn -> Format.fprintf fmt "move_tree_exn"
+    | Delete -> Format.fprintf fmt "delete"
+    | List -> Format.fprintf fmt "list"
+    | Count_subtrees -> Format.fprintf fmt "count_subtrees"
+    | Substree_name_at -> Format.fprintf fmt "substree_name_at"
+    | Hash -> Format.fprintf fmt "hash"
+    | Hash_exn -> Format.fprintf fmt "hash_exn"
+    | Write_value_exn -> Format.fprintf fmt "write_value_exn"
+    | Read_value_exn -> Format.fprintf fmt "read_value_exn"
+
+  type some_op = Some_op : 'a t -> some_op
+
+  let pp_some_op fmt (x : some_op) = match x with Some_op op -> pp fmt op
+
+  type some_input = Some_input : 'a t * 'a -> some_input
+
+  let pp_some_input fmt (x : some_input) =
+    match x with
+    | Some_input (Find_value, key) ->
+        Format.fprintf fmt "%a(%s)" pp Find_value key
+    | Some_input (Find_value_exn, key) ->
+        Format.fprintf fmt "%a(%s)" pp Find_value_exn key
+    | Some_input (Set_value_exn, (edit_readonly, key, _value)) ->
+        Format.fprintf
+          fmt
+          "%a(edit_readonly: %a, key: %s, value: %s)"
+          pp
+          Set_value_exn
+          Fmt.bool
+          edit_readonly
+          key
+          "<value>"
+    | Some_input (Copy_tree_exn, (edit_readonly, from, to_)) ->
+        Format.fprintf
+          fmt
+          "%a(edit_readonly: %a, from: %s, to: %s)"
+          pp
+          Copy_tree_exn
+          Fmt.bool
+          edit_readonly
+          from
+          to_
+    | Some_input (Move_tree_exn, (from, to_)) ->
+        Format.fprintf fmt "%a(from: %s, to: %s)" pp Move_tree_exn from to_
+    | Some_input (Delete, (edit_readonly, key)) ->
+        Format.fprintf
+          fmt
+          "%a(edit_readonly: %a, key: %s)"
+          pp
+          Delete
+          Fmt.bool
+          edit_readonly
+          key
+    | Some_input (List, key) -> Format.fprintf fmt "%a(%s)" pp List key
+    | Some_input (Count_subtrees, key) ->
+        Format.fprintf fmt "%a(%s)" pp Count_subtrees key
+    | Some_input (Substree_name_at, (key, idx)) ->
+        Format.fprintf fmt "%a(key: %s, index: %d)" pp Substree_name_at key idx
+    | Some_input (Hash, key) -> Format.fprintf fmt "%a(%s)" pp Hash key
+    | Some_input (Hash_exn, key) -> Format.fprintf fmt "%a(%s)" pp Hash_exn key
+    | Some_input (Write_value_exn, (edit_readonly, key, offset, _value)) ->
+        Format.fprintf
+          fmt
+          "%a(edit_readonly: %a, key: %s, offset: %Ld, value: %s)"
+          pp
+          Write_value_exn
+          Fmt.bool
+          edit_readonly
+          key
+          offset
+          "<value>"
+    | Some_input (Read_value_exn, (key, offset, len)) ->
+        Format.fprintf
+          fmt
+          "%a(key: %s, offset: %Ld, len: %Ld)"
+          pp
+          Read_value_exn
+          key
+          offset
+          len
+
+  module Map = Map.Make (struct
+    type t = some_op
+
+    let compare = Stdlib.compare
+  end)
+
+  module Set = Set.Make (struct
+    type t = some_op
+
+    let compare = Stdlib.compare
+  end)
+
+  let write_operations : some_op list =
+    [Some_op Write_value_exn; Some_op Set_value_exn]
+
+  let read_operations : some_op list =
+    [Some_op Find_value; Some_op Read_value_exn; Some_op Find_value_exn]
+
+  let structure_inspection_operations : some_op list =
+    [
+      Some_op Hash;
+      Some_op List;
+      Some_op Count_subtrees;
+      Some_op Substree_name_at;
+      Some_op Hash_exn;
+    ]
+
+  let structure_modification_operations : some_op list =
+    [Some_op Delete; Some_op Copy_tree_exn; Some_op Move_tree_exn]
+
+  let all_operations : some_op list =
+    let all =
+      List.concat
+        [
+          write_operations;
+          read_operations;
+          structure_modification_operations;
+          structure_inspection_operations;
+        ]
+    in
+    Assert.Int.equal
+      ~loc:__LOC__
+      ~msg:"Not exhaust list of durable operations"
+      (List.length all)
+      13 ;
+    all
+end
+
+(* Wrapper around tested durable which keeps track some
+   statistic, also might be used for debug tracing.
+*)
+module Traceable_durable = struct
+  module type S = sig
+    include Testable_durable_sig
+
+    val print_collected_statistic : unit -> unit
+  end
+
+  module Default_traceable_config = struct
+    let print_operations : Durable_operation.Set.t = Durable_operation.Set.empty
+
+    let count_methods_invocations = true
+  end
+
+  module type Traceable_config = module type of Default_traceable_config
+
+  module Make (Config : Traceable_config) (D : Testable_durable_sig) :
+    S with type t = D.t and type key = D.key and type cbv = D.cbv = struct
+    open Durable_operation
+
+    type st = {succ : int; fails : int}
+
+    let method_invocations : st Map.t ref = ref Durable_operation.Map.empty
+
+    let tot_method_invocations : int ref = ref 0
+
+    type t = D.t
+
+    type key = D.key
+
+    type cbv = D.cbv
+
+    let is_op_printable (op : _ Durable_operation.t) =
+      Set.mem (Some_op op) Config.print_operations
+
+    let inspect_op (type input) (op : input Durable_operation.t) (inp : input)
+        (is_succ : 'a -> bool) (operation : unit -> 'a Lwt.t) : 'a Lwt.t =
+      let inc f =
+        if Config.count_methods_invocations then
+          method_invocations :=
+            Map.update
+              (Some_op op)
+              (Option.fold
+                 ~none:(Some (f {succ = 0; fails = 0}))
+                 ~some:(fun x -> Some (f x)))
+              !method_invocations
+        else ()
+      in
+      let inc_succ () = inc (fun t -> {t with succ = t.succ + 1}) in
+      let inc_fails () = inc (fun t -> {t with fails = t.fails + 1}) in
+      tot_method_invocations := !tot_method_invocations + 1 ;
+      Lwt.try_bind
+        operation
+        (fun a ->
+          if is_succ a then inc_succ () else inc_fails () ;
+          if is_op_printable op then
+            Format.printf
+              "%4d: %a completed normally\n\n"
+              !tot_method_invocations
+              Durable_operation.pp_some_input
+              (Some_input (op, inp)) ;
+          Lwt.return a)
+        (fun exn ->
+          inc_fails () ;
+          if is_op_printable op then
+            Format.printf
+              "%4d: %a completed with an exception: %s\n\n"
+              !tot_method_invocations
+              Durable_operation.pp_some_input
+              (Some_input (op, inp))
+              (Printexc.to_string exn) ;
+          raise exn)
+
+    let encoding = D.encoding
+
+    let max_key_length = D.max_key_length
+
+    let key_of_string_exn = D.key_of_string_exn
+
+    let key_of_string_opt = D.key_of_string_opt
+
+    let find_value dur key =
+      inspect_op
+        Find_value
+        (D.Internal_for_tests.key_to_string key)
+        Option.is_some
+      @@ fun () -> D.find_value dur key
+
+    let find_value_exn dur key =
+      inspect_op
+        Find_value_exn
+        (D.Internal_for_tests.key_to_string key)
+        (Fun.const true)
+      @@ fun () -> D.find_value_exn dur key
+
+    let copy_tree_exn dur ?(edit_readonly = false) key_from key_to =
+      inspect_op
+        Copy_tree_exn
+        ( edit_readonly,
+          D.Internal_for_tests.key_to_string key_from,
+          D.Internal_for_tests.key_to_string key_to )
+        (Fun.const true)
+      @@ fun () -> D.copy_tree_exn dur ~edit_readonly key_from key_to
+
+    let move_tree_exn dur key_from key_to =
+      inspect_op
+        Move_tree_exn
+        ( D.Internal_for_tests.key_to_string key_from,
+          D.Internal_for_tests.key_to_string key_to )
+        (Fun.const true)
+      @@ fun () -> D.move_tree_exn dur key_from key_to
+
+    let list dur key =
+      inspect_op List (D.Internal_for_tests.key_to_string key) (fun l ->
+          not (List.is_empty l))
+      @@ fun () -> D.list dur key
+
+    let count_subtrees dur key =
+      inspect_op
+        Count_subtrees
+        (D.Internal_for_tests.key_to_string key)
+        (fun l -> l > 0)
+      @@ fun () -> D.count_subtrees dur key
+
+    let subtree_name_at dur key sibling_id =
+      inspect_op
+        Substree_name_at
+        (D.Internal_for_tests.key_to_string key, sibling_id)
+        (Fun.const true)
+      @@ fun () -> D.subtree_name_at dur key sibling_id
+
+    let delete ?(edit_readonly = false) dur key =
+      inspect_op
+        Delete
+        (edit_readonly, D.Internal_for_tests.key_to_string key)
+        (Fun.const true)
+      @@ fun () -> D.delete ~edit_readonly dur key
+
+    let hash dur key =
+      inspect_op Hash (D.Internal_for_tests.key_to_string key) Option.is_some
+      @@ fun () -> D.hash dur key
+
+    let hash_exn dur key =
+      inspect_op
+        Hash_exn
+        (D.Internal_for_tests.key_to_string key)
+        (Fun.const true)
+      @@ fun () -> D.hash_exn dur key
+
+    let set_value_exn dur ?(edit_readonly = false) key value =
+      inspect_op
+        Set_value_exn
+        (edit_readonly, D.Internal_for_tests.key_to_string key, value)
+        (Fun.const true)
+      @@ fun () -> D.set_value_exn dur ~edit_readonly key value
+
+    let write_value_exn dur ?(edit_readonly = false) key offset value =
+      inspect_op
+        Write_value_exn
+        (edit_readonly, D.Internal_for_tests.key_to_string key, offset, value)
+        (Fun.const true)
+      @@ fun () -> D.write_value_exn dur ~edit_readonly key offset value
+
+    let read_value_exn dur key offset len =
+      inspect_op
+        Read_value_exn
+        (D.Internal_for_tests.key_to_string key, offset, len)
+        (Fun.const true)
+      @@ fun () -> D.read_value_exn dur key offset len
+
+    module Internal_for_tests = D.Internal_for_tests
+
+    let print_collected_statistic () =
+      let collected = Map.bindings !method_invocations in
+      let sm = !tot_method_invocations in
+      let to_perc (x : int) (tot : int) =
+        Float.(div (of_int (Int.mul 100 x)) (of_int tot))
+      in
+      Format.printf "Methods invocation statistic, total invocations: %d\n" sm ;
+      List.iter
+        (fun (op, st) ->
+          Format.printf
+            "%4s%a: %.1f%% of all ops\n%8sSuccessful: %.1f%% / Fails: %.1f%%\n"
+            ""
+            Durable_operation.pp_some_op
+            op
+            (to_perc (st.succ + st.fails) sm)
+            ""
+            (to_perc st.succ (st.succ + st.fails))
+            (to_perc st.fails (st.succ + st.fails)))
+        collected
+  end
 end
 
 module Paired_durable = Make_paired_durable (Durables_equality)

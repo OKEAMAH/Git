@@ -234,4 +234,6 @@ let read_value_exn tree key offset num_bytes =
 
 module Internal_for_tests = struct
   let key_is_readonly = function Readonly _ -> true | Writeable _ -> false
+
+  let key_to_string key = String.concat "/" @@ ("" :: key_contents key)
 end
