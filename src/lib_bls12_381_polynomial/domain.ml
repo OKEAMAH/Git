@@ -27,9 +27,11 @@ module Fr = Bls12_381.Fr
 
 module Stubs = struct
   type fr = Fr.t
-
   type fr_array = Fr_carray.t
 
+  external compute_domain : fr_array -> int -> fr -> unit
+    = "caml_bls12_381_polynomial_internal_compute_domain_stubs"
+    [@@noalloc]
   (** [compute_domain res n g] computes [[one; g; ..; g^{n-1}]] for a given
   blst_fr element [g]
 
@@ -38,9 +40,10 @@ module Stubs = struct
   
   ensures:
   - [res[i] = g^i] for [i = 0..(n-1)] *)
-  external compute_domain : fr_array -> int -> fr -> unit
-    = "caml_polynomial_compute_domain_stubs"
 
+  external rescale : fr_array -> fr_array -> int -> int -> unit
+    = "caml_bls12_381_polynomial_internal_evaluations_rescale_stubs"
+    [@@noalloc]
   (** [rescale res a size_res size_a] writes the result of rescaling the evaluation
       representation of a polynomial [a] from [domain_a] of size [size_a] to
       [domain_res] of size [size_res] in [res]
@@ -51,31 +54,23 @@ module Stubs = struct
    - [size_res <= size_a]
    - [res] and [a] are disjoint
    - [size_res mod size_a = 0] *)
-  external rescale : fr_array -> fr_array -> int -> int -> unit
-    = "caml_polynomial_evaluations_rescale_stubs"
 end
 
 module Domain_impl = struct
   type scalar = Bls12_381.Fr.t
-
   type t = Fr_carray.t [@@deriving repr]
 
   let of_carray p = p
-
   let to_carray p = p
-
   let of_array = Fr_carray.of_array
-
   let to_array d = Fr_carray.to_array d
-
   let length = Fr_carray.length
-
   let get = Fr_carray.get
 
   let create n root_of_unity =
-    if n <= 1 then raise @@ Invalid_argument "create: requires n > 1" ;
+    if n <= 1 then raise @@ Invalid_argument "create: requires n > 1";
     let domain = Fr_carray.allocate n in
-    Stubs.compute_domain domain n root_of_unity ;
+    Stubs.compute_domain domain n root_of_unity;
     domain
 
   let primitive_root_of_unity = Fr_carray.primitive_root_of_unity
@@ -96,7 +91,7 @@ module Domain_impl = struct
     if n > l || log <= 0 then raise @@ Invalid_argument "subgroup: wrong order"
     else
       let dom = Fr_carray.allocate n in
-      Stubs.rescale dom d n l ;
+      Stubs.rescale dom d n l;
       dom
 
   let inverse d =
@@ -107,52 +102,51 @@ end
 
 module type Domain_sig = sig
   type scalar
-
   type t [@@deriving repr]
 
-  (** [length p] returns the length of a given array [p] *)
   val length : t -> int
+  (** [length p] returns the length of a given array [p] *)
 
-  (** [get p i] returns the [i]-th element of a given array [p] *)
   val get : t -> int -> scalar
+  (** [get p i] returns the [i]-th element of a given array [p] *)
 
+  val primitive_root_of_unity : int -> scalar
   (** [primitive_root_of_unity n] returns a primitive [n]-th root of unity,
       provided it exists *)
-  val primitive_root_of_unity : int -> scalar
 
+  val build : ?primitive_root:scalar -> int -> t
   (** [build n] computes [[one; g; ..; g^{n-1}]] where [g]
       is a primitive [n]-th root of unity *)
-  val build : ?primitive_root:scalar -> int -> t
 
+  val build_power_of_two : ?primitive_root:scalar -> int -> t
   (** [build_power_of_two log] computes [[one; g; ..; g^{n-1}]] where [g]
       is a primitive [n]-th root of unity and [n = 2^log] *)
-  val build_power_of_two : ?primitive_root:scalar -> int -> t
 
-  (** [subgroup log d] returns a subgroup of [d] of order [2^log] *)
   val subgroup : log:int -> t -> t
+  (** [subgroup log d] returns a subgroup of [d] of order [2^log] *)
 
-  (** [inverse d] returns for a domain [wⁱᵢ] its inverse domain [w⁻ⁱᵢ] *)
   val inverse : t -> scalar array
+  (** [inverse d] returns for a domain [wⁱᵢ] its inverse domain [w⁻ⁱᵢ] *)
 end
 
 module type Domain_unsafe_sig = sig
   include Domain_sig
 
+  val to_carray : t -> Fr_carray.t
   (** [to_carray d] converts [d] from type {!t} to type {!Fr_carray.t}
 
       Note: [to_carray d] doesn't create a copy of [d] *)
-  val to_carray : t -> Fr_carray.t
 
+  val of_carray : Fr_carray.t -> t
   (** [of_carray d] converts [d] from type {!Fr_carray.t} to type {!t}
 
       Note: [of_carray d] doesn't create a copy of [d] *)
-  val of_carray : Fr_carray.t -> t
 
-  (** [to_array d] converts a C array [d] to an OCaml array *)
   val to_array : t -> scalar array
+  (** [to_array d] converts a C array [d] to an OCaml array *)
 
-  (** [of_array d] converts an OCaml array [d] to a C array *)
   val of_array : scalar array -> t
+  (** [of_array d] converts an OCaml array [d] to a C array *)
 end
 
 module Domain_unsafe : Domain_unsafe_sig with type scalar = Bls12_381.Fr.t =

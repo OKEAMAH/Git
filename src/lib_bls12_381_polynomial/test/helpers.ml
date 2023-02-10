@@ -26,41 +26,14 @@
 let rec repeat n f =
   if n < 0 then ()
   else (
-    f () ;
+    f ();
     repeat (n - 1) f)
 
 let must_fail f =
   let exception Local in
   try
-    (try f () with _ -> raise Local) ;
+    (try f () with _ -> raise Local);
     assert false
   with
   | Local -> ()
   | _ -> assert false
-
-let file_mapping =
-  let t = Hashtbl.create 17 in
-  let rec loop path =
-    List.iter
-      (fun name ->
-        let full = Filename.concat path name in
-        if Sys.is_directory full then loop full else Hashtbl.add t name full)
-      (Array.to_list (Sys.readdir path))
-  in
-  let test_vectors = ["test_vectors"; "test/test_vectors"] in
-  List.iter (fun f -> if Sys.file_exists f then loop f) test_vectors ;
-  t
-
-let open_file filename =
-  let name =
-    if Sys.file_exists filename then filename
-    else
-      match Hashtbl.find file_mapping filename with
-      | exception _ ->
-          failwith
-            (Printf.sprintf
-               "Cannot open %S, the file doesn't exists in test_vectors"
-               filename)
-      | f -> f
-  in
-  open_in_bin name

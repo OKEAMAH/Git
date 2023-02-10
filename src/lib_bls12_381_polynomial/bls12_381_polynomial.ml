@@ -27,7 +27,6 @@ module type S = sig
   type scalar
 
   module Domain : Domain.Domain_sig with type scalar = scalar
-
   module Polynomial : Polynomial.Polynomial_sig with type scalar = scalar
 
   module Evaluations :
@@ -38,27 +37,13 @@ module type S = sig
 
   module Srs : sig
     module Srs_g1 : Srs.S with type polynomial = Polynomial.t
-
     module Srs_g2 : Srs.S with type polynomial = Polynomial.t
 
     type t = Srs_g1.t * Srs_g2.t
 
     val generate_insecure : int -> int -> t
-
     val check : t -> unit
   end
-
-  module G1_carray :
-    Ec_carray.EC_carray_sig
-      with type elt = Bls12_381.G1.t
-       and type domain = Domain.t
-       and type evaluations = Evaluations.t
-
-  module G2_carray :
-    Ec_carray.EC_carray_sig
-      with type elt = Bls12_381.G2.t
-       and type domain = Domain.t
-       and type evaluations = Evaluations.t
 end
 
 type scalar = Bls12_381.Fr.t
@@ -67,5 +52,3 @@ module Domain = Domain
 module Polynomial = Polynomial
 module Evaluations = Evaluations
 module Srs = Srs.Srs
-module G1_carray = Ec_carray.G1_carray
-module G2_carray = Ec_carray.G2_carray
