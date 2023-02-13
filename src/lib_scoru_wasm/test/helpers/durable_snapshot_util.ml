@@ -159,6 +159,7 @@ end
 
 module CBV = Tezos_lazy_containers.Chunked_byte_vector
 
+(* Hetero equality for chunked byte vector *)
 module CBV_equality : Hetero_equality.S with type a = CBV.t and type b = CBV.t =
 struct
   type a = CBV.t
@@ -181,22 +182,40 @@ struct
     Bytes.equal b1 b2
 end
 
-(* This module implements a durable interface for pair of
-   durable storages X.t * Y.t .
+(* Adapter of snapshotted durable interface
+   with additional cbv type, which it doesn't have *)
+module Snapshot :
+  Testable_durable_sig
+    with type cbv = Tezos_lazy_containers.Chunked_byte_vector.t = struct
+  type cbv = Tezos_lazy_containers.Chunked_byte_vector.t
+
+  include Tezos_scoru_wasm_durable_snapshot.Durable
+end
+
+(* Adapter of current durable interface
+   with additional cbv type, which it doesn't have *)
+module Current :
+  Testable_durable_sig
+    with type cbv = Tezos_lazy_containers.Chunked_byte_vector.t = struct
+  type cbv = Tezos_lazy_containers.Chunked_byte_vector.t
+
+  include Tezos_scoru_wasm.Durable
+end
+
+module Durables_equality = Make_encodable_equality (Snapshot) (Current)
+
+(* This module implements a durable testable interface
+   for a current implementation (Current module) against
+   the reference implementation (Snapshot module) .
    All the methods are performed on both durables and
    returned values and resulting durables tested on equality.
    Hence, this module aspires to mantain invariant that trees in the pair
    are always equal wrt. passed Eq_durable.
 *)
 module Make_paired_durable
-    (Snapshot : Testable_durable_sig)
-    (Current : Testable_durable_sig)
     (Eq_durable : Hetero_equality.S
                     with type a = Snapshot.t
-                     and type b = Current.t)
-    (Eq_cbv : Hetero_equality.S
-                with type a = Snapshot.cbv
-                 and type b = Current.cbv) :
+                     and type b = Current.t) :
   Testable_durable_sig
     with type t = Snapshot.t * Current.t
      and type cbv = Current.cbv = struct
@@ -400,13 +419,13 @@ module Make_paired_durable
 
   let find_value (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (Hetero_equality.make_option (module Eq_cbv))
+      (Hetero_equality.make_option (module CBV_equality))
       (add_tree tree_s @@ Snapshot.find_value tree_s key_s)
       (add_tree tree_c @@ Current.find_value tree_c key_c)
 
   let find_value_exn (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module Eq_cbv)
+      (module CBV_equality)
       (add_tree tree_s @@ Snapshot.find_value_exn tree_s key_s)
       (add_tree tree_c @@ Current.find_value_exn tree_c key_c)
 
@@ -482,3 +501,5 @@ module Make_paired_durable
       (add_tree tree_s @@ Snapshot.read_value_exn tree_s key_s offset len)
       (add_tree tree_c @@ Current.read_value_exn tree_c key_c offset len)
 end
+
+module Paired_durable = Make_paired_durable (Durables_equality)

@@ -35,33 +35,6 @@ open Tztest
 open Encodings_util
 open Durable_snapshot_util
 
-(* Adapter of snapshotted durable interface
-   with additional cbv type, which it doesn't have *)
-module Snapshotted_durable :
-  Testable_durable_sig
-    with type cbv = Tezos_lazy_containers.Chunked_byte_vector.t = struct
-  type cbv = Tezos_lazy_containers.Chunked_byte_vector.t
-
-  include Tezos_scoru_wasm_durable_snapshot.Durable
-end
-
-(* Adapter of current durable interface
-   with additional cbv type, which it doesn't have *)
-module Current_durable :
-  Testable_durable_sig
-    with type cbv = Tezos_lazy_containers.Chunked_byte_vector.t = struct
-  type cbv = Tezos_lazy_containers.Chunked_byte_vector.t
-
-  include Tezos_scoru_wasm.Durable
-end
-
-module Durables_equality =
-  Make_encodable_equality (Snapshotted_durable) (Current_durable)
-module Paired_durable =
-  Make_paired_durable (Snapshotted_durable) (Current_durable)
-    (Durables_equality)
-    (CBV_equality)
-
 let run_scenario (scenario : Paired_durable.t -> 'a Lwt.t) : 'a Lwt.t =
   let open Lwt_syntax in
   let* tree = empty_tree () in
