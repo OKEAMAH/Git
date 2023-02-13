@@ -38,31 +38,6 @@ module type Testable_durable_sig = sig
 
   type cbv
 
-  (** [key] was too long, or contained invalid steps. *)
-  exception Invalid_key of string
-
-  (** Invalid index for a subkey *)
-  exception Index_too_large of int
-
-  (** A value was not found in the durable store. *)
-  exception Value_not_found
-
-  (** A tree does not exists under key in the durable store. *)
-  exception Tree_not_found
-
-  (** Attempted to write/read to/from a value at [offset],
-    beyond the [limit]. *)
-  exception Out_of_bounds of (int64 * int64)
-
-  (** [Durable_storage.t] was empty. *)
-  exception Durable_empty
-
-  (** Cannot modify a readonly value. *)
-  exception Readonly_value
-
-  (** Cannot read from or write to more than 2,048 bytes *)
-  exception IO_too_large
-
   val encoding : t Tezos_tree_encoding.t
 
   val max_key_length : int
@@ -219,22 +194,6 @@ module Make_paired_durable
   Testable_durable_sig
     with type t = Snapshot.t * Current.t
      and type cbv = Current.cbv = struct
-  exception Invalid_key of string
-
-  exception Index_too_large = Current.Index_too_large
-
-  exception Value_not_found = Current.Value_not_found
-
-  exception Tree_not_found = Current.Tree_not_found
-
-  exception Out_of_bounds = Current.Out_of_bounds
-
-  exception Durable_empty = Current.Durable_empty
-
-  exception Readonly_value = Current.Readonly_value
-
-  exception IO_too_large = Current.IO_too_large
-
   type t = Snapshot.t * Current.t
 
   type key = Snapshot.key * Current.key
@@ -265,23 +224,24 @@ module Make_paired_durable
      we would like to be able to test exceptions
      thrown from Snapshot durable and Current on equality.
 
-     Without this funtion there are two different types of
-     exception, like:
+     Without this funtion there are two different sets of
+     exceptions:
        Tezos_scoru_wasm_durable_snapshot.Durable.Value_not_found
        Tezos_scoru_wasm.Durable.Value_not_found
      even though essentially it's the same exception.
   *)
-  let convert_durable_exception (e : exn) =
-    match e with
-    | Snapshot.Invalid_key k -> Current.Invalid_key k
-    | Snapshot.Index_too_large i -> Current.Index_too_large i
-    | Snapshot.Value_not_found -> Current.Value_not_found
-    | Snapshot.Tree_not_found -> Current.Tree_not_found
-    | Snapshot.Out_of_bounds b -> Current.Out_of_bounds b
-    | Snapshot.Durable_empty -> Current.Durable_empty
-    | Snapshot.Readonly_value -> Current.Readonly_value
-    | Snapshot.IO_too_large -> Current.IO_too_large
-    | e -> e
+  let convert_to_snapshot_durable_exception (e : exn) =
+    Tezos_scoru_wasm_durable_snapshot.Durable.(
+      match e with
+      | Tezos_scoru_wasm.Durable.Invalid_key k -> Invalid_key k
+      | Tezos_scoru_wasm.Durable.Index_too_large i -> Index_too_large i
+      | Tezos_scoru_wasm.Durable.Value_not_found -> Value_not_found
+      | Tezos_scoru_wasm.Durable.Tree_not_found -> Tree_not_found
+      | Tezos_scoru_wasm.Durable.Out_of_bounds b -> Out_of_bounds b
+      | Tezos_scoru_wasm.Durable.Durable_empty -> Durable_empty
+      | Tezos_scoru_wasm.Durable.Readonly_value -> Readonly_value
+      | Tezos_scoru_wasm.Durable.IO_too_large -> IO_too_large
+      | e -> e)
 
   let ensure_same_outcome (type a b) ((module Eq) : (a, b) Hetero_equality.t)
       (f_s : unit -> (a * Snapshot.t) Lwt.t)
@@ -310,9 +270,9 @@ module Make_paired_durable
                "Tree methods failed with different exceptions: %s vs %s"
                (Printexc.to_string error_snapshot)
                (Printexc.to_string error_current))
-          (convert_durable_exception error_snapshot)
-          error_current ;
-        raise error_current
+          error_snapshot
+          (convert_to_snapshot_durable_exception error_current) ;
+        raise error_snapshot
     | Ok (val_snapshot, tree_snapshot), Ok (val_current, tree_current) ->
         let* () = assert_values_equality val_snapshot val_current in
         let+ () = assert_trees_equality (tree_snapshot, tree_current) in
