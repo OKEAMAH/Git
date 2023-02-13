@@ -26,9 +26,9 @@
 (* This module represents comparison between two different types,
    which might be compared.
    Also it's useful for cases when
-   two types can only be compared within Lwt.
-   For now this module is used to compare Snapshotted and Current
-   durable storages.
+   two types can be only compared within Lwt.
+   For now this module is used to compare reference and current implementations
+   of durable storages.
    Also it will be handy when we replace CBV with immutable CBV
    for Durable.load_bytes.
 *)
@@ -49,44 +49,90 @@ end
 
 type ('a, 'b) t = (module S with type a = 'a and type b = 'b)
 
-(* Make Hetero_equality.t for values of the same type  *)
-let make (type x) ~pp ~(eq : x -> x -> bool) : (x, x) t =
-  (module struct
-    type a = x
+(* Make {!Hetero_equality} for values of the same type  *)
+module Make (X : sig
+  type t
 
-    type b = x
+  val pp : t Fmt.t
 
-    let to_string_a a = Lwt.return @@ Format.asprintf "%a" pp a
+  val eq : t -> t -> bool
+end) : S with type a = X.t and type b = X.t = struct
+  type a = X.t
 
-    let to_string_b = to_string_a
+  type b = X.t
 
-    let eq a b = Lwt.return @@ eq a b
-  end)
+  let to_string_a a = Lwt.return @@ Format.asprintf "%a" X.pp a
 
-(* Make (t Option.t) Hetero_equality.t for option having t Hetero_equality.t *)
-let make_option (type x y) ((module Eq) : (x, y) t) : (x Option.t, y Option.t) t
-    =
-  (module struct
-    type a = x Option.t
+  let to_string_b = to_string_a
 
-    type b = y Option.t
+  let eq a b = Lwt.return @@ X.eq a b
+end
 
-    let to_string_option ~to_string x =
-      let open Lwt_syntax in
-      let opt_formatter = Fmt.option Fmt.string in
-      match x with
-      | None -> Lwt.return @@ Format.asprintf "%a" opt_formatter None
-      | Some x ->
-          let+ s = to_string x in
-          Format.asprintf "%a" opt_formatter (Some s)
+(* Make {!Hetero_equality} from provided {!Hetero_equality} for ['t option] *)
+module Make_option (Eq : S) :
+  S with type a = Eq.a option and type b = Eq.b option = struct
+  type a = Eq.a option
 
-    let to_string_a = to_string_option ~to_string:Eq.to_string_a
+  type b = Eq.b option
 
-    let to_string_b = to_string_option ~to_string:Eq.to_string_b
+  let to_string_option ~to_string x =
+    let open Lwt_syntax in
+    let opt_formatter = Fmt.option Fmt.string in
+    match x with
+    | None -> Lwt.return @@ Format.asprintf "%a" opt_formatter None
+    | Some x ->
+        let+ s = to_string x in
+        Format.asprintf "%a" opt_formatter (Some s)
 
-    let eq x_opt y_opt =
-      match (x_opt, y_opt) with
-      | None, None -> Lwt.return_true
-      | Some x, Some y -> Eq.eq x y
-      | _, _ -> Lwt.return_false
-  end)
+  let to_string_a = to_string_option ~to_string:Eq.to_string_a
+
+  let to_string_b = to_string_option ~to_string:Eq.to_string_b
+
+  let eq x_opt y_opt =
+    match (x_opt, y_opt) with
+    | None, None -> Lwt.return_true
+    | Some x, Some y -> Eq.eq x y
+    | _, _ -> Lwt.return_false
+end
+
+module Context_hash = Make (struct
+  type t = Context_hash.t
+
+  let pp = Context_hash.pp
+
+  let eq = Context_hash.equal
+end)
+
+module Context_hash_option = Make_option (Context_hash)
+
+module Int = Make (struct
+  type t = int
+
+  let pp = Fmt.int
+
+  let eq = ( = )
+end)
+
+module String_list = Make (struct
+  type t = string list
+
+  let pp = Fmt.list ~sep:Fmt.semi Fmt.string
+
+  let eq = List.equal String.equal
+end)
+
+module String = Make (struct
+  type t = string
+
+  let pp = Fmt.string
+
+  let eq = String.equal
+end)
+
+module Unit = Make (struct
+  type t = unit
+
+  let pp fmt () = Format.fprintf fmt "unit"
+
+  let eq _ _ = true
+end)

@@ -157,6 +157,8 @@ struct
     Bytes.equal b1 b2
 end
 
+module CBV_equality_option = Hetero_equality.Make_option (CBV_equality)
+
 (* Adapter of snapshotted durable interface
    with additional cbv type, which it doesn't have *)
 module Snapshot :
@@ -296,9 +298,7 @@ module Make_paired_durable
     let add_unit r = ((), r) in
     let+ _, trees =
       ensure_same_outcome
-        (Hetero_equality.make
-           ~pp:(fun fmt () -> Format.fprintf fmt "unit")
-           ~eq:(fun _ _ -> true))
+        (module Hetero_equality.Unit)
         (fun () -> Lwt.map add_unit @@ f_s ())
         (fun () -> Lwt.map add_unit @@ f_c ())
     in
@@ -379,7 +379,7 @@ module Make_paired_durable
 
   let find_value (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (Hetero_equality.make_option (module CBV_equality))
+      (module CBV_equality_option)
       (add_tree tree_s @@ Snapshot.find_value tree_s key_s)
       (add_tree tree_c @@ Current.find_value tree_c key_c)
 
@@ -405,21 +405,19 @@ module Make_paired_durable
 
   let list (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (Hetero_equality.make
-         ~pp:(Fmt.list Fmt.string)
-         ~eq:(List.equal String.equal))
+      (module Hetero_equality.String_list)
       (add_tree tree_s @@ Snapshot.list tree_s key_s)
       (add_tree tree_c @@ Current.list tree_c key_c)
 
   let count_subtrees (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (Hetero_equality.make ~pp:Fmt.int ~eq:( = ))
+      (module Hetero_equality.Int)
       (add_tree tree_s @@ Snapshot.count_subtrees tree_s key_s)
       (add_tree tree_c @@ Current.count_subtrees tree_c key_c)
 
   let subtree_name_at (tree_s, tree_c) (key_s, key_c) n =
     same_values
-      (Hetero_equality.make ~pp:Fmt.string ~eq:String.equal)
+      (module Hetero_equality.String)
       (add_tree tree_s @@ Snapshot.subtree_name_at tree_s key_s n)
       (add_tree tree_c @@ Current.subtree_name_at tree_c key_c n)
 
@@ -430,15 +428,13 @@ module Make_paired_durable
 
   let hash (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (Hetero_equality.make
-         ~pp:(Fmt.option Context_hash.pp)
-         ~eq:(Option.equal Context_hash.equal))
+      (module Hetero_equality.Context_hash_option)
       (add_tree tree_s @@ Snapshot.hash tree_s key_s)
       (add_tree tree_c @@ Current.hash tree_c key_c)
 
   let hash_exn (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (Hetero_equality.make ~pp:Context_hash.pp ~eq:Context_hash.equal)
+      (module Hetero_equality.Context_hash)
       (add_tree tree_s @@ Snapshot.hash_exn tree_s key_s)
       (add_tree tree_c @@ Current.hash_exn tree_c key_c)
 
@@ -457,7 +453,7 @@ module Make_paired_durable
 
   let read_value_exn (tree_s, tree_c) (key_s, key_c) offset len =
     same_values
-      (Hetero_equality.make ~pp:Fmt.string ~eq:String.equal)
+      (module Hetero_equality.String)
       (add_tree tree_s @@ Snapshot.read_value_exn tree_s key_s offset len)
       (add_tree tree_c @@ Current.read_value_exn tree_c key_c offset len)
 end
