@@ -3378,7 +3378,7 @@ let octez_scoru_wasm_durable_snapshot =
     "tezos_scoru_wasm_durable_snapshot"
     ~path:"src/lib_scoru_wasm/test/durable_snapshot"
     ~opam:"tezos-scoru-wasm-durable-snasphot"
-    ~synopsis:"Durable storage implementation which was originally realised"
+    ~synopsis:"Durable storage reference implementation"
     ~deps:
       [
         octez_base |> open_ ~m:"TzPervasives";
