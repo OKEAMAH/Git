@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open QCheck
+open QCheck2
 open Tezos_test_helpers.Qcheck_extra
 module RS = Random.State
 
@@ -43,6 +43,12 @@ module Monad_ops (M : Monad.S) = struct
   let rec iter_n ~(f : 'a -> 'a M.t) (z : 'a) (n : int) : 'a M.t =
     if n <= 0 then M.return z
     else M.bind (f z) (fun res -> iter_n ~f res (n - 1))
+
+  let rec traverse_seq (xs: 'a M.t Seq.t): 'a Seq.t M.t =
+    (* HERE: I actually have to evaluate lazy valuees of Seq *)
+    match Seq.uncons xs with
+      | None -> M.return Seq.empty
+      | Some (x, rest) -> M.bind x (fun x -> M.map (Seq.cons x) @@ traverse_seq rest)
 end
 
 (* Lwt.t which has some state, satisfies Monad.S *)
@@ -82,18 +88,35 @@ end
    Satisfies Monad.S
 *)
 module Gen_m (M : Monad.S) = struct
-  (* This is basically Gen.t but with a returned type wrapped with M.t.
-     With QCheck2.Gen.t = RS.t -> 'a Tree.t it's more trickier,
-     it seems impossible to keep Tree.t lazy: you can try to
-     introduce Tree transformer:
-         'a Tree_m.t = 'a * 'a Tree_m.t M.t Seq.t
-     in order to detain shrinks evaluation,
-     but it seems that eventually, when you try to escape M monad to return Gen.t,
-     (to be compatible with other code) you will evaluate all the lazy parts 'a Tree.t M.t.
-  *)
-  type 'a t = RS.t -> 'a M.t
+  let unpack_tree t = (Tree.root t, Tree.children t)
 
-  let bind m f g = M.bind (m g) (fun a -> f a g)
+  (* This is basically Gen2.t but with tree_m and returned type wrapped with M.t. *)
+  type 'a t = RS.t -> 'a Tree.t M.t
+
+  (* Adapted version of QCheck2.Tree.bind *)
+  let bind (m : 'a t) (f : 'a -> 'b t) : 'b t =
+   fun g ->
+    let open Monad.Syntax (M) in
+    let rec bind_tree (ta : 'a Tree.t) (f : 'a -> 'b Tree.t M.t) :
+        'b Tree.t M.t =
+      let open Monad_ops(M) in
+      let x, xs = unpack_tree ta in
+      let* (y, ys_of_x) = M.map unpack_tree @@ f x in
+      let ys_of_xs_m =
+        Seq.map (fun tree -> bind_tree tree f) xs
+      in
+      (* HERE: in traverse_seq I have to traverse lazy Seq and
+      essentially evaluate all of them, which will cause recursive invocation of
+      bind_tree, which is also eagerly evaluate tree recursively.
+      Which will effectively lead to eager evaluation of the whole tree.
+      *)
+      let* ys_of_xs = traverse_seq ys_of_xs_m in
+      let ys = Seq.append ys_of_x ys_of_xs in
+      (** HERE: I can't construct a tree *)
+      M.return @@ Tree.make (y, ys)
+    in
+    let* m = m g in
+    bind_tree m (fun x -> f x g)
 
   let map f x g = M.map f (x g)
 
