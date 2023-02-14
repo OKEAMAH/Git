@@ -896,7 +896,10 @@ let octez_bls12_381_polynomial_internal =
           [
             "caml_polynomial_stubs";
             "caml_srs_stubs";
+            "caml_ec_array_stubs";
+            "caml_fft_stubs";
             "polynomial";
+            "fft";
           ];
       }
 
@@ -914,7 +917,16 @@ let _octez_bls12_381_polynomial_tests =
         bls12_381;
         octez_bls12_381_polynomial_internal;
       ]
-    ~dep_files:["srs_zcash_g1_5"]
+    ~dep_files:
+      [
+        "srs_zcash_g1_5";
+        "fft_test_vector_g1_2";
+        "fft_test_vector_g2_2";
+        "ifft_test_vector_g1_2";
+        "ifft_test_vector_g2_2";
+        "test_vector_g1_2";
+        "test_vector_g2_2";
+      ]
 
 let octez_crypto_dal =
   public_lib
