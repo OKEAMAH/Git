@@ -115,6 +115,7 @@ module Inner = struct
 
   (* Operations on vector of scalars *)
   module Evaluations = Tezos_bls12_381_polynomial_internal.Evaluations
+  module G1_array = Tezos_bls12_381_polynomial_internal.G1_carray
 
   (* Domains for the Fast Fourier Transform (FTT). *)
   module Domains = Tezos_bls12_381_polynomial_internal.Domain
@@ -751,11 +752,6 @@ module Inner = struct
     Pairing.pairing_check
       [(cm, committed_offset_monomial); (proof, G2.(negate (copy one)))]
 
-  let inverse domain =
-    let n = Array.length domain in
-    Array.init n (fun i ->
-        if i = 0 then Bls12_381.Fr.(copy one) else Array.get domain (n - i))
-
   let diff_next_power_of_two x =
     let logx = Z.log2 (Z.of_int x) in
     if 1 lsl logx = x then 0 else (1 lsl (logx + 1)) - x
@@ -773,19 +769,19 @@ module Inner = struct
       let log_inf = Z.log2 (Z.of_int ratio) in
       if 1 lsl log_inf < ratio then log_inf else log_inf + 1
     in
-    let domain = Domains.build_power_of_two k |> Domains.inverse |> inverse in
+    let domain = Domains.build_power_of_two k in
+    let quotient = degree / l in
+    let padding = diff_next_power_of_two (2 * quotient) in
+    let len = (2 * quotient) + padding in
     let precompute_srsj j =
       let quotient = (degree - j) / l in
-      let padding = diff_next_power_of_two (2 * quotient) in
       let points =
-        Array.init
-          ((2 * quotient) + padding)
-          (fun i ->
+        G1_array.init len (fun i ->
             if i < quotient then
               G1.copy (Srs_g1.get srs (degree - j - ((i + 1) * l)))
             else G1.(copy zero))
       in
-      G1.fft_inplace ~domain ~points ;
+      G1_array.evaluation_ecfft_inplace ~domain ~points ;
       points
     in
     (domain, Array.init l precompute_srsj)
@@ -798,60 +794,71 @@ module Inner = struct
    *)
   let multiple_multi_reveals ~chunk_len ~chunk_count ~degree
       ~preprocess:(domain2m, precomputed_srs_part) coefs =
-    let open Bls12_381 in
     let n = chunk_len + chunk_count in
     assert (chunk_len < n) ;
     assert (is_power_of_two degree) ;
     assert (1 lsl chunk_len < degree) ;
     assert (degree <= 1 lsl n) ;
+    let coefs_length = Polynomials.degree coefs + 1 in
     let l = 1 lsl chunk_len in
+
     (* We don’t need the first coefficient f₀. *)
+
+    (* Padding in case quotient is not a power of 2 to get proper fft in
+       Toeplitz matrix part. *)
+    let quotient = degree / l in
+    let padding = diff_next_power_of_two (2 * quotient) in
+    let len = (2 * quotient) + padding in
     let compute_h_j j =
-      let rest = (degree - j) mod l in
-      let quotient = (degree - j) / l in
-      (* Padding in case quotient is not a power of 2 to get proper fft in
-         Toeplitz matrix part. *)
-      let padding = diff_next_power_of_two (2 * quotient) in
       (* fm, 0, …, 0, f₁, f₂, …, fm-1 *)
       let points =
-        Array.init
-          ((2 * quotient) + padding)
-          (fun i ->
-            if i <= quotient + (padding / 2) then Scalar.(copy zero)
-            else Scalar.copy coefs.(rest + ((i - (quotient + padding)) * l)))
+        let rest = (degree - j) mod l in
+        let quotient = (degree - j) / l in
+        let padding = diff_next_power_of_two (2 * quotient) in
+        Polynomials.init len (fun i ->
+            if i = 0 then Polynomials.get coefs (degree - j)
+            else if i <= quotient + (padding / 2) then Scalar.(copy zero)
+            else
+              let j = rest + ((i - (quotient + padding)) * l) in
+              if j < coefs_length then Polynomials.get coefs j
+              else Scalar.(copy zero))
       in
-      points.(0) <- Scalar.copy coefs.(degree - j) ;
-      Scalar.fft_inplace ~domain:domain2m ~points ;
-      Array.map2 G1.mul precomputed_srs_part.(j) points
+      Evaluations.evaluation_fft domain2m points
     in
-    let sum = compute_h_j 0 in
-    let rec sum_hj j =
-      if j = l then ()
-      else
-        let hj = compute_h_j j in
-        (* sum.(i) <- sum.(i) + hj.(i) *)
-        Array.iteri (fun i hij -> sum.(i) <- G1.add sum.(i) hij) hj ;
-        sum_hj (j + 1)
+
+    let evaluations = Array.init l compute_h_j in
+
+    let h_j =
+      match G1_array.mul_arrays ~evaluations ~arrays:precomputed_srs_part with
+      | exception Invalid_argument _ -> assert false
+      | h_j -> h_j
     in
-    sum_hj 1 ;
+
+    let sum = h_j.(0) in
+    for i = 1 to l - 1 do
+      G1_array.add_arrays_inplace sum h_j.(i)
+    done ;
 
     (* Toeplitz matrix-vector multiplication *)
-    G1.ifft_inplace ~domain:(inverse domain2m) ~points:sum ;
-    let hl = Array.sub sum 0 (Array.length domain2m / 2) in
-
+    G1_array.interpolation_ecfft_inplace ~domain:domain2m ~points:sum ;
+    let h = G1_array.sub sum ~off:0 ~len:(Domains.length domain2m / 2) in
     let phidomain = Domains.build_power_of_two chunk_count in
-    let phidomain = inverse (Domains.inverse phidomain) in
     (* Kate amortized FFT *)
-    G1.fft ~domain:phidomain ~points:hl
+    let hh =
+      G1_array.init (1 lsl chunk_count) (fun _ -> Bls12_381.G1.(copy zero))
+    in
+    G1_array.blit h ~src_off:0 hh ~dst_off:0 ~len:(Domains.length domain2m / 2) ;
+    G1_array.evaluation_ecfft_inplace ~domain:phidomain ~points:hh ;
+    G1_array.to_array hh
 
   (* h = polynomial such that h(y×domain[i]) = zi. *)
   let interpolation_h_poly y domain z_list =
-    Scalar.ifft_inplace ~domain:(Domains.inverse domain) ~points:z_list ;
+    let h = Evaluations.interpolation_fft2 domain z_list in
     let inv_y = Scalar.inverse_exn y in
     Array.fold_left_map
       (fun inv_yi h -> Scalar.(mul inv_yi inv_y, mul h inv_yi))
       Scalar.(copy one)
-      z_list
+      (Polynomials.to_dense_coefficients h)
     |> snd |> Polynomials.of_dense
 
   (* Part 3.2 verifier : verifies that f(w×domain.(i)) = evaluations.(i). *)
@@ -906,7 +913,7 @@ module Inner = struct
       ~chunk_count:t.proofs_log
       ~degree:t.k
       ~preprocess
-      p'
+      (Polynomials.of_dense p')
 
   let verify_shard (t : t) cm {index = shard_index; share = shard_evaluations}
       proof =
