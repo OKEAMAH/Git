@@ -512,15 +512,19 @@ let step_encoding =
       case
         ~title:"Dissection"
         (Tag 0)
-        dissection_encoding
-        (function Dissection d -> Some d | _ -> None)
-        (fun d -> Dissection d);
+        (merge_objs
+           (obj1 (req "kind" (constant "dissection")))
+           dissection_encoding)
+        (function Dissection d -> Some ((), d) | _ -> None)
+        (fun ((), d) -> Dissection d);
       case
         ~title:"Proof"
         (Tag 1)
-        Sc_rollup_proof_repr.encoding
-        (function Proof p -> Some p | _ -> None)
-        (fun p -> Proof p);
+        (merge_objs
+           (obj1 (req "kind" (constant "proof")))
+           Sc_rollup_proof_repr.encoding)
+        (function Proof p -> Some ((), p) | _ -> None)
+        (fun ((), p) -> Proof p);
     ]
 
 let pp_step ppf step =
