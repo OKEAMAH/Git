@@ -79,13 +79,23 @@ let validate_attestation ctxt op =
 
 let apply_attestation ctxt op =
   assert_dal_feature_enabled ctxt >>? fun () ->
-  let Dal.Attestation.{attestor; attestation; level = _} = op in
+  let Dal.Attestation.{attestor; attestation; level} = op in
   match Dal.Attestation.shards_of_attestor ctxt ~attestor with
   | None ->
       (* This should not happen: operation validation should have failed. *)
       let level = Level.current ctxt in
       error (Dal_data_availibility_attestor_not_in_committee {attestor; level})
   | Some shards ->
+      let bitset_int = Bitset.to_z (attestation :> Bitset.t) in
+      Logging.log
+        Notice
+        "attestation for level %a pkh %a: %a"
+        Raw_level.pp
+        level
+        Signature.Public_key_hash.pp_short
+        attestor
+        Z.pp_print
+        bitset_int ;
       Ok (Dal.Attestation.record_attested_shards ctxt attestation shards)
 
 (* This function should fail if we don't want the operation to be

@@ -2011,6 +2011,10 @@ let test_attestor ~with_baker_daemon protocol parameters cryptobox node client
       let first_not_attested_published_level =
         Node.get_level node + 1 - parameters.attestation_lag
       in
+      Log.info
+        "first not attested published level is %d (intermediary level is %d)"
+        first_not_attested_published_level
+        intermediary_level ;
       if first_not_attested_published_level >= max_level then
         Test.fail "test not checking for unattested slots; adjust parameters" ;
       let* () =
@@ -2040,6 +2044,13 @@ let test_attestor ~with_baker_daemon protocol parameters cryptobox node client
         (slot_idx level = slot_index)
           int
           ~error_msg:"Expected index %L (got %R)") ;
+      let* _ =
+        RPC.call node
+        @@ RPC.get_chain_block_operations_validation_pass
+             ~block:(string_of_int (level + parameters.attestation_lag))
+             ~validation_pass:0
+             ()
+      in
       (if
        level < intermediary_level || level >= first_not_attested_published_level
       then
