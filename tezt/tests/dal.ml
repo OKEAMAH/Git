@@ -2040,14 +2040,16 @@ let test_attestor ~with_baker_daemon protocol parameters cryptobox node client
         (slot_idx level = slot_index)
           int
           ~error_msg:"Expected index %L (got %R)") ;
-      let expected_status =
-        if level < first_not_attested_published_level then "attested"
-        else "unattested"
-      in
-      Check.(
-        (expected_status = status)
-          string
-          ~error_msg:"Expected status %L (got %R)") ;
+      (if
+       level < intermediary_level || level >= first_not_attested_published_level
+      then
+       let expected_status =
+         if level < intermediary_level then "attested" else "unattested"
+       in
+       Check.(
+         (expected_status = status)
+           string
+           ~error_msg:"Expected status %L (got %R)")) ;
       check_attestations (level + 1)
   in
   check_attestations first_level
