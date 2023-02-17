@@ -49,6 +49,7 @@ let all_passes = [`PConsensus; `PAnonymous; `PVote; `PManager]
 
 let consensus_kinds = [`KPreendorsement; `KEndorsement; `KDal_attestation]
 
+(* N.b. we do not consider Failing_noop as those will never be valid. *)
 let anonymous_kinds =
   [
     `KSeed_nonce_revelation;
@@ -61,27 +62,72 @@ let anonymous_kinds =
 
 let vote_kinds = [`KProposals; `KBallot]
 
-(* N.b. we do not consider Failing_noop as those will never be valid. *)
-let manager_kinds =
+type manager_kind =
+  | Reveal
+  | Transaction
+  | Origination
+  | Delegation
+  | Register_global_constant
+  | Set_deposits_limit
+  | Increase_paid_storage
+  | Update_consensus_key
+  | Tx_rollup_origination
+  | Tx_rollup_submit_batch
+  | Tx_rollup_commit
+  | Tx_rollup_return_bond
+  | Tx_rollup_finalize_commitment
+  | Tx_rollup_remove_commitment
+  | Tx_rollup_rejection
+  | Tx_rollup_dispatch_tickets
+  | Transfer_ticket
+  | Dal_publish_slot_header
+  | Sc_rollup_originate
+  | Sc_rollup_add_messages
+  | Sc_rollup_cement
+  | Sc_rollup_publish
+  | Sc_rollup_refute
+  | Sc_rollup_timeout
+  | Sc_rollup_execute_outbox_message
+  | Sc_rollup_recover_bond
+  | Zk_rollup_origination
+  | Zk_rollup_publish
+  | Zk_rollup_update
+(* When adding a new case of manager operation, please add a
+   constructor in the previous [manager_kind] enumeration and list
+   this new constructor in the following
+   [manager_kinds] list. *)
+
+let manager_kinds : manager_kind list =
   [
-    `KReveal;
-    `KTransaction;
-    `KOrigination;
-    `KDelegation;
-    `KSet_deposits_limit;
-    `KIncrease_paid_storage;
-    `KRegister_global_constant;
-    `KTransfer_ticket;
-    `KDal_publish_slot_header;
-    `KSc_rollup_originate;
-    `KSc_rollup_add_messages;
-    `KSc_rollup_cement;
-    `KSc_rollup_publish;
-    `KSc_rollup_refute;
-    `KSc_rollup_timeout;
-    `KSc_rollup_execute_outbox_message;
-    `KSc_rollup_recover_bond;
-    `KUpdate_consensus_key;
+    Reveal;
+    Transaction;
+    Origination;
+    Delegation;
+    Register_global_constant;
+    Set_deposits_limit;
+    Increase_paid_storage;
+    Update_consensus_key;
+    (* Tx_rollup_origination;
+     * Tx_rollup_submit_batch;
+     * Tx_rollup_commit;
+     * Tx_rollup_return_bond;
+     * Tx_rollup_finalize_commitment;
+     * Tx_rollup_remove_commitment;
+     * Tx_rollup_rejection;
+     * Tx_rollup_dispatch_tickets; *)
+    Transfer_ticket;
+    Dal_publish_slot_header;
+    Sc_rollup_originate;
+    Sc_rollup_add_messages;
+    Sc_rollup_cement;
+    Sc_rollup_publish;
+    Sc_rollup_refute;
+    Sc_rollup_timeout;
+    Sc_rollup_execute_outbox_message;
+    Sc_rollup_recover_bond
+    (* Zk_rollup_origination;
+     * Zk_rollup_publish;
+     * Zk_rollup_update; *);
   ]
 
 let pass_to_operation_kinds = function
@@ -473,7 +519,7 @@ let generate_manager_operation ?source gen_manop =
 let generate_reveal =
   let open QCheck2.Gen in
   let+ pk = random_pk in
-  Reveal pk
+  Alpha_context.Reveal pk
 
 let generate_transaction =
   let open QCheck2.Gen in
@@ -481,34 +527,34 @@ let generate_transaction =
   let+ destination = random_contract in
   let parameters = Script.unit_parameter in
   let entrypoint = Entrypoint.default in
-  Transaction {amount; parameters; entrypoint; destination}
+  Alpha_context.Transaction {amount; parameters; entrypoint; destination}
 
 let generate_origination =
   let open QCheck2.Gen in
   let+ credit = gen_amount in
   let delegate = None in
   let script = Script.{code = unit_parameter; storage = unit_parameter} in
-  Origination {delegate; script; credit}
+  Alpha_context.Origination {delegate; script; credit}
 
 let generate_delegation =
   let open QCheck2.Gen in
   let+ delegate = option random_pkh in
-  Delegation delegate
+  Alpha_context.Delegation delegate
 
 let generate_increase_paid_storage =
   let open QCheck2.Gen in
   let* amount_in_bytes = gen_amount_in_bytes in
   let+ destination = random_contract_hash in
-  Increase_paid_storage {amount_in_bytes; destination}
+  Alpha_context.Increase_paid_storage {amount_in_bytes; destination}
 
 let generate_set_deposits_limit =
   let open QCheck2.Gen in
   let+ amount_opt = option gen_amount in
-  Set_deposits_limit amount_opt
+  Alpha_context.Set_deposits_limit amount_opt
 
 let generate_register_global_constant =
   let value = Script_repr.lazy_expr (Expr.from_string "Pair 1 2") in
-  QCheck2.Gen.pure (Register_global_constant {value})
+  QCheck2.Gen.pure (Alpha_context.Register_global_constant {value})
 
 let generate_transfer_ticket =
   let open QCheck2.Gen in
@@ -518,7 +564,8 @@ let generate_transfer_ticket =
   let contents = Script.lazy_expr (Expr.from_string "1") in
   let ty = Script.lazy_expr (Expr.from_string "nat") in
   let entrypoint = Entrypoint.default in
-  Transfer_ticket {contents; ty; ticketer; amount; destination; entrypoint}
+  Alpha_context.Transfer_ticket
+    {contents; ty; ticketer; amount; destination; entrypoint}
 
 let generate_dal_publish_slot_header =
   let published_level = Alpha_context.Raw_level.of_int32_exn Int32.zero in
@@ -529,7 +576,7 @@ let generate_dal_publish_slot_header =
     Alpha_context.Dal.Operations.Publish_slot_header.
       {published_level; slot_index; commitment; commitment_proof}
   in
-  QCheck2.Gen.pure (Dal_publish_slot_header slot_header)
+  QCheck2.Gen.pure (Alpha_context.Dal_publish_slot_header slot_header)
 
 let generate_sc_rollup_originate =
   let kind = Sc_rollup.Kind.Example_arith in
@@ -539,11 +586,12 @@ let generate_sc_rollup_originate =
     Lwt_main.run (Sc_rollup_helpers.compute_origination_proof ~boot_sector kind)
   in
   QCheck2.Gen.pure
-    (Sc_rollup_originate {kind; boot_sector; origination_proof; parameters_ty})
+    (Alpha_context.Sc_rollup_originate
+       {kind; boot_sector; origination_proof; parameters_ty})
 
 let generate_sc_rollup_add_messages =
   let open QCheck2.Gen in
-  return (Sc_rollup_add_messages {messages = []})
+  return (Alpha_context.Sc_rollup_add_messages {messages = []})
 
 let sc_dummy_commitment =
   let number_of_ticks =
@@ -563,13 +611,13 @@ let generate_sc_rollup_cement =
   let open QCheck2.Gen in
   let+ rollup = random_sc_rollup in
   let commitment = Sc_rollup.Commitment.hash_uncarbonated sc_dummy_commitment in
-  Sc_rollup_cement {rollup; commitment}
+  Alpha_context.Sc_rollup_cement {rollup; commitment}
 
 let generate_sc_rollup_publish =
   let open QCheck2.Gen in
   let+ rollup = random_sc_rollup in
   let commitment = sc_dummy_commitment in
-  Sc_rollup_publish {rollup; commitment}
+  Alpha_context.Sc_rollup_publish {rollup; commitment}
 
 let generate_sc_rollup_refute =
   let open QCheck2.Gen in
@@ -578,7 +626,7 @@ let generate_sc_rollup_refute =
   let refutation : Sc_rollup.Game.refutation =
     Sc_rollup.Game.Move {choice = Sc_rollup.Tick.initial; step = Dissection []}
   in
-  Sc_rollup_refute {rollup; opponent; refutation}
+  Alpha_context.Sc_rollup_refute {rollup; opponent; refutation}
 
 let generate_sc_rollup_timeout =
   let open QCheck2.Gen in
@@ -586,7 +634,7 @@ let generate_sc_rollup_timeout =
   let* rollup = random_sc_rollup in
   let+ staker = random_pkh in
   let stakers = Sc_rollup.Game.Index.make source staker in
-  Sc_rollup_timeout {rollup; stakers}
+  Alpha_context.Sc_rollup_timeout {rollup; stakers}
 
 let generate_sc_rollup_execute_outbox_message =
   let open QCheck2.Gen in
@@ -595,56 +643,100 @@ let generate_sc_rollup_execute_outbox_message =
     Sc_rollup.Commitment.hash_uncarbonated sc_dummy_commitment
   in
   let output_proof = "" in
-  Sc_rollup_execute_outbox_message {rollup; cemented_commitment; output_proof}
+  Alpha_context.Sc_rollup_execute_outbox_message
+    {rollup; cemented_commitment; output_proof}
 
 let generate_sc_rollup_recover_bond =
   let open QCheck2.Gen in
   let* staker = random_pkh in
   let+ sc_rollup = random_sc_rollup in
-  Sc_rollup_recover_bond {sc_rollup; staker}
+  Alpha_context.Sc_rollup_recover_bond {sc_rollup; staker}
 
 let generate_update_consensus_key =
   let open QCheck2.Gen in
   let+ pk = random_pk in
-  Update_consensus_key pk
+  Alpha_context.Update_consensus_key pk
 
 (** {2 By Kind Operation Generator} *)
 
+(* This function is only defined to statically check that no case is
+   missing in the [manager_kind] enum type. *)
+let _manager_operation_to_kind (type kind) (op : kind manager_operation) :
+    manager_kind =
+  match op with
+  | Alpha_context.Reveal _ -> Reveal
+  | Alpha_context.Transaction _ -> Transaction
+  | Alpha_context.Origination _ -> Origination
+  | Alpha_context.Delegation _ -> Delegation
+  | Alpha_context.Register_global_constant _ -> Register_global_constant
+  | Alpha_context.Set_deposits_limit _ -> Set_deposits_limit
+  | Alpha_context.Increase_paid_storage _ -> Increase_paid_storage
+  | Alpha_context.Update_consensus_key _ -> Update_consensus_key
+  | Alpha_context.Tx_rollup_origination -> Tx_rollup_origination
+  | Alpha_context.Tx_rollup_submit_batch _ -> Tx_rollup_submit_batch
+  | Alpha_context.Tx_rollup_commit _ -> Tx_rollup_commit
+  | Alpha_context.Tx_rollup_return_bond _ -> Tx_rollup_return_bond
+  | Alpha_context.Tx_rollup_finalize_commitment _ ->
+      Tx_rollup_finalize_commitment
+  | Alpha_context.Tx_rollup_remove_commitment _ -> Tx_rollup_remove_commitment
+  | Alpha_context.Tx_rollup_rejection _ -> Tx_rollup_rejection
+  | Alpha_context.Tx_rollup_dispatch_tickets _ -> Tx_rollup_dispatch_tickets
+  | Alpha_context.Transfer_ticket _ -> Transfer_ticket
+  | Alpha_context.Dal_publish_slot_header _ -> Dal_publish_slot_header
+  | Alpha_context.Sc_rollup_originate _ -> Sc_rollup_originate
+  | Alpha_context.Sc_rollup_add_messages _ -> Sc_rollup_add_messages
+  | Alpha_context.Sc_rollup_cement _ -> Sc_rollup_cement
+  | Alpha_context.Sc_rollup_publish _ -> Sc_rollup_publish
+  | Alpha_context.Sc_rollup_refute _ -> Sc_rollup_refute
+  | Alpha_context.Sc_rollup_timeout _ -> Sc_rollup_timeout
+  | Alpha_context.Sc_rollup_execute_outbox_message _ ->
+      Sc_rollup_execute_outbox_message
+  | Alpha_context.Sc_rollup_recover_bond _ -> Sc_rollup_recover_bond
+  | Alpha_context.Zk_rollup_origination _ -> Zk_rollup_origination
+  | Alpha_context.Zk_rollup_publish _ -> Zk_rollup_publish
+  | Alpha_context.Zk_rollup_update _ -> Zk_rollup_update
+
 let generator_of ?source = function
-  | `KReveal -> generate_manager_operation ?source generate_reveal
-  | `KTransaction -> generate_manager_operation ?source generate_transaction
-  | `KOrigination -> generate_manager_operation ?source generate_origination
-  | `KSet_deposits_limit ->
+  | Reveal -> generate_manager_operation ?source generate_reveal
+  | Transaction -> generate_manager_operation ?source generate_transaction
+  | Origination -> generate_manager_operation ?source generate_origination
+  | Set_deposits_limit ->
       generate_manager_operation ?source generate_set_deposits_limit
-  | `KIncrease_paid_storage ->
+  | Increase_paid_storage ->
       generate_manager_operation ?source generate_increase_paid_storage
-  | `KDelegation -> generate_manager_operation ?source generate_delegation
-  | `KRegister_global_constant ->
+  | Delegation -> generate_manager_operation ?source generate_delegation
+  | Register_global_constant ->
       generate_manager_operation ?source generate_register_global_constant
-  | `KTransfer_ticket ->
+  | Transfer_ticket ->
       generate_manager_operation ?source generate_transfer_ticket
-  | `KDal_publish_slot_header ->
+  | Dal_publish_slot_header ->
       generate_manager_operation ?source generate_dal_publish_slot_header
-  | `KSc_rollup_originate ->
+  | Sc_rollup_originate ->
       generate_manager_operation ?source generate_sc_rollup_originate
-  | `KSc_rollup_add_messages ->
+  | Sc_rollup_add_messages ->
       generate_manager_operation ?source generate_sc_rollup_add_messages
-  | `KSc_rollup_cement ->
+  | Sc_rollup_cement ->
       generate_manager_operation ?source generate_sc_rollup_cement
-  | `KSc_rollup_publish ->
+  | Sc_rollup_publish ->
       generate_manager_operation ?source generate_sc_rollup_publish
-  | `KSc_rollup_refute ->
+  | Sc_rollup_refute ->
       generate_manager_operation ?source generate_sc_rollup_refute
-  | `KSc_rollup_timeout ->
+  | Sc_rollup_timeout ->
       generate_manager_operation ?source generate_sc_rollup_timeout
-  | `KSc_rollup_execute_outbox_message ->
+  | Sc_rollup_execute_outbox_message ->
       generate_manager_operation
         ?source
         generate_sc_rollup_execute_outbox_message
-  | `KSc_rollup_recover_bond ->
+  | Sc_rollup_recover_bond ->
       generate_manager_operation ?source generate_sc_rollup_recover_bond
-  | `KUpdate_consensus_key ->
+  | Update_consensus_key ->
       generate_manager_operation ?source generate_update_consensus_key
+  | Tx_rollup_origination | Tx_rollup_submit_batch | Tx_rollup_commit
+  | Tx_rollup_return_bond | Tx_rollup_finalize_commitment
+  | Tx_rollup_remove_commitment | Tx_rollup_rejection
+  | Tx_rollup_dispatch_tickets | Zk_rollup_origination | Zk_rollup_publish
+  | Zk_rollup_update ->
+      assert false
 
 let generate_manager_operation batch_size =
   let open QCheck2.Gen in
