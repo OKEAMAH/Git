@@ -81,6 +81,7 @@ let manager_kinds =
     `KSc_rollup_timeout;
     `KSc_rollup_execute_outbox_message;
     `KSc_rollup_recover_bond;
+    `KUpdate_consensus_key;
   ]
 
 let pass_to_operation_kinds = function
@@ -602,6 +603,11 @@ let generate_sc_rollup_recover_bond =
   let+ sc_rollup = random_sc_rollup in
   Sc_rollup_recover_bond {sc_rollup; staker}
 
+let generate_update_consensus_key =
+  let open QCheck2.Gen in
+  let+ pk = random_pk in
+  Update_consensus_key pk
+
 (** {2 By Kind Operation Generator} *)
 
 let generator_of ?source = function
@@ -637,6 +643,8 @@ let generator_of ?source = function
         generate_sc_rollup_execute_outbox_message
   | `KSc_rollup_recover_bond ->
       generate_manager_operation ?source generate_sc_rollup_recover_bond
+  | `KUpdate_consensus_key ->
+      generate_manager_operation ?source generate_update_consensus_key
 
 let generate_manager_operation batch_size =
   let open QCheck2.Gen in
