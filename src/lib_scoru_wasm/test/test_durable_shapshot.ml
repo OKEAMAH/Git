@@ -37,6 +37,7 @@ open Encodings_util
 open Durable_snapshot_util
 open Durable_operations_generator
 open Probability_helpers
+open Durable_input_generator
 
 let tztest_qcheck2 ?(number_of_runs = 1) ~name (generator, verifier) =
   let verifier inp = Lwt.map (fun x -> Ok x) (verifier inp) in
@@ -79,7 +80,7 @@ let tztest_qcheck2 ?(number_of_runs = 1) ~name (generator, verifier) =
   Alcotest_lwt.test_case name speed (fun _sw () -> Lwt.return @@ run ())
 
 module Paired_runners = struct
-  module Generator = Operations_generator
+  module Generator = Make_operations_generator (Input_generator)
   module Runner = Make_durable_operations_runner (Paired_durable)
 
   (* rounds - number of operations to be generated in a stress-test *)

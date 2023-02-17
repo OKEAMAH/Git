@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open QCheck2
+open Durable_input_generator
 
 (* Weighted operations list:
    operations will be generated proportionally to their weight *)
@@ -34,37 +35,19 @@ type testcase = {
   operations : Durable_operation.some_input list;
 }
 
-module Operations_generator = struct
+module Make_operations_generator
+    (IG : Durable_input_generator.S with type ctxt = int Trie.t) =
+struct
   open Gen
-
-  let range (i : int) (j : int) =
-    let rec aux n acc = if n < i then acc else aux (n - 1) (n :: acc) in
-    aux j []
-
-  let range_chars (i : char) (j : char) =
-    List.map Char.chr @@ range (Char.code i) (Char.code j)
-
-  let max_path_segments = 10
-
-  let key_alphabet : char list =
-    List.concat
-      [
-        ['.'; '-'; '_'];
-        range_chars 'a' 'z';
-        range_chars 'A' 'Z';
-        range_chars '0' '9';
-      ]
-
-  let gen_arbitrary_path =
-    let* segments = Gen.int_range 1 max_path_segments in
-    Gen.map (fun xs -> "/" ^ String.concat "/" xs)
-    @@ Gen.list_repeat segments
-    @@ Gen.string_size ~gen:(Gen.oneofl key_alphabet) (Gen.int_range 1 10)
 
   let generate_initial_keys (initial_tree_size : int) :
       (string * string) list Gen.t =
     let* keys =
-      Gen.list_size (Gen.return initial_tree_size) gen_arbitrary_path
+      Gen.list_size (Gen.return initial_tree_size)
+      @@ gen_arbitrary_path
+           ~max_len:Default_key_generator_params.max_key_length
+           ~max_segments_num:20
+           (Gen.oneofl Default_key_generator_params.key_alphabet)
     in
     let+ values =
       Gen.list_size
@@ -78,10 +61,9 @@ module Operations_generator = struct
       (fun i (k, v) -> if i < ro_ops then ("/readonly" ^ k, v) else (k, v))
       kv
 
-  (* TODO: this will be implemented properly in next MR *)
-  let gen_op _trie _ops_distribution =
-    let+ key = gen_arbitrary_path in
-    Durable_operation.Some_input (Find_value, key)
+  let gen_op trie ops_distribution =
+    let* invoke_op = Gen.frequencyl ops_distribution in
+    IG.generate_some_input trie invoke_op
 
   let rec gen_ops ops_distribution (trie : int Trie.t) n ops =
     let open Durable_operation in
