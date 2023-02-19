@@ -1853,6 +1853,11 @@ let parse_chest ctxt : Script.node -> (Script_timelock.chest * context) tzresult
                (loc, strip_locations expr, "a valid time-lock chest")))
   | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr))
 
+let default_parse_operation _ctxt expr =
+  (* operations cannot appear in parameters or storage,
+     the protocol should never parse the bytes of an operation. *)
+  error (Operations_cannot_be_parsed (location expr, strip_locations expr))
+
 (* -- parse data of complex types -- *)
 
 let parse_pair (type r) parse_l parse_r ctxt ~legacy
@@ -2082,10 +2087,19 @@ let rec parse_data :
     stack_depth:int ->
     context ->
     allow_forged:bool ->
+    parse_operation:
+      (context -> Script.node -> (Script_typed_ir.operation * context) tzresult) ->
     (a, ac) ty ->
     Script.node ->
     (a * context) tzresult Lwt.t =
- fun ~unparse_code_rec ~elab_conf ~stack_depth ctxt ~allow_forged ty script_data ->
+ fun ~unparse_code_rec
+     ~elab_conf
+     ~stack_depth
+     ctxt
+     ~allow_forged
+     ~parse_operation
+     ty
+     script_data ->
   let open Lwt_result_syntax in
   let*? ctxt = Gas.consume ctxt Typecheck_costs.parse_data_cycle in
   let non_terminal_recursion ctxt ty script_data =
@@ -2098,6 +2112,7 @@ let rec parse_data :
         ~stack_depth:(stack_depth + 1)
         ctxt
         ~allow_forged
+        ~parse_operation
         ty
         script_data
   in
@@ -2248,9 +2263,7 @@ let rec parse_data :
   | Signature_t, expr ->
       Lwt.return @@ traced_no_lwt @@ parse_signature ctxt expr
   | Operation_t, expr ->
-      (* operations cannot appear in parameters or storage,
-         the protocol should never parse the bytes of an operation *)
-      tzfail (Operations_cannot_be_parsed (location expr, strip_locations expr))
+      Lwt.return @@ traced_no_lwt @@ parse_operation ctxt expr
   | Chain_id_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_chain_id ctxt expr
   | Address_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_address ctxt expr
   | Contract_t (arg_ty, _), expr ->
@@ -2937,6 +2950,7 @@ and parse_instr :
           ~stack_depth:(stack_depth + 1)
           ctxt
           ~allow_forged:false
+          ~parse_operation:default_parse_operation
           t
           d
       in
@@ -5142,6 +5156,7 @@ let parse_storage :
          ~stack_depth:0
          ctxt
          ~allow_forged
+         ~parse_operation:default_parse_operation
          storage_type
          (root storage))
 
@@ -5318,7 +5333,7 @@ include Data_unparser (struct
 
   let parse_packable_ty = parse_packable_ty
 
-  let parse_data = parse_data
+  let parse_data = parse_data ~parse_operation:default_parse_operation
 end)
 
 let unparse_code_rec : unparse_code_rec =
@@ -5864,7 +5879,15 @@ let list_of_big_map_ids ids =
   Lazy_storage.IdSet.fold Big_map (fun id acc -> id :: acc) ids []
 
 let parse_data ~elab_conf ctxt ~allow_forged ty t =
-  parse_data ~unparse_code_rec ~elab_conf ~allow_forged ~stack_depth:0 ctxt ty t
+  parse_data
+    ~unparse_code_rec
+    ~elab_conf
+    ~allow_forged
+    ~stack_depth:0
+    ~parse_operation:default_parse_operation
+    ctxt
+    ty
+    t
 
 let parse_view ~elab_conf ctxt ty view =
   parse_view ~unparse_code_rec ~elab_conf ctxt ty view
