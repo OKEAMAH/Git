@@ -440,12 +440,7 @@ let has_stuck_flag tree =
 let make_durable list_key_vals =
   let open Lwt_syntax in
   let* tree = empty_tree () in
-  let* tree =
-    Tree_encoding_runner.encode
-      (Tezos_tree_encoding.value ["durable"; "@"; "keep_me"] Data_encoding.bool)
-      true
-      tree
-  in
+  let* tree = Wasm.initial_state tree in
   let* durable = wrap_as_durable_storage tree in
   let+ tree =
     List.fold_left

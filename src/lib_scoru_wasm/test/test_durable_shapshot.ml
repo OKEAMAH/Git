@@ -133,6 +133,14 @@ let test_several_operations () =
   let key2 = Paired_durable.key_of_string_exn "/durable/value/to2/write2" in
   let* durable = Paired_durable.write_value_exn durable key1 0L "hello" in
   let* durable = Paired_durable.write_value_exn durable key2 0L "world" in
+  let* _hash =
+    Paired_durable.hash_exn
+      durable
+      (Paired_durable.key_of_string_exn "/durable/value/to/write1")
+  in
+  let* _hash =
+    Paired_durable.hash durable (Paired_durable.key_of_string_exn "")
+  in
   let* res_hello = Paired_durable.read_value_exn durable key1 0L 5L in
   Assert.String.equal ~loc:__LOC__ "hello" res_hello ;
   let* res_still_hello = Paired_durable.read_value_exn durable key1 0L 10L in
@@ -220,7 +228,7 @@ let stress_each_op () =
 let tests : unit Alcotest_lwt.test_case trace =
   List.append
     [
-      tztest "Do several operations on durable" `Quick test_several_operations;
+      tztest "Several basic operations on durable" `Quick test_several_operations;
       stress_test_desceding ~init_size:2000 ~rounds:3000;
       stress_test_uniform ~init_size:2000 ~rounds:20000;
       stress_strcture_ops ~init_size:2000 ~rounds:3000;

@@ -85,6 +85,12 @@ val lazy_mapping :
   'v t ->
   (Tezos_lazy_containers.Lazy_map.tree option * ('k * 'v option) list) t
 
+val lazy_dirs : 'a t -> 'a Tezos_lazy_containers.Lazy_dirs.t t
+
+val lazy_fs : 'a t -> 'a Tezos_lazy_containers.Lazy_fs.t t
+
+val chunked_byte_vector : Tezos_lazy_containers.Chunked_byte_vector.t t
+
 (** [case tag enc f] return a partial encoder that represents a case in a
     sum-type. The encoder hides the (existentially bound) type of the
     parameter to the specific case, provided a converter function [f] and

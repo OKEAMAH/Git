@@ -89,6 +89,18 @@ val lazy_mapping :
   'a t ->
   (Tezos_lazy_containers.Lazy_map.tree option * ('i -> 'a Lwt.t)) t
 
+val lazy_mapping_with_names :
+  ('i -> key) ->
+  'a t ->
+  (Tezos_lazy_containers.Lazy_map.tree option * string list * ('i -> 'a Lwt.t))
+  t
+
+val lazy_dirs : 'a t -> 'a Tezos_lazy_containers.Lazy_dirs.t t
+
+val lazy_fs : 'a t -> 'a Tezos_lazy_containers.Lazy_fs.t t
+
+val chunked_byte_vector : Tezos_lazy_containers.Chunked_byte_vector.t t
+
 (** [delayed f] produces a tree decoder that delays evaluation of [f ()] until
     the decoder is actually needed. This is required to allow for directly
     recursive decoders. *)

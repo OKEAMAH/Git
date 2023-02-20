@@ -147,6 +147,45 @@ let lazy_mapping to_key enc_value =
           bindings);
   }
 
+let lazy_dirs contents_encoding =
+  let open Tezos_lazy_containers.Lazy_dirs in
+  let to_key k = [LMap.string_of_key k] in
+  contramap
+    (fun tree ->
+      (LMap.origin tree.contents, LMap.loaded_bindings tree.contents))
+    (lazy_mapping to_key contents_encoding)
+
+let lazy_fs contents_encoding =
+  let open Tezos_lazy_containers.Lazy_fs in
+  let rec encode :
+      type tree. tree Tree.backend -> _ -> prefix_key -> tree -> tree Lwt.t =
+   fun backend fs prefix tree ->
+    let open Lwt.Syntax in
+    let* tree = (lazy_dirs {encode}).encode backend fs.dirs prefix tree in
+    match fs.content with
+    | Some content ->
+        contents_encoding.encode
+          backend
+          content
+          (fun suffix -> prefix ("@" :: suffix))
+          tree
+    | None -> Lwt.return tree
+  in
+  {encode}
+
+let chunk =
+  let open Tezos_lazy_containers.Chunked_byte_vector.Chunk in
+  contramap to_bytes (raw [])
+
+let chunked_byte_vector =
+  let open Tezos_lazy_containers.Chunked_byte_vector in
+  let to_key k = [Int64.to_string k] in
+  contramap
+    (fun vector -> ((origin vector, loaded_chunks vector), length vector))
+    (tup2
+       (scope ["contents"] @@ lazy_mapping to_key chunk)
+       (value ["length"] Data_encoding.int64))
+
 type ('tag, 'a) case =
   | Case : {
       tag : 'tag;
