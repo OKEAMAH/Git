@@ -5249,6 +5249,29 @@ module Protocol = Protocol
         ~inline_tests:ppx_expect
         ~linkall:true
     in
+    let _octez_sc_rollup_test =
+      let list =
+        [("dissection", N.(number >= 017))]
+        |> List.filter_map (fun (t, ok) -> if ok then Some t else None)
+      in
+      only_if (list <> []) @@ fun () ->
+      tezt
+        list
+        ~path:(path // "lib_sc_rollup/test")
+        ~opam:"tezos-sc-rollup-test"
+        ~synopsis:"Tests for the smart rollup helpers"
+        ~with_macos_security_framework:true
+        ~deps:
+          [
+            octez_base |> open_ ~m:"TzPervasives";
+            main |> open_;
+            octez_test_helpers |> open_;
+            alcotezt;
+            qcheck_alcotest;
+            qcheck_core;
+            octez_sc_rollup |> if_some |> open_;
+          ]
+    in
     let octez_sc_rollup_node =
       only_if (active && N.(number >= 016)) @@ fun () ->
       private_lib
