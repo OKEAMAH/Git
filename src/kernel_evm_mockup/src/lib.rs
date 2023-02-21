@@ -15,6 +15,7 @@ use crate::wei::{from_eth, Wei};
 mod account;
 mod error;
 mod storage;
+mod transactions;
 mod wei;
 
 pub fn init_mock_account<Host: Runtime + RawRollupCore>(host: &mut Host) -> Result<(), Error> {

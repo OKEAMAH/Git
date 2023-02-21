@@ -8,9 +8,13 @@ use std::str::Utf8Error;
 
 use num_bigint::ParseBigIntError;
 
+use rlp::DecoderError;
+
+#[derive(Debug)]
 pub enum Error {
     Path(PathError),
     Runtime(RuntimeError),
+    TransactionDecoding(DecoderError),
     Transfer,
     Generic,
 }
@@ -35,5 +39,11 @@ impl From<Utf8Error> for Error {
 impl From<ParseBigIntError> for Error {
     fn from(_: ParseBigIntError) -> Self {
         Self::Generic
+    }
+}
+
+impl From<DecoderError> for Error {
+    fn from(e: DecoderError) -> Self {
+        Self::TransactionDecoding(e)
     }
 }
