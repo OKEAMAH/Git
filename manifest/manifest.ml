@@ -824,6 +824,11 @@ module Ctypes = struct
               ([
                  "c_flags";
                  ":standard";
+                 (* The following flag is related to these issues.
+                    These should be fixed as soon as ctypes allows const qualifiers
+                    https://gitlab.com/tezos/tezos/-/issues/4908
+                    Related issue from ctypes:
+                       https://github.com/yallop/ocaml-ctypes/issues/134 *)
                  "-Wno-discarded-qualifiers";
                  "-I" ^ desc.extra_search_dir;
                ]

@@ -1819,7 +1819,17 @@ let octez_wasmer =
             {instance = "Functions"; functor_ = "Api_funcs_desc"};
           generated_types = "Api_types";
           generated_entry_point = "Api";
-          c_flags = ["-Wno-incompatible-pointer-types"];
+          c_flags =
+            [
+              "-Wall";
+              "-Wextra";
+              (* The following flag is related to these issues.
+                 These should be fixed as soon as ctypes allows const qualifiers
+                 https://gitlab.com/tezos/tezos/-/issues/4908
+                 Related issue from ctypes:
+                    https://github.com/yallop/ocaml-ctypes/issues/134 *)
+              "-Wno-incompatible-pointer-types";
+            ];
           c_library_flags = [];
         }
 
@@ -2015,7 +2025,15 @@ let octez_sapling =
       {
         language = C;
         flags =
-          [":standard"; "-I%{env:OPAM_SWITCH_PREFIX=}/lib/tezos-rust-libs"];
+          [
+            ":standard";
+            (* Uncomment when
+               https://github.com/yallop/ocaml-ctypes/issues/248#issuecomment-1440045648
+               is fixed *)
+            (* "-Wall"; *)
+            (* "-Wextra"; *)
+            "-I%{env:OPAM_SWITCH_PREFIX=}/lib/tezos-rust-libs";
+          ];
         names = ["rustzcash_ctypes_c_stubs"];
       }
     ~c_library_flags:
