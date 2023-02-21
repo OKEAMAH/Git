@@ -45,7 +45,6 @@ type balance =
   | Minted
   | Frozen_bonds of Contract_repr.t * Bond_id_repr.t
   | Tx_rollup_rejection_punishments
-  | Tx_rollup_rejection_rewards
   | Sc_rollup_refutation_punishments
   | Sc_rollup_refutation_rewards
 
@@ -216,14 +215,8 @@ let balance_encoding =
               (req "bond_id" Bond_id_repr.encoding))
            (function Frozen_bonds (c, r) -> Some ((), (), c, r) | _ -> None)
            (fun ((), (), c, r) -> Frozen_bonds (c, r));
-         case
-           (Tag 22)
-           ~title:"Tx_rollup_rejection_rewards"
-           (obj2
-              (req "kind" (constant "minted"))
-              (req "category" (constant "tx_rollup_rejection_rewards")))
-           (function Tx_rollup_rejection_rewards -> Some ((), ()) | _ -> None)
-           (fun ((), ()) -> Tx_rollup_rejection_rewards);
+         (* 22 was for Tx_rollup_rejection_rewards that has been removed.
+            https://gitlab.com/tezos/tezos/-/merge_requests/7760 *)
          case
            (Tag 23)
            ~title:"Tx_rollup_rejection_punishments"
@@ -294,7 +287,8 @@ let compare_balance ba bb =
         | Minted -> 17
         | Frozen_bonds _ -> 18
         | Tx_rollup_rejection_punishments -> 19
-        | Tx_rollup_rejection_rewards -> 20
+        (* 20 was for Tx_rollup_rejection_rewards that has been removed.
+           https://gitlab.com/tezos/tezos/-/merge_requests/7760 *)
         | Sc_rollup_refutation_punishments -> 21
         | Sc_rollup_refutation_rewards -> 22
         (* don't forget to add parameterized cases in the first part of the function *)
