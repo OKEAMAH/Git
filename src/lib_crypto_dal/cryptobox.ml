@@ -1150,23 +1150,6 @@ module Inner = struct
       then Ok ()
       else Error `Invalid_shard
 
-  let _prove_single t p z =
-    let q, _ =
-      Polynomials.(
-        division_xn (p - constant (evaluate p z)) 1 (Scalar.negate z))
-    in
-    commit t q
-
-  let _verify_single t cm ~point ~evaluation proof =
-    let h_secret = Srs_g2.get t.srs.raw.srs_g2 1 in
-    Bls12_381.(
-      Pairing.pairing_check
-        [
-          ( G1.(add cm (negate (mul (copy one) evaluation))),
-            G2.(negate (copy one)) );
-          (proof, G2.(add h_secret (negate (mul (copy one) point))));
-        ])
-
   let prove_page t p page_index =
     if page_index < 0 || page_index >= t.pages_per_slot then
       Error `Segment_index_out_of_range
