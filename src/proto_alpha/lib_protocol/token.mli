@@ -93,8 +93,6 @@ type infinite_source =
   | `Baking_bonuses  (** Consensus baking variable bonus *)
   | `Minted  (** Generic source for test purpose *)
   | `Liquidity_baking_subsidies  (** Subsidy for liquidity-baking contract *)
-  | `Tx_rollup_rejection_rewards
-    (** Tx_rollup rejection rewards (slashing redistribution) *)
   | `Sc_rollup_refutation_rewards
     (** Sc_rollup refutation rewards (slashing redistribution) *) ]
 

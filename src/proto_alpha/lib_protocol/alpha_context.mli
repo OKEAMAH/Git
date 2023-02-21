@@ -5260,7 +5260,6 @@ module Token : sig
     | `Baking_bonuses
     | `Minted
     | `Liquidity_baking_subsidies
-    | `Tx_rollup_rejection_rewards
     | `Sc_rollup_refutation_rewards
     | container ]
 
