@@ -72,90 +72,7 @@ module type Testable_durable_sig = sig
   val read_value_exn : t -> key -> int64 -> int64 -> string Lwt.t
 end
 
-module type Encodable = sig
-  type t
-
-  val encoding : t Tezos_tree_encoding.t
-end
-
-(* Creates equality based on encoding durables to irmin trees,
-   and its hashes comparison.
-*)
-module Make_encodable_equality (X : Encodable) (Y : Encodable) :
-  Hetero_equality.S with type a = X.t and type b = Y.t = struct
-  type a = X.t
-
-  type b = Y.t
-
-  let hash t encoding =
-    let open Lwt_syntax in
-    let* tree = empty_tree () in
-    let+ tree = Tree_encoding_runner.encode encoding t tree in
-    Context_binary_tree.hash tree
-
-  let to_string_a t =
-    let open Lwt_syntax in
-    let+ hash = hash t X.encoding in
-    Format.asprintf "%a" Context_hash.pp hash
-
-  let to_string_b t =
-    let open Lwt_syntax in
-    let+ hash = hash t Y.encoding in
-    Format.asprintf "%a" Context_hash.pp hash
-
-  let eq tree_s tree_c =
-    let open Lwt_syntax in
-    let* hash1 = hash tree_s X.encoding in
-    let+ hash2 = hash tree_c Y.encoding in
-    Context_hash.equal hash1 hash2
-end
-
-(* This is a helper (just in case) to skip
-   intermididate trees comparisons,
-   if  some tests are slow.
-*)
-module Make_always_equal (X : sig
-  type t
-end) (Y : sig
-  type t
-end) : Hetero_equality.S with type a = X.t and type b = Y.t = struct
-  type a = X.t
-
-  type b = Y.t
-
-  let to_string_a _ = Lwt.return "<Current durable>"
-
-  let to_string_b _ = Lwt.return "<Snapshot durable>"
-
-  let eq _ _ = Lwt.return_true
-end
-
 module CBV = Tezos_lazy_containers.Chunked_byte_vector
-
-(* Hetero equality for chunked byte vector *)
-module CBV_equality : Hetero_equality.S with type a = CBV.t and type b = CBV.t =
-struct
-  type a = CBV.t
-
-  type b = CBV.t
-
-  let to_string_cbv cbv =
-    let open Lwt_syntax in
-    let+ cbv_bytes = CBV.to_bytes cbv in
-    Format.asprintf "%a" Hex.pp (Hex.of_bytes cbv_bytes)
-
-  let to_string_a = to_string_cbv
-
-  let to_string_b = to_string_cbv
-
-  let eq cbv1 cbv2 =
-    let open Lwt_syntax in
-    let* b1 = CBV.to_bytes cbv1 in
-    let+ b2 = CBV.to_bytes cbv2 in
-    Bytes.equal b1 b2
-end
-
-module CBV_equality_option = Hetero_equality.Make_option (CBV_equality)
 
 (* Adapter of snapshotted durable interface
    with additional cbv type, which it doesn't have *)
@@ -175,8 +92,8 @@ module Snapshot : Testable_durable_sig = struct
     CBV.to_bytes cbv
 end
 
-(* Adapter of current durable interface
-   with additional cbv type, which it doesn't have *)
+(* Adapter of current durable interface,
+   tweaking find_value/find_value_exn signatures *)
 module Current : Testable_durable_sig = struct
   include Tezos_scoru_wasm.Durable
 
@@ -193,21 +110,32 @@ module Current : Testable_durable_sig = struct
     CBV.to_bytes cbv
 end
 
-module Durables_equality = Make_encodable_equality (Snapshot) (Current)
+(* Returns Ok () or Error (string * string) with diverged hashes *)
+let compare_durable_storages (ts : Snapshot.t) (tc : Current.t) :
+    (unit, string * string) result Lwt.t =
+  let open Lwt_syntax in
+  let hash t encoding =
+    let* tree = empty_tree () in
+    let+ tree = Tree_encoding_runner.encode encoding t tree in
+    Context_binary_tree.hash tree
+  in
+  let* hash_snapshot = hash ts Snapshot.encoding in
+  let* hash_current = hash tc Current.encoding in
+  if Context_hash.equal hash_snapshot hash_current then Lwt.return_ok ()
+  else
+    Lwt.return_error
+      ( Format.asprintf "%a" Context_hash.pp hash_snapshot,
+        Format.asprintf "%a" Context_hash.pp hash_current )
 
 (* This module implements a durable testable interface
    for a current implementation (Current module) against
    the reference implementation (Snapshot module) .
    All the methods are performed on both durables and
    returned values and resulting durables tested on equality.
-   Hence, this module aspires to mantain invariant that trees in the pair
-   are always equal wrt. passed Eq_durable.
 *)
-module Make_paired_durable
-    (Eq_durable : Hetero_equality.S
-                    with type a = Snapshot.t
-                     and type b = Current.t) :
-  Testable_durable_sig with type t = Snapshot.t * Current.t = struct
+module Make_paired_durable (Config : sig
+  val compare_durables_after_each_operation : bool
+end) : Testable_durable_sig with type t = Snapshot.t * Current.t = struct
   type t = Snapshot.t * Current.t
 
   type key = Snapshot.key * Current.key
@@ -221,16 +149,16 @@ module Make_paired_durable
 
   let assert_trees_equality (t_s, t_c) =
     let open Lwt_syntax in
-    let* eq = Eq_durable.eq t_s t_c in
-    (* Avoid calling trees' pp unless trees are different *)
-    if eq then Lwt.return_unit
-    else
-      let* snapshot_str = Eq_durable.to_string_a t_s in
-      let+ current_str = Eq_durable.to_string_b t_c in
-      Assert.fail_msg
-        "Tree states diverged: snapshot = %s vs current = %s"
-        snapshot_str
-        current_str
+    if Config.compare_durables_after_each_operation then
+      let* res = compare_durable_storages t_s t_c in
+      match res with
+      | Error (snapshot_str, current_str) ->
+          Assert.fail_msg
+            "Tree states diverged: snapshot = %s vs current = %s"
+            snapshot_str
+            current_str
+      | _ -> Lwt.return_unit
+    else Lwt.return_unit
 
   (* Motivation behind this function that
      we would like to be able to test exceptions
@@ -255,24 +183,13 @@ module Make_paired_durable
       | Tezos_scoru_wasm.Durable.IO_too_large -> IO_too_large
       | e -> e)
 
-  let ensure_same_outcome (type a b) ((module Eq) : (a, b) Hetero_equality.t)
-      (f_s : unit -> (a * Snapshot.t) Lwt.t)
-      (f_c : unit -> (b * Current.t) Lwt.t) :
-      (b * (Snapshot.t * Current.t)) Lwt.t =
+  let ensure_same_outcome (type a) ~(pp : Format.formatter -> a -> unit)
+      ~(eq : a -> a -> bool) (f_s : unit -> (a * Snapshot.t) Lwt.t)
+      (f_c : unit -> (a * Current.t) Lwt.t) :
+      (a * (Snapshot.t * Current.t)) Lwt.t =
     let open Lwt_syntax in
     let* outcome_snapshot = guard f_s in
     let* outcome_current = guard f_c in
-    let assert_values_equality val_snapshot val_current =
-      let* eq = Eq.eq val_snapshot val_current in
-      if eq then Lwt.return_unit
-      else
-        let* val_snapshot_str = Eq.to_string_a val_snapshot in
-        let* val_current_str = Eq.to_string_b val_current in
-        Assert.fail_msg
-          "Expected returned value %s but got %s"
-          val_snapshot_str
-          val_current_str
-    in
     match (outcome_snapshot, outcome_current) with
     | Error error_snapshot, Error error_current ->
         Assert.equal
@@ -286,21 +203,27 @@ module Make_paired_durable
           (convert_to_snapshot_durable_exception error_current) ;
         raise error_snapshot
     | Ok (val_snapshot, tree_snapshot), Ok (val_current, tree_current) ->
-        let* () = assert_values_equality val_snapshot val_current in
+        Assert.equal
+          ~loc:__LOC__
+          ~msg:"Returned values from durables are not equal"
+          ~pp
+          ~eq
+          val_snapshot
+          val_current ;
         let+ () = assert_trees_equality (tree_snapshot, tree_current) in
         (val_current, (tree_snapshot, tree_current))
     | Ok (val_snapshot, _), Error error_current ->
-        let+ val_str = Eq.to_string_a val_snapshot in
         Assert.fail_msg
-          "Expected returned value %s but failed with error %s"
-          val_str
+          "Expected returned value %a but failed with error %s"
+          pp
+          val_snapshot
           (Printexc.to_string error_current)
     | Error error_snapshot, Ok (val_current, _) ->
-        let+ val_str = Eq.to_string_b val_current in
         Assert.fail_msg
-          "Expected to fail with error %s but value returned %s"
+          "Expected to fail with error %s but value returned %a"
           (Printexc.to_string error_snapshot)
-          val_str
+          pp
+          val_current
 
   let same_trees (f_s : unit -> Snapshot.t Lwt.t)
       (f_c : unit -> Current.t Lwt.t) : (Snapshot.t * Current.t) Lwt.t =
@@ -308,16 +231,16 @@ module Make_paired_durable
     let add_unit r = ((), r) in
     let+ _, trees =
       ensure_same_outcome
-        (module Hetero_equality.Unit)
+        ~pp:(fun fmt _ -> Format.fprintf fmt "unit")
+        ~eq:(fun _ _ -> true)
         (fun () -> Lwt.map add_unit @@ f_s ())
         (fun () -> Lwt.map add_unit @@ f_c ())
     in
     trees
 
-  let same_values (type a b) (eq : (a, b) Hetero_equality.t)
-      (f_s : unit -> (a * Snapshot.t) Lwt.t)
-      (f_c : unit -> (b * Current.t) Lwt.t) : b Lwt.t =
-    Lwt.map fst @@ ensure_same_outcome eq f_s f_c
+  let same_values (type a) ~pp ~eq (f_s : unit -> (a * Snapshot.t) Lwt.t)
+      (f_c : unit -> (a * Current.t) Lwt.t) : a Lwt.t =
+    Lwt.map fst @@ ensure_same_outcome ~pp ~eq f_s f_c
 
   let add_tree tree f = Lwt.map (fun r -> (r, tree)) f
 
@@ -389,13 +312,15 @@ module Make_paired_durable
 
   let find_value (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module Hetero_equality.Bytes_option)
+      ~pp:(fun fmt b -> (Fmt.option Hex.pp) fmt (Option.map Hex.of_bytes b))
+      ~eq:(Option.equal Bytes.equal)
       (fun () -> add_tree tree_s @@ Snapshot.find_value tree_s key_s)
       (fun () -> add_tree tree_c @@ Current.find_value tree_c key_c)
 
   let find_value_exn (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module Hetero_equality.Bytes)
+      ~pp:(fun fmt b -> Hex.pp fmt (Hex.of_bytes b))
+      ~eq:Bytes.equal
       (fun () -> add_tree tree_s @@ Snapshot.find_value_exn tree_s key_s)
       (fun () -> add_tree tree_c @@ Current.find_value_exn tree_c key_c)
 
@@ -415,19 +340,22 @@ module Make_paired_durable
 
   let list (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module Hetero_equality.String_list)
+      ~pp:(Fmt.list ~sep:Fmt.semi Fmt.string)
+      ~eq:(List.equal String.equal)
       (fun () -> add_tree tree_s @@ Snapshot.list tree_s key_s)
       (fun () -> add_tree tree_c @@ Current.list tree_c key_c)
 
   let count_subtrees (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module Hetero_equality.Int)
+      ~pp:Fmt.int
+      ~eq:Int.equal
       (fun () -> add_tree tree_s @@ Snapshot.count_subtrees tree_s key_s)
       (fun () -> add_tree tree_c @@ Current.count_subtrees tree_c key_c)
 
   let subtree_name_at (tree_s, tree_c) (key_s, key_c) n =
     same_values
-      (module Hetero_equality.String)
+      ~pp:Fmt.string
+      ~eq:String.equal
       (fun () -> add_tree tree_s @@ Snapshot.subtree_name_at tree_s key_s n)
       (fun () -> add_tree tree_c @@ Current.subtree_name_at tree_c key_c n)
 
@@ -438,13 +366,15 @@ module Make_paired_durable
 
   let hash (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module Hetero_equality.Context_hash_option)
+      ~pp:(Fmt.option Context_hash.pp)
+      ~eq:(Option.equal Context_hash.equal)
       (fun () -> add_tree tree_s @@ Snapshot.hash tree_s key_s)
       (fun () -> add_tree tree_c @@ Current.hash tree_c key_c)
 
   let hash_exn (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module Hetero_equality.Context_hash)
+      ~pp:Context_hash.pp
+      ~eq:Context_hash.equal
       (fun () -> add_tree tree_s @@ Snapshot.hash_exn tree_s key_s)
       (fun () -> add_tree tree_c @@ Current.hash_exn tree_c key_c)
 
@@ -463,11 +393,14 @@ module Make_paired_durable
 
   let read_value_exn (tree_s, tree_c) (key_s, key_c) offset len =
     same_values
-      (module Hetero_equality.String)
+      ~pp:Fmt.string
+      ~eq:String.equal
       (fun () ->
         add_tree tree_s @@ Snapshot.read_value_exn tree_s key_s offset len)
       (fun () ->
         add_tree tree_c @@ Current.read_value_exn tree_c key_c offset len)
 end
 
-module Paired_durable = Make_paired_durable (Durables_equality)
+module Paired_durable = Make_paired_durable (struct
+  let compare_durables_after_each_operation = true
+end)

@@ -44,17 +44,16 @@ let run_scenario (scenario : Paired_durable.t -> 'a Lwt.t) : 'a Lwt.t =
   *)
   let _max_key_len = Paired_durable.max_key_length in
   let* result = scenario durable in
-  let* final_state_eq = Durables_equality.eq (fst durable) (snd durable) in
-  let* snapshot_str = Durables_equality.to_string_a (fst durable) in
-  let+ current_str = Durables_equality.to_string_b (snd durable) in
-  (* Just in case check testing states *)
-  Assert.assert_true
-    (Format.asprintf
-       "Final durable states diverged: snapshot = %s vs current = %s"
-       snapshot_str
-       current_str)
-    final_state_eq ;
-  result
+  let* final_state_eq = compare_durable_storages (fst durable) (snd durable) in
+  match final_state_eq with
+  | Error (snapshot_str, current_str) ->
+      Assert.fail
+        ~loc:__LOC__
+        ~msg:"Final durable states diverged"
+        Fmt.string
+        snapshot_str
+        current_str
+  | _ -> Lwt.return result
 
 (* Actual tests *)
 
