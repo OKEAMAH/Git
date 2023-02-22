@@ -83,10 +83,10 @@ let test_several_operations () =
   let key_prefix = Paired_durable.key_of_string_exn "/durable/value" in
   let* durable = Paired_durable.delete durable key_prefix in
   let* () =
-    assert_exception Tezos_scoru_wasm.Durable.Value_not_found @@ fun () ->
-    Paired_durable.read_value_exn durable key1 0L 5L
+    assert_exception Tezos_scoru_wasm_durable_snapshot.Durable.Value_not_found
+    @@ fun () -> Paired_durable.read_value_exn durable key1 0L 5L
   in
   return_ok_unit
 
 let tests : unit Alcotest_lwt.test_case trace =
-  [tztest "Do several operations om durable" `Quick test_several_operations]
+  [tztest "Do several operations on durable" `Quick test_several_operations]

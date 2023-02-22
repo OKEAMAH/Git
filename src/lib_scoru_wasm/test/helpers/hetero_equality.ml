@@ -136,3 +136,13 @@ module Unit = Make (struct
 
   let eq _ _ = true
 end)
+
+module Bytes = Make (struct
+  type t = bytes
+
+  let pp fmt b = Hex.pp fmt (Hex.of_bytes b)
+
+  let eq = Bytes.equal
+end)
+
+module Bytes_option = Make_option (Bytes)

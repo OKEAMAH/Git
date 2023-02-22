@@ -36,8 +36,6 @@ module type Testable_durable_sig = sig
 
   type key
 
-  type cbv
-
   val encoding : t Tezos_tree_encoding.t
 
   val max_key_length : int
@@ -46,9 +44,9 @@ module type Testable_durable_sig = sig
 
   val key_of_string_opt : string -> key option
 
-  val find_value : t -> key -> cbv option Lwt.t
+  val find_value : t -> key -> bytes option Lwt.t
 
-  val find_value_exn : t -> key -> cbv Lwt.t
+  val find_value_exn : t -> key -> bytes Lwt.t
 
   val copy_tree_exn : t -> ?edit_readonly:bool -> key -> key -> t Lwt.t
 
@@ -161,22 +159,38 @@ module CBV_equality_option = Hetero_equality.Make_option (CBV_equality)
 
 (* Adapter of snapshotted durable interface
    with additional cbv type, which it doesn't have *)
-module Snapshot :
-  Testable_durable_sig
-    with type cbv = Tezos_lazy_containers.Chunked_byte_vector.t = struct
-  type cbv = Tezos_lazy_containers.Chunked_byte_vector.t
-
+module Snapshot : Testable_durable_sig = struct
   include Tezos_scoru_wasm_durable_snapshot.Durable
+
+  let find_value tree key =
+    let open Lwt_syntax in
+    let* cbv = find_value tree key in
+    match cbv with
+    | None -> Lwt.return None
+    | Some cbv -> Lwt.map Option.some (CBV.to_bytes cbv)
+
+  let find_value_exn tree key =
+    let open Lwt_syntax in
+    let* cbv = find_value_exn tree key in
+    CBV.to_bytes cbv
 end
 
 (* Adapter of current durable interface
    with additional cbv type, which it doesn't have *)
-module Current :
-  Testable_durable_sig
-    with type cbv = Tezos_lazy_containers.Chunked_byte_vector.t = struct
-  type cbv = Tezos_lazy_containers.Chunked_byte_vector.t
-
+module Current : Testable_durable_sig = struct
   include Tezos_scoru_wasm.Durable
+
+  let find_value tree key =
+    let open Lwt_syntax in
+    let* cbv = find_value tree key in
+    match cbv with
+    | None -> Lwt.return None
+    | Some cbv -> Lwt.map Option.some (CBV.to_bytes cbv)
+
+  let find_value_exn tree key =
+    let open Lwt_syntax in
+    let* cbv = find_value_exn tree key in
+    CBV.to_bytes cbv
 end
 
 module Durables_equality = Make_encodable_equality (Snapshot) (Current)
@@ -193,14 +207,10 @@ module Make_paired_durable
     (Eq_durable : Hetero_equality.S
                     with type a = Snapshot.t
                      and type b = Current.t) :
-  Testable_durable_sig
-    with type t = Snapshot.t * Current.t
-     and type cbv = Current.cbv = struct
+  Testable_durable_sig with type t = Snapshot.t * Current.t = struct
   type t = Snapshot.t * Current.t
 
   type key = Snapshot.key * Current.key
-
-  type cbv = Current.cbv
 
   (* Helper functions *)
   let guard (f : unit -> 'a Lwt.t) =
@@ -379,13 +389,13 @@ module Make_paired_durable
 
   let find_value (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module CBV_equality_option)
+      (module Hetero_equality.Bytes_option)
       (fun () -> add_tree tree_s @@ Snapshot.find_value tree_s key_s)
       (fun () -> add_tree tree_c @@ Current.find_value tree_c key_c)
 
   let find_value_exn (tree_s, tree_c) (key_s, key_c) =
     same_values
-      (module CBV_equality)
+      (module Hetero_equality.Bytes)
       (fun () -> add_tree tree_s @@ Snapshot.find_value_exn tree_s key_s)
       (fun () -> add_tree tree_c @@ Current.find_value_exn tree_c key_c)
 
