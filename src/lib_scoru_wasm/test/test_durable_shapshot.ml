@@ -39,10 +39,6 @@ let run_scenario (scenario : Paired_durable.t -> 'a Lwt.t) : 'a Lwt.t =
   let open Lwt_syntax in
   let* tree = empty_tree () in
   let* durable = Tree_encoding_runner.decode Paired_durable.encoding tree in
-  (* Check pre-conditions:
-     max key length is the same for both implementations.
-  *)
-  let _max_key_len = Paired_durable.max_key_length in
   let* result = scenario durable in
   let* final_state_eq = compare_durable_storages (fst durable) (snd durable) in
   match final_state_eq with
@@ -87,5 +83,5 @@ let test_several_operations () =
   in
   return_ok_unit
 
-let tests : unit Alcotest_lwt.test_case trace =
+let tests =
   [tztest "Do several operations on durable" `Quick test_several_operations]

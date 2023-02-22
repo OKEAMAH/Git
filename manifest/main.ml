@@ -3458,7 +3458,7 @@ let octez_scoru_wasm_durable_snapshot =
   private_lib
     "tezos_scoru_wasm_durable_snapshot"
     ~path:"src/lib_scoru_wasm/test/durable_snapshot"
-    ~opam:"tezos-scoru-wasm-durable-snasphot"
+    ~opam:"tezos-scoru-wasm-durable-snapshot"
     ~synopsis:"Durable storage reference implementation"
     ~deps:
       [

@@ -164,7 +164,7 @@ end) : Testable_durable_sig with type t = Snapshot.t * Current.t = struct
      we would like to be able to test exceptions
      thrown from Snapshot durable and Current on equality.
 
-     Without this funtion there are two different sets of
+     Without this function there are two different sets of
      exceptions:
        Tezos_scoru_wasm_durable_snapshot.Durable.Value_not_found
        Tezos_scoru_wasm.Durable.Value_not_found
@@ -297,7 +297,6 @@ end) : Testable_durable_sig with type t = Snapshot.t * Current.t = struct
   let key_of_string_opt key =
     match (Snapshot.key_of_string_opt key, Current.key_of_string_opt key) with
     | None, None -> None
-    (* TODO: should we compare keys? *)
     | Some k1, Some k2 -> Some (k1, k2)
     | Some _k1, None ->
         Assert.fail_msg
