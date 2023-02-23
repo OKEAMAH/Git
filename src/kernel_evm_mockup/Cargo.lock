@@ -225,6 +225,7 @@ name = "evm_mockup_kernel"
 version = "0.1.0"
 dependencies = [
  "debug",
+ "hex",
  "host",
  "kernel",
  "mock_runtime",

@@ -19,3 +19,4 @@ mock_runtime = { git = "https://gitlab.com/tezos/kernel", branch = "main", defau
 
 num-bigint = "0.3"
 rlp = "0.5.2"
+hex = "0.4.3" # This crate is only for debugging and inserting hex encoded transactions, and will be removed
