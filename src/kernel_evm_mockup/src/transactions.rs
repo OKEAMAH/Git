@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::account::OwnedHash;
+use crate::error::Error;
 use crate::wei::Wei;
 
 use rlp::{Decodable, DecoderError, Rlp, RlpIterator};
@@ -197,6 +198,34 @@ impl Decodable for Transaction2930 {
             })
         } else {
             Err(DecoderError::RlpExpectedToBeList)
+        }
+    }
+}
+
+pub enum RawTransaction {
+    Legacy(LegacyTransaction),
+    Eip1559(Transaction1559),
+    Eip2930(Transaction2930),
+}
+
+impl RawTransaction {
+    // It cannot be implemented with the Decodable trait since it expects an RLP
+    // encoded value. The prefixed transactions are not RLP compatible.
+    pub fn decode(bytes: &[u8]) -> Result<RawTransaction, Error> {
+        match bytes.first() {
+            None => Err(Error::Generic),
+            Some(1_u8) => {
+                let decoder = Rlp::new(&bytes[1..]);
+                Ok(RawTransaction::Eip2930(Transaction2930::decode(&decoder)?))
+            }
+            Some(2_u8) => {
+                let decoder = Rlp::new(&bytes[1..]);
+                Ok(RawTransaction::Eip1559(Transaction1559::decode(&decoder)?))
+            }
+            Some(_) => {
+                let decoder = Rlp::new(bytes);
+                Ok(RawTransaction::Legacy(LegacyTransaction::decode(&decoder)?))
+            }
         }
     }
 }
