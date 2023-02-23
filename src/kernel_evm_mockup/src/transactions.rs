@@ -72,3 +72,78 @@ impl Decodable for LegacyTransaction {
         }
     }
 }
+
+// Ethereum EIP 1559 Transaction
+pub struct Transaction1559 {
+    pub chain_id: u64,
+    pub signer_nonce: u64,
+    pub max_priority_fee_per_gas: Wei,
+    pub max_fee_per_gas: Wei,
+    pub gas_limit: u64,
+    pub destination: Option<OwnedHash>,
+    pub amount: Wei,
+    pub payload: Vec<u8>,
+    pub access_list: Vec<(OwnedHash, Vec<OwnedHash>)>,
+    pub signature_y_parity: bool,
+    pub signature_r: Vec<u8>,
+    pub signature_s: Vec<u8>,
+}
+
+fn decode_access_list(decoder: &Rlp<'_>) -> Result<Vec<(OwnedHash, Vec<OwnedHash>)>, DecoderError> {
+    let mut buffer = Vec::new();
+
+    if decoder.is_list() {
+        let it = decoder.iter();
+        it.fold(Ok(()), |acc, decoder| {
+            if decoder.is_list() && decoder.item_count() == Ok(2) && acc == Ok(()) {
+                let account = decode_field(&decoder.at(0)?, "account")?;
+                let storage_keys: Vec<OwnedHash> = decoder.at(1)?.as_list()?;
+                buffer.push((account, storage_keys));
+                Ok(())
+            } else {
+                Err(DecoderError::RlpExpectedToBeList)
+            }
+        })?
+    };
+    Ok(buffer)
+}
+
+impl Decodable for Transaction1559 {
+    fn decode(decoder: &Rlp<'_>) -> Result<Self, DecoderError> {
+        if decoder.is_list() && decoder.item_count() == Ok(12) {
+            let mut it = decoder.iter();
+            let chain_id: u64 = decode_field(&next(&mut it)?, "chain_id")?;
+            let signer_nonce: u64 = decode_field(&next(&mut it)?, "signer_nonce")?;
+            let max_priority_fee_per_gas = Wei::decode(&next(&mut it)?)?;
+            let max_fee_per_gas = Wei::decode(&next(&mut it)?)?;
+            let gas_limit: u64 = decode_field(&next(&mut it)?, "gas_limit")?;
+            let destination: OwnedHash = decode_field(&next(&mut it)?, "destination")?;
+            let amount: Wei = Wei::from_bytes_le(decode_data(&next(&mut it)?, "amount")?);
+            let payload: Vec<u8> = decode_field(&next(&mut it)?, "payload")?;
+            let access_list = decode_access_list(&next(&mut it)?)?;
+            let signature_y_parity = decode_field(&next(&mut it)?, "signature_y_parity")?;
+            let signature_r = decode_field(&next(&mut it)?, "signature_r")?;
+            let signature_s = decode_field(&next(&mut it)?, "signature_s")?;
+            Ok(Self {
+                chain_id,
+                signer_nonce,
+                max_priority_fee_per_gas,
+                max_fee_per_gas,
+                gas_limit,
+                destination: if destination.is_empty() {
+                    None
+                } else {
+                    Some(destination)
+                },
+                amount,
+                payload,
+                access_list,
+                signature_y_parity,
+                signature_r,
+                signature_s,
+            })
+        } else {
+            Err(DecoderError::RlpExpectedToBeList)
+        }
+    }
+}
