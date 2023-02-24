@@ -229,6 +229,115 @@ let register_protocol_specific_because_regression_tests () =
   Timelock.register ~protocols:[Alpha] ;
   Timelock_disabled.register ~protocols:[Mumbai]
 
+type coverage_action = Merge | Verify
+let () =
+  let coverage_action = match Cli.get_string_opt "coverage_action" with
+  | Some "merge" -> Some Merge
+  | Some "verify" -> Some Verify
+  | Some action -> Test.fail "Invalid Tezt test argument 'coverage_action': %s. Should be one of 'verify' or 'merge'." action
+  | None -> None
+  in
+  let coverage_output test =
+    let title = Test.title test in
+    let file = Test.file test in
+    let output_dir =
+      (* hack here hardcoding coverage location *)
+      project_root // "tezt/tests" // "_coverage_output"
+    in
+    let relative_output_dir =
+      let test_title_file =
+        let sanitize_char = function
+          | ( 'a' .. 'z'
+            | 'A' .. 'Z'
+            | '0' .. '9'
+            | '_' | '-' | '.' | ' ' | '(' | ')' ) as x ->
+              x
+          | _ -> '-'
+        in
+        let full = String.map sanitize_char title in
+        let max_length = 80 in
+        let title = if String.length full > max_length then String.sub full 0 max_length
+        else full in
+        sf "%d-%s" (Unix.getpid ()) title
+      in
+      file // test_title_file
+    in
+    output_dir // relative_output_dir
+  in
+  let reset test =
+    let rec create_parents dirname =
+      let parent = Filename.dirname dirname in
+      if String.length parent < String.length dirname then (
+        create_parents parent ;
+        if not (Sys.file_exists dirname) then
+          try
+            Log.info "Create %S" dirname ;
+            Unix.mkdir dirname 0o755
+          with Unix.Unix_error (EEXIST, _, _) ->
+            (* Can happen with [-j] in particular. *)
+            ())
+    in
+    let stored_full_output_dir = coverage_output test in
+    create_parents stored_full_output_dir ;
+    Unix.putenv "BISECT_FILE" (stored_full_output_dir ^ "/") ;
+    Log.debug "Storing coverage in %S" stored_full_output_dir
+  in
+  let cleanup coverage_action test =
+    let coverage_directory = coverage_output test in
+    let coverage_files =
+      Sys.readdir coverage_directory
+      |> Array.to_list
+      |> List.filter @@ fun filename -> filename =~ rex "^\\d+\\.coverage$"
+    in
+    let* () = (match coverage_files with
+    | [] ->
+        Log.info "Test '%s' did not produce any coverage" (Test.title test) ;
+        unit
+    | _ ->
+        (* merge coverage *)
+        match coverage_action with
+          | Merge ->
+            let* () =
+              Process.run "bisect-ppx-report"
+              @@ [
+                "merge";
+                "--coverage-path";
+                coverage_directory;
+                coverage_directory // "merged.coverage";
+              ]
+            in
+            (* remove unmerged *)
+            List.iter
+              (fun filename ->
+                 let filename = coverage_directory // filename in
+                 Sys.remove filename ;
+                 Log.info "(not) Removed coverage trace: %s" filename)
+              coverage_files ;
+            unit
+          | Verify ->
+            let* () =
+              Lwt_list.iter_s
+                (fun filename ->
+                   let filename = coverage_directory // filename in
+                   let* () =
+                     Process.run "bisect-ppx-report" @@ ["summary"; filename]
+                   in
+                   Log.info "Coverage trace %s is not corrupt" filename ;
+                   unit)
+                coverage_files
+            in
+            unit)
+    in
+    (* Reset to a default location to get the coverage of the tezt execution it self *)
+    Unix.putenv "BISECT_FILE" (project_root // "tezt/tests/_coverage_output/") ;
+    unit
+  in
+  match coverage_action with
+  | Some coverage_action ->
+    Test.declare_reset_function reset ;
+    Test.declare_cleanup_function (cleanup coverage_action)
+  | None -> ()
+
 let () =
   register_protocol_independent_tests () ;
   register_protocol_migration_tests () ;
