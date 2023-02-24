@@ -36,29 +36,21 @@ open Lwt_result_syntax
 let wrap e = Lwt.return (Environment.wrap_tzresult e)
 
 let simple_test () =
-  let public, secret = Tezos_crypto.Timelock.gen_rsa_keys () in
-  let locked_value = Tezos_crypto.Timelock.gen_locked_value public in
+  let open Tezos_crypto.Timelock_legacy in
+  let public, secret = gen_rsa_keys () in
+  let locked_value = gen_locked_value public in
   let time = 1000 in
-  let unlocked_value =
-    Tezos_crypto.Timelock.unlock_with_secret secret ~time locked_value
-  in
+  let unlocked_value = unlock_with_secret secret ~time locked_value in
   let same_unlocked, proof =
-    Tezos_crypto.Timelock.unlock_and_prove_without_secret
-      public
-      ~time
-      locked_value
+    unlock_and_prove_without_secret public ~time locked_value
   in
   assert (unlocked_value = same_unlocked) ;
-  let sym_key =
-    Tezos_crypto.Timelock.unlocked_value_to_symmetric_key unlocked_value
-  in
+  let sym_key = unlocked_value_to_symmetric_key unlocked_value in
   let message = Bytes.create 12 in
-  let c = Tezos_crypto.Timelock.encrypt sym_key message in
+  let c = encrypt sym_key message in
   let expected_result = Environment.Timelock.Correct message in
-  let chest_key = Tezos_crypto.Timelock.{unlocked_value; proof} in
-  let chest =
-    Tezos_crypto.Timelock.{locked_value; rsa_public = public; ciphertext = c}
-  in
+  let chest_key = {unlocked_value; proof} in
+  let chest = {locked_value; rsa_public = public; ciphertext = c} in
   let result = Environment.Timelock.open_chest chest chest_key ~time in
   assert (result = expected_result) ;
   return_unit
@@ -93,6 +85,7 @@ let deprecated_chest_open () =
    DISABLED as open_chest is deprecated, but is expected to return.
 *)
 let contract_test () =
+  let open Tezos_crypto.Timelock_legacy in
   let* block, baker, source_contract, _src2 = Contract_helpers.init () in
   let storage = "0xdeadbeef" in
   let script = Contract_helpers.read_file timelock_path in
@@ -104,39 +97,28 @@ let contract_test () =
       ~baker
       block
   in
-  let public, secret = Tezos_crypto.Timelock.gen_rsa_keys () in
-  let locked_value = Tezos_crypto.Timelock.gen_locked_value public in
+  let public, secret = gen_rsa_keys () in
+  let locked_value = gen_locked_value public in
   let time = 1000 in
-  let unlocked_value =
-    Tezos_crypto.Timelock.unlock_with_secret secret ~time locked_value
-  in
+  let unlocked_value = unlock_with_secret secret ~time locked_value in
   let _same_unlocked, proof =
-    Tezos_crypto.Timelock.unlock_and_prove_without_secret
-      public
-      ~time
-      locked_value
+    unlock_and_prove_without_secret public ~time locked_value
   in
-  let sym_key =
-    Tezos_crypto.Timelock.unlocked_value_to_symmetric_key unlocked_value
-  in
+  let sym_key = unlocked_value_to_symmetric_key unlocked_value in
   let message = Bytes.of_string "this is my message" in
-  let c = Tezos_crypto.Timelock.encrypt sym_key message in
+  let c = encrypt sym_key message in
   let check_storage chest chest_key expected_storage_hexa =
     let chest_key_bytes =
       "0x"
       ^ Hex.show
           (Hex.of_bytes
-             (Data_encoding.Binary.to_bytes_exn
-                Tezos_crypto.Timelock.chest_key_encoding
-                chest_key))
+             (Data_encoding.Binary.to_bytes_exn chest_key_encoding chest_key))
     in
     let chest_bytes =
       "0x"
       ^ Hex.show
           (Hex.of_bytes
-             (Data_encoding.Binary.to_bytes_exn
-                Tezos_crypto.Timelock.chest_encoding
-                chest))
+             (Data_encoding.Binary.to_bytes_exn chest_encoding chest))
     in
     let michelson_string =
       Format.sprintf "(Pair %s %s )" chest_key_bytes chest_bytes
@@ -170,46 +152,31 @@ let contract_test () =
     assert (to_check = expected_storage_hexa) ;
     return_unit
   in
-  let chest_key_correct = Tezos_crypto.Timelock.{unlocked_value; proof} in
-  let chest_correct =
-    Tezos_crypto.Timelock.{locked_value; rsa_public = public; ciphertext = c}
-  in
+  let chest_key_correct = {unlocked_value; proof} in
+  let chest_correct = {locked_value; rsa_public = public; ciphertext = c} in
   check_storage
     chest_correct
     chest_key_correct
     (Hex.show (Hex.of_bytes message))
   >>=? fun () ->
   (* We redo an RSA parameters generation to create incorrect cipher and proof *)
-  let public_bogus, secret_bogus = Tezos_crypto.Timelock.gen_rsa_keys () in
-  let locked_value_bogus =
-    Tezos_crypto.Timelock.gen_locked_value public_bogus
-  in
+  let public_bogus, secret_bogus = gen_rsa_keys () in
+  let locked_value_bogus = gen_locked_value public_bogus in
   let time = 1000 in
   let unlocked_value_bogus =
-    Tezos_crypto.Timelock.unlock_with_secret
-      secret_bogus
-      ~time
-      locked_value_bogus
+    unlock_with_secret secret_bogus ~time locked_value_bogus
   in
   let _same_unlocked, proof_bogus =
-    Tezos_crypto.Timelock.unlock_and_prove_without_secret
-      public
-      ~time
-      locked_value_bogus
+    unlock_and_prove_without_secret public ~time locked_value_bogus
   in
-  let sym_key_bogus =
-    Tezos_crypto.Timelock.unlocked_value_to_symmetric_key unlocked_value_bogus
-  in
-  let c_bogus = Tezos_crypto.Timelock.encrypt sym_key_bogus message in
+  let sym_key_bogus = unlocked_value_to_symmetric_key unlocked_value_bogus in
+  let c_bogus = encrypt sym_key_bogus message in
 
   let chest_incorrect =
-    Tezos_crypto.Timelock.
-      {locked_value; rsa_public = public; ciphertext = c_bogus}
+    {locked_value; rsa_public = public; ciphertext = c_bogus}
   in
   check_storage chest_incorrect chest_key_correct "00" >>=? fun () ->
-  let chest_key_incorrect =
-    Tezos_crypto.Timelock.{unlocked_value; proof = proof_bogus}
-  in
+  let chest_key_incorrect = {unlocked_value; proof = proof_bogus} in
   check_storage chest_correct chest_key_incorrect "01" >>=? fun () ->
   return_unit
 
