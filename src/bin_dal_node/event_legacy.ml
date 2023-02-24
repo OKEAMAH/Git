@@ -87,13 +87,13 @@ let data_dir_not_found =
     ("path", Data_encoding.(string))
 
 let stored_slot_shards =
-  declare_2
+  declare_1
     ~section
     ~name:"stored_slot_shards"
-    ~msg:"Slot stored: commitment {commitment}, shards {shards}"
+    ~msg:"Successfuly stored the shards associated to commitment {commitment}"
     ~level:Notice
-    ("commitment", Data_encoding.string)
-    ("shards", Data_encoding.int31)
+    ~pp1:Cryptobox.Commitment.pp
+    ("commitment", Cryptobox.Commitment.encoding)
 
 let fetched_slot =
   declare_2

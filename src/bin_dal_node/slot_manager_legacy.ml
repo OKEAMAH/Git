@@ -121,15 +121,11 @@ let () =
 
 type slot = bytes
 
-let save store watcher slot_header shards =
+let save store watcher commitment key_values =
   let open Lwt_result_syntax in
-  let* () = Shard_store.write_shards store slot_header shards in
-  let*! () =
-    let slot_header_b58 = Cryptobox.Commitment.to_b58check slot_header in
-    Event.(
-      emit stored_slot_shards (slot_header_b58, Cryptobox.IntMap.cardinal shards))
-  in
-  Lwt_watcher.notify watcher slot_header ;
+  let* () = Key_value_store.write_values store key_values in
+  let*! () = Event.(emit stored_slot_shards commitment) in
+  Lwt_watcher.notify watcher commitment ;
   return_unit
 
 let split_and_store watcher cryptobox store slot =
@@ -143,8 +139,12 @@ let split_and_store watcher cryptobox store slot =
   let open Lwt_result_syntax in
   match r with
   | Ok (polynomial, commitment, commitment_proof) ->
-      let shards = Cryptobox.shards_from_polynomial cryptobox polynomial in
-      let* () = save store watcher commitment shards in
+      let key_values =
+        Cryptobox.shards_from_polynomial cryptobox polynomial
+        |> Cryptobox.IntMap.to_seq
+        |> Seq.map (fun (int, shard) -> ((commitment, int), shard))
+      in
+      let* () = save store watcher commitment key_values in
       Lwt.return_ok (commitment, commitment_proof)
   | Error (`Slot_wrong_size msg) -> Lwt.return_error [Splitting_failed msg]
 
@@ -154,34 +154,58 @@ let polynomial_from_shards cryptobox shards =
   | Error (`Invert_zero msg | `Not_enough_shards msg) ->
       Error [Merging_failed msg]
 
-let save_shards store watcher cryptobox slot_header shards =
+let save_shards store watcher cryptobox commitment shards =
   let open Lwt_result_syntax in
   let*? polynomial = polynomial_from_shards cryptobox shards in
-  let rebuilt_slot_header = Cryptobox.commit cryptobox polynomial in
+  let rebuilt_commitment = Cryptobox.commit cryptobox polynomial in
   let*? () =
-    if Cryptobox.Commitment.equal slot_header rebuilt_slot_header then Ok ()
+    if Cryptobox.Commitment.equal commitment rebuilt_commitment then Ok ()
     else Result_syntax.fail [Invalid_shards_slot_header_association]
   in
-  save store watcher slot_header shards
-
-let get_shard dal_constants store slot_header shard_id =
-  let open Lwt_result_syntax in
-  let share_size = Cryptobox.encoded_share_size dal_constants in
-  let* r = Shard_store.read_shard ~share_size store slot_header shard_id in
-  return r
-
-let get_shards dal_constants store slot_header shard_ids =
-  let open Lwt_result_syntax in
-  let share_size = Cryptobox.encoded_share_size dal_constants in
-  let* r =
-    Shard_store.read_shards_subset ~share_size store slot_header shard_ids
+  let key_values =
+    Cryptobox.shards_from_polynomial cryptobox polynomial
+    |> Cryptobox.IntMap.to_seq
+    |> Seq.map (fun (int, shard) -> ((commitment, int), shard))
   in
-  return r
+  save store watcher commitment key_values
 
-let get_slot cryptobox store slot_header =
+(* FIXME: missing validation of data? *)
+let get_shard store commitment shard_id =
   let open Lwt_result_syntax in
-  let share_size = Cryptobox.encoded_share_size cryptobox in
-  let* shards = Shard_store.read_shards ~share_size store slot_header in
+  let* share = Key_value_store.read_value store (commitment, shard_id) in
+  return Cryptobox.{index = shard_id; share}
+
+let get_shards store commitment shard_ids =
+  let open Lwt_result_syntax in
+  let* list =
+    Key_value_store.read_values
+      store
+      (List.to_seq shard_ids |> Seq.map (fun shard_id -> (commitment, shard_id)))
+    |> Seq_s.fold_left_e
+         (fun acc ((_commitment, shard_id), v) ->
+           match v with
+           | Error err -> Error err
+           | Ok v -> Ok (Cryptobox.{index = shard_id; share = v} :: acc))
+         []
+  in
+  List.rev list |> return
+
+let get_slot cryptobox store commitment =
+  let open Lwt_result_syntax in
+  let keys =
+    0 -- ((Cryptobox.parameters cryptobox).number_of_shards - 1)
+    |> List.to_seq
+    |> Seq.map (fun shard_id -> (commitment, shard_id))
+  in
+  let* shards =
+    Key_value_store.read_values store keys
+    |> Seq_s.fold_left_e
+         (fun map ((_commitment, shard_id), value) ->
+           match value with
+           | Error err -> Error err
+           | Ok value -> Ok (Cryptobox.IntMap.add shard_id value map))
+         Cryptobox.IntMap.empty
+  in
   let*? polynomial = polynomial_from_shards cryptobox shards in
   let slot = Cryptobox.polynomial_to_bytes cryptobox polynomial in
   let*! () =

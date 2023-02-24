@@ -36,6 +36,9 @@
 
 type slot = bytes
 
+type shard_store :=
+  (Cryptobox.Commitment.t * int, Cryptobox.share) Key_value_store.t
+
 (** [split_and_store watcher dal_constants store slot] splits [slot] in shards,
     stores it onto the [store] and returns the corresponding [slot_header],
     using [dal_constants].
@@ -44,24 +47,19 @@ type slot = bytes
 val split_and_store :
   Cryptobox.commitment Lwt_watcher.input ->
   Cryptobox.t ->
-  Shard_store.t ->
+  shard_store ->
   slot ->
   (Cryptobox.Commitment.t * Cryptobox.commitment_proof) tzresult Lwt.t
 
-(** [get_shard dal_constants store slot_header shard_id] gets the shard associated to
+(** [get_shard store slot_header shard_id] gets the shard associated to
     [slot_header] at the range [shard_id]. *)
 val get_shard :
-  Cryptobox.t ->
-  Shard_store.t ->
-  Cryptobox.commitment ->
-  int ->
-  Cryptobox.shard tzresult Lwt.t
+  shard_store -> Cryptobox.commitment -> int -> Cryptobox.shard tzresult Lwt.t
 
-(** [get_shards dal_constants store slot_header shard_ids] gets the shards
+(** [get_shards store slot_header shard_ids] gets the shards
     associated to [slot_header] at the ranges [shard_ids]. *)
 val get_shards :
-  Cryptobox.t ->
-  Shard_store.t ->
+  shard_store ->
   Cryptobox.commitment ->
   int list ->
   Cryptobox.shard list tzresult Lwt.t
@@ -70,7 +68,7 @@ val get_shards :
     disk the shards associated to [slot_header], gathers them, rebuilds and
     returns the [slot]. *)
 val get_slot :
-  Cryptobox.t -> Shard_store.t -> Cryptobox.commitment -> slot tzresult Lwt.t
+  Cryptobox.t -> shard_store -> Cryptobox.commitment -> slot tzresult Lwt.t
 
 (** [get_slot_pages] behaves as [get_slot], except that it also
     splits the slot into pages before returning them.
@@ -81,14 +79,14 @@ val get_slot :
     [Cryptobox.parameters] argument. *)
 val get_slot_pages :
   Cryptobox.t ->
-  Shard_store.t ->
+  shard_store ->
   Cryptobox.commitment ->
   bytes list tzresult Lwt.t
 
 (** [save_shards store slot_header shards] stores [shards] onto the [store]
     associated to the given [slot_header] *)
 val save_shards :
-  Shard_store.t ->
+  shard_store ->
   Cryptobox.commitment Lwt_watcher.input ->
   Cryptobox.t ->
   Cryptobox.commitment ->
