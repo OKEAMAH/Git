@@ -8,6 +8,9 @@
  (libraries
   tezt
   tezt-tezos)
+ (link_flags
+  (:standard)
+  (:include %{workspace_root}/static-link-flags.sexp))
  (flags
   (:standard)
   -open Tezt

@@ -3257,8 +3257,8 @@ let _tezt_testnet_scenarios =
     ~internal_name:"main"
     ~path:"src/bin_testnet_scenarios"
     ~synopsis:"Run scenarios on testnets"
+    ~release_status:Experimental
     ~bisect_ppx:false
-    ~static:false
     ~deps:
       [
         tezt_lib |> open_ |> open_ ~m:"Base";
