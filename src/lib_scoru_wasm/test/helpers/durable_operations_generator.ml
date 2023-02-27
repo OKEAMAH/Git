@@ -57,7 +57,7 @@ module Operations_generator = struct
 
   let gen_arbitrary_path =
     let* segments = Gen.int_range 1 max_path_segments in
-    Gen.map (fun xs -> "/" ^ String.concat "/" xs)
+    Gen.map (fun xs -> String.concat "/" ("" :: xs))
     @@ Gen.list_repeat segments
     @@ Gen.string_size ~gen:(Gen.oneofl key_alphabet) (Gen.int_range 1 10)
 
@@ -145,7 +145,8 @@ struct
           | Out_of_bounds _ | Durable_empty | Readonly_value | IO_too_large
           | Tezos_lazy_containers.Chunked_byte_vector.Bounds ->
               cont @@ Error e
-          (* This one below is thrown from Durable as well
+          (* TODO: https://gitlab.com/tezos/tezos/-/issues/4958
+             This one below is thrown from Durable as well
              but are not exposed in public API.
              I don't think it's nice design *)
           | exn

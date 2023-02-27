@@ -23,7 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open QCheck2
 open Tezos_test_helpers
 
 (* Probability is in range between 0 and 1 *)
@@ -68,21 +67,13 @@ module Probability : Probability_sig = struct
     x + y
 end
 
-let gen_probability : Probability.t Gen.t =
-  Gen.map Probability.of_percent @@ Gen.int_bound 99
-
-let gen_bool (p : Probability.t) : bool Gen.t =
-  let open Gen in
-  let+ c = gen_probability in
-  c < p
-
 module Distributions = struct
   let uniform_distribution_l (a : 'a list) : (int * 'a) list =
     List.map (fun x -> (1, x)) a
 
   (* This one generates: n, n - 1, ... 1 weights.
-     So the first operation will occur n times often then last one. *)
-  let desceding_distribution_l (a : 'a list) : (int * 'a) list =
+     So the first operation will occur n times more often than the last one. *)
+  let descending_distribution_l (a : 'a list) : (int * 'a) list =
     let n = List.length a in
     List.mapi (fun i x -> (n - i, x)) a
 
@@ -90,7 +81,7 @@ module Distributions = struct
   let centered_distribution_l (a : 'a list) : (int * 'a) list =
     let n = List.length a in
     let n2 = n - Int.div n 2 in
-    List.mapi (fun i x -> ((if i < n2 then i + 1 else n - i + 1), x)) a
+    List.mapi (fun i x -> ((if i < n2 then i + 1 else n - i), x)) a
 
   (* Generates 0, ... 1, ... 0, 0, where 1 is n-th position*)
   let one_of_n n (a : 'a list) : (int * 'a) list =

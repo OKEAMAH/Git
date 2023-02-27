@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -34,15 +34,15 @@
        be able to use it in QCheck.Gen.
 *)
 
-(* Support sizes in order to generate keys evenly *)
+module Map : module type of Map.Make (String)
+
+(* Support subtree sizes in order to generate keys evenly *)
 type 'a t = {
   value : 'a option;
-  children : 'a t Map.Make(String).t;
+  children : 'a t Map.t;
   keys_count : int;
   nodes_count : int; (* including empty one *)
 }
-
-module Map : module type of Map.Make (String)
 
 val empty : 'a t
 

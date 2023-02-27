@@ -36,7 +36,7 @@ open QCheck2
 open Encodings_util
 open Durable_snapshot_util
 open Durable_operations_generator
-open Probability_helpers
+open Probability_utils
 
 let tztest_qcheck2 ?(number_of_runs = 1) ~name (generator, verifier) =
   let verifier inp = Lwt.map (fun x -> Ok x) (verifier inp) in
@@ -156,7 +156,7 @@ let stress_test_desceding ~init_size ~rounds =
        ~initial_tree_size:init_size
        ~rounds
        ~operations_distribution:
-         (Distributions.desceding_distribution_l
+         (Distributions.descending_distribution_l
             Durable_operation.all_operations)
 
 let stress_test_uniform ~init_size ~rounds =
