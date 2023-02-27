@@ -406,7 +406,17 @@ end) : Testable_durable_sig with type t = Snapshot.t * Current.t = struct
         add_tree tree_c @@ Current.read_value_exn tree_c key_c offset len)
 
   module Internal_for_tests = struct
-    let key_to_string (_k, k) = Current.Internal_for_tests.key_to_string k
+    let key_to_string (k1, k2) =
+      let s1 = Snapshot.Internal_for_tests.key_to_string k1 in
+      let s2 = Current.Internal_for_tests.key_to_string k2 in
+      Assert.String.equal
+        ~loc:__LOC__
+        ~msg:
+          "String key representation are different for Snapshot and Current \
+           storages"
+        s1
+        s2 ;
+      s2
   end
 end
 
