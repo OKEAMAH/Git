@@ -95,3 +95,15 @@ type remote_configuration = {
    uses a connection to a Dac node to retrieve pages that are not
    saved locally. *)
 module Remote : S with type configuration = remote_configuration
+
+(** Module with functors for constructing page stores. Reserved for
+    internal use for tests only.*)
+module Internal_for_tests_only : sig
+  (** [With_data_integrity_check] tweaks a module [P] of type [Page_store]
+      so that the [content] of a page is verified against the [hash] supplied,
+      before the page is saved in the underlying [Page_store]. If the
+      verification of the hash fails, the
+      page is not saved and the error [Hash_of_page_is_invalid] is returned.  *)
+  module With_data_integrity_check : functor (P : S) ->
+    S with type configuration = P.configuration and type t = P.t
+end

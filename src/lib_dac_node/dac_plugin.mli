@@ -34,8 +34,11 @@ type hash
 
 val hash_to_bytes : hash -> bytes
 
-(** Protocol independent encoding of Dac_plugin.hash values. *)
-val raw_encoding : hash Data_encoding.t
+(** Protocol independent encoding of Dac_plugin.hash values.
+    To be used only in situations where the plugin is not available,
+    and for reporting purposes (e.g. when emitting an event or registering
+    an error). *)
+val non_proto_encoding_unsafe : hash Data_encoding.t
 
 (** FIXME: https://gitlab.com/tezos/tezos/-/issues/4856
     Fix static supported_hashes type *)
