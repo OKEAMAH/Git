@@ -43,7 +43,12 @@ val read_kernel : ?base:string -> string -> string
     corresponding to the installer for this specific kernel. [installee] is read
     from [base_installee] on the disk. *)
 val prepare_installer_kernel :
-  ?base_installee:string -> dac_node:Dac_node.t -> string -> string Lwt.t
+  ?base_installee:string ->
+  ?installer:string ->
+  ?dac_member_pk:string ->
+  dac_node:Dac_node.t ->
+  string ->
+  string Lwt.t
 
 (** [setup_l1 protocol] initializes a protocol with the given parameters, and
     returns the L1 node and client. *)

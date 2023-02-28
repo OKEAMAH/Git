@@ -71,12 +71,15 @@ let read_kernel ?base name : string =
 *)
 let prepare_installer_kernel
     ?(base_installee =
-      "src/proto_alpha/lib_protocol/test/integration/wasm_kernel") ~dac_node
-    installee =
-  let installer_dummy_hash =
+      "src/proto_alpha/lib_protocol/test/integration/wasm_kernel")
+    ?(installer = "reveal_installer.wasm") ?dac_member_pk ~dac_node installee =
+  let installer_kernel_dummy_hash =
     "1acaa995ef84bc24cc8bb545dd986082fbbec071ed1c3e9954abea5edc441ccd3a"
   in
-  let installer = load_kernel_file "reveal_installer.wasm" in
+  let installer_dac_commitee_dummy_hash =
+    "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+  in
+  let installer = load_kernel_file installer in
   let installee = load_kernel_file ~base:base_installee (installee ^ ".wasm") in
   let* root_hash, _ =
     RPC.call
@@ -88,7 +91,18 @@ let prepare_installer_kernel
   (* Ensure reveal hash is correct length for installer. *)
   assert (String.length root_hash = 66) ;
   let installer =
-    replace_string (rex installer_dummy_hash) ~by:root_hash installer
+    replace_string (rex installer_kernel_dummy_hash) ~by:root_hash installer
+  in
+  let installer =
+    Option.fold
+      ~none:installer
+      ~some:(fun dm_pk ->
+        assert (String.length dm_pk = 96) ;
+        replace_string
+          (rex installer_dac_commitee_dummy_hash)
+          ~by:dm_pk
+          installer)
+      dac_member_pk
   in
   return installer
 

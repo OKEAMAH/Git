@@ -39,8 +39,15 @@ let send_message ?(src = Constant.bootstrap2.alias) client msg =
   let* () = Client.Sc_rollup.send_message ~hooks ~src ~msg client in
   Client.bake_for_and_wait client
 
-(* TX Kernel external messages and their encodings *)
-module Tx_kernel = struct
+(* TX Kernel external messages and their encodings.
+   Parametrisied by boolean config no_signing,
+   if it's set to true then dummy signatures
+   will be generated instead of real ones.
+*)
+module Tx_kernel_general (C : sig
+  val no_signing : bool
+end) =
+struct
   open Tezos_protocol_alpha.Protocol
   open Tezos_crypto.Signature
 
@@ -180,11 +187,17 @@ module Tx_kernel = struct
       in
       list_encode account_ops_encoded
 
-    let list_of_multiaccount_tx_encoding (transactions : multiaccount_tx list) =
+    let list_of_multiaccount_tx_repr (transactions : multiaccount_tx list) =
       let txs_encodings =
         List.map (fun x -> x.encoded_accounts_ops) transactions
       in
       list_encode txs_encodings
+
+    let batch_repr (batch : transactions_batch) =
+      let signature =
+        batch.aggregated_signature |> Bls.to_bytes |> Bytes.to_string
+      in
+      batch.encoded_transactions ^ signature
   end
 
   let multiaccount_tx_of (accounts_operations : account_operations list) =
@@ -192,29 +205,33 @@ module Tx_kernel = struct
       Encodings.list_of_account_operations_repr accounts_operations
     in
     let accounts_sks = List.map (fun x -> x.signer) accounts_operations in
-    (* List consisting of single transaction, that is fine *)
     let aggregated_signature =
-      Option.get
-      @@ Bls.(
-           aggregate_signature_opt
-           @@ List.map
-                (fun sk -> sign sk @@ Bytes.of_string encoded_accounts_ops)
-                accounts_sks)
+      if C.no_signing then Bls.zero
+      else
+        let aggr =
+          Option.get
+          @@ Bls.(
+               aggregate_signature_opt
+               @@ List.map
+                    (fun sk -> sign sk @@ Bytes.of_string encoded_accounts_ops)
+                    accounts_sks)
+        in
+        assert (
+          Bls.aggregate_check
+            (List.map
+               (fun sk ->
+                 ( Bls.Secret_key.to_public_key sk,
+                   None,
+                   Bytes.of_string encoded_accounts_ops ))
+               accounts_sks)
+            aggr) ;
+        aggr
     in
-    assert (
-      Bls.aggregate_check
-        (List.map
-           (fun sk ->
-             ( Bls.Secret_key.to_public_key sk,
-               None,
-               Bytes.of_string encoded_accounts_ops ))
-           accounts_sks)
-        aggregated_signature) ;
     {accounts_operations; encoded_accounts_ops; aggregated_signature}
 
   let transactions_batch_of (transactions : multiaccount_tx list) =
     let encoded_transactions =
-      Encodings.list_of_multiaccount_tx_encoding transactions
+      Encodings.list_of_multiaccount_tx_repr transactions
     in
     let signatures =
       List.map
@@ -222,23 +239,28 @@ module Tx_kernel = struct
         transactions
     in
     let aggregated_signature =
-      Option.get @@ Bls.aggregate_signature_opt signatures
+      if C.no_signing then Bls.zero
+      else Option.get @@ Bls.aggregate_signature_opt signatures
     in
     {transactions; encoded_transactions; aggregated_signature}
 
   let external_message_of_batch (batch : transactions_batch) =
     let v1_batch_prefix = "\000" in
-    let signature =
-      batch.aggregated_signature |> Tezos_crypto.Signature.Bls.to_bytes
-      |> Bytes.to_string
-    in
-    hex_encode @@ v1_batch_prefix ^ batch.encoded_transactions ^ signature
+    v1_batch_prefix ^ Encodings.batch_repr batch
 
   (* External message consisting of single transaction. *)
   let external_message_of_account_ops (accounts_ops : account_operations list) =
     external_message_of_batch @@ transactions_batch_of
     @@ [multiaccount_tx_of accounts_ops]
 end
+
+module Tx_kernel_no_signing = Tx_kernel_general (struct
+  let no_signing = true
+end)
+
+module Tx_kernel = Tx_kernel_general (struct
+  let no_signing = false
+end)
 
 let assert_state_changed sc_rollup_client prev_state_hash =
   let*! state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
@@ -256,15 +278,16 @@ let assert_ticks_advanced sc_rollup_client prev_ticks =
 
 (* Send a deposit into the rollup. *)
 let test_deposit ~client ~sc_rollup_node ~sc_rollup_client ~sc_rollup_address
-    ~mint_and_deposit_contract level tz4_address =
+    ~mint_and_deposit_contract ~level tz4_address amount =
   let*! prev_state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
   let* () =
     (* Internal message through forwarder *)
     let arg =
       sf
-        {|Pair (Pair %S "%s") (Pair 450 "Hello, Ticket!")|}
+        {|Pair (Pair %S "%s") (Pair %d "Hello, Ticket!")|}
         sc_rollup_address
         tz4_address
+        amount
     in
     Client.transfer
       client
@@ -282,8 +305,20 @@ let test_deposit ~client ~sc_rollup_node ~sc_rollup_client ~sc_rollup_address
   let* () = assert_state_changed sc_rollup_client prev_state_hash in
   Lwt.return @@ (level + 1)
 
-let test_tx_kernel_e2e protocol =
-  let commitment_period = 2 and challenge_window = 5 in
+type full_tx_setup = {
+  node : Node.t;
+  client : Client.t;
+  sc_rollup_node : Sc_rollup_node.t;
+  sc_rollup_client : Sc_rollup_client.t;
+  sc_rollup_address : string;
+  dac_node : Dac_node.t;
+  start_level : int;
+  mint_and_deposit_contract : string;
+}
+
+let setup_tx_kernel_and_dac ?installer ?installee ~commitment_period
+    ~challenge_window protocol =
+  let open Tezos_crypto.Signature in
   Dac.with_layer1 ~protocol ~commitment_period ~challenge_window
   @@ fun node client bootstrap1_key ->
   let sc_rollup_node =
@@ -301,14 +336,25 @@ let test_tx_kernel_e2e protocol =
     ~pvm_name:"wasm_2_0_0"
     node
     client
-  @@ fun dac_node _dac_members ->
+  @@ fun dac_node dac_members ->
   (* Start a rollup node *)
   (* Prepare DAL/DAC: put reveal data in rollup node directory. *)
   let* () = Dac_node.terminate dac_node in
   let* () = Dac_node.run dac_node ~wait_ready:true in
   let* _dir = Dac_node.init_config dac_node in
+  let dac_member_pk_encoded =
+    Data_encoding.Binary.to_string_exn Bls.Public_key.encoding
+    @@ Bls.Public_key.of_b58check_exn
+         (List.hd dac_members).Account.aggregate_public_key
+  in
   (* We can now produce our installer *)
-  let* installer_kernel = prepare_installer_kernel ~dac_node "tx-kernel" in
+  let* installer_kernel =
+    prepare_installer_kernel
+      ~dac_member_pk:(hex_encode dac_member_pk_encoded)
+      ~dac_node
+      ?installer
+    @@ Option.value ~default:"tx-kernel" installee
+  in
   let boot_sector = hex_encode installer_kernel in
   (* Initialise the sc rollup *)
   let* sc_rollup_address =
@@ -358,8 +404,31 @@ let test_tx_kernel_e2e protocol =
   Log.info
     "The mint and deposit contract %s was successfully originated"
     mint_and_deposit_contract ;
-  let level = init_level + 1 in
+  return
+    {
+      node;
+      client;
+      sc_rollup_node;
+      sc_rollup_client;
+      sc_rollup_address;
+      dac_node;
+      start_level = init_level + 1;
+      mint_and_deposit_contract;
+    }
 
+let test_tx_kernel_e2e protocol =
+  let commitment_period = 2 and challenge_window = 5 in
+  let* {
+         client;
+         sc_rollup_node;
+         sc_rollup_client;
+         sc_rollup_address;
+         mint_and_deposit_contract;
+         start_level;
+         _;
+       } =
+    setup_tx_kernel_and_dac ~commitment_period ~challenge_window protocol
+  in
   (* gen two tz4 accounts *)
   let pkh, _pk, sk = Tezos_crypto.Signature.Bls.generate_key () in
   let pkh2, _pk2, sk2 = Tezos_crypto.Signature.Bls.generate_key () in
@@ -371,8 +440,9 @@ let test_tx_kernel_e2e protocol =
       ~sc_rollup_client
       ~sc_rollup_address
       ~mint_and_deposit_contract
-      level
-    @@ Tezos_crypto.Signature.Bls.Public_key_hash.to_b58check pkh
+      ~level:start_level
+      (Tezos_crypto.Signature.Bls.Public_key_hash.to_b58check pkh)
+      450
   in
   (* Construct transfer *)
   let ticket amount =
@@ -409,9 +479,11 @@ let test_tx_kernel_e2e protocol =
       |> transactions_batch_of |> external_message_of_batch)
   in
 
-  (* Send transfers *)
+  (* Send transfer *)
   let*! prev_state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
-  let* () = send_message client (sf "hex:[%S]" transfer_message) in
+  let* () =
+    send_message client (sf "hex:[%S]" @@ hex_encode transfer_message)
+  in
   let level = level + 1 in
   let* _ = Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node level in
   let* () = assert_state_changed sc_rollup_client prev_state_hash in
@@ -461,7 +533,9 @@ let test_tx_kernel_e2e protocol =
   (* Send withdrawal *)
   let*! prev_state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
   let*! prev_ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
-  let* () = send_message client (sf "hex:[%S]" withdraw_message) in
+  let* () =
+    send_message client (sf "hex:[%S]" @@ hex_encode withdraw_message)
+  in
   let withdrawal_level = level + 1 in
   let* _ =
     Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node withdrawal_level
@@ -536,6 +610,74 @@ let test_tx_kernel_e2e protocol =
   in
   unit
 
+let test_tx_kernel_60k_txs protocol =
+  let operations_n = 60000 in
+  let commitment_period = 2 and challenge_window = 5 in
+  let* {
+         client;
+         sc_rollup_node;
+         sc_rollup_client;
+         sc_rollup_address;
+         mint_and_deposit_contract;
+         start_level;
+         dac_node;
+         _;
+       } =
+    setup_tx_kernel_and_dac
+      ~installer:"tx-demo-installer.wasm"
+      ~installee:"tx-kernel-no-sig"
+      ~commitment_period
+      ~challenge_window
+      protocol
+  in
+  (* gen two tz4 accounts *)
+  let pkh, _pk, sk = Tezos_crypto.Signature.Bls.generate_key () in
+  let pkh2, _pk2, _sk2 = Tezos_crypto.Signature.Bls.generate_key () in
+  (* Deposit *)
+  let* level =
+    test_deposit
+      ~client
+      ~sc_rollup_node
+      ~sc_rollup_client
+      ~sc_rollup_address
+      ~mint_and_deposit_contract
+      ~level:start_level
+      (Tezos_crypto.Signature.Bls.Public_key_hash.to_b58check pkh)
+      (operations_n + 1)
+  in
+  (* Construct transfer *)
+  let ticket amount =
+    Tx_kernel_no_signing.ticket_of
+      ~ticketer:mint_and_deposit_contract
+      ~content:"Hello, Ticket!"
+      amount
+  in
+  let transfer_message =
+    Tx_kernel_no_signing.(
+      external_message_of_batch @@ transactions_batch_of
+      @@ List.init operations_n (fun i ->
+             multiaccount_tx_of
+             @@ [
+                  account_operations_of
+                    ~sk
+                    ~counter:(Int64.of_int i)
+                    [Transfer {destination = pkh2; ticket = ticket 1}];
+                ]))
+  in
+  let* _, raw_operation =
+    RPC.call
+      dac_node
+      (Rollup.Dac.RPC.dac_store_preimage
+         ~payload:transfer_message
+         ~pagination_scheme:"Merkle_tree_V0")
+  in
+  (* Send transfer *)
+  let*! prev_state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+  let* () = send_message client (sf "hex:[%S]" (hex_encode raw_operation)) in
+  let level = level + 1 in
+  let* _ = Sc_rollup_node.wait_for_level sc_rollup_node level in
+  assert_state_changed sc_rollup_client prev_state_hash
+
 let register_test ?(regression = false) ~__FILE__ ~tags ~title f =
   let tags = "tx_sc_rollup" :: tags in
   if regression then Protocol.register_regression_test ~__FILE__ ~title ~tags f
@@ -549,4 +691,17 @@ let test_tx_kernel_e2e =
     ~title:(Printf.sprintf "wasm_2_0_0 - tx kernel should run e2e (kernel_e2e)")
     test_tx_kernel_e2e
 
-let register ~protocols = test_tx_kernel_e2e protocols
+let test_tx_kernel_60k_txs =
+  register_test
+    ~regression:true
+    ~__FILE__
+    ~tags:["wasm"; "kernel"; "wasm_2_0_0"; "kernel_e2e"; "60k_txs"]
+    ~title:
+      (Printf.sprintf
+         "wasm_2_0_0 - tx kernel should process 60K transactions with one \
+          operation inside (kernel_e2e)")
+    test_tx_kernel_60k_txs
+
+let register ~protocols =
+  test_tx_kernel_e2e protocols ;
+  test_tx_kernel_60k_txs protocols
