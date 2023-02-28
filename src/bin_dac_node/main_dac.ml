@@ -66,6 +66,22 @@ let reveal_data_dir_arg =
     ~default
     (Client_config.string_parameter ())
 
+let payload_dir_arg =
+  let default =
+    "dac_example_payloads" |> Filename.concat "tests" |> Filename.concat "tezt"
+    |> Filename.concat Filename.current_dir_name
+  in
+  Tezos_clic.default_arg
+    ~long:"payload-dir"
+    ~placeholder:"payload-dir"
+    ~doc:
+      (Format.sprintf
+         "The path of the directory where the generated payload will be saved. \
+          Default value is %s"
+         default)
+    ~default
+    (Client_config.string_parameter ())
+
 let tz4_address_parameter =
   Tezos_clic.parameter (fun _cctxt s ->
       let open Lwt_result_syntax in
@@ -101,6 +117,10 @@ let positive_int_parameter =
 let threshold_param ?(name = "DAC threshold parameter")
     ?(desc =
       "Number of DAC member signatures required to validate a root page hash") =
+  Tezos_clic.param ~name ~desc positive_int_parameter
+
+let size_param ?(name = "Payload size parameter")
+    ?(desc = "Size of payload to be generated, in Megabytes") =
   Tezos_clic.param ~name ~desc positive_int_parameter
 
 let rpc_address_arg =
@@ -141,6 +161,10 @@ let coordinator_rpc_param ?(name = "DAC coordinator rpc address parameter")
     String.concat "\n" [desc; "An address of the form <rpc_address>:<rpc_port>"]
   in
   Tezos_clic.param ~name ~desc coordinator_rpc_parameter
+
+let filename_param ?(name = "Sample payload name")
+    ?(desc = "The name of the sample payload") =
+  Tezos_clic.param ~name ~desc @@ Client_config.string_parameter ()
 
 module Config_init = struct
   let create_configuration ~data_dir ~reveal_data_dir ~rpc_address ~rpc_port
@@ -278,6 +302,19 @@ module Config_init = struct
     ]
 end
 
+let generate_payload_command =
+  let open Tezos_clic in
+  command
+    ~group
+    ~desc:"Generate sample payload for benchmarking."
+    (args1 payload_dir_arg)
+    (prefixes ["generate"; "sample"; "payload"; "of"; "size"]
+    @@ size_param
+    @@ prefixes ["MB"; "and"; "filename"]
+    @@ filename_param @@ stop)
+    (fun payload_dir size filename _cctxt ->
+      Sample_payload.generate payload_dir filename size)
+
 let run_command =
   let open Tezos_clic in
   command
@@ -287,7 +324,7 @@ let run_command =
     (prefixes ["run"] @@ stop)
     (fun data_dir cctxt -> Daemon.run ~data_dir cctxt)
 
-let commands () = [run_command] @ Config_init.commands
+let commands () = [run_command; generate_payload_command] @ Config_init.commands
 
 let select_commands _ _ =
   let open Lwt_result_syntax in

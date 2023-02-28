@@ -40,7 +40,7 @@ type 'a t
 (** Initializes an instance of [Data_streamer.t]. *)
 val init : unit -> 'a t
 
-(** [publish streamer data] publishes [data] to all attached 
+(** [publish streamer data] publishes [data] to all attached
     subscribers of the [streamer]. *)
 val publish : 'a t -> 'a -> unit
 

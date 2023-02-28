@@ -300,3 +300,17 @@ module Internal_for_tests = struct
        and type t = R.remote_context * P.t =
     With_remote_fetch (R) (P)
 end
+
+module Fake : S with type configuration = unit = struct
+  type t = unit
+
+  type configuration = unit
+
+  let init () = ()
+
+  let save _plugin () ~hash:_ ~content:_ = Lwt_result_syntax.return_unit
+
+  let mem _plugin () _hash = Lwt_result_syntax.return true
+
+  let load _plugin () _hash = Lwt_result_syntax.return Bytes.empty
+end

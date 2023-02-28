@@ -234,6 +234,9 @@ module Observer = struct
           let*! () =
             Event.emit_processing_root_hash_failed dac_plugin root_hash errs
           in
+          let msg = Format.asprintf "%a" Error_monad.pp_print_trace errs in
+          let*! () = Lwt_io.eprintf "%s" msg in
+          let*! () = Lwt_io.(flush stderr) in
           return ()
     in
     let remote_store =

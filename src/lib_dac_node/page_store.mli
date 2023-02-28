@@ -95,6 +95,8 @@ type remote_configuration = {
    saved locally. *)
 module Remote : S with type configuration = remote_configuration
 
+module Fake : S with type configuration = unit
+
 (**/**)
 
 module Internal_for_tests : sig
