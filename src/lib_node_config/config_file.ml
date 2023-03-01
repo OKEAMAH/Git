@@ -390,6 +390,7 @@ type t = {
 }
 
 and p2p = {
+  reuse_port : bool;  
   expected_pow : float;
   bootstrap_peers : string list option;
   listen_addr : string option;
@@ -415,6 +416,7 @@ and tls = {cert : string; key : string}
 
 let default_p2p =
   {
+    reuse_port = false;
     expected_pow = 26.;
     bootstrap_peers = None;
     listen_addr = Some ("[::]:" ^ string_of_int default_p2p_port);
@@ -457,6 +459,7 @@ let p2p =
   let open Data_encoding in
   conv
     (fun {
+       reuse_port;
            expected_pow;
            bootstrap_peers;
            listen_addr;
@@ -468,7 +471,9 @@ let p2p =
            enable_testchain;
            reconnection_config;
          } ->
-      ( expected_pow,
+       (
+         (reuse_port)  ,       
+     (    expected_pow,
         bootstrap_peers,
         listen_addr,
         advertised_net_port,
@@ -477,8 +482,9 @@ let p2p =
         limits,
         disable_mempool,
         enable_testchain,
-        reconnection_config ))
-    (fun ( expected_pow,
+        reconnection_config )))
+    (fun ( (reuse_port),
+   (    expected_pow,
            bootstrap_peers,
            listen_addr,
            advertised_net_port,
@@ -487,8 +493,9 @@ let p2p =
            limits,
            disable_mempool,
            enable_testchain,
-           reconnection_config ) ->
+           reconnection_config )) ->
       {
+        reuse_port;
         expected_pow;
         bootstrap_peers;
         listen_addr;
@@ -500,6 +507,16 @@ let p2p =
         enable_testchain;
         reconnection_config;
       })
+    (merge_objs
+       (obj1
+          (dft
+             "reuse_port"
+             ~description:
+               "Allows a socket to be stolen by another process. This \
+                can be useful for testing purposes."
+             bool
+             false)
+       )
     (obj10
        (dft
           "expected-proof-of-work"
@@ -575,7 +592,7 @@ let p2p =
            "The reconnection policy regulates the frequency with which the \
             node tries to reconnect to an old known peer."
          encoding
-         default))
+         default)))
 
 let rpc : rpc Data_encoding.t =
   let open Data_encoding in
@@ -849,7 +866,7 @@ let to_string cfg =
 
 let update ?(disable_config_validation = false) ?data_dir ?min_connections
     ?expected_connections ?max_connections ?max_download_speed ?max_upload_speed
-    ?binary_chunks_size ?peer_table_size ?expected_pow ?bootstrap_peers
+    ?binary_chunks_size ?peer_table_size  ?reuse_port ?expected_pow ?bootstrap_peers
     ?listen_addr ?advertised_net_port ?discovery_addr ?(rpc_listen_addrs = [])
     ?(allow_all_rpc = []) ?(media_type = Media_type.Command_line.Any)
     ?(metrics_addr = []) ?operation_metadata_size_limit
@@ -915,6 +932,7 @@ let update ?(disable_config_validation = false) ?data_dir ?min_connections
   in
   let p2p : p2p =
     {
+      reuse_port = Option.value ~default:cfg.p2p.reuse_port reuse_port;
       expected_pow = Option.value ~default:cfg.p2p.expected_pow expected_pow;
       bootstrap_peers =
         Option.value ~default:cfg.p2p.bootstrap_peers bootstrap_peers;

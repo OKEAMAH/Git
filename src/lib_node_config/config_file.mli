@@ -60,6 +60,7 @@ type t = {
 }
 
 and p2p = {
+  reuse_port : bool;  
   expected_pow : float;
   bootstrap_peers : string list option;
   listen_addr : string option;
@@ -109,6 +110,7 @@ val update :
   ?max_upload_speed:int ->
   ?binary_chunks_size:int ->
   ?peer_table_size:int ->
+  ?reuse_port:bool ->
   ?expected_pow:float ->
   ?bootstrap_peers:string list option ->
   ?listen_addr:string ->
