@@ -55,13 +55,6 @@ exception Readonly_value
 
 let encoding = E.wrapped_tree
 
-let of_storage ~default s =
-  match Storage.to_tree s with Some t -> T.select t | None -> default
-
-let of_storage_exn s = T.select @@ Storage.to_tree_exn s
-
-let to_storage d = Storage.of_tree @@ T.wrap d
-
 type key = Writeable of string list | Readonly of string list
 
 (* A key is bounded to 250 bytes, including the implicit '/durable' prefix.

@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2023 TriliTech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -22,37 +22,25 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-open Tezos_scoru_wasm
-module Wasmer = Tezos_wasmer
-module Lazy_containers = Tezos_lazy_containers
 
-module Kernel_cache = Cache.Make (struct
-  module Key = Context_hash
+module Names : module type of Set.Make (String)
 
-  type value = Wasmer.Module.t
+module LMap : Lazy_map.S with type key = String.t
 
-  let delete = Wasmer.Module.delete
-end)
+type 'a t = {names : Names.t; contents : 'a LMap.t}
 
-let kernel_cache = Kernel_cache.create 2
+val create : ?names:Names.t -> ?contents:'a LMap.t -> unit -> 'a t
 
-let load_parse_module store key durable =
-  let open Lwt.Syntax in
-  let* kernel = Durable.find_value_exn durable key in
-  let+ kernel =
-    Lazy_containers.Immutable_chunked_byte_vector.to_string kernel
-  in
-  Wasmer.Module.(create store Binary kernel)
+val is_empty : 'a t -> bool
 
-let load_module store key durable =
-  let open Lwt.Syntax in
-  let* kernel_hash = Durable.hash_exn durable key in
-  let md = Kernel_cache.find_opt kernel_cache kernel_hash in
-  match md with
-  | None ->
-      let* md = load_parse_module store key durable in
-      Kernel_cache.replace kernel_cache kernel_hash md ;
-      Lwt.return md
-  | Some md -> Lwt.return md
+val find : 'a t -> Names.elt -> 'a option Lwt.t
 
-let load_kernel store durable = load_module store Constants.kernel_key durable
+val add : 'a t -> Names.elt -> 'a -> 'a t
+
+val remove : 'a t -> Names.elt -> 'a t
+
+val list : 'a t -> Names.elt list
+
+val length : 'a t -> int
+
+val nth_name : 'a t -> int -> Names.elt option

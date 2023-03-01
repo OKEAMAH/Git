@@ -118,3 +118,5 @@ val store_bytes : t -> int64 -> bytes -> t Lwt.t
     been cached in-memory since [vector] has been created, either by
     reading its contents, or by writing to those chunks. *)
 val loaded_chunks : t -> (int64 * Chunk.t option) list
+
+val to_chunked_byte_vector : t -> Chunked_byte_vector.t

@@ -82,7 +82,9 @@ module Make_durable_state
     let key = Tezos_scoru_wasm.Durable.key_of_string_exn key_str in
     let* durable = decode_durable tree in
     let+ res_opt = Tezos_scoru_wasm.Durable.find_value durable key in
-    Option.map Tezos_lazy_containers.Chunked_byte_vector.length res_opt
+    Option.map
+      Tezos_lazy_containers.Immutable_chunked_byte_vector.length
+      res_opt
 
   let lookup tree key_str =
     let open Lwt_syntax in
@@ -92,7 +94,9 @@ module Make_durable_state
     match res_opt with
     | None -> return_none
     | Some v ->
-        let+ bts = Tezos_lazy_containers.Chunked_byte_vector.to_bytes v in
+        let+ bts =
+          Tezos_lazy_containers.Immutable_chunked_byte_vector.to_bytes v
+        in
         Some bts
 
   let list tree key_str =

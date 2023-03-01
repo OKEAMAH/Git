@@ -181,6 +181,68 @@ let lazy_mapping to_key field_enc =
         (Some tree, produce_value));
   }
 
+let lazy_mapping_with_names to_key field_enc =
+  {
+    decode =
+      (fun backend input_tree input_prefix ->
+        let open Lwt_syntax in
+        let produce_value index =
+          (scope (to_key index) field_enc).decode
+            backend
+            input_tree
+            input_prefix
+        in
+        let* names = Tree.list backend input_tree (input_prefix []) in
+        let names = List.map fst names in
+        let+ tree = subtree backend input_tree input_prefix in
+        (Some tree, names, produce_value));
+  }
+
+let lazy_dirs contents_decoding =
+  let open Tezos_lazy_containers.Lazy_dirs in
+  let to_key k = [LMap.string_of_key k] in
+  map
+    (fun (origin, names, produce_value) ->
+      let contents = LMap.create ?origin ~produce_value () in
+      create ~names:(Names.of_list names) ~contents ())
+    (lazy_mapping_with_names to_key contents_decoding)
+
+let lazy_fs content_decoder =
+  let open Lwt.Syntax in
+  let rec decode : type tree. tree Tree.backend -> tree -> _ =
+   fun backend tree prefix ->
+    let value_key = prefix ["@"] in
+    let* value_tree = Tree.find_tree backend tree value_key in
+    let* content =
+      match value_tree with
+      | Some _ ->
+          let+ content =
+            content_decoder.decode backend tree (fun suffix ->
+                prefix ("@" :: suffix))
+          in
+          Some content
+      | None -> Lwt.return_none
+    in
+    let+ dirs = (lazy_dirs {decode}).decode backend tree prefix in
+    let dirs = Tezos_lazy_containers.Lazy_dirs.remove dirs "@" in
+    Tezos_lazy_containers.Lazy_fs.create ?value:content ~dirs ()
+  in
+  {decode}
+
+let chunk =
+  let open Tezos_lazy_containers.Chunked_byte_vector.Chunk in
+  map of_bytes (raw [])
+
+let chunked_byte_vector =
+  let open Tezos_lazy_containers.Chunked_byte_vector in
+  let to_key k = [Int64.to_string k] in
+  map
+    (fun ((origin, get_chunk), len) -> create ?origin ~get_chunk len)
+    (let open Syntax in
+    let+ x = scope ["contents"] @@ lazy_mapping to_key chunk
+    and+ y = value ["length"] Data_encoding.int64 in
+    (x, y))
+
 let case_lwt tag decode extract = Case {tag; decode; extract}
 
 let case tag decode extract =

@@ -266,23 +266,18 @@ let chunk =
   conv of_bytes to_bytes (raw [])
 
 let chunked_byte_vector =
-  let open Chunked_byte_vector in
-  let to_key k = [Int64.to_string k] in
-  let encode =
-    E.contramap
-      (fun vector -> ((origin vector, loaded_chunks vector), length vector))
-      (E.tup2
-         (E.scope ["contents"] @@ E.lazy_mapping to_key chunk.encode)
-         (E.value ["length"] Data_encoding.int64))
-  in
-  let decode =
-    D.map
-      (fun ((origin, get_chunk), len) -> create ?origin ~get_chunk len)
-      (let open D.Syntax in
-      let+ x = D.scope ["contents"] @@ D.lazy_mapping to_key chunk.decode
-      and+ y = D.value ["length"] Data_encoding.int64 in
-      (x, y))
-  in
+  let encode = E.chunked_byte_vector in
+  let decode = D.chunked_byte_vector in
+  {encode; decode}
+
+let lazy_dirs contents_encoding =
+  let encode = E.lazy_dirs contents_encoding.encode in
+  let decode = D.lazy_dirs contents_encoding.decode in
+  {encode; decode}
+
+let lazy_fs contents_encoding =
+  let encode = E.lazy_fs contents_encoding.encode in
+  let decode = D.lazy_fs contents_encoding.decode in
   {encode; decode}
 
 let immutable_chunk =

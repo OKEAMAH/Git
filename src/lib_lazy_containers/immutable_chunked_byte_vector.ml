@@ -287,3 +287,11 @@ let to_string vector =
   Bytes.to_string buffer
 
 let loaded_chunks vector = Vector.loaded_bindings vector.chunks
+
+let to_chunked_byte_vector v =
+  Chunked_byte_vector.create
+    ?origin:(origin v)
+    ~get_chunk:(fun i ->
+      Lwt.map (fun x -> Chunked_byte_vector.Chunk.of_bytes @@ Bytes.of_string x)
+      @@ get_chunk i v)
+    v.length

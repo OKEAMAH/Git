@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2023 TriliTech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -22,37 +22,23 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-open Tezos_scoru_wasm
-module Wasmer = Tezos_wasmer
-module Lazy_containers = Tezos_lazy_containers
 
-module Kernel_cache = Cache.Make (struct
-  module Key = Context_hash
+type 'a t = {content : 'a option; dirs : 'a t Lazy_dirs.t}
 
-  type value = Wasmer.Module.t
+val create : ?value:'a -> ?dirs:'a t Lazy_dirs.t -> unit -> 'a t
 
-  let delete = Wasmer.Module.delete
-end)
+val find_tree : 'a t -> string list -> 'a t option Lwt.t
 
-let kernel_cache = Kernel_cache.create 2
+val find : 'a t -> string list -> 'a option Lwt.t
 
-let load_parse_module store key durable =
-  let open Lwt.Syntax in
-  let* kernel = Durable.find_value_exn durable key in
-  let+ kernel =
-    Lazy_containers.Immutable_chunked_byte_vector.to_string kernel
-  in
-  Wasmer.Module.(create store Binary kernel)
+val add_tree : 'a t -> string list -> 'a t -> 'a t Lwt.t
 
-let load_module store key durable =
-  let open Lwt.Syntax in
-  let* kernel_hash = Durable.hash_exn durable key in
-  let md = Kernel_cache.find_opt kernel_cache kernel_hash in
-  match md with
-  | None ->
-      let* md = load_parse_module store key durable in
-      Kernel_cache.replace kernel_cache kernel_hash md ;
-      Lwt.return md
-  | Some md -> Lwt.return md
+val add : 'a t -> string list -> 'a -> 'a t Lwt.t
 
-let load_kernel store durable = load_module store Constants.kernel_key durable
+val remove : 'a t -> string list -> 'a t Lwt.t
+
+val length : 'a t -> int
+
+val list : 'a t -> string list
+
+val nth_name : 'a t -> int -> string option

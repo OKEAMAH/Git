@@ -25,7 +25,7 @@
 
 (** [t] allows a [wrapped_tree] to be manipulated as a tree of
     [chunked_byte_vector] *)
-type t
+type t = Tezos_webassembly_interpreter.Durable_storage.t
 
 (** [key] was too long, or contained invalid steps. *)
 exception Invalid_key of string
@@ -81,11 +81,11 @@ val key_of_string_opt : string -> key option
 (** [find_value durable key] optionally looks for the value encoded at [key]
     in [durable]. *)
 val find_value :
-  t -> key -> Tezos_lazy_containers.Chunked_byte_vector.t option Lwt.t
+  t -> key -> Tezos_lazy_containers.Immutable_chunked_byte_vector.t option Lwt.t
 
 (** @raise Value_not_found *)
 val find_value_exn :
-  t -> key -> Tezos_lazy_containers.Chunked_byte_vector.t Lwt.t
+  t -> key -> Tezos_lazy_containers.Immutable_chunked_byte_vector.t Lwt.t
 
 (** [copy_tree_exn tree ?edit_readonly from_key to_key] produces a new tree in which a copy of
     the entire subtree at from_key is copied to to_key.

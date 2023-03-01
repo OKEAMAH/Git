@@ -42,8 +42,8 @@ let value_store_key_too_large =
 
 let equal_chunks c1 c2 =
   let open Lwt.Syntax in
-  let* c1 = Chunked_byte_vector.to_string c1 in
-  let* c2 = Chunked_byte_vector.to_string c2 in
+  let* c1 = Immutable_chunked_byte_vector.to_string c1 in
+  let* c2 = Immutable_chunked_byte_vector.to_string c2 in
   Lwt.return @@ assert (String.equal c1 c2)
 
 (* Test checking that if [key] is missing, [store_has key] returns [false] *)
@@ -427,14 +427,14 @@ let test_durable_find_value () =
   assert (Option.is_some r) ;
   let* x =
     match r with
-    | Some y -> Chunked_byte_vector.to_string y
+    | Some y -> Immutable_chunked_byte_vector.to_string y
     | None -> assert false
   in
   assert (x = "a very long value") ;
   let* v =
     Durable.find_value_exn durable @@ Durable.key_of_string_exn "/hello/value"
   in
-  let* x = Chunked_byte_vector.to_string v in
+  let* x = Immutable_chunked_byte_vector.to_string v in
   assert (x = "a very long value") ;
   let* r =
     Durable.find_value durable @@ Durable.key_of_string_exn "/hello/other"
@@ -476,7 +476,7 @@ let test_durable_count_subtrees_and_list () =
   let* () = assert_subtree_count tree 2 "/hello/you" in
   let* () = assert_subtree_count tree 1 "/hello/you/too" in
   let* () = assert_subtree_count tree 0 "/bye" in
-  let* () = assert_list tree [""; "hello"; "long"] "" in
+  let* () = assert_list tree ["hello"; "long"; "readonly"] "" in
   let* () = assert_list tree [""; "world"; "you"] "/hello" in
   let* () = assert_list tree [""; "too"] "/hello/you" in
   let* () = assert_list tree [""] "/hello/you/too" in
@@ -493,7 +493,7 @@ let test_durable_count_subtrees_and_list () =
    the tree that existed previously at [to_key] *)
 let test_store_copy () =
   let open Lwt_syntax in
-  let value () = Chunked_byte_vector.of_string "a very long value" in
+  let value () = Immutable_chunked_byte_vector.of_string "a very long value" in
   (*
   Store the following tree:
     /durable/a/short/path/_ = "a very long value"
@@ -921,7 +921,7 @@ let test_store_write () =
   let* value =
     Durable.find_value_exn tree @@ Durable.key_of_string_exn existing_key
   in
-  let* result = Chunked_byte_vector.to_string value in
+  let* result = Immutable_chunked_byte_vector.to_string value in
   (* We started writing at an offset into the value. *)
   let expected_write_bytes =
     (String.sub contents 0 @@ Int32.to_int write_offset) ^ contents
@@ -978,7 +978,7 @@ let test_store_write () =
   let* value =
     Durable.find_value_exn tree @@ Durable.key_of_string_exn new_key
   in
-  let* result = Chunked_byte_vector.to_string value in
+  let* result = Immutable_chunked_byte_vector.to_string value in
   assert (contents = result) ;
   return_ok_unit
 
@@ -987,6 +987,7 @@ let test_durable_invalid_keys () =
   let open Lwt.Syntax in
   let* _ =
     assert_invalid_key (fun () ->
+
         Lwt.return @@ Durable.key_of_string_exn "//hello")
   in
   let* _ =
