@@ -76,9 +76,9 @@ let setup_evm_kernel ?(originator_key = Constant.bootstrap1.public_key_hash)
       f
       ~pvm_name:pvm_kind
       ~threshold:0
-      ~dac_members:0
+      ~committee_members:0
   in
-  with_dac_node node client @@ fun dac_node _dac_members ->
+  with_dac_node node client @@ fun dac_node _committee_members ->
   (* Start a rollup node *)
   (* Prepare DAL/DAC: put reveal data in rollup node directory. *)
   let* installer_kernel =
