@@ -23,14 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type ('coordinator, 'dac_member, 'observer, 'legacy) t =
+type ('coordinator, 'committee_member, 'observer, 'legacy) t =
   | Coordinator of 'coordinator
-  | Dac_member of 'dac_member
+  | Committee_member of 'committee_member
   | Observer of 'observer
   | Legacy of 'legacy
 
-let make_encoding ~coordinator_encoding ~dac_member_encoding ~observer_encoding
-    ~legacy_encoding =
+let make_encoding ~coordinator_encoding ~committee_member_encoding
+    ~observer_encoding ~legacy_encoding =
   Data_encoding.(
     union
       [
@@ -41,11 +41,11 @@ let make_encoding ~coordinator_encoding ~dac_member_encoding ~observer_encoding
           (function Coordinator coordinator -> Some coordinator | _ -> None)
           (function coordinator -> Coordinator coordinator);
         case
-          ~title:"dac_member"
+          ~title:"committee_member"
           (Tag 1)
-          dac_member_encoding
-          (function Dac_member config -> Some config | _ -> None)
-          (function config -> Dac_member config);
+          committee_member_encoding
+          (function Committee_member config -> Some config | _ -> None)
+          (function config -> Committee_member config);
         case
           ~title:"observer"
           (Tag 2)

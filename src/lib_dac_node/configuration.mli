@@ -33,12 +33,13 @@ type coordinator = {
   threshold : int;
       (** The number of signatures required from DAC members to consider a
       message valid. *)
-  dac_members_addresses : Tezos_crypto.Aggregate_signature.public_key_hash list;
+  committee_members_addresses :
+    Tezos_crypto.Aggregate_signature.public_key_hash list;
       (** The list of tz4 addresses denoting the dac members. *)
 }
 
 (** Configuration type for dac members. *)
-type dac_member = {
+type committee_member = {
   coordinator_rpc_address : string;  (** RPC address of the coordinator. *)
   coordinator_rpc_port : int;  (** RPC port of the coordinator. *)
   address : Tezos_crypto.Aggregate_signature.public_key_hash;
@@ -56,7 +57,8 @@ type legacy = {
   threshold : int;
       (** The number of signatures required from DAC members to consider a
       message valid. *)
-  dac_members_addresses : Tezos_crypto.Aggregate_signature.public_key_hash list;
+  committee_members_addresses :
+    Tezos_crypto.Aggregate_signature.public_key_hash list;
       (** The list of tz4 addresses denoting the dac members. *)
   dac_cctxt_config : host_and_port option;
       (**  When running integration tests with multiple dac nodes in the
@@ -66,7 +68,7 @@ type legacy = {
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4707.
    Remove legacy mode once other DAC operating modes are fully functional. *)
-type mode = (coordinator, dac_member, observer, legacy) Operating_modes.t
+type mode = (coordinator, committee_member, observer, legacy) Operating_modes.t
 
 type t = {
   data_dir : string;  (** The path to the DAC node data directory. *)
