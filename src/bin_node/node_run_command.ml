@@ -293,6 +293,7 @@ let init_node ?sandbox ?target ~identity ~singleprocess
             private_mode = config.p2p.private_mode;
             reconnection_config = config.p2p.reconnection_config;
             identity;
+            reuse_port = config.p2p.reuse_port;
             proof_of_work_target =
               Tezos_crypto.Crypto_box.make_pow_target config.p2p.expected_pow;
             trust_discovered_peers = sandbox <> None;

@@ -196,6 +196,7 @@ module P2p_net = struct
   let conf identity =
     P2p.
       {
+        reuse_port = false;
         listening_port = None;
         listening_addr = None;
         advertised_port = None;

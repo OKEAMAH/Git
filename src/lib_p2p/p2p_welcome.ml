@@ -130,12 +130,23 @@ let rec worker_loop st =
   | Error (Canceled :: _) -> Lwt.return_unit
   | Error err -> Events.(emit unexpected_error) err
 
-let create_listening_socket ~backlog ?(addr = Ipaddr.V6.unspecified) port =
+let create_listening_socket ~backlog ~reuse_port ?(addr = Ipaddr.V6.unspecified)
+    port =
   let open Lwt_result_syntax in
   Lwt.catch
     (fun () ->
       let main_socket = Lwt_unix.(socket PF_INET6 SOCK_STREAM 0) in
+      (* To understand the difference between those two options,
+         please read this stackoverflow answer:
+         https://stackoverflow.com/questions/14388706/how-do-so-reuseaddr-and-so-reuseport-differ
+
+         [SO_REUSEPORT] is used for testing purpose. It allows a test
+         framework to generate a port by creating a socket and let the
+         node to steal the socket. We don't use it by default because
+         otherwise, any other process in the system using
+         [SO_REUSEPORT] could steal this socket. *)
       Lwt_unix.(setsockopt main_socket SO_REUSEADDR true) ;
+      Lwt_unix.(setsockopt main_socket SO_REUSEPORT reuse_port) ;
       let*! () =
         Lwt_unix.bind
           main_socket
@@ -150,11 +161,11 @@ let create_listening_socket ~backlog ?(addr = Ipaddr.V6.unspecified) port =
                {reason = err; address = addr; port})
       | exn -> Lwt.fail exn)
 
-let create ?addr ~backlog connect_handler port =
+let create ?addr ~backlog ~reuse_port connect_handler port =
   let open Lwt_result_syntax in
   Lwt.catch
     (fun () ->
-      let* socket = create_listening_socket ~backlog ?addr port in
+      let* socket = create_listening_socket ~backlog ~reuse_port ?addr port in
       let canceler = Lwt_canceler.create () in
       let st =
         {

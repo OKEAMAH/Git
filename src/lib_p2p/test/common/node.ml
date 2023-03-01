@@ -247,14 +247,24 @@ let detach_node ?(prefix = "") ?timeout ?(min_connections : int option)
               trusted_points
           in
           let*! welcome =
-            P2p_welcome.create ~backlog:10 connect_handler ~addr port
+            P2p_welcome.create
+              ~backlog:10
+              ~reuse_port:true
+              connect_handler
+              ~addr
+              port
           in
           let* welcome =
             match welcome with
             | Ok w -> Lwt.return @@ Ok w
             | Error _ ->
                 let*! () = Lwt_unix.sleep 2. in
-                P2p_welcome.create ~backlog:10 connect_handler ~addr port
+                P2p_welcome.create
+                  ~backlog:10
+                  ~reuse_port:true
+                  connect_handler
+                  ~addr
+                  port
           in
           P2p_welcome.activate welcome ;
           let*! () = Event.(emit node_ready) port in

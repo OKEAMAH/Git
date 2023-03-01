@@ -49,6 +49,7 @@ type t
 val create :
   ?addr:P2p_addr.t ->
   backlog:int ->
+  reuse_port:bool ->
   ('msg, 'meta, 'meta_conn) P2p_connect_handler.t ->
   P2p_addr.port ->
   t tzresult Lwt.t

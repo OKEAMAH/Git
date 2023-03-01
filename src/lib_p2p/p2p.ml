@@ -36,6 +36,7 @@ type config = {
   peers_file : string;
   private_mode : bool;
   identity : P2p_identity.t;
+  reuse_port : bool;
   proof_of_work_target : Tezos_crypto.Crypto_box.pow_target;
   trust_discovered_peers : bool;
   reconnection_config : Point_reconnection_config.t;
@@ -156,6 +157,7 @@ let may_create_welcome_worker config limits connect_handler =
   |> Option.map_es (fun port ->
          P2p_welcome.create
            ~backlog:limits.P2p_limits.backlog
+           ~reuse_port:config.reuse_port
            connect_handler
            ?addr:config.listening_addr
            port)
