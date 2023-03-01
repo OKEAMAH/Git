@@ -38,7 +38,7 @@
 *)
 let fresh () =
   let dummy_socket = Unix.(socket PF_INET SOCK_STREAM 0) in
-  Fun.protect ~finally:(fun () -> Unix.close dummy_socket) @@ fun () ->
+  Unix.(setsockopt dummy_socket SO_REUSEPORT true) ;
   Unix.bind dummy_socket Unix.(ADDR_INET (inet_addr_loopback, 0)) ;
   let addr = Unix.getsockname dummy_socket in
   match addr with ADDR_INET (_, port) -> port | _ -> assert false
