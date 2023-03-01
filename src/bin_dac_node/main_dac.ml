@@ -156,7 +156,7 @@ module Config_init = struct
       @@ seq_of_param @@ tz4_address_param)
       (fun (data_dir, rpc_address, rpc_port, reveal_data_dir)
            threshold
-           dac_members_addresses
+           committee_members_addresses
            cctxt ->
         create_configuration
           ~data_dir
@@ -164,7 +164,7 @@ module Config_init = struct
           ~rpc_address
           ~rpc_port
           (Operating_modes.Legacy
-             {threshold; dac_members_addresses; dac_cctxt_config = None})
+             {threshold; committee_members_addresses; dac_cctxt_config = None})
           cctxt)
 
   let coordinator_command =
@@ -179,17 +179,17 @@ module Config_init = struct
       @@ seq_of_param @@ tz4_address_param)
       (fun (data_dir, rpc_address, rpc_port, reveal_data_dir)
            threshold
-           dac_members_addresses
+           committee_members_addresses
            cctxt ->
         create_configuration
           ~data_dir
           ~reveal_data_dir
           ~rpc_address
           ~rpc_port
-          (Coordinator {threshold; dac_members_addresses})
+          (Coordinator {threshold; committee_members_addresses})
           cctxt)
 
-  let dac_member_command =
+  let committee_member_command =
     let open Tezos_clic in
     command
       ~group
@@ -209,7 +209,8 @@ module Config_init = struct
           ~reveal_data_dir
           ~rpc_address
           ~rpc_port
-          (Dac_member {coordinator_rpc_address; coordinator_rpc_port; address})
+          (Committee_member
+             {coordinator_rpc_address; coordinator_rpc_port; address})
           cctxt)
 
   let observer_command =
@@ -232,7 +233,12 @@ module Config_init = struct
           cctxt)
 
   let commands =
-    [legacy_command; coordinator_command; dac_member_command; observer_command]
+    [
+      legacy_command;
+      coordinator_command;
+      committee_member_command;
+      observer_command;
+    ]
 end
 
 let run_command =

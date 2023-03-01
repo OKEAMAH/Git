@@ -185,11 +185,12 @@ let run ~data_dir cctxt =
   let* addresses, threshold, coordinator_cctxt_opt =
     match mode with
     | Operating_modes.Legacy
-        {dac_members_addresses; threshold; dac_cctxt_config} ->
-        return (dac_members_addresses, threshold, dac_cctxt_config)
+        {committee_members_addresses; threshold; dac_cctxt_config} ->
+        return (committee_members_addresses, threshold, dac_cctxt_config)
     | Operating_modes.Coordinator _ ->
         tzfail @@ Mode_not_supported "coordinator"
-    | Operating_modes.Dac_member _ -> tzfail @@ Mode_not_supported "dac_member"
+    | Operating_modes.Committee_member _ ->
+        tzfail @@ Mode_not_supported "committee_member"
     | Operating_modes.Observer _ -> tzfail @@ Mode_not_supported "observer"
   in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4725

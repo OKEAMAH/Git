@@ -28,10 +28,11 @@ type host_and_port = {host : string; port : int}
 
 type coordinator = {
   threshold : int;
-  dac_members_addresses : Tezos_crypto.Aggregate_signature.public_key_hash list;
+  committee_members_addresses :
+    Tezos_crypto.Aggregate_signature.public_key_hash list;
 }
 
-type dac_member = {
+type committee_member = {
   coordinator_rpc_address : string;
   coordinator_rpc_port : int;
   address : Tezos_crypto.Aggregate_signature.public_key_hash;
@@ -41,11 +42,12 @@ type observer = {coordinator_rpc_address : string; coordinator_rpc_port : int}
 
 type legacy = {
   threshold : int;
-  dac_members_addresses : Tezos_crypto.Aggregate_signature.public_key_hash list;
+  committee_members_addresses :
+    Tezos_crypto.Aggregate_signature.public_key_hash list;
   dac_cctxt_config : host_and_port option;
 }
 
-type mode = (coordinator, dac_member, observer, legacy) Operating_modes.t
+type mode = (coordinator, committee_member, observer, legacy) Operating_modes.t
 
 type t = {
   data_dir : string;
@@ -86,19 +88,19 @@ let host_and_port_encoding =
 let coordinator_encoding =
   Data_encoding.(
     conv_with_guard
-      (fun ({threshold; dac_members_addresses} : coordinator) ->
-        (threshold, dac_members_addresses, false))
-      (fun (threshold, dac_members_addresses, legacy) ->
+      (fun ({threshold; committee_members_addresses} : coordinator) ->
+        (threshold, committee_members_addresses, false))
+      (fun (threshold, committee_members_addresses, legacy) ->
         if legacy then Error "legacy flag should be set to false"
-        else Ok {threshold; dac_members_addresses})
+        else Ok {threshold; committee_members_addresses})
       (obj3
          (req "threshold" uint8)
          (req
-            "dac_members"
+            "committee_members"
             (list Tezos_crypto.Aggregate_signature.Public_key_hash.encoding))
          (req "legacy" bool)))
 
-let dac_member_encoding =
+let committee_member_encoding =
   Data_encoding.(
     conv
       (fun {coordinator_rpc_address; coordinator_rpc_port; address} ->
@@ -126,15 +128,16 @@ let observer_encoding =
 let legacy_encoding =
   Data_encoding.(
     conv_with_guard
-      (fun {threshold; dac_members_addresses; dac_cctxt_config} ->
-        (threshold, dac_members_addresses, dac_cctxt_config, true))
-      (fun (threshold, dac_members_addresses, dac_cctxt_config, legacy) ->
-        if legacy then Ok {threshold; dac_members_addresses; dac_cctxt_config}
+      (fun {threshold; committee_members_addresses; dac_cctxt_config} ->
+        (threshold, committee_members_addresses, dac_cctxt_config, true))
+      (fun (threshold, committee_members_addresses, dac_cctxt_config, legacy) ->
+        if legacy then
+          Ok {threshold; committee_members_addresses; dac_cctxt_config}
         else Error "'legacy' flag should be set to true")
       (obj4
          (dft "threshold" uint8 default_dac_threshold)
          (dft
-            "dac_members"
+            "committee_members"
             (list Tezos_crypto.Aggregate_signature.Public_key_hash.encoding)
             default_dac_addresses)
          (opt "dac_cctxt_config" host_and_port_encoding)
@@ -143,7 +146,7 @@ let legacy_encoding =
 let mode_config_encoding =
   Operating_modes.make_encoding
     ~coordinator_encoding
-    ~dac_member_encoding
+    ~committee_member_encoding
     ~observer_encoding
     ~legacy_encoding
 
