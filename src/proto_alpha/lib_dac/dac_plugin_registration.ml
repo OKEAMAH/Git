@@ -44,6 +44,9 @@ end) : Dac_plugin.T = struct
       of_reveal_hash
       Protocol.Sc_rollup_reveal_hash.encoding
 
+  let equal h1 h2 =
+    Protocol.Sc_rollup_reveal_hash.equal (to_reveal_hash h1) (to_reveal_hash h2)
+
   let dac_hash_to_proto_supported_hashes = function
     | Dac_plugin.Blake2B -> Protocol.Sc_rollup_reveal_hash.Blake2B
 
