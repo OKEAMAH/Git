@@ -294,3 +294,16 @@ let get_tezos_reorg_for_new_head l1_state old_head new_head =
         in
         return Reorg.{old_chain = []; new_chain}
   | `Head old_head -> get_tezos_reorg_for_new_head l1_state old_head new_head
+
+module Internal_for_tests = struct
+  let dummy cctxt =
+    let heads, _push = Lwt_stream.create () in
+    {
+      name = "dummy_layer_1_for_tests";
+      reconnection_delay = 5.0;
+      heads;
+      cctxt = (cctxt :> Client_context.full);
+      stopper = Fun.id;
+      running = false;
+    }
+end
