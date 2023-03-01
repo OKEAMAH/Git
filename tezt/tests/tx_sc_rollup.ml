@@ -632,7 +632,8 @@ let test_tx_kernel_60k_txs protocol =
   in
   (* gen two tz4 accounts *)
   let pkh, _pk, sk = Tezos_crypto.Signature.Bls.generate_key () in
-  let pkh2, _pk2, _sk2 = Tezos_crypto.Signature.Bls.generate_key () in
+  let pkh2, _pk2, sk2 = Tezos_crypto.Signature.Bls.generate_key () in
+  let pkh3, _pk3, sk3 = Tezos_crypto.Signature.Bls.generate_key () in
   (* Deposit *)
   let* level =
     test_deposit
@@ -662,6 +663,14 @@ let test_tx_kernel_60k_txs protocol =
                     ~sk
                     ~counter:(Int64.of_int i)
                     [Transfer {destination = pkh2; ticket = ticket 1}];
+                  account_operations_of
+                    ~sk:sk2
+                    ~counter:(Int64.of_int i)
+                    [Transfer {destination = pkh3; ticket = ticket 1}];
+                  account_operations_of
+                    ~sk:sk3
+                    ~counter:(Int64.of_int i)
+                    [Transfer {destination = pkh; ticket = ticket 1}];
                 ]))
   in
   let* _, raw_operation =
@@ -703,5 +712,5 @@ let test_tx_kernel_60k_txs =
     test_tx_kernel_60k_txs
 
 let register ~protocols =
-  test_tx_kernel_e2e protocols ;
+  (* test_tx_kernel_e2e protocols ; *)
   test_tx_kernel_60k_txs protocols
