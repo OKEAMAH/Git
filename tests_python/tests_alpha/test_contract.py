@@ -143,16 +143,16 @@ class TestManager:
         balance_bootstrap = client.get_mutez_balance('bootstrap2')
         amount = 10.1
         amount_mutez = utils.mutez_of_tez(amount)
+        fee = 0.000543
         client.transfer(
             amount,
             'manager',
             'bootstrap2',
-            ['--gas-limit', f'{128 * 26350 + 12}'],
+            ['--fee', f'{fee}', '--gas-limit', f'{128 * 26350 + 12}'],
         )
         utils.bake(client, bake_for='bootstrap5')
         new_balance = client.get_mutez_balance('manager')
         new_balance_bootstrap = client.get_mutez_balance('bootstrap2')
-        fee = 0.000542
         fee_mutez = utils.mutez_of_tez(fee)
         assert balance - amount_mutez == new_balance
         assert (
