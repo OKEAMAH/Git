@@ -27,7 +27,10 @@
 type error +=
   | Cannot_write_page_to_page_storage of {hash : string; content : bytes}
   | Cannot_read_page_from_page_storage of string
-  | Invalid_page_hash of {expected : Dac_plugin.hash; actual : Dac_plugin.hash}
+  | Hash_of_page_is_invalid of {
+      expected : Dac_plugin.hash;
+      actual : Dac_plugin.hash;
+    }
 
 let () =
   register_error_kind
@@ -165,7 +168,7 @@ module With_data_integrity_check (P : S) :
     let scheme = Plugin.scheme_of_hash hash in
     let content_hash = Plugin.hash_bytes [content] ~scheme in
     if not @@ Plugin.equal hash content_hash then
-      tzfail @@ Invalid_page_hash {expected = hash; actual = content_hash}
+      tzfail @@ Hash_of_page_is_invalid {expected = hash; actual = content_hash}
     else P.save plugin page_store ~hash ~content
 
   let mem = P.mem
@@ -239,9 +242,9 @@ module Remote : S with type configuration = remote_configuration = struct
 end
 
 module Internal_for_tests_only = struct
-  module With_data_integrity_check : functor (P : S) ->
+  module With_data_integrity_check (P : S) :
     S with type configuration = P.configuration and type t = P.t =
-    With_data_integrity_check
+    With_data_integrity_check (P)
 
   module With_remote_fetch (R : sig
     type remote_context

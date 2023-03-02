@@ -101,7 +101,7 @@ module Internal_for_tests_only : sig
       before the page is saved in the underlying [Page_store]. If the
       verification of the hash fails, the
       page is not saved and the error [Hash_of_page_is_invalid] is returned.  *)
-  module With_data_integrity_check : functor (P : S) ->
+  module With_data_integrity_check (P : S) :
     S with type configuration = P.configuration and type t = P.t
 
   (** [With_remote_context(R)(P)] tweaks a module [P] of type [Page_store]
