@@ -440,11 +440,22 @@ module Merkle_tree = struct
           ~hash:root_hash
           ~content:serialised_corrupt_payload
       in
-      assert_fails_with
+      let* () =
+        assert_fails_with
+          ~loc:__LOC__
+          (Mock_synch_codec.deserialize_payload
+             dac_plugin
+             ~page_store
+             root_hash)
+          (Page_store.Invalid_page_hash
+             {expected = root_hash; actual = root_hash_of_corrupt_payload})
+      in
+      (* Check that pages have not been copied from the remote modck store
+         to the local one. *)
+      Assert.equal_int
         ~loc:__LOC__
-        (Mock_synch_codec.deserialize_payload dac_plugin ~page_store root_hash)
-        (Page_store.Invalid_page_hash
-           {expected = root_hash; actual = root_hash_of_corrupt_payload})
+        (Hashes_map_backend.number_of_pages mock_local_store)
+        0
 
     let multiple_pages_roundtrip_homogeneous_payload () =
       (* Each page in tests contains at most 80 bytes, of which 5 are reserved
