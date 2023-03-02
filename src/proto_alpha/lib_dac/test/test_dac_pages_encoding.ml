@@ -443,7 +443,7 @@ module Merkle_tree = struct
       assert_fails_with
         ~loc:__LOC__
         (Mock_synch_codec.deserialize_payload dac_plugin ~page_store root_hash)
-        (Page_store.Hash_of_page_is_invalid
+        (Page_store.Invalid_page_hash
            {expected = root_hash; actual = root_hash_of_corrupt_payload})
 
     let multiple_pages_roundtrip_homogeneous_payload () =
