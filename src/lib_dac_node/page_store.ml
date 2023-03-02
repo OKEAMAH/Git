@@ -27,10 +27,7 @@
 type error +=
   | Cannot_write_page_to_page_storage of {hash : string; content : bytes}
   | Cannot_read_page_from_page_storage of string
-  | Hash_of_page_is_invalid of {
-      expected : Dac_plugin.hash;
-      actual : Dac_plugin.hash;
-    }
+  | Invalid_page_hash of {expected : Dac_plugin.hash; actual : Dac_plugin.hash}
 
 let () =
   register_error_kind
@@ -82,9 +79,9 @@ let () =
         (req "expected" Dac_plugin.non_proto_encoding_unsafe)
         (req "acual" Dac_plugin.non_proto_encoding_unsafe))
     (function
-      | Hash_of_page_is_invalid {expected; actual} -> Some (expected, actual)
+      | Invalid_page_hash {expected; actual} -> Some (expected, actual)
       | _ -> None)
-    (fun (expected, actual) -> Hash_of_page_is_invalid {expected; actual})
+    (fun (expected, actual) -> Invalid_page_hash {expected; actual})
 
 module type S = sig
   type t
@@ -168,7 +165,7 @@ module With_data_integrity_check (P : S) :
     let scheme = Plugin.scheme_of_hash hash in
     let content_hash = Plugin.hash_bytes [content] ~scheme in
     if not @@ Plugin.equal hash content_hash then
-      tzfail @@ Hash_of_page_is_invalid {expected = hash; actual = content_hash}
+      tzfail @@ Invalid_page_hash {expected = hash; actual = content_hash}
     else P.save plugin page_store ~hash ~content
 
   let mem = P.mem
