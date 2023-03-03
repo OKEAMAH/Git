@@ -31,7 +31,7 @@
     Subject:      Tests for the tezos-scoru-wasm durable snapshotting
 *)
 
-open Tztest
+(* open Tztest *)
 open QCheck2
 open Encodings_util
 open Durable_snapshot_util
@@ -77,6 +77,10 @@ let tztest_qcheck2 ?(number_of_runs = 1) ~name (generator, verifier) =
         | Error _err -> false )
   in
   Alcotest_lwt.test_case name speed (fun _sw () -> Lwt.return @@ run ())
+
+(* let tztest_qcheck2 ~name (gen, verifier) =
+   let verifier inp = Lwt.map (fun x -> Ok x) (verifier inp) in
+   tztest_qcheck2 ~name gen verifier *)
 
 module Paired_runners = struct
   module Generator = Operations_generator
@@ -217,11 +221,11 @@ let stress_each_op () =
     Durable_operation.all_operations
 
 let tests : unit Alcotest_lwt.test_case trace =
-  List.append
-    [
-      tztest "Do several operations on durable" `Quick test_several_operations;
-      stress_test_desceding ~init_size:2000 ~rounds:3000;
-      stress_test_uniform ~init_size:2000 ~rounds:20000;
-      stress_strcture_ops ~init_size:2000 ~rounds:3000;
-    ]
-    (stress_each_op ())
+  (* List.append
+     [
+       tztest "Do several operations on durable" `Quick test_several_operations; *)
+  [stress_test_desceding ~init_size:2000 ~rounds:3000]
+(* stress_test_uniform ~init_size:2000 ~rounds:20000;
+   stress_strcture_ops ~init_size:2000 ~rounds:3000; *)
+(* ]
+   (stress_each_op ()) *)

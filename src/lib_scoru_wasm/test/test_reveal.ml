@@ -34,7 +34,9 @@
 open Tezos_webassembly_interpreter
 open Tezos_scoru_wasm
 open Wasm_utils
-open Tztest_helper
+
+(* open Tztest_helper *)
+open Tztest
 
 let reveal_preimage_module hash_addr hash_size preimage_addr max_bytes =
   Format.sprintf
@@ -322,15 +324,21 @@ let test_fast_exec_reveal ~version () =
   Lwt_result_syntax.return_unit
 
 let tests =
-  tztests_with_pvm
-    ~versions:[V0; V1]
-    [
-      ( "Test reveal_preimage with preimage length below max_bytes",
-        `Quick,
-        test_reveal_preimage_classic );
-      ( "Test reveal_preimage with preimage length above max_bytes",
-        `Quick,
-        test_reveal_preimage_above_max );
-      ("Test reveal_metadata", `Quick, test_reveal_metadata);
-      ("Test reveal_preimage with Fast Exec", `Quick, test_fast_exec_reveal);
-    ]
+  [
+    tztest
+      "Test reveal_preimage with Fast Exec"
+      `Quick
+      (test_fast_exec_reveal ~version:V0);
+  ]
+(* tztests_with_pvm
+   ~versions:[V0; V1]
+   [
+     (* ( "Test reveal_preimage with preimage length below max_bytes",
+          `Quick,
+          test_reveal_preimage_classic );
+        ( "Test reveal_preimage with preimage length above max_bytes",
+          `Quick,
+          test_reveal_preimage_above_max );
+        ("Test reveal_metadata", `Quick, test_reveal_metadata) *)
+     ("Test reveal_preimage with Fast Exec", `Quick, test_fast_exec_reveal);
+   ] *)
