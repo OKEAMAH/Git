@@ -21,6 +21,7 @@ include: .gitlab/ci/jobs/test/common.yml
       - tezt-results-$CI_NODE_INDEX.json
       - $BISECT_FILE
       - $JUNIT
+      - "$CI_PROJECT_DIR/tezt/tests/_coverage_output/"
     # These record artifacts (tezt-results-$CI_NODE_INDEX.json) should
     # be stored for as long as a given commit on master is expected to
     # be HEAD in order to support auto-balancing. At the time of
