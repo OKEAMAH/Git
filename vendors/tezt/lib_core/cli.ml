@@ -72,6 +72,7 @@ type options = {
   mutable only : int option;
   mutable test_args : string String_map.t;
   mutable seed : int option;
+  mutable covering : string list;
 }
 
 let options =
@@ -113,6 +114,7 @@ let options =
     only = None;
     test_args = String_map.empty;
     seed = None;
+    covering = [];
   }
 
 let () = at_exit @@ fun () -> Option.iter close_out options.log_file
@@ -503,6 +505,13 @@ let init ?args () =
           Arg.Int (fun seed -> options.seed <- Some seed),
           "<SEED> Force tests declared with ~seed: Random to initialize the \
            pseudo-random number generator with this seed." );
+        ( "--covering",
+          Arg.String (fun path -> options.covering <- path :: options.covering),
+          "<PATH> Select tests covering PATH. Can be given multiple times. \
+           PATH must be a file, not a directory." );
+        ( "-c",
+          Arg.String (fun path -> options.covering <- path :: options.covering),
+          "<PATH> Same as --covering." );
       ]
   in
   let usage =

@@ -1,9 +1,5 @@
 (library
  (name tezt_core)
  (public_name tezt.core)
- (libraries
-  re
-  lwt
-  unix
-  ezjsonm)
+ (libraries re lwt unix ezjsonm bisect_ppx.common)
  (js_of_ocaml))

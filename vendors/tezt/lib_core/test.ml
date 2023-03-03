@@ -930,6 +930,70 @@ let skip_test () =
         registered := String_map.add test.title test !registered)
       list)
 
+(* Apply --covering *)
+let select_covering () =
+  match Cli.options.covering with
+  | [] ->
+      (* No --job: do not unregister any test. *)
+      ()
+  | paths ->
+      (* For each test, get the coverage *)
+      (* If it's coverage touches any of the files in paths, then select it *)
+      let coverage_output test =
+        let title = title test in
+        let file = file test in
+        let output_dir =
+          (* hack here hardcoding coverage location *)
+          project_root // "tezt/tests" // "_coverage_output"
+        in
+        let relative_output_dir =
+          let test_title_file =
+            let sanitize_char = function
+              | ( 'a' .. 'z'
+                | 'A' .. 'Z'
+                | '0' .. '9'
+                | '_' | '-' | '.' | ' ' | '(' | ')' ) as x ->
+                  x
+              | _ -> '-'
+            in
+            let full = String.map sanitize_char title in
+            let max_length = 80 in
+            if String.length full > max_length then String.sub full 0 max_length
+            else full
+          in
+          file // test_title_file
+        in
+        output_dir // relative_output_dir
+      in
+      let filter test_title test =
+        (* AJ: Could just be the dir if we use ~coverage_paths below *)
+        let coverage_file = coverage_output test // "merged.coverage" in
+        if Sys.file_exists coverage_file then (
+          Log.debug "Loading coverage for %S in %s" test_title coverage_file ;
+          let coverage =
+            Coverage_input.load_coverage
+              ~coverage_files:[coverage_file]
+              ~coverage_paths:[]
+              ~expect:[]
+              ~do_not_expect:[]
+          in
+          Seq.exists
+            (fun (covered_file, (coverage : Bisect_common.instrumented_file)) ->
+              let counts () = Array.fold_left ( + ) 0 coverage.counts in
+              if List.exists (( = ) covered_file) paths && counts () > 0 then (
+                Log.debug
+                  "Test %S covers the file %s, selecting"
+                  test_title
+                  covered_file ;
+                true)
+              else false)
+            (Hashtbl.to_seq coverage))
+        else (
+          Log.warn "No coverage for test %S, deselecting" test_title ;
+          false)
+      in
+      registered := String_map.filter filter !registered
+
 let suggest_jobs () =
   let jobs = split_tests_into_balanced_jobs Cli.options.job_count in
   let job_count = Array.length jobs in
@@ -1122,6 +1186,8 @@ let run_with_scheduler scheduler =
   select_job () ;
   (* Apply --skip and --only if needed. *)
   skip_test () ;
+  (* Apply --covering if needed. *)
+  select_covering () ;
   (* Print a warning if no test was selected. *)
   if String_map.is_empty !registered then (
     Printf.eprintf

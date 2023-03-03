@@ -115,6 +115,7 @@ type options = {
   mutable only : int option;
   mutable test_args : string String_map.t;
   mutable seed : int option;
+  mutable covering : string list;
 }
 
 (** Values for command-line options. *)
