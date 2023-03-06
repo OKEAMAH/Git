@@ -4057,7 +4057,11 @@ module Sc_rollup : sig
 
     val refutation_encoding : refutation Data_encoding.t
 
-    val pp_refutation : Format.formatter -> refutation -> unit
+    val pp_refutation :
+      ?pvm:('state, 'proof, 'output) PVM.implementation ->
+      Format.formatter ->
+      refutation ->
+      unit
 
     type reason = Conflict_resolved | Timeout
 

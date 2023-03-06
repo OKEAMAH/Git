@@ -523,7 +523,7 @@ let step_encoding =
         (fun p -> Proof p);
     ]
 
-let pp_step ppf step =
+let pp_step ?pvm ppf step =
   match step with
   | Dissection states ->
       Format.fprintf ppf "Dissection:@ " ;
@@ -539,7 +539,8 @@ let pp_step ppf step =
             state_hash)
         ppf
         states
-  | Proof proof -> Format.fprintf ppf "proof: %a" Sc_rollup_proof_repr.pp proof
+  | Proof proof ->
+      Format.fprintf ppf "proof: %a" (Sc_rollup_proof_repr.pp ?pvm) proof
 
 type refutation =
   | Start of {
@@ -548,7 +549,7 @@ type refutation =
     }
   | Move of {choice : Sc_rollup_tick_repr.t; step : step}
 
-let pp_refutation ppf = function
+let pp_refutation ?pvm ppf = function
   | Start {player_commitment_hash; opponent_commitment_hash} ->
       Format.fprintf
         ppf
@@ -563,7 +564,7 @@ let pp_refutation ppf = function
         "Tick: %a@ Step: %a"
         Sc_rollup_tick_repr.pp
         choice
-        pp_step
+        (pp_step ?pvm)
         step
 
 let refutation_encoding =

@@ -4077,6 +4077,98 @@ let test_recover_bond_of_stakers =
   in
   unit
 
+let test_loser_vs_loser ~kind ~loser_mode ~inputs ~final_level =
+  let challenge_window = 4 and commitment_period = 4 in
+  test_full_scenario
+    ~commitment_period
+    ~kind
+    ~timeout:60
+    ~challenge_window
+    {
+      tags = ["refutation"; "draw"];
+      variant = None;
+      description = "refutation games loser vs loser finish in a draw";
+    }
+  @@ fun protocol loser_rollup_node1 _sc_client1 sc_rollup_address node client
+    ->
+  let* _configuration_filenames =
+    Sc_rollup_node.config_init ~loser_mode loser_rollup_node1 sc_rollup_address
+  in
+
+  let bootstrap1_key = Constant.bootstrap1.public_key_hash in
+  let bootstrap2_key = Constant.bootstrap2.public_key_hash in
+
+  let game_started = ref false in
+  let conflict_detected = ref None in
+  let _ =
+    let* conflict = wait_for_conflict_detected loser_rollup_node1 in
+    conflict_detected := Some conflict ;
+    unit
+  in
+  let loser_rollup_node2 =
+    Sc_rollup_node.create
+      ~protocol
+      Operator
+      node
+      ~base_dir:(Client.base_dir client)
+      ~default_operator:bootstrap2_key
+  in
+  let* _configuration_filenames =
+    Sc_rollup_node.config_init ~loser_mode loser_rollup_node2 sc_rollup_address
+  in
+  let* () = Sc_rollup_node.run loser_rollup_node1 []
+  and* () = Sc_rollup_node.run loser_rollup_node2 [] in
+
+  let rec consume_inputs = function
+    | [] -> unit
+    | inputs :: next_batches ->
+        let* () =
+          send_text_messages ~src:Constant.bootstrap3.alias client inputs
+        in
+        consume_inputs next_batches
+  in
+  let* () = consume_inputs inputs in
+
+  let keep_going client =
+    let* game =
+      RPC.Client.call client
+      @@ RPC.get_chain_block_context_smart_rollups_smart_rollup_staker_games
+           ~staker:bootstrap1_key
+           sc_rollup_address
+           ()
+    in
+    if !game_started then return @@ not (JSON.is_null game)
+    else (
+      game_started := not @@ JSON.is_null game ;
+      return true)
+  in
+
+  let* () = bake_until keep_going (final_level - List.length inputs) client in
+
+  if not (Option.is_some !conflict_detected) then
+    Test.fail "Node did not detect the conflict" ;
+
+  if not !game_started then Test.fail "Conflict not started" ;
+
+  let* first_op_deposit_json =
+    RPC.Client.call client
+    @@ RPC.get_chain_block_context_contract_frozen_bonds ~id:bootstrap1_key ()
+  in
+  let* second_op_deposit_json =
+    RPC.Client.call client
+    @@ RPC.get_chain_block_context_contract_frozen_bonds ~id:bootstrap2_key ()
+  in
+
+  Check.(
+    (first_op_deposit_json = Tez.zero)
+      Tez.typ
+      ~error_msg:"expecting loss for first dishonest participant = %R, got %L") ;
+  Check.(
+    (second_op_deposit_json = Tez.zero)
+      Tez.typ
+      ~error_msg:"expecting loss for second dishonest participant = %R, got %L") ;
+  unit
+
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -4290,6 +4382,18 @@ let register ~protocols =
     ~kernel_name:"no_parse_bad_fingerprint"
     ~internal:false ;
   test_accuser protocols ;
+  test_loser_vs_loser
+    ~kind:"arith"
+    ~loser_mode:"5 3 0"
+    ~inputs:(inputs_for 30)
+    ~final_level:80
+    protocols ;
+  test_loser_vs_loser
+    ~kind:"wasm_2_0_0"
+    ~loser_mode:"5 4 0"
+    ~inputs:(inputs_for 30)
+    ~final_level:80
+    protocols ;
   (* Shared tezts - will be executed for both PVMs. *)
   register ~kind:"wasm_2_0_0" ~protocols ;
   register ~kind:"arith" ~protocols

@@ -160,12 +160,14 @@ module Make (PVM : Pvm.S) = struct
               | exn -> raise exn)
         in
         let failure_insertion_eval state tick failing_ticks' =
+          let*! current_tick = PVM.get_tick state in
           let*! () =
             Interpreter_event.intended_failure
               ~level
               ~message_index
               ~message_tick:tick
-              ~internal:true
+              ~current_tick
+              ()
           in
           let*! state = PVM.Internal_for_tests.insert_failure state in
           return (state, 1L, failing_ticks')
@@ -246,14 +248,6 @@ module Make (PVM : Pvm.S) = struct
       in
       go fuel start_tick failing_ticks state
 
-    (** [mutate input] corrupts the payload of [input] for testing purposes. *)
-    let mutate input =
-      let payload =
-        Sc_rollup.Inbox_message.unsafe_of_string
-          "\001to the cheater we promise pain and misery"
-      in
-      {input with Sc_rollup.payload}
-
     (** [feed_input node_ctxt reveal_map level message_index ~fuel
         ~failing_ticks state input] feeds [input] (that has a given
         [message_index] in inbox of [level]) to the PVM in order to advance
@@ -280,14 +274,19 @@ module Make (PVM : Pvm.S) = struct
         match failing_ticks with
         | xtick :: failing_ticks' ->
             if xtick = tick then
+              let input = Loser_mode.mutate xtick input in
+              let*! current_tick = PVM.get_tick state in
               let*! () =
                 Interpreter_event.intended_failure
                   ~level
                   ~message_index
+                  ~message:input
                   ~message_tick:tick
-                  ~internal:false
+                  ~current_tick
+                  ()
               in
-              return (mutate input, failing_ticks')
+
+              return (input, failing_ticks')
             else return (input, failing_ticks)
         | [] -> return (input, failing_ticks)
       in

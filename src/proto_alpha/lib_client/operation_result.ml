@@ -357,7 +357,7 @@ let pp_manager_operation_content (type kind) source ppf
         rollup
         Sc_rollup.Staker.pp
         opponent
-        Sc_rollup.Game.pp_refutation
+        (Sc_rollup.Game.pp_refutation ?pvm:None)
         refutation
   | Sc_rollup_timeout {rollup; stakers = {alice; bob}} ->
       Format.fprintf

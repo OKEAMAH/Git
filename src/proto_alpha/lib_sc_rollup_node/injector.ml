@@ -58,7 +58,11 @@ module Parameters :
         (List.map (fun t -> (string_of_tag t, t)) Configuration.purposes)
   end
 
-  module Operation = L1_operation
+  module Operation = struct
+    include L1_operation
+
+    let pp = pp ~pvm:(module Wasm_2_0_0_pvm)
+  end
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/3459
      Very coarse approximation for the number of operation we

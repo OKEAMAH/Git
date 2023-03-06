@@ -308,6 +308,7 @@ let do_runlike_command node arguments =
   in
   let arguments = make_arguments node @ arguments in
   run
+    ~env:(String_map.singleton "LWT_LOG" "* -> debug")
     ?runner:node.persistent_state.runner
     node
     {ready = false; level = Unknown}

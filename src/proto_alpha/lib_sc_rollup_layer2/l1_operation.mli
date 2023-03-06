@@ -47,4 +47,8 @@ val to_manager_operation : t -> packed_manager_operation
 val of_manager_operation : 'a manager_operation -> t option
 
 (** Pretty printer (human readable) for L1 operations. *)
-val pp : Format.formatter -> t -> unit
+val pp :
+  ?pvm:('state, 'proof, 'output) Sc_rollup.PVM.implementation ->
+  Format.formatter ->
+  t ->
+  unit

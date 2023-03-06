@@ -99,7 +99,7 @@ let encoding : t Data_encoding.t =
            (fun (rollup, stakers) -> Timeout {rollup; stakers});
        ]
 
-let pp ppf = function
+let pp ?pvm ppf = function
   | Add_messages {messages} ->
       Format.fprintf
         ppf
@@ -146,14 +146,14 @@ let pp ppf = function
         "dissection (against %a)"
         Signature.Public_key_hash.pp
         opponent
-  | Refute {rollup = _; opponent; refutation = Move {choice; step = Proof _}} ->
+  | Refute {rollup = _; opponent; refutation} ->
       Format.fprintf
         ppf
-        "proof for tick %a  (against %a)"
-        Sc_rollup.Tick.pp
-        choice
+        "@[<v2>Refute proof:@,opponent %a@,proof %a@]"
         Signature.Public_key_hash.pp
         opponent
+        (Sc_rollup.Game.pp_refutation ?pvm)
+        refutation
   | Timeout {rollup = _; stakers = _} -> Format.fprintf ppf "timeout"
 
 let to_manager_operation : t -> packed_manager_operation = function

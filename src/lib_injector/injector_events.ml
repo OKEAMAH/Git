@@ -132,7 +132,9 @@ module Make
         Format.fprintf
           ppf
           "@[%a@]"
-          (Format.pp_print_list Operation.pp)
+          (Format.pp_print_list
+             ~pp_sep:(fun fmt () -> Format.pp_print_string fmt "; ")
+             Operation.pp)
           operations
 
       let pp_operations_hash_list ppf operations =

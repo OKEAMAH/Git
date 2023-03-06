@@ -82,7 +82,7 @@ module Simple = struct
       ~msg:"Operation {operation} was included as successful"
       ~level:Debug
       ("operation", L1_operation.encoding)
-      ~pp1:L1_operation.pp
+      ~pp1:(L1_operation.pp ?pvm:None)
 
   let included_failed_operation =
     declare_3
@@ -100,7 +100,7 @@ module Simple = struct
               ("skipped", `Skipped);
             ]) )
       ("error", Data_encoding.option Environment.Error_monad.trace_encoding)
-      ~pp1:L1_operation.pp
+      ~pp1:(L1_operation.pp ?pvm:None)
       ~pp3:
         (fun ppf -> function
           | None -> Format.pp_print_string ppf "none"
@@ -113,7 +113,7 @@ module Simple = struct
       ~msg:"Operation {operation} was finalized"
       ~level:Debug
       ("operation", L1_operation.encoding)
-      ~pp1:L1_operation.pp
+      ~pp1:(L1_operation.pp ?pvm:None)
 
   let wrong_initial_pvm_state_hash =
     declare_2

@@ -74,3 +74,25 @@ let is_failure failures ~level ~message_index =
         Some f.message_tick
       else None)
     failures
+
+let level_has_failures failures ~level =
+  List.filter_map
+    (fun f -> if Compare.Int.(f.level = level) then Some f else None)
+    failures
+
+let failure_external_message _tick :
+    Protocol.Alpha_context.Sc_rollup.Inbox_message.t =
+  let rand_int () = string_of_int @@ (1000 + Random.int 100000) in
+  let failure_payload = rand_int () ^ " " ^ rand_int () ^ " +" in
+  let msg : Protocol.Alpha_context.Sc_rollup.Inbox_message.t =
+    External failure_payload
+  in
+  msg
+
+let mutate tick input : Protocol.Alpha_context.Sc_rollup.inbox_message =
+  let payload =
+    WithExceptions.Result.get_ok ~loc:__LOC__
+    @@ Protocol.Alpha_context.Sc_rollup.Inbox_message.serialize
+         (failure_external_message tick)
+  in
+  {input with payload}

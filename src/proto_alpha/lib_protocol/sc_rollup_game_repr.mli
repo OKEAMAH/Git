@@ -337,7 +337,11 @@ type refutation =
       (** [choice] is the final tick in the current dissection at which
           the two players agree. *)
 
-val pp_refutation : Format.formatter -> refutation -> unit
+val pp_refutation :
+  ?pvm:('state, 'proof, 'output) Sc_rollups.PVM.implementation ->
+  Format.formatter ->
+  refutation ->
+  unit
 
 val refutation_encoding : refutation Data_encoding.t
 

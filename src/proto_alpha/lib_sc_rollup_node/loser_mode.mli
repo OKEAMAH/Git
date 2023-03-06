@@ -23,8 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type failure = {level : int; message_index : int; message_tick : int64}
+
 (** A list of failures. *)
-type t
+type t = failure list
 
 val encoding : t Data_encoding.t
 
@@ -44,3 +46,18 @@ val make : string -> t option
    [message_index] and for all [message_ticks]. Ticks are sorted by
    increasing order. *)
 val is_failure : t -> level:int -> message_index:int -> int64 list
+
+(** [level_has_failures failures ~level] returns [failure] where a
+    failure is supposed to happen at the point of the rollup node
+    processing of a given inbox [level], a given [message_index] and
+    for all [message_ticks]. Ticks are sorted by increasing order. *)
+val level_has_failures : t -> level:int -> t
+
+val failure_external_message :
+  int64 -> Protocol.Alpha_context.Sc_rollup.Inbox_message.t
+
+(** [mutate input] corrupts the payload of [input] for testing purposes. *)
+val mutate :
+  int64 ->
+  Protocol.Alpha_context.Sc_rollup.inbox_message ->
+  Protocol.Alpha_context.Sc_rollup.inbox_message

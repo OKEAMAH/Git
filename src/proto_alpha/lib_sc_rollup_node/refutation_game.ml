@@ -164,6 +164,13 @@ module Make (Interpreter : Interpreter.S) :
 
   let generate_proof node_ctxt game start_state =
     let open Lwt_result_syntax in
+    let*! state_hash = PVM.state_hash start_state in
+    Format.eprintf
+      "GAME: \ngame: %a\nstart state %a\n%!"
+      Data_encoding.Json.pp
+      (Data_encoding.Json.construct Sc_rollup.Game.encoding game)
+      Sc_rollup.State_hash.pp
+      state_hash ;
     (* NOTE: [snapshot_level] and [snapshot_hash] below refer to the level
        before the refutation game starts. In fact, snapshotting of inbox and Dal
        slots histories at [game.start_level] takes the state of the skip list
@@ -282,6 +289,20 @@ module Make (Interpreter : Interpreter.S) :
            (snapshot_inbox, game.inbox_level))
       @@ (Sc_rollup.Proof.produce ~metadata (module P) game.inbox_level
          >|= Environment.wrap_tzresult)
+    in
+    let () =
+      match proof.input_proof with
+      | Some x -> (
+          match x with
+          | Inbox_proof {level; message_counter; _} ->
+              Printf.eprintf
+                "PROOF: Inbox_proof (%ld, %s)\n%!"
+                (Raw_level.to_int32 level)
+                (Z.to_string message_counter)
+          | Reveal_proof _ -> Printf.eprintf "PROOF: Reveal\n%!"
+          | First_inbox_message ->
+              Printf.eprintf "PROOF: First_inbox_message\n%!")
+      | None -> Printf.eprintf "Input proof DONT exists\n%!"
     in
     let*? pvm_step =
       Sc_rollup.Proof.unserialize_pvm_step ~pvm:(module PVM) proof.pvm_step
