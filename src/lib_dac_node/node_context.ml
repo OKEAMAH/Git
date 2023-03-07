@@ -69,7 +69,8 @@ let init config cctxt coordinator_opt =
     config;
     tezos_node_cctxt = cctxt;
     coordinator_opt;
-    page_store = Page_store.Filesystem.init config.reveal_data_dir;
+    page_store =
+      Page_store.Filesystem.init (Configuration.reveal_data_dir config);
     node_store;
   }
 

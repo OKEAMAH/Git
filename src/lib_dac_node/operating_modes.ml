@@ -23,39 +23,55 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type ('coordinator, 'committee_member, 'observer, 'legacy) t =
-  | Coordinator of 'coordinator
-  | Committee_member of 'committee_member
-  | Observer of 'observer
-  | Legacy of 'legacy
+type coordinator
 
-let make_encoding ~coordinator_encoding ~committee_member_encoding
-    ~observer_encoding ~legacy_encoding =
-  Data_encoding.(
-    union
-      [
-        case
-          ~title:"coordinator"
-          (Tag 0)
-          coordinator_encoding
-          (function Coordinator coordinator -> Some coordinator | _ -> None)
-          (function coordinator -> Coordinator coordinator);
-        case
-          ~title:"committee_member"
-          (Tag 1)
-          committee_member_encoding
-          (function Committee_member config -> Some config | _ -> None)
-          (function config -> Committee_member config);
-        case
-          ~title:"observer"
-          (Tag 2)
-          observer_encoding
-          (function Observer config -> Some config | _ -> None)
-          (function config -> Observer config);
-        case
-          ~title:"legacy"
-          (Tag 3)
-          legacy_encoding
-          (function Legacy config -> Some config | _ -> None)
-          (function config -> Legacy config);
-      ])
+type committee_member
+
+type observer
+
+type legacy
+
+module type Modal_type = sig
+  type coordinator_t
+
+  type committee_member_t
+
+  type observer_t
+
+  type legacy_t
+
+  type 'a mode =
+    | Coordinator : coordinator_t -> coordinator mode
+    | Committee_member : committee_member_t -> committee_member mode
+    | Observer : observer_t -> observer mode
+    | Legacy : legacy_t -> legacy mode
+
+  type t = Ex : 'a mode -> t
+end
+
+module Make_modal_type (T : sig
+  type coordinator_t
+
+  type committee_member_t
+
+  type observer_t
+
+  type legacy_t
+end) =
+struct
+  type coordinator_t = T.coordinator_t
+
+  type committee_member_t = T.committee_member_t
+
+  type observer_t = T.observer_t
+
+  type legacy_t = T.legacy_t
+
+  type 'a mode =
+    | Coordinator : coordinator_t -> coordinator mode
+    | Committee_member : committee_member_t -> committee_member mode
+    | Observer : observer_t -> observer mode
+    | Legacy : legacy_t -> legacy mode
+
+  type t = Ex : 'a mode -> t
+end
