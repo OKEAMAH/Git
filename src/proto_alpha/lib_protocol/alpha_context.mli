@@ -4673,15 +4673,18 @@ and _ contents =
     }
       -> Kind.drain_delegate contents
   | Failing_noop : string -> Kind.failing_noop contents
-  | Manager_operation : {
-      source : public_key_hash;
-      fee : Tez.tez;
-      counter : Manager_counter.t;
-      operation : 'kind manager_operation;
-      gas_limit : Gas.Arith.integral;
-      storage_limit : Z.t;
-    }
+  | Manager_operation :
+      'kind manager_operation_contents
       -> 'kind Kind.manager contents
+
+and 'kind manager_operation_contents = {
+  source : public_key_hash;
+  fee : Tez.tez;
+  counter : Manager_counter.t;
+  operation : 'kind manager_operation;
+  gas_limit : Gas.Arith.integral;
+  storage_limit : Z.t;
+}
 
 and _ manager_operation =
   | Reveal : public_key -> Kind.reveal manager_operation

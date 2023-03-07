@@ -326,15 +326,19 @@ and _ contents =
      a (revealed) implicit account, that describe management and
      interactions between contracts (whether implicit or
      smart). *)
-  | Manager_operation : {
-      source : Signature.Public_key_hash.t;
-      fee : Tez_repr.tez;
-      counter : Manager_counter_repr.t;
-      operation : 'kind manager_operation;
-      gas_limit : Gas_limit_repr.Arith.integral;
-      storage_limit : Z.t;
-    }
+  | Manager_operation :
+      'kind manager_operation_contents
       -> 'kind Kind.manager contents
+
+(** The contents of a manager operation. *)
+and 'kind manager_operation_contents = {
+  source : Signature.Public_key_hash.t;
+  fee : Tez_repr.tez;
+  counter : Manager_counter_repr.t;
+  operation : 'kind manager_operation;
+  gas_limit : Gas_limit_repr.Arith.integral;
+  storage_limit : Z.t;
+}
 
 (** A [manager_operation] describes management and interactions
     between contracts (whether implicit or smart). *)
