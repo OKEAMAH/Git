@@ -23,22 +23,45 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/5019
-   Should we use Gadts and get rid of variant types? *)
-(* A variant type that defines different values according to the operating
-   mode. *)
-type ('coordinator, 'committee_member, 'observer, 'legacy) t =
-  | Coordinator of 'coordinator
-  | Committee_member of 'committee_member
-  | Observer of 'observer
-  | Legacy of 'legacy
+type coordinator
 
-(* [make_encoding ~coordinator_encoding ~committee_member_encoding
-    ~observer_encoding ~legacy_encoding] constructs a union encoding
-    from the encodings given for each operating mode. *)
-val make_encoding :
-  coordinator_encoding:'coordinator Data_encoding.t ->
-  committee_member_encoding:'committee_member Data_encoding.t ->
-  observer_encoding:'observer Data_encoding.t ->
-  legacy_encoding:'legacy Data_encoding.t ->
-  ('coordinator, 'committee_member, 'observer, 'legacy) t Data_encoding.t
+type committee_member
+
+type observer
+
+(* TODO: https://gitlab.com/tezos/tezos/-/issues/4707.
+   Remove legacy mode once other DAC operating modes are fully functional. *)
+type legacy
+
+module type Modal_type = sig
+  type coordinator_t
+
+  type committee_member_t
+
+  type observer_t
+
+  type legacy_t
+
+  type 'a mode =
+    | Coordinator : coordinator_t -> coordinator mode
+    | Committee_member : committee_member_t -> committee_member mode
+    | Observer : observer_t -> observer mode
+    | Legacy : legacy_t -> legacy mode
+
+  type t = Ex : 'a mode -> t
+end
+
+module Make_modal_type (T : sig
+  type coordinator_t
+
+  type committee_member_t
+
+  type observer_t
+
+  type legacy_t
+end) :
+  Modal_type
+    with type coordinator_t = T.coordinator_t
+     and type committee_member_t = T.committee_member_t
+     and type observer_t = T.observer_t
+     and type legacy_t = T.legacy_t

@@ -136,11 +136,15 @@ module Config_init = struct
   let create_configuration ~data_dir ~reveal_data_dir ~rpc_address ~rpc_port
       mode (cctxt : Client_context.full) =
     let open Lwt_result_syntax in
-    let open Configuration in
-    let config = {data_dir; rpc_address; rpc_port; reveal_data_dir; mode} in
-    let* () = save config in
+    (* Rename to avoid *)
+    let config =
+      Configuration.Ex {data_dir; rpc_address; rpc_port; reveal_data_dir; mode}
+    in
+    let* () = Configuration.save config in
     let*! _ =
-      cctxt#message "DAC node configuration written in %s" (filename config)
+      cctxt#message
+        "DAC node configuration written in %s"
+        (Configuration.filename config)
     in
     return ()
 
@@ -163,8 +167,7 @@ module Config_init = struct
           ~reveal_data_dir
           ~rpc_address
           ~rpc_port
-          (Operating_modes.Legacy
-             {threshold; committee_members_addresses; dac_cctxt_config = None})
+          (Configuration.make_legacy threshold committee_members_addresses)
           cctxt)
 
   let coordinator_command =
@@ -186,7 +189,7 @@ module Config_init = struct
           ~reveal_data_dir
           ~rpc_address
           ~rpc_port
-          (Coordinator {threshold; committee_members_addresses})
+          (Configuration.make_coordinator threshold committee_members_addresses)
           cctxt)
 
   let committee_member_command =
@@ -209,8 +212,10 @@ module Config_init = struct
           ~reveal_data_dir
           ~rpc_address
           ~rpc_port
-          (Committee_member
-             {coordinator_rpc_address; coordinator_rpc_port; address})
+          (Configuration.make_committee_member
+             coordinator_rpc_address
+             coordinator_rpc_port
+             address)
           cctxt)
 
   let observer_command =
@@ -229,7 +234,9 @@ module Config_init = struct
           ~reveal_data_dir
           ~rpc_address
           ~rpc_port
-          (Observer {coordinator_rpc_address; coordinator_rpc_port})
+          (Configuration.make_observer
+             coordinator_rpc_address
+             coordinator_rpc_port)
           cctxt)
 
   let commands =

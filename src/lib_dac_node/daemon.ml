@@ -178,20 +178,25 @@ let daemonize handlers =
 let run ~data_dir cctxt =
   let open Lwt_result_syntax in
   let*! () = Event.(emit starting_node) () in
-  let* ({rpc_address; rpc_port; reveal_data_dir; mode; _} as config) =
+  let* (Configuration.Ex {rpc_address; rpc_port; reveal_data_dir; mode; _} as
+       config) =
     Configuration.load ~data_dir
   in
   let* () = Dac_manager.Storage.ensure_reveal_data_dir_exists reveal_data_dir in
   let* addresses, threshold, coordinator_cctxt_opt =
     match mode with
-    | Operating_modes.Legacy
-        {committee_members_addresses; threshold; dac_cctxt_config} ->
+    | Configuration.Modal.Legacy configuration ->
+        let committee_members_addresses =
+          Configuration.Legacy.committee_members_addresses configuration
+        in
+        let threshold = Configuration.Legacy.threshold configuration in
+        let dac_cctxt_config =
+          Configuration.Legacy.dac_cctxt_config configuration
+        in
         return (committee_members_addresses, threshold, dac_cctxt_config)
-    | Operating_modes.Coordinator _ ->
-        tzfail @@ Mode_not_supported "coordinator"
-    | Operating_modes.Committee_member _ ->
-        tzfail @@ Mode_not_supported "committee_member"
-    | Operating_modes.Observer _ -> tzfail @@ Mode_not_supported "observer"
+    | Coordinator _ -> tzfail @@ Mode_not_supported "coordinator"
+    | Committee_member _ -> tzfail @@ Mode_not_supported "committee_member"
+    | Observer _ -> tzfail @@ Mode_not_supported "observer"
   in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4725
      Stop DAC node when in Legacy mode, if threshold is not reached. *)
@@ -223,9 +228,7 @@ let run ~data_dir cctxt =
         dac_sk_uris)
   in
   let _ = RPC_server.install_finalizer rpc_server in
-  let*! () =
-    Event.(emit rpc_server_is_ready (config.rpc_address, config.rpc_port))
-  in
+  let*! () = Event.(emit rpc_server_is_ready (rpc_address, rpc_port)) in
   (* Start daemon to resolve current protocol plugin *)
   let* () = daemonize [Handler.resolve_plugin_and_set_ready ctxt cctxt] in
   (* Start never-ending monitoring daemons. [coordinator_cctxt] is required to
