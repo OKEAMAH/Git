@@ -1431,14 +1431,12 @@ let burn_internal_storage_fees :
   | IEvent_result _ -> return (ctxt, storage_limit, smopr)
 
 let apply_manager_contents (type kind) ctxt chain_id ~consume_gas_for_sig_check
-    (op : kind Kind.manager contents) :
+    (op : kind manager_operation_contents) :
     (success_or_failure
     * kind manager_operation_result
     * packed_internal_operation_result list)
     Lwt.t =
-  let (Manager_operation {source; operation; gas_limit; storage_limit; _}) =
-    op
-  in
+  let {source; operation; gas_limit; storage_limit; _} = op in
   (* We do not expose the internal scaling to the users. Instead, we multiply
        the specified gas limit by the internal scaling. *)
   let ctxt = Gas.set_limit ctxt gas_limit in
@@ -1605,7 +1603,7 @@ let rec apply_manager_contents_list_rec :
      fees_updated_contents_list ->
   let level = Level.current ctxt in
   match fees_updated_contents_list with
-  | FeesUpdatedSingle {contents = Manager_operation _ as op; balance_updates} ->
+  | FeesUpdatedSingle {contents = Manager_operation op; balance_updates} ->
       apply_manager_contents ctxt chain_id ~consume_gas_for_sig_check op
       >|= fun (ctxt_result, operation_result, internal_operation_results) ->
       let result =
@@ -1613,8 +1611,8 @@ let rec apply_manager_contents_list_rec :
           {balance_updates; operation_result; internal_operation_results}
       in
       (ctxt_result, Single_result result)
-  | FeesUpdatedCons
-      ({contents = Manager_operation _ as op; balance_updates}, rest) -> (
+  | FeesUpdatedCons ({contents = Manager_operation op; balance_updates}, rest)
+    -> (
       apply_manager_contents ctxt chain_id ~consume_gas_for_sig_check op
       >>= function
       | Failure, operation_result, internal_operation_results ->
