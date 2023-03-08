@@ -334,7 +334,7 @@ val prove_page :
   Result.t
 
 (** [prove_shards t polynomial] produces [number_of_shards] proofs
-    (π_0, ..., π_{number_of_shards}) for the elements of
+    (π_0, ..., π_{number_of_shards - 1}) for the elements of
     [polynomial_from_shards polynomial] where [number_of_shards]
     is declared in [t].
 
@@ -350,6 +350,47 @@ val prove_page :
     [proof = (prove_shards t polynomial).(shard.index)],
     and [commitment = commit t polynomial]. *)
 val prove_shards : t -> polynomial -> shard_proof array
+
+(* The precomputation used to produce shard proofs. *)
+type shards_proofs_precomputation
+
+val shards_proofs_precomputation_encoding :
+  shards_proofs_precomputation Data_encoding.t
+
+(* [precomputation_shard_proofs t] returns the precomputation used to
+   produce shard proofs. *)
+val precompute_shards_proofs : t -> shards_proofs_precomputation
+
+(* [save_precompute_shards_proofs precomputation filename] saves the
+   given [precomputation] to disk with the given [filename]. *)
+val save_precompute_shards_proofs :
+  shards_proofs_precomputation -> string -> unit
+
+(* [load_precompute_shards_proofs filename] loads the precomputation from disk
+   from the given [filename]. *)
+val load_precompute_shards_proofs : string -> shards_proofs_precomputation
+
+(* [prove_shards_with_precomputation t precomputation p] produces
+   [number_of_shards] proofs (π_0, ..., π_{number_of_shards - 1}) for the elements
+   of [polynomial_from_shards polynomial] where [number_of_shards]
+   is declared in [t] using the [precomputation].
+
+   Requires:
+   - [polynomial = polynomial_from_slot t s] for some slot [s] and the
+   same value [t] used in [prove_shards]. Since the caller of [prove_shards]
+   knows [polynomial], it is its responsibility to enforce this requirement.
+   - [precomputation = precompute_shards_proofs t] with the same value [t]
+   used in [prove_shards]. There is no way for this function to check that
+   the [precomputation] is correct since it doesn't compute it.
+
+   Ensures:
+   - [verify_shard t commitment shard proof = Ok ()] if
+   and only if
+   [Array.mem shard (shards_from_polynomial t polynomial])
+   [proof = (prove_shards t polynomial).(shard.index)],
+   and [commitment = commit t polynomial]. *)
+val prove_shards_with_precomputation :
+  t -> shards_proofs_precomputation -> polynomial -> shard_proof array
 
 module Internal_for_tests : sig
   (** The initialisation parameters can be too large for testing
