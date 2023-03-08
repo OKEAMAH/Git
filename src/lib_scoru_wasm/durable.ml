@@ -95,6 +95,51 @@ let assert_max_bytes max_bytes =
 
 let key_contents = function Readonly k | Writeable k -> k
 
+(* This module contains helpers,
+   that used to implement Durable storage functions
+   from the previous versions,
+   in order to keep backward compatibility
+*)
+module Backward_compatible = struct
+  module T = Encodings_util.Tree
+
+  let value_marker = "@"
+
+  (* This function covnerts Lazy_fs to irmin tree *)
+  let encode_to_t subtree =
+    let open Lwt_syntax in
+    let* tree = Encodings_util.empty_tree () in
+    (* Encode it to empty irmin tree *)
+    Encodings_util.Tree_encoding_runner.encode encoding subtree tree
+
+  let hash subtree =
+    let open Lwt_syntax in
+    let* tree = encode_to_t subtree in
+    (* We only need hash of '@' subtree, hence we have to lookup it first.
+       This place might is subject for optimization:
+       we don't need to encode the WHOLE Lazy_fs subtree,
+       it's enough to encode only value to @.
+    *)
+    let+ opt = Encodings_util.Tree.find_tree tree [value_marker] in
+    Option.map (fun subtree -> Encodings_util.Tree.hash subtree) opt
+
+  let list subtree =
+    let open Lwt.Syntax in
+    let* tree = encode_to_t subtree in
+    let+ subtrees = T.list tree [] in
+    List.map (fun (name, _) -> if name = "@" then "" else name) subtrees
+
+  let subtree_name_at subtree index =
+    let open Lwt.Syntax in
+    let* tree = encode_to_t subtree in
+    let* list = T.list ~offset:index ~length:1 tree [] in
+    let nth = List.nth list 0 in
+    match nth with
+    | Some (step, _) when Compare.String.(step = value_marker) -> Lwt.return ""
+    | Some (step, _) -> Lwt.return step
+    | None -> raise (Index_too_large index)
+end
+
 let find_value (tree : t) key =
   let key = key_contents key in
   Tezos_lazy_containers.Lazy_fs.find tree key
@@ -121,12 +166,10 @@ let copy_tree_exn (tree : t) ?(edit_readonly = false) from_key to_key =
 let list (tree : t) key =
   let open Lwt.Syntax in
   let key = key_contents key in
-  let+ tree = Tezos_lazy_containers.Lazy_fs.find_tree tree key in
-  match tree with
-  | None -> []
-  | Some tree ->
-      let subtrees = Tezos_lazy_containers.Lazy_fs.list tree in
-      if Option.is_some tree.content then "" :: subtrees else subtrees
+  let* subtree = Tezos_lazy_containers.Lazy_fs.find_tree tree key in
+  match subtree with
+  | None -> Lwt.return []
+  | Some subtree -> Backward_compatible.list subtree
 
 let count_subtrees (tree : t) key =
   let open Lwt.Syntax in
@@ -144,19 +187,8 @@ let delete ?(edit_readonly = false) (tree : t) key : t Lwt.t =
 
 let subtree_name_at tree key (index : int) : string Lwt.t =
   let open Lwt.Syntax in
-  let+ tree = find_tree_exn tree key in
-  let res =
-    if Option.is_some tree.content then
-      if index = 0 then
-        (* When the node has content, the first index represents the value key.
-           This key is represented as the empty string historically.
-           We need to preserve those semantics. Otherwise a new PVM kind/version
-           needs to be established. *)
-        Some ""
-      else Tezos_lazy_containers.Lazy_fs.nth_name tree (pred index)
-    else Tezos_lazy_containers.Lazy_fs.nth_name tree index
-  in
-  match res with None -> raise (Index_too_large index) | Some x -> x
+  let* subtree = find_tree_exn tree key in
+  Backward_compatible.subtree_name_at subtree index
 
 let move_tree_exn tree from_key to_key =
   let open Lwt.Syntax in
@@ -167,16 +199,11 @@ let move_tree_exn tree from_key to_key =
   Tezos_lazy_containers.Lazy_fs.add_tree tree (key_contents to_key) move_tree
 
 let hash (tree : t) key : Context_hash.t option Lwt.t =
-  let open Lwt.Syntax in
+  let open Lwt_syntax in
   let key = key_contents key in
-  let* content = Tezos_lazy_containers.Lazy_fs.find tree key in
-  match content with
-  | Some content ->
-      let+ content =
-        Tezos_lazy_containers.Immutable_chunked_byte_vector.to_string content
-      in
-      Some (Context_hash.hash_string [content])
-  | None -> Lwt.return_none
+  (* Find a subtree *)
+  let* subtree = Tezos_lazy_containers.Lazy_fs.find_tree tree key in
+  Option.fold ~none:Lwt.return_none ~some:Backward_compatible.hash subtree
 
 let hash_exn tree key =
   let open Lwt.Syntax in
