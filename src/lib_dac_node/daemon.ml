@@ -200,13 +200,13 @@ let run ~data_dir cctxt =
   in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4725
      Stop DAC node when in Legacy mode, if threshold is not reached. *)
-  let* dac_accounts = Dac_manager.Keys.get_keys ~addresses ~threshold cctxt in
+  let* dac_accounts =
+    Wallet.Legacy.get_all_committee_members_keys addresses ~threshold cctxt
+  in
   let dac_pks_opt, dac_sk_uris =
     dac_accounts
-    |> List.map (fun account_opt ->
-           match account_opt with
-           | None -> (None, None)
-           | Some (_pkh, pk_opt, sk_uri) -> (pk_opt, Some sk_uri))
+    |> List.map (fun Wallet.Legacy.{pk_opt; sk_uri_opt; _} ->
+           (pk_opt, sk_uri_opt))
     |> List.split
   in
   let coordinator_cctxt_opt =

@@ -32,6 +32,9 @@ type host_and_port = {host : string; port : int}
 module Coordinator : sig
   (** The type of a coordinator specific configuration mode. *)
   type t
+
+  val committee_members_addresses :
+    t -> Tezos_crypto.Aggregate_signature.public_key_hash trace
 end
 
 (** Committee_member specific configuration. *)

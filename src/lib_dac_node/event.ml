@@ -163,6 +163,17 @@ let dac_account_cannot_sign =
     ~level:Warning
     ("tz4_account", Tezos_crypto.Aggregate_signature.Public_key_hash.encoding)
 
+let dac_account_cannot_verify =
+  declare_1
+    ~section
+    ~name:"dac_account_cannot_verify"
+    ~msg:
+      "There is an account with public key {tz4_account} in the Tezos client \
+       wallet, but its public key is not available. Signatures from this \
+       account cannot be verified and will be ignored."
+    ~level:Warning
+    ("tz4_account", Tezos_crypto.Aggregate_signature.Public_key_hash.encoding)
+
 let handle_new_subscription_to_hash_streamer =
   declare_0
     ~section

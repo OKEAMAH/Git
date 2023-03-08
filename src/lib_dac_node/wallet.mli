@@ -23,31 +23,53 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Module that implements Dac related functionalities. *)
+(** Module that implements W functionalities. *)
 
-type error +=
-  | Reveal_data_path_not_a_directory of string
-  | Cannot_create_reveal_data_dir of string
-
-module Storage : sig
-  (** [ensure_reveal_data_dir_exists reveal_data_dir] checks that the
-      path at [reveal_data_dir] exists and is a directory. If
-      the path does not exist, it is created as a directory.
-      Parent directories are recursively created when they do not
-      exist.
-
-      This function may fail with
-      {ul
-        {li [Reveal_data_path_not_a_directory reveal_data_dir] if the
-          path exists and is not a directory,
-
-        {li [Cannot_create_reveal_data_dir reveal_data_dir] If the
-            creation of the directory fails.}}
-      }
+(** [get_public_key cctxt pkh] returns the public key associated with the given [pkh] if it can
+      be found in [cctxt].
   *)
-  val ensure_reveal_data_dir_exists : string -> unit tzresult Lwt.t
+val get_public_key :
+  #Client_context.wallet ->
+  Tezos_crypto.Aggregate_signature.public_key_hash ->
+  Tezos_crypto.Aggregate_signature.public_key option tzresult Lwt.t
+
+module Coordinator : sig
+  type t = {
+    pkh : Tezos_crypto.Aggregate_signature.public_key_hash;
+    pk_opt : Tezos_crypto.Aggregate_signature.public_key option;
+  }
+
+  val get_all_committee_members_public_keys :
+    Tezos_crypto.Aggregate_signature.public_key_hash list ->
+    #Client_context.wallet ->
+    t list tzresult Lwt.t
 end
 
-val resolve_plugin :
-  Tezos_shell_services.Chain_services.Blocks.protocols ->
-  (module Dac_plugin.T) option Lwt.t
+module Committee_member : sig
+  type t = {
+    pkh : Tezos_crypto.Aggregate_signature.public_key_hash;
+    sk_uri : Client_keys.aggregate_sk_uri;
+  }
+
+  val get_committee_member_signing_key :
+    Tezos_crypto.Aggregate_signature.public_key_hash ->
+    #Client_context.wallet ->
+    t tzresult Lwt.t
+end
+
+module Legacy : sig
+  type t = {
+    pkh : Tezos_crypto.Aggregate_signature.public_key_hash;
+    pk_opt : Tezos_crypto.Aggregate_signature.public_key option;
+    sk_uri_opt : Client_keys.aggregate_sk_uri option;
+  }
+
+  (** [get_all_committee_members_keys ~addresses ~threshold cctxt config]
+      returns the aliases and keys associated with the aggregate signature
+      addresses in [config] pkh in the tezos wallet of [cctxt]. *)
+  val get_all_committee_members_keys :
+    Tezos_crypto.Aggregate_signature.public_key_hash list ->
+    threshold:int ->
+    #Client_context.wallet ->
+    t list tzresult Lwt.t
+end

@@ -149,9 +149,12 @@ let get_node_store (type a) ctxt (access_mode : a Store_sigs.mode) :
 
 let get_committee_members ctxt =
   let open Result_syntax in
-  match ctxt.config.mode with
-  | Legacy legacy -> Ok legacy.committee_members_addresses
-  | Coordinator coordinator -> Ok coordinator.committee_members_addresses
+  let (Ex config) = ctxt.config in
+  match config.mode with
+  | Legacy legacy ->
+      Ok (Configuration.Legacy.committee_members_addresses legacy)
+  | Coordinator coordinator ->
+      Ok (Configuration.Coordinator.committee_members_addresses coordinator)
   | Observer _ ->
       tzfail
       @@ Invalid_operation_for_mode
