@@ -409,6 +409,35 @@ module Test = struct
              [2; 3; 11; 19]
            = Z.one)
 
+  let path filename = project_root // Filename.dirname __FILE__ // filename
+
+  let test_shard_proofs_load_from_file =
+    let open QCheck2 in
+    Test.make
+      ~name:"DAL cryptobox: test shard proofs loading"
+      ~print:print_parameters
+      ~count:1
+      generate_parameters
+      (fun params ->
+        init () ;
+        assume (ensure_validity params) ;
+        (let open Tezos_error_monad.Error_monad.Result_syntax in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        let filename = path "test_precomputation" in
+        let precomputation = Cryptobox.precompute_shards_proofs t in
+        Cryptobox.save_precompute_shards_proofs precomputation filename ;
+        let retrieved_precomputation =
+          Cryptobox.load_precompute_shards_proofs filename
+        in
+        Sys.remove filename ;
+        return
+          (Cryptobox.Internal_for_tests.precomputation_equal
+             precomputation
+             retrieved_precomputation))
+        |> function
+        | Ok true -> true
+        | _ -> false)
+
   (* We can craft two slots whose commitments are equal for two different
      page sizes. *)
   (* FIXME https://gitlab.com/tezos/tezos/-/issues/4555
@@ -494,5 +523,6 @@ let () =
             Test.test_commitment_proof;
             Test.test_polynomial_slot_conversions;
             Test.test_select_fft_domain;
+            Test.test_shard_proofs_load_from_file;
           ] );
     ]
