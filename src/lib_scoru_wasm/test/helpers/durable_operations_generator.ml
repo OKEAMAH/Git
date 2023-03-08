@@ -128,7 +128,7 @@ module Make_durable_operations_runner
     (Durable : Durable_snapshot_util.Testable_durable_sig) =
 struct
   open Lwt_syntax
-  open Tezos_scoru_wasm_helpers.Encodings_util
+  open Tezos_scoru_wasm.Encodings_util
   open Tezos_scoru_wasm_helpers.Wasm_utils
 
   let durable_exn_handler (act : unit -> 'a Lwt.t)

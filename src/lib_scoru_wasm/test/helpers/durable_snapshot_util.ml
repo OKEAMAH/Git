@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 open Tezos_test_helpers
-open Tezos_scoru_wasm_helpers.Encodings_util
+open Tezos_scoru_wasm.Encodings_util
 module Context_binary_tree = Tezos_context_memory.Context_binary.Tree
 
 (* This is a generalised projection of
