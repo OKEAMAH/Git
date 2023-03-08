@@ -102,6 +102,119 @@ module Parameters :
      {!Injector_sigs.Parameter.batch_must_succeed}. *)
   let batch_must_succeed _ = `At_least_one
 
+  let has_suffix ~suffix s =
+    let x = String.length suffix in
+    let n = String.length s in
+    n >= x && String.sub s (n - x) x = suffix
+
+  let error_action (op : Operation.t) err =
+    let open Sc_rollup_errors in
+    match err with
+    | Gas.Operation_quota_exceeded ->
+        (* Always retry operations which have gas errors *)
+        Some `Retry
+    | Contract_storage.Balance_too_low _
+    | Contract_storage.Empty_implicit_contract _
+    | Contract_storage.Empty_implicit_delegated_contract _ ->
+        (* Retry operations if source cannot pay fees *)
+        Some `Retry
+    | _ -> (
+        match op with
+        | Publish _ -> (
+            match err with
+            | Sc_rollup_does_not_exist _ -> Some `Abort
+            | Sc_rollup_staker_funds_too_low _ -> Some `Retry
+            | Sc_rollup_too_far_ahead -> Some `Retry
+            | Sc_rollup_unknown_commitment _ -> Some `Forget
+            | Sc_rollup_bad_inbox_level -> Some `Abort
+            | Sc_rollup_zero_tick_commitment -> Some `Abort
+            | _ -> None)
+        | Cement _ -> (
+            match err with
+            | Sc_rollup_does_not_exist _ -> Some `Abort
+            | Sc_rollup_no_stakers -> Some `Forget
+            | Sc_rollup_unknown_commitment _ -> Some `Forget
+            | Sc_rollup_parent_not_lcc -> Some `Retry
+            | Sc_rollup_disputed -> Some `Retry
+            | Sc_rollup_commitment_too_recent _ -> Some `Retry
+            | _ -> None)
+        | Refute _ -> (
+            match err with
+            | Sc_rollup_does_not_exist _ -> Some `Abort
+            | Sc_rollup_game_already_started -> Some `Forget
+            | Sc_rollup_staker_in_game _ -> Some `Retry
+            | Sc_rollup_no_conflict -> Some `Forget
+            | Sc_rollup_no_game -> Some `Retry
+            | Sc_rollup_wrong_turn -> Some `Retry
+            | Sc_rollup_dissection_chunk_repr.(
+                ( Dissection_number_of_sections_mismatch _
+                | Dissection_invalid_number_of_sections _
+                | Dissection_start_hash_mismatch _
+                | Dissection_stop_hash_mismatch _
+                | Dissection_edge_ticks_mismatch _
+                | Dissection_ticks_not_increasing
+                | Dissection_invalid_distribution _
+                | Dissection_invalid_successive_states_shape )) ->
+                Some `Forget
+            | Sc_rollup.Game.(
+                ( Dissection_choice_not_found _
+                | Proof_unexpected_section_size _
+                | Proof_start_state_hash_mismatch _
+                | Proof_stop_state_hash_failed_to_refute _
+                | Proof_stop_state_hash_failed_to_validate _
+                | Dissecting_during_final_move )) ->
+                Some `Forget
+            | Sc_rollup_inbox_repr.Inbox_proof_error _ -> Some `Abort
+            | Sc_rollup_proof_repr.Sc_rollup_proof_check _ -> Some `Abort
+            | Sc_rollup_proof_repr.Sc_rollup_invalid_serialized_inbox_proof ->
+                Some `Abort
+            | _ -> None)
+        | Timeout _ -> (
+            match err with
+            | Sc_rollup_does_not_exist _ -> Some `Abort
+            | Sc_rollup_no_game -> Some `Forget
+            | Sc_rollup_timeout_level_not_reached _ -> Some `Forget
+            | _ -> None)
+        | Add_messages _ -> (
+            match err with
+            | Sc_rollup_max_number_of_messages_reached_for_commitment_period ->
+                Some `Retry
+            | Sc_rollup_add_zero_messages -> Some `Forget
+            | _ ->
+                let open Option_syntax in
+                let err_json =
+                  Data_encoding.Json.construct
+                    Environment.Error_monad.error_encoding
+                    err
+                in
+                let* err_id = Ezjsonm.find_opt err_json ["id"] in
+                let* err_id_str = Ezjsonm.decode_string err_id in
+                if
+                  has_suffix
+                    err_id_str
+                    ~suffix:"smart_rollup_inbox_message_encoding"
+                then Some `Forget
+                else None))
+
+  let error_handler op trace =
+    let action =
+      TzTrace.fold
+        (fun action err ->
+          match action with
+          | Some _ -> action
+          | None -> (
+              match err with
+              | Environment.Ecoproto_error err -> error_action op err
+              | _ -> action))
+        None
+        trace
+    in
+    match action with
+    | Some `Abort -> Abort trace
+    | Some `Retry -> Retry
+    | Some `Forget -> Forget
+    | None -> Forget (* Forget operations otherwise *)
+
   let retry_unsuccessful_operation _node_ctxt (op : Operation.t) status =
     let open Lwt_syntax in
     match status with
@@ -127,26 +240,7 @@ module Parameters :
              maybe check if game exists on other branch as well.
         *)
         return Retry
-    | Failed error -> (
-        (* TODO: https://gitlab.com/tezos/tezos/-/issues/4071
-           Think about which operations should be retried and when. *)
-        let is_gas_error =
-          TzTrace.fold
-            (fun found -> function
-              | Environment.Ecoproto_error Gas.Operation_quota_exceeded -> true
-              | _ -> found)
-            false
-            error
-        in
-        if is_gas_error then
-          (* Always retry operations which have gas errors *)
-          return Retry
-        else
-          match op with
-          | Timeout _ | Refute _ | Cement _ | Add_messages _ ->
-              (* Failing timeout and refutation operations can be ignored. *)
-              return Forget
-          | Publish _ -> return (Abort error))
+    | Failed error -> return (error_handler op error)
 end
 
 module Proto_client = struct
