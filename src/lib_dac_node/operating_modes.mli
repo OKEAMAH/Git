@@ -23,15 +23,15 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type coordinator
+type coordinator = Coordinator
 
-type committee_member
+type committee_member = Committee_member
 
-type observer
+type observer = Observer
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4707.
    Remove legacy mode once other DAC operating modes are fully functional. *)
-type legacy
+type legacy = Legacy
 
 module type Modal_type = sig
   type coordinator_t

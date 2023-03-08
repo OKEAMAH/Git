@@ -67,8 +67,6 @@ module Coordinator = struct
               "committee_members"
               (list Tezos_crypto.Aggregate_signature.Public_key_hash.encoding))
            (req "legacy" bool)))
-
-  let committee_members_addresses t = t.committee_members_addresses
 end
 
 module Committee_member = struct

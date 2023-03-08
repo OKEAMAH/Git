@@ -220,47 +220,99 @@ let register_get_certificate ctx dac_plugin =
     (RPC_services.get_certificate dac_plugin)
     (fun root_hash () () -> handle_get_certificate ctx root_hash)
 
-let register dac_plugin node_context cctxt dac_public_keys_opt dac_sk_uris
-    hash_streamer =
-  let page_store = Node_context.get_page_store node_context in
-  Tezos_rpc.Directory.empty
-  |> register_serialize_dac_store_preimage
-       dac_plugin
-       cctxt
-       dac_sk_uris
-       page_store
-       hash_streamer
-  |> register_verify_external_message_signature dac_plugin dac_public_keys_opt
-  |> register_retrieve_preimage dac_plugin page_store
-  |> register_monitor_root_hashes dac_plugin hash_streamer
-  |> register_store_dac_member_signature node_context dac_plugin cctxt
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4934
-     Once profiles are implemented, registration of the coordinator's
-     "/preimage" endpoint should be moved out of the [start_legacy]. *)
-  |> register_coordinator_preimage_endpoint dac_plugin hash_streamer page_store
-  |> register_get_certificate node_context dac_plugin
+module Coordinator = struct
+  let dynamic_rpc_dir dac_plugin
+      (coordinator_node_ctxt :
+        Operating_modes.coordinator Node_context.node_ctxt) =
+    let modal_node_ctxt =
+      match Node_context.mode coordinator_node_ctxt with
+      | Coordinator modal_node_ctxt -> modal_node_ctxt
+    in
 
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/4750
-   Move this to RPC_server.Legacy once all operating modes are supported. *)
-let start_legacy ~rpc_address ~rpc_port ~threshold cctxt ctxt dac_pks_opt
-    dac_sk_uris =
+    let hash_streamer =
+      Node_context.Coordinator.hash_streamer modal_node_ctxt
+    in
+    let node_ctxt = Node_context.Ex coordinator_node_ctxt in
+    let pks_opt = Node_context.Coordinator.pks_opt modal_node_ctxt in
+    let page_store = Node_context.get_page_store node_ctxt in
+    let cctxt = Node_context.get_tezos_node_cctxt node_ctxt in
+
+    Tezos_rpc.Directory.empty
+    |> register_coordinator_preimage_endpoint
+         dac_plugin
+         hash_streamer
+         page_store
+    |> register_verify_external_message_signature dac_plugin pks_opt
+    |> register_retrieve_preimage dac_plugin page_store
+    |> register_monitor_root_hashes dac_plugin hash_streamer
+    |> register_store_dac_member_signature node_ctxt dac_plugin cctxt
+    |> register_get_certificate node_ctxt dac_plugin
+end
+
+module Committee_member = struct
+  let dynamic_rpc_dir dac_plugin
+      (committee_member_node_ctxt : 'a Node_context.node_ctxt) =
+    let node_ctxt = Node_context.Ex committee_member_node_ctxt in
+    let page_store = Node_context.get_page_store node_ctxt in
+    Tezos_rpc.Directory.empty
+    |> register_retrieve_preimage dac_plugin page_store
+end
+
+module Observer = struct
+  let dynamic_rpc_dir dac_plugin
+      (observer_node_ctxt : 'a Node_context.node_ctxt) =
+    let node_ctxt = Node_context.Ex observer_node_ctxt in
+    let page_store = Node_context.get_page_store node_ctxt in
+    Tezos_rpc.Directory.empty
+    |> register_retrieve_preimage dac_plugin page_store
+end
+
+module Legacy = struct
+  let dynamic_rpc_dir dac_plugin (legacy_node_ctxt : 'a Node_context.node_ctxt)
+      =
+    let modal_node_ctxt =
+      match Node_context.mode legacy_node_ctxt with
+      | Legacy modal_node_ctxt -> modal_node_ctxt
+    in
+    let node_ctxt = Node_context.Ex legacy_node_ctxt in
+    let hash_streamer = Node_context.Legacy.hash_streamer modal_node_ctxt in
+    let pks_opt = Node_context.Legacy.pks_opt modal_node_ctxt in
+    let sk_uris_opt = Node_context.Legacy.sk_uris_opt modal_node_ctxt in
+    let page_store = Node_context.get_page_store node_ctxt in
+    let cctxt = Node_context.get_tezos_node_cctxt node_ctxt in
+    Tezos_rpc.Directory.empty
+    |> register_serialize_dac_store_preimage
+         dac_plugin
+         cctxt
+         sk_uris_opt
+         page_store
+         hash_streamer
+    |> register_verify_external_message_signature dac_plugin pks_opt
+    |> register_retrieve_preimage dac_plugin page_store
+    |> register_monitor_root_hashes dac_plugin hash_streamer
+    |> register_store_dac_member_signature node_ctxt dac_plugin cctxt
+    |> register_get_certificate node_ctxt dac_plugin
+end
+
+let start ~rpc_address ~rpc_port node_ctxt =
   let open Lwt_syntax in
+  let (Node_context.Ex modal_node_ctxt) = node_ctxt in
+  let register_dynamic_rpc dac_plugin =
+    match Node_context.mode modal_node_ctxt with
+    | Coordinator _ -> Coordinator.dynamic_rpc_dir dac_plugin modal_node_ctxt
+    | Committee_member _ ->
+        Committee_member.dynamic_rpc_dir dac_plugin modal_node_ctxt
+    | Observer _ -> Observer.dynamic_rpc_dir dac_plugin modal_node_ctxt
+    | Legacy _ -> Legacy.dynamic_rpc_dir dac_plugin modal_node_ctxt
+  in
   let dir =
     Tezos_rpc.Directory.register_dynamic_directory
       Tezos_rpc.Directory.empty
       Tezos_rpc.Path.open_root
       (fun () ->
-        match Node_context.get_status ctxt with
-        | Ready {dac_plugin = (module Dac_plugin); hash_streamer} ->
-            let _threshold = threshold in
-            Lwt.return
-              (register
-                 (module Dac_plugin)
-                 ctxt
-                 cctxt
-                 dac_pks_opt
-                 dac_sk_uris
-                 hash_streamer)
+        match Node_context.get_status node_ctxt with
+        | Ready {dac_plugin = (module Dac_plugin)} ->
+            Lwt.return (register_dynamic_rpc (module Dac_plugin))
         | Starting -> Lwt.return Tezos_rpc.Directory.empty)
   in
   let rpc_address = P2p_addr.of_string_exn rpc_address in

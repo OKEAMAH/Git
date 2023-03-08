@@ -24,33 +24,80 @@
 (*****************************************************************************)
 type dac_plugin_module = (module Dac_plugin.T)
 
+module Coordinator : sig
+  type t = {
+    committee_members : Wallet.Coordinator.t list;
+    hash_streamer : Dac_plugin.hash Data_streamer.t;
+        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4895
+           This could be problematic in case coordinator and member/observer
+           use two different plugins that bind different underlying hashes. *)
+  }
+
+  val hash_streamer : t -> Dac_plugin.hash Data_streamer.t
+
+  val pks_opt : t -> Tezos_crypto.Aggregate_signature.public_key option list
+end
+
+module Committee_member : sig
+  type t = {
+    committee_member : Wallet.Committee_member.t;
+    coordinator_cctxt : Dac_node_client.cctxt;
+  }
+
+  val coordinator_cctxt : t -> Dac_node_client.cctxt
+
+  val sk_uri : t -> Client_keys.aggregate_sk_uri
+end
+
+module Observer : sig
+  type t = {coordinator_cctxt : Dac_node_client.cctxt}
+
+  val coordinator_cctxt : t -> Dac_node_client.cctxt
+end
+
+module Legacy : sig
+  type t = {
+    committee_members : Wallet.Legacy.t list;
+    coordinator_cctxt : Dac_node_client.cctxt option;
+    hash_streamer : Dac_plugin.hash Data_streamer.t;
+  }
+
+  val hash_streamer : t -> Dac_plugin.hash Data_streamer.t
+
+  val coordinator_cctxt : t -> Dac_node_client.cctxt option
+
+  val pks_opt : t -> Tezos_crypto.Aggregate_signature.public_key option list
+
+  val sk_uris_opt : t -> Client_keys.aggregate_sk_uri option list
+end
+
+module Modal :
+  Operating_modes.Modal_type
+    with type coordinator_t = Coordinator.t
+     and type committee_member_t = Committee_member.t
+     and type observer_t = Observer.t
+     and type legacy_t = Legacy.t
+
 (** A [ready_ctx] value contains globally needed information for a running dac
     node. It is available when the DAC plugin has been loaded. Additionally,
     it also contains an instance of [Dac_plugin.hash Data_streamer.t] - a
     component for streaming root hashes, produced during the serialization of
     dac payload. *)
-type ready_ctxt = {
-  dac_plugin : dac_plugin_module;
-  hash_streamer : Dac_plugin.hash Data_streamer.t;
-}
+type ready_ctxt = {dac_plugin : dac_plugin_module}
 
 (** The status of the dac node. *)
 type status = Ready of ready_ctxt | Starting
 
+type 'a node_ctxt
+
 (** A [t] value contains both the status and the dac node configuration. Its
     fields are available through accessors. *)
-type t
+type t = Ex : _ node_ctxt -> t
 
-(** [init config cctxt dac_node_cctxt] creates a [t] with a status set to
-    [Starting] using the given dac node configuration [config],
-    tezos node client context [cctxt], and optional client context of
-    another dac node [dac_node_cctxt], which can be used for writting
-    tests with two dac nodes running the legacy mode. *)
-val init :
-  Configuration.t ->
-  Client_context.full ->
-  Dac_node_client.cctxt option ->
-  t tzresult Lwt.t
+(** [init config cctxt] creates a [t] with a status set to
+    [Starting] using the given dac node configuration [config] and
+    tezos node client context [cctxt]. *)
+val init : Configuration.t -> Client_context.full -> t tzresult Lwt.t
 
 (** Raised by [set_ready] when the status is already [Ready _] *)
 exception Status_already_ready
@@ -69,11 +116,10 @@ type error += Node_not_ready
     times, it replaces current values for [ready_ctxt] with new one. *)
 val get_ready : t -> ready_ctxt tzresult
 
-(** [get_config ctxt] returns the dac node configuration. *)
-val get_config : t -> Configuration.t
-
 (** [get_status ctxt] returns the dac node status. *)
 val get_status : t -> status
+
+val mode : 'a node_ctxt -> 'a Modal.mode
 
 (** [get_tezos_node_cctxt ctxt] returns the Tezos node's client context. *)
 val get_tezos_node_cctxt : t -> Client_context.full

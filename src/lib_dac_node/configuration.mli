@@ -31,28 +31,38 @@ type host_and_port = {host : string; port : int}
 (** Coordinator specific configuration. *)
 module Coordinator : sig
   (** The type of a coordinator specific configuration mode. *)
-  type t
-
-  val committee_members_addresses :
-    t -> Tezos_crypto.Aggregate_signature.public_key_hash trace
+  type t = {
+    threshold : int;
+    committee_members_addresses :
+      Tezos_crypto.Aggregate_signature.public_key_hash list;
+  }
 end
 
 (** Committee_member specific configuration. *)
 module Committee_member : sig
   (** The type of a Committee_member specific configuration mode. *)
-  type t
+  type t = {
+    coordinator_rpc_address : string;
+    coordinator_rpc_port : int;
+    address : Tezos_crypto.Aggregate_signature.public_key_hash;
+  }
 end
 
 (** Observer specific configuration. *)
 module Observer : sig
   (** The type of an Observer specific configuration mode. *)
-  type t
+  type t = {coordinator_rpc_address : string; coordinator_rpc_port : int}
 end
 
 (** Legacy specific configuration. *)
 module Legacy : sig
   (** The type of a legacy-specific configuration mode. *)
-  type t
+  type t = {
+    threshold : int;
+    committee_members_addresses :
+      Tezos_crypto.Aggregate_signature.public_key_hash list;
+    dac_cctxt_config : host_and_port option;
+  }
 
   (* [committee_members_addresses t] retrieves the addresses of the committee
      members from the legacy configuration [t].*)
@@ -87,6 +97,8 @@ type 'a configuration = {
           DAC. *)
 }
 
+type t = Ex : _ configuration -> t
+
 (** [make_coordinator threshold dac_members_addresses] creates a new coordinator
     configuration mode using the given [threshold] and [dac_members_addresses].
 *)
@@ -120,8 +132,6 @@ val make_legacy :
   int ->
   Tezos_crypto.Aggregate_signature.public_key_hash trace ->
   Operating_modes.legacy Modal.mode
-
-type t = Ex : _ configuration -> t
 
 (** [filename config] gets the path to config file *)
 val filename : t -> string
