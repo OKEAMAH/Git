@@ -121,11 +121,11 @@ let string_of_ticket_token ctxt
     (Ticket_token.Ex_token {ticketer; contents_type; contents}) =
   let open Lwt_result_wrap_syntax in
   let*?@ x, _ =
-    Script_ir_unparser.unparse_comparable_data
-      ctxt
-      Script_ir_unparser.Readable
-      contents_type
-      contents
+    Gas_monad.run_pure_gas ctxt
+    @@ Script_ir_unparser.unparse_comparable_data
+         Script_ir_unparser.Readable
+         contents_type
+         contents
   in
   return
   @@ Format.asprintf

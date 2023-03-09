@@ -44,11 +44,11 @@ let string_list_of_ex_token_diffs ctxt token_diffs =
   let accum (xs, ctxt)
       (Ticket_token.Ex_token {ticketer; contents_type; contents}, amount) =
     let*?@ x, ctxt =
-      Script_ir_unparser.unparse_comparable_data
-        ctxt
-        Script_ir_unparser.Readable
-        contents_type
-        contents
+      Gas_monad.run_pure_gas ctxt
+      @@ Script_ir_unparser.unparse_comparable_data
+           Script_ir_unparser.Readable
+           contents_type
+           contents
     in
     let str =
       Format.asprintf

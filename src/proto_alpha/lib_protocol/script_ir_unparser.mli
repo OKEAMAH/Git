@@ -116,11 +116,10 @@ val unparse_with_data_encoding :
     Micheline representation of [v] of type [ty], consuming gas from
     [ctxt]. *)
 val unparse_comparable_data :
-  context ->
   unparsing_mode ->
   'a comparable_ty ->
   'a ->
-  (Script.expr * context) tzresult
+  Script.expr Gas_monad.pure_gas_monad
 
 (** [unparse_contract ~loc unparsing_mode contract] returns a Micheline
     representation of a given contract in a given [unparsing_mode]. *)

@@ -75,11 +75,11 @@ let of_ex_token ctxt ~owner
   Gas.consume ctxt (Script.strip_annotations_cost cont_ty_unstripped)
   >>?= fun ctxt ->
   let ty = Script.strip_annotations cont_ty_unstripped in
-  Script_ir_unparser.unparse_comparable_data
-    ctxt
-    Script_ir_unparser.Optimized_legacy
-    contents_type
-    contents
+  Gas_monad.run_pure_gas ctxt
+  @@ Script_ir_unparser.unparse_comparable_data
+       Script_ir_unparser.Optimized_legacy
+       contents_type
+       contents
   >>?= fun (contents, ctxt) ->
   make
     ctxt

@@ -510,11 +510,14 @@ let rec unparse_comparable_data_rec :
       Unparsing_compound_pure_gas.unparse_option ~loc unparse_v v
   | Never_t, _ -> .
 
-let account_for_future_serialization_cost unparsed_data ctxt =
-  Gas.consume ctxt (Script.strip_locations_cost unparsed_data) >>? fun ctxt ->
+let account_for_future_serialization_cost unparsed_data =
+  let open Gas_monad.Syntax in
+  let* () = Gas_monad.consume_gas (Script.strip_locations_cost unparsed_data) in
   let unparsed_data = Micheline.strip_locations unparsed_data in
-  Gas.consume ctxt (Script.micheline_serialization_cost unparsed_data)
-  >|? fun ctxt -> (unparsed_data, ctxt)
+  let+ () =
+    Gas_monad.consume_gas (Script.micheline_serialization_cost unparsed_data)
+  in
+  unparsed_data
 
 type unparse_code_rec =
   t ->
@@ -830,18 +833,23 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
   let unparse_data ctxt ~stack_depth mode ty v =
     unparse_data_rec ctxt ~stack_depth mode ty v
     >>=? fun (unparsed_data, ctxt) ->
-    Lwt.return (account_for_future_serialization_cost unparsed_data ctxt)
+    Lwt.return
+    @@ Gas_monad.run_pure_gas ctxt
+    @@ account_for_future_serialization_cost unparsed_data
 
   let unparse_code ctxt ~stack_depth mode v =
     unparse_code_rec ctxt ~stack_depth mode v >>=? fun (unparsed_data, ctxt) ->
-    Lwt.return (account_for_future_serialization_cost unparsed_data ctxt)
+    Lwt.return
+    @@ Gas_monad.run_pure_gas ctxt
+    @@ account_for_future_serialization_cost unparsed_data
 
   let unparse_items ctxt ~stack_depth mode ty vty vs =
     unparse_items_rec ctxt ~stack_depth mode ty vty vs
     >>=? fun (unparsed_datas, ctxt) ->
     List.fold_left_e
       (fun (acc, ctxt) unparsed_data ->
-        account_for_future_serialization_cost unparsed_data ctxt
+        Gas_monad.run_pure_gas ctxt
+        @@ account_for_future_serialization_cost unparsed_data
         >|? fun (unparsed_data, ctxt) -> (unparsed_data :: acc, ctxt))
       ([], ctxt)
       unparsed_datas
@@ -854,7 +862,7 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
   end
 end
 
-let unparse_comparable_data ctxt mode ty v =
-  Gas_monad.run_pure_gas ctxt @@ unparse_comparable_data_rec ~loc:() mode ty v
-  >>? fun (unparsed_data, ctxt) ->
-  account_for_future_serialization_cost unparsed_data ctxt
+let unparse_comparable_data mode ty v =
+  let open Gas_monad.Syntax in
+  let* unparsed_data = unparse_comparable_data_rec ~loc:() mode ty v in
+  account_for_future_serialization_cost unparsed_data
