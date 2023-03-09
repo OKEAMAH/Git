@@ -1431,19 +1431,15 @@ module Registration_section = struct
       in
       let big_map =
         raise_if_error
-          (Lwt_main.run
-             ( Execution_context.make ~rng_state >>=? fun (ctxt, _) ->
-               let big_map = Script_big_map.empty int unit_t in
-               Script_map.fold
-                 (fun k v acc ->
-                   let open Gas_monad.Syntax in
-                   let* bm = acc in
-                   Script_big_map.update k v bm)
-                 map
-                 (Gas_monad.return big_map)
-               |> Gas_monad.run_pure_gas ctxt
-               |> Environment.wrap_tzresult
-               >>?= fun (big_map, _) -> return big_map ))
+          (let big_map = Script_big_map.empty int unit_t in
+           Script_map.fold
+             (fun k v acc ->
+               let open Gas_monad.Syntax in
+               let* bm = acc in
+               Script_big_map.update k v bm)
+             map
+             (Gas_monad.return big_map)
+           |> Gas_monad.run_pure_gas_unlimited |> Environment.wrap_tzresult)
       in
       (key, big_map)
 

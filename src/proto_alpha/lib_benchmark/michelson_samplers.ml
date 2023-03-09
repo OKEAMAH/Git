@@ -709,23 +709,19 @@ end)
       fun key_ty elt_ty rng_state ->
         let open TzPervasives in
         let result =
-          Lwt_main.run
-            ( Execution_context.make ~rng_state >>=? fun (ctxt, _) ->
-              let big_map = Script_big_map.empty key_ty elt_ty in
-              (* Cannot have big maps under big maps *)
-              option_t (-1) elt_ty |> Environment.wrap_tzresult
-              >>?= fun opt_elt_ty ->
-              let map = generate_map key_ty opt_elt_ty rng_state in
-              Script_map.fold
-                (fun k v acc ->
-                  let open Gas_monad.Syntax in
-                  let* bm = acc in
-                  Script_big_map.update k v bm)
-                map
-                (Gas_monad.return big_map)
-              |> Gas_monad.run_pure_gas ctxt
-              |> Environment.wrap_tzresult
-              >>?= fun (big_map, _) -> return big_map )
+          let big_map = Script_big_map.empty key_ty elt_ty in
+          (* Cannot have big maps under big maps *)
+          option_t (-1) elt_ty |> Environment.wrap_tzresult
+          >>? fun opt_elt_ty ->
+          let map = generate_map key_ty opt_elt_ty rng_state in
+          Script_map.fold
+            (fun k v acc ->
+              let open Gas_monad.Syntax in
+              let* bm = acc in
+              Script_big_map.update k v bm)
+            map
+            (Gas_monad.return big_map)
+          |> Gas_monad.run_pure_gas_unlimited |> Environment.wrap_tzresult
         in
         match result with
         | Ok x -> x
