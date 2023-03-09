@@ -82,6 +82,16 @@ let run ctxt m =
           ok (res, ctxt)
       | None -> error Gas.Operation_quota_exceeded)
 
+type void = |
+
+type 'a pure_gas_monad = ('a, void) gas_monad
+
+let run_pure_gas ctxt (m : 'a pure_gas_monad) =
+  match run ctxt m with
+  | Ok (Ok x, ctxt) -> Ok (x, ctxt)
+  | Ok (Error _, _) -> .
+  | Error _ as err -> err
+
 let record_trace_eval :
     type error_trace error_context.
     error_details:(error_context, error_trace) Script_tc_errors.error_details ->

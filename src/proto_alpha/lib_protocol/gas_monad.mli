@@ -68,6 +68,18 @@ val run :
 (** [run_unlimited m] runs [m] on an unlimited gas limit. *)
 val run_unlimited : ('a, 'trace) t -> ('a, 'trace) result tzresult
 
+(** [('a, void) gas_monad] is the gas monad of computations which
+    can fail due to gas. *)
+
+type void = |
+
+type 'a pure_gas_monad = ('a, void) t
+
+val run_pure_gas :
+  Alpha_context.context ->
+  'a pure_gas_monad ->
+  ('a * Alpha_context.context) tzresult
+
 (** [record_trace_level ~error_details f m] returns a new gas-monad value that
      when run, records trace levels using [f]. This function has no effect in
     the case of a gas-exhaustion error or if [error_details] is [Fast]. *)
