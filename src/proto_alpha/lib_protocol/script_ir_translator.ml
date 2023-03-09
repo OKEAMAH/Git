@@ -5076,7 +5076,8 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
   >>=? fun (storage, ctxt) ->
   let loc = Micheline.dummy_location in
   (if normalize_types then
-   unparse_parameter_ty ~loc ctxt arg_type ~entrypoints
+   Gas_monad.run_pure_gas ctxt
+   @@ unparse_parameter_ty ~loc arg_type ~entrypoints
    >>?= fun (arg_type, ctxt) ->
    Gas_monad.run_pure_gas ctxt @@ unparse_ty ~loc storage_type
    >>?= fun (storage_type, ctxt) ->
