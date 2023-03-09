@@ -6910,39 +6910,36 @@ let _ppinclude =
     ~bisect_ppx:No
     ~deps:[compiler_libs_common]
 
-let _octez_node =
-  let protocol_deps =
-    let deps_for_protocol protocol =
-      let is_optional =
-        match (Protocol.status protocol, Protocol.number protocol) with
-        | _, V 000 ->
-            (* The node always needs to be linked with this protocol for Mainnet. *)
-            false
-        | Active, V _ ->
-            (* Active protocols cannot be optional because of a bug
-               that results in inconsistent hashes. Once this bug is fixed,
-               this exception can be removed. *)
-            false
-        | (Frozen | Overridden | Not_mainnet), _ | Active, (Alpha | Other) ->
-            (* Other protocols are optional. *)
-            true
-      in
-      let targets =
-        List.filter_map
-          Fun.id
-          [Protocol.embedded_opt protocol; Protocol.plugin_registerer protocol]
-      in
-      if is_optional then List.map optional targets else targets
+let protocol_deps =
+  let deps_for_protocol protocol =
+    let is_optional =
+      match (Protocol.status protocol, Protocol.number protocol) with
+      | _, V 000 ->
+          (* The node always needs to be linked with this protocol for Mainnet. *)
+          false
+      | Active, V _ ->
+          (* Active protocols cannot be optional because of a bug
+             that results in inconsistent hashes. Once this bug is fixed,
+             this exception can be removed. *)
+          false
+      | (Frozen | Overridden | Not_mainnet), _ | Active, (Alpha | Other) ->
+          (* Other protocols are optional. *)
+          true
     in
-    List.map deps_for_protocol Protocol.all |> List.flatten
+    let targets =
+      List.filter_map
+        Fun.id
+        [Protocol.embedded_opt protocol; Protocol.plugin_registerer protocol]
+    in
+    if is_optional then List.map optional targets else targets
   in
-  public_exe
-    "octez-node"
-    ~path:"src/bin_node"
-    ~internal_name:"main"
-    ~synopsis:"Tezos: `octez-node` binary"
-    ~release_status:Released
-    ~with_macos_security_framework:true
+  List.map deps_for_protocol Protocol.all |> List.flatten
+
+let octez_node_commands =
+  private_lib
+    "octez_node_commands"
+    ~path:"src/bin_node/lib_node_commands"
+    ~opam:""
     ~deps:
       ([
          octez_base |> open_ ~m:"TzPervasives" |> open_;
@@ -6974,7 +6971,16 @@ let _octez_node =
          octez_base_p2p_identity_file |> open_;
        ]
       @ protocol_deps)
-    ~linkall:true
+
+let _octez_node =
+  public_exe
+    "octez-node"
+    ~path:"src/bin_node/bin"
+    ~synopsis:"Tezos: `octez-node` binary"
+    ~internal_name:"main"
+    ~release_status:Released
+    ~with_macos_security_framework:true
+    ~deps:(octez_node_commands :: protocol_deps)
     ~dune:
       Dune.
         [
@@ -6983,6 +6989,7 @@ let _octez_node =
             ~package:"octez-node"
             ~section:"bin";
         ]
+    ~linkall:true
 
 let _octez_client =
   let protocol_deps =

@@ -26,4 +26,4 @@
 
 let () =
   Random.self_init () ;
-  exit (Cmdliner.Cmd.eval Node_commands.all)
+  exit (Cmdliner.Cmd.eval Octez_node_commands.Node_commands.all)
