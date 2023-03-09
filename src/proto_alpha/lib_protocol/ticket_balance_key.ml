@@ -80,7 +80,7 @@ let of_ex_token ctxt ~owner
     Script_ir_unparser.Optimized_legacy
     contents_type
     contents
-  >>=? fun (contents, ctxt) ->
+  >>?= fun (contents, ctxt) ->
   make
     ctxt
     ~owner

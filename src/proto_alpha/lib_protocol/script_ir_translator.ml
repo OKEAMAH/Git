@@ -163,15 +163,15 @@ let pack_node unparsed ctxt =
 
 let pack_comparable_data ctxt ty data =
   unparse_comparable_data ctxt Optimized_legacy ty data
-  >|=? fun (unparsed, ctxt) -> pack_node unparsed ctxt
+  >|? fun (unparsed, ctxt) -> pack_node unparsed ctxt
 
 let hash_bytes ctxt bytes =
   Gas.consume ctxt (Michelson_v1_gas.Cost_of.Interpreter.blake2b bytes)
   >|? fun ctxt -> (Script_expr_hash.(hash_bytes [bytes]), ctxt)
 
 let hash_comparable_data ctxt ty data =
-  pack_comparable_data ctxt ty data >>=? fun (bytes, ctxt) ->
-  Lwt.return @@ hash_bytes ctxt bytes
+  pack_comparable_data ctxt ty data >>? fun (bytes, ctxt) ->
+  hash_bytes ctxt bytes
 
 (* ---- Tickets ------------------------------------------------------------ *)
 
@@ -1980,7 +1980,7 @@ let rec parse_data :
             else error_unexpected_annot loc annot)
             >>?= fun () ->
             non_terminal_recursion ctxt key_type k >>=? fun (k, ctxt) ->
-            hash_comparable_data ctxt key_type k >>=? fun (key_hash, ctxt) ->
+            hash_comparable_data ctxt key_type k >>?= fun (key_hash, ctxt) ->
             non_terminal_recursion ctxt value_type v >>=? fun (v, ctxt) ->
             Lwt.return
               ( (match last_key with
@@ -5189,7 +5189,7 @@ let diff_of_big_map ctxt mode ~temporary ~ids_to_copy
   List.fold_left_es
     (fun (acc, ctxt) (key_hash, key, value) ->
       Gas.consume ctxt Typecheck_costs.parse_instr_cycle >>?= fun ctxt ->
-      unparse_comparable_data ctxt mode key_type key >>=? fun (key, ctxt) ->
+      unparse_comparable_data ctxt mode key_type key >>?= fun (key, ctxt) ->
       (match value with
       | None -> return (None, ctxt)
       | Some x ->

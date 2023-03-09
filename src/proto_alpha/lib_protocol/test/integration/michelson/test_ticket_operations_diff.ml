@@ -75,7 +75,7 @@ let big_map_updates_of_key_values ctxt key_values =
   let open Lwt_result_wrap_syntax in
   List.fold_right_es
     (fun (key, value) (kvs, ctxt) ->
-      let*@ key_hash, ctxt =
+      let*?@ key_hash, ctxt =
         Script_ir_translator.hash_comparable_data
           ctxt
           Script_typed_ir.int_t
@@ -120,7 +120,7 @@ let assert_equal_string_list ~loc msg =
 let string_of_ticket_token ctxt
     (Ticket_token.Ex_token {ticketer; contents_type; contents}) =
   let open Lwt_result_wrap_syntax in
-  let*@ x, _ =
+  let*?@ x, _ =
     Script_ir_unparser.unparse_comparable_data
       ctxt
       Script_ir_unparser.Readable

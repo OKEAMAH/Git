@@ -197,7 +197,7 @@ let tickets_from_big_map_ref ~pre_populated value_exp =
     let* updates, ctxt =
       List.fold_left_es
         (fun (kvs, ctxt) (key, value) ->
-          let*@ key_hash, ctxt =
+          let*?@ key_hash, ctxt =
             Script_ir_translator.hash_comparable_data
               ctxt
               Script_typed_ir.int_t

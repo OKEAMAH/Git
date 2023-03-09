@@ -37,7 +37,7 @@ open Alpha_context
 let unparse ctxt (Ticket_token.Ex_token {ticketer; contents_type; contents}) =
   let open Lwt_result_syntax in
   let open Script_ir_unparser in
-  let* contents, ctxt =
+  let*? contents, ctxt =
     unparse_comparable_data ctxt Optimized_legacy contents_type contents
   in
   let*? ty_unstripped, ctxt =

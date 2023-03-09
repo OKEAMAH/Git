@@ -394,7 +394,7 @@ val hash_comparable_data :
   context ->
   'a Script_typed_ir.comparable_ty ->
   'a ->
-  (Script_expr_hash.t * context) tzresult Lwt.t
+  (Script_expr_hash.t * context) tzresult
 
 val hash_data :
   context ->

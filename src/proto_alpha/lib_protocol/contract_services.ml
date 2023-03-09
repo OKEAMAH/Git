@@ -527,7 +527,7 @@ let register () =
             (Micheline.root key)
           >>=? fun (key, ctxt) ->
           Script_ir_translator.hash_comparable_data ctxt key_type key
-          >>=? fun (key, ctxt) ->
+          >>?= fun (key, ctxt) ->
           match script with
           | None -> return_none
           | Some script -> (

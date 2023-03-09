@@ -43,7 +43,7 @@ let string_list_of_ex_token_diffs ctxt token_diffs =
   let open Lwt_result_wrap_syntax in
   let accum (xs, ctxt)
       (Ticket_token.Ex_token {ticketer; contents_type; contents}, amount) =
-    let*@ x, ctxt =
+    let*?@ x, ctxt =
       Script_ir_unparser.unparse_comparable_data
         ctxt
         Script_ir_unparser.Readable
@@ -104,7 +104,7 @@ let updates_of_key_values ctxt key_values =
   let open Lwt_result_wrap_syntax in
   List.fold_right_es
     (fun (key, value) (kvs, ctxt) ->
-      let*@ key_hash, ctxt =
+      let*?@ key_hash, ctxt =
         Script_ir_translator.hash_comparable_data
           ctxt
           Script_typed_ir.int_t
