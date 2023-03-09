@@ -57,17 +57,16 @@ val get :
   ('key, 'value) Script_typed_ir.big_map ->
   ('value option * context) tzresult Lwt.t
 
-(** [update ctxt key new_value big_map] updates the value bound by [key]
+(** [update key new_value big_map] updates the value bound by [key]
     with [v] if the [new_value] is [Some v]. When the [new_value] is [None],
     delete the entire entry bound by [key] in the [big_map].
     Consumes cost for hashing the given key.
     See {!get_and_update} for details. *)
 val update :
-  context ->
   'key ->
   'value option ->
   ('key, 'value) Script_typed_ir.big_map ->
-  (('key, 'value) Script_typed_ir.big_map * context) tzresult
+  ('key, 'value) Script_typed_ir.big_map Gas_monad.pure_gas_monad
 
 (** [get_and_update ctxt key new_value big_map] works just like
     [update ctxt key new_value big_map] except it also returns

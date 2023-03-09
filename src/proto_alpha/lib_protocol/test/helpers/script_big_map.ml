@@ -21,7 +21,8 @@
 (* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 
-let update k v m ctxt = Protocol.Script_big_map.update ctxt k v m
+let update k v m ctxt =
+  Protocol.Gas_monad.run_pure_gas ctxt @@ Protocol.Script_big_map.update k v m
 
 let of_list key_ty ty xs ctxt =
   List.fold_left_e

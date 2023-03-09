@@ -1436,10 +1436,12 @@ module Registration_section = struct
                let big_map = Script_big_map.empty int unit_t in
                Script_map.fold
                  (fun k v acc ->
-                   acc >>? fun (bm, ctxt_acc) ->
-                   Script_big_map.update ctxt_acc k v bm)
+                   let open Gas_monad.Syntax in
+                   let* bm = acc in
+                   Script_big_map.update k v bm)
                  map
-                 (ok (big_map, ctxt))
+                 (Gas_monad.return big_map)
+               |> Gas_monad.run_pure_gas ctxt
                |> Environment.wrap_tzresult
                >>?= fun (big_map, _) -> return big_map ))
       in

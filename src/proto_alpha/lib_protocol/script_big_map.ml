@@ -81,11 +81,10 @@ let update_by_hash key_hash key value (Big_map map) =
         };
     }
 
-let update ctxt key value (Big_map {key_type; _} as map) =
-  Gas_monad.run_pure_gas ctxt @@ hash_comparable_data key_type key
-  >|? fun (key_hash, ctxt) ->
-  let map = update_by_hash key_hash key value map in
-  (map, ctxt)
+let update key value (Big_map {key_type; _} as map) =
+  let open Gas_monad.Syntax in
+  let+ key_hash = hash_comparable_data key_type key in
+  update_by_hash key_hash key value map
 
 let get_and_update ctxt key value (Big_map {key_type; _} as map) =
   Gas_monad.run_pure_gas ctxt @@ hash_comparable_data key_type key
