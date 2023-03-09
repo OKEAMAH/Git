@@ -214,14 +214,13 @@ let setup ctxt ~key_type ~value_type entries =
   in
   let*? key_type_node, ctxt =
     Environment.wrap_tzresult
-    @@ Script_ir_unparser.unparse_ty ~loc:Micheline.dummy_location ctxt key_type
+    @@ Gas_monad.run_pure_gas ctxt
+    @@ Script_ir_unparser.unparse_ty ~loc:Micheline.dummy_location key_type
   in
   let*? value_type_node, ctxt =
     Environment.wrap_tzresult
-    @@ Script_ir_unparser.unparse_ty
-         ~loc:Micheline.dummy_location
-         ctxt
-         value_type
+    @@ Gas_monad.run_pure_gas ctxt
+    @@ Script_ir_unparser.unparse_ty ~loc:Micheline.dummy_location value_type
   in
   let key_type = Micheline.strip_locations key_type_node in
   let value_type = Micheline.strip_locations value_type_node in

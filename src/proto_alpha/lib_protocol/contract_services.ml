@@ -457,7 +457,8 @@ let register () =
                   r |> function
                   | Ok (Ex_ty_cstr {ty; original_type_expr; _}) ->
                       if normalize_types then
-                        Script_ir_unparser.unparse_ty ~loc:() ctxt ty
+                        Gas_monad.run_pure_gas ctxt
+                        @@ Script_ir_unparser.unparse_ty ~loc:() ty
                         >|? fun (ty_node, _ctxt) ->
                         Some (Micheline.strip_locations ty_node)
                       else
@@ -497,7 +498,8 @@ let register () =
                          (Script_typed_ir.Ex_ty ty, original_type_expr)
                          (acc, ctxt) ->
                       (if normalize_types then
-                       Script_ir_unparser.unparse_ty ~loc:() ctxt ty
+                       Gas_monad.run_pure_gas ctxt
+                       @@ Script_ir_unparser.unparse_ty ~loc:() ty
                        >|? fun (ty_node, ctxt) ->
                        (Micheline.strip_locations ty_node, ctxt)
                       else

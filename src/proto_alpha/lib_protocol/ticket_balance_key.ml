@@ -66,7 +66,8 @@ let make ctxt ~owner ~ticketer ~contents_type ~contents =
 let of_ex_token ctxt ~owner
     (Ticket_token.Ex_token {ticketer; contents_type; contents}) =
   let loc = Micheline.dummy_location in
-  Script_ir_unparser.unparse_ty ~loc ctxt contents_type
+  Gas_monad.run_pure_gas ctxt
+  @@ Script_ir_unparser.unparse_ty ~loc contents_type
   >>?= fun (cont_ty_unstripped, ctxt) ->
   (* We strip the annotations from the content type in order to map
      tickets with the same content type, but with different annotations, to the

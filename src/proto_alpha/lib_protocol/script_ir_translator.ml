@@ -4357,7 +4357,8 @@ and parse_instr :
   | Prim (loc, I_EMIT, [], annot), Item_t (data, rest) ->
       check_packable ~legacy loc data >>?= fun () ->
       parse_entrypoint_annot_strict loc annot >>?= fun tag ->
-      unparse_ty ~loc:() ctxt data >>?= fun (unparsed_ty, ctxt) ->
+      Gas_monad.run_pure_gas ctxt @@ unparse_ty ~loc:() data
+      >>?= fun (unparsed_ty, ctxt) ->
       Gas.consume ctxt (Script.strip_locations_cost unparsed_ty)
       >>?= fun ctxt ->
       let unparsed_ty = Micheline.strip_locations unparsed_ty in
@@ -5077,14 +5078,17 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
   (if normalize_types then
    unparse_parameter_ty ~loc ctxt arg_type ~entrypoints
    >>?= fun (arg_type, ctxt) ->
-   unparse_ty ~loc ctxt storage_type >>?= fun (storage_type, ctxt) ->
+   Gas_monad.run_pure_gas ctxt @@ unparse_ty ~loc storage_type
+   >>?= fun (storage_type, ctxt) ->
    Script_map.map_es_in_context
      (fun ctxt
           _name
           (Typed_view {input_ty; output_ty; kinstr = _; original_code_expr}) ->
        Lwt.return
-         ( unparse_ty ~loc ctxt input_ty >>? fun (input_ty, ctxt) ->
-           unparse_ty ~loc ctxt output_ty >|? fun (output_ty, ctxt) ->
+         ( Gas_monad.run_pure_gas ctxt @@ unparse_ty ~loc input_ty
+         >>? fun (input_ty, ctxt) ->
+           Gas_monad.run_pure_gas ctxt @@ unparse_ty ~loc output_ty
+           >|? fun (output_ty, ctxt) ->
            ({input_ty; output_ty; view_code = original_code_expr}, ctxt) ))
      ctxt
      typed_views
@@ -5168,7 +5172,8 @@ let diff_of_big_map ctxt mode ~temporary ~ids_to_copy
       Lwt.return
         (let kt = unparse_comparable_ty_uncarbonated ~loc:() key_type in
          Gas.consume ctxt (Script.strip_locations_cost kt) >>? fun ctxt ->
-         unparse_ty ~loc:() ctxt value_type >>? fun (kv, ctxt) ->
+         Gas_monad.run_pure_gas ctxt @@ unparse_ty ~loc:() value_type
+         >>? fun (kv, ctxt) ->
          Gas.consume ctxt (Script.strip_locations_cost kv) >|? fun ctxt ->
          let key_type = Micheline.strip_locations kt in
          let value_type = Micheline.strip_locations kv in

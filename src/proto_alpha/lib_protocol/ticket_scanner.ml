@@ -546,7 +546,8 @@ let tickets_of_node ctxt ~include_lazy has_tickets expr =
 let ex_ticket_size ctxt (Ex_ticket (ty, ticket)) =
   (* type *)
   Script_typed_ir.ticket_t Micheline.dummy_location ty >>?= fun ty ->
-  Script_ir_unparser.unparse_ty ~loc:() ctxt ty >>?= fun (ty', ctxt) ->
+  Gas_monad.run_pure_gas ctxt @@ Script_ir_unparser.unparse_ty ~loc:() ty
+  >>?= fun (ty', ctxt) ->
   let ty_nodes, ty_size = Script_typed_ir_size.node_size ty' in
   let ty_size_cost = Script_typed_ir_size_costs.nodes_cost ~nodes:ty_nodes in
   Gas.consume ctxt ty_size_cost >>?= fun ctxt ->

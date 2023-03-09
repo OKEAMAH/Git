@@ -479,7 +479,8 @@ let rec kundip :
 let apply ctxt gas capture_ty capture lam =
   let loc = Micheline.dummy_location in
   let ctxt = update_context gas ctxt in
-  Script_ir_unparser.unparse_ty ~loc ctxt capture_ty >>?= fun (ty_expr, ctxt) ->
+  Gas_monad.run_pure_gas ctxt @@ Script_ir_unparser.unparse_ty ~loc capture_ty
+  >>?= fun (ty_expr, ctxt) ->
   unparse_data ctxt Optimized capture_ty capture >>=? fun (const_expr, ctxt) ->
   let make_expr expr =
     Micheline.(
@@ -496,9 +497,10 @@ let apply ctxt gas capture_ty capture lam =
           descr.kbef
         in
         let (Item_t (ret_ty, Bot_t)) = descr.kaft in
-        Script_ir_unparser.unparse_ty ~loc ctxt full_arg_ty
+        Gas_monad.run_pure_gas ctxt
+        @@ Script_ir_unparser.unparse_ty ~loc full_arg_ty
         >>?= fun (arg_ty_expr, ctxt) ->
-        Script_ir_unparser.unparse_ty ~loc ctxt ret_ty
+        Gas_monad.run_pure_gas ctxt @@ Script_ir_unparser.unparse_ty ~loc ret_ty
         >>?= fun (ret_ty_expr, ctxt) ->
         match full_arg_ty with
         | Pair_t (capture_ty, arg_ty, _, _) ->
@@ -587,7 +589,8 @@ let make_transaction_to_tx_rollup (type t) ctxt ~destination ~amount
   unparse_data ctxt Optimized parameters_ty parameters
   >>=? fun (unparsed_parameters, ctxt) ->
   Lwt.return
-    ( Script_ir_unparser.unparse_ty ~loc:Micheline.dummy_location ctxt tp
+    ( Gas_monad.run_pure_gas ctxt
+    @@ Script_ir_unparser.unparse_ty ~loc:Micheline.dummy_location tp
     >>? fun (ty, ctxt) ->
       let unparsed_parameters =
         Micheline.Seq
