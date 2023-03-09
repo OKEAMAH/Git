@@ -153,26 +153,30 @@ let check_comparable :
       let t = Script_ir_unparser.serialize_ty_for_error ty in
       error (Comparable_type_expected (loc, t))
 
-let pack_node unparsed ctxt =
+let pack_node unparsed =
   let bytes =
     Data_encoding.(
       Binary.to_bytes_exn (tup2 (Fixed.string Plain 1) expr_encoding))
       ("\x05", unparsed)
   in
-  (bytes, ctxt)
+  bytes
 
-let pack_comparable_data ctxt ty data =
-  Gas_monad.run_pure_gas ctxt
-  @@ unparse_comparable_data Optimized_legacy ty data
-  >|? fun (unparsed, ctxt) -> pack_node unparsed ctxt
+let pack_comparable_data ty data =
+  let open Gas_monad.Syntax in
+  let+ unparsed = unparse_comparable_data Optimized_legacy ty data in
+  pack_node unparsed
 
-let hash_bytes ctxt bytes =
-  Gas.consume ctxt (Michelson_v1_gas.Cost_of.Interpreter.blake2b bytes)
-  >|? fun ctxt -> (Script_expr_hash.(hash_bytes [bytes]), ctxt)
+let hash_bytes bytes =
+  let open Gas_monad.Syntax in
+  let+ () =
+    Gas_monad.consume_gas (Michelson_v1_gas.Cost_of.Interpreter.blake2b bytes)
+  in
+  Script_expr_hash.(hash_bytes [bytes])
 
-let hash_comparable_data ctxt ty data =
-  pack_comparable_data ctxt ty data >>? fun (bytes, ctxt) ->
-  hash_bytes ctxt bytes
+let hash_comparable_data ty data =
+  let open Gas_monad.Syntax in
+  let* bytes = pack_comparable_data ty data in
+  hash_bytes bytes
 
 (* ---- Tickets ------------------------------------------------------------ *)
 
@@ -1981,7 +1985,8 @@ let rec parse_data :
             else error_unexpected_annot loc annot)
             >>?= fun () ->
             non_terminal_recursion ctxt key_type k >>=? fun (k, ctxt) ->
-            hash_comparable_data ctxt key_type k >>?= fun (key_hash, ctxt) ->
+            Gas_monad.run_pure_gas ctxt @@ hash_comparable_data key_type k
+            >>?= fun (key_hash, ctxt) ->
             non_terminal_recursion ctxt value_type v >>=? fun (v, ctxt) ->
             Lwt.return
               ( (match last_key with
@@ -5137,11 +5142,12 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
 
 let pack_data_with_mode ctxt ty data ~mode =
   unparse_data ~stack_depth:0 ctxt mode ty data >|=? fun (unparsed, ctxt) ->
-  pack_node unparsed ctxt
+  (pack_node unparsed, ctxt)
 
 let hash_data ctxt ty data =
   pack_data_with_mode ctxt ty data ~mode:Optimized_legacy
-  >>=? fun (bytes, ctxt) -> Lwt.return @@ hash_bytes ctxt bytes
+  >>=? fun (bytes, ctxt) ->
+  Lwt.return @@ Gas_monad.run_pure_gas ctxt @@ hash_bytes bytes
 
 let pack_data ctxt ty data =
   pack_data_with_mode ctxt ty data ~mode:Optimized_legacy

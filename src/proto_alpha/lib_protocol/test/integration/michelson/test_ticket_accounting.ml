@@ -139,7 +139,8 @@ let updates_of_key_values ctxt ~key_type ~value_type key_values =
   List.fold_right_es
     (fun (key, value) (kvs, ctxt) ->
       let*?@ key_hash, ctxt =
-        Script_ir_translator.hash_comparable_data ctxt key_type key
+        Gas_monad.run_pure_gas ctxt
+        @@ Script_ir_translator.hash_comparable_data key_type key
       in
       let*?@ key, ctxt =
         Gas_monad.run_pure_gas ctxt

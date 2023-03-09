@@ -391,10 +391,9 @@ val pack_data :
   (bytes * context) tzresult Lwt.t
 
 val hash_comparable_data :
-  context ->
   'a Script_typed_ir.comparable_ty ->
   'a ->
-  (Script_expr_hash.t * context) tzresult
+  Script_expr_hash.t Gas_monad.pure_gas_monad
 
 val hash_data :
   context ->

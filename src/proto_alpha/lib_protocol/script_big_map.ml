@@ -39,7 +39,8 @@ let empty key_type value_type =
     }
 
 let mem ctxt key (Big_map {id; diff; key_type; _}) =
-  hash_comparable_data ctxt key_type key >>?= fun (key_hash, ctxt) ->
+  Gas_monad.run_pure_gas ctxt @@ hash_comparable_data key_type key
+  >>?= fun (key_hash, ctxt) ->
   match (Big_map_overlay.find key_hash diff.map, id) with
   | None, None -> return (false, ctxt)
   | None, Some id ->
@@ -65,8 +66,8 @@ let get_by_hash ctxt key (Big_map {id; diff; value_type; _}) =
           >|=? fun (x, ctxt) -> (Some x, ctxt))
 
 let get ctxt key (Big_map {key_type; _} as map) =
-  hash_comparable_data ctxt key_type key >>?= fun (key_hash, ctxt) ->
-  get_by_hash ctxt key_hash map
+  Gas_monad.run_pure_gas ctxt @@ hash_comparable_data key_type key
+  >>?= fun (key_hash, ctxt) -> get_by_hash ctxt key_hash map
 
 let update_by_hash key_hash key value (Big_map map) =
   let contains = Big_map_overlay.mem key_hash map.diff.map in
@@ -81,12 +82,14 @@ let update_by_hash key_hash key value (Big_map map) =
     }
 
 let update ctxt key value (Big_map {key_type; _} as map) =
-  hash_comparable_data ctxt key_type key >|? fun (key_hash, ctxt) ->
+  Gas_monad.run_pure_gas ctxt @@ hash_comparable_data key_type key
+  >|? fun (key_hash, ctxt) ->
   let map = update_by_hash key_hash key value map in
   (map, ctxt)
 
 let get_and_update ctxt key value (Big_map {key_type; _} as map) =
-  hash_comparable_data ctxt key_type key >>?= fun (key_hash, ctxt) ->
+  Gas_monad.run_pure_gas ctxt @@ hash_comparable_data key_type key
+  >>?= fun (key_hash, ctxt) ->
   let new_map = update_by_hash key_hash key value map in
   get_by_hash ctxt key_hash map >>=? fun (old_value, ctxt) ->
   return ((old_value, new_map), ctxt)
