@@ -5511,7 +5511,7 @@ module Protocol = Protocol
             octez_crypto;
             parameters |> if_some;
             hashcons;
-            test_helpers |> open_;
+            test_helpers |> open_ |> if_ N.(number <= 17);
             prbnmcn_stats;
           ]
         ~linkall:true

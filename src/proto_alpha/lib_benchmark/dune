@@ -16,7 +16,6 @@
   tezos-crypto
   tezos-protocol-alpha.parameters
   hashcons
-  tezos-alpha-test-helpers
   prbnmcn-stats)
  (library_flags (:standard -linkall))
  (flags
@@ -29,6 +28,5 @@
   -open Tezos_micheline_rewriting
   -open Tezos_benchmark
   -open Tezos_benchmark_type_inference_alpha
-  -open Tezos_protocol_alpha
-  -open Tezos_alpha_test_helpers)
+  -open Tezos_protocol_alpha)
  (private_modules kernel rules state_space))

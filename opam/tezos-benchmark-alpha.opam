@@ -20,8 +20,8 @@ depends: [
   "tezos-protocol-alpha"
   "tezos-crypto"
   "hashcons"
-  "tezos-alpha-test-helpers"
   "prbnmcn-stats" { = "0.0.6" }
+  "tezos-alpha-test-helpers" {with-test}
 ]
 build: [
   ["rm" "-r" "vendors"]
