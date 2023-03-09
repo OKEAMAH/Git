@@ -86,11 +86,14 @@ type void = |
 
 type 'a pure_gas_monad = ('a, void) gas_monad
 
+let simplify_void_result (r : ('a, void) result) : 'a =
+  match r with Ok x -> x | Error _ -> .
+
 let run_pure_gas ctxt (m : 'a pure_gas_monad) =
-  match run ctxt m with
-  | Ok (Ok x, ctxt) -> Ok (x, ctxt)
-  | Ok (Error _, _) -> .
-  | Error _ as err -> err
+  run ctxt m >|? fun (r, ctxt) -> (simplify_void_result r, ctxt)
+
+let run_pure_gas_unlimited (m : 'a pure_gas_monad) =
+  run_unlimited m >|? simplify_void_result
 
 let record_trace_eval :
     type error_trace error_context.

@@ -80,6 +80,8 @@ val run_pure_gas :
   'a pure_gas_monad ->
   ('a * Alpha_context.context) tzresult
 
+val run_pure_gas_unlimited : 'a pure_gas_monad -> 'a tzresult
+
 (** [record_trace_level ~error_details f m] returns a new gas-monad value that
      when run, records trace levels using [f]. This function has no effect in
     the case of a gas-exhaustion error or if [error_details] is [Fast]. *)
