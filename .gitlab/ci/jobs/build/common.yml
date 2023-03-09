@@ -26,6 +26,8 @@
       - _build/default/src/lib_protocol_compiler/bin/main_native.exe
     expire_in: 1 day
     when: on_success
+  tags:
+    - dedicated
 
 # similar to the build template above, this template
 # compiles all binaries using the static profile.
@@ -38,7 +40,8 @@
     ARCH: ""
   script:
     - make -C ${CI_PROJECT_DIR}/.gitlab/ci build-static-binaries
-
+  tags:
+    - dedicated
   artifacts:
     paths:
       - "octez-binaries/$ARCH/*"

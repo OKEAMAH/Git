@@ -10,10 +10,5 @@ include:
   # Stage: test_coverage
   - .gitlab/ci/jobs/coverage/coverage_default.yml
 
-  # Stage: packaging
-  - .gitlab/ci/jobs/packaging/opam_prepare.yml
-  - .gitlab/ci/jobs/packaging/opam_package.yml
 
-  # Stage: doc
-  - .gitlab/ci/jobs/doc/linkcheck.yml
-  - .gitlab/ci/jobs/doc/tests.yml
+

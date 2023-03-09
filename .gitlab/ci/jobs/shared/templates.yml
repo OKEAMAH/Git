@@ -7,6 +7,8 @@
   # template requiring artifacts from preceeding jobs should declare
   # their dependencies locally.
   dependencies: []
+  tags:
+    - dedicated
 
 # Add variables for bisect_ppx instrumentation
 .template__coverage:
@@ -14,6 +16,7 @@
     COVERAGE_OPTIONS: "--instrument-with bisect_ppx"
     BISECT_FILE: "$CI_PROJECT_DIR/_coverage_output/"
     SLACK_COVERAGE_CHANNEL: "C02PHBE7W73"
+
 
 .build_template:
   extends:
@@ -25,3 +28,8 @@
     # FIXME: https://gitlab.com/tezos/tezos/-/issues/2865
     - sudo chown -R $(id -u):$(id -g) $CI_PROJECT_DIR
     - . ./scripts/version.sh
+    # Load the environment poetry previously created in the docker image.
+    # Give access to the Python dependencies/executables
+    - . $HOME/.venv/bin/activate
+  tags:
+    - dedicated

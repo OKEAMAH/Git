@@ -1,3 +1,4 @@
+
 .template__code_quality:
   variables:
     CODE_QUALITY_REPORT: "_reports/gl-code-quality-report.json"
