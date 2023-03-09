@@ -1436,12 +1436,12 @@ module Registration_section = struct
                let big_map = Script_big_map.empty int unit_t in
                Script_map.fold
                  (fun k v acc ->
-                   acc >>=? fun (bm, ctxt_acc) ->
+                   acc >>? fun (bm, ctxt_acc) ->
                    Script_big_map.update ctxt_acc k v bm)
                  map
-                 (return (big_map, ctxt))
-               >|= Environment.wrap_tzresult
-               >>=? fun (big_map, _) -> return big_map ))
+                 (ok (big_map, ctxt))
+               |> Environment.wrap_tzresult
+               >>?= fun (big_map, _) -> return big_map ))
       in
       (key, big_map)
 

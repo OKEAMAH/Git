@@ -67,7 +67,7 @@ val update :
   'key ->
   'value option ->
   ('key, 'value) Script_typed_ir.big_map ->
-  (('key, 'value) Script_typed_ir.big_map * context) tzresult Lwt.t
+  (('key, 'value) Script_typed_ir.big_map * context) tzresult
 
 (** [get_and_update ctxt key new_value big_map] works just like
     [update ctxt key new_value big_map] except it also returns

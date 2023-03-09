@@ -718,12 +718,12 @@ end)
               let map = generate_map key_ty opt_elt_ty rng_state in
               Script_map.fold
                 (fun k v acc ->
-                  acc >>=? fun (bm, ctxt_acc) ->
+                  acc >>? fun (bm, ctxt_acc) ->
                   Script_big_map.update ctxt_acc k v bm)
                 map
-                (return (big_map, ctxt))
-              >|= Environment.wrap_tzresult
-              >>=? fun (big_map, _) -> return big_map )
+                (ok (big_map, ctxt))
+              |> Environment.wrap_tzresult
+              >>?= fun (big_map, _) -> return big_map )
         in
         match result with
         | Ok x -> x

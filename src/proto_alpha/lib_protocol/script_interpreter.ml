@@ -827,9 +827,9 @@ module Raw = struct
         | IBig_map_update (_, k) ->
             let key = accu in
             let maybe_value, (map, stack) = stack in
-            ( use_gas_counter_in_context ctxt gas @@ fun ctxt ->
+            ( use_gas_counter_in_context_no_lwt ctxt gas @@ fun ctxt ->
               Script_big_map.update ctxt key maybe_value map )
-            >>=? fun (big_map, ctxt, gas) ->
+            >>?= fun (big_map, ctxt, gas) ->
             (step [@ocaml.tailcall]) (ctxt, sc) gas k ks big_map stack
         | IBig_map_get_and_update (_, k) ->
             let key = accu in

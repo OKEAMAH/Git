@@ -81,9 +81,9 @@ let update_by_hash key_hash key value (Big_map map) =
     }
 
 let update ctxt key value (Big_map {key_type; _} as map) =
-  hash_comparable_data ctxt key_type key >>?= fun (key_hash, ctxt) ->
+  hash_comparable_data ctxt key_type key >|? fun (key_hash, ctxt) ->
   let map = update_by_hash key_hash key value map in
-  return (map, ctxt)
+  (map, ctxt)
 
 let get_and_update ctxt key value (Big_map {key_type; _} as map) =
   hash_comparable_data ctxt key_type key >>?= fun (key_hash, ctxt) ->
