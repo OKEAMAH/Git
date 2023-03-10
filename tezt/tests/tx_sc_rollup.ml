@@ -296,12 +296,12 @@ let test_tx_kernel_e2e protocol =
   in
   Dac.with_legacy_dac_node
     ~threshold:0
-    ~dac_members:1
+    ~committee_members:1
     ~sc_rollup_node
     ~pvm_name:"wasm_2_0_0"
     node
     client
-  @@ fun dac_node _dac_members ->
+  @@ fun dac_node _committee_members ->
   (* Start a rollup node *)
   (* Prepare DAL/DAC: put reveal data in rollup node directory. *)
   let* () = Dac_node.terminate dac_node in
