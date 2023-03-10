@@ -37,126 +37,6 @@ let () =
     (function Mode_not_supported mode -> Some mode | _ -> None)
     (fun mode -> Mode_not_supported mode)
 
-module Handler = struct
-  (** [make_stream_daemon handler streamed_call] calls [handler] on each newly
-      received value from [streamed_call].
-
-      It returns a couple [(p, stopper)] where [p] is a promise resolving when the
-      stream closes and [stopper] a function closing the stream.
-  *)
-  let make_stream_daemon handle streamed_call =
-    let open Lwt_result_syntax in
-    let* stream, stopper = streamed_call in
-    let rec go () =
-      let*! tok = Lwt_stream.get stream in
-      match tok with
-      | None -> return_unit
-      | Some element ->
-          let*! r = handle stopper element in
-          let*! () =
-            match r with
-            | Ok () -> Lwt.return_unit
-            | Error trace ->
-                let*! () = Event.(emit daemon_error) trace in
-                Lwt.return_unit
-          in
-          go ()
-    in
-    return (go (), stopper)
-
-  let resolve_plugin_and_set_ready ctxt cctxt =
-    (* Monitor heads and try resolve the DAC protocol plugin corresponding to
-       the protocol of the targeted node. *)
-    (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3605
-       Handle situtation where plugin is not found *)
-    let open Lwt_result_syntax in
-    let handler stopper
-        (_block_hash, (_block_header : Tezos_base.Block_header.t)) =
-      let* protocols =
-        Tezos_shell_services.Chain_services.Blocks.protocols cctxt ()
-      in
-      let*! dac_plugin = Dac_manager.resolve_plugin protocols in
-      match dac_plugin with
-      | Some dac_plugin ->
-          Node_context.set_ready ctxt dac_plugin ;
-          let*! () = Event.(emit node_is_ready ()) in
-          stopper () ;
-          return_unit
-      | None -> return_unit
-    in
-    let handler stopper el =
-      match Node_context.get_status ctxt with
-      | Starting -> handler stopper el
-      | Ready _ -> return_unit
-    in
-    let*! () = Event.(emit layer1_node_tracking_started ()) in
-    make_stream_daemon
-      handler
-      (Tezos_shell_services.Monitor_services.heads cctxt `Main)
-
-  let new_head ctxt cctxt =
-    (* Monitor heads and store published slot headers indexed by block hash. *)
-    let open Lwt_result_syntax in
-    let handler _stopper (block_hash, (header : Tezos_base.Block_header.t)) =
-      match Node_context.get_status ctxt with
-      | Starting -> return_unit
-      | Ready _ ->
-          let block_level = header.shell.level in
-          let*! () =
-            Event.(emit layer1_node_new_head (block_hash, block_level))
-          in
-          return_unit
-    in
-    let*! () = Event.(emit layer1_node_tracking_started ()) in
-    (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3517
-        If the layer1 node reboots, the rpc stream breaks.*)
-    make_stream_daemon
-      handler
-      (Tezos_shell_services.Monitor_services.heads cctxt `Main)
-
-  (** This handler will be invoked only when a [coordinator_cctxt] is specified
-      in the DAC node configuration. The DAC node tries to subscribes to the
-      stream of root hashes via the streamed GET /monitor/root_hashes RPC call
-      to the dac node corresponding to [coordinator_cctxt]. *)
-  let new_root_hash ctxt coordinator_cctxt =
-    let open Lwt_result_syntax in
-    let handler dac_plugin remote_store _stopper root_hash =
-      let*! () = Event.emit_new_root_hash_received dac_plugin root_hash in
-      let*! payload_result =
-        Pages_encoding.Merkle_tree.V0.Remote.deserialize_payload
-          dac_plugin
-          ~page_store:remote_store
-          root_hash
-      in
-      match payload_result with
-      | Ok _ ->
-          let*! () =
-            Event.emit_received_root_hash_processed dac_plugin root_hash
-          in
-          return ()
-      | Error errs ->
-          (* TODO: https://gitlab.com/tezos/tezos/-/issues/4930.
-             Improve handling of errors. *)
-          let*! () =
-            Event.emit_processing_root_hash_failed dac_plugin root_hash errs
-          in
-          return ()
-    in
-    let*? dac_plugin = Node_context.get_dac_plugin ctxt in
-    let remote_store =
-      Page_store.(
-        Remote.init
-          {
-            cctxt = coordinator_cctxt;
-            page_store = Node_context.get_page_store ctxt;
-          })
-    in
-    let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
-    make_stream_daemon
-      (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt dac_plugin)
-end
-
 let daemonize handlers =
   (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3605
      Improve concurrent tasks by using workers *)
@@ -184,33 +64,13 @@ let run ~data_dir cctxt =
   in
   let* () = Dac_manager.Storage.ensure_reveal_data_dir_exists reveal_data_dir in
   let* ctxt = Node_context.init config cctxt in
-  let (Node_context.Ex modal_node_ctxt) = ctxt in
-  let coordinator_cctxt_opt =
-    match Node_context.mode modal_node_ctxt with
-    | Node_context.Modal.Coordinator _ -> None
-    | Node_context.Modal.Committee_member committee_member_ctxt ->
-        Some
-          (Node_context.Committee_member.coordinator_cctxt
-             committee_member_ctxt)
-    | Node_context.Modal.Observer observer_ctxt ->
-        Some (Node_context.Observer.coordinator_cctxt observer_ctxt)
-    | Node_context.Modal.Legacy legacy_ctxt ->
-        Node_context.Legacy.coordinator_cctxt legacy_ctxt
-  in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4725
      Stop DAC node when in Legacy mode, if threshold is not reached. *)
   let* rpc_server = RPC_server.start ~rpc_address ~rpc_port ctxt in
   let _ = RPC_server.install_finalizer rpc_server in
   let*! () = Event.(emit rpc_server_is_ready (rpc_address, rpc_port)) in
   (* Start daemon to resolve current protocol plugin *)
-  let* () = daemonize [Handler.resolve_plugin_and_set_ready ctxt cctxt] in
+  let* () = daemonize [Handler.resolve_plugin_and_set_ready ctxt] in
   (* Start never-ending monitoring daemons. [coordinator_cctxt] is required to
      monitor new root hashes in legacy mode. *)
-  match coordinator_cctxt_opt with
-  | None -> daemonize [Handler.new_head ctxt cctxt]
-  | Some coordinator_cctxt ->
-      daemonize
-        [
-          Handler.new_head ctxt cctxt;
-          Handler.new_root_hash ctxt coordinator_cctxt;
-        ]
+  daemonize @@ Handler.handlers ctxt
