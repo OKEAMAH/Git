@@ -146,16 +146,16 @@ let get_node_store (type a) ctxt (access_mode : a Store_sigs.mode) :
   | Store_sigs.Read_only -> Store.Irmin_store.readonly ctxt.node_store
   | Store_sigs.Read_write -> ctxt.node_store
 
-let get_dac_committee ctxt =
+let get_committee_members ctxt =
   let open Result_syntax in
   match ctxt.config.mode with
-  | Legacy legacy -> Ok legacy.dac_members_addresses
-  | Coordinator coordinator -> Ok coordinator.dac_members_addresses
+  | Legacy legacy -> Ok legacy.committee_members_addresses
+  | Coordinator coordinator -> Ok coordinator.committee_members_addresses
   | Observer _ ->
       tzfail
       @@ Invalid_operation_for_mode
-           {mode = "observer"; operation = "get_dac_committee"}
-  | Dac_member _ ->
+           {mode = "observer"; operation = "get_committee_members"}
+  | Committee_member _ ->
       tzfail
       @@ Invalid_operation_for_mode
-           {mode = "dac_member"; operation = "get_dac_committee"}
+           {mode = "dac_member"; operation = "get_committee_members"}
