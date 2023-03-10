@@ -69,7 +69,7 @@ let test_flush () =
 
 let () =
   Alcotest_lwt.run
-    "Plugin"
+    ""
     [
       ( Protocol.name ^ ": on_flush",
         [

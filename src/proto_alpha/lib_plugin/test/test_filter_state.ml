@@ -185,7 +185,7 @@ let test_remove_unknown =
 
 let () =
   Alcotest.run
-    "Filter_state"
+    ""
     [
       (Protocol.name ^ ": add_manager_op", qcheck_wrap [test_add_manager_op]);
       ( Protocol.name ^ ": remove",

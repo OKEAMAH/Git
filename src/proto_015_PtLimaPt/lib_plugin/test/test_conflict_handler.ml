@@ -260,7 +260,7 @@ let test_manager_ops () =
 
 let () =
   Alcotest_lwt.run
-    "conflict_handler"
+    ""
     [
       ( Protocol.name ^ ": conflict_handler",
         [

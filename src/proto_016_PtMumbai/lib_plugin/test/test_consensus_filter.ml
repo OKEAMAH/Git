@@ -433,7 +433,7 @@ let test_not_acceptable_next_level =
 
 let () =
   Alcotest.run
-    "Filter"
+    ""
     [
       ( Protocol.name ^ ": pre_filter",
         qcheck_wrap
