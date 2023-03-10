@@ -737,22 +737,22 @@ let tests =
     [
       tztest "transfer - balances" `Quick test_simple_balances;
       tztest "transfer - balance updates" `Quick test_simple_balance_updates;
-      tztest "transfer - test allocated" `Quick test_allocated;
-      tztest "transfer - test transfer to sink" `Quick test_transferring_to_sink;
+      tztest "transfer - allocated" `Quick test_allocated;
+      tztest "transfer - transfer to sink" `Quick test_transferring_to_sink;
       tztest
-        "transfer - test transfer from source"
+        "transfer - transfer from source"
         `Quick
         test_transferring_from_source;
       tztest
-        "transfer - test all (sources x sinks)"
+        "transfer - all (sources x sinks)"
         `Quick
         test_all_combinations_of_sources_and_sinks;
       tztest
-        "transfer - test from empty sources to a destination"
+        "transfer - from empty sources to a destination"
         `Quick
         test_transfer_n_with_empty_source;
       tztest
-        "transfer - test from n sources to a destination"
+        "transfer - from n sources to a destination"
         `Quick
         test_transfer_n_with_non_empty_source;
     ]

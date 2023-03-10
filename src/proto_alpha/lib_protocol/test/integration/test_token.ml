@@ -755,25 +755,25 @@ let tests =
     [
       tztest "transfer - balances" `Quick test_simple_balances;
       tztest "transfer - balance updates" `Quick test_simple_balance_updates;
-      tztest "transfer - test allocated" `Quick test_allocated;
+      tztest "transfer - allocated" `Quick test_allocated;
       tztest
-        "transfer - test transfer to receiver"
+        "transfer - transfer to receiver"
         `Quick
         test_transferring_to_receiver;
       tztest
-        "transfer - test transfer from giver"
+        "transfer - transfer from giver"
         `Quick
         test_transferring_from_giver;
       tztest
-        "transfer - test all (givers x receivers)"
+        "transfer - all (givers x receivers)"
         `Quick
         test_all_combinations_of_givers_and_receivers;
       tztest
-        "transfer - test from no giver to a receiver"
+        "transfer - from no giver to a receiver"
         `Quick
         test_transfer_n_with_no_giver;
       tztest
-        "transfer - test from n givers to a receiver"
+        "transfer - from n givers to a receiver"
         `Quick
         test_transfer_n_with_several_givers;
     ]

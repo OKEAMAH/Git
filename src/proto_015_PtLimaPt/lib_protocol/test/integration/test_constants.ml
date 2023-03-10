@@ -187,8 +187,7 @@ let tests =
       `Quick
       test_sc_rollup_commitment_storage_size;
     Tztest.tztest
-      "test liquidity_baking_subsidy parameter is 1/16th of total baking \
-       rewards"
+      "liquidity_baking_subsidy parameter is 1/16th of total baking rewards"
       `Quick
       liquidity_baking_subsidy_param;
   ]
