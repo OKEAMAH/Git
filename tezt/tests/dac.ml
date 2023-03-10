@@ -162,7 +162,7 @@ let with_layer1 ?additional_bootstrap_accounts ?commitment_period
   let bootstrap1_key = Constant.bootstrap1.public_key_hash in
   f node client bootstrap1_key
 
-let with_legacy_dac_node tezos_node ?sc_rollup_node ?(pvm_name = "arith")
+let with_legacy_dac_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
     ?(wait_ready = true) ~threshold ~committee_members tezos_client f =
   let range i = List.init i Fun.id in
   let reveal_data_dir =
@@ -186,6 +186,7 @@ let with_legacy_dac_node tezos_node ?sc_rollup_node ?(pvm_name = "arith")
   in
   let dac_node =
     Dac_node.create_legacy
+      ?name
       ~node:tezos_node
       ~client:tezos_client
       ?reveal_data_dir
@@ -200,10 +201,97 @@ let with_legacy_dac_node tezos_node ?sc_rollup_node ?(pvm_name = "arith")
   let* () = Dac_node.run dac_node ~wait_ready in
   f dac_node committee_members
 
+let with_coordinator_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
+    ?(wait_ready = true) ~threshold ~committee_members tezos_client f =
+  let range i = List.init i Fun.id in
+  let reveal_data_dir =
+    Option.map
+      (fun sc_rollup_node ->
+        Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) pvm_name)
+      sc_rollup_node
+  in
+  let* committee_members =
+    List.fold_left
+      (fun keys i ->
+        let* keys in
+        let* key =
+          Client.bls_gen_and_show_keys
+            ~alias:(Format.sprintf "committee-member-%d" i)
+            tezos_client
+        in
+        return (key :: keys))
+      (return [])
+      (range committee_members)
+  in
+  let dac_node =
+    Dac_node.create_coordinator
+      ?name
+      ~node:tezos_node
+      ~client:tezos_client
+      ?reveal_data_dir
+      ~threshold
+      ~committee_members:
+        (List.map
+           (fun (dc : Account.aggregate_key) -> dc.aggregate_public_key_hash)
+           committee_members)
+      ()
+  in
+  let* _dir = Dac_node.init_config dac_node in
+  let* () = Dac_node.run dac_node ~wait_ready in
+  f dac_node committee_members
+
+let with_committee_member tezos_node coordinator_node ?name ?sc_rollup_node
+    ?(pvm_name = "arith") ?(wait_ready = true) ~committee_member tezos_client f
+    =
+  let reveal_data_dir =
+    Option.map
+      (fun sc_rollup_node ->
+        Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) pvm_name)
+      sc_rollup_node
+  in
+  let Account.{public_key_hash; _} = committee_member in
+  let dac_node =
+    Dac_node.create_committee_member
+      ?name
+      ~node:tezos_node
+      ~client:tezos_client
+      ?reveal_data_dir
+      ~coordinator_rpc_host:(Dac_node.rpc_host coordinator_node)
+      ~coordinator_rpc_port:(Dac_node.rpc_port coordinator_node)
+      ~address:public_key_hash
+      ()
+  in
+  let* _dir = Dac_node.init_config dac_node in
+  let* () = Dac_node.run dac_node ~wait_ready in
+  f dac_node committee_member
+
+let with_observer tezos_node coordinator_node ?name ?sc_rollup_node
+    ?(pvm_name = "arith") ?(wait_ready = true) ~committee_member tezos_client f
+    =
+  let reveal_data_dir =
+    Option.map
+      (fun sc_rollup_node ->
+        Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) pvm_name)
+      sc_rollup_node
+  in
+  let dac_node =
+    Dac_node.create_observer
+      ?name
+      ~node:tezos_node
+      ~client:tezos_client
+      ?reveal_data_dir
+      ~coordinator_rpc_host:(Dac_node.rpc_host coordinator_node)
+      ~coordinator_rpc_port:(Dac_node.rpc_port coordinator_node)
+      ()
+  in
+  let* _dir = Dac_node.init_config dac_node in
+  let* () = Dac_node.run dac_node ~wait_ready in
+  f dac_node committee_member
+
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4706
    Keep pvm name value in Sc_rollup.t. *)
-let with_fresh_rollup ~protocol ?(pvm_name = "arith") f tezos_node tezos_client
-    bootstrap1_key =
+let with_fresh_rollup ~protocol ?(pvm_name = "arith") tezos_node tezos_client
+    bootstrap1_key f =
   let* rollup_address =
     Client.Sc_rollup.originate
       ~hooks
@@ -228,10 +316,48 @@ let with_fresh_rollup ~protocol ?(pvm_name = "arith") f tezos_node tezos_client
   let* () = Client.bake_for_and_wait tezos_client in
   f rollup_address sc_rollup_node configuration_filename
 
+let scenario_with_full_dac_infrastructure ?(tags = ["dac"; "full"])
+    ?(pvm_name = "arith") ~committee_members ~observers
+    ?(with_rollup_nodes = false) ?commitment_period ?challenge_window
+    ?event_sections_levels ?node_arguments variant scenario =
+  let description = "Testing Full DAC infrastructure" in
+  test
+    ~__FILE__
+    ~tags
+    (Printf.sprintf "%s (%s)" description variant)
+    (fun protocol ->
+      with_layer1
+        ?commitment_period
+        ?challenge_window
+        ?event_sections_levels
+        ?node_arguments
+        ~protocol
+      @@ fun node client key ->
+      with_fresh_rollup ~protocol ~pvm_name node client key
+      @@ fun sc_rollup_address sc_rollup_node _configuration_filename ->
+      with_coordinator_node
+        node
+        client
+        ~name:"coordinator"
+        ~pvm_name
+        ~threshold:0
+        ~committee_members
+      @@ fun coordinator_node committee_members ->
+      scenario
+        ~protocol
+        ~node
+        ~client
+        ~key
+        ~sc_rollup_address
+        ~sc_rollup_node
+        ~coordinator_node
+        ~committee_members)
+
 (* Wrapper scenario functions that should be re-used as much as possible when
    writing tests. *)
-let scenario_with_layer1_node ?(tags = ["dac"; "layer1"]) ?commitment_period
-    ?challenge_window ?event_sections_levels ?node_arguments variant scenario =
+let scenario_with_layer1_node ?(tags = ["dac"; "layer1"]) ?(pvm_name = "arith")
+    ?commitment_period ?challenge_window ?event_sections_levels ?node_arguments
+    variant scenario =
   let description = "Testing DAC L1 integration" in
   test
     ~__FILE__
@@ -273,6 +399,9 @@ let scenario_with_all_nodes ?(tags = ["dac"; "dac_node"; "legacy"])
       with_layer1 ?commitment_period ?challenge_window ~protocol
       @@ fun node client key ->
       with_fresh_rollup
+        node
+        client
+        key
         ~protocol
         ~pvm_name
         (fun sc_rollup_address sc_rollup_node _configuration_filename ->
@@ -293,10 +422,7 @@ let scenario_with_all_nodes ?(tags = ["dac"; "dac_node"; "legacy"])
             client
             pvm_name
             threshold
-            committee_members)
-        node
-        client
-        key)
+            committee_members))
 
 let wait_for_layer1_block_processing dac_node level =
   Dac_node.wait_for dac_node "dac_node_layer_1_new_head.v0" (fun e ->
