@@ -474,19 +474,98 @@ let generate_reveal =
   let+ pk = random_pk in
   Reveal pk
 
+type ex_comparable_data =
+  | Ex_comparable_data :
+      'a Script_typed_ir.comparable_ty * 'a
+      -> ex_comparable_data
+
+(* We use the Michelson samplers from lib_benchmark and turn them into QCheck2
+   generators *)
+module Michelson_samplers_parameters = struct
+  let atom_size_range : Tezos_benchmark.Base_samplers.range =
+    {min = 0; max = 100}
+
+  let other_size : Tezos_benchmark.Base_samplers.range = {min = 0; max = 1000}
+
+  let parameters : Michelson_samplers.parameters =
+    {
+      base_parameters =
+        {
+          int_size = atom_size_range;
+          string_size = atom_size_range;
+          bytes_size = atom_size_range;
+        };
+      list_size = other_size;
+      set_size = other_size;
+      map_size = other_size;
+    }
+end
+
+module Michelson_crypto_samplers =
+Tezos_benchmark.Crypto_samplers.Make_finite_key_pool (struct
+  let size = 1000
+
+  let algo = `Default
+end)
+
+module Samplers : Michelson_samplers.S =
+  Michelson_samplers.Make
+    (Michelson_samplers_parameters)
+    (Michelson_crypto_samplers)
+
+let ex_comparable_data_sampler :
+    ex_comparable_data Tezos_benchmark.Base_samplers.sampler =
+ fun random_state ->
+  let size =
+    Tezos_benchmark.Base_samplers.sample_in_interval
+      ~range:{min = 1; max = 20}
+      random_state
+  in
+  let (Ex_comparable_ty ty) =
+    Samplers.Random_type.m_comparable_type ~size random_state
+  in
+  let x = Samplers.Random_value.comparable ty random_state in
+  Ex_comparable_data (ty, x)
+
+let generate_michelson_comparable_data =
+  QCheck2.Gen.make_primitive ~gen:ex_comparable_data_sampler ~shrink:(fun _ ->
+      Seq.empty)
+
+let random_bls_g1 =
+  QCheck2.Gen.make_primitive
+    ~gen:(Samplers.Random_value.value Script_typed_ir.Bls12_381_g1_t)
+    ~shrink:(fun _ -> Seq.empty)
+
+let assert_gas_run m =
+  match Gas_monad.run_pure_gas_unlimited m with
+  | Ok x -> x
+  | Error _ -> assert false
+
+let generate_expr =
+  let open QCheck2.Gen in
+  let+ (Ex_comparable_data (ty, x)) = generate_michelson_comparable_data in
+  assert_gas_run @@ Script_ir_unparser.unparse_comparable_data Optimized ty x
+
+let generate_lazy_expr =
+  let open QCheck2.Gen in
+  let+ expr = generate_expr in
+  Script.lazy_expr expr
+
 let generate_transaction =
   let open QCheck2.Gen in
   let* amount = gen_amount in
-  let+ destination = random_contract in
-  let parameters = Script.unit_parameter in
+  let* destination = random_contract in
+  let+ parameters = generate_lazy_expr in
   let entrypoint = Entrypoint.default in
   Transaction {amount; parameters; entrypoint; destination}
 
 let generate_origination =
   let open QCheck2.Gen in
-  let+ credit = gen_amount in
-  let delegate = None in
-  let script = Script.{code = unit_parameter; storage = unit_parameter} in
+  let* credit = gen_amount in
+  let* delegate = option random_pkh in
+  let* code = generate_lazy_expr in
+  let+ storage = generate_lazy_expr in
+  let script = Script.{code; storage} in
   Origination {delegate; script; credit}
 
 let generate_delegation =
@@ -506,22 +585,35 @@ let generate_set_deposits_limit =
   Set_deposits_limit amount_opt
 
 let generate_register_global_constant =
-  let value = Script_repr.lazy_expr (Expr.from_string "Pair 1 2") in
-  QCheck2.Gen.pure (Register_global_constant {value})
+  let open QCheck2.Gen in
+  let+ value = generate_lazy_expr in
+  Register_global_constant {value}
 
 let generate_transfer_ticket =
   let open QCheck2.Gen in
   let* ticketer = random_contract in
   let* destination = random_contract in
-  let+ amount = gen_ticket_amounts in
-  let contents = Script.lazy_expr (Expr.from_string "1") in
-  let ty = Script.lazy_expr (Expr.from_string "nat") in
+  let* amount = gen_ticket_amounts in
+  let+ (Ex_comparable_data (ty, x)) = generate_michelson_comparable_data in
+  let contents =
+    Script.lazy_expr @@ assert_gas_run
+    @@ Script_ir_unparser.unparse_comparable_data Optimized ty x
+  in
+  let ty =
+    Script.lazy_expr @@ Micheline.strip_locations @@ assert_gas_run
+    @@ Script_ir_unparser.unparse_ty ~loc:() ty
+  in
   let entrypoint = Entrypoint.default in
   Transfer_ticket {contents; ty; ticketer; amount; destination; entrypoint}
 
 let generate_dal_publish_slot_header =
-  let published_level = Alpha_context.Raw_level.of_int32_exn Int32.zero in
-  let slot_index = Alpha_context.Dal.Slot_index.zero in
+  let open QCheck2.Gen in
+  let* published_level = gen_level in
+  let* slot_index =
+    let open Alpha_context.Dal.Slot_index in
+    let+ i = int_bound (to_int max_value) in
+    Option.value ~default:zero (of_int_opt i)
+  in
   let commitment = Alpha_context.Dal.Slot.Commitment.zero in
   let commitment_proof = Alpha_context.Dal.Slot.Commitment_proof.zero in
   let slot_header =
@@ -531,18 +623,19 @@ let generate_dal_publish_slot_header =
   QCheck2.Gen.pure (Dal_publish_slot_header slot_header)
 
 let generate_sc_rollup_originate =
-  let kind = Sc_rollup.Kind.Example_arith in
-  let boot_sector = "" in
-  let parameters_ty = Script.lazy_expr (Expr.from_string "1") in
+  let open QCheck2.Gen in
+  let* kind = oneofl Sc_rollup.Kind.[Example_arith; Wasm_2_0_0] in
+  let* boot_sector = string in
+  let+ parameters_ty = generate_lazy_expr in
   let origination_proof =
     Lwt_main.run (Sc_rollup_helpers.compute_origination_proof ~boot_sector kind)
   in
-  QCheck2.Gen.pure
-    (Sc_rollup_originate {kind; boot_sector; origination_proof; parameters_ty})
+  Sc_rollup_originate {kind; boot_sector; origination_proof; parameters_ty}
 
 let generate_sc_rollup_add_messages =
   let open QCheck2.Gen in
-  return (Sc_rollup_add_messages {messages = []})
+  let+ messages = list string in
+  Sc_rollup_add_messages {messages}
 
 let sc_dummy_commitment =
   let number_of_ticks =
@@ -570,12 +663,99 @@ let generate_sc_rollup_publish =
   let commitment = sc_dummy_commitment in
   Sc_rollup_publish {rollup; commitment}
 
+let generate_sc_rollup_dissection_tick =
+  let open QCheck2.Gen in
+  let+ n = big_nat in
+  Sc_rollup.Tick.of_z (Z.of_int n)
+
+let generate_sc_rollup_dissection_chunk =
+  let open QCheck2.Gen in
+  let* state_hash =
+    option
+      (pure @@ Sc_rollup.State_hash.context_hash_to_state_hash Context_hash.zero)
+  in
+  let+ tick = generate_sc_rollup_dissection_tick in
+  {Sc_rollup.Dissection_chunk.state_hash; tick}
+
+let generate_reveal_proof =
+  let open QCheck2.Gen in
+  let* case =
+    oneofl
+      [
+        `Raw_data_proof;
+        `Metadata_proof (* don't know how to s `Dal_page_proof *);
+      ]
+  in
+  match case with
+  | `Raw_data_proof ->
+      let+ proof = string in
+      Sc_rollup.Proof.Raw_data_proof proof
+  | `Metadata_proof -> return Sc_rollup.Proof.Metadata_proof
+
+let of_string_through_encoding enc x =
+  let open Data_encoding in
+  let encoded = Binary.to_bytes_exn (string' Hex) x in
+  Binary.of_bytes_exn enc encoded
+
+let generate_input_proof =
+  let open QCheck2.Gen in
+  let* case = oneofl [`Inbox_proof; `Reveal_proof; `First_inbox_message] in
+  match case with
+  | `Inbox_proof ->
+      let* level = gen_level in
+      let* message_counter = nat in
+      let message_counter = Z.of_int message_counter in
+      let+ proof = string in
+      let proof =
+        of_string_through_encoding
+          Sc_rollup.Inbox.serialized_proof_encoding
+          proof
+      in
+      Sc_rollup.Proof.Inbox_proof {level; message_counter; proof}
+  | `Reveal_proof ->
+      let+ proof = generate_reveal_proof in
+      Sc_rollup.Proof.Reveal_proof proof
+  | `First_inbox_message -> return Sc_rollup.Proof.First_inbox_message
+
+let generate_sc_rollup_step =
+  let open QCheck2.Gen in
+  let* case = oneofl [`Dissection; `Proof] in
+  match case with
+  | `Dissection ->
+      let+ chunks = list generate_sc_rollup_dissection_chunk in
+      Sc_rollup.Game.Dissection chunks
+  | `Proof ->
+      let* pvm_step = string in
+      let pvm_step =
+        of_string_through_encoding Sc_rollup.Proof.serialized_encoding pvm_step
+      in
+      let+ input_proof = option generate_input_proof in
+      Sc_rollup.Game.Proof {pvm_step; input_proof}
+
+let generate_sc_rollup_refutation =
+  let open QCheck2.Gen in
+  let* case = oneofl [`Start; `Move] in
+  match case with
+  | `Start ->
+      let player_commitment_hash =
+        Sc_rollup.Commitment.hash_uncarbonated sc_dummy_commitment
+      in
+      let opponent_commitment_hash =
+        Sc_rollup.Commitment.hash_uncarbonated sc_dummy_commitment
+      in
+      return
+      @@ Sc_rollup.Game.Start {player_commitment_hash; opponent_commitment_hash}
+  | `Move ->
+      let* choice = generate_sc_rollup_dissection_tick in
+      let+ step = generate_sc_rollup_step in
+      Sc_rollup.Game.Move {choice; step}
+
 let generate_sc_rollup_refute =
   let open QCheck2.Gen in
   let* opponent = random_pkh in
-  let+ rollup = random_sc_rollup in
-  let refutation : Sc_rollup.Game.refutation =
-    Sc_rollup.Game.Move {choice = Sc_rollup.Tick.initial; step = Dissection []}
+  let* rollup = random_sc_rollup in
+  let+ (refutation : Sc_rollup.Game.refutation) =
+    generate_sc_rollup_refutation
   in
   Sc_rollup_refute {rollup; opponent; refutation}
 

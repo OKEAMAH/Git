@@ -72,6 +72,7 @@ let main () =
       "skip_list_hash";
       "verify_output_proof";
       "deserialize_output_proof";
+      "operation_serialization";
     ]
   in
   Lwt_list.iter_s

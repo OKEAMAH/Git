@@ -2927,6 +2927,8 @@ module Dal : sig
 
     val zero : t
 
+    val max_value : t
+
     val encoding : t Data_encoding.t
 
     val of_int_opt : int -> t option

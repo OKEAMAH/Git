@@ -30,3 +30,5 @@ let translator = "translator"
 let encoding = "encoding"
 
 let cache = "cache"
+
+let operation = "operation"
