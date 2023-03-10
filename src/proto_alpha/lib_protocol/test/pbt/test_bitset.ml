@@ -94,7 +94,7 @@ let test_fill =
 
 let () =
   Alcotest.run
-    "bits"
+    ""
     [
       ( Protocol.name ^ ": quantity",
         qcheck_wrap

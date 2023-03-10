@@ -276,7 +276,7 @@ let test_quantity ~count =
 let () =
   let qcheck_wrap = qcheck_wrap ~rand:(Random.State.make_self_init ()) in
   Alcotest.run
-    "Compact_encoding"
+    "encoding"
     [
       (Protocol.name ^ ": quantity", qcheck_wrap [test_quantity ~count:100_000]);
       ( Protocol.name ^ ": roundtrip",

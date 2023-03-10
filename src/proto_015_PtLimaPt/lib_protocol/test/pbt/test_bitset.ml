@@ -107,7 +107,7 @@ let test_diff (c1, c2) =
 
 let () =
   Alcotest.run
-    "bits"
+    ""
     [
       ( Protocol.name ^ ": quantity",
         qcheck_wrap

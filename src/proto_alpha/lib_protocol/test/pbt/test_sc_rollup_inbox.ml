@@ -74,7 +74,4 @@ let test_add_info_per_level =
 
 let tests = [test_add_info_per_level]
 
-let () =
-  Alcotest.run
-    "Smart rollup inbox"
-    [(Protocol.name ^ ": safety", qcheck_wrap tests)]
+let () = Alcotest.run "" [(Protocol.name ^ ": safety", qcheck_wrap tests)]

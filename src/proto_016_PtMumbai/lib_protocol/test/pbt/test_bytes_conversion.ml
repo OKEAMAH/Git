@@ -209,7 +209,4 @@ let tests =
   ]
 
 let () =
-  Alcotest.run
-    ("protocol > script_bytes > " ^ Protocol.name
-   ^ ": bytes and int/nat conversion ")
-    tests
+  Alcotest.run ("" ^ Protocol.name ^ ": bytes and int/nat conversion ") tests

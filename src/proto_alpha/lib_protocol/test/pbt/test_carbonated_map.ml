@@ -545,6 +545,4 @@ let tests ~rand = qcheck_wrap ~rand qcheck_tests @ unit_tests
 let () =
   (* Ensure deterministic results. *)
   let rand = Random.State.make [|0x1337533D; 71287309; 397060904|] in
-  Alcotest.run
-    "protocol > pbt > carbonated map"
-    [(Protocol.name ^ ": Carbonated map", tests ~rand)]
+  Alcotest.run "" [(Protocol.name ^ ": Carbonated map", tests ~rand)]

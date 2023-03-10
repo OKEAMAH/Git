@@ -289,6 +289,4 @@ let tests =
   ]
 
 let () =
-  Alcotest.run
-    "SC rollup encoding"
-    [(Protocol.name ^ ": roundtrip", qcheck_wrap tests)]
+  Alcotest.run "" [(Protocol.name ^ ": sc - roundtrip", qcheck_wrap tests)]

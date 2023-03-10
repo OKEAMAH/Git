@@ -222,7 +222,7 @@ let tests_to_scalar = [test_address_to_scalar; test_operation_to_scalar]
 
 let () =
   Alcotest.run
-    "ZK rollup encoding"
+    ""
     [
       (Protocol.name ^ ": roundtrip", qcheck_wrap tests_roundtrip);
       (Protocol.name ^ ": to_scalar", qcheck_wrap tests_to_scalar);

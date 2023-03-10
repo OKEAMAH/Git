@@ -319,7 +319,7 @@ let economic_tests =
 let () =
   let open Qcheck2_helpers in
   Alcotest.run
-    "protocol > pbt > liquidity baking"
+    ""
     [
       ( Protocol.name ^ ": Machines Cross-Validation",
         qcheck_wrap machine_validation_tests );

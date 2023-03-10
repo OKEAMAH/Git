@@ -343,7 +343,7 @@ let test_pack_unpack =
 
 let () =
   Alcotest.run
-    "protocol > pbt > script_comparison"
+    ""
     [
       ( Protocol.name ^ ": compatible_with_reference",
         qcheck_wrap [test_compatible_with_reference] );

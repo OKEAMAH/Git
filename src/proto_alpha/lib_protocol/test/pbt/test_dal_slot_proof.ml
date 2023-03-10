@@ -245,7 +245,7 @@ end
 let () =
   let open Tezos_protocol_alpha_parameters.Default_parameters in
   let module Test = Make (struct
-    let name = "test"
+    let name = ""
 
     let count = 5
 
