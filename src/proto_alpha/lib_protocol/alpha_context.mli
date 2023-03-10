@@ -4867,6 +4867,12 @@ module Operation : sig
 
   type error += Invalid_signature (* `Permanent *)
 
+  type serialized_operation_for_check_signature = private
+    | Serialized_operation_for_check_signature of bytes
+
+  val serialize_unsigned_operation :
+    _ operation -> serialized_operation_for_check_signature
+
   val check_signature : public_key -> Chain_id.t -> _ operation -> unit tzresult
 
   val pack : 'kind operation -> packed_operation

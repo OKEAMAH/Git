@@ -1763,6 +1763,17 @@ let () =
     (function Contents_list_error s -> Some s | _ -> None)
     (fun s -> Contents_list_error s)
 
+type serialized_operation_for_check_signature =
+  | Serialized_operation_for_check_signature of bytes
+
+let serialize_unsigned_operation (type kind)
+    ({shell; protocol_data} : kind operation) :
+    serialized_operation_for_check_signature =
+  Serialized_operation_for_check_signature
+    (Data_encoding.Binary.to_bytes_exn
+       unsigned_operation_encoding
+       (shell, Contents_list protocol_data.contents))
+
 let check_signature (type kind) key chain_id
     ({shell; protocol_data} : kind operation) =
   let check ~watermark contents signature =

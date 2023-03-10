@@ -634,6 +634,13 @@ type error += Missing_signature (* `Permanent *)
 
 type error += Invalid_signature (* `Permanent *)
 
+type serialized_operation_for_check_signature = private
+  | Serialized_operation_for_check_signature of bytes
+
+(** Serializing an operation to bytes is useful to check its signature. *)
+val serialize_unsigned_operation :
+  _ operation -> serialized_operation_for_check_signature
+
 val check_signature :
   Signature.Public_key.t -> Chain_id.t -> _ operation -> unit tzresult
 
